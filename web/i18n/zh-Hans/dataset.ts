@@ -45,6 +45,15 @@ const translation = {
   },
   docsFailedNotice: '文档无法被索引',
   retry: '重试',
+  indexingTechnique: {
+    high_quality: '高质量',
+    economic: '经济',
+  },
+  indexingMethod: {
+    semantic_search: '向量检索',
+    full_text_search: '全文检索',
+    hybrid_search: '混合检索',
+  },
 }
 
 export default translation

@@ -100,7 +100,14 @@ const ConfigContent: FC<Props> = ({
       <div className='mt-2 space-y-3'>
         <RadioCard
           icon={<NTo1Retrieval className='shrink-0 mr-3 w-9 h-9 rounded-lg' />}
-          title={t('appDebug.datasetConfig.retrieveOneWay.title')}
+          title={(
+            <div className='flex items-center'>
+              {t('appDebug.datasetConfig.retrieveOneWay.title')}
+              <TooltipPlus popupContent={<div className='w-[320px]'>According to product planning, N-to-1 retrieval will be officially deprecated in September. Until then you can still use it normally.</div>}>
+                <div className='ml-1 px-[5px] h-[18px] rounded-[5px] border border-text-accent-secondary system-2xs-medium-uppercase leading-[18px] text-text-accent-secondary'>legacy</div>
+              </TooltipPlus>
+            </div>
+          )}
           description={t('appDebug.datasetConfig.retrieveOneWay.description')}
           isChosen={type === RETRIEVE_TYPE.oneWay}
           onChosen={() => { setType(RETRIEVE_TYPE.oneWay) }}

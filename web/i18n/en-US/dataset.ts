@@ -45,6 +45,15 @@ const translation = {
   },
   docsFailedNotice: 'documents failed to be indexed',
   retry: 'Retry',
+  indexingTechnique: {
+    high_quality: 'HQ',
+    economic: 'ECO',
+  },
+  indexingMethod: {
+    semantic_search: 'VECTOR',
+    full_text_search: 'FULL TEXT',
+    hybrid_search: 'HYBRID',
+  },
 }
 
 export default translation
