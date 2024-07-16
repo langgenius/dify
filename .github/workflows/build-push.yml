@@ -76,18 +76,18 @@ jobs:
           cache-to: type=gha,mode=max
 
 
-      - name: generate config
-        uses: appleboy/kubernetes-action@v0.0.1
-        with:
-          server: ${{ secrets.K8S_SERVER }}
-          ca_cert: ${{ secrets.K8S_CA_CERT }}
-          token: ${{ secrets.K8S_TOKEN }}
-          output: kubeconfig.yaml
+      # - name: generate config
+      #   uses: appleboy/kubernetes-action@v0.0.1
+      #   with:
+      #     server: ${{ secrets.K8S_SERVER }}
+      #     ca_cert: ${{ secrets.K8S_CA_CERT }}
+      #     token: ${{ secrets.K8S_TOKEN }}
+      #     output: kubeconfig.yaml
 
-      - name: deploy
-        env:
-          KUBECONFIG: kubeconfig.yaml
-        run: |
-          sudo chmod 644 kubeconfig.yaml
-          kubectl -n ${{ env.NAMESPACE }} set image deployment/dify-${{ matrix.service_name }} ${{ matrix.service_name }}=${{ env[matrix.image_name_env] }}:${{ fromJSON(steps.meta.outputs.json).labels['org.opencontainers.image.revision'] }}
+      # - name: deploy
+      #   env:
+      #     KUBECONFIG: kubeconfig.yaml
+      #   run: |
+      #     sudo chmod 644 kubeconfig.yaml
+      #     kubectl -n ${{ env.NAMESPACE }} set image deployment/dify-${{ matrix.service_name }} ${{ matrix.service_name }}=${{ env[matrix.image_name_env] }}:${{ fromJSON(steps.meta.outputs.json).labels['org.opencontainers.image.revision'] }}
           
