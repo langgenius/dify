@@ -1,5 +1,5 @@
-import type { TemplateTransformNodeType } from './types'
+import type { AssignerNodeType } from './types'
 
-export const checkNodeValid = (payload: TemplateTransformNodeType) => {
+export const checkNodeValid = (payload: AssignerNodeType) => {
   return true
 }

@@ -1,6 +1,14 @@
-import type { CommonNodeType, Variable } from '@/app/components/workflow/types'
+import type { CommonNodeType, ValueSelector } from '@/app/components/workflow/types'
 
-export type TemplateTransformNodeType = CommonNodeType & {
-  variables: Variable[]
-  template: string
+export enum WriteMode {
+  Overwrite = 'overwrite',
+  Append = 'append',
+  Clear = 'clear',
+}
+
+export type AssignerNodeType = CommonNodeType & {
+  variable: ValueSelector
+  writeMode: WriteMode
+  value: any
+  // valueType
 }

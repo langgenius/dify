@@ -408,6 +408,14 @@ const translation = {
       },
       setAssignVariable: 'Set assign variable',
     },
+    assigner: {
+      assignedVariable: 'Assigned Variable',
+      writeMode: 'Write Mode',
+      overwrite: 'Overwrite',
+      append: 'Append',
+      clear: 'Clear',
+      setValue: 'Set Value',
+    },
     tool: {
       toAuthorize: 'To authorize',
       inputVars: 'Input Variables',

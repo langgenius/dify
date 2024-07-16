@@ -408,6 +408,14 @@ const translation = {
       },
       setAssignVariable: '设置赋值变量',
     },
+    assigner: {
+      assignedVariable: '赋值的变量',
+      writeMode: '写入模式',
+      overwrite: '覆盖',
+      append: '追加',
+      clear: '清空',
+      setValue: '设置值',
+    },
     tool: {
       toAuthorize: '授权',
       inputVars: '输入变量',
