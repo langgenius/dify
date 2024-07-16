@@ -115,7 +115,7 @@ class LLMGenerator:
         return questions
 
     @classmethod
-    def generate_rule_config(cls, tenant_id: str, audiences: str, hoping_to_solve: str) -> dict:
+    def generate_rule_config(cls, tenant_id: str, instruction: str) -> dict:
         output_parser = RuleConfigGeneratorOutputParser()
 
         prompt_template = PromptTemplateParser(
@@ -124,8 +124,7 @@ class LLMGenerator:
 
         prompt = prompt_template.format(
             inputs={
-                "audiences": audiences,
-                "hoping_to_solve": hoping_to_solve,
+                "TASK_DESCRIPTION": instruction,
                 "variable": "{{variable}}",
                 "lanA": "{{lanA}}",
                 "lanB": "{{lanB}}",

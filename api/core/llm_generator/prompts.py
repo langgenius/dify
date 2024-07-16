@@ -80,65 +80,17 @@ GENERATOR_QA_PROMPT = (
     '<QA Pairs>'
 )
 
-RULE_CONFIG_GENERATE_TEMPLATE = """Given MY INTENDED AUDIENCES and HOPING TO SOLVE using a language model, please select \
-the model prompt that best suits the input. 
-You will be provided with the prompt, variables, and an opening statement. 
-Only the content enclosed in double curly braces, such as {{variable}}, in the prompt can be considered as a variable; \
-otherwise, it cannot exist as a variable in the variables.
-If you believe revising the original input will result in a better response from the language model, you may \
-suggest revisions.
-
-<<PRINCIPLES OF GOOD PROMPT>>
-Integrate the intended audience in the prompt e.g. the audience is an expert in the field.
-Break down complex tasks into a sequence of simpler prompts in an interactive conversation.
-Implement example-driven prompting (Use few-shot prompting). 
-When formatting your prompt start with Instruction followed by either Example if relevant. \
-Subsequently present your content. Use one or more line breaks to separate instructions examples questions context and input data.
-Incorporate the following phrases: “Your task is” and “You MUST”.
-Incorporate the following phrases: “You will be penalized”.
-Use leading words like writing “think step by step”.
-Add to your prompt the following phrase “Ensure that your answer is unbiased and does not rely on stereotypes”.
-Assign a role to the large language models.
-Use Delimiters.
-To write an essay /text /paragraph /article or any type of text that should be detailed: “Write a detailed [essay/text/paragraph] for me on [topic] in detail by adding all the information necessary”.
-Clearly state the requirements that the model must follow in order to produce content in the form of the keywords regulations hint or instructions
-
-<< FORMATTING >>
-Return a markdown code snippet with a JSON object formatted to look like, \
-no any other string out of markdown code snippet:
-```json
-{{{{
-    "prompt": string \\ generated prompt
-    "variables": list of string \\ variables
-    "opening_statement": string \\ an opening statement to guide users on how to ask questions with generated prompt \
-and fill in variables, with a welcome sentence, and keep TLDR.
-}}}}
-```
-
-<< EXAMPLES >>
-[EXAMPLE A]
-```json
-{
-  "prompt": "I need your help to translate the following {{Input_language}}paper paragraph into {{Target_language}}, in a style similar to a popular science magazine in {{Target_language}}. #### Rules Ensure accurate conveyance of the original text's facts and context during translation. Maintain the original paragraph format and retain technical terms and company abbreviations ",
-  "variables": ["Input_language", "Target_language"],
-  "opening_statement": " Hi. I am your translation assistant. I can help you with any translation and ensure accurate conveyance of information. "
-}
-```
-
-[EXAMPLE B]
-```json
-{
-  "prompt": "Your task is to review the provided meeting notes and create a concise summary that captures the essential information, focusing on key takeaways and action items assigned to specific individuals or departments during the meeting. Use clear and professional language, and organize the summary in a logical manner using appropriate formatting such as headings, subheadings, and bullet points. Ensure that the summary is easy to understand and provides a comprehensive but succinct overview of the meeting's content, with a particular focus on clearly indicating who is responsible for each action item.",
-  "variables": ["meeting_notes"],
-  "opening_statement": "Hi! I'm your meeting notes summarizer AI. I can help you with any meeting notes and ensure accurate conveyance of information."
-}
-```
-
-<< MY INTENDED AUDIENCES >>
-{{audiences}}
-
-<< HOPING TO SOLVE >>
-{{hoping_to_solve}}
-
-<< OUTPUT >>
+RULE_CONFIG_GENERATE_TEMPLATE = """
+Here's a task description for which I'd like you to create a high-quality prompt template:
+<task_description>
+{{TASK_DESCRIPTION}}
+</task_description>
+Based on the task description, create a well-formed json template that other ais can use to continuously complete the task. The prompt template should contain:
+-"prompt" field to give other AI or LLMS a hint to do the task
+- "variables" field, some tasks may require user input parameters, then please provide these fields as a list, e.g. ["Input_language", "Target_language"]
+- Explicit instructions for AI to use this prompt in the "prompt" field, stating that it should step-wise explain how the input variable is used to complete the task
+- The "opening_statement" field, which is the LLM opening statement and should be present in the provided 'variables' field if any
+- Be consistent with the task description language.
+- The output is json and contains prompt, variables, opening_statement
+Please generate the full prompt template and output only the prompt template.
 """
