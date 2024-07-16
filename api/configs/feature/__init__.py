@@ -1,6 +1,6 @@
 from typing import Optional
 
-from pydantic import AliasChoices, Field, NonNegativeInt, PositiveInt, computed_field, HttpUrl
+from pydantic import AliasChoices, Field, HttpUrl, NonNegativeInt, PositiveInt, computed_field
 from pydantic_settings import BaseSettings
 
 from configs.feature.hosted_service import HostedServiceConfig
