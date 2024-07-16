@@ -7,7 +7,6 @@ environment_variable_fields = {
     'name': fields.String,
     'value': fields.Raw,
     'value_type': fields.String(attribute='value_type.value'),
-    'exportable': fields.Boolean,
 }
 
 workflow_fields = {

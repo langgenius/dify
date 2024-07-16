@@ -1,14 +1,14 @@
 import pytest
 from pydantic import ValidationError
 
-from core.app.variables import FloatVariable, IntegerVariable, SecretVariable, TextVariable, variable_factory
+from core.app.variables import FloatVariable, IntegerVariable, SecretVariable, StringVariable, variable_factory
 from core.app.variables.entities import VariableType
 
 
 def test_text_variable():
     test_data = {'value_type': 'text', 'name': 'test_text', 'value': 'Hello, World!'}
     result = variable_factory.from_mapping(test_data)
-    assert isinstance(result, TextVariable)
+    assert isinstance(result, StringVariable)
 
 
 def test_integer_variable():
@@ -36,7 +36,7 @@ def test_invalid_value_type():
 
 
 def test_frozen_variables():
-    var = TextVariable(name='text', value='text')
+    var = StringVariable(name='text', value='text')
     with pytest.raises(ValidationError):
         var.value = 'new value'
 
@@ -55,10 +55,10 @@ def test_frozen_variables():
 
 def test_variable_value_type_immutable():
     with pytest.raises(ValidationError):
-        TextVariable(value_type=VariableType.ARRAY, name='text', value='text')
+        StringVariable(value_type=VariableType.ARRAY, name='text', value='text')
 
     with pytest.raises(ValidationError):
-        TextVariable.model_validate({
+        StringVariable.model_validate({
             'value_type': 'not text',
             'name': 'text',
             'value': 'text'

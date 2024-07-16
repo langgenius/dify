@@ -5,7 +5,7 @@ from .entities import (
     IntegerVariable,
     ObjectVariable,
     SecretVariable,
-    TextVariable,
+    StringVariable,
     Variable,
 )
 
@@ -15,7 +15,7 @@ __all__ = [
     'ObjectVariable',
     'SecretVariable',
     'FileVariable',
-    'TextVariable',
+    'StringVariable',
     'ArrayVariable',
     'Variable',
 ]

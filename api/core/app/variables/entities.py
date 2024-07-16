@@ -10,7 +10,7 @@ from core.helper import encrypter
 
 
 class VariableType(str, Enum):
-    TEXT = 'text'
+    STRING = 'string'
     NUMBER = 'number'
     FILE = 'file'
 
@@ -46,8 +46,8 @@ class Variable(BaseModel):
         return str(self.value)
 
 
-class TextVariable(Variable):
-    value_type: VariableType = VariableType.TEXT
+class StringVariable(Variable):
+    value_type: VariableType = VariableType.STRING
     value: str
 
 

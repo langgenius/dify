@@ -1,7 +1,7 @@
 from unittest import mock
 
 import contexts
-from core.app.variables import FloatVariable, IntegerVariable, SecretVariable, TextVariable
+from core.app.variables import FloatVariable, IntegerVariable, SecretVariable, StringVariable
 from models.workflow import Workflow
 
 
@@ -19,7 +19,7 @@ def test_environment_variables():
     workflow = Workflow()
 
     # Create some EnvironmentVariable instances
-    variable1 = TextVariable.model_validate({'name': 'var1', 'value': 'value1'})
+    variable1 = StringVariable.model_validate({'name': 'var1', 'value': 'value1'})
     variable2 = IntegerVariable.model_validate({'name': 'var2', 'value': 123})
     variable3 = SecretVariable.model_validate({'name': 'var3', 'value': 'secret'})
     variable4 = FloatVariable.model_validate({'name': 'var4', 'value': 3.14})
@@ -60,7 +60,7 @@ def test_to_dict():
         # Set the environment_variables property of the Workflow instance
         workflow.environment_variables = [
             SecretVariable.model_validate({'name': 'secret', 'value': 'secret'}),
-            TextVariable.model_validate({'name': 'text', 'value': 'text'}),
+            StringVariable.model_validate({'name': 'text', 'value': 'text'}),
         ]
 
         workflow_dict = workflow.to_dict()
