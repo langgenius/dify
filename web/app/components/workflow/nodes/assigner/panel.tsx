@@ -3,6 +3,7 @@ import React from 'react'
 import { useTranslation } from 'react-i18next'
 
 import VarReferencePicker from '../_base/components/variable/var-reference-picker'
+import RadioCardItem from '../_base/components/radio-card-item'
 import useConfig from './use-config'
 import type { AssignerNodeType } from './types'
 import Field from '@/app/components/workflow/nodes/_base/components/field'
@@ -21,6 +22,9 @@ const Panel: FC<NodePanelProps<AssignerNodeType>> = ({
     inputs,
     handleVarChanges,
     filterVar,
+    varType,
+    handleWriteModeChange,
+    writeModeTypes,
   } = useConfig(id, data)
 
   return (
@@ -41,7 +45,17 @@ const Panel: FC<NodePanelProps<AssignerNodeType>> = ({
         <Field
           title={t(`${i18nPrefix}.writeMode`)}
         >
-          aa
+          <div className='grid grid-cols-3 gap-2'>
+            {writeModeTypes.map(type => (
+              <RadioCardItem
+                key={type}
+                title={t(`${i18nPrefix}.${type}`)}
+                onSelect={handleWriteModeChange(type)}
+                isSelected={inputs.writeMode === type}
+                textCenter
+              />
+            ))}
+          </div>
         </Field>
         <Field
           title={t(`${i18nPrefix}.setValue`)}

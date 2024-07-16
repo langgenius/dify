@@ -7,7 +7,7 @@ const i18nPrefix = 'workflow.errorMsg'
 const nodeDefault: NodeDefault<AssignerNodeType> = {
   defaultValue: {
     variable: [],
-    writeMode: WriteMode.Append,
+    writeMode: WriteMode.Overwrite,
   },
   getAvailablePrevNodes(isChatMode: boolean) {
     const nodes = isChatMode

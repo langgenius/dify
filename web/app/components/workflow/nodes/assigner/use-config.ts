@@ -1,9 +1,9 @@
 import { useCallback, useMemo } from 'react'
 import produce from 'immer'
 import { useStoreApi } from 'reactflow'
-import type { ValueSelector, Var } from '../../types'
+import { type ValueSelector, VarType } from '../../types'
 import { getVarType } from '../_base/components/variable/utils'
-import type { AssignerNodeType } from './types'
+import { type AssignerNodeType, WriteMode } from './types'
 import useNodeCrud from '@/app/components/workflow/nodes/_base/hooks/use-node-crud'
 import {
   useIsChatMode,
@@ -36,7 +36,7 @@ const useConfig = (id: string, payload: AssignerNodeType) => {
     setInputs(newInputs)
   }, [inputs, setInputs])
 
-  const type = getVarType({
+  const varType = getVarType({
     parentNode: iterationNode,
     valueSelector: inputs.variable,
     availableNodes,
@@ -44,9 +44,24 @@ const useConfig = (id: string, payload: AssignerNodeType) => {
     isConstant: false,
   })
 
-  console.log(type)
+  const writeModeTypes = useMemo(() => {
+    const types = [WriteMode.Overwrite, WriteMode.Append, WriteMode.Clear]
+    if (varType === VarType.object)
+      return types.filter(t => t !== WriteMode.Append)
 
-  const filterVar = useCallback((varPayload: Var) => {
+    return types
+  }, [varType])
+
+  const handleWriteModeChange = useCallback((writeMode: WriteMode) => {
+    return () => {
+      const newInputs = produce(inputs, (draft) => {
+        draft.writeMode = writeMode
+      })
+      setInputs(newInputs)
+    }
+  }, [inputs, setInputs])
+
+  const filterVar = useCallback(() => {
     return true // [VarType.string, VarType.number, VarType.object, VarType.array, VarType.arrayNumber, VarType.arrayString, VarType.arrayObject].includes(varPayload.type)
   }, [])
 
@@ -55,6 +70,9 @@ const useConfig = (id: string, payload: AssignerNodeType) => {
     inputs,
     filterVar,
     handleVarChanges,
+    varType,
+    writeModeTypes,
+    handleWriteModeChange,
   }
 }
 
