@@ -175,7 +175,7 @@ werkzeug = "~3.0.1"
 xinference-client = "0.9.4"
 yarl = "~1.9.4"
 zhipuai = "1.0.7"
-elasticsearch = "7.17.9"
+elasticsearch = "8.7.0"
 
 ############################################################
 # Tool dependencies required by tool implementations
