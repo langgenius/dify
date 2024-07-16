@@ -1,6 +1,6 @@
 from typing import Optional
 
-from pydantic import AliasChoices, Field, NonNegativeInt, PositiveInt, computed_field
+from pydantic import AliasChoices, Field, NonNegativeInt, PositiveInt, computed_field, HttpUrl
 from pydantic_settings import BaseSettings
 
 from configs.feature.hosted_service import HostedServiceConfig
@@ -41,7 +41,7 @@ class CodeExecutionSandboxConfig(BaseSettings):
     """
     Code Execution Sandbox configs
     """
-    CODE_EXECUTION_ENDPOINT: str = Field(
+    CODE_EXECUTION_ENDPOINT: HttpUrl = Field(
         description='endpoint URL of code execution servcie',
         default='http://sandbox:8194',
     )
@@ -228,7 +228,7 @@ class UpdateConfig(BaseSettings):
     """
     Update configs
     """
-    CHECK_UPDATE_URL: str = Field(
+    CHECK_UPDATE_URL: HttpUrl = Field(
         description='url for checking updates',
         default='https://updates.dify.ai',
     )

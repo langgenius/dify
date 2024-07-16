@@ -1,6 +1,6 @@
 from typing import Optional
 
-from pydantic import Field, NonNegativeInt
+from pydantic import Field, NonNegativeInt, HttpUrl
 from pydantic_settings import BaseSettings
 
 
@@ -187,7 +187,7 @@ class HostedFetchAppTemplateConfig(BaseSettings):
         default='remote',
     )
 
-    HOSTED_FETCH_APP_TEMPLATES_REMOTE_DOMAIN: str = Field(
+    HOSTED_FETCH_APP_TEMPLATES_REMOTE_DOMAIN: HttpUrl = Field(
         description='the domain for fetching remote app templates',
         default='https://tmpl.dify.ai',
     )
