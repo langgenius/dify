@@ -70,8 +70,7 @@ def get_url(url: str, user_agent: str = None) -> str:
         response = requests.get(url, headers=headers, allow_redirects=True, timeout=(120, 300))
     elif response.status_code == 403:
         scraper = cloudscraper.create_scraper()
-        headers = {'User-Agent': user_agent} if user_agent else {}
-        response = scraper.get(url, headers=headers)
+        response = scraper.get(url, headers=headers, allow_redirects=True, timeout=(120, 300))
 
     if response.status_code != 200:
         return "URL returned status code {}.".format(response.status_code)
