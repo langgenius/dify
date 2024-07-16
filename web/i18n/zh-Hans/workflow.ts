@@ -413,6 +413,7 @@ const translation = {
       writeMode: '写入模式',
       overwrite: '覆盖',
       append: '追加',
+      plus: '加',
       clear: '清空',
       setValue: '设置值',
     },

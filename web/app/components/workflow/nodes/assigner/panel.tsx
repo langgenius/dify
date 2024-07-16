@@ -5,9 +5,9 @@ import { useTranslation } from 'react-i18next'
 import VarReferencePicker from '../_base/components/variable/var-reference-picker'
 import RadioCardItem from '../_base/components/radio-card-item'
 import useConfig from './use-config'
-import type { AssignerNodeType } from './types'
+import { type AssignerNodeType, WriteMode } from './types'
 import Field from '@/app/components/workflow/nodes/_base/components/field'
-import type { NodePanelProps } from '@/app/components/workflow/types'
+import { type NodePanelProps, VarType } from '@/app/components/workflow/types'
 
 const i18nPrefix = 'workflow.nodes.assigner'
 
@@ -49,7 +49,7 @@ const Panel: FC<NodePanelProps<AssignerNodeType>> = ({
             {writeModeTypes.map(type => (
               <RadioCardItem
                 key={type}
-                title={t(`${i18nPrefix}.${type}`)}
+                title={(varType === VarType.number && type === WriteMode.Append) ? t(`${i18nPrefix}.plus`) : t(`${i18nPrefix}.${type}`)}
                 onSelect={handleWriteModeChange(type)}
                 isSelected={inputs.writeMode === type}
                 textCenter
