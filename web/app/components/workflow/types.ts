@@ -25,6 +25,7 @@ export enum BlockEnum {
   Tool = 'tool',
   ParameterExtractor = 'parameter-extractor',
   Iteration = 'iteration',
+  Assigner = 'assigner', // is now named as VariableAssigner
 }
 
 export type Branch = {
