@@ -3,6 +3,7 @@ from typing import Optional
 from pydantic import BaseModel, Field, model_validator
 
 from core.workflow.entities.node_entities import NodeRunResult
+from models.workflow import WorkflowNodeExecutionStatus
 
 
 class GraphEngineEvent(BaseModel):
@@ -50,10 +51,12 @@ class NodeRunStartedEvent(BaseNodeEvent):
 
 class NodeRunStreamChunkEvent(BaseNodeEvent):
     chunk_content: str = Field(..., description="chunk content")
+    from_variable_selector: list[str] = Field(..., description="from variable selector")
 
 
 class NodeRunRetrieverResourceEvent(BaseNodeEvent):
     retriever_resources: list[dict] = Field(..., description="retriever resources")
+    context: str = Field(..., description="context")
 
 
 class NodeRunSucceededEvent(BaseNodeEvent):
@@ -61,7 +64,10 @@ class NodeRunSucceededEvent(BaseNodeEvent):
 
 
 class NodeRunFailedEvent(BaseNodeEvent):
-    run_result: NodeRunResult = Field(..., description="run result")
+    run_result: NodeRunResult = Field(
+        default=NodeRunResult(status=WorkflowNodeExecutionStatus.FAILED),
+        description="run result"
+    )
     reason: str = Field("", description="failed reason")
 
     @model_validator(mode='before')

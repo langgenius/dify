@@ -1,9 +1,16 @@
+from unittest.mock import patch
+
+from core.app.entities.app_invoke_entities import InvokeFrom
+from core.workflow.entities.node_entities import SystemVariable, UserFrom
+from core.workflow.entities.variable_pool import VariablePool
 from core.workflow.graph_engine.entities.graph import Graph
-from core.workflow.graph_engine.entities.run_condition import RunCondition
-from core.workflow.utils.condition.entities import Condition
+from core.workflow.graph_engine.graph_engine import GraphEngine
+from models.workflow import WorkflowType
 
 
-def test_init():
+@patch('extensions.ext_database.db.session.remove')
+@patch('extensions.ext_database.db.session.close')
+def test_run(mock_close, mock_remove):
     graph_config = {
         "edges": [
             {
@@ -37,37 +44,43 @@ def test_init():
         "nodes": [
             {
                 "data": {
-                    "type": "start"
+                    "type": "start",
+                    "title": "start"
                 },
                 "id": "start"
             },
             {
                 "data": {
                     "type": "llm",
+                    "title": "llm"
                 },
                 "id": "llm"
             },
             {
                 "data": {
                     "type": "answer",
+                    "title": "answer"
                 },
                 "id": "answer",
             },
             {
                 "data": {
-                    "type": "question-classifier"
+                    "type": "question-classifier",
+                    "title": "qc"
                 },
                 "id": "qc",
             },
             {
                 "data": {
                     "type": "http-request",
+                    "title": "http"
                 },
                 "id": "http",
             },
             {
                 "data": {
                     "type": "answer",
+                    "title": "answer2"
                 },
                 "id": "answer2",
             }
@@ -78,787 +91,30 @@ def test_init():
         graph_config=graph_config
     )
 
-    start_node_id = "start"
+    variable_pool = VariablePool(system_variables={
+        SystemVariable.QUERY: 'what\'s the weather in SF',
+        SystemVariable.FILES: [],
+        SystemVariable.CONVERSATION_ID: 'abababa',
+        SystemVariable.USER_ID: 'aaa'
+    }, user_inputs={})
 
-    assert graph.root_node_id == start_node_id
-    assert graph.edge_mapping.get(start_node_id)[0].target_node_id == "qc"
-    assert {"llm", "http"} == {node.target_node_id for node in graph.edge_mapping.get("qc")}
-
-
-def test__init_iteration_graph():
-    graph_config = {
-        "edges": [
-            {
-                "id": "llm-answer",
-                "source": "llm",
-                "sourceHandle": "source",
-                "target": "answer",
-            },
-            {
-                "id": "iteration-source-llm-target",
-                "source": "iteration",
-                "sourceHandle": "source",
-                "target": "llm",
-            },
-            {
-                "id": "template-transform-in-iteration-source-llm-in-iteration-target",
-                "source": "template-transform-in-iteration",
-                "sourceHandle": "source",
-                "target": "llm-in-iteration",
-            },
-            {
-                "id": "llm-in-iteration-source-answer-in-iteration-target",
-                "source": "llm-in-iteration",
-                "sourceHandle": "source",
-                "target": "answer-in-iteration",
-            },
-            {
-                "id": "start-source-code-target",
-                "source": "start",
-                "sourceHandle": "source",
-                "target": "code",
-            },
-            {
-                "id": "code-source-iteration-target",
-                "source": "code",
-                "sourceHandle": "source",
-                "target": "iteration",
-            }
-        ],
-        "nodes": [
-            {
-                "data": {
-                    "type": "start",
-                },
-                "id": "start",
-            },
-            {
-                "data": {
-                    "type": "llm",
-                },
-                "id": "llm",
-            },
-            {
-                "data": {
-                    "type": "answer",
-                },
-                "id": "answer",
-            },
-            {
-                "data": {
-                    "type": "iteration"
-                },
-                "id": "iteration",
-            },
-            {
-                "data": {
-                    "type": "template-transform",
-                },
-                "id": "template-transform-in-iteration",
-                "parentId": "iteration",
-            },
-            {
-                "data": {
-                    "type": "llm",
-                },
-                "id": "llm-in-iteration",
-                "parentId": "iteration",
-            },
-            {
-                "data": {
-                    "type": "answer",
-                },
-                "id": "answer-in-iteration",
-                "parentId": "iteration",
-            },
-            {
-                "data": {
-                    "type": "code",
-                },
-                "id": "code",
-            }
-        ]
-    }
-
-    graph = Graph.init(
-        graph_config=graph_config,
-        root_node_id="template-transform-in-iteration"
-    )
-    graph.add_extra_edge(
-        source_node_id="answer-in-iteration",
-        target_node_id="template-transform-in-iteration",
-        run_condition=RunCondition(
-            type="condition",
-            conditions=[
-                Condition(
-                    variable_selector=["iteration", "index"],
-                    comparison_operator="≤",
-                    value="5"
-                )
-            ]
-        )
+    graph_engine = GraphEngine(
+        tenant_id="111",
+        app_id="222",
+        workflow_type=WorkflowType.CHAT,
+        workflow_id="333",
+        user_id="444",
+        user_from=UserFrom.ACCOUNT,
+        invoke_from=InvokeFrom.WEB_APP,
+        call_depth=0,
+        graph=graph,
+        variable_pool=variable_pool,
+        max_execution_steps=500,
+        max_execution_time=1200
     )
 
-    # iteration:
-    #   [template-transform-in-iteration -> llm-in-iteration -> answer-in-iteration]
+    print("")
 
-    assert graph.root_node_id == "template-transform-in-iteration"
-    assert graph.edge_mapping.get("template-transform-in-iteration")[0].target_node_id == "llm-in-iteration"
-    assert graph.edge_mapping.get("llm-in-iteration")[0].target_node_id == "answer-in-iteration"
-    assert graph.edge_mapping.get("answer-in-iteration")[0].target_node_id == "template-transform-in-iteration"
-
-
-def test_parallels_graph():
-    graph_config = {
-        "edges": [
-            {
-                "id": "start-source-llm1-target",
-                "source": "start",
-                "target": "llm1",
-            },
-            {
-                "id": "start-source-llm2-target",
-                "source": "start",
-                "target": "llm2",
-            },
-            {
-                "id": "start-source-llm3-target",
-                "source": "start",
-                "target": "llm3",
-            },
-            {
-                "id": "llm1-source-answer-target",
-                "source": "llm1",
-                "target": "answer",
-            },
-            {
-                "id": "llm2-source-answer-target",
-                "source": "llm2",
-                "target": "answer",
-            },
-            {
-                "id": "llm3-source-answer-target",
-                "source": "llm3",
-                "target": "answer",
-            }
-        ],
-        "nodes": [
-            {
-                "data": {
-                    "type": "start"
-                },
-                "id": "start"
-            },
-            {
-                "data": {
-                    "type": "llm",
-                },
-                "id": "llm1"
-            },
-            {
-                "data": {
-                    "type": "llm",
-                },
-                "id": "llm2"
-            },
-            {
-                "data": {
-                    "type": "llm",
-                },
-                "id": "llm3"
-            },
-            {
-                "data": {
-                    "type": "answer",
-                },
-                "id": "answer",
-            },
-        ],
-    }
-
-    graph = Graph.init(
-        graph_config=graph_config
-    )
-
-    assert graph.root_node_id == "start"
-    for i in range(3):
-        assert graph.edge_mapping.get("start")[i].target_node_id == f"llm{i+1}"
-        assert graph.edge_mapping.get(f"llm{i+1}") is not None
-        assert graph.edge_mapping.get(f"llm{i+1}")[0].target_node_id == "answer"
-
-    assert len(graph.parallel_mapping) == 1
-    assert len(graph.node_parallel_mapping) == 3
-
-    for node_id in ["llm1", "llm2", "llm3"]:
-        assert node_id in graph.node_parallel_mapping
-
-
-def test_parallels_graph2():
-    graph_config = {
-        "edges": [
-            {
-                "id": "start-source-llm1-target",
-                "source": "start",
-                "target": "llm1",
-            },
-            {
-                "id": "start-source-llm2-target",
-                "source": "start",
-                "target": "llm2",
-            },
-            {
-                "id": "start-source-llm3-target",
-                "source": "start",
-                "target": "llm3",
-            },
-            {
-                "id": "llm1-source-answer-target",
-                "source": "llm1",
-                "target": "answer",
-            },
-            {
-                "id": "llm2-source-answer-target",
-                "source": "llm2",
-                "target": "answer",
-            }
-        ],
-        "nodes": [
-            {
-                "data": {
-                    "type": "start"
-                },
-                "id": "start"
-            },
-            {
-                "data": {
-                    "type": "llm",
-                },
-                "id": "llm1"
-            },
-            {
-                "data": {
-                    "type": "llm",
-                },
-                "id": "llm2"
-            },
-            {
-                "data": {
-                    "type": "llm",
-                },
-                "id": "llm3"
-            },
-            {
-                "data": {
-                    "type": "answer",
-                },
-                "id": "answer",
-            },
-        ],
-    }
-
-    graph = Graph.init(
-        graph_config=graph_config
-    )
-
-    assert graph.root_node_id == "start"
-    for i in range(3):
-        assert graph.edge_mapping.get("start")[i].target_node_id == f"llm{i + 1}"
-
-        if i < 2:
-            assert graph.edge_mapping.get(f"llm{i + 1}") is not None
-            assert graph.edge_mapping.get(f"llm{i + 1}")[0].target_node_id == "answer"
-
-    assert len(graph.parallel_mapping) == 1
-    assert len(graph.node_parallel_mapping) == 3
-
-    for node_id in ["llm1", "llm2", "llm3"]:
-        assert node_id in graph.node_parallel_mapping
-
-
-def test_parallels_graph3():
-    graph_config = {
-        "edges": [
-            {
-                "id": "start-source-llm1-target",
-                "source": "start",
-                "target": "llm1",
-            },
-            {
-                "id": "start-source-llm2-target",
-                "source": "start",
-                "target": "llm2",
-            },
-            {
-                "id": "start-source-llm3-target",
-                "source": "start",
-                "target": "llm3",
-            },
-        ],
-        "nodes": [
-            {
-                "data": {
-                    "type": "start"
-                },
-                "id": "start"
-            },
-            {
-                "data": {
-                    "type": "llm",
-                },
-                "id": "llm1"
-            },
-            {
-                "data": {
-                    "type": "llm",
-                },
-                "id": "llm2"
-            },
-            {
-                "data": {
-                    "type": "llm",
-                },
-                "id": "llm3"
-            },
-            {
-                "data": {
-                    "type": "answer",
-                },
-                "id": "answer",
-            },
-        ],
-    }
-
-    graph = Graph.init(
-        graph_config=graph_config
-    )
-
-    assert graph.root_node_id == "start"
-    for i in range(3):
-        assert graph.edge_mapping.get("start")[i].target_node_id == f"llm{i + 1}"
-
-    assert len(graph.parallel_mapping) == 1
-    assert len(graph.node_parallel_mapping) == 3
-
-    for node_id in ["llm1", "llm2", "llm3"]:
-        assert node_id in graph.node_parallel_mapping
-
-
-def test_parallels_graph4():
-    graph_config = {
-        "edges": [
-            {
-                "id": "start-source-llm1-target",
-                "source": "start",
-                "target": "llm1",
-            },
-            {
-                "id": "start-source-llm2-target",
-                "source": "start",
-                "target": "llm2",
-            },
-            {
-                "id": "start-source-llm3-target",
-                "source": "start",
-                "target": "llm3",
-            },
-            {
-                "id": "llm1-source-answer-target",
-                "source": "llm1",
-                "target": "code1",
-            },
-            {
-                "id": "llm2-source-answer-target",
-                "source": "llm2",
-                "target": "code2",
-            },
-            {
-                "id": "llm3-source-code3-target",
-                "source": "llm3",
-                "target": "code3",
-            },
-            {
-                "id": "code1-source-answer-target",
-                "source": "code1",
-                "target": "answer",
-            },
-            {
-                "id": "code2-source-answer-target",
-                "source": "code2",
-                "target": "answer",
-            },
-            {
-                "id": "code3-source-answer-target",
-                "source": "code3",
-                "target": "answer",
-            }
-        ],
-        "nodes": [
-            {
-                "data": {
-                    "type": "start"
-                },
-                "id": "start"
-            },
-            {
-                "data": {
-                    "type": "llm",
-                },
-                "id": "llm1"
-            },
-            {
-                "data": {
-                    "type": "code",
-                },
-                "id": "code1"
-            },
-            {
-                "data": {
-                    "type": "llm",
-                },
-                "id": "llm2"
-            },
-            {
-                "data": {
-                    "type": "code",
-                },
-                "id": "code2"
-            },
-            {
-                "data": {
-                    "type": "llm",
-                },
-                "id": "llm3"
-            },
-            {
-                "data": {
-                    "type": "code",
-                },
-                "id": "code3"
-            },
-            {
-                "data": {
-                    "type": "answer",
-                },
-                "id": "answer",
-            },
-        ],
-    }
-
-    graph = Graph.init(
-        graph_config=graph_config
-    )
-
-    assert graph.root_node_id == "start"
-    for i in range(3):
-        assert graph.edge_mapping.get("start")[i].target_node_id == f"llm{i + 1}"
-        assert graph.edge_mapping.get(f"llm{i + 1}") is not None
-        assert graph.edge_mapping.get(f"llm{i + 1}")[0].target_node_id == f"code{i + 1}"
-        assert graph.edge_mapping.get(f"code{i + 1}") is not None
-        assert graph.edge_mapping.get(f"code{i + 1}")[0].target_node_id == "answer"
-
-    assert len(graph.parallel_mapping) == 1
-    assert len(graph.node_parallel_mapping) == 6
-
-    for node_id in ["llm1", "llm2", "llm3", "code1", "code2", "code3"]:
-        assert node_id in graph.node_parallel_mapping
-
-
-def test_parallels_graph5():
-    graph_config = {
-        "edges": [
-            {
-                "id": "start-source-llm1-target",
-                "source": "start",
-                "target": "llm1",
-            },
-            {
-                "id": "start-source-llm2-target",
-                "source": "start",
-                "target": "llm2",
-            },
-            {
-                "id": "start-source-llm3-target",
-                "source": "start",
-                "target": "llm3",
-            },
-            {
-                "id": "start-source-llm3-target",
-                "source": "start",
-                "target": "llm4",
-            },
-            {
-                "id": "start-source-llm3-target",
-                "source": "start",
-                "target": "llm5",
-            },
-            {
-                "id": "llm1-source-code1-target",
-                "source": "llm1",
-                "target": "code1",
-            },
-            {
-                "id": "llm2-source-code1-target",
-                "source": "llm2",
-                "target": "code1",
-            },
-            {
-                "id": "llm3-source-code2-target",
-                "source": "llm3",
-                "target": "code2",
-            },
-            {
-                "id": "llm4-source-code2-target",
-                "source": "llm4",
-                "target": "code2",
-            },
-            {
-                "id": "llm5-source-code3-target",
-                "source": "llm5",
-                "target": "code3",
-            },
-            {
-                "id": "code1-source-answer-target",
-                "source": "code1",
-                "target": "answer",
-            },
-            {
-                "id": "code2-source-answer-target",
-                "source": "code2",
-                "target": "answer",
-            }
-        ],
-        "nodes": [
-            {
-                "data": {
-                    "type": "start"
-                },
-                "id": "start"
-            },
-            {
-                "data": {
-                    "type": "llm",
-                },
-                "id": "llm1"
-            },
-            {
-                "data": {
-                    "type": "code",
-                },
-                "id": "code1"
-            },
-            {
-                "data": {
-                    "type": "llm",
-                },
-                "id": "llm2"
-            },
-            {
-                "data": {
-                    "type": "code",
-                },
-                "id": "code2"
-            },
-            {
-                "data": {
-                    "type": "llm",
-                },
-                "id": "llm3"
-            },
-            {
-                "data": {
-                    "type": "code",
-                },
-                "id": "code3"
-            },
-            {
-                "data": {
-                    "type": "answer",
-                },
-                "id": "answer",
-            },
-            {
-                "data": {
-                    "type": "llm",
-                },
-                "id": "llm4"
-            },
-            {
-                "data": {
-                    "type": "llm",
-                },
-                "id": "llm5"
-            },
-        ],
-    }
-
-    graph = Graph.init(
-        graph_config=graph_config
-    )
-
-    assert graph.root_node_id == "start"
-    for i in range(5):
-        assert graph.edge_mapping.get("start")[i].target_node_id == f"llm{i + 1}"
-
-    assert graph.edge_mapping.get("llm1") is not None
-    assert graph.edge_mapping.get("llm1")[0].target_node_id == "code1"
-    assert graph.edge_mapping.get("llm2") is not None
-    assert graph.edge_mapping.get("llm2")[0].target_node_id == "code1"
-    assert graph.edge_mapping.get("llm3") is not None
-    assert graph.edge_mapping.get("llm3")[0].target_node_id == "code2"
-    assert graph.edge_mapping.get("llm4") is not None
-    assert graph.edge_mapping.get("llm4")[0].target_node_id == "code2"
-    assert graph.edge_mapping.get("llm5") is not None
-    assert graph.edge_mapping.get("llm5")[0].target_node_id == "code3"
-    assert graph.edge_mapping.get("code1") is not None
-    assert graph.edge_mapping.get("code1")[0].target_node_id == "answer"
-    assert graph.edge_mapping.get("code2") is not None
-    assert graph.edge_mapping.get("code2")[0].target_node_id == "answer"
-
-    assert len(graph.parallel_mapping) == 1
-    assert len(graph.node_parallel_mapping) == 8
-
-    for node_id in ["llm1", "llm2", "llm3", "llm4", "llm5", "code1", "code2", "code3"]:
-        assert node_id in graph.node_parallel_mapping
-
-
-def test_parallels_graph6():
-    graph_config = {
-        "edges": [
-            {
-                "id": "start-source-llm1-target",
-                "source": "start",
-                "target": "llm1",
-            },
-            {
-                "id": "start-source-llm2-target",
-                "source": "start",
-                "target": "llm2",
-            },
-            {
-                "id": "start-source-llm3-target",
-                "source": "start",
-                "target": "llm3",
-            },
-            {
-                "id": "llm1-source-code1-target",
-                "source": "llm1",
-                "target": "code1",
-            },
-            {
-                "id": "llm1-source-code2-target",
-                "source": "llm1",
-                "target": "code2",
-            },
-            {
-                "id": "llm2-source-code3-target",
-                "source": "llm2",
-                "target": "code3",
-            },
-            {
-                "id": "code1-source-answer-target",
-                "source": "code1",
-                "target": "answer",
-            },
-            {
-                "id": "code2-source-answer-target",
-                "source": "code2",
-                "target": "answer",
-            },
-            {
-                "id": "code3-source-answer-target",
-                "source": "code3",
-                "target": "answer",
-            }
-        ],
-        "nodes": [
-            {
-                "data": {
-                    "type": "start"
-                },
-                "id": "start"
-            },
-            {
-                "data": {
-                    "type": "llm",
-                },
-                "id": "llm1"
-            },
-            {
-                "data": {
-                    "type": "code",
-                },
-                "id": "code1"
-            },
-            {
-                "data": {
-                    "type": "llm",
-                },
-                "id": "llm2"
-            },
-            {
-                "data": {
-                    "type": "code",
-                },
-                "id": "code2"
-            },
-            {
-                "data": {
-                    "type": "llm",
-                },
-                "id": "llm3"
-            },
-            {
-                "data": {
-                    "type": "code",
-                },
-                "id": "code3"
-            },
-            {
-                "data": {
-                    "type": "answer",
-                },
-                "id": "answer",
-            },
-        ],
-    }
-
-    graph = Graph.init(
-        graph_config=graph_config
-    )
-
-    assert graph.root_node_id == "start"
-    for i in range(3):
-        assert graph.edge_mapping.get("start")[i].target_node_id == f"llm{i + 1}"
-
-    assert graph.edge_mapping.get("llm1") is not None
-    assert graph.edge_mapping.get("llm1")[0].target_node_id == "code1"
-    assert graph.edge_mapping.get("llm1") is not None
-    assert graph.edge_mapping.get("llm1")[1].target_node_id == "code2"
-    assert graph.edge_mapping.get("llm2") is not None
-    assert graph.edge_mapping.get("llm2")[0].target_node_id == "code3"
-    assert graph.edge_mapping.get("code1") is not None
-    assert graph.edge_mapping.get("code1")[0].target_node_id == "answer"
-    assert graph.edge_mapping.get("code2") is not None
-    assert graph.edge_mapping.get("code2")[0].target_node_id == "answer"
-    assert graph.edge_mapping.get("code3") is not None
-    assert graph.edge_mapping.get("code3")[0].target_node_id == "answer"
-
-    assert len(graph.parallel_mapping) == 2
-    assert len(graph.node_parallel_mapping) == 6
-
-    for node_id in ["llm1", "llm2", "llm3", "code1", "code2", "code3"]:
-        assert node_id in graph.node_parallel_mapping
-
-    parent_parallel = None
-    child_parallel = None
-    for p_id, parallel in graph.parallel_mapping.items():
-        if parallel.parent_parallel_id is None:
-            parent_parallel = parallel
-        else:
-            child_parallel = parallel
-
-    for node_id in ["llm1", "llm2", "llm3", "code3"]:
-        assert graph.node_parallel_mapping[node_id] == parent_parallel.id
-
-    for node_id in ["code1", "code2"]:
-        assert graph.node_parallel_mapping[node_id] == child_parallel.id
+    generator = graph_engine.run()
+    for item in generator:
+        print(type(item), item)

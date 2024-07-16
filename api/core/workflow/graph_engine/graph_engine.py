@@ -3,13 +3,13 @@ import queue
 import time
 from collections.abc import Generator
 from concurrent.futures import ThreadPoolExecutor
-from typing import Optional, cast
+from datetime import datetime, timezone
+from typing import Optional
 
 from flask import Flask, current_app
 
 from core.app.apps.base_app_queue_manager import GenerateTaskStoppedException
 from core.app.entities.app_invoke_entities import InvokeFrom
-from core.workflow.callbacks.base_workflow_callback import BaseWorkflowCallback
 from core.workflow.entities.node_entities import NodeType
 from core.workflow.entities.variable_pool import VariablePool
 from core.workflow.graph_engine.condition_handlers.condition_manager import ConditionManager
@@ -19,14 +19,21 @@ from core.workflow.graph_engine.entities.event import (
     GraphRunStartedEvent,
     GraphRunSucceededEvent,
     NodeRunFailedEvent,
+    NodeRunRetrieverResourceEvent,
     NodeRunStartedEvent,
+    NodeRunStreamChunkEvent,
+    NodeRunSucceededEvent,
 )
 from core.workflow.graph_engine.entities.graph import Graph
 from core.workflow.graph_engine.entities.graph_init_params import GraphInitParams
 from core.workflow.graph_engine.entities.graph_runtime_state import GraphRuntimeState
-from core.workflow.nodes.base_node import UserFrom, node_classes
+from core.workflow.graph_engine.entities.runtime_route_state import RouteNodeState
+from core.workflow.nodes import node_classes
+from core.workflow.nodes.base_node import UserFrom
+from core.workflow.nodes.event import RunCompletedEvent, RunRetrieverResourceEvent, RunStreamChunkEvent
+from core.workflow.nodes.test.test_node import TestNode
 from extensions.ext_database import db
-from models.workflow import WorkflowType
+from models.workflow import WorkflowNodeExecutionStatus, WorkflowType
 
 thread_pool = ThreadPoolExecutor(max_workers=500, thread_name_prefix="ThreadGraphParallelRun")
 logger = logging.getLogger(__name__)
@@ -43,7 +50,8 @@ class GraphEngine:
                  call_depth: int,
                  graph: Graph,
                  variable_pool: VariablePool,
-                 callbacks: list[BaseWorkflowCallback]) -> None:
+                 max_execution_steps: int,
+                 max_execution_time: int) -> None:
         self.graph = graph
         self.init_params = GraphInitParams(
             tenant_id=tenant_id,
@@ -61,12 +69,8 @@ class GraphEngine:
             start_at=time.perf_counter()
         )
 
-        max_execution_steps = current_app.config.get("WORKFLOW_MAX_EXECUTION_STEPS")
-        self.max_execution_steps = cast(int, max_execution_steps)
-        max_execution_time = current_app.config.get("WORKFLOW_MAX_EXECUTION_TIME")
-        self.max_execution_time = cast(int, max_execution_time)
-
-        self.callbacks = callbacks
+        self.max_execution_steps = max_execution_steps
+        self.max_execution_time = max_execution_time
 
     def run_in_block_mode(self):
         # TODO convert generator to result
@@ -92,7 +96,7 @@ class GraphEngine:
             return
         except Exception as e:
             yield GraphRunFailedEvent(reason=str(e))
-            return
+            raise e
 
     def _run(self, start_node_id: str, in_parallel_id: Optional[str] = None) -> Generator[GraphEngineEvent, None, None]:
         next_node_id = start_node_id
@@ -118,7 +122,7 @@ class GraphEngine:
                 )
             except Exception as e:
                 yield NodeRunFailedEvent(node_id=next_node_id, reason=str(e))
-                return
+                raise e
 
             previous_node_id = next_node_id
 
@@ -141,11 +145,13 @@ class GraphEngine:
                     for edge in edge_mappings:
                         if edge.run_condition:
                             result = ConditionManager.get_condition_handler(
-                                run_condition=edge.run_condition
+                                init_params=self.init_params,
+                                graph=self.graph,
+                                run_condition=edge.run_condition,
                             ).check(
+                                graph_runtime_state=self.graph_runtime_state,
                                 source_node_id=edge.source_node_id,
                                 target_node_id=edge.target_node_id,
-                                graph=self.graph
                             )
 
                             if result:
@@ -250,7 +256,16 @@ class GraphEngine:
             raise GraphRunFailedError(f'Node {node_id} type {node_type} not found.')
 
         # init workflow run state
-        node_instance = node_cls(  # type: ignore
+        # node_instance = node_cls(  # type: ignore
+        #     config=node_config,
+        #     graph_init_params=self.init_params,
+        #     graph=self.graph,
+        #     graph_runtime_state=self.graph_runtime_state,
+        #     previous_node_id=previous_node_id
+        # )
+
+        # init workflow run state
+        node_instance = TestNode(
             config=node_config,
             graph_init_params=self.init_params,
             graph=self.graph,
@@ -268,24 +283,64 @@ class GraphEngine:
         self.graph_runtime_state.node_run_steps += 1
 
         try:
+            start_at = datetime.now(timezone.utc).replace(tzinfo=None)
+
             # run node
             generator = node_instance.run()
+            run_result = None
+            for item in generator:
+                if isinstance(item, RunCompletedEvent):
+                    run_result = item.run_result
+                    if run_result.status == WorkflowNodeExecutionStatus.FAILED:
+                        yield NodeRunFailedEvent(
+                            node_id=node_id,
+                            parallel_id=parallel_id,
+                            run_result=run_result,
+                            reason=run_result.error
+                        )
+                    elif run_result.status == WorkflowNodeExecutionStatus.SUCCEEDED:
+                        yield NodeRunSucceededEvent(
+                            node_id=node_id,
+                            parallel_id=parallel_id,
+                            run_result=run_result
+                        )
 
-            yield from generator
+                    self.graph_runtime_state.node_run_state.node_state_mapping[node_id] = RouteNodeState(
+                        node_id=node_id,
+                        start_at=start_at,
+                        status=RouteNodeState.Status.SUCCESS if run_result.status == WorkflowNodeExecutionStatus.SUCCEEDED
+                        else RouteNodeState.Status.FAILED,
+                        finished_at=datetime.now(timezone.utc).replace(tzinfo=None),
+                        node_run_result=run_result,
+                        failed_reason=run_result.error
+                        if run_result.status == WorkflowNodeExecutionStatus.FAILED else None
+                    )
+
+                    # todo append self.graph_runtime_state.node_run_state.routes
+                    break
+                elif isinstance(item, RunStreamChunkEvent):
+                    yield NodeRunStreamChunkEvent(
+                        node_id=node_id,
+                        parallel_id=parallel_id,
+                        chunk_content=item.chunk_content,
+                        from_variable_selector=item.from_variable_selector,
+                    )
+                elif isinstance(item, RunRetrieverResourceEvent):
+                    yield NodeRunRetrieverResourceEvent(
+                        node_id=node_id,
+                        parallel_id=parallel_id,
+                        retriever_resources=item.retriever_resources,
+                        context=item.context
+                    )
 
             # todo record state
-
-            # trigger node run success event
-            yield NodeRunSucceededEvent(node_id=node_id, parallel_id=parallel_id)
         except GenerateTaskStoppedException as e:
             # trigger node run failed event
             yield NodeRunFailedEvent(node_id=node_id, parallel_id=parallel_id, reason=str(e))
             return
         except Exception as e:
-            # todo logger.exception(f"Node {node.node_data.title} run failed: {str(e)}")
-            # trigger node run failed event
-            yield NodeRunFailedEvent(node_id=node_id, parallel_id=parallel_id, reason=str(e))
-            return
+            logger.exception(f"Node {node_instance.node_data.title} run failed: {str(e)}")
+            raise e
         finally:
             db.session.close()
 

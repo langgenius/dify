@@ -17,7 +17,8 @@ from core.workflow.entities.workflow_runtime_state import WorkflowRuntimeState
 from core.workflow.errors import WorkflowNodeRunFailedError
 from core.workflow.graph_engine.entities.graph import Graph
 from core.workflow.graph_engine.graph_engine import GraphEngine
-from core.workflow.nodes.base_node import BaseIterationNode, BaseNode, UserFrom, node_classes
+from core.workflow.nodes import node_classes
+from core.workflow.nodes.base_node import BaseIterationNode, BaseNode, UserFrom
 from core.workflow.nodes.iteration.entities import IterationState
 from core.workflow.nodes.llm.entities import LLMNodeData
 from core.workflow.nodes.start.start_node import StartNode
@@ -93,7 +94,8 @@ class WorkflowEntry:
             call_depth=call_depth,
             graph=graph,
             variable_pool=variable_pool,
-            callbacks=callbacks
+            max_execution_steps=current_app.config.get("WORKFLOW_MAX_EXECUTION_STEPS"),
+            max_execution_time=current_app.config.get("WORKFLOW_MAX_EXECUTION_TIME")
         )
 
         # init workflow run

@@ -2,36 +2,19 @@ from abc import ABC, abstractmethod
 from collections.abc import Generator
 from typing import Optional
 
-from core.app.entities.app_invoke_entities import InvokeFrom
 from core.workflow.entities.base_node_data_entities import BaseIterationState, BaseNodeData
-from core.workflow.entities.node_entities import NodeRunResult, NodeType, UserFrom
+from core.workflow.entities.node_entities import NodeRunResult, NodeType
 from core.workflow.entities.variable_pool import VariablePool
 from core.workflow.graph_engine.entities.graph import Graph
 from core.workflow.graph_engine.entities.graph_init_params import GraphInitParams
 from core.workflow.graph_engine.entities.graph_runtime_state import GraphRuntimeState
 from core.workflow.nodes.event import RunCompletedEvent, RunEvent
 from core.workflow.nodes.iterable_node import IterableNodeMixin
-from models.workflow import WorkflowType
 
 
 class BaseNode(ABC):
     _node_data_cls: type[BaseNodeData]
     _node_type: NodeType
-
-    tenant_id: str
-    app_id: str
-    workflow_type: WorkflowType
-    workflow_id: str
-    user_id: str
-    user_from: UserFrom
-    invoke_from: InvokeFrom
-    workflow_call_depth: int
-    graph: Graph
-    graph_runtime_state: GraphRuntimeState
-    previous_node_id: Optional[str] = None
-
-    node_id: str
-    node_data: BaseNodeData
 
     def __init__(self,
                  config: dict,
@@ -80,24 +63,6 @@ class BaseNode(ABC):
             )
         else:
             yield from result
-
-    def publish_text_chunk(self, text: str, value_selector: list[str] = None) -> None:
-        """
-        Publish text chunk
-        :param text: chunk text
-        :param value_selector: value selector
-        :return:
-        """
-        # TODO remove callbacks
-        if self.callbacks:
-            for callback in self.callbacks:
-                callback.on_node_text_chunk(
-                    node_id=self.node_id,
-                    text=text,
-                    metadata={
-                        "value_selector": value_selector
-                    }
-                )
 
     @classmethod
     def extract_variable_selector_to_variable_mapping(cls, config: dict) -> dict[str, list[str]]:

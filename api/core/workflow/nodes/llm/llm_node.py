@@ -170,7 +170,7 @@ class LLMNode(BaseNode):
                     model_instance: ModelInstance,
                     prompt_messages: list[PromptMessage],
                     stop: Optional[list[str]] = None) \
-            -> Generator[RunStreamChunkEvent | "ModelInvokeCompleted", None, None]:
+            -> Generator["RunStreamChunkEvent | ModelInvokeCompleted", None, None]:
         """
         Invoke large language model
         :param node_data_model: node data model
@@ -204,7 +204,7 @@ class LLMNode(BaseNode):
         self.deduct_llm_quota(tenant_id=self.tenant_id, model_instance=model_instance, usage=usage)
 
     def _handle_invoke_result(self, invoke_result: LLMResult | Generator) \
-            -> Generator[RunStreamChunkEvent | "ModelInvokeCompleted", None, None]:
+            -> Generator["RunStreamChunkEvent | ModelInvokeCompleted", None, None]:
         """
         Handle invoke result
         :param invoke_result: invoke result
