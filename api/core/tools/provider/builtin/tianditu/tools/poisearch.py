@@ -35,7 +35,7 @@ class PoiSearchTool(BuiltinTool):
             'keyWord': keyword,
             'queryRadius': 5000,
             'queryType': 3,
-            'pointLonlat': '%s,%s' % (base_coords['location']['lon'], base_coords['location']['lat']),
+            'pointLonlat': base_coords['location']['lon'] + ',' + base_coords['location']['lat'],
             'start': 0,
             'count': 100,
         }
