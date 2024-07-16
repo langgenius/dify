@@ -545,15 +545,15 @@ class DatasetRetrievalSettingApi(Resource):
             case VectorType.MILVUS | VectorType.RELYT | VectorType.PGVECTOR | VectorType.TIDB_VECTOR | VectorType.CHROMA | VectorType.TENCENT | VectorType.ORACLE:
                 return {
                     'retrieval_method': [
-                        RetrievalMethod.SEMANTIC_SEARCH
+                        RetrievalMethod.SEMANTIC_SEARCH.value
                     ]
                 }
             case VectorType.QDRANT | VectorType.WEAVIATE | VectorType.OPENSEARCH | VectorType.ANALYTICDB | VectorType.MYSCALE:
                 return {
                     'retrieval_method': [
-                        RetrievalMethod.SEMANTIC_SEARCH,
-                        RetrievalMethod.FULL_TEXT_SEARCH,
-                        RetrievalMethod.HYBRID_SEARCH,
+                        RetrievalMethod.SEMANTIC_SEARCH.value,
+                        RetrievalMethod.FULL_TEXT_SEARCH.value,
+                        RetrievalMethod.HYBRID_SEARCH.value,
                     ]
                 }
             case _:
@@ -569,15 +569,15 @@ class DatasetRetrievalSettingMockApi(Resource):
             case VectorType.MILVUS | VectorType.RELYT | VectorType.PGVECTOR | VectorType.TIDB_VECTOR | VectorType.CHROMA | VectorType.TENCENT | VectorType.ORACLE:
                 return {
                     'retrieval_method': [
-                        RetrievalMethod.SEMANTIC_SEARCH
+                        RetrievalMethod.SEMANTIC_SEARCH.value
                     ]
                 }
             case VectorType.QDRANT | VectorType.WEAVIATE | VectorType.OPENSEARCH| VectorType.ANALYTICDB | VectorType.MYSCALE:
                 return {
                     'retrieval_method': [
-                        RetrievalMethod.SEMANTIC_SEARCH,
-                        RetrievalMethod.FULL_TEXT_SEARCH,
-                        RetrievalMethod.HYBRID_SEARCH,
+                        RetrievalMethod.SEMANTIC_SEARCH.value,
+                        RetrievalMethod.FULL_TEXT_SEARCH.value,
+                        RetrievalMethod.HYBRID_SEARCH.value,
                     ]
                 }
             case _:
