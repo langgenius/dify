@@ -1,10 +1,8 @@
 from typing import Optional
 
-from pydantic import BaseModel, Field, model_validator
+from pydantic import BaseModel, Field
 
-from core.workflow.entities.node_entities import NodeRunResult
 from core.workflow.graph_engine.entities.runtime_route_state import RouteNodeState
-from models.workflow import WorkflowNodeExecutionStatus
 
 
 class GraphEngineEvent(BaseModel):

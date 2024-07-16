@@ -10,9 +10,8 @@ from core.entities.provider_entities import CustomConfiguration, CustomProviderC
 from core.model_manager import ModelInstance
 from core.model_runtime.entities.model_entities import ModelType
 from core.model_runtime.model_providers import ModelProviderFactory
-from core.workflow.entities.node_entities import SystemVariable
+from core.workflow.entities.node_entities import SystemVariable, UserFrom
 from core.workflow.entities.variable_pool import VariablePool
-from core.workflow.entities.node_entities import UserFrom
 from core.workflow.nodes.llm.llm_node import LLMNode
 from extensions.ext_database import db
 from models.provider import ProviderType
