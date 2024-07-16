@@ -1,0 +1,54 @@
+identity:
+  name: get_base_info
+  author: Doug Lea
+  label:
+    en_US: Get Base Info
+    zh_Hans: 获取多维表格元数据
+description:
+  human:
+    en_US: Get base info
+    zh_Hans: |
+      获取多维表格元数据，响应体如下:
+      {
+          "code": 0,
+          "msg": "success",
+          "data": {
+              "app": {
+                  "app_token": "appbcbWCzen6D8dezhoCH2RpMAh",
+                  "name": "mybase",
+                  "revision": 1,
+                  "is_advanced": false,
+                  "time_zone": "Asia/Beijing"
+              }
+          }
+      }
+      app_token: 多维表格的 app_token;
+      name: 多维表格的名字;
+      revision: 多维表格的版本号;
+      is_advanced: 多维表格是否开启了高级权限。取值包括：(true-表示开启了高级权限，false-表示关闭了高级权限);
+      time_zone: 文档时区;
+  llm: A tool to get Base Metadata, imported parameter is Unique Device Identifier app_token of Base, app_token is required.
+parameters:
+  - name: Authorization
+    type: string
+    required: true
+    label:
+      en_US: token
+      zh_Hans: 凭证
+    human_description:
+      en_US: API access token parameter, tenant_access_token or user_access_token
+      zh_Hans: API 的访问凭证参数，tenant_access_token 或 user_access_token
+    llm_description: API access token parameter, tenant_access_token or user_access_token
+    form: llm
+
+  - name: app_token
+    type: string
+    required: true
+    label:
+      en_US: app_token
+      zh_Hans: 多维表格
+    human_description:
+      en_US: bitable app token
+      zh_Hans: 多维表格的唯一标识符 app_token
+    llm_description: bitable app token
+    form: llm

@@ -3,15 +3,15 @@ import { useMemo, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { useContext } from 'use-context-selector'
 import { useDebounceFn, useMount } from 'ahooks'
-import cn from 'classnames'
+import { RiArrowDownSLine } from '@remixicon/react'
 import { useStore as useLabelStore } from './store'
+import cn from '@/utils/classnames'
 import {
   PortalToFollowElem,
   PortalToFollowElemContent,
   PortalToFollowElemTrigger,
 } from '@/app/components/base/portal-to-follow-elem'
 import SearchInput from '@/app/components/base/search-input'
-import { ChevronDown } from '@/app/components/base/icons/src/vender/line/arrows'
 import { Tag01, Tag03 } from '@/app/components/base/icons/src/vender/line/financeAndECommerce'
 import { Check } from '@/app/components/base/icons/src/vender/line/general'
 import { XCircle } from '@/app/components/base/icons/src/vender/solid/general'
@@ -97,7 +97,7 @@ const LabelFilter: FC<LabelFilterProps> = ({
             )}
             {!value.length && (
               <div className='p-[1px]'>
-                <ChevronDown className='h-3.5 w-3.5 text-gray-700'/>
+                <RiArrowDownSLine className='h-3.5 w-3.5 text-gray-700' />
               </div>
             )}
             {!!value.length && (
@@ -105,7 +105,7 @@ const LabelFilter: FC<LabelFilterProps> = ({
                 e.stopPropagation()
                 onChange([])
               }}>
-                <XCircle className='h-3.5 w-3.5 text-gray-400 group-hover/clear:text-gray-600'/>
+                <XCircle className='h-3.5 w-3.5 text-gray-400 group-hover/clear:text-gray-600' />
               </div>
             )}
           </div>
@@ -123,7 +123,7 @@ const LabelFilter: FC<LabelFilterProps> = ({
                   onClick={() => selectLabel(label)}
                 >
                   <div title={label.label[language]} className='grow text-sm text-gray-700 leading-5 truncate'>{label.label[language]}</div>
-                  {value.includes(label.name) && <Check className='shrink-0 w-4 h-4 text-primary-600'/>}
+                  {value.includes(label.name) && <Check className='shrink-0 w-4 h-4 text-primary-600' />}
                 </div>
               ))}
               {!filteredLabelList.length && (

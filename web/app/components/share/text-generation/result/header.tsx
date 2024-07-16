@@ -4,7 +4,7 @@ import React from 'react'
 import { useTranslation } from 'react-i18next'
 import { ClipboardDocumentIcon, HandThumbDownIcon, HandThumbUpIcon } from '@heroicons/react/24/outline'
 import copy from 'copy-to-clipboard'
-import type { Feedbacktype } from '@/app/components/app/chat/type'
+import type { Feedbacktype } from '@/app/components/base/chat/chat/type'
 import Button from '@/app/components/base/button'
 import Toast from '@/app/components/base/toast'
 import Tooltip from '@/app/components/base/tooltip'
@@ -28,7 +28,7 @@ const Header: FC<IResultHeaderProps> = ({
       <div className='text-gray-800 text-2xl leading-4 font-normal'>{t('share.generation.resultTitle')}</div>
       <div className='flex items-center space-x-2'>
         <Button
-          className='flex items-center !h-7 !p-[2px] !pr-2'
+          className='h-7 p-[2px] pr-2'
           onClick={() => {
             copy(result)
             Toast.notify({ type: 'success', message: 'copied' })

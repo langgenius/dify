@@ -54,9 +54,6 @@ class DallE3Tool(BuiltinTool):
         style = tool_parameters.get('style', 'vivid')
         if style not in ['natural', 'vivid']:
             return self.create_text_message('Invalid style')
-        # set extra body
-        seed_id = tool_parameters.get('seed_id', self._generate_random_id(8))
-        extra_body = {'seed': seed_id}
 
         # call openapi dalle3
         response = client.images.generate(
@@ -64,7 +61,6 @@ class DallE3Tool(BuiltinTool):
             model='dall-e-3',
             size=size,
             n=n,
-            extra_body=extra_body,
             style=style,
             quality=quality,
             response_format='b64_json'
@@ -76,8 +72,6 @@ class DallE3Tool(BuiltinTool):
             result.append(self.create_blob_message(blob=b64decode(image.b64_json),
                                                    meta={'mime_type': 'image/png'},
                                                    save_as=self.VARIABLE_KEY.IMAGE.value))
-        result.append(self.create_text_message(f'\nGenerate image source to Seed ID: {seed_id}'))
-
         return result
 
     @staticmethod

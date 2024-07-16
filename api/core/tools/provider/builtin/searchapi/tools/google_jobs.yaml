@@ -185,7 +185,7 @@ parameters:
           en_US: New Zealand
           zh_Hans: 新西兰
           pt_BR: New Zealand
-      - value: NO
+      - value: 'NO'
         label:
           en_US: Norway
           zh_Hans: 挪威
@@ -468,11 +468,11 @@ parameters:
     required: false
     form: form
     options:
-      - value: true
+      - value: 'true'
         label:
           en_US: "true"
           zh_Hans: "true"
-      - value: false
+      - value: 'false'
         label:
           en_US: "false"
           zh_Hans: "false"

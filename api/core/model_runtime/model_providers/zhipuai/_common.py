@@ -18,7 +18,7 @@ class _CommonZhipuaiAI:
         """
         credentials_kwargs = {
             "api_key": credentials['api_key'] if 'api_key' in credentials else 
-                        credentials['zhipuai_api_key'] if 'zhipuai_api_key' in credentials else None,
+                        credentials.get("zhipuai_api_key"),
         }
 
         return credentials_kwargs

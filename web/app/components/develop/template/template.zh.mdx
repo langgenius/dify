@@ -57,9 +57,6 @@ import { Row, Col, Properties, Property, Heading, SubProperty } from '../md.tsx'
         用户标识，用于定义终端用户的身份，方便检索、统计。
         由开发者定义规则，需保证用户标识在应用内唯一。
       </Property>
-      <Property name='conversation_id' type='string' key='conversation_id'>
-      （选填）会话 ID，需要基于之前的聊天记录继续对话，必须传之前消息的 conversation_id。
-      </Property>
       <Property name='files' type='array[object]' key='files'>
           上传的文件。
           - `type` (string) 支持类型：图片 `image`（目前仅支持图片格式） 。
@@ -79,7 +76,6 @@ import { Row, Col, Properties, Property, Heading, SubProperty } from '../md.tsx'
     ### ChatCompletionResponse
     返回完整的 App 结果，`Content-Type` 为 `application/json`。
     - `message_id` (string) 消息唯一 ID
-    - `conversation_id` (string) 会话 ID
     - `mode` (string) App 模式，固定为 chat
     - `answer` (string) 完整回复内容
     - `metadata` (object) 元数据
@@ -99,13 +95,11 @@ import { Row, Col, Properties, Property, Heading, SubProperty } from '../md.tsx'
     - `event: message` LLM 返回文本块事件，即：完整的文本以分块的方式输出。
       - `task_id` (string) 任务 ID，用于请求跟踪和下方的停止响应接口
       - `message_id` (string) 消息唯一 ID
-      - `conversation_id` (string) 会话 ID
       - `answer` (string) LLM 返回文本块内容
       - `created_at` (int) 创建时间戳，如：1705395332
     - `event: message_end` 消息结束事件，收到此事件则代表流式返回结束。
       - `task_id` (string) 任务 ID，用于请求跟踪和下方的停止响应接口
       - `message_id` (string) 消息唯一 ID
-      - `conversation_id` (string) 会话 ID
       - `metadata` (object) 元数据
         - `usage` (Usage) 模型用量信息
         - `retriever_resources` (array[RetrieverResource]) 引用和归属分段列表
@@ -113,7 +107,6 @@ import { Row, Col, Properties, Property, Heading, SubProperty } from '../md.tsx'
       开启内容审查和审查输出内容时，若命中了审查条件，则会通过此事件替换消息内容为预设回复。
       - `task_id` (string) 任务 ID，用于请求跟踪和下方的停止响应接口
       - `message_id` (string) 消息唯一 ID
-      - `conversation_id` (string) 会话 ID
       - `answer` (string) 替换内容（直接替换 LLM 所有回复文本）
       - `created_at` (int) 创建时间戳，如：1705395332
     - `event: error`
@@ -476,14 +469,19 @@ import { Row, Col, Properties, Property, Heading, SubProperty } from '../md.tsx'
   </Col>
   <Col sticky>
 
-    <CodeGroup title="Request" tag="POST" label="/text-to-audio" targetCode={`curl --location --request POST '${props.appDetail.api_base_url}/text-to-audio' \\\n--header 'Authorization: Bearer ENTER-YOUR-SECRET-KEY' \\\n--form 'text=你好Dify;user=abc-123;streaming=false`}>
+    <CodeGroup title="Request" tag="POST" label="/text-to-audio" targetCode={`curl -o text-to-audio.mp3 -X POST '${props.appDetail.api_base_url}/text-to-audio' \\\n--header 'Authorization: Bearer {api_key}' \\\n--header 'Content-Type: application/json' \\\n--data-raw '{\n    "text": "你好Dify",\n    "user": "abc-123",\n    "streaming": false\n}'`}>
 
     ```bash {{ title: 'cURL' }}
-    curl --location --request POST '${props.appDetail.api_base_url}/text-to-audio' \
-    --header 'Authorization: Bearer ENTER-YOUR-SECRET-KEY' \
-    --form 'file=你好Dify;user=abc-123;streaming=false'
+    curl -o text-to-audio.mp3 -X POST '${props.appDetail.api_base_url}/text-to-audio' \
+    --header 'Authorization: Bearer {api_key}' \
+    --header 'Content-Type: application/json' \
+    --data-raw '{
+        "text": "你好Dify",
+        "user": "abc-123",
+        "streaming": false
+    }'
     ```
-
+    
     </CodeGroup>
 
     <CodeGroup title="headers">

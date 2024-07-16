@@ -66,7 +66,7 @@ class BuiltinTool(Tool):
             tenant_id=self.runtime.tenant_id,
             prompt_messages=prompt_messages
         )
-    
+
     def summary(self, user_id: str, content: str) -> str:
         max_tokens = self.get_max_tokens()
 

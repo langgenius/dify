@@ -105,6 +105,8 @@ const translation = {
     customDisclaimerPlaceholder: '사용자 정의 권리 포기 문구를 입력해주세요.',
     confirmTitle: '저장하시겠습니까?',
     confirmTip: '이 도구를 사용하는 앱은 영향을 받습니다.',
+    deleteToolConfirmTitle: '이 도구를 삭제하시겠습니까?',
+    deleteToolConfirmContent: '이 도구를 삭제하면 되돌릴 수 없습니다. 사용자는 더 이상 당신의 도구에 액세스할 수 없습니다.',
   },
   test: {
     title: '테스트',

@@ -13,7 +13,7 @@ def handle(sender, **kwargs):
     if not isinstance(application_generate_entity, ChatAppGenerateEntity | AgentChatAppGenerateEntity):
         return
 
-    model_config = application_generate_entity.model_config
+    model_config = application_generate_entity.model_conf
     provider_model_bundle = model_config.provider_model_bundle
     provider_configuration = provider_model_bundle.configuration
 

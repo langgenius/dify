@@ -2,16 +2,15 @@
 import React, { useEffect, useReducer, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { useRouter } from 'next/navigation'
-import classNames from 'classnames'
 import useSWR from 'swr'
 import Link from 'next/link'
 import Toast from '../components/base/toast'
 import style from './page.module.css'
-import { IS_CE_EDITION, SUPPORT_MAIL_LOGIN, apiPrefix } from '@/config'
+import classNames from '@/utils/classnames'
+import { IS_CE_EDITION, SUPPORT_MAIL_LOGIN, apiPrefix, emailRegex } from '@/config'
 import Button from '@/app/components/base/button'
 import { login, oauth } from '@/service/common'
 import { getPurifyHref } from '@/utils'
-const validEmailReg = /^[\w\.-]+@([\w-]+\.)+[\w-]{2,}$/
 
 type IState = {
   formValid: boolean
@@ -78,7 +77,7 @@ const NormalForm = () => {
 
   const [isLoading, setIsLoading] = useState(false)
   const handleEmailPasswordLogin = async () => {
-    if (!validEmailReg.test(email)) {
+    if (!emailRegex.test(email)) {
       Toast.notify({
         type: 'error',
         message: t('login.error.emailInValid'),
@@ -157,9 +156,8 @@ const NormalForm = () => {
               <div className='w-full'>
                 <a href={getPurifyHref(`${apiPrefix}/oauth/login/github`)}>
                   <Button
-                    type='default'
                     disabled={isLoading}
-                    className='w-full hover:!bg-gray-50 !text-sm !font-medium'
+                    className='w-full hover:!bg-gray-50'
                   >
                     <>
                       <span className={
@@ -176,9 +174,8 @@ const NormalForm = () => {
               <div className='w-full'>
                 <a href={getPurifyHref(`${apiPrefix}/oauth/login/google`)}>
                   <Button
-                    type='default'
                     disabled={isLoading}
-                    className='w-full hover:!bg-gray-50 !text-sm !font-medium'
+                    className='w-full hover:!bg-gray-50'
                   >
                     <>
                       <span className={
@@ -227,21 +224,9 @@ const NormalForm = () => {
                 <div className='mb-4'>
                   <label htmlFor="password" className="my-2 flex items-center justify-between text-sm font-medium text-gray-900">
                     <span>{t('login.password')}</span>
-                    {/* <Tooltip
-                      selector='forget-password'
-                      htmlContent={
-                        <div>
-                          <div className='font-medium'>{t('login.forget')}</div>
-                          <div className='font-medium text-gray-500'>
-                            <code>
-                              sudo rm -rf /
-                            </code>
-                          </div>
-                        </div>
-                      }
-                    >
-                      <span className='cursor-pointer text-primary-600'>{t('login.forget')}</span>
-                    </Tooltip> */}
+                    <Link href='/forgot-password' className='text-primary-600'>
+                      {t('login.forget')}
+                    </Link>
                   </label>
                   <div className="relative mt-1">
                     <input
@@ -272,10 +257,10 @@ const NormalForm = () => {
                 <div className='mb-2'>
                   <Button
                     tabIndex={0}
-                    type='primary'
+                    variant='primary'
                     onClick={handleEmailPasswordLogin}
                     disabled={isLoading}
-                    className="w-full !fone-medium !text-sm"
+                    className="w-full"
                   >{t('login.signBtn')}</Button>
                 </div>
               </form>

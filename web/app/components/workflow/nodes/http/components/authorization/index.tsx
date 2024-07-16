@@ -139,8 +139,8 @@ const Authorization: FC<Props> = ({
           )}
         </div>
         <div className='mt-6 flex justify-end space-x-2'>
-          <Button onClick={onHide} className='flex items-center !h-8 leading-[18px] !text-[13px] !font-medium'>{t('common.operation.cancel')}</Button>
-          <Button type='primary' onClick={handleConfirm} className='flex items-center !h-8 leading-[18px] !text-[13px] !font-medium'>{t('common.operation.save')}</Button>
+          <Button onClick={onHide}>{t('common.operation.cancel')}</Button>
+          <Button variant='primary' onClick={handleConfirm}>{t('common.operation.save')}</Button>
         </div>
       </div>
     </Modal>

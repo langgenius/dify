@@ -2,8 +2,11 @@ import { Fragment } from 'react'
 import type { FC } from 'react'
 import { Popover, Transition } from '@headlessui/react'
 import { useTranslation } from 'react-i18next'
+import {
+  RiCheckLine,
+  RiMoreFill,
+} from '@remixicon/react'
 import { PreferredProviderTypeEnum } from '../declarations'
-import { Check, DotsHorizontal } from '@/app/components/base/icons/src/vender/line/general'
 import Button from '@/app/components/base/button'
 
 type SelectorProps = {
@@ -35,7 +38,7 @@ const Selector: FC<SelectorProps> = ({
               px-0 w-6 h-6 bg-white rounded-md
               ${open && '!bg-gray-100'}
             `}>
-              <DotsHorizontal className='w-3 h-3 text-gray-700' />
+              <RiMoreFill className='w-3 h-3 text-gray-700' />
             </Button>
           )
         }
@@ -57,7 +60,7 @@ const Selector: FC<SelectorProps> = ({
                     onClick={() => onSelect(option.key)}
                   >
                     <div className='grow'>{option.text}</div>
-                    {value === option.key && <Check className='w-4 h-4 text-primary-600' />}
+                    {value === option.key && <RiCheckLine className='w-4 h-4 text-primary-600' />}
                   </div>
                 </Popover.Button>
               ))

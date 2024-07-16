@@ -15,7 +15,7 @@ class BraveSearchWrapper(BaseModel):
     """The API key to use for the Brave search engine."""
     search_kwargs: dict = Field(default_factory=dict)
     """Additional keyword arguments to pass to the search request."""
-    base_url = "https://api.search.brave.com/res/v1/web/search"
+    base_url: str = "https://api.search.brave.com/res/v1/web/search"
     """The base URL for the Brave search engine."""
 
     def run(self, query: str) -> str:
@@ -58,8 +58,8 @@ class BraveSearchWrapper(BaseModel):
 class BraveSearch(BaseModel):
     """Tool that queries the BraveSearch."""
 
-    name = "brave_search"
-    description = (
+    name: str = "brave_search"
+    description: str = (
         "a search engine. "
         "useful for when you need to answer questions about current events."
         " input should be a search query."

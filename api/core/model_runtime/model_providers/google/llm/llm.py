@@ -277,10 +277,7 @@ class GoogleLargeLanguageModel(LargeLanguageModel):
                             type='function',
                             function=AssistantPromptMessage.ToolCall.ToolCallFunction(
                                 name=part.function_call.name,
-                                arguments=json.dumps({
-                                    key: value 
-                                    for key, value in part.function_call.args.items()
-                                })
+                                arguments=json.dumps(dict(part.function_call.args.items()))
                             )
                         )
                     ]
@@ -313,7 +310,7 @@ class GoogleLargeLanguageModel(LargeLanguageModel):
                         delta=LLMResultChunkDelta(
                             index=index,
                             message=assistant_prompt_message,
-                            finish_reason=chunk.candidates[0].finish_reason,
+                            finish_reason=str(chunk.candidates[0].finish_reason),
                             usage=usage
                         )
                     )

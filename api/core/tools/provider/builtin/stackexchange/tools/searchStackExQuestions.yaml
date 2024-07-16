@@ -96,15 +96,15 @@ parameters:
       zh_Hans: 是否限制为只有已接受答案的问题。
     form: form
     options:
-      - value: true
+      - value: 'true'
         label:
-          en_US: Yes
+          en_US: 'Yes'
           zh_Hans: 是
-      - value: false
+      - value: 'false'
         label:
-          en_US: No
+          en_US: 'No'
           zh_Hans: 否
-    default: true
+    default: 'true'
   - name: pagesize
     type: number
     required: true

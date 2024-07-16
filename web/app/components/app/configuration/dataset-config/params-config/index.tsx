@@ -3,8 +3,8 @@ import type { FC } from 'react'
 import { memo, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { useContext } from 'use-context-selector'
-import cn from 'classnames'
 import ConfigContent from './config-content'
+import cn from '@/utils/classnames'
 import { Settings04 } from '@/app/components/base/icons/src/vender/line/general'
 import ConfigContext from '@/context/debug-configuration'
 import Modal from '@/app/components/base/modal'
@@ -95,7 +95,7 @@ const ParamsConfig: FC = () => {
               <Button className='mr-2 flex-shrink-0' onClick={() => {
                 setOpen(false)
               }}>{t('common.operation.cancel')}</Button>
-              <Button type='primary' className='flex-shrink-0' onClick={handleSave} >{t('common.operation.save')}</Button>
+              <Button variant='primary' className='flex-shrink-0' onClick={handleSave} >{t('common.operation.save')}</Button>
             </div>
           </Modal>
         )

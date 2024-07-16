@@ -6,7 +6,7 @@ from services.feature_service import FeatureService
 
 class SystemFeatureApi(Resource):
     def get(self):
-        return FeatureService.get_system_features().dict()
+        return FeatureService.get_system_features().model_dump()
 
 
 api.add_resource(SystemFeatureApi, '/system-features')

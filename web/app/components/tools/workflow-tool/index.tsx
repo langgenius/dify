@@ -2,9 +2,12 @@
 import type { FC } from 'react'
 import React, { useState } from 'react'
 import { useTranslation } from 'react-i18next'
-import cn from 'classnames'
+import {
+  RiQuestionLine,
+} from '@remixicon/react'
 import produce from 'immer'
 import type { Emoji, WorkflowToolProviderParameter, WorkflowToolProviderRequest } from '../types'
+import cn from '@/utils/classnames'
 import Drawer from '@/app/components/base/drawer-plus'
 import Button from '@/app/components/base/button'
 import Toast from '@/app/components/base/toast'
@@ -13,7 +16,6 @@ import AppIcon from '@/app/components/base/app-icon'
 import MethodSelector from '@/app/components/tools/workflow-tool/method-selector'
 import LabelSelector from '@/app/components/tools/labels/selector'
 import ConfirmModal from '@/app/components/tools/workflow-tool/confirm-modal'
-import { HelpCircle } from '@/app/components/base/icons/src/vender/line/general'
 import Tooltip from '@/app/components/base/tooltip'
 
 type Props = {
@@ -61,28 +63,32 @@ const WorkflowToolAsModal: FC<Props> = ({
   const [showModal, setShowModal] = useState(false)
 
   const isNameValid = (name: string) => {
+    // when the user has not input anything, no need for a warning
+    if (name === '')
+      return true
+
     return /^[a-zA-Z0-9_]+$/.test(name)
   }
 
   const onConfirm = () => {
-    if (!label) {
-      return Toast.notify({
+    let errorMessage = ''
+    if (!label)
+      errorMessage = t('common.errorMsg.fieldRequired', { field: t('tools.createTool.name') })
+
+    if (!name)
+      errorMessage = t('common.errorMsg.fieldRequired', { field: t('tools.createTool.nameForToolCall') })
+
+    if (!isNameValid(name))
+      errorMessage = t('tools.createTool.nameForToolCall') + t('tools.createTool.nameForToolCallTip')
+
+    if (errorMessage) {
+      Toast.notify({
         type: 'error',
-        message: 'Please enter the tool name',
+        message: errorMessage,
       })
+      return
     }
-    if (!name) {
-      return Toast.notify({
-        type: 'error',
-        message: 'Please enter the name for tool call',
-      })
-    }
-    else if (!isNameValid(name)) {
-      return Toast.notify({
-        type: 'error',
-        message: 'Name for tool call can only contain numbers, letters, and underscores',
-      })
-    }
+
     const requestParams = {
       name,
       description,
@@ -125,7 +131,7 @@ const WorkflowToolAsModal: FC<Props> = ({
             <div className='grow h-0 overflow-y-auto px-6 py-3 space-y-4'>
               {/* name & icon */}
               <div>
-                <div className='py-2 leading-5 text-sm font-medium text-gray-900'>{t('tools.createTool.name')}</div>
+                <div className='py-2 leading-5 text-sm font-medium text-gray-900'>{t('tools.createTool.name')} <span className='ml-1 text-red-500'>*</span></div>
                 <div className='flex items-center justify-between gap-3'>
                   <AppIcon size='large' onClick={() => { setShowEmojiPicker(true) }} className='cursor-pointer' icon={emoji.content} background={emoji.background} />
                   <input
@@ -140,7 +146,7 @@ const WorkflowToolAsModal: FC<Props> = ({
               {/* name for tool call */}
               <div>
                 <div className='flex items-center py-2 leading-5 text-sm font-medium text-gray-900'>
-                  {t('tools.createTool.nameForToolCall')}
+                  {t('tools.createTool.nameForToolCall')} <span className='ml-1 text-red-500'>*</span>
                   <Tooltip
                     htmlContent={
                       <div className='w-[180px]'>
@@ -149,7 +155,7 @@ const WorkflowToolAsModal: FC<Props> = ({
                     }
                     selector='workflow-tool-modal-tooltip'
                   >
-                    <HelpCircle className='ml-2 w-[14px] h-[14px] text-gray-400' />
+                    <RiQuestionLine className='ml-2 w-[14px] h-[14px] text-gray-400' />
                   </Tooltip>
                 </div>
                 <input
@@ -160,7 +166,7 @@ const WorkflowToolAsModal: FC<Props> = ({
                   onChange={e => setName(e.target.value)}
                 />
                 {!isNameValid(name) && (
-                  <div className='text-xs leading-[18px] text-[#DC6803]'>{t('tools.createTool.nameForToolCallTip')}</div>
+                  <div className='text-xs leading-[18px] text-red-500'>{t('tools.createTool.nameForToolCallTip')}</div>
                 )}
               </div>
               {/* description */}
@@ -208,7 +214,7 @@ const WorkflowToolAsModal: FC<Props> = ({
                               </div>
                             )}
                             {item.name !== '__image' && (
-                              <MethodSelector value={item.form} onChange={value => handleParameterChange('form', value, index)}/>
+                              <MethodSelector value={item.form} onChange={value => handleParameterChange('form', value, index)} />
                             )}
                           </td>
                           <td className="p-2 pl-3 text-gray-500 w-[236px]">
@@ -242,11 +248,11 @@ const WorkflowToolAsModal: FC<Props> = ({
             </div>
             <div className={cn((!isAdd && onRemove) ? 'justify-between' : 'justify-end', 'mt-2 shrink-0 flex py-4 px-6 rounded-b-[10px] bg-gray-50 border-t border-black/5')} >
               {!isAdd && onRemove && (
-                <Button className='flex items-center h-8 !px-3 !text-[13px] font-medium !text-gray-700' onClick={onRemove}>{t('common.operation.remove')}</Button>
+                <Button onClick={onRemove} className='text-red-500 border-red-50 hover:border-red-500'>{t('common.operation.delete')}</Button>
               )}
               <div className='flex space-x-2 '>
-                <Button className='flex items-center h-8 !px-3 !text-[13px] font-medium !text-gray-700' onClick={onHide}>{t('common.operation.cancel')}</Button>
-                <Button disabled={!label || !name || !isNameValid(name)} className='flex items-center h-8 !px-3 !text-[13px] font-medium' type='primary' onClick={() => {
+                <Button onClick={onHide}>{t('common.operation.cancel')}</Button>
+                <Button variant='primary' onClick={() => {
                   if (isAdd)
                     onConfirm()
                   else

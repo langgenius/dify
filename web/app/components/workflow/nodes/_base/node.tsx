@@ -9,7 +9,11 @@ import {
   useMemo,
   useRef,
 } from 'react'
-import cn from 'classnames'
+import {
+  RiCheckboxCircleLine,
+  RiErrorWarningLine,
+  RiLoader2Line,
+} from '@remixicon/react'
 import type { NodeProps } from '../../types'
 import {
   BlockEnum,
@@ -27,12 +31,8 @@ import {
 import NodeResizer from './components/node-resizer'
 import NodeControl from './components/node-control'
 import AddVariablePopupWithPosition from './components/add-variable-popup-with-position'
+import cn from '@/utils/classnames'
 import BlockIcon from '@/app/components/workflow/block-icon'
-import {
-  CheckCircle,
-  Loading02,
-} from '@/app/components/base/icons/src/vender/line/general'
-import { AlertCircle } from '@/app/components/base/icons/src/vender/line/alertsAndFeedback'
 
 type BaseNodeProps = {
   children: ReactElement
@@ -169,17 +169,17 @@ const BaseNode: FC<BaseNodeProps> = ({
           }
           {
             (data._runningStatus === NodeRunningStatus.Running || data._singleRunningStatus === NodeRunningStatus.Running) && (
-              <Loading02 className='w-3.5 h-3.5 text-primary-600 animate-spin' />
+              <RiLoader2Line className='w-3.5 h-3.5 text-primary-600 animate-spin' />
             )
           }
           {
             data._runningStatus === NodeRunningStatus.Succeeded && (
-              <CheckCircle className='w-3.5 h-3.5 text-[#12B76A]' />
+              <RiCheckboxCircleLine className='w-3.5 h-3.5 text-[#12B76A]' />
             )
           }
           {
             data._runningStatus === NodeRunningStatus.Failed && (
-              <AlertCircle className='w-3.5 h-3.5 text-[#F04438]' />
+              <RiErrorWarningLine className='w-3.5 h-3.5 text-[#F04438]' />
             )
           }
         </div>

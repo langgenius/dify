@@ -4,6 +4,8 @@ import {
   useStoreApi,
 } from 'reactflow'
 import produce from 'immer'
+import { v4 as uuidV4 } from 'uuid'
+import { usePathname } from 'next/navigation'
 import { useWorkflowStore } from '../store'
 import { useNodesSyncDraft } from '../hooks'
 import {
@@ -19,6 +21,7 @@ import {
   stopWorkflowRun,
 } from '@/service/workflow'
 import { useFeaturesStore } from '@/app/components/base/features/hooks'
+import { AudioPlayerManager } from '@/app/components/base/audio-btn/audio.player.manager'
 
 export const useWorkflowRun = () => {
   const store = useStoreApi()
@@ -27,6 +30,7 @@ export const useWorkflowRun = () => {
   const featuresStore = useFeaturesStore()
   const { doSyncWorkflowDraft } = useNodesSyncDraft()
   const { handleUpdateWorkflowCanvas } = useWorkflowUpdate()
+  const pathname = usePathname()
 
   const handleBackupDraft = useCallback(() => {
     const {
@@ -134,6 +138,20 @@ export const useWorkflowRun = () => {
     let isInIteration = false
     let iterationLength = 0
 
+    let ttsUrl = ''
+    let ttsIsPublic = false
+    if (params.token) {
+      ttsUrl = '/text-to-audio'
+      ttsIsPublic = true
+    }
+    else if (params.appId) {
+      if (pathname.search('explore/installed') > -1)
+        ttsUrl = `/installed-apps/${params.appId}/text-to-audio`
+      else
+        ttsUrl = `/apps/${params.appId}/text-to-audio`
+    }
+    const player = AudioPlayerManager.getInstance().getAudioPlayer(ttsUrl, ttsIsPublic, uuidV4(), 'none', 'none', (_: any): any => {})
+
     ssePost(
       url,
       {
@@ -179,11 +197,17 @@ export const useWorkflowRun = () => {
             setWorkflowRunningData,
           } = workflowStore.getState()
 
+          const isStringOutput = data.outputs && Object.keys(data.outputs).length === 1 && typeof data.outputs[Object.keys(data.outputs)[0]] === 'string'
+
           setWorkflowRunningData(produce(workflowRunningData!, (draft) => {
             draft.result = {
               ...draft.result,
               ...data,
             } as any
+            if (isStringOutput) {
+              draft.resultTabActive = true
+              draft.resultText = data.outputs[Object.keys(data.outputs)[0]]
+            }
           }))
 
           prevNodeId = ''
@@ -461,6 +485,15 @@ export const useWorkflowRun = () => {
           setWorkflowRunningData(produce(workflowRunningData!, (draft) => {
             draft.resultText = text
           }))
+        },
+        onTTSChunk: (messageId: string, audio: string, audioType?: string) => {
+          if (!audio || audio === '')
+            return
+          player.playAudioWithAudio(audio, true)
+          AudioPlayerManager.getInstance().resetMsgId(messageId)
+        },
+        onTTSEnd: (messageId: string, audio: string, audioType?: string) => {
+          player.playAudioWithAudio(audio, false)
         },
         ...restCallback,
       },

@@ -5,12 +5,12 @@ import React, { useState } from 'react'
 import data from '@emoji-mart/data'
 import type { Emoji, EmojiMartData } from '@emoji-mart/data'
 import { SearchIndex, init } from 'emoji-mart'
-import cn from 'classnames'
 import {
   MagnifyingGlassIcon,
 } from '@heroicons/react/24/outline'
 import { useTranslation } from 'react-i18next'
 import s from './style.module.css'
+import cn from '@/utils/classnames'
 import Divider from '@/app/components/base/divider'
 import Button from '@/app/components/base/button'
 
@@ -86,7 +86,7 @@ const EmojiPicker: FC<IEmojiPickerProps> = ({
     onClose={() => { }}
     isShow
     closable={false}
-    wrapperClassName={`!z-40 ${className}`}
+    wrapperClassName={className}
     className={cn(s.container, '!w-[362px] !p-0')}
   >
     <div className='flex flex-col items-center w-full p-3'>
@@ -189,14 +189,14 @@ const EmojiPicker: FC<IEmojiPickerProps> = ({
     </div>
     <Divider className='m-0' />
     <div className='w-full flex items-center justify-center p-3 gap-2'>
-      <Button type="default" className='w-full' onClick={() => {
+      <Button className='w-full' onClick={() => {
         onClose && onClose()
       }}>
         {t('app.emoji.cancel')}
       </Button>
       <Button
         disabled={selectedEmoji === ''}
-        type="primary"
+        variant="primary"
         className='w-full'
         onClick={() => {
           onSelect && onSelect(selectedEmoji, selectedBackground)

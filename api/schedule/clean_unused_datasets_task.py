@@ -2,10 +2,10 @@ import datetime
 import time
 
 import click
-from flask import current_app
 from werkzeug.exceptions import NotFound
 
 import app
+from configs import dify_config
 from core.rag.index_processor.index_processor_factory import IndexProcessorFactory
 from extensions.ext_database import db
 from models.dataset import Dataset, DatasetQuery, Document
@@ -14,7 +14,7 @@ from models.dataset import Dataset, DatasetQuery, Document
 @app.celery.task(queue='dataset')
 def clean_unused_datasets_task():
     click.echo(click.style('Start clean unused datasets indexes.', fg='green'))
-    clean_days = int(current_app.config.get('CLEAN_DAY_SETTING'))
+    clean_days = int(dify_config.CLEAN_DAY_SETTING)
     start_at = time.perf_counter()
     thirty_days_ago = datetime.datetime.now() - datetime.timedelta(days=clean_days)
     page = 1

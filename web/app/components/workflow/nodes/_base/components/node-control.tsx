@@ -6,6 +6,9 @@ import {
 } from 'react'
 import { useTranslation } from 'react-i18next'
 import {
+  RiPlayLargeLine,
+} from '@remixicon/react'
+import {
   useNodeDataUpdate,
   useNodesInteractions,
   useNodesSyncDraft,
@@ -14,7 +17,6 @@ import type { Node } from '../../../types'
 import { canRunBySingle } from '../../../utils'
 import PanelOperator from './panel-operator'
 import {
-  Play,
   Stop,
 } from '@/app/components/base/icons/src/vender/line/mediaAndDevices'
 import TooltipPlus from '@/app/components/base/tooltip-plus'
@@ -69,7 +71,7 @@ const NodeControl: FC<NodeControlProps> = ({
                     <TooltipPlus
                       popupContent={t('workflow.panel.runThisStep')}
                     >
-                      <Play className='w-3 h-3' />
+                      <RiPlayLargeLine className='w-3 h-3' />
                     </TooltipPlus>
                   )
               }

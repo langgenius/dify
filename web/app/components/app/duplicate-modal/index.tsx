@@ -1,8 +1,8 @@
 'use client'
 import React, { useState } from 'react'
-import cn from 'classnames'
 import { useTranslation } from 'react-i18next'
 import s from './style.module.css'
+import cn from '@/utils/classnames'
 import Modal from '@/app/components/base/modal'
 import Button from '@/app/components/base/button'
 import Toast from '@/app/components/base/toast'
@@ -75,7 +75,7 @@ const DuplicateAppModal = ({
           {isAppsFull && <AppsFull loc='app-duplicate-create' />}
         </div>
         <div className='flex flex-row-reverse'>
-          <Button disabled={isAppsFull} className='w-24 ml-2' type='primary' onClick={submit}>{t('app.duplicate')}</Button>
+          <Button disabled={isAppsFull} className='w-24 ml-2' variant='primary' onClick={submit}>{t('app.duplicate')}</Button>
           <Button className='w-24' onClick={onHide}>{t('common.operation.cancel')}</Button>
         </div>
       </Modal>

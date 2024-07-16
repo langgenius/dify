@@ -128,7 +128,7 @@ const SecretKeyModal = ({
                         setCopyValue(api.token)
                       }}></div>
                     </Tooltip>
-                    { isCurrentWorkspaceManager
+                    {isCurrentWorkspaceManager
                       && <div className={`flex items-center justify-center flex-shrink-0 w-6 h-6 rounded-lg cursor-pointer ${s.trashIcon}`} onClick={() => {
                         setDelKeyId(api.id)
                         setShowConfirmDelete(true)
@@ -143,7 +143,7 @@ const SecretKeyModal = ({
         )
       }
       <div className='flex'>
-        <Button type='default' className={`flex flex-shrink-0 mt-4 ${s.autoWidth}`} onClick={onCreate} disabled={ !currentWorkspace || currentWorkspace.role === 'normal'}>
+        <Button className={`flex flex-shrink-0 mt-4 ${s.autoWidth}`} onClick={onCreate} disabled={ !currentWorkspace || !isCurrentWorkspaceManager}>
           <PlusIcon className='flex flex-shrink-0 w-4 h-4' />
           <div className='text-xs font-medium text-gray-800'>{t('appApi.apiKeyModal.createNewSecretKey')}</div>
         </Button>

@@ -2,7 +2,9 @@
 import type { FC } from 'react'
 import React from 'react'
 import { useTranslation } from 'react-i18next'
-import { ToolsActive } from '@/app/components/base/icons/src/public/header-nav/tools'
+import {
+  RiHammerFill,
+} from '@remixicon/react'
 import { Heart02 } from '@/app/components/base/icons/src/vender/solid/education'
 import { BookOpen01 } from '@/app/components/base/icons/src/vender/line/education'
 import { ArrowUpRight } from '@/app/components/base/icons/src/vender/line/arrows'
@@ -19,7 +21,7 @@ const Contribute: FC = () => {
     >
       <div className='flex pt-[14px] px-[14px] pb-3 h-[66px] items-center gap-3 grow-0 shrink-0'>
         <div className='relative shrink-0 flex items-center'>
-          <div className='z-10 flex p-3 rounded-[10px] bg-white border-[0.5px] border-primary-100 shadow-md'><ToolsActive className='w-4 h-4 text-primary-600'/></div>
+          <div className='z-10 flex p-3 rounded-[10px] bg-white border-[0.5px] border-primary-100 shadow-md'><RiHammerFill className='w-4 h-4 text-primary-600'/></div>
           <div className='-translate-x-2 flex p-3 rounded-[10px] bg-[#FEF6FB] border-[0.5px] border-[#FCE7F6] shadow-md'><Heart02 className='w-4 h-4 text-[#EE46BC]'/></div>
         </div>
       </div>

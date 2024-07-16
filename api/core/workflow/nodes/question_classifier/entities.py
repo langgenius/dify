@@ -32,5 +32,5 @@ class QuestionClassifierNodeData(BaseNodeData):
     type: str = 'question-classifier'
     model: ModelConfig
     classes: list[ClassConfig]
-    instruction: Optional[str]
-    memory: Optional[MemoryConfig]
+    instruction: Optional[str] = None
+    memory: Optional[MemoryConfig] = None

@@ -1,8 +1,9 @@
 import type { Fetcher } from 'swr'
-import { del, get, post, put } from './base'
-import type { ApikeysListResponse, AppDailyConversationsResponse, AppDailyEndUsersResponse, AppDetailResponse, AppListResponse, AppStatisticsResponse, AppTemplatesResponse, AppTokenCostsResponse, AppVoicesListResponse, CreateApiKeyResponse, GenerationIntroductionResponse, UpdateAppModelConfigResponse, UpdateAppSiteCodeResponse, UpdateOpenAIKeyResponse, ValidateOpenAIKeyResponse, WorkflowDailyConversationsResponse } from '@/models/app'
+import { del, get, patch, post, put } from './base'
+import type { ApikeysListResponse, AppDailyConversationsResponse, AppDailyEndUsersResponse, AppDetailResponse, AppListResponse, AppStatisticsResponse, AppTemplatesResponse, AppTokenCostsResponse, AppVoicesListResponse, CreateApiKeyResponse, GenerationIntroductionResponse, TracingConfig, TracingStatus, UpdateAppModelConfigResponse, UpdateAppSiteCodeResponse, UpdateOpenAIKeyResponse, ValidateOpenAIKeyResponse, WorkflowDailyConversationsResponse } from '@/models/app'
 import type { CommonResponse } from '@/models/common'
 import type { AppMode, ModelConfig } from '@/types/app'
+import type { TracingProvider } from '@/app/(commonLayout)/app/(appDetailLayout)/[appId]/overview/tracing/type'
 
 export const fetchAppList: Fetcher<AppListResponse, { url: string; params?: Record<string, any> }> = ({ url, params }) => {
   return get<AppListResponse>(url, { params })
@@ -34,6 +35,10 @@ export const exportAppConfig: Fetcher<{ data: string }, string> = (appID) => {
 
 export const importApp: Fetcher<AppDetailResponse, { data: string; name?: string; description?: string; icon?: string; icon_background?: string }> = ({ data, name, description, icon, icon_background }) => {
   return post<AppDetailResponse>('apps/import', { body: { data, name, description, icon, icon_background } })
+}
+
+export const importAppFromUrl: Fetcher<AppDetailResponse, { url: string; name?: string; description?: string; icon?: string; icon_background?: string }> = ({ url, name, description, icon, icon_background }) => {
+  return post<AppDetailResponse>('apps/import/url', { body: { url, name, description, icon, icon_background } })
 }
 
 export const switchApp: Fetcher<{ new_app_id: string }, { appID: string; name: string; icon: string; icon_background: string }> = ({ appID, name, icon, icon_background }) => {
@@ -119,5 +124,35 @@ export const generationIntroduction: Fetcher<GenerationIntroductionResponse, { u
 }
 
 export const fetchAppVoices: Fetcher<AppVoicesListResponse, { appId: string; language?: string }> = ({ appId, language }) => {
+  language = language || 'en-US'
   return get<AppVoicesListResponse>(`apps/${appId}/text-to-audio/voices?language=${language}`)
+}
+
+// Tracing
+export const fetchTracingStatus: Fetcher<TracingStatus, { appId: string }> = ({ appId }) => {
+  return get(`/apps/${appId}/trace`)
+}
+
+export const updateTracingStatus: Fetcher<CommonResponse, { appId: string; body: Record<string, any> }> = ({ appId, body }) => {
+  return post(`/apps/${appId}/trace`, { body })
+}
+
+export const fetchTracingConfig: Fetcher<TracingConfig & { has_not_configured: true }, { appId: string; provider: TracingProvider }> = ({ appId, provider }) => {
+  return get(`/apps/${appId}/trace-config`, {
+    params: {
+      tracing_provider: provider,
+    },
+  })
+}
+
+export const addTracingConfig: Fetcher<CommonResponse, { appId: string; body: TracingConfig }> = ({ appId, body }) => {
+  return post(`/apps/${appId}/trace-config`, { body })
+}
+
+export const updateTracingConfig: Fetcher<CommonResponse, { appId: string; body: TracingConfig }> = ({ appId, body }) => {
+  return patch(`/apps/${appId}/trace-config`, { body })
+}
+
+export const removeTracingConfig: Fetcher<CommonResponse, { appId: string; provider: TracingProvider }> = ({ appId, provider }) => {
+  return del(`/apps/${appId}/trace-config?tracing_provider=${provider}`)
 }

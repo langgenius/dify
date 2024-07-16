@@ -3,17 +3,19 @@ import type { FC } from 'react'
 import React, { useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { useBoolean } from 'ahooks'
-import cn from 'classnames'
+import {
+  RiQuestionLine,
+} from '@remixicon/react'
 import produce from 'immer'
 import { useContext } from 'use-context-selector'
 import ConfirmAddVar from './confirm-add-var'
 import s from './style.module.css'
 import PromptEditorHeightResizeWrap from './prompt-editor-height-resize-wrap'
+import cn from '@/utils/classnames'
 import { type PromptVariable } from '@/models/debug'
 import Tooltip from '@/app/components/base/tooltip'
 import { AppType } from '@/types/app'
 import { getNewVar, getVars } from '@/utils/var'
-import { HelpCircle } from '@/app/components/base/icons/src/vender/line/general'
 import AutomaticBtn from '@/app/components/app/configuration/config/automatic/automatic-btn'
 import type { AutomaticRes } from '@/service/debug'
 import GetAutomaticResModal from '@/app/components/app/configuration/config/automatic/get-automatic-res'
@@ -143,7 +145,7 @@ const Prompt: FC<ISimplePromptInput> = ({
                   {t('appDebug.promptTip')}
                 </div>}
                 selector='config-prompt-tooltip'>
-                <HelpCircle className='w-[14px] h-[14px] text-indigo-400' />
+                <RiQuestionLine className='w-[14px] h-[14px] text-indigo-400' />
               </Tooltip>
             )}
           </div>
