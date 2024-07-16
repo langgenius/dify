@@ -3,7 +3,6 @@ import logging
 from datetime import datetime, timezone
 from typing import cast
 
-import yaml
 from flask_login import current_user
 from flask_sqlalchemy.pagination import Pagination
 
@@ -17,13 +16,12 @@ from core.model_runtime.entities.model_entities import ModelPropertyKey, ModelTy
 from core.model_runtime.model_providers.__base.large_language_model import LargeLanguageModel
 from core.tools.tool_manager import ToolManager
 from core.tools.utils.configuration import ToolParameterConfigurationManager
-from events.app_event import app_model_config_was_updated, app_was_created
+from events.app_event import app_was_created
 from extensions.ext_database import db
 from models.account import Account
 from models.model import App, AppMode, AppModelConfig
 from models.tools import ApiToolProvider
 from services.tag_service import TagService
-from services.workflow_service import WorkflowService
 from tasks.remove_app_and_related_data_task import remove_app_and_related_data_task
 
 
@@ -143,120 +141,6 @@ class AppService:
         app_was_created.send(app, account=account)
 
         return app
-
-    def import_app(self, tenant_id: str, data: str, args: dict, account: Account) -> App:
-        """
-        Import app
-        :param tenant_id: tenant id
-        :param data: import data
-        :param args: request args
-        :param account: Account instance
-        """
-        try:
-            import_data = yaml.safe_load(data)
-        except yaml.YAMLError as e:
-            raise ValueError("Invalid YAML format in data argument.")
-
-        app_data = import_data.get('app')
-        model_config_data = import_data.get('model_config')
-        workflow = import_data.get('workflow')
-
-        if not app_data:
-            raise ValueError("Missing app in data argument")
-
-        app_mode = AppMode.value_of(app_data.get('mode'))
-        if app_mode in [AppMode.ADVANCED_CHAT, AppMode.WORKFLOW]:
-            if not workflow:
-                raise ValueError("Missing workflow in data argument "
-                                 "when app mode is advanced-chat or workflow")
-        elif app_mode in [AppMode.CHAT, AppMode.AGENT_CHAT, AppMode.COMPLETION]:
-            if not model_config_data:
-                raise ValueError("Missing model_config in data argument "
-                                 "when app mode is chat, agent-chat or completion")
-        else:
-            raise ValueError("Invalid app mode")
-
-        app = App(
-            tenant_id=tenant_id,
-            mode=app_data.get('mode'),
-            name=args.get("name") if args.get("name") else app_data.get('name'),
-            description=args.get("description") if args.get("description") else app_data.get('description', ''),
-            icon=args.get("icon") if args.get("icon") else app_data.get('icon'),
-            icon_background=args.get("icon_background") if args.get("icon_background") \
-                else app_data.get('icon_background'),
-            enable_site=True,
-            enable_api=True
-        )
-
-        db.session.add(app)
-        db.session.commit()
-
-        app_was_created.send(app, account=account)
-
-        if workflow:
-            # init draft workflow
-            workflow_service = WorkflowService()
-            draft_workflow = workflow_service.sync_draft_workflow(
-                app_model=app,
-                graph=workflow.get('graph'),
-                features=workflow.get('features'),
-                unique_hash=None,
-                account=account
-            )
-            workflow_service.publish_workflow(
-                app_model=app,
-                account=account,
-                draft_workflow=draft_workflow
-            )
-
-        if model_config_data:
-            app_model_config = AppModelConfig()
-            app_model_config = app_model_config.from_model_config_dict(model_config_data)
-            app_model_config.app_id = app.id
-
-            db.session.add(app_model_config)
-            db.session.commit()
-
-            app.app_model_config_id = app_model_config.id
-
-            app_model_config_was_updated.send(
-                app,
-                app_model_config=app_model_config
-            )
-
-        return app
-
-    def export_app(self, app: App) -> str:
-        """
-        Export app
-        :param app: App instance
-        :return:
-        """
-        app_mode = AppMode.value_of(app.mode)
-
-        export_data = {
-            "app": {
-                "name": app.name,
-                "mode": app.mode,
-                "icon": app.icon,
-                "icon_background": app.icon_background,
-                "description": app.description
-            }
-        }
-
-        if app_mode in [AppMode.ADVANCED_CHAT, AppMode.WORKFLOW]:
-            workflow_service = WorkflowService()
-            workflow = workflow_service.get_draft_workflow(app)
-            export_data['workflow'] = {
-                "graph": workflow.graph_dict,
-                "features": workflow.features_dict
-            }
-        else:
-            app_model_config = app.app_model_config
-
-            export_data['model_config'] = app_model_config.to_dict()
-
-        return yaml.dump(export_data)
 
     def get_app(self, app: App) -> App:
         """
