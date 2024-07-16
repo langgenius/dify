@@ -25,14 +25,12 @@ const ShareQRCode = ({ content, selectorId, className }: Props) => {
 
   useEffect(() => {
     const handleClickOutside = (event: MouseEvent) => {
-      if (qrCodeRef.current && !qrCodeRef.current.contains(event.target as Node)) {
+      if (qrCodeRef.current && !qrCodeRef.current.contains(event.target as Node))
         setIsShow(false)
-      }
     }
 
-    if (isShow) {
+    if (isShow)
       document.addEventListener('click', handleClickOutside)
-    }
 
     return () => {
       document.removeEventListener('click', handleClickOutside)
