@@ -74,6 +74,7 @@ class App(db.Model):
     is_public = db.Column(db.Boolean, nullable=False, server_default=db.text('false'))
     is_universal = db.Column(db.Boolean, nullable=False, server_default=db.text('false'))
     tracing = db.Column(db.Text, nullable=True)
+    max_active_requests = db.Column(db.Integer, nullable=True)
     created_at = db.Column(db.DateTime, nullable=False, server_default=db.text('CURRENT_TIMESTAMP(0)'))
     updated_at = db.Column(db.DateTime, nullable=False, server_default=db.text('CURRENT_TIMESTAMP(0)'))
 
@@ -626,6 +627,7 @@ class Message(db.Model):
         db.Index('message_conversation_id_idx', 'conversation_id'),
         db.Index('message_end_user_idx', 'app_id', 'from_source', 'from_end_user_id'),
         db.Index('message_account_idx', 'app_id', 'from_source', 'from_account_id'),
+        db.Index('message_workflow_run_id_idx', 'conversation_id', 'workflow_run_id')
     )
 
     id = db.Column(StringUUID, server_default=db.text('uuid_generate_v4()'))
@@ -837,6 +839,49 @@ class Message(db.Model):
             return db.session.query(WorkflowRun).filter(WorkflowRun.id == self.workflow_run_id).first()
 
         return None
+
+    def to_dict(self) -> dict:
+        return {
+            'id': self.id,
+            'app_id': self.app_id,
+            'conversation_id': self.conversation_id,
+            'inputs': self.inputs,
+            'query': self.query,
+            'message': self.message,
+            'answer': self.answer,
+            'status': self.status,
+            'error': self.error,
+            'message_metadata': self.message_metadata_dict,
+            'from_source': self.from_source,
+            'from_end_user_id': self.from_end_user_id,
+            'from_account_id': self.from_account_id,
+            'created_at': self.created_at.isoformat(),
+            'updated_at': self.updated_at.isoformat(),
+            'agent_based': self.agent_based,
+            'workflow_run_id': self.workflow_run_id
+        }
+
+    @classmethod
+    def from_dict(cls, data: dict):
+        return cls(
+            id=data['id'],
+            app_id=data['app_id'],
+            conversation_id=data['conversation_id'],
+            inputs=data['inputs'],
+            query=data['query'],
+            message=data['message'],
+            answer=data['answer'],
+            status=data['status'],
+            error=data['error'],
+            message_metadata=json.dumps(data['message_metadata']),
+            from_source=data['from_source'],
+            from_end_user_id=data['from_end_user_id'],
+            from_account_id=data['from_account_id'],
+            created_at=data['created_at'],
+            updated_at=data['updated_at'],
+            agent_based=data['agent_based'],
+            workflow_run_id=data['workflow_run_id']
+        )
 
 
 class MessageFeedback(db.Model):

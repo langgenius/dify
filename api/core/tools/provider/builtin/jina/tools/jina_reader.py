@@ -1,3 +1,4 @@
+import json
 from typing import Any, Union
 
 from yarl import URL
@@ -26,11 +27,20 @@ class JinaReaderTool(BuiltinTool):
         if 'api_key' in self.runtime.credentials and self.runtime.credentials.get('api_key'):
             headers['Authorization'] = "Bearer " + self.runtime.credentials.get('api_key')
 
-        target_selector = tool_parameters.get('target_selector', None)
+        request_params = tool_parameters.get('request_params')
+        if request_params is not None and request_params != '':
+            try:
+                request_params = json.loads(request_params)
+                if not isinstance(request_params, dict):
+                    raise ValueError("request_params must be a JSON object")
+            except (json.JSONDecodeError, ValueError) as e:
+                raise ValueError(f"Invalid request_params: {e}")
+
+        target_selector = tool_parameters.get('target_selector')
         if target_selector is not None and target_selector != '':
             headers['X-Target-Selector'] = target_selector
 
-        wait_for_selector = tool_parameters.get('wait_for_selector', None)
+        wait_for_selector = tool_parameters.get('wait_for_selector')
         if wait_for_selector is not None and wait_for_selector != '':
             headers['X-Wait-For-Selector'] = wait_for_selector
 
@@ -43,7 +53,7 @@ class JinaReaderTool(BuiltinTool):
         if tool_parameters.get('gather_all_images_at_the_end', False):
             headers['X-With-Images-Summary'] = 'true'
 
-        proxy_server = tool_parameters.get('proxy_server', None)
+        proxy_server = tool_parameters.get('proxy_server')
         if proxy_server is not None and proxy_server != '':
             headers['X-Proxy-Url'] = proxy_server
 
@@ -53,7 +63,8 @@ class JinaReaderTool(BuiltinTool):
         response = ssrf_proxy.get(
             str(URL(self._jina_reader_endpoint + url)),
             headers=headers,
-            timeout=(10, 60)
+            params=request_params,
+            timeout=(10, 60),
         )
 
         if tool_parameters.get('summary', False):

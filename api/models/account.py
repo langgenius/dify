@@ -80,6 +80,10 @@ class Account(UserMixin, db.Model):
 
         self._current_tenant = tenant
 
+    @property
+    def current_role(self):
+        return self._current_tenant.current_role
+
     def get_status(self) -> AccountStatus:
         status_str = self.status
         return AccountStatus(status_str)
@@ -110,6 +114,14 @@ class Account(UserMixin, db.Model):
     def is_editor(self):
         return TenantAccountRole.is_editing_role(self._current_tenant.current_role)
 
+    @property
+    def is_dataset_editor(self):
+        return TenantAccountRole.is_dataset_edit_role(self._current_tenant.current_role)
+
+    @property
+    def is_dataset_operator(self):
+        return self._current_tenant.current_role == TenantAccountRole.DATASET_OPERATOR
+
 class TenantStatus(str, enum.Enum):
     NORMAL = 'normal'
     ARCHIVE = 'archive'
@@ -120,10 +132,12 @@ class TenantAccountRole(str, enum.Enum):
     ADMIN = 'admin'
     EDITOR = 'editor'
     NORMAL = 'normal'
+    DATASET_OPERATOR = 'dataset_operator'
 
     @staticmethod
     def is_valid_role(role: str) -> bool:
-        return role and role in {TenantAccountRole.OWNER, TenantAccountRole.ADMIN, TenantAccountRole.EDITOR, TenantAccountRole.NORMAL}
+        return role and role in {TenantAccountRole.OWNER, TenantAccountRole.ADMIN, TenantAccountRole.EDITOR,
+                                 TenantAccountRole.NORMAL, TenantAccountRole.DATASET_OPERATOR}
 
     @staticmethod
     def is_privileged_role(role: str) -> bool:
@@ -131,12 +145,17 @@ class TenantAccountRole(str, enum.Enum):
     
     @staticmethod
     def is_non_owner_role(role: str) -> bool:
-        return role and role in {TenantAccountRole.ADMIN, TenantAccountRole.EDITOR, TenantAccountRole.NORMAL}
+        return role and role in {TenantAccountRole.ADMIN, TenantAccountRole.EDITOR, TenantAccountRole.NORMAL,
+                                 TenantAccountRole.DATASET_OPERATOR}
     
     @staticmethod
     def is_editing_role(role: str) -> bool:
         return role and role in {TenantAccountRole.OWNER, TenantAccountRole.ADMIN, TenantAccountRole.EDITOR}
 
+    @staticmethod
+    def is_dataset_edit_role(role: str) -> bool:
+        return role and role in {TenantAccountRole.OWNER, TenantAccountRole.ADMIN, TenantAccountRole.EDITOR,
+                                 TenantAccountRole.DATASET_OPERATOR}
 
 class Tenant(db.Model):
     __tablename__ = 'tenants'
@@ -153,8 +172,7 @@ class Tenant(db.Model):
     created_at = db.Column(db.DateTime, nullable=False, server_default=db.text('CURRENT_TIMESTAMP(0)'))
     updated_at = db.Column(db.DateTime, nullable=False, server_default=db.text('CURRENT_TIMESTAMP(0)'))
 
-    def get_accounts(self) -> list[db.Model]:
-        Account = db.Model
+    def get_accounts(self) -> list[Account]:
         return db.session.query(Account).filter(
             Account.id == TenantAccountJoin.account_id,
             TenantAccountJoin.tenant_id == self.id
@@ -173,6 +191,7 @@ class TenantAccountJoinRole(enum.Enum):
     OWNER = 'owner'
     ADMIN = 'admin'
     NORMAL = 'normal'
+    DATASET_OPERATOR = 'dataset_operator'
 
 
 class TenantAccountJoin(db.Model):

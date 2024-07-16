@@ -14,10 +14,10 @@ language_timezone_mapping = {
     'vi-VN': 'Asia/Ho_Chi_Minh',
     'ro-RO': 'Europe/Bucharest',
     'pl-PL': 'Europe/Warsaw',
-    'hi-IN': 'Asia/Kolkata'
+    'hi-IN': 'Asia/Kolkata',
 }
 
-languages = language_timezone_mapping.keys()
+languages = list(language_timezone_mapping.keys())
 
 
 def supported_language(lang):

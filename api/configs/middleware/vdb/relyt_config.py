@@ -1,9 +1,10 @@
 from typing import Optional
 
-from pydantic import BaseModel, Field, PositiveInt
+from pydantic import Field, PositiveInt
+from pydantic_settings import BaseSettings
 
 
-class RelytConfig(BaseModel):
+class RelytConfig(BaseSettings):
     """
     Relyt configs
     """

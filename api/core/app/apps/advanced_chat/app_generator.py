@@ -59,7 +59,7 @@ class AdvancedChatAppGenerator(MessageBasedAppGenerator):
         inputs = args['inputs']
 
         extras = {
-            "auto_generate_conversation_name": args['auto_generate_name'] if 'auto_generate_name' in args else False
+            "auto_generate_conversation_name": args.get('auto_generate_name', False)
         }
 
         # get conversation

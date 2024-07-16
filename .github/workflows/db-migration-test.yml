@@ -38,6 +38,11 @@ jobs:
       - name: Install dependencies
         run: poetry install -C api
 
+      - name: Prepare middleware env
+        run: |
+          cd docker
+          cp middleware.env.example middleware.env
+
       - name: Set up Middlewares
         uses: hoverkraft-tech/compose-action@v2.0.0
         with:

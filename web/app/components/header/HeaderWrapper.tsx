@@ -1,7 +1,7 @@
 'use client'
-import classNames from 'classnames'
 import { usePathname } from 'next/navigation'
 import s from './index.module.css'
+import classNames from '@/utils/classnames'
 
 type HeaderWrapperProps = {
   children: React.ReactNode

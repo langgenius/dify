@@ -12,7 +12,7 @@ from core.model_manager import ModelInstance, ModelManager
 from core.model_runtime.entities.message_entities import PromptMessageTool
 from core.model_runtime.entities.model_entities import ModelFeature, ModelType
 from core.model_runtime.model_providers.__base.large_language_model import LargeLanguageModel
-from core.ops.ops_trace_manager import TraceTask, TraceTaskName
+from core.ops.ops_trace_manager import TraceQueueManager, TraceTask, TraceTaskName
 from core.ops.utils import measure_time
 from core.rag.datasource.retrieval_service import RetrievalService
 from core.rag.models.document import Document
@@ -28,7 +28,7 @@ from models.dataset import Dataset, DatasetQuery, DocumentSegment
 from models.dataset import Document as DatasetDocument
 
 default_retrieval_model = {
-    'search_method': RetrievalMethod.SEMANTIC_SEARCH,
+    'search_method': RetrievalMethod.SEMANTIC_SEARCH.value,
     'reranking_enable': False,
     'reranking_model': {
         'reranking_provider_name': '',
@@ -357,7 +357,7 @@ class DatasetRetrieval:
             db.session.commit()
 
         # get tracing instance
-        trace_manager = self.application_generate_entity.trace_manager if self.application_generate_entity else None
+        trace_manager: TraceQueueManager = self.application_generate_entity.trace_manager if self.application_generate_entity else None
         if trace_manager:
             trace_manager.add_trace_task(
                 TraceTask(
@@ -464,7 +464,7 @@ class DatasetRetrieval:
         if retrieve_config.retrieve_strategy == DatasetRetrieveConfigEntity.RetrieveStrategy.SINGLE:
             # get retrieval model config
             default_retrieval_model = {
-                'search_method': RetrievalMethod.SEMANTIC_SEARCH,
+                'search_method': RetrievalMethod.SEMANTIC_SEARCH.value,
                 'reranking_enable': False,
                 'reranking_model': {
                     'reranking_provider_name': '',

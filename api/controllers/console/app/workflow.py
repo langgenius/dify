@@ -13,12 +13,14 @@ from controllers.console.setup import setup_required
 from controllers.console.wraps import account_initialization_required
 from core.app.apps.base_app_queue_manager import AppQueueManager
 from core.app.entities.app_invoke_entities import InvokeFrom
+from core.errors.error import AppInvokeQuotaExceededError
 from fields.workflow_fields import workflow_fields
 from fields.workflow_run_fields import workflow_run_node_execution_fields
 from libs import helper
 from libs.helper import TimestampField, uuid_value
 from libs.login import current_user, login_required
 from models.model import App, AppMode
+from services.app_dsl_service import AppDslService
 from services.app_generate_service import AppGenerateService
 from services.errors.app import WorkflowHashNotEqualError
 from services.workflow_service import WorkflowService
@@ -127,8 +129,7 @@ class DraftWorkflowImportApi(Resource):
         parser.add_argument('data', type=str, required=True, nullable=False, location='json')
         args = parser.parse_args()
 
-        workflow_service = WorkflowService()
-        workflow = workflow_service.import_draft_workflow(
+        workflow = AppDslService.import_and_overwrite_workflow(
             app_model=app_model,
             data=args['data'],
             account=current_user
@@ -279,7 +280,7 @@ class DraftWorkflowRunApi(Resource):
             )
 
             return helper.compact_generate_response(response)
-        except ValueError as e:
+        except (ValueError, AppInvokeQuotaExceededError) as e:
             raise e
         except Exception as e:
             logging.exception("internal server error.")

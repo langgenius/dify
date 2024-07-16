@@ -167,13 +167,14 @@ class WorkflowCycleManage(WorkflowIterationCycleManage):
         db.session.refresh(workflow_run)
         db.session.close()
 
-        trace_manager.add_trace_task(
-            TraceTask(
-                TraceTaskName.WORKFLOW_TRACE,
-                workflow_run=workflow_run,
-                conversation_id=conversation_id,
+        if trace_manager:
+            trace_manager.add_trace_task(
+                TraceTask(
+                    TraceTaskName.WORKFLOW_TRACE,
+                    workflow_run=workflow_run,
+                    conversation_id=conversation_id,
+                )
             )
-        )
 
         return workflow_run
 

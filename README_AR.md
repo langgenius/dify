@@ -157,21 +157,29 @@
 
 ```bash
 cd docker
+cp .env.example .env
 docker compose up -d
 ```
+
 بعد التشغيل، يمكنك الوصول إلى لوحة تحكم Dify في متصفحك على [http://localhost/install](http://localhost/install) وبدء عملية التهيئة.
 
 > إذا كنت ترغب في المساهمة في Dify أو القيام بتطوير إضافي، فانظر إلى [دليلنا للنشر من الشفرة (code) المصدرية](https://docs.dify.ai/getting-started/install-self-hosted/local-source-code)
 
 ## الخطوات التالية
 
-إذا كنت بحاجة إلى تخصيص التكوين، يرجى الرجوع إلى التعليقات في ملف [docker-compose.yml](docker/docker-compose.yaml) لدينا وتعيين التكوينات البيئية يدويًا. بعد إجراء التغييرات، يرجى تشغيل `docker-compose up -d` مرة أخرى. يمكنك رؤية قائمة كاملة بالمتغيرات البيئية [هنا](https://docs.dify.ai/getting-started/install-self-hosted/environments).
+إذا كنت بحاجة إلى تخصيص الإعدادات، فيرجى الرجوع إلى التعليقات في ملف [.env.example](docker/.env.example) وتحديث القيم المقابلة في ملف `.env`. بالإضافة إلى ذلك، قد تحتاج إلى إجراء تعديلات على ملف `docker-compose.yaml` نفسه، مثل تغيير إصدارات الصور أو تعيينات المنافذ أو نقاط تحميل وحدات التخزين، بناءً على بيئة النشر ومتطلباتك الخاصة. بعد إجراء أي تغييرات، يرجى إعادة تشغيل `docker-compose up -d`. يمكنك العثور على قائمة كاملة بمتغيرات البيئة المتاحة [هنا](https://docs.dify.ai/getting-started/install-self-hosted/environments).
 
 يوجد مجتمع خاص بـ [Helm Charts](https://helm.sh/) وملفات YAML التي تسمح بتنفيذ Dify على Kubernetes للنظام من الإيجابيات العلوية.
 
 - [رسم بياني Helm من قبل @LeoQuote](https://github.com/douban/charts/tree/master/charts/dify)
 - [رسم بياني Helm من قبل @BorisPolonsky](https://github.com/BorisPolonsky/dify-helm)
 - [ملف YAML من قبل @Winson-030](https://github.com/Winson-030/dify-kubernetes)
+
+#### استخدام Terraform للتوزيع
+
+##### Azure Global
+استخدم [terraform](https://www.terraform.io/) لنشر Dify على Azure بنقرة واحدة.
+- [Azure Terraform بواسطة @nikawang](https://github.com/nikawang/dify-azure-terraform)
 
 
 ## المساهمة

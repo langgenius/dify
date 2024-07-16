@@ -1,8 +1,8 @@
 'use client'
 import type { FC } from 'react'
 import React from 'react'
-import cn from 'classnames'
 import s from './style.module.css'
+import cn from '@/utils/classnames'
 
 type Props = {
   className?: string
@@ -24,7 +24,7 @@ const RadioCard: FC<Props> = ({
   description,
   noRadio,
   isChosen,
-  onChosen = () => {},
+  onChosen = () => { },
   chosenConfig,
   chosenConfigWrapClassName,
 }) => {

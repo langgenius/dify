@@ -1,9 +1,9 @@
 import type { ReactElement } from 'react'
 import { useId } from 'react'
-import cn from 'classnames'
 import { useContext } from 'use-context-selector'
 import RadioGroupContext from '../../context'
 import s from '../../style.module.css'
+import cn from '@/utils/classnames'
 
 export type IRadioProps = {
   className?: string

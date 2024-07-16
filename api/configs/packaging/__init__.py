@@ -1,14 +1,15 @@
-from pydantic import BaseModel, Field
+from pydantic import Field
+from pydantic_settings import BaseSettings
 
 
-class PackagingInfo(BaseModel):
+class PackagingInfo(BaseSettings):
     """
     Packaging build information
     """
 
     CURRENT_VERSION: str = Field(
         description='Dify version',
-        default='0.6.11',
+        default='0.6.14',
     )
 
     COMMIT_SHA: str = Field(

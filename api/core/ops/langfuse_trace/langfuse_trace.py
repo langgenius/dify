@@ -107,9 +107,21 @@ class LangFuseDataTrace(BaseTraceInstance):
 
         # through workflow_run_id get all_nodes_execution
         workflow_nodes_executions = (
-            db.session.query(WorkflowNodeExecution)
+            db.session.query(
+                WorkflowNodeExecution.id,
+                WorkflowNodeExecution.tenant_id,
+                WorkflowNodeExecution.app_id,
+                WorkflowNodeExecution.title,
+                WorkflowNodeExecution.node_type,
+                WorkflowNodeExecution.status,
+                WorkflowNodeExecution.inputs,
+                WorkflowNodeExecution.outputs,
+                WorkflowNodeExecution.created_at,
+                WorkflowNodeExecution.elapsed_time,
+                WorkflowNodeExecution.process_data,
+                WorkflowNodeExecution.execution_metadata,
+            )
             .filter(WorkflowNodeExecution.workflow_run_id == trace_info.workflow_run_id)
-            .order_by(WorkflowNodeExecution.index.desc())
             .all()
         )
 
@@ -121,7 +133,9 @@ class LangFuseDataTrace(BaseTraceInstance):
             node_type = node_execution.node_type
             status = node_execution.status
             if node_type == "llm":
-                inputs = json.loads(node_execution.process_data).get("prompts", {})
+                inputs = json.loads(node_execution.process_data).get(
+                    "prompts", {}
+                    ) if node_execution.process_data else {}
             else:
                 inputs = json.loads(node_execution.inputs) if node_execution.inputs else {}
             outputs = (
@@ -147,6 +161,7 @@ class LangFuseDataTrace(BaseTraceInstance):
             # add span
             if trace_info.message_id:
                 span_data = LangfuseSpan(
+                    id=node_execution_id,
                     name=f"{node_name}_{node_execution_id}",
                     input=inputs,
                     output=outputs,
@@ -160,6 +175,7 @@ class LangFuseDataTrace(BaseTraceInstance):
                 )
             else:
                 span_data = LangfuseSpan(
+                    id=node_execution_id,
                     name=f"{node_name}_{node_execution_id}",
                     input=inputs,
                     output=outputs,
@@ -172,6 +188,30 @@ class LangFuseDataTrace(BaseTraceInstance):
                 )
 
             self.add_span(langfuse_span_data=span_data)
+
+            process_data = json.loads(node_execution.process_data) if node_execution.process_data else {}
+            if process_data and process_data.get("model_mode") == "chat":
+                total_token = metadata.get("total_tokens", 0)
+                # add generation
+                generation_usage = GenerationUsage(
+                    totalTokens=total_token,
+                )
+
+                node_generation_data = LangfuseGeneration(
+                    name=f"generation_{node_execution_id}",
+                    trace_id=trace_id,
+                    parent_observation_id=node_execution_id,
+                    start_time=created_at,
+                    end_time=finished_at,
+                    input=inputs,
+                    output=outputs,
+                    metadata=metadata,
+                    level=LevelEnum.DEFAULT if status == 'succeeded' else LevelEnum.ERROR,
+                    status_message=trace_info.error if trace_info.error else "",
+                    usage=generation_usage,
+                )
+
+                self.add_generation(langfuse_generation_data=node_generation_data)
 
     def message_trace(
         self, trace_info: MessageTraceInfo, **kwargs
@@ -186,8 +226,10 @@ class LangFuseDataTrace(BaseTraceInstance):
         if message_data.from_end_user_id:
             end_user_data: EndUser = db.session.query(EndUser).filter(
                 EndUser.id == message_data.from_end_user_id
-            ).first().session_id
-            user_id = end_user_data.session_id
+            ).first()
+            if end_user_data is not None:
+                user_id = end_user_data.session_id
+                metadata["user_id"] = user_id
 
         trace_data = LangfuseTrace(
             id=message_id,
@@ -220,6 +262,7 @@ class LangFuseDataTrace(BaseTraceInstance):
             output=trace_info.answer_tokens,
             total=trace_info.total_tokens,
             unit=UnitEnum.TOKENS,
+            totalCost=message_data.total_price,
         )
 
         langfuse_generation_data = LangfuseGeneration(
@@ -303,7 +346,7 @@ class LangFuseDataTrace(BaseTraceInstance):
             start_time=trace_info.start_time,
             end_time=trace_info.end_time,
             metadata=trace_info.metadata,
-            level=LevelEnum.DEFAULT if trace_info.error == "" else LevelEnum.ERROR,
+            level=LevelEnum.DEFAULT if trace_info.error == "" or trace_info.error is None else LevelEnum.ERROR,
             status_message=trace_info.error,
         )
 

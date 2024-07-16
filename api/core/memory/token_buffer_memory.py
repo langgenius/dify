@@ -12,7 +12,8 @@ from core.model_runtime.entities.message_entities import (
     UserPromptMessage,
 )
 from extensions.ext_database import db
-from models.model import AppMode, Conversation, Message
+from models.model import AppMode, Conversation, Message, MessageFile
+from models.workflow import WorkflowRun
 
 
 class TokenBufferMemory:
@@ -30,33 +31,46 @@ class TokenBufferMemory:
         app_record = self.conversation.app
 
         # fetch limited messages, and return reversed
-        query = db.session.query(Message).filter(
+        query = db.session.query(
+            Message.id,
+            Message.query,
+            Message.answer,
+            Message.created_at,
+            Message.workflow_run_id
+        ).filter(
             Message.conversation_id == self.conversation.id,
             Message.answer != ''
         ).order_by(Message.created_at.desc())
 
         if message_limit and message_limit > 0:
-            messages = query.limit(message_limit).all()
+            message_limit = message_limit if message_limit <= 500 else 500
         else:
-            messages = query.all()
+            message_limit = 500
+
+        messages = query.limit(message_limit).all()
 
         messages = list(reversed(messages))
         message_file_parser = MessageFileParser(
             tenant_id=app_record.tenant_id,
             app_id=app_record.id
         )
-
         prompt_messages = []
         for message in messages:
-            files = message.message_files
+            files = db.session.query(MessageFile).filter(MessageFile.message_id == message.id).all()
             if files:
+                file_extra_config = None
                 if self.conversation.mode not in [AppMode.ADVANCED_CHAT.value, AppMode.WORKFLOW.value]:
-                    file_extra_config = FileUploadConfigManager.convert(message.app_model_config.to_dict())
+                    file_extra_config = FileUploadConfigManager.convert(self.conversation.model_config)
                 else:
-                    file_extra_config = FileUploadConfigManager.convert(
-                        message.workflow_run.workflow.features_dict,
-                        is_vision=False
-                    )
+                    if message.workflow_run_id:
+                        workflow_run = (db.session.query(WorkflowRun)
+                                        .filter(WorkflowRun.id == message.workflow_run_id).first())
+
+                        if workflow_run:
+                            file_extra_config = FileUploadConfigManager.convert(
+                                workflow_run.workflow.features_dict,
+                                is_vision=False
+                            )
 
                 if file_extra_config:
                     file_objs = message_file_parser.transform_message_files(

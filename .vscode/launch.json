@@ -13,7 +13,6 @@
             "jinja": true,
             "env": {
                 "FLASK_APP": "app.py",
-                "FLASK_DEBUG": "1",
                 "GEVENT_SUPPORT": "True"
             },
             "args": [
@@ -37,7 +36,19 @@
                 "FLASK_DEBUG": "1",
                 "GEVENT_SUPPORT": "True"
             },
-            "args": ["-A", "app.celery", "worker", "-P", "gevent", "-c", "1", "--loglevel", "info", "-Q", "dataset,generation,mail"],
+            "args": [
+                "-A",
+                "app.celery",
+                "worker",
+                "-P",
+                "gevent",
+                "-c",
+                "1",
+                "--loglevel",
+                "info",
+                "-Q",
+                "dataset,generation,mail,ops_trace,app_deletion"
+            ]
         },
     ]
 }

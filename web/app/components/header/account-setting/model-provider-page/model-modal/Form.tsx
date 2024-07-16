@@ -1,6 +1,5 @@
 import { useState } from 'react'
 import type { FC } from 'react'
-import cn from 'classnames'
 import {
   RiQuestionLine,
 } from '@remixicon/react'
@@ -17,6 +16,7 @@ import type {
 import { FormTypeEnum } from '../declarations'
 import { useLanguage } from '../hooks'
 import Input from './Input'
+import cn from '@/utils/classnames'
 import { SimpleSelect } from '@/app/components/base/select'
 import Tooltip from '@/app/components/base/tooltip-plus'
 import Radio from '@/app/components/base/radio'
@@ -114,7 +114,7 @@ const Form: FC<FormProps> = ({
             validated={validatedSuccess}
             placeholder={placeholder?.[language] || placeholder?.en_US}
             disabled={disabed}
-            type={formSchema.type === FormTypeEnum.textNumber ? 'number' : 'text'}
+            type={formSchema.type === FormTypeEnum.textNumber ? 'number' : formSchema.type === FormTypeEnum.secretInput ? 'password' : 'text'}
             {...(formSchema.type === FormTypeEnum.textNumber ? { min: (formSchema as CredentialFormSchemaNumberInput).min, max: (formSchema as CredentialFormSchemaNumberInput).max } : {})}
           />
           {fieldMoreInfo?.(formSchema)}
@@ -229,6 +229,7 @@ const Form: FC<FormProps> = ({
         variable,
         label,
         show_on,
+        required,
       } = formSchema as CredentialFormSchemaRadio
 
       if (show_on.length && !show_on.every(showOnItem => value[showOnItem.variable] === showOnItem.value))
@@ -239,11 +240,16 @@ const Form: FC<FormProps> = ({
           <div className='flex items-center justify-between py-2 text-sm text-gray-900'>
             <div className='flex items-center space-x-2'>
               <span className={cn(fieldLabelClassName, 'py-2 text-sm text-gray-900')}>{label[language] || label.en_US}</span>
+              {
+                required && (
+                  <span className='ml-1 text-red-500'>*</span>
+                )
+              }
               {tooltipContent}
             </div>
             <Radio.Group
               className='flex items-center'
-              value={value[variable] ? 1 : 0}
+              value={value[variable] === null ? undefined : (value[variable] ? 1 : 0)}
               onChange={val => handleFormChange(variable, val === 1)}
             >
               <Radio value={1} className='!mr-1'>True</Radio>
