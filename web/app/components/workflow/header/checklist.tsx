@@ -11,7 +11,6 @@ import {
   RiCloseLine,
   RiListCheck3,
 } from '@remixicon/react'
-import cn from 'classnames'
 import BlockIcon from '../block-icon'
 import {
   useChecklist,
@@ -21,6 +20,7 @@ import type {
   CommonEdgeType,
   CommonNodeType,
 } from '../types'
+import cn from '@/utils/classnames'
 import {
   PortalToFollowElem,
   PortalToFollowElemContent,
@@ -122,7 +122,9 @@ const WorkflowChecklist = ({
                               className='mr-1.5'
                               toolIcon={node.toolIcon}
                             />
-                            {node.title}
+                            <span className='grow truncate'>
+                              {node.title}
+                            </span>
                           </div>
                           <div className='border-t-[0.5px] border-t-black/2'>
                             {

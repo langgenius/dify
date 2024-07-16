@@ -1,4 +1,6 @@
 import hashlib
+import logging
+import re
 import subprocess
 import uuid
 from abc import abstractmethod
@@ -10,7 +12,7 @@ from core.model_runtime.entities.model_entities import ModelPropertyKey, ModelTy
 from core.model_runtime.errors.invoke import InvokeBadRequestError
 from core.model_runtime.model_providers.__base.ai_model import AIModel
 
-
+logger = logging.getLogger(__name__)
 class TTSModel(AIModel):
     """
     Model class for ttstext model.
@@ -20,7 +22,7 @@ class TTSModel(AIModel):
     # pydantic configs
     model_config = ConfigDict(protected_namespaces=())
 
-    def invoke(self, model: str, tenant_id: str, credentials: dict, content_text: str, voice: str, streaming: bool,
+    def invoke(self, model: str, tenant_id: str, credentials: dict, content_text: str, voice: str,
                user: Optional[str] = None):
         """
         Invoke large language model
@@ -35,14 +37,15 @@ class TTSModel(AIModel):
         :return: translated audio file
         """
         try:
+            logger.info(f"Invoke TTS model: {model} , invoke content : {content_text}")
             self._is_ffmpeg_installed()
-            return self._invoke(model=model, credentials=credentials, user=user, streaming=streaming,
+            return self._invoke(model=model, credentials=credentials, user=user,
                                 content_text=content_text, voice=voice, tenant_id=tenant_id)
         except Exception as e:
             raise self._transform_invoke_error(e)
 
     @abstractmethod
-    def _invoke(self, model: str, tenant_id: str, credentials: dict, content_text: str, voice: str, streaming: bool,
+    def _invoke(self, model: str, tenant_id: str, credentials: dict, content_text: str, voice: str,
                 user: Optional[str] = None):
         """
         Invoke large language model
@@ -123,26 +126,26 @@ class TTSModel(AIModel):
             return model_schema.model_properties[ModelPropertyKey.MAX_WORKERS]
 
     @staticmethod
-    def _split_text_into_sentences(text: str, limit: int, delimiters=None):
-        if delimiters is None:
-            delimiters = set('。！？；\n')
-
-        buf = []
-        word_count = 0
-        for char in text:
-            buf.append(char)
-            if char in delimiters:
-                if word_count >= limit:
-                    yield ''.join(buf)
-                    buf = []
-                    word_count = 0
-                else:
-                    word_count += 1
-            else:
-                word_count += 1
-
-        if buf:
-            yield ''.join(buf)
+    def _split_text_into_sentences(org_text, max_length=2000, pattern=r'[。.!?]'):
+        match = re.compile(pattern)
+        tx = match.finditer(org_text)
+        start = 0
+        result = []
+        one_sentence = ''
+        for i in tx:
+            end = i.regs[0][1]
+            tmp = org_text[start:end]
+            if len(one_sentence + tmp) > max_length:
+                result.append(one_sentence)
+                one_sentence = ''
+            one_sentence += tmp
+            start = end
+        last_sens = org_text[start:]
+        if last_sens:
+            one_sentence += last_sens
+        if one_sentence != '':
+            result.append(one_sentence)
+        return result
 
     @staticmethod
     def _is_ffmpeg_installed():

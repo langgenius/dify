@@ -117,7 +117,7 @@ class Dataset(db.Model):
     @property
     def retrieval_model_dict(self):
         default_retrieval_model = {
-            'search_method': RetrievalMethod.SEMANTIC_SEARCH,
+            'search_method': RetrievalMethod.SEMANTIC_SEARCH.value,
             'reranking_enable': False,
             'reranking_model': {
                 'reranking_provider_name': '',
@@ -662,4 +662,21 @@ class DatasetCollectionBinding(db.Model):
     model_name = db.Column(db.String(40), nullable=False)
     type = db.Column(db.String(40), server_default=db.text("'dataset'::character varying"), nullable=False)
     collection_name = db.Column(db.String(64), nullable=False)
+    created_at = db.Column(db.DateTime, nullable=False, server_default=db.text('CURRENT_TIMESTAMP(0)'))
+
+
+class DatasetPermission(db.Model):
+    __tablename__ = 'dataset_permissions'
+    __table_args__ = (
+        db.PrimaryKeyConstraint('id', name='dataset_permission_pkey'),
+        db.Index('idx_dataset_permissions_dataset_id', 'dataset_id'),
+        db.Index('idx_dataset_permissions_account_id', 'account_id'),
+        db.Index('idx_dataset_permissions_tenant_id', 'tenant_id')
+    )
+
+    id = db.Column(StringUUID, server_default=db.text('uuid_generate_v4()'), primary_key=True)
+    dataset_id = db.Column(StringUUID, nullable=False)
+    account_id = db.Column(StringUUID, nullable=False)
+    tenant_id = db.Column(StringUUID, nullable=False)
+    has_permission = db.Column(db.Boolean, nullable=False, server_default=db.text('true'))
     created_at = db.Column(db.DateTime, nullable=False, server_default=db.text('CURRENT_TIMESTAMP(0)'))

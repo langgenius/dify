@@ -7,9 +7,11 @@ from typing import Any, Union, cast
 import httpx
 import pydantic
 from httpx import URL, Timeout
+from tenacity import retry
+from tenacity.stop import stop_after_attempt
 
 from . import _errors
-from ._base_type import NOT_GIVEN, Body, Data, Headers, NotGiven, Query, RequestFiles, ResponseT
+from ._base_type import NOT_GIVEN, AnyMapping, Body, Data, Headers, NotGiven, Query, RequestFiles, ResponseT
 from ._errors import APIResponseValidationError, APIStatusError, APITimeoutError
 from ._files import make_httpx_files
 from ._request_opt import ClientRequestParam, UserRequestInput
@@ -221,6 +223,7 @@ class HttpClient:
     def __exit__(self, exc_type, exc_val, exc_tb):
         self.close()
 
+    @retry(stop=stop_after_attempt(ZHIPUAI_DEFAULT_MAX_RETRIES))
     def request(
             self,
             *,
@@ -355,6 +358,7 @@ def make_user_request_input(
         max_retries: int | None = None,
         timeout: float | Timeout | None | NotGiven = NOT_GIVEN,
         extra_headers: Headers = None,
+        extra_body: Body | None = None,
         query: Query | None = None,
 ) -> UserRequestInput:
     options: UserRequestInput = {}
@@ -367,5 +371,7 @@ def make_user_request_input(
         options['timeout'] = timeout
     if query is not None:
         options["params"] = query
+    if extra_body is not None:
+        options["extra_json"] = cast(AnyMapping, extra_body)
 
     return options

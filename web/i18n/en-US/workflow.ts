@@ -364,6 +364,7 @@ const translation = {
       enterValue: 'Enter value',
       addCondition: 'Add Condition',
       conditionNotSetup: 'Condition NOT setup',
+      selectVariable: 'Select variable...',
     },
     variableAssigner: {
       title: 'Assign variables',
@@ -396,6 +397,7 @@ const translation = {
           url: 'Image url',
           upload_file_id: 'Upload file id',
         },
+        json: 'tool generated json',
       },
     },
     questionClassifiers: {

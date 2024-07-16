@@ -2,11 +2,11 @@
 import type { FC } from 'react'
 import React, { useEffect, useRef, useState } from 'react'
 import { useBoolean, useHover } from 'ahooks'
-import cn from 'classnames'
 import {
   RiSearchLine,
 } from '@remixicon/react'
 import { useTranslation } from 'react-i18next'
+import cn from '@/utils/classnames'
 import { type NodeOutPutVar, type ValueSelector, type Var, VarType } from '@/app/components/workflow/types'
 import { Variable02 } from '@/app/components/base/icons/src/vender/solid/development'
 import { ChevronRight } from '@/app/components/base/icons/src/vender/line/arrows'

@@ -1,7 +1,6 @@
 import type { FC } from 'react'
 import { memo } from 'react'
 import { useTranslation } from 'react-i18next'
-import cn from 'classnames'
 import {
   RiLoader2Line,
   RiPlayLargeFill,
@@ -14,6 +13,7 @@ import {
 } from '../hooks'
 import { WorkflowRunningStatus } from '../types'
 import ViewHistory from './view-history'
+import cn from '@/utils/classnames'
 import {
   StopCircle,
 } from '@/app/components/base/icons/src/vender/line/mediaAndDevices'

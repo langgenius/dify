@@ -12,7 +12,7 @@ from extensions.ext_database import db
 from models.dataset import Dataset
 
 default_retrieval_model = {
-    'search_method': RetrievalMethod.SEMANTIC_SEARCH,
+    'search_method': RetrievalMethod.SEMANTIC_SEARCH.value,
     'reranking_enable': False,
     'reranking_model': {
         'reranking_provider_name': '',
@@ -93,7 +93,7 @@ class RetrievalService:
             exception_message = ';\n'.join(exceptions)
             raise Exception(exception_message)
 
-        if retrival_method == RetrievalMethod.HYBRID_SEARCH:
+        if retrival_method == RetrievalMethod.HYBRID_SEARCH.value:
             data_post_processor = DataPostProcessor(str(dataset.tenant_id), reranking_mode,
                                                     reranking_model, weights, False)
             all_documents = data_post_processor.invoke(
@@ -150,7 +150,7 @@ class RetrievalService:
                 )
 
                 if documents:
-                    if reranking_model and retrival_method == RetrievalMethod.SEMANTIC_SEARCH:
+                    if reranking_model and retrival_method == RetrievalMethod.SEMANTIC_SEARCH.value:
                         data_post_processor = DataPostProcessor(str(dataset.tenant_id),
                                                                 RerankMode.RERANKING_MODEL.value,
                                                                 reranking_model, None, False)
@@ -184,7 +184,7 @@ class RetrievalService:
                     top_k=top_k
                 )
                 if documents:
-                    if reranking_model and retrival_method == RetrievalMethod.FULL_TEXT_SEARCH:
+                    if reranking_model and retrival_method == RetrievalMethod.FULL_TEXT_SEARCH.value:
                         data_post_processor = DataPostProcessor(str(dataset.tenant_id),
                                                                 RerankMode.RERANKING_MODEL.value,
                                                                 reranking_model, None, False)

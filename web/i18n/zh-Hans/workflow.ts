@@ -364,6 +364,7 @@ const translation = {
       enterValue: '输入值',
       addCondition: '添加条件',
       conditionNotSetup: '条件未设置',
+      selectVariable: '选择变量',
     },
     variableAssigner: {
       title: '变量赋值',
@@ -396,6 +397,7 @@ const translation = {
           url: '图片链接',
           upload_file_id: '上传文件ID',
         },
+        json: '工具生成的json',
       },
     },
     questionClassifiers: {

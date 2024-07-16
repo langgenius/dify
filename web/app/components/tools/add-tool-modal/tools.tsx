@@ -2,11 +2,11 @@ import {
   memo,
   useCallback,
 } from 'react'
-import cn from 'classnames'
 import { useTranslation } from 'react-i18next'
 import {
   RiAddLine,
 } from '@remixicon/react'
+import cn from '@/utils/classnames'
 import { ArrowUpRight } from '@/app/components/base/icons/src/vender/line/arrows'
 import { Check } from '@/app/components/base/icons/src/vender/line/general'
 import { Tag01 } from '@/app/components/base/icons/src/vender/line/financeAndECommerce'

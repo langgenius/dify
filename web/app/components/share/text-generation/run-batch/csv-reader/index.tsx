@@ -4,9 +4,9 @@ import React, { useState } from 'react'
 import {
   useCSVReader,
 } from 'react-papaparse'
-import cn from 'classnames'
 import { useTranslation } from 'react-i18next'
 import s from './style.module.css'
+import cn from '@/utils/classnames'
 import { Csv as CSVIcon } from '@/app/components/base/icons/src/public/files'
 
 export type Props = {

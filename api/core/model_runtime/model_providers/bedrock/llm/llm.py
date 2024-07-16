@@ -29,6 +29,7 @@ from core.model_runtime.entities.message_entities import (
     PromptMessageTool,
     SystemPromptMessage,
     TextPromptMessageContent,
+    ToolPromptMessage,
     UserPromptMessage,
 )
 from core.model_runtime.errors.invoke import (
@@ -46,6 +47,28 @@ from core.model_runtime.model_providers.cohere.llm.llm import CohereLargeLanguag
 logger = logging.getLogger(__name__)
 
 class BedrockLargeLanguageModel(LargeLanguageModel):
+
+    # please refer to the documentation: https://docs.aws.amazon.com/bedrock/latest/userguide/conversation-inference.html
+    # TODO There is invoke issue: context limit on Cohere Model, will add them after fixed.
+    CONVERSE_API_ENABLED_MODEL_INFO=[
+        {'prefix': 'anthropic.claude-v2', 'support_system_prompts': True, 'support_tool_use': False},
+        {'prefix': 'anthropic.claude-v1', 'support_system_prompts': True, 'support_tool_use': False},
+        {'prefix': 'anthropic.claude-3', 'support_system_prompts': True, 'support_tool_use': True},
+        {'prefix': 'meta.llama', 'support_system_prompts': True, 'support_tool_use': False},
+        {'prefix': 'mistral.mistral-7b-instruct', 'support_system_prompts': False, 'support_tool_use': False},
+        {'prefix': 'mistral.mixtral-8x7b-instruct', 'support_system_prompts': False, 'support_tool_use': False},
+        {'prefix': 'mistral.mistral-large', 'support_system_prompts': True, 'support_tool_use': True},
+        {'prefix': 'mistral.mistral-small', 'support_system_prompts': True, 'support_tool_use': True},
+        {'prefix': 'amazon.titan', 'support_system_prompts': False, 'support_tool_use': False}
+    ]
+
+    @staticmethod
+    def _find_model_info(model_id):
+        for model in BedrockLargeLanguageModel.CONVERSE_API_ENABLED_MODEL_INFO:
+            if model_id.startswith(model['prefix']):
+                return model
+        logger.info(f"current model id: {model_id} did not support by Converse API")
+        return None
 
     def _invoke(self, model: str, credentials: dict,
                 prompt_messages: list[PromptMessage], model_parameters: dict,
@@ -65,10 +88,12 @@ class BedrockLargeLanguageModel(LargeLanguageModel):
         :param user: unique user id
         :return: full response or stream response chunk generator result
         """
-        # TODO: consolidate different invocation methods for models based on base model capabilities
-        # invoke anthropic models via boto3 client
-        if "anthropic" in model:
-            return self._generate_anthropic(model, credentials, prompt_messages, model_parameters, stop, stream, user)
+        
+        model_info= BedrockLargeLanguageModel._find_model_info(model)
+        if model_info:
+            model_info['model'] = model
+            # invoke models via boto3 converse API
+            return self._generate_with_converse(model_info, credentials, prompt_messages, model_parameters, stop, stream, user, tools)
         # invoke Cohere models via boto3 client
         if "cohere.command-r" in model:
             return self._generate_cohere_chat(model, credentials, prompt_messages, model_parameters, stop, stream, user, tools)
@@ -150,12 +175,12 @@ class BedrockLargeLanguageModel(LargeLanguageModel):
         return self._handle_generate_response(model, credentials, response, prompt_messages)
 
 
-    def _generate_anthropic(self, model: str, credentials: dict, prompt_messages: list[PromptMessage], model_parameters: dict,
-                stop: Optional[list[str]] = None, stream: bool = True, user: Optional[str] = None) -> Union[LLMResult, Generator]:
+    def _generate_with_converse(self, model_info: dict, credentials: dict, prompt_messages: list[PromptMessage], model_parameters: dict,
+                stop: Optional[list[str]] = None, stream: bool = True, user: Optional[str] = None, tools: Optional[list[PromptMessageTool]] = None,) -> Union[LLMResult, Generator]:
         """
-        Invoke Anthropic large language model
+        Invoke large language model with converse API
 
-        :param model: model name
+        :param model_info: model information
         :param credentials: model credentials
         :param prompt_messages: prompt messages
         :param model_parameters: model parameters
@@ -171,24 +196,25 @@ class BedrockLargeLanguageModel(LargeLanguageModel):
         system, prompt_message_dicts = self._convert_converse_prompt_messages(prompt_messages)
         inference_config, additional_model_fields = self._convert_converse_api_model_parameters(model_parameters, stop)
 
+        parameters = {
+            'modelId': model_info['model'],
+            'messages': prompt_message_dicts,
+            'inferenceConfig': inference_config,
+            'additionalModelRequestFields': additional_model_fields,
+        }
+
+        if model_info['support_system_prompts'] and system and len(system) > 0:
+            parameters['system'] = system
+
+        if model_info['support_tool_use'] and tools:
+            parameters['toolConfig'] = self._convert_converse_tool_config(tools=tools)
+
         if stream:
-            response = bedrock_client.converse_stream(
-                modelId=model,
-                messages=prompt_message_dicts,
-                system=system,
-                inferenceConfig=inference_config,
-                additionalModelRequestFields=additional_model_fields
-            )
-            return self._handle_converse_stream_response(model, credentials, response, prompt_messages)
+            response = bedrock_client.converse_stream(**parameters)
+            return self._handle_converse_stream_response(model_info['model'], credentials, response, prompt_messages)
         else:
-            response = bedrock_client.converse(
-                modelId=model,
-                messages=prompt_message_dicts,
-                system=system,
-                inferenceConfig=inference_config,
-                additionalModelRequestFields=additional_model_fields
-            )
-            return self._handle_converse_response(model, credentials, response, prompt_messages)
+            response = bedrock_client.converse(**parameters)
+            return self._handle_converse_response(model_info['model'], credentials, response, prompt_messages)
 
     def _handle_converse_response(self, model: str, credentials: dict, response: dict,
                                 prompt_messages: list[PromptMessage]) -> LLMResult:
@@ -201,10 +227,30 @@ class BedrockLargeLanguageModel(LargeLanguageModel):
         :param prompt_messages: prompt messages
         :return: full response chunk generator result
         """
+        response_content = response['output']['message']['content']
         # transform assistant message to prompt message
-        assistant_prompt_message = AssistantPromptMessage(
-            content=response['output']['message']['content'][0]['text']
-        )
+        if response['stopReason'] == 'tool_use':
+            tool_calls = []
+            text, tool_use = self._extract_tool_use(response_content)
+
+            tool_call = AssistantPromptMessage.ToolCall(
+                id=tool_use['toolUseId'],
+                type='function',
+                function=AssistantPromptMessage.ToolCall.ToolCallFunction(
+                    name=tool_use['name'],
+                    arguments=json.dumps(tool_use['input'])
+                )
+            )
+            tool_calls.append(tool_call)
+
+            assistant_prompt_message = AssistantPromptMessage(
+                content=text,
+                tool_calls=tool_calls
+            )
+        else:
+            assistant_prompt_message = AssistantPromptMessage(
+                content=response_content[0]['text']
+            )
 
         # calculate num tokens
         if response['usage']:
@@ -227,6 +273,18 @@ class BedrockLargeLanguageModel(LargeLanguageModel):
         )
         return result
 
+    def _extract_tool_use(self, content:dict)-> tuple[str, dict]:
+        tool_use = {}
+        text = ''
+        for item in content:
+            if 'toolUse' in item:
+                tool_use = item['toolUse']
+            elif 'text' in item:
+                text = item['text']
+            else:
+                raise ValueError(f"Got unknown item: {item}")
+        return text, tool_use
+
     def _handle_converse_stream_response(self, model: str, credentials: dict, response: dict,
                                         prompt_messages: list[PromptMessage], ) -> Generator:
         """
@@ -246,12 +304,18 @@ class BedrockLargeLanguageModel(LargeLanguageModel):
             output_tokens = 0
             finish_reason = None
             index = 0
+            tool_calls: list[AssistantPromptMessage.ToolCall] = []
+            tool_use = {}
 
             for chunk in response['stream']:
                 if 'messageStart' in chunk:
                     return_model = model
                 elif 'messageStop' in chunk:
                     finish_reason = chunk['messageStop']['stopReason']
+                elif 'contentBlockStart' in chunk:
+                    tool = chunk['contentBlockStart']['start']['toolUse']
+                    tool_use['toolUseId'] = tool['toolUseId']
+                    tool_use['name'] = tool['name']
                 elif 'metadata' in chunk:
                     input_tokens = chunk['metadata']['usage']['inputTokens']
                     output_tokens = chunk['metadata']['usage']['outputTokens']
@@ -260,29 +324,49 @@ class BedrockLargeLanguageModel(LargeLanguageModel):
                         model=return_model,
                         prompt_messages=prompt_messages,
                         delta=LLMResultChunkDelta(
-                            index=index + 1,
+                            index=index,
                             message=AssistantPromptMessage(
-                                content=''
+                                content='',
+                                tool_calls=tool_calls
                             ),
                             finish_reason=finish_reason,
                             usage=usage
                         )
                     )
                 elif 'contentBlockDelta' in chunk:
-                    chunk_text = chunk['contentBlockDelta']['delta']['text'] if chunk['contentBlockDelta']['delta']['text'] else ''
-                    full_assistant_content += chunk_text
-                    assistant_prompt_message = AssistantPromptMessage(
-                        content=chunk_text if chunk_text else '',
-                    )
-                    index = chunk['contentBlockDelta']['contentBlockIndex']
-                    yield LLMResultChunk(
-                        model=model,
-                        prompt_messages=prompt_messages,
-                        delta=LLMResultChunkDelta(
-                            index=index,
-                            message=assistant_prompt_message,
+                    delta = chunk['contentBlockDelta']['delta']
+                    if 'text' in delta:
+                        chunk_text = delta['text'] if delta['text'] else ''
+                        full_assistant_content += chunk_text
+                        assistant_prompt_message = AssistantPromptMessage(
+                            content=chunk_text if chunk_text else '',
                         )
-                    )
+                        index = chunk['contentBlockDelta']['contentBlockIndex']
+                        yield LLMResultChunk(
+                            model=model,
+                            prompt_messages=prompt_messages,
+                            delta=LLMResultChunkDelta(
+                                index=index+1,
+                                message=assistant_prompt_message,
+                            )
+                        )
+                    elif 'toolUse' in delta:
+                        if 'input' not in tool_use:
+                            tool_use['input'] = ''
+                        tool_use['input'] += delta['toolUse']['input']
+                elif 'contentBlockStop' in chunk:
+                    if 'input' in tool_use:
+                        tool_call = AssistantPromptMessage.ToolCall(
+                            id=tool_use['toolUseId'],
+                            type='function',
+                            function=AssistantPromptMessage.ToolCall.ToolCallFunction(
+                                name=tool_use['name'],
+                                arguments=tool_use['input']
+                            )
+                        )
+                        tool_calls.append(tool_call)
+                        tool_use = {}
+
         except Exception as ex:
             raise InvokeError(str(ex))
     
@@ -312,24 +396,35 @@ class BedrockLargeLanguageModel(LargeLanguageModel):
         """
 
         system = []
-        first_loop = True
+        prompt_message_dicts = []
         for message in prompt_messages:
             if isinstance(message, SystemPromptMessage):
                 message.content=message.content.strip()
-                if first_loop:
-                    system=message.content
-                    first_loop=False
-                else:
-                    system+="\n"
-                    system+=message.content
-
-        prompt_message_dicts = []
-        for message in prompt_messages:
-            if not isinstance(message, SystemPromptMessage):
+                system.append({"text": message.content})
+            else:
                 prompt_message_dicts.append(self._convert_prompt_message_to_dict(message))
 
         return system, prompt_message_dicts
 
+    def _convert_converse_tool_config(self, tools: Optional[list[PromptMessageTool]] = None) -> dict:
+        tool_config = {}
+        configs = []
+        if tools:
+            for tool in tools:
+                configs.append(
+                    {
+                        "toolSpec": {
+                            "name": tool.name,
+                            "description": tool.description,
+                            "inputSchema": {
+                                "json": tool.parameters
+                            }
+                        }
+                    }
+                )
+            tool_config["tools"] = configs
+            return tool_config
+    
     def _convert_prompt_message_to_dict(self, message: PromptMessage) -> dict:
         """
         Convert PromptMessage to dict
@@ -379,13 +474,34 @@ class BedrockLargeLanguageModel(LargeLanguageModel):
                 message_dict = {"role": "user", "content": sub_messages}
         elif isinstance(message, AssistantPromptMessage):
             message = cast(AssistantPromptMessage, message)
-            message_dict = {"role": "assistant", "content": [{'text': message.content}]}
+            if message.tool_calls:
+                message_dict = {
+                    "role": "assistant", "content":[{
+                        "toolUse": {
+                            "toolUseId": message.tool_calls[0].id,
+                            "name": message.tool_calls[0].function.name,
+                            "input": json.loads(message.tool_calls[0].function.arguments)
+                        }
+                    }]
+                }
+            else:
+                message_dict = {"role": "assistant", "content": [{'text': message.content}]}
         elif isinstance(message, SystemPromptMessage):
             message = cast(SystemPromptMessage, message)
             message_dict = [{'text': message.content}]
+        elif isinstance(message, ToolPromptMessage):
+            message = cast(ToolPromptMessage, message)
+            message_dict = {
+                "role": "user",
+                "content": [{
+                    "toolResult": {
+                        "toolUseId": message.tool_call_id,
+                        "content": [{"json": {"text": message.content}}]
+                    }                   
+                }]
+            }
         else:
             raise ValueError(f"Got unknown type {message}")
-
         return message_dict
 
     def get_num_tokens(self, model: str, credentials: dict, prompt_messages: list[PromptMessage] | str,
@@ -401,10 +517,12 @@ class BedrockLargeLanguageModel(LargeLanguageModel):
         """
         prefix = model.split('.')[0]
         model_name = model.split('.')[1]
+        
         if isinstance(prompt_messages, str):
             prompt = prompt_messages
         else:
             prompt = self._convert_messages_to_prompt(prompt_messages, prefix, model_name)
+
 
         return self._get_num_tokens_by_gpt2(prompt)
 
@@ -489,11 +607,16 @@ class BedrockLargeLanguageModel(LargeLanguageModel):
         content = message.content
 
         if isinstance(message, UserPromptMessage):
-            message_text = f"{human_prompt_prefix} {content} {human_prompt_postfix}"
+            body = content
+            if (isinstance(content, list)):
+                body = "".join([c.data for c in content if c.type == PromptMessageContentType.TEXT])
+            message_text = f"{human_prompt_prefix} {body} {human_prompt_postfix}"
         elif isinstance(message, AssistantPromptMessage):
             message_text = f"{ai_prompt} {content}"
         elif isinstance(message, SystemPromptMessage):
             message_text = content
+        elif isinstance(message, ToolPromptMessage):
+            message_text = f"{human_prompt_prefix} {message.content}"
         else:
             raise ValueError(f"Got unknown type {message}")
 
