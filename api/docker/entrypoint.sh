@@ -8,8 +8,11 @@ if [[ "${MIGRATION_ENABLED}" == "true" ]]; then
 fi
 
 if [[ "${MODE}" == "worker" ]]; then
-  celery -A app.celery worker -P ${CELERY_WORKER_CLASS:-gevent} -c ${CELERY_WORKER_AMOUNT:-1} --loglevel INFO \
-    -Q ${CELERY_QUEUES:-dataset,generation,mail,ops_trace,app_deletion}
+  celery -A app.celery worker \
+    --loglevel INFO \
+    --pool ${CELERY_WORKER_CLASS:-gevent} \
+    --concurrency ${CELERY_WORKER_AMOUNT:-3} \
+    --queues ${CELERY_QUEUES:-dataset,generation,mail,ops_trace,app_deletion}
 elif [[ "${MODE}" == "beat" ]]; then
   celery -A app.celery beat --loglevel INFO
 else
