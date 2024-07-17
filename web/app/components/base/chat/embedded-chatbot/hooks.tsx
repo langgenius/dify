@@ -114,22 +114,36 @@ export const useEmbeddedChatbot = () => {
     setNewConversationInputs(newInputs)
   }, [])
   const inputsForms = useMemo(() => {
+    function getInputsFromUrlParams(): Record<string, any> {
+      const urlParams = new URLSearchParams(window.location.search)
+      let inputs: Record<string, any> = {}
+      urlParams.forEach((value, key) => {
+        inputs[key] = Buffer.from(decodeURIComponent(value), 'base64').toString()
+      })
+      return inputs
+    }
+
+    const inputs = getInputsFromUrlParams()
+
     return (appParams?.user_input_form || []).filter((item: any) => item.paragraph || item.select || item['text-input'] || item.number).map((item: any) => {
       if (item.paragraph) {
         return {
           ...item.paragraph,
+          default: inputs[item.paragraph.variable] || item.default,
           type: 'paragraph',
         }
       }
       if (item.number) {
         return {
           ...item.number,
+          default: inputs[item.number.variable] || item.default,
           type: 'number',
         }
       }
       if (item.select) {
         return {
           ...item.select,
+          default: inputs[item.select.variable] || item.default,
           type: 'select',
         }
       }
