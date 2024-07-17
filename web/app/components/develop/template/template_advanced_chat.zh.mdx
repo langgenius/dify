@@ -910,7 +910,7 @@ import { Row, Col, Properties, Property, Heading, SubProperty } from '../md.tsx'
     ### Request Body
 
     <Properties>
-      <Property name='text' type='str' key='text'>
+      <Property name='message_id' type='str' key='text'>
         Dify 生成的文本消息，那么直接传递生成的message-id 即可，后台会通过 message_id 查找相应的内容直接合成语音信息。如果同时传 message_id 和 text，优先使用 message_id。
       </Property>
       <Property name='text' type='str' key='text'>
@@ -923,16 +923,16 @@ import { Row, Col, Properties, Property, Heading, SubProperty } from '../md.tsx'
   </Col>
   <Col sticky>
 
-    <CodeGroup title="Request" tag="POST" label="/text-to-audio" targetCode={`curl -o text-to-audio.mp3 -X POST '${props.appDetail.api_base_url}/text-to-audio' \\\n--header 'Authorization: Bearer {api_key}' \\\n--header 'Content-Type: application/json' \\\n--data-raw '{\n    "text": "你好Dify",\n    "user": "abc-123",\n    "streaming": false\n}'`}>
+    <CodeGroup title="Request" tag="POST" label="/text-to-audio" targetCode={`curl -o text-to-audio.mp3 -X POST '${props.appDetail.api_base_url}/text-to-audio' \\\n--header 'Authorization: Bearer {api_key}' \\\n--header 'Content-Type: application/json' \\\n--data-raw '{\n    "message_id": "5ad4cb98-f0c7-4085-b384-88c403be6290",\n    "text": "你好Dify",\n    "user": "abc-123"\n}'`}>
 
     ```bash {{ title: 'cURL' }}
     curl -o text-to-audio.mp3 -X POST '${props.appDetail.api_base_url}/text-to-audio' \
     --header 'Authorization: Bearer {api_key}' \
     --header 'Content-Type: application/json' \
     --data-raw '{
+        "message_id": "5ad4cb98-f0c7-4085-b384-88c403be6290",
         "text": "你好Dify",
-        "user": "abc-123",
-        "streaming": false
+        "user": "abc-123"
     }'
     ```
     
