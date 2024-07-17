@@ -22,7 +22,7 @@ export type IToastProps = {
 type IToastContext = {
   notify: (props: IToastProps) => void
 }
-const defaultDuring = 3000
+const defaultDuring = 6000
 
 export const ToastContext = createContext<IToastContext>({} as IToastContext)
 export const useToastContext = () => useContext(ToastContext)
