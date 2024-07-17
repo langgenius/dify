@@ -1,10 +1,10 @@
+from collections.abc import Mapping, Sequence
 from os import path
-from typing import Optional, cast
+from typing import Any, cast
 
 from core.callback_handler.workflow_tool_callback_handler import DifyWorkflowCallbackHandler
 from core.file.file_obj import FileTransferMethod, FileType, FileVar
 from core.tools.entities.tool_entities import ToolInvokeMessage, ToolParameter
-from core.tools.tool.tool import Tool
 from core.tools.tool_engine import ToolEngine
 from core.tools.tool_manager import ToolManager
 from core.tools.utils.message_transformer import ToolFileMessageTransformer
@@ -52,14 +52,14 @@ class ToolNode(BaseNode):
             )
         
         # get parameters
-        parameters = self._generate_parameters(variable_pool, node_data, tool_runtime)
+        tool_parameters = tool_runtime.get_runtime_parameters() or []
+        parameters = self._generate_parameters(tool_parameters=tool_parameters, variable_pool=variable_pool, node_data=node_data)
 
         try:
             messages = ToolEngine.workflow_invoke(
                 tool=tool_runtime,
                 tool_parameters=parameters,
                 user_id=self.user_id,
-                workflow_id=self.workflow_id, 
                 workflow_tool_callback=DifyWorkflowCallbackHandler(),
                 workflow_call_depth=self.workflow_call_depth,
             )
@@ -89,18 +89,17 @@ class ToolNode(BaseNode):
             inputs=parameters
         )
 
-    def _generate_parameters(self, variable_pool: VariablePool, node_data: ToolNodeData, tool_runtime: Tool) -> dict:
+    def _generate_parameters(self, tool_parameters: Sequence[ToolParameter], variable_pool: VariablePool, node_data: ToolNodeData) -> Mapping[str, Any]:
         """
             Generate parameters
         """
-        tool_parameters = tool_runtime.get_all_runtime_parameters()
-
-        def fetch_parameter(name: str) -> Optional[ToolParameter]:
-            return next((parameter for parameter in tool_parameters if parameter.name == name), None)
+        tool_parameters_dictionary = {
+            parameter.name: parameter for parameter in tool_parameters
+        }
 
         result = {}
         for parameter_name in node_data.tool_parameters:
-            parameter = fetch_parameter(parameter_name)
+            parameter = tool_parameters_dictionary.get(parameter_name)
             if not parameter:
                 continue
             if parameter.type == ToolParameter.ToolParameterType.FILE:
@@ -108,17 +107,17 @@ class ToolNode(BaseNode):
                     v.to_dict() for v in self._fetch_files(variable_pool)
                 ]
             else:
-                input = node_data.tool_parameters[parameter_name]
-                if input.type == 'mixed':
-                    result[parameter_name] = self._format_variable_template(input.value, variable_pool)
-                elif input.type == 'variable':
-                    value = variable_pool.get_any(input.value)
+                tool_input = node_data.tool_parameters[parameter_name]
+                if tool_input.type == 'mixed':
+                    result[parameter_name] = self._format_variable_template(template=tool_input.value, variable_pool=variable_pool)
+                elif tool_input.type == 'variable':
+                    value = variable_pool.get_any(tool_input.value)
                     result[parameter_name] = value
-                elif input.type == 'constant':
-                    result[parameter_name] = input.value
+                elif tool_input.type == 'constant':
+                    result[parameter_name] = tool_input.value
 
         return result
-    
+
     def _format_variable_template(self, template: str, variable_pool: VariablePool) -> str:
         """
         Format variable template
@@ -128,7 +127,7 @@ class ToolNode(BaseNode):
         for selector in template_parser.extract_variable_selectors():
             value = variable_pool.get_any(selector.value_selector)
             inputs[selector.variable] = value
-        
+
         return template_parser.format(inputs)
     
     def _fetch_files(self, variable_pool: VariablePool) -> list[FileVar]:
