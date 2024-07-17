@@ -238,7 +238,7 @@ class Workflow(db.Model):
         result = {
             'graph': self.graph_dict,
             'features': self.features_dict,
-            'environment_variables': [var.model_dump() for var in environment_variables],
+            'environment_variables': [var.model_dump(mode='json') for var in environment_variables],
         }
         return result
 
