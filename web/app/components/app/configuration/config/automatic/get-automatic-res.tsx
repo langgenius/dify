@@ -149,11 +149,8 @@ const GetAutomaticRes: FC<IGetAutomaticResProps> = ({
       return
     setLoadingTrue()
     try {
-      // TODO: wait for api
       const res = await generateRule({
-        // hoping_to_solve: instruction,
-        audiences: 'Students',
-        hoping_to_solve: 'I want to write an email',
+        instruction,
       })
       setRes(res)
     }
