@@ -167,7 +167,7 @@ class GraphEngine:
                                 run_condition=edge.run_condition,
                             ).check(
                                 graph_runtime_state=self.graph_runtime_state,
-                                source_node_id=edge.source_node_id,
+                                previous_route_node_state=previous_route_node_state,
                                 target_node_id=edge.target_node_id,
                             )
 

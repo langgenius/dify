@@ -4,6 +4,7 @@ from core.workflow.graph_engine.entities.graph import Graph
 from core.workflow.graph_engine.entities.graph_init_params import GraphInitParams
 from core.workflow.graph_engine.entities.graph_runtime_state import GraphRuntimeState
 from core.workflow.graph_engine.entities.run_condition import RunCondition
+from core.workflow.graph_engine.entities.runtime_route_state import RouteNodeState
 
 
 class RunConditionHandler(ABC):
@@ -18,13 +19,13 @@ class RunConditionHandler(ABC):
     @abstractmethod
     def check(self,
               graph_runtime_state: GraphRuntimeState,
-              source_node_id: str,
+              previous_route_node_state: RouteNodeState,
               target_node_id: str) -> bool:
         """
         Check if the condition can be executed
 
         :param graph_runtime_state: graph runtime state
-        :param source_node_id: source node id
+        :param previous_route_node_state: previous route node state
         :param target_node_id: target node id
         :return: bool
         """

@@ -21,7 +21,7 @@ from models.workflow import WorkflowType
 
 @patch('extensions.ext_database.db.session.remove')
 @patch('extensions.ext_database.db.session.close')
-def test_run(mock_close, mock_remove):
+def test_run_parallel(mock_close, mock_remove):
     graph_config = {
         "edges": [
             {
@@ -127,7 +127,7 @@ def test_run(mock_close, mock_remove):
         max_execution_time=1200
     )
 
-    print("")
+    # print("")
 
     app = Flask('test')
 
@@ -135,7 +135,7 @@ def test_run(mock_close, mock_remove):
     with app.app_context():
         generator = graph_engine.run()
         for item in generator:
-            print(type(item), item)
+            # print(type(item), item)
             items.append(item)
             if isinstance(item, NodeRunSucceededEvent):
                 assert item.route_node_state.status == RouteNodeState.Status.SUCCESS
@@ -153,4 +153,146 @@ def test_run(mock_close, mock_remove):
     assert isinstance(items[2], NodeRunSucceededEvent)
     assert items[2].route_node_state.node_id == 'start'
 
-    print(graph_engine.graph_runtime_state)
+
+@patch('extensions.ext_database.db.session.remove')
+@patch('extensions.ext_database.db.session.close')
+def test_run_branch(mock_close, mock_remove):
+    graph_config = {
+        "edges": [{
+            "id": "1",
+            "source": "start",
+            "target": "if-else-1",
+        }, {
+            "id": "2",
+            "source": "if-else-1",
+            "sourceHandle": "true",
+            "target": "answer-1",
+        }, {
+            "id": "3",
+            "source": "if-else-1",
+            "sourceHandle": "false",
+            "target": "if-else-2",
+        }, {
+            "id": "4",
+            "source": "if-else-2",
+            "sourceHandle": "true",
+            "target": "answer-2",
+        }, {
+            "id": "5",
+            "source": "if-else-2",
+            "sourceHandle": "false",
+            "target": "answer-3",
+        }],
+        "nodes": [{
+            "data": {
+                "title": "Start",
+                "type": "start",
+                "variables": []
+            },
+            "id": "start"
+        }, {
+            "data": {
+                "answer": "1",
+                "title": "Answer",
+                "type": "answer",
+                "variables": []
+            },
+            "id": "answer-1",
+        }, {
+            "data": {
+                "cases": [{
+                    "case_id": "true",
+                    "conditions": [{
+                        "comparison_operator": "contains",
+                        "id": "b0f02473-08b6-4a81-af91-15345dcb2ec8",
+                        "value": "hi",
+                        "varType": "string",
+                        "variable_selector": ["sys", "query"]
+                    }],
+                    "id": "true",
+                    "logical_operator": "and"
+                }],
+                "desc": "",
+                "title": "IF/ELSE",
+                "type": "if-else"
+            },
+            "id": "if-else-1",
+        }, {
+            "data": {
+                "cases": [{
+                    "case_id": "true",
+                    "conditions": [{
+                        "comparison_operator": "contains",
+                        "id": "ae895199-5608-433b-b5f0-0997ae1431e4",
+                        "value": "takatost",
+                        "varType": "string",
+                        "variable_selector": ["sys", "query"]
+                    }],
+                    "id": "true",
+                    "logical_operator": "and"
+                }],
+                "title": "IF/ELSE 2",
+                "type": "if-else"
+            },
+            "id": "if-else-2",
+        }, {
+            "data": {
+                "answer": "2",
+                "title": "Answer 2",
+                "type": "answer",
+            },
+            "id": "answer-2",
+        }, {
+            "data": {
+                "answer": "3",
+                "title": "Answer 3",
+                "type": "answer",
+            },
+            "id": "answer-3",
+        }]
+    }
+
+    graph = Graph.init(
+        graph_config=graph_config
+    )
+
+    variable_pool = VariablePool(system_variables={
+        SystemVariable.QUERY: 'hi',
+        SystemVariable.FILES: [],
+        SystemVariable.CONVERSATION_ID: 'abababa',
+        SystemVariable.USER_ID: 'aaa'
+    }, user_inputs={})
+
+    graph_engine = GraphEngine(
+        tenant_id="111",
+        app_id="222",
+        workflow_type=WorkflowType.CHAT,
+        workflow_id="333",
+        user_id="444",
+        user_from=UserFrom.ACCOUNT,
+        invoke_from=InvokeFrom.WEB_APP,
+        call_depth=0,
+        graph=graph,
+        variable_pool=variable_pool,
+        max_execution_steps=500,
+        max_execution_time=1200
+    )
+
+    # print("")
+
+    app = Flask('test')
+
+    items = []
+    with app.app_context():
+        generator = graph_engine.run()
+        for item in generator:
+            # print(type(item), item)
+            items.append(item)
+
+    assert len(items) == 8
+    assert items[3].route_node_state.node_id == 'if-else-1'
+    assert items[4].route_node_state.node_id == 'if-else-1'
+    assert items[5].route_node_state.node_id == 'answer-1'
+    assert items[6].route_node_state.node_id == 'answer-1'
+
+    # print(graph_engine.graph_runtime_state.model_dump_json(indent=2))

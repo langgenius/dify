@@ -1,7 +1,7 @@
 from enum import Enum
 from typing import Any, Optional, Union
 
-from pydantic import BaseModel, Field
+from pydantic import BaseModel, Field, model_validator
 
 from core.file.file_obj import FileVar
 from core.workflow.entities.node_entities import SystemVariable
@@ -38,9 +38,21 @@ class VariablePool(BaseModel):
         description='System variables',
     )
 
-    def __post_init__(self):
-        for system_variable, value in self.system_variables.items():
-            self.append_variable('sys', [system_variable.value], value)
+    @model_validator(mode='before')
+    def append_system_variables(cls, v: dict) -> dict:
+        """
+        Append system variables
+        :param v: params
+        :return:
+        """
+        v['variables_mapping'] = {
+            'sys': {}
+        }
+        system_variables = v['system_variables']
+        for system_variable, value in system_variables.items():
+            variable_key_list_hash = hash((system_variable.value,))
+            v['variables_mapping']['sys'][variable_key_list_hash] = value
+        return v
 
     def append_variable(self, node_id: str, variable_key_list: list[str], value: VariableValue) -> None:
         """
