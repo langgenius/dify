@@ -7,7 +7,6 @@ from core.model_runtime.entities.llm_entities import LLMResult, LLMUsage
 from core.model_runtime.utils.encoders import jsonable_encoder
 from core.workflow.entities.base_node_data_entities import BaseNodeData
 from core.workflow.entities.node_entities import NodeType
-from core.workflow.nodes.answer.entities import GenerateRouteChunk
 from models.workflow import WorkflowNodeExecutionStatus
 
 
@@ -17,15 +16,6 @@ class WorkflowStreamGenerateNodes(BaseModel):
     """
     end_node_id: str
     stream_node_ids: list[str]
-
-
-class ChatflowStreamGenerateRoute(BaseModel):
-    """
-    ChatflowStreamGenerateRoute entity
-    """
-    answer_node_id: str
-    generate_route: list[GenerateRouteChunk]
-    current_route_position: int = 0
 
 
 class NodeExecutionInfo(BaseModel):

@@ -5,6 +5,8 @@ from pydantic import BaseModel, Field
 
 from core.workflow.entities.node_entities import NodeType
 from core.workflow.graph_engine.entities.run_condition import RunCondition
+from core.workflow.nodes.answer.answer_stream_output_manager import AnswerStreamOutputManager
+from core.workflow.nodes.answer.entities import AnswerStreamGenerateRoute
 
 
 class GraphEdge(BaseModel):
@@ -38,6 +40,10 @@ class Graph(BaseModel):
     node_parallel_mapping: dict[str, str] = Field(
         default_factory=dict,
         description="graph node parallel mapping (node id: parallel id)"
+    )
+    answer_stream_generate_routes: dict[str, AnswerStreamGenerateRoute] = Field(
+        default_factory=dict,
+        description="answer stream generate routes"
     )
 
     @classmethod
@@ -142,6 +148,12 @@ class Graph(BaseModel):
             node_parallel_mapping=node_parallel_mapping
         )
 
+        # init answer stream generate routes
+        answer_stream_generate_routes = AnswerStreamOutputManager.init_stream_generate_routes(
+            node_id_config_mapping=node_id_config_mapping,
+            edge_mapping=edge_mapping
+        )
+
         # init graph
         graph = cls(
             root_node_id=root_node_id,
@@ -149,7 +161,8 @@ class Graph(BaseModel):
             node_id_config_mapping=node_id_config_mapping,
             edge_mapping=edge_mapping,
             parallel_mapping=parallel_mapping,
-            node_parallel_mapping=node_parallel_mapping
+            node_parallel_mapping=node_parallel_mapping,
+            answer_stream_generate_routes=answer_stream_generate_routes
         )
 
         return graph

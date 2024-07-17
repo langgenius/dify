@@ -2,9 +2,9 @@ import json
 from typing import cast
 
 from core.file.file_obj import FileVar
-from core.prompt.utils.prompt_template_parser import PromptTemplateParser
 from core.workflow.entities.base_node_data_entities import BaseNodeData
 from core.workflow.entities.node_entities import NodeRunResult, NodeType
+from core.workflow.nodes.answer.answer_stream_output_manager import AnswerStreamOutputManager
 from core.workflow.nodes.answer.entities import (
     AnswerNodeData,
     GenerateRouteChunk,
@@ -29,11 +29,11 @@ class AnswerNode(BaseNode):
         node_data = cast(AnswerNodeData, node_data)
 
         # generate routes
-        generate_routes = self.extract_generate_route_from_node_data(node_data)
+        generate_routes = AnswerStreamOutputManager.extract_generate_route_from_node_data(node_data)
 
         answer = ''
         for part in generate_routes:
-            if part.type == "var":
+            if part.type == GenerateRouteChunk.ChunkType.VAR:
                 part = cast(VarGenerateRouteChunk, part)
                 value_selector = part.value_selector
                 value = self.graph_runtime_state.variable_pool.get_variable_value(
@@ -73,67 +73,6 @@ class AnswerNode(BaseNode):
         )
 
     @classmethod
-    def extract_generate_route_selectors(cls, config: dict) -> list[GenerateRouteChunk]:
-        """
-        Extract generate route selectors
-        :param config: node config
-        :return:
-        """
-        node_data = cls._node_data_cls(**config.get("data", {}))
-        node_data = cast(cls._node_data_cls, node_data)
-
-        return cls.extract_generate_route_from_node_data(node_data)
-
-    @classmethod
-    def extract_generate_route_from_node_data(cls, node_data: AnswerNodeData) -> list[GenerateRouteChunk]:
-        """
-        Extract generate route from node data
-        :param node_data: node data object
-        :return:
-        """
-        variable_template_parser = VariableTemplateParser(template=node_data.answer)
-        variable_selectors = variable_template_parser.extract_variable_selectors()
-
-        value_selector_mapping = {
-            variable_selector.variable: variable_selector.value_selector
-            for variable_selector in variable_selectors
-        }
-
-        variable_keys = list(value_selector_mapping.keys())
-
-        # format answer template
-        template_parser = PromptTemplateParser(template=node_data.answer, with_variable_tmpl=True)
-        template_variable_keys = template_parser.variable_keys
-
-        # Take the intersection of variable_keys and template_variable_keys
-        variable_keys = list(set(variable_keys) & set(template_variable_keys))
-
-        template = node_data.answer
-        for var in variable_keys:
-            template = template.replace(f'{{{{{var}}}}}', f'Ω{{{{{var}}}}}Ω')
-
-        generate_routes = []
-        for part in template.split('Ω'):
-            if part:
-                if cls._is_variable(part, variable_keys):
-                    var_key = part.replace('Ω', '').replace('{{', '').replace('}}', '')
-                    value_selector = value_selector_mapping[var_key]
-                    generate_routes.append(VarGenerateRouteChunk(
-                        value_selector=value_selector
-                    ))
-                else:
-                    generate_routes.append(TextGenerateRouteChunk(
-                        text=part
-                    ))
-
-        return generate_routes
-
-    @classmethod
-    def _is_variable(cls, part, variable_keys):
-        cleaned_part = part.replace('{{', '').replace('}}', '')
-        return part.startswith('{{') and cleaned_part in variable_keys
-
-    @classmethod
     def _extract_variable_selector_to_variable_mapping(cls, node_data: BaseNodeData) -> dict[str, list[str]]:
         """
         Extract variable selector to variable mapping
@@ -141,7 +80,7 @@ class AnswerNode(BaseNode):
         :return:
         """
         node_data = node_data
-        node_data = cast(cls._node_data_cls, node_data)
+        node_data = cast(AnswerNodeData, node_data)
 
         variable_template_parser = VariableTemplateParser(template=node_data.answer)
         variable_selectors = variable_template_parser.extract_variable_selectors()

@@ -17,10 +17,10 @@ from core.workflow.entities.workflow_runtime_state import WorkflowRuntimeState
 from core.workflow.errors import WorkflowNodeRunFailedError
 from core.workflow.graph_engine.entities.graph import Graph
 from core.workflow.graph_engine.graph_engine import GraphEngine
-from core.workflow.nodes import node_classes
 from core.workflow.nodes.base_node import BaseIterationNode, BaseNode, UserFrom
 from core.workflow.nodes.iteration.entities import IterationState
 from core.workflow.nodes.llm.entities import LLMNodeData
+from core.workflow.nodes.node_mapping import node_classes
 from core.workflow.nodes.start.start_node import StartNode
 from extensions.ext_database import db
 from models.workflow import (

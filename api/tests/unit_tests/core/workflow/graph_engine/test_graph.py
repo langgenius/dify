@@ -50,6 +50,8 @@ def test_init():
             {
                 "data": {
                     "type": "answer",
+                    "title": "answer",
+                    "answer": "1"
                 },
                 "id": "answer",
             },
@@ -68,6 +70,8 @@ def test_init():
             {
                 "data": {
                     "type": "answer",
+                    "title": "answer",
+                    "answer": "1"
                 },
                 "id": "answer2",
             }
@@ -141,6 +145,8 @@ def test__init_iteration_graph():
             {
                 "data": {
                     "type": "answer",
+                    "title": "answer",
+                    "answer": "1"
                 },
                 "id": "answer",
             },
@@ -167,6 +173,8 @@ def test__init_iteration_graph():
             {
                 "data": {
                     "type": "answer",
+                    "title": "answer",
+                    "answer": "1"
                 },
                 "id": "answer-in-iteration",
                 "parentId": "iteration",
@@ -270,6 +278,8 @@ def test_parallels_graph():
             {
                 "data": {
                     "type": "answer",
+                    "title": "answer",
+                    "answer": "1"
                 },
                 "id": "answer",
             },
@@ -350,6 +360,8 @@ def test_parallels_graph2():
             {
                 "data": {
                     "type": "answer",
+                    "title": "answer",
+                    "answer": "1"
                 },
                 "id": "answer",
             },
@@ -422,6 +434,8 @@ def test_parallels_graph3():
             {
                 "data": {
                     "type": "answer",
+                    "title": "answer",
+                    "answer": "1"
                 },
                 "id": "answer",
             },
@@ -538,6 +552,8 @@ def test_parallels_graph4():
             {
                 "data": {
                     "type": "answer",
+                    "title": "answer",
+                    "answer": "1"
                 },
                 "id": "answer",
             },
@@ -673,6 +689,8 @@ def test_parallels_graph5():
             {
                 "data": {
                     "type": "answer",
+                    "title": "answer",
+                    "answer": "1"
                 },
                 "id": "answer",
             },
@@ -816,6 +834,8 @@ def test_parallels_graph6():
             {
                 "data": {
                     "type": "answer",
+                    "title": "answer",
+                    "answer": "1"
                 },
                 "id": "answer",
             },

@@ -9,6 +9,7 @@ from core.workflow.graph_engine.entities.event import (
     BaseNodeEvent,
     GraphRunFailedEvent,
     GraphRunStartedEvent,
+    GraphRunSucceededEvent,
     NodeRunFailedEvent,
     NodeRunStartedEvent,
     NodeRunSucceededEvent,
@@ -187,12 +188,19 @@ def test_run_branch(mock_close, mock_remove):
             "data": {
                 "title": "Start",
                 "type": "start",
-                "variables": []
+                "variables": [{
+                    "label": "uid",
+                    "max_length": 48,
+                    "options": [],
+                    "required": True,
+                    "type": "text-input",
+                    "variable": "uid"
+                }]
             },
             "id": "start"
         }, {
             "data": {
-                "answer": "1",
+                "answer": "1 {{#start.uid#}}",
                 "title": "Answer",
                 "type": "answer",
                 "variables": []
@@ -261,7 +269,9 @@ def test_run_branch(mock_close, mock_remove):
         SystemVariable.FILES: [],
         SystemVariable.CONVERSATION_ID: 'abababa',
         SystemVariable.USER_ID: 'aaa'
-    }, user_inputs={})
+    }, user_inputs={
+        "uid": "takato"
+    })
 
     graph_engine = GraphEngine(
         tenant_id="111",
@@ -286,7 +296,7 @@ def test_run_branch(mock_close, mock_remove):
     with app.app_context():
         generator = graph_engine.run()
         for item in generator:
-            # print(type(item), item)
+            print(type(item), item)
             items.append(item)
 
     assert len(items) == 8
@@ -294,5 +304,7 @@ def test_run_branch(mock_close, mock_remove):
     assert items[4].route_node_state.node_id == 'if-else-1'
     assert items[5].route_node_state.node_id == 'answer-1'
     assert items[6].route_node_state.node_id == 'answer-1'
+    assert items[6].route_node_state.node_run_result.outputs['answer'] == '1 takato'
+    assert isinstance(items[7], GraphRunSucceededEvent)
 
     # print(graph_engine.graph_runtime_state.model_dump_json(indent=2))
