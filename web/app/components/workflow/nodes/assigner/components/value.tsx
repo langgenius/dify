@@ -4,6 +4,7 @@ import React from 'react'
 import { VarType } from '../../../types'
 import type { AssignerSupportVarType, WriteMode } from '../types'
 import StringValue from './string-value'
+import NumberValue from './number-value'
 
 type Props = {
   nodeId: string
@@ -26,6 +27,15 @@ const Value: FC<Props> = ({
     case VarType.string:
       return (
         <StringValue
+          nodeId={nodeId}
+          value={value}
+          onChange={onChange}
+          readOnly={readOnly}
+        />
+      )
+    case VarType.number:
+      return (
+        <NumberValue
           nodeId={nodeId}
           value={value}
           onChange={onChange}

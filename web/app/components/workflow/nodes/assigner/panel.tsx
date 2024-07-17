@@ -60,18 +60,21 @@ const Panel: FC<NodePanelProps<AssignerNodeType>> = ({
             ))}
           </div>
         </Field>
-        <Field
-          title={t(`${i18nPrefix}.setValue`)}
-        >
-          <Value
-            nodeId={id}
-            writeMode={inputs.writeMode}
-            type={varType as AssignerSupportVarType}
-            value={inputs.value}
-            onChange={handleValueChange}
-            readOnly={readOnly}
-          />
-        </Field>
+        {inputs.writeMode !== WriteMode.Clear && (
+          <Field
+            title={t(`${i18nPrefix}.setValue`)}
+          >
+            <Value
+              nodeId={id}
+              writeMode={inputs.writeMode}
+              type={varType as AssignerSupportVarType}
+              value={inputs.value}
+              onChange={handleValueChange}
+              readOnly={readOnly}
+            />
+          </Field>
+        )}
+
       </div>
     </div>
   )

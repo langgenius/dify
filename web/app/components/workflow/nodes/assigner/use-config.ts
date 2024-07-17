@@ -10,6 +10,7 @@ import {
   useNodesReadOnly,
   useWorkflow,
 } from '@/app/components/workflow/hooks'
+import { VarType as VarKindType } from '@/app/components/workflow/nodes/tool/types'
 
 const useConfig = (id: string, payload: AssignerNodeType) => {
   const { nodesReadOnly: readOnly } = useNodesReadOnly()
@@ -29,13 +30,6 @@ const useConfig = (id: string, payload: AssignerNodeType) => {
   }, [getBeforeNodesInSameBranch, id])
   const { inputs, setInputs } = useNodeCrud<AssignerNodeType>(id, payload)
 
-  const handleVarChanges = useCallback((variable: ValueSelector | string) => {
-    const newInputs = produce(inputs, (draft) => {
-      draft.variable = variable as ValueSelector
-    })
-    setInputs(newInputs)
-  }, [inputs, setInputs])
-
   const varType = getVarType({
     parentNode: iterationNode,
     valueSelector: inputs.variable || [],
@@ -43,6 +37,40 @@ const useConfig = (id: string, payload: AssignerNodeType) => {
     isChatMode,
     isConstant: false,
   })
+
+  const getInitValue = useCallback((varType: VarType) => {
+    switch (varType) {
+      case VarType.string:
+        return ''
+      case VarType.number:
+        return {
+          type: VarKindType.constant,
+          value: 0,
+        }
+      case VarType.object:
+        return {}
+      case VarType.arrayString:
+      case VarType.arrayNumber:
+      case VarType.arrayObject:
+        return []
+    }
+  }, [])
+
+  const handleVarChanges = useCallback((variable: ValueSelector | string) => {
+    const newInputs = produce(inputs, (draft) => {
+      draft.variable = variable as ValueSelector
+      const newVarType = getVarType({
+        parentNode: iterationNode,
+        valueSelector: draft.variable || [],
+        availableNodes,
+        isChatMode,
+        isConstant: false,
+      })
+      if (newVarType !== varType)
+        draft.value = getInitValue(newVarType)
+    })
+    setInputs(newInputs)
+  }, [availableNodes, getInitValue, inputs, isChatMode, iterationNode, setInputs, varType])
 
   const writeModeTypes = useMemo(() => {
     const types = [WriteMode.Overwrite, WriteMode.Append, WriteMode.Clear]
@@ -56,10 +84,12 @@ const useConfig = (id: string, payload: AssignerNodeType) => {
     return () => {
       const newInputs = produce(inputs, (draft) => {
         draft.writeMode = writeMode
+        if (varType !== VarType.string && varType !== VarType.number)
+          draft.value = getInitValue(varType)
       })
       setInputs(newInputs)
     }
-  }, [inputs, setInputs])
+  }, [getInitValue, inputs, setInputs, varType])
 
   const handleValueChange = useCallback((value: any) => {
     const newInputs = produce(inputs, (draft) => {
