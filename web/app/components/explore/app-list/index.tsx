@@ -168,31 +168,27 @@ const Apps = ({
         </div>
       )}
       <div className={cn(
-        'flex items-center mt-6',
+        'flex items-center justify-between mt-6',
         pageType === PageType.EXPLORE ? 'px-12' : 'px-8',
       )}>
-        {pageType !== PageType.EXPLORE && (
-          <>
-            <AppTypeSelector value={currentType} onChange={setCurrentType} />
-            <div className='mx-2 w-[1px] h-3.5 bg-gray-200' />
-          </>
-        )}
-        <Category
-          list={categories}
-          value={currCategory}
-          onChange={setCurrCategory}
-          allCategoriesEn={allCategoriesEn}
-        />
+        <>
+          {pageType !== PageType.EXPLORE && (
+            <>
+              <AppTypeSelector value={currentType} onChange={setCurrentType}/>
+              <div className='mx-2 w-[1px] h-3.5 bg-gray-200'/>
+            </>
+          )}
+          <Category
+            list={categories}
+            value={currCategory}
+            onChange={setCurrCategory}
+            allCategoriesEn={allCategoriesEn}
+          />
+        </>
+        <SearchInput value={keywords} onChange={handleKeywordsChange}/>
+
       </div>
 
-      <div>
-        <div className={cn(
-          'flex mt-6',
-          pageType === PageType.EXPLORE ? 'px-12' : 'px-8',
-        )}>
-          <SearchInput className="w-[300px]" value={keywords} onChange={handleKeywordsChange} />
-        </div>
-      </div>
       <div className={cn(
         'relative flex flex-1 pb-6 flex-col overflow-auto bg-gray-100 shrink-0 grow',
         pageType === PageType.EXPLORE ? 'mt-4' : 'mt-0 pt-2',
