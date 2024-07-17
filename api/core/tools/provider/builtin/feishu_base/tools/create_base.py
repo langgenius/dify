@@ -2,6 +2,7 @@ from typing import Any
 
 from core.tools.entities.tool_entities import ToolInvokeMessage
 from core.tools.tool.builtin_tool import BuiltinTool
+
 from .feishu_api import FeishuRequest
 
 
