@@ -2,8 +2,7 @@ import logging
 import time
 from typing import Optional, cast
 
-from flask import current_app
-
+from configs import dify_config
 from core.app.app_config.entities import FileExtraConfig
 from core.app.apps.base_app_queue_manager import GenerateTaskStoppedException
 from core.app.entities.app_invoke_entities import InvokeFrom
@@ -118,7 +117,7 @@ class WorkflowEngineManager:
 
         if not isinstance(graph.get('edges'), list):
             raise ValueError('edges in workflow graph must be a list')
-        
+
         # init variable pool
         if not variable_pool:
             variable_pool = VariablePool(
@@ -126,7 +125,7 @@ class WorkflowEngineManager:
                 user_inputs=user_inputs
             )
 
-        workflow_call_max_depth = current_app.config.get("WORKFLOW_CALL_MAX_DEPTH")
+        workflow_call_max_depth = dify_config.WORKFLOW_CALL_MAX_DEPTH
         if call_depth > workflow_call_max_depth:
             raise ValueError('Max workflow call depth {} reached.'.format(workflow_call_max_depth))
 
@@ -177,8 +176,8 @@ class WorkflowEngineManager:
             predecessor_node: BaseNode = None
             current_iteration_node: BaseIterationNode = None
             has_entry_node = False
-            max_execution_steps = current_app.config.get("WORKFLOW_MAX_EXECUTION_STEPS")
-            max_execution_time = current_app.config.get("WORKFLOW_MAX_EXECUTION_TIME")
+            max_execution_steps = dify_config.WORKFLOW_MAX_EXECUTION_STEPS
+            max_execution_time = dify_config.WORKFLOW_MAX_EXECUTION_TIME
             while True:
                 # get next node, multiple target nodes in the future
                 next_node = self._get_next_overall_node(
@@ -237,7 +236,7 @@ class WorkflowEngineManager:
                             next_node_id = next_iteration
                             # get next id
                             next_node = self._get_node(workflow_run_state, graph, next_node_id, callbacks)
-                
+
                 if not next_node:
                     break
 
@@ -398,7 +397,7 @@ class WorkflowEngineManager:
                 tenant_id=workflow.tenant_id,
                 node_instance=node_instance
             )
-            
+
             # run node
             node_run_result = node_instance.run(
                 variable_pool=variable_pool
@@ -443,7 +442,7 @@ class WorkflowEngineManager:
                     node_config = node
                 else:
                     raise ValueError('node id is not an iteration node')
-        
+
         # init variable pool
         variable_pool = VariablePool(
             system_variables={},
@@ -452,7 +451,7 @@ class WorkflowEngineManager:
 
         # variable selector to variable mapping
         iteration_nested_nodes = [
-            node for node in nodes 
+            node for node in nodes
             if node.get('data', {}).get('iteration_id') == node_id or node.get('id') == node_id
         ]
         iteration_nested_node_ids = [node.get('id') for node in iteration_nested_nodes]
@@ -475,13 +474,13 @@ class WorkflowEngineManager:
 
             # remove iteration variables
             variable_mapping = {
-                f'{node_config.get("id")}.{key}': value for key, value in variable_mapping.items() 
+                f'{node_config.get("id")}.{key}': value for key, value in variable_mapping.items()
                 if value[0] != node_id
             }
 
             # remove variable out from iteration
             variable_mapping = {
-                key: value for key, value in variable_mapping.items() 
+                key: value for key, value in variable_mapping.items()
                 if value[0] not in iteration_nested_node_ids
             }
 
@@ -561,7 +560,7 @@ class WorkflowEngineManager:
                     error=error
                 )
 
-    def _workflow_iteration_started(self, graph: dict, 
+    def _workflow_iteration_started(self, graph: dict,
                                     current_iteration_node: BaseIterationNode,
                                     workflow_run_state: WorkflowRunState,
                                     predecessor_node_id: Optional[str] = None,
@@ -600,7 +599,7 @@ class WorkflowEngineManager:
 
     def _workflow_iteration_next(self, graph: dict,
                                  current_iteration_node: BaseIterationNode,
-                                 workflow_run_state: WorkflowRunState, 
+                                 workflow_run_state: WorkflowRunState,
                                  callbacks: list[BaseWorkflowCallback] = None) -> None:
         """
         Workflow iteration next
@@ -629,9 +628,9 @@ class WorkflowEngineManager:
 
         for node in nodes:
             workflow_run_state.variable_pool.clear_node_variables(node_id=node.get('id'))
-    
+
     def _workflow_iteration_completed(self, current_iteration_node: BaseIterationNode,
-                                        workflow_run_state: WorkflowRunState, 
+                                        workflow_run_state: WorkflowRunState,
                                         callbacks: list[BaseWorkflowCallback] = None) -> None:
         if callbacks:
             if isinstance(workflow_run_state.current_iteration_state, IterationState):
@@ -684,7 +683,7 @@ class WorkflowEngineManager:
                         callbacks=callbacks,
                         workflow_call_depth=workflow_run_state.workflow_call_depth
                     )
-                
+
         else:
             edges = graph.get('edges')
             source_node_id = predecessor_node.node_id
@@ -738,9 +737,9 @@ class WorkflowEngineManager:
                 callbacks=callbacks,
                 workflow_call_depth=workflow_run_state.workflow_call_depth
             )
-        
-    def _get_node(self, workflow_run_state: WorkflowRunState, 
-                  graph: dict, 
+
+    def _get_node(self, workflow_run_state: WorkflowRunState,
+                  graph: dict,
                   node_id: str,
                   callbacks: list[BaseWorkflowCallback]) -> Optional[BaseNode]:
         """
@@ -940,7 +939,7 @@ class WorkflowEngineManager:
 
         return new_value
 
-    def _mapping_user_inputs_to_variable_pool(self, 
+    def _mapping_user_inputs_to_variable_pool(self,
                                               variable_mapping: dict,
                                               user_inputs: dict,
                                               variable_pool: VariablePool,
