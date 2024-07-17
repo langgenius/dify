@@ -51,9 +51,11 @@ const PermissionSelector = ({ disabled, permission, value, memberList, onChange,
       ...memberList.filter(member => member.id !== userProfile.id).filter(member => value.includes(member.id)),
     ].map(member => member.name).join(', ')
   }, [userProfile, value, memberList])
+
   const showMe = useMemo(() => {
     return userProfile.name.includes(searchKeywords) || userProfile.email.includes(searchKeywords)
   }, [searchKeywords, userProfile])
+
   const filteredMemberList = useMemo(() => {
     return memberList.filter(member => (member.name.includes(searchKeywords) || member.email.includes(searchKeywords)) && member.id !== userProfile.id && ['owner', 'admin', 'editor', 'dataset_operator'].includes(member.role))
   }, [memberList, searchKeywords, userProfile])
