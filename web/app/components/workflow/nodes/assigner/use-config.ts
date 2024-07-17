@@ -55,10 +55,11 @@ const useConfig = (id: string, payload: AssignerNodeType) => {
             value: '',
           },
         ]
+      case VarType.arrayFile:
+        return []
       case VarType.arrayString:
       case VarType.arrayNumber:
       case VarType.arrayObject:
-      case VarType.arrayFile:
         if (writeMode === WriteMode.Append) {
           switch (varType) {
             case VarType.arrayString:
@@ -79,8 +80,6 @@ const useConfig = (id: string, payload: AssignerNodeType) => {
           }
         }
         else {
-          if (varType === VarType.arrayFile)
-            return [] // Var Reference
           return {
             type: VarKindType.constant,
             value: '',

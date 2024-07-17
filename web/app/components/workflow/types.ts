@@ -195,6 +195,7 @@ export enum VarType {
   boolean = 'boolean',
   object = 'object',
   array = 'array',
+  file = 'file',
   arrayString = 'array[string]',
   arrayNumber = 'array[number]',
   arrayObject = 'array[object]',
