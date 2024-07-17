@@ -30,6 +30,11 @@
       return;
     }
 
+    let inputs = config.inputs || {};
+    // encode the values using base64
+    inputs = Object.fromEntries(Object.entries(inputs).map(([key, value]) => [key, btoa(value)]));
+    let params = new URLSearchParams(inputs);
+
     const baseUrl =
       config.baseUrl || `https://${config.isDev ? "dev." : ""}udify.app`;
 
@@ -39,12 +44,12 @@
       iframe.allow = "fullscreen;microphone";
       iframe.title = "dify chatbot bubble window";
       iframe.id = iframeId;
-      iframe.src = `${baseUrl}/chatbot/${config.token}`;
+      iframe.src = `${baseUrl}/chatbot/${config.token}?${params}`;
       iframe.style.cssText = `
-        border: none; position: fixed; flex-direction: column; justify-content: space-between; 
-        box-shadow: rgba(150, 150, 150, 0.2) 0px 10px 30px 0px, rgba(150, 150, 150, 0.2) 0px 0px 0px 1px; 
-        bottom: 5rem; right: 1rem; width: 24rem; max-width: calc(100vw - 2rem); height: 40rem; 
-        max-height: calc(100vh - 6rem); border-radius: 0.75rem; display: flex; z-index: 2147483647; 
+        border: none; position: fixed; flex-direction: column; justify-content: space-between;
+        box-shadow: rgba(150, 150, 150, 0.2) 0px 10px 30px 0px, rgba(150, 150, 150, 0.2) 0px 0px 0px 1px;
+        bottom: 5rem; right: 1rem; width: 24rem; max-width: calc(100vw - 2rem); height: 40rem;
+        max-height: calc(100vh - 6rem); border-radius: 0.75rem; display: flex; z-index: 2147483647;
         overflow: hidden; left: unset; background-color: #F3F4F6;
       `;
 
@@ -106,19 +111,19 @@
       document.head.appendChild(styleSheet);
       styleSheet.sheet.insertRule(`
         #${containerDiv.id} {
-          position: fixed; 
+          position: fixed;
           bottom: var(--${containerDiv.id}-bottom, 1rem);
           right: var(--${containerDiv.id}-right, 1rem);
           left: var(--${containerDiv.id}-left, unset);
           top: var(--${containerDiv.id}-top, unset);
           width: var(--${containerDiv.id}-width, 50px);
           height: var(--${containerDiv.id}-height, 50px);
-          border-radius: var(--${containerDiv.id}-border-radius, 25px); 
+          border-radius: var(--${containerDiv.id}-border-radius, 25px);
           background-color: var(--${containerDiv.id}-bg-color, #155EEF);
           box-shadow: var(--${containerDiv.id}-box-shadow, rgba(0, 0, 0, 0.2) 0px 4px 8px 0px);
           cursor: pointer;
-          z-index: 2147483647; 
-          transition: all 0.2s ease-in-out 0s; 
+          z-index: 2147483647;
+          transition: all 0.2s ease-in-out 0s;
         }
       `);
       styleSheet.sheet.insertRule(`
@@ -154,7 +159,8 @@
         } else {
           document.addEventListener('keydown', handleEscKey);
         }
-        
+
+
         resetIframePosition();
       });
 
