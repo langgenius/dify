@@ -2,6 +2,7 @@ import datetime
 import time
 
 import click
+from sqlalchemy import func
 from werkzeug.exceptions import NotFound
 
 import app
@@ -9,7 +10,7 @@ from configs import dify_config
 from core.rag.index_processor.index_processor_factory import IndexProcessorFactory
 from extensions.ext_database import db
 from models.dataset import Dataset, DatasetQuery, Document
-from sqlalchemy import func
+
 
 @app.celery.task(queue='dataset')
 def clean_unused_datasets_task():
