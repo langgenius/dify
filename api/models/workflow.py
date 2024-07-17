@@ -115,11 +115,11 @@ class Workflow(db.Model):
 
     @property
     def created_by_account(self):
-        return Account.query.get(self.created_by)
+        return db.session.get(Account, self.created_by)
 
     @property
     def updated_by_account(self):
-        return Account.query.get(self.updated_by) if self.updated_by else None
+        return db.session.get(Account, self.updated_by) if self.updated_by else None
 
     @property
     def graph_dict(self):
@@ -290,14 +290,14 @@ class WorkflowRun(db.Model):
     @property
     def created_by_account(self):
         created_by_role = CreatedByRole.value_of(self.created_by_role)
-        return Account.query.get(self.created_by) \
+        return db.session.get(Account, self.created_by) \
             if created_by_role == CreatedByRole.ACCOUNT else None
 
     @property
     def created_by_end_user(self):
         from models.model import EndUser
         created_by_role = CreatedByRole.value_of(self.created_by_role)
-        return EndUser.query.get(self.created_by) \
+        return db.session.get(EndUser, self.created_by) \
             if created_by_role == CreatedByRole.END_USER else None
 
     @property
@@ -500,14 +500,14 @@ class WorkflowNodeExecution(db.Model):
     @property
     def created_by_account(self):
         created_by_role = CreatedByRole.value_of(self.created_by_role)
-        return Account.query.get(self.created_by) \
+        return db.session.get(Account, self.created_by) \
             if created_by_role == CreatedByRole.ACCOUNT else None
 
     @property
     def created_by_end_user(self):
         from models.model import EndUser
         created_by_role = CreatedByRole.value_of(self.created_by_role)
-        return EndUser.query.get(self.created_by) \
+        return db.session.get(EndUser, self.created_by) \
             if created_by_role == CreatedByRole.END_USER else None
 
     @property
@@ -612,17 +612,17 @@ class WorkflowAppLog(db.Model):
 
     @property
     def workflow_run(self):
-        return WorkflowRun.query.get(self.workflow_run_id)
+        return db.session.get(WorkflowRun, self.workflow_run_id)
 
     @property
     def created_by_account(self):
         created_by_role = CreatedByRole.value_of(self.created_by_role)
-        return Account.query.get(self.created_by) \
+        return db.session.get(Account, self.created_by) \
             if created_by_role == CreatedByRole.ACCOUNT else None
 
     @property
     def created_by_end_user(self):
         from models.model import EndUser
         created_by_role = CreatedByRole.value_of(self.created_by_role)
-        return EndUser.query.get(self.created_by) \
+        return db.session.get(EndUser, self.created_by) \
             if created_by_role == CreatedByRole.END_USER else None
