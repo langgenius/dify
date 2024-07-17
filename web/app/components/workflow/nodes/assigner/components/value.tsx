@@ -8,6 +8,7 @@ import VarReferencePicker from '../../_base/components/variable/var-reference-pi
 import StringValue from './string-value'
 import NumberValue from './number-value'
 import ObjectValue from './object-value'
+import ArrayValue from './array-value'
 
 type Props = {
   nodeId: string
@@ -76,6 +77,17 @@ const Value: FC<Props> = ({
       />
     )
   }
+
+  if ([VarType.arrayString, VarType.arrayNumber, VarType.arrayObject].includes(type)) {
+    return <ArrayValue
+      nodeId={nodeId}
+      varType={type}
+      value={value}
+      onChange={onChange}
+      readOnly={readOnly}
+    />
+  }
+
   return null
 }
 export default React.memo(Value)
