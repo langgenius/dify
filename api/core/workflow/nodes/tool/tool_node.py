@@ -126,7 +126,7 @@ class ToolNode(BaseNode):
         inputs = {}
         template_parser = VariableTemplateParser(template)
         for selector in template_parser.extract_variable_selectors():
-            value = variable_pool.get_any(selector.variable)
+            value = variable_pool.get_any(selector.value_selector)
             inputs[selector.variable] = value
         
         return template_parser.format(inputs)
