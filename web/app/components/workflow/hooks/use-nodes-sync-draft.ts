@@ -81,7 +81,7 @@ export const useNodesSyncDraft = () => {
             sensitive_word_avoidance: features.moderation,
             file_upload: features.file,
           },
-          environmentVariables,
+          environment_variables: environmentVariables,
           hash: syncWorkflowDraftHash,
         },
       }
