@@ -38,7 +38,7 @@ const useConfig = (id: string, payload: AssignerNodeType) => {
 
   const varType = getVarType({
     parentNode: iterationNode,
-    valueSelector: inputs.variable,
+    valueSelector: inputs.variable || [],
     availableNodes,
     isChatMode,
     isConstant: false,
