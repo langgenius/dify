@@ -9,7 +9,7 @@ class PackagingInfo(BaseSettings):
 
     CURRENT_VERSION: str = Field(
         description='Dify version',
-        default='0.6.13',
+        default='0.6.14',
     )
 
     COMMIT_SHA: str = Field(

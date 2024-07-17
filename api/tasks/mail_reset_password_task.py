@@ -3,8 +3,9 @@ import time
 
 import click
 from celery import shared_task
-from flask import current_app, render_template
+from flask import render_template
 
+from configs import dify_config
 from extensions.ext_mail import mail
 
 
@@ -24,7 +25,7 @@ def send_reset_password_mail_task(language: str, to: str, token: str):
 
     # send reset password mail using different languages
     try:
-        url = f'{current_app.config.get("CONSOLE_WEB_URL")}/forgot-password?token={token}'
+        url = f'{dify_config.CONSOLE_WEB_URL}/forgot-password?token={token}'
         if language == 'zh-Hans':
             html_content = render_template('reset_password_mail_template_zh-CN.html',
                                            to=to,

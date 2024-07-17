@@ -4,7 +4,8 @@ from core.workflow.entities.base_node_data_entities import BaseNodeData
 from core.workflow.entities.node_entities import NodeRunResult, NodeType
 from core.workflow.entities.variable_pool import VariablePool
 from core.workflow.nodes.base_node import BaseNode
-from core.workflow.nodes.if_else.entities import IfElseNodeData
+from core.workflow.nodes.if_else.entities import Condition, IfElseNodeData
+from core.workflow.utils.variable_template_parser import VariableTemplateParser
 from models.workflow import WorkflowNodeExecutionStatus
 
 
@@ -29,68 +30,48 @@ class IfElseNode(BaseNode):
             "condition_results": []
         }
 
+        input_conditions = []
+        final_result = False
+        selected_case_id = None
         try:
-            logical_operator = node_data.logical_operator
-            input_conditions = []
-            for condition in node_data.conditions:
-                actual_value = variable_pool.get_variable_value(
-                    variable_selector=condition.variable_selector
+            # Check if the new cases structure is used
+            if node_data.cases:
+                for case in node_data.cases:
+                    input_conditions, group_result = self.process_conditions(variable_pool, case.conditions)
+                    # Apply the logical operator for the current case
+                    final_result = all(group_result) if case.logical_operator == "and" else any(group_result)
+
+                    process_datas["condition_results"].append(
+                        {
+                            "group": case.model_dump(),
+                            "results": group_result,
+                            "final_result": final_result,
+                        }
+                    )
+
+                    # Break if a case passes (logical short-circuit)
+                    if final_result:
+                        selected_case_id = case.case_id  # Capture the ID of the passing case
+                        break
+
+            else:
+                # Fallback to old structure if cases are not defined
+                input_conditions, group_result = self.process_conditions(variable_pool, node_data.conditions)
+
+                final_result = all(group_result) if node_data.logical_operator == "and" else any(group_result)
+
+                selected_case_id = "true" if final_result else "false"
+
+                process_datas["condition_results"].append(
+                    {
+                        "group": "default",
+                        "results": group_result,
+                        "final_result": final_result
+                    }
                 )
-
-                expected_value = condition.value
-
-                input_conditions.append({
-                    "actual_value": actual_value,
-                    "expected_value": expected_value,
-                    "comparison_operator": condition.comparison_operator
-                })
 
             node_inputs["conditions"] = input_conditions
 
-            for input_condition in input_conditions:
-                actual_value = input_condition["actual_value"]
-                expected_value = input_condition["expected_value"]
-                comparison_operator = input_condition["comparison_operator"]
-
-                if comparison_operator == "contains":
-                    compare_result = self._assert_contains(actual_value, expected_value)
-                elif comparison_operator == "not contains":
-                    compare_result = self._assert_not_contains(actual_value, expected_value)
-                elif comparison_operator == "start with":
-                    compare_result = self._assert_start_with(actual_value, expected_value)
-                elif comparison_operator == "end with":
-                    compare_result = self._assert_end_with(actual_value, expected_value)
-                elif comparison_operator == "is":
-                    compare_result = self._assert_is(actual_value, expected_value)
-                elif comparison_operator == "is not":
-                    compare_result = self._assert_is_not(actual_value, expected_value)
-                elif comparison_operator == "empty":
-                    compare_result = self._assert_empty(actual_value)
-                elif comparison_operator == "not empty":
-                    compare_result = self._assert_not_empty(actual_value)
-                elif comparison_operator == "=":
-                    compare_result = self._assert_equal(actual_value, expected_value)
-                elif comparison_operator == "≠":
-                    compare_result = self._assert_not_equal(actual_value, expected_value)
-                elif comparison_operator == ">":
-                    compare_result = self._assert_greater_than(actual_value, expected_value)
-                elif comparison_operator == "<":
-                    compare_result = self._assert_less_than(actual_value, expected_value)
-                elif comparison_operator == "≥":
-                    compare_result = self._assert_greater_than_or_equal(actual_value, expected_value)
-                elif comparison_operator == "≤":
-                    compare_result = self._assert_less_than_or_equal(actual_value, expected_value)
-                elif comparison_operator == "null":
-                    compare_result = self._assert_null(actual_value)
-                elif comparison_operator == "not null":
-                    compare_result = self._assert_not_null(actual_value)
-                else:
-                    continue
-
-                process_datas["condition_results"].append({
-                    **input_condition,
-                    "result": compare_result
-                })
         except Exception as e:
             return NodeRunResult(
                 status=WorkflowNodeExecutionStatus.FAILED,
@@ -99,20 +80,101 @@ class IfElseNode(BaseNode):
                 error=str(e)
             )
 
-        if logical_operator == "and":
-            compare_result = False not in [condition["result"] for condition in process_datas["condition_results"]]
-        else:
-            compare_result = True in [condition["result"] for condition in process_datas["condition_results"]]
+        outputs = {"result": final_result, "selected_case_id": selected_case_id}
 
-        return NodeRunResult(
+        data = NodeRunResult(
             status=WorkflowNodeExecutionStatus.SUCCEEDED,
             inputs=node_inputs,
             process_data=process_datas,
-            edge_source_handle="false" if not compare_result else "true",
-            outputs={
-                "result": compare_result
-            }
+            edge_source_handle=selected_case_id if selected_case_id else "false",  # Use case ID or 'default'
+            outputs=outputs
         )
+
+        return data
+
+    def evaluate_condition(
+        self, actual_value: Optional[str | list], expected_value: str, comparison_operator: str
+    ) -> bool:
+        """
+        Evaluate condition
+        :param actual_value: actual value
+        :param expected_value: expected value
+        :param comparison_operator: comparison operator
+
+        :return: bool
+        """
+        if comparison_operator == "contains":
+            return self._assert_contains(actual_value, expected_value)
+        elif comparison_operator == "not contains":
+            return self._assert_not_contains(actual_value, expected_value)
+        elif comparison_operator == "start with":
+            return self._assert_start_with(actual_value, expected_value)
+        elif comparison_operator == "end with":
+            return self._assert_end_with(actual_value, expected_value)
+        elif comparison_operator == "is":
+            return self._assert_is(actual_value, expected_value)
+        elif comparison_operator == "is not":
+            return self._assert_is_not(actual_value, expected_value)
+        elif comparison_operator == "empty":
+            return self._assert_empty(actual_value)
+        elif comparison_operator == "not empty":
+            return self._assert_not_empty(actual_value)
+        elif comparison_operator == "=":
+            return self._assert_equal(actual_value, expected_value)
+        elif comparison_operator == "≠":
+            return self._assert_not_equal(actual_value, expected_value)
+        elif comparison_operator == ">":
+            return self._assert_greater_than(actual_value, expected_value)
+        elif comparison_operator == "<":
+            return self._assert_less_than(actual_value, expected_value)
+        elif comparison_operator == "≥":
+            return self._assert_greater_than_or_equal(actual_value, expected_value)
+        elif comparison_operator == "≤":
+            return self._assert_less_than_or_equal(actual_value, expected_value)
+        elif comparison_operator == "null":
+            return self._assert_null(actual_value)
+        elif comparison_operator == "not null":
+            return self._assert_not_null(actual_value)
+        else:
+            raise ValueError(f"Invalid comparison operator: {comparison_operator}")
+
+    def process_conditions(self, variable_pool: VariablePool, conditions: list[Condition]):
+        input_conditions = []
+        group_result = []
+
+        for condition in conditions:
+            actual_value = variable_pool.get_variable_value(
+                variable_selector=condition.variable_selector
+            )
+
+            if condition.value is not None:
+                variable_template_parser = VariableTemplateParser(template=condition.value)
+                expected_value = variable_template_parser.extract_variable_selectors()
+                variable_selectors = variable_template_parser.extract_variable_selectors()
+                if variable_selectors:
+                    for variable_selector in variable_selectors:
+                        value = variable_pool.get_variable_value(
+                            variable_selector=variable_selector.value_selector
+                        )
+                        expected_value = variable_template_parser.format({variable_selector.variable: value})
+                else:
+                    expected_value = condition.value
+            else:
+                expected_value = None
+
+            comparison_operator = condition.comparison_operator
+            input_conditions.append(
+                {
+                    "actual_value": actual_value,
+                    "expected_value": expected_value,
+                    "comparison_operator": comparison_operator
+                }
+            )
+
+            result = self.evaluate_condition(actual_value, expected_value, comparison_operator)
+            group_result.append(result)
+
+        return input_conditions, group_result
 
     def _assert_contains(self, actual_value: Optional[str | list], expected_value: str) -> bool:
         """

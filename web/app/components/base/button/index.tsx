@@ -14,6 +14,7 @@ const buttonVariants = cva(
         'secondary': 'btn-secondary',
         'secondary-accent': 'btn-secondary-accent',
         'ghost': 'btn-ghost',
+        'tertiary': 'btn-tertiary',
       },
       size: {
         small: 'btn-small',
