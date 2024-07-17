@@ -283,7 +283,7 @@ class HttpExecutor:
         # validate response
         return self._validate_and_parse_response(response)
 
-    def to_raw_request(self, mask_authorization_header: Optional[bool] = True) -> str:
+    def to_raw_request(self) -> str:
         """
         convert to raw request
         """
@@ -295,16 +295,15 @@ class HttpExecutor:
 
         headers = self._assembling_headers()
         for k, v in headers.items():
-            if mask_authorization_header:
-                # get authorization header
-                if self.authorization.type == 'api-key':
-                    authorization_header = 'Authorization'
-                    if self.authorization.config and self.authorization.config.header:
-                        authorization_header = self.authorization.config.header
+            # get authorization header
+            if self.authorization.type == 'api-key':
+                authorization_header = 'Authorization'
+                if self.authorization.config and self.authorization.config.header:
+                    authorization_header = self.authorization.config.header
 
-                    if k.lower() == authorization_header.lower():
-                        raw_request += f'{k}: {"*" * len(v)}\n'
-                        continue
+                if k.lower() == authorization_header.lower():
+                    raw_request += f'{k}: {"*" * len(v)}\n'
+                    continue
 
             raw_request += f'{k}: {v}\n'
 
