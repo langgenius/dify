@@ -12,6 +12,7 @@ import { fetchBuiltInToolCredential, fetchBuiltInToolCredentialSchema } from '@/
 import Loading from '@/app/components/base/loading'
 import Form from '@/app/components/header/account-setting/model-provider-page/model-modal/Form'
 import { LinkExternal02 } from '@/app/components/base/icons/src/vender/line/general'
+import { useLanguage } from '@/app/components/header/account-setting/model-provider-page/hooks'
 
 type Props = {
   collection: Collection
@@ -29,6 +30,7 @@ const ConfigCredential: FC<Props> = ({
   onRemove = () => { },
 }) => {
   const { t } = useTranslation()
+  const language = useLanguage()
   const [credentialSchema, setCredentialSchema] = useState<any>(null)
   const { name: collectionName } = collection
   const [tempCredential, setTempCredential] = React.useState<any>({})
@@ -46,7 +48,7 @@ const ConfigCredential: FC<Props> = ({
   const handleSave = () => {
     for (const field of credentialSchema) {
       if (field.required && !tempCredential[field.name]) {
-        Toast.notify({ type: 'error', message: t('common.errorMsg.fieldRequired', { field: field.name }) })
+        Toast.notify({ type: 'error', message: t('common.errorMsg.fieldRequired', { field: field.label[language] || field.label.en_US }) })
         return
       }
     }
