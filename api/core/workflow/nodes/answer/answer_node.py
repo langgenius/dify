@@ -26,7 +26,7 @@ class AnswerNode(BaseNode):
         :return:
         """
         node_data = self.node_data
-        node_data = cast(self._node_data_cls, node_data)
+        node_data = cast(AnswerNodeData, node_data)
 
         # generate routes
         generate_routes = self.extract_generate_route_from_node_data(node_data)

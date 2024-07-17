@@ -43,6 +43,26 @@ class RouteNodeState(BaseModel):
     paused_by: Optional[str] = None
     """paused by"""
 
+    def set_finished(self, run_result: NodeRunResult) -> None:
+        """
+        Node finished
+
+        :param run_result: run result
+        """
+        if self.status in [RouteNodeState.Status.SUCCESS, RouteNodeState.Status.FAILED]:
+            raise Exception(f"Route state {self.id} already finished")
+
+        if run_result.status == WorkflowNodeExecutionStatus.SUCCEEDED:
+            self.status = RouteNodeState.Status.SUCCESS
+        elif run_result.status == WorkflowNodeExecutionStatus.FAILED:
+            self.status = RouteNodeState.Status.FAILED
+            self.failed_reason = run_result.error
+        else:
+            raise Exception(f"Invalid route status {run_result.status}")
+
+        self.node_run_result = run_result
+        self.finished_at = datetime.now(timezone.utc).replace(tzinfo=None)
+
 
 class RuntimeRouteState(BaseModel):
     routes: dict[str, list[str]] = Field(
@@ -87,29 +107,3 @@ class RuntimeRouteState(BaseModel):
         """
         return [self.node_state_mapping[target_state_id]
                 for target_state_id in self.routes.get(source_node_state_id, [])]
-
-    def set_node_state_finished(self, node_state_id: str, run_result: NodeRunResult) -> None:
-        """
-        Node finished
-
-        :param node_state_id: route node state id
-        :param run_result: run result
-        """
-        if node_state_id not in self.node_state_mapping:
-            raise Exception(f"Route state {node_state_id} not found")
-
-        route = self.node_state_mapping[node_state_id]
-
-        if route.status in [RouteNodeState.Status.SUCCESS, RouteNodeState.Status.FAILED]:
-            raise Exception(f"Route state {node_state_id} already finished")
-
-        if run_result.status == WorkflowNodeExecutionStatus.SUCCEEDED:
-            route.status = RouteNodeState.Status.SUCCESS
-        elif run_result.status == WorkflowNodeExecutionStatus.FAILED:
-            route.status = RouteNodeState.Status.FAILED
-            route.failed_reason = run_result.error
-        else:
-            raise Exception(f"Invalid route status {run_result.status}")
-
-        route.node_run_result = run_result
-        route.finished_at = datetime.now(timezone.utc).replace(tzinfo=None)
