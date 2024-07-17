@@ -80,17 +80,58 @@ GENERATOR_QA_PROMPT = (
     '<QA Pairs>'
 )
 
-RULE_CONFIG_GENERATE_TEMPLATE = """
-Here's a task description for which I'd like you to create a high-quality prompt template:
+RULE_CONFIG_PROMPT_GENERATE_TEMPLATE = """
+Here is a task description for which I would like you to create a high-quality prompt template for:
 <task_description>
 {{TASK_DESCRIPTION}}
 </task_description>
-Based on the task description, create a well-formed json template that other ais can use to continuously complete the task. The prompt template should contain:
--"prompt" field to give other AI or LLMS a hint to do the task
-- "variables" field, some tasks may require user input parameters, then please provide these fields as a list, e.g. ["Input_language", "Target_language"]
-- Explicit instructions for AI to use this prompt in the "prompt" field, stating that it should step-wise explain how the input variable is used to complete the task
-- The "opening_statement" field, which is the LLM opening statement and should be present in the provided 'variables' field if any
-- Be consistent with the task description language.
-- The output is json and contains prompt, variables, opening_statement
+Based on task description, please create a well-structured prompt template that another AI could use to consistently complete the task. The prompt template should include:
+Descriptive variable names surrounded by {{ }} (two curly brackets) to indicate where the actual values will be substituted in. Choose variable names that clearly indicate the type of value expected. 
+Clear instructions for the AI that will be using this prompt, demarcated with <instructions> tags. The instructions should provide step-by-step directions on how to complete the task using the input variables. Also Specifies in the instructions that the output should not contain any xml tag. 
+Relevant examples if needed to clarify the task further, demarcated with <example> tags. Do not use curly brackets any other than in <instruction> section. 
+Any other relevant sections demarcated with appropriate XML tags like <input>, <output>, etc.
+Use the same language as task description. 
+Output in xml and start with <instruction>
 Please generate the full prompt template and output only the prompt template.
+"""
+
+RULE_CONFIG_PARAMETER_GENERATE_TEMPLATE = """
+I need to extract the following information from the input text. The <information to be extracted> tag specifies the 'type', 'description' and 'required' of the information to be extracted. 
+<information to be extracted>
+variables name bounded two double curly brackets 
+</information to be extracted>
+
+Step 1: Carefully read the input and understand the structure of the expected output.
+Step 2: Extract relevant parameters from the provided text based on the name and description of object. 
+Step 3: Structure the extracted parameters to JSON object as specified in <structure>.
+Step 4: Ensure that the JSON object is properly formatted and valid. The output should not contain any XML tags. Only the JSON object should be outputted.
+
+### Structure
+Here is the structure of the expected output, I should always follow the output structure. 
+["variable_name_1", "variable_name_2"]
+
+### Input Text
+Inside <text></text> XML tags, there is a text that I should extract parameters and convert to a JSON object.
+<text>
+{{INPUT_TEXT}}
+</text>
+
+### Answer
+I should always output a valid list. Output nothing other than the list of variable_name. 
+"""
+
+RULE_CONFIG_STATEMENT_GENERATE_TEMPLATE = """
+<instruction>
+Step 1: Identify the purpose of the chatbot from the variable {{TASK_DESCRIPTION}} and infer chatbot's tone  (e.g., friendly, professional, etc.) to add personality traits. 
+Step 2: Create a coherent and engaging opening statement.
+Step 3: Ensure the output is welcoming and clearly explains what the chatbot is designed to do. Do not include any XML tags in the output.
+Please use the same language as the user's input language. If user uses chinese then generate opening statement in chinese,  if user uses english then generate opening statement in english. 
+Example Input: 
+Provide customer support for an e-commerce website
+Example Output: 
+Welcome! I'm here to assist you with any questions or issues you might have with your shopping experience. Whether you're looking for product information, need help with your order, or have any other inquiries, feel free to ask. I'm friendly, helpful, and ready to support you in any way I can.
+<Task>
+Here is the task description: {{INPUT_TEXT}}
+
+You just need to generate the output
 """

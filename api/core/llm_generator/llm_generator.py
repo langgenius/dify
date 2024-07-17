@@ -1,6 +1,7 @@
 import json
 import logging
 import re
+from concurrent.futures import ThreadPoolExecutor
 from typing import Optional
 
 from core.llm_generator.output_parser.errors import OutputParserException
@@ -118,31 +119,40 @@ class LLMGenerator:
     def generate_rule_config(cls, tenant_id: str, instruction: str) -> dict:
         output_parser = RuleConfigGeneratorOutputParser()
 
+        # get rule config prompt, parameter and statement
+        prompt_generate, parameter_generate, statement_generate = output_parser.get_format_instructions()
+
         prompt_template = PromptTemplateParser(
-            template=output_parser.get_format_instructions()
+            prompt_generate
         )
 
-        prompt = prompt_template.format(
+        parameter_template = PromptTemplateParser(
+            parameter_generate
+        )
+
+        statement_template = PromptTemplateParser(
+            statement_generate
+        )
+
+        # format the prompt_generate_prompt
+        prompt_generate_prompt = prompt_template.format(
             inputs={
                 "TASK_DESCRIPTION": instruction,
-                "variable": "{{variable}}",
-                "lanA": "{{lanA}}",
-                "lanB": "{{lanB}}",
-                "topic": "{{topic}}"
             },
             remove_template_variables=False
         )
+        prompt_messages = [UserPromptMessage(content=prompt_generate_prompt)]
 
+        # get model instance
         model_manager = ModelManager()
         model_instance = model_manager.get_default_model_instance(
             tenant_id=tenant_id,
             model_type=ModelType.LLM,
         )
 
-        prompt_messages = [UserPromptMessage(content=prompt)]
-
         try:
-            response = model_instance.invoke_llm(
+            # the first step to generate the task prompt
+            task_prompt = model_instance.invoke_llm(
                 prompt_messages=prompt_messages,
                 model_parameters={
                     "max_tokens": 512,
@@ -150,8 +160,55 @@ class LLMGenerator:
                 },
                 stream=False
             )
+            parameter_generate_prompt = parameter_template.format(
+                inputs={
+                    "INPUT_TEXT": task_prompt.message.content,
+                },
+                remove_template_variables=False
+            )
 
-            rule_config = output_parser.parse(response.message.content)
+            parameter_messages = [UserPromptMessage(content=parameter_generate_prompt)]
+
+            # the second step to generate the task parameter
+            statement_generate_prompt = statement_template.format(
+                inputs={
+                    "TASK_DESCRIPTION": instruction,
+                    "INPUT_TEXT": task_prompt.message.content,
+                },
+                remove_template_variables=False
+            )
+
+            statement_messages = [UserPromptMessage(content=statement_generate_prompt)]
+
+            # start a thread pool to generate the task parameter and task statement
+            with ThreadPoolExecutor() as executor:
+                task_parameter_future = executor.submit(
+                    model_instance.invoke_llm,
+                    prompt_messages=parameter_messages,
+                    model_parameters={
+                        "max_tokens": 512,
+                        "temperature": 0
+                    },
+                    stream=False
+                )
+                task_statement_future = executor.submit(
+                    model_instance.invoke_llm,
+                    prompt_messages=statement_messages,
+                    model_parameters={
+                        "max_tokens": 512,
+                        "temperature": 0
+                    },
+                    stream=False
+                )
+
+                task_parameter = task_parameter_future.result()
+                task_statement = task_statement_future.result()
+
+            rule_config = {
+                "prompt": task_prompt.message.content,
+                "variables": json.loads(task_parameter.message.content),
+                "opening_statement": task_statement.message.content
+            }
         except InvokeError as e:
             raise e
         except OutputParserException:
