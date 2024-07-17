@@ -51,7 +51,7 @@ def init_app(app: Flask) -> Celery:
         },
         'clean_unused_datasets_task': {
             'task': 'schedule.clean_unused_datasets_task.clean_unused_datasets_task',
-            'schedule': timedelta(minutes=1),
+            'schedule': timedelta(days=day),
         }
     }
     celery_app.conf.update(

@@ -1,4 +1,6 @@
 import re
+from collections.abc import Mapping
+from typing import Any
 
 from core.workflow.entities.variable_entities import VariableSelector
 
@@ -77,7 +79,7 @@ class VariableTemplateParser:
 
         return variable_selectors
 
-    def format(self, inputs: dict, remove_template_variables: bool = True) -> str:
+    def format(self, inputs: Mapping[str, Any], remove_template_variables: bool = True) -> str:
         """
         Formats the template string by replacing the template variables with their corresponding values.
 
@@ -91,6 +93,9 @@ class VariableTemplateParser:
         def replacer(match):
             key = match.group(1)
             value = inputs.get(key, match.group(0))  # return original matched string if key not found
+
+            if value is None:
+                value = ''
             # convert the value to string
             if isinstance(value, list | dict | bool | int | float):
                 value = str(value)
