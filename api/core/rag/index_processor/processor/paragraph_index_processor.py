@@ -67,14 +67,11 @@ class ParagraphIndexProcessor(BaseIndexProcessor):
             vector = Vector(dataset)
             if node_ids:
                 vector.delete_by_ids(node_ids)
-            else:
-                vector.delete()
+
         if with_keywords:
             keyword = Keyword(dataset)
             if node_ids:
                 keyword.delete_by_ids(node_ids)
-            else:
-                keyword.delete()
 
     def retrieve(self, retrival_method: str, query: str, dataset: Dataset, top_k: int,
                  score_threshold: float, reranking_model: dict) -> list[Document]:
