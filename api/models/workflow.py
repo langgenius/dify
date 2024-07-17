@@ -190,9 +190,8 @@ class Workflow(db.Model):
 
     @property
     def environment_variables(self) -> Sequence[Variable]:
-        if not self._environment_variables:
+        if self._environment_variables is None:
             self._environment_variables = '{}'
-            return []
 
         # FIXME: get current user from flask context, may not a good way.
         user = contexts.current_user.get()
@@ -207,7 +206,7 @@ class Workflow(db.Model):
             if isinstance(var, SecretVariable)
             else var
         )
-        results = [decrypt_func(var) for var in results]
+        results = list(map(decrypt_func, results))
         return results
 
     @environment_variables.setter
@@ -215,18 +214,16 @@ class Workflow(db.Model):
         # FIXME: get current user from flask context, may not a good way.
         user = contexts.current_user.get()
 
-        previous_vars = {var.name: var for var in self.environment_variables}
-        new_vars: list[Variable] = []
-        for var in vars:
-            if var.name in previous_vars and var == previous_vars[var.name]:
-                var = previous_vars[var.name]
-            elif var.name not in previous_vars and isinstance(var, SecretVariable):
-                var = var.model_copy(
-                    update={'value': encrypter.encrypt_token(tenant_id=user.current_tenant_id, token=var.value)}
-                )
-            new_vars.append(var)
+        encrypt_func = (
+            lambda var: var.model_copy(
+                update={'value': encrypter.encrypt_token(tenant_id=user.current_tenant_id, token=var.value)}
+            )
+            if isinstance(var, SecretVariable)
+            else var
+        )
+        encrypted_vars = list(map(encrypt_func, vars))
         environment_variables_json = json.dumps(
-            {var.name: var.model_dump() for var in new_vars},
+            {var.name: var.model_dump() for var in encrypted_vars},
             ensure_ascii=False,
         )
         self._environment_variables = environment_variables_json
