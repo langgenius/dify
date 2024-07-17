@@ -38,7 +38,7 @@ const useConfig = (id: string, payload: AssignerNodeType) => {
     isConstant: false,
   })
 
-  const getInitValue = useCallback((varType: VarType) => {
+  const getInitValue = useCallback((varType: VarType, writeMode: WriteMode) => {
     switch (varType) {
       case VarType.string:
         return ''
@@ -48,11 +48,44 @@ const useConfig = (id: string, payload: AssignerNodeType) => {
           value: 0,
         }
       case VarType.object:
-        return {}
+        return [
+          {
+            id: Date.now(),
+            key: '',
+            value: '',
+          },
+        ]
       case VarType.arrayString:
       case VarType.arrayNumber:
       case VarType.arrayObject:
-        return []
+      case VarType.arrayFile:
+        if (writeMode === WriteMode.Append) {
+          switch (varType) {
+            case VarType.arrayString:
+              return ''
+            case VarType.arrayNumber:
+              return {
+                type: VarKindType.constant,
+                value: 0,
+              }
+            case VarType.arrayObject:
+              return [
+                {
+                  id: Date.now(),
+                  key: '',
+                  value: '',
+                },
+              ]
+          }
+        }
+        else {
+          if (varType === VarType.arrayFile)
+            return [] // Var Reference
+          return {
+            type: VarKindType.constant,
+            value: '',
+          }
+        }
     }
   }, [])
 
@@ -67,7 +100,7 @@ const useConfig = (id: string, payload: AssignerNodeType) => {
         isConstant: false,
       })
       if (newVarType !== varType)
-        draft.value = getInitValue(newVarType)
+        draft.value = getInitValue(newVarType, inputs.writeMode)
     })
     setInputs(newInputs)
   }, [availableNodes, getInitValue, inputs, isChatMode, iterationNode, setInputs, varType])
@@ -84,8 +117,8 @@ const useConfig = (id: string, payload: AssignerNodeType) => {
     return () => {
       const newInputs = produce(inputs, (draft) => {
         draft.writeMode = writeMode
-        if (varType !== VarType.string && varType !== VarType.number)
-          draft.value = getInitValue(varType)
+        if (inputs.writeMode !== WriteMode.Clear && writeMode !== WriteMode.Clear && varType !== VarType.string && varType !== VarType.number)
+          draft.value = getInitValue(varType, writeMode)
       })
       setInputs(newInputs)
     }
