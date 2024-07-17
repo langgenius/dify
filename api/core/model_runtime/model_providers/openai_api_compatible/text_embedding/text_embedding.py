@@ -161,7 +161,7 @@ class OAICompatEmbeddingModel(_CommonOAI_API_Compat, TextEmbeddingModel):
             endpoint_url = urljoin(endpoint_url, 'embeddings')
 
             payload = {
-                'input': 'ping',
+                'input': ['ping'],
                 'model': model
             }
 
