@@ -19,7 +19,12 @@ from controllers.console.setup import setup_required
 from controllers.console.wraps import account_initialization_required
 from core.app.apps.base_app_queue_manager import AppQueueManager
 from core.app.entities.app_invoke_entities import InvokeFrom
-from core.errors.error import ModelCurrentlyNotSupportError, ProviderTokenNotInitError, QuotaExceededError
+from core.errors.error import (
+    AppInvokeQuotaExceededError,
+    ModelCurrentlyNotSupportError,
+    ProviderTokenNotInitError,
+    QuotaExceededError,
+)
 from core.model_runtime.errors.invoke import InvokeError
 from libs import helper
 from libs.helper import uuid_value
@@ -75,7 +80,7 @@ class CompletionMessageApi(Resource):
             raise ProviderModelCurrentlyNotSupportError()
         except InvokeError as e:
             raise CompletionRequestError(e.description)
-        except ValueError as e:
+        except (ValueError, AppInvokeQuotaExceededError) as e:
             raise e
         except Exception as e:
             logging.exception("internal server error.")
@@ -141,7 +146,7 @@ class ChatMessageApi(Resource):
             raise ProviderModelCurrentlyNotSupportError()
         except InvokeError as e:
             raise CompletionRequestError(e.description)
-        except ValueError as e:
+        except (ValueError, AppInvokeQuotaExceededError) as e:
             raise e
         except Exception as e:
             logging.exception("internal server error.")

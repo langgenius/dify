@@ -213,7 +213,7 @@ Workflow applications offers non-session support and is ideal for translation, a
 ---
 
 <Heading
-  url='/workflows/:task_id/stop'
+  url='/workflows/tasks/:task_id/stop'
   method='POST'
   title='Stop Generate'
   name='#stop-generatebacks'
@@ -231,9 +231,9 @@ Workflow applications offers non-session support and is ideal for translation, a
   </Col>
   <Col sticky>
   ### Request Example
-  <CodeGroup title="Request" tag="POST" label="/workflows/:task_id/stop" targetCode={`curl -X POST '${props.appDetail.api_base_url}/workflows/:task_id/stop' \\\n-H 'Authorization: Bearer {api_key}' \\\n-H 'Content-Type: application/json' \\\n--data-raw '{"user": "abc-123"}'`}>
+  <CodeGroup title="Request" tag="POST" label="/workflows/tasks/:task_id/stop" targetCode={`curl -X POST '${props.appDetail.api_base_url}/workflows/tasks/:task_id/stop' \\\n-H 'Authorization: Bearer {api_key}' \\\n-H 'Content-Type: application/json' \\\n--data-raw '{"user": "abc-123"}'`}>
     ```bash {{ title: 'cURL' }}
-    curl -X POST '${props.appDetail.api_base_url}/workflows/:task_id/stop' \
+    curl -X POST '${props.appDetail.api_base_url}/workflows/tasks/:task_id/stop' \
     -H 'Authorization: Bearer {api_key}' \
     -H 'Content-Type: application/json' \
     --data-raw '{

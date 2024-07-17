@@ -60,6 +60,8 @@ class IfElseNode(BaseNode):
 
                 final_result = all(group_result) if node_data.logical_operator == "and" else any(group_result)
 
+                selected_case_id = "true" if final_result else "false"
+
                 process_datas["condition_results"].append(
                     {
                         "group": "default",
@@ -78,11 +80,7 @@ class IfElseNode(BaseNode):
                 error=str(e)
             )
 
-        outputs = {
-            "result": final_result
-        }
-        if node_data.cases:
-            outputs["selected_case_id"] = selected_case_id
+        outputs = {"result": final_result, "selected_case_id": selected_case_id}
 
         data = NodeRunResult(
             status=WorkflowNodeExecutionStatus.SUCCEEDED,
