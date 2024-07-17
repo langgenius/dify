@@ -11,6 +11,7 @@
   const configKey = "difyChatbotConfig";
   const buttonId = "dify-chatbot-bubble-button";
   const iframeId = "dify-chatbot-bubble-window";
+  const config = window[configKey];
 
   // SVG icons for open and close states
   const svgIcons = {
@@ -24,7 +25,6 @@
 
   // Main function to embed the chatbot
   function embedChatbot() {
-    const config = window[configKey];
     if (!config || !config.token) {
       console.error(`${configKey} is empty or token is not provided`);
       return;
@@ -141,11 +141,19 @@
         if (!targetIframe) {
           createIframe();
           resetIframePosition();
+          this.title = "Exit (ESC)";
           displayDiv.innerHTML = svgIcons.close;
+          document.addEventListener('keydown', handleEscKey);
           return;
         }
         targetIframe.style.display = targetIframe.style.display === "none" ? "block" : "none";
         displayDiv.innerHTML = targetIframe.style.display === "none" ? svgIcons.open : svgIcons.close;
+
+        if (targetIframe.style.display === "none") {
+          document.removeEventListener('keydown', handleEscKey);
+        } else {
+          document.addEventListener('keydown', handleEscKey);
+        }
         
         resetIframePosition();
       });
@@ -220,6 +228,23 @@
     }
   }
 
-  // Set the embedChatbot function to run when the body is loaded
-  document.body.onload = embedChatbot;
+  // Add esc Exit keyboard event triggered
+  function handleEscKey(event) {
+    if (event.key === 'Escape') {
+      const targetIframe = document.getElementById(iframeId);
+      const button = document.getElementById(buttonId);
+      if (targetIframe && targetIframe.style.display !== 'none') {
+        targetIframe.style.display = 'none';
+        button.querySelector('div').innerHTML = svgIcons.open;
+      }
+    }
+  }
+  document.addEventListener('keydown', handleEscKey);
+
+  // Set the embedChatbot function to run when the body is loaded,Avoid infinite nesting
+  if (config?.dynamicScript) {
+    embedChatbot();
+  } else {
+    document.body.onload = embedChatbot;
+  }
 })();
