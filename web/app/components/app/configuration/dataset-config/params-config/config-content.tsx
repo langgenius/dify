@@ -1,7 +1,11 @@
 'use client'
-import React from 'react'
+import {
+  memo,
+  useMemo,
+} from 'react'
 import type { FC } from 'react'
 import { useTranslation } from 'react-i18next'
+import { uniq } from 'lodash-es'
 import {
   RiQuestionLine,
 } from '@remixicon/react'
@@ -23,6 +27,7 @@ import type { ModelConfig } from '@/app/components/workflow/types'
 import ModelParameterModal from '@/app/components/header/account-setting/model-provider-page/model-parameter-modal'
 import TooltipPlus from '@/app/components/base/tooltip-plus'
 import { ModelTypeEnum } from '@/app/components/header/account-setting/model-provider-page/declarations'
+import type { DataSet } from '@/models/datasets'
 
 type Props = {
   datasetConfigs: DatasetConfigs
@@ -31,6 +36,7 @@ type Props = {
   singleRetrievalModelConfig?: ModelConfig
   onSingleRetrievalModelChange?: (config: ModelConfig) => void
   onSingleRetrievalModelParamsChange?: (config: ModelConfig) => void
+  selectedDatasets?: DataSet[]
 }
 
 const ConfigContent: FC<Props> = ({
@@ -40,6 +46,7 @@ const ConfigContent: FC<Props> = ({
   singleRetrievalModelConfig: singleRetrievalConfig = {} as ModelConfig,
   onSingleRetrievalModelChange = () => { },
   onSingleRetrievalModelParamsChange = () => { },
+  selectedDatasets = [],
 }) => {
   const { t } = useTranslation()
   const type = datasetConfigs.retrieval_model
@@ -67,6 +74,7 @@ const ConfigContent: FC<Props> = ({
       }
     }
   })()
+  console.log(rerankModel, 'rerankModel')
 
   const handleParamChange = (key: string, value: number) => {
     if (key === 'top_k') {
@@ -95,6 +103,15 @@ const ConfigContent: FC<Props> = ({
 
   const model = singleRetrievalConfig
 
+  const selectedDatasetsMode = useMemo(() => {
+    return {
+      onlyHighQuality: selectedDatasets.every(item => item.indexing_technique === 'high_quality'),
+      onlyEconomic: selectedDatasets.every(item => item.indexing_technique === 'economy'),
+      mixtureHighQualityAndEconomic: selectedDatasets.some(item => item.indexing_technique === 'high_quality') && selectedDatasets.some(item => item.indexing_technique === 'economy'),
+      inconsistentEmbeddingModel: uniq(selectedDatasets.map(item => item.embedding_model)).length > 1,
+    }
+  }, [selectedDatasets])
+
   return (
     <div>
       <div className='mt-2 space-y-3'>
@@ -120,9 +137,29 @@ const ConfigContent: FC<Props> = ({
           onChosen={() => { setType(RETRIEVE_TYPE.multiWay) }}
         />
       </div>
+      {
+        selectedDatasetsMode.inconsistentEmbeddingModel
+        && type === RETRIEVE_TYPE.multiWay
+        && !datasetConfigs.reranking_model
+        && (
+          <div className='mt-4 system-xs-regular text-text-warning'>
+            {t('dataset.inconsistentEmbeddingModelTip')}
+          </div>
+        )
+      }
+      {
+        selectedDatasetsMode.mixtureHighQualityAndEconomic
+        && type === RETRIEVE_TYPE.multiWay
+        && !datasetConfigs.reranking_model
+        && (
+          <div className='mt-4 system-xs-regular text-text-warning'>
+            {t('dataset.mixtureHighQualityAndEconomicTip')}
+          </div>
+        )
+      }
       {type === RETRIEVE_TYPE.multiWay && (
         <>
-          <div className='mt-6'>
+          <div className='mt-4'>
             <div className='leading-[32px] text-[13px] font-medium text-gray-900'>{t('common.modelProvider.rerankModel.key')}</div>
             <div>
               <ModelSelector
@@ -158,7 +195,7 @@ const ConfigContent: FC<Props> = ({
       )}
 
       {isInWorkflow && type === RETRIEVE_TYPE.oneWay && (
-        <div className='mt-6'>
+        <div className='mt-4'>
           <div className='flex items-center space-x-0.5'>
             <div className='leading-[32px] text-[13px] font-medium text-gray-900'>{t('common.modelProvider.systemReasoningModel.key')}</div>
             <TooltipPlus
@@ -187,4 +224,4 @@ const ConfigContent: FC<Props> = ({
     </div >
   )
 }
-export default React.memo(ConfigContent)
+export default memo(ConfigContent)

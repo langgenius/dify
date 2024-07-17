@@ -47,13 +47,15 @@ const translation = {
   retry: 'Retry',
   indexingTechnique: {
     high_quality: 'HQ',
-    economic: 'ECO',
+    economy: 'ECO',
   },
   indexingMethod: {
     semantic_search: 'VECTOR',
     full_text_search: 'FULL TEXT',
     hybrid_search: 'HYBRID',
   },
+  mixtureHighQualityAndEconomicTip: 'The rerank model is required for mixture of high quality and economical knowledge bases.',
+  inconsistentEmbeddingModelTip: 'The rerank model is required if the embedding method is inconsistent, such as mixture of with and without embedding or using different embedding models.',
 }
 
 export default translation

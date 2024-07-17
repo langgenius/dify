@@ -42,6 +42,7 @@
 
   .btn-primary.btn-disabled {
     @apply 
+    shadow-none
     bg-components-button-primary-bg-disabled
     border-components-button-primary-border-disabled
     text-components-button-primary-text-disabled;
@@ -49,6 +50,7 @@
 
   .btn-primary.btn-destructive.btn-disabled {
     @apply 
+    shadow-none
     bg-components-button-destructive-primary-bg-disabled
     border-components-button-destructive-primary-border-disabled
     text-components-button-destructive-primary-text-disabled;

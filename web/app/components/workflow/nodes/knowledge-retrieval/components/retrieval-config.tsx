@@ -17,6 +17,7 @@ import { DATASET_DEFAULT } from '@/config'
 import { useModelListAndDefaultModelAndCurrentProviderAndModel } from '@/app/components/header/account-setting/model-provider-page/hooks'
 import { ModelTypeEnum } from '@/app/components/header/account-setting/model-provider-page/declarations'
 import Button from '@/app/components/base/button'
+import type { DataSet } from '@/models/datasets'
 
 import type {
   DatasetConfigs,
@@ -34,6 +35,7 @@ type Props = {
   onSingleRetrievalModelChange?: (config: ModelConfig) => void
   onSingleRetrievalModelParamsChange?: (config: ModelConfig) => void
   readonly?: boolean
+  selectedDatasets?: DataSet[]
 }
 
 const RetrievalConfig: FC<Props> = ({
@@ -44,6 +46,7 @@ const RetrievalConfig: FC<Props> = ({
   onSingleRetrievalModelChange,
   onSingleRetrievalModelParamsChange,
   readonly,
+  selectedDatasets,
 }) => {
   const { t } = useTranslation()
 
@@ -106,6 +109,7 @@ const RetrievalConfig: FC<Props> = ({
       <PortalToFollowElemContent style={{ zIndex: 1001 }}>
         <div className='w-[404px] pt-3 pb-4 px-4 shadow-xl  rounded-2xl border border-gray-200  bg-white'>
           <ConfigRetrievalContent
+            selectedDatasets={selectedDatasets}
             datasetConfigs={
               {
                 retrieval_model: payload.retrieval_mode,
