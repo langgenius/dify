@@ -57,7 +57,7 @@
     "lodash-es": "^4.17.21",
     "mermaid": "10.4.0",
     "negotiator": "^0.6.3",
-    "next": "^14.1.1",
+    "next": "^14.2.4",
     "next-nprogress-bar": "^2.3.8",
     "pinyin-pro": "^3.23.0",
     "qrcode.react": "^3.1.0",
