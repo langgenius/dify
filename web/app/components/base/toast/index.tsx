@@ -27,7 +27,6 @@ export const ToastContext = createContext<IToastContext>({} as IToastContext)
 export const useToastContext = () => useContext(ToastContext)
 const Toast = ({
   type = 'info',
-  duration,
   message,
   children,
   className,
@@ -91,7 +90,7 @@ export const ToastProvider = ({
     duration: 6000,
   }
   const [params, setParams] = React.useState<IToastProps>(placeholder)
-  const defaultDuring = params.type === 'success' ? 3000 : 6000
+  const defaultDuring = (params.type === 'success' || params.type === 'info') ? 3000 : 6000
   const [mounted, setMounted] = useState(false)
 
   useEffect(() => {
@@ -100,7 +99,7 @@ export const ToastProvider = ({
         setMounted(false)
       }, params.duration || defaultDuring)
     }
-  }, [mounted])
+  }, [defaultDuring, mounted, params.duration])
 
   return <ToastContext.Provider value={{
     notify: (props) => {
@@ -119,6 +118,7 @@ Toast.notify = ({
   duration,
   className,
 }: Pick<IToastProps, 'type' | 'message' | 'duration' | 'className'>) => {
+  const defaultDuring = (type === 'success' || type === 'info') ? 3000 : 6000
   if (typeof window === 'object') {
     const holder = document.createElement('div')
     const root = createRoot(holder)
