@@ -5,8 +5,8 @@ from core.app.variables import FloatVariable, IntegerVariable, SecretVariable, S
 from core.app.variables.entities import VariableType
 
 
-def test_text_variable():
-    test_data = {'value_type': 'text', 'name': 'test_text', 'value': 'Hello, World!'}
+def test_string_variable():
+    test_data = {'value_type': 'string', 'name': 'test_text', 'value': 'Hello, World!'}
     result = variable_factory.from_mapping(test_data)
     assert isinstance(result, StringVariable)
 
