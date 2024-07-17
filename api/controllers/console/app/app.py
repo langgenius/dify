@@ -197,7 +197,7 @@ class AppExportApi(Resource):
 
         # Add include_secret params
         parser = reqparse.RequestParser()
-        parser.add_argument('include_secret', type=bool, default=False, location='args')
+        parser.add_argument('include_secret', type=inputs.boolean, default=False, location='args')
         args = parser.parse_args()
 
         app_service = AppService()
