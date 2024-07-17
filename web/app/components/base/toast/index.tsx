@@ -22,7 +22,6 @@ export type IToastProps = {
 type IToastContext = {
   notify: (props: IToastProps) => void
 }
-const defaultDuring = 6000
 
 export const ToastContext = createContext<IToastContext>({} as IToastContext)
 export const useToastContext = () => useContext(ToastContext)
@@ -92,7 +91,7 @@ export const ToastProvider = ({
     duration: 6000,
   }
   const [params, setParams] = React.useState<IToastProps>(placeholder)
-
+  const defaultDuring = params.type === 'success' ? 3000 : 6000
   const [mounted, setMounted] = useState(false)
 
   useEffect(() => {
