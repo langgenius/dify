@@ -11,7 +11,7 @@ class StableDiffusionTool(BuiltinTool, BaseStabilityAuthorization):
     """
     This class is responsible for providing the stable diffusion tool.
     """
-    model_endpoint_map = {
+    model_endpoint_map: dict[str, str] = {
         'sd3': 'https://api.stability.ai/v2beta/stable-image/generate/sd3',
         'sd3-turbo': 'https://api.stability.ai/v2beta/stable-image/generate/sd3',
         'core': 'https://api.stability.ai/v2beta/stable-image/generate/core',

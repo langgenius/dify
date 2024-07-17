@@ -376,7 +376,7 @@ class XinferenceProvider(Provider):
 - Invoke 调用
 
   ```python
-  def _invoke(elf, model: str, credentials: dict, content_text: str, streaming: bool, user: Optional[str] = None):
+  def _invoke(self, model: str, credentials: dict, content_text: str, streaming: bool, user: Optional[str] = None):
       """
       Invoke large language model
   

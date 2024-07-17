@@ -7,6 +7,7 @@
 - azuredalle
 - stability
 - wikipedia
+- nominatim
 - yahoo
 - arxiv
 - pubmed
@@ -27,4 +28,5 @@
 - qrcode
 - dingtalk
 - feishu
+- feishu_base
 - slack

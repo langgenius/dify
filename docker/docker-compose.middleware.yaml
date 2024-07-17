@@ -1,20 +1,18 @@
-version: '3'
 services:
   # The postgres database.
   db:
     image: postgres:15-alpine
     restart: always
+    env_file:
+      - ./middleware.env
     environment:
-      # The password for the default postgres user.
-      POSTGRES_PASSWORD: difyai123456
-      # The name of the default postgres database.
-      POSTGRES_DB: dify
-      # postgres data directory
-      PGDATA: /var/lib/postgresql/data/pgdata
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-difyai123456}
+      POSTGRES_DB: ${POSTGRES_DB:-dify}
+      PGDATA: ${PGDATA:-/var/lib/postgresql/data/pgdata}
     volumes:
       - ./volumes/db/data:/var/lib/postgresql/data
     ports:
-      - "5432:5432"
+      - "${EXPOSE_POSTGRES_PORT:-5432}:5432"
 
   # The redis cache.
   redis:
@@ -26,30 +24,7 @@ services:
     # Set the redis password when startup redis server.
     command: redis-server --requirepass difyai123456
     ports:
-      - "6379:6379"
-
-  # The Weaviate vector store.
-  weaviate:
-    image: semitechnologies/weaviate:1.19.0
-    restart: always
-    volumes:
-      # Mount the Weaviate data directory to the container.
-      - ./volumes/weaviate:/var/lib/weaviate
-    environment:
-      # The Weaviate configurations
-      # You can refer to the [Weaviate](https://weaviate.io/developers/weaviate/config-refs/env-vars) documentation for more information.
-      QUERY_DEFAULTS_LIMIT: 25
-      AUTHENTICATION_ANONYMOUS_ACCESS_ENABLED: 'false'
-      PERSISTENCE_DATA_PATH: '/var/lib/weaviate'
-      DEFAULT_VECTORIZER_MODULE: 'none'
-      CLUSTER_HOSTNAME: 'node1'
-      AUTHENTICATION_APIKEY_ENABLED: 'true'
-      AUTHENTICATION_APIKEY_ALLOWED_KEYS: 'WVF5YThaHlkYwhGUSmCRgsX3tD5ngdN8pkih'
-      AUTHENTICATION_APIKEY_USERS: 'hello@dify.ai'
-      AUTHORIZATION_ADMINLIST_ENABLED: 'true'
-      AUTHORIZATION_ADMINLIST_USERS: 'hello@dify.ai'
-    ports:
-      - "8080:8080"
+      - "${EXPOSE_REDIS_PORT:-6379}:6379"
 
   # The DifySandbox
   sandbox:
@@ -59,13 +34,13 @@ services:
       # The DifySandbox configurations
       # Make sure you are changing this key for your deployment with a strong key.
       # You can generate a strong key using `openssl rand -base64 42`.
-      API_KEY: dify-sandbox
-      GIN_MODE: 'release'
-      WORKER_TIMEOUT: 15
-      ENABLE_NETWORK: 'true'
-      HTTP_PROXY: 'http://ssrf_proxy:3128'
-      HTTPS_PROXY: 'http://ssrf_proxy:3128'
-      SANDBOX_PORT: 8194
+      API_KEY: ${SANDBOX_API_KEY:-dify-sandbox}
+      GIN_MODE: ${SANDBOX_GIN_MODE:-release}
+      WORKER_TIMEOUT: ${SANDBOX_WORKER_TIMEOUT:-15}
+      ENABLE_NETWORK: ${SANDBOX_ENABLE_NETWORK:-true}
+      HTTP_PROXY: ${SANDBOX_HTTP_PROXY:-http://ssrf_proxy:3128}
+      HTTPS_PROXY: ${SANDBOX_HTTPS_PROXY:-http://ssrf_proxy:3128}
+      SANDBOX_PORT: ${SANDBOX_PORT:-8194}
     volumes:
       - ./volumes/sandbox/dependencies:/dependencies
     networks:
@@ -77,30 +52,50 @@ services:
   ssrf_proxy:
     image: ubuntu/squid:latest
     restart: always
-    ports:
-      - "3128:3128"
-      - "8194:8194"
     volumes:
-      # pls clearly modify the squid.conf file to fit your network environment.
-      - ./volumes/ssrf_proxy/squid.conf:/etc/squid/squid.conf
+      - ./ssrf_proxy/squid.conf.template:/etc/squid/squid.conf.template
+      - ./ssrf_proxy/docker-entrypoint.sh:/docker-entrypoint-mount.sh
+    entrypoint: [ "sh", "-c", "cp /docker-entrypoint-mount.sh /docker-entrypoint.sh && sed -i 's/\r$$//' /docker-entrypoint.sh && chmod +x /docker-entrypoint.sh && /docker-entrypoint.sh" ]
+    environment:
+      # pls clearly modify the squid env vars to fit your network environment.
+      HTTP_PORT: ${SSRF_HTTP_PORT:-3128}
+      COREDUMP_DIR: ${SSRF_COREDUMP_DIR:-/var/spool/squid}
+      REVERSE_PROXY_PORT: ${SSRF_REVERSE_PROXY_PORT:-8194}
+      SANDBOX_HOST: ${SSRF_SANDBOX_HOST:-sandbox}
+      SANDBOX_PORT: ${SANDBOX_PORT:-8194}
+    ports:
+      - "${EXPOSE_SSRF_PROXY_PORT:-3128}:${SSRF_HTTP_PORT:-3128}"
+      - "${EXPOSE_SANDBOX_PORT:-8194}:${SANDBOX_PORT:-8194}"
     networks:
       - ssrf_proxy_network
       - default
-  # Qdrant vector store.
-  # uncomment to use qdrant as vector store.
-  # (if uncommented, you need to comment out the weaviate service above,
-  # and set VECTOR_STORE to qdrant in the api & worker service.)
-  # qdrant:
-  #   image: qdrant/qdrant:1.7.3
-  #   restart: always
-  #   volumes:
-  #     - ./volumes/qdrant:/qdrant/storage
-  #   environment:
-  #     QDRANT_API_KEY: 'difyai123456'
-  #   ports:
-  #     - "6333:6333"
-  #     - "6334:6334"
 
+  # The Weaviate vector store.
+  weaviate:
+    image: semitechnologies/weaviate:1.19.0
+    profiles:
+      - weaviate
+    restart: always
+    volumes:
+      # Mount the Weaviate data directory to the container.
+      - ./volumes/weaviate:/var/lib/weaviate
+    env_file:
+      - ./middleware.env
+    environment:
+      # The Weaviate configurations
+      # You can refer to the [Weaviate](https://weaviate.io/developers/weaviate/config-refs/env-vars) documentation for more information.
+      PERSISTENCE_DATA_PATH: ${WEAVIATE_PERSISTENCE_DATA_PATH:-/var/lib/weaviate}
+      QUERY_DEFAULTS_LIMIT: ${WEAVIATE_QUERY_DEFAULTS_LIMIT:-25}
+      AUTHENTICATION_ANONYMOUS_ACCESS_ENABLED: ${WEAVIATE_AUTHENTICATION_ANONYMOUS_ACCESS_ENABLED:-false}
+      DEFAULT_VECTORIZER_MODULE: ${WEAVIATE_DEFAULT_VECTORIZER_MODULE:-none}
+      CLUSTER_HOSTNAME: ${WEAVIATE_CLUSTER_HOSTNAME:-node1}
+      AUTHENTICATION_APIKEY_ENABLED: ${WEAVIATE_AUTHENTICATION_APIKEY_ENABLED:-true}
+      AUTHENTICATION_APIKEY_ALLOWED_KEYS: ${WEAVIATE_AUTHENTICATION_APIKEY_ALLOWED_KEYS:-WVF5YThaHlkYwhGUSmCRgsX3tD5ngdN8pkih}
+      AUTHENTICATION_APIKEY_USERS: ${WEAVIATE_AUTHENTICATION_APIKEY_USERS:-hello@dify.ai}
+      AUTHORIZATION_ADMINLIST_ENABLED: ${WEAVIATE_AUTHORIZATION_ADMINLIST_ENABLED:-true}
+      AUTHORIZATION_ADMINLIST_USERS: ${WEAVIATE_AUTHORIZATION_ADMINLIST_USERS:-hello@dify.ai}
+    ports:
+      - "${EXPOSE_WEAVIATE_PORT:-8080}:8080"
 
 networks:
   # create a network between sandbox, api and ssrf_proxy, and can not access outside.

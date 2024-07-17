@@ -2,11 +2,11 @@
 import type { FC } from 'react'
 import React, { useEffect, useState } from 'react'
 import { useTranslation } from 'react-i18next'
+import { RiCloseLine } from '@remixicon/react'
 import CSVUploader from './csv-uploader'
 import CSVDownloader from './csv-downloader'
 import Button from '@/app/components/base/button'
 import Modal from '@/app/components/base/modal'
-import { XClose } from '@/app/components/base/icons/src/vender/line/general'
 import type { DocForm } from '@/models/datasets'
 
 export type IBatchModalProps = {
@@ -39,10 +39,10 @@ const BatchModal: FC<IBatchModalProps> = ({
   }, [isShow])
 
   return (
-    <Modal isShow={isShow} onClose={() => {}} className='px-8 py-6 !max-w-[520px] !rounded-xl'>
+    <Modal isShow={isShow} onClose={() => { }} className='px-8 py-6 !max-w-[520px] !rounded-xl'>
       <div className='relative pb-1 text-xl font-medium leading-[30px] text-gray-900'>{t('datasetDocuments.list.batchModal.title')}</div>
       <div className='absolute right-4 top-4 p-2 cursor-pointer' onClick={onCancel}>
-        <XClose className='w-4 h-4 text-gray-500' />
+        <RiCloseLine className='w-4 h-4 text-gray-500' />
       </div>
       <CSVUploader
         file={currentCSV}
@@ -52,10 +52,10 @@ const BatchModal: FC<IBatchModalProps> = ({
         docForm={docForm}
       />
       <div className='mt-[28px] pt-6 flex justify-end'>
-        <Button className='mr-2 text-gray-700 text-sm font-medium' onClick={onCancel}>
+        <Button className='mr-2' onClick={onCancel}>
           {t('datasetDocuments.list.batchModal.cancel')}
         </Button>
-        <Button className='text-sm font-medium' type="primary" onClick={handleSend} disabled={!currentCSV}>
+        <Button variant="primary" onClick={handleSend} disabled={!currentCSV}>
           {t('datasetDocuments.list.batchModal.run')}
         </Button>
       </div>

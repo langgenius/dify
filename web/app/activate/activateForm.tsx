@@ -4,10 +4,10 @@ import { useContext } from 'use-context-selector'
 import { useTranslation } from 'react-i18next'
 import useSWR from 'swr'
 import { useSearchParams } from 'next/navigation'
-import cn from 'classnames'
 import Link from 'next/link'
 import { CheckCircleIcon } from '@heroicons/react/24/solid'
 import style from './style.module.css'
+import cn from '@/utils/classnames'
 import Button from '@/app/components/base/button'
 
 import { SimpleSelect } from '@/app/components/base/select'
@@ -41,10 +41,9 @@ const ActivateForm = () => {
 
   const [name, setName] = useState('')
   const [password, setPassword] = useState('')
-  const [timezone, setTimezone] = useState('Asia/Shanghai')
+  const [timezone, setTimezone] = useState(Intl.DateTimeFormat().resolvedOptions().timeZone)
   const [language, setLanguage] = useState(locale)
   const [showSuccess, setShowSuccess] = useState(false)
-  const defaultLanguage = useCallback(() => (window.navigator.language.startsWith('zh') ? LanguagesSupported[1] : LanguagesSupported[0]) || LanguagesSupported[0], [])
 
   const showErrorMessage = useCallback((message: string) => {
     Toast.notify({
@@ -86,7 +85,7 @@ const ActivateForm = () => {
           timezone,
         },
       })
-      setLocaleOnClient(language.startsWith('en') ? 'en-US' : 'zh-Hans', false)
+      setLocaleOnClient(language, false)
       setShowSuccess(true)
     }
     catch {
@@ -110,7 +109,7 @@ const ActivateForm = () => {
             <h2 className="text-[32px] font-bold text-gray-900">{t('login.invalid')}</h2>
           </div>
           <div className="w-full mx-auto mt-6">
-            <Button type='primary' className='w-full !fone-medium !text-sm'>
+            <Button variant='primary' className='w-full !text-sm'>
               <a href="https://dify.ai">{t('login.explore')}</a>
             </Button>
           </div>
@@ -196,8 +195,8 @@ const ActivateForm = () => {
               </div>
               <div>
                 <Button
-                  type='primary'
-                  className='w-full !fone-medium !text-sm'
+                  variant='primary'
+                  className='w-full !text-sm'
                   onClick={handleActivate}
                 >
                   {`${t('login.join')} ${checkRes.workspace_name}`}
@@ -227,7 +226,7 @@ const ActivateForm = () => {
             </h2>
           </div>
           <div className="w-full mx-auto mt-6">
-            <Button type='primary' className='w-full !fone-medium !text-sm'>
+            <Button variant='primary' className='w-full !text-sm'>
               <a href="/signin">{t('login.activated')}</a>
             </Button>
           </div>

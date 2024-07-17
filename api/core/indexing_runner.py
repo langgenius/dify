@@ -339,7 +339,7 @@ class IndexingRunner:
     def _extract(self, index_processor: BaseIndexProcessor, dataset_document: DatasetDocument, process_rule: dict) \
             -> list[Document]:
         # load file
-        if dataset_document.data_source_type not in ["upload_file", "notion_import"]:
+        if dataset_document.data_source_type not in ["upload_file", "notion_import", "website_crawl"]:
             return []
 
         data_source_info = dataset_document.data_source_info_dict
@@ -375,12 +375,29 @@ class IndexingRunner:
                 document_model=dataset_document.doc_form
             )
             text_docs = index_processor.extract(extract_setting, process_rule_mode=process_rule['mode'])
+        elif dataset_document.data_source_type == 'website_crawl':
+            if (not data_source_info or 'provider' not in data_source_info
+                    or 'url' not in data_source_info or 'job_id' not in data_source_info):
+                raise ValueError("no website import info found")
+            extract_setting = ExtractSetting(
+                datasource_type="website_crawl",
+                website_info={
+                    "provider": data_source_info['provider'],
+                    "job_id": data_source_info['job_id'],
+                    "tenant_id": dataset_document.tenant_id,
+                    "url": data_source_info['url'],
+                    "mode": data_source_info['mode'],
+                    "only_main_content": data_source_info['only_main_content']
+                },
+                document_model=dataset_document.doc_form
+            )
+            text_docs = index_processor.extract(extract_setting, process_rule_mode=process_rule['mode'])
         # update document status to splitting
         self._update_document_index_status(
             document_id=dataset_document.id,
             after_indexing_status="splitting",
             extra_update_params={
-                DatasetDocument.word_count: sum([len(text_doc.page_content) for text_doc in text_docs]),
+                DatasetDocument.word_count: sum(len(text_doc.page_content) for text_doc in text_docs),
                 DatasetDocument.parsing_completed_at: datetime.datetime.now(datetime.timezone.utc).replace(tzinfo=None)
             }
         )
@@ -550,7 +567,7 @@ class IndexingRunner:
                 document_qa_list = self.format_split_text(response)
                 qa_documents = []
                 for result in document_qa_list:
-                    qa_document = Document(page_content=result['question'], metadata=document_node.metadata.copy())
+                    qa_document = Document(page_content=result['question'], metadata=document_node.metadata.model_copy())
                     doc_id = str(uuid.uuid4())
                     hash = helper.generate_text_hash(result['question'])
                     qa_document.metadata['answer'] = result['answer']
@@ -713,7 +730,7 @@ class IndexingRunner:
             self._check_document_paused_status(dataset_document.id)
 
             tokens = 0
-            if dataset.indexing_technique == 'high_quality' or embedding_model_type_instance:
+            if embedding_model_instance:
                 tokens += sum(
                     embedding_model_instance.get_text_embedding_num_tokens(
                         [document.page_content]

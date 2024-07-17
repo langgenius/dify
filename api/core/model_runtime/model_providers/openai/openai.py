@@ -1,4 +1,5 @@
 import logging
+from collections.abc import Mapping
 
 from core.model_runtime.entities.model_entities import ModelType
 from core.model_runtime.errors.validate import CredentialsValidateFailedError
@@ -9,7 +10,7 @@ logger = logging.getLogger(__name__)
 
 class OpenAIProvider(ModelProvider):
 
-    def validate_provider_credentials(self, credentials: dict) -> None:
+    def validate_provider_credentials(self, credentials: Mapping) -> None:
         """
         Validate provider credentials
         if validate failed, raise exception

@@ -29,7 +29,7 @@ const SecretKeyGenerateModal = ({
         <InputCopy className='w-full' value={newKey?.token} />
       </div>
       <div className='flex justify-end my-4'>
-        <Button type='default' className={`flex-shrink-0 ${s.w64}`} onClick={onClose}>
+        <Button className={`flex-shrink-0 ${s.w64}`} onClick={onClose}>
           <span className='text-xs font-medium text-gray-800'>{t('appApi.actionMsg.ok')}</span>
         </Button>
       </div>

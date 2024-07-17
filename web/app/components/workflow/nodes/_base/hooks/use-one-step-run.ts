@@ -12,6 +12,7 @@ import { getNodeInfoById, isSystemVar, toNodeOutputVars } from '@/app/components
 import type { CommonNodeType, InputVar, ValueSelector, Var, Variable } from '@/app/components/workflow/types'
 import { BlockEnum, InputVarType, NodeRunningStatus, VarType } from '@/app/components/workflow/types'
 import { useStore as useAppStore } from '@/app/components/app/store'
+import { useWorkflowStore } from '@/app/components/workflow/store'
 import { getIterationSingleNodeRunUrl, singleNodeRun } from '@/service/workflow'
 import Toast from '@/app/components/base/toast'
 import LLMDefault from '@/app/components/workflow/nodes/llm/default'
@@ -164,6 +165,12 @@ const useOneStepRun = <T>({
     }
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [data._isSingleRun])
+
+  const workflowStore = useWorkflowStore()
+  useEffect(() => {
+    workflowStore.getState().setShowSingleRunPanel(!!isShowSingleRun)
+  }, [isShowSingleRun])
+
   const hideSingleRun = () => {
     handleNodeDataUpdate({
       id,
@@ -330,6 +337,7 @@ const useOneStepRun = <T>({
           variable: item.variable,
           type: InputVarType.textInput,
           required: true,
+          value_selector: item.value_selector,
         }
       }
       return {

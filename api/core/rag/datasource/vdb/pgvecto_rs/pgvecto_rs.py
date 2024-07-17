@@ -6,7 +6,7 @@ from uuid import UUID, uuid4
 from flask import current_app
 from numpy import ndarray
 from pgvecto_rs.sqlalchemy import Vector
-from pydantic import BaseModel, root_validator
+from pydantic import BaseModel, model_validator
 from sqlalchemy import Float, String, create_engine, insert, select, text
 from sqlalchemy import text as sql_text
 from sqlalchemy.dialects import postgresql
@@ -31,7 +31,7 @@ class PgvectoRSConfig(BaseModel):
     password: str
     database: str
 
-    @root_validator()
+    @model_validator(mode='before')
     def validate_config(cls, values: dict) -> dict:
         if not values['host']:
             raise ValueError("config PGVECTO_RS_HOST is required")
@@ -129,14 +129,6 @@ class PGVectoRS(BaseVector):
             session.commit()
 
         return pks
-
-    def delete_by_document_id(self, document_id: str):
-        ids = self.get_ids_by_metadata_field('document_id', document_id)
-        if ids:
-            with Session(self._client) as session:
-                select_statement = sql_text(f"DELETE FROM {self._collection_name} WHERE id = ANY(:ids)")
-                session.execute(select_statement, {'ids': ids})
-                session.commit()
 
     def get_ids_by_metadata_field(self, key: str, value: str):
         result = None

@@ -1,18 +1,21 @@
 'use client'
 import { useTranslation } from 'react-i18next'
 import { Fragment, useCallback } from 'react'
-import cn from 'classnames'
+import {
+  RiAddLine,
+  RiArrowDownSLine,
+  RiArrowRightSLine,
+} from '@remixicon/react'
 import { Menu, Transition } from '@headlessui/react'
 import { useRouter } from 'next/navigation'
 import { debounce } from 'lodash-es'
+import cn from '@/utils/classnames'
 import AppIcon from '@/app/components/base/app-icon'
 import { AiText, ChatBot, CuteRobote } from '@/app/components/base/icons/src/vender/solid/communication'
 import { Route } from '@/app/components/base/icons/src/vender/solid/mapsAndTravel'
 import { useAppContext } from '@/context/app-context'
 import { useStore as useAppStore } from '@/app/components/app/store'
-import { ChevronDown, ChevronRight } from '@/app/components/base/icons/src/vender/line/arrows'
 import { FileArrow01, FilePlus01, FilePlus02 } from '@/app/components/base/icons/src/vender/line/files'
-import { Plus } from '@/app/components/base/icons/src/vender/line/general'
 
 export type NavItem = {
   id: string
@@ -34,7 +37,7 @@ export type INavSelectorProps = {
 const NavSelector = ({ curNav, navs, createText, isApp, onCreate, onLoadmore }: INavSelectorProps) => {
   const { t } = useTranslation()
   const router = useRouter()
-  const { isCurrentWorkspaceManager } = useAppContext()
+  const { isCurrentWorkspaceEditor } = useAppContext()
   const setAppDetail = useAppStore(state => state.setAppDetail)
 
   const handleScroll = useCallback(debounce((e) => {
@@ -56,7 +59,7 @@ const NavSelector = ({ curNav, navs, createText, isApp, onCreate, onLoadmore }: 
               open && 'bg-primary-50',
             )}>
               <div className='max-w-[180px] truncate' title={curNav?.name}>{curNav?.name}</div>
-              <ChevronDown
+              <RiArrowDownSLine
                 className={cn('shrink-0 w-3 h-3 ml-1 opacity-50 group-hover:opacity-100', open && '!opacity-100')}
                 aria-hidden="true"
               />
@@ -79,7 +82,7 @@ const NavSelector = ({ curNav, navs, createText, isApp, onCreate, onLoadmore }: 
                         router.push(nav.link)
                       }} title={nav.name}>
                         <div className='relative w-6 h-6 mr-2 rounded-md'>
-                          <AppIcon size='tiny' icon={nav.icon} background={nav.icon_background}/>
+                          <AppIcon size='tiny' icon={nav.icon} background={nav.icon_background} />
                           {!!nav.mode && (
                             <span className={cn(
                               'absolute w-3.5 h-3.5 -bottom-0.5 -right-0.5 p-0.5 bg-white rounded border-[0.5px] border-[rgba(0,0,0,0.02)] shadow-sm',
@@ -110,19 +113,19 @@ const NavSelector = ({ curNav, navs, createText, isApp, onCreate, onLoadmore }: 
                   ))
                 }
               </div>
-              {!isApp && (
+              {!isApp && isCurrentWorkspaceEditor && (
                 <Menu.Button className='p-1 w-full'>
                   <div onClick={() => onCreate('')} className={cn(
                     'flex items-center gap-2 px-3 py-[6px] rounded-lg cursor-pointer hover:bg-gray-100',
                   )}>
                     <div className='shrink-0 flex justify-center items-center w-6 h-6 bg-gray-50 rounded-[6px] border-[0.5px] border-gray-200 border'>
-                      <Plus className='w-4 h-4 text-gray-500' />
+                      <RiAddLine className='w-4 h-4 text-gray-500' />
                     </div>
                     <div className='grow text-left font-normal text-[14px] text-gray-700'>{createText}</div>
                   </div>
                 </Menu.Button>
               )}
-              {isApp && isCurrentWorkspaceManager && (
+              {isApp && isCurrentWorkspaceEditor && (
                 <Menu as="div" className="relative w-full h-full">
                   {({ open }) => (
                     <>
@@ -132,10 +135,10 @@ const NavSelector = ({ curNav, navs, createText, isApp, onCreate, onLoadmore }: 
                           open && '!bg-gray-100',
                         )}>
                           <div className='shrink-0 flex justify-center items-center w-6 h-6 bg-gray-50 rounded-[6px] border-[0.5px] border-gray-200 border'>
-                            <Plus className='w-4 h-4 text-gray-500' />
+                            <RiAddLine className='w-4 h-4 text-gray-500' />
                           </div>
                           <div className='grow text-left font-normal text-[14px] text-gray-700'>{createText}</div>
-                          <ChevronRight className='shrink-0 w-3.5 h-3.5  text-gray-500'/>
+                          <RiArrowRightSLine className='shrink-0 w-3.5 h-3.5  text-gray-500' />
                         </div>
                       </Menu.Button>
                       <Transition

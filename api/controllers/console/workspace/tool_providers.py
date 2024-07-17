@@ -104,7 +104,7 @@ class ToolBuiltinProviderIconApi(Resource):
     @setup_required
     def get(self, provider):
         icon_bytes, mimetype = BuiltinToolManageService.get_builtin_tool_provider_icon(provider)
-        icon_cache_max_age = int(current_app.config.get('TOOL_ICON_CACHE_MAX_AGE'))
+        icon_cache_max_age = current_app.config.get('TOOL_ICON_CACHE_MAX_AGE')
         return send_file(io.BytesIO(icon_bytes), mimetype=mimetype, max_age=icon_cache_max_age)
 
 class ToolApiProviderAddApi(Resource):

@@ -2,15 +2,17 @@
 import type { FC } from 'react'
 import React, { useEffect, useState } from 'react'
 import { useTranslation } from 'react-i18next'
-import cn from 'classnames'
 import { addDefaultValue, toolCredentialToFormSchemas } from '../../utils/to-form-schema'
 import type { Collection } from '../../types'
+import cn from '@/utils/classnames'
 import Drawer from '@/app/components/base/drawer-plus'
 import Button from '@/app/components/base/button'
+import Toast from '@/app/components/base/toast'
 import { fetchBuiltInToolCredential, fetchBuiltInToolCredentialSchema } from '@/service/tools'
 import Loading from '@/app/components/base/loading'
 import Form from '@/app/components/header/account-setting/model-provider-page/model-modal/Form'
 import { LinkExternal02 } from '@/app/components/base/icons/src/vender/line/general'
+import { useLanguage } from '@/app/components/header/account-setting/model-provider-page/hooks'
 
 type Props = {
   collection: Collection
@@ -28,6 +30,7 @@ const ConfigCredential: FC<Props> = ({
   onRemove = () => { },
 }) => {
   const { t } = useTranslation()
+  const language = useLanguage()
   const [credentialSchema, setCredentialSchema] = useState<any>(null)
   const { name: collectionName } = collection
   const [tempCredential, setTempCredential] = React.useState<any>({})
@@ -41,6 +44,16 @@ const ConfigCredential: FC<Props> = ({
       setTempCredential(defaultCredentials)
     })
   }, [])
+
+  const handleSave = () => {
+    for (const field of credentialSchema) {
+      if (field.required && !tempCredential[field.name]) {
+        Toast.notify({ type: 'error', message: t('common.errorMsg.fieldRequired', { field: field.label[language] || field.label.en_US }) })
+        return
+      }
+    }
+    onSaved(tempCredential)
+  }
 
   return (
     <Drawer
@@ -84,12 +97,12 @@ const ConfigCredential: FC<Props> = ({
                 <div className={cn((collection.is_team_authorization && !isHideRemoveBtn) ? 'justify-between' : 'justify-end', 'mt-2 flex ')} >
                   {
                     (collection.is_team_authorization && !isHideRemoveBtn) && (
-                      <Button className='flex items-center h-8 !px-3 !text-[13px] font-medium !text-gray-700' onClick={onRemove}>{t('common.operation.remove')}</Button>
+                      <Button onClick={onRemove}>{t('common.operation.remove')}</Button>
                     )
                   }
                   < div className='flex space-x-2'>
-                    <Button className='flex items-center h-8 !px-3 !text-[13px] font-medium !text-gray-700 bg-white' onClick={onCancel}>{t('common.operation.cancel')}</Button>
-                    <Button className='flex items-center h-8 !px-3 !text-[13px] font-medium' type='primary' onClick={() => onSaved(tempCredential)}>{t('common.operation.save')}</Button>
+                    <Button onClick={onCancel}>{t('common.operation.cancel')}</Button>
+                    <Button variant='primary' onClick={handleSave}>{t('common.operation.save')}</Button>
                   </div>
                 </div>
               </>

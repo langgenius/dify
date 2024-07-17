@@ -14,7 +14,7 @@ const translation = {
     permissionsAllMember: 'すべてのチームメンバー',
     indexMethod: 'インデックス方法',
     indexMethodHighQuality: '高品質',
-    indexMethodHighQualityTip: 'ユーザーのクエリ時により高い精度を提供するために、OpenAIの埋め込みインターフェースを呼び出して処理します。',
+    indexMethodHighQualityTip: 'ユーザーがクエリを実行する際により高い精度を提供するために、Embeddingモデルを呼び出して処理を行う。',
     indexMethodEconomy: '経済的',
     indexMethodEconomyTip: 'オフラインのベクトルエンジン、キーワードインデックスなどを使用して精度を低下させることなく、トークンを消費せずに処理します。',
     embeddingModel: '埋め込みモデル',

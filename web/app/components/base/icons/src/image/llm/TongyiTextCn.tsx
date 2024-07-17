@@ -2,8 +2,8 @@
 // DON NOT EDIT IT MANUALLY
 
 import * as React from 'react'
-import cn from 'classnames'
 import s from './TongyiTextCn.module.css'
+import cn from '@/utils/classnames'
 
 const Icon = React.forwardRef<HTMLSpanElement, React.DetailedHTMLProps<React.HTMLAttributes<HTMLSpanElement>, HTMLSpanElement>>((
   { className, ...restProps },

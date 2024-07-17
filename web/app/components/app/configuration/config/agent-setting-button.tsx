@@ -25,7 +25,7 @@ const AgentSettingButton: FC<Props> = ({
 
   return (
     <>
-      <Button onClick={() => setIsShowAgentSetting(true)} className='shrink-0 mr-2 !px-3 !h-8 !text-[13px] font-medium text-gray-700'>
+      <Button onClick={() => setIsShowAgentSetting(true)} className='shrink-0 mr-2'>
         <Settings01 className='mr-1 w-4 h-4 text-gray-500' />
         {t('appDebug.agent.setting.name')}
       </Button>

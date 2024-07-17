@@ -514,8 +514,8 @@ class WorkflowConverter:
 
                 prompt_rules = prompt_template_config['prompt_rules']
                 role_prefix = {
-                    "user": prompt_rules['human_prefix'] if 'human_prefix' in prompt_rules else 'Human',
-                    "assistant": prompt_rules['assistant_prefix'] if 'assistant_prefix' in prompt_rules else 'Assistant'
+                    "user": prompt_rules.get('human_prefix', 'Human'),
+                    "assistant": prompt_rules.get('assistant_prefix', 'Assistant')
                 }
             else:
                 advanced_completion_prompt_template = prompt_template.advanced_completion_prompt_template

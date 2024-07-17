@@ -70,7 +70,8 @@ class AdvancedChatAppRunner(AppRunner):
                 app_record=app_record,
                 app_generate_entity=application_generate_entity,
                 inputs=inputs,
-                query=query
+                query=query,
+                message_id=message.id
         ):
             return
 
@@ -156,11 +157,14 @@ class AdvancedChatAppRunner(AppRunner):
         # return workflow
         return workflow
 
-    def handle_input_moderation(self, queue_manager: AppQueueManager,
-                                app_record: App,
-                                app_generate_entity: AdvancedChatAppGenerateEntity,
-                                inputs: dict,
-                                query: str) -> bool:
+    def handle_input_moderation(
+            self, queue_manager: AppQueueManager,
+            app_record: App,
+            app_generate_entity: AdvancedChatAppGenerateEntity,
+            inputs: dict,
+            query: str,
+            message_id: str
+    ) -> bool:
         """
         Handle input moderation
         :param queue_manager: application queue manager
@@ -168,6 +172,7 @@ class AdvancedChatAppRunner(AppRunner):
         :param app_generate_entity: application generate entity
         :param inputs: inputs
         :param query: query
+        :param message_id: message id
         :return:
         """
         try:
@@ -178,6 +183,7 @@ class AdvancedChatAppRunner(AppRunner):
                 app_generate_entity=app_generate_entity,
                 inputs=inputs,
                 query=query,
+                message_id=message_id,
             )
         except ModerationException as e:
             self._stream_output(
@@ -249,6 +255,12 @@ class AdvancedChatAppRunner(AppRunner):
                 )
                 index += 1
                 time.sleep(0.01)
+        else:
+            queue_manager.publish(
+                QueueTextChunkEvent(
+                    text=text
+                ), PublishFrom.APPLICATION_MANAGER
+            )
 
         queue_manager.publish(
             QueueStopEvent(stopped_by=stopped_by),

@@ -17,7 +17,7 @@ const translation = {
     indexMethod: 'Metoda indeksowania',
     indexMethodHighQuality: 'Wysoka jakość',
     indexMethodHighQualityTip:
-      'Wywołaj interfejs wbudowywanie OpenAI do przetwarzania, aby zapewnić wyższą dokładność przy zapytaniach użytkowników.',
+      'Wywołaj model Embedding do przetwarzania, aby zapewnić większą dokładność przy zapytaniach użytkowników.',
     indexMethodEconomy: 'Ekonomiczna',
     indexMethodEconomyTip:
       'Użyj silników wektorów offline, indeksów słów kluczowych itp., aby zmniejszyć dokładność bez wydawania tokenów',

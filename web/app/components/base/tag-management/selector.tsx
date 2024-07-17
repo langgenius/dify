@@ -3,14 +3,14 @@ import { useMemo, useState } from 'react'
 import { useContext } from 'use-context-selector'
 import { useTranslation } from 'react-i18next'
 import { useUnmount } from 'ahooks'
-import cn from 'classnames'
+import { RiAddLine } from '@remixicon/react'
 import { useStore as useTagStore } from './store'
+import cn from '@/utils/classnames'
 import type { HtmlContentProps } from '@/app/components/base/popover'
 import CustomPopover from '@/app/components/base/popover'
 import Divider from '@/app/components/base/divider'
 import SearchInput from '@/app/components/base/search-input'
 import { Tag01, Tag03 } from '@/app/components/base/icons/src/vender/line/financeAndECommerce'
-import { Plus } from '@/app/components/base/icons/src/vender/line/general'
 import type { Tag } from '@/app/components/base/tag-management/constant'
 import Checkbox from '@/app/components/base/checkbox'
 import { bindTag, createTag, fetchTagList, unBindTag } from '@/service/tag'
@@ -134,7 +134,7 @@ const Panel = (props: PanelProps) => {
       {keywords && notExisted && (
         <div className='p-1'>
           <div className='flex items-center gap-2 pl-3 py-[6px] pr-2 rounded-lg cursor-pointer hover:bg-gray-100' onClick={createNewTag}>
-            <Plus className='h-4 w-4 text-gray-500' />
+            <RiAddLine className='h-4 w-4 text-gray-500' />
             <div className='grow text-sm text-gray-700 leading-5 truncate'>
               {`${t('common.tag.create')} `}
               <span className='font-medium'>{`"${keywords}"`}</span>
@@ -156,7 +156,7 @@ const Panel = (props: PanelProps) => {
               <Checkbox
                 className='shrink-0'
                 checked={selectedTagIDs.includes(tag.id)}
-                onCheck={() => {}}
+                onCheck={() => { }}
               />
               <div title={tag.name} className='grow text-sm text-gray-700 leading-5 truncate'>{tag.name}</div>
             </div>
@@ -170,7 +170,7 @@ const Panel = (props: PanelProps) => {
               <Checkbox
                 className='shrink-0'
                 checked={selectedTagIDs.includes(tag.id)}
-                onCheck={() => {}}
+                onCheck={() => { }}
               />
               <div title={tag.name} className='grow text-sm text-gray-700 leading-5 truncate'>{tag.name}</div>
             </div>

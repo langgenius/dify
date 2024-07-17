@@ -1,7 +1,7 @@
 from enum import Enum
 from typing import Optional
 
-from pydantic import BaseModel
+from pydantic import BaseModel, ConfigDict
 
 from core.model_runtime.entities.common_entities import I18nObject
 from core.model_runtime.entities.model_entities import ModelType, ProviderModel
@@ -77,3 +77,6 @@ class DefaultModelEntity(BaseModel):
     model: str
     model_type: ModelType
     provider: DefaultModelProviderEntity
+
+    # pydantic configs
+    model_config = ConfigDict(protected_namespaces=())

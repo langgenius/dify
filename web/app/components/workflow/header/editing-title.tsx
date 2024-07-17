@@ -10,6 +10,7 @@ const EditingTitle = () => {
   const { formatTimeFromNow } = useWorkflow()
   const draftUpdatedAt = useStore(state => state.draftUpdatedAt)
   const publishedAt = useStore(state => state.publishedAt)
+  const isSyncingWorkflowDraft = useStore(s => s.isSyncingWorkflowDraft)
 
   return (
     <div className='flex items-center h-[18px] text-xs text-gray-500'>
@@ -25,6 +26,14 @@ const EditingTitle = () => {
         publishedAt
           ? `${t('workflow.common.published')} ${formatTimeFromNow(publishedAt)}`
           : t('workflow.common.unpublished')
+      }
+      {
+        isSyncingWorkflowDraft && (
+          <>
+            <span className='flex items-center mx-1'>·</span>
+            {t('workflow.common.syncingData')}
+          </>
+        )
       }
     </div>
   )

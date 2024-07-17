@@ -1,5 +1,5 @@
 from core.tools.errors import ToolProviderCredentialValidationError
-from core.tools.provider.builtin.duckduckgo.tools.duckduckgo_search import DuckDuckGoSearchTool
+from core.tools.provider.builtin.duckduckgo.tools.ddgo_search import DuckDuckGoSearchTool
 from core.tools.provider.builtin_tool_provider import BuiltinToolProviderController
 
 
