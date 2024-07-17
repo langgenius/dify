@@ -36,7 +36,7 @@ const NodeComponent: FC<NodeProps<AssignerNodeType>> = ({
         varName={varName}
         className='bg-workflow-block-parma-bg'
       />
-      <div className='mt-2 flex justify-between items-center h-[22px] px-[5px] bg-workflow-block-parma-bg radius-sm'>
+      <div className='my-2 flex justify-between items-center h-[22px] px-[5px] bg-workflow-block-parma-bg radius-sm'>
         <div className='system-xs-medium-uppercase text-text-tertiary'>{t(`${i18nPrefix}.writeMode`)}</div>
         <div className='system-xs-medium text-text-secondary'>{(varType === VarType.number && writeMode === WriteMode.Append) ? t(`${i18nPrefix}.plus`) : t(`${i18nPrefix}.${writeMode}`)}</div>
       </div>

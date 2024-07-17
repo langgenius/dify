@@ -61,6 +61,13 @@ const useConfig = (id: string, payload: AssignerNodeType) => {
     }
   }, [inputs, setInputs])
 
+  const handleValueChange = useCallback((value: any) => {
+    const newInputs = produce(inputs, (draft) => {
+      draft.value = value
+    })
+    setInputs(newInputs)
+  }, [inputs, setInputs])
+
   const filterVar = useCallback(() => {
     return true // [VarType.string, VarType.number, VarType.object, VarType.array, VarType.arrayNumber, VarType.arrayString, VarType.arrayObject].includes(varPayload.type)
   }, [])
@@ -73,6 +80,7 @@ const useConfig = (id: string, payload: AssignerNodeType) => {
     varType,
     writeModeTypes,
     handleWriteModeChange,
+    handleValueChange,
   }
 }
 

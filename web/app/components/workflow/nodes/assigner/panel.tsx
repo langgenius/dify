@@ -5,7 +5,9 @@ import { useTranslation } from 'react-i18next'
 import VarReferencePicker from '../_base/components/variable/var-reference-picker'
 import RadioCardItem from '../_base/components/radio-card-item'
 import useConfig from './use-config'
-import { type AssignerNodeType, WriteMode } from './types'
+import { WriteMode } from './types'
+import type { AssignerNodeType, AssignerSupportVarType } from './types'
+import Value from './components/value'
 import Field from '@/app/components/workflow/nodes/_base/components/field'
 import { type NodePanelProps, VarType } from '@/app/components/workflow/types'
 
@@ -25,6 +27,7 @@ const Panel: FC<NodePanelProps<AssignerNodeType>> = ({
     varType,
     handleWriteModeChange,
     writeModeTypes,
+    handleValueChange,
   } = useConfig(id, data)
 
   return (
@@ -60,7 +63,14 @@ const Panel: FC<NodePanelProps<AssignerNodeType>> = ({
         <Field
           title={t(`${i18nPrefix}.setValue`)}
         >
-          aa
+          <Value
+            nodeId={id}
+            writeMode={inputs.writeMode}
+            type={varType as AssignerSupportVarType}
+            value={inputs.value}
+            onChange={handleValueChange}
+            readOnly={readOnly}
+          />
         </Field>
       </div>
     </div>
