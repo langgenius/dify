@@ -122,7 +122,7 @@ class Workflow(db.Model):
     updated_at = db.Column(db.DateTime)
     # TODO: update this field to sqlalchemy column after frontend update.
     _environment_variables = '{}'
-    # _environment_variables = db.Column('environment_variable', db.Text, nullable=False, server_default='{}')
+    # _environment_variables = db.Column('environment_variables', db.Text, nullable=False, server_default='{}')
 
     @property
     def created_by_account(self):
@@ -190,6 +190,10 @@ class Workflow(db.Model):
 
     @property
     def environment_variables(self) -> Sequence[Variable]:
+        if not self._environment_variables:
+            self._environment_variables = '{}'
+            return []
+
         # FIXME: get current user from flask context, may not a good way.
         user = contexts.current_user.get()
 
