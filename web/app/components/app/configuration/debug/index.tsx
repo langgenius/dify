@@ -136,7 +136,7 @@ const Debug: FC<IDebug> = ({
 
   const { notify } = useContext(ToastContext)
   const logError = useCallback((message: string) => {
-    notify({ type: 'error', message, duration: 3000 })
+    notify({ type: 'error', message, duration: 6000 })
   }, [notify])
   const [completionFiles, setCompletionFiles] = useState<VisionFile[]>([])
 
@@ -144,11 +144,11 @@ const Debug: FC<IDebug> = ({
     if (isAdvancedMode && mode !== AppType.completion) {
       if (modelModeType === ModelModeType.completion) {
         if (!hasSetBlockStatus.history) {
-          notify({ type: 'error', message: t('appDebug.otherError.historyNoBeEmpty'), duration: 3000 })
+          notify({ type: 'error', message: t('appDebug.otherError.historyNoBeEmpty'), duration: 6000 })
           return false
         }
         if (!hasSetBlockStatus.query) {
-          notify({ type: 'error', message: t('appDebug.otherError.queryNoBeEmpty'), duration: 3000 })
+          notify({ type: 'error', message: t('appDebug.otherError.queryNoBeEmpty'), duration: 6000 })
           return false
         }
       }

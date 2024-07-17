@@ -106,7 +106,7 @@ const ChatInput: FC<ChatInputProps> = ({
   }
 
   const logError = (message: string) => {
-    notify({ type: 'error', message, duration: 3000 })
+    notify({ type: 'error', message, duration: 6000 })
   }
   const handleVoiceInputShow = () => {
     (Recorder as any).getPermission().then(() => {

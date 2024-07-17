@@ -555,23 +555,23 @@ const Configuration: FC = () => {
     const promptVariables = modelConfig.configs.prompt_variables
 
     if (promptEmpty) {
-      notify({ type: 'error', message: t('appDebug.otherError.promptNoBeEmpty'), duration: 3000 })
+      notify({ type: 'error', message: t('appDebug.otherError.promptNoBeEmpty'), duration: 6000 })
       return
     }
     if (isAdvancedMode && mode !== AppType.completion) {
       if (modelModeType === ModelModeType.completion) {
         if (!hasSetBlockStatus.history) {
-          notify({ type: 'error', message: t('appDebug.otherError.historyNoBeEmpty'), duration: 3000 })
+          notify({ type: 'error', message: t('appDebug.otherError.historyNoBeEmpty'), duration: 6000 })
           return
         }
         if (!hasSetBlockStatus.query) {
-          notify({ type: 'error', message: t('appDebug.otherError.queryNoBeEmpty'), duration: 3000 })
+          notify({ type: 'error', message: t('appDebug.otherError.queryNoBeEmpty'), duration: 6000 })
           return
         }
       }
     }
     if (contextVarEmpty) {
-      notify({ type: 'error', message: t('appDebug.feature.dataSet.queryVariable.contextVarNotEmpty'), duration: 3000 })
+      notify({ type: 'error', message: t('appDebug.feature.dataSet.queryVariable.contextVarNotEmpty'), duration: 6000 })
       return
     }
     const postDatasets = dataSets.map(({ id }) => ({
@@ -638,7 +638,7 @@ const Configuration: FC = () => {
       modelConfig: newModelConfig,
       completionParams,
     })
-    notify({ type: 'success', message: t('common.api.success'), duration: 3000 })
+    notify({ type: 'success', message: t('common.api.success'), duration: 6000 })
 
     setCanReturnToSimpleMode(false)
     return true

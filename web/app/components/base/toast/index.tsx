@@ -89,7 +89,7 @@ export const ToastProvider = ({
   const placeholder: IToastProps = {
     type: 'info',
     message: 'Toast message',
-    duration: 3000,
+    duration: 6000,
   }
   const [params, setParams] = React.useState<IToastProps>(placeholder)
 
