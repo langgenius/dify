@@ -1,6 +1,6 @@
 provider: stepfun
 label:
-  zh_Hans: 阶跃星辰 
+  zh_Hans: 阶跃星辰
   en_US: Stepfun
 description:
   en_US: Models provided by stepfun, such as step-1-8k, step-1-32k、step-1v-8k、step-1v-32k, step-1-128k and step-1-256k

@@ -1,6 +1,5 @@
-import os
 from collections.abc import Generator
-
+import os
 import pytest
 
 from core.model_runtime.entities.llm_entities import LLMResult, LLMResultChunk, LLMResultChunkDelta
