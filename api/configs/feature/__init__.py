@@ -23,6 +23,7 @@ class SecurityConfig(BaseSettings):
         default=24,
     )
 
+
 class AppExecutionConfig(BaseSettings):
     """
     App Execution configs
@@ -435,6 +436,13 @@ class ImageFormatConfig(BaseSettings):
     )
 
 
+class CeleryBeatConfig(BaseSettings):
+    CELERY_BEAT_SCHEDULER_TIME: int = Field(
+        description='the time of the celery scheduler, default to 1 day',
+        default=1,
+    )
+
+
 class FeatureConfig(
     # place the configs in alphabet order
     AppExecutionConfig,
@@ -462,5 +470,6 @@ class FeatureConfig(
 
     # hosted services config
     HostedServiceConfig,
+    CeleryBeatConfig,
 ):
     pass

@@ -117,7 +117,7 @@ class MemberUpdateRoleApi(Resource):
         if not TenantAccountRole.is_valid_role(new_role):
             return {'code': 'invalid-role', 'message': 'Invalid role'}, 400
 
-        member = Account.query.get(str(member_id))
+        member = db.session.get(Account, str(member_id))
         if not member:
             abort(404)
 
