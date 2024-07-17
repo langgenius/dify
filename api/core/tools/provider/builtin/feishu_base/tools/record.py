@@ -44,5 +44,5 @@ class RecordTool(BuiltinTool):
             res = client.list_table_records(app_token, table_id, page_token, page_size)
 
         else:
-            res = {"error": f"not support this {operations} operation"}
+            res = {'error': f'not support this {operations} operation'}
         return self.create_json_message(res)

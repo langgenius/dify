@@ -15,8 +15,8 @@ class FeishuRequest:
         if redis_client.exists("feishu_tenant_access_token"):
             return redis_client.get("feishu_tenant_access_token").decode()
         res = self.get_tenant_access_token(self.app_id, self.app_secret)
-        redis_client.setex("feishu_tenant_access_token", res.get('expire'), res.get('tenant_access_token'))
-        return res.get('tenant_access_token')
+        redis_client.setex("feishu_tenant_access_token", res.get("expire"), res.get("tenant_access_token"))
+        return res.get("tenant_access_token")
 
     def _send_request(self, url: str, method: str = "post", require_token: bool = True, payload: dict = None,
                       params: dict = None):
@@ -99,7 +99,7 @@ class FeishuRequest:
     def list_base_tables(self, app_token: str, page_token: str = "", page_size: int = 20) -> dict:
         """
         API url: https://open.feishu.cn/document/server-docs/docs/bitable-v1/app-table/list
-        page_token is used for load next page's data
+        page_token is used for load next page"s data
         Example Response:
         {
             "code": 0,
@@ -123,7 +123,7 @@ class FeishuRequest:
             "page_size": page_size,
         }
         url = f"https://open.feishu.cn/open-apis/bitable/v1/apps/{app_token}/tables"
-        res = self._send_request(url, method='get', params=params)
+        res = self._send_request(url, method="get", params=params)
         return res.get("data")
 
     def delete_base_table(self, app_token: str, table_id: str) -> dict:
@@ -137,7 +137,7 @@ class FeishuRequest:
         }
         """
         url = f"https://open.feishu.cn/open-apis/bitable/v1/apps/{app_token}/tables/{table_id}"
-        res = self._send_request(url, method='delete')
+        res = self._send_request(url, method="delete")
         return res
 
     def create_table_record(self, app_token: str, table_id: str, fields: str) -> dict:
@@ -149,7 +149,7 @@ class FeishuRequest:
             "fields": json.loads(fields)
         }
         res = self._send_request(url, payload=payload)
-        return res.get('data')
+        return res.get("data")
 
     def update_table_record(self, app_token: str, table_id: str, record_id: str,
                             fields: str) -> dict:
@@ -161,23 +161,23 @@ class FeishuRequest:
             "fields": json.loads(fields)
         }
         res = self._send_request(url, method="put", payload=payload)
-        return res.get('data')
+        return res.get("data")
 
     def delete_table_record(self, app_token: str, table_id: str, record_id: str) -> dict:
         """
         API url: https://open.feishu.cn/document/server-docs/docs/bitable-v1/app-table-record/delete
         """
         url = f"https://open.feishu.cn/open-apis/bitable/v1/apps/{app_token}/tables/{table_id}/records/{record_id}"
-        res = self._send_request(url, method='delete')
-        return res.get('data')
+        res = self._send_request(url, method="delete")
+        return res.get("data")
 
     def get_table_record(self, app_token: str, table_id: str, record_id: str) -> dict:
         """
         API url: https://open.feishu.cn/document/server-docs/docs/bitable-v1/app-table-record/get
         """
         url = f"https://open.feishu.cn/open-apis/bitable/v1/apps/{app_token}/tables/{table_id}/records/{record_id}"
-        res = self._send_request(url, method='get')
-        return res.get('data')
+        res = self._send_request(url, method="get")
+        return res.get("data")
 
     def list_table_records(self, app_token: str, table_id: str, page_token: str = "",
                            page_size: int = 20) -> dict:
@@ -190,4 +190,4 @@ class FeishuRequest:
         }
         url = f"https://open.feishu.cn/open-apis/bitable/v1/apps/{app_token}/tables/{table_id}/records/search"
         res = self._send_request(url, params=params, payload={})
-        return res.get('data')
+        return res.get("data")

@@ -31,5 +31,5 @@ class TableTool(BuiltinTool):
                 raise ValueError('table id is required when delete tables')
             res = client.delete_base_table(app_token, table_id)
         else:
-            res = {"error": f"not support this {operations} operation"}
+            res = {'error': f'not support this {operations} operation'}
         return self.create_json_message(res)
