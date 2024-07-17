@@ -9,10 +9,10 @@ import re
 import time
 from json import JSONDecodeError
 
-from flask import current_app
 from sqlalchemy import func
 from sqlalchemy.dialects.postgresql import JSONB
 
+from configs import dify_config
 from core.rag.retrieval.retrival_methods import RetrievalMethod
 from extensions.ext_database import db
 from extensions.ext_storage import storage
@@ -528,7 +528,7 @@ class DocumentSegment(db.Model):
             nonce = os.urandom(16).hex()
             timestamp = str(int(time.time()))
             data_to_sign = f"image-preview|{upload_file_id}|{timestamp}|{nonce}"
-            secret_key = current_app.config['SECRET_KEY'].encode()
+            secret_key = dify_config.SECRET_KEY.encode() if dify_config.SECRET_KEY else b''
             sign = hmac.new(secret_key, data_to_sign.encode(), hashlib.sha256).digest()
             encoded_sign = base64.urlsafe_b64encode(sign).decode()
 
