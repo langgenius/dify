@@ -246,9 +246,9 @@ Workflow 应用无会话支持，适合用于翻译/文章写作/总结 AI 等�
   </Col>
   <Col sticky>
     ### Request Example
-    <CodeGroup title="Request" tag="GET" label="/workflows/tasks/:task_id" targetCode={`curl -X GET '${props.appDetail.api_base_url}/workflows/tasks/:task_id/stop' \\\n-H 'Authorization: Bearer {api_key}' \\\n-H 'Content-Type: application/json'`}>
+    <CodeGroup title="Request" tag="GET" label="/workflows/tasks/:task_id" targetCode={`curl -X GET '${props.appDetail.api_base_url}/workflows/tasks/:task_id' \\\n-H 'Authorization: Bearer {api_key}' \\\n-H 'Content-Type: application/json'`}>
       ```bash {{ title: 'cURL' }}
-      curl -X POST '${props.appDetail.api_base_url}/workflows/tasks/:task_id' \
+      curl -X GET '${props.appDetail.api_base_url}/workflows/tasks/:task_id' \
       -H 'Authorization: Bearer {api_key}' \
       -H 'Content-Type: application/json'
       ```
