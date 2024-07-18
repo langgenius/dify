@@ -19,6 +19,7 @@ from qdrant_client.http.models import (
 )
 from qdrant_client.local.qdrant_local import QdrantLocal
 
+from configs import dify_config
 from core.rag.datasource.entity.embedding import Embeddings
 from core.rag.datasource.vdb.field import Field
 from core.rag.datasource.vdb.vector_base import BaseVector
@@ -361,6 +362,8 @@ class QdrantVector(BaseVector):
                     metadata=metadata,
                 )
                 docs.append(doc)
+        # Sort the documents by score in descending order
+        docs = sorted(docs, key=lambda x: x.metadata['score'], reverse=True)
         return docs
 
     def search_by_full_text(self, query: str, **kwargs: Any) -> list[Document]:
@@ -444,11 +447,11 @@ class QdrantVectorFactory(AbstractVectorFactory):
             collection_name=collection_name,
             group_id=dataset.id,
             config=QdrantConfig(
-                endpoint=config.get('QDRANT_URL'),
-                api_key=config.get('QDRANT_API_KEY'),
+                endpoint=dify_config.QDRANT_URL,
+                api_key=dify_config.QDRANT_API_KEY,
                 root_path=config.root_path,
-                timeout=config.get('QDRANT_CLIENT_TIMEOUT'),
-                grpc_port=config.get('QDRANT_GRPC_PORT'),
-                prefer_grpc=config.get('QDRANT_GRPC_ENABLED')
+                timeout=dify_config.QDRANT_CLIENT_TIMEOUT,
+                grpc_port=dify_config.QDRANT_GRPC_PORT,
+                prefer_grpc=dify_config.QDRANT_GRPC_ENABLED
             )
         )
