@@ -10,7 +10,7 @@ class MyScaleConfig(BaseModel):
 
     MYSCALE_HOST: Optional[str] = Field(
         description='MyScale host',
-        default=None,
+        default='localhost',
     )
 
     MYSCALE_PORT: Optional[PositiveInt] = Field(
@@ -20,20 +20,20 @@ class MyScaleConfig(BaseModel):
 
     MYSCALE_USER: Optional[str] = Field(
         description='MyScale user',
-        default=None,
+        default='default',
     )
 
     MYSCALE_PASSWORD: Optional[str] = Field(
         description='MyScale password',
-        default=None,
+        default='',
     )
 
     MYSCALE_DATABASE: Optional[str] = Field(
         description='MyScale database name',
-        default=None,
+        default='default',
     )
 
     MYSCALE_FTS_PARAMS: Optional[str] = Field(
         description='MyScale fts index parameters',
-        default=None,
+        default='',
     )
