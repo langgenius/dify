@@ -218,41 +218,43 @@ const GetAutomaticRes: FC<IGetAutomaticResProps> = ({
         </div>
 
         {(!isLoading && res) && (
-          <div className='w-0 grow p-6 pb-0 h-full overflow-y-auto'>
-            <div className='mb-3 leading-[160%] text-base font-semibold text-gray-800'>{t('appDebug.generate.resTitle')}</div>
-            <ConfigPrompt
-              mode={mode}
-              promptTemplate={res?.prompt || ''}
-              promptVariables={[]}
-              readonly
-              noTitle={isInLLMNode}
-              gradientBorder
-              editorHeight={isInLLMNode ? 524 : 0}
-            />
-            {!isInLLMNode && (
-              <>
-                {(res?.variables?.length && res?.variables?.length > 0)
-                  ? (
-                    <ConfigVar
-                      promptVariables={res?.variables.map(key => ({ key, name: key, type: 'string', required: true })) || []}
-                      readonly
-                    />
-                  )
-                  : ''}
+          <div className='w-0 grow p-6 pb-0 h-full'>
+            <div className='shrink-0 mb-3 leading-[160%] text-base font-semibold text-gray-800'>{t('appDebug.generate.resTitle')}</div>
+            <div className='max-h-[560px] pb-2 overflow-y-auto'>
+              <ConfigPrompt
+                mode={mode}
+                promptTemplate={res?.prompt || ''}
+                promptVariables={[]}
+                readonly
+                noTitle={isInLLMNode}
+                gradientBorder
+                editorHeight={isInLLMNode ? 524 : 0}
+              />
+              {!isInLLMNode && (
+                <>
+                  {(res?.variables?.length && res?.variables?.length > 0)
+                    ? (
+                      <ConfigVar
+                        promptVariables={res?.variables.map(key => ({ key, name: key, type: 'string', required: true })) || []}
+                        readonly
+                      />
+                    )
+                    : ''}
 
-                {(mode !== AppType.completion && res?.opening_statement) && (
-                  <div className='mt-7'>
-                    <GroupName name={t('appDebug.feature.groupChat.title')} />
-                    <OpeningStatement
-                      value={res?.opening_statement || ''}
-                      readonly
-                    />
-                  </div>
-                )}
-              </>
-            )}
+                  {(mode !== AppType.completion && res?.opening_statement) && (
+                    <div className='mt-7'>
+                      <GroupName name={t('appDebug.feature.groupChat.title')} />
+                      <OpeningStatement
+                        value={res?.opening_statement || ''}
+                        readonly
+                      />
+                    </div>
+                  )}
+                </>
+              )}
+            </div>
 
-            <div className='sticky bottom-[-24px] flex justify-end right-0 py-4 bg-white'>
+            <div className='flex justify-end py-4 pr-6 bg-white'>
               <Button onClick={onClose}>{t('common.operation.cancel')}</Button>
               <Button variant='primary' className='ml-2' onClick={() => {
                 setShowConfirmOverwrite(true)
