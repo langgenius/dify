@@ -125,16 +125,18 @@ export const useEmbeddedChatbot = () => {
         }
       }
       if (item.number) {
+        const convertedNumber = Number(initInputs[item.number.variable]) ?? undefined
         return {
           ...item.number,
-          default: initInputs[item.number.variable] || item.default,
+          default: convertedNumber || item.default,
           type: 'number',
         }
       }
       if (item.select) {
+        const isInputInOptions = item.select.options.includes(initInputs[item.select.variable])
         return {
           ...item.select,
-          default: initInputs[item.select.variable] || item.default,
+          default: (isInputInOptions ? initInputs[item.select.variable] : undefined) || item.default,
           type: 'select',
         }
       }
