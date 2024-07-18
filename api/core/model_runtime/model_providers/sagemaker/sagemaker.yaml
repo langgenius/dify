@@ -115,3 +115,12 @@ model_credential_schema:
           label:
             en_US: Asia Pacific (Sydney)
             zh_Hans: 亚太地区 (悉尼)
+        - value: cn-north-1
+          label:
+            en_US: AWS Beijing (cn-north-1)
+            zh_Hans: 中国北京 (cn-north-1)
+        - value: cn-northwest-1
+          label:
+            en_US: AWS Ningxia (cn-northwest-1)
+            zh_Hans: 中国宁夏 (cn-northwest-1)
+
