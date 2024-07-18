@@ -12,6 +12,7 @@ identity:
   icon: icon.svg
   tags:
     - utilities
+    - travel
 credentials_for_provider:
   tianditu_api_key:
     type: secret-input
