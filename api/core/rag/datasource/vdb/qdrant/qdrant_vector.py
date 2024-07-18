@@ -6,6 +6,7 @@ from itertools import islice
 from typing import TYPE_CHECKING, Any, Optional, Union, cast
 
 import qdrant_client
+from flask import current_app
 from pydantic import BaseModel
 from qdrant_client.http import models as rest
 from qdrant_client.http.models import (
@@ -439,6 +440,7 @@ class QdrantVectorFactory(AbstractVectorFactory):
             dataset.index_struct = json.dumps(
                 self.gen_index_struct_dict(VectorType.QDRANT, collection_name))
 
+        config = current_app.config
         return QdrantVector(
             collection_name=collection_name,
             group_id=dataset.id,

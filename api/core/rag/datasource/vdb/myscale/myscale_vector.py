@@ -159,11 +159,11 @@ class MyScaleVectorFactory(AbstractVectorFactory):
         return MyScaleVector(
             collection_name=collection_name,
             config=MyScaleConfig(
-                host=dify_config.MYSCALE_HOST if dify_config.MYSCALE_HOST else "localhost",
-                port=dify_config.MYSCALE_PORT if dify_config.MYSCALE_PORT else 8123,
-                user=dify_config.MYSCALE_USER if dify_config.MYSCALE_USER else "default",
-                password=dify_config.MYSCALE_PASSWORD if dify_config.MYSCALE_PASSWORD else "",
-                database=dify_config.MYSCALE_DATABASE if dify_config.MYSCALE_DATABASE else "default",
-                fts_params=dify_config.MYSCALE_FTS_PARAMS if dify_config.MYSCALE_FTS_PARAMS else "",
+                host=dify_config.MYSCALE_HOST or "localhost",
+                port=dify_config.MYSCALE_PORT or 8123,
+                user=dify_config.MYSCALE_USER or "default",
+                password=dify_config.MYSCALE_PASSWORD or "",
+                database=dify_config.MYSCALE_DATABASE or "default",
+                fts_params=dify_config.MYSCALE_FTS_PARAMS or "",
             ),
         )
