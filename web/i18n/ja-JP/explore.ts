@@ -22,6 +22,7 @@ const translation = {
   },
   appCard: {
     addToWorkspace: 'ワークスペースに追加',
+    share: 'アプリを共有する',
     customize: 'カスタマイズ',
   },
   appCustomize: {

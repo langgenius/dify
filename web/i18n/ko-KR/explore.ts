@@ -22,6 +22,7 @@ const translation = {
   },
   appCard: {
     addToWorkspace: '작업 공간에 추가',
+    share: '앱 공유하기',
     customize: '사용자 정의',
   },
   appCustomize: {

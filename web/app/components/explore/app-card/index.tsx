@@ -79,7 +79,7 @@ const AppCard = ({
             </Button>
             <Button variant='secondary-accent' className='grow h-7' onClick={() => onClickCopy()}>
               <RiShareLine className='w-4 h-4 mr-1'/>
-              <span className='text-xs'>Share</span>
+              <span className='text-xs'>{t('explore.appCard.share')}</span>
             </Button>
           </div>
 
