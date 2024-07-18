@@ -74,7 +74,8 @@ parameters:
     human_description:
       en_US: blacklist a set of paths that you do not want to crawl. you can use regex patterns to help with the list.
       zh_Hans: 指定一组不想爬取的路径。您可以使用正则表达式模式来帮助定义列表。
-    placeholder: /blog/*, /about
+    placeholder:
+      en_US: /blog/*, /about
     form: form
   - name: whitelist
     type: string
@@ -85,7 +86,8 @@ parameters:
     human_description:
       en_US: Whitelist a set of paths that you want to crawl, ignoring all other routes that do not match the patterns. You can use regex patterns to help with the list.
       zh_Hans: 指定一组要爬取的路径，忽略所有不匹配模式的其他路由。您可以使用正则表达式模式来帮助定义列表。
-    placeholder: /blog/*, /about
+    placeholder:
+      en_US: /blog/*, /about
     form: form
   - name: readability
     type: boolean
