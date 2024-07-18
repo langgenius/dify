@@ -939,14 +939,12 @@ class WorkflowEngineManager:
 
         return new_value
 
-    def _mapping_user_inputs_to_variable_pool(
-        self,
-        variable_mapping: dict,
-        user_inputs: dict,
-        variable_pool: VariablePool,
-        tenant_id: str,
-        node_instance: BaseNode
-    ):
+    def _mapping_user_inputs_to_variable_pool(self,
+                                              variable_mapping: dict,
+                                              user_inputs: dict,
+                                              variable_pool: VariablePool,
+                                              tenant_id: str,
+                                              node_instance: BaseNode):
         for variable_key, variable_selector in variable_mapping.items():
             if variable_key not in user_inputs and not variable_pool.get(variable_selector):
                 raise ValueError(f'Variable key {variable_key} not found in user inputs.')

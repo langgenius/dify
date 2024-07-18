@@ -5,9 +5,9 @@ from enum import Enum
 from typing import Any
 
 from clickhouse_connect import get_client
-from flask import current_app
 from pydantic import BaseModel
 
+from configs import dify_config
 from core.rag.datasource.entity.embedding import Embeddings
 from core.rag.datasource.vdb.vector_base import BaseVector
 from core.rag.datasource.vdb.vector_factory import AbstractVectorFactory
@@ -156,15 +156,15 @@ class MyScaleVectorFactory(AbstractVectorFactory):
             dataset.index_struct = json.dumps(
                 self.gen_index_struct_dict(VectorType.MYSCALE, collection_name))
 
-        config = current_app.config
         return MyScaleVector(
             collection_name=collection_name,
             config=MyScaleConfig(
-                host=config.get("MYSCALE_HOST", "localhost"),
-                port=int(config.get("MYSCALE_PORT", 8123)),
-                user=config.get("MYSCALE_USER", "default"),
-                password=config.get("MYSCALE_PASSWORD", ""),
-                database=config.get("MYSCALE_DATABASE", "default"),
-                fts_params=config.get("MYSCALE_FTS_PARAMS", ""),
+                # TODO: I think setting those values as the default config would be a better option.
+                host=dify_config.MYSCALE_HOST or "localhost",
+                port=dify_config.MYSCALE_PORT or 8123,
+                user=dify_config.MYSCALE_USER or "default",
+                password=dify_config.MYSCALE_PASSWORD or "",
+                database=dify_config.MYSCALE_DATABASE or "default",
+                fts_params=dify_config.MYSCALE_FTS_PARAMS or "",
             ),
         )
