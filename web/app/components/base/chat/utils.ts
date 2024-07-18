@@ -1,4 +1,4 @@
-async function decodeBase64AndDecompress(base64String) {
+async function decodeBase64AndDecompress(base64String: string) {
   const binaryString = atob(base64String)
   const compressedUint8Array = Uint8Array.from(binaryString, char => char.charCodeAt(0))
   const decompressedStream = new Response(compressedUint8Array).body.pipeThrough(new DecompressionStream('gzip'))
