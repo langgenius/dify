@@ -3,10 +3,12 @@ identity:
   name: spider
   label:
     en_US: Spider
-    zh_CN: Spider
+    zh_Hans: Spider
+    pt_BR: Spider
   description:
     en_US: Spider API integration, returning LLM-ready data by scraping & crawling websites.
-    zh_CN: Spider API 集成，通过爬取和抓取网站返回 LLM-ready 数据。
+    zh_Hans: Spider API 集成，通过爬取和抓取网站返回 LLM-ready 数据。
+    pt_BR: Integração da API Spider, retornando dados prontos para LLM por meio de scraping e crawling de sites.
   icon: icon.svg
   tags:
     - search
@@ -17,11 +19,14 @@ credentials_for_provider:
     required: true
     label:
       en_US: Spider API Key
-      zh_CN: Spider API 密钥
+      zh_Hans: Spider API 密钥
+      pt_BR: Chave da API Spider
     placeholder:
       en_US: Please input your Spider API key
-      zh_CN: 请输入您的 Spider API 密钥
+      zh_Hans: 请输入您的 Spider API 密钥
+      pt_BR: Por favor, insira sua chave da API Spider
     help:
       en_US: Get your Spider API key from your Spider dashboard
-      zh_CN: 从您的 Spider 仪表板中获取 Spider API 密钥。
+      zh_Hans: 从您的 Spider 仪表板中获取 Spider API 密钥。
+      pt_BR: Obtenha sua chave da API Spider do seu painel do Spider.
     url: https://spider.cloud/
