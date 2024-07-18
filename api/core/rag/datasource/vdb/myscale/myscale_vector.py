@@ -159,6 +159,7 @@ class MyScaleVectorFactory(AbstractVectorFactory):
         return MyScaleVector(
             collection_name=collection_name,
             config=MyScaleConfig(
+                # TODO: I think setting those values as the default config would be a better option.
                 host=dify_config.MYSCALE_HOST or "localhost",
                 port=dify_config.MYSCALE_PORT or 8123,
                 user=dify_config.MYSCALE_USER or "default",
