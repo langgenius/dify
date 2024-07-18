@@ -18,18 +18,20 @@ export const useWorkflowVariables = () => {
     beforeNodes,
     isChatMode,
     filterVar,
+    hideEnv,
   }: {
     parentNode?: Node | null
     beforeNodes: Node[]
     isChatMode: boolean
     filterVar: (payload: Var, selector: ValueSelector) => boolean
+    hideEnv?: boolean
   }): NodeOutPutVar[] => {
     return toNodeAvailableVars({
       parentNode,
       t,
       beforeNodes,
       isChatMode,
-      environmentVariables,
+      environmentVariables: hideEnv ? [] : environmentVariables,
       filterVar,
     })
   }, [environmentVariables, t])
