@@ -346,7 +346,7 @@ class AppService:
                     try:
                         provider: ApiToolProvider = db.session.query(ApiToolProvider).filter(
                             ApiToolProvider.id == provider_id
-                        )
+                        ).first()
                         meta['tool_icons'][tool_name] = json.loads(provider.icon)
                     except:
                         meta['tool_icons'][tool_name] = {
