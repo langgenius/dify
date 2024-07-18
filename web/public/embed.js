@@ -24,14 +24,42 @@
   };
 
   // Main function to embed the chatbot
-  function embedChatbot() {
+  async function embedChatbot() {
     if (!config || !config.token) {
       console.error(`${configKey} is empty or token is not provided`);
       return;
     }
 
+    async function compressAndEncodeBase64(input) {
+      const uint8Array = new TextEncoder().encode(input);
+      const compressedStream = new Response(
+          new Blob([uint8Array]).stream().pipeThrough(new CompressionStream('gzip'))
+      ).arrayBuffer();
+      const compressedUint8Array = new Uint8Array(await compressedStream);
+      return btoa(String.fromCharCode(...compressedUint8Array));
+    }
+
+    async function getCompressedInputsFromConfig() {
+      const inputs = config?.inputs || {};
+      const compressedInputs = {};
+      await Promise.all(
+        Object.entries(inputs).map(async ([key, value]) => {
+          compressedInputs[key] = await compressAndEncodeBase64(value);
+        })
+      );
+      return compressedInputs;
+    }
+
+    const params = new URLSearchParams(await getCompressedInputsFromConfig());
+
     const baseUrl =
       config.baseUrl || `https://${config.isDev ? "dev." : ""}udify.app`;
+
+    // pre-check the length of the URL
+    const iframeUrl = `${baseUrl}/chatbot/${config.token}?${params}`;
+    if(iframeUrl.length > 2048) {
+      console.error("The URL is too long, please reduce the number of inputs to prevent the bot from failing to load");
+    }
 
     // Function to create the iframe for the chatbot
     function createIframe() {
@@ -39,12 +67,12 @@
       iframe.allow = "fullscreen;microphone";
       iframe.title = "dify chatbot bubble window";
       iframe.id = iframeId;
-      iframe.src = `${baseUrl}/chatbot/${config.token}`;
+      iframe.src = iframeUrl;
       iframe.style.cssText = `
-        border: none; position: fixed; flex-direction: column; justify-content: space-between; 
-        box-shadow: rgba(150, 150, 150, 0.2) 0px 10px 30px 0px, rgba(150, 150, 150, 0.2) 0px 0px 0px 1px; 
-        bottom: 5rem; right: 1rem; width: 24rem; max-width: calc(100vw - 2rem); height: 40rem; 
-        max-height: calc(100vh - 6rem); border-radius: 0.75rem; display: flex; z-index: 2147483647; 
+        border: none; position: fixed; flex-direction: column; justify-content: space-between;
+        box-shadow: rgba(150, 150, 150, 0.2) 0px 10px 30px 0px, rgba(150, 150, 150, 0.2) 0px 0px 0px 1px;
+        bottom: 5rem; right: 1rem; width: 24rem; max-width: calc(100vw - 2rem); height: 40rem;
+        max-height: calc(100vh - 6rem); border-radius: 0.75rem; display: flex; z-index: 2147483647;
         overflow: hidden; left: unset; background-color: #F3F4F6;
       `;
 
@@ -106,19 +134,19 @@
       document.head.appendChild(styleSheet);
       styleSheet.sheet.insertRule(`
         #${containerDiv.id} {
-          position: fixed; 
+          position: fixed;
           bottom: var(--${containerDiv.id}-bottom, 1rem);
           right: var(--${containerDiv.id}-right, 1rem);
           left: var(--${containerDiv.id}-left, unset);
           top: var(--${containerDiv.id}-top, unset);
           width: var(--${containerDiv.id}-width, 50px);
           height: var(--${containerDiv.id}-height, 50px);
-          border-radius: var(--${containerDiv.id}-border-radius, 25px); 
+          border-radius: var(--${containerDiv.id}-border-radius, 25px);
           background-color: var(--${containerDiv.id}-bg-color, #155EEF);
           box-shadow: var(--${containerDiv.id}-box-shadow, rgba(0, 0, 0, 0.2) 0px 4px 8px 0px);
           cursor: pointer;
-          z-index: 2147483647; 
-          transition: all 0.2s ease-in-out 0s; 
+          z-index: 2147483647;
+          transition: all 0.2s ease-in-out 0s;
         }
       `);
       styleSheet.sheet.insertRule(`
@@ -154,7 +182,8 @@
         } else {
           document.addEventListener('keydown', handleEscKey);
         }
-        
+
+
         resetIframePosition();
       });
 
