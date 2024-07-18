@@ -1,7 +1,5 @@
 from unittest.mock import patch
 
-from flask import Flask
-
 from core.app.entities.app_invoke_entities import InvokeFrom
 from core.workflow.entities.node_entities import SystemVariable, UserFrom
 from core.workflow.entities.variable_pool import VariablePool
@@ -130,22 +128,19 @@ def test_run_parallel(mock_close, mock_remove):
 
     # print("")
 
-    app = Flask('test')
-
     items = []
-    with app.app_context():
-        generator = graph_engine.run()
-        for item in generator:
-            # print(type(item), item)
-            items.append(item)
-            if isinstance(item, NodeRunSucceededEvent):
-                assert item.route_node_state.status == RouteNodeState.Status.SUCCESS
+    generator = graph_engine.run()
+    for item in generator:
+        # print(type(item), item)
+        items.append(item)
+        if isinstance(item, NodeRunSucceededEvent):
+            assert item.route_node_state.status == RouteNodeState.Status.SUCCESS
 
-            assert not isinstance(item, NodeRunFailedEvent)
-            assert not isinstance(item, GraphRunFailedEvent)
+        assert not isinstance(item, NodeRunFailedEvent)
+        assert not isinstance(item, GraphRunFailedEvent)
 
-            if isinstance(item, BaseNodeEvent) and item.route_node_state.node_id in ['answer2', 'answer3']:
-                assert item.parallel_id is not None
+        if isinstance(item, BaseNodeEvent) and item.route_node_state.node_id in ['answer2', 'answer3']:
+            assert item.parallel_id is not None
 
     assert len(items) == 12
     assert isinstance(items[0], GraphRunStartedEvent)
@@ -290,14 +285,11 @@ def test_run_branch(mock_close, mock_remove):
 
     # print("")
 
-    app = Flask('test')
-
     items = []
-    with app.app_context():
-        generator = graph_engine.run()
-        for item in generator:
-            print(type(item), item)
-            items.append(item)
+    generator = graph_engine.run()
+    for item in generator:
+        print(type(item), item)
+        items.append(item)
 
     assert len(items) == 8
     assert items[3].route_node_state.node_id == 'if-else-1'
