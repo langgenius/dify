@@ -171,7 +171,7 @@ const Apps = ({
   if (!categories || categories.length === 0) {
     return (
       <div className="flex h-full items-center">
-        <Loading type="area"/>
+        <Loading type="area" />
       </div>
     )
   }
