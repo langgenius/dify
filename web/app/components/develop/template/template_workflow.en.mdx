@@ -225,6 +225,63 @@ Workflow applications offers non-session support and is ideal for translation, a
 ---
 
 <Heading
+  url='/workflows/run/:workflow_id'
+  method='GET'
+  title='Get Workflow Run Detail'
+  name='#get-workflow-run-detail'
+/>
+<Row>
+  <Col>
+    Retrieve the current execution results of a workflow task based on the workflow execution ID.
+    ### Path
+    - `workflow_id` (string) Workflow ID, can be obtained from the streaming chunk return
+    ### Response
+    - `id` (string) ID of workflow execution
+    - `workflow_id` (string) ID of relatied workflow
+    - `status` (string) status of execution, `running` / `succeeded` / `failed` / `stopped`
+    - `inputs` (json) content of input
+    - `outputs` (json) content of output
+    - `error` (string) reason of error
+    - `total_steps` (int) total steps of task
+    - `total_tokens` (int) total tokens to be used
+    - `created_at` (timestamp) start time
+    - `finished_at` (timestamp) end time
+    - `elapsed_time` (float) total seconds to be used
+  </Col>
+  <Col sticky>
+    ### Request Example
+    <CodeGroup title="Request" tag="GET" label="/workflows/run/:workflow_id" targetCode={`curl -X GET '${props.appDetail.api_base_url}/workflows/run/:workflow_id' \\\n-H 'Authorization: Bearer {api_key}' \\\n-H 'Content-Type: application/json'`}>
+      ```bash {{ title: 'cURL' }}
+      curl -X GET '${props.appDetail.api_base_url}/workflows/run/:workflow_id' \
+      -H 'Authorization: Bearer {api_key}' \
+      -H 'Content-Type: application/json'
+      ```
+    </CodeGroup>
+
+    ### Response Example
+    <CodeGroup title="Response">
+    ```json {{ title: 'Response' }}
+    {
+        "id": "b1ad3277-089e-42c6-9dff-6820d94fbc76",
+        "workflow_id": "19eff89f-ec03-4f75-b0fc-897e7effea02",
+        "status": "succeeded",
+        "inputs": "{\"sys.files\": [], \"sys.user_id\": \"abc-123\"}",
+        "outputs": null,
+        "error": null,
+        "total_steps": 3,
+        "total_tokens": 0,
+        "created_at": "Thu, 18 Jul 2024 03:17:40 -0000",
+        "finished_at": "Thu, 18 Jul 2024 03:18:10 -0000",
+        "elapsed_time": 30.098514399956912
+    }
+    ```
+    </CodeGroup>
+  </Col>
+</Row>
+
+---
+
+<Heading
   url='/workflows/tasks/:task_id/stop'
   method='POST'
   title='Stop Generate'

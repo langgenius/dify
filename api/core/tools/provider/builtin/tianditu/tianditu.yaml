@@ -1,0 +1,32 @@
+identity:
+  author: Listeng
+  name: tianditu
+  label:
+    en_US: Tianditu
+    zh_Hans: 天地图
+    pt_BR: Tianditu
+  description:
+    en_US: The Tianditu tool provided the functions of place name search, geocoding, static maps generation, etc. in China region.
+    zh_Hans: 天地图工具可以调用天地图的接口，实现中国区域内的地名搜索、地理编码、静态地图等功能。
+    pt_BR: The Tianditu tool provided the functions of place name search, geocoding, static maps generation, etc. in China region.
+  icon: icon.svg
+  tags:
+    - utilities
+    - travel
+credentials_for_provider:
+  tianditu_api_key:
+    type: secret-input
+    required: true
+    label:
+      en_US: Tianditu API Key
+      zh_Hans: 天地图Key
+      pt_BR: Tianditu API key
+    placeholder:
+      en_US: Please input your Tianditu API key
+      zh_Hans: 请输入你的天地图Key
+      pt_BR: Please input your Tianditu API key
+    help:
+      en_US: Get your Tianditu API key from Tianditu
+      zh_Hans: 获取您的天地图Key
+      pt_BR: Get your Tianditu API key from Tianditu
+    url: http://lbs.tianditu.gov.cn/home.html
