@@ -574,7 +574,7 @@ class ToolManager:
                 provider: ApiToolProvider = db.session.query(ApiToolProvider).filter(
                     ApiToolProvider.tenant_id == tenant_id,
                     ApiToolProvider.id == provider_id
-                )
+                ).first()
                 return json.loads(provider.icon)
             except:
                 return {
