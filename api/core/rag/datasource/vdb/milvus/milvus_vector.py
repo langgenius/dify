@@ -115,7 +115,8 @@ class MilvusVector(BaseVector):
             uri = "https://" + str(self._client_config.host) + ":" + str(self._client_config.port)
         else:
             uri = "http://" + str(self._client_config.host) + ":" + str(self._client_config.port)
-        connections.connect(alias=alias, uri=uri, user=self._client_config.user, password=self._client_config.password)
+        connections.connect(alias=alias, uri=uri, user=self._client_config.user, password=self._client_config.password,
+                            db_name=self._client_config.database)
 
         from pymilvus import utility
         if utility.has_collection(self._collection_name, using=alias):
@@ -130,7 +131,8 @@ class MilvusVector(BaseVector):
             uri = "https://" + str(self._client_config.host) + ":" + str(self._client_config.port)
         else:
             uri = "http://" + str(self._client_config.host) + ":" + str(self._client_config.port)
-        connections.connect(alias=alias, uri=uri, user=self._client_config.user, password=self._client_config.password)
+        connections.connect(alias=alias, uri=uri, user=self._client_config.user, password=self._client_config.password,
+                            db_name=self._client_config.database)
 
         from pymilvus import utility
         if utility.has_collection(self._collection_name, using=alias):
