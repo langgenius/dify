@@ -16,7 +16,8 @@
     "gen-icons": "node ./app/components/base/icons/script.js",
     "uglify-embed": "node ./bin/uglify-embed",
     "check-i18n": "node ./i18n/script.js",
-    "test": "jest"
+    "test": "jest",
+    "test:watch": "jest --watch"
   },
   "dependencies": {
     "@babel/runtime": "^7.22.3",
@@ -103,6 +104,7 @@
     "@antfu/eslint-config": "^0.36.0",
     "@faker-js/faker": "^7.6.0",
     "@rgrove/parse-xml": "^4.1.0",
+    "@testing-library/dom": "^10.3.2",
     "@testing-library/jest-dom": "^6.4.6",
     "@testing-library/react": "^16.0.0",
     "@types/crypto-js": "^4.1.1",

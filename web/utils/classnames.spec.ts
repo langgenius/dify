@@ -17,7 +17,7 @@ describe('classnames', () => {
     })).toBe('foo baz')
   })
 
-  test('tailwind-merge feature', () => {
+  test('tailwind-merge', () => {
     expect(cn('p-0')).toBe('p-0')
     expect(cn('text-right text-center text-left')).toBe('text-left')
     expect(cn('pl-4 p-8')).toBe('p-8')
@@ -43,7 +43,7 @@ describe('classnames', () => {
     expect(cn('text-3.5xl text-black')).toBe('text-3.5xl text-black')
   })
 
-  test('classnames with tailwind-merge', () => {
+  test('classnames combined with tailwind-merge', () => {
     expect(cn('text-right', {
       'text-center': true,
     })).toBe('text-center')
