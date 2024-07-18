@@ -73,7 +73,7 @@ class WorkflowRunApi(Resource):
             raise InternalServerError()
 
 
-class WorkflowTaskDetailApi(Resource):
+class WorkflowRunDetailApi(Resource):
     workflow_run_fields = {
         'id': fields.String,
         'workflow_id': fields.String,
@@ -90,7 +90,7 @@ class WorkflowTaskDetailApi(Resource):
 
     @validate_app_token
     @marshal_with(workflow_run_fields)
-    def get(self, app_model: App, task_id: str):
+    def get(self, app_model: App, workflow_id: str):
         """
         Get a workflow task running detail
         """
@@ -98,7 +98,7 @@ class WorkflowTaskDetailApi(Resource):
         if app_mode != AppMode.WORKFLOW:
             raise NotWorkflowAppError()
 
-        workflow_run = db.session.query(WorkflowRun).filter(WorkflowRun.id == task_id).first()
+        workflow_run = db.session.query(WorkflowRun).filter(WorkflowRun.id == workflow_id).first()
         return workflow_run
 
 
@@ -120,5 +120,5 @@ class WorkflowTaskStopApi(Resource):
 
 
 api.add_resource(WorkflowRunApi, '/workflows/run')
-api.add_resource(WorkflowTaskDetailApi, '/workflows/tasks/<string:task_id>')
+api.add_resource(WorkflowRunDetailApi, '/workflows/run/<string:workflow_id>')
 api.add_resource(WorkflowTaskStopApi, '/workflows/tasks/<string:task_id>/stop')

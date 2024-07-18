@@ -225,16 +225,16 @@ Workflow applications offers non-session support and is ideal for translation, a
 ---
 
 <Heading
-  url='/workflows/tasks/:task_id'
+  url='/workflows/run/:workflow_id'
   method='GET'
-  title='Get Workflow Task'
-  name='#get-workflow-task'
+  title='Get Workflow Run Detail'
+  name='#get-workflow-run-detail'
 />
 <Row>
   <Col>
     Retrieve the current execution results of a workflow task based on the workflow execution ID.
     ### Path
-    - `task_id` (string) Task ID, can be obtained from the streaming chunk return
+    - `workflow_id` (string) Workflow ID, can be obtained from the streaming chunk return
     ### Response
     - `id` (string) ID of workflow execution
     - `workflow_id` (string) ID of relatied workflow
@@ -250,9 +250,9 @@ Workflow applications offers non-session support and is ideal for translation, a
   </Col>
   <Col sticky>
     ### Request Example
-    <CodeGroup title="Request" tag="GET" label="/workflows/tasks/:task_id" targetCode={`curl -X GET '${props.appDetail.api_base_url}/workflows/tasks/:task_id' \\\n-H 'Authorization: Bearer {api_key}' \\\n-H 'Content-Type: application/json'`}>
+    <CodeGroup title="Request" tag="GET" label="/workflows/run/:workflow_id" targetCode={`curl -X GET '${props.appDetail.api_base_url}/workflows/run/:workflow_id' \\\n-H 'Authorization: Bearer {api_key}' \\\n-H 'Content-Type: application/json'`}>
       ```bash {{ title: 'cURL' }}
-      curl -X GET '${props.appDetail.api_base_url}/workflows/tasks/:task_id' \
+      curl -X GET '${props.appDetail.api_base_url}/workflows/run/:workflow_id' \
       -H 'Authorization: Bearer {api_key}' \
       -H 'Content-Type: application/json'
       ```
