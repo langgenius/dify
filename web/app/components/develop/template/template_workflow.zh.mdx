@@ -221,6 +221,63 @@ Workflow 应用无会话支持，适合用于翻译/文章写作/总结 AI 等�
 ---
 
 <Heading
+  url='/workflows/run/:workflow_id'
+  method='GET'
+  title='获取workflow执行情况'
+  name='#get-workflow-run-detail'
+/>
+<Row>
+  <Col>
+    根据 workflow 执行 ID 获取 workflow 任务当前执行结果
+    ### Path
+    - `workflow_id` (string) workflow 执行 ID，可在流式返回 Chunk 中获取
+    ### Response
+    - `id` (string) workflow 执行 ID
+    - `workflow_id` (string) 关联的 Workflow ID
+    - `status` (string) 执行状态 `running` / `succeeded` / `failed` / `stopped`
+    - `inputs` (json) 任务输入内容
+    - `outputs` (json) 任务输出内容
+    - `error` (string) 错误原因
+    - `total_steps` (int) 任务执行总步数
+    - `total_tokens` (int) 任务执行总 tokens
+    - `created_at` (timestamp) 任务开始时间
+    - `finished_at` (timestamp) 任务结束时间
+    - `elapsed_time` (float) 耗时(s)
+  </Col>
+  <Col sticky>
+    ### Request Example
+    <CodeGroup title="Request" tag="GET" label="/workflows/run/:workflow_id" targetCode={`curl -X GET '${props.appDetail.api_base_url}/workflows/run/:workflow_id' \\\n-H 'Authorization: Bearer {api_key}' \\\n-H 'Content-Type: application/json'`}>
+      ```bash {{ title: 'cURL' }}
+      curl -X GET '${props.appDetail.api_base_url}/workflows/run/:workflow_id' \
+      -H 'Authorization: Bearer {api_key}' \
+      -H 'Content-Type: application/json'
+      ```
+    </CodeGroup>
+
+    ### Response Example
+    <CodeGroup title="Response">
+    ```json {{ title: 'Response' }}
+    {
+        "id": "b1ad3277-089e-42c6-9dff-6820d94fbc76",
+        "workflow_id": "19eff89f-ec03-4f75-b0fc-897e7effea02",
+        "status": "succeeded",
+        "inputs": "{\"sys.files\": [], \"sys.user_id\": \"abc-123\"}",
+        "outputs": null,
+        "error": null,
+        "total_steps": 3,
+        "total_tokens": 0,
+        "created_at": "Thu, 18 Jul 2024 03:17:40 -0000",
+        "finished_at": "Thu, 18 Jul 2024 03:18:10 -0000",
+        "elapsed_time": 30.098514399956912
+    }
+    ```
+    </CodeGroup>
+  </Col>
+</Row>
+
+---
+
+<Heading
   url='/workflows/tasks/:task_id/stop'
   method='POST'
   title='停止响应'
