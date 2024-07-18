@@ -31,6 +31,7 @@ import type {
 import { addFileInfos, sortAgentSorts } from '@/app/components/tools/utils'
 import { useToastContext } from '@/app/components/base/toast'
 import { changeLanguage } from '@/i18n/i18next-config'
+import { getProcessedInputsFromUrlParams } from '@/app/components/base/chat/utils'
 
 export const useEmbeddedChatbot = () => {
   const isInstalledApp = false
@@ -144,24 +145,10 @@ export const useEmbeddedChatbot = () => {
       }
     })
   }, [appParams])
-  useEffect(async () => {
-    async function decodeBase64AndDecompress(base64String) {
-      const binaryString = atob(base64String)
-      const compressedUint8Array = Uint8Array.from(binaryString, char => char.charCodeAt(0))
-      const decompressedStream = new Response(compressedUint8Array).body.pipeThrough(new DecompressionStream('gzip'))
-      const decompressedArrayBuffer = await new Response(decompressedStream).arrayBuffer()
-      return new TextDecoder().decode(decompressedArrayBuffer)
-    }
 
-    function getInputsFromUrlParams(): Record<string, any> {
-      const urlParams = new URLSearchParams(window.location.search)
-      const inputs: Record<string, any> = {}
-      urlParams.forEach(async (value, key) => {
-        inputs[key] = await decodeBase64AndDecompress(decodeURIComponent(value))
-      })
-      return inputs
-    }
-    setInitInputs(getInputsFromUrlParams())
+  useEffect(() => {
+    // init inputs from url params
+    setInitInputs(getProcessedInputsFromUrlParams())
   }, [])
   useEffect(() => {
     const conversationInputs: Record<string, any> = {}
