@@ -17,7 +17,7 @@ describe('classnames', () => {
     })).toBe('foo baz')
   })
 
-  test('tailwind-merge feaurn', () => {
+  test('tailwind-merge feature', () => {
     expect(cn('p-0')).toBe('p-0')
     expect(cn('text-right text-center text-left')).toBe('text-left')
     expect(cn('pl-4 p-8')).toBe('p-8')
