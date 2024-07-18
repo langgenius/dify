@@ -1,4 +1,7 @@
-import { useCallback } from 'react'
+import {
+  useCallback,
+  useState,
+} from 'react'
 import { useTranslation } from 'react-i18next'
 import { useReactFlow } from 'reactflow'
 import { useWorkflowStore } from '../store'
@@ -10,6 +13,7 @@ import {
 } from '../utils'
 import { useEdgesInteractions } from './use-edges-interactions'
 import { useNodesInteractions } from './use-nodes-interactions'
+import { useNodesSyncDraft } from './use-nodes-sync-draft'
 import { useEventEmitterContextContext } from '@/context/event-emitter'
 import { fetchPublishedWorkflow, fetchWorkflowDraft } from '@/service/workflow'
 import { exportAppConfig } from '@/service/apps'
@@ -82,12 +86,21 @@ export const useDSL = () => {
   const { t } = useTranslation()
   const { notify } = useToastContext()
   const { eventEmitter } = useEventEmitterContextContext()
+  const [exporting, setExporting] = useState(false)
+  const { doSyncWorkflowDraft } = useNodesSyncDraft()
+
   const appDetail = useAppStore(s => s.appDetail)
 
   const handleExportDSL = useCallback(async (include = false) => {
     if (!appDetail)
       return
+
+    if (exporting)
+      return
+
     try {
+      setExporting(true)
+      await doSyncWorkflowDraft()
       const { data } = await exportAppConfig({
         appID: appDetail.id,
         include,
@@ -101,7 +114,10 @@ export const useDSL = () => {
     catch (e) {
       notify({ type: 'error', message: t('app.exportFailed') })
     }
-  }, [appDetail, notify, t])
+    finally {
+      setExporting(false)
+    }
+  }, [appDetail, notify, t, doSyncWorkflowDraft, exporting])
 
   const exportCheck = useCallback(async () => {
     if (!appDetail)

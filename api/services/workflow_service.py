@@ -4,11 +4,9 @@ from collections.abc import Sequence
 from datetime import datetime, timezone
 from typing import Optional
 
-import yaml
-
 from core.app.apps.advanced_chat.app_config_manager import AdvancedChatAppConfigManager
 from core.app.apps.workflow.app_config_manager import WorkflowAppConfigManager
-from core.app.variables import Variable, variable_factory
+from core.app.variables import Variable
 from core.model_runtime.utils.encoders import jsonable_encoder
 from core.workflow.entities.node_entities import NodeType
 from core.workflow.errors import WorkflowNodeRunFailedError
@@ -120,59 +118,6 @@ class WorkflowService:
 
         # return draft workflow
         return workflow
-
-    def import_draft_workflow(self, app_model: App,
-                              data: str,
-                              account: Account) -> Workflow:
-        """
-        Import draft workflow
-        :param app_model: App instance
-        :param data: import data
-        :param account: Account instance
-        :return:
-        """
-        try:
-            import_data = yaml.safe_load(data)
-        except yaml.YAMLError as e:
-            raise ValueError("Invalid YAML format in data argument.")
-
-        app_data = import_data.get('app')
-        workflow = import_data.get('workflow')
-
-        if not app_data:
-            raise ValueError("Missing app in data argument")
-
-        app_mode = AppMode.value_of(app_data.get('mode'))
-        if app_mode not in [AppMode.ADVANCED_CHAT, AppMode.WORKFLOW]:
-            raise ValueError("Only support import workflow in advanced-chat or workflow app.")
-
-        if app_data.get('mode') != app_model.mode:
-            raise ValueError(f"App mode {app_data.get('mode')} is not matched with current app mode {app_model.mode}")
-
-        if not workflow:
-            raise ValueError("Missing workflow in data argument "
-                             "when app mode is advanced-chat or workflow")
-
-        # fetch draft workflow by app_model
-        current_draft_workflow = self.get_draft_workflow(app_model=app_model)
-        if current_draft_workflow:
-            unique_hash = current_draft_workflow.unique_hash
-        else:
-            unique_hash = None
-
-        # sync draft workflow
-        environment_variables_list = workflow.get('environment_variables') or []
-        environment_variables = [variable_factory.from_mapping(obj) for obj in environment_variables_list]
-        draft_workflow = self.sync_draft_workflow(
-            app_model=app_model,
-            graph=workflow.get('graph'),
-            features=workflow.get('features'),
-            unique_hash=unique_hash,
-            account=account,
-            environment_variables=environment_variables,
-        )
-
-        return draft_workflow
 
     def publish_workflow(self, app_model: App,
                          account: Account,

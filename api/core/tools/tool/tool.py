@@ -241,7 +241,7 @@ class Tool(BaseModel, ABC):
 
             :return: the runtime parameters
         """
-        return self.parameters
+        return self.parameters or []
     
     def get_all_runtime_parameters(self) -> list[ToolParameter]:
         """

@@ -65,9 +65,7 @@ class HttpRequestNode(BaseNode):
             process_data = {}
             if http_executor:
                 process_data = {
-                    'request': http_executor.to_raw_request(
-                        mask_authorization_header=node_data.mask_authorization_header
-                    ),
+                    'request': http_executor.to_raw_request(),
                 }
             return NodeRunResult(
                 status=WorkflowNodeExecutionStatus.FAILED,
@@ -86,9 +84,7 @@ class HttpRequestNode(BaseNode):
                 'files': files,
             },
             process_data={
-                'request': http_executor.to_raw_request(
-                    mask_authorization_header=node_data.mask_authorization_header,
-                ),
+                'request': http_executor.to_raw_request(),
             },
         )
 

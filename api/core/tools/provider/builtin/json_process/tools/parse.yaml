@@ -38,3 +38,15 @@ parameters:
       pt_BR: JSON fields to be parsed
     llm_description: JSON fields to be parsed
     form: llm
+  - name: ensure_ascii
+    type: boolean
+    default: true
+    label:
+      en_US: Ensure ASCII
+      zh_Hans: 确保 ASCII
+      pt_BR: Ensure ASCII
+    human_description:
+      en_US: Ensure the JSON output is ASCII encoded
+      zh_Hans: 确保输出的 JSON 是 ASCII 编码
+      pt_BR: Ensure the JSON output is ASCII encoded
+    form: form

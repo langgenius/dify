@@ -51,7 +51,7 @@ const translation = {
       title: 'Experience enhance',
     },
     conversationOpener: {
-      title: 'Conversation remakers',
+      title: 'Conversation Opener',
       description: 'In a chat app, the first sentence that the AI actively speaks to the user is usually used as a welcome.',
     },
     suggestedQuestionsAfterAnswer: {

@@ -349,6 +349,9 @@ const translation = {
       language: 'भाषा',
       resolutionTooltip: 'टेक्स्ट-टू-स्पीच वॉयस सपोर्ट भाषा।',
       voice: 'वॉयस',
+      autoPlay: 'ऑटो प्ले',
+      autoPlayEnabled: 'चालू करणे',
+      autoPlayDisabled: 'सोडा',
     },
   },
   openingStatement: {
