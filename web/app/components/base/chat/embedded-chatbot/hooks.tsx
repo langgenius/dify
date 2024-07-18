@@ -31,6 +31,7 @@ import type {
 import { addFileInfos, sortAgentSorts } from '@/app/components/tools/utils'
 import { useToastContext } from '@/app/components/base/toast'
 import { changeLanguage } from '@/i18n/i18next-config'
+import { getProcessedInputsFromUrlParams } from '@/app/components/base/chat/utils'
 
 export const useEmbeddedChatbot = () => {
   const isInstalledApp = false
@@ -109,6 +110,7 @@ export const useEmbeddedChatbot = () => {
   const { t } = useTranslation()
   const newConversationInputsRef = useRef<Record<string, any>>({})
   const [newConversationInputs, setNewConversationInputs] = useState<Record<string, any>>({})
+  const [initInputs, setInitInputs] = useState<Record<string, any>>({})
   const handleNewConversationInputsChange = useCallback((newInputs: Record<string, any>) => {
     newConversationInputsRef.current = newInputs
     setNewConversationInputs(newInputs)
@@ -116,30 +118,49 @@ export const useEmbeddedChatbot = () => {
   const inputsForms = useMemo(() => {
     return (appParams?.user_input_form || []).filter((item: any) => item.paragraph || item.select || item['text-input'] || item.number).map((item: any) => {
       if (item.paragraph) {
+        let value = initInputs[item.paragraph.variable]
+        if (value && item.paragraph.max_length && value.length > item.paragraph.max_length)
+          value = value.slice(0, item.paragraph.max_length)
+
         return {
           ...item.paragraph,
+          default: value || item.default,
           type: 'paragraph',
         }
       }
       if (item.number) {
+        const convertedNumber = Number(initInputs[item.number.variable]) ?? undefined
         return {
           ...item.number,
+          default: convertedNumber || item.default,
           type: 'number',
         }
       }
       if (item.select) {
+        const isInputInOptions = item.select.options.includes(initInputs[item.select.variable])
         return {
           ...item.select,
+          default: (isInputInOptions ? initInputs[item.select.variable] : undefined) || item.default,
           type: 'select',
         }
       }
 
+      let value = initInputs[item['text-input'].variable]
+      if (value && item['text-input'].max_length && value.length > item['text-input'].max_length)
+        value = value.slice(0, item['text-input'].max_length)
+
       return {
         ...item['text-input'],
+        default: value || item.default,
         type: 'text-input',
       }
     })
   }, [appParams])
+
+  useEffect(() => {
+    // init inputs from url params
+    setInitInputs(getProcessedInputsFromUrlParams())
+  }, [])
   useEffect(() => {
     const conversationInputs: Record<string, any> = {}
 
