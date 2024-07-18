@@ -183,7 +183,7 @@ def load_user_from_request(request_from_flask_login):
 
     account = AccountService.load_logged_in_account(account_id=user_id, token=auth_token)
     if account:
-        contexts.current_user.set(account)
+        contexts.tenant_id.set(account.current_tenant_id)
     return account
 
 

@@ -1,5 +1,3 @@
 from contextvars import ContextVar
 
-from models.account import Account
-
-current_user: ContextVar[Account] = ContextVar('current_user')
+tenant_id: ContextVar[str] = ContextVar('tenant_id')

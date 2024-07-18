@@ -194,14 +194,14 @@ class Workflow(db.Model):
             self._environment_variables = '{}'
 
         # FIXME: get current user from flask context, may not a good way.
-        user = contexts.current_user.get()
+        tenant_id = contexts.tenant_id.get()
 
         environment_variables_dict: dict[str, Any] = json.loads(self._environment_variables)
         results = [variable_factory.from_mapping(v) for v in environment_variables_dict.values()]
         # decrypt secret variables value
         decrypt_func = (
             lambda var: var.model_copy(
-                update={'value': encrypter.decrypt_token(tenant_id=user.current_tenant_id, token=var.value)}
+                update={'value': encrypter.decrypt_token(tenant_id=tenant_id, token=var.value)}
             )
             if isinstance(var, SecretVariable)
             else var
@@ -212,11 +212,11 @@ class Workflow(db.Model):
     @environment_variables.setter
     def environment_variables(self, vars: Sequence[Variable]):
         # FIXME: get current user from flask context, may not a good way.
-        user = contexts.current_user.get()
+        tenant_id = contexts.tenant_id.get()
 
         encrypt_func = (
             lambda var: var.model_copy(
-                update={'value': encrypter.encrypt_token(tenant_id=user.current_tenant_id, token=var.value)}
+                update={'value': encrypter.encrypt_token(tenant_id=tenant_id, token=var.value)}
             )
             if isinstance(var, SecretVariable)
             else var

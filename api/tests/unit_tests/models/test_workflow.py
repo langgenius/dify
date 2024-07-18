@@ -6,14 +6,7 @@ from models.workflow import Workflow
 
 
 def test_environment_variables():
-    # Create a mock user
-    mock_user = mock.MagicMock()
-    mock_user.is_authenticated = True
-    mock_user.id = 1
-    mock_user.username = 'testuser'
-    mock_user.current_tenant_id = 'tenant_id'
-
-    contexts.current_user.set(mock_user)
+    contexts.tenant_id.set('tenant_id')
 
     # Create a Workflow instance
     workflow = Workflow()
@@ -36,14 +29,7 @@ def test_environment_variables():
 
 
 def test_to_dict():
-    # Create a mock user
-    mock_user = mock.MagicMock()
-    mock_user.is_authenticated = True
-    mock_user.id = 1
-    mock_user.username = 'testuser'
-    mock_user.current_tenant_id = 'tenant_id'
-
-    contexts.current_user.set(mock_user)
+    contexts.tenant_id.set('tenant_id')
 
     # Create a Workflow instance
     workflow = Workflow(

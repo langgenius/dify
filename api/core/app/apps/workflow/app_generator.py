@@ -9,6 +9,7 @@ from typing import Union
 from flask import Flask, current_app
 from pydantic import ValidationError
 
+import contexts
 from core.app.app_config.features.file_upload.manager import FileUploadConfigManager
 from core.app.apps.base_app_generator import BaseAppGenerator
 from core.app.apps.base_app_queue_manager import AppQueueManager, GenerateTaskStoppedException, PublishFrom
@@ -87,6 +88,7 @@ class WorkflowAppGenerator(BaseAppGenerator):
             call_depth=call_depth,
             trace_manager=trace_manager
         )
+        contexts.tenant_id.set(application_generate_entity.app_config.tenant_id)
 
         return self._generate(
             app_model=app_model,
@@ -194,6 +196,7 @@ class WorkflowAppGenerator(BaseAppGenerator):
                 inputs=args['inputs']
             )
         )
+        contexts.tenant_id.set(application_generate_entity.app_config.tenant_id)
 
         return self._generate(
             app_model=app_model,

@@ -9,6 +9,7 @@ from typing import Union
 from flask import Flask, current_app, g
 from pydantic import ValidationError
 
+import contexts
 from core.app.app_config.features.file_upload.manager import FileUploadConfigManager
 from core.app.apps.advanced_chat.app_config_manager import AdvancedChatAppConfigManager
 from core.app.apps.advanced_chat.app_runner import AdvancedChatAppRunner
@@ -108,6 +109,7 @@ class AdvancedChatAppGenerator(MessageBasedAppGenerator):
             extras=extras,
             trace_manager=trace_manager
         )
+        contexts.tenant_id.set(application_generate_entity.app_config.tenant_id)
 
         return self._generate(
             app_model=app_model,
@@ -174,6 +176,7 @@ class AdvancedChatAppGenerator(MessageBasedAppGenerator):
                 inputs=args['inputs']
             )
         )
+        contexts.tenant_id.set(application_generate_entity.app_config.tenant_id)
 
         return self._generate(
             app_model=app_model,
