@@ -2,7 +2,7 @@ import { BlockEnum } from '../../types'
 import type { NodeDefault } from '../../types'
 import type { KnowledgeRetrievalNodeType } from './types'
 import { ALL_CHAT_AVAILABLE_BLOCKS, ALL_COMPLETION_AVAILABLE_BLOCKS } from '@/app/components/workflow/constants'
-
+import { DATASET_DEFAULT } from '@/config'
 import { RETRIEVE_TYPE } from '@/types/app'
 const i18nPrefix = 'workflow'
 
@@ -10,7 +10,11 @@ const nodeDefault: NodeDefault<KnowledgeRetrievalNodeType> = {
   defaultValue: {
     query_variable_selector: [],
     dataset_ids: [],
-    retrieval_mode: RETRIEVE_TYPE.oneWay,
+    retrieval_mode: RETRIEVE_TYPE.multiWay,
+    multiple_retrieval_config: {
+      top_k: DATASET_DEFAULT.top_k,
+      score_threshold: undefined,
+    },
   },
   getAvailablePrevNodes(isChatMode: boolean) {
     const nodes = isChatMode

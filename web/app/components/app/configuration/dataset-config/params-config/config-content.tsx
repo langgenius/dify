@@ -1,14 +1,12 @@
 'use client'
-import {
-  memo,
-  useMemo,
-} from 'react'
+
+import { memo } from 'react'
 import type { FC } from 'react'
 import { useTranslation } from 'react-i18next'
-import { uniq } from 'lodash-es'
 import {
   RiQuestionLine,
 } from '@remixicon/react'
+import WeightedScore from './weighted-score'
 import TopKItem from '@/app/components/base/param-item/top-k-item'
 import ScoreThresholdItem from '@/app/components/base/param-item/score-threshold-item'
 import RadioCard from '@/app/components/base/radio-card/simple'
@@ -20,7 +18,6 @@ import {
 import type {
   DatasetConfigs,
 } from '@/models/debug'
-
 import ModelSelector from '@/app/components/header/account-setting/model-provider-page/model-selector'
 import { useModelListAndDefaultModelAndCurrentProviderAndModel } from '@/app/components/header/account-setting/model-provider-page/hooks'
 import type { ModelConfig } from '@/app/components/workflow/types'
@@ -28,6 +25,13 @@ import ModelParameterModal from '@/app/components/header/account-setting/model-p
 import TooltipPlus from '@/app/components/base/tooltip-plus'
 import { ModelTypeEnum } from '@/app/components/header/account-setting/model-provider-page/declarations'
 import type { DataSet } from '@/models/datasets'
+import {
+  DEFAULT_WEIGHTED_SCORE,
+  RerankingModeEnum,
+  WeightedScoreEnum,
+} from '@/models/datasets'
+import cn from '@/utils/classnames'
+import { useSelectedDatasetsMode } from '@/app/components/workflow/nodes/knowledge-retrieval/hooks'
 
 type Props = {
   datasetConfigs: DatasetConfigs
@@ -49,6 +53,7 @@ const ConfigContent: FC<Props> = ({
   selectedDatasets = [],
 }) => {
   const { t } = useTranslation()
+  const selectedDatasetsMode = useSelectedDatasetsMode(selectedDatasets)
   const type = datasetConfigs.retrieval_model
   const setType = (value: RETRIEVE_TYPE) => {
     onChange({
@@ -74,7 +79,6 @@ const ConfigContent: FC<Props> = ({
       }
     }
   })()
-  console.log(rerankModel, 'rerankModel')
 
   const handleParamChange = (key: string, value: number) => {
     if (key === 'top_k') {
@@ -101,16 +105,70 @@ const ConfigContent: FC<Props> = ({
     })
   }
 
+  const handleWeightedScoreTypeChange = (type: WeightedScoreEnum) => {
+    const configs = {
+      ...datasetConfigs,
+      weights: {
+        ...datasetConfigs.weights!,
+        weight_type: type,
+      },
+    }
+
+    if (type === WeightedScoreEnum.SemanticFirst) {
+      configs.weights.vector_setting.vector_weight = DEFAULT_WEIGHTED_SCORE.semanticFirst.semantic
+      configs.weights.keyword_setting.keyword_weight = DEFAULT_WEIGHTED_SCORE.semanticFirst.keyword
+    }
+
+    if (type === WeightedScoreEnum.KeywordFirst) {
+      configs.weights.vector_setting.vector_weight = DEFAULT_WEIGHTED_SCORE.keywordFirst.semantic
+      configs.weights.keyword_setting.keyword_weight = DEFAULT_WEIGHTED_SCORE.keywordFirst.keyword
+    }
+
+    onChange(configs)
+  }
+
+  const handleWeightedScoreValueChange = (value: number) => {
+    onChange({
+      ...datasetConfigs,
+      weights: {
+        ...datasetConfigs.weights!,
+        vector_setting: {
+          ...datasetConfigs.weights!.vector_setting!,
+          vector_weight: value,
+        },
+        keyword_setting: {
+          keyword_weight: (10 - value * 10) / 10,
+        },
+      },
+    })
+  }
+
+  const handleRerankModeChange = (mode: RerankingModeEnum) => {
+    onChange({
+      ...datasetConfigs,
+      reranking_mode: mode,
+    })
+  }
+
   const model = singleRetrievalConfig
 
-  const selectedDatasetsMode = useMemo(() => {
-    return {
-      onlyHighQuality: selectedDatasets.every(item => item.indexing_technique === 'high_quality'),
-      onlyEconomic: selectedDatasets.every(item => item.indexing_technique === 'economy'),
-      mixtureHighQualityAndEconomic: selectedDatasets.some(item => item.indexing_technique === 'high_quality') && selectedDatasets.some(item => item.indexing_technique === 'economy'),
-      inconsistentEmbeddingModel: uniq(selectedDatasets.map(item => item.embedding_model)).length > 1,
-    }
-  }, [selectedDatasets])
+  const rerankingModeOptions = [
+    {
+      value: RerankingModeEnum.WeightedScore,
+      label: 'Weighted Score',
+      tips: 'xxx',
+    },
+    {
+      value: RerankingModeEnum.RerankingModel,
+      label: 'Rerank Model',
+      tips: 'bbb',
+    },
+  ]
+
+  const showWeightedScore = selectedDatasetsMode.allHighQuality
+    && !selectedDatasetsMode.inconsistentEmbeddingModel
+
+  const selectedRerankMode = datasetConfigs.reranking_mode || RerankingModeEnum.RerankingModel
 
   return (
     <div>
@@ -137,60 +195,118 @@ const ConfigContent: FC<Props> = ({
           onChosen={() => { setType(RETRIEVE_TYPE.multiWay) }}
         />
       </div>
-      {
-        selectedDatasetsMode.inconsistentEmbeddingModel
-        && type === RETRIEVE_TYPE.multiWay
-        && !datasetConfigs.reranking_model
-        && (
-          <div className='mt-4 system-xs-regular text-text-warning'>
-            {t('dataset.inconsistentEmbeddingModelTip')}
-          </div>
-        )
-      }
-      {
-        selectedDatasetsMode.mixtureHighQualityAndEconomic
-        && type === RETRIEVE_TYPE.multiWay
-        && !datasetConfigs.reranking_model
-        && (
-          <div className='mt-4 system-xs-regular text-text-warning'>
-            {t('dataset.mixtureHighQualityAndEconomicTip')}
-          </div>
-        )
-      }
       {type === RETRIEVE_TYPE.multiWay && (
         <>
-          <div className='mt-4'>
-            <div className='leading-[32px] text-[13px] font-medium text-gray-900'>{t('common.modelProvider.rerankModel.key')}</div>
-            <div>
-              <ModelSelector
-                defaultModel={rerankModel && { provider: rerankModel?.provider_name, model: rerankModel?.model_name }}
-                onSelect={(v) => {
-                  onChange({
-                    ...datasetConfigs,
-                    reranking_model: {
-                      reranking_provider_name: v.provider,
-                      reranking_model_name: v.model,
-                    },
-                  })
-                }}
-                modelList={rerankModelList}
-              />
-            </div>
-          </div>
-          <div className='mt-4 space-y-4'>
-            <TopKItem
-              value={datasetConfigs.top_k}
-              onChange={handleParamChange}
-              enable={true}
-            />
-            <ScoreThresholdItem
-              value={datasetConfigs.score_threshold as number}
-              onChange={handleParamChange}
-              enable={datasetConfigs.score_threshold_enabled}
-              hasSwitch={true}
-              onSwitchChange={handleSwitch}
-            />
-          </div>
+          {
+            selectedDatasetsMode.inconsistentEmbeddingModel && !datasetConfigs.reranking_model?.reranking_provider_name
+            && (
+              <div className='mt-4 system-xs-regular text-text-warning'>
+                {t('dataset.inconsistentEmbeddingModelTip')}
+              </div>
+            )
+          }
+          {
+            selectedDatasetsMode.mixtureHighQualityAndEconomic && !datasetConfigs.reranking_model?.reranking_provider_name
+            && (
+              <div className='mt-4 system-xs-regular text-text-warning'>
+                {t('dataset.mixtureHighQualityAndEconomicTip')}
+              </div>
+            )
+          }
+          {
+            showWeightedScore && (
+              <div className='flex items-center justify-between mt-4'>
+                {
+                  rerankingModeOptions.map(option => (
+                    <div
+                      key={option.value}
+                      className={cn(
+                        'flex items-center justify-center w-[calc((100%-8px)/2)] h-8 rounded-lg border border-components-option-card-option-border bg-components-option-card-option-bg cursor-pointer system-sm-medium text-text-secondary',
+                        selectedRerankMode === option.value && 'border-[1.5px] border-components-option-card-option-selected-border bg-components-option-card-option-selected-bg text-text-primary',
+                      )}
+                      onClick={() => handleRerankModeChange(option.value)}
+                    >
+                      <div className='truncate'>{option.label}</div>
+                      <TooltipPlus
+                        popupContent={option.tips}
+                        hideArrow
+                      >
+                        <RiQuestionLine className='ml-0.5 w-3.5 h-4.5 text-text-quaternary' />
+                      </TooltipPlus>
+                    </div>
+                  ))
+                }
+              </div>
+            )
+          }
+          {
+            datasetConfigs.reranking_mode !== RerankingModeEnum.WeightedScore && (
+              <div className='mt-4'>
+                <div className='leading-[32px] text-[13px] font-medium text-gray-900'>{t('common.modelProvider.rerankModel.key')}</div>
+                <div>
+                  <ModelSelector
+                    defaultModel={rerankModel && { provider: rerankModel?.provider_name, model: rerankModel?.model_name }}
+                    onSelect={(v) => {
+                      onChange({
+                        ...datasetConfigs,
+                        reranking_model: {
+                          reranking_provider_name: v.provider,
+                          reranking_model_name: v.model,
+                        },
+                      })
+                    }}
+                    modelList={rerankModelList}
+                  />
+                </div>
+              </div>
+            )
+          }
+          {
+            showWeightedScore
+            && datasetConfigs.reranking_mode === RerankingModeEnum.WeightedScore
+            && (
+              <div className='mt-4 space-y-4'>
+                <WeightedScore
+                  type={datasetConfigs.weights?.weight_type}
+                  value={datasetConfigs.weights?.vector_setting.vector_weight}
+                  onTypeChange={handleWeightedScoreTypeChange}
+                  onValueChange={handleWeightedScoreValueChange}
+                />
+                <TopKItem
+                  value={datasetConfigs.top_k}
+                  onChange={handleParamChange}
+                  enable={true}
+                />
+                <ScoreThresholdItem
+                  value={datasetConfigs.score_threshold as number}
+                  onChange={handleParamChange}
+                  enable={datasetConfigs.score_threshold_enabled}
+                  hasSwitch={true}
+                  onSwitchChange={handleSwitch}
+                />
+              </div>
+            )
+          }
+          {
+            !(showWeightedScore
+            && datasetConfigs.reranking_mode === RerankingModeEnum.WeightedScore)
+            && (
+              <div className='mt-4 space-y-4'>
+                <TopKItem
+                  value={datasetConfigs.top_k}
+                  onChange={handleParamChange}
+                  enable={true}
+                />
+                <ScoreThresholdItem
+                  value={datasetConfigs.score_threshold as number}
+                  onChange={handleParamChange}
+                  enable={datasetConfigs.score_threshold_enabled}
+                  hasSwitch={true}
+                  onSwitchChange={handleSwitch}
+                />
+              </div>
+            )
+          }
         </>
       )}
 

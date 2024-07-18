@@ -1,6 +1,7 @@
 import type { FC } from 'react'
 import {
   memo,
+  useCallback,
 } from 'react'
 import { useTranslation } from 'react-i18next'
 import VarReferencePicker from '../_base/components/variable/var-reference-picker'
@@ -43,7 +44,13 @@ const Panel: FC<NodePanelProps<KnowledgeRetrievalNodeType>> = ({
     query,
     setQuery,
     runResult,
+    rerankModelOpen,
+    setRerankModelOpen,
   } = useConfig(id, data)
+
+  const handleOpenFromPropsChange = useCallback((openFromProps: boolean) => {
+    setRerankModelOpen(openFromProps)
+  }, [setRerankModelOpen])
 
   return (
     <div className='mt-2'>
@@ -69,7 +76,7 @@ const Panel: FC<NodePanelProps<KnowledgeRetrievalNodeType>> = ({
               <RetrievalConfig
                 payload={{
                   retrieval_mode: inputs.retrieval_mode,
-                  multiple_retrieval_config: inputs.multiple_retrieval_config,
+                  multiple_retrieval_config: inputs.multiple_retrieval_config!,
                   single_retrieval_config: inputs.single_retrieval_config,
                 }}
                 onRetrievalModeChange={handleRetrievalModeChange}
@@ -78,6 +85,8 @@ const Panel: FC<NodePanelProps<KnowledgeRetrievalNodeType>> = ({
                 onSingleRetrievalModelChange={handleModelChanged as any}
                 onSingleRetrievalModelParamsChange={handleCompletionParamsChange}
                 readonly={readOnly || !inputs.dataset_ids.length}
+                openFromProps={rerankModelOpen}
+                onOpenFromPropsChange={handleOpenFromPropsChange}
                 selectedDatasets={selectedDatasets}
               />
               {!readOnly && (<div className='w-px h-3 bg-gray-200'></div>)}
