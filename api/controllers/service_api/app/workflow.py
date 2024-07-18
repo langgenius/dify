@@ -31,6 +31,33 @@ logger = logging.getLogger(__name__)
 
 
 class WorkflowRunApi(Resource):
+    workflow_run_fields = {
+        'id': fields.String,
+        'workflow_id': fields.String,
+        'status': fields.String,
+        'inputs': fields.Raw,
+        'outputs': fields.Raw,
+        'error': fields.String,
+        'total_steps': fields.Integer,
+        'total_tokens': fields.Integer,
+        'created_at': fields.DateTime,
+        'finished_at': fields.DateTime,
+        'elapsed_time': fields.Float,
+    }
+
+    @validate_app_token
+    @marshal_with(workflow_run_fields)
+    def get(self, app_model: App, workflow_id: str):
+        """
+        Get a workflow task running detail
+        """
+        app_mode = AppMode.value_of(app_model.mode)
+        if app_mode != AppMode.WORKFLOW:
+            raise NotWorkflowAppError()
+
+        workflow_run = db.session.query(WorkflowRun).filter(WorkflowRun.id == workflow_id).first()
+        return workflow_run
+
     @validate_app_token(fetch_user_arg=FetchUserArg(fetch_from=WhereisUserArg.JSON, required=True))
     def post(self, app_model: App, end_user: EndUser):
         """
@@ -73,35 +100,6 @@ class WorkflowRunApi(Resource):
             raise InternalServerError()
 
 
-class WorkflowRunDetailApi(Resource):
-    workflow_run_fields = {
-        'id': fields.String,
-        'workflow_id': fields.String,
-        'status': fields.String,
-        'inputs': fields.Raw,
-        'outputs': fields.Raw,
-        'error': fields.String,
-        'total_steps': fields.Integer,
-        'total_tokens': fields.Integer,
-        'created_at': fields.DateTime,
-        'finished_at': fields.DateTime,
-        'elapsed_time': fields.Float,
-    }
-
-    @validate_app_token
-    @marshal_with(workflow_run_fields)
-    def get(self, app_model: App, workflow_id: str):
-        """
-        Get a workflow task running detail
-        """
-        app_mode = AppMode.value_of(app_model.mode)
-        if app_mode != AppMode.WORKFLOW:
-            raise NotWorkflowAppError()
-
-        workflow_run = db.session.query(WorkflowRun).filter(WorkflowRun.id == workflow_id).first()
-        return workflow_run
-
-
 class WorkflowTaskStopApi(Resource):
     @validate_app_token(fetch_user_arg=FetchUserArg(fetch_from=WhereisUserArg.JSON, required=True))
     def post(self, app_model: App, end_user: EndUser, task_id: str):
@@ -119,6 +117,5 @@ class WorkflowTaskStopApi(Resource):
         }
 
 
-api.add_resource(WorkflowRunApi, '/workflows/run')
-api.add_resource(WorkflowRunDetailApi, '/workflows/run/<string:workflow_id>')
+api.add_resource(WorkflowRunApi, '/workflows/run/<string:workflow_id>', '/workflows/run')
 api.add_resource(WorkflowTaskStopApi, '/workflows/tasks/<string:task_id>/stop')
