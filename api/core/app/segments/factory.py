@@ -3,7 +3,9 @@ from typing import Any
 
 from core.file.file_obj import FileVar
 
-from .entities import (
+from .segments import Segment, StringSegment
+from .types import SegmentType
+from .variables import (
     ArrayVariable,
     FileVariable,
     FloatVariable,
@@ -12,11 +14,10 @@ from .entities import (
     SecretVariable,
     StringVariable,
     Variable,
-    VariableType,
 )
 
 
-def from_mapping(m: Mapping[str, Any], /) -> Variable:
+def build_variable_from_mapping(m: Mapping[str, Any], /) -> Variable:
     if (value_type := m.get('value_type')) is None:
         raise ValueError('missing value type')
     if not (name := m.get('name')):
@@ -24,15 +25,15 @@ def from_mapping(m: Mapping[str, Any], /) -> Variable:
     if not (value := m.get('value')):
         raise ValueError('missing value')
     match value_type:
-        case VariableType.STRING:
+        case SegmentType.STRING:
             return StringVariable.model_validate(m)
-        case VariableType.NUMBER if isinstance(value, int):
+        case SegmentType.NUMBER if isinstance(value, int):
             return IntegerVariable.model_validate(m)
-        case VariableType.NUMBER if isinstance(value, float):
+        case SegmentType.NUMBER if isinstance(value, float):
             return FloatVariable.model_validate(m)
-        case VariableType.SECRET:
+        case SegmentType.SECRET:
             return SecretVariable.model_validate(m)
-        case VariableType.NUMBER if not isinstance(value, float | int):
+        case SegmentType.NUMBER if not isinstance(value, float | int):
             raise ValueError(f'invalid number value {value}')
     raise ValueError(f'not supported value type {value_type}')
 
@@ -54,4 +55,10 @@ def build_anonymous_variable(value: Any, /) -> Variable:
         return ArrayVariable(name='anonymous', value=elements)
     if isinstance(value, FileVar):
         return FileVariable(name='anonymous', value=value)
+    raise ValueError(f'not supported value {value}')
+
+
+def build_segment(value: Any, /) -> Segment:
+    if isinstance(value, str):
+        return StringSegment(value=value)
     raise ValueError(f'not supported value {value}')

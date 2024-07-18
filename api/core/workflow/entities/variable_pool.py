@@ -5,7 +5,7 @@ from typing import Any, Optional, Union
 
 from typing_extensions import deprecated
 
-from core.app.variables import ArrayVariable, ObjectVariable, Variable, variable_factory
+from core.app.segments import ArrayVariable, ObjectVariable, Variable, factory
 from core.file.file_obj import FileVar
 from core.workflow.entities.node_entities import SystemVariable
 
@@ -52,13 +52,16 @@ class VariablePool:
         # elements of the selector except the first one.
         self._variable_dictionary: dict[str, dict[int, Variable]] = defaultdict(dict)
 
+        # TODO: This user inputs is not used for pool.
         self.user_inputs = user_inputs
+
         self.system_variables = system_variables
-        for system_variable, value in system_variables.items():
-            self.add((SYSTEM_VARIABLE_NODE_ID, system_variable.value), value)
+        for key, value in system_variables.items():
+            self.add((SYSTEM_VARIABLE_NODE_ID, key.value), value)
+
         self.environment_variables = environment_variables or []
         for var in self.environment_variables:
-            self.add((ENVIRONMENT_VARIABLE_NODE_ID, var.name), var.value)
+            self.add((ENVIRONMENT_VARIABLE_NODE_ID, var.name), var)
 
     def add(self, selector: Sequence[str], value: Any, /) -> None:
         """
@@ -81,7 +84,7 @@ class VariablePool:
             return
 
         if not isinstance(value, Variable):
-            v = variable_factory.build_anonymous_variable(value)
+            v = factory.build_anonymous_variable(value)
         else:
             v = value
 

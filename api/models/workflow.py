@@ -4,10 +4,10 @@ from enum import Enum
 from typing import Any, Optional, Union
 
 import contexts
-from core.app.variables import (
+from core.app.segments import (
     SecretVariable,
     Variable,
-    variable_factory,
+    factory,
 )
 from core.helper import encrypter
 from extensions.ext_database import db
@@ -197,7 +197,7 @@ class Workflow(db.Model):
         tenant_id = contexts.tenant_id.get()
 
         environment_variables_dict: dict[str, Any] = json.loads(self._environment_variables)
-        results = [variable_factory.from_mapping(v) for v in environment_variables_dict.values()]
+        results = [factory.build_variable_from_mapping(v) for v in environment_variables_dict.values()]
         # decrypt secret variables value
         decrypt_func = (
             lambda var: var.model_copy(

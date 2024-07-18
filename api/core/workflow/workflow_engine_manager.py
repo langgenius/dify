@@ -956,7 +956,7 @@ class WorkflowEngineManager:
             # get value
             value = user_inputs.get(variable_key)
 
-            # temp fix for image type
+            # FIXME: temp fix for image type
             if node_instance.node_type == NodeType.LLM:
                 new_value = []
                 if isinstance(value, list):

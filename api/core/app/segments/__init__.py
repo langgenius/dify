@@ -1,4 +1,9 @@
-from .entities import (
+from pydantic import BaseModel
+
+from .segments import Segment
+from .segments_group import SegmentGroup
+from .types import SegmentType
+from .variables import (
     ArrayVariable,
     FileVariable,
     FloatVariable,
@@ -18,4 +23,7 @@ __all__ = [
     'StringVariable',
     'ArrayVariable',
     'Variable',
+    'SegmentType',
+    'SegmentGroup',
+    'Segment'
 ]

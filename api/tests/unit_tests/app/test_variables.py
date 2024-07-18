@@ -1,38 +1,44 @@
 import pytest
 from pydantic import ValidationError
 
-from core.app.variables import FloatVariable, IntegerVariable, SecretVariable, StringVariable, variable_factory
-from core.app.variables.entities import VariableType
+from core.app.segments import (
+    FloatVariable,
+    IntegerVariable,
+    SecretVariable,
+    SegmentType,
+    StringVariable,
+    factory,
+)
 
 
 def test_string_variable():
     test_data = {'value_type': 'string', 'name': 'test_text', 'value': 'Hello, World!'}
-    result = variable_factory.from_mapping(test_data)
+    result = factory.build_variable_from_mapping(test_data)
     assert isinstance(result, StringVariable)
 
 
 def test_integer_variable():
     test_data = {'value_type': 'number', 'name': 'test_int', 'value': 42}
-    result = variable_factory.from_mapping(test_data)
+    result = factory.build_variable_from_mapping(test_data)
     assert isinstance(result, IntegerVariable)
 
 
 def test_float_variable():
     test_data = {'value_type': 'number', 'name': 'test_float', 'value': 3.14}
-    result = variable_factory.from_mapping(test_data)
+    result = factory.build_variable_from_mapping(test_data)
     assert isinstance(result, FloatVariable)
 
 
 def test_secret_variable():
     test_data = {'value_type': 'secret', 'name': 'test_secret', 'value': 'secret_value'}
-    result = variable_factory.from_mapping(test_data)
+    result = factory.build_variable_from_mapping(test_data)
     assert isinstance(result, SecretVariable)
 
 
 def test_invalid_value_type():
     test_data = {'value_type': 'unknown', 'name': 'test_invalid', 'value': 'value'}
     with pytest.raises(ValueError):
-        variable_factory.from_mapping(test_data)
+        factory.build_variable_from_mapping(test_data)
 
 
 def test_frozen_variables():
@@ -55,7 +61,7 @@ def test_frozen_variables():
 
 def test_variable_value_type_immutable():
     with pytest.raises(ValidationError):
-        StringVariable(value_type=VariableType.ARRAY, name='text', value='text')
+        StringVariable(value_type=SegmentType.ARRAY, name='text', value='text')
 
     with pytest.raises(ValidationError):
         StringVariable.model_validate({
@@ -66,12 +72,12 @@ def test_variable_value_type_immutable():
 
     var = IntegerVariable(name='integer', value=42)
     with pytest.raises(ValidationError):
-        IntegerVariable(value_type=VariableType.ARRAY, name=var.name, value=var.value)
+        IntegerVariable(value_type=SegmentType.ARRAY, name=var.name, value=var.value)
 
     var = FloatVariable(name='float', value=3.14)
     with pytest.raises(ValidationError):
-        FloatVariable(value_type=VariableType.ARRAY, name=var.name, value=var.value)
+        FloatVariable(value_type=SegmentType.ARRAY, name=var.name, value=var.value)
 
     var = SecretVariable(name='secret', value='secret_value')
     with pytest.raises(ValidationError):
-        SecretVariable(value_type=VariableType.ARRAY, name=var.name, value=var.value)
+        SecretVariable(value_type=SegmentType.ARRAY, name=var.name, value=var.value)

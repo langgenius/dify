@@ -1,7 +1,7 @@
 from unittest import mock
 
 import contexts
-from core.app.variables import FloatVariable, IntegerVariable, SecretVariable, StringVariable
+from core.app.segments import FloatVariable, IntegerVariable, SecretVariable, StringVariable
 from models.workflow import Workflow
 
 

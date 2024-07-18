@@ -6,7 +6,7 @@ from typing import Optional
 
 from core.app.apps.advanced_chat.app_config_manager import AdvancedChatAppConfigManager
 from core.app.apps.workflow.app_config_manager import WorkflowAppConfigManager
-from core.app.variables import Variable
+from core.app.segments import Variable
 from core.model_runtime.utils.encoders import jsonable_encoder
 from core.workflow.entities.node_entities import NodeType
 from core.workflow.errors import WorkflowNodeRunFailedError

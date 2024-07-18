@@ -3,7 +3,7 @@ import logging
 import httpx
 import yaml  # type: ignore
 
-from core.app.variables import variable_factory
+from core.app.segments import factory
 from events.app_event import app_model_config_was_updated, app_was_created
 from extensions.ext_database import db
 from models.account import Account
@@ -237,7 +237,7 @@ class AppDslService:
 
         # init draft workflow
         environment_variables_list = workflow_data.get('environment_variables') or []
-        environment_variables = [variable_factory.from_mapping(obj) for obj in environment_variables_list]
+        environment_variables = [factory.build_variable_from_mapping(obj) for obj in environment_variables_list]
         workflow_service = WorkflowService()
         draft_workflow = workflow_service.sync_draft_workflow(
             app_model=app,
@@ -281,7 +281,7 @@ class AppDslService:
 
         # sync draft workflow
         environment_variables_list = workflow_data.get('environment_variables') or []
-        environment_variables = [variable_factory.from_mapping(obj) for obj in environment_variables_list]
+        environment_variables = [factory.build_variable_from_mapping(obj) for obj in environment_variables_list]
         draft_workflow = workflow_service.sync_draft_workflow(
             app_model=app_model,
             graph=workflow_data.get('graph', {}),
