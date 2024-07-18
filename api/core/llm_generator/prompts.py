@@ -98,13 +98,13 @@ Please generate the full prompt template and output only the prompt template.
 RULE_CONFIG_PARAMETER_GENERATE_TEMPLATE = """
 I need to extract the following information from the input text. The <information to be extracted> tag specifies the 'type', 'description' and 'required' of the information to be extracted. 
 <information to be extracted>
-variables name bounded two double curly brackets 
+variables name bounded two double curly brackets. Variable name has to be composed of number, english alphabets and underline and nothing else. 
 </information to be extracted>
 
 Step 1: Carefully read the input and understand the structure of the expected output.
 Step 2: Extract relevant parameters from the provided text based on the name and description of object. 
 Step 3: Structure the extracted parameters to JSON object as specified in <structure>.
-Step 4: Ensure that the JSON object is properly formatted and valid. The output should not contain any XML tags. Only the JSON object should be outputted.
+Step 4: Ensure that the list of variable_names is properly formatted and valid. The output should not contain any XML tags. Output an empty list if there is no valid variable name in input text. 
 
 ### Structure
 Here is the structure of the expected output, I should always follow the output structure. 
@@ -117,7 +117,7 @@ Inside <text></text> XML tags, there is a text that I should extract parameters 
 </text>
 
 ### Answer
-I should always output a valid list. Output nothing other than the list of variable_name. 
+I should always output a valid list. Output nothing other than the list of variable_name. Output an empty list if there is no variable name in input text.
 """
 
 RULE_CONFIG_STATEMENT_GENERATE_TEMPLATE = """
