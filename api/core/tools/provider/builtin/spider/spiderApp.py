@@ -45,7 +45,6 @@ class Spider:
         :param api_key: A string of the API key for Spider. Defaults to the SPIDER_API_KEY environment variable.
         :raises ValueError: If no API key is provided.
         """
-        print(api_key)
         self.api_key = api_key or os.getenv("SPIDER_API_KEY")
         if self.api_key is None:
             raise ValueError("No API key provided")
