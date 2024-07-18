@@ -179,8 +179,9 @@ x-shared-env: &shared-api-worker-env
 services:
   # API service
   api:
-    image: langgenius/dify-api:0.6.14
+    image: ghcr.io/acedatacloud/platform-service-dify-api:${BUILD_NUMBER}
     restart: always
+    build: '../api'
     environment:
       # Use the shared environment variables.
       <<: *shared-api-worker-env
@@ -199,8 +200,9 @@ services:
   # worker service
   # The Celery worker for processing the queue.
   worker:
-    image: langgenius/dify-api:0.6.14
+    image: ghcr.io/acedatacloud/platform-service-dify-api:${BUILD_NUMBER}
     restart: always
+    build: '../api'
     environment:
       # Use the shared environment variables.
       <<: *shared-api-worker-env
@@ -218,8 +220,9 @@ services:
 
   # Frontend web application.
   web:
-    image: langgenius/dify-web:0.6.14
+    image: ghcr.io/acedatacloud/platform-service-dify-web:${BUILD_NUMBER}
     restart: always
+    build: '../web'
     environment:
       CONSOLE_API_URL: ${CONSOLE_API_URL:-}
       APP_API_URL: ${APP_API_URL:-}
