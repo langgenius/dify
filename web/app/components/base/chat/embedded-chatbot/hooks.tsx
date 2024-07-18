@@ -118,9 +118,13 @@ export const useEmbeddedChatbot = () => {
   const inputsForms = useMemo(() => {
     return (appParams?.user_input_form || []).filter((item: any) => item.paragraph || item.select || item['text-input'] || item.number).map((item: any) => {
       if (item.paragraph) {
+        let value = initInputs[item.paragraph.variable]
+        if (value && item.paragraph.max_length && value.length > item.paragraph.max_length)
+          value = value.slice(0, item.paragraph.max_length)
+
         return {
           ...item.paragraph,
-          default: initInputs[item.paragraph.variable] || item.default,
+          default: value || item.default,
           type: 'paragraph',
         }
       }
@@ -141,8 +145,13 @@ export const useEmbeddedChatbot = () => {
         }
       }
 
+      let value = initInputs[item['text-input'].variable]
+      if (value && item['text-input'].max_length && value.length > item['text-input'].max_length)
+        value = value.slice(0, item['text-input'].max_length)
+
       return {
         ...item['text-input'],
+        default: value || item.default,
         type: 'text-input',
       }
     })
