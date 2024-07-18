@@ -88,25 +88,22 @@ parameters:
       ### FilterTypeEnum Reference
       ```
       Enum Value, Enum Character, Description
-      1, Like, Contains
+      1, Like, Contains(Include)
       2, Eq, Is (Equal)
       3, Start, Starts With
       4, End, Ends With
-      5, NotLike, Does Not Contain
+      5, NotLike, Does Not Contain(Not Include)
       6, Ne, Is Not (Not Equal)
       7, IsEmpty, Empty
       8, HasValue, Not Empty
-      11, Between, Within Range
-      12, NotBetween, Outside Range
+      11, Between, Within Range(Belong to)
+      12, NotBetween, Outside Range(Not belong to) 
       13, Gt, Greater Than
       14, Gte, Greater Than or Equal To
       15, Lt, Less Than
       16, Lte, Less Than or Equal To
       17, DateEnum, Date Is
       18, NotDateEnum, Date Is Not
-      21, MySelf, Owned by Me
-      22, UnRead, Unread
-      23, Sub, Owned by Subordinate
       24, RCEq, Associated Field Is
       25, RCNe, Associated Field Is Not
       26, ArrEq, Array Equals
@@ -227,3 +224,4 @@ parameters:
       en_US: used for selecting the result type, table styled text or json text
       zh_Hans: 用于选择结果类型，使用表格格式文本还是JSON格式文本
     form: form
+    
