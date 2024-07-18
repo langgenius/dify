@@ -1,7 +1,8 @@
-from typing import Optional, Any, Union
-import logging
-import boto3
 import json
+import logging
+from typing import Any, Optional
+
+import boto3
 
 from core.model_runtime.entities.common_entities import I18nObject
 from core.model_runtime.entities.model_entities import AIModelEntity, FetchFrom, ModelType
@@ -69,9 +70,9 @@ class SageMakerRerankModel(RerankModel):
 
             line = 1
             if not self.sagemaker_client:
-                access_key = credentials.get('aws_access_key_id', None)
-                secret_key = credentials.get('aws_secret_access_key', None)
-                aws_region = credentials.get('aws_region', None)
+                access_key = credentials.get('aws_access_key_id')
+                secret_key = credentials.get('aws_secret_access_key')
+                aws_region = credentials.get('aws_region')
                 if aws_region:
                     if access_key and secret_key:
                         self.sagemaker_client = boto3.client("sagemaker-runtime", 
@@ -85,7 +86,7 @@ class SageMakerRerankModel(RerankModel):
 
             line = 2
 
-            sagemaker_endpoint = credentials.get('sagemaker_endpoint', None)
+            sagemaker_endpoint = credentials.get('sagemaker_endpoint')
             candidate_docs = []
 
             scores = self._sagemaker_rerank(query, docs, sagemaker_endpoint)

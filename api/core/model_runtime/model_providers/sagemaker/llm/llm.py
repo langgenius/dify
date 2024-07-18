@@ -1,21 +1,15 @@
 import json
 import logging
-from collections.abc import Generator, Iterator
-from typing import Optional, Union, cast, Any
+from collections.abc import Generator
+from typing import Any, Optional, Union
+
 import boto3
 
-from core.model_runtime.entities.common_entities import I18nObject
-from core.model_runtime.entities.llm_entities import LLMMode, LLMResult, LLMResultChunk, LLMResultChunkDelta
+from core.model_runtime.entities.llm_entities import LLMMode, LLMResult
 from core.model_runtime.entities.message_entities import (
     AssistantPromptMessage,
     PromptMessage,
-    PromptMessageContentType,
-    PromptMessageRole,
     PromptMessageTool,
-    SystemPromptMessage,
-    TextPromptMessageContent,
-    ToolPromptMessage,
-    UserPromptMessage,
 )
 from core.model_runtime.entities.model_entities import AIModelEntity, FetchFrom, I18nObject, ModelType
 from core.model_runtime.errors.invoke import (
@@ -60,9 +54,9 @@ class SageMakerLargeLanguageModel(LargeLanguageModel):
         model_mode = self.get_model_mode(model, credentials)
 
         if not self.sagemaker_client:
-            access_key = credentials.get('access_key', None)
-            secret_key = credentials.get('secret_key', None)
-            aws_region = credentials.get('aws_region', None)
+            access_key = credentials.get('access_key')
+            secret_key = credentials.get('secret_key')
+            aws_region = credentials.get('aws_region')
             if aws_region:
                 if access_key and secret_key:
                     self.sagemaker_client = boto3.client("sagemaker-runtime", 
@@ -75,7 +69,7 @@ class SageMakerLargeLanguageModel(LargeLanguageModel):
                 self.sagemaker_client = boto3.client("sagemaker-runtime")
 
 
-        sagemaker_endpoint = credentials.get('sagemaker_endpoint', None)
+        sagemaker_endpoint = credentials.get('sagemaker_endpoint')
         response_model = self.sagemaker_client.invoke_endpoint(
                     EndpointName=sagemaker_endpoint,
                     Body=json.dumps(

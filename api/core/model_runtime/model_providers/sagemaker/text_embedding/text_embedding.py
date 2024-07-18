@@ -1,23 +1,21 @@
-import time
-from typing import Optional, Any
-
-import numpy as np
-import boto3
+import itertools
 import json
 import logging
-import itertools
+import time
+from typing import Any, Optional
+
+import boto3
 
 from core.model_runtime.entities.common_entities import I18nObject
-from core.model_runtime.entities.model_entities import AIModelEntity, FetchFrom, ModelType, ModelPropertyKey
-from core.model_runtime.entities.model_entities import PriceType
+from core.model_runtime.entities.model_entities import AIModelEntity, FetchFrom, ModelPropertyKey, ModelType, PriceType
 from core.model_runtime.entities.text_embedding_entities import EmbeddingUsage, TextEmbeddingResult
 from core.model_runtime.errors.invoke import (
-    InvokeAuthorizationError,
-    InvokeBadRequestError,
-    InvokeConnectionError,
-    InvokeError,
-    InvokeRateLimitError,
-    InvokeServerUnavailableError,
+        InvokeAuthorizationError,
+        InvokeBadRequestError,
+        InvokeConnectionError,
+        InvokeError,
+        InvokeRateLimitError,
+        InvokeServerUnavailableError,
 )
 from core.model_runtime.errors.validate import CredentialsValidateFailedError
 from core.model_runtime.model_providers.__base.text_embedding_model import TextEmbeddingModel
@@ -28,11 +26,11 @@ CONTEXT_SIZE=8192
 logger = logging.getLogger(__name__)
 
 def batch_generator(generator, batch_size):
-        while True:
-            batch = list(itertools.islice(generator, batch_size))
-            if not batch:
-                break
-            yield batch
+    while True:
+        batch = list(itertools.islice(generator, batch_size))
+        if not batch:
+            break
+        yield batch
 
 class SageMakerEmbeddingModel(TextEmbeddingModel):
     """
@@ -74,9 +72,9 @@ class SageMakerEmbeddingModel(TextEmbeddingModel):
         try:
             line = 1
             if not self.sagemaker_client:
-                access_key = credentials.get('aws_access_key_id', None)
-                secret_key = credentials.get('aws_secret_access_key', None)
-                aws_region = credentials.get('aws_region', None)
+                access_key = credentials.get('aws_access_key_id')
+                secret_key = credentials.get('aws_secret_access_key')
+                aws_region = credentials.get('aws_region')
                 if aws_region:
                     if access_key and secret_key:
                         self.sagemaker_client = boto3.client("sagemaker-runtime", 
@@ -89,7 +87,7 @@ class SageMakerEmbeddingModel(TextEmbeddingModel):
                     self.sagemaker_client = boto3.client("sagemaker-runtime")
 
             line = 2
-            sagemaker_endpoint = credentials.get('sagemaker_endpoint', None)
+            sagemaker_endpoint = credentials.get('sagemaker_endpoint')
 
             line = 3
             truncated_texts = [ item[:CONTEXT_SIZE] for item in texts ]
