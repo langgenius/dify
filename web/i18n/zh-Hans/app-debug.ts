@@ -229,7 +229,7 @@ const translation = {
       },
       excelFormulaExpert: {
         name: 'Excel 公式专家',
-        instruction: '一个可以让小白用户理解、使用和创建',
+        instruction: '一个可以让小白用户理解、使用和创建 Excel 公式的对话机器人',
       },
       travelPlanning: {
         name: '旅行规划助手',

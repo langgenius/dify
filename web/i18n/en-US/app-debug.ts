@@ -209,6 +209,7 @@ const translation = {
     resTitle: 'Generated Prompt',
     noDataLine1: 'Describe your use case on the left,',
     noDataLine2: 'the orchestration preview will show here.',
+    apply: 'Apply',
     loading: 'Orchestrating the application for you...',
     overwriteTitle: 'Override existing configuration?',
     overwriteMessage: 'Applying this prompt will override existing configuration.',
