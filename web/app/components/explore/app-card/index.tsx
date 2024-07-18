@@ -72,12 +72,12 @@ const AppCard = ({
       <div className='mb-1 px-[14px] text-xs leading-normal text-gray-500 line-clamp-4 group-hover:line-clamp-2 group-hover:h-9'>{app.description}</div>
       {isExplore && canCreate && (
         <div className={cn('hidden items-center flex-wrap min-h-[42px] px-[14px] pt-2 pb-[10px] group-hover:flex')}>
-          <div className={cn('flex items-center w-full space-x-2')}>
-            <Button variant='primary' className='grow h-7' onClick={() => onCreate()}>
+          <div className={cn('flex items-center justify-between w-full space-x-2')}>
+            <Button variant='primary' className='w-full h-7' onClick={() => onCreate()}>
               <PlusIcon className='w-4 h-4 mr-1'/>
               <span className='text-xs'>{t('explore.appCard.addToWorkspace')}</span>
             </Button>
-            <Button variant='secondary-accent' className='grow h-7' onClick={() => onClickCopy()}>
+            <Button variant='secondary-accent' className='w-full h-7' onClick={() => onClickCopy()}>
               <RiShareLine className='w-4 h-4 mr-1'/>
               <span className='text-xs'>{t('explore.appCard.share')}</span>
             </Button>
