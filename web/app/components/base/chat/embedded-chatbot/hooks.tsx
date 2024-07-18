@@ -109,41 +109,31 @@ export const useEmbeddedChatbot = () => {
   const { t } = useTranslation()
   const newConversationInputsRef = useRef<Record<string, any>>({})
   const [newConversationInputs, setNewConversationInputs] = useState<Record<string, any>>({})
+  const [initInputs, setInitInputs] = useState<Record<string, any>>({})
   const handleNewConversationInputsChange = useCallback((newInputs: Record<string, any>) => {
     newConversationInputsRef.current = newInputs
     setNewConversationInputs(newInputs)
   }, [])
   const inputsForms = useMemo(() => {
-    function getInputsFromUrlParams(): Record<string, any> {
-      const urlParams = new URLSearchParams(window.location.search)
-      let inputs: Record<string, any> = {}
-      urlParams.forEach((value, key) => {
-        inputs[key] = Buffer.from(decodeURIComponent(value), 'base64').toString()
-      })
-      return inputs
-    }
-
-    const inputs = getInputsFromUrlParams()
-
     return (appParams?.user_input_form || []).filter((item: any) => item.paragraph || item.select || item['text-input'] || item.number).map((item: any) => {
       if (item.paragraph) {
         return {
           ...item.paragraph,
-          default: inputs[item.paragraph.variable] || item.default,
+          default: initInputs[item.paragraph.variable] || item.default,
           type: 'paragraph',
         }
       }
       if (item.number) {
         return {
           ...item.number,
-          default: inputs[item.number.variable] || item.default,
+          default: initInputs[item.number.variable] || item.default,
           type: 'number',
         }
       }
       if (item.select) {
         return {
           ...item.select,
-          default: inputs[item.select.variable] || item.default,
+          default: initInputs[item.select.variable] || item.default,
           type: 'select',
         }
       }
@@ -154,6 +144,25 @@ export const useEmbeddedChatbot = () => {
       }
     })
   }, [appParams])
+  useEffect(async () => {
+    async function decodeBase64AndDecompress(base64String) {
+      const binaryString = atob(base64String)
+      const compressedUint8Array = Uint8Array.from(binaryString, char => char.charCodeAt(0))
+      const decompressedStream = new Response(compressedUint8Array).body.pipeThrough(new DecompressionStream('gzip'))
+      const decompressedArrayBuffer = await new Response(decompressedStream).arrayBuffer()
+      return new TextDecoder().decode(decompressedArrayBuffer)
+    }
+
+    function getInputsFromUrlParams(): Record<string, any> {
+      const urlParams = new URLSearchParams(window.location.search)
+      const inputs: Record<string, any> = {}
+      urlParams.forEach(async (value, key) => {
+        inputs[key] = await decodeBase64AndDecompress(decodeURIComponent(value))
+      })
+      return inputs
+    }
+    setInitInputs(getInputsFromUrlParams())
+  }, [])
   useEffect(() => {
     const conversationInputs: Record<string, any> = {}
 
