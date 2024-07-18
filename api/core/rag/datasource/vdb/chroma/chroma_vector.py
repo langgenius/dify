@@ -111,7 +111,8 @@ class ChromaVector(BaseVector):
                     metadata=metadata,
                 )
                 docs.append(doc)
-
+         # Sort the documents by score in descending order
+        docs = sorted(docs, key=lambda x: x.metadata['score'], reverse=True)
         return docs
 
     def search_by_full_text(self, query: str, **kwargs: Any) -> list[Document]:
