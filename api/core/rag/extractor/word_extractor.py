@@ -8,8 +8,8 @@ from urllib.parse import urlparse
 
 import requests
 from docx import Document as DocxDocument
-from flask import current_app
 
+from configs import dify_config
 from core.rag.extractor.extractor_base import BaseExtractor
 from core.rag.models.document import Document
 from extensions.ext_database import db
@@ -96,10 +96,9 @@ class WordExtractor(BaseExtractor):
 
                     storage.save(file_key, rel.target_part.blob)
                 # save file to db
-                config = current_app.config
                 upload_file = UploadFile(
                     tenant_id=self.tenant_id,
-                    storage_type=config['STORAGE_TYPE'],
+                    storage_type=dify_config.STORAGE_TYPE,
                     key=file_key,
                     name=file_key,
                     size=0,
@@ -114,7 +113,7 @@ class WordExtractor(BaseExtractor):
 
                 db.session.add(upload_file)
                 db.session.commit()
-                image_map[rel.target_part] = f"![image]({current_app.config.get('CONSOLE_API_URL')}/files/{upload_file.id}/image-preview)"
+                image_map[rel.target_part] = f"![image]({dify_config.CONSOLE_API_URL}/files/{upload_file.id}/image-preview)"
 
         return image_map
 
