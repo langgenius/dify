@@ -138,7 +138,7 @@ class ChromaVectorFactory(AbstractVectorFactory):
             config=ChromaConfig(
                 host=dify_config.CHROMA_HOST,
                 port=dify_config.CHROMA_PORT,
-                tenant=dify_config.CHROMA_TENANT if config.get('CHROMA_TENANT') else chromadb.DEFAULT_TENANT,
+                tenant=dify_config.CHROMA_TENANT or chromadb.DEFAULT_TENANT,
                 database=dify_config.CHROMA_DATABASE if config.get('CHROMA_DATABASE') else chromadb.DEFAULT_DATABASE,
                 auth_provider=dify_config.CHROMA_AUTH_PROVIDER,
                 auth_credentials=dify_config.CHROMA_AUTH_CREDENTIALS,
