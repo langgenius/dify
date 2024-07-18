@@ -122,7 +122,7 @@ Toast.notify = ({
   if (typeof window === 'object') {
     const holder = document.createElement('div')
     const root = createRoot(holder)
-
+    const defaultDuring = type === 'success' ? 3000 : 6000
     root.render(<Toast type={type} message={message} duration={duration} className={className} />)
     document.body.appendChild(holder)
     setTimeout(() => {
