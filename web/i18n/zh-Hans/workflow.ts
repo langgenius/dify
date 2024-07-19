@@ -19,7 +19,7 @@ const translation = {
     goBackToEdit: '返回编辑模式',
     conversationLog: '对话记录',
     features: '功能',
-    debugAndPreview: '调试和预览',
+    debugAndPreview: '预览',
     restart: '重新开始',
     currentDraft: '当前草稿',
     currentDraftUnpublished: '当前草稿未发布',

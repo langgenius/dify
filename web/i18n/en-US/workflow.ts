@@ -19,7 +19,7 @@ const translation = {
     goBackToEdit: 'Go back to editor',
     conversationLog: 'Conversation Log',
     features: 'Features',
-    debugAndPreview: 'Debug and Preview',
+    debugAndPreview: 'Preview',
     restart: 'Restart',
     currentDraft: 'Current Draft',
     currentDraftUnpublished: 'Current Draft Unpublished',
