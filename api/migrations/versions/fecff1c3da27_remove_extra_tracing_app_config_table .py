@@ -1,4 +1,4 @@
-"""remove extra tracing app config table
+"""remove extra tracing app config table and add idx_dataset_permissions_tenant_id
 
 Revision ID: fecff1c3da27
 Revises: 408176b91ad3
@@ -23,6 +23,9 @@ def upgrade():
     with op.batch_alter_table('trace_app_config', schema=None) as batch_op:
         batch_op.drop_index('tracing_app_config_app_id_idx')
 
+    # idx_dataset_permissions_tenant_id
+    with op.batch_alter_table('dataset_permissions', schema=None) as batch_op:
+        batch_op.create_index('idx_dataset_permissions_tenant_id', ['tenant_id'])
     # ### end Alembic commands ###
 
 
@@ -46,4 +49,6 @@ def downgrade():
     with op.batch_alter_table('trace_app_config', schema=None) as batch_op:
         batch_op.create_index('tracing_app_config_app_id_idx', ['app_id'])
 
+    with op.batch_alter_table('dataset_permissions', schema=None) as batch_op:
+        batch_op.drop_index('idx_dataset_permissions_tenant_id')
     # ### end Alembic commands ###
