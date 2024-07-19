@@ -8,7 +8,11 @@ class GraphRuntimeState(BaseModel):
     variable_pool: VariablePool = Field(..., description="variable pool")
 
     start_at: float = Field(..., description="start time")
-    total_tokens: int = Field(0, description="total tokens")
-    node_run_steps: int = Field(0, description="node run steps")
+    total_tokens: int = 0
+    """total tokens"""
 
-    node_run_state: RuntimeRouteState = Field(default_factory=RuntimeRouteState, description="node run state")
+    node_run_steps: int = 0
+    """node run steps"""
+
+    node_run_state: RuntimeRouteState = RuntimeRouteState()
+    """node run state"""

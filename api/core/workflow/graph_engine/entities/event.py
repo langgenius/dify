@@ -50,7 +50,8 @@ class NodeRunStartedEvent(BaseNodeEvent):
 
 class NodeRunStreamChunkEvent(BaseNodeEvent):
     chunk_content: str = Field(..., description="chunk content")
-    from_variable_selector: list[str] = Field(..., description="from variable selector")
+    from_variable_selector: Optional[list[str]] = None
+    """from variable selector"""
 
 
 class NodeRunRetrieverResourceEvent(BaseNodeEvent):

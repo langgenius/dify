@@ -4,7 +4,7 @@ from typing import cast
 from core.file.file_obj import FileVar
 from core.workflow.entities.base_node_data_entities import BaseNodeData
 from core.workflow.entities.node_entities import NodeRunResult, NodeType
-from core.workflow.nodes.answer.answer_stream_output_manager import AnswerStreamOutputManager
+from core.workflow.nodes.answer.answer_stream_generate_router import AnswerStreamGeneratorRouter
 from core.workflow.nodes.answer.entities import (
     AnswerNodeData,
     GenerateRouteChunk,
@@ -29,7 +29,7 @@ class AnswerNode(BaseNode):
         node_data = cast(AnswerNodeData, node_data)
 
         # generate routes
-        generate_routes = AnswerStreamOutputManager.extract_generate_route_from_node_data(node_data)
+        generate_routes = AnswerStreamGeneratorRouter.extract_generate_route_from_node_data(node_data)
 
         answer = ''
         for part in generate_routes:

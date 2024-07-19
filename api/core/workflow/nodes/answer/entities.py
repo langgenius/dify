@@ -42,11 +42,21 @@ class TextGenerateRouteChunk(GenerateRouteChunk):
     text: str = Field(..., description="text")
 
 
+class AnswerNodeDoubleLink(BaseModel):
+    node_id: str = Field(..., description="node id")
+    source_node_ids: list[str] = Field(..., description="source node ids")
+    target_node_ids: list[str] = Field(..., description="target node ids")
+
+
 class AnswerStreamGenerateRoute(BaseModel):
     """
-    ChatflowStreamGenerateRoute entity
+    AnswerStreamGenerateRoute entity
     """
-    answer_node_id: str = Field(..., description="answer node ID")
-    generate_route: list[GenerateRouteChunk] = Field(..., description="answer stream generate route")
-    current_route_position: int = 0
-    """current generate route position"""
+    answer_dependencies: dict[str, list[str]] = Field(
+        ...,
+        description="answer dependencies (answer node id -> dependent answer node ids)"
+    )
+    answer_generate_route: dict[str, list[GenerateRouteChunk]] = Field(
+        ...,
+        description="answer generate route (answer node id -> generate route chunks)"
+    )

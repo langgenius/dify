@@ -28,6 +28,9 @@ from core.workflow.graph_engine.entities.graph import Graph
 from core.workflow.graph_engine.entities.graph_init_params import GraphInitParams
 from core.workflow.graph_engine.entities.graph_runtime_state import GraphRuntimeState
 from core.workflow.graph_engine.entities.runtime_route_state import RouteNodeState
+from core.workflow.nodes.answer.answer_stream_processor import AnswerStreamProcessor
+
+# from core.workflow.nodes.answer.answer_stream_processor import AnswerStreamProcessor
 from core.workflow.nodes.event import RunCompletedEvent, RunRetrieverResourceEvent, RunStreamChunkEvent
 from core.workflow.nodes.node_mapping import node_classes
 from extensions.ext_database import db
@@ -81,6 +84,10 @@ class GraphEngine:
         try:
             # run graph
             generator = self._run(start_node_id=self.graph.root_node_id)
+            if self.init_params.workflow_type == WorkflowType.CHAT:
+                answer_stream_processor = AnswerStreamProcessor(self.graph)
+                generator = answer_stream_processor.process(generator)
+
             for item in generator:
                 yield item
                 if isinstance(item, NodeRunFailedEvent):
@@ -314,8 +321,6 @@ class GraphEngine:
 
         db.session.close()
 
-        # TODO reference from core.workflow.workflow_entry.WorkflowEntry._run_workflow_node
-
         self.graph_runtime_state.node_run_steps += 1
 
         try:
@@ -335,7 +340,7 @@ class GraphEngine:
                         if run_result.metadata and run_result.metadata.get(NodeRunMetadataKey.TOTAL_TOKENS):
                             # plus state total_tokens
                             self.graph_runtime_state.total_tokens += int(
-                                run_result.metadata.get(NodeRunMetadataKey.TOTAL_TOKENS)
+                                run_result.metadata.get(NodeRunMetadataKey.TOTAL_TOKENS)  # type: ignore[arg-type]
                             )
 
                         # append node output variables to variable pool
@@ -397,7 +402,7 @@ class GraphEngine:
         self.graph_runtime_state.variable_pool.append_variable(
             node_id=node_id,
             variable_key_list=variable_key_list,
-            value=variable_value
+            value=variable_value  # type: ignore[arg-type]
         )
 
         # if variable_value is a dict, then recursively append variables

@@ -5,21 +5,24 @@ from pydantic import BaseModel, Field
 
 from core.workflow.entities.node_entities import NodeType
 from core.workflow.graph_engine.entities.run_condition import RunCondition
-from core.workflow.nodes.answer.answer_stream_output_manager import AnswerStreamOutputManager
+from core.workflow.nodes.answer.answer_stream_generate_router import AnswerStreamGeneratorRouter
 from core.workflow.nodes.answer.entities import AnswerStreamGenerateRoute
 
 
 class GraphEdge(BaseModel):
     source_node_id: str = Field(..., description="source node id")
     target_node_id: str = Field(..., description="target node id")
-    run_condition: Optional[RunCondition] = Field(None, description="run condition")
+    run_condition: Optional[RunCondition] = None
+    """run condition"""
 
 
 class GraphParallel(BaseModel):
     id: str = Field(default_factory=lambda: str(uuid.uuid4()), description="random uuid parallel id")
     start_from_node_id: str = Field(..., description="start from node id")
-    parent_parallel_id: Optional[str] = Field(None, description="parent parallel id")
-    end_to_node_id: Optional[str] = Field(None, description="end to node id")
+    parent_parallel_id: Optional[str] = None
+    """parent parallel id"""
+    end_to_node_id: Optional[str] = None
+    """end to node id"""
 
 
 class Graph(BaseModel):
@@ -33,6 +36,10 @@ class Graph(BaseModel):
         default_factory=dict,
         description="graph edge mapping (source node id: edges)"
     )
+    reverse_edge_mapping: dict[str, list[GraphEdge]] = Field(
+        default_factory=dict,
+        description="reverse graph edge mapping (target node id: edges)"
+    )
     parallel_mapping: dict[str, GraphParallel] = Field(
         default_factory=dict,
         description="graph parallel mapping (parallel id: parallel)"
@@ -41,8 +48,8 @@ class Graph(BaseModel):
         default_factory=dict,
         description="graph node parallel mapping (node id: parallel id)"
     )
-    answer_stream_generate_routes: dict[str, AnswerStreamGenerateRoute] = Field(
-        default_factory=dict,
+    answer_stream_generate_routes: AnswerStreamGenerateRoute = Field(
+        ...,
         description="answer stream generate routes"
     )
 
@@ -66,6 +73,7 @@ class Graph(BaseModel):
 
         # reorganize edges mapping
         edge_mapping: dict[str, list[GraphEdge]] = {}
+        reverse_edge_mapping: dict[str, list[GraphEdge]] = {}
         target_edge_ids = set()
         for edge_config in edge_configs:
             source_node_id = edge_config.get('source')
@@ -79,6 +87,9 @@ class Graph(BaseModel):
             if not target_node_id:
                 continue
 
+            if target_node_id not in reverse_edge_mapping:
+                reverse_edge_mapping[target_node_id] = []
+
             target_edge_ids.add(target_node_id)
 
             # parse run condition
@@ -91,11 +102,12 @@ class Graph(BaseModel):
 
             graph_edge = GraphEdge(
                 source_node_id=source_node_id,
-                target_node_id=edge_config.get('target'),
+                target_node_id=target_node_id,
                 run_condition=run_condition
             )
 
             edge_mapping[source_node_id].append(graph_edge)
+            reverse_edge_mapping[target_node_id].append(graph_edge)
 
         # node configs
         node_configs = graph_config.get('nodes')
@@ -149,9 +161,9 @@ class Graph(BaseModel):
         )
 
         # init answer stream generate routes
-        answer_stream_generate_routes = AnswerStreamOutputManager.init_stream_generate_routes(
+        answer_stream_generate_routes = AnswerStreamGeneratorRouter.init(
             node_id_config_mapping=node_id_config_mapping,
-            edge_mapping=edge_mapping
+            reverse_edge_mapping=reverse_edge_mapping
         )
 
         # init graph
@@ -160,6 +172,7 @@ class Graph(BaseModel):
             node_ids=node_ids,
             node_id_config_mapping=node_id_config_mapping,
             edge_mapping=edge_mapping,
+            reverse_edge_mapping=reverse_edge_mapping,
             parallel_mapping=parallel_mapping,
             node_parallel_mapping=node_parallel_mapping,
             answer_stream_generate_routes=answer_stream_generate_routes
