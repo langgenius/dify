@@ -33,13 +33,6 @@ const EnvPanel = () => {
   const [showRemoveVarConfirm, setShowRemoveConfirm] = useState(false)
   const [cacheForDelete, setCacheForDelete] = useState<EnvironmentVariable>()
 
-  const handleSave = (env: EnvironmentVariable) => {
-    if (!currentVar)
-      updateEnvList([env, ...envList])
-    else
-      updateEnvList(envList.map(e => e.name === currentVar.name ? env : e))
-  }
-
   const getEffectedNodes = useCallback((env: EnvironmentVariable) => {
     const { getNodes } = store.getState()
     const allNodes = getNodes()
@@ -78,6 +71,25 @@ const EnvPanel = () => {
       handleDelete(env)
     }
   }, [getEffectedNodes, handleDelete])
+
+  const handleSave = useCallback((env: EnvironmentVariable) => {
+    if (!currentVar)
+      return updateEnvList([env, ...envList])
+    else
+      updateEnvList(envList.map(e => e.name === currentVar.name ? env : e))
+    // side effects of rename env
+    if (currentVar.name !== env.name) {
+      const { getNodes, setNodes } = store.getState()
+      const effectedNodes = getEffectedNodes(currentVar)
+      const newNodes = getNodes().map((node) => {
+        if (effectedNodes.find(n => n.id === node.id))
+          return updateNodeVars(node, ['env', currentVar.name], ['env', env.name])
+
+        return node
+      })
+      setNodes(newNodes)
+    }
+  }, [currentVar, envList, getEffectedNodes, store, updateEnvList])
 
   const secretValue = (value: string) => {
     return `${value.slice(0, 2)}********${value.slice(-2)}`
