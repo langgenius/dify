@@ -268,7 +268,7 @@ const SettingsModal: FC<SettingsModalProps> = ({
               </div>
             </div>
           </div>
-          <div className='w-[480px]'>
+          <div>
             {indexMethod === 'high_quality'
               ? (
                 <RetrievalMethodConfig
