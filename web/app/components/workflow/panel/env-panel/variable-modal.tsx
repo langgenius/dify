@@ -1,6 +1,7 @@
 import React, { useEffect } from 'react'
 import { useTranslation } from 'react-i18next'
 import { useClickAway } from 'ahooks'
+import { v4 as uuid4 } from 'uuid'
 import { RiCloseLine } from '@remixicon/react'
 import { useContext } from 'use-context-selector'
 import Button from '@/app/components/base/button'
@@ -49,6 +50,7 @@ const VariableModal = ({
     if (!env && envList.some(env => env.name === name))
       return notify({ type: 'error', message: 'name is existed' })
     onSave({
+      id: env ? env.id : uuid4(),
       value_type: type,
       name,
       value,

@@ -103,6 +103,7 @@ export type Variable = {
 }
 
 export type EnvironmentVariable = {
+  id: string
   name: string
   value: any
   value_type: 'string' | 'number' | 'secret'
