@@ -67,6 +67,11 @@ const AddVariablePopupWithPosition = ({
       isChatMode,
       filterVar: filterVar(outputType as VarType),
     })
+      .map(node => ({
+        ...node,
+        vars: node.isStartNode ? node.vars.filter(v => !v.variable.startsWith('sys.')) : node.vars,
+      }))
+      .filter(item => item.vars.length > 0)
   }, [showAssignVariablePopup, getNodeAvailableVars, getBeforeNodesInSameBranch, isChatMode, outputType])
 
   useClickAway(() => {

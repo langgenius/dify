@@ -51,13 +51,7 @@ const Panel: FC<NodePanelProps<VariableAssignerNodeType>> = ({
               }}
               onChange={handleListOrTypeChange}
               groupEnabled={false}
-              availableVars={getAvailableVars(id, 'target', filterVar(inputs.output_type))
-                .map(node => ({
-                  ...node,
-                  vars: node.isStartNode ? node.vars.filter(v => !v.variable.startsWith('sys.')) : node.vars,
-                }))
-                .filter(item => item.vars.length > 0)
-              }
+              availableVars={getAvailableVars(id, 'target', filterVar(inputs.output_type))}
             />
           )
           : (<div>
@@ -73,13 +67,7 @@ const Panel: FC<NodePanelProps<VariableAssignerNodeType>> = ({
                     canRemove={!readOnly && inputs.advanced_settings?.groups.length > 1}
                     onRemove={handleGroupRemoved(item.groupId)}
                     onGroupNameChange={handleVarGroupNameChange(item.groupId)}
-                    availableVars={getAvailableVars(id, item.groupId, filterVar(item.output_type))
-                      .map(node => ({
-                        ...node,
-                        vars: node.isStartNode ? node.vars.filter(v => !v.variable.startsWith('sys.')) : node.vars,
-                      }))
-                      .filter(item => item.vars.length > 0)
-                    }
+                    availableVars={getAvailableVars(id, item.groupId, filterVar(item.output_type))}
                   />
                   {index !== inputs.advanced_settings?.groups.length - 1 && <Split className='my-4' />}
                 </div>

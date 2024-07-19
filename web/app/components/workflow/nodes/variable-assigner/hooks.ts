@@ -144,6 +144,11 @@ export const useGetAvailableVars = () => {
       hideEnv: true,
       filterVar,
     })
+      .map(node => ({
+        ...node,
+        vars: node.isStartNode ? node.vars.filter(v => !v.variable.startsWith('sys.')) : node.vars,
+      }))
+      .filter(item => item.vars.length > 0)
   }, [nodes, getBeforeNodesInSameBranchIncludeParent, getNodeAvailableVars, isChatMode])
 
   return getAvailableVars
