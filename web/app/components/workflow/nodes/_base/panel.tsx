@@ -98,21 +98,21 @@ const BasePanel: FC<BasePanelProps> = ({
   return (
     <div className={cn(
       'relative mr-2 h-full',
-      showMessageLogModal && '!absolute !mr-0 w-[384px] overflow-hidden -top-[5px] right-[416px] z-0 shadow-lg border-[0.5px] border-gray-200 rounded-2xl transition-all',
+      showMessageLogModal && '!absolute !mr-0 w-[384px] overflow-hidden -top-[5px] right-[416px] z-0 shadow-lg border-[0.5px] border-components-panel-border rounded-2xl transition-all',
     )}>
       <div
         ref={triggerRef}
         className='absolute top-1/2 -translate-y-1/2 -left-2 w-3 h-6 cursor-col-resize resize-x'>
-        <div className='w-1 h-6 bg-gray-300 rounded-sm'></div>
+        <div className='w-1 h-6 bg-divider-regular rounded-sm'></div>
       </div>
       <div
         ref={containerRef}
-        className={cn('h-full bg-white shadow-lg border-[0.5px] border-gray-200 rounded-2xl', showSingleRunPanel ? 'overflow-hidden' : 'overflow-y-auto')}
+        className={cn('h-full bg-components-panel-bg shadow-lg border-[0.5px] border-components-panel-border rounded-2xl', showSingleRunPanel ? 'overflow-hidden' : 'overflow-y-auto')}
         style={{
           width: `${panelWidth}px`,
         }}
       >
-        <div className='sticky top-0 bg-white border-b-[0.5px] border-black/5 z-10'>
+        <div className='sticky top-0 bg-components-panel-bg border-b-[0.5px] border-black/5 z-10'>
           <div className='flex items-center px-4 pt-4 pb-1'>
             <BlockIcon
               className='shrink-0 mr-1'
@@ -137,19 +137,19 @@ const BasePanel: FC<BasePanelProps> = ({
                         handleSyncWorkflowDraft(true)
                       }}
                     >
-                      <RiPlayLargeLine className='w-4 h-4 text-gray-500' />
+                      <RiPlayLargeLine className='w-4 h-4 text-text-tertiary' />
                     </div>
                   </TooltipPlus>
                 )
               }
               <HelpLink nodeType={data.type} />
               <PanelOperator id={id} data={data} showHelpLink={false} />
-              <div className='mx-3 w-[1px] h-3.5 bg-gray-200' />
+              <div className='mx-3 w-[1px] h-3.5 bg-divider-regular' />
               <div
                 className='flex items-center justify-center w-6 h-6 cursor-pointer'
                 onClick={() => handleNodeSelect(id, true)}
               >
-                <RiCloseLine className='w-4 h-4' />
+                <RiCloseLine className='w-4 h-4 text-text-tertiary' />
               </div>
             </div>
           </div>
@@ -166,10 +166,10 @@ const BasePanel: FC<BasePanelProps> = ({
         {
           !!availableNextBlocks.length && (
             <div className='p-4 border-t-[0.5px] border-t-black/5'>
-              <div className='flex items-center mb-1 text-gray-700 text-[13px] font-semibold'>
+              <div className='flex items-center mb-1 system-sm-semibold-uppercase text-text-secondary'>
                 {t('workflow.panel.nextStep').toLocaleUpperCase()}
               </div>
-              <div className='mb-2 text-xs text-gray-400'>
+              <div className='mb-2 system-xs-regular text-text-tertiary'>
                 {t('workflow.panel.addNextStep')}
               </div>
               <NextStep selectedNode={{ id, data } as Node} />
