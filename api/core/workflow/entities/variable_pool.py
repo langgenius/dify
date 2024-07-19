@@ -1,6 +1,5 @@
 from collections import defaultdict
 from collections.abc import Mapping, Sequence
-from enum import Enum
 from typing import Any, Optional, Union
 
 from typing_extensions import deprecated
@@ -10,21 +9,6 @@ from core.file.file_obj import FileVar
 from core.workflow.entities.node_entities import SystemVariable
 
 VariableValue = Union[str, int, float, dict, list, FileVar]
-
-
-class ValueType(Enum):
-    """
-    Value Type Enum
-    """
-
-    STRING = 'string'
-    NUMBER = 'number'
-    OBJECT = 'object'
-    ARRAY_STRING = 'array[string]'
-    ARRAY_NUMBER = 'array[number]'
-    ARRAY_OBJECT = 'array[object]'
-    ARRAY_FILE = 'array[file]'
-    FILE = 'file'
 
 
 SYSTEM_VARIABLE_NODE_ID = 'sys'
