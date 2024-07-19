@@ -67,12 +67,17 @@ export const useWorkflowUpdate = () => {
       setSyncWorkflowDraftHash,
       setIsSyncingWorkflowDraft,
       setEnvironmentVariables,
+      setEnvSecrets,
     } = workflowStore.getState()
     setIsSyncingWorkflowDraft(true)
     fetchWorkflowDraft(`/apps/${appId}/workflows/draft`).then((response) => {
       handleUpdateWorkflowCanvas(response.graph as WorkflowDataUpdator)
       setSyncWorkflowDraftHash(response.hash)
-      setEnvironmentVariables(response.environment_variables || [])
+      setEnvSecrets((response.environment_variables || []).filter(env => env.value_type === 'secret').reduce((acc, env) => {
+        acc[env.id] = env.value
+        return acc
+      }, {} as Record<string, string>))
+      setEnvironmentVariables(response.environment_variables?.map(env => env.value_type === 'secret' ? { ...env, value: '[__HIDDEN__]' } : env) || [])
     }).finally(() => setIsSyncingWorkflowDraft(false))
   }, [handleUpdateWorkflowCanvas, workflowStore])
 

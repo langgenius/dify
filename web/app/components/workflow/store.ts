@@ -88,6 +88,8 @@ type Shape = {
   setShowEnvPanel: (showEnvPanel: boolean) => void
   environmentVariables: EnvironmentVariable[]
   setEnvironmentVariables: (environmentVariables: EnvironmentVariable[]) => void
+  envSecrets: Record<string, string>
+  setEnvSecrets: (envSecrets: Record<string, string>) => void
   selection: null | { x1: number; y1: number; x2: number; y2: number }
   setSelection: (selection: Shape['selection']) => void
   bundleNodeSize: { width: number; height: number } | null
@@ -200,6 +202,8 @@ export const createWorkflowStore = () => {
     setShowEnvPanel: showEnvPanel => set(() => ({ showEnvPanel })),
     environmentVariables: [],
     setEnvironmentVariables: environmentVariables => set(() => ({ environmentVariables })),
+    envSecrets: {},
+    setEnvSecrets: envSecrets => set(() => ({ envSecrets })),
     selection: null,
     setSelection: selection => set(() => ({ selection })),
     bundleNodeSize: null,

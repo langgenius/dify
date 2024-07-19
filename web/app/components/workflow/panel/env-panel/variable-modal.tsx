@@ -23,6 +23,7 @@ const VariableModal = ({
   const { t } = useTranslation()
   const { notify } = useContext(ToastContext)
   const envList = useStore(s => s.environmentVariables)
+  const envSecrets = useStore(s => s.envSecrets)
   const [type, setType] = React.useState<'string' | 'number' | 'secret'>('string')
   const [name, setName] = React.useState('')
   const [value, setValue] = React.useState<any>()
@@ -53,7 +54,7 @@ const VariableModal = ({
       id: env ? env.id : uuid4(),
       value_type: type,
       name,
-      value,
+      value: type === 'number' ? Number(value) : value,
     })
     onClose()
   }
@@ -62,9 +63,9 @@ const VariableModal = ({
     if (env) {
       setType(env.value_type)
       setName(env.name)
-      setValue(env.value)
+      setValue(env.value_type === 'secret' ? envSecrets[env.id] : env.value)
     }
-  }, [env])
+  }, [env, envSecrets])
 
   return (
     <div
@@ -94,7 +95,11 @@ const VariableModal = ({
             <div className={cn(
               'w-[106px] flex items-center justify-center p-2 radius-md bg-components-option-card-option-bg border border-components-option-card-option-border text-text-secondary system-sm-regular cursor-pointer hover:shadow-xs hover:bg-components-option-card-option-bg-hover hover:border-components-option-card-option-border-hover',
               type === 'number' && 'text-text-primary font-medium border-[1.5px] shadow-xs bg-components-option-card-option-selected-bg border-components-option-card-option-selected-border hover:border-components-option-card-option-selected-border',
-            )} onClick={() => setType('number')}>Number</div>
+            )} onClick={() => {
+              setType('number')
+              if (!(/^[0-9]$/).test(value))
+                setValue('')
+            }}>Number</div>
             <div className={cn(
               'w-[106px] flex items-center justify-center p-2 radius-md bg-components-option-card-option-bg border border-components-option-card-option-border text-text-secondary system-sm-regular cursor-pointer hover:shadow-xs hover:bg-components-option-card-option-bg-hover hover:border-components-option-card-option-border-hover',
               type === 'secret' && 'text-text-primary font-medium border-[1.5px] shadow-xs bg-components-option-card-option-selected-bg border-components-option-card-option-selected-border hover:border-components-option-card-option-selected-border',
@@ -125,7 +130,7 @@ const VariableModal = ({
               placeholder={t('workflow.env.modal.valuePlaceholder') || ''}
               value={value}
               onChange={e => setValue(e.target.value)}
-              type={type !== 'number' ? type === 'string' ? 'text' : 'password' : 'number'}
+              type={type !== 'number' ? 'text' : 'number'}
             />
           </div>
         </div>
