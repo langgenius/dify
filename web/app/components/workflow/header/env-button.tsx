@@ -13,7 +13,7 @@ const EnvButton = () => {
   }
 
   return (
-    <div className={cn('relative flex items-center justify-center mr-2 p-0.5 w-8 h-8 rounded-lg border-[0.5px] border-gray-200 bg-white shadow-xs cursor-pointer')} onClick={handleClick}>
+    <div className={cn('relative flex items-center justify-center p-0.5 w-8 h-8 rounded-lg border-[0.5px] border-gray-200 bg-white shadow-xs cursor-pointer')} onClick={handleClick}>
       <Env className='w-4 h-4 text-gray-500' />
     </div>
   )
