@@ -1,7 +1,5 @@
-from pydantic import BaseModel
-
+from .segment_group import SegmentGroup
 from .segments import Segment
-from .segments_group import SegmentGroup
 from .types import SegmentType
 from .variables import (
     ArrayVariable,
