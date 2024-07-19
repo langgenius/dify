@@ -2,7 +2,6 @@ import json
 import uuid
 from typing import Any, Optional
 
-from flask import current_app
 from pydantic import BaseModel, model_validator
 from sqlalchemy import Column, Sequence, String, Table, create_engine, insert
 from sqlalchemy import text as sql_text
@@ -19,6 +18,7 @@ try:
 except ImportError:
     from sqlalchemy.ext.declarative import declarative_base
 
+from configs import dify_config
 from core.rag.datasource.vdb.vector_base import BaseVector
 from core.rag.models.document import Document
 from extensions.ext_redis import redis_client
@@ -85,7 +85,7 @@ class RelytVector(BaseVector):
                         document TEXT NOT NULL,
                         metadata JSON NOT NULL,
                         embedding vector({dimension}) NOT NULL
-                    ) using heap; 
+                    ) using heap;
                 """)
                 session.execute(create_statement)
                 index_statement = sql_text(f"""
@@ -313,15 +313,14 @@ class RelytVectorFactory(AbstractVectorFactory):
             dataset.index_struct = json.dumps(
                 self.gen_index_struct_dict(VectorType.RELYT, collection_name))
 
-        config = current_app.config
         return RelytVector(
             collection_name=collection_name,
             config=RelytConfig(
-                host=config.get('RELYT_HOST'),
-                port=config.get('RELYT_PORT'),
-                user=config.get('RELYT_USER'),
-                password=config.get('RELYT_PASSWORD'),
-                database=config.get('RELYT_DATABASE'),
+                host=dify_config.RELYT_HOST,
+                port=dify_config.RELYT_PORT,
+                user=dify_config.RELYT_USER,
+                password=dify_config.RELYT_PASSWORD,
+                database=dify_config.RELYT_DATABASE,
             ),
             group_id=dataset.id
         )
