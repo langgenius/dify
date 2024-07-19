@@ -16,16 +16,14 @@ def clean_embedding_cache_task():
     clean_days = int(dify_config.CLEAN_DAY_SETTING)
     start_at = time.perf_counter()
     thirty_days_ago = datetime.datetime.now() - datetime.timedelta(days=clean_days)
-    page = 1
     while True:
         try:
             embeddings = db.session.query(Embedding).filter(Embedding.created_at < thirty_days_ago) \
-                .order_by(Embedding.created_at.desc()).paginate(page=page, per_page=100)
+                .order_by(Embedding.created_at.desc()).limit(100).all()
         except NotFound:
             break
         for embedding in embeddings:
             db.session.delete(embedding)
         db.session.commit()
-        page += 1
     end_at = time.perf_counter()
     click.echo(click.style('Cleaned embedding cache from db success latency: {}'.format(end_at - start_at), fg='green'))

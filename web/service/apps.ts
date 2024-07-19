@@ -37,6 +37,10 @@ export const importApp: Fetcher<AppDetailResponse, { data: string; name?: string
   return post<AppDetailResponse>('apps/import', { body: { data, name, description, icon, icon_background } })
 }
 
+export const importAppFromUrl: Fetcher<AppDetailResponse, { url: string; name?: string; description?: string; icon?: string; icon_background?: string }> = ({ url, name, description, icon, icon_background }) => {
+  return post<AppDetailResponse>('apps/import/url', { body: { url, name, description, icon, icon_background } })
+}
+
 export const switchApp: Fetcher<{ new_app_id: string }, { appID: string; name: string; icon: string; icon_background: string }> = ({ appID, name, icon, icon_background }) => {
   return post<{ new_app_id: string }>(`apps/${appID}/convert-to-workflow`, { body: { name, icon, icon_background } })
 }
