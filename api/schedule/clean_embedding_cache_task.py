@@ -2,13 +2,13 @@ import datetime
 import time
 
 import click
+from sqlalchemy import text
 from werkzeug.exceptions import NotFound
 
 import app
 from configs import dify_config
 from extensions.ext_database import db
 from models.dataset import Embedding
-from sqlalchemy import text
 
 
 @app.celery.task(queue='dataset')
