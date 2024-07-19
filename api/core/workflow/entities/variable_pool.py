@@ -1,6 +1,6 @@
 from collections import defaultdict
 from collections.abc import Mapping, Sequence
-from typing import Any, Optional, Union
+from typing import Any, Union
 
 from typing_extensions import deprecated
 
@@ -20,8 +20,7 @@ class VariablePool:
         self,
         system_variables: Mapping[SystemVariable, Any],
         user_inputs: Mapping[str, Any],
-        # TODO: remove Optional
-        environment_variables: Optional[Sequence[Variable]] = None,
+        environment_variables: Sequence[Variable],
     ) -> None:
         # system variables
         # for example:

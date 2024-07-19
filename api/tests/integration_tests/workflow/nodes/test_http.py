@@ -18,7 +18,7 @@ BASIC_NODE_DATA = {
 }
 
 # construct variable pool
-pool = VariablePool(system_variables={}, user_inputs={})
+pool = VariablePool(system_variables={}, user_inputs={}, environment_variables=[])
 pool.add(['a', 'b123', 'args1'], 1)
 pool.add(['a', 'b123', 'args2'], 2)
 

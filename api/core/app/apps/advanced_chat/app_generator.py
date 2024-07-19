@@ -6,7 +6,7 @@ import uuid
 from collections.abc import Generator
 from typing import Union
 
-from flask import Flask, current_app, g
+from flask import Flask, current_app
 from pydantic import ValidationError
 
 import contexts
@@ -270,8 +270,6 @@ class AdvancedChatAppGenerator(MessageBasedAppGenerator):
         for var, val in context.items():
             var.set(val)
         with flask_app.app_context():
-            # FIXME: Cannot get current user from here.
-            g.user = user
             try:
                 runner = AdvancedChatAppRunner()
                 if application_generate_entity.single_iteration_run:

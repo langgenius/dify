@@ -70,7 +70,7 @@ def test_execute_llm(setup_openai_mock):
         SystemVariable.FILES: [],
         SystemVariable.CONVERSATION_ID: 'abababa',
         SystemVariable.USER_ID: 'aaa'
-    }, user_inputs={})
+    }, user_inputs={}, environment_variables=[])
     pool.add(['abc', 'output'], 'sunny')
 
     credentials = {
@@ -185,7 +185,7 @@ def test_execute_llm_with_jinja2(setup_code_executor_mock, setup_openai_mock):
         SystemVariable.FILES: [],
         SystemVariable.CONVERSATION_ID: 'abababa',
         SystemVariable.USER_ID: 'aaa'
-    }, user_inputs={})
+    }, user_inputs={}, environment_variables=[])
     pool.add(['abc', 'output'], 'sunny')
 
     credentials = {

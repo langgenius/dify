@@ -51,7 +51,6 @@ class DraftWorkflowApi(Resource):
             raise DraftWorkflowNotExist()
 
         # return workflow, if not found, return None (initiate graph by frontend)
-        # TODO: Mask secret variables values in environment_variables
         return workflow
 
     @setup_required

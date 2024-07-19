@@ -191,14 +191,15 @@ class Workflow(db.Model):
 
     @property
     def environment_variables(self) -> Sequence[Variable]:
+        # TODO: find some way to init `self._environment_variables` when instance created.
         if self._environment_variables is None:
             self._environment_variables = '{}'
 
-        # FIXME: get current user from flask context, may not a good way.
         tenant_id = contexts.tenant_id.get()
 
         environment_variables_dict: dict[str, Any] = json.loads(self._environment_variables)
         results = [factory.build_variable_from_mapping(v) for v in environment_variables_dict.values()]
+
         # decrypt secret variables value
         decrypt_func = (
             lambda var: var.model_copy(
@@ -212,18 +213,19 @@ class Workflow(db.Model):
 
     @environment_variables.setter
     def environment_variables(self, value: Sequence[Variable]):
-        # FIXME: get current user from flask context, may not a good way.
-        value = list(value)
         tenant_id = contexts.tenant_id.get()
 
+        value = list(value)
         if any(var for var in value if not var.id):
             raise ValueError('environment variable require a unique id')
 
+        # Compare inputs and origin variables, if the value is HIDDEN_VALUE, use the origin variable value (only update `name`).
         origin_variables_dictionary = {var.id: var for var in self.environment_variables}
         for i, variable in enumerate(value):
             if variable.id in origin_variables_dictionary and variable.value == HIDDEN_VALUE:
                 value[i] = origin_variables_dictionary[variable.id].model_copy(update={'name': variable.name})
 
+        # encrypt secret variables value
         encrypt_func = (
             lambda var: var.model_copy(
                 update={'value': encrypter.encrypt_token(tenant_id=tenant_id, token=var.value)}

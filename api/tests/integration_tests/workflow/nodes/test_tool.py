@@ -6,7 +6,7 @@ from models.workflow import WorkflowNodeExecutionStatus
 
 
 def test_tool_variable_invoke():
-    pool = VariablePool(system_variables={}, user_inputs={})
+    pool = VariablePool(system_variables={}, user_inputs={}, environment_variables=[])
     pool.add(['1', '123', 'args1'], '1+1')
 
     node = ToolNode(
@@ -45,7 +45,7 @@ def test_tool_variable_invoke():
     assert result.outputs['files'] == []
 
 def test_tool_mixed_invoke():
-    pool = VariablePool(system_variables={}, user_inputs={})
+    pool = VariablePool(system_variables={}, user_inputs={}, environment_variables=[])
     pool.add(['1', 'args1'], '1+1')
 
     node = ToolNode(

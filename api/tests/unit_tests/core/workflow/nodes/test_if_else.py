@@ -121,7 +121,7 @@ def test_execute_if_else_result_true():
     pool = VariablePool(system_variables={
         SystemVariable.FILES: [],
         SystemVariable.USER_ID: 'aaa'
-    }, user_inputs={})
+    }, user_inputs={}, environment_variables=[])
     pool.add(['start', 'array_contains'], ['ab', 'def'])
     pool.add(['start', 'array_not_contains'], ['ac', 'def'])
     pool.add(['start', 'contains'], 'cabcde')
@@ -184,7 +184,7 @@ def test_execute_if_else_result_false():
     pool = VariablePool(system_variables={
         SystemVariable.FILES: [],
         SystemVariable.USER_ID: 'aaa'
-    }, user_inputs={})
+    }, user_inputs={}, environment_variables=[])
     pool.add(['start', 'array_contains'], ['1ab', 'def'])
     pool.add(['start', 'array_not_contains'], ['ab', 'def'])
 

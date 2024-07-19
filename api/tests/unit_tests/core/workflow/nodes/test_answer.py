@@ -31,7 +31,7 @@ def test_execute_answer():
     pool = VariablePool(system_variables={
         SystemVariable.FILES: [],
         SystemVariable.USER_ID: 'aaa'
-    }, user_inputs={})
+    }, user_inputs={}, environment_variables=[])
     pool.add(['start', 'weather'], 'sunny')
     pool.add(['llm', 'text'], 'You are a helpful AI.')
 

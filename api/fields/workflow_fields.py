@@ -8,8 +8,7 @@ from libs.helper import TimestampField
 
 class EnvironmentVariableField(fields.Raw):
     def format(self, value):
-        # Implement your masking logic here
-        # For example, replace all values with '***' or remove sensitive keys
+        # Mask secret variables values in environment_variables
         if isinstance(value, SecretVariable):
             return {
                 'id': value.id,
