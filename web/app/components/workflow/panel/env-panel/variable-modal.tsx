@@ -37,7 +37,7 @@ const VariableModal = ({
       return setName('')
     if (!/^[a-zA-Z0-9_]+$/.test(v))
       return notify({ type: 'error', message: 'name is can only contain letters, numbers and underscores' })
-    if (/[0-9]/.test(v))
+    if (/^[0-9]/.test(v))
       return notify({ type: 'error', message: 'name can not start with a number' })
     setName(v)
   }
