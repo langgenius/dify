@@ -497,7 +497,7 @@ const replaceOldVarInText = (text: string, oldVar: ValueSelector, newVar: ValueS
     return text
 
   if (!newVar || newVar.length === 0)
-    return text
+    return text.replaceAll(`{{#${oldVar.join('.')}#}}`, '')
 
   return text.replaceAll(`{{#${oldVar.join('.')}#}}`, `{{#${newVar.join('.')}#}}`)
 }
@@ -542,7 +542,7 @@ export const getNodeUsedVars = (node: Node): ValueSelector[] => {
     case BlockEnum.IfElse: {
       res = (data as IfElseNodeType).conditions?.map((c) => {
         return c.variable_selector
-      })
+      }) || []
       break
     }
     case BlockEnum.Code: {
