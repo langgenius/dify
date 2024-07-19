@@ -93,9 +93,9 @@ const translation = {
     },
     export: {
       title: '导出 Secret 类型环境变量？',
-      checkbox: '确认导出以上变量',
-      ignore: '忽略并导出 DSL',
-      export: '导出包含 Secret 类型的 DSL',
+      checkbox: '导出 secret 值',
+      ignore: '导出 DSL',
+      export: '导出包含 Secret 值的 DSL',
     },
   },
   changeHistory: {

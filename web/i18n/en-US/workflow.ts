@@ -93,9 +93,9 @@ const translation = {
     },
     export: {
       title: 'Export Secret environment variables?',
-      checkbox: 'Confirm export of the above variables',
-      ignore: 'Ignore & Export DSL',
-      export: 'Export DSL with Secret variables ',
+      checkbox: 'Export secret values',
+      ignore: 'Export DSL',
+      export: 'Export DSL with secret values ',
     },
   },
   changeHistory: {

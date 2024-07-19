@@ -29,10 +29,6 @@ const DSLExportConfirmModal = ({
     onClose()
   }
 
-  const secretValue = (value: string) => {
-    return `${value.slice(0, 2)}********${value.slice(-2)}`
-  }
-
   return (
     <Modal
       isShow={true}
@@ -40,7 +36,7 @@ const DSLExportConfirmModal = ({
       className={cn('max-w-[480px] w-[480px]')}
     >
       <div className='relative pb-6 title-2xl-semi-bold text-text-primary'>{t('workflow.env.export.title')}</div>
-      <div className='absolute right-6 top-6 p-2 cursor-pointer' onClick={onClose}>
+      <div className='absolute right-4 top-4 p-2 cursor-pointer' onClick={onClose}>
         <RiCloseLine className='w-4 h-4 text-text-tertiary' />
       </div>
       <div className='relative'>
@@ -63,7 +59,7 @@ const DSLExportConfirmModal = ({
                   </div>
                 </td>
                 <td className={cn('h-7 pl-3', index + 1 !== envList.length && 'border-b')}>
-                  <div className='system-xs-regular text-text-secondary truncate'>{secretValue(env.value)}</div>
+                  <div className='system-xs-regular text-text-secondary truncate'>{env.value}</div>
                 </td>
               </tr>
             ))}
@@ -79,12 +75,7 @@ const DSLExportConfirmModal = ({
         <div className='text-text-primary system-sm-medium cursor-pointer' onClick={() => setExportSecrets(!exportSecrets)}>{t('workflow.env.export.checkbox')}</div>
       </div>
       <div className='flex flex-row-reverse pt-6'>
-        {!exportSecrets && (
-          <Button className='ml-2' variant='primary' onClick={submit}>{t('workflow.env.export.ignore')}</Button>
-        )}
-        {exportSecrets && (
-          <Button className='ml-2' variant='warning' onClick={submit}>{t('workflow.env.export.export')}</Button>
-        )}
+        <Button className='ml-2' variant='primary' onClick={submit}>{exportSecrets ? t('workflow.env.export.export') : t('workflow.env.export.ignore')}</Button>
         <Button onClick={onClose}>{t('common.operation.cancel')}</Button>
       </div>
     </Modal>

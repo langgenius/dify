@@ -30,7 +30,7 @@ import type { Tag } from '@/app/components/base/tag-management/constant'
 import TagSelector from '@/app/components/base/tag-management/selector'
 import type { EnvironmentVariable } from '@/app/components/workflow/types'
 import DSLExportConfirmModal from '@/app/components/workflow/dsl-export-confirm-modal'
-import { fetchPublishedWorkflow } from '@/service/workflow'
+import { fetchWorkflowDraft } from '@/service/workflow'
 
 export type AppCardProps = {
   app: App
@@ -150,8 +150,8 @@ const AppCard = ({ app, onRefresh }: AppCardProps) => {
       return
     }
     try {
-      const publishedWorkflow = await fetchPublishedWorkflow(`/apps/${app.id}/workflows/publish`)
-      const list = (publishedWorkflow.environment_variables || []).filter(env => env.value_type === 'secret')
+      const workflowDraft = await fetchWorkflowDraft(`/apps/${app.id}/workflows/draft`)
+      const list = (workflowDraft.environment_variables || []).filter(env => env.value_type === 'secret')
       if (list.length === 0) {
         onExport()
         return

@@ -30,7 +30,7 @@ import { getRedirection } from '@/utils/app-redirection'
 import UpdateDSLModal from '@/app/components/workflow/update-dsl-modal'
 import type { EnvironmentVariable } from '@/app/components/workflow/types'
 import DSLExportConfirmModal from '@/app/components/workflow/dsl-export-confirm-modal'
-import { fetchPublishedWorkflow } from '@/service/workflow'
+import { fetchWorkflowDraft } from '@/service/workflow'
 
 export type IAppInfoProps = {
   expand: boolean
@@ -139,8 +139,8 @@ const AppInfo = ({ expand }: IAppInfoProps) => {
       return
     }
     try {
-      const publishedWorkflow = await fetchPublishedWorkflow(`/apps/${appDetail.id}/workflows/publish`)
-      const list = (publishedWorkflow.environment_variables || []).filter(env => env.value_type === 'secret')
+      const workflowDraft = await fetchWorkflowDraft(`/apps/${appDetail.id}/workflows/draft`)
+      const list = (workflowDraft.environment_variables || []).filter(env => env.value_type === 'secret')
       if (list.length === 0) {
         onExport()
         return

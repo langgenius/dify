@@ -15,7 +15,7 @@ import { useEdgesInteractions } from './use-edges-interactions'
 import { useNodesInteractions } from './use-nodes-interactions'
 import { useNodesSyncDraft } from './use-nodes-sync-draft'
 import { useEventEmitterContextContext } from '@/context/event-emitter'
-import { fetchPublishedWorkflow, fetchWorkflowDraft } from '@/service/workflow'
+import { fetchWorkflowDraft } from '@/service/workflow'
 import { exportAppConfig } from '@/service/apps'
 import { useToastContext } from '@/app/components/base/toast'
 import { useStore as useAppStore } from '@/app/components/app/store'
@@ -123,8 +123,8 @@ export const useDSL = () => {
     if (!appDetail)
       return
     try {
-      const publishedWorkflow = await fetchPublishedWorkflow(`/apps/${appDetail?.id}/workflows/publish`)
-      const list = (publishedWorkflow.environment_variables || []).filter(env => env.value_type === 'secret')
+      const workflowDraft = await fetchWorkflowDraft(`/apps/${appDetail?.id}/workflows/draft`)
+      const list = (workflowDraft.environment_variables || []).filter(env => env.value_type === 'secret')
       if (list.length === 0) {
         handleExportDSL()
         return
