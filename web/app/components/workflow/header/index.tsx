@@ -194,6 +194,7 @@ const Header: FC = () => {
                 crossAxisOffset: 53,
               }}
             />
+            <div className='mx-2 w-[1px] h-3.5 bg-gray-200'></div>
             <Checklist disabled={nodesReadOnly} />
           </div>
         )

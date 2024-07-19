@@ -63,6 +63,7 @@ const AddVariablePopupWithPosition = ({
           data: showAssignVariablePopup.nodeData,
         } as any,
       ],
+      hideEnv: true,
       isChatMode,
       filterVar: filterVar(outputType as VarType),
     })
