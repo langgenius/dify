@@ -4,11 +4,11 @@ import ssl
 from typing import Any, Optional
 from uuid import uuid4
 
-from flask import current_app
 from opensearchpy import OpenSearch, helpers
 from opensearchpy.helpers import BulkIndexError
 from pydantic import BaseModel, model_validator
 
+from configs import dify_config
 from core.rag.datasource.entity.embedding import Embeddings
 from core.rag.datasource.vdb.field import Field
 from core.rag.datasource.vdb.vector_base import BaseVector
@@ -257,14 +257,13 @@ class OpenSearchVectorFactory(AbstractVectorFactory):
             dataset.index_struct = json.dumps(
                 self.gen_index_struct_dict(VectorType.OPENSEARCH, collection_name))
 
-        config = current_app.config
 
         open_search_config = OpenSearchConfig(
-            host=config.get('OPENSEARCH_HOST'),
-            port=config.get('OPENSEARCH_PORT'),
-            user=config.get('OPENSEARCH_USER'),
-            password=config.get('OPENSEARCH_PASSWORD'),
-            secure=config.get('OPENSEARCH_SECURE'),
+            host=dify_config.OPENSEARCH_HOST,
+            port=dify_config.OPENSEARCH_PORT,
+            user=dify_config.OPENSEARCH_USER,
+            password=dify_config.OPENSEARCH_PASSWORD,
+            secure=dify_config.OPENSEARCH_SECURE,
         )
 
         return OpenSearchVector(

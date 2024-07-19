@@ -9,10 +9,10 @@ import re
 import time
 from json import JSONDecodeError
 
-from flask import current_app
 from sqlalchemy import func
 from sqlalchemy.dialects.postgresql import JSONB
 
+from configs import dify_config
 from core.rag.retrieval.retrival_methods import RetrievalMethod
 from extensions.ext_database import db
 from extensions.ext_storage import storage
@@ -68,7 +68,7 @@ class Dataset(db.Model):
 
     @property
     def created_by_account(self):
-        return Account.query.get(self.created_by)
+        return db.session.get(Account, self.created_by)
 
     @property
     def latest_process_rule(self):
@@ -336,7 +336,7 @@ class Document(db.Model):
     @property
     def dataset_process_rule(self):
         if self.dataset_process_rule_id:
-            return DatasetProcessRule.query.get(self.dataset_process_rule_id)
+            return db.session.get(DatasetProcessRule, self.dataset_process_rule_id)
         return None
 
     @property
@@ -528,7 +528,7 @@ class DocumentSegment(db.Model):
             nonce = os.urandom(16).hex()
             timestamp = str(int(time.time()))
             data_to_sign = f"image-preview|{upload_file_id}|{timestamp}|{nonce}"
-            secret_key = current_app.config['SECRET_KEY'].encode()
+            secret_key = dify_config.SECRET_KEY.encode() if dify_config.SECRET_KEY else b''
             sign = hmac.new(secret_key, data_to_sign.encode(), hashlib.sha256).digest()
             encoded_sign = base64.urlsafe_b64encode(sign).decode()
 
@@ -560,7 +560,7 @@ class AppDatasetJoin(db.Model):
 
     @property
     def app(self):
-        return App.query.get(self.app_id)
+        return db.session.get(App, self.app_id)
 
 
 class DatasetQuery(db.Model):

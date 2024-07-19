@@ -121,7 +121,7 @@ flask-cors = "~4.0.0"
 flask-login = "~0.6.3"
 flask-migrate = "~4.0.5"
 flask-restful = "~0.3.10"
-flask-sqlalchemy = "~3.0.5"
+Flask-SQLAlchemy = "~3.1.1"
 gevent = "~23.9.1"
 gmpy2 = "~2.1.5"
 google-ai-generativelanguage = "0.6.1"
@@ -194,6 +194,7 @@ twilio = "~9.0.4"
 vanna = { version = "0.5.5", extras = ["postgres", "mysql", "clickhouse", "duckdb"] }
 wikipedia = "1.4.0"
 yfinance = "~0.2.40"
+cloudscraper = "1.2.71"
 
 ############################################################
 # VDB dependencies required by vector store clients

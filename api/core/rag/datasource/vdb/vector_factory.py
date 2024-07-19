@@ -1,8 +1,7 @@
 from abc import ABC, abstractmethod
 from typing import Any
 
-from flask import current_app
-
+from configs import dify_config
 from core.embedding.cached_embedding import CacheEmbedding
 from core.model_manager import ModelManager
 from core.model_runtime.entities.model_entities import ModelType
@@ -37,8 +36,7 @@ class Vector:
         self._vector_processor = self._init_vector()
 
     def _init_vector(self) -> BaseVector:
-        config = current_app.config
-        vector_type = config.get('VECTOR_STORE')
+        vector_type = dify_config.VECTOR_STORE
         if self._dataset.index_struct_dict:
             vector_type = self._dataset.index_struct_dict['type']
 

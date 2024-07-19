@@ -4,9 +4,9 @@ from typing import Any, Optional
 
 import requests
 import weaviate
-from flask import current_app
 from pydantic import BaseModel, model_validator
 
+from configs import dify_config
 from core.rag.datasource.entity.embedding import Embeddings
 from core.rag.datasource.vdb.field import Field
 from core.rag.datasource.vdb.vector_base import BaseVector
@@ -216,7 +216,8 @@ class WeaviateVector(BaseVector):
             if score > score_threshold:
                 doc.metadata['score'] = score
                 docs.append(doc)
-
+        # Sort the documents by score in descending order
+        docs = sorted(docs, key=lambda x: x.metadata['score'], reverse=True)
         return docs
 
     def search_by_full_text(self, query: str, **kwargs: Any) -> list[Document]:
@@ -281,9 +282,9 @@ class WeaviateVectorFactory(AbstractVectorFactory):
         return WeaviateVector(
             collection_name=collection_name,
             config=WeaviateConfig(
-                endpoint=current_app.config.get('WEAVIATE_ENDPOINT'),
-                api_key=current_app.config.get('WEAVIATE_API_KEY'),
-                batch_size=int(current_app.config.get('WEAVIATE_BATCH_SIZE'))
+                endpoint=dify_config.WEAVIATE_ENDPOINT,
+                api_key=dify_config.WEAVIATE_API_KEY,
+                batch_size=dify_config.WEAVIATE_BATCH_SIZE
             ),
             attributes=attributes
         )

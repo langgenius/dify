@@ -316,6 +316,9 @@ const translation = {
       language: '언어',
       resolutionTooltip: '텍스트 읽기 음성 언어를 지원합니다.',
       voice: '음성',
+      autoPlay: '자동 재생',
+      autoPlayEnabled: '켜다',
+      autoPlayDisabled: '폐쇄',
     },
   },
   openingStatement: {

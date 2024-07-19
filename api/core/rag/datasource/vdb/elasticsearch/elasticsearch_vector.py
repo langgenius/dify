@@ -145,8 +145,11 @@ class ElasticSearchVector(BaseVector):
             if score > score_threshold:
                 doc.metadata['score'] = score
             docs.append(doc)
-        return docs
 
+        # Sort the documents by score in descending order
+        docs = sorted(docs, key=lambda x: x.metadata['score'], reverse=True)
+
+        return docs
     def search_by_full_text(self, query: str, **kwargs: Any) -> list[Document]:
         query_str = {
             "match": {
