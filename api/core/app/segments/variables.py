@@ -1,6 +1,8 @@
 import json
 from collections.abc import Mapping, Sequence
 
+from pydantic import Field
+
 from core.file.file_obj import FileVar
 from core.helper import encrypter
 
@@ -13,6 +15,10 @@ class Variable(Segment):
     A variable is a segment that has a name.
     """
 
+    id: str = Field(
+        default='',
+        description="Unique identity for variable. It's only used by environment variables now.",
+    )
     name: str
 
 

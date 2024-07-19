@@ -4,6 +4,7 @@ from enum import Enum
 from typing import Any, Optional, Union
 
 import contexts
+from constants import HIDDEN_VALUE
 from core.app.segments import (
     SecretVariable,
     Variable,
@@ -210,9 +211,18 @@ class Workflow(db.Model):
         return results
 
     @environment_variables.setter
-    def environment_variables(self, vars: Sequence[Variable]):
+    def environment_variables(self, value: Sequence[Variable]):
         # FIXME: get current user from flask context, may not a good way.
+        value = list(value)
         tenant_id = contexts.tenant_id.get()
+
+        if any(var for var in value if not var.id):
+            raise ValueError('environment variable require a unique id')
+
+        origin_variables_dictionary = {var.id: var for var in self.environment_variables}
+        for i, variable in enumerate(value):
+            if variable.id in origin_variables_dictionary and variable.value == HIDDEN_VALUE:
+                value[i] = origin_variables_dictionary[variable.id].model_copy(update={'name': variable.name})
 
         encrypt_func = (
             lambda var: var.model_copy(
@@ -221,7 +231,7 @@ class Workflow(db.Model):
             if isinstance(var, SecretVariable)
             else var
         )
-        encrypted_vars = list(map(encrypt_func, vars))
+        encrypted_vars = list(map(encrypt_func, value))
         environment_variables_json = json.dumps(
             {var.name: var.model_dump() for var in encrypted_vars},
             ensure_ascii=False,
