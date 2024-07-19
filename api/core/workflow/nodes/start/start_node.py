@@ -9,7 +9,7 @@ from models.workflow import WorkflowNodeExecutionStatus
 
 class StartNode(BaseNode):
     _node_data_cls = StartNodeData
-    node_type = NodeType.START
+    _node_type = NodeType.START
 
     def _run(self, variable_pool: VariablePool) -> NodeRunResult:
         """
