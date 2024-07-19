@@ -52,7 +52,7 @@ const Filed: FC<Props> = ({
         <div className='flex'>
           {operations && <div>{operations}</div>}
           {supportFold && (
-            <RiArrowDownSLine className='w-3.5 h-3.5 text-text-tertiary cursor-pointer transform transition-transform' style={{ transform: fold ? 'rotate(-90deg)' : 'rotate(0deg)' }} />
+            <RiArrowDownSLine className='w-4 h-4 text-text-tertiary cursor-pointer transform transition-transform' style={{ transform: fold ? 'rotate(-90deg)' : 'rotate(0deg)' }} />
           )}
         </div>
       </div>
