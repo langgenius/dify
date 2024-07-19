@@ -38,7 +38,7 @@ class AnswerNode(BaseNode):
                 value_selector = part.value_selector
                 value = variable_pool.get(value_selector)
                 if value:
-                    answer += value.markdown()
+                    answer += value.markdown
             else:
                 part = cast(TextGenerateRouteChunk, part)
                 answer += part.text
