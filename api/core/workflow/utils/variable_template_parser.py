@@ -41,6 +41,8 @@ def parse_mixed_template(*, template: str, variable_pool: VariablePool) -> str:
 
 class VariableTemplateParser:
     """
+    !NOTE: Consider to use the new `segments` module instead of this class.
+
     A class for parsing and manipulating template variables in a string.
 
     Rules:
