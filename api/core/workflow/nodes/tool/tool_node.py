@@ -2,6 +2,7 @@ from collections.abc import Mapping, Sequence
 from os import path
 from typing import Any, cast
 
+from core.app.segments import parser
 from core.callback_handler.workflow_tool_callback_handler import DifyWorkflowCallbackHandler
 from core.file.file_obj import FileTransferMethod, FileType, FileVar
 from core.tools.entities.tool_entities import ToolInvokeMessage, ToolParameter
@@ -12,7 +13,7 @@ from core.workflow.entities.node_entities import NodeRunMetadataKey, NodeRunResu
 from core.workflow.entities.variable_pool import VariablePool
 from core.workflow.nodes.base_node import BaseNode
 from core.workflow.nodes.tool.entities import ToolNodeData
-from core.workflow.utils.variable_template_parser import VariableTemplateParser, parse_mixed_template
+from core.workflow.utils.variable_template_parser import VariableTemplateParser
 from models.workflow import WorkflowNodeExecutionStatus
 
 
@@ -55,6 +56,7 @@ class ToolNode(BaseNode):
         # get parameters
         tool_parameters = tool_runtime.get_runtime_parameters() or []
         parameters = self._generate_parameters(tool_parameters=tool_parameters, variable_pool=variable_pool, node_data=node_data)
+        parameters_for_log = self._generate_parameters(tool_parameters=tool_parameters, variable_pool=variable_pool, node_data=node_data, for_log=True)
 
         try:
             messages = ToolEngine.workflow_invoke(
@@ -67,7 +69,7 @@ class ToolNode(BaseNode):
         except Exception as e:
             return NodeRunResult(
                 status=WorkflowNodeExecutionStatus.FAILED,
-                inputs=parameters,
+                inputs=parameters_for_log,
                 metadata={
                     NodeRunMetadataKey.TOOL_INFO: tool_info
                 },
@@ -87,11 +89,16 @@ class ToolNode(BaseNode):
             metadata={
                 NodeRunMetadataKey.TOOL_INFO: tool_info
             },
-            inputs=parameters
+            inputs=parameters_for_log
         )
 
     def _generate_parameters(
-        self, tool_parameters: Sequence[ToolParameter], variable_pool: VariablePool, node_data: ToolNodeData
+        self,
+        *,
+        tool_parameters: Sequence[ToolParameter],
+        variable_pool: VariablePool,
+        node_data: ToolNodeData,
+        for_log: bool = False,
     ) -> Mapping[str, Any]:
         """
         Generate parameters based on the given tool parameters, variable pool, and node data.
@@ -118,16 +125,11 @@ class ToolNode(BaseNode):
                 ]
             else:
                 tool_input = node_data.tool_parameters[parameter_name]
-                if tool_input.type == 'mixed':
-                    result[parameter_name] = parse_mixed_template(
-                        template=str(tool_input.value),
-                        variable_pool=variable_pool,
-                    )
-                elif tool_input.type == 'variable':
-                    value = variable_pool.get_any(tool_input.value)
-                    result[parameter_name] = value
-                elif tool_input.type == 'constant':
-                    result[parameter_name] = tool_input.value
+                segment_group = parser.convert_template(
+                    template=str(tool_input.value),
+                    variable_pool=variable_pool,
+                )
+                result[parameter_name] = segment_group.log if for_log else segment_group.text
 
         return result
 
