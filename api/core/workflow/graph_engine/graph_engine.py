@@ -85,7 +85,10 @@ class GraphEngine:
             # run graph
             generator = self._run(start_node_id=self.graph.root_node_id)
             if self.init_params.workflow_type == WorkflowType.CHAT:
-                answer_stream_processor = AnswerStreamProcessor(self.graph)
+                answer_stream_processor = AnswerStreamProcessor(
+                    graph=self.graph,
+                    variable_pool=self.graph_runtime_state.variable_pool
+                )
                 generator = answer_stream_processor.process(generator)
 
             for item in generator:
