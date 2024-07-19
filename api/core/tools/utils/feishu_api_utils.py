@@ -135,7 +135,7 @@ class FeishuRequest:
     def send_webhook_message(self, webhook: str, msg_type: str, content: str) -> dict:
         url = "https://lark-plugin-api.solutionsuite.cn/lark-plugin/message/send_webhook_message"
         payload = {
-            "key": webhook,
+            "webhook": webhook,
             "msg_type": msg_type,
             "content": content,
         }
