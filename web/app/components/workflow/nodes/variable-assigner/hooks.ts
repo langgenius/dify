@@ -126,7 +126,7 @@ export const useGetAvailableVars = () => {
   const { getBeforeNodesInSameBranchIncludeParent } = useWorkflow()
   const { getNodeAvailableVars } = useWorkflowVariables()
   const isChatMode = useIsChatMode()
-  const getAvailableVars = useCallback((nodeId: string, handleId: string, filterVar: (v: Var) => boolean) => {
+  const getAvailableVars = useCallback((nodeId: string, handleId: string, filterVar: (v: Var) => boolean, hideEnv = false) => {
     const availableNodes: Node[] = []
     const currentNode = nodes.find(node => node.id === nodeId)!
 
@@ -137,18 +137,27 @@ export const useGetAvailableVars = () => {
     availableNodes.push(...beforeNodes)
     const parentNode = nodes.find(node => node.id === currentNode.parentId)
 
+    if (hideEnv) {
+      return getNodeAvailableVars({
+        parentNode,
+        beforeNodes: uniqBy(availableNodes, 'id').filter(node => node.id !== nodeId),
+        isChatMode,
+        hideEnv,
+        filterVar,
+      })
+        .map(node => ({
+          ...node,
+          vars: node.isStartNode ? node.vars.filter(v => !v.variable.startsWith('sys.')) : node.vars,
+        }))
+        .filter(item => item.vars.length > 0)
+    }
+
     return getNodeAvailableVars({
       parentNode,
       beforeNodes: uniqBy(availableNodes, 'id').filter(node => node.id !== nodeId),
       isChatMode,
-      hideEnv: true,
       filterVar,
     })
-      .map(node => ({
-        ...node,
-        vars: node.isStartNode ? node.vars.filter(v => !v.variable.startsWith('sys.')) : node.vars,
-      }))
-      .filter(item => item.vars.length > 0)
   }, [nodes, getBeforeNodesInSameBranchIncludeParent, getNodeAvailableVars, isChatMode])
 
   return getAvailableVars

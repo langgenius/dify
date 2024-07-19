@@ -55,7 +55,7 @@ const NodeGroupItem = ({
     const group = item.variableAssignerNodeData.advanced_settings?.groups.find(group => group.groupId === item.targetHandleId)
     return group?.output_type || ''
   }, [item.variableAssignerNodeData, item.targetHandleId, groupEnabled])
-  const availableVars = getAvailableVars(item.variableAssignerNodeId, item.targetHandleId, filterVar(outputType as VarType))
+  const availableVars = getAvailableVars(item.variableAssignerNodeId, item.targetHandleId, filterVar(outputType as VarType), true)
   const showSelectionBorder = useMemo(() => {
     if (groupEnabled && enteringNodePayload?.nodeId === item.variableAssignerNodeId) {
       if (hoveringAssignVariableGroupId)
