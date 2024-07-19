@@ -1,6 +1,6 @@
-model: ernie-lite-8k-0922
+model: ernie-character-8k-0321
 label:
-  en_US: ERNIE-Lite-8K-0922
+  en_US: ERNIE-Character-8K
 model_type: llm
 features:
   - agent-thought
@@ -28,4 +28,3 @@ parameter_rules:
     default: 1.0
     min: 1.0
     max: 2.0
-deprecated: true
