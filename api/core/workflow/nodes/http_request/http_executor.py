@@ -212,13 +212,11 @@ class HttpExecutor:
                 raise ValueError('self.authorization config is required')
             if authorization.config is None:
                 raise ValueError('authorization config is required')
-            if authorization.config.type != 'bearer' and authorization.config.header is None:
-                raise ValueError('authorization config header is required')
 
             if self.authorization.config.api_key is None:
                 raise ValueError('api_key is required')
 
-            if not self.authorization.config.header:
+            if not authorization.config.header:
                 authorization.config.header = 'Authorization'
 
             if self.authorization.config.type == 'bearer':
