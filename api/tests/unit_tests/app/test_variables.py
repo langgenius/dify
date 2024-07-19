@@ -64,11 +64,7 @@ def test_variable_value_type_immutable():
         StringVariable(value_type=SegmentType.ARRAY, name='text', value='text')
 
     with pytest.raises(ValidationError):
-        StringVariable.model_validate({
-            'value_type': 'not text',
-            'name': 'text',
-            'value': 'text'
-        })
+        StringVariable.model_validate({'value_type': 'not text', 'name': 'text', 'value': 'text'})
 
     var = IntegerVariable(name='integer', value=42)
     with pytest.raises(ValidationError):
@@ -81,3 +77,15 @@ def test_variable_value_type_immutable():
     var = SecretVariable(name='secret', value='secret_value')
     with pytest.raises(ValidationError):
         SecretVariable(value_type=SegmentType.ARRAY, name=var.name, value=var.value)
+
+
+def test_build_a_blank_string():
+    result = factory.build_variable_from_mapping(
+        {
+            'value_type': 'string',
+            'name': 'blank',
+            'value': '',
+        }
+    )
+    assert isinstance(result, StringVariable)
+    assert result.value == ''

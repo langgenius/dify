@@ -20,9 +20,9 @@ from .variables import (
 def build_variable_from_mapping(m: Mapping[str, Any], /) -> Variable:
     if (value_type := m.get('value_type')) is None:
         raise ValueError('missing value type')
-    if not (name := m.get('name')):
+    if not m.get('name'):
         raise ValueError('missing name')
-    if not (value := m.get('value')):
+    if (value := m.get('value')) is None:
         raise ValueError('missing value')
     match value_type:
         case SegmentType.STRING:
