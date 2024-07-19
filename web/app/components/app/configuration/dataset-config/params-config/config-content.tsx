@@ -24,12 +24,11 @@ import type { ModelConfig } from '@/app/components/workflow/types'
 import ModelParameterModal from '@/app/components/header/account-setting/model-provider-page/model-parameter-modal'
 import TooltipPlus from '@/app/components/base/tooltip-plus'
 import { ModelTypeEnum } from '@/app/components/header/account-setting/model-provider-page/declarations'
-import type { DataSet } from '@/models/datasets'
-import {
-  DEFAULT_WEIGHTED_SCORE,
-  RerankingModeEnum,
+import type {
+  DataSet,
   WeightedScoreEnum,
 } from '@/models/datasets'
+import { RerankingModeEnum } from '@/models/datasets'
 import cn from '@/utils/classnames'
 import { useSelectedDatasetsMode } from '@/app/components/workflow/nodes/knowledge-retrieval/hooks'
 
@@ -105,42 +104,22 @@ const ConfigContent: FC<Props> = ({
     })
   }
 
-  const handleWeightedScoreTypeChange = (type: WeightedScoreEnum) => {
+  const handleWeightedScoreChange = (value: { type: WeightedScoreEnum; value: number[] }) => {
     const configs = {
       ...datasetConfigs,
       weights: {
         ...datasetConfigs.weights!,
-        weight_type: type,
-      },
-    }
-
-    if (type === WeightedScoreEnum.SemanticFirst) {
-      configs.weights.vector_setting.vector_weight = DEFAULT_WEIGHTED_SCORE.semanticFirst.semantic
-      configs.weights.keyword_setting.keyword_weight = DEFAULT_WEIGHTED_SCORE.semanticFirst.keyword
-    }
-
-    if (type === WeightedScoreEnum.KeywordFirst) {
-      configs.weights.vector_setting.vector_weight = DEFAULT_WEIGHTED_SCORE.keywordFirst.semantic
-      configs.weights.keyword_setting.keyword_weight = DEFAULT_WEIGHTED_SCORE.keywordFirst.keyword
-    }
-
-    onChange(configs)
-  }
-
-  const handleWeightedScoreValueChange = (value: number) => {
-    onChange({
-      ...datasetConfigs,
-      weights: {
-        ...datasetConfigs.weights!,
+        weight_type: value.type,
         vector_setting: {
           ...datasetConfigs.weights!.vector_setting!,
-          vector_weight: value,
+          vector_weight: value.value[0],
         },
         keyword_setting: {
-          keyword_weight: (10 - value * 10) / 10,
+          keyword_weight: value.value[1],
         },
       },
-    })
+    }
+    onChange(configs)
   }
 
   const handleRerankModeChange = (mode: RerankingModeEnum) => {
@@ -267,10 +246,14 @@ const ConfigContent: FC<Props> = ({
             && (
               <div className='mt-4 space-y-4'>
                 <WeightedScore
-                  type={datasetConfigs.weights?.weight_type}
-                  value={datasetConfigs.weights?.vector_setting.vector_weight}
-                  onTypeChange={handleWeightedScoreTypeChange}
-                  onValueChange={handleWeightedScoreValueChange}
+                  value={{
+                    type: datasetConfigs.weights!.weight_type,
+                    value: [
+                      datasetConfigs.weights!.vector_setting.vector_weight,
+                      datasetConfigs.weights!.keyword_setting.keyword_weight,
+                    ],
+                  }}
+                  onChange={handleWeightedScoreChange}
                 />
                 <TopKItem
                   value={datasetConfigs.top_k}

@@ -47,7 +47,7 @@ const SelectDataSet: FC<ISelectDataSetProps> = ({
         const { data, has_more } = await fetchDatasets({ url: '/datasets', params: { page } })
         setPage(getPage() + 1)
         setIsNoMore(!has_more)
-        const newList = [...(datasets || []), ...data]
+        const newList = [...(datasets || []), ...data.filter(item => item.indexing_technique)]
         setDataSets(newList)
         setLoaded(true)
         if (!selected.find(item => !item.name))

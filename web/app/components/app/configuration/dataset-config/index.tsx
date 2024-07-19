@@ -74,7 +74,7 @@ const DatasetConfig: FC = () => {
       title={t('appDebug.feature.dataSet.title')}
       headerRight={
         <div className='flex items-center gap-1'>
-          {!isAgent && <ParamsConfig />}
+          {!isAgent && <ParamsConfig disabled={!hasData} selectedDatasets={dataSet} />}
           <OperationBtn type="add" onClick={showSelectDataSet} />
         </div>
       }

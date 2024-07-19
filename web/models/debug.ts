@@ -148,7 +148,7 @@ export type DatasetConfigs = {
   }
   top_k: number
   score_threshold_enabled: boolean
-  score_threshold?: number | null
+  score_threshold: number | null | undefined
   datasets: {
     datasets: {
       enabled: boolean
@@ -156,9 +156,8 @@ export type DatasetConfigs = {
     }[]
   }
   reranking_mode?: RerankingModeEnum
-  reranking_enable?: boolean
   weights?: {
-    weight_type?: WeightedScoreEnum
+    weight_type: WeightedScoreEnum
     vector_setting: {
       vector_weight: number
       embedding_provider_name: string
