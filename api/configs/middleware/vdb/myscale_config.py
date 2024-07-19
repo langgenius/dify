@@ -8,32 +8,32 @@ class MyScaleConfig(BaseModel):
     MyScale configs
     """
 
-    MYSCALE_HOST: Optional[str] = Field(
+    MYSCALE_HOST: str = Field(
         description='MyScale host',
         default='localhost',
     )
 
-    MYSCALE_PORT: Optional[PositiveInt] = Field(
+    MYSCALE_PORT: PositiveInt = Field(
         description='MyScale port',
         default=8123,
     )
 
-    MYSCALE_USER: Optional[str] = Field(
+    MYSCALE_USER: str = Field(
         description='MyScale user',
         default='default',
     )
 
-    MYSCALE_PASSWORD: Optional[str] = Field(
+    MYSCALE_PASSWORD: str = Field(
         description='MyScale password',
         default='',
     )
 
-    MYSCALE_DATABASE: Optional[str] = Field(
+    MYSCALE_DATABASE: str = Field(
         description='MyScale database name',
         default='default',
     )
 
-    MYSCALE_FTS_PARAMS: Optional[str] = Field(
+    MYSCALE_FTS_PARAMS: str = Field(
         description='MyScale fts index parameters',
         default='',
     )
