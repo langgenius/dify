@@ -4,7 +4,6 @@ import React, { useMemo, useState } from 'react'
 import {
   Cog8ToothIcon,
   DocumentTextIcon,
-  PaintBrushIcon,
   RocketLaunchIcon,
 } from '@heroicons/react/24/outline'
 import { usePathname, useRouter } from 'next/navigation'
@@ -66,7 +65,6 @@ function AppCard({
     const operationsMap = {
       webapp: [
         { opName: t('appOverview.overview.appInfo.preview'), opIcon: RocketLaunchIcon },
-        { opName: t('appOverview.overview.appInfo.customize.entry'), opIcon: PaintBrushIcon },
       ] as { opName: string; opIcon: any }[],
       api: [{ opName: t('appOverview.overview.apiInfo.doc'), opIcon: DocumentTextIcon }],
       app: [],

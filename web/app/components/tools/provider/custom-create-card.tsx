@@ -8,8 +8,6 @@ import {
 import type { CustomCollectionBackend } from '../types'
 import I18n from '@/context/i18n'
 import { getLanguage } from '@/i18n/language'
-import { BookOpen01 } from '@/app/components/base/icons/src/vender/line/education'
-import { ArrowUpRight } from '@/app/components/base/icons/src/vender/line/arrows'
 import EditCustomToolModal from '@/app/components/tools/edit-custom-collection-modal'
 import { createCustomCollection } from '@/service/tools'
 import Toast from '@/app/components/base/toast'
@@ -54,13 +52,13 @@ const Contribute = ({ onRefreshData }: Props) => {
               <div className='ml-3 text-sm font-semibold leading-5 text-gray-800 group-hover:text-primary-600'>{t('tools.createCustomTool')}</div>
             </div>
           </div>
-          <div className='px-4 py-3 rounded-b-xl border-t-[0.5px] border-black/5 text-gray-500 hover:text-[#155EEF] hover:bg-white'>
+          {/* <div className='px-4 py-3 rounded-b-xl border-t-[0.5px] border-black/5 text-gray-500 hover:text-[#155EEF] hover:bg-white'>
             <a href={linkUrl} target='_blank' rel='noopener noreferrer' className='flex items-center space-x-1'>
               <BookOpen01 className='shrink-0 w-3 h-3' />
               <div className='grow leading-[18px] text-xs font-normal truncate' title={t('tools.customToolTip') || ''}>{t('tools.customToolTip')}</div>
               <ArrowUpRight className='shrink-0 w-3 h-3' />
             </a>
-          </div>
+          </div> */}
         </div>
       )}
       {isShowEditCollectionToolModal && (
