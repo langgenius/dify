@@ -497,7 +497,7 @@ const replaceOldVarInText = (text: string, oldVar: ValueSelector, newVar: ValueS
     return text
 
   if (!newVar || newVar.length === 0)
-    return text.replaceAll(`{{#${oldVar.join('.')}#}}`, '')
+    return text
 
   return text.replaceAll(`{{#${oldVar.join('.')}#}}`, `{{#${newVar.join('.')}#}}`)
 }
