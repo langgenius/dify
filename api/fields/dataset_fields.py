@@ -39,7 +39,7 @@ dataset_retrieval_model_fields = {
     'reranking_enable': fields.Boolean,
     'reranking_mode': fields.String,
     'reranking_model': fields.Nested(reranking_model_fields),
-    'weights': fields.Nested(weighted_score_fields),
+    'weights': fields.Nested(weighted_score_fields, allow_null=True),
     'top_k': fields.Integer,
     'score_threshold_enabled': fields.Boolean,
     'score_threshold': fields.Float
