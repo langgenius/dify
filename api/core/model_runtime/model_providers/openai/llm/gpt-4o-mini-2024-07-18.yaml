@@ -24,7 +24,7 @@ parameter_rules:
     use_template: max_tokens
     default: 512
     min: 1
-    max: 4096
+    max: 16384
   - name: response_format
     label:
       zh_Hans: 回复格式
