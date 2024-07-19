@@ -187,7 +187,7 @@ const Result: FC<IResultProps> = ({
     let isEnd = false
     let isTimeout = false;
     (async () => {
-      await sleep(TEXT_GENERATION_TIMEOUT_MS) // 1min timeout
+      await sleep(TEXT_GENERATION_TIMEOUT_MS)
       if (!isEnd) {
         setRespondingFalse()
         onCompleted(getCompletionRes(), taskId, false)
