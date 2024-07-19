@@ -114,9 +114,9 @@ class AnthropicLargeLanguageModel(LargeLanguageModel):
             extra_model_kwargs['system'] = system
 
         # Add the new header for claude-3-5-sonnet-20240620 model
-        headers = {}
+        extra_headers = {}
         if model == "claude-3-5-sonnet-20240620":
-            headers["anthropic-beta"] = "max-tokens-3-5-sonnet-2024-07-15"
+            extra_headers["anthropic-beta"] = "max-tokens-3-5-sonnet-2024-07-15"
 
         if tools:
             extra_model_kwargs['tools'] = [
@@ -126,7 +126,7 @@ class AnthropicLargeLanguageModel(LargeLanguageModel):
                 model=model,
                 messages=prompt_message_dicts,
                 stream=stream,
-                headers=headers,
+                extra_headers=extra_headers,
                 **model_parameters,
                 **extra_model_kwargs
             )
@@ -136,7 +136,7 @@ class AnthropicLargeLanguageModel(LargeLanguageModel):
                 model=model,
                 messages=prompt_message_dicts,
                 stream=stream,
-                headers=headers,
+                extra_headers=extra_headers,
                 **model_parameters,
                 **extra_model_kwargs
             )
