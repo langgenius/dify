@@ -41,7 +41,7 @@ from models.workflow import WorkflowNodeExecutionStatus
 
 class LLMNode(BaseNode):
     _node_data_cls = LLMNodeData
-    node_type = NodeType.LLM
+    _node_type = NodeType.LLM
 
     def _run(self, variable_pool: VariablePool) -> NodeRunResult:
         """
