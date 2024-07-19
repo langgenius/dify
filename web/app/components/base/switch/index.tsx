@@ -58,7 +58,7 @@ const Switch = ({ onChange, size = 'lg', defaultValue = false, disabled = false,
         className={classNames(
           circleStyle[size],
           enabled ? translateLeft[size] : 'translate-x-0',
-          'pointer-events-none inline-block transform rounded-[5px] bg-components-toggle-knob shadow ring-0 transition duration-200 ease-in-out',
+          'pointer-events-none inline-block transform rounded-[3px] bg-components-toggle-knob shadow ring-0 transition duration-200 ease-in-out',
         )}
       />
     </OriginalSwitch>
