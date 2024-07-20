@@ -25,9 +25,10 @@ def clean_embedding_cache_task():
         except NotFound:
             break
         if embedding_ids:
-            db.session.execute(text(
-                "DELETE FROM embeddings WHERE id in :embedding_ids"
-            ), {'embedding_ids': tuple(embedding_ids)})
+            for embedding_id in embedding_ids:
+                db.session.execute(text(
+                    "DELETE FROM embeddings WHERE id = :embedding_id"
+                ), {'embedding_id': embedding_id})
 
             db.session.commit()
         else:
