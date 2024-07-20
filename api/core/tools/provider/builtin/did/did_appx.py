@@ -80,7 +80,7 @@ class DIDApp:
     def _monitor_job_status(self, target: str, id: str, poll_interval: int):
         while True:
             status = self.check_did_status(target=target, id=id)
-            if status['status'] == 'created' or status['status'] == 'done':
+            if status['status'] == 'done':
                 return status
             elif status['status'] == 'error' or status['status'] == 'rejected':
                 raise HTTPError(f'Talks {id} failed: {status["status"]} {status.get("error",{}).get("description")}')
