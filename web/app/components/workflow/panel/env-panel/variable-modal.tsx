@@ -2,9 +2,10 @@ import React, { useEffect } from 'react'
 import { useTranslation } from 'react-i18next'
 import { useClickAway } from 'ahooks'
 import { v4 as uuid4 } from 'uuid'
-import { RiCloseLine } from '@remixicon/react'
+import { RiCloseLine, RiQuestionLine } from '@remixicon/react'
 import { useContext } from 'use-context-selector'
 import Button from '@/app/components/base/button'
+import TooltipPlus from '@/app/components/base/tooltip-plus'
 import { ToastContext } from '@/app/components/base/toast'
 import { useStore } from '@/app/components/workflow/store'
 import type { EnvironmentVariable } from '@/app/components/workflow/types'
@@ -103,7 +104,16 @@ const VariableModal = ({
             <div className={cn(
               'w-[106px] flex items-center justify-center p-2 radius-md bg-components-option-card-option-bg border border-components-option-card-option-border text-text-secondary system-sm-regular cursor-pointer hover:shadow-xs hover:bg-components-option-card-option-bg-hover hover:border-components-option-card-option-border-hover',
               type === 'secret' && 'text-text-primary font-medium border-[1.5px] shadow-xs bg-components-option-card-option-selected-bg border-components-option-card-option-selected-border hover:border-components-option-card-option-selected-border',
-            )} onClick={() => setType('secret')}>Secret</div>
+            )} onClick={() => setType('secret')}>
+              <span>Secret</span>
+              <TooltipPlus popupContent={
+                <div className='w-[240px]'>
+                  {t('workflow.env.modal.secretTip')}
+                </div>
+              }>
+                <RiQuestionLine className='ml-0.5 w-[14px] h-[14px] text-text-quaternary' />
+              </TooltipPlus>
+            </div>
           </div>
         </div>
         {/* name */}

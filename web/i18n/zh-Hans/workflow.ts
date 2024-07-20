@@ -90,6 +90,7 @@ const translation = {
       namePlaceholder: '变量名',
       value: '值',
       valuePlaceholder: '变量值',
+      secretTip: '用于定义敏感信息或数据，导出 DSL 时设置了防泄露机制。',
     },
     export: {
       title: '导出 Secret 类型环境变量？',

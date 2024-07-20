@@ -90,6 +90,7 @@ const translation = {
       namePlaceholder: 'env name',
       value: 'Value',
       valuePlaceholder: 'env value',
+      secretTip: 'Used to define sensitive information or data, with DSL settings configured for leak prevention.',
     },
     export: {
       title: 'Export Secret environment variables?',
