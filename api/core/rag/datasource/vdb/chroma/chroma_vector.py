@@ -3,9 +3,9 @@ from typing import Any, Optional
 
 import chromadb
 from chromadb import QueryResult, Settings
-from flask import current_app
 from pydantic import BaseModel
 
+from configs import dify_config
 from core.rag.datasource.entity.embedding import Embeddings
 from core.rag.datasource.vdb.vector_base import BaseVector
 from core.rag.datasource.vdb.vector_factory import AbstractVectorFactory
@@ -111,7 +111,8 @@ class ChromaVector(BaseVector):
                     metadata=metadata,
                 )
                 docs.append(doc)
-
+         # Sort the documents by score in descending order
+        docs = sorted(docs, key=lambda x: x.metadata['score'], reverse=True)
         return docs
 
     def search_by_full_text(self, query: str, **kwargs: Any) -> list[Document]:
@@ -133,15 +134,14 @@ class ChromaVectorFactory(AbstractVectorFactory):
             }
             dataset.index_struct = json.dumps(index_struct_dict)
 
-        config = current_app.config
         return ChromaVector(
             collection_name=collection_name,
             config=ChromaConfig(
-                host=config.get('CHROMA_HOST'),
-                port=int(config.get('CHROMA_PORT')),
-                tenant=config.get('CHROMA_TENANT', chromadb.DEFAULT_TENANT),
-                database=config.get('CHROMA_DATABASE', chromadb.DEFAULT_DATABASE),
-                auth_provider=config.get('CHROMA_AUTH_PROVIDER'),
-                auth_credentials=config.get('CHROMA_AUTH_CREDENTIALS'),
+                host=dify_config.CHROMA_HOST,
+                port=dify_config.CHROMA_PORT,
+                tenant=dify_config.CHROMA_TENANT or chromadb.DEFAULT_TENANT,
+                database=dify_config.CHROMA_DATABASE or chromadb.DEFAULT_DATABASE,
+                auth_provider=dify_config.CHROMA_AUTH_PROVIDER,
+                auth_credentials=dify_config.CHROMA_AUTH_CREDENTIALS,
             ),
         )

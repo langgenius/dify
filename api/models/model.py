@@ -4,10 +4,11 @@ import uuid
 from enum import Enum
 from typing import Optional
 
-from flask import current_app, request
+from flask import request
 from flask_login import UserMixin
 from sqlalchemy import Float, func, text
 
+from configs import dify_config
 from core.file.tool_file_parser import ToolFileParser
 from core.file.upload_file_parser import UploadFileParser
 from extensions.ext_database import db
@@ -111,7 +112,7 @@ class App(db.Model):
 
     @property
     def api_base_url(self):
-        return (current_app.config['SERVICE_API_URL'] if current_app.config['SERVICE_API_URL']
+        return (dify_config.SERVICE_API_URL if dify_config.SERVICE_API_URL
                 else request.host_url.rstrip('/')) + '/v1'
 
     @property
@@ -1113,7 +1114,7 @@ class Site(db.Model):
     @property
     def app_base_url(self):
         return (
-            current_app.config['APP_WEB_URL'] if current_app.config['APP_WEB_URL'] else request.host_url.rstrip('/'))
+            dify_config.APP_WEB_URL if  dify_config.APP_WEB_URL else request.host_url.rstrip('/'))
 
 
 class ApiToken(db.Model):
@@ -1382,7 +1383,7 @@ class TraceAppConfig(db.Model):
     __tablename__ = 'trace_app_config'
     __table_args__ = (
         db.PrimaryKeyConstraint('id', name='tracing_app_config_pkey'),
-        db.Index('tracing_app_config_app_id_idx', 'app_id'),
+        db.Index('trace_app_config_app_id_idx', 'app_id'),
     )
 
     id = db.Column(StringUUID, server_default=db.text('uuid_generate_v4()'))

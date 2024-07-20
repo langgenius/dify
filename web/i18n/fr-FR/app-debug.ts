@@ -322,6 +322,9 @@ const translation = {
       language: 'Langue',
       resolutionTooltip: 'Support de la langue pour la voix de synthèse de texte.',
       voice: 'Voix',
+      autoPlay: 'Lecture Automatique',
+      autoPlayEnabled: 'Allumer',
+      autoPlayDisabled: 'Fermeture',
     },
   },
   openingStatement: {

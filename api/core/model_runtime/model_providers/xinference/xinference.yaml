@@ -46,3 +46,12 @@ model_credential_schema:
       placeholder:
         zh_Hans: 在此输入您的Model UID
         en_US: Enter the model uid
+    - variable: api_key
+      label:
+        zh_Hans: API密钥
+        en_US: API key
+      type: text-input
+      required: false
+      placeholder:
+        zh_Hans: 在此输入您的API密钥
+        en_US: Enter the api key

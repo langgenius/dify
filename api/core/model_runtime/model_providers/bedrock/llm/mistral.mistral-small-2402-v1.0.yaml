@@ -2,6 +2,8 @@ model: mistral.mistral-small-2402-v1:0
 label:
   en_US: Mistral Small
 model_type: llm
+features:
+  - tool-call
 model_properties:
   mode: completion
   context_size: 32000
