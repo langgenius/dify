@@ -305,9 +305,6 @@ class AnalyticdbVector(BaseVector):
             self._client.delete_collection(request)
         except Exception as e:
             raise e
-        finally:
-            collection_exist_cache_key = 'vector_indexing_{}'.format(self._collection_name)
-            redis_client.delete(collection_exist_cache_key)
 
 class AnalyticdbVectorFactory(AbstractVectorFactory):
     def init_vector(self, dataset: Dataset, attributes: list, embeddings: Embeddings):

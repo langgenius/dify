@@ -80,8 +80,6 @@ class ChromaVector(BaseVector):
 
     def delete(self):
         self._client.delete_collection(self._collection_name)
-        collection_exist_cache_key = 'vector_indexing_{}'.format(self._collection_name)
-        redis_client.delete(collection_exist_cache_key)
 
     def delete_by_ids(self, ids: list[str]) -> None:
         collection = self._client.get_or_create_collection(self._collection_name)

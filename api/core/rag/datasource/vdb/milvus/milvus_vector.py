@@ -154,8 +154,6 @@ class MilvusVector(BaseVector):
         from pymilvus import utility
         if utility.has_collection(self._collection_name, using=alias):
             utility.drop_collection(self._collection_name, None, using=alias)
-        collection_exist_cache_key = 'vector_indexing_{}'.format(self._collection_name)
-        redis_client.delete(collection_exist_cache_key)
 
     def text_exists(self, id: str) -> bool:
         alias = uuid4().hex

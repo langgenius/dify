@@ -133,8 +133,6 @@ class OpenSearchVector(BaseVector):
 
     def delete(self) -> None:
         self._client.indices.delete(index=self._collection_name.lower())
-        collection_exist_cache_key = 'vector_indexing_{}'.format(self._collection_name)
-        redis_client.delete(collection_exist_cache_key)
 
     def text_exists(self, id: str) -> bool:
         try:
