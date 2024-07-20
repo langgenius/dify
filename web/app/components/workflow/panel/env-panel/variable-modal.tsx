@@ -1,6 +1,5 @@
 import React, { useEffect } from 'react'
 import { useTranslation } from 'react-i18next'
-import { useClickAway } from 'ahooks'
 import { v4 as uuid4 } from 'uuid'
 import { RiCloseLine, RiQuestionLine } from '@remixicon/react'
 import { useContext } from 'use-context-selector'
@@ -28,11 +27,6 @@ const VariableModal = ({
   const [type, setType] = React.useState<'string' | 'number' | 'secret'>('string')
   const [name, setName] = React.useState('')
   const [value, setValue] = React.useState<any>()
-
-  const ref = React.useRef(null)
-  useClickAway(() => {
-    onClose()
-  }, ref)
 
   const handleNameChange = (v: string) => {
     if (!v)
@@ -70,7 +64,6 @@ const VariableModal = ({
 
   return (
     <div
-      ref={ref}
       className={cn('flex flex-col w-[360px] bg-components-panel-bg rounded-2xl h-full border-[0.5px] border-components-panel-border shadow-2xl')}
     >
       <div className='shrink-0 flex items-center justify-between mb-3 p-4 pb-0 text-text-primary system-xl-semibold'>
