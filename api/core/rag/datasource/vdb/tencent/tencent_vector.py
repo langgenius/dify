@@ -196,8 +196,8 @@ class TencentVector(BaseVector):
 
     def delete(self) -> None:
         self._db.drop_collection(name=self._collection_name)
-
-
+        collection_exist_cache_key = 'vector_indexing_{}'.format(self._collection_name)
+        redis_client.delete(collection_exist_cache_key)
 
 
 class TencentVectorFactory(AbstractVectorFactory):

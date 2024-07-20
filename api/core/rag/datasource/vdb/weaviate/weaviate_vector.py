@@ -146,6 +146,8 @@ class WeaviateVector(BaseVector):
         schema = self._default_schema(self._collection_name)
         if self._client.schema.contains(schema):
             self._client.schema.delete_class(self._collection_name)
+        collection_exist_cache_key = 'vector_indexing_{}'.format(self._collection_name)
+        redis_client.delete(collection_exist_cache_key)
 
     def text_exists(self, id: str) -> bool:
         collection_name = self._collection_name

@@ -169,6 +169,8 @@ class PGVectoRS(BaseVector):
         with Session(self._client) as session:
             session.execute(sql_text(f"DROP TABLE IF EXISTS {self._collection_name}"))
             session.commit()
+        collection_exist_cache_key = 'vector_indexing_{}'.format(self._collection_name)
+        redis_client.delete(collection_exist_cache_key)
 
     def text_exists(self, id: str) -> bool:
         with Session(self._client) as session:

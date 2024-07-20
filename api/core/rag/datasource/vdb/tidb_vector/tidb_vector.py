@@ -220,6 +220,8 @@ class TiDBVector(BaseVector):
         with Session(self._engine) as session:
             session.execute(sql_text(f"""DROP TABLE IF EXISTS {self._collection_name};"""))
             session.commit()
+        collection_exist_cache_key = 'vector_indexing_{}'.format(self._collection_name)
+        redis_client.delete(collection_exist_cache_key)
 
 
 class TiDBVectorFactory(AbstractVectorFactory):

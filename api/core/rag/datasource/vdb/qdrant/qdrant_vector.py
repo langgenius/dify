@@ -286,6 +286,9 @@ class QdrantVector(BaseVector):
             # Some other error occurred, so re-raise the exception
             else:
                 raise e
+        finally:
+            collection_exist_cache_key = 'vector_indexing_{}'.format(self._collection_name)
+            redis_client.delete(collection_exist_cache_key)
 
     def delete_by_ids(self, ids: list[str]) -> None:
 

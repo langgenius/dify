@@ -158,6 +158,8 @@ class PGVector(BaseVector):
     def delete(self) -> None:
         with self._get_cursor() as cur:
             cur.execute(f"DROP TABLE IF EXISTS {self.table_name}")
+        collection_exist_cache_key = 'vector_indexing_{}'.format(self._collection_name)
+        redis_client.delete(collection_exist_cache_key)
 
     def _create_collection(self, dimension: int):
         cache_key = f"vector_indexing_{self._collection_name}"
