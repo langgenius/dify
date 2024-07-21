@@ -134,18 +134,20 @@ const ConfigContent: FC<Props> = ({
   const rerankingModeOptions = [
     {
       value: RerankingModeEnum.WeightedScore,
-      label: 'Weighted Score',
-      tips: 'xxx',
+      label: t('dataset.weightedScore.title'),
+      tips: t('dataset.weightedScore.description'),
     },
     {
       value: RerankingModeEnum.RerankingModel,
-      label: 'Rerank Model',
-      tips: 'bbb',
+      label: t('common.modelProvider.rerankModel.key'),
+      tips: t('common.modelProvider.rerankModel.tip'),
     },
   ]
 
   const showWeightedScore = selectedDatasetsMode.allHighQuality
     && !selectedDatasetsMode.inconsistentEmbeddingModel
+
+  const showWeightedScorePanel = showWeightedScore && datasetConfigs.reranking_mode === RerankingModeEnum.WeightedScore
 
   const selectedRerankMode = datasetConfigs.reranking_mode || RerankingModeEnum.RerankingModel
 
@@ -157,7 +159,7 @@ const ConfigContent: FC<Props> = ({
           title={(
             <div className='flex items-center'>
               {t('appDebug.datasetConfig.retrieveOneWay.title')}
-              <TooltipPlus popupContent={<div className='w-[320px]'>According to product planning, N-to-1 retrieval will be officially deprecated in September. Until then you can still use it normally.</div>}>
+              <TooltipPlus popupContent={<div className='w-[320px]'>{t('dataset.nTo1RetrievalLegacy')}</div>}>
                 <div className='ml-1 px-[5px] h-[18px] rounded-[5px] border border-text-accent-secondary system-2xs-medium-uppercase leading-[18px] text-text-accent-secondary'>legacy</div>
               </TooltipPlus>
             </div>
@@ -219,7 +221,7 @@ const ConfigContent: FC<Props> = ({
             )
           }
           {
-            datasetConfigs.reranking_mode !== RerankingModeEnum.WeightedScore && (
+            !showWeightedScorePanel && (
               <div className='mt-4'>
                 <div className='leading-[32px] text-[13px] font-medium text-gray-900'>{t('common.modelProvider.rerankModel.key')}</div>
                 <div>
@@ -241,8 +243,7 @@ const ConfigContent: FC<Props> = ({
             )
           }
           {
-            showWeightedScore
-            && datasetConfigs.reranking_mode === RerankingModeEnum.WeightedScore
+            showWeightedScorePanel
             && (
               <div className='mt-4 space-y-4'>
                 <WeightedScore
@@ -271,8 +272,7 @@ const ConfigContent: FC<Props> = ({
             )
           }
           {
-            !(showWeightedScore
-            && datasetConfigs.reranking_mode === RerankingModeEnum.WeightedScore)
+            !showWeightedScorePanel
             && (
               <div className='mt-4 space-y-4'>
                 <TopKItem

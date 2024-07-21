@@ -1,4 +1,5 @@
 import { memo, useCallback } from 'react'
+import { useTranslation } from 'react-i18next'
 import {
   DEFAULT_WEIGHTED_SCORE,
   WeightedScoreEnum,
@@ -28,18 +29,19 @@ const WeightedScore = ({
   value,
   onChange = () => {},
 }: WeightedScoreProps) => {
+  const { t } = useTranslation()
   const options = [
     {
       value: WeightedScoreEnum.SemanticFirst,
-      label: 'Semantic first',
+      label: t('dataset.weightedScore.semanticFirst'),
     },
     {
       value: WeightedScoreEnum.KeywordFirst,
-      label: 'Keyword first',
+      label: t('dataset.weightedScore.keywordFirst'),
     },
     {
       value: WeightedScoreEnum.Customized,
-      label: 'Customized',
+      label: t('dataset.weightedScore.customized'),
     },
   ]
 
@@ -80,11 +82,13 @@ const WeightedScore = ({
       </div>
       <div className='flex items-center px-3 h-9 space-x-3 rounded-lg border border-components-panel-border'>
         <div className='shrink-0 flex items-center w-[86px] system-xs-semibold-uppercase text-util-colors-blue-blue-500'>
-          <div className='mr-1 truncate' title='SEMANTIC'>SEMANTIC</div>
+          <div className='mr-1 truncate uppercase' title={t('dataset.weightedScore.semantic') || ''}>
+            {t('dataset.weightedScore.semantic')}
+          </div>
           {formatNumber(value.value[0])}
         </div>
         <Slider
-          className={cn('grow', disabled && 'cursor-not-allowed')}
+          className={cn('grow h-0.5 bg-gradient-to-r from-[#53B1FD] to-[#2ED3B7]', disabled && 'cursor-not-allowed')}
           max={1.0}
           min={0}
           step={0.1}
@@ -92,10 +96,13 @@ const WeightedScore = ({
           onChange={v => onChange({ type: value.type, value: [v, (10 - v * 10) / 10] })}
           disabled={disabled}
           thumbClassName={cn(disabled && '!cursor-not-allowed')}
+          trackClassName='!bg-transparent'
         />
-        <div className='shrink-0 flex items-center w-[86px] system-xs-semibold-uppercase text-util-colors-cyan-cyan-500'>
+        <div className='shrink-0 flex items-center justify-end w-[86px] system-xs-semibold-uppercase text-util-colors-cyan-cyan-500'>
           {formatNumber((10 - value.value[0] * 10) / 10)}
-          <div className='ml-1 truncate' title='SEMANTIC'>KEYWORD</div>
+          <div className='ml-1 truncate uppercase' title={t('dataset.weightedScore.keyword') || ''}>
+            {t('dataset.weightedScore.keyword')}
+          </div>
         </div>
       </div>
     </div>

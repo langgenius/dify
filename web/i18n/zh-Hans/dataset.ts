@@ -56,6 +56,17 @@ const translation = {
   },
   mixtureHighQualityAndEconomicTip: '高质量和经济知识库的混合需要配置 Rerank 模型。',
   inconsistentEmbeddingModelTip: '如果嵌入方法不一致，例如有嵌入和没有嵌入的混合或使用不同的嵌入模型，则需要 Rerank 模型。',
+  rerankSettings: 'Rerank 设置',
+  weightedScore: {
+    title: '权重设置',
+    description: '通过调整分配的权重，重新排序策略确定是优先进行语义匹配还是关键字匹配。',
+    semanticFirst: '语义优先',
+    keywordFirst: '关键词优先',
+    customized: '自定义',
+    semantic: '语义',
+    keyword: '关键词',
+  },
+  nTo1RetrievalLegacy: '根据产品规划，N 选 1 召回将于 9 月正式弃用。在那之前，您仍然可以正常使用它。',
 }
 
 export default translation

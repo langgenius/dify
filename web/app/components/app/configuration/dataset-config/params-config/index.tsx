@@ -111,7 +111,7 @@ const ParamsConfig = ({
         disabled={disabled}
       >
         <RiEqualizer2Line className='mr-1 w-3.5 h-3.5' />
-        Rerank Settings
+        {t('dataset.rerankSettings')}
       </Button>
       {
         rerankSettingModalOpen && (

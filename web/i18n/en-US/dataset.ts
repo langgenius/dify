@@ -56,6 +56,17 @@ const translation = {
   },
   mixtureHighQualityAndEconomicTip: 'The rerank model is required for mixture of high quality and economical knowledge bases.',
   inconsistentEmbeddingModelTip: 'The rerank model is required if the embedding method is inconsistent, such as mixture of with and without embedding or using different embedding models.',
+  rerankSettings: 'Rerank Settings',
+  weightedScore: {
+    title: 'Weighted Score',
+    description: 'By adjusting the weights assigned， this rerank strategy determines whether to prioritize semantic or keyword matching.',
+    semanticFirst: 'Semantic first',
+    keywordFirst: 'Keyword first',
+    customized: 'Customized',
+    semantic: 'Semantic',
+    keyword: 'Keyword',
+  },
+  nTo1RetrievalLegacy: 'According to product planning, N-to-1 retrieval will be officially deprecated in September. Until then you can still use it normally.',
 }
 
 export default translation

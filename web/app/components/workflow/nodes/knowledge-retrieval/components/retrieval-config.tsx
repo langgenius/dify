@@ -2,6 +2,7 @@
 import type { FC } from 'react'
 import React, { useCallback, useState } from 'react'
 import { RiEqualizer2Line } from '@remixicon/react'
+import { useTranslation } from 'react-i18next'
 import type { MultipleRetrievalConfig, SingleRetrievalConfig } from '../types'
 import type { ModelConfig } from '../../../types'
 import cn from '@/utils/classnames'
@@ -48,6 +49,7 @@ const RetrievalConfig: FC<Props> = ({
   onOpenFromPropsChange,
   selectedDatasets,
 }) => {
+  const { t } = useTranslation()
   const [open, setOpen] = useState(false)
   const mergedOpen = openFromProps !== undefined ? openFromProps : open
 
@@ -108,7 +110,7 @@ const RetrievalConfig: FC<Props> = ({
           className={cn(open && 'bg-components-button-ghost-bg-hover')}
         >
           <RiEqualizer2Line className='mr-1 w-3.5 h-3.5' />
-          Rerank Settings
+          {t('dataset.rerankSettings')}
         </Button>
       </PortalToFollowElemTrigger>
       <PortalToFollowElemContent style={{ zIndex: 1001 }}>

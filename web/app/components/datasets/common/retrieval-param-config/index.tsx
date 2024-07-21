@@ -171,8 +171,8 @@ const RetrievalParamConfig: FC<Props> = ({
               onClick={() => handleChangeRerankMode(RerankingModeEnum.WeightedScore)}
             >
               <div className='flex items-center h-6 system-sm-semibold text-text-secondary'>
-                <div className='mr-0.5'>Weighted Score</div>
-                <Tooltip popupContent={<div className="w-[200px]">{t('common.modelProvider.rerankModel.tip')}</div>}>
+                <div className='mr-0.5'>{t('dataset.weightedScore.title')}</div>
+                <Tooltip popupContent={<div className="w-[200px]">{t('dataset.weightedScore.description')}</div>}>
                   <RiQuestionLine className='w-[14px] h-[14px] text-text-quaternary' />
                 </Tooltip>
               </div>
