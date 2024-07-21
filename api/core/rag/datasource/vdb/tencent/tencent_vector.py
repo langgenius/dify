@@ -198,8 +198,6 @@ class TencentVector(BaseVector):
         self._db.drop_collection(name=self._collection_name)
 
 
-
-
 class TencentVectorFactory(AbstractVectorFactory):
     def init_vector(self, dataset: Dataset, attributes: list, embeddings: Embeddings) -> TencentVector:
 
