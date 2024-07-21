@@ -16,18 +16,18 @@ const Line = ({
             {
               index === 0 && (
                 <>
+                  <path
+                    d='M0,18 L24,18'
+                    strokeWidth={1}
+                    fill='none'
+                    className='stroke-divider-soild'
+                  />
                   <rect
                     x={0}
                     y={16}
                     width={1}
                     height={4}
-                    fill='#98A2B3'
-                  />
-                  <path
-                    d='M0,18 L24,18'
-                    strokeWidth={1}
-                    stroke='#D0D5DD'
-                    fill='none'
+                    className='fill-divider-soild-alt'
                   />
                 </>
               )
@@ -37,8 +37,8 @@ const Line = ({
                 <path
                   d={`M0,18 Q12,18 12,28 L12,${index * 48 + 18 - 10} Q12,${index * 48 + 18} 24,${index * 48 + 18}`}
                   strokeWidth={1}
-                  stroke='#D0D5DD'
                   fill='none'
+                  className='stroke-divider-soild'
                 />
               )
             }
@@ -47,7 +47,7 @@ const Line = ({
               y={index * 48 + 18 - 2}
               width={1}
               height={4}
-              fill='#98A2B3'
+              className='fill-divider-soild-alt'
             />
           </g>
         ))
