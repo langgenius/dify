@@ -316,6 +316,9 @@ const translation = {
       language: 'Мова', // Language
       resolutionTooltip: 'Мовна підтримка для синтезу мовлення.', // Text-to-speech voice support language。
       voice: 'Голос', // Voice
+      autoPlay: 'Автоматичне відтворення',
+      autoPlayEnabled: 'ВІДЧИНЕНО',
+      autoPlayDisabled: 'закриття',
     },
   },
   openingStatement: {

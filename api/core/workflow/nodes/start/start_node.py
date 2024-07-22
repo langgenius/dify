@@ -8,7 +8,7 @@ from models.workflow import WorkflowNodeExecutionStatus
 
 class StartNode(BaseNode):
     _node_data_cls = StartNodeData
-    node_type = NodeType.START
+    _node_type = NodeType.START
 
     def _run(self) -> NodeRunResult:
         """
@@ -16,7 +16,7 @@ class StartNode(BaseNode):
         :return:
         """
         # Get cleaned inputs
-        cleaned_inputs = self.graph_runtime_state.variable_pool.user_inputs
+        cleaned_inputs = dict(self.graph_runtime_state.variable_pool.user_inputs)
 
         for var in self.graph_runtime_state.variable_pool.system_variables:
             cleaned_inputs['sys.' + var.value] = self.graph_runtime_state.variable_pool.system_variables[var]

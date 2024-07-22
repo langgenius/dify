@@ -170,6 +170,29 @@ def test_execute_if_else_result_true():
         }
     )
 
+    # construct variable pool
+    pool = VariablePool(system_variables={
+        SystemVariable.FILES: [],
+        SystemVariable.USER_ID: 'aaa'
+    }, user_inputs={}, environment_variables=[])
+    pool.add(['start', 'array_contains'], ['ab', 'def'])
+    pool.add(['start', 'array_not_contains'], ['ac', 'def'])
+    pool.add(['start', 'contains'], 'cabcde')
+    pool.add(['start', 'not_contains'], 'zacde')
+    pool.add(['start', 'start_with'], 'abc')
+    pool.add(['start', 'end_with'], 'zzab')
+    pool.add(['start', 'is'], 'ab')
+    pool.add(['start', 'is_not'], 'aab')
+    pool.add(['start', 'empty'], '')
+    pool.add(['start', 'not_empty'], 'aaa')
+    pool.add(['start', 'equals'], 22)
+    pool.add(['start', 'not_equals'], 23)
+    pool.add(['start', 'greater_than'], 23)
+    pool.add(['start', 'less_than'], 21)
+    pool.add(['start', 'greater_than_or_equal'], 22)
+    pool.add(['start', 'less_than_or_equal'], 21)
+    pool.add(['start', 'not_null'], '1212')
+
     # Mock db.session.close()
     db.session.close = MagicMock()
 
@@ -214,9 +237,9 @@ def test_execute_if_else_result_false():
     pool = VariablePool(system_variables={
         SystemVariable.FILES: [],
         SystemVariable.USER_ID: 'aaa'
-    }, user_inputs={})
-    pool.append_variable(node_id='start', variable_key_list=['array_contains'], value=['1ab', 'def'])
-    pool.append_variable(node_id='start', variable_key_list=['array_not_contains'], value=['ab', 'def'])
+    }, user_inputs={}, environment_variables=[])
+    pool.add(['start', 'array_contains'], ['1ab', 'def'])
+    pool.add(['start', 'array_not_contains'], ['ab', 'def'])
 
     # Mock db.session.close()
     db.session.close = MagicMock()

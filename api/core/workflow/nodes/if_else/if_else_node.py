@@ -10,7 +10,7 @@ from models.workflow import WorkflowNodeExecutionStatus
 
 class IfElseNode(BaseNode):
     _node_data_cls = IfElseNodeData
-    node_type = NodeType.IF_ELSE
+    _node_type = NodeType.IF_ELSE
 
     def _run(self) -> NodeRunResult:
         """

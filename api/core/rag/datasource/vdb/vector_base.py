@@ -61,9 +61,14 @@ class BaseVector(ABC):
             doc_id = text.metadata['doc_id']
             exists_duplicate_node = self.text_exists(doc_id)
             if exists_duplicate_node:
+                # FIXME: Mutation to loop iterable `texts` during iteration
                 texts.remove(text)
 
         return texts
 
     def _get_uuids(self, texts: list[Document]) -> list[str]:
         return [text.metadata['doc_id'] for text in texts]
+
+    @property
+    def collection_name(self):
+        return self._collection_name

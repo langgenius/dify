@@ -98,7 +98,7 @@ class AppService:
                 model_instance = None
 
             if model_instance:
-                if model_instance.model == default_model_config['model']['name']:
+                if model_instance.model == default_model_config['model']['name'] and model_instance.provider == default_model_config['model']['provider']:
                     default_model_dict = default_model_config['model']
                 else:
                     llm_model = cast(LargeLanguageModel, model_instance.model_type_instance)
@@ -346,7 +346,7 @@ class AppService:
                     try:
                         provider: ApiToolProvider = db.session.query(ApiToolProvider).filter(
                             ApiToolProvider.id == provider_id
-                        )
+                        ).first()
                         meta['tool_icons'][tool_name] = json.loads(provider.icon)
                     except:
                         meta['tool_icons'][tool_name] = {

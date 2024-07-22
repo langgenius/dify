@@ -8,6 +8,7 @@ import { v4 as uuid4 } from 'uuid'
 import type { PromptItem, ValueSelector, Var, Variable } from '../../../types'
 import { EditionType, PromptRole } from '../../../types'
 import useAvailableVarList from '../../_base/hooks/use-available-var-list'
+import { useWorkflowStore } from '../../../store'
 import ConfigPromptItem from './config-prompt-item'
 import cn from '@/utils/classnames'
 import Editor from '@/app/components/workflow/nodes/_base/components/prompt/editor'
@@ -48,6 +49,10 @@ const ConfigPrompt: FC<Props> = ({
   handleAddVariable,
 }) => {
   const { t } = useTranslation()
+  const workflowStore = useWorkflowStore()
+  const {
+    setControlPromptEditorRerenderKey,
+  } = workflowStore.getState()
   const payloadWithIds = (isChatModel && Array.isArray(payload))
     ? payload.map((item) => {
       const id = uuid4()
@@ -124,6 +129,11 @@ const ConfigPrompt: FC<Props> = ({
     onChange(newPrompt)
   }, [onChange, payload])
 
+  const handleGenerated = useCallback((prompt: string) => {
+    handleCompletionPromptChange(prompt)
+    setTimeout(() => setControlPromptEditorRerenderKey(Date.now()))
+  }, [handleCompletionPromptChange, setControlPromptEditorRerenderKey])
+
   const handleCompletionEditionTypeChange = useCallback((editionType: EditionType) => {
     const newPrompt = produce(payload as PromptItem, (draft) => {
       draft.edition_type = editionType
@@ -191,10 +201,8 @@ const ConfigPrompt: FC<Props> = ({
                           handleAddVariable={handleAddVariable}
                         />
                       </div>
-
                     )
                   })
-
                 }
               </ReactSortable>
             </div>
@@ -219,11 +227,13 @@ const ConfigPrompt: FC<Props> = ({
               hasSetBlockStatus={hasSetBlockStatus}
               nodesOutputVars={availableVars}
               availableNodes={availableNodesWithParent}
+              isSupportPromptGenerator
               isSupportJinja
               editionType={(payload as PromptItem).edition_type}
               varList={varList}
               onEditionTypeChange={handleCompletionEditionTypeChange}
               handleAddVariable={handleAddVariable}
+              onGenerated={handleGenerated}
             />
           </div>
         )}

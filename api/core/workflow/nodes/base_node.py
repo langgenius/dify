@@ -1,6 +1,6 @@
 from abc import ABC, abstractmethod
-from collections.abc import Generator
-from typing import Optional
+from collections.abc import Generator, Mapping
+from typing import Any, Optional
 
 from core.workflow.entities.base_node_data_entities import BaseIterationState, BaseNodeData
 from core.workflow.entities.node_entities import NodeRunResult, NodeType
@@ -17,7 +17,7 @@ class BaseNode(ABC):
     _node_type: NodeType
 
     def __init__(self,
-                 config: dict,
+                 config: Mapping[str, Any],
                  graph_init_params: GraphInitParams,
                  graph: Graph,
                  graph_runtime_state: GraphRuntimeState,

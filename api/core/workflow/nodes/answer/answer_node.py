@@ -1,7 +1,5 @@
-import json
 from typing import cast
 
-from core.file.file_obj import FileVar
 from core.workflow.entities.base_node_data_entities import BaseNodeData
 from core.workflow.entities.node_entities import NodeRunResult, NodeType
 from core.workflow.nodes.answer.answer_stream_generate_router import AnswerStreamGeneratorRouter
@@ -18,7 +16,7 @@ from models.workflow import WorkflowNodeExecutionStatus
 
 class AnswerNode(BaseNode):
     _node_data_cls = AnswerNodeData
-    node_type = NodeType.ANSWER
+    _node_type: NodeType = NodeType.ANSWER
 
     def _run(self) -> NodeRunResult:
         """
@@ -36,31 +34,12 @@ class AnswerNode(BaseNode):
             if part.type == GenerateRouteChunk.ChunkType.VAR:
                 part = cast(VarGenerateRouteChunk, part)
                 value_selector = part.value_selector
-                value = self.graph_runtime_state.variable_pool.get_variable_value(
+                value = self.graph_runtime_state.variable_pool.get(
                     variable_selector=value_selector
                 )
 
-                text = ''
-                if isinstance(value, str | int | float):
-                    text = str(value)
-                elif isinstance(value, dict):
-                    # other types
-                    text = json.dumps(value, ensure_ascii=False)
-                elif isinstance(value, FileVar):
-                    # convert file to markdown
-                    text = value.to_markdown()
-                elif isinstance(value, list):
-                    for item in value:
-                        if isinstance(item, FileVar):
-                            text += item.to_markdown() + ' '
-
-                    text = text.strip()
-
-                    if not text and value:
-                        # other types
-                        text = json.dumps(value, ensure_ascii=False)
-
-                answer += text
+                if value:
+                    answer += value.markdown
             else:
                 part = cast(TextGenerateRouteChunk, part)
                 answer += part.text

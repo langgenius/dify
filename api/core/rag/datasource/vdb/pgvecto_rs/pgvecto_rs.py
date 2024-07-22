@@ -3,7 +3,6 @@ import logging
 from typing import Any
 from uuid import UUID, uuid4
 
-from flask import current_app
 from numpy import ndarray
 from pgvecto_rs.sqlalchemy import Vector
 from pydantic import BaseModel, model_validator
@@ -12,6 +11,7 @@ from sqlalchemy import text as sql_text
 from sqlalchemy.dialects import postgresql
 from sqlalchemy.orm import Mapped, Session, mapped_column
 
+from configs import dify_config
 from core.rag.datasource.entity.embedding import Embeddings
 from core.rag.datasource.vdb.pgvecto_rs.collection import CollectionORM
 from core.rag.datasource.vdb.vector_base import BaseVector
@@ -93,7 +93,7 @@ class PGVectoRS(BaseVector):
                         text TEXT NOT NULL,
                         meta JSONB NOT NULL,
                         vector vector({dimension}) NOT NULL
-                    ) using heap; 
+                    ) using heap;
                 """)
                 session.execute(create_statement)
                 index_statement = sql_text(f"""
@@ -233,15 +233,15 @@ class PGVectoRSFactory(AbstractVectorFactory):
             dataset.index_struct = json.dumps(
                 self.gen_index_struct_dict(VectorType.WEAVIATE, collection_name))
         dim = len(embeddings.embed_query("pgvecto_rs"))
-        config = current_app.config
+
         return PGVectoRS(
             collection_name=collection_name,
             config=PgvectoRSConfig(
-                host=config.get('PGVECTO_RS_HOST'),
-                port=config.get('PGVECTO_RS_PORT'),
-                user=config.get('PGVECTO_RS_USER'),
-                password=config.get('PGVECTO_RS_PASSWORD'),
-                database=config.get('PGVECTO_RS_DATABASE'),
+                host=dify_config.PGVECTO_RS_HOST,
+                port=dify_config.PGVECTO_RS_PORT,
+                user=dify_config.PGVECTO_RS_USER,
+                password=dify_config.PGVECTO_RS_PASSWORD,
+                database=dify_config.PGVECTO_RS_DATABASE,
             ),
             dim=dim
         )

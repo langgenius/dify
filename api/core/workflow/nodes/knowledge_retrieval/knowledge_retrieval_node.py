@@ -21,7 +21,7 @@ from models.dataset import Dataset, Document, DocumentSegment
 from models.workflow import WorkflowNodeExecutionStatus
 
 default_retrieval_model = {
-    'search_method': RetrievalMethod.SEMANTIC_SEARCH,
+    'search_method': RetrievalMethod.SEMANTIC_SEARCH.value,
     'reranking_enable': False,
     'reranking_model': {
         'reranking_provider_name': '',
@@ -40,7 +40,8 @@ class KnowledgeRetrievalNode(BaseNode):
         node_data = cast(KnowledgeRetrievalNodeData, self.node_data)
 
         # extract variables
-        query = self.graph_runtime_state.variable_pool.get_variable_value(variable_selector=node_data.query_variable_selector)
+        variable = self.graph_runtime_state.variable_pool.get(node_data.query_variable_selector)
+        query = variable.value if variable else None
         variables = {
             'query': query
         }

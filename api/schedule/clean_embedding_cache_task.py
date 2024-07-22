@@ -2,6 +2,7 @@ import datetime
 import time
 
 import click
+from sqlalchemy import text
 from werkzeug.exceptions import NotFound
 
 import app
@@ -16,16 +17,21 @@ def clean_embedding_cache_task():
     clean_days = int(dify_config.CLEAN_DAY_SETTING)
     start_at = time.perf_counter()
     thirty_days_ago = datetime.datetime.now() - datetime.timedelta(days=clean_days)
-    page = 1
     while True:
         try:
-            embeddings = db.session.query(Embedding).filter(Embedding.created_at < thirty_days_ago) \
-                .order_by(Embedding.created_at.desc()).paginate(page=page, per_page=100)
+            embedding_ids = db.session.query(Embedding.id).filter(Embedding.created_at < thirty_days_ago) \
+                .order_by(Embedding.created_at.desc()).limit(100).all()
+            embedding_ids = [embedding_id[0] for embedding_id in embedding_ids]
         except NotFound:
             break
-        for embedding in embeddings:
-            db.session.delete(embedding)
-        db.session.commit()
-        page += 1
+        if embedding_ids:
+            for embedding_id in embedding_ids:
+                db.session.execute(text(
+                    "DELETE FROM embeddings WHERE id = :embedding_id"
+                ), {'embedding_id': embedding_id})
+
+            db.session.commit()
+        else:
+            break
     end_at = time.perf_counter()
     click.echo(click.style('Cleaned embedding cache from db success latency: {}'.format(end_at - start_at), fg='green'))

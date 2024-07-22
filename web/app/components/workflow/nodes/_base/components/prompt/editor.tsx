@@ -16,6 +16,7 @@ import type {
 
 import Wrap from '../editor/wrap'
 import { CodeLanguage } from '../../../code/types'
+import PromptGeneratorBtn from '../../../llm/components/prompt-generator-btn'
 import cn from '@/utils/classnames'
 import ToggleExpandBtn from '@/app/components/workflow/nodes/_base/components/toggle-expand-btn'
 import useToggleExpend from '@/app/components/workflow/nodes/_base/hooks/use-toggle-expend'
@@ -55,6 +56,8 @@ type Props = {
   }
   nodesOutputVars?: NodeOutPutVar[]
   availableNodes?: Node[]
+  isSupportPromptGenerator?: boolean
+  onGenerated?: (prompt: string) => void
   // for jinja
   isSupportJinja?: boolean
   editionType?: EditionType
@@ -80,11 +83,13 @@ const Editor: FC<Props> = ({
   hasSetBlockStatus,
   nodesOutputVars,
   availableNodes = [],
+  isSupportPromptGenerator,
   isSupportJinja,
   editionType,
   onEditionTypeChange,
   varList = [],
   handleAddVariable,
+  onGenerated,
 }) => {
   const { t } = useTranslation()
   const { eventEmitter } = useEventEmitterContextContext()
@@ -124,6 +129,10 @@ const Editor: FC<Props> = ({
             <div className='leading-4 text-xs font-semibold text-gray-700 uppercase'>{title}</div>
             <div className='flex items-center'>
               <div className='leading-[18px] text-xs font-medium text-gray-500'>{value?.length || 0}</div>
+              {isSupportPromptGenerator && (
+                <PromptGeneratorBtn className='ml-[5px]' onGenerated={onGenerated} />
+              )}
+
               <div className='w-px h-3 ml-2 mr-2 bg-gray-200'></div>
               {/* Operations */}
               <div className='flex items-center space-x-2'>
