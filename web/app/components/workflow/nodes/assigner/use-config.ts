@@ -2,13 +2,13 @@ import { useCallback, useMemo } from 'react'
 import produce from 'immer'
 import { useStoreApi } from 'reactflow'
 import { type ValueSelector, VarType } from '../../types'
-import { getVarType } from '../_base/components/variable/utils'
 import { type AssignerNodeType, WriteMode } from './types'
 import useNodeCrud from '@/app/components/workflow/nodes/_base/hooks/use-node-crud'
 import {
   useIsChatMode,
   useNodesReadOnly,
   useWorkflow,
+  useWorkflowVariables,
 } from '@/app/components/workflow/hooks'
 import { VarType as VarKindType } from '@/app/components/workflow/nodes/tool/types'
 
@@ -30,7 +30,8 @@ const useConfig = (id: string, payload: AssignerNodeType) => {
   }, [getBeforeNodesInSameBranch, id])
   const { inputs, setInputs } = useNodeCrud<AssignerNodeType>(id, payload)
 
-  const varType = getVarType({
+  const { getCurrentVariableType } = useWorkflowVariables()
+  const varType = getCurrentVariableType({
     parentNode: iterationNode,
     valueSelector: inputs.variable || [],
     availableNodes,
@@ -91,7 +92,7 @@ const useConfig = (id: string, payload: AssignerNodeType) => {
   const handleVarChanges = useCallback((variable: ValueSelector | string) => {
     const newInputs = produce(inputs, (draft) => {
       draft.variable = variable as ValueSelector
-      const newVarType = getVarType({
+      const newVarType = getCurrentVariableType({
         parentNode: iterationNode,
         valueSelector: draft.variable || [],
         availableNodes,
@@ -102,7 +103,7 @@ const useConfig = (id: string, payload: AssignerNodeType) => {
         draft.value = getInitValue(newVarType, inputs.writeMode)
     })
     setInputs(newInputs)
-  }, [availableNodes, getInitValue, inputs, isChatMode, iterationNode, setInputs, varType])
+  }, [availableNodes, getCurrentVariableType, getInitValue, inputs, isChatMode, iterationNode, setInputs, varType])
 
   const writeModeTypes = useMemo(() => {
     const types = [WriteMode.Overwrite, WriteMode.Append, WriteMode.Clear]
