@@ -152,76 +152,79 @@ class LLMGenerator:
             model=model_config.get("name") if model_config else None,
         )
 
+        error = ""
+        error_step = ""
+        rule_config = {
+            "prompt": "",
+            "variables": [],
+            "opening_statement": "",
+            "error": ""
+        }
+        model_parameters = {
+            "max_tokens": 512,
+            "temperature": 0
+        }
+        prompt_content = None
+
         try:
-            # the first step to generate the task prompt
-            task_prompt = model_instance.invoke_llm(
-                prompt_messages=prompt_messages,
-                model_parameters={
-                    "max_tokens": 512,
-                    "temperature": 0
-                },
-                stream=False
-            )
+            try:
+                # the first step to generate the task prompt
+                prompt_content = model_instance.invoke_llm(
+                    prompt_messages=prompt_messages,
+                    model_parameters=model_parameters,
+                    stream=False
+                )
+            except InvokeError as e:
+                error = str(e)
+                error_step = "generate prefix prompt"
+
+            rule_config["prompt"] = prompt_content.message.content
+
             parameter_generate_prompt = parameter_template.format(
                 inputs={
-                    "INPUT_TEXT": task_prompt.message.content,
+                    "INPUT_TEXT": prompt_content.message.content,
                 },
                 remove_template_variables=False
             )
-
             parameter_messages = [UserPromptMessage(content=parameter_generate_prompt)]
 
-            # the second step to generate the task parameter
+            # the second step to generate the task_parameter and task_statement
             statement_generate_prompt = statement_template.format(
                 inputs={
                     "TASK_DESCRIPTION": instruction,
-                    "INPUT_TEXT": task_prompt.message.content,
+                    "INPUT_TEXT": prompt_content.message.content,
                 },
                 remove_template_variables=False
             )
-
             statement_messages = [UserPromptMessage(content=statement_generate_prompt)]
 
-            # start a thread pool to generate the task parameter and task statement
-            with ThreadPoolExecutor() as executor:
-                task_parameter_future = executor.submit(
-                    model_instance.invoke_llm,
+            try:
+                parameter_content = model_instance.invoke_llm(
                     prompt_messages=parameter_messages,
-                    model_parameters={
-                        "max_tokens": 512,
-                        "temperature": 0
-                    },
+                    model_parameters=model_parameters,
                     stream=False
                 )
-                task_statement_future = executor.submit(
-                    model_instance.invoke_llm,
+                rule_config["variables"] = re.findall(r'"\s*([^"]+)\s*"', parameter_content.message.content)
+            except InvokeError as e:
+                error = str(e)
+                error_step = "generate variables"
+
+            try:
+                statement_content = model_instance.invoke_llm(
                     prompt_messages=statement_messages,
-                    model_parameters={
-                        "max_tokens": 512,
-                        "temperature": 0
-                    },
+                    model_parameters=model_parameters,
                     stream=False
                 )
+                rule_config["opening_statement"] = statement_content.message.content
+            except InvokeError as e:
+                error = str(e)
+                error_step = "generate conversation opener"
 
-                task_parameter = task_parameter_future.result()
-                task_statement = task_statement_future.result()
-
-            rule_config = {
-                "prompt": task_prompt.message.content,
-                "variables": json.loads(task_parameter.message.content),
-                "opening_statement": task_statement.message.content
-            }
-        except InvokeError as e:
-            raise e
-        except OutputParserException:
-            raise ValueError('Please give a valid input for intended audience or hoping to solve problems.')
         except Exception as e:
             logging.exception(e)
-            rule_config = {
-                "prompt": "",
-                "variables": [],
-                "opening_statement": ""
-            }
+            rule_config["error"] = str(e)
+
+        rule_config["error"] = f"Failed to {error_step}. Error: {error}"
 
         return rule_config
 
