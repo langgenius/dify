@@ -157,6 +157,7 @@ class Vector:
             doc_id = text.metadata['doc_id']
             exists_duplicate_node = self.text_exists(doc_id)
             if exists_duplicate_node:
+                # FIXME: Mutation to loop iterable `texts` during iteration
                 texts.remove(text)
 
         return texts

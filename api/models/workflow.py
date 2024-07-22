@@ -121,9 +121,7 @@ class Workflow(db.Model):
     created_at = db.Column(db.DateTime, nullable=False, server_default=db.text('CURRENT_TIMESTAMP(0)'))
     updated_by = db.Column(StringUUID)
     updated_at = db.Column(db.DateTime)
-    # TODO: update this field to sqlalchemy column after frontend update.
-    _environment_variables = '{}'
-    # _environment_variables = db.Column('environment_variables', db.Text, nullable=False, server_default='{}')
+    _environment_variables = db.Column('environment_variables', db.Text, nullable=False, server_default='{}')
 
     @property
     def created_by_account(self):
