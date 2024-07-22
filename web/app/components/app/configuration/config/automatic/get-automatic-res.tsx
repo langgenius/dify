@@ -152,11 +152,17 @@ const GetAutomaticRes: FC<IGetAutomaticResProps> = ({
       return
     setLoadingTrue()
     try {
-      const res = await generateRule({
+      const { error, ...res } = await generateRule({
         instruction,
         model_config: model,
       })
       setRes(res)
+      if (error) {
+        Toast.notify({
+          type: 'error',
+          message: error,
+        })
+      }
     }
     finally {
       setLoadingFalse()
