@@ -111,13 +111,13 @@ Below process is not required but recommended if you want to automate the renewa
 
 ```bash
 # Create the renewal script
-touch ~/dify/renew_cert.sh
+touch /path/to/dify/renew_cert.sh
 
 # Grant execution permissions to the script
-chmod +x ~/dify/renew_cert.sh
+chmod +x /path/to/dify/renew_cert.sh
 
 # Edit the script
-vim ~/dify/renew_cert.sh
+vim /path/to/dify/renew_cert.sh
 ```
 
 Content of `renew_cert.sh`:
@@ -134,7 +134,7 @@ cd /path/to/dify/docker && docker-compose restart nginx
 
 ```bash
 # Grant execution permissions to the script
-chmod +x ~/dify/renew_cert.sh
+chmod +x /path/to/dify/renew_cert.sh
 
 # Set up cron job
 (crontab -l 2>/dev/null; echo "0 12 * * * /path/to/dify/renew_cert.sh") | crontab -
