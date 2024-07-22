@@ -342,10 +342,14 @@ class FunctionCallAgentRunner(BaseAgentRunner):
         """
         tool_calls = []
         for prompt_message in llm_result_chunk.delta.message.tool_calls:
+            args = {}
+            if prompt_message.function.arguments != '':
+                args = json.loads(prompt_message.function.arguments)
+
             tool_calls.append((
                 prompt_message.id,
                 prompt_message.function.name,
-                json.loads(prompt_message.function.arguments),
+                args,
             ))
 
         return tool_calls
@@ -359,10 +363,14 @@ class FunctionCallAgentRunner(BaseAgentRunner):
         """
         tool_calls = []
         for prompt_message in llm_result.message.tool_calls:
+            args = {}
+            if prompt_message.function.arguments != '':
+                args = json.loads(prompt_message.function.arguments)
+
             tool_calls.append((
                 prompt_message.id,
                 prompt_message.function.name,
-                json.loads(prompt_message.function.arguments),
+                args,
             ))
 
         return tool_calls
