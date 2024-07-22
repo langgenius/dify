@@ -20,7 +20,7 @@ from controllers.service_api.app.error import (
 from controllers.service_api.wraps import FetchUserArg, WhereisUserArg, validate_app_token
 from core.errors.error import ModelCurrentlyNotSupportError, ProviderTokenNotInitError, QuotaExceededError
 from core.model_runtime.errors.invoke import InvokeError
-from models.model import App, EndUser
+from models.model import App, AppMode, EndUser
 from services.audio_service import AudioService
 from services.errors.audio import (
     AudioTooLargeServiceError,
@@ -72,19 +72,30 @@ class AudioApi(Resource):
 class TextApi(Resource):
     @validate_app_token(fetch_user_arg=FetchUserArg(fetch_from=WhereisUserArg.JSON))
     def post(self, app_model: App, end_user: EndUser):
-        parser = reqparse.RequestParser()
-        parser.add_argument('text', type=str, required=True, nullable=False, location='json')
-        parser.add_argument('voice', type=str, location='json')
-        parser.add_argument('streaming', type=bool, required=False, nullable=False, location='json')
-        args = parser.parse_args()
-
         try:
+            parser = reqparse.RequestParser()
+            parser.add_argument('message_id', type=str, required=False, location='json')
+            parser.add_argument('voice', type=str, location='json')
+            parser.add_argument('streaming', type=bool, location='json')
+            args = parser.parse_args()
+
+            message_id = args.get('message_id')
+            if (app_model.mode in [AppMode.ADVANCED_CHAT.value, AppMode.WORKFLOW.value]
+                    and app_model.workflow
+                    and app_model.workflow.features_dict):
+                text_to_speech = app_model.workflow.features_dict.get('text_to_speech')
+                voice = args.get('voice') if args.get('voice') else text_to_speech.get('voice')
+            else:
+                try:
+                    voice = args.get('voice') if args.get('voice') else app_model.app_model_config.text_to_speech_dict.get(
+                        'voice')
+                except Exception:
+                    voice = None
             response = AudioService.transcript_tts(
                 app_model=app_model,
-                text=args['text'],
-                end_user=end_user,
-                voice=args.get('voice'),
-                streaming=args['streaming']
+                message_id=message_id,
+                end_user=end_user.external_user_id,
+                voice=voice
             )
 
             return response

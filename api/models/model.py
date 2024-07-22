@@ -74,6 +74,7 @@ class App(db.Model):
     is_public = db.Column(db.Boolean, nullable=False, server_default=db.text('false'))
     is_universal = db.Column(db.Boolean, nullable=False, server_default=db.text('false'))
     tracing = db.Column(db.Text, nullable=True)
+    max_active_requests = db.Column(db.Integer, nullable=True)
     created_at = db.Column(db.DateTime, nullable=False, server_default=db.text('CURRENT_TIMESTAMP(0)'))
     updated_at = db.Column(db.DateTime, nullable=False, server_default=db.text('CURRENT_TIMESTAMP(0)'))
 
@@ -626,6 +627,7 @@ class Message(db.Model):
         db.Index('message_conversation_id_idx', 'conversation_id'),
         db.Index('message_end_user_idx', 'app_id', 'from_source', 'from_end_user_id'),
         db.Index('message_account_idx', 'app_id', 'from_source', 'from_account_id'),
+        db.Index('message_workflow_run_id_idx', 'conversation_id', 'workflow_run_id')
     )
 
     id = db.Column(StringUUID, server_default=db.text('uuid_generate_v4()'))

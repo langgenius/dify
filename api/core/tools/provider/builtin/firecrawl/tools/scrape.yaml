@@ -1,0 +1,23 @@
+identity:
+  name: scrape
+  author: ahasasjeb
+  label:
+    en_US: Scrape
+    zh_Hans: 抓取
+description:
+  human:
+    en_US: Extract data from a single URL.
+    zh_Hans: 从单个URL抓取数据。
+  llm: This tool is designed to scrape URL and output the content in Markdown format.
+parameters:
+  - name: url
+    type: string
+    required: true
+    label:
+      en_US: URL to scrape
+      zh_Hans: 要抓取的URL
+    human_description:
+      en_US: The URL of the website to scrape and extract data from.
+      zh_Hans: 要抓取并提取数据的网站URL。
+    llm_description: The URL of the website that needs to be crawled. This is a required parameter.
+    form: llm

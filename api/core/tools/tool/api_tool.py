@@ -238,7 +238,7 @@ class ApiTool(Tool):
                     return int(value)
                 elif property['type'] == 'number':
                     # check if it is a float
-                    if '.' in value:
+                    if '.' in str(value):
                         return float(value)
                     else:
                         return int(value)
@@ -249,9 +249,12 @@ class ApiTool(Tool):
                 elif property['type'] == 'null':
                     if value is None:
                         return None
-                elif property['type'] == 'object':
+                elif property['type'] == 'object' or property['type'] == 'array':
                     if isinstance(value, str):
                         try:
+                            # an array str like '[1,2]' also can convert to list [1,2] through json.loads
+                            # json not support single quote, but we can support it
+                            value = value.replace("'", '"')
                             return json.loads(value)
                         except ValueError:
                             return value

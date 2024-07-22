@@ -186,7 +186,7 @@ class MessageFileParser:
             }
 
             response = requests.head(url, headers=headers, allow_redirects=True)
-            if response.status_code == 200:
+            if response.status_code in {200, 304}:
                 return True, ""
             else:
                 return False, "URL does not exist."

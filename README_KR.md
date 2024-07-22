@@ -190,6 +190,12 @@ Dify를 Kubernetes에 배포하고 프리미엄 스케일링 설정을 구성했
 - [Helm Chart by @BorisPolonsky](https://github.com/BorisPolonsky/dify-helm)
 - [YAML file by @Winson-030](https://github.com/Winson-030/dify-kubernetes)
 
+#### Terraform을 사용한 배포
+
+##### Azure Global
+[terraform](https://www.terraform.io/)을 사용하여 Azure에 Dify를 원클릭으로 배포하세요.
+- [nikawang의 Azure Terraform](https://github.com/nikawang/dify-azure-terraform)
+
 ## 기여
 
 코드에 기여하고 싶은 분들은 [기여 가이드](https://github.com/langgenius/dify/blob/main/CONTRIBUTING.md)를 참조하세요.

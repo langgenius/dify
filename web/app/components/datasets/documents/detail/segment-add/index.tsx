@@ -2,11 +2,11 @@
 import type { FC } from 'react'
 import React from 'react'
 import { useTranslation } from 'react-i18next'
-import cn from 'classnames'
 import {
   RiErrorWarningFill,
   RiLoader2Line,
 } from '@remixicon/react'
+import cn from '@/utils/classnames'
 import { FilePlus02 } from '@/app/components/base/icons/src/vender/line/files'
 import { CheckCircle } from '@/app/components/base/icons/src/vender/solid/general'
 import Popover from '@/app/components/base/popover'
@@ -38,8 +38,8 @@ const SegmentAdd: FC<ISegmentAddProps> = ({
       <>
         {(importStatus === ProcessStatus.WAITING || importStatus === ProcessStatus.PROCESSING) && (
           <div className='relative overflow-hidden inline-flex items-center mr-2 px-3 py-[6px] text-blue-700 bg-[#F5F8FF] rounded-lg border border-black/5'>
-            {importStatus === ProcessStatus.WAITING && <div className='absolute left-0 top-0 w-3/12 h-full bg-[#D1E0FF] z-0'/>}
-            {importStatus === ProcessStatus.PROCESSING && <div className='absolute left-0 top-0 w-2/3 h-full bg-[#D1E0FF] z-0'/>}
+            {importStatus === ProcessStatus.WAITING && <div className='absolute left-0 top-0 w-3/12 h-full bg-[#D1E0FF] z-0' />}
+            {importStatus === ProcessStatus.PROCESSING && <div className='absolute left-0 top-0 w-2/3 h-full bg-[#D1E0FF] z-0' />}
             <RiLoader2Line className='animate-spin mr-2 w-4 h-4' />
             <span className='font-medium text-[13px] leading-[18px] z-10'>{t('datasetDocuments.list.batchModal.processing')}</span>
           </div>

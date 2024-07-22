@@ -1,5 +1,4 @@
 import json
-import os
 from copy import deepcopy
 from random import randint
 from typing import Any, Optional, Union
@@ -8,22 +7,28 @@ from urllib.parse import urlencode
 import httpx
 
 import core.helper.ssrf_proxy as ssrf_proxy
+from configs import dify_config
 from core.workflow.entities.variable_entities import VariableSelector
 from core.workflow.entities.variable_pool import ValueType, VariablePool
-from core.workflow.nodes.http_request.entities import HttpRequestNodeData
+from core.workflow.nodes.http_request.entities import (
+    HttpRequestNodeAuthorization,
+    HttpRequestNodeBody,
+    HttpRequestNodeData,
+    HttpRequestNodeTimeout,
+)
 from core.workflow.utils.variable_template_parser import VariableTemplateParser
 
-MAX_BINARY_SIZE = int(os.environ.get('HTTP_REQUEST_NODE_MAX_BINARY_SIZE', 1024 * 1024 * 10))  # 10MB
-READABLE_MAX_BINARY_SIZE = f'{MAX_BINARY_SIZE / 1024 / 1024:.2f}MB'
-MAX_TEXT_SIZE = int(os.environ.get('HTTP_REQUEST_NODE_MAX_TEXT_SIZE', 1024 * 1024))  # 1MB
-READABLE_MAX_TEXT_SIZE = f'{MAX_TEXT_SIZE / 1024 / 1024:.2f}MB'
+MAX_BINARY_SIZE = dify_config.HTTP_REQUEST_NODE_MAX_BINARY_SIZE
+READABLE_MAX_BINARY_SIZE = dify_config.HTTP_REQUEST_NODE_READABLE_MAX_BINARY_SIZE
+MAX_TEXT_SIZE = dify_config.HTTP_REQUEST_NODE_MAX_TEXT_SIZE
+READABLE_MAX_TEXT_SIZE = dify_config.HTTP_REQUEST_NODE_READABLE_MAX_TEXT_SIZE
 
 
 class HttpExecutorResponse:
     headers: dict[str, str]
     response: httpx.Response
 
-    def __init__(self, response: httpx.Response = None):
+    def __init__(self, response: httpx.Response):
         self.response = response
         self.headers = dict(response.headers) if isinstance(self.response, httpx.Response) else {}
 
@@ -39,7 +44,6 @@ class HttpExecutorResponse:
 
     def get_content_type(self) -> str:
         return self.headers.get('content-type', '')
-
 
     def extract_file(self) -> tuple[str, bytes]:
         """
@@ -88,17 +92,21 @@ class HttpExecutorResponse:
 class HttpExecutor:
     server_url: str
     method: str
-    authorization: HttpRequestNodeData.Authorization
+    authorization: HttpRequestNodeAuthorization
     params: dict[str, Any]
     headers: dict[str, Any]
     body: Union[None, str]
     files: Union[None, dict[str, Any]]
     boundary: str
     variable_selectors: list[VariableSelector]
-    timeout: HttpRequestNodeData.Timeout
+    timeout: HttpRequestNodeTimeout
 
-    def __init__(self, node_data: HttpRequestNodeData, timeout: HttpRequestNodeData.Timeout,
-                 variable_pool: Optional[VariablePool] = None):
+    def __init__(
+        self,
+        node_data: HttpRequestNodeData,
+        timeout: HttpRequestNodeTimeout,
+        variable_pool: Optional[VariablePool] = None,
+    ):
         self.server_url = node_data.url
         self.method = node_data.method
         self.authorization = node_data.authorization
@@ -113,11 +121,11 @@ class HttpExecutor:
         self._init_template(node_data, variable_pool)
 
     @staticmethod
-    def _is_json_body(body: HttpRequestNodeData.Body):
+    def _is_json_body(body: HttpRequestNodeBody):
         """
         check if body is json
         """
-        if body and body.type == 'json':
+        if body and body.type == 'json' and body.data:
             try:
                 json.loads(body.data)
                 return True
@@ -146,7 +154,6 @@ class HttpExecutor:
         return result
 
     def _init_template(self, node_data: HttpRequestNodeData, variable_pool: Optional[VariablePool] = None):
-
         # extract all template in url
         self.server_url, server_url_variable_selectors = self._format_template(node_data.url, variable_pool)
 
@@ -178,9 +185,7 @@ class HttpExecutor:
                 body = self._to_dict(body_data)
 
                 if node_data.body.type == 'form-data':
-                    self.files = {
-                        k: ('', v) for k, v in body.items()
-                    }
+                    self.files = {k: ('', v) for k, v in body.items()}
                     random_str = lambda n: ''.join([chr(randint(97, 122)) for _ in range(n)])
                     self.boundary = f'----WebKitFormBoundary{random_str(16)}'
 
@@ -192,13 +197,24 @@ class HttpExecutor:
             elif node_data.body.type == 'none':
                 self.body = ''
 
-        self.variable_selectors = (server_url_variable_selectors + params_variable_selectors
-                                   + headers_variable_selectors + body_data_variable_selectors)
+        self.variable_selectors = (
+            server_url_variable_selectors
+            + params_variable_selectors
+            + headers_variable_selectors
+            + body_data_variable_selectors
+        )
 
     def _assembling_headers(self) -> dict[str, Any]:
         authorization = deepcopy(self.authorization)
         headers = deepcopy(self.headers) or {}
         if self.authorization.type == 'api-key':
+            if self.authorization.config is None:
+                raise ValueError('self.authorization config is required')
+            if authorization.config is None:
+                raise ValueError('authorization config is required')
+            if authorization.config.type != 'bearer' and authorization.config.header is None:
+                raise ValueError('authorization config header is required')
+
             if self.authorization.config.api_key is None:
                 raise ValueError('api_key is required')
 
@@ -216,7 +232,7 @@ class HttpExecutor:
 
     def _validate_and_parse_response(self, response: httpx.Response) -> HttpExecutorResponse:
         """
-            validate the response
+        validate the response
         """
         if isinstance(response, httpx.Response):
             executor_response = HttpExecutorResponse(response)
@@ -226,24 +242,26 @@ class HttpExecutor:
         if executor_response.is_file:
             if executor_response.size > MAX_BINARY_SIZE:
                 raise ValueError(
-                    f'File size is too large, max size is {READABLE_MAX_BINARY_SIZE}, but current size is {executor_response.readable_size}.')
+                    f'File size is too large, max size is {READABLE_MAX_BINARY_SIZE}, but current size is {executor_response.readable_size}.'
+                )
         else:
             if executor_response.size > MAX_TEXT_SIZE:
                 raise ValueError(
-                    f'Text size is too large, max size is {READABLE_MAX_TEXT_SIZE}, but current size is {executor_response.readable_size}.')
+                    f'Text size is too large, max size is {READABLE_MAX_TEXT_SIZE}, but current size is {executor_response.readable_size}.'
+                )
 
         return executor_response
 
     def _do_http_request(self, headers: dict[str, Any]) -> httpx.Response:
         """
-            do http request depending on api bundle
+        do http request depending on api bundle
         """
         kwargs = {
             'url': self.server_url,
             'headers': headers,
             'params': self.params,
             'timeout': (self.timeout.connect, self.timeout.read, self.timeout.write),
-            'follow_redirects': True
+            'follow_redirects': True,
         }
 
         if self.method in ('get', 'head', 'post', 'put', 'delete', 'patch'):
@@ -306,8 +324,9 @@ class HttpExecutor:
 
         return raw_request
 
-    def _format_template(self, template: str, variable_pool: VariablePool, escape_quotes: bool = False) \
-            -> tuple[str, list[VariableSelector]]:
+    def _format_template(
+        self, template: str, variable_pool: Optional[VariablePool], escape_quotes: bool = False
+    ) -> tuple[str, list[VariableSelector]]:
         """
         format template
         """
@@ -318,14 +337,13 @@ class HttpExecutor:
             variable_value_mapping = {}
             for variable_selector in variable_selectors:
                 value = variable_pool.get_variable_value(
-                    variable_selector=variable_selector.value_selector,
-                    target_value_type=ValueType.STRING
+                    variable_selector=variable_selector.value_selector, target_value_type=ValueType.STRING
                 )
 
                 if value is None:
                     raise ValueError(f'Variable {variable_selector.variable} not found')
 
-                if escape_quotes:
+                if escape_quotes and isinstance(value, str):
                     value = value.replace('"', '\\"')
 
                 variable_value_mapping[variable_selector.variable] = value

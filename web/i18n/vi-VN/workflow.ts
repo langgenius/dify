@@ -388,6 +388,7 @@ const translation = {
           url: 'URL hình ảnh',
           upload_file_id: 'ID tệp đã tải lên',
         },
+        json: 'JSON được tạo bởi công cụ',
       },
     },
     questionClassifiers: {

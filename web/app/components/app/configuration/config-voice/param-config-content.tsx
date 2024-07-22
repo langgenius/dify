@@ -3,7 +3,6 @@ import useSWR from 'swr'
 import type { FC } from 'react'
 import { useContext } from 'use-context-selector'
 import React, { Fragment } from 'react'
-import classNames from 'classnames'
 import {
   RiQuestionLine,
 } from '@remixicon/react'
@@ -11,11 +10,14 @@ import { usePathname } from 'next/navigation'
 import { useTranslation } from 'react-i18next'
 import { Listbox, Transition } from '@headlessui/react'
 import { CheckIcon, ChevronDownIcon } from '@heroicons/react/20/solid'
+import classNames from '@/utils/classnames'
+import RadioGroup from '@/app/components/app/configuration/config-vision/radio-group'
 import type { Item } from '@/app/components/base/select'
 import ConfigContext from '@/context/debug-configuration'
 import { fetchAppVoices } from '@/service/apps'
 import Tooltip from '@/app/components/base/tooltip'
 import { languages } from '@/i18n/language'
+import { TtsAutoPlay } from '@/types/app'
 const VoiceParamConfig: FC = () => {
   const { t } = useTranslation()
   const pathname = usePathname()
@@ -27,12 +29,16 @@ const VoiceParamConfig: FC = () => {
     setTextToSpeechConfig,
   } = useContext(ConfigContext)
 
-  const languageItem = languages.find(item => item.value === textToSpeechConfig.language)
+  let languageItem = languages.find(item => item.value === textToSpeechConfig.language)
   const localLanguagePlaceholder = languageItem?.name || t('common.placeholder.select')
-
+  if (languages && !languageItem)
+    languageItem = languages[0]
   const language = languageItem?.value
   const voiceItems = useSWR({ appId, language }, fetchAppVoices).data
-  const voiceItem = voiceItems?.find(item => item.value === textToSpeechConfig.voice)
+  let voiceItem = voiceItems?.find(item => item.value === textToSpeechConfig.voice)
+  if (voiceItems && !voiceItem)
+    voiceItem = voiceItems[0]
+
   const localVoicePlaceholder = voiceItem?.name || t('common.placeholder.select')
 
   return (
@@ -42,8 +48,9 @@ const VoiceParamConfig: FC = () => {
         <div className='pt-3 space-y-6'>
           <div>
             <div className='mb-2 flex items-center  space-x-1'>
-              <div className='leading-[18px] text-[13px] font-semibold text-gray-800'>{t('appDebug.voice.voiceSettings.language')}</div>
-              <Tooltip htmlContent={<div className='w-[180px]' >
+              <div
+                className='leading-[18px] text-[13px] font-semibold text-gray-800'>{t('appDebug.voice.voiceSettings.language')}</div>
+              <Tooltip htmlContent={<div className='w-[180px]'>
                 {t('appDebug.voice.voiceSettings.resolutionTooltip').split('\n').map(item => (
                   <div key={item}>{item}</div>
                 ))}
@@ -61,7 +68,8 @@ const VoiceParamConfig: FC = () => {
               }}
             >
               <div className={'relative h-9'}>
-                <Listbox.Button className={'w-full h-full rounded-lg border-0 bg-gray-100 py-1.5 pl-3 pr-10 sm:text-sm sm:leading-6 focus-visible:outline-none focus-visible:bg-gray-200 group-hover:bg-gray-200 cursor-pointer'}>
+                <Listbox.Button
+                  className={'w-full h-full rounded-lg border-0 bg-gray-100 py-1.5 pl-3 pr-10 sm:text-sm sm:leading-6 focus-visible:outline-none focus-visible:bg-gray-200 group-hover:bg-gray-200 cursor-pointer'}>
                   <span className={classNames('block truncate text-left', !languageItem?.name && 'text-gray-400')}>
                     {languageItem?.name ? t(`common.voice.language.${languageItem?.value.replace('-', '')}`) : localLanguagePlaceholder}
                   </span>
@@ -79,7 +87,8 @@ const VoiceParamConfig: FC = () => {
                   leaveTo="opacity-0"
                 >
 
-                  <Listbox.Options className="absolute z-10 mt-1 px-1 max-h-60 w-full overflow-auto rounded-md bg-white py-1 text-base shadow-lg border-gray-200 border-[0.5px] focus:outline-none sm:text-sm">
+                  <Listbox.Options
+                    className="absolute z-10 mt-1 px-1 max-h-60 w-full overflow-auto rounded-md bg-white py-1 text-base shadow-lg border-gray-200 border-[0.5px] focus:outline-none sm:text-sm">
                     {languages.map((item: Item) => (
                       <Listbox.Option
                         key={item.value}
@@ -112,9 +121,9 @@ const VoiceParamConfig: FC = () => {
               </div>
             </Listbox>
           </div>
-
           <div>
-            <div className='mb-2 leading-[18px] text-[13px] font-semibold text-gray-800'>{t('appDebug.voice.voiceSettings.voice')}</div>
+            <div
+              className='mb-2 leading-[18px] text-[13px] font-semibold text-gray-800'>{t('appDebug.voice.voiceSettings.voice')}</div>
             <Listbox
               value={voiceItem}
               disabled={!languageItem}
@@ -126,8 +135,10 @@ const VoiceParamConfig: FC = () => {
               }}
             >
               <div className={'relative h-9'}>
-                <Listbox.Button className={'w-full h-full rounded-lg border-0 bg-gray-100 py-1.5 pl-3 pr-10 sm:text-sm sm:leading-6 focus-visible:outline-none focus-visible:bg-gray-200 group-hover:bg-gray-200 cursor-pointer'}>
-                  <span className={classNames('block truncate text-left', !voiceItem?.name && 'text-gray-400')}>{voiceItem?.name ?? localVoicePlaceholder}</span>
+                <Listbox.Button
+                  className={'w-full h-full rounded-lg border-0 bg-gray-100 py-1.5 pl-3 pr-10 sm:text-sm sm:leading-6 focus-visible:outline-none focus-visible:bg-gray-200 group-hover:bg-gray-200 cursor-pointer'}>
+                  <span
+                    className={classNames('block truncate text-left', !voiceItem?.name && 'text-gray-400')}>{voiceItem?.name ?? localVoicePlaceholder}</span>
                   <span className="pointer-events-none absolute inset-y-0 right-0 flex items-center pr-2">
                     <ChevronDownIcon
                       className="h-5 w-5 text-gray-400"
@@ -142,7 +153,8 @@ const VoiceParamConfig: FC = () => {
                   leaveTo="opacity-0"
                 >
 
-                  <Listbox.Options className="absolute z-10 mt-1 px-1 max-h-60 w-full overflow-auto rounded-md bg-white py-1 text-base shadow-lg border-gray-200 border-[0.5px] focus:outline-none sm:text-sm">
+                  <Listbox.Options
+                    className="absolute z-10 mt-1 px-1 max-h-60 w-full overflow-auto rounded-md bg-white py-1 text-base shadow-lg border-gray-200 border-[0.5px] focus:outline-none sm:text-sm">
                     {voiceItems?.map((item: Item) => (
                       <Listbox.Option
                         key={item.value}
@@ -173,6 +185,30 @@ const VoiceParamConfig: FC = () => {
                 </Transition>
               </div>
             </Listbox>
+          </div>
+          <div>
+            <div
+              className='mb-2 leading-[18px] text-[13px] font-semibold text-gray-800'>{t('appDebug.voice.voiceSettings.autoPlay')}</div>
+            <RadioGroup
+              className='space-x-3'
+              options={[
+                {
+                  label: t('appDebug.voice.voiceSettings.autoPlayEnabled'),
+                  value: TtsAutoPlay.enabled,
+                },
+                {
+                  label: t('appDebug.voice.voiceSettings.autoPlayDisabled'),
+                  value: TtsAutoPlay.disabled,
+                },
+              ]}
+              value={textToSpeechConfig.autoPlay ? textToSpeechConfig.autoPlay : TtsAutoPlay.disabled}
+              onChange={(value: TtsAutoPlay) => {
+                setTextToSpeechConfig({
+                  ...textToSpeechConfig,
+                  autoPlay: value,
+                })
+              }}
+            />
           </div>
         </div>
       </div>

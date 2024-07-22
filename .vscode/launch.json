@@ -13,7 +13,6 @@
             "jinja": true,
             "env": {
                 "FLASK_APP": "app.py",
-                "FLASK_DEBUG": "1",
                 "GEVENT_SUPPORT": "True"
             },
             "args": [
@@ -48,7 +47,7 @@
                 "--loglevel",
                 "info",
                 "-Q",
-                "dataset,generation,mail,ops_trace"
+                "dataset,generation,mail,ops_trace,app_deletion"
             ]
         },
     ]

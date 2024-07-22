@@ -107,9 +107,21 @@ class LangFuseDataTrace(BaseTraceInstance):
 
         # through workflow_run_id get all_nodes_execution
         workflow_nodes_executions = (
-            db.session.query(WorkflowNodeExecution)
+            db.session.query(
+                WorkflowNodeExecution.id,
+                WorkflowNodeExecution.tenant_id,
+                WorkflowNodeExecution.app_id,
+                WorkflowNodeExecution.title,
+                WorkflowNodeExecution.node_type,
+                WorkflowNodeExecution.status,
+                WorkflowNodeExecution.inputs,
+                WorkflowNodeExecution.outputs,
+                WorkflowNodeExecution.created_at,
+                WorkflowNodeExecution.elapsed_time,
+                WorkflowNodeExecution.process_data,
+                WorkflowNodeExecution.execution_metadata,
+            )
             .filter(WorkflowNodeExecution.workflow_run_id == trace_info.workflow_run_id)
-            .order_by(WorkflowNodeExecution.index.desc())
             .all()
         )
 
@@ -121,7 +133,9 @@ class LangFuseDataTrace(BaseTraceInstance):
             node_type = node_execution.node_type
             status = node_execution.status
             if node_type == "llm":
-                inputs = json.loads(node_execution.process_data).get("prompts", {})
+                inputs = json.loads(node_execution.process_data).get(
+                    "prompts", {}
+                    ) if node_execution.process_data else {}
             else:
                 inputs = json.loads(node_execution.inputs) if node_execution.inputs else {}
             outputs = (
@@ -213,7 +227,9 @@ class LangFuseDataTrace(BaseTraceInstance):
             end_user_data: EndUser = db.session.query(EndUser).filter(
                 EndUser.id == message_data.from_end_user_id
             ).first()
-            user_id = end_user_data.session_id
+            if end_user_data is not None:
+                user_id = end_user_data.session_id
+                metadata["user_id"] = user_id
 
         trace_data = LangfuseTrace(
             id=message_id,

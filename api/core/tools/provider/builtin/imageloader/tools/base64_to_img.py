@@ -1,26 +1,21 @@
+import base64
+import hashlib
+import json
+import re
+import uuid
+from io import BytesIO
+from mimetypes import guess_type
 from typing import Any
-
-from core.tools.entities.tool_entities import ToolInvokeMessage
-from core.tools.tool.builtin_tool import BuiltinTool
-
-from core.tools.tool_file_manager import ToolFileManager
-from core.tools.utils.message_transformer import ToolFileMessageTransformer
-from core.tools.errors import ToolInvokeError
-from models.tools import BuiltinToolProvider
-from mimetypes import guess_extension, guess_type
-from flask_login import current_user
 
 import requests
 from PIL import Image
-from io import BytesIO
-import base64
-import json
-from extensions.ext_storage import storage
-import uuid
-import hashlib
-import re
 
-from os import path
+from core.tools.entities.tool_entities import ToolInvokeMessage
+from core.tools.errors import ToolInvokeError
+from core.tools.tool.builtin_tool import BuiltinTool
+from core.tools.tool_file_manager import ToolFileManager
+from extensions.ext_storage import storage
+
 
 class ImageLoaderConvertBase64Tool(BuiltinTool):
     """
@@ -32,7 +27,7 @@ class ImageLoaderConvertBase64Tool(BuiltinTool):
         print(tool_parameters)
         # image_bytes = self.download_image(url)
         if not isinstance(base64String, str):
-            raise ToolInvokeError(f"Convert failed!")
+            raise ToolInvokeError("Convert failed!")
 
         result = []
 

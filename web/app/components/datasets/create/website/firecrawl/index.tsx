@@ -2,7 +2,6 @@
 import type { FC } from 'react'
 import React, { useCallback, useEffect, useState } from 'react'
 import { useTranslation } from 'react-i18next'
-import cn from 'classnames'
 import Header from './header'
 import UrlInput from './base/url-input'
 import OptionsWrap from './base/options-wrap'
@@ -10,6 +9,7 @@ import Options from './options'
 import CrawledResult from './crawled-result'
 import Crawling from './crawling'
 import ErrorMessage from './base/error-message'
+import cn from '@/utils/classnames'
 import { useModalContext } from '@/context/modal-context'
 import type { CrawlOptions, CrawlResultItem } from '@/models/datasets'
 import Toast from '@/app/components/base/toast'
@@ -118,6 +118,7 @@ const FireCrawl: FC<Props> = ({
         ...res,
         total: Math.min(res.total, parseFloat(crawlOptions.limit as string)),
       })
+      onCheckedCrawlResultChange(res.data || []) // default select the crawl result
       await sleep(2500)
       return await waitForCrawlFinished(jobId)
     }
@@ -162,6 +163,7 @@ const FireCrawl: FC<Props> = ({
       }
       else {
         setCrawlResult(data)
+        onCheckedCrawlResultChange(data.data || []) // default select the crawl result
         setCrawlErrorMessage('')
       }
     }
