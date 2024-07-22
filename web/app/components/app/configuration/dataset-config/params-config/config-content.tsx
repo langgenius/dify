@@ -148,7 +148,7 @@ const ConfigContent: FC<Props> = ({
   const showWeightedScore = selectedDatasetsMode.allHighQuality
     && !selectedDatasetsMode.inconsistentEmbeddingModel
 
-  const showWeightedScorePanel = showWeightedScore && datasetConfigs.reranking_mode === RerankingModeEnum.WeightedScore
+  const showWeightedScorePanel = showWeightedScore && datasetConfigs.reranking_mode === RerankingModeEnum.WeightedScore && datasetConfigs.weights
 
   const selectedRerankMode = datasetConfigs.reranking_mode || RerankingModeEnum.RerankingModel
 
@@ -302,13 +302,17 @@ const ConfigContent: FC<Props> = ({
                   onChange={handleParamChange}
                   enable={true}
                 />
-                <ScoreThresholdItem
-                  value={datasetConfigs.score_threshold as number}
-                  onChange={handleParamChange}
-                  enable={datasetConfigs.score_threshold_enabled}
-                  hasSwitch={true}
-                  onSwitchChange={handleSwitch}
-                />
+                {
+                  !(((datasetConfigs.retrieval_model === RETRIEVE_TYPE.oneWay || datasetConfigs.reranking_enable === false) && selectedDatasetsMode.allEconomic)) && (
+                    <ScoreThresholdItem
+                      value={datasetConfigs.score_threshold as number}
+                      onChange={handleParamChange}
+                      enable={datasetConfigs.score_threshold_enabled}
+                      hasSwitch={true}
+                      onSwitchChange={handleSwitch}
+                    />
+                  )
+                }
               </div>
             )
           }

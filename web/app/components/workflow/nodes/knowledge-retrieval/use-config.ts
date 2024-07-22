@@ -169,10 +169,10 @@ const useConfig = (id: string, payload: KnowledgeRetrievalNodeType) => {
 
   const handleMultipleRetrievalConfigChange = useCallback((newConfig: MultipleRetrievalConfig) => {
     const newInputs = produce(inputs, (draft) => {
-      draft.multiple_retrieval_config = newConfig
+      draft.multiple_retrieval_config = getMultipleRetrievalConfig(newConfig!, selectedDatasets)
     })
     setInputs(newInputs)
-  }, [inputs, setInputs])
+  }, [inputs, setInputs, selectedDatasets])
 
   // datasets
   useEffect(() => {
