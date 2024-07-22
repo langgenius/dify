@@ -124,6 +124,7 @@ const translation = {
   },
   userProfile: {
     settings: 'Ustawienia',
+    emailSupport: 'Wsparcie e-mail',
     workspace: 'Przestrzeń robocza',
     createWorkspace: 'Utwórz przestrzeń roboczą',
     helpCenter: 'Pomoc',
