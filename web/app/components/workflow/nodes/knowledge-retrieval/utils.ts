@@ -81,10 +81,10 @@ export const getMultipleRetrievalConfig = (multipleRetrievalConfig: MultipleRetr
     reranking_model,
     weights,
     reranking_enable,
-  } = multipleRetrievalConfig
+  } = multipleRetrievalConfig || { top_k: DATASET_DEFAULT.top_k }
 
   const result = {
-    top_k: top_k || DATASET_DEFAULT.top_k,
+    top_k,
     score_threshold,
     reranking_mode,
     reranking_model,

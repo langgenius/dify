@@ -76,7 +76,7 @@ const Panel: FC<NodePanelProps<KnowledgeRetrievalNodeType>> = ({
               <RetrievalConfig
                 payload={{
                   retrieval_mode: inputs.retrieval_mode,
-                  multiple_retrieval_config: inputs.multiple_retrieval_config!,
+                  multiple_retrieval_config: inputs.multiple_retrieval_config,
                   single_retrieval_config: inputs.single_retrieval_config,
                 }}
                 onRetrievalModeChange={handleRetrievalModeChange}
