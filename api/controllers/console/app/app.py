@@ -212,7 +212,7 @@ class AppCopyApi(Resource):
         parser.add_argument('icon_background', type=str, location='json')
         args = parser.parse_args()
 
-        data = AppDslService.export_dsl(app_model=app_model)
+        data = AppDslService.export_dsl(app_model=app_model, include_secret=True)
         app = AppDslService.import_and_create_new_app(
             tenant_id=current_user.current_tenant_id,
             data=data,
@@ -234,8 +234,13 @@ class AppExportApi(Resource):
         if not current_user.is_editor:
             raise Forbidden()
 
+        # Add include_secret params
+        parser = reqparse.RequestParser()
+        parser.add_argument('include_secret', type=inputs.boolean, default=False, location='args')
+        args = parser.parse_args()
+
         return {
-            "data": AppDslService.export_dsl(app_model=app_model)
+            "data": AppDslService.export_dsl(app_model=app_model, include_secret=args['include_secret'])
         }
 
 

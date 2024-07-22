@@ -1,7 +1,5 @@
 import os
 
-from configs import dify_config
-
 if os.environ.get("DEBUG", "false").lower() != 'true':
     from gevent import monkey
 
@@ -23,7 +21,9 @@ from flask import Flask, Response, request
 from flask_cors import CORS
 from werkzeug.exceptions import Unauthorized
 
+import contexts
 from commands import register_commands
+from configs import dify_config
 
 # DO NOT REMOVE BELOW
 from events import event_handlers
@@ -181,7 +181,10 @@ def load_user_from_request(request_from_flask_login):
     decoded = PassportService().verify(auth_token)
     user_id = decoded.get('user_id')
 
-    return AccountService.load_logged_in_account(account_id=user_id, token=auth_token)
+    account = AccountService.load_logged_in_account(account_id=user_id, token=auth_token)
+    if account:
+        contexts.tenant_id.set(account.current_tenant_id)
+    return account
 
 
 @login_manager.unauthorized_handler

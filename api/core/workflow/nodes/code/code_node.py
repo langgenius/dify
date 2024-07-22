@@ -59,11 +59,8 @@ class CodeNode(BaseNode):
         variables = {}
         for variable_selector in node_data.variables:
             variable = variable_selector.variable
-            value = variable_pool.get_variable_value(
-                variable_selector=variable_selector.value_selector
-            )
-
-            variables[variable] = value
+            value = variable_pool.get(variable_selector.value_selector)
+            variables[variable] = value.value if value else None
         # Run code
         try:
             result = CodeExecutor.execute_workflow_code_template(
