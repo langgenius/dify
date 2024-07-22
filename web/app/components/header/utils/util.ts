@@ -14,6 +14,7 @@ export const mailToSupport = (account: string, plan: string, version: string) =>
   const subject = `Technical Support Request ${plan} ${account}`
   const body = `
     Please do not remove the following information:
+    -----------------------------------------------
     Current Plan: ${plan}
     Account: ${account}
     Version: ${version}
