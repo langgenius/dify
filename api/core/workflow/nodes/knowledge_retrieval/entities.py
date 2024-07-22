@@ -45,6 +45,7 @@ class MultipleRetrievalConfig(BaseModel):
     top_k: int
     score_threshold: Optional[float] = None
     reranking_mode: str = 'reranking_model'
+    reranking_enable: bool = False
     reranking_model: RerankingModelConfig
     weights: WeightedScoreConfig
 
