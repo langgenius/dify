@@ -116,7 +116,7 @@ class LLMGenerator:
         return questions
 
     @classmethod
-    def generate_rule_config(cls, tenant_id: str, instruction: str) -> dict:
+    def generate_rule_config(cls, tenant_id: str, instruction: str, model_config: dict) -> dict:
         output_parser = RuleConfigGeneratorOutputParser()
 
         # get rule config prompt, parameter and statement
@@ -145,9 +145,11 @@ class LLMGenerator:
 
         # get model instance
         model_manager = ModelManager()
-        model_instance = model_manager.get_default_model_instance(
+        model_instance = model_manager.get_model_instance(
             tenant_id=tenant_id,
             model_type=ModelType.LLM,
+            provider=model_config.get("provider") if model_config else None,
+            model=model_config.get("name") if model_config else None,
         )
 
         try:
