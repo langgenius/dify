@@ -1,0 +1,14 @@
+# Please do not directly edit this file. Instead, copy this file as docker-compose.ssl.yaml and edit it if necessary.
+
+version: '3'
+services:
+  nginx:
+    volumes:
+      - ./data/certbot/conf:/etc/letsencrypt
+      - ./data/certbot/www:/var/www/certbot
+  certbot:
+    image: certbot/certbot
+    volumes:
+      - ./data/certbot/conf:/etc/letsencrypt
+      - ./data/certbot/www:/var/www/certbot
+    entrypoint: "/bin/sh -c 'trap exit TERM; while :; do certbot renew; sleep 12h & wait $${!}; done;'"
