@@ -1,6 +1,6 @@
-model: ernie-3.5-8k-0205
+model: ernie-4.0-turbo-8k
 label:
-  en_US: Ernie-3.5-8K-0205
+  en_US: Ernie-4.0-turbo-8K
 model_type: llm
 features:
   - agent-thought
@@ -22,6 +22,9 @@ parameter_rules:
     max: 2048
   - name: presence_penalty
     use_template: presence_penalty
+    default: 1.0
+    min: 1.0
+    max: 2.0
   - name: frequency_penalty
     use_template: frequency_penalty
   - name: response_format
@@ -35,4 +38,3 @@ parameter_rules:
       zh_Hans: 禁用模型自行进行外部搜索。
       en_US: Disable the model to perform external search.
     required: false
-deprecated: true

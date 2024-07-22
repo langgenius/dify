@@ -276,6 +276,10 @@ button:focus-within {
   line-height: 24px;
 }
 
+[class*='code-'] {
+  @apply font-mono;
+}
+
 .code-xs-regular {
   font-size: 12px;
   font-weight: 400;
@@ -563,6 +567,7 @@ button:focus-within {
   font-weight: 700;
   line-height: 1.2;
 }
+
 /* font define end */
 
 /* border radius start */
@@ -625,6 +630,7 @@ button:focus-within {
 .radius-full {
   border-radius: 64px;
 }
+
 /* border radius end */
 
 .link {
