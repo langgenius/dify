@@ -6,10 +6,10 @@ import time
 import uuid
 from typing import Optional
 
-from flask import current_app
 from flask_login import current_user
 from sqlalchemy import func
 
+from configs import dify_config
 from core.errors.error import LLMBadRequestError, ProviderTokenNotInitError
 from core.model_manager import ModelManager
 from core.model_runtime.entities.model_entities import ModelType
@@ -524,7 +524,14 @@ class DocumentService:
     @staticmethod
     def delete_document(document):
         # trigger document_was_deleted signal
-        document_was_deleted.send(document.id, dataset_id=document.dataset_id, doc_form=document.doc_form)
+        file_id = None
+        if document.data_source_type == 'upload_file':
+            if document.data_source_info:
+                data_source_info = document.data_source_info_dict
+                if data_source_info and 'upload_file_id' in data_source_info:
+                    file_id = data_source_info['upload_file_id']
+        document_was_deleted.send(document.id, dataset_id=document.dataset_id,
+                                  doc_form=document.doc_form, file_id=file_id)
 
         db.session.delete(document)
         db.session.commit()
@@ -650,7 +657,7 @@ class DocumentService:
                 elif document_data["data_source"]["type"] == "website_crawl":
                     website_info = document_data["data_source"]['info_list']['website_info_list']
                     count = len(website_info['urls'])
-                batch_upload_limit = int(current_app.config['BATCH_UPLOAD_LIMIT'])
+                batch_upload_limit = int(dify_config.BATCH_UPLOAD_LIMIT)
                 if count > batch_upload_limit:
                     raise ValueError(f"You have reached the batch upload limit of {batch_upload_limit}.")
 
@@ -681,7 +688,7 @@ class DocumentService:
                 dataset.collection_binding_id = dataset_collection_binding.id
                 if not dataset.retrieval_model:
                     default_retrieval_model = {
-                        'search_method': RetrievalMethod.SEMANTIC_SEARCH,
+                        'search_method': RetrievalMethod.SEMANTIC_SEARCH.value,
                         'reranking_enable': False,
                         'reranking_model': {
                             'reranking_provider_name': '',
@@ -838,13 +845,17 @@ class DocumentService:
                         'only_main_content': website_info.get('only_main_content', False),
                         'mode': 'crawl',
                     }
+                    if len(url) > 255:
+                        document_name = url[:200] + '...'
+                    else:
+                        document_name = url
                     document = DocumentService.build_document(
                         dataset, dataset_process_rule.id,
                         document_data["data_source"]["type"],
                         document_data["doc_form"],
                         document_data["doc_language"],
                         data_source_info, created_from, position,
-                        account, url, batch
+                        account, document_name, batch
                     )
                     db.session.add(document)
                     db.session.flush()
@@ -1028,7 +1039,7 @@ class DocumentService:
             elif document_data["data_source"]["type"] == "website_crawl":
                 website_info = document_data["data_source"]['info_list']['website_info_list']
                 count = len(website_info['urls'])
-            batch_upload_limit = int(current_app.config['BATCH_UPLOAD_LIMIT'])
+            batch_upload_limit = int(dify_config.BATCH_UPLOAD_LIMIT)
             if count > batch_upload_limit:
                 raise ValueError(f"You have reached the batch upload limit of {batch_upload_limit}.")
 
@@ -1052,7 +1063,7 @@ class DocumentService:
                 retrieval_model = document_data['retrieval_model']
             else:
                 default_retrieval_model = {
-                    'search_method': RetrievalMethod.SEMANTIC_SEARCH,
+                    'search_method': RetrievalMethod.SEMANTIC_SEARCH.value,
                     'reranking_enable': False,
                     'reranking_model': {
                         'reranking_provider_name': '',

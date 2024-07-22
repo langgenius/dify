@@ -1,3 +1,4 @@
+import logging
 import time
 from collections.abc import Mapping
 from typing import Any
@@ -5,6 +6,7 @@ from typing import Any
 import requests
 from requests.exceptions import HTTPError
 
+logger = logging.getLogger(__name__)
 
 class FirecrawlApp:
     def __init__(self, api_key: str | None = None, base_url: str | None = None):
@@ -48,6 +50,7 @@ class FirecrawlApp:
         headers = self._prepare_headers()
         data = {'url': url, **kwargs}
         response = self._request('POST', endpoint, data, headers)
+        logger.debug(f"Sent request to {endpoint=} body={data}")
         if response is None:
             raise HTTPError("Failed to scrape URL after multiple retries")
         return response
@@ -57,6 +60,7 @@ class FirecrawlApp:
         headers = self._prepare_headers()
         data = {'query': query, **kwargs}
         response = self._request('POST', endpoint, data, headers)
+        logger.debug(f"Sent request to {endpoint=} body={data}")
         if response is None:
             raise HTTPError("Failed to perform search after multiple retries")
         return response
@@ -66,8 +70,9 @@ class FirecrawlApp:
     ):
         endpoint = f'{self.base_url}/v0/crawl'
         headers = self._prepare_headers(idempotency_key)
-        data = {'url': url, **kwargs}
+        data = {'url': url, **kwargs['params']}
         response = self._request('POST', endpoint, data, headers)
+        logger.debug(f"Sent request to {endpoint=} body={data}")
         if response is None:
             raise HTTPError("Failed to initiate crawl after multiple retries")
         job_id: str = response['jobId']

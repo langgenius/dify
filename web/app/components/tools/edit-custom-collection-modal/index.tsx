@@ -87,9 +87,9 @@ const EditCustomCollectionModal: FC<Props> = ({
       return
     }
     (async () => {
-      const customCollection = getCustomCollection()
       try {
         const { parameters_schema, schema_type } = await parseParamsSchema(debouncedSchema)
+        const customCollection = getCustomCollection()
         const newCollection = produce(customCollection, (draft) => {
           draft.schema_type = schema_type
         })
@@ -97,6 +97,7 @@ const EditCustomCollectionModal: FC<Props> = ({
         setParamsSchemas(parameters_schema)
       }
       catch (e) {
+        const customCollection = getCustomCollection()
         const newCollection = produce(customCollection, (draft) => {
           draft.schema_type = ''
         })

@@ -20,6 +20,7 @@ from libs import helper
 from libs.helper import TimestampField, uuid_value
 from libs.login import current_user, login_required
 from models.model import App, AppMode
+from services.app_dsl_service import AppDslService
 from services.app_generate_service import AppGenerateService
 from services.errors.app import WorkflowHashNotEqualError
 from services.workflow_service import WorkflowService
@@ -128,8 +129,7 @@ class DraftWorkflowImportApi(Resource):
         parser.add_argument('data', type=str, required=True, nullable=False, location='json')
         args = parser.parse_args()
 
-        workflow_service = WorkflowService()
-        workflow = workflow_service.import_draft_workflow(
+        workflow = AppDslService.import_and_overwrite_workflow(
             app_model=app_model,
             data=args['data'],
             account=current_user
