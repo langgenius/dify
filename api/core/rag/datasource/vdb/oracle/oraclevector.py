@@ -58,7 +58,7 @@ SQL_CREATE_INDEX = """
 CREATE INDEX idx_docs_{table_name} ON {table_name}(text) 
 INDEXTYPE IS CTXSYS.CONTEXT PARAMETERS 
 ('FILTER CTXSYS.NULL_FILTER SECTION GROUP CTXSYS.HTML_SECTION_GROUP LEXER sys.my_chinese_vgram_lexer')
-+"""
+"""
 
 
 class OracleVector(BaseVector):
