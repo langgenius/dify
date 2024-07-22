@@ -20,6 +20,8 @@ import { LogOut01 } from '@/app/components/base/icons/src/vender/line/general'
 import { useModalContext } from '@/context/modal-context'
 import { LanguagesSupported } from '@/i18n/language'
 import { useProviderContext } from '@/context/provider-context'
+import { Plan } from '@/app/components/billing/type'
+
 export type IAppSelecotr = {
   isMobile: boolean
 }
@@ -37,7 +39,7 @@ export default function AppSelector({ isMobile }: IAppSelecotr) {
   const { userProfile, langeniusVersionInfo } = useAppContext()
   const { setShowAccountSettingModal } = useModalContext()
   const { plan } = useProviderContext()
-  const isProOrTeamPlan = plan.type !== 'sandbox'
+  const canEmailSupport = plan.type === Plan.professional || plan.type === Plan.team || plan.type === Plan.enterprise
 
   const handleLogout = async () => {
     await logout({
@@ -109,7 +111,7 @@ export default function AppSelector({ isMobile }: IAppSelecotr) {
                         <div>{t('common.userProfile.settings')}</div>
                       </div>
                     </Menu.Item>
-                    {isProOrTeamPlan && <Menu.Item>
+                    {canEmailSupport && <Menu.Item>
                       <a
                         className={classNames(itemClassName, 'group justify-between')}
                         href={mailToSupport(userProfile.email, plan.type, langeniusVersionInfo.current_version)}
