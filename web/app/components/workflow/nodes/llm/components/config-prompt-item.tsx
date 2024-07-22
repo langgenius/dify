@@ -4,7 +4,7 @@ import React, { useCallback, useEffect, useState } from 'react'
 import { uniqueId } from 'lodash-es'
 import { useTranslation } from 'react-i18next'
 import { RiQuestionLine } from '@remixicon/react'
-import type { PromptItem, Variable } from '../../../types'
+import type { ModelConfig, PromptItem, Variable } from '../../../types'
 import { EditionType } from '../../../types'
 import { useWorkflowStore } from '../../../store'
 import Editor from '@/app/components/workflow/nodes/_base/components/prompt/editor'
@@ -38,6 +38,7 @@ type Props = {
   availableNodes: any
   varList: Variable[]
   handleAddVariable: (payload: any) => void
+  modelConfig?: ModelConfig
 }
 
 const roleOptions = [
@@ -77,6 +78,7 @@ const ConfigPromptItem: FC<Props> = ({
   availableNodes,
   varList,
   handleAddVariable,
+  modelConfig,
 }) => {
   const { t } = useTranslation()
   const workflowStore = useWorkflowStore()
@@ -138,6 +140,7 @@ const ConfigPromptItem: FC<Props> = ({
       availableNodes={availableNodes}
       isSupportPromptGenerator={payload.role === PromptRole.system}
       onGenerated={handleGenerated}
+      modelConfig={modelConfig}
       isSupportJinja
       editionType={payload.edition_type}
       onEditionTypeChange={onEditionTypeChange}

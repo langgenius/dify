@@ -20,6 +20,7 @@ import Button from '@/app/components/base/button'
 import Toast from '@/app/components/base/toast'
 import { generateRule } from '@/service/debug'
 import ConfigPrompt from '@/app/components/app/configuration/config-prompt'
+import type { Model } from '@/types/app'
 import { AppType } from '@/types/app'
 import ConfigVar from '@/app/components/app/configuration/config-var'
 import OpeningStatement from '@/app/components/app/configuration/features/chat-group/opening-statement'
@@ -33,6 +34,7 @@ import { Generator } from '@/app/components/base/icons/src/vender/other'
 
 export type IGetAutomaticResProps = {
   mode: AppType
+  model: Model
   isShow: boolean
   onClose: () => void
   onFinished: (res: AutomaticRes) => void
@@ -57,6 +59,7 @@ const TryLabel: FC<{
 
 const GetAutomaticRes: FC<IGetAutomaticResProps> = ({
   mode,
+  model,
   isShow,
   onClose,
   isInLLMNode,
@@ -149,10 +152,17 @@ const GetAutomaticRes: FC<IGetAutomaticResProps> = ({
       return
     setLoadingTrue()
     try {
-      const res = await generateRule({
+      const { error, ...res } = await generateRule({
         instruction,
+        model_config: model,
       })
       setRes(res)
+      if (error) {
+        Toast.notify({
+          type: 'error',
+          message: error,
+        })
+      }
     }
     finally {
       setLoadingFalse()

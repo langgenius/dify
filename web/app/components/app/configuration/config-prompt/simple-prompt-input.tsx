@@ -14,6 +14,7 @@ import PromptEditorHeightResizeWrap from './prompt-editor-height-resize-wrap'
 import cn from '@/utils/classnames'
 import { type PromptVariable } from '@/models/debug'
 import Tooltip from '@/app/components/base/tooltip'
+import type { CompletionParams } from '@/types/app'
 import { AppType } from '@/types/app'
 import { getNewVar, getVars } from '@/utils/var'
 import AutomaticBtn from '@/app/components/app/configuration/config/automatic/automatic-btn'
@@ -58,6 +59,7 @@ const Prompt: FC<ISimplePromptInput> = ({
   const { eventEmitter } = useEventEmitterContextContext()
   const {
     modelConfig,
+    completionParams,
     dataSets,
     setModelConfig,
     setPrevPromptConfig,
@@ -247,6 +249,14 @@ const Prompt: FC<ISimplePromptInput> = ({
       {showAutomatic && (
         <GetAutomaticResModal
           mode={mode as AppType}
+          model={
+            {
+              provider: modelConfig.provider,
+              name: modelConfig.model_id,
+              mode: modelConfig.mode,
+              completion_params: completionParams as CompletionParams,
+            }
+          }
           isShow={showAutomatic}
           onClose={showAutomaticFalse}
           onFinished={handleAutomaticRes}
