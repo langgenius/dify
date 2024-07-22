@@ -22,7 +22,7 @@ export const getSelectedDatasetsMode = (datasets: DataSet[]) => {
   let allHighQualityFullTextSearch = true
   let allEconomic = true
   let mixtureHighQualityAndEconomic = true
-  let inconsistentEmbeddingModel = uniq(datasets.map(item => item.embedding_model)).length > 1
+  let inconsistentEmbeddingModel = false
   if (!datasets.length) {
     allHighQuality = false
     allHighQualityVectorSearch = false
@@ -51,6 +51,9 @@ export const getSelectedDatasetsMode = (datasets: DataSet[]) => {
   if (allHighQuality || allEconomic)
     mixtureHighQualityAndEconomic = false
 
+  if (allHighQuality)
+    inconsistentEmbeddingModel = uniq(datasets.map(item => item.embedding_model)).length > 1
+
   return {
     allHighQuality,
     allHighQualityVectorSearch,
@@ -77,6 +80,7 @@ export const getMultipleRetrievalConfig = (multipleRetrievalConfig: MultipleRetr
     reranking_mode,
     reranking_model,
     weights,
+    reranking_enable,
   } = multipleRetrievalConfig
 
   const result = {
@@ -85,6 +89,7 @@ export const getMultipleRetrievalConfig = (multipleRetrievalConfig: MultipleRetr
     reranking_mode,
     reranking_model,
     weights,
+    reranking_enable,
   }
 
   if (allEconomic || mixtureHighQualityAndEconomic || inconsistentEmbeddingModel)

@@ -24,6 +24,7 @@ export type MultipleRetrievalConfig = {
       keyword_weight: number
     }
   }
+  reranking_enable?: boolean
 }
 
 export type SingleRetrievalConfig = {

@@ -84,6 +84,7 @@ const RetrievalConfig: FC<Props> = ({
           }),
       reranking_mode: configs.reranking_mode,
       weights: configs.weights as any,
+      reranking_enable: configs.reranking_enable,
     })
   }, [onMultipleRetrievalConfigChange, payload.retrieval_mode, rerankDefaultModel?.provider?.provider, rerankDefaultModel?.model, onRetrievalModeChange])
 

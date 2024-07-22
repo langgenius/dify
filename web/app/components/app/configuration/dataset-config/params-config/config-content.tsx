@@ -31,6 +31,7 @@ import type {
 import { RerankingModeEnum } from '@/models/datasets'
 import cn from '@/utils/classnames'
 import { useSelectedDatasetsMode } from '@/app/components/workflow/nodes/knowledge-retrieval/hooks'
+import Switch from '@/app/components/base/switch'
 
 type Props = {
   datasetConfigs: DatasetConfigs
@@ -179,7 +180,7 @@ const ConfigContent: FC<Props> = ({
       {type === RETRIEVE_TYPE.multiWay && (
         <>
           {
-            selectedDatasetsMode.inconsistentEmbeddingModel && !datasetConfigs.reranking_model?.reranking_provider_name
+            selectedDatasetsMode.inconsistentEmbeddingModel
             && (
               <div className='mt-4 system-xs-regular text-text-warning'>
                 {t('dataset.inconsistentEmbeddingModelTip')}
@@ -187,7 +188,7 @@ const ConfigContent: FC<Props> = ({
             )
           }
           {
-            selectedDatasetsMode.mixtureHighQualityAndEconomic && !datasetConfigs.reranking_model?.reranking_provider_name
+            selectedDatasetsMode.mixtureHighQualityAndEconomic
             && (
               <div className='mt-4 system-xs-regular text-text-warning'>
                 {t('dataset.mixtureHighQualityAndEconomicTip')}
@@ -223,7 +224,28 @@ const ConfigContent: FC<Props> = ({
           {
             !showWeightedScorePanel && (
               <div className='mt-4'>
-                <div className='leading-[32px] text-[13px] font-medium text-gray-900'>{t('common.modelProvider.rerankModel.key')}</div>
+                <div className='flex items-center'>
+                  {
+                    selectedDatasetsMode.allEconomic && (
+                      <Switch
+                        size='md'
+                        defaultValue={
+                          !(((datasetConfigs.retrieval_model === RETRIEVE_TYPE.oneWay || datasetConfigs.reranking_enable === false) && selectedDatasetsMode.allEconomic))
+                        }
+                        onChange={(v) => {
+                          onChange({
+                            ...datasetConfigs,
+                            reranking_enable: v,
+                          })
+                        }}
+                      />
+                    )
+                  }
+                  <div className='ml-2 leading-[32px] text-[13px] font-medium text-gray-900'>{t('common.modelProvider.rerankModel.key')}</div>
+                  <TooltipPlus popupContent={<div className="w-[200px]">{t('common.modelProvider.rerankModel.tip')}</div>}>
+                    <RiQuestionLine className='ml-0.5 w-[14px] h-[14px] text-gray-400' />
+                  </TooltipPlus>
+                </div>
                 <div>
                   <ModelSelector
                     defaultModel={rerankModel && { provider: rerankModel?.provider_name, model: rerankModel?.model_name }}

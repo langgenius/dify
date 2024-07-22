@@ -167,6 +167,7 @@ export type DatasetConfigs = {
       keyword_weight: number
     }
   }
+  reranking_enable?: boolean
 }
 
 export type DebugRequestBody = {
