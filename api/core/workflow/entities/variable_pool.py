@@ -2,7 +2,7 @@ from collections import defaultdict
 from collections.abc import Mapping, Sequence
 from typing import Any, Union
 
-from pydantic import BaseModel, Field
+from pydantic import BaseModel, Field, model_validator
 from typing_extensions import deprecated
 
 from core.app.segments import ArrayVariable, ObjectVariable, Variable, factory
@@ -21,7 +21,7 @@ class VariablePool(BaseModel):
     # The first element of the selector is the node id, it's the first-level key in the dictionary.
     # Other elements of the selector are the keys in the second-level dictionary. To get the key, we hash the
     # elements of the selector except the first one.
-    _variable_dictionary: dict[str, dict[int, Variable]] = Field(
+    variable_dictionary: dict[str, dict[int, Variable]] = Field(
         description='Variables mapping',
         default=defaultdict(dict)
     )
@@ -36,10 +36,12 @@ class VariablePool(BaseModel):
     )
 
     environment_variables: Sequence[Variable] = Field(
-        description="Environment variables."
+        description="Environment variables.",
+        default_factory=list
     )
 
-    def __post_init__(self):
+    @model_validator(mode="after")
+    def val_model_after(self):
         """
         Append system variables
         :return:
@@ -51,6 +53,8 @@ class VariablePool(BaseModel):
         # Add environment variables to the variable pool
         for var in self.environment_variables or []:
             self.add((ENVIRONMENT_VARIABLE_NODE_ID, var.name), var)
+
+        return self
 
     def add(self, selector: Sequence[str], value: Any, /) -> None:
         """
@@ -78,7 +82,7 @@ class VariablePool(BaseModel):
             v = value
 
         hash_key = hash(tuple(selector[1:]))
-        self._variable_dictionary[selector[0]][hash_key] = v
+        self.variable_dictionary[selector[0]][hash_key] = v
 
     def get(self, selector: Sequence[str], /) -> Variable | None:
         """
@@ -96,7 +100,7 @@ class VariablePool(BaseModel):
         if len(selector) < 2:
             raise ValueError('Invalid selector')
         hash_key = hash(tuple(selector[1:]))
-        value = self._variable_dictionary[selector[0]].get(hash_key)
+        value = self.variable_dictionary[selector[0]].get(hash_key)
 
         return value
 
@@ -117,7 +121,7 @@ class VariablePool(BaseModel):
         if len(selector) < 2:
             raise ValueError('Invalid selector')
         hash_key = hash(tuple(selector[1:]))
-        value = self._variable_dictionary[selector[0]].get(hash_key)
+        value = self.variable_dictionary[selector[0]].get(hash_key)
 
         if value is None:
             return value
@@ -140,7 +144,7 @@ class VariablePool(BaseModel):
         if not selector:
             return
         if len(selector) == 1:
-            self._variable_dictionary[selector[0]] = {}
+            self.variable_dictionary[selector[0]] = {}
             return
         hash_key = hash(tuple(selector[1:]))
-        self._variable_dictionary[selector[0]].pop(hash_key, None)
+        self.variable_dictionary[selector[0]].pop(hash_key, None)

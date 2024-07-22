@@ -10,6 +10,7 @@ from core.workflow.graph_engine.entities.event import (
     GraphRunSucceededEvent,
     NodeRunFailedEvent,
     NodeRunStartedEvent,
+    NodeRunStreamChunkEvent,
     NodeRunSucceededEvent,
 )
 from core.workflow.graph_engine.entities.graph import Graph
@@ -139,10 +140,12 @@ def test_run_parallel(mock_close, mock_remove):
         assert not isinstance(item, NodeRunFailedEvent)
         assert not isinstance(item, GraphRunFailedEvent)
 
-        if isinstance(item, BaseNodeEvent) and item.route_node_state.node_id in ['answer2', 'answer3']:
+        if isinstance(item, BaseNodeEvent) and item.route_node_state.node_id in [
+            'answer2', 'answer3', 'answer4', 'answer5'
+        ]:
             assert item.parallel_id is not None
 
-    assert len(items) == 12
+    assert len(items) == 19
     assert isinstance(items[0], GraphRunStartedEvent)
     assert isinstance(items[1], NodeRunStartedEvent)
     assert items[1].route_node_state.node_id == 'start'
@@ -291,12 +294,16 @@ def test_run_branch(mock_close, mock_remove):
         print(type(item), item)
         items.append(item)
 
-    assert len(items) == 8
+    assert len(items) == 10
     assert items[3].route_node_state.node_id == 'if-else-1'
     assert items[4].route_node_state.node_id == 'if-else-1'
-    assert items[5].route_node_state.node_id == 'answer-1'
-    assert items[6].route_node_state.node_id == 'answer-1'
-    assert items[6].route_node_state.node_run_result.outputs['answer'] == '1 takato'
-    assert isinstance(items[7], GraphRunSucceededEvent)
+    assert isinstance(items[5], NodeRunStreamChunkEvent)
+    assert items[5].chunk_content == '1 '
+    assert isinstance(items[6], NodeRunStreamChunkEvent)
+    assert items[6].chunk_content == 'takato'
+    assert items[7].route_node_state.node_id == 'answer-1'
+    assert items[8].route_node_state.node_id == 'answer-1'
+    assert items[8].route_node_state.node_run_result.outputs['answer'] == '1 takato'
+    assert isinstance(items[9], GraphRunSucceededEvent)
 
     # print(graph_engine.graph_runtime_state.model_dump_json(indent=2))

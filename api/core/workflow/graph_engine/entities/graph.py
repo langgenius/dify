@@ -285,16 +285,18 @@ class Graph(BaseModel):
                 )
 
                 # collect all branches node ids
-                end_to_node_id: Optional[str] = None
                 for branch_node_id, node_ids in in_branch_node_ids.items():
                     for node_id in node_ids:
                         node_parallel_mapping[node_id] = parallel.id
 
-                        if not end_to_node_id and edge_mapping.get(node_id):
-                            node_edges = edge_mapping[node_id]
-                            target_node_id = node_edges[0].target_node_id
-                            if node_parallel_mapping.get(target_node_id) == parent_parallel_id:
-                                end_to_node_id = target_node_id
+                end_to_node_id: Optional[str] = None
+                for node_id in node_parallel_mapping:
+                    if not end_to_node_id and edge_mapping.get(node_id):
+                        node_edges = edge_mapping[node_id]
+                        target_node_id = node_edges[0].target_node_id
+                        if node_parallel_mapping.get(target_node_id) == parent_parallel_id:
+                            end_to_node_id = target_node_id
+                            break
 
                 if end_to_node_id:
                     parallel.end_to_node_id = end_to_node_id

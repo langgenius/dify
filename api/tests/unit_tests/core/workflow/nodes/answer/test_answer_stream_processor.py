@@ -187,9 +187,8 @@ def test_process():
             #       " " + (event.chunk_content if isinstance(event, NodeRunStreamChunkEvent) else ""))
             if isinstance(event, NodeRunSucceededEvent):
                 if 'llm' in event.route_node_state.node_id:
-                    variable_pool.append_variable(
-                        event.route_node_state.node_id,
-                        ["text"],
+                    variable_pool.add(
+                        [event.route_node_state.node_id, "text"],
                         "".join(str(i) for i in range(0, int(event.route_node_state.node_id[-1])))
                     )
             yield event

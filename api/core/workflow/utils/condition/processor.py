@@ -1,3 +1,4 @@
+from collections.abc import Sequence
 from typing import Any, Optional
 
 from core.file.file_obj import FileVar
@@ -7,15 +8,15 @@ from core.workflow.utils.variable_template_parser import VariableTemplateParser
 
 
 class ConditionProcessor:
-    def process_conditions(self, variable_pool: VariablePool, conditions: list[Condition]):
+    def process_conditions(self, variable_pool: VariablePool, conditions: Sequence[Condition]):
         input_conditions = []
         group_result = []
 
         index = 0
         for condition in conditions:
             index += 1
-            actual_value = variable_pool.get_variable_value(
-                variable_selector=condition.variable_selector
+            actual_value = variable_pool.get_any(
+                condition.variable_selector
             )
 
             expected_value = None
@@ -24,8 +25,8 @@ class ConditionProcessor:
                 variable_selectors = variable_template_parser.extract_variable_selectors()
                 if variable_selectors:
                     for variable_selector in variable_selectors:
-                        value = variable_pool.get_variable_value(
-                            variable_selector=variable_selector.value_selector
+                        value = variable_pool.get_any(
+                            variable_selector.value_selector
                         )
                         expected_value = variable_template_parser.format({variable_selector.variable: value})
 
@@ -63,37 +64,37 @@ class ConditionProcessor:
         :return: bool
         """
         if comparison_operator == "contains":
-            return self._assert_contains(actual_value, expected_value)  # type: ignore
+            return self._assert_contains(actual_value, expected_value)
         elif comparison_operator == "not contains":
-            return self._assert_not_contains(actual_value, expected_value)  # type: ignore
+            return self._assert_not_contains(actual_value, expected_value)
         elif comparison_operator == "start with":
-            return self._assert_start_with(actual_value, expected_value)  # type: ignore
+            return self._assert_start_with(actual_value, expected_value)
         elif comparison_operator == "end with":
-            return self._assert_end_with(actual_value, expected_value)  # type: ignore
+            return self._assert_end_with(actual_value, expected_value)
         elif comparison_operator == "is":
-            return self._assert_is(actual_value, expected_value)  # type: ignore
+            return self._assert_is(actual_value, expected_value)
         elif comparison_operator == "is not":
-            return self._assert_is_not(actual_value, expected_value)  # type: ignore
+            return self._assert_is_not(actual_value, expected_value)
         elif comparison_operator == "empty":
-            return self._assert_empty(actual_value)  # type: ignore
+            return self._assert_empty(actual_value)
         elif comparison_operator == "not empty":
-            return self._assert_not_empty(actual_value)  # type: ignore
+            return self._assert_not_empty(actual_value)
         elif comparison_operator == "=":
-            return self._assert_equal(actual_value, expected_value)  # type: ignore
+            return self._assert_equal(actual_value, expected_value)
         elif comparison_operator == "≠":
-            return self._assert_not_equal(actual_value, expected_value)  # type: ignore
+            return self._assert_not_equal(actual_value, expected_value)
         elif comparison_operator == ">":
-            return self._assert_greater_than(actual_value, expected_value)  # type: ignore
+            return self._assert_greater_than(actual_value, expected_value)
         elif comparison_operator == "<":
-            return self._assert_less_than(actual_value, expected_value)  # type: ignore
+            return self._assert_less_than(actual_value, expected_value)
         elif comparison_operator == "≥":
-            return self._assert_greater_than_or_equal(actual_value, expected_value)  # type: ignore
+            return self._assert_greater_than_or_equal(actual_value, expected_value)
         elif comparison_operator == "≤":
-            return self._assert_less_than_or_equal(actual_value, expected_value)  # type: ignore
+            return self._assert_less_than_or_equal(actual_value, expected_value)
         elif comparison_operator == "null":
-            return self._assert_null(actual_value)  # type: ignore
+            return self._assert_null(actual_value)
         elif comparison_operator == "not null":
-            return self._assert_not_null(actual_value)  # type: ignore
+            return self._assert_not_null(actual_value)
         else:
             raise ValueError(f"Invalid comparison operator: {comparison_operator}")
 

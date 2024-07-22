@@ -244,8 +244,8 @@ class GraphEngine:
 
                     next_node_id = final_node_id
 
-            if in_parallel_id and self.graph.node_parallel_mapping.get(next_node_id, '') == in_parallel_id:
-                break
+            # if in_parallel_id and self.graph.node_parallel_mapping.get(next_node_id, '') == in_parallel_id:
+            #     break
 
     def _run_parallel_node(self,
                            flask_app: Flask,
@@ -402,10 +402,9 @@ class GraphEngine:
         :param variable_value: variable value
         :return:
         """
-        self.graph_runtime_state.variable_pool.append_variable(
-            node_id=node_id,
-            variable_key_list=variable_key_list,
-            value=variable_value  # type: ignore[arg-type]
+        self.graph_runtime_state.variable_pool.add(
+            [node_id] + variable_key_list,
+            variable_value
         )
 
         # if variable_value is a dict, then recursively append variables

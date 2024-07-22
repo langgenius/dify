@@ -35,7 +35,7 @@ class AnswerNode(BaseNode):
                 part = cast(VarGenerateRouteChunk, part)
                 value_selector = part.value_selector
                 value = self.graph_runtime_state.variable_pool.get(
-                    variable_selector=value_selector
+                    value_selector
                 )
 
                 if value:
