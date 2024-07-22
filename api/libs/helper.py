@@ -15,6 +15,7 @@ from zoneinfo import available_timezones
 from flask import Response, current_app, stream_with_context
 from flask_restful import fields
 
+from core.app.features.rate_limiting.rate_limit import RateLimitGenerator
 from extensions.ext_redis import redis_client
 from models.account import Account
 
@@ -159,7 +160,7 @@ def generate_text_hash(text: str) -> str:
     return sha256(hash_text.encode()).hexdigest()
 
 
-def compact_generate_response(response: Union[dict, Generator]) -> Response:
+def compact_generate_response(response: Union[dict, RateLimitGenerator]) -> Response:
     if isinstance(response, dict):
         return Response(response=json.dumps(response), status=200, mimetype='application/json')
     else:
