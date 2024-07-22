@@ -99,7 +99,7 @@ const WeightedScore = ({
           trackClassName='!bg-transparent'
         />
         <div className='shrink-0 flex items-center justify-end w-[86px] system-xs-semibold-uppercase text-util-colors-cyan-cyan-500'>
-          {formatNumber((10 - value.value[0] * 10) / 10)}
+          {formatNumber(value.value[1])}
           <div className='ml-1 truncate uppercase' title={t('dataset.weightedScore.keyword') || ''}>
             {t('dataset.weightedScore.keyword')}
           </div>

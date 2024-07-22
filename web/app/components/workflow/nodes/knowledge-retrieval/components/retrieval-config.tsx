@@ -23,7 +23,7 @@ import type { DataSet } from '@/models/datasets'
 type Props = {
   payload: {
     retrieval_mode: RETRIEVE_TYPE
-    multiple_retrieval_config: MultipleRetrievalConfig
+    multiple_retrieval_config?: MultipleRetrievalConfig
     single_retrieval_config?: SingleRetrievalConfig
   }
   onRetrievalModeChange: (mode: RETRIEVE_TYPE) => void
@@ -120,7 +120,7 @@ const RetrievalConfig: FC<Props> = ({
             datasetConfigs={
               {
                 retrieval_model: payload.retrieval_mode,
-                reranking_model: multiple_retrieval_config.reranking_model?.provider
+                reranking_model: multiple_retrieval_config?.reranking_model?.provider
                   ? {
                     reranking_provider_name: multiple_retrieval_config.reranking_model?.provider,
                     reranking_model_name: multiple_retrieval_config.reranking_model?.model,
@@ -129,14 +129,15 @@ const RetrievalConfig: FC<Props> = ({
                     reranking_provider_name: '',
                     reranking_model_name: '',
                   },
-                top_k: multiple_retrieval_config.top_k,
-                score_threshold_enabled: !(multiple_retrieval_config.score_threshold === undefined || multiple_retrieval_config.score_threshold === null),
+                top_k: multiple_retrieval_config?.top_k || DATASET_DEFAULT.top_k,
+                score_threshold_enabled: !(multiple_retrieval_config?.score_threshold === undefined || multiple_retrieval_config.score_threshold === null),
                 score_threshold: multiple_retrieval_config?.score_threshold,
                 datasets: {
                   datasets: [],
                 },
                 reranking_mode: multiple_retrieval_config?.reranking_mode,
                 weights: multiple_retrieval_config?.weights,
+                reranking_enable: multiple_retrieval_config?.reranking_enable,
               }
             }
             onChange={handleChange}

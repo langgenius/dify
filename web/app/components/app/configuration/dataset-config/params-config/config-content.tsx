@@ -1,6 +1,6 @@
 'use client'
 
-import { memo } from 'react'
+import { memo, useMemo } from 'react'
 import type { FC } from 'react'
 import { useTranslation } from 'react-i18next'
 import {
@@ -149,8 +149,14 @@ const ConfigContent: FC<Props> = ({
     && !selectedDatasetsMode.inconsistentEmbeddingModel
 
   const showWeightedScorePanel = showWeightedScore && datasetConfigs.reranking_mode === RerankingModeEnum.WeightedScore && datasetConfigs.weights
-
   const selectedRerankMode = datasetConfigs.reranking_mode || RerankingModeEnum.RerankingModel
+
+  const showRerankModel = useMemo(() => {
+    if (datasetConfigs.reranking_enable === false && selectedDatasetsMode.allEconomic)
+      return false
+
+    return true
+  }, [datasetConfigs.reranking_enable, selectedDatasetsMode.allEconomic])
 
   return (
     <div>
@@ -229,9 +235,7 @@ const ConfigContent: FC<Props> = ({
                     selectedDatasetsMode.allEconomic && (
                       <Switch
                         size='md'
-                        defaultValue={
-                          !(((datasetConfigs.retrieval_model === RETRIEVE_TYPE.oneWay || datasetConfigs.reranking_enable === false) && selectedDatasetsMode.allEconomic))
-                        }
+                        defaultValue={showRerankModel}
                         onChange={(v) => {
                           onChange({
                             ...datasetConfigs,
@@ -303,7 +307,7 @@ const ConfigContent: FC<Props> = ({
                   enable={true}
                 />
                 {
-                  !(((datasetConfigs.retrieval_model === RETRIEVE_TYPE.oneWay || datasetConfigs.reranking_enable === false) && selectedDatasetsMode.allEconomic)) && (
+                  showRerankModel && (
                     <ScoreThresholdItem
                       value={datasetConfigs.score_threshold as number}
                       onChange={handleParamChange}
