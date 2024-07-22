@@ -92,7 +92,7 @@ const BaseNode: FC<BaseNodeProps> = ({
           'group relative pb-1 shadow-xs',
           'border border-transparent rounded-[15px]',
           data.type !== BlockEnum.Iteration && 'w-[240px] bg-workflow-block-bg',
-          data.type === BlockEnum.Iteration && 'flex flex-col w-full h-full bg-workflow-block-bg/80',
+          data.type === BlockEnum.Iteration && 'flex flex-col w-full h-full bg-[#fcfdff]/80',
           !data._runningStatus && 'hover:shadow-lg',
           showRunningBorder && '!border-primary-500',
           showSuccessBorder && '!border-[#12B76A]',
