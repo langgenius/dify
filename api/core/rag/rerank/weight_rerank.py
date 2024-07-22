@@ -10,8 +10,6 @@ from core.model_runtime.entities.model_entities import ModelType
 from core.rag.datasource.keyword.jieba.jieba_keyword_table_handler import JiebaKeywordTableHandler
 from core.rag.models.document import Document
 from core.rag.rerank.entity.weight import Weights, VectorSetting
-from rank_bm25 import BM25Okapi
-from sklearn.feature_extraction.text import TfidfVectorizer
 
 
 class WeightRerankRunner:
@@ -74,36 +72,25 @@ class WeightRerankRunner:
             document_keywords = keyword_table_handler.extract_keywords(document.page_content, None)
             document.metadata['keywords'] = document_keywords
             documents_keywords.append(document_keywords)
-        # # build bm25 model
-        # bm25 = BM25Okapi(documents_keywords)
-        # query_bm25_scores = bm25.get_scores(query_keywords)
-        #
-        # # normalize BM25 scores to the range [0, 1]
-        # max_score = max(query_bm25_scores)
-        # min_score = min(query_bm25_scores)
-        #
-        # normalized_query_bm25_scores = [(score - min_score) / (max_score - min_score) if max_score != min_score else 0 for score in
-        #                      query_bm25_scores]
 
-        # 计算查询关键词的词频(TF)
+        # Counter query keywords(TF)
         query_keyword_counts = Counter(query_keywords)
 
-        # 总文档数
+        # total documents
         total_documents = len(documents)
 
-        # 计算所有文档中的关键词IDF
+        # calculate all documents' keywords IDF
         all_keywords = set()
         for document_keywords in documents_keywords:
             all_keywords.update(document_keywords)
 
         keyword_idf = {}
         for keyword in all_keywords:
-            # 统计包含该关键词的文档数
+            # calculate include query keywords' documents
             doc_count_containing_keyword = sum(1 for doc_keywords in documents_keywords if keyword in doc_keywords)
-            # 计算IDF值
+            # IDF
             keyword_idf[keyword] = math.log((1 + total_documents) / (1 + doc_count_containing_keyword)) + 1
 
-        # 计算查询的TF-IDF值
         query_tfidf = {}
 
         for keyword, count in query_keyword_counts.items():
@@ -111,23 +98,10 @@ class WeightRerankRunner:
             idf = keyword_idf.get(keyword, 0)
             query_tfidf[keyword] = tf * idf
 
-        # 计算每个文档的TF-IDF值
+        # calculate all documents' TF-IDF
         documents_tfidf = []
         for document_keywords in documents_keywords:
             document_keyword_counts = Counter(document_keywords)
-            s = 1e-9
-            q = 1e-9
-            for k, v in query_keyword_counts.items():
-                if k in document_keyword_counts:
-                    s += v  # * dtwt[k]
-            for k, v in query_keyword_counts.items():
-                q += v  # * v
-            # d = 1e-9
-            # for k, v in dtwt.items():
-            #    d += v * v
-            score = s / q / max(1, math.sqrt(
-                math.log10(max(len(query_keyword_counts.keys()), len(document_keyword_counts.keys())))))
-            print(f"ragflow similarity: {score}")
             document_tfidf = {}
             for keyword, count in document_keyword_counts.items():
                 tf = count
@@ -135,7 +109,6 @@ class WeightRerankRunner:
                 document_tfidf[keyword] = tf * idf
             documents_tfidf.append(document_tfidf)
 
-        # 计算查询TF-IDF值与每个文档TF-IDF值的相似度
         def cosine_similarity(vec1, vec2):
             intersection = set(vec1.keys()) & set(vec2.keys())
             numerator = sum([vec1[x] * vec2[x] for x in intersection])
@@ -149,15 +122,13 @@ class WeightRerankRunner:
             else:
                 return float(numerator) / denominator
 
-        # 计算相似度
         similarities = []
         for document_tfidf in documents_tfidf:
             similarity = cosine_similarity(query_tfidf, document_tfidf)
             similarities.append(similarity)
 
-        # 打印每个文档的相似度
-        for idx, similarity in enumerate(similarities):
-            print(f"Document {idx + 1} similarity: {similarity}")
+        # for idx, similarity in enumerate(similarities):
+        #     print(f"Document {idx + 1} similarity: {similarity}")
 
         return similarities
 
