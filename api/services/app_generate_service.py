@@ -21,7 +21,7 @@ class AppGenerateService:
                  args: Any,
                  invoke_from: InvokeFrom,
                  streaming: bool = True,
-                 ) -> Union[dict, Generator[dict, None, None]]:
+                 ):
         """
         App Content Generate
         :param app_model: app model
