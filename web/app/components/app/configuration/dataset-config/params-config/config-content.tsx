@@ -66,7 +66,7 @@ const ConfigContent: FC<Props> = ({
     defaultModel: rerankDefaultModel,
   } = useModelListAndDefaultModelAndCurrentProviderAndModel(ModelTypeEnum.rerank)
   const rerankModel = (() => {
-    if (datasetConfigs.reranking_model) {
+    if (datasetConfigs.reranking_model?.reranking_provider_name) {
       return {
         provider_name: datasetConfigs.reranking_model.reranking_provider_name,
         model_name: datasetConfigs.reranking_model.reranking_model_name,
