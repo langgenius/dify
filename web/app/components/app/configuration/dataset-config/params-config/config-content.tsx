@@ -160,6 +160,7 @@ const ConfigContent: FC<Props> = ({
 
   return (
     <div>
+      <div className='system-xl-semibold text-text-primary'>{t('dataset.rerankSettings')}</div>
       <div className='mt-2 space-y-3'>
         <RadioCard
           icon={<NTo1Retrieval className='shrink-0 mr-3 w-9 h-9 rounded-lg' />}
@@ -167,7 +168,7 @@ const ConfigContent: FC<Props> = ({
             <div className='flex items-center'>
               {t('appDebug.datasetConfig.retrieveOneWay.title')}
               <TooltipPlus popupContent={<div className='w-[320px]'>{t('dataset.nTo1RetrievalLegacy')}</div>}>
-                <div className='ml-1 px-[5px] h-[18px] rounded-[5px] border border-text-accent-secondary system-2xs-medium-uppercase leading-[18px] text-text-accent-secondary'>legacy</div>
+                <div className='ml-1 flex items-center px-[5px] h-[18px] rounded-[5px] border border-text-accent-secondary system-2xs-medium-uppercase text-text-accent-secondary'>legacy</div>
               </TooltipPlus>
             </div>
           )}

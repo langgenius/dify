@@ -122,7 +122,6 @@ const ParamsConfig = ({
               setRerankSettingModalOpen(false)
             }}
             className='sm:min-w-[528px]'
-            title={t('appDebug.datasetConfig.settingTitle')}
           >
             <ConfigContent
               datasetConfigs={tempDataSetConfigs}

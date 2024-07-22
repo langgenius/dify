@@ -56,7 +56,7 @@ const translation = {
   },
   mixtureHighQualityAndEconomicTip: '高质量和经济知识库的混合需要配置 Rerank 模型。',
   inconsistentEmbeddingModelTip: '如果嵌入方法不一致，例如有嵌入和没有嵌入的混合或使用不同的嵌入模型，则需要 Rerank 模型。',
-  rerankSettings: 'Rerank 设置',
+  rerankSettings: '召回设置',
   weightedScore: {
     title: '权重设置',
     description: '通过调整分配的权重，重新排序策略确定是优先进行语义匹配还是关键字匹配。',
