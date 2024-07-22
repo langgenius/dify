@@ -222,7 +222,7 @@ class LLMGenerator:
             logging.exception(e)
             rule_config["error"] = str(e)
 
-        rule_config["error"] = f"Failed to {error_step}. Error: {error}"
+        rule_config["error"] = f"Failed to {error_step}. Error: {error}" if error else ""
 
         return rule_config
 
