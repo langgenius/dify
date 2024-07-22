@@ -15,6 +15,7 @@ import TooltipPlus from '@/app/components/base/tooltip-plus'
 import { useProviderContext, useProviderContextSelector } from '@/context/provider-context'
 import { disableModel, enableModel } from '@/service/common'
 import { Plan } from '@/app/components/billing/type'
+import { useAppContext } from '@/context/app-context'
 
 export type ModelListItemProps = {
   model: ModelItem
@@ -28,6 +29,7 @@ const ModelListItem = ({ model, provider, isConfigurable, onConfig, onModifyLoad
   const { t } = useTranslation()
   const { plan } = useProviderContext()
   const modelLoadBalancingEnabled = useProviderContextSelector(state => state.modelLoadBalancingEnabled)
+  const { isCurrentWorkspaceManager } = useAppContext()
 
   const toggleModelEnablingStatus = useCallback(async (enabled: boolean) => {
     if (enabled)
@@ -73,7 +75,7 @@ const ModelListItem = ({ model, provider, isConfigurable, onConfig, onModifyLoad
       <div className='shrink-0 flex items-center'>
         {
           model.fetch_from === ConfigurationMethodEnum.customizableModel
-            ? (
+            ? (isCurrentWorkspaceManager && (
               <Button
                 className='hidden group-hover:flex h-7'
                 onClick={() => onConfig({ __model_name: model.model, __model_type: model.model_type })}
@@ -81,8 +83,8 @@ const ModelListItem = ({ model, provider, isConfigurable, onConfig, onModifyLoad
                 <Settings01 className='mr-[5px] w-3.5 h-3.5' />
                 {t('common.modelProvider.config')}
               </Button>
-            )
-            : ((modelLoadBalancingEnabled || plan.type === Plan.sandbox) && !model.deprecated && [ModelStatusEnum.active, ModelStatusEnum.disabled].includes(model.status))
+            ))
+            : (isCurrentWorkspaceManager && (modelLoadBalancingEnabled || plan.type === Plan.sandbox) && !model.deprecated && [ModelStatusEnum.active, ModelStatusEnum.disabled].includes(model.status))
               ? (
                 <Button
                   className='opacity-0 group-hover:opacity-100 h-[28px] transition-opacity'
@@ -101,7 +103,7 @@ const ModelListItem = ({ model, provider, isConfigurable, onConfig, onModifyLoad
                 <Switch defaultValue={false} disabled size='md' />
               </TooltipPlus>
             )
-            : (
+            : (isCurrentWorkspaceManager && (
               <Switch
                 className='ml-2'
                 defaultValue={model?.status === ModelStatusEnum.active}
@@ -109,7 +111,7 @@ const ModelListItem = ({ model, provider, isConfigurable, onConfig, onModifyLoad
                 size='md'
                 onChange={onEnablingStateChange}
               />
-            )
+            ))
         }
       </div>
     </div>
