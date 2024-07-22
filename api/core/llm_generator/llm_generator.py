@@ -158,7 +158,10 @@ class LLMGenerator:
             "opening_statement": "",
             "error": ""
         }
-        model_parameters = model_config.get("completion_params") if model_config else None
+        model_parameters = {
+            "max_tokens": 512,
+            "temperature": 0.01
+        }
         prompt_content = None
 
         try:
