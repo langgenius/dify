@@ -1,7 +1,7 @@
 import logging
 from abc import ABC, abstractmethod
 from collections.abc import Generator
-from typing import Union
+from typing import Any, Union
 
 from core.app.entities.app_invoke_entities import InvokeFrom
 from core.app.entities.task_entities import AppBlockingResponse, AppStreamResponse
@@ -15,44 +15,41 @@ class AppGenerateResponseConverter(ABC):
     @classmethod
     def convert(cls, response: Union[
         AppBlockingResponse,
-        Generator[AppStreamResponse, None, None]
-    ], invoke_from: InvokeFrom) -> Union[
-        dict,
-        Generator[str, None, None]
-    ]:
+        Generator[AppStreamResponse, Any, None]
+    ], invoke_from: InvokeFrom):
         if invoke_from in [InvokeFrom.DEBUGGER, InvokeFrom.SERVICE_API]:
-            if isinstance(response, cls._blocking_response_type):
+            if isinstance(response, AppBlockingResponse):
                 return cls.convert_blocking_full_response(response)
             else:
-                def _generate():
+                def _generate_full_response() -> Generator[str, Any, None]:
                     for chunk in cls.convert_stream_full_response(response):
                         if chunk == 'ping':
                             yield f'event: {chunk}\n\n'
                         else:
                             yield f'data: {chunk}\n\n'
 
-                return _generate()
+                return _generate_full_response()
         else:
-            if isinstance(response, cls._blocking_response_type):
+            if isinstance(response, AppBlockingResponse):
                 return cls.convert_blocking_simple_response(response)
             else:
-                def _generate():
+                def _generate_simple_response() -> Generator[str, Any, None]:
                     for chunk in cls.convert_stream_simple_response(response):
                         if chunk == 'ping':
                             yield f'event: {chunk}\n\n'
                         else:
                             yield f'data: {chunk}\n\n'
 
-                return _generate()
+                return _generate_simple_response()
 
     @classmethod
     @abstractmethod
-    def convert_blocking_full_response(cls, blocking_response: AppBlockingResponse) -> dict:
+    def convert_blocking_full_response(cls, blocking_response: AppBlockingResponse) -> dict[str, Any]:
         raise NotImplementedError
 
     @classmethod
     @abstractmethod
-    def convert_blocking_simple_response(cls, blocking_response: AppBlockingResponse) -> dict:
+    def convert_blocking_simple_response(cls, blocking_response: AppBlockingResponse) -> dict[str, Any]:
         raise NotImplementedError
 
     @classmethod
@@ -68,7 +65,7 @@ class AppGenerateResponseConverter(ABC):
         raise NotImplementedError
 
     @classmethod
-    def _get_simple_metadata(cls, metadata: dict) -> dict:
+    def _get_simple_metadata(cls, metadata: dict[str, Any]):
         """
         Get simple metadata.
         :param metadata: metadata

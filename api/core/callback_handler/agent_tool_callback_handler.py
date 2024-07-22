@@ -1,9 +1,11 @@
 import os
+from collections.abc import Mapping, Sequence
 from typing import Any, Optional, TextIO, Union
 
 from pydantic import BaseModel
 
 from core.ops.ops_trace_manager import TraceQueueManager, TraceTask, TraceTaskName
+from core.tools.entities.tool_entities import ToolInvokeMessage
 
 _TEXT_COLOR_MAPPING = {
     "blue": "36;1",
@@ -43,7 +45,7 @@ class DifyAgentCallbackHandler(BaseModel):
     def on_tool_start(
         self,
         tool_name: str,
-        tool_inputs: dict[str, Any],
+        tool_inputs: Mapping[str, Any],
     ) -> None:
         """Do nothing."""
         print_text("\n[on_tool_start] ToolCall:" + tool_name + "\n" + str(tool_inputs) + "\n", color=self.color)
@@ -51,8 +53,8 @@ class DifyAgentCallbackHandler(BaseModel):
     def on_tool_end(
         self,
         tool_name: str,
-        tool_inputs: dict[str, Any],
-        tool_outputs: str,
+        tool_inputs: Mapping[str, Any],
+        tool_outputs: Sequence[ToolInvokeMessage],
         message_id: Optional[str] = None,
         timer: Optional[Any] = None,
         trace_manager: Optional[TraceQueueManager] = None
