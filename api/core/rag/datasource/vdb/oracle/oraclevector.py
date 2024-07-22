@@ -258,6 +258,8 @@ class OracleVector(BaseVector):
             with self._get_cursor() as cur:
                 cur.execute(SQL_CREATE_TABLE.format(table_name=self.table_name))
             redis_client.set(collection_exist_cache_key, 1, ex=3600)
+            with self._get_cursor() as cur:
+                cur.execute(SQL_CREATE_INDEX.format(table_name=self.table_name))
 
 
 class OracleVectorFactory(AbstractVectorFactory):
