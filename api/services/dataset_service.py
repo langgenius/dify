@@ -845,7 +845,7 @@ class DocumentService:
                         'only_main_content': website_info.get('only_main_content', False),
                         'mode': 'crawl',
                     }
-                    if url.length > 255:
+                    if len(url) > 255:
                         document_name = url[:200] + '...'
                     else:
                         document_name = url

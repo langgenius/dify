@@ -77,7 +77,7 @@ Dify 依赖以下工具和库：
 
 Dify 由后端和前端组成。通过 `cd api/` 导航到后端目录，然后按照 [后端 README](api/README.md) 进行安装。在另一个终端中，通过 `cd web/` 导航到前端目录，然后按照 [前端 README](web/README.md) 进行安装。
 
-查看 [安装常见问题解答](https://docs.dify.ai/getting-started/faq/install-faq) 以获取常见问题列表和故障排除步骤。
+查看 [安装常见问题解答](https://docs.dify.ai/v/zh-hans/learn-more/faq/install-faq) 以获取常见问题列表和故障排除步骤。
 
 ### 5. 在浏览器中访问 Dify
 

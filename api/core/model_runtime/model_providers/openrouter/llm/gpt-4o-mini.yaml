@@ -1,7 +1,6 @@
-model: gpt-4o-mini-2024-07-18
+model: openai/gpt-4o-mini
 label:
-  zh_Hans: gpt-4o-mini-2024-07-18
-  en_US: gpt-4o-mini-2024-07-18
+  en_US: gpt-4o-mini
 model_type: llm
 features:
   - multi-tool-call
@@ -38,7 +37,7 @@ parameter_rules:
       - text
       - json_object
 pricing:
-  input: '0.15'
-  output: '0.60'
-  unit: '0.000001'
+  input: "0.15"
+  output: "0.60"
+  unit: "0.000001"
   currency: USD

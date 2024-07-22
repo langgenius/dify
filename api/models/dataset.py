@@ -630,7 +630,8 @@ class Embedding(db.Model):
     __tablename__ = 'embeddings'
     __table_args__ = (
         db.PrimaryKeyConstraint('id', name='embedding_pkey'),
-        db.UniqueConstraint('model_name', 'hash', 'provider_name', name='embedding_hash_idx')
+        db.UniqueConstraint('model_name', 'hash', 'provider_name', name='embedding_hash_idx'),
+        db.Index('created_at_idx', 'created_at')
     )
 
     id = db.Column(StringUUID, primary_key=True, server_default=db.text('uuid_generate_v4()'))
