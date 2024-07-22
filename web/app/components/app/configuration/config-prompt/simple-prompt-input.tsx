@@ -58,6 +58,7 @@ const Prompt: FC<ISimplePromptInput> = ({
   const { eventEmitter } = useEventEmitterContextContext()
   const {
     modelConfig,
+    completionParams,
     dataSets,
     setModelConfig,
     setPrevPromptConfig,
@@ -247,6 +248,14 @@ const Prompt: FC<ISimplePromptInput> = ({
       {showAutomatic && (
         <GetAutomaticResModal
           mode={mode as AppType}
+          model={
+            {
+              provider: modelConfig.provider,
+              name: modelConfig.model_id,
+              mode: modelConfig.mode,
+              completion_params: completionParams as any,
+            }
+          }
           isShow={showAutomatic}
           onClose={showAutomaticFalse}
           onFinished={handleAutomaticRes}
