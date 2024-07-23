@@ -133,7 +133,6 @@ class LLMGenerator:
             "max_tokens": 512,
             "temperature": 0.01
         }
-        prompt_content = None
 
         if no_variable:
             prompt_template = PromptTemplateParser(
@@ -220,6 +219,9 @@ class LLMGenerator:
             except InvokeError as e:
                 error = str(e)
                 error_step = "generate prefix prompt"
+                rule_config["error"] = f"Failed to {error_step}. Error: {error}" if error else ""
+
+                return rule_config
 
             rule_config["prompt"] = prompt_content.message.content
 
