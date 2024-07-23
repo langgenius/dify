@@ -1,14 +1,15 @@
 import logging
 import time
-from typing import Optional, cast
+from collections.abc import Mapping, Sequence
+from typing import Any, Optional, cast
 
 from configs import dify_config
 from core.app.app_config.entities import FileExtraConfig
 from core.app.apps.base_app_queue_manager import GenerateTaskStoppedException
 from core.app.entities.app_invoke_entities import InvokeFrom
 from core.file.file_obj import FileTransferMethod, FileType, FileVar
-from core.workflow.callbacks.base_workflow_callback import BaseWorkflowCallback
-from core.workflow.entities.node_entities import NodeRunMetadataKey, NodeRunResult, NodeType
+from core.workflow.callbacks.base_workflow_callback import WorkflowCallback
+from core.workflow.entities.node_entities import NodeRunMetadataKey, NodeRunResult, NodeType, SystemVariable
 from core.workflow.entities.variable_pool import VariablePool, VariableValue
 from core.workflow.entities.workflow_entities import WorkflowNodeAndResult, WorkflowRunState
 from core.workflow.errors import WorkflowNodeRunFailedError
@@ -35,7 +36,7 @@ from models.workflow import (
     WorkflowNodeExecutionStatus,
 )
 
-node_classes = {
+node_classes: Mapping[NodeType, type[BaseNode]] = {
     NodeType.START: StartNode,
     NodeType.END: EndNode,
     NodeType.ANSWER: AnswerNode,
@@ -86,14 +87,14 @@ class WorkflowEngineManager:
 
         return default_config
 
-    def run_workflow(self, workflow: Workflow,
+    def run_workflow(self, *, workflow: Workflow,
                      user_id: str,
                      user_from: UserFrom,
                      invoke_from: InvokeFrom,
-                     user_inputs: dict,
-                     system_inputs: Optional[dict] = None,
-                     callbacks: list[BaseWorkflowCallback] = None,
-                     call_depth: Optional[int] = 0,
+                     user_inputs: Mapping[str, Any],
+                     system_inputs: Mapping[SystemVariable, Any],
+                     callbacks: Sequence[WorkflowCallback],
+                     call_depth: int = 0,
                      variable_pool: Optional[VariablePool] = None) -> None:
         """
         :param workflow: Workflow instance
@@ -122,7 +123,8 @@ class WorkflowEngineManager:
         if not variable_pool:
             variable_pool = VariablePool(
                 system_variables=system_inputs,
-                user_inputs=user_inputs
+                user_inputs=user_inputs,
+                environment_variables=workflow.environment_variables,
             )
 
         workflow_call_max_depth = dify_config.WORKFLOW_CALL_MAX_DEPTH
@@ -154,7 +156,7 @@ class WorkflowEngineManager:
 
     def _run_workflow(self, workflow: Workflow,
                      workflow_run_state: WorkflowRunState,
-                     callbacks: list[BaseWorkflowCallback] = None,
+                     callbacks: Sequence[WorkflowCallback],
                      start_at: Optional[str] = None,
                      end_at: Optional[str] = None) -> None:
         """
@@ -173,8 +175,8 @@ class WorkflowEngineManager:
         graph = workflow.graph_dict
 
         try:
-            predecessor_node: BaseNode = None
-            current_iteration_node: BaseIterationNode = None
+            predecessor_node: BaseNode | None = None
+            current_iteration_node: BaseIterationNode | None = None
             has_entry_node = False
             max_execution_steps = dify_config.WORKFLOW_MAX_EXECUTION_STEPS
             max_execution_time = dify_config.WORKFLOW_MAX_EXECUTION_TIME
@@ -235,7 +237,7 @@ class WorkflowEngineManager:
                             # move to next iteration
                             next_node_id = next_iteration
                             # get next id
-                            next_node = self._get_node(workflow_run_state, graph, next_node_id, callbacks)
+                            next_node = self._get_node(workflow_run_state=workflow_run_state, graph=graph, node_id=next_node_id, callbacks=callbacks)
 
                 if not next_node:
                     break
@@ -295,7 +297,7 @@ class WorkflowEngineManager:
                         workflow_run_state.current_iteration_state = None
                         continue
                     else:
-                        next_node = self._get_node(workflow_run_state, graph, next_node_id, callbacks)
+                        next_node = self._get_node(workflow_run_state=workflow_run_state, graph=graph, node_id=next_node_id, callbacks=callbacks)
 
                 # run workflow, run multiple target nodes in the future
                 self._run_workflow_node(
@@ -381,7 +383,8 @@ class WorkflowEngineManager:
             # init variable pool
             variable_pool = VariablePool(
                 system_variables={},
-                user_inputs={}
+                user_inputs={},
+                environment_variables=workflow.environment_variables,
             )
 
             # variable selector to variable mapping
@@ -419,7 +422,7 @@ class WorkflowEngineManager:
                                             node_id: str,
                                             user_id: str,
                                             user_inputs: dict,
-                                            callbacks: list[BaseWorkflowCallback] = None,
+                                            callbacks: Sequence[WorkflowCallback],
     ) -> None:
         """
         Single iteration run workflow node
@@ -446,7 +449,8 @@ class WorkflowEngineManager:
         # init variable pool
         variable_pool = VariablePool(
             system_variables={},
-            user_inputs={}
+            user_inputs={},
+            environment_variables=workflow.environment_variables,
         )
 
         # variable selector to variable mapping
@@ -535,7 +539,7 @@ class WorkflowEngineManager:
             end_at=end_node_id
         )
 
-    def _workflow_run_success(self, callbacks: list[BaseWorkflowCallback] = None) -> None:
+    def _workflow_run_success(self, callbacks: Sequence[WorkflowCallback]) -> None:
         """
         Workflow run success
         :param callbacks: workflow callbacks
@@ -547,7 +551,7 @@ class WorkflowEngineManager:
                 callback.on_workflow_run_succeeded()
 
     def _workflow_run_failed(self, error: str,
-                             callbacks: list[BaseWorkflowCallback] = None) -> None:
+                             callbacks: Sequence[WorkflowCallback]) -> None:
         """
         Workflow run failed
         :param error: error message
@@ -560,11 +564,11 @@ class WorkflowEngineManager:
                     error=error
                 )
 
-    def _workflow_iteration_started(self, graph: dict,
+    def _workflow_iteration_started(self, *, graph: Mapping[str, Any],
                                     current_iteration_node: BaseIterationNode,
                                     workflow_run_state: WorkflowRunState,
                                     predecessor_node_id: Optional[str] = None,
-                                    callbacks: list[BaseWorkflowCallback] = None) -> None:
+                                    callbacks: Sequence[WorkflowCallback]) -> None:
         """
         Workflow iteration started
         :param current_iteration_node: current iteration node
@@ -597,10 +601,10 @@ class WorkflowEngineManager:
         # add steps
         workflow_run_state.workflow_node_steps += 1
 
-    def _workflow_iteration_next(self, graph: dict,
+    def _workflow_iteration_next(self, *, graph: Mapping[str, Any],
                                  current_iteration_node: BaseIterationNode,
                                  workflow_run_state: WorkflowRunState,
-                                 callbacks: list[BaseWorkflowCallback] = None) -> None:
+                                 callbacks: Sequence[WorkflowCallback]) -> None:
         """
         Workflow iteration next
         :param workflow_run_state: workflow run state
@@ -627,11 +631,11 @@ class WorkflowEngineManager:
         nodes = [node for node in nodes if node.get('data', {}).get('iteration_id') == current_iteration_node.node_id]
 
         for node in nodes:
-            workflow_run_state.variable_pool.clear_node_variables(node_id=node.get('id'))
+            workflow_run_state.variable_pool.remove((node.get('id'),))
 
-    def _workflow_iteration_completed(self, current_iteration_node: BaseIterationNode,
+    def _workflow_iteration_completed(self, *, current_iteration_node: BaseIterationNode,
                                         workflow_run_state: WorkflowRunState,
-                                        callbacks: list[BaseWorkflowCallback] = None) -> None:
+                                        callbacks: Sequence[WorkflowCallback]) -> None:
         if callbacks:
             if isinstance(workflow_run_state.current_iteration_state, IterationState):
                 for callback in callbacks:
@@ -644,10 +648,10 @@ class WorkflowEngineManager:
                         }
                     )
 
-    def _get_next_overall_node(self, workflow_run_state: WorkflowRunState,
-                       graph: dict,
+    def _get_next_overall_node(self, *, workflow_run_state: WorkflowRunState,
+                       graph: Mapping[str, Any],
                        predecessor_node: Optional[BaseNode] = None,
-                       callbacks: list[BaseWorkflowCallback] = None,
+                       callbacks: Sequence[WorkflowCallback],
                        start_at: Optional[str] = None,
                        end_at: Optional[str] = None) -> Optional[BaseNode]:
         """
@@ -739,9 +743,9 @@ class WorkflowEngineManager:
             )
 
     def _get_node(self, workflow_run_state: WorkflowRunState,
-                  graph: dict,
+                  graph: Mapping[str, Any],
                   node_id: str,
-                  callbacks: list[BaseWorkflowCallback]) -> Optional[BaseNode]:
+                  callbacks: Sequence[WorkflowCallback]):
         """
         Get node from graph by node id
         """
@@ -752,7 +756,7 @@ class WorkflowEngineManager:
         for node_config in nodes:
             if node_config.get('id') == node_id:
                 node_type = NodeType.value_of(node_config.get('data', {}).get('type'))
-                node_cls = node_classes.get(node_type)
+                node_cls = node_classes[node_type]
                 return node_cls(
                     tenant_id=workflow_run_state.tenant_id,
                     app_id=workflow_run_state.app_id,
@@ -764,8 +768,6 @@ class WorkflowEngineManager:
                     callbacks=callbacks,
                     workflow_call_depth=workflow_run_state.workflow_call_depth
                 )
-
-        return None
 
     def _is_timed_out(self, start_at: float, max_execution_time: int) -> bool:
         """
@@ -785,10 +787,10 @@ class WorkflowEngineManager:
             if node_and_result.node_id == node_id
         ])
 
-    def _run_workflow_node(self, workflow_run_state: WorkflowRunState,
+    def _run_workflow_node(self, *, workflow_run_state: WorkflowRunState,
                            node: BaseNode,
                            predecessor_node: Optional[BaseNode] = None,
-                           callbacks: list[BaseWorkflowCallback] = None) -> None:
+                           callbacks: Sequence[WorkflowCallback]) -> None:
         if callbacks:
             for callback in callbacks:
                 callback.on_workflow_node_execute_started(
@@ -894,10 +896,8 @@ class WorkflowEngineManager:
         :param variable_value: variable value
         :return:
         """
-        variable_pool.append_variable(
-            node_id=node_id,
-            variable_key_list=variable_key_list,
-            value=variable_value
+        variable_pool.add(
+            [node_id] + variable_key_list, variable_value
         )
 
         # if variable_value is a dict, then recursively append variables
@@ -946,7 +946,7 @@ class WorkflowEngineManager:
                                               tenant_id: str,
                                               node_instance: BaseNode):
         for variable_key, variable_selector in variable_mapping.items():
-            if variable_key not in user_inputs:
+            if variable_key not in user_inputs and not variable_pool.get(variable_selector):
                 raise ValueError(f'Variable key {variable_key} not found in user inputs.')
 
             # fetch variable node id from variable selector
@@ -956,7 +956,7 @@ class WorkflowEngineManager:
             # get value
             value = user_inputs.get(variable_key)
 
-            # temp fix for image type
+            # FIXME: temp fix for image type
             if node_instance.node_type == NodeType.LLM:
                 new_value = []
                 if isinstance(value, list):
@@ -983,8 +983,4 @@ class WorkflowEngineManager:
                     value = new_value
 
             # append variable and value to variable pool
-            variable_pool.append_variable(
-                node_id=variable_node_id,
-                variable_key_list=variable_key_list,
-                value=value
-            )
+            variable_pool.add([variable_node_id]+variable_key_list, value)

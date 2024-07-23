@@ -224,7 +224,6 @@ Al mismo tiempo, considera apoyar a Dify compartiéndolo en redes sociales y en 
 
 * [Discusión en GitHub](https://github.com/langgenius/dify/discussions). Lo mejor para: compartir comentarios y hacer preguntas.
 * [Reporte de problemas en GitHub](https://github.com/langgenius/dify/issues). Lo mejor para: errores que encuentres usando Dify.AI y propuestas de características. Consulta nuestra [Guía de contribución](https://github.com/langgenius/dify/blob/main/CONTRIBUTING.md).
-* [Correo electrónico](mailto:support@dify.ai?subject=[GitHub]Questions%20About%20Dify). Lo mejor para: preguntas que tengas sobre el uso de Dify.AI.
 * [Discord](https://discord.gg/FngNHpbcY7). Lo mejor para: compartir tus aplicaciones y pasar el rato con la comunidad.
 * [Twitter](https://twitter.com/dify_ai). Lo mejor para: compartir tus aplicaciones y pasar el rato con la comunidad.
 

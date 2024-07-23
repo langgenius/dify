@@ -110,7 +110,7 @@ class RetrievalService:
                 )
 
                 documents = keyword.search(
-                    query,
+                    cls.escape_query_for_search(query),
                     top_k=top_k
                 )
                 all_documents.extend(documents)
@@ -132,7 +132,7 @@ class RetrievalService:
                 )
 
                 documents = vector.search_by_vector(
-                    query,
+                    cls.escape_query_for_search(query),
                     search_type='similarity_score_threshold',
                     top_k=top_k,
                     score_threshold=score_threshold,
@@ -170,7 +170,7 @@ class RetrievalService:
                 )
 
                 documents = vector_processor.search_by_full_text(
-                    query,
+                    cls.escape_query_for_search(query),
                     top_k=top_k
                 )
                 if documents:
@@ -186,3 +186,7 @@ class RetrievalService:
                         all_documents.extend(documents)
             except Exception as e:
                 exceptions.append(str(e))
+
+    @staticmethod
+    def escape_query_for_search(query: str) -> str:
+        return query.replace('"', '\\"')
