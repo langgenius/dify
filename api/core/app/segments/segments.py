@@ -33,6 +33,32 @@ class Segment(BaseModel):
     def markdown(self) -> str:
         return str(self.value)
 
+    def to_object(self) -> Any:
+        if isinstance(self.value, Segment):
+            return self.value.to_object()
+        if isinstance(self.value, list):
+            return [v.to_object() for v in self.value]
+        if isinstance(self.value, dict):
+            return {k: v.to_object() for k, v in self.value.items()}
+        return self.value
+
+
+class NoneSegment(Segment):
+    value_type: SegmentType = SegmentType.NONE
+    value: None = None
+
+    @property
+    def text(self) -> str:
+        return 'null'
+
+    @property
+    def log(self) -> str:
+        return 'null'
+
+    @property
+    def markdown(self) -> str:
+        return 'null'
+
 
 class StringSegment(Segment):
     value_type: SegmentType = SegmentType.STRING
