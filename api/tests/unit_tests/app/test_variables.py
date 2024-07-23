@@ -9,6 +9,7 @@ from core.app.segments import (
     StringVariable,
     factory,
 )
+from core.app.segments.variables import ArrayVariable, ObjectVariable
 
 
 def test_string_variable():
@@ -89,3 +90,47 @@ def test_build_a_blank_string():
     )
     assert isinstance(result, StringVariable)
     assert result.value == ''
+
+
+def test_object_variable_to_object():
+    var = ObjectVariable(
+        name='object',
+        value={
+            'key1': ObjectVariable(
+                name='object',
+                value={
+                    'key2': StringVariable(name='key2', value='value2'),
+                },
+            ),
+            'key2': ArrayVariable(
+                name='array',
+                value=[
+                    StringVariable(name='key5_1', value='value5_1'),
+                    IntegerVariable(name='key5_2', value=42),
+                    ObjectVariable(name='key5_3', value={}),
+                ],
+            ),
+        },
+    )
+
+    assert var.to_object() == {
+        'key1': {
+            'key2': 'value2',
+        },
+        'key2': [
+            'value5_1',
+            42,
+            {},
+        ],
+    }
+
+
+def test_variable_to_object():
+    var = StringVariable(name='text', value='text')
+    assert var.to_object() == 'text'
+    var = IntegerVariable(name='integer', value=42)
+    assert var.to_object() == 42
+    var = FloatVariable(name='float', value=3.14)
+    assert var.to_object() == 3.14
+    var = SecretVariable(name='secret', value='secret_value')
+    assert var.to_object() == 'secret_value'
