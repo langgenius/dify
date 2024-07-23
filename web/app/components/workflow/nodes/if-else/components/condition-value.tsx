@@ -9,8 +9,9 @@ import {
   isComparisonOperatorNeedTranslate,
 } from '../utils'
 import { Variable02 } from '@/app/components/base/icons/src/vender/solid/development'
+import { Env } from '@/app/components/base/icons/src/vender/line/others'
 import cn from '@/utils/classnames'
-import { isSystemVar } from '@/app/components/workflow/nodes/_base/components/variable/utils'
+import { isENV, isSystemVar } from '@/app/components/workflow/nodes/_base/components/variable/utils'
 
 type ConditionValueProps = {
   variableSelector: string[]
@@ -32,7 +33,7 @@ const ConditionValue = ({
       return ''
 
     return value.replace(/{{#([^#]*)#}}/g, (a, b) => {
-      const arr = b.split('.')
+      const arr: string[] = b.split('.')
       if (isSystemVar(arr))
         return `{{${b}}}`
 
@@ -42,7 +43,8 @@ const ConditionValue = ({
 
   return (
     <div className='flex items-center px-1 h-6 rounded-md bg-workflow-block-parma-bg'>
-      <Variable02 className='shrink-0 mr-1 w-3.5 h-3.5 text-text-accent' />
+      {!isENV(variableSelector) && <Variable02 className='shrink-0 mr-1 w-3.5 h-3.5 text-text-accent' />}
+      {isENV(variableSelector) && <Env className='shrink-0 mr-1 w-3.5 h-3.5 text-util-colors-violet-violet-600' />}
       <div
         className={cn(
           'shrink-0  truncate text-xs font-medium text-text-accent',

@@ -1,9 +1,10 @@
 from abc import ABC, abstractmethod
+from collections.abc import Mapping, Sequence
 from enum import Enum
-from typing import Optional
+from typing import Any, Optional
 
 from core.app.entities.app_invoke_entities import InvokeFrom
-from core.workflow.callbacks.base_workflow_callback import BaseWorkflowCallback
+from core.workflow.callbacks.base_workflow_callback import WorkflowCallback
 from core.workflow.entities.base_node_data_entities import BaseIterationState, BaseNodeData
 from core.workflow.entities.node_entities import NodeRunResult, NodeType
 from core.workflow.entities.variable_pool import VariablePool
@@ -46,7 +47,7 @@ class BaseNode(ABC):
     node_data: BaseNodeData
     node_run_result: Optional[NodeRunResult] = None
 
-    callbacks: list[BaseWorkflowCallback]
+    callbacks: Sequence[WorkflowCallback]
 
     def __init__(self, tenant_id: str,
                  app_id: str,
@@ -54,8 +55,8 @@ class BaseNode(ABC):
                  user_id: str,
                  user_from: UserFrom,
                  invoke_from: InvokeFrom,
-                 config: dict,
-                 callbacks: list[BaseWorkflowCallback] = None,
+                 config: Mapping[str, Any],
+                 callbacks: Sequence[WorkflowCallback] | None = None,
                  workflow_call_depth: int = 0) -> None:
         self.tenant_id = tenant_id
         self.app_id = app_id
@@ -65,7 +66,8 @@ class BaseNode(ABC):
         self.invoke_from = invoke_from
         self.workflow_call_depth = workflow_call_depth
 
-        self.node_id = config.get("id")
+        # TODO: May need to check if key exists.
+        self.node_id = config["id"]
         if not self.node_id:
             raise ValueError("Node ID is required.")
 

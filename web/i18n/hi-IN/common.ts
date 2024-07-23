@@ -128,6 +128,7 @@ const translation = {
   },
   userProfile: {
     settings: 'सेटिंग्स',
+    emailSupport: 'सहायता',
     workspace: 'वर्कस्पेस',
     createWorkspace: 'वर्कस्पेस बनाएं',
     helpCenter: 'सहायता',
