@@ -5,7 +5,11 @@ from typing import Optional
 
 from core.llm_generator.output_parser.rule_config_generator import RuleConfigGeneratorOutputParser
 from core.llm_generator.output_parser.suggested_questions_after_answer import SuggestedQuestionsAfterAnswerOutputParser
-from core.llm_generator.prompts import CONVERSATION_TITLE_PROMPT, GENERATOR_QA_PROMPT
+from core.llm_generator.prompts import (
+    CONVERSATION_TITLE_PROMPT,
+    GENERATOR_QA_PROMPT,
+    WORKFLOW_RULE_CONFIG_PROMPT_GENERATE_TEMPLATE,
+)
 from core.model_manager import ModelManager
 from core.model_runtime.entities.message_entities import SystemPromptMessage, UserPromptMessage
 from core.model_runtime.entities.model_entities import ModelType
@@ -114,8 +118,63 @@ class LLMGenerator:
         return questions
 
     @classmethod
-    def generate_rule_config(cls, tenant_id: str, instruction: str, model_config: dict) -> dict:
+    def generate_rule_config(cls, tenant_id: str, instruction: str, model_config: dict, no_params: bool) -> dict:
         output_parser = RuleConfigGeneratorOutputParser()
+
+        error = ""
+        error_step = ""
+        rule_config = {
+            "prompt": "",
+            "variables": [],
+            "opening_statement": "",
+            "error": ""
+        }
+        model_parameters = {
+            "max_tokens": 512,
+            "temperature": 0.01
+        }
+        prompt_content = None
+
+        if no_params:
+            prompt_template = PromptTemplateParser(
+                WORKFLOW_RULE_CONFIG_PROMPT_GENERATE_TEMPLATE
+            )
+
+            prompt_generate = prompt_template.format(
+                inputs={
+                    "TASK_DESCRIPTION": instruction,
+                },
+                remove_template_variables=False
+            )
+
+            prompt_messages = [UserPromptMessage(content=prompt_generate)]
+
+            model_manager = ModelManager()
+
+            model_instance = model_manager.get_default_model_instance(
+                tenant_id=tenant_id,
+                model_type=ModelType.LLM,
+            )
+
+            try:
+                response = model_instance.invoke_llm(
+                    prompt_messages=prompt_messages,
+                    model_parameters=model_parameters,
+                    stream=False
+                )
+
+                rule_config["prompt"] = response.message.content
+                
+            except InvokeError as e:
+                error = str(e)
+                error_step = "generate rule config"
+            except Exception as e:
+                logging.exception(e)
+                rule_config["error"] = str(e)
+
+            rule_config["error"] = f"Failed to {error_step}. Error: {error}" if error else ""
+
+            return rule_config
 
         # get rule config prompt, parameter and statement
         prompt_generate, parameter_generate, statement_generate = output_parser.get_format_instructions()
@@ -149,20 +208,6 @@ class LLMGenerator:
             provider=model_config.get("provider") if model_config else None,
             model=model_config.get("name") if model_config else None,
         )
-
-        error = ""
-        error_step = ""
-        rule_config = {
-            "prompt": "",
-            "variables": [],
-            "opening_statement": "",
-            "error": ""
-        }
-        model_parameters = {
-            "max_tokens": 512,
-            "temperature": 0.01
-        }
-        prompt_content = None
 
         try:
             try:

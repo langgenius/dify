@@ -24,6 +24,7 @@ class RuleGenerateApi(Resource):
         parser = reqparse.RequestParser()
         parser.add_argument('instruction', type=str, required=True, nullable=False, location='json')
         parser.add_argument('model_config', type=dict, required=True, nullable=False, location='json')
+        parser.add_argument('no_params', type=bool, required=True, default=False, location='json')
         args = parser.parse_args()
 
         account = current_user
@@ -32,7 +33,8 @@ class RuleGenerateApi(Resource):
             rules = LLMGenerator.generate_rule_config(
                 tenant_id=account.current_tenant_id,
                 instruction=args['instruction'],
-                model_config=args['model_config']
+                model_config=args['model_config'],
+                no_params=args['no_params']
             )
         except ProviderTokenNotInitError as ex:
             raise ProviderNotInitializeError(ex.description)

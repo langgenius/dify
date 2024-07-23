@@ -81,6 +81,21 @@ GENERATOR_QA_PROMPT = (
     '<QA Pairs>'
 )
 
+WORKFLOW_RULE_CONFIG_PROMPT_GENERATE_TEMPLATE = """
+Here is a task description for which I would like you to create a high-quality prompt template for:
+<task_description>
+{{TASK_DESCRIPTION}}
+</task_description>
+Based on task description, please create a well-structured prompt template that another AI could use to consistently complete the task. The prompt template should include:
+- Do not inlcude <input> or <output> section and variables in the prompt, assume user will add them at their own will. 
+- Clear instructions for the AI that will be using this prompt, demarcated with <instructions> tags. The instructions should provide step-by-step directions on how to complete the task using the input variables. Also Specifies in the instructions that the output should not contain any xml tag. 
+- Relevant examples if needed to clarify the task further, demarcated with <example> tags. Do not include variables in the prompt. Give three pairs of input and output examples.   
+- Include other relevant sections demarcated with appropriate XML tags like <examples>, <instructions>.
+- Use the same language as task description. 
+- Output in ``` xml ``` and start with <instruction>
+Please generate the full prompt template with at least 300 words and output only the prompt template.
+"""
+
 RULE_CONFIG_PROMPT_GENERATE_TEMPLATE = """
 Here is a task description for which I would like you to create a high-quality prompt template for:
 <task_description>
