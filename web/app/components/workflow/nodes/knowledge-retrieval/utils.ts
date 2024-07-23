@@ -75,7 +75,7 @@ export const getMultipleRetrievalConfig = (multipleRetrievalConfig: MultipleRetr
   } = getSelectedDatasetsMode(selectedDatasets)
 
   const {
-    top_k,
+    top_k = DATASET_DEFAULT.top_k,
     score_threshold,
     reranking_mode,
     reranking_model,

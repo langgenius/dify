@@ -13,7 +13,6 @@ import ContextVar from './context-var'
 import ConfigContext from '@/context/debug-configuration'
 import { AppType } from '@/types/app'
 import type { DataSet } from '@/models/datasets'
-import { getMultipleRetrievalConfig } from '@/app/components/workflow/nodes/knowledge-retrieval/utils'
 
 const Icon = (
   <svg width="24" height="24" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
@@ -32,42 +31,14 @@ const DatasetConfig: FC = () => {
     setModelConfig,
     showSelectDataSet,
     isAgent,
-    datasetConfigs,
-    setDatasetConfigs,
   } = useContext(ConfigContext)
   const formattingChangedDispatcher = useFormattingChangedDispatcher()
 
   const hasData = dataSet.length > 0
 
   const onRemove = (id: string) => {
-    const newDatasets = dataSet.filter(item => item.id !== id)
     setDataSet(dataSet.filter(item => item.id !== id))
     formattingChangedDispatcher()
-
-    const { datasets, retrieval_model, score_threshold_enabled, ...restConfigs } = datasetConfigs
-
-    const retrievalConfig = getMultipleRetrievalConfig({
-      top_k: restConfigs.top_k,
-      score_threshold: restConfigs.score_threshold,
-      reranking_model: restConfigs.reranking_model && {
-        provider: restConfigs.reranking_model.reranking_provider_name,
-        model: restConfigs.reranking_model.reranking_model_name,
-      },
-      reranking_mode: restConfigs.reranking_mode,
-      weights: restConfigs.weights,
-      reranking_enable: restConfigs.reranking_enable,
-    }, newDatasets)
-
-    setDatasetConfigs({
-      ...retrievalConfig,
-      reranking_model: restConfigs.reranking_model && {
-        reranking_provider_name: restConfigs.reranking_model.reranking_provider_name,
-        reranking_model_name: restConfigs.reranking_model.reranking_model_name,
-      },
-      retrieval_model,
-      score_threshold_enabled,
-      datasets,
-    })
   }
 
   const handleSave = (newDataset: DataSet) => {
@@ -76,31 +47,6 @@ const DatasetConfig: FC = () => {
     const newDatasets = [...dataSet.slice(0, index), newDataset, ...dataSet.slice(index + 1)]
     setDataSet(newDatasets)
     formattingChangedDispatcher()
-
-    const { datasets, retrieval_model, score_threshold_enabled, ...restConfigs } = datasetConfigs
-
-    const retrievalConfig = getMultipleRetrievalConfig({
-      top_k: restConfigs.top_k,
-      score_threshold: restConfigs.score_threshold,
-      reranking_model: restConfigs.reranking_model && {
-        provider: restConfigs.reranking_model.reranking_provider_name,
-        model: restConfigs.reranking_model.reranking_model_name,
-      },
-      reranking_mode: restConfigs.reranking_mode,
-      weights: restConfigs.weights,
-      reranking_enable: restConfigs.reranking_enable,
-    }, newDatasets)
-
-    setDatasetConfigs({
-      ...retrievalConfig,
-      reranking_model: restConfigs.reranking_model && {
-        reranking_provider_name: restConfigs.reranking_model.reranking_provider_name,
-        reranking_model_name: restConfigs.reranking_model.reranking_model_name,
-      },
-      retrieval_model,
-      score_threshold_enabled,
-      datasets,
-    })
   }
 
   const promptVariables = modelConfig.configs.prompt_variables
