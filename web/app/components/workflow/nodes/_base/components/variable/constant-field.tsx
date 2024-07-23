@@ -1,6 +1,6 @@
 'use client'
 import type { FC } from 'react'
-import React, { useCallback, useEffect, useRef } from 'react'
+import React, { useCallback } from 'react'
 import type { CredentialFormSchema, CredentialFormSchemaNumberInput, CredentialFormSchemaSelect } from '@/app/components/header/account-setting/model-provider-page/declarations'
 import { FormTypeEnum } from '@/app/components/header/account-setting/model-provider-page/declarations'
 import { useLanguage } from '@/app/components/header/account-setting/model-provider-page/hooks'
@@ -32,13 +32,6 @@ const ConstantField: FC<Props> = ({
     onChange(value as string, VarKindType.constant)
   }, [onChange])
 
-  const hasSetSelectDefault = useRef(false)
-  useEffect(() => {
-    if (!hasSetSelectDefault.current && schema.type === FormTypeEnum.select && schema.default) {
-      handleSelectChange(schema.default)
-      hasSetSelectDefault.current = true
-    }
-  }, [schema, handleSelectChange])
   return (
     <>
       {schema.type === FormTypeEnum.select && (
@@ -47,7 +40,6 @@ const ConstantField: FC<Props> = ({
           className='flex items-center'
           disabled={readonly}
           items={(schema as CredentialFormSchemaSelect).options.map(option => ({ value: option.value, name: option.label[language] || option.label.en_US }))}
-          defaultValue={schema.default || ''}
           onSelect={item => handleSelectChange(item.value)}
           placeholder={placeholder?.[language] || placeholder?.en_US}
         />
@@ -56,7 +48,7 @@ const ConstantField: FC<Props> = ({
         <input
           type='number'
           className='w-full h-8 leading-8 pl-0.5 bg-transparent text-[13px] font-normal text-gray-900 placeholder:text-gray-400 focus:outline-none overflow-hidden'
-          value={((value as string) === '' || value === undefined || value === null) ? schema.default : value}
+          value={value}
           onChange={handleStaticChange}
           readOnly={readonly}
           placeholder={placeholder?.[language] || placeholder?.en_US}
