@@ -41,8 +41,8 @@ class KnowledgeRetrievalNode(BaseNode):
         node_data: KnowledgeRetrievalNodeData = cast(self._node_data_cls, self.node_data)
 
         # extract variables
-        variable = variable_pool.get(node_data.query_variable_selector)
-        query = variable.value if variable else None
+        variable = variable_pool.get_any(node_data.query_variable_selector)
+        query = variable
         variables = {
             'query': query
         }
