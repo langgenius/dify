@@ -160,7 +160,7 @@ const ConfigContent: FC<Props> = ({
 
   return (
     <div>
-      <div className='system-xl-semibold text-text-primary'>{t('dataset.rerankSettings')}</div>
+      <div className='system-xl-semibold text-text-primary'>{t('dataset.retrievalSettings')}</div>
       <div className='mt-2 space-y-3'>
         <RadioCard
           icon={<NTo1Retrieval className='shrink-0 mr-3 w-9 h-9 rounded-lg' />}
@@ -186,6 +186,12 @@ const ConfigContent: FC<Props> = ({
       </div>
       {type === RETRIEVE_TYPE.multiWay && (
         <>
+          <div className='mb-2 mt-4 h-[1px] bg-divider-subtle'></div>
+          <div
+            className='flex items-center mb-2 h-6 system-md-semibold text-text-secondary'
+          >
+            {t('dataset.rerankSettings')}
+          </div>
           {
             selectedDatasetsMode.inconsistentEmbeddingModel
             && (
@@ -204,7 +210,7 @@ const ConfigContent: FC<Props> = ({
           }
           {
             showWeightedScore && (
-              <div className='flex items-center justify-between mt-4'>
+              <div className='flex items-center justify-between'>
                 {
                   rerankingModeOptions.map(option => (
                     <div
@@ -217,7 +223,7 @@ const ConfigContent: FC<Props> = ({
                     >
                       <div className='truncate'>{option.label}</div>
                       <TooltipPlus
-                        popupContent={option.tips}
+                        popupContent={<div className='w-[200px]'>{option.tips}</div>}
                         hideArrow
                       >
                         <RiQuestionLine className='ml-0.5 w-3.5 h-4.5 text-text-quaternary' />

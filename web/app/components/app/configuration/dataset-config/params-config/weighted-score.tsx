@@ -81,7 +81,7 @@ const WeightedScore = ({
         }
       </div>
       <div className='flex items-center px-3 h-9 space-x-3 rounded-lg border border-components-panel-border'>
-        <div className='shrink-0 flex items-center w-[86px] system-xs-semibold-uppercase text-util-colors-blue-blue-500'>
+        <div className='shrink-0 flex items-center w-[90px] system-xs-semibold-uppercase text-util-colors-blue-blue-500'>
           <div className='mr-1 truncate uppercase' title={t('dataset.weightedScore.semantic') || ''}>
             {t('dataset.weightedScore.semantic')}
           </div>
@@ -98,7 +98,7 @@ const WeightedScore = ({
           thumbClassName={cn(disabled && '!cursor-not-allowed')}
           trackClassName='!bg-transparent'
         />
-        <div className='shrink-0 flex items-center justify-end w-[86px] system-xs-semibold-uppercase text-util-colors-cyan-cyan-500'>
+        <div className='shrink-0 flex items-center justify-end w-[90px] system-xs-semibold-uppercase text-util-colors-cyan-cyan-500'>
           {formatNumber(value.value[1])}
           <div className='ml-1 truncate uppercase' title={t('dataset.weightedScore.keyword') || ''}>
             {t('dataset.weightedScore.keyword')}

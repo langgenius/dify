@@ -81,6 +81,19 @@ const RetrievalParamConfig: FC<Props> = ({
     onChange(result)
   }
 
+  const rerankingModeOptions = [
+    {
+      value: RerankingModeEnum.WeightedScore,
+      label: t('dataset.weightedScore.title'),
+      tips: t('dataset.weightedScore.description'),
+    },
+    {
+      value: RerankingModeEnum.RerankingModel,
+      label: t('common.modelProvider.rerankModel.key'),
+      tips: t('common.modelProvider.rerankModel.tip'),
+    },
+  ]
+
   return (
     <div>
       {!isEconomical && !isHybridSearch && (
@@ -162,150 +175,108 @@ const RetrievalParamConfig: FC<Props> = ({
       {
         isHybridSearch && (
           <>
-            <div
-              className={cn(
-                'mb-2 px-4 py-3 rounded-[10px] border border-components-option-card-option-border bg-components-option-card-option-bg',
-                value.reranking_mode === RerankingModeEnum.WeightedScore && 'border-[1.5px] border-components-option-card-option-selected-border bg-components-option-card-option-selected-bg shadow-xs',
-                value.reranking_mode !== RerankingModeEnum.WeightedScore && 'cursor-pointer',
-              )}
-              onClick={() => handleChangeRerankMode(RerankingModeEnum.WeightedScore)}
-            >
-              <div className='flex items-center h-6 system-sm-semibold text-text-secondary'>
-                <div className='mr-0.5'>{t('dataset.weightedScore.title')}</div>
-                <Tooltip popupContent={<div className="w-[200px]">{t('dataset.weightedScore.description')}</div>}>
-                  <RiQuestionLine className='w-[14px] h-[14px] text-text-quaternary' />
-                </Tooltip>
-              </div>
+            <div className='flex items-center justify-between'>
               {
-                value.reranking_mode === RerankingModeEnum.WeightedScore && (
-                  <>
-                    <WeightedScore
-                      value={{
-                        type: value.weights!.weight_type,
-                        value: [
-                          value.weights!.vector_setting.vector_weight,
-                          value.weights!.keyword_setting.keyword_weight,
-                        ],
-                      }}
-                      onChange={(v) => {
-                        onChange({
-                          ...value,
-                          weights: {
-                            ...value.weights!,
-                            weight_type: v.type,
-                            vector_setting: {
-                              ...value.weights!.vector_setting,
-                              vector_weight: v.value[0],
-                            },
-                            keyword_setting: {
-                              ...value.weights!.keyword_setting,
-                              keyword_weight: v.value[1],
-                            },
-                          },
-                        })
-                      }}
-                    />
-                    <div className={cn(!isEconomical && 'mt-4', 'flex space-between space-x-6')}>
-                      <TopKItem
-                        className='grow'
-                        value={value.top_k}
-                        onChange={(_key, v) => {
-                          onChange({
-                            ...value,
-                            top_k: v,
-                          })
-                        }}
-                        enable={true}
-                      />
-                      <ScoreThresholdItem
-                        className='grow'
-                        value={value.score_threshold}
-                        onChange={(_key, v) => {
-                          onChange({
-                            ...value,
-                            score_threshold: v,
-                          })
-                        }}
-                        enable={value.score_threshold_enabled}
-                        hasSwitch={true}
-                        onSwitchChange={(_key, v) => {
-                          onChange({
-                            ...value,
-                            score_threshold_enabled: v,
-                          })
-                        }}
-                      />
-                    </div>
-                  </>
-                )
+                rerankingModeOptions.map(option => (
+                  <div
+                    key={option.value}
+                    className={cn(
+                      'flex items-center justify-center mb-4 w-[calc((100%-8px)/2)] h-8 rounded-lg border border-components-option-card-option-border bg-components-option-card-option-bg cursor-pointer system-sm-medium text-text-secondary',
+                      value.reranking_mode === RerankingModeEnum.WeightedScore && option.value === RerankingModeEnum.WeightedScore && 'border-[1.5px] border-components-option-card-option-selected-border bg-components-option-card-option-selected-bg text-text-primary',
+                      value.reranking_mode !== RerankingModeEnum.WeightedScore && option.value !== RerankingModeEnum.WeightedScore && 'border-[1.5px] border-components-option-card-option-selected-border bg-components-option-card-option-selected-bg text-text-primary',
+                    )}
+                    onClick={() => handleChangeRerankMode(option.value)}
+                  >
+                    <div className='truncate'>{option.label}</div>
+                    <Tooltip
+                      popupContent={<div className='w-[200px]'>{option.tips}</div>}
+                      hideArrow
+                    >
+                      <RiQuestionLine className='ml-0.5 w-3.5 h-4.5 text-text-quaternary' />
+                    </Tooltip>
+                  </div>
+                ))
               }
             </div>
-            <div
-              className={cn(
-                'px-4 py-3 rounded-[10px] border border-components-option-card-option-border bg-components-option-card-option-bg',
-                value.reranking_mode !== RerankingModeEnum.WeightedScore && 'border-[1.5px] border-components-option-card-option-selected-border bg-components-option-card-option-selected-bg shadow-xs',
-                value.reranking_mode === RerankingModeEnum.RerankingModel && 'cursor-pointer',
-              )}
-              onClick={() => handleChangeRerankMode(RerankingModeEnum.RerankingModel)}
-            >
-              <div className='flex items-center h-6 system-sm-semibold text-text-secondary'>
-                <div className='mr-0.5'>{t('common.modelProvider.rerankModel.key')}</div>
-                <Tooltip popupContent={<div className="w-[200px]">{t('common.modelProvider.rerankModel.tip')}</div>}>
-                  <RiQuestionLine className='w-[14px] h-[14px] text-text-quaternary' />
-                </Tooltip>
-              </div>
-              {
-                value.reranking_mode !== RerankingModeEnum.WeightedScore && (
-                  <>
-                    <ModelSelector
-                      triggerClassName={`${!value.reranking_enable && '!opacity-60 !cursor-not-allowed'}`}
-                      defaultModel={rerankModel && { provider: rerankModel.provider_name, model: rerankModel.model_name }}
-                      modelList={rerankModelList}
-                      readonly={!value.reranking_enable}
-                      onSelect={(v) => {
-                        onChange({
-                          ...value,
-                          reranking_model: {
-                            reranking_provider_name: v.provider,
-                            reranking_model_name: v.model,
-                          },
-                        })
-                      }}
-                    />
-                    <div className={cn(!isEconomical && 'mt-4', 'flex space-between space-x-6')}>
-                      <TopKItem
-                        className='grow'
-                        value={value.top_k}
-                        onChange={(_key, v) => {
-                          onChange({
-                            ...value,
-                            top_k: v,
-                          })
-                        }}
-                        enable={true}
-                      />
-                      <ScoreThresholdItem
-                        className='grow'
-                        value={value.score_threshold}
-                        onChange={(_key, v) => {
-                          onChange({
-                            ...value,
-                            score_threshold: v,
-                          })
-                        }}
-                        enable={value.score_threshold_enabled}
-                        hasSwitch={true}
-                        onSwitchChange={(_key, v) => {
-                          onChange({
-                            ...value,
-                            score_threshold_enabled: v,
-                          })
-                        }}
-                      />
-                    </div>
-                  </>
-                )
-              }
+            {
+              value.reranking_mode === RerankingModeEnum.WeightedScore && (
+                <WeightedScore
+                  value={{
+                    type: value.weights!.weight_type,
+                    value: [
+                      value.weights!.vector_setting.vector_weight,
+                      value.weights!.keyword_setting.keyword_weight,
+                    ],
+                  }}
+                  onChange={(v) => {
+                    onChange({
+                      ...value,
+                      weights: {
+                        ...value.weights!,
+                        weight_type: v.type,
+                        vector_setting: {
+                          ...value.weights!.vector_setting,
+                          vector_weight: v.value[0],
+                        },
+                        keyword_setting: {
+                          ...value.weights!.keyword_setting,
+                          keyword_weight: v.value[1],
+                        },
+                      },
+                    })
+                  }}
+                />
+              )
+            }
+            {
+              value.reranking_mode !== RerankingModeEnum.WeightedScore && (
+                <ModelSelector
+                  triggerClassName={`${!value.reranking_enable && '!opacity-60 !cursor-not-allowed'}`}
+                  defaultModel={rerankModel && { provider: rerankModel.provider_name, model: rerankModel.model_name }}
+                  modelList={rerankModelList}
+                  readonly={!value.reranking_enable}
+                  onSelect={(v) => {
+                    onChange({
+                      ...value,
+                      reranking_model: {
+                        reranking_provider_name: v.provider,
+                        reranking_model_name: v.model,
+                      },
+                    })
+                  }}
+                />
+              )
+            }
+            <div className={cn(!isEconomical && 'mt-4', 'flex space-between space-x-6')}>
+              <TopKItem
+                className='grow'
+                value={value.top_k}
+                onChange={(_key, v) => {
+                  onChange({
+                    ...value,
+                    top_k: v,
+                  })
+                }}
+                enable={true}
+              />
+              <ScoreThresholdItem
+                className='grow'
+                value={value.score_threshold}
+                onChange={(_key, v) => {
+                  onChange({
+                    ...value,
+                    score_threshold: v,
+                  })
+                }}
+                enable={value.score_threshold_enabled}
+                hasSwitch={true}
+                onSwitchChange={(_key, v) => {
+                  onChange({
+                    ...value,
+                    score_threshold_enabled: v,
+                  })
+                }}
+              />
             </div>
           </>
         )
