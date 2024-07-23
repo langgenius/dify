@@ -6,7 +6,7 @@ from core.model_runtime.errors.invoke import InvokeAuthorizationError
 from core.rag.data_post_processor.reorder import ReorderRunner
 from core.rag.models.document import Document
 from core.rag.rerank.constants.rerank_mode import RerankMode
-from core.rag.rerank.entity.weight import Weights, VectorSetting, KeywordSetting
+from core.rag.rerank.entity.weight import KeywordSetting, VectorSetting, Weights
 from core.rag.rerank.rerank_model import RerankModelRunner
 from core.rag.rerank.weight_rerank import WeightRerankRunner
 

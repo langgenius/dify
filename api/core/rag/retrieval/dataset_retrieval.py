@@ -17,7 +17,6 @@ from core.ops.utils import measure_time
 from core.rag.data_post_processor.data_post_processor import DataPostProcessor
 from core.rag.datasource.retrieval_service import RetrievalService
 from core.rag.models.document import Document
-from core.rag.rerank.rerank_model import RerankModelRunner
 from core.rag.retrieval.retrival_methods import RetrievalMethod
 from core.rag.retrieval.router.multi_dataset_function_call_router import FunctionCallMultiDatasetRouter
 from core.rag.retrieval.router.multi_dataset_react_route import ReactMultiDatasetRouter
