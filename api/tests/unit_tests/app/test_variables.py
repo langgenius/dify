@@ -2,14 +2,16 @@ import pytest
 from pydantic import ValidationError
 
 from core.app.segments import (
+    ArrayVariable,
     FloatVariable,
     IntegerVariable,
+    NoneVariable,
+    ObjectVariable,
     SecretVariable,
     SegmentType,
     StringVariable,
     factory,
 )
-from core.app.segments.variables import ArrayVariable, ObjectVariable
 
 
 def test_string_variable():
@@ -134,3 +136,13 @@ def test_variable_to_object():
     assert var.to_object() == 3.14
     var = SecretVariable(name='secret', value='secret_value')
     assert var.to_object() == 'secret_value'
+
+
+def test_build_a_object_variable_with_none_value():
+    var = factory.build_anonymous_variable(
+        {
+            'key1': None,
+        }
+    )
+    assert isinstance(var, ObjectVariable)
+    assert isinstance(var.value['key1'], NoneVariable)

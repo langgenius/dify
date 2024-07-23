@@ -15,3 +15,4 @@ class SegmentType(str, Enum):
     ARRAY_NUMBER = 'array[number]'
     ARRAY_OBJECT = 'array[object]'
     ARRAY_FILE = 'array[file]'
+    NONE = 'none'
