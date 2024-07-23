@@ -1,5 +1,4 @@
-name: "Help"
-description: "Request for help."
+title: "Help"
 labels:
   - enhancement
 body:

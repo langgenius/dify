@@ -1,5 +1,4 @@
-name: "Feature or enhancement request"
-description: Propose something new.
+title: "Feature or enhancement request"
 labels:
   - enhancement
 body:
