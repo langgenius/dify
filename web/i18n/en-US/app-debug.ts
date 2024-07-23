@@ -201,8 +201,7 @@ const translation = {
   },
   generate: {
     title: 'Prompt Generator',
-    descriptionInApp: 'The prompt generator can convert input task instructions into high-quality, structured prompts. Please write clear and specific instructions with as much detail as possible. Prompt Generator uses the model and parameters configured in the settings of the current orchestration.',
-    descriptionLLM: 'The prompt generator can convert input task instructions into high-quality, structured prompts. Please write clear and specific instructions with as much detail as possible. Prompt Generator uses the model and parameters configured in the current LLM node.',
+    description: 'The Prompt Generator uses the configured model to optimize prompts for higher quality and better structure. Please write clear and detailed instructions.',
     tryIt: 'Try it',
     instruction: 'Instructions',
     instructionPlaceHolder: 'Write clear and specific instructions.',

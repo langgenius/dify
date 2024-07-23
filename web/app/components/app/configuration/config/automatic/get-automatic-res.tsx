@@ -188,7 +188,7 @@ const GetAutomaticRes: FC<IGetAutomaticResProps> = ({
         <div className='w-[570px] shrink-0 p-6 h-full overflow-y-auto border-r border-gray-100'>
           <div className='mb-8'>
             <div className={`leading-[28px] text-lg font-bold ${s.textGradient}`}>{t('appDebug.generate.title')}</div>
-            <div className='mt-1 text-[13px] font-normal text-gray-500'>{t(`appDebug.generate.${isInLLMNode ? 'descriptionLLM' : 'descriptionInApp'}`)}</div>
+            <div className='mt-1 text-[13px] font-normal text-gray-500'>{t('appDebug.generate.description')}</div>
           </div>
           <div >
             <div className='flex items-center'>
