@@ -66,18 +66,7 @@ class DatasetConfigManager:
             dataset_configs = config.get('dataset_configs')
         else:
             dataset_configs = {
-                'retrieval_model': 'multiple',
-                'reranking_enable': True,
-                'reranking_mode': 'weighted_score',
-                'weights': {
-                    'weight_type': 'semantic_first',
-                    'vector_setting': {
-                        'vector_weight': 0.7,
-                    },
-                    'keyword_setting': {
-                        'keyword_weight': 0.3
-                    }
-                }
+                'retrieval_model': 'multiple'
             }
         query_variable = config.get('dataset_query_variable')
 
