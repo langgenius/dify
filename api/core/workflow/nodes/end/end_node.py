@@ -22,8 +22,8 @@ class EndNode(BaseNode):
 
         outputs = {}
         for variable_selector in output_variables:
-            value = self.graph_runtime_state.variable_pool.get(variable_selector.value_selector)
-            outputs[variable_selector.variable] = value.value if value else None
+            value = self.graph_runtime_state.variable_pool.get_any(variable_selector.value_selector)
+            outputs[variable_selector.variable] = value
 
         return NodeRunResult(
             status=WorkflowNodeExecutionStatus.SUCCEEDED,

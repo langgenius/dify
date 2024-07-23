@@ -38,11 +38,10 @@ class BaseKeyword(ABC):
         raise NotImplementedError
 
     def _filter_duplicate_texts(self, texts: list[Document]) -> list[Document]:
-        for text in texts:
+        for text in texts[:]:
             doc_id = text.metadata['doc_id']
             exists_duplicate_node = self.text_exists(doc_id)
             if exists_duplicate_node:
-                # FIXME: Mutation to loop iterable `texts` during iteration
                 texts.remove(text)
 
         return texts
