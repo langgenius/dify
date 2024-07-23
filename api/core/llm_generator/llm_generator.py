@@ -118,7 +118,7 @@ class LLMGenerator:
         return questions
 
     @classmethod
-    def generate_rule_config(cls, tenant_id: str, instruction: str, model_config: dict, no_params: bool) -> dict:
+    def generate_rule_config(cls, tenant_id: str, instruction: str, model_config: dict, no_variable: bool) -> dict:
         output_parser = RuleConfigGeneratorOutputParser()
 
         error = ""
@@ -135,7 +135,7 @@ class LLMGenerator:
         }
         prompt_content = None
 
-        if no_params:
+        if no_variable:
             prompt_template = PromptTemplateParser(
                 WORKFLOW_RULE_CONFIG_PROMPT_GENERATE_TEMPLATE
             )
