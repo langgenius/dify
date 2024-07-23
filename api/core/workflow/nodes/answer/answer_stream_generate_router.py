@@ -167,37 +167,3 @@ class AnswerStreamGeneratorRouter:
                     reverse_edge_mapping=reverse_edge_mapping,
                     answer_dependencies=answer_dependencies
                 )
-
-    @classmethod
-    def _fetch_answer_dependencies(cls,
-                                   current_node_id: str,
-                                   answer_node_id: str,
-                                   answer_node_ids: list[str],
-                                   reverse_edge_mapping: dict[str, list["GraphEdge"]],  # type: ignore[name-defined]
-                                   answer_dependencies: dict[str, list[str]]
-                                   ) -> None:
-        """
-        Fetch answer dependencies
-        :param current_node_id: current node id
-        :param answer_node_id: answer node id
-        :param answer_node_ids: answer node ids
-        :param reverse_edge_mapping: reverse edge mapping
-        :param answer_dependencies: answer dependencies
-        :return:
-        """
-        for edge in reverse_edge_mapping.get(current_node_id, []):
-            source_node_id = edge.source_node_id
-            if source_node_id == answer_node_id:
-                continue
-
-            if source_node_id in answer_node_ids:
-                # is answer node
-                answer_dependencies[answer_node_id].append(source_node_id)
-            else:
-                cls._fetch_answer_dependencies(
-                    current_node_id=source_node_id,
-                    answer_node_id=answer_node_id,
-                    answer_node_ids=answer_node_ids,
-                    reverse_edge_mapping=reverse_edge_mapping,
-                    answer_dependencies=answer_dependencies
-                )

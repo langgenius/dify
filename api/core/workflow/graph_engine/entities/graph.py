@@ -7,6 +7,8 @@ from core.workflow.entities.node_entities import NodeType
 from core.workflow.graph_engine.entities.run_condition import RunCondition
 from core.workflow.nodes.answer.answer_stream_generate_router import AnswerStreamGeneratorRouter
 from core.workflow.nodes.answer.entities import AnswerStreamGenerateRoute
+from core.workflow.nodes.end.end_stream_generate_router import EndStreamGeneratorRouter
+from core.workflow.nodes.end.entities import EndStreamParam
 
 
 class GraphEdge(BaseModel):
@@ -51,6 +53,10 @@ class Graph(BaseModel):
     answer_stream_generate_routes: AnswerStreamGenerateRoute = Field(
         ...,
         description="answer stream generate routes"
+    )
+    end_stream_param: EndStreamParam = Field(
+        ...,
+        description="end stream param"
     )
 
     @classmethod
@@ -166,6 +172,12 @@ class Graph(BaseModel):
             reverse_edge_mapping=reverse_edge_mapping
         )
 
+        # init end stream param
+        end_stream_param = EndStreamGeneratorRouter.init(
+            node_id_config_mapping=node_id_config_mapping,
+            reverse_edge_mapping=reverse_edge_mapping
+        )
+
         # init graph
         graph = cls(
             root_node_id=root_node_id,
@@ -175,7 +187,8 @@ class Graph(BaseModel):
             reverse_edge_mapping=reverse_edge_mapping,
             parallel_mapping=parallel_mapping,
             node_parallel_mapping=node_parallel_mapping,
-            answer_stream_generate_routes=answer_stream_generate_routes
+            answer_stream_generate_routes=answer_stream_generate_routes,
+            end_stream_param=end_stream_param
         )
 
         return graph
