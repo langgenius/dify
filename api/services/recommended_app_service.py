@@ -4,6 +4,7 @@ from os import path
 from typing import Optional
 
 import requests
+from flask import current_app
 
 from configs import dify_config
 from constants.languages import languages
