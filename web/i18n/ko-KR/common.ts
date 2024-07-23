@@ -115,6 +115,7 @@ const translation = {
   },
   userProfile: {
     settings: '설정',
+    emailSupport: '이메일 지원',
     workspace: '작업 공간',
     createWorkspace: '작업 공간 만들기',
     helpCenter: '도움말 센터',

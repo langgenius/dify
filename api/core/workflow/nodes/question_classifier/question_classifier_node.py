@@ -41,7 +41,8 @@ class QuestionClassifierNode(LLMNode):
         node_data = cast(QuestionClassifierNodeData, node_data)
 
         # extract variables
-        query = variable_pool.get_variable_value(variable_selector=node_data.query_variable_selector)
+        variable = variable_pool.get(node_data.query_variable_selector)
+        query = variable.value if variable else None
         variables = {
             'query': query
         }
@@ -294,7 +295,8 @@ class QuestionClassifierNode(LLMNode):
         variable_template_parser = VariableTemplateParser(template=instruction)
         variable_selectors.extend(variable_template_parser.extract_variable_selectors())
         for variable_selector in variable_selectors:
-            variable_value = variable_pool.get_variable_value(variable_selector.value_selector)
+            variable = variable_pool.get(variable_selector.value_selector)
+            variable_value = variable.value if variable else None
             if variable_value is None:
                 raise ValueError(f'Variable {variable_selector.variable} not found')
 

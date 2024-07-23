@@ -19,8 +19,8 @@ import {
 import { filterVar } from '../utils'
 import AddVariable from './add-variable'
 import NodeVariableItem from './node-variable-item'
+import { isENV, isSystemVar } from '@/app/components/workflow/nodes/_base/components/variable/utils'
 import cn from '@/utils/classnames'
-import { isSystemVar } from '@/app/components/workflow/nodes/_base/components/variable/utils'
 
 const i18nPrefix = 'workflow.nodes.variableAssigner'
 type GroupItem = {
@@ -55,7 +55,7 @@ const NodeGroupItem = ({
     const group = item.variableAssignerNodeData.advanced_settings?.groups.find(group => group.groupId === item.targetHandleId)
     return group?.output_type || ''
   }, [item.variableAssignerNodeData, item.targetHandleId, groupEnabled])
-  const availableVars = getAvailableVars(item.variableAssignerNodeId, item.targetHandleId, filterVar(outputType as VarType))
+  const availableVars = getAvailableVars(item.variableAssignerNodeId, item.targetHandleId, filterVar(outputType as VarType), true)
   const showSelectionBorder = useMemo(() => {
     if (groupEnabled && enteringNodePayload?.nodeId === item.variableAssignerNodeId) {
       if (hoveringAssignVariableGroupId)
@@ -123,12 +123,14 @@ const NodeGroupItem = ({
       {
         !!item.variables.length && item.variables.map((variable = [], index) => {
           const isSystem = isSystemVar(variable)
+          const isEnv = isENV(variable)
           const node = isSystem ? nodes.find(node => node.data.type === BlockEnum.Start) : nodes.find(node => node.id === variable[0])
           const varName = isSystem ? `sys.${variable[variable.length - 1]}` : variable.slice(1).join('.')
 
           return (
             <NodeVariableItem
               key={index}
+              isEnv={isEnv}
               node={node as Node}
               varName={varName}
               showBorder={showSelectedBorder || showSelectionBorder}

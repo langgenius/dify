@@ -74,10 +74,12 @@ class TextApi(WebApiResource):
             parser = reqparse.RequestParser()
             parser.add_argument('message_id', type=str, required=False, location='json')
             parser.add_argument('voice', type=str, location='json')
+            parser.add_argument('text', type=str, location='json')
             parser.add_argument('streaming', type=bool, location='json')
             args = parser.parse_args()
 
-            message_id = args.get('message_id')
+            message_id = args.get('message_id', None)
+            text = args.get('text', None)
             if (app_model.mode in [AppMode.ADVANCED_CHAT.value, AppMode.WORKFLOW.value]
                     and app_model.workflow
                     and app_model.workflow.features_dict):
@@ -94,7 +96,8 @@ class TextApi(WebApiResource):
                 app_model=app_model,
                 message_id=message_id,
                 end_user=end_user.external_user_id,
-                voice=voice
+                voice=voice,
+                text=text
             )
 
             return response
