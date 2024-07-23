@@ -10,7 +10,7 @@ const LogoSite: FC<LogoSiteProps> = ({
 }) => {
   return (
     <img
-      src='/logo/logo-site.png'
+      src='https://app.chaindesk.ai/_next/image?url=%2Flogo.png&w=2048&q=75'
       className={classNames('block w-auto h-10', className)}
       alt='logo'
     />

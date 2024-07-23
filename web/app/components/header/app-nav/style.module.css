@@ -1,0 +1,29 @@
+.textGradient {
+  background: linear-gradient(to right, rgba(16, 74, 225, 1) 0, rgba(0, 152, 238, 1) 100%);
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  background-clip: text;
+  text-fill-color: transparent;
+}
+
+.appList {
+  grid-template-columns: repeat(1, minmax(0, 1fr))
+}
+
+@media (min-width: 1624px) {
+  .appList {
+    grid-template-columns: repeat(4, minmax(0, 1fr))
+  }
+}
+
+@media (min-width: 1300px) and (max-width: 1624px) {
+  .appList {
+    grid-template-columns: repeat(3, minmax(0, 1fr))
+  }
+}
+
+@media (min-width: 1025px) and (max-width: 1300px) {
+  .appList {
+    grid-template-columns: repeat(2, minmax(0, 1fr))
+  }
+}

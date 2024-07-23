@@ -33,6 +33,12 @@ const LocaleLayout = ({
         <meta name="mobile-web-app-capable" content="yes" />
         <meta name="apple-mobile-web-app-capable" content="yes" />
         <meta name="apple-mobile-web-app-status-bar-style" content="default" />
+        <style>{`
+          #dify-chatbot-bubble-button {
+            background-color: #1C64F2 !important;
+          }
+        `}</style>
+
       </head>
       <body
         className="h-full select-auto"
@@ -47,10 +53,15 @@ const LocaleLayout = ({
         <Topbar />
         <BrowerInitor>
           <SentryInitor>
-            <I18nServer>{children}</I18nServer>
+            <I18nServer>
+              {children}
+
+            </I18nServer>
           </SentryInitor>
+
         </BrowerInitor>
       </body>
+
     </html>
   )
 }

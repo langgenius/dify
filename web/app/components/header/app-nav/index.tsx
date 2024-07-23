@@ -113,6 +113,7 @@ const AppNav = () => {
 
   return (
     <>
+
       <Nav
         isApp
         icon={<RiRobot2Line className='w-4 h-4' />}
@@ -126,6 +127,7 @@ const AppNav = () => {
         onCreate={openModal}
         onLoadmore={handleLoadmore}
       />
+
       <CreateAppModal
         show={showNewAppDialog}
         onClose={() => setShowNewAppDialog(false)}

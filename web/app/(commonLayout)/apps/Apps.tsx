@@ -6,7 +6,6 @@ import useSWRInfinite from 'swr/infinite'
 import { useTranslation } from 'react-i18next'
 import { useDebounceFn } from 'ahooks'
 import {
-  RiApps2Line,
   RiExchange2Line,
   RiMessage3Line,
   RiRobot3Line,
@@ -14,6 +13,7 @@ import {
 import AppCard from './AppCard'
 import NewAppCard from './NewAppCard'
 import useAppsQueryState from './hooks/useAppsQueryState'
+import s from './style.module.css'
 import type { AppListResponse } from '@/models/app'
 import { fetchAppList } from '@/service/apps'
 import { useAppContext } from '@/context/app-context'
@@ -75,8 +75,8 @@ const Apps = () => {
 
   const anchorRef = useRef<HTMLDivElement>(null)
   const options = [
-    { value: 'all', text: t('app.types.all'), icon: <RiApps2Line className='w-[14px] h-[14px] mr-1' /> },
-    { value: 'chat', text: t('app.types.chatbot'), icon: <RiMessage3Line className='w-[14px] h-[14px] mr-1' /> },
+    /*     { value: 'all', text: t('app.types.all'), icon: <RiApps2Line className='w-[14px] h-[14px] mr-1' /> },
+ */ { value: 'chat', text: t('app.types.chatbot'), icon: <RiMessage3Line className='w-[14px] h-[14px] mr-1' /> },
     { value: 'agent-chat', text: t('app.types.agent'), icon: <RiRobot3Line className='w-[14px] h-[14px] mr-1' /> },
     { value: 'workflow', text: t('app.types.workflow'), icon: <RiExchange2Line className='w-[14px] h-[14px] mr-1' /> },
   ]
@@ -125,6 +125,10 @@ const Apps = () => {
 
   return (
     <>
+      <div className='shrink-0 pt-6 px-12'>
+        <div className={`mb-1 ${s.textGradient} text-xl font-semibold`}>{t('explore.apps.title')}</div>
+        <div className='text-gray-500 text-sm'>{t('explore.apps.description')}</div>
+      </div>
       <div className='sticky top-0 flex justify-between items-center pt-4 px-12 pb-2 leading-[56px] bg-gray-100 z-10 flex-wrap gap-y-2'>
         <TabSliderNew
           value={activeTab}
