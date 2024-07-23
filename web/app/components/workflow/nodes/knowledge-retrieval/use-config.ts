@@ -214,7 +214,7 @@ const useConfig = (id: string, payload: KnowledgeRetrievalNodeType) => {
 
       if (payload.retrieval_mode === RETRIEVE_TYPE.multiWay && newDatasets.length > 0) {
         const multipleRetrievalConfig = draft.multiple_retrieval_config
-        draft.multiple_retrieval_config = getMultipleRetrievalConfig(multipleRetrievalConfig!, selectedDatasets)
+        draft.multiple_retrieval_config = getMultipleRetrievalConfig(multipleRetrievalConfig!, newDatasets)
       }
     })
     setInputs(newInputs)
@@ -222,7 +222,7 @@ const useConfig = (id: string, payload: KnowledgeRetrievalNodeType) => {
 
     if (allEconomic || mixtureHighQualityAndEconomic || inconsistentEmbeddingModel)
       setRerankModelOpen(true)
-  }, [inputs, setInputs, payload.retrieval_mode, selectedDatasets])
+  }, [inputs, setInputs, payload.retrieval_mode])
 
   const filterVar = useCallback((varPayload: Var) => {
     return varPayload.type === VarType.string

@@ -95,7 +95,10 @@ export const getMultipleRetrievalConfig = (multipleRetrievalConfig: MultipleRetr
   if (allEconomic || mixtureHighQualityAndEconomic || inconsistentEmbeddingModel)
     result.reranking_mode = RerankingModeEnum.RerankingModel
 
-  if (allHighQuality && !inconsistentEmbeddingModel && reranking_mode === RerankingModeEnum.WeightedScore && !weights) {
+  if (allHighQuality && !inconsistentEmbeddingModel && reranking_mode === undefined)
+    result.reranking_mode = RerankingModeEnum.WeightedScore
+
+  if (allHighQuality && !inconsistentEmbeddingModel && (reranking_mode === RerankingModeEnum.WeightedScore || reranking_mode === undefined) && !weights) {
     result.weights = {
       weight_type: WeightedScoreEnum.Customized,
       vector_setting: {

@@ -57,7 +57,10 @@ import { useTextGenerationCurrentProviderAndModelAndModelList } from '@/app/comp
 import { fetchCollectionList } from '@/service/tools'
 import { type Collection } from '@/app/components/tools/types'
 import { useStore as useAppStore } from '@/app/components/app/store'
-import { getSelectedDatasetsMode } from '@/app/components/workflow/nodes/knowledge-retrieval/utils'
+import {
+  getMultipleRetrievalConfig,
+  getSelectedDatasetsMode,
+} from '@/app/components/workflow/nodes/knowledge-retrieval/utils'
 
 type PublishConfig = {
   modelConfig: ModelConfig
@@ -237,6 +240,31 @@ const Configuration: FC = () => {
 
     if (allEconomic || mixtureHighQualityAndEconomic || inconsistentEmbeddingModel)
       setRerankSettingModalOpen(true)
+
+    const { datasets, retrieval_model, score_threshold_enabled, ...restConfigs } = datasetConfigs
+
+    const retrievalConfig = getMultipleRetrievalConfig({
+      top_k: restConfigs.top_k,
+      score_threshold: restConfigs.score_threshold,
+      reranking_model: restConfigs.reranking_model && {
+        provider: restConfigs.reranking_model.reranking_provider_name,
+        model: restConfigs.reranking_model.reranking_model_name,
+      },
+      reranking_mode: restConfigs.reranking_mode,
+      weights: restConfigs.weights,
+      reranking_enable: restConfigs.reranking_enable,
+    }, newDatasets)
+
+    setDatasetConfigs({
+      ...retrievalConfig,
+      reranking_model: restConfigs.reranking_model && {
+        reranking_provider_name: restConfigs.reranking_model.reranking_provider_name,
+        reranking_model_name: restConfigs.reranking_model.reranking_model_name,
+      },
+      retrieval_model,
+      score_threshold_enabled,
+      datasets,
+    })
   }
 
   const [isShowHistoryModal, { setTrue: showHistoryModal, setFalse: hideHistoryModal }] = useBoolean(false)
@@ -521,7 +549,7 @@ const Configuration: FC = () => {
         syncToPublishedConfig(config)
         setPublishedConfig(config)
         setDatasetConfigs({
-          retrieval_model: RETRIEVE_TYPE.oneWay,
+          retrieval_model: RETRIEVE_TYPE.multiWay,
           ...modelConfig.dataset_configs,
         })
         setHasFetchedDetail(true)

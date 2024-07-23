@@ -14,6 +14,7 @@ const nodeDefault: NodeDefault<KnowledgeRetrievalNodeType> = {
     multiple_retrieval_config: {
       top_k: DATASET_DEFAULT.top_k,
       score_threshold: undefined,
+      reranking_enable: false,
     },
   },
   getAvailablePrevNodes(isChatMode: boolean) {
