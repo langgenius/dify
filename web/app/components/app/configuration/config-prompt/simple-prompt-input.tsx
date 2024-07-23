@@ -28,7 +28,6 @@ import { useEventEmitterContextContext } from '@/context/event-emitter'
 import { ADD_EXTERNAL_DATA_TOOL } from '@/app/components/app/configuration/config-var'
 import { INSERT_VARIABLE_VALUE_BLOCK_COMMAND } from '@/app/components/base/prompt-editor/plugins/variable-block'
 import { PROMPT_EDITOR_UPDATE_VALUE_BY_EVENT_EMITTER } from '@/app/components/base/prompt-editor/plugins/update-block'
-import useBreakpoints, { MediaType } from '@/hooks/use-breakpoints'
 
 export type ISimplePromptInput = {
   mode: AppType
@@ -36,9 +35,6 @@ export type ISimplePromptInput = {
   promptVariables: PromptVariable[]
   readonly?: boolean
   onChange?: (promp: string, promptVariables: PromptVariable[]) => void
-  noTitle?: boolean
-  gradientBorder?: boolean
-  editorHeight?: number
 }
 
 const Prompt: FC<ISimplePromptInput> = ({
@@ -47,14 +43,8 @@ const Prompt: FC<ISimplePromptInput> = ({
   promptVariables,
   readonly = false,
   onChange,
-  noTitle,
-  gradientBorder,
-  editorHeight: initEditorHeight,
 }) => {
   const { t } = useTranslation()
-  const media = useBreakpoints()
-  const isMobile = media === MediaType.mobile
-
   const { eventEmitter } = useEventEmitterContextContext()
   const {
     modelConfig,
@@ -126,11 +116,6 @@ const Prompt: FC<ISimplePromptInput> = ({
 
   const [showAutomatic, { setTrue: showAutomaticTrue, setFalse: showAutomaticFalse }] = useBoolean(false)
   const handleAutomaticRes = (res: AutomaticRes) => {
-    // put eventEmitter in first place to prevent overwrite the configs.prompt_variables.But another problem is that prompt won't hight the prompt_variables.
-    eventEmitter?.emit({
-      type: PROMPT_EDITOR_UPDATE_VALUE_BY_EVENT_EMITTER,
-      payload: res.prompt,
-    } as any)
     const newModelConfig = produce(modelConfig, (draft) => {
       draft.configs.prompt_template = res.prompt
       draft.configs.prompt_variables = res.variables.map(key => ({ key, name: key, type: 'string', required: true }))
@@ -140,35 +125,36 @@ const Prompt: FC<ISimplePromptInput> = ({
     if (mode !== AppType.completion)
       setIntroduction(res.opening_statement)
     showAutomaticFalse()
+    eventEmitter?.emit({
+      type: PROMPT_EDITOR_UPDATE_VALUE_BY_EVENT_EMITTER,
+      payload: res.prompt,
+    } as any)
   }
-  const minHeight = initEditorHeight || 228
+  const minHeight = 228
   const [editorHeight, setEditorHeight] = useState(minHeight)
 
   return (
-    <div className={cn((!readonly || gradientBorder) ? `${s.gradientBorder}` : 'bg-gray-50', ' relative shadow-md')}>
+    <div className={cn(!readonly ? `${s.gradientBorder}` : 'bg-gray-50', ' relative shadow-md')}>
       <div className='rounded-xl bg-[#EEF4FF]'>
-        {!noTitle && (
-          <div className="flex justify-between items-center h-11 px-3">
-            <div className="flex items-center space-x-1">
-              <div className='h2'>{mode !== AppType.completion ? t('appDebug.chatSubTitle') : t('appDebug.completionSubTitle')}</div>
-              {!readonly && (
-                <Tooltip
-                  htmlContent={<div className='w-[180px]'>
-                    {t('appDebug.promptTip')}
-                  </div>}
-                  selector='config-prompt-tooltip'>
-                  <RiQuestionLine className='w-[14px] h-[14px] text-indigo-400' />
-                </Tooltip>
-              )}
-            </div>
-            <div className='flex items-center'>
-              {!isAgent && !readonly && !isMobile && (
-                <AutomaticBtn onClick={showAutomaticTrue} />
-              )}
-            </div>
+        <div className="flex justify-between items-center h-11 px-3">
+          <div className="flex items-center space-x-1">
+            <div className='h2'>{mode !== AppType.completion ? t('appDebug.chatSubTitle') : t('appDebug.completionSubTitle')}</div>
+            {!readonly && (
+              <Tooltip
+                htmlContent={<div className='w-[180px]'>
+                  {t('appDebug.promptTip')}
+                </div>}
+                selector='config-prompt-tooltip'>
+                <RiQuestionLine className='w-[14px] h-[14px] text-indigo-400' />
+              </Tooltip>
+            )}
           </div>
-        )}
-
+          <div className='flex items-center'>
+            {!isAgent && !readonly && (
+              <AutomaticBtn onClick={showAutomaticTrue} />
+            )}
+          </div>
+        </div>
         <PromptEditorHeightResizeWrap
           className='px-4 pt-2 min-h-[228px] bg-white rounded-t-xl text-sm text-gray-700'
           height={editorHeight}
@@ -230,7 +216,6 @@ const Prompt: FC<ISimplePromptInput> = ({
             onBlur={() => {
               handleChange(promptTemplate, getVars(promptTemplate))
             }}
-            editable={!readonly}
           />
         </PromptEditorHeightResizeWrap>
       </div>
