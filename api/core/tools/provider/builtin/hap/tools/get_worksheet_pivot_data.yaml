@@ -210,7 +210,7 @@ parameters:
       type SortByFields = {
         controlId: string; // Field ID used for sorting
         isAsc: boolean; // Sorting direction, true indicates ascending order, false indicates descending order
-      }[]; 
+      }[];
       ```
     form: llm
 
@@ -246,4 +246,3 @@ parameters:
       en_US: used for selecting the result type, table styled text or json text
       zh_Hans: 用于选择结果类型，使用表格格式文本还是JSON格式文本
     form: form
-    

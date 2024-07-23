@@ -69,4 +69,3 @@ parameters:
       zh_Hans: 私有部署 HAP 服务器地址，公有云无需填写
     llm_description: the address for the privately deployed HAP server.
     form: form
-    
