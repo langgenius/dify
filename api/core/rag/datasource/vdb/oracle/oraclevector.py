@@ -197,6 +197,9 @@ class OracleVector(BaseVector):
         return docs
 
     def search_by_full_text(self, query: str, **kwargs: Any) -> list[Document]:
+        top_k = kwargs.get("top_k", 5)
+        # just not implement fetch by score_threshold now, may be later
+        score_threshold = kwargs.get("score_threshold") if kwargs.get("score_threshold") else 0.0
         if len(query) > 0:
             # Check which language the query is in
             zh_pattern = re.compile('[\u4e00-\u9fa5]+')
@@ -231,8 +234,8 @@ class OracleVector(BaseVector):
                         entities.append(token)
             with self._get_cursor() as cur:
                 cur.execute(
-                    f"select meta, text FROM {self.table_name} WHERE CONTAINS(text, :1, 1) > 0 order by score(1) desc fetch first 10 rows only",
-                    [" and ".join(entities)]
+                    f"select meta, text FROM {self.table_name} WHERE CONTAINS(text, :1, 1) > 0 order by score(1) desc fetch first {top_k} rows only",
+                    [" ACCUM ".join(entities)]
                 )
                 docs = []
                 for record in cur:
