@@ -43,6 +43,23 @@ class Segment(BaseModel):
         return self.value
 
 
+class NoneSegment(Segment):
+    value_type: SegmentType = SegmentType.NONE
+    value: None = None
+
+    @property
+    def text(self) -> str:
+        return 'null'
+
+    @property
+    def log(self) -> str:
+        return 'null'
+
+    @property
+    def markdown(self) -> str:
+        return 'null'
+
+
 class StringSegment(Segment):
     value_type: SegmentType = SegmentType.STRING
     value: str
