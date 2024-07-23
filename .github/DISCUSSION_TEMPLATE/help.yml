@@ -1,6 +1,4 @@
 title: "Help"
-labels:
-  - enhancement
 body:
   - type: checkboxes
     attributes:
