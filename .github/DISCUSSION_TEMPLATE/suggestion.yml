@@ -1,6 +1,4 @@
-title: "Feature or enhancement request"
-labels:
-  - enhancement
+title: Suggestions for New Features
 body:
   - type: checkboxes
     attributes:
