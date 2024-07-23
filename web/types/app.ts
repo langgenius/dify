@@ -3,6 +3,11 @@ import type { CollectionType } from '@/app/components/tools/types'
 import type { LanguagesSupported } from '@/i18n/language'
 import type { Tag } from '@/app/components/base/tag-management/constant'
 
+export enum Theme {
+  light = 'light',
+  dark = 'dark',
+}
+
 export enum ProviderType {
   openai = 'openai',
   anthropic = 'anthropic',

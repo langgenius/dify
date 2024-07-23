@@ -10,8 +10,10 @@ import produce from 'immer'
 import { useStoreApi } from 'reactflow'
 import VarReferencePopup from './var-reference-popup'
 import { getNodeInfoById, isENV, isSystemVar } from './utils'
+import ConstantField from './constant-field'
 import cn from '@/utils/classnames'
 import type { Node, NodeOutPutVar, ValueSelector, Var } from '@/app/components/workflow/types'
+import type { CredentialFormSchema } from '@/app/components/header/account-setting/model-provider-page/declarations'
 import { BlockEnum } from '@/app/components/workflow/types'
 import { VarBlockIcon } from '@/app/components/workflow/block-icon'
 import { Line3 } from '@/app/components/base/icons/src/public/common'
@@ -47,6 +49,7 @@ type Props = {
   availableNodes?: Node[]
   availableVars?: NodeOutPutVar[]
   isAddBtnTrigger?: boolean
+  schema?: CredentialFormSchema
 }
 
 const VarReferencePicker: FC<Props> = ({
@@ -64,6 +67,7 @@ const VarReferencePicker: FC<Props> = ({
   availableNodes: passedInAvailableNodes,
   availableVars,
   isAddBtnTrigger,
+  schema,
 }) => {
   const { t } = useTranslation()
   const store = useStoreApi()
@@ -192,10 +196,6 @@ const VarReferencePicker: FC<Props> = ({
     setOpen(false)
   }, [onChange, varKindType])
 
-  const handleStaticChange = useCallback((e: React.ChangeEvent<HTMLInputElement>) => {
-    onChange(e.target.value as string, varKindType)
-  }, [onChange, varKindType])
-
   const handleClearVar = useCallback(() => {
     if (varKindType === VarKindType.constant)
       onChange('', varKindType)
@@ -265,14 +265,11 @@ const VarReferencePicker: FC<Props> = ({
                 </div>)}
               {isConstant
                 ? (
-                  <input
-                    type='text'
-                    className='w-full h-8 leading-8 pl-0.5 bg-transparent text-[13px] font-normal text-gray-900 placeholder:text-gray-400 focus:outline-none overflow-hidden'
-                    value={isConstant ? value : ''}
-                    onChange={handleStaticChange}
-                    onFocus={() => setIsFocus(true)}
-                    onBlur={() => setIsFocus(false)}
-                    readOnly={readonly}
+                  <ConstantField
+                    value={value as string}
+                    onChange={onChange as ((value: string | number, varKindType: VarKindType, varInfo?: Var) => void)}
+                    schema={schema as CredentialFormSchema}
+                    readonly={readonly}
                   />
                 )
                 : (
