@@ -40,6 +40,7 @@ export type ISimplePromptInput = {
   noTitle?: boolean
   gradientBorder?: boolean
   editorHeight?: number
+  noResize?: boolean
 }
 
 const Prompt: FC<ISimplePromptInput> = ({
@@ -51,6 +52,7 @@ const Prompt: FC<ISimplePromptInput> = ({
   noTitle,
   gradientBorder,
   editorHeight: initEditorHeight,
+  noResize,
 }) => {
   const { t } = useTranslation()
   const media = useBreakpoints()
@@ -176,6 +178,7 @@ const Prompt: FC<ISimplePromptInput> = ({
           height={editorHeight}
           minHeight={minHeight}
           onHeightChange={setEditorHeight}
+          hideResize={noResize}
           footer={(
             <div className='pl-4 pb-2 flex bg-white rounded-b-xl'>
               <div className="h-[18px] leading-[18px] px-1 rounded-md bg-gray-100 text-xs text-gray-500">{promptTemplate.length}</div>
