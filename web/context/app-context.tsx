@@ -133,7 +133,7 @@ export const AppContextProvider: FC<AppContextProviderProps> = ({ children }) =>
     }}>
       <div className='flex flex-col h-full overflow-y-auto'>
         {globalThis.document?.body?.getAttribute('data-public-maintenance-notice') && <MaintenanceNotice />}
-        <div ref={pageContainerRef} className='grow relative flex flex-col overflow-y-auto overflow-x-hidden bg-gray-100'>
+        <div ref={pageContainerRef} className='grow relative flex flex-col overflow-y-auto overflow-x-hidden bg-background-body'>
           {children}
         </div>
       </div>
