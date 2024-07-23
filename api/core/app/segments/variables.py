@@ -6,7 +6,7 @@ from pydantic import Field
 from core.file.file_obj import FileVar
 from core.helper import encrypter
 
-from .segments import Segment, StringSegment
+from .segments import NoneSegment, Segment, StringSegment
 from .types import SegmentType
 
 
@@ -83,6 +83,6 @@ class SecretVariable(StringVariable):
         return encrypter.obfuscated_token(self.value)
 
 
-class NoneVariable(Variable):
+class NoneVariable(NoneSegment, Variable):
     value_type: SegmentType = SegmentType.NONE
     value: None = None
