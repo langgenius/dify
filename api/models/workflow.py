@@ -1,7 +1,16 @@
 import json
+from collections.abc import Mapping, Sequence
 from enum import Enum
-from typing import Optional, Union
+from typing import Any, Optional, Union
 
+import contexts
+from constants import HIDDEN_VALUE
+from core.app.segments import (
+    SecretVariable,
+    Variable,
+    factory,
+)
+from core.helper import encrypter
 from extensions.ext_database import db
 from libs import helper
 from models import StringUUID
@@ -112,6 +121,7 @@ class Workflow(db.Model):
     created_at = db.Column(db.DateTime, nullable=False, server_default=db.text('CURRENT_TIMESTAMP(0)'))
     updated_by = db.Column(StringUUID)
     updated_at = db.Column(db.DateTime)
+    _environment_variables = db.Column('environment_variables', db.Text, nullable=False, server_default='{}')
 
     @property
     def created_by_account(self):
@@ -122,11 +132,11 @@ class Workflow(db.Model):
         return db.session.get(Account, self.updated_by) if self.updated_by else None
 
     @property
-    def graph_dict(self):
-        return json.loads(self.graph) if self.graph else None
+    def graph_dict(self) -> Mapping[str, Any]:
+        return json.loads(self.graph) if self.graph else {}
 
     @property
-    def features_dict(self):
+    def features_dict(self) -> Mapping[str, Any]:
         return json.loads(self.features) if self.features else {}
 
     def user_input_form(self, to_old_structure: bool = False) -> list:
@@ -176,6 +186,72 @@ class Workflow(db.Model):
         return db.session.query(WorkflowToolProvider).filter(
             WorkflowToolProvider.app_id == self.app_id
         ).first() is not None
+
+    @property
+    def environment_variables(self) -> Sequence[Variable]:
+        # TODO: find some way to init `self._environment_variables` when instance created.
+        if self._environment_variables is None:
+            self._environment_variables = '{}'
+
+        tenant_id = contexts.tenant_id.get()
+
+        environment_variables_dict: dict[str, Any] = json.loads(self._environment_variables)
+        results = [factory.build_variable_from_mapping(v) for v in environment_variables_dict.values()]
+
+        # decrypt secret variables value
+        decrypt_func = (
+            lambda var: var.model_copy(
+                update={'value': encrypter.decrypt_token(tenant_id=tenant_id, token=var.value)}
+            )
+            if isinstance(var, SecretVariable)
+            else var
+        )
+        results = list(map(decrypt_func, results))
+        return results
+
+    @environment_variables.setter
+    def environment_variables(self, value: Sequence[Variable]):
+        tenant_id = contexts.tenant_id.get()
+
+        value = list(value)
+        if any(var for var in value if not var.id):
+            raise ValueError('environment variable require a unique id')
+
+        # Compare inputs and origin variables, if the value is HIDDEN_VALUE, use the origin variable value (only update `name`).
+        origin_variables_dictionary = {var.id: var for var in self.environment_variables}
+        for i, variable in enumerate(value):
+            if variable.id in origin_variables_dictionary and variable.value == HIDDEN_VALUE:
+                value[i] = origin_variables_dictionary[variable.id].model_copy(update={'name': variable.name})
+
+        # encrypt secret variables value
+        encrypt_func = (
+            lambda var: var.model_copy(
+                update={'value': encrypter.encrypt_token(tenant_id=tenant_id, token=var.value)}
+            )
+            if isinstance(var, SecretVariable)
+            else var
+        )
+        encrypted_vars = list(map(encrypt_func, value))
+        environment_variables_json = json.dumps(
+            {var.name: var.model_dump() for var in encrypted_vars},
+            ensure_ascii=False,
+        )
+        self._environment_variables = environment_variables_json
+
+    def to_dict(self, *, include_secret: bool = False) -> Mapping[str, Any]:
+        environment_variables = list(self.environment_variables)
+        environment_variables = [
+            v if not isinstance(v, SecretVariable) or include_secret else v.model_copy(update={'value': ''})
+            for v in environment_variables
+        ]
+
+        result = {
+            'graph': self.graph_dict,
+            'features': self.features_dict,
+            'environment_variables': [var.model_dump(mode='json') for var in environment_variables],
+        }
+        return result
+
 
 class WorkflowRunTriggeredFrom(Enum):
     """
