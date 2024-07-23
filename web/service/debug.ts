@@ -7,6 +7,7 @@ export type AutomaticRes = {
   prompt: string
   variables: string[]
   opening_statement: string
+  error?: string
 }
 
 export const sendChatMessage = async (appId: string, body: Record<string, any>, { onData, onCompleted, onThought, onFile, onError, getAbortController, onMessageEnd, onMessageReplace }: {
