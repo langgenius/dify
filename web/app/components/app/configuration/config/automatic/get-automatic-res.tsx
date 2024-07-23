@@ -156,6 +156,7 @@ const GetAutomaticRes: FC<IGetAutomaticResProps> = ({
       const { error, ...res } = await generateRule({
         instruction,
         model_config: model,
+        no_variable: !!isInLLMNode,
       })
       setRes(res)
       if (error) {
