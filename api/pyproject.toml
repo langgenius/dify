@@ -163,7 +163,7 @@ redis = { version = "~5.0.3", extras = ["hiredis"] }
 replicate = "~0.22.0"
 resend = "~0.7.0"
 safetensors = "~0.4.3"
-sentry-sdk = { version = "~1.39.2", extras = ["flask"] }
+sentry-sdk = { version = "~2.8.0", extras = ["flask"] }
 sqlalchemy = "~2.0.29"
 tencentcloud-sdk-python-hunyuan = "~3.0.1158"
 tiktoken = "~0.7.0"
