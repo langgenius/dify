@@ -1,5 +1,4 @@
-name: "General Discussion"
-description: "General discussion about the project."
+title: "General Discussion"
 body:
   - type: checkboxes
     attributes:
