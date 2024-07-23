@@ -16,9 +16,9 @@ class DataPostProcessor:
     """
 
     def __init__(self, tenant_id: str, reranking_mode: str,
-                 reranking_model: dict, weights: Optional[dict] = None,
+                 reranking_model: Optional[dict] = None, weights: Optional[dict] = None,
                  reorder_enabled: bool = False):
-        self.rerank_runner = self._get_rerank_runner(reranking_mode, reranking_model, weights, tenant_id)
+        self.rerank_runner = self._get_rerank_runner(reranking_mode, tenant_id, reranking_model, weights)
         self.reorder_runner = self._get_reorder_runner(reorder_enabled)
 
     def invoke(self, query: str, documents: list[Document], score_threshold: Optional[float] = None,
@@ -31,9 +31,9 @@ class DataPostProcessor:
 
         return documents
 
-    def _get_rerank_runner(self, reranking_mode: str, reranking_model: dict, weights: dict,
-                           tenant_id: str) -> Optional[RerankModelRunner | WeightRerankRunner]:
-        if reranking_mode == RerankMode.WEIGHTED_SCORE.value:
+    def _get_rerank_runner(self, reranking_mode: str, tenant_id: str, reranking_model: Optional[dict] = None,
+                           weights: Optional[dict] = None) -> Optional[RerankModelRunner | WeightRerankRunner]:
+        if reranking_mode == RerankMode.WEIGHTED_SCORE.value and weights:
             return WeightRerankRunner(
                 tenant_id,
                 Weights(

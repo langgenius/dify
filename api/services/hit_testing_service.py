@@ -40,7 +40,7 @@ class HitTestingService:
 
         all_documents = RetrievalService.retrieve(retrival_method=retrieval_model.get('search_method', 'semantic_search'),
                                                   dataset_id=dataset.id,
-                                                  query=cls.escape_query_for_search(query),,
+                                                  query=cls.escape_query_for_search(query),
                                                   top_k=retrieval_model.get('top_k', 2),
                                                   score_threshold=retrieval_model['score_threshold']
                                                   if retrieval_model['score_threshold_enabled'] else None,

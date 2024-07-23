@@ -144,7 +144,7 @@ class KnowledgeRetrievalNode(BaseNode):
                     'reranking_model_name': node_data.multiple_retrieval_config.reranking_model['name']
                 }
                 weights = None
-            else:
+            elif node_data.multiple_retrieval_config.reranking_mode == 'weighted_score':
                 reranking_model = None
                 weights = {
                     'weight_type': node_data.multiple_retrieval_config.weights.weight_type,
@@ -157,6 +157,9 @@ class KnowledgeRetrievalNode(BaseNode):
                         "keyword_weight": node_data.multiple_retrieval_config.weights.keyword_setting.keyword_weight
                     }
                 }
+            else:
+                reranking_model = None
+                weights = None
             all_documents = dataset_retrieval.multiple_retrieve(self.app_id, self.tenant_id, self.user_id,
                                                                 self.user_from.value,
                                                                 available_datasets, query,
@@ -165,6 +168,7 @@ class KnowledgeRetrievalNode(BaseNode):
                                                                 node_data.multiple_retrieval_config.reranking_mode,
                                                                 reranking_model,
                                                                 weights,
+                                                                node_data.multiple_retrieval_config.reranking_enable,
                                                                 )
 
         context_list = []

@@ -42,13 +42,13 @@ class WeightRerankRunner:
         documents = unique_documents
 
         rerank_documents = []
-        query_bm25_scores = self._calculate_bm25(query, documents)
+        query_scores = self._calculate_keyword_score(query, documents)
 
         query_vector_scores = self._calculate_cosine(self.tenant_id, query, documents, self.weights.vector_setting)
-        for document, query_bm25_score, query_vector_score in zip(documents, query_bm25_scores, query_vector_scores):
+        for document, query_score, query_vector_score in zip(documents, query_scores, query_vector_scores):
             # format document
             score = self.weights.vector_setting.vector_weight * query_vector_score + \
-                    self.weights.keyword_setting.keyword_weight * query_bm25_score
+                    self.weights.keyword_setting.keyword_weight * query_score
             if score_threshold and score < score_threshold:
                 continue
             document.metadata['score'] = score
@@ -56,7 +56,7 @@ class WeightRerankRunner:
         rerank_documents = sorted(rerank_documents, key=lambda x: x.metadata['score'], reverse=True)
         return rerank_documents[:top_n] if top_n else rerank_documents
 
-    def _calculate_bm25(self, query: str, documents: list[Document]) -> list[float]:
+    def _calculate_keyword_score(self, query: str, documents: list[Document]) -> list[float]:
         """
         Calculate BM25 scores
         :param query: search query
