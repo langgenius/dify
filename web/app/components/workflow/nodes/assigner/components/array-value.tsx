@@ -1,18 +1,22 @@
 'use client'
 import type { FC } from 'react'
-import React, { useCallback } from 'react'
+import React, { useCallback, useMemo } from 'react'
 import {
   RiArrowDownSLine,
 } from '@remixicon/react'
-import type { ValueSelector, Var, VarType } from '../../../types'
+import type { ValueSelector, Var } from '../../../types'
+import { VarType } from '../../../types'
 import CodeEditor from '../../_base/components/editor/code-editor'
 import { CodeLanguage } from '../../code/types'
+import { WriteMode } from '../types'
+import { arrayNumber, arrayObject, arrayString, object } from './json-example'
 import { VarType as VarKindType } from '@/app/components/workflow/nodes/tool/types'
 import VarReferencePicker from '@/app/components/workflow/nodes/_base/components/variable/var-reference-picker'
 import TypeSelector from '@/app/components/workflow/nodes/_base/components/selector'
 type Props = {
   nodeId: string
   varType: VarType
+  writeMode: WriteMode
   value: {
     type: VarKindType
     value: ValueSelector | string
@@ -35,6 +39,7 @@ const varKindTypes = [
 const ArrayValue: FC<Props> = ({
   nodeId,
   varType,
+  writeMode,
   value,
   onChange,
   readOnly,
@@ -58,6 +63,24 @@ const ArrayValue: FC<Props> = ({
   const filterVar = useCallback((varPayload: Var) => {
     return varPayload.type === varType
   }, [varType])
+
+  const example = useMemo(() => {
+    if (writeMode === WriteMode.Overwrite) {
+      switch (varType) {
+        case VarType.arrayString:
+          return arrayString
+        case VarType.arrayNumber:
+          return arrayNumber
+        case VarType.arrayObject:
+          return arrayObject
+      }
+    }
+    else { // Append
+      if (varType === VarType.arrayObject)
+        return object
+    }
+    return ''
+  }, [varType, writeMode])
 
   return (
     <div>
@@ -83,10 +106,8 @@ const ArrayValue: FC<Props> = ({
             readOnly={readOnly}
             language={CodeLanguage.json}
             title={<span>JSON</span>}
-            placeholder={<div className='whitespace-pre-line'>{`# JSON example 
-# [ # { # "name":"ray", # "age":"20" # },
-  # { # "name":"lily", # "age":"18" # } 
-# ]`}
+            placeholder={<div className='whitespace-pre'>{`# JSON example 
+${example}`}
             </div>}
           />
         )

@@ -82,6 +82,7 @@ const Value: FC<Props> = ({
     return <ArrayValue
       nodeId={nodeId}
       varType={type}
+      writeMode={writeMode}
       value={value}
       onChange={onChange}
       readOnly={readOnly}

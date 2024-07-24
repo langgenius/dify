@@ -57,7 +57,7 @@ const VarReferencePicker: FC<Props> = ({
   readonly,
   className,
   isShowNodeName,
-  value,
+  value = [],
   onOpen = () => { },
   onChange,
   isSupportConstantValue,
