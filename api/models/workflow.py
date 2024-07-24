@@ -122,6 +122,8 @@ class Workflow(db.Model):
     updated_by = db.Column(StringUUID)
     updated_at = db.Column(db.DateTime)
     _environment_variables = db.Column('environment_variables', db.Text, nullable=False, server_default='{}')
+    # _conversation_variables = db.Column('conversation_variables', db.Text, nullable=False, server_default='{}')
+    _conversation_variables = '{}'
 
     @property
     def created_by_account(self):
@@ -251,6 +253,23 @@ class Workflow(db.Model):
             'environment_variables': [var.model_dump(mode='json') for var in environment_variables],
         }
         return result
+
+    @property
+    def conversation_variables(self) -> Sequence[Variable]:
+        # TODO: find some way to init `self._conversation_variables` when instance created.
+        if self._conversation_variables is None:
+            self._conversation_variables = '{}'
+
+        variables_dict: dict[str, Any] = json.loads(self._conversation_variables)
+        results = [factory.build_variable_from_mapping(v) for v in variables_dict.values()]
+        return results
+
+    @conversation_variables.setter
+    def conversation_variables(self, value: Sequence[Variable]) -> None:
+        self._conversation_variables = json.dumps(
+            {var.name: var.model_dump() for var in value},
+            ensure_ascii=False,
+        )
 
 
 class WorkflowRunTriggeredFrom(Enum):
