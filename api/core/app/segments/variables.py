@@ -20,6 +20,7 @@ class Variable(Segment):
         description="Unique identity for variable. It's only used by environment variables now.",
     )
     name: str
+    description: str = Field(default='', description='Description of the variable.')
 
 
 class StringVariable(StringSegment, Variable):
