@@ -6,7 +6,7 @@ from pydantic import Field
 from core.file.file_obj import FileVar
 from core.helper import encrypter
 
-from .segments import Segment, StringSegment
+from .segments import NoneSegment, Segment, StringSegment
 from .types import SegmentType
 
 
@@ -20,6 +20,7 @@ class Variable(Segment):
         description="Unique identity for variable. It's only used by environment variables now.",
     )
     name: str
+    description: str = Field(default='', description='Description of the variable.')
 
 
 class StringVariable(StringSegment, Variable):
@@ -81,3 +82,8 @@ class SecretVariable(StringVariable):
     @property
     def log(self) -> str:
         return encrypter.obfuscated_token(self.value)
+
+
+class NoneVariable(NoneSegment, Variable):
+    value_type: SegmentType = SegmentType.NONE
+    value: None = None
