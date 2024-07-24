@@ -54,8 +54,8 @@ const translation = {
     full_text_search: 'FULL TEXT',
     hybrid_search: 'HYBRID',
   },
-  mixtureHighQualityAndEconomicTip: 'The rerank model is required for mixture of high quality and economical knowledge bases.',
-  inconsistentEmbeddingModelTip: 'The rerank model is required if the embedding method is inconsistent, such as mixture of with and without embedding or using different embedding models.',
+  mixtureHighQualityAndEconomicTip: 'The Rerank model is required for mixture of high quality and economical knowledge bases.',
+  inconsistentEmbeddingModelTip: 'The Rerank model is required if the Embedding models of the selected knowledge bases are inconsistent.',
   retrievalSettings: 'Retrieval Setting',
   rerankSettings: 'Rerank Setting',
   weightedScore: {

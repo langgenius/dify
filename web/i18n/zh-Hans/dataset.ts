@@ -54,8 +54,8 @@ const translation = {
     full_text_search: '全文检索',
     hybrid_search: '混合检索',
   },
-  mixtureHighQualityAndEconomicTip: '高质量和经济知识库的混合需要配置 Rerank 模型。',
-  inconsistentEmbeddingModelTip: '如果嵌入方法不一致，例如有嵌入和没有嵌入的混合或使用不同的嵌入模型，则需要 Rerank 模型。',
+  mixtureHighQualityAndEconomicTip: '混合使用高质量和经济型知识库需要配置 Rerank 模型。',
+  inconsistentEmbeddingModelTip: '当所选知识库配置的 Embedding 模型不一致时，需要配置 Rerank 模型。',
   retrievalSettings: '召回设置',
   rerankSettings: 'Rerank 设置',
   weightedScore: {
