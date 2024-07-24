@@ -640,7 +640,7 @@ class Embedding(db.Model):
     hash = db.Column(db.String(64), nullable=False)
     embedding = db.Column(db.LargeBinary, nullable=False)
     created_at = db.Column(db.DateTime, nullable=False, server_default=db.text('CURRENT_TIMESTAMP(0)'))
-    provider_name = db.Column(db.String(40), nullable=False,
+    provider_name = db.Column(db.String(255), nullable=False,
                               server_default=db.text("''::character varying"))
 
     def set_embedding(self, embedding_data: list[float]):
