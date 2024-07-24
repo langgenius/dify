@@ -66,6 +66,7 @@ class AnswerStreamProcessor:
         for answer_node_id, route_chunks in self.generate_routes.answer_generate_route.items():
             self.route_position[answer_node_id] = 0
         self.rest_node_ids = self.graph.node_ids.copy()
+        self.current_stream_chunk_generating_node_ids = {}
 
     def _remove_unreachable_nodes(self, event: NodeRunSucceededEvent) -> None:
         finished_node_id = event.route_node_state.node_id
@@ -179,14 +180,13 @@ class AnswerStreamProcessor:
             return []
 
         stream_out_answer_node_ids = []
-        for answer_node_id, position in self.route_position.items():
+        for answer_node_id, route_position in self.route_position.items():
             if answer_node_id not in self.rest_node_ids:
                 continue
 
             # all depends on answer node id not in rest node ids
             if all(dep_id not in self.rest_node_ids
                    for dep_id in self.generate_routes.answer_dependencies[answer_node_id]):
-                route_position = self.route_position[answer_node_id]
                 if route_position >= len(self.generate_routes.answer_generate_route[answer_node_id]):
                     continue
 

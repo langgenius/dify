@@ -61,7 +61,9 @@ class EndStreamGeneratorRouter:
                     value_selectors.append(variable_selector.value_selector)
 
         # remove duplicates
-        value_selectors = list(set(value_selectors))
+        value_selector_tuples = [tuple(item) for item in value_selectors]
+        unique_value_selector_tuples = list(set(value_selector_tuples))
+        value_selectors = [list(item) for item in unique_value_selector_tuples]
 
         return value_selectors
 
