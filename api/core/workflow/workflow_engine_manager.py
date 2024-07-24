@@ -87,15 +87,18 @@ class WorkflowEngineManager:
 
         return default_config
 
-    def run_workflow(self, *, workflow: Workflow,
-                     user_id: str,
-                     user_from: UserFrom,
-                     invoke_from: InvokeFrom,
-                     user_inputs: Mapping[str, Any],
-                     system_inputs: Mapping[SystemVariable, Any],
-                     callbacks: Sequence[WorkflowCallback],
-                     call_depth: int = 0,
-                     variable_pool: Optional[VariablePool] = None) -> None:
+    def run_workflow(
+        self,
+        *,
+        workflow: Workflow,
+        user_id: str,
+        user_from: UserFrom,
+        invoke_from: InvokeFrom,
+        user_inputs: Mapping[str, Any],
+        system_inputs: Mapping[SystemVariable, Any],
+        callbacks: Sequence[WorkflowCallback],
+        call_depth: int = 0
+    ) -> None:
         """
         :param workflow: Workflow instance
         :param user_id: user id
@@ -120,12 +123,11 @@ class WorkflowEngineManager:
             raise ValueError('edges in workflow graph must be a list')
 
         # init variable pool
-        if not variable_pool:
-            variable_pool = VariablePool(
-                system_variables=system_inputs,
-                user_inputs=user_inputs,
-                environment_variables=workflow.environment_variables,
-            )
+        variable_pool = VariablePool(
+            system_variables=system_inputs,
+            user_inputs=user_inputs,
+            environment_variables=workflow.environment_variables,
+        )
 
         workflow_call_max_depth = dify_config.WORKFLOW_CALL_MAX_DEPTH
         if call_depth > workflow_call_max_depth:
