@@ -27,6 +27,7 @@ const ObjectValue: FC<Props> = ({
       list={value}
       onChange={onChange}
       onAdd={handleOnAdd}
+      keyNotSupportVar
       insertVarTipToLeft
     />
   )

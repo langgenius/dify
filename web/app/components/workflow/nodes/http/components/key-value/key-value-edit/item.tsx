@@ -6,6 +6,7 @@ import produce from 'immer'
 import type { KeyValue } from '../../../types'
 import InputItem from './input-item'
 import cn from '@/utils/classnames'
+import Input from '@/app/components/base/input'
 
 const i18nPrefix = 'workflow.nodes.http'
 
@@ -20,6 +21,7 @@ type Props = {
   onRemove: () => void
   isLastItem: boolean
   onAdd: () => void
+  keyNotSupportVar?: boolean
   insertVarTipToLeft?: boolean
 }
 
@@ -34,6 +36,7 @@ const KeyValueItem: FC<Props> = ({
   onRemove,
   isLastItem,
   onAdd,
+  keyNotSupportVar,
   insertVarTipToLeft,
 }) => {
   const { t } = useTranslation()
@@ -53,16 +56,26 @@ const KeyValueItem: FC<Props> = ({
     // group class name is for hover row show remove button
     <div className={cn(className, 'group flex h-min-7 border-t border-gray-200')}>
       <div className='w-1/2 border-r border-gray-200'>
-        <InputItem
-          instanceId={`http-key-${instanceId}`}
-          nodeId={nodeId}
-          value={payload.key}
-          onChange={handleChange('key')}
-          hasRemove={false}
-          placeholder={t(`${i18nPrefix}.key`)!}
-          readOnly={readonly}
-          insertVarTipToLeft={insertVarTipToLeft}
-        />
+        {!keyNotSupportVar
+          ? (
+            <InputItem
+              instanceId={`http-key-${instanceId}`}
+              nodeId={nodeId}
+              value={payload.key}
+              onChange={handleChange('key')}
+              hasRemove={false}
+              placeholder={t(`${i18nPrefix}.key`)!}
+              readOnly={readonly}
+              insertVarTipToLeft={insertVarTipToLeft}
+            />
+          )
+          : (
+            <Input
+              className='rounded-none bg-white border-none system-sm-regular focus:ring-0 focus:bg-gray-100! hover:bg-gray-50'
+              value={payload.key}
+              onChange={handleChange('key')}
+            />
+          )}
       </div>
       <div className='w-1/2'>
         <InputItem
