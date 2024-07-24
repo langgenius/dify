@@ -125,6 +125,7 @@ class WorkflowEngineManager:
                 system_variables=system_inputs,
                 user_inputs=user_inputs,
                 environment_variables=workflow.environment_variables,
+                conversation_variables=workflow.conversation_variables,
             )
 
         workflow_call_max_depth = dify_config.WORKFLOW_CALL_MAX_DEPTH
@@ -385,6 +386,7 @@ class WorkflowEngineManager:
                 system_variables={},
                 user_inputs={},
                 environment_variables=workflow.environment_variables,
+                conversation_variables=workflow.conversation_variables,
             )
 
             # variable selector to variable mapping
@@ -451,6 +453,7 @@ class WorkflowEngineManager:
             system_variables={},
             user_inputs={},
             environment_variables=workflow.environment_variables,
+            conversation_variables=workflow.conversation_variables,
         )
 
         # variable selector to variable mapping
