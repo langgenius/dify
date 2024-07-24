@@ -16,7 +16,7 @@ type Props = {
 }
 
 const ConstantField: FC<Props> = ({
-  schema,
+  schema = {} as CredentialFormSchema,
   readonly,
   value,
   onChange,
