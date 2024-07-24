@@ -20,6 +20,7 @@ type Props = {
   onRemove: () => void
   isLastItem: boolean
   onAdd: () => void
+  insertVarTipToLeft?: boolean
 }
 
 const KeyValueItem: FC<Props> = ({
@@ -33,6 +34,7 @@ const KeyValueItem: FC<Props> = ({
   onRemove,
   isLastItem,
   onAdd,
+  insertVarTipToLeft,
 }) => {
   const { t } = useTranslation()
 
@@ -59,6 +61,7 @@ const KeyValueItem: FC<Props> = ({
           hasRemove={false}
           placeholder={t(`${i18nPrefix}.key`)!}
           readOnly={readonly}
+          insertVarTipToLeft={insertVarTipToLeft}
         />
       </div>
       <div className='w-1/2'>
@@ -71,6 +74,7 @@ const KeyValueItem: FC<Props> = ({
           onRemove={onRemove}
           placeholder={t(`${i18nPrefix}.value`)!}
           readOnly={readonly}
+          insertVarTipToLeft={insertVarTipToLeft}
         />
       </div>
     </div>
