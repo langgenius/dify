@@ -218,7 +218,7 @@ const AppInfo = ({ expand }: IAppInfoProps) => {
             </div>
             {expand && (
               <div className="grow w-0">
-                <div className='flex justify-between items-center text-sm leading-5 font-medium text-gray-900'>
+                <div className='flex justify-between items-center text-sm leading-5 font-medium text-text-secondary'>
                   <div className='truncate' title={appDetail.name}>{appDetail.name}</div>
                   {isCurrentWorkspaceEditor && <RiArrowDownSLine className='shrink-0 ml-[2px] w-3 h-3 text-gray-500' />}
                 </div>
@@ -434,7 +434,7 @@ const AppInfo = ({ expand }: IAppInfoProps) => {
         {showImportDSLModal && (
           <UpdateDSLModal
             onCancel={() => setShowImportDSLModal(false)}
-            onBackup={onExport}
+            onBackup={exportCheck}
           />
         )}
         {secretEnvList.length > 0 && (
