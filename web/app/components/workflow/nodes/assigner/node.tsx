@@ -22,7 +22,7 @@ const NodeComponent: FC<NodeProps<AssignerNodeType>> = ({
   const nodes: Node[] = useNodes()
   const { variable, writeMode } = data
 
-  if (!variable)
+  if (!variable || variable.length === 0)
     return null
 
   const isSystem = isSystemVar(variable)
