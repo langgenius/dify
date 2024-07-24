@@ -47,7 +47,7 @@ const ConstantField: FC<Props> = ({
       {schema.type === FormTypeEnum.textNumber && (
         <input
           type='number'
-          className='w-full h-8 leading-8 pl-0.5 bg-transparent text-[13px] font-normal text-gray-900 placeholder:text-gray-400 focus:outline-none overflow-hidden'
+          className='w-full h-8 leading-8 p-2 rounded-lg bg-gray-100 text-[13px] font-normal text-gray-900 placeholder:text-gray-400 focus:outline-none overflow-hidden'
           value={value}
           onChange={handleStaticChange}
           readOnly={readonly}

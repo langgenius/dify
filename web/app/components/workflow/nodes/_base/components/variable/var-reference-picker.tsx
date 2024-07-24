@@ -242,23 +242,27 @@ const VarReferencePicker: FC<Props> = ({
                 <AddButton onClick={() => { }}></AddButton>
               </div>
             )
-            : (<div ref={triggerRef} className={cn((open || isFocus) ? 'border-gray-300' : 'border-gray-100', 'relative group/wrap flex items-center w-full h-8 p-1 rounded-lg bg-gray-100 border')}>
+            : (<div ref={triggerRef} className={cn((open || isFocus) ? 'border-gray-300' : 'border-gray-100', 'relative group/wrap flex items-center w-full h-8', !isSupportConstantValue && 'p-1 rounded-lg bg-gray-100 border')}>
               {isSupportConstantValue
                 ? <div onClick={(e) => {
                   e.stopPropagation()
                   setOpen(false)
                   setControlFocus(Date.now())
-                }} className='mr-1 flex items-center space-x-1'>
+                }} className='h-full mr-1 flex items-center space-x-1'>
                   <TypeSelector
                     noLeft
-                    triggerClassName='!text-xs'
+                    trigger={
+                      <div className='flex items-center h-8 px-2 radius-md bg-components-input-bg-normal'>
+                        <div className='mr-1 system-sm-regular text-components-input-text-filled'>{varKindType === VarKindType.variable ? 'Variable' : 'Constant'}</div>
+                        <RiArrowDownSLine className='w-4 h-4 text-text-quaternary' />
+                      </div>
+                    }
                     readonly={readonly}
                     DropDownIcon={RiArrowDownSLine}
                     value={varKindType}
                     options={varKindTypes}
                     onChange={handleVarKindTypeChange}
                   />
-                  <div className='h-4 w-px bg-black/5'></div>
                 </div>
                 : (!hasValue && <div className='ml-1.5 mr-1'>
                   <Variable02 className='w-3.5 h-3.5 text-gray-400' />
@@ -273,37 +277,39 @@ const VarReferencePicker: FC<Props> = ({
                   />
                 )
                 : (
-                  <div className={cn('inline-flex h-full items-center px-1.5 rounded-[5px]', hasValue && 'bg-white')}>
-                    {hasValue
-                      ? (
-                        <>
-                          {isShowNodeName && !isEnv && (
-                            <div className='flex items-center'>
-                              <div className='p-[1px]'>
-                                <VarBlockIcon
-                                  className='!text-gray-900'
-                                  type={outputVarNode?.type || BlockEnum.Start}
-                                />
+                  <div className={cn('h-full', isSupportConstantValue && 'grow flex items-center pl-1 py-1 rounded-lg bg-gray-100')}>
+                    <div className={cn('inline-flex h-full items-center px-1.5 rounded-[5px]', hasValue && 'bg-white')}>
+                      {hasValue
+                        ? (
+                          <>
+                            {isShowNodeName && !isEnv && (
+                              <div className='flex items-center'>
+                                <div className='p-[1px]'>
+                                  <VarBlockIcon
+                                    className='!text-gray-900'
+                                    type={outputVarNode?.type || BlockEnum.Start}
+                                  />
+                                </div>
+                                <div className='mx-0.5 text-xs font-medium text-gray-700 truncate' title={outputVarNode?.title} style={{
+                                  maxWidth: maxNodeNameWidth,
+                                }}>{outputVarNode?.title}</div>
+                                <Line3 className='mr-0.5'></Line3>
                               </div>
-                              <div className='mx-0.5 text-xs font-medium text-gray-700 truncate' title={outputVarNode?.title} style={{
-                                maxWidth: maxNodeNameWidth,
-                              }}>{outputVarNode?.title}</div>
-                              <Line3 className='mr-0.5'></Line3>
+                            )}
+                            <div className='flex items-center text-primary-600'>
+                              {!hasValue && <Variable02 className='w-3.5 h-3.5' />}
+                              {isEnv && <Env className='w-3.5 h-3.5 text-util-colors-violet-violet-600' />}
+                              <div className={cn('ml-0.5 text-xs font-medium truncate', isEnv && '!text-gray-900')} title={varName} style={{
+                                maxWidth: maxVarNameWidth,
+                              }}>{varName}</div>
                             </div>
-                          )}
-                          <div className='flex items-center text-primary-600'>
-                            {!hasValue && <Variable02 className='w-3.5 h-3.5' />}
-                            {isEnv && <Env className='w-3.5 h-3.5 text-util-colors-violet-violet-600' />}
-                            <div className={cn('ml-0.5 text-xs font-medium truncate', isEnv && '!text-gray-900')} title={varName} style={{
-                              maxWidth: maxVarNameWidth,
-                            }}>{varName}</div>
-                          </div>
-                          <div className='ml-0.5 text-xs font-normal text-gray-500 capitalize truncate' title={type} style={{
-                            maxWidth: maxTypeWidth,
-                          }}>{type}</div>
-                        </>
-                      )
-                      : <div className='text-[13px] font-normal text-gray-400'>{t('workflow.common.setVarValuePlaceholder')}</div>}
+                            <div className='ml-0.5 text-xs font-normal text-gray-500 capitalize truncate' title={type} style={{
+                              maxWidth: maxTypeWidth,
+                            }}>{type}</div>
+                          </>
+                        )
+                        : <div className='text-[13px] font-normal text-gray-400'>{t('workflow.common.setVarValuePlaceholder')}</div>}
+                    </div>
                   </div>
                 )}
               {(hasValue && !readonly) && (<div
