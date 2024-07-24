@@ -4,12 +4,11 @@ from collections.abc import Mapping, Sequence
 from typing import Any, Optional, cast
 
 from configs import dify_config
-from core.app.app_config.entities import FileExtraConfig
 from core.app.apps.base_app_queue_manager import GenerateTaskStoppedException
 from core.app.entities.app_invoke_entities import InvokeFrom
-from core.file.file_obj import FileTransferMethod, FileType, FileVar
+from core.file.file_obj import FileExtraConfig, FileTransferMethod, FileType, FileVar
 from core.workflow.callbacks.base_workflow_callback import WorkflowCallback
-from core.workflow.entities.node_entities import NodeRunMetadataKey, NodeRunResult, NodeType, SystemVariable
+from core.workflow.entities.node_entities import NodeRunMetadataKey, NodeRunResult, NodeType
 from core.workflow.entities.variable_pool import VariablePool, VariableValue
 from core.workflow.entities.workflow_entities import WorkflowNodeAndResult, WorkflowRunState
 from core.workflow.errors import WorkflowNodeRunFailedError
@@ -30,6 +29,7 @@ from core.workflow.nodes.start.start_node import StartNode
 from core.workflow.nodes.template_transform.template_transform_node import TemplateTransformNode
 from core.workflow.nodes.tool.tool_node import ToolNode
 from core.workflow.nodes.variable_aggregator.variable_aggregator_node import VariableAggregatorNode
+from core.workflow.nodes.variable_assigner import VariableAssignerNode
 from extensions.ext_database import db
 from models.workflow import (
     Workflow,
@@ -51,7 +51,8 @@ node_classes: Mapping[NodeType, type[BaseNode]] = {
     NodeType.VARIABLE_AGGREGATOR: VariableAggregatorNode,
     NodeType.VARIABLE_ASSIGNER: VariableAggregatorNode,
     NodeType.ITERATION: IterationNode,
-    NodeType.PARAMETER_EXTRACTOR: ParameterExtractorNode
+    NodeType.PARAMETER_EXTRACTOR: ParameterExtractorNode,
+    NodeType.CONVERSATION_VARIABLE_ASSIGNER: VariableAssignerNode,
 }
 
 logger = logging.getLogger(__name__)
@@ -94,10 +95,9 @@ class WorkflowEngineManager:
         user_id: str,
         user_from: UserFrom,
         invoke_from: InvokeFrom,
-        user_inputs: Mapping[str, Any],
-        system_inputs: Mapping[SystemVariable, Any],
         callbacks: Sequence[WorkflowCallback],
-        call_depth: int = 0
+        call_depth: int = 0,
+        variable_pool: VariablePool,
     ) -> None:
         """
         :param workflow: Workflow instance
@@ -122,12 +122,6 @@ class WorkflowEngineManager:
         if not isinstance(graph.get('edges'), list):
             raise ValueError('edges in workflow graph must be a list')
 
-        # init variable pool
-        variable_pool = VariablePool(
-            system_variables=system_inputs,
-            user_inputs=user_inputs,
-            environment_variables=workflow.environment_variables,
-        )
 
         workflow_call_max_depth = dify_config.WORKFLOW_CALL_MAX_DEPTH
         if call_depth > workflow_call_max_depth:
@@ -403,6 +397,7 @@ class WorkflowEngineManager:
                 system_variables={},
                 user_inputs={},
                 environment_variables=workflow.environment_variables,
+                conversation_variables=workflow.conversation_variables,
             )
 
             if node_cls is None:
@@ -468,6 +463,7 @@ class WorkflowEngineManager:
             system_variables={},
             user_inputs={},
             environment_variables=workflow.environment_variables,
+            conversation_variables=workflow.conversation_variables,
         )
 
         # variable selector to variable mapping

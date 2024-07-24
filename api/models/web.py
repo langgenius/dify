@@ -1,7 +1,8 @@
 
 from extensions.ext_database import db
-from models import StringUUID
-from models.model import Message
+
+from .model import Message
+from .types import StringUUID
 
 
 class SavedMessage(db.Model):

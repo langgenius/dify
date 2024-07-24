@@ -14,8 +14,8 @@ from core.file.upload_file_parser import UploadFileParser
 from extensions.ext_database import db
 from libs.helper import generate_string
 
-from . import StringUUID
 from .account import Account, Tenant
+from .types import StringUUID
 
 
 class DifySetup(db.Model):

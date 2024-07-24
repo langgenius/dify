@@ -3,8 +3,9 @@ from typing import Any, Optional
 
 from pydantic import BaseModel
 
+from core.file.file_obj import FileExtraConfig
 from core.model_runtime.entities.message_entities import PromptMessageRole
-from models.model import AppMode
+from models import AppMode
 
 
 class ModelConfigEntity(BaseModel):
@@ -200,11 +201,6 @@ class TracingConfigEntity(BaseModel):
     tracing_provider: str
 
 
-class FileExtraConfig(BaseModel):
-    """
-    File Upload Entity.
-    """
-    image_config: Optional[dict[str, Any]] = None
 
 
 class AppAdditionalFeatures(BaseModel):
