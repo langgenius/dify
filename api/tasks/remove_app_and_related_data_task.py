@@ -45,6 +45,9 @@ def remove_app_and_related_data_task(self, tenant_id: str, app_id: str):
         _delete_app_annotation_data(tenant_id, app_id)
         _delete_app_dataset_joins(tenant_id, app_id)
         _delete_app_workflows(tenant_id, app_id)
+        _delete_app_workflow_runs(tenant_id, app_id)
+        _delete_app_workflow_node_executions(tenant_id, app_id)
+        _delete_app_workflow_app_logs(tenant_id, app_id)
         _delete_app_conversations(tenant_id, app_id)
         _delete_app_messages(tenant_id, app_id)
         _delete_workflow_tool_providers(tenant_id, app_id)
@@ -162,11 +165,6 @@ def _delete_app_dataset_joins(tenant_id: str, app_id: str):
 
 def _delete_app_workflows(tenant_id: str, app_id: str):
     def del_workflow(workflow_id: str):
-        db.session.query(WorkflowRun).filter(WorkflowRun.workflow_id == workflow_id).delete(synchronize_session=False)
-        db.session.query(WorkflowNodeExecution).filter(WorkflowNodeExecution.workflow_id == workflow_id).delete(
-            synchronize_session=False)
-        db.session.query(WorkflowAppLog).filter(WorkflowAppLog.workflow_id == workflow_id).delete(
-            synchronize_session=False)
         db.session.query(Workflow).filter(Workflow.id == workflow_id).delete(synchronize_session=False)
 
     _delete_records(
@@ -174,6 +172,43 @@ def _delete_app_workflows(tenant_id: str, app_id: str):
         {"tenant_id": tenant_id, "app_id": app_id},
         del_workflow,
         "workflow"
+    )
+
+
+def _delete_app_workflow_runs(tenant_id: str, app_id: str):
+    def del_workflow_run(workflow_run_id: str):
+        db.session.query(WorkflowRun).filter(WorkflowRun.id == workflow_run_id).delete(synchronize_session=False)
+
+    _delete_records(
+        """select id from workflow_runs where tenant_id=:tenant_id and app_id=:app_id limit 1000""",
+        {"tenant_id": tenant_id, "app_id": app_id},
+        del_workflow_run,
+        "workflow run"
+    )
+
+
+def _delete_app_workflow_node_executions(tenant_id: str, app_id: str):
+    def del_workflow_node_execution(workflow_node_execution_id: str):
+        db.session.query(WorkflowNodeExecution).filter(
+            WorkflowNodeExecution.id == workflow_node_execution_id).delete(synchronize_session=False)
+
+    _delete_records(
+        """select id from workflow_node_executions where tenant_id=:tenant_id and app_id=:app_id limit 1000""",
+        {"tenant_id": tenant_id, "app_id": app_id},
+        del_workflow_node_execution,
+        "workflow node execution"
+    )
+
+
+def _delete_app_workflow_app_logs(tenant_id: str, app_id: str):
+    def del_workflow_app_log(workflow_app_log_id: str):
+        db.session.query(WorkflowAppLog).filter(WorkflowAppLog.id == workflow_app_log_id).delete(synchronize_session=False)
+
+    _delete_records(
+        """select id from workflow_app_logs where tenant_id=:tenant_id and app_id=:app_id limit 1000""",
+        {"tenant_id": tenant_id, "app_id": app_id},
+        del_workflow_app_log,
+        "workflow app log"
     )
 
 
