@@ -44,6 +44,7 @@ const StringValue: FC<Props> = ({
       placeholder={t('workflow.nodes.http.insertVarPlaceholder')!}
       placeholderClassName='!leading-[21px]'
       promptMinHeightClassName='h-full'
+      insertVarTipToLeft
     />
   )
 }
