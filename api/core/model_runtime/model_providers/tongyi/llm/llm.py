@@ -500,7 +500,7 @@ You should also complete the text started with ``` but not tell ``` directly.
                 tongyi_messages.append({
                     'role': 'assistant',
                     'content': content if not rich_content else [{"text": content}],
-                    'tool_calls': [obj.model_dump() for obj in
+                    'tool_calls': [tool_call.model_dump() for tool_call in
                                    prompt_message.tool_calls] if prompt_message.tool_calls else []
 
                 })
