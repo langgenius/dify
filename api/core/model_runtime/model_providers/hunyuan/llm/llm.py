@@ -144,7 +144,6 @@ class HunyuanLargeLanguageModel(LargeLanguageModel):
 
             data_str = event['data']
             data = json.loads(data_str)
-            # logging.info(f"\n\n========== data: {data}")
 
             choices = data.get('Choices', [])
             if not choices:
