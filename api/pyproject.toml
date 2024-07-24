@@ -201,7 +201,7 @@ cloudscraper = "1.2.71"
 ############################################################
 
 [tool.poetry.group.vdb.dependencies]
-chromadb = "~0.5.1"
+chromadb = "0.5.1"
 oracledb = "~2.2.1"
 pgvecto-rs = "0.1.4"
 pgvector = "0.2.5"
