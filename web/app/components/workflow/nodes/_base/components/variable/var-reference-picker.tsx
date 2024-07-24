@@ -224,6 +224,8 @@ const VarReferencePicker: FC<Props> = ({
     return [maxNodeNameWidth, maxVarNameWidth, maxTypeWidth]
   })()
 
+  const WrapElem = isSupportConstantValue ? 'div' : PortalToFollowElemTrigger
+  const VarPickerWrap = !isSupportConstantValue ? 'div' : PortalToFollowElemTrigger
   return (
     <div className={cn(className, !readonly && 'cursor-pointer')}>
       <PortalToFollowElem
@@ -231,7 +233,7 @@ const VarReferencePicker: FC<Props> = ({
         onOpenChange={setOpen}
         placement={isAddBtnTrigger ? 'bottom-end' : 'bottom-start'}
       >
-        <PortalToFollowElemTrigger onClick={() => {
+        <WrapElem onClick={() => {
           if (readonly)
             return
           !isConstant ? setOpen(!open) : setControlFocus(Date.now())
@@ -242,7 +244,7 @@ const VarReferencePicker: FC<Props> = ({
                 <AddButton onClick={() => { }}></AddButton>
               </div>
             )
-            : (<div ref={triggerRef} className={cn((open || isFocus) ? 'border-gray-300' : 'border-gray-100', 'relative group/wrap flex items-center w-full h-8', !isSupportConstantValue && 'p-1 rounded-lg bg-gray-100 border')}>
+            : (<div ref={!isSupportConstantValue ? triggerRef : null} className={cn((open || isFocus) ? 'border-gray-300' : 'border-gray-100', 'relative group/wrap flex items-center w-full h-8', !isSupportConstantValue && 'p-1 rounded-lg bg-gray-100 border')}>
               {isSupportConstantValue
                 ? <div onClick={(e) => {
                   e.stopPropagation()
@@ -277,40 +279,50 @@ const VarReferencePicker: FC<Props> = ({
                   />
                 )
                 : (
-                  <div className={cn('h-full', isSupportConstantValue && 'grow flex items-center pl-1 py-1 rounded-lg bg-gray-100')}>
-                    <div className={cn('inline-flex h-full items-center px-1.5 rounded-[5px]', hasValue && 'bg-white')}>
-                      {hasValue
-                        ? (
-                          <>
-                            {isShowNodeName && !isEnv && (
-                              <div className='flex items-center'>
-                                <div className='p-[1px]'>
-                                  <VarBlockIcon
-                                    className='!text-gray-900'
-                                    type={outputVarNode?.type || BlockEnum.Start}
-                                  />
+                  <VarPickerWrap
+                    onClick={() => {
+                      if (readonly)
+                        return
+                      !isConstant ? setOpen(!open) : setControlFocus(Date.now())
+                    }}
+                    className='grow h-full'
+                  >
+                    <div ref={isSupportConstantValue ? triggerRef : null} className={cn('h-full', isSupportConstantValue && 'flex items-center pl-1 py-1 rounded-lg bg-gray-100')}>
+                      <div className={cn('inline-flex h-full items-center px-1.5 rounded-[5px]', hasValue && 'bg-white')}>
+                        {hasValue
+                          ? (
+                            <>
+                              {isShowNodeName && !isEnv && (
+                                <div className='flex items-center'>
+                                  <div className='p-[1px]'>
+                                    <VarBlockIcon
+                                      className='!text-gray-900'
+                                      type={outputVarNode?.type || BlockEnum.Start}
+                                    />
+                                  </div>
+                                  <div className='mx-0.5 text-xs font-medium text-gray-700 truncate' title={outputVarNode?.title} style={{
+                                    maxWidth: maxNodeNameWidth,
+                                  }}>{outputVarNode?.title}</div>
+                                  <Line3 className='mr-0.5'></Line3>
                                 </div>
-                                <div className='mx-0.5 text-xs font-medium text-gray-700 truncate' title={outputVarNode?.title} style={{
-                                  maxWidth: maxNodeNameWidth,
-                                }}>{outputVarNode?.title}</div>
-                                <Line3 className='mr-0.5'></Line3>
+                              )}
+                              <div className='flex items-center text-primary-600'>
+                                {!hasValue && <Variable02 className='w-3.5 h-3.5' />}
+                                {isEnv && <Env className='w-3.5 h-3.5 text-util-colors-violet-violet-600' />}
+                                <div className={cn('ml-0.5 text-xs font-medium truncate', isEnv && '!text-gray-900')} title={varName} style={{
+                                  maxWidth: maxVarNameWidth,
+                                }}>{varName}</div>
                               </div>
-                            )}
-                            <div className='flex items-center text-primary-600'>
-                              {!hasValue && <Variable02 className='w-3.5 h-3.5' />}
-                              {isEnv && <Env className='w-3.5 h-3.5 text-util-colors-violet-violet-600' />}
-                              <div className={cn('ml-0.5 text-xs font-medium truncate', isEnv && '!text-gray-900')} title={varName} style={{
-                                maxWidth: maxVarNameWidth,
-                              }}>{varName}</div>
-                            </div>
-                            <div className='ml-0.5 text-xs font-normal text-gray-500 capitalize truncate' title={type} style={{
-                              maxWidth: maxTypeWidth,
-                            }}>{type}</div>
-                          </>
-                        )
-                        : <div className='text-[13px] font-normal text-gray-400'>{t('workflow.common.setVarValuePlaceholder')}</div>}
+                              <div className='ml-0.5 text-xs font-normal text-gray-500 capitalize truncate' title={type} style={{
+                                maxWidth: maxTypeWidth,
+                              }}>{type}</div>
+                            </>
+                          )
+                          : <div className='text-[13px] font-normal text-gray-400'>{t('workflow.common.setVarValuePlaceholder')}</div>}
+                      </div>
                     </div>
-                  </div>
+
+                  </VarPickerWrap>
                 )}
               {(hasValue && !readonly) && (<div
                 className='invisible group-hover/wrap:visible absolute h-5 right-1 top-[50%] translate-y-[-50%] group p-1 rounded-md hover:bg-black/5 cursor-pointer'
@@ -319,7 +331,7 @@ const VarReferencePicker: FC<Props> = ({
                 <RiCloseLine className='w-3.5 h-3.5 text-gray-500 group-hover:text-gray-800' />
               </div>)}
             </div>)}
-        </PortalToFollowElemTrigger>
+        </WrapElem>
         <PortalToFollowElemContent style={{
           zIndex: 100,
         }}>
