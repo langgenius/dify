@@ -1,4 +1,4 @@
-model: THUDM/glm-4-9b-chat
+model: zhipuai/glm-4-9B-chat
 label:
   en_US: THUDM/glm-4-9b-chat
 model_type: llm

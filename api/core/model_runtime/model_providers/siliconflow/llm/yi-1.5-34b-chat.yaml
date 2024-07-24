@@ -1,4 +1,4 @@
-model: 01-ai/Yi-1.5-34B-Chat-16K
+model: 01-ai/Yi-1.5-34B-Chat
 label:
   en_US: 01-ai/Yi-1.5-34B-Chat-16K
 model_type: llm
