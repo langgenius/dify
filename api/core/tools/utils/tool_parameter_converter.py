@@ -53,9 +53,13 @@ class ToolParameterConverter:
                 case ToolParameter.ToolParameterType.NUMBER:
                     if isinstance(value, int) | isinstance(value, float):
                         return value
+                    # possible string values, empty string, int, float, list
+                    # for example, "['1721812946546', 'aaa']" is for transfer variable between nodes
                     elif isinstance(value, str) and value != '':
                         if '.' in value:
                             return float(value)
+                        elif '[' in value:
+                            return value
                         else:
                             return int(value)
                 case ToolParameter.ToolParameterType.FILE:
