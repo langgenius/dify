@@ -9,6 +9,7 @@ import { useTranslation } from 'react-i18next'
 import { useBoolean } from 'ahooks'
 import { BlockEnum, EditionType } from '../../../../types'
 import type {
+  ModelConfig,
   Node,
   NodeOutPutVar,
   Variable,
@@ -58,6 +59,7 @@ type Props = {
   availableNodes?: Node[]
   isSupportPromptGenerator?: boolean
   onGenerated?: (prompt: string) => void
+  modelConfig?: ModelConfig
   // for jinja
   isSupportJinja?: boolean
   editionType?: EditionType
@@ -90,6 +92,7 @@ const Editor: FC<Props> = ({
   varList = [],
   handleAddVariable,
   onGenerated,
+  modelConfig,
 }) => {
   const { t } = useTranslation()
   const { eventEmitter } = useEventEmitterContextContext()
@@ -130,7 +133,7 @@ const Editor: FC<Props> = ({
             <div className='flex items-center'>
               <div className='leading-[18px] text-xs font-medium text-gray-500'>{value?.length || 0}</div>
               {isSupportPromptGenerator && (
-                <PromptGeneratorBtn className='ml-[5px]' onGenerated={onGenerated} />
+                <PromptGeneratorBtn className='ml-[5px]' onGenerated={onGenerated} modelConfig={modelConfig} />
               )}
 
               <div className='w-px h-3 ml-2 mr-2 bg-gray-200'></div>

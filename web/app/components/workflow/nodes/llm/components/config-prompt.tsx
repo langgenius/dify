@@ -5,7 +5,7 @@ import { useTranslation } from 'react-i18next'
 import produce from 'immer'
 import { ReactSortable } from 'react-sortablejs'
 import { v4 as uuid4 } from 'uuid'
-import type { PromptItem, ValueSelector, Var, Variable } from '../../../types'
+import type { ModelConfig, PromptItem, ValueSelector, Var, Variable } from '../../../types'
 import { EditionType, PromptRole } from '../../../types'
 import useAvailableVarList from '../../_base/hooks/use-available-var-list'
 import { useWorkflowStore } from '../../../store'
@@ -33,6 +33,7 @@ type Props = {
   }
   varList?: Variable[]
   handleAddVariable: (payload: any) => void
+  modelConfig: ModelConfig
 }
 
 const ConfigPrompt: FC<Props> = ({
@@ -47,6 +48,7 @@ const ConfigPrompt: FC<Props> = ({
   hasSetBlockStatus,
   varList = [],
   handleAddVariable,
+  modelConfig,
 }) => {
   const { t } = useTranslation()
   const workflowStore = useWorkflowStore()
@@ -199,6 +201,7 @@ const ConfigPrompt: FC<Props> = ({
                           availableNodes={availableNodesWithParent}
                           varList={varList}
                           handleAddVariable={handleAddVariable}
+                          modelConfig={modelConfig}
                         />
                       </div>
                     )
@@ -234,6 +237,7 @@ const ConfigPrompt: FC<Props> = ({
               onEditionTypeChange={handleCompletionEditionTypeChange}
               handleAddVariable={handleAddVariable}
               onGenerated={handleGenerated}
+              modelConfig={modelConfig}
             />
           </div>
         )}

@@ -10,6 +10,7 @@ from .variables import (
     FileVariable,
     FloatVariable,
     IntegerVariable,
+    NoneVariable,
     ObjectVariable,
     SecretVariable,
     StringVariable,
@@ -39,6 +40,8 @@ def build_variable_from_mapping(m: Mapping[str, Any], /) -> Variable:
 
 
 def build_anonymous_variable(value: Any, /) -> Variable:
+    if value is None:
+        return NoneVariable(name='anonymous')
     if isinstance(value, str):
         return StringVariable(name='anonymous', value=value)
     if isinstance(value, int):

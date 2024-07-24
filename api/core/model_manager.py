@@ -410,10 +410,9 @@ class LBModelManager:
         self._model = model
         self._load_balancing_configs = load_balancing_configs
 
-        for load_balancing_config in self._load_balancing_configs:
+        for load_balancing_config in self._load_balancing_configs[:]:  # Iterate over a shallow copy of the list
             if load_balancing_config.name == "__inherit__":
                 if not managed_credentials:
-                    # FIXME: Mutation to loop iterable `self._load_balancing_configs` during iteration
                     # remove __inherit__ if managed credentials is not provided
                     self._load_balancing_configs.remove(load_balancing_config)
                 else:

@@ -22,17 +22,19 @@ class RuleGenerateApi(Resource):
     @account_initialization_required
     def post(self):
         parser = reqparse.RequestParser()
-        parser.add_argument('audiences', type=str, required=True, nullable=False, location='json')
-        parser.add_argument('hoping_to_solve', type=str, required=True, nullable=False, location='json')
+        parser.add_argument('instruction', type=str, required=True, nullable=False, location='json')
+        parser.add_argument('model_config', type=dict, required=True, nullable=False, location='json')
+        parser.add_argument('no_variable', type=bool, required=True, default=False, location='json')
         args = parser.parse_args()
 
         account = current_user
 
         try:
             rules = LLMGenerator.generate_rule_config(
-                account.current_tenant_id,
-                args['audiences'],
-                args['hoping_to_solve']
+                tenant_id=account.current_tenant_id,
+                instruction=args['instruction'],
+                model_config=args['model_config'],
+                no_variable=args['no_variable']
             )
         except ProviderTokenNotInitError as ex:
             raise ProviderNotInitializeError(ex.description)

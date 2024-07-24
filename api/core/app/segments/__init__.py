@@ -1,11 +1,12 @@
 from .segment_group import SegmentGroup
-from .segments import Segment
+from .segments import NoneSegment, Segment
 from .types import SegmentType
 from .variables import (
     ArrayVariable,
     FileVariable,
     FloatVariable,
     IntegerVariable,
+    NoneVariable,
     ObjectVariable,
     SecretVariable,
     StringVariable,
@@ -23,5 +24,7 @@ __all__ = [
     'Variable',
     'SegmentType',
     'SegmentGroup',
-    'Segment'
+    'Segment',
+    'NoneSegment',
+    'NoneVariable',
 ]

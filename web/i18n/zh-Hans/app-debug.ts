@@ -200,8 +200,8 @@ const translation = {
     },
   },
   generate: {
-    title: '提示生成器',
-    description: '提示生成器可以将输入的任务指令转换为高质量、结构化的提示。请尽可能详细地编写清晰、具体的指令。生成的提示的质量取决于您选择的推理模型。',
+    title: '提示词生成器',
+    description: '提示词生成器使用配置的模型来优化提示词，以获得更高的质量和更好的结构。请写出清晰详细的说明。',
     tryIt: '试一试',
     instruction: '指令',
     instructionPlaceHolder: '写下清晰、具体的说明。',
