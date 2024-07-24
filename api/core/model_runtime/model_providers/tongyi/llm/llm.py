@@ -425,7 +425,7 @@ You should also complete the text started with ``` but not tell ``` directly.
             raise ValueError(f"Got unknown type {message}")
 
         return message_text
-    
+
     def _convert_messages_to_prompt(self, messages: list[PromptMessage]) -> str:
         """
         Format a list of messages into a full prompt for the Anthropic model
@@ -500,6 +500,9 @@ You should also complete the text started with ``` but not tell ``` directly.
                 tongyi_messages.append({
                     'role': 'assistant',
                     'content': content if not rich_content else [{"text": content}],
+                    'tool_calls': [self.object_to_dict(obj) for obj in
+                                   prompt_message.tool_calls] if prompt_message.tool_calls else []
+
                 })
             elif isinstance(prompt_message, ToolPromptMessage):
                 tongyi_messages.append({
@@ -511,6 +514,19 @@ You should also complete the text started with ``` but not tell ``` directly.
                 raise ValueError(f"Got unknown type {prompt_message}")
 
         return tongyi_messages
+
+    def object_to_dict(self, obj):
+        if isinstance(obj, (list | tuple)):
+            return [self.object_to_dict(item) for item in obj]
+        elif hasattr(obj, '__dict__'):
+            result = {}
+            for key, value in obj.__dict__.items():
+                result[key] = self.object_to_dict(value)
+            return result
+        elif isinstance(obj, dict):
+            return {key: self.object_to_dict(value) for key, value in obj.items()}
+        else:
+            return obj
 
     def _save_base64_image_to_file(self, base64_image: str) -> str:
         """
