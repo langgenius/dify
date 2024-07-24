@@ -106,6 +106,7 @@ const ArrayValue: FC<Props> = ({
             readOnly={readOnly}
             language={CodeLanguage.json}
             title={<span>JSON</span>}
+            height={250}
             placeholder={<div className='whitespace-pre'>{`# JSON example 
 ${example}`}
             </div>}
