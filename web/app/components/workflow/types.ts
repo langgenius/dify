@@ -102,6 +102,13 @@ export type Variable = {
   isParagraph?: boolean
 }
 
+export type EnvironmentVariable = {
+  id: string
+  name: string
+  value: any
+  value_type: 'string' | 'number' | 'secret'
+}
+
 export type VariableWithValue = {
   key: string
   value: string
@@ -183,6 +190,7 @@ export type Memory = {
 export enum VarType {
   string = 'string',
   number = 'number',
+  secret = 'secret',
   boolean = 'boolean',
   object = 'object',
   array = 'array',

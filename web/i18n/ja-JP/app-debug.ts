@@ -202,23 +202,6 @@ const translation = {
     },
 
   },
-  automatic: {
-    title: '自動アプリケーションオーケストレーション',
-    description: 'シナリオを説明してください。Difyがアプリケーションをあなたのためにオーケストレートします。',
-    intendedAudience: '誰が想定されるターゲットですか？',
-    intendedAudiencePlaceHolder: '例：学生',
-    solveProblem: 'どのような問題をAIが解決できると期待していますか？',
-    solveProblemPlaceHolder: '例：学業成績の評価',
-    generate: '生成',
-    audiencesRequired: 'ターゲットが必要です',
-    problemRequired: '問題が必要です',
-    resTitle: '次のアプリケーションをあなたのためにオーケストレートしました。',
-    apply: 'このオーケストレーションを適用する',
-    noData: '左側にユースケースを記述し、オーケストレーションプレビューがここに表示されます。',
-    loading: 'アプリケーションのオーケストレーションを実行しています...',
-    overwriteTitle: '既存の構成を上書きしますか？',
-    overwriteMessage: 'このオーケストレーションを適用すると、既存の構成が上書きされます。',
-  },
   resetConfig: {
     title: 'リセットを確認しますか？',
     message: '変更が破棄され、最後に公開された構成が復元されます。',

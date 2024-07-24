@@ -1,8 +1,8 @@
-from flask import current_app
 from flask_login import current_user
 from flask_restful import Resource, abort, marshal_with, reqparse
 
 import services
+from configs import dify_config
 from controllers.console import api
 from controllers.console.setup import setup_required
 from controllers.console.wraps import account_initialization_required, cloud_edition_billing_resource_check
@@ -48,7 +48,7 @@ class MemberInviteEmailApi(Resource):
 
         inviter = current_user
         invitation_results = []
-        console_web_url = current_app.config.get("CONSOLE_WEB_URL")
+        console_web_url = dify_config.CONSOLE_WEB_URL
         for invitee_email in invitee_emails:
             try:
                 token = RegisterService.invite_new_member(inviter.current_tenant, invitee_email, interface_language, role=invitee_role, inviter=inviter)
@@ -117,7 +117,7 @@ class MemberUpdateRoleApi(Resource):
         if not TenantAccountRole.is_valid_role(new_role):
             return {'code': 'invalid-role', 'message': 'Invalid role'}, 400
 
-        member = Account.query.get(str(member_id))
+        member = db.session.get(Account, str(member_id))
         if not member:
             abort(404)
 

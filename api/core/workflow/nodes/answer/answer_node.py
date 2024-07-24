@@ -1,7 +1,5 @@
-import json
 from typing import cast
 
-from core.file.file_obj import FileVar
 from core.prompt.utils.prompt_template_parser import PromptTemplateParser
 from core.workflow.entities.base_node_data_entities import BaseNodeData
 from core.workflow.entities.node_entities import NodeRunResult, NodeType
@@ -19,7 +17,7 @@ from models.workflow import WorkflowNodeExecutionStatus
 
 class AnswerNode(BaseNode):
     _node_data_cls = AnswerNodeData
-    node_type = NodeType.ANSWER
+    _node_type: NodeType = NodeType.ANSWER
 
     def _run(self, variable_pool: VariablePool) -> NodeRunResult:
         """
@@ -28,7 +26,7 @@ class AnswerNode(BaseNode):
         :return:
         """
         node_data = self.node_data
-        node_data = cast(self._node_data_cls, node_data)
+        node_data = cast(AnswerNodeData, node_data)
 
         # generate routes
         generate_routes = self.extract_generate_route_from_node_data(node_data)
@@ -38,31 +36,9 @@ class AnswerNode(BaseNode):
             if part.type == "var":
                 part = cast(VarGenerateRouteChunk, part)
                 value_selector = part.value_selector
-                value = variable_pool.get_variable_value(
-                    variable_selector=value_selector
-                )
-
-                text = ''
-                if isinstance(value, str | int | float):
-                    text = str(value)
-                elif isinstance(value, dict):
-                    # other types
-                    text = json.dumps(value, ensure_ascii=False)
-                elif isinstance(value, FileVar):
-                    # convert file to markdown
-                    text = value.to_markdown()
-                elif isinstance(value, list):
-                    for item in value:
-                        if isinstance(item, FileVar):
-                            text += item.to_markdown() + ' '
-
-                    text = text.strip()
-
-                    if not text and value:
-                        # other types
-                        text = json.dumps(value, ensure_ascii=False)
-
-                answer += text
+                value = variable_pool.get(value_selector)
+                if value:
+                    answer += value.markdown
             else:
                 part = cast(TextGenerateRouteChunk, part)
                 answer += part.text
@@ -82,7 +58,7 @@ class AnswerNode(BaseNode):
         :return:
         """
         node_data = cls._node_data_cls(**config.get("data", {}))
-        node_data = cast(cls._node_data_cls, node_data)
+        node_data = cast(AnswerNodeData, node_data)
 
         return cls.extract_generate_route_from_node_data(node_data)
 
@@ -143,7 +119,7 @@ class AnswerNode(BaseNode):
         :return:
         """
         node_data = node_data
-        node_data = cast(cls._node_data_cls, node_data)
+        node_data = cast(AnswerNodeData, node_data)
 
         variable_template_parser = VariableTemplateParser(template=node_data.answer)
         variable_selectors = variable_template_parser.extract_variable_selectors()
