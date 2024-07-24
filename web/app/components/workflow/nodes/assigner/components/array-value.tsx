@@ -10,7 +10,6 @@ import { CodeLanguage } from '../../code/types'
 import { VarType as VarKindType } from '@/app/components/workflow/nodes/tool/types'
 import VarReferencePicker from '@/app/components/workflow/nodes/_base/components/variable/var-reference-picker'
 import TypeSelector from '@/app/components/workflow/nodes/_base/components/selector'
-
 type Props = {
   nodeId: string
   varType: VarType
@@ -47,6 +46,8 @@ const ArrayValue: FC<Props> = ({
     })
   }, [onChange, value])
 
+  const varTypeItem = varKindTypes.find(item => item.value === value?.type)
+
   const handleVarKindTypeChange = useCallback((newType: VarKindType) => {
     onChange({
       value: newType === VarKindType.constant ? '' : [],
@@ -60,17 +61,20 @@ const ArrayValue: FC<Props> = ({
 
   return (
     <div>
-      <div className='mb-1 flex h-[22px] items-center'>
-        <TypeSelector
-          noLeft
-          triggerClassName='!text-xs'
-          readonly={readOnly}
-          DropDownIcon={RiArrowDownSLine}
-          value={value.type}
-          options={varKindTypes}
-          onChange={handleVarKindTypeChange}
-        />
-      </div>
+      <TypeSelector
+        className='mb-1'
+        noLeft
+        trigger={
+          <div className='flex items-center h-7 justify-between px-2 bg-components-input-bg-normal radius-md text-xs'>
+            <div className='system-sm-regular text-components-input-text-filled'>{varTypeItem?.label}</div>
+            {!readOnly && <RiArrowDownSLine className='w-4 h-4 text-text-quaternary' />}
+          </div>
+        }
+        readonly={readOnly}
+        value={value.type}
+        options={varKindTypes}
+        onChange={handleVarKindTypeChange}
+      />
       {value.type === VarKindType.constant
         ? (
           <CodeEditor
