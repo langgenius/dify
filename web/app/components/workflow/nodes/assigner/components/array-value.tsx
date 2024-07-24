@@ -83,6 +83,11 @@ const ArrayValue: FC<Props> = ({
             readOnly={readOnly}
             language={CodeLanguage.json}
             title={<span>JSON</span>}
+            placeholder={<div className='whitespace-pre-line'>{`# JSON example 
+# [ # { # "name":"ray", # "age":"20" # },
+  # { # "name":"lily", # "age":"18" # } 
+# ]`}
+            </div>}
           />
         )
         : (

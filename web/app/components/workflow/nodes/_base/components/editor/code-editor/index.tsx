@@ -15,7 +15,7 @@ const CODE_EDITOR_LINE_HEIGHT = 18
 
 export type Props = {
   value?: string | object
-  placeholder?: string
+  placeholder?: JSX.Element | string
   onChange?: (value: string) => void
   title?: JSX.Element
   language: CodeLanguage
