@@ -195,7 +195,7 @@ class OllamaLargeLanguageModel(LargeLanguageModel):
         data["options"] = model_parameters or {}
 
         if stop:
-            data["stop"] = "\n".join(stop)
+            data["options"]["stop"] = stop
 
         completion_type = LLMMode.value_of(credentials["mode"])
 

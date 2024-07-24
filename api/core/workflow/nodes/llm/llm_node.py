@@ -12,7 +12,11 @@ from core.file.file_obj import FileVar
 from core.memory.token_buffer_memory import TokenBufferMemory
 from core.model_manager import ModelInstance, ModelManager
 from core.model_runtime.entities.llm_entities import LLMUsage
-from core.model_runtime.entities.message_entities import PromptMessage, PromptMessageContentType
+from core.model_runtime.entities.message_entities import (
+    ImagePromptMessageContent,
+    PromptMessage,
+    PromptMessageContentType,
+)
 from core.model_runtime.entities.model_entities import ModelType
 from core.model_runtime.model_providers.__base.large_language_model import LargeLanguageModel
 from core.model_runtime.utils.encoders import jsonable_encoder
@@ -37,7 +41,7 @@ from models.workflow import WorkflowNodeExecutionStatus
 
 class LLMNode(BaseNode):
     _node_data_cls = LLMNodeData
-    node_type = NodeType.LLM
+    _node_type = NodeType.LLM
 
     def _run(self, variable_pool: VariablePool) -> NodeRunResult:
         """
@@ -86,7 +90,7 @@ class LLMNode(BaseNode):
             # fetch prompt messages
             prompt_messages, stop = self._fetch_prompt_messages(
                 node_data=node_data,
-                query=variable_pool.get_variable_value(['sys', SystemVariable.QUERY.value])
+                query=variable_pool.get_any(['sys', SystemVariable.QUERY.value])
                 if node_data.memory else None,
                 query_prompt_template=node_data.memory.query_prompt_template if node_data.memory else None,
                 inputs=inputs,
@@ -234,8 +238,8 @@ class LLMNode(BaseNode):
 
         for variable_selector in node_data.prompt_config.jinja2_variables or []:
             variable = variable_selector.variable
-            value = variable_pool.get_variable_value(
-                variable_selector=variable_selector.value_selector
+            value = variable_pool.get_any(
+                variable_selector.value_selector
             )
 
             def parse_dict(d: dict) -> str:
@@ -298,7 +302,7 @@ class LLMNode(BaseNode):
             variable_selectors = variable_template_parser.extract_variable_selectors()
 
         for variable_selector in variable_selectors:
-            variable_value = variable_pool.get_variable_value(variable_selector.value_selector)
+            variable_value = variable_pool.get_any(variable_selector.value_selector)
             if variable_value is None:
                 raise ValueError(f'Variable {variable_selector.variable} not found')
 
@@ -309,7 +313,7 @@ class LLMNode(BaseNode):
             query_variable_selectors = (VariableTemplateParser(template=memory.query_prompt_template)
                                         .extract_variable_selectors())
             for variable_selector in query_variable_selectors:
-                variable_value = variable_pool.get_variable_value(variable_selector.value_selector)
+                variable_value = variable_pool.get_any(variable_selector.value_selector)
                 if variable_value is None:
                     raise ValueError(f'Variable {variable_selector.variable} not found')
 
@@ -327,7 +331,7 @@ class LLMNode(BaseNode):
         if not node_data.vision.enabled:
             return []
 
-        files = variable_pool.get_variable_value(['sys', SystemVariable.FILES.value])
+        files = variable_pool.get_any(['sys', SystemVariable.FILES.value])
         if not files:
             return []
 
@@ -346,7 +350,7 @@ class LLMNode(BaseNode):
         if not node_data.context.variable_selector:
             return None
 
-        context_value = variable_pool.get_variable_value(node_data.context.variable_selector)
+        context_value = variable_pool.get_any(node_data.context.variable_selector)
         if context_value:
             if isinstance(context_value, str):
                 return context_value
@@ -492,7 +496,7 @@ class LLMNode(BaseNode):
             return None
 
         # get conversation id
-        conversation_id = variable_pool.get_variable_value(['sys', SystemVariable.CONVERSATION_ID.value])
+        conversation_id = variable_pool.get_any(['sys', SystemVariable.CONVERSATION_ID.value])
         if conversation_id is None:
             return None
 
@@ -548,6 +552,7 @@ class LLMNode(BaseNode):
         stop = model_config.stop
 
         vision_enabled = node_data.vision.enabled
+        vision_detail = node_data.vision.configs.detail if node_data.vision.configs else None
         filtered_prompt_messages = []
         for prompt_message in prompt_messages:
             if prompt_message.is_empty():
@@ -556,7 +561,10 @@ class LLMNode(BaseNode):
             if not isinstance(prompt_message.content, str):
                 prompt_message_content = []
                 for content_item in prompt_message.content:
-                    if vision_enabled and content_item.type == PromptMessageContentType.IMAGE:
+                    if vision_enabled and content_item.type == PromptMessageContentType.IMAGE and isinstance(content_item, ImagePromptMessageContent):
+                        # Override vision config if LLM node has vision config
+                        if vision_detail:
+                            content_item.detail = ImagePromptMessageContent.DETAIL(vision_detail)
                         prompt_message_content.append(content_item)
                     elif content_item.type == PromptMessageContentType.TEXT:
                         prompt_message_content.append(content_item)

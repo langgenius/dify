@@ -2,9 +2,12 @@
 import type { FC } from 'react'
 import React from 'react'
 import { useTranslation } from 'react-i18next'
+import {
+  RiDeleteBinLine,
+  RiEditLine,
+} from '@remixicon/react'
 import type { Param } from '../../types'
 import { Variable02 } from '@/app/components/base/icons/src/vender/solid/development'
-import { Edit03, Trash03 } from '@/app/components/base/icons/src/vender/line/general'
 const i18nPrefix = 'workflow.nodes.parameterExtractor'
 
 type Props = {
@@ -43,14 +46,14 @@ const Item: FC<Props> = ({
           className='p-1 cursor-pointer rounded-md hover:bg-black/5'
           onClick={onEdit}
         >
-          <Edit03 className='w-4 h-4 text-gray-500' />
+          <RiEditLine className='w-4 h-4 text-gray-500' />
         </div>
 
         <div
           className='p-1 cursor-pointer rounded-md hover:bg-black/5'
           onClick={onDelete}
         >
-          <Trash03 className='w-4 h-4 text-gray-500' />
+          <RiDeleteBinLine className='w-4 h-4 text-gray-500' />
         </div>
       </div>
     </div>

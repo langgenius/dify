@@ -1,6 +1,5 @@
 import os
 from collections.abc import Iterable
-from time import sleep
 from typing import Any, Literal, Union
 
 import anthropic
@@ -64,7 +63,6 @@ class MockAnthropicClass:
 
         index = 0
         for i in range(0, len(full_response_text)):
-            sleep(0.1)
             yield ContentBlockDeltaEvent(
                 type='content_block_delta',
                 delta=TextDelta(text=full_response_text[i], type='text_delta'),

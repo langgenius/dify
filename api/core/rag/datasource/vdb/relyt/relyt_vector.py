@@ -1,17 +1,24 @@
+import json
 import uuid
 from typing import Any, Optional
 
-from pydantic import BaseModel, root_validator
+from pydantic import BaseModel, model_validator
 from sqlalchemy import Column, Sequence, String, Table, create_engine, insert
 from sqlalchemy import text as sql_text
 from sqlalchemy.dialects.postgresql import JSON, TEXT
 from sqlalchemy.orm import Session
+
+from core.rag.datasource.entity.embedding import Embeddings
+from core.rag.datasource.vdb.vector_factory import AbstractVectorFactory
+from core.rag.datasource.vdb.vector_type import VectorType
+from models.dataset import Dataset
 
 try:
     from sqlalchemy.orm import declarative_base
 except ImportError:
     from sqlalchemy.ext.declarative import declarative_base
 
+from configs import dify_config
 from core.rag.datasource.vdb.vector_base import BaseVector
 from core.rag.models.document import Document
 from extensions.ext_redis import redis_client
@@ -26,7 +33,7 @@ class RelytConfig(BaseModel):
     password: str
     database: str
 
-    @root_validator()
+    @model_validator(mode='before')
     def validate_config(cls, values: dict) -> dict:
         if not values['host']:
             raise ValueError("config RELYT_HOST is required")
@@ -53,7 +60,7 @@ class RelytVector(BaseVector):
         self._group_id = group_id
 
     def get_type(self) -> str:
-        return 'relyt'
+        return VectorType.RELYT
 
     def create(self, texts: list[Document], embeddings: list[list[float]], **kwargs):
         index_params = {}
@@ -78,7 +85,7 @@ class RelytVector(BaseVector):
                         document TEXT NOT NULL,
                         metadata JSON NOT NULL,
                         embedding vector({dimension}) NOT NULL
-                    ) using heap; 
+                    ) using heap;
                 """)
                 session.execute(create_statement)
                 index_statement = sql_text(f"""
@@ -143,11 +150,6 @@ class RelytVector(BaseVector):
                     conn.execute(insert(chunks_table).values(chunks_table_data))
 
         return ids
-
-    def delete_by_document_id(self, document_id: str):
-        ids = self.get_ids_by_metadata_field('document_id', document_id)
-        if ids:
-            self.delete_by_uuids(ids)
 
     def get_ids_by_metadata_field(self, key: str, value: str):
         result = None
@@ -240,10 +242,10 @@ class RelytVector(BaseVector):
         return docs
 
     def similarity_search_with_score_by_vector(
-        self,
-        embedding: list[float],
-        k: int = 4,
-        filter: Optional[dict] = None,
+            self,
+            embedding: list[float],
+            k: int = 4,
+            filter: Optional[dict] = None,
     ) -> list[tuple[Document, float]]:
         # Add the filter if provided
         try:
@@ -298,3 +300,27 @@ class RelytVector(BaseVector):
     def search_by_full_text(self, query: str, **kwargs: Any) -> list[Document]:
         # milvus/zilliz/relyt doesn't support bm25 search
         return []
+
+
+class RelytVectorFactory(AbstractVectorFactory):
+    def init_vector(self, dataset: Dataset, attributes: list, embeddings: Embeddings) -> RelytVector:
+        if dataset.index_struct_dict:
+            class_prefix: str = dataset.index_struct_dict['vector_store']['class_prefix']
+            collection_name = class_prefix
+        else:
+            dataset_id = dataset.id
+            collection_name = Dataset.gen_collection_name_by_id(dataset_id)
+            dataset.index_struct = json.dumps(
+                self.gen_index_struct_dict(VectorType.RELYT, collection_name))
+
+        return RelytVector(
+            collection_name=collection_name,
+            config=RelytConfig(
+                host=dify_config.RELYT_HOST,
+                port=dify_config.RELYT_PORT,
+                user=dify_config.RELYT_USER,
+                password=dify_config.RELYT_PASSWORD,
+                database=dify_config.RELYT_DATABASE,
+            ),
+            group_id=dataset.id
+        )

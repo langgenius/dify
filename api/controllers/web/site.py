@@ -1,8 +1,8 @@
 
-from flask import current_app
 from flask_restful import fields, marshal_with
 from werkzeug.exceptions import Forbidden
 
+from configs import dify_config
 from controllers.web import api
 from controllers.web.wraps import WebApiResource
 from extensions.ext_database import db
@@ -26,6 +26,8 @@ class AppSiteApi(WebApiResource):
 
     site_fields = {
         'title': fields.String,
+        'chat_color_theme': fields.String,
+        'chat_color_theme_inverted': fields.Boolean,
         'icon': fields.String,
         'icon_background': fields.String,
         'description': fields.String,
@@ -33,7 +35,8 @@ class AppSiteApi(WebApiResource):
         'privacy_policy': fields.String,
         'custom_disclaimer': fields.String,
         'default_language': fields.String,
-        'prompt_public': fields.Boolean
+        'prompt_public': fields.Boolean,
+        'show_workflow_steps': fields.Boolean,
     }
 
     app_fields = {
@@ -81,7 +84,7 @@ class AppSiteInfo:
         self.can_replace_logo = can_replace_logo
 
         if can_replace_logo:
-            base_url = current_app.config.get('FILES_URL')
+            base_url = dify_config.FILES_URL
             remove_webapp_brand = tenant.custom_config_dict.get('remove_webapp_brand', False)
             replace_webapp_logo = f'{base_url}/files/workspaces/{tenant.id}/webapp-logo' if tenant.custom_config_dict.get('replace_webapp_logo') else None
             self.custom_config = {

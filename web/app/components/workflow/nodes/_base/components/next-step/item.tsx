@@ -45,8 +45,9 @@ const Item = ({
   const renderTrigger = useCallback((open: boolean) => {
     return (
       <Button
+        size='small'
         className={`
-          hidden group-hover:flex px-2 py-0 h-6 bg-white text-xs text-gray-700 font-medium rounded-md
+          hidden group-hover:flex
           ${open && '!bg-gray-100 !flex'}
         `}
       >
@@ -57,7 +58,7 @@ const Item = ({
 
   return (
     <div
-      className='relative group flex items-center mb-3 last-of-type:mb-0 px-2 h-9 rounded-lg border-[0.5px] border-gray-200 bg-white hover:bg-gray-50 shadow-xs text-xs text-gray-700 cursor-pointer'
+      className='relative group flex items-center mb-3 last-of-type:mb-0 px-2 h-9 rounded-lg border-[0.5px] border-divider-regular bg-background-default hover:bg-background-default-hover shadow-xs text-xs text-text-secondary cursor-pointer'
     >
       {
         branchName && (
@@ -74,7 +75,7 @@ const Item = ({
         toolIcon={toolIcon}
         className='shrink-0 mr-1.5'
       />
-      <div className='grow'>{data.title}</div>
+      <div className='grow system-xs-medium text-text-secondary'>{data.title}</div>
       {
         !nodesReadOnly && (
           <BlockSelector

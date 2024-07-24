@@ -1,6 +1,6 @@
 import re
 from collections.abc import Generator
-from time import sleep, time
+from time import time
 
 # import monkeypatch
 from typing import Any, Literal, Optional, Union
@@ -20,7 +20,6 @@ class MockCompletionsClass:
     def mocked_openai_completion_create_sync(
         model: str
     ) -> CompletionMessage:
-        sleep(1)
         return CompletionMessage(
             id="cmpl-3QJQa5jXJ5Z5X",
             object="text_completion",
@@ -48,7 +47,6 @@ class MockCompletionsClass:
     ) -> Generator[CompletionMessage, None, None]:
         full_text = "Hello, world!\n\n```python\nprint('Hello, world!')\n```"
         for i in range(0, len(full_text) + 1):
-            sleep(0.1)
             if i == len(full_text):
                 yield CompletionMessage(
                     id="cmpl-3QJQa5jXJ5Z5X",

@@ -1,7 +1,9 @@
 import type { FC } from 'react'
 import React from 'react'
 import { useTranslation } from 'react-i18next'
-
+import {
+  RiArrowRightSLine,
+} from '@remixicon/react'
 import VarReferencePicker from '../_base/components/variable/var-reference-picker'
 import Split from '../_base/components/split'
 import ResultPanel from '../../run/result-panel'
@@ -11,7 +13,6 @@ import useConfig from './use-config'
 import { InputVarType, type NodePanelProps } from '@/app/components/workflow/types'
 import Field from '@/app/components/workflow/nodes/_base/components/field'
 import BeforeRunForm from '@/app/components/workflow/nodes/_base/components/before-run-form'
-import { ArrowNarrowRight } from '@/app/components/base/icons/src/vender/line/arrows'
 
 const i18nPrefix = 'workflow.nodes.iteration'
 
@@ -116,7 +117,7 @@ const Panel: FC<NodePanelProps<IterationNodeType>> = ({
               <div className='px-4'>
                 <div className='flex items-center h-[34px] justify-between px-3 bg-gray-100 border-[0.5px] border-gray-200 rounded-lg cursor-pointer' onClick={showIterationDetail}>
                   <div className='leading-[18px] text-[13px] font-medium text-gray-700'>{t(`${i18nPrefix}.iteration`, { count: iterationRunResult.length })}</div>
-                  <ArrowNarrowRight className='w-3.5 h-3.5 text-gray-500' />
+                  <RiArrowRightSLine className='w-3.5 h-3.5 text-gray-500' />
                 </div>
                 <Split className='mt-3' />
               </div>

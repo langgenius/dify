@@ -4,11 +4,11 @@ import uuid
 from collections.abc import Generator
 from typing import Union
 
-from flask import current_app
 from flask_login import current_user
 from werkzeug.datastructures import FileStorage
 from werkzeug.exceptions import NotFound
 
+from configs import dify_config
 from core.file.upload_file_parser import UploadFileParser
 from core.rag.extractor.extract_processor import ExtractProcessor
 from extensions.ext_database import db
@@ -21,7 +21,7 @@ IMAGE_EXTENSIONS = ['jpg', 'jpeg', 'png', 'webp', 'gif', 'svg']
 IMAGE_EXTENSIONS.extend([ext.upper() for ext in IMAGE_EXTENSIONS])
 
 ALLOWED_EXTENSIONS = ['txt', 'markdown', 'md', 'pdf', 'html', 'htm', 'xlsx', 'xls', 'docx', 'csv']
-UNSTRUSTURED_ALLOWED_EXTENSIONS = ['txt', 'markdown', 'md', 'pdf', 'html', 'htm', 'xlsx', 'xls',
+UNSTRUCTURED_ALLOWED_EXTENSIONS = ['txt', 'markdown', 'md', 'pdf', 'html', 'htm', 'xlsx', 'xls',
                                    'docx', 'csv', 'eml', 'msg', 'pptx', 'ppt', 'xml', 'epub']
 
 PREVIEW_WORDS_LIMIT = 3000
@@ -31,9 +31,12 @@ class FileService:
 
     @staticmethod
     def upload_file(file: FileStorage, user: Union[Account, EndUser], only_image: bool = False) -> UploadFile:
+        filename = file.filename
         extension = file.filename.split('.')[-1]
-        etl_type = current_app.config['ETL_TYPE']
-        allowed_extensions = UNSTRUSTURED_ALLOWED_EXTENSIONS + IMAGE_EXTENSIONS if etl_type == 'Unstructured' \
+        if len(filename) > 200:
+            filename = filename.split('.')[0][:200] + '.' + extension
+        etl_type = dify_config.ETL_TYPE
+        allowed_extensions = UNSTRUCTURED_ALLOWED_EXTENSIONS + IMAGE_EXTENSIONS if etl_type == 'Unstructured' \
             else ALLOWED_EXTENSIONS + IMAGE_EXTENSIONS
         if extension.lower() not in allowed_extensions:
             raise UnsupportedFileTypeError()
@@ -47,9 +50,9 @@ class FileService:
         file_size = len(file_content)
 
         if extension.lower() in IMAGE_EXTENSIONS:
-            file_size_limit = current_app.config.get("UPLOAD_IMAGE_FILE_SIZE_LIMIT") * 1024 * 1024
+            file_size_limit = dify_config.UPLOAD_IMAGE_FILE_SIZE_LIMIT * 1024 * 1024
         else:
-            file_size_limit = current_app.config.get("UPLOAD_FILE_SIZE_LIMIT") * 1024 * 1024
+            file_size_limit = dify_config.UPLOAD_FILE_SIZE_LIMIT * 1024 * 1024
 
         if file_size > file_size_limit:
             message = f'File size exceeded. {file_size} > {file_size_limit}'
@@ -70,12 +73,11 @@ class FileService:
         storage.save(file_key, file_content)
 
         # save file to db
-        config = current_app.config
         upload_file = UploadFile(
             tenant_id=current_tenant_id,
-            storage_type=config['STORAGE_TYPE'],
+            storage_type=dify_config.STORAGE_TYPE,
             key=file_key,
-            name=file.filename,
+            name=filename,
             size=file_size,
             extension=extension,
             mime_type=file.mimetype,
@@ -93,6 +95,8 @@ class FileService:
 
     @staticmethod
     def upload_text(text: str, text_name: str) -> UploadFile:
+        if len(text_name) > 200:
+            text_name = text_name[:200]
         # user uuid as file name
         file_uuid = str(uuid.uuid4())
         file_key = 'upload_files/' + current_user.current_tenant_id + '/' + file_uuid + '.txt'
@@ -101,10 +105,9 @@ class FileService:
         storage.save(file_key, text.encode('utf-8'))
 
         # save file to db
-        config = current_app.config
         upload_file = UploadFile(
             tenant_id=current_user.current_tenant_id,
-            storage_type=config['STORAGE_TYPE'],
+            storage_type=dify_config.STORAGE_TYPE,
             key=file_key,
             name=text_name + '.txt',
             size=len(text),
@@ -133,8 +136,8 @@ class FileService:
 
         # extract text from file
         extension = upload_file.extension
-        etl_type = current_app.config['ETL_TYPE']
-        allowed_extensions = UNSTRUSTURED_ALLOWED_EXTENSIONS if etl_type == 'Unstructured' else ALLOWED_EXTENSIONS
+        etl_type = dify_config.ETL_TYPE
+        allowed_extensions = UNSTRUCTURED_ALLOWED_EXTENSIONS if etl_type == 'Unstructured' else ALLOWED_EXTENSIONS
         if extension.lower() not in allowed_extensions:
             raise UnsupportedFileTypeError()
 

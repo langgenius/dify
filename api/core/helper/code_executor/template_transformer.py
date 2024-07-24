@@ -4,12 +4,10 @@ from abc import ABC, abstractmethod
 from base64 import b64encode
 from typing import Optional
 
-from pydantic import BaseModel
-
 from core.helper.code_executor.entities import CodeDependency
 
 
-class TemplateTransformer(ABC, BaseModel):
+class TemplateTransformer(ABC):
     _code_placeholder: str = '{{code}}'
     _inputs_placeholder: str = '{{inputs}}'
     _result_tag: str = '<<RESULT>>'

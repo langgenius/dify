@@ -1,3 +1,4 @@
+import contextvars
 import logging
 import os
 import threading
@@ -8,6 +9,7 @@ from typing import Union
 from flask import Flask, current_app
 from pydantic import ValidationError
 
+import contexts
 from core.app.app_config.features.file_upload.manager import FileUploadConfigManager
 from core.app.apps.advanced_chat.app_config_manager import AdvancedChatAppConfigManager
 from core.app.apps.advanced_chat.app_runner import AdvancedChatAppRunner
@@ -20,6 +22,7 @@ from core.app.entities.app_invoke_entities import AdvancedChatAppGenerateEntity,
 from core.app.entities.task_entities import ChatbotAppBlockingResponse, ChatbotAppStreamResponse
 from core.file.message_file_parser import MessageFileParser
 from core.model_runtime.errors.invoke import InvokeAuthorizationError, InvokeError
+from core.ops.ops_trace_manager import TraceQueueManager
 from extensions.ext_database import db
 from models.account import Account
 from models.model import App, Conversation, EndUser, Message
@@ -29,13 +32,14 @@ logger = logging.getLogger(__name__)
 
 
 class AdvancedChatAppGenerator(MessageBasedAppGenerator):
-    def generate(self, app_model: App,
-                 workflow: Workflow,
-                 user: Union[Account, EndUser],
-                 args: dict,
-                 invoke_from: InvokeFrom,
-                 stream: bool = True) \
-            -> Union[dict, Generator[dict, None, None]]:
+    def generate(
+        self, app_model: App,
+        workflow: Workflow,
+        user: Union[Account, EndUser],
+        args: dict,
+        invoke_from: InvokeFrom,
+        stream: bool = True,
+    ) -> Union[dict, Generator[dict, None, None]]:
         """
         Generate App response.
 
@@ -57,7 +61,7 @@ class AdvancedChatAppGenerator(MessageBasedAppGenerator):
         inputs = args['inputs']
 
         extras = {
-            "auto_generate_conversation_name": args['auto_generate_name'] if 'auto_generate_name' in args else False
+            "auto_generate_conversation_name": args.get('auto_generate_name', False)
         }
 
         # get conversation
@@ -84,6 +88,13 @@ class AdvancedChatAppGenerator(MessageBasedAppGenerator):
             workflow=workflow
         )
 
+        # get tracing instance
+        trace_manager = TraceQueueManager(app_id=app_model.id)
+
+        if invoke_from == InvokeFrom.DEBUGGER:
+            # always enable retriever resource in debugger mode
+            app_config.additional_features.show_retrieve_source = True
+
         # init application generate entity
         application_generate_entity = AdvancedChatAppGenerateEntity(
             task_id=str(uuid.uuid4()),
@@ -95,8 +106,10 @@ class AdvancedChatAppGenerator(MessageBasedAppGenerator):
             user_id=user.id,
             stream=stream,
             invoke_from=invoke_from,
-            extras=extras
+            extras=extras,
+            trace_manager=trace_manager
         )
+        contexts.tenant_id.set(application_generate_entity.app_config.tenant_id)
 
         return self._generate(
             app_model=app_model,
@@ -163,6 +176,7 @@ class AdvancedChatAppGenerator(MessageBasedAppGenerator):
                 inputs=args['inputs']
             )
         )
+        contexts.tenant_id.set(application_generate_entity.app_config.tenant_id)
 
         return self._generate(
             app_model=app_model,
@@ -215,6 +229,8 @@ class AdvancedChatAppGenerator(MessageBasedAppGenerator):
             'queue_manager': queue_manager,
             'conversation_id': conversation.id,
             'message_id': message.id,
+            'user': user,
+            'context': contextvars.copy_context()
         })
 
         worker_thread.start()
@@ -239,7 +255,9 @@ class AdvancedChatAppGenerator(MessageBasedAppGenerator):
                          application_generate_entity: AdvancedChatAppGenerateEntity,
                          queue_manager: AppQueueManager,
                          conversation_id: str,
-                         message_id: str) -> None:
+                         message_id: str,
+                         user: Account,
+                         context: contextvars.Context) -> None:
         """
         Generate worker in a new thread.
         :param flask_app: Flask app
@@ -249,6 +267,8 @@ class AdvancedChatAppGenerator(MessageBasedAppGenerator):
         :param message_id: message ID
         :return:
         """
+        for var, val in context.items():
+            var.set(val)
         with flask_app.app_context():
             try:
                 runner = AdvancedChatAppRunner()

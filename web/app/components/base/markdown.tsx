@@ -7,11 +7,12 @@ import RemarkGfm from 'remark-gfm'
 import SyntaxHighlighter from 'react-syntax-highlighter'
 import { atelierHeathLight } from 'react-syntax-highlighter/dist/esm/styles/hljs'
 import type { RefObject } from 'react'
-import { useEffect, useRef, useState } from 'react'
-import cn from 'classnames'
-import CopyBtn from '@/app/components/app/chat/copy-btn'
-import SVGBtn from '@/app/components/app/chat/svg'
-import Flowchart from '@/app/components/app/chat/mermaid'
+import { memo, useEffect, useMemo, useRef, useState } from 'react'
+import type { CodeComponent } from 'react-markdown/lib/ast-to-react'
+import cn from '@/utils/classnames'
+import CopyBtn from '@/app/components/base/copy-btn'
+import SVGBtn from '@/app/components/base/svg'
+import Flowchart from '@/app/components/base/mermaid'
 
 // Available language https://github.com/react-syntax-highlighter/react-syntax-highlighter/blob/master/AVAILABLE_LANGUAGES_HLJS.MD
 const capitalizationLanguageNameMap: Record<string, string> = {
@@ -39,6 +40,15 @@ const getCorrectCapitalizationLanguageName = (language: string) => {
 
   return language.charAt(0).toUpperCase() + language.substring(1)
 }
+
+const preprocessLaTeX = (content: string) => {
+  if (typeof content !== 'string')
+    return content
+  return content.replace(/\\\[(.*?)\\\]/gs, (_, equation) => `$$${equation}$$`)
+    .replace(/\\\((.*?)\\\)/gs, (_, equation) => `$$${equation}$$`)
+    .replace(/(^|[^\\])\$(.+?)\$/gs, (_, prefix, equation) => `${prefix}$${equation}$`)
+}
+
 export function PreCode(props: { children: any }) {
   const ref = useRef<HTMLPreElement>(null)
 
@@ -80,67 +90,88 @@ const useLazyLoad = (ref: RefObject<Element>): boolean => {
   return isIntersecting
 }
 
+// **Add code block
+// Avoid error #185 (Maximum update depth exceeded.
+// This can happen when a component repeatedly calls setState inside componentWillUpdate or componentDidUpdate.
+// React limits the number of nested updates to prevent infinite loops.)
+// Reference A: https://reactjs.org/docs/error-decoder.html?invariant=185
+// Reference B1: https://react.dev/reference/react/memo
+// Reference B2: https://react.dev/reference/react/useMemo
+// ****
+// The original error that occurred in the streaming response during the conversation:
+// Error: Minified React error 185;
+// visit https://reactjs.org/docs/error-decoder.html?invariant=185 for the full message
+// or use the non-minified dev environment for full errors and additional helpful warnings.
+const CodeBlock: CodeComponent = memo(({ inline, className, children, ...props }) => {
+  const [isSVG, setIsSVG] = useState(true)
+  const match = /language-(\w+)/.exec(className || '')
+  const language = match?.[1]
+  const languageShowName = getCorrectCapitalizationLanguageName(language || '')
+
+  // Use `useMemo` to ensure that `SyntaxHighlighter` only re-renders when necessary
+  return useMemo(() => {
+    return (!inline && match)
+      ? (
+        <div>
+          <div
+            className='flex justify-between h-8 items-center p-1 pl-3 border-b'
+            style={{
+              borderColor: 'rgba(0, 0, 0, 0.05)',
+            }}
+          >
+            <div className='text-[13px] text-gray-500 font-normal'>{languageShowName}</div>
+            <div style={{ display: 'flex' }}>
+              {language === 'mermaid'
+                && <SVGBtn
+                  isSVG={isSVG}
+                  setIsSVG={setIsSVG}
+                />
+              }
+              <CopyBtn
+                className='mr-1'
+                value={String(children).replace(/\n$/, '')}
+                isPlain
+              />
+            </div>
+          </div>
+          {(language === 'mermaid' && isSVG)
+            ? (<Flowchart PrimitiveCode={String(children).replace(/\n$/, '')} />)
+            : (<SyntaxHighlighter
+              {...props}
+              style={atelierHeathLight}
+              customStyle={{
+                paddingLeft: 12,
+                backgroundColor: '#fff',
+              }}
+              language={match[1]}
+              showLineNumbers
+              PreTag="div"
+            >
+              {String(children).replace(/\n$/, '')}
+            </SyntaxHighlighter>)}
+        </div>
+      )
+      : (
+        <code {...props} className={className}>
+          {children}
+        </code>
+      )
+  }, [children, className, inline, isSVG, language, languageShowName, match, props])
+})
+
+CodeBlock.displayName = 'CodeBlock'
+
 export function Markdown(props: { content: string; className?: string }) {
-  const [isSVG, setIsSVG] = useState(false)
+  const latexContent = preprocessLaTeX(props.content)
   return (
     <div className={cn(props.className, 'markdown-body')}>
       <ReactMarkdown
         remarkPlugins={[[RemarkMath, { singleDollarTextMath: false }], RemarkGfm, RemarkBreaks]}
         rehypePlugins={[
-          RehypeKatex,
+          RehypeKatex as any,
         ]}
         components={{
-          code({ inline, className, children, ...props }) {
-            const match = /language-(\w+)/.exec(className || '')
-            const language = match?.[1]
-            const languageShowName = getCorrectCapitalizationLanguageName(language || '')
-            return (!inline && match)
-              ? (
-                <div>
-                  <div
-                    className='flex justify-between h-8 items-center p-1 pl-3 border-b'
-                    style={{
-                      borderColor: 'rgba(0, 0, 0, 0.05)',
-                    }}
-                  >
-                    <div className='text-[13px] text-gray-500 font-normal'>{languageShowName}</div>
-                    <div style={{ display: 'flex' }}>
-                      {language === 'mermaid'
-                        && <SVGBtn
-                          isSVG={isSVG}
-                          setIsSVG={setIsSVG}
-                        />
-                      }
-                      <CopyBtn
-                        className='mr-1'
-                        value={String(children).replace(/\n$/, '')}
-                        isPlain
-                      />
-                    </div>
-                  </div>
-                  {(language === 'mermaid' && isSVG)
-                    ? (<Flowchart PrimitiveCode={String(children).replace(/\n$/, '')} />)
-                    : (<SyntaxHighlighter
-                      {...props}
-                      style={atelierHeathLight}
-                      customStyle={{
-                        paddingLeft: 12,
-                        backgroundColor: '#fff',
-                      }}
-                      language={match[1]}
-                      showLineNumbers
-                      PreTag="div"
-                    >
-                      {String(children).replace(/\n$/, '')}
-                    </SyntaxHighlighter>)}
-                </div>
-              )
-              : (
-                <code {...props} className={className}>
-                  {children}
-                </code>
-              )
-          },
+          code: CodeBlock,
           img({ src, alt, ...props }) {
             return (
               // eslint-disable-next-line @next/next/no-img-element
@@ -179,7 +210,7 @@ export function Markdown(props: { content: string; className?: string }) {
         linkTarget='_blank'
       >
         {/* Markdown detect has problem. */}
-        {props.content}
+        {latexContent}
       </ReactMarkdown>
     </div>
   )

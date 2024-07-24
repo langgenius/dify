@@ -1,10 +1,10 @@
 'use client'
 
 import { useTranslation } from 'react-i18next'
-import classNames from 'classnames'
 import useSWR from 'swr'
 import Link from 'next/link'
 import s from './index.module.css'
+import classNames from '@/utils/classnames'
 import { fetchAccountIntegrates } from '@/service/common'
 
 const titleClassName = `

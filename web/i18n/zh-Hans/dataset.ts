@@ -8,6 +8,7 @@ const translation = {
   deleteDatasetConfirmTitle: '要删除知识库吗？',
   deleteDatasetConfirmContent:
     '删除知识库是不可逆的。用户将无法再访问您的知识库,所有的提示配置和日志将被永久删除。',
+  datasetUsedByApp: '某些应用正在使用该知识库。应用将无法再使用该知识库,所有的提示配置和日志将被永久删除。',
   datasetDeleted: '知识库已删除',
   datasetDeleteFailed: '删除知识库失败',
   didYouKnow: '你知道吗？',
@@ -44,6 +45,29 @@ const translation = {
   },
   docsFailedNotice: '文档无法被索引',
   retry: '重试',
+  indexingTechnique: {
+    high_quality: '高质量',
+    economy: '经济',
+  },
+  indexingMethod: {
+    semantic_search: '向量检索',
+    full_text_search: '全文检索',
+    hybrid_search: '混合检索',
+  },
+  mixtureHighQualityAndEconomicTip: '混合使用高质量和经济型知识库需要配置 Rerank 模型。',
+  inconsistentEmbeddingModelTip: '当所选知识库配置的 Embedding 模型不一致时，需要配置 Rerank 模型。',
+  retrievalSettings: '召回设置',
+  rerankSettings: 'Rerank 设置',
+  weightedScore: {
+    title: '权重设置',
+    description: '通过调整分配的权重，重新排序策略确定是优先进行语义匹配还是关键字匹配。',
+    semanticFirst: '语义优先',
+    keywordFirst: '关键词优先',
+    customized: '自定义',
+    semantic: '语义',
+    keyword: '关键词',
+  },
+  nTo1RetrievalLegacy: '根据产品规划，N 选 1 召回将于 9 月正式弃用。在那之前，您仍然可以正常使用它。',
 }
 
 export default translation

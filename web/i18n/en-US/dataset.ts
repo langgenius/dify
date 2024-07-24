@@ -8,6 +8,7 @@ const translation = {
   deleteDatasetConfirmTitle: 'Delete this Knowledge?',
   deleteDatasetConfirmContent:
     'Deleting the Knowledge is irreversible. Users will no longer be able to access your Knowledge, and all prompt configurations and logs will be permanently deleted.',
+  datasetUsedByApp: 'The knowledge is being used by some apps. Apps will no longer be able to use this Knowledge, and all prompt configurations and logs will be permanently deleted.',
   datasetDeleted: 'Knowledge deleted',
   datasetDeleteFailed: 'Failed to delete Knowledge',
   didYouKnow: 'Did you know?',
@@ -44,6 +45,29 @@ const translation = {
   },
   docsFailedNotice: 'documents failed to be indexed',
   retry: 'Retry',
+  indexingTechnique: {
+    high_quality: 'HQ',
+    economy: 'ECO',
+  },
+  indexingMethod: {
+    semantic_search: 'VECTOR',
+    full_text_search: 'FULL TEXT',
+    hybrid_search: 'HYBRID',
+  },
+  mixtureHighQualityAndEconomicTip: 'The Rerank model is required for mixture of high quality and economical knowledge bases.',
+  inconsistentEmbeddingModelTip: 'The Rerank model is required if the Embedding models of the selected knowledge bases are inconsistent.',
+  retrievalSettings: 'Retrieval Setting',
+  rerankSettings: 'Rerank Setting',
+  weightedScore: {
+    title: 'Weighted Score',
+    description: 'By adjusting the weights assigned， this rerank strategy determines whether to prioritize semantic or keyword matching.',
+    semanticFirst: 'Semantic first',
+    keywordFirst: 'Keyword first',
+    customized: 'Customized',
+    semantic: 'Semantic',
+    keyword: 'Keyword',
+  },
+  nTo1RetrievalLegacy: 'According to product planning, N-to-1 retrieval will be officially deprecated in September. Until then you can still use it normally.',
 }
 
 export default translation

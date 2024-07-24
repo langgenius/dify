@@ -2,12 +2,13 @@
 from pydantic import BaseModel, Field
 
 from core.rag.datasource.retrieval_service import RetrievalService
+from core.rag.retrieval.retrival_methods import RetrievalMethod
 from core.tools.tool.dataset_retriever.dataset_retriever_base_tool import DatasetRetrieverBaseTool
 from extensions.ext_database import db
 from models.dataset import Dataset, Document, DocumentSegment
 
 default_retrieval_model = {
-    'search_method': 'semantic_search',
+    'search_method': RetrievalMethod.SEMANTIC_SEARCH.value,
     'reranking_enable': False,
     'reranking_model': {
         'reranking_provider_name': '',
@@ -77,7 +78,8 @@ class DatasetRetrieverTool(DatasetRetrieverBaseTool):
                                                       score_threshold=retrieval_model['score_threshold']
                                                       if retrieval_model['score_threshold_enabled'] else None,
                                                       reranking_model=retrieval_model['reranking_model']
-                                                      if retrieval_model['reranking_enable'] else None
+                                                      if retrieval_model['reranking_enable'] else None,
+                                                      weights=retrieval_model.get('weights', None),
                                                       )
             else:
                 documents = []

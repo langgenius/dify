@@ -2,10 +2,9 @@ import json
 import logging
 from typing import Optional, Union
 
-from flask import current_app
-
-from core.model_runtime.entities.common_entities import I18nObject
+from configs import dify_config
 from core.tools.entities.api_entities import UserTool, UserToolProvider
+from core.tools.entities.common_entities import I18nObject
 from core.tools.entities.tool_bundle import ApiToolBundle
 from core.tools.entities.tool_entities import (
     ApiProviderAuthType,
@@ -29,7 +28,7 @@ class ToolTransformService:
         """
             get tool provider icon url
         """
-        url_prefix = (current_app.config.get("CONSOLE_API_URL")
+        url_prefix = (dify_config.CONSOLE_API_URL
                       + "/console/api/workspaces/current/tool-provider/")
         
         if provider_type == ToolProviderType.BUILT_IN.value:
@@ -81,11 +80,13 @@ class ToolTransformService:
             description=I18nObject(
                 en_US=provider_controller.identity.description.en_US,
                 zh_Hans=provider_controller.identity.description.zh_Hans,
+                pt_BR=provider_controller.identity.description.pt_BR,
             ),
             icon=provider_controller.identity.icon,
             label=I18nObject(
                 en_US=provider_controller.identity.label.en_US,
                 zh_Hans=provider_controller.identity.label.zh_Hans,
+                pt_BR=provider_controller.identity.label.pt_BR,
             ),
             type=ToolProviderType.BUILT_IN,
             masked_credentials={},

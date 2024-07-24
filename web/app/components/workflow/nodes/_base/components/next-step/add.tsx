@@ -4,12 +4,14 @@ import {
 } from 'react'
 import { useTranslation } from 'react-i18next'
 import {
+  RiAddLine,
+} from '@remixicon/react'
+import {
   useAvailableBlocks,
   useNodesInteractions,
   useNodesReadOnly,
 } from '@/app/components/workflow/hooks'
 import BlockSelector from '@/app/components/workflow/block-selector'
-import { Plus } from '@/app/components/base/icons/src/vender/line/general'
 import type {
   CommonNodeType,
   OnSelectBlock,
@@ -49,24 +51,24 @@ const Add = ({
     return (
       <div
         className={`
-          relative flex items-center px-2 h-9 rounded-lg border border-dashed border-gray-200 bg-gray-50 
-          hover:bg-gray-100 text-xs text-gray-500 cursor-pointer
-          ${open && '!bg-gray-100'}
+          relative flex items-center px-2 h-9 rounded-lg border border-dashed border-divider-regular bg-dropzone-bg
+          hover:bg-dropzone-bg-hover text-xs text-text-placeholder cursor-pointer
+          ${open && '!bg-components-dropzone-bg-alt'}
           ${nodesReadOnly && '!cursor-not-allowed'}
         `}
       >
         {
           branchName && (
             <div
-              className='absolute left-1 right-1 -top-[7.5px] flex items-center h-3 text-[10px] text-gray-500 font-semibold'
+              className='absolute left-1 right-1 -top-[7.5px] flex items-center h-3 text-[10px] text-text-placeholder font-semibold'
               title={branchName.toLocaleUpperCase()}
             >
-              <div className='inline-block px-0.5 rounded-[5px] bg-white truncate'>{branchName.toLocaleUpperCase()}</div>
+              <div className='inline-block px-0.5 rounded-[5px] bg-background-default truncate'>{branchName.toLocaleUpperCase()}</div>
             </div>
           )
         }
-        <div className='flex items-center justify-center mr-1.5 w-5 h-5 rounded-[5px] bg-gray-200'>
-          <Plus className='w-3 h-3' />
+        <div className='flex items-center justify-center mr-1.5 w-5 h-5 rounded-[5px] bg-background-default-dimm'>
+          <RiAddLine className='w-3 h-3' />
         </div>
         {t('workflow.panel.selectNextStep')}
       </div>

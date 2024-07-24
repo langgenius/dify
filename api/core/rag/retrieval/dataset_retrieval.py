@@ -1,4 +1,6 @@
+import math
 import threading
+from collections import Counter
 from typing import Optional, cast
 
 from flask import Flask, current_app
@@ -12,9 +14,13 @@ from core.model_manager import ModelInstance, ModelManager
 from core.model_runtime.entities.message_entities import PromptMessageTool
 from core.model_runtime.entities.model_entities import ModelFeature, ModelType
 from core.model_runtime.model_providers.__base.large_language_model import LargeLanguageModel
+from core.ops.ops_trace_manager import TraceQueueManager, TraceTask, TraceTaskName
+from core.ops.utils import measure_time
+from core.rag.data_post_processor.data_post_processor import DataPostProcessor
+from core.rag.datasource.keyword.jieba.jieba_keyword_table_handler import JiebaKeywordTableHandler
 from core.rag.datasource.retrieval_service import RetrievalService
 from core.rag.models.document import Document
-from core.rag.rerank.rerank import RerankRunner
+from core.rag.retrieval.retrival_methods import RetrievalMethod
 from core.rag.retrieval.router.multi_dataset_function_call_router import FunctionCallMultiDatasetRouter
 from core.rag.retrieval.router.multi_dataset_react_route import ReactMultiDatasetRouter
 from core.tools.tool.dataset_retriever.dataset_multi_retriever_tool import DatasetMultiRetrieverTool
@@ -25,7 +31,7 @@ from models.dataset import Dataset, DatasetQuery, DocumentSegment
 from models.dataset import Document as DatasetDocument
 
 default_retrieval_model = {
-    'search_method': 'semantic_search',
+    'search_method': RetrievalMethod.SEMANTIC_SEARCH.value,
     'reranking_enable': False,
     'reranking_model': {
         'reranking_provider_name': '',
@@ -37,14 +43,20 @@ default_retrieval_model = {
 
 
 class DatasetRetrieval:
-    def retrieve(self, app_id: str, user_id: str, tenant_id: str,
-                 model_config: ModelConfigWithCredentialsEntity,
-                 config: DatasetEntity,
-                 query: str,
-                 invoke_from: InvokeFrom,
-                 show_retrieve_source: bool,
-                 hit_callback: DatasetIndexToolCallbackHandler,
-                 memory: Optional[TokenBufferMemory] = None) -> Optional[str]:
+    def __init__(self, application_generate_entity=None):
+        self.application_generate_entity = application_generate_entity
+
+    def retrieve(
+            self, app_id: str, user_id: str, tenant_id: str,
+            model_config: ModelConfigWithCredentialsEntity,
+            config: DatasetEntity,
+            query: str,
+            invoke_from: InvokeFrom,
+            show_retrieve_source: bool,
+            hit_callback: DatasetIndexToolCallbackHandler,
+            message_id: str,
+            memory: Optional[TokenBufferMemory] = None,
+    ) -> Optional[str]:
         """
         Retrieve dataset.
         :param app_id: app_id
@@ -56,6 +68,7 @@ class DatasetRetrieval:
         :param invoke_from: invoke from
         :param show_retrieve_source: show retrieve source
         :param hit_callback: hit callback
+        :param message_id: message id
         :param memory: memory
         :return:
         """
@@ -112,15 +125,21 @@ class DatasetRetrieval:
         all_documents = []
         user_from = 'account' if invoke_from in [InvokeFrom.EXPLORE, InvokeFrom.DEBUGGER] else 'end_user'
         if retrieve_config.retrieve_strategy == DatasetRetrieveConfigEntity.RetrieveStrategy.SINGLE:
-            all_documents = self.single_retrieve(app_id, tenant_id, user_id, user_from, available_datasets, query,
-                                                 model_instance,
-                                                 model_config, planning_strategy)
+            all_documents = self.single_retrieve(
+                app_id, tenant_id, user_id, user_from, available_datasets, query,
+                model_instance,
+                model_config, planning_strategy, message_id
+            )
         elif retrieve_config.retrieve_strategy == DatasetRetrieveConfigEntity.RetrieveStrategy.MULTIPLE:
-            all_documents = self.multiple_retrieve(app_id, tenant_id, user_id, user_from,
-                                                   available_datasets, query, retrieve_config.top_k,
-                                                   retrieve_config.score_threshold,
-                                                   retrieve_config.reranking_model.get('reranking_provider_name'),
-                                                   retrieve_config.reranking_model.get('reranking_model_name'))
+            all_documents = self.multiple_retrieve(
+                app_id, tenant_id, user_id, user_from,
+                available_datasets, query, retrieve_config.top_k,
+                retrieve_config.score_threshold,
+                retrieve_config.rerank_mode,
+                retrieve_config.reranking_model,
+                retrieve_config.weights,
+                message_id,
+            )
 
         document_score_list = {}
         for item in all_documents:
@@ -188,16 +207,18 @@ class DatasetRetrieval:
             return str("\n".join(document_context_list))
         return ''
 
-    def single_retrieve(self, app_id: str,
-                        tenant_id: str,
-                        user_id: str,
-                        user_from: str,
-                        available_datasets: list,
-                        query: str,
-                        model_instance: ModelInstance,
-                        model_config: ModelConfigWithCredentialsEntity,
-                        planning_strategy: PlanningStrategy,
-                        ):
+    def single_retrieve(
+            self, app_id: str,
+            tenant_id: str,
+            user_id: str,
+            user_from: str,
+            available_datasets: list,
+            query: str,
+            model_instance: ModelInstance,
+            model_config: ModelConfigWithCredentialsEntity,
+            planning_strategy: PlanningStrategy,
+            message_id: Optional[str] = None,
+    ):
         tools = []
         for dataset in available_datasets:
             description = dataset.description
@@ -250,31 +271,44 @@ class DatasetRetrieval:
                 if score_threshold_enabled:
                     score_threshold = retrieval_model_config.get("score_threshold")
 
-                results = RetrievalService.retrieve(retrival_method=retrival_method, dataset_id=dataset.id,
-                                                    query=query,
-                                                    top_k=top_k, score_threshold=score_threshold,
-                                                    reranking_model=reranking_model)
+                with measure_time() as timer:
+                    results = RetrievalService.retrieve(
+                        retrival_method=retrival_method, dataset_id=dataset.id,
+                        query=query,
+                        top_k=top_k, score_threshold=score_threshold,
+                        reranking_model=reranking_model,
+                        weights=retrieval_model_config.get('weights', None),
+                    )
                 self._on_query(query, [dataset_id], app_id, user_from, user_id)
+
                 if results:
-                    self._on_retrival_end(results)
+                    self._on_retrival_end(results, message_id, timer)
+
                 return results
         return []
 
-    def multiple_retrieve(self,
-                          app_id: str,
-                          tenant_id: str,
-                          user_id: str,
-                          user_from: str,
-                          available_datasets: list,
-                          query: str,
-                          top_k: int,
-                          score_threshold: float,
-                          reranking_provider_name: str,
-                          reranking_model_name: str):
+    def multiple_retrieve(
+            self,
+            app_id: str,
+            tenant_id: str,
+            user_id: str,
+            user_from: str,
+            available_datasets: list,
+            query: str,
+            top_k: int,
+            score_threshold: float,
+            reranking_mode: str,
+            reranking_model: Optional[dict] = None,
+            weights: Optional[dict] = None,
+            reranking_enable: bool = True,
+            message_id: Optional[str] = None,
+    ):
         threads = []
         all_documents = []
         dataset_ids = [dataset.id for dataset in available_datasets]
+        index_type = None
         for dataset in available_datasets:
+            index_type = dataset.indexing_technique
             retrieval_thread = threading.Thread(target=self._retriever, kwargs={
                 'flask_app': current_app._get_current_object(),
                 'dataset_id': dataset.id,
@@ -286,25 +320,34 @@ class DatasetRetrieval:
             retrieval_thread.start()
         for thread in threads:
             thread.join()
-        # do rerank for searched documents
-        model_manager = ModelManager()
-        rerank_model_instance = model_manager.get_model_instance(
-            tenant_id=tenant_id,
-            provider=reranking_provider_name,
-            model_type=ModelType.RERANK,
-            model=reranking_model_name
-        )
 
-        rerank_runner = RerankRunner(rerank_model_instance)
-        all_documents = rerank_runner.run(query, all_documents,
-                                          score_threshold,
-                                          top_k)
+        if reranking_enable:
+            # do rerank for searched documents
+            data_post_processor = DataPostProcessor(tenant_id, reranking_mode,
+                                                    reranking_model, weights, False)
+
+            with measure_time() as timer:
+                all_documents = data_post_processor.invoke(
+                    query=query,
+                    documents=all_documents,
+                    score_threshold=score_threshold,
+                    top_n=top_k
+                )
+        else:
+            if index_type == "economy":
+                all_documents = self.calculate_keyword_score(query, all_documents, top_k)
+            elif index_type == "high_quality":
+                all_documents = self.calculate_vector_score(all_documents, top_k, score_threshold)
         self._on_query(query, dataset_ids, app_id, user_from, user_id)
+
         if all_documents:
-            self._on_retrival_end(all_documents)
+            self._on_retrival_end(all_documents, message_id, timer)
+
         return all_documents
 
-    def _on_retrival_end(self, documents: list[Document]) -> None:
+    def _on_retrival_end(
+        self, documents: list[Document], message_id: Optional[str] = None, timer: Optional[dict] = None
+    ) -> None:
         """Handle retrival end."""
         for document in documents:
             query = db.session.query(DocumentSegment).filter(
@@ -322,6 +365,18 @@ class DatasetRetrieval:
             )
 
             db.session.commit()
+
+        # get tracing instance
+        trace_manager: TraceQueueManager = self.application_generate_entity.trace_manager if self.application_generate_entity else None
+        if trace_manager:
+            trace_manager.add_trace_task(
+                TraceTask(
+                    TraceTaskName.DATASET_RETRIEVAL_TRACE,
+                    message_id=message_id,
+                    documents=documents,
+                    timer=timer
+                )
+            )
 
     def _on_query(self, query: str, dataset_ids: list[str], app_id: str, user_from: str, user_id: str) -> None:
         """
@@ -375,7 +430,8 @@ class DatasetRetrieval:
                                                           score_threshold=retrieval_model['score_threshold']
                                                           if retrieval_model['score_threshold_enabled'] else None,
                                                           reranking_model=retrieval_model['reranking_model']
-                                                          if retrieval_model['reranking_enable'] else None
+                                                          if retrieval_model['reranking_enable'] else None,
+                                                          weights=retrieval_model.get('weights', None),
                                                           )
 
                     all_documents.extend(documents)
@@ -419,7 +475,7 @@ class DatasetRetrieval:
         if retrieve_config.retrieve_strategy == DatasetRetrieveConfigEntity.RetrieveStrategy.SINGLE:
             # get retrieval model config
             default_retrieval_model = {
-                'search_method': 'semantic_search',
+                'search_method': RetrievalMethod.SEMANTIC_SEARCH.value,
                 'reranking_enable': False,
                 'reranking_model': {
                     'reranking_provider_name': '',
@@ -468,3 +524,94 @@ class DatasetRetrieval:
             tools.append(tool)
 
         return tools
+
+    def calculate_keyword_score(self, query: str, documents: list[Document], top_k: int) -> list[Document]:
+        """
+        Calculate keywords scores
+        :param query: search query
+        :param documents: documents for reranking
+
+        :return:
+        """
+        keyword_table_handler = JiebaKeywordTableHandler()
+        query_keywords = keyword_table_handler.extract_keywords(query, None)
+        documents_keywords = []
+        for document in documents:
+            # get the document keywords
+            document_keywords = keyword_table_handler.extract_keywords(document.page_content, None)
+            document.metadata['keywords'] = document_keywords
+            documents_keywords.append(document_keywords)
+
+        # Counter query keywords(TF)
+        query_keyword_counts = Counter(query_keywords)
+
+        # total documents
+        total_documents = len(documents)
+
+        # calculate all documents' keywords IDF
+        all_keywords = set()
+        for document_keywords in documents_keywords:
+            all_keywords.update(document_keywords)
+
+        keyword_idf = {}
+        for keyword in all_keywords:
+            # calculate include query keywords' documents
+            doc_count_containing_keyword = sum(1 for doc_keywords in documents_keywords if keyword in doc_keywords)
+            # IDF
+            keyword_idf[keyword] = math.log((1 + total_documents) / (1 + doc_count_containing_keyword)) + 1
+
+        query_tfidf = {}
+
+        for keyword, count in query_keyword_counts.items():
+            tf = count
+            idf = keyword_idf.get(keyword, 0)
+            query_tfidf[keyword] = tf * idf
+
+        # calculate all documents' TF-IDF
+        documents_tfidf = []
+        for document_keywords in documents_keywords:
+            document_keyword_counts = Counter(document_keywords)
+            document_tfidf = {}
+            for keyword, count in document_keyword_counts.items():
+                tf = count
+                idf = keyword_idf.get(keyword, 0)
+                document_tfidf[keyword] = tf * idf
+            documents_tfidf.append(document_tfidf)
+
+        def cosine_similarity(vec1, vec2):
+            intersection = set(vec1.keys()) & set(vec2.keys())
+            numerator = sum(vec1[x] * vec2[x] for x in intersection)
+
+            sum1 = sum(vec1[x] ** 2 for x in vec1.keys())
+            sum2 = sum(vec2[x] ** 2 for x in vec2.keys())
+            denominator = math.sqrt(sum1) * math.sqrt(sum2)
+
+            if not denominator:
+                return 0.0
+            else:
+                return float(numerator) / denominator
+
+        similarities = []
+        for document_tfidf in documents_tfidf:
+            similarity = cosine_similarity(query_tfidf, document_tfidf)
+            similarities.append(similarity)
+
+        for document, score in zip(documents, similarities):
+            # format document
+            document.metadata['score'] = score
+        documents = sorted(documents, key=lambda x: x.metadata['score'], reverse=True)
+        return documents[:top_k] if top_k else documents
+
+    def calculate_vector_score(self, all_documents: list[Document],
+                               top_k: int, score_threshold: float) -> list[Document]:
+        filter_documents = []
+        for document in all_documents:
+            if document.metadata['score'] >= score_threshold:
+                filter_documents.append(document)
+        if not filter_documents:
+            return []
+        filter_documents = sorted(filter_documents, key=lambda x: x.metadata['score'], reverse=True)
+        return filter_documents[:top_k] if top_k else filter_documents
+
+
+

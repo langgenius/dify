@@ -1,7 +1,8 @@
 import logging
 import os
 import time
-from typing import Optional, cast
+from collections.abc import Mapping
+from typing import Any, Optional, cast
 
 from core.app.apps.advanced_chat.app_config_manager import AdvancedChatAppConfig
 from core.app.apps.advanced_chat.workflow_event_trigger_callback import WorkflowEventTriggerCallback
@@ -14,6 +15,7 @@ from core.app.entities.app_invoke_entities import (
 )
 from core.app.entities.queue_entities import QueueAnnotationReplyEvent, QueueStopEvent, QueueTextChunkEvent
 from core.moderation.base import ModerationException
+from core.workflow.callbacks.base_workflow_callback import WorkflowCallback
 from core.workflow.entities.node_entities import SystemVariable
 from core.workflow.nodes.base_node import UserFrom
 from core.workflow.workflow_engine_manager import WorkflowEngineManager
@@ -70,7 +72,8 @@ class AdvancedChatAppRunner(AppRunner):
                 app_record=app_record,
                 app_generate_entity=application_generate_entity,
                 inputs=inputs,
-                query=query
+                query=query,
+                message_id=message.id
         ):
             return
 
@@ -86,7 +89,7 @@ class AdvancedChatAppRunner(AppRunner):
 
         db.session.close()
 
-        workflow_callbacks = [WorkflowEventTriggerCallback(
+        workflow_callbacks: list[WorkflowCallback] = [WorkflowEventTriggerCallback(
             queue_manager=queue_manager,
             workflow=workflow
         )]
@@ -156,11 +159,14 @@ class AdvancedChatAppRunner(AppRunner):
         # return workflow
         return workflow
 
-    def handle_input_moderation(self, queue_manager: AppQueueManager,
-                                app_record: App,
-                                app_generate_entity: AdvancedChatAppGenerateEntity,
-                                inputs: dict,
-                                query: str) -> bool:
+    def handle_input_moderation(
+            self, queue_manager: AppQueueManager,
+            app_record: App,
+            app_generate_entity: AdvancedChatAppGenerateEntity,
+            inputs: Mapping[str, Any],
+            query: str,
+            message_id: str
+    ) -> bool:
         """
         Handle input moderation
         :param queue_manager: application queue manager
@@ -168,6 +174,7 @@ class AdvancedChatAppRunner(AppRunner):
         :param app_generate_entity: application generate entity
         :param inputs: inputs
         :param query: query
+        :param message_id: message id
         :return:
         """
         try:
@@ -178,6 +185,7 @@ class AdvancedChatAppRunner(AppRunner):
                 app_generate_entity=app_generate_entity,
                 inputs=inputs,
                 query=query,
+                message_id=message_id,
             )
         except ModerationException as e:
             self._stream_output(
@@ -249,6 +257,12 @@ class AdvancedChatAppRunner(AppRunner):
                 )
                 index += 1
                 time.sleep(0.01)
+        else:
+            queue_manager.publish(
+                QueueTextChunkEvent(
+                    text=text
+                ), PublishFrom.APPLICATION_MANAGER
+            )
 
         queue_manager.publish(
             QueueStopEvent(stopped_by=stopped_by),

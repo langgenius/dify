@@ -3,14 +3,19 @@ import logging
 from typing import Any
 
 import sqlalchemy
-from pydantic import BaseModel, root_validator
+from pydantic import BaseModel, model_validator
 from sqlalchemy import JSON, TEXT, Column, DateTime, String, Table, create_engine, insert
 from sqlalchemy import text as sql_text
 from sqlalchemy.orm import Session, declarative_base
 
+from configs import dify_config
+from core.rag.datasource.entity.embedding import Embeddings
 from core.rag.datasource.vdb.vector_base import BaseVector
+from core.rag.datasource.vdb.vector_factory import AbstractVectorFactory
+from core.rag.datasource.vdb.vector_type import VectorType
 from core.rag.models.document import Document
 from extensions.ext_redis import redis_client
+from models.dataset import Dataset
 
 logger = logging.getLogger(__name__)
 
@@ -21,8 +26,9 @@ class TiDBVectorConfig(BaseModel):
     user: str
     password: str
     database: str
+    program_name: str
 
-    @root_validator()
+    @model_validator(mode='before')
     def validate_config(cls, values: dict) -> dict:
         if not values['host']:
             raise ValueError("config TIDB_VECTOR_HOST is required")
@@ -34,10 +40,15 @@ class TiDBVectorConfig(BaseModel):
             raise ValueError("config TIDB_VECTOR_PASSWORD is required")
         if not values['database']:
             raise ValueError("config TIDB_VECTOR_DATABASE is required")
+        if not values['program_name']:
+            raise ValueError("config APPLICATION_NAME is required")
         return values
 
 
 class TiDBVector(BaseVector):
+
+    def get_type(self) -> str:
+        return VectorType.TIDB_VECTOR
 
     def _table(self, dim: int) -> Table:
         from tidb_vector.sqlalchemy import VectorType
@@ -57,7 +68,7 @@ class TiDBVector(BaseVector):
         super().__init__(collection_name)
         self._client_config = config
         self._url = (f"mysql+pymysql://{config.user}:{config.password}@{config.host}:{config.port}/{config.database}?"
-                     f"ssl_verify_cert=true&ssl_verify_identity=true")
+                     f"ssl_verify_cert=true&ssl_verify_identity=true&program_name={config.program_name}")
         self._distance_func = distance_func.lower()
         self._engine = create_engine(self._url)
         self._orm_base = declarative_base()
@@ -150,11 +161,6 @@ class TiDBVector(BaseVector):
             print("Delete operation failed:", str(e))
             return False
 
-    def delete_by_document_id(self, document_id: str):
-        ids = self.get_ids_by_metadata_field('document_id', document_id)
-        if ids:
-            self._delete_by_ids(ids)
-
     def get_ids_by_metadata_field(self, key: str, value: str):
         with Session(self._engine) as session:
             select_statement = sql_text(
@@ -192,8 +198,8 @@ class TiDBVector(BaseVector):
         with Session(self._engine) as session:
             select_statement = sql_text(
                 f"""SELECT meta, text, distance FROM (
-                        SELECT meta, text, {tidb_func}(vector, "{query_vector_str}")  as distance 
-                        FROM {self._collection_name} 
+                        SELECT meta, text, {tidb_func}(vector, "{query_vector_str}")  as distance
+                        FROM {self._collection_name}
                         ORDER BY distance
                         LIMIT {top_k}
                     ) t WHERE distance < {distance};"""
@@ -214,3 +220,28 @@ class TiDBVector(BaseVector):
         with Session(self._engine) as session:
             session.execute(sql_text(f"""DROP TABLE IF EXISTS {self._collection_name};"""))
             session.commit()
+
+
+class TiDBVectorFactory(AbstractVectorFactory):
+    def init_vector(self, dataset: Dataset, attributes: list, embeddings: Embeddings) -> TiDBVector:
+
+        if dataset.index_struct_dict:
+            class_prefix: str = dataset.index_struct_dict['vector_store']['class_prefix']
+            collection_name = class_prefix.lower()
+        else:
+            dataset_id = dataset.id
+            collection_name = Dataset.gen_collection_name_by_id(dataset_id).lower()
+            dataset.index_struct = json.dumps(
+                self.gen_index_struct_dict(VectorType.TIDB_VECTOR, collection_name))
+
+        return TiDBVector(
+            collection_name=collection_name,
+            config=TiDBVectorConfig(
+                host=dify_config.TIDB_VECTOR_HOST,
+                port=dify_config.TIDB_VECTOR_PORT,
+                user=dify_config.TIDB_VECTOR_USER,
+                password=dify_config.TIDB_VECTOR_PASSWORD,
+                database=dify_config.TIDB_VECTOR_DATABASE,
+                program_name=dify_config.APPLICATION_NAME,
+            ),
+        )

@@ -12,6 +12,7 @@ const translation = {
     cancel: 'Cancel',
     clear: 'Clear',
     save: 'Save',
+    saveAndEnable: 'Save & Enable',
     edit: 'Edit',
     add: 'Add',
     added: 'Added',
@@ -36,6 +37,10 @@ const translation = {
     params: 'Params',
     duplicate: 'Duplicate',
     rename: 'Rename',
+  },
+  errorMsg: {
+    fieldRequired: '{{field}} is required',
+    urlError: 'url should start with http:// or https://',
   },
   placeholder: {
     input: 'Please enter',
@@ -119,6 +124,7 @@ const translation = {
   },
   userProfile: {
     settings: 'Settings',
+    emailSupport: 'Email Support',
     workspace: 'Workspace',
     createWorkspace: 'Create Workspace',
     helpCenter: 'Help',
@@ -156,6 +162,9 @@ const translation = {
     langGeniusAccountTip: 'Your Dify account and associated user data.',
     editName: 'Edit Name',
     showAppLength: 'Show {{length}} apps',
+    delete: 'Delete Account',
+    deleteTip: 'Deleting your account will permanently erase all your data and it cannot be recovered.',
+    deleteConfirmTip: 'To confirm, please send the following from your registered email to ',
   },
   members: {
     team: 'Team',
@@ -169,6 +178,12 @@ const translation = {
     adminTip: 'Can build apps & manage team settings',
     normal: 'Normal',
     normalTip: 'Only can use apps, can not build apps',
+    builder: 'Builder',
+    builderTip: 'Can build & edit own apps',
+    editor: 'Editor',
+    editorTip: 'Can build & edit apps',
+    datasetOperator: 'Knowledge Admin',
+    datasetOperatorTip: 'Only can manage the knowledge base',
     inviteTeamMember: 'Add team member',
     inviteTeamMemberTip: 'They can access your team data directly after signing in.',
     email: 'Email',
@@ -185,6 +200,8 @@ const translation = {
     removeFromTeamTip: 'Will remove team access',
     setAdmin: 'Set as administrator',
     setMember: 'Set to ordinary member',
+    setBuilder: 'Set as builder',
+    setEditor: 'Set as editor',
     disinvite: 'Cancel the invitation',
     deleteMember: 'Delete Member',
     you: '(You)',
@@ -354,6 +371,7 @@ const translation = {
   dataSource: {
     add: 'Add a data source',
     connect: 'Connect',
+    configure: 'Configure',
     notion: {
       title: 'Notion',
       description: 'Using Notion as a data source for the Knowledge.',
@@ -372,6 +390,14 @@ const translation = {
         addPages: 'Add pages',
         preview: 'PREVIEW',
       },
+    },
+    website: {
+      title: 'Website',
+      description: 'Import content from websites using web crawler.',
+      with: 'With',
+      configuredCrawlers: 'Configured crawlers',
+      active: 'Active',
+      inactive: 'Inactive',
     },
   },
   plugin: {
@@ -417,7 +443,7 @@ const translation = {
     latestAvailable: 'Dify {{version}} is the latest version available.',
   },
   appMenus: {
-    overview: 'Overview',
+    overview: 'Monitoring',
     promptEng: 'Orchestrate',
     apiAccess: 'API Access',
     logAndAnn: 'Logs & Ann.',

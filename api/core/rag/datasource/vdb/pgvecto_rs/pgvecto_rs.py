@@ -1,19 +1,25 @@
+import json
 import logging
 from typing import Any
 from uuid import UUID, uuid4
 
 from numpy import ndarray
 from pgvecto_rs.sqlalchemy import Vector
-from pydantic import BaseModel, root_validator
+from pydantic import BaseModel, model_validator
 from sqlalchemy import Float, String, create_engine, insert, select, text
 from sqlalchemy import text as sql_text
 from sqlalchemy.dialects import postgresql
 from sqlalchemy.orm import Mapped, Session, mapped_column
 
+from configs import dify_config
+from core.rag.datasource.entity.embedding import Embeddings
 from core.rag.datasource.vdb.pgvecto_rs.collection import CollectionORM
 from core.rag.datasource.vdb.vector_base import BaseVector
+from core.rag.datasource.vdb.vector_factory import AbstractVectorFactory
+from core.rag.datasource.vdb.vector_type import VectorType
 from core.rag.models.document import Document
 from extensions.ext_redis import redis_client
+from models.dataset import Dataset
 
 logger = logging.getLogger(__name__)
 
@@ -25,7 +31,7 @@ class PgvectoRSConfig(BaseModel):
     password: str
     database: str
 
-    @root_validator()
+    @model_validator(mode='before')
     def validate_config(cls, values: dict) -> dict:
         if not values['host']:
             raise ValueError("config PGVECTO_RS_HOST is required")
@@ -67,7 +73,7 @@ class PGVectoRS(BaseVector):
         self._distance_op = "<=>"
 
     def get_type(self) -> str:
-        return 'pgvecto-rs'
+        return VectorType.PGVECTO_RS
 
     def create(self, texts: list[Document], embeddings: list[list[float]], **kwargs):
         self.create_collection(len(embeddings[0]))
@@ -87,7 +93,7 @@ class PGVectoRS(BaseVector):
                         text TEXT NOT NULL,
                         meta JSONB NOT NULL,
                         vector vector({dimension}) NOT NULL
-                    ) using heap; 
+                    ) using heap;
                 """)
                 session.execute(create_statement)
                 index_statement = sql_text(f"""
@@ -123,14 +129,6 @@ class PGVectoRS(BaseVector):
             session.commit()
 
         return pks
-
-    def delete_by_document_id(self, document_id: str):
-        ids = self.get_ids_by_metadata_field('document_id', document_id)
-        if ids:
-            with Session(self._client) as session:
-                select_statement = sql_text(f"DELETE FROM {self._collection_name} WHERE id = ANY(:ids)")
-                session.execute(select_statement, {'ids': ids})
-                session.commit()
 
     def get_ids_by_metadata_field(self, key: str, value: str):
         result = None
@@ -222,3 +220,28 @@ class PGVectoRS(BaseVector):
         #         docs.append(doc)
         #     return docs
         return []
+
+
+class PGVectoRSFactory(AbstractVectorFactory):
+    def init_vector(self, dataset: Dataset, attributes: list, embeddings: Embeddings) -> PGVectoRS:
+        if dataset.index_struct_dict:
+            class_prefix: str = dataset.index_struct_dict['vector_store']['class_prefix']
+            collection_name = class_prefix.lower()
+        else:
+            dataset_id = dataset.id
+            collection_name = Dataset.gen_collection_name_by_id(dataset_id).lower()
+            dataset.index_struct = json.dumps(
+                self.gen_index_struct_dict(VectorType.WEAVIATE, collection_name))
+        dim = len(embeddings.embed_query("pgvecto_rs"))
+
+        return PGVectoRS(
+            collection_name=collection_name,
+            config=PgvectoRSConfig(
+                host=dify_config.PGVECTO_RS_HOST,
+                port=dify_config.PGVECTO_RS_PORT,
+                user=dify_config.PGVECTO_RS_USER,
+                password=dify_config.PGVECTO_RS_PASSWORD,
+                database=dify_config.PGVECTO_RS_DATABASE,
+            ),
+            dim=dim
+        )

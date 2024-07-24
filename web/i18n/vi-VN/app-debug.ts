@@ -322,6 +322,9 @@ const translation = {
       language: 'Ngôn ngữ',
       resolutionTooltip: 'Giọng nói văn bản hỗ trợ ngôn ngữ。',
       voice: 'Giọng',
+      autoPlay: 'chạy tự động',
+      autoPlayEnabled: 'bật',
+      autoPlayDisabled: 'Khép kín',
     },
   },
   openingStatement: {

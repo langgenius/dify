@@ -1,6 +1,9 @@
 import type { FC } from 'react'
 import { useState } from 'react'
 import { useTranslation } from 'react-i18next'
+import {
+  RiLoader2Line,
+} from '@remixicon/react'
 import type {
   CustomConfigurationModelFixedFields,
   ModelItem,
@@ -19,10 +22,10 @@ import QuotaPanel from './quota-panel'
 import ModelList from './model-list'
 import AddModelButton from './add-model-button'
 import { ChevronDownDouble } from '@/app/components/base/icons/src/vender/line/arrows'
-import { Loading02 } from '@/app/components/base/icons/src/vender/line/general'
 import { fetchModelProviderModelList } from '@/service/common'
 import { useEventEmitterContextContext } from '@/context/event-emitter'
 import { IS_CE_EDITION } from '@/config'
+import { useAppContext } from '@/context/app-context'
 
 export const UPDATE_MODEL_PROVIDER_CUSTOM_MODEL_LIST = 'UPDATE_MODEL_PROVIDER_CUSTOM_MODEL_LIST'
 type ProviderAddedCardProps = {
@@ -42,6 +45,7 @@ const ProviderAddedCard: FC<ProviderAddedCardProps> = ({
   const configurationMethods = provider.configurate_methods.filter(method => method !== ConfigurationMethodEnum.fetchFromRemote)
   const systemConfig = provider.system_configuration
   const hasModelList = fetched && !!modelList.length
+  const { isCurrentWorkspaceManager } = useAppContext()
   const showQuota = systemConfig.enabled && [...MODEL_PROVIDER_QUOTA_GET_PAID].includes(provider.provider) && !IS_CE_EDITION
 
   const getModelList = async (providerName: string) => {
@@ -101,7 +105,7 @@ const ProviderAddedCard: FC<ProviderAddedCardProps> = ({
           )
         }
         {
-          configurationMethods.includes(ConfigurationMethodEnum.predefinedModel) && (
+          configurationMethods.includes(ConfigurationMethodEnum.predefinedModel) && isCurrentWorkspaceManager && (
             <CredentialPanel
               onSetup={() => onOpenModal(ConfigurationMethodEnum.predefinedModel)}
               provider={provider}
@@ -131,12 +135,12 @@ const ProviderAddedCard: FC<ProviderAddedCardProps> = ({
               }
               {
                 loading && (
-                  <Loading02 className='ml-0.5 animate-spin w-3 h-3' />
+                  <RiLoader2Line className='ml-0.5 animate-spin w-3 h-3' />
                 )
               }
             </div>
             {
-              configurationMethods.includes(ConfigurationMethodEnum.customizableModel) && (
+              configurationMethods.includes(ConfigurationMethodEnum.customizableModel) && isCurrentWorkspaceManager && (
                 <AddModelButton
                   onClick={() => onOpenModal(ConfigurationMethodEnum.customizableModel)}
                   className='hidden group-hover:flex group-hover:text-primary-600'

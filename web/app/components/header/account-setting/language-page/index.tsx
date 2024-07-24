@@ -22,27 +22,41 @@ export default function LanguagePage() {
   const { notify } = useContext(ToastContext)
   const [editing, setEditing] = useState(false)
   const { t } = useTranslation()
-  const handleSelect = async (type: string, item: Item) => {
-    let url = ''
-    let bodyKey = ''
-    if (type === 'language') {
-      url = '/account/interface-language'
-      bodyKey = 'interface_language'
-      setLocaleOnClient(item.value.toString())
-    }
-    if (type === 'timezone') {
-      url = '/account/timezone'
-      bodyKey = 'timezone'
-    }
+
+  const handleSelectLanguage = async (item: Item) => {
+    const url = '/account/interface-language'
+    const bodyKey = 'interface_language'
+
+    setEditing(true)
     try {
-      setEditing(true)
       await updateUserProfile({ url, body: { [bodyKey]: item.value } })
       notify({ type: 'success', message: t('common.actionMsg.modifiedSuccessfully') })
-      mutateUserProfile()
-      setEditing(false)
+
+      setLocaleOnClient(item.value.toString())
     }
     catch (e) {
       notify({ type: 'error', message: (e as Error).message })
+    }
+    finally {
+      setEditing(false)
+    }
+  }
+
+  const handleSelectTimezone = async (item: Item) => {
+    const url = '/account/timezone'
+    const bodyKey = 'timezone'
+
+    setEditing(true)
+    try {
+      await updateUserProfile({ url, body: { [bodyKey]: item.value } })
+      notify({ type: 'success', message: t('common.actionMsg.modifiedSuccessfully') })
+
+      mutateUserProfile()
+    }
+    catch (e) {
+      notify({ type: 'error', message: (e as Error).message })
+    }
+    finally {
       setEditing(false)
     }
   }
@@ -54,7 +68,7 @@ export default function LanguagePage() {
         <SimpleSelect
           defaultValue={locale || userProfile.interface_language}
           items={languages.filter(item => item.supported)}
-          onSelect={item => handleSelect('language', item)}
+          onSelect={item => handleSelectLanguage(item)}
           disabled={editing}
         />
       </div>
@@ -63,7 +77,7 @@ export default function LanguagePage() {
         <SimpleSelect
           defaultValue={userProfile.timezone}
           items={timezones}
-          onSelect={item => handleSelect('timezone', item)}
+          onSelect={item => handleSelectTimezone(item)}
           disabled={editing}
         />
       </div>

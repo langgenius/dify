@@ -53,12 +53,13 @@ class ToolParameterConverter:
                 case ToolParameter.ToolParameterType.NUMBER:
                     if isinstance(value, int) | isinstance(value, float):
                         return value
-                    elif isinstance(value, str):
+                    elif isinstance(value, str) and value != '':
                         if '.' in value:
                             return float(value)
                         else:
                             return int(value)
-
+                case ToolParameter.ToolParameterType.FILE:
+                    return value
                 case _:
                     return str(value)
 

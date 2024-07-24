@@ -114,6 +114,10 @@ class VariableEntity(BaseModel):
     default: Optional[str] = None
     hint: Optional[str] = None
 
+    @property
+    def name(self) -> str:
+        return self.variable
+
 
 class ExternalDataVariableEntity(BaseModel):
     """
@@ -155,7 +159,11 @@ class DatasetRetrieveConfigEntity(BaseModel):
     retrieve_strategy: RetrieveStrategy
     top_k: Optional[int] = None
     score_threshold: Optional[float] = None
+    rerank_mode: Optional[str] = 'reranking_model'
     reranking_model: Optional[dict] = None
+    weights: Optional[dict] = None
+
+
 
 
 class DatasetEntity(BaseModel):
@@ -183,6 +191,14 @@ class TextToSpeechEntity(BaseModel):
     language: Optional[str] = None
 
 
+class TracingConfigEntity(BaseModel):
+    """
+    Tracing Config Entity.
+    """
+    enabled: bool
+    tracing_provider: str
+
+
 class FileExtraConfig(BaseModel):
     """
     File Upload Entity.
@@ -199,7 +215,7 @@ class AppAdditionalFeatures(BaseModel):
     more_like_this: bool = False
     speech_to_text: bool = False
     text_to_speech: Optional[TextToSpeechEntity] = None
-
+    trace_config: Optional[TracingConfigEntity] = None
 
 class AppConfig(BaseModel):
     """

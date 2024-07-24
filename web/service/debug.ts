@@ -7,6 +7,7 @@ export type AutomaticRes = {
   prompt: string
   variables: string[]
   opening_statement: string
+  error?: string
 }
 
 export const sendChatMessage = async (appId: string, body: Record<string, any>, { onData, onCompleted, onThought, onFile, onError, getAbortController, onMessageEnd, onMessageReplace }: {
@@ -55,7 +56,7 @@ export const fetchSuggestedQuestions = (appId: string, messageId: string, getAbo
   )
 }
 
-export const fetchConvesationMessages = (appId: string, conversation_id: string, getAbortController?: any) => {
+export const fetchConversationMessages = (appId: string, conversation_id: string, getAbortController?: any) => {
   return get(`apps/${appId}/chat-messages`, {
     params: {
       conversation_id,

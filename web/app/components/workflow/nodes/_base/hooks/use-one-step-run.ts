@@ -7,11 +7,12 @@ import {
   useNodeDataUpdate,
   useWorkflow,
 } from '@/app/components/workflow/hooks'
-import { getNodeInfoById, isSystemVar, toNodeOutputVars } from '@/app/components/workflow/nodes/_base/components/variable/utils'
+import { getNodeInfoById, isENV, isSystemVar, toNodeOutputVars } from '@/app/components/workflow/nodes/_base/components/variable/utils'
 
 import type { CommonNodeType, InputVar, ValueSelector, Var, Variable } from '@/app/components/workflow/types'
 import { BlockEnum, InputVarType, NodeRunningStatus, VarType } from '@/app/components/workflow/types'
 import { useStore as useAppStore } from '@/app/components/app/store'
+import { useWorkflowStore } from '@/app/components/workflow/store'
 import { getIterationSingleNodeRunUrl, singleNodeRun } from '@/service/workflow'
 import Toast from '@/app/components/base/toast'
 import LLMDefault from '@/app/components/workflow/nodes/llm/default'
@@ -164,6 +165,12 @@ const useOneStepRun = <T>({
     }
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [data._isSingleRun])
+
+  const workflowStore = useWorkflowStore()
+  useEffect(() => {
+    workflowStore.getState().setShowSingleRunPanel(!!isShowSingleRun)
+  }, [isShowSingleRun])
+
   const hideSingleRun = () => {
     handleNodeDataUpdate({
       id,
@@ -322,7 +329,7 @@ const useOneStepRun = <T>({
     if (!variables)
       return []
 
-    const varInputs = variables.map((item) => {
+    const varInputs = variables.filter(item => !isENV(item.value_selector)).map((item) => {
       const originalVar = getVar(item.value_selector)
       if (!originalVar) {
         return {
@@ -330,6 +337,7 @@ const useOneStepRun = <T>({
           variable: item.variable,
           type: InputVarType.textInput,
           required: true,
+          value_selector: item.value_selector,
         }
       }
       return {

@@ -2,10 +2,14 @@ import {
   memo,
   useState,
 } from 'react'
-import cn from 'classnames'
 import useSWR from 'swr'
 import { useTranslation } from 'react-i18next'
 import { useShallow } from 'zustand/react/shallow'
+import {
+  RiCheckboxCircleLine,
+  RiCloseLine,
+  RiErrorWarningLine,
+} from '@remixicon/react'
 import {
   useIsChatMode,
   useNodesInteractions,
@@ -14,6 +18,7 @@ import {
   useWorkflowRun,
 } from '../hooks'
 import { WorkflowRunningStatus } from '../types'
+import cn from '@/utils/classnames'
 import {
   PortalToFollowElem,
   PortalToFollowElemContent,
@@ -25,8 +30,7 @@ import {
   ClockPlay,
   ClockPlaySlim,
 } from '@/app/components/base/icons/src/vender/line/time'
-import { CheckCircle, XClose } from '@/app/components/base/icons/src/vender/line/general'
-import { AlertCircle, AlertTriangle } from '@/app/components/base/icons/src/vender/line/alertsAndFeedback'
+import { AlertTriangle } from '@/app/components/base/icons/src/vender/line/alertsAndFeedback'
 import {
   fetcChatRunHistory,
   fetchWorkflowRunHistory,
@@ -99,16 +103,13 @@ const ViewHistory = ({
                 popupContent={t('workflow.common.viewRunHistory')}
               >
                 <div
-                  className={`
-                    flex items-center justify-center w-7 h-7 rounded-md hover:bg-black/5 cursor-pointer
-                    ${open && 'bg-primary-50'}
-                  `}
+                  className={cn('group flex items-center justify-center w-7 h-7 rounded-md hover:bg-state-accent-hover cursor-pointer', open && 'bg-state-accent-hover')}
                   onClick={() => {
                     setCurrentLogItem()
                     setShowMessageLogModal(false)
                   }}
                 >
-                  <ClockPlay className={`w-4 h-4 ${open ? 'text-primary-600' : 'text-gray-500'}`} />
+                  <ClockPlay className={cn('w-4 h-4 group-hover:text-components-button-secondary-accent-text', open ? 'text-components-button-secondary-accent-text' : 'text-components-button-ghost-text')} />
                 </div>
               </TooltipPlus>
             )
@@ -131,7 +132,7 @@ const ViewHistory = ({
                   setOpen(false)
                 }}
               >
-                <XClose className='w-4 h-4 text-gray-500' />
+                <RiCloseLine className='w-4 h-4 text-gray-500' />
               </div>
             </div>
             {
@@ -166,6 +167,7 @@ const ViewHistory = ({
                           workflowStore.setState({
                             historyWorkflowData: item,
                             showInputsPanel: false,
+                            showEnvPanel: false,
                           })
                           handleBackupDraft()
                           setOpen(false)
@@ -180,12 +182,12 @@ const ViewHistory = ({
                         }
                         {
                           !isChatMode && item.status === WorkflowRunningStatus.Failed && (
-                            <AlertCircle className='mt-0.5 mr-1.5 w-3.5 h-3.5 text-[#F04438]' />
+                            <RiErrorWarningLine className='mt-0.5 mr-1.5 w-3.5 h-3.5 text-[#F04438]' />
                           )
                         }
                         {
                           !isChatMode && item.status === WorkflowRunningStatus.Succeeded && (
-                            <CheckCircle className='mt-0.5 mr-1.5 w-3.5 h-3.5 text-[#12B76A]' />
+                            <RiCheckboxCircleLine className='mt-0.5 mr-1.5 w-3.5 h-3.5 text-[#12B76A]' />
                           )
                         }
                         <div>

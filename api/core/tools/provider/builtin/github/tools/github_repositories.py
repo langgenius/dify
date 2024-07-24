@@ -39,10 +39,10 @@ class GihubRepositoriesTool(BuiltinTool):
                                      f"q={quote(query)}&sort=stars&per_page={top_n}&order=desc")
             response_data = response.json()
             if response.status_code == 200 and isinstance(response_data.get('items'), list):
-                contents = list()
+                contents = []
                 if len(response_data.get('items')) > 0:
                     for item in response_data.get('items'):
-                        content = dict()
+                        content = {}
                         updated_at_object = datetime.strptime(item['updated_at'], "%Y-%m-%dT%H:%M:%SZ")
                         content['owner'] = item['owner']['login']
                         content['name'] = item['name']

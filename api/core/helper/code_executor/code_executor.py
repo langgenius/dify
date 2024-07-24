@@ -8,7 +8,7 @@ from httpx import get, post
 from pydantic import BaseModel
 from yarl import URL
 
-from config import get_env
+from configs import dify_config
 from core.helper.code_executor.entities import CodeDependency
 from core.helper.code_executor.javascript.javascript_transformer import NodeJsTemplateTransformer
 from core.helper.code_executor.jinja2.jinja2_transformer import Jinja2TemplateTransformer
@@ -18,18 +18,18 @@ from core.helper.code_executor.template_transformer import TemplateTransformer
 logger = logging.getLogger(__name__)
 
 # Code Executor
-CODE_EXECUTION_ENDPOINT = get_env('CODE_EXECUTION_ENDPOINT')
-CODE_EXECUTION_API_KEY = get_env('CODE_EXECUTION_API_KEY')
+CODE_EXECUTION_ENDPOINT = dify_config.CODE_EXECUTION_ENDPOINT
+CODE_EXECUTION_API_KEY = dify_config.CODE_EXECUTION_API_KEY
 
-CODE_EXECUTION_TIMEOUT= (10, 60)
+CODE_EXECUTION_TIMEOUT = (10, 60)
 
 class CodeExecutionException(Exception):
     pass
 
 class CodeExecutionResponse(BaseModel):
     class Data(BaseModel):
-        stdout: Optional[str]
-        error: Optional[str]
+        stdout: Optional[str] = None
+        error: Optional[str] = None
 
     code: int
     message: str
@@ -64,7 +64,7 @@ class CodeExecutor:
 
     @classmethod
     def execute_code(cls, 
-                     language: Literal['python3', 'javascript', 'jinja2'], 
+                     language: CodeLanguage, 
                      preload: str, 
                      code: str, 
                      dependencies: Optional[list[CodeDependency]] = None) -> str:
@@ -88,7 +88,7 @@ class CodeExecutor:
         }
 
         if dependencies:
-            data['dependencies'] = [dependency.dict() for dependency in dependencies]
+            data['dependencies'] = [dependency.model_dump() for dependency in dependencies]
 
         try:
             response = post(str(url), json=data, headers=headers, timeout=CODE_EXECUTION_TIMEOUT)
@@ -119,7 +119,7 @@ class CodeExecutor:
         return response.data.stdout
 
     @classmethod
-    def execute_workflow_code_template(cls, language: Literal['python3', 'javascript', 'jinja2'], code: str, inputs: dict, dependencies: Optional[list[CodeDependency]] = None) -> dict:
+    def execute_workflow_code_template(cls, language: CodeLanguage, code: str, inputs: dict, dependencies: Optional[list[CodeDependency]] = None) -> dict:
         """
         Execute code
         :param language: code language

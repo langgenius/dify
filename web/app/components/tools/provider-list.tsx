@@ -1,13 +1,14 @@
 'use client'
 import { useEffect, useMemo, useState } from 'react'
-import cn from 'classnames'
 import { useTranslation } from 'react-i18next'
+import { RiCloseLine } from '@remixicon/react'
 import type { Collection } from './types'
+import cn from '@/utils/classnames'
 import { useTabSearchParams } from '@/hooks/use-tab-searchparams'
 import TabSliderNew from '@/app/components/base/tab-slider-new'
 import LabelFilter from '@/app/components/tools/labels/filter'
 import SearchInput from '@/app/components/base/search-input'
-import { DotsGrid, XClose } from '@/app/components/base/icons/src/vender/line/general'
+import { DotsGrid } from '@/app/components/base/icons/src/vender/line/general'
 import { Colors } from '@/app/components/base/icons/src/vender/line/others'
 import { Route } from '@/app/components/base/icons/src/vender/line/mapsAndTravel'
 import CustomCreateCard from '@/app/components/tools/provider/custom-create-card'
@@ -24,9 +25,9 @@ const ProviderList = () => {
     defaultTab: 'builtin',
   })
   const options = [
-    { value: 'builtin', text: t('tools.type.builtIn'), icon: <DotsGrid className='w-[14px] h-[14px] mr-1'/> },
-    { value: 'api', text: t('tools.type.custom'), icon: <Colors className='w-[14px] h-[14px] mr-1'/> },
-    { value: 'workflow', text: t('tools.type.workflow'), icon: <Route className='w-[14px] h-[14px] mr-1'/> },
+    { value: 'builtin', text: t('tools.type.builtIn'), icon: <DotsGrid className='w-[14px] h-[14px] mr-1' /> },
+    { value: 'api', text: t('tools.type.custom'), icon: <Colors className='w-[14px] h-[14px] mr-1' /> },
+    { value: 'workflow', text: t('tools.type.workflow'), icon: <Route className='w-[14px] h-[14px] mr-1' /> },
   ]
   const [tagFilterValue, setTagFilterValue] = useState<string[]>([])
   const handleTagsChange = (value: string[]) => {
@@ -69,7 +70,7 @@ const ProviderList = () => {
     <div className='relative flex overflow-hidden bg-gray-100 shrink-0 h-0 grow'>
       <div className='relative flex flex-col overflow-y-auto bg-gray-100 grow'>
         <div className={cn(
-          'sticky top-0 flex justify-between items-center pt-4 px-12 pb-2 leading-[56px] bg-gray-100 z-10 flex-wrap gap-y-2',
+          'sticky top-0 flex justify-between items-center pt-4 px-12 pb-2 leading-[56px] bg-gray-100 z-20 flex-wrap gap-y-2',
           currentProvider && 'pr-6',
         )}>
           <TabSliderNew
@@ -91,7 +92,7 @@ const ProviderList = () => {
           currentProvider && 'pr-6 sm:grid-cols-1 md:grid-cols-2 lg:grid-cols-3',
         )}>
           {activeTab === 'builtin' && <ContributeCard />}
-          {activeTab === 'api' && <CustomCreateCard onRefreshData={getProviderList}/>}
+          {activeTab === 'api' && <CustomCreateCard onRefreshData={getProviderList} />}
           {filteredCollectionList.map(collection => (
             <ProviderCard
               active={currentProvider?.id === collection.id}
@@ -100,7 +101,7 @@ const ProviderList = () => {
               collection={collection}
             />
           ))}
-          {!filteredCollectionList.length && <div className='absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2'><Empty/></div>}
+          {!filteredCollectionList.length && <div className='absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2'><Empty /></div>}
         </div>
       </div>
       <div className={cn(
@@ -109,7 +110,7 @@ const ProviderList = () => {
       )}>
         {currentProvider && <ProviderDetail collection={currentProvider} onRefreshData={getProviderList} />}
       </div>
-      <div className='absolute top-5 right-5 p-1 cursor-pointer' onClick={() => setCurrentProvider(undefined)}><XClose className='w-4 h-4'/></div>
+      <div className='absolute top-5 right-5 p-1 cursor-pointer' onClick={() => setCurrentProvider(undefined)}><RiCloseLine className='w-4 h-4' /></div>
     </div>
   )
 }

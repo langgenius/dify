@@ -88,7 +88,7 @@ class OAIAPICompatLargeLanguageModel(_CommonOAI_API_Compat, LargeLanguageModel):
         :param tools: tools for tool calling
         :return:
         """
-        return self._num_tokens_from_messages(model, prompt_messages, tools)
+        return self._num_tokens_from_messages(model, prompt_messages, tools, credentials)
 
     def validate_credentials(self, model: str, credentials: dict) -> None:
         """
@@ -305,7 +305,7 @@ class OAIAPICompatLargeLanguageModel(_CommonOAI_API_Compat, LargeLanguageModel):
 
         if completion_type is LLMMode.CHAT:
             endpoint_url = urljoin(endpoint_url, 'chat/completions')
-            data['messages'] = [self._convert_prompt_message_to_dict(m) for m in prompt_messages]
+            data['messages'] = [self._convert_prompt_message_to_dict(m, credentials) for m in prompt_messages]
         elif completion_type is LLMMode.COMPLETION:
             endpoint_url = urljoin(endpoint_url, 'completions')
             data['prompt'] = prompt_messages[0].content
@@ -582,7 +582,7 @@ class OAIAPICompatLargeLanguageModel(_CommonOAI_API_Compat, LargeLanguageModel):
 
         return result
 
-    def _convert_prompt_message_to_dict(self, message: PromptMessage) -> dict:
+    def _convert_prompt_message_to_dict(self, message: PromptMessage, credentials: Optional[dict] = None) -> dict:
         """
         Convert PromptMessage to dict for OpenAI API format
         """
@@ -616,30 +616,34 @@ class OAIAPICompatLargeLanguageModel(_CommonOAI_API_Compat, LargeLanguageModel):
             message = cast(AssistantPromptMessage, message)
             message_dict = {"role": "assistant", "content": message.content}
             if message.tool_calls:
-                # message_dict["tool_calls"] = [helper.dump_model(PromptMessageFunction(function=tool_call)) for tool_call
-                #                               in
-                #                               message.tool_calls]
-
-                function_call = message.tool_calls[0]
-                message_dict["function_call"] = {
-                    "name": function_call.function.name,
-                    "arguments": function_call.function.arguments,
-                }
+                function_calling_type = credentials.get('function_calling_type', 'no_call')
+                if function_calling_type == 'tool_call':
+                    message_dict["tool_calls"] = [tool_call.dict() for tool_call in
+                                                message.tool_calls]
+                elif function_calling_type == 'function_call':
+                    function_call = message.tool_calls[0]
+                    message_dict["function_call"] = {
+                        "name": function_call.function.name,
+                        "arguments": function_call.function.arguments,
+                    }
         elif isinstance(message, SystemPromptMessage):
             message = cast(SystemPromptMessage, message)
             message_dict = {"role": "system", "content": message.content}
         elif isinstance(message, ToolPromptMessage):
             message = cast(ToolPromptMessage, message)
-            # message_dict = {
-            #     "role": "tool",
-            #     "content": message.content,
-            #     "tool_call_id": message.tool_call_id
-            # }
-            message_dict = {
-                "role": "function",
-                "content": message.content,
-                "name": message.tool_call_id
-            }
+            function_calling_type = credentials.get('function_calling_type', 'no_call')
+            if function_calling_type == 'tool_call':
+                message_dict = {
+                    "role": "tool",
+                    "content": message.content,
+                    "tool_call_id": message.tool_call_id
+                }
+            elif function_calling_type == 'function_call':
+                message_dict = {
+                    "role": "function",
+                    "content": message.content,
+                    "name": message.tool_call_id
+                }
         else:
             raise ValueError(f"Got unknown type {message}")
 
@@ -675,7 +679,7 @@ class OAIAPICompatLargeLanguageModel(_CommonOAI_API_Compat, LargeLanguageModel):
         return num_tokens
 
     def _num_tokens_from_messages(self, model: str, messages: list[PromptMessage],
-                                  tools: Optional[list[PromptMessageTool]] = None) -> int:
+                                  tools: Optional[list[PromptMessageTool]] = None, credentials: dict = None) -> int:
         """
         Approximate num tokens with GPT2 tokenizer.
         """
@@ -684,7 +688,7 @@ class OAIAPICompatLargeLanguageModel(_CommonOAI_API_Compat, LargeLanguageModel):
         tokens_per_name = 1
 
         num_tokens = 0
-        messages_dict = [self._convert_prompt_message_to_dict(m) for m in messages]
+        messages_dict = [self._convert_prompt_message_to_dict(m, credentials) for m in messages]
         for message in messages_dict:
             num_tokens += tokens_per_message
             for key, value in message.items():

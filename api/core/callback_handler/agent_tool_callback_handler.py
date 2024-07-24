@@ -1,7 +1,11 @@
 import os
+from collections.abc import Mapping, Sequence
 from typing import Any, Optional, TextIO, Union
 
 from pydantic import BaseModel
+
+from core.ops.ops_trace_manager import TraceQueueManager, TraceTask, TraceTaskName
+from core.tools.entities.tool_entities import ToolInvokeMessage
 
 _TEXT_COLOR_MAPPING = {
     "blue": "36;1",
@@ -29,7 +33,7 @@ def print_text(
 class DifyAgentCallbackHandler(BaseModel):
     """Callback Handler that prints to std out."""
     color: Optional[str] = ''
-    current_loop = 1
+    current_loop: int = 1
 
     def __init__(self, color: Optional[str] = None) -> None:
         super().__init__()
@@ -41,7 +45,7 @@ class DifyAgentCallbackHandler(BaseModel):
     def on_tool_start(
         self,
         tool_name: str,
-        tool_inputs: dict[str, Any],
+        tool_inputs: Mapping[str, Any],
     ) -> None:
         """Do nothing."""
         print_text("\n[on_tool_start] ToolCall:" + tool_name + "\n" + str(tool_inputs) + "\n", color=self.color)
@@ -49,8 +53,11 @@ class DifyAgentCallbackHandler(BaseModel):
     def on_tool_end(
         self,
         tool_name: str,
-        tool_inputs: dict[str, Any],
-        tool_outputs: str,
+        tool_inputs: Mapping[str, Any],
+        tool_outputs: Sequence[ToolInvokeMessage],
+        message_id: Optional[str] = None,
+        timer: Optional[Any] = None,
+        trace_manager: Optional[TraceQueueManager] = None
     ) -> None:
         """If not the final action, print out observation."""
         print_text("\n[on_tool_end]\n", color=self.color)
@@ -58,6 +65,18 @@ class DifyAgentCallbackHandler(BaseModel):
         print_text("Inputs: " + str(tool_inputs) + "\n", color=self.color)
         print_text("Outputs: " + str(tool_outputs)[:1000] + "\n", color=self.color)
         print_text("\n")
+
+        if trace_manager:
+            trace_manager.add_trace_task(
+                TraceTask(
+                    TraceTaskName.TOOL_TRACE,
+                    message_id=message_id,
+                    tool_name=tool_name,
+                    tool_inputs=tool_inputs,
+                    tool_outputs=tool_outputs,
+                    timer=timer,
+                )
+            )
 
     def on_tool_error(
         self, error: Union[Exception, KeyboardInterrupt], **kwargs: Any

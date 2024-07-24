@@ -1,9 +1,9 @@
-import type { IOnCompleted, IOnData, IOnError, IOnFile, IOnIterationFinished, IOnIterationNexted, IOnIterationStarted, IOnMessageEnd, IOnMessageReplace, IOnNodeFinished, IOnNodeStarted, IOnTextChunk, IOnTextReplace, IOnThought, IOnWorkflowFinished, IOnWorkflowStarted } from './base'
+import type { IOnCompleted, IOnData, IOnError, IOnFile, IOnIterationFinished, IOnIterationNexted, IOnIterationStarted, IOnMessageEnd, IOnMessageReplace, IOnNodeFinished, IOnNodeStarted, IOnTTSChunk, IOnTTSEnd, IOnTextChunk, IOnTextReplace, IOnThought, IOnWorkflowFinished, IOnWorkflowStarted } from './base'
 import {
   del as consoleDel, get as consoleGet, patch as consolePatch, post as consolePost,
   delPublic as del, getPublic as get, patchPublic as patch, postPublic as post, ssePost,
 } from './base'
-import type { Feedbacktype } from '@/app/components/app/chat/type'
+import type { Feedbacktype } from '@/app/components/base/chat/chat/type'
 import type {
   AppConversationData,
   AppData,
@@ -30,7 +30,7 @@ export function getUrl(url: string, isInstalledApp: boolean, installedAppId: str
   return isInstalledApp ? `installed-apps/${installedAppId}/${url.startsWith('/') ? url.slice(1) : url}` : url
 }
 
-export const sendChatMessage = async (body: Record<string, any>, { onData, onCompleted, onThought, onFile, onError, getAbortController, onMessageEnd, onMessageReplace }: {
+export const sendChatMessage = async (body: Record<string, any>, { onData, onCompleted, onThought, onFile, onError, getAbortController, onMessageEnd, onMessageReplace, onTTSChunk, onTTSEnd }: {
   onData: IOnData
   onCompleted: IOnCompleted
   onFile: IOnFile
@@ -39,13 +39,15 @@ export const sendChatMessage = async (body: Record<string, any>, { onData, onCom
   onMessageEnd?: IOnMessageEnd
   onMessageReplace?: IOnMessageReplace
   getAbortController?: (abortController: AbortController) => void
+  onTTSChunk?: IOnTTSChunk
+  onTTSEnd?: IOnTTSEnd
 }, isInstalledApp: boolean, installedAppId = '') => {
   return ssePost(getUrl('chat-messages', isInstalledApp, installedAppId), {
     body: {
       ...body,
       response_mode: 'streaming',
     },
-  }, { onData, onCompleted, onThought, onFile, isPublicAPI: !isInstalledApp, onError, getAbortController, onMessageEnd, onMessageReplace })
+  }, { onData, onCompleted, onThought, onFile, isPublicAPI: !isInstalledApp, onError, getAbortController, onMessageEnd, onMessageReplace, onTTSChunk, onTTSEnd })
 }
 
 export const stopChatMessageResponding = async (appId: string, taskId: string, isInstalledApp: boolean, installedAppId = '') => {
@@ -212,6 +214,10 @@ export const audioToText = (url: string, isPublicAPI: boolean, body: FormData) =
 
 export const textToAudio = (url: string, isPublicAPI: boolean, body: FormData) => {
   return (getAction('post', !isPublicAPI))(url, { body }, { bodyStringify: false, deleteContentType: true }) as Promise<{ data: string }>
+}
+
+export const textToAudioStream = (url: string, isPublicAPI: boolean, header: { content_type: string }, body: { streaming: boolean; voice?: string; message_id?: string; text?: string | null | undefined }) => {
+  return (getAction('post', !isPublicAPI))(url, { body, header }, { needAllResponseContent: true })
 }
 
 export const fetchAccessToken = async (appCode: string) => {

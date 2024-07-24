@@ -1,15 +1,12 @@
 import os
 from collections import OrderedDict
 from collections.abc import Callable
-from typing import Any, AnyStr
+from typing import Any
 
 from core.tools.utils.yaml_utils import load_yaml_file
 
 
-def get_position_map(
-        folder_path: AnyStr,
-        file_name: str = '_position.yaml',
-) -> dict[str, int]:
+def get_position_map(folder_path: str, *, file_name: str = "_position.yaml") -> dict[str, int]:
     """
     Get the mapping from name to index from a YAML file
     :param folder_path:
@@ -17,6 +14,9 @@ def get_position_map(
     :return: a dict with name as key and index as value
     """
     position_file_name = os.path.join(folder_path, file_name)
+    if not position_file_name or not os.path.exists(position_file_name):
+        return {}
+    
     positions = load_yaml_file(position_file_name, ignore_error=True)
     position_map = {}
     index = 0

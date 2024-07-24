@@ -7,7 +7,10 @@ import {
   useEdges,
   useNodes,
 } from 'reactflow'
-import cn from 'classnames'
+import {
+  RiCloseLine,
+  RiListCheck3,
+} from '@remixicon/react'
 import BlockIcon from '../block-icon'
 import {
   useChecklist,
@@ -17,15 +20,14 @@ import type {
   CommonEdgeType,
   CommonNodeType,
 } from '../types'
+import cn from '@/utils/classnames'
 import {
   PortalToFollowElem,
   PortalToFollowElemContent,
   PortalToFollowElemTrigger,
 } from '@/app/components/base/portal-to-follow-elem'
 import {
-  Checklist,
   ChecklistSquare,
-  XClose,
 } from '@/app/components/base/icons/src/vender/line/general'
 import { AlertTriangle } from '@/app/components/base/icons/src/vender/line/alertsAndFeedback'
 
@@ -55,22 +57,15 @@ const WorkflowChecklist = ({
       <PortalToFollowElemTrigger onClick={() => !disabled && setOpen(v => !v)}>
         <div
           className={cn(
-            'relative flex items-center justify-center p-0.5 w-8 h-8 rounded-lg border-[0.5px] border-gray-200 bg-white shadow-xs',
+            'relative ml-0.5 flex items-center justify-center w-7 h-7 rounded-md',
             disabled && 'opacity-50 cursor-not-allowed',
           )}
         >
           <div
-            className={`
-              group flex items-center justify-center w-full h-full rounded-md cursor-pointer
-              hover:bg-primary-50
-              ${open && 'bg-primary-50'}
-            `}
+            className={cn('group flex items-center justify-center w-full h-full rounded-md cursor-pointer hover:bg-state-accent-hover', open && 'bg-state-accent-hover')}
           >
-            <Checklist
-              className={`
-                w-4 h-4 group-hover:text-primary-600
-                ${open ? 'text-primary-600' : 'text-gray-500'}`
-              }
+            <RiListCheck3
+              className={cn('w-4 h-4 group-hover:text-components-button-secondary-accent-text', open ? 'text-components-button-secondary-accent-text' : 'text-components-button-ghost-text')}
             />
           </div>
           {
@@ -95,7 +90,7 @@ const WorkflowChecklist = ({
               className='shrink-0 flex items-center justify-center w-6 h-6 cursor-pointer'
               onClick={() => setOpen(false)}
             >
-              <XClose className='w-4 h-4 text-gray-500' />
+              <RiCloseLine className='w-4 h-4 text-gray-500' />
             </div>
           </div>
           <div className='py-2'>
@@ -120,7 +115,9 @@ const WorkflowChecklist = ({
                               className='mr-1.5'
                               toolIcon={node.toolIcon}
                             />
-                            {node.title}
+                            <span className='grow truncate'>
+                              {node.title}
+                            </span>
                           </div>
                           <div className='border-t-[0.5px] border-t-black/2'>
                             {

@@ -1,9 +1,9 @@
 'use client'
-import cn from 'classnames'
 import { useRouter, useSearchParams } from 'next/navigation'
 import type { FC } from 'react'
 import { useEffect, useState } from 'react'
 import { useTranslation } from 'react-i18next'
+import cn from '@/utils/classnames'
 import Toast from '@/app/components/base/toast'
 import { getUserOAuth2SSOUrl, getUserOIDCSSOUrl, getUserSAMLSSOUrl } from '@/service/sso'
 import Button from '@/app/components/base/button'
@@ -87,10 +87,10 @@ const UserSSOForm: FC<UserSSOFormProps> = ({
         <div className="w-full mx-auto mt-10">
           <Button
             tabIndex={0}
-            type='primary'
+            variant='primary'
             onClick={() => { handleSSOLogin() }}
             disabled={isLoading}
-            className="w-full !fone-medium !text-sm"
+            className="w-full"
           >{t('login.sso')}
           </Button>
         </div>

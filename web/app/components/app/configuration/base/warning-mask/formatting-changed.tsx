@@ -28,7 +28,7 @@ const FormattingChanged: FC<IFormattingChangedProps> = ({
       description={t('appDebug.formattingChangedText')}
       footer={
         <div className='flex space-x-2'>
-          <Button type='primary' className='flex items-center space-x-2' onClick={onConfirm}>
+          <Button variant='primary' className='flex space-x-2' onClick={onConfirm}>
             {icon}
             <span>{t('common.operation.refresh')}</span>
           </Button>
