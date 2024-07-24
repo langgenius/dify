@@ -4,6 +4,7 @@ import React, { useCallback } from 'react'
 import { useBoolean } from 'ahooks'
 import cn from 'classnames'
 import { Generator } from '@/app/components/base/icons/src/vender/other'
+import { ActionButton } from '@/app/components/base/action-button'
 import GetAutomaticResModal from '@/app/components/app/configuration/config/automatic/get-automatic-res'
 import { AppType } from '@/types/app'
 import type { AutomaticRes } from '@/service/debug'
@@ -28,9 +29,11 @@ const PromptGeneratorBtn: FC<Props> = ({
   }, [onGenerated, showAutomaticFalse])
   return (
     <div className={cn(className)}>
-      <div className='p-[5px] rounded-md hover:bg-[#155EEF]/8 cursor-pointer' onClick={showAutomaticTrue}>
-        <Generator className='w-3.5 h-3.5 text-primary-600' />
-      </div>
+      <ActionButton
+        className='hover:bg-[#155EFF]/8'
+        onClick={showAutomaticTrue}>
+        <Generator className='w-4 h-4 text-primary-600' />
+      </ActionButton>
       {showAutomatic && (
         <GetAutomaticResModal
           mode={AppType.chat}

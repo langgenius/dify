@@ -13,6 +13,7 @@ export type TooltipProps = {
   hideArrow?: boolean
   popupClassName?: string
   offset?: OffsetOptions
+  asChild?: boolean
 }
 
 const arrow = (
@@ -27,6 +28,7 @@ const Tooltip: FC<TooltipProps> = ({
   hideArrow,
   popupClassName,
   offset,
+  asChild,
 }) => {
   const [open, setOpen] = useState(false)
   const [isHoverPopup, {
@@ -79,6 +81,7 @@ const Tooltip: FC<TooltipProps> = ({
           }
         }}
         onMouseLeave={() => triggerMethod === 'hover' && handleLeave(true)}
+        asChild={asChild}
       >
         {children}
       </PortalToFollowElemTrigger>
