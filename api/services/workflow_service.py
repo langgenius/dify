@@ -72,6 +72,7 @@ class WorkflowService:
         unique_hash: Optional[str],
         account: Account,
         environment_variables: Sequence[Variable],
+        conversation_variables: Sequence[Variable],
     ) -> Workflow:
         """
         Sync draft workflow
@@ -99,7 +100,8 @@ class WorkflowService:
                 graph=json.dumps(graph),
                 features=json.dumps(features),
                 created_by=account.id,
-                environment_variables=environment_variables
+                environment_variables=environment_variables,
+                conversation_variables=conversation_variables,
             )
             db.session.add(workflow)
         # update draft workflow if found
