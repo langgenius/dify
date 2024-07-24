@@ -12,6 +12,9 @@
 - google/gemini-pro
 - cohere/command-r-plus
 - cohere/command-r
+- meta-llama/llama-3.1-405b-instruct
+- meta-llama/llama-3.1-70b-instruct
+- meta-llama/llama-3.1-8b-instruct
 - meta-llama/llama-3-70b-instruct
 - meta-llama/llama-3-8b-instruct
 - mistralai/mixtral-8x22b-instruct

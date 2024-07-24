@@ -4,7 +4,7 @@ from typing import Any, Union
 
 from typing_extensions import deprecated
 
-from core.app.segments import ArrayVariable, ObjectVariable, Variable, factory
+from core.app.segments import Variable, factory
 from core.file.file_obj import FileVar
 from core.workflow.entities.node_entities import SystemVariable
 
@@ -113,14 +113,7 @@ class VariablePool:
             raise ValueError('Invalid selector')
         hash_key = hash(tuple(selector[1:]))
         value = self._variable_dictionary[selector[0]].get(hash_key)
-
-        if value is None:
-            return value
-        if isinstance(value, ArrayVariable):
-            return [element.value for element in value.value]
-        if isinstance(value, ObjectVariable):
-            return {k: v.value for k, v in value.value.items()}
-        return value.value if value else None
+        return value.to_object() if value else None
 
     def remove(self, selector: Sequence[str], /):
         """
