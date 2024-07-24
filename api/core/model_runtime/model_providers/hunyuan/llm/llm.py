@@ -101,7 +101,6 @@ class HunyuanLargeLanguageModel(LargeLanguageModel):
 
     def _convert_prompt_messages_to_dicts(self, prompt_messages: list[PromptMessage]) -> list[dict]:
         """Convert a list of PromptMessage objects to a list of dictionaries with 'Role' and 'Content' keys."""
-        # return [{"Role": message.role.value, "Content": message.content} for message in prompt_messages]
         dict_list = []
         for message in prompt_messages:
             if isinstance(message, AssistantPromptMessage):
