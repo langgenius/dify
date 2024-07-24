@@ -255,15 +255,16 @@ const VarReferencePicker: FC<Props> = ({
                     noLeft
                     trigger={
                       <div className='flex items-center h-8 px-2 radius-md bg-components-input-bg-normal'>
-                        <div className='mr-1 system-sm-regular text-components-input-text-filled'>{varKindType === VarKindType.variable ? 'Variable' : 'Constant'}</div>
+                        <div className='mr-1 system-sm-regular text-components-input-text-filled'>{varKindTypes.find(item => item.value === varKindType)?.label}</div>
                         <RiArrowDownSLine className='w-4 h-4 text-text-quaternary' />
                       </div>
                     }
+                    popupClassName='top-8'
                     readonly={readonly}
-                    DropDownIcon={RiArrowDownSLine}
                     value={varKindType}
                     options={varKindTypes}
                     onChange={handleVarKindTypeChange}
+                    showChecked
                   />
                 </div>
                 : (!hasValue && <div className='ml-1.5 mr-1'>

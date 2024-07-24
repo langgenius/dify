@@ -72,7 +72,7 @@ const TypeSelector: FC<Props> = ({
         )}
 
       {(showOption && !readonly) && (
-        <div className={cn(popupClassName, 'absolute z-10 top-[24px] w-[120px]  p-1 border border-gray-200 shadow-lg rounded-lg bg-white select-none')}>
+        <div className={cn('absolute z-10 top-[24px] w-[120px]  p-1 border border-gray-200 shadow-lg rounded-lg bg-white select-none', popupClassName)}>
           {list.map(item => (
             <div
               key={item.value}
