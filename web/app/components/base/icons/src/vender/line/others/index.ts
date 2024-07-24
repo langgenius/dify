@@ -1,4 +1,5 @@
 export { default as Apps02 } from './Apps02'
+export { default as BubbleX } from './BubbleX'
 export { default as Colors } from './Colors'
 export { default as DragHandle } from './DragHandle'
 export { default as Env } from './Env'

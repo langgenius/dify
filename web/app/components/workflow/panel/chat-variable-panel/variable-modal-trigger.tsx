@@ -3,26 +3,26 @@ import React from 'react'
 import { useTranslation } from 'react-i18next'
 import { RiAddLine } from '@remixicon/react'
 import Button from '@/app/components/base/button'
-import VariableModal from '@/app/components/workflow/panel/env-panel/variable-modal'
+import VariableModal from '@/app/components/workflow/panel/chat-variable-panel/variable-modal'
 import {
   PortalToFollowElem,
   PortalToFollowElemContent,
   PortalToFollowElemTrigger,
 } from '@/app/components/base/portal-to-follow-elem'
-import type { EnvironmentVariable } from '@/app/components/workflow/types'
+import type { ConversationVariable } from '@/app/components/workflow/types'
 
 type Props = {
   open: boolean
   setOpen: (value: React.SetStateAction<boolean>) => void
-  env?: EnvironmentVariable
+  chatVar?: ConversationVariable
   onClose: () => void
-  onSave: (env: EnvironmentVariable) => void
+  onSave: (env: ConversationVariable) => void
 }
 
-const VariableTrigger = ({
+const VariableModalTrigger = ({
   open,
   setOpen,
-  env,
+  chatVar,
   onClose,
   onSave,
 }: Props) => {
@@ -52,7 +52,7 @@ const VariableTrigger = ({
       </PortalToFollowElemTrigger>
       <PortalToFollowElemContent className='z-[11]'>
         <VariableModal
-          env={env}
+          chatVar={chatVar}
           onSave={onSave}
           onClose={() => {
             onClose()
@@ -64,4 +64,4 @@ const VariableTrigger = ({
   )
 }
 
-export default VariableTrigger
+export default VariableModalTrigger

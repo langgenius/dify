@@ -11,6 +11,7 @@ import type {
 } from './help-line/types'
 import type { VariableAssignerNodeType } from './nodes/variable-assigner/types'
 import type {
+  ConversationVariable,
   Edge,
   EnvironmentVariable,
   HistoryWorkflowData,
@@ -20,6 +21,24 @@ import type {
   WorkflowRunningData,
 } from './types'
 import { WorkflowContext } from './context'
+
+// #TODO chatVar#
+const MOCK_DATA = [
+  {
+    id: 'fjlaksdjflkjg-dfjlajfl0dnfkafjk-djfdkafj-djfak',
+    name: 'chat_history',
+    type: 'Array[Message]',
+    description: 'The chat history of the conversation',
+    default_value: [],
+  },
+  {
+    id: 'fljdaklfjl-dfjlafj0-dklajglje-eknglh',
+    name: 'order_id',
+    type: 'string',
+    description: '',
+    default_value: '123456',
+  },
+]
 
 type PreviewRunningData = WorkflowRunningData & {
   resultTabActive?: boolean
@@ -90,6 +109,10 @@ type Shape = {
   setEnvironmentVariables: (environmentVariables: EnvironmentVariable[]) => void
   envSecrets: Record<string, string>
   setEnvSecrets: (envSecrets: Record<string, string>) => void
+  showChatVariablePanel: boolean
+  setShowChatVariablePanel: (showChatVariablePanel: boolean) => void
+  conversationVariables: ConversationVariable[]
+  setConversationVariables: (conversationVariables: ConversationVariable[]) => void
   selection: null | { x1: number; y1: number; x2: number; y2: number }
   setSelection: (selection: Shape['selection']) => void
   bundleNodeSize: { width: number; height: number } | null
@@ -204,6 +227,10 @@ export const createWorkflowStore = () => {
     setEnvironmentVariables: environmentVariables => set(() => ({ environmentVariables })),
     envSecrets: {},
     setEnvSecrets: envSecrets => set(() => ({ envSecrets })),
+    showChatVariablePanel: false,
+    setShowChatVariablePanel: showChatVariablePanel => set(() => ({ showChatVariablePanel })),
+    conversationVariables: MOCK_DATA,
+    setConversationVariables: conversationVariables => set(() => ({ conversationVariables })),
     selection: null,
     setSelection: selection => set(() => ({ selection })),
     bundleNodeSize: null,

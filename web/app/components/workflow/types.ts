@@ -110,6 +110,15 @@ export type EnvironmentVariable = {
   value_type: 'string' | 'number' | 'secret'
 }
 
+// #TODO chatVar#
+export type ConversationVariable = {
+  id: string
+  name: string
+  type: string
+  default_value: any
+  description: string
+}
+
 export type VariableWithValue = {
   key: string
   value: string

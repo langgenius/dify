@@ -99,6 +99,11 @@ const translation = {
       export: 'Export DSL with secret values ',
     },
   },
+  chatVariable: {
+    panelTitle: 'Conversation Variables',
+    panelDescription: 'Conversation Variables are used to store interactive information that LLM needs to remember, including conversation history, uploaded files, user preferences. They are read-write.',
+    button: 'Add Variable',
+  },
   changeHistory: {
     title: 'Change History',
     placeholder: 'You haven\'t changed anything yet',
