@@ -70,8 +70,8 @@ def test_execute_llm(setup_openai_mock):
         SystemVariable.FILES: [],
         SystemVariable.CONVERSATION_ID: 'abababa',
         SystemVariable.USER_ID: 'aaa'
-    }, user_inputs={})
-    pool.append_variable(node_id='abc', variable_key_list=['output'], value='sunny')
+    }, user_inputs={}, environment_variables=[])
+    pool.add(['abc', 'output'], 'sunny')
 
     credentials = {
         'openai_api_key': os.environ.get('OPENAI_API_KEY')
@@ -185,8 +185,8 @@ def test_execute_llm_with_jinja2(setup_code_executor_mock, setup_openai_mock):
         SystemVariable.FILES: [],
         SystemVariable.CONVERSATION_ID: 'abababa',
         SystemVariable.USER_ID: 'aaa'
-    }, user_inputs={})
-    pool.append_variable(node_id='abc', variable_key_list=['output'], value='sunny')
+    }, user_inputs={}, environment_variables=[])
+    pool.add(['abc', 'output'], 'sunny')
 
     credentials = {
         'openai_api_key': os.environ.get('OPENAI_API_KEY')

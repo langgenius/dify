@@ -2,7 +2,7 @@ from typing import Optional
 
 from core.app.entities.queue_entities import AppQueueEvent
 from core.model_runtime.utils.encoders import jsonable_encoder
-from core.workflow.callbacks.base_workflow_callback import BaseWorkflowCallback
+from core.workflow.callbacks.base_workflow_callback import WorkflowCallback
 from core.workflow.entities.base_node_data_entities import BaseNodeData
 from core.workflow.entities.node_entities import NodeType
 
@@ -15,7 +15,7 @@ _TEXT_COLOR_MAPPING = {
 }
 
 
-class WorkflowLoggingCallback(BaseWorkflowCallback):
+class WorkflowLoggingCallback(WorkflowCallback):
 
     def __init__(self) -> None:
         self.current_node_id = None

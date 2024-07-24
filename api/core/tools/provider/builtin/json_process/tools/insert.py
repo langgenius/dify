@@ -19,31 +19,31 @@ class JSONParseTool(BuiltinTool):
         content = tool_parameters.get('content', '')
         if not content:
             return self.create_text_message('Invalid parameter content')
-        
+
         # get query
         query = tool_parameters.get('query', '')
         if not query:
             return self.create_text_message('Invalid parameter query')
-        
+
         # get new value
         new_value = tool_parameters.get('new_value', '')
         if not new_value:
             return self.create_text_message('Invalid parameter new_value')
-        
+
         # get insert position
         index = tool_parameters.get('index')
-        
+
         # get create path
         create_path = tool_parameters.get('create_path', False)
-        
+
+        ensure_ascii = tool_parameters.get('ensure_ascii', True)
         try:
-            result = self._insert(content, query, new_value, index, create_path)
+            result = self._insert(content, query, new_value, ensure_ascii, index, create_path)
             return self.create_text_message(str(result))
         except Exception:
             return self.create_text_message('Failed to insert JSON content')
 
-
-    def _insert(self, origin_json, query, new_value, index=None, create_path=False):
+    def _insert(self, origin_json, query, new_value, ensure_ascii: bool, index=None, create_path=False):
         try:
             input_data = json.loads(origin_json)
             expr = parse(query)
@@ -51,9 +51,9 @@ class JSONParseTool(BuiltinTool):
                 new_value = json.loads(new_value)
             except json.JSONDecodeError:
                 new_value = new_value
-            
+
             matches = expr.find(input_data)
-            
+
             if not matches and create_path:
                 # create new path
                 path_parts = query.strip('$').strip('.').split('.')
@@ -91,7 +91,7 @@ class JSONParseTool(BuiltinTool):
                     else:
                         # replace old value with new value
                         match.full_path.update(input_data, new_value)
-            
-            return json.dumps(input_data, ensure_ascii=True)
+
+            return json.dumps(input_data, ensure_ascii=ensure_ascii)
         except Exception as e:
             return str(e)

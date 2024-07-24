@@ -2,9 +2,9 @@ import requests
 
 
 class DifyClient:
-    def __init__(self, api_key):
+    def __init__(self, api_key, base_url: str = 'https://api.dify.ai/v1'):
         self.api_key = api_key
-        self.base_url = "https://api.dify.ai/v1"
+        self.base_url = base_url
 
     def _send_request(self, method, endpoint, json=None, params=None, stream=False):
         headers = {

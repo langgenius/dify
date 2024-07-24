@@ -131,7 +131,7 @@ class ModelLoadBalancingService:
                 load_balancing_configs.insert(0, inherit_config)
             else:
                 # move the inherit configuration to the first
-                for i, load_balancing_config in enumerate(load_balancing_configs):
+                for i, load_balancing_config in enumerate(load_balancing_configs[:]):
                     if load_balancing_config.name == '__inherit__':
                         inherit_config = load_balancing_configs.pop(i)
                         load_balancing_configs.insert(0, inherit_config)

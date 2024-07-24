@@ -19,6 +19,7 @@ import { NodeRunningStatus, WorkflowRunningStatus } from '@/app/components/workf
 import type { WorkflowProcess } from '@/app/components/base/chat/types'
 import { sleep } from '@/utils'
 import type { SiteInfo } from '@/models/share'
+import { TEXT_GENERATION_TIMEOUT_MS } from '@/config'
 
 export type IResultProps = {
   isWorkflow: boolean
@@ -186,7 +187,7 @@ const Result: FC<IResultProps> = ({
     let isEnd = false
     let isTimeout = false;
     (async () => {
-      await sleep(1000 * 60) // 1min timeout
+      await sleep(TEXT_GENERATION_TIMEOUT_MS)
       if (!isEnd) {
         setRespondingFalse()
         onCompleted(getCompletionRes(), taskId, false)

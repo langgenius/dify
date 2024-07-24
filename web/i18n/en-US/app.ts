@@ -13,6 +13,10 @@ const translation = {
   exportFailed: 'Export DSL failed.',
   importDSL: 'Import DSL file',
   createFromConfigFile: 'Create from DSL file',
+  importFromDSL: 'Import from DSL',
+  importFromDSLFile: 'From DSL file',
+  importFromDSLUrl: 'From URL',
+  importFromDSLUrlPlaceholder: 'Paste DSL link here',
   deleteAppConfirmTitle: 'Delete this app?',
   deleteAppConfirmContent:
     'Deleting the app is irreversible. Users will no longer be able to access your app, and all prompt configurations and logs will be permanently deleted.',
