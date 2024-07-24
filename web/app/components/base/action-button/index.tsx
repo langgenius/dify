@@ -25,16 +25,12 @@ const actionButtonVariants = cva(
       size: 'm',
     },
   },
-
 )
 
 export type ActionButtonProps = {
   size?: 'xs' | 'm' | 'l' | 'xl'
-
   state?: ActionButtonState
-
   styleCss?: CSSProperties
-
 } & React.ButtonHTMLAttributes<HTMLButtonElement> & VariantProps<typeof actionButtonVariants>
 
 function getActionButtonState(state: ActionButtonState) {
@@ -51,31 +47,19 @@ function getActionButtonState(state: ActionButtonState) {
 }
 
 const ActionButton = React.forwardRef<HTMLButtonElement, ActionButtonProps>(
-
   ({ className, size, state = ActionButtonState.Default, styleCss, children, ...props }, ref) => {
     return (
-
       <button
-
         type='button'
-
         className={classNames(
-
           actionButtonVariants({ className, size }),
-
           getActionButtonState(state),
-
         )}
-
         ref={ref}
-
         style={styleCss}
-
         {...props}
       >
-        <div className="icon-wrap">
-          {children}
-        </div>
+        {children}
       </button>
     )
   },

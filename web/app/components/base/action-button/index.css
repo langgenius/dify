@@ -16,24 +16,16 @@
     }
 
     .action-btn-l {
-        @apply p-[6px] w-[34px] h-[34px] rounded-lg
+        @apply p-1.5 w-[34px] h-[34px] rounded-lg
     }
 
     /* m is for the regular button */
     .action-btn-m {
-        @apply p-[2px] w-6 h-6 rounded-lg
+        @apply p-0.5 w-6 h-6 rounded-lg
     }
 
     .action-btn-xs {
         @apply p-0 w-5 h-5 rounded
-    }
-
-    .icon-wrap {
-        @apply flex justify-center items-center w-5 h-5
-    }
-
-    .action-btn-xs .icon-wrap {
-        @apply w-4 h-4
     }
 
     .action-btn.action-btn-active {
