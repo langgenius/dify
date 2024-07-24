@@ -248,6 +248,7 @@ const Workflow: FC<WorkflowProps> = memo(({
   } = useWorkflow()
   const { handleStartWorkflowRun } = useWorkflowStartRun()
   const {
+    exportCheck,
     handleExportDSL,
   } = useDSL()
 
@@ -334,7 +335,7 @@ const Workflow: FC<WorkflowProps> = memo(({
         showImportDSLModal && (
           <UpdateDSLModal
             onCancel={() => setShowImportDSLModal(false)}
-            onBackup={handleExportDSL}
+            onBackup={exportCheck}
             onImport={handlePaneContextmenuCancel}
           />
         )
