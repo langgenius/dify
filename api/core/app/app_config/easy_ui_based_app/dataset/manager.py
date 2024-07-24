@@ -120,12 +120,6 @@ class DatasetConfigManager:
         if not isinstance(config["dataset_configs"], dict):
             raise ValueError("dataset_configs must be of object type")
 
-        if config["dataset_configs"]['retrieval_model'] == 'multiple':
-            if not config["dataset_configs"]['reranking_model']:
-                raise ValueError("reranking_model has not been set")
-            if not isinstance(config["dataset_configs"]['reranking_model'], dict):
-                raise ValueError("reranking_model must be of object type")
-
         if not isinstance(config["dataset_configs"], dict):
             raise ValueError("dataset_configs must be of object type")
 
