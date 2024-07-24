@@ -4,7 +4,7 @@ import pytz
 from flask_login import current_user
 from flask_restful import Resource, marshal_with, reqparse
 from flask_restful.inputs import int_range
-from sqlalchemy import String, func, or_
+from sqlalchemy import func, or_
 from sqlalchemy.orm import joinedload
 from werkzeug.exceptions import Forbidden, NotFound
 
@@ -179,9 +179,8 @@ class ChatConversationApi(Resource):
                     Message.answer.ilike(keyword_filter),
                     Conversation.name.ilike(keyword_filter),
                     Conversation.introduction.ilike(keyword_filter),
-                    func.cast(subquery.c.from_end_user_session_id, String).ilike(keyword_filter)
+                    subquery.c.from_end_user_session_id.ilike(keyword_filter)
                 ),
-
             )
 
         account = current_user
