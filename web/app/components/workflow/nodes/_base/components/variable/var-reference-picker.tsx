@@ -288,7 +288,7 @@ const VarReferencePicker: FC<Props> = ({
                     className='grow h-full'
                   >
                     <div ref={isSupportConstantValue ? triggerRef : null} className={cn('h-full', isSupportConstantValue && 'flex items-center pl-1 py-1 rounded-lg bg-gray-100')}>
-                      <div className={cn('flex h-full items-center px-1.5 rounded-[5px]', hasValue && 'bg-white')}>
+                      <div className={cn('h-full items-center px-1.5 rounded-[5px]', hasValue ? 'bg-white inline-flex' : 'flex')}>
                         {hasValue
                           ? (
                             <>
