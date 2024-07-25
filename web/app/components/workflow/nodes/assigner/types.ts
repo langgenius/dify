@@ -10,6 +10,7 @@ export type AssignerSupportVarType = VarType.string | VarType.number | VarType.o
 
 export type AssignerNodeType = CommonNodeType & {
   variable: ValueSelector
+  varType: VarType
   writeMode: WriteMode
   value: any
   // valueType

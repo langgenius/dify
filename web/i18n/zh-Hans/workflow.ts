@@ -416,6 +416,7 @@ const translation = {
       plus: '加',
       clear: '清空',
       setValue: '设置值',
+      value: '值',
     },
     tool: {
       toAuthorize: '授权',

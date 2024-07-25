@@ -46,7 +46,7 @@ const useConfig = (id: string, payload: AssignerNodeType) => {
       case VarType.number:
         return {
           type: VarKindType.constant,
-          value: 0,
+          value: undefined,
         }
       case VarType.object:
         return [
@@ -99,6 +99,7 @@ const useConfig = (id: string, payload: AssignerNodeType) => {
         isChatMode,
         isConstant: false,
       })
+      draft.varType = newVarType
       if (newVarType !== varType)
         draft.value = getInitValue(newVarType, inputs.writeMode)
     })

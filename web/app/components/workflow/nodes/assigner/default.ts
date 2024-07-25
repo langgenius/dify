@@ -1,4 +1,4 @@
-import { BlockEnum } from '../../types'
+import { BlockEnum, VarType } from '../../types'
 import type { NodeDefault } from '../../types'
 import { type AssignerNodeType, WriteMode } from './types'
 import { ALL_CHAT_AVAILABLE_BLOCKS, ALL_COMPLETION_AVAILABLE_BLOCKS } from '@/app/components/workflow/constants'
@@ -21,10 +21,23 @@ const nodeDefault: NodeDefault<AssignerNodeType> = {
   },
   checkValid(payload: AssignerNodeType, t: any) {
     let errorMessages = ''
-    const { variable } = payload
+    const { variable, varType, writeMode, value } = payload
 
     if (!errorMessages && !variable?.length)
-      errorMessages = t(`${i18nPrefix}.fieldRequired`, { field: t(`${i18nPrefix}.fields.variable`) })
+      errorMessages = t(`${i18nPrefix}.fieldRequired`, { field: t('workflow.nodes.assigner.assignedVariable') })
+
+    if (!errorMessages && writeMode !== WriteMode.Clear) {
+      switch (varType || VarType.string) {
+        case VarType.string:
+          if (!value)
+            errorMessages = t(`${i18nPrefix}.fieldRequired`, { field: t('workflow.nodes.assigner.value') })
+          break
+        case VarType.number:
+          if (value?.value === undefined || value?.value?.length === 0)
+            errorMessages = t(`${i18nPrefix}.fieldRequired`, { field: t('workflow.nodes.assigner.value') })
+          break
+      }
+    }
 
     return {
       isValid: !errorMessages,

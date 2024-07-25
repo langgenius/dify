@@ -416,6 +416,7 @@ const translation = {
       plus: 'Plus',
       clear: 'Clear',
       setValue: 'Set Value',
+      value: 'Value',
     },
     tool: {
       toAuthorize: 'To authorize',
