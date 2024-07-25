@@ -46,6 +46,7 @@ def test_execute_answer():
         app_id='1',
         workflow_type=WorkflowType.WORKFLOW,
         workflow_id='1',
+        graph_config=graph_config,
         user_id='1',
         user_from=UserFrom.ACCOUNT,
         invoke_from=InvokeFrom.DEBUGGER,

@@ -2,14 +2,12 @@ from abc import ABC, abstractmethod
 from collections.abc import Generator, Mapping
 from typing import Any, Optional
 
-from core.workflow.entities.base_node_data_entities import BaseIterationState, BaseNodeData
+from core.workflow.entities.base_node_data_entities import BaseNodeData
 from core.workflow.entities.node_entities import NodeRunResult, NodeType
-from core.workflow.entities.variable_pool import VariablePool
 from core.workflow.graph_engine.entities.graph import Graph
 from core.workflow.graph_engine.entities.graph_init_params import GraphInitParams
 from core.workflow.graph_engine.entities.graph_runtime_state import GraphRuntimeState
 from core.workflow.nodes.event import RunCompletedEvent, RunEvent
-from core.workflow.nodes.iterable_node_mixin import IterableNodeMixin
 
 
 class BaseNode(ABC):
@@ -26,6 +24,7 @@ class BaseNode(ABC):
         self.app_id = graph_init_params.app_id
         self.workflow_type = graph_init_params.workflow_type
         self.workflow_id = graph_init_params.workflow_id
+        self.graph_config = graph_init_params.graph_config
         self.user_id = graph_init_params.user_id
         self.user_from = graph_init_params.user_from
         self.invoke_from = graph_init_params.invoke_from
@@ -100,37 +99,3 @@ class BaseNode(ABC):
         :return:
         """
         return self._node_type
-
-
-class BaseIterationNode(BaseNode, IterableNodeMixin):
-    @abstractmethod
-    def _run(self) -> BaseIterationState:
-        """
-        Run node
-        :return:
-        """
-        raise NotImplementedError
-
-    def run(self) -> BaseIterationState:
-        """
-        Run node entry
-        :return:
-        """
-        return self._run(variable_pool=self.graph_runtime_state.variable_pool)
-
-    def get_next_iteration(self, variable_pool: VariablePool, state: BaseIterationState) -> NodeRunResult | str:
-        """
-        Get next iteration start node id based on the graph.
-        :param graph: graph
-        :return: next node id
-        """
-        return self._get_next_iteration(variable_pool, state)
-
-    @abstractmethod
-    def _get_next_iteration(self, variable_pool: VariablePool, state: BaseIterationState) -> NodeRunResult | str:
-        """
-        Get next iteration start node id based on the graph.
-        :param graph: graph
-        :return: next node id
-        """
-        raise NotImplementedError

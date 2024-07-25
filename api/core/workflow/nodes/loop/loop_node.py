@@ -1,13 +1,12 @@
 from typing import Any
 
-from core.workflow.entities.node_entities import NodeRunResult, NodeType
-from core.workflow.entities.variable_pool import VariablePool
-from core.workflow.nodes.base_node import BaseIterationNode
+from core.workflow.entities.node_entities import NodeType
+from core.workflow.nodes.base_node import BaseNode
 from core.workflow.nodes.loop.entities import LoopNodeData, LoopState
 from core.workflow.utils.condition.entities import Condition
 
 
-class LoopNode(BaseIterationNode):
+class LoopNode(BaseNode):
     """
     Loop Node.
     """
@@ -16,12 +15,6 @@ class LoopNode(BaseIterationNode):
 
     def _run(self) -> LoopState:
         return super()._run()
-
-    def _get_next_iteration(self, variable_loop: VariablePool) -> NodeRunResult | str:
-        """
-        Get next iteration start node id based on the graph.
-        """
-        pass
 
     @classmethod
     def get_conditions(cls, node_config: dict[str, Any]) -> list[Condition]:

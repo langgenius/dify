@@ -141,3 +141,15 @@ class VariablePool(BaseModel):
             return
         hash_key = hash(tuple(selector[1:]))
         self.variable_dictionary[selector[0]].pop(hash_key, None)
+
+    def remove_node(self, node_id: str, /):
+        """
+        Remove all variables associated with a given node id.
+
+        Args:
+            node_id (str): The node id to remove.
+
+        Returns:
+            None
+        """
+        self.variable_dictionary.pop(node_id, None)

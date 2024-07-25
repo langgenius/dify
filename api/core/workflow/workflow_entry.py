@@ -98,9 +98,10 @@ class WorkflowEntry:
             invoke_from=invoke_from,
             call_depth=call_depth,
             graph=graph,
+            graph_config=graph_config,
             variable_pool=variable_pool,
-            max_execution_steps=current_app.config.get("WORKFLOW_MAX_EXECUTION_STEPS"),
-            max_execution_time=current_app.config.get("WORKFLOW_MAX_EXECUTION_TIME")
+            max_execution_steps=dify_config.WORKFLOW_MAX_EXECUTION_STEPS,
+            max_execution_time=dify_config.WORKFLOW_MAX_EXECUTION_TIME
         )
 
         # init workflow run
@@ -155,7 +156,6 @@ class WorkflowEntry:
                 )
 
             predecessor_node: BaseNode | None = None
-            current_iteration_node: BaseIterationNode | None = None
             has_entry_node = False
             max_execution_steps = dify_config.WORKFLOW_MAX_EXECUTION_STEPS
             max_execution_time = dify_config.WORKFLOW_MAX_EXECUTION_TIME
@@ -610,7 +610,7 @@ class WorkflowEntry:
             for callback in callbacks:
                 callback.on_workflow_run_started()
 
-    def _workflow_run_success(self, callbacks: Sequence[WorkflowCallback]) -> None:
+    def _workflow_run_success(self, callbacks: Sequence[BaseWorkflowCallback]) -> None:
         """
         Workflow run success
         :param callbacks: workflow callbacks

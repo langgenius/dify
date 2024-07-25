@@ -2,8 +2,8 @@ import logging
 import queue
 import threading
 import time
-from collections.abc import Generator
-from typing import Optional
+from collections.abc import Generator, Mapping
+from typing import Any, Optional
 
 from flask import Flask, current_app
 from uritemplate.variable import VariableValue
@@ -41,24 +41,29 @@ logger = logging.getLogger(__name__)
 
 
 class GraphEngine:
-    def __init__(self, tenant_id: str,
-                 app_id: str,
-                 workflow_type: WorkflowType,
-                 workflow_id: str,
-                 user_id: str,
-                 user_from: UserFrom,
-                 invoke_from: InvokeFrom,
-                 call_depth: int,
-                 graph: Graph,
-                 variable_pool: VariablePool,
-                 max_execution_steps: int,
-                 max_execution_time: int) -> None:
+    def __init__(
+            self,
+            tenant_id: str,
+            app_id: str,
+            workflow_type: WorkflowType,
+            workflow_id: str,
+            user_id: str,
+            user_from: UserFrom,
+            invoke_from: InvokeFrom,
+            call_depth: int,
+            graph: Graph,
+            graph_config: Mapping[str, Any],
+            variable_pool: VariablePool,
+            max_execution_steps: int,
+            max_execution_time: int
+    ) -> None:
         self.graph = graph
         self.init_params = GraphInitParams(
             tenant_id=tenant_id,
             app_id=app_id,
             workflow_type=workflow_type,
             workflow_id=workflow_id,
+            graph_config=graph_config,
             user_id=user_id,
             user_from=user_from,
             invoke_from=invoke_from,

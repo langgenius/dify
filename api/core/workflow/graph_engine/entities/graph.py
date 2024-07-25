@@ -1,5 +1,6 @@
 import uuid
-from typing import Optional, cast
+from collections.abc import Mapping
+from typing import Any, Optional, cast
 
 from pydantic import BaseModel, Field
 
@@ -61,7 +62,7 @@ class Graph(BaseModel):
 
     @classmethod
     def init(cls,
-             graph_config: dict,
+             graph_config: Mapping[str, Any],
              root_node_id: Optional[str] = None) -> "Graph":
         """
         Init graph
