@@ -17,12 +17,15 @@ proxies = {
     'https://': SSRF_PROXY_HTTPS_URL
 } if SSRF_PROXY_HTTP_URL and SSRF_PROXY_HTTPS_URL else None
 
-
 BACKOFF_FACTOR = 0.5
 STATUS_FORCELIST = [429, 500, 502, 503, 504]
 
-
 def make_request(method, url, max_retries=SSRF_DEFAULT_MAX_RETRIES, **kwargs):
+    if "allow_redirects" in kwargs:
+        allow_redirects = kwargs.pop("allow_redirects")
+        if "follow_redirects" not in kwargs:
+            kwargs["follow_redirects"] = allow_redirects
+    
     retries = 0
     while retries <= max_retries:
         try:
