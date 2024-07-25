@@ -45,7 +45,7 @@ def get_url(url: str, user_agent: str = None) -> str:
 
     main_content_type = None
     supported_content_types = extract_processor.SUPPORT_URL_CONTENT_TYPES + ["text/html"]
-    response = ssrf_proxy.head(url, headers=headers, allow_redirects=True, timeout=(5, 10))
+    response = ssrf_proxy.head(url, headers=headers, follow_redirects=True, timeout=(5, 10))
 
     if response.status_code == 200:
         # check content-type
