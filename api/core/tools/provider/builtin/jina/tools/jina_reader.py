@@ -60,11 +60,13 @@ class JinaReaderTool(BuiltinTool):
         if tool_parameters.get('no_cache', False):
             headers['X-No-Cache'] = 'true'
 
+        max_retries = tool_parameters.get('max_retries', 3)
         response = ssrf_proxy.get(
             str(URL(self._jina_reader_endpoint + url)),
             headers=headers,
             params=request_params,
             timeout=(10, 60),
+            max_retries=max_retries
         )
 
         if tool_parameters.get('summary', False):
