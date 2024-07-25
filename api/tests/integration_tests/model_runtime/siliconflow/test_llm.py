@@ -16,14 +16,14 @@ def test_validate_credentials():
         model.validate_credentials(
             model='deepseek-ai/DeepSeek-V2-Chat',
             credentials={
-                'siliconflow_api_key': 'invalid_key'
+                'api_key': 'invalid_key'
             }
         )
 
     model.validate_credentials(
         model='deepseek-ai/DeepSeek-V2-Chat',
         credentials={
-            'siliconflow_api_key': os.environ.get('SILICONFLOW_API_KEY') 
+            'api_key': os.environ.get('API_KEY')
         }
     )
 
@@ -34,7 +34,7 @@ def test_invoke_model():
     response = model.invoke(
         model='deepseek-ai/DeepSeek-V2-Chat',
         credentials={
-            'siliconflow_api_key': os.environ.get('SILICONFLOW_API_KEY')
+            'api_key': os.environ.get('API_KEY')
         },
         prompt_messages=[
             UserPromptMessage(
@@ -60,7 +60,7 @@ def test_invoke_stream_model():
     response = model.invoke(
         model='deepseek-ai/DeepSeek-V2-Chat',
         credentials={
-            'siliconflow_api_key': os.environ.get('SILICONFLOW_API_KEY')
+            'api_key': os.environ.get('API_KEY')
         },
         prompt_messages=[
             UserPromptMessage(
@@ -91,7 +91,7 @@ def test_get_num_tokens():
     num_tokens = model.get_num_tokens(
         model='deepseek-ai/DeepSeek-V2-Chat',
         credentials={
-            'siliconflow_api_key': os.environ.get('SILICONFLOW_API_KEY')
+            'api_key': os.environ.get('API_KEY')
         },
         prompt_messages=[
             SystemPromptMessage(

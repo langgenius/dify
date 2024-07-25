@@ -19,7 +19,7 @@ configurate_methods:
   - predefined-model
 provider_credential_schema:
   credential_form_schemas:
-    - variable: siliconflow_api_key
+    - variable: api_key
       label:
         en_US: API Key
       type: secret-input

@@ -16,6 +16,6 @@ def test_validate_provider_credentials():
 
     provider.validate_provider_credentials(
         credentials={
-            'siliconflow_api_key': os.environ.get('SILICONFLOW_API_KEY')
+            'api_key': os.environ.get('API_KEY')
         }
     )
