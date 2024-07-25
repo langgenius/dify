@@ -12,7 +12,6 @@ from urllib.parse import unquote
 
 import cloudscraper
 from bs4 import BeautifulSoup, CData, Comment, NavigableString
-from newspaper import Article
 from regex import regex
 
 from core.helper import ssrf_proxy
@@ -71,7 +70,7 @@ def get_url(url: str, user_agent: str = None) -> str:
     elif response.status_code == 403:
         scraper = cloudscraper.create_scraper()
         scraper.perform_request = ssrf_proxy.make_request
-        response = scraper.get(url, headers=headers, allow_redirects=True, timeout=(120, 300))
+        response = scraper.get(url, headers=headers, follow_redirects=True, timeout=(120, 300))
 
     if response.status_code != 200:
         return "URL returned status code {}.".format(response.status_code)
