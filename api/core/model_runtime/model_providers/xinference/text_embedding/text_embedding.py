@@ -116,8 +116,10 @@ class XinferenceTextEmbeddingModel(TextEmbeddingModel):
                 credentials['max_tokens'] = extra_args.max_tokens
             if server_url.endswith('/'):
                 server_url = server_url[:-1]
+                
+            api_key = credentials.get('api_key')
 
-            client = Client(base_url=server_url)
+            client = Client(base_url=server_url, api_key=api_key)
 
             try:
                 handle = client.get_model(model_uid=model_uid)

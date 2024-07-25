@@ -450,20 +450,22 @@ class XinferenceAILargeLanguageModel(LargeLanguageModel):
         if 'server_url' not in credentials:
             raise CredentialsValidateFailedError('server_url is required in credentials')
 
-        if credentials['server_url'].endswith('/'):
-            credentials['server_url'] = credentials['server_url'][:-1]
+        server_url = credentials['server_url']
+        if server_url.endswith('/'):
+            server_url = credentials['server_url'][:-1]
 
         api_key = credentials.get('api_key') or "abc"
 
         client = OpenAI(
-            base_url=f'{credentials["server_url"]}/v1',
+            base_url=f'{server_url}/v1',
             api_key=api_key,
             max_retries=3,
             timeout=60,
         )
 
         xinference_client = Client(
-            base_url=credentials['server_url'],
+            base_url=server_url,
+            api_key=api_key,
         )
 
         xinference_model = xinference_client.get_model(credentials['model_uid'])

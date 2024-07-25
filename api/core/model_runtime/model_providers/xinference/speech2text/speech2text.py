@@ -47,12 +47,16 @@ class XinferenceSpeech2TextModel(Speech2TextModel):
             if "/" in credentials['model_uid'] or "?" in credentials['model_uid'] or "#" in credentials['model_uid']:
                 raise CredentialsValidateFailedError("model_uid should not contain /, ?, or #")
 
-            if credentials['server_url'].endswith('/'):
-                credentials['server_url'] = credentials['server_url'][:-1]
+            server_url = credentials['server_url']
+            if server_url.endswith('/'):
+                server_url = credentials['server_url'][:-1] 
+
+            api_key = credentials.get('api_key')
 
             # initialize client
             client = Client(
-                base_url=credentials['server_url']
+                base_url=server_url,
+                api_key=api_key,
             )
 
             xinference_client = client.get_model(model_uid=credentials['model_uid'])
