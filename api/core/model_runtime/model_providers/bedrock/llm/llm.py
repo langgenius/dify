@@ -208,14 +208,25 @@ class BedrockLargeLanguageModel(LargeLanguageModel):
 
         if model_info['support_tool_use'] and tools:
             parameters['toolConfig'] = self._convert_converse_tool_config(tools=tools)
+        try:
+            if stream:
+                response = bedrock_client.converse_stream(**parameters)
+                return self._handle_converse_stream_response(model_info['model'], credentials, response, prompt_messages)
+            else:
+                response = bedrock_client.converse(**parameters)
+                return self._handle_converse_response(model_info['model'], credentials, response, prompt_messages)
+        except ClientError as ex:
+            error_code = ex.response['Error']['Code']
+            full_error_msg = f"{error_code}: {ex.response['Error']['Message']}"
+            raise self._map_client_to_invoke_error(error_code, full_error_msg)
+        except (EndpointConnectionError, NoRegionError, ServiceNotInRegionError) as ex:
+            raise InvokeConnectionError(str(ex))
 
-        if stream:
-            response = bedrock_client.converse_stream(**parameters)
-            return self._handle_converse_stream_response(model_info['model'], credentials, response, prompt_messages)
-        else:
-            response = bedrock_client.converse(**parameters)
-            return self._handle_converse_response(model_info['model'], credentials, response, prompt_messages)
+        except UnknownServiceError as ex:
+            raise InvokeServerUnavailableError(str(ex))
 
+        except Exception as ex:
+            raise InvokeError(str(ex))
     def _handle_converse_response(self, model: str, credentials: dict, response: dict,
                                 prompt_messages: list[PromptMessage]) -> LLMResult:
         """
@@ -558,7 +569,6 @@ class BedrockLargeLanguageModel(LargeLanguageModel):
         except ClientError as ex:
             error_code = ex.response['Error']['Code']
             full_error_msg = f"{error_code}: {ex.response['Error']['Message']}"
-
             raise CredentialsValidateFailedError(str(self._map_client_to_invoke_error(error_code, full_error_msg)))
 
         except Exception as ex:
