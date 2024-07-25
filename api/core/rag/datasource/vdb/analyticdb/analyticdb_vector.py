@@ -293,15 +293,18 @@ class AnalyticdbVector(BaseVector):
         return documents
 
     def delete(self) -> None:
-        from alibabacloud_gpdb20160503 import models as gpdb_20160503_models
-        request = gpdb_20160503_models.DeleteCollectionRequest(
-            collection=self._collection_name,
-            dbinstance_id=self.config.instance_id,
-            namespace=self.config.namespace,
-            namespace_password=self.config.namespace_password,
-            region_id=self.config.region_id,
-        )
-        self._client.delete_collection(request)
+        try:
+            from alibabacloud_gpdb20160503 import models as gpdb_20160503_models
+            request = gpdb_20160503_models.DeleteCollectionRequest(
+                collection=self._collection_name,
+                dbinstance_id=self.config.instance_id,
+                namespace=self.config.namespace,
+                namespace_password=self.config.namespace_password,
+                region_id=self.config.region_id,
+            )
+            self._client.delete_collection(request)
+        except Exception as e:
+            raise e
 
 class AnalyticdbVectorFactory(AbstractVectorFactory):
     def init_vector(self, dataset: Dataset, attributes: list, embeddings: Embeddings):

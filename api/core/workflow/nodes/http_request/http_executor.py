@@ -9,7 +9,7 @@ import httpx
 import core.helper.ssrf_proxy as ssrf_proxy
 from configs import dify_config
 from core.workflow.entities.variable_entities import VariableSelector
-from core.workflow.entities.variable_pool import ValueType, VariablePool
+from core.workflow.entities.variable_pool import VariablePool
 from core.workflow.nodes.http_request.entities import (
     HttpRequestNodeAuthorization,
     HttpRequestNodeBody,
@@ -212,13 +212,11 @@ class HttpExecutor:
                 raise ValueError('self.authorization config is required')
             if authorization.config is None:
                 raise ValueError('authorization config is required')
-            if authorization.config.type != 'bearer' and authorization.config.header is None:
-                raise ValueError('authorization config header is required')
 
             if self.authorization.config.api_key is None:
                 raise ValueError('api_key is required')
 
-            if not self.authorization.config.header:
+            if not authorization.config.header:
                 authorization.config.header = 'Authorization'
 
             if self.authorization.config.type == 'bearer':
@@ -335,16 +333,13 @@ class HttpExecutor:
         if variable_pool:
             variable_value_mapping = {}
             for variable_selector in variable_selectors:
-                value = variable_pool.get_variable_value(
-                    variable_selector=variable_selector.value_selector, target_value_type=ValueType.STRING
-                )
-
-                if value is None:
+                variable = variable_pool.get_any(variable_selector.value_selector)
+                if variable is None:
                     raise ValueError(f'Variable {variable_selector.variable} not found')
-
-                if escape_quotes and isinstance(value, str):
-                    value = value.replace('"', '\\"')
-
+                if escape_quotes and isinstance(variable, str):
+                    value = variable.replace('"', '\\"')
+                else:
+                    value = variable
                 variable_value_mapping[variable_selector.variable] = value
 
             return variable_template_parser.format(variable_value_mapping), variable_selectors

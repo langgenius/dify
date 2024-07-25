@@ -18,9 +18,9 @@ BASIC_NODE_DATA = {
 }
 
 # construct variable pool
-pool = VariablePool(system_variables={}, user_inputs={})
-pool.append_variable(node_id='a', variable_key_list=['b123', 'args1'], value=1)
-pool.append_variable(node_id='a', variable_key_list=['b123', 'args2'], value=2)
+pool = VariablePool(system_variables={}, user_inputs={}, environment_variables=[])
+pool.add(['a', 'b123', 'args1'], 1)
+pool.add(['a', 'b123', 'args2'], 2)
 
 
 @pytest.mark.parametrize('setup_http_mock', [['none']], indirect=True)

@@ -25,7 +25,6 @@ def measure_time():
         yield timing_info
     finally:
         timing_info['end'] = datetime.now()
-        print(f"Execution time: {timing_info['end'] - timing_info['start']}")
 
 
 def replace_text_with_content(data):

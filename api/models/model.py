@@ -328,7 +328,9 @@ class AppModelConfig(db.Model):
                 return {'retrieval_model': 'single'}
             else:
                 return dataset_configs
-        return {'retrieval_model': 'single'}
+        return {
+                'retrieval_model': 'multiple',
+            }
 
     @property
     def file_upload_dict(self) -> dict:
@@ -1383,7 +1385,7 @@ class TraceAppConfig(db.Model):
     __tablename__ = 'trace_app_config'
     __table_args__ = (
         db.PrimaryKeyConstraint('id', name='tracing_app_config_pkey'),
-        db.Index('tracing_app_config_app_id_idx', 'app_id'),
+        db.Index('trace_app_config_app_id_idx', 'app_id'),
     )
 
     id = db.Column(StringUUID, server_default=db.text('uuid_generate_v4()'))

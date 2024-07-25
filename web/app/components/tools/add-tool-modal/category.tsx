@@ -22,7 +22,6 @@ const Icon = ({ svgString, active }: { svgString: string; active: boolean }) => 
       return null
     const parser = new DOMParser()
     const doc = parser.parseFromString(svg, 'image/svg+xml')
-    console.log(doc.documentElement)
     return doc.documentElement
   }
   useMount(() => {

@@ -86,6 +86,9 @@
 
 - `agent-thought` Agent reasoning, generally over 70B with thought chain capability.
 - `vision` Vision, i.e., image understanding.
+- `tool-call`
+- `multi-tool-call`
+- `stream-tool-call`
 
 ### FetchFrom
 

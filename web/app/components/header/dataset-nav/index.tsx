@@ -11,6 +11,7 @@ import useSWR from 'swr'
 import useSWRInfinite from 'swr/infinite'
 import { flatten } from 'lodash-es'
 import Nav from '../nav'
+import type { NavItem } from '../nav/nav-selector'
 import { fetchDatasetDetail, fetchDatasets } from '@/service/datasets'
 import type { DataSetListResponse } from '@/models/datasets'
 
@@ -31,7 +32,7 @@ const DatasetNav = () => {
         datasetId,
       }
       : null,
-    apiParams => fetchDatasetDetail(apiParams.datasetId))
+    apiParams => fetchDatasetDetail(apiParams.datasetId as string))
   const { data: datasetsData, setSize } = useSWRInfinite(datasetId ? getKey : () => null, fetchDatasets, { revalidateFirstPage: false, revalidateAll: true })
   const datasetItems = flatten(datasetsData?.map(datasetData => datasetData.data))
 
@@ -46,14 +47,14 @@ const DatasetNav = () => {
       text={t('common.menus.datasets')}
       activeSegment='datasets'
       link='/datasets'
-      curNav={currentDataset}
+      curNav={currentDataset as Omit<NavItem, 'link'>}
       navs={datasetItems.map(dataset => ({
         id: dataset.id,
         name: dataset.name,
         link: `/datasets/${dataset.id}/documents`,
         icon: dataset.icon,
         icon_background: dataset.icon_background,
-      }))}
+      })) as NavItem[]}
       createText={t('common.menus.newDataset')}
       onCreate={() => router.push('/datasets/create')}
       onLoadmore={handleLoadmore}

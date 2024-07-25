@@ -3,6 +3,8 @@ import {
   useState,
 } from 'react'
 import { useAsyncEffect } from 'ahooks'
+import { useTranslation } from 'react-i18next'
+import { RiLoopLeftLine } from '@remixicon/react'
 import {
   EmbeddedChatbotContext,
   useEmbeddedChatbotContext,
@@ -19,8 +21,10 @@ import LogoHeader from '@/app/components/base/logo/logo-embeded-chat-header'
 import Header from '@/app/components/base/chat/embedded-chatbot/header'
 import ConfigPanel from '@/app/components/base/chat/embedded-chatbot/config-panel'
 import ChatWrapper from '@/app/components/base/chat/embedded-chatbot/chat-wrapper'
+import Tooltip from '@/app/components/base/tooltip'
 
 const Chatbot = () => {
+  const { t } = useTranslation()
   const {
     isMobile,
     appInfoError,
@@ -80,7 +84,22 @@ const Chatbot = () => {
             <Loading type='app' />
           )}
           {chatReady && !appChatListDataLoading && (
-            <ChatWrapper />
+            <div className='relative h-full pt-8 mx-auto w-full max-w-[720px]'>
+              {!isMobile && (
+                <div className='absolute top-2.5 right-3 z-20'>
+                  <Tooltip
+                    selector={'embed-scene-restart-button'}
+                    htmlContent={t('share.chat.resetChat')}
+                    position='top'
+                  >
+                    <div className='p-1.5 bg-white border-[0.5px] border-gray-100 rounded-lg shadow-md cursor-pointer' onClick={handleNewConversation}>
+                      <RiLoopLeftLine className="h-4 w-4 text-gray-500"/>
+                    </div>
+                  </Tooltip>
+                </div>
+              )}
+              <ChatWrapper />
+            </div>
           )}
         </div>
       </div>

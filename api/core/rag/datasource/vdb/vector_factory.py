@@ -9,6 +9,7 @@ from core.rag.datasource.entity.embedding import Embeddings
 from core.rag.datasource.vdb.vector_base import BaseVector
 from core.rag.datasource.vdb.vector_type import VectorType
 from core.rag.models.document import Document
+from extensions.ext_redis import redis_client
 from models.dataset import Dataset
 
 
@@ -134,6 +135,10 @@ class Vector:
 
     def delete(self) -> None:
         self._vector_processor.delete()
+        # delete collection redis cache
+        if self._vector_processor.collection_name:
+            collection_exist_cache_key = 'vector_indexing_{}'.format(self._vector_processor.collection_name)
+            redis_client.delete(collection_exist_cache_key)
 
     def _get_embeddings(self) -> Embeddings:
         model_manager = ModelManager()
@@ -148,7 +153,7 @@ class Vector:
         return CacheEmbedding(embedding_model)
 
     def _filter_duplicate_texts(self, texts: list[Document]) -> list[Document]:
-        for text in texts:
+        for text in texts[:]:
             doc_id = text.metadata['doc_id']
             exists_duplicate_node = self.text_exists(doc_id)
             if exists_duplicate_node:

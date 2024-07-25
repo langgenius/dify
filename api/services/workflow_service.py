@@ -1,10 +1,12 @@
 import json
 import time
+from collections.abc import Sequence
 from datetime import datetime, timezone
 from typing import Optional
 
 from core.app.apps.advanced_chat.app_config_manager import AdvancedChatAppConfigManager
 from core.app.apps.workflow.app_config_manager import WorkflowAppConfigManager
+from core.app.segments import Variable
 from core.model_runtime.utils.encoders import jsonable_encoder
 from core.workflow.entities.node_entities import NodeType
 from core.workflow.errors import WorkflowNodeRunFailedError
@@ -61,11 +63,16 @@ class WorkflowService:
 
         return workflow
 
-    def sync_draft_workflow(self, app_model: App,
-                            graph: dict,
-                            features: dict,
-                            unique_hash: Optional[str],
-                            account: Account) -> Workflow:
+    def sync_draft_workflow(
+        self,
+        *,
+        app_model: App,
+        graph: dict,
+        features: dict,
+        unique_hash: Optional[str],
+        account: Account,
+        environment_variables: Sequence[Variable],
+    ) -> Workflow:
         """
         Sync draft workflow
         :raises WorkflowHashNotEqualError
@@ -73,10 +80,8 @@ class WorkflowService:
         # fetch draft workflow by app_model
         workflow = self.get_draft_workflow(app_model=app_model)
 
-        if workflow:
-            # validate unique hash
-            if workflow.unique_hash != unique_hash:
-                raise WorkflowHashNotEqualError()
+        if workflow and workflow.unique_hash != unique_hash:
+            raise WorkflowHashNotEqualError()
 
         # validate features structure
         self.validate_features_structure(
@@ -93,7 +98,8 @@ class WorkflowService:
                 version='draft',
                 graph=json.dumps(graph),
                 features=json.dumps(features),
-                created_by=account.id
+                created_by=account.id,
+                environment_variables=environment_variables
             )
             db.session.add(workflow)
         # update draft workflow if found
@@ -102,6 +108,7 @@ class WorkflowService:
             workflow.features = json.dumps(features)
             workflow.updated_by = account.id
             workflow.updated_at = datetime.now(timezone.utc).replace(tzinfo=None)
+            workflow.environment_variables = environment_variables
 
         # commit db session changes
         db.session.commit()
@@ -137,7 +144,8 @@ class WorkflowService:
             version=str(datetime.now(timezone.utc).replace(tzinfo=None)),
             graph=draft_workflow.graph,
             features=draft_workflow.features,
-            created_by=account.id
+            created_by=account.id,
+            environment_variables=draft_workflow.environment_variables
         )
 
         # commit db session changes

@@ -13,7 +13,8 @@ import type { DataSet } from '@/models/datasets'
 import Button from '@/app/components/base/button'
 import { fetchDatasets } from '@/service/datasets'
 import Loading from '@/app/components/base/loading'
-import { formatNumber } from '@/utils/format'
+import Badge from '@/app/components/base/badge'
+import { useKnowledge } from '@/hooks/use-knowledge'
 
 export type ISelectDataSetProps = {
   isShow: boolean
@@ -38,6 +39,7 @@ const SelectDataSet: FC<ISelectDataSetProps> = ({
   const listRef = useRef<HTMLDivElement>(null)
   const [page, setPage, getPage] = useGetState(1)
   const [isNoMore, setIsNoMore] = useState(false)
+  const { formatIndexingTechniqueAndMethod } = useKnowledge()
 
   useInfiniteScroll(
     async () => {
@@ -45,7 +47,7 @@ const SelectDataSet: FC<ISelectDataSetProps> = ({
         const { data, has_more } = await fetchDatasets({ url: '/datasets', params: { page } })
         setPage(getPage() + 1)
         setIsNoMore(!has_more)
-        const newList = [...(datasets || []), ...data]
+        const newList = [...(datasets || []), ...data.filter(item => item.indexing_technique)]
         setDataSets(newList)
         setLoaded(true)
         if (!selected.find(item => !item.name))
@@ -136,14 +138,13 @@ const SelectDataSet: FC<ISelectDataSetProps> = ({
                     <span className='ml-1 shrink-0 px-1 border boder-gray-200 rounded-md text-gray-500 text-xs font-normal leading-[18px]'>{t('dataset.unavailable')}</span>
                   )}
                 </div>
-
-                <div className={cn('shrink-0 flex text-xs text-gray-500 overflow-hidden whitespace-nowrap', !item.embedding_available && 'opacity-50')}>
-                  <span className='max-w-[100px] overflow-hidden text-ellipsis whitespace-nowrap'>{formatNumber(item.word_count)}</span>
-                  {t('appDebug.feature.dataSet.words')}
-                  <span className='px-0.5'>·</span>
-                  <span className='max-w-[100px] min-w-[8px] overflow-hidden text-ellipsis whitespace-nowrap'>{formatNumber(item.document_count)} </span>
-                  {t('appDebug.feature.dataSet.textBlocks')}
-                </div>
+                {
+                  item.indexing_technique && (
+                    <Badge
+                      text={formatIndexingTechniqueAndMethod(item.indexing_technique, item.retrieval_model_dict?.search_method)}
+                    />
+                  )
+                }
               </div>
             ))}
           </div>
