@@ -11,11 +11,11 @@ from contextlib import contextmanager
 from urllib.parse import unquote
 
 import cloudscraper
-import requests
 from bs4 import BeautifulSoup, CData, Comment, NavigableString
 from newspaper import Article
 from regex import regex
 
+from core.helper import ssrf_proxy
 from core.rag.extractor import extract_processor
 from core.rag.extractor.extract_processor import ExtractProcessor
 
@@ -45,7 +45,7 @@ def get_url(url: str, user_agent: str = None) -> str:
 
     main_content_type = None
     supported_content_types = extract_processor.SUPPORT_URL_CONTENT_TYPES + ["text/html"]
-    response = requests.head(url, headers=headers, allow_redirects=True, timeout=(5, 10))
+    response = ssrf_proxy.head(url, headers=headers, allow_redirects=True, timeout=(5, 10))
 
     if response.status_code == 200:
         # check content-type
@@ -67,10 +67,11 @@ def get_url(url: str, user_agent: str = None) -> str:
         if main_content_type in extract_processor.SUPPORT_URL_CONTENT_TYPES:
             return ExtractProcessor.load_from_url(url, return_text=True)
 
-        response = requests.get(url, headers=headers, allow_redirects=True, timeout=(120, 300))
+        response = ssrf_proxy.get(url, headers=headers, follow_redirects=True, timeout=(120, 300))
     elif response.status_code == 403:
         scraper = cloudscraper.create_scraper()
-        response = scraper.get(url, headers=headers, allow_redirects=True, timeout=(120, 300))
+        scraper.request = ssrf_proxy.make_request
+        response = scraper.get(url, headers=headers, follow_redirects=True, timeout=(120, 300))
 
     if response.status_code != 200:
         return "URL returned status code {}.".format(response.status_code)
