@@ -452,7 +452,7 @@ class XinferenceAILargeLanguageModel(LargeLanguageModel):
 
         server_url = credentials['server_url']
         if server_url.endswith('/'):
-            server_url = credentials['server_url'][:-1]
+            server_url = server_url[:-1]
 
         api_key = credentials.get('api_key') or "abc"
 
