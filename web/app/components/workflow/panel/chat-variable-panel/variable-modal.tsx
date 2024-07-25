@@ -46,19 +46,19 @@ const ChatVariableModal = ({
       return notify({ type: 'error', message: 'name is existed' })
     onSave({
       id: chatVar ? chatVar.id : uuid4(),
-      type,
       name,
+      value_type: type,
+      value: type === 'number' ? Number(value) : value,
       description: '',
-      default_value: type === 'number' ? Number(value) : value,
     })
     onClose()
   }
 
   useEffect(() => {
     if (chatVar) {
-      setType(chatVar.type)
+      setType(chatVar.value_type)
       setName(chatVar.name)
-      setValue(chatVar.default_value)
+      setValue(chatVar.value)
     }
   }, [chatVar])
 
