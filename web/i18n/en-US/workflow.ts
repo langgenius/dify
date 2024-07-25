@@ -417,6 +417,8 @@ const translation = {
       clear: 'Clear',
       setValue: 'Set Value',
       value: 'Value',
+      keyInObj: 'Key in object',
+      valueInObj: 'Value in object',
     },
     tool: {
       toAuthorize: 'To authorize',

@@ -417,6 +417,8 @@ const translation = {
       clear: '清空',
       setValue: '设置值',
       value: '值',
+      keyInObj: '对象中的 Key',
+      valueInObj: '对象中的 值',
     },
     tool: {
       toAuthorize: '授权',

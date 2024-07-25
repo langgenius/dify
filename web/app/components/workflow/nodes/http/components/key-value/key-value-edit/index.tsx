@@ -51,6 +51,9 @@ const KeyValueList: FC<Props> = ({
     }
   }, [list, onChange])
 
+  if (!Array.isArray(list))
+    return null
+
   return (
     <div className='border border-gray-200 rounded-lg overflow-hidden'>
       <div className='flex items-center h-7 leading-7 text-xs font-medium text-gray-500 uppercase'>
