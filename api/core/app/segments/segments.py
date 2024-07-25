@@ -34,12 +34,6 @@ class Segment(BaseModel):
         return str(self.value)
 
     def to_object(self) -> Any:
-        if isinstance(self.value, Segment):
-            return self.value.to_object()
-        if isinstance(self.value, list):
-            return [v.to_object() for v in self.value]
-        if isinstance(self.value, dict):
-            return {k: v.to_object() for k, v in self.value.items()}
         return self.value
 
 
