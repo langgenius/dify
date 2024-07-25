@@ -140,6 +140,7 @@ class AnswerStreamProcessor:
                         chunk_content=route_chunk.text,
                         route_node_state=event.route_node_state,
                         parallel_id=event.parallel_id,
+                        parallel_start_node_id=event.parallel_start_node_id,
                     )
                 else:
                     route_chunk = cast(VarGenerateRouteChunk, route_chunk)
@@ -162,6 +163,7 @@ class AnswerStreamProcessor:
                             from_variable_selector=value_selector,
                             route_node_state=event.route_node_state,
                             parallel_id=event.parallel_id,
+                            parallel_start_node_id=event.parallel_start_node_id,
                         )
 
                 self.route_position[answer_node_id] += 1

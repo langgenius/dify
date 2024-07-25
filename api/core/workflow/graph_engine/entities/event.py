@@ -40,7 +40,10 @@ class GraphRunFailedEvent(BaseGraphEvent):
 
 class BaseNodeEvent(GraphEngineEvent):
     route_node_state: RouteNodeState = Field(..., description="route node state")
-    parallel_id: Optional[str] = Field(None, description="parallel id if node is in parallel")
+    parallel_id: Optional[str] = None
+    """parallel id if node is in parallel"""
+    parallel_start_node_id: Optional[str] = None
+    """parallel start node id if node is in parallel"""
     # iteration_id: Optional[str] = Field(None, description="iteration id if node is in iteration")
 
 
