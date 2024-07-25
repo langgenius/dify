@@ -16,6 +16,11 @@ proxies = {
 
 
 def make_request(method, url, **kwargs):
+    if "allow_redirects" in kwargs:
+        allow_redirects = kwargs.pop("allow_redirects")
+        if "follow_redirects" not in kwargs:
+            kwargs["follow_redirects"] = allow_redirects
+
     if SSRF_PROXY_ALL_URL:
         return httpx.request(method=method, url=url, proxy=SSRF_PROXY_ALL_URL, **kwargs)
     elif proxies:
