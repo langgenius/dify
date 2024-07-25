@@ -97,6 +97,7 @@ const ArrayValue: FC<Props> = ({
         value={value.type}
         options={varKindTypes}
         onChange={handleVarKindTypeChange}
+        showChecked
       />
       {value.type === VarKindType.constant
         ? (
