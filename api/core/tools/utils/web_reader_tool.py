@@ -70,8 +70,8 @@ def get_url(url: str, user_agent: str = None) -> str:
         response = ssrf_proxy.get(url, headers=headers, follow_redirects=True, timeout=(120, 300))
     elif response.status_code == 403:
         scraper = cloudscraper.create_scraper()
-        scraper.request = ssrf_proxy.make_request
-        response = scraper.get(url, headers=headers, follow_redirects=True, timeout=(120, 300))
+        scraper.perform_request = ssrf_proxy.make_request
+        response = scraper.get(url, headers=headers, allow_redirects=True, timeout=(120, 300))
 
     if response.status_code != 200:
         return "URL returned status code {}.".format(response.status_code)
