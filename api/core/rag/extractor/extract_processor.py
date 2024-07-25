@@ -4,9 +4,8 @@ from pathlib import Path
 from typing import Union
 from urllib.parse import unquote
 
-import requests
-
 from configs import dify_config
+from core.helper import ssrf_proxy
 from core.rag.extractor.csv_extractor import CSVExtractor
 from core.rag.extractor.entity.datasource_type import DatasourceType
 from core.rag.extractor.entity.extract_setting import ExtractSetting
@@ -51,7 +50,7 @@ class ExtractProcessor:
 
     @classmethod
     def load_from_url(cls, url: str, return_text: bool = False) -> Union[list[Document], str]:
-        response = requests.get(url, headers={
+        response = ssrf_proxy.get(url, headers={
             "User-Agent": USER_AGENT
         })
 
