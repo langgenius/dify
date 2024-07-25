@@ -275,7 +275,7 @@ class TenantService:
     @staticmethod
     def create_owner_tenant_if_not_exist(account: Account):
         """Create owner tenant if not exist"""
-        available_ta = TenantAccountJoin.query.filter_by(account_id=account.id) \
+        available_ta = TenantAccountJoin.query.filter_by(account_id=account.id, role='owner') \
             .order_by(TenantAccountJoin.id.asc()).first()
 
         if available_ta:
