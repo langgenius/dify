@@ -3,7 +3,6 @@ import queue
 import threading
 import time
 from collections.abc import Generator
-from concurrent.futures import ThreadPoolExecutor
 from typing import Optional
 
 from flask import Flask, current_app
