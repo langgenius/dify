@@ -8,6 +8,7 @@ import type { ToolDefaultValue } from '@/app/components/workflow/block-selector/
 import type { VarType as VarKindType } from '@/app/components/workflow/nodes/tool/types'
 import type { NodeTracing } from '@/types/workflow'
 import type { Collection, Tool } from '@/app/components/tools/types'
+import type { ChatVarType } from '@/app/components/workflow/panel/chat-variable-panel/type'
 
 export enum BlockEnum {
   Start = 'start',
@@ -113,8 +114,8 @@ export type EnvironmentVariable = {
 export type ConversationVariable = {
   id: string
   name: string
+  value_type: ChatVarType
   value: any
-  value_type: string
   description: string
 }
 

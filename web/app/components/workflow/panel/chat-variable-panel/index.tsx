@@ -9,8 +9,8 @@ import {
 import { RiCloseLine } from '@remixicon/react'
 import { useTranslation } from 'react-i18next'
 import { useStore } from '@/app/components/workflow/store'
-import VariableModalTrigger from '@/app/components/workflow/panel/chat-variable-panel/variable-modal-trigger'
-import VariableItem from '@/app/components/workflow/panel/chat-variable-panel/variable-item'
+import VariableModalTrigger from '@/app/components/workflow/panel/chat-variable-panel/components/variable-modal-trigger'
+import VariableItem from '@/app/components/workflow/panel/chat-variable-panel/components/variable-item'
 import RemoveEffectVarConfirm from '@/app/components/workflow/nodes/_base/components/remove-effect-var-confirm'
 import type {
   ConversationVariable,

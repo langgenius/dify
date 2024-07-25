@@ -3,7 +3,7 @@ import React from 'react'
 import { useTranslation } from 'react-i18next'
 import { RiAddLine } from '@remixicon/react'
 import Button from '@/app/components/base/button'
-import VariableModal from '@/app/components/workflow/panel/chat-variable-panel/variable-modal'
+import VariableModal from '@/app/components/workflow/panel/chat-variable-panel/components/variable-modal'
 import {
   PortalToFollowElem,
   PortalToFollowElemContent,
