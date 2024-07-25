@@ -80,7 +80,7 @@ const VariableModal = ({
       <div className='px-4 py-2'>
         {/* type */}
         <div className='mb-4'>
-          <div className='mb-1 text-text-secondary system-sm-semibold'>{t('workflow.env.modal.type')}</div>
+          <div className='mb-1 h-6 flex items-center text-text-secondary system-sm-semibold'>{t('workflow.env.modal.type')}</div>
           <div className='flex gap-2'>
             <div className={cn(
               'w-[106px] flex items-center justify-center p-2 radius-md bg-components-option-card-option-bg border border-components-option-card-option-border text-text-secondary system-sm-regular cursor-pointer hover:shadow-xs hover:bg-components-option-card-option-bg-hover hover:border-components-option-card-option-border-hover',
@@ -111,7 +111,7 @@ const VariableModal = ({
         </div>
         {/* name */}
         <div className='mb-4'>
-          <div className='mb-1 text-text-secondary system-sm-semibold'>{t('workflow.env.modal.name')}</div>
+          <div className='mb-1 h-6 flex items-center text-text-secondary system-sm-semibold'>{t('workflow.env.modal.name')}</div>
           <div className='flex'>
             <input
               tabIndex={0}
@@ -125,7 +125,7 @@ const VariableModal = ({
         </div>
         {/* value */}
         <div className=''>
-          <div className='mb-1 text-text-secondary system-sm-semibold'>{t('workflow.env.modal.value')}</div>
+          <div className='mb-1 h-6 flex items-center text-text-secondary system-sm-semibold'>{t('workflow.env.modal.value')}</div>
           <div className='flex'>
             <input
               tabIndex={0}

@@ -6,26 +6,18 @@ import {
   PortalToFollowElemContent,
   PortalToFollowElemTrigger,
 } from '@/app/components/base/portal-to-follow-elem'
-import { ChatVarType } from '@/app/components/workflow/panel/chat-variable-panel/type'
 import cn from '@/utils/classnames'
 
 type Props = {
   value?: any
+  list: any
   onSelect: (value: any) => void
   popupClassName?: string
 }
 
-const list = [
-  ChatVarType.String,
-  ChatVarType.Number,
-  ChatVarType.Object,
-  ChatVarType.ArrayString,
-  ChatVarType.ArrayNumber,
-  ChatVarType.ArrayObject,
-]
-
 const VariableTypeSelector = ({
   value,
+  list,
   onSelect,
   popupClassName,
 }: Props) => {
@@ -45,7 +37,7 @@ const VariableTypeSelector = ({
       </PortalToFollowElemTrigger>
       <PortalToFollowElemContent className={cn('w-full z-[11]', popupClassName)}>
         <div className='p-1 bg-components-panel-bg-blur border-[0.5px] border-components-panel-border radius-xl shadow-lg'>
-          {list.map(item => (
+          {list.map((item: any) => (
             <div key={item} className='flex items-center gap-2 pl-3 pr-2 py-[6px] radius-md cursor-pointer hover:bg-state-base-hover' onClick={() => {
               onSelect(item)
               setOpen(false)
