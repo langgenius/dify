@@ -49,7 +49,7 @@ type Props = {
   availableNodes?: Node[]
   availableVars?: NodeOutPutVar[]
   isAddBtnTrigger?: boolean
-  schema?: CredentialFormSchema
+  schema?: Partial<CredentialFormSchema>
 }
 
 const VarReferencePicker: FC<Props> = ({
@@ -99,7 +99,6 @@ const VarReferencePicker: FC<Props> = ({
 
   const [varKindType, setVarKindType] = useState<VarKindType>(defaultVarKindType)
   const isConstant = isSupportConstantValue && varKindType === VarKindType.constant
-
   const outputVars = useMemo(() => {
     if (availableVars)
       return availableVars

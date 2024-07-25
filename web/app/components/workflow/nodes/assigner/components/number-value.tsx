@@ -5,6 +5,7 @@ import type { ValueSelector, Var } from '../../../types'
 import { VarType } from '../../../types'
 import VarReferencePicker from '@/app/components/workflow/nodes/_base/components/variable/var-reference-picker'
 import { VarType as VarKindType } from '@/app/components/workflow/nodes/tool/types'
+import { FormTypeEnum } from '@/app/components/header/account-setting/model-provider-page/declarations'
 
 type Props = {
   nodeId: string
@@ -41,6 +42,9 @@ const NumberValue: FC<Props> = ({
       isSupportConstantValue
       defaultVarKindType={value?.type}
       filterVar={filterVar}
+      schema={{
+        type: FormTypeEnum.textNumber,
+      }}
     />
   )
 }

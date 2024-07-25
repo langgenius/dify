@@ -9,7 +9,7 @@ import type { Var } from '@/app/components/workflow/types'
 import { SimpleSelect } from '@/app/components/base/select'
 
 type Props = {
-  schema: CredentialFormSchema
+  schema: Partial<CredentialFormSchema>
   readonly: boolean
   value: string
   onChange: (value: string | number, varKindType: VarKindType, varInfo?: Var) => void
