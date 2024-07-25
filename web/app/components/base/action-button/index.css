@@ -1,0 +1,49 @@
+@tailwind components;
+
+@layer components {
+    .action-btn {
+        @apply inline-flex justify-center items-center cursor-pointer text-text-tertiary
+        hover:text-text-secondary 
+        hover:bg-state-base-hover 
+    }
+
+    .action-btn-disabled {
+        @apply cursor-not-allowed
+    }
+
+    .action-btn-xl {
+        @apply p-2 w-9 h-9 rounded-lg
+    }
+
+    .action-btn-l {
+        @apply p-1.5 w-[34px] h-[34px] rounded-lg
+    }
+
+    /* m is for the regular button */
+    .action-btn-m {
+        @apply p-0.5 w-6 h-6 rounded-lg
+    }
+
+    .action-btn-xs {
+        @apply p-0 w-5 h-5 rounded
+    }
+
+    .action-btn.action-btn-active {
+        @apply 
+        text-text-accent 
+        bg-state-accent-active
+        hover:bg-state-accent-active-alt
+    }
+
+    .action-btn.action-btn-disabled {
+        @apply
+        text-text-disabled
+    }
+
+    .action-btn.action-btn-destructive {
+        @apply
+        text-text-destructive
+        bg-state-destructive-hover
+    }
+
+}

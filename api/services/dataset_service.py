@@ -688,7 +688,7 @@ class DocumentService:
                 dataset.collection_binding_id = dataset_collection_binding.id
                 if not dataset.retrieval_model:
                     default_retrieval_model = {
-                        'search_method': RetrievalMethod.SEMANTIC_SEARCH,
+                        'search_method': RetrievalMethod.SEMANTIC_SEARCH.value,
                         'reranking_enable': False,
                         'reranking_model': {
                             'reranking_provider_name': '',
@@ -845,13 +845,17 @@ class DocumentService:
                         'only_main_content': website_info.get('only_main_content', False),
                         'mode': 'crawl',
                     }
+                    if len(url) > 255:
+                        document_name = url[:200] + '...'
+                    else:
+                        document_name = url
                     document = DocumentService.build_document(
                         dataset, dataset_process_rule.id,
                         document_data["data_source"]["type"],
                         document_data["doc_form"],
                         document_data["doc_language"],
                         data_source_info, created_from, position,
-                        account, url, batch
+                        account, document_name, batch
                     )
                     db.session.add(document)
                     db.session.flush()
@@ -1059,7 +1063,7 @@ class DocumentService:
                 retrieval_model = document_data['retrieval_model']
             else:
                 default_retrieval_model = {
-                    'search_method': RetrievalMethod.SEMANTIC_SEARCH,
+                    'search_method': RetrievalMethod.SEMANTIC_SEARCH.value,
                     'reranking_enable': False,
                     'reranking_model': {
                         'reranking_provider_name': '',

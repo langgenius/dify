@@ -281,7 +281,7 @@ class UserSatisfactionRateStatistic(Resource):
                         SELECT date(DATE_TRUNC('day', m.created_at AT TIME ZONE 'UTC' AT TIME ZONE :tz )) AS date, 
                             COUNT(m.id) as message_count, COUNT(mf.id) as feedback_count 
                             FROM messages m
-                            LEFT JOIN message_feedbacks mf on mf.message_id=m.id
+                            LEFT JOIN message_feedbacks mf on mf.message_id=m.id and mf.rating='like'
                             WHERE m.app_id = :app_id 
                         '''
         arg_dict = {'tz': account.timezone, 'app_id': app_model.id}

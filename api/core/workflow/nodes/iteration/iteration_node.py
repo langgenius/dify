@@ -20,7 +20,8 @@ class IterationNode(BaseIterationNode):
         """
         Run the node.
         """
-        iterator = variable_pool.get_variable_value(cast(IterationNodeData, self.node_data).iterator_selector)
+        self.node_data = cast(IterationNodeData, self.node_data)
+        iterator = variable_pool.get_any(self.node_data.iterator_selector)
 
         if not isinstance(iterator, list):
             raise ValueError(f"Invalid iterator value: {iterator}, please provide a list.")
@@ -63,15 +64,15 @@ class IterationNode(BaseIterationNode):
         """
         node_data = cast(IterationNodeData, self.node_data)
 
-        variable_pool.append_variable(self.node_id, ['index'], state.index)
+        variable_pool.add((self.node_id, 'index'), state.index)
         # get the iterator value
-        iterator = variable_pool.get_variable_value(node_data.iterator_selector)
+        iterator = variable_pool.get_any(node_data.iterator_selector)
 
         if iterator is None or not isinstance(iterator, list):
             return
         
         if state.index < len(iterator):
-            variable_pool.append_variable(self.node_id, ['item'], iterator[state.index])
+            variable_pool.add((self.node_id, 'item'), iterator[state.index])
 
     def _next_iteration(self, variable_pool: VariablePool, state: IterationState):
         """
@@ -87,7 +88,7 @@ class IterationNode(BaseIterationNode):
         :return: True if iteration limit is reached, False otherwise
         """
         node_data = cast(IterationNodeData, self.node_data)
-        iterator =  variable_pool.get_variable_value(node_data.iterator_selector)
+        iterator =  variable_pool.get_any(node_data.iterator_selector)
 
         if iterator is None or not isinstance(iterator, list):
             return True
@@ -100,12 +101,16 @@ class IterationNode(BaseIterationNode):
         :param variable_pool: variable pool
         """
         output_selector = cast(IterationNodeData, self.node_data).output_selector
-        output = variable_pool.get_variable_value(output_selector)
+        output = variable_pool.get_any(output_selector)
         # clear the output for this iteration
-        variable_pool.append_variable(self.node_id, output_selector[1:], None)
+        variable_pool.remove([self.node_id] + output_selector[1:])
         state.current_output = output
         if output is not None:
-            state.outputs.append(output)
+            # NOTE: This is a temporary patch to process double nested list (for example, DALL-E output in iteration).
+            if isinstance(output, list):
+                state.outputs.extend(output)
+            else:
+                state.outputs.append(output)
 
     @classmethod
     def _extract_variable_selector_to_variable_mapping(cls, node_data: IterationNodeData) -> dict[str, list[str]]:

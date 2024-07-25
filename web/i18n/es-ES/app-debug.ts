@@ -317,6 +317,9 @@ const translation = {
       language: 'Idioma',
       resolutionTooltip: 'Soporte de idioma para voz a texto.',
       voice: 'Voz',
+      autoPlay: 'Auto-reproducción',
+      autoPlayEnabled: 'Abierto',
+      autoPlayDisabled: 'Cierre',
     },
   },
   openingStatement: {

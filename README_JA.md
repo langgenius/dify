@@ -221,7 +221,6 @@ docker compose up -d
 
 * [Github Discussion](https://github.com/langgenius/dify/discussions). 主に: フィードバックの共有や質問。
 * [GitHub Issues](https://github.com/langgenius/dify/issues). 主に: Dify.AIを使用する際に発生するエラーや問題については、[貢献ガイド](CONTRIBUTING_JA.md)を参照してください
-* [Email](mailto:support@dify.ai?subject=[GitHub]Questions%20About%20Dify). 主に: Dify.AIの使用に関する質問。
 * [Discord](https://discord.gg/FngNHpbcY7). 主に: アプリケーションの共有やコミュニティとの交流。
 * [Twitter](https://twitter.com/dify_ai). 主に: アプリケーションの共有やコミュニティとの交流。
 
@@ -239,7 +238,7 @@ docker compose up -d
     <td>無料の30分間のミーティングをスケジュール</td>
   </tr>
   <tr>
-    <td><a href='mailto:support@dify.ai?subject=[GitHub]Technical%20Support'>技術サポート</a></td>
+    <td><a href='https://github.com/langgenius/dify/issues'>技術サポート</a></td>
     <td>技術的な問題やサポートに関する質問</td>
   </tr>
   <tr>

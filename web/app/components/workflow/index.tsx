@@ -7,6 +7,7 @@ import {
   useEffect,
   useMemo,
   useRef,
+  useState,
 } from 'react'
 import { setAutoFreeze } from 'immer'
 import {
@@ -30,6 +31,7 @@ import 'reactflow/dist/style.css'
 import './style.css'
 import type {
   Edge,
+  EnvironmentVariable,
   Node,
 } from './types'
 import { WorkflowContextProvider } from './context'
@@ -62,6 +64,7 @@ import PanelContextmenu from './panel-contextmenu'
 import NodeContextmenu from './node-contextmenu'
 import SyncingDataModal from './syncing-data-modal'
 import UpdateDSLModal from './update-dsl-modal'
+import DSLExportConfirmModal from './dsl-export-confirm-modal'
 import {
   useStore,
   useWorkflowStore,
@@ -74,6 +77,7 @@ import {
 } from './utils'
 import {
   CUSTOM_NODE,
+  DSL_EXPORT_CHECK,
   ITERATION_CHILDREN_Z_INDEX,
   WORKFLOW_DATA_UPDATE,
 } from './constants'
@@ -114,6 +118,7 @@ const Workflow: FC<WorkflowProps> = memo(({
   const nodeAnimation = useStore(s => s.nodeAnimation)
   const showConfirm = useStore(s => s.showConfirm)
   const showImportDSLModal = useStore(s => s.showImportDSLModal)
+
   const {
     setShowConfirm,
     setControlPromptEditorRerenderKey,
@@ -126,6 +131,8 @@ const Workflow: FC<WorkflowProps> = memo(({
   } = useNodesSyncDraft()
   const { workflowReadOnly } = useWorkflowReadOnly()
   const { nodesReadOnly } = useNodesReadOnly()
+
+  const [secretEnvList, setSecretEnvList] = useState<EnvironmentVariable[]>([])
 
   const { eventEmitter } = useEventEmitterContextContext()
 
@@ -148,6 +155,8 @@ const Workflow: FC<WorkflowProps> = memo(({
 
       setTimeout(() => setControlPromptEditorRerenderKey(Date.now()))
     }
+    if (v.type === DSL_EXPORT_CHECK)
+      setSecretEnvList(v.payload.data as EnvironmentVariable[])
   })
 
   useEffect(() => {
@@ -239,6 +248,7 @@ const Workflow: FC<WorkflowProps> = memo(({
   } = useWorkflow()
   const { handleStartWorkflowRun } = useWorkflowStartRun()
   const {
+    exportCheck,
     handleExportDSL,
   } = useDSL()
 
@@ -325,8 +335,17 @@ const Workflow: FC<WorkflowProps> = memo(({
         showImportDSLModal && (
           <UpdateDSLModal
             onCancel={() => setShowImportDSLModal(false)}
-            onBackup={handleExportDSL}
+            onBackup={exportCheck}
             onImport={handlePaneContextmenuCancel}
+          />
+        )
+      }
+      {
+        secretEnvList.length > 0 && (
+          <DSLExportConfirmModal
+            envList={secretEnvList}
+            onConfirm={handleExportDSL}
+            onClose={() => setSecretEnvList([])}
           />
         )
       }

@@ -262,6 +262,10 @@ You should also complete the text started with ``` but not tell ``` directly.
         :param prompt_messages: prompt messages
         :return: llm response
         """
+        if response.status_code != 200 and response.status_code != HTTPStatus.OK:
+            raise ServiceUnavailableError(
+                response.message
+            )
         # transform assistant message to prompt message
         assistant_prompt_message = AssistantPromptMessage(
             content=response.output.choices[0].message.content,
@@ -421,7 +425,7 @@ You should also complete the text started with ``` but not tell ``` directly.
             raise ValueError(f"Got unknown type {message}")
 
         return message_text
-    
+
     def _convert_messages_to_prompt(self, messages: list[PromptMessage]) -> str:
         """
         Format a list of messages into a full prompt for the Anthropic model
@@ -496,6 +500,9 @@ You should also complete the text started with ``` but not tell ``` directly.
                 tongyi_messages.append({
                     'role': 'assistant',
                     'content': content if not rich_content else [{"text": content}],
+                    'tool_calls': [tool_call.model_dump() for tool_call in
+                                   prompt_message.tool_calls] if prompt_message.tool_calls else []
+
                 })
             elif isinstance(prompt_message, ToolPromptMessage):
                 tongyi_messages.append({

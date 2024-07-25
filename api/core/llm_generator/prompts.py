@@ -64,6 +64,7 @@ User Input:
 SUGGESTED_QUESTIONS_AFTER_ANSWER_INSTRUCTION_PROMPT = (
     "Please help me predict the three most likely questions that human would ask, "
     "and keeping each question under 20 characters.\n"
+    "MAKE SURE your output is the SAME language as the Assistant's latest response(if the main response is written in Chinese, then the language of your output must be using Chinese.)!\n"
     "The output must be an array in JSON format following the specified schema:\n"
     "[\"question1\",\"question2\",\"question3\"]\n"
 )
@@ -80,65 +81,73 @@ GENERATOR_QA_PROMPT = (
     '<QA Pairs>'
 )
 
-RULE_CONFIG_GENERATE_TEMPLATE = """Given MY INTENDED AUDIENCES and HOPING TO SOLVE using a language model, please select \
-the model prompt that best suits the input. 
-You will be provided with the prompt, variables, and an opening statement. 
-Only the content enclosed in double curly braces, such as {{variable}}, in the prompt can be considered as a variable; \
-otherwise, it cannot exist as a variable in the variables.
-If you believe revising the original input will result in a better response from the language model, you may \
-suggest revisions.
+WORKFLOW_RULE_CONFIG_PROMPT_GENERATE_TEMPLATE = """
+Here is a task description for which I would like you to create a high-quality prompt template for:
+<task_description>
+{{TASK_DESCRIPTION}}
+</task_description>
+Based on task description, please create a well-structured prompt template that another AI could use to consistently complete the task. The prompt template should include:
+- Do not inlcude <input> or <output> section and variables in the prompt, assume user will add them at their own will. 
+- Clear instructions for the AI that will be using this prompt, demarcated with <instructions> tags. The instructions should provide step-by-step directions on how to complete the task using the input variables. Also Specifies in the instructions that the output should not contain any xml tag. 
+- Relevant examples if needed to clarify the task further, demarcated with <example> tags. Do not include variables in the prompt. Give three pairs of input and output examples.   
+- Include other relevant sections demarcated with appropriate XML tags like <examples>, <instructions>.
+- Use the same language as task description. 
+- Output in ``` xml ``` and start with <instruction>
+Please generate the full prompt template with at least 300 words and output only the prompt template.
+"""
 
-<<PRINCIPLES OF GOOD PROMPT>>
-Integrate the intended audience in the prompt e.g. the audience is an expert in the field.
-Break down complex tasks into a sequence of simpler prompts in an interactive conversation.
-Implement example-driven prompting (Use few-shot prompting). 
-When formatting your prompt start with Instruction followed by either Example if relevant. \
-Subsequently present your content. Use one or more line breaks to separate instructions examples questions context and input data.
-Incorporate the following phrases: “Your task is” and “You MUST”.
-Incorporate the following phrases: “You will be penalized”.
-Use leading words like writing “think step by step”.
-Add to your prompt the following phrase “Ensure that your answer is unbiased and does not rely on stereotypes”.
-Assign a role to the large language models.
-Use Delimiters.
-To write an essay /text /paragraph /article or any type of text that should be detailed: “Write a detailed [essay/text/paragraph] for me on [topic] in detail by adding all the information necessary”.
-Clearly state the requirements that the model must follow in order to produce content in the form of the keywords regulations hint or instructions
+RULE_CONFIG_PROMPT_GENERATE_TEMPLATE = """
+Here is a task description for which I would like you to create a high-quality prompt template for:
+<task_description>
+{{TASK_DESCRIPTION}}
+</task_description>
+Based on task description, please create a well-structured prompt template that another AI could use to consistently complete the task. The prompt template should include:
+- Descriptive variable names surrounded by {{ }} (two curly brackets) to indicate where the actual values will be substituted in. Choose variable names that clearly indicate the type of value expected. Variable names have to be composed of number, english alphabets and underline and nothing else. 
+- Clear instructions for the AI that will be using this prompt, demarcated with <instructions> tags. The instructions should provide step-by-step directions on how to complete the task using the input variables. Also Specifies in the instructions that the output should not contain any xml tag. 
+- Relevant examples if needed to clarify the task further, demarcated with <example> tags. Do not use curly brackets any other than in <instruction> section. 
+- Any other relevant sections demarcated with appropriate XML tags like <input>, <output>, etc.
+- Use the same language as task description. 
+- Output in ``` xml ``` and start with <instruction>
+Please generate the full prompt template and output only the prompt template.
+"""
 
-<< FORMATTING >>
-Return a markdown code snippet with a JSON object formatted to look like, \
-no any other string out of markdown code snippet:
-```json
-{{{{
-    "prompt": string \\ generated prompt
-    "variables": list of string \\ variables
-    "opening_statement": string \\ an opening statement to guide users on how to ask questions with generated prompt \
-and fill in variables, with a welcome sentence, and keep TLDR.
-}}}}
-```
+RULE_CONFIG_PARAMETER_GENERATE_TEMPLATE = """
+I need to extract the following information from the input text. The <information to be extracted> tag specifies the 'type', 'description' and 'required' of the information to be extracted. 
+<information to be extracted>
+variables name bounded two double curly brackets. Variable name has to be composed of number, english alphabets and underline and nothing else. 
+</information to be extracted>
 
-<< EXAMPLES >>
-[EXAMPLE A]
-```json
-{
-  "prompt": "I need your help to translate the following {{Input_language}}paper paragraph into {{Target_language}}, in a style similar to a popular science magazine in {{Target_language}}. #### Rules Ensure accurate conveyance of the original text's facts and context during translation. Maintain the original paragraph format and retain technical terms and company abbreviations ",
-  "variables": ["Input_language", "Target_language"],
-  "opening_statement": " Hi. I am your translation assistant. I can help you with any translation and ensure accurate conveyance of information. "
-}
-```
+Step 1: Carefully read the input and understand the structure of the expected output.
+Step 2: Extract relevant parameters from the provided text based on the name and description of object. 
+Step 3: Structure the extracted parameters to JSON object as specified in <structure>.
+Step 4: Ensure that the list of variable_names is properly formatted and valid. The output should not contain any XML tags. Output an empty list if there is no valid variable name in input text. 
 
-[EXAMPLE B]
-```json
-{
-  "prompt": "Your task is to review the provided meeting notes and create a concise summary that captures the essential information, focusing on key takeaways and action items assigned to specific individuals or departments during the meeting. Use clear and professional language, and organize the summary in a logical manner using appropriate formatting such as headings, subheadings, and bullet points. Ensure that the summary is easy to understand and provides a comprehensive but succinct overview of the meeting's content, with a particular focus on clearly indicating who is responsible for each action item.",
-  "variables": ["meeting_notes"],
-  "opening_statement": "Hi! I'm your meeting notes summarizer AI. I can help you with any meeting notes and ensure accurate conveyance of information."
-}
-```
+### Structure
+Here is the structure of the expected output, I should always follow the output structure. 
+["variable_name_1", "variable_name_2"]
 
-<< MY INTENDED AUDIENCES >>
-{{audiences}}
+### Input Text
+Inside <text></text> XML tags, there is a text that I should extract parameters and convert to a JSON object.
+<text>
+{{INPUT_TEXT}}
+</text>
 
-<< HOPING TO SOLVE >>
-{{hoping_to_solve}}
+### Answer
+I should always output a valid list. Output nothing other than the list of variable_name. Output an empty list if there is no variable name in input text.
+"""
 
-<< OUTPUT >>
+RULE_CONFIG_STATEMENT_GENERATE_TEMPLATE = """
+<instruction>
+Step 1: Identify the purpose of the chatbot from the variable {{TASK_DESCRIPTION}} and infer chatbot's tone  (e.g., friendly, professional, etc.) to add personality traits. 
+Step 2: Create a coherent and engaging opening statement.
+Step 3: Ensure the output is welcoming and clearly explains what the chatbot is designed to do. Do not include any XML tags in the output.
+Please use the same language as the user's input language. If user uses chinese then generate opening statement in chinese,  if user uses english then generate opening statement in english. 
+Example Input: 
+Provide customer support for an e-commerce website
+Example Output: 
+Welcome! I'm here to assist you with any questions or issues you might have with your shopping experience. Whether you're looking for product information, need help with your order, or have any other inquiries, feel free to ask. I'm friendly, helpful, and ready to support you in any way I can.
+<Task>
+Here is the task description: {{INPUT_TEXT}}
+
+You just need to generate the output
 """
