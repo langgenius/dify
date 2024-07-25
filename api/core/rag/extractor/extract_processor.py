@@ -4,8 +4,6 @@ from pathlib import Path
 from typing import Union
 from urllib.parse import unquote
 
-import requests
-
 from configs import dify_config
 from core.helper import ssrf_proxy
 from core.rag.extractor.csv_extractor import CSVExtractor

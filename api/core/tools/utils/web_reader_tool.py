@@ -79,7 +79,7 @@ def get_url(url: str, user_agent: str = None) -> str:
     a = extract_using_readabilipy(response.text)
 
     if not a['plain_text'] or not a['plain_text'].strip():
-        return get_url_from_newspaper3k(url)
+        return ''
 
     res = FULL_TEMPLATE.format(
         title=a['title'],
@@ -87,23 +87,6 @@ def get_url(url: str, user_agent: str = None) -> str:
         publish_date=a['date'],
         top_image="",
         text=a['plain_text'] if a['plain_text'] else "",
-    )
-
-    return res
-
-
-def get_url_from_newspaper3k(url: str) -> str:
-
-    a = Article(url)
-    a.download()
-    a.parse()
-
-    res = FULL_TEMPLATE.format(
-        title=a.title,
-        authors=a.authors,
-        publish_date=a.publish_date,
-        top_image=a.top_image,
-        text=a.text,
     )
 
     return res
