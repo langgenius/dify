@@ -54,8 +54,16 @@ class MarkdownExtractor(BaseExtractor):
 
         current_header = None
         current_text = ""
+        code_block_flag = False
 
         for line in lines:
+            if line.startswith("```"):
+                code_block_flag = not code_block_flag
+                current_text += line + "\n"
+                continue
+            if code_block_flag:
+                current_text += line + "\n"
+                continue
             header_match = re.match(r"^#+\s", line)
             if header_match:
                 if current_header is not None:
