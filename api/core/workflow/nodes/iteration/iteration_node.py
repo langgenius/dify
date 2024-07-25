@@ -5,15 +5,13 @@ from configs import dify_config
 from core.model_runtime.utils.encoders import jsonable_encoder
 from core.workflow.entities.base_node_data_entities import BaseIterationState
 from core.workflow.entities.node_entities import NodeRunResult, NodeType
-from core.workflow.graph_engine.entities.event import GraphRunFailedEvent, NodeRunSucceededEvent
+from core.workflow.graph_engine.entities.event import BaseGraphEvent, GraphRunFailedEvent, NodeRunSucceededEvent
 from core.workflow.graph_engine.entities.graph import Graph
 from core.workflow.graph_engine.entities.run_condition import RunCondition
-from core.workflow.graph_engine.graph_engine import GraphEngine
 from core.workflow.nodes.base_node import BaseNode
 from core.workflow.nodes.event import RunCompletedEvent
 from core.workflow.nodes.iteration.entities import IterationNodeData
 from core.workflow.utils.condition.entities import Condition
-from core.workflow.workflow_entry import WorkflowRunFailedError
 from models.workflow import WorkflowNodeExecutionStatus
 
 logger = logging.getLogger(__name__)
@@ -74,7 +72,7 @@ class IterationNode(BaseNode):
                         Condition(
                             variable_selector=[self.node_id, "index"],
                             comparison_operator="<",
-                            value=len(iterator_list_value)
+                            value=str(len(iterator_list_value))
                         )
                     ]
                 )
@@ -93,6 +91,7 @@ class IterationNode(BaseNode):
         )
 
         # init graph engine
+        from core.workflow.graph_engine.graph_engine import GraphEngine
         graph_engine = GraphEngine(
             tenant_id=self.tenant_id,
             app_id=self.app_id,
@@ -114,10 +113,11 @@ class IterationNode(BaseNode):
             rst = graph_engine.run()
             outputs: list[Any] = []
             for event in rst:
-                yield event
                 if isinstance(event, NodeRunSucceededEvent):
+                    yield event
+
                     # handle iteration run result
-                    if event.node_id in iteration_leaf_node_ids:
+                    if event.route_node_state.node_id in iteration_leaf_node_ids:
                         # append to iteration output variable list
                         outputs.append(variable_pool.get_any(self.node_data.output_selector))
 
@@ -132,13 +132,23 @@ class IterationNode(BaseNode):
                             next_index
                         )
 
-                        variable_pool.add(
-                            [self.node_id, 'item'],
-                            iterator_list_value[next_index]
-                        )
-                    elif isinstance(event, GraphRunFailedEvent):
+                        if next_index < len(iterator_list_value):
+                            variable_pool.add(
+                                [self.node_id, 'item'],
+                                iterator_list_value[next_index]
+                            )
+                elif isinstance(event, BaseGraphEvent):
+                    if isinstance(event, GraphRunFailedEvent):
                         # iteration run failed
-                        raise WorkflowRunFailedError(event.reason)
+                        yield RunCompletedEvent(
+                            run_result=NodeRunResult(
+                                status=WorkflowNodeExecutionStatus.FAILED,
+                                error=event.reason,
+                            )
+                        )
+                        break
+                else:
+                    yield event
 
             yield RunCompletedEvent(
                 run_result=NodeRunResult(
@@ -146,14 +156,6 @@ class IterationNode(BaseNode):
                     outputs={
                         'output': jsonable_encoder(outputs)
                     }
-                )
-            )
-        except WorkflowRunFailedError as e:
-            # iteration run failed
-            yield RunCompletedEvent(
-                run_result=NodeRunResult(
-                    status=WorkflowNodeExecutionStatus.FAILED,
-                    error=str(e),
                 )
             )
         except Exception as e:

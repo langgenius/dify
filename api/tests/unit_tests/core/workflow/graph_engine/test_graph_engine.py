@@ -23,7 +23,7 @@ from models.workflow import WorkflowNodeExecutionStatus, WorkflowType
 
 @patch('extensions.ext_database.db.session.remove')
 @patch('extensions.ext_database.db.session.close')
-def test_run_parallel_in_workflow(mock_close, mock_remove, mocker):
+def test_run_parallel_in_workflow(mock_close, mock_remove):
     graph_config = {
         "edges": [
             {

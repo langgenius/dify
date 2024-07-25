@@ -104,9 +104,14 @@ class GraphEngine:
             )
 
             for item in generator:
-                yield item
-                if isinstance(item, NodeRunFailedEvent):
-                    yield GraphRunFailedEvent(reason=item.route_node_state.failed_reason or 'Unknown error.')
+                try:
+                    yield item
+                    if isinstance(item, NodeRunFailedEvent):
+                        yield GraphRunFailedEvent(reason=item.route_node_state.failed_reason or 'Unknown error.')
+                        return
+                except Exception as e:
+                    logger.exception(f"Graph run failed: {str(e)}")
+                    yield GraphRunFailedEvent(reason=str(e))
                     return
 
             # trigger graph run success event
@@ -115,6 +120,7 @@ class GraphEngine:
             yield GraphRunFailedEvent(reason=e.error)
             return
         except Exception as e:
+            logger.exception("Unknown Error when graph running")
             yield GraphRunFailedEvent(reason=str(e))
             raise e
 
@@ -182,7 +188,22 @@ class GraphEngine:
                 break
 
             if len(edge_mappings) == 1:
-                next_node_id = edge_mappings[0].target_node_id
+                edge = edge_mappings[0]
+                if edge.run_condition:
+                    result = ConditionManager.get_condition_handler(
+                        init_params=self.init_params,
+                        graph=self.graph,
+                        run_condition=edge.run_condition,
+                    ).check(
+                        graph_runtime_state=self.graph_runtime_state,
+                        previous_route_node_state=previous_route_node_state,
+                        target_node_id=edge.target_node_id,
+                    )
+
+                    if not result:
+                        break
+
+                next_node_id = edge.target_node_id
             else:
                 if any(edge.run_condition for edge in edge_mappings):
                     # if nodes has run conditions, get node id which branch to take based on the run condition results
