@@ -4,6 +4,7 @@ import { useContext } from 'use-context-selector'
 import { v4 as uuid4 } from 'uuid'
 import { RiCloseLine, RiDraftLine, RiInputField } from '@remixicon/react'
 import VariableTypeSelector from '@/app/components/workflow/panel/chat-variable-panel/components/variable-type-select'
+import ArrayValueList from '@/app/components/workflow/panel/chat-variable-panel/components/array-value-list'
 import Button from '@/app/components/base/button'
 import CodeEditor from '@/app/components/workflow/nodes/_base/components/editor/code-editor'
 import { ToastContext } from '@/app/components/base/toast'
@@ -61,6 +62,7 @@ const ChatVariableModal = ({
   const [name, setName] = React.useState('')
   const [type, setType] = React.useState<ChatVarType>(ChatVarType.String)
   const [value, setValue] = React.useState<any>()
+  const [editorContent, setEditorContent] = React.useState<String>()
   const [editInJSON, setEditInJSON] = React.useState(false)
   const [des, setDes] = React.useState<string>('')
 
@@ -89,6 +91,48 @@ const ChatVariableModal = ({
     setName(v)
   }
 
+  const handleTypeChange = (v: ChatVarType) => {
+    setValue(undefined)
+    setEditorContent(undefined)
+    if (v === ChatVarType.ArrayObject)
+      setEditInJSON(true)
+    if (v === ChatVarType.String || v === ChatVarType.Number || v === ChatVarType.Object)
+      setEditInJSON(false)
+    setType(v)
+  }
+
+  const handleEditorChange = (editInJSON: boolean) => {
+    if (type === ChatVarType.ArrayString || type === ChatVarType.ArrayNumber) {
+      if (editInJSON) {
+        const newValue = (value?.length && value.filter(Boolean).length) ? value.filter(Boolean) : undefined
+        setValue(newValue)
+        if (!editorContent)
+          setEditorContent(JSON.stringify(newValue))
+      }
+      else {
+        setValue(value?.length ? value : [undefined])
+      }
+    }
+    setEditInJSON(editInJSON)
+  }
+
+  const handleEditorValueChange = (content: string) => {
+    if (!content) {
+      setEditorContent(content)
+      return setValue(undefined)
+    }
+    else {
+      setEditorContent(content)
+      try {
+        const newValue = JSON.parse(content)
+        setValue(newValue)
+      }
+      catch (e) {
+        // ignore JSON.parse errors
+      }
+    }
+  }
+
   // #TODO charVar#
   const handleSave = () => {
     if (!name)
@@ -113,15 +157,9 @@ const ChatVariableModal = ({
       setType(chatVar.value_type)
       setValue(chatVar.value)
       setDes(chatVar.description)
+      setEditInJSON(false)
     }
   }, [chatVar])
-
-  useEffect(() => {
-    if (type === ChatVarType.ArrayObject)
-      setEditInJSON(true)
-    if (type === ChatVarType.String || type === ChatVarType.Number || type === ChatVarType.Object)
-      setEditInJSON(false)
-  }, [type])
 
   return (
     <div
@@ -138,7 +176,7 @@ const ChatVariableModal = ({
           </div>
         </div>
       </div>
-      <div className='px-4 py-2'>
+      <div className='px-4 py-2 max-h-[480px] overflow-y-auto'>
         {/* name */}
         <div className='mb-4'>
           <div className='mb-1 h-6 flex items-center text-text-secondary system-sm-semibold'>{t('workflow.chatVariable.modal.name')}</div>
@@ -160,7 +198,7 @@ const ChatVariableModal = ({
             <VariableTypeSelector
               value={type}
               list={typeList}
-              onSelect={setType}
+              onSelect={handleTypeChange}
               popupClassName='w-[327px]'
             />
           </div>
@@ -174,7 +212,7 @@ const ChatVariableModal = ({
                 variant='ghost'
                 size='small'
                 className='text-text-tertiary'
-                onClick={() => setEditInJSON(!editInJSON)}
+                onClick={() => handleEditorChange(!editInJSON)}
               >
                 {editInJSON ? <RiInputField className='mr-1 w-3.5 h-3.5' /> : <RiDraftLine className='mr-1 w-3.5 h-3.5' />}
                 {editInJSON ? t('workflow.chatVariable.modal.oneByOne') : t('workflow.chatVariable.modal.editInJSON')}
@@ -182,32 +220,49 @@ const ChatVariableModal = ({
             )}
           </div>
           <div className='flex'>
-            {(type === ChatVarType.String || type === ChatVarType.Number) && (
+            {type === ChatVarType.String && (
               <input
-                tabIndex={0}
                 className='block px-3 w-full h-8 bg-components-input-bg-normal system-sm-regular radius-md border border-transparent appearance-none outline-none caret-primary-600 hover:border-components-input-border-hover hover:bg-components-input-bg-hover focus:bg-components-input-bg-active focus:border-components-input-border-active focus:shadow-xs placeholder:system-sm-regular placeholder:text-components-input-text-placeholder'
                 placeholder={t('workflow.chatVariable.modal.valuePlaceholder') || ''}
                 value={value}
                 onChange={e => setValue(e.target.value)}
-                type={type !== ChatVarType.Number ? 'text' : 'number'}
+              />
+            )}
+            {type === ChatVarType.Number && (
+              <input
+                className='block px-3 w-full h-8 bg-components-input-bg-normal system-sm-regular radius-md border border-transparent appearance-none outline-none caret-primary-600 hover:border-components-input-border-hover hover:bg-components-input-bg-hover focus:bg-components-input-bg-active focus:border-components-input-border-active focus:shadow-xs placeholder:system-sm-regular placeholder:text-components-input-text-placeholder'
+                placeholder={t('workflow.chatVariable.modal.valuePlaceholder') || ''}
+                value={value}
+                onChange={e => setValue(e.target.value)}
+                type='number'
               />
             )}
             {type === ChatVarType.Object && (
               <div></div>
             )}
-            {(type === ChatVarType.ArrayString || type === ChatVarType.ArrayNumber) && !editInJSON && (
-              <div></div>
+            {type === ChatVarType.ArrayString && !editInJSON && (
+              <ArrayValueList
+                isString
+                list={value || [undefined]}
+                onChange={setValue}
+              />
+            )}
+            {type === ChatVarType.ArrayNumber && !editInJSON && (
+              <ArrayValueList
+                isString={false}
+                list={value || [undefined]}
+                onChange={setValue}
+              />
             )}
             {editInJSON && (
               <div className='w-full py-2 pl-3 pr-1 rounded-[10px] bg-components-input-bg-normal' style={{ height: editorMinHeight }}>
                 <CodeEditor
                   isExpand
                   noWrapper
-                  // isJSONStringifyBeauty
                   language={CodeLanguage.json}
-                  value={value}
+                  value={editorContent}
                   placeholder={<div className='whitespace-pre'>{placeholder}</div>}
-                  onChange={value => setValue(value)}
+                  onChange={handleEditorValueChange}
                 />
               </div>
             )}

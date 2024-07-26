@@ -115,6 +115,11 @@ const translation = {
       descriptionPlaceholder: 'Describe the variable',
       editInJSON: 'Edit in JSON',
       oneByOne: 'Add one by one',
+      arrayValue: 'Value',
+      addArrayValue: 'Add Value',
+      objectKey: 'Key',
+      objectType: 'Type',
+      objectValue: 'Default Value',
     },
   },
   changeHistory: {

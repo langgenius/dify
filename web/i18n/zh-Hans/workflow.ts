@@ -113,6 +113,11 @@ const translation = {
       valuePlaceholder: '默认值，可以为空',
       description: '描述',
       descriptionPlaceholder: '变量的描述',
+      arrayValue: '值',
+      addArrayValue: '添加值',
+      objectKey: '属性',
+      objectType: '类型',
+      objectValue: '默认值',
     },
   },
   changeHistory: {
