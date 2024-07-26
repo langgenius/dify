@@ -15,6 +15,7 @@ import VariableAssignerDefault from './nodes/variable-assigner/default'
 import EndNodeDefault from './nodes/end/default'
 import IterationDefault from './nodes/iteration/default'
 import DocExtractorDefault from './nodes/doc-extractor/default'
+import ListFilterDefault from './nodes/list-filter/default'
 
 type NodesExtraData = {
   author: string
@@ -170,6 +171,15 @@ export const NODES_EXTRA_DATA: Record<BlockEnum, NodesExtraData> = {
     getAvailableNextNodes: DocExtractorDefault.getAvailableNextNodes,
     checkValid: DocExtractorDefault.checkValid,
   },
+  [BlockEnum.ListFilter]: {
+    author: 'Dify',
+    about: '',
+    availablePrevNodes: [],
+    availableNextNodes: [],
+    getAvailablePrevNodes: ListFilterDefault.getAvailablePrevNodes,
+    getAvailableNextNodes: ListFilterDefault.getAvailableNextNodes,
+    checkValid: ListFilterDefault.checkValid,
+  },
 
 }
 
@@ -290,6 +300,12 @@ export const NODES_INITIAL_DATA = {
     title: '',
     desc: '',
     ...DocExtractorDefault.defaultValue,
+  },
+  [BlockEnum.ListFilter]: {
+    type: BlockEnum.ListFilter,
+    title: '',
+    desc: '',
+    ...ListFilterDefault.defaultValue,
   },
 }
 

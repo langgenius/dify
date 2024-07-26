@@ -245,6 +245,24 @@ const formatItem = (
       break
     }
 
+    case BlockEnum.ListFilter: {
+      res.vars = [
+        {
+          variable: 'result',
+          type: VarType.array, // TODO dyn value
+        },
+        {
+          variable: 'first_record',
+          type: VarType.string, // TODO dyn value
+        },
+        {
+          variable: 'last_record',
+          type: VarType.string, // TODO dyn value
+        },
+      ]
+      break
+    }
+
     case 'env': {
       res.vars = data.envList.map((env: EnvironmentVariable) => {
         return {
