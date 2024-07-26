@@ -60,7 +60,6 @@ class CogView3Tool(BuiltinTool):
             result.append(self.create_json_message({
                 "url": image.url,
             }))
-            result.append(self.create_text_message(f'{image.url}'))
         return result
 
     @staticmethod
