@@ -3,15 +3,20 @@ from typing import Any
 
 from core.file.file_obj import FileVar
 
-from .segments import Segment, StringSegment
+from .segments import (
+    ArraySegment,
+    FileSegment,
+    FloatSegment,
+    IntegerSegment,
+    NoneSegment,
+    ObjectSegment,
+    Segment,
+    StringSegment,
+)
 from .types import SegmentType
 from .variables import (
-    ArrayVariable,
-    FileVariable,
     FloatVariable,
     IntegerVariable,
-    NoneVariable,
-    ObjectVariable,
     SecretVariable,
     StringVariable,
     Variable,
@@ -39,29 +44,23 @@ def build_variable_from_mapping(m: Mapping[str, Any], /) -> Variable:
     raise ValueError(f'not supported value type {value_type}')
 
 
-def build_anonymous_variable(value: Any, /) -> Variable:
-    if value is None:
-        return NoneVariable(name='anonymous')
-    if isinstance(value, str):
-        return StringVariable(name='anonymous', value=value)
-    if isinstance(value, int):
-        return IntegerVariable(name='anonymous', value=value)
-    if isinstance(value, float):
-        return FloatVariable(name='anonymous', value=value)
-    if isinstance(value, dict):
-        # TODO: Limit the depth of the object
-        obj = {k: build_anonymous_variable(v) for k, v in value.items()}
-        return ObjectVariable(name='anonymous', value=obj)
-    if isinstance(value, list):
-        # TODO: Limit the depth of the array
-        elements = [build_anonymous_variable(v) for v in value]
-        return ArrayVariable(name='anonymous', value=elements)
-    if isinstance(value, FileVar):
-        return FileVariable(name='anonymous', value=value)
-    raise ValueError(f'not supported value {value}')
-
-
 def build_segment(value: Any, /) -> Segment:
+    if value is None:
+        return NoneSegment()
     if isinstance(value, str):
         return StringSegment(value=value)
+    if isinstance(value, int):
+        return IntegerSegment(value=value)
+    if isinstance(value, float):
+        return FloatSegment(value=value)
+    if isinstance(value, dict):
+        # TODO: Limit the depth of the object
+        obj = {k: build_segment(v) for k, v in value.items()}
+        return ObjectSegment(value=obj)
+    if isinstance(value, list):
+        # TODO: Limit the depth of the array
+        elements = [build_segment(v) for v in value]
+        return ArraySegment(value=elements)
+    if isinstance(value, FileVar):
+        return FileSegment(value=value)
     raise ValueError(f'not supported value {value}')

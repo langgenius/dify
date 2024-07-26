@@ -5,7 +5,8 @@ from core.app.segments import (
     ArrayVariable,
     FloatVariable,
     IntegerVariable,
-    NoneVariable,
+    NoneSegment,
+    ObjectSegment,
     ObjectVariable,
     SecretVariable,
     SegmentType,
@@ -139,10 +140,10 @@ def test_variable_to_object():
 
 
 def test_build_a_object_variable_with_none_value():
-    var = factory.build_anonymous_variable(
+    var = factory.build_segment(
         {
             'key1': None,
         }
     )
-    assert isinstance(var, ObjectVariable)
-    assert isinstance(var.value['key1'], NoneVariable)
+    assert isinstance(var, ObjectSegment)
+    assert isinstance(var.value['key1'], NoneSegment)

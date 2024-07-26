@@ -9,3 +9,5 @@ class SegmentType(str, Enum):
     ARRAY = 'array'
     OBJECT = 'object'
     FILE = 'file'
+
+    GROUP = 'group'
