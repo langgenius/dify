@@ -494,6 +494,10 @@ const translation = {
       },
     },
     docExtractor: {
+      inputVars: 'Input Variables',
+      outputVars: {
+        text: 'Extracted text',
+      },
     },
   },
   tracing: {

@@ -493,6 +493,12 @@ const translation = {
         showAuthor: '显示作者',
       },
     },
+    docExtractor: {
+      inputVars: '输入变量',
+      outputVars: {
+        text: '提取的文本',
+      },
+    },
   },
   tracing: {
     stopBy: '由{{user}}终止',
