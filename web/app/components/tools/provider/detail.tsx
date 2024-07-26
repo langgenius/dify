@@ -85,7 +85,7 @@ const ProviderDetail = ({
   const [customCollection, setCustomCollection] = useState<CustomCollectionBackend | WorkflowToolProviderResponse | null>(null)
   const [isShowEditCollectionToolModal, setIsShowEditCustomCollectionModal] = useState(false)
   const [showConfirmDelete, setShowConfirmDelete] = useState(false)
-  const [deleteAction, setDeleteAction] = useState(null)
+  const [deleteAction, setDeleteAction] = useState('')
   const doUpdateCustomToolCollection = async (data: CustomCollectionBackend) => {
     await updateCustomCollection(data)
     onRefreshData()

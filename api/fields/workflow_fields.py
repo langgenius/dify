@@ -1,9 +1,11 @@
 from flask_restful import fields
 
-from core.app.segments import SecretVariable, Variable
+from core.app.segments import SecretVariable, SegmentType, Variable
 from core.helper import encrypter
 from fields.member_fields import simple_account_fields
 from libs.helper import TimestampField
+
+ENVIRONMENT_VARIABLE_SUPPORTED_TYPES = (SegmentType.STRING, SegmentType.NUMBER, SegmentType.SECRET)
 
 
 class EnvironmentVariableField(fields.Raw):
@@ -16,14 +18,18 @@ class EnvironmentVariableField(fields.Raw):
                 'value': encrypter.obfuscated_token(value.value),
                 'value_type': value.value_type.value,
             }
-        elif isinstance(value, Variable):
+        if isinstance(value, Variable):
             return {
                 'id': value.id,
                 'name': value.name,
                 'value': value.value,
                 'value_type': value.value_type.value,
             }
-        return value
+        if isinstance(value, dict):
+            value_type = value.get('value_type')
+            if value_type not in ENVIRONMENT_VARIABLE_SUPPORTED_TYPES:
+                raise ValueError(f'Unsupported environment variable value type: {value_type}')
+            return value
 
 
 environment_variable_fields = {

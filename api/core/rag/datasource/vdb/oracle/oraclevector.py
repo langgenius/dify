@@ -55,7 +55,7 @@ CREATE TABLE IF NOT EXISTS {table_name} (
 )
 """
 SQL_CREATE_INDEX = """
-CREATE INDEX idx_docs_{table_name} ON {table_name}(text) 
+CREATE INDEX IF NOT EXISTS idx_docs_{table_name} ON {table_name}(text) 
 INDEXTYPE IS CTXSYS.CONTEXT PARAMETERS 
 ('FILTER CTXSYS.NULL_FILTER SECTION GROUP CTXSYS.HTML_SECTION_GROUP LEXER sys.my_chinese_vgram_lexer')
 """
@@ -248,7 +248,7 @@ class OracleVector(BaseVector):
 
     def delete(self) -> None:
         with self._get_cursor() as cur:
-            cur.execute(f"DROP TABLE IF EXISTS {self.table_name}")
+            cur.execute(f"DROP TABLE IF EXISTS {self.table_name} cascade constraints")
 
     def _create_collection(self, dimension: int):
         cache_key = f"vector_indexing_{self._collection_name}"

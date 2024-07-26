@@ -14,6 +14,7 @@ const buttonVariants = cva(
         'secondary': 'btn-secondary',
         'secondary-accent': 'btn-secondary-accent',
         'ghost': 'btn-ghost',
+        'ghost-accent': 'btn-ghost-accent',
         'tertiary': 'btn-tertiary',
       },
       size: {
@@ -30,16 +31,20 @@ const buttonVariants = cva(
 )
 
 export type ButtonProps = {
+  destructive?: boolean
   loading?: boolean
   styleCss?: CSSProperties
 } & React.ButtonHTMLAttributes<HTMLButtonElement> & VariantProps<typeof buttonVariants>
 
 const Button = React.forwardRef<HTMLButtonElement, ButtonProps>(
-  ({ className, variant, size, loading, styleCss, children, ...props }, ref) => {
+  ({ className, variant, size, destructive, loading, styleCss, children, ...props }, ref) => {
     return (
       <button
         type='button'
-        className={classNames(buttonVariants({ variant, size, className }))}
+        className={classNames(
+          buttonVariants({ variant, size, className }),
+          destructive && 'btn-destructive',
+        )}
         ref={ref}
         style={styleCss}
         {...props}
