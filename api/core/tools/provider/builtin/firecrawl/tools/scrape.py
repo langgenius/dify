@@ -1,7 +1,7 @@
 from typing import Any
 
 from core.tools.entities.tool_entities import ToolInvokeMessage
-from core.tools.provider.builtin.firecrawl.firecrawl_appx import FirecrawlApp, get_json_params, get_array_params
+from core.tools.provider.builtin.firecrawl.firecrawl_appx import FirecrawlApp, get_array_params, get_json_params
 from core.tools.tool.builtin_tool import BuiltinTool
 
 

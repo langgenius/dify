@@ -1,6 +1,6 @@
+import json
 import logging
 import time
-import json
 from collections.abc import Mapping
 from typing import Any
 
