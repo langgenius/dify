@@ -125,6 +125,7 @@ const Operation: FC<OperationProps> = ({
                   id={id}
                   value={content}
                   noCache={false}
+                  voice={config?.text_to_speech?.voice}
                   className='hidden group-hover:block'
                 />
               </>
