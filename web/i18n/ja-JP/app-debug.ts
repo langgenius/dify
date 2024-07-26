@@ -3,7 +3,7 @@ const translation = {
     line1: 'プロンプト',
     line2: 'エンジニアリング',
   },
-  orchestrate: 'Orchestrate',
+  orchestrate: 'オーケストレーション',
   promptMode: {
     simple: 'エキスパートモードに切り替えて、PROMPT全体を編集します',
     advanced: 'エキスパートモード',

@@ -56,6 +56,9 @@ class ObjectVariable(Variable):
         # TODO: Use markdown code block
         return json.dumps(self.model_dump()['value'], ensure_ascii=False, indent=2)
 
+    def to_object(self):
+        return {k: v.to_object() for k, v in self.value.items()}
+
 
 class ArrayVariable(Variable):
     value_type: SegmentType = SegmentType.ARRAY
@@ -64,6 +67,9 @@ class ArrayVariable(Variable):
     @property
     def markdown(self) -> str:
         return '\n'.join(['- ' + item.markdown for item in self.value])
+
+    def to_object(self):
+        return [v.to_object() for v in self.value]
 
 
 class FileVariable(Variable):

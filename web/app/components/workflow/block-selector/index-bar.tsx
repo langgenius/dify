@@ -1,6 +1,7 @@
 import { pinyin } from 'pinyin-pro'
+import type { FC, RefObject } from 'react'
 
-export const groupItems = (items, getFirstChar) => {
+export const groupItems = (items: Array<any>, getFirstChar: (item: string) => string) => {
   const groups = items.reduce((acc, item) => {
     const firstChar = getFirstChar(item)
     if (!firstChar || firstChar.length === 0)
@@ -34,9 +35,14 @@ export const groupItems = (items, getFirstChar) => {
   return { letters, groups }
 }
 
-const IndexBar = ({ letters, itemRefs }) => {
-  const handleIndexClick = (letter) => {
-    const element = itemRefs.current[letter]
+type IndexBarProps = {
+  letters: string[]
+  itemRefs: RefObject<{ [key: string]: HTMLElement | null }>
+}
+
+const IndexBar: FC<IndexBarProps> = ({ letters, itemRefs }) => {
+  const handleIndexClick = (letter: string) => {
+    const element = itemRefs.current?.[letter]
     if (element)
       element.scrollIntoView({ behavior: 'smooth' })
   }
