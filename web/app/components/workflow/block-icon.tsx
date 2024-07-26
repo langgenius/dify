@@ -4,12 +4,14 @@ import { BlockEnum } from './types'
 import {
   Answer,
   Code,
+  DocsExtractor,
   End,
   Home,
   Http,
   IfElse,
   Iteration,
   KnowledgeRetrieval,
+  ListFilter,
   Llm,
   ParameterExtractor,
   QuestionClassifier,
@@ -46,6 +48,8 @@ const getIcon = (type: BlockEnum, className: string) => {
     [BlockEnum.Tool]: <VariableX className={className} />,
     [BlockEnum.Iteration]: <Iteration className={className} />,
     [BlockEnum.ParameterExtractor]: <ParameterExtractor className={className} />,
+    [BlockEnum.DocExtractor]: <DocsExtractor className={className} />,
+    [BlockEnum.ListFilter]: <ListFilter className={className} />,
   }[type]
 }
 const ICON_CONTAINER_BG_COLOR_MAP: Record<string, string> = {
@@ -63,6 +67,8 @@ const ICON_CONTAINER_BG_COLOR_MAP: Record<string, string> = {
   [BlockEnum.VariableAssigner]: 'bg-[#2E90FA]',
   [BlockEnum.VariableAggregator]: 'bg-[#2E90FA]',
   [BlockEnum.ParameterExtractor]: 'bg-[#2E90FA]',
+  [BlockEnum.DocExtractor]: 'bg-util-colors-green-green-500',
+  [BlockEnum.ListFilter]: 'bg-util-colors-cyan-cyan-500',
 }
 const BlockIcon: FC<BlockIconProps> = ({
   type,
