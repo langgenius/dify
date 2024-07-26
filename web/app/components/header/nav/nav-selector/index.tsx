@@ -23,13 +23,13 @@ export type NavItem = {
   link: string
   icon: string
   icon_background: string
-  mode: string
+  mode?: string
 }
 export type INavSelectorProps = {
   navs: NavItem[]
   curNav?: Omit<NavItem, 'link'>
   createText: string
-  isApp: boolean
+  isApp?: boolean
   onCreate: (state: string) => void
   onLoadmore?: () => void
 }

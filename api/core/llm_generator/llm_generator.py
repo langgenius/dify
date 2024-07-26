@@ -118,7 +118,7 @@ class LLMGenerator:
         return questions
 
     @classmethod
-    def generate_rule_config(cls, tenant_id: str, instruction: str, model_config: dict, no_variable: bool) -> dict:
+    def generate_rule_config(cls, tenant_id: str, instruction: str, model_config: dict, no_variable: bool, rule_config_max_tokens: int = 512) -> dict:
         output_parser = RuleConfigGeneratorOutputParser()
 
         error = ""
@@ -130,7 +130,7 @@ class LLMGenerator:
             "error": ""
         }
         model_parameters = {
-            "max_tokens": 512,
+            "max_tokens": rule_config_max_tokens,
             "temperature": 0.01
         }
 
