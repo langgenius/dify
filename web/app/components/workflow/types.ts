@@ -25,6 +25,8 @@ export enum BlockEnum {
   Tool = 'tool',
   ParameterExtractor = 'parameter-extractor',
   Iteration = 'iteration',
+  DocExtractor = 'doc-extractor',
+  ListFilter = 'list-filter',
 }
 
 export type Branch = {
@@ -193,6 +195,7 @@ export enum VarType {
   secret = 'secret',
   boolean = 'boolean',
   object = 'object',
+  file = 'file',
   array = 'array',
   arrayString = 'array[string]',
   arrayNumber = 'array[number]',

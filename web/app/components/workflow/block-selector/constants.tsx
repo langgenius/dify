@@ -69,6 +69,11 @@ export const BLOCKS: Block[] = [
     type: BlockEnum.HttpRequest,
     title: 'HTTP Request',
   },
+  {
+    classification: BlockClassificationEnum.Utilities,
+    type: BlockEnum.DocExtractor,
+    title: 'Doc Extractor',
+  },
 ]
 
 export const BLOCK_CLASSIFICATIONS: string[] = [

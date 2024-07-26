@@ -235,6 +235,16 @@ const formatItem = (
       break
     }
 
+    case BlockEnum.DocExtractor: {
+      res.vars = [
+        {
+          variable: 'text',
+          type: VarType.string,
+        },
+      ]
+      break
+    }
+
     case 'env': {
       res.vars = data.envList.map((env: EnvironmentVariable) => {
         return {

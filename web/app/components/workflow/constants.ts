@@ -14,6 +14,7 @@ import ToolDefault from './nodes/tool/default'
 import VariableAssignerDefault from './nodes/variable-assigner/default'
 import EndNodeDefault from './nodes/end/default'
 import IterationDefault from './nodes/iteration/default'
+import DocExtractorDefault from './nodes/doc-extractor/default'
 
 type NodesExtraData = {
   author: string
@@ -160,6 +161,16 @@ export const NODES_EXTRA_DATA: Record<BlockEnum, NodesExtraData> = {
     getAvailableNextNodes: ToolDefault.getAvailableNextNodes,
     checkValid: ToolDefault.checkValid,
   },
+  [BlockEnum.DocExtractor]: {
+    author: 'Dify',
+    about: '',
+    availablePrevNodes: [],
+    availableNextNodes: [],
+    getAvailablePrevNodes: DocExtractorDefault.getAvailablePrevNodes,
+    getAvailableNextNodes: DocExtractorDefault.getAvailableNextNodes,
+    checkValid: DocExtractorDefault.checkValid,
+  },
+
 }
 
 export const ALL_CHAT_AVAILABLE_BLOCKS = Object.keys(NODES_EXTRA_DATA).filter(key => key !== BlockEnum.End && key !== BlockEnum.Start) as BlockEnum[]
@@ -273,6 +284,12 @@ export const NODES_INITIAL_DATA = {
     title: '',
     desc: '',
     ...ToolDefault.defaultValue,
+  },
+  [BlockEnum.DocExtractor]: {
+    type: BlockEnum.DocExtractor,
+    title: '',
+    desc: '',
+    ...DocExtractorDefault.defaultValue,
   },
 }
 

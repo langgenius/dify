@@ -176,6 +176,7 @@ const translation = {
     'iteration-start': 'Iteration Start',
     'iteration': 'Iteration',
     'parameter-extractor': 'Parameter Extractor',
+    'doc-extractor': 'Doc Extractor',
   },
   blocksAbout: {
     'start': 'Define the initial parameters for launching a workflow',
@@ -192,6 +193,7 @@ const translation = {
     'variable-aggregator': 'Aggregate multi-branch variables into a single variable for unified configuration of downstream nodes.',
     'iteration': 'Perform multiple steps on a list object until all results are outputted.',
     'parameter-extractor': 'Use LLM to extract structured parameters from natural language for tool invocations or HTTP requests.',
+    'doc-extractor': 'TODO',
   },
   operator: {
     zoomIn: 'Zoom In',
@@ -488,6 +490,8 @@ const translation = {
         bulletList: 'Bullet List',
         showAuthor: 'Show Author',
       },
+    },
+    docExtractor: {
     },
   },
   tracing: {
