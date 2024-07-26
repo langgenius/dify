@@ -26,5 +26,4 @@ sed -e "s|\${CERTBOT_EMAIL}|$CERTBOT_EMAIL|g" \
 
 chmod +x /update-cert.sh
 
-echo "\nExecuting command: $@"
-exec "$@"
+echo "\nExecuting command:" "$@"
