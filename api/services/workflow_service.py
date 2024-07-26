@@ -213,7 +213,7 @@ class WorkflowService:
         start_at = time.perf_counter()
 
         try:
-            node_instance, node_run_result = workflow_engine_manager.single_step_run_workflow_node(
+            node_instance, node_run_result = workflow_engine_manager.single_step_run(
                 workflow=draft_workflow,
                 node_id=node_id,
                 user_inputs=user_inputs,

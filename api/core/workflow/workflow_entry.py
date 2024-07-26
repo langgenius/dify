@@ -1,5 +1,5 @@
 import logging
-from collections.abc import Mapping, Sequence
+from collections.abc import Generator, Mapping, Sequence
 from typing import Any, Optional, cast
 
 from configs import dify_config
@@ -11,7 +11,7 @@ from core.workflow.callbacks.base_workflow_callback import WorkflowCallback
 from core.workflow.entities.node_entities import NodeRunResult, NodeType, SystemVariable, UserFrom
 from core.workflow.entities.variable_pool import VariablePool
 from core.workflow.errors import WorkflowNodeRunFailedError
-from core.workflow.graph_engine.entities.event import GraphRunFailedEvent
+from core.workflow.graph_engine.entities.event import GraphEngineEvent, GraphRunFailedEvent
 from core.workflow.graph_engine.entities.graph import Graph
 from core.workflow.graph_engine.graph_engine import GraphEngine
 from core.workflow.nodes.base_node import BaseNode
@@ -26,7 +26,7 @@ logger = logging.getLogger(__name__)
 
 
 class WorkflowEntry:
-    def run_workflow(
+    def run(
             self,
             *,
             workflow: Workflow,
@@ -37,7 +37,7 @@ class WorkflowEntry:
             system_inputs: Mapping[SystemVariable, Any],
             callbacks: Sequence[WorkflowCallback],
             call_depth: int = 0
-    ) -> None:
+    ) -> Generator[GraphEngineEvent, None, None]:
         """
         :param workflow: Workflow instance
         :param user_id: user id
@@ -110,6 +110,7 @@ class WorkflowEntry:
                             graph_runtime_state=graph_engine.graph_runtime_state,
                             event=event
                         )
+                    yield event
         except GenerateTaskStoppedException:
             pass
         except Exception as e:
@@ -125,10 +126,10 @@ class WorkflowEntry:
                     )
             return
 
-    def single_step_run_workflow_node(self, workflow: Workflow,
-                                      node_id: str,
-                                      user_id: str,
-                                      user_inputs: dict) -> tuple[BaseNode, NodeRunResult]:
+    def single_step_run(self, workflow: Workflow,
+                        node_id: str,
+                        user_id: str,
+                        user_inputs: dict) -> tuple[BaseNode, NodeRunResult]:
         """
         Single step run workflow node
         :param workflow: Workflow instance

@@ -67,23 +67,24 @@ class NodeRunFailedEvent(BaseNodeEvent):
 
 
 ###########################################
-# Parallel Events
+# Parallel Branch Events
 ###########################################
 
 
-class BaseParallelEvent(GraphEngineEvent):
+class BaseParallelBranchEvent(GraphEngineEvent):
     parallel_id: str = Field(..., description="parallel id")
+    parallel_start_node_id: str = Field(..., description="parallel start node id")
 
 
-class ParallelRunStartedEvent(BaseParallelEvent):
+class ParallelBranchRunStartedEvent(BaseParallelBranchEvent):
     pass
 
 
-class ParallelRunSucceededEvent(BaseParallelEvent):
+class ParallelBranchRunSucceededEvent(BaseParallelBranchEvent):
     pass
 
 
-class ParallelRunFailedEvent(BaseParallelEvent):
+class ParallelBranchRunFailedEvent(BaseParallelBranchEvent):
     reason: str = Field(..., description="failed reason")
 
 
@@ -113,4 +114,4 @@ class IterationRunFailedEvent(BaseIterationEvent):
     reason: str = Field(..., description="failed reason")
 
 
-InNodeEvent = BaseNodeEvent | BaseParallelEvent | BaseIterationEvent
+InNodeEvent = BaseNodeEvent | BaseParallelBranchEvent | BaseIterationEvent

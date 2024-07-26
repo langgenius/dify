@@ -98,7 +98,7 @@ class AdvancedChatAppRunner(AppRunner):
 
         # RUN WORKFLOW
         workflow_engine_manager = WorkflowEngineManager()
-        workflow_engine_manager.run_workflow(
+        workflow_engine_manager.run(
             workflow=workflow,
             user_id=application_generate_entity.user_id,
             user_from=UserFrom.ACCOUNT

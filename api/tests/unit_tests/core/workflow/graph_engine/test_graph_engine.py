@@ -248,13 +248,13 @@ def test_run_parallel_in_workflow(mock_close, mock_remove):
             )
         )
 
-    print("")
+    # print("")
 
     with patch.object(LLMNode, '_run', new=llm_generator):
         items = []
         generator = graph_engine.run()
         for item in generator:
-            print(type(item), item)
+            # print(type(item), item)
             items.append(item)
             if isinstance(item, NodeRunSucceededEvent):
                 assert item.route_node_state.status == RouteNodeState.Status.SUCCESS
@@ -267,7 +267,7 @@ def test_run_parallel_in_workflow(mock_close, mock_remove):
             ]:
                 assert item.parallel_id is not None
 
-        assert len(items) == 17
+        assert len(items) == 21
         assert isinstance(items[0], GraphRunStartedEvent)
         assert isinstance(items[1], NodeRunStartedEvent)
         assert items[1].route_node_state.node_id == 'start'
@@ -402,7 +402,7 @@ def test_run_parallel_in_chatflow(mock_close, mock_remove):
         ]:
             assert item.parallel_id is not None
 
-    assert len(items) == 19
+    assert len(items) == 23
     assert isinstance(items[0], GraphRunStartedEvent)
     assert isinstance(items[1], NodeRunStartedEvent)
     assert items[1].route_node_state.node_id == 'start'

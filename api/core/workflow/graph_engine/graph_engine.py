@@ -23,6 +23,9 @@ from core.workflow.graph_engine.entities.event import (
     NodeRunStartedEvent,
     NodeRunStreamChunkEvent,
     NodeRunSucceededEvent,
+    ParallelBranchRunFailedEvent,
+    ParallelBranchRunStartedEvent,
+    ParallelBranchRunSucceededEvent,
 )
 from core.workflow.graph_engine.entities.graph import Graph
 from core.workflow.graph_engine.entities.graph_init_params import GraphInitParams
@@ -237,14 +240,12 @@ class GraphEngine:
 
                     # new thread
                     for edge in edge_mappings:
-                        run_thread = threading.Thread(target=self._run_parallel_node, kwargs={
+                        threading.Thread(target=self._run_parallel_node, kwargs={
                             'flask_app': current_app._get_current_object(),
                             'parallel_id': parallel_id,
                             'parallel_start_node_id': edge.target_node_id,
                             'q': q
-                        })
-
-                        run_thread.start()
+                        }).start()
 
                     succeeded_count = 0
                     while True:
@@ -253,16 +254,15 @@ class GraphEngine:
                             if event is None:
                                 break
 
-                            if isinstance(event, GraphRunSucceededEvent):
+                            yield event
+                            if isinstance(event, ParallelBranchRunSucceededEvent):
                                 succeeded_count += 1
                                 if succeeded_count == len(edge_mappings):
                                     break
 
                                 continue
-                            elif isinstance(event, GraphRunFailedEvent):
+                            elif isinstance(event, ParallelBranchRunFailedEvent):
                                 raise GraphRunFailedError(event.reason)
-                            else:
-                                yield event
                         except queue.Empty:
                             continue
 
@@ -286,6 +286,11 @@ class GraphEngine:
         """
         with flask_app.app_context():
             try:
+                q.put(ParallelBranchRunStartedEvent(
+                    parallel_id=parallel_id,
+                    parallel_start_node_id=parallel_start_node_id
+                ))
+
                 # run node
                 generator = self._run(
                     start_node_id=parallel_start_node_id,
@@ -296,12 +301,23 @@ class GraphEngine:
                     q.put(item)
 
                 # trigger graph run success event
-                q.put(GraphRunSucceededEvent())
+                q.put(ParallelBranchRunSucceededEvent(
+                    parallel_id=parallel_id,
+                    parallel_start_node_id=parallel_start_node_id
+                ))
             except GraphRunFailedError as e:
-                q.put(GraphRunFailedEvent(reason=e.error))
+                q.put(ParallelBranchRunFailedEvent(
+                    parallel_id=parallel_id,
+                    parallel_start_node_id=parallel_start_node_id,
+                    reason=e.error
+                ))
             except Exception as e:
                 logger.exception("Unknown Error when generating in parallel")
-                q.put(GraphRunFailedEvent(reason=str(e)))
+                q.put(ParallelBranchRunFailedEvent(
+                    parallel_id=parallel_id,
+                    parallel_start_node_id=parallel_start_node_id,
+                    reason=str(e)
+                ))
             finally:
                 db.session.remove()
 
