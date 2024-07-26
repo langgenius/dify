@@ -5,7 +5,6 @@ from collections.abc import Mapping
 from typing import Any, Optional, cast
 
 from core.app.apps.advanced_chat.app_config_manager import AdvancedChatAppConfig
-from core.app.apps.advanced_chat.workflow_event_trigger_callback import WorkflowEventTriggerCallback
 from core.app.apps.base_app_queue_manager import AppQueueManager, PublishFrom
 from core.app.apps.base_app_runner import AppRunner
 from core.app.apps.workflow_logging_callback import WorkflowLoggingCallback
@@ -17,7 +16,7 @@ from core.app.entities.queue_entities import QueueAnnotationReplyEvent, QueueSto
 from core.moderation.base import ModerationException
 from core.workflow.callbacks.base_workflow_callback import WorkflowCallback
 from core.workflow.entities.node_entities import SystemVariable, UserFrom
-from core.workflow.workflow_engine_manager import WorkflowEngineManager
+from core.workflow.workflow_entry import WorkflowEntry
 from extensions.ext_database import db
 from models.model import App, Conversation, EndUser, Message
 from models.workflow import Workflow
@@ -88,17 +87,13 @@ class AdvancedChatAppRunner(AppRunner):
 
         db.session.close()
 
-        workflow_callbacks: list[WorkflowCallback] = [WorkflowEventTriggerCallback(
-            queue_manager=queue_manager,
-            workflow=workflow
-        )]
-
+        workflow_callbacks: list[WorkflowCallback] = []
         if bool(os.environ.get("DEBUG", 'False').lower() == 'true'):
             workflow_callbacks.append(WorkflowLoggingCallback())
 
         # RUN WORKFLOW
-        workflow_engine_manager = WorkflowEngineManager()
-        workflow_engine_manager.run(
+        workflow_entry = WorkflowEntry()
+        workflow_entry.run(
             workflow=workflow,
             user_id=application_generate_entity.user_id,
             user_from=UserFrom.ACCOUNT
@@ -114,34 +109,6 @@ class AdvancedChatAppRunner(AppRunner):
                 SystemVariable.USER_ID: user_id
             },
             call_depth=application_generate_entity.call_depth
-        )
-
-    def single_iteration_run(self, app_id: str, workflow_id: str,
-                             queue_manager: AppQueueManager,
-                             inputs: dict, node_id: str, user_id: str) -> None:
-        """
-        Single iteration run
-        """
-        app_record: App = db.session.query(App).filter(App.id == app_id).first()
-        if not app_record:
-            raise ValueError("App not found")
-        
-        workflow = self.get_workflow(app_model=app_record, workflow_id=workflow_id)
-        if not workflow:
-            raise ValueError("Workflow not initialized")
-        
-        workflow_callbacks = [WorkflowEventTriggerCallback(
-            queue_manager=queue_manager,
-            workflow=workflow
-        )]
-
-        workflow_engine_manager = WorkflowEngineManager()
-        workflow_engine_manager.single_step_run_iteration_workflow_node(
-            workflow=workflow,
-            node_id=node_id,
-            user_id=user_id,
-            user_inputs=inputs,
-            callbacks=workflow_callbacks
         )
 
     def get_workflow(self, app_model: App, workflow_id: str) -> Optional[Workflow]:

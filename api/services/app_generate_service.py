@@ -99,6 +99,7 @@ class AppGenerateService:
                                   node_id: str,
                                   args: Any,
                                   streaming: bool = True):
+        # TODO
         if app_model.mode == AppMode.ADVANCED_CHAT.value:
             workflow = cls._get_workflow(app_model, InvokeFrom.DEBUGGER)
             return AdvancedChatAppGenerator().single_iteration_generate(

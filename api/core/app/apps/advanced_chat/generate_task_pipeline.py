@@ -264,15 +264,6 @@ class AdvancedChatAppGenerateTaskPipeline(BasedGenerateTaskPipeline, WorkflowCyc
             elif isinstance(event, QueueNodeStartedEvent):
                 workflow_node_execution = self._handle_node_start(event)
 
-                # search stream_generate_routes if node id is answer start at node
-                if not self._task_state.current_stream_generate_state and event.node_id in self._stream_generate_routes:
-                    self._task_state.current_stream_generate_state = self._stream_generate_routes[event.node_id]
-                    # reset current route position to 0
-                    self._task_state.current_stream_generate_state.current_route_position = 0
-
-                    # generate stream outputs when node started
-                    yield from self._generate_stream_outputs_when_node_started()
-
                 yield self._workflow_node_start_to_stream_response(
                     event=event,
                     task_id=self._application_generate_entity.task_id,
@@ -280,11 +271,6 @@ class AdvancedChatAppGenerateTaskPipeline(BasedGenerateTaskPipeline, WorkflowCyc
                 )
             elif isinstance(event, QueueNodeSucceededEvent | QueueNodeFailedEvent):
                 workflow_node_execution = self._handle_node_finished(event)
-
-                # stream outputs when node finished
-                generator = self._generate_stream_outputs_when_node_finished()
-                if generator:
-                    yield from generator
 
                 yield self._workflow_node_finish_to_stream_response(
                     task_id=self._application_generate_entity.task_id,
@@ -349,11 +335,6 @@ class AdvancedChatAppGenerateTaskPipeline(BasedGenerateTaskPipeline, WorkflowCyc
             elif isinstance(event, QueueTextChunkEvent):
                 delta_text = event.text
                 if delta_text is None:
-                    continue
-
-                if not self._is_stream_out_support(
-                        event=event
-                ):
                     continue
 
                 # handle output moderation chunk
