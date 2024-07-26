@@ -1,12 +1,19 @@
 from typing import Optional
 
-from core.app.entities.queue_entities import AppQueueEvent
 from core.model_runtime.utils.encoders import jsonable_encoder
 from core.workflow.callbacks.base_workflow_callback import WorkflowCallback
 from core.workflow.entities.base_node_data_entities import BaseNodeData
 from core.workflow.entities.node_entities import NodeType
-from core.workflow.graph_engine.entities.event import GraphEngineEvent, GraphRunStartedEvent, GraphRunSucceededEvent, \
-    GraphRunFailedEvent, NodeRunStartedEvent, NodeRunSucceededEvent, NodeRunFailedEvent, NodeRunStreamChunkEvent
+from core.workflow.graph_engine.entities.event import (
+    GraphEngineEvent,
+    GraphRunFailedEvent,
+    GraphRunStartedEvent,
+    GraphRunSucceededEvent,
+    NodeRunFailedEvent,
+    NodeRunStartedEvent,
+    NodeRunStreamChunkEvent,
+    NodeRunSucceededEvent,
+)
 from core.workflow.graph_engine.entities.graph import Graph
 from core.workflow.graph_engine.entities.graph_init_params import GraphInitParams
 from core.workflow.graph_engine.entities.graph_runtime_state import GraphRuntimeState

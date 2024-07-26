@@ -5,8 +5,15 @@ from configs import dify_config
 from core.model_runtime.utils.encoders import jsonable_encoder
 from core.workflow.entities.base_node_data_entities import BaseIterationState
 from core.workflow.entities.node_entities import NodeRunResult, NodeType
-from core.workflow.graph_engine.entities.event import BaseGraphEvent, GraphRunFailedEvent, NodeRunSucceededEvent, \
-    IterationRunStartedEvent, IterationRunSucceededEvent, IterationRunFailedEvent, IterationRunNextEvent
+from core.workflow.graph_engine.entities.event import (
+    BaseGraphEvent,
+    GraphRunFailedEvent,
+    IterationRunFailedEvent,
+    IterationRunNextEvent,
+    IterationRunStartedEvent,
+    IterationRunSucceededEvent,
+    NodeRunSucceededEvent,
+)
 from core.workflow.graph_engine.entities.graph import Graph
 from core.workflow.graph_engine.entities.run_condition import RunCondition
 from core.workflow.nodes.base_node import BaseNode
