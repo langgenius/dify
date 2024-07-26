@@ -21,14 +21,14 @@ parameters:
       zh_Hans: 要抓取并提取数据的网站URL。
     llm_description: The URL of the website that needs to be crawled. This is a required parameter.
     form: llm
-##############Page Options#######################
+############## Page Options #######################
   - name: headers
     type: string
     label:
       en_US: headers
       zh_Hans: 请求头
     human_description:
-      en_US: | 
+      en_US: |
         Headers to send with the request. Can be used to send cookies, user-agent, etc. Example: {"cookies": "testcookies"}
       zh_Hans: |
         随请求发送的头部。可以用来发送cookies、用户代理等。示例：{"cookies": "testcookies"}
@@ -67,7 +67,8 @@ parameters:
     human_description:
       en_US: |
         Only include tags, classes and ids from the page in the final output. Use comma separated values. Example: script, .ad, #footer
-      zh_Hans: 仅在最终输出中包含HTML页面的这些标签，可以通过标签名、类或ID来设定，使用逗号分隔值。示例：script, .ad, #footer
+      zh_Hans: |
+        仅在最终输出中包含HTML页面的这些标签，可以通过标签名、类或ID来设定，使用逗号分隔值。示例：script, .ad, #footer
     form: form
   - name: onlyMainContent
     type: boolean
@@ -87,7 +88,8 @@ parameters:
     human_description:
       en_US: |
         Tags, classes and ids to remove from the page. Use comma separated values. Example: script, .ad, #footer
-      zh_Hans: 要在最终输出中移除HTML页面的这些标签，可以通过标签名、类或ID来设定，使用逗号分隔值。示例：script, .ad, #footer
+      zh_Hans: |
+        要在最终输出中移除HTML页面的这些标签，可以通过标签名、类或ID来设定，使用逗号分隔值。示例：script, .ad, #footer
     placeholder:
       en_US: Use commas to separate multiple tags
       zh_Hans: 多个标签时使用半角逗号分隔
@@ -122,7 +124,7 @@ parameters:
       en_US: Wait x amount of milliseconds for the page to load to fetch content.
       zh_Hans: 等待x毫秒以使页面加载并获取内容。
     form: form
-##############Extractor Options#######################
+############## Extractor Options #######################
   - name: mode
     type: select
     options:
@@ -142,7 +144,7 @@ parameters:
       en_US: Extractor Mode
       zh_Hans: 提取模式
     human_description:
-      en_US: | 
+      en_US: |
        The extraction mode to use. 'markdown': Returns the scraped markdown content, does not perform LLM extraction. 'llm-extraction': Extracts information from the cleaned and parsed content using LLM.
       zh_Hans: 使用的提取模式。“markdown”：返回抓取的markdown内容，不执行LLM提取。“llm-extractioin”：使用LLM按Extractor Schema从内容中提取信息。
     form: form

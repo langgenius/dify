@@ -21,7 +21,7 @@ parameters:
       zh_Hans: 输入关键词即可使用Firecrawl API进行搜索。
     llm_description: Efficiently extract keywords from user text.
     form: llm
-##############Page Options#######################
+############## Page Options #######################
   - name: onlyMainContent
     type: boolean
     default: false
@@ -62,7 +62,7 @@ parameters:
       en_US: Include the raw HTML content of the page. Will output a rawHtml key in the response.
       zh_Hans: 返回中包含一个原始HTML版本的内容，将以rawHtml键返回。
     form: form
-##############Search Options#######################
+############## Search Options #######################
   - name: limit
     type: number
     min: 0

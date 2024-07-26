@@ -31,7 +31,7 @@ parameters:
       en_US: If you choose not to wait, it will directly return a job ID. You can use this job ID to check the crawling results or cancel the crawling task, which is usually very useful for a large-scale crawling task.
       zh_Hans: 如果选择不等待，则会直接返回一个job_id，可以通过job_id查询爬取结果或取消爬取任务，这通常对于一个大型爬取任务来说非常有用。
     form: form
-##############Crawl Options#######################
+############## Crawl Options #######################
   - name: includes
     type: string
     required: false
@@ -96,7 +96,7 @@ parameters:
       en_US: Crawl Mode
       zh_Hans: 爬取模式
     human_description:
-      en_US:  The crawling mode to use. Fast mode crawls 4x faster websites without sitemap, but may not be as accurate and shouldn't be used in heavy js-rendered websites.
+      en_US: The crawling mode to use. Fast mode crawls 4x faster websites without sitemap, but may not be as accurate and shouldn't be used in heavy js-rendered websites.
       zh_Hans: 使用fast模式将不会使用其站点地图，比普通模式快4倍，但是可能不够准确，也不适用于大量js渲染的网站。
   - name: ignoreSitemap
     type: boolean
@@ -140,14 +140,14 @@ parameters:
       en_US: Allows the crawler to follow links to external websites.
       zh_Hans:
     form: form
-##############Page Options#######################
+############## Page Options #######################
   - name: headers
     type: string
     label:
       en_US: headers
       zh_Hans: 请求头
     human_description:
-      en_US: | 
+      en_US: |
         Headers to send with the request. Can be used to send cookies, user-agent, etc. Example: {"cookies": "testcookies"}
       zh_Hans: |
         随请求发送的头部。可以用来发送cookies、用户代理等。示例：{"cookies": "testcookies"}
@@ -186,7 +186,8 @@ parameters:
     human_description:
       en_US: |
         Only include tags, classes and ids from the page in the final output. Use comma separated values. Example: script, .ad, #footer
-      zh_Hans: 仅在最终输出中包含HTML页面的这些标签，可以通过标签名、类或ID来设定，使用逗号分隔值。示例：script, .ad, #footer
+      zh_Hans: |
+        仅在最终输出中包含HTML页面的这些标签，可以通过标签名、类或ID来设定，使用逗号分隔值。示例：script, .ad, #footer
     form: form
   - name: onlyMainContent
     type: boolean
@@ -206,7 +207,8 @@ parameters:
     human_description:
       en_US: |
         Tags, classes and ids to remove from the page. Use comma separated values. Example: script, .ad, #footer
-      zh_Hans: 要在最终输出中移除HTML页面的这些标签，可以通过标签名、类或ID来设定，使用逗号分隔值。示例：script, .ad, #footer
+      zh_Hans: |
+        要在最终输出中移除HTML页面的这些标签，可以通过标签名、类或ID来设定，使用逗号分隔值。示例：script, .ad, #footer
     placeholder:
       en_US: Use commas to separate multiple tags
       zh_Hans: 多个标签时使用半角逗号分隔
