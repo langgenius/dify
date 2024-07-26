@@ -501,8 +501,7 @@ You should also complete the text started with ``` but not tell ``` directly.
                     'role': 'assistant',
                     'content': content if not rich_content else [{"text": content}],
                     'tool_calls': [tool_call.model_dump() for tool_call in
-                                   prompt_message.tool_calls] if prompt_message.tool_calls else []
-
+                                   prompt_message.tool_calls] if prompt_message.tool_calls else None
                 })
             elif isinstance(prompt_message, ToolPromptMessage):
                 tongyi_messages.append({
