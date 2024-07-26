@@ -1,3 +1,5 @@
+import os
+
 from flask_login import current_user
 from flask_restful import Resource, reqparse
 
@@ -28,13 +30,15 @@ class RuleGenerateApi(Resource):
         args = parser.parse_args()
 
         account = current_user
+        PROMPT_GENERATION_MAX_TOKENS = int(os.getenv('PROMPT_GENERATION_MAX_TOKENS', '512'))
 
         try:
             rules = LLMGenerator.generate_rule_config(
                 tenant_id=account.current_tenant_id,
                 instruction=args['instruction'],
                 model_config=args['model_config'],
-                no_variable=args['no_variable']
+                no_variable=args['no_variable'],
+                rule_config_max_tokens=PROMPT_GENERATION_MAX_TOKENS
             )
         except ProviderTokenNotInitError as ex:
             raise ProviderNotInitializeError(ex.description)
