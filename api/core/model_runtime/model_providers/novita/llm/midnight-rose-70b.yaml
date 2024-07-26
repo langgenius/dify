@@ -1,7 +1,7 @@
-model: lzlv_70b
+model: sophosympatheia/midnight-rose-70b
 label:
-  zh_Hans: lzlv_70b
-  en_US: lzlv_70b
+  zh_Hans: sophosympatheia/midnight-rose-70b
+  en_US: sophosympatheia/midnight-rose-70b
 model_type: llm
 features:
   - agent-thought
@@ -35,7 +35,7 @@ parameter_rules:
     max: 2
     default: 0
 pricing:
-  input: '0.0058'
-  output: '0.0078'
+  input: '0.008'
+  output: '0.008'
   unit: '0.0001'
   currency: USD
