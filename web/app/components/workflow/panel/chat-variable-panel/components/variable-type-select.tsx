@@ -9,6 +9,7 @@ import {
 import cn from '@/utils/classnames'
 
 type Props = {
+  inCell?: boolean
   value?: any
   list: any
   onSelect: (value: any) => void
@@ -16,6 +17,7 @@ type Props = {
 }
 
 const VariableTypeSelector = ({
+  inCell = false,
   value,
   list,
   onSelect,
@@ -30,8 +32,17 @@ const VariableTypeSelector = ({
       placement='bottom'
     >
       <PortalToFollowElemTrigger className='w-full' onClick={() => setOpen(v => !v)}>
-        <div className={cn('flex items-center w-full px-2 py-1 bg-components-input-bg-normal radius-md cursor-pointer hover:bg-state-base-hover-alt', open && 'bg-state-base-hover-alt hover:bg-state-base-hover-alt')}>
-          <div className='grow p-1 system-sm-regular text-components-input-text-filled truncate'>{value}</div>
+        <div className={cn(
+          'flex items-center w-full px-2 cursor-pointer',
+          !inCell && 'py-1 bg-components-input-bg-normal hover:bg-state-base-hover-alt radius-md',
+          inCell && 'py-0.5 hover:bg-state-base-hover',
+          open && !inCell && 'bg-state-base-hover-alt hover:bg-state-base-hover-alt',
+          open && inCell && 'bg-state-base-hover hover:bg-state-base-hover',
+        )}>
+          <div className={cn(
+            'grow p-1 system-sm-regular text-components-input-text-filled truncate',
+            inCell && 'system-xs-regular text-text-secondary',
+          )}>{value}</div>
           <RiArrowDownSLine className='ml-0.5 w-4 h-4 text-text-quaternary' />
         </div>
       </PortalToFollowElemTrigger>

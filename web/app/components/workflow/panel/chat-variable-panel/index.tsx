@@ -63,11 +63,11 @@ const ChatVariablePanel = () => {
 
   const handleDelete = useCallback((chatVar: ConversationVariable) => {
     removeUsedVarInNodes(chatVar)
-    // #TODO chatVar#
+    updateChatVarList(varList.filter(v => v.id !== chatVar.id))
     setCacheForDelete(undefined)
     setShowRemoveConfirm(false)
     doSyncWorkflowDraft()
-  }, [doSyncWorkflowDraft, removeUsedVarInNodes])
+  }, [doSyncWorkflowDraft, removeUsedVarInNodes, updateChatVarList, varList])
 
   const deleteCheck = useCallback((chatVar: ConversationVariable) => {
     const effectedNodes = getEffectedNodes(chatVar)
@@ -81,11 +81,16 @@ const ChatVariablePanel = () => {
   }, [getEffectedNodes, handleDelete])
 
   const handleSave = useCallback(async (chatVar: ConversationVariable) => {
-    // add env
-    if (!currentVar)
+    // add chatVar
+    if (!currentVar) {
+      const newList = [chatVar, ...varList]
+      updateChatVarList(newList)
+      doSyncWorkflowDraft()
       return
-    // #TODO chatVar#
-
+    }
+    // edit chatVar
+    const newList = varList.map(v => v.id === currentVar.id ? chatVar : v)
+    updateChatVarList(newList)
     // side effects of rename env
     if (currentVar.name !== chatVar.name) {
       const { getNodes, setNodes } = store.getState()
@@ -98,8 +103,8 @@ const ChatVariablePanel = () => {
       })
       setNodes(newNodes)
     }
-    await doSyncWorkflowDraft()
-  }, [currentVar, doSyncWorkflowDraft, getEffectedNodes, store])
+    doSyncWorkflowDraft()
+  }, [currentVar, doSyncWorkflowDraft, getEffectedNodes, store, updateChatVarList, varList])
 
   return (
     <div

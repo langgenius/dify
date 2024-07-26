@@ -1,9 +1,11 @@
-import React, { useEffect, useMemo } from 'react'
+import React, { useCallback, useEffect, useMemo } from 'react'
 import { useTranslation } from 'react-i18next'
 import { useContext } from 'use-context-selector'
 import { v4 as uuid4 } from 'uuid'
 import { RiCloseLine, RiDraftLine, RiInputField } from '@remixicon/react'
 import VariableTypeSelector from '@/app/components/workflow/panel/chat-variable-panel/components/variable-type-select'
+import ObjectValueList from '@/app/components/workflow/panel/chat-variable-panel/components/object-value-list'
+import { DEFAULT_OBJECT_VALUE } from '@/app/components/workflow/panel/chat-variable-panel/components/object-value-item'
 import ArrayValueList from '@/app/components/workflow/panel/chat-variable-panel/components/array-value-list'
 import Button from '@/app/components/base/button'
 import CodeEditor from '@/app/components/workflow/nodes/_base/components/editor/code-editor'
@@ -18,6 +20,12 @@ export type ModalPropsType = {
   chatVar?: ConversationVariable
   onClose: () => void
   onSave: (chatVar: ConversationVariable) => void
+}
+
+type ObjectValueItem = {
+  key: string
+  type: ChatVarType
+  value: string | number | undefined
 }
 
 const typeList = [
@@ -62,6 +70,7 @@ const ChatVariableModal = ({
   const [name, setName] = React.useState('')
   const [type, setType] = React.useState<ChatVarType>(ChatVarType.String)
   const [value, setValue] = React.useState<any>()
+  const [objectValue, setObjectValue] = React.useState<ObjectValueItem[]>([DEFAULT_OBJECT_VALUE])
   const [editorContent, setEditorContent] = React.useState<String>()
   const [editInJSON, setEditInJSON] = React.useState(false)
   const [des, setDes] = React.useState<string>('')
@@ -80,6 +89,23 @@ const ChatVariableModal = ({
       return arrayObjectPlaceholder
     return ''
   }, [type])
+  const getObjectValue = useCallback(() => {
+    if (!chatVar)
+      return [DEFAULT_OBJECT_VALUE]
+    return Object.keys(chatVar.value).map((key) => {
+      return {
+        key,
+        type: typeof chatVar.value[key] === 'string' ? ChatVarType.String : ChatVarType.Number,
+        value: chatVar.value[key],
+      }
+    })
+  }, [chatVar])
+  const formatValueFromObject = useCallback((list: ObjectValueItem[]) => {
+    list.reduce((acc: any, curr) => {
+      acc[curr.key] = curr.value
+      return acc
+    }, {})
+  }, [])
 
   const handleNameChange = (v: string) => {
     if (!v)
@@ -133,19 +159,21 @@ const ChatVariableModal = ({
     }
   }
 
-  // #TODO charVar#
   const handleSave = () => {
     if (!name)
       return notify({ type: 'error', message: 'name can not be empty' })
-    if (!value)
-      return notify({ type: 'error', message: 'value can not be empty' })
     if (!chatVar && varList.some(chatVar => chatVar.name === name))
       return notify({ type: 'error', message: 'name is existed' })
+    if (type !== ChatVarType.Object && !value)
+      return notify({ type: 'error', message: 'value can not be empty' })
+    if (type === ChatVarType.Object && !objectValue.some(item => item.key))
+      return notify({ type: 'error', message: 'object key can not be empty' })
+
     onSave({
       id: chatVar ? chatVar.id : uuid4(),
       name,
       value_type: type,
-      value,
+      value: type === ChatVarType.Object ? formatValueFromObject(objectValue) : value,
       description: des,
     })
     onClose()
@@ -158,12 +186,13 @@ const ChatVariableModal = ({
       setValue(chatVar.value)
       setDes(chatVar.description)
       setEditInJSON(false)
+      setObjectValue(getObjectValue())
     }
-  }, [chatVar])
+  }, [chatVar, getObjectValue])
 
   return (
     <div
-      className={cn('flex flex-col w-[360px] bg-components-panel-bg rounded-2xl h-full border-[0.5px] border-components-panel-border shadow-2xl')}
+      className={cn('flex flex-col w-[360px] bg-components-panel-bg rounded-2xl h-full border-[0.5px] border-components-panel-border shadow-2xl', type === ChatVarType.Object && 'w-[480px]')}
     >
       <div className='shrink-0 flex items-center justify-between mb-3 p-4 pb-0 text-text-primary system-xl-semibold'>
         {!chatVar ? t('workflow.chatVariable.modal.title') : t('workflow.chatVariable.modal.editTitle')}
@@ -233,12 +262,15 @@ const ChatVariableModal = ({
                 className='block px-3 w-full h-8 bg-components-input-bg-normal system-sm-regular radius-md border border-transparent appearance-none outline-none caret-primary-600 hover:border-components-input-border-hover hover:bg-components-input-bg-hover focus:bg-components-input-bg-active focus:border-components-input-border-active focus:shadow-xs placeholder:system-sm-regular placeholder:text-components-input-text-placeholder'
                 placeholder={t('workflow.chatVariable.modal.valuePlaceholder') || ''}
                 value={value}
-                onChange={e => setValue(e.target.value)}
+                onChange={e => setValue(Number(e.target.value))}
                 type='number'
               />
             )}
             {type === ChatVarType.Object && (
-              <div></div>
+              <ObjectValueList
+                list={objectValue}
+                onChange={setObjectValue}
+              />
             )}
             {type === ChatVarType.ArrayString && !editInJSON && (
               <ArrayValueList

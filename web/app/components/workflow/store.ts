@@ -35,7 +35,7 @@ const MOCK_DATA = [
     id: 'fljdaklfjl-dfjlafj0-dklajglje-eknglh',
     name: 'order_id',
     value: '123456',
-    value_type: 'string',
+    value_type: 'String',
     description: '',
   },
 ]
