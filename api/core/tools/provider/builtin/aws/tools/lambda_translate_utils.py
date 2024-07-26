@@ -1,7 +1,7 @@
 import boto3
 import json
 
-from typing import Any, Optional, Union, List
+from typing import Any, Union
 from core.tools.entities.tool_entities import ToolInvokeMessage
 from core.tools.tool.builtin_tool import BuiltinTool
 
@@ -38,7 +38,7 @@ class LambdaTranslateUtilsTool(BuiltinTool):
         line = 0
         try:
             if not self.lambda_client:
-                aws_region = tool_parameters.get('aws_region', None)
+                aws_region = tool_parameters.get('aws_region')
                 if aws_region:
                     self.lambda_client = boto3.client("lambda", region_name=aws_region)
                 else:
