@@ -5,7 +5,8 @@ from configs import dify_config
 from core.model_runtime.utils.encoders import jsonable_encoder
 from core.workflow.entities.base_node_data_entities import BaseIterationState
 from core.workflow.entities.node_entities import NodeRunResult, NodeType
-from core.workflow.graph_engine.entities.event import BaseGraphEvent, GraphRunFailedEvent, NodeRunSucceededEvent
+from core.workflow.graph_engine.entities.event import BaseGraphEvent, GraphRunFailedEvent, NodeRunSucceededEvent, \
+    IterationRunStartedEvent, IterationRunSucceededEvent, IterationRunFailedEvent, IterationRunNextEvent
 from core.workflow.graph_engine.entities.graph import Graph
 from core.workflow.graph_engine.entities.run_condition import RunCondition
 from core.workflow.nodes.base_node import BaseNode
@@ -108,6 +109,16 @@ class IterationNode(BaseNode):
             max_execution_time=dify_config.WORKFLOW_MAX_EXECUTION_TIME
         )
 
+        yield IterationRunStartedEvent(
+            iteration_id=self.node_id,
+        )
+
+        yield IterationRunNextEvent(
+            iteration_id=self.node_id,
+            index=0,
+            output=None
+        )
+
         try:
             # run workflow
             rst = graph_engine.run()
@@ -119,7 +130,8 @@ class IterationNode(BaseNode):
                     # handle iteration run result
                     if event.route_node_state.node_id in iteration_leaf_node_ids:
                         # append to iteration output variable list
-                        outputs.append(variable_pool.get_any(self.node_data.output_selector))
+                        current_iteration_output = variable_pool.get_any(self.node_data.output_selector)
+                        outputs.append(current_iteration_output)
 
                         # remove all nodes outputs from variable pool
                         for node_id in iteration_graph.node_ids:
@@ -137,9 +149,20 @@ class IterationNode(BaseNode):
                                 [self.node_id, 'item'],
                                 iterator_list_value[next_index]
                             )
+
+                        yield IterationRunNextEvent(
+                            iteration_id=self.node_id,
+                            index=next_index,
+                            pre_iteration_output=jsonable_encoder(current_iteration_output) if current_iteration_output else None
+                        )
                 elif isinstance(event, BaseGraphEvent):
                     if isinstance(event, GraphRunFailedEvent):
                         # iteration run failed
+                        yield IterationRunFailedEvent(
+                            iteration_id=self.node_id,
+                            reason=event.reason,
+                        )
+
                         yield RunCompletedEvent(
                             run_result=NodeRunResult(
                                 status=WorkflowNodeExecutionStatus.FAILED,
@@ -149,6 +172,10 @@ class IterationNode(BaseNode):
                         break
                 else:
                     yield event
+
+            yield IterationRunSucceededEvent(
+                iteration_id=self.node_id,
+            )
 
             yield RunCompletedEvent(
                 run_result=NodeRunResult(
@@ -161,6 +188,11 @@ class IterationNode(BaseNode):
         except Exception as e:
             # iteration run failed
             logger.exception("Iteration run failed")
+            yield IterationRunFailedEvent(
+                iteration_id=self.node_id,
+                reason=str(e),
+            )
+
             yield RunCompletedEvent(
                 run_result=NodeRunResult(
                     status=WorkflowNodeExecutionStatus.FAILED,

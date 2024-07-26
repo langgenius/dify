@@ -5,6 +5,11 @@ from core.model_runtime.utils.encoders import jsonable_encoder
 from core.workflow.callbacks.base_workflow_callback import WorkflowCallback
 from core.workflow.entities.base_node_data_entities import BaseNodeData
 from core.workflow.entities.node_entities import NodeType
+from core.workflow.graph_engine.entities.event import GraphEngineEvent, GraphRunStartedEvent, GraphRunSucceededEvent, \
+    GraphRunFailedEvent, NodeRunStartedEvent, NodeRunSucceededEvent, NodeRunFailedEvent, NodeRunStreamChunkEvent
+from core.workflow.graph_engine.entities.graph import Graph
+from core.workflow.graph_engine.entities.graph_init_params import GraphInitParams
+from core.workflow.graph_engine.entities.graph_runtime_state import GraphRuntimeState
 
 _TEXT_COLOR_MAPPING = {
     "blue": "36;1",
@@ -20,87 +25,140 @@ class WorkflowLoggingCallback(WorkflowCallback):
     def __init__(self) -> None:
         self.current_node_id = None
 
-    def on_workflow_run_started(self) -> None:
-        """
-        Workflow run started
-        """
-        self.print_text("\n[on_workflow_run_started]", color='pink')
+    def on_event(
+            self,
+            graph: Graph,
+            graph_init_params: GraphInitParams,
+            graph_runtime_state: GraphRuntimeState,
+            event: GraphEngineEvent
+    ) -> None:
+        if isinstance(event, GraphRunStartedEvent):
+            self.print_text("\n[on_workflow_run_started]", color='pink')
+        elif isinstance(event, GraphRunSucceededEvent):
+            self.print_text("\n[on_workflow_run_succeeded]", color='green')
+        elif isinstance(event, GraphRunFailedEvent):
+            self.print_text(f"\n[on_workflow_run_failed] reason: {event.reason}", color='red')
+        elif isinstance(event, NodeRunStartedEvent):
+            self.on_workflow_node_execute_started(
+                graph=graph,
+                event=event
+            )
+        elif isinstance(event, NodeRunSucceededEvent):
+            self.on_workflow_node_execute_succeeded(
+                graph=graph,
+                graph_init_params=graph_init_params,
+                graph_runtime_state=graph_runtime_state,
+                event=event
+            )
+        elif isinstance(event, NodeRunFailedEvent):
+            self.on_workflow_node_execute_failed(
+                graph=graph,
+                graph_init_params=graph_init_params,
+                graph_runtime_state=graph_runtime_state,
+                event=event
+            )
+        elif isinstance(event, NodeRunStreamChunkEvent):
+            self.on_node_text_chunk(
+                graph=graph,
+                graph_init_params=graph_init_params,
+                graph_runtime_state=graph_runtime_state,
+                event=event
+            )
 
-    def on_workflow_run_succeeded(self) -> None:
-        """
-        Workflow run succeeded
-        """
-        self.print_text("\n[on_workflow_run_succeeded]", color='green')
-
-    def on_workflow_run_failed(self, error: str) -> None:
-        """
-        Workflow run failed
-        """
-        self.print_text("\n[on_workflow_run_failed]", color='red')
-
-    def on_workflow_node_execute_started(self, node_id: str,
-                                         node_type: NodeType,
-                                         node_data: BaseNodeData,
-                                         node_run_index: int = 1,
-                                         predecessor_node_id: Optional[str] = None) -> None:
+    def on_workflow_node_execute_started(
+            self,
+            graph: Graph,
+            event: NodeRunStartedEvent
+    ) -> None:
         """
         Workflow node execute started
         """
-        self.print_text("\n[on_workflow_node_execute_started]", color='yellow')
-        self.print_text(f"Node ID: {node_id}", color='yellow')
-        self.print_text(f"Type: {node_type.value}", color='yellow')
-        self.print_text(f"Index: {node_run_index}", color='yellow')
-        if predecessor_node_id:
-            self.print_text(f"Predecessor Node ID: {predecessor_node_id}", color='yellow')
+        route_node_state = event.route_node_state
+        node_config = graph.node_id_config_mapping.get(route_node_state.node_id)
+        node_type = None
+        if node_config:
+            node_type = node_config.get("data", {}).get("type")
 
-    def on_workflow_node_execute_succeeded(self, node_id: str,
-                                           node_type: NodeType,
-                                           node_data: BaseNodeData,
-                                           inputs: Optional[dict] = None,
-                                           process_data: Optional[dict] = None,
-                                           outputs: Optional[dict] = None,
-                                           execution_metadata: Optional[dict] = None) -> None:
+        self.print_text("\n[on_workflow_node_execute_started]", color='yellow')
+        self.print_text(f"Node ID: {route_node_state.node_id}", color='yellow')
+        self.print_text(f"Type: {node_type}", color='yellow')
+
+    def on_workflow_node_execute_succeeded(
+            self,
+            graph: Graph,
+            graph_init_params: GraphInitParams,
+            graph_runtime_state: GraphRuntimeState,
+            event: NodeRunSucceededEvent
+    ) -> None:
         """
         Workflow node execute succeeded
         """
-        self.print_text("\n[on_workflow_node_execute_succeeded]", color='green')
-        self.print_text(f"Node ID: {node_id}", color='green')
-        self.print_text(f"Type: {node_type.value}", color='green')
-        self.print_text(f"Inputs: {jsonable_encoder(inputs) if inputs else ''}", color='green')
-        self.print_text(f"Process Data: {jsonable_encoder(process_data) if process_data else ''}", color='green')
-        self.print_text(f"Outputs: {jsonable_encoder(outputs) if outputs else ''}", color='green')
-        self.print_text(f"Metadata: {jsonable_encoder(execution_metadata) if execution_metadata else ''}",
-                        color='green')
+        route_node_state = event.route_node_state
+        node_config = graph.node_id_config_mapping.get(route_node_state.node_id)
+        node_type = None
+        if node_config:
+            node_type = node_config.get("data", {}).get("type")
 
-    def on_workflow_node_execute_failed(self, node_id: str,
-                                        node_type: NodeType,
-                                        node_data: BaseNodeData,
-                                        error: str,
-                                        inputs: Optional[dict] = None,
-                                        outputs: Optional[dict] = None,
-                                        process_data: Optional[dict] = None) -> None:
+        self.print_text("\n[on_workflow_node_execute_succeeded]", color='green')
+        self.print_text(f"Node ID: {route_node_state.node_id}", color='green')
+        self.print_text(f"Type: {node_type.value}", color='green')
+
+        if route_node_state.node_run_result:
+            node_run_result = route_node_state.node_run_result
+            self.print_text(f"Inputs: {jsonable_encoder(node_run_result.inputs) if node_run_result.inputs else ''}", color='green')
+            self.print_text(f"Process Data: {jsonable_encoder(node_run_result.process_data) if node_run_result.process_data else ''}", color='green')
+            self.print_text(f"Outputs: {jsonable_encoder(node_run_result.outputs) if node_run_result.outputs else ''}", color='green')
+            self.print_text(f"Metadata: {jsonable_encoder(node_run_result.execution_metadata) if node_run_result.execution_metadata else ''}",
+                            color='green')
+
+    def on_workflow_node_execute_failed(
+            self,
+            graph: Graph,
+            graph_init_params: GraphInitParams,
+            graph_runtime_state: GraphRuntimeState,
+            event: NodeRunFailedEvent
+    ) -> None:
         """
         Workflow node execute failed
         """
-        self.print_text("\n[on_workflow_node_execute_failed]", color='red')
-        self.print_text(f"Node ID: {node_id}", color='red')
-        self.print_text(f"Type: {node_type.value}", color='red')
-        self.print_text(f"Error: {error}", color='red')
-        self.print_text(f"Inputs: {jsonable_encoder(inputs) if inputs else ''}", color='red')
-        self.print_text(f"Process Data: {jsonable_encoder(process_data) if process_data else ''}", color='red')
-        self.print_text(f"Outputs: {jsonable_encoder(outputs) if outputs else ''}", color='red')
+        route_node_state = event.route_node_state
+        node_config = graph.node_id_config_mapping.get(route_node_state.node_id)
+        node_type = None
+        if node_config:
+            node_type = node_config.get("data", {}).get("type")
 
-    def on_node_text_chunk(self, node_id: str, text: str, metadata: Optional[dict] = None) -> None:
+        self.print_text("\n[on_workflow_node_execute_failed]", color='red')
+        self.print_text(f"Node ID: {route_node_state.node_id}", color='red')
+        self.print_text(f"Type: {node_type.value}", color='red')
+
+        if route_node_state.node_run_result:
+            node_run_result = route_node_state.node_run_result
+            self.print_text(f"Error: {node_run_result.error}", color='red')
+            self.print_text(f"Inputs: {jsonable_encoder(node_run_result.inputs) if node_run_result.inputs else ''}", color='red')
+            self.print_text(f"Process Data: {jsonable_encoder(node_run_result.process_data) if node_run_result.process_data else ''}", color='red')
+            self.print_text(f"Outputs: {jsonable_encoder(node_run_result.outputs) if node_run_result.outputs else ''}", color='red')
+
+    def on_node_text_chunk(
+            self,
+            graph: Graph,
+            graph_init_params: GraphInitParams,
+            graph_runtime_state: GraphRuntimeState,
+            event: NodeRunStreamChunkEvent
+    ) -> None:
         """
         Publish text chunk
         """
-        if not self.current_node_id or self.current_node_id != node_id:
-            self.current_node_id = node_id
+        route_node_state = event.route_node_state
+        if not self.current_node_id or self.current_node_id != route_node_state.node_id:
+            self.current_node_id = route_node_state.node_id
             self.print_text('\n[on_node_text_chunk]')
-            self.print_text(f"Node ID: {node_id}")
-            self.print_text(f"Metadata: {jsonable_encoder(metadata) if metadata else ''}")
+            self.print_text(f"Node ID: {route_node_state.node_id}")
 
-        self.print_text(text, color="pink", end="")
+            node_run_result = route_node_state.node_run_result
+            if node_run_result:
+                self.print_text(f"Metadata: {jsonable_encoder(node_run_result.metadata) if node_run_result.metadata else ''}")
+
+        self.print_text(event.chunk_content, color="pink", end="")
 
     def on_workflow_iteration_started(self, 
                                       node_id: str,
@@ -134,13 +192,6 @@ class WorkflowLoggingCallback(WorkflowCallback):
         Publish iteration completed
         """
         self.print_text("\n[on_workflow_iteration_completed]", color='blue')
-
-    def on_event(self, event: AppQueueEvent) -> None:
-        """
-        Publish event
-        """
-        self.print_text("\n[on_workflow_event]", color='blue')
-        self.print_text(f"Event: {jsonable_encoder(event)}", color='blue')
 
     def print_text(
             self, text: str, color: Optional[str] = None, end: str = "\n"

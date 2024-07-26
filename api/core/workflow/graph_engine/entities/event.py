@@ -1,4 +1,4 @@
-from typing import Optional
+from typing import Optional, Any
 
 from pydantic import BaseModel, Field
 
@@ -18,10 +18,6 @@ class BaseGraphEvent(GraphEngineEvent):
 
 
 class GraphRunStartedEvent(BaseGraphEvent):
-    pass
-
-
-class GraphRunBackToRootEvent(BaseGraphEvent):
     pass
 
 
@@ -102,6 +98,11 @@ class BaseIterationEvent(GraphEngineEvent):
 
 class IterationRunStartedEvent(BaseIterationEvent):
     pass
+
+
+class IterationRunNextEvent(BaseIterationEvent):
+    index: int = Field(..., description="index")
+    pre_iteration_output: Optional[Any] = Field(None, description="pre iteration output")
 
 
 class IterationRunSucceededEvent(BaseIterationEvent):

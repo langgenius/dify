@@ -30,8 +30,6 @@ from core.workflow.graph_engine.entities.graph_runtime_state import GraphRuntime
 from core.workflow.graph_engine.entities.runtime_route_state import RouteNodeState
 from core.workflow.nodes.answer.answer_stream_processor import AnswerStreamProcessor
 from core.workflow.nodes.end.end_stream_processor import EndStreamProcessor
-
-# from core.workflow.nodes.answer.answer_stream_processor import AnswerStreamProcessor
 from core.workflow.nodes.event import RunCompletedEvent, RunRetrieverResourceEvent, RunStreamChunkEvent
 from core.workflow.nodes.node_mapping import node_classes
 from extensions.ext_database import db
@@ -77,10 +75,6 @@ class GraphEngine:
 
         self.max_execution_steps = max_execution_steps
         self.max_execution_time = max_execution_time
-
-    def run_in_block_mode(self):
-        # TODO convert generator to result
-        pass
 
     def run(self) -> Generator[GraphEngineEvent, None, None]:
         # trigger graph run start event

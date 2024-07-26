@@ -206,4 +206,4 @@ def test_run():
                 assert item.run_result.status == WorkflowNodeExecutionStatus.SUCCEEDED
                 assert item.run_result.outputs == {"output": ["dify 123", "dify 123"]}
 
-        assert count == 15
+        assert count == 20
