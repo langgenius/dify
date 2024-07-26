@@ -59,9 +59,7 @@ class CodeNode(BaseNode):
         variables = {}
         for variable_selector in node_data.variables:
             variable = variable_selector.variable
-            value = variable_pool.get_variable_value(
-                variable_selector=variable_selector.value_selector
-            )
+            value = variable_pool.get_any(variable_selector.value_selector)
 
             variables[variable] = value
         # Run code

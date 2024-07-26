@@ -163,7 +163,8 @@ redis = { version = "~5.0.3", extras = ["hiredis"] }
 replicate = "~0.22.0"
 resend = "~0.7.0"
 safetensors = "~0.4.3"
-sentry-sdk = { version = "~1.39.2", extras = ["flask"] }
+scikit-learn = "^1.5.1"
+sentry-sdk = { version = "~1.44.1", extras = ["flask"] }
 sqlalchemy = "~2.0.29"
 tencentcloud-sdk-python-hunyuan = "~3.0.1158"
 tiktoken = "~0.7.0"
@@ -175,7 +176,7 @@ werkzeug = "~3.0.1"
 xinference-client = "0.9.4"
 yarl = "~1.9.4"
 zhipuai = "1.0.7"
-
+rank-bm25 = "~0.2.2"
 ############################################################
 # Tool dependencies required by tool implementations
 ############################################################
@@ -200,7 +201,7 @@ cloudscraper = "1.2.71"
 ############################################################
 
 [tool.poetry.group.vdb.dependencies]
-chromadb = "~0.5.1"
+chromadb = "0.5.1"
 oracledb = "~2.2.1"
 pgvecto-rs = "0.1.4"
 pgvector = "0.2.5"

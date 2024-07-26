@@ -2,7 +2,7 @@
 // DON NOT EDIT IT MANUALLY
 
 import * as React from 'react'
-import data from './MessagePlay.json'
+import data from './Generator.json'
 import IconBase from '@/app/components/base/icons/IconBase'
 import type { IconBaseProps, IconData } from '@/app/components/base/icons/IconBase'
 
@@ -11,6 +11,6 @@ const Icon = React.forwardRef<React.MutableRefObject<SVGElement>, Omit<IconBaseP
   ref,
 ) => <IconBase {...props} ref={ref} data={data as IconData} />)
 
-Icon.displayName = 'MessagePlay'
+Icon.displayName = 'Generator'
 
 export default Icon

@@ -14,13 +14,13 @@ from core.app.entities.queue_entities import (
     QueueWorkflowStartedEvent,
     QueueWorkflowSucceededEvent,
 )
-from core.workflow.callbacks.base_workflow_callback import BaseWorkflowCallback
+from core.workflow.callbacks.base_workflow_callback import WorkflowCallback
 from core.workflow.entities.base_node_data_entities import BaseNodeData
 from core.workflow.entities.node_entities import NodeType
 from models.workflow import Workflow
 
 
-class WorkflowEventTriggerCallback(BaseWorkflowCallback):
+class WorkflowEventTriggerCallback(WorkflowCallback):
 
     def __init__(self, queue_manager: AppQueueManager, workflow: Workflow):
         self._queue_manager = queue_manager

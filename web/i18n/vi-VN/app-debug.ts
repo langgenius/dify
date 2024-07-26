@@ -3,7 +3,7 @@ const translation = {
     line1: 'PROMPT',
     line2: 'Engineering',
   },
-  orchestrate: 'Orchestrate',
+  orchestrate: 'Dàn nhạc',
   promptMode: {
     simple: 'Chuyển sang Chế độ Chuyên gia để chỉnh sửa toàn bộ PROMPT',
     advanced: 'Chế độ Chuyên gia',

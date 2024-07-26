@@ -396,9 +396,11 @@ class QdrantVector(BaseVector):
         documents = []
         for result in results:
             if result:
-                documents.append(self._document_from_scored_point(
+                document = self._document_from_scored_point(
                     result, Field.CONTENT_KEY.value, Field.METADATA_KEY.value
-                ))
+                )
+                document.metadata['vector'] = result.vector
+                documents.append(document)
 
         return documents
 

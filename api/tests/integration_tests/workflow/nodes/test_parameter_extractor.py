@@ -123,7 +123,7 @@ def test_function_calling_parameter_extractor(setup_openai_mock):
         SystemVariable.FILES: [],
         SystemVariable.CONVERSATION_ID: 'abababa',
         SystemVariable.USER_ID: 'aaa'
-    }, user_inputs={})
+    }, user_inputs={}, environment_variables=[])
 
     result = node.run(pool)
 
@@ -181,7 +181,7 @@ def test_instructions(setup_openai_mock):
         SystemVariable.FILES: [],
         SystemVariable.CONVERSATION_ID: 'abababa',
         SystemVariable.USER_ID: 'aaa'
-    }, user_inputs={})
+    }, user_inputs={}, environment_variables=[])
 
     result = node.run(pool)
 
@@ -247,7 +247,7 @@ def test_chat_parameter_extractor(setup_anthropic_mock):
         SystemVariable.FILES: [],
         SystemVariable.CONVERSATION_ID: 'abababa',
         SystemVariable.USER_ID: 'aaa'
-    }, user_inputs={})
+    }, user_inputs={}, environment_variables=[])
 
     result = node.run(pool)
 
@@ -311,7 +311,7 @@ def test_completion_parameter_extractor(setup_openai_mock):
         SystemVariable.FILES: [],
         SystemVariable.CONVERSATION_ID: 'abababa',
         SystemVariable.USER_ID: 'aaa'
-    }, user_inputs={})
+    }, user_inputs={}, environment_variables=[])
 
     result = node.run(pool)
 
@@ -424,7 +424,7 @@ def test_chat_parameter_extractor_with_memory(setup_anthropic_mock):
         SystemVariable.FILES: [],
         SystemVariable.CONVERSATION_ID: 'abababa',
         SystemVariable.USER_ID: 'aaa'
-    }, user_inputs={})
+    }, user_inputs={}, environment_variables=[])
 
     result = node.run(pool)
 

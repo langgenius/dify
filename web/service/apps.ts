@@ -29,8 +29,8 @@ export const copyApp: Fetcher<AppDetailResponse, { appID: string; name: string; 
   return post<AppDetailResponse>(`apps/${appID}/copy`, { body: { name, icon, icon_background, mode, description } })
 }
 
-export const exportAppConfig: Fetcher<{ data: string }, string> = (appID) => {
-  return get<{ data: string }>(`apps/${appID}/export`)
+export const exportAppConfig: Fetcher<{ data: string }, { appID: string; include?: boolean }> = ({ appID, include = false }) => {
+  return get<{ data: string }>(`apps/${appID}/export?include_secret=${include}`)
 }
 
 export const importApp: Fetcher<AppDetailResponse, { data: string; name?: string; description?: string; icon?: string; icon_background?: string }> = ({ data, name, description, icon, icon_background }) => {

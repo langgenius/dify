@@ -22,7 +22,7 @@ body:
   - type: input
     attributes:
       label: Dify version
-      placeholder: 0.6.11
+      placeholder: 0.6.15
       description: See about section in Dify console
     validations:
       required: true

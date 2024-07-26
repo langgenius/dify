@@ -630,7 +630,8 @@ class Embedding(db.Model):
     __tablename__ = 'embeddings'
     __table_args__ = (
         db.PrimaryKeyConstraint('id', name='embedding_pkey'),
-        db.UniqueConstraint('model_name', 'hash', 'provider_name', name='embedding_hash_idx')
+        db.UniqueConstraint('model_name', 'hash', 'provider_name', name='embedding_hash_idx'),
+        db.Index('created_at_idx', 'created_at')
     )
 
     id = db.Column(StringUUID, primary_key=True, server_default=db.text('uuid_generate_v4()'))
@@ -639,7 +640,7 @@ class Embedding(db.Model):
     hash = db.Column(db.String(64), nullable=False)
     embedding = db.Column(db.LargeBinary, nullable=False)
     created_at = db.Column(db.DateTime, nullable=False, server_default=db.text('CURRENT_TIMESTAMP(0)'))
-    provider_name = db.Column(db.String(40), nullable=False,
+    provider_name = db.Column(db.String(255), nullable=False,
                               server_default=db.text("''::character varying"))
 
     def set_embedding(self, embedding_data: list[float]):
