@@ -16,7 +16,7 @@
     }
 
     .action-btn-l {
-        @apply p-1.5 w-[34px] h-[34px] rounded-lg
+        @apply p-1.5 w-8 h-8 rounded-lg
     }
 
     /* m is for the regular button */
