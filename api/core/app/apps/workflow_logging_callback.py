@@ -94,6 +94,8 @@ class WorkflowLoggingCallback(WorkflowCallback):
                 graph_runtime_state=graph_runtime_state,
                 event=event
             )
+        else:
+            self.print_text(f"\n[{event.__class__.__name__}]", color='blue')
 
     def on_workflow_node_execute_started(
             self,
