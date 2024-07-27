@@ -25,7 +25,7 @@ logger = logging.getLogger(__name__)
 CODE_EXECUTION_ENDPOINT = dify_config.CODE_EXECUTION_ENDPOINT
 CODE_EXECUTION_API_KEY = dify_config.CODE_EXECUTION_API_KEY
 
-CODE_EXECUTION_TIMEOUT= (10, 60)
+CODE_EXECUTION_TIMEOUT = (10, 60)
 
 class CodeExecutionException(Exception):
     pass
@@ -68,7 +68,7 @@ class CodeExecutor:
 
     @classmethod
     def execute_code(cls, 
-                     language: Literal['python3', 'javascript', 'jinja2'], 
+                     language: CodeLanguage, 
                      preload: str, 
                      code: str, 
                      dependencies: Optional[list[CodeDependency]] = None) -> str:
@@ -108,7 +108,7 @@ class CodeExecutor:
         
 
     @classmethod
-    def execute_workflow_code_template(cls, language: Literal['python3', 'javascript', 'jinja2'], code: str, inputs: dict, dependencies: Optional[list[CodeDependency]] = None) -> dict:
+    def execute_workflow_code_template(cls, language: CodeLanguage, code: str, inputs: dict, dependencies: Optional[list[CodeDependency]] = None) -> dict:
         """
         Execute code
         :param language: code language

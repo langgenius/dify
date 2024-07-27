@@ -118,6 +118,7 @@ const translation = {
   },
   userProfile: {
     settings: 'Cài đặt',
+    emailSupport: 'Hỗ trợ qua Email',
     workspace: 'Không gian làm việc',
     createWorkspace: 'Tạo Không gian làm việc',
     helpCenter: 'Trung tâm trợ giúp',

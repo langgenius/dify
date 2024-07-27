@@ -1,0 +1,15 @@
+identity:
+  author: Mingdao
+  name: hap
+  label:
+    en_US: HAP
+    zh_Hans: HAP
+    pt_BR: HAP
+  description:
+    en_US: "Hyper application platform that is particularly friendly to AI"
+    zh_Hans: "对 AI 特别友好的超级应用平台"
+    pt_BR: "Plataforma de aplicação hiper que é particularmente amigável à IA"
+  icon: icon.svg
+  tags:
+    - productivity
+credentials_for_provider:

@@ -15,7 +15,7 @@ import type { ParameterExtractorNodeType } from '../../../parameter-extractor/ty
 import type { IterationNodeType } from '../../../iteration/types'
 import { BlockEnum, InputVarType, VarType } from '@/app/components/workflow/types'
 import type { StartNodeType } from '@/app/components/workflow/nodes/start/types'
-import type { Node, NodeOutPutVar, ValueSelector, Var } from '@/app/components/workflow/types'
+import type { EnvironmentVariable, Node, NodeOutPutVar, ValueSelector, Var } from '@/app/components/workflow/types'
 import type { VariableAssignerNodeType } from '@/app/components/workflow/nodes/variable-assigner/types'
 import {
   HTTP_REQUEST_OUTPUT_STRUCT,
@@ -32,6 +32,10 @@ import { VAR_REGEX } from '@/config'
 
 export const isSystemVar = (valueSelector: ValueSelector) => {
   return valueSelector[0] === 'sys' || valueSelector[1] === 'sys'
+}
+
+export const isENV = (valueSelector: ValueSelector) => {
+  return valueSelector[0] === 'env'
 }
 
 const inputVarTypeToVarType = (type: InputVarType): VarType => {
@@ -59,7 +63,11 @@ const findExceptVarInObject = (obj: any, filterVar: (payload: Var, selector: Val
   return res
 }
 
-const formatItem = (item: any, isChatMode: boolean, filterVar: (payload: Var, selector: ValueSelector) => boolean): NodeOutPutVar => {
+const formatItem = (
+  item: any,
+  isChatMode: boolean,
+  filterVar: (payload: Var, selector: ValueSelector) => boolean,
+): NodeOutPutVar => {
   const { id, data } = item
 
   const res: NodeOutPutVar = {
@@ -226,6 +234,16 @@ const formatItem = (item: any, isChatMode: boolean, filterVar: (payload: Var, se
       ]
       break
     }
+
+    case 'env': {
+      res.vars = data.envList.map((env: EnvironmentVariable) => {
+        return {
+          variable: `env.${env.name}`,
+          type: env.value_type,
+        }
+      }) as Var[]
+      break
+    }
   }
 
   const selector = [id]
@@ -246,16 +264,30 @@ const formatItem = (item: any, isChatMode: boolean, filterVar: (payload: Var, se
 
   return res
 }
-export const toNodeOutputVars = (nodes: any[], isChatMode: boolean, filterVar = (_payload: Var, _selector: ValueSelector) => true): NodeOutPutVar[] => {
-  const res = nodes
-    .filter(node => SUPPORT_OUTPUT_VARS_NODE.includes(node.data.type))
-    .map((node) => {
-      return {
-        ...formatItem(node, isChatMode, filterVar),
-        isStartNode: node.data.type === BlockEnum.Start,
-      }
-    })
-    .filter(item => item.vars.length > 0)
+export const toNodeOutputVars = (
+  nodes: any[],
+  isChatMode: boolean,
+  filterVar = (_payload: Var, _selector: ValueSelector) => true,
+  environmentVariables: EnvironmentVariable[] = [],
+): NodeOutPutVar[] => {
+  // ENV_NODE data format
+  const ENV_NODE = {
+    id: 'env',
+    data: {
+      title: 'ENVIRONMENT',
+      type: 'env',
+      envList: environmentVariables,
+    },
+  }
+  const res = [
+    ...nodes.filter(node => SUPPORT_OUTPUT_VARS_NODE.includes(node.data.type)),
+    ...(environmentVariables.length > 0 ? [ENV_NODE] : []),
+  ].map((node) => {
+    return {
+      ...formatItem(node, isChatMode, filterVar),
+      isStartNode: node.data.type === BlockEnum.Start,
+    }
+  }).filter(item => item.vars.length > 0)
   return res
 }
 
@@ -313,6 +345,7 @@ export const getVarType = ({
   availableNodes,
   isChatMode,
   isConstant,
+  environmentVariables = [],
 }:
 {
   valueSelector: ValueSelector
@@ -321,11 +354,17 @@ export const getVarType = ({
   availableNodes: any[]
   isChatMode: boolean
   isConstant?: boolean
+  environmentVariables?: EnvironmentVariable[]
 }): VarType => {
   if (isConstant)
     return VarType.string
 
-  const beforeNodesOutputVars = toNodeOutputVars(availableNodes, isChatMode)
+  const beforeNodesOutputVars = toNodeOutputVars(
+    availableNodes,
+    isChatMode,
+    undefined,
+    environmentVariables,
+  )
 
   const isIterationInnerVar = parentNode?.data.type === BlockEnum.Iteration
   if (isIterationItem) {
@@ -346,6 +385,7 @@ export const getVarType = ({
       return VarType.number
   }
   const isSystem = isSystemVar(valueSelector)
+  const isEnv = isENV(valueSelector)
   const startNode = availableNodes.find((node: any) => {
     return node.data.type === BlockEnum.Start
   })
@@ -358,7 +398,7 @@ export const getVarType = ({
 
   let type: VarType = VarType.string
   let curr: any = targetVar.vars
-  if (isSystem) {
+  if (isSystem || isEnv) {
     return curr.find((v: any) => v.variable === (valueSelector as ValueSelector).join('.'))?.type
   }
   else {
@@ -383,6 +423,7 @@ export const toNodeAvailableVars = ({
   t,
   beforeNodes,
   isChatMode,
+  environmentVariables,
   filterVar,
 }: {
   parentNode?: Node | null
@@ -390,9 +431,16 @@ export const toNodeAvailableVars = ({
   // to get those nodes output vars
   beforeNodes: Node[]
   isChatMode: boolean
+  // env
+  environmentVariables?: EnvironmentVariable[]
   filterVar: (payload: Var, selector: ValueSelector) => boolean
 }): NodeOutPutVar[] => {
-  const beforeNodesOutputVars = toNodeOutputVars(beforeNodes, isChatMode, filterVar)
+  const beforeNodesOutputVars = toNodeOutputVars(
+    beforeNodes,
+    isChatMode,
+    filterVar,
+    environmentVariables,
+  )
   const isInIteration = parentNode?.data.type === BlockEnum.Iteration
   if (isInIteration) {
     const iterationNode: any = parentNode
@@ -402,6 +450,7 @@ export const toNodeAvailableVars = ({
       valueSelector: iterationNode?.data.iterator_selector || [],
       availableNodes: beforeNodes,
       isChatMode,
+      environmentVariables,
     })
     const iterationVar = {
       nodeId: iterationNode?.id,
@@ -493,7 +542,7 @@ export const getNodeUsedVars = (node: Node): ValueSelector[] => {
     case BlockEnum.IfElse: {
       res = (data as IfElseNodeType).conditions?.map((c) => {
         return c.variable_selector
-      })
+      }) || []
       break
     }
     case BlockEnum.Code: {

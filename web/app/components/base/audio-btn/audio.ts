@@ -60,21 +60,6 @@ export default class AudioPlayer {
         return
 
       this.sourceBuffer = this.mediaSource?.addSourceBuffer(contentType)
-    //   this.sourceBuffer?.addEventListener('update', () => {
-    //     if (this.cacheBuffers.length && !this.sourceBuffer?.updating) {
-    //       const cacheBuffer = this.cacheBuffers.shift()!
-    //       this.sourceBuffer?.appendBuffer(cacheBuffer)
-    //     }
-    //     // this.pauseAudio()
-    //   })
-    //
-    //   this.sourceBuffer?.addEventListener('updateend', () => {
-    //     if (this.cacheBuffers.length && !this.sourceBuffer?.updating) {
-    //       const cacheBuffer = this.cacheBuffers.shift()!
-    //       this.sourceBuffer?.appendBuffer(cacheBuffer)
-    //     }
-    //     // this.pauseAudio()
-    //   })
     })
   }
 

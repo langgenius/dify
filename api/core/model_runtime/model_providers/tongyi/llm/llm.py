@@ -262,6 +262,10 @@ You should also complete the text started with ``` but not tell ``` directly.
         :param prompt_messages: prompt messages
         :return: llm response
         """
+        if response.status_code != 200 and response.status_code != HTTPStatus.OK:
+            raise ServiceUnavailableError(
+                response.message
+            )
         # transform assistant message to prompt message
         assistant_prompt_message = AssistantPromptMessage(
             content=response.output.choices[0].message.content,

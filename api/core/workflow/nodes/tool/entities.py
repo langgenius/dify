@@ -29,6 +29,7 @@ class ToolEntity(BaseModel):
 
 class ToolNodeData(BaseNodeData, ToolEntity):
     class ToolInput(BaseModel):
+        # TODO: check this type
         value: Union[Any, list[str]]
         type: Literal['mixed', 'variable', 'constant']
 

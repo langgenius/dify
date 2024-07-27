@@ -119,6 +119,7 @@ const translation = {
   },
   userProfile: {
     settings: '設定',
+    emailSupport: '電子郵件支援',
     workspace: '工作空間',
     createWorkspace: '建立工作空間',
     helpCenter: '幫助文件',

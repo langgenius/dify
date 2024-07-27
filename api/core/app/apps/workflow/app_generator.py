@@ -1,3 +1,4 @@
+import contextvars
 import logging
 import os
 import threading
@@ -8,6 +9,7 @@ from typing import Union
 from flask import Flask, current_app
 from pydantic import ValidationError
 
+import contexts
 from core.app.app_config.features.file_upload.manager import FileUploadConfigManager
 from core.app.apps.base_app_generator import BaseAppGenerator
 from core.app.apps.base_app_queue_manager import AppQueueManager, GenerateTaskStoppedException, PublishFrom
@@ -38,7 +40,7 @@ class WorkflowAppGenerator(BaseAppGenerator):
         invoke_from: InvokeFrom,
         stream: bool = True,
         call_depth: int = 0,
-    ) -> Union[dict, Generator[dict, None, None]]:
+    ):
         """
         Generate App response.
 
@@ -86,6 +88,7 @@ class WorkflowAppGenerator(BaseAppGenerator):
             call_depth=call_depth,
             trace_manager=trace_manager
         )
+        contexts.tenant_id.set(application_generate_entity.app_config.tenant_id)
 
         return self._generate(
             app_model=app_model,
@@ -126,7 +129,8 @@ class WorkflowAppGenerator(BaseAppGenerator):
         worker_thread = threading.Thread(target=self._generate_worker, kwargs={
             'flask_app': current_app._get_current_object(),
             'application_generate_entity': application_generate_entity,
-            'queue_manager': queue_manager
+            'queue_manager': queue_manager,
+            'context': contextvars.copy_context()
         })
 
         worker_thread.start()
@@ -150,8 +154,7 @@ class WorkflowAppGenerator(BaseAppGenerator):
                                   node_id: str,
                                   user: Account,
                                   args: dict,
-                                  stream: bool = True) \
-            -> Union[dict, Generator[dict, None, None]]:
+                                  stream: bool = True):
         """
         Generate App response.
 
@@ -193,6 +196,7 @@ class WorkflowAppGenerator(BaseAppGenerator):
                 inputs=args['inputs']
             )
         )
+        contexts.tenant_id.set(application_generate_entity.app_config.tenant_id)
 
         return self._generate(
             app_model=app_model,
@@ -205,7 +209,8 @@ class WorkflowAppGenerator(BaseAppGenerator):
 
     def _generate_worker(self, flask_app: Flask,
                          application_generate_entity: WorkflowAppGenerateEntity,
-                         queue_manager: AppQueueManager) -> None:
+                         queue_manager: AppQueueManager,
+                         context: contextvars.Context) -> None:
         """
         Generate worker in a new thread.
         :param flask_app: Flask app
@@ -213,6 +218,8 @@ class WorkflowAppGenerator(BaseAppGenerator):
         :param queue_manager: queue manager
         :return:
         """
+        for var, val in context.items():
+            var.set(val)
         with flask_app.app_context():
             try:
                 # workflow app

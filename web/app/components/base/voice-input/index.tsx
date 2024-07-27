@@ -152,6 +152,10 @@ const VoiceInput = ({
   useEffect(() => {
     initCanvas()
     handleStartRecord()
+    const recorderRef = recorder?.current
+    return () => {
+      recorderRef?.stop()
+    }
   }, [])
 
   const minutes = parseInt(`${parseInt(`${originDuration}`) / 60}`)
