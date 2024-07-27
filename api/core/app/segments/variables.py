@@ -4,6 +4,7 @@ from core.helper import encrypter
 
 from .segments import (
     ArrayAnySegment,
+    ArrayFileSegment,
     ArrayNumberSegment,
     ArrayObjectSegment,
     ArrayStringSegment,
@@ -43,6 +44,10 @@ class IntegerVariable(IntegerSegment, Variable):
     pass
 
 
+class FileVariable(FileSegment, Variable):
+    pass
+
+
 class ObjectVariable(ObjectSegment, Variable):
     pass
 
@@ -63,7 +68,7 @@ class ArrayObjectVariable(ArrayObjectSegment, Variable):
     pass
 
 
-class FileVariable(FileSegment, Variable):
+class ArrayFileVariable(ArrayFileSegment, Variable):
     pass
 
 

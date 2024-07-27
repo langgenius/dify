@@ -15,9 +15,11 @@ from .segments import (
 )
 from .types import SegmentType
 from .variables import (
+    ArrayFileVariable,
     ArrayNumberVariable,
     ArrayObjectVariable,
     ArrayStringVariable,
+    FileVariable,
     FloatVariable,
     IntegerVariable,
     ObjectVariable,
@@ -45,6 +47,8 @@ def build_variable_from_mapping(m: Mapping[str, Any], /) -> Variable:
             return FloatVariable.model_validate(m)
         case SegmentType.NUMBER if not isinstance(value, float | int):
             raise ValueError(f'invalid number value {value}')
+        case SegmentType.FILE:
+            return FileVariable.model_validate(m)
         case SegmentType.OBJECT if isinstance(value, dict):
             return ObjectVariable.model_validate(
                 {**m, 'value': {k: build_variable_from_mapping(v) for k, v in value.items()}}
@@ -55,6 +59,8 @@ def build_variable_from_mapping(m: Mapping[str, Any], /) -> Variable:
             return ArrayNumberVariable.model_validate({**m, 'value': [build_variable_from_mapping(v) for v in value]})
         case SegmentType.ARRAY_OBJECT if isinstance(value, list):
             return ArrayObjectVariable.model_validate({**m, 'value': [build_variable_from_mapping(v) for v in value]})
+        case SegmentType.ARRAY_FILE if isinstance(value, list):
+            return ArrayFileVariable.model_validate({**m, 'value': [build_variable_from_mapping(v) for v in value]})
     raise ValueError(f'not supported value type {value_type}')
 
 

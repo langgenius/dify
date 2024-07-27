@@ -73,6 +73,16 @@ class IntegerSegment(Segment):
     value: int
 
 
+class FileSegment(Segment):
+    value_type: SegmentType = SegmentType.FILE
+    # TODO: embed FileVar in this model.
+    value: FileVar
+
+    @property
+    def markdown(self) -> str:
+        return self.value.to_markdown()
+
+
 class ObjectSegment(Segment):
     value_type: SegmentType = SegmentType.OBJECT
     value: Mapping[str, Segment]
@@ -125,11 +135,6 @@ class ArrayObjectSegment(ArraySegment):
     value: Sequence[ObjectSegment]
 
 
-class FileSegment(Segment):
-    value_type: SegmentType = SegmentType.FILE
-    # TODO: embed FileVar in this model.
-    value: FileVar
-
-    @property
-    def markdown(self) -> str:
-        return self.value.to_markdown()
+class ArrayFileSegment(ArraySegment):
+    value_type: SegmentType = SegmentType.ARRAY_FILE
+    value: Sequence[FileSegment]
