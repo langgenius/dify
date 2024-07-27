@@ -112,14 +112,21 @@ class ToolFileManager:
 
     @staticmethod
     def create_file_by_key(
-        user_id: str, tenant_id: str, conversation_id: str, file_key: str, mimetype: str
+        user_id: str, id: Optional[str], tenant_id: str, conversation_id: str, file_key: str, mimetype: str
     ) -> ToolFile:
         """
         create file
         """
-        tool_file = ToolFile(
-            user_id=user_id, tenant_id=tenant_id, conversation_id=conversation_id, file_key=file_key, mimetype=mimetype
-        )
+
+        tool_file: ToolFile = db.session.query(ToolFile).filter(
+            ToolFile.id == id,
+        ).first()
+
+        if not tool_file:
+            tool_file = ToolFile(id=id, user_id=user_id, tenant_id=tenant_id,
+                        conversation_id=conversation_id, file_key=file_key, mimetype=mimetype)
+            db.session.add(tool_file)
+            db.session.commit()
         return tool_file
 
     @staticmethod
