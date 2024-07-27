@@ -62,6 +62,7 @@ class StringSegment(Segment):
     value_type: SegmentType = SegmentType.STRING
     value: str
 
+
 class FloatSegment(Segment):
     value_type: SegmentType = SegmentType.NUMBER
     value: float
@@ -96,15 +97,32 @@ class ObjectSegment(Segment):
 
 
 class ArraySegment(Segment):
-    value_type: SegmentType = SegmentType.ARRAY
-    value: Sequence[Segment]
-
     @property
     def markdown(self) -> str:
         return '\n'.join(['- ' + item.markdown for item in self.value])
 
     def to_object(self):
         return [v.to_object() for v in self.value]
+
+
+class ArrayAnySegment(ArraySegment):
+    value_type: SegmentType = SegmentType.ARRAY_ANY
+    value: Sequence[Segment]
+
+
+class ArrayStringSegment(ArraySegment):
+    value_type: SegmentType = SegmentType.ARRAY_STRING
+    value: Sequence[StringSegment]
+
+
+class ArrayNumberSegment(ArraySegment):
+    value_type: SegmentType = SegmentType.ARRAY_NUMBER
+    value: Sequence[FloatSegment | IntegerSegment]
+
+
+class ArrayObjectSegment(ArraySegment):
+    value_type: SegmentType = SegmentType.ARRAY_OBJECT
+    value: Sequence[ObjectSegment]
 
 
 class FileSegment(Segment):

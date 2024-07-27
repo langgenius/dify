@@ -1,10 +1,12 @@
-
 from pydantic import Field
 
 from core.helper import encrypter
 
 from .segments import (
-    ArraySegment,
+    ArrayAnySegment,
+    ArrayNumberSegment,
+    ArrayObjectSegment,
+    ArrayStringSegment,
     FileSegment,
     FloatSegment,
     IntegerSegment,
@@ -45,7 +47,19 @@ class ObjectVariable(ObjectSegment, Variable):
     pass
 
 
-class ArrayVariable(ArraySegment, Variable):
+class ArrayAnyVariable(ArrayAnySegment, Variable):
+    pass
+
+
+class ArrayStringVariable(ArrayStringSegment, Variable):
+    pass
+
+
+class ArrayNumberVariable(ArrayNumberSegment, Variable):
+    pass
+
+
+class ArrayObjectVariable(ArrayObjectSegment, Variable):
     pass
 
 
