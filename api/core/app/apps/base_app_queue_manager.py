@@ -5,7 +5,7 @@ from collections.abc import Generator
 from enum import Enum
 from typing import Any
 
-from flask import current_app
+from configs  import dify_config
 from sqlalchemy.orm import DeclarativeMeta
 
 from core.app.entities.app_invoke_entities import InvokeFrom
@@ -48,7 +48,7 @@ class AppQueueManager:
         :return:
         """
         # wait for APP_MAX_EXECUTION_TIME seconds to stop listen
-        listen_timeout = current_app.config.get("APP_MAX_EXECUTION_TIME")
+        listen_timeout = dify_config.APP_MAX_EXECUTION_TIME
         start_time = time.time()
         last_ping_time = 0
         while True:
