@@ -123,6 +123,21 @@ class XinferenceText2SpeechModel(TTSModel):
             ]
         }
 
+    def get_tts_model_voices(self, model: str, credentials: dict, language: Optional[str] = None) -> list:
+        return [{'name': 'default', 'value': 'default'}]
+
+    def _get_model_default_voice(self, model: str, credentials: dict) -> any:
+        return ""
+
+    def _get_model_word_limit(self, model: str, credentials: dict) -> int:
+        return 3500
+
+    def _get_model_audio_type(self, model: str, credentials: dict) -> str:
+        return "mp3"
+
+    def _get_model_workers_limit(self, model: str, credentials: dict) -> int:
+        return 5
+
     def _tts_invoke(self, model: str, credentials: dict, content_text: str, voice: str) -> any:
         """
         _tts_invoke text2speech model
