@@ -4,8 +4,7 @@ Welcome to the new `docker` directory for deploying Dify using Docker Compose. T
 
 ### What's Updated
 
-- **Certbot Container
-  **: `docker-compose.yaml` now contains `certbot` for managing SSL certificates. This container automatically renews certificates and ensures secure HTTPS connections.  
+- **Certbot Container**: `docker-compose.yaml` now contains `certbot` for managing SSL certificates. This container automatically renews certificates and ensures secure HTTPS connections.  
   For more information, refer `docker/certbot/README.md`.
 
 - **Persistent Environment Variables
