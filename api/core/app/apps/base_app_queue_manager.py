@@ -5,9 +5,9 @@ from collections.abc import Generator
 from enum import Enum
 from typing import Any
 
-from configs  import dify_config
 from sqlalchemy.orm import DeclarativeMeta
 
+from configs import dify_config
 from core.app.entities.app_invoke_entities import InvokeFrom
 from core.app.entities.queue_entities import (
     AppQueueEvent,
