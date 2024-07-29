@@ -90,6 +90,12 @@ class ApiProviderAuthType(Enum):
         raise ValueError(f'invalid mode value {value}')
 
 class ToolInvokeMessage(BaseModel):
+    class TextMessage(BaseModel):
+        text: str
+
+    class JsonMessage(BaseModel):
+        json_object: dict
+
     class MessageType(Enum):
         TEXT = "text"
         IMAGE = "image"
@@ -103,7 +109,7 @@ class ToolInvokeMessage(BaseModel):
     """
         plain text, image url or link url
     """
-    message: Optional[Union[str, bytes, dict]] = None
+    message: JsonMessage | TextMessage
     meta: Optional[dict[str, Any]] = None
     save_as: str = ''
 

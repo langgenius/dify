@@ -1,10 +1,20 @@
+import time
 from flask_restful import Resource, reqparse
 
 from controllers.console.setup import setup_required
 from controllers.inner_api import api
 from controllers.inner_api.plugin.wraps import get_tenant, plugin_data
 from controllers.inner_api.wraps import plugin_inner_api_only
-from core.plugin.entities.request import RequestInvokeLLM, RequestInvokeModeration, RequestInvokeRerank, RequestInvokeSpeech2Text, RequestInvokeTTS, RequestInvokeTextEmbedding, RequestInvokeTool
+from core.plugin.entities.request import (
+    RequestInvokeLLM,
+    RequestInvokeModeration,
+    RequestInvokeRerank,
+    RequestInvokeSpeech2Text,
+    RequestInvokeTextEmbedding,
+    RequestInvokeTool,
+    RequestInvokeTTS,
+)
+from core.tools.entities.tool_entities import ToolInvokeMessage
 from libs.helper import compact_generate_response
 from models.account import Tenant
 from services.plugin.plugin_invoke_service import PluginInvokeService
@@ -18,6 +28,7 @@ class PluginInvokeLLMApi(Resource):
     def post(self, user_id: str, tenant_model: Tenant, payload: RequestInvokeLLM):
         pass
 
+
 class PluginInvokeTextEmbeddingApi(Resource):
     @setup_required
     @plugin_inner_api_only
@@ -25,6 +36,7 @@ class PluginInvokeTextEmbeddingApi(Resource):
     @plugin_data(payload_type=RequestInvokeTextEmbedding)
     def post(self, user_id: str, tenant_model: Tenant, payload: RequestInvokeTextEmbedding):
         pass
+
 
 class PluginInvokeRerankApi(Resource):
     @setup_required
@@ -34,6 +46,7 @@ class PluginInvokeRerankApi(Resource):
     def post(self, user_id: str, tenant_model: Tenant, payload: RequestInvokeRerank):
         pass
 
+
 class PluginInvokeTTSApi(Resource):
     @setup_required
     @plugin_inner_api_only
@@ -41,6 +54,7 @@ class PluginInvokeTTSApi(Resource):
     @plugin_data(payload_type=RequestInvokeTTS)
     def post(self, user_id: str, tenant_model: Tenant, payload: RequestInvokeTTS):
         pass
+
 
 class PluginInvokeSpeech2TextApi(Resource):
     @setup_required
@@ -50,6 +64,7 @@ class PluginInvokeSpeech2TextApi(Resource):
     def post(self, user_id: str, tenant_model: Tenant, payload: RequestInvokeSpeech2Text):
         pass
 
+
 class PluginInvokeModerationApi(Resource):
     @setup_required
     @plugin_inner_api_only
@@ -58,23 +73,27 @@ class PluginInvokeModerationApi(Resource):
     def post(self, user_id: str, tenant_model: Tenant, payload: RequestInvokeModeration):
         pass
 
+
 class PluginInvokeToolApi(Resource):
     @setup_required
     @plugin_inner_api_only
     @get_tenant
     @plugin_data(payload_type=RequestInvokeTool)
-    def post(self, user_id: str, tenant_model: Tenant):
-        parser = reqparse.RequestParser()
-        parser.add_argument('provider', type=dict, required=True, location='json')
-        parser.add_argument('tool', type=dict, required=True, location='json')
-        parser.add_argument('parameters', type=dict, required=True, location='json')
+    def post(self, user_id: str, tenant_model: Tenant, payload: RequestInvokeTool):
+        def generator():
+            for i in range(10):
+                time.sleep(0.1)
+                yield (
+                    ToolInvokeMessage(
+                        type=ToolInvokeMessage.MessageType.TEXT,
+                        message=ToolInvokeMessage.TextMessage(text='helloworld'),
+                    )
+                    .model_dump_json()
+                    .encode()
+                    + b'\n\n'
+                )
 
-        args = parser.parse_args()
-
-        response = PluginInvokeService.invoke_tool(
-            user_id, tenant_model, args['provider'], args['tool'], args['parameters']
-        )
-        return compact_generate_response(response)
+        return compact_generate_response(generator())
 
 
 class PluginInvokeNodeApi(Resource):
