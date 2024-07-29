@@ -62,6 +62,7 @@ class StringSegment(Segment):
     value_type: SegmentType = SegmentType.STRING
     value: str
 
+
 class FloatSegment(Segment):
     value_type: SegmentType = SegmentType.NUMBER
     value: float
@@ -70,6 +71,16 @@ class FloatSegment(Segment):
 class IntegerSegment(Segment):
     value_type: SegmentType = SegmentType.NUMBER
     value: int
+
+
+class FileSegment(Segment):
+    value_type: SegmentType = SegmentType.FILE
+    # TODO: embed FileVar in this model.
+    value: FileVar
+
+    @property
+    def markdown(self) -> str:
+        return self.value.to_markdown()
 
 
 class ObjectSegment(Segment):
@@ -96,9 +107,6 @@ class ObjectSegment(Segment):
 
 
 class ArraySegment(Segment):
-    value_type: SegmentType = SegmentType.ARRAY
-    value: Sequence[Segment]
-
     @property
     def markdown(self) -> str:
         return '\n'.join(['- ' + item.markdown for item in self.value])
@@ -107,11 +115,26 @@ class ArraySegment(Segment):
         return [v.to_object() for v in self.value]
 
 
-class FileSegment(Segment):
-    value_type: SegmentType = SegmentType.FILE
-    # TODO: embed FileVar in this model.
-    value: FileVar
+class ArrayAnySegment(ArraySegment):
+    value_type: SegmentType = SegmentType.ARRAY_ANY
+    value: Sequence[Segment]
 
-    @property
-    def markdown(self) -> str:
-        return self.value.to_markdown()
+
+class ArrayStringSegment(ArraySegment):
+    value_type: SegmentType = SegmentType.ARRAY_STRING
+    value: Sequence[StringSegment]
+
+
+class ArrayNumberSegment(ArraySegment):
+    value_type: SegmentType = SegmentType.ARRAY_NUMBER
+    value: Sequence[FloatSegment | IntegerSegment]
+
+
+class ArrayObjectSegment(ArraySegment):
+    value_type: SegmentType = SegmentType.ARRAY_OBJECT
+    value: Sequence[ObjectSegment]
+
+
+class ArrayFileSegment(ArraySegment):
+    value_type: SegmentType = SegmentType.ARRAY_FILE
+    value: Sequence[FileSegment]
