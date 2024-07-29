@@ -264,7 +264,7 @@ class ModelInstance:
             user=user
         )
 
-    def invoke_tts(self, content_text: str, tenant_id: str, voice: str, streaming: bool, user: Optional[str] = None) \
+    def invoke_tts(self, content_text: str, tenant_id: str, voice: str, user: Optional[str] = None) \
             -> str:
         """
         Invoke large language tts model
@@ -287,8 +287,7 @@ class ModelInstance:
             content_text=content_text,
             user=user,
             tenant_id=tenant_id,
-            voice=voice,
-            streaming=streaming
+            voice=voice
         )
 
     def _round_robin_invoke(self, function: Callable, *args, **kwargs):
@@ -411,7 +410,7 @@ class LBModelManager:
         self._model = model
         self._load_balancing_configs = load_balancing_configs
 
-        for load_balancing_config in self._load_balancing_configs:
+        for load_balancing_config in self._load_balancing_configs[:]:  # Iterate over a shallow copy of the list
             if load_balancing_config.name == "__inherit__":
                 if not managed_credentials:
                     # remove __inherit__ if managed credentials is not provided

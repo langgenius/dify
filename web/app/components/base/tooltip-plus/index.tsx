@@ -1,9 +1,9 @@
 'use client'
 import type { FC } from 'react'
 import React, { useEffect, useRef, useState } from 'react'
-import cn from 'classnames'
 import { useBoolean } from 'ahooks'
 import type { OffsetOptions, Placement } from '@floating-ui/react'
+import cn from '@/utils/classnames'
 import { PortalToFollowElem, PortalToFollowElemContent, PortalToFollowElemTrigger } from '@/app/components/base/portal-to-follow-elem'
 export type TooltipProps = {
   position?: Placement
@@ -13,6 +13,7 @@ export type TooltipProps = {
   hideArrow?: boolean
   popupClassName?: string
   offset?: OffsetOptions
+  asChild?: boolean
 }
 
 const arrow = (
@@ -27,6 +28,7 @@ const Tooltip: FC<TooltipProps> = ({
   hideArrow,
   popupClassName,
   offset,
+  asChild,
 }) => {
   const [open, setOpen] = useState(false)
   const [isHoverPopup, {
@@ -79,6 +81,7 @@ const Tooltip: FC<TooltipProps> = ({
           }
         }}
         onMouseLeave={() => triggerMethod === 'hover' && handleLeave(true)}
+        asChild={asChild}
       >
         {children}
       </PortalToFollowElemTrigger>

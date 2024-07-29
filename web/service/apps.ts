@@ -29,12 +29,16 @@ export const copyApp: Fetcher<AppDetailResponse, { appID: string; name: string; 
   return post<AppDetailResponse>(`apps/${appID}/copy`, { body: { name, icon, icon_background, mode, description } })
 }
 
-export const exportAppConfig: Fetcher<{ data: string }, string> = (appID) => {
-  return get<{ data: string }>(`apps/${appID}/export`)
+export const exportAppConfig: Fetcher<{ data: string }, { appID: string; include?: boolean }> = ({ appID, include = false }) => {
+  return get<{ data: string }>(`apps/${appID}/export?include_secret=${include}`)
 }
 
 export const importApp: Fetcher<AppDetailResponse, { data: string; name?: string; description?: string; icon?: string; icon_background?: string }> = ({ data, name, description, icon, icon_background }) => {
   return post<AppDetailResponse>('apps/import', { body: { data, name, description, icon, icon_background } })
+}
+
+export const importAppFromUrl: Fetcher<AppDetailResponse, { url: string; name?: string; description?: string; icon?: string; icon_background?: string }> = ({ url, name, description, icon, icon_background }) => {
+  return post<AppDetailResponse>('apps/import/url', { body: { url, name, description, icon, icon_background } })
 }
 
 export const switchApp: Fetcher<{ new_app_id: string }, { appID: string; name: string; icon: string; icon_background: string }> = ({ appID, name, icon, icon_background }) => {
@@ -120,6 +124,7 @@ export const generationIntroduction: Fetcher<GenerationIntroductionResponse, { u
 }
 
 export const fetchAppVoices: Fetcher<AppVoicesListResponse, { appId: string; language?: string }> = ({ appId, language }) => {
+  language = language || 'en-US'
   return get<AppVoicesListResponse>(`apps/${appId}/text-to-audio/voices?language=${language}`)
 }
 

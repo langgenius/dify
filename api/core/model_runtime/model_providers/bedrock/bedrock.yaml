@@ -66,6 +66,10 @@ provider_credential_schema:
           label:
             en_US: Europe (Frankfurt)
             zh_Hans: 欧洲 (法兰克福)
+        - value: eu-west-2
+          label:
+            en_US: Eu west London (London)
+            zh_Hans: 欧洲西部 (伦敦)
         - value: us-gov-west-1
           label:
             en_US: AWS GovCloud (US-West)

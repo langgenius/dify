@@ -1,0 +1,61 @@
+identity:
+  author: Waffle
+  name: cogview
+  label:
+    en_US: CogView
+    zh_Hans: CogView 绘画
+    pt_BR: CogView
+  description:
+    en_US: CogView art
+    zh_Hans: CogView 绘画
+    pt_BR: CogView art
+  icon: icon.png
+  tags:
+    - image
+    - productivity
+credentials_for_provider:
+  zhipuai_api_key:
+    type: secret-input
+    required: true
+    label:
+      en_US: ZhipuAI API key
+      zh_Hans: ZhipuAI API key
+      pt_BR: ZhipuAI API key
+    help:
+      en_US: Please input your ZhipuAI API key
+      zh_Hans: 请输入你的 ZhipuAI API key
+      pt_BR: Please input your ZhipuAI API key
+    placeholder:
+      en_US: Please input your ZhipuAI API key
+      zh_Hans: 请输入你的 ZhipuAI API key
+      pt_BR: Please input your ZhipuAI API key
+  zhipuai_organizaion_id:
+    type: text-input
+    required: false
+    label:
+      en_US: ZhipuAI organization ID
+      zh_Hans: ZhipuAI organization ID
+      pt_BR: ZhipuAI organization ID
+    help:
+      en_US: Please input your ZhipuAI organization ID
+      zh_Hans: 请输入你的 ZhipuAI organization ID
+      pt_BR: Please input your ZhipuAI organization ID
+    placeholder:
+      en_US: Please input your ZhipuAI organization ID
+      zh_Hans: 请输入你的 ZhipuAI organization ID
+      pt_BR: Please input your ZhipuAI organization ID
+  zhipuai_base_url:
+    type: text-input
+    required: false
+    label:
+      en_US: ZhipuAI base URL
+      zh_Hans: ZhipuAI base URL
+      pt_BR: ZhipuAI base URL
+    help:
+      en_US: Please input your ZhipuAI base URL
+      zh_Hans: 请输入你的 ZhipuAI base URL
+      pt_BR: Please input your ZhipuAI base URL
+    placeholder:
+      en_US: Please input your ZhipuAI base URL
+      zh_Hans: 请输入你的 ZhipuAI base URL
+      pt_BR: Please input your ZhipuAI base URL

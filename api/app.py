@@ -1,8 +1,6 @@
 import os
 
-from configs.app_config import DifyConfig
-
-if not os.environ.get("DEBUG") or os.environ.get("DEBUG", "false").lower() != 'true':
+if os.environ.get("DEBUG", "false").lower() != 'true':
     from gevent import monkey
 
     monkey.patch_all()
@@ -23,7 +21,9 @@ from flask import Flask, Response, request
 from flask_cors import CORS
 from werkzeug.exceptions import Unauthorized
 
+import contexts
 from commands import register_commands
+from configs import dify_config
 
 # DO NOT REMOVE BELOW
 from events import event_handlers
@@ -43,6 +43,8 @@ from extensions import (
 from extensions.ext_database import db
 from extensions.ext_login import login_manager
 from libs.passport import PassportService
+
+# TODO: Find a way to avoid importing models here
 from models import account, dataset, model, source, task, tool, tools, web
 from services.account_service import AccountService
 
@@ -81,7 +83,7 @@ def create_flask_app_with_configs() -> Flask:
     with configs loaded from .env file
     """
     dify_app = DifyApp(__name__)
-    dify_app.config.from_mapping(DifyConfig().model_dump())
+    dify_app.config.from_mapping(dify_config.model_dump())
 
     # populate configs into system environment variables
     for key, value in dify_app.config.items():
@@ -179,7 +181,10 @@ def load_user_from_request(request_from_flask_login):
     decoded = PassportService().verify(auth_token)
     user_id = decoded.get('user_id')
 
-    return AccountService.load_logged_in_account(account_id=user_id, token=auth_token)
+    account = AccountService.load_logged_in_account(account_id=user_id, token=auth_token)
+    if account:
+        contexts.tenant_id.set(account.current_tenant_id)
+    return account
 
 
 @login_manager.unauthorized_handler

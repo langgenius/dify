@@ -1,12 +1,12 @@
 import { useTranslation } from 'react-i18next'
 import { useRouter } from 'next/navigation'
 import { useContext, useContextSelector } from 'use-context-selector'
-import cn from 'classnames'
 import { RiArrowDownSLine } from '@remixicon/react'
 import React, { useCallback, useState } from 'react'
 import AppIcon from '../base/app-icon'
 import SwitchAppModal from '../app/switch-app-modal'
 import s from './style.module.css'
+import cn from '@/utils/classnames'
 import {
   PortalToFollowElem,
   PortalToFollowElemContent,
@@ -28,6 +28,9 @@ import type { CreateAppModalProps } from '@/app/components/explore/create-app-mo
 import { NEED_REFRESH_APP_LIST_KEY } from '@/config'
 import { getRedirection } from '@/utils/app-redirection'
 import UpdateDSLModal from '@/app/components/workflow/update-dsl-modal'
+import type { EnvironmentVariable } from '@/app/components/workflow/types'
+import DSLExportConfirmModal from '@/app/components/workflow/dsl-export-confirm-modal'
+import { fetchWorkflowDraft } from '@/service/workflow'
 
 export type IAppInfoProps = {
   expand: boolean
@@ -47,6 +50,7 @@ const AppInfo = ({ expand }: IAppInfoProps) => {
   const [showSwitchTip, setShowSwitchTip] = useState<string>('')
   const [showSwitchModal, setShowSwitchModal] = useState<boolean>(false)
   const [showImportDSLModal, setShowImportDSLModal] = useState<boolean>(false)
+  const [secretEnvList, setSecretEnvList] = useState<EnvironmentVariable[]>([])
 
   const mutateApps = useContextSelector(
     AppsContext,
@@ -108,16 +112,40 @@ const AppInfo = ({ expand }: IAppInfoProps) => {
     }
   }
 
-  const onExport = async () => {
+  const onExport = async (include = false) => {
     if (!appDetail)
       return
     try {
-      const { data } = await exportAppConfig(appDetail.id)
+      const { data } = await exportAppConfig({
+        appID: appDetail.id,
+        include,
+      })
       const a = document.createElement('a')
       const file = new Blob([data], { type: 'application/yaml' })
       a.href = URL.createObjectURL(file)
       a.download = `${appDetail.name}.yml`
       a.click()
+    }
+    catch (e) {
+      notify({ type: 'error', message: t('app.exportFailed') })
+    }
+  }
+
+  const exportCheck = async () => {
+    if (!appDetail)
+      return
+    if (appDetail.mode !== 'workflow' && appDetail.mode !== 'advanced-chat') {
+      onExport()
+      return
+    }
+    try {
+      const workflowDraft = await fetchWorkflowDraft(`/apps/${appDetail.id}/workflows/draft`)
+      const list = (workflowDraft.environment_variables || []).filter(env => env.value_type === 'secret')
+      if (list.length === 0) {
+        onExport()
+        return
+      }
+      setSecretEnvList(list)
     }
     catch (e) {
       notify({ type: 'error', message: t('app.exportFailed') })
@@ -190,7 +218,7 @@ const AppInfo = ({ expand }: IAppInfoProps) => {
             </div>
             {expand && (
               <div className="grow w-0">
-                <div className='flex justify-between items-center text-sm leading-5 font-medium text-gray-900'>
+                <div className='flex justify-between items-center text-sm leading-5 font-medium text-text-secondary'>
                   <div className='truncate' title={appDetail.name}>{appDetail.name}</div>
                   {isCurrentWorkspaceEditor && <RiArrowDownSLine className='shrink-0 ml-[2px] w-3 h-3 text-gray-500' />}
                 </div>
@@ -314,7 +342,7 @@ const AppInfo = ({ expand }: IAppInfoProps) => {
                 </>
               )}
               <Divider className="!my-1" />
-              <div className='h-9 py-2 px-3 mx-1 flex items-center hover:bg-gray-50 rounded-lg cursor-pointer' onClick={onExport}>
+              <div className='h-9 py-2 px-3 mx-1 flex items-center hover:bg-gray-50 rounded-lg cursor-pointer' onClick={exportCheck}>
                 <span className='text-gray-700 text-sm leading-5'>{t('app.export')}</span>
               </div>
               {
@@ -350,7 +378,7 @@ const AppInfo = ({ expand }: IAppInfoProps) => {
                 'w-full h-[256px] bg-center bg-no-repeat bg-contain rounded-xl',
                 showSwitchTip === 'chat' && s.expertPic,
                 showSwitchTip === 'completion' && s.completionPic,
-              )}/>
+              )} />
               <div className='px-4 pb-2'>
                 <div className='flex items-center gap-1 text-gray-700 text-md leading-6 font-semibold'>
                   {showSwitchTip === 'chat' ? t('app.newApp.advanced') : t('app.types.workflow')}
@@ -403,14 +431,19 @@ const AppInfo = ({ expand }: IAppInfoProps) => {
             onCancel={() => setShowConfirmDelete(false)}
           />
         )}
-        {
-          showImportDSLModal && (
-            <UpdateDSLModal
-              onCancel={() => setShowImportDSLModal(false)}
-              onBackup={onExport}
-            />
-          )
-        }
+        {showImportDSLModal && (
+          <UpdateDSLModal
+            onCancel={() => setShowImportDSLModal(false)}
+            onBackup={exportCheck}
+          />
+        )}
+        {secretEnvList.length > 0 && (
+          <DSLExportConfirmModal
+            envList={secretEnvList}
+            onConfirm={onExport}
+            onClose={() => setSecretEnvList([])}
+          />
+        )}
       </div>
     </PortalToFollowElem>
   )

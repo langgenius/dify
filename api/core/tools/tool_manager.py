@@ -6,8 +6,7 @@ from os import listdir, path
 from threading import Lock
 from typing import Any, Union
 
-from flask import current_app
-
+from configs import dify_config
 from core.agent.entities import AgentToolEntity
 from core.app.entities.app_invoke_entities import InvokeFrom
 from core.helper.module_import_helper import load_single_subclass_from_source
@@ -154,7 +153,7 @@ class ToolManager:
                 'invoke_from': invoke_from,
                 'tool_invoke_from': tool_invoke_from,
             })
-        
+
         elif provider_type == 'api':
             if tenant_id is None:
                 raise ValueError('tenant id is required for api provider')
@@ -201,7 +200,7 @@ class ToolManager:
             init runtime parameter
         """
         parameter_value = parameters.get(parameter_rule.name)
-        if not parameter_value:
+        if not parameter_value and parameter_value != 0:
             # get default value
             parameter_value = parameter_rule.default
             if not parameter_value and parameter_rule.required:
@@ -321,14 +320,14 @@ class ToolManager:
         if cls._builtin_providers_loaded:
             yield from list(cls._builtin_providers.values())
             return
-        
+
         with cls._builtin_provider_lock:
             if cls._builtin_providers_loaded:
                 yield from list(cls._builtin_providers.values())
                 return
-            
+
             yield from cls._list_builtin_providers()
-    
+
     @classmethod
     def _list_builtin_providers(cls) -> Generator[BuiltinToolProviderController, None, None]:
         """
@@ -492,7 +491,7 @@ class ToolManager:
 
         controller = ApiToolProviderController.from_db(
             provider,
-            ApiProviderAuthType.API_KEY if provider.credentials['auth_type'] == 'api_key' else 
+            ApiProviderAuthType.API_KEY if provider.credentials['auth_type'] == 'api_key' else
             ApiProviderAuthType.NONE
         )
         controller.load_bundled_tools(provider.tools)
@@ -566,7 +565,7 @@ class ToolManager:
         provider_type = provider_type
         provider_id = provider_id
         if provider_type == 'builtin':
-            return (current_app.config.get("CONSOLE_API_URL")
+            return (dify_config.CONSOLE_API_URL
                     + "/console/api/workspaces/current/tool-provider/builtin/"
                     + provider_id
                     + "/icon")
@@ -575,7 +574,7 @@ class ToolManager:
                 provider: ApiToolProvider = db.session.query(ApiToolProvider).filter(
                     ApiToolProvider.tenant_id == tenant_id,
                     ApiToolProvider.id == provider_id
-                )
+                ).first()
                 return json.loads(provider.icon)
             except:
                 return {

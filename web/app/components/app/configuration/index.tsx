@@ -46,7 +46,7 @@ import { fetchDatasets } from '@/service/datasets'
 import { useProviderContext } from '@/context/provider-context'
 import { AgentStrategy, AppType, ModelModeType, RETRIEVE_TYPE, Resolution, TransferMethod } from '@/types/app'
 import { PromptMode } from '@/models/debug'
-import { ANNOTATION_DEFAULT, DEFAULT_AGENT_SETTING, DEFAULT_CHAT_PROMPT_CONFIG, DEFAULT_COMPLETION_PROMPT_CONFIG } from '@/config'
+import { ANNOTATION_DEFAULT, DATASET_DEFAULT, DEFAULT_AGENT_SETTING, DEFAULT_CHAT_PROMPT_CONFIG, DEFAULT_COMPLETION_PROMPT_CONFIG } from '@/config'
 import SelectDataSet from '@/app/components/app/configuration/dataset-config/select-dataset'
 import { useModalContext } from '@/context/modal-context'
 import useBreakpoints, { MediaType } from '@/hooks/use-breakpoints'
@@ -57,6 +57,10 @@ import { useTextGenerationCurrentProviderAndModelAndModelList } from '@/app/comp
 import { fetchCollectionList } from '@/service/tools'
 import { type Collection } from '@/app/components/tools/types'
 import { useStore as useAppStore } from '@/app/components/app/store'
+import {
+  getMultipleRetrievalConfig,
+  getSelectedDatasetsMode,
+} from '@/app/components/workflow/nodes/knowledge-retrieval/utils'
 
 type PublishConfig = {
   modelConfig: ModelConfig
@@ -174,14 +178,14 @@ const Configuration: FC = () => {
 
   }, [])
   const [datasetConfigs, setDatasetConfigs] = useState<DatasetConfigs>({
-    retrieval_model: RETRIEVE_TYPE.oneWay,
+    retrieval_model: RETRIEVE_TYPE.multiWay,
     reranking_model: {
       reranking_provider_name: '',
       reranking_model_name: '',
     },
-    top_k: 2,
+    top_k: DATASET_DEFAULT.top_k,
     score_threshold_enabled: false,
-    score_threshold: 0.7,
+    score_threshold: DATASET_DEFAULT.score_threshold,
     datasets: {
       datasets: [],
     },
@@ -202,6 +206,7 @@ const Configuration: FC = () => {
   const hasSetContextVar = !!contextVar
   const [isShowSelectDataSet, { setTrue: showSelectDataSet, setFalse: hideSelectDataSet }] = useBoolean(false)
   const selectedIds = dataSets.map(item => item.id)
+  const [rerankSettingModalOpen, setRerankSettingModalOpen] = useState(false)
   const handleSelect = (data: DataSet[]) => {
     if (isEqual(data.map(item => item.id), dataSets.map(item => item.id))) {
       hideSelectDataSet()
@@ -209,6 +214,7 @@ const Configuration: FC = () => {
     }
 
     formattingChangedDispatcher()
+    let newDatasets = data
     if (data.find(item => !item.name)) { // has not loaded selected dataset
       const newSelected = produce(data, (draft: any) => {
         data.forEach((item, index) => {
@@ -220,11 +226,45 @@ const Configuration: FC = () => {
         })
       })
       setDataSets(newSelected)
+      newDatasets = newSelected
     }
     else {
       setDataSets(data)
     }
     hideSelectDataSet()
+    const {
+      allEconomic,
+      mixtureHighQualityAndEconomic,
+      inconsistentEmbeddingModel,
+    } = getSelectedDatasetsMode(newDatasets)
+
+    if (allEconomic || mixtureHighQualityAndEconomic || inconsistentEmbeddingModel)
+      setRerankSettingModalOpen(true)
+
+    const { datasets, retrieval_model, score_threshold_enabled, ...restConfigs } = datasetConfigs
+
+    const retrievalConfig = getMultipleRetrievalConfig({
+      top_k: restConfigs.top_k,
+      score_threshold: restConfigs.score_threshold,
+      reranking_model: restConfigs.reranking_model && {
+        provider: restConfigs.reranking_model.reranking_provider_name,
+        model: restConfigs.reranking_model.reranking_model_name,
+      },
+      reranking_mode: restConfigs.reranking_mode,
+      weights: restConfigs.weights,
+      reranking_enable: restConfigs.reranking_enable,
+    }, newDatasets)
+
+    setDatasetConfigs({
+      ...retrievalConfig,
+      reranking_model: restConfigs.reranking_model && {
+        reranking_provider_name: restConfigs.reranking_model.reranking_provider_name,
+        reranking_model_name: restConfigs.reranking_model.reranking_model_name,
+      },
+      retrieval_model,
+      score_threshold_enabled,
+      datasets,
+    })
   }
 
   const [isShowHistoryModal, { setTrue: showHistoryModal, setFalse: hideHistoryModal }] = useBoolean(false)
@@ -509,7 +549,7 @@ const Configuration: FC = () => {
         syncToPublishedConfig(config)
         setPublishedConfig(config)
         setDatasetConfigs({
-          retrieval_model: RETRIEVE_TYPE.oneWay,
+          retrieval_model: RETRIEVE_TYPE.multiWay,
           ...modelConfig.dataset_configs,
         })
         setHasFetchedDetail(true)
@@ -555,23 +595,23 @@ const Configuration: FC = () => {
     const promptVariables = modelConfig.configs.prompt_variables
 
     if (promptEmpty) {
-      notify({ type: 'error', message: t('appDebug.otherError.promptNoBeEmpty'), duration: 3000 })
+      notify({ type: 'error', message: t('appDebug.otherError.promptNoBeEmpty') })
       return
     }
     if (isAdvancedMode && mode !== AppType.completion) {
       if (modelModeType === ModelModeType.completion) {
         if (!hasSetBlockStatus.history) {
-          notify({ type: 'error', message: t('appDebug.otherError.historyNoBeEmpty'), duration: 3000 })
+          notify({ type: 'error', message: t('appDebug.otherError.historyNoBeEmpty') })
           return
         }
         if (!hasSetBlockStatus.query) {
-          notify({ type: 'error', message: t('appDebug.otherError.queryNoBeEmpty'), duration: 3000 })
+          notify({ type: 'error', message: t('appDebug.otherError.queryNoBeEmpty') })
           return
         }
       }
     }
     if (contextVarEmpty) {
-      notify({ type: 'error', message: t('appDebug.feature.dataSet.queryVariable.contextVarNotEmpty'), duration: 3000 })
+      notify({ type: 'error', message: t('appDebug.feature.dataSet.queryVariable.contextVarNotEmpty') })
       return
     }
     const postDatasets = dataSets.map(({ id }) => ({
@@ -638,7 +678,7 @@ const Configuration: FC = () => {
       modelConfig: newModelConfig,
       completionParams,
     })
-    notify({ type: 'success', message: t('common.api.success'), duration: 3000 })
+    notify({ type: 'success', message: t('common.api.success') })
 
     setCanReturnToSimpleMode(false)
     return true
@@ -744,6 +784,8 @@ const Configuration: FC = () => {
       isShowVisionConfig,
       visionConfig,
       setVisionConfig: handleSetVisionConfig,
+      rerankSettingModalOpen,
+      setRerankSettingModalOpen,
     }}
     >
       <>

@@ -71,6 +71,9 @@ model_credential_schema:
         - label:
             en_US: '2024-02-01'
           value: '2024-02-01'
+        - label:
+            en_US: '2024-06-01'
+          value: '2024-06-01'
       placeholder:
         zh_Hans: 在此选择您的 API 版本
         en_US: Select your API Version here

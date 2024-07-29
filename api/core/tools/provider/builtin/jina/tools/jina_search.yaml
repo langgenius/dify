@@ -91,3 +91,17 @@ parameters:
       pt_BR: Ignorar o cache
     llm_description: bypass the cache
     form: form
+  - name: max_retries
+    type: number
+    required: false
+    default: 3
+    label:
+      en_US: Retry
+      zh_Hans: 重试
+      pt_BR: Repetir
+    human_description:
+      en_US: Number of times to retry the request if it fails
+      zh_Hans: 请求失败时重试的次数
+      pt_BR: Número de vezes para repetir a solicitação se falhar
+    llm_description: Number of times to retry the request if it fails
+    form: form

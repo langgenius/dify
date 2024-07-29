@@ -1,11 +1,12 @@
 from typing import Optional
 
-from pydantic import AliasChoices, BaseModel, Field, NonNegativeInt, PositiveInt, computed_field
+from pydantic import AliasChoices, Field, NonNegativeInt, PositiveInt, computed_field
+from pydantic_settings import BaseSettings
 
 from configs.feature.hosted_service import HostedServiceConfig
 
 
-class SecurityConfig(BaseModel):
+class SecurityConfig(BaseSettings):
     """
     Secret Key configs
     """
@@ -17,8 +18,13 @@ class SecurityConfig(BaseModel):
         default=None,
     )
 
+    RESET_PASSWORD_TOKEN_EXPIRY_HOURS: PositiveInt = Field(
+        description='Expiry time in hours for reset token',
+        default=24,
+    )
 
-class AppExecutionConfig(BaseModel):
+
+class AppExecutionConfig(BaseSettings):
     """
     App Execution configs
     """
@@ -26,9 +32,13 @@ class AppExecutionConfig(BaseModel):
         description='execution timeout in seconds for app execution',
         default=1200,
     )
+    APP_MAX_ACTIVE_REQUESTS: NonNegativeInt = Field(
+        description='max active request per app, 0 means unlimited',
+        default=0,
+    )
 
 
-class CodeExecutionSandboxConfig(BaseModel):
+class CodeExecutionSandboxConfig(BaseSettings):
     """
     Code Execution Sandbox configs
     """
@@ -43,36 +53,36 @@ class CodeExecutionSandboxConfig(BaseModel):
     )
 
 
-class EndpointConfig(BaseModel):
+class EndpointConfig(BaseSettings):
     """
     Module URL configs
     """
     CONSOLE_API_URL: str = Field(
         description='The backend URL prefix of the console API.'
                     'used to concatenate the login authorization callback or notion integration callback.',
-        default='https://cloud.dify.ai',
+        default='',
     )
 
     CONSOLE_WEB_URL: str = Field(
         description='The front-end URL prefix of the console web.'
                     'used to concatenate some front-end addresses and for CORS configuration use.',
-        default='https://cloud.dify.ai',
+        default='',
     )
 
     SERVICE_API_URL: str = Field(
         description='Service API Url prefix.'
                     'used to display Service API Base Url to the front-end.',
-        default='https://api.dify.ai',
+        default='',
     )
 
     APP_WEB_URL: str = Field(
         description='WebApp Url prefix.'
                     'used to display WebAPP API Base Url to the front-end.',
-        default='https://udify.app',
+        default='',
     )
 
 
-class FileAccessConfig(BaseModel):
+class FileAccessConfig(BaseSettings):
     """
     File Access configs
     """
@@ -82,7 +92,7 @@ class FileAccessConfig(BaseModel):
                     'Url is signed and has expiration time.',
         validation_alias=AliasChoices('FILES_URL', 'CONSOLE_API_URL'),
         alias_priority=1,
-        default='https://cloud.dify.ai',
+        default='',
     )
 
     FILES_ACCESS_TIMEOUT: int = Field(
@@ -91,7 +101,7 @@ class FileAccessConfig(BaseModel):
     )
 
 
-class FileUploadConfig(BaseModel):
+class FileUploadConfig(BaseSettings):
     """
     File Uploading configs
     """
@@ -116,7 +126,7 @@ class FileUploadConfig(BaseModel):
     )
 
 
-class HttpConfig(BaseModel):
+class HttpConfig(BaseSettings):
     """
     HTTP configs
     """
@@ -148,7 +158,7 @@ class HttpConfig(BaseModel):
         return self.inner_WEB_API_CORS_ALLOW_ORIGINS.split(',')
 
 
-class InnerAPIConfig(BaseModel):
+class InnerAPIConfig(BaseSettings):
     """
     Inner API configs
     """
@@ -163,7 +173,7 @@ class InnerAPIConfig(BaseModel):
     )
 
 
-class LoggingConfig(BaseModel):
+class LoggingConfig(BaseSettings):
     """
     Logging configs
     """
@@ -195,7 +205,7 @@ class LoggingConfig(BaseModel):
     )
 
 
-class ModelLoadBalanceConfig(BaseModel):
+class ModelLoadBalanceConfig(BaseSettings):
     """
     Model load balance configs
     """
@@ -205,7 +215,7 @@ class ModelLoadBalanceConfig(BaseModel):
     )
 
 
-class BillingConfig(BaseModel):
+class BillingConfig(BaseSettings):
     """
     Platform Billing Configurations
     """
@@ -215,7 +225,7 @@ class BillingConfig(BaseModel):
     )
 
 
-class UpdateConfig(BaseModel):
+class UpdateConfig(BaseSettings):
     """
     Update configs
     """
@@ -225,7 +235,7 @@ class UpdateConfig(BaseModel):
     )
 
 
-class WorkflowConfig(BaseModel):
+class WorkflowConfig(BaseSettings):
     """
     Workflow feature configs
     """
@@ -246,7 +256,7 @@ class WorkflowConfig(BaseModel):
     )
 
 
-class OAuthConfig(BaseModel):
+class OAuthConfig(BaseSettings):
     """
     oauth configs
     """
@@ -276,7 +286,7 @@ class OAuthConfig(BaseModel):
     )
 
 
-class ModerationConfig(BaseModel):
+class ModerationConfig(BaseSettings):
     """
     Moderation in app configs.
     """
@@ -288,7 +298,7 @@ class ModerationConfig(BaseModel):
     )
 
 
-class ToolConfig(BaseModel):
+class ToolConfig(BaseSettings):
     """
     Tool configs
     """
@@ -299,7 +309,7 @@ class ToolConfig(BaseModel):
     )
 
 
-class MailConfig(BaseModel):
+class MailConfig(BaseSettings):
     """
     Mail Configurations
     """
@@ -355,7 +365,7 @@ class MailConfig(BaseModel):
     )
 
 
-class RagEtlConfig(BaseModel):
+class RagEtlConfig(BaseSettings):
     """
     RAG ETL Configurations.
     """
@@ -381,7 +391,7 @@ class RagEtlConfig(BaseModel):
     )
 
 
-class DataSetConfig(BaseModel):
+class DataSetConfig(BaseSettings):
     """
     Dataset configs
     """
@@ -391,8 +401,12 @@ class DataSetConfig(BaseModel):
         default=30,
     )
 
+    DATASET_OPERATOR_ENABLED: bool = Field(
+        description='whether to enable dataset operator',
+        default=False,
+    )
 
-class WorkspaceConfig(BaseModel):
+class WorkspaceConfig(BaseSettings):
     """
     Workspace configs
     """
@@ -403,7 +417,7 @@ class WorkspaceConfig(BaseModel):
     )
 
 
-class IndexingConfig(BaseModel):
+class IndexingConfig(BaseSettings):
     """
     Indexing configs.
     """
@@ -414,10 +428,17 @@ class IndexingConfig(BaseModel):
     )
 
 
-class ImageFormatConfig(BaseModel):
+class ImageFormatConfig(BaseSettings):
     MULTIMODAL_SEND_IMAGE_FORMAT: str = Field(
         description='multi model send image format, support base64, url, default is base64',
         default='base64',
+    )
+
+
+class CeleryBeatConfig(BaseSettings):
+    CELERY_BEAT_SCHEDULER_TIME: int = Field(
+        description='the time of the celery scheduler, default to 1 day',
+        default=1,
     )
 
 
@@ -448,5 +469,6 @@ class FeatureConfig(
 
     # hosted services config
     HostedServiceConfig,
+    CeleryBeatConfig,
 ):
     pass

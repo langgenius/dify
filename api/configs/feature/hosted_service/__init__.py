@@ -1,9 +1,10 @@
 from typing import Optional
 
-from pydantic import BaseModel, Field, NonNegativeInt
+from pydantic import Field, NonNegativeInt
+from pydantic_settings import BaseSettings
 
 
-class HostedOpenAiConfig(BaseModel):
+class HostedOpenAiConfig(BaseSettings):
     """
     Hosted OpenAI service config
     """
@@ -68,7 +69,7 @@ class HostedOpenAiConfig(BaseModel):
     )
 
 
-class HostedAzureOpenAiConfig(BaseModel):
+class HostedAzureOpenAiConfig(BaseSettings):
     """
     Hosted OpenAI service config
     """
@@ -78,7 +79,7 @@ class HostedAzureOpenAiConfig(BaseModel):
         default=False,
     )
 
-    HOSTED_OPENAI_API_KEY: Optional[str] = Field(
+    HOSTED_AZURE_OPENAI_API_KEY: Optional[str] = Field(
         description='',
         default=None,
     )
@@ -94,7 +95,7 @@ class HostedAzureOpenAiConfig(BaseModel):
     )
 
 
-class HostedAnthropicConfig(BaseModel):
+class HostedAnthropicConfig(BaseSettings):
     """
     Hosted Azure OpenAI service config
     """
@@ -125,7 +126,7 @@ class HostedAnthropicConfig(BaseModel):
     )
 
 
-class HostedMinmaxConfig(BaseModel):
+class HostedMinmaxConfig(BaseSettings):
     """
     Hosted Minmax service config
     """
@@ -136,7 +137,7 @@ class HostedMinmaxConfig(BaseModel):
     )
 
 
-class HostedSparkConfig(BaseModel):
+class HostedSparkConfig(BaseSettings):
     """
     Hosted Spark service config
     """
@@ -147,7 +148,7 @@ class HostedSparkConfig(BaseModel):
     )
 
 
-class HostedZhipuAIConfig(BaseModel):
+class HostedZhipuAIConfig(BaseSettings):
     """
     Hosted Minmax service config
     """
@@ -158,7 +159,7 @@ class HostedZhipuAIConfig(BaseModel):
     )
 
 
-class HostedModerationConfig(BaseModel):
+class HostedModerationConfig(BaseSettings):
     """
     Hosted Moderation service config
     """
@@ -174,7 +175,7 @@ class HostedModerationConfig(BaseModel):
     )
 
 
-class HostedFetchAppTemplateConfig(BaseModel):
+class HostedFetchAppTemplateConfig(BaseSettings):
     """
     Hosted Moderation service config
     """

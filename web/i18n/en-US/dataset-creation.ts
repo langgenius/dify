@@ -42,7 +42,7 @@ const translation = {
     notionSyncTitle: 'Notion is not connected',
     notionSyncTip: 'To sync with Notion, connection to Notion must be established first.',
     connect: 'Go to connect',
-    button: 'next',
+    button: 'Next',
     emptyDatasetCreation: 'I want to create an empty Knowledge',
     modal: {
       title: 'Create an empty Knowledge',
@@ -62,7 +62,7 @@ const translation = {
       run: 'Run',
       firecrawlTitle: 'Extract web content with 🔥Firecrawl',
       firecrawlDoc: 'Firecrawl docs',
-      firecrawlDocLink: 'https://docs.dify.ai/guides/knowledge-base/sync_from_website',
+      firecrawlDocLink: 'https://docs.dify.ai/guides/knowledge-base/sync-from-website',
       options: 'Options',
       crawlSubPage: 'Crawl sub-pages',
       limit: 'Limit',

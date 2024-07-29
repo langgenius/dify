@@ -1,3 +1,4 @@
+import json
 from typing import Any, Union
 
 from yarl import URL
@@ -26,6 +27,15 @@ class JinaReaderTool(BuiltinTool):
         if 'api_key' in self.runtime.credentials and self.runtime.credentials.get('api_key'):
             headers['Authorization'] = "Bearer " + self.runtime.credentials.get('api_key')
 
+        request_params = tool_parameters.get('request_params')
+        if request_params is not None and request_params != '':
+            try:
+                request_params = json.loads(request_params)
+                if not isinstance(request_params, dict):
+                    raise ValueError("request_params must be a JSON object")
+            except (json.JSONDecodeError, ValueError) as e:
+                raise ValueError(f"Invalid request_params: {e}")
+
         target_selector = tool_parameters.get('target_selector')
         if target_selector is not None and target_selector != '':
             headers['X-Target-Selector'] = target_selector
@@ -50,10 +60,13 @@ class JinaReaderTool(BuiltinTool):
         if tool_parameters.get('no_cache', False):
             headers['X-No-Cache'] = 'true'
 
+        max_retries = tool_parameters.get('max_retries', 3)
         response = ssrf_proxy.get(
             str(URL(self._jina_reader_endpoint + url)),
             headers=headers,
-            timeout=(10, 60)
+            params=request_params,
+            timeout=(10, 60),
+            max_retries=max_retries
         )
 
         if tool_parameters.get('summary', False):

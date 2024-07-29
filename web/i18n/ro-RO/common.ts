@@ -118,6 +118,7 @@ const translation = {
   },
   userProfile: {
     settings: 'Setări',
+    emailSupport: 'Suport prin email',
     workspace: 'Spațiu de lucru',
     createWorkspace: 'Creează Spațiu de lucru',
     helpCenter: 'Ajutor',

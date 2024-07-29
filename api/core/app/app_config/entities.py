@@ -114,6 +114,10 @@ class VariableEntity(BaseModel):
     default: Optional[str] = None
     hint: Optional[str] = None
 
+    @property
+    def name(self) -> str:
+        return self.variable
+
 
 class ExternalDataVariableEntity(BaseModel):
     """
@@ -155,7 +159,11 @@ class DatasetRetrieveConfigEntity(BaseModel):
     retrieve_strategy: RetrieveStrategy
     top_k: Optional[int] = None
     score_threshold: Optional[float] = None
+    rerank_mode: Optional[str] = 'reranking_model'
     reranking_model: Optional[dict] = None
+    weights: Optional[dict] = None
+
+
 
 
 class DatasetEntity(BaseModel):

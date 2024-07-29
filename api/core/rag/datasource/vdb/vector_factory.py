@@ -1,8 +1,7 @@
 from abc import ABC, abstractmethod
 from typing import Any
 
-from flask import current_app
-
+from configs import dify_config
 from core.embedding.cached_embedding import CacheEmbedding
 from core.model_manager import ModelManager
 from core.model_runtime.entities.model_entities import ModelType
@@ -10,6 +9,7 @@ from core.rag.datasource.entity.embedding import Embeddings
 from core.rag.datasource.vdb.vector_base import BaseVector
 from core.rag.datasource.vdb.vector_type import VectorType
 from core.rag.models.document import Document
+from extensions.ext_redis import redis_client
 from models.dataset import Dataset
 
 
@@ -37,8 +37,7 @@ class Vector:
         self._vector_processor = self._init_vector()
 
     def _init_vector(self) -> BaseVector:
-        config = current_app.config
-        vector_type = config.get('VECTOR_STORE')
+        vector_type = dify_config.VECTOR_STORE
         if self._dataset.index_struct_dict:
             vector_type = self._dataset.index_struct_dict['type']
 
@@ -57,6 +56,9 @@ class Vector:
             case VectorType.MILVUS:
                 from core.rag.datasource.vdb.milvus.milvus_vector import MilvusVectorFactory
                 return MilvusVectorFactory
+            case VectorType.MYSCALE:
+                from core.rag.datasource.vdb.myscale.myscale_vector import MyScaleVectorFactory
+                return MyScaleVectorFactory
             case VectorType.PGVECTOR:
                 from core.rag.datasource.vdb.pgvector.pgvector import PGVectorFactory
                 return PGVectorFactory
@@ -84,6 +86,9 @@ class Vector:
             case VectorType.OPENSEARCH:
                 from core.rag.datasource.vdb.opensearch.opensearch_vector import OpenSearchVectorFactory
                 return OpenSearchVectorFactory
+            case VectorType.ANALYTICDB:
+                from core.rag.datasource.vdb.analyticdb.analyticdb_vector import AnalyticdbVectorFactory
+                return AnalyticdbVectorFactory
             case _:
                 raise ValueError(f"Vector store {vector_type} is not supported.")
 
@@ -130,6 +135,10 @@ class Vector:
 
     def delete(self) -> None:
         self._vector_processor.delete()
+        # delete collection redis cache
+        if self._vector_processor.collection_name:
+            collection_exist_cache_key = 'vector_indexing_{}'.format(self._vector_processor.collection_name)
+            redis_client.delete(collection_exist_cache_key)
 
     def _get_embeddings(self) -> Embeddings:
         model_manager = ModelManager()
@@ -144,7 +153,7 @@ class Vector:
         return CacheEmbedding(embedding_model)
 
     def _filter_duplicate_texts(self, texts: list[Document]) -> list[Document]:
-        for text in texts:
+        for text in texts[:]:
             doc_id = text.metadata['doc_id']
             exists_duplicate_node = self.text_exists(doc_id)
             if exists_duplicate_node:

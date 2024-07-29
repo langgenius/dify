@@ -1,7 +1,7 @@
 import { Popover, Transition } from '@headlessui/react'
 import { Fragment, cloneElement, useRef } from 'react'
-import cn from 'classnames'
 import s from './style.module.css'
+import cn from '@/utils/classnames'
 
 export type HtmlContentProps = {
   onClose?: () => void
