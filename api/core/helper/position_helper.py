@@ -14,7 +14,7 @@ def get_position_map(folder_path: str, *, file_name: str = "_position.yaml") -> 
     :return: a dict with name as key and index as value
     """
     position_file_path = os.path.join(folder_path, file_name)
-    yaml_content = load_yaml_file(file_path=position_file_path, default_value=[])
+    yaml_content = load_yaml_file(file_path=position_file_path, ignore_error=True, default_value=[])
     positions = [item.strip() for item in yaml_content if item and isinstance(item, str) and item.strip()]
     return {name: index for index, name in enumerate(positions)}
 
