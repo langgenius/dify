@@ -1,0 +1,44 @@
+identity: # 工具的基本信息
+  name: mgdb_query 
+  author: Riino 
+  label: 
+    en_US: MongoDB 
+    zh_Hans: MongoDB 
+description: 
+  human: 
+    en_US: A tool for performing a query to MongoDB
+    zh_Hans: 一个用于执行 MongoDB 聚合管道查询的工具。
+  llm: A tool for performing a query search in MongoDB. Input should be a mongoDB Aggregation Pipeline. 
+parameters: 
+  - name: database_name
+    type: string 
+    required: true 
+    label: 
+      en_US: Database Name
+      zh_Hans: 数据库名称
+    human_description: 
+      en_US: MongoDB database name
+      zh_Hans: MongoDB 数据库名
+    form: form 
+  - name: collection_name
+    type: string 
+    required: true 
+    label: 
+      en_US: Collection Name
+      zh_Hans: 集合名称
+    human_description: 
+      en_US: MongoDB collection name
+      zh_Hans: MongoDB 集合名称
+    form: form 
+  - name: query_pipeline 
+    type: string 
+    required: true 
+    label: 
+      en_US: Query pipeline 
+      zh_Hans: 查询管道 
+    human_description: 
+      en_US: For more information, visit https://www.mongodb.com/docs/manual/tutorial/update-documents-with-aggregation-pipeline/
+      zh_Hans: 详见 https://www.mongodb.com/zh-cn/docs/manual/core/aggregation-pipeline/
+    llm_description: a typical pipeline query 
+    form: form 
+

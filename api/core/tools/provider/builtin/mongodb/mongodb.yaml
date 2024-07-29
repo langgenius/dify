@@ -1,0 +1,57 @@
+# identity: 
+#   author: Riino
+#   name: mongodb
+#   label:
+#     en_US: MongoDB
+#     zh_Hans: MongoDB 
+#   description:
+#     en_US: Connect to MongoDB 
+#     zh_Hans: 连接 MongoDB 数据库
+#   icon: icon.svg
+#   credentials_for_provider:
+#    mongodb_uri:
+#     type: secret-input
+#     required: true
+#     label: 
+#       en_US: MongoDB connection string
+#       zh_Hans: MongoDB connection string
+#     placeholder: 
+#       en_US: Please input your connection string
+#       zh_Hans: 请输入你的数据库链接地址
+#     help: 
+#       en_US: Get your connection string from MongoDB Atlas or other MongoDB
+#       zh_Hans: 从MongdoDB Atlas 或者其他数据库获取连接凭证 
+#     url: https://cloud.mongodb.com/ 
+
+identity:
+  author: Riino
+  name: mongodb
+  label:
+    en_US: MongoDB
+    zh_Hans: MongoDB
+    pt_BR: MongoDB
+  description:
+    en_US: MongoDB
+    zh_Hans: MongoDB
+    pt_BR: MongoDB
+  icon: icon.svg
+  tags:
+    - productivity
+    - utilities
+credentials_for_provider:
+  mongodb_uri:
+    type: secret-input
+    required: true
+    label:
+      en_US: Mongodb Connection String
+      zh_Hans: Mongodb Connection String
+      pt_BR: Mongodb Connection String
+    placeholder:
+      en_US: Please input your Mongodb Connection String
+      zh_Hans: 请输入你的 Mongodb Connection String
+      pt_BR: Please input your Mongodb Connection String
+    help:
+      en_US: Get your Mongodb Connection String from MongoDB Atlas
+      zh_Hans: 从 MongoDb Atlas 获取您的 Mongodb Connection String
+      pt_BR: Get your Mongodb Connection String from MongoDB Atlas
+    url: https://cloud.mongodb.com/
