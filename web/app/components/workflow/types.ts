@@ -220,6 +220,7 @@ export type Var = {
   isSelect?: boolean
   options?: string[]
   required?: boolean
+  des?: string
 }
 
 export type NodeOutPutVar = {

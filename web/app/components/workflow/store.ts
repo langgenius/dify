@@ -27,7 +27,7 @@ const MOCK_DATA = [
   {
     id: 'fjlaksdjflkjg-dfjlajfl0dnfkafjk-djfdkafj-djfak',
     name: 'chat_history',
-    value_type: 'Array[Message]',
+    value_type: 'array[message]',
     value: [],
     description: 'The chat history of the conversation',
   },
@@ -35,7 +35,7 @@ const MOCK_DATA = [
     id: 'fljdaklfjl-dfjlafj0-dklajglje-eknglh',
     name: 'order_id',
     value: '123456',
-    value_type: 'String',
+    value_type: 'string',
     description: '',
   },
 ]

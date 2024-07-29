@@ -101,7 +101,7 @@ const WorkflowVariableBlockComponent = ({
         {!isEnv && !isChatVar && <Variable02 className='shrink-0 w-3.5 h-3.5' />}
         {isEnv && <Env className='shrink-0 w-3.5 h-3.5 text-util-colors-violet-violet-600' />}
         {isChatVar && <BubbleX className='w-3.5 h-3.5 text-util-colors-teal-teal-700' />}
-        <div className={cn('shrink-0 ml-0.5 text-xs font-medium truncate', isEnv && 'text-gray-900')} title={varName}>{varName}</div>
+        <div className={cn('shrink-0 ml-0.5 text-xs font-medium truncate', (isEnv || isChatVar) && 'text-gray-900')} title={varName}>{varName}</div>
         {
           !node && !isEnv && !isChatVar && (
             <RiErrorWarningFill className='ml-0.5 w-3 h-3 text-[#D92D20]' />

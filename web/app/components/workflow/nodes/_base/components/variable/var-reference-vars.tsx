@@ -114,7 +114,7 @@ const Item: FC<ItemProps> = ({
               <div title={itemData.variable} className='ml-1 w-0 grow truncate text-[13px] font-normal text-gray-900'>{itemData.variable.replace('env.', '')}</div>
             )}
             {isChatVar && (
-              <div title={itemData.variable} className='ml-1 w-0 grow truncate text-[13px] font-normal text-gray-900'>{itemData.variable.replace('conversation.', '')}</div>
+              <div title={itemData.des} className='ml-1 w-0 grow truncate text-[13px] font-normal text-gray-900'>{itemData.variable.replace('conversation.', '')}</div>
             )}
           </div>
           <div className='ml-1 shrink-0 text-xs font-normal text-gray-500 capitalize'>{itemData.type}</div>
@@ -218,7 +218,6 @@ const VarReferenceVars: FC<Props> = ({
 }) => {
   const { t } = useTranslation()
   const [searchText, setSearchText] = useState('')
-  console.log(vars)
 
   const filteredVars = vars.filter((v) => {
     const children = v.vars.filter(v => checkKeys([v.variable], false).isValid || v.variable.startsWith('sys.') || v.variable.startsWith('env.') || v.variable.startsWith('conversation.'))

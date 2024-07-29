@@ -1,8 +1,8 @@
 export enum ChatVarType {
-  Number = 'Number',
-  String = 'String',
-  Object = 'Object',
-  ArrayString = 'Array[String]',
-  ArrayNumber = 'Array[Number]',
-  ArrayObject = 'Array[Object]',
+  Number = 'number',
+  String = 'string',
+  Object = 'object',
+  ArrayString = 'array[string]',
+  ArrayNumber = 'array[number]',
+  ArrayObject = 'array[object]',
 }

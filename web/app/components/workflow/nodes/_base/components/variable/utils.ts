@@ -301,7 +301,7 @@ export const toNodeOutputVars = (
     data: {
       title: 'CONVERSATION',
       type: 'conversation',
-      chatVarList: environmentVariables,
+      chatVarList: conversationVariables,
     },
   }
   const res = [
