@@ -183,8 +183,41 @@ class BaseAgentRunner(AppRunner):
 
             if parameter.required:
                 message_tool.parameters['required'].append(parameter.name)
+            
+            if parameter.type == ToolParameter.ToolParameterType.OBJECT:
+                self._convert_object_to_properties(parameter, message_tool.parameters['properties'][parameter.name])
 
         return message_tool, tool_entity
+
+    def _convert_object_to_properties(self, tool_parameter: ToolParameter, message_tool_parameter: dict):
+        """
+            convert tool parameter object to prompt message tool
+        """
+        message_tool_parameter['properties'] = {}
+        message_tool_parameter['required'] = []
+        for parameter in tool_parameter.properties:
+            if (parameter is None): continue
+            if parameter['form'] != 'llm':#ToolParameter.ToolParameterForm.LLM:
+                continue
+
+            parameter_type = ToolParameterConverter.get_parameter_type(parameter['type'])
+            enum = []
+            if parameter['type'] == 'select':#ToolParameter.ToolParameterType.SELECT:
+                enum = [option.value for option in parameter['options']]
+
+            message_tool_parameter['properties'][parameter['name']] = {
+                "type": parameter_type,
+                "description": parameter['llm_description'] or '',
+            }
+
+            if len(enum) > 0:
+                message_tool_parameter['properties'][parameter['name']]['enum'] = enum
+
+            if parameter['required']:
+                message_tool_parameter['required'].append(parameter['name'])
+            
+            if parameter['type'] == 'object':#ToolParameter.ToolParameterType.OBJECT:
+                self._convert_object_to_properties(parameter, message_tool_parameter['properties'][parameter['name']])
     
     def _convert_dataset_retriever_tool_to_prompt_message_tool(self, tool: DatasetRetrieverTool) -> PromptMessageTool:
         """

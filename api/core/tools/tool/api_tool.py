@@ -233,6 +233,7 @@ class ApiTool(Tool):
 
     def _convert_body_property_type(self, property: dict[str, Any], value: Any) -> Any:
         try:
+            if ("$ref" in property): property = {**property, "type": "object" }
             if 'type' in property:
                 if property['type'] == 'integer' or property['type'] == 'int':
                     return int(value)

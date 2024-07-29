@@ -36,7 +36,8 @@ class HunyuanLargeLanguageModel(LargeLanguageModel):
 
         custom_parameters = {
             'Temperature': model_parameters.get('temperature', 0.0),
-            'TopP': model_parameters.get('top_p', 1.0)
+            'TopP': model_parameters.get('top_p', 1.0),
+            'EnableEnhancement': False,
         }
 
         params = {
@@ -57,8 +58,10 @@ class HunyuanLargeLanguageModel(LargeLanguageModel):
                 }
             } for tool in tools]
 
+        logging.info(f"HunyuanLargeLanguageModel invoke params: {params}")
         request.from_json_string(json.dumps(params))
         response = client.ChatCompletions(request)
+        logging.info(f"HunyuanLargeLanguageModel invoke response: {response}")
 
         if stream:
             return self._handle_stream_chat_response(model, credentials, prompt_messages, response)
