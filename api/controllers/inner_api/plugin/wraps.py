@@ -2,7 +2,9 @@ from collections.abc import Callable
 from functools import wraps
 from typing import Optional
 
+from flask import request
 from flask_restful import reqparse
+from pydantic import BaseModel
 
 from extensions.ext_database import db
 from models.account import Tenant
@@ -41,6 +43,29 @@ def get_tenant(view: Optional[Callable] = None):
             return view_func(*args, **kwargs)
         return decorated_view
 
+    if view is None:
+        return decorator
+    else:
+        return decorator(view)
+
+def plugin_data(view: Optional[Callable] = None, *, payload_type: type[BaseModel]):
+    def decorator(view_func):
+        def decorated_view(*args, **kwargs):
+            try:
+                data = request.get_json()
+            except Exception:
+                raise ValueError('invalid json')
+            
+            try:
+                payload = payload_type(**data)
+            except Exception as e:
+                raise ValueError(f'invalid payload: {str(e)}')
+            
+            kwargs['payload'] = payload
+            return view_func(*args, **kwargs)
+        
+        return decorated_view
+    
     if view is None:
         return decorator
     else:

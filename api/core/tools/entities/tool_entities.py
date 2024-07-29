@@ -103,8 +103,8 @@ class ToolInvokeMessage(BaseModel):
     """
         plain text, image url or link url
     """
-    message: Union[str, bytes, dict] = None
-    meta: dict[str, Any] = None
+    message: Optional[Union[str, bytes, dict]] = None
+    meta: Optional[dict[str, Any]] = None
     save_as: str = ''
 
 class ToolInvokeMessageBinary(BaseModel):
@@ -168,16 +168,19 @@ class ToolParameter(BaseModel):
         """
         # convert options to ToolParameterOption
         if options:
-            options = [ToolParameterOption(value=option, label=I18nObject(en_US=option, zh_Hans=option)) for option in options]
+            option_objs = [ToolParameterOption(value=option, label=I18nObject(en_US=option, zh_Hans=option)) for option in options]
+        else:
+            option_objs = None
         return cls(
             name=name,
             label=I18nObject(en_US='', zh_Hans=''),
+            placeholder=None,
             human_description=I18nObject(en_US='', zh_Hans=''),
             type=type,
             form=cls.ToolParameterForm.LLM,
             llm_description=llm_description,
             required=required,
-            options=options,
+            options=option_objs,
         )
 
 class ToolProviderIdentity(BaseModel):
@@ -245,7 +248,7 @@ class ToolProviderCredentials(BaseModel):
             'default': self.default,
             'options': self.options,
             'help': self.help.to_dict() if self.help else None,
-            'label': self.label.to_dict(),
+            'label': self.label.to_dict() if self.label else None,
             'url': self.url,
             'placeholder': self.placeholder.to_dict() if self.placeholder else None,
         }
