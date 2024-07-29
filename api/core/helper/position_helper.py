@@ -13,18 +13,10 @@ def get_position_map(folder_path: str, *, file_name: str = "_position.yaml") -> 
     :param file_name: the YAML file name, default to '_position.yaml'
     :return: a dict with name as key and index as value
     """
-    position_file_name = os.path.join(folder_path, file_name)
-    if not position_file_name or not os.path.exists(position_file_name):
-        return {}
-    
-    positions = load_yaml_file(position_file_name, ignore_error=True)
-    position_map = {}
-    index = 0
-    for _, name in enumerate(positions):
-        if name and isinstance(name, str):
-            position_map[name.strip()] = index
-            index += 1
-    return position_map
+    position_file_path = os.path.join(folder_path, file_name)
+    yaml_content = load_yaml_file(file_path=position_file_path, default_value=[])
+    positions = [item.strip() for item in yaml_content if item and isinstance(item, str) and item.strip()]
+    return {name: index for index, name in enumerate(positions)}
 
 
 def sort_by_position_map(
