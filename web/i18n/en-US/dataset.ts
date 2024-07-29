@@ -33,7 +33,7 @@ const translation = {
     },
     hybrid_search: {
       title: 'Hybrid Search',
-      description: 'Execute full-text search and vector searches simultaneously, re-rank to select the best match for the user\'s query. Configuration of the Rerank model APIs necessary.',
+      description: 'Execute full-text search and vector searches simultaneously, re-rank to select the best match for the user\'s query. Users can choose to set weights or configure to a Rerank model.',
       recommend: 'Recommend',
     },
     invertedIndex: {
@@ -60,14 +60,14 @@ const translation = {
   rerankSettings: 'Rerank Setting',
   weightedScore: {
     title: 'Weighted Score',
-    description: 'By adjusting the weights assigned， this rerank strategy determines whether to prioritize semantic or keyword matching.',
+    description: 'By adjusting the weights assigned, this rerank strategy determines whether to prioritize semantic or keyword matching.',
     semanticFirst: 'Semantic first',
     keywordFirst: 'Keyword first',
     customized: 'Customized',
     semantic: 'Semantic',
     keyword: 'Keyword',
   },
-  nTo1RetrievalLegacy: 'According to product planning, N-to-1 retrieval will be officially deprecated in September. Until then you can still use it normally.',
+  nTo1RetrievalLegacy: 'According to the optimization and upgrade of the retrieval strategy, N-to-1 retrieval will be officially deprecated in September. Until then you can still use it normally.',
 }
 
 export default translation

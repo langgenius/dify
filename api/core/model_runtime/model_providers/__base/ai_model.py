@@ -162,7 +162,7 @@ class AIModel(ABC):
         # traverse all model_schema_yaml_paths
         for model_schema_yaml_path in model_schema_yaml_paths:
             # read yaml data from yaml file
-            yaml_data = load_yaml_file(model_schema_yaml_path, ignore_error=True)
+            yaml_data = load_yaml_file(model_schema_yaml_path)
 
             new_parameter_rules = []
             for parameter_rule in yaml_data.get('parameter_rules', []):
