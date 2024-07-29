@@ -18,6 +18,9 @@ class ToolParameterConverter:
             case ToolParameter.ToolParameterType.NUMBER:
                 return 'number'
 
+            case ToolParameter.ToolParameterType.OBJECT:
+                return 'object'
+
             case _:
                 raise ValueError(f"Unsupported parameter type {parameter_type}")
 
@@ -58,7 +61,7 @@ class ToolParameterConverter:
                             return float(value)
                         else:
                             return int(value)
-                case ToolParameter.ToolParameterType.FILE:
+                case ToolParameter.ToolParameterType.FILE | ToolParameter.ToolParameterType.OBJECT:
                     return value
                 case _:
                     return str(value)
