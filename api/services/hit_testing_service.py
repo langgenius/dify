@@ -38,14 +38,16 @@ class HitTestingService:
         if not retrieval_model:
             retrieval_model = dataset.retrieval_model if dataset.retrieval_model else default_retrieval_model
 
-        all_documents = RetrievalService.retrieve(retrival_method=retrieval_model['search_method'],
+        all_documents = RetrievalService.retrieve(retrival_method=retrieval_model.get('search_method', 'semantic_search'),
                                                   dataset_id=dataset.id,
                                                   query=cls.escape_query_for_search(query),
-                                                  top_k=retrieval_model['top_k'],
+                                                  top_k=retrieval_model.get('top_k', 2),
                                                   score_threshold=retrieval_model['score_threshold']
                                                   if retrieval_model['score_threshold_enabled'] else None,
                                                   reranking_model=retrieval_model['reranking_model']
-                                                  if retrieval_model['reranking_enable'] else None
+                                                  if retrieval_model['reranking_enable'] else None,
+                                                  reranking_mode=retrieval_model.get('reranking_mode', None),
+                                                  weights=retrieval_model.get('weights', None),
                                                   )
 
         end = time.perf_counter()

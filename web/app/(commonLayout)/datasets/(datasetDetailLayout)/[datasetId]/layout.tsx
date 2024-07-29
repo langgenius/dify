@@ -166,8 +166,8 @@ const ExtraInfo = ({ isMobile, relatedApps }: IExtraInfoProps) => {
             className='inline-flex items-center text-xs text-primary-600 mt-2 cursor-pointer'
             href={
               locale === LanguagesSupported[1]
-                ? 'https://docs.dify.ai/v/zh-hans/guides/application-design/prompt-engineering'
-                : 'https://docs.dify.ai/user-guide/creating-dify-apps/prompt-engineering'
+                ? 'https://docs.dify.ai/v/zh-hans/guides/knowledge-base/integrate_knowledge_within_application'
+                : 'https://docs.dify.ai/guides/knowledge-base/integrate-knowledge-within-application'
             }
             target='_blank' rel='noopener noreferrer'
           >

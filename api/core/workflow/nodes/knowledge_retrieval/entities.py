@@ -13,13 +13,41 @@ class RerankingModelConfig(BaseModel):
     model: str
 
 
+class VectorSetting(BaseModel):
+    """
+    Vector Setting.
+    """
+    vector_weight: float
+    embedding_provider_name: str
+    embedding_model_name: str
+
+
+class KeywordSetting(BaseModel):
+    """
+    Keyword Setting.
+    """
+    keyword_weight: float
+
+
+class WeightedScoreConfig(BaseModel):
+    """
+    Weighted score Config.
+    """
+    weight_type: str
+    vector_setting: VectorSetting
+    keyword_setting: KeywordSetting
+
+
 class MultipleRetrievalConfig(BaseModel):
     """
     Multiple Retrieval Config.
     """
     top_k: int
     score_threshold: Optional[float] = None
-    reranking_model: RerankingModelConfig
+    reranking_mode: str = 'reranking_model'
+    reranking_enable: bool = True
+    reranking_model: Optional[RerankingModelConfig] = None
+    weights: Optional[WeightedScoreConfig] = None
 
 
 class ModelConfig(BaseModel):

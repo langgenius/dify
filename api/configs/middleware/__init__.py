@@ -1,4 +1,5 @@
 from typing import Any, Optional
+from urllib.parse import quote_plus
 
 from pydantic import Field, NonNegativeInt, PositiveInt, computed_field
 from pydantic_settings import BaseSettings
@@ -104,7 +105,7 @@ class DatabaseConfig:
         ).strip("&")
         db_extras = f"?{db_extras}" if db_extras else ""
         return (f"{self.SQLALCHEMY_DATABASE_URI_SCHEME}://"
-                f"{self.DB_USERNAME}:{self.DB_PASSWORD}@{self.DB_HOST}:{self.DB_PORT}/{self.DB_DATABASE}"
+                f"{quote_plus(self.DB_USERNAME)}:{quote_plus(self.DB_PASSWORD)}@{self.DB_HOST}:{self.DB_PORT}/{self.DB_DATABASE}" 
                 f"{db_extras}")
 
     SQLALCHEMY_POOL_SIZE: NonNegativeInt = Field(

@@ -31,12 +31,12 @@ const VoiceParamConfig: FC = () => {
 
   let languageItem = languages.find(item => item.value === textToSpeechConfig.language)
   const localLanguagePlaceholder = languageItem?.name || t('common.placeholder.select')
-  if (languages && !languageItem)
+  if (languages && !languageItem && languages.length > 0)
     languageItem = languages[0]
   const language = languageItem?.value
   const voiceItems = useSWR({ appId, language }, fetchAppVoices).data
   let voiceItem = voiceItems?.find(item => item.value === textToSpeechConfig.voice)
-  if (voiceItems && !voiceItem)
+  if (voiceItems && !voiceItem && voiceItems.length > 0)
     voiceItem = voiceItems[0]
 
   const localVoicePlaceholder = voiceItem?.name || t('common.placeholder.select')
@@ -125,9 +125,11 @@ const VoiceParamConfig: FC = () => {
             <div
               className='mb-2 leading-[18px] text-[13px] font-semibold text-gray-800'>{t('appDebug.voice.voiceSettings.voice')}</div>
             <Listbox
-              value={voiceItem}
+              value={voiceItem ?? {}}
               disabled={!languageItem}
               onChange={(value: Item) => {
+                if (!value.value)
+                  return
                 setTextToSpeechConfig({
                   ...textToSpeechConfig,
                   voice: String(value.value),

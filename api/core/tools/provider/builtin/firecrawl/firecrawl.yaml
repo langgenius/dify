@@ -31,8 +31,5 @@ credentials_for_provider:
     label:
       en_US: Firecrawl server's Base URL
       zh_Hans: Firecrawl服务器的API URL
-      pt_BR: Firecrawl server's Base URL
     placeholder:
-      en_US: https://www.firecrawl.dev
-      zh_HansL: https://www.firecrawl.dev
-      pt_BR: https://www.firecrawl.dev
+      en_US: https://api.firecrawl.dev

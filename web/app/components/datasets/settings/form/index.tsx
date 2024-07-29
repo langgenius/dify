@@ -113,6 +113,10 @@ const Form = () => {
       retrievalConfig,
       indexMethod,
     })
+    if (postRetrievalConfig.weights) {
+      postRetrievalConfig.weights.vector_setting.embedding_provider_name = currentDataset?.embedding_model_provider || ''
+      postRetrievalConfig.weights.vector_setting.embedding_model_name = currentDataset?.embedding_model || ''
+    }
     try {
       setLoading(true)
       const requestParams = {

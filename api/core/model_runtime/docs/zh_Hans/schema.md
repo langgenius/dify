@@ -87,6 +87,9 @@
 
 - `agent-thought` Agent 推理，一般超过 70B 有思维链能力。
 - `vision` 视觉，即：图像理解。
+- `tool-call` 工具调用
+- `multi-tool-call` 多工具调用
+- `stream-tool-call` 流式工具调用
 
 ### FetchFrom
 

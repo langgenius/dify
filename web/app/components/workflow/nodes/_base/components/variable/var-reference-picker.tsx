@@ -146,7 +146,10 @@ const VarReferencePicker: FC<Props> = ({
   const varName = useMemo(() => {
     if (hasValue) {
       const isSystem = isSystemVar(value as ValueSelector)
-      const varName = value.length >= 3 ? (value as ValueSelector).slice(-2).join('.') : value[value.length - 1]
+      let varName = ''
+      if (Array.isArray(value))
+        varName = value.length >= 3 ? (value as ValueSelector).slice(-2).join('.') : value[value.length - 1]
+
       return `${isSystem ? 'sys.' : ''}${varName}`
     }
     return ''
