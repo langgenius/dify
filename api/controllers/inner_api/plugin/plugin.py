@@ -1,10 +1,13 @@
 import time
+from collections.abc import Generator
+
 from flask_restful import Resource, reqparse
 
 from controllers.console.setup import setup_required
 from controllers.inner_api import api
 from controllers.inner_api.plugin.wraps import get_tenant, plugin_data
 from controllers.inner_api.wraps import plugin_inner_api_only
+from core.plugin.backwards_invocation.model import PluginBackwardsInvocation
 from core.plugin.entities.request import (
     RequestInvokeLLM,
     RequestInvokeModeration,
@@ -17,7 +20,6 @@ from core.plugin.entities.request import (
 from core.tools.entities.tool_entities import ToolInvokeMessage
 from libs.helper import compact_generate_response
 from models.account import Tenant
-from services.plugin.plugin_invoke_service import PluginInvokeService
 
 
 class PluginInvokeLLMApi(Resource):
@@ -26,7 +28,15 @@ class PluginInvokeLLMApi(Resource):
     @get_tenant
     @plugin_data(payload_type=RequestInvokeLLM)
     def post(self, user_id: str, tenant_model: Tenant, payload: RequestInvokeLLM):
-        pass
+        def generator():
+            response = PluginBackwardsInvocation.invoke_llm(user_id, tenant_model, payload)
+            if isinstance(response, Generator):
+                for chunk in response:
+                    yield chunk.model_dump_json().encode() + b'\n\n'
+            else:
+                yield response.model_dump_json().encode() + b'\n\n'
+
+        return compact_generate_response(generator())
 
 
 class PluginInvokeTextEmbeddingApi(Resource):

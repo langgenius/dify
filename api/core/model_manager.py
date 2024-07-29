@@ -7,7 +7,7 @@ from core.entities.provider_configuration import ProviderConfiguration, Provider
 from core.entities.provider_entities import ModelLoadBalancingConfiguration
 from core.errors.error import ProviderTokenNotInitError
 from core.model_runtime.callbacks.base_callback import Callback
-from core.model_runtime.entities.llm_entities import LLMResult
+from core.model_runtime.entities.llm_entities import LLMResult, LLMResultChunk
 from core.model_runtime.entities.message_entities import PromptMessage, PromptMessageTool
 from core.model_runtime.entities.model_entities import ModelType
 from core.model_runtime.entities.rerank_entities import RerankResult
@@ -103,7 +103,7 @@ class ModelInstance:
     def invoke_llm(self, prompt_messages: list[PromptMessage], model_parameters: Optional[dict] = None,
                    tools: Optional[list[PromptMessageTool]] = None, stop: Optional[list[str]] = None,
                    stream: bool = True, user: Optional[str] = None, callbacks: Optional[list[Callback]] = None) \
-            -> Union[LLMResult, Generator]:
+            -> Union[LLMResult, Generator[LLMResultChunk, None, None]]:
         """
         Invoke large language model
 
