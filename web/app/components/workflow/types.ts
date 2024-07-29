@@ -142,6 +142,7 @@ export type InputVar = {
     nodeType: BlockEnum
     nodeName: string
     variable: string
+    isChatVar?: boolean
   }
   variable: string
   max_length?: number

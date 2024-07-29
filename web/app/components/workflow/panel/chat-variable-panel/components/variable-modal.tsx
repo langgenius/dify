@@ -164,9 +164,9 @@ const ChatVariableModal = ({
       return notify({ type: 'error', message: 'name can not be empty' })
     if (!chatVar && varList.some(chatVar => chatVar.name === name))
       return notify({ type: 'error', message: 'name is existed' })
-    if (type !== ChatVarType.Object && !value)
-      return notify({ type: 'error', message: 'value can not be empty' })
-    if (type === ChatVarType.Object && !objectValue.some(item => item.key))
+    // if (type !== ChatVarType.Object && !value)
+    //   return notify({ type: 'error', message: 'value can not be empty' })
+    if (type === ChatVarType.Object && objectValue.some(item => !item.key && !!item.value))
       return notify({ type: 'error', message: 'object key can not be empty' })
 
     onSave({

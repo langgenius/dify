@@ -18,6 +18,8 @@ import { useFeatures } from '@/app/components/base/features/hooks'
 import { VarBlockIcon } from '@/app/components/workflow/block-icon'
 import { Line3 } from '@/app/components/base/icons/src/public/common'
 import { Variable02 } from '@/app/components/base/icons/src/vender/solid/development'
+import { BubbleX } from '@/app/components/base/icons/src/vender/line/others'
+import cn from '@/utils/classnames'
 
 type Props = {
   payload: InputVar
@@ -56,22 +58,24 @@ const FormItem: FC<Props> = ({
   }, [value, onChange])
   const nodeKey = (() => {
     if (typeof payload.label === 'object') {
-      const { nodeType, nodeName, variable } = payload.label
+      const { nodeType, nodeName, variable, isChatVar } = payload.label
       return (
         <div className='h-full flex items-center'>
-          <div className='flex items-center'>
-            <div className='p-[1px]'>
-              <VarBlockIcon type={nodeType || BlockEnum.Start} />
+          {!isChatVar && (
+            <div className='flex items-center'>
+              <div className='p-[1px]'>
+                <VarBlockIcon type={nodeType || BlockEnum.Start} />
+              </div>
+              <div className='mx-0.5 text-xs font-medium text-gray-700 max-w-[150px] truncate' title={nodeName}>
+                {nodeName}
+              </div>
+              <Line3 className='mr-0.5'></Line3>
             </div>
-            <div className='mx-0.5 text-xs font-medium text-gray-700 max-w-[150px] truncate' title={nodeName}>
-              {nodeName}
-            </div>
-            <Line3 className='mr-0.5'></Line3>
-          </div>
-
+          )}
           <div className='flex items-center text-primary-600'>
-            <Variable02 className='w-3.5 h-3.5' />
-            <div className='ml-0.5 text-xs font-medium max-w-[150px] truncate' title={variable} >
+            {!isChatVar && <Variable02 className='w-3.5 h-3.5' />}
+            {isChatVar && <BubbleX className='w-3.5 h-3.5 text-util-colors-teal-teal-700' />}
+            <div className={cn('ml-0.5 text-xs font-medium max-w-[150px] truncate', isChatVar && 'text-text-secondary')} title={variable} >
               {variable}
             </div>
           </div>
