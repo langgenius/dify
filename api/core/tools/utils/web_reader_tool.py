@@ -7,6 +7,7 @@ import site
 import subprocess
 import tempfile
 import unicodedata
+import chardet
 from contextlib import contextmanager
 from urllib.parse import unquote
 
@@ -76,6 +77,19 @@ def get_url(url: str, user_agent: str = None) -> str:
         return "URL returned status code {}.".format(response.status_code)
 
     a = extract_using_readabilipy(response.text)
+
+    # Detect encoding using chardet
+    detected_encoding = chardet.detect(response.content)
+    encoding = detected_encoding['encoding']
+    if encoding:
+        try:
+            content = response.content.decode(encoding)
+        except (UnicodeDecodeError, TypeError):
+            content = response.text
+    else:
+        content = response.text
+
+    a = extract_using_readabilipy(content)
 
     if not a['plain_text'] or not a['plain_text'].strip():
         return ''
