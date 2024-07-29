@@ -3,7 +3,7 @@ const translation = {
     firstStepTip: 'はじめるには、',
     enterKeyTip: '以下にOpenAI APIキーを入力してください',
     getKeyTip: 'OpenAIダッシュボードからAPIキーを取得してください',
-    placeholder: 'あなたのOpenAI APIキー（例：sk-xxxx）',
+    placeholder: 'あなた様のOpenAI APIキー（例：sk-xxxx）',
   },
   apiKeyInfo: {
     cloud: {
@@ -104,7 +104,7 @@ const translation = {
     },
     apiInfo: {
       title: 'バックエンドサービスAPI',
-      explanation: 'あなたのアプリケーションに簡単に統合できます',
+      explanation: 'あなた様のアプリケーションに簡単に統合できます',
       accessibleAddress: 'サービスAPIエンドポイント',
       doc: 'APIリファレンス',
     },
