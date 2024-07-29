@@ -23,7 +23,7 @@ Use `docker-compose --profile certbot up` to use this features.
    ```
    then after the containers launched:
    ```shell
-   sudo docker-compose exec -it certbot /update-cert.sh
+   sudo docker-compose exec -it certbot /bin/sh /update-cert.sh
    ```
 2. Edit `.env` file and `sudo docker-compose --profile certbot up` again.  
    set `.env` value additionally
@@ -42,7 +42,7 @@ Use `docker-compose --profile certbot up` to use this features.
 For SSL certificates renewal, execute commands below:
 
 ```shell
-sudo docker-compose exec -it certbot /update-cert.sh
+sudo docker-compose exec -it certbot /bin/sh /update-cert.sh
 sudo docker-compose exec nginx nginx -s reload
 ```
 
@@ -58,7 +58,7 @@ To apply changes to `CERTBOT_OPTIONS`, regenerate the certbot container before u
 
 ```shell
 sudo docker-compose --profile certbot up -d --no-deps --force-recreate certbot
-sudo docker-compose exec -it certbot /update-cert.sh
+sudo docker-compose exec -it certbot /bin/sh /update-cert.sh
 ```
 
 Then, reload the nginx container if necessary.

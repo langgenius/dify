@@ -306,14 +306,14 @@ services:
       - ./volumes/certbot/www:/var/www/html
       - ./volumes/certbot/logs:/var/log/letsencrypt
       - ./volumes/certbot/conf/live:/etc/letsencrypt/live
-      - ./certbot/update-cert.sh.template:/update-cert.sh.template
+      - ./certbot/update-cert.template:/update-cert.template
       - ./certbot/docker-entrypoint.sh:/docker-entrypoint.sh
     environment:
       - CERTBOT_EMAIL=${CERTBOT_EMAIL}
       - CERTBOT_DOMAIN=${CERTBOT_DOMAIN}
       - CERTBOT_OPTIONS=${CERTBOT_OPTIONS:-}
     entrypoint: [ "/docker-entrypoint.sh" ]
-    command: sh -c 'trap exit TERM; while :; do certbot renew; sleep 12h & wait $${!}; done;'
+    command: ["tail", "-f", "/dev/null"]
 
   # The nginx reverse proxy.
   # used for reverse proxying the API service and Web service.
