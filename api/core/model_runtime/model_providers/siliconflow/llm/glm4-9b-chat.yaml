@@ -1,11 +1,9 @@
 model: zhipuai/glm4-9B-chat
 label:
-  en_US: zhipuai/glm4-9B-chat
+  en_US: THUDM/glm-4-9b-chat
 model_type: llm
 features:
-  - multi-tool-call
   - agent-thought
-  - stream-tool-call
 model_properties:
   mode: chat
   context_size: 32768
