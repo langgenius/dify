@@ -23,12 +23,13 @@ export default class AudioPlayer {
   isPublic: boolean
   callback: ((event: string) => {}) | null
 
-  constructor(streamUrl: string, isPublic: boolean, msgId: string | undefined, msgContent: string | null | undefined, callback: ((event: string) => {}) | null) {
+  constructor(streamUrl: string, isPublic: boolean, msgId: string | undefined, msgContent: string | null | undefined, voice: string | undefined, callback: ((event: string) => {}) | null) {
     this.audioContext = new AudioContext()
     this.msgId = msgId
     this.msgContent = msgContent
     this.url = streamUrl
     this.isPublic = isPublic
+    this.voice = voice
     this.callback = callback
 
     // Compatible with iphone ios17 ManagedMediaSource
@@ -154,7 +155,6 @@ export default class AudioPlayer {
         this.mediaSource?.endOfStream()
         clearInterval(endTimer)
       }
-      console.log('finishStream  endOfStream endTimer')
     }, 10)
   }
 
@@ -169,7 +169,6 @@ export default class AudioPlayer {
         const arrayBuffer = this.cacheBuffers.shift()!
         this.sourceBuffer?.appendBuffer(arrayBuffer)
       }
-      console.log('finishStream  timer')
     }, 10)
   }
 
