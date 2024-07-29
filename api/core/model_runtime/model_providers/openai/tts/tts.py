@@ -114,7 +114,8 @@ class OpenAIText2SpeechModel(_CommonOpenAI, TTSModel):
             # doc: https://platform.openai.com/docs/guides/text-to-speech
             credentials_kwargs = self._to_credential_kwargs(credentials)
             client = OpenAI(**credentials_kwargs)
-            if not voice or voice not in self.get_tts_model_voices(model=model, credentials=credentials):
+            model_support_voice = [x.get("value") for x in self.get_tts_model_voices(model=model, credentials=credentials)]
+            if not voice or voice not in model_support_voice:
                 voice = self._get_model_default_voice(model, credentials)
             word_limit = self._get_model_word_limit(model, credentials)
             if len(content_text) > word_limit:

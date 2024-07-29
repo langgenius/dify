@@ -30,7 +30,6 @@ class CogView3Tool(BuiltinTool):
         if not prompt:
             return self.create_text_message('Please input prompt')
         # get size
-        print(tool_parameters.get('prompt', 'square'))
         size = size_mapping[tool_parameters.get('size', 'square')]
         # get n
         n = tool_parameters.get('n', 1)
@@ -58,8 +57,9 @@ class CogView3Tool(BuiltinTool):
         result = []
         for image in response.data:
             result.append(self.create_image_message(image=image.url))
-        result.append(self.create_text_message(
-            f'\nGenerate image source to Seed ID: {seed_id}'))
+            result.append(self.create_json_message({
+                "url": image.url,
+            }))
         return result
 
     @staticmethod

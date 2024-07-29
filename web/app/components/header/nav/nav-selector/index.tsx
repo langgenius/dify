@@ -23,13 +23,13 @@ export type NavItem = {
   link: string
   icon: string
   icon_background: string
-  mode: string
+  mode?: string
 }
 export type INavSelectorProps = {
   navs: NavItem[]
   curNav?: Omit<NavItem, 'link'>
   createText: string
-  isApp: boolean
+  isApp?: boolean
   onCreate: (state: string) => void
   onLoadmore?: () => void
 }
@@ -55,8 +55,8 @@ const NavSelector = ({ curNav, navs, createText, isApp, onCreate, onLoadmore }: 
         {({ open }) => (
           <>
             <Menu.Button className={cn(
-              'group inline-flex items-center w-full h-7 justify-center rounded-[10px] pl-2 pr-2.5 text-[14px] font-semibold text-primary-600 hover:bg-primary-50',
-              open && 'bg-primary-50',
+              'group inline-flex items-center w-full h-7 justify-center rounded-[10px] pl-2 pr-2.5 text-[14px] font-semibold text-components-main-nav-nav-button-text-active hover:hover:bg-components-main-nav-nav-button-bg-active-hover',
+              open && 'bg-components-main-nav-nav-button-bg-active',
             )}>
               <div className='max-w-[180px] truncate' title={curNav?.name}>{curNav?.name}</div>
               <RiArrowDownSLine

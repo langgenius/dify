@@ -1,14 +1,18 @@
 from typing import Any
 
 from core.llm_generator.output_parser.errors import OutputParserException
-from core.llm_generator.prompts import RULE_CONFIG_GENERATE_TEMPLATE
+from core.llm_generator.prompts import (
+    RULE_CONFIG_PARAMETER_GENERATE_TEMPLATE,
+    RULE_CONFIG_PROMPT_GENERATE_TEMPLATE,
+    RULE_CONFIG_STATEMENT_GENERATE_TEMPLATE,
+)
 from libs.json_in_md_parser import parse_and_check_json_markdown
 
 
 class RuleConfigGeneratorOutputParser:
 
-    def get_format_instructions(self) -> str:
-        return RULE_CONFIG_GENERATE_TEMPLATE
+    def get_format_instructions(self) -> tuple[str, str, str]:
+        return RULE_CONFIG_PROMPT_GENERATE_TEMPLATE, RULE_CONFIG_PARAMETER_GENERATE_TEMPLATE, RULE_CONFIG_STATEMENT_GENERATE_TEMPLATE
 
     def parse(self, text: str) -> Any:
         try:

@@ -6,7 +6,7 @@ import cn from '@/utils/classnames'
 
 type Props = {
   className?: string
-  title: string
+  title: string | JSX.Element | null
   description: string
   isChosen: boolean
   onChosen: () => void

@@ -125,11 +125,16 @@ class ToolNode(BaseNode):
                 ]
             else:
                 tool_input = node_data.tool_parameters[parameter_name]
-                segment_group = parser.convert_template(
-                    template=str(tool_input.value),
-                    variable_pool=variable_pool,
-                )
-                result[parameter_name] = segment_group.log if for_log else segment_group.text
+                if tool_input.type == 'variable':
+                    # TODO: check if the variable exists in the variable pool
+                    parameter_value = variable_pool.get(tool_input.value).value
+                else:
+                    segment_group = parser.convert_template(
+                        template=str(tool_input.value),
+                        variable_pool=variable_pool,
+                    )
+                    parameter_value = segment_group.log if for_log else segment_group.text
+                result[parameter_name] = parameter_value
 
         return result
 

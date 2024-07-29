@@ -106,7 +106,11 @@ class IterationNode(BaseIterationNode):
         variable_pool.remove([self.node_id] + output_selector[1:])
         state.current_output = output
         if output is not None:
-            state.outputs.append(output)
+            # NOTE: This is a temporary patch to process double nested list (for example, DALL-E output in iteration).
+            if isinstance(output, list):
+                state.outputs.extend(output)
+            else:
+                state.outputs.append(output)
 
     @classmethod
     def _extract_variable_selector_to_variable_mapping(cls, node_data: IterationNodeData) -> dict[str, list[str]]:

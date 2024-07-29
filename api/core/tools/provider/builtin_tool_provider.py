@@ -27,7 +27,7 @@ class BuiltinToolProviderController(ToolProviderController):
         provider = self.__class__.__module__.split('.')[-1]
         yaml_path = path.join(path.dirname(path.realpath(__file__)), 'builtin', provider, f'{provider}.yaml')
         try:
-            provider_yaml = load_yaml_file(yaml_path)
+            provider_yaml = load_yaml_file(yaml_path, ignore_error=False)
         except Exception as e:
             raise ToolProviderNotFoundError(f'can not load provider yaml for {provider}: {e}')
 
@@ -58,7 +58,7 @@ class BuiltinToolProviderController(ToolProviderController):
         for tool_file in tool_files:
             # get tool name
             tool_name = tool_file.split(".")[0]
-            tool = load_yaml_file(path.join(tool_path, tool_file))
+            tool = load_yaml_file(path.join(tool_path, tool_file), ignore_error=False)
 
             # get tool class, import the module
             assistant_tool_class = load_single_subclass_from_source(

@@ -1,5 +1,4 @@
-import json
-from typing import Any, Union
+from typing import Any
 
 from core.tools.entities.tool_entities import ToolInvokeMessage
 from core.tools.provider.builtin.firecrawl.firecrawl_appx import FirecrawlApp
@@ -7,20 +6,23 @@ from core.tools.tool.builtin_tool import BuiltinTool
 
 
 class SearchTool(BuiltinTool):
-    def _invoke(self, user_id: str, tool_parameters: dict[str, Any]) -> Union[ToolInvokeMessage, list[ToolInvokeMessage]]:
-        app = FirecrawlApp(api_key=self.runtime.credentials['firecrawl_api_key'], base_url=self.runtime.credentials['base_url'])
-
-        crawl_result = app.search(
+    def _invoke(self, user_id: str, tool_parameters: dict[str, Any]) -> ToolInvokeMessage:
+        """
+        the pageOptions and searchOptions comes from doc here:
+        https://docs.firecrawl.dev/api-reference/endpoint/search
+        """
+        app = FirecrawlApp(api_key=self.runtime.credentials['firecrawl_api_key'],
+                           base_url=self.runtime.credentials['base_url'])
+        pageOptions = {}
+        pageOptions['onlyMainContent'] = tool_parameters.get('onlyMainContent', False)
+        pageOptions['fetchPageContent'] = tool_parameters.get('fetchPageContent', True)
+        pageOptions['includeHtml'] = tool_parameters.get('includeHtml', False)
+        pageOptions['includeRawHtml'] = tool_parameters.get('includeRawHtml', False)
+        searchOptions = {'limit': tool_parameters.get('limit')}
+        search_result = app.search(
             query=tool_parameters['keyword'],
-            wait=True
+            pageOptions=pageOptions,
+            searchOptions=searchOptions
         )
 
-        if isinstance(crawl_result, dict):
-            result_message = json.dumps(crawl_result, ensure_ascii=False, indent=4)
-        else:
-            result_message = str(crawl_result)
-
-        if not crawl_result:
-            return self.create_text_message("Search request failed.")
-
-        return self.create_text_message(result_message)
+        return self.create_json_message(search_result)

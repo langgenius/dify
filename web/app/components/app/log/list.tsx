@@ -495,7 +495,7 @@ function DetailPanel<T extends ChatConversationFullDetailResponse | CompletionCo
             >
               <Chat
                 config={{
-                  app_id: appDetail?.id,
+                  appId: appDetail?.id,
                   text_to_speech: {
                     enabled: true,
                   },
