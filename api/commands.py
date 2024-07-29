@@ -500,8 +500,10 @@ def add_qdrant_doc_id_index(field: str):
 
         from core.rag.datasource.vdb.qdrant.qdrant_vector import QdrantConfig
         for binding in bindings:
+            if dify_config.QDRANT_URL is None:
+                raise ValueError('Qdrant url is required.')
             qdrant_config = QdrantConfig(
-                endpoint=dify_config.QDRANT_URL or '',
+                endpoint=dify_config.QDRANT_URL,
                 api_key=dify_config.QDRANT_API_KEY,
                 root_path=current_app.root_path,
                 timeout=dify_config.QDRANT_CLIENT_TIMEOUT,
