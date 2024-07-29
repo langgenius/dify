@@ -60,7 +60,7 @@ const translation = {
   rerankSettings: 'Rerank Setting',
   weightedScore: {
     title: 'Weighted Score',
-    description: 'By adjusting the weights assigned， this rerank strategy determines whether to prioritize semantic or keyword matching.',
+    description: 'By adjusting the weights assigned, this rerank strategy determines whether to prioritize semantic or keyword matching.',
     semanticFirst: 'Semantic first',
     keywordFirst: 'Keyword first',
     customized: 'Customized',
