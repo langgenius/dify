@@ -172,7 +172,7 @@ class ApiTool(Tool):
                         elif 'default' in property:
                             body[name] = property['default']
                         else:
-                            body[name] = None
+                            continue
                     break
 
         # replace path parameters
