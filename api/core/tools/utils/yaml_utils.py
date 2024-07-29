@@ -12,7 +12,7 @@ def load_yaml_file(file_path: str, ignore_error: bool = True, default_value: Any
     Safe loading a YAML file
     :param file_path: the path of the YAML file
     :param ignore_error:
-        if True, return default_value if error occurs and the error will be logged in warning level
+        if True, return default_value if error occurs and the error will be logged in debug level
         if False, raise error if error occurs
     :param default_value: the value returned when errors ignored
     :return: an object of the YAML content
@@ -20,12 +20,13 @@ def load_yaml_file(file_path: str, ignore_error: bool = True, default_value: Any
     try:
         with open(file_path, encoding='utf-8') as yaml_file:
             try:
-                return yaml.safe_load(yaml_file)
+                yaml_content = yaml.safe_load(yaml_file)
+                return yaml_content if yaml_content else default_value
             except Exception as e:
                 raise YAMLError(f'Failed to load YAML file {file_path}: {e}')
     except Exception as e:
         if ignore_error:
-            logger.warning(f'Failed to load YAML file {file_path}: {e}')
+            logger.debug(f'Failed to load YAML file {file_path}: {e}')
             return default_value
         else:
             raise e
