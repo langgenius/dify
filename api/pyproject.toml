@@ -181,6 +181,7 @@ openpyxl = "^3.1.5"
 ############################################################
 # Tool dependencies required by tool implementations
 ############################################################
+pymongo = "^4.8.0"
 
 [tool.poetry.group.tool.dependencies]
 arxiv = "2.1.0"
