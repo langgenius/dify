@@ -247,7 +247,7 @@ class CouchbaseVector(BaseVector):
     def delete_by_document_id(self, document_id: str):
         query = f"""
                 DELETE FROM `{self._client_config.bucket_name}`.{self._client_config.scope_name}.{self._collection_name}
-                WHERE id = $doc_id;
+                WHERE META().id = $doc_id;
                 """
         self._cluster.query(query,named_parameters={'doc_id':document_id})
 
@@ -263,9 +263,9 @@ class CouchbaseVector(BaseVector):
     def delete_by_metadata_field(self, key: str, value: str) -> None:
         query = f"""
             DELETE FROM `{self._client_config.bucket_name}`.{self._client_config.scope_name}.{self._collection_name}
-            WHERE metadata.{key} = {value};
+            WHERE metadata.{key} = $value;
             """
-        self._cluster.query(query)
+        self._cluster.query(query, named_parameters={'value':value})
         
     def search_by_vector(
             self,
