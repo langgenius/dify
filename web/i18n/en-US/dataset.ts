@@ -67,7 +67,7 @@ const translation = {
     semantic: 'Semantic',
     keyword: 'Keyword',
   },
-  nTo1RetrievalLegacy: 'According to product planning, N-to-1 retrieval will be officially deprecated in September. Until then you can still use it normally.',
+  nTo1RetrievalLegacy: 'According to the optimization and upgrade of the retrieval strategy, N-to-1 retrieval will be officially deprecated in September. Until then you can still use it normally.',
 }
 
 export default translation

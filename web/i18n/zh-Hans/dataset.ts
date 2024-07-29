@@ -67,7 +67,7 @@ const translation = {
     semantic: '语义',
     keyword: '关键词',
   },
-  nTo1RetrievalLegacy: '根据产品规划，N 选 1 召回将于 9 月正式弃用。在那之前，您仍然可以正常使用它。',
+  nTo1RetrievalLegacy: '为了对检索策略进行优化和升级，N 选 1 检索功能将于九月份正式被优化。在此之前，您仍然可以正常使用该功能。',
 }
 
 export default translation
