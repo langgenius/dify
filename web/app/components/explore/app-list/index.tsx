@@ -1,13 +1,14 @@
 'use client'
 
 import React, { useMemo, useState } from 'react'
-import cn from 'classnames'
 import { useRouter } from 'next/navigation'
 import { useTranslation } from 'react-i18next'
 import { useContext } from 'use-context-selector'
 import useSWR from 'swr'
+import { useDebounceFn } from 'ahooks'
 import Toast from '../../base/toast'
 import s from './style.module.css'
+import cn from '@/utils/classnames'
 import ExploreContext from '@/context/explore-context'
 import type { App } from '@/models/explore'
 import Category from '@/app/components/explore/category'
@@ -22,6 +23,7 @@ import Loading from '@/app/components/base/loading'
 import { NEED_REFRESH_APP_LIST_KEY } from '@/config'
 import { useAppContext } from '@/context/app-context'
 import { getRedirection } from '@/utils/app-redirection'
+import SearchInput from '@/app/components/base/search-input'
 
 type AppsProps = {
   pageType?: PageType
@@ -42,6 +44,18 @@ const Apps = ({
   const { push } = useRouter()
   const { hasEditPermission } = useContext(ExploreContext)
   const allCategoriesEn = t('explore.apps.allCategories', { lng: 'en' })
+
+  const [keywords, setKeywords] = useState('')
+  const [searchKeywords, setSearchKeywords] = useState('')
+
+  const { run: handleSearch } = useDebounceFn(() => {
+    setSearchKeywords(keywords)
+  }, { wait: 500 })
+
+  const handleKeywordsChange = (value: string) => {
+    setKeywords(value)
+    handleSearch()
+  }
 
   const [currentType, setCurrentType] = useState<string>('')
   const [currCategory, setCurrCategory] = useTabSearchParams({
@@ -89,6 +103,17 @@ const Apps = ({
     }
   }, [currentType, currCategory, allCategoriesEn, allList])
 
+  const searchFilteredList = useMemo(() => {
+    if (!searchKeywords || !filteredList || filteredList.length === 0)
+      return filteredList
+
+    const lowerCaseSearchKeywords = searchKeywords.toLowerCase()
+
+    return filteredList.filter(item =>
+      item.app && item.app.name && item.app.name.toLowerCase().includes(lowerCaseSearchKeywords),
+    )
+  }, [searchKeywords, filteredList])
+
   const [currApp, setCurrApp] = React.useState<App | null>(null)
   const [isShowCreateModal, setIsShowCreateModal] = React.useState(false)
   const onCreate: CreateAppModalProps['onConfirm'] = async ({
@@ -123,7 +148,7 @@ const Apps = ({
     }
   }
 
-  if (!categories) {
+  if (!categories || categories.length === 0) {
     return (
       <div className="flex h-full items-center">
         <Loading type="area" />
@@ -143,25 +168,30 @@ const Apps = ({
         </div>
       )}
       <div className={cn(
-        'flex items-center mt-6',
+        'flex items-center justify-between mt-6',
         pageType === PageType.EXPLORE ? 'px-12' : 'px-8',
       )}>
-        {pageType !== PageType.EXPLORE && (
-          <>
-            <AppTypeSelector value={currentType} onChange={setCurrentType} />
-            <div className='mx-2 w-[1px] h-3.5 bg-gray-200'/>
-          </>
-        )}
-        <Category
-          list={categories}
-          value={currCategory}
-          onChange={setCurrCategory}
-          allCategoriesEn={allCategoriesEn}
-        />
+        <>
+          {pageType !== PageType.EXPLORE && (
+            <>
+              <AppTypeSelector value={currentType} onChange={setCurrentType}/>
+              <div className='mx-2 w-[1px] h-3.5 bg-gray-200'/>
+            </>
+          )}
+          <Category
+            list={categories}
+            value={currCategory}
+            onChange={setCurrCategory}
+            allCategoriesEn={allCategoriesEn}
+          />
+        </>
+        <SearchInput value={keywords} onChange={handleKeywordsChange}/>
+
       </div>
+
       <div className={cn(
         'relative flex flex-1 pb-6 flex-col overflow-auto bg-gray-100 shrink-0 grow',
-        pageType === PageType.EXPLORE ? 'mt-6' : 'mt-0 pt-2',
+        pageType === PageType.EXPLORE ? 'mt-4' : 'mt-0 pt-2',
       )}>
         <nav
           className={cn(
@@ -169,7 +199,7 @@ const Apps = ({
             'grid content-start shrink-0',
             pageType === PageType.EXPLORE ? 'gap-4 px-6 sm:px-12' : 'gap-3 px-8  sm:!grid-cols-2 md:!grid-cols-3 lg:!grid-cols-4',
           )}>
-          {filteredList.map(app => (
+          {searchFilteredList.map(app => (
             <AppCard
               key={app.app_id}
               isExplore={pageType === PageType.EXPLORE}

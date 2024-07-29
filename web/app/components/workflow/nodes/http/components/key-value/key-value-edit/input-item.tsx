@@ -1,9 +1,9 @@
 'use client'
 import type { FC } from 'react'
 import React, { useCallback, useState } from 'react'
-import cn from 'classnames'
 import { useTranslation } from 'react-i18next'
 import useAvailableVarList from '../../../../_base/hooks/use-available-var-list'
+import cn from '@/utils/classnames'
 import RemoveButton from '@/app/components/workflow/nodes/_base/components/remove-button'
 import Input from '@/app/components/workflow/nodes/_base/components/input-support-select-var'
 import type { Var } from '@/app/components/workflow/types'
@@ -39,7 +39,7 @@ const InputItem: FC<Props> = ({
   const { availableVars, availableNodesWithParent } = useAvailableVarList(nodeId, {
     onlyLeafNodeVar: false,
     filterVar: (varPayload: Var) => {
-      return [VarType.string, VarType.number].includes(varPayload.type)
+      return [VarType.string, VarType.number, VarType.secret].includes(varPayload.type)
     },
   })
 

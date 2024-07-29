@@ -119,6 +119,7 @@ const translation = {
   },
   userProfile: {
     settings: 'Налаштування',
+    emailSupport: 'Підтримка по електронній пошті',
     workspace: 'Робочий простір',
     createWorkspace: 'Створити робочий простір',
     helpCenter: 'Довідковий центр',

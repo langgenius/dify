@@ -3,7 +3,6 @@ import useSWR from 'swr'
 import type { FC } from 'react'
 import { useContext } from 'use-context-selector'
 import React, { Fragment } from 'react'
-import classNames from 'classnames'
 import {
   RiQuestionLine,
 } from '@remixicon/react'
@@ -11,6 +10,7 @@ import { usePathname } from 'next/navigation'
 import { useTranslation } from 'react-i18next'
 import { Listbox, Transition } from '@headlessui/react'
 import { CheckIcon, ChevronDownIcon } from '@heroicons/react/20/solid'
+import classNames from '@/utils/classnames'
 import RadioGroup from '@/app/components/app/configuration/config-vision/radio-group'
 import type { Item } from '@/app/components/base/select'
 import ConfigContext from '@/context/debug-configuration'
@@ -31,12 +31,12 @@ const VoiceParamConfig: FC = () => {
 
   let languageItem = languages.find(item => item.value === textToSpeechConfig.language)
   const localLanguagePlaceholder = languageItem?.name || t('common.placeholder.select')
-  if (languages && !languageItem)
+  if (languages && !languageItem && languages.length > 0)
     languageItem = languages[0]
   const language = languageItem?.value
   const voiceItems = useSWR({ appId, language }, fetchAppVoices).data
   let voiceItem = voiceItems?.find(item => item.value === textToSpeechConfig.voice)
-  if (voiceItems && !voiceItem)
+  if (voiceItems && !voiceItem && voiceItems.length > 0)
     voiceItem = voiceItems[0]
 
   const localVoicePlaceholder = voiceItem?.name || t('common.placeholder.select')
@@ -109,7 +109,7 @@ const VoiceParamConfig: FC = () => {
                                   'absolute inset-y-0 right-0 flex items-center pr-4 text-gray-700',
                                 )}
                               >
-                                <CheckIcon className="h-5 w-5" aria-hidden="true"/>
+                                <CheckIcon className="h-5 w-5" aria-hidden="true" />
                               </span>
                             )}
                           </>
@@ -125,9 +125,11 @@ const VoiceParamConfig: FC = () => {
             <div
               className='mb-2 leading-[18px] text-[13px] font-semibold text-gray-800'>{t('appDebug.voice.voiceSettings.voice')}</div>
             <Listbox
-              value={voiceItem}
+              value={voiceItem ?? {}}
               disabled={!languageItem}
               onChange={(value: Item) => {
+                if (!value.value)
+                  return
                 setTextToSpeechConfig({
                   ...textToSpeechConfig,
                   voice: String(value.value),
@@ -174,7 +176,7 @@ const VoiceParamConfig: FC = () => {
                                   'absolute inset-y-0 right-0 flex items-center pr-4 text-gray-700',
                                 )}
                               >
-                                <CheckIcon className="h-5 w-5" aria-hidden="true"/>
+                                <CheckIcon className="h-5 w-5" aria-hidden="true" />
                               </span>
                             )}
                           </>

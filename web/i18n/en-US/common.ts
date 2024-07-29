@@ -124,6 +124,7 @@ const translation = {
   },
   userProfile: {
     settings: 'Settings',
+    emailSupport: 'Email Support',
     workspace: 'Workspace',
     createWorkspace: 'Create Workspace',
     helpCenter: 'Help',
@@ -181,6 +182,8 @@ const translation = {
     builderTip: 'Can build & edit own apps',
     editor: 'Editor',
     editorTip: 'Can build & edit apps',
+    datasetOperator: 'Knowledge Admin',
+    datasetOperatorTip: 'Only can manage the knowledge base',
     inviteTeamMember: 'Add team member',
     inviteTeamMemberTip: 'They can access your team data directly after signing in.',
     email: 'Email',

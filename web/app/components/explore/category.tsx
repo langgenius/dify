@@ -2,7 +2,7 @@
 import type { FC } from 'react'
 import React from 'react'
 import { useTranslation } from 'react-i18next'
-import cn from 'classnames'
+import cn from '@/utils/classnames'
 import exploreI18n from '@/i18n/en-US/explore'
 import type { AppCategory } from '@/models/explore'
 import { ThumbsUp } from '@/app/components/base/icons/src/vender/line/alertsAndFeedback'
@@ -28,7 +28,7 @@ const Category: FC<ICategoryProps> = ({
   allCategoriesEn,
 }) => {
   const { t } = useTranslation()
-  const isAllCategories = !list.includes(value)
+  const isAllCategories = !list.includes(value as AppCategory)
 
   const itemClassName = (isSelected: boolean) => cn(
     'flex items-center px-3 py-[7px] h-[32px] rounded-lg border-[0.5px] border-transparent text-gray-700 font-medium leading-[18px] cursor-pointer hover:bg-gray-200',
@@ -41,7 +41,7 @@ const Category: FC<ICategoryProps> = ({
         className={itemClassName(isAllCategories)}
         onClick={() => onChange(allCategoriesEn)}
       >
-        <ThumbsUp className='mr-1 w-3.5 h-3.5'/>
+        <ThumbsUp className='mr-1 w-3.5 h-3.5' />
         {t('explore.apps.allCategories')}
       </div>
       {list.map(name => (

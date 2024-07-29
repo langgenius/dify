@@ -2,6 +2,15 @@ import type { AnnotationReplyConfig, ChatPromptConfig, CompletionPromptConfig, D
 import type { CollectionType } from '@/app/components/tools/types'
 import type { LanguagesSupported } from '@/i18n/language'
 import type { Tag } from '@/app/components/base/tag-management/constant'
+import type {
+  RerankingModeEnum,
+  WeightedScoreEnum,
+} from '@/models/datasets'
+
+export enum Theme {
+  light = 'light',
+  dark = 'dark',
+}
 
 export enum ProviderType {
   openai = 'openai',
@@ -135,9 +144,64 @@ export enum AgentStrategy {
   react = 'react',
 }
 
+export type CompletionParams = {
+  /** Maximum number of tokens in the answer message returned by Completion */
+  max_tokens: number
+  /**
+   * A number between 0 and 2.
+   * The larger the number, the more random the result;
+   * otherwise, the more deterministic.
+   * When in use, choose either `temperature` or `top_p`.
+   * Default is 1.
+   */
+  temperature: number
+  /**
+   * Represents the proportion of probability mass samples to take,
+   * e.g., 0.1 means taking the top 10% probability mass samples.
+   * The determinism between the samples is basically consistent.
+   * Among these results, the `top_p` probability mass results are taken.
+   * When in use, choose either `temperature` or `top_p`.
+   * Default is 1.
+   */
+  top_p: number
+  /** When enabled, the Completion Text will concatenate the Prompt content together and return it. */
+  echo: boolean
+  /**
+   * Specify up to 4 to automatically stop generating before the text specified in `stop`.
+   * Suitable for use in chat mode.
+   * For example, specify "Q" and "A",
+   * and provide some Q&A examples as context,
+   * and the model will give out in Q&A format and stop generating before Q&A.
+   */
+  stop: string[]
+  /**
+   * A number between -2.0 and 2.0.
+   * The larger the value, the less the model will repeat topics and the more it will provide new topics.
+   */
+  presence_penalty: number
+  /**
+   * A number between -2.0 and 2.0.
+   * A lower setting will make the model appear less cultured,
+   * always repeating expressions.
+   * The difference between `frequency_penalty` and `presence_penalty`
+   * is that `frequency_penalty` penalizes a word based on its frequency in the training data,
+   * while `presence_penalty` penalizes a word based on its occurrence in the input text.
+   */
+  frequency_penalty: number
+}
 /**
  * Model configuration. The backend type.
  */
+export type Model = {
+  /** LLM provider, e.g., OPENAI */
+  provider: string
+  /** Model name, e.g, gpt-3.5.turbo */
+  name: string
+  mode: ModelModeType
+  /** Default Completion call parameters */
+  completion_params: CompletionParams
+}
+
 export type ModelConfig = {
   opening_statement: string
   suggested_questions?: string[]
@@ -174,59 +238,7 @@ export type ModelConfig = {
     strategy?: AgentStrategy
     tools: ToolItem[]
   }
-  model: {
-    /** LLM provider, e.g., OPENAI */
-    provider: string
-    /** Model name, e.g, gpt-3.5.turbo */
-    name: string
-    mode: ModelModeType
-    /** Default Completion call parameters */
-    completion_params: {
-      /** Maximum number of tokens in the answer message returned by Completion */
-      max_tokens: number
-      /**
-       * A number between 0 and 2.
-       * The larger the number, the more random the result;
-       * otherwise, the more deterministic.
-       * When in use, choose either `temperature` or `top_p`.
-       * Default is 1.
-       */
-      temperature: number
-      /**
-       * Represents the proportion of probability mass samples to take,
-       * e.g., 0.1 means taking the top 10% probability mass samples.
-       * The determinism between the samples is basically consistent.
-       * Among these results, the `top_p` probability mass results are taken.
-       * When in use, choose either `temperature` or `top_p`.
-       * Default is 1.
-       */
-      top_p: number
-      /** When enabled, the Completion Text will concatenate the Prompt content together and return it. */
-      echo: boolean
-      /**
-       * Specify up to 4 to automatically stop generating before the text specified in `stop`.
-       * Suitable for use in chat mode.
-       * For example, specify "Q" and "A",
-       * and provide some Q&A examples as context,
-       * and the model will give out in Q&A format and stop generating before Q&A.
-       */
-      stop: string[]
-      /**
-       * A number between -2.0 and 2.0.
-       * The larger the value, the less the model will repeat topics and the more it will provide new topics.
-       */
-      presence_penalty: number
-      /**
-       * A number between -2.0 and 2.0.
-       * A lower setting will make the model appear less cultured,
-       * always repeating expressions.
-       * The difference between `frequency_penalty` and `presence_penalty`
-       * is that `frequency_penalty` penalizes a word based on its frequency in the training data,
-       * while `presence_penalty` penalizes a word based on its occurrence in the input text.
-       */
-      frequency_penalty: number
-    }
-  }
+  model: Model
   dataset_configs: DatasetConfigs
   file_upload?: {
     image: VisionSettings
@@ -395,4 +407,16 @@ export type RetrievalConfig = {
   top_k: number
   score_threshold_enabled: boolean
   score_threshold: number
+  reranking_mode?: RerankingModeEnum
+  weights?: {
+    weight_type: WeightedScoreEnum
+    vector_setting: {
+      vector_weight: number
+      embedding_provider_name: string
+      embedding_model_name: string
+    }
+    keyword_setting: {
+      keyword_weight: number
+    }
+  }
 }

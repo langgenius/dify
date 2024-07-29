@@ -2,7 +2,6 @@
 'use client'
 import type { FC } from 'react'
 import React, { useEffect, useRef, useState } from 'react'
-import cn from 'classnames'
 import {
   RiAddLine,
   RiDeleteBinLine,
@@ -12,6 +11,7 @@ import produce from 'immer'
 import { useTranslation } from 'react-i18next'
 import { useBoolean } from 'ahooks'
 import { ReactSortable } from 'react-sortablejs'
+import cn from '@/utils/classnames'
 import ConfigContext from '@/context/debug-configuration'
 import Panel from '@/app/components/app/configuration/base/feature-panel'
 import Button from '@/app/components/base/button'

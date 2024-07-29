@@ -2,7 +2,6 @@
 import type { FC } from 'react'
 import React from 'react'
 import { useTranslation } from 'react-i18next'
-import cn from 'classnames'
 import {
   RiQuestionLine,
 } from '@remixicon/react'
@@ -12,6 +11,7 @@ import { ALL_PLANS, NUM_INFINITE, contactSalesUrl, contractSales, unAvailable } 
 import Toast from '../../base/toast'
 import TooltipPlus from '../../base/tooltip-plus'
 import { PlanRange } from './select-plan-range'
+import cn from '@/utils/classnames'
 import { useAppContext } from '@/context/app-context'
 import { fetchSubscriptionUrls } from '@/service/billing'
 import { LanguagesSupported } from '@/i18n/language'

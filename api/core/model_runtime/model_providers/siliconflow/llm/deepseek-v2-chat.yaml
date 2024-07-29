@@ -1,11 +1,9 @@
 model: deepseek-ai/deepseek-v2-chat
 label:
-  en_US: deepseek-ai/deepseek-v2-chat
+  en_US: deepseek-ai/DeepSeek-V2-Chat
 model_type: llm
 features:
-  - multi-tool-call
   - agent-thought
-  - stream-tool-call
 model_properties:
   mode: chat
   context_size: 32768

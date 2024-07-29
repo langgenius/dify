@@ -43,15 +43,15 @@ def init_app(app: Flask) -> Celery:
         "schedule.clean_embedding_cache_task",
         "schedule.clean_unused_datasets_task",
     ]
-
+    day = app.config["CELERY_BEAT_SCHEDULER_TIME"]
     beat_schedule = {
         'clean_embedding_cache_task': {
             'task': 'schedule.clean_embedding_cache_task.clean_embedding_cache_task',
-            'schedule': timedelta(days=1),
+            'schedule': timedelta(days=day),
         },
         'clean_unused_datasets_task': {
             'task': 'schedule.clean_unused_datasets_task.clean_unused_datasets_task',
-            'schedule': timedelta(days=1),
+            'schedule': timedelta(days=day),
         }
     }
     celery_app.conf.update(

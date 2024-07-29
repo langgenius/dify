@@ -27,10 +27,14 @@ if $api_modified; then
 
     # python style checks rely on `ruff` in path
     if ! command -v ruff &> /dev/null; then
-        echo "Installing Ruff ..."
-        pip install ruff
+        echo "Installing linting tools (Ruff, dotenv-linter ...) ..."
+        poetry install -C api --only lint
     fi
 
+    # run Ruff linter auto-fixing
+    ruff check --fix ./api
+
+    # run Ruff linter checks
     ruff check --preview ./api || status=$?
 
     status=${status:-0}

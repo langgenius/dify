@@ -1,9 +1,10 @@
 import json
 from functools import wraps
 
-from flask import abort, current_app, request
+from flask import abort, request
 from flask_login import current_user
 
+from configs import dify_config
 from controllers.console.workspace.error import AccountNotInitializedError
 from services.feature_service import FeatureService
 from services.operation_service import OperationService
@@ -26,7 +27,7 @@ def account_initialization_required(view):
 def only_edition_cloud(view):
     @wraps(view)
     def decorated(*args, **kwargs):
-        if current_app.config['EDITION'] != 'CLOUD':
+        if dify_config.EDITION != 'CLOUD':
             abort(404)
 
         return view(*args, **kwargs)
@@ -37,7 +38,7 @@ def only_edition_cloud(view):
 def only_edition_self_hosted(view):
     @wraps(view)
     def decorated(*args, **kwargs):
-        if current_app.config['EDITION'] != 'SELF_HOSTED':
+        if dify_config.EDITION != 'SELF_HOSTED':
             abort(404)
 
         return view(*args, **kwargs)
