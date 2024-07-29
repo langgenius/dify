@@ -36,9 +36,8 @@ const ChatVariablePanel = () => {
   const getEffectedNodes = useCallback((chatVar: ConversationVariable) => {
     const { getNodes } = store.getState()
     const allNodes = getNodes()
-    // #TODO charVar#
     return findUsedVarNodes(
-      ['env', chatVar.name],
+      ['conversation', chatVar.name],
       allNodes,
     )
   }, [store])
@@ -46,10 +45,9 @@ const ChatVariablePanel = () => {
   const removeUsedVarInNodes = useCallback((chatVar: ConversationVariable) => {
     const { getNodes, setNodes } = store.getState()
     const effectedNodes = getEffectedNodes(chatVar)
-    // #TODO charVar#
     const newNodes = getNodes().map((node) => {
       if (effectedNodes.find(n => n.id === node.id))
-        return updateNodeVars(node, ['env', chatVar.name], [])
+        return updateNodeVars(node, ['conversation', chatVar.name], [])
 
       return node
     })
@@ -97,7 +95,7 @@ const ChatVariablePanel = () => {
       const effectedNodes = getEffectedNodes(currentVar)
       const newNodes = getNodes().map((node) => {
         if (effectedNodes.find(n => n.id === node.id))
-          return updateNodeVars(node, ['env', currentVar.name], ['env', chatVar.name])
+          return updateNodeVars(node, ['conversation', currentVar.name], ['conversation', chatVar.name])
 
         return node
       })

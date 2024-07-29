@@ -5,7 +5,7 @@ import { useTranslation } from 'react-i18next'
 import NodeVariableItem from '../variable-assigner/components/node-variable-item'
 import { type AssignerNodeType, WriteMode } from './types'
 import useConfig from './use-config'
-import { isENV, isSystemVar } from '@/app/components/workflow/nodes/_base/components/variable/utils'
+import { isConversationVar, isENV, isSystemVar } from '@/app/components/workflow/nodes/_base/components/variable/utils'
 import { BlockEnum, type Node, type NodeProps, VarType } from '@/app/components/workflow/types'
 
 const i18nPrefix = 'workflow.nodes.assigner'
@@ -27,6 +27,8 @@ const NodeComponent: FC<NodeProps<AssignerNodeType>> = ({
 
   const isSystem = isSystemVar(variable)
   const isEnv = isENV(variable)
+  const isChatVar = isConversationVar(variable)
+
   const node = isSystem ? nodes.find(node => node.data.type === BlockEnum.Start) : nodes.find(node => node.id === variable[0])
   const varName = isSystem ? `sys.${variable[variable.length - 1]}` : variable.slice(1).join('.')
   return (
@@ -35,6 +37,7 @@ const NodeComponent: FC<NodeProps<AssignerNodeType>> = ({
       <NodeVariableItem
         node={node as Node}
         isEnv={isEnv}
+        isChatVar={isChatVar}
         varName={varName}
         className='bg-workflow-block-parma-bg'
       />
