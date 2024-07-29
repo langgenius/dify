@@ -240,6 +240,7 @@ const translation = {
     checklistResolved: 'All issues are resolved',
     organizeBlocks: 'Organize blocks',
     change: 'Change',
+    optional: '(optional)',
   },
   nodes: {
     common: {

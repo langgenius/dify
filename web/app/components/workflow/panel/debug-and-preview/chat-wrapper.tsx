@@ -25,7 +25,11 @@ import {
 } from '@/service/debug'
 import { useStore as useAppStore } from '@/app/components/app/store'
 
-const ChatWrapper = forwardRef<ChatWrapperRefType>((_, ref) => {
+type ChatWrapperProps = {
+  showInputsFieldsPanel: boolean
+}
+
+const ChatWrapper = forwardRef<ChatWrapperRefType, ChatWrapperProps>(({ showInputsFieldsPanel }, ref) => {
   const nodes = useNodes<StartNodeType>()
   const startNode = nodes.find(node => node.data.type === BlockEnum.Start)
   const startVariables = startNode?.data.variables
@@ -94,7 +98,7 @@ const ChatWrapper = forwardRef<ChatWrapperRefType>((_, ref) => {
       } as any}
       chatList={chatList}
       isResponding={isResponding}
-      chatContainerClassName='px-4'
+      chatContainerClassName='px-3'
       chatContainerInnerClassName='pt-6'
       chatFooterClassName='px-4 rounded-bl-2xl'
       chatFooterInnerClassName='pb-4'
@@ -102,7 +106,7 @@ const ChatWrapper = forwardRef<ChatWrapperRefType>((_, ref) => {
       onStopResponding={handleStop}
       chatNode={(
         <>
-          <UserInput />
+          {showInputsFieldsPanel && <UserInput />}
           {
             !chatList.length && (
               <Empty />

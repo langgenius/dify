@@ -86,7 +86,12 @@ const FormItem: FC<Props> = ({
   const isIterator = type === InputVarType.iterator
   return (
     <div className={`${className}`}>
-      {!isArrayLikeType && <div className='h-8 leading-8 text-[13px] font-medium text-gray-700 truncate'>{typeof payload.label === 'object' ? nodeKey : payload.label}</div>}
+      {!isArrayLikeType && (
+        <div className='h-6 mb-1 flex items-center gap-1 text-text-secondary system-sm-semibold'>
+          <div className='truncate'>{typeof payload.label === 'object' ? nodeKey : payload.label}</div>
+          {!payload.required && <span className='text-text-tertiary system-xs-regular'>{t('workflow.panel.optional')}</span>}
+        </div>
+      )}
       <div className='grow'>
         {
           type === InputVarType.textInput && (

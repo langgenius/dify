@@ -238,6 +238,7 @@ const translation = {
     checklistResolved: '所有问题均已解决',
     organizeBlocks: '整理节点',
     change: '更改',
+    optional: '（选填）',
   },
   nodes: {
     common: {
