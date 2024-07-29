@@ -11,6 +11,8 @@ import Button from '@/app/components/base/button'
 import { DEFAULT_VALUE_MAX_LEN } from '@/config'
 import TextGenerationImageUploader from '@/app/components/base/image-uploader/text-generation-image-uploader'
 import type { VisionFile, VisionSettings } from '@/types/app'
+import ChatInputArea from '@/app/components/base/chat/chat/chat-input-area'
+import { FileUploaderInAttachment } from '@/app/components/base/file-uploader'
 
 export type IRunOnceProps = {
   siteInfo: SiteInfo
@@ -112,6 +114,8 @@ const RunOnce: FC<IRunOnceProps> = ({
               </div>
             )
           }
+          <ChatInputArea />
+          <FileUploaderInAttachment />
           {promptConfig.prompt_variables.length > 0 && (
             <div className='mt-4 h-[1px] bg-gray-100'></div>
           )}
