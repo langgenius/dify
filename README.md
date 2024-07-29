@@ -173,6 +173,9 @@ Star Dify on GitHub and be instantly notified of new releases.
 The easiest way to start the Dify server is to run our [docker-compose.yml](docker/docker-compose.yaml) file. Before running the installation command, make sure that [Docker](https://docs.docker.com/get-docker/) and [Docker Compose](https://docs.docker.com/compose/install/) are installed on your machine:
 
 ```bash
+mkdir dify
+cd dify
+git clone https://github.com/langgenius/dify.git
 cd docker
 cp .env.example .env
 docker compose up -d
