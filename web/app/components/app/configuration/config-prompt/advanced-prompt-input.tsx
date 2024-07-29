@@ -43,6 +43,7 @@ type Props = {
   promptVariables: PromptVariable[]
   isContextMissing: boolean
   onHideContextMissingTip: () => void
+  noResize?: boolean
 }
 
 const AdvancedPromptInput: FC<Props> = ({
@@ -56,6 +57,7 @@ const AdvancedPromptInput: FC<Props> = ({
   promptVariables,
   isContextMissing,
   onHideContextMissingTip,
+  noResize,
 }) => {
   const { t } = useTranslation()
   const { eventEmitter } = useEventEmitterContextContext()
@@ -207,6 +209,7 @@ const AdvancedPromptInput: FC<Props> = ({
               <div className="h-[18px] leading-[18px] px-1 rounded-md bg-gray-100 text-xs text-gray-500">{value.length}</div>
             </div>
           )}
+          hideResize={noResize}
         >
           <PromptEditor
             className='min-h-[84px]'

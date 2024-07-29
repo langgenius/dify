@@ -22,7 +22,7 @@ from fields.conversation_fields import (
 )
 from libs.helper import datetime_string
 from libs.login import login_required
-from models.model import AppMode, Conversation, Message, MessageAnnotation
+from models.model import AppMode, Conversation, EndUser, Message, MessageAnnotation
 
 
 class CompletionConversationApi(Resource):
@@ -156,19 +156,31 @@ class ChatConversationApi(Resource):
         parser.add_argument('limit', type=int_range(1, 100), required=False, default=20, location='args')
         args = parser.parse_args()
 
+        subquery = (
+            db.session.query(
+                Conversation.id.label('conversation_id'),
+                EndUser.session_id.label('from_end_user_session_id')
+            )
+            .outerjoin(EndUser, Conversation.from_end_user_id == EndUser.id)
+            .subquery()
+        )
+
         query = db.select(Conversation).where(Conversation.app_id == app_model.id)
 
         if args['keyword']:
+            keyword_filter = '%{}%'.format(args['keyword'])
             query = query.join(
-                Message, Message.conversation_id == Conversation.id
+                Message, Message.conversation_id == Conversation.id,
+            ).join(
+                subquery, subquery.c.conversation_id == Conversation.id
             ).filter(
                 or_(
-                    Message.query.ilike('%{}%'.format(args['keyword'])),
-                    Message.answer.ilike('%{}%'.format(args['keyword'])),
-                    Conversation.name.ilike('%{}%'.format(args['keyword'])),
-                    Conversation.introduction.ilike('%{}%'.format(args['keyword'])),
+                    Message.query.ilike(keyword_filter),
+                    Message.answer.ilike(keyword_filter),
+                    Conversation.name.ilike(keyword_filter),
+                    Conversation.introduction.ilike(keyword_filter),
+                    subquery.c.from_end_user_session_id.ilike(keyword_filter)
                 ),
-
             )
 
         account = current_user

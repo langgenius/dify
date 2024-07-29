@@ -5,9 +5,10 @@ import cn from 'classnames'
 import { useWorkflow } from '../../../hooks'
 import { BlockEnum } from '../../../types'
 import { VarBlockIcon } from '../../../block-icon'
-import { getNodeInfoById, isSystemVar } from './variable/utils'
+import { getNodeInfoById, isENV, isSystemVar } from './variable/utils'
 import { Line3 } from '@/app/components/base/icons/src/public/common'
 import { Variable02 } from '@/app/components/base/icons/src/vender/solid/development'
+import { Env } from '@/app/components/base/icons/src/vender/line/others'
 type Props = {
   nodeId: string
   value: string
@@ -40,25 +41,29 @@ const ReadonlyInputWithSelectVar: FC<Props> = ({
 
       const value = vars[index].split('.')
       const isSystem = isSystemVar(value)
+      const isEnv = isENV(value)
       const node = (isSystem ? startNode : getNodeInfoById(availableNodes, value[0]))?.data
       const varName = `${isSystem ? 'sys.' : ''}${value[value.length - 1]}`
 
       return (<span key={index}>
         <span className='relative top-[-3px] leading-[16px]'>{str}</span>
         <div className=' inline-flex h-[16px] items-center px-1.5 rounded-[5px] bg-white'>
-          <div className='flex items-center'>
-            <div className='p-[1px]'>
-              <VarBlockIcon
-                className='!text-gray-900'
-                type={node?.type || BlockEnum.Start}
-              />
+          {!isEnv && (
+            <div className='flex items-center'>
+              <div className='p-[1px]'>
+                <VarBlockIcon
+                  className='!text-gray-900'
+                  type={node?.type || BlockEnum.Start}
+                />
+              </div>
+              <div className='max-w-[60px] mx-0.5 text-xs font-medium text-gray-700 truncate' title={node?.title}>{node?.title}</div>
+              <Line3 className='mr-0.5'></Line3>
             </div>
-            <div className='max-w-[60px] mx-0.5 text-xs font-medium text-gray-700 truncate' title={node?.title}>{node?.title}</div>
-            <Line3 className='mr-0.5'></Line3>
-          </div>
+          )}
           <div className='flex items-center text-primary-600'>
-            <Variable02 className='w-3.5 h-3.5' />
-            <div className='max-w-[50px] ml-0.5 text-xs font-medium truncate' title={varName}>{varName}</div>
+            {!isEnv && <Variable02 className='shrink-0 w-3.5 h-3.5' />}
+            {isEnv && <Env className='shrink-0 w-3.5 h-3.5 text-util-colors-violet-violet-600' />}
+            <div className={cn('max-w-[50px] ml-0.5 text-xs font-medium truncate', isEnv && 'text-gray-900')} title={varName}>{varName}</div>
           </div>
         </div>
       </span>)

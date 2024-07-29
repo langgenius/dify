@@ -121,7 +121,7 @@ flask-cors = "~4.0.0"
 flask-login = "~0.6.3"
 flask-migrate = "~4.0.5"
 flask-restful = "~0.3.10"
-flask-sqlalchemy = "~3.0.5"
+Flask-SQLAlchemy = "~3.1.1"
 gevent = "~23.9.1"
 gmpy2 = "~2.1.5"
 google-ai-generativelanguage = "0.6.1"
@@ -148,9 +148,9 @@ oss2 = "2.18.5"
 pandas = { version = "~2.2.2", extras = ["performance", "excel"] }
 psycopg2-binary = "~2.9.6"
 pycryptodome = "3.19.1"
-pydantic = "~2.7.4"
-pydantic-settings = "~2.3.3"
-pydantic_extra_types = "~2.8.1"
+pydantic = "~2.8.2"
+pydantic-settings = "~2.3.4"
+pydantic_extra_types = "~2.9.0"
 pydub = "~0.25.1"
 pyjwt = "~2.8.0"
 pypdfium2 = "~4.17.0"
@@ -163,7 +163,8 @@ redis = { version = "~5.0.3", extras = ["hiredis"] }
 replicate = "~0.22.0"
 resend = "~0.7.0"
 safetensors = "~0.4.3"
-sentry-sdk = { version = "~1.39.2", extras = ["flask"] }
+scikit-learn = "^1.5.1"
+sentry-sdk = { version = "~1.44.1", extras = ["flask"] }
 sqlalchemy = "~2.0.29"
 tencentcloud-sdk-python-hunyuan = "~3.0.1158"
 tiktoken = "~0.7.0"
@@ -175,7 +176,8 @@ werkzeug = "~3.0.1"
 xinference-client = "0.9.4"
 yarl = "~1.9.4"
 zhipuai = "1.0.7"
-
+rank-bm25 = "~0.2.2"
+openpyxl = "^3.1.5"
 ############################################################
 # Tool dependencies required by tool implementations
 ############################################################
@@ -193,13 +195,14 @@ twilio = "~9.0.4"
 vanna = { version = "0.5.5", extras = ["postgres", "mysql", "clickhouse", "duckdb"] }
 wikipedia = "1.4.0"
 yfinance = "~0.2.40"
+cloudscraper = "1.2.71"
 
 ############################################################
 # VDB dependencies required by vector store clients
 ############################################################
 
 [tool.poetry.group.vdb.dependencies]
-chromadb = "~0.5.1"
+chromadb = "0.5.1"
 oracledb = "~2.2.1"
 pgvecto-rs = "0.1.4"
 pgvector = "0.2.5"

@@ -1,5 +1,5 @@
 import json
-from collections.abc import Generator
+from collections.abc import Generator, Mapping
 from copy import deepcopy
 from datetime import datetime, timezone
 from mimetypes import guess_type
@@ -48,7 +48,7 @@ class ToolEngine:
         if isinstance(tool_parameters, str):
             # check if this tool has only one parameter
             parameters = [
-                parameter for parameter in tool.get_runtime_parameters() 
+                parameter for parameter in tool.get_runtime_parameters() or []
                 if parameter.form == ToolParameter.ToolParameterForm.LLM
             ]
             if parameters and len(parameters) == 1:
@@ -136,8 +136,8 @@ class ToolEngine:
         return error_response, [], ToolInvokeMeta.error_instance(error_response)
 
     @staticmethod
-    def workflow_invoke(tool: Tool, tool_parameters: dict,
-                        user_id: str, workflow_id: str, 
+    def workflow_invoke(tool: Tool, tool_parameters: Mapping[str, Any],
+                        user_id: str,
                         workflow_tool_callback: DifyWorkflowCallbackHandler,
                         workflow_call_depth: int,
         ) -> Generator[ToolInvokeMessage, None, None]:
@@ -154,7 +154,9 @@ class ToolEngine:
             if isinstance(tool, WorkflowTool):
                 tool.workflow_call_depth = workflow_call_depth + 1
 
-            response = tool.invoke(user_id, tool_parameters)
+            if tool.runtime and tool.runtime.runtime_parameters:
+                tool_parameters = {**tool.runtime.runtime_parameters, **tool_parameters}
+            response = tool.invoke(user_id=user_id, tool_parameters=tool_parameters)
 
             # hit the callback handler
             workflow_tool_callback.on_tool_end(

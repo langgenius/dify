@@ -79,7 +79,7 @@ class HostedAzureOpenAiConfig(BaseSettings):
         default=False,
     )
 
-    HOSTED_OPENAI_API_KEY: Optional[str] = Field(
+    HOSTED_AZURE_OPENAI_API_KEY: Optional[str] = Field(
         description='',
         default=None,
     )

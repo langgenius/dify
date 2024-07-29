@@ -46,14 +46,15 @@ def document_indexing_update_task(dataset_id: str, document_id: str):
         index_processor = IndexProcessorFactory(index_type).init_index_processor()
 
         segments = db.session.query(DocumentSegment).filter(DocumentSegment.document_id == document_id).all()
-        index_node_ids = [segment.index_node_id for segment in segments]
+        if segments:
+            index_node_ids = [segment.index_node_id for segment in segments]
 
-        # delete from vector index
-        index_processor.clean(dataset, index_node_ids)
+            # delete from vector index
+            index_processor.clean(dataset, index_node_ids)
 
-        for segment in segments:
-            db.session.delete(segment)
-        db.session.commit()
+            for segment in segments:
+                db.session.delete(segment)
+            db.session.commit()
         end_at = time.perf_counter()
         logging.info(
             click.style('Cleaned document when document update data source or process rule: {} latency: {}'.format(document_id, end_at - start_at), fg='green'))

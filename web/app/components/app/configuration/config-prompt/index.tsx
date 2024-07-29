@@ -19,6 +19,10 @@ export type IPromptProps = {
   promptTemplate: string
   promptVariables: PromptVariable[]
   readonly?: boolean
+  noTitle?: boolean
+  gradientBorder?: boolean
+  editorHeight?: number
+  noResize?: boolean
   onChange?: (prompt: string, promptVariables: PromptVariable[]) => void
 }
 
@@ -26,7 +30,11 @@ const Prompt: FC<IPromptProps> = ({
   mode,
   promptTemplate,
   promptVariables,
+  noTitle,
+  gradientBorder,
   readonly = false,
+  editorHeight,
+  noResize,
   onChange,
 }) => {
   const { t } = useTranslation()
@@ -99,6 +107,10 @@ const Prompt: FC<IPromptProps> = ({
         promptVariables={promptVariables}
         readonly={readonly}
         onChange={onChange}
+        noTitle={noTitle}
+        gradientBorder={gradientBorder}
+        editorHeight={editorHeight}
+        noResize={noResize}
       />
     )
   }
@@ -121,6 +133,7 @@ const Prompt: FC<IPromptProps> = ({
                 promptVariables={promptVariables}
                 isContextMissing={isContextMissing && !isHideContextMissTip}
                 onHideContextMissingTip={() => setIsHideContextMissTip(true)}
+                noResize={noResize}
               />
             ))
           )
@@ -136,6 +149,7 @@ const Prompt: FC<IPromptProps> = ({
               promptVariables={promptVariables}
               isContextMissing={isContextMissing && !isHideContextMissTip}
               onHideContextMissingTip={() => setIsHideContextMissTip(true)}
+              noResize={noResize}
             />
           )
         }

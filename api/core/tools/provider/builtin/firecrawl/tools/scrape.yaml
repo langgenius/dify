@@ -3,7 +3,7 @@ identity:
   author: ahasasjeb
   label:
     en_US: Scrape
-    zh_Hans: 抓取
+    zh_Hans: 单页面抓取
 description:
   human:
     en_US: Extract data from a single URL.
@@ -21,3 +21,160 @@ parameters:
       zh_Hans: 要抓取并提取数据的网站URL。
     llm_description: The URL of the website that needs to be crawled. This is a required parameter.
     form: llm
+############## Page Options #######################
+  - name: headers
+    type: string
+    label:
+      en_US: headers
+      zh_Hans: 请求头
+    human_description:
+      en_US: |
+        Headers to send with the request. Can be used to send cookies, user-agent, etc. Example: {"cookies": "testcookies"}
+      zh_Hans: |
+        随请求发送的头部。可以用来发送cookies、用户代理等。示例：{"cookies": "testcookies"}
+    placeholder:
+      en_US: Please enter an object that can be serialized in JSON
+      zh_Hans: 请输入可以json序列化的对象
+    form: form
+  - name: includeHtml
+    type: boolean
+    default: false
+    label:
+      en_US: include Html
+      zh_Hans: 包含HTML
+    human_description:
+      en_US: Include the HTML version of the content on page. Will output a html key in the response.
+      zh_Hans: 返回中包含一个HTML版本的内容，将以html键返回。
+    form: form
+  - name: includeRawHtml
+    type: boolean
+    default: false
+    label:
+      en_US: include Raw Html
+      zh_Hans: 包含原始HTML
+    human_description:
+      en_US: Include the raw HTML content of the page. Will output a rawHtml key in the response.
+      zh_Hans: 返回中包含一个原始HTML版本的内容，将以rawHtml键返回。
+    form: form
+  - name: onlyIncludeTags
+    type: string
+    label:
+      en_US: only Include Tags
+      zh_Hans: 仅抓取这些标签
+    placeholder:
+      en_US: Use commas to separate multiple tags
+      zh_Hans: 多个标签时使用半角逗号分隔
+    human_description:
+      en_US: |
+        Only include tags, classes and ids from the page in the final output. Use comma separated values. Example: script, .ad, #footer
+      zh_Hans: |
+        仅在最终输出中包含HTML页面的这些标签，可以通过标签名、类或ID来设定，使用逗号分隔值。示例：script, .ad, #footer
+    form: form
+  - name: onlyMainContent
+    type: boolean
+    default: false
+    label:
+      en_US: only Main Content
+      zh_Hans: 仅抓取主要内容
+    human_description:
+      en_US: Only return the main content of the page excluding headers, navs, footers, etc.
+      zh_Hans: 只返回页面的主要内容，不包括头部、导航栏、尾部等。
+    form: form
+  - name: removeTags
+    type: string
+    label:
+      en_US: remove Tags
+      zh_Hans: 要移除这些标签
+    human_description:
+      en_US: |
+        Tags, classes and ids to remove from the page. Use comma separated values. Example: script, .ad, #footer
+      zh_Hans: |
+        要在最终输出中移除HTML页面的这些标签，可以通过标签名、类或ID来设定，使用逗号分隔值。示例：script, .ad, #footer
+    placeholder:
+      en_US: Use commas to separate multiple tags
+      zh_Hans: 多个标签时使用半角逗号分隔
+    form: form
+  - name: replaceAllPathsWithAbsolutePaths
+    type: boolean
+    default: false
+    label:
+      en_US: All AbsolutePaths
+      zh_Hans: 使用绝对路径
+    human_description:
+      en_US: Replace all relative paths with absolute paths for images and links.
+      zh_Hans: 将所有图片和链接的相对路径替换为绝对路径。
+    form: form
+  - name: screenshot
+    type: boolean
+    default: false
+    label:
+      en_US: screenshot
+      zh_Hans: 截图
+    human_description:
+      en_US: Include a screenshot of the top of the page that you are scraping.
+      zh_Hans: 提供正在抓取的页面的顶部的截图。
+    form: form
+  - name: waitFor
+    type: number
+    min: 0
+    label:
+      en_US: wait For
+      zh_Hans: 等待时间
+    human_description:
+      en_US: Wait x amount of milliseconds for the page to load to fetch content.
+      zh_Hans: 等待x毫秒以使页面加载并获取内容。
+    form: form
+############## Extractor Options #######################
+  - name: mode
+    type: select
+    options:
+      - value: markdown
+        label:
+          en_US: markdown
+      - value: llm-extraction
+        label:
+          en_US: llm-extraction
+      - value: llm-extraction-from-raw-html
+        label:
+          en_US: llm-extraction-from-raw-html
+      - value: llm-extraction-from-markdown
+        label:
+          en_US: llm-extraction-from-markdown
+    label:
+      en_US: Extractor Mode
+      zh_Hans: 提取模式
+    human_description:
+      en_US: |
+       The extraction mode to use. 'markdown': Returns the scraped markdown content, does not perform LLM extraction. 'llm-extraction': Extracts information from the cleaned and parsed content using LLM.
+      zh_Hans: 使用的提取模式。“markdown”：返回抓取的markdown内容，不执行LLM提取。“llm-extractioin”：使用LLM按Extractor Schema从内容中提取信息。
+    form: form
+  - name: extractionPrompt
+    type: string
+    label:
+      en_US: Extractor Prompt
+      zh_Hans: 提取时的提示词
+    human_description:
+      en_US: A prompt describing what information to extract from the page, applicable for LLM extraction modes.
+      zh_Hans: 当使用LLM提取模式时，用于给LLM描述提取规则。
+    form: form
+  - name: extractionSchema
+    type: string
+    label:
+      en_US: Extractor Schema
+      zh_Hans: 提取时的结构
+    placeholder:
+      en_US: Please enter an object that can be serialized in JSON
+    human_description:
+      en_US: |
+        The schema for the data to be extracted, required only for LLM extraction modes. Example: {
+            "type": "object",
+            "properties": {"company_mission": {"type": "string"}},
+            "required": ["company_mission"]
+        }
+      zh_Hans: |
+       当使用LLM提取模式时，使用该结构去提取，示例：{
+            "type": "object",
+            "properties": {"company_mission": {"type": "string"}},
+            "required": ["company_mission"]
+        }
+    form: form

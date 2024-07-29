@@ -1,0 +1,23 @@
+model: meta-llama/llama-3.1-70b-instruct
+label:
+  en_US: llama-3.1-70b-instruct
+model_type: llm
+model_properties:
+  mode: chat
+  context_size: 128000
+parameter_rules:
+  - name: temperature
+    use_template: temperature
+  - name: top_p
+    use_template: top_p
+  - name: max_tokens
+    use_template: max_tokens
+    required: true
+    default: 512
+    min: 1
+    max: 128000
+pricing:
+  input: "0.9"
+  output: "0.9"
+  unit: "0.000001"
+  currency: USD

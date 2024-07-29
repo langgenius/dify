@@ -75,7 +75,7 @@
       "name": "Italiano (Italia)",
       "prompt_name": "Italian",
       "example": "Ciao, Dify!",
-      "supported": false
+      "supported": true
     },
     {
       "value": "th-TH",

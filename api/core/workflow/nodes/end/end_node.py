@@ -10,7 +10,7 @@ from models.workflow import WorkflowNodeExecutionStatus
 
 class EndNode(BaseNode):
     _node_data_cls = EndNodeData
-    node_type = NodeType.END
+    _node_type = NodeType.END
 
     def _run(self, variable_pool: VariablePool) -> NodeRunResult:
         """
@@ -19,15 +19,12 @@ class EndNode(BaseNode):
         :return:
         """
         node_data = self.node_data
-        node_data = cast(self._node_data_cls, node_data)
+        node_data = cast(EndNodeData, node_data)
         output_variables = node_data.outputs
 
         outputs = {}
         for variable_selector in output_variables:
-            value = variable_pool.get_variable_value(
-                variable_selector=variable_selector.value_selector
-            )
-
+            value = variable_pool.get_any(variable_selector.value_selector)
             outputs[variable_selector.variable] = value
 
         return NodeRunResult(
@@ -45,7 +42,7 @@ class EndNode(BaseNode):
         :return:
         """
         node_data = cls._node_data_cls(**config.get("data", {}))
-        node_data = cast(cls._node_data_cls, node_data)
+        node_data = cast(EndNodeData, node_data)
 
         return cls.extract_generate_nodes_from_node_data(graph, node_data)
 
@@ -57,7 +54,7 @@ class EndNode(BaseNode):
         :param node_data: node data object
         :return:
         """
-        nodes = graph.get('nodes')
+        nodes = graph.get('nodes', [])
         node_mapping = {node.get('id'): node for node in nodes}
 
         variable_selectors = node_data.outputs

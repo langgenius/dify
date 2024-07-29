@@ -4,9 +4,8 @@ from pathlib import Path
 from typing import Union
 from urllib.parse import unquote
 
-import requests
-from flask import current_app
-
+from configs import dify_config
+from core.helper import ssrf_proxy
 from core.rag.extractor.csv_extractor import CSVExtractor
 from core.rag.extractor.entity.datasource_type import DatasourceType
 from core.rag.extractor.entity.extract_setting import ExtractSetting
@@ -51,7 +50,7 @@ class ExtractProcessor:
 
     @classmethod
     def load_from_url(cls, url: str, return_text: bool = False) -> Union[list[Document], str]:
-        response = requests.get(url, headers={
+        response = ssrf_proxy.get(url, headers={
             "User-Agent": USER_AGENT
         })
 
@@ -94,9 +93,9 @@ class ExtractProcessor:
                     storage.download(upload_file.key, file_path)
                 input_file = Path(file_path)
                 file_extension = input_file.suffix.lower()
-                etl_type = current_app.config['ETL_TYPE']
-                unstructured_api_url = current_app.config['UNSTRUCTURED_API_URL']
-                unstructured_api_key = current_app.config['UNSTRUCTURED_API_KEY']
+                etl_type = dify_config.ETL_TYPE
+                unstructured_api_url = dify_config.UNSTRUCTURED_API_URL
+                unstructured_api_key = dify_config.UNSTRUCTURED_API_KEY
                 if etl_type == 'Unstructured':
                     if file_extension == '.xlsx' or file_extension == '.xls':
                         extractor = ExcelExtractor(file_path)

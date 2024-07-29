@@ -53,10 +53,11 @@ const Operation: FC<OperationProps> = ({
     content: messageContent,
     annotation,
     feedback,
+    adminFeedback,
     agent_thoughts,
   } = item
   const hasAnnotation = !!annotation?.id
-  const [localFeedback, setLocalFeedback] = useState(feedback)
+  const [localFeedback, setLocalFeedback] = useState(config?.supportAnnotation ? adminFeedback : feedback)
 
   const content = useMemo(() => {
     if (agent_thoughts?.length)
@@ -113,15 +114,19 @@ const Operation: FC<OperationProps> = ({
         {!isOpeningStatement && (showPromptLog || config?.text_to_speech?.enabled) && (
           <div className='hidden group-hover:flex items-center w-max h-[28px] p-0.5 rounded-lg bg-white border-[0.5px] border-gray-100 shadow-md shrink-0'>
             {showPromptLog && (
-              <Log logItem={item} />
+              <>
+                <Log logItem={item} />
+                <div className='mx-1 w-[1px] h-[14px] bg-gray-200' />
+              </>
             )}
+
             {(config?.text_to_speech?.enabled) && (
               <>
-                <div className='mx-1 w-[1px] h-[14px] bg-gray-200' />
                 <AudioBtn
                   id={id}
                   value={content}
                   noCache={false}
+                  voice={config?.text_to_speech?.voice}
                   className='hidden group-hover:block'
                 />
               </>

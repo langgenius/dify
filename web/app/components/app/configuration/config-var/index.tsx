@@ -96,7 +96,7 @@ const ConfigVar: FC<IConfigVarProps> = ({ promptVariables, readonly, onPromptVar
         ...rest,
         type: type === InputVarType.textInput ? 'string' : type,
         key: variable,
-        name: label,
+        name: label as string,
       }
 
       if (payload.type === InputVarType.textInput)

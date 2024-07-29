@@ -23,6 +23,7 @@ class SecurityConfig(BaseSettings):
         default=24,
     )
 
+
 class AppExecutionConfig(BaseSettings):
     """
     App Execution configs
@@ -418,7 +419,6 @@ class DataSetConfig(BaseSettings):
         default=False,
     )
 
-
 class WorkspaceConfig(BaseSettings):
     """
     Workspace configs
@@ -445,6 +445,13 @@ class ImageFormatConfig(BaseSettings):
     MULTIMODAL_SEND_IMAGE_FORMAT: str = Field(
         description='multi model send image format, support base64, url, default is base64',
         default='base64',
+    )
+
+
+class CeleryBeatConfig(BaseSettings):
+    CELERY_BEAT_SCHEDULER_TIME: int = Field(
+        description='the time of the celery scheduler, default to 1 day',
+        default=1,
     )
 
 
@@ -476,5 +483,6 @@ class FeatureConfig(
 
     # hosted services config
     HostedServiceConfig,
+    CeleryBeatConfig,
 ):
     pass
