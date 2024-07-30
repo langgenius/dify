@@ -1,6 +1,7 @@
 import { useCallback, useMemo } from 'react'
 import produce from 'immer'
 import { useStoreApi } from 'reactflow'
+import { isEqual } from 'lodash-es'
 import { VarType } from '../../types'
 import type { ValueSelector, Var } from '../../types'
 import { type AssignerNodeType, WriteMode } from './types'
@@ -82,6 +83,10 @@ const useConfig = (id: string, payload: AssignerNodeType) => {
   }, [inputs, setInputs])
 
   const filterToAssignedVar = useCallback((varPayload: Var) => {
+    // console.log(varPayload.variable.split('.'), inputs.assigned_variable_selector)
+    if (isEqual(varPayload.variable.split('.'), inputs.assigned_variable_selector))
+      return false
+
     if (inputs.write_mode === WriteMode.Overwrite) {
       return varPayload.type === assignedVarType
     }
@@ -98,11 +103,11 @@ const useConfig = (id: string, payload: AssignerNodeType) => {
       }
     }
     return true
-  }, [inputs.write_mode, assignedVarType])
+  }, [inputs.assigned_variable_selector, inputs.write_mode, assignedVarType])
 
-  const handleToAssignedVarChange = useCallback((value: any) => {
+  const handleToAssignedVarChange = useCallback((value: ValueSelector | string) => {
     const newInputs = produce(inputs, (draft) => {
-      draft.input_variable_selector = value
+      draft.input_variable_selector = value as ValueSelector
     })
     setInputs(newInputs)
   }, [inputs, setInputs])
