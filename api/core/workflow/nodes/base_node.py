@@ -1,5 +1,5 @@
 from abc import ABC, abstractmethod
-from collections.abc import Generator, Mapping
+from collections.abc import Generator, Mapping, Sequence
 from typing import Any, Optional
 
 from core.workflow.entities.base_node_data_entities import BaseNodeData
