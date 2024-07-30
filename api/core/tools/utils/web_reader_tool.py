@@ -1,4 +1,3 @@
-import chardet
 import hashlib
 import json
 import mimetypes
@@ -11,6 +10,7 @@ import unicodedata
 from contextlib import contextmanager
 from urllib.parse import unquote
 
+import chardet
 import cloudscraper
 from bs4 import BeautifulSoup, CData, Comment, NavigableString
 from regex import regex
