@@ -2,8 +2,8 @@ identity:
   author: hymvp
   name: localvanna
   label:
-    en_US: Vanna.AI
-    zh_Hans: Vanna.AI
+    en_US: LocalVanna
+    zh_Hans: LocalVanna
   description:
     en_US: The fastest way to get actionable insights from your database just by asking questions.
     zh_Hans: Vanna本地化部署。
