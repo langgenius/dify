@@ -24,16 +24,40 @@ from core.model_runtime.model_providers.__base.tts_model import TTSModel
 class XinferenceText2SpeechModel(TTSModel):
 
     def __init__(self):
-        # default voice, need support custom voice
-        self.voices = {
-            'default': [
-                {'name': 'Alloy', 'value': 'alloy'},
-                {'name': 'Echo', 'value': 'echo'},
-                {'name': 'Fable', 'value': 'fable'},
-                {'name': 'Onyx', 'value': 'onyx'},
-                {'name': 'Nova', 'value': 'nova'},
-                {'name': 'Shimmer', 'value': 'shimmer'},
-            ]
+        # preset voices, need support custom voice
+        self.model_voices = {
+            'chattts': {
+                'all': [
+                    {'name': 'Alloy', 'value': 'alloy'},
+                    {'name': 'Echo', 'value': 'echo'},
+                    {'name': 'Fable', 'value': 'fable'},
+                    {'name': 'Onyx', 'value': 'onyx'},
+                    {'name': 'Nova', 'value': 'nova'},
+                    {'name': 'Shimmer', 'value': 'shimmer'},
+                ]
+            },
+            'cosyvoice': {
+                'zh-Hans': [
+                    {'name': '中文男', 'value': '中文男'},
+                    {'name': '中文女', 'value': '中文女'},
+                    {'name': '粤语女', 'value': '粤语女'},
+                ],
+                'zh-Hant': [
+                    {'name': '中文男', 'value': '中文男'},
+                    {'name': '中文女', 'value': '中文女'},
+                    {'name': '粤语女', 'value': '粤语女'},
+                ],
+                'en-US': [
+                    {'name': '英文男', 'value': '英文男'},
+                    {'name': '英文女', 'value': '英文女'},
+                ],
+                'ja-JP': [
+                    {'name': '日语男', 'value': '日语男'},
+                ],
+                'ko-KR': [
+                    {'name': '韩语女', 'value': '韩语女'},
+                ]
+            }
         }
 
     def validate_credentials(self, model: str, credentials: dict) -> None:
@@ -137,10 +161,13 @@ class XinferenceText2SpeechModel(TTSModel):
         }
 
     def get_tts_model_voices(self, model: str, credentials: dict, language: Optional[str] = None) -> list:
-        if language in self.voices:
-            return self.voices[language]
-        else:
-            return self.voices['default']
+        for key, voices in self.model_voices.items():
+            if key in model.lower():
+                if language in voices:
+                    return voices[language]
+                elif 'all' in voices:
+                    return voices['all']
+        return []
 
     def _get_model_default_voice(self, model: str, credentials: dict) -> any:
         return ""
