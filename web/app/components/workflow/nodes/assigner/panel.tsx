@@ -59,7 +59,7 @@ const Panel: FC<NodePanelProps<AssignerNodeType>> = ({
         </Field>
         {inputs.write_mode !== WriteMode.Clear && (
           <Field
-            title={t(`${i18nPrefix}.setValue`)}
+            title={t(`${i18nPrefix}.setVariable`)}
           >
             <VarReferencePicker
               readonly={readOnly}

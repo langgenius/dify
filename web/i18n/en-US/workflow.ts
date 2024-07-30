@@ -439,8 +439,8 @@ const translation = {
       'append': 'Append',
       'plus': 'Plus',
       'clear': 'Clear',
-      'setValue': 'Set Value',
-      'value': 'Value',
+      'setVariable': 'Set Variable',
+      'variable': 'Variable',
     },
     tool: {
       toAuthorize: 'To authorize',

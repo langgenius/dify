@@ -437,10 +437,8 @@ const translation = {
       'append': '追加',
       'plus': '加',
       'clear': '清空',
-      'setValue': '设置值',
-      'value': '值',
-      'keyInObj': '对象中的 Key',
-      'valueInObj': '对象中的 值',
+      'setVariable': '设置变量',
+      'variable': '变量',
     },
     tool: {
       toAuthorize: '授权',

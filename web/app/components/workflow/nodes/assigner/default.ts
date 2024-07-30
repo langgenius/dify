@@ -33,7 +33,7 @@ const nodeDefault: NodeDefault<AssignerNodeType> = {
 
     if (!errorMessages && writeMode !== WriteMode.Clear) {
       if (!toAssignerVarSelector?.length)
-        errorMessages = t(`${i18nPrefix}.fieldRequired`, { field: t('workflow.nodes.assigner.value') })
+        errorMessages = t(`${i18nPrefix}.fieldRequired`, { field: t('workflow.nodes.assigner.variable') })
     }
 
     return {
