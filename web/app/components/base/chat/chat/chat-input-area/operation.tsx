@@ -1,10 +1,27 @@
-import { forwardRef } from 'react'
-import { RiSendPlane2Fill } from '@remixicon/react'
+import {
+  forwardRef,
+  memo,
+} from 'react'
+import {
+  RiMicLine,
+  RiSendPlane2Fill,
+} from '@remixicon/react'
+import type {
+  EnableType,
+} from '../../types'
 import Button from '@/app/components/base/button'
+import ActionButton from '@/app/components/base/action-button'
 import { FileUploaderInChatInput } from '@/app/components/base/file-uploader'
 import cn from '@/utils/classnames'
 
-const Operation = forwardRef<HTMLDivElement>((_, ref) => {
+type OperationProps = {
+  speechToTextConfig?: EnableType
+  onShowVoiceInput?: () => void
+}
+const Operation = forwardRef<HTMLDivElement, OperationProps>(({
+  speechToTextConfig,
+  onShowVoiceInput,
+}, ref) => {
   return (
     <div
       className={cn(
@@ -15,8 +32,18 @@ const Operation = forwardRef<HTMLDivElement>((_, ref) => {
         className='flex items-center pl-1'
         ref={ref}
       >
-        <div className='flex items-center'>
+        <div className='flex items-center space-x-1'>
           <FileUploaderInChatInput />
+          {
+            speechToTextConfig?.enabled && (
+              <ActionButton
+                size='l'
+                onClick={onShowVoiceInput}
+              >
+                <RiMicLine className='w-5 h-5' />
+              </ActionButton>
+            )
+          }
         </div>
         <Button
           className='ml-3 px-0 w-8'
@@ -30,4 +57,4 @@ const Operation = forwardRef<HTMLDivElement>((_, ref) => {
 })
 Operation.displayName = 'Operation'
 
-export default Operation
+export default memo(Operation)

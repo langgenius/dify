@@ -14,11 +14,6 @@ const FileListFlexOperation = forwardRef<HTMLDivElement>((_, ref) => {
       <FileListItem />
       <FileListItem isFile />
       <FileListItem isFile />
-      <FileListItem isFile />
-      <FileListItem />
-      <FileListItem />
-      <FileListItem />
-      <FileListItem />
     </div>
   )
 })

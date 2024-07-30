@@ -31,7 +31,7 @@ const FileUploaderInAttachment = () => {
               className='grow'
             >
               {option.icon}
-              {option.label}
+              <span className='ml-1'>{option.label}</span>
             </Button>
           ))
         }
