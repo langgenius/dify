@@ -2,8 +2,8 @@ identity:
   name: localvanna
   author: hymvp
   label:
-    en_US: Vanna.AI
-    zh_Hans: Vanna.AI
+    en_US: LocalVanna
+    zh_Hans: LocalVanna
 description:
   human:
     en_US: The fastest way to get actionable insights from your database just by asking questions.
