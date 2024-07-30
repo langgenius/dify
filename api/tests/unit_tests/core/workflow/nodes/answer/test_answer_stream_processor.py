@@ -1,7 +1,7 @@
 from collections.abc import Generator
 from datetime import datetime, timezone
 
-from core.workflow.entities.node_entities import SystemVariable
+from core.workflow.entities.node_entities import NodeType, SystemVariable
 from core.workflow.entities.variable_pool import VariablePool
 from core.workflow.graph_engine.entities.event import (
     GraphEngineEvent,
@@ -12,6 +12,7 @@ from core.workflow.graph_engine.entities.event import (
 from core.workflow.graph_engine.entities.graph import Graph
 from core.workflow.graph_engine.entities.runtime_route_state import RouteNodeState
 from core.workflow.nodes.answer.answer_stream_processor import AnswerStreamProcessor
+from core.workflow.nodes.start.entities import StartNodeData
 
 
 def _recursive_process(graph: Graph, next_node_id: str) -> Generator[GraphEngineEvent, None, None]:
@@ -37,7 +38,14 @@ def _publish_events(graph: Graph, next_node_id: str) -> Generator[GraphEngineEve
         parallel = graph.parallel_mapping.get(parallel_id)
         parallel_start_node_id = parallel.start_from_node_id if parallel else None
 
+    node_config = graph.node_id_config_mapping[next_node_id]
+    node_type = NodeType.value_of(node_config.get("data", {}).get("type"))
+    mock_node_data = StartNodeData(**{"title": "demo", "variables": []})
+
     yield NodeRunStartedEvent(
+        node_id=next_node_id,
+        node_type=node_type,
+        node_data=mock_node_data,
         route_node_state=route_node_state,
         parallel_id=graph.node_parallel_mapping.get(next_node_id),
         parallel_start_node_id=parallel_start_node_id
@@ -47,6 +55,9 @@ def _publish_events(graph: Graph, next_node_id: str) -> Generator[GraphEngineEve
         length = int(next_node_id[-1])
         for i in range(0, length):
             yield NodeRunStreamChunkEvent(
+                node_id=next_node_id,
+                node_type=node_type,
+                node_data=mock_node_data,
                 chunk_content=str(i),
                 route_node_state=route_node_state,
                 from_variable_selector=[next_node_id, "text"],
@@ -57,6 +68,9 @@ def _publish_events(graph: Graph, next_node_id: str) -> Generator[GraphEngineEve
     route_node_state.status = RouteNodeState.Status.SUCCESS
     route_node_state.finished_at = datetime.now(timezone.utc).replace(tzinfo=None)
     yield NodeRunSucceededEvent(
+        node_id=next_node_id,
+        node_type=node_type,
+        node_data=mock_node_data,
         route_node_state=route_node_state,
         parallel_id=parallel_id,
         parallel_start_node_id=parallel_start_node_id

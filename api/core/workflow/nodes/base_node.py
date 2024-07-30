@@ -4,6 +4,7 @@ from typing import Any, Optional
 
 from core.workflow.entities.base_node_data_entities import BaseNodeData
 from core.workflow.entities.node_entities import NodeRunResult, NodeType
+from core.workflow.graph_engine.entities.event import InNodeEvent
 from core.workflow.graph_engine.entities.graph import Graph
 from core.workflow.graph_engine.entities.graph_init_params import GraphInitParams
 from core.workflow.graph_engine.entities.graph_runtime_state import GraphRuntimeState
@@ -42,14 +43,14 @@ class BaseNode(ABC):
 
     @abstractmethod
     def _run(self) \
-            -> NodeRunResult | Generator[RunEvent, None, None]:
+            -> NodeRunResult | Generator[RunEvent | InNodeEvent, None, None]:
         """
         Run node
         :return:
         """
         raise NotImplementedError
 
-    def run(self) -> Generator[RunEvent, None, None]:
+    def run(self) -> Generator[RunEvent | InNodeEvent, None, None]:
         """
         Run node entry
         :return:

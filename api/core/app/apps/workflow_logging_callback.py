@@ -46,7 +46,7 @@ class WorkflowLoggingCallback(WorkflowCallback):
         elif isinstance(event, GraphRunSucceededEvent):
             self.print_text("\n[on_workflow_run_succeeded]", color='green')
         elif isinstance(event, GraphRunFailedEvent):
-            self.print_text(f"\n[on_workflow_run_failed] reason: {event.reason}", color='red')
+            self.print_text(f"\n[on_workflow_run_failed] reason: {event.error}", color='red')
         elif isinstance(event, NodeRunStartedEvent):
             self.on_workflow_node_execute_started(
                 graph=graph,

@@ -11,21 +11,20 @@ from core.workflow.graph_engine.entities.event import (
     NodeRunSucceededEvent,
 )
 from core.workflow.graph_engine.entities.graph import Graph
+from core.workflow.nodes.answer.base_stream_processor import StreamProcessor
 from core.workflow.nodes.answer.entities import GenerateRouteChunk, TextGenerateRouteChunk, VarGenerateRouteChunk
 
 logger = logging.getLogger(__name__)
 
 
-class AnswerStreamProcessor:
+class AnswerStreamProcessor(StreamProcessor):
 
     def __init__(self, graph: Graph, variable_pool: VariablePool) -> None:
-        self.graph = graph
-        self.variable_pool = variable_pool
+        super().__init__(graph, variable_pool)
         self.generate_routes = graph.answer_stream_generate_routes
         self.route_position = {}
         for answer_node_id, route_chunks in self.generate_routes.answer_generate_route.items():
             self.route_position[answer_node_id] = 0
-        self.rest_node_ids = graph.node_ids.copy()
         self.current_stream_chunk_generating_node_ids: dict[str, list[str]] = {}
 
     def process(self,
@@ -74,58 +73,6 @@ class AnswerStreamProcessor:
         self.rest_node_ids = self.graph.node_ids.copy()
         self.current_stream_chunk_generating_node_ids = {}
 
-    def _remove_unreachable_nodes(self, event: NodeRunSucceededEvent) -> None:
-        finished_node_id = event.route_node_state.node_id
-
-        if finished_node_id not in self.rest_node_ids:
-            return
-
-        # remove finished node id
-        self.rest_node_ids.remove(finished_node_id)
-
-        run_result = event.route_node_state.node_run_result
-        if not run_result:
-            return
-
-        if run_result.edge_source_handle:
-            reachable_node_ids = []
-            unreachable_first_node_ids = []
-            for edge in self.graph.edge_mapping[finished_node_id]:
-                if (edge.run_condition
-                        and edge.run_condition.branch_identify
-                        and run_result.edge_source_handle == edge.run_condition.branch_identify):
-                    reachable_node_ids.extend(self._fetch_node_ids_in_reachable_branch(edge.target_node_id))
-                    continue
-                else:
-                    unreachable_first_node_ids.append(edge.target_node_id)
-
-            for node_id in unreachable_first_node_ids:
-                self._remove_node_ids_in_unreachable_branch(node_id, reachable_node_ids)
-
-    def _fetch_node_ids_in_reachable_branch(self, node_id: str) -> list[str]:
-        node_ids = []
-        for edge in self.graph.edge_mapping.get(node_id, []):
-            if edge.target_node_id == self.graph.root_node_id:
-                continue
-
-            node_ids.append(edge.target_node_id)
-            node_ids.extend(self._fetch_node_ids_in_reachable_branch(edge.target_node_id))
-        return node_ids
-
-    def _remove_node_ids_in_unreachable_branch(self, node_id: str, reachable_node_ids: list[str]) -> None:
-        """
-        remove target node ids until merge
-        """
-        if node_id not in self.rest_node_ids:
-            return
-
-        self.rest_node_ids.remove(node_id)
-        for edge in self.graph.edge_mapping.get(node_id, []):
-            if edge.target_node_id in reachable_node_ids:
-                continue
-
-            self._remove_node_ids_in_unreachable_branch(edge.target_node_id, reachable_node_ids)
-
     def _generate_stream_outputs_when_node_finished(self,
                                                     event: NodeRunSucceededEvent
                                                     ) -> Generator[GraphEngineEvent, None, None]:
@@ -138,8 +85,8 @@ class AnswerStreamProcessor:
             # all depends on answer node id not in rest node ids
             if (event.route_node_state.node_id != answer_node_id
                     and (answer_node_id not in self.rest_node_ids
-                    or not all(dep_id not in self.rest_node_ids
-                       for dep_id in self.generate_routes.answer_dependencies[answer_node_id]))):
+                         or not all(dep_id not in self.rest_node_ids
+                                    for dep_id in self.generate_routes.answer_dependencies[answer_node_id]))):
                 continue
 
             route_position = self.route_position[answer_node_id]
@@ -149,6 +96,9 @@ class AnswerStreamProcessor:
                 if route_chunk.type == GenerateRouteChunk.ChunkType.TEXT:
                     route_chunk = cast(TextGenerateRouteChunk, route_chunk)
                     yield NodeRunStreamChunkEvent(
+                        node_id=event.node_id,
+                        node_type=event.node_type,
+                        node_data=event.node_data,
                         chunk_content=route_chunk.text,
                         route_node_state=event.route_node_state,
                         parallel_id=event.parallel_id,
@@ -171,6 +121,9 @@ class AnswerStreamProcessor:
 
                     if text:
                         yield NodeRunStreamChunkEvent(
+                            node_id=event.node_id,
+                            node_type=event.node_type,
+                            node_data=event.node_data,
                             chunk_content=text,
                             from_variable_selector=value_selector,
                             route_node_state=event.route_node_state,

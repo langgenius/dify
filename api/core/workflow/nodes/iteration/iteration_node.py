@@ -1,13 +1,16 @@
 import logging
+from collections.abc import Generator
 from typing import Any, cast
 
 from configs import dify_config
 from core.model_runtime.utils.encoders import jsonable_encoder
-from core.workflow.entities.base_node_data_entities import BaseIterationState
-from core.workflow.entities.node_entities import NodeRunResult, NodeType
+from core.workflow.entities.node_entities import NodeRunMetadataKey, NodeRunResult, NodeType
 from core.workflow.graph_engine.entities.event import (
     BaseGraphEvent,
+    BaseNodeEvent,
+    BaseParallelBranchEvent,
     GraphRunFailedEvent,
+    InNodeEvent,
     IterationRunFailedEvent,
     IterationRunNextEvent,
     IterationRunStartedEvent,
@@ -17,7 +20,7 @@ from core.workflow.graph_engine.entities.event import (
 from core.workflow.graph_engine.entities.graph import Graph
 from core.workflow.graph_engine.entities.run_condition import RunCondition
 from core.workflow.nodes.base_node import BaseNode
-from core.workflow.nodes.event import RunCompletedEvent
+from core.workflow.nodes.event import RunCompletedEvent, RunEvent
 from core.workflow.nodes.iteration.entities import IterationNodeData
 from core.workflow.utils.condition.entities import Condition
 from models.workflow import WorkflowNodeExecutionStatus
@@ -32,7 +35,7 @@ class IterationNode(BaseNode):
     _node_data_cls = IterationNodeData
     _node_type = NodeType.ITERATION
 
-    def _run(self) -> BaseIterationState:
+    def _run(self) -> Generator[RunEvent | InNodeEvent, None, None]:
         """
         Run the node.
         """
@@ -41,6 +44,10 @@ class IterationNode(BaseNode):
 
         if not isinstance(iterator_list_value, list):
             raise ValueError(f"Invalid iterator value: {iterator_list_value}, please provide a list.")
+
+        inputs = {
+            "iterator_selector": iterator_list_value
+        }
 
         root_node_id = self.node_data.start_node_id
         graph_config = self.graph_config
@@ -117,21 +124,42 @@ class IterationNode(BaseNode):
         )
 
         yield IterationRunStartedEvent(
-            iteration_id=self.node_id,
+            iteration_node_id=self.node_id,
+            iteration_node_type=self.node_type,
+            iteration_node_data=self.node_data,
+            inputs=inputs,
+            metadata={
+                "iterator_length": 1
+            },
+            predecessor_node_id=self.previous_node_id
         )
 
         yield IterationRunNextEvent(
-            iteration_id=self.node_id,
+            iteration_node_id=self.node_id,
+            iteration_node_type=self.node_type,
+            iteration_node_data=self.node_data,
             index=0,
-            output=None
+            pre_iteration_output=None
         )
 
+        outputs: list[Any] = []
         try:
             # run workflow
             rst = graph_engine.run()
-            outputs: list[Any] = []
             for event in rst:
+                if isinstance(event, (BaseNodeEvent | BaseParallelBranchEvent)) and not event.in_iteration_id:
+                    event.in_iteration_id = self.node_id
+
                 if isinstance(event, NodeRunSucceededEvent):
+                    metadata = event.route_node_state.node_run_result.metadata
+                    if not metadata:
+                        metadata = {}
+
+                    if NodeRunMetadataKey.ITERATION_ID not in metadata:
+                        metadata[NodeRunMetadataKey.ITERATION_ID] = self.node_id
+                        metadata[NodeRunMetadataKey.ITERATION_INDEX] = variable_pool.get_any([self.node_id, 'index'])
+                        event.route_node_state.node_run_result.metadata = metadata
+
                     yield event
 
                     # handle iteration run result
@@ -158,22 +186,35 @@ class IterationNode(BaseNode):
                             )
 
                         yield IterationRunNextEvent(
-                            iteration_id=self.node_id,
+                            iteration_node_id=self.node_id,
+                            iteration_node_type=self.node_type,
+                            iteration_node_data=self.node_data,
                             index=next_index,
-                            pre_iteration_output=jsonable_encoder(current_iteration_output) if current_iteration_output else None
+                            pre_iteration_output=jsonable_encoder(
+                                current_iteration_output) if current_iteration_output else None
                         )
                 elif isinstance(event, BaseGraphEvent):
                     if isinstance(event, GraphRunFailedEvent):
                         # iteration run failed
                         yield IterationRunFailedEvent(
-                            iteration_id=self.node_id,
-                            reason=event.reason,
+                            iteration_node_id=self.node_id,
+                            iteration_node_type=self.node_type,
+                            iteration_node_data=self.node_data,
+                            inputs=inputs,
+                            outputs={
+                                "output": jsonable_encoder(outputs)
+                            },
+                            steps=len(iterator_list_value),
+                            metadata={
+                                "total_tokens": graph_engine.graph_runtime_state.total_tokens
+                            },
+                            error=event.error,
                         )
 
                         yield RunCompletedEvent(
                             run_result=NodeRunResult(
                                 status=WorkflowNodeExecutionStatus.FAILED,
-                                error=event.reason,
+                                error=event.error,
                             )
                         )
                         break
@@ -181,7 +222,17 @@ class IterationNode(BaseNode):
                     yield event
 
             yield IterationRunSucceededEvent(
-                iteration_id=self.node_id,
+                iteration_node_id=self.node_id,
+                iteration_node_type=self.node_type,
+                iteration_node_data=self.node_data,
+                inputs=inputs,
+                outputs={
+                    "output": jsonable_encoder(outputs)
+                },
+                steps=len(iterator_list_value),
+                metadata={
+                    "total_tokens": graph_engine.graph_runtime_state.total_tokens
+                }
             )
 
             yield RunCompletedEvent(
@@ -196,8 +247,18 @@ class IterationNode(BaseNode):
             # iteration run failed
             logger.exception("Iteration run failed")
             yield IterationRunFailedEvent(
-                iteration_id=self.node_id,
-                reason=str(e),
+                iteration_node_id=self.node_id,
+                iteration_node_type=self.node_type,
+                iteration_node_data=self.node_data,
+                inputs=inputs,
+                outputs={
+                    "output": jsonable_encoder(outputs)
+                },
+                steps=len(iterator_list_value),
+                metadata={
+                    "total_tokens": graph_engine.graph_runtime_state.total_tokens
+                },
+                error=str(e),
             )
 
             yield RunCompletedEvent(

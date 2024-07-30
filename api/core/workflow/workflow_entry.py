@@ -26,24 +26,21 @@ logger = logging.getLogger(__name__)
 
 
 class WorkflowEntry:
-    def run(
+    def __init__(
             self,
-            *,
             workflow: Workflow,
             user_id: str,
             user_from: UserFrom,
             invoke_from: InvokeFrom,
             user_inputs: Mapping[str, Any],
             system_inputs: Mapping[SystemVariable, Any],
-            callbacks: Sequence[WorkflowCallback],
             call_depth: int = 0
-    ) -> Generator[GraphEngineEvent, None, None]:
+    ) -> None:
         """
         :param workflow: Workflow instance
         :param user_id: user id
         :param user_from: user from
         :param invoke_from: invoke from service-api, web-app, debugger, explore
-        :param callbacks: workflow callbacks
         :param user_inputs: user variables inputs
         :param system_inputs: system inputs, like: query, files
         :param call_depth: call depth
@@ -82,7 +79,7 @@ class WorkflowEntry:
         )
 
         # init workflow run state
-        graph_engine = GraphEngine(
+        self.graph_engine = GraphEngine(
             tenant_id=workflow.tenant_id,
             app_id=workflow.app_id,
             workflow_type=WorkflowType.value_of(workflow.type),
@@ -98,6 +95,16 @@ class WorkflowEntry:
             max_execution_time=dify_config.WORKFLOW_MAX_EXECUTION_TIME
         )
 
+    def run(
+            self,
+            *,
+            callbacks: Sequence[WorkflowCallback],
+    ) -> Generator[GraphEngineEvent, None, None]:
+        """
+        :param callbacks: workflow callbacks
+        """
+        graph_engine = self.graph_engine
+
         try:
             # run workflow
             generator = graph_engine.run()
@@ -105,7 +112,7 @@ class WorkflowEntry:
                 if callbacks:
                     for callback in callbacks:
                         callback.on_event(
-                            graph=graph,
+                            graph=self.graph_engine.graph,
                             graph_init_params=graph_engine.init_params,
                             graph_runtime_state=graph_engine.graph_runtime_state,
                             event=event
@@ -117,11 +124,11 @@ class WorkflowEntry:
             if callbacks:
                 for callback in callbacks:
                     callback.on_event(
-                        graph=graph,
+                        graph=self.graph_engine.graph,
                         graph_init_params=graph_engine.init_params,
                         graph_runtime_state=graph_engine.graph_runtime_state,
                         event=GraphRunFailedEvent(
-                            reason=str(e)
+                            error=str(e)
                         )
                     )
             return
@@ -161,6 +168,9 @@ class WorkflowEntry:
         node_type = NodeType.value_of(node_config.get('data', {}).get('type'))
         node_cls = node_classes.get(node_type)
 
+        if not node_cls:
+            raise ValueError(f'Node class not found for node type {node_type}')
+
         # init workflow run state
         node_instance = node_cls(
             tenant_id=workflow.tenant_id,
@@ -195,7 +205,7 @@ class WorkflowEntry:
                 node_instance=node_instance
             )
 
-            # run node
+            # run node TODO
             node_run_result = node_instance.run(
                 variable_pool=variable_pool
             )

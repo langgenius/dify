@@ -14,6 +14,7 @@ from core.workflow.entities.node_entities import NodeRunMetadataKey, NodeType, U
 from core.workflow.entities.variable_pool import VariablePool
 from core.workflow.graph_engine.condition_handlers.condition_manager import ConditionManager
 from core.workflow.graph_engine.entities.event import (
+    BaseIterationEvent,
     GraphEngineEvent,
     GraphRunFailedEvent,
     GraphRunStartedEvent,
@@ -32,6 +33,7 @@ from core.workflow.graph_engine.entities.graph_init_params import GraphInitParam
 from core.workflow.graph_engine.entities.graph_runtime_state import GraphRuntimeState
 from core.workflow.graph_engine.entities.runtime_route_state import RouteNodeState
 from core.workflow.nodes.answer.answer_stream_processor import AnswerStreamProcessor
+from core.workflow.nodes.base_node import BaseNode
 from core.workflow.nodes.end.end_stream_processor import EndStreamProcessor
 from core.workflow.nodes.event import RunCompletedEvent, RunRetrieverResourceEvent, RunStreamChunkEvent
 from core.workflow.nodes.node_mapping import node_classes
@@ -84,16 +86,16 @@ class GraphEngine:
         yield GraphRunStartedEvent()
 
         try:
+            stream_processor_cls: type[AnswerStreamProcessor | EndStreamProcessor]
             if self.init_params.workflow_type == WorkflowType.CHAT:
-                stream_processor = AnswerStreamProcessor(
-                    graph=self.graph,
-                    variable_pool=self.graph_runtime_state.variable_pool
-                )
+                stream_processor_cls = AnswerStreamProcessor
             else:
-                stream_processor = EndStreamProcessor(
-                    graph=self.graph,
-                    variable_pool=self.graph_runtime_state.variable_pool
-                )
+                stream_processor_cls = EndStreamProcessor
+
+            stream_processor = stream_processor_cls(
+                graph=self.graph,
+                variable_pool=self.graph_runtime_state.variable_pool
+            )
 
             # run graph
             generator = stream_processor.process(
@@ -104,21 +106,21 @@ class GraphEngine:
                 try:
                     yield item
                     if isinstance(item, NodeRunFailedEvent):
-                        yield GraphRunFailedEvent(reason=item.route_node_state.failed_reason or 'Unknown error.')
+                        yield GraphRunFailedEvent(error=item.route_node_state.failed_reason or 'Unknown error.')
                         return
                 except Exception as e:
                     logger.exception(f"Graph run failed: {str(e)}")
-                    yield GraphRunFailedEvent(reason=str(e))
+                    yield GraphRunFailedEvent(error=str(e))
                     return
 
             # trigger graph run success event
             yield GraphRunSucceededEvent()
         except GraphRunFailedError as e:
-            yield GraphRunFailedEvent(reason=e.error)
+            yield GraphRunFailedEvent(error=e.error)
             return
         except Exception as e:
             logger.exception("Unknown Error when graph running")
-            yield GraphRunFailedEvent(reason=str(e))
+            yield GraphRunFailedEvent(error=str(e))
             raise e
 
     def _run(self, start_node_id: str, in_parallel_id: Optional[str] = None) -> Generator[GraphEngineEvent, None, None]:
@@ -145,11 +147,34 @@ class GraphEngine:
                 node_id=next_node_id
             )
 
+            # get node config
+            node_id = route_node_state.node_id
+            node_config = self.graph.node_id_config_mapping.get(node_id)
+            if not node_config:
+                raise GraphRunFailedError(f'Node {node_id} config not found.')
+
+            # convert to specific node
+            node_type = NodeType.value_of(node_config.get('data', {}).get('type'))
+            node_cls = node_classes.get(node_type)
+            if not node_cls:
+                raise GraphRunFailedError(f'Node {node_id} type {node_type} not found.')
+
+            previous_node_id = previous_route_node_state.node_id if previous_route_node_state else None
+
+            # init workflow run state
+            node_instance = node_cls(  # type: ignore
+                config=node_config,
+                graph_init_params=self.init_params,
+                graph=self.graph,
+                graph_runtime_state=self.graph_runtime_state,
+                previous_node_id=previous_node_id
+            )
+
             try:
                 # run node
                 yield from self._run_node(
+                    node_instance=node_instance,
                     route_node_state=route_node_state,
-                    previous_node_id=previous_route_node_state.node_id if previous_route_node_state else None,
                     parallel_id=in_parallel_id,
                     parallel_start_node_id=parallel_start_node_id
                 )
@@ -166,6 +191,10 @@ class GraphEngine:
                 route_node_state.status = RouteNodeState.Status.FAILED
                 route_node_state.failed_reason = str(e)
                 yield NodeRunFailedEvent(
+                    error=str(e),
+                    node_id=next_node_id,
+                    node_type=node_type,
+                    node_data=node_instance.node_data,
                     route_node_state=route_node_state,
                     parallel_id=in_parallel_id,
                     parallel_start_node_id=parallel_start_node_id
@@ -241,7 +270,7 @@ class GraphEngine:
                     # new thread
                     for edge in edge_mappings:
                         threading.Thread(target=self._run_parallel_node, kwargs={
-                            'flask_app': current_app._get_current_object(),
+                            'flask_app': current_app._get_current_object(),  # type: ignore[attr-defined]
                             'parallel_id': parallel_id,
                             'parallel_start_node_id': edge.target_node_id,
                             'q': q
@@ -309,21 +338,21 @@ class GraphEngine:
                 q.put(ParallelBranchRunFailedEvent(
                     parallel_id=parallel_id,
                     parallel_start_node_id=parallel_start_node_id,
-                    reason=e.error
+                    error=e.error
                 ))
             except Exception as e:
                 logger.exception("Unknown Error when generating in parallel")
                 q.put(ParallelBranchRunFailedEvent(
                     parallel_id=parallel_id,
                     parallel_start_node_id=parallel_start_node_id,
-                    reason=str(e)
+                    error=str(e)
                 ))
             finally:
                 db.session.remove()
 
     def _run_node(self,
+                  node_instance: BaseNode,
                   route_node_state: RouteNodeState,
-                  previous_node_id: Optional[str] = None,
                   parallel_id: Optional[str] = None,
                   parallel_start_node_id: Optional[str] = None) -> Generator[GraphEngineEvent, None, None]:
         """
@@ -331,44 +360,13 @@ class GraphEngine:
         """
         # trigger node run start event
         yield NodeRunStartedEvent(
+            node_id=node_instance.node_id,
+            node_type=node_instance.node_type,
+            node_data=node_instance.node_data,
             route_node_state=route_node_state,
+            predecessor_node_id=node_instance.previous_node_id,
             parallel_id=parallel_id,
             parallel_start_node_id=parallel_start_node_id
-        )
-
-        # get node config
-        node_id = route_node_state.node_id
-        node_config = self.graph.node_id_config_mapping.get(node_id)
-        if not node_config:
-            route_node_state.status = RouteNodeState.Status.FAILED
-            route_node_state.failed_reason = f'Node {node_id} config not found.'
-            yield NodeRunFailedEvent(
-                route_node_state=route_node_state,
-                parallel_id=parallel_id,
-                parallel_start_node_id=parallel_start_node_id
-            )
-            return
-
-        # convert to specific node
-        node_type = NodeType.value_of(node_config.get('data', {}).get('type'))
-        node_cls = node_classes.get(node_type)
-        if not node_cls:
-            route_node_state.status = RouteNodeState.Status.FAILED
-            route_node_state.failed_reason = f'Node {node_id} type {node_type} not found.'
-            yield NodeRunFailedEvent(
-                route_node_state=route_node_state,
-                parallel_id=parallel_id,
-                parallel_start_node_id=parallel_start_node_id
-            )
-            return
-
-        # init workflow run state
-        node_instance = node_cls(  # type: ignore
-            config=node_config,
-            graph_init_params=self.init_params,
-            graph=self.graph,
-            graph_runtime_state=self.graph_runtime_state,
-            previous_node_id=previous_node_id
         )
 
         db.session.close()
@@ -385,6 +383,10 @@ class GraphEngine:
 
                     if run_result.status == WorkflowNodeExecutionStatus.FAILED:
                         yield NodeRunFailedEvent(
+                            error=route_node_state.failed_reason,
+                            node_id=node_instance.node_id,
+                            node_type=node_instance.node_type,
+                            node_data=node_instance.node_data,
                             route_node_state=route_node_state,
                             parallel_id=parallel_id,
                             parallel_start_node_id=parallel_start_node_id
@@ -401,12 +403,15 @@ class GraphEngine:
                             for variable_key, variable_value in run_result.outputs.items():
                                 # append variables to variable pool recursively
                                 self._append_variables_recursively(
-                                    node_id=node_id,
+                                    node_id=node_instance.node_id,
                                     variable_key_list=[variable_key],
                                     variable_value=variable_value
                                 )
 
                         yield NodeRunSucceededEvent(
+                            node_id=node_instance.node_id,
+                            node_type=node_instance.node_type,
+                            node_data=node_instance.node_data,
                             route_node_state=route_node_state,
                             parallel_id=parallel_id,
                             parallel_start_node_id=parallel_start_node_id
@@ -415,6 +420,9 @@ class GraphEngine:
                     break
                 elif isinstance(item, RunStreamChunkEvent):
                     yield NodeRunStreamChunkEvent(
+                        node_id=node_instance.node_id,
+                        node_type=node_instance.node_type,
+                        node_data=node_instance.node_data,
                         chunk_content=item.chunk_content,
                         from_variable_selector=item.from_variable_selector,
                         route_node_state=route_node_state,
@@ -423,17 +431,28 @@ class GraphEngine:
                     )
                 elif isinstance(item, RunRetrieverResourceEvent):
                     yield NodeRunRetrieverResourceEvent(
+                        node_id=node_instance.node_id,
+                        node_type=node_instance.node_type,
+                        node_data=node_instance.node_data,
                         retriever_resources=item.retriever_resources,
                         context=item.context,
                         route_node_state=route_node_state,
                         parallel_id=parallel_id,
                         parallel_start_node_id=parallel_start_node_id,
                     )
+                elif isinstance(item, BaseIterationEvent):
+                    # add parallel info to iteration event
+                    item.parallel_id = parallel_id
+                    item.parallel_start_node_id = parallel_start_node_id
         except GenerateTaskStoppedException:
             # trigger node run failed event
             route_node_state.status = RouteNodeState.Status.FAILED
             route_node_state.failed_reason = "Workflow stopped."
             yield NodeRunFailedEvent(
+                error="Workflow stopped.",
+                node_id=node_instance.node_id,
+                node_type=node_instance.node_type,
+                node_data=node_instance.node_data,
                 route_node_state=route_node_state,
                 parallel_id=parallel_id,
                 parallel_start_node_id=parallel_start_node_id,

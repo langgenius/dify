@@ -27,6 +27,7 @@ from core.prompt.utils.prompt_message_util import PromptMessageUtil
 from core.workflow.entities.base_node_data_entities import BaseNodeData
 from core.workflow.entities.node_entities import NodeRunMetadataKey, NodeRunResult, NodeType, SystemVariable
 from core.workflow.entities.variable_pool import VariablePool
+from core.workflow.graph_engine.entities.event import InNodeEvent
 from core.workflow.nodes.base_node import BaseNode
 from core.workflow.nodes.event import RunCompletedEvent, RunEvent, RunRetrieverResourceEvent, RunStreamChunkEvent
 from core.workflow.nodes.llm.entities import (
@@ -42,11 +43,19 @@ from models.provider import Provider, ProviderType
 from models.workflow import WorkflowNodeExecutionStatus
 
 
+class ModelInvokeCompleted(BaseModel):
+    """
+    Model invoke completed
+    """
+    text: str
+    usage: LLMUsage
+
+
 class LLMNode(BaseNode):
     _node_data_cls = LLMNodeData
     _node_type = NodeType.LLM
 
-    def _run(self) -> Generator[RunEvent, None, None]:
+    def _run(self) -> Generator[RunEvent | InNodeEvent, None, None]:
         """
         Run node
         :return:
@@ -167,7 +176,7 @@ class LLMNode(BaseNode):
                     model_instance: ModelInstance,
                     prompt_messages: list[PromptMessage],
                     stop: Optional[list[str]] = None) \
-            -> Generator[RunEvent, None, None]:
+            -> Generator[RunEvent | ModelInvokeCompleted, None, None]:
         """
         Invoke large language model
         :param node_data_model: node data model
@@ -201,7 +210,7 @@ class LLMNode(BaseNode):
         self.deduct_llm_quota(tenant_id=self.tenant_id, model_instance=model_instance, usage=usage)
 
     def _handle_invoke_result(self, invoke_result: LLMResult | Generator) \
-            -> Generator[RunEvent, None, None]:
+            -> Generator[RunEvent | ModelInvokeCompleted, None, None]:
         """
         Handle invoke result
         :param invoke_result: invoke result
@@ -762,11 +771,3 @@ class LLMNode(BaseNode):
                 }
             }
         }
-
-
-class ModelInvokeCompleted(BaseModel):
-    """
-    Model invoke completed
-    """
-    text: str
-    usage: LLMUsage
