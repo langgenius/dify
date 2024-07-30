@@ -3,7 +3,7 @@ import React from 'react'
 import { useTranslation } from 'react-i18next'
 
 import VarReferencePicker from '../_base/components/variable/var-reference-picker'
-import RadioCardItem from '../_base/components/radio-card-item'
+import OptionCard from '../_base/components/option-card'
 import useConfig from './use-config'
 import { WriteMode } from './types'
 import type { AssignerNodeType } from './types'
@@ -49,12 +49,11 @@ const Panel: FC<NodePanelProps<AssignerNodeType>> = ({
         >
           <div className={cn('grid gap-2', isSupportAppend ? 'grid-cols-3' : 'grid-cols-2')}>
             {writeModeTypes.map(type => (
-              <RadioCardItem
+              <OptionCard
                 key={type}
                 title={t(`${i18nPrefix}.${type}`)}
                 onSelect={handleWriteModeChange(type)}
-                isSelected={inputs.write_mode === type}
-                textCenter
+                selected={inputs.write_mode === type}
               />
             ))}
           </div>
