@@ -89,6 +89,9 @@ class Vector:
             case VectorType.ANALYTICDB:
                 from core.rag.datasource.vdb.analyticdb.analyticdb_vector import AnalyticdbVectorFactory
                 return AnalyticdbVectorFactory
+            case VectorType.TIDB_ON_QDRANT:
+                from core.rag.datasource.vdb.analyticdb.analyticdb_vector import AnalyticdbVectorFactory
+                return AnalyticdbVectorFactory
             case _:
                 raise ValueError(f"Vector store {vector_type} is not supported.")
 

@@ -15,3 +15,4 @@ class VectorType(str, Enum):
     OPENSEARCH = 'opensearch'
     TENCENT = 'tencent'
     ORACLE = 'oracle'
+    TIDB_ON_QDRANT = 'tidb_on_qdrant'

@@ -666,6 +666,21 @@ class DatasetCollectionBinding(db.Model):
     created_at = db.Column(db.DateTime, nullable=False, server_default=db.text('CURRENT_TIMESTAMP(0)'))
 
 
+class TidbAuthBinding(db.Model):
+    __tablename__ = 'tidb_auth_bindings'
+    __table_args__ = (
+        db.PrimaryKeyConstraint('id', name='dataset_collection_bindings_pkey'),
+        db.Index('provider_model_name_idx', 'provider_name', 'model_name')
+
+    )
+
+    id = db.Column(StringUUID, primary_key=True, server_default=db.text('uuid_generate_v4()'))
+    tenant_id = db.Column(StringUUID, nullable=False)
+    model_name = db.Column(db.String(255), nullable=False)
+    type = db.Column(db.String(40), server_default=db.text("'dataset'::character varying"), nullable=False)
+    collection_name = db.Column(db.String(64), nullable=False)
+    created_at = db.Column(db.DateTime, nullable=False, server_default=db.text('CURRENT_TIMESTAMP(0)'))
+
 class DatasetPermission(db.Model):
     __tablename__ = 'dataset_permissions'
     __table_args__ = (
