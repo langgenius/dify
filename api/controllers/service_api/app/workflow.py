@@ -43,7 +43,7 @@ workflow_run_fields = {
     'elapsed_time': fields.Float,
 }
 
-class WorkflowApi(Resource):
+class WorkflowRunDetailApi(Resource):
     @validate_app_token
     @marshal_with(workflow_run_fields)
     def get(self, app_model: App, workflow_id: str):
@@ -117,5 +117,5 @@ class WorkflowTaskStopApi(Resource):
 
 
 api.add_resource(WorkflowRunApi, '/workflows/run')
-api.add_resource(WorkflowApi, '/workflows/run/<string:workflow_id>')
+api.add_resource(WorkflowRunDetailApi, '/workflows/run/<string:workflow_id>')
 api.add_resource(WorkflowTaskStopApi, '/workflows/tasks/<string:task_id>/stop')
