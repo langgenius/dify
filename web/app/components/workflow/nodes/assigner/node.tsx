@@ -3,24 +3,19 @@ import React from 'react'
 import { useNodes } from 'reactflow'
 import { useTranslation } from 'react-i18next'
 import NodeVariableItem from '../variable-assigner/components/node-variable-item'
-import { type AssignerNodeType, WriteMode } from './types'
-import useConfig from './use-config'
+import { type AssignerNodeType } from './types'
 import { isConversationVar, isENV, isSystemVar } from '@/app/components/workflow/nodes/_base/components/variable/utils'
-import { BlockEnum, type Node, type NodeProps, VarType } from '@/app/components/workflow/types'
+import { BlockEnum, type Node, type NodeProps } from '@/app/components/workflow/types'
 
 const i18nPrefix = 'workflow.nodes.assigner'
 
 const NodeComponent: FC<NodeProps<AssignerNodeType>> = ({
-  id,
   data,
 }) => {
   const { t } = useTranslation()
-  const {
-    varType,
-  } = useConfig(id, data)
 
   const nodes: Node[] = useNodes()
-  const { variable, writeMode } = data
+  const { assigned_variable_selector: variable, write_mode: writeMode } = data
 
   if (!variable || variable.length === 0)
     return null
@@ -43,7 +38,7 @@ const NodeComponent: FC<NodeProps<AssignerNodeType>> = ({
       />
       <div className='my-2 flex justify-between items-center h-[22px] px-[5px] bg-workflow-block-parma-bg radius-sm'>
         <div className='system-xs-medium-uppercase text-text-tertiary'>{t(`${i18nPrefix}.writeMode`)}</div>
-        <div className='system-xs-medium text-text-secondary'>{(varType === VarType.number && writeMode === WriteMode.Append) ? t(`${i18nPrefix}.plus`) : t(`${i18nPrefix}.${writeMode}`)}</div>
+        <div className='system-xs-medium text-text-secondary'>{t(`${i18nPrefix}.${writeMode}`)}</div>
       </div>
     </div>
   )

@@ -6,10 +6,9 @@ import VarReferencePicker from '../_base/components/variable/var-reference-picke
 import RadioCardItem from '../_base/components/radio-card-item'
 import useConfig from './use-config'
 import { WriteMode } from './types'
-import type { AssignerNodeType, AssignerSupportVarType } from './types'
-import Value from './components/value'
+import type { AssignerNodeType } from './types'
 import Field from '@/app/components/workflow/nodes/_base/components/field'
-import { type NodePanelProps, VarType } from '@/app/components/workflow/types'
+import { type NodePanelProps } from '@/app/components/workflow/types'
 
 const i18nPrefix = 'workflow.nodes.assigner'
 
@@ -22,12 +21,11 @@ const Panel: FC<NodePanelProps<AssignerNodeType>> = ({
   const {
     readOnly,
     inputs,
-    handleVarChanges,
-    filterVar,
-    varType,
+    handleAssignedVarChanges,
     handleWriteModeChange,
     writeModeTypes,
-    handleValueChange,
+    filterToAssignedVar,
+    handleToAssignedVarChange,
   } = useConfig(id, data)
 
   return (
@@ -40,9 +38,8 @@ const Panel: FC<NodePanelProps<AssignerNodeType>> = ({
             readonly={readOnly}
             nodeId={id}
             isShowNodeName
-            value={inputs.variable || []}
-            onChange={handleVarChanges}
-            filterVar={filterVar}
+            value={inputs.assigned_variable_selector || []}
+            onChange={handleAssignedVarChanges}
           />
         </Field>
         <Field
@@ -52,25 +49,25 @@ const Panel: FC<NodePanelProps<AssignerNodeType>> = ({
             {writeModeTypes.map(type => (
               <RadioCardItem
                 key={type}
-                title={(varType === VarType.number && type === WriteMode.Append) ? t(`${i18nPrefix}.plus`) : t(`${i18nPrefix}.${type}`)}
+                title={t(`${i18nPrefix}.${type}`)}
                 onSelect={handleWriteModeChange(type)}
-                isSelected={inputs.writeMode === type}
+                isSelected={inputs.write_mode === type}
                 textCenter
               />
             ))}
           </div>
         </Field>
-        {inputs.writeMode !== WriteMode.Clear && (
+        {inputs.write_mode !== WriteMode.Clear && (
           <Field
             title={t(`${i18nPrefix}.setValue`)}
           >
-            <Value
+            <VarReferencePicker
+              readonly={readOnly}
               nodeId={id}
-              writeMode={inputs.writeMode}
-              type={varType as AssignerSupportVarType}
-              value={inputs.value}
-              onChange={handleValueChange}
-              readOnly={readOnly}
+              isShowNodeName
+              value={inputs.input_variable_selector || []}
+              onChange={handleToAssignedVarChange}
+              filterVar={filterToAssignedVar}
             />
           </Field>
         )}

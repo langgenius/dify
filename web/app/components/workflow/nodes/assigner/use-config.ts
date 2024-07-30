@@ -1,7 +1,8 @@
 import { useCallback, useMemo } from 'react'
 import produce from 'immer'
 import { useStoreApi } from 'reactflow'
-import { type ValueSelector, VarType } from '../../types'
+import { VarType } from '../../types'
+import type { ValueSelector, Var } from '../../types'
 import { type AssignerNodeType, WriteMode } from './types'
 import useNodeCrud from '@/app/components/workflow/nodes/_base/hooks/use-node-crud'
 import {
@@ -10,7 +11,6 @@ import {
   useWorkflow,
   useWorkflowVariables,
 } from '@/app/components/workflow/hooks'
-import { VarType as VarKindType } from '@/app/components/workflow/nodes/tool/types'
 
 const useConfig = (id: string, payload: AssignerNodeType) => {
   const { nodesReadOnly: readOnly } = useNodesReadOnly()
@@ -31,120 +31,84 @@ const useConfig = (id: string, payload: AssignerNodeType) => {
   const { inputs, setInputs } = useNodeCrud<AssignerNodeType>(id, payload)
 
   const { getCurrentVariableType } = useWorkflowVariables()
-  const varType = getCurrentVariableType({
+  const assignedVarType = getCurrentVariableType({
     parentNode: iterationNode,
-    valueSelector: inputs.variable || [],
+    valueSelector: inputs.assigned_variable_selector || [],
     availableNodes,
     isChatMode,
     isConstant: false,
   })
 
-  const getInitValue = useCallback((varType: VarType, writeMode: WriteMode) => {
-    switch (varType) {
-      case VarType.string:
-        return ''
-      case VarType.number:
-        return {
-          type: VarKindType.constant,
-          value: undefined,
-        }
-      case VarType.object:
-        return [
-          {
-            id: Date.now(),
-            key: '',
-            value: '',
-          },
-        ]
-      case VarType.arrayFile:
-        return []
-      case VarType.arrayString:
-      case VarType.arrayNumber:
-      case VarType.arrayObject:
-        if (writeMode === WriteMode.Append) {
-          switch (varType) {
-            case VarType.arrayString:
-              return ''
-            case VarType.arrayNumber:
-              return {
-                type: VarKindType.constant,
-                value: 0,
-              }
-            case VarType.arrayObject:
-              return [
-                {
-                  id: Date.now(),
-                  key: '',
-                  value: '',
-                },
-              ]
-          }
-        }
-        else {
-          return {
-            type: VarKindType.constant,
-            value: '',
-          }
-        }
-    }
-  }, [])
-
-  const handleVarChanges = useCallback((variable: ValueSelector | string) => {
+  const handleAssignedVarChanges = useCallback((variable: ValueSelector | string) => {
     const newInputs = produce(inputs, (draft) => {
-      draft.variable = variable as ValueSelector
+      draft.assigned_variable_selector = variable as ValueSelector
       const newVarType = getCurrentVariableType({
         parentNode: iterationNode,
-        valueSelector: draft.variable || [],
+        valueSelector: draft.assigned_variable_selector || [],
         availableNodes,
         isChatMode,
         isConstant: false,
       })
-      draft.varType = newVarType
-      if (newVarType !== varType)
-        draft.value = getInitValue(newVarType, inputs.writeMode)
+      if (newVarType !== assignedVarType)
+        draft.input_variable_selector = []
     })
     setInputs(newInputs)
-  }, [availableNodes, getCurrentVariableType, getInitValue, inputs, isChatMode, iterationNode, setInputs, varType])
+  }, [availableNodes, getCurrentVariableType, inputs, isChatMode, iterationNode, setInputs, assignedVarType])
 
   const writeModeTypes = useMemo(() => {
     const types = [WriteMode.Overwrite, WriteMode.Append, WriteMode.Clear]
-    if (varType === VarType.object)
+    if (![VarType.arrayString, VarType.arrayNumber, VarType.arrayObject].includes(assignedVarType))
       return types.filter(t => t !== WriteMode.Append)
 
     return types
-  }, [varType])
+  }, [assignedVarType])
 
   const handleWriteModeChange = useCallback((writeMode: WriteMode) => {
     return () => {
       const newInputs = produce(inputs, (draft) => {
-        draft.writeMode = writeMode
-        if (inputs.writeMode !== WriteMode.Clear && writeMode !== WriteMode.Clear && varType !== VarType.string && varType !== VarType.number)
-          draft.value = getInitValue(varType, writeMode)
+        draft.write_mode = writeMode
+        if (inputs.write_mode === WriteMode.Clear)
+          draft.input_variable_selector = []
       })
       setInputs(newInputs)
     }
-  }, [getInitValue, inputs, setInputs, varType])
+  }, [inputs, setInputs])
 
-  const handleValueChange = useCallback((value: any) => {
+  const filterToAssignedVar = useCallback((varPayload: Var) => {
+    if (inputs.write_mode === WriteMode.Overwrite) {
+      return varPayload.type === assignedVarType
+    }
+    else if (inputs.write_mode === WriteMode.Append) {
+      switch (assignedVarType) {
+        case VarType.arrayString:
+          return varPayload.type === VarType.string
+        case VarType.arrayNumber:
+          return varPayload.type === VarType.number
+        case VarType.arrayObject:
+          return varPayload.type === VarType.object
+        default:
+          return false
+      }
+    }
+    return true
+  }, [inputs.write_mode, assignedVarType])
+
+  const handleToAssignedVarChange = useCallback((value: any) => {
     const newInputs = produce(inputs, (draft) => {
-      draft.value = value
+      draft.input_variable_selector = value
     })
     setInputs(newInputs)
   }, [inputs, setInputs])
 
-  const filterVar = useCallback(() => {
-    return true // [VarType.string, VarType.number, VarType.object, VarType.array, VarType.arrayNumber, VarType.arrayString, VarType.arrayObject].includes(varPayload.type)
-  }, [])
-
   return {
     readOnly,
     inputs,
-    filterVar,
-    handleVarChanges,
-    varType,
+    handleAssignedVarChanges,
+    assignedVarType,
     writeModeTypes,
     handleWriteModeChange,
-    handleValueChange,
+    filterToAssignedVar,
+    handleToAssignedVarChange,
   }
 }
 
