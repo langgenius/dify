@@ -217,18 +217,6 @@ alibabacloud_tea_openapi = "~0.3.9"
 clickhouse-connect = "~0.7.16"
 
 ############################################################
-# Transparent dependencies required by main dependencies
-# for pinning versions
-############################################################
-
-[tool.poetry.group.transparent.dependencies]
-kaleido = "0.2.1"
-lxml = "5.1.0"
-sympy = "1.12"
-tenacity = "~8.3.0"
-xlrd = "~2.0.1"
-
-############################################################
 # Dev dependencies for running tests
 ############################################################
 
