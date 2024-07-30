@@ -33,7 +33,7 @@ const translation = {
     },
     hybrid_search: {
       title: '混合检索',
-      description: '同时执行全文检索和向量检索，并应用重排序步骤，从两类查询结果中选择匹配用户问题的最佳结果，需配置 Rerank 模型 API',
+      description: '同时执行全文检索和向量检索，并应用重排序步骤，从两类查询结果中选择匹配用户问题的最佳结果，用户可以选择设置权重或配置重新排序模型。',
       recommend: '推荐',
     },
     invertedIndex: {
@@ -67,7 +67,7 @@ const translation = {
     semantic: '语义',
     keyword: '关键词',
   },
-  nTo1RetrievalLegacy: '根据产品规划，N 选 1 召回将于 9 月正式弃用。在那之前，您仍然可以正常使用它。',
+  nTo1RetrievalLegacy: '为了对检索策略进行优化和升级，N 选 1 检索功能将于九月份正式被优化。在此之前，您仍然可以正常使用该功能。',
 }
 
 export default translation

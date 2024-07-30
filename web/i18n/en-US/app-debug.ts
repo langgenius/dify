@@ -409,7 +409,7 @@ const translation = {
     },
     retrieveMultiWay: {
       title: 'Multi-path retrieval',
-      description: 'Based on user intent, queries across all Knowledge, retrieves relevant text from multi-sources, and selects the best results matching the user query after reranking. Configuration of the Rerank model API is required.',
+      description: 'Based on user intent, queries across all Knowledge, retrieves relevant text from multi-sources, and selects the best results matching the user query after reranking. ',
     },
     rerankModelRequired: 'Rerank model is required',
     params: 'Params',
