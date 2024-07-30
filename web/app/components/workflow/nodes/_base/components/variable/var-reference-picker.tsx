@@ -32,6 +32,7 @@ import {
 import { VarType as VarKindType } from '@/app/components/workflow/nodes/tool/types'
 import TypeSelector from '@/app/components/workflow/nodes/_base/components/selector'
 import AddButton from '@/app/components/base/button/add-button'
+import Badge from '@/app/components/base/badge'
 const TRIGGER_DEFAULT_WIDTH = 227
 
 type Props = {
@@ -50,6 +51,7 @@ type Props = {
   availableVars?: NodeOutPutVar[]
   isAddBtnTrigger?: boolean
   schema?: Partial<CredentialFormSchema>
+  valueTypePlaceHolder?: string
 }
 
 const VarReferencePicker: FC<Props> = ({
@@ -68,6 +70,7 @@ const VarReferencePicker: FC<Props> = ({
   availableVars,
   isAddBtnTrigger,
   schema,
+  valueTypePlaceHolder,
 }) => {
   const { t } = useTranslation()
   const store = useStoreApi()
@@ -335,6 +338,13 @@ const VarReferencePicker: FC<Props> = ({
               >
                 <RiCloseLine className='w-3.5 h-3.5 text-gray-500 group-hover:text-gray-800' />
               </div>)}
+              {!hasValue && valueTypePlaceHolder && (
+                <Badge
+                  className=' absolute right-1 top-[50%] translate-y-[-50%] capitalize'
+                  text={valueTypePlaceHolder}
+                  uppercase={false}
+                />
+              )}
             </div>)}
         </WrapElem>
         <PortalToFollowElemContent style={{

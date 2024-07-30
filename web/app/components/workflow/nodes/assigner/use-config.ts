@@ -84,6 +84,21 @@ const useConfig = (id: string, payload: AssignerNodeType) => {
     }
   }, [inputs, setInputs])
 
+  const toAssignedVarType = useMemo(() => {
+    const { write_mode } = inputs
+    if (write_mode === WriteMode.Overwrite)
+      return assignedVarType
+    if (write_mode === WriteMode.Append) {
+      if (assignedVarType === VarType.arrayString)
+        return VarType.string
+      if (assignedVarType === VarType.arrayNumber)
+        return VarType.number
+      if (assignedVarType === VarType.arrayObject)
+        return VarType.object
+    }
+    return VarType.string
+  }, [assignedVarType, inputs])
+
   const filterToAssignedVar = useCallback((varPayload: Var) => {
     // console.log(varPayload.variable.split('.'), inputs.assigned_variable_selector)
     if (isEqual(varPayload.variable.split('.'), inputs.assigned_variable_selector))
@@ -124,6 +139,7 @@ const useConfig = (id: string, payload: AssignerNodeType) => {
     handleWriteModeChange,
     filterToAssignedVar,
     handleToAssignedVarChange,
+    toAssignedVarType,
   }
 }
 

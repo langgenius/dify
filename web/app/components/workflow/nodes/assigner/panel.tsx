@@ -28,6 +28,7 @@ const Panel: FC<NodePanelProps<AssignerNodeType>> = ({
     handleWriteModeChange,
     filterToAssignedVar,
     handleToAssignedVarChange,
+    toAssignedVarType,
   } = useConfig(id, data)
 
   return (
@@ -69,6 +70,7 @@ const Panel: FC<NodePanelProps<AssignerNodeType>> = ({
               value={inputs.input_variable_selector || []}
               onChange={handleToAssignedVarChange}
               filterVar={filterToAssignedVar}
+              valueTypePlaceHolder={toAssignedVarType}
             />
           </Field>
         )}
