@@ -179,7 +179,7 @@ x-shared-env: &shared-api-worker-env
 services:
   # API service
   api:
-    image: langgenius/dify-api:0.6.15
+    image: oracleai
     restart: always
     environment:
       # Use the shared environment variables.
@@ -192,6 +192,7 @@ services:
     volumes:
       # Mount the storage directory to the container, for storing user files.
       - ./volumes/app/storage:/app/api/storage
+      - ./volumes/app/chromadb:/app/chromadb
     networks:
       - ssrf_proxy_network
       - default
@@ -199,7 +200,7 @@ services:
   # worker service
   # The Celery worker for processing the queue.
   worker:
-    image: langgenius/dify-api:0.6.15
+    image: oracleai
     restart: always
     environment:
       # Use the shared environment variables.
