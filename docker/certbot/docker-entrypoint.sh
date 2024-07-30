@@ -22,7 +22,7 @@ printf '%s\n' "\nGenerating update-cert.sh from template"
 sed -e "s|\${CERTBOT_EMAIL}|$CERTBOT_EMAIL|g" \
     -e "s|\${CERTBOT_DOMAIN}|$CERTBOT_DOMAIN|g" \
     -e "s|\${CERTBOT_OPTIONS}|$CERTBOT_OPTIONS|g" \
-    /update-cert.template > /update-cert.sh
+    /update-cert.template.txt > /update-cert.sh
 
 chmod +x /update-cert.sh
 

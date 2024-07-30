@@ -306,7 +306,7 @@ services:
       - ./volumes/certbot/www:/var/www/html
       - ./volumes/certbot/logs:/var/log/letsencrypt
       - ./volumes/certbot/conf/live:/etc/letsencrypt/live
-      - ./certbot/update-cert.template:/update-cert.template
+      - ./certbot/update-cert.template.txt:/update-cert.template.txt
       - ./certbot/docker-entrypoint.sh:/docker-entrypoint.sh
     environment:
       - CERTBOT_EMAIL=${CERTBOT_EMAIL}
