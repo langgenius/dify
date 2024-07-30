@@ -16,7 +16,7 @@ import {
   useSelectionInteractions,
   useWorkflow,
 } from '../hooks'
-import { isEventTargetInputArea } from '../utils'
+import { getKeyboardKeyCodeBySystem, isEventTargetInputArea } from '../utils'
 import { useStore } from '../store'
 import AddBlock from './add-block'
 import TipPopup from './tip-popup'
@@ -78,18 +78,28 @@ const Control = () => {
     handleLayout()
   }
 
-  const addNote = (e: MouseEvent<HTMLDivElement>) => {
+  useKeyPress(`${getKeyboardKeyCodeBySystem('ctrl')}.o`, (e) => {
+    e.preventDefault()
+    goLayout()
+  }, { exactMatch: true, useCapture: true })
+
+  const addNote = (e?: MouseEvent<HTMLDivElement>) => {
     if (getNodesReadOnly())
       return
 
-    e.stopPropagation()
+    e?.stopPropagation()
     handleAddNote()
   }
+
+  useKeyPress('n', (e) => {
+    e.preventDefault()
+    addNote()
+  }, { exactMatch: true, useCapture: true })
 
   return (
     <div className='flex items-center p-0.5 rounded-lg border-[0.5px] border-gray-100 bg-white shadow-lg text-gray-500'>
       <AddBlock />
-      <TipPopup title={t('workflow.nodes.note.addNote')}>
+      <TipPopup title={t('workflow.nodes.note.addNote')} shortcuts={['n']}>
         <div
           className={cn(
             'flex items-center justify-center ml-[1px] w-8 h-8 rounded-lg hover:bg-black/5 hover:text-gray-700 cursor-pointer',
@@ -101,7 +111,7 @@ const Control = () => {
         </div>
       </TipPopup>
       <div className='mx-[3px] w-[1px] h-3.5 bg-gray-200'></div>
-      <TipPopup title={t('workflow.common.pointerMode')}>
+      <TipPopup title={t('workflow.common.pointerMode')} shortcuts={['v']}>
         <div
           className={cn(
             'flex items-center justify-center mr-[1px] w-8 h-8 rounded-lg cursor-pointer',
@@ -113,7 +123,7 @@ const Control = () => {
           <RiCursorLine className='w-4 h-4' />
         </div>
       </TipPopup>
-      <TipPopup title={t('workflow.common.handMode')}>
+      <TipPopup title={t('workflow.common.handMode')} shortcuts={['h']}>
         <div
           className={cn(
             'flex items-center justify-center w-8 h-8 rounded-lg cursor-pointer',
@@ -126,7 +136,7 @@ const Control = () => {
         </div>
       </TipPopup>
       <div className='mx-[3px] w-[1px] h-3.5 bg-gray-200'></div>
-      <TipPopup title={t('workflow.panel.organizeBlocks')}>
+      <TipPopup title={t('workflow.panel.organizeBlocks')} shortcuts={['ctrl', 'o']}>
         <div
           className={cn(
             'flex items-center justify-center w-8 h-8 rounded-lg hover:bg-black/5 hover:text-gray-700 cursor-pointer',
