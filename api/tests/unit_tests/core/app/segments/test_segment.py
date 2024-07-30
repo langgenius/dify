@@ -1,4 +1,4 @@
-from core.app.segments import SecretVariable, parser
+from core.app.segments import SecretVariable, StringSegment, parser
 from core.helper import encrypter
 from core.workflow.entities.node_entities import SystemVariable
 from core.workflow.entities.variable_pool import VariablePool
@@ -51,3 +51,4 @@ def test_convert_variable_to_segment_group():
     segments_group = parser.convert_template(template=template, variable_pool=variable_pool)
     assert segments_group.text == 'fake-user-id'
     assert segments_group.log == 'fake-user-id'
+    assert segments_group.value == [StringSegment(value='fake-user-id')]

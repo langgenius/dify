@@ -375,6 +375,10 @@ class AzureOpenAILargeLanguageModel(_CommonAzureOpenAI, LargeLanguageModel):
                 continue
 
             delta = chunk.choices[0]
+            # NOTE: For fix https://github.com/langgenius/dify/issues/5790
+            if delta.delta is None:
+                continue
+
 
             # extract tool calls from response
             self._update_tool_calls(tool_calls=tool_calls, tool_calls_response=delta.delta.tool_calls)
