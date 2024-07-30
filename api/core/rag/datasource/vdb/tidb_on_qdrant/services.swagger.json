@@ -107,10 +107,7 @@
             "in": "body",
             "required": true,
             "schema": {
-              "$ref": "#/definitions/tidb_cloud_open_apiserverlessv1beta1Cluster",
-              "required": [
-                "cluster"
-              ]
+              "$ref": "#/definitions/tidb_cloud_open_apiserverlessv1beta1Cluster"
             }
           }
         ],
