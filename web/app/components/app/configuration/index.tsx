@@ -877,8 +877,8 @@ const Configuration: FC = () => {
         </div>
         {restoreConfirmOpen && (
           <Confirm
-            title={t('appDebug.resetConfig.title')}
-            content={t('appDebug.resetConfig.message')}
+            title={t('appDebug.resetConfig.title') as string}
+            content={t('appDebug.resetConfig.message') as string}
             isShow={restoreConfirmOpen}
             onClose={() => setRestoreConfirmOpen(false)}
             onConfirm={resetAppConfig}
@@ -887,8 +887,8 @@ const Configuration: FC = () => {
         )}
         {showUseGPT4Confirm && (
           <Confirm
-            title={t('appDebug.trailUseGPT4Info.title')}
-            content={t('appDebug.trailUseGPT4Info.description')}
+            title={t('appDebug.trailUseGPT4Info.title') as string}
+            content={t('appDebug.trailUseGPT4Info.description') as string}
             isShow={showUseGPT4Confirm}
             onClose={() => setShowUseGPT4Confirm(false)}
             onConfirm={() => {
