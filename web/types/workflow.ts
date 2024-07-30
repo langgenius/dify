@@ -1,6 +1,7 @@
 import type { Viewport } from 'reactflow'
 import type {
   BlockEnum,
+  ConversationVariable,
   Edge,
   EnvironmentVariable,
   Node,
@@ -58,6 +59,7 @@ export type FetchWorkflowDraftResponse = {
   updated_at: number
   tool_published: boolean
   environment_variables?: EnvironmentVariable[]
+  conversation_variables?: ConversationVariable[]
 }
 
 export type NodeTracingListResponse = {
