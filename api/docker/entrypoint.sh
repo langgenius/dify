@@ -16,12 +16,8 @@ if [[ "${MODE}" == "worker" ]]; then
     MAX_WORKERS=${CELERY_MAX_WORKERS:-$AVAILABLE_CORES}
     MIN_WORKERS=${CELERY_MIN_WORKERS:-1}
     CONCURRENCY_OPTION="--autoscale=${MAX_WORKERS},${MIN_WORKERS}"
-  elif [ -n "$CELERY_WORKER_AMOUNT" ]; then
-    # If CELERY_WORKER_AMOUNT is set, use it
-    CONCURRENCY_OPTION="-c ${CELERY_WORKER_AMOUNT}"
   else
-    # Otherwise, the default is the number of CPUs available on the system
-    CONCURRENCY_OPTION=""
+    CONCURRENCY_OPTION="-c ${CELERY_WORKER_AMOUNT:-1}"
   fi
 
 
