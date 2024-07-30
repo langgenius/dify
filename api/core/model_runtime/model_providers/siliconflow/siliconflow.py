@@ -19,7 +19,7 @@ class SiliconflowProvider(ModelProvider):
             model_instance = self.get_model_instance(ModelType.LLM)
 
             model_instance.validate_credentials(
-                model='deepseek-ai/deepseek-v2-chat',
+                model='deepseek-ai/DeepSeek-V2-Chat',
                 credentials=credentials
             )
         except CredentialsValidateFailedError as ex:
