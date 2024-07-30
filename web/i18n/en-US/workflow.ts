@@ -121,6 +121,8 @@ const translation = {
       objectType: 'Type',
       objectValue: 'Default Value',
     },
+    storedContent: 'Stored content',
+    updatedAt: 'Updated at ',
   },
   changeHistory: {
     title: 'Change History',

@@ -119,6 +119,8 @@ const translation = {
       objectType: '类型',
       objectValue: '默认值',
     },
+    storedContent: '存储内容',
+    updatedAt: '更新时间 ',
   },
   changeHistory: {
     title: '变更历史',
