@@ -29,7 +29,8 @@ import type {
   CreateApiKeyResponse,
 } from '@/models/app'
 import type { RetrievalConfig } from '@/types/app'
-
+import { PUBLIC_OUT_API_PREFIX } from '@/config' // 聊天窗口上传文档相关接口
+import Toast from '@/app/components/base/toast'
 // apis for documents in a dataset
 
 type CommonDocReq = {
@@ -40,6 +41,7 @@ type CommonDocReq = {
 type BatchReq = {
   datasetId: string
   batchId: string
+  pubOutApiKey: string
 }
 
 export type SortType = 'created_at' | 'hit_count' | '-created_at' | '-hit_count'
@@ -282,4 +284,84 @@ export const getErrorDocs: Fetcher<ErrorDocsResponse, { datasetId: string }> = (
 
 export const retryErrorDocs: Fetcher<CommonResponse, { datasetId: string; document_ids: string[] }> = ({ datasetId, document_ids }) => {
   return post<CommonResponse>(`/datasets/${datasetId}/retry`, { body: { document_ids } })
+}
+/**
+ * 通过API创建空文档
+ */
+export const createEmptyDatasetByApi: Fetcher<DataSet, { name: string;pubOutApiKey: string }> = ({ name, pubOutApiKey }) => {
+  return post<DataSet>('/datasets', { body: { name } }, { isPublicOutAPI: true, pubApiKey: pubOutApiKey })
+}
+/**
+ * 通过DataSetId 根据文件创建知识库
+ */
+export const createKnowledgeByFile: Fetcher<any, { dataSetId: string;file: File;pubOutApiKey: string }> = async ({ dataSetId, file, pubOutApiKey }) => {
+  // 做一些必要检查
+  if (!PUBLIC_OUT_API_PREFIX) {
+    Toast.notify({ type: 'error', message: 'PUBLIC_OUT_API_PREFIX不能为空,请联系管理员' })
+    return
+  }
+  const formData = new FormData()
+  const data = JSON.stringify({
+    indexing_technique: 'high_quality',
+    process_rule: {
+      rules: {
+        pre_processing_rules: [
+          { id: 'remove_extra_spaces', enabled: true },
+          { id: 'remove_urls_emails', enabled: true },
+        ],
+        segmentation: {
+          max_tokens: 500,
+          separator: '\n',
+        },
+      },
+      mode: 'custom',
+    },
+  })
+  formData.append('data', data)
+  formData.append('file', file)
+
+  try {
+    const response = await fetch(`${PUBLIC_OUT_API_PREFIX}/datasets/${dataSetId}/document/create_by_file`, {
+      method: 'POST',
+      headers: {
+        Authorization: `Bearer ${pubOutApiKey}`,
+        ContentType: 'text/plain',
+      },
+      body: formData,
+    })
+
+    if (!response.ok)
+      throw new Error(`Request failed with status ${response.status}`)
+
+    const jsonResponse = await response.json()
+    return jsonResponse
+  }
+  catch (error) {
+    console.error('Error:', error)
+  }
+}
+/**
+ * 检查当前文档的索引状态
+ */
+export const showIndexStatus: Fetcher<any, { datasetID: string; batch: string;pubOutApiKey: string }> = async ({ datasetID, batch, pubOutApiKey }) => {
+  try {
+    const response = await fetch(`${PUBLIC_OUT_API_PREFIX}/datasets/${datasetID}/documents/${batch}/indexing-status`, {
+      method: 'GET',
+      headers: {
+        Authorization: `Bearer ${pubOutApiKey}`,
+      },
+    })
+    if (!response.ok)
+      throw new Error(`Request failed with status ${response.status}`)
+
+    const jsonResponse = response.json()
+    return jsonResponse
+  }
+  catch (error) {
+    console.error('Error:', error)
+  }
+}
+
+export const fetchIndexingStatusBatchByOutAPI: Fetcher<IndexingStatusBatchResponse, BatchReq> = async ({ datasetId, batchId, pubOutApiKey }) => {
+  return get<IndexingStatusBatchResponse>(`/datasets/${datasetId}/batch/${batchId}/indexing-status`, {}, { isPublicOutAPI: true, pubApiKey: pubOutApiKey })
 }

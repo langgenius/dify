@@ -1,3 +1,4 @@
+import { v4 as uuidv4 } from 'uuid'
 import { useCallback, useMemo, useRef, useState } from 'react'
 import type { ClipboardEvent } from 'react'
 import { useParams } from 'next/navigation'
@@ -6,7 +7,11 @@ import { imageUpload } from './utils'
 import { useToastContext } from '@/app/components/base/toast'
 import { ALLOW_FILE_EXTENSIONS, TransferMethod } from '@/types/app'
 import type { ImageFile, VisionSettings } from '@/types/app'
-
+import {
+  createEmptyDatasetByApi,
+  createKnowledgeByFile,
+  showIndexStatus,
+} from '@/service/datasets' // 用户在聊天窗口上传知识库相关接口
 export const useImageFiles = () => {
   const params = useParams()
   const { t } = useTranslation()
@@ -122,13 +127,13 @@ export const useLocalFileUploader = ({ limit, disabled = false, onUpload }: useL
   const params = useParams()
   const { t } = useTranslation()
 
-  const handleLocalFileUpload = useCallback((file: File) => {
+  const handleLocalFileUpload = useCallback(async (file: File, isRag = false) => {
     if (disabled) {
       // TODO: leave some warnings?
       return
     }
 
-    if (!ALLOW_FILE_EXTENSIONS.includes(file.type.split('/')[1]))
+    if (!ALLOW_FILE_EXTENSIONS.includes(file.type.split('/')[1]) && !ALLOW_FILE_EXTENSIONS.includes(file.name.split('.')[1]))
       return
 
     if (limit && file.size > limit * 1024 * 1024) {
@@ -137,6 +142,58 @@ export const useLocalFileUploader = ({ limit, disabled = false, onUpload }: useL
     }
 
     const reader = new FileReader()
+    reader.readAsDataURL(file)
+
+    /**
+        * 1、如果是Rag
+        * 2、如果是则先创建一个空知识库
+        * 3、根据创建空知识库返回的datasetId，再上传文件
+        */
+    if (isRag) {
+      const fileFile = {
+        type: TransferMethod.local_file,
+        _id: `${Date.now()}`,
+        fileId: '',
+        file,
+        url: reader.result as string,
+        base64Url: reader.result as string,
+        progress: 0,
+        isRag: true,
+        dataset_id: '',
+        document_id: '',
+      }
+      onUpload(fileFile)
+      const publicKey = 'dataset-nSj968HM200ElZXeCGwx9xtX'
+      const dataSet = await createEmptyDatasetByApi({ name: uuidv4(), pubOutApiKey: publicKey })
+      fileFile.progress = 30
+      onUpload(fileFile)
+      const knowledge = await createKnowledgeByFile({ dataSetId: dataSet.id, file, pubOutApiKey: publicKey })
+      fileFile.progress = 100
+      onUpload(fileFile) // 此时代表文件上传成功,下一步通过定时任务,去获取文件的索引状态
+      const timer = setInterval(async () => {
+        const status = await showIndexStatus({ datasetID: dataSet.id, batch: knowledge.batch, pubOutApiKey: publicKey })
+        // 下面data中是一个数组,我想拿到第一条数据请问怎么解构
+        const { data } = status
+        const [first] = data
+        const { indexing_status, completed_segments, total_segments } = first
+        if (indexing_status === 'completed' || (completed_segments === total_segments)) { // 检索成功或者已经完成
+          fileFile.progress = 100 // 检索成功提示检索成功
+          fileFile.fileId = knowledge?.document?.data_source_info.upload_file_id
+          fileFile.url = knowledge.batch
+          fileFile.dataset_id = dataSet.id
+          fileFile.document_id = knowledge.document.id
+          onUpload(fileFile)
+          clearInterval(timer)// 检索成功后清除定时器
+        }
+        else {
+          fileFile.progress = total_segments / completed_segments * 100
+          onUpload(fileFile)
+        }
+      }, 1000) // 每隔一秒去检查一次检索状态
+      console.log(knowledge)
+      return
+    }
+
     reader.addEventListener(
       'load',
       () => {

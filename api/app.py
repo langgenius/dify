@@ -204,9 +204,11 @@ def register_blueprints(app):
     from controllers.service_api import bp as service_api_bp
     from controllers.web import bp as web_bp
 
+    # TODO 放开servicesAPI 的权限跨域 允许开放式访问
     CORS(service_api_bp,
-         allow_headers=['Content-Type', 'Authorization', 'X-App-Code'],
-         methods=['GET', 'PUT', 'POST', 'DELETE', 'OPTIONS', 'PATCH']
+         resources={
+             r"/*": {"origins": app.config['WEB_API_CORS_ALLOW_ORIGINS']}},
+         supports_credentials=True
          )
     app.register_blueprint(service_api_bp)
 

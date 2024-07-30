@@ -367,8 +367,9 @@ export enum TtsAutoPlay {
   disabled = 'disabled',
 }
 
-export const ALLOW_FILE_EXTENSIONS = ['png', 'jpg', 'jpeg', 'webp', 'gif']
-
+// TODO add more file types here
+export const ALLOW_FILE_EXTENSIONS = ['png', 'jpg', 'jpeg', 'webp', 'gif', 'pdf', 'docx']
+export const File_WITHOUT_IMAGE = ['docx', 'pdf']
 export type VisionSettings = {
   enabled: boolean
   number_limits: number
@@ -386,6 +387,9 @@ export type ImageFile = {
   url: string
   base64Url?: string
   deleted?: boolean
+  isRag?: boolean // 是否立即进行知识库创建
+  dataset_id?: string
+  document_id?: string
 }
 
 export type VisionFile = {

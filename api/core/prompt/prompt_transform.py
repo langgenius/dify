@@ -12,9 +12,10 @@ class PromptTransform:
     def _append_chat_histories(self, memory: TokenBufferMemory,
                                memory_config: MemoryConfig,
                                prompt_messages: list[PromptMessage],
-                               model_config: ModelConfigWithCredentialsEntity) -> list[PromptMessage]:
+                               model_config: ModelConfigWithCredentialsEntity,
+                               current_query:str='') -> list[PromptMessage]:
         rest_tokens = self._calculate_rest_token(prompt_messages, model_config)
-        histories = self._get_history_messages_list_from_memory(memory, memory_config, rest_tokens)
+        histories = self._get_history_messages_list_from_memory(memory, memory_config, rest_tokens, current_query=current_query)
         prompt_messages.extend(histories)
 
         return prompt_messages
@@ -71,7 +72,8 @@ class PromptTransform:
 
     def _get_history_messages_list_from_memory(self, memory: TokenBufferMemory,
                                                memory_config: MemoryConfig,
-                                               max_token_limit: int) -> list[PromptMessage]:
+                                               max_token_limit: int,
+                                               current_query: str= '') -> list[PromptMessage]:
         """Get memory messages."""
         return memory.get_history_prompt_messages(
             max_token_limit=max_token_limit,
@@ -79,5 +81,6 @@ class PromptTransform:
             if (memory_config.window.enabled
                 and memory_config.window.size is not None
                 and memory_config.window.size > 0)
-            else None
+            else None,
+            current_query=current_query
         )

@@ -568,7 +568,8 @@ class LLMNode(BaseNode):
                         prompt_message_content.append(content_item)
                     elif content_item.type == PromptMessageContentType.TEXT:
                         prompt_message_content.append(content_item)
-
+                    elif content_item.type == PromptMessageContentType.DOCUMENT:
+                        prompt_message_content.append(content_item)
                 if len(prompt_message_content) > 1:
                     prompt_message.content = prompt_message_content
                 elif (len(prompt_message_content) == 1

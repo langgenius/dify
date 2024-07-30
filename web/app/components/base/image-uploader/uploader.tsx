@@ -31,8 +31,11 @@ const Uploader: FC<UploaderProps> = ({
 
     if (!file)
       return
-
-    handleLocalFileUpload(file)
+    // TODO 测试完后增加更多的类型
+    if (file.name.split('.')[1] === 'docx')
+      handleLocalFileUpload(file, true)
+    else
+      handleLocalFileUpload(file, false)
     closePopover?.()
   }
 

@@ -932,7 +932,8 @@ class MessageFile(db.Model):
     created_by_role = db.Column(db.String(255), nullable=False)
     created_by = db.Column(StringUUID, nullable=False)
     created_at = db.Column(db.DateTime, nullable=False, server_default=db.text('CURRENT_TIMESTAMP(0)'))
-
+    dataset_id = db.Column(StringUUID, nullable=True)
+    document_id = db.Column(StringUUID, nullable=True)
 
 class MessageAnnotation(db.Model):
     __tablename__ = 'message_annotations'

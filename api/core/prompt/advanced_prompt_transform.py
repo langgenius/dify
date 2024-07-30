@@ -1,7 +1,7 @@
 from typing import Optional, Union
 
 from core.app.entities.app_invoke_entities import ModelConfigWithCredentialsEntity
-from core.file.file_obj import FileVar
+from core.file.file_obj import FileType, FileVar
 from core.helper.code_executor.jinja2.jinja2_formatter import Jinja2Formatter
 from core.memory.token_buffer_memory import TokenBufferMemory
 from core.model_runtime.entities.message_entities import (
@@ -181,12 +181,15 @@ class AdvancedPromptTransform(PromptTransform):
             )
 
         if memory and memory_config:
-            prompt_messages = self._append_chat_histories(memory, memory_config, prompt_messages, model_config)
-
+            prompt_messages = self._append_chat_histories(memory, memory_config, prompt_messages, model_config, current_query=query)
+            # add document files to the last user message
             if files:
                 prompt_message_contents = [TextPromptMessageContent(data=query)]
                 for file in files:
-                    prompt_message_contents.append(file.prompt_message_content)
+                    if file.type == FileType.DOCUMENT:
+                        prompt_message_contents.append(file.prompt_message_content_document(queryStr=query))
+                    else:
+                        prompt_message_contents.append(file.prompt_message_content)
 
                 prompt_messages.append(UserPromptMessage(content=prompt_message_contents))
             else:

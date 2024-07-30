@@ -51,6 +51,7 @@ class PromptMessageContentType(Enum):
     """
     TEXT = 'text'
     IMAGE = 'image'
+    DOCUMENT = 'document' # add a document type for rag 
 
 
 class PromptMessageContent(BaseModel):
@@ -78,6 +79,17 @@ class ImagePromptMessageContent(PromptMessageContent):
 
     type: PromptMessageContentType = PromptMessageContentType.IMAGE
     detail: DETAIL = DETAIL.LOW
+    """
+    1、if file is a document 
+    2、build document prompt message content
+
+    """
+class DocumentPromptMessageContent(TextPromptMessageContent):
+    """
+    Model class for image prompt message content.
+    """
+    # document seagment convert to text
+    type: PromptMessageContentType = PromptMessageContentType.TEXT
 
 
 class PromptMessage(ABC, BaseModel):

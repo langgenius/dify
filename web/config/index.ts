@@ -5,11 +5,13 @@ import { PromptRole } from '@/models/debug'
 
 export let apiPrefix = ''
 export let publicApiPrefix = ''
-
+export let publicOutApiPrefix = ''
 // NEXT_PUBLIC_API_PREFIX=/console/api NEXT_PUBLIC_PUBLIC_API_PREFIX=/api npm run start
 if (process.env.NEXT_PUBLIC_API_PREFIX && process.env.NEXT_PUBLIC_PUBLIC_API_PREFIX) {
   apiPrefix = process.env.NEXT_PUBLIC_API_PREFIX
   publicApiPrefix = process.env.NEXT_PUBLIC_PUBLIC_API_PREFIX
+  if (process.env.NEXT_PUBLIC_OUT_API_PREFIX)// 如果配置直接通过API访问的外部能力的话
+    publicOutApiPrefix = process.env.NEXT_PUBLIC_OUT_API_PREFIX
 }
 else if (
   globalThis.document?.body?.getAttribute('data-api-prefix')
@@ -29,7 +31,7 @@ else {
 
 export const API_PREFIX: string = apiPrefix
 export const PUBLIC_API_PREFIX: string = publicApiPrefix
-
+export const PUBLIC_OUT_API_PREFIX: string = publicOutApiPrefix// 知识库相关接口
 const EDITION = process.env.NEXT_PUBLIC_EDITION || globalThis.document?.body?.getAttribute('data-public-edition') || 'SELF_HOSTED'
 export const IS_CE_EDITION = EDITION === 'SELF_HOSTED'
 

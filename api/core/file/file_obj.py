@@ -6,14 +6,17 @@ from pydantic import BaseModel
 from core.app.app_config.entities import FileExtraConfig
 from core.file.tool_file_parser import ToolFileParser
 from core.file.upload_file_parser import UploadFileParser
-from core.model_runtime.entities.message_entities import ImagePromptMessageContent
+from core.model_runtime.entities.message_entities import DocumentPromptMessageContent, ImagePromptMessageContent
 from extensions.ext_database import db
+
+# document rag
+from models.dataset import DocumentSegment
 from models.model import UploadFile
 
 
 class FileType(enum.Enum):
     IMAGE = 'image'
-
+    DOCUMENT= 'document'
     @staticmethod
     def value_of(value):
         for member in FileType:
@@ -57,6 +60,8 @@ class FileVar(BaseModel):
     filename: Optional[str] = None
     extension: Optional[str] = None
     mime_type: Optional[str] = None
+    document_id: Optional[str] = None # document rag
+    dataset_id: Optional[str] = None # document rag
 
     def to_dict(self) -> dict:
         return {
@@ -70,6 +75,8 @@ class FileVar(BaseModel):
             'filename': self.filename,
             'extension': self.extension,
             'mime_type': self.mime_type,
+            'document_id':self.document_id, # document rag
+            'dataset_id':self.dataset_id    # document rag
         }
 
     def to_markdown(self) -> str:
@@ -112,7 +119,34 @@ class FileVar(BaseModel):
                 detail=ImagePromptMessageContent.DETAIL.HIGH
                 if image_config.get("detail") == "high" else ImagePromptMessageContent.DETAIL.LOW
             )
-
+    
+   
+    """
+    when the file type is document, the prompt message content will be the content of the document
+    """
+    def prompt_message_content_document(self,queryStr:str='') -> ImagePromptMessageContent:
+        if self.type == FileType.DOCUMENT:              
+            dataset_id = self.dataset_id
+            document_id = self.document_id
+            from services.dataset_service import DocumentService
+            document = DocumentService.get_document(dataset_id, document_id)
+            query = DocumentSegment.query.filter(
+            DocumentSegment.document_id == str(document_id))
+            query = query.where(DocumentSegment.content.ilike(f'%{queryStr}%'))
+            limit = 20
+            total = query.count()
+            queryContent :str = ''
+            segments = query.order_by(DocumentSegment.position).limit(limit + 1).all()
+            has_more = False
+            if len(segments) > limit:
+                has_more = True
+            segments = segments[:-1]
+            for segment in segments:
+                print(segment.content)
+                queryContent += segment.content+'\n'
+            return DocumentPromptMessageContent(
+                data= queryContent,
+            )
     def _get_data(self, force_url: bool = False) -> Optional[str]:
         if self.type == FileType.IMAGE:
             if self.transfer_method == FileTransferMethod.REMOTE_URL:

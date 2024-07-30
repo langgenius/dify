@@ -12,6 +12,7 @@ from openai.types.chat.chat_completion_chunk import ChoiceDeltaToolCall
 from core.model_runtime.entities.llm_entities import LLMMode, LLMResult, LLMResultChunk, LLMResultChunkDelta
 from core.model_runtime.entities.message_entities import (
     AssistantPromptMessage,
+    DocumentPromptMessageContent,  #todo nessary 
     ImagePromptMessageContent,
     PromptMessage,
     PromptMessageContentType,
@@ -501,6 +502,13 @@ class AzureOpenAILargeLanguageModel(_CommonAzureOpenAI, LargeLanguageModel):
                                 "url": message_content.data,
                                 "detail": message_content.detail.value
                             }
+                        }
+                        sub_messages.append(sub_message_dict)
+                    elif message_content.type == PromptMessageContentType.DOCUMENT:
+                        message_content = cast(DocumentPromptMessageContent, message_content)
+                        sub_message_dict = {
+                            "type": "text",
+                            "text": message_content.data
                         }
                         sub_messages.append(sub_message_dict)
                 message_dict = {"role": "user", "content": sub_messages}

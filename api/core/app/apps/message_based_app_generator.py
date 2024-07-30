@@ -232,6 +232,8 @@ class MessageBasedAppGenerator(BaseAppGenerator):
                 upload_file_id=file.related_id,
                 created_by_role=('account' if account_id else 'end_user'),
                 created_by=account_id or end_user_id,
+                dataset_id=file.dataset_id, # add dataset_id
+                document_id=file.document_id,# add document_id
             )
             db.session.add(message_file)
             db.session.commit()

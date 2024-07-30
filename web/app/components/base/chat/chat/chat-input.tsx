@@ -27,6 +27,9 @@ import { XCircle } from '@/app/components/base/icons/src/vender/solid/general'
 import { Send03 } from '@/app/components/base/icons/src/vender/solid/communication'
 import ChatImageUploader from '@/app/components/base/image-uploader/chat-image-uploader'
 import ImageList from '@/app/components/base/image-uploader/image-list'
+import FileList from '@/app/components/base/image-uploader/file-list'
+import { File_WITHOUT_IMAGE } from '@/types/app'
+import type { ImageFile } from '@/types/app'
 import {
   useClipboardUploader,
   useDraggableUploader,
@@ -78,10 +81,12 @@ const ChatInput: FC<ChatInputProps> = ({
         return
       }
       onSend(query, files.filter(file => file.progress !== -1).map(fileItem => ({
-        type: 'image',
+        type: fileItem.isRag ? 'document' : 'image',
         transfer_method: fileItem.type,
         url: fileItem.url,
         upload_file_id: fileItem.fileId,
+        document_id: fileItem.document_id,
+        dataset_id: fileItem.dataset_id,
       })))
       setQuery('')
       onClear()
@@ -115,7 +120,23 @@ const ChatInput: FC<ChatInputProps> = ({
       logError(t('common.voiceInput.notAllow'))
     })
   }
-
+  // chat input   document type
+  const isHasImage = (files: ImageFile[]) => {
+    for (let i = 0; i < files.length; i++) {
+      if (files[i].type === TransferMethod.local_file) {
+        // if (!ALLOW_FILE_EXTENSIONS.includes(file.type.split('/')[1]) && !ALLOW_FILE_EXTENSIONS.includes(file?.file.name.split('.')[1]))
+        //   return
+        /**
+         * 产生要判断在不在允许后缀中
+         */
+        const fileName = files[i]?.file?.name || ''
+        // 如果这个文件包含了文本文档则返回false
+        if (File_WITHOUT_IMAGE.includes(fileName?.split('.')[1]))
+          return false
+      }
+    }
+    return true
+  }
   const [isActiveIconFocused, setActiveIconFocused] = useState(false)
 
   const media = useBreakpoints()
@@ -163,7 +184,8 @@ const ChatInput: FC<ChatInputProps> = ({
                   />
                   <div className='mx-1 w-[1px] h-4 bg-black/5' />
                 </div>
-                <div className='pl-[52px]'>
+                {/* 如果上传的是图片 */}
+                {isHasImage(files) && (<div className='pl-[52px]'>
                   <ImageList
                     list={files}
                     onRemove={onRemove}
@@ -171,7 +193,17 @@ const ChatInput: FC<ChatInputProps> = ({
                     onImageLinkLoadSuccess={onImageLinkLoadSuccess}
                     onImageLinkLoadError={onImageLinkLoadError}
                   />
-                </div>
+                </div>)}
+                {/* 如果上传的是文件 */}
+                {!isHasImage(files) && (<div className='pl-[52px]'>
+                  <FileList
+                    list={files}
+                    onRemove={onRemove}
+                    onReUpload={onReUpload}
+                    onImageLinkLoadSuccess={onImageLinkLoadSuccess}
+                    onImageLinkLoadError={onImageLinkLoadError}
+                  />
+                </div>)}
               </>
             )
           }

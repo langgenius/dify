@@ -95,6 +95,9 @@ class MessageFileParser:
 
                     new_files.append(file_obj)
 
+            if file_type == FileType.DOCUMENT: 
+                for file_obj in file_objs:
+                    new_files.append(file_obj)
         # return all file objs
         return new_files
 
