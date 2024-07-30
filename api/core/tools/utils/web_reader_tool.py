@@ -1,3 +1,4 @@
+import chardet
 import hashlib
 import json
 import mimetypes
@@ -7,7 +8,6 @@ import site
 import subprocess
 import tempfile
 import unicodedata
-import chardet
 from contextlib import contextmanager
 from urllib.parse import unquote
 
@@ -75,8 +75,6 @@ def get_url(url: str, user_agent: str = None) -> str:
 
     if response.status_code != 200:
         return "URL returned status code {}.".format(response.status_code)
-
-    a = extract_using_readabilipy(response.text)
 
     # Detect encoding using chardet
     detected_encoding = chardet.detect(response.content)
