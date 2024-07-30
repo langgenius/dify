@@ -68,10 +68,16 @@ const FILE_TYPE_ICON_MAP = {
 }
 type FileTypeIconProps = {
   type: keyof typeof FileTypeEnum
+  size?: 'sm' | 'lg'
   className?: string
+}
+const SizeMap = {
+  sm: 'w-4 h-4',
+  lg: 'w-6 h-6',
 }
 const FileTypeIcon = ({
   type,
+  size = 'sm',
   className,
 }: FileTypeIconProps) => {
   const Icon = FILE_TYPE_ICON_MAP[type].component
@@ -80,7 +86,7 @@ const FileTypeIcon = ({
   if (!Icon)
     return null
 
-  return <Icon className={cn('w-5 h-5', color, className)} />
+  return <Icon className={cn('shrink-0', SizeMap[size], color, className)} />
 }
 
 export default memo(FileTypeIcon)
