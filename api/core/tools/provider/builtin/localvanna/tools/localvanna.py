@@ -47,7 +47,7 @@ class VannaTool(BuiltinTool):
         ollama_host = tool_parameters.get("ollama_host", "")
         vdbpath = tool_parameters.get("vdbpath", "")
        # vn = VannaDefault(model=model, api_key=api_key)
-        config = {'model': model, 'ollama_host': ollama_host, 'path': vdbpath }
+        config = {'model': llmmodel, 'ollama_host': ollama_host, 'path': vdbpath }
         vn = VannaTool.MyVanna(config=config)
         
 
