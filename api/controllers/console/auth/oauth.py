@@ -11,7 +11,7 @@ from constants.languages import languages
 from extensions.ext_database import db
 from libs.helper import get_remote_ip
 from libs.oauth import GitHubOAuth, GoogleOAuth, OAuthUserInfo
-from models.account import Account, AccountStatus
+from models.account import Account, AccountStatus, AccountIntegrate
 from services.account_service import AccountService, RegisterService, TenantService
 
 from .. import api
@@ -77,6 +77,14 @@ class OAuthCallback(Resource):
         if account.status == AccountStatus.PENDING.value:
             account.status = AccountStatus.ACTIVE.value
             account.initialized_at = datetime.now(timezone.utc).replace(tzinfo=None)
+            db.session.commit()
+
+        # Save token for OAuth exit
+        account_integrate: Optional[AccountIntegrate] = AccountIntegrate.query.filter_by(account_id=account.id,
+                                                                                         provider=provider).first()
+        if account_integrate:
+            # If it exists, update the record
+            account_integrate.encrypted_token = user_info.token
             db.session.commit()
 
         TenantService.create_owner_tenant_if_not_exist(account)
