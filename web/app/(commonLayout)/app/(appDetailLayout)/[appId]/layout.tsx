@@ -3,7 +3,6 @@ import type { FC } from 'react'
 import { useUnmount } from 'ahooks'
 import React, { useCallback, useEffect, useState } from 'react'
 import { usePathname, useRouter } from 'next/navigation'
-import cn from 'classnames'
 import {
   RiDashboard2Fill,
   RiDashboard2Line,
@@ -17,6 +16,7 @@ import {
 import { useTranslation } from 'react-i18next'
 import { useShallow } from 'zustand/react/shallow'
 import s from './style.module.css'
+import cn from '@/utils/classnames'
 import { useStore } from '@/app/components/app/store'
 import AppSideBar from '@/app/components/app-sidebar'
 import type { NavIcon } from '@/app/components/app-sidebar/navLink'
@@ -40,7 +40,7 @@ const AppDetailLayout: FC<IAppDetailLayoutProps> = (props) => {
   const pathname = usePathname()
   const media = useBreakpoints()
   const isMobile = media === MediaType.mobile
-  const { isCurrentWorkspaceManager, isCurrentWorkspaceEditor } = useAppContext()
+  const { isCurrentWorkspaceEditor } = useAppContext()
   const { appDetail, setAppDetail, setAppSiderbarExpand } = useStore(useShallow(state => ({
     appDetail: state.appDetail,
     setAppDetail: state.setAppDetail,
@@ -53,7 +53,7 @@ const AppDetailLayout: FC<IAppDetailLayoutProps> = (props) => {
     selectedIcon: NavIcon
   }>>([])
 
-  const getNavigations = useCallback((appId: string, isCurrentWorkspaceManager: boolean, isCurrentWorkspaceEditor: boolean, mode: string) => {
+  const getNavigations = useCallback((appId: string, isCurrentWorkspaceEditor: boolean, mode: string) => {
     const navs = [
       ...(isCurrentWorkspaceEditor
         ? [{
@@ -70,7 +70,7 @@ const AppDetailLayout: FC<IAppDetailLayoutProps> = (props) => {
         icon: RiTerminalBoxLine,
         selectedIcon: RiTerminalBoxFill,
       },
-      ...(isCurrentWorkspaceManager
+      ...(isCurrentWorkspaceEditor
         ? [{
           name: mode !== 'workflow'
             ? t('common.appMenus.logAndAnn')
@@ -115,13 +115,13 @@ const AppDetailLayout: FC<IAppDetailLayoutProps> = (props) => {
       }
       else {
         setAppDetail(res)
-        setNavigation(getNavigations(appId, isCurrentWorkspaceManager, isCurrentWorkspaceEditor, res.mode))
+        setNavigation(getNavigations(appId, isCurrentWorkspaceEditor, res.mode))
       }
     }).catch((e: any) => {
       if (e.status === 404)
         router.replace('/apps')
     })
-  }, [appId, isCurrentWorkspaceManager, isCurrentWorkspaceEditor])
+  }, [appId, isCurrentWorkspaceEditor])
 
   useUnmount(() => {
     setAppDetail()

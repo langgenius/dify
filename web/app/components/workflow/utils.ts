@@ -14,6 +14,7 @@ import type {
   InputVar,
   Node,
   ToolWithProvider,
+  ValueSelector,
 } from './types'
 import { BlockEnum } from './types'
 import {
@@ -23,6 +24,8 @@ import {
   START_INITIAL_POSITION,
 } from './constants'
 import type { QuestionClassifierNodeType } from './nodes/question-classifier/types'
+import type { IfElseNodeType } from './nodes/if-else/types'
+import { branchNameCorrect } from './nodes/if-else/utils'
 import type { ToolNodeType } from './nodes/tool/types'
 import { CollectionType } from '@/app/components/tools/types'
 import { toolParametersToFormSchemas } from '@/app/components/tools/utils/to-form-schema'
@@ -114,16 +117,21 @@ export const initialNodes = (originNodes: Node[], originEdges: Edge[]) => {
     node.data._connectedTargetHandleIds = connectedEdges.filter(edge => edge.target === node.id).map(edge => edge.targetHandle || 'target')
 
     if (node.data.type === BlockEnum.IfElse) {
-      node.data._targetBranches = [
-        {
-          id: 'true',
-          name: 'IS TRUE',
-        },
-        {
-          id: 'false',
-          name: 'IS FALSE',
-        },
-      ]
+      const nodeData = node.data as IfElseNodeType
+
+      if (!nodeData.cases && nodeData.logical_operator && nodeData.conditions) {
+        (node.data as IfElseNodeType).cases = [
+          {
+            case_id: 'true',
+            logical_operator: nodeData.logical_operator,
+            conditions: nodeData.conditions,
+          },
+        ]
+      }
+      node.data._targetBranches = branchNameCorrect([
+        ...(node.data as IfElseNodeType).cases.map(item => ({ id: item.case_id, name: '' })),
+        { id: 'false', name: '' },
+      ])
     }
 
     if (node.data.type === BlockEnum.QuestionClassifier) {
@@ -184,6 +192,7 @@ export const initialEdges = (originEdges: Edge[], originNodes: Node[]) => {
         _connectedNodeIsSelected: edge.source === selectedNode.id || edge.target === selectedNode.id,
       } as any
     }
+
     return edge
   })
 }
@@ -462,4 +471,11 @@ export const isEventTargetInputArea = (target: HTMLElement) => {
 
   if (target.contentEditable === 'true')
     return true
+}
+
+export const variableTransformer = (v: ValueSelector | string) => {
+  if (typeof v === 'string')
+    return v.replace(/^{{#|#}}$/g, '').split('.')
+
+  return `{{#${v.join('.')}#}}`
 }

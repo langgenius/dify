@@ -121,12 +121,6 @@ model_credential_schema:
             - variable: __model_type
               value: llm
         - label:
-            en_US: Skylark2-pro-4k
-          value: Skylark2-pro-4k
-          show_on:
-            - variable: __model_type
-              value: llm
-        - label:
             en_US: Llama3-8B
           value: Llama3-8B
           show_on:
@@ -135,6 +129,42 @@ model_credential_schema:
         - label:
             en_US: Llama3-70B
           value: Llama3-70B
+          show_on:
+            - variable: __model_type
+              value: llm
+        - label:
+            en_US: Moonshot-v1-8k
+          value: Moonshot-v1-8k
+          show_on:
+            - variable: __model_type
+              value: llm
+        - label:
+            en_US: Moonshot-v1-32k
+          value: Moonshot-v1-32k
+          show_on:
+            - variable: __model_type
+              value: llm
+        - label:
+            en_US: Moonshot-v1-128k
+          value: Moonshot-v1-128k
+          show_on:
+            - variable: __model_type
+              value: llm
+        - label:
+            en_US: GLM3-130B
+          value: GLM3-130B
+          show_on:
+            - variable: __model_type
+              value: llm
+        - label:
+            en_US: GLM3-130B-Fin
+          value: GLM3-130B-Fin
+          show_on:
+            - variable: __model_type
+              value: llm
+        - label:
+            en_US: Mistral-7B
+          value: Mistral-7B
           show_on:
             - variable: __model_type
               value: llm
@@ -181,7 +211,7 @@ model_credential_schema:
         zh_Hans: 模型上下文长度
         en_US: Model Context Size
       type: text-input
-      default: '4096'
+      default: "4096"
       placeholder:
         zh_Hans: 输入您的模型上下文长度
         en_US: Enter your Model Context Size
@@ -195,7 +225,7 @@ model_credential_schema:
       label:
         zh_Hans: 最大 token 上限
         en_US: Upper Bound for Max Tokens
-      default: '4096'
+      default: "4096"
       type: text-input
       placeholder:
         zh_Hans: 输入您的模型最大 token 上限

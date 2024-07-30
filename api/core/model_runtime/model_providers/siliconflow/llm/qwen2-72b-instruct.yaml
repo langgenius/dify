@@ -1,11 +1,9 @@
 model: alibaba/Qwen2-72B-Instruct
 label:
-  en_US: alibaba/Qwen2-72B-Instruct
+  en_US: Qwen/Qwen2-72B-Instruct
 model_type: llm
 features:
-  - multi-tool-call
   - agent-thought
-  - stream-tool-call
 model_properties:
   mode: chat
   context_size: 32768

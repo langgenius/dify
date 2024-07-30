@@ -21,7 +21,7 @@ model_properties:
     - mode: 'shimmer'
       name: 'Shimmer'
       language: ['zh-Hans', 'en-US', 'de-DE', 'fr-FR', 'es-ES', 'it-IT', 'th-TH', 'id-ID']
-  word_limit: 120
+  word_limit: 3500
   audio_type: 'mp3'
   max_workers: 5
 pricing:

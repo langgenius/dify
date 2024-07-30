@@ -1,10 +1,10 @@
 'use client'
 import type { FC } from 'react'
 import React from 'react'
-import cn from 'classnames'
 import { useTranslation } from 'react-i18next'
 import { useBoolean } from 'ahooks'
 import type { Timeout as TimeoutPayloadType } from '../../types'
+import cn from '@/utils/classnames'
 import { ChevronRight } from '@/app/components/base/icons/src/vender/line/arrows'
 
 type Props = {

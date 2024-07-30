@@ -1,5 +1,5 @@
 import { forwardRef, useEffect, useRef } from 'react'
-import cn from 'classnames'
+import cn from '@/utils/classnames'
 import { sleep } from '@/utils'
 
 type IProps = {

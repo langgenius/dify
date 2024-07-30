@@ -3,9 +3,9 @@ import { useRef, useState } from 'react'
 import { useMount } from 'ahooks'
 import { useTranslation } from 'react-i18next'
 import { isEqual } from 'lodash-es'
-import cn from 'classnames'
 import { RiCloseLine } from '@remixicon/react'
 import { BookOpenIcon } from '@heroicons/react/24/outline'
+import cn from '@/utils/classnames'
 import IndexMethodRadio from '@/app/components/datasets/settings/index-method-radio'
 import Button from '@/app/components/base/button'
 import type { DataSet } from '@/models/datasets'
@@ -259,7 +259,7 @@ const SettingsModal: FC<SettingsModalProps> = ({
 
         {/* Retrieval Method Config */}
         <div className={rowClass}>
-          <div className={labelClass}>
+          <div className={cn(labelClass, 'w-auto min-w-[168px]')}>
             <div>
               <div>{t('datasetSettings.form.retrievalSetting.title')}</div>
               <div className='leading-[18px] text-xs font-normal text-gray-500'>
@@ -268,7 +268,7 @@ const SettingsModal: FC<SettingsModalProps> = ({
               </div>
             </div>
           </div>
-          <div className='w-[480px]'>
+          <div>
             {indexMethod === 'high_quality'
               ? (
                 <RetrievalMethodConfig

@@ -1,9 +1,6 @@
 import logging
 import time
 
-import numpy as np
-from sklearn.manifold import TSNE
-
 from core.rag.datasource.retrieval_service import RetrievalService
 from core.rag.models.document import Document
 from core.rag.retrieval.retrival_methods import RetrievalMethod
@@ -12,7 +9,7 @@ from models.account import Account
 from models.dataset import Dataset, DatasetQuery, DocumentSegment
 
 default_retrieval_model = {
-    'search_method': RetrievalMethod.SEMANTIC_SEARCH,
+    'search_method': RetrievalMethod.SEMANTIC_SEARCH.value,
     'reranking_enable': False,
     'reranking_model': {
         'reranking_provider_name': '',
@@ -41,14 +38,16 @@ class HitTestingService:
         if not retrieval_model:
             retrieval_model = dataset.retrieval_model if dataset.retrieval_model else default_retrieval_model
 
-        all_documents = RetrievalService.retrieve(retrival_method=retrieval_model['search_method'],
+        all_documents = RetrievalService.retrieve(retrival_method=retrieval_model.get('search_method', 'semantic_search'),
                                                   dataset_id=dataset.id,
-                                                  query=query,
-                                                  top_k=retrieval_model['top_k'],
+                                                  query=cls.escape_query_for_search(query),
+                                                  top_k=retrieval_model.get('top_k', 2),
                                                   score_threshold=retrieval_model['score_threshold']
                                                   if retrieval_model['score_threshold_enabled'] else None,
                                                   reranking_model=retrieval_model['reranking_model']
-                                                  if retrieval_model['reranking_enable'] else None
+                                                  if retrieval_model['reranking_enable'] else None,
+                                                  reranking_mode=retrieval_model.get('reranking_mode', None),
+                                                  weights=retrieval_model.get('weights', None),
                                                   )
 
         end = time.perf_counter()
@@ -102,31 +101,12 @@ class HitTestingService:
         }
 
     @classmethod
-    def get_tsne_positions_from_embeddings(cls, embeddings: list):
-        embedding_length = len(embeddings)
-        if embedding_length <= 1:
-            return [{'x': 0, 'y': 0}]
-
-        noise = np.random.normal(0, 1e-4, np.array(embeddings).shape)
-        concatenate_data = np.array(embeddings) + noise
-        concatenate_data = concatenate_data.reshape(embedding_length, -1)
-
-        perplexity = embedding_length / 2 + 1
-        if perplexity >= embedding_length:
-            perplexity = max(embedding_length - 1, 1)
-
-        tsne = TSNE(n_components=2, perplexity=perplexity, early_exaggeration=12.0)
-        data_tsne = tsne.fit_transform(concatenate_data)
-
-        tsne_position_data = []
-        for i in range(len(data_tsne)):
-            tsne_position_data.append({'x': float(data_tsne[i][0]), 'y': float(data_tsne[i][1])})
-
-        return tsne_position_data
-
-    @classmethod
     def hit_testing_args_check(cls, args):
         query = args['query']
 
         if not query or len(query) > 250:
             raise ValueError('Query is required and cannot exceed 250 characters')
+
+    @staticmethod
+    def escape_query_for_search(query: str) -> str:
+        return query.replace('"', '\\"')

@@ -360,7 +360,7 @@ export const HTTP_REQUEST_OUTPUT_STRUCT: Var[] = [
   },
   {
     variable: 'headers',
-    type: VarType.string,
+    type: VarType.object,
   },
   {
     variable: 'files',
@@ -396,3 +396,4 @@ export const PARAMETER_EXTRACTOR_COMMON_STRUCT: Var[] = [
 
 export const WORKFLOW_DATA_UPDATE = 'WORKFLOW_DATA_UPDATE'
 export const CUSTOM_NODE = 'custom'
+export const DSL_EXPORT_CHECK = 'DSL_EXPORT_CHECK'

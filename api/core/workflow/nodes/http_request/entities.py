@@ -1,13 +1,13 @@
-import os
 from typing import Literal, Optional, Union
 
 from pydantic import BaseModel, ValidationInfo, field_validator
 
+from configs import dify_config
 from core.workflow.entities.base_node_data_entities import BaseNodeData
 
-MAX_CONNECT_TIMEOUT = int(os.environ.get('HTTP_REQUEST_MAX_CONNECT_TIMEOUT', '300'))
-MAX_READ_TIMEOUT = int(os.environ.get('HTTP_REQUEST_MAX_READ_TIMEOUT', '600'))
-MAX_WRITE_TIMEOUT = int(os.environ.get('HTTP_REQUEST_MAX_WRITE_TIMEOUT', '600'))
+MAX_CONNECT_TIMEOUT = dify_config.HTTP_REQUEST_MAX_CONNECT_TIMEOUT
+MAX_READ_TIMEOUT = dify_config.HTTP_REQUEST_MAX_READ_TIMEOUT
+MAX_WRITE_TIMEOUT = dify_config.HTTP_REQUEST_MAX_WRITE_TIMEOUT
 
 
 class HttpRequestNodeAuthorizationConfig(BaseModel):
@@ -58,4 +58,3 @@ class HttpRequestNodeData(BaseNodeData):
     params: str
     body: Optional[HttpRequestNodeBody] = None
     timeout: Optional[HttpRequestNodeTimeout] = None
-    mask_authorization_header: Optional[bool] = True

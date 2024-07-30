@@ -2,10 +2,10 @@
 import React, { useCallback, useEffect, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { useContext } from 'use-context-selector'
-import cn from 'classnames'
 import { AuthHeaderPrefix, AuthType, CollectionType } from '../types'
 import type { Collection, CustomCollectionBackend, Tool, WorkflowToolProviderRequest, WorkflowToolProviderResponse } from '../types'
 import ToolItem from './tool-item'
+import cn from '@/utils/classnames'
 import I18n from '@/context/i18n'
 import { getLanguage } from '@/i18n/language'
 import Confirm from '@/app/components/base/confirm'
@@ -85,7 +85,7 @@ const ProviderDetail = ({
   const [customCollection, setCustomCollection] = useState<CustomCollectionBackend | WorkflowToolProviderResponse | null>(null)
   const [isShowEditCollectionToolModal, setIsShowEditCustomCollectionModal] = useState(false)
   const [showConfirmDelete, setShowConfirmDelete] = useState(false)
-  const [deleteAction, setDeleteAction] = useState(null)
+  const [deleteAction, setDeleteAction] = useState('')
   const doUpdateCustomToolCollection = async (data: CustomCollectionBackend) => {
     await updateCustomCollection(data)
     onRefreshData()
@@ -117,7 +117,7 @@ const ProviderDetail = ({
       provider: collection.name,
     })
     setIsDetailLoading(false)
-  }, [collection.name])
+  }, [collection.labels, collection.name])
   // workflow provider
   const [isShowEditWorkflowToolModal, setIsShowEditWorkflowToolModal] = useState(false)
   const getWorkflowToolProvider = useCallback(async () => {

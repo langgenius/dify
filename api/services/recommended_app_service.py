@@ -6,10 +6,11 @@ from typing import Optional
 import requests
 from flask import current_app
 
+from configs import dify_config
 from constants.languages import languages
 from extensions.ext_database import db
 from models.model import App, RecommendedApp
-from services.app_service import AppService
+from services.app_dsl_service import AppDslService
 
 logger = logging.getLogger(__name__)
 
@@ -25,7 +26,7 @@ class RecommendedAppService:
         :param language: language
         :return:
         """
-        mode = current_app.config.get('HOSTED_FETCH_APP_TEMPLATES_MODE', 'remote')
+        mode = dify_config.HOSTED_FETCH_APP_TEMPLATES_MODE
         if mode == 'remote':
             try:
                 result = cls._fetch_recommended_apps_from_dify_official(language)
@@ -104,13 +105,18 @@ class RecommendedAppService:
         :param language: language
         :return:
         """
-        domain = current_app.config.get('HOSTED_FETCH_APP_TEMPLATES_REMOTE_DOMAIN', 'https://tmpl.dify.ai')
+        domain = dify_config.HOSTED_FETCH_APP_TEMPLATES_REMOTE_DOMAIN
         url = f'{domain}/apps?language={language}'
         response = requests.get(url, timeout=(3, 10))
         if response.status_code != 200:
             raise ValueError(f'fetch recommended apps failed, status code: {response.status_code}')
 
-        return response.json()
+        result = response.json()
+
+        if "categories" in result:
+            result["categories"] = sorted(result["categories"])
+        
+        return result
 
     @classmethod
     def _fetch_recommended_apps_from_builtin(cls, language: str) -> dict:
@@ -129,7 +135,7 @@ class RecommendedAppService:
         :param app_id: app id
         :return:
         """
-        mode = current_app.config.get('HOSTED_FETCH_APP_TEMPLATES_MODE', 'remote')
+        mode = dify_config.HOSTED_FETCH_APP_TEMPLATES_MODE
         if mode == 'remote':
             try:
                 result = cls._fetch_recommended_app_detail_from_dify_official(app_id)
@@ -152,7 +158,7 @@ class RecommendedAppService:
         :param app_id: App ID
         :return:
         """
-        domain = current_app.config.get('HOSTED_FETCH_APP_TEMPLATES_REMOTE_DOMAIN', 'https://tmpl.dify.ai')
+        domain = dify_config.HOSTED_FETCH_APP_TEMPLATES_REMOTE_DOMAIN
         url = f'{domain}/apps/{app_id}'
         response = requests.get(url, timeout=(3, 10))
         if response.status_code != 200:
@@ -181,16 +187,13 @@ class RecommendedAppService:
         if not app_model or not app_model.is_public:
             return None
 
-        app_service = AppService()
-        export_str = app_service.export_app(app_model)
-
         return {
             'id': app_model.id,
             'name': app_model.name,
             'icon': app_model.icon,
             'icon_background': app_model.icon_background,
             'mode': app_model.mode,
-            'export_data': export_str
+            'export_data': AppDslService.export_dsl(app_model=app_model)
         }
 
     @classmethod

@@ -249,8 +249,7 @@ def migrate_knowledge_vector_database():
     create_count = 0
     skipped_count = 0
     total_count = 0
-    config = current_app.config
-    vector_type = config.get('VECTOR_STORE')
+    vector_type = dify_config.VECTOR_STORE
     page = 1
     while True:
         try:
@@ -334,6 +333,14 @@ def migrate_knowledge_vector_database():
                     collection_name = Dataset.gen_collection_name_by_id(dataset_id)
                     index_struct_dict = {
                         "type": VectorType.OPENSEARCH,
+                        "vector_store": {"class_prefix": collection_name}
+                    }
+                    dataset.index_struct = json.dumps(index_struct_dict)
+                elif vector_type == VectorType.ANALYTICDB:
+                    dataset_id = dataset.id
+                    collection_name = Dataset.gen_collection_name_by_id(dataset_id)
+                    index_struct_dict = {
+                        "type": VectorType.ANALYTICDB,
                         "vector_store": {"class_prefix": collection_name}
                     }
                     dataset.index_struct = json.dumps(index_struct_dict)
@@ -476,8 +483,7 @@ def convert_to_agent_apps():
 @click.option('--field', default='metadata.doc_id', prompt=False, help='index field , default is metadata.doc_id.')
 def add_qdrant_doc_id_index(field: str):
     click.echo(click.style('Start add qdrant doc_id index.', fg='green'))
-    config = current_app.config
-    vector_type = config.get('VECTOR_STORE')
+    vector_type = dify_config.VECTOR_STORE
     if vector_type != "qdrant":
         click.echo(click.style('Sorry, only support qdrant vector store.', fg='red'))
         return
@@ -494,13 +500,15 @@ def add_qdrant_doc_id_index(field: str):
 
         from core.rag.datasource.vdb.qdrant.qdrant_vector import QdrantConfig
         for binding in bindings:
+            if dify_config.QDRANT_URL is None:
+                raise ValueError('Qdrant url is required.')
             qdrant_config = QdrantConfig(
-                endpoint=config.get('QDRANT_URL'),
-                api_key=config.get('QDRANT_API_KEY'),
+                endpoint=dify_config.QDRANT_URL,
+                api_key=dify_config.QDRANT_API_KEY,
                 root_path=current_app.root_path,
-                timeout=config.get('QDRANT_CLIENT_TIMEOUT'),
-                grpc_port=config.get('QDRANT_GRPC_PORT'),
-                prefer_grpc=config.get('QDRANT_GRPC_ENABLED')
+                timeout=dify_config.QDRANT_CLIENT_TIMEOUT,
+                grpc_port=dify_config.QDRANT_GRPC_PORT,
+                prefer_grpc=dify_config.QDRANT_GRPC_ENABLED
             )
             try:
                 client = qdrant_client.QdrantClient(**qdrant_config.to_qdrant_params())

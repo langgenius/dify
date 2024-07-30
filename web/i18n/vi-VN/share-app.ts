@@ -1,6 +1,6 @@
 const translation = {
   common: {
-    welcome: 'Chào mừng đến với',
+    welcome: '',
     appUnavailable: 'Ứng dụng không khả dụng',
     appUnkonwError: 'Ứng dụng không khả dụng',
   },

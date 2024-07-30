@@ -2,12 +2,12 @@
 import type { FC } from 'react'
 import React from 'react'
 import { useTranslation } from 'react-i18next'
-import cn from 'classnames'
 import { RiDeleteBinLine } from '@remixicon/react'
 import { Edit02 } from '../../base/icons/src/vender/line/general'
 import s from './style.module.css'
 import type { AnnotationItem } from './type'
 import RemoveAnnotationConfirmModal from './remove-annotation-confirm-modal'
+import cn from '@/utils/classnames'
 import useTimestamp from '@/hooks/use-timestamp'
 
 type Props = {

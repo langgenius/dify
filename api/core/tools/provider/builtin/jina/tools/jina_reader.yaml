@@ -25,6 +25,22 @@ parameters:
       pt_BR: used for linking to webpages
     llm_description: url for scraping
     form: llm
+  - name: request_params
+    type: string
+    required: false
+    label:
+      en_US: Request params
+      zh_Hans: 请求参数
+      pt_BR: Request params
+    human_description:
+      en_US: |
+        request parameters, format: {"key1": "value1", "key2": "value2"}
+      zh_Hans: |
+        请求参数，格式：{"key1": "value1", "key2": "value2"}
+      pt_BR: |
+        request parameters, format: {"key1": "value1", "key2": "value2"}
+    llm_description: request parameters
+    form: llm
   - name: target_selector
     type: string
     required: false
@@ -133,4 +149,18 @@ parameters:
       zh_Hans: 为输出启用摘要
       pt_BR: Habilitar resumo para a saída
     llm_description: enable summary
+    form: form
+  - name: max_retries
+    type: number
+    required: false
+    default: 3
+    label:
+      en_US: Retry
+      zh_Hans: 重试
+      pt_BR: Repetir
+    human_description:
+      en_US: Number of times to retry the request if it fails
+      zh_Hans: 请求失败时重试的次数
+      pt_BR: Número de vezes para repetir a solicitação se falhar
+    llm_description: Number of times to retry the request if it fails
     form: form

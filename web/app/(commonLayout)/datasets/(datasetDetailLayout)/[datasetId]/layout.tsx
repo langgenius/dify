@@ -4,7 +4,6 @@ import React, { useEffect } from 'react'
 import { usePathname } from 'next/navigation'
 import useSWR from 'swr'
 import { useTranslation } from 'react-i18next'
-import classNames from 'classnames'
 import { useBoolean } from 'ahooks'
 import {
   Cog8ToothIcon,
@@ -23,6 +22,7 @@ import {
 } from '@heroicons/react/24/solid'
 import Link from 'next/link'
 import s from './style.module.css'
+import classNames from '@/utils/classnames'
 import { fetchDatasetDetail, fetchDatasetRelatedApps } from '@/service/datasets'
 import type { RelatedApp, RelatedAppResponse } from '@/models/datasets'
 import AppSideBar from '@/app/components/app-sidebar'
@@ -166,8 +166,8 @@ const ExtraInfo = ({ isMobile, relatedApps }: IExtraInfoProps) => {
             className='inline-flex items-center text-xs text-primary-600 mt-2 cursor-pointer'
             href={
               locale === LanguagesSupported[1]
-                ? 'https://docs.dify.ai/v/zh-hans/guides/application-design/prompt-engineering'
-                : 'https://docs.dify.ai/user-guide/creating-dify-apps/prompt-engineering'
+                ? 'https://docs.dify.ai/v/zh-hans/guides/knowledge-base/integrate_knowledge_within_application'
+                : 'https://docs.dify.ai/guides/knowledge-base/integrate-knowledge-within-application'
             }
             target='_blank' rel='noopener noreferrer'
           >

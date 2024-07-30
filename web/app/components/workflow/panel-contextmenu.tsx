@@ -2,7 +2,6 @@ import {
   memo,
   useRef,
 } from 'react'
-import cn from 'classnames'
 import { useTranslation } from 'react-i18next'
 import { useClickAway } from 'ahooks'
 import ShortcutsName from './shortcuts-name'
@@ -15,6 +14,7 @@ import {
 } from './hooks'
 import AddBlock from './operator/add-block'
 import { useOperator } from './operator/hooks'
+import cn from '@/utils/classnames'
 
 const PanelContextmenu = () => {
   const { t } = useTranslation()
@@ -26,7 +26,7 @@ const PanelContextmenu = () => {
   const { handlePaneContextmenuCancel } = usePanelInteractions()
   const { handleStartWorkflowRun } = useWorkflowStartRun()
   const { handleAddNote } = useOperator()
-  const { handleExportDSL } = useDSL()
+  const { exportCheck } = useDSL()
 
   useClickAway(() => {
     handlePaneContextmenuCancel()
@@ -105,7 +105,7 @@ const PanelContextmenu = () => {
       <div className='p-1'>
         <div
           className='flex items-center justify-between px-3 h-8 text-sm text-gray-700 rounded-lg cursor-pointer hover:bg-gray-50'
-          onClick={() => handleExportDSL()}
+          onClick={() => exportCheck()}
         >
           {t('app.export')}
         </div>

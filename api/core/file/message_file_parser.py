@@ -1,4 +1,5 @@
-from typing import Union
+from collections.abc import Mapping, Sequence
+from typing import Any, Union
 
 import requests
 
@@ -16,7 +17,7 @@ class MessageFileParser:
         self.tenant_id = tenant_id
         self.app_id = app_id
 
-    def validate_and_transform_files_arg(self, files: list[dict], file_extra_config: FileExtraConfig,
+    def validate_and_transform_files_arg(self, files: Sequence[Mapping[str, Any]], file_extra_config: FileExtraConfig,
                                          user: Union[Account, EndUser]) -> list[FileVar]:
         """
         validate and transform files arg
@@ -186,7 +187,7 @@ class MessageFileParser:
             }
 
             response = requests.head(url, headers=headers, allow_redirects=True)
-            if response.status_code == 200:
+            if response.status_code in {200, 304}:
                 return True, ""
             else:
                 return False, "URL does not exist."

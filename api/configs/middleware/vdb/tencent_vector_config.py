@@ -1,9 +1,10 @@
 from typing import Optional
 
-from pydantic import BaseModel, Field, NonNegativeInt, PositiveInt
+from pydantic import Field, NonNegativeInt, PositiveInt
+from pydantic_settings import BaseSettings
 
 
-class TencentVectorDBConfig(BaseModel):
+class TencentVectorDBConfig(BaseSettings):
     """
     Tencent Vector configs
     """
