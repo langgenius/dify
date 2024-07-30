@@ -1,12 +1,21 @@
-import json
-from collections.abc import Mapping, Sequence
-
 from pydantic import Field
 
-from core.file.file_obj import FileVar
 from core.helper import encrypter
 
-from .segments import NoneSegment, Segment, StringSegment
+from .segments import (
+    ArrayAnySegment,
+    ArrayFileSegment,
+    ArrayNumberSegment,
+    ArrayObjectSegment,
+    ArrayStringSegment,
+    FileSegment,
+    FloatSegment,
+    IntegerSegment,
+    NoneSegment,
+    ObjectSegment,
+    Segment,
+    StringSegment,
+)
 from .types import SegmentType
 
 
@@ -27,53 +36,40 @@ class StringVariable(StringSegment, Variable):
     pass
 
 
-class FloatVariable(Variable):
-    value_type: SegmentType = SegmentType.NUMBER
-    value: float
+class FloatVariable(FloatSegment, Variable):
+    pass
 
 
-class IntegerVariable(Variable):
-    value_type: SegmentType = SegmentType.NUMBER
-    value: int
+class IntegerVariable(IntegerSegment, Variable):
+    pass
 
 
-class ObjectVariable(Variable):
-    value_type: SegmentType = SegmentType.OBJECT
-    value: Mapping[str, Variable]
-
-    @property
-    def text(self) -> str:
-        # TODO: Process variables.
-        return json.dumps(self.model_dump()['value'], ensure_ascii=False)
-
-    @property
-    def log(self) -> str:
-        # TODO: Process variables.
-        return json.dumps(self.model_dump()['value'], ensure_ascii=False, indent=2)
-
-    @property
-    def markdown(self) -> str:
-        # TODO: Use markdown code block
-        return json.dumps(self.model_dump()['value'], ensure_ascii=False, indent=2)
+class FileVariable(FileSegment, Variable):
+    pass
 
 
-class ArrayVariable(Variable):
-    value_type: SegmentType = SegmentType.ARRAY
-    value: Sequence[Variable]
-
-    @property
-    def markdown(self) -> str:
-        return '\n'.join(['- ' + item.markdown for item in self.value])
+class ObjectVariable(ObjectSegment, Variable):
+    pass
 
 
-class FileVariable(Variable):
-    value_type: SegmentType = SegmentType.FILE
-    # TODO: embed FileVar in this model.
-    value: FileVar
+class ArrayAnyVariable(ArrayAnySegment, Variable):
+    pass
 
-    @property
-    def markdown(self) -> str:
-        return self.value.to_markdown()
+
+class ArrayStringVariable(ArrayStringSegment, Variable):
+    pass
+
+
+class ArrayNumberVariable(ArrayNumberSegment, Variable):
+    pass
+
+
+class ArrayObjectVariable(ArrayObjectSegment, Variable):
+    pass
+
+
+class ArrayFileVariable(ArrayFileSegment, Variable):
+    pass
 
 
 class SecretVariable(StringVariable):

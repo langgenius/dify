@@ -635,7 +635,7 @@ class Embedding(db.Model):
     )
 
     id = db.Column(StringUUID, primary_key=True, server_default=db.text('uuid_generate_v4()'))
-    model_name = db.Column(db.String(40), nullable=False,
+    model_name = db.Column(db.String(255), nullable=False,
                            server_default=db.text("'text-embedding-ada-002'::character varying"))
     hash = db.Column(db.String(64), nullable=False)
     embedding = db.Column(db.LargeBinary, nullable=False)
@@ -660,7 +660,7 @@ class DatasetCollectionBinding(db.Model):
 
     id = db.Column(StringUUID, primary_key=True, server_default=db.text('uuid_generate_v4()'))
     provider_name = db.Column(db.String(40), nullable=False)
-    model_name = db.Column(db.String(40), nullable=False)
+    model_name = db.Column(db.String(255), nullable=False)
     type = db.Column(db.String(40), server_default=db.text("'dataset'::character varying"), nullable=False)
     collection_name = db.Column(db.String(64), nullable=False)
     created_at = db.Column(db.DateTime, nullable=False, server_default=db.text('CURRENT_TIMESTAMP(0)'))

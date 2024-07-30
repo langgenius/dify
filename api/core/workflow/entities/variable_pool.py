@@ -5,7 +5,7 @@ from typing import Any, Union
 from pydantic import BaseModel, Field, model_validator
 from typing_extensions import deprecated
 
-from core.app.segments import Variable, factory
+from core.app.segments import Segment, Variable, factory
 from core.file.file_obj import FileVar
 from core.workflow.entities.node_entities import SystemVariable
 
@@ -21,7 +21,7 @@ class VariablePool(BaseModel):
     # The first element of the selector is the node id, it's the first-level key in the dictionary.
     # Other elements of the selector are the keys in the second-level dictionary. To get the key, we hash the
     # elements of the selector except the first one.
-    variable_dictionary: dict[str, dict[int, Variable]] = Field(
+    variable_dictionary: dict[str, dict[int, Segment]] = Field(
         description='Variables mapping',
         default=defaultdict(dict)
     )
@@ -76,15 +76,15 @@ class VariablePool(BaseModel):
         if value is None:
             return
 
-        if not isinstance(value, Variable):
-            v = factory.build_anonymous_variable(value)
-        else:
+        if isinstance(value, Segment):
             v = value
+        else:
+            v = factory.build_segment(value)
 
         hash_key = hash(tuple(selector[1:]))
         self.variable_dictionary[selector[0]][hash_key] = v
 
-    def get(self, selector: Sequence[str], /) -> Variable | None:
+    def get(self, selector: Sequence[str], /) -> Segment | None:
         """
         Retrieves the value from the variable pool based on the given selector.
 
