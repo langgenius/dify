@@ -44,6 +44,8 @@ const useConfig = (id: string, payload: AssignerNodeType) => {
     return [VarType.arrayString, VarType.arrayNumber, VarType.arrayObject].includes(varType)
   }, [])
 
+  const isCurrSupportAppend = useMemo(() => isSupportAppend(assignedVarType), [assignedVarType, isSupportAppend])
+
   const handleAssignedVarChanges = useCallback((variable: ValueSelector | string) => {
     const newInputs = produce(inputs, (draft) => {
       draft.assigned_variable_selector = variable as ValueSelector
@@ -117,6 +119,7 @@ const useConfig = (id: string, payload: AssignerNodeType) => {
     inputs,
     handleAssignedVarChanges,
     assignedVarType,
+    isSupportAppend: isCurrSupportAppend,
     writeModeTypes,
     handleWriteModeChange,
     filterToAssignedVar,

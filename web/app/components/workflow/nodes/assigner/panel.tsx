@@ -9,6 +9,7 @@ import { WriteMode } from './types'
 import type { AssignerNodeType } from './types'
 import Field from '@/app/components/workflow/nodes/_base/components/field'
 import { type NodePanelProps } from '@/app/components/workflow/types'
+import cn from '@/utils/classnames'
 
 const i18nPrefix = 'workflow.nodes.assigner'
 
@@ -22,8 +23,9 @@ const Panel: FC<NodePanelProps<AssignerNodeType>> = ({
     readOnly,
     inputs,
     handleAssignedVarChanges,
-    handleWriteModeChange,
+    isSupportAppend,
     writeModeTypes,
+    handleWriteModeChange,
     filterToAssignedVar,
     handleToAssignedVarChange,
   } = useConfig(id, data)
@@ -45,7 +47,7 @@ const Panel: FC<NodePanelProps<AssignerNodeType>> = ({
         <Field
           title={t(`${i18nPrefix}.writeMode`)}
         >
-          <div className='grid grid-cols-3 gap-2'>
+          <div className={cn('grid gap-2', isSupportAppend ? 'grid-cols-3' : 'grid-cols-2')}>
             {writeModeTypes.map(type => (
               <RadioCardItem
                 key={type}
