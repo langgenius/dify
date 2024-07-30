@@ -83,23 +83,18 @@ const Control = () => {
     goLayout()
   }, { exactMatch: true, useCapture: true })
 
-  const addNote = (e?: MouseEvent<HTMLDivElement>) => {
+  const addNote = (e: MouseEvent<HTMLDivElement>) => {
     if (getNodesReadOnly())
       return
 
-    e?.stopPropagation()
+    e.stopPropagation()
     handleAddNote()
   }
-
-  useKeyPress('n', (e) => {
-    e.preventDefault()
-    addNote()
-  }, { exactMatch: true, useCapture: true })
 
   return (
     <div className='flex items-center p-0.5 rounded-lg border-[0.5px] border-gray-100 bg-white shadow-lg text-gray-500'>
       <AddBlock />
-      <TipPopup title={t('workflow.nodes.note.addNote')} shortcuts={['n']}>
+      <TipPopup title={t('workflow.nodes.note.addNote')}>
         <div
           className={cn(
             'flex items-center justify-center ml-[1px] w-8 h-8 rounded-lg hover:bg-black/5 hover:text-gray-700 cursor-pointer',

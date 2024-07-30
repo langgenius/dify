@@ -71,7 +71,6 @@ const PanelContextmenu = () => {
           }}
         >
           {t('workflow.nodes.note.addNote')}
-          <ShortcutsName keys={['n']} />
         </div>
         <div
           className='flex items-center justify-between px-3 h-8 text-sm text-gray-700 rounded-lg cursor-pointer hover:bg-gray-50'
