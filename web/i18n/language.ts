@@ -23,6 +23,7 @@ export type I18nText = {
   'ro-RO': string
   'pl-PL': string
   'hi-IN': string
+  'tr-TR': string
 }
 
 export const languages = data.languages
@@ -74,6 +75,9 @@ export const NOTICE_I18N = {
       'Наша система буде недоступна з 19:00 до 24:00 UTC 28 серпня для оновлення. Якщо у вас виникнуть запитання, будь ласка, зв’яжіться з нашою службою підтримки (support@dify.ai). Дякуємо за терпіння.',
     vi_VN:
       'Hệ thống của chúng tôi sẽ ngừng hoạt động từ 19:00 đến 24:00 UTC vào ngày 28 tháng 8 để nâng cấp. Nếu có thắc mắc, vui lòng liên hệ với nhóm hỗ trợ của chúng tôi (support@dify.ai). Chúng tôi đánh giá cao sự kiên nhẫn của bạn.',
+    tr_TR:
+      'Sistemimiz, 28 Ağustos\'ta 19:00 ile 24:00 UTC saatleri arasında güncelleme nedeniyle kullanılamayacaktır. Sorularınız için lütfen destek ekibimizle iletişime geçin (support@dify.ai). Sabrınız için teşekkür ederiz.',
+
   },
   href: '#',
 }

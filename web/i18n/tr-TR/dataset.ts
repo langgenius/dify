@@ -1,0 +1,73 @@
+const translation = {
+  knowledge: 'Bilgi',
+  documentCount: ' belge',
+  wordCount: ' k kelime',
+  appCount: ' bağlı uygulama',
+  createDataset: 'Bilgi Oluştur',
+  createDatasetIntro: 'LLM bağlam geliştirmesi için kendi metin verilerinizi içe aktarın veya Webhook aracılığıyla gerçek zamanlı veri yazın.',
+  deleteDatasetConfirmTitle: 'Bu Bilgi silinsin mi?',
+  deleteDatasetConfirmContent:
+    'Bilgiyi silmek geri alınamaz. Kullanıcılar artık Bilginize erişemeyecek ve tüm istem yapılandırmaları ve günlükler kalıcı olarak silinecektir.',
+  datasetUsedByApp: 'Bu bilgi bazı uygulamalar tarafından kullanılıyor. Uygulamalar artık bu Bilgiyi kullanamayacak ve tüm istem yapılandırmaları ve günlükler kalıcı olarak silinecektir.',
+  datasetDeleted: 'Bilgi silindi',
+  datasetDeleteFailed: 'Bilgi silinemedi',
+  didYouKnow: 'Biliyor muydunuz?',
+  intro1: 'Bilgi, Dify uygulamasına ',
+  intro2: 'bir bağlam olarak',
+  intro3: ' entegre edilebilir',
+  intro4: 'veya ',
+  intro5: 'bağımsız bir ChatGPT indeks eklentisi olarak',
+  intro6: ' oluşturulup yayınlanabilir',
+  unavailable: 'Kullanılamıyor',
+  unavailableTip: 'Gömme modeli kullanılamıyor, varsayılan gömme modeli yapılandırılmalı',
+  datasets: 'BİLGİ',
+  datasetsApi: 'API ERİŞİMİ',
+  retrieval: {
+    semantic_search: {
+      title: 'Vektör Arama',
+      description: 'Sorgu gömmeleri oluşturun ve vektör temsiline en benzer metin parçasını arayın.',
+    },
+    full_text_search: {
+      title: 'Tam Metin Arama',
+      description: 'Belgedeki tüm terimleri indeksler, kullanıcıların herhangi bir terimi aramasına ve bu terimleri içeren ilgili metin parçasını almasına olanak tanır.',
+    },
+    hybrid_search: {
+      title: 'Hibrit Arama',
+      description: 'Tam metin araması ve vektör aramaları eş zamanlı olarak yürütür, kullanıcının sorgusuna en iyi eşleşmeyi seçmek için yeniden sıralama yapar. Kullanıcılar ağırlıkları ayarlamayı veya bir Yeniden Sıralama modeli yapılandırmayı seçebilir.',
+      recommend: 'Önerilen',
+    },
+    invertedIndex: {
+      title: 'Ters İndeks',
+      description: 'Ters İndeks, verimli erişim için kullanılan bir yapıdır. Terimlere göre düzenlenmiştir, her terim onu içeren belgelere veya web sayfalarına işaret eder.',
+    },
+    change: 'Değiştir',
+    changeRetrievalMethod: 'Erişim yöntemini değiştir',
+  },
+  docsFailedNotice: 'belge indekslenemedi',
+  retry: 'Tekrar dene',
+  indexingTechnique: {
+    high_quality: 'YK',
+    economy: 'EKO',
+  },
+  indexingMethod: {
+    semantic_search: 'VEKTÖR',
+    full_text_search: 'TAM METİN',
+    hybrid_search: 'HİBRİT',
+  },
+  mixtureHighQualityAndEconomicTip: 'Yüksek kaliteli ve ekonomik bilgi tabanlarının karışımı için Yeniden Sıralama modeli gereklidir.',
+  inconsistentEmbeddingModelTip: 'Seçilen bilgi tabanlarının Gömme modelleri tutarsızsa Yeniden Sıralama modeli gereklidir.',
+  retrievalSettings: 'Erişim Ayarı',
+  rerankSettings: 'Yeniden Sıralama Ayarı',
+  weightedScore: {
+    title: 'Ağırlıklı Puan',
+    description: 'Bu yeniden sıralama stratejisi, atanan ağırlıkları ayarlayarak anlamsal veya anahtar kelime eşleştirmesine öncelik verilip verilmeyeceğini belirler.',
+    semanticFirst: 'Anlamsal öncelikli',
+    keywordFirst: 'Anahtar kelime öncelikli',
+    customized: 'Özelleştirilmiş',
+    semantic: 'Anlamsal',
+    keyword: 'Anahtar kelime',
+  },
+  nTo1RetrievalLegacy: 'Erişim stratejisinin optimizasyonu ve yükseltilmesi nedeniyle, N-1 erişimi Eylül ayında resmi olarak kullanımdan kaldırılacaktır. O zamana kadar normal şekilde kullanmaya devam edebilirsiniz.',
+}
+
+export default translation

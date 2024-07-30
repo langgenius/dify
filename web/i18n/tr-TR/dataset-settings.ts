@@ -1,0 +1,35 @@
+const translation = {
+  title: 'Bilgi ayarları',
+  desc: 'Burada Bilgi\'nin özelliklerini ve çalışma yöntemlerini değiştirebilirsiniz.',
+  form: {
+    name: 'Bilgi Adı',
+    namePlaceholder: 'Lütfen Bilgi adını girin',
+    nameError: 'Ad boş olamaz',
+    desc: 'Bilgi açıklaması',
+    descInfo: 'Lütfen Bilgi\'nin içeriğini özetlemek için açık bir metin açıklaması yazın. Bu açıklama, çıkarım için birden fazla Bilgi arasından seçim yaparken eşleştirme temeli olarak kullanılacaktır.',
+    descPlaceholder: 'Bu Bilgi\'de ne olduğunu açıklayın. Detaylı bir açıklama, AI\'nin Bilgi\'nin içeriğine zamanında erişmesini sağlar. Boş bırakılırsa, Dify varsayılan eşleştirme stratejisini kullanacaktır.',
+    descWrite: 'İyi bir Bilgi açıklaması nasıl yazılır öğrenin.',
+    permissions: 'İzinler',
+    permissionsOnlyMe: 'Sadece ben',
+    permissionsAllMember: 'Tüm ekip üyeleri',
+    permissionsInvitedMembers: 'Kısmi ekip üyeleri',
+    me: '(Siz)',
+    indexMethod: 'İndeksleme Yöntemi',
+    indexMethodHighQuality: 'Yüksek Kalite',
+    indexMethodHighQualityTip: 'Kullanıcılar sorgu yaptığında daha yüksek doğruluk sağlamak için Embedding modelini çağırır.',
+    indexMethodEconomy: 'Ekonomik',
+    indexMethodEconomyTip: 'Token harcamadan doğruluğu azaltmak için çevrimdışı vektör motorları, anahtar kelime dizinleri vb. kullanır',
+    embeddingModel: 'Embedding Modeli',
+    embeddingModelTip: 'Embedding modelini değiştirmek için lütfen gidin: ',
+    embeddingModelTipLink: 'Ayarlar',
+    retrievalSetting: {
+      title: 'Geri alma ayarı',
+      learnMore: 'Daha fazla bilgi edinin',
+      description: ' geri alma yöntemi hakkında.',
+      longDescription: ' geri alma yöntemi hakkında, bunu istediğiniz zaman Bilgi ayarlarından değiştirebilirsiniz.',
+    },
+    save: 'Kaydet',
+  },
+}
+
+export default translation
