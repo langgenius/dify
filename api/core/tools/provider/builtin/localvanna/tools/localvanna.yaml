@@ -7,7 +7,7 @@ identity:
 description:
   human:
     en_US: The fastest way to get actionable insights from your database just by asking questions.
-    zh_Hans: 一个基于大模型和RAG的Text2SQL工具。
+    zh_Hans: Vanna本地化部署。
   llm: A tool for converting text to SQL.
 parameters:
   - name: prompt
@@ -87,6 +87,36 @@ parameters:
       en_US: Please input depending on DB type, visit https://vanna.ai/docs/ for more specification
       zh_Hans: 请根据数据库类型，填入对应值，详情参考https://vanna.ai/docs/
     form: form
+  - name: llmmodel
+    type: string
+    required: True
+    label:
+      en_US: model name
+      zh_Hans: 模型名称
+    human_description:
+      en_US: model name
+      zh_Hans: 模型名称
+    form: form
+  - name: ollama_host
+    type: string
+    required: True
+    label:
+      en_US: ollama host
+      zh_Hans: ollama主机地址
+    human_description:
+      en_US: ollama host
+      zh_Hans: ollama主机地址
+    form: form
+  - name: vdbpath
+    type: string
+    required: True
+    label:
+      en_US: vdb path
+      zh_Hans: 向量数据库目录
+    human_description:
+      en_US: vdb path
+      zh_Hans: 向量数据库目录
+    form: form    
   - name: db_name
     type: string
     required: false
@@ -96,7 +126,7 @@ parameters:
     human_description:
       en_US: Database name
       zh_Hans: 数据库名
-    form: form
+    form: form  
   - name: username
     type: string
     required: false

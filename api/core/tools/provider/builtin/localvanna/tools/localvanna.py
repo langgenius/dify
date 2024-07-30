@@ -42,9 +42,12 @@ class VannaTool(BuiltinTool):
         username = tool_parameters.get("username", "")
         password = tool_parameters.get("password", "")
         port = tool_parameters.get("port", 0)
-
+        
+        llmmodel = tool_parameters.get("llmmodel", "")
+        ollama_host = tool_parameters.get("ollama_host", "")
+        vdbpath = tool_parameters.get("vdbpath", "")
        # vn = VannaDefault(model=model, api_key=api_key)
-        config = {'model': 'qwen2:7b-instruct-fp16', 'ollama_host': 'http://129.154.199.90:11434','path': '/home/opc/project/dify/docker/volumes/app/chromadb'}
+        config = {'model': model, 'ollama_host': ollama_host, 'path': vdbpath }
         vn = VannaTool.MyVanna(config=config)
         
 
