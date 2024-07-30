@@ -39,6 +39,10 @@ const useConfig = (id: string, payload: AssignerNodeType) => {
     isConstant: false,
   })
 
+  const isSupportAppend = useCallback((varType: VarType) => {
+    return [VarType.arrayString, VarType.arrayNumber, VarType.arrayObject].includes(varType)
+  }, [])
+
   const handleAssignedVarChanges = useCallback((variable: ValueSelector | string) => {
     const newInputs = produce(inputs, (draft) => {
       draft.assigned_variable_selector = variable as ValueSelector
@@ -49,19 +53,22 @@ const useConfig = (id: string, payload: AssignerNodeType) => {
         isChatMode,
         isConstant: false,
       })
+
+      if (inputs.write_mode === WriteMode.Append && !isSupportAppend(newVarType))
+        draft.write_mode = WriteMode.Overwrite
       if (newVarType !== assignedVarType)
         draft.input_variable_selector = []
     })
     setInputs(newInputs)
-  }, [availableNodes, getCurrentVariableType, inputs, isChatMode, iterationNode, setInputs, assignedVarType])
+  }, [inputs, setInputs, getCurrentVariableType, iterationNode, availableNodes, isChatMode, isSupportAppend, assignedVarType])
 
   const writeModeTypes = useMemo(() => {
     const types = [WriteMode.Overwrite, WriteMode.Append, WriteMode.Clear]
-    if (![VarType.arrayString, VarType.arrayNumber, VarType.arrayObject].includes(assignedVarType))
+    if (!isSupportAppend(assignedVarType))
       return types.filter(t => t !== WriteMode.Append)
 
     return types
-  }, [assignedVarType])
+  }, [assignedVarType, isSupportAppend])
 
   const handleWriteModeChange = useCallback((writeMode: WriteMode) => {
     return () => {
