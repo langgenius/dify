@@ -6,9 +6,9 @@ import RehypeKatex from 'rehype-katex'
 import RemarkGfm from 'remark-gfm'
 import SyntaxHighlighter from 'react-syntax-highlighter'
 import { atelierHeathLight } from 'react-syntax-highlighter/dist/esm/styles/hljs'
-import type { RefObject } from 'react'
-import { memo, useEffect, useMemo, useRef, useState } from 'react'
+import { memo, useMemo, useRef, useState } from 'react'
 import type { CodeComponent } from 'react-markdown/lib/ast-to-react'
+import PreviewComponent from '../PreviewComponent'
 import cn from '@/utils/classnames'
 import CopyBtn from '@/app/components/base/copy-btn'
 import SVGBtn from '@/app/components/base/svg'
@@ -44,9 +44,13 @@ const getCorrectCapitalizationLanguageName = (language: string) => {
 const preprocessLaTeX = (content: string) => {
   if (typeof content !== 'string')
     return content
-  return content.replace(/\\\[(.*?)\\\]/gs, (_, equation) => `$$${equation}$$`)
+  return content
+    .replace(/\\\[(.*?)\\\]/gs, (_, equation) => `$$${equation}$$`)
     .replace(/\\\((.*?)\\\)/gs, (_, equation) => `$$${equation}$$`)
-    .replace(/(^|[^\\])\$(.+?)\$/gs, (_, prefix, equation) => `${prefix}$${equation}$`)
+    .replace(
+      /(^|[^\\])\$(.+?)\$/gs,
+      (_, prefix, equation) => `${prefix}$${equation}$`,
+    )
 }
 
 export function PreCode(props: { children: any }) {
@@ -56,39 +60,38 @@ export function PreCode(props: { children: any }) {
     <pre ref={ref}>
       <span
         className="copy-code-button"
-        onClick={() => {
-          if (ref.current) {
-            const code = ref.current.innerText
-            // copyToClipboard(code);
-          }
-        }}
+        // onClick={() => {
+        // if (ref.current) {
+        //   const code = ref.current.innerText;
+        // copyToClipboard(code);
+        // }
+        // }}
       ></span>
       {props.children}
     </pre>
   )
 }
 
-const useLazyLoad = (ref: RefObject<Element>): boolean => {
-  const [isIntersecting, setIntersecting] = useState<boolean>(false)
+// const useLazyLoad = (ref: RefObject<Element>): boolean => {
+//   const [isIntersecting, setIntersecting] = useState<boolean>(false);
 
-  useEffect(() => {
-    const observer = new IntersectionObserver(([entry]) => {
-      if (entry.isIntersecting) {
-        setIntersecting(true)
-        observer.disconnect()
-      }
-    })
+//   useEffect(() => {
+//     const observer = new IntersectionObserver(([entry]) => {
+//       if (entry.isIntersecting) {
+//         setIntersecting(true);
+//         observer.disconnect();
+//       }
+//     });
 
-    if (ref.current)
-      observer.observe(ref.current)
+//     if (ref.current) observer.observe(ref.current);
 
-    return () => {
-      observer.disconnect()
-    }
-  }, [ref])
+//     return () => {
+//       observer.disconnect();
+//     };
+//   }, [ref]);
 
-  return isIntersecting
-}
+//   return isIntersecting;
+// };
 
 // **Add code block
 // Avoid error #185 (Maximum update depth exceeded.
@@ -102,116 +105,170 @@ const useLazyLoad = (ref: RefObject<Element>): boolean => {
 // Error: Minified React error 185;
 // visit https://reactjs.org/docs/error-decoder.html?invariant=185 for the full message
 // or use the non-minified dev environment for full errors and additional helpful warnings.
-const CodeBlock: CodeComponent = memo(({ inline, className, children, ...props }) => {
-  const [isSVG, setIsSVG] = useState(true)
-  const match = /language-(\w+)/.exec(className || '')
-  const language = match?.[1]
-  const languageShowName = getCorrectCapitalizationLanguageName(language || '')
+/* eslint-disable no-mixed-operators */
+const CodeBlock: CodeComponent = memo(
+  ({ inline, className, children, ...props }) => {
+    const [isSVG, setIsSVG] = useState(true)
+    const match = /language-(\w+)/.exec(className || '')
+    const language = match?.[1]
+    const languageShowName = getCorrectCapitalizationLanguageName(
+      language || '',
+    )
 
-  // Use `useMemo` to ensure that `SyntaxHighlighter` only re-renders when necessary
-  return useMemo(() => {
-    return (!inline && match)
-      ? (
-        <div>
-          <div
-            className='flex justify-between h-8 items-center p-1 pl-3 border-b'
-            style={{
-              borderColor: 'rgba(0, 0, 0, 0.05)',
-            }}
-          >
-            <div className='text-[13px] text-gray-500 font-normal'>{languageShowName}</div>
-            <div style={{ display: 'flex' }}>
-              {language === 'mermaid'
-                && <SVGBtn
-                  isSVG={isSVG}
-                  setIsSVG={setIsSVG}
-                />
-              }
-              <CopyBtn
-                className='mr-1'
-                value={String(children).replace(/\n$/, '')}
-                isPlain
-              />
-            </div>
-          </div>
-          {(language === 'mermaid' && isSVG)
-            ? (<Flowchart PrimitiveCode={String(children).replace(/\n$/, '')} />)
-            : (<SyntaxHighlighter
-              {...props}
-              style={atelierHeathLight}
-              customStyle={{
-                paddingLeft: 12,
-                backgroundColor: '#fff',
+    // Use `useMemo` to ensure that `SyntaxHighlighter` only re-renders when necessary
+    return useMemo(() => {
+      return !inline && match
+        ? (
+          <div>
+            <div
+              className="flex justify-between h-8 items-center p-1 pl-3 border-b"
+              style={{
+                borderColor: 'rgba(0, 0, 0, 0.05)',
               }}
-              language={match[1]}
-              showLineNumbers
-              PreTag="div"
             >
-              {String(children).replace(/\n$/, '')}
-            </SyntaxHighlighter>)}
-        </div>
-      )
-      : (
-        <code {...props} className={className}>
-          {children}
-        </code>
-      )
-  }, [children, className, inline, isSVG, language, languageShowName, match, props])
-})
+              <div className="text-[13px] text-gray-500 font-normal">
+                {languageShowName}
+              </div>
+              <div style={{ display: 'flex' }}>
+                {language === 'mermaid' && (
+                  <SVGBtn isSVG={isSVG} setIsSVG={setIsSVG} />
+                )}
+                <CopyBtn
+                  className="mr-1"
+                  value={String(children).replace(/\n$/, '')}
+                  isPlain
+                />
+              </div>
+            </div>
+            {language === 'mermaid' && isSVG
+              ? (
+                <Flowchart PrimitiveCode={String(children).replace(/\n$/, '')} />
+              )
+              : (
+                <SyntaxHighlighter
+                  {...props}
+                  style={atelierHeathLight}
+                  customStyle={{
+                    paddingLeft: 12,
+                    backgroundColor: '#fff',
+                  }}
+                  language={match[1]}
+                  showLineNumbers
+                  PreTag="div"
+                >
+                  {String(children).replace(/\n$/, '')}
+                </SyntaxHighlighter>
+              )}
+          </div>
+        )
+        : (
+          <code {...props} className={className}>
+            {children}
+          </code>
+        )
+    }, [
+      children,
+      className,
+      inline,
+      isSVG,
+      language,
+      languageShowName,
+      match,
+      props,
+    ])
+  },
+)
+/* eslint-enable no-mixed-operators */
 
 CodeBlock.displayName = 'CodeBlock'
 
+const parseContent = (
+  content: string,
+): Array<{ type: 'markdown' | 'antArtifact'; content: string }> => {
+  const segments: Array<{ type: 'markdown' | 'antArtifact'; content: string }>
+    = []
+  const regex = /<antartifact>([\s\S]*?)<\/antartifact>/g
+  let lastIndex = 0
+  let match = regex.exec(content)
+
+  while (match !== null) {
+    if (match.index > lastIndex) {
+      segments.push({
+        type: 'markdown',
+        content: content.slice(lastIndex, match.index),
+      })
+    }
+    segments.push({ type: 'antArtifact', content: match[1] })
+    lastIndex = regex.lastIndex
+    match = regex.exec(content)
+  }
+
+  if (lastIndex < content.length)
+    segments.push({ type: 'markdown', content: content.slice(lastIndex) })
+
+  return segments
+}
+
 export function Markdown(props: { content: string; className?: string }) {
   const latexContent = preprocessLaTeX(props.content)
+  const segments = parseContent(latexContent)
   return (
     <div className={cn(props.className, 'markdown-body')}>
-      <ReactMarkdown
-        remarkPlugins={[[RemarkMath, { singleDollarTextMath: false }], RemarkGfm, RemarkBreaks]}
-        rehypePlugins={[
-          RehypeKatex as any,
-        ]}
-        components={{
-          code: CodeBlock,
-          img({ src, alt, ...props }) {
-            return (
-              // eslint-disable-next-line @next/next/no-img-element
-              <img
-                src={src}
-                alt={alt}
-                width={250}
-                height={250}
-                className="max-w-full h-auto align-middle border-none rounded-lg shadow-md hover:shadow-lg transition-shadow duration-300 ease-in-out mt-2 mb-2"
-                {...props}
-              />
-            )
-          },
-          p: (paragraph) => {
-            const { node }: any = paragraph
-            if (node.children[0].tagName === 'img') {
-              const image = node.children[0]
-
-              return (
-                <>
-                  {/* eslint-disable-next-line @next/next/no-img-element */}
-                  <img
-                    src={image.properties.src}
-                    width={250}
-                    height={250}
-                    className="max-w-full h-auto align-middle border-none rounded-lg shadow-md hover:shadow-lg transition-shadow duration-300 ease-in-out mt-2 mb-2"
-                    alt={image.properties.alt}
-                  />
-                  <p>{paragraph.children.slice(1)}</p>
-                </>
-              )
-            }
-            return <p>{paragraph.children}</p>
-          },
-        }}
-        linkTarget='_blank'
-      >
-        {/* Markdown detect has problem. */}
-        {latexContent}
-      </ReactMarkdown>
+      {segments.map((segment, index) => {
+        if (segment.type === 'markdown') {
+          return (
+            <ReactMarkdown
+              key={index}
+              remarkPlugins={[
+                [RemarkMath, { singleDollarTextMath: false }],
+                RemarkGfm,
+                RemarkBreaks,
+              ]}
+              rehypePlugins={[RehypeKatex as any]}
+              components={{
+                code: CodeBlock,
+                img({ src, alt, ...props }) {
+                  return (
+                    <img
+                      src={src}
+                      alt={alt}
+                      width={250}
+                      height={250}
+                      className="max-w-full h-auto align-middle border-none rounded-lg shadow-md hover:shadow-lg transition-shadow duration-300 ease-in-out mt-2 mb-2"
+                      {...props}
+                    />
+                  )
+                },
+                p: (paragraph) => {
+                  const { node }: any = paragraph
+                  if (node.children[0].tagName === 'img') {
+                    const image = node.children[0]
+                    return (
+                      <>
+                        <img
+                          src={image.properties.src}
+                          width={250}
+                          height={250}
+                          className="max-w-full h-auto align-middle border-none rounded-lg shadow-md hover:shadow-lg transition-shadow duration-300 ease-in-out mt-2 mb-2"
+                          alt={image.properties.alt}
+                        />
+                        <p>{paragraph.children.slice(1)}</p>
+                      </>
+                    )
+                  }
+                  return <p>{paragraph.children}</p>
+                },
+              }}
+              linkTarget="_blank"
+            >
+              {segment.content}
+            </ReactMarkdown>
+          )
+        }
+        else {
+          return <PreviewComponent key={index} code={segment.content} />
+        }
+      })}
     </div>
   )
 }

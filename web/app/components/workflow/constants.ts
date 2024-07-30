@@ -162,8 +162,14 @@ export const NODES_EXTRA_DATA: Record<BlockEnum, NodesExtraData> = {
   },
 }
 
-export const ALL_CHAT_AVAILABLE_BLOCKS = Object.keys(NODES_EXTRA_DATA).filter(key => key !== BlockEnum.End && key !== BlockEnum.Start) as BlockEnum[]
-export const ALL_COMPLETION_AVAILABLE_BLOCKS = Object.keys(NODES_EXTRA_DATA).filter(key => key !== BlockEnum.Answer && key !== BlockEnum.Start) as BlockEnum[]
+export const ALL_CHAT_AVAILABLE_BLOCKS = Object.keys(NODES_EXTRA_DATA).filter(
+  key => key !== BlockEnum.End && key !== BlockEnum.Start,
+) as BlockEnum[]
+export const ALL_COMPLETION_AVAILABLE_BLOCKS = Object.keys(
+  NODES_EXTRA_DATA,
+).filter(
+  key => key !== BlockEnum.Answer && key !== BlockEnum.Start,
+) as BlockEnum[]
 
 export const NODES_INITIAL_DATA = {
   [BlockEnum.Start]: {
@@ -280,7 +286,7 @@ export const NODE_WIDTH = 240
 export const X_OFFSET = 60
 export const NODE_WIDTH_X_OFFSET = NODE_WIDTH + X_OFFSET
 export const Y_OFFSET = 39
-export const MAX_TREE_DEEPTH = 50
+export const MAX_TREE_DEEPTH = 100
 export const START_INITIAL_POSITION = { x: 80, y: 282 }
 export const AUTO_LAYOUT_OFFSET = {
   x: -42,
@@ -316,9 +322,18 @@ export const RETRIEVAL_OUTPUT_STRUCT = `{
 }`
 
 export const SUPPORT_OUTPUT_VARS_NODE = [
-  BlockEnum.Start, BlockEnum.LLM, BlockEnum.KnowledgeRetrieval, BlockEnum.Code, BlockEnum.TemplateTransform,
-  BlockEnum.HttpRequest, BlockEnum.Tool, BlockEnum.VariableAssigner, BlockEnum.VariableAggregator, BlockEnum.QuestionClassifier,
-  BlockEnum.ParameterExtractor, BlockEnum.Iteration,
+  BlockEnum.Start,
+  BlockEnum.LLM,
+  BlockEnum.KnowledgeRetrieval,
+  BlockEnum.Code,
+  BlockEnum.TemplateTransform,
+  BlockEnum.HttpRequest,
+  BlockEnum.Tool,
+  BlockEnum.VariableAssigner,
+  BlockEnum.VariableAggregator,
+  BlockEnum.QuestionClassifier,
+  BlockEnum.ParameterExtractor,
+  BlockEnum.Iteration,
 ]
 
 export const LLM_OUTPUT_STRUCT: Var[] = [
