@@ -33,7 +33,7 @@ const translation = {
     },
     hybrid_search: {
       title: 'Hybrid Search',
-      description: 'Execute full-text search and vector searches simultaneously, re-rank to select the best match for the user\'s query. Configuration of the Rerank model APIs necessary.',
+      description: 'Execute full-text search and vector searches simultaneously, re-rank to select the best match for the user\'s query. Users can choose to set weights or configure to a Rerank model.',
       recommend: 'Recommend',
     },
     invertedIndex: {
@@ -53,6 +53,7 @@ const translation = {
     semantic_search: 'VECTOR',
     full_text_search: 'FULL TEXT',
     hybrid_search: 'HYBRID',
+    invertedIndex: 'INVERTED',
   },
   mixtureHighQualityAndEconomicTip: 'The Rerank model is required for mixture of high quality and economical knowledge bases.',
   inconsistentEmbeddingModelTip: 'The Rerank model is required if the Embedding models of the selected knowledge bases are inconsistent.',
@@ -67,7 +68,8 @@ const translation = {
     semantic: 'Semantic',
     keyword: 'Keyword',
   },
-  nTo1RetrievalLegacy: 'According to product planning, N-to-1 retrieval will be officially deprecated in September. Until then you can still use it normally.',
+  nTo1RetrievalLegacy: 'N-to-1 retrieval will be officially deprecated from September. It is recommended to use the latest Multi-path retrieval to obtain better results. ',
+  nTo1RetrievalLegacyLink: 'Learn more',
 }
 
 export default translation

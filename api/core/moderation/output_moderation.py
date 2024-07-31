@@ -21,8 +21,6 @@ class ModerationRule(BaseModel):
 
 
 class OutputModeration(BaseModel):
-    DEFAULT_BUFFER_SIZE: int = 300
-
     tenant_id: str
     app_id: str
 
@@ -77,10 +75,10 @@ class OutputModeration(BaseModel):
         return final_output
 
     def start_thread(self) -> threading.Thread:
-        buffer_size = int(dify_config.config.MODERATION_BUFFER_SIZE)
+        buffer_size = dify_config.MODERATION_BUFFER_SIZE
         thread = threading.Thread(target=self.worker, kwargs={
             'flask_app': current_app._get_current_object(),
-            'buffer_size': buffer_size if buffer_size > 0 else self.DEFAULT_BUFFER_SIZE
+            'buffer_size': buffer_size if buffer_size > 0 else dify_config.MODERATION_BUFFER_SIZE
         })
 
         thread.start()
