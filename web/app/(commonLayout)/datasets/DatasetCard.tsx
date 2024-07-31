@@ -214,7 +214,6 @@ const DatasetCard = ({
           title={t('dataset.deleteDatasetConfirmTitle')}
           content={confirmMessage}
           isShow={showConfirmDelete}
-          onClose={() => setShowConfirmDelete(false)}
           onConfirm={onConfirmDelete}
           onCancel={() => setShowConfirmDelete(false)}
         />

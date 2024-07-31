@@ -185,7 +185,6 @@ function AppCard({
                   title={t('appOverview.overview.appInfo.regenerate') as string}
                   content={t('appOverview.overview.appInfo.regenerateNotice') as string}
                   isShow={showConfirmDelete}
-                  onClose={() => setShowConfirmDelete(false)}
                   onConfirm={() => {
                     onGenCode()
                     setShowConfirmDelete(false)

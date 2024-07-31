@@ -21,7 +21,6 @@ const RemoveAnnotationConfirmModal: FC<Props> = ({
     <Confirm
       isShow={isShow}
       onCancel={onHide}
-      onClose={onHide}
       onConfirm={onRemove}
       title={t('appDebug.feature.annotation.removeConfirm') as string}
     />

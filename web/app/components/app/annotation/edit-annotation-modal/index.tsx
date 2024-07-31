@@ -101,7 +101,6 @@ const EditAnnotationModal: FC<Props> = ({
               />
               <Confirm
                 isShow={showModal}
-                onClose={() => setShowModal(false)}
                 onCancel={() => setShowModal(false)}
                 onConfirm={() => {
                   onRemove()

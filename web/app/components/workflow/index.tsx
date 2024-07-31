@@ -324,7 +324,6 @@ const Workflow: FC<WorkflowProps> = memo(({
           <Confirm
             isShow
             onCancel={() => setShowConfirm(undefined)}
-            onClose={() => setShowConfirm(undefined)}
             onConfirm={showConfirm.onConfirm}
             title={showConfirm.title}
             content={showConfirm.desc}

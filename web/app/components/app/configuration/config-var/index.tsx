@@ -398,7 +398,6 @@ const ConfigVar: FC<IConfigVarProps> = ({ promptVariables, readonly, onPromptVar
             hideDeleteContextVarModal()
           }}
           onCancel={hideDeleteContextVarModal}
-          onClose={hideDeleteContextVarModal}
         />
       )}
 

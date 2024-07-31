@@ -389,10 +389,9 @@ const AppCard = ({ app, onRefresh }: AppCardProps) => {
       )}
       {showConfirmDelete && (
         <Confirm
-          title={t('app.deleteAppConfirmTitle')}
-          content={t('app.deleteAppConfirmContent')}
+          title={t('app.deleteAppConfirmTitle') as string}
+          content={t('app.deleteAppConfirmContent') as string}
           isShow={showConfirmDelete}
-          onClose={() => setShowConfirmDelete(false)}
           onConfirm={onConfirmDelete}
           onCancel={() => setShowConfirmDelete(false)}
         />

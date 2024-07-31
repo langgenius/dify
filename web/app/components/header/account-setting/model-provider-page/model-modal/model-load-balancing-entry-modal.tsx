@@ -334,7 +334,6 @@ const ModelLoadBalancingEntryModal: FC<ModelModalProps> = ({
                 title={t('common.modelProvider.confirmDelete')}
                 isShow={showConfirm}
                 onCancel={() => setShowConfirm(false)}
-                onClose={() => setShowConfirm(false)}
                 onConfirm={handleRemove}
               />
             )

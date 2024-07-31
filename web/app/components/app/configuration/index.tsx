@@ -880,7 +880,6 @@ const Configuration: FC = () => {
             title={t('appDebug.resetConfig.title') as string}
             content={t('appDebug.resetConfig.message') as string}
             isShow={restoreConfirmOpen}
-            onClose={() => setRestoreConfirmOpen(false)}
             onConfirm={resetAppConfig}
             onCancel={() => setRestoreConfirmOpen(false)}
           />
@@ -890,7 +889,6 @@ const Configuration: FC = () => {
             title={t('appDebug.trailUseGPT4Info.title') as string}
             content={t('appDebug.trailUseGPT4Info.description') as string}
             isShow={showUseGPT4Confirm}
-            onClose={() => setShowUseGPT4Confirm(false)}
             onConfirm={() => {
               setShowAccountSettingModal({ payload: 'provider' })
               setShowUseGPT4Confirm(false)

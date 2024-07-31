@@ -1,38 +1,39 @@
 import React, { useEffect, useRef, useState } from 'react'
+import { createPortal } from 'react-dom'
 import { useTranslation } from 'react-i18next'
 import Button from '../button'
 
 export type IConfirm = {
   className?: string
   isShow: boolean
-  onClose: () => void
   type?: 'info' | 'warning'
-  isLoading?: boolean
-  isDisabled?: boolean
   title: string
-  content?: string
+  content?: React.ReactNode
   confirmText?: string
   onConfirm: () => void
   cancelText?: string
   onCancel: () => void
-  twoButton?: boolean
-  children?: React.ReactNode
+  isLoading?: boolean
+  isDisabled?: boolean
+  showConfirm?: boolean
+  showCancel?: boolean
+  maskClosable?: boolean
 }
 
 function Confirm({
   isShow,
-  onClose,
   type = 'warning',
-  twoButton = true,
-  isLoading = false,
-  isDisabled = false,
   title,
   content,
   confirmText,
   cancelText,
   onConfirm,
   onCancel,
-  children,
+  showConfirm = true,
+  showCancel = true,
+  isLoading = false,
+  isDisabled = false,
+  maskClosable = true,
 }: IConfirm) {
   const { t } = useTranslation()
   const dialogRef = useRef<HTMLDivElement>(null)
@@ -44,18 +45,18 @@ function Confirm({
   useEffect(() => {
     const handleKeyDown = (event: KeyboardEvent) => {
       if (event.key === 'Escape')
-        onClose()
+        onCancel()
     }
 
     document.addEventListener('keydown', handleKeyDown)
     return () => {
       document.removeEventListener('keydown', handleKeyDown)
     }
-  }, [onClose])
+  }, [onCancel])
 
   const handleClickOutside = (event: MouseEvent) => {
-    if (dialogRef.current && !dialogRef.current.contains(event.target as Node))
-      onClose()
+    if (maskClosable && dialogRef.current && !dialogRef.current.contains(event.target as Node))
+      onCancel()
   }
 
   useEffect(() => {
@@ -63,14 +64,14 @@ function Confirm({
     return () => {
       document.removeEventListener('mousedown', handleClickOutside)
     }
-  }, [])
+  }, [maskClosable])
 
   useEffect(() => {
     if (isShow) {
       setIsVisible(true)
     }
     else {
-      const timer = setTimeout(() => setIsVisible(false), 200) // 200ms is the duration of the fade-out animation
+      const timer = setTimeout(() => setIsVisible(false), 200)
       return () => clearTimeout(timer)
     }
   }, [isShow])
@@ -78,22 +79,21 @@ function Confirm({
   if (!isVisible)
     return null
 
-  return (
+  return createPortal(
     <div className={'fixed inset-0 flex items-center justify-center z-[10000000] bg-background-overlay'}>
       <div ref={dialogRef} className={'relative w-full max-w-[480px] overflow-hidden'}>
         <div className='flex flex-col items-start max-w-full rounded-2xl border-[0.5px] border-solid border-components-panel-border shadows-shadow-lg bg-components-panel-bg'>
           <div className='flex pt-6 pl-6 pr-6 pb-4 flex-col items-start gap-2 self-stretch'>
             <div className='title-2xl-semi-bold text-text-primary'>{title}</div>
             <div className='system-md-regular text-text-tertiary'>{content}</div>
-            <div>{children}</div>
           </div>
           <div className='flex p-6 gap-2 justify-end items-start self-stretch'>
-            {twoButton && <Button onClick={onCancel}>{cancelTxt}</Button>}
-            <Button variant={type === 'info' ? 'primary' : 'warning'} loading={isLoading} disabled={isDisabled} onClick={onConfirm}>{confirmTxt}</Button>
+            {showCancel && <Button onClick={onCancel}>{cancelTxt}</Button>}
+            {showConfirm && <Button variant={'primary'} destructive={type !== 'info'} loading={isLoading} disabled={isDisabled} onClick={onConfirm}>{confirmTxt}</Button>}
           </div>
         </div>
       </div>
-    </div>
+    </div>, document.body,
   )
 }
 

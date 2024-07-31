@@ -57,16 +57,14 @@ const Item: FC<ItemProps> = ({
         </div>
       </div>
       {
-        showDeleteConfirm && (
-          <Confirm
+        showDeleteConfirm
+          && <Confirm
             isShow={showDeleteConfirm}
             onCancel={() => setShowDeleteConfirm(false)}
-            onClose={() => setShowDeleteConfirm(false)}
             title={`${t('common.operation.delete')} “${data.name}”?`}
             onConfirm={handleDeleteApiBasedExtension}
             confirmText={t('common.operation.delete') || ''}
           />
-        )
       }
     </div>
   )

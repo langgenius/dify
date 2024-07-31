@@ -207,7 +207,6 @@ const ViewAnnotationModal: FC<Props> = ({
             </div>
             <Confirm
               isShow={showModal}
-              onClose={() => setShowModal(false)}
               onCancel={() => setShowModal(false)}
               onConfirm={async () => {
                 await onRemove()

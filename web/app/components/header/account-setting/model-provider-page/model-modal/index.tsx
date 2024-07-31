@@ -390,7 +390,6 @@ const ModelModal: FC<ModelModalProps> = ({
                 isShow={showConfirm}
                 onCancel={() => setShowConfirm(false)}
                 onConfirm={handleRemove}
-                onClose={() => setShowConfirm(false)}
               />
             )
           }
