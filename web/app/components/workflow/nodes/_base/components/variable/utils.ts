@@ -264,8 +264,16 @@ const formatItem = (
   const selector = [id]
   res.vars = res.vars.filter((v) => {
     const { children } = v
-    if (!children)
-      return filterVar(v, selector)
+    if (!children) {
+      return filterVar(v, (() => {
+        const variableArr = v.variable.split('.')
+        const [first, ..._other] = variableArr
+        if (first === 'sys' || first === 'env' || first === 'conversation')
+          return variableArr
+
+        return [...selector, ...variableArr]
+      })())
+    }
 
     const obj = findExceptVarInObject(v, filterVar, selector)
     return obj?.children && obj?.children.length > 0

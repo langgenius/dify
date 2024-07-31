@@ -49,6 +49,8 @@ const useConfig = (id: string, payload: AssignerNodeType) => {
   const handleAssignedVarChanges = useCallback((variable: ValueSelector | string) => {
     const newInputs = produce(inputs, (draft) => {
       draft.assigned_variable_selector = variable as ValueSelector
+      draft.input_variable_selector = []
+
       const newVarType = getCurrentVariableType({
         parentNode: iterationNode,
         valueSelector: draft.assigned_variable_selector || [],
@@ -59,11 +61,9 @@ const useConfig = (id: string, payload: AssignerNodeType) => {
 
       if (inputs.write_mode === WriteMode.Append && !isSupportAppend(newVarType))
         draft.write_mode = WriteMode.Overwrite
-      if (newVarType !== assignedVarType)
-        draft.input_variable_selector = []
     })
     setInputs(newInputs)
-  }, [inputs, setInputs, getCurrentVariableType, iterationNode, availableNodes, isChatMode, isSupportAppend, assignedVarType])
+  }, [inputs, setInputs, getCurrentVariableType, iterationNode, availableNodes, isChatMode, isSupportAppend])
 
   const writeModeTypes = useMemo(() => {
     const types = [WriteMode.Overwrite, WriteMode.Append, WriteMode.Clear]
@@ -99,9 +99,8 @@ const useConfig = (id: string, payload: AssignerNodeType) => {
     return VarType.string
   }, [assignedVarType, inputs])
 
-  const filterToAssignedVar = useCallback((varPayload: Var) => {
-    // console.log(varPayload.variable.split('.'), inputs.assigned_variable_selector)
-    if (isEqual(varPayload.variable.split('.'), inputs.assigned_variable_selector))
+  const filterToAssignedVar = useCallback((varPayload: Var, selector: ValueSelector) => {
+    if (isEqual(selector, inputs.assigned_variable_selector))
       return false
 
     if (inputs.write_mode === WriteMode.Overwrite) {
