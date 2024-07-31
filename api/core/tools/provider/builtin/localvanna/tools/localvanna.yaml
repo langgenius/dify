@@ -116,7 +116,7 @@ parameters:
     human_description:
       en_US: vdb path
       zh_Hans: 向量数据库目录
-    form: form    
+    form: form
   - name: db_name
     type: string
     required: false
@@ -126,7 +126,7 @@ parameters:
     human_description:
       en_US: Database name
       zh_Hans: 数据库名
-    form: form  
+    form: form
   - name: username
     type: string
     required: false
