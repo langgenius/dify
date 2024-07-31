@@ -2,6 +2,8 @@
 - google/codegemma-7b
 - google/recurrentgemma-2b
 - meta/llama2-70b
+- meta/llama3-1-8b-instruct
+- meta/llama3-1-405b-instruct
 - meta/llama3-8b-instruct
 - meta/llama3-70b-instruct
 - mistralai/mistral-large
