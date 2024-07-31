@@ -14,9 +14,9 @@ const ProgressCircle: React.FC<ProgressCircleProps> = ({
   percentage = 0,
   size = 12,
   circleStrokeWidth = 1,
-  circleStrokeColor = 'components-progress-brand-border',
-  circleFillColor = 'components-progress-brand-bg',
-  sectorFillColor = 'components-progress-brand-progress',
+  circleStrokeColor = 'stroke-components-progress-brand-border',
+  circleFillColor = 'fill-components-progress-brand-bg',
+  sectorFillColor = 'fill-components-progress-brand-progress',
 }) => {
   const radius = size / 2
   const center = size / 2
@@ -41,8 +41,8 @@ const ProgressCircle: React.FC<ProgressCircleProps> = ({
     >
       <circle
         className={cn(
-          `fill-${circleFillColor}`,
-          `stroke-${circleStrokeColor}`,
+          circleFillColor,
+          circleStrokeColor,
         )}
         cx={center + circleStrokeWidth / 2}
         cy={center + circleStrokeWidth / 2}
@@ -50,7 +50,7 @@ const ProgressCircle: React.FC<ProgressCircleProps> = ({
         strokeWidth={circleStrokeWidth}
       />
       <path
-        className={cn(`fill-${sectorFillColor}`)}
+        className={cn(sectorFillColor)}
         d={pathData}
         transform={`translate(${circleStrokeWidth / 2}, ${circleStrokeWidth / 2})`}
       />

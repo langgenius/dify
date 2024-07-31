@@ -52,6 +52,7 @@ const FileUploaderInAttachment = () => {
     if (option.value === 'link') {
       return (
         <FileFromLinkOrLocal
+          key={option.value}
           showFromLocal={false}
           trigger={renderTrigger(option)}
         />

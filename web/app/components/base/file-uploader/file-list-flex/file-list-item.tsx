@@ -22,7 +22,7 @@ const FileListItem = ({
 
   return (
     <div className={cn(
-      'w-[68px] h-[68px] border-[2px] border-components-panel-border shadow-xs',
+      'w-[68px] h-[68px] border-[2px] border-effects-image-frame shadow-xs',
       className,
     )}></div>
   )
