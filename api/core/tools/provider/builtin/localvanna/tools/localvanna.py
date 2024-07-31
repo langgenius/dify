@@ -59,6 +59,7 @@ class VannaTool(BuiltinTool):
                 return self.create_text_message("Please input port")
 
         schema_sql = "SELECT * FROM INFORMATION_SCHEMA.COLUMNS"
+        schema_sql_orcl = "SELECT * FROM USER_TAB_COLUMNS"
         match db_type:
             case "SQLite":
                 schema_sql = "SELECT type, sql FROM sqlite_master WHERE sql is not null"
@@ -98,6 +99,12 @@ class VannaTool(BuiltinTool):
                     df_ddl = vn.run_sql(schema_sql)
                     for ddl in df_ddl["sql"].to_list():
                         vn.train(ddl=ddl)
+
+                elif db_type == "Oracle":
+                    df_ddl = vn.run_sql(schema_sql_orcl)
+                    for ddl in df_ddl["sql"].to_list():
+                        vn.train(ddl=ddl)
+
                 else:
                     df_information_schema = vn.run_sql(schema_sql)
                     plan = vn.get_training_plan_generic(df_information_schema)
