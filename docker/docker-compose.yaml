@@ -583,6 +583,16 @@ services:
     ports:
       - "${MYSCALE_PORT:-8123}:${MYSCALE_PORT:-8123}"
 
+  # unstructured .
+  # (if used, you need to set ETL_TYPE to Unstructured in the api & worker service.)
+  unstructured:
+    image: downloads.unstructured.io/unstructured-io/unstructured-api:latest
+    profiles:
+      - unstructured
+    restart: always
+    volumes:
+      - ./volumes/unstructured:/app/data
+
 networks:
   # create a network between sandbox, api and ssrf_proxy, and can not access outside.
   ssrf_proxy_network:
