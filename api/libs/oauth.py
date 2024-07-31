@@ -2,6 +2,7 @@ import urllib.parse
 from dataclasses import dataclass
 
 import requests
+from requests.auth import HTTPBasicAuth
 
 
 @dataclass
@@ -9,6 +10,7 @@ class OAuthUserInfo:
     id: str
     name: str
     email: str
+    token: str
 
 
 class OAuth:
@@ -16,6 +18,7 @@ class OAuth:
         self.client_id = client_id
         self.client_secret = client_secret
         self.redirect_uri = redirect_uri
+        self.access_token = None
 
     def get_authorization_url(self):
         raise NotImplementedError()
@@ -33,12 +36,16 @@ class OAuth:
     def _transform_user_info(self, raw_info: dict) -> OAuthUserInfo:
         raise NotImplementedError()
 
+    def logout(self, token: str):
+        raise NotImplementedError()
+
 
 class GitHubOAuth(OAuth):
     _AUTH_URL = 'https://github.com/login/oauth/authorize'
     _TOKEN_URL = 'https://github.com/login/oauth/access_token'
     _USER_INFO_URL = 'https://api.github.com/user'
     _EMAIL_INFO_URL = 'https://api.github.com/user/emails'
+    _LOGOUT_URL = 'https://api.github.com/applications/{}/grant'
 
     def get_authorization_url(self):
         params = {
@@ -64,6 +71,7 @@ class GitHubOAuth(OAuth):
         if not access_token:
             raise ValueError(f"Error in GitHub OAuth: {response_json}")
 
+        self.access_token = access_token
         return access_token
 
     def get_raw_user_info(self, token: str):
@@ -85,14 +93,26 @@ class GitHubOAuth(OAuth):
         return OAuthUserInfo(
             id=str(raw_info['id']),
             name=raw_info['name'],
-            email=email
+            email=email,
+            token=self.access_token
         )
+
+    def logout(self, token: str):
+        data = {
+            'access_token': token
+        }
+        headers = {
+            'Accept': 'application/vnd.github+json',
+            'X-GitHub-Api-Version': '2022-11-28'
+        }
+        requests.delete(self._LOGOUT_URL.format(self.client_id), auth=HTTPBasicAuth(self.client_id, self.client_secret), headers=headers, json=data)
 
 
 class GoogleOAuth(OAuth):
     _AUTH_URL = 'https://accounts.google.com/o/oauth2/v2/auth'
     _TOKEN_URL = 'https://oauth2.googleapis.com/token'
     _USER_INFO_URL = 'https://www.googleapis.com/oauth2/v3/userinfo'
+    _LOGOUT_URL = 'https://accounts.google.com/o/oauth2/revoke'
 
     def get_authorization_url(self):
         params = {
@@ -120,6 +140,7 @@ class GoogleOAuth(OAuth):
         if not access_token:
             raise ValueError(f"Error in Google OAuth: {response_json}")
 
+        self.access_token = access_token
         return access_token
 
     def get_raw_user_info(self, token: str):
@@ -132,7 +153,14 @@ class GoogleOAuth(OAuth):
         return OAuthUserInfo(
             id=str(raw_info['sub']),
             name=None,
-            email=raw_info['email']
+            email=raw_info['email'],
+            token=self.access_token
         )
 
+    def logout(self, token: str):
+        data = {
+            'token': token
+        }
+        headers = {'Content-type': 'application/x-www-form-urlencoded'}
+        requests.get(self._LOGOUT_URL, params=data, headers=headers)
 
