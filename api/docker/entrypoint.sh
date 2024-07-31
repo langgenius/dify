@@ -10,16 +10,15 @@ fi
 if [[ "${MODE}" == "worker" ]]; then
 
   # Get the number of available CPU cores
-  AVAILABLE_CORES=$(nproc)
   if [ "${CELERY_AUTO_SCALE,,}" = "true" ]; then
     # Set MAX_WORKERS to the number of available cores if not specified
+    AVAILABLE_CORES=$(nproc)
     MAX_WORKERS=${CELERY_MAX_WORKERS:-$AVAILABLE_CORES}
     MIN_WORKERS=${CELERY_MIN_WORKERS:-1}
     CONCURRENCY_OPTION="--autoscale=${MAX_WORKERS},${MIN_WORKERS}"
   else
     CONCURRENCY_OPTION="-c ${CELERY_WORKER_AMOUNT:-1}"
   fi
-
 
   exec celery -A app.celery worker -P ${CELERY_WORKER_CLASS:-gevent} $CONCURRENCY_OPTION --loglevel INFO \
     -Q ${CELERY_QUEUES:-dataset,generation,mail,ops_trace,app_deletion}
