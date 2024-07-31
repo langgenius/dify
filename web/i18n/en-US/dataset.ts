@@ -53,6 +53,7 @@ const translation = {
     semantic_search: 'VECTOR',
     full_text_search: 'FULL TEXT',
     hybrid_search: 'HYBRID',
+    invertedIndex: 'INVERTED',
   },
   mixtureHighQualityAndEconomicTip: 'The Rerank model is required for mixture of high quality and economical knowledge bases.',
   inconsistentEmbeddingModelTip: 'The Rerank model is required if the Embedding models of the selected knowledge bases are inconsistent.',
@@ -67,7 +68,8 @@ const translation = {
     semantic: 'Semantic',
     keyword: 'Keyword',
   },
-  nTo1RetrievalLegacy: 'According to the optimization and upgrade of the retrieval strategy, N-to-1 retrieval will be officially deprecated in September. Until then you can still use it normally.',
+  nTo1RetrievalLegacy: 'N-to-1 retrieval will be officially deprecated from September. It is recommended to use the latest Multi-path retrieval to obtain better results. ',
+  nTo1RetrievalLegacyLink: 'Learn more',
 }
 
 export default translation

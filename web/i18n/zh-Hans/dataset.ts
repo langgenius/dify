@@ -53,6 +53,7 @@ const translation = {
     semantic_search: '向量检索',
     full_text_search: '全文检索',
     hybrid_search: '混合检索',
+    invertedIndex: '倒排索引',
   },
   mixtureHighQualityAndEconomicTip: '混合使用高质量和经济型知识库需要配置 Rerank 模型。',
   inconsistentEmbeddingModelTip: '当所选知识库配置的 Embedding 模型不一致时，需要配置 Rerank 模型。',
@@ -67,7 +68,8 @@ const translation = {
     semantic: '语义',
     keyword: '关键词',
   },
-  nTo1RetrievalLegacy: '为了对检索策略进行优化和升级，N 选 1 检索功能将于九月份正式被优化。在此之前，您仍然可以正常使用该功能。',
+  nTo1RetrievalLegacy: '9 月 1 日起我们将不再提供此能力，推荐使用最新的多路召回获得更好的检索效果。',
+  nTo1RetrievalLegacyLink: '了解更多',
 }
 
 export default translation

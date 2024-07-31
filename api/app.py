@@ -261,6 +261,7 @@ def after_request(response):
 @app.route('/health')
 def health():
     return Response(json.dumps({
+        'pid': os.getpid(),
         'status': 'ok',
         'version': app.config['CURRENT_VERSION']
     }), status=200, content_type="application/json")
@@ -284,6 +285,7 @@ def threads():
         })
 
     return {
+        'pid': os.getpid(),
         'thread_num': num_threads,
         'threads': thread_list
     }
@@ -293,6 +295,7 @@ def threads():
 def pool_stat():
     engine = db.engine
     return {
+        'pid': os.getpid(),
         'pool_size': engine.pool.size(),
         'checked_in_connections': engine.pool.checkedin(),
         'checked_out_connections': engine.pool.checkedout(),
