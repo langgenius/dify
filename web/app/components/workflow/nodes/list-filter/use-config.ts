@@ -2,7 +2,7 @@ import { useCallback } from 'react'
 import produce from 'immer'
 import type { ValueSelector, Var } from '../../types'
 import { VarType } from '../../types'
-import type { Limit, type ListFilterNodeType } from './types'
+import type { Limit, ListFilterNodeType } from './types'
 import useNodeCrud from '@/app/components/workflow/nodes/_base/hooks/use-node-crud'
 import {
   useNodesReadOnly,
