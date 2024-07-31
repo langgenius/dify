@@ -5,6 +5,7 @@ import VarReferencePicker from '../_base/components/variable/var-reference-picke
 import OutputVars, { VarItem } from '../_base/components/output-vars'
 import useConfig from './use-config'
 import type { ListFilterNodeType } from './types'
+import LimitConfig from './components/limit-config'
 import Field from '@/app/components/workflow/nodes/_base/components/field'
 import { type NodePanelProps } from '@/app/components/workflow/types'
 
@@ -21,6 +22,7 @@ const Panel: FC<NodePanelProps<ListFilterNodeType>> = ({
     inputs,
     handleVarChanges,
     filterVar,
+    handleLimitChange,
   } = useConfig(id, data)
 
   return (
@@ -38,6 +40,12 @@ const Panel: FC<NodePanelProps<ListFilterNodeType>> = ({
             filterVar={filterVar}
           />
         </Field>
+
+        <LimitConfig
+          config={inputs.limit}
+          onChange={handleLimitChange}
+          readonly={readOnly}
+        />
       </div>
       <div className='px-4 pt-4 pb-2'>
         <OutputVars>

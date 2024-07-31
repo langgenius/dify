@@ -501,6 +501,7 @@ const translation = {
     },
     listFilter: {
       inputVar: 'Input Variable',
+      limit: 'Limit',
       outputVars: {
         result: 'Filter result',
         first_record: 'First record',

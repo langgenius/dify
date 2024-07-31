@@ -501,6 +501,7 @@ const translation = {
     },
     listFilter: {
       inputVar: '输入变量',
+      limit: '限制',
       outputVars: {
         result: '过滤结果',
         first_record: '第一条记录',

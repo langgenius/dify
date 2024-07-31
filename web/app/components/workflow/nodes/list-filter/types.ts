@@ -5,6 +5,11 @@ export enum OrderBy {
   DESC = 'desc',
 }
 
+export type Limit = {
+  enabled: boolean
+  size?: number
+}
+
 export type ListFilterNodeType = CommonNodeType & {
   variable: ValueSelector
   filterBy: []
@@ -13,8 +18,5 @@ export type ListFilterNodeType = CommonNodeType & {
     key: ValueSelector | string
     value: OrderBy
   }
-  limit: {
-    enabled: boolean
-    value: number
-  }
+  limit: Limit
 }
