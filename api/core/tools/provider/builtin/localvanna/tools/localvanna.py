@@ -1,13 +1,11 @@
 from typing import Any, Union
 
-from vanna.remote import VannaDefault
+from vanna.chromadb import ChromaDB_VectorStore
+from vanna.ollama import Ollama
 
 from core.tools.entities.tool_entities import ToolInvokeMessage
 from core.tools.errors import ToolProviderCredentialValidationError
 from core.tools.tool.builtin_tool import BuiltinTool
-from vanna.ollama import Ollama
-from vanna.chromadb import ChromaDB_VectorStore
-
 
 
 class VannaTool(BuiltinTool):
@@ -46,7 +44,6 @@ class VannaTool(BuiltinTool):
         llmmodel = tool_parameters.get("llmmodel", "")
         ollama_host = tool_parameters.get("ollama_host", "")
         vdbpath = tool_parameters.get("vdbpath", "")
-       # vn = VannaDefault(model=model, api_key=api_key)
         config = {'model': llmmodel, 'ollama_host': ollama_host, 'path': vdbpath }
         vn = VannaTool.MyVanna(config=config)
         
@@ -74,10 +71,8 @@ class VannaTool(BuiltinTool):
                 vn.connect_to_mssql(url)
             case "MySQL":
                 vn.connect_to_mysql(host=url, dbname=db_name, user=username, password=password, port=port)
-                #vn.connect_to_mysql(host='150.136.236.107', dbname='test', user='dify', password='dify', port=3306)
             case "Oracle":
                 vn.connect_to_oracle(user=username, password=password, dsn=url)
-                #vn.connect_to_oracle(user='C##dify', password='dify', dsn='150.136.236.107:1521/free')
             case "Hive":
                 vn.connect_to_hive(host=url, dbname=db_name, user=username, password=password, port=port)
             case "ClickHouse":
