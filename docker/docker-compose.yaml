@@ -567,11 +567,18 @@ services:
     restart: always
     environment:
       - "ELASTIC_PASSWORD=${ELASTICSEARCH_USERNAME:-elastic}"
+      - "cluster.name=dify-es-cluster"
+      - "node.name=dify-es0"
       - "discovery.type=single-node"
       - "xpack.security.http.ssl.enabled=false"
       - "xpack.license.self_generated.type=trial"
     ports:
       - "${ELASTICSEARCH_PORT:-9200}:${ELASTICSEARCH_PORT:-9200}"
+    healthcheck:
+      test: ["CMD", "curl", "-s", "http://localhost:9200/_cluster/health?pretty"]
+      interval: 30s
+      timeout: 10s
+      retries: 50
 
 networks:
   # create a network between sandbox, api and ssrf_proxy, and can not access outside.
