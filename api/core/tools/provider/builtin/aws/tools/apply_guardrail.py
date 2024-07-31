@@ -40,8 +40,6 @@ class ApplyGuardrailTool(BuiltinTool):
                 source=params.source,
                 content=[{"text": {"text": params.text}}]
             )
-            
-            logger.info(f"Raw response from AWS: {json.dumps(response, indent=2)}")
 
             # Check for empty response
             if not response:
