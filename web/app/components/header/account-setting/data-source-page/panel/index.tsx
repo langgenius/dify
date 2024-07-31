@@ -35,6 +35,7 @@ const Panel: FC<Props> = ({
 }) => {
   const { t } = useTranslation()
   const isNotion = type === DataSourceType.notion
+  const isFeishu = type === DataSourceType.feishu
   const isWebsite = type === DataSourceType.website
 
   return (
@@ -92,6 +93,40 @@ const Panel: FC<Props> = ({
           </>
         )}
 
+        {isFeishu && (
+          <>
+            {
+              isConfigured
+                ? (
+                  <div
+                    className={
+                      `flex items-center ml-3 px-3 h-7 bg-white border border-gray-200
+                  rounded-md text-xs font-medium text-gray-700
+                  ${!readOnly ? 'cursor-pointer' : 'grayscale opacity-50 cursor-default'}`
+                    }
+                    onClick={onConfigure}
+                  >
+                    {t('common.dataSource.configure')}
+                  </div>
+                )
+                : (
+                  <>
+                    {isSupportList && <div
+                      className={
+                        `flex items-center px-3 py-1 min-h-7 bg-white border-[0.5px] border-gray-200 text-xs font-medium text-primary-600 rounded-md
+                  ${!readOnly ? 'cursor-pointer' : 'grayscale opacity-50 cursor-default'}`
+                      }
+                      onClick={onConfigure}
+                    >
+                      <PlusIcon className='w-[14px] h-[14px] mr-[5px]' />
+                      {t('common.dataSource.feishu.addWorkspace')}
+                    </div>}
+                  </>
+                )
+            }
+          </>
+        )}
+
         {isWebsite && !isConfigured && (
           <div
             className={
@@ -111,7 +146,9 @@ const Panel: FC<Props> = ({
           <>
             <div className='flex items-center px-3 h-[18px]'>
               <div className='text-xs font-medium text-gray-500'>
-                {isNotion ? t('common.dataSource.notion.connectedWorkspace') : t('common.dataSource.website.configuredCrawlers')}
+                {isNotion && t('common.dataSource.notion.connectedWorkspace')}
+                {isFeishu && t('common.dataSource.feishu.connectedWorkspace')}
+                {isWebsite && t('common.dataSource.website.configuredCrawlers')}
               </div>
               <div className='grow ml-3 border-t border-t-gray-100' />
             </div>

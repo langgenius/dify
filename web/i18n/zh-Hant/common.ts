@@ -364,6 +364,25 @@ const translation = {
         preview: '預覽',
       },
     },
+    feishu: {
+      title: 'Lark',
+      description: '使用 Lark 作為知識庫的資料來源。',
+      connectedWorkspace: '已繫結工作空間',
+      addWorkspace: '新增工作空間',
+      connected: '已繫結',
+      disconnected: '未繫結',
+      changeAuthorizedPages: '更改授權頁面',
+      pagesAuthorized: '已授權頁面',
+      sync: '同步',
+      remove: '刪除',
+      selector: {
+        pageSelected: '已選頁面',
+        searchPages: '搜尋頁面...',
+        noSearchResult: '無搜尋結果',
+        addPages: '新增頁面',
+        preview: '預覽',
+      },
+    },
   },
   plugin: {
     serpapi: {

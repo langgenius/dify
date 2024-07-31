@@ -17,6 +17,7 @@ const translation = {
     dataSourceType: {
       file: '匯入已有文字',
       notion: '同步自 Notion 內容',
+      feishu: '同步自 Lark 內容',
       web: '同步自 Web 站點',
     },
     uploader: {
@@ -36,6 +37,8 @@ const translation = {
     },
     notionSyncTitle: 'Notion 未繫結',
     notionSyncTip: '同步 Notion 內容前，須先繫結 Notion 空間',
+    feishuSyncTitle: 'Lark 未繫結',
+    feishuSyncTip: '同步 Lark 內容前，須先繫結 Lark 空間',
     connect: '去繫結',
     button: '下一步',
     emptyDatasetCreation: '建立一個空知識庫',

@@ -1,10 +1,14 @@
+import logging
 import urllib.parse
 
 import requests
 from flask_login import current_user
 
 from extensions.ext_database import db
+from extensions.ext_redis import redis_client
 from models.source import DataSourceOauthBinding
+
+logger = logging.getLogger(__name__)
 
 
 class OAuthDataSource:
@@ -18,6 +22,12 @@ class OAuthDataSource:
 
     def get_access_token(self, code: str):
         raise NotImplementedError()
+
+
+class FeishuWikiOAuthDataSource:
+    def __init__(self, app_id: str, app_secret: str):
+        self.app_id = app_id
+        self.app_secret = app_secret
 
 
 class NotionOAuth(OAuthDataSource):
@@ -292,3 +302,206 @@ class NotionOAuth(OAuthDataSource):
         response_json = response.json()
         results = response_json.get('results', [])
         return results
+
+
+class FeishuWikiOAuth(FeishuWikiOAuthDataSource):
+    _FEISHU_TENANT_ACCESS_TOKEN_URL = 'https://open.larkoffice.com/open-apis/auth/v3/tenant_access_token/internal'
+    _FEISHU_WIKI_SPACES_SEARCH = 'https://open.larkoffice.com/open-apis/wiki/v2/spaces'
+    _FEISHU_WIKI_NODES_SEARCH = 'https://open.larkoffice.com/open-apis/wiki/v2/spaces/{space_id}/nodes'
+
+    def get_tenant_access_token(self):
+        tenant_access_token_cache_key = f'tenant_access_token_{self.app_id}'
+
+        cache_result = redis_client.get(tenant_access_token_cache_key)
+        if cache_result is not None:
+            return cache_result.decode('utf-8')
+
+        data = {
+            "app_id": self.app_id,
+            "app_secret": self.app_secret
+        }
+        headers = {'Accept': 'application/json'}
+        response = requests.post(self._FEISHU_TENANT_ACCESS_TOKEN_URL, data=data, headers=headers, timeout=(60, 120))
+        response_json = response.json()
+
+        code = response_json.get('code')
+        tenant_access_token = response_json.get('tenant_access_token')
+
+        expire = response_json.get('expire')
+        if expire > 3600:
+            redis_client.setex(tenant_access_token_cache_key, 3600, tenant_access_token)
+        else:
+            redis_client.setex(tenant_access_token_cache_key, expire, tenant_access_token)
+
+        if code != 0:
+            raise ValueError(f"Error in Feishu OAuth: {response_json}")
+        return tenant_access_token
+
+    def get_feishu_wiki_spaces(self, page_token: str = "", page_size: int = 50):
+        headers = {
+            'Content-Type': 'application/json',
+            'Authorization': f"Bearer {self.get_tenant_access_token()}",
+        }
+
+        params = {
+            "page_size": page_size,
+            "page_token": page_token,
+        }
+
+        response = requests.get(url=self._FEISHU_WIKI_SPACES_SEARCH, params=params, headers=headers, timeout=(60, 120))
+        response_json = response.json()
+
+        if not response.ok:
+            raise Exception(
+                f"get feishu wiki spaces fail！status_code：{response.status_code}, code: {response_json['code']}, msg：{response_json['msg']}")
+
+        spaces = response_json["data"]["items"]
+        has_more = response_json["data"]["has_more"]
+
+        if has_more:
+            next_page_token = response_json["data"]["page_token"]
+            next_spaces = self.get_feishu_wiki_spaces(next_page_token)
+            spaces.extend(next_spaces)
+
+        return spaces
+
+    def save_feishu_wiki_data_source(self):
+        workspace_name = self.app_id
+        workspace_icon = None
+        workspace_id = current_user.current_tenant_id
+
+        spaces = self.get_feishu_wiki_spaces()
+        pages = []
+
+        for space in spaces:
+            space_type = space['space_type']
+            if space_type == 'team':
+                space_id = space['space_id']
+                nodes = self.get_all_feishu_wiki_nodes(space_id)
+                pages.extend(nodes)
+
+        source_info = {
+            'workspace_name': workspace_name,
+            'workspace_icon': workspace_icon,
+            'workspace_id': workspace_id,
+            'pages': pages,
+            'total': len(pages)
+        }
+
+        data_source_binding = DataSourceOauthBinding.query.filter(
+            db.and_(
+                DataSourceOauthBinding.tenant_id == current_user.current_tenant_id,
+                DataSourceOauthBinding.provider == 'feishuwiki',
+                DataSourceOauthBinding.access_token == self.app_secret
+            )
+        ).first()
+        if data_source_binding:
+            data_source_binding.source_info = source_info
+            data_source_binding.disabled = False
+            db.session.commit()
+        else:
+            new_data_source_binding = DataSourceOauthBinding(
+                tenant_id=current_user.current_tenant_id,
+                access_token=self.app_secret,
+                source_info=source_info,
+                provider='feishuwiki'
+            )
+            db.session.add(new_data_source_binding)
+            db.session.commit()
+
+    def sync_data_source(self, binding_id: str):
+        data_source_binding = DataSourceOauthBinding.query.filter(
+            db.and_(
+                DataSourceOauthBinding.tenant_id == current_user.current_tenant_id,
+                DataSourceOauthBinding.provider == 'feishuwiki',
+                DataSourceOauthBinding.id == binding_id,
+                DataSourceOauthBinding.disabled == False
+            )
+        ).first()
+        if data_source_binding:
+            workspace_name = self.app_id
+            workspace_icon = None
+            workspace_id = current_user.current_tenant_id
+
+            spaces = self.get_feishu_wiki_spaces()
+            pages = []
+
+            for space in spaces:
+                space_type = space['space_type']
+                if space_type == 'team':
+                    space_id = space['space_id']
+                    nodes = self.get_all_feishu_wiki_nodes(space_id)
+                    pages.extend(nodes)
+
+            source_info = {
+                'workspace_name': workspace_name,
+                'workspace_icon': workspace_icon,
+                'workspace_id': workspace_id,
+                'pages': pages,
+                'total': len(pages)
+            }
+
+            data_source_binding.source_info = source_info
+            data_source_binding.disabled = False
+            db.session.commit()
+        else:
+            raise ValueError('Data source binding not found')
+
+    def get_all_feishu_wiki_nodes(self, space_id: str):
+        nodes = self.get_feishu_wiki_nodes(space_id)
+        res = []
+        for node in nodes:
+            queue = [node]
+            while queue:
+                level, size = [], len(queue)
+                for _ in range(size):
+                    node = queue.pop(0)
+                    obj_type = node["obj_type"]
+                    node_type = node["node_type"]
+                    if obj_type == "docx" and node_type == "origin":
+                        level.append({
+                            "page_id": node["node_token"],
+                            "page_name": node["title"] if node["title"] else "未命名文档",
+                            "parent_id": node["parent_node_token"] if node["parent_node_token"] else "root",
+                            "obj_token": node["obj_token"],
+                            "obj_type": node["obj_type"],
+                            "space_id": node["space_id"],
+                        })
+                    has_child = node["has_child"]
+                    if has_child:
+                        node_token = node["node_token"]
+                        child_nodes = self.get_feishu_wiki_nodes(space_id, "", node_token)
+                        queue.extend(child_nodes)
+                res.extend(level)
+        return res
+
+    def get_feishu_wiki_nodes(self, space_id: str, page_token: str = "", parent_node_token: str = "",
+                              page_size: int = 50):
+        headers = {
+            'Content-Type': 'application/json',
+            'Authorization': f"Bearer {self.get_tenant_access_token()}",
+        }
+
+        params = {
+            "page_size": page_size,
+            "page_token": page_token,
+            "parent_node_token": parent_node_token,
+        }
+
+        response = requests.get(url=self._FEISHU_WIKI_NODES_SEARCH.format(space_id=space_id), params=params,
+                                headers=headers, timeout=(60, 120))
+        response_json = response.json()
+
+        if not response.ok:
+            raise Exception(
+                f"get feishu wiki nodes fail！status_code：{response.status_code}, code: {response_json['code']}, msg：{response_json['msg']}")
+
+        nodes = response_json["data"]["items"]
+        has_more = response_json["data"]["has_more"]
+
+        if has_more:
+            next_page_token = response_json["data"]["page_token"]
+            next_nodes = self.get_feishu_wiki_nodes(space_id, next_page_token, parent_node_token)
+            nodes.extend(next_nodes)
+
+        return nodes

@@ -1,0 +1,15 @@
+.search-icon {
+  background: url(../assets/search.svg) center center;
+  background-size: 14px 14px;
+}
+
+.clear-icon {
+  background: url(../assets/clear.svg) center center;
+  background-size: contain;
+}
+
+.input-wrapper {
+  flex-basis: 200px;
+  width: 0;
+  box-shadow: 0px 1px 2px rgba(16, 24, 40, 0.05);
+}

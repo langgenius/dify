@@ -359,6 +359,22 @@ class DatasetIndexingEstimateApi(Resource):
                         document_model=args['doc_form']
                     )
                     extract_settings.append(extract_setting)
+        elif args['info_list']['data_source_type'] == 'feishuwiki_import':
+            feishuwiki_info_list = args['info_list']['feishuwiki_info_list']
+            for feishuwiki_info in feishuwiki_info_list:
+                workspace_id = feishuwiki_info['workspace_id']
+                for page in feishuwiki_info['pages']:
+                    extract_setting = ExtractSetting(
+                        datasource_type="feishuwiki_import",
+                        feishuwiki_info={
+                            "feishu_workspace_id": workspace_id,
+                            "obj_token": page['obj_token'],
+                            "obj_type": page['obj_type'],
+                            "tenant_id": current_user.current_tenant_id
+                        },
+                        document_model=args['doc_form']
+                    )
+                    extract_settings.append(extract_setting)
         elif args['info_list']['data_source_type'] == 'website_crawl':
             website_info_list = args['info_list']['website_info_list']
             for url in website_info_list['urls']:

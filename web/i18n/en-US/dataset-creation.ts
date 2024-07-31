@@ -22,6 +22,7 @@ const translation = {
     dataSourceType: {
       file: 'Import from file',
       notion: 'Sync from Notion',
+      feishu: 'Sync from Lark',
       web: 'Sync from website',
     },
     uploader: {
@@ -41,6 +42,8 @@ const translation = {
     },
     notionSyncTitle: 'Notion is not connected',
     notionSyncTip: 'To sync with Notion, connection to Notion must be established first.',
+    feishuSyncTitle: 'Lark is not connected',
+    feishuSyncTip: 'To sync with Lark, connection to Lark must be established first.',
     connect: 'Go to connect',
     button: 'Next',
     emptyDatasetCreation: 'I want to create an empty Knowledge',

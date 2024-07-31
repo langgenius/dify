@@ -41,7 +41,7 @@ from services.errors.file import FileNotExistsError
 from services.feature_service import FeatureModel, FeatureService
 from services.tag_service import TagService
 from services.vector_service import VectorService
-from tasks.clean_notion_document_task import clean_notion_document_task
+from tasks.clean_notion_document_task import clean_notion_or_feishuwiki_document_task
 from tasks.deal_dataset_vector_index_task import deal_dataset_vector_index_task
 from tasks.delete_segment_from_index_task import delete_segment_from_index_task
 from tasks.disable_segment_from_index_task import disable_segment_from_index_task
@@ -654,6 +654,10 @@ class DocumentService:
                     notion_info_list = document_data["data_source"]['info_list']['notion_info_list']
                     for notion_info in notion_info_list:
                         count = count + len(notion_info['pages'])
+                elif document_data["data_source"]["type"] == "feishuwiki_import":
+                    feishuwiki_info_list = document_data["data_source"]['info_list']['feishuwiki_info_list']
+                    for feishuwiki_info in feishuwiki_info_list:
+                        count = count + len(feishuwiki_info['pages'])
                 elif document_data["data_source"]["type"] == "website_crawl":
                     website_info = document_data["data_source"]['info_list']['website_info_list']
                     count = len(website_info['urls'])
@@ -833,7 +837,57 @@ class DocumentService:
                             exist_document.pop(page['page_id'])
                 # delete not selected documents
                 if len(exist_document) > 0:
-                    clean_notion_document_task.delay(list(exist_document.values()), dataset.id)
+                    clean_notion_or_feishuwiki_document_task.delay(list(exist_document.values()), dataset.id)
+            elif document_data["data_source"]["type"] == "feishuwiki_import":
+                feishuwiki_info_list = document_data["data_source"]['info_list']['feishuwiki_info_list']
+                exist_obj_token_list = []
+                exist_document = {}
+                documents = Document.query.filter_by(
+                    dataset_id=dataset.id,
+                    tenant_id=current_user.current_tenant_id,
+                    data_source_type='feishuwiki_import',
+                    enabled=True
+                ).all()
+                if documents:
+                    for document in documents:
+                        data_source_info = json.loads(document.data_source_info)
+                        exist_obj_token_list.append(data_source_info['obj_token'])
+                        exist_document[data_source_info['obj_token']] = document.id
+                for feishuwiki_info in feishuwiki_info_list:
+                    workspace_id = feishuwiki_info['workspace_id']
+                    data_source_binding = DataSourceOauthBinding.query.filter(
+                        db.and_(
+                            DataSourceOauthBinding.tenant_id == current_user.current_tenant_id,
+                            DataSourceOauthBinding.provider == 'feishuwiki',
+                            DataSourceOauthBinding.disabled == False,
+                            DataSourceOauthBinding.source_info['workspace_id'] == f'"{workspace_id}"'
+                        )
+                    ).first()
+                    if not data_source_binding:
+                        raise ValueError('Data source binding not found.')
+                    for page in feishuwiki_info['pages']:
+                        if page['obj_token'] not in exist_obj_token_list:
+                            data_source_info = {
+                                "feishu_workspace_id": workspace_id,
+                                "obj_token": page['obj_token'],
+                                "obj_type": page['obj_type'],
+                            }
+                            document = DocumentService.build_document(dataset, dataset_process_rule.id,
+                                                                      document_data["data_source"]["type"],
+                                                                      document_data["doc_form"],
+                                                                      document_data["doc_language"],
+                                                                      data_source_info, created_from, position,
+                                                                      account, page['page_name'], batch)
+                            db.session.add(document)
+                            db.session.flush()
+                            document_ids.append(document.id)
+                            documents.append(document)
+                            position += 1
+                        else:
+                            exist_document.pop(page['obj_token'])
+                # delete not selected documents
+                if len(exist_document) > 0:
+                    clean_notion_or_feishuwiki_document_task.delay(list(exist_document.values()), dataset.id)
             elif document_data["data_source"]["type"] == "website_crawl":
                 website_info = document_data["data_source"]['info_list']['website_info_list']
                 urls = website_info['urls']
@@ -987,6 +1041,26 @@ class DocumentService:
                             "notion_page_icon": page['page_icon'],
                             "type": page['type']
                         }
+            elif document_data["data_source"]["type"] == "feishuwiki_import":
+                feishuwiki_info_list = document_data["data_source"]['info_list']['feishuwiki_info_list']
+                for feishuwiki_info in feishuwiki_info_list:
+                    workspace_id = feishuwiki_info['workspace_id']
+                    data_source_binding = DataSourceOauthBinding.query.filter(
+                        db.and_(
+                            DataSourceOauthBinding.tenant_id == current_user.current_tenant_id,
+                            DataSourceOauthBinding.provider == 'feishuwiki',
+                            DataSourceOauthBinding.disabled == False,
+                            DataSourceOauthBinding.source_info['workspace_id'] == f'"{workspace_id}"'
+                        )
+                    ).first()
+                    if not data_source_binding:
+                        raise ValueError('Data source binding not found.')
+                    for page in feishuwiki_info['pages']:
+                        data_source_info = {
+                            "feishu_workspace_id": workspace_id,
+                            "obj_token": page['obj_token'],
+                            "obj_type": page['obj_type']
+                        }
             elif document_data["data_source"]["type"] == "website_crawl":
                 website_info = document_data["data_source"]['info_list']['website_info_list']
                 urls = website_info['urls']
@@ -1036,6 +1110,10 @@ class DocumentService:
                 notion_info_list = document_data["data_source"]['info_list']['notion_info_list']
                 for notion_info in notion_info_list:
                     count = count + len(notion_info['pages'])
+            elif document_data["data_source"]["type"] == "feishuwiki_import":
+                feishu_info_list = document_data["data_source"]['info_list']['feishuwiki_info_list']
+                for feishuwiki_info in feishu_info_list:
+                    count = count + len(feishuwiki_info['pages'])
             elif document_data["data_source"]["type"] == "website_crawl":
                 website_info = document_data["data_source"]['info_list']['website_info_list']
                 count = len(website_info['urls'])
@@ -1139,6 +1217,10 @@ class DocumentService:
             if 'notion_info_list' not in args['data_source']['info_list'] or not args['data_source']['info_list'][
                 'notion_info_list']:
                 raise ValueError("Notion source info is required")
+        if args['data_source']['type'] == 'feishuwiki_import':
+            if 'feishuwiki_info_list' not in args['data_source']['info_list'] or not args['data_source']['info_list'][
+                'feishuwiki_info_list']:
+                raise ValueError("FeishuWiki source info is required")
         if args['data_source']['type'] == 'website_crawl':
             if 'website_info_list' not in args['data_source']['info_list'] or not args['data_source']['info_list'][
                 'website_info_list']:
