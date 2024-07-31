@@ -8,7 +8,10 @@ export const useKnowledge = () => {
     return t(`dataset.indexingTechnique.${indexingTechnique}`)
   }, [t])
 
-  const formatIndexingMethod = useCallback((indexingMethod: string) => {
+  const formatIndexingMethod = useCallback((indexingMethod: string, isEco?: boolean) => {
+    if (isEco)
+      return t('dataset.indexingMethod.invertedIndex')
+
     return t(`dataset.indexingMethod.${indexingMethod}`)
   }, [t])
 
@@ -16,7 +19,7 @@ export const useKnowledge = () => {
     let result = formatIndexingTechnique(indexingTechnique)
 
     if (indexingMethod)
-      result += ` · ${formatIndexingMethod(indexingMethod)}`
+      result += ` · ${formatIndexingMethod(indexingMethod, indexingTechnique === 'economy')}`
 
     return result
   }, [formatIndexingTechnique, formatIndexingMethod])

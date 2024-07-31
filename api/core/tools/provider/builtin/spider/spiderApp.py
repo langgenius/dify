@@ -116,6 +116,7 @@ class Spider:
         :param params: Optional dictionary of additional parameters for the scrape request.
         :return: JSON response containing the scraping results.
         """
+        params = params or {}
 
         # Add { "return_format": "markdown" } to the params if not already present
         if "return_format" not in params:
@@ -143,6 +144,7 @@ class Spider:
         :param stream: Boolean indicating if the response should be streamed. Defaults to False.
         :return: JSON response or the raw response stream if streaming enabled.
         """
+        params = params or {}
 
         # Add { "return_format": "markdown" } to the params if not already present
         if "return_format" not in params:
