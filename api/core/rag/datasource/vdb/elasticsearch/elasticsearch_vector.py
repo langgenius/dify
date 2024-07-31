@@ -46,7 +46,7 @@ class ElasticSearchVector(BaseVector):
                 basic_auth=(config.username, config.password),
                 request_timeout=300,
                 retry_on_timeout=True,
-                max_retries=5,
+                max_retries=10,
             )
         except requests.exceptions.ConnectionError:
             raise ConnectionError("Vector database connection error")
