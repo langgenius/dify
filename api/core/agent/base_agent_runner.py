@@ -164,6 +164,17 @@ class BaseAgentRunner(AppRunner):
         )
 
         parameters = tool_entity.get_all_runtime_parameters()
+
+        self._convert_parameters_to_object_properties(parameters, message_tool.parameters)
+
+        return message_tool, tool_entity
+
+    def _convert_parameters_to_object_properties(self, parameters: list[ToolParameter], message_tool_parameter: dict):
+        """
+        convert tool parameters to prompt message tool object properties
+        """
+        message_tool_parameter['properties'] = {}
+        message_tool_parameter['required'] = []
         for parameter in parameters:
             if parameter.form != ToolParameter.ToolParameterForm.LLM:
                 continue
@@ -173,51 +184,47 @@ class BaseAgentRunner(AppRunner):
             if parameter.type == ToolParameter.ToolParameterType.SELECT:
                 enum = [option.value for option in parameter.options]
 
-            message_tool.parameters['properties'][parameter.name] = {
+            message_tool_parameter['properties'][parameter.name] = {
                 "type": parameter_type,
                 "description": parameter.llm_description or '',
             }
 
             if len(enum) > 0:
-                message_tool.parameters['properties'][parameter.name]['enum'] = enum
+                message_tool_parameter['properties'][parameter.name]['enum'] = enum
 
             if parameter.required:
-                message_tool.parameters['required'].append(parameter.name)
+                if parameter.name not in message_tool_parameter['required']:
+                    message_tool_parameter['required'].append(parameter.name)
             
             if parameter.type == ToolParameter.ToolParameterType.OBJECT:
-                self._convert_object_to_properties(parameter, message_tool.parameters['properties'][parameter.name])
+                self._convert_parameters_to_object_properties(parameter.properties, message_tool_parameter['properties'][parameter.name])
+            elif parameter.type == ToolParameter.ToolParameterType.ARRAY:
+                self._convert_parameter_items_to_array_items(parameter.items, message_tool_parameter['properties'][parameter.name])
 
-        return message_tool, tool_entity
-
-    def _convert_object_to_properties(self, tool_parameter: ToolParameter, message_tool_parameter: dict):
+    def _convert_parameter_items_to_array_items(self, parameter: ToolParameter, message_tool_parameter: dict):
         """
-            convert tool parameter object to prompt message tool
+        convert tool parameters array items to prompt message tool array items
         """
-        message_tool_parameter['properties'] = {}
-        message_tool_parameter['required'] = []
-        for parameter in tool_parameter.properties:
-            if (parameter is None): continue
-            if parameter['form'] != 'llm':#ToolParameter.ToolParameterForm.LLM:
-                continue
+        if parameter.form != ToolParameter.ToolParameterForm.LLM:
+            return
 
-            parameter_type = ToolParameterConverter.get_parameter_type(parameter['type'])
-            enum = []
-            if parameter['type'] == 'select':#ToolParameter.ToolParameterType.SELECT:
-                enum = [option.value for option in parameter['options']]
+        parameter_type = ToolParameterConverter.get_parameter_type(parameter.type)
+        enum = []
+        if parameter.type == ToolParameter.ToolParameterType.SELECT:
+            enum = [option.value for option in parameter.options]
 
-            message_tool_parameter['properties'][parameter['name']] = {
-                "type": parameter_type,
-                "description": parameter['llm_description'] or '',
-            }
+        message_tool_parameter['items'] = {
+            "type": parameter_type,
+            "description": parameter.llm_description or '',
+        }
 
-            if len(enum) > 0:
-                message_tool_parameter['properties'][parameter['name']]['enum'] = enum
+        if len(enum) > 0:
+            message_tool_parameter['items']['enum'] = enum
 
-            if parameter['required']:
-                message_tool_parameter['required'].append(parameter['name'])
-            
-            if parameter['type'] == 'object':#ToolParameter.ToolParameterType.OBJECT:
-                self._convert_object_to_properties(parameter, message_tool_parameter['properties'][parameter['name']])
+        if parameter.type == ToolParameter.ToolParameterType.OBJECT:
+            self._convert_parameters_to_object_properties(parameter.properties, message_tool_parameter['items'])
+        elif parameter.type == ToolParameter.ToolParameterType.ARRAY:
+            self._convert_parameter_items_to_array_items(parameter.items, message_tool_parameter['items'])
     
     def _convert_dataset_retriever_tool_to_prompt_message_tool(self, tool: DatasetRetrieverTool) -> PromptMessageTool:
         """
@@ -282,26 +289,7 @@ class BaseAgentRunner(AppRunner):
         # try to get tool runtime parameters
         tool_runtime_parameters = tool.get_runtime_parameters() or []
 
-        for parameter in tool_runtime_parameters:
-            if parameter.form != ToolParameter.ToolParameterForm.LLM:
-                continue
-
-            parameter_type = ToolParameterConverter.get_parameter_type(parameter.type)
-            enum = []
-            if parameter.type == ToolParameter.ToolParameterType.SELECT:
-                enum = [option.value for option in parameter.options]
-        
-            prompt_tool.parameters['properties'][parameter.name] = {
-                "type": parameter_type,
-                "description": parameter.llm_description or '',
-            }
-
-            if len(enum) > 0:
-                prompt_tool.parameters['properties'][parameter.name]['enum'] = enum
-
-            if parameter.required:
-                if parameter.name not in prompt_tool.parameters['required']:
-                    prompt_tool.parameters['required'].append(parameter.name)
+        self._convert_parameters_to_object_properties(tool_runtime_parameters, prompt_tool.parameters)
 
         return prompt_tool
         

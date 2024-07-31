@@ -87,46 +87,11 @@ class ApiBasedToolSchemaParser:
                             for ref in reference:
                                 root = root[ref]
                             # overwrite the content
-                            interface['operation']['requestBody']['content'][content_type]['schema'] = root
+                            content['schema'] = root
 
                     # parse body parameters
-                    if 'schema' in interface['operation']['requestBody']['content'][content_type]:
-                        body_schema = interface['operation']['requestBody']['content'][content_type]['schema']
-                        required = body_schema.get('required', [])
-                        properties = body_schema.get('properties', {})
-                        for name, property in properties.items():
-                            tool = ToolParameter(
-                                name=name,
-                                label=I18nObject(
-                                    en_US=name,
-                                    zh_Hans=name
-                                ),
-                                human_description=I18nObject(
-                                    en_US=property.get('description', ''),
-                                    zh_Hans=property.get('description', '')
-                                ),
-                                type=ToolParameter.ToolParameterType.STRING,
-                                required=name in required,
-                                form=ToolParameter.ToolParameterForm.LLM,
-                                llm_description=property.get('description', ''),
-                                default=property.get('default', None),
-                            )
-
-                            # check if there is a type
-                            typ = ApiBasedToolSchemaParser._get_tool_parameter_type(property)
-                            if typ:
-                                tool.type = typ
-                            elif '$ref' in property:
-                                tool.type = ToolParameter.ToolParameterType.OBJECT
-                                tool.properties = tool.properties or []
-
-                                schema = openapi
-                                reference = property['$ref'].split('/')[1:]
-                                for ref in reference:
-                                    schema = schema[ref]
-                                ApiBasedToolSchemaParser.parse_openapi_object_parameter(openapi, schema, tool.properties)
-
-                            parameters.append(tool)
+                    if content and 'schema' in content:
+                        parameters += ApiBasedToolSchemaParser.parse_openapi_object_parameter(openapi, content['schema'])
 
             # check if parameters is duplicated
             parameters_count = {}
@@ -166,10 +131,20 @@ class ApiBasedToolSchemaParser:
         return bundles
 
     @staticmethod
-    def parse_openapi_object_parameter(openapi: dict, object_schema: dict, children_properties: list[ToolParameter]):
-        required = object_schema.get('required', [])
-        properties = object_schema.get('properties', {})
+    def parse_openapi_object_parameter(openapi: dict, object_parameter: dict):
+        parameters = []
+
+        required = object_parameter.get('required', [])
+        properties = object_parameter.get('properties', {})
         for name, property in properties.items():
+            if '$ref' in property:
+                root = openapi
+                reference = property['$ref'].split('/')[1:]
+                for ref in reference:
+                    root = root[ref]
+                # overwrite the property
+                property = root
+
             tool = ToolParameter(
                 name=name,
                 label=I18nObject(
@@ -191,17 +166,55 @@ class ApiBasedToolSchemaParser:
             typ = ApiBasedToolSchemaParser._get_tool_parameter_type(property)
             if typ:
                 tool.type = typ
-            elif '$ref' in property:
-                tool.type = ToolParameter.ToolParameterType.OBJECT
-                tool.properties = tool.properties or []
+            
+            if (typ == ToolParameter.ToolParameterType.OBJECT):
+                tool.properties = ApiBasedToolSchemaParser.parse_openapi_object_parameter(openapi, property)
+            elif (tool.type == ToolParameter.ToolParameterType.ARRAY):
+                tool.items = ApiBasedToolSchemaParser.parse_openapi_array_parameter(openapi, property.get('items', {}))
 
-                schema = openapi
-                reference = property['$ref'].split('/')[1:]
-                for ref in reference:
-                    schema = schema[ref]
-                ApiBasedToolSchemaParser.parse_openapi_object_parameter(openapi, schema, tool.properties)
+            parameters.append(tool)
 
-            children_properties.append(tool)
+        return parameters
+
+    @staticmethod
+    def parse_openapi_array_parameter(openapi: dict, property: dict):
+        if ('$ref' in property):
+            root = openapi
+            reference = property['$ref'].split('/')[1:]
+            for ref in reference:
+                root = root[ref]
+            # overwrite the property
+            property = root
+
+        name = 'items'
+        tool = ToolParameter(
+            name=name,
+            label=I18nObject(
+                en_US=name,
+                zh_Hans=name
+            ),
+            human_description=I18nObject(
+                en_US=property.get('description', ''),
+                zh_Hans=property.get('description', '')
+            ),
+            type=ToolParameter.ToolParameterType.STRING,
+            required=False,
+            form=ToolParameter.ToolParameterForm.LLM,
+            llm_description=property.get('description', ''),
+            default=property.get('default', None),
+        )
+
+        # check if there is a type
+        typ = ApiBasedToolSchemaParser._get_tool_parameter_type(property)
+        if typ:
+            tool.type = typ
+
+        if (typ == ToolParameter.ToolParameterType.OBJECT):
+            tool.properties = ApiBasedToolSchemaParser.parse_openapi_object_parameter(openapi, property)
+        elif (tool.type == ToolParameter.ToolParameterType.ARRAY):
+            tool.items = ApiBasedToolSchemaParser.parse_openapi_array_parameter(openapi, property.get('items', {}))
+
+        return tool
     
     @staticmethod
     def _get_tool_parameter_type(parameter: dict) -> ToolParameter.ToolParameterType:
@@ -218,6 +231,10 @@ class ApiBasedToolSchemaParser:
             return ToolParameter.ToolParameterType.BOOLEAN
         elif typ == 'string':
             return ToolParameter.ToolParameterType.STRING
+        elif typ == 'object':
+            return ToolParameter.ToolParameterType.OBJECT
+        elif typ == 'array':
+            return ToolParameter.ToolParameterType.ARRAY
 
     @staticmethod
     def parse_openapi_yaml_to_tool_bundle(yaml: str, extra_info: dict = None, warning: dict = None) -> list[ApiToolBundle]:
