@@ -261,7 +261,7 @@ export default function AccountPage() {
             <div className='my-2 px-3 py-2 rounded-lg bg-gray-100 text-sm font-medium leading-5 text-gray-800'>{`Delete Account: ${userProfile.email}`}</div>
           </>}
           confirmText={t('common.operation.ok') as string}
-        ></Confirm>
+        />
       )}
     </>
   )
