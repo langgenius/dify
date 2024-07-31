@@ -115,6 +115,7 @@ const translation = {
       descriptionPlaceholder: 'Describe the variable',
       editInJSON: 'Edit in JSON',
       oneByOne: 'Add one by one',
+      editInForm: 'Edit in Form',
       arrayValue: 'Value',
       addArrayValue: 'Add Value',
       objectKey: 'Key',

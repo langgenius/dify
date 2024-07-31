@@ -37,6 +37,11 @@ const typeList = [
   ChatVarType.ArrayObject,
 ]
 
+const objectPlaceholder = `#  example
+#  {
+#     "name": "ray",
+#     "age": 20
+#  }`
 const arrayStringPlaceholder = `#  example
 #  [
 #     "value1",
@@ -71,7 +76,7 @@ const ChatVariableModal = ({
   const [type, setType] = React.useState<ChatVarType>(ChatVarType.String)
   const [value, setValue] = React.useState<any>()
   const [objectValue, setObjectValue] = React.useState<ObjectValueItem[]>([DEFAULT_OBJECT_VALUE])
-  const [editorContent, setEditorContent] = React.useState<String>()
+  const [editorContent, setEditorContent] = React.useState<string>()
   const [editInJSON, setEditInJSON] = React.useState(false)
   const [des, setDes] = React.useState<string>('')
 
@@ -87,7 +92,7 @@ const ChatVariableModal = ({
       return arrayNumberPlaceholder
     if (type === ChatVarType.ArrayObject)
       return arrayObjectPlaceholder
-    return ''
+    return objectPlaceholder
   }, [type])
   const getObjectValue = useCallback(() => {
     if (!chatVar)
@@ -101,8 +106,9 @@ const ChatVariableModal = ({
     })
   }, [chatVar])
   const formatValueFromObject = useCallback((list: ObjectValueItem[]) => {
-    list.reduce((acc: any, curr) => {
-      acc[curr.key] = curr.value
+    return list.reduce((acc: any, curr) => {
+      if (curr.key)
+        acc[curr.key] = curr.value || null
       return acc
     }, {})
   }, [])
@@ -128,6 +134,36 @@ const ChatVariableModal = ({
   }
 
   const handleEditorChange = (editInJSON: boolean) => {
+    if (type === ChatVarType.Object) {
+      if (editInJSON) {
+        const newValue = !objectValue[0].key ? undefined : formatValueFromObject(objectValue)
+        setValue(newValue)
+        setEditorContent(JSON.stringify(newValue))
+      }
+      else {
+        if (!editorContent) {
+          setValue(undefined)
+          setObjectValue([DEFAULT_OBJECT_VALUE])
+        }
+        else {
+          try {
+            const newValue = JSON.parse(editorContent)
+            setValue(newValue)
+            const newObjectValue = Object.keys(newValue).map((key) => {
+              return {
+                key,
+                type: typeof newValue[key] === 'string' ? ChatVarType.String : ChatVarType.Number,
+                value: newValue[key],
+              }
+            })
+            setObjectValue(newObjectValue)
+          }
+          catch (e) {
+            // ignore JSON.parse errors
+          }
+        }
+      }
+    }
     if (type === ChatVarType.ArrayString || type === ChatVarType.ArrayNumber) {
       if (editInJSON) {
         const newValue = (value?.length && value.filter(Boolean).length) ? value.filter(Boolean) : undefined
@@ -247,6 +283,17 @@ const ChatVariableModal = ({
                 {editInJSON ? t('workflow.chatVariable.modal.oneByOne') : t('workflow.chatVariable.modal.editInJSON')}
               </Button>
             )}
+            {type === ChatVarType.Object && (
+              <Button
+                variant='ghost'
+                size='small'
+                className='text-text-tertiary'
+                onClick={() => handleEditorChange(!editInJSON)}
+              >
+                {editInJSON ? <RiInputField className='mr-1 w-3.5 h-3.5' /> : <RiDraftLine className='mr-1 w-3.5 h-3.5' />}
+                {editInJSON ? t('workflow.chatVariable.modal.editInForm') : t('workflow.chatVariable.modal.editInJSON')}
+              </Button>
+            )}
           </div>
           <div className='flex'>
             {type === ChatVarType.String && (
@@ -266,7 +313,7 @@ const ChatVariableModal = ({
                 type='number'
               />
             )}
-            {type === ChatVarType.Object && (
+            {type === ChatVarType.Object && !editInJSON && (
               <ObjectValueList
                 list={objectValue}
                 onChange={setObjectValue}
