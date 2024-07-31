@@ -1,7 +1,6 @@
 import { memo } from 'react'
 import { useTranslation } from 'react-i18next'
 import './weighted-score.css'
-import type { WeightedScoreEnum } from '@/models/datasets'
 import Slider from '@/app/components/base/slider'
 import cn from '@/utils/classnames'
 
@@ -15,7 +14,6 @@ const formatNumber = (value: number) => {
 }
 
 type Value = {
-  type: WeightedScoreEnum
   value: number[]
 }
 
@@ -38,7 +36,7 @@ const WeightedScore = ({
           min={0}
           step={0.1}
           value={value.value[0]}
-          onChange={v => onChange({ type: value.type, value: [v, (10 - v * 10) / 10] })}
+          onChange={v => onChange({ value: [v, (10 - v * 10) / 10] })}
           trackClassName='weightedScoreSliderTrack'
         />
         <div className='flex justify-between mt-1'>

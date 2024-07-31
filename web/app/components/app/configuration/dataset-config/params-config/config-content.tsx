@@ -27,7 +27,6 @@ import TooltipPlus from '@/app/components/base/tooltip-plus'
 import { ModelTypeEnum } from '@/app/components/header/account-setting/model-provider-page/declarations'
 import type {
   DataSet,
-  WeightedScoreEnum,
 } from '@/models/datasets'
 import { RerankingModeEnum } from '@/models/datasets'
 import cn from '@/utils/classnames'
@@ -113,12 +112,11 @@ const ConfigContent: FC<Props> = ({
     })
   }
 
-  const handleWeightedScoreChange = (value: { type: WeightedScoreEnum; value: number[] }) => {
+  const handleWeightedScoreChange = (value: { value: number[] }) => {
     const configs = {
       ...datasetConfigs,
       weights: {
         ...datasetConfigs.weights!,
-        weight_type: value.type,
         vector_setting: {
           ...datasetConfigs.weights!.vector_setting!,
           vector_weight: value.value[0],
@@ -311,7 +309,6 @@ const ConfigContent: FC<Props> = ({
               <div className='mt-2 space-y-4'>
                 <WeightedScore
                   value={{
-                    type: datasetConfigs.weights!.weight_type,
                     value: [
                       datasetConfigs.weights!.vector_setting.vector_weight,
                       datasetConfigs.weights!.keyword_setting.keyword_weight,
