@@ -16,8 +16,6 @@ class KeywordSetting(BaseModel):
 class Weights(BaseModel):
     """Model for weighted rerank."""
 
-    weight_type: str
-
     vector_setting: VectorSetting
 
     keyword_setting: KeywordSetting
