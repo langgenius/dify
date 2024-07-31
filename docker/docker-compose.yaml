@@ -592,8 +592,6 @@ services:
     restart: always
     volumes:
       - ./volumes/unstructured:/app/data
-    ports:
-      - "8000:8000"
 
 networks:
   # create a network between sandbox, api and ssrf_proxy, and can not access outside.
