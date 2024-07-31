@@ -33,7 +33,7 @@ class CodeExecutionResponse(BaseModel):
 
     code: int
     message: str
-    data: Data
+    data: Optional[Data]
 
 
 class CodeLanguage(str, Enum):
