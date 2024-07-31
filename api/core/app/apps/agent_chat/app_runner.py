@@ -10,12 +10,14 @@ from core.app.apps.base_app_queue_manager import AppQueueManager, PublishFrom
 from core.app.apps.base_app_runner import AppRunner
 from core.app.entities.app_invoke_entities import AgentChatAppGenerateEntity, ModelConfigWithCredentialsEntity
 from core.app.entities.queue_entities import QueueAnnotationReplyEvent
+from core.callback_handler.index_tool_callback_handler import DatasetIndexToolCallbackHandler
 from core.memory.token_buffer_memory import TokenBufferMemory
 from core.model_manager import ModelInstance
 from core.model_runtime.entities.llm_entities import LLMMode, LLMUsage
 from core.model_runtime.entities.model_entities import ModelFeature, ModelPropertyKey
 from core.model_runtime.model_providers.__base.large_language_model import LargeLanguageModel
 from core.moderation.base import ModerationException
+from core.rag.retrieval.dataset_retrieval import DatasetRetrieval
 from core.tools.entities.tool_entities import ToolRuntimeVariablePool
 from extensions.ext_database import db
 from models.model import App, Conversation, Message, MessageAgentThought
@@ -151,6 +153,32 @@ class AgentChatAppRunner(AppRunner):
                 query=query
             )
 
+        # get context from datasets
+        context = None
+        if app_config.dataset and app_config.dataset.dataset_ids:
+            hit_callback = DatasetIndexToolCallbackHandler(
+                queue_manager,
+                app_record.id,
+                message.id,
+                application_generate_entity.user_id,
+                application_generate_entity.invoke_from
+            )
+
+            dataset_retrieval = DatasetRetrieval(application_generate_entity)
+            context = dataset_retrieval.retrieve(
+                app_id=app_record.id,
+                user_id=application_generate_entity.user_id,
+                tenant_id=app_record.tenant_id,
+                model_config=application_generate_entity.model_conf,
+                config=app_config.dataset,
+                query=query,
+                invoke_from=application_generate_entity.invoke_from,
+                show_retrieve_source=app_config.additional_features.show_retrieve_source,
+                hit_callback=hit_callback,
+                memory=memory,
+                message_id=message.id,
+            )
+
         # reorganize all inputs and template to prompt messages
         # Include: prompt template, inputs, query(optional), files(optional)
         #          memory(optional), external data, dataset context(optional)
@@ -161,6 +189,7 @@ class AgentChatAppRunner(AppRunner):
             inputs=inputs,
             files=files,
             query=query,
+            context=context,
             memory=memory
         )
 
@@ -196,6 +225,7 @@ class AgentChatAppRunner(AppRunner):
             inputs=inputs,
             files=files,
             query=query,
+            context=context,
             memory=memory,
         )
 
