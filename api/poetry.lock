@@ -2113,21 +2113,23 @@ develop = ["aiohttp", "furo", "httpx", "mock", "opentelemetry-api", "opentelemet
 
 [[package]]
 name = "elasticsearch"
-version = "8.7.0"
+version = "8.14.0"
 description = "Python client for Elasticsearch"
 optional = false
-python-versions = ">=3.6, <4"
+python-versions = ">=3.7"
 files = [
-    {file = "elasticsearch-8.7.0-py3-none-any.whl", hash = "sha256:a06482f4c338ab6ace5cf89ee351cf3ee1854083f29a3b875433e608424fb48c"},
-    {file = "elasticsearch-8.7.0.tar.gz", hash = "sha256:1849356db4192fbb75b2b8f3d55edb0fb07f8d855f386b318a7889222b49591f"},
+    {file = "elasticsearch-8.14.0-py3-none-any.whl", hash = "sha256:cef8ef70a81af027f3da74a4f7d9296b390c636903088439087b8262a468c130"},
+    {file = "elasticsearch-8.14.0.tar.gz", hash = "sha256:aa2490029dd96f4015b333c1827aa21fd6c0a4d223b00dfb0fe933b8d09a511b"},
 ]
 
 [package.dependencies]
-elastic-transport = ">=8,<9"
+elastic-transport = ">=8.13,<9"
 
 [package.extras]
 async = ["aiohttp (>=3,<4)"]
-requests = ["requests (>=2.4.0,<3.0.0)"]
+orjson = ["orjson (>=3)"]
+requests = ["requests (>=2.4.0,!=2.32.2,<3.0.0)"]
+vectorstore-mmr = ["numpy (>=1)", "simsimd (>=3)"]
 
 [[package]]
 name = "email-validator"
@@ -9538,4 +9540,4 @@ cffi = ["cffi (>=1.11)"]
 [metadata]
 lock-version = "2.0"
 python-versions = "^3.10"
-content-hash = "ccdf2fa555873e5a3468ddcbdb953e4edfbb262f20691e9e742a6b57ecf2f2e3"
+content-hash = "17e9d1c5a37bdbaa7c92d427ac9d551d7d1ac1c572717cfdc21fccbaa659c63b"

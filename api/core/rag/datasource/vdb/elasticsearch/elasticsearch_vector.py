@@ -17,8 +17,8 @@ from models.dataset import Dataset
 class ElasticSearchConfig(BaseModel):
     host: str
     port: str
-    api_key_id: str
-    api_key: str
+    username: str
+    password: str
 
     @model_validator(mode='before')
     def validate_config(cls, values: dict) -> dict:
@@ -26,10 +26,10 @@ class ElasticSearchConfig(BaseModel):
             raise ValueError("config HOST is required")
         if not values['port']:
             raise ValueError("config PORT is required")
-        if not values['api_key_id']:
-            raise ValueError("config API_KEY_ID is required")
-        if not values['api_key']:
-            raise ValueError("config API_KEY is required")
+        if not values['username']:
+            raise ValueError("config USERNAME is required")
+        if not values['password']:
+            raise ValueError("config PASSWORD is required")
         return values
 
 
@@ -43,7 +43,7 @@ class ElasticSearchVector(BaseVector):
         try:
             client = Elasticsearch(
                 hosts=f'{config.host}:{config.port}',
-                api_key=(config.api_key_id, config.api_key),
+                basic_auth=(config.username, config.password),
                 request_timeout=300,
                 retry_on_timeout=True,
                 max_retries=5,
@@ -184,8 +184,8 @@ class ElasticSearchVectorFactory(AbstractVectorFactory):
             config=ElasticSearchConfig(
                 host=config.get('ELASTICSEARCH_HOST'),
                 port=config.get('ELASTICSEARCH_PORT'),
-                api_key_id=config.get('ELASTICSEARCH_API_KEY_ID'),
-                api_key=config.get('ELASTICSEARCH_API_KEY'),
+                username=config.get('ELASTICSEARCH_USERNAME'),
+                password=config.get('ELASTICSEARCH_PASSWORD'),
             ),
             attributes=[]
         )

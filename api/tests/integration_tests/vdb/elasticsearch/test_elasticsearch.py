@@ -14,8 +14,8 @@ class ElasticSearchVectorTest(AbstractVectorTest):
             config=ElasticSearchConfig(
                 host='http://localhost',
                 port='9200',
-                api_key_id='difyai',
-                api_key='difyai123456'
+                username='elastic',
+                password='elastic'
             ),
             attributes=self.attributes
         )
