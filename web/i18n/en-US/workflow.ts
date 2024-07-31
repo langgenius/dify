@@ -494,9 +494,17 @@ const translation = {
       },
     },
     docExtractor: {
-      inputVars: 'Input Variables',
+      inputVar: 'Input Variable',
       outputVars: {
         text: 'Extracted text',
+      },
+    },
+    listFilter: {
+      inputVar: 'Input Variable',
+      outputVars: {
+        result: 'Filter result',
+        first_record: 'First record',
+        last_record: 'Last record',
       },
     },
   },

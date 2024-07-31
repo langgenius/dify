@@ -494,9 +494,17 @@ const translation = {
       },
     },
     docExtractor: {
-      inputVars: '输入变量',
+      inputVar: '输入变量',
       outputVars: {
         text: '提取的文本',
+      },
+    },
+    listFilter: {
+      inputVar: '输入变量',
+      outputVars: {
+        result: '过滤结果',
+        first_record: '第一条记录',
+        last_record: '最后一条记录',
       },
     },
   },

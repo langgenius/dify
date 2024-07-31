@@ -7,7 +7,7 @@ import { type ListFilterNodeType } from './types'
 import { isENV, isSystemVar } from '@/app/components/workflow/nodes/_base/components/variable/utils'
 import { BlockEnum, type Node, type NodeProps } from '@/app/components/workflow/types'
 
-const i18nPrefix = 'workflow.nodes.assigner'
+const i18nPrefix = 'workflow.nodes.listFilter'
 
 const NodeComponent: FC<NodeProps<ListFilterNodeType>> = ({
   data,
@@ -26,7 +26,7 @@ const NodeComponent: FC<NodeProps<ListFilterNodeType>> = ({
   const varName = isSystem ? `sys.${variable[variable.length - 1]}` : variable.slice(1).join('.')
   return (
     <div className='relative px-3'>
-      <div className='mb-1 system-2xs-medium-uppercase text-text-tertiary'>{t(`${i18nPrefix}.assignedVariable`)}</div>
+      <div className='mb-1 system-2xs-medium-uppercase text-text-tertiary'>{t(`${i18nPrefix}.inputVar`)}</div>
       <NodeVariableItem
         node={node as Node}
         isEnv={isEnv}
