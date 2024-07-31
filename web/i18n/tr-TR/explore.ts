@@ -16,8 +16,8 @@ const translation = {
     },
   },
   apps: {
-    title: 'Dify Uygulamalarını Keşfet',
-    description: 'Bu şablon uygulamaları hemen kullanın veya şablonlara dayalı olarak kendi uygulamalarınızı özelleştirin.',
+    title: 'Dify Tarafından Keşfet Uygulamaları',
+    description: 'Bu şablon uygulamalarını anında kullanın veya şablonlara dayalı kendi uygulamalarınızı özelleştirin.',
     allCategories: 'Önerilen',
   },
   appCard: {
@@ -25,9 +25,9 @@ const translation = {
     customize: 'Özelleştir',
   },
   appCustomize: {
-    title: '{{name}} üzerinden uygulama oluştur',
-    subTitle: 'Uygulama simgesi & adı',
-    nameRequired: 'Uygulama adı gereklidir',
+    title: '{{name}} uygulamasından uygulama oluştur',
+    subTitle: 'Uygulama simgesi ve ismi',
+    nameRequired: 'Uygulama ismi gereklidir',
   },
   category: {
     Assistant: 'Asistan',

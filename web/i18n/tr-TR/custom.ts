@@ -1,29 +1,29 @@
 const translation = {
   custom: 'Özelleştirme',
   upgradeTip: {
-    prefix: 'Markanızı özelleştirmek için',
-    suffix: 'planınızı yükseltin.',
+    prefix: 'Markanızı özelleştirmek için planınızı yükseltin',
+    suffix: '.',
   },
   webapp: {
-    title: 'Web Uygulaması markasını özelleştir',
-    removeBrand: 'Powered by Dify\'ı kaldır',
-    changeLogo: 'Powered by Marka Görselini Değiştir',
-    changeLogoTip: 'Minimum 40x40px boyutunda SVG veya PNG formatı',
+    title: 'WebApp markasını özelleştir',
+    removeBrand: 'Powered by Dify\'i kaldır',
+    changeLogo: 'Powered by Brand Resmini Değiştir',
+    changeLogoTip: 'SVG veya PNG formatında, en az 40x40px boyutunda',
   },
   app: {
-    title: 'Uygulama başlık markasını özelleştir',
-    changeLogoTip: 'Minimum 80x80px boyutunda SVG veya PNG formatı',
+    title: 'Uygulama başlığı markasını özelleştir',
+    changeLogoTip: 'SVG veya PNG formatında, en az 80x80px boyutunda',
   },
   upload: 'Yükle',
   uploading: 'Yükleniyor',
-  uploadedFail: 'Görsel yükleme başarısız oldu, lütfen tekrar yükleyin.',
+  uploadedFail: 'Resim yükleme başarısız oldu, lütfen tekrar yükleyin.',
   change: 'Değiştir',
   apply: 'Uygula',
-  restore: 'Varsayılana Döndür',
+  restore: 'Varsayılan Ayarları Geri Yükle',
   customize: {
     contactUs: ' bizimle iletişime geçin ',
-    prefix: 'Uygulama içindeki marka logosunu özelleştirmek için lütfen',
-    suffix: 'Enterprise sürümüne yükseltmek için.',
+    prefix: 'Uygulama içindeki marka logosunu özelleştirmek için, lütfen',
+    suffix: 'Enterprise sürümüne yükseltin.',
   },
 }
 

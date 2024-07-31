@@ -1,8 +1,8 @@
 const translation = {
-  title: 'Geri Alma Testi',
-  desc: 'Verilen sorgu metnine dayalı olarak Bilgi\'nin eşleşme etkisini test edin.',
-  dateTimeFormat: 'DD.MM.YYYY HH:mm',
-  recents: 'Son Yapılanlar',
+  title: 'Geri Alım Testi',
+  desc: 'Verilen sorgu metnine göre Bilginin isabet etkisini test edin.',
+  dateTimeFormat: 'GG/AA/YYYY ss:dd ÖÖ/ÖS',
+  recents: 'Sonuçlar',
   table: {
     header: {
       source: 'Kaynak',
@@ -12,17 +12,17 @@ const translation = {
   },
   input: {
     title: 'Kaynak metin',
-    placeholder: 'Lütfen bir metin girin, kısa bir bildiri cümlesi önerilir.',
+    placeholder: 'Bir metin girin, kısa bir bildirim cümlesi önerilir.',
     countWarning: 'En fazla 200 karakter.',
-    indexWarning: 'Sadece yüksek kaliteli Bilgi.',
-    testing: 'Test ediliyor',
+    indexWarning: 'Yüksek kaliteli Bilgi sadece.',
+    testing: 'Test Ediliyor',
   },
   hit: {
     title: 'GERİ ALINAN PARAGRAFLAR',
-    emptyTip: 'Geri Alma Testi sonuçları burada gösterilecek',
+    emptyTip: 'Geri Alım Testi sonuçları burada gösterilecektir',
   },
-  noRecentTip: 'Burada yakın zamanda yapılmış sorgu sonucu yok',
-  viewChart: 'VEKTÖR GRAFİĞİNİ Görüntüle',
+  noRecentTip: 'Burada son sorgu sonuçları yok',
+  viewChart: 'VEKTÖR GRAFİĞİNİ GÖRÜNTÜLE',
 }
 
 export default translation

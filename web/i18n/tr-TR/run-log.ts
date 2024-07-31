@@ -5,24 +5,24 @@ const translation = {
   tracing: 'İZLEME',
   resultPanel: {
     status: 'DURUM',
-    time: 'GEÇEN SÜRE',
+    time: 'GEÇEN ZAMAN',
     tokens: 'TOPLAM TOKEN',
   },
   meta: {
-    title: 'META VERİ',
+    title: 'METADATA',
     status: 'Durum',
-    version: 'Versiyon',
+    version: 'Sürüm',
     executor: 'Yürütücü',
-    startTime: 'Başlangıç Zamanı',
-    time: 'Geçen Süre',
+    startTime: 'Başlama Zamanı',
+    time: 'Geçen Zaman',
     tokens: 'Toplam Token',
     steps: 'Çalıştırma Adımları',
   },
   resultEmpty: {
-    title: 'Bu çalıştırma sadece JSON formatında çıktı veriyor,',
+    title: 'Bu çalıştırma sadece JSON formatında çıktı verdi,',
     tipLeft: 'lütfen ',
-    link: 'detay paneline',
-    tipRight: ' giderek görüntüleyin.',
+    link: 'detay paneli',
+    tipRight: 'ne gidin ve görüntüleyin.',
   },
 }
 
