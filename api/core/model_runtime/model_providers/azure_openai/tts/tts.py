@@ -1,12 +1,8 @@
 import concurrent.futures
 import copy
-from functools import reduce
-from io import BytesIO
 from typing import Optional
 
-from flask import Response
 from openai import AzureOpenAI
-from pydub import AudioSegment
 
 from core.model_runtime.entities.model_entities import AIModelEntity
 from core.model_runtime.errors.invoke import InvokeBadRequestError
@@ -51,7 +47,7 @@ class AzureOpenAIText2SpeechModel(_CommonAzureOpenAI, TTSModel):
         :return: text translated to audio file
         """
         try:
-            self._tts_invoke(
+            self._tts_invoke_streaming(
                 model=model,
                 credentials=credentials,
                 content_text='Hello Dify!',
@@ -59,45 +55,6 @@ class AzureOpenAIText2SpeechModel(_CommonAzureOpenAI, TTSModel):
             )
         except Exception as ex:
             raise CredentialsValidateFailedError(str(ex))
-
-    def _tts_invoke(self, model: str, credentials: dict, content_text: str, voice: str) -> Response:
-        """
-        _tts_invoke text2speech model
-
-        :param model: model name
-        :param credentials: model credentials
-        :param content_text: text content to be translated
-        :param voice: model timbre
-        :return: text translated to audio file
-        """
-        audio_type = self._get_model_audio_type(model, credentials)
-        word_limit = self._get_model_word_limit(model, credentials)
-        max_workers = self._get_model_workers_limit(model, credentials)
-        try:
-            sentences = list(self._split_text_into_sentences(org_text=content_text, max_length=word_limit))
-            audio_bytes_list = []
-
-            # Create a thread pool and map the function to the list of sentences
-            with concurrent.futures.ThreadPoolExecutor(max_workers=max_workers) as executor:
-                futures = [executor.submit(self._process_sentence, sentence=sentence, model=model, voice=voice,
-                                           credentials=credentials) for sentence in sentences]
-                for future in futures:
-                    try:
-                        if future.result():
-                            audio_bytes_list.append(future.result())
-                    except Exception as ex:
-                        raise InvokeBadRequestError(str(ex))
-
-            if len(audio_bytes_list) > 0:
-                audio_segments = [AudioSegment.from_file(BytesIO(audio_bytes), format=audio_type) for audio_bytes in
-                                  audio_bytes_list if audio_bytes]
-                combined_segment = reduce(lambda x, y: x + y, audio_segments)
-                buffer: BytesIO = BytesIO()
-                combined_segment.export(buffer, format=audio_type)
-                buffer.seek(0)
-                return Response(buffer.read(), status=200, mimetype=f"audio/{audio_type}")
-        except Exception as ex:
-            raise InvokeBadRequestError(str(ex))
 
     def _tts_invoke_streaming(self, model: str,  credentials: dict, content_text: str,
                               voice: str) -> any:
@@ -144,7 +101,6 @@ class AzureOpenAIText2SpeechModel(_CommonAzureOpenAI, TTSModel):
         :param sentence: text content to be translated
         :return: text translated to audio file
         """
-        # transform credentials to kwargs for model instance
         credentials_kwargs = self._to_credential_kwargs(credentials)
         client = AzureOpenAI(**credentials_kwargs)
         response = client.audio.speech.create(model=model, voice=voice, input=sentence.strip())

@@ -126,6 +126,7 @@ class ToolNode(BaseNode):
             else:
                 tool_input = node_data.tool_parameters[parameter_name]
                 if tool_input.type == 'variable':
+                    # TODO: check if the variable exists in the variable pool
                     parameter_value = variable_pool.get(tool_input.value).value
                 else:
                     segment_group = parser.convert_template(
@@ -173,13 +174,14 @@ class ToolNode(BaseNode):
                 ext = path.splitext(url)[1]
                 mimetype = response.meta.get('mime_type', 'image/jpeg')
                 filename = response.save_as or url.split('/')[-1]
+                transfer_method = response.meta.get('transfer_method', FileTransferMethod.TOOL_FILE)
 
                 # get tool file id
                 tool_file_id = url.split('/')[-1].split('.')[0]
                 result.append(FileVar(
                     tenant_id=self.tenant_id,
                     type=FileType.IMAGE,
-                    transfer_method=FileTransferMethod.TOOL_FILE,
+                    transfer_method=transfer_method,
                     url=url,
                     related_id=tool_file_id,
                     filename=filename,

@@ -1,18 +1,18 @@
 const translation = {
-  knowledge: '知識',
+  knowledge: 'ナレッジ',
   documentCount: ' ドキュメント',
   wordCount: ' k 単語',
   appCount: ' リンクされたアプリ',
-  createDataset: '知識を作成',
+  createDataset: 'ナレッジを作成',
   createDatasetIntro: '独自のテキストデータをインポートするか、LLMコンテキストの強化のためにWebhookを介してリアルタイムでデータを書き込むことができます。',
-  deleteDatasetConfirmTitle: 'この知識を削除しますか？',
+  deleteDatasetConfirmTitle: 'このナレッジを削除しますか？',
   deleteDatasetConfirmContent:
-    '知識を削除すると元に戻すことはできません。ユーザーはもはやあなたの知識にアクセスできず、すべてのプロンプトの設定とログが永久に削除されます。',
-  datasetUsedByApp: 'この知識は一部のアプリによって使用されています。アプリはこの知識を使用できなくなり、すべてのプロンプト設定とログは永久に削除されます。',
-  datasetDeleted: '知識が削除されました',
-  datasetDeleteFailed: '知識の削除に失敗しました',
+    'ナレッジを削除すると元に戻すことはできません。ユーザーはもはやあなた様のナレッジにアクセスできず、すべてのプロンプトの設定とログが永久に削除されます。',
+  datasetUsedByApp: 'このナレッジは一部のアプリによって使用されています。アプリはこのナレッジを使用できなくなり、すべてのプロンプト設定とログは永久に削除されます。',
+  datasetDeleted: 'ナレッジが削除されました',
+  datasetDeleteFailed: 'ナレッジの削除に失敗しました',
   didYouKnow: 'ご存知ですか？',
-  intro1: '知識はDifyアプリケーションに統合することができます',
+  intro1: 'ナレッジはDifyアプリケーションに統合することができます',
   intro2: 'コンテキストとして',
   intro3: '、',
   intro4: 'または',
@@ -20,7 +20,7 @@ const translation = {
   intro6: '単体のChatGPTインデックスプラグインとして公開するために',
   unavailable: '利用不可',
   unavailableTip: '埋め込みモデルが利用できません。デフォルトの埋め込みモデルを設定する必要があります',
-  datasets: '知識',
+  datasets: 'ナレッジ',
   datasetsApi: 'API',
   retrieval: {
     semantic_search: {
@@ -33,7 +33,7 @@ const translation = {
     },
     hybrid_search: {
       title: 'ハイブリッド検索',
-      description: '全文検索とベクトル検索を同時に実行し、ユーザーのクエリに最適なマッチを選択するために再ランク付けを行います。再ランクモデルAPIの設定が必要です。',
+      description: '全文検索とベクトル検索を同時に実行し、ユーザーのクエリに最適なマッチを選択するためにRerank付けを行います。RerankモデルAPIの設定が必要です。',
       recommend: 'おすすめ',
     },
     invertedIndex: {
@@ -45,6 +45,29 @@ const translation = {
   },
   docsFailedNotice: 'ドキュメントのインデックスに失敗しました',
   retry: '再試行',
+  indexingTechnique: {
+    high_quality: '高品質',
+    economy: '経済',
+  },
+  indexingMethod: {
+    semantic_search: 'ベクトル検索',
+    full_text_search: 'フルテキスト検索',
+    hybrid_search: 'ハイブリッド検索',
+  },
+  mixtureHighQualityAndEconomicTip: '高品質なナレッジベースと経済的なナレッジベースを混在させるには、Rerankモデルを構成する必要がある。',
+  inconsistentEmbeddingModelTip: '選択されたナレッジベースが一貫性のない埋め込みモデルで構成されている場合、Rerankモデルの構成が必要です。',
+  retrievalSettings: '設定を回収',
+  rerankSettings: 'Rerank設定',
+  weightedScore: {
+    title: 'ウェイト設定',
+    description: '割り当てられた重みを調整することで、並べ替え戦略はセマンティックマッチングとキーワードマッチングのどちらを優先するかを決定します。',
+    semanticFirst: 'セマンティック優先',
+    keywordFirst: 'キーワード優先',
+    customized: 'カスタマイズ',
+    semantic: 'セマンティクス',
+    keyword: 'キーワード',
+  },
+  nTo1RetrievalLegacy: '製品計画によると、N To 1 Retrievalは9月に正式に廃止される予定です。それまでは通常通り使用できます。',
 }
 
 export default translation

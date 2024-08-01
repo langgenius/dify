@@ -116,7 +116,8 @@ class AnthropicLargeLanguageModel(LargeLanguageModel):
         # Add the new header for claude-3-5-sonnet-20240620 model
         extra_headers = {}
         if model == "claude-3-5-sonnet-20240620":
-            extra_headers["anthropic-beta"] = "max-tokens-3-5-sonnet-2024-07-15"
+            if model_parameters.get('max_tokens') > 4096:
+                extra_headers["anthropic-beta"] = "max-tokens-3-5-sonnet-2024-07-15"
 
         if tools:
             extra_model_kwargs['tools'] = [

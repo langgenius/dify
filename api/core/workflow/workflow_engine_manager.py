@@ -389,11 +389,10 @@ class WorkflowEngineManager:
                 environment_variables=workflow.environment_variables,
             )
 
+            if node_cls is None:
+                raise ValueError('Node class not found')
             # variable selector to variable mapping
-            try:
-                variable_mapping = node_cls.extract_variable_selector_to_variable_mapping(node_config)
-            except NotImplementedError:
-                variable_mapping = {}
+            variable_mapping = node_cls.extract_variable_selector_to_variable_mapping(node_config)
 
             self._mapping_user_inputs_to_variable_pool(
                 variable_mapping=variable_mapping,
@@ -473,10 +472,9 @@ class WorkflowEngineManager:
         for node_config in iteration_nested_nodes:
             # mapping user inputs to variable pool
             node_cls = node_classes.get(NodeType.value_of(node_config.get('data', {}).get('type')))
-            try:
-                variable_mapping = node_cls.extract_variable_selector_to_variable_mapping(node_config)
-            except NotImplementedError:
-                variable_mapping = {}
+            if node_cls is None:
+                raise ValueError('Node class not found')
+            variable_mapping = node_cls.extract_variable_selector_to_variable_mapping(node_config)
 
             # remove iteration variables
             variable_mapping = {
@@ -942,7 +940,7 @@ class WorkflowEngineManager:
         return new_value
 
     def _mapping_user_inputs_to_variable_pool(self,
-                                              variable_mapping: dict,
+                                              variable_mapping: Mapping[str, Sequence[str]],
                                               user_inputs: dict,
                                               variable_pool: VariablePool,
                                               tenant_id: str,

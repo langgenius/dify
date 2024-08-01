@@ -37,7 +37,6 @@ class DataPostProcessor:
             return WeightRerankRunner(
                 tenant_id,
                 Weights(
-                    weight_type=weights['weight_type'],
                     vector_setting=VectorSetting(
                         vector_weight=weights['vector_setting']['vector_weight'],
                         embedding_provider_name=weights['vector_setting']['embedding_provider_name'],
