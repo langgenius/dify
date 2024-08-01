@@ -1,5 +1,5 @@
 .item {
-  @apply relative p-4 rounded-xl border border-gray-100 cursor-pointer;
+  @apply relative rounded-xl border border-gray-100 cursor-pointer;
   background-color: #fcfcfd;
 }
 

@@ -10,6 +10,7 @@ import unicodedata
 from contextlib import contextmanager
 from urllib.parse import unquote
 
+import chardet
 import cloudscraper
 from bs4 import BeautifulSoup, CData, Comment, NavigableString
 from regex import regex
@@ -75,7 +76,18 @@ def get_url(url: str, user_agent: str = None) -> str:
     if response.status_code != 200:
         return "URL returned status code {}.".format(response.status_code)
 
-    a = extract_using_readabilipy(response.text)
+    # Detect encoding using chardet
+    detected_encoding = chardet.detect(response.content)
+    encoding = detected_encoding['encoding']
+    if encoding:
+        try:
+            content = response.content.decode(encoding)
+        except (UnicodeDecodeError, TypeError):
+            content = response.text
+    else:
+        content = response.text
+
+    a = extract_using_readabilipy(content)
 
     if not a['plain_text'] or not a['plain_text'].strip():
         return ''
