@@ -3,6 +3,7 @@ import 'katex/dist/katex.min.css'
 import RemarkMath from 'remark-math'
 import RemarkBreaks from 'remark-breaks'
 import RehypeKatex from 'rehype-katex'
+import RehypeRaw from 'rehype-raw'
 import RemarkGfm from 'remark-gfm'
 import SyntaxHighlighter from 'react-syntax-highlighter'
 import { atelierHeathLight } from 'react-syntax-highlighter/dist/esm/styles/hljs'
@@ -13,6 +14,10 @@ import cn from '@/utils/classnames'
 import CopyBtn from '@/app/components/base/copy-btn'
 import SVGBtn from '@/app/components/base/svg'
 import Flowchart from '@/app/components/base/mermaid'
+import { useChatContext } from '@/app/components/base/chat/chat/context'
+import ImageGallery from '@/app/components/base/image-gallery'
+import VideoGallery from '@/app/components/base/video-gallery'
+import AudioGallery from '@/app/components/base/audio-gallery'
 
 // Available language https://github.com/react-syntax-highlighter/react-syntax-highlighter/blob/master/AVAILABLE_LANGUAGES_HLJS.MD
 const capitalizationLanguageNameMap: Record<string, string> = {
@@ -161,51 +166,70 @@ const CodeBlock: CodeComponent = memo(({ inline, className, children, ...props }
 
 CodeBlock.displayName = 'CodeBlock'
 
+const VideoBlock: CodeComponent = memo(({ node }) => {
+  const srcs = node.children.filter(child => 'properties' in child).map(child => (child as any).properties.src)
+  if (srcs.length === 0)
+    return null
+  return <VideoGallery key={srcs.join()} srcs={srcs} />
+})
+VideoBlock.displayName = 'VideoBlock'
+
+const AudioBlock: CodeComponent = memo(({ node }) => {
+  const srcs = node.children.filter(child => 'properties' in child).map(child => (child as any).properties.src)
+  if (srcs.length === 0)
+    return null
+  return <AudioGallery key={srcs.join()} srcs={srcs} />
+})
+AudioBlock.displayName = 'AudioBlock'
+
+const Paragraph = (paragraph: any) => {
+  const { node }: any = paragraph
+  const children_node = node.children
+  if (children_node && children_node[0] && 'tagName' in children_node[0] && children_node[0].tagName === 'img') {
+    return (
+      <>
+        <ImageGallery srcs={[children_node[0].properties.src]} />
+        <p>{paragraph.children.slice(1)}</p>
+      </>
+    )
+  }
+  return <p>{paragraph.children}</p>
+}
+
+const Img = ({ src }: any) => {
+  return (<ImageGallery srcs={[src]} />)
+}
+
+const Link = ({ node, ...props }: any) => {
+  if (node.properties?.href && node.properties.href?.toString().startsWith('abbr')) {
+    // eslint-disable-next-line react-hooks/rules-of-hooks
+    const { onSend } = useChatContext()
+    const hidden_text = decodeURIComponent(node.properties.href.toString().split('abbr:')[1])
+
+    return <abbr onClick={() => onSend?.(hidden_text)} title={node.children[0]?.value} className="cursor-pointer">{node.children[0]?.value}</abbr>
+  }
+  else {
+    return <a {...props} target="_blank" className="cursor-pointer">{node.children[0] ? node.children[0]?.value : 'Download'}</a>
+  }
+}
+
 export function Markdown(props: { content: string; className?: string }) {
   const latexContent = preprocessLaTeX(props.content)
   return (
     <div className={cn(props.className, 'markdown-body')}>
       <ReactMarkdown
-        remarkPlugins={[[RemarkMath, { singleDollarTextMath: false }], RemarkGfm, RemarkBreaks]}
+        remarkPlugins={[[RemarkGfm, RemarkMath, { singleDollarTextMath: false }], RemarkBreaks]}
         rehypePlugins={[
-          RehypeKatex as any,
+          RehypeKatex,
+          RehypeRaw as any,
         ]}
         components={{
           code: CodeBlock,
-          img({ src, alt, ...props }) {
-            return (
-              // eslint-disable-next-line @next/next/no-img-element
-              <img
-                src={src}
-                alt={alt}
-                width={250}
-                height={250}
-                className="max-w-full h-auto align-middle border-none rounded-lg shadow-md hover:shadow-lg transition-shadow duration-300 ease-in-out mt-2 mb-2"
-                {...props}
-              />
-            )
-          },
-          p: (paragraph) => {
-            const { node }: any = paragraph
-            if (node.children[0].tagName === 'img') {
-              const image = node.children[0]
-
-              return (
-                <>
-                  {/* eslint-disable-next-line @next/next/no-img-element */}
-                  <img
-                    src={image.properties.src}
-                    width={250}
-                    height={250}
-                    className="max-w-full h-auto align-middle border-none rounded-lg shadow-md hover:shadow-lg transition-shadow duration-300 ease-in-out mt-2 mb-2"
-                    alt={image.properties.alt}
-                  />
-                  <p>{paragraph.children.slice(1)}</p>
-                </>
-              )
-            }
-            return <p>{paragraph.children}</p>
-          },
+          img: Img,
+          video: VideoBlock,
+          audio: AudioBlock,
+          a: Link,
+          p: Paragraph,
         }}
         linkTarget='_blank'
       >
