@@ -304,7 +304,6 @@ class AzureOpenAILargeLanguageModel(_CommonAzureOpenAI, LargeLanguageModel):
         messages = [self._convert_prompt_message_to_dict(m) for m in prompt_messages]
         contents_new  = ''
         for message_content in messages:
-            print(message_content)
             contents = message_content.get('content')
             contents_copy = contents[:]
             for content in contents_copy:
