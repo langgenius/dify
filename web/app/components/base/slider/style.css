@@ -1,32 +1,11 @@
-.slider {
-    position: relative;
-}
 .slider.disabled {
     opacity: 0.6;
 }
 
-.slider-thumb {
-    width: 16px;
-    height: 16px;
-    background-color: white;
-    border-radius: 50%;
-    border: 1px solid rgba(0, 0, 0, 0.08);
-    position: absolute;
-    top: -8px;
-    box-shadow: 0px 1px 2px 0px rgba(0, 0, 0, 0.08);
-    cursor: pointer;
-
-}
-
-.slider-thumb:focus {
-    outline: none;
-}
-
 .slider-track {
-    background-color: #528BFF;
-    height: 2px;
+    background-color: var(--color-components-silder-range);
 }
 
 .slider-track-1 {
-    background-color: #E5E7EB;
+    background-color: var(--color-components-silder-track);
 }
