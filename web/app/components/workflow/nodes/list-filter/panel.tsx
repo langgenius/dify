@@ -4,10 +4,12 @@ import { useTranslation } from 'react-i18next'
 import VarReferencePicker from '../_base/components/variable/var-reference-picker'
 import OutputVars, { VarItem } from '../_base/components/output-vars'
 import OptionCard from '../_base/components/option-card'
+import Split from '../_base/components/split'
 import useConfig from './use-config'
 import SubVariablePicker from './components/sub-variable-picker'
 import { type ListFilterNodeType, OrderBy } from './types'
 import LimitConfig from './components/limit-config'
+import FilterCondition from './components/filter-condition'
 import Field from '@/app/components/workflow/nodes/_base/components/field'
 import { type NodePanelProps } from '@/app/components/workflow/types'
 import Switch from '@/app/components/base/switch'
@@ -46,6 +48,13 @@ const Panel: FC<NodePanelProps<ListFilterNodeType>> = ({
           />
         </Field>
 
+        <Field
+          title={t(`${i18nPrefix}.filterCondition`)}
+          isSubTitle
+        >
+          <FilterCondition />
+        </Field>
+        <Split />
         <Field
           title={t(`${i18nPrefix}.orderBy`)}
           operations={

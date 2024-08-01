@@ -24,7 +24,6 @@ const SubVariablePicker: FC = () => {
           { value: '2', name: 'age', type: 'number' },
         ]}
         defaultValue={'1'}
-        allowSearch
         onSelect={() => { }}
         placeholder='Select sub variable key'
         optionClassName='pl-4 pr-5 py-0'

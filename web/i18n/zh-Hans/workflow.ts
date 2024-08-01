@@ -501,6 +501,7 @@ const translation = {
     },
     listFilter: {
       inputVar: '输入变量',
+      filterCondition: '过滤条件',
       limit: '限制',
       orderBy: '排序',
       asc: '升序',

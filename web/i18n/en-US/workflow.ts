@@ -501,6 +501,7 @@ const translation = {
     },
     listFilter: {
       inputVar: 'Input Variable',
+      filterCondition: 'Filter Condition',
       limit: 'Limit',
       orderBy: 'Order by',
       asc: 'ASC',
