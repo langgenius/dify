@@ -80,7 +80,11 @@ function Confirm({
     return null
 
   return createPortal(
-    <div className={'fixed inset-0 flex items-center justify-center z-[10000000] bg-background-overlay'}>
+    <div className={'fixed inset-0 flex items-center justify-center z-[10000000] bg-background-overlay'}
+      onClick={(e) => {
+        e.preventDefault()
+        e.stopPropagation()
+      }}>
       <div ref={dialogRef} className={'relative w-full max-w-[480px] overflow-hidden'}>
         <div className='flex flex-col items-start max-w-full rounded-2xl border-[0.5px] border-solid border-components-panel-border shadows-shadow-lg bg-components-panel-bg'>
           <div className='flex pt-6 pl-6 pr-6 pb-4 flex-col items-start gap-2 self-stretch'>
