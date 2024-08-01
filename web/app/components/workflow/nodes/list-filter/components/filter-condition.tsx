@@ -5,19 +5,26 @@ import SubVariablePicker from './sub-variable-picker'
 import { SimpleSelect as Select } from '@/app/components/base/select'
 import Input from '@/app/components/base/input'
 
-const FilterCondition: FC = () => {
+type Props = {
+  hasSubVariable: boolean
+}
+
+const FilterCondition: FC<Props> = ({
+  hasSubVariable,
+}) => {
   return (
     <div>
-      <SubVariablePicker />
-      <div className='mt-2 flex space-x-1'>
+      {hasSubVariable && <SubVariablePicker className="mb-2" />}
+      <div className='flex space-x-1'>
         <Select
           wrapperClassName='shrink-0 h-8'
+          className='!text-[13px]'
           items={[
             { value: '1', name: 'include', type: '' },
           ]}
           onSelect={() => { }}
         />
-        <Input className='grow h-8' />
+        <Input className='grow h-8 text-components-input-text-filled system-sm-regular !text-[13px]' />
       </div>
     </div>
   )

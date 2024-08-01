@@ -1,17 +1,46 @@
-import { useCallback } from 'react'
+import { useCallback, useMemo } from 'react'
 import produce from 'immer'
+import { useStoreApi } from 'reactflow'
 import type { ValueSelector, Var } from '../../types'
 import { VarType } from '../../types'
 import type { Limit, ListFilterNodeType, OrderBy } from './types'
 import useNodeCrud from '@/app/components/workflow/nodes/_base/hooks/use-node-crud'
 import {
+  useIsChatMode,
   useNodesReadOnly,
+  useWorkflow,
+  useWorkflowVariables,
 } from '@/app/components/workflow/hooks'
 
 const useConfig = (id: string, payload: ListFilterNodeType) => {
   const { nodesReadOnly: readOnly } = useNodesReadOnly()
+  const isChatMode = useIsChatMode()
+
+  const store = useStoreApi()
+  const { getBeforeNodesInSameBranch } = useWorkflow()
+
+  const {
+    getNodes,
+  } = store.getState()
+  const currentNode = getNodes().find(n => n.id === id)
+  const isInIteration = payload.isInIteration
+  const iterationNode = isInIteration ? getNodes().find(n => n.id === currentNode!.parentId) : null
+  const availableNodes = useMemo(() => {
+    return getBeforeNodesInSameBranch(id)
+  }, [getBeforeNodesInSameBranch, id])
 
   const { inputs, setInputs } = useNodeCrud<ListFilterNodeType>(id, payload)
+
+  const { getCurrentVariableType } = useWorkflowVariables()
+  const varType = getCurrentVariableType({
+    parentNode: iterationNode,
+    valueSelector: inputs.variable || [],
+    availableNodes,
+    isChatMode,
+    isConstant: false,
+  })
+
+  const hasSubVariable = [VarType.arrayFile, VarType.arrayObject].includes(varType)
 
   const handleVarChanges = useCallback((variable: ValueSelector | string) => {
     const newInputs = produce(inputs, (draft) => {
@@ -51,6 +80,7 @@ const useConfig = (id: string, payload: ListFilterNodeType) => {
     readOnly,
     inputs,
     filterVar,
+    hasSubVariable,
     handleVarChanges,
     handleLimitChange,
     handleOrderByEnabledChange,

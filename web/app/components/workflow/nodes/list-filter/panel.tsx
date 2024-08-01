@@ -25,6 +25,7 @@ const Panel: FC<NodePanelProps<ListFilterNodeType>> = ({
   const {
     readOnly,
     inputs,
+    hasSubVariable,
     handleVarChanges,
     filterVar,
     handleLimitChange,
@@ -52,7 +53,7 @@ const Panel: FC<NodePanelProps<ListFilterNodeType>> = ({
           title={t(`${i18nPrefix}.filterCondition`)}
           isSubTitle
         >
-          <FilterCondition />
+          <FilterCondition hasSubVariable={hasSubVariable} />
         </Field>
         <Split />
         <Field
@@ -69,8 +70,10 @@ const Panel: FC<NodePanelProps<ListFilterNodeType>> = ({
           {inputs.orderBy?.enabled
             ? (
               <div className='flex items-center justify-between'>
-                <div className='grow mr-2'><SubVariablePicker /></div>
-                <div className='shrink-0 flex space-x-1'>
+                {hasSubVariable && (
+                  <div className='grow mr-2'><SubVariablePicker /></div>
+                )}
+                <div className={!hasSubVariable ? 'w-full grid grid-cols-2 gap-1' : 'shrink-0 flex space-x-1'}>
                   <OptionCard
                     title={t(`${i18nPrefix}.asc`)}
                     onSelect={handleOrderByTypeChange(OrderBy.ASC)}

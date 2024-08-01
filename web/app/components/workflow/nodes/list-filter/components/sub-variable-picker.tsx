@@ -3,8 +3,15 @@ import type { FC } from 'react'
 import React from 'react'
 import { SimpleSelect as Select } from '@/app/components/base/select'
 import { Variable02 } from '@/app/components/base/icons/src/vender/solid/development'
+import cn from '@/utils/classnames'
 
-const SubVariablePicker: FC = () => {
+type Props = {
+  className?: string
+}
+
+const SubVariablePicker: FC<Props> = ({
+  className,
+}) => {
   const renderOption = ({ item }: { item: Record<string, any> }) => {
     return (
       <div className='flex items-center h-6 justify-between'>
@@ -17,7 +24,7 @@ const SubVariablePicker: FC = () => {
     )
   }
   return (
-    <div>
+    <div className={cn(className)}>
       <Select
         items={[
           { value: '1', name: 'name', type: 'string' },
@@ -25,6 +32,7 @@ const SubVariablePicker: FC = () => {
         ]}
         defaultValue={'1'}
         onSelect={() => { }}
+        className='!text-[13px]'
         placeholder='Select sub variable key'
         optionClassName='pl-4 pr-5 py-0'
         renderOption={renderOption}
