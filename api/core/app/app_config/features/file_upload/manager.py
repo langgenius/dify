@@ -19,7 +19,8 @@ class FileUploadConfigManager:
                 if 'enabled' in file_upload_dict['image'] and file_upload_dict['image']['enabled']:
                     image_config = {
                         'number_limits': file_upload_dict['image']['number_limits'],
-                        'transfer_methods': file_upload_dict['image']['transfer_methods']
+                        'transfer_methods': file_upload_dict['image']['transfer_methods'],
+                        'secure_key': file_upload_dict['image']['secure_key']
                     }
 
                     if is_vision:

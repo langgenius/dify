@@ -119,15 +119,16 @@ export const useImageFiles = () => {
 type useLocalUploaderProps = {
   disabled?: boolean
   limit?: number
+  secure_key?: string
   onUpload: (imageFile: ImageFile) => void
 }
 
-export const useLocalFileUploader = ({ limit, disabled = false, onUpload }: useLocalUploaderProps) => {
+export const useLocalFileUploader = ({ limit, disabled = false, secure_key, onUpload }: useLocalUploaderProps) => {
   const { notify } = useToastContext()
   const params = useParams()
   const { t } = useTranslation()
 
-  const handleLocalFileUpload = useCallback(async (file: File, isRag = false) => {
+  const handleLocalFileUpload = useCallback(async (file: File, isRag = false, secure_key = '') => {
     if (disabled) {
       // TODO: leave some warnings?
       return
@@ -143,7 +144,7 @@ export const useLocalFileUploader = ({ limit, disabled = false, onUpload }: useL
 
     const reader = new FileReader()
     reader.readAsDataURL(file)
-
+    console.log('secure_key', secure_key)
     /**
         * 1、如果是Rag
         * 2、如果是则先创建一个空知识库
@@ -161,14 +162,19 @@ export const useLocalFileUploader = ({ limit, disabled = false, onUpload }: useL
         isRag: true,
         dataset_id: '',
         document_id: '',
+        index_status: '',
+        file_name: '',
+        file_size: 0,
       }
       onUpload(fileFile)
-      const publicKey = 'dataset-nSj968HM200ElZXeCGwx9xtX'
-      const dataSet = await createEmptyDatasetByApi({ name: uuidv4(), pubOutApiKey: publicKey })
+      const publicKey = secure_key
+      const dataSet = await createEmptyDatasetByApi({ name: uuidv4(), create_by_system: true, pubOutApiKey: publicKey })
       fileFile.progress = 30
+      fileFile.index_status = '上传中'
       onUpload(fileFile)
       const knowledge = await createKnowledgeByFile({ dataSetId: dataSet.id, file, pubOutApiKey: publicKey })
-      fileFile.progress = 100
+      fileFile.progress = 99
+      fileFile.index_status = '等待检索'
       onUpload(fileFile) // 此时代表文件上传成功,下一步通过定时任务,去获取文件的索引状态
       const timer = setInterval(async () => {
         const status = await showIndexStatus({ datasetID: dataSet.id, batch: knowledge.batch, pubOutApiKey: publicKey })
@@ -182,11 +188,21 @@ export const useLocalFileUploader = ({ limit, disabled = false, onUpload }: useL
           fileFile.url = knowledge.batch
           fileFile.dataset_id = dataSet.id
           fileFile.document_id = knowledge.document.id
+          fileFile.file_name = fileFile?.file?.name
+          fileFile.file_size = fileFile?.file.size
+          fileFile.index_status = '索引完成'
+          fileFile.index_status = `${fileFile.file_size / 1000}KB`
           onUpload(fileFile)
+
           clearInterval(timer)// 检索成功后清除定时器
         }
         else {
-          fileFile.progress = total_segments / completed_segments * 100
+          if (fileFile.index_status === '索引完成') { // 如果是已经完成了,则清除定时器,并不再更新进度
+            clearInterval(timer)
+            return
+          }
+          fileFile.index_status = '索引中'
+          fileFile.progress = completed_segments / total_segments * 100
           onUpload(fileFile)
         }
       }, 1000) // 每隔一秒去检查一次检索状态
@@ -230,7 +246,6 @@ export const useLocalFileUploader = ({ limit, disabled = false, onUpload }: useL
       },
       false,
     )
-    reader.readAsDataURL(file)
   }, [disabled, limit, notify, t, onUpload, params.token])
 
   return { disabled, handleLocalFileUpload }

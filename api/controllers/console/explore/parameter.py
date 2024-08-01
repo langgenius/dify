@@ -75,6 +75,7 @@ class AppParameterApi(InstalledAppResource):
                                                      "enabled": False,
                                                      "number_limits": 3,
                                                      "detail": "high",
+                                                     "secure_key": "",
                                                      "transfer_methods": ["remote_url", "local_file"]
                                                  }}),
             'system_parameters': {

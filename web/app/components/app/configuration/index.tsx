@@ -343,6 +343,7 @@ const Configuration: FC = () => {
     number_limits: 2,
     detail: Resolution.low,
     transfer_methods: [TransferMethod.local_file],
+    secure_key: '',
   })
 
   const handleSetVisionConfig = (config: VisionSettings, notNoticeFormattingChanged?: boolean) => {
@@ -351,6 +352,7 @@ const Configuration: FC = () => {
       number_limits: config.number_limits || 2,
       detail: config.detail || Resolution.low,
       transfer_methods: config.transfer_methods || [TransferMethod.local_file],
+      secure_key: config.secure_key || '',
     })
     if (!notNoticeFormattingChanged)
       formattingChangedDispatcher()

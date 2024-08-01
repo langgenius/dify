@@ -1,4 +1,4 @@
-import { API_PREFIX, IS_CE_EDITION, PUBLIC_API_PREFIX, PUBLIC_OUT_API_PREFIX } from '@/config'
+import { API_PREFIX, IS_CE_EDITION, PUBLIC_API_PREFIX } from '@/config'
 import Toast from '@/app/components/base/toast'
 import type { AnnotationReply, MessageEnd, MessageReplace, ThoughtItem } from '@/app/components/base/chat/chat/type'
 import type { VisionFile } from '@/types/app'
@@ -66,12 +66,12 @@ export type IOnTextReplace = (textReplace: TextReplaceResponse) => void
 
 export type IOtherOptions = {
   isPublicAPI?: boolean
+  isPublicOutAPI?: boolean// 用于动态构建知识库
+  pubApiKey?: string
   bodyStringify?: boolean
   needAllResponseContent?: boolean
   deleteContentType?: boolean
   silent?: boolean
-  isPublicOutAPI?: boolean// 用于动态构建知识库
-  pubApiKey?: string
   onData?: IOnData // for stream
   onThought?: IOnThought
   onFile?: IOnFile
@@ -269,8 +269,6 @@ const baseFetch = <T>(
   {
     isPublicAPI = false,
     bodyStringify = true,
-    isPublicOutAPI = false,
-    pubApiKey = '',
     needAllResponseContent,
     deleteContentType,
     getAbortController,
@@ -283,34 +281,23 @@ const baseFetch = <T>(
     getAbortController(abortController)
     options.signal = abortController.signal
   }
-  const urlPrefix = isPublicAPI ? PUBLIC_API_PREFIX : API_PREFIX
-  let urlWithPrefix = `${urlPrefix}${url.startsWith('/') ? url : `/${url}`}`
-  if (isPublicOutAPI) {
-    if (pubApiKey === '')
-      Toast.notify({ type: 'error', message: 'pubApiKey is required' })
+  if (isPublicAPI) {
+    const sharedToken = globalThis.location.pathname.split('/').slice(-1)[0]
+    const accessToken = localStorage.getItem('token') || JSON.stringify({ [sharedToken]: '' })
+    let accessTokenJson = { [sharedToken]: '' }
+    try {
+      accessTokenJson = JSON.parse(accessToken)
+    }
+    catch (e) {
 
-    options.headers.set('Authorization', `Bearer ${pubApiKey}`)
-
-    urlWithPrefix = `${PUBLIC_OUT_API_PREFIX}${url.startsWith('/') ? url : `/${url}`}`
+    }
+    options.headers.set('Authorization', `Bearer ${accessTokenJson[sharedToken]}`)
   }
   else {
-    if (isPublicAPI) {
-      const sharedToken = globalThis.location.pathname.split('/').slice(-1)[0]
-      const accessToken = localStorage.getItem('token') || JSON.stringify({ [sharedToken]: '' })
-      let accessTokenJson = { [sharedToken]: '' }
-      try {
-        accessTokenJson = JSON.parse(accessToken)
-      }
-      catch (e) {
-
-      }
-      options.headers.set('Authorization', `Bearer ${accessTokenJson[sharedToken]}`)
-    }
-    else {
-      const accessToken = localStorage.getItem('console_token') || ''
-      options.headers.set('Authorization', `Bearer ${accessToken}`)
-    }
+    const accessToken = localStorage.getItem('console_token') || ''
+    options.headers.set('Authorization', `Bearer ${accessToken}`)
   }
+
   if (deleteContentType) {
     options.headers.delete('Content-Type')
   }
@@ -319,6 +306,9 @@ const baseFetch = <T>(
     if (!contentType)
       options.headers.set('Content-Type', ContentType.json)
   }
+
+  const urlPrefix = isPublicAPI ? PUBLIC_API_PREFIX : API_PREFIX
+  let urlWithPrefix = `${urlPrefix}${url.startsWith('/') ? url : `/${url}`}`
 
   const { method, params, body } = options
   // handle query
@@ -527,7 +517,22 @@ export const ssePost = (
   const { body } = options
   if (body)
     options.body = JSON.stringify(body)
+  if (isPublicAPI) {
+    const sharedToken = globalThis.location.pathname.split('/').slice(-1)[0]
+    const accessToken = localStorage.getItem('token') || JSON.stringify({ [sharedToken]: '' })
+    let accessTokenJson = { [sharedToken]: '' }
+    try {
+      accessTokenJson = JSON.parse(accessToken)
+    }
+    catch (e) {
 
+    }
+    options.headers.set('Authorization', `Bearer ${accessTokenJson[sharedToken]}`)
+  }
+  else {
+    const accessToken = localStorage.getItem('console_token') || ''
+    options.headers.set('Authorization', `Bearer ${accessToken}`)
+  }
   globalThis.fetch(urlWithPrefix, options as RequestInit)
     .then((res) => {
       if (!/^(2|3)\d{2}$/.test(String(res.status))) {

@@ -11,6 +11,7 @@ import {
 import RadioGroup from './radio-group'
 import { TransferMethod } from '@/types/app'
 import ParamItem from '@/app/components/base/param-item'
+import Input from '@/app/components/base/input'
 
 const MIN = 1
 const MAX = 6
@@ -66,6 +67,22 @@ const ParamConfigContent = ({
       onChange(newFeatures)
   }, [featuresStore, onChange])
 
+  const handleSecureKeyChange = useCallback((value: string) => {
+    if (!value)
+      return
+
+    const {
+      features,
+      setFeatures,
+    } = featuresStore!.getState()
+    const newFeatures = produce(features, (draft) => {
+      if (draft.file?.image)
+        draft.file.image.secure_key = value
+    })
+    setFeatures(newFeatures)
+    if (onChange)
+      onChange(newFeatures)
+  }, [featuresStore, onChange])
   return (
     <div>
       <div>
@@ -108,6 +125,16 @@ const ParamConfigContent = ({
               value={file?.image?.number_limits || 3}
               enable={true}
               onChange={handleLimitsChange}
+            />
+          </div>
+          <div>
+            <p className='text-[13px] font-bold ml-1 mb-1'>文档检索密钥</p>
+            <Input
+              className=''
+              value={file?.image?.secure_key}
+              placeholder='请输入文档检索密钥'
+              onChange={handleSecureKeyChange}
+
             />
           </div>
         </div>

@@ -30,7 +30,7 @@ const processSvgStructure = (svgStructure, replaceFillOrStrokeColor) => {
   }
 }
 const generateSvgComponent = async (fileHandle, entry, pathList, replaceFillOrStrokeColor) => {
-  const currentPath = path.resolve(__dirname, 'src', ...pathList.slice(2))
+  const currentPath = path.resolve(__dirname, 'src1', ...pathList.slice(2))
 
   try {
     await access(currentPath)
@@ -80,7 +80,7 @@ export { default as <%= svgName %> } from './<%= svgName %>'
 }
 
 const generateImageComponent = async (entry, pathList) => {
-  const currentPath = path.resolve(__dirname, 'src', ...pathList.slice(2))
+  const currentPath = path.resolve(__dirname, 'src1', ...pathList.slice(2))
 
   try {
     await access(currentPath)
@@ -156,7 +156,7 @@ const walk = async (entry, pathList, replaceFillOrStrokeColor) => {
 }
 
 (async () => {
-  await rm(path.resolve(__dirname, 'src'), { recursive: true, force: true })
+  await rm(path.resolve(__dirname, 'src1'), { recursive: true, force: true })
   await walk('public', [__dirname, 'assets'])
   await walk('vender', [__dirname, 'assets'], true)
   await walk('image', [__dirname, 'assets'])

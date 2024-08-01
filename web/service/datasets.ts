@@ -288,8 +288,8 @@ export const retryErrorDocs: Fetcher<CommonResponse, { datasetId: string; docume
 /**
  * 通过API创建空文档
  */
-export const createEmptyDatasetByApi: Fetcher<DataSet, { name: string;pubOutApiKey: string }> = ({ name, pubOutApiKey }) => {
-  return post<DataSet>('/datasets', { body: { name } }, { isPublicOutAPI: true, pubApiKey: pubOutApiKey })
+export const createEmptyDatasetByApi: Fetcher<DataSet, { name: string; create_by_system: boolean; pubOutApiKey: string }> = ({ name, create_by_system, pubOutApiKey }) => {
+  return post<DataSet>('/datasets', { body: { name, create_by_system } }, { isPublicOutAPI: true, pubApiKey: pubOutApiKey })
 }
 /**
  * 通过DataSetId 根据文件创建知识库
@@ -304,17 +304,7 @@ export const createKnowledgeByFile: Fetcher<any, { dataSetId: string;file: File;
   const data = JSON.stringify({
     indexing_technique: 'high_quality',
     process_rule: {
-      rules: {
-        pre_processing_rules: [
-          { id: 'remove_extra_spaces', enabled: true },
-          { id: 'remove_urls_emails', enabled: true },
-        ],
-        segmentation: {
-          max_tokens: 500,
-          separator: '\n',
-        },
-      },
-      mode: 'custom',
+      mode: 'automatic',
     },
   })
   formData.append('data', data)

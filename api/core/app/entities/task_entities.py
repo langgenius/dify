@@ -167,6 +167,8 @@ class MessageFileStreamResponse(StreamResponse):
     type: str
     belongs_to: str
     url: str
+    file_name: Optional[str] = None
+    file_size: Optional[int] = None
 
 
 class MessageReplaceStreamResponse(StreamResponse):

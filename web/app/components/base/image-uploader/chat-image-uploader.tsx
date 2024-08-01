@@ -18,14 +18,16 @@ type UploadOnlyFromLocalProps = {
   onUpload: (imageFile: ImageFile) => void
   disabled?: boolean
   limit?: number
+  secure_key?: string
 }
 const UploadOnlyFromLocal: FC<UploadOnlyFromLocalProps> = ({
   onUpload,
   disabled,
   limit,
+  secure_key,
 }) => {
   return (
-    <Uploader onUpload={onUpload} disabled={disabled} limit={limit}>
+    <Uploader onUpload={onUpload} disabled={disabled} limit={limit} secure_key={secure_key}>
       {hovering => (
         <div
           className={`
@@ -45,12 +47,14 @@ type UploaderButtonProps = {
   onUpload: (imageFile: ImageFile) => void
   disabled?: boolean
   limit?: number
+  secure_key?: string
 }
 const UploaderButton: FC<UploaderButtonProps> = ({
   methods,
   onUpload,
   disabled,
   limit,
+  secure_key,
 }) => {
   const { t } = useTranslation()
   const [open, setOpen] = useState(false)
@@ -101,6 +105,7 @@ const UploaderButton: FC<UploaderButtonProps> = ({
                 onUpload={handleUpload}
                 limit={limit}
                 closePopover={closePopover}
+                secure_key={secure_key}
               >
                 {hovering => (
                   <div
@@ -142,6 +147,7 @@ const ChatImageUploader: FC<ChatImageUploaderProps> = ({
         onUpload={onUpload}
         disabled={disabled}
         limit={+settings.image_file_size_limit!}
+        secure_key={settings.secure_key}
       />
     )
   }
@@ -152,6 +158,7 @@ const ChatImageUploader: FC<ChatImageUploaderProps> = ({
       onUpload={onUpload}
       disabled={disabled}
       limit={+settings.image_file_size_limit!}
+      secure_key={settings.secure_key}
     />
   )
 }

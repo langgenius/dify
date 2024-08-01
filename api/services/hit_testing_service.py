@@ -22,7 +22,7 @@ default_retrieval_model = {
 
 class HitTestingService:
     @classmethod
-    def retrieve(cls, dataset: Dataset, query: str, account: Account, retrieval_model: dict, limit: int = 10) -> dict:
+    def retrieve(cls, dataset: Dataset, query: str, account: Account, retrieval_model: dict, limit: int = 10,is_inner_access: bool = False) -> dict:
         if dataset.available_document_count == 0 or dataset.available_segment_count == 0:
             return {
                 "query": {
@@ -52,17 +52,17 @@ class HitTestingService:
 
         end = time.perf_counter()
         logging.debug(f"Hit testing retrieve in {end - start:0.4f} seconds")
+        if is_inner_access == False: # if the request is from inner access, do not save the query
+            dataset_query = DatasetQuery(
+                dataset_id=dataset.id,
+                content=query,
+                source='hit_testing',
+                created_by_role='account',
+                created_by=account.id
+            )
 
-        dataset_query = DatasetQuery(
-            dataset_id=dataset.id,
-            content=query,
-            source='hit_testing',
-            created_by_role='account',
-            created_by=account.id
-        )
-
-        db.session.add(dataset_query)
-        db.session.commit()
+            db.session.add(dataset_query)
+            db.session.commit()
 
         return cls.compact_retrieve_response(dataset, query, all_documents)
 

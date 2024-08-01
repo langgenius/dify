@@ -178,7 +178,9 @@ class MessageCycleManage:
                 id=message_file.id,
                 type=message_file.type,
                 belongs_to=message_file.belongs_to or 'user',
-                url=url
+                url=url,
+                file_name=message_file.file_name,
+                file_size=message_file.file_size,
             )
 
         return None

@@ -182,7 +182,7 @@ class AdvancedPromptTransform(PromptTransform):
 
         if memory and memory_config:
             prompt_messages = self._append_chat_histories(memory, memory_config, prompt_messages, model_config, current_query=query)
-            # add document files to the last user message
+            # add
             if files:
                 prompt_message_contents = [TextPromptMessageContent(data=query)]
                 for file in files:

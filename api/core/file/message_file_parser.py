@@ -126,7 +126,8 @@ class MessageFileParser:
         """
         type_file_objs: dict[FileType, list[FileVar]] = {
             # Currently only support image
-            FileType.IMAGE: []
+            FileType.IMAGE: [],
+            FileType.DOCUMENT: []
         }
 
         if not files:
@@ -162,7 +163,11 @@ class MessageFileParser:
                     transfer_method=transfer_method,
                     url=file.get('url') if transfer_method == FileTransferMethod.REMOTE_URL else None,
                     related_id=file.get('upload_file_id') if transfer_method == FileTransferMethod.LOCAL_FILE else None,
-                    extra_config=file_extra_config
+                    extra_config=file_extra_config,
+                    dataset_id=file.get('dataset_id'),
+                    document_id=file.get('document_id'),
+                    file_name=file.get('file_name'),
+                    file_size=file.get('file_size')
                 )
             return FileVar(
                 tenant_id=self.tenant_id,
@@ -170,7 +175,11 @@ class MessageFileParser:
                 transfer_method=transfer_method,
                 url=None,
                 related_id=file.get('tool_file_id'),
-                extra_config=file_extra_config
+                extra_config=file_extra_config,
+                dataset_id=file.get('dataset_id'),
+                document_id=file.get('document_id'),
+                file_name=file.get('file_name'),
+                file_size=file.get('file_size'),
             )
         else:
             return FileVar(
@@ -180,7 +189,11 @@ class MessageFileParser:
                 transfer_method=FileTransferMethod.value_of(file.transfer_method),
                 url=file.url,
                 related_id=file.upload_file_id or None,
-                extra_config=file_extra_config
+                extra_config=file_extra_config,
+                dataset_id=file.dataset_id,
+                document_id=file.document_id,
+                file_name=file.file_name,
+                file_size=file.file_size
             )
 
     def _check_image_remote_url(self, url):

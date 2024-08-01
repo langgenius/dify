@@ -12,6 +12,7 @@ import { QuestionTriangle } from '@/app/components/base/icons/src/vender/solid/g
 import { User } from '@/app/components/base/icons/src/public/avatar'
 import { Markdown } from '@/app/components/base/markdown'
 import ImageGallery from '@/app/components/base/image-gallery'
+import DocumentGallery from '@/app/components/base/document-gallery'
 
 type QuestionProps = {
   item: ChatItem
@@ -28,7 +29,10 @@ const Question: FC<QuestionProps> = ({
     message_files,
   } = item
 
-  const imgSrcs = message_files?.length ? message_files.map(item => item.url) : []
+  const imgSrcs = message_files?.length
+    ? message_files.filter(item => item.type === 'image').map(item => item.url)
+    : []
+  const documentFiles = message_files?.filter(item => item.type === 'document')
   return (
     <div className='flex justify-end mb-2 last:mb-0 pl-10'>
       <div className='group relative mr-4'>
@@ -43,6 +47,11 @@ const Question: FC<QuestionProps> = ({
           {
             !!imgSrcs.length && (
               <ImageGallery srcs={imgSrcs} />
+            )
+          }
+          {
+            !!documentFiles?.length && (
+              <DocumentGallery files={documentFiles} />
             )
           }
           <Markdown content={content} />

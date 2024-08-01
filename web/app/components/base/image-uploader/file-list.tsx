@@ -12,10 +12,11 @@ import TooltipPlus from '@/app/components/base/tooltip-plus'
 import type { ImageFile } from '@/types/app'
 import { TransferMethod } from '@/types/app'
 import ImagePreview from '@/app/components/base/image-uploader/image-preview'
-
+import { Word } from '@/app/components/base/icons/src/vender/line/document'
 type ImageListProps = {
   list: ImageFile[]
   readonly?: boolean
+  secure_key?: string
   onRemove?: (imageFileId: string) => void
   onReUpload?: (imageFileId: string) => void
   onImageLinkLoadSuccess?: (imageFileId: string) => void
@@ -25,6 +26,7 @@ type ImageListProps = {
 const ImageList: FC<ImageListProps> = ({
   list,
   readonly,
+  secure_key,
   onRemove,
   onReUpload,
   onImageLinkLoadSuccess,
@@ -56,7 +58,7 @@ const ImageList: FC<ImageListProps> = ({
           {item.type === TransferMethod.local_file && item.progress !== 100 && (
             <>
               <div
-                className="absolute inset-0 flex items-center justify-center z-[1] bg-black/30"
+                className="absolute inset-0 flex items-center rounded-lg justify-center z-[1] bg-black/30"
                 style={{ left: item.progress > -1 ? `${item.progress}%` : 0 }}
               >
                 {item.progress === -1 && (
@@ -77,7 +79,7 @@ const ImageList: FC<ImageListProps> = ({
           {item.type === TransferMethod.remote_url && item.progress !== 100 && (
             <div
               className={`
-                  absolute inset-0 flex items-center justify-center rounded-lg z-[1] border
+                  absolute inset-0 flex items-center justify-center rounded-lg z-[1] rounded border
                   ${item.progress === -1
               ? 'bg-[#FEF0C7] border-[#DC6803]'
               : 'bg-black/[0.16] border-transparent'
@@ -116,7 +118,7 @@ const ImageList: FC<ImageListProps> = ({
           {/*  } */}
           {/* /> */}
           <div className="sm:flex">
-            <div className="mb-4 flex-shrink-0 sm:mb-0 sm:mr-4">
+            <div className="mb-2 flex-shrink-0 sm:mb-0 sm:mr-1">
               {/* <img */}
               {/*   className="w-8 h-8 rounded-lg object-cover cursor-pointer border-[0.5px] border-black/5" */}
               {/*   onLoad={() => handleImageLinkLoadSuccess(item)} */}
@@ -138,10 +140,30 @@ const ImageList: FC<ImageListProps> = ({
 
             </div>
             <div>
-              <h4 className="text-sm text-gray-400">{item.file?.name}</h4>
-              <p className="text-sm">
-                209.kb
-              </p>
+
+              {/* <div className="grid grid-cols-1 gap-x-8 gap-y-6 sm:grid-cols-2">
+              <div className="grid grid-cols-1 gap-x-8 gap-y-6">
+                 <Word className="w-4 h-4 text-gray-500" />
+              </div>
+              <div className="grid grid-cols-2 gap-x-8 gap-y-6">
+                <h4 className="text-sm text-gray-400">{item.file?.name}</h4>
+              </div>
+            </div> */}
+
+              <div className="flex h-14">
+                <div className="w-1/10 h-5  pl-1 sm:pt-3 items-center">
+                  {/* Left column content */}
+                  <Word className="w-9 text-blue-500 items-center" />
+                </div>
+                <div className="w-9/10 sm:pt-3 sm:pr-3">
+                  {/* Right column content */}
+                  <p className='text-[13px]'>{item.file?.name}</p>
+                  <p className="text-[10px]">
+                    {item.index_status || ''}
+                  </p>
+                </div>
+              </div>
+
             </div>
           </div>
           {!readonly && (

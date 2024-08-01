@@ -10,6 +10,7 @@ type UploaderProps = {
   closePopover?: () => void
   limit?: number
   disabled?: boolean
+  secure_key?: string
 }
 
 const Uploader: FC<UploaderProps> = ({
@@ -18,12 +19,14 @@ const Uploader: FC<UploaderProps> = ({
   closePopover,
   limit,
   disabled,
+  secure_key,
 }) => {
   const [hovering, setHovering] = useState(false)
   const { handleLocalFileUpload } = useLocalFileUploader({
     limit,
     onUpload,
     disabled,
+    secure_key,
   })
 
   const handleChange = (e: ChangeEvent<HTMLInputElement>) => {
@@ -33,7 +36,7 @@ const Uploader: FC<UploaderProps> = ({
       return
     // TODO 测试完后增加更多的类型
     if (file.name.split('.')[1] === 'docx')
-      handleLocalFileUpload(file, true)
+      handleLocalFileUpload(file, true, secure_key)
     else
       handleLocalFileUpload(file, false)
     closePopover?.()
@@ -51,7 +54,7 @@ const Uploader: FC<UploaderProps> = ({
         onClick={e => ((e.target as HTMLInputElement).value = '')}
         type='file'
         accept={ALLOW_FILE_EXTENSIONS.map(ext => `.${ext}`).join(',')}
-        onChange={handleChange}
+        onChange={secure_key => handleChange(secure_key)}
         disabled={disabled}
       />
     </div>

@@ -336,7 +336,7 @@ class AppModelConfig(db.Model):
     def file_upload_dict(self) -> dict:
         return json.loads(self.file_upload) if self.file_upload else {
             "image": {"enabled": False, "number_limits": 3, "detail": "high",
-                      "transfer_methods": ["remote_url", "local_file"]}}
+                      "transfer_methods": ["remote_url", "local_file"],"secure_key": ""}}
 
     def to_dict(self) -> dict:
         return {
@@ -830,7 +830,9 @@ class Message(db.Model):
                 'id': message_file.id,
                 'type': message_file.type,
                 'url': url,
-                'belongs_to': message_file.belongs_to if message_file.belongs_to else 'user'
+                'belongs_to': message_file.belongs_to if message_file.belongs_to else 'user',
+                'file_size': message_file.file_size,
+                'file_name': message_file.file_name,
             })
 
         return files
@@ -934,6 +936,8 @@ class MessageFile(db.Model):
     created_at = db.Column(db.DateTime, nullable=False, server_default=db.text('CURRENT_TIMESTAMP(0)'))
     dataset_id = db.Column(StringUUID, nullable=True)
     document_id = db.Column(StringUUID, nullable=True)
+    file_name = db.Column(db.String(255), nullable=True)
+    file_size = db.Column(db.Integer, nullable=True)
 
 class MessageAnnotation(db.Model):
     __tablename__ = 'message_annotations'

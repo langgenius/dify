@@ -302,6 +302,22 @@ class AzureOpenAILargeLanguageModel(_CommonAzureOpenAI, LargeLanguageModel):
 
         # chat model
         messages = [self._convert_prompt_message_to_dict(m) for m in prompt_messages]
+        contents_new  = ''
+        for message_content in messages:
+            print(message_content)
+            contents = message_content.get('content')
+            contents_copy = contents[:]
+            for content in contents_copy:
+                if isinstance(content, dict):
+                    if content.get('type') == 'document':
+                        content['type'] = 'text'
+                        contents_new = content['text']  #单独将类型为文档的内容提取出来
+                            #删除原来的文档内容
+                        contents.remove(content)
+                    #将这个content的type改为text
+        # 这里将类型为文档的提示词重新构建为系统提示词                
+        message_dict = {"role": "system", "content": contents_new}
+        messages.append(message_dict)
         response = client.chat.completions.create(
             messages=messages,
             model=model,
@@ -487,6 +503,14 @@ class AzureOpenAILargeLanguageModel(_CommonAzureOpenAI, LargeLanguageModel):
                 sub_messages = []
                 assert message.content is not None
                 for message_content in message.content:
+                    if isinstance(message_content, DocumentPromptMessageContent):
+                        message_content = cast(DocumentPromptMessageContent, message_content)
+                        sub_message_dict = {
+                            "type": "document",
+                            "text": message_content.data
+                        }
+                        sub_messages.append(sub_message_dict)
+                        continue
                     if message_content.type == PromptMessageContentType.TEXT:
                         message_content = cast(TextPromptMessageContent, message_content)
                         sub_message_dict = {
@@ -507,7 +531,7 @@ class AzureOpenAILargeLanguageModel(_CommonAzureOpenAI, LargeLanguageModel):
                     elif message_content.type == PromptMessageContentType.DOCUMENT:
                         message_content = cast(DocumentPromptMessageContent, message_content)
                         sub_message_dict = {
-                            "type": "text",
+                            "type": "document",
                             "text": message_content.data
                         }
                         sub_messages.append(sub_message_dict)

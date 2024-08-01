@@ -88,9 +88,9 @@ class DocumentPromptMessageContent(TextPromptMessageContent):
     """
     Model class for image prompt message content.
     """
-    # document seagment convert to text
+    # document seagment convert rag
     type: PromptMessageContentType = PromptMessageContentType.TEXT
-
+ 
 
 class PromptMessage(ABC, BaseModel):
     """

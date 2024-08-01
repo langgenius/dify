@@ -36,6 +36,8 @@ message_file_fields = {
     'type': fields.String,
     'url': fields.String,
     'belongs_to': fields.String(default='user'),
+    'file_name': fields.String(default=''),
+    'file_size': fields.Integer(default=0),
 }
 
 agent_thought_fields = {

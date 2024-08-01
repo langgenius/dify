@@ -50,3 +50,5 @@ package-lock.json
 pnpm-lock.yaml
 
 .favorites.json
+
+/app/components/base/icons/src1

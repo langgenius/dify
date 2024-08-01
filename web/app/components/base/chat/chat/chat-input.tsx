@@ -87,6 +87,8 @@ const ChatInput: FC<ChatInputProps> = ({
         upload_file_id: fileItem.fileId,
         document_id: fileItem.document_id,
         dataset_id: fileItem.dataset_id,
+        file_name: fileItem?.file_name,
+        file_size: fileItem?.file_size,
       })))
       setQuery('')
       onClear()
@@ -198,6 +200,7 @@ const ChatInput: FC<ChatInputProps> = ({
                 {!isHasImage(files) && (<div className='pl-[52px]'>
                   <FileList
                     list={files}
+                    secure_key={visionConfig.secure_key}
                     onRemove={onRemove}
                     onReUpload={onReUpload}
                     onImageLinkLoadSuccess={onImageLinkLoadSuccess}

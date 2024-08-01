@@ -435,6 +435,7 @@ const WorkflowWrap = memo(() => {
         enabled: !!features.file_upload?.image.enabled,
         number_limits: features.file_upload?.image.number_limits || 3,
         transfer_methods: features.file_upload?.image.transfer_methods || ['local_file', 'remote_url'],
+        secure_key: features.file_upload?.image.secure_key || ' ',
       },
     },
     opening: {

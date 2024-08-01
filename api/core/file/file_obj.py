@@ -10,7 +10,6 @@ from core.model_runtime.entities.message_entities import DocumentPromptMessageCo
 from extensions.ext_database import db
 
 # document rag
-from models.dataset import DocumentSegment
 from models.model import UploadFile
 
 
@@ -62,6 +61,8 @@ class FileVar(BaseModel):
     mime_type: Optional[str] = None
     document_id: Optional[str] = None # document rag
     dataset_id: Optional[str] = None # document rag
+    file_name: Optional[str] = None  # document rag
+    file_size: Optional[int] = None  # document rag
 
     def to_dict(self) -> dict:
         return {
@@ -76,7 +77,9 @@ class FileVar(BaseModel):
             'extension': self.extension,
             'mime_type': self.mime_type,
             'document_id':self.document_id, # document rag
-            'dataset_id':self.dataset_id    # document rag
+            'dataset_id':self.dataset_id,    # document rag
+            'file_name': self.file_name,  # document rag    
+            'file_size': self.file_size,  # document rag
         }
 
     def to_markdown(self) -> str:
@@ -128,22 +131,26 @@ class FileVar(BaseModel):
         if self.type == FileType.DOCUMENT:              
             dataset_id = self.dataset_id
             document_id = self.document_id
-            from services.dataset_service import DocumentService
-            document = DocumentService.get_document(dataset_id, document_id)
-            query = DocumentSegment.query.filter(
-            DocumentSegment.document_id == str(document_id))
-            query = query.where(DocumentSegment.content.ilike(f'%{queryStr}%'))
-            limit = 20
-            total = query.count()
-            queryContent :str = ''
-            segments = query.order_by(DocumentSegment.position).limit(limit + 1).all()
-            has_more = False
-            if len(segments) > limit:
-                has_more = True
-            segments = segments[:-1]
-            for segment in segments:
-                print(segment.content)
-                queryContent += segment.content+'\n'
+            from services.dataset_service import DatasetService
+            from services.hit_testing_service import HitTestingService
+            dataset = DatasetService.get_dataset(dataset_id)
+            retrieval_model = {
+                "reranking_enable": False,
+                "search_method": "semantic_search",
+                "top_k": 4,
+                "score_threshold_enabled": False,
+            }
+            response = HitTestingService.retrieve(
+                dataset=dataset,
+                query=queryStr,
+                account='',
+                retrieval_model=retrieval_model,
+                limit=10,
+                is_inner_access=True
+            )
+            queryContent = ''
+            for segment in response['records']:
+                queryContent += segment['segment'].content+'\n'
             return DocumentPromptMessageContent(
                 data= queryContent,
             )

@@ -57,7 +57,7 @@ class DatasetService:
 
     @staticmethod
     def get_datasets(page, per_page, provider="vendor", tenant_id=None, user=None, search=None, tag_ids=None):
-        query = Dataset.query.filter(Dataset.provider == provider, Dataset.tenant_id == tenant_id).order_by(
+        query = Dataset.query.filter(Dataset.provider == provider, Dataset.tenant_id == tenant_id,Dataset.create_by_system==False).order_by(
             Dataset.created_at.desc()
         )
 
@@ -138,14 +138,15 @@ class DatasetService:
     def get_datasets_by_ids(ids, tenant_id):
         datasets = Dataset.query.filter(
             Dataset.id.in_(ids),
-            Dataset.tenant_id == tenant_id
+            Dataset.tenant_id == tenant_id,
+            Dataset.create_by_system == False
         ).paginate(
             page=1, per_page=len(ids), max_per_page=len(ids), error_out=False
         )
         return datasets.items, datasets.total
 
     @staticmethod
-    def create_empty_dataset(tenant_id: str, name: str, indexing_technique: Optional[str], account: Account):
+    def create_empty_dataset(tenant_id: str, name: str, indexing_technique: Optional[str], account: Account,create_by_system=False):
         # check if dataset name already exists
         if Dataset.query.filter_by(name=name, tenant_id=tenant_id).first():
             raise DatasetNameDuplicateError(
@@ -165,6 +166,7 @@ class DatasetService:
         dataset.tenant_id = tenant_id
         dataset.embedding_model_provider = embedding_model.provider if embedding_model else None
         dataset.embedding_model = embedding_model.model if embedding_model else None
+        dataset.create_by_system = create_by_system
         db.session.add(dataset)
         db.session.commit()
         return dataset

@@ -376,6 +376,7 @@ export type VisionSettings = {
   detail: Resolution
   transfer_methods: TransferMethod[]
   image_file_size_limit?: number | string
+  secure_key?: string
 }
 
 export type ImageFile = {
@@ -390,6 +391,9 @@ export type ImageFile = {
   isRag?: boolean // 是否立即进行知识库创建
   dataset_id?: string
   document_id?: string
+  index_status?: string
+  file_name?: string
+  file_size?: number
 }
 
 export type VisionFile = {
@@ -399,6 +403,8 @@ export type VisionFile = {
   url: string
   upload_file_id: string
   belongs_to?: string
+  file_name?: string
+  file_size?: number
 }
 
 export type RetrievalConfig = {

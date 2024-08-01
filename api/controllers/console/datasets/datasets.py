@@ -113,6 +113,9 @@ class DatasetListApi(Resource):
                             choices=Dataset.INDEXING_TECHNIQUE_LIST,
                             nullable=True,
                             help='Invalid indexing technique.')
+        parser.add_argument('create_by_system', type= bool, location='json',
+                            nullable=True,
+                            )
         args = parser.parse_args()
 
         # The role of the current user in the ta table must be admin, owner, or editor, or dataset_operator
@@ -124,7 +127,8 @@ class DatasetListApi(Resource):
                 tenant_id=current_user.current_tenant_id,
                 name=args['name'],
                 indexing_technique=args['indexing_technique'],
-                account=current_user
+                account=current_user,
+                create_by_system = args['create_by_system']
             )
         except services.errors.dataset.DatasetNameDuplicateError:
             raise DatasetNameDuplicateError()

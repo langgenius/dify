@@ -30,6 +30,7 @@ export type FileUpload = {
   image?: EnabledOrDisabled & {
     number_limits?: number
     transfer_methods?: TransferMethod[]
+    secure_key?: string
   }
 }
 

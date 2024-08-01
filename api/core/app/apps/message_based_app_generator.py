@@ -234,6 +234,8 @@ class MessageBasedAppGenerator(BaseAppGenerator):
                 created_by=account_id or end_user_id,
                 dataset_id=file.dataset_id, # add dataset_id
                 document_id=file.document_id,# add document_id
+                file_name = file.file_name, # add doc origin name
+                file_size = file.file_size, #add doc size
             )
             db.session.add(message_file)
             db.session.commit()
