@@ -67,7 +67,7 @@ class XinferenceRerankModel(RerankModel):
         for idx, result in enumerate(response['results']):
             # format document
             index = result['index']
-            page_content = result['document']['text']
+            page_content = result['document']['text'] if 'text' in result['document'] else result['document']
             rerank_document = RerankDocument(
                 index=index,
                 text=page_content,
