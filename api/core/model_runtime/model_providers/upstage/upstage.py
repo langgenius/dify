@@ -1,5 +1,4 @@
 import logging
-from collections.abc import Mapping
 
 from core.model_runtime.entities.model_entities import ModelType
 from core.model_runtime.errors.validate import CredentialsValidateFailedError
