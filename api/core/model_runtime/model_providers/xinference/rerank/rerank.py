@@ -60,7 +60,18 @@ class XinferenceRerankModel(RerankModel):
                 return_documents=True
             )
         except RuntimeError as e:
-            raise InvokeServerUnavailableError(str(e))
+            if 'return_documents' not in str(e):
+                raise InvokeServerUnavailableError(str(e))
+            try:
+                # compatible for xinference reranker lower than 0.13.0
+                handle = RESTfulRerankModelHandle(model_uid, server_url, auth_headers)
+                response = handle.rerank(
+                    documents=docs,
+                    query=query,
+                    top_n=top_n,
+                )
+            except RuntimeError as e:
+                raise InvokeServerUnavailableError(str(e))
 
 
         rerank_documents = []
