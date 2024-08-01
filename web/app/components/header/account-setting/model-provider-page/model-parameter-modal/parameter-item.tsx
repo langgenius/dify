@@ -56,7 +56,7 @@ const ParameterItem: FC<ParameterItemProps> = ({
   const handleInputChange = (newValue: ParameterValue) => {
     setLocalValue(newValue)
 
-    if (onChange && (parameterRule.name === 'stop' || !isNullOrUndefined(value)))
+    if (onChange && (parameterRule.name === 'stop' || !isNullOrUndefined(value) || parameterRule.required))
       onChange(newValue)
   }
 
