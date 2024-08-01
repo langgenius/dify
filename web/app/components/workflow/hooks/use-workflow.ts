@@ -471,8 +471,14 @@ export const useWorkflowInit = () => {
   const handleGetInitialWorkflowData = useCallback(async () => {
     try {
       const res = await fetchWorkflowDraft(`/apps/${appDetail.id}/workflows/draft`)
-
       setData(res)
+      workflowStore.setState({
+        envSecrets: (res.environment_variables || []).filter(env => env.value_type === 'secret').reduce((acc, env) => {
+          acc[env.id] = env.value
+          return acc
+        }, {} as Record<string, string>),
+        environmentVariables: res.environment_variables?.map(env => env.value_type === 'secret' ? { ...env, value: '[__HIDDEN__]' } : env) || [],
+      })
       setSyncWorkflowDraftHash(res.hash)
       setIsLoading(false)
     }
@@ -491,6 +497,7 @@ export const useWorkflowInit = () => {
                 features: {
                   retriever_resource: { enabled: true },
                 },
+                environment_variables: [],
               },
             }).then((res) => {
               workflowStore.getState().setDraftUpdatedAt(res.updated_at)

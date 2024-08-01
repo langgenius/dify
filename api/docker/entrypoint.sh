@@ -8,15 +8,28 @@ if [[ "${MIGRATION_ENABLED}" == "true" ]]; then
 fi
 
 if [[ "${MODE}" == "worker" ]]; then
-  celery -A app.celery worker -P ${CELERY_WORKER_CLASS:-gevent} -c ${CELERY_WORKER_AMOUNT:-1} --loglevel INFO \
+
+  # Get the number of available CPU cores
+  if [ "${CELERY_AUTO_SCALE,,}" = "true" ]; then
+    # Set MAX_WORKERS to the number of available cores if not specified
+    AVAILABLE_CORES=$(nproc)
+    MAX_WORKERS=${CELERY_MAX_WORKERS:-$AVAILABLE_CORES}
+    MIN_WORKERS=${CELERY_MIN_WORKERS:-1}
+    CONCURRENCY_OPTION="--autoscale=${MAX_WORKERS},${MIN_WORKERS}"
+  else
+    CONCURRENCY_OPTION="-c ${CELERY_WORKER_AMOUNT:-1}"
+  fi
+
+  exec celery -A app.celery worker -P ${CELERY_WORKER_CLASS:-gevent} $CONCURRENCY_OPTION --loglevel INFO \
     -Q ${CELERY_QUEUES:-dataset,generation,mail,ops_trace,app_deletion}
+
 elif [[ "${MODE}" == "beat" ]]; then
-  celery -A app.celery beat --loglevel INFO
+  exec celery -A app.celery beat --loglevel INFO
 else
   if [[ "${DEBUG}" == "true" ]]; then
-    flask run --host=${DIFY_BIND_ADDRESS:-0.0.0.0} --port=${DIFY_PORT:-5001} --debug
+    exec flask run --host=${DIFY_BIND_ADDRESS:-0.0.0.0} --port=${DIFY_PORT:-5001} --debug
   else
-    gunicorn \
+    exec gunicorn \
       --bind "${DIFY_BIND_ADDRESS:-0.0.0.0}:${DIFY_PORT:-5001}" \
       --workers ${SERVER_WORKER_AMOUNT:-1} \
       --worker-class ${SERVER_WORKER_CLASS:-gevent} \

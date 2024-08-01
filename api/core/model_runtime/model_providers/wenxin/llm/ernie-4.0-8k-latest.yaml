@@ -1,4 +1,4 @@
-model: ernie-4.0-8k-Latest
+model: ernie-4.0-8k-latest
 label:
   en_US: Ernie-4.0-8K-Latest
 model_type: llm

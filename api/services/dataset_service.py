@@ -845,13 +845,17 @@ class DocumentService:
                         'only_main_content': website_info.get('only_main_content', False),
                         'mode': 'crawl',
                     }
+                    if len(url) > 255:
+                        document_name = url[:200] + '...'
+                    else:
+                        document_name = url
                     document = DocumentService.build_document(
                         dataset, dataset_process_rule.id,
                         document_data["data_source"]["type"],
                         document_data["doc_form"],
                         document_data["doc_language"],
                         data_source_info, created_from, position,
-                        account, url, batch
+                        account, document_name, batch
                     )
                     db.session.add(document)
                     db.session.flush()

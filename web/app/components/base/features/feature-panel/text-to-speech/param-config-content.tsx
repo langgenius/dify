@@ -149,7 +149,7 @@ const VoiceParamConfig = ({
             <div
               className='mb-2 leading-[18px] text-[13px] font-semibold text-gray-800'>{t('appDebug.voice.voiceSettings.voice')}</div>
             <Listbox
-              value={voiceItem}
+              value={voiceItem ?? {}}
               disabled={!languageItem}
               onChange={(value: Item) => {
                 handleChange({

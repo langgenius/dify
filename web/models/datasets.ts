@@ -449,3 +449,46 @@ export type ErrorDocsResponse = {
   data: IndexingStatusResponse[]
   total: number
 }
+
+export type SelectedDatasetsMode = {
+  allHighQuality: boolean
+  allHighQualityVectorSearch: boolean
+  allHighQualityFullTextSearch: boolean
+  allEconomic: boolean
+  mixtureHighQualityAndEconomic: boolean
+  inconsistentEmbeddingModel: boolean
+}
+
+export enum WeightedScoreEnum {
+  SemanticFirst = 'semantic_first',
+  KeywordFirst = 'keyword_first',
+  Customized = 'customized',
+}
+
+export enum RerankingModeEnum {
+  RerankingModel = 'reranking_model',
+  WeightedScore = 'weighted_score',
+}
+
+export const DEFAULT_WEIGHTED_SCORE = {
+  allHighQualityVectorSearch: {
+    semantic: 1.0,
+    keyword: 0,
+  },
+  allHighQualityFullTextSearch: {
+    semantic: 0,
+    keyword: 1.0,
+  },
+  semanticFirst: {
+    semantic: 0.7,
+    keyword: 0.3,
+  },
+  keywordFirst: {
+    semantic: 0.3,
+    keyword: 0.7,
+  },
+  other: {
+    semantic: 0.7,
+    keyword: 0.3,
+  },
+}

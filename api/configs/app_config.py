@@ -65,3 +65,5 @@ class DifyConfig(
 
     SSRF_PROXY_HTTP_URL: str | None = None
     SSRF_PROXY_HTTPS_URL: str | None = None
+
+    MODERATION_BUFFER_SIZE: int = Field(default=300, description='The buffer size for moderation.')

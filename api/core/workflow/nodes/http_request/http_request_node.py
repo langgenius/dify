@@ -3,6 +3,7 @@ from mimetypes import guess_extension
 from os import path
 from typing import cast
 
+from core.app.segments import parser
 from core.file.file_obj import FileTransferMethod, FileType, FileVar
 from core.tools.tool_file_manager import ToolFileManager
 from core.workflow.entities.base_node_data_entities import BaseNodeData
@@ -51,6 +52,9 @@ class HttpRequestNode(BaseNode):
 
     def _run(self, variable_pool: VariablePool) -> NodeRunResult:
         node_data: HttpRequestNodeData = cast(HttpRequestNodeData, self.node_data)
+        # TODO: Switch to use segment directly
+        if node_data.authorization.config and node_data.authorization.config.api_key:
+            node_data.authorization.config.api_key = parser.convert_template(template=node_data.authorization.config.api_key, variable_pool=variable_pool).text
 
         # init http executor
         http_executor = None
@@ -65,9 +69,7 @@ class HttpRequestNode(BaseNode):
             process_data = {}
             if http_executor:
                 process_data = {
-                    'request': http_executor.to_raw_request(
-                        mask_authorization_header=node_data.mask_authorization_header
-                    ),
+                    'request': http_executor.to_raw_request(),
                 }
             return NodeRunResult(
                 status=WorkflowNodeExecutionStatus.FAILED,
@@ -86,9 +88,7 @@ class HttpRequestNode(BaseNode):
                 'files': files,
             },
             process_data={
-                'request': http_executor.to_raw_request(
-                    mask_authorization_header=node_data.mask_authorization_header,
-                ),
+                'request': http_executor.to_raw_request(),
             },
         )
 

@@ -178,6 +178,7 @@ const Panel: FC<NodePanelProps<LLMNodeType>> = ({
             hasSetBlockStatus={hasSetBlockStatus}
             varList={inputs.prompt_config?.jinja2_variables || []}
             handleAddVariable={handleAddVariable}
+            modelConfig={model}
           />
         )}
 

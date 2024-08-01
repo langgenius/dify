@@ -97,6 +97,7 @@ class BaiduAccessToken:
             baidu_access_tokens_lock.release()
             return token
 
+
 class ErnieMessage:
     class Role(Enum):
         USER = 'user'
@@ -137,7 +138,9 @@ class ErnieBotModel:
         'ernie-speed-appbuilder': 'https://aip.baidubce.com/rpc/2.0/ai_custom/v1/wenxinworkshop/chat/ai_apaas',
         'ernie-lite-8k-0922': 'https://aip.baidubce.com/rpc/2.0/ai_custom/v1/wenxinworkshop/chat/eb-instant',
         'ernie-lite-8k-0308': 'https://aip.baidubce.com/rpc/2.0/ai_custom/v1/wenxinworkshop/chat/ernie-lite-8k',
+        'ernie-character-8k': 'https://aip.baidubce.com/rpc/2.0/ai_custom/v1/wenxinworkshop/chat/ernie-char-8k',
         'ernie-character-8k-0321': 'https://aip.baidubce.com/rpc/2.0/ai_custom/v1/wenxinworkshop/chat/ernie-char-8k',
+        'ernie-4.0-tutbo-8k': 'https://aip.baidubce.com/rpc/2.0/ai_custom/v1/wenxinworkshop/chat/ernie-4.0-turbo-8k',
         'ernie-4.0-tutbo-8k-preview': 'https://aip.baidubce.com/rpc/2.0/ai_custom/v1/wenxinworkshop/chat/ernie-4.0-turbo-8k-preview',
     }
 
@@ -149,7 +152,8 @@ class ErnieBotModel:
         'ernie-3.5-8k-1222',
         'ernie-3.5-4k-0205',
         'ernie-3.5-128k',
-        'ernie-4.0-8k'
+        'ernie-4.0-8k',
+        'ernie-4.0-turbo-8k',
         'ernie-4.0-turbo-8k-preview'
     ]
 
