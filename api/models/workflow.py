@@ -13,8 +13,9 @@ from core.app.segments import (
 from core.helper import encrypter
 from extensions.ext_database import db
 from libs import helper
-from models import StringUUID
-from models.account import Account
+
+from .account import Account
+from .types import StringUUID
 
 
 class CreatedByRole(Enum):
