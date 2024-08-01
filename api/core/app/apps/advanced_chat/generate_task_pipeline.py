@@ -244,7 +244,8 @@ class AdvancedChatAppGenerateTaskPipeline(BasedGenerateTaskPipeline, WorkflowCyc
         :return:
         """
         for message in self._queue_manager.listen():
-            if publisher:
+            if (isinstance(message.event, QueueTextChunkEvent)
+                    and message.event.metadata.get('is_answer_previous_node', False) and publisher):
                 publisher.publish(message=message)
             event = message.event
 
