@@ -1,7 +1,6 @@
 import type { AgentStrategy, ModelModeType, RETRIEVE_TYPE, ToolItem, TtsAutoPlay } from '@/types/app'
 import type {
   RerankingModeEnum,
-  WeightedScoreEnum,
 } from '@/models/datasets'
 export type Inputs = Record<string, string | number | object>
 
@@ -157,7 +156,6 @@ export type DatasetConfigs = {
   }
   reranking_mode?: RerankingModeEnum
   weights?: {
-    weight_type: WeightedScoreEnum
     vector_setting: {
       vector_weight: number
       embedding_provider_name: string
