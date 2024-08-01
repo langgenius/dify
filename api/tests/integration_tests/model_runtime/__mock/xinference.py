@@ -106,7 +106,7 @@ class MockXinferenceClass:
     def _check_cluster_authenticated(self):
         self._cluster_authed = True
         
-    def rerank(self: RESTfulRerankModelHandle, documents: list[str], query: str, top_n: int) -> dict:
+    def rerank(self: RESTfulRerankModelHandle, documents: list[str], query: str, top_n: int, return_documents: bool) -> dict:
         # check if self._model_uid is a valid uuid
         if not re.match(r'[a-f0-9]{8}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{12}', self._model_uid) and \
             self._model_uid != 'rerank':
