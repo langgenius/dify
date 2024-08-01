@@ -155,6 +155,7 @@ docker-legacy/volumes/milvus/*
 docker-legacy/volumes/chroma/*
 
 docker/volumes/app/storage/*
+docker/volumes/certbot/*
 docker/volumes/db/data/*
 docker/volumes/redis/data/*
 docker/volumes/weaviate/*
@@ -174,5 +175,6 @@ sdks/python-client/dify_client.egg-info
 .vscode/*
 !.vscode/launch.json
 pyrightconfig.json
+api/.vscode
 
 .idea/

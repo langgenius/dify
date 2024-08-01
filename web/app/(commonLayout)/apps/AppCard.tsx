@@ -28,6 +28,9 @@ import EditAppModal from '@/app/components/explore/create-app-modal'
 import SwitchAppModal from '@/app/components/app/switch-app-modal'
 import type { Tag } from '@/app/components/base/tag-management/constant'
 import TagSelector from '@/app/components/base/tag-management/selector'
+import type { EnvironmentVariable } from '@/app/components/workflow/types'
+import DSLExportConfirmModal from '@/app/components/workflow/dsl-export-confirm-modal'
+import { fetchWorkflowDraft } from '@/service/workflow'
 
 export type AppCardProps = {
   app: App
@@ -50,6 +53,7 @@ const AppCard = ({ app, onRefresh }: AppCardProps) => {
   const [showDuplicateModal, setShowDuplicateModal] = useState(false)
   const [showSwitchModal, setShowSwitchModal] = useState<boolean>(false)
   const [showConfirmDelete, setShowConfirmDelete] = useState(false)
+  const [secretEnvList, setSecretEnvList] = useState<EnvironmentVariable[]>([])
 
   const onConfirmDelete = useCallback(async () => {
     try {
@@ -123,14 +127,36 @@ const AppCard = ({ app, onRefresh }: AppCardProps) => {
     }
   }
 
-  const onExport = async () => {
+  const onExport = async (include = false) => {
     try {
-      const { data } = await exportAppConfig(app.id)
+      const { data } = await exportAppConfig({
+        appID: app.id,
+        include,
+      })
       const a = document.createElement('a')
       const file = new Blob([data], { type: 'application/yaml' })
       a.href = URL.createObjectURL(file)
       a.download = `${app.name}.yml`
       a.click()
+    }
+    catch (e) {
+      notify({ type: 'error', message: t('app.exportFailed') })
+    }
+  }
+
+  const exportCheck = async () => {
+    if (app.mode !== 'workflow' && app.mode !== 'advanced-chat') {
+      onExport()
+      return
+    }
+    try {
+      const workflowDraft = await fetchWorkflowDraft(`/apps/${app.id}/workflows/draft`)
+      const list = (workflowDraft.environment_variables || []).filter(env => env.value_type === 'secret')
+      if (list.length === 0) {
+        onExport()
+        return
+      }
+      setSecretEnvList(list)
     }
     catch (e) {
       notify({ type: 'error', message: t('app.exportFailed') })
@@ -164,7 +190,7 @@ const AppCard = ({ app, onRefresh }: AppCardProps) => {
       e.stopPropagation()
       props.onClick?.()
       e.preventDefault()
-      onExport()
+      exportCheck()
     }
     const onClickSwitch = async (e: React.MouseEvent<HTMLDivElement>) => {
       e.stopPropagation()
@@ -369,6 +395,13 @@ const AppCard = ({ app, onRefresh }: AppCardProps) => {
           onClose={() => setShowConfirmDelete(false)}
           onConfirm={onConfirmDelete}
           onCancel={() => setShowConfirmDelete(false)}
+        />
+      )}
+      {secretEnvList.length > 0 && (
+        <DSLExportConfirmModal
+          envList={secretEnvList}
+          onConfirm={onExport}
+          onClose={() => setSecretEnvList([])}
         />
       )}
     </>

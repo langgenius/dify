@@ -21,3 +21,55 @@ parameters:
       zh_Hans: 输入关键词即可使用Firecrawl API进行搜索。
     llm_description: Efficiently extract keywords from user text.
     form: llm
+############## Page Options #######################
+  - name: onlyMainContent
+    type: boolean
+    default: false
+    label:
+      en_US: only Main Content
+      zh_Hans: 仅抓取主要内容
+    human_description:
+      en_US: Only return the main content of the page excluding headers, navs, footers, etc.
+      zh_Hans: 只返回页面的主要内容，不包括头部、导航栏、尾部等。
+    form: form
+  - name: fetchPageContent
+    type: boolean
+    default: true
+    label:
+      en_US: fetch Page Content
+      zh_Hans: 抓取页面内容
+    human_description:
+      en_US: Fetch the content of each page. If false, defaults to a basic fast serp API.
+      zh_Hans: 获取每个页面的内容。如果为否，则使用基本的快速搜索结果页面API。
+    form: form
+  - name: includeHtml
+    type: boolean
+    default: false
+    label:
+      en_US: include Html
+      zh_Hans: 包含HTML
+    human_description:
+      en_US: Include the HTML version of the content on page. Will output a html key in the response.
+      zh_Hans: 返回中包含一个HTML版本的内容，将以html键返回。
+    form: form
+  - name: includeRawHtml
+    type: boolean
+    default: false
+    label:
+      en_US: include Raw Html
+      zh_Hans: 包含原始HTML
+    human_description:
+      en_US: Include the raw HTML content of the page. Will output a rawHtml key in the response.
+      zh_Hans: 返回中包含一个原始HTML版本的内容，将以rawHtml键返回。
+    form: form
+############## Search Options #######################
+  - name: limit
+    type: number
+    min: 0
+    label:
+      en_US: Maximum results
+      zh_Hans: 最大结果数量
+    human_description:
+      en_US: Maximum number of results. Max is 20 during beta.
+      zh_Hans: 最大结果数量。在测试阶段，最大为20。
+    form: form

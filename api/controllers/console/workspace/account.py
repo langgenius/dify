@@ -1,10 +1,11 @@
 import datetime
 
 import pytz
-from flask import current_app, request
+from flask import request
 from flask_login import current_user
 from flask_restful import Resource, fields, marshal_with, reqparse
 
+from configs import dify_config
 from constants.languages import supported_language
 from controllers.console import api
 from controllers.console.setup import setup_required
@@ -36,7 +37,7 @@ class AccountInitApi(Resource):
 
         parser = reqparse.RequestParser()
 
-        if current_app.config['EDITION'] == 'CLOUD':
+        if dify_config.EDITION == 'CLOUD':
             parser.add_argument('invitation_code', type=str, location='json')
 
         parser.add_argument(
@@ -45,7 +46,7 @@ class AccountInitApi(Resource):
                             required=True, location='json')
         args = parser.parse_args()
 
-        if current_app.config['EDITION'] == 'CLOUD':
+        if dify_config.EDITION == 'CLOUD':
             if not args['invitation_code']:
                 raise ValueError('invitation_code is required')
 

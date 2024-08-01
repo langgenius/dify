@@ -53,10 +53,11 @@ const Operation: FC<OperationProps> = ({
     content: messageContent,
     annotation,
     feedback,
+    adminFeedback,
     agent_thoughts,
   } = item
   const hasAnnotation = !!annotation?.id
-  const [localFeedback, setLocalFeedback] = useState(feedback)
+  const [localFeedback, setLocalFeedback] = useState(config?.supportAnnotation ? adminFeedback : feedback)
 
   const content = useMemo(() => {
     if (agent_thoughts?.length)
@@ -125,6 +126,7 @@ const Operation: FC<OperationProps> = ({
                   id={id}
                   value={content}
                   noCache={false}
+                  voice={config?.text_to_speech?.voice}
                   className='hidden group-hover:block'
                 />
               </>

@@ -375,6 +375,10 @@ class AzureOpenAILargeLanguageModel(_CommonAzureOpenAI, LargeLanguageModel):
                 continue
 
             delta = chunk.choices[0]
+            # NOTE: For fix https://github.com/langgenius/dify/issues/5790
+            if delta.delta is None:
+                continue
+
 
             # extract tool calls from response
             self._update_tool_calls(tool_calls=tool_calls, tool_calls_response=delta.delta.tool_calls)
@@ -501,7 +505,7 @@ class AzureOpenAILargeLanguageModel(_CommonAzureOpenAI, LargeLanguageModel):
                         sub_messages.append(sub_message_dict)
                 message_dict = {"role": "user", "content": sub_messages}
         elif isinstance(message, AssistantPromptMessage):
-            message = cast(AssistantPromptMessage, message)
+            # message = cast(AssistantPromptMessage, message)
             message_dict = {"role": "assistant", "content": message.content}
             if message.tool_calls:
                 message_dict["tool_calls"] = [helper.dump_model(tool_call) for tool_call in message.tool_calls]

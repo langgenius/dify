@@ -7,7 +7,7 @@ import {
   useNodeDataUpdate,
   useWorkflow,
 } from '@/app/components/workflow/hooks'
-import { getNodeInfoById, isSystemVar, toNodeOutputVars } from '@/app/components/workflow/nodes/_base/components/variable/utils'
+import { getNodeInfoById, isENV, isSystemVar, toNodeOutputVars } from '@/app/components/workflow/nodes/_base/components/variable/utils'
 
 import type { CommonNodeType, InputVar, ValueSelector, Var, Variable } from '@/app/components/workflow/types'
 import { BlockEnum, InputVarType, NodeRunningStatus, VarType } from '@/app/components/workflow/types'
@@ -329,7 +329,7 @@ const useOneStepRun = <T>({
     if (!variables)
       return []
 
-    const varInputs = variables.map((item) => {
+    const varInputs = variables.filter(item => !isENV(item.value_selector)).map((item) => {
       const originalVar = getVar(item.value_selector)
       if (!originalVar) {
         return {

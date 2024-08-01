@@ -328,7 +328,9 @@ class AppModelConfig(db.Model):
                 return {'retrieval_model': 'single'}
             else:
                 return dataset_configs
-        return {'retrieval_model': 'single'}
+        return {
+                'retrieval_model': 'multiple',
+            }
 
     @property
     def file_upload_dict(self) -> dict:

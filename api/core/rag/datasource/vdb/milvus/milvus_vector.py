@@ -5,6 +5,7 @@ from uuid import uuid4
 
 from pydantic import BaseModel, model_validator
 from pymilvus import MilvusClient, MilvusException, connections
+from pymilvus.milvus_client import IndexParams
 
 from configs import dify_config
 from core.rag.datasource.entity.embedding import Embeddings
@@ -115,7 +116,8 @@ class MilvusVector(BaseVector):
             uri = "https://" + str(self._client_config.host) + ":" + str(self._client_config.port)
         else:
             uri = "http://" + str(self._client_config.host) + ":" + str(self._client_config.port)
-        connections.connect(alias=alias, uri=uri, user=self._client_config.user, password=self._client_config.password)
+        connections.connect(alias=alias, uri=uri, user=self._client_config.user, password=self._client_config.password,
+                            db_name=self._client_config.database)
 
         from pymilvus import utility
         if utility.has_collection(self._collection_name, using=alias):
@@ -130,7 +132,8 @@ class MilvusVector(BaseVector):
             uri = "https://" + str(self._client_config.host) + ":" + str(self._client_config.port)
         else:
             uri = "http://" + str(self._client_config.host) + ":" + str(self._client_config.port)
-        connections.connect(alias=alias, uri=uri, user=self._client_config.user, password=self._client_config.password)
+        connections.connect(alias=alias, uri=uri, user=self._client_config.user, password=self._client_config.password,
+                            db_name=self._client_config.database)
 
         from pymilvus import utility
         if utility.has_collection(self._collection_name, using=alias):
@@ -248,11 +251,15 @@ class MilvusVector(BaseVector):
                 # Since primary field is auto-id, no need to track it
                 self._fields.remove(Field.PRIMARY_KEY.value)
 
+                # Create Index params for the collection
+                index_params_obj = IndexParams()
+                index_params_obj.add_index(field_name=Field.VECTOR.value, **index_params)
+
                 # Create the collection
                 collection_name = self._collection_name
-                self._client.create_collection_with_schema(collection_name=collection_name,
-                                                           schema=schema, index_param=index_params,
-                                                           consistency_level=self._consistency_level)
+                self._client.create_collection(collection_name=collection_name,
+                                               schema=schema, index_params=index_params_obj,
+                                               consistency_level=self._consistency_level)
             redis_client.set(collection_exist_cache_key, 1, ex=3600)
 
     def _init_client(self, config) -> MilvusClient:

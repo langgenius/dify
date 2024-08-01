@@ -29,6 +29,7 @@ import { useStore as useAppStore } from '@/app/components/app/store'
 import WorkflowProcessItem from '@/app/components/base/chat/chat/answer/workflow-process'
 import type { WorkflowProcess } from '@/app/components/base/chat/types'
 import type { SiteInfo } from '@/models/share'
+import { useChatContext } from '@/app/components/base/chat/chat/context'
 
 const MAX_DEPTH = 3
 
@@ -127,6 +128,10 @@ const GenerationItem: FC<IGenerationItemProps> = ({
   const [childFeedback, setChildFeedback] = useState<Feedbacktype>({
     rating: null,
   })
+  const {
+    config,
+  } = useChatContext()
+
   const setCurrentLogItem = useAppStore(s => s.setCurrentLogItem)
   const setShowPromptLogModal = useAppStore(s => s.setShowPromptLogModal)
 
@@ -430,6 +435,7 @@ const GenerationItem: FC<IGenerationItemProps> = ({
                     <AudioBtn
                       id={messageId!}
                       className={'mr-1'}
+                      voice={config?.text_to_speech?.voice}
                     />
                   </>
                 )}

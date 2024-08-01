@@ -6,6 +6,7 @@ from typing import Any, Optional
 from flask import Flask, current_app
 from pydantic import BaseModel, ConfigDict
 
+from configs import dify_config
 from core.app.apps.base_app_queue_manager import AppQueueManager, PublishFrom
 from core.app.entities.queue_entities import QueueMessageReplaceEvent
 from core.moderation.base import ModerationAction, ModerationOutputsResult
@@ -20,8 +21,6 @@ class ModerationRule(BaseModel):
 
 
 class OutputModeration(BaseModel):
-    DEFAULT_BUFFER_SIZE: int = 300
-
     tenant_id: str
     app_id: str
 
@@ -76,10 +75,10 @@ class OutputModeration(BaseModel):
         return final_output
 
     def start_thread(self) -> threading.Thread:
-        buffer_size = int(current_app.config.get('MODERATION_BUFFER_SIZE', self.DEFAULT_BUFFER_SIZE))
+        buffer_size = dify_config.MODERATION_BUFFER_SIZE
         thread = threading.Thread(target=self.worker, kwargs={
             'flask_app': current_app._get_current_object(),
-            'buffer_size': buffer_size if buffer_size > 0 else self.DEFAULT_BUFFER_SIZE
+            'buffer_size': buffer_size if buffer_size > 0 else dify_config.MODERATION_BUFFER_SIZE
         })
 
         thread.start()

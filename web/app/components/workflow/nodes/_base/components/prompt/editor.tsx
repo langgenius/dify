@@ -9,6 +9,7 @@ import { useTranslation } from 'react-i18next'
 import { useBoolean } from 'ahooks'
 import { BlockEnum, EditionType } from '../../../../types'
 import type {
+  ModelConfig,
   Node,
   NodeOutPutVar,
   Variable,
@@ -16,6 +17,7 @@ import type {
 
 import Wrap from '../editor/wrap'
 import { CodeLanguage } from '../../../code/types'
+import PromptGeneratorBtn from '../../../llm/components/prompt-generator-btn'
 import cn from '@/utils/classnames'
 import ToggleExpandBtn from '@/app/components/workflow/nodes/_base/components/toggle-expand-btn'
 import useToggleExpend from '@/app/components/workflow/nodes/_base/hooks/use-toggle-expend'
@@ -28,6 +30,7 @@ import s from '@/app/components/app/configuration/config-prompt/style.module.css
 import { useEventEmitterContextContext } from '@/context/event-emitter'
 import { PROMPT_EDITOR_INSERT_QUICKLY } from '@/app/components/base/prompt-editor/plugins/update-block'
 import { Variable02 } from '@/app/components/base/icons/src/vender/solid/development'
+import ActionButton from '@/app/components/base/action-button'
 import TooltipPlus from '@/app/components/base/tooltip-plus'
 import CodeEditor from '@/app/components/workflow/nodes/_base/components/editor/code-editor/editor-support-vars'
 import Switch from '@/app/components/base/switch'
@@ -55,6 +58,9 @@ type Props = {
   }
   nodesOutputVars?: NodeOutPutVar[]
   availableNodes?: Node[]
+  isSupportPromptGenerator?: boolean
+  onGenerated?: (prompt: string) => void
+  modelConfig?: ModelConfig
   // for jinja
   isSupportJinja?: boolean
   editionType?: EditionType
@@ -80,11 +86,14 @@ const Editor: FC<Props> = ({
   hasSetBlockStatus,
   nodesOutputVars,
   availableNodes = [],
+  isSupportPromptGenerator,
   isSupportJinja,
   editionType,
   onEditionTypeChange,
   varList = [],
   handleAddVariable,
+  onGenerated,
+  modelConfig,
 }) => {
   const { t } = useTranslation()
   const { eventEmitter } = useEventEmitterContextContext()
@@ -120,13 +129,17 @@ const Editor: FC<Props> = ({
     <Wrap className={cn(className, wrapClassName)} style={wrapStyle} isInNode isExpand={isExpand}>
       <div ref={ref} className={cn(isFocus ? s.gradientBorder : 'bg-gray-100', isExpand && 'h-full', '!rounded-[9px] p-0.5')}>
         <div className={cn(isFocus ? 'bg-gray-50' : 'bg-gray-100', isExpand && 'h-full flex flex-col', 'rounded-lg')}>
-          <div className={cn(headerClassName, 'pt-1 pl-3 pr-2 flex justify-between h-6 items-center')}>
+          <div className={cn(headerClassName, 'pt-1 pl-3 pr-2 flex justify-between items-center')}>
             <div className='leading-4 text-xs font-semibold text-gray-700 uppercase'>{title}</div>
             <div className='flex items-center'>
               <div className='leading-[18px] text-xs font-medium text-gray-500'>{value?.length || 0}</div>
+              {isSupportPromptGenerator && (
+                <PromptGeneratorBtn className='ml-[5px]' onGenerated={onGenerated} modelConfig={modelConfig} />
+              )}
+
               <div className='w-px h-3 ml-2 mr-2 bg-gray-200'></div>
               {/* Operations */}
-              <div className='flex items-center space-x-2'>
+              <div className='flex items-center space-x-[2px]'>
                 {isSupportJinja && (
                   <TooltipPlus
                     popupContent={
@@ -153,19 +166,28 @@ const Editor: FC<Props> = ({
                 {!readOnly && (
                   <TooltipPlus
                     popupContent={`${t('workflow.common.insertVarTip')}`}
+                    asChild
                   >
-                    <Variable02 className='w-3.5 h-3.5 text-gray-500 cursor-pointer' onClick={handleInsertVariable} />
+                    <ActionButton onClick={handleInsertVariable}>
+                      <Variable02 className='w-4 h-4' />
+                    </ActionButton>
                   </TooltipPlus>
                 )}
                 {showRemove && (
-                  <RiDeleteBinLine className='w-3.5 h-3.5 text-gray-500 cursor-pointer' onClick={onRemove} />
+                  <ActionButton onClick={onRemove}>
+                    <RiDeleteBinLine className='w-4 h-4' />
+                  </ActionButton>
                 )}
                 {!isCopied
                   ? (
-                    <Clipboard className='w-3.5 h-3.5 text-gray-500 cursor-pointer' onClick={handleCopy} />
+                    <ActionButton onClick={handleCopy}>
+                      <Clipboard className='w-4 h-4' />
+                    </ActionButton>
                   )
                   : (
-                    <ClipboardCheck className='mx-1 w-3.5 h-3.5 text-gray-500' />
+                    <ActionButton>
+                      <ClipboardCheck className='w-4 h-4' />
+                    </ActionButton>
                   )
                 }
                 <ToggleExpandBtn isExpand={isExpand} onExpandChange={setIsExpand} />
