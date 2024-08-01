@@ -263,7 +263,7 @@ const useConfig = (id: string, payload: KnowledgeRetrievalNodeType) => {
     handleMultipleRetrievalConfigChange,
     handleModelChanged,
     handleCompletionParamsChange,
-    selectedDatasets,
+    selectedDatasets: selectedDatasets.filter(d => d.name),
     handleOnDatasetsChange,
     isShowSingleRun,
     hideSingleRun,
