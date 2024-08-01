@@ -71,30 +71,32 @@ const LimitConfig: FC<Props> = ({
           />
         }
       >
-        {payload && (
-          <div className='flex justify-between items-center h-8 space-x-2'>
-            <input
-              value={(payload?.size || LIMIT_SIZE_DEFAULT) as number}
-              className='shrink-0 block pl-3 w-12 h-8 appearance-none outline-none rounded-lg bg-gray-100 text-[13px] text-gra-900'
-              type='number'
-              min={LIMIT_SIZE_MIN}
-              max={LIMIT_SIZE_MAX}
-              step={1}
-              onChange={e => handleLimitSizeChange(e.target.value)}
-              onBlur={handleBlur}
-              disabled={readonly || !payload?.enabled}
-            />
-            <Slider
-              className='grow'
-              value={(payload?.size || LIMIT_SIZE_DEFAULT) as number}
-              min={LIMIT_SIZE_MIN}
-              max={LIMIT_SIZE_MAX}
-              step={1}
-              onChange={handleLimitSizeChange}
-              disabled={readonly || !payload?.enabled}
-            />
-          </div>
-        )}
+        {payload?.enabled
+          ? (
+            <div className='flex justify-between items-center h-8 space-x-2'>
+              <input
+                value={(payload?.size || LIMIT_SIZE_DEFAULT) as number}
+                className='shrink-0 block pl-3 w-12 h-8 appearance-none outline-none rounded-lg bg-gray-100 text-[13px] text-gra-900'
+                type='number'
+                min={LIMIT_SIZE_MIN}
+                max={LIMIT_SIZE_MAX}
+                step={1}
+                onChange={e => handleLimitSizeChange(e.target.value)}
+                onBlur={handleBlur}
+                disabled={readonly || !payload?.enabled}
+              />
+              <Slider
+                className='grow'
+                value={(payload?.size || LIMIT_SIZE_DEFAULT) as number}
+                min={LIMIT_SIZE_MIN}
+                max={LIMIT_SIZE_MAX}
+                step={1}
+                onChange={handleLimitSizeChange}
+                disabled={readonly || !payload?.enabled}
+              />
+            </div>
+          )
+          : null}
       </Field>
     </div>
   )

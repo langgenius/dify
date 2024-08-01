@@ -2,7 +2,7 @@ import { useCallback } from 'react'
 import produce from 'immer'
 import type { ValueSelector, Var } from '../../types'
 import { VarType } from '../../types'
-import type { Limit, ListFilterNodeType } from './types'
+import type { Limit, ListFilterNodeType, OrderBy } from './types'
 import useNodeCrud from '@/app/components/workflow/nodes/_base/hooks/use-node-crud'
 import {
   useNodesReadOnly,
@@ -31,12 +31,30 @@ const useConfig = (id: string, payload: ListFilterNodeType) => {
     setInputs(newInputs)
   }, [inputs, setInputs])
 
+  const handleOrderByEnabledChange = useCallback((enabled: boolean) => {
+    const newInputs = produce(inputs, (draft) => {
+      draft.orderBy.enabled = enabled
+    })
+    setInputs(newInputs)
+  }, [inputs, setInputs])
+
+  const handleOrderByTypeChange = useCallback((type: OrderBy) => {
+    return () => {
+      const newInputs = produce(inputs, (draft) => {
+        draft.orderBy.value = type
+      })
+      setInputs(newInputs)
+    }
+  }, [inputs, setInputs])
+
   return {
     readOnly,
     inputs,
     filterVar,
     handleVarChanges,
     handleLimitChange,
+    handleOrderByEnabledChange,
+    handleOrderByTypeChange,
   }
 }
 

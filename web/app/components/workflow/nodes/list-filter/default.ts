@@ -1,12 +1,21 @@
 import { BlockEnum } from '../../types'
 import type { NodeDefault } from '../../types'
-import { type ListFilterNodeType } from './types'
+import { type ListFilterNodeType, OrderBy } from './types'
 import { ALL_CHAT_AVAILABLE_BLOCKS, ALL_COMPLETION_AVAILABLE_BLOCKS } from '@/app/components/workflow/constants'
 const i18nPrefix = 'workflow.errorMsg'
 
 const nodeDefault: NodeDefault<ListFilterNodeType> = {
   defaultValue: {
     variable: [],
+    orderBy: {
+      enabled: false,
+      key: '',
+      value: OrderBy.ASC,
+    },
+    limit: {
+      enabled: false,
+      size: 10,
+    },
   },
   getAvailablePrevNodes(isChatMode: boolean) {
     const nodes = isChatMode
