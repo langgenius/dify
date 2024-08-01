@@ -1,4 +1,3 @@
-const translation = {
-}
+const translation = {}
 
 export default translation
