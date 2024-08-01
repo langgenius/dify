@@ -125,6 +125,13 @@
       "prompt_name": "Hindi",
       "example": "नमस्ते, Dify!",
       "supported": "true"
+    },
+    {
+      "value": "tr-TR",
+      "name": "Türkçe",
+      "prompt_name": "Türkçe",
+      "example": "Selam!",
+      "supported": "true"
     }
   ]
 }
