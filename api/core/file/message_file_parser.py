@@ -3,8 +3,7 @@ from typing import Any, Union
 
 import requests
 
-from core.app.app_config.entities import FileExtraConfig
-from core.file.file_obj import FileBelongsTo, FileTransferMethod, FileType, FileVar
+from core.file.file_obj import FileBelongsTo, FileExtraConfig, FileTransferMethod, FileType, FileVar
 from extensions.ext_database import db
 from models.account import Account
 from models.model import EndUser, MessageFile, UploadFile

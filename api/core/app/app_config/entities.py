@@ -3,6 +3,7 @@ from typing import Any, Optional
 
 from pydantic import BaseModel
 
+from core.file.file_obj import FileExtraConfig
 from core.model_runtime.entities.message_entities import PromptMessageRole
 from models.model import AppMode
 

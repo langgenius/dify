@@ -4,10 +4,9 @@ from collections.abc import Mapping, Sequence
 from typing import Any, Optional, cast
 
 from configs import dify_config
-from core.app.app_config.entities import FileExtraConfig
 from core.app.apps.base_app_queue_manager import GenerateTaskStoppedException
 from core.app.entities.app_invoke_entities import InvokeFrom
-from core.file.file_obj import FileTransferMethod, FileType, FileVar
+from core.file.file_obj import FileExtraConfig, FileTransferMethod, FileType, FileVar
 from core.workflow.callbacks.base_workflow_callback import WorkflowCallback
 from core.workflow.entities.node_entities import NodeRunMetadataKey, NodeRunResult, NodeType, SystemVariable
 from core.workflow.entities.variable_pool import VariablePool, VariableValue
