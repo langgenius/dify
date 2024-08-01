@@ -312,7 +312,7 @@ class AzureOpenAILargeLanguageModel(_CommonAzureOpenAI, LargeLanguageModel):
                     if content.get('type') == 'document':
                         content['type'] = 'text'
                         contents_new = content['text']  #单独将类型为文档的内容提取出来
-                            #删除原来的文档内容
+                        #删除原来的文档内容
                         contents.remove(content)
                     #将这个content的type改为text
         # 这里将类型为文档的提示词重新构建为系统提示词                
