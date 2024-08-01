@@ -13,7 +13,7 @@ class Subscription(Resource):
     @setup_required
     @login_required
     @account_initialization_required
-    @only_edition_cloud
+    # @only_edition_cloud  # TODO: remove this decorator
     def get(self):
 
         parser = reqparse.RequestParser()
@@ -34,8 +34,12 @@ class Invoices(Resource):
     @setup_required
     @login_required
     @account_initialization_required
-    @only_edition_cloud
+    # @only_edition_cloud  # TODO: remove this decorator
+
     def get(self):
+
+        # integrate stripe and update this 
+
         BillingService.is_tenant_owner_or_admin(current_user)
         return BillingService.get_invoices(current_user.email, current_user.current_tenant_id)
 

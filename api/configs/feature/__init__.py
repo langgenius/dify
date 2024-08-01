@@ -219,9 +219,11 @@ class BillingConfig(BaseSettings):
     """
     Platform Billing Configurations
     """
+    # TODO enable billing
     BILLING_ENABLED: bool = Field(
         description='whether to enable billing',
-        default=False,
+        # default=False,
+        default=True,
     )
 
 

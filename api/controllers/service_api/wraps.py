@@ -81,6 +81,7 @@ def validate_app_token(view: Optional[Callable] = None, *, fetch_user_arg: Optio
         return decorator(view)
 
 
+# TODO , update the to works for all editions
 def cloud_edition_billing_resource_check(resource: str,
                                          api_token_type: str,
                                          error_msg: str = "You have reached the limit of your subscription."):
@@ -111,6 +112,7 @@ def cloud_edition_billing_resource_check(resource: str,
     return interceptor
 
 
+# TODO , update the to works for all editions
 def cloud_edition_billing_knowledge_limit_check(resource: str,
                                                 api_token_type: str,
                                                 error_msg: str = "To unlock this feature and elevate your Dify experience, please upgrade to a paid plan."):

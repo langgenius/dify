@@ -1414,3 +1414,6 @@ class TraceAppConfig(db.Model):
             "created_at": self.created_at.__str__() if self.created_at else None,
             'updated_at': self.updated_at.__str__() if self.updated_at else None,
         }
+
+
+

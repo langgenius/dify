@@ -5,11 +5,13 @@ from services.billing_service import BillingService
 from services.enterprise.enterprise_service import EnterpriseService
 
 
+# TODO: update to enable billing
 class SubscriptionModel(BaseModel):
     plan: str = 'sandbox'
     interval: str = ''
 
 
+# TODO: update to enable billing
 class BillingModel(BaseModel):
     enabled: bool = False
     subscription: SubscriptionModel = SubscriptionModel()
@@ -51,9 +53,13 @@ class FeatureService:
 
         cls._fulfill_params_from_env(features)
 
+        
+        # TODO update to enable billing 
         if dify_config.BILLING_ENABLED:
             cls._fulfill_params_from_billing_api(features, tenant_id)
 
+        print('features before sending')
+        print(features)
         return features
 
     @classmethod
@@ -73,11 +79,14 @@ class FeatureService:
 
     @classmethod
     def _fulfill_params_from_billing_api(cls, features: FeatureModel, tenant_id: str):
+        # TODO this is return instance of BillingModel based on the user
         billing_info = BillingService.get_info(tenant_id)
+        print("billing info")
+        print(billing_info)
 
-        features.billing.enabled = billing_info['enabled']
-        features.billing.subscription.plan = billing_info['subscription']['plan']
-        features.billing.subscription.interval = billing_info['subscription']['interval']
+        features.billing.enabled = True 
+        features.billing.subscription.plan = billing_info['billing']['subscription']['plan']
+        features.billing.subscription.interval = billing_info['billing']['subscription']['interval']
 
         if 'members' in billing_info:
             features.members.size = billing_info['members']['size']

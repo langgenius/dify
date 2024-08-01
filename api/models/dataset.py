@@ -101,6 +101,7 @@ class Dataset(db.Model):
             DocumentSegment.enabled == True
         ).scalar()
 
+
     @property
     def word_count(self):
         return Document.query.with_entities(func.coalesce(func.sum(Document.word_count))) \

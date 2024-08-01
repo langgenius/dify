@@ -166,11 +166,12 @@ class Tenant(db.Model):
     id = db.Column(StringUUID, server_default=db.text('uuid_generate_v4()'))
     name = db.Column(db.String(255), nullable=False)
     encrypt_public_key = db.Column(db.Text)
-    plan = db.Column(db.String(255), nullable=False, server_default=db.text("'basic'::character varying"))
+    plan = db.Column(db.String(255), nullable=False, server_default=db.text("'sandbox'::character varying"))
     status = db.Column(db.String(255), nullable=False, server_default=db.text("'normal'::character varying"))
     custom_config = db.Column(db.Text)
     created_at = db.Column(db.DateTime, nullable=False, server_default=db.text('CURRENT_TIMESTAMP(0)'))
     updated_at = db.Column(db.DateTime, nullable=False, server_default=db.text('CURRENT_TIMESTAMP(0)'))
+
 
     def get_accounts(self) -> list[Account]:
         return db.session.query(Account).filter(
@@ -247,3 +248,123 @@ class InvitationCode(db.Model):
     used_by_account_id = db.Column(StringUUID)
     deprecated_at = db.Column(db.DateTime)
     created_at = db.Column(db.DateTime, nullable=False, server_default=db.text('CURRENT_TIMESTAMP(0)'))
+
+
+
+
+class PlanType(str, enum.Enum):
+    SANDBOX = 'sandbox'
+    PROFESSIONAL = 'professional'
+    TEAM = 'team'
+    CUSTOM = 'custom'
+
+class SupportType(str, enum.Enum):
+    COMMUNITY_FORUMS = 'community_forums'
+    EMAIL_SUPPORT = 'email_support'
+    PRIORITY_EMAIL_CHAT = 'priority_email_chat'
+
+class ProcessingPriority(str, enum.Enum):
+    STANDARD = 'standard'
+    PRIORITY = 'priority'
+
+    
+class BasePlan(db.Model):
+    __tablename__ = 'base_plans'
+    __table_args__ = (
+        db.PrimaryKeyConstraint('id', name='base_plan_pkey'),
+        db.UniqueConstraint('plan_type', name='unique_plan_type')
+    )
+
+    id = db.Column(StringUUID, server_default=db.text('uuid_generate_v4()'))
+    plan_type = db.Column(db.String(255), nullable=False , server_default=db.text("'sandbox'::character varying"))
+    name = db.Column(db.String(255), nullable=False)
+    description = db.Column(db.Text)
+    price_monthly = db.Column(db.Float, nullable=False)
+    price_yearly = db.Column(db.Float, nullable=False)
+    message_credits = db.Column(db.Integer, nullable=False)
+    team_members = db.Column(db.Integer, nullable=False)
+    build_apps = db.Column(db.Integer, nullable=False)
+    vector_storage = db.Column(db.Integer, nullable=False)  # in MB
+    documents_upload_quota = db.Column(db.Integer, nullable=False)
+    documents_bulk_upload = db.Column(db.Boolean, nullable=False)
+    document_processing_priority = db.Column(db.String(255), nullable=False , server_default=db.text("'standard'::character varying"))
+    message_requests = db.Column(db.Integer, nullable=False)
+    annotation_quota_limit = db.Column(db.Integer, nullable=False)
+    logs_history = db.Column(db.Integer, nullable=False)  # in days
+    custom_tools = db.Column(db.Integer, nullable=False)
+    support = db.Column(db.String(255), nullable=False , server_default=db.text("'community_forums'::character varying"))
+    custom_branding = db.Column(db.Boolean, nullable=False)  # for web app logo change
+    created_at = db.Column(db.DateTime, nullable=False, server_default=db.text('CURRENT_TIMESTAMP(0)'))
+    model_load_balancing_enabled = db.Column(db.Boolean, nullable=False, server_default=db.text('false'))
+    dataset_operator_enabled = db.Column(db.Boolean, nullable=False, server_default=db.text('false'))
+    updated_at = db.Column(db.DateTime, nullable=False, server_default=db.text('CURRENT_TIMESTAMP(0)'))
+
+    def __repr__(self):
+        return f'<BasePlan {self.plan_type}>'
+
+        
+        
+class PaymentStatus(str, enum.Enum):
+    PENDING = 'pending'
+    SUCCEEDED = 'succeeded'
+    FAILED = 'failed'
+    REFUNDED = 'refunded'
+
+
+
+
+class PlanInterval(str, enum.Enum):
+    MONTHLY = 'monthly'
+    YEARLY = 'yearly'
+
+
+class TenantPlan(db.Model):
+    __tablename__ = 'tenant_plans'
+    __table_args__ = (
+        db.PrimaryKeyConstraint('id', name='tenant_plan_pkey'),
+        db.UniqueConstraint('tenant_id', 'base_plan_id', 'start_date', name='unique_tenant_plan')
+    )
+
+    id = db.Column(StringUUID, server_default=db.text('uuid_generate_v4()'))
+    tenant_id = db.Column(StringUUID, nullable=False)
+    base_plan_id = db.Column(StringUUID, nullable=False)
+    start_date = db.Column(db.DateTime, nullable=False)
+    end_date = db.Column(db.DateTime, nullable=False)
+    interval = db.Column(db.String(255), nullable=False , server_default=db.text("'monthly'::character varying"))
+
+    is_active = db.Column(db.Boolean, nullable=False, default=True)
+    multiplier = db.Column(db.Float, nullable=False, default=1.0)
+    discount = db.Column(db.Float, nullable=False, default=0.0)  # Percentage
+    has_paid = db.Column(db.Boolean, nullable=False, default=False)
+    amount = db.Column(db.Float, nullable=False, default=0.0)
+    transaction_id = db.Column(StringUUID, nullable=True)
+    created_at = db.Column(db.DateTime, nullable=False, server_default=db.text('CURRENT_TIMESTAMP(0)'))
+    updated_at = db.Column(db.DateTime, nullable=False, server_default=db.text('CURRENT_TIMESTAMP(0)'))
+
+    def __repr__(self):
+        return f'<TenantPlan {self.tenant_id} - {self.base_plan_id}>'
+
+
+class Transaction(db.Model):
+    __tablename__ = 'transactions'
+    __table_args__ = (
+        db.PrimaryKeyConstraint('id', name='transaction_pkey'),
+    )
+
+    id = db.Column(StringUUID, server_default=db.text('uuid_generate_v4()'))
+    tenant_id = db.Column(StringUUID, nullable=False)
+    amount = db.Column(db.Float, nullable=False)
+    currency = db.Column(db.String(3), nullable=False)
+    status = db.Column(db.String(255), nullable=False , server_default=db.text("'pending'::character varying"))
+    stripe_payment_intent_id = db.Column(db.String(255), nullable=True)
+    stripe_customer_id = db.Column(db.String(255), nullable=True)
+    stripe_payment_method_id = db.Column(db.String(255), nullable=True)
+    stripe_invoice_id = db.Column(db.String(255), nullable=True)
+    stripe_subscription_id = db.Column(db.String(255), nullable=True)
+    payment_method_type = db.Column(db.String(50), nullable=True)
+    description = db.Column(db.Text, nullable=True)
+    created_at = db.Column(db.DateTime, nullable=False, server_default=db.text('CURRENT_TIMESTAMP(0)'))
+    updated_at = db.Column(db.DateTime, nullable=False, server_default=db.text('CURRENT_TIMESTAMP(0)'))
+
+    def __repr__(self):
+        return f'<Transaction {self.id} - {self.status}>'

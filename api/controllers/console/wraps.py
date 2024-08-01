@@ -46,6 +46,7 @@ def only_edition_self_hosted(view):
     return decorated
 
 
+# TODO , update the to works for all editions 
 def cloud_edition_billing_resource_check(resource: str,
                                          error_msg: str = "You have reached the limit of your subscription."):
     def interceptor(view):
@@ -84,7 +85,7 @@ def cloud_edition_billing_resource_check(resource: str,
 
     return interceptor
 
-
+# TODO , update the to works for all editions
 def cloud_edition_billing_knowledge_limit_check(resource: str,
                                                 error_msg: str = "To unlock this feature and elevate your Dify experience, please upgrade to a paid plan."):
     def interceptor(view):
@@ -92,6 +93,7 @@ def cloud_edition_billing_knowledge_limit_check(resource: str,
         def decorated(*args, **kwargs):
             features = FeatureService.get_features(current_user.current_tenant_id)
             if features.billing.enabled:
+                # TODO what is this add segment
                 if resource == 'add_segment':
                     if features.billing.subscription.plan == 'sandbox':
                         abort(403, error_msg)

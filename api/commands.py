@@ -19,7 +19,7 @@ from extensions.ext_redis import redis_client
 from libs.helper import email as email_validate
 from libs.password import hash_password, password_pattern, valid_password
 from libs.rsa import generate_key_pair
-from models.account import Tenant
+from models.account import PlanType, ProcessingPriority, SupportType, Tenant , BasePlan
 from models.dataset import Dataset, DatasetCollectionBinding, DocumentSegment
 from models.dataset import Document as DatasetDocument
 from models.model import Account, App, AppAnnotationSetting, AppMode, Conversation, MessageAnnotation
@@ -642,6 +642,105 @@ where sites.id is null limit 1000"""
     click.echo(click.style('Congratulations! Fix app related site missing issue successful!', fg='green'))
 
 
+
+
+
+def create_base_plans():
+    """Add base plans to the database."""
+    plans = [
+        BasePlan(
+            plan_type=PlanType.SANDBOX,
+            name="Sandbox",
+            description="200 times GPT free trial",
+            price_monthly=0,
+            price_yearly=0,
+            message_credits=200,
+            team_members=1,
+            build_apps=10,
+            vector_storage=5,  # 5MB
+            documents_upload_quota=50,
+            documents_bulk_upload=False,
+            document_processing_priority=ProcessingPriority.STANDARD,
+            message_requests=500,
+            annotation_quota_limit=10,
+            logs_history=15,
+            custom_tools=-1 , # not available
+            support=SupportType.COMMUNITY_FORUMS,
+            custom_branding=False , 
+            dataset_operator_enabled=False,
+            model_load_balancing_enabled=False
+        ),
+        BasePlan(
+            plan_type=PlanType.PROFESSIONAL,
+            name="Professional",
+            description="For individuals and small teams to unlock more power affordably.",
+            price_monthly=59,
+            price_yearly=59*10, 
+            message_credits=5000,
+            team_members=3,
+            build_apps=50,
+            vector_storage=200,  # 200MB
+            documents_upload_quota=500,
+            documents_bulk_upload=True,
+            document_processing_priority=ProcessingPriority.PRIORITY,
+            message_requests=0,  # Unlimited
+            annotation_quota_limit=2000,
+            logs_history=0,  # Unlimited
+            custom_tools=10,
+            support=SupportType.EMAIL_SUPPORT,
+            custom_branding=True , 
+            dataset_operator_enabled=False,
+            model_load_balancing_enabled=False
+        ),
+        BasePlan(
+            plan_type=PlanType.TEAM,
+            name="Team",
+            description="Collaborate without limits and enjoy top-tier performance.",
+            price_monthly=159,
+            price_yearly=159*10,  
+            message_credits=10000,
+            team_members=0,  # Unlimited
+            build_apps=0,  # Unlimited
+            vector_storage=1024,  # 1GB
+            documents_upload_quota=1000,
+            documents_bulk_upload=True,
+            document_processing_priority=ProcessingPriority.PRIORITY,
+            message_requests=0,  # Unlimited
+            annotation_quota_limit=5000,
+            logs_history=0,  # Unlimited
+            custom_tools=0,  # Unlimited
+            support=SupportType.PRIORITY_EMAIL_CHAT,
+            custom_branding=True ,
+            dataset_operator_enabled=True,
+            model_load_balancing_enabled=True
+        )
+    ]
+
+    for plan in plans:
+        existing_plan = BasePlan.query.filter_by(plan_type=plan.plan_type).first()
+        if existing_plan:
+            for key, value in plan.__dict__.items():
+                if key != '_sa_instance_state':
+                    setattr(existing_plan, key, value)
+        else:
+            db.session.add(plan)
+
+    db.session.commit()
+    print("Base plans have been added or updated.")
+
+
+# You can call this function in your seed command
+@click.command('seed_base_plans')
+def seed_base_plans_command():
+    """Seed the base plans."""
+    create_base_plans()
+    click.echo('Base plans have been seeded!')
+
+
+
+
+
+
 def register_commands(app):
     app.cli.add_command(reset_password)
     app.cli.add_command(reset_email)
@@ -652,3 +751,4 @@ def register_commands(app):
     app.cli.add_command(create_tenant)
     app.cli.add_command(upgrade_db)
     app.cli.add_command(fix_app_site_missing)
+    app.cli.add_command(seed_base_plans_command)
