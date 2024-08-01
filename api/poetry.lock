@@ -9098,13 +9098,13 @@ h11 = ">=0.9.0,<1"
 
 [[package]]
 name = "xinference-client"
-version = "0.9.4"
+version = "0.13.3"
 description = "Client for Xinference"
 optional = false
 python-versions = "*"
 files = [
-    {file = "xinference-client-0.9.4.tar.gz", hash = "sha256:21934bc9f3142ade66aaed33c2b6cf244c274d5b4b3163f9981bebdddacf205f"},
-    {file = "xinference_client-0.9.4-py3-none-any.whl", hash = "sha256:6d3f1df3537a011f0afee5f9c9ca4f3ff564ca32cc999cf7038b324c0b907d0c"},
+    {file = "xinference-client-0.13.3.tar.gz", hash = "sha256:822b722100affdff049c27760be7d62ac92de58c87a40d3361066df446ba648f"},
+    {file = "xinference_client-0.13.3-py3-none-any.whl", hash = "sha256:f0eff3858b1ebcef2129726f82b09259c177e11db466a7ca23def3d4849c419f"},
 ]
 
 [package.dependencies]
@@ -9502,4 +9502,4 @@ cffi = ["cffi (>=1.11)"]
 [metadata]
 lock-version = "2.0"
 python-versions = "^3.10"
-content-hash = "a8b61d74d9322302b7447b6f8728ad606abc160202a8a122a05a8ef3cec7055b"
+content-hash = "ca55e4a4bb354fe969cc73c823557525c7598b0375e8791fcd77febc59e03b96"
