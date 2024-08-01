@@ -30,7 +30,7 @@ const UndoRedo: FC<UndoRedoProps> = ({ handleUndo, handleRedo }) => {
 
   return (
     <div className='flex items-center p-0.5 rounded-lg border-[0.5px] border-gray-100 bg-white shadow-lg text-gray-500'>
-      <TipPopup title={t('workflow.common.undo')!} >
+      <TipPopup title={t('workflow.common.undo')!} shortcuts={['ctrl', 'z']}>
         <div
           data-tooltip-id='workflow.undo'
           className={`
@@ -43,7 +43,7 @@ const UndoRedo: FC<UndoRedoProps> = ({ handleUndo, handleRedo }) => {
           <RiArrowGoBackLine className='h-4 w-4' />
         </div>
       </TipPopup>
-      <TipPopup title={t('workflow.common.redo')!} >
+      <TipPopup title={t('workflow.common.redo')!} shortcuts={['ctrl', 'y']}>
         <div
           data-tooltip-id='workflow.redo'
           className={`

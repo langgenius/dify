@@ -36,7 +36,8 @@ class HunyuanLargeLanguageModel(LargeLanguageModel):
 
         custom_parameters = {
             'Temperature': model_parameters.get('temperature', 0.0),
-            'TopP': model_parameters.get('top_p', 1.0)
+            'TopP': model_parameters.get('top_p', 1.0),
+            'EnableEnhancement': model_parameters.get('enable_enhance', True)
         }
 
         params = {

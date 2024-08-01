@@ -173,7 +173,7 @@ transformers = "~4.35.0"
 unstructured = { version = "~0.10.27", extras = ["docx", "epub", "md", "msg", "ppt", "pptx"] }
 websocket-client = "~1.7.0"
 werkzeug = "~3.0.1"
-xinference-client = "0.9.4"
+xinference-client = "0.13.3"
 yarl = "~1.9.4"
 zhipuai = "1.0.7"
 rank-bm25 = "~0.2.2"
