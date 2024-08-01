@@ -22,6 +22,9 @@ x-shared-env: &shared-api-worker-env
   CELERY_WORKER_CLASS: ${CELERY_WORKER_CLASS:-}
   GUNICORN_TIMEOUT: ${GUNICORN_TIMEOUT:-360}
   CELERY_WORKER_AMOUNT: ${CELERY_WORKER_AMOUNT:-}
+  CELERY_AUTO_SCALE: ${CELERY_AUTO_SCALE:-false}
+  CELERY_MAX_WORKERS: ${CELERY_MAX_WORKERS:-}
+  CELERY_MIN_WORKERS: ${CELERY_MIN_WORKERS:-}
   API_TOOL_DEFAULT_CONNECT_TIMEOUT: ${API_TOOL_DEFAULT_CONNECT_TIMEOUT:-10}
   API_TOOL_DEFAULT_READ_TIMEOUT: ${API_TOOL_DEFAULT_READ_TIMEOUT:-60}
   DB_USERNAME: ${DB_USERNAME:-postgres}
@@ -276,7 +279,7 @@ services:
 
   # ssrf_proxy server
   # for more information, please refer to
-  # https://docs.dify.ai/getting-started/install-self-hosted/install-faq#id-16.-why-is-ssrf_proxy-needed
+  # https://docs.dify.ai/learn-more/faq/self-host-faq#id-18.-why-is-ssrf_proxy-needed
   ssrf_proxy:
     image: ubuntu/squid:latest
     restart: always
@@ -295,6 +298,26 @@ services:
       - ssrf_proxy_network
       - default
 
+  # Certbot service
+  # use `docker-compose --profile certbot up` to start the certbot service.
+  certbot:
+    image: certbot/certbot
+    profiles:
+      - certbot
+    volumes:
+      - ./volumes/certbot/conf:/etc/letsencrypt
+      - ./volumes/certbot/www:/var/www/html
+      - ./volumes/certbot/logs:/var/log/letsencrypt
+      - ./volumes/certbot/conf/live:/etc/letsencrypt/live
+      - ./certbot/update-cert.template.txt:/update-cert.template.txt
+      - ./certbot/docker-entrypoint.sh:/docker-entrypoint.sh
+    environment:
+      - CERTBOT_EMAIL=${CERTBOT_EMAIL}
+      - CERTBOT_DOMAIN=${CERTBOT_DOMAIN}
+      - CERTBOT_OPTIONS=${CERTBOT_OPTIONS:-}
+    entrypoint: [ "/docker-entrypoint.sh" ]
+    command: ["tail", "-f", "/dev/null"]
+
   # The nginx reverse proxy.
   # used for reverse proxying the API service and Web service.
   nginx:
@@ -306,7 +329,10 @@ services:
       - ./nginx/https.conf.template:/etc/nginx/https.conf.template
       - ./nginx/conf.d:/etc/nginx/conf.d
       - ./nginx/docker-entrypoint.sh:/docker-entrypoint-mount.sh
-      - ./nginx/ssl:/etc/ssl
+      - ./nginx/ssl:/etc/ssl # cert dir (legacy)
+      - ./volumes/certbot/conf/live:/etc/letsencrypt/live # cert dir (with certbot container)
+      - ./volumes/certbot/conf:/etc/letsencrypt
+      - ./volumes/certbot/www:/var/www/html
     entrypoint: [ "sh", "-c", "cp /docker-entrypoint-mount.sh /docker-entrypoint.sh && sed -i 's/\r$$//' /docker-entrypoint.sh && chmod +x /docker-entrypoint.sh && /docker-entrypoint.sh" ]
     environment:
       NGINX_SERVER_NAME: ${NGINX_SERVER_NAME:-_}
@@ -323,6 +349,8 @@ services:
       NGINX_KEEPALIVE_TIMEOUT: ${NGINX_KEEPALIVE_TIMEOUT:-65}
       NGINX_PROXY_READ_TIMEOUT: ${NGINX_PROXY_READ_TIMEOUT:-3600s}
       NGINX_PROXY_SEND_TIMEOUT: ${NGINX_PROXY_SEND_TIMEOUT:-3600s}
+      NGINX_ENABLE_CERTBOT_CHALLENGE: ${NGINX_ENABLE_CERTBOT_CHALLENGE:-false}
+      CERTBOT_DOMAIN: ${CERTBOT_DOMAIN:-}
     depends_on:
       - api
       - web
@@ -453,7 +481,7 @@ services:
       - ./volumes/milvus/etcd:/etcd
     command: etcd -advertise-client-urls=http://127.0.0.1:2379 -listen-client-urls http://0.0.0.0:2379 --data-dir /etcd
     healthcheck:
-      test: ["CMD", "etcdctl", "endpoint", "health"]
+      test: [ "CMD", "etcdctl", "endpoint", "health" ]
       interval: 30s
       timeout: 20s
       retries: 3
@@ -472,7 +500,7 @@ services:
       - ./volumes/milvus/minio:/minio_data
     command: minio server /minio_data --console-address ":9001"
     healthcheck:
-      test: ["CMD", "curl", "-f", "http://localhost:9000/minio/health/live"]
+      test: [ "CMD", "curl", "-f", "http://localhost:9000/minio/health/live" ]
       interval: 30s
       timeout: 20s
       retries: 3
@@ -484,7 +512,7 @@ services:
     image: milvusdb/milvus:v2.3.1
     profiles:
       - milvus
-    command: ["milvus", "run", "standalone"]
+    command: [ "milvus", "run", "standalone" ]
     environment:
       ETCD_ENDPOINTS: ${ETCD_ENDPOINTS:-etcd:2379}
       MINIO_ADDRESS: ${MINIO_ADDRESS:-minio:9000}
@@ -492,7 +520,7 @@ services:
     volumes:
       - ./volumes/milvus/milvus:/var/lib/milvus
     healthcheck:
-      test: ["CMD", "curl", "-f", "http://localhost:9091/healthz"]
+      test: [ "CMD", "curl", "-f", "http://localhost:9091/healthz" ]
       interval: 30s
       start_period: 90s
       timeout: 20s
@@ -554,6 +582,16 @@ services:
       - ./volumes/myscale/config/users.d/custom_users_config.xml:/etc/clickhouse-server/users.d/custom_users_config.xml
     ports:
       - "${MYSCALE_PORT:-8123}:${MYSCALE_PORT:-8123}"
+
+  # unstructured .
+  # (if used, you need to set ETL_TYPE to Unstructured in the api & worker service.)
+  unstructured:
+    image: downloads.unstructured.io/unstructured-io/unstructured-api:latest
+    profiles:
+      - unstructured
+    restart: always
+    volumes:
+      - ./volumes/unstructured:/app/data
 
 networks:
   # create a network between sandbox, api and ssrf_proxy, and can not access outside.

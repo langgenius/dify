@@ -142,6 +142,7 @@ const SegmentDetailComponent: FC<ISegmentDetailProps> = ({
             </Button>
             <Button
               variant='primary'
+              className='ml-3'
               onClick={handleSave}
               disabled={loading}
             >

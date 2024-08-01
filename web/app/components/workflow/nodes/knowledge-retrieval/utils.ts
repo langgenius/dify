@@ -7,7 +7,6 @@ import type {
 import {
   DEFAULT_WEIGHTED_SCORE,
   RerankingModeEnum,
-  WeightedScoreEnum,
 } from '@/models/datasets'
 import { RETRIEVE_METHOD } from '@/types/app'
 import { DATASET_DEFAULT } from '@/config'
@@ -100,7 +99,6 @@ export const getMultipleRetrievalConfig = (multipleRetrievalConfig: MultipleRetr
 
   if (allHighQuality && !inconsistentEmbeddingModel && (reranking_mode === RerankingModeEnum.WeightedScore || reranking_mode === undefined) && !weights) {
     result.weights = {
-      weight_type: WeightedScoreEnum.Customized,
       vector_setting: {
         vector_weight: allHighQualityVectorSearch
           ? DEFAULT_WEIGHTED_SCORE.allHighQualityVectorSearch.semantic
