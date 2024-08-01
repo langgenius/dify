@@ -33,7 +33,7 @@ const translation = {
     },
     hybrid_search: {
       title: 'ハイブリッド検索',
-      description: '全文検索とベクトル検索を同時に実行し、ユーザーのクエリに最適なマッチを選択するために再ランク付けを行います。再ランクモデルAPIの設定が必要です。',
+      description: '全文検索とベクトル検索を同時に実行し、ユーザーのクエリに最適なマッチを選択するためにRerank付けを行います。RerankモデルAPIの設定が必要です。',
       recommend: 'おすすめ',
     },
     invertedIndex: {
