@@ -24,7 +24,7 @@ const defaultItems = [
 export type Item = {
   value: number | string
   name: string
-}
+} & Record<string, any>
 
 export type ISelectProps = {
   className?: string
@@ -38,6 +38,13 @@ export type ISelectProps = {
   placeholder?: string
   overlayClassName?: string
   optionClassName?: string
+  renderOption?: ({
+    item,
+    selected,
+  }: {
+    item: Item
+    selected: boolean
+  }) => React.ReactNode
 }
 const Select: FC<ISelectProps> = ({
   className,
@@ -49,6 +56,7 @@ const Select: FC<ISelectProps> = ({
   bgClassName = 'bg-gray-100',
   overlayClassName,
   optionClassName,
+  renderOption,
 }) => {
   const [query, setQuery] = useState('')
   const [open, setOpen] = useState(false)
@@ -61,6 +69,7 @@ const Select: FC<ISelectProps> = ({
       defaultSelect = existed
 
     setSelectedItem(defaultSelect)
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [defaultValue])
 
   const filteredItems: Item[]
@@ -120,24 +129,30 @@ const Select: FC<ISelectProps> = ({
                 value={item}
                 className={({ active }: { active: boolean }) =>
                   classNames(
-                    optionClassName,
                     'relative cursor-default select-none py-2 pl-3 pr-9 rounded-lg hover:bg-gray-100 text-gray-700',
                     active ? 'bg-gray-100' : '',
+                    optionClassName,
                   )
                 }
               >
                 {({ /* active, */ selected }) => (
                   <>
-                    <span className={classNames('block', selected && 'font-normal')}>{item.name}</span>
-                    {selected && (
-                      <span
-                        className={classNames(
-                          'absolute inset-y-0 right-0 flex items-center pr-4 text-gray-700',
-                        )}
-                      >
-                        <CheckIcon className="h-5 w-5" aria-hidden="true" />
-                      </span>
-                    )}
+                    {renderOption
+                      ? renderOption({ item, selected })
+                      : (
+                        <>
+                          <span className={classNames('block', selected && 'font-normal')}>{item.name}</span>
+                          {selected && (
+                            <span
+                              className={classNames(
+                                'absolute inset-y-0 right-0 flex items-center pr-4 text-gray-700',
+                              )}
+                            >
+                              <CheckIcon className="h-5 w-5" aria-hidden="true" />
+                            </span>
+                          )}
+                        </>
+                      )}
                   </>
                 )}
               </Combobox.Option>
@@ -157,6 +172,8 @@ const SimpleSelect: FC<ISelectProps> = ({
   disabled = false,
   onSelect,
   placeholder,
+  optionClassName,
+  renderOption,
 }) => {
   const { t } = useTranslation()
   const localPlaceholder = placeholder || t('common.placeholder.select')
@@ -169,6 +186,7 @@ const SimpleSelect: FC<ISelectProps> = ({
       defaultSelect = existed
 
     setSelectedItem(defaultSelect)
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [defaultValue])
 
   return (
@@ -218,24 +236,30 @@ const SimpleSelect: FC<ISelectProps> = ({
                 <Listbox.Option
                   key={item.value}
                   className={({ active }) =>
-                    `relative cursor-pointer select-none py-2 pl-3 pr-9 rounded-lg hover:bg-gray-100 text-gray-700 ${active ? 'bg-gray-100' : ''
-                    }`
+                    classNames(
+                      `relative cursor-pointer select-none py-2 pl-3 pr-9 rounded-lg hover:bg-gray-100 text-gray-700 ${active ? 'bg-gray-100' : ''}`,
+                      optionClassName,
+                    )
                   }
                   value={item}
                   disabled={disabled}
                 >
                   {({ /* active, */ selected }) => (
                     <>
-                      <span className={classNames('block', selected && 'font-normal')}>{item.name}</span>
-                      {selected && (
-                        <span
-                          className={classNames(
-                            'absolute inset-y-0 right-0 flex items-center pr-4 text-gray-700',
+                      {renderOption
+                        ? renderOption({ item, selected })
+                        : (<>
+                          <span className={classNames('block', selected && 'font-normal')}>{item.name}</span>
+                          {selected && (
+                            <span
+                              className={classNames(
+                                'absolute inset-y-0 right-0 flex items-center pr-4 text-gray-700',
+                              )}
+                            >
+                              <CheckIcon className="h-5 w-5" aria-hidden="true" />
+                            </span>
                           )}
-                        >
-                          <CheckIcon className="h-5 w-5" aria-hidden="true" />
-                        </span>
-                      )}
+                        </>)}
                     </>
                   )}
                 </Listbox.Option>

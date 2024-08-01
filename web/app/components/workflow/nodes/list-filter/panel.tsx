@@ -5,6 +5,7 @@ import VarReferencePicker from '../_base/components/variable/var-reference-picke
 import OutputVars, { VarItem } from '../_base/components/output-vars'
 import OptionCard from '../_base/components/option-card'
 import useConfig from './use-config'
+import SubVariablePicker from './components/sub-variable-picker'
 import { type ListFilterNodeType, OrderBy } from './types'
 import LimitConfig from './components/limit-config'
 import Field from '@/app/components/workflow/nodes/_base/components/field'
@@ -59,7 +60,7 @@ const Panel: FC<NodePanelProps<ListFilterNodeType>> = ({
           {inputs.orderBy?.enabled
             ? (
               <div className='flex items-center justify-between'>
-                <div className='grow'>Variable Picker placeholder</div>
+                <div className='grow mr-2'><SubVariablePicker /></div>
                 <div className='shrink-0 flex space-x-1'>
                   <OptionCard
                     title={t(`${i18nPrefix}.asc`)}
