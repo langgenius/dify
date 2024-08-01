@@ -57,6 +57,7 @@ class XinferenceRerankModel(RerankModel):
                 documents=docs,
                 query=query,
                 top_n=top_n,
+                return_documents=True
             )
         except RuntimeError as e:
             raise InvokeServerUnavailableError(str(e))
@@ -66,7 +67,7 @@ class XinferenceRerankModel(RerankModel):
         for idx, result in enumerate(response['results']):
             # format document
             index = result['index']
-            page_content = result['document']
+            page_content = result['document'] if isinstance(result['document'], str) else result['document']['text']
             rerank_document = RerankDocument(
                 index=index,
                 text=page_content,
