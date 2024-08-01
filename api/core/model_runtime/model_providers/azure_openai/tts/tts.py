@@ -101,7 +101,6 @@ class AzureOpenAIText2SpeechModel(_CommonAzureOpenAI, TTSModel):
         :param sentence: text content to be translated
         :return: text translated to audio file
         """
-        # transform credentials to kwargs for model instance
         credentials_kwargs = self._to_credential_kwargs(credentials)
         client = AzureOpenAI(**credentials_kwargs)
         response = client.audio.speech.create(model=model, voice=voice, input=sentence.strip())
