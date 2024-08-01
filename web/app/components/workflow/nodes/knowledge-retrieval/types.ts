@@ -2,7 +2,6 @@ import type { CommonNodeType, ModelConfig, ValueSelector } from '@/app/component
 import type { RETRIEVE_TYPE } from '@/types/app'
 import type {
   RerankingModeEnum,
-  WeightedScoreEnum,
 } from '@/models/datasets'
 
 export type MultipleRetrievalConfig = {
@@ -14,7 +13,6 @@ export type MultipleRetrievalConfig = {
   }
   reranking_mode?: RerankingModeEnum
   weights?: {
-    weight_type: WeightedScoreEnum
     vector_setting: {
       vector_weight: number
       embedding_provider_name: string
