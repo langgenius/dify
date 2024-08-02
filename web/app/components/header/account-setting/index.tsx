@@ -23,7 +23,6 @@ import {
 } from '@remixicon/react'
 import AccountPage from './account-page'
 import MembersPage from './members-page'
-import IntegrationsPage from './Integrations-page'
 import LanguagePage from './language-page'
 import ApiBasedExtensionPage from './api-based-extension-page'
 import DataSourcePage from './data-source-page'
@@ -220,7 +219,7 @@ export default function AccountSetting({
             {activeMenu === 'account' && <AccountPage />}
             {activeMenu === 'members' && <MembersPage />}
             {activeMenu === 'billing' && <BillingPage />}
-            {activeMenu === 'integrations' && <IntegrationsPage />}
+            {/* {activeMenu === 'integrations' && <IntegrationsPage />} */}
             {activeMenu === 'language' && <LanguagePage />}
             {activeMenu === 'provider' && <ModelProviderPage />}
             {activeMenu === 'data-source' && <DataSourcePage />}

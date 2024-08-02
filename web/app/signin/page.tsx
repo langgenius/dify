@@ -1,13 +1,11 @@
 'use client'
 import React, { useEffect, useState } from 'react'
-import Script from 'next/script'
 import Loading from '../components/base/loading'
 import Forms from './forms'
 import Header from './_header'
 import style from './page.module.css'
 import UserSSOForm from './userSSOForm'
 import cn from '@/utils/classnames'
-import { IS_CE_EDITION } from '@/config'
 
 import type { SystemFeatures } from '@/types/feature'
 import { defaultSystemFeatures } from '@/types/feature'
@@ -27,7 +25,7 @@ const SignIn = () => {
 
   return (
     <>
-      {!IS_CE_EDITION && (
+      {/* {!IS_CE_EDITION && (
         <>
           <Script strategy="beforeInteractive" async src={'https://www.googletagmanager.com/gtag/js?id=AW-11217955271'}></Script>
           <Script
@@ -43,7 +41,7 @@ gtag('config', 'AW-11217955271"');
           >
           </Script>
         </>
-      )}
+      )} */}
       <div className={cn(
         style.background,
         'flex w-full min-h-screen',
@@ -74,9 +72,9 @@ gtag('config', 'AW-11217955271"');
           {!loading && !systemFeatures.sso_enforced_for_signin && (
             <>
               <Forms />
-              <div className='px-8 py-6 text-sm font-normal text-gray-500'>
+              {/* <div className='px-8 py-6 text-sm font-normal text-gray-500'>
                 © {new Date().getFullYear()} LangGenius, Inc. All rights reserved.
-              </div>
+              </div> */}
             </>
           )}
 
