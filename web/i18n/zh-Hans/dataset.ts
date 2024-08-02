@@ -70,6 +70,7 @@ const translation = {
   },
   nTo1RetrievalLegacy: '9 月 1 日起我们将不再提供此能力，推荐使用最新的多路召回获得更好的检索效果。',
   nTo1RetrievalLegacyLink: '了解更多',
+  nTo1RetrievalLegacyLinkText: '9 月 1 日起我们将不再提供此能力。',
 }
 
 export default translation
