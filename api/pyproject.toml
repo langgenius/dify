@@ -242,4 +242,4 @@ ruff = "~0.5.1"
 dotenv-linter = "~0.5.0"
 [[tool.poetry.source]]
 name = "mirrors"
-url = "https://pipy.tuna.tsinghua.edu.cn/simple"
+url = "https://mirrors.aliyun.com/pypi/simple/"
