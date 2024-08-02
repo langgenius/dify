@@ -12,6 +12,7 @@ from flask import Flask, current_app
 from flask_login import current_user
 from sqlalchemy.orm.exc import ObjectDeletedError
 
+from configs import dify_config
 from core.errors.error import ProviderTokenNotInitError
 from core.llm_generator.llm_generator import LLMGenerator
 from core.model_manager import ModelInstance, ModelManager
@@ -224,7 +225,7 @@ class IndexingRunner:
         features = FeatureService.get_features(tenant_id)
         if features.billing.enabled:
             count = len(extract_settings)
-            batch_upload_limit = int(current_app.config['BATCH_UPLOAD_LIMIT'])
+            batch_upload_limit = dify_config.BATCH_UPLOAD_LIMIT
             if count > batch_upload_limit:
                 raise ValueError(f"You have reached the batch upload limit of {batch_upload_limit}.")
 
@@ -427,7 +428,7 @@ class IndexingRunner:
             # The user-defined segmentation rule
             rules = json.loads(processing_rule.rules)
             segmentation = rules["segmentation"]
-            max_segmentation_tokens_length = int(current_app.config['INDEXING_MAX_SEGMENTATION_TOKENS_LENGTH'])
+            max_segmentation_tokens_length = dify_config.INDEXING_MAX_SEGMENTATION_TOKENS_LENGTH
             if segmentation["max_tokens"] < 50 or segmentation["max_tokens"] > max_segmentation_tokens_length:
                 raise ValueError(f"Custom segment length should be between 50 and {max_segmentation_tokens_length}.")
 

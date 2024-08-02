@@ -155,6 +155,7 @@ docker-legacy/volumes/milvus/*
 docker-legacy/volumes/chroma/*
 
 docker/volumes/app/storage/*
+docker/volumes/certbot/*
 docker/volumes/db/data/*
 docker/volumes/redis/data/*
 docker/volumes/weaviate/*

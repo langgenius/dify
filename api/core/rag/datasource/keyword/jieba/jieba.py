@@ -2,9 +2,9 @@ import json
 from collections import defaultdict
 from typing import Any, Optional
 
-from flask import current_app
 from pydantic import BaseModel
 
+from configs import dify_config
 from core.rag.datasource.keyword.jieba.jieba_keyword_table_handler import JiebaKeywordTableHandler
 from core.rag.datasource.keyword.keyword_base import BaseKeyword
 from core.rag.models.document import Document
@@ -139,7 +139,7 @@ class Jieba(BaseKeyword):
             if keyword_table_dict:
                 return keyword_table_dict['__data__']['table']
         else:
-            keyword_data_source_type = current_app.config['KEYWORD_DATA_SOURCE_TYPE']
+            keyword_data_source_type = dify_config.KEYWORD_DATA_SOURCE_TYPE
             dataset_keyword_table = DatasetKeywordTable(
                 dataset_id=self.dataset.id,
                 keyword_table='',
