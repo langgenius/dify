@@ -189,8 +189,6 @@ class DatasetApi(Resource):
         dataset = DatasetService.get_dataset(dataset_id_str)
         if dataset is None:
             raise NotFound("Dataset not found.")
-        # check user's model setting
-        DatasetService.check_dataset_model_setting(dataset)
 
         parser = reqparse.RequestParser()
         parser.add_argument('name', nullable=False,
@@ -214,6 +212,13 @@ class DatasetApi(Resource):
         parser.add_argument('partial_member_list', type=list, location='json', help='Invalid parent user list.')
         args = parser.parse_args()
         data = request.get_json()
+
+        # check embedding model setting
+        if data.get('indexing_technique') == 'high_quality':
+            DatasetService.check_embedding_model_setting(dataset.tenant_id,
+                                                         data.get('embedding_model_provider'),
+                                                         data.get('embedding_model')
+                                                         )
 
         # The role of the current user in the ta table must be admin, owner, editor, or dataset_operator
         DatasetPermissionService.check_permission(
