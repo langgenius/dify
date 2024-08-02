@@ -33,7 +33,7 @@ class CodeExecutionResponse(BaseModel):
 
     code: int
     message: str
-    data: Optional[Data]
+    data: Data
 
 
 class CodeLanguage(str, Enum):
@@ -107,14 +107,11 @@ class CodeExecutor:
             response = response.json()
         except:
             raise CodeExecutionException('Failed to parse response')
+
+        if (code := response.get('code')) != 0:
+            raise CodeExecutionException(f"Got error code: {code}. Got error msg: {response.get('message')}")
         
         response = CodeExecutionResponse(**response)
-
-        if response.code != 0:
-            raise CodeExecutionException(response.message)
-
-        if response.data is None:
-            raise CodeExecutionException('Failed to execute code, got empty response')
         
         if response.data.error:
             raise CodeExecutionException(response.data.error)
