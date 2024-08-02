@@ -22,7 +22,7 @@ const SelectTypeItem: FC<ISelectTypeItemProps> = ({
 
   return (
     <div
-      className={cn(s.item, selected && s.selected, 'space-y-1')}
+      className={cn('space-y-1', selected && s.selected, s.item)}
       onClick={onClick}
     >
       <div className='shrink-0'>

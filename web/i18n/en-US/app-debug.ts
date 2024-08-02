@@ -311,6 +311,8 @@ const translation = {
     'paragraph': 'Paragraph',
     'select': 'Select',
     'number': 'Number',
+    'single-file': 'Single File',
+    'multi-files': 'File List',
     'notSet': 'Not set, try typing {{input}} in the prefix prompt',
     'stringTitle': 'Form text box options',
     'maxLength': 'Max length',

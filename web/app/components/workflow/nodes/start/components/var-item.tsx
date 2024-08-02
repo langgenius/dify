@@ -79,6 +79,7 @@ const VarItem: FC<Props> = ({
         isShowEditVarModal && (
           <ConfigVarModal
             isShow
+            supportFile
             payload={payload}
             onClose={hideEditVarModal}
             onConfirm={handlePayloadChange}

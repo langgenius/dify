@@ -126,6 +126,8 @@ export enum InputVarType {
   json = 'json', // obj, array
   contexts = 'contexts', // knowledge retrieval
   iterator = 'iterator', // iteration input
+  singleFile = 'single-file',
+  multiFiles = 'multi-files',
 }
 
 export type InputVar = {

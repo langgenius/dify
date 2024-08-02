@@ -25,6 +25,7 @@ export type IConfigModalProps = {
   varKeys?: string[]
   onClose: () => void
   onConfirm: (newValue: InputVar, moreInfo?: MoreInfo) => void
+  supportFile?: boolean
 }
 
 const inputClassName = 'w-full px-3 text-sm leading-9 text-gray-900 border-0 rounded-lg grow h-9 bg-gray-100 focus:outline-none focus:ring-1 focus:ring-inset focus:ring-gray-200'
@@ -35,6 +36,7 @@ const ConfigModal: FC<IConfigModalProps> = ({
   isShow,
   onClose,
   onConfirm,
+  supportFile,
 }) => {
   const { modelConfig } = useContext(ConfigContext)
   const { t } = useTranslation()
@@ -88,14 +90,6 @@ const ConfigModal: FC<IConfigModalProps> = ({
       Toast.notify({ type: 'error', message: t('appDebug.variableConig.errorMsg.varNameRequired') })
       return
     }
-    // TODO: check if key already exists. should the consider the edit case
-    // if (varKeys.map(key => key?.trim()).includes(tempPayload.variable.trim())) {
-    //   Toast.notify({
-    //     type: 'error',
-    //     message: t('appDebug.varKeyError.keyAlreadyExists', { key: tempPayload.variable }),
-    //   })
-    //   return
-    // }
 
     if (!tempPayload.label) {
       Toast.notify({ type: 'error', message: t('appDebug.variableConig.errorMsg.labelNameRequired') })
@@ -136,11 +130,15 @@ const ConfigModal: FC<IConfigModalProps> = ({
         <div className='space-y-2'>
 
           <Field title={t('appDebug.variableConig.fieldType')}>
-            <div className='flex space-x-2'>
+            <div className='grid grid-cols-3 gap-2'>
               <SelectTypeItem type={InputVarType.textInput} selected={type === InputVarType.textInput} onClick={() => handlePayloadChange('type')(InputVarType.textInput)} />
               <SelectTypeItem type={InputVarType.paragraph} selected={type === InputVarType.paragraph} onClick={() => handlePayloadChange('type')(InputVarType.paragraph)} />
               <SelectTypeItem type={InputVarType.select} selected={type === InputVarType.select} onClick={() => handlePayloadChange('type')(InputVarType.select)} />
               <SelectTypeItem type={InputVarType.number} selected={type === InputVarType.number} onClick={() => handlePayloadChange('type')(InputVarType.number)} />
+              {supportFile && <>
+                <SelectTypeItem type={InputVarType.singleFile} selected={type === InputVarType.singleFile} onClick={() => handlePayloadChange('type')(InputVarType.singleFile)} />
+                <SelectTypeItem type={InputVarType.multiFiles} selected={type === InputVarType.multiFiles} onClick={() => handlePayloadChange('type')(InputVarType.multiFiles)} />
+              </>}
             </div>
           </Field>
 
