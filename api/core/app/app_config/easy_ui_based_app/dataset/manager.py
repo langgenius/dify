@@ -91,7 +91,8 @@ class DatasetConfigManager:
                     top_k=dataset_configs.get('top_k', 4),
                     score_threshold=dataset_configs.get('score_threshold'),
                     reranking_model=dataset_configs.get('reranking_model'),
-                    weights=dataset_configs.get('weights')
+                    weights=dataset_configs.get('weights'),
+                    reranking_enabled=dataset_configs.get('reranking_enabled', True),
                 )
             )
 

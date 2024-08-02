@@ -138,6 +138,7 @@ class DatasetRetrieval:
                 retrieve_config.rerank_mode,
                 retrieve_config.reranking_model,
                 retrieve_config.weights,
+                retrieve_config.reranking_enabled,
                 message_id,
             )
 
@@ -606,7 +607,7 @@ class DatasetRetrieval:
                                top_k: int, score_threshold: float) -> list[Document]:
         filter_documents = []
         for document in all_documents:
-            if document.metadata['score'] >= score_threshold:
+            if score_threshold and document.metadata['score'] >= score_threshold:
                 filter_documents.append(document)
         if not filter_documents:
             return []

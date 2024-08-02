@@ -158,10 +158,11 @@ class DatasetRetrieveConfigEntity(BaseModel):
 
     retrieve_strategy: RetrieveStrategy
     top_k: Optional[int] = None
-    score_threshold: Optional[float] = None
+    score_threshold: Optional[float] = .0
     rerank_mode: Optional[str] = 'reranking_model'
     reranking_model: Optional[dict] = None
     weights: Optional[dict] = None
+    reranking_enabled: Optional[bool] = True
 
 
 
