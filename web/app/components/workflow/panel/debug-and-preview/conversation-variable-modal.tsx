@@ -1,5 +1,6 @@
 'use client'
 import React, { useCallback } from 'react'
+import { useMount } from 'ahooks'
 import { useTranslation } from 'react-i18next'
 import { capitalize } from 'lodash-es'
 import copy from 'copy-to-clipboard'
@@ -18,6 +19,7 @@ import type {
 import { ChatVarType } from '@/app/components/workflow/panel/chat-variable-panel/type'
 import { CodeLanguage } from '@/app/components/workflow/nodes/code/types'
 import useTimestamp from '@/hooks/use-timestamp'
+import { fetchCurrentValueOfConversationVariable } from '@/service/workflow'
 import cn from '@/utils/classnames'
 
 export type Props = {
@@ -32,7 +34,31 @@ const ConversationVariableModal = ({
   const { t } = useTranslation()
   const { formatTime } = useTimestamp()
   const varList = useStore(s => s.conversationVariables) as ConversationVariable[]
+  const appID = useStore(s => s.appId)
   const [currentVar, setCurrentVar] = React.useState<ConversationVariable>(varList[0])
+  const [latestValueMap, setLatestValueMap] = React.useState<Record<string, string>>({})
+  const [latestValueTimestampMap, setLatestValueTimestampMap] = React.useState<Record<string, number>>({})
+
+  const getChatVarLatestValues = useCallback(async () => {
+    if (conversationID && varList.length > 0) {
+      const res = await fetchCurrentValueOfConversationVariable({
+        url: `/apps/${appID}/conversation-variables`,
+        params: { conversation_id: conversationID },
+      })
+      if (res.data.length > 0) {
+        const valueMap = res.data.reduce((acc: any, cur) => {
+          acc[cur.id] = cur.value
+          return acc
+        }, {})
+        setLatestValueMap(valueMap)
+        const timestampMap = res.data.reduce((acc: any, cur) => {
+          acc[cur.id] = cur.updated_at
+          return acc
+        }, {})
+        setLatestValueTimestampMap(timestampMap)
+      }
+    }
+  }, [appID, conversationID, varList.length])
 
   const [isCopied, setIsCopied] = React.useState(false)
   const handleCopy = useCallback(() => {
@@ -42,6 +68,10 @@ const ConversationVariableModal = ({
       setIsCopied(false)
     }, 2000)
   }, [currentVar.value])
+
+  useMount(() => {
+    getChatVarLatestValues()
+  })
 
   return (
     <Modal
@@ -79,7 +109,9 @@ const ConversationVariableModal = ({
               <div className='grow h-[1px]' style={{
                 background: 'linear-gradient(to right, rgba(16, 24, 40, 0.08) 0%, rgba(255, 255, 255) 100%)',
               }}></div>
-              <div className='shrink-0 text-text-tertiary system-xs-regular'>{t('workflow.chatVariable.updatedAt')}{formatTime((new Date().getTime() / 1000), t('appLog.dateTimeFormat') as string)}</div>
+              {latestValueTimestampMap[currentVar.id] && (
+                <div className='shrink-0 text-text-tertiary system-xs-regular'>{t('workflow.chatVariable.updatedAt')}{formatTime(latestValueTimestampMap[currentVar.id], t('appLog.dateTimeFormat') as string)}</div>
+              )}
             </div>
             <div className='grow'>
               {currentVar.value_type !== ChatVarType.Number && currentVar.value_type !== ChatVarType.String && (
@@ -103,14 +135,14 @@ const ConversationVariableModal = ({
                       noWrapper
                       isExpand
                       language={CodeLanguage.json}
-                      value={currentVar.value}
+                      value={latestValueMap[currentVar.id] || ''}
                       isJSONStringifyBeauty
                     />
                   </div>
                 </div>
               )}
               {(currentVar.value_type === ChatVarType.Number || currentVar.value_type === ChatVarType.String) && (
-                <div className='h-full px-4 py-3 rounded-lg bg-components-input-bg-normal text-components-input-text-filled system-md-regular overflow-y-auto'>{currentVar.value}</div>
+                <div className='h-full px-4 py-3 rounded-lg bg-components-input-bg-normal text-components-input-text-filled system-md-regular overflow-y-auto'>{latestValueMap[currentVar.id] || ''}</div>
               )}
             </div>
           </div>

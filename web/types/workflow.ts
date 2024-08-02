@@ -242,3 +242,11 @@ export type NodesDefaultConfigsResponse = {
   type: string
   config: any
 }[]
+
+export type ConversationVariableResponse = {
+  data: (ConversationVariable & { updated_at: number; created_at: number })[]
+  has_more: boolean
+  limit: number
+  total: number
+  page: number
+}

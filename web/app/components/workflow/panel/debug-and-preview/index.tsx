@@ -15,7 +15,6 @@ import {
 import { BlockEnum } from '../../types'
 import type { StartNodeType } from '../../nodes/start/types'
 import ChatWrapper from './chat-wrapper'
-import ConversationVariableModal from './conversation-variable-modal'
 import cn from '@/utils/classnames'
 import { RefreshCcw01 } from '@/app/components/base/icons/src/vender/line/arrows'
 import { BubbleX } from '@/app/components/base/icons/src/vender/line/others'
@@ -102,14 +101,13 @@ const DebugAndPreview = () => {
         </div>
       </div>
       <div className='grow rounded-b-2xl overflow-y-auto'>
-        <ChatWrapper ref={chatRef} showInputsFieldsPanel={expanded} />
-      </div>
-      {showConversationVariableModal && (
-        <ConversationVariableModal
-          conversationID={''}
-          onHide={() => setShowConversationVariableModal(false)}
+        <ChatWrapper
+          ref={chatRef}
+          showConversationVariableModal={showConversationVariableModal}
+          onConversationModalHide={() => setShowConversationVariableModal(false)}
+          showInputsFieldsPanel={expanded}
         />
-      )}
+      </div>
     </div>
   )
 }
