@@ -322,23 +322,26 @@ class DatasetRetrieval:
         for thread in threads:
             thread.join()
 
-        if reranking_enable:
-            # do rerank for searched documents
-            data_post_processor = DataPostProcessor(tenant_id, reranking_mode,
-                                                    reranking_model, weights, False)
+        with measure_time() as timer:
+            if reranking_enable:
+                # do rerank for searched documents
+                data_post_processor = DataPostProcessor(
+                    tenant_id, reranking_mode,
+                    reranking_model, weights, False
+                )
 
-            with measure_time() as timer:
                 all_documents = data_post_processor.invoke(
                     query=query,
                     documents=all_documents,
                     score_threshold=score_threshold,
                     top_n=top_k
                 )
-        else:
-            if index_type == "economy":
-                all_documents = self.calculate_keyword_score(query, all_documents, top_k)
-            elif index_type == "high_quality":
-                all_documents = self.calculate_vector_score(all_documents, top_k, score_threshold)
+            else:
+                if index_type == "economy":
+                    all_documents = self.calculate_keyword_score(query, all_documents, top_k)
+                elif index_type == "high_quality":
+                    all_documents = self.calculate_vector_score(all_documents, top_k, score_threshold)
+
         self._on_query(query, dataset_ids, app_id, user_from, user_id)
 
         if all_documents:
