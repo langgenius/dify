@@ -140,14 +140,13 @@ class KnowledgeRetrievalNode(BaseNode):
         elif node_data.retrieval_mode == DatasetRetrieveConfigEntity.RetrieveStrategy.MULTIPLE.value:
             if node_data.multiple_retrieval_config.reranking_mode == 'reranking_model':
                 reranking_model = {
-                    'reranking_provider_name': node_data.multiple_retrieval_config.reranking_model['provider'],
-                    'reranking_model_name': node_data.multiple_retrieval_config.reranking_model['name']
+                    'reranking_provider_name': node_data.multiple_retrieval_config.reranking_model.provider,
+                    'reranking_model_name': node_data.multiple_retrieval_config.reranking_model.model
                 }
                 weights = None
             elif node_data.multiple_retrieval_config.reranking_mode == 'weighted_score':
                 reranking_model = None
                 weights = {
-                    'weight_type': node_data.multiple_retrieval_config.weights.weight_type,
                     'vector_setting': {
                         "vector_weight": node_data.multiple_retrieval_config.weights.vector_setting.vector_weight,
                         "embedding_provider_name": node_data.multiple_retrieval_config.weights.vector_setting.embedding_provider_name,

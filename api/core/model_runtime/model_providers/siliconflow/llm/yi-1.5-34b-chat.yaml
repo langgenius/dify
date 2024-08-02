@@ -1,11 +1,9 @@
 model: 01-ai/Yi-1.5-34B-Chat
 label:
-  en_US: 01-ai/Yi-1.5-34B-Chat
+  en_US: 01-ai/Yi-1.5-34B-Chat-16K
 model_type: llm
 features:
-  - multi-tool-call
   - agent-thought
-  - stream-tool-call
 model_properties:
   mode: chat
   context_size: 16384
