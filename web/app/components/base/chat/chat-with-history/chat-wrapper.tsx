@@ -30,6 +30,7 @@ const ChatWrapper = () => {
     handleFeedback,
     currentChatInstanceRef,
     appData,
+    themeBuilder,
   } = useChatWithHistoryContext()
   const appConfig = useMemo(() => {
     const config = appParams || {}
@@ -143,6 +144,7 @@ const ChatWrapper = () => {
       onFeedback={handleFeedback}
       suggestedQuestions={suggestedQuestions}
       hideProcessDetail
+      themeBuilder={themeBuilder}
     />
   )
 }
