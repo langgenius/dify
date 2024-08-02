@@ -23,22 +23,22 @@ import type {
 import { WorkflowContext } from './context'
 
 // #TODO chatVar#
-const MOCK_DATA = [
-  {
-    id: 'fjlaksdjflkjg-dfjlajfl0dnfkafjk-djfdkafj-djfak',
-    name: 'chat_history',
-    value_type: 'array[message]',
-    value: [],
-    description: 'The chat history of the conversation',
-  },
-  {
-    id: 'fljdaklfjl-dfjlafj0-dklajglje-eknglh',
-    name: 'order_id',
-    value: '123456',
-    value_type: 'string',
-    description: '',
-  },
-]
+// const MOCK_DATA = [
+//   {
+//     id: 'fjlaksdjflkjg-dfjlajfl0dnfkafjk-djfdkafj-djfak',
+//     name: 'chat_history',
+//     value_type: 'array[message]',
+//     value: [],
+//     description: 'The chat history of the conversation',
+//   },
+//   {
+//     id: 'fljdaklfjl-dfjlafj0-dklajglje-eknglh',
+//     name: 'order_id',
+//     value: '123456',
+//     value_type: 'string',
+//     description: '',
+//   },
+// ]
 
 type PreviewRunningData = WorkflowRunningData & {
   resultTabActive?: boolean
@@ -229,7 +229,7 @@ export const createWorkflowStore = () => {
     setEnvSecrets: envSecrets => set(() => ({ envSecrets })),
     showChatVariablePanel: false,
     setShowChatVariablePanel: showChatVariablePanel => set(() => ({ showChatVariablePanel })),
-    conversationVariables: MOCK_DATA,
+    conversationVariables: [],
     setConversationVariables: conversationVariables => set(() => ({ conversationVariables })),
     selection: null,
     setSelection: selection => set(() => ({ selection })),
