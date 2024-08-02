@@ -179,9 +179,7 @@ yarl = "~1.9.4"
 zhipuai = "1.0.7"
 rank-bm25 = "~0.2.2"
 openpyxl = "^3.1.5"
-grpcio="1.62.2"
-grpcio-tools="1.62.2"
-grpcio-status="1.62.2"
+
 ############################################################
 # Tool dependencies required by tool implementations
 ############################################################
