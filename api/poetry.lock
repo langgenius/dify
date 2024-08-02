@@ -5630,6 +5630,7 @@ files = [
 
 [package.dependencies]
 numpy = ">=1.23"
+SQLAlchemy = {version = ">=2.0.23", optional = true, markers = "extra == \"sqlalchemy\""}
 toml = ">=0.10"
 
 [package.extras]
@@ -9500,4 +9501,4 @@ cffi = ["cffi (>=1.11)"]
 [metadata]
 lock-version = "2.0"
 python-versions = ">=3.10,<3.13"
-content-hash = "a08d4f01e22487dc70f4a7e5a173e44d5e8fe616941fc94d8b271526277079a7"
+content-hash = "50acbb78f2a273dfa8683d9d292596e89d13a420c6ecb1afad331f2c38dd1423"
