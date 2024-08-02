@@ -11,10 +11,11 @@ import Field from './field'
 import Toast from '@/app/components/base/toast'
 import { checkKeys, getNewVarInWorkflow } from '@/utils/var'
 import ConfigContext from '@/context/debug-configuration'
-import type { InputVar, MoreInfo } from '@/app/components/workflow/types'
+import type { InputVar, MoreInfo, UploadFileSetting } from '@/app/components/workflow/types'
 import Modal from '@/app/components/base/modal'
 import Switch from '@/app/components/base/switch'
 import { ChangeType, InputVarType } from '@/app/components/workflow/types'
+import FileUploadSetting from '@/app/components/workflow/nodes/_base/components/file-upload-setting'
 
 const TEXT_MAX_LENGTH = 256
 
@@ -98,7 +99,7 @@ const ConfigModal: FC<IConfigModalProps> = ({
     if (isStringInput || type === InputVarType.number) {
       onConfirm(tempPayload, moreInfo)
     }
-    else {
+    else if (type === InputVarType.select) {
       if (options?.length === 0) {
         Toast.notify({ type: 'error', message: t('appDebug.variableConig.errorMsg.atLeastOneOption') })
         return
@@ -116,6 +117,9 @@ const ConfigModal: FC<IConfigModalProps> = ({
         Toast.notify({ type: 'error', message: t('appDebug.variableConig.errorMsg.optionRepeat') })
         return
       }
+      onConfirm(tempPayload, moreInfo)
+    }
+    else {
       onConfirm(tempPayload, moreInfo)
     }
   }
@@ -172,6 +176,14 @@ const ConfigModal: FC<IConfigModalProps> = ({
             <Field title={t('appDebug.variableConig.options')}>
               <ConfigSelect options={options || []} onChange={handlePayloadChange('options')} />
             </Field>
+          )}
+
+          {[InputVarType.singleFile, InputVarType.multiFiles].includes(type) && (
+            <FileUploadSetting
+              payload={tempPayload as UploadFileSetting}
+              onChange={(p: UploadFileSetting) => setTempPayload(p as InputVar)}
+              isMultiple={type === InputVarType.multiFiles}
+            />
           )}
 
           <Field title={t('appDebug.variableConig.required')}>

@@ -144,7 +144,7 @@ export type InputVar = {
   hint?: string
   options?: string[]
   value_selector?: ValueSelector
-}
+} & Partial<UploadFileSetting>
 
 export type ModelConfig = {
   provider: string
@@ -328,4 +328,19 @@ export type MoreInfo = {
 
 export type ToolWithProvider = Collection & {
   tools: Tool[]
+}
+
+export enum SupportUploadFileTypes {
+  image = 'image',
+  document = 'document',
+  audio = 'audio',
+  video = 'video',
+  custom = 'custom',
+}
+
+export type UploadFileSetting = {
+  uploadMethod: TransferMethod
+  maxUploadNumLimit?: number // multiple files upload limit
+  supportFileTypes: SupportUploadFileTypes
+  customFileTypes?: string[]
 }

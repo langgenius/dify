@@ -324,6 +324,20 @@ const translation = {
     'inputPlaceholder': 'Please input',
     'content': 'Content',
     'required': 'Required',
+    'file': {
+      image: {
+        name: 'Image',
+      },
+      audio: {
+        name: 'Audio',
+      },
+      document: {
+        name: 'Document',
+      },
+      video: {
+        name: 'Video',
+      },
+    },
     'errorMsg': {
       varNameRequired: 'Variable name is required',
       labelNameRequired: 'Label name is required',
