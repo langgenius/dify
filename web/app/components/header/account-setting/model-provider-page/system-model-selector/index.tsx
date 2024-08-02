@@ -249,6 +249,7 @@ const SystemModel: FC<SystemModelSelectorProps> = ({
               {t('common.operation.cancel')}
             </Button>
             <Button
+              className='ml-2'
               variant='primary'
               onClick={handleSave}
               disabled={!isCurrentWorkspaceManager}
