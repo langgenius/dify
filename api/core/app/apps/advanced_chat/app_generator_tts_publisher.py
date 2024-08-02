@@ -5,8 +5,12 @@ import queue
 import re
 import threading
 
-from core.app.entities.queue_entities import QueueAgentMessageEvent, QueueLLMChunkEvent, QueueTextChunkEvent, \
-    QueueNodeSucceededEvent
+from core.app.entities.queue_entities import (
+    QueueAgentMessageEvent,
+    QueueLLMChunkEvent,
+    QueueNodeSucceededEvent,
+    QueueTextChunkEvent,
+)
 from core.model_manager import ModelManager
 from core.model_runtime.entities.model_entities import ModelType
 
