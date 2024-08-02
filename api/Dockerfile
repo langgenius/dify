@@ -1,5 +1,5 @@
 # base image
-FROM python:3.10-slim-bookworm AS base
+FROM registry.us-west-1.aliyuncs.com/synclike/python:3.10-slim-bookworm AS base
 
 WORKDIR /app/api
 
@@ -20,6 +20,7 @@ RUN apt-get update \
 
 # Install Python dependencies
 COPY pyproject.toml poetry.lock ./
+RUN poetry lock --no-update
 RUN poetry install --sync --no-cache --no-root
 
 # production stage
