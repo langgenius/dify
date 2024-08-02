@@ -1,5 +1,5 @@
 [project]
-requires-python = ">=3.10"
+requires-python = ">=3.10,<3.13"
 
 [build-system]
 requires = ["poetry-core"]
@@ -124,7 +124,7 @@ flask-migrate = "~4.0.5"
 flask-restful = "~0.3.10"
 Flask-SQLAlchemy = "~3.1.1"
 gevent = "~23.9.1"
-gmpy2 = "~2.1.5"
+gmpy2 = "~2.2.1"
 google-ai-generativelanguage = "0.6.1"
 google-api-core = "2.18.0"
 google-api-python-client = "2.90.0"
@@ -179,6 +179,7 @@ yarl = "~1.9.4"
 zhipuai = "1.0.7"
 rank-bm25 = "~0.2.2"
 openpyxl = "^3.1.5"
+
 ############################################################
 # Tool dependencies required by tool implementations
 ############################################################
