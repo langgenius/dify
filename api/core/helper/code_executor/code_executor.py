@@ -112,6 +112,9 @@ class CodeExecutor:
 
         if response.code != 0:
             raise CodeExecutionException(response.message)
+
+        if response.data is None:
+            raise CodeExecutionException('Failed to execute code, got empty response')
         
         if response.data.error:
             raise CodeExecutionException(response.data.error)
