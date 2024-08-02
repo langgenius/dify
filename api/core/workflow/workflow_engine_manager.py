@@ -186,7 +186,7 @@ class WorkflowEngineManager:
                                                     .replace('#', '')
                                                     .replace('.text', '')
                                                     .replace('{{', '')
-                                                    .replace('}}', ''))
+                                                    .replace('}}', '').split('.')[0])
                     except Exception as e:
                         logger.error(e)
 
@@ -870,6 +870,10 @@ class WorkflowEngineManager:
 
             raise ValueError(f"Node {node.node_data.title} run failed: {node_run_result.error}")
 
+        if node.is_answer_previous_node and not isinstance(node, LLMNode):
+            if not node_run_result.metadata:
+                node_run_result.metadata = {}
+            node_run_result.metadata["is_answer_previous_node"]=True
         workflow_nodes_and_result.result = node_run_result
 
         # node run success

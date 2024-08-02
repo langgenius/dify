@@ -246,6 +246,11 @@ class AdvancedChatAppGenerateTaskPipeline(BasedGenerateTaskPipeline, WorkflowCyc
         for message in self._queue_manager.listen():
             if hasattr(message.event, 'metadata') and message.event.metadata.get('is_answer_previous_node', False) and publisher:
                 publisher.publish(message=message)
+            elif (hasattr(message.event, 'execution_metadata')
+                  and message.event.execution_metadata
+                  and message.event.execution_metadata.get('is_answer_previous_node', False)
+                  and publisher):
+                publisher.publish(message=message)
             event = message.event
 
             if isinstance(event, QueueErrorEvent):
