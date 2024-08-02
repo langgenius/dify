@@ -51,7 +51,7 @@ class UpstageTextEmbeddingModel(_CommonUpstage, TextEmbeddingModel):
         tokenizer = self._get_tokenizer()
 
         for i, text in enumerate(texts):
-            token = tokenizer.encode(text, add_special_tokens=False)
+            token = tokenizer.encode(text, add_special_tokens=False).tokens
             for j in range(0, len(token), context_size):
                 tokens += [token[j:j+context_size]]
                 indices += [i]
@@ -186,10 +186,10 @@ class UpstageTextEmbeddingModel(_CommonUpstage, TextEmbeddingModel):
             tokens=tokens,
             total_tokens=tokens,
             unit_price=input_price_info.unit_price,
-            price_unit=input_price_info.price_unit,
-            total_price=input_price_info.total_price,
+            price_unit=input_price_info.unit,
+            total_price=input_price_info.total_amount,
             currency=input_price_info.currency,
-            latency=time.perf_counter() - self.start_time
+            latency=time.perf_counter() - self.started_at
         )
 
         return usage
