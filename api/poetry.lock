@@ -5619,23 +5619,25 @@ files = [
 
 [[package]]
 name = "pgvecto-rs"
-version = "0.1.4"
+version = "0.2.1"
 description = "Python binding for pgvecto.rs"
 optional = false
-python-versions = ">=3.8"
+python-versions = "<3.13,>=3.8"
 files = [
-    {file = "pgvecto_rs-0.1.4-py3-none-any.whl", hash = "sha256:9b08a9e612f0cd65d1cc6e17a35b9bb5956187e0e3981bf6e997ff9e615c6116"},
-    {file = "pgvecto_rs-0.1.4.tar.gz", hash = "sha256:078b96cff1f3d417169ad46cacef7fc4d644978bbd6725a5c24c0675de5030ab"},
+    {file = "pgvecto_rs-0.2.1-py3-none-any.whl", hash = "sha256:b3ee2c465219469ad537b3efea2916477c6c576b3d6fd4298980d0733d12bb27"},
+    {file = "pgvecto_rs-0.2.1.tar.gz", hash = "sha256:07046eaad2c4f75745f76de9ba483541909f1c595aced8d3434224a4f933daca"},
 ]
 
 [package.dependencies]
 numpy = ">=1.23"
+SQLAlchemy = {version = ">=2.0.23", optional = true, markers = "extra == \"sqlalchemy\""}
 toml = ">=0.10"
 
 [package.extras]
+django = ["Django (>=4.2)"]
 psycopg3 = ["psycopg[binary] (>=3.1.12)"]
 sdk = ["openai (>=1.2.2)", "pgvecto_rs[sqlalchemy]"]
-sqlalchemy = ["SQLAlchemy (>=2.0.23)", "pgvecto_rs[psycopg3]"]
+sqlalchemy = ["SQLAlchemy (>=2.0.23)"]
 
 [[package]]
 name = "pgvector"
@@ -6131,10 +6133,7 @@ files = [
 [package.dependencies]
 annotated-types = ">=0.4.0"
 pydantic-core = "2.20.1"
-typing-extensions = [
-    {version = ">=4.6.1", markers = "python_version < \"3.13\""},
-    {version = ">=4.12.2", markers = "python_version >= \"3.13\""},
-]
+typing-extensions = {version = ">=4.6.1", markers = "python_version < \"3.13\""}
 
 [package.extras]
 email = ["email-validator (>=2.0.0)"]
@@ -9501,5 +9500,5 @@ cffi = ["cffi (>=1.11)"]
 
 [metadata]
 lock-version = "2.0"
-python-versions = "^3.10"
-content-hash = "ca55e4a4bb354fe969cc73c823557525c7598b0375e8791fcd77febc59e03b96"
+python-versions = ">=3.10,<3.13"
+content-hash = "50acbb78f2a273dfa8683d9d292596e89d13a420c6ecb1afad331f2c38dd1423"
