@@ -5,9 +5,9 @@ WORKDIR /app/api
 
 # Install Poetry
 ENV POETRY_VERSION=1.8.3
-RUN poetry config repositories.pypi https://pypi.tuna.tsinghua.edu.cn/simple
-RUN pip install --no-cache-dir poetry==${POETRY_VERSION}
 
+RUN pip install --no-cache-dir poetry==${POETRY_VERSION}
+RUN poetry config repositories.pypi https://pypi.tuna.tsinghua.edu.cn/simple
 # Configure Poetry
 ENV POETRY_CACHE_DIR=/tmp/poetry_cache
 ENV POETRY_NO_INTERACTION=1
