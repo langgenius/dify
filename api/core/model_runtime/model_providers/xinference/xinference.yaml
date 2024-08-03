@@ -17,6 +17,7 @@ supported_model_types:
   - text-embedding
   - rerank
   - speech2text
+  - tts
 configurate_methods:
   - customizable-model
 model_credential_schema:

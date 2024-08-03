@@ -1,5 +1,5 @@
 [project]
-requires-python = ">=3.10"
+requires-python = ">=3.10,<3.13"
 
 [build-system]
 requires = ["poetry-core"]
@@ -73,6 +73,7 @@ quote-style = "single"
 
 [tool.pytest_env]
 OPENAI_API_KEY = "sk-IamNotARealKeyJustForMockTestKawaiiiiiiiiii"
+UPSTAGE_API_KEY = "up-aaaaaaaaaaaaaaaaaaaa"
 AZURE_OPENAI_API_BASE = "https://difyai-openai.openai.azure.com"
 AZURE_OPENAI_API_KEY = "xxxxb1707exxxxxxxxxxaaxxxxxf94"
 ANTHROPIC_API_KEY = "sk-ant-api11-IamNotARealKeyJustForMockTestKawaiiiiiiiiii-NotBaka-ASkksz"
@@ -123,7 +124,7 @@ flask-migrate = "~4.0.5"
 flask-restful = "~0.3.10"
 Flask-SQLAlchemy = "~3.1.1"
 gevent = "~23.9.1"
-gmpy2 = "~2.1.5"
+gmpy2 = "~2.2.1"
 google-ai-generativelanguage = "0.6.1"
 google-api-core = "2.18.0"
 google-api-python-client = "2.90.0"
@@ -154,7 +155,7 @@ pydantic_extra_types = "~2.9.0"
 pydub = "~0.25.1"
 pyjwt = "~2.8.0"
 pypdfium2 = "~4.17.0"
-python = "^3.10"
+python = ">=3.10,<3.13"
 python-docx = "~1.1.0"
 python-dotenv = "1.0.0"
 pyyaml = "~6.0.1"
@@ -173,11 +174,12 @@ transformers = "~4.35.0"
 unstructured = { version = "~0.10.27", extras = ["docx", "epub", "md", "msg", "ppt", "pptx"] }
 websocket-client = "~1.7.0"
 werkzeug = "~3.0.1"
-xinference-client = "0.9.4"
+xinference-client = "0.13.3"
 yarl = "~1.9.4"
 zhipuai = "1.0.7"
 rank-bm25 = "~0.2.2"
 openpyxl = "^3.1.5"
+
 ############################################################
 # Tool dependencies required by tool implementations
 ############################################################
@@ -204,7 +206,7 @@ cloudscraper = "1.2.71"
 [tool.poetry.group.vdb.dependencies]
 chromadb = "0.5.1"
 oracledb = "~2.2.1"
-pgvecto-rs = "0.1.4"
+pgvecto-rs = { version = "~0.2.1", extras = ['sqlalchemy'] }
 pgvector = "0.2.5"
 pymilvus = "~2.4.4"
 pymysql = "1.1.1"
