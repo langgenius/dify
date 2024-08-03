@@ -2,9 +2,9 @@ from enum import Enum
 
 from .model import AppMode
 from .types import StringUUID
-from .workflow import ConversationVariable
+from .workflow import ConversationVariable, WorkflowNodeExecutionStatus
 
-__all__ = ['ConversationVariable', 'StringUUID', 'AppMode']
+__all__ = ['ConversationVariable', 'StringUUID', 'AppMode', 'WorkflowNodeExecutionStatus']
 
 
 class CreatedByRole(Enum):
