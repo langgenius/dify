@@ -3,6 +3,8 @@ from collections.abc import Mapping, Sequence
 from enum import Enum
 from typing import Any, Optional, Union
 
+from sqlalchemy.orm import Mapped
+
 import contexts
 from constants import HIDDEN_VALUE
 from core.app.segments import (
@@ -123,8 +125,7 @@ class Workflow(db.Model):
     updated_by = db.Column(StringUUID)
     updated_at = db.Column(db.DateTime)
     _environment_variables = db.Column('environment_variables', db.Text, nullable=False, server_default='{}')
-    # _conversation_variables = db.Column('conversation_variables', db.Text, nullable=False, server_default='{}')
-    _conversation_variables = '{}'
+    _conversation_variables = db.Column('conversation_variables', db.Text, nullable=False, server_default='{}')
 
     @property
     def created_by_account(self):
@@ -722,3 +723,34 @@ class WorkflowAppLog(db.Model):
         created_by_role = CreatedByRole.value_of(self.created_by_role)
         return db.session.get(EndUser, self.created_by) \
             if created_by_role == CreatedByRole.END_USER else None
+
+
+class ConversationVariable(db.Model):
+    __tablename__ = 'workflow__conversation_variables'
+
+    id = db.Column(StringUUID, primary_key=True)
+    app_id: Mapped[str] = db.Column(StringUUID, nullable=False, index=True)
+    conversation_id: Mapped[str] = db.Column(StringUUID, nullable=False, index=True)
+    data = db.Column(db.Text, nullable=False)
+    created_at = db.Column(db.DateTime, nullable=False, index=True, server_default=db.text('CURRENT_TIMESTAMP(0)'))
+    updated_at = db.Column(db.DateTime, nullable=False, server_default=db.text('CURRENT_TIMESTAMP(0)'), onupdate=db.text('CURRENT_TIMESTAMP(0)'))
+
+    def __init__(self, *, id: str, app_id: str, conversation_id: str, data: str) -> None:
+        self.id = id
+        self.app_id = app_id
+        self.conversation_id = conversation_id
+        self.data = data
+
+    @classmethod
+    def from_variable(cls, *, app_id: str, conversation_id: str, variable: Variable) -> 'ConversationVariable':
+        obj = cls(
+            id=variable.id,
+            app_id=app_id,
+            conversation_id=conversation_id,
+            data=variable.model_dump_json(),
+        )
+        return obj
+
+    def to_variable(self) -> Variable:
+        mapping = json.loads(self.data)
+        return factory.build_variable_from_mapping(mapping)
