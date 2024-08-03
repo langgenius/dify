@@ -3,15 +3,12 @@ from collections.abc import Mapping, Sequence
 from enum import Enum
 from typing import Any, Optional, Union
 
+from sqlalchemy import func
 from sqlalchemy.orm import Mapped
 
 import contexts
 from constants import HIDDEN_VALUE
-from core.app.segments import (
-    SecretVariable,
-    Variable,
-    factory,
-)
+from core.app.segments import SecretVariable, Variable, factory
 from core.helper import encrypter
 from extensions.ext_database import db
 from libs import helper
@@ -733,7 +730,7 @@ class ConversationVariable(db.Model):
     conversation_id: Mapped[str] = db.Column(StringUUID, nullable=False, index=True)
     data = db.Column(db.Text, nullable=False)
     created_at = db.Column(db.DateTime, nullable=False, index=True, server_default=db.text('CURRENT_TIMESTAMP(0)'))
-    updated_at = db.Column(db.DateTime, nullable=False, server_default=db.text('CURRENT_TIMESTAMP(0)'), onupdate=db.text('CURRENT_TIMESTAMP(0)'))
+    updated_at = db.Column(db.DateTime, nullable=False, server_default=func.current_timestamp(), onupdate=func.current_timestamp())
 
     def __init__(self, *, id: str, app_id: str, conversation_id: str, data: str) -> None:
         self.id = id
