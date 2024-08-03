@@ -1,4 +1,4 @@
-from typing import Optional, List
+from typing import Optional
 
 from xinference_client.client.restful.restful_client import Client, RESTfulRerankModelHandle
 
@@ -183,7 +183,7 @@ class RESTfulRerankModelHandleWithoutExtraParameter(RESTfulRerankModelHandle):
 
     def rerank(
             self,
-            documents: List[str],
+            documents: list[str],
             query: str,
             top_n: Optional[int] = None,
             max_chunks_per_doc: Optional[int] = None,
