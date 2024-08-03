@@ -203,6 +203,16 @@ def register_blueprints(app):
     from controllers.inner_api import bp as inner_api_bp
     from controllers.service_api import bp as service_api_bp
     from controllers.web import bp as web_bp
+    from controllers.webhook import bp as webhook_bp
+
+
+    CORS(webhook_bp, resources={r"/*": {"origins": "*"}}, 
+     allow_headers=["Content-Type", "Authorization"],
+     methods=["GET", "POST", "OPTIONS"])
+
+    app.register_blueprint(webhook_bp)
+
+
 
     CORS(service_api_bp,
          allow_headers=['Content-Type', 'Authorization', 'X-App-Code'],
@@ -239,6 +249,9 @@ def register_blueprints(app):
     app.register_blueprint(files_bp)
 
     app.register_blueprint(inner_api_bp)
+
+
+
 
 
 # create app

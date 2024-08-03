@@ -1,8 +1,10 @@
+import os 
 from models.dataset import  Document
 from models.model import App, MessageAnnotation
 from services.tenant_plan_service import TenantPlanService
 from extensions.ext_database import db
-from models.account import Account, BasePlan, Tenant, TenantAccountJoin, TenantAccountRole, TenantPlan , AccountStatus
+from models.account import Account, BasePlan, Tenant, TenantAccountJoin, TenantAccountRole, TenantPlan , PlanType , PlanInterval
+from services.stripe_service import StripeService
 
 
 
@@ -30,9 +32,41 @@ class BillingService:
                          prefilled_email: str = '',
                          tenant_id: str = ''):
 
-        #TODO : integrate stripe and update this
-        return "https://www.example.com" 
 
+        
+
+        price_id = BillingService.get_plan_price_id(plan, interval)
+        print(f"price_id : {price_id}")
+
+
+        account = db.session.query(Account).filter_by(email=prefilled_email).first()
+
+        if not account:
+            raise ValueError("Account does not exist")
+         
+
+        customer = StripeService.create_customer(account.email , account.name)
+
+
+        if not customer:
+            raise ValueError("Customer does not exist")
+
+
+        checkout_session = StripeService.create_checkout_session(customer["id"] ,
+                                                                  price_id ,
+                                                                  "http://localhost:3000/apps" ,
+                                                                  "http://localhost:3000/apps" ,
+                                                                  tenant_id)
+
+        if not checkout_session:
+            raise ValueError("Checkout session does not exist")
+
+
+        print(checkout_session["url"])
+
+        return  {
+         "url"  : checkout_session["url"]
+        }
 
 
     @classmethod
@@ -43,7 +77,6 @@ class BillingService:
                                         prefilled_email: str):
 
                                         
-        #TODO we have to ingreate email service here to send email
         return "https://www.example.com"
 
 
@@ -52,7 +85,16 @@ class BillingService:
     def get_invoices(cls, prefilled_email: str = '', tenant_id: str = ''):
 
       #TODO we have to ingreate email service here to send email
+       print(f"input : get_invoices funcation prefilled_email : {prefilled_email} tenant_id : {tenant_id}")
+
+       new_base_plan =  StripeService.create_plan_with_price( PlanType.PROFESSIONAL , 2)
+
+       
+       print(f"new_base_plan : {new_base_plan}")
+
        return "https://www.example.com"
+        
+
 
 
 
@@ -175,3 +217,18 @@ class BillingService:
         # each words has typicaly 5 tokens
         # 1.2 million token will give us 1 MB of vector space
         return float(f"{((total_words_count * 5  ) / ( 1.2 * 10**6 ) ):.2f}")
+
+
+
+    @staticmethod
+    def get_plan_price_id(plan: str, duration: str) -> str:
+
+        
+       plan = db.session.query(BasePlan).filter_by(plan_type=plan).first()
+       print(f"plan : {plan}")
+
+       return plan.price_id_monthly if duration == "month" else plan.price_id_yearly
+
+        
+        
+    

@@ -281,6 +281,8 @@ class BasePlan(db.Model):
     description = db.Column(db.Text)
     price_monthly = db.Column(db.Float, nullable=False)
     price_yearly = db.Column(db.Float, nullable=False)
+    price_id_monthly = db.Column(db.String(255), nullable=False) # stripe price id 
+    price_id_yearly = db.Column(db.String(255), nullable=False) # stripe price id 
     message_credits = db.Column(db.Integer, nullable=False)
     team_members = db.Column(db.Integer, nullable=False)
     build_apps = db.Column(db.Integer, nullable=False)
@@ -332,7 +334,7 @@ class TenantPlan(db.Model):
     end_date = db.Column(db.DateTime, nullable=False)
     interval = db.Column(db.String(255), nullable=False , server_default=db.text("'monthly'::character varying"))
 
-    is_active = db.Column(db.Boolean, nullable=False, default=True)
+    is_active = db.Column(db.Boolean, nullable=False, default=True) # TODO : update this to false 
     multiplier = db.Column(db.Float, nullable=False, default=1.0)
     discount = db.Column(db.Float, nullable=False, default=0.0)  # Percentage
     has_paid = db.Column(db.Boolean, nullable=False, default=False)
@@ -368,3 +370,23 @@ class Transaction(db.Model):
 
     def __repr__(self):
         return f'<Transaction {self.id} - {self.status}>'
+
+
+
+
+class TenantCustomerId(db.Model):
+    __tablename__ = 'tenant_customer_id'
+    __table_args__ = (
+        db.PrimaryKeyConstraint('id', name='tenant_customer_id_pkey'),
+        db.Index('tenant_customer_id_tenant_id_idx', 'tenant_id'),
+        db.Index('tenant_customer_id_customer_id_idx', 'customer_id')
+    )
+
+    id = db.Column(StringUUID, server_default=db.text('uuid_generate_v4()'))
+    tenant_id = db.Column(StringUUID, nullable=False)
+    customer_id = db.Column(StringUUID, nullable=False) # stripe customer id , used to send invoice
+    created_at = db.Column(db.DateTime, nullable=False, server_default=db.text('CURRENT_TIMESTAMP(0)'))
+    updated_at = db.Column(db.DateTime, nullable=False, server_default=db.text('CURRENT_TIMESTAMP(0)'))
+
+    def __repr__(self):
+        return f'<TenantCustomerId {self.id}>'
