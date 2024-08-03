@@ -344,6 +344,7 @@ const Configuration: FC = () => {
     detail: Resolution.low,
     transfer_methods: [TransferMethod.local_file],
     secure_key: '',
+    document_url: 'https://',
   })
 
   const handleSetVisionConfig = (config: VisionSettings, notNoticeFormattingChanged?: boolean) => {
@@ -353,6 +354,7 @@ const Configuration: FC = () => {
       detail: config.detail || Resolution.low,
       transfer_methods: config.transfer_methods || [TransferMethod.local_file],
       secure_key: config.secure_key || '',
+      document_url: config.document_url || '',
     })
     if (!notNoticeFormattingChanged)
       formattingChangedDispatcher()

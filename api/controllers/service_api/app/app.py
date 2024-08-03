@@ -75,6 +75,7 @@ class AppParameterApi(Resource):
                                                      "enabled": False,
                                                      "number_limits": 3,
                                                      "secure_key": "",
+                                                     "document_url":"https://",
                                                      "detail": "high",
                                                      "transfer_methods": ["remote_url", "local_file"]
                                                  }}),

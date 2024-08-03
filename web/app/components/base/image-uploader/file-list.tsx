@@ -17,6 +17,7 @@ type ImageListProps = {
   list: ImageFile[]
   readonly?: boolean
   secure_key?: string
+  document_url?: string
   onRemove?: (imageFileId: string) => void
   onReUpload?: (imageFileId: string) => void
   onImageLinkLoadSuccess?: (imageFileId: string) => void
@@ -27,6 +28,7 @@ const ImageList: FC<ImageListProps> = ({
   list,
   readonly,
   secure_key,
+  document_url,
   onRemove,
   onReUpload,
   onImageLinkLoadSuccess,
@@ -98,47 +100,8 @@ const ImageList: FC<ImageListProps> = ({
               )}
             </div>
           )}
-          {/* <img */}
-          {/*  className="w-16 h-16 rounded-lg object-cover cursor-pointer border-[0.5px] border-black/5" */}
-          {/*  alt={item.file?.name} */}
-          {/*  onLoad={() => handleImageLinkLoadSuccess(item)} */}
-          {/*  onError={() => handleImageLinkLoadError(item)} */}
-          {/*  src={ */}
-          {/*    item.type === TransferMethod.remote_url */}
-          {/*      ? item.url */}
-          {/*      : item.base64Url */}
-          {/*  } */}
-          {/*  onClick={() => */}
-          {/*    item.progress === 100 */}
-          {/*    && setImagePreviewUrl( */}
-          {/*      (item.type === TransferMethod.remote_url */}
-          {/*        ? item.url */}
-          {/*        : item.base64Url) as string, */}
-          {/*    ) */}
-          {/*  } */}
-          {/* /> */}
           <div className="sm:flex">
-            <div className="mb-2 flex-shrink-0 sm:mb-0 sm:mr-1">
-              {/* <img */}
-              {/*   className="w-8 h-8 rounded-lg object-cover cursor-pointer border-[0.5px] border-black/5" */}
-              {/*   onLoad={() => handleImageLinkLoadSuccess(item)} */}
-              {/*   onError={() => handleImageLinkLoadError(item)} */}
-              {/*   src={ */}
-              {/*     item.type === TransferMethod.remote_url */}
-              {/*       ? item.url */}
-              {/*       : item.base64Url */}
-              {/*   } */}
-              {/*   onClick={() => */}
-              {/*     item.progress === 100 */}
-              {/*     && setImagePreviewUrl( */}
-              {/*       (item.type === TransferMethod.remote_url */}
-              {/*         ? item.url */}
-              {/*         : item.base64Url) as string, */}
-              {/*     ) */}
-              {/*   } */}
-              {/* /> */}
-
-            </div>
+            <div className="mb-2 flex-shrink-0 sm:mb-0 sm:mr-1"/>
             <div>
 
               {/* <div className="grid grid-cols-1 gap-x-8 gap-y-6 sm:grid-cols-2">

@@ -31,6 +31,7 @@ export type FileUpload = {
     number_limits?: number
     transfer_methods?: TransferMethod[]
     secure_key?: string
+    document_url?: string
   }
 }
 

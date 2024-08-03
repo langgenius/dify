@@ -377,6 +377,7 @@ export type VisionSettings = {
   transfer_methods: TransferMethod[]
   image_file_size_limit?: number | string
   secure_key?: string
+  document_url?: string
 }
 
 export type ImageFile = {

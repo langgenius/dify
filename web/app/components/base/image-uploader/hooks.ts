@@ -120,15 +120,16 @@ type useLocalUploaderProps = {
   disabled?: boolean
   limit?: number
   secure_key?: string
+  document_url?: string
   onUpload: (imageFile: ImageFile) => void
 }
 
-export const useLocalFileUploader = ({ limit, disabled = false, secure_key, onUpload }: useLocalUploaderProps) => {
+export const useLocalFileUploader = ({ limit, disabled = false, secure_key, document_url, onUpload }: useLocalUploaderProps) => {
   const { notify } = useToastContext()
   const params = useParams()
   const { t } = useTranslation()
 
-  const handleLocalFileUpload = useCallback(async (file: File, isRag = false, secure_key = '') => {
+  const handleLocalFileUpload = useCallback(async (file: File, isRag = false, secure_key = '', document_url = '') => {
     if (disabled) {
       // TODO: leave some warnings?
       return
@@ -144,7 +145,7 @@ export const useLocalFileUploader = ({ limit, disabled = false, secure_key, onUp
 
     const reader = new FileReader()
     reader.readAsDataURL(file)
-    console.log('secure_key', secure_key)
+    console.log('secure_key', secure_key, document_url)
     /**
         * 1、如果是Rag
         * 2、如果是则先创建一个空知识库
@@ -168,16 +169,16 @@ export const useLocalFileUploader = ({ limit, disabled = false, secure_key, onUp
       }
       onUpload(fileFile)
       const publicKey = secure_key
-      const dataSet = await createEmptyDatasetByApi({ name: uuidv4(), create_by_system: true, pubOutApiKey: publicKey })
+      const dataSet = await createEmptyDatasetByApi({ name: uuidv4(), create_by_system: true, pubOutApiKey: publicKey, documentUrl: document_url })
       fileFile.progress = 30
       fileFile.index_status = '上传中'
       onUpload(fileFile)
-      const knowledge = await createKnowledgeByFile({ dataSetId: dataSet.id, file, pubOutApiKey: publicKey })
+      const knowledge = await createKnowledgeByFile({ dataSetId: dataSet.id, file, pubOutApiKey: publicKey, documentUrl: document_url })
       fileFile.progress = 99
       fileFile.index_status = '等待检索'
       onUpload(fileFile) // 此时代表文件上传成功,下一步通过定时任务,去获取文件的索引状态
       const timer = setInterval(async () => {
-        const status = await showIndexStatus({ datasetID: dataSet.id, batch: knowledge.batch, pubOutApiKey: publicKey })
+        const status = await showIndexStatus({ datasetID: dataSet.id, batch: knowledge.batch, pubOutApiKey: publicKey, documentUrl: document_url })
         // 下面data中是一个数组,我想拿到第一条数据请问怎么解构
         const { data } = status
         const [first] = data

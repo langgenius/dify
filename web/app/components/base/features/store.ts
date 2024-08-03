@@ -46,6 +46,7 @@ export const createFeaturesStore = (initProps?: Partial<FeaturesState>) => {
           number_limits: 3,
           transfer_methods: [TransferMethod.local_file, TransferMethod.remote_url],
           secure_key: ' ',
+          document_url: 'https://',
         },
       },
     },

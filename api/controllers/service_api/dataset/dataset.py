@@ -78,6 +78,8 @@ class DatasetListApi(DatasetApiResource):
         parser.add_argument('indexing_technique', type=str, location='json',
                             choices=Dataset.INDEXING_TECHNIQUE_LIST,
                             help='Invalid indexing technique.')
+        parser.add_argument('create_by_system', type= bool, location='json',
+                            nullable=True,)
         args = parser.parse_args()
 
         try:
@@ -85,7 +87,8 @@ class DatasetListApi(DatasetApiResource):
                 tenant_id=tenant_id,
                 name=args['name'],
                 indexing_technique=args['indexing_technique'],
-                account=current_user
+                account=current_user,
+                 create_by_system = args['create_by_system']
             )
         except services.errors.dataset.DatasetNameDuplicateError:
             raise DatasetNameDuplicateError()

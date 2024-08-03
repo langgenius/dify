@@ -83,6 +83,22 @@ const ParamConfigContent = ({
     if (onChange)
       onChange(newFeatures)
   }, [featuresStore, onChange])
+  const handleDocumentUrlChange = useCallback((value: string) => {
+    if (!value)
+      return
+
+    const {
+      features,
+      setFeatures,
+    } = featuresStore!.getState()
+    const newFeatures = produce(features, (draft) => {
+      if (draft.file?.image)
+        draft.file.image.document_url = value
+    })
+    setFeatures(newFeatures)
+    if (onChange)
+      onChange(newFeatures)
+  }, [featuresStore, onChange])
   return (
     <div>
       <div>
@@ -125,6 +141,16 @@ const ParamConfigContent = ({
               value={file?.image?.number_limits || 3}
               enable={true}
               onChange={handleLimitsChange}
+            />
+          </div>
+          <div>
+            <p className='text-[13px] font-bold ml-1 mb-1'>文档检索地址</p>
+            <Input
+              className=''
+              value={file?.image?.document_url}
+              placeholder='请输入文档检索地址'
+              onChange={handleDocumentUrlChange}
+
             />
           </div>
           <div>

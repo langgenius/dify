@@ -20,7 +20,8 @@ class FileUploadConfigManager:
                     image_config = {
                         'number_limits': file_upload_dict['image']['number_limits'],
                         'transfer_methods': file_upload_dict['image']['transfer_methods'],
-                        'secure_key': file_upload_dict['image']['secure_key']
+                        'secure_key': file_upload_dict['image']['secure_key'],
+                        "document_url":file_upload_dict['image']['document_url'],
                     }
 
                     if is_vision:

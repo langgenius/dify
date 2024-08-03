@@ -29,7 +29,7 @@ import type {
   CreateApiKeyResponse,
 } from '@/models/app'
 import type { RetrievalConfig } from '@/types/app'
-import { PUBLIC_OUT_API_PREFIX } from '@/config' // 聊天窗口上传文档相关接口
+// 聊天窗口上传文档相关接口
 import Toast from '@/app/components/base/toast'
 // apis for documents in a dataset
 
@@ -288,16 +288,32 @@ export const retryErrorDocs: Fetcher<CommonResponse, { datasetId: string; docume
 /**
  * 通过API创建空文档
  */
-export const createEmptyDatasetByApi: Fetcher<DataSet, { name: string; create_by_system: boolean; pubOutApiKey: string }> = ({ name, create_by_system, pubOutApiKey }) => {
-  return post<DataSet>('/datasets', { body: { name, create_by_system } }, { isPublicOutAPI: true, pubApiKey: pubOutApiKey })
+export const createEmptyDatasetByApi: Fetcher<any, { name: string; create_by_system: boolean; pubOutApiKey: string;documentUrl: string }> = async ({ name, create_by_system, pubOutApiKey, documentUrl }) => {
+  // return post<DataSet>('/datasets', { body: { name, create_by_system } }, { isPublicOutAPI: true, pubApiKey: pubOutApiKey })
+  const response = await fetch(`${documentUrl}/datasets`, {
+    method: 'POST',
+    headers: {
+      'Authorization': `Bearer ${pubOutApiKey}`,
+      'Content-Type': 'application/json',
+    },
+    body: JSON.stringify({
+      name,
+      create_by_system,
+    }),
+  })
+  if (!response.ok)
+    throw new Error(`Request failed with status ${response.status}`)
+
+  const jsonResponse = response.json()
+  return jsonResponse
 }
 /**
  * 通过DataSetId 根据文件创建知识库
  */
-export const createKnowledgeByFile: Fetcher<any, { dataSetId: string;file: File;pubOutApiKey: string }> = async ({ dataSetId, file, pubOutApiKey }) => {
+export const createKnowledgeByFile: Fetcher<any, { dataSetId: string;file: File;pubOutApiKey: string;documentUrl: string }> = async ({ dataSetId, file, pubOutApiKey, documentUrl }) => {
   // 做一些必要检查
-  if (!PUBLIC_OUT_API_PREFIX) {
-    Toast.notify({ type: 'error', message: 'PUBLIC_OUT_API_PREFIX不能为空,请联系管理员' })
+  if (!documentUrl) {
+    Toast.notify({ type: 'error', message: 'documentUrl不能为空,请联系管理员' })
     return
   }
   const formData = new FormData()
@@ -311,7 +327,7 @@ export const createKnowledgeByFile: Fetcher<any, { dataSetId: string;file: File;
   formData.append('file', file)
 
   try {
-    const response = await fetch(`${PUBLIC_OUT_API_PREFIX}/datasets/${dataSetId}/document/create_by_file`, {
+    const response = await fetch(`${documentUrl}/datasets/${dataSetId}/document/create_by_file`, {
       method: 'POST',
       headers: {
         Authorization: `Bearer ${pubOutApiKey}`,
@@ -333,9 +349,9 @@ export const createKnowledgeByFile: Fetcher<any, { dataSetId: string;file: File;
 /**
  * 检查当前文档的索引状态
  */
-export const showIndexStatus: Fetcher<any, { datasetID: string; batch: string;pubOutApiKey: string }> = async ({ datasetID, batch, pubOutApiKey }) => {
+export const showIndexStatus: Fetcher<any, { datasetID: string; batch: string;pubOutApiKey: string;documentUrl: string }> = async ({ datasetID, batch, pubOutApiKey, documentUrl }) => {
   try {
-    const response = await fetch(`${PUBLIC_OUT_API_PREFIX}/datasets/${datasetID}/documents/${batch}/indexing-status`, {
+    const response = await fetch(`${documentUrl}/datasets/${datasetID}/documents/${batch}/indexing-status`, {
       method: 'GET',
       headers: {
         Authorization: `Bearer ${pubOutApiKey}`,
@@ -350,8 +366,4 @@ export const showIndexStatus: Fetcher<any, { datasetID: string; batch: string;pu
   catch (error) {
     console.error('Error:', error)
   }
-}
-
-export const fetchIndexingStatusBatchByOutAPI: Fetcher<IndexingStatusBatchResponse, BatchReq> = async ({ datasetId, batchId, pubOutApiKey }) => {
-  return get<IndexingStatusBatchResponse>(`/datasets/${datasetId}/batch/${batchId}/indexing-status`, {}, { isPublicOutAPI: true, pubApiKey: pubOutApiKey })
 }
