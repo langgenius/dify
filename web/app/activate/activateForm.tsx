@@ -4,6 +4,7 @@ import { useContext } from 'use-context-selector'
 import { useTranslation } from 'react-i18next'
 import useSWR from 'swr'
 import { useSearchParams } from 'next/navigation'
+import Link from 'next/link'
 import { CheckCircleIcon } from '@heroicons/react/24/solid'
 import style from './style.module.css'
 import cn from '@/utils/classnames'
@@ -201,7 +202,7 @@ const ActivateForm = () => {
                   {`${t('login.join')} ${checkRes.workspace_name}`}
                 </Button>
               </div>
-              {/* <div className="block w-hull mt-2 text-xs text-gray-600">
+              <div className="block w-hull mt-2 text-xs text-gray-600">
                 {t('login.license.tip')}
                 &nbsp;
                 <Link
@@ -209,7 +210,7 @@ const ActivateForm = () => {
                   target='_blank' rel='noopener noreferrer'
                   href={`https://docs.dify.ai/${language !== LanguagesSupported[1] ? 'user-agreement' : `v/${locale.toLowerCase()}/policies`}/open-source`}
                 >{t('login.license.link')}</Link>
-              </div> */}
+              </div>
             </div>
           </div>
         </div>

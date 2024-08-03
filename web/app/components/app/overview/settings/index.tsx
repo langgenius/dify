@@ -2,7 +2,8 @@
 import type { FC } from 'react'
 import React, { useEffect, useState } from 'react'
 import { ChevronRightIcon } from '@heroicons/react/20/solid'
-import { useTranslation } from 'react-i18next'
+import Link from 'next/link'
+import { Trans, useTranslation } from 'react-i18next'
 import s from './style.module.css'
 import Modal from '@/app/components/base/modal'
 import Button from '@/app/components/base/button'
@@ -226,12 +227,12 @@ const SettingsModal: FC<ISettingsModalProps> = ({
             placeholder={t(`${prefixSettings}.more.copyRightPlaceholder`) as string}
           />
           <div className={`mt-8 font-medium ${s.settingTitle} text-gray-900`}>{t(`${prefixSettings}.more.privacyPolicy`)}</div>
-          {/* <p className={`mt-1 ${s.settingsTip} text-gray-500`}>
+          <p className={`mt-1 ${s.settingsTip} text-gray-500`}>
             <Trans
               i18nKey={`${prefixSettings}.more.privacyPolicyTip`}
               components={{ privacyPolicyLink: <Link href={'https://docs.dify.ai/user-agreement/privacy-policy'} target='_blank' rel='noopener noreferrer' className='text-primary-600' /> }}
             />
-          </p> */}
+          </p>
           <input className={`w-full mt-2 rounded-lg h-10 box-border px-3 ${s.projectName} bg-gray-100`}
             value={inputInfo.privacyPolicy}
             onChange={onChange('privacyPolicy')}

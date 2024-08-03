@@ -8,6 +8,7 @@ import type { SubmitHandler } from 'react-hook-form'
 import { useForm } from 'react-hook-form'
 import { z } from 'zod'
 import { zodResolver } from '@hookform/resolvers/zod'
+import Link from 'next/link'
 import Loading from '../components/base/loading'
 import classNames from '@/utils/classnames'
 import Button from '@/app/components/base/button'
@@ -152,7 +153,7 @@ const InstallForm = () => {
                 </Button>
               </div>
             </form>
-            {/* <div className="block w-hull mt-2 text-xs text-gray-600">
+            <div className="block w-hull mt-2 text-xs text-gray-600">
               {t('login.license.tip')}
               &nbsp;
               <Link
@@ -160,7 +161,7 @@ const InstallForm = () => {
                 target='_blank' rel='noopener noreferrer'
                 href={'https://docs.dify.ai/user-agreement/open-source'}
               >{t('login.license.link')}</Link>
-            </div> */}
+            </div>
           </div>
         </div>
       </>

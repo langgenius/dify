@@ -21,9 +21,9 @@ const Install = () => {
       }>
         <Header />
         <InstallForm />
-        {/* <div className='px-8 py-6 text-sm font-normal text-gray-500'>
+        <div className='px-8 py-6 text-sm font-normal text-gray-500'>
           © {new Date().getFullYear()} Dify, Inc. All rights reserved.
-        </div> */}
+        </div>
       </div>
     </div>
   )
