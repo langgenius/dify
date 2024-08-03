@@ -728,7 +728,7 @@ class WorkflowAppLog(db.Model):
 class ConversationVariable(db.Model):
     __tablename__ = 'workflow__conversation_variables'
 
-    id = db.Column(StringUUID, primary_key=True)
+    id: Mapped[str] = db.Column(StringUUID, primary_key=True)
     app_id: Mapped[str] = db.Column(StringUUID, nullable=False, index=True)
     conversation_id: Mapped[str] = db.Column(StringUUID, nullable=False, index=True)
     data = db.Column(db.Text, nullable=False)
