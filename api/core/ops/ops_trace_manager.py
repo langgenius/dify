@@ -153,27 +153,12 @@ class OpsTraceManager:
     def get_ops_trace_instance(
         cls,
         app_id: Optional[Union[UUID, str]] = None,
-        message_id: Optional[str] = None,
-        conversation_id: Optional[str] = None
     ):
         """
         Get ops trace through model config
         :param app_id: app_id
-        :param message_id: message_id
-        :param conversation_id: conversation_id
         :return:
         """
-        if conversation_id is not None:
-            conversation_data: Conversation = db.session.query(Conversation).filter(
-                Conversation.id == conversation_id
-            ).first()
-            if conversation_data:
-                app_id = conversation_data.app_id
-
-        if message_id is not None:
-            record: Message = db.session.query(Message).filter(Message.id == message_id).first()
-            app_id = record.app_id
-
         if isinstance(app_id, UUID):
             app_id = str(app_id)
 
@@ -296,6 +281,8 @@ class TraceTask:
         self.timer = timer
         self.kwargs = kwargs
         self.file_base_url = os.getenv("FILES_URL", "http://127.0.0.1:5001")
+
+        self.app_id = None
 
     def execute(self):
         return self.preprocess()
@@ -667,13 +654,11 @@ trace_manager_batch_size = int(os.getenv("TRACE_QUEUE_MANAGER_BATCH_SIZE", 100))
 
 
 class TraceQueueManager:
-    def __init__(self, app_id=None, conversation_id=None, message_id=None):
+    def __init__(self, app_id=None):
         global trace_manager_timer
 
         self.app_id = app_id
-        self.conversation_id = conversation_id
-        self.message_id = message_id
-        self.trace_instance = OpsTraceManager.get_ops_trace_instance(app_id, conversation_id, message_id)
+        self.trace_instance = OpsTraceManager.get_ops_trace_instance(app_id)
         self.flask_app = current_app._get_current_object()
         if trace_manager_timer is None:
             self.start_timer()
@@ -683,6 +668,7 @@ class TraceQueueManager:
         global trace_manager_queue
         try:
             if self.trace_instance:
+                trace_task.app_id = self.app_id
                 trace_manager_queue.put(trace_task)
         except Exception as e:
             logging.debug(f"Error adding trace task: {e}")
@@ -721,9 +707,7 @@ class TraceQueueManager:
             for task in tasks:
                 trace_info = task.execute()
                 task_data = {
-                    "app_id": self.app_id,
-                    "conversation_id": self.conversation_id,
-                    "message_id": self.message_id,
+                    "app_id": task.app_id,
                     "trace_info_type": type(trace_info).__name__,
                     "trace_info": trace_info.model_dump() if trace_info else {},
                 }
