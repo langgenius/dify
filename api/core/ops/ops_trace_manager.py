@@ -333,6 +333,8 @@ class TraceTask:
         file_list = workflow_run_inputs.get("sys.file") if workflow_run_inputs.get("sys.file") else []
         query = workflow_run_inputs.get("query") or workflow_run_inputs.get("sys.query") or ""
 
+        user_id = workflow_run.created_by
+
         # get workflow_app_log_id
         workflow_app_log_data = db.session.query(WorkflowAppLog).filter_by(
             tenant_id=tenant_id,
@@ -358,6 +360,7 @@ class TraceTask:
             "total_tokens": total_tokens,
             "file_list": file_list,
             "triggered_form": workflow_run.triggered_from,
+            "user_id": user_id,
         }
 
         workflow_trace_info = WorkflowTraceInfo(
