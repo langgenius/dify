@@ -202,6 +202,7 @@ const ChatInput: FC<ChatInputProps> = ({
                     list={files}
                     secure_key={visionConfig.secure_key}
                     document_url={visionConfig.document_url}
+                    document_enable={visionConfig.document_enable}
                     onRemove={onRemove}
                     onReUpload={onReUpload}
                     onImageLinkLoadSuccess={onImageLinkLoadSuccess}

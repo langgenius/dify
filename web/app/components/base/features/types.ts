@@ -32,6 +32,7 @@ export type FileUpload = {
     transfer_methods?: TransferMethod[]
     secure_key?: string
     document_url?: string
+    document_enable?: boolean
   }
 }
 

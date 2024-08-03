@@ -121,15 +121,16 @@ type useLocalUploaderProps = {
   limit?: number
   secure_key?: string
   document_url?: string
+  document_enable?: boolean
   onUpload: (imageFile: ImageFile) => void
 }
 
-export const useLocalFileUploader = ({ limit, disabled = false, secure_key, document_url, onUpload }: useLocalUploaderProps) => {
+export const useLocalFileUploader = ({ limit, disabled = false, secure_key, document_url, document_enable, onUpload }: useLocalUploaderProps) => {
   const { notify } = useToastContext()
   const params = useParams()
   const { t } = useTranslation()
 
-  const handleLocalFileUpload = useCallback(async (file: File, isRag = false, secure_key = '', document_url = '') => {
+  const handleLocalFileUpload = useCallback(async (file: File, isRag = false, secure_key = '', document_url = '', document_enable = false) => {
     if (disabled) {
       // TODO: leave some warnings?
       return
@@ -145,7 +146,7 @@ export const useLocalFileUploader = ({ limit, disabled = false, secure_key, docu
 
     const reader = new FileReader()
     reader.readAsDataURL(file)
-    console.log('secure_key', secure_key, document_url)
+    console.log('secure_key', secure_key, document_url, document_enable)
     /**
         * 1、如果是Rag
         * 2、如果是则先创建一个空知识库

@@ -22,6 +22,7 @@ class FileUploadConfigManager:
                         'transfer_methods': file_upload_dict['image']['transfer_methods'],
                         'secure_key': file_upload_dict['image']['secure_key'],
                         "document_url":file_upload_dict['image']['document_url'],
+                        "document_enable":file_upload_dict['image']['document_enable']
                     }
 
                     if is_vision:

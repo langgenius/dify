@@ -18,6 +18,7 @@ type ImageListProps = {
   readonly?: boolean
   secure_key?: string
   document_url?: string
+  document_enable?: boolean
   onRemove?: (imageFileId: string) => void
   onReUpload?: (imageFileId: string) => void
   onImageLinkLoadSuccess?: (imageFileId: string) => void
@@ -29,6 +30,7 @@ const ImageList: FC<ImageListProps> = ({
   readonly,
   secure_key,
   document_url,
+  document_enable,
   onRemove,
   onReUpload,
   onImageLinkLoadSuccess,

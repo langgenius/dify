@@ -2,7 +2,7 @@ import type { ChangeEvent, FC } from 'react'
 import { useState } from 'react'
 import { useLocalFileUploader } from './hooks'
 import type { ImageFile } from '@/types/app'
-import { ALLOW_FILE_EXTENSIONS } from '@/types/app'
+import { ALLOW_FILE_EXTENSIONS, File_WITHOUT_IMAGE } from '@/types/app'
 
 type UploaderProps = {
   children: (hovering: boolean) => JSX.Element
@@ -12,6 +12,7 @@ type UploaderProps = {
   disabled?: boolean
   secure_key?: string
   document_url?: string
+  document_enable?: boolean
 }
 
 const Uploader: FC<UploaderProps> = ({
@@ -22,6 +23,7 @@ const Uploader: FC<UploaderProps> = ({
   disabled,
   secure_key,
   document_url,
+  document_enable,
 }) => {
   const [hovering, setHovering] = useState(false)
   const { handleLocalFileUpload } = useLocalFileUploader({
@@ -30,6 +32,7 @@ const Uploader: FC<UploaderProps> = ({
     disabled,
     secure_key,
     document_url,
+    document_enable,
   })
 
   const handleChange = (e: ChangeEvent<HTMLInputElement>) => {
@@ -39,7 +42,7 @@ const Uploader: FC<UploaderProps> = ({
       return
     // TODO 测试完后增加更多的类型
     if (file.name.split('.')[1] === 'docx')
-      handleLocalFileUpload(file, true, secure_key, document_url)
+      handleLocalFileUpload(file, true, secure_key, document_url, document_enable)
     else
       handleLocalFileUpload(file, false)
     closePopover?.()
@@ -56,7 +59,7 @@ const Uploader: FC<UploaderProps> = ({
         className='absolute block inset-0 opacity-0 text-[0] w-full disabled:cursor-not-allowed cursor-pointer'
         onClick={e => ((e.target as HTMLInputElement).value = '')}
         type='file'
-        accept={ALLOW_FILE_EXTENSIONS.map(ext => `.${ext}`).join(',')}
+        accept={ALLOW_FILE_EXTENSIONS.filter(item => document_enable || !File_WITHOUT_IMAGE.includes(item)).map(ext => `.${ext}`).join(',')}
         onChange={secure_key => handleChange(secure_key)}
         disabled={disabled}
       />

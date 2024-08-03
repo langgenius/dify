@@ -378,6 +378,7 @@ export type VisionSettings = {
   image_file_size_limit?: number | string
   secure_key?: string
   document_url?: string
+  document_enable?: boolean
 }
 
 export type ImageFile = {

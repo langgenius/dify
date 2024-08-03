@@ -96,6 +96,7 @@ const TextGenerationImageUploader: FC<TextGenerationImageUploaderProps> = ({
       limit={+settings.image_file_size_limit!}
       secure_key={settings.secure_key}
       document_url={settings.document_url}
+      document_enable = {settings.document_enable}
     >
       {
         hovering => (

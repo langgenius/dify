@@ -12,7 +12,7 @@ import RadioGroup from './radio-group'
 import { TransferMethod } from '@/types/app'
 import ParamItem from '@/app/components/base/param-item'
 import Input from '@/app/components/base/input'
-
+import Switch from '@/app/components/base/switch'
 const MIN = 1
 const MAX = 6
 type ParamConfigContentProps = {
@@ -99,6 +99,20 @@ const ParamConfigContent = ({
     if (onChange)
       onChange(newFeatures)
   }, [featuresStore, onChange])
+  const handleSwitch = useCallback((value: boolean) => {
+    const {
+      features,
+      setFeatures,
+    } = featuresStore!.getState()
+    const newFeatures = produce(features, (draft) => {
+      if (draft.file?.image)
+        draft.file.image.document_enable = value
+    })
+    setFeatures(newFeatures)
+
+    if (onChange)
+      onChange(newFeatures)
+  }, [featuresStore, onChange])
   return (
     <div>
       <div>
@@ -144,25 +158,37 @@ const ParamConfigContent = ({
             />
           </div>
           <div>
-            <p className='text-[13px] font-bold ml-1 mb-1'>文档检索地址</p>
-            <Input
-              className=''
-              value={file?.image?.document_url}
-              placeholder='请输入文档检索地址'
-              onChange={handleDocumentUrlChange}
-
+            <p className='text-[13px] font-bold ml-1 mb-1'>是否开启文档上传</p>
+            <Switch
+              defaultValue={file?.image?.document_enable}
+              onChange={handleSwitch}
+              size='md'
             />
           </div>
-          <div>
-            <p className='text-[13px] font-bold ml-1 mb-1'>文档检索密钥</p>
-            <Input
-              className=''
-              value={file?.image?.secure_key}
-              placeholder='请输入文档检索密钥'
-              onChange={handleSecureKeyChange}
+          {file?.image?.document_enable && (
+            <div>
+              <div>
+                <p className='text-[13px] font-bold ml-1 mb-1'>文档检索地址</p>
+                <Input
+                  className=''
+                  value={file?.image?.document_url}
+                  placeholder='请输入文档检索地址'
+                  onChange={handleDocumentUrlChange}
 
-            />
-          </div>
+                />
+              </div>
+              <div>
+                <p className='text-[13px] font-bold ml-1 mb-1'>文档检索密钥</p>
+                <Input
+                  className=''
+                  value={file?.image?.secure_key}
+                  placeholder='请输入文档检索密钥'
+                  onChange={handleSecureKeyChange}
+                />
+              </div>
+            </div>
+          )}
+
         </div>
       </div>
     </div>
