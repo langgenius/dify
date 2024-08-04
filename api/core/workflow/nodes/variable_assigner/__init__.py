@@ -70,7 +70,10 @@ class VariableAssignerNode(BaseNode):
 
         # Update conversation variable.
         # TODO: Find a better way to use the database.
-        update_conversation_variable(updated_variable)
+        conversation_id = variable_pool.get(['sys', 'conversation_id'])
+        if not isinstance(conversation_id, Variable):
+            raise VariableAssignerNodeError('conversation_id not found')
+        update_conversation_variable(conversation_id=conversation_id.text, variable=updated_variable)
 
         return NodeRunResult(
             status=WorkflowNodeExecutionStatus.SUCCEEDED,
@@ -80,8 +83,10 @@ class VariableAssignerNode(BaseNode):
         )
 
 
-def update_conversation_variable(variable: Variable):
-    stmt = select(ConversationVariable).where(ConversationVariable.id == variable.id)
+def update_conversation_variable(conversation_id: str, variable: Variable):
+    stmt = select(ConversationVariable).where(
+        ConversationVariable.id == variable.id, ConversationVariable.conversation_id == conversation_id
+    )
     with Session(db.engine) as session:
         row = session.scalar(stmt)
         if not row:

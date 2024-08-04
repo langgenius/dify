@@ -31,6 +31,8 @@ class ConversationVariablesApi(Resource):
         )
         if args['conversation_id']:
             stmt = stmt.where(ConversationVariable.conversation_id == args['conversation_id'])
+        else:
+            raise ValueError('conversation_id is required')
 
         # NOTE: This is a temporary solution to avoid performance issues.
         page = 1
