@@ -158,7 +158,18 @@ class StripeService:
 
  
         stripe_plan_name = f"{base_plan.name} x {multiplier}"
+
+
+        is_already_exist = StripeService.get_product_prices_by_name(stripe_plan_name)
+
+        if is_already_exist["success"]:
+            return StripeService.create_plan(base_plan , stripe_plan_name , is_already_exist["plan_id"] , base_plan_type_with_multiplier , multiplier, is_already_exist["monthy_price_id"], is_already_exist["yearly_price_id"])
+
+        
+
         new_plan = stripe.Product.create(name=stripe_plan_name)
+
+
 
         print(f"new_plan : {new_plan}")
 
@@ -169,7 +180,7 @@ class StripeService:
 
         monthly_price_new_plan = stripe.Price.create(
             # currency="usd" #TODO: update this with usd on get once get hte strip id  
-            currency="inr" ,
+            currency="usd" ,
             unit_amount= int(base_plan.price_monthly * multiplier),
             recurring={
                 "interval": "month",
@@ -201,17 +212,26 @@ class StripeService:
 
     
         yearly_plan_price_id = yearly_price_new_plan["id"]
+        
+
+        return StripeService.create_plan(base_plan , stripe_plan_name , new_plan["id"]   ,base_plan_type_with_multiplier , multiplier, mothly_plan_price_id, yearly_plan_price_id )
+
+
+        
+    @staticmethod
+    def create_plan( base_plan : BasePlan , plan_name: str , plan_id : str , plan_type :  str ,  multiplier : float  , monthly_price_id : str , yearly_price_id : str ):
 
         new_base_plan = BasePlan(
-            plan_type = base_plan_type_with_multiplier,
-            name = stripe_plan_name,
+            plan_type = plan_type,
+            name = plan_name,
             description = base_plan.description,
             price_monthly = base_plan.price_monthly * multiplier,
             price_yearly = base_plan.price_yearly * multiplier,
+            stripe_product_id = plan_id,
             annotation_quota_limit = base_plan.annotation_quota_limit * multiplier,
             custom_tools = base_plan.custom_tools * multiplier,
-            price_id_monthly = mothly_plan_price_id, 
-            price_id_yearly = yearly_plan_price_id,
+            price_id_monthly = monthly_price_id, 
+            price_id_yearly = yearly_price_id,
             message_requests = base_plan.message_requests * multiplier ,
             message_credits = base_plan.message_credits * multiplier,
             team_members = base_plan.team_members * multiplier,
@@ -233,4 +253,61 @@ class StripeService:
 
         return new_base_plan
 
+
          
+    @staticmethod
+    def get_product_prices_by_name(product_name):
+            try:
+
+                products = stripe.Product.search(query=f"name:'{product_name}'")
+
+                print(f"products : {products}")
+                
+                if not products.data:
+                    return {
+                        "success"  : False ,
+                        "monthy_price_id" : "" ,
+                        "yearly_price_id" : "" ,
+                        "plan_id" : "" ,
+                    } 
+
+
+                # Get the first matching product
+                product = products.data[0]
+
+                # Step 2: Retrieve prices for the product
+                prices = stripe.Price.list(product=product.id)
+
+                
+                print(f"prices : {prices}")
+
+
+                monthy_price_id = ""
+                yearly_price_id = ""
+                product_id = product["id"] 
+                
+
+
+                for price in prices.data:
+
+                    if price.recurring.interval == "month":
+                        monthy_price_id = price.id
+                    elif price.recurring.interval == "year":
+                        yearly_price_id = price.id
+
+
+                return {
+                    "success"  : True if monthy_price_id != "" and yearly_price_id != "" else False ,
+                    "monthy_price_id" : price.unit_amount ,
+                    "yearly_price_id" : price.unit_amount , 
+                    "plan_id" : product_id ,
+                }
+
+
+            except stripe.error.StripeError as e:
+                print(f"An error occurred: {str(e)}")
+                return {
+                    "success"  : False ,
+                    "monthy_price_id" : "" ,
+                    "yearly_price_id" : "" ,
+                } 

@@ -666,8 +666,8 @@ def create_base_plans():
             annotation_quota_limit=10,
             logs_history=15,
             custom_tools=-1 , # not available
-            price_id_monthly=os.getenv('STRIPE_PRICE_ID'), #TODO : updat this with the actaul price id
-            price_id_yearly=os.getenv('STRIPE_PRICE_ID'), #TODO : updat this with the actaul price id
+            price_id_monthly="", 
+            price_id_yearly="", 
             support=SupportType.COMMUNITY_FORUMS,
             custom_branding=False , 
             dataset_operator_enabled=False,
@@ -685,8 +685,9 @@ def create_base_plans():
             vector_storage=200,  # 200MB
             documents_upload_quota=500,
             documents_bulk_upload=True,
-            price_id_monthly=os.getenv('STRIPE_PRICE_ID'), #TODO : updat this with the actaul price id
-            price_id_yearly=os.getenv('STRIPE_PRICE_ID'), #TODO : updat this with the actaul price id
+            price_id_monthly=os.getenv('STRIPE_PRICE_ID_PROFESSIONAL_PLAN_MONTHLY'), 
+            price_id_yearly=os.getenv('STRIPE_PRICE_ID_PROFESSIONAL_PLAN_YEARLY'),
+            stripe_product_id=os.getenv('STRIPE_PROFESSIONAL_PLAN_ID'),
             document_processing_priority=ProcessingPriority.PRIORITY,
             message_requests=0,  # Unlimited
             annotation_quota_limit=2000,
@@ -707,8 +708,9 @@ def create_base_plans():
             team_members=0,  # Unlimited
             build_apps=0,  # Unlimited
             vector_storage=1024,  # 1GB
-            price_id_monthly=os.getenv('STRIPE_PRICE_ID'), #TODO : updat this with the actaul price id
-            price_id_yearly=os.getenv('STRIPE_PRICE_ID'), #TODO : updat this with the actaul price id
+            price_id_monthly=os.getenv('STRIPE_PRICE_ID_TEAM_PLAN_MONTHLY'), 
+            price_id_yearly=os.getenv('STRIPE_PRICE_ID_TEAM_PLAN_YEARLY'),
+            stripe_product_id=os.getenv('STRIPE_TEAM_PLAN_ID'),
             documents_upload_quota=1000,
             documents_bulk_upload=True,
             document_processing_priority=ProcessingPriority.PRIORITY,

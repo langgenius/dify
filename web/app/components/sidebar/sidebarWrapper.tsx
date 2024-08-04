@@ -1,56 +1,90 @@
-'use client'
-import React, { useCallback, useEffect, useState } from 'react'
-import Link from 'next/link'
-import { useBoolean } from 'ahooks'
-import { useSelectedLayoutSegment } from 'next/navigation'
-import { Bars3Icon } from '@heroicons/react/20/solid'
-import HeaderBillingBtn from '../billing/header-billing-btn'
-import { SidebarBody, Sidebar as UISidebar } from '@/app/components/ui/sidebar'
-import AccountDropdown from '@/app/components/header/account-dropdown'
-import AppNav from '@/app/components/header/app-nav'
-import DatasetNav from '@/app/components/header/dataset-nav'
-import EnvNav from '@/app/components/header/env-nav'
-import ExploreNav from '@/app/components/header/explore-nav'
-import ToolsNav from '@/app/components/header/tools-nav'
-import GithubStar from '@/app/components/header/github-star'
-import { WorkspaceProvider } from '@/context/workspace-context'
-import { useAppContext } from '@/context/app-context'
-import LogoSite from '@/app/components/base/logo/logo-site'
-import useBreakpoints, { MediaType } from '@/hooks/use-breakpoints'
-import { useProviderContext } from '@/context/provider-context'
-import { useModalContext } from '@/context/modal-context'
+"use client";
+import React, { useCallback, useEffect, useState } from "react";
+import Link from "next/link";
+import { useBoolean } from "ahooks";
+import { useSelectedLayoutSegment } from "next/navigation";
+import { Bars3Icon } from "@heroicons/react/20/solid";
+import HeaderBillingBtn from "../billing/header-billing-btn";
+import { SidebarBody, Sidebar as UISidebar } from "@/app/components/ui/sidebar";
+import AccountDropdown from "@/app/components/header/account-dropdown";
+import AppNav from "@/app/components/header/app-nav";
+import DatasetNav from "@/app/components/header/dataset-nav";
+import EnvNav from "@/app/components/header/env-nav";
+import ExploreNav from "@/app/components/header/explore-nav";
+import ToolsNav from "@/app/components/header/tools-nav";
+import GithubStar from "@/app/components/header/github-star";
+import { WorkspaceProvider } from "@/context/workspace-context";
+import { useAppContext } from "@/context/app-context";
+import LogoSite from "@/app/components/base/logo/logo-site";
+import useBreakpoints, { MediaType } from "@/hooks/use-breakpoints";
+import { useProviderContext } from "@/context/provider-context";
+import { useModalContext } from "@/context/modal-context";
+import { SideBar as NextUISidebar } from "@/app/components/next-ui/sidebar";
 
 const navClassName = `
   flex items-center relative mr-0 sm:mr-3 px-3 h-8 rounded-xl
   font-medium text-sm
   cursor-pointer
-`
-type SideBarWrapperProps = { children: React.ReactNode }
+`;
+type SideBarWrapperProps = { children: React.ReactNode };
 
 export function SidebarWrapper({ children }: SideBarWrapperProps) {
-  const { isCurrentWorkspaceEditor, isCurrentWorkspaceDatasetOperator } = useAppContext()
-  const selectedSegment = useSelectedLayoutSegment()
-  const media = useBreakpoints()
-  const isMobile = media === MediaType.mobile
-  const [isShowNavMenu, { toggle, setFalse: hideNavMenu }] = useBoolean(false)
-  const { enableBilling, plan } = useProviderContext()
-  const { setShowPricingModal, setShowAccountSettingModal } = useModalContext()
-  const isFreePlan = plan.type === 'sandbox'
-  const [sidebarOpen, setSidebarOpen] = useState(!isMobile)
+  const { isCurrentWorkspaceEditor, isCurrentWorkspaceDatasetOperator } =
+    useAppContext();
+  const selectedSegment = useSelectedLayoutSegment();
+  const media = useBreakpoints();
+  const isMobile = media === MediaType.mobile;
+  const [isShowNavMenu, { toggle, setFalse: hideNavMenu }] = useBoolean(false);
+  const { enableBilling, plan } = useProviderContext();
+  const { setShowPricingModal, setShowAccountSettingModal } = useModalContext();
+  const isFreePlan = plan.type === "sandbox";
+  const [sidebarOpen, setSidebarOpen] = useState(!isMobile);
 
   const handlePlanClick = useCallback(() => {
-    if (isFreePlan)
-      setShowPricingModal()
-    else
-      setShowAccountSettingModal({ payload: 'billing' })
-  }, [isFreePlan, setShowAccountSettingModal, setShowPricingModal])
+    if (isFreePlan) setShowPricingModal();
+    else setShowAccountSettingModal({ payload: "billing" });
+  }, [isFreePlan, setShowAccountSettingModal, setShowPricingModal]);
 
   useEffect(() => {
-    hideNavMenu()
-  }, [selectedSegment, hideNavMenu])
+    hideNavMenu();
+  }, [selectedSegment, hideNavMenu]);
 
   return (
     <div className="flex h-screen">
+      {/* <NextUISidebar
+        isOpen={sidebarOpen}
+        onOpenChange={setSidebarOpen}
+        isCollapsed={sidebarOpen}
+        setIsCollapsed={setSidebarOpen}
+        isMobile={isMobile}
+        company={{
+          key: "Home",
+          href: "/apps",
+          icon: <LogoSite className="h-8 w-auto" />,
+          element: (
+            <Link href="/apps" className="flex items-center">
+              <LogoSite className="h-8 w-auto" />
+            </Link>
+          ),
+        }}
+        exploreNav={
+          !isCurrentWorkspaceDatasetOperator ? (
+            <ExploreNav className={navClassName} />
+          ) : null
+        }
+        appNav={!isCurrentWorkspaceDatasetOperator ? <AppNav /> : null}
+        datasetNav={
+          isCurrentWorkspaceEditor || isCurrentWorkspaceDatasetOperator ? (
+            <DatasetNav />
+          ) : null
+        }
+        toolsNav={
+          !isCurrentWorkspaceDatasetOperator ? (
+            <ToolsNav className={navClassName} />
+          ) : null
+        }
+      ></NextUISidebar> */}
+
       <UISidebar open={sidebarOpen} setOpen={setSidebarOpen} animate={false}>
         <SidebarBody className="flex flex-col h-full">
           <div className="flex items-center justify-between p-4">
@@ -63,10 +97,15 @@ export function SidebarWrapper({ children }: SideBarWrapperProps) {
           <nav className="flex-1 overflow-y-auto px-4">
             {!isMobile && (
               <div className="flex flex-col space-y-2">
-                {!isCurrentWorkspaceDatasetOperator && <ExploreNav className={navClassName} />}
+                {!isCurrentWorkspaceDatasetOperator && (
+                  <ExploreNav className={navClassName} />
+                )}
                 {!isCurrentWorkspaceDatasetOperator && <AppNav />}
-                {(isCurrentWorkspaceEditor || isCurrentWorkspaceDatasetOperator) && <DatasetNav />}
-                {!isCurrentWorkspaceDatasetOperator && <ToolsNav className={navClassName} />}
+                {(isCurrentWorkspaceEditor ||
+                  isCurrentWorkspaceDatasetOperator) && <DatasetNav />}
+                {!isCurrentWorkspaceDatasetOperator && (
+                  <ToolsNav className={navClassName} />
+                )}
               </div>
             )}
           </nav>
@@ -101,17 +140,22 @@ export function SidebarWrapper({ children }: SideBarWrapperProps) {
           </>
         )}
 
-        {(isMobile && isShowNavMenu) && (
+        {isMobile && isShowNavMenu && (
           <div className="w-full flex flex-col bg-white dark:bg-gray-800 shadow">
-            {!isCurrentWorkspaceDatasetOperator && <ExploreNav className={navClassName} />}
+            {!isCurrentWorkspaceDatasetOperator && (
+              <ExploreNav className={navClassName} />
+            )}
             {!isCurrentWorkspaceDatasetOperator && <AppNav />}
-            {(isCurrentWorkspaceEditor || isCurrentWorkspaceDatasetOperator) && <DatasetNav />}
-            {!isCurrentWorkspaceDatasetOperator && <ToolsNav className={navClassName} />}
+            {(isCurrentWorkspaceEditor ||
+              isCurrentWorkspaceDatasetOperator) && <DatasetNav />}
+            {!isCurrentWorkspaceDatasetOperator && (
+              <ToolsNav className={navClassName} />
+            )}
           </div>
         )}
 
         {children}
       </div>
     </div>
-  )
+  );
 }

@@ -1,8 +1,6 @@
 import enum
 import json
-
 from flask_login import UserMixin
-
 from extensions.ext_database import db
 from models import StringUUID
 
@@ -171,6 +169,7 @@ class Tenant(db.Model):
     custom_config = db.Column(db.Text)
     created_at = db.Column(db.DateTime, nullable=False, server_default=db.text('CURRENT_TIMESTAMP(0)'))
     updated_at = db.Column(db.DateTime, nullable=False, server_default=db.text('CURRENT_TIMESTAMP(0)'))
+    stripe_customer_id = db.Column(db.String(255), nullable=True)
 
 
     def get_accounts(self) -> list[Account]:
@@ -279,10 +278,11 @@ class BasePlan(db.Model):
     plan_type = db.Column(db.String(255), nullable=False , server_default=db.text("'sandbox'::character varying"))
     name = db.Column(db.String(255), nullable=False)
     description = db.Column(db.Text)
+    stripe_product_id = db.Column(db.String(255), nullable=True)
     price_monthly = db.Column(db.Float, nullable=False)
     price_yearly = db.Column(db.Float, nullable=False)
-    price_id_monthly = db.Column(db.String(255), nullable=False) # stripe price id 
-    price_id_yearly = db.Column(db.String(255), nullable=False) # stripe price id 
+    price_id_monthly = db.Column(db.String(255), nullable=False ) # stripe price id
+    price_id_yearly = db.Column(db.String(255), nullable=False ) # stripe price id
     message_credits = db.Column(db.Integer, nullable=False)
     team_members = db.Column(db.Integer, nullable=False)
     build_apps = db.Column(db.Integer, nullable=False)
@@ -333,13 +333,10 @@ class TenantPlan(db.Model):
     start_date = db.Column(db.DateTime, nullable=False)
     end_date = db.Column(db.DateTime, nullable=False)
     interval = db.Column(db.String(255), nullable=False , server_default=db.text("'monthly'::character varying"))
-
     is_active = db.Column(db.Boolean, nullable=False, default=True) # TODO : update this to false 
-    multiplier = db.Column(db.Float, nullable=False, default=1.0)
     discount = db.Column(db.Float, nullable=False, default=0.0)  # Percentage
     has_paid = db.Column(db.Boolean, nullable=False, default=False)
     amount = db.Column(db.Float, nullable=False, default=0.0)
-    transaction_id = db.Column(StringUUID, nullable=True)
     created_at = db.Column(db.DateTime, nullable=False, server_default=db.text('CURRENT_TIMESTAMP(0)'))
     updated_at = db.Column(db.DateTime, nullable=False, server_default=db.text('CURRENT_TIMESTAMP(0)'))
 
@@ -355,6 +352,7 @@ class Transaction(db.Model):
 
     id = db.Column(StringUUID, server_default=db.text('uuid_generate_v4()'))
     tenant_id = db.Column(StringUUID, nullable=False)
+    tenant_plan_id = db.Column(StringUUID, nullable=False)
     amount = db.Column(db.Float, nullable=False)
     currency = db.Column(db.String(3), nullable=False)
     status = db.Column(db.String(255), nullable=False , server_default=db.text("'pending'::character varying"))

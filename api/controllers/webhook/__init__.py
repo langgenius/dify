@@ -6,4 +6,4 @@ bp = Blueprint('webhook', __name__, url_prefix='/webhook')
 api = ExternalApi(bp)
 
 print("webhook registered --------")
-from . import stripe
+from . import stripe_webhook

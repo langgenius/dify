@@ -8,6 +8,7 @@ class TenantPlanService:
     @classmethod
     def get_tenant_plan(cls, tenant_id: str) -> TenantPlan:
         # Get the current active tenant plan
+        
         current_plan = TenantPlan.query.filter_by(tenant_id=tenant_id, is_active=True).order_by(TenantPlan.end_date.desc()).first()
         print('current plan')
         print(current_plan)

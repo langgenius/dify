@@ -44,15 +44,27 @@ class BillingService:
         if not account:
             raise ValueError("Account does not exist")
          
+        
+        
+        tenant = db.session.query(Tenant).filter_by(id=account.current_tenant_id).first() 
 
-        customer = StripeService.create_customer(account.email , account.name)
+        customer_id = tenant.stripe_customer_id
+
+        if not customer_id or customer_id == "":
+           customer = StripeService.create_customer(account.email , account.name)
+           customer_id = customer["id"]
 
 
-        if not customer:
+
+        if not customer_id:
             raise ValueError("Customer does not exist")
 
+        
+        tenant.stripe_customer_id = customer_id
+        db.session.add(tenant)
+        db.session.commit()
 
-        checkout_session = StripeService.create_checkout_session(customer["id"] ,
+        checkout_session = StripeService.create_checkout_session( customer_id ,
                                                                   price_id ,
                                                                   "http://localhost:3000/apps" ,
                                                                   "http://localhost:3000/apps" ,
@@ -62,7 +74,6 @@ class BillingService:
             raise ValueError("Checkout session does not exist")
 
 
-        print(checkout_session["url"])
 
         return  {
          "url"  : checkout_session["url"]
@@ -87,10 +98,10 @@ class BillingService:
       #TODO we have to ingreate email service here to send email
        print(f"input : get_invoices funcation prefilled_email : {prefilled_email} tenant_id : {tenant_id}")
 
-       new_base_plan =  StripeService.create_plan_with_price( PlanType.PROFESSIONAL , 2)
+       plan =  StripeService.create_plan_with_price( PlanType.PROFESSIONAL , 2)
 
        
-       print(f"new_base_plan : {new_base_plan}")
+       print(f"plan : {plan}")
 
        return "https://www.example.com"
         
@@ -114,11 +125,12 @@ class BillingService:
     
     @staticmethod
     def format_plan_to_feature_model(  tenant_plan: TenantPlan, base_plan: BasePlan) :  
-        max_members = tenant_plan.multiplier * base_plan.team_members 
-        max_apps = tenant_plan.multiplier * base_plan.build_apps
-        max_vector_space = tenant_plan.multiplier * base_plan.vector_storage
-        max_annotation_quota_limit = tenant_plan.multiplier * base_plan.annotation_quota_limit
-        max_documents_upload_quota = tenant_plan.multiplier * base_plan.documents_upload_quota
+
+        max_members =  base_plan.team_members 
+        max_apps =  base_plan.build_apps
+        max_vector_space = base_plan.vector_storage
+        max_annotation_quota_limit =  base_plan.annotation_quota_limit
+        max_documents_upload_quota =  base_plan.documents_upload_quota
         docs_processing =  base_plan.document_processing_priority
         can_replace_logo = base_plan.custom_branding
         model_load_balancing_enabled = base_plan.model_load_balancing_enabled
@@ -158,24 +170,24 @@ class BillingService:
 
         return {
            "members" : {
-               "size" :  cur_members ,
-               "limit" :max_members
+               "size" : int(cur_members) ,
+               "limit": int(max_members)
                 },
            "apps" : {
-               "size" :  cur_apps ,
-               "limit" :max_apps
+               "size" :  int(cur_apps) ,
+               "limit" : int(max_apps)
                 },
            "vector_space" : {
-               "size" :  cur_vector_space ,
-               "limit" : max_vector_space
+               "size" :  int(cur_vector_space) ,
+               "limit" : int(max_vector_space)
                 },
            "documents_upload_quota" : {
-               "size" :  cur_documents ,
-               "limit" : max_documents_upload_quota
+               "size" :  int(cur_documents) ,
+               "limit" : int(max_documents_upload_quota)
                 },
            "annotation_quota_limit" : {
-               "size" :  cur_annotations ,
-               "limit" : max_annotation_quota_limit
+               "size" :  int(cur_annotations) ,
+               "limit" : int(max_annotation_quota_limit)
                 },
            "docs_processing" : docs_processing,
            "can_replace_logo" : can_replace_logo,

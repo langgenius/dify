@@ -1,5 +1,7 @@
 /** @type {import('tailwindcss').Config} */
 import tailwindThemeVarDefine from './themes/tailwind-theme-var-define'
+import { nextui } from '@nextui-org/react'
+
 module.exports = {
   content: [
     './app/**/*.{js,ts,jsx,tsx}',
@@ -92,6 +94,7 @@ module.exports = {
   },
   plugins: [
     require('@tailwindcss/typography'),
+    nextui(),
   ],
   // https://github.com/tailwindlabs/tailwindcss/discussions/5969
   corePlugins: {
