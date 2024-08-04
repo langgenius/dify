@@ -28,7 +28,7 @@ class NodeType(Enum):
     LOOP = 'loop'
     ITERATION = 'iteration'
     PARAMETER_EXTRACTOR = 'parameter-extractor'
-    CONVERSATION_VARIABLE_ASSIGNER = 'conversation-variable-assigner'
+    CONVERSATION_VARIABLE_ASSIGNER = 'assigner'
 
     @classmethod
     def value_of(cls, value: str) -> 'NodeType':

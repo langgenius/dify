@@ -104,16 +104,15 @@ class AdvancedChatAppRunner(AppRunner):
             workflow_callbacks.append(WorkflowLoggingCallback())
 
         # Init conversation variables
-        app_id = application_generate_entity.app_config.app_id
         stmt = select(ConversationVariable).where(
-            ConversationVariable.app_id == app_id, ConversationVariable.id == conversation.id
+            ConversationVariable.app_id == conversation.app_id, ConversationVariable.conversation_id == conversation.id
         )
         with Session(db.engine) as session:
             conversation_variables = session.scalars(stmt).all()
             if not conversation_variables:
                 conversation_variables = [
                     ConversationVariable.from_variable(
-                        app_id=app_id, conversation_id=conversation.id, variable=variable
+                        app_id=conversation.app_id, conversation_id=conversation.id, variable=variable
                     )
                     for variable in workflow.conversation_variables
                 ]

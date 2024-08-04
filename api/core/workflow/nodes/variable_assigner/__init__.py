@@ -29,7 +29,7 @@ class VariableAssignerData(BaseNodeData):
     desc: Optional[str] = 'Assign a value to a variable'
     assigned_variable_selector: Sequence[str]
     write_mode: WriteMode
-    input_value_selector: Sequence[str]
+    input_variable_selector: Sequence[str]
 
 
 class VariableAssignerNode(BaseNode):
@@ -46,13 +46,13 @@ class VariableAssignerNode(BaseNode):
 
         match data.write_mode:
             case WriteMode.OVER_WRITE:
-                income_value = variable_pool.get(data.input_value_selector)
+                income_value = variable_pool.get(data.input_variable_selector)
                 if not income_value:
                     raise VariableAssignerNodeError('input value not found')
                 updated_variable = original_variable.model_copy(update={'value': income_value.value})
 
             case WriteMode.APPEND:
-                income_value = variable_pool.get(data.input_value_selector)
+                income_value = variable_pool.get(data.input_variable_selector)
                 if not income_value:
                     raise VariableAssignerNodeError('input value not found')
                 updated_value = original_variable.value + [income_value.value]
@@ -71,7 +71,7 @@ class VariableAssignerNode(BaseNode):
         # Update conversation variable.
         # TODO: Find a better way to use the database.
         conversation_id = variable_pool.get(['sys', 'conversation_id'])
-        if not isinstance(conversation_id, Variable):
+        if not conversation_id:
             raise VariableAssignerNodeError('conversation_id not found')
         update_conversation_variable(conversation_id=conversation_id.text, variable=updated_variable)
 
