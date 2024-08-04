@@ -111,6 +111,7 @@ class WorkflowService:
             workflow.updated_by = account.id
             workflow.updated_at = datetime.now(timezone.utc).replace(tzinfo=None)
             workflow.environment_variables = environment_variables
+            workflow.conversation_variables = conversation_variables
 
         # commit db session changes
         db.session.commit()
