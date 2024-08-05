@@ -54,7 +54,9 @@ class ImageLoaderConvertBase64Tool(BuiltinTool):
             mimetype=mime_type
         )
 
-        url = f"https://dify.ddit.ai/{file_key}"
+        sign_url = ToolFileManager.sign_file(tool_file_id=filename, extension=image_ext)
+
+        url = sign_url
 
         meta = { 
             "url": url,

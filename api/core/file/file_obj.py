@@ -131,6 +131,6 @@ class FileVar(BaseModel):
             elif self.transfer_method == FileTransferMethod.TOOL_FILE:
                 extension = self.extension
                 # add sign url
-                return ToolFileParser.get_tool_file_manager().sign_file(tool_file_id=self.related_id, extension=extension)
+                return self.url if self.url is not None else ToolFileParser.get_tool_file_manager().sign_file(tool_file_id=self.related_id, extension=extension)
 
         return None

@@ -178,7 +178,7 @@ class ToolNode(BaseNode):
             if response.type == ToolInvokeMessage.MessageType.IMAGE_LINK or \
                     response.type == ToolInvokeMessage.MessageType.IMAGE:
                 url = response.message
-                ext = path.splitext(url)[1]
+                ext = path.splitext(url)[1].split('?')[0]
                 mimetype = response.meta.get('mime_type', 'image/jpeg')
                 filename = response.save_as or url.split('/')[-1]
 
