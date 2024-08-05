@@ -404,12 +404,12 @@ export const getVarType = ({
   else {
     (valueSelector as ValueSelector).slice(1).forEach((key, i) => {
       const isLast = i === valueSelector.length - 2
-      curr = curr.find((v: any) => v.variable === key)
+      curr = curr?.find((v: any) => v.variable === key)
       if (isLast) {
         type = curr?.type
       }
       else {
-        if (curr.type === VarType.object)
+        if (curr?.type === VarType.object)
           curr = curr.children
       }
     })

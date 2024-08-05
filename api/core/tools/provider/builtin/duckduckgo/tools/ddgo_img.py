@@ -2,6 +2,7 @@ from typing import Any
 
 from duckduckgo_search import DDGS
 
+from core.file.file_obj import FileTransferMethod
 from core.tools.entities.tool_entities import ToolInvokeMessage
 from core.tools.tool.builtin_tool import BuiltinTool
 
@@ -21,6 +22,7 @@ class DuckDuckGoImageSearchTool(BuiltinTool):
         response = DDGS().images(**query_dict)
         result = []
         for res in response:
+            res['transfer_method'] = FileTransferMethod.REMOTE_URL
             msg = ToolInvokeMessage(type=ToolInvokeMessage.MessageType.IMAGE_LINK,
                                     message=res.get('image'),
                                     save_as='',

@@ -22,10 +22,8 @@ def process_trace_tasks(tasks_data):
 
     trace_info = tasks_data.get('trace_info')
     app_id = tasks_data.get('app_id')
-    conversation_id = tasks_data.get('conversation_id')
-    message_id = tasks_data.get('message_id')
     trace_info_type = tasks_data.get('trace_info_type')
-    trace_instance = OpsTraceManager.get_ops_trace_instance(app_id, conversation_id, message_id)
+    trace_instance = OpsTraceManager.get_ops_trace_instance(app_id)
 
     if trace_info.get('message_data'):
         trace_info['message_data'] = Message.from_dict(data=trace_info['message_data'])
