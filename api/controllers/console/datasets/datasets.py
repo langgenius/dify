@@ -238,7 +238,8 @@ class DatasetApi(Resource):
             DatasetPermissionService.update_partial_member_list(
                 tenant_id, dataset_id_str, data.get('partial_member_list')
             )
-        else:
+        # clear partial member list when permission is only_me or all_team_members
+        elif data.get('permission') == 'only_me' or data.get('permission') == 'all_team_members':
             DatasetPermissionService.clear_partial_member_list(dataset_id_str)
 
         partial_member_list = DatasetPermissionService.get_dataset_partial_member_list(dataset_id_str)
