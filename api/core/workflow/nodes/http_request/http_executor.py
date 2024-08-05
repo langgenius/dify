@@ -337,8 +337,7 @@ class HttpExecutor:
                 if variable is None:
                     raise ValueError(f'Variable {variable_selector.variable} not found')
                 if escape_quotes and isinstance(variable, str):
-                    value = variable.replace('"', '\\"')
-                    value = value.replace('\n', '\\n')
+                    value = variable.replace('"', '\\"').replace('\n', '\\n')
                 else:
                     value = variable
                 variable_value_mapping[variable_selector.variable] = value
