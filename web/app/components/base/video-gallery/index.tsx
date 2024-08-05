@@ -1,5 +1,5 @@
 'use client'
-import React, { useEffect, useRef } from 'react'
+import React, { useEffect, useMemo, useRef } from 'react'
 
 type Props = {
   srcs: string[]
@@ -26,28 +26,27 @@ const getWidthStyle = (imgNum: number) => {
 const VideoGallery: React.FC<Props> = ({ srcs }) => {
   const videoRefs = useRef<(HTMLVideoElement | null)[]>([])
   const videoNum = srcs.length
-  const videoStyle = getWidthStyle(videoNum)
+  const videoStyle = useMemo(() => getWidthStyle(videoNum), [videoNum])
 
   useEffect(() => {
     srcs.forEach((src, index) => {
-      const video = videoRefs.current[index]!
-      if (video && src) {
-        if (!video.paused)
-          video.pause()
-
+      const video = videoRefs.current[index]
+      if (video && src)
         video.src = src
-        video.play().catch(error => console.log(error))
-      }
     })
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [srcs.join(',')])
+  }, [srcs])
 
   return (
     <>
-      {srcs.map((_, index) => (
-        <video controls title='preview' key={`video_${_}`} style={videoStyle}
-          ref={(ref) => { videoRefs.current[index] = ref as HTMLVideoElement }} />),
-      )}
+      {srcs.map((src, index) => (
+        <video
+          controls
+          key={`video_${src}`}
+          style={videoStyle}
+          ref={(ref) => { videoRefs.current[index] = ref }}
+          aria-label={`Video ${index + 1}`}
+        />
+      ))}
     </>
   )
 }

@@ -15,7 +15,7 @@ const VideoPreview: FC<VideoPreviewProps> = ({
   return createPortal(
     <div className='fixed inset-0 p-8 flex items-center justify-center bg-black/80 z-[1000]' onClick={e => e.stopPropagation()}>
       <div>
-        <video controls title={title}>
+        <video controls title={title} autoPlay={false} preload="metadata">
           <source
             type="video/mp4"
             src={url}

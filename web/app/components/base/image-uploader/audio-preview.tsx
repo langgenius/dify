@@ -15,7 +15,7 @@ const AudioPreview: FC<AudioPreviewProps> = ({
   return createPortal(
     <div className='fixed inset-0 p-8 flex items-center justify-center bg-black/80 z-[1000]' onClick={e => e.stopPropagation()}>
       <div>
-        <audio controls title={title}>
+        <audio controls title={title} autoPlay={false} preload="metadata">
           <source
             type="audio/mpeg"
             src={url}

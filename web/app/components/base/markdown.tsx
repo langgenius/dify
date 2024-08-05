@@ -222,6 +222,20 @@ export function Markdown(props: { content: string; className?: string }) {
         rehypePlugins={[
           RehypeKatex,
           RehypeRaw as any,
+          // The Rehype plug-in is used to remove the ref attribute of an element
+          () => {
+            return (tree) => {
+              // 引入方法迭代树
+              const iterate = (node: any) => {
+                if (node.type === 'element' && !node.properties?.src && node.properties?.ref && node.properties.ref.startsWith('{') && node.properties.ref.endsWith('}'))
+                  delete node.properties.ref
+
+                if (node.children)
+                  node.children.forEach(iterate)
+              }
+              tree.children.forEach(iterate)
+            }
+          },
         ]}
         components={{
           code: CodeBlock,

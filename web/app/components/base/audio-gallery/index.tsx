@@ -1,5 +1,5 @@
 'use client'
-import React, { useEffect, useRef } from 'react'
+import React, { useEffect, useMemo, useRef } from 'react'
 
 type Props = {
   srcs: string[]
@@ -26,21 +26,15 @@ const getWidthStyle = (imgNum: number) => {
 const AudioGallery: React.FC<Props> = ({ srcs }) => {
   const audioRefs = useRef<(HTMLAudioElement | null)[]>([])
   const audioNum = srcs.length
-  const audioStyle = getWidthStyle(audioNum)
+  const audioStyle = useMemo(() => getWidthStyle(audioNum), [audioNum])
 
   useEffect(() => {
     srcs.forEach((src, index) => {
-      const audio = audioRefs.current[index]!
-      if (audio && src) {
-        if (!audio.paused)
-          audio.pause()
-
+      const audio = audioRefs.current[index]
+      if (audio && src)
         audio.src = src
-        audio.play().catch(error => console.log(error))
-      }
     })
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [srcs.join(',')])
+  }, [srcs])
 
   return (
     <>
