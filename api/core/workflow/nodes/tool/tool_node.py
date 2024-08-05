@@ -119,10 +119,22 @@ class ToolNode(BaseNode):
             parameter = tool_parameters_dictionary.get(parameter_name)
             if not parameter:
                 continue
+
             if parameter.type == ToolParameter.ToolParameterType.FILE:
-                result[parameter_name] = [
-                    v.to_dict() for v in self._fetch_files(variable_pool)
-                ]
+                tool_input = node_data.tool_parameters[parameter_name]
+
+                if isinstance(tool_input.value, list) and tool_input.value:
+                    tool_input_first_value = tool_input.value[0]
+                    variable = variable_pool.get([tool_input_first_value, SystemVariable.FILES.value])
+                    files = [file_var.value for file_var in variable.value] if variable else []
+                    result[parameter_name] = [
+                        v.to_dict() for v in files
+                    ]
+                else:
+                    # 处理 tool_input.value 不是列表或者为空的情况
+                    result[parameter_name] = [
+                        v.to_dict() for v in self._fetch_files(variable_pool)
+                    ]
             else:
                 tool_input = node_data.tool_parameters[parameter_name]
                 segment_group = parser.convert_template(
@@ -171,7 +183,7 @@ class ToolNode(BaseNode):
                 filename = response.save_as or url.split('/')[-1]
 
                 # get tool file id
-                tool_file_id = url.split('/')[-1].split('.')[0]
+                tool_file_id = response.meta.get('tool_file_id', url.split('/')[-1].split('.')[0])
                 result.append(FileVar(
                     tenant_id=self.tenant_id,
                     type=FileType.IMAGE,
