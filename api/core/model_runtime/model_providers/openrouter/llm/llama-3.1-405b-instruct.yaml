@@ -4,7 +4,7 @@ label:
 model_type: llm
 model_properties:
   mode: chat
-  context_size: 128000
+  context_size: 131072
 parameter_rules:
   - name: temperature
     use_template: temperature
@@ -15,9 +15,9 @@ parameter_rules:
     required: true
     default: 512
     min: 1
-    max: 128000
+    max: 131072
 pricing:
-  input: "3"
-  output: "3"
+  input: "2.7"
+  output: "2.7"
   unit: "0.000001"
   currency: USD
