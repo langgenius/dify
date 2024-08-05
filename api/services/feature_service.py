@@ -41,6 +41,7 @@ class SystemFeatureModel(BaseModel):
     sso_enforced_for_signin_protocol: str = ''
     sso_enforced_for_web: bool = False
     sso_enforced_for_web_protocol: str = ''
+    sso_exclude_apps: list = []
 
 
 class FeatureService:
@@ -116,3 +117,9 @@ class FeatureService:
         features.sso_enforced_for_signin_protocol = enterprise_info['sso_enforced_for_signin_protocol']
         features.sso_enforced_for_web = enterprise_info['sso_enforced_for_web']
         features.sso_enforced_for_web_protocol = enterprise_info['sso_enforced_for_web_protocol']
+        features.sso_exclude_apps = enterprise_info['sso_exclude_apps']
+
+    @classmethod
+    def update_web_sso_exclude_apps(cls, app_id_list, user_id):
+        EnterpriseService.update_web_sso_exclude_apps(app_id_list, user_id)
+        return True

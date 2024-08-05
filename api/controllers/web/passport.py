@@ -14,10 +14,12 @@ from services.feature_service import FeatureService
 
 class PassportResource(Resource):
     """Base resource for passport."""
-    def get(self):
 
+    def get(self, app_id):
         system_features = FeatureService.get_system_features()
-        if system_features.sso_enforced_for_web:
+        web_sso_exclude_apps = system_features.sso_exclude_apps
+
+        if system_features.sso_enforced_for_web and app_id not in web_sso_exclude_apps:
             raise WebSSOAuthRequiredError()
 
         app_code = request.headers.get('X-App-Code')

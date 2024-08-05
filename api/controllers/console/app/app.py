@@ -17,6 +17,7 @@ from fields.app_fields import (
 from libs.login import login_required
 from services.app_dsl_service import AppDslService
 from services.app_service import AppService
+from services.feature_service import FeatureService
 
 ALLOW_CREATE_APP_MODES = ['chat', 'agent-chat', 'advanced-chat', 'workflow', 'completion']
 
@@ -362,6 +363,32 @@ class AppTraceApi(Resource):
         return {"result": "success"}
 
 
+class AppSSOApi(Resource):
+
+    @setup_required
+    @login_required
+    @account_initialization_required
+    def get(self):
+        return FeatureService.get_system_features().model_dump()
+
+    @setup_required
+    @login_required
+    @account_initialization_required
+    def patch(self):
+        parser = reqparse.RequestParser()
+        parser.add_argument('exclude_app_id_list', type=list, location='json')
+
+        if not current_user.is_editor:
+            raise Forbidden()
+
+        args = parser.parse_args()
+
+        current_user_id = current_user.id
+        FeatureService.update_web_sso_exclude_apps(args['exclude_app_id_list'], current_user_id)
+
+        return {"result": "success"}
+
+
 api.add_resource(AppListApi, '/apps')
 api.add_resource(AppImportApi, '/apps/import')
 api.add_resource(AppImportFromUrlApi, '/apps/import/url')
@@ -373,3 +400,4 @@ api.add_resource(AppIconApi, '/apps/<uuid:app_id>/icon')
 api.add_resource(AppSiteStatus, '/apps/<uuid:app_id>/site-enable')
 api.add_resource(AppApiStatus, '/apps/<uuid:app_id>/api-enable')
 api.add_resource(AppTraceApi, '/apps/<uuid:app_id>/trace')
+api.add_resource(AppSSOApi, '/apps/web-sso')
