@@ -113,6 +113,21 @@ const ChatVariableModal = ({
     }, {})
   }, [])
 
+  const formatValue = (value: any) => {
+    switch (type) {
+      case ChatVarType.String:
+        return value || ''
+      case ChatVarType.Number:
+        return value || 0
+      case ChatVarType.Object:
+        return formatValueFromObject(objectValue)
+      case ChatVarType.ArrayString:
+      case ChatVarType.ArrayNumber:
+      case ChatVarType.ArrayObject:
+        return value?.filter(Boolean) || []
+    }
+  }
+
   const handleNameChange = (v: string) => {
     if (!v)
       return setName('')
@@ -209,7 +224,7 @@ const ChatVariableModal = ({
       id: chatVar ? chatVar.id : uuid4(),
       name,
       value_type: type,
-      value: type === ChatVarType.Object ? formatValueFromObject(objectValue) : value,
+      value: formatValue(value),
       description: des,
     })
     onClose()

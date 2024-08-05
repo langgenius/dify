@@ -47,7 +47,7 @@ const VariableModalTrigger = ({
       }}>
         <Button variant='primary'>
           <RiAddLine className='mr-1 w-4 h-4' />
-          <span className='system-sm-medium'>{t('workflow.env.envPanelButton')}</span>
+          <span className='system-sm-medium'>{t('workflow.chatVariable.button')}</span>
         </Button>
       </PortalToFollowElemTrigger>
       <PortalToFollowElemContent className='z-[11]'>
