@@ -115,6 +115,18 @@ model_credential_schema:
             - variable: __model_type
               value: llm
         - label:
+            en_US: gpt-4o-mini
+          value: gpt-4o-mini
+          show_on:
+            - variable: __model_type
+              value: llm
+        - label:
+            en_US: gpt-4o-mini-2024-07-18
+          value: gpt-4o-mini-2024-07-18
+          show_on:
+            - variable: __model_type
+              value: llm
+        - label:
             en_US: gpt-4o
           value: gpt-4o
           show_on:

@@ -264,20 +264,18 @@ const Form = () => {
             )}
         </div>
       </div>
-      {currentDataset?.embedding_available && (
-        <div className={rowClass}>
-          <div className={labelClass} />
-          <div className='w-[480px]'>
-            <Button
-              className='min-w-24'
-              variant='primary'
-              onClick={handleSave}
-            >
-              {t('datasetSettings.form.save')}
-            </Button>
-          </div>
+      <div className={rowClass}>
+        <div className={labelClass} />
+        <div className='w-[480px]'>
+          <Button
+            className='min-w-24'
+            variant='primary'
+            onClick={handleSave}
+          >
+            {t('datasetSettings.form.save')}
+          </Button>
         </div>
-      )}
+      </div>
     </div>
   )
 }

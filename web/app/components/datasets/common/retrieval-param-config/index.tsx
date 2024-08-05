@@ -16,6 +16,7 @@ import ModelSelector from '@/app/components/header/account-setting/model-provide
 import { useModelListAndDefaultModel } from '@/app/components/header/account-setting/model-provider-page/hooks'
 import { ModelTypeEnum } from '@/app/components/header/account-setting/model-provider-page/declarations'
 import {
+  DEFAULT_WEIGHTED_SCORE,
   RerankingModeEnum,
   WeightedScoreEnum,
 } from '@/models/datasets'
@@ -69,12 +70,12 @@ const RetrievalParamConfig: FC<Props> = ({
       result.weights = {
         weight_type: WeightedScoreEnum.Customized,
         vector_setting: {
-          vector_weight: 0.5,
+          vector_weight: DEFAULT_WEIGHTED_SCORE.other.semantic,
           embedding_provider_name: '',
           embedding_model_name: '',
         },
         keyword_setting: {
-          keyword_weight: 0.5,
+          keyword_weight: DEFAULT_WEIGHTED_SCORE.other.keyword,
         },
       }
     }
@@ -202,7 +203,6 @@ const RetrievalParamConfig: FC<Props> = ({
               value.reranking_mode === RerankingModeEnum.WeightedScore && (
                 <WeightedScore
                   value={{
-                    type: value.weights!.weight_type,
                     value: [
                       value.weights!.vector_setting.vector_weight,
                       value.weights!.keyword_setting.keyword_weight,
@@ -213,7 +213,6 @@ const RetrievalParamConfig: FC<Props> = ({
                       ...value,
                       weights: {
                         ...value.weights!,
-                        weight_type: v.type,
                         vector_setting: {
                           ...value.weights!.vector_setting,
                           vector_weight: v.value[0],
