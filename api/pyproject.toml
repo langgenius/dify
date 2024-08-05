@@ -152,7 +152,6 @@ pycryptodome = "3.19.1"
 pydantic = "~2.8.2"
 pydantic-settings = "~2.3.4"
 pydantic_extra_types = "~2.9.0"
-pydub = "~0.25.1"
 pyjwt = "~2.8.0"
 pypdfium2 = "~4.17.0"
 python = ">=3.10,<3.13"
@@ -179,6 +178,7 @@ yarl = "~1.9.4"
 zhipuai = "1.0.7"
 rank-bm25 = "~0.2.2"
 openpyxl = "^3.1.5"
+kaleido = "0.2.1"
 
 ############################################################
 # Tool dependencies required by tool implementations

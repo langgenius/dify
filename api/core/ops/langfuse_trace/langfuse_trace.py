@@ -65,12 +65,13 @@ class LangFuseDataTrace(BaseTraceInstance):
 
     def workflow_trace(self, trace_info: WorkflowTraceInfo):
         trace_id = trace_info.workflow_app_log_id if trace_info.workflow_app_log_id else trace_info.workflow_run_id
+        user_id = trace_info.metadata.get("user_id")
         if trace_info.message_id:
             trace_id = trace_info.message_id
             name = f"message_{trace_info.message_id}"
             trace_data = LangfuseTrace(
                 id=trace_info.message_id,
-                user_id=trace_info.tenant_id,
+                user_id=user_id,
                 name=name,
                 input=trace_info.workflow_run_inputs,
                 output=trace_info.workflow_run_outputs,
@@ -95,7 +96,7 @@ class LangFuseDataTrace(BaseTraceInstance):
         else:
             trace_data = LangfuseTrace(
                 id=trace_id,
-                user_id=trace_info.tenant_id,
+                user_id=user_id,
                 name=f"workflow_{trace_info.workflow_app_log_id}" if trace_info.workflow_app_log_id else f"workflow_{trace_info.workflow_run_id}",
                 input=trace_info.workflow_run_inputs,
                 output=trace_info.workflow_run_outputs,

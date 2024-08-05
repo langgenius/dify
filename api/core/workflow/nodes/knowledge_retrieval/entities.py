@@ -33,7 +33,6 @@ class WeightedScoreConfig(BaseModel):
     """
     Weighted score Config.
     """
-    weight_type: str
     vector_setting: VectorSetting
     keyword_setting: KeywordSetting
 
@@ -48,7 +47,6 @@ class MultipleRetrievalConfig(BaseModel):
     reranking_enable: bool = True
     reranking_model: Optional[RerankingModelConfig] = None
     weights: Optional[WeightedScoreConfig] = None
-
 
 class ModelConfig(BaseModel):
     """
