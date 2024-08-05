@@ -55,7 +55,7 @@ export default translation
 
 async function main() {
   // for example
-  // autoGenTrans('workflow', 'zh-Hant')
+  autoGenTrans('workflow', 'zh-Hant')
 
   // get error may cause the rate limit
   // get all files names in en-US folder
