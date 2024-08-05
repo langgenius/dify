@@ -7,18 +7,14 @@ Welcome to the new `docker` directory for deploying Dify using Docker Compose. T
 - **Certbot Container**: `docker-compose.yaml` now contains `certbot` for managing SSL certificates. This container automatically renews certificates and ensures secure HTTPS connections.  
   For more information, refer `docker/certbot/README.md`.
 
-- **Persistent Environment Variables
-  **: Environment variables are now managed through a `.env` file, ensuring that your configurations persist across deployments.
+- **Persistent Environment Variables**: Environment variables are now managed through a `.env` file, ensuring that your configurations persist across deployments.
 
   > What is `.env`? </br> </br>
   > The `.env` file is a crucial component in Docker and Docker Compose environments, serving as a centralized configuration file where you can define environment variables that are accessible to the containers at runtime. This file simplifies the management of environment settings across different stages of development, testing, and production, providing consistency and ease of configuration to deployments.
 
-- **Unified Vector Database Services
-  **: All vector database services are now managed from a single Docker Compose file `docker-compose.yaml`. You can switch between different vector databases by setting the `VECTOR_STORE` environment variable in your `.env` file.
-- **Mandatory .env File
-  **: A `.env` file is now required to run `docker compose up`. This file is crucial for configuring your deployment and for any custom settings to persist through upgrades.
-- **Legacy Support
-  **: Previous deployment files are now located in the `docker-legacy` directory and will no longer be maintained.
+- **Unified Vector Database Services**: All vector database services are now managed from a single Docker Compose file `docker-compose.yaml`. You can switch between different vector databases by setting the `VECTOR_STORE` environment variable in your `.env` file.
+- **Mandatory .env File**: A `.env` file is now required to run `docker compose up`. This file is crucial for configuring your deployment and for any custom settings to persist through upgrades.
+- **Legacy Support**: Previous deployment files are now located in the `docker-legacy` directory and will no longer be maintained.
 
 ### How to Deploy Dify with `docker-compose.yaml`
 
@@ -29,7 +25,7 @@ Welcome to the new `docker` directory for deploying Dify using Docker Compose. T
     - Customize the `.env` file as needed. Refer to the `.env.example` file for detailed configuration options.
 3. **Running the Services**:
     - Execute `docker compose up` from the `docker` directory to start the services.
-    - To specify a vector database, set the `VECTOR_store` variable in your `.env` file to your desired vector database service, such as `milvus`, `weaviate`, or `opensearch`.
+    - To specify a vector database, set the `VECTOR_STORE` variable in your `.env` file to your desired vector database service, such as `milvus`, `weaviate`, or `opensearch`.
 4. **SSL Certificate Setup**:
     - Rrefer `docker/certbot/README.md` to set up SSL certificates using Certbot.
 
@@ -56,10 +52,8 @@ For users migrating from the `docker-legacy` setup:
 
 #### Key Modules and Customization
 
-- **Vector Database Services
-  **: Depending on the type of vector database used (`VECTOR_STORE`), users can set specific endpoints, ports, and authentication details.
-- **Storage Services
-  **: Depending on the storage type (`STORAGE_TYPE`), users can configure specific settings for S3, Azure Blob, Google Storage, etc.
+- **Vector Database Services**: Depending on the type of vector database used (`VECTOR_STORE`), users can set specific endpoints, ports, and authentication details.
+- **Storage Services**: Depending on the storage type (`STORAGE_TYPE`), users can configure specific settings for S3, Azure Blob, Google Storage, etc.
 - **API and Web Services**: Users can define URLs and other settings that affect how the API and web frontends operate.
 
 #### Other notable variables
@@ -99,9 +93,7 @@ The `.env.example` file provided in the Docker setup is extensive and covers a w
 
 ### Additional Information
 
-- **Continuous Improvement Phase
-  **: We are actively seeking feedback from the community to refine and enhance the deployment process. As more users adopt this new method, we will continue to make improvements based on your experiences and suggestions.
-- **Support
-  **: For detailed configuration options and environment variable settings, refer to the `.env.example` file and the Docker Compose configuration files in the `docker` directory.
+- **Continuous Improvement Phase**: We are actively seeking feedback from the community to refine and enhance the deployment process. As more users adopt this new method, we will continue to make improvements based on your experiences and suggestions.
+- **Support**: For detailed configuration options and environment variable settings, refer to the `.env.example` file and the Docker Compose configuration files in the `docker` directory.
 
 This README aims to guide you through the deployment process using the new Docker Compose setup. For any issues or further assistance, please refer to the official documentation or contact support.
