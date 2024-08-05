@@ -149,8 +149,7 @@ class MessageAnnotationApi(Resource):
     @get_app_model
     @marshal_with(annotation_fields)
     def post(self, app_model):
-        # The role of the current user in the ta table must be admin or owner
-        if not current_user.is_admin_or_owner:
+        if not current_user.is_editor:
             raise Forbidden()
 
         parser = reqparse.RequestParser()
