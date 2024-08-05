@@ -40,7 +40,7 @@ export type AppCardProps = {
 const AppCard = ({ app, onRefresh }: AppCardProps) => {
   const { t } = useTranslation()
   const { notify } = useContext(ToastContext)
-  const { isCurrentWorkspaceEditor } = useAppContext()
+  const { isCurrentWorkspaceManager, isCurrentWorkspaceEditor } = useAppContext()
   const { onPlanInfoChanged } = useProviderContext()
   const { push } = useRouter()
 
@@ -210,9 +210,11 @@ const AppCard = ({ app, onRefresh }: AppCardProps) => {
           <span className={s.actionName}>{t('app.editApp')}</span>
         </button>
         <Divider className="!my-1" />
-        <button className={s.actionItem} onClick={onClickDuplicate}>
-          <span className={s.actionName}>{t('app.duplicate')}</span>
-        </button>
+        {isCurrentWorkspaceManager && (
+          <button className={s.actionItem} onClick={onClickDuplicate}>
+            <span className={s.actionName}>{t('app.duplicate')}</span>
+          </button>
+        )}
         <button className={s.actionItem} onClick={onClickExport}>
           <span className={s.actionName}>{t('app.export')}</span>
         </button>
@@ -227,15 +229,19 @@ const AppCard = ({ app, onRefresh }: AppCardProps) => {
             </div>
           </>
         )}
-        <Divider className="!my-1" />
-        <div
-          className={cn(s.actionItem, s.deleteActionItem, 'group')}
-          onClick={onClickDelete}
-        >
-          <span className={cn(s.actionName, 'group-hover:text-red-500')}>
-            {t('common.operation.delete')}
-          </span>
-        </div>
+        {isCurrentWorkspaceManager && (
+          <>
+            <Divider className="!my-1" />
+            <div
+              className={cn(s.actionItem, s.deleteActionItem, 'group')}
+              onClick={onClickDelete}
+            >
+              <span className={cn(s.actionName, 'group-hover:text-red-500')}>
+                {t('common.operation.delete')}
+              </span>
+            </div>
+          </>
+        )}
       </div>
     )
   }

@@ -65,8 +65,8 @@ class AppListApi(Resource):
         parser.add_argument('icon_background', type=str, location='json')
         args = parser.parse_args()
 
-        # The role of the current user in the ta table must be admin, owner, or editor
-        if not current_user.is_editor:
+        # The role of the current user in the ta table must be admin, owner
+        if not current_user.is_admin_or_owner:
             raise Forbidden()
 
         if 'mode' not in args or args['mode'] is None:
@@ -86,8 +86,8 @@ class AppImportApi(Resource):
     @cloud_edition_billing_resource_check('apps')
     def post(self):
         """Import app"""
-        # The role of the current user in the ta table must be admin, owner, or editor
-        if not current_user.is_editor:
+        # The role of the current user in the ta table must be admin, owner
+        if not current_user.is_admin_or_owner:
             raise Forbidden()
 
         parser = reqparse.RequestParser()
@@ -116,8 +116,8 @@ class AppImportFromUrlApi(Resource):
     @cloud_edition_billing_resource_check('apps')
     def post(self):
         """Import app from url"""
-        # The role of the current user in the ta table must be admin, owner, or editor
-        if not current_user.is_editor:
+        # The role of the current user in the ta table must be admin, owner
+        if not current_user.is_admin_or_owner:
             raise Forbidden()
 
         parser = reqparse.RequestParser()
@@ -183,8 +183,8 @@ class AppApi(Resource):
     @get_app_model
     def delete(self, app_model):
         """Delete app"""
-        # The role of the current user in the ta table must be admin, owner, or editor
-        if not current_user.is_editor:
+        # The role of the current user in the ta table must be admin, owner
+        if not current_user.is_admin_or_owner:
             raise Forbidden()
 
         app_service = AppService()
@@ -201,8 +201,8 @@ class AppCopyApi(Resource):
     @marshal_with(app_detail_fields_with_site)
     def post(self, app_model):
         """Copy app"""
-        # The role of the current user in the ta table must be admin, owner, or editor
-        if not current_user.is_editor:
+        # The role of the current user in the ta table must be admin, owner
+        if not current_user.is_admin_or_owner:
             raise Forbidden()
 
         parser = reqparse.RequestParser()
