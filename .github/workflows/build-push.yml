@@ -77,4 +77,5 @@ jobs:
           host: ${{ secrets.ENDPOINT }}
           private-key: ${{ secrets.PKEY }}
       - name: Clone repository
-        run: ls
+        run: |
+          echo 'test' > test.txt
