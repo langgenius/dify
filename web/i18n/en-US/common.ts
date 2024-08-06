@@ -348,7 +348,7 @@ const translation = {
     getFreeTokens: 'Get free Tokens',
     priorityUsing: 'Prioritize using',
     deprecated: 'Deprecated',
-    confirmDelete: 'confirm deletion?',
+    confirmDelete: 'Confirm deletion?',
     quotaTip: 'Remaining available free tokens',
     loadPresets: 'Load Presents',
     parameters: 'PARAMETERS',
