@@ -55,6 +55,7 @@ export const ensureRerankModelSelected = ({
     indexMethod === 'high_quality'
     && (retrievalConfig.reranking_enable || retrievalConfig.search_method === RETRIEVE_METHOD.hybrid)
     && !rerankModel
+    && rerankDefaultModel
   ) {
     return {
       ...retrievalConfig,
