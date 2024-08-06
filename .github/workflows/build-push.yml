@@ -7,9 +7,9 @@ on:
   release:
     types: [published]
 
-env:
-  DIFY_WEB_IMAGE_NAME: ${{ vars.DIFY_WEB_IMAGE_NAME }}
-  DIFY_API_IMAGE_NAME: ${{ vars.DIFY_API_IMAGE_NAME }}
+# env:
+#   DIFY_WEB_IMAGE_NAME: ${{ vars.DIFY_WEB_IMAGE_NAME }}
+#   DIFY_API_IMAGE_NAME: ${{ vars.DIFY_API_IMAGE_NAME }}
 
 jobs:
   build-and-push:
