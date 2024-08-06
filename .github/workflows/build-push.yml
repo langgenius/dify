@@ -7,9 +7,9 @@ on:
   release:
     types: [published]
 
-# env:
-#   DIFY_WEB_IMAGE_NAME: ${{ vars.DIFY_WEB_IMAGE_NAME }}
-#   DIFY_API_IMAGE_NAME: ${{ vars.DIFY_API_IMAGE_NAME }}
+env:
+  DIFY_WEB_IMAGE_NAME: ${{ secrets.DIFY_WEB_IMAGE_NAME }}
+  DIFY_API_IMAGE_NAME: ${{ secrets.DIFY_API_IMAGE_NAME }}
 
 jobs:
   build-and-push:
@@ -19,10 +19,10 @@ jobs:
       matrix:
         include:
           - service_name: "web"
-            image_name_env: ${{ secrets.DIFY_WEB_IMAGE_NAME }}
+            image_name_env: "${{ env.DIFY_WEB_IMAGE_NAME }}"
             context: "web"
           - service_name: "api"
-            image_name_env: ${{ secrets.DIFY_API_IMAGE_NAME }}
+            image_name_env: ${{ env.DIFY_API_IMAGE_NAME }}
             context: "api"
     steps:
       - name: Login to CI
