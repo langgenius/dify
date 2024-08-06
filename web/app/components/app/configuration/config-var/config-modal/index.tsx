@@ -13,9 +13,9 @@ import { checkKeys, getNewVarInWorkflow } from '@/utils/var'
 import ConfigContext from '@/context/debug-configuration'
 import type { InputVar, MoreInfo, UploadFileSetting } from '@/app/components/workflow/types'
 import Modal from '@/app/components/base/modal'
-import Switch from '@/app/components/base/switch'
 import { ChangeType, InputVarType } from '@/app/components/workflow/types'
 import FileUploadSetting from '@/app/components/workflow/nodes/_base/components/file-upload-setting'
+import Checkbox from '@/app/components/base/checkbox'
 
 const TEXT_MAX_LENGTH = 256
 
@@ -186,9 +186,10 @@ const ConfigModal: FC<IConfigModalProps> = ({
             />
           )}
 
-          <Field title={t('appDebug.variableConig.required')}>
-            <Switch defaultValue={tempPayload.required} onChange={handlePayloadChange('required')} />
-          </Field>
+          <div className='!mt-5 flex items-center h-6 space-x-2'>
+            <Checkbox checked={tempPayload.required} onCheck={() => handlePayloadChange('required')(!tempPayload.required)} />
+            <span className='text-text-secondary system-sm-semibold'>{t('appDebug.variableConig.required')}</span>
+          </div>
         </div>
       </div>
       <ModalFoot
