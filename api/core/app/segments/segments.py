@@ -1,4 +1,5 @@
 import json
+import sys
 from collections.abc import Mapping, Sequence
 from typing import Any
 
@@ -36,6 +37,10 @@ class Segment(BaseModel):
     @property
     def markdown(self) -> str:
         return str(self.value)
+
+    @property
+    def size(self) -> int:
+        return sys.getsizeof(self.value)
 
     def to_object(self) -> Any:
         return self.value
