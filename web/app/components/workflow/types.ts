@@ -3,7 +3,7 @@ import type {
   Node as ReactFlowNode,
   Viewport,
 } from 'reactflow'
-import type { TransferMethod } from '@/types/app'
+import type { Resolution, TransferMethod } from '@/types/app'
 import type { ToolDefaultValue } from '@/app/components/workflow/block-selector/types'
 import type { VarType as VarKindType } from '@/app/components/workflow/nodes/tool/types'
 import type { NodeTracing } from '@/types/workflow'
@@ -343,4 +343,9 @@ export type UploadFileSetting = {
   maxUploadNumLimit?: number // multiple files upload limit
   supportFileTypes: SupportUploadFileTypes
   customFileTypes?: string[]
+}
+
+export type VisionSetting = {
+  valueSelector: ValueSelector
+  resolution: Resolution
 }
