@@ -84,8 +84,7 @@ class ToolFileMessageTransformer:
                 file_var: FileVar = message.meta.get('file_var')
                 if file_var:
                     if file_var.transfer_method == FileTransferMethod.TOOL_FILE:
-                        url = file_var.url if file_var.url is not None else cls.get_tool_file_url(file_var.related_id, file_var.extension)
-                        # url = cls.get_tool_file_url(file_var.related_id, file_var.extension)
+                        url = cls.get_tool_file_url(file_var.related_id, file_var.extension)
                         if file_var.type == FileType.IMAGE:
                             result.append(ToolInvokeMessage(
                                 type=ToolInvokeMessage.MessageType.IMAGE_LINK,
@@ -107,4 +106,6 @@ class ToolFileMessageTransformer:
     
     @classmethod
     def get_tool_file_url(cls, tool_file_id: str, extension: str) -> str:
-        return f'/files/tools/{tool_file_id}{extension or ".bin"}'
+        sign_url = ToolFileManager.sign_file(tool_file_id=tool_file_id, extension=extension)
+        return sign_url
+        # return f'/files/tools/{tool_file_id}{extension or ".bin"}'
