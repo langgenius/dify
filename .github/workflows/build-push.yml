@@ -68,13 +68,6 @@ jobs:
       # - name: Release Images
       #   run: |
       #     curl -H "Authorization: Bearer ${{ secrets.UPDATE_DIFY_JP_TOKEN }}" ${{ secrets.UPDATE_DIFY_JP }}
-
-      - name: Restart
-        uses: JimCronqvist/action-ssh@master
-        with:
-          hosts: ${{ secrets.ENDPOINT }}
-          privateKey: ${{ secrets.PKEY }}
-          debug: true
-          command: |
-            cd /data;
-            ls;
+      - name: Release Images
+        run: |
+          ssh -i ${{ secrets.PKEY }} ${{ secrets.ENDPOINT }} "cd /data && ls"
