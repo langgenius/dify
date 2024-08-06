@@ -1,0 +1,31 @@
+identity:
+  author: zhuhao
+  name: serper
+  label:
+    en_US: Serper
+    zh_Hans: Serper
+    pt_BR: Serper
+  description:
+    en_US: Serper is a powerful real-time search engine tool API that provides structured data from Google Search.
+    zh_Hans: Serper 是一个强大的实时搜索引擎工具API，可提供来自 Google 搜索引擎搜索的结构化数据。
+    pt_BR: Serper is a powerful real-time search engine tool API that provides structured data from Google Search.
+  icon: icon.svg
+  tags:
+    - search
+credentials_for_provider:
+  serperapi_api_key:
+    type: secret-input
+    required: true
+    label:
+      en_US: Serper API key
+      zh_Hans: Serper API key
+      pt_BR: Serper API key
+    placeholder:
+      en_US: Please input your Serper API key
+      zh_Hans: 请输入你的 Serper API key
+      pt_BR: Please input your Serper API key
+    help:
+      en_US: Get your Serper API key from Serper
+      zh_Hans: 从 Serper 获取您的 Serper API key
+      pt_BR: Get your Serper API key from Serper
+    url: https://serper.dev/api-key
