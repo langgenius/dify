@@ -21,9 +21,17 @@ const InputNumberWithSlider: FC<Props> = ({
   onChange,
 }) => {
   const handleBlur = useCallback(() => {
-    if (value === undefined || value === null)
+    if (value === undefined || value === null) {
       onChange(defaultValue)
-  }, [defaultValue, onChange, value])
+      return
+    }
+    if (max !== undefined && value > max) {
+      onChange(max)
+      return
+    }
+    if (min !== undefined && value < min)
+      onChange(min)
+  }, [defaultValue, max, min, onChange, value])
 
   const handleChange = useCallback((e: React.ChangeEvent<HTMLInputElement>) => {
     onChange(parseFloat(e.target.value))
@@ -33,7 +41,7 @@ const InputNumberWithSlider: FC<Props> = ({
     <div className='flex justify-between items-center h-8 space-x-2'>
       <input
         value={value}
-        className='shrink-0 block pl-3 w-12 h-8 appearance-none outline-none rounded-lg bg-gray-100 text-[13px] text-gra-900'
+        className='shrink-0 block pl-3 w-12 h-8 appearance-none outline-none rounded-lg bg-components-input-bg-normal text-[13px] text-components-input-text-filled'
         type='number'
         min={min}
         max={max}

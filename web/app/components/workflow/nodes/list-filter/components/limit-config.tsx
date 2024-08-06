@@ -3,10 +3,10 @@ import type { FC } from 'react'
 import React, { useCallback } from 'react'
 import { useTranslation } from 'react-i18next'
 import type { Limit } from '../types'
+import InputNumberWithSlider from '../../_base/components/input-number-with-slider'
 import cn from '@/utils/classnames'
 import Field from '@/app/components/workflow/nodes/_base/components/field'
 import Switch from '@/app/components/base/switch'
-import Slider from '@/app/components/base/slider'
 
 const i18nPrefix = 'workflow.nodes.listFilter'
 const LIMIT_SIZE_MIN = 1
@@ -49,15 +49,6 @@ const LimitConfig: FC<Props> = ({
     })
   }, [onChange, config])
 
-  const handleBlur = useCallback(() => {
-    const payload = config
-    if (!payload)
-      return
-
-    if (payload.size === undefined || payload.size === null)
-      handleLimitSizeChange(LIMIT_SIZE_DEFAULT)
-  }, [handleLimitSizeChange, config])
-
   return (
     <div className={cn(className)}>
       <Field
@@ -73,28 +64,13 @@ const LimitConfig: FC<Props> = ({
       >
         {payload?.enabled
           ? (
-            <div className='flex justify-between items-center h-8 space-x-2'>
-              <input
-                value={(payload?.size || LIMIT_SIZE_DEFAULT) as number}
-                className='shrink-0 block pl-3 w-12 h-8 appearance-none outline-none rounded-lg bg-gray-100 text-[13px] text-gra-900'
-                type='number'
-                min={LIMIT_SIZE_MIN}
-                max={LIMIT_SIZE_MAX}
-                step={1}
-                onChange={e => handleLimitSizeChange(e.target.value)}
-                onBlur={handleBlur}
-                disabled={readonly || !payload?.enabled}
-              />
-              <Slider
-                className='grow'
-                value={(payload?.size || LIMIT_SIZE_DEFAULT) as number}
-                min={LIMIT_SIZE_MIN}
-                max={LIMIT_SIZE_MAX}
-                step={1}
-                onChange={handleLimitSizeChange}
-                disabled={readonly || !payload?.enabled}
-              />
-            </div>
+            <InputNumberWithSlider
+              value={payload?.size || LIMIT_SIZE_DEFAULT}
+              min={LIMIT_SIZE_MIN}
+              max={LIMIT_SIZE_MAX}
+              onChange={handleLimitSizeChange}
+              readonly={readonly || !payload?.enabled}
+            />
           )
           : null}
       </Field>
