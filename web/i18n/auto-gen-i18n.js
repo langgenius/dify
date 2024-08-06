@@ -7,11 +7,26 @@ const { parseModule, generateCode, loadFile } = magicast
 // https://github.com/vitalets/google-translate-api
 const bingTranslate = require('bing-translate-api')
 const { translate } = bingTranslate
-const sleep = ms => new Promise(resolve => setTimeout(resolve, ms))
 
 const targetLanguage = 'en-US'
-const data = require('./languages.json')
-const languages = data.languages.filter(language => language.supported && language.value === 'zh-Hant').map(language => language.value)
+// https://github.com/plainheart/bing-translate-api/blob/master/src/met/lang.json
+const languageKeyMap = {
+  'zh-Hans': 'zh-Hans',
+  'zh-Hant': 'zh-Hant',
+  'pt-BR': 'pt',
+  'es-ES': 'es',
+  'fr-FR': 'fr',
+  'de-DE': 'de',
+  'ja-JP': 'ja',
+  'ko-KR': 'ko',
+  'it-IT': 'it',
+  'uk-UA': 'uk',
+  'vi-VN': 'vi',
+  'ro-RO': 'ro',
+  'pl-PL': 'pl',
+  'hi-IN': 'hi',
+  'tr-TR': 'tr',
+}
 
 async function translateMissingKeyDeeply(sourceObj, targetObject, toLanguage) {
   await Promise.all(Object.keys(sourceObj).map(async (key) => {
@@ -21,7 +36,7 @@ async function translateMissingKeyDeeply(sourceObj, targetObject, toLanguage) {
         await translateMissingKeyDeeply(sourceObj[key], targetObject[key], toLanguage)
       }
       else {
-        const { translation } = await translate(sourceObj[key], null, toLanguage)
+        const { translation } = await translate(sourceObj[key], null, languageKeyMap[toLanguage])
         targetObject[key] = translation
         // console.log(translation)
       }
@@ -54,10 +69,12 @@ export default translation
 }
 
 async function main() {
-  // for example
-  autoGenTrans('workflow', 'zh-Hant')
+  const fileName = 'workflow'
+  Promise.all(Object.keys(languageKeyMap).map(async (toLanguage) => {
+    await autoGenTrans(fileName, toLanguage)
+  }))
 
-  // get error may cause the rate limit
+  // get error may because of the rate limit
   // get all files names in en-US folder
   // const files = fs.readdirSync(path.join(__dirname, targetLanguage)).map(file => file.replace(/\.ts/, '')).slice(0, 1)
   // await Promise.all(files.map(async (file) => {
