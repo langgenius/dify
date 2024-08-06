@@ -47,7 +47,7 @@ jobs:
         uses: docker/build-push-action@v6
         with:
           context: "{{defaultContext}}:${{ matrix.context }}"
-          platforms: linux/arm64'
+          platforms: 'linux/arm64'
           build-args: COMMIT_SHA=${{ fromJSON(steps.meta.outputs.json).labels['org.opencontainers.image.revision'] }}
           push: true
           tags: ${{ steps.meta.outputs.tags }}
@@ -55,7 +55,7 @@ jobs:
           cache-from: type=gha
           cache-to: type=gha,mode=max
 
-  release:
+  depoly-jp:
       runs-on: ubuntu-latest
       needs: build-and-push
       steps:
