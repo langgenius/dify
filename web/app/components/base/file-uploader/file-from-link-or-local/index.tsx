@@ -2,6 +2,7 @@ import {
   memo,
   useState,
 } from 'react'
+import { useTranslation } from 'react-i18next'
 import { RiUploadCloud2Line } from '@remixicon/react'
 import {
   PortalToFollowElem,
@@ -22,6 +23,7 @@ const FileFromLinkOrLocal = ({
   showFromLocal = true,
   trigger,
 }: FileFromLinkOrLocalProps) => {
+  const { t } = useTranslation()
   const [open, setOpen] = useState(false)
   const [url, setUrl] = useState('')
 
@@ -53,7 +55,7 @@ const FileFromLinkOrLocal = ({
                   disabled={!url}
                   onClick={() => onLink?.(url)}
                 >
-                  OK
+                  {t('common.operation.ok')}
                 </Button>
               </div>
             )
@@ -74,7 +76,7 @@ const FileFromLinkOrLocal = ({
                 variant='secondary-accent'
               >
                 <RiUploadCloud2Line className='mr-1 w-4 h-4' />
-                Upload from computer
+                {t('common.fileUploader.uploadFromComputer')}
               </Button>
             )
           }

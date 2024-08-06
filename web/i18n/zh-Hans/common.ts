@@ -548,6 +548,10 @@ const translation = {
     pasteImageLinkInvalid: '图片链接无效',
     imageUpload: '图片上传',
   },
+  fileUploader: {
+    uploadFromComputer: '从本地上传',
+    pasteFileLink: '粘贴文件链接',
+  },
   tag: {
     placeholder: '全部标签',
     addNew: '创建新标签',

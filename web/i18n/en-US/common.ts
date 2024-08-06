@@ -552,6 +552,10 @@ const translation = {
     pasteImageLinkInvalid: 'Invalid image link',
     imageUpload: 'Image Upload',
   },
+  fileUploader: {
+    uploadFromComputer: 'Local upload',
+    pasteImageLink: 'Paste file link',
+  },
   tag: {
     placeholder: 'All Tags',
     addNew: 'Add new tag',

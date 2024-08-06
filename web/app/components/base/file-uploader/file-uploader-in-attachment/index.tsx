@@ -6,6 +6,7 @@ import {
   RiLink,
   RiUploadCloud2Line,
 } from '@remixicon/react'
+import { useTranslation } from 'react-i18next'
 import FileFromLinkOrLocal from '../file-from-link-or-local'
 import FileInAttachmentItem from './file-in-attachment-item'
 import Button from '@/app/components/base/button'
@@ -17,15 +18,16 @@ type Option = {
   icon: JSX.Element
 }
 const FileUploaderInAttachment = () => {
+  const { t } = useTranslation()
   const options = [
     {
       value: 'local',
-      label: 'Local upload',
+      label: t('common.fileUploader.uploadFromComputer'),
       icon: <RiUploadCloud2Line className='w-4 h-4' />,
     },
     {
       value: 'link',
-      label: 'Paste file link',
+      label: t('common.fileUploader.pasteFileLink'),
       icon: <RiLink className='w-4 h-4' />,
     },
   ]
