@@ -77,7 +77,7 @@ async function main() {
   const files = fs
     .readdirSync(path.join(__dirname, targetLanguage))
     .map(file => file.replace(/\.ts/, ''))
-    .filter(f => f !== 'app-debug') // parse error in app-debug
+    .filter(f => f !== 'app-debug') // ast parse error in app-debug
 
   await Promise.all(files.map(async (file) => {
     await Promise.all(Object.keys(languageKeyMap).map(async (language) => {
