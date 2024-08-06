@@ -57,10 +57,11 @@ class EndpointConfig(BaseSettings):
     """
     Module URL configs
     """
+    # TODO : update the variables in the production settings
     CONSOLE_API_URL: str = Field(
         description='The backend URL prefix of the console API.'
                     'used to concatenate the login authorization callback or notion integration callback.',
-        default='',
+        default='http://localhost:5001/',
     )
 
     CONSOLE_WEB_URL: str = Field(
@@ -277,14 +278,16 @@ class OAuthConfig(BaseSettings):
         default=None,
     )
 
+    # TODO : update the variables in the production settings 
     GOOGLE_CLIENT_ID: Optional[str] = Field(
         description='Google client id for OAuth',
-        default=None,
+        default="496157740953-jtorq1pmavl1rhacs2v5im5baausgjv6.apps.googleusercontent.com",
+        
     )
 
     GOOGLE_CLIENT_SECRET: Optional[str] = Field(
         description='Google client secret key for OAuth',
-        default=None,
+        default="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",
     )
 
 

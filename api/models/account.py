@@ -1,6 +1,9 @@
+from datetime import datetime, timedelta
 import enum
 import json
+from sqlalchemy.sql import func
 from flask_login import UserMixin
+from grpc import server
 from extensions.ext_database import db
 from models import StringUUID
 
@@ -388,3 +391,41 @@ class TenantCustomerId(db.Model):
 
     def __repr__(self):
         return f'<TenantCustomerId {self.id}>'
+
+        
+        
+        
+class EmailVerificationCode(db.Model):
+    __tablename__ = 'email_verification_codes'
+    __table_args__ = (
+        db.PrimaryKeyConstraint('id', name='email_verification_code_pkey'),
+    )
+
+    id = db.Column(StringUUID, server_default=db.text('uuid_generate_v4()'), primary_key=True)
+    email = db.Column(db.String(255), nullable=False)
+    code = db.Column(db.String(255), nullable=False)
+    expired_at = db.Column(db.DateTime, nullable=False)
+    created_at = db.Column(db.DateTime, nullable=False, server_default=func.now())
+    updated_at = db.Column(db.DateTime, nullable=False, server_default=func.now(), onupdate=func.now())
+
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        if not self.expired_at:
+            self.set_expiration()
+
+    def set_expiration(self, hours=24):
+        self.expired_at = datetime.utcnow() + timedelta(hours=hours)
+
+    def is_expired(self):
+        return datetime.utcnow() > self.expired_at
+
+    def expire_now(self):
+        self.expired_at = datetime.utcnow()
+
+    @classmethod
+    def cleanup_expired(cls):
+        cls.query.filter(cls.expired_at < datetime.utcnow()).delete()
+        db.session.commit()
+
+    def __repr__(self):
+        return f'<EmailVerificationCode {self.id}>'

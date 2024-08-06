@@ -61,7 +61,7 @@ class TenantPlanService:
         return new_plan
 
     @classmethod
-    def create_tenant_plan(cls, tenant_id: str, plan_type: str, interval: str, multiplier: float = 1.0) -> TenantPlan:
+    def create_tenant_plan(cls, tenant_id: str, plan_type: str, interval: str) -> TenantPlan:
         base_plan = BasePlan.query.filter_by(plan_type=plan_type).first()
         if not base_plan:
             raise ValueError(f"Base plan of type {plan_type} not found")
@@ -75,9 +75,8 @@ class TenantPlanService:
             start_date=start_date,
             end_date=end_date,
             is_active=True , 
-            multiplier=multiplier  , 
             interval =  PlanInterval.MONTHLY if interval == "monthly"  else PlanInterval.YEARLY , 
-            amount =  base_plan.price_monthly * multiplier  if interval == "monthly"  else base_plan.price_yearly * multiplier
+            amount =  base_plan.price_monthly if interval == "monthly"  else base_plan.price_yearly 
         )
         
         db.session.add(new_plan)

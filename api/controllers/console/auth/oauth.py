@@ -4,7 +4,8 @@ from typing import Optional
 
 import requests
 from flask import current_app, redirect, request
-from flask_restful import Resource
+from core.app.features.rate_limiting.rate_limit import RateLimit
+from flask_restful import Resource , reqparse
 
 from configs import dify_config
 from constants.languages import languages
@@ -13,6 +14,8 @@ from libs.helper import get_remote_ip
 from libs.oauth import GitHubOAuth, GoogleOAuth, OAuthUserInfo
 from models.account import Account, AccountStatus
 from services.account_service import AccountService, RegisterService, TenantService
+from services.email_service import EmailService
+
 
 from .. import api
 
@@ -36,13 +39,16 @@ def get_oauth_providers():
                 redirect_uri=dify_config.CONSOLE_API_URL + '/console/api/oauth/authorize/google',
             )
 
-        OAUTH_PROVIDERS = {'github': github_oauth, 'google': google_oauth}
+         #TODO ONLY USING GOOGLE
+        OAUTH_PROVIDERS = { 'google': google_oauth}
         return OAUTH_PROVIDERS
 
 
 class OAuthLogin(Resource):
     def get(self, provider: str):
         OAUTH_PROVIDERS = get_oauth_providers()
+        print("----------------------------------------")
+        print(OAUTH_PROVIDERS)
         with current_app.app_context():
             oauth_provider = OAUTH_PROVIDERS.get(provider)
             print(vars(oauth_provider))
@@ -121,5 +127,120 @@ def _generate_account(provider: str, user_info: OAuthUserInfo):
     return account
 
 
+
+class EmailLogin(Resource):
+
+    
+    # TODO : Rate limit 
+    def __init__(self):
+        self.rate_limit = RateLimit("email_login", max_active_requests=0)
+    
+    
+    def post(self):
+
+        try:
+            self.rate_limit.enter()
+
+
+            try: 
+                parser = reqparse.RequestParser()
+                parser.add_argument('email', type=str, required=True, location='json')
+
+                args = parser.parse_args()
+
+                email = args['email']
+
+                if email.strip() == "":
+                   return { "result" : "failure" ,  'message': "Email is required"}, 400
+
+                verification_code = EmailService.create_verification_code(email)
+
+                if verification_code['success'] == False:
+                    return { "result" : "failure" ,  'message': "Error sending message, Please try again after some time  "}, 500
+
+                magic_link = f'{dify_config.CONSOLE_API_URL}/console/api/oauth/authorize/magic-link?code={verification_code["code"]}'
+
+                res = EmailService.send_login_email(email , magic_link ,verification_code["code"])
+            
+                return { "result" : "success" ,  "message" : "Magic link sent successfully at " + email }, 200
+            
+
+            except Exception as e:
+                print(e)
+                return {  "result" : "failure" , "error": "Failed to send magic link"}, 400
+         
+
+        except Exception as e:
+            print(e)
+            return {  "result" : "failure" , "error": "Rate limit exceeded"}, 400
+
+
+class EmailCallback(Resource):
+
+    def get(self):
+
+        code = request.args.get('code')
+
+        if not code:
+            return {'code': 'invalid-code', 'message': 'Invalid code'}, 400
+        
+        try:
+            res = EmailService.verify_code(code)
+            if res['success'] == False:
+                return {'code': 'invalid-code', 'message': res['message']}, 400
+
+            email = res['email']
+
+            account = Account.query.filter_by(email=res['email']).first()
+
+
+            if not account:
+                # Create account
+                account_name =  'Dify'
+                account = RegisterService.register(
+                    email= email, name=account_name, password=None, open_id=None, provider=None
+                )
+
+                preferred_lang = request.accept_languages.best_match(languages)
+                if preferred_lang and preferred_lang in languages:
+                    interface_language = preferred_lang
+                else:
+                    interface_language = languages[0]
+                account.interface_language = interface_language
+                db.session.commit()
+            
+
+            if account.status == AccountStatus.BANNED.value or account.status == AccountStatus.CLOSED.value:
+                return {'error': 'Account is banned or closed.'}, 403
+
+
+
+            if account.status == AccountStatus.PENDING.value:
+                account.status = AccountStatus.ACTIVE.value
+                account.initialized_at = datetime.now(timezone.utc).replace(tzinfo=None)
+                db.session.commit()
+
+            TenantService.create_owner_tenant_if_not_exist(account)
+
+            token = AccountService.login(account, ip_address=get_remote_ip(request))
+
+            return redirect(f'{dify_config.CONSOLE_WEB_URL}?console_token={token}')
+
+
+
+
+
+        except Exception as e:
+            print(e)
+            return {'code': 'failed', 'message': 'Failed to log in'}, 400
+
+
+
+
+        
+
+
 api.add_resource(OAuthLogin, '/oauth/login/<provider>')
 api.add_resource(OAuthCallback, '/oauth/authorize/<provider>')
+api.add_resource(EmailLogin, '/oauth/login/magic-link')
+api.add_resource(EmailCallback, '/oauth/authorize/magic-link')

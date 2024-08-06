@@ -14,13 +14,15 @@ import {
   emailRegex,
 } from "@/config";
 import Button from "@/app/components/base/button";
-import { login, oauth } from "@/service/common";
+import { login, oauth, magicLink } from "@/service/common";
 import { getPurifyHref } from "@/utils";
+import { parse } from "path";
 
 type IState = {
   formValid: boolean;
   github: boolean;
   google: boolean;
+  magic_link: boolean;
 };
 
 type IAction = {
@@ -30,7 +32,8 @@ type IAction = {
     | "github_login"
     | "github_login_failed"
     | "google_login"
-    | "google_login_failed";
+    | "google_login_failed"
+    | "magic_link_login";
 };
 
 function reducer(state: IState, action: IAction) {
@@ -65,6 +68,12 @@ function reducer(state: IState, action: IAction) {
         ...state,
         google: false,
       };
+
+    case "magic_link_login":
+      return {
+        ...state,
+        magic_link: true,
+      };
     default:
       throw new Error("Unknown action.");
   }
@@ -80,11 +89,14 @@ const NormalForm = () => {
     formValid: false,
     github: false,
     google: false,
+    magic_link: false,
   });
 
   const [showPassword, setShowPassword] = useState(false);
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
+
+  const [magicLinkEmail, setMagicLinkEmail] = useState("");
 
   const [isLoading, setIsLoading] = useState(false);
   const handleEmailPasswordLogin = async () => {
@@ -106,68 +118,120 @@ const NormalForm = () => {
         },
       });
       if (res.result === "success") {
-        console.log("settting console toke in the request localstorage");
-        console.log(res.data);
         localStorage.setItem("console_token", res.data);
-        router.replace("/apps")
-      }
-      else {
+        router.replace("/apps");
+      } else {
         Toast.notify({
-          type: 'error',
+          type: "error",
           message: res.data,
-        })
+        });
+      }
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  const handleMagicLinkLogin = async () => {
+    const time = new Date().getTime();
+
+    const prevTimeStamp = localStorage.getItem(magicLinkEmail);
+
+    if (prevTimeStamp) {
+      const prevTime = new Date(parseInt(prevTimeStamp)).getTime();
+      const isLessThan5Min = time - prevTime < 1000 * 60 * 5;
+
+      if (isLessThan5Min) {
+        Toast.notify({
+          type: "error",
+          message: "Try after 5 minutes",
+        });
+        return;
       }
     }
-    finally {
-      setIsLoading(false)
+
+    if (!emailRegex.test(magicLinkEmail)) {
+      Toast.notify({
+        type: "error",
+        message: t("login.error.emailInValid"),
+      });
+      return;
     }
-  }
+    try {
+      setIsLoading(true);
+      const res = await magicLink({
+        url: "/oauth/login/magic-link",
+        body: {
+          email: magicLinkEmail,
+        },
+      });
+      if (res.result === "success") {
+        Toast.notify({
+          type: "success",
+          message: "Email Send Successfully to " + magicLinkEmail,
+        });
 
-  const { data: github, error: github_error } = useSWR(state.github
-    ? ({
-      url: '/oauth/login/github',
-      // params: {
-      //   provider: 'github',
-      // },
-    })
-    : null, oauth)
+        localStorage.setItem(magicLinkEmail, time.toString());
+      } else {
+        Toast.notify({
+          type: "error",
+          message: res.message,
+        });
+      }
+    } finally {
+      setIsLoading(false);
+    }
+  };
 
-  const { data: google, error: google_error } = useSWR(state.google
-    ? ({
-      url: '/oauth/login/google',
-      // params: {
-      //   provider: 'google',
-      // },
-    })
-    : null, oauth)
+  const { data: github, error: github_error } = useSWR(
+    state.github
+      ? {
+          url: "/oauth/login/github",
+          // params: {
+          //   provider: 'github',
+          // },
+        }
+      : null,
+    oauth
+  );
+
+  const { data: google, error: google_error } = useSWR(
+    state.google
+      ? {
+          url: "/oauth/login/google",
+          // params: {
+          //   provider: 'google',
+          // },
+        }
+      : null,
+    oauth
+  );
 
   useEffect(() => {
-    if (github_error !== undefined)
-      dispatch({ type: 'github_login_failed' })
-    if (github)
-      window.location.href = github.redirect_url
-  }, [github, github_error])
+    if (github_error !== undefined) dispatch({ type: "github_login_failed" });
+    if (github) window.location.href = github.redirect_url;
+  }, [github, github_error]);
 
   useEffect(() => {
-    if (google_error !== undefined)
-      dispatch({ type: 'google_login_failed' })
-    if (google)
-      window.location.href = google.redirect_url
-  }, [google, google_error])
+    if (google_error !== undefined) dispatch({ type: "google_login_failed" });
+    if (google) window.location.href = google.redirect_url;
+  }, [google, google_error]);
 
   return (
     <>
       <div className="w-full mx-auto">
-        <h2 className="text-[32px] font-bold text-gray-900">{t('login.pageTitle')}</h2>
-        <p className='mt-1 text-sm text-gray-600'>{t('login.welcome')}</p>
+        <h2 className="text-[32px] font-bold text-gray-900">
+          {t("login.pageTitle")}
+        </h2>
+        <p className="mt-1 text-sm text-gray-600">{t("login.welcome")}</p>
       </div>
 
       <div className="w-full mx-auto mt-8">
         <div className="bg-white ">
           {!useEmailLogin && (
             <div className="flex flex-col gap-3 mt-6">
-              <div className='w-full'>
+              {/* <div className='w-full'>
                 <a href={getPurifyHref(`${apiPrefix}/oauth/login/github`)}>
+
                   <Button
                     disabled={isLoading}
                     className='w-full hover:!bg-gray-50'
@@ -183,21 +247,56 @@ const NormalForm = () => {
                     </>
                   </Button>
                 </a>
+              </div> */}
+              <div className="flex gap-2  flex-col">
+                <label
+                  htmlFor="magicLinkEmail"
+                  className="my-2 block text-sm font-medium text-gray-900"
+                >
+                  {t("login.email")}
+                </label>
+                <input
+                  value={magicLinkEmail}
+                  onChange={(e) => setMagicLinkEmail(e.target.value)}
+                  id="magicLinkEmail"
+                  type="email"
+                  autoComplete="email"
+                  placeholder={t("login.emailPlaceholder") || ""}
+                  className={
+                    "appearance-none block w-full rounded-lg pl-[14px] px-3 py-2 border border-gray-200 hover:border-gray-300 hover:shadow-sm focus:outline-none focus:ring-primary-500 focus:border-primary-500 placeholder-gray-400 caret-primary-600 sm:text-sm"
+                  }
+                />
+
+                <Button
+                  disabled={isLoading}
+                  onClick={handleMagicLinkLogin}
+                  className="w-full hover:!bg-gray-50"
+                >
+                  <span className="truncate text-gray-800">
+                    {t("login.withEmail")}
+                  </span>
+                </Button>
               </div>
-              <div className='w-full'>
+
+              <div className="flex  gap-2 my-2 items-center">
+                <div className="w-1/2 h-0.5 bg-gray-300"></div>
+                <div>or</div>
+                <div className="w-1/2 h-0.5 bg-gray-300"></div>
+              </div>
+
+              <div className="w-full">
                 <a href={getPurifyHref(`${apiPrefix}/oauth/login/google`)}>
                   <Button
                     disabled={isLoading}
-                    className='w-full hover:!bg-gray-50'
+                    className="w-full hover:!bg-gray-50"
                   >
                     <>
-                      <span className={
-                        classNames(
-                          style.googleIcon,
-                          'w-5 h-5 mr-2',
-                        )
-                      } />
-                      <span className="truncate text-gray-800">{t('login.withGoogle')}</span>
+                      <span
+                        className={classNames(style.googleIcon, "w-5 h-5 mr-2")}
+                      />
+                      <span className="truncate text-gray-800">
+                        {t("login.withGoogle")}
+                      </span>
                     </>
                   </Button>
                 </a>
@@ -205,8 +304,8 @@ const NormalForm = () => {
             </div>
           )}
 
-          {
-            useEmailLogin && <>
+          {useEmailLogin && (
+            <>
               {/* <div className="relative mt-6">
                 <div className="absolute inset-0 flex items-center" aria-hidden="true">
                   <div className="w-full border-t border-gray-300" />
@@ -216,44 +315,53 @@ const NormalForm = () => {
                 </div>
               </div> */}
 
-              <form onSubmit={() => { }}>
-                <div className='mb-5'>
-                  <label htmlFor="email" className="my-2 block text-sm font-medium text-gray-900">
-                    {t('login.email')}
+              <form onSubmit={() => {}}>
+                <div className="mb-5">
+                  <label
+                    htmlFor="email"
+                    className="my-2 block text-sm font-medium text-gray-900"
+                  >
+                    {t("login.email")}
                   </label>
                   <div className="mt-1">
                     <input
                       value={email}
-                      onChange={e => setEmail(e.target.value)}
+                      onChange={(e) => setEmail(e.target.value)}
                       id="email"
                       type="email"
                       autoComplete="email"
-                      placeholder={t('login.emailPlaceholder') || ''}
-                      className={'appearance-none block w-full rounded-lg pl-[14px] px-3 py-2 border border-gray-200 hover:border-gray-300 hover:shadow-sm focus:outline-none focus:ring-primary-500 focus:border-primary-500 placeholder-gray-400 caret-primary-600 sm:text-sm'}
+                      placeholder={t("login.emailPlaceholder") || ""}
+                      className={
+                        "appearance-none block w-full rounded-lg pl-[14px] px-3 py-2 border border-gray-200 hover:border-gray-300 hover:shadow-sm focus:outline-none focus:ring-primary-500 focus:border-primary-500 placeholder-gray-400 caret-primary-600 sm:text-sm"
+                      }
                     />
                   </div>
                 </div>
 
-                <div className='mb-4'>
-                  <label htmlFor="password" className="my-2 flex items-center justify-between text-sm font-medium text-gray-900">
-                    <span>{t('login.password')}</span>
-                    <Link href='/forgot-password' className='text-primary-600'>
-                      {t('login.forget')}
+                <div className="mb-4">
+                  <label
+                    htmlFor="password"
+                    className="my-2 flex items-center justify-between text-sm font-medium text-gray-900"
+                  >
+                    <span>{t("login.password")}</span>
+                    <Link href="/forgot-password" className="text-primary-600">
+                      {t("login.forget")}
                     </Link>
                   </label>
                   <div className="relative mt-1">
                     <input
                       id="password"
                       value={password}
-                      onChange={e => setPassword(e.target.value)}
+                      onChange={(e) => setPassword(e.target.value)}
                       onKeyDown={(e) => {
-                        if (e.key === 'Enter')
-                          handleEmailPasswordLogin()
+                        if (e.key === "Enter") handleEmailPasswordLogin();
                       }}
-                      type={showPassword ? 'text' : 'password'}
+                      type={showPassword ? "text" : "password"}
                       autoComplete="current-password"
-                      placeholder={t('login.passwordPlaceholder') || ''}
-                      className={'appearance-none block w-full rounded-lg pl-[14px] px-3 py-2 border border-gray-200 hover:border-gray-300 hover:shadow-sm focus:outline-none focus:ring-primary-500 focus:border-primary-500 placeholder-gray-400 caret-primary-600 sm:text-sm pr-10'}
+                      placeholder={t("login.passwordPlaceholder") || ""}
+                      className={
+                        "appearance-none block w-full rounded-lg pl-[14px] px-3 py-2 border border-gray-200 hover:border-gray-300 hover:shadow-sm focus:outline-none focus:ring-primary-500 focus:border-primary-500 placeholder-gray-400 caret-primary-600 sm:text-sm pr-10"
+                      }
                     />
                     <div className="absolute inset-y-0 right-0 flex items-center pr-3">
                       <button
@@ -261,54 +369,62 @@ const NormalForm = () => {
                         onClick={() => setShowPassword(!showPassword)}
                         className="text-gray-400 hover:text-gray-500 focus:outline-none focus:text-gray-500"
                       >
-                        {showPassword ? '👀' : '😝'}
+                        {showPassword ? "👀" : "😝"}
                       </button>
                     </div>
                   </div>
                 </div>
 
-                <div className='mb-2'>
+                <div className="mb-2">
                   <Button
                     tabIndex={0}
-                    variant='primary'
+                    variant="primary"
                     onClick={handleEmailPasswordLogin}
                     disabled={isLoading}
                     className="w-full"
-                  >{t('login.signBtn')}</Button>
+                  >
+                    {t("login.signBtn")}
+                  </Button>
                 </div>
               </form>
             </>
-          }
+          )}
           {/*  agree to our Terms and Privacy Policy. */}
           <div className="w-hull text-center block mt-2 text-xs text-gray-600">
-            {t('login.tosDesc')}
+            {t("login.tosDesc")}
             &nbsp;
             <Link
-              className='text-primary-600'
-              target='_blank' rel='noopener noreferrer'
-              href='https://dify.ai/terms'
-            >{t('login.tos')}</Link>
+              className="text-primary-600"
+              target="_blank"
+              rel="noopener noreferrer"
+              href="https://dify.ai/terms"
+            >
+              {t("login.tos")}
+            </Link>
             &nbsp;&&nbsp;
             <Link
-              className='text-primary-600'
-              target='_blank' rel='noopener noreferrer'
-              href='https://dify.ai/privacy'
-            >{t('login.pp')}</Link>
+              className="text-primary-600"
+              target="_blank"
+              rel="noopener noreferrer"
+              href="https://dify.ai/privacy"
+            >
+              {t("login.pp")}
+            </Link>
           </div>
 
-          {IS_CE_EDITION && <div className="w-hull text-center block mt-2 text-xs text-gray-600">
-            {t('login.goToInit')}
-            &nbsp;
-            <Link
-              className='text-primary-600'
-              href='/install'
-            >{t('login.setAdminAccount')}</Link>
-          </div>}
-
+          {IS_CE_EDITION && (
+            <div className="w-hull text-center block mt-2 text-xs text-gray-600">
+              {t("login.goToInit")}
+              &nbsp;
+              <Link className="text-primary-600" href="/install">
+                {t("login.setAdminAccount")}
+              </Link>
+            </div>
+          )}
         </div>
       </div>
     </>
-  )
-}
+  );
+};
 
-export default NormalForm
+export default NormalForm;

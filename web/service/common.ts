@@ -12,6 +12,7 @@ import type {
   InitValidateStatusResponse,
   InvitationResponse,
   LangGeniusVersionResponse,
+  MagicLinkResponse,
   Member,
   ModerateResponse,
   OauthResponse,
@@ -41,6 +42,12 @@ import type { SystemFeatures } from '@/types/feature'
 export const login: Fetcher<CommonResponse & { data: string }, { url: string; body: Record<string, any> }> = ({ url, body }) => {
   return post(url, { body }) as Promise<CommonResponse & { data: string }>
 }
+
+
+export const magicLink: Fetcher<CommonResponse & MagicLinkResponse, { url: string; body: Record<string, any> }> = ({ url, body }) => {
+  return post(url, { body }) as Promise<CommonResponse & MagicLinkResponse>
+}
+
 
 export const setup: Fetcher<CommonResponse, { body: Record<string, any> }> = ({ body }) => {
   return post<CommonResponse>('/setup', { body })
@@ -77,6 +84,7 @@ export const fetchLanggeniusVersion: Fetcher<LangGeniusVersionResponse, { url: s
 export const oauth: Fetcher<OauthResponse, { url: string; params: Record<string, any> }> = ({ url, params }) => {
   return get<OauthResponse>(url, { params })
 }
+
 
 export const oneMoreStep: Fetcher<CommonResponse, { url: string; body: Record<string, any> }> = ({ url, body }) => {
   return post<CommonResponse>(url, { body })

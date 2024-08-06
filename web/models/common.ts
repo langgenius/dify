@@ -8,6 +8,10 @@ export type OauthResponse = {
   redirect_url: string
 }
 
+export type MagicLinkResponse = {
+  message: string
+}
+
 export type SetupStatusResponse = {
   step: 'finished' | 'not_started'
   setup_at?: Date

@@ -54,7 +54,6 @@ class FeatureService:
         cls._fulfill_params_from_env(features)
 
         
-        # TODO update to enable billing 
         if dify_config.BILLING_ENABLED:
             cls._fulfill_params_from_billing_api(features, tenant_id)
 
@@ -79,7 +78,6 @@ class FeatureService:
 
     @classmethod
     def _fulfill_params_from_billing_api(cls, features: FeatureModel, tenant_id: str):
-        # TODO this is return instance of BillingModel based on the user
         billing_info = BillingService.get_info(tenant_id)
         print("billing info")
         print(billing_info)
