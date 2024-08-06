@@ -68,7 +68,14 @@ jobs:
       # - name: Release Images
       #   run: |
       #     curl -H "Authorization: Bearer ${{ secrets.UPDATE_DIFY_JP_TOKEN }}" ${{ secrets.UPDATE_DIFY_JP }}
-      - name: Release Images
-        run: |
-          echo ${{ secrets.PKEY }} > deploy.key
-          ssh -i deploy.key -o StrictHostKeyChecking=no ${{ secrets.DEPLOY }}@${{ secrets.ENDPOINT }} "pwd && echo 'test' > test.txt"
+      # - name: Release Images
+      #   run: |
+      #     echo ${{ secrets.PKEY }} > deploy.key
+      #     ssh -i deploy.key -o StrictHostKeyChecking=no ${{ secrets.DEPLOY }}@${{ secrets.ENDPOINT }} "pwd && echo 'test' > test.txt"
+      - name: Run a command remotely
+        uses: docker://evaneos/ssh-action:0.1.0
+        with:
+          hosts: ${{ secrets.ENDPOINT }}
+          user: ${{ secrets.DEPLOY }}
+          private_key: ${{ secrets.PKEY }}
+          commands: pwd && echo 'test' > ~/test.txt
