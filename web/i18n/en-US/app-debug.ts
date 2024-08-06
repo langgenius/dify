@@ -343,6 +343,8 @@ const translation = {
         createPlaceholder: 'File extension, e.g .doc',
       },
     },
+    'maxNumberOfUploads': 'Max number of uploads',
+    'maxNumberTip': 'Max 15MB each',
     'errorMsg': {
       varNameRequired: 'Variable name is required',
       labelNameRequired: 'Label name is required',

@@ -2,10 +2,12 @@
 import type { FC } from 'react'
 import React, { useCallback } from 'react'
 import produce from 'immer'
+import { useTranslation } from 'react-i18next'
 import type { UploadFileSetting } from '../../../types'
 import { SupportUploadFileTypes } from '../../../types'
 import OptionCard from './option-card'
 import FileTypeItem from './file-type-item'
+import InputNumberWithSlider from './input-number-with-slider'
 import Field from '@/app/components/app/configuration/config-var/config-modal/field'
 import { TransferMethod } from '@/types/app'
 
@@ -20,6 +22,8 @@ const FileUploadSetting: FC<Props> = ({
   isMultiple,
   onChange,
 }) => {
+  const { t } = useTranslation()
+
   const {
     uploadMethod,
     maxUploadNumLimit,
@@ -50,6 +54,13 @@ const FileUploadSetting: FC<Props> = ({
           return v
         return `.${v}`
       })
+    })
+    onChange(newPayload)
+  }, [onChange, payload])
+
+  const handleMaxUploadNumLimitChange = useCallback((value: number) => {
+    const newPayload = produce(payload, (draft) => {
+      draft.maxUploadNumLimit = value
     })
     onChange(newPayload)
   }, [onChange, payload])
@@ -103,10 +114,17 @@ const FileUploadSetting: FC<Props> = ({
       </Field>
       {isMultiple && (
         <Field
-          title='Max number of uploads'
+          className='mt-4'
+          title={t('appDebug.variableConig.maxNumberOfUploads')!}
         >
           <div>
-            <span>Max number of uploads</span>
+            <div className='mb-1.5 text-text-tertiary body-xs-regular'>{t('appDebug.variableConig.maxNumberTip')}</div>
+            <InputNumberWithSlider
+              value={maxUploadNumLimit || 1}
+              min={1}
+              max={10}
+              onChange={handleMaxUploadNumLimitChange}
+            />
           </div>
         </Field>
       )}
