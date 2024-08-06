@@ -16,6 +16,7 @@ from core.app.segments import (
     StringVariable,
     factory,
 )
+from core.app.segments.exc import VariableError
 
 
 def test_string_variable():
@@ -44,7 +45,7 @@ def test_secret_variable():
 
 def test_invalid_value_type():
     test_data = {'value_type': 'unknown', 'name': 'test_invalid', 'value': 'value'}
-    with pytest.raises(ValueError):
+    with pytest.raises(VariableError):
         factory.build_variable_from_mapping(test_data)
 
 
@@ -223,3 +224,15 @@ def test_array_file_variable():
     assert isinstance(variable, ArrayFileVariable)
     assert isinstance(variable.value[0], FileSegment)
     assert isinstance(variable.value[1], FileSegment)
+
+
+def test_variable_cannot_large_than_5_kb():
+    with pytest.raises(VariableError):
+        factory.build_variable_from_mapping(
+            {
+                'id': str(uuid4()),
+                'value_type': 'string',
+                'name': 'test_text',
+                'value': 'a' * 1024 * 6,
+            }
+        )
