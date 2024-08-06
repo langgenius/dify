@@ -15,6 +15,7 @@ from core.tools.errors import ToolInvokeError
 from core.tools.tool.builtin_tool import BuiltinTool
 from core.tools.tool_file_manager import ToolFileManager
 from extensions.ext_storage import storage
+from core.file.file_obj import FileTransferMethod
 
 
 class ImageLoaderConvertBase64Tool(BuiltinTool):
@@ -60,7 +61,8 @@ class ImageLoaderConvertBase64Tool(BuiltinTool):
 
         meta = { 
             "url": url,
-            "tool_file_id": filename
+            "tool_file_id": filename,
+            "transfer_method": FileTransferMethod.REMOTE_URL
         }
 
         msg = ToolInvokeMessage(type=ToolInvokeMessage.MessageType.IMAGE_LINK,
