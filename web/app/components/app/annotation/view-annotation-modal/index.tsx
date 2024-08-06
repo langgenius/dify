@@ -213,7 +213,7 @@ const ViewAnnotationModal: FC<Props> = ({
                 setShowModal(false)
                 onHide()
               }}
-              title={t('appDebug.feature.annotation.removeConfirm') as string}
+              title={t('appDebug.feature.annotation.removeConfirm')}
             />
           </div>
         )}

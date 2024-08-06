@@ -392,7 +392,7 @@ const ConfigVar: FC<IConfigVarProps> = ({ promptVariables, readonly, onPromptVar
         <Confirm
           isShow={isShowDeleteContextVarModal}
           title={t('appDebug.feature.dataSet.queryVariable.deleteContextVarTitle', { varName: promptVariables[removeIndex as number]?.name })}
-          content={t('appDebug.feature.dataSet.queryVariable.deleteContextVarTip') as string}
+          content={t('appDebug.feature.dataSet.queryVariable.deleteContextVarTip')}
           onConfirm={() => {
             didRemoveVar(removeIndex as number)
             hideDeleteContextVarModal()

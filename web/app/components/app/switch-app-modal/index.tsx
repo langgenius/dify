@@ -139,8 +139,8 @@ const SwitchAppModal = ({ show, appDetail, inAppDetail = false, onSuccess, onClo
       </Modal>
       {showConfirmDelete && (
         <Confirm
-          title={t('app.deleteAppConfirmTitle') as string}
-          content={t('app.deleteAppConfirmContent') as string}
+          title={t('app.deleteAppConfirmTitle')}
+          content={t('app.deleteAppConfirmContent')}
           isShow={showConfirmDelete}
           onConfirm={() => setShowConfirmDelete(false)}
           onCancel={() => {

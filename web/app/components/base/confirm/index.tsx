@@ -9,7 +9,7 @@ export type IConfirm = {
   type?: 'info' | 'warning'
   title: string
   content?: React.ReactNode
-  confirmText?: string
+  confirmText?: string | null
   onConfirm: () => void
   cancelText?: string
   onCancel: () => void

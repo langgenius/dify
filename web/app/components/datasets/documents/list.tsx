@@ -295,9 +295,9 @@ export const OperationAction: FC<{
     {showModal
       && <Confirm
         isShow={showModal}
-        title={t('datasetDocuments.list.delete.title') as string}
-        content={t('datasetDocuments.list.delete.content') as string}
-        confirmText={t('common.operation.sure') as string}
+        title={t('datasetDocuments.list.delete.title')}
+        content={t('datasetDocuments.list.delete.content')}
+        confirmText={t('common.operation.sure')}
         onConfirm={() => onOperate('delete')}
         onCancel={() => setShowModal(false)}
       />

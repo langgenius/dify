@@ -877,8 +877,8 @@ const Configuration: FC = () => {
         </div>
         {restoreConfirmOpen && (
           <Confirm
-            title={t('appDebug.resetConfig.title') as string}
-            content={t('appDebug.resetConfig.message') as string}
+            title={t('appDebug.resetConfig.title')}
+            content={t('appDebug.resetConfig.message')}
             isShow={restoreConfirmOpen}
             onConfirm={resetAppConfig}
             onCancel={() => setRestoreConfirmOpen(false)}
@@ -886,8 +886,8 @@ const Configuration: FC = () => {
         )}
         {showUseGPT4Confirm && (
           <Confirm
-            title={t('appDebug.trailUseGPT4Info.title') as string}
-            content={t('appDebug.trailUseGPT4Info.description') as string}
+            title={t('appDebug.trailUseGPT4Info.title')}
+            content={t('appDebug.trailUseGPT4Info.description')}
             isShow={showUseGPT4Confirm}
             onConfirm={() => {
               setShowAccountSettingModal({ payload: 'provider' })

@@ -279,8 +279,8 @@ const GetAutomaticRes: FC<IGetAutomaticResProps> = ({
         {isShowAutoPromptResPlaceholder() && renderNoData}
         {showConfirmOverwrite && (
           <Confirm
-            title={t('appDebug.generate.overwriteTitle') as string}
-            content={t('appDebug.generate.overwriteMessage') as string}
+            title={t('appDebug.generate.overwriteTitle')}
+            content={t('appDebug.generate.overwriteMessage')}
             isShow={showConfirmOverwrite}
             onConfirm={() => {
               setShowConfirmOverwrite(false)

@@ -280,7 +280,7 @@ const ProviderConfigModal: FC<Props> = ({
             isShow
             type='warning'
             title={t(`${I18N_PREFIX}.removeConfirmTitle`, { key: t(`app.tracing.${type}.title`) })!}
-            content={t(`${I18N_PREFIX}.removeConfirmContent`) as string}
+            content={t(`${I18N_PREFIX}.removeConfirmContent`)}
             onConfirm={handleRemove}
             onCancel={hideRemoveConfirm}
           />

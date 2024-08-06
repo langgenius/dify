@@ -218,8 +218,8 @@ const SegmentCard: FC<ISegmentCardProps> = ({
       {showModal
         && <Confirm
           isShow={showModal}
-          title={t('datasetDocuments.segment.delete') as string}
-          confirmText={t('common.operation.sure') as string}
+          title={t('datasetDocuments.segment.delete')}
+          confirmText={t('common.operation.sure')}
           onConfirm={async () => { await onDelete?.(id) }}
           onCancel={() => setShowModal(false)}
         />

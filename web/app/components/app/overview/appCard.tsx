@@ -182,8 +182,8 @@ function AppCard({
               {showConfirmDelete && (
                 <Confirm
                   type='warning'
-                  title={t('appOverview.overview.appInfo.regenerate') as string}
-                  content={t('appOverview.overview.appInfo.regenerateNotice') as string}
+                  title={t('appOverview.overview.appInfo.regenerate')}
+                  content={t('appOverview.overview.appInfo.regenerateNotice')}
                   isShow={showConfirmDelete}
                   onConfirm={() => {
                     onGenCode()
