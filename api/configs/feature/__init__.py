@@ -405,7 +405,7 @@ class DataSetConfig(BaseSettings):
 
     DATASET_OPERATOR_ENABLED: bool = Field(
         description='whether to enable dataset operator',
-        default=False,
+        default=True,
     )
 
 class WorkspaceConfig(BaseSettings):
