@@ -19,10 +19,10 @@ jobs:
       matrix:
         include:
           - service_name: "web"
-            image_name_env: "${{ secrets.DIFY_WEB_IMAGE_NAME }}"
+            image_name_env: ${{ secrets.DIFY_WEB_IMAGE_NAME }}
             context: "web"
           - service_name: "api"
-            image_name_env: "${{ secrets.DIFY_API_IMAGE_NAME }}"
+            image_name_env: ${{ secrets.DIFY_API_IMAGE_NAME }}
             context: "api"
     steps:
       - name: Login to CI
@@ -55,10 +55,10 @@ jobs:
           cache-from: type=gha
           cache-to: type=gha,mode=max
 
-  deploy:
-      runs-on: ubuntu-latest
-      needs: build-and-push
-      steps:
-        - name: Release Images
-          run: |
-            curl -H "Authorization: Bearer ${{ secrets.UPDATE_DIFY_JP_TOKEN }}" ${{ secrets.UPDATE_DIFY_JP }}
+release:
+    runs-on: ubuntu-latest
+    needs: build-and-push
+    steps:
+      - name: Release Images
+        run: |
+          curl -H "Authorization: Bearer ${{ secrets.UPDATE_DIFY_JP_TOKEN }}" ${{ secrets.UPDATE_DIFY_JP }}
