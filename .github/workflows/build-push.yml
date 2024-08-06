@@ -68,11 +68,13 @@ jobs:
       # - name: Release Images
       #   run: |
       #     curl -H "Authorization: Bearer ${{ secrets.UPDATE_DIFY_JP_TOKEN }}" ${{ secrets.UPDATE_DIFY_JP }}
-      - name: Exec cmd on remote server
-        uses: Comori/ssh@v0.0.1
+      # - name: Release Images
+      #   run: |
+      #     ssh -i ${{ secrets.PKEY }} ${{ secrets.ENDPOINT }} "cd /data && ls"
+      - name: Setup SSH
+        uses: MrSquaare/ssh-setup-action@v3
         with:
-          host: 54.250.64.133
-          username: deploy
-          privateKey: ${{ secrets.PKEY }}
-          command: |
-            cd /data && ls
+          host: ${{ secrets.ENDPOINT }}
+          private-key: ${{ secrets.PKEY }}
+      - name: Clone repository
+        run: ls
