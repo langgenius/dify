@@ -17,13 +17,12 @@ jobs:
     if: github.event.pull_request.draft == false
     strategy:
       matrix:
-        include:
-          - service_name: "web"
-            image_name_env: "${{ env.DIFY_WEB_IMAGE_NAME }}"
-            context: "web"
-          - service_name: "api"
-            image_name_env: ${{ env.DIFY_API_IMAGE_NAME }}
-            context: "api"
+        - service_name: "web"
+          image_name_env: "DIFY_WEB_IMAGE_NAME"
+          context: "web"
+        - service_name: "api"
+          image_name_env: "DIFY_API_IMAGE_NAME"
+          context: "api"
     steps:
       - name: Login to CI
         uses: docker/login-action@v2
