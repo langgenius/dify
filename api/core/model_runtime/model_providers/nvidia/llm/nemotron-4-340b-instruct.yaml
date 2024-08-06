@@ -1,15 +1,13 @@
-model: deepseek-coder
+model: nvidia/nemotron-4-340b-instruct
 label:
-  zh_Hans: deepseek-coder
-  en_US: deepseek-coder
+  zh_Hans: nvidia/nemotron-4-340b-instruct
+  en_US: nvidia/nemotron-4-340b-instruct
 model_type: llm
 features:
   - agent-thought
-  - multi-tool-call
-  - stream-tool-call
 model_properties:
   mode: chat
-  context_size: 128000
+  context_size: 131072
 parameter_rules:
   - name: temperature
     use_template: temperature
@@ -26,3 +24,13 @@ parameter_rules:
     min: 1
     max: 4096
     default: 1024
+  - name: frequency_penalty
+    use_template: frequency_penalty
+    min: -2
+    max: 2
+    default: 0
+  - name: presence_penalty
+    use_template: presence_penalty
+    min: -2
+    max: 2
+    default: 0
