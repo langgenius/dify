@@ -1,4 +1,5 @@
 import ReactMarkdown from 'react-markdown'
+import ReactEcharts from 'echarts-for-react'
 import 'katex/dist/katex.min.css'
 import RemarkMath from 'remark-math'
 import RemarkBreaks from 'remark-breaks'
@@ -13,7 +14,6 @@ import cn from '@/utils/classnames'
 import CopyBtn from '@/app/components/base/copy-btn'
 import SVGBtn from '@/app/components/base/svg'
 import Flowchart from '@/app/components/base/mermaid'
-import ReactEcharts from "echarts-for-react"
 
 // Available language https://github.com/react-syntax-highlighter/react-syntax-highlighter/blob/master/AVAILABLE_LANGUAGES_HLJS.MD
 const capitalizationLanguageNameMap: Record<string, string> = {
@@ -109,15 +109,15 @@ const CodeBlock: CodeComponent = memo(({ inline, className, children, ...props }
   const match = /language-(\w+)/.exec(className || '')
   const language = match?.[1]
   const languageShowName = getCorrectCapitalizationLanguageName(language || '')
-  var chartData = JSON.parse(String('{"title":{"text":"Something went wrong."}}').replace(/\n$/,''))
-  if(language === 'echarts'){
-    try{
-      chartData = JSON.parse(String(children).replace(/\n$/,''))
+  let chartData = JSON.parse(String('{"title":{"text":"Something went wrong."}}').replace(/\n$/, ''))
+  if (language === 'echarts') {
+    try {
+      chartData = JSON.parse(String(children).replace(/\n$/, ''))
     }
-    catch(error){
+    catch (error) {
     }
   }
-  
+
   // Use `useMemo` to ensure that `SyntaxHighlighter` only re-renders when necessary
   return useMemo(() => {
     return (!inline && match)
@@ -147,26 +147,24 @@ const CodeBlock: CodeComponent = memo(({ inline, className, children, ...props }
           {(language === 'mermaid' && isSVG)
             ? (<Flowchart PrimitiveCode={String(children).replace(/\n$/, '')} />)
             : (
-            (language === 'echarts')?
-            // ECharts
-            (<div style={{minHeight:"250px",minWidth:"250px"}}><ReactEcharts
-              option={chartData}
-            >
-            </ReactEcharts></div>)
-            // Other
-            :(<SyntaxHighlighter
-              {...props}
-              style={atelierHeathLight}
-              customStyle={{
-                paddingLeft: 12,
-                backgroundColor: '#fff',
-              }}
-              language={match[1]}
-              showLineNumbers
-              PreTag="div"
-            >
-              {String(children).replace(/\n$/, '')}
-            </SyntaxHighlighter>))}
+              (language === 'echarts')
+                ? (<div style={{ minHeight: '250px', minWidth: '250px' }}><ReactEcharts
+                  option={chartData}
+                >
+                </ReactEcharts></div>)
+                : (<SyntaxHighlighter
+                  {...props}
+                  style={atelierHeathLight}
+                  customStyle={{
+                    paddingLeft: 12,
+                    backgroundColor: '#fff',
+                  }}
+                  language={match[1]}
+                  showLineNumbers
+                  PreTag="div"
+                >
+                  {String(children).replace(/\n$/, '')}
+                </SyntaxHighlighter>))}
         </div>
       )
       : (
