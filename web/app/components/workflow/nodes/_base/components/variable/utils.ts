@@ -125,12 +125,14 @@ const formatItem = (
       const {
         outputs,
       } = data as CodeNodeType
-      res.vars = Object.keys(outputs).map((key) => {
-        return {
-          variable: key,
-          type: outputs[key].type,
-        }
-      })
+      res.vars = outputs
+        ? Object.keys(outputs).map((key) => {
+          return {
+            variable: key,
+            type: outputs[key].type,
+          }
+        })
+        : []
       break
     }
 
