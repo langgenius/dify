@@ -69,20 +69,21 @@ export default translation
 }
 
 async function main() {
-  const fileName = 'workflow'
-  Promise.all(Object.keys(languageKeyMap).map(async (toLanguage) => {
-    await autoGenTrans(fileName, toLanguage)
-  }))
-
-  // get error may because of the rate limit
-  // get all files names in en-US folder
-  // const files = fs.readdirSync(path.join(__dirname, targetLanguage)).map(file => file.replace(/\.ts/, '')).slice(0, 1)
-  // await Promise.all(files.map(async (file) => {
-  //   await Promise.all(languages.map(async (language) => {
-  //     await autoGenTrans(file, language)
-  //     await sleep(1000)
-  //   }))
+  // const fileName = 'workflow'
+  // Promise.all(Object.keys(languageKeyMap).map(async (toLanguage) => {
+  //   await autoGenTrans(fileName, toLanguage)
   // }))
+
+  const files = fs
+    .readdirSync(path.join(__dirname, targetLanguage))
+    .map(file => file.replace(/\.ts/, ''))
+    .filter(f => f !== 'app-debug') // parse error in app-debug
+
+  await Promise.all(files.map(async (file) => {
+    await Promise.all(Object.keys(languageKeyMap).map(async (language) => {
+      await autoGenTrans(file, language)
+    }))
+  }))
 }
 
 main()
