@@ -333,6 +333,11 @@ const translation = {
       video: {
         name: '视频',
       },
+      custom: {
+        name: '其他文件类型',
+        description: '指定其他文件类型',
+        createPlaceholder: '文件扩展名，例如 .doc',
+      },
     },
     'content': '内容',
     'errorMsg': {

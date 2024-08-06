@@ -337,6 +337,11 @@ const translation = {
       video: {
         name: 'Video',
       },
+      custom: {
+        name: 'Other file types',
+        description: 'Specify other file types.',
+        createPlaceholder: 'File extension, e.g .doc',
+      },
     },
     'errorMsg': {
       varNameRequired: 'Variable name is required',

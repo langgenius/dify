@@ -43,6 +43,17 @@ const FileUploadSetting: FC<Props> = ({
     }
   }, [onChange, payload])
 
+  const handleCustomFileTypesChange = useCallback((customFileTypes: string[]) => {
+    const newPayload = produce(payload, (draft) => {
+      draft.customFileTypes = customFileTypes.map((v) => {
+        if (v.startsWith('.'))
+          return v
+        return `.${v}`
+      })
+    })
+    onChange(newPayload)
+  }, [onChange, payload])
+
   return (
     <div>
       <Field
@@ -59,10 +70,18 @@ const FileUploadSetting: FC<Props> = ({
               />
             ))
           }
+          <FileTypeItem
+            type={SupportUploadFileTypes.custom}
+            selected={supportFileTypes === SupportUploadFileTypes.custom}
+            onSelect={handleSupportFileTypeChange}
+            customFileTypes={customFileTypes}
+            onCustomFileTypesChange={handleCustomFileTypesChange}
+          />
         </div>
       </Field>
       <Field
         title='Upload File Types'
+        className='mt-4'
       >
         <div className='grid grid-cols-3 gap-2'>
           <OptionCard
