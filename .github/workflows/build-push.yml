@@ -93,5 +93,5 @@ jobs:
           SSH_KEY: ${{ secrets.PKEY }}
           SSH_HOST: ${{ secrets.ENDPOINT }}
 
-      - name: Start the server
-        run: pwd
+      - name: Stop the server
+        run: ssh staging 'pwd'
