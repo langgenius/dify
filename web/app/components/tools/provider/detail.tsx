@@ -366,7 +366,6 @@ const ProviderDetail = ({
           title={t('tools.createTool.deleteToolConfirmTitle')}
           content={t('tools.createTool.deleteToolConfirmContent')}
           isShow={showConfirmDelete}
-          onClose={() => setShowConfirmDelete(false)}
           onConfirm={handleConfirmDelete}
           onCancel={() => setShowConfirmDelete(false)}
         />
