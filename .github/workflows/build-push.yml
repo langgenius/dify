@@ -75,4 +75,5 @@ jobs:
           hosts: ${{ secrets.ENDPOINT }}
           privateKey: ${{ secrets.PKEY }}
           command: |
-            cd /data && ls;
+            cd /data;
+            ls;
