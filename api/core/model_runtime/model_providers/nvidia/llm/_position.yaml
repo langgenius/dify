@@ -10,5 +10,8 @@
 - mistralai/mistral-large
 - mistralai/mixtral-8x7b-instruct-v0.1
 - mistralai/mixtral-8x22b-instruct-v0.1
+- nvidia/nemotron-4-340b-instruct
+- microsoft/phi-3-medium-128k-instruct
+- microsoft/phi-3-mini-128k-instruct
 - fuyu-8b
 - snowflake/arctic
