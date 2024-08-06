@@ -14,6 +14,7 @@ import type { ConversationVariable } from '@/app/components/workflow/types'
 type Props = {
   open: boolean
   setOpen: (value: React.SetStateAction<boolean>) => void
+  showTip: boolean
   chatVar?: ConversationVariable
   onClose: () => void
   onSave: (env: ConversationVariable) => void
@@ -22,6 +23,7 @@ type Props = {
 const VariableModalTrigger = ({
   open,
   setOpen,
+  showTip,
   chatVar,
   onClose,
   onSave,
@@ -38,7 +40,7 @@ const VariableModalTrigger = ({
       placement='left-start'
       offset={{
         mainAxis: 8,
-        alignmentAxis: -104,
+        alignmentAxis: showTip ? -278 : -48,
       }}
     >
       <PortalToFollowElemTrigger onClick={() => {

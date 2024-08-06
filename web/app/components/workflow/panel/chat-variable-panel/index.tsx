@@ -6,9 +6,12 @@ import {
 import {
   useStoreApi,
 } from 'reactflow'
-import { RiCloseLine } from '@remixicon/react'
+import { RiBookOpenLine, RiCloseLine } from '@remixicon/react'
 import { useTranslation } from 'react-i18next'
 import { useStore } from '@/app/components/workflow/store'
+import ActionButton, { ActionButtonState } from '@/app/components/base/action-button'
+import { BubbleX, LongArrowLeft, LongArrowRight } from '@/app/components/base/icons/src/vender/line/others'
+import BlockIcon from '@/app/components/workflow/block-icon'
 import VariableModalTrigger from '@/app/components/workflow/panel/chat-variable-panel/components/variable-modal-trigger'
 import VariableItem from '@/app/components/workflow/panel/chat-variable-panel/components/variable-item'
 import RemoveEffectVarConfirm from '@/app/components/workflow/nodes/_base/components/remove-effect-var-confirm'
@@ -17,6 +20,7 @@ import type {
 } from '@/app/components/workflow/types'
 import { findUsedVarNodes, updateNodeVars } from '@/app/components/workflow/nodes/_base/components/variable/utils'
 import { useNodesSyncDraft } from '@/app/components/workflow/hooks/use-nodes-sync-draft'
+import { BlockEnum } from '@/app/components/workflow/types'
 import cn from '@/utils/classnames'
 
 const ChatVariablePanel = () => {
@@ -27,6 +31,7 @@ const ChatVariablePanel = () => {
   const updateChatVarList = useStore(s => s.setConversationVariables)
   const { doSyncWorkflowDraft } = useNodesSyncDraft()
 
+  const [showTip, setShowTip] = useState(true)
   const [showVariableModal, setShowVariableModal] = useState(false)
   const [currentVar, setCurrentVar] = useState<ConversationVariable>()
 
@@ -112,7 +117,10 @@ const ChatVariablePanel = () => {
     >
       <div className='shrink-0 flex items-center justify-between p-4 pb-0 text-text-primary system-xl-semibold'>
         {t('workflow.chatVariable.panelTitle')}
-        <div className='flex items-center'>
+        <div className='flex items-center gap-1'>
+          <ActionButton state={showTip ? ActionButtonState.Active : undefined} onClick={() => setShowTip(!showTip)}>
+            <RiBookOpenLine className='w-4 h-4' />
+          </ActionButton>
           <div
             className='flex items-center justify-center w-6 h-6 cursor-pointer'
             onClick={() => setShowChatVariablePanel(false)}
@@ -121,11 +129,48 @@ const ChatVariablePanel = () => {
           </div>
         </div>
       </div>
-      <div className='shrink-0 py-1 px-4 system-sm-regular text-text-tertiary'>{t('workflow.chatVariable.panelDescription')}</div>
+      {showTip && (
+        <div className='shrink-0 px-3 pt-2.5 pb-2'>
+          <div className='relative p-3 radius-2xl bg-background-section-burn'>
+            <div className='inline-block py-[3px] px-[5px] rounded-[5px] border border-divider-deep text-text-tertiary system-2xs-medium-uppercase'>TIPS</div>
+            <div className='mt-1 mb-4 system-sm-regular text-text-secondary'>
+              {t('workflow.chatVariable.panelDescription')}
+              <a className='text-text-accent' href="">{t('workflow.chatVariable.docLink')}</a>
+            </div>
+            <div className='flex items-center gap-2'>
+              <div className='flex flex-col p-3 pb-4 bg-workflow-block-bg radius-lg border border-workflow-block-border shadow-md'>
+                <BubbleX className='shrink-0 mb-1 w-4 h-4 text-util-colors-teal-teal-700' />
+                <div className='text-text-secondary system-xs-semibold'>conversation_var</div>
+                <div className='text-text-tertiary system-2xs-regular'>String</div>
+              </div>
+              <div className='grow'>
+                <div className='mb-2 flex items-center gap-2 py-1'>
+                  <div className='shrink-0 flex items-center gap-1 w-16 h-3 px-1'>
+                    <LongArrowLeft className='grow h-2 text-text-quaternary' />
+                    <div className='shrink-0 text-text-tertiary system-2xs-medium'>WRITE</div>
+                  </div>
+                  <BlockIcon className='shrink-0' type={BlockEnum.Assigner} />
+                  <div className='grow text-text-secondary system-xs-semibold truncate'>{t('workflow.blocks.assigner')}</div>
+                </div>
+                <div className='flex items-center gap-2 py-1'>
+                  <div className='shrink-0 flex items-center gap-1 w-16 h-3 px-1'>
+                    <div className='shrink-0 text-text-tertiary system-2xs-medium'>READ</div>
+                    <LongArrowRight className='grow h-2 text-text-quaternary' />
+                  </div>
+                  <BlockIcon className='shrink-0' type={BlockEnum.LLM} />
+                  <div className='grow text-text-secondary system-xs-semibold truncate'>{t('workflow.blocks.llm')}</div>
+                </div>
+              </div>
+            </div>
+            <div className='absolute z-10 top-[-4px] right-[38px] w-3 h-3 bg-background-section-burn rotate-45'/>
+          </div>
+        </div>
+      )}
       <div className='shrink-0 px-4 pt-2 pb-3'>
         <VariableModalTrigger
           open={showVariableModal}
           setOpen={setShowVariableModal}
+          showTip={showTip}
           chatVar={currentVar}
           onSave={handleSave}
           onClose={() => setCurrentVar(undefined)}

@@ -101,7 +101,8 @@ const translation = {
   },
   chatVariable: {
     panelTitle: 'Conversation Variables',
-    panelDescription: 'Conversation Variables are used to store interactive information that LLM needs to remember, including conversation history, uploaded files, user preferences. They are read-write.',
+    panelDescription: 'Conversation Variables are used to store interactive information that LLM needs to remember, including conversation history, uploaded files, user preferences. They are read-write. ',
+    docLink: 'Visit our docs to learn more.',
     button: 'Add Variable',
     modal: {
       title: 'Add Conversation Variable',
