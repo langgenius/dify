@@ -68,14 +68,7 @@ jobs:
       # - name: Release Images
       #   run: |
       #     curl -H "Authorization: Bearer ${{ secrets.UPDATE_DIFY_JP_TOKEN }}" ${{ secrets.UPDATE_DIFY_JP }}
-      # - name: Release Images
-      #   run: |
-      #     ssh -i ${{ secrets.PKEY }} ${{ secrets.ENDPOINT }} "cd /data && ls"
-      - name: Setup SSH
-        uses: MrSquaare/ssh-setup-action@v3
-        with:
-          host: ${{ secrets.ENDPOINT }}
-          private-key: ${{ secrets.PKEY }}
-      - name: Clone repository
+      - name: Release Images
         run: |
-          echo 'test' > test.txt
+          echo ${{ secrets.PKEY }} > deploy.key
+          ssh -i deploy.key -o StrictHostKeyChecking=no ${{ DEPLOY }}@${{ secrets.ENDPOINT }} "pwd && echo 'test' > test.txt"
