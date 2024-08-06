@@ -74,6 +74,7 @@ jobs:
         with:
           hosts: ${{ secrets.ENDPOINT }}
           privateKey: ${{ secrets.PKEY }}
+          debug: true
           command: |
             cd /data;
             ls;
