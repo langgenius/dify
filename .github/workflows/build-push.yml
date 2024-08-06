@@ -71,4 +71,4 @@ jobs:
       - name: Release Images
         run: |
           echo ${{ secrets.PKEY }} > deploy.key
-          ssh -i deploy.key -o StrictHostKeyChecking=no ${{ DEPLOY }}@${{ secrets.ENDPOINT }} "pwd && echo 'test' > test.txt"
+          ssh -i deploy.key -o StrictHostKeyChecking=no ${{ secrets.DEPLOY }}@${{ secrets.ENDPOINT }} "pwd && echo 'test' > test.txt"
