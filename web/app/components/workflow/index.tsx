@@ -87,7 +87,7 @@ import { FeaturesProvider } from '@/app/components/base/features'
 import type { Features as FeaturesData } from '@/app/components/base/features/types'
 import { useFeaturesStore } from '@/app/components/base/features/hooks'
 import { useEventEmitterContextContext } from '@/context/event-emitter'
-import Confirm from '@/app/components/base/confirm/common'
+import Confirm from '@/app/components/base/confirm'
 
 const nodeTypes = {
   [CUSTOM_NODE]: CustomNode,
@@ -330,8 +330,7 @@ const Workflow: FC<WorkflowProps> = memo(({
             onCancel={() => setShowConfirm(undefined)}
             onConfirm={showConfirm.onConfirm}
             title={showConfirm.title}
-            desc={showConfirm.desc}
-            confirmWrapperClassName='!z-[11]'
+            content={showConfirm.desc}
           />
         )
       }

@@ -114,7 +114,7 @@ const Form: FC<FormProps> = ({
             validated={validatedSuccess}
             placeholder={placeholder?.[language] || placeholder?.en_US}
             disabled={disabed}
-            type={formSchema.type === FormTypeEnum.textNumber ? 'number' : formSchema.type === FormTypeEnum.secretInput ? 'password' : 'text'}
+            type={formSchema.type === FormTypeEnum.textNumber ? 'number' : 'text'}
             {...(formSchema.type === FormTypeEnum.textNumber ? { min: (formSchema as CredentialFormSchemaNumberInput).min, max: (formSchema as CredentialFormSchemaNumberInput).max } : {})}
           />
           {fieldMoreInfo?.(formSchema)}

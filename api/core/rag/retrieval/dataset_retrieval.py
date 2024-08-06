@@ -138,6 +138,7 @@ class DatasetRetrieval:
                 retrieve_config.rerank_mode,
                 retrieve_config.reranking_model,
                 retrieve_config.weights,
+                retrieve_config.reranking_enabled,
                 message_id,
             )
 
@@ -277,6 +278,7 @@ class DatasetRetrieval:
                         query=query,
                         top_k=top_k, score_threshold=score_threshold,
                         reranking_model=reranking_model,
+                        reranking_mode=retrieval_model_config.get('reranking_mode', 'reranking_model'),
                         weights=retrieval_model_config.get('weights', None),
                     )
                 self._on_query(query, [dataset_id], app_id, user_from, user_id)
@@ -321,23 +323,26 @@ class DatasetRetrieval:
         for thread in threads:
             thread.join()
 
-        if reranking_enable:
-            # do rerank for searched documents
-            data_post_processor = DataPostProcessor(tenant_id, reranking_mode,
-                                                    reranking_model, weights, False)
+        with measure_time() as timer:
+            if reranking_enable:
+                # do rerank for searched documents
+                data_post_processor = DataPostProcessor(
+                    tenant_id, reranking_mode,
+                    reranking_model, weights, False
+                )
 
-            with measure_time() as timer:
                 all_documents = data_post_processor.invoke(
                     query=query,
                     documents=all_documents,
                     score_threshold=score_threshold,
                     top_n=top_k
                 )
-        else:
-            if index_type == "economy":
-                all_documents = self.calculate_keyword_score(query, all_documents, top_k)
-            elif index_type == "high_quality":
-                all_documents = self.calculate_vector_score(all_documents, top_k, score_threshold)
+            else:
+                if index_type == "economy":
+                    all_documents = self.calculate_keyword_score(query, all_documents, top_k)
+                elif index_type == "high_quality":
+                    all_documents = self.calculate_vector_score(all_documents, top_k, score_threshold)
+
         self._on_query(query, dataset_ids, app_id, user_from, user_id)
 
         if all_documents:
@@ -427,10 +432,12 @@ class DatasetRetrieval:
                                                           dataset_id=dataset.id,
                                                           query=query,
                                                           top_k=top_k,
-                                                          score_threshold=retrieval_model['score_threshold']
+                                                          score_threshold=retrieval_model.get('score_threshold', .0)
                                                           if retrieval_model['score_threshold_enabled'] else None,
-                                                          reranking_model=retrieval_model['reranking_model']
+                                                          reranking_model=retrieval_model.get('reranking_model', None)
                                                           if retrieval_model['reranking_enable'] else None,
+                                                          reranking_mode=retrieval_model.get('reranking_mode')
+                                                          if retrieval_model.get('reranking_mode') else 'reranking_model',
                                                           weights=retrieval_model.get('weights', None),
                                                           )
 
@@ -606,7 +613,7 @@ class DatasetRetrieval:
                                top_k: int, score_threshold: float) -> list[Document]:
         filter_documents = []
         for document in all_documents:
-            if document.metadata['score'] >= score_threshold:
+            if score_threshold and document.metadata['score'] >= score_threshold:
                 filter_documents.append(document)
         if not filter_documents:
             return []

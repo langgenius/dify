@@ -189,8 +189,6 @@ class DatasetApi(Resource):
         dataset = DatasetService.get_dataset(dataset_id_str)
         if dataset is None:
             raise NotFound("Dataset not found.")
-        # check user's model setting
-        DatasetService.check_dataset_model_setting(dataset)
 
         parser = reqparse.RequestParser()
         parser.add_argument('name', nullable=False,
@@ -215,6 +213,13 @@ class DatasetApi(Resource):
         args = parser.parse_args()
         data = request.get_json()
 
+        # check embedding model setting
+        if data.get('indexing_technique') == 'high_quality':
+            DatasetService.check_embedding_model_setting(dataset.tenant_id,
+                                                         data.get('embedding_model_provider'),
+                                                         data.get('embedding_model')
+                                                         )
+
         # The role of the current user in the ta table must be admin, owner, editor, or dataset_operator
         DatasetPermissionService.check_permission(
             current_user, dataset, data.get('permission'), data.get('partial_member_list')
@@ -233,7 +238,8 @@ class DatasetApi(Resource):
             DatasetPermissionService.update_partial_member_list(
                 tenant_id, dataset_id_str, data.get('partial_member_list')
             )
-        else:
+        # clear partial member list when permission is only_me or all_team_members
+        elif data.get('permission') == 'only_me' or data.get('permission') == 'all_team_members':
             DatasetPermissionService.clear_partial_member_list(dataset_id_str)
 
         partial_member_list = DatasetPermissionService.get_dataset_partial_member_list(dataset_id_str)

@@ -1,0 +1,27 @@
+identity:
+  name: serper
+  author: zhuhao
+  label:
+    en_US: Serper
+    zh_Hans: Serper
+    pt_BR: Serper
+description:
+  human:
+    en_US: A tool for performing a Google search and extracting snippets and webpages.Input should be a search query.
+    zh_Hans: 一个用于执行 Google 搜索并提取片段和网页的工具。输入应该是一个搜索查询。
+    pt_BR: A tool for performing a Google search and extracting snippets and webpages.Input should be a search query.
+  llm: A tool for performing a Google search and extracting snippets and webpages.Input should be a search query.
+parameters:
+  - name: query
+    type: string
+    required: true
+    label:
+      en_US: Query string
+      zh_Hans: 查询语句
+      pt_BR: Query string
+    human_description:
+      en_US: used for searching
+      zh_Hans: 用于搜索网页内容
+      pt_BR: used for searching
+    llm_description: key words for searching
+    form: llm
