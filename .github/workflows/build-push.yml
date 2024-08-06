@@ -12,80 +12,69 @@ env:
   DIFY_API_IMAGE_NAME: ${{ secrets.DIFY_API_IMAGE_NAME }}
 
 jobs:
-  # build-and-push:
-  #   runs-on: ubuntu-latest
-  #   if: github.event.pull_request.draft == false
-  #   strategy:
-  #     matrix:
-  #       include:
-  #         - service_name: "web"
-  #           image_name_env: "DIFY_WEB_IMAGE_NAME"
-  #           context: "web"
-  #         - service_name: "api"
-  #           image_name_env: "DIFY_API_IMAGE_NAME"
-  #           context: "api"
-  #   steps:
-  #     - name: Set up QEMU
-  #       uses: docker/setup-qemu-action@v3
-
-  #     - name: Set up Docker Buildx
-  #       uses: docker/setup-buildx-action@v3
-        
-  #     - name: Login to CI
-  #       uses: docker/login-action@v2
-  #       with:
-  #         registry: ${{ secrets.CI_HOSTNAME }}
-  #         username: ${{ secrets.CI_USERNAME }}
-  #         password: ${{ secrets.CI_PASSWORD }}
-
-  #     - name: Extract metadata (tags, labels) for Docker
-  #       id: meta
-  #       uses: docker/metadata-action@v5
-  #       with:
-  #         images: ${{ env[matrix.image_name_env] }}
-  #         tags: |
-  #           type=raw,value=latest,enable=${{ startsWith(github.ref, 'refs/tags/') }}
-  #           type=ref,event=branch
-  #           type=sha,enable=true,priority=100,prefix=,suffix=,format=long
-  #           type=raw,value=${{ github.ref_name }},enable=${{ startsWith(github.ref, 'refs/tags/') }}
-
-  #     - name: Build and push
-  #       uses: docker/build-push-action@v6
-  #       with:
-  #         context: "{{defaultContext}}:${{ matrix.context }}"
-  #         platforms: 'linux/arm64'
-  #         build-args: COMMIT_SHA=${{ fromJSON(steps.meta.outputs.json).labels['org.opencontainers.image.revision'] }}
-  #         push: true
-  #         tags: ${{ steps.meta.outputs.tags }}
-  #         labels: ${{ steps.meta.outputs.labels }}
-  #         cache-from: type=gha
-  #         cache-to: type=gha,mode=max
-
-  # depoly-jp:
-  #   runs-on: ubuntu-latest
-    # needs: build-and-push
-    # steps:
-      # - name: Release Images
-      #   run: |
-      #     curl -H "Authorization: Bearer ${{ secrets.UPDATE_DIFY_JP_TOKEN }}" ${{ secrets.UPDATE_DIFY_JP }}
-      # - name: Release Images
-      #   run: |
-      #     echo ${{ secrets.PKEY }} > deploy.key
-      #     ssh -i deploy.key -o StrictHostKeyChecking=no ${{ secrets.DEPLOY }}@${{ secrets.ENDPOINT }} "pwd && echo 'test' > test.txt"
-  deploy:
-    name: "Deploy to staging"
+  build-and-push:
     runs-on: ubuntu-latest
+    if: github.event.pull_request.draft == false
+    strategy:
+      matrix:
+        include:
+          - service_name: "web"
+            image_name_env: "DIFY_WEB_IMAGE_NAME"
+            context: "web"
+          - service_name: "api"
+            image_name_env: "DIFY_API_IMAGE_NAME"
+            context: "api"
     steps:
-      - name: Configure SSH
+      - name: Set up QEMU
+        uses: docker/setup-qemu-action@v3
+
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v3
+        
+      - name: Login to CI
+        uses: docker/login-action@v2
+        with:
+          registry: ${{ secrets.CI_HOSTNAME }}
+          username: ${{ secrets.CI_USERNAME }}
+          password: ${{ secrets.CI_PASSWORD }}
+
+      - name: Extract metadata (tags, labels) for Docker
+        id: meta
+        uses: docker/metadata-action@v5
+        with:
+          images: ${{ env[matrix.image_name_env] }}
+          tags: |
+            type=raw,value=latest,enable=${{ startsWith(github.ref, 'refs/tags/') }}
+            type=ref,event=branch
+            type=sha,enable=true,priority=100,prefix=,suffix=,format=long
+            type=raw,value=${{ github.ref_name }},enable=${{ startsWith(github.ref, 'refs/tags/') }}
+
+      - name: Build and push
+        uses: docker/build-push-action@v6
+        with:
+          context: "{{defaultContext}}:${{ matrix.context }}"
+          platforms: 'linux/arm64'
+          build-args: COMMIT_SHA=${{ fromJSON(steps.meta.outputs.json).labels['org.opencontainers.image.revision'] }}
+          push: true
+          tags: ${{ steps.meta.outputs.tags }}
+          labels: ${{ steps.meta.outputs.labels }}
+          cache-from: type=gha
+          cache-to: type=gha,mode=max
+
+  deploy-jp:
+    runs-on: ubuntu-latest
+    needs: build-and-push
+    steps:
+      - name: Configure Login
         run: |
           mkdir -p ~/.ssh/
-          echo "$SSH_KEY" > ~/.ssh/staging.key
-          chmod 600 ~/.ssh/staging.key
+          echo "$SSH_KEY" > ~/.ssh/jp.key
+          chmod 600 ~/.ssh/jp.key
           cat >>~/.ssh/config <<END
-          Host staging
+          Host jp
             HostName $SSH_HOST
             User $SSH_USER
-            IdentityFile ~/.ssh/staging.key
+            IdentityFile ~/.ssh/jp.key
             StrictHostKeyChecking no
           END
         env:
@@ -93,5 +82,7 @@ jobs:
           SSH_KEY: ${{ secrets.PKEY }}
           SSH_HOST: ${{ secrets.ENDPOINT }}
 
-      - name: Stop the server
-        run: ssh staging 'pwd && echo test > test.txt'
+      - name: Pull Image
+        run: |
+          ssh jp 'cd /data/dify && docker-compose pull api web'
+          ssh jp 'cd /data/dify && docker-compose restart'
