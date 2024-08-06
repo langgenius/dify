@@ -15,6 +15,7 @@ import EmojiPicker from '@/app/components/base/emoji-picker'
 import { useToastContext } from '@/app/components/base/toast'
 
 import { languages } from '@/i18n/language'
+import Switch from '@/app/components/base/switch'
 
 export type ISettingsModalProps = {
   isChat: boolean
@@ -206,9 +207,17 @@ const SettingsModal: FC<ISettingsModalProps> = ({
           <input className={`w-full mt-2 rounded-lg h-10 box-border px-3 ${s.projectName} bg-gray-100`}
             value={inputInfo.chatColorTheme ?? ''}
             onChange={onChange('chatColorTheme')}
-            placeholder= 'E.g #A020F0'
+            placeholder='E.g #A020F0'
           />
         </>}
+        <div className='w-full mt-8'>
+          <p className='system-xs-medium text-gray-500'>{t(`${prefixSettings}.sso.label`)}</p>
+          <div className='flex justify-between items-center'>
+            <div className='font-medium system-sm-semibold flex-grow text-gray-900'>{t(`${prefixSettings}.sso.title`)}</div>
+            <Switch></Switch>
+          </div>
+          <p className='body-xs-regular text-gray-500'>{t(`${prefixSettings}.sso.description`)}</p>
+        </div>
         {!isShowMore && <div className='w-full cursor-pointer mt-8' onClick={() => setIsShowMore(true)}>
           <div className='flex justify-between'>
             <div className={`font-medium ${s.settingTitle} flex-grow text-gray-900`}>{t(`${prefixSettings}.more.entry`)}</div>
