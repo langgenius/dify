@@ -99,6 +99,10 @@ const useConfig = (id: string, payload: AssignerNodeType) => {
     return VarType.string
   }, [assignedVarType, inputs])
 
+  const filterAssignedVar = useCallback((varPayload: Var, selector: ValueSelector) => {
+    return selector.join('.').startsWith('conversation')
+  }, [])
+
   const filterToAssignedVar = useCallback((varPayload: Var, selector: ValueSelector) => {
     if (isEqual(selector, inputs.assigned_variable_selector))
       return false
@@ -136,6 +140,7 @@ const useConfig = (id: string, payload: AssignerNodeType) => {
     isSupportAppend: isCurrSupportAppend,
     writeModeTypes,
     handleWriteModeChange,
+    filterAssignedVar,
     filterToAssignedVar,
     handleToAssignedVarChange,
     toAssignedVarType,

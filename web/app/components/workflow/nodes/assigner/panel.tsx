@@ -26,6 +26,7 @@ const Panel: FC<NodePanelProps<AssignerNodeType>> = ({
     isSupportAppend,
     writeModeTypes,
     handleWriteModeChange,
+    filterAssignedVar,
     filterToAssignedVar,
     handleToAssignedVarChange,
     toAssignedVarType,
@@ -43,6 +44,7 @@ const Panel: FC<NodePanelProps<AssignerNodeType>> = ({
             isShowNodeName
             value={inputs.assigned_variable_selector || []}
             onChange={handleAssignedVarChanges}
+            filterVar={filterAssignedVar}
           />
         </Field>
         <Field
