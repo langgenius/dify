@@ -4,7 +4,6 @@ const path = require('node:path')
 const transpile = require('typescript').transpile
 const magicast = require('magicast')
 const { parseModule, generateCode, loadFile } = magicast
-// https://github.com/vitalets/google-translate-api
 const bingTranslate = require('bing-translate-api')
 const { translate } = bingTranslate
 
