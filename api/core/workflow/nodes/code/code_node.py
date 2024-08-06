@@ -179,6 +179,8 @@ class CodeNode(BaseNode):
                                 )
                         else:
                             raise ValueError(f'Output {prefix}.{output_name} is not a valid array. make sure all elements are of the same type.')
+                elif isinstance(output_value, type(None)):
+                    pass
                 else:
                     raise ValueError(f'Output {prefix}.{output_name} is not a valid type.')
                 
