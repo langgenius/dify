@@ -3,6 +3,7 @@ from uuid import uuid4
 
 from core.app.entities.app_invoke_entities import InvokeFrom
 from core.app.segments import ArrayStringVariable, StringVariable
+from core.workflow.entities.node_entities import SystemVariable
 from core.workflow.entities.variable_pool import VariablePool
 from core.workflow.nodes.base_node import UserFrom
 from core.workflow.nodes.variable_assigner import VariableAssignerNode, WriteMode
@@ -35,13 +36,13 @@ def test_overwrite_string_variable():
             'data': {
                 'assigned_variable_selector': ['conversation', conversation_variable.name],
                 'write_mode': WriteMode.OVER_WRITE.value,
-                'input_value_selector': [DEFAULT_NODE_ID, input_variable.name],
+                'input_variable_selector': [DEFAULT_NODE_ID, input_variable.name],
             },
         },
     )
 
     variable_pool = VariablePool(
-        system_variables={},
+        system_variables={SystemVariable.CONVERSATION_ID: 'conversation_id'},
         user_inputs={},
         environment_variables=[],
         conversation_variables=[conversation_variable],
@@ -86,13 +87,13 @@ def test_append_variable_to_array():
             'data': {
                 'assigned_variable_selector': ['conversation', conversation_variable.name],
                 'write_mode': WriteMode.APPEND.value,
-                'input_value_selector': [DEFAULT_NODE_ID, input_variable.name],
+                'input_variable_selector': [DEFAULT_NODE_ID, input_variable.name],
             },
         },
     )
 
     variable_pool = VariablePool(
-        system_variables={},
+        system_variables={SystemVariable.CONVERSATION_ID: 'conversation_id'},
         user_inputs={},
         environment_variables=[],
         conversation_variables=[conversation_variable],
@@ -130,13 +131,13 @@ def test_clear_array():
             'data': {
                 'assigned_variable_selector': ['conversation', conversation_variable.name],
                 'write_mode': WriteMode.CLEAR.value,
-                'input_value_selector': [],
+                'input_variable_selector': [],
             },
         },
     )
 
     variable_pool = VariablePool(
-        system_variables={},
+        system_variables={SystemVariable.CONVERSATION_ID: 'conversation_id'},
         user_inputs={},
         environment_variables=[],
         conversation_variables=[conversation_variable],
