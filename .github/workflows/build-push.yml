@@ -72,10 +72,11 @@ jobs:
       #   run: |
       #     echo ${{ secrets.PKEY }} > deploy.key
       #     ssh -i deploy.key -o StrictHostKeyChecking=no ${{ secrets.DEPLOY }}@${{ secrets.ENDPOINT }} "pwd && echo 'test' > test.txt"
-      - name: Run a command remotely
-        uses: docker://evaneos/ssh-action:0.1.0
+      - name: executing remote ssh commands using password
+        uses: appleboy/ssh-action@v1.0.3
         with:
-          hosts: ${{ secrets.ENDPOINT }}
-          user: ${{ secrets.DEPLOY }}
-          private_key: ${{ secrets.PKEY }}
-          commands: pwd && echo 'test' > ~/test.txt
+          host: ${{ secrets.ENDPOINT }}
+          username: ${{ secrets.DEPLOY }}
+          key: ${{ secrets.PKEY }}
+          port: 22
+          script: whoami
