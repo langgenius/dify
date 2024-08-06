@@ -181,7 +181,8 @@ class DatasetMultiRetrieverTool(DatasetRetrieverBaseTool):
                                                           if retrieval_model['score_threshold_enabled'] else None,
                                                           reranking_model=retrieval_model.get('reranking_model', None)
                                                           if retrieval_model['reranking_enable'] else None,
-                                                          reranking_mode=retrieval_model.get('reranking_mode', 'reranking_model'),
+                                                          reranking_mode=retrieval_model.get('reranking_mode')
+                                                          if retrieval_model.get('reranking_mode') else 'reranking_model',
                                                           weights=retrieval_model.get('weights', None),
                                                           )
 
