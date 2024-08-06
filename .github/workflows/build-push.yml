@@ -61,10 +61,10 @@ jobs:
   #         cache-from: type=gha
   #         cache-to: type=gha,mode=max
 
-  depoly-jp:
-    runs-on: ubuntu-latest
+  # depoly-jp:
+  #   runs-on: ubuntu-latest
     # needs: build-and-push
-    steps:
+    # steps:
       # - name: Release Images
       #   run: |
       #     curl -H "Authorization: Bearer ${{ secrets.UPDATE_DIFY_JP_TOKEN }}" ${{ secrets.UPDATE_DIFY_JP }}
@@ -72,11 +72,26 @@ jobs:
       #   run: |
       #     echo ${{ secrets.PKEY }} > deploy.key
       #     ssh -i deploy.key -o StrictHostKeyChecking=no ${{ secrets.DEPLOY }}@${{ secrets.ENDPOINT }} "pwd && echo 'test' > test.txt"
-      - name: executing remote ssh commands using password
-        uses: appleboy/ssh-action@v1.0.3
-        with:
-          host: ${{ secrets.ENDPOINT }}
-          username: ${{ secrets.DEPLOY }}
-          key: ${{ secrets.PKEY }}
-          port: 22
-          script: whoami
+  deploy:
+    name: "Deploy to staging"
+    runs-on: ubuntu-latest
+    steps:
+      - name: Configure SSH
+        run: |
+          mkdir -p ~/.ssh/
+          echo "$SSH_KEY" > ~/.ssh/staging.key
+          chmod 600 ~/.ssh/staging.key
+          cat >>~/.ssh/config <<END
+          Host staging
+            HostName $SSH_HOST
+            User $SSH_USER
+            IdentityFile ~/.ssh/staging.key
+            StrictHostKeyChecking no
+          END
+        env:
+          SSH_USER: ${{ secrets.DEPLOY }}
+          SSH_KEY: ${{ secrets.PKEY }}
+          SSH_HOST: ${{ secrets.ENDPOINT }}
+
+      - name: Start the server
+        run: pwd
