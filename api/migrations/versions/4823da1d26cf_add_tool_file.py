@@ -25,7 +25,7 @@ def upgrade():
     sa.Column('conversation_id', postgresql.UUID(), nullable=False),
     sa.Column('file_key', sa.String(length=255), nullable=False),
     sa.Column('mimetype', sa.String(length=255), nullable=False),
-    sa.Column('original_url', sa.String(length=255), nullable=True),
+    sa.Column('original_url', sa.String(length=2048), nullable=True),
     sa.PrimaryKeyConstraint('id', name='tool_file_pkey')
     )
     # ### end Alembic commands ###
