@@ -1,102 +1,115 @@
-'use client'
-import React, { useEffect, useReducer, useState } from 'react'
-import { useTranslation } from 'react-i18next'
-import { useRouter } from 'next/navigation'
-import useSWR from 'swr'
-import Link from 'next/link'
-import Toast from '../components/base/toast'
-import style from './page.module.css'
-import classNames from '@/utils/classnames'
-import { IS_CE_EDITION, SUPPORT_MAIL_LOGIN, apiPrefix, emailRegex } from '@/config'
-import Button from '@/app/components/base/button'
-import { login, oauth } from '@/service/common'
-import { getPurifyHref } from '@/utils'
+"use client";
+import React, { useEffect, useReducer, useState } from "react";
+import { useTranslation } from "react-i18next";
+import { useRouter } from "next/navigation";
+import useSWR from "swr";
+import Link from "next/link";
+import Toast from "../components/base/toast";
+import style from "./page.module.css";
+import classNames from "@/utils/classnames";
+import {
+  IS_CE_EDITION,
+  SUPPORT_MAIL_LOGIN,
+  apiPrefix,
+  emailRegex,
+} from "@/config";
+import Button from "@/app/components/base/button";
+import { login, oauth } from "@/service/common";
+import { getPurifyHref } from "@/utils";
 
 type IState = {
-  formValid: boolean
-  github: boolean
-  google: boolean
-}
+  formValid: boolean;
+  github: boolean;
+  google: boolean;
+};
 
 type IAction = {
-  type: 'login' | 'login_failed' | 'github_login' | 'github_login_failed' | 'google_login' | 'google_login_failed'
-}
+  type:
+    | "login"
+    | "login_failed"
+    | "github_login"
+    | "github_login_failed"
+    | "google_login"
+    | "google_login_failed";
+};
 
 function reducer(state: IState, action: IAction) {
   switch (action.type) {
-    case 'login':
+    case "login":
       return {
         ...state,
         formValid: true,
-      }
-    case 'login_failed':
+      };
+    case "login_failed":
       return {
         ...state,
         formValid: true,
-      }
-    case 'github_login':
+      };
+    case "github_login":
       return {
         ...state,
         github: true,
-      }
-    case 'github_login_failed':
+      };
+    case "github_login_failed":
       return {
         ...state,
         github: false,
-      }
-    case 'google_login':
+      };
+    case "google_login":
       return {
         ...state,
         google: true,
-      }
-    case 'google_login_failed':
+      };
+    case "google_login_failed":
       return {
         ...state,
         google: false,
-      }
+      };
     default:
-      throw new Error('Unknown action.')
+      throw new Error("Unknown action.");
   }
 }
 
 const NormalForm = () => {
-  const { t } = useTranslation()
-  const useEmailLogin = IS_CE_EDITION || SUPPORT_MAIL_LOGIN
+  const { t } = useTranslation();
+  const useEmailLogin = IS_CE_EDITION || SUPPORT_MAIL_LOGIN;
 
-  const router = useRouter()
+  const router = useRouter();
 
   const [state, dispatch] = useReducer(reducer, {
     formValid: false,
     github: false,
     google: false,
-  })
+  });
 
-  const [showPassword, setShowPassword] = useState(false)
-  const [email, setEmail] = useState('')
-  const [password, setPassword] = useState('')
+  const [showPassword, setShowPassword] = useState(false);
+  const [email, setEmail] = useState("");
+  const [password, setPassword] = useState("");
 
-  const [isLoading, setIsLoading] = useState(false)
+  const [isLoading, setIsLoading] = useState(false);
   const handleEmailPasswordLogin = async () => {
     if (!emailRegex.test(email)) {
       Toast.notify({
-        type: 'error',
-        message: t('login.error.emailInValid'),
-      })
-      return
+        type: "error",
+        message: t("login.error.emailInValid"),
+      });
+      return;
     }
     try {
-      setIsLoading(true)
+      setIsLoading(true);
       const res = await login({
-        url: '/login',
+        url: "/login",
         body: {
           email,
           password,
           remember_me: true,
         },
-      })
-      if (res.result === 'success') {
-        localStorage.setItem('console_token', res.data)
-        router.replace('/apps')
+      });
+      if (res.result === "success") {
+        console.log("settting console toke in the request localstorage");
+        console.log(res.data);
+        localStorage.setItem("console_token", res.data);
+        router.replace("/apps")
       }
       else {
         Toast.notify({
