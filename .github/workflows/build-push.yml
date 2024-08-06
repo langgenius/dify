@@ -82,11 +82,14 @@ jobs:
           SSH_KEY: ${{ secrets.PKEY }}
           SSH_HOST: ${{ secrets.ENDPOINT }}
 
-      - name: Pull Image & Restart
+      - name: Pull Image
         run: |
           ssh jp 'cd /data/dify && docker-compose pull api web --ignore-pull-failures'
       
       - name: Restart
         run: |
-          ssh jp 'cd /data/dify && docker-compose restart'
+          ssh jp 'cd /data/dify && docker-compose up -d'
+
+      - name: Clean
+        run: |
           ssh jp 'cd /data/dify && docker rmi $(docker images -f "dangling=true" -q)'
