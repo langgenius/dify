@@ -170,7 +170,7 @@ class WordExtractor(BaseExtractor):
 
                     if image_part in image_map:
                         image_link = image_map[image_part]
-                        paragraph_content.append(f"![Image]({image_link})")
+                        paragraph_content.append(image_link)
             else:
                 paragraph_content.append(run.text)
         return "".join(paragraph_content).strip()
