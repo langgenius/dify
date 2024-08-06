@@ -10,11 +10,6 @@ on:
 env:
   DIFY_WEB_IMAGE_NAME: ${{ vars.DIFY_WEB_IMAGE_NAME }}
   DIFY_API_IMAGE_NAME: ${{ vars.DIFY_API_IMAGE_NAME }}
-  registry: ${{ secrets.CI_HOSTNAME }}
-  username: ${{ secrets.CI_USERNAME }}
-  password: ${{ secrets.CI_PASSWORD }}
-  NAMESPACE: ${{ secrets.NAMESPACE }}
-  KUBECONFIG: ${{ secrets.KUBECONFIG }}
 
 jobs:
   build-and-push:
@@ -24,32 +19,18 @@ jobs:
       matrix:
         include:
           - service_name: "web"
-            image_name_env: "DIFY_WEB_IMAGE_NAME"
+            image_name_env: "${{ secrets.DIFY_WEB_IMAGE_NAME }}"
             context: "web"
           - service_name: "api"
-            image_name_env: "DIFY_API_IMAGE_NAME"
+            image_name_env: "${{ secrets.DIFY_API_IMAGE_NAME }}"
             context: "api"
     steps:
-      - name: Set up QEMU
-        uses: docker/setup-qemu-action@v3
-
-      - name: Set up Docker Buildx
-        uses: docker/setup-buildx-action@v3
-
-      # - name: Login to Docker Hub
-      #   uses: docker/login-action@v2
-      #   with:
-      #     username: ${{ env.DOCKERHUB_USER }}
-      #     password: ${{ env.DOCKERHUB_TOKEN }}
-
       - name: Login to CI
-        # run: |
-        #   echo $password | buildah login --username $username --password-stdin $registry
         uses: docker/login-action@v2
         with:
-          registry: ${{ env.registry }}
-          username: ${{ env.username }}
-          password: ${{ env.password }}
+          registry: ${{ secrets.CI_HOSTNAME }}
+          username: ${{ secrets.CI_USERNAME }}
+          password: ${{ secrets.CI_PASSWORD }}
 
       - name: Extract metadata (tags, labels) for Docker
         id: meta
@@ -66,8 +47,7 @@ jobs:
         uses: docker/build-push-action@v6
         with:
           context: "{{defaultContext}}:${{ matrix.context }}"
-          # platforms: ${{ startsWith(github.ref, 'refs/tags/') && 'linux/amd64,linux/arm64' || 'linux/amd64' }}
-          platforms: ${{ startsWith(github.ref, 'refs/tags/') && 'linux/arm64' || 'linux/arm64' }}
+          platforms: linux/arm64'
           build-args: COMMIT_SHA=${{ fromJSON(steps.meta.outputs.json).labels['org.opencontainers.image.revision'] }}
           push: true
           tags: ${{ steps.meta.outputs.tags }}
@@ -75,21 +55,10 @@ jobs:
           cache-from: type=gha
           cache-to: type=gha,mode=max
 
-
-      # - name: generate config
-      #   uses: appleboy/kubernetes-action@v0.0.1
-      #   with:
-      #     server: ${{ secrets.K8S_SERVER }}
-      #     ca_cert: ${{ secrets.K8S_CA_CERT }}
-      #     token: ${{ secrets.K8S_TOKEN }}
-      #     output: kubeconfig.yaml
-
-      # - name: deploy
-      #   env:
-      #     KUBECONFIG: kubeconfig.yaml
-      #   run: |
-      #     sudo chmod 644 kubeconfig.yaml
-      #     kubectl -n ${{ env.NAMESPACE }} set image deployment/dify-${{ matrix.service_name }} ${{ matrix.service_name }}=${{ env[matrix.image_name_env] }}:${{ fromJSON(steps.meta.outputs.json).labels['org.opencontainers.image.revision'] }}
-      - name: Trigger update
-        run: |
-          curl -H "Authorization: Bearer ${{ secrets.UPDATE_DIFY_JP_TOKEN }}" ${{ secrets.UPDATE_DIFY_JP }}
+  deploy:
+      runs-on: ubuntu-latest
+      needs: build-and-push
+      steps:
+        - name: Release Images
+          run: |
+            curl -H "Authorization: Bearer ${{ secrets.UPDATE_DIFY_JP_TOKEN }}" ${{ secrets.UPDATE_DIFY_JP }}
