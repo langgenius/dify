@@ -4,22 +4,25 @@ import React, { useEffect, useState } from 'react'
 import { ChevronRightIcon } from '@heroicons/react/20/solid'
 import Link from 'next/link'
 import { Trans, useTranslation } from 'react-i18next'
+import { useContextSelector } from 'use-context-selector'
 import s from './style.module.css'
 import Modal from '@/app/components/base/modal'
 import Button from '@/app/components/base/button'
 import AppIcon from '@/app/components/base/app-icon'
+import Switch from '@/app/components/base/switch'
 import { SimpleSelect } from '@/app/components/base/select'
 import type { AppDetailResponse } from '@/models/app'
-import type { Language } from '@/types/app'
+import type { AppSSO, Language } from '@/types/app'
 import EmojiPicker from '@/app/components/base/emoji-picker'
 import { useToastContext } from '@/app/components/base/toast'
 
 import { languages } from '@/i18n/language'
-import Switch from '@/app/components/base/switch'
+import TooltipPlus from '@/app/components/base/tooltip-plus'
+import AppContext from '@/context/app-context'
 
 export type ISettingsModalProps = {
   isChat: boolean
-  appInfo: AppDetailResponse
+  appInfo: AppDetailResponse & AppSSO
   isShow: boolean
   defaultValue?: string
   onClose: () => void
@@ -39,6 +42,7 @@ export type ConfigParams = {
   icon: string
   icon_background: string
   show_workflow_steps: boolean
+  enable_sso: boolean
 }
 
 const prefixSettings = 'appOverview.overview.appInfo.settings'
@@ -50,6 +54,7 @@ const SettingsModal: FC<ISettingsModalProps> = ({
   onClose,
   onSave,
 }) => {
+  const systemFeatures = useContextSelector(AppContext, state => state.systemFeatures)
   const { notify } = useToastContext()
   const [isShowMore, setIsShowMore] = useState(false)
   const { icon, icon_background } = appInfo
@@ -73,6 +78,7 @@ const SettingsModal: FC<ISettingsModalProps> = ({
     privacyPolicy: privacy_policy,
     customDisclaimer: custom_disclaimer,
     show_workflow_steps,
+    enable_sso: appInfo.enable_sso,
   })
   const [language, setLanguage] = useState(default_language)
   const [saveLoading, setSaveLoading] = useState(false)
@@ -91,6 +97,7 @@ const SettingsModal: FC<ISettingsModalProps> = ({
       privacyPolicy: privacy_policy,
       customDisclaimer: custom_disclaimer,
       show_workflow_steps,
+      enable_sso: appInfo.enable_sso,
     })
     setLanguage(default_language)
     setEmoji({ icon, icon_background })
@@ -139,6 +146,7 @@ const SettingsModal: FC<ISettingsModalProps> = ({
       icon: emoji.icon,
       icon_background: emoji.icon_background,
       show_workflow_steps: inputInfo.show_workflow_steps,
+      enable_sso: inputInfo.enable_sso,
     }
     await onSave?.(params)
     setSaveLoading(false)
@@ -214,7 +222,9 @@ const SettingsModal: FC<ISettingsModalProps> = ({
           <p className='system-xs-medium text-gray-500'>{t(`${prefixSettings}.sso.label`)}</p>
           <div className='flex justify-between items-center'>
             <div className='font-medium system-sm-semibold flex-grow text-gray-900'>{t(`${prefixSettings}.sso.title`)}</div>
-            <Switch></Switch>
+            <TooltipPlus disabled={!systemFeatures.sso_enforced_for_web} popupContent={<div className='w-[180px]'>{t(`${prefixSettings}.sso.tooltip`)}</div>}>
+              <Switch defaultValue={inputInfo.enable_sso} onChange={v => setInputInfo({ ...inputInfo, enable_sso: v })}></Switch>
+            </TooltipPlus>
           </div>
           <p className='body-xs-regular text-gray-500'>{t(`${prefixSettings}.sso.description`)}</p>
         </div>
