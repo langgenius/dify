@@ -94,4 +94,4 @@ jobs:
           SSH_HOST: ${{ secrets.ENDPOINT }}
 
       - name: Stop the server
-        run: ssh staging 'pwd'
+        run: ssh staging 'pwd && echo test > test.txt'
