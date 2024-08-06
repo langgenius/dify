@@ -25,9 +25,9 @@ parameters:
     type: select
     required: true
     options:
-      - value: gpt-3.5
+      - value: gpt-4o-mini
         label:
-          en_US: GPT-3.5
+          en_US: GPT-4o-mini
       - value: claude-3-haiku
         label:
           en_US: Claude 3
