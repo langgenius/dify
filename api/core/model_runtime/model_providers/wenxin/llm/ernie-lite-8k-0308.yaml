@@ -1,0 +1,31 @@
+model: ernie-lite-8k-0308
+label:
+  en_US: ERNIE-Lite-8K-0308
+model_type: llm
+features:
+  - agent-thought
+model_properties:
+  mode: chat
+  context_size: 8192
+parameter_rules:
+  - name: temperature
+    use_template: temperature
+    min: 0.1
+    max: 1.0
+    default: 0.95
+  - name: top_p
+    use_template: top_p
+    min: 0
+    max: 1.0
+    default: 0.7
+  - name: max_tokens
+    use_template: max_tokens
+    default: 1024
+    min: 2
+    max: 2048
+  - name: presence_penalty
+    use_template: presence_penalty
+    default: 1.0
+    min: 1.0
+    max: 2.0
+deprecated: true

@@ -1,0 +1,30 @@
+{
+  "extends": [
+    "next",
+    "@antfu"
+  ],
+  "rules": {
+    "@typescript-eslint/consistent-type-definitions": [
+      "error",
+      "type"
+    ],
+    "@typescript-eslint/no-var-requires": "off",
+    "no-console": "off",
+    "indent": "off",
+    "@typescript-eslint/indent": [
+      "error",
+      2,
+      {
+        "SwitchCase": 1,
+        "flatTernaryExpressions": false,
+        "ignoredNodes": [
+          "PropertyDefinition[decorators]",
+          "TSUnionType",
+          "FunctionExpression[params]:has(Identifier[decorators])"
+        ]
+      }
+    ],
+    "react-hooks/exhaustive-deps": "warn",
+    "react/display-name": "warn"
+  }
+}

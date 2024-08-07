@@ -1,0 +1,225 @@
+.listItem {
+  @apply col-span-1 bg-white border-2 border-solid border-transparent rounded-xl shadow-xs min-h-[160px] flex flex-col transition-all duration-200 ease-in-out cursor-pointer hover:shadow-lg;
+}
+
+.listItem.newItemCard {
+  @apply outline outline-1 outline-gray-200 -outline-offset-1 hover:shadow-sm hover:bg-white;
+  background-color: rgba(229, 231, 235, 0.5);
+}
+
+.listItem.selectable {
+  @apply relative bg-gray-50 outline outline-1 outline-gray-200 -outline-offset-1 shadow-none hover:bg-none hover:shadow-none hover:outline-primary-200 transition-colors;
+}
+
+.listItem.selectable * {
+  @apply relative;
+}
+
+.listItem.selectable::before {
+  content: "";
+  @apply absolute top-0 left-0 block w-full h-full rounded-lg pointer-events-none opacity-0 transition-opacity duration-200 ease-in-out hover:opacity-100;
+  background: linear-gradient(0deg,
+      rgba(235, 245, 255, 0.5),
+      rgba(235, 245, 255, 0.5)),
+    #ffffff;
+}
+
+.listItem.selectable:hover::before {
+  @apply opacity-100;
+}
+
+.listItem.selected {
+  @apply border-primary-600 hover:border-primary-600 border-2;
+}
+
+.listItem.selected::before {
+  @apply opacity-100;
+}
+
+.appIcon {
+  @apply flex items-center justify-center w-8 h-8 bg-pink-100 rounded-lg grow-0 shrink-0;
+}
+
+.appIcon.medium {
+  @apply w-9 h-9;
+}
+
+.appIcon.large {
+  @apply w-10 h-10;
+}
+
+.newItemIcon {
+  @apply flex items-center justify-center w-8 h-8 transition-colors duration-200 ease-in-out border border-gray-200 rounded-lg hover:bg-white grow-0 shrink-0;
+}
+
+.listItem:hover .newItemIcon {
+  @apply bg-gray-50 border-primary-100;
+}
+
+.newItemCard .newItemIcon {
+  @apply bg-gray-100;
+}
+
+.newItemCard:hover .newItemIcon {
+  @apply bg-white;
+}
+
+.selectable .newItemIcon {
+  @apply bg-gray-50;
+}
+
+.selectable:hover .newItemIcon {
+  @apply bg-primary-50;
+}
+
+.newItemIconImage {
+  @apply grow-0 shrink-0 block w-4 h-4 bg-center bg-contain transition-colors duration-200 ease-in-out;
+  color: #1f2a37;
+}
+
+.listItem:hover .newIconImage {
+  @apply text-primary-600;
+}
+
+.newItemIconAdd {
+  background-image: url("./apps/assets/add.svg");
+}
+
+/* .newItemIconChat {
+  background-image: url("~@/app/components/base/icons/assets/public/header-nav/studio/Robot.svg");
+}
+
+.selected .newItemIconChat {
+  background-image: url("~@/app/components/base/icons/assets/public/header-nav/studio/Robot-Active.svg");
+} */
+
+.newItemIconComplete {
+  background-image: url("./apps/assets/completion.svg");
+}
+
+.listItemTitle {
+  @apply flex pt-[14px] px-[14px] pb-3 h-[66px] items-center gap-3 grow-0 shrink-0;
+}
+
+.listItemHeading {
+  @apply relative h-8 text-sm font-medium leading-8 grow;
+}
+
+.listItemHeadingContent {
+  @apply absolute top-0 left-0 w-full h-full overflow-hidden text-ellipsis whitespace-nowrap;
+}
+
+.actionIconWrapper {
+  @apply hidden h-8 w-8 p-2 rounded-md border-none hover:bg-gray-100 !important;
+}
+
+.listItem:hover .actionIconWrapper {
+  @apply !inline-flex;
+}
+
+.deleteDatasetIcon {
+  @apply hidden grow-0 shrink-0 basis-8 w-8 h-8 rounded-lg transition-colors duration-200 ease-in-out bg-white border border-gray-200 hover:bg-gray-100 bg-center bg-no-repeat;
+  background-size: 16px;
+  background-image: url('~@/assets/delete.svg');
+}
+
+.listItem:hover .deleteDatasetIcon {
+  @apply block;
+}
+
+.listItemDescription {
+  @apply mb-3 px-[14px] h-9 text-xs leading-normal text-gray-500 line-clamp-2;
+}
+
+.listItemDescription.noClip {
+  @apply line-clamp-none;
+}
+
+.listItemFooter {
+  @apply flex items-center flex-wrap min-h-[42px] px-[14px] pt-2 pb-[10px];
+}
+
+.listItemFooter.datasetCardFooter {
+  @apply flex items-center gap-4 text-xs text-gray-500;
+}
+
+.listItemStats {
+  @apply flex items-center gap-1;
+}
+
+.listItemFooterIcon {
+  @apply block w-3 h-3 bg-center bg-contain;
+}
+
+.solidChatIcon {
+  background-image: url("./apps/assets/chat-solid.svg");
+}
+
+.solidCompletionIcon {
+  background-image: url("./apps/assets/completion-solid.svg");
+}
+
+.newItemCardHeading {
+  @apply transition-colors duration-200 ease-in-out;
+}
+
+.listItem:hover .newItemCardHeading {
+  @apply text-primary-600;
+}
+
+.listItemLink {
+  @apply inline-flex items-center gap-1 text-xs text-gray-400 transition-colors duration-200 ease-in-out;
+}
+
+.listItem:hover .listItemLink {
+  @apply text-primary-600;
+}
+
+.linkIcon {
+  @apply block w-[13px] h-[13px] bg-center bg-contain;
+  background-image: url("./apps/assets/link.svg");
+}
+
+.linkIcon.grayLinkIcon {
+  background-image: url("./apps/assets/link-gray.svg");
+}
+
+.listItem:hover .grayLinkIcon {
+  background-image: url("./apps/assets/link.svg");
+}
+
+.rightIcon {
+  @apply block w-[13px] h-[13px] bg-center bg-contain;
+  background-image: url("./apps/assets/right-arrow.svg");
+}
+
+.socialMediaLink {
+  @apply flex items-center justify-center w-8 h-8 cursor-pointer hover:opacity-80 transition-opacity duration-200 ease-in-out;
+}
+
+.socialMediaIcon {
+  @apply block w-6 h-6 bg-center bg-contain;
+}
+
+.githubIcon {
+  background-image: url("./apps/assets/github.svg");
+}
+
+.discordIcon {
+  background-image: url("./apps/assets/discord.svg");
+}
+
+/* #region new app dialog */
+.newItemCaption {
+  @apply inline-flex items-center mb-2 text-sm font-medium;
+}
+
+/* #endregion new app dialog */
+
+.unavailable {
+  @apply opacity-50;
+}
+
+.listItem:hover .unavailable {
+  @apply opacity-100;
+}

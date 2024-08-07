@@ -1,0 +1,89 @@
+identity:
+  name: searxng_search
+  author: Tice
+  label:
+    en_US: SearXNG Search
+    zh_Hans: SearXNG 搜索
+description:
+  human:
+    en_US: Perform searches on SearXNG and get results.
+    zh_Hans: 在 SearXNG 上进行搜索并获取结果。
+  llm: Perform searches on SearXNG and get results.
+parameters:
+  - name: query
+    type: string
+    required: true
+    label:
+      en_US: Query string
+      zh_Hans: 查询语句
+    human_description:
+      en_US: The search query.
+      zh_Hans: 搜索查询语句。
+    llm_description: Key words for searching
+    form: llm
+  - name: search_type
+    type: select
+    required: true
+    label:
+      en_US: search type
+      zh_Hans: 搜索类型
+      pt_BR: search type
+    human_description:
+      en_US: search type for page, news or image.
+      zh_Hans: 选择搜索的类型：网页，新闻，图片。
+      pt_BR: search type for page, news or image.
+    default: Page
+    options:
+      - value: Page
+        label:
+          en_US: Page
+          zh_Hans: 网页
+          pt_BR: Page
+      - value: News
+        label:
+          en_US: News
+          zh_Hans: 新闻
+          pt_BR: News
+      - value: Image
+        label:
+          en_US: Image
+          zh_Hans: 图片
+          pt_BR: Image
+    form: form
+  - name: num_results
+    type: number
+    required: true
+    label:
+      en_US: Number of query results
+      zh_Hans: 返回查询数量
+    human_description:
+      en_US: The number of query results.
+      zh_Hans: 返回查询结果的数量。
+    form: form
+    default: 5
+    min: 1
+    max: 20
+  - name: result_type
+    type: select
+    required: true
+    label:
+      en_US: result type
+      zh_Hans: 结果类型
+      pt_BR: result type
+    human_description:
+      en_US: return a list of links or texts.
+      zh_Hans: 返回一个连接列表还是纯文本内容。
+      pt_BR: return a list of links or texts.
+    default: text
+    options:
+      - value: link
+        label:
+          en_US: Link
+          zh_Hans: 链接
+          pt_BR: Link
+      - value: text
+        label:
+          en_US: Text
+          zh_Hans: 文本
+          pt_BR: Text
+    form: form

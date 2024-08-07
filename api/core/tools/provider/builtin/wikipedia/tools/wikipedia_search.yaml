@@ -1,0 +1,101 @@
+identity:
+  name: wikipedia_search
+  author: Dify
+  label:
+    en_US: WikipediaSearch
+    zh_Hans: 维基百科搜索
+    pt_BR: WikipediaSearch
+  icon: icon.svg
+description:
+  human:
+    en_US: A tool for performing a Wikipedia search and extracting snippets and webpages.
+    zh_Hans: 一个用于执行维基百科搜索并提取片段和网页的工具。
+    pt_BR: A tool for performing a Wikipedia search and extracting snippets and webpages.
+  llm: A tool for performing a Wikipedia search and extracting snippets and webpages. Input should be a search query.
+parameters:
+  - name: query
+    type: string
+    required: true
+    label:
+      en_US: Query string
+      zh_Hans: 查询语句
+      pt_BR: Query string
+    human_description:
+      en_US: key words for searching
+      zh_Hans: 查询关键词
+      pt_BR: key words for searching
+    llm_description: key words for searching, this should be in the language of "language" parameter
+    form: llm
+  - name: language
+    type: string
+    required: true
+    label:
+      en_US: Language
+      zh_Hans: 语言
+    human_description:
+      en_US: The language of the Wikipedia to be searched
+      zh_Hans: 要搜索的维基百科语言
+    llm_description: >-
+      language of the wikipedia to be searched,
+      only "de" for German,
+      "en" for English,
+      "fr" for French,
+      "hi" for Hindi,
+      "ja" for Japanese,
+      "ko" for Korean,
+      "pl" for Polish,
+      "pt" for Portuguese,
+      "ro" for Romanian,
+      "uk" for Ukrainian,
+      "vi" for Vietnamese,
+      and "zh" for Chinese are supported
+    form: llm
+    options:
+      - value: de
+        label:
+          en_US: German
+          zh_Hans: 德语
+      - value: en
+        label:
+          en_US: English
+          zh_Hans: 英语
+      - value: fr
+        label:
+          en_US: French
+          zh_Hans: 法语
+      - value: hi
+        label:
+          en_US: Hindi
+          zh_Hans: 印地语
+      - value: ja
+        label:
+          en_US: Japanese
+          zh_Hans: 日语
+      - value: ko
+        label:
+          en_US: Korean
+          zh_Hans: 韩语
+      - value: pl
+        label:
+          en_US: Polish
+          zh_Hans: 波兰语
+      - value: pt
+        label:
+          en_US: Portuguese
+          zh_Hans: 葡萄牙语
+      - value: ro
+        label:
+          en_US: Romanian
+          zh_Hans: 罗马尼亚语
+      - value: uk
+        label:
+          en_US: Ukrainian
+          zh_Hans: 乌克兰语
+      - value: vi
+        label:
+          en_US: Vietnamese
+          zh_Hans: 越南语
+      - value: zh
+        label:
+          en_US: Chinese
+          zh_Hans: 中文

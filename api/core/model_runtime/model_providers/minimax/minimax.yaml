@@ -1,0 +1,37 @@
+provider: minimax
+label:
+  en_US: Minimax
+icon_small:
+  en_US: icon_s_en.png
+icon_large:
+  en_US: icon_l_en.png
+background: "#FFEFEF"
+help:
+  title:
+    en_US: Get your API Key from Minimax
+    zh_Hans: 从 Minimax 获取您的 API Key
+  url:
+    en_US: https://api.minimax.chat/user-center/basic-information/interface-key
+supported_model_types:
+  - llm
+  - text-embedding
+configurate_methods:
+  - predefined-model
+provider_credential_schema:
+  credential_form_schemas:
+    - variable: minimax_api_key
+      label:
+        en_US: API Key
+      type: secret-input
+      required: true
+      placeholder:
+        zh_Hans: 在此输入您的 API Key
+        en_US: Enter your API Key
+    - variable: minimax_group_id
+      label:
+        en_US: Group ID
+      type: text-input
+      required: true
+      placeholder:
+        zh_Hans: 在此输入您的 Group ID
+        en_US: Enter your group ID

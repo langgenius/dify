@@ -1,0 +1,15 @@
+.copyIcon {
+  background-image: url(~@/app/components/develop/secret-key/assets/copy.svg);
+  background-position: center;
+  background-repeat: no-repeat;
+}
+
+.copyIcon:hover {
+  background-image: url(~@/app/components/develop/secret-key/assets/copy-hover.svg);
+  background-position: center;
+  background-repeat: no-repeat;
+}
+
+.copyIcon.copied {
+  background-image: url(~@/app/components/develop/secret-key/assets/copied.svg);
+}

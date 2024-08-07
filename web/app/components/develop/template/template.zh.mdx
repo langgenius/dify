@@ -1,0 +1,508 @@
+import { CodeGroup } from '../code.tsx'
+import { Row, Col, Properties, Property, Heading, SubProperty } from '../md.tsx'
+
+# 文本生成型应用 API
+
+文本生成应用无会话支持，适合用于翻译/文章写作/总结 AI 等等。
+
+<div>
+  ### 基础 URL
+  <CodeGroup title="Code" targetCode={props.appDetail.api_base_url}>
+    ```javascript
+    ```
+  </CodeGroup>
+
+  ### 鉴权
+
+
+  Dify Service API 使用 `API-Key` 进行鉴权。
+  <i>**强烈建议开发者把 `API-Key` 放在后端存储，而非分享或者放在客户端存储，以免 `API-Key` 泄露，导致财产损失。**</i>
+  所有 API 请求都应在 **`Authorization`** HTTP Header 中包含您的 `API-Key`，如下所示：
+
+  <CodeGroup title="Code">
+    ```javascript
+      Authorization: Bearer {API_KEY}
+    ```
+  </CodeGroup>
+</div>
+
+---
+
+<Heading
+  url='/completion-messages'
+  method='POST'
+  title='发送消息'
+  name='#Create-Completion-Message'
+/>
+<Row>
+  <Col>
+    发送请求给文本生成型应用。
+
+    ### Request Body
+
+    <Properties>
+      <Property name='inputs' type='object' key='inputs'>
+        (选填)允许传入 App 定义的各变量值。
+  inputs 参数包含了多组键值对（Key/Value pairs），每组的键对应一个特定变量，每组的值则是该变量的具体值。
+  文本生成型应用要求至少传入一组键值对。
+      - `query` (string) 必填
+        用户输入的文本内容。
+      </Property>
+      <Property name='response_mode' type='string' key='response_mode'>
+        - `streaming` 流式模式（推荐）。基于 SSE（**[Server-Sent Events](https://developer.mozilla.org/en-US/docs/Web/API/Server-sent_events/Using_server-sent_events)**）实现类似打字机输出方式的流式返回。
+        - `blocking` 阻塞模式，等待执行完毕后返回结果。（请求若流程较长可能会被中断）。
+        <i>由于 Cloudflare 限制，请求会在 100 秒超时无返回后中断。</i>
+      </Property>
+      <Property name='user' type='string' key='user'>
+        用户标识，用于定义终端用户的身份，方便检索、统计。
+        由开发者定义规则，需保证用户标识在应用内唯一。
+      </Property>
+      <Property name='files' type='array[object]' key='files'>
+          上传的文件。
+          - `type` (string) 支持类型：图片 `image`（目前仅支持图片格式） 。
+          - `transfer_method` (string)  传递方式:
+            - `remote_url`: 图片地址。
+            - `local_file`: 上传文件。
+          - `url` 图片地址。（仅当传递方式为 `remote_url` 时）。
+          - `upload_file_id` 上传文件 ID。（仅当传递方式为 `local_file `时）。
+      </Property>
+    </Properties>
+
+    ### Response
+    <Properties>
+    当 `response_mode` 为 `blocking` 时，返回 ChatCompletionResponse object。
+    当 `response_mode` 为 `streaming`时，返回 ChunkChatCompletionResponse object 流式序列。
+
+    ### ChatCompletionResponse
+    返回完整的 App 结果，`Content-Type` 为 `application/json`。
+    - `message_id` (string) 消息唯一 ID
+    - `mode` (string) App 模式，固定为 chat
+    - `answer` (string) 完整回复内容
+    - `metadata` (object) 元数据
+      - `usage` (Usage) 模型用量信息
+      - `retriever_resources` (array[RetrieverResource]) 引用和归属分段列表
+    - `created_at` (int) 消息创建时间戳，如：1705395332
+
+    ### ChunkChatCompletionResponse
+    返回 App 输出的流式块，`Content-Type` 为 `text/event-stream`。
+    每个流式块均为 data: 开头，块之间以 `\n\n` 即两个换行符分隔，如下所示：
+    <CodeGroup>
+    ```streaming {{ title: 'Response' }}
+    data: {"event": "message", "task_id": "900bbd43-dc0b-4383-a372-aa6e6c414227", "id": "663c5084-a254-4040-8ad3-51f2a3c1a77c", "answer": "Hi", "created_at": 1705398420}\n\n
+    ```
+    </CodeGroup>
+    流式块中根据 `event` 不同，结构也不同：
+    - `event: message` LLM 返回文本块事件，即：完整的文本以分块的方式输出。
+      - `task_id` (string) 任务 ID，用于请求跟踪和下方的停止响应接口
+      - `message_id` (string) 消息唯一 ID
+      - `answer` (string) LLM 返回文本块内容
+      - `created_at` (int) 创建时间戳，如：1705395332
+    - `event: message_end` 消息结束事件，收到此事件则代表文本流式返回结束。
+      - `task_id` (string) 任务 ID，用于请求跟踪和下方的停止响应接口
+      - `message_id` (string) 消息唯一 ID
+      - `metadata` (object) 元数据
+        - `usage` (Usage) 模型用量信息
+        - `retriever_resources` (array[RetrieverResource]) 引用和归属分段列表
+    - `event: tts_message` TTS 音频流事件，即：语音合成输出。内容是Mp3格式的音频块，使用 base64 编码后的字符串，播放的时候直接解码即可。(开启自动播放才有此消息)
+      - `task_id` (string) 任务 ID，用于请求跟踪和下方的停止响应接口
+      - `message_id` (string) 消息唯一 ID
+      - `audio` (string) 语音合成之后的音频块使用 Base64 编码之后的文本内容，播放的时候直接 base64 解码送入播放器即可
+      - `created_at` (int) 创建时间戳，如：1705395332
+    - `event: tts_message_end` TTS 音频流结束事件，收到这个事件表示音频流返回结束。
+      - `task_id` (string) 任务 ID，用于请求跟踪和下方的停止响应接口
+      - `message_id` (string) 消息唯一 ID
+      - `audio` (string) 结束事件是没有音频的，所以这里是空字符串
+      - `created_at` (int) 创建时间戳，如：1705395332
+    - `event: message_replace` 消息内容替换事件。
+      开启内容审查和审查输出内容时，若命中了审查条件，则会通过此事件替换消息内容为预设回复。
+      - `task_id` (string) 任务 ID，用于请求跟踪和下方的停止响应接口
+      - `message_id` (string) 消息唯一 ID
+      - `answer` (string) 替换内容（直接替换 LLM 所有回复文本）
+      - `created_at` (int) 创建时间戳，如：1705395332
+    - `event: error`
+      流式输出过程中出现的异常会以 stream event 形式输出，收到异常事件后即结束。
+      - `task_id` (string) 任务 ID，用于请求跟踪和下方的停止响应接口
+      - `message_id` (string) 消息唯一 ID
+      - `status` (int) HTTP 状态码
+      - `code` (string) 错误码
+      - `message` (string) 错误消息
+    - `event: ping` 每 10s 一次的 ping 事件，保持连接存活。
+
+    ### Errors
+    - 404，对话不存在
+    - 400，`invalid_param`，传入参数异常
+    - 400，`app_unavailable`，App 配置不可用
+    - 400，`provider_not_initialize`，无可用模型凭据配置
+    - 400，`provider_quota_exceeded`，模型调用额度不足
+    - 400，`model_currently_not_support`，当前模型不可用
+    - 400，`completion_request_error`，文本生成失败
+    - 500，服务内部异常
+
+    </Properties>
+  </Col>
+  <Col sticky>
+
+    <CodeGroup title="Request" tag="POST" label="/completion-messages" targetCode={`curl -X POST '${props.appDetail.api_base_url}/completion-messages' \\\n--header 'Authorization: Bearer {api_key}' \\\n--header 'Content-Type: application/json' \\\n--data-raw '{\n    "inputs": {"query": "Hello, world!"},\n    "response_mode": "streaming",\n    "user": "abc-123"\n}'\n`}>
+
+    ```bash {{ title: 'cURL' }}
+    curl -X POST '${props.appDetail.api_base_url}/completion-messages' \
+    --header 'Authorization: Bearer {api_key}' \
+    --header 'Content-Type: application/json' \
+    --data-raw '{
+        "inputs": {
+          "query": "Hello, world!"
+        },
+        "response_mode": "streaming",
+        "user": "abc-123"
+    }'
+    ```
+    </CodeGroup>
+    ### blocking
+    <CodeGroup title="Response">
+    ```json {{ title: 'Response' }}
+    {
+      "id": "0b089b9a-24d9-48cc-94f8-762677276261",
+      "answer": "how are you?",
+      "created_at": 1679586667
+    }
+    ```
+    </CodeGroup>
+    ### streaming
+    <CodeGroup title="Response">
+    ```streaming {{ title: 'Response' }}
+      data: {"id": "5ad4cb98-f0c7-4085-b384-88c403be6290", "answer": " I", "created_at": 1679586595}
+      data: {"id": "5ad4cb98-f0c7-4085-b384-88c403be6290", "answer": " I", "created_at": 1679586595}
+      data: {"event": "tts_message", "conversation_id": "23dd85f3-1a41-4ea0-b7a9-062734ccfaf9", "message_id": "a8bdc41c-13b2-4c18-bfd9-054b9803038c", "created_at": 1721205487, "task_id": "3bf8a0bb-e73b-4690-9e66-4e429bad8ee7", "audio": "qqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqq"}
+      data: {"event": "tts_message_end", "conversation_id": "23dd85f3-1a41-4ea0-b7a9-062734ccfaf9", "message_id": "a8bdc41c-13b2-4c18-bfd9-054b9803038c", "created_at": 1721205487, "task_id": "3bf8a0bb-e73b-4690-9e66-4e429bad8ee7", "audio": ""}
+    ```
+    </CodeGroup>
+  </Col>
+</Row>
+
+---
+<Heading
+  url='/files/upload'
+  method='POST'
+  title='上传文件'
+  name='#files-upload'
+/>
+<Row>
+  <Col>
+    上传文件（目前仅支持图片）并在发送消息时使用，可实现图文多模态理解。
+    支持 png, jpg, jpeg, webp, gif 格式。
+    <i>上传的文件仅供当前终端用户使用。</i>
+
+    ### Request Body
+    该接口需使用  `multipart/form-data` 进行请求。
+    <Properties>
+      <Property name='file' type='file' key='file'>
+        要上传的文件。
+      </Property>
+      <Property name='user' type='string' key='user'>
+          用户标识，用于定义终端用户的身份，必须和发送消息接口传入 user 保持一致。
+      </Property>
+    </Properties>
+
+    ### Response
+    成功上传后，服务器会返回文件的 ID 和相关信息。
+    - `id` (uuid) ID
+    - `name` (string) 文件名
+    - `size` (int) 文件大小（byte）
+    - `extension` (string) 文件后缀
+    - `mime_type` (string) 文件 mime-type
+    - `created_by` (uuid) 上传人 ID
+    - `created_at` (timestamp) 上传时间
+
+    ### Errors
+    - 400，`no_file_uploaded`，必须提供文件
+    - 400，`too_many_files`，目前只接受一个文件
+    - 400，`unsupported_preview`，该文件不支持预览
+    - 400，`unsupported_estimate`，该文件不支持估算
+    - 413，`file_too_large`，文件太大
+    - 415，`unsupported_file_type`，不支持的扩展名，当前只接受文档类文件
+    - 503，`s3_connection_failed`，无法连接到 S3 服务
+    - 503，`s3_permission_denied`，无权限上传文件到 S3
+    - 503，`s3_file_too_large`，文件超出 S3 大小限制
+  </Col>
+  <Col sticky>
+
+    <CodeGroup title="Request" tag="POST" label="/files/upload" targetCode={`curl -X POST '${props.appDetail.api_base_url}/files/upload' \\\n--header 'Authorization: Bearer {api_key}' \\\n--form 'file=@localfile;type=image/[png|jpeg|jpg|webp|gif] \\\n--form 'user=abc-123'`}>
+
+    ```bash {{ title: 'cURL' }}
+    curl -X POST '${props.appDetail.api_base_url}/files/upload' \
+    --header 'Authorization: Bearer {api_key}' \
+    --form 'file=@"/path/to/file"'
+    ```
+
+    </CodeGroup>
+
+    <CodeGroup title="Response">
+    ```json {{ title: 'Response' }}
+    {
+      "id": "72fa9618-8f89-4a37-9b33-7e1178a24a67",
+      "name": "example.png",
+      "size": 1024,
+      "extension": "png",
+      "mime_type": "image/png",
+      "created_by": 123,
+      "created_at": 1577836800,
+    }
+    ```
+    </CodeGroup>
+  </Col>
+</Row>
+---
+<Heading
+  url='/completion-messages/:task_id/stop'
+  method='POST'
+  title='停止响应'
+  name='#Stop'
+/>
+<Row>
+  <Col>
+  仅支持流式模式。
+  ### Path
+  - `task_id` (string) 任务 ID，可在流式返回 Chunk 中获取
+
+  ### Request Body
+  - `user` (string) Required
+    用户标识，用于定义终端用户的身份，必须和发送消息接口传入 user 保持一致。
+  ### Response
+  - `result` (string) 固定返回 success
+  </Col>
+  <Col sticky>
+  <CodeGroup title="Request" tag="POST" label="/completion-messages/:task_id/stop" targetCode={`curl -X POST '${props.appDetail.api_base_url}/completion-messages/:task_id/stop' \\\n-H 'Authorization: Bearer {api_key}' \\\n-H 'Content-Type: application/json' \\\n--data-raw '{ "user": "abc-123"}'`}>
+    ```bash {{ title: 'cURL' }}
+    curl -X POST '${props.appDetail.api_base_url}/completion-messages/:task_id/stop' \
+    -H 'Authorization: Bearer {api_key}' \
+    -H 'Content-Type: application/json' \
+    --data-raw '{
+        "user": "abc-123"
+    }'
+    ```
+
+    </CodeGroup>
+
+    <CodeGroup title="Response">
+    ```json {{ title: 'Response' }}
+    {
+      "result": "success"
+    }
+    ```
+    </CodeGroup>
+  </Col>
+</Row>
+---
+
+<Heading
+  url='/messages/:message_id/feedbacks'
+  method='POST'
+  title='消息反馈（点赞）'
+  name='#feedbacks'
+/>
+<Row>
+  <Col>
+    消息终端用户反馈、点赞，方便应用开发者优化输出预期。
+
+    ### Path Params
+    <Properties>
+      <Property name='message_id' type='string' key='message_id'>
+       消息 ID
+      </Property>
+    </Properties>
+
+    ### Request Body
+
+    <Properties>
+      <Property name='rating' type='string' key='rating'>
+         点赞 like, 点踩 dislike,  撤销点赞 null
+      </Property>
+      <Property name='user' type='string' key='user'>
+          用户标识，由开发者定义规则，需保证用户标识在应用内唯一。
+      </Property>
+    </Properties>
+
+    ### Response
+    - `result` (string) 固定返回 success
+  </Col>
+  <Col sticky>
+
+    <CodeGroup title="Request" tag="POST" label="/messages/:message_id/feedbacks" targetCode={`curl -X POST '${props.appDetail.api_base_url}/messages/:message_id/feedbacks \\\n--header 'Authorization: Bearer {api_key}' \\\n--header 'Content-Type: application/json' \\\n--data-raw '{\n    "rating": "like",\n    "user": "abc-123"\n}'`}>
+
+    ```bash {{ title: 'cURL' }}
+    curl -X POST '${props.appDetail.api_base_url}/messages/:message_id/feedbacks' \
+    --header 'Authorization: Bearer {api_key}' \
+    --header 'Content-Type: application/json' \
+    --data-raw '{
+        "rating": "like",
+        "user": "abc-123"
+    }'
+    ```
+
+    </CodeGroup>
+
+    <CodeGroup title="Response">
+    ```json {{ title: 'Response' }}
+    {
+      "result": "success"
+    }
+    ```
+    </CodeGroup>
+  </Col>
+</Row>
+
+---
+
+<Heading
+  url='/parameters'
+  method='GET'
+  title='获取应用配置信息'
+  name='#parameters'
+/>
+<Row>
+  <Col>
+    用于进入页面一开始，获取功能开关、输入参数名称、类型及默认值等使用。
+
+    ### Query
+
+    <Properties>
+      <Property name='user' type='string' key='user'>
+        用户标识，由开发者定义规则，需保证用户标识在应用内唯一。
+      </Property>
+    </Properties>
+
+    ### Response
+    - `opening_statement` (string) 开场白
+    - `suggested_questions` (array[string]) 开场推荐问题列表
+    - `suggested_questions_after_answer` (object) 启用回答后给出推荐问题。
+      - `enabled` (bool) 是否开启
+    - `speech_to_text` (object) 语音转文本
+      - `enabled` (bool) 是否开启
+    - `retriever_resource` (object) 引用和归属
+      - `enabled` (bool) 是否开启
+    - `annotation_reply` (object) 标记回复
+      - `enabled` (bool) 是否开启
+    - `user_input_form` (array[object]) 用户输入表单配置
+      - `text-input` (object) 文本输入控件
+        - `label` (string) 控件展示标签名
+        - `variable` (string) 控件 ID
+        - `required` (bool) 是否必填
+        - `default` (string) 默认值
+      - `paragraph` (object) 段落文本输入控件
+        - `label` (string) 控件展示标签名
+        - `variable` (string) 控件 ID
+        - `required` (bool) 是否必填
+        - `default` (string) 默认值
+      - `select` (object) 下拉控件
+        - `label` (string) 控件展示标签名
+        - `variable` (string) 控件 ID
+        - `required` (bool) 是否必填
+        - `default` (string) 默认值
+        - `options` (array[string]) 选项值
+    - `file_upload` (object) 文件上传配置
+      - `image` (object) 图片设置
+        当前仅支持图片类型：`png`, `jpg`, `jpeg`, `webp`, `gif`
+        - `enabled` (bool) 是否开启
+        - `number_limits` (int) 图片数量限制，默认 3
+        - `transfer_methods` (array[string]) 传递方式列表，remote_url , local_file，必选一个
+    - `system_parameters` (object) 系统参数
+      - `image_file_size_limit` (string) 图片文件上传大小限制（MB）
+  </Col>
+  <Col sticky>
+
+    <CodeGroup title="Request" tag="GET" label="/parameters" targetCode={` curl -X GET '${props.appDetail.api_base_url}/parameters'\\\n--header 'Authorization: Bearer {api_key}'`}>
+
+    ```bash {{ title: 'cURL' }}
+    curl -X GET '${props.appDetail.api_base_url}/parameters?user=abc-123' \
+    --header 'Authorization: Bearer {api_key}'
+    ```
+
+    </CodeGroup>
+
+    <CodeGroup title="Response">
+    ```json {{ title: 'Response' }}
+    {
+      "introduction": "nice to meet you",
+      "user_input_form": [
+        {
+          "text-input": {
+            "label": "a",
+            "variable": "a",
+            "required": true,
+            "max_length": 48,
+            "default": ""
+          }
+        },
+        {
+          // ...
+        }
+      ],
+      "file_upload": {
+        "image": {
+          "enabled": true,
+          "number_limits": 3,
+          "transfer_methods": [
+            "remote_url",
+            "local_file"
+          ]
+        }
+      }
+    }
+    ```
+    </CodeGroup>
+  </Col>
+</Row>
+
+---
+
+<Heading
+  url='/text-to-audio'
+  method='POST'
+  title='文字转语音'
+  name='#audio'
+/>
+<Row>
+  <Col>
+    文字转语音。
+
+    ### Request Body
+
+    <Properties>
+      <Property name='message_id' type='str' key='text'>
+        Dify 生成的文本消息，那么直接传递生成的message-id 即可，后台会通过 message_id 查找相应的内容直接合成语音信息。如果同时传 message_id 和 text，优先使用 message_id。
+      </Property>
+      <Property name='text' type='str' key='text'>
+        语音生成内容。如果没有传 message-id的话，则会使用这个字段的内容
+      </Property>
+      <Property name='user' type='string' key='user'>
+        用户标识，由开发者定义规则，需保证用户标识在应用内唯一。
+      </Property>
+    </Properties>
+  </Col>
+  <Col sticky>
+
+    <CodeGroup title="Request" tag="POST" label="/text-to-audio" targetCode={`curl -o text-to-audio.mp3 -X POST '${props.appDetail.api_base_url}/text-to-audio' \\\n--header 'Authorization: Bearer {api_key}' \\\n--header 'Content-Type: application/json' \\\n--data-raw '{\n    "message_id": "5ad4cb98-f0c7-4085-b384-88c403be6290",\n    "text": "你好Dify",\n    "user": "abc-123"\n}'`}>
+
+    ```bash {{ title: 'cURL' }}
+    curl -o text-to-audio.mp3 -X POST '${props.appDetail.api_base_url}/text-to-audio' \
+    --header 'Authorization: Bearer {api_key}' \
+    --header 'Content-Type: application/json' \
+    --data-raw '{
+        "message_id": "5ad4cb98-f0c7-4085-b384-88c403be6290",
+        "text": "你好Dify",
+        "user": "abc-123",
+        "streaming": false
+    }'
+    ```
+    
+    </CodeGroup>
+
+    <CodeGroup title="headers">
+    ```json {{ title: 'headers' }}
+    {
+      "Content-Type": "audio/wav"
+    }
+    ```
+    </CodeGroup>
+  </Col>
+</Row>

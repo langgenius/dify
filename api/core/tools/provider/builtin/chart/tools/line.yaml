@@ -1,0 +1,41 @@
+identity:
+  name: line_chart
+  author: Dify
+  label:
+    en_US: Linear Chart
+    zh_Hans: 线性图表
+    pt_BR: Gráfico linear
+  icon: icon.svg
+description:
+  human:
+    en_US: linear chart
+    zh_Hans: 线性图表
+    pt_BR: Gráfico linear
+  llm: generate a linear chart with input data
+parameters:
+  - name: data
+    type: string
+    required: true
+    label:
+      en_US: data
+      zh_Hans: 数据
+      pt_BR: dados
+    human_description:
+      en_US: data for generating chart, each number should be separated by ";"
+      zh_Hans: 用于生成线性图表的数据，每个数字之间用 ";" 分隔
+      pt_BR: dados para gerar gráfico linear, cada número deve ser separado por ";"
+    llm_description: data for generating linear chart, data should be a string contains a list of numbers like "1;2;3;4;5"
+    form: llm
+  - name: x_axis
+    type: string
+    required: false
+    label:
+      en_US: X Axis
+      zh_Hans: x 轴
+      pt_BR: Eixo X
+    human_description:
+      en_US: X axis for chart, each text should be separated by ";"
+      zh_Hans: 线性图表的 x 轴，每个文本之间用 ";" 分隔
+      pt_BR: Eixo X para gráfico linear, cada texto deve ser separado por ";"
+    llm_description: x axis for linear chart, x axis should be a string contains a list of texts like "a;b;c;1;2" in order to match the data
+    form: llm

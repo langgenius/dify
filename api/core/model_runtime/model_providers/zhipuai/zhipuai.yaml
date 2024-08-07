@@ -1,0 +1,31 @@
+provider: zhipuai
+label:
+  zh_Hans: 智谱 AI
+  en_US: ZHIPU AI
+icon_small:
+  en_US: icon_s_en.svg
+icon_large:
+  zh_Hans: icon_l_zh.svg
+  en_US: icon_l_en.svg
+background: "#EFF1FE"
+help:
+  title:
+    en_US: Get your API key from ZHIPU AI
+    zh_Hans: 从智谱 AI 获取 API Key
+  url:
+    en_US: https://open.bigmodel.cn/usercenter/apikeys
+supported_model_types:
+  - llm
+  - text-embedding
+configurate_methods:
+  - predefined-model
+provider_credential_schema:
+  credential_form_schemas:
+    - variable: api_key
+      label:
+        en_US: APIKey
+      type: secret-input
+      required: true
+      placeholder:
+        zh_Hans: 在此输入您的 APIKey
+        en_US: Enter your APIKey

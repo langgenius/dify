@@ -1,0 +1,15 @@
+.titleIcon {
+  background-position-x: center;
+  background-repeat: no-repeat;
+  background-size: 28px 28px;
+  @apply h-6 w-6 !important;
+}
+.layoutRightIcon {
+  @apply w-8 h-8 ml-2 box-border border border-gray-200 rounded-lg hover:bg-gray-50 cursor-pointer hover:shadow-[0_1px_2px_rgba(16,24,40,0.05)];
+}
+.iconShow {
+  background: center center url(../assets/layoutRightShow.svg) no-repeat;
+}
+.iconClose {
+  background: center center url(../assets/layoutRightClose.svg) no-repeat;
+}

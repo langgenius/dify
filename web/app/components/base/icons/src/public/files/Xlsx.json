@@ -1,0 +1,145 @@
+{
+	"icon": {
+		"type": "element",
+		"isRootNode": true,
+		"name": "svg",
+		"attributes": {
+			"width": "24",
+			"height": "26",
+			"viewBox": "0 0 24 26",
+			"fill": "none",
+			"xmlns": "http://www.w3.org/2000/svg"
+		},
+		"children": [
+			{
+				"type": "element",
+				"name": "g",
+				"attributes": {
+					"filter": "url(#filter0_d_5938_927)"
+				},
+				"children": [
+					{
+						"type": "element",
+						"name": "path",
+						"attributes": {
+							"d": "M3 5.8C3 4.11984 3 3.27976 3.32698 2.63803C3.6146 2.07354 4.07354 1.6146 4.63803 1.32698C5.27976 1 6.11984 1 7.8 1H14L21 8V18.2C21 19.8802 21 20.7202 20.673 21.362C20.3854 21.9265 19.9265 22.3854 19.362 22.673C18.7202 23 17.8802 23 16.2 23H7.8C6.11984 23 5.27976 23 4.63803 22.673C4.07354 22.3854 3.6146 21.9265 3.32698 21.362C3 20.7202 3 19.8802 3 18.2V5.8Z",
+							"fill": "#169951"
+						},
+						"children": []
+					}
+				]
+			},
+			{
+				"type": "element",
+				"name": "path",
+				"attributes": {
+					"opacity": "0.5",
+					"d": "M14 1L21 8H16C14.8954 8 14 7.10457 14 6V1Z",
+					"fill": "white"
+				},
+				"children": []
+			},
+			{
+				"type": "element",
+				"name": "path",
+				"attributes": {
+					"fill-rule": "evenodd",
+					"clip-rule": "evenodd",
+					"d": "M17 12C17.5523 12 18 12.4477 18 13V18C18 18.5523 17.5523 19 17 19H7C6.44772 19 6 18.5523 6 18V13C6 12.4477 6.44772 12 7 12H17ZM11.5 13H7L7 15H11.5V13ZM12.5 18H17V16H12.5V18ZM11.5 16V18H7L7 16H11.5ZM12.5 15H17V13H12.5V15Z",
+					"fill": "white",
+					"fill-opacity": "0.96"
+				},
+				"children": []
+			},
+			{
+				"type": "element",
+				"name": "defs",
+				"attributes": {},
+				"children": [
+					{
+						"type": "element",
+						"name": "filter",
+						"attributes": {
+							"id": "filter0_d_5938_927",
+							"x": "1",
+							"y": "0",
+							"width": "22",
+							"height": "26",
+							"filterUnits": "userSpaceOnUse",
+							"color-interpolation-filters": "sRGB"
+						},
+						"children": [
+							{
+								"type": "element",
+								"name": "feFlood",
+								"attributes": {
+									"flood-opacity": "0",
+									"result": "BackgroundImageFix"
+								},
+								"children": []
+							},
+							{
+								"type": "element",
+								"name": "feColorMatrix",
+								"attributes": {
+									"in": "SourceAlpha",
+									"type": "matrix",
+									"values": "0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 127 0",
+									"result": "hardAlpha"
+								},
+								"children": []
+							},
+							{
+								"type": "element",
+								"name": "feOffset",
+								"attributes": {
+									"dy": "1"
+								},
+								"children": []
+							},
+							{
+								"type": "element",
+								"name": "feGaussianBlur",
+								"attributes": {
+									"stdDeviation": "1"
+								},
+								"children": []
+							},
+							{
+								"type": "element",
+								"name": "feColorMatrix",
+								"attributes": {
+									"type": "matrix",
+									"values": "0 0 0 0 0.0627451 0 0 0 0 0.0941176 0 0 0 0 0.156863 0 0 0 0.05 0"
+								},
+								"children": []
+							},
+							{
+								"type": "element",
+								"name": "feBlend",
+								"attributes": {
+									"mode": "normal",
+									"in2": "BackgroundImageFix",
+									"result": "effect1_dropShadow_5938_927"
+								},
+								"children": []
+							},
+							{
+								"type": "element",
+								"name": "feBlend",
+								"attributes": {
+									"mode": "normal",
+									"in": "SourceGraphic",
+									"in2": "effect1_dropShadow_5938_927",
+									"result": "shape"
+								},
+								"children": []
+							}
+						]
+					}
+				]
+			}
+		]
+	},
+	"name": "Xlsx"
+}

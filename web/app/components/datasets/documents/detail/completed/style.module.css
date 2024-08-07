@@ -1,0 +1,155 @@
+/* .cardWrapper {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(290px, auto));
+  grid-gap: 16px;
+  grid-auto-rows: 180px;
+} */
+.totalText {
+  @apply text-gray-900 font-medium text-base flex-1;
+}
+.docSearchWrapper {
+  @apply sticky w-full py-1 -top-3 bg-white flex items-center mb-3 justify-between z-10 flex-wrap gap-y-1;
+}
+.listContainer {
+  height: calc(100% - 3.25rem);
+  @apply box-border pb-[30px];
+}
+.cardWrapper {
+  @apply grid gap-4 grid-cols-3 min-w-[902px] last:mb-[30px];
+}
+.segWrapper {
+  @apply box-border h-[180px] w-full xl:min-w-[290px] bg-gray-50 px-4 pt-4 flex flex-col text-opacity-50 rounded-xl border border-transparent hover:border-gray-200 hover:shadow-lg hover:cursor-pointer hover:bg-white;
+}
+.segTitleWrapper {
+  @apply flex items-center justify-between;
+}
+.segStatusWrapper {
+  @apply flex items-center box-border;
+}
+.segContent {
+  white-space: wrap;
+  @apply flex-1 h-0 min-h-0 mt-2 text-sm text-gray-800 overflow-ellipsis overflow-hidden from-gray-800 to-white;
+}
+.segData {
+  @apply hidden text-gray-500 text-xs pt-2;
+}
+.segDataText {
+  @apply max-w-[80px] truncate;
+}
+.chartLinkText {
+  background: linear-gradient(to left, white, 90%, transparent);
+  @apply text-primary-600 font-semibold text-xs absolute right-0 hidden h-12 pl-12 items-center;
+}
+.select {
+  @apply h-8 py-0 bg-gray-50 hover:bg-gray-100 rounded-lg shadow-none !important;
+}
+.segModalContent {
+  @apply h-96 text-gray-800 text-base break-all overflow-y-scroll;
+  white-space: pre-line;
+}
+.footer {
+  @apply flex items-center justify-between box-border border-t-gray-200 border-t-[0.5px] pt-3 mt-4 flex-wrap gap-y-2;
+}
+.numberInfo {
+  @apply text-gray-500 text-xs font-medium;
+}
+.keywordTitle {
+  @apply text-gray-500 mb-2 mt-1 text-xs uppercase;
+}
+.keywordWrapper {
+  @apply text-gray-700 w-full max-h-[200px] overflow-auto flex flex-wrap;
+}
+.keyword {
+  @apply text-sm border border-gray-200 max-w-[200px] max-h-[100px] whitespace-pre-line overflow-y-auto mr-1 mb-2 last:mr-0 px-2 py-1 rounded-lg;
+}
+.hashText {
+  @apply w-48 inline-block truncate;
+}
+.commonIcon {
+  @apply w-3 h-3 inline-block align-middle mr-1 bg-gray-500;
+  mask-repeat: no-repeat;
+  mask-size: contain;
+  mask-position: center center;
+}
+.targetIcon {
+  mask-image: url(../../assets/target.svg);
+}
+.typeSquareIcon {
+  mask-image: url(../../assets/typeSquare.svg);
+}
+.bezierCurveIcon {
+  mask-image: url(../../assets/bezierCurve.svg);
+}
+.cardLoadingWrapper {
+  @apply relative w-full h-full inline-block rounded-b-xl;
+  background-position: center center;
+  background-repeat: no-repeat;
+  background-size: 100% 100%;
+  background-origin: content-box;
+}
+.cardLoadingIcon {
+  background-image: url(../../assets/cardLoading.svg);
+}
+/* .hitLoadingIcon {
+  background-image: url(../../assets/hitLoading.svg);
+} */
+.cardLoadingBg {
+  @apply h-full relative rounded-b-xl mt-4;
+  left: calc(-1rem - 1px);
+  width: calc(100% + 2rem + 2px);
+  height: calc(100% - 1rem + 1px);
+  background: linear-gradient(
+    180deg,
+    rgba(252, 252, 253, 0) 0%,
+    #fcfcfd 74.15%
+  );
+}
+
+.hitTitleWrapper {
+  @apply w-full flex items-center justify-between mb-2;
+}
+.progressWrapper {
+  @apply flex items-center justify-between w-full;
+}
+.progress {
+  border-radius: 3px;
+  @apply relative h-1.5 box-border border border-gray-300 flex-1 mr-2;
+}
+.progressLoading {
+  @apply border-[#EAECF0] bg-[#EAECF0];
+}
+.progressInner {
+  @apply absolute top-0 h-full bg-gray-300;
+}
+.progressText {
+  font-size: 13px;
+  @apply text-gray-700 font-bold;
+}
+.progressTextLoading {
+  border-radius: 5px;
+  @apply h-3.5 w-3.5 bg-[#EAECF0];
+}
+.editTip {
+  box-shadow: 0px 4px 6px -2px rgba(16, 24, 40, 0.03), 0px 12px 16px -4px rgba(16, 24, 40, 0.08);
+}
+
+.delModal {
+  background: linear-gradient(
+      180deg,
+      rgba(217, 45, 32, 0.05) 0%,
+      rgba(217, 45, 32, 0) 24.02%
+    ),
+    #f9fafb;
+  box-shadow: 0px 20px 24px -4px rgba(16, 24, 40, 0.08),
+    0px 8px 8px -4px rgba(16, 24, 40, 0.03);
+  @apply rounded-2xl p-8;
+}
+.warningWrapper {
+  box-shadow: 0px 20px 24px -4px rgba(16, 24, 40, 0.08),
+    0px 8px 8px -4px rgba(16, 24, 40, 0.03);
+  background: rgba(255, 255, 255, 0.9);
+  @apply h-12 w-12 border-[0.5px] border-gray-100 rounded-xl mb-3 flex items-center justify-center;
+}
+.warningIcon {
+  @apply w-[22px] h-[22px] fill-current text-red-600;
+}

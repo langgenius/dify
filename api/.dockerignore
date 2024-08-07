@@ -1,0 +1,14 @@
+.env
+*.env.*
+
+storage/privkeys/*
+
+# Logs
+logs
+*.log*
+
+# jetbrains
+.idea
+
+# venv
+.venv

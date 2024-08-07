@@ -1,0 +1,666 @@
+@import "preflight.css";
+@tailwind base;
+@tailwind components;
+
+@import '../../themes/light.css';
+@import '../../themes/dark.css';
+
+html[data-changing-theme] * {
+  transition: none !important;
+}
+
+:root {
+  --max-width: 1100px;
+  --border-radius: 12px;
+  --font-mono: ui-monospace, Menlo, Monaco, "Cascadia Mono", "Segoe UI Mono",
+    "Roboto Mono", "Oxygen Mono", "Ubuntu Monospace", "Source Code Pro",
+    "Fira Mono", "Droid Sans Mono", "Courier New", monospace;
+
+  --foreground-rgb: 0, 0, 0;
+  --background-start-rgb: 214, 219, 220;
+  --background-end-rgb: 255, 255, 255;
+
+  --primary-glow: conic-gradient(from 180deg at 50% 50%,
+      #16abff33 0deg,
+      #0885ff33 55deg,
+      #54d6ff33 120deg,
+      #0071ff33 160deg,
+      transparent 360deg);
+  --secondary-glow: radial-gradient(rgba(255, 255, 255, 1),
+      rgba(255, 255, 255, 0));
+
+  --tile-start-rgb: 239, 245, 249;
+  --tile-end-rgb: 228, 232, 233;
+  --tile-border: conic-gradient(#00000080,
+      #00000040,
+      #00000030,
+      #00000020,
+      #00000010,
+      #00000010,
+      #00000080);
+
+  --callout-rgb: 238, 240, 241;
+  --callout-border-rgb: 172, 175, 176;
+  --card-rgb: 180, 185, 188;
+  --card-border-rgb: 131, 134, 135;
+}
+
+/* @media (prefers-color-scheme: dark) {
+  :root {
+    --foreground-rgb: 255, 255, 255;
+    --background-start-rgb: 0, 0, 0;
+    --background-end-rgb: 0, 0, 0;
+
+    --primary-glow: radial-gradient(rgba(1, 65, 255, 0.4), rgba(1, 65, 255, 0));
+    --secondary-glow: linear-gradient(to bottom right,
+        rgba(1, 65, 255, 0),
+        rgba(1, 65, 255, 0),
+        rgba(1, 65, 255, 0.3));
+
+    --tile-start-rgb: 2, 13, 46;
+    --tile-end-rgb: 2, 5, 19;
+    --tile-border: conic-gradient(#ffffff80,
+        #ffffff40,
+        #ffffff30,
+        #ffffff20,
+        #ffffff10,
+        #ffffff10,
+        #ffffff80);
+
+    --callout-rgb: 20, 20, 20;
+    --callout-border-rgb: 108, 108, 108;
+    --card-rgb: 100, 100, 100;
+    --card-border-rgb: 200, 200, 200;
+  }
+} */
+
+* {
+  box-sizing: border-box;
+  padding: 0;
+  margin: 0;
+}
+
+html,
+body {
+  max-width: 100vw;
+  overflow: hidden;
+}
+
+body {
+  color: rgb(var(--foreground-rgb));
+  user-select: none;
+  /* background: linear-gradient(
+      to bottom,
+      transparent,
+      rgb(var(--background-end-rgb))
+    )
+    rgb(var(--background-start-rgb)); */
+}
+
+a {
+  color: inherit;
+  text-decoration: none;
+  outline: none;
+}
+
+button:focus-within {
+  outline: none;
+}
+
+/* @media (prefers-color-scheme: dark) {
+  html {
+    color-scheme: dark;
+  }
+} */
+
+/* CSS Utils */
+.h1 {
+  padding-bottom: 1.5rem;
+  line-height: 1.5;
+  font-size: 1.125rem;
+  color: #111928;
+}
+
+.h2 {
+  font-size: 14px;
+  font-weight: 500;
+  color: #111928;
+  line-height: 1.5;
+}
+
+/* font define start */
+.system-kbd {
+  font-size: 12px;
+  font-weight: 500;
+  line-height: 16px;
+}
+
+.system-2xs-regular-uppercase {
+  font-size: 10px;
+  font-weight: 400;
+  text-transform: uppercase;
+  line-height: 12px;
+}
+
+.system-2xs-medium {
+  font-size: 10px;
+  font-weight: 500;
+  line-height: 12px;
+}
+
+.system-2xs-medium-uppercase {
+  font-size: 10px;
+  font-weight: 500;
+  text-transform: uppercase;
+  line-height: 12px;
+}
+
+.system-2xs-semibold-uppercase {
+  font-size: 10px;
+  font-weight: 600;
+  text-transform: uppercase;
+  line-height: 12px;
+}
+
+.system-xs-regular {
+  font-size: 12px;
+  font-weight: 400;
+  line-height: 16px;
+}
+
+.system-xs-regular-uppercase {
+  font-size: 12px;
+  font-weight: 400;
+  text-transform: uppercase;
+  line-height: 16px;
+}
+
+.system-xs-medium {
+  font-size: 12px;
+  font-weight: 500;
+  line-height: 16px;
+}
+
+.system-xs-medium-uppercase {
+  font-size: 12px;
+  font-weight: 500;
+  text-transform: uppercase;
+  line-height: 16px;
+}
+
+.system-xs-semibold {
+  font-size: 12px;
+  font-weight: 600;
+  line-height: 16px;
+}
+
+.system-xs-semibold-uppercase {
+  font-size: 12px;
+  font-weight: 600;
+  text-transform: uppercase;
+  line-height: 16px;
+}
+
+.system-sm-regular {
+  font-size: 13px;
+  font-weight: 400;
+  line-height: 16px;
+}
+
+.system-sm-medium {
+  font-size: 13px;
+  font-weight: 500;
+  line-height: 16px;
+}
+
+.system-sm-medium-uppercase {
+  font-size: 13px;
+  font-weight: 500;
+  text-transform: uppercase;
+  line-height: 16px;
+}
+
+.system-sm-semibold {
+  font-size: 13px;
+  font-weight: 600;
+  line-height: 16px;
+}
+
+.system-sm-semibold-uppercase {
+  font-size: 13px;
+  font-weight: 600;
+  text-transform: uppercase;
+  line-height: 16px;
+}
+
+.system-md-regular {
+  font-size: 14px;
+  font-weight: 400;
+  line-height: 20px;
+}
+
+.system-md-medium {
+  font-size: 14px;
+  font-weight: 500;
+  line-height: 20px;
+}
+
+.system-md-semibold {
+  font-size: 14px;
+  font-weight: 600;
+  line-height: 20px;
+}
+
+.system-md-semibold-uppercase {
+  font-size: 14px;
+  font-weight: 600;
+  text-transform: uppercase;
+  line-height: 20px;
+}
+
+.system-xl-regular {
+  font-size: 16px;
+  font-weight: 400;
+  line-height: 24px;
+}
+
+.system-xl-medium {
+  font-size: 16px;
+  font-weight: 500;
+  line-height: 24px;
+}
+
+.system-xl-semibold {
+  font-size: 16px;
+  font-weight: 600;
+  line-height: 24px;
+}
+
+[class*='code-'] {
+  @apply font-mono;
+}
+
+.code-xs-regular {
+  font-size: 12px;
+  font-weight: 400;
+  line-height: 1.5;
+}
+
+.code-xs-semibold {
+  font-size: 12px;
+  font-weight: 600;
+  line-height: 1.5;
+}
+
+.code-sm-regular {
+  font-size: 13px;
+  font-weight: 400;
+  line-height: 1.5;
+}
+
+.code-sm-semibold {
+  font-size: 13px;
+  font-weight: 600;
+  line-height: 1.5;
+}
+
+.code-md-regular {
+  font-size: 14px;
+  font-weight: 400;
+  line-height: 1.5;
+}
+
+.code-md-semibold {
+  font-size: 14px;
+  font-weight: 600;
+  line-height: 1.5;
+}
+
+.body-xs-light {
+  font-size: 12px;
+  font-weight: 300;
+  line-height: 16px;
+}
+
+.body-xs-regular {
+  font-size: 12px;
+  font-weight: 400;
+  line-height: 16px;
+}
+
+.body-xs-medium {
+  font-size: 12px;
+  font-weight: 500;
+  line-height: 16px;
+}
+
+.body-sm-light {
+  font-size: 13px;
+  font-weight: 300;
+  line-height: 16px;
+}
+
+.body-sm-regular {
+  font-size: 13px;
+  font-weight: 400;
+  line-height: 16px;
+}
+
+.body-sm-medium {
+  font-size: 13px;
+  font-weight: 500;
+  line-height: 16px;
+}
+
+.body-md-light {
+  font-size: 14px;
+  font-weight: 300;
+  line-height: 20px;
+}
+
+.body-md-regular {
+  font-size: 14px;
+  font-weight: 400;
+  line-height: 20px;
+}
+
+.body-md-medium {
+  font-size: 14px;
+  font-weight: 500;
+  line-height: 20px;
+}
+
+.body-lg-light {
+  font-size: 15px;
+  font-weight: 300;
+  line-height: 20px;
+}
+
+.body-lg-regular {
+  font-size: 15px;
+  font-weight: 400;
+  line-height: 20px;
+}
+
+.body-lg-medium {
+  font-size: 15px;
+  font-weight: 500;
+  line-height: 20px;
+}
+
+.body-xl-regular {
+  font-size: 16px;
+  font-weight: 400;
+  line-height: 24px;
+}
+
+.body-xl-medium {
+  font-size: 16px;
+  font-weight: 500;
+  line-height: 24px;
+}
+
+.body-xl-light {
+  font-size: 16px;
+  font-weight: 300;
+  line-height: 24px;
+}
+
+.body-2xl-light {
+  font-size: 18px;
+  font-weight: 300;
+  line-height: 1.5;
+}
+
+.body-2xl-regular {
+  font-size: 18px;
+  font-weight: 400;
+  line-height: 1.5;
+}
+
+.body-2xl-medium {
+  font-size: 18px;
+  font-weight: 500;
+  line-height: 1.5;
+}
+
+.title-xs-semi-bold {
+  font-size: 12px;
+  font-weight: 600;
+  line-height: 16px;
+}
+
+.title-xs-bold {
+  font-size: 12px;
+  font-weight: 700;
+  line-height: 16px;
+}
+
+.title-sm-semi-bold {
+  font-size: 13px;
+  font-weight: 600;
+  line-height: 16px;
+}
+
+.title-sm-bold {
+  font-size: 13px;
+  font-weight: 700;
+  line-height: 16px;
+}
+
+.title-md-semi-bold {
+  font-size: 14px;
+  font-weight: 600;
+  line-height: 20px;
+}
+
+.title-md-bold {
+  font-size: 14px;
+  font-weight: 700;
+  line-height: 20px;
+}
+
+.title-lg-semi-bold {
+  font-size: 15px;
+  font-weight: 600;
+  line-height: 1.2;
+}
+
+.title-lg-bold {
+  font-size: 15px;
+  font-weight: 700;
+  line-height: 1.2;
+}
+
+.title-xl-semi-bold {
+  font-size: 16px;
+  font-weight: 600;
+  line-height: 1.2;
+}
+
+.title-xl-bold {
+  font-size: 16px;
+  font-weight: 700;
+  line-height: 1.2;
+}
+
+.title-2xl-semi-bold {
+  font-size: 18px;
+  font-weight: 600;
+  line-height: 1.2;
+}
+
+.title-2xl-bold {
+  font-size: 18px;
+  font-weight: 700;
+  line-height: 1.2;
+}
+
+.title-3xl-semi-bold {
+  font-size: 20px;
+  font-weight: 600;
+  line-height: 1.2;
+}
+
+.title-3xl-bold {
+  font-size: 20px;
+  font-weight: 700;
+  line-height: 1.2;
+}
+
+.title-4xl-semi-bold {
+  font-size: 24px;
+  font-weight: 600;
+  line-height: 1.2;
+}
+
+.title-4xl-bold {
+  font-size: 24px;
+  font-weight: 700;
+  line-height: 1.2;
+}
+
+.title-5xl-semi-bold {
+  font-size: 30px;
+  font-weight: 600;
+  line-height: 1.2;
+}
+
+.title-5xl-bold {
+  font-size: 30px;
+  font-weight: 700;
+  line-height: 1.2;
+}
+
+.title-6xl-semi-bold {
+  font-size: 36px;
+  font-weight: 600;
+  line-height: 1.2;
+}
+
+.title-6xl-bold {
+  font-size: 36px;
+  font-weight: 700;
+  line-height: 1.2;
+}
+
+.title-7xl-semi-bold {
+  font-size: 48px;
+  font-weight: 600;
+  line-height: 1.2;
+}
+
+.title-7xl-bold {
+  font-size: 48px;
+  font-weight: 700;
+  line-height: 1.2;
+}
+
+.title-8xl-semi-bold {
+  font-size: 60px;
+  font-weight: 600;
+  line-height: 1.2;
+}
+
+.title-8xl-bold {
+  font-size: 60px;
+  font-weight: 700;
+  line-height: 1.2;
+}
+
+/* font define end */
+
+/* border radius start */
+.radius-2xs {
+  border-radius: 2px;
+}
+
+.radius-xs {
+  border-radius: 4px;
+}
+
+.radius-sm {
+  border-radius: 6px;
+}
+
+.radius-md {
+  border-radius: 8px;
+}
+
+.radius-lg {
+  border-radius: 10px;
+}
+
+.radius-xl {
+  border-radius: 12px;
+}
+
+.radius-2xl {
+  border-radius: 16px;
+}
+
+.radius-3xl {
+  border-radius: 20px;
+}
+
+.radius-4xl {
+  border-radius: 24px;
+}
+
+.radius-5xl {
+  border-radius: 24px;
+}
+
+.radius-6xl {
+  border-radius: 28px;
+}
+
+.radius-7xl {
+  border-radius: 32px;
+}
+
+.radius-8xl {
+  border-radius: 40px;
+}
+
+.radius-9xl {
+  border-radius: 48px;
+}
+
+.radius-full {
+  border-radius: 64px;
+}
+
+/* border radius end */
+
+.link {
+  @apply text-blue-600 cursor-pointer hover:opacity-80 transition-opacity duration-200 ease-in-out;
+}
+
+.text-gradient {
+  background: linear-gradient(91.58deg, #2250F2 -29.55%, #0EBCF3 75.22%);
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  background-clip: text;
+  text-fill-color: transparent;
+}
+
+/* overwrite paging active dark model style  */
+[class*=style_paginatio] li .text-primary-600 {
+  color: rgb(28 100 242);
+  background-color: rgb(235 245 255);
+}
+
+/* support safari 14 and below */
+.inset-0 {
+  left: 0;
+  right: 0;
+  top: 0;
+  bottom: 0;
+}
+
+@import '../components/base/button/index.css';
+@import '../components/base/action-button/index.css';
+@import '../components/base/modal/index.css';
+
+@tailwind utilities;

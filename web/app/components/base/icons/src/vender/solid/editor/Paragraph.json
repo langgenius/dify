@@ -1,0 +1,44 @@
+{
+	"icon": {
+		"type": "element",
+		"isRootNode": true,
+		"name": "svg",
+		"attributes": {
+			"width": "24",
+			"height": "24",
+			"viewBox": "0 0 24 24",
+			"fill": "none",
+			"xmlns": "http://www.w3.org/2000/svg"
+		},
+		"children": [
+			{
+				"type": "element",
+				"name": "path",
+				"attributes": {
+					"d": "M2 6.5C2 5.67157 2.67157 5 3.5 5H20.5C21.3284 5 22 5.67157 22 6.5C22 7.32843 21.3284 8 20.5 8H3.5C2.67157 8 2 7.32843 2 6.5Z",
+					"fill": "currentColor"
+				},
+				"children": []
+			},
+			{
+				"type": "element",
+				"name": "path",
+				"attributes": {
+					"d": "M2 12.5C2 11.6716 2.67157 11 3.5 11H20.5C21.3284 11 22 11.6716 22 12.5C22 13.3284 21.3284 14 20.5 14H3.5C2.67157 14 2 13.3284 2 12.5Z",
+					"fill": "currentColor"
+				},
+				"children": []
+			},
+			{
+				"type": "element",
+				"name": "path",
+				"attributes": {
+					"d": "M2 18.5C2 17.6716 2.67157 17 3.5 17H12.5C13.3284 17 14 17.6716 14 18.5C14 19.3284 13.3284 20 12.5 20H3.5C2.67157 20 2 19.3284 2 18.5Z",
+					"fill": "currentColor"
+				},
+				"children": []
+			}
+		]
+	},
+	"name": "Paragraph"
+}

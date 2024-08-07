@@ -1,0 +1,1143 @@
+import { CodeGroup } from '@/app/components/develop/code.tsx'
+import { Row, Col, Properties, Property, Heading, SubProperty, Paragraph } from '@/app/components/develop/md.tsx'
+
+# 知识库 API
+
+<div>
+  ### 鉴权
+
+  Dify Service API 使用 `API-Key` 进行鉴权。
+
+  建议开发者把 `API-Key` 放在后端存储，而非分享或者放在客户端存储，以免 `API-Key` 泄露，导致财产损失。
+
+  所有 API 请求都应在 **`Authorization`** HTTP Header 中包含您的 `API-Key`，如下所示：
+
+  <CodeGroup title="Code">
+    ```javascript
+      Authorization: Bearer {API_KEY}
+
+    ```
+  </CodeGroup>
+</div>
+
+---
+
+<Heading
+  url='/datasets/{dataset_id}/document/create_by_text'
+  method='POST'
+  title='通过文本创建文档'
+  name='#create_by_text'
+/>
+<Row>
+  <Col>
+    此接口基于已存在知识库，在此知识库的基础上通过文本创建新的文档
+
+    ### Path
+    <Properties>
+      <Property name='dataset_id' type='string' key='dataset_id'>
+        知识库 ID
+      </Property>
+    </Properties>
+
+    ### Request Body
+    <Properties>
+      <Property name='name' type='string' key='name'>
+        文档名称
+      </Property>
+      <Property name='text' type='string' key='text'>
+        文档内容
+      </Property>
+      <Property name='indexing_technique' type='string' key='indexing_technique'>
+        索引方式
+          - <code>high_quality</code> 高质量：使用  embedding 模型进行嵌入，构建为向量数据库索引
+          - <code>economy</code> 经济：使用 Keyword Table Index 的倒排索引进行构建
+      </Property>
+      <Property name='process_rule' type='object' key='process_rule'>
+        处理规则
+          - <code>mode</code> (string) 清洗、分段模式 ，automatic 自动 / custom 自定义
+          - <code>rules</code> (object) 自定义规则（自动模式下，该字段为空）
+            - <code>pre_processing_rules</code> (array[object]) 预处理规则
+              - <code>id</code> (string) 预处理规则的唯一标识符
+                - 枚举：
+                  - <code>remove_extra_spaces</code> 替换连续空格、换行符、制表符
+                  - <code>remove_urls_emails</code> 删除 URL、电子邮件地址
+              - <code>enabled</code> (bool) 是否选中该规则，不传入文档 ID 时代表默认值
+            - <code>segmentation</code> (object) 分段规则
+              - <code>separator</code> 自定义分段标识符，目前仅允许设置一个分隔符。默认为 \n
+              - <code>max_tokens</code> 最大长度 (token) 默认为 1000
+      </Property>
+    </Properties>
+  </Col>
+  <Col sticky>
+    <CodeGroup
+      title="Request"
+      tag="POST"
+      label="/datasets/{dataset_id}/document/create_by_text"
+      targetCode={`curl --location --request POST '${props.apiBaseUrl}/datasets/{dataset_id}/document/create_by_text' \\\n--header 'Authorization: Bearer {api_key}' \\\n--header 'Content-Type: application/json' \\\n--data-raw '{"name": "text","text": "text","indexing_technique": "high_quality","process_rule": {"mode": "automatic"}}'`}
+    >
+    ```bash {{ title: 'cURL' }}
+    curl --location --request --request POST '${props.apiBaseUrl}/datasets/{dataset_id}/document/create_by_text' \
+    --header 'Authorization: Bearer {api_key}' \
+    --header 'Content-Type: application/json' \
+    --data-raw '{
+        "name": "text",
+        "text": "text",
+        "indexing_technique": "high_quality",
+        "process_rule": {
+            "mode": "automatic"
+        }
+    }'
+    ```
+    </CodeGroup>
+    <CodeGroup title="Response">
+    ```json {{ title: 'Response' }}
+    {
+      "document": {
+        "id": "",
+        "position": 1,
+        "data_source_type": "upload_file",
+        "data_source_info": {
+            "upload_file_id": ""
+        },
+        "dataset_process_rule_id": "",
+        "name": "text.txt",
+        "created_from": "api",
+        "created_by": "",
+        "created_at": 1695690280,
+        "tokens": 0,
+        "indexing_status": "waiting",
+        "error": null,
+        "enabled": true,
+        "disabled_at": null,
+        "disabled_by": null,
+        "archived": false,
+        "display_status": "queuing",
+        "word_count": 0,
+        "hit_count": 0,
+        "doc_form": "text_model"
+      },
+      "batch": ""
+    }
+    ```
+    </CodeGroup>
+  </Col>
+</Row>
+
+---
+
+<Heading
+  url='/datasets/{dataset_id}/document/create_by_file'
+  method='POST'
+  title='通过文件创建文档 '
+  name='#create_by_file'
+/>
+<Row>
+  <Col>
+    此接口基于已存在知识库，在此知识库的基础上通过文件创建新的文档
+
+    ### Path
+    <Properties>
+      <Property name='dataset_id' type='string' key='dataset_id'>
+        知识库 ID
+      </Property>
+    </Properties>
+
+    ### Request Bodys
+    <Properties>
+      <Property name='data' type='multipart/form-data json string' key='data'>
+        - original_document_id 源文档 ID （选填）
+          - 用于重新上传文档或修改文档清洗、分段配置，缺失的信息从源文档复制
+          - 源文档不可为归档的文档
+          - 当传入 <code>original_document_id</code> 时，代表文档进行更新操作，<code>process_rule</code> 为可填项目，不填默认使用源文档的分段方式
+          - 未传入 <code>original_document_id</code> 时，代表文档进行新增操作，<code>process_rule</code> 为必填
+
+        - indexing_technique 索引方式
+          - <code>high_quality</code> 高质量：使用  embedding 模型进行嵌入，构建为向量数据库索引
+          - <code>economy</code> 经济：使用 Keyword Table Index 的倒排索引进行构建
+
+        - process_rule 处理规则
+          - <code>mode</code> (string) 清洗、分段模式 ，automatic 自动 / custom 自定义
+          - <code>rules</code> (object) 自定义规则（自动模式下，该字段为空）
+            - <code>pre_processing_rules</code> (array[object]) 预处理规则
+              - <code>id</code> (string) 预处理规则的唯一标识符
+                - 枚举：
+                  - <code>remove_extra_spaces</code> 替换连续空格、换行符、制表符
+                  - <code>remove_urls_emails</code> 删除 URL、电子邮件地址
+              - <code>enabled</code> (bool) 是否选中该规则，不传入文档 ID 时代表默认值
+            - <code>segmentation</code> (object) 分段规则
+              - <code>separator</code> 自定义分段标识符，目前仅允许设置一个分隔符。默认为 \n
+              - <code>max_tokens</code> 最大长度 (token) 默认为 1000
+      </Property>
+      <Property name='file' type='multipart/form-data' key='file'>
+        需要上传的文件。
+      </Property>
+    </Properties>
+  </Col>
+  <Col sticky>
+    <CodeGroup
+      title="Request"
+      tag="POST"
+      label="/datasets/{dataset_id}/document/create_by_file"
+      targetCode={`curl --location --request POST '${props.apiBaseUrl}/datasets/{dataset_id}/document/create_by_file' \\\n--header 'Authorization: Bearer {api_key}' \\\n--form 'data="{"indexing_technique":"high_quality","process_rule":{"rules":{"pre_processing_rules":[{"id":"remove_extra_spaces","enabled":true},{"id":"remove_urls_emails","enabled":true}],"segmentation":{"separator":"###","max_tokens":500}},"mode":"custom"}}";type=text/plain' \\\n--form 'file=@"/path/to/file"'`}
+    >
+    ```bash {{ title: 'cURL' }}
+    curl --location --request POST '${props.apiBaseUrl}/datasets/{dataset_id}/document/create_by_file' \
+    --header 'Authorization: Bearer {api_key}' \
+    --form 'data="{\"name\":\"Dify\",\"indexing_technique\":\"high_quality\",\"process_rule\":{\"rules\":{\"pre_processing_rules\":[{\"id\":\"remove_extra_spaces\",\"enabled\":true},{\"id\":\"remove_urls_emails\",\"enabled\":true}],\"segmentation\":{\"separator\":\"###\",\"max_tokens\":500}},\"mode\":\"custom\"}}";type=text/plain' \
+    --form 'file=@"/path/to/file"'
+    ```
+    </CodeGroup>
+    <CodeGroup title="Response">
+    ```json {{ title: 'Response' }}
+    {
+      "document": {
+        "id": "",
+        "position": 1,
+        "data_source_type": "upload_file",
+        "data_source_info": {
+          "upload_file_id": ""
+        },
+        "dataset_process_rule_id": "",
+        "name": "Dify.txt",
+        "created_from": "api",
+        "created_by": "",
+        "created_at": 1695308667,
+        "tokens": 0,
+        "indexing_status": "waiting",
+        "error": null,
+        "enabled": true,
+        "disabled_at": null,
+        "disabled_by": null,
+        "archived": false,
+        "display_status": "queuing",
+        "word_count": 0,
+        "hit_count": 0,
+        "doc_form": "text_model"
+      },
+      "batch": ""
+    }
+    ```
+    </CodeGroup>
+  </Col>
+</Row>
+
+---
+
+<Heading
+  url='/datasets'
+  method='POST'
+  title='创建空知识库'
+  name='#create_empty_dataset'
+/>
+<Row>
+  <Col>
+    ### Request Body
+    <Properties>
+      <Property name='name' type='string' key='name'>
+        知识库名称
+      </Property>
+    </Properties>
+  </Col>
+  <Col sticky>
+    <CodeGroup 
+      title="Request" 
+      tag="POST" 
+      label="/datasets"
+      targetCode={`curl --location --request POST '${props.apiBaseUrl}/datasets' \\\n--header 'Authorization: Bearer {api_key}' \\\n--header 'Content-Type: application/json' \\\n--data-raw '{"name": "name"}'`}
+    >
+    ```bash {{ title: 'cURL' }}
+    curl --location --request POST '${props.apiBaseUrl}/datasets' \
+    --header 'Authorization: Bearer {api_key}' \
+    --header 'Content-Type: application/json' \
+    --data-raw '{
+      "name": "name"
+    }'
+    ```
+    </CodeGroup>
+    <CodeGroup title="Response">
+    ```json {{ title: 'Response' }}
+    {
+      "id": "",
+      "name": "name",
+      "description": null,
+      "provider": "vendor",
+      "permission": "only_me",
+      "data_source_type": null,
+      "indexing_technique": null,
+      "app_count": 0,
+      "document_count": 0,
+      "word_count": 0,
+      "created_by": "",
+      "created_at": 1695636173,
+      "updated_by": "",
+      "updated_at": 1695636173,
+      "embedding_model": null,
+      "embedding_model_provider": null,
+      "embedding_available": null
+    }
+    ```
+    </CodeGroup>
+  </Col>
+</Row>
+
+---
+
+<Heading
+  url='/datasets'
+  method='GET'
+  title='知识库列表'
+  name='#dataset_list'
+/>
+<Row>
+  <Col>
+    ### Query
+    <Properties>
+      <Property name='page' type='string' key='page'>
+        页码
+      </Property>
+      <Property name='limit' type='string' key='limit'>
+        返回条数，默认 20，范围 1-100
+      </Property>
+    </Properties>
+  </Col>
+  <Col sticky>
+    <CodeGroup
+      title="Request"
+      tag="POST"
+      label="/datasets"
+      targetCode={`curl --location --request GET '${props.apiBaseUrl}/datasets?page=1&limit=20' \\\n--header 'Authorization: Bearer {api_key}'`}
+    >
+    ```bash {{ title: 'cURL' }}
+    curl --location --request GET '${props.apiBaseUrl}/datasets?page=1&limit=20' \
+    --header 'Authorization: Bearer {api_key}'
+    ```
+    </CodeGroup>
+    <CodeGroup title="Response">
+    ```json {{ title: 'Response' }}
+    {
+      "data": [
+        {
+          "id": "",
+          "name": "知识库名称",
+          "description": "描述信息",
+          "permission": "only_me",
+          "data_source_type": "upload_file",
+          "indexing_technique": "",
+          "app_count": 2,
+          "document_count": 10,
+          "word_count": 1200,
+          "created_by": "",
+          "created_at": "",
+          "updated_by": "",
+          "updated_at": ""
+        },
+        ...
+      ],
+      "has_more": true,
+      "limit": 20,
+      "total": 50,
+      "page": 1
+    }
+    ```
+    </CodeGroup>
+  </Col>
+</Row>
+
+---
+
+<Heading
+  url='/datasets/{dataset_id}'
+  method='DELETE'
+  title='删除知识库'
+  name='#delete_dataset'
+/>
+<Row>
+  <Col>
+    ### Path
+    <Properties>
+      <Property name='dataset_id' type='string' key='dataset_id'>
+        知识库 ID
+      </Property>
+    </Properties>
+  </Col>
+  <Col sticky>
+    <CodeGroup
+      title="Request"
+      tag="DELETE"
+      label="/datasets/{dataset_id}"
+      targetCode={`curl --location --request DELETE '${props.apiBaseUrl}/datasets/{dataset_id}' \\\n--header 'Authorization: Bearer {api_key}'`}
+    >
+    ```bash {{ title: 'cURL' }}
+    curl --location --request DELETE '${props.apiBaseUrl}/datasets/{dataset_id}' \
+    --header 'Authorization: Bearer {api_key}'
+    ```
+    </CodeGroup>
+    <CodeGroup title="Response">
+    ```text {{ title: 'Response' }}
+    204 No Content
+    ```
+    </CodeGroup>
+  </Col>
+</Row>
+
+---
+
+<Heading
+  url='/datasets/{dataset_id}/documents/{document_id}/update_by_text'
+  method='POST'
+  title='通过文本更新文档 '
+  name='#update_by_text'
+/>
+<Row>
+  <Col>
+    此接口基于已存在知识库，在此知识库的基础上通过文本更新文档
+
+    ### Path
+    <Properties>
+      <Property name='dataset_id' type='string' key='dataset_id'>
+        知识库 ID
+      </Property>
+      <Property name='document_id' type='string' key='document_id'>
+        文档 ID
+      </Property>
+    </Properties>
+
+    ### Request Body
+    <Properties>
+      <Property name='name' type='string' key='name'>
+        文档名称 （选填）
+      </Property>
+      <Property name='text' type='string' key='text'>
+        文档内容（选填）
+      </Property>
+      <Property name='process_rule' type='object' key='process_rule'>
+        处理规则（选填）
+          - <code>mode</code> (string) 清洗、分段模式 ，automatic 自动 / custom 自定义
+          - <code>rules</code> (object) 自定义规则（自动模式下，该字段为空）
+            - <code>pre_processing_rules</code> (array[object]) 预处理规则
+              - <code>id</code> (string) 预处理规则的唯一标识符
+                - 枚举：
+                  - <code>remove_extra_spaces</code> 替换连续空格、换行符、制表符
+                  - <code>remove_urls_emails</code> 删除 URL、电子邮件地址
+              - <code>enabled</code> (bool) 是否选中该规则，不传入文档 ID 时代表默认值
+            - <code>segmentation</code> (object) 分段规则
+              - <code>separator</code> 自定义分段标识符，目前仅允许设置一个分隔符。默认为 \n
+              - <code>max_tokens</code> 最大长度 (token) 默认为 1000
+      </Property>
+    </Properties>
+  </Col>
+  <Col sticky>
+    <CodeGroup
+      title="Request"
+      tag="POST"
+      label="/datasets/{dataset_id}/documents/{document_id}/update_by_text"
+      targetCode={`curl --location --request POST '${props.apiBaseUrl}/datasets/{dataset_id}/documents/{document_id}/update_by_text' \\\n--header 'Authorization: Bearer {api_key}' \\\n--header 'Content-Type: application/json' \\\n--data-raw '{"name": "name","text": "text"}'`}
+    >
+    ```bash {{ title: 'cURL' }}
+    curl --location --request POST '${props.apiBaseUrl}/datasets/{dataset_id}/documents/{document_id}/update_by_text' \
+    --header 'Authorization: Bearer {api_key}' \
+    --header 'Content-Type: application/json' \
+    --data-raw '{
+        "name": "name",
+        "text": "text"
+    }'
+    ```
+    </CodeGroup>
+    <CodeGroup title="Response">
+    ```json {{ title: 'Response' }}
+    {
+      "document": {
+        "id": "",
+        "position": 1,
+        "data_source_type": "upload_file",
+        "data_source_info": {
+          "upload_file_id": ""
+        },
+        "dataset_process_rule_id": "",
+        "name": "name.txt",
+        "created_from": "api",
+        "created_by": "",
+        "created_at": 1695308667,
+        "tokens": 0,
+        "indexing_status": "waiting",
+        "error": null,
+        "enabled": true,
+        "disabled_at": null,
+        "disabled_by": null,
+        "archived": false,
+        "display_status": "queuing",
+        "word_count": 0,
+        "hit_count": 0,
+        "doc_form": "text_model"
+      },
+      "batch": ""
+    }
+    ```
+    </CodeGroup>
+  </Col>
+</Row>
+
+---
+
+<Heading
+  url='/datasets/{dataset_id}/documents/{document_id}/update_by_file'
+  method='POST'
+  title='通过文件更新文档  '
+  name='#update_by_file'
+/>
+<Row>
+  <Col>
+    此接口基于已存在知识库，在此知识库的基础上通过文件更新文档的操作。
+
+    ### Path
+    <Properties>
+      <Property name='dataset_id' type='string' key='dataset_id'>
+        知识库 ID
+      </Property>
+      <Property name='document_id' type='string' key='document_id'>
+        文档 ID
+      </Property>
+    </Properties>
+
+    ### Request Body
+    <Properties>
+      <Property name='name' type='string' key='name'>
+        文档名称 （选填）
+      </Property>
+      <Property name='file' type='multipart/form-data' key='file'>
+        需要上传的文件
+      </Property>
+      <Property name='process_rule' type='object' key='process_rule'>
+        处理规则（选填）
+          - <code>mode</code> (string) 清洗、分段模式 ，automatic 自动 / custom 自定义
+          - <code>rules</code> (object) 自定义规则（自动模式下，该字段为空）
+            - <code>pre_processing_rules</code> (array[object]) 预处理规则
+              - <code>id</code> (string) 预处理规则的唯一标识符
+                - 枚举：
+                  - <code>remove_extra_spaces</code> 替换连续空格、换行符、制表符
+                  - <code>remove_urls_emails</code> 删除 URL、电子邮件地址
+              - <code>enabled</code> (bool) 是否选中该规则，不传入文档 ID 时代表默认值
+            - <code>segmentation</code> (object) 分段规则
+              - <code>separator</code> 自定义分段标识符，目前仅允许设置一个分隔符。默认为 \n
+              - <code>max_tokens</code> 最大长度 (token) 默认为 1000
+      </Property>
+    </Properties>
+  </Col>
+  <Col sticky>
+    <CodeGroup
+      title="Request"
+      tag="POST"
+      label="/datasets/{dataset_id}/documents/{document_id}/update_by_file"
+      targetCode={`curl --location --request POST '${props.apiBaseUrl}/datasets/{dataset_id}/documents/{document_id}/update_by_file' \\\n--header 'Authorization: Bearer {api_key}' \\\n--form 'data="{"name":"Dify","indexing_technique":"high_quality","process_rule":{"rules":{"pre_processing_rules":[{"id":"remove_extra_spaces","enabled":true},{"id":"remove_urls_emails","enabled":true}],"segmentation":{"separator":"###","max_tokens":500}},"mode":"custom"}}";type=text/plain' \\\n--form 'file=@"/path/to/file"'`}
+    >
+    ```bash {{ title: 'cURL' }}
+    curl --location --request POST '${props.apiBaseUrl}/datasets/{dataset_id}/documents/{document_id}/update_by_file' \
+    --header 'Authorization: Bearer {api_key}' \
+    --form 'data="{\"name\":\"Dify\",\"indexing_technique\":\"high_quality\",\"process_rule\":{\"rules\":{\"pre_processing_rules\":[{\"id\":\"remove_extra_spaces\",\"enabled\":true},{\"id\":\"remove_urls_emails\",\"enabled\":true}],\"segmentation\":{\"separator\":\"###\",\"max_tokens\":500}},\"mode\":\"custom\"}}";type=text/plain' \
+    --form 'file=@"/path/to/file"'
+    ```
+    </CodeGroup>
+    <CodeGroup title="Response">
+    ```json {{ title: 'Response' }}
+    {
+      "document": {
+        "id": "",
+        "position": 1,
+        "data_source_type": "upload_file",
+        "data_source_info": {
+          "upload_file_id": ""
+        },
+        "dataset_process_rule_id": "",
+        "name": "Dify.txt",
+        "created_from": "api",
+        "created_by": "",
+        "created_at": 1695308667,
+        "tokens": 0,
+        "indexing_status": "waiting",
+        "error": null,
+        "enabled": true,
+        "disabled_at": null,
+        "disabled_by": null,
+        "archived": false,
+        "display_status": "queuing",
+        "word_count": 0,
+        "hit_count": 0,
+        "doc_form": "text_model"
+      },
+      "batch": "20230921150427533684"
+    }
+    ```
+    </CodeGroup>
+  </Col>
+</Row>
+
+---
+
+<Heading
+  url='/datasets/{dataset_id}/documents/{batch}/indexing-status'
+  method='GET'
+  title='获取文档嵌入状态（进度）'
+  name='#indexing_status'
+/>
+<Row>
+  <Col>
+    ### Path
+    <Properties>
+      <Property name='dataset_id' type='string' key='dataset_id'>
+        知识库 ID
+      </Property>
+      <Property name='batch' type='string' key='batch'>
+        上传文档的批次号
+      </Property>
+    </Properties>
+  </Col>
+  <Col sticky>
+    <CodeGroup
+      title="Request"
+      tag="GET"
+      label="/datasets/{dataset_id}/documents/{batch}/indexing-status"
+      targetCode={`curl --location --request GET '${props.apiBaseUrl}/datasets/{dataset_id}/documents/{batch}/indexing-status' \\\n--header 'Authorization: Bearer {api_key}'`}
+    >
+    ```bash {{ title: 'cURL' }}
+    curl --location --request GET '${props.apiBaseUrl}/datasets/{dataset_id}/documents/{batch}/indexing-status' \
+    --header 'Authorization: Bearer {api_key}' \
+    ```
+    </CodeGroup>
+    <CodeGroup title="Response">
+    ```json {{ title: 'Response' }}
+    {
+      "data":[{
+        "id": "",
+        "indexing_status": "indexing",
+        "processing_started_at": 1681623462.0,
+        "parsing_completed_at": 1681623462.0,
+        "cleaning_completed_at": 1681623462.0,
+        "splitting_completed_at": 1681623462.0,
+        "completed_at": null,
+        "paused_at": null,
+        "error": null,
+        "stopped_at": null,
+        "completed_segments": 24,
+        "total_segments": 100
+      }]
+    }
+    ```
+    </CodeGroup>
+  </Col>
+</Row>
+
+---
+
+<Heading
+  url='/datasets/{dataset_id}/documents/{document_id}'
+  method='DELETE'
+  title='删除文档'
+  name='#delete_document'
+/>
+<Row>
+  <Col>
+    ### Path
+    <Properties>
+      <Property name='dataset_id' type='string' key='dataset_id'>
+        知识库 ID
+      </Property>
+      <Property name='document_id' type='string' key='document_id'>
+        文档 ID
+      </Property>
+    </Properties>
+  </Col>
+  <Col sticky>
+    <CodeGroup
+      title="Request"
+      tag="DELETE"
+      label="/datasets/{dataset_id}/documents/{document_id}"
+      targetCode={`curl --location --request DELETE '${props.apiBaseUrl}/datasets/{dataset_id}/documents/{document_id}' \\\n--header 'Authorization: Bearer {api_key}'`}
+    >
+    ```bash {{ title: 'cURL' }}
+    curl --location --request DELETE '${props.apiBaseUrl}/datasets/{dataset_id}/documents/{document_id}' \
+    --header 'Authorization: Bearer {api_key}' \
+    ```
+    </CodeGroup>
+    <CodeGroup title="Response">
+    ```json {{ title: 'Response' }}
+    {
+      "result": "success"
+    }
+    ```
+    </CodeGroup>
+  </Col>
+</Row>
+
+---
+
+<Heading
+  url='/datasets/{dataset_id}/documents'
+  method='GET'
+  title='知识库文档列表'
+  name='#dataset_document_list'
+/>
+<Row>
+  <Col>
+    ### Path
+    <Properties>
+      <Property name='dataset_id' type='string' key='dataset_id'>
+        知识库 ID
+      </Property>
+    </Properties>
+
+    ### Query
+    <Properties>
+      <Property name='keyword' type='string' key='keyword'>
+        搜索关键词，可选，目前仅搜索文档名称
+      </Property>
+      <Property name='page' type='string' key='page'>
+        页码，可选
+      </Property>
+      <Property name='limit' type='string' key='limit'>
+        返回条数，可选，默认 20，范围 1-100
+      </Property>
+    </Properties>
+  </Col>
+  <Col sticky>
+    <CodeGroup
+      title="Request"
+      tag="GET"
+      label="/datasets/{dataset_id}/documents"
+      targetCode={`curl --location --request GET '${props.apiBaseUrl}/datasets/{dataset_id}/documents' \\\n--header 'Authorization: Bearer {api_key}'`}
+    >
+    ```bash {{ title: 'cURL' }}
+    curl --location --request GET '${props.apiBaseUrl}/datasets/{dataset_id}/documents' \
+    --header 'Authorization: Bearer {api_key}' \
+    ```
+    </CodeGroup>
+    <CodeGroup title="Response">
+    ```json {{ title: 'Response' }}
+    {
+      "data": [
+        {
+          "id": "",
+          "position": 1,
+          "data_source_type": "file_upload",
+          "data_source_info": null,
+          "dataset_process_rule_id": null,
+          "name": "dify",
+          "created_from": "",
+          "created_by": "",
+          "created_at": 1681623639,
+          "tokens": 0,
+          "indexing_status": "waiting",
+          "error": null,
+          "enabled": true,
+          "disabled_at": null,
+          "disabled_by": null,
+          "archived": false
+        },
+      ],
+      "has_more": false,
+      "limit": 20,
+      "total": 9,
+      "page": 1
+    }
+    ```
+    </CodeGroup>
+  </Col>
+</Row>
+
+---
+
+<Heading
+  url='/datasets/{dataset_id}/documents/{document_id}/segments'
+  method='POST'
+  title='新增分段'
+  name='#create_new_segment'
+/>
+<Row>
+  <Col>
+    ### Path
+    <Properties>
+      <Property name='dataset_id' type='string' key='dataset_id'>
+        知识库 ID
+      </Property>
+      <Property name='document_id' type='string' key='document_id'>
+        文档 ID
+      </Property>
+    </Properties>
+
+    ### Request Body
+    <Properties>
+      <Property name='segments' type='object list' key='segments'>
+        - <code>content</code> (text) 文本内容/问题内容，必填
+        - <code>answer</code> (text) 答案内容，非必填，如果知识库的模式为qa模式则传值
+        - <code>keywords</code> (list) 关键字，非必填
+      </Property>
+    </Properties>
+  </Col>
+  <Col sticky>
+    <CodeGroup
+      title="Request"
+      tag="POST"
+      label="/datasets/{dataset_id}/documents/{document_id}/segments"
+      targetCode={`curl --location --request POST '${props.apiBaseUrl}/datasets/{dataset_id}/documents/{document_id}/segments' \\\n--header 'Authorization: Bearer {api_key}' \\\n--header 'Content-Type: application/json' \\\n--data-raw '{"segments": [{"content": "1","answer": "1","keywords": ["a"]}]}'`}
+    >
+    ```bash {{ title: 'cURL' }}
+    curl --location --request POST '${props.apiBaseUrl}/datasets/{dataset_id}/documents/{document_id}/segments' \
+    --header 'Authorization: Bearer {api_key}' \
+    --header 'Content-Type: application/json' \
+    --data-raw '{
+      "segments": [
+        {
+          "content": "1",
+          "answer": "1",
+          "keywords": ["a"]
+        }
+      ]
+    }'
+    ```
+    </CodeGroup>
+    <CodeGroup title="Response">
+    ```json {{ title: 'Response' }}
+    {
+      "data": [{
+        "id": "",
+        "position": 1,
+        "document_id": "",
+        "content": "1",
+        "answer": "1",
+        "word_count": 25,
+        "tokens": 0,
+        "keywords": [
+            "a"
+        ],
+        "index_node_id": "",
+        "index_node_hash": "",
+        "hit_count": 0,
+        "enabled": true,
+        "disabled_at": null,
+        "disabled_by": null,
+        "status": "completed",
+        "created_by": "",
+        "created_at": 1695312007,
+        "indexing_at": 1695312007,
+        "completed_at": 1695312007,
+        "error": null,
+        "stopped_at": null
+      }],
+      "doc_form": "text_model"
+    }
+    ```
+    </CodeGroup>
+  </Col>
+</Row>
+
+---
+
+<Heading
+  url='/datasets/{dataset_id}/documents/{document_id}/segments'
+  method='GET'
+  title='查询文档分段'
+  name='#get_segment'
+/>
+<Row>
+  <Col>
+    ### Path
+    <Properties>
+      <Property name='dataset_id' type='string' key='dataset_id'>
+        知识库 ID
+      </Property>
+      <Property name='document_id' type='string' key='document_id'>
+        文档 ID
+      </Property>
+    </Properties>
+
+     ### Query
+    <Properties>
+      <Property name='keyword' type='string' key='keyword'>
+        搜索关键词，可选
+      </Property>
+      <Property name='status' type='string' key='status'>
+        搜索状态，completed
+      </Property>
+    </Properties>
+  </Col>
+  <Col sticky>
+    <CodeGroup
+      title="Request"
+      tag="GET"
+      label="/datasets/{dataset_id}/documents/{document_id}/segments"
+      targetCode={`curl --location --request GET '${props.apiBaseUrl}/datasets/{dataset_id}/documents/{document_id}/segments' \\\n--header 'Authorization: Bearer {api_key}' \\\n--header 'Content-Type: application/json'`}
+    >
+    ```bash {{ title: 'cURL' }}
+    curl --location --request GET '${props.apiBaseUrl}/datasets/{dataset_id}/documents/{document_id}/segments' \
+    --header 'Authorization: Bearer {api_key}' \
+    --header 'Content-Type: application/json'
+    ```
+    </CodeGroup>
+    <CodeGroup title="Response">
+    ```json {{ title: 'Response' }}
+    {
+      "data": [{
+        "id": "",
+        "position": 1,
+        "document_id": "",
+        "content": "1",
+        "answer": "1",
+        "word_count": 25,
+        "tokens": 0,
+        "keywords": [
+            "a"
+        ],
+        "index_node_id": "",
+        "index_node_hash": "",
+        "hit_count": 0,
+        "enabled": true,
+        "disabled_at": null,
+        "disabled_by": null,
+        "status": "completed",
+        "created_by": "",
+        "created_at": 1695312007,
+        "indexing_at": 1695312007,
+        "completed_at": 1695312007,
+        "error": null,
+        "stopped_at": null
+      }],
+      "doc_form": "text_model"
+    }
+    ```
+    </CodeGroup>
+  </Col>
+</Row>
+
+---
+
+<Heading
+  url='/datasets/{dataset_id}/documents/{document_id}/segments/{segment_id}'
+  method='DELETE'
+  title='删除文档分段'
+  name='#delete_segment'
+/>
+<Row>
+  <Col>
+    ### Path
+    <Properties>
+      <Property name='dataset_id' type='string' key='dataset_id'>
+        知识库 ID
+      </Property>
+      <Property name='segment_id' type='string' key='segment_id'>
+        文档分段ID
+      </Property>
+    </Properties>
+  </Col>
+  <Col sticky>
+    <CodeGroup
+      title="Request"
+      tag="DELETE"
+      label="/datasets/{dataset_id}/documents/{document_id}/segments/{segment_id}"
+      targetCode={`curl --location --request DELETE '${props.apiBaseUrl}/datasets/{dataset_id}/documents/{document_id}/segments/{segment_id}' \\\n--header 'Authorization: Bearer {api_key}' \\\n--header 'Content-Type: application/json'`}
+    >
+    ```bash {{ title: 'cURL' }}
+    curl --location --request DELETE '${props.apiBaseUrl}/datasets/{dataset_id}/documents/{document_id}/segments/{segment_id}' \
+    --header 'Authorization: Bearer {api_key}' \
+    --header 'Content-Type: application/json'
+    ```
+    </CodeGroup>
+    <CodeGroup title="Response">
+    ```json {{ title: 'Response' }}
+    {
+      "result": "success"
+    }
+    ```
+    </CodeGroup>
+  </Col>
+</Row>
+
+---
+
+<Heading
+  url='/datasets/{dataset_id}/documents/{document_id}/segments/{segment_id}'
+  method='POST'
+  title='更新文档分段'
+  name='#update_segment'
+/>
+<Row>
+  <Col>
+    ### POST
+    <Properties>
+      <Property name='dataset_id' type='string' key='dataset_id'>
+        知识库 ID
+      </Property>
+      <Property name='segment_id' type='string' key='segment_id'>
+        文档分段ID
+      </Property>
+    </Properties>
+
+    ### Request Body
+    <Properties>
+      <Property name='segment' type='object list' key='segment'>
+        - <code>content</code> (text) 文本内容/问题内容，必填
+        - <code>answer</code> (text) 答案内容，非必填，如果知识库的模式为qa模式则传值
+        - <code>keywords</code> (list) 关键字，非必填
+        - <code>enabled</code> (bool) false/true，非必填
+      </Property>
+    </Properties>
+  </Col>
+  <Col sticky>
+    <CodeGroup
+      title="Request"
+      tag="POST"
+      label="/datasets/{dataset_id}/documents/{document_id}/segments/{segment_id}"
+      targetCode={`curl --location --request POST '${props.apiBaseUrl}/datasets/{dataset_id}/documents/{document_id}/segments/{segment_id}' \\\n--header 'Authorization: Bearer {api_key}' \\\n--header 'Content-Type: application/json'\\\n--data-raw '{\"segment\": {\"content\": \"1\",\"answer\": \"1\", \"keywords\": [\"a\"], \"enabled\": false}}'`}
+    >
+    ```bash {{ title: 'cURL' }}
+    curl --location --request POST '${props.apiBaseUrl}/datasets/{dataset_id}/documents/{document_id}/segments/{segment_id}' \
+    --header 'Authorization: Bearer {api_key}' \
+    --header 'Content-Type: application/json' \
+    --data-raw '{
+      "segment": {
+          "content": "1",
+          "answer": "1",
+          "keywords": ["a"],
+          "enabled": false
+      }
+    }'
+    ```
+    </CodeGroup>
+    <CodeGroup title="Response">
+    ```json {{ title: 'Response' }}
+    {
+      "data": [{
+        "id": "",
+        "position": 1,
+        "document_id": "",
+        "content": "1",
+        "answer": "1",
+        "word_count": 25,
+        "tokens": 0,
+        "keywords": [
+            "a"
+        ],
+        "index_node_id": "",
+        "index_node_hash": "",
+        "hit_count": 0,
+        "enabled": true,
+        "disabled_at": null,
+        "disabled_by": null,
+        "status": "completed",
+        "created_by": "",
+        "created_at": 1695312007,
+        "indexing_at": 1695312007,
+        "completed_at": 1695312007,
+        "error": null,
+        "stopped_at": null
+      }],
+      "doc_form": "text_model"
+    }
+    ```
+    </CodeGroup>
+  </Col>
+</Row>
+
+---
+
+<Row>
+  <Col>
+    ### 错误信息
+    <Properties>
+      <Property name='code' type='string' key='code'>
+        返回的错误代码
+      </Property>
+    </Properties>
+    <Properties>
+      <Property name='status' type='number' key='status'>
+        返回的错误状态
+      </Property>
+    </Properties>
+    <Properties>
+      <Property name='message' type='string' key='message'>
+        返回的错误信息
+      </Property>
+    </Properties>
+  </Col>
+  <Col>
+    <CodeGroup title="Example">
+    ```json {{ title: 'Response' }}
+      {
+        "code": "no_file_uploaded",
+        "message": "Please upload your file.",
+        "status": 400
+      }
+    ```
+    </CodeGroup>
+  </Col>
+</Row>
+<table className="max-w-auto border-collapse border border-slate-400" style={{ maxWidth: 'none', width: 'auto' }}>
+  <thead style={{ background: '#f9fafc' }}>
+    <tr>
+      <th className="p-2 border border-slate-300">code</th>
+      <th className="p-2 border border-slate-300">status</th>
+      <th className="p-2 border border-slate-300">message</th>
+    </tr>
+  </thead>
+  <tbody>
+    <tr>
+      <td className="p-2 border border-slate-300">no_file_uploaded</td>
+      <td className="p-2 border border-slate-300">400</td>
+      <td className="p-2 border border-slate-300">Please upload your file.</td>
+    </tr>
+    <tr>
+      <td className="p-2 border border-slate-300">too_many_files</td>
+      <td className="p-2 border border-slate-300">400</td>
+      <td className="p-2 border border-slate-300">Only one file is allowed.</td>
+    </tr>
+    <tr>
+      <td className="p-2 border border-slate-300">file_too_large</td>
+      <td className="p-2 border border-slate-300">413</td>
+      <td className="p-2 border border-slate-300">File size exceeded.</td>
+    </tr>
+    <tr>
+      <td className="p-2 border border-slate-300">unsupported_file_type</td>
+      <td className="p-2 border border-slate-300">415</td>
+      <td className="p-2 border border-slate-300">File type not allowed.</td>
+    </tr>
+    <tr>
+      <td className="p-2 border border-slate-300">high_quality_dataset_only</td>
+      <td className="p-2 border border-slate-300">400</td>
+      <td className="p-2 border border-slate-300">Current operation only supports 'high-quality' datasets.</td>
+    </tr>
+    <tr>
+      <td className="p-2 border border-slate-300">dataset_not_initialized</td>
+      <td className="p-2 border border-slate-300">400</td>
+      <td className="p-2 border border-slate-300">The dataset is still being initialized or indexing. Please wait a moment.</td>
+    </tr>
+    <tr>
+      <td className="p-2 border border-slate-300">archived_document_immutable</td>
+      <td className="p-2 border border-slate-300">403</td>
+      <td className="p-2 border border-slate-300">The archived document is not editable.</td>
+    </tr>
+    <tr>
+      <td className="p-2 border border-slate-300">dataset_name_duplicate</td>
+      <td className="p-2 border border-slate-300">409</td>
+      <td className="p-2 border border-slate-300">The dataset name already exists. Please modify your dataset name.</td>
+    </tr>
+    <tr>
+      <td className="p-2 border border-slate-300">invalid_action</td>
+      <td className="p-2 border border-slate-300">400</td>
+      <td className="p-2 border border-slate-300">Invalid action.</td>
+    </tr>
+    <tr>
+      <td className="p-2 border border-slate-300">document_already_finished</td>
+      <td className="p-2 border border-slate-300">400</td>
+      <td className="p-2 border border-slate-300">The document has been processed. Please refresh the page or go to the document details.</td>
+    </tr>
+    <tr>
+      <td className="p-2 border border-slate-300">document_indexing</td>
+      <td className="p-2 border border-slate-300">400</td>
+      <td className="p-2 border border-slate-300">The document is being processed and cannot be edited.</td>
+    </tr>
+    <tr>
+      <td className="p-2 border border-slate-300">invalid_metadata</td>
+      <td className="p-2 border border-slate-300">400</td>
+      <td className="p-2 border border-slate-300">The metadata content is incorrect. Please check and verify.</td>
+    </tr>
+  </tbody>
+</table>
+<div className="pb-4" />

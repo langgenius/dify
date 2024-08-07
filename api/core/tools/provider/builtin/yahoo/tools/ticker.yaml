@@ -1,0 +1,28 @@
+identity:
+  name: yahoo_finance_ticker
+  author: Dify
+  label:
+    en_US: Ticker
+    zh_Hans: 股票信息
+    pt_BR: Ticker
+  icon: icon.svg
+description:
+  human:
+    en_US: A tool for search ticker information from Yahoo Finance.
+    zh_Hans: 一个用于从雅虎财经搜索股票信息的工具。
+    pt_BR: Uma ferramenta para buscar informações de ticker do Yahoo Finance.
+  llm: A tool for search ticker information from Yahoo Finance. Input should be the ticker symbol like AAPL.
+parameters:
+  - name: symbol
+    type: string
+    required: true
+    label:
+      en_US: Ticker symbol
+      zh_Hans: 股票代码
+      pt_BR: Símbolo do ticker
+    human_description:
+      en_US: The ticker symbol of the company you want to search.
+      zh_Hans: 你想要搜索的公司的股票代码。
+      pt_BR: O símbolo do ticker da empresa que você deseja pesquisar.
+    llm_description: The ticker symbol of the company you want to search.
+    form: llm

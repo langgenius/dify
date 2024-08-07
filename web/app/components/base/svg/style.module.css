@@ -1,0 +1,11 @@
+.svgIcon {
+  background-image: url(~@/app/components/develop/secret-key/assets/svg.svg);
+  background-position: center;
+  background-repeat: no-repeat;
+}
+
+.svgIconed {
+  background-image: url(~@/app/components/develop/secret-key/assets/svged.svg);
+  background-position: center;
+  background-repeat: no-repeat;
+}

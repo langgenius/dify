@@ -1,0 +1,8 @@
+.modal {
+  max-width: 1024px !important;
+  border-radius: 12px !important;
+  margin-top: 60px;
+  margin-bottom: 60px;
+  padding: 0 !important;
+  overflow-y: auto;
+}

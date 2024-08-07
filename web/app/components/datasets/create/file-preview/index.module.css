@@ -1,0 +1,52 @@
+.filePreview {
+    @apply flex flex-col border-l border-gray-200 shrink-0;
+    width: 528px;
+    background-color: #fcfcfd;
+  }
+  
+  .previewHeader {
+    @apply border-b border-gray-200 shrink-0;
+    margin: 42px 32px 0;
+    padding-bottom: 16px;
+  }
+  
+  .previewHeader .title {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    color: #101828;
+    font-weight: 600;
+    font-size: 18px;
+    line-height: 28px;
+  }
+  
+  .previewHeader .fileName {
+    font-weight: 400;
+    font-size: 12px;
+    line-height: 18px;
+    color: #1D2939;
+  }
+  
+  .previewHeader .filetype {
+    color: #667085;
+  }
+  
+  .previewContent {
+    @apply overflow-y-auto grow;
+    padding: 20px 32px;
+    font-weight: 400;
+    font-size: 16px;
+    line-height: 24px;
+    color: #344054;
+  }
+  
+  .previewContent .loading {
+    width: 100%;
+    height: 180px;
+    background: #f9fafb center no-repeat url(../assets/Loading.svg);
+    background-size: contain;
+  }
+  .fileContent {
+    white-space: pre-line;
+  }
+  

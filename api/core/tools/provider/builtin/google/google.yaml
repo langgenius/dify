@@ -1,0 +1,31 @@
+identity:
+  author: Dify
+  name: google
+  label:
+    en_US: Google
+    zh_Hans: Google
+    pt_BR: Google
+  description:
+    en_US: Google
+    zh_Hans: GoogleSearch
+    pt_BR: Google
+  icon: icon.svg
+  tags:
+    - search
+credentials_for_provider:
+  serpapi_api_key:
+    type: secret-input
+    required: true
+    label:
+      en_US: SerpApi API key
+      zh_Hans: SerpApi API key
+      pt_BR: SerpApi API key
+    placeholder:
+      en_US: Please input your SerpApi API key
+      zh_Hans: 请输入你的 SerpApi API key
+      pt_BR: Please input your SerpApi API key
+    help:
+      en_US: Get your SerpApi API key from SerpApi
+      zh_Hans: 从 SerpApi 获取您的 SerpApi API key
+      pt_BR: Get your SerpApi API key from SerpApi
+    url: https://serpapi.com/manage-api-key

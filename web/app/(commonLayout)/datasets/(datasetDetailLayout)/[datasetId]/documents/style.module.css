@@ -1,0 +1,9 @@
+.logTable td {
+  padding: 7px 8px;
+  box-sizing: border-box;
+  max-width: 200px;
+}
+
+.pagination li {
+  list-style: none;
+}

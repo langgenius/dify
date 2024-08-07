@@ -1,0 +1,27 @@
+identity:
+  name: get_board_cards
+  author: Yash Parmar
+  label:
+    en_US: Get Board Cards
+    zh_Hans: 获取看板卡片
+    pt_BR: Obter Cartões do Quadro
+description:
+  human:
+    en_US: Retrieves all cards present on a specific Trello board by its ID, providing a list of card names and their IDs. Useful for managing and organizing project tasks.
+    zh_Hans: 通过其 ID 检索特定 Trello 看板上的所有卡片，提供卡片名称及其 ID 的列表。用于管理和组织项目任务。
+    pt_BR: Recupera todos os cartões presentes em um quadro Trello específico pelo seu ID, fornecendo uma lista dos nomes dos cartões e seus IDs. Útil para gerenciar e organizar tarefas de projetos.
+  llm: Obtain a list of all cards on a specific Trello board by entering the board's ID. This tool helps in quickly assessing the tasks or items associated with the board.
+parameters:
+  - name: boardId
+    type: string
+    required: true
+    label:
+      en_US: Board ID
+      zh_Hans: 看板 ID
+      pt_BR: ID do Quadro
+    human_description:
+      en_US: The unique identifier of the Trello board from which you want to retrieve cards. It specifies the exact board to gather card details from.
+      zh_Hans: 您想要从中检索卡片的 Trello 看板的唯一标识符。它指定了要从中收集卡片详细信息的确切看板。
+      pt_BR: O identificador único do quadro Trello do qual você deseja recuperar os cartões. Especifica o quadro exato para obter detalhes dos cartões.
+    llm_description: Input the ID of the Trello board to fetch its cards, allowing for a detailed overview of the board's contents.
+    form: llm

@@ -1,0 +1,36 @@
+.modal {
+  position: relative;
+}
+
+.modal .close {
+  position: absolute;
+  right: 16px;
+  top: 25px;
+  width: 32px;
+  height: 32px;
+  border-radius: 8px;
+  background: center no-repeat url(~@/app/components/datasets/create/assets/close.svg);
+  background-size: 16px;
+  cursor: pointer;
+}
+
+.modal .title {
+  @apply mb-9;
+  font-weight: 600;
+  font-size: 20px;
+  line-height: 30px;
+  color: #101828;
+}
+
+.modal .content {
+  @apply mb-9;
+  font-weight: 400;
+  font-size: 14px;
+  line-height: 20px;
+  color: #101828;
+}
+
+.subTitle {
+  margin-bottom: 8px;
+  font-weight: 500;
+}

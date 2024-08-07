@@ -1,0 +1,84 @@
+provider: triton_inference_server
+label:
+  en_US: Triton Inference Server
+icon_small:
+  en_US: icon_s_en.svg
+icon_large:
+  en_US: icon_l_en.png
+background: "#EFFDFD"
+help:
+  title:
+    en_US: How to deploy Triton Inference Server
+    zh_Hans: 如何部署 Triton Inference Server
+  url:
+    en_US: https://github.com/triton-inference-server/server
+supported_model_types:
+  - llm
+configurate_methods:
+  - customizable-model
+model_credential_schema:
+  model:
+    label:
+      en_US: Model Name
+      zh_Hans: 模型名称
+    placeholder:
+      en_US: Enter your model name
+      zh_Hans: 输入模型名称
+  credential_form_schemas:
+    - variable: server_url
+      label:
+        zh_Hans: 服务器URL
+        en_US: Server url
+      type: text-input
+      required: true
+      placeholder:
+        zh_Hans: 在此输入 Triton Inference Server 的服务器地址，如 http://192.168.1.100:8000
+        en_US: Enter the url of your Triton Inference Server, e.g. http://192.168.1.100:8000
+    - variable: context_size
+      label:
+        zh_Hans: 上下文大小
+        en_US: Context size
+      type: text-input
+      required: true
+      placeholder:
+        zh_Hans: 在此输入您的上下文大小
+        en_US: Enter the context size
+      default: '2048'
+    - variable: completion_type
+      label:
+        zh_Hans: 补全类型
+        en_US: Model type
+      type: select
+      required: true
+      default: chat
+      placeholder:
+        zh_Hans: 在此输入您的补全类型
+        en_US: Enter the completion type
+      options:
+        - label:
+            zh_Hans: 补全模型
+            en_US: Completion model
+          value: completion
+        - label:
+            zh_Hans: 对话模型
+            en_US: Chat model
+          value: chat
+    - variable: stream
+      label:
+        zh_Hans: 流式输出
+        en_US: Stream output
+      type: select
+      required: true
+      default: 'true'
+      placeholder:
+        zh_Hans: 是否支持流式输出
+        en_US: Whether to support stream output
+      options:
+        - label:
+            zh_Hans: 是
+            en_US: 'Yes'
+          value: 'true'
+        - label:
+            zh_Hans: 否
+            en_US: 'No'
+          value: 'false'

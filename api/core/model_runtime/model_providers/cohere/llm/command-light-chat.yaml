@@ -1,0 +1,62 @@
+model: command-light-chat
+label:
+  zh_Hans: command-light-chat
+  en_US: command-light-chat
+model_type: llm
+features:
+  - agent-thought
+model_properties:
+  mode: chat
+  context_size: 4096
+parameter_rules:
+  - name: temperature
+    use_template: temperature
+    max: 5.0
+  - name: p
+    use_template: top_p
+    default: 0.75
+    min: 0.01
+    max: 0.99
+  - name: k
+    label:
+      zh_Hans: 取样数量
+      en_US: Top k
+    type: int
+    help:
+      zh_Hans: 仅从每个后续标记的前 K 个选项中采样。
+      en_US: Only sample from the top K options for each subsequent token.
+    required: false
+    default: 0
+    min: 0
+    max: 500
+  - name: max_tokens
+    use_template: max_tokens
+    default: 1024
+    max: 4096
+  - name: preamble_override
+    label:
+      zh_Hans: 前导文本
+      en_US: Preamble
+    type: string
+    help:
+      zh_Hans: 当指定时，将使用提供的前导文本替换默认的 Cohere 前导文本。
+      en_US: When specified, the default Cohere preamble will be replaced with the provided one.
+    required: false
+  - name: prompt_truncation
+    label:
+      zh_Hans: 提示截断
+      en_US: Prompt Truncation
+    type: string
+    help:
+      zh_Hans: 指定如何构造 Prompt。当 prompt_truncation 设置为 "AUTO" 时，将会丢弃一些来自聊天记录的元素，以尝试构造一个符合模型上下文长度限制的 Prompt。
+      en_US: Dictates how the prompt will be constructed. With prompt_truncation set to "AUTO", some elements from chat histories will be dropped in an attempt to construct a prompt that fits within the model's context length limit.
+    required: true
+    default: 'AUTO'
+    options:
+      - 'AUTO'
+      - 'OFF'
+pricing:
+  input: '0.3'
+  output: '0.6'
+  unit: '0.000001'
+  currency: USD

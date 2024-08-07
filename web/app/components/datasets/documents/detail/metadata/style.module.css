@@ -1,0 +1,114 @@
+.main {
+  @apply w-full sm:w-96 xl:w-[360px] flex-shrink-0 p-0 sm:px-6 sm:py-5 overflow-y-auto border-none sm:border-l-gray-100 sm:border-l;
+}
+.operationWrapper {
+  @apply flex flex-col items-center gap-4 mt-7 mb-8;
+}
+.iconWrapper {
+  @apply box-border cursor-pointer h-8 w-8 inline-flex items-center justify-center;
+  @apply border-[#EAECF5] border rounded-lg hover:border-primary-200 hover:bg-primary-25 hover:shadow-md;
+}
+.icon {
+  @apply h-4 w-4 stroke-current stroke-[2px] text-gray-700 group-hover:stroke-primary-600;
+}
+.iconCheck {
+  @apply border-primary-400 border-[1.5px] bg-primary-25 shadow-sm !important;
+}
+.commonIcon {
+  @apply w-4 h-4 inline-block align-middle bg-gray-700 hover:bg-primary-600;
+}
+.bookOpenIcon {
+  mask-image: url(../../assets/bookOpen.svg);
+}
+.globeIcon {
+  mask-image: url(../../assets/globe.svg);
+}
+.graduationHatIcon {
+  mask-image: url(../../assets/graduationHat.svg);
+}
+.fileIcon {
+  mask-image: url(../../assets/file.svg);
+}
+.briefcaseIcon {
+  mask-image: url(../../assets/briefcase.svg);
+}
+.atSignIcon {
+  mask-image: url(../../assets/atSign.svg);
+}
+.messageTextCircleIcon {
+  mask-image: url(../../assets/messageTextCircle.svg);
+}
+.radioGroup {
+  @apply !bg-transparent !gap-2;
+}
+.radio {
+  @apply !p-0 !mr-0 hover:bg-transparent !rounded-lg;
+}
+.title {
+  @apply text-sm text-gray-800 font-medium leading-6;
+}
+.titleWrapper {
+  @apply flex items-center justify-between;
+}
+.desc {
+  @apply text-gray-500 text-xs;
+}
+.fieldInfo {
+  /* height: 1.75rem; */
+  min-height: 1.75rem;
+  @apply flex flex-row items-center gap-4;
+}
+.fieldInfo > .label {
+  @apply w-2/5 max-w-[128px] text-gray-500 text-xs font-medium overflow-hidden text-ellipsis whitespace-nowrap;
+}
+.fieldInfo > .value {
+  overflow-wrap: anywhere;
+  @apply w-3/5 text-gray-700 font-normal text-xs;
+}
+.changeTip {
+  @apply text-[#D92D20] text-xs text-center;
+}
+.opBtnWrapper {
+  @apply flex items-center justify-center gap-1;
+}
+.opBtn {
+  @apply h-6 w-14 px-0 text-xs font-medium rounded-md !important;
+}
+.opEditBtn {
+  box-shadow: 0px 1px 2px rgba(16, 24, 40, 0.05);
+  @apply border-[0.5px] border-gray-200 bg-white !important;
+}
+.opCancelBtn {
+  @apply border-none bg-gray-50 font-medium text-gray-700 hover:bg-gray-100 !important;
+}
+.opSaveBtn {
+  @apply border-primary-700 border-[0.5px] font-medium hover:border-none !important;
+}
+.opIcon {
+  @apply h-3 w-3 stroke-current stroke-2 mr-1;
+}
+.select {
+  @apply h-7 py-0 pl-2 text-xs bg-gray-50 hover:bg-gray-100 rounded-md shadow-none !important;
+}
+.selectWrapper {
+  @apply !h-7 w-full
+}
+.selectWrapper ul {
+  @apply text-xs
+}
+.selectWrapper li {
+  @apply flex items-center h-8
+}
+.documentTypeShow {
+  @apply flex items-center text-xs text-gray-500;
+}
+.iconShow {
+  mask-size: contain;
+  @apply w-3 h-3 bg-gray-500 hover:bg-none mr-1 !important;
+}
+.textArea {
+  @apply placeholder:text-gray-400 bg-gray-50 px-2 py-1 caret-primary-600 rounded-md hover:bg-gray-100 focus-visible:outline-none focus-visible:bg-white focus-visible:border focus-visible:border-gray-300 hover:shadow-[0_1px_2px_rgba(16,24,40,0.05);];
+}
+.input {
+  @apply bg-gray-50 hover:bg-gray-100 focus-visible:bg-white !important
+}

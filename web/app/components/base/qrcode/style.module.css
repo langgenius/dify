@@ -1,0 +1,61 @@
+.QrcodeIcon {
+  background-image: url(~@/app/components/develop/secret-key/assets/qrcode.svg);
+  background-position: center;
+  background-repeat: no-repeat;
+}
+
+.QrcodeIcon:hover {
+  background-image: url(~@/app/components/develop/secret-key/assets/qrcode-hover.svg);
+  background-position: center;
+  background-repeat: no-repeat;
+}
+
+.QrcodeIcon.show {
+  background-image: url(~@/app/components/develop/secret-key/assets/qrcode-hover.svg);
+  background-position: center;
+  background-repeat: no-repeat;
+}
+
+.qrcodeimage {
+  position: relative;
+  object-fit: cover;
+}
+.scan {
+  margin: 0;
+  line-height: 1rem;
+  font-size: 0.75rem;
+}
+.download {
+  position: relative;
+  color: #155eef;
+  font-size: 0.75rem;
+  line-height: 1rem;
+}
+.text {
+  align-self: stretch;
+  display: flex;
+  flex-direction: row;
+  align-items: center;
+  justify-content: center;
+  white-space: nowrap;
+  gap: 4px;
+}
+.qrcodeform {
+  border: 0.5px solid #eaecf0;
+  display: flex;
+  flex-direction: column;
+  margin: 0 !important;
+  margin-top: 4px !important;
+  margin-left: -75px !important;
+  width: fit-content;
+  position: relative;
+  border-radius: 8px;
+  background-color: #fff;
+  box-shadow: 0 12px 16px -4px rgba(16, 24, 40, 0.08),
+    0 4px 6px -2px rgba(16, 24, 40, 0.03);
+  overflow: hidden;
+  align-items: center;
+  justify-content: center;
+  padding: 15px;
+  gap: 8px;
+}

@@ -1,0 +1,40 @@
+identity:
+  name: feishu_group_bot
+  author: Arkii Sun
+  label:
+    en_US: Send Group Message
+    zh_Hans: 发送群消息
+    pt_BR: Send Group Message
+  icon: icon.png
+description:
+  human:
+    en_US: Sending a group message on Feishu via the webhook of group bot
+    zh_Hans: 通过飞书的群机器人webhook发送群消息
+    pt_BR: Sending a group message on Feishu via the webhook of group bot
+  llm: A tool for sending messages to a chat group on Feishu(飞书) .
+parameters:
+  - name: hook_key
+    type: secret-input
+    required: true
+    label:
+      en_US: Feishu Group bot webhook key
+      zh_Hans: 群机器人webhook的key
+      pt_BR: Feishu Group bot webhook key
+    human_description:
+      en_US: Feishu Group bot webhook key
+      zh_Hans: 群机器人webhook的key
+      pt_BR: Feishu Group bot webhook key
+    form: form
+  - name: content
+    type: string
+    required: true
+    label:
+      en_US: content
+      zh_Hans: 消息内容
+      pt_BR: content
+    human_description:
+      en_US: Content to sent to the group.
+      zh_Hans: 群消息文本
+      pt_BR: Content to sent to the group.
+    llm_description: Content of the message
+    form: llm

@@ -1,0 +1,15 @@
+identity:
+  author: Dify
+  name: wikipedia
+  label:
+    en_US: Wikipedia
+    zh_Hans: 维基百科
+    pt_BR: Wikipedia
+  description:
+    en_US: Wikipedia is a free online encyclopedia, created and edited by volunteers around the world.
+    zh_Hans: 维基百科是一个由全世界的志愿者创建和编辑的免费在线百科全书。
+    pt_BR: Wikipedia is a free online encyclopedia, created and edited by volunteers around the world.
+  icon: icon.svg
+  tags:
+    - social
+credentials_for_provider:

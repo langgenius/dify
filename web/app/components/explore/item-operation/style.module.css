@@ -1,0 +1,33 @@
+.actionItem {
+  @apply h-9 py-2 px-3 mx-1 flex items-center gap-2 rounded-lg cursor-pointer;
+}
+
+.actionName {
+  @apply text-gray-700 text-sm;
+}
+
+.commonIcon {
+  @apply w-4 h-4 inline-block align-middle;
+  background-repeat: no-repeat;
+  background-position: center center;
+  background-size: contain;
+}
+
+.actionIcon {
+  @apply bg-gray-500;
+  mask-image: url(~@/assets/action.svg);
+}
+
+body .btn.open,
+body .btn:hover {
+  background: url(~@/assets/action.svg) center center no-repeat transparent;
+  background-size: 16px 16px;
+}
+
+body .btn:hover {
+  background-color: #F2F4F7;
+}
+
+.deleteActionItem:hover .deleteActionItemChild {
+  @apply text-red-500; 
+}

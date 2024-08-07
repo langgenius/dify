@@ -1,0 +1,4 @@
+.simplePieChart {
+  border-radius: 50%;
+  box-shadow: 0 0 5px -3px rgb(from var(--simple-pie-chart-color) r g b / 0.1), 0.5px 0.5px 3px 0 rgb(from var(--simple-pie-chart-color) r g b / 0.3);
+}

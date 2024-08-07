@@ -1,0 +1,20 @@
+.option {
+  width: 188px;
+  height: 128px;
+  @apply box-border cursor-pointer bg-auto bg-no-repeat bg-center rounded-md;
+}
+.active {
+  @apply border-[1.5px] border-[#2970FF];
+}
+.iframeIcon {
+  background-image: url(../assets/iframe-option.svg);
+}
+.scriptsIcon {
+  background-image: url(../assets/scripts-option.svg);
+}
+.chromePluginIcon {
+  background-image: url(../assets/chromeplugin-option.svg);
+}
+.pluginInstallIcon {
+  background-image: url(../assets/chromeplugin-install.svg);
+}

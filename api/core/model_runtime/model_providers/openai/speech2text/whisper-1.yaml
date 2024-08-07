@@ -1,0 +1,5 @@
+model: whisper-1
+model_type: speech2text
+model_properties:
+  file_upload_limit: 25
+  supported_file_extensions: flac,mp3,mp4,mpeg,mpga,m4a,ogg,wav,webm

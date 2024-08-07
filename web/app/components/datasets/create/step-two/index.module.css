@@ -1,0 +1,439 @@
+.pageHeader {
+  @apply px-16 flex justify-between items-center;
+  position: sticky;
+  top: 0;
+  left: 0;
+  padding-top: 42px;
+  padding-bottom: 12px;
+  background-color: #fff;
+  font-weight: 600;
+  font-size: 18px;
+  line-height: 28px;
+  color: #101828;
+  z-index: 10;
+}
+
+.form {
+  @apply px-16 pb-8;
+}
+
+.form .label {
+  @apply pt-6 pb-2 flex items-center;
+  font-weight: 500;
+  font-size: 16px;
+  line-height: 24px;
+  color: #344054;
+}
+
+.segmentationItem {
+  min-height: 68px;
+}
+
+.indexItem {
+  min-height: 146px;
+}
+
+.indexItem .disableMask {
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  background-color: rgba(255, 255, 255, 0.5);
+  border-radius: 12px;
+  z-index: 2;
+}
+
+.indexItem .warningTip {
+  position: absolute;
+  bottom: 0;
+  left: 0;
+  width: 100%;
+  padding: 8px 20px 8px 40px;
+  background: #FFFAEB;
+  border-top: 0.5px solid #FEF0C7;
+  border-radius: 12px;
+  font-size: 12px;
+  line-height: 18px;
+  color: #344054;
+  z-index: 3;
+}
+
+.indexItem .warningTip::before {
+  content: '';
+  position: absolute;
+  top: 11px;
+  left: 20px;
+  width: 12px;
+  height: 12px;
+  background: center no-repeat url(../assets/alert-triangle.svg);
+  background-size: 12px;
+}
+
+.indexItem .warningTip .click {
+  color: #155EEF;
+  cursor: pointer;
+}
+
+.indexItem.disabled:hover {
+  background-color: #fcfcfd;
+  border-color: #f2f4f7;
+  box-shadow: none;
+  cursor: default;
+}
+
+.indexItem.disabled:hover .radio {
+  @apply w-4 h-4 border-[2px] border-gray-200 rounded-full;
+}
+
+.radioItem {
+  @apply relative mb-2 rounded-xl border border-gray-100 cursor-pointer;
+  background-color: #fcfcfd;
+}
+
+.radioItem.segmentationItem.custom {
+  height: auto;
+}
+
+.radioItem.segmentationItem.custom .typeHeader {
+  /* height: 65px; */
+}
+
+.radioItem.indexItem .typeHeader {
+  @apply py-4 pr-5;
+}
+
+.radioItem.indexItem.active .typeHeader {
+  padding: 15.5px 19.5px 15.5px 63.5px;
+}
+
+.radioItem.indexItem .radio {
+  top: 16px;
+  right: 20px;
+}
+
+.radioItem.indexItem.active .radio {
+  top: 16px;
+  right: 19.5px;
+}
+
+.radioItem.indexItem .typeHeader .title {
+  @apply pb-1;
+}
+
+.radioItem.indexItem .typeHeader .tip {
+  @apply pb-3;
+}
+
+.radioItem .typeIcon {
+  position: absolute;
+  top: 18px;
+  left: 20px;
+  width: 32px;
+  height: 32px;
+  background: #EEF4FF center no-repeat;
+  border-radius: 8px;
+}
+
+.typeIcon.auto {
+  background-color: #F5F3FF;
+  background-image: url(../assets/zap-fast.svg);
+}
+
+.typeIcon.customize {
+  background-image: url(../assets/sliders-02.svg);
+}
+
+.typeIcon.qualified {
+  background-color: #FFF6ED;
+  background-image: url(../assets/star-07.svg);
+}
+
+.typeIcon.economical {
+  background-image: url(../assets/piggy-bank-01.svg);
+}
+
+.radioItem .radio {
+  @apply w-4 h-4 border-[2px] border-gray-200 rounded-full;
+  position: absolute;
+  top: 26px;
+  right: 20px;
+}
+
+.radioItem:hover {
+  background-color: #ffffff;
+  border-color: #B2CCFF;
+  box-shadow: 0px 12px 16px -4px rgba(16, 24, 40, 0.08), 0px 4px 6px -2px rgba(16, 24, 40, 0.03);
+}
+
+.radioItem:hover .radio {
+  border-color: #155eef;
+}
+
+.radioItem.active {
+  border-width: 1.5px;
+  border-color: #528BFF;
+  box-shadow: 0px 1px 3px rgba(16, 24, 40, 0.1), 0px 1px 2px rgba(16, 24, 40, 0.06);
+}
+
+.radioItem.active .radio {
+  top: 25.5px;
+  right: 19.5px;
+  border-width: 5px;
+  border-color: #155EEF;
+}
+
+.radioItem.active:hover {
+  border-width: 1.5px;
+  border-color: #528BFF;
+  box-shadow: 0px 1px 3px rgba(16, 24, 40, 0.1), 0px 1px 2px rgba(16, 24, 40, 0.06);
+}
+
+.radioItem.active .typeIcon {
+  top: 17.5px;
+  left: 19.5px;
+}
+
+.radioItem.active .typeHeader {
+  padding: 11.5px 63.5px;
+}
+
+.typeHeader {
+  @apply flex flex-col px-16 py-3 justify-center;
+}
+
+.typeHeader .title {
+  display: flex;
+  align-items: center;
+  padding-bottom: 2px;
+  font-weight: 500;
+  font-size: 16px;
+  line-height: 24px;
+  color: #101828;
+}
+
+.typeHeader .tip {
+  font-weight: 400;
+  font-size: 13px;
+  line-height: 18px;
+  color: #667085;
+}
+
+.recommendTag {
+  display: inline-flex;
+  justify-content: center;
+  align-items: center;
+  padding: 0 6px;
+  margin-left: 4px;
+  border: 1px solid #E0EAFF;
+  border-radius: 6px;
+  font-weight: 500;
+  font-size: 12px;
+  line-height: 20px;
+  color: #444CE7;
+}
+
+.typeFormBody {
+  @apply px-16;
+  border-top: 1px solid #F2F4F7;
+}
+
+.formRow {
+  @apply flex justify-between mt-6;
+}
+
+.formRow .label {
+  @apply mb-2 p-0;
+  font-weight: 500;
+  font-size: 14px;
+  line-height: 20px;
+  color: #101828;
+}
+
+.ruleItem {
+  @apply flex items-center;
+}
+
+.formFooter {
+  padding: 16px 0 28px;
+}
+
+.formFooter .button {
+  font-size: 13px;
+  line-height: 18px;
+}
+
+.input {
+  @apply inline-flex h-9 w-full py-1 px-2 rounded-lg text-xs leading-normal;
+  @apply bg-gray-100 caret-primary-600 hover:bg-gray-100 focus:ring-1 focus:ring-inset focus:ring-gray-200 focus-visible:outline-none focus:bg-white placeholder:text-gray-400;
+}
+
+.source {
+  @apply flex justify-between items-center mt-8 px-6 py-4 rounded-xl bg-gray-50 border border-gray-100;
+}
+
+.source .divider {
+  @apply shrink-0 mx-4 w-px bg-gray-200;
+  height: 42px;
+}
+
+.fileIcon {
+  @apply inline-flex mr-1 w-6 h-6 bg-center bg-no-repeat;
+  background-image: url(../assets/pdf.svg);
+  background-size: 24px;
+}
+
+.fileIcon.pdf {
+  background-image: url(../assets/pdf.svg);
+}
+
+.fileIcon.csv {
+  background-image: url(../assets/csv.svg);
+}
+
+.fileIcon.doc {
+  background-image: url(../assets/doc.svg);
+}
+
+.fileIcon.docx {
+  background-image: url(../assets/docx.svg);
+}
+
+.fileIcon.xlsx,
+.fileIcon.xls {
+  background-image: url(../assets/xlsx.svg);
+}
+
+.fileIcon.html,
+.fileIcon.htm {
+  background-image: url(../assets/html.svg);
+}
+
+.fileIcon.md,
+.fileIcon.markdown {
+  background-image: url(../assets/md.svg);
+}
+
+.fileIcon.txt {
+  background-image: url(../assets/txt.svg);
+}
+
+.fileIcon.json {
+  background-image: url(../assets/json.svg);
+}
+
+.sourceContent {
+  width: 0;
+  flex: 1 1 auto;
+}
+
+.sourceCount {
+  @apply shrink-0 ml-1;
+  font-weight: 500;
+  font-size: 13px;
+  line-height: 18px;
+  color: #667085;
+}
+
+.segmentCount {
+  flex: 1 1 30%;
+  max-width: 120px;
+}
+
+.divider {
+  @apply mx-3 w-px h-4 bg-gray-200;
+}
+
+.calculating {
+  color: #98A2B3;
+  font-size: 12px;
+  line-height: 18px;
+}
+
+.sideTip {
+  @apply flex flex-col items-center shrink-0;
+  padding-top: 108px;
+  width: 524px;
+  border-left: 0.5px solid #F2F4F7;
+}
+
+.tipCard {
+  @apply flex flex-col items-start p-6;
+  width: 320px;
+  background-color: #F9FAFB;
+  box-shadow: 0px 1px 2px rgba(16, 24, 40, 0.05);
+  border-radius: 12px;
+}
+
+.tipCard .icon {
+  width: 32px;
+  height: 32px;
+  border: 1px solid #EAECF0;
+  border-radius: 6px;
+  background: center no-repeat url(../assets/book-open-01.svg);
+  background-size: 16px;
+}
+
+.tipCard .title {
+  margin: 12px 0;
+  font-weight: 500;
+  font-size: 16px;
+  line-height: 24px;
+  color: #344054;
+}
+
+.tipCard .content {
+  font-weight: 400;
+  font-size: 14px;
+  line-height: 20px;
+  color: #344054;
+}
+
+.previewWrap {
+  flex-shrink: 0;
+  width: 524px;
+}
+
+.previewWrap.isMobile {
+  max-width: 524px;
+}
+
+.previewHeader {
+  position: sticky;
+  top: 0;
+  left: 0;
+  padding-top: 42px;
+  background-color: #fff;
+  font-weight: 600;
+  font-size: 18px;
+  line-height: 28px;
+  color: #101828;
+  z-index: 10;
+}
+
+/* 
+ * `fixed` must under `previewHeader` because of style override would not work
+ */
+.fixed {
+  padding-top: 12px;
+  font-size: 12px;
+  line-height: 18px;
+  background: rgba(255, 255, 255, 0.9);
+  border-bottom: 0.5px solid #EAECF0;
+  backdrop-filter: blur(4px);
+  animation: fix 0.5s;
+}
+
+@keyframes fix {
+  from {
+    padding-top: 42px;
+    font-size: 18px;
+    line-height: 28px;
+  }
+
+  to {
+    padding-top: 12px;
+    font-size: 12px;
+    line-height: 18px;
+  }
+}

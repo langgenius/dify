@@ -1,0 +1,57 @@
+.customModal {
+    max-width: 800px !important;
+    max-height: calc(100vh - 80px);
+}
+
+.close {
+    top: 1.5rem;
+    right: 1.5rem;
+}
+
+.trash {
+    color: transparent;
+}
+
+.w64 {
+    width: 4rem;
+}
+
+.customApi {
+    font-size: 11px;
+}
+
+.autoWidth {
+    width: auto;
+}
+
+.trashIcon {
+    background-color: transparent;
+    background-image: url(./assets/trash-gray.svg);
+    background-position: center;
+    background-repeat: no-repeat;
+    background-size: 16px 16px;
+}
+
+.trashIcon:hover {
+    background-color: rgba(254, 228, 226, 1);
+    background-image: url(./assets/trash-red.svg);
+    background-position: center;
+    background-repeat: no-repeat;
+    background-size: 16px 16px;
+}
+
+.copyIcon {
+    background-image: url(./assets/copy.svg);
+    background-position: center;
+    background-repeat: no-repeat;
+}
+
+.copyIcon:hover {
+    background-image: url(./assets/copy-hover.svg);
+    background-position: center;
+    background-repeat: no-repeat;
+}
+
+.copyIcon.copied {
+    background-image: url(./assets/copied.svg);
+}

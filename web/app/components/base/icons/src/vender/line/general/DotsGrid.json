@@ -1,0 +1,134 @@
+{
+	"icon": {
+		"type": "element",
+		"isRootNode": true,
+		"name": "svg",
+		"attributes": {
+			"width": "14",
+			"height": "14",
+			"viewBox": "0 0 14 14",
+			"fill": "none",
+			"xmlns": "http://www.w3.org/2000/svg"
+		},
+		"children": [
+			{
+				"type": "element",
+				"name": "g",
+				"attributes": {
+					"id": "Icon"
+				},
+				"children": [
+					{
+						"type": "element",
+						"name": "g",
+						"attributes": {
+							"id": "Solid"
+						},
+						"children": [
+							{
+								"type": "element",
+								"name": "path",
+								"attributes": {
+									"fill-rule": "evenodd",
+									"clip-rule": "evenodd",
+									"d": "M5.83333 2.91667C5.83333 2.27233 6.35567 1.75 7 1.75C7.64433 1.75 8.16667 2.27233 8.16667 2.91667C8.16667 3.561 7.64433 4.08333 7 4.08333C6.35567 4.08333 5.83333 3.561 5.83333 2.91667Z",
+									"fill": "currentColor"
+								},
+								"children": []
+							},
+							{
+								"type": "element",
+								"name": "path",
+								"attributes": {
+									"fill-rule": "evenodd",
+									"clip-rule": "evenodd",
+									"d": "M5.83333 7C5.83333 6.35567 6.35567 5.83333 7 5.83333C7.64433 5.83333 8.16667 6.35567 8.16667 7C8.16667 7.64433 7.64433 8.16667 7 8.16667C6.35567 8.16667 5.83333 7.64433 5.83333 7Z",
+									"fill": "currentColor"
+								},
+								"children": []
+							},
+							{
+								"type": "element",
+								"name": "path",
+								"attributes": {
+									"fill-rule": "evenodd",
+									"clip-rule": "evenodd",
+									"d": "M5.83333 11.0833C5.83333 10.439 6.35567 9.91667 7 9.91667C7.64433 9.91667 8.16667 10.439 8.16667 11.0833C8.16667 11.7277 7.64433 12.25 7 12.25C6.35567 12.25 5.83333 11.7277 5.83333 11.0833Z",
+									"fill": "currentColor"
+								},
+								"children": []
+							},
+							{
+								"type": "element",
+								"name": "path",
+								"attributes": {
+									"fill-rule": "evenodd",
+									"clip-rule": "evenodd",
+									"d": "M9.91667 2.91667C9.91667 2.27233 10.439 1.75 11.0833 1.75C11.7277 1.75 12.25 2.27233 12.25 2.91667C12.25 3.561 11.7277 4.08333 11.0833 4.08333C10.439 4.08333 9.91667 3.561 9.91667 2.91667Z",
+									"fill": "currentColor"
+								},
+								"children": []
+							},
+							{
+								"type": "element",
+								"name": "path",
+								"attributes": {
+									"fill-rule": "evenodd",
+									"clip-rule": "evenodd",
+									"d": "M9.91667 7C9.91667 6.35567 10.439 5.83333 11.0833 5.83333C11.7277 5.83333 12.25 6.35567 12.25 7C12.25 7.64433 11.7277 8.16667 11.0833 8.16667C10.439 8.16667 9.91667 7.64433 9.91667 7Z",
+									"fill": "currentColor"
+								},
+								"children": []
+							},
+							{
+								"type": "element",
+								"name": "path",
+								"attributes": {
+									"fill-rule": "evenodd",
+									"clip-rule": "evenodd",
+									"d": "M9.91667 11.0833C9.91667 10.439 10.439 9.91667 11.0833 9.91667C11.7277 9.91667 12.25 10.439 12.25 11.0833C12.25 11.7277 11.7277 12.25 11.0833 12.25C10.439 12.25 9.91667 11.7277 9.91667 11.0833Z",
+									"fill": "currentColor"
+								},
+								"children": []
+							},
+							{
+								"type": "element",
+								"name": "path",
+								"attributes": {
+									"fill-rule": "evenodd",
+									"clip-rule": "evenodd",
+									"d": "M1.75 2.91667C1.75 2.27233 2.27233 1.75 2.91667 1.75C3.561 1.75 4.08333 2.27233 4.08333 2.91667C4.08333 3.561 3.561 4.08333 2.91667 4.08333C2.27233 4.08333 1.75 3.561 1.75 2.91667Z",
+									"fill": "currentColor"
+								},
+								"children": []
+							},
+							{
+								"type": "element",
+								"name": "path",
+								"attributes": {
+									"fill-rule": "evenodd",
+									"clip-rule": "evenodd",
+									"d": "M1.75 7C1.75 6.35567 2.27233 5.83333 2.91667 5.83333C3.561 5.83333 4.08333 6.35567 4.08333 7C4.08333 7.64433 3.561 8.16667 2.91667 8.16667C2.27233 8.16667 1.75 7.64433 1.75 7Z",
+									"fill": "currentColor"
+								},
+								"children": []
+							},
+							{
+								"type": "element",
+								"name": "path",
+								"attributes": {
+									"fill-rule": "evenodd",
+									"clip-rule": "evenodd",
+									"d": "M1.75 11.0833C1.75 10.439 2.27233 9.91667 2.91667 9.91667C3.561 9.91667 4.08333 10.439 4.08333 11.0833C4.08333 11.7277 3.561 12.25 2.91667 12.25C2.27233 12.25 1.75 11.7277 1.75 11.0833Z",
+									"fill": "currentColor"
+								},
+								"children": []
+							}
+						]
+					}
+				]
+			}
+		]
+	},
+	"name": "DotsGrid"
+}

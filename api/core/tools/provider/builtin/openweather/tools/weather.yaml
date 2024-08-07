@@ -1,0 +1,80 @@
+identity:
+  name: weather
+  author: Onelevenvy
+  label:
+    en_US: Open Weather Query
+    zh_Hans: 天气查询
+    pt_BR: Previsão do tempo
+  icon: icon.svg
+description:
+  human:
+    en_US: Weather forecast inquiry
+    zh_Hans: 天气查询
+    pt_BR: Inquérito sobre previsão meteorológica
+  llm: A tool when you want to ask about the weather or weather-related question
+parameters:
+  - name: city
+    type: string
+    required: true
+    label:
+      en_US: city
+      zh_Hans: 城市
+      pt_BR: cidade
+    human_description:
+      en_US: Target city for weather forecast query
+      zh_Hans: 天气预报查询的目标城市
+      pt_BR: Cidade de destino para consulta de previsão do tempo
+    llm_description: If you don't know you can extract the city name from the
+      question or you can reply：Please tell me your city. You have to extract
+      the Chinese city name from the question.If the input region is in Chinese
+      characters for China, it should be replaced with the corresponding English
+      name, such as '北京' for correct input is 'Beijing'
+    form: llm
+  - name: lang
+    type: select
+    required: true
+    human_description:
+      en_US: language
+      zh_Hans: 语言
+      pt_BR: language
+    label:
+      en_US: language
+      zh_Hans: 语言
+      pt_BR: language
+    form: form
+    options:
+      - value: zh_cn
+        label:
+          en_US: cn
+          zh_Hans: 中国
+          pt_BR: cn
+      - value: en_us
+        label:
+          en_US: usa
+          zh_Hans: 美国
+          pt_BR: usa
+    default: zh_cn
+  - name: units
+    type: select
+    required: true
+    human_description:
+      en_US: units for temperature
+      zh_Hans: 温度单位
+      pt_BR: units for temperature
+    label:
+      en_US: units
+      zh_Hans: 单位
+      pt_BR: units
+    form: form
+    options:
+      - value: metric
+        label:
+          en_US: metric
+          zh_Hans: ℃
+          pt_BR: metric
+      - value: imperial
+        label:
+          en_US: imperial
+          zh_Hans: ℉
+          pt_BR: imperial
+    default: metric

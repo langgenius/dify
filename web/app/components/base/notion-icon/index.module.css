@@ -1,0 +1,6 @@
+.default-page-icon {
+  width: 20px;
+  height: 20px;
+  background: url(../notion-page-selector/assets/notion-page.svg) center center no-repeat;
+  background-size: cover;
+}

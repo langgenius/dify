@@ -1,0 +1,61 @@
+identity:
+  author: Onelevenvy
+  name: spark
+  label:
+    en_US: Spark
+    zh_Hans: 讯飞星火
+    pt_BR: Spark
+  description:
+    en_US: Spark Platform Toolkit
+    zh_Hans: 讯飞星火平台工具
+    pt_BR: Pacote de Ferramentas da Plataforma Spark
+  icon: icon.svg
+  tags:
+    - image
+credentials_for_provider:
+  APPID:
+    type: secret-input
+    required: true
+    label:
+      en_US: Spark APPID
+      zh_Hans: APPID
+      pt_BR: Spark APPID
+    help:
+      en_US: Please input your  APPID
+      zh_Hans: 请输入你的 APPID
+      pt_BR: Please input your APPID
+    placeholder:
+      en_US: Please input your APPID
+      zh_Hans: 请输入你的 APPID
+      pt_BR: Please input your APPID
+  APISecret:
+    type: secret-input
+    required: true
+    label:
+      en_US: Spark APISecret
+      zh_Hans: APISecret
+      pt_BR: Spark APISecret
+    help:
+      en_US: Please input your Spark APISecret
+      zh_Hans: 请输入你的 APISecret
+      pt_BR: Please input your Spark APISecret
+    placeholder:
+      en_US: Please input your Spark APISecret
+      zh_Hans: 请输入你的 APISecret
+      pt_BR: Please input your Spark APISecret
+  APIKey:
+    type: secret-input
+    required: true
+    label:
+      en_US: Spark APIKey
+      zh_Hans: APIKey
+      pt_BR: Spark APIKey
+    help:
+      en_US: Please input your Spark APIKey
+      zh_Hans: 请输入你的 APIKey
+      pt_BR: Please input your Spark APIKey
+    placeholder:
+      en_US: Please input your Spark APIKey
+      zh_Hans: 请输入你的 APIKey
+      pt_BR: Please input Spark APIKey
+    url: https://console.xfyun.cn/services

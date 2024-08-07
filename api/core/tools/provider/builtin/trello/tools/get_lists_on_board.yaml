@@ -1,0 +1,27 @@
+identity:
+  name: get_lists_from_board
+  author: Yash Parmar
+  label:
+    en_US: Get Lists from Board
+    zh_Hans: 获取看板的列表
+    pt_BR: Obter Listas do Quadro
+description:
+  human:
+    en_US: Retrieves all lists from a specified Trello board by its ID, providing an overview of the board's organization and current phases or categories.
+    zh_Hans: 通过其 ID 从指定的 Trello 看板检索所有列表，提供看板组织和当前阶段或类别的概览。
+    pt_BR: Recupera todas as listas de um quadro Trello especificado pelo seu ID, fornecendo uma visão geral da organização do quadro e das fases ou categorias atuais.
+  llm: Fetch and display all lists from a specific Trello board by inputting the board's ID. This aids in understanding the board's structure and task categorization.
+parameters:
+  - name: boardId
+    type: string
+    required: true
+    label:
+      en_US: Board ID
+      zh_Hans: 看板 ID
+      pt_BR: ID do Quadro
+    human_description:
+      en_US: The unique identifier of the Trello board from which to retrieve the lists.
+      zh_Hans: 用于检索列表的 Trello 看板的唯一标识符。
+      pt_BR: O identificador único do quadro Trello do qual as listas serão recuperadas.
+    llm_description: Enter the ID of the Trello board to obtain a detailed list of all its lists, providing insight into the board's structure.
+    form: llm

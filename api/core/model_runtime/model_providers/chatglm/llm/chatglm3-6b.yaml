@@ -1,0 +1,22 @@
+model: chatglm3-6b
+label:
+  en_US: ChatGLM3-6B
+model_type: llm
+features:
+  - tool-call
+  - agent-thought
+model_properties:
+  mode: chat
+  context_size: 8000
+parameter_rules:
+  - name: temperature
+    use_template: temperature
+  - name: top_p
+    use_template: top_p
+    required: false
+  - name: max_tokens
+    use_template: max_tokens
+    required: true
+    default: 256
+    min: 1
+    max: 8000

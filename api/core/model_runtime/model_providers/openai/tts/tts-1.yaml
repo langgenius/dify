@@ -1,0 +1,31 @@
+model: tts-1
+model_type: tts
+model_properties:
+  default_voice: 'alloy'
+  voices:
+    - mode: 'alloy'
+      name: 'Alloy'
+      language: ['zh-Hans', 'en-US', 'de-DE', 'fr-FR', 'es-ES', 'it-IT', 'th-TH', 'id-ID']
+    - mode: 'echo'
+      name: 'Echo'
+      language: ['zh-Hans', 'en-US', 'de-DE', 'fr-FR', 'es-ES', 'it-IT', 'th-TH', 'id-ID']
+    - mode: 'fable'
+      name: 'Fable'
+      language: ['zh-Hans', 'en-US', 'de-DE', 'fr-FR', 'es-ES', 'it-IT', 'th-TH', 'id-ID']
+    - mode: 'onyx'
+      name: 'Onyx'
+      language: ['zh-Hans', 'en-US', 'de-DE', 'fr-FR', 'es-ES', 'it-IT', 'th-TH', 'id-ID']
+    - mode: 'nova'
+      name: 'Nova'
+      language: ['zh-Hans', 'en-US', 'de-DE', 'fr-FR', 'es-ES', 'it-IT', 'th-TH', 'id-ID']
+    - mode: 'shimmer'
+      name: 'Shimmer'
+      language: ['zh-Hans', 'en-US', 'de-DE', 'fr-FR', 'es-ES', 'it-IT', 'th-TH', 'id-ID']
+  word_limit: 3500
+  audio_type: 'mp3'
+  max_workers: 5
+pricing:
+  input: '0.015'
+  output: '0'
+  unit: '0.001'
+  currency: USD

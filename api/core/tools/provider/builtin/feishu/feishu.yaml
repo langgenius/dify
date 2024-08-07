@@ -1,0 +1,16 @@
+identity:
+  author: Arkii Sun
+  name: feishu
+  label:
+    en_US: Feishu
+    zh_Hans: 飞书
+    pt_BR: Feishu
+  description:
+    en_US: Feishu group bot
+    zh_Hans: 飞书群机器人
+    pt_BR: Feishu group bot
+  icon: icon.svg
+  tags:
+    - social
+    - productivity
+credentials_for_provider:

@@ -1,0 +1,42 @@
+identity:
+  author: Dify
+  name: stablediffusion
+  label:
+    en_US: Stable Diffusion
+    zh_Hans: Stable Diffusion
+    pt_BR: Stable Diffusion
+  description:
+    en_US: Stable Diffusion is a tool for generating images which can be deployed locally.
+    zh_Hans: Stable Diffusion 是一个可以在本地部署的图片生成的工具。
+    pt_BR: Stable Diffusion is a tool for generating images which can be deployed locally.
+  icon: icon.png
+  tags:
+    - image
+credentials_for_provider:
+  base_url:
+    type: secret-input
+    required: true
+    label:
+      en_US: Base URL
+      zh_Hans: StableDiffusion服务器的Base URL
+      pt_BR: Base URL
+    placeholder:
+      en_US: Please input your StableDiffusion server's Base URL
+      zh_Hans: 请输入你的 StableDiffusion 服务器的 Base URL
+      pt_BR: Please input your StableDiffusion server's Base URL
+  model:
+    type: text-input
+    required: true
+    label:
+      en_US: Model
+      zh_Hans: 模型
+      pt_BR: Model
+    placeholder:
+      en_US: Please input your model
+      zh_Hans: 请输入你的模型名称
+      pt_BR: Please input your model
+    help:
+      en_US: The model name of the StableDiffusion server
+      zh_Hans: StableDiffusion服务器的模型名称
+      pt_BR: The model name of the StableDiffusion server
+    url: https://docs.dify.ai/tutorials/tool-configuration/stable-diffusion

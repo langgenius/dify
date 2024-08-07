@@ -1,0 +1,176 @@
+{
+	"icon": {
+		"type": "element",
+		"isRootNode": true,
+		"name": "svg",
+		"attributes": {
+			"width": "24",
+			"height": "24",
+			"viewBox": "0 0 24 24",
+			"fill": "none",
+			"xmlns": "http://www.w3.org/2000/svg"
+		},
+		"children": [
+			{
+				"type": "element",
+				"name": "g",
+				"attributes": {
+					"id": "Xorbits Square",
+					"clip-path": "url(#clip0_9850_26870)"
+				},
+				"children": [
+					{
+						"type": "element",
+						"name": "path",
+						"attributes": {
+							"id": "Vector",
+							"d": "M8.00391 12.3124C8.69334 13.0754 9.47526 13.7494 10.3316 14.3188C11.0667 14.8105 11.8509 15.2245 12.6716 15.5541C14.1617 14.1465 15.3959 12.4907 16.3192 10.6606L21.7051 0L12.3133 7.38353C10.5832 8.74456 9.12178 10.416 8.00391 12.3124Z",
+							"fill": "url(#paint0_linear_9850_26870)"
+						},
+						"children": []
+					},
+					{
+						"type": "element",
+						"name": "path",
+						"attributes": {
+							"id": "Vector_2",
+							"d": "M7.23504 18.9512C6.56092 18.5012 5.92386 18.0265 5.3221 17.5394L2.06445 24L7.91975 19.3959C7.69034 19.2494 7.46092 19.103 7.23504 18.9512Z",
+							"fill": "url(#paint1_linear_9850_26870)"
+						},
+						"children": []
+					},
+					{
+						"type": "element",
+						"name": "path",
+						"attributes": {
+							"id": "Vector_3",
+							"d": "M19.3161 8.57474C21.0808 10.9147 21.5961 13.5159 20.3996 15.3053C18.6526 17.9189 13.9161 17.8183 9.82024 15.0812C5.72435 12.3441 3.82024 8.0065 5.56729 5.39297C6.76377 3.60356 9.36318 3.0865 12.2008 3.81886C7.29318 1.73474 2.62376 1.94121 0.813177 4.64474C-1.45976 8.04709 1.64435 14.1177 7.74494 18.1889C13.8455 22.26 20.6361 22.8124 22.9091 19.4118C24.7179 16.703 23.1173 12.3106 19.3161 8.57474Z",
+							"fill": "url(#paint2_linear_9850_26870)"
+						},
+						"children": []
+					}
+				]
+			},
+			{
+				"type": "element",
+				"name": "defs",
+				"attributes": {},
+				"children": [
+					{
+						"type": "element",
+						"name": "linearGradient",
+						"attributes": {
+							"id": "paint0_linear_9850_26870",
+							"x1": "2.15214",
+							"y1": "24.3018",
+							"x2": "21.2921",
+							"y2": "0.0988218",
+							"gradientUnits": "userSpaceOnUse"
+						},
+						"children": [
+							{
+								"type": "element",
+								"name": "stop",
+								"attributes": {
+									"stop-color": "#E9A85E"
+								},
+								"children": []
+							},
+							{
+								"type": "element",
+								"name": "stop",
+								"attributes": {
+									"offset": "1",
+									"stop-color": "#F52B76"
+								},
+								"children": []
+							}
+						]
+					},
+					{
+						"type": "element",
+						"name": "linearGradient",
+						"attributes": {
+							"id": "paint1_linear_9850_26870",
+							"x1": "2.06269",
+							"y1": "24.2294",
+							"x2": "21.2027",
+							"y2": "0.028252",
+							"gradientUnits": "userSpaceOnUse"
+						},
+						"children": [
+							{
+								"type": "element",
+								"name": "stop",
+								"attributes": {
+									"stop-color": "#E9A85E"
+								},
+								"children": []
+							},
+							{
+								"type": "element",
+								"name": "stop",
+								"attributes": {
+									"offset": "1",
+									"stop-color": "#F52B76"
+								},
+								"children": []
+							}
+						]
+					},
+					{
+						"type": "element",
+						"name": "linearGradient",
+						"attributes": {
+							"id": "paint2_linear_9850_26870",
+							"x1": "-0.613606",
+							"y1": "3.843",
+							"x2": "21.4449",
+							"y2": "18.7258",
+							"gradientUnits": "userSpaceOnUse"
+						},
+						"children": [
+							{
+								"type": "element",
+								"name": "stop",
+								"attributes": {
+									"stop-color": "#6A0CF5"
+								},
+								"children": []
+							},
+							{
+								"type": "element",
+								"name": "stop",
+								"attributes": {
+									"offset": "1",
+									"stop-color": "#AB66F3"
+								},
+								"children": []
+							}
+						]
+					},
+					{
+						"type": "element",
+						"name": "clipPath",
+						"attributes": {
+							"id": "clip0_9850_26870"
+						},
+						"children": [
+							{
+								"type": "element",
+								"name": "rect",
+								"attributes": {
+									"width": "24",
+									"height": "24",
+									"fill": "white"
+								},
+								"children": []
+							}
+						]
+					}
+				]
+			}
+		]
+	},
+	"name": "XorbitsInference"
+}

@@ -1,0 +1,34 @@
+model: gemini-pro-vision
+label:
+  en_US: Gemini Pro Vision
+model_type: llm
+features:
+  - vision
+model_properties:
+  mode: chat
+  context_size: 12288
+parameter_rules:
+  - name: temperature
+    use_template: temperature
+  - name: top_p
+    use_template: top_p
+  - name: top_k
+    label:
+      zh_Hans: 取样数量
+      en_US: Top k
+    type: int
+    help:
+      zh_Hans: 仅从每个后续标记的前 K 个选项中采样。
+      en_US: Only sample from the top K options for each subsequent token.
+    required: false
+  - name: max_tokens_to_sample
+    use_template: max_tokens
+    required: true
+    default: 4096
+    min: 1
+    max: 4096
+pricing:
+  input: '0.00'
+  output: '0.00'
+  unit: '0.000001'
+  currency: USD

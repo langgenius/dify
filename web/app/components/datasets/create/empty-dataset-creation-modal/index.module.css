@@ -1,0 +1,38 @@
+.modal {
+  position: relative;
+}
+
+.modalHeader {
+  @apply flex items-center place-content-between h-8;
+}
+.modalHeader .title {
+  @apply grow;
+  font-weight: 600;
+  font-size: 20px;
+  line-height: 32px;
+  color: #101828;
+}
+.modalHeader .close {
+  @apply shrink-0 h-4 w-4 bg-center bg-no-repeat cursor-pointer;
+  background-image: url(../assets/close.svg);
+  background-size: 16px;
+}
+
+.modal .tip {
+  @apply mt-1 mb-8;
+  font-weight: 400;
+  font-size: 13px;
+  line-height: 18px;
+  color: #667085;
+}
+
+.form {
+  @apply mb-8;
+}
+.form .label {
+  @apply mb-2;
+  font-weight: 500;
+  font-size: 14px;
+  line-height: 20px;
+  color: #101828;
+}

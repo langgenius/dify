@@ -1,0 +1,40 @@
+identity:
+  name: send_message
+  author: Yash Parmar
+  label:
+    en_US: SendMessage
+    zh_Hans: 发送消息
+    pt_BR: SendMessage
+description:
+  human:
+    en_US: Send SMS or Twilio Messaging Channels messages.
+    zh_Hans: 发送SMS或Twilio消息通道消息。
+    pt_BR: Send SMS or Twilio Messaging Channels messages.
+  llm: Send SMS or Twilio Messaging Channels messages. Supports different channels including WhatsApp.
+parameters:
+  - name: message
+    type: string
+    required: true
+    label:
+      en_US: Message
+      zh_Hans: 消息内容
+      pt_BR: Message
+    human_description:
+      en_US: The content of the message to be sent.
+      zh_Hans: 要发送的消息内容。
+      pt_BR: The content of the message to be sent.
+    llm_description: The content of the message to be sent.
+    form: llm
+  - name: to_number
+    type: string
+    required: true
+    label:
+      en_US: To Number
+      zh_Hans: 收信号码
+      pt_BR: Para Número
+    human_description:
+      en_US: The recipient's phone number. Prefix with 'whatsapp:' for WhatsApp messages, e.g., "whatsapp:+1234567890".
+      zh_Hans: 收件人的电话号码。WhatsApp消息前缀为'whatsapp:'，例如，"whatsapp:+1234567890"。
+      pt_BR: The recipient's phone number. Prefix with 'whatsapp:' for WhatsApp messages, e.g., "whatsapp:+1234567890".
+    llm_description: The recipient's phone number. Prefix with 'whatsapp:' for WhatsApp messages, e.g., "whatsapp:+1234567890".
+    form: llm

@@ -1,0 +1,28 @@
+identity:
+  name: gaode_weather
+  author: CharlieWei
+  label:
+    en_US: Weather Forecast
+    zh_Hans: 天气预报
+    pt_BR: Previsão do tempo
+  icon: icon.svg
+description:
+  human:
+    en_US: Weather forecast inquiry
+    zh_Hans: 天气预报查询。
+    pt_BR: Inquérito sobre previsão meteorológica.
+  llm: A tool when you want to ask about the weather or weather-related question.
+parameters:
+  - name: city
+    type: string
+    required: true
+    label:
+      en_US: city
+      zh_Hans: 城市
+      pt_BR: cidade
+    human_description:
+      en_US: Target city for weather forecast query.
+      zh_Hans: 天气预报查询的目标城市。
+      pt_BR: Cidade de destino para consulta de previsão do tempo.
+    llm_description: If you don't know you can extract the city name from the question or you can reply：Please tell me your city. You have to extract the Chinese city name from the question.
+    form: llm

@@ -1,0 +1,27 @@
+identity:
+  name: get_board_actions
+  author: Yash Parmar
+  label:
+    en_US: Get Board Actions
+    zh_Hans: 获取看板操作
+    pt_BR: Obter Ações do Quadro
+description:
+  human:
+    en_US: Retrieves a list of actions (such as updates, movements, and comments) for a Trello board by its ID. This tool provides insights into the board's activity history.
+    zh_Hans: 通过其 ID 为 Trello 看板检索操作列表（如更新、移动和评论）。此工具提供了看板活动历史的见解。
+    pt_BR: Recupera uma lista de ações (como atualizações, movimentos e comentários) para um quadro Trello pelo seu ID. Esta ferramenta oferece insights sobre o histórico de atividades do quadro.
+  llm: Fetch the sequence of actions performed on a Trello board, such as card updates, movements, and comments, by providing the board's ID. Offers a historical view of board activities.
+parameters:
+  - name: boardId
+    type: string
+    required: true
+    label:
+      en_US: Board ID
+      zh_Hans: 看板 ID
+      pt_BR: ID do Quadro
+    human_description:
+      en_US: The unique identifier of the Trello board for which you want to retrieve actions. It targets the specific board to fetch its activity log.
+      zh_Hans: 您想要检索操作的 Trello 看板的唯一标识符。它定位特定的看板以获取其活动日志。
+      pt_BR: O identificador único do quadro Trello para o qual você deseja recuperar ações. Direciona especificamente para o quadro para buscar seu registro de atividades.
+    llm_description: Input the ID of the Trello board to access its detailed action history, including all updates, comments, and movements related to the board.
+    form: llm

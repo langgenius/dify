@@ -1,0 +1,8 @@
+model: amazon.titan-embed-text-v2:0
+model_type: text-embedding
+model_properties:
+  context_size: 8192
+pricing:
+  input: '0.00002'
+  unit: '0.00001'
+  currency: USD

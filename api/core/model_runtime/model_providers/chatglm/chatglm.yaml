@@ -1,0 +1,28 @@
+provider: chatglm
+label:
+  en_US: ChatGLM
+icon_small:
+  en_US: icon_s_en.svg
+icon_large:
+  en_US: icon_l_en.svg
+background: "#F4F7FF"
+help:
+  title:
+    en_US: Deploy ChatGLM to your local
+    zh_Hans: 部署您的本地 ChatGLM
+  url:
+    en_US: https://github.com/THUDM/ChatGLM3
+supported_model_types:
+  - llm
+configurate_methods:
+  - predefined-model
+provider_credential_schema:
+  credential_form_schemas:
+    - variable: api_base
+      label:
+        en_US: API URL
+      type: text-input
+      required: true
+      placeholder:
+        zh_Hans: 在此输入您的 API URL
+        en_US: Enter your API URL
