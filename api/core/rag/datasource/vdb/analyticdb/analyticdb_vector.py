@@ -65,8 +65,15 @@ class AnalyticdbVector(BaseVector):
         AnalyticdbVector._init = True
 
     def _initialize(self) -> None:
-        self._initialize_vector_database()
-        self._create_namespace_if_not_exists()
+        cache_key = f"vector_indexing_{self.config.instance_id}"
+        lock_name = f"{cache_key}_lock"
+        with redis_client.lock(lock_name, timeout=20):
+            collection_exist_cache_key = f"vector_indexing_{self.config.instance_id}"
+            if redis_client.get(collection_exist_cache_key):
+                return
+            self._initialize_vector_database()
+            self._create_namespace_if_not_exists()
+            redis_client.set(collection_exist_cache_key, 1, ex=3600)
 
     def _initialize_vector_database(self) -> None:
         from alibabacloud_gpdb20160503 import models as gpdb_20160503_models
