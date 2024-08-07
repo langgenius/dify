@@ -173,7 +173,7 @@ class CouchbaseVector(BaseVector):
             index_definition['uuid'] = uuid
             index_definition['params']['mapping']['types']['collection_name']['properties']['embedding']['fields'][0]['dims'] = vector_length
             index_definition['params']['mapping']['types'][self._scope_name + '.' + self._collection_name] = index_definition['params']['mapping']['types'].pop('collection_name')
-            time.sleep(3)
+            time.sleep(2)
             index_manager.upsert_index(
                 SearchIndex(
                     index_definition["name"],
@@ -181,7 +181,7 @@ class CouchbaseVector(BaseVector):
                     source_name=self._bucket_name,
                 ),
             )
-
+            time.sleep(1)
 
             redis_client.set(collection_exist_cache_key, 1, ex=3600)
 
@@ -232,10 +232,15 @@ class CouchbaseVector(BaseVector):
 
 
     def text_exists(self, id: str) -> bool:
-        query = f"SELECT COUNT(1) AS count FROM `{self._client_config.bucket_name}`.`{self._client_config.scope_name}`.`{self._collection_name}` WHERE `id` = {id}"
-        result = self._cluster.query(query)
+        # Use a parameterized query for safety and correctness
+        query = f"SELECT COUNT(1) AS count FROM `{self._client_config.bucket_name}`.{self._client_config.scope_name}.{self._collection_name} WHERE META().id = $doc_id"
+        # Pass the id as a parameter to the query
+        result = self._cluster.query(query, named_parameters={"doc_id": id})
         for row in result:
+            print(row)
             return row['count'] > 0
+        return False  # Return False if no rows are returned
+
 
     def delete_by_ids(self, ids: list[str]) -> None:
         print(ids)
@@ -261,13 +266,13 @@ class CouchbaseVector(BaseVector):
         self._cluster.query(query,named_parameters={'doc_id':document_id})
         print('running delete by document id')
 
-    def get_ids_by_metadata_field(self, key: str, value: str):
-        query = f"""
-            SELECT id FROM `{self._client_config.bucket_name}`.{self._client_config.scope_name}.{self._collection_name}
-            WHERE metadata.{key} = {value};
-            """
-        result = self._cluster.query(query)
-        return [row['id'] for row in result.rows()]
+    # def get_ids_by_metadata_field(self, key: str, value: str):
+    #     query = f"""
+    #         SELECT id FROM `{self._client_config.bucket_name}`.{self._client_config.scope_name}.{self._collection_name}
+    #         WHERE `metadata.{key}` = $value;
+    #         """
+    #     result = self._cluster.query(query, named_parameters={'value':value})
+    #     return [row['id'] for row in result.rows()]
 
     
     def delete_by_metadata_field(self, key: str, value: str) -> None:

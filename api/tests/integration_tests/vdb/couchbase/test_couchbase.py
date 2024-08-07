@@ -21,10 +21,5 @@ class CouchbaseTest(AbstractVectorTest):
             ),
         )
 
-    def search_by_full_text(self):
-        hits_by_full_text: list[Document] = self.vector.search_by_full_text(query=get_example_text())
-        assert len(hits_by_full_text) == 0
-
-
 def test_couchbase(setup_mock_redis):
     CouchbaseTest().run_all_tests()
