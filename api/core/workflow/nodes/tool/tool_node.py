@@ -118,6 +118,7 @@ class ToolNode(BaseNode):
         for parameter_name in node_data.tool_parameters:
             parameter = tool_parameters_dictionary.get(parameter_name)
             if not parameter:
+                result[parameter_name] = None
                 continue
             if parameter.type == ToolParameter.ToolParameterType.FILE:
                 result[parameter_name] = [
