@@ -200,7 +200,7 @@ safetensors = "~0.4.3"
 ############################################################
 # [ Tools ] dependency group
 ############################################################
-[tool.poetry.group.tools.dependencies]
+[tool.poetry.group.tool.dependencies]
 arxiv = "2.1.0"
 cloudscraper = "1.2.71"
 duckduckgo-search = "~6.3.0"
@@ -241,6 +241,7 @@ chromadb = "0.5.1"
 clickhouse-connect = "~0.7.16"
 elasticsearch = "8.14.0"
 opensearch-py = "2.4.0"
+couchbase = "^4.3.0"
 oracledb = "~2.2.1"
 pgvecto-rs = { version = "~0.2.1", extras = ['sqlalchemy'] }
 pgvector = "0.2.5"

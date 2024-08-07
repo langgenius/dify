@@ -32,6 +32,7 @@ from configs.middleware.vdb.tidb_vector_config import TiDBVectorConfig
 from configs.middleware.vdb.upstash_config import UpstashConfig
 from configs.middleware.vdb.vikingdb_config import VikingDBConfig
 from configs.middleware.vdb.weaviate_config import WeaviateConfig
+from configs.middleware.vdb.couchbase_config import CouchbaseConfig
 
 
 class StorageConfig(BaseSettings):
@@ -251,6 +252,7 @@ class MiddlewareConfig(
     TiDBVectorConfig,
     WeaviateConfig,
     ElasticsearchConfig,
+    CouchbaseConfig,
     InternalTestConfig,
     VikingDBConfig,
     UpstashConfig,
