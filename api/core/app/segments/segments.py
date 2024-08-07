@@ -89,17 +89,14 @@ class ObjectSegment(Segment):
 
     @property
     def text(self) -> str:
-        # TODO: Process variables.
         return json.dumps(self.model_dump()['value'], ensure_ascii=False)
 
     @property
     def log(self) -> str:
-        # TODO: Process variables.
         return json.dumps(self.model_dump()['value'], ensure_ascii=False, indent=2)
 
     @property
     def markdown(self) -> str:
-        # TODO: Use markdown code block
         return json.dumps(self.model_dump()['value'], ensure_ascii=False, indent=2)
 
 
