@@ -68,6 +68,7 @@ class OpenAILargeLanguageModel(_CommonOpenAI, LargeLanguageModel):
 
         # get model mode
         model_mode = self.get_model_mode(base_model, credentials)
+        print(f"Model mode: {model_mode}")
 
         if model_mode == LLMMode.CHAT:
             # chat model
@@ -669,6 +670,7 @@ class OpenAILargeLanguageModel(_CommonOpenAI, LargeLanguageModel):
         )
 
         for chunk in response:
+            print(chunk)
             if len(chunk.choices) == 0:
                 if chunk.usage:
                     # calculate num tokens
@@ -719,6 +721,10 @@ class OpenAILargeLanguageModel(_CommonOpenAI, LargeLanguageModel):
             )
 
             full_assistant_content += delta.delta.content if delta.delta.content else ''
+            
+            print(full_assistant_content)
+
+            print('has_finish_reason', has_finish_reason)
 
             if has_finish_reason:
                 final_chunk = LLMResultChunk(
@@ -755,6 +761,8 @@ class OpenAILargeLanguageModel(_CommonOpenAI, LargeLanguageModel):
         # transform usage
         usage = self._calc_response_usage(model, credentials, prompt_tokens, completion_tokens)
         final_chunk.delta.usage = usage
+
+        print(final_chunk)
 
         yield final_chunk
 
