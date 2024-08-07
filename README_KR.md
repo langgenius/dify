@@ -4,7 +4,7 @@
   <a href="https://cloud.dify.ai">Dify 클라우드</a> ·
   <a href="https://docs.dify.ai/getting-started/install-self-hosted">셀프-호스팅</a> ·
   <a href="https://docs.dify.ai">문서</a> ·
-  <a href="https://cal.com/guchenhe/60-min-meeting">기업 문의</a>
+  <a href="https://udify.app/chat/22L1zSxg6yW1cWQg">기업 문의 (영어만 가능)</a>
 </p>
 
 <p align="center">
