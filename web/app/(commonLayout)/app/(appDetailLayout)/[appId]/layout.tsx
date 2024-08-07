@@ -120,7 +120,7 @@ const AppDetailLayout: FC<IAppDetailLayoutProps> = (props) => {
         setAppDetail({ ...res, enable_sso: false })
         setNavigation(getNavigations(appId, isCurrentWorkspaceEditor, res.mode))
         if (systemFeatures.enable_web_sso_switch_component) {
-          fetchAppSSO(appId).then((ssoRes) => {
+          fetchAppSSO({ appId }).then((ssoRes) => {
             setAppDetail({ ...res, enable_sso: ssoRes.enabled })
           })
         }

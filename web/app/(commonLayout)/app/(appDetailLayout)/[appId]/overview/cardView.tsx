@@ -40,7 +40,7 @@ const CardView: FC<ICardViewProps> = ({ appId }) => {
     })
     // update sso setting
     if (systemFeatures.enable_web_sso_switch_component) {
-      fetchAppSSO(appId).then((res) => {
+      fetchAppSSO({ appId }).then((res) => {
         setAppDetail({ ...appDetail!, enable_sso: res.enabled })
       })
     }

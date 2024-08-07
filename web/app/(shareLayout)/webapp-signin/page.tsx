@@ -16,7 +16,6 @@ const WebSSOForm: FC = () => {
   const redirectUrl = searchParams.get('redirect_url')
   const tokenFromUrl = searchParams.get('web_sso_token')
   const message = searchParams.get('message')
-  const appId = searchParams.get('app_id')
 
   const showErrorToast = (message: string) => {
     Toast.notify({
@@ -75,7 +74,7 @@ const WebSSOForm: FC = () => {
   useEffect(() => {
     const init = async () => {
       const res = await fetchSystemFeatures()
-      const appSettings = await fetchAppSSO(appId!)
+      const appSettings = await fetchAppSSO({ appCode: getAppCodeFromRedirectUrl()! })
       // do sso when system & app sso is enabled
       if (res.sso_enforced_for_web && appSettings.enabled) {
         const protocol = res.sso_enforced_for_web_protocol
