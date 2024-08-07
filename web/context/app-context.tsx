@@ -60,6 +60,7 @@ const AppContext = createContext<AppContextValue>({
     sso_enforced_for_signin_protocol: '',
     sso_enforced_for_web: false,
     sso_enforced_for_web_protocol: '',
+    enable_web_sso_switch_component: true,
   },
   setTheme: () => { },
   apps: [],
@@ -104,6 +105,7 @@ export const AppContextProvider: FC<AppContextProviderProps> = ({ children }) =>
       sso_enforced_for_signin_protocol: '',
       sso_enforced_for_web: false,
       sso_enforced_for_web_protocol: '',
+      enable_web_sso_switch_component: true,
     },
   })
 
