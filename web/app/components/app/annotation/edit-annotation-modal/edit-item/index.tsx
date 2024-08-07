@@ -79,7 +79,7 @@ const EditItem: FC<Props> = ({
                 {!readonly && (
                   <div
                     className='flex items-center space-x-1 leading-[18px] text-xs font-medium text-[#155EEF] cursor-pointer'
-                    onClick={(e) => {
+                    onClick={() => {
                       setIsEdit(true)
                     }}
                   >

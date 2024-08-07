@@ -1,6 +1,7 @@
 from flask_login import current_user
 from flask_restful import Resource, marshal_with, reqparse
 
+from constants import HIDDEN_VALUE
 from controllers.console import api
 from controllers.console.setup import setup_required
 from controllers.console.wraps import account_initialization_required
@@ -89,7 +90,7 @@ class APIBasedExtensionDetailAPI(Resource):
         extension_data_from_db.name = args['name']
         extension_data_from_db.api_endpoint = args['api_endpoint']
 
-        if args['api_key'] != '[__HIDDEN__]':
+        if args['api_key'] != HIDDEN_VALUE:
             extension_data_from_db.api_key = args['api_key']
 
         return APIBasedExtensionService.save(extension_data_from_db)

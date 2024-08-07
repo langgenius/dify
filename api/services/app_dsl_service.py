@@ -176,7 +176,7 @@ class AppDslService:
         else:
             cls._append_model_config_export_data(export_data, app_model)
 
-        return yaml.dump(export_data)
+        return yaml.dump(export_data, allow_unicode=True)
 
     @classmethod
     def _check_or_fix_dsl(cls, import_data: dict) -> dict:
