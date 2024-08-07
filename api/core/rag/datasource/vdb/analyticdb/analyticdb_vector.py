@@ -285,9 +285,11 @@ class AnalyticdbVector(BaseVector):
         documents = []
         for match in response.body.matches.match:
             if match.score > score_threshold:
+                metadata = json.loads(match.metadata.get("metadata_"))
                 doc = Document(
                     page_content=match.metadata.get("page_content"),
-                    metadata=json.loads(match.metadata.get("metadata_")),
+                    vector=match.metadata.get("vector"),
+                    metadata=metadata,
                 )
                 documents.append(doc)
         return documents
