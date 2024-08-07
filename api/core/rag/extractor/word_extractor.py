@@ -160,7 +160,6 @@ class WordExtractor(BaseExtractor):
         hyperlinks_url = None
         url_pattern = re.compile(r'http://[^\s+]+//|https://[^\s+]+')
         for para in doc.paragraphs:
-            # 检查段落中是否有超链接
             for run in para.runs:
                 if run.text and hyperlinks_url:
                     result = f'  [{run.text}]({hyperlinks_url})  '
