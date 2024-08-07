@@ -322,7 +322,23 @@ class AnalyticdbVectorFactory(AbstractVectorFactory):
                 self.gen_index_struct_dict(VectorType.ANALYTICDB, collection_name)
             )
 
-        # TODO handle optional params
+        # handle optional params
+        if dify_config.ANALYTICDB_KEY_ID is None:
+            raise ValueError("ANALYTICDB_KEY_ID should not be None")
+        if dify_config.ANALYTICDB_KEY_SECRET is None:
+            raise ValueError("ANALYTICDB_KEY_SECRET should not be None")
+        if dify_config.ANALYTICDB_REGION_ID is None:
+            raise ValueError("ANALYTICDB_REGION_ID should not be None")
+        if dify_config.ANALYTICDB_INSTANCE_ID is None:
+            raise ValueError("ANALYTICDB_INSTANCE_ID should not be None")
+        if dify_config.ANALYTICDB_ACCOUNT is None:
+            raise ValueError("ANALYTICDB_ACCOUNT should not be None")
+        if dify_config.ANALYTICDB_PASSWORD is None:
+            raise ValueError("ANALYTICDB_PASSWORD should not be None")
+        if dify_config.ANALYTICDB_NAMESPACE is None:
+            raise ValueError("ANALYTICDB_NAMESPACE should not be None")
+        if dify_config.ANALYTICDB_NAMESPACE_PASSWORD is None:
+            raise ValueError("ANALYTICDB_NAMESPACE_PASSWORD should not be None")
         return AnalyticdbVector(
             collection_name,
             AnalyticdbConfig(
