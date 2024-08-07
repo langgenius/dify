@@ -12,6 +12,7 @@ import CodeEditor from '../editor/code-editor'
 import { CodeLanguage } from '../../../code/types'
 import TextEditor from '../editor/text-editor'
 import Select from '@/app/components/base/select'
+import Textarea from '@/app/components/base/textarea'
 import TextGenerationImageUploader from '@/app/components/base/image-uploader/text-generation-image-uploader'
 import { Resolution } from '@/types/app'
 import { useFeatures } from '@/app/components/base/features/hooks'
@@ -116,10 +117,9 @@ const FormItem: FC<Props> = ({
 
         {
           type === InputVarType.paragraph && (
-            <textarea
-              className="w-full px-3 py-1 text-sm leading-[18px] text-gray-900 border-0 rounded-lg grow h-[120px] bg-gray-50 focus:outline-none focus:ring-1 focus:ring-inset focus:ring-gray-200"
+            <Textarea
               value={value || ''}
-              onChange={e => onChange(e.target.value)}
+              onChange={onChange}
               placeholder={t('appDebug.variableConig.inputPlaceholder')!}
               autoFocus={autoFocus}
             />
