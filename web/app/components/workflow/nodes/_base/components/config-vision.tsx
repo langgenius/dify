@@ -58,13 +58,16 @@ const ConfigVision: FC<Props> = ({
       title={t(`${i18nPrefix}.vision`)}
       tooltip={t('appDebug.vision.description')!}
       operations={
-        // disabled={isVisionModel}
-        <TooltipPlus hideArrow popupContent={t('appDebug.vision.onlySupportVisionModelTip')!} >
+        <TooltipPlus
+          hideArrow
+          popupContent={t('appDebug.vision.onlySupportVisionModelTip')!}
+          disabled={isVisionModel}
+        >
           <Switch disabled={readOnly || !isVisionModel} size='md' defaultValue={!isVisionModel ? false : enabled} onChange={onEnabledChange} />
         </TooltipPlus>
       }
     >
-      {(enabled || !isVisionModel)
+      {(enabled && isVisionModel)
         ? (
           <div>
             <VarReferencePicker
@@ -80,7 +83,6 @@ const ConfigVision: FC<Props> = ({
               onChange={handleVisionResolutionChange}
             />
           </div>
-
         )
         : null}
 
