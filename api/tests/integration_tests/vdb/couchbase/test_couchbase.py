@@ -1,4 +1,4 @@
-from core.rag.datasource.vdb.couchbase.couchbase_vector import CouchbaseVector, CouchbaseConfig
+from core.rag.datasource.vdb.couchbase.couchbase_vector import CouchbaseConfig, CouchbaseVector
 from core.rag.models.document import Document
 from tests.integration_tests.vdb.test_vector_store import (
     AbstractVectorTest,

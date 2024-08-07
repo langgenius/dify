@@ -1,6 +1,6 @@
 from typing import Optional
 
-from pydantic import BaseModel, Field, PositiveInt
+from pydantic import BaseModel, Field
 
 
 class CouchbaseConfig(BaseModel):

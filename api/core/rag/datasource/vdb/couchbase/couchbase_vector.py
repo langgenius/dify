@@ -1,18 +1,14 @@
 import json
 import logging
-from datetime import timedelta
-from typing import Any, Dict
-import uuid
 import time
+import uuid
+from datetime import timedelta
+from typing import Any
 
 import couchbase.search as search
 from couchbase.auth import PasswordAuthenticator
 from couchbase.cluster import Cluster
-from couchbase.management.collections import CollectionManager
 from couchbase.management.search import SearchIndex
-from couchbase.search import SearchMetrics
-from couchbase.options import QueryOptions
-from couchbase.exceptions import CollectionNotFoundException
 
 # needed for options -- cluster, timeout, SQL++ (N1QL) query, etc.
 from couchbase.options import ClusterOptions, SearchOptions
@@ -190,7 +186,7 @@ class CouchbaseVector(BaseVector):
             redis_client.set(collection_exist_cache_key, 1, ex=3600)
 
     def _collection_exists(self, name: str):
-        scope_collection_map: Dict[str, Any] = {}
+        scope_collection_map: dict[str, Any] = {}
 
         # Get a list of all scopes in the bucket
         for scope in self._bucket.collections().get_all_scopes():
@@ -377,7 +373,7 @@ class CouchbaseVector(BaseVector):
                 if collection.name == self._collection_name:
                     manager.drop_collection('_default', self._collection_name)
 
-    def _format_metadata(self, row_fields: Dict[str, Any]) -> Dict[str, Any]:
+    def _format_metadata(self, row_fields: dict[str, Any]) -> dict[str, Any]:
         """Helper method to format the metadata from the Couchbase Search API.
         Args:
             row_fields (Dict[str, Any]): The fields to format.
