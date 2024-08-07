@@ -67,7 +67,7 @@ def test_build_a_object_variable_with_none_value():
         }
     )
     assert isinstance(var, ObjectSegment)
-    assert isinstance(var.value['key1'], NoneSegment)
+    assert var.value['key1'] is None
 
 
 def test_object_variable():
