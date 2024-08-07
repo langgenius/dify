@@ -124,6 +124,7 @@ const translation = {
   },
   userProfile: {
     settings: 'Settings',
+    emailSupport: 'Email Support',
     workspace: 'Workspace',
     createWorkspace: 'Create Workspace',
     helpCenter: 'Help',
@@ -347,7 +348,7 @@ const translation = {
     getFreeTokens: 'Get free Tokens',
     priorityUsing: 'Prioritize using',
     deprecated: 'Deprecated',
-    confirmDelete: 'confirm deletion?',
+    confirmDelete: 'Confirm deletion?',
     quotaTip: 'Remaining available free tokens',
     loadPresets: 'Load Presents',
     parameters: 'PARAMETERS',

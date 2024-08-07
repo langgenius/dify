@@ -1,6 +1,8 @@
 import React, { useEffect, useRef, useState } from 'react'
 import mermaid from 'mermaid'
+import { usePrevious } from 'ahooks'
 import CryptoJS from 'crypto-js'
+import { ExclamationTriangleIcon } from '@heroicons/react/24/outline'
 import LoadingAnim from '@/app/components/base/chat/chat/loading-anim'
 
 let mermaidAPI: any
@@ -40,32 +42,15 @@ const Flowchart = React.forwardRef((props: {
 }, ref) => {
   const [svgCode, setSvgCode] = useState(null)
   const chartId = useRef(`flowchart_${CryptoJS.MD5(props.PrimitiveCode).toString()}`)
-  const [isRender, setIsRender] = useState(false)
+  const prevPrimitiveCode = usePrevious(props.PrimitiveCode)
   const [isLoading, setIsLoading] = useState(true)
-
-  const clearFlowchartCache = () => {
-    for (let i = localStorage.length - 1; i >= 0; --i) {
-      const key = localStorage.key(i)
-      if (key && key.startsWith('flowchart_'))
-        localStorage.removeItem(key)
-    }
-  }
+  const timeRef = useRef<NodeJS.Timeout>()
+  const [errMsg, setErrMsg] = useState('')
 
   const renderFlowchart = async (PrimitiveCode: string) => {
     try {
-      const cachedSvg: any = localStorage.getItem(chartId.current)
-      if (cachedSvg) {
-        setSvgCode(cachedSvg)
-        setIsLoading(false)
-        return
-      }
-
       if (typeof window !== 'undefined' && mermaidAPI) {
         const svgGraph = await mermaidAPI.render(chartId.current, PrimitiveCode)
-        const dom = new DOMParser().parseFromString(svgGraph.svg, 'text/xml')
-        if (!dom.querySelector('g.main'))
-          throw new Error('empty svg')
-
         const base64Svg: any = await svgToBase64(svgGraph.svg)
         setSvgCode(base64Svg)
         setIsLoading(false)
@@ -74,30 +59,26 @@ const Flowchart = React.forwardRef((props: {
       }
     }
     catch (error) {
-      clearFlowchartCache()
-      // eslint-disable-next-line @typescript-eslint/no-use-before-define
-      handleReRender()
+      if (prevPrimitiveCode === props.PrimitiveCode) {
+        setIsLoading(false)
+        setErrMsg((error as Error).message)
+      }
     }
   }
 
-  const handleReRender = () => {
-    setIsRender(false)
-    setSvgCode(null)
-    if (chartId.current)
-      localStorage.removeItem(chartId.current)
-
-    setTimeout(() => {
-      setIsRender(true)
-      renderFlowchart(props.PrimitiveCode)
-    }, 100)
-  }
-
   useEffect(() => {
-    setIsRender(false)
-    setTimeout(() => {
-      setIsRender(true)
+    const cachedSvg: any = localStorage.getItem(chartId.current)
+    if (cachedSvg) {
+      setSvgCode(cachedSvg)
+      setIsLoading(false)
+      return
+    }
+    if (timeRef.current)
+      clearTimeout(timeRef.current)
+
+    timeRef.current = setTimeout(() => {
       renderFlowchart(props.PrimitiveCode)
-    }, 100)
+    }, 300)
   }, [props.PrimitiveCode])
 
   return (
@@ -105,14 +86,22 @@ const Flowchart = React.forwardRef((props: {
     // @ts-expect-error
     <div ref={ref}>
       {
-        isRender
-          && <div className="mermaid" style={style}>
-            {svgCode && <img src={svgCode} style={{ width: '100%', height: 'auto' }} alt="Mermaid chart" />}
-          </div>
+        svgCode
+        && <div className="mermaid" style={style}>
+          {svgCode && <img src={svgCode} style={{ width: '100%', height: 'auto' }} alt="Mermaid chart" />}
+        </div>
       }
       {isLoading
         && <div className='py-4 px-[26px]'>
           <LoadingAnim type='text' />
+        </div>
+      }
+      {
+        errMsg
+        && <div className='py-4 px-[26px]'>
+          <ExclamationTriangleIcon className='w-6 h-6 text-red-500' />
+          &nbsp;
+          {errMsg}
         </div>
       }
     </div>

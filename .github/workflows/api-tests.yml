@@ -21,6 +21,7 @@ jobs:
         python-version:
           - "3.10"
           - "3.11"
+          - "3.12"
 
     steps:
       - name: Checkout code
@@ -89,6 +90,5 @@ jobs:
             pgvecto-rs
             pgvector
             chroma
-            myscale
       - name: Test Vector Stores
         run: poetry run -C api bash dev/pytest/pytest_vdb.sh

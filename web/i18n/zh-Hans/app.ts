@@ -13,6 +13,10 @@ const translation = {
   exportFailed: '导出 DSL 失败',
   importDSL: '导入 DSL 文件',
   createFromConfigFile: '通过 DSL 文件创建',
+  importFromDSL: '导入 DSL',
+  importFromDSLFile: '文件',
+  importFromDSLUrl: 'URL',
+  importFromDSLUrlPlaceholder: '输入 DSL 文件的 URL',
   deleteAppConfirmTitle: '确认删除应用?',
   deleteAppConfirmContent:
     '删除应用将无法撤销。用户将不能访问你的应用，所有 Prompt 编排配置和日志均将一并被删除。',

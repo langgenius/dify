@@ -51,7 +51,7 @@ const Panel: FC<NodePanelProps<VariableAssignerNodeType>> = ({
               }}
               onChange={handleListOrTypeChange}
               groupEnabled={false}
-              availableVars={getAvailableVars(id, 'target', filterVar(inputs.output_type))}
+              availableVars={getAvailableVars(id, 'target', filterVar(inputs.output_type), true)}
             />
           )
           : (<div>
@@ -67,7 +67,7 @@ const Panel: FC<NodePanelProps<VariableAssignerNodeType>> = ({
                     canRemove={!readOnly && inputs.advanced_settings?.groups.length > 1}
                     onRemove={handleGroupRemoved(item.groupId)}
                     onGroupNameChange={handleVarGroupNameChange(item.groupId)}
-                    availableVars={getAvailableVars(id, item.groupId, filterVar(item.output_type))}
+                    availableVars={getAvailableVars(id, item.groupId, filterVar(item.output_type), true)}
                   />
                   {index !== inputs.advanced_settings?.groups.length - 1 && <Split className='my-4' />}
                 </div>

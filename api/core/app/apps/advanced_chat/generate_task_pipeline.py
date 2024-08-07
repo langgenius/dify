@@ -118,7 +118,7 @@ class AdvancedChatAppGenerateTaskPipeline(BasedGenerateTaskPipeline, WorkflowCyc
         self._stream_generate_routes = self._get_stream_generate_routes()
         self._conversation_name_generate_thread = None
 
-    def process(self) -> Union[ChatbotAppBlockingResponse, Generator[ChatbotAppStreamResponse, None, None]]:
+    def process(self):
         """
         Process generate task pipeline.
         :return:
@@ -141,8 +141,7 @@ class AdvancedChatAppGenerateTaskPipeline(BasedGenerateTaskPipeline, WorkflowCyc
         else:
             return self._to_blocking_response(generator)
 
-    def _to_blocking_response(self, generator: Generator[StreamResponse, None, None]) \
-            -> ChatbotAppBlockingResponse:
+    def _to_blocking_response(self, generator: Generator[StreamResponse, None, None]) -> ChatbotAppBlockingResponse:
         """
         Process blocking response.
         :return:
@@ -172,8 +171,7 @@ class AdvancedChatAppGenerateTaskPipeline(BasedGenerateTaskPipeline, WorkflowCyc
 
         raise Exception('Queue listening stopped unexpectedly.')
 
-    def _to_stream_response(self, generator: Generator[StreamResponse, None, None]) \
-            -> Generator[ChatbotAppStreamResponse, None, None]:
+    def _to_stream_response(self, generator: Generator[StreamResponse, None, None]) -> Generator[ChatbotAppStreamResponse, Any, None]:
         """
         To stream response.
         :return:
@@ -246,7 +244,12 @@ class AdvancedChatAppGenerateTaskPipeline(BasedGenerateTaskPipeline, WorkflowCyc
         :return:
         """
         for message in self._queue_manager.listen():
-            if publisher:
+            if message.event and hasattr(message.event, 'metadata') and message.event.metadata.get('is_answer_previous_node', False) and publisher:
+                publisher.publish(message=message)
+            elif (hasattr(message.event, 'execution_metadata')
+                  and message.event.execution_metadata
+                  and message.event.execution_metadata.get('is_answer_previous_node', False)
+                  and publisher):
                 publisher.publish(message=message)
             event = message.event
 

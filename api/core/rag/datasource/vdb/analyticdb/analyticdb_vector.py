@@ -7,8 +7,8 @@ _import_err_msg = (
     "`alibabacloud_gpdb20160503` and `alibabacloud_tea_openapi` packages not found, "
     "please run `pip install alibabacloud_gpdb20160503 alibabacloud_tea_openapi`"
 )
-from flask import current_app
 
+from configs import dify_config
 from core.rag.datasource.entity.embedding import Embeddings
 from core.rag.datasource.vdb.vector_base import BaseVector
 from core.rag.datasource.vdb.vector_factory import AbstractVectorFactory
@@ -36,7 +36,7 @@ class AnalyticdbConfig(BaseModel):
             "region_id": self.region_id,
             "read_timeout": self.read_timeout,
         }
-    
+
 class AnalyticdbVector(BaseVector):
     _instance = None
     _init = False
@@ -45,7 +45,7 @@ class AnalyticdbVector(BaseVector):
         if cls._instance is None:
             cls._instance = super().__new__(cls)
         return cls._instance
-    
+
     def __init__(self, collection_name: str, config: AnalyticdbConfig):
         # collection_name must be updated every time
         self._collection_name = collection_name.lower()
@@ -65,8 +65,15 @@ class AnalyticdbVector(BaseVector):
         AnalyticdbVector._init = True
 
     def _initialize(self) -> None:
-        self._initialize_vector_database()
-        self._create_namespace_if_not_exists()
+        cache_key = f"vector_indexing_{self.config.instance_id}"
+        lock_name = f"{cache_key}_lock"
+        with redis_client.lock(lock_name, timeout=20):
+            collection_exist_cache_key = f"vector_indexing_{self.config.instance_id}"
+            if redis_client.get(collection_exist_cache_key):
+                return
+            self._initialize_vector_database()
+            self._create_namespace_if_not_exists()
+            redis_client.set(collection_exist_cache_key, 1, ex=3600)
 
     def _initialize_vector_database(self) -> None:
         from alibabacloud_gpdb20160503 import models as gpdb_20160503_models
@@ -105,7 +112,7 @@ class AnalyticdbVector(BaseVector):
                 raise ValueError(
                     f"failed to create namespace {self.config.namespace}: {e}"
                 )
-            
+
     def _create_collection_if_not_exists(self, embedding_dimension: int):
         from alibabacloud_gpdb20160503 import models as gpdb_20160503_models
         from Tea.exceptions import TeaException
@@ -149,7 +156,7 @@ class AnalyticdbVector(BaseVector):
 
     def get_type(self) -> str:
         return VectorType.ANALYTICDB
-    
+
     def create(self, texts: list[Document], embeddings: list[list[float]], **kwargs):
         dimension = len(embeddings[0])
         self._create_collection_if_not_exists(dimension)
@@ -199,7 +206,7 @@ class AnalyticdbVector(BaseVector):
         )
         response = self._client.query_collection_data(request)
         return len(response.body.matches.match) > 0
-    
+
     def delete_by_ids(self, ids: list[str]) -> None:
         from alibabacloud_gpdb20160503 import models as gpdb_20160503_models
         ids_str = ",".join(f"'{id}'" for id in ids)
@@ -260,7 +267,7 @@ class AnalyticdbVector(BaseVector):
                 )
                 documents.append(doc)
         return documents
-    
+
     def search_by_full_text(self, query: str, **kwargs: Any) -> list[Document]:
         from alibabacloud_gpdb20160503 import models as gpdb_20160503_models
         score_threshold = (
@@ -285,23 +292,28 @@ class AnalyticdbVector(BaseVector):
         documents = []
         for match in response.body.matches.match:
             if match.score > score_threshold:
+                metadata = json.loads(match.metadata.get("metadata_"))
                 doc = Document(
                     page_content=match.metadata.get("page_content"),
-                    metadata=json.loads(match.metadata.get("metadata_")),
+                    vector=match.metadata.get("vector"),
+                    metadata=metadata,
                 )
                 documents.append(doc)
         return documents
-    
+
     def delete(self) -> None:
-        from alibabacloud_gpdb20160503 import models as gpdb_20160503_models
-        request = gpdb_20160503_models.DeleteCollectionRequest(
-            collection=self._collection_name,
-            dbinstance_id=self.config.instance_id,
-            namespace=self.config.namespace,
-            namespace_password=self.config.namespace_password,
-            region_id=self.config.region_id,
-        )
-        self._client.delete_collection(request)
+        try:
+            from alibabacloud_gpdb20160503 import models as gpdb_20160503_models
+            request = gpdb_20160503_models.DeleteCollectionRequest(
+                collection=self._collection_name,
+                dbinstance_id=self.config.instance_id,
+                namespace=self.config.namespace,
+                namespace_password=self.config.namespace_password,
+                region_id=self.config.region_id,
+            )
+            self._client.delete_collection(request)
+        except Exception as e:
+            raise e
 
 class AnalyticdbVectorFactory(AbstractVectorFactory):
     def init_vector(self, dataset: Dataset, attributes: list, embeddings: Embeddings):
@@ -316,17 +328,34 @@ class AnalyticdbVectorFactory(AbstractVectorFactory):
             dataset.index_struct = json.dumps(
                 self.gen_index_struct_dict(VectorType.ANALYTICDB, collection_name)
             )
-        config = current_app.config
+
+        # handle optional params
+        if dify_config.ANALYTICDB_KEY_ID is None:
+            raise ValueError("ANALYTICDB_KEY_ID should not be None")
+        if dify_config.ANALYTICDB_KEY_SECRET is None:
+            raise ValueError("ANALYTICDB_KEY_SECRET should not be None")
+        if dify_config.ANALYTICDB_REGION_ID is None:
+            raise ValueError("ANALYTICDB_REGION_ID should not be None")
+        if dify_config.ANALYTICDB_INSTANCE_ID is None:
+            raise ValueError("ANALYTICDB_INSTANCE_ID should not be None")
+        if dify_config.ANALYTICDB_ACCOUNT is None:
+            raise ValueError("ANALYTICDB_ACCOUNT should not be None")
+        if dify_config.ANALYTICDB_PASSWORD is None:
+            raise ValueError("ANALYTICDB_PASSWORD should not be None")
+        if dify_config.ANALYTICDB_NAMESPACE is None:
+            raise ValueError("ANALYTICDB_NAMESPACE should not be None")
+        if dify_config.ANALYTICDB_NAMESPACE_PASSWORD is None:
+            raise ValueError("ANALYTICDB_NAMESPACE_PASSWORD should not be None")
         return AnalyticdbVector(
             collection_name,
             AnalyticdbConfig(
-                access_key_id=config.get("ANALYTICDB_KEY_ID"),
-                access_key_secret=config.get("ANALYTICDB_KEY_SECRET"),
-                region_id=config.get("ANALYTICDB_REGION_ID"),
-                instance_id=config.get("ANALYTICDB_INSTANCE_ID"),
-                account=config.get("ANALYTICDB_ACCOUNT"),
-                account_password=config.get("ANALYTICDB_PASSWORD"),
-                namespace=config.get("ANALYTICDB_NAMESPACE"),
-                namespace_password=config.get("ANALYTICDB_NAMESPACE_PASSWORD"),
+                access_key_id=dify_config.ANALYTICDB_KEY_ID,
+                access_key_secret=dify_config.ANALYTICDB_KEY_SECRET,
+                region_id=dify_config.ANALYTICDB_REGION_ID,
+                instance_id=dify_config.ANALYTICDB_INSTANCE_ID,
+                account=dify_config.ANALYTICDB_ACCOUNT,
+                account_password=dify_config.ANALYTICDB_PASSWORD,
+                namespace=dify_config.ANALYTICDB_NAMESPACE,
+                namespace_password=dify_config.ANALYTICDB_NAMESPACE_PASSWORD,
             ),
         )

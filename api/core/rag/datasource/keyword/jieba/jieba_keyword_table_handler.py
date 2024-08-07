@@ -1,4 +1,5 @@
 import re
+from typing import Optional
 
 import jieba
 from jieba.analyse import default_tfidf
@@ -11,7 +12,7 @@ class JiebaKeywordTableHandler:
     def __init__(self):
         default_tfidf.stop_words = STOPWORDS
 
-    def extract_keywords(self, text: str, max_keywords_per_chunk: int = 10) -> set[str]:
+    def extract_keywords(self, text: str, max_keywords_per_chunk: Optional[int] = 10) -> set[str]:
         """Extract keywords with JIEBA tfidf."""
         keywords = jieba.analyse.extract_tags(
             sentence=text,

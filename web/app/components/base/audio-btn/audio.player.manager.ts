@@ -41,7 +41,7 @@ export class AudioPlayerManager {
       }
 
       this.msgId = id
-      this.audioPlayers = new AudioPlayer(url, isPublic, id, msgContent, callback)
+      this.audioPlayers = new AudioPlayer(url, isPublic, id, msgContent, voice, callback)
       return this.audioPlayers
     }
   }

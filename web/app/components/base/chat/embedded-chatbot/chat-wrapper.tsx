@@ -111,7 +111,7 @@ const ChatWrapper = () => {
       )
     }
 
-    return <div className='mb-6' />
+    return null
   }, [currentConversationId, inputsForms, isMobile])
 
   return (

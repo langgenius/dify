@@ -5,9 +5,9 @@ from enum import Enum
 from typing import Any
 
 from clickhouse_connect import get_client
-from flask import current_app
 from pydantic import BaseModel
 
+from configs import dify_config
 from core.rag.datasource.entity.embedding import Embeddings
 from core.rag.datasource.vdb.vector_base import BaseVector
 from core.rag.datasource.vdb.vector_factory import AbstractVectorFactory
@@ -126,13 +126,14 @@ class MyScaleVector(BaseVector):
         where_str = f"WHERE dist < {1 - score_threshold}" if \
             self._metric.upper() == "COSINE" and order == SortOrder.ASC and score_threshold > 0.0 else ""
         sql = f"""
-            SELECT text, metadata, {dist} as dist FROM {self._config.database}.{self._collection_name}
+            SELECT text, vector, metadata, {dist} as dist FROM {self._config.database}.{self._collection_name}
             {where_str} ORDER BY dist {order.value} LIMIT {top_k}
         """
         try:
             return [
                 Document(
                     page_content=r["text"],
+                    vector=r['vector'],
                     metadata=r["metadata"],
                 )
                 for r in self._client.query(sql).named_results()
@@ -156,15 +157,14 @@ class MyScaleVectorFactory(AbstractVectorFactory):
             dataset.index_struct = json.dumps(
                 self.gen_index_struct_dict(VectorType.MYSCALE, collection_name))
 
-        config = current_app.config
         return MyScaleVector(
             collection_name=collection_name,
             config=MyScaleConfig(
-                host=config.get("MYSCALE_HOST", "localhost"),
-                port=int(config.get("MYSCALE_PORT", 8123)),
-                user=config.get("MYSCALE_USER", "default"),
-                password=config.get("MYSCALE_PASSWORD", ""),
-                database=config.get("MYSCALE_DATABASE", "default"),
-                fts_params=config.get("MYSCALE_FTS_PARAMS", ""),
+                host=dify_config.MYSCALE_HOST,
+                port=dify_config.MYSCALE_PORT,
+                user=dify_config.MYSCALE_USER,
+                password=dify_config.MYSCALE_PASSWORD,
+                database=dify_config.MYSCALE_DATABASE,
+                fts_params=dify_config.MYSCALE_FTS_PARAMS,
             ),
         )

@@ -131,6 +131,7 @@ class WorkflowCycleManage(WorkflowIterationCycleManage):
                     TraceTaskName.WORKFLOW_TRACE,
                     workflow_run=workflow_run,
                     conversation_id=conversation_id,
+                    user_id=trace_manager.user_id,
                 )
             )
 
@@ -173,6 +174,7 @@ class WorkflowCycleManage(WorkflowIterationCycleManage):
                     TraceTaskName.WORKFLOW_TRACE,
                     workflow_run=workflow_run,
                     conversation_id=conversation_id,
+                    user_id=trace_manager.user_id,
                 )
             )
 

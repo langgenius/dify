@@ -3,13 +3,13 @@ from core.app.app_config.entities import TextToSpeechEntity
 
 class TextToSpeechConfigManager:
     @classmethod
-    def convert(cls, config: dict) -> bool:
+    def convert(cls, config: dict):
         """
         Convert model config to model config
 
         :param config: model config args
         """
-        text_to_speech = False
+        text_to_speech = None
         text_to_speech_dict = config.get('text_to_speech')
         if text_to_speech_dict:
             if text_to_speech_dict.get('enabled'):

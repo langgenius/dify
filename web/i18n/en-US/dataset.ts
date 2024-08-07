@@ -33,7 +33,7 @@ const translation = {
     },
     hybrid_search: {
       title: 'Hybrid Search',
-      description: 'Execute full-text search and vector searches simultaneously, re-rank to select the best match for the user\'s query. Configuration of the Rerank model APIs necessary.',
+      description: 'Execute full-text search and vector searches simultaneously, re-rank to select the best match for the user\'s query. Users can choose to set weights or configure to a Rerank model.',
       recommend: 'Recommend',
     },
     invertedIndex: {
@@ -45,6 +45,32 @@ const translation = {
   },
   docsFailedNotice: 'documents failed to be indexed',
   retry: 'Retry',
+  indexingTechnique: {
+    high_quality: 'HQ',
+    economy: 'ECO',
+  },
+  indexingMethod: {
+    semantic_search: 'VECTOR',
+    full_text_search: 'FULL TEXT',
+    hybrid_search: 'HYBRID',
+    invertedIndex: 'INVERTED',
+  },
+  mixtureHighQualityAndEconomicTip: 'The Rerank model is required for mixture of high quality and economical knowledge bases.',
+  inconsistentEmbeddingModelTip: 'The Rerank model is required if the Embedding models of the selected knowledge bases are inconsistent.',
+  retrievalSettings: 'Retrieval Setting',
+  rerankSettings: 'Rerank Setting',
+  weightedScore: {
+    title: 'Weighted Score',
+    description: 'By adjusting the weights assigned, this rerank strategy determines whether to prioritize semantic or keyword matching.',
+    semanticFirst: 'Semantic first',
+    keywordFirst: 'Keyword first',
+    customized: 'Customized',
+    semantic: 'Semantic',
+    keyword: 'Keyword',
+  },
+  nTo1RetrievalLegacy: 'N-to-1 retrieval will be officially deprecated from September. It is recommended to use the latest Multi-path retrieval to obtain better results. ',
+  nTo1RetrievalLegacyLink: 'Learn more',
+  nTo1RetrievalLegacyLinkText: ' N-to-1 retrieval will be officially deprecated in September.',
 }
 
 export default translation

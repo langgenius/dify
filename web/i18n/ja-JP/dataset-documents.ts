@@ -4,6 +4,7 @@ const translation = {
     desc: 'ナレッジのすべてのファイルがここに表示され、ナレッジ全体がDifyの引用やチャットプラグインを介してリンクされるか、インデックス化されることができます。',
     addFile: 'ファイルを追加',
     addPages: 'ページを追加',
+    addUrl: 'URLを追加',
     table: {
       header: {
         fileName: 'ファイル名',
@@ -13,6 +14,8 @@ const translation = {
         status: 'ステータス',
         action: 'アクション',
       },
+      rename: '名前を変更',
+      name: '名前',
     },
     action: {
       uploadFile: '新しいファイルをアップロード',
