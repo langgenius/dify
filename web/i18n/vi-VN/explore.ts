@@ -22,6 +22,7 @@ const translation = {
   },
   appCard: {
     addToWorkspace: 'Thêm vào Kho lưu trữ',
+    share: 'Chia Sẻ Ứng Dụng',
     customize: 'Tùy chỉnh',
   },
   appCustomize: {

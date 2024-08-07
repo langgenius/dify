@@ -22,6 +22,7 @@ const translation = {
   },
   appCard: {
     addToWorkspace: 'Adăugați la spațiul de lucru',
+    share: 'Partajează Aplicația',
     customize: 'Personalizați',
   },
   appCustomize: {

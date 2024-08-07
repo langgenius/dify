@@ -22,6 +22,7 @@ const translation = {
   },
   appCard: {
     addToWorkspace: 'Adicionar ao Espaço de Trabalho',
+    share: 'Compartilhar App',
     customize: 'Personalizar',
   },
   appCustomize: {

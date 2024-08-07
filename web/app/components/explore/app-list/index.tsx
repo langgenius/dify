@@ -1,7 +1,7 @@
 'use client'
 
 import React, { useMemo, useState } from 'react'
-import { useRouter } from 'next/navigation'
+import { useRouter, useSearchParams } from 'next/navigation'
 import { useTranslation } from 'react-i18next'
 import { useContext } from 'use-context-selector'
 import useSWR from 'swr'
@@ -42,6 +42,9 @@ const Apps = ({
   const { t } = useTranslation()
   const { isCurrentWorkspaceEditor } = useAppContext()
   const { push } = useRouter()
+  const searchParams = useSearchParams()
+  const searchParamsAppId = searchParams.get('id')
+  const searchParamsCategory = searchParams.get('category')
   const { hasEditPermission } = useContext(ExploreContext)
   const allCategoriesEn = t('explore.apps.allCategories', { lng: 'en' })
 
@@ -109,9 +112,18 @@ const Apps = ({
 
     const lowerCaseSearchKeywords = searchKeywords.toLowerCase()
 
-    return filteredList.filter(item =>
-      item.app && item.app.name && item.app.name.toLowerCase().includes(lowerCaseSearchKeywords),
-    )
+    // Prioritize finding items that match the ID
+    const idMatchedItems = filteredList.filter(item => searchKeywords === item.app.id)
+
+    // If no ID matches, then search for items that match the app name
+    if (idMatchedItems.length > 0) {
+      return idMatchedItems
+    }
+    else {
+      return filteredList.filter(item =>
+        item.app && item.app.name && item.app.name.toLowerCase().includes(lowerCaseSearchKeywords),
+      )
+    }
   }, [searchKeywords, filteredList])
 
   const [currApp, setCurrApp] = React.useState<App | null>(null)
@@ -147,6 +159,14 @@ const Apps = ({
       Toast.notify({ type: 'error', message: t('app.newApp.appCreateFailed') })
     }
   }
+
+  useMemo(() => {
+    if (searchParamsAppId && searchParamsCategory && categories.length > 0) {
+      setKeywords(searchParamsAppId)
+      setSearchKeywords(searchParamsAppId)
+      setCurrCategory(searchParamsCategory)
+    }
+  }, [categories])
 
   if (!categories || categories.length === 0) {
     return (
@@ -185,7 +205,7 @@ const Apps = ({
             allCategoriesEn={allCategoriesEn}
           />
         </>
-        <SearchInput value={keywords} onChange={handleKeywordsChange}/>
+        <SearchInput className='w-[200px]' value={keywords} onChange={handleKeywordsChange}/>
 
       </div>
 

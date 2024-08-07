@@ -22,6 +22,7 @@ const translation = {
   },
   appCard: {
     addToWorkspace: '添加到工作区',
+    share: '分享应用',
     customize: '自定义',
   },
   appCustomize: {
