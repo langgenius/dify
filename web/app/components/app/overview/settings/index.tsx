@@ -22,7 +22,7 @@ import AppContext from '@/context/app-context'
 
 export type ISettingsModalProps = {
   isChat: boolean
-  appInfo: AppDetailResponse & AppSSO
+  appInfo: AppDetailResponse & Partial<AppSSO>
   isShow: boolean
   defaultValue?: string
   onClose: () => void
@@ -146,7 +146,7 @@ const SettingsModal: FC<ISettingsModalProps> = ({
       icon: emoji.icon,
       icon_background: emoji.icon_background,
       show_workflow_steps: inputInfo.show_workflow_steps,
-      enable_sso: inputInfo.enable_sso,
+      enable_sso: inputInfo.enable_sso!,
     }
     await onSave?.(params)
     setSaveLoading(false)
@@ -218,16 +218,17 @@ const SettingsModal: FC<ISettingsModalProps> = ({
             placeholder='E.g #A020F0'
           />
         </>}
-        <div className='w-full mt-8'>
+        {/* only show when enable sso feature */}
+        {systemFeatures.enable_web_sso_switch_component && <div className='w-full mt-8'>
           <p className='system-xs-medium text-gray-500'>{t(`${prefixSettings}.sso.label`)}</p>
           <div className='flex justify-between items-center'>
             <div className='font-medium system-sm-semibold flex-grow text-gray-900'>{t(`${prefixSettings}.sso.title`)}</div>
-            <TooltipPlus disabled={!systemFeatures.sso_enforced_for_web} popupContent={<div className='w-[180px]'>{t(`${prefixSettings}.sso.tooltip`)}</div>}>
-              <Switch defaultValue={inputInfo.enable_sso} onChange={v => setInputInfo({ ...inputInfo, enable_sso: v })}></Switch>
+            <TooltipPlus disabled={systemFeatures.sso_enforced_for_web} popupContent={<div className='w-[180px]'>{t(`${prefixSettings}.sso.tooltip`)}</div>}>
+              <Switch disabled={!systemFeatures.sso_enforced_for_web} defaultValue={inputInfo.enable_sso} onChange={v => setInputInfo({ ...inputInfo, enable_sso: v })}></Switch>
             </TooltipPlus>
           </div>
           <p className='body-xs-regular text-gray-500'>{t(`${prefixSettings}.sso.description`)}</p>
-        </div>
+        </div>}
         {!isShowMore && <div className='w-full cursor-pointer mt-8' onClick={() => setIsShowMore(true)}>
           <div className='flex justify-between'>
             <div className={`font-medium ${s.settingTitle} flex-grow text-gray-900`}>{t(`${prefixSettings}.more.entry`)}</div>

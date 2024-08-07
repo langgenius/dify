@@ -7,6 +7,7 @@ import Toast from '@/app/components/base/toast'
 import { fetchSystemFeatures, fetchWebOAuth2SSOUrl, fetchWebOIDCSSOUrl, fetchWebSAMLSSOUrl } from '@/service/share'
 import { setAccessToken } from '@/app/components/share/utils'
 import Loading from '@/app/components/base/loading'
+import { fetchAppSSO } from '@/service/apps'
 
 const WebSSOForm: FC = () => {
   const searchParams = useSearchParams()
@@ -15,6 +16,7 @@ const WebSSOForm: FC = () => {
   const redirectUrl = searchParams.get('redirect_url')
   const tokenFromUrl = searchParams.get('web_sso_token')
   const message = searchParams.get('message')
+  const appId = searchParams.get('app_id')
 
   const showErrorToast = (message: string) => {
     Toast.notify({
@@ -73,16 +75,20 @@ const WebSSOForm: FC = () => {
   useEffect(() => {
     const init = async () => {
       const res = await fetchSystemFeatures()
-      const protocol = res.sso_enforced_for_web_protocol
+      const appSettings = await fetchAppSSO(appId!)
+      // do sso when system & app sso is enabled
+      if (res.sso_enforced_for_web && appSettings.enabled) {
+        const protocol = res.sso_enforced_for_web_protocol
 
-      if (message) {
-        showErrorToast(message)
-        return
-      }
+        if (message) {
+          showErrorToast(message)
+          return
+        }
 
-      if (!tokenFromUrl) {
-        await handleSSOLogin(protocol)
-        return
+        if (!tokenFromUrl) {
+          await handleSSOLogin(protocol)
+          return
+        }
       }
 
       await processTokenAndRedirect()

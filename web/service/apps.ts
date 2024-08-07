@@ -16,8 +16,8 @@ export const fetchAppDetail = ({ url, id }: { url: string; id: string }) => {
 export const fetchAppSSO = async (appId: string) => {
   return get<AppSSOResponse>(`/enterprise/app-setting/sso/${appId}`)
 }
-export const updateAppSSO = async ({ id, enabled }: { id: string;enabled: boolean }) => {
-  return put('/enterprise/app-setting/sso', { body: { appId: id, enabled } })
+export const updateAppSSO = async ({ id, userId, enabled }: { id: string;userId: string;enabled: boolean }) => {
+  return put('/enterprise/app-setting/sso', { body: { appId: id, userId, enabled } })
 }
 
 export const fetchAppTemplates: Fetcher<AppTemplatesResponse, { url: string }> = ({ url }) => {
