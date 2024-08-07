@@ -9,10 +9,6 @@ if os.environ.get("DEBUG", "false").lower() != 'true':
 
     grpc.experimental.gevent.init_gevent()
 
-import nltk
-
-nltk.download('punkt')
-
 import json
 import logging
 import sys
