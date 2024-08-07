@@ -23,6 +23,7 @@ from models.workflow import (
     WorkflowNodeExecutionTriggeredFrom,
     WorkflowType,
 )
+from services.app_site_service import AppSiteService
 from services.errors.app import WorkflowHashNotEqualError
 from services.workflow.workflow_converter import WorkflowConverter
 
@@ -155,6 +156,8 @@ class WorkflowService:
 
         app_model.workflow_id = workflow.id
         db.session.commit()
+
+        AppSiteService.update_site_with_app(app_model)
 
         # trigger app workflow events
         app_published_workflow_was_updated.send(app_model, published_workflow=workflow)

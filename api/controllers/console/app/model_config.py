@@ -16,6 +16,7 @@ from extensions.ext_database import db
 from libs.login import login_required
 from models.model import AppMode, AppModelConfig
 from services.app_model_config_service import AppModelConfigService
+from services.app_site_service import AppSiteService
 
 
 class ModelConfigResource(Resource):
@@ -134,6 +135,8 @@ class ModelConfigResource(Resource):
 
         app_model.app_model_config_id = new_app_model_config.id
         db.session.commit()
+
+        AppSiteService.update_site_with_app(app_model)
 
         app_model_config_was_updated.send(
             app_model,
