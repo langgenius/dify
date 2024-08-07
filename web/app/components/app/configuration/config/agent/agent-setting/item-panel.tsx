@@ -1,9 +1,8 @@
 'use client'
 import type { FC } from 'react'
 import React from 'react'
-import { RiQuestionLine } from '@remixicon/react'
 import cn from '@/utils/classnames'
-import Tooltip from '@/app/components/base/tooltip'
+import TooltipPlus from '@/app/components/base/tooltip-plus'
 type Props = {
   className?: string
   icon: JSX.Element
@@ -24,16 +23,15 @@ const ItemPanel: FC<Props> = ({
       <div className='flex items-center'>
         {icon}
         <div className='ml-3 mr-1 leading-6 text-sm font-semibold text-gray-800'>{name}</div>
-        <Tooltip
-          htmlContent={
+        <TooltipPlus
+          popupContent={
             <div className='w-[180px]'>
               {description}
             </div>
           }
-          selector={`agent-setting-tooltip-${name}`}
+          needsDelay={false}
         >
-          <RiQuestionLine className='w-[14px] h-[14px] text-gray-400' />
-        </Tooltip>
+        </TooltipPlus>
       </div>
       <div>
         {children}

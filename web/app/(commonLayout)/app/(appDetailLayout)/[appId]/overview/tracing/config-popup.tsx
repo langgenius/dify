@@ -121,6 +121,7 @@ const ConfigPopup: FC<PopupProps> = ({
                 ? (
                   <TooltipPlus
                     popupContent={t(`${I18N_PREFIX}.disabledTip`)}
+                    needsDelay={false}
                   >
                     {switchContent}
                   </TooltipPlus>

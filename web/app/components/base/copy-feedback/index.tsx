@@ -3,7 +3,6 @@ import React, { useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { debounce } from 'lodash-es'
 import copy from 'copy-to-clipboard'
-import Tooltip from '../tooltip'
 import TooltipPlus from '../tooltip-plus'
 import copyStyle from './style.module.css'
 
@@ -29,13 +28,13 @@ const CopyFeedback = ({ content, selectorId, className }: Props) => {
   }, 100)
 
   return (
-    <Tooltip
-      selector={`common-copy-feedback-${selectorId}`}
-      content={
+    <TooltipPlus
+      popupContent={
         (isCopied
           ? t(`${prefixEmbedded}.copied`)
           : t(`${prefixEmbedded}.copy`)) || ''
       }
+      needsDelay={false}
     >
       <div
         className={`w-8 h-8 cursor-pointer hover:bg-gray-100 rounded-lg ${
@@ -50,7 +49,7 @@ const CopyFeedback = ({ content, selectorId, className }: Props) => {
           }`}
         ></div>
       </div>
-    </Tooltip>
+    </TooltipPlus>
   )
 }
 

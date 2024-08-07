@@ -2,9 +2,9 @@ import { useContext } from 'use-context-selector'
 import { useTranslation } from 'react-i18next'
 import Button from '../../base/button'
 import Tag from '../../base/tag'
-import Tooltip from '../../base/tooltip'
 import { getIcon } from '../common/retrieval-method-info'
 import s from './style.module.css'
+import TooltipPlus from '@/app/components/base/tooltip-plus'
 import cn from '@/utils/classnames'
 import DatasetDetailContext from '@/context/dataset-detail'
 import type { HitTestingResponse } from '@/models/datasets'
@@ -76,9 +76,9 @@ const TextAreaWithButton = ({
             <span className="text-gray-800 font-semibold text-sm">
               {t('datasetHitTesting.input.title')}
             </span>
-            <Tooltip
-              selector={'change-retrieval-method'}
-              htmlContent={t('dataset.retrieval.changeRetrievalMethod')}
+            <TooltipPlus
+              popupContent={t('dataset.retrieval.changeRetrievalMethod')}
+              needsDelay={false}
             >
               <div
                 onClick={onClickRetrievalMethod}
@@ -87,7 +87,7 @@ const TextAreaWithButton = ({
                 <Icon className='w-3.5 h-3.5'></Icon>
                 <div className='text-xs font-medium'>{t(`dataset.retrieval.${retrievalMethod}.title`)}</div>
               </div>
-            </Tooltip>
+            </TooltipPlus>
           </div>
           <div className='h-2 rounded-tl-xl rounded-tr-xl bg-white'></div>
         </div>
@@ -101,9 +101,9 @@ const TextAreaWithButton = ({
           <div className="absolute inset-x-0 bottom-0 flex items-center justify-between mx-4 mt-2 mb-2">
             {text?.length > 200
               ? (
-                <Tooltip
-                  content={t('datasetHitTesting.input.countWarning') as string}
-                  selector="hit-testing-warning"
+                <TooltipPlus
+                  popupContent={t('datasetHitTesting.input.countWarning')}
+                  needsDelay={false}
                 >
                   <div>
                     <Tag color="red" className="!text-red-600">
@@ -112,7 +112,7 @@ const TextAreaWithButton = ({
                       200
                     </Tag>
                   </div>
-                </Tooltip>
+                </TooltipPlus>
               )
               : (
                 <Tag

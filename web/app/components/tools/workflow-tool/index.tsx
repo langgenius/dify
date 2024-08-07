@@ -2,9 +2,6 @@
 import type { FC } from 'react'
 import React, { useState } from 'react'
 import { useTranslation } from 'react-i18next'
-import {
-  RiQuestionLine,
-} from '@remixicon/react'
 import produce from 'immer'
 import type { Emoji, WorkflowToolProviderParameter, WorkflowToolProviderRequest } from '../types'
 import cn from '@/utils/classnames'
@@ -16,7 +13,7 @@ import AppIcon from '@/app/components/base/app-icon'
 import MethodSelector from '@/app/components/tools/workflow-tool/method-selector'
 import LabelSelector from '@/app/components/tools/labels/selector'
 import ConfirmModal from '@/app/components/tools/workflow-tool/confirm-modal'
-import Tooltip from '@/app/components/base/tooltip'
+import TooltipPlus from '@/app/components/base/tooltip-plus'
 
 type Props = {
   isAdd?: boolean
@@ -147,16 +144,14 @@ const WorkflowToolAsModal: FC<Props> = ({
               <div>
                 <div className='flex items-center py-2 leading-5 text-sm font-medium text-gray-900'>
                   {t('tools.createTool.nameForToolCall')} <span className='ml-1 text-red-500'>*</span>
-                  <Tooltip
-                    htmlContent={
+                  <TooltipPlus
+                    popupContent={
                       <div className='w-[180px]'>
                         {t('tools.createTool.nameForToolCallPlaceHolder')}
                       </div>
                     }
-                    selector='workflow-tool-modal-tooltip'
-                  >
-                    <RiQuestionLine className='ml-2 w-[14px] h-[14px] text-gray-400' />
-                  </Tooltip>
+                    needsDelay={false}
+                  />
                 </div>
                 <input
                   type='text'

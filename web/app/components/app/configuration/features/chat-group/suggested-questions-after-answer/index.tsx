@@ -2,12 +2,9 @@
 import type { FC } from 'react'
 import React from 'react'
 import { useTranslation } from 'react-i18next'
-import {
-  RiQuestionLine,
-} from '@remixicon/react'
 import Panel from '@/app/components/app/configuration/base/feature-panel'
 import SuggestedQuestionsAfterAnswerIcon from '@/app/components/app/configuration/base/icons/suggested-questions-after-answer-icon'
-import Tooltip from '@/app/components/base/tooltip'
+import TooltipPlus from '@/app/components/base/tooltip-plus'
 
 const SuggestedQuestionsAfterAnswer: FC = () => {
   const { t } = useTranslation()
@@ -17,11 +14,14 @@ const SuggestedQuestionsAfterAnswer: FC = () => {
       title={
         <div className='flex items-center gap-2'>
           <div>{t('appDebug.feature.suggestedQuestionsAfterAnswer.title')}</div>
-          <Tooltip htmlContent={<div className='w-[180px]'>
-            {t('appDebug.feature.suggestedQuestionsAfterAnswer.description')}
-          </div>} selector='suggestion-question-tooltip'>
-            <RiQuestionLine className='w-[14px] h-[14px] text-gray-400' />
-          </Tooltip>
+          <TooltipPlus
+            popupContent={
+              <div className='w-[180px]'>
+                {t('appDebug.feature.suggestedQuestionsAfterAnswer.description')}
+              </div>
+            }
+            needsDelay={false}
+          />
         </div>
       }
       headerIcon={<SuggestedQuestionsAfterAnswerIcon />}

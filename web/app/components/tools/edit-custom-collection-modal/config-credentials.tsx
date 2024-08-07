@@ -2,10 +2,7 @@
 import type { FC } from 'react'
 import React from 'react'
 import { useTranslation } from 'react-i18next'
-import {
-  RiQuestionLine,
-} from '@remixicon/react'
-import Tooltip from '../../base/tooltip'
+import TooltipPlus from '@/app/components/base/tooltip-plus'
 import cn from '@/utils/classnames'
 import type { Credential } from '@/app/components/tools/types'
 import Drawer from '@/app/components/base/drawer-plus'
@@ -111,16 +108,15 @@ const ConfigCredential: FC<Props> = ({
                 <div>
                   <div className='flex items-center h-8 text-[13px] font-medium text-gray-900'>
                     {t('tools.createTool.authMethod.key')}
-                    <Tooltip
-                      selector='model-page-system-reasoning-model-tip'
-                      htmlContent={
+                    <TooltipPlus
+                      popupContent={
                         <div className='w-[261px] text-gray-500'>
                           {t('tools.createTool.authMethod.keyTooltip')}
                         </div>
                       }
-                    >
-                      <RiQuestionLine className='ml-0.5 w-[14px] h-[14px] text-gray-400' />
-                    </Tooltip>
+                      needsDelay={false}
+                      iconStyle='ml-0.5'
+                    />
                   </div>
                   <input
                     value={tempCredential.api_key_header}

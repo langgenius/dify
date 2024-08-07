@@ -7,13 +7,11 @@ import produce from 'immer'
 import {
   RiDeleteBinLine,
   RiHammerFill,
-  RiQuestionLine,
 } from '@remixicon/react'
 import { useFormattingChangedDispatcher } from '../../../debug/hooks'
 import SettingBuiltInTool from './setting-built-in-tool'
 import cn from '@/utils/classnames'
 import Panel from '@/app/components/app/configuration/base/feature-panel'
-import Tooltip from '@/app/components/base/tooltip'
 import { InfoCircle } from '@/app/components/base/icons/src/vender/line/general'
 import OperationBtn from '@/app/components/app/configuration/base/operation-btn'
 import AppIcon from '@/app/components/base/app-icon'
@@ -68,11 +66,13 @@ const AgentTools: FC = () => {
         title={
           <div className='flex items-center'>
             <div className='mr-1'>{t('appDebug.agent.tools.name')}</div>
-            <Tooltip htmlContent={<div className='w-[180px]'>
-              {t('appDebug.agent.tools.description')}
-            </div>} selector='config-tools-tooltip'>
-              <RiQuestionLine className='w-[14px] h-[14px] text-gray-400' />
-            </Tooltip>
+            <TooltipPlus
+              popupContent={
+                <div className='w-[180px]'>
+                  {t('appDebug.agent.tools.description')}
+                </div>
+              }
+            />
           </div>
         }
         headerRight={

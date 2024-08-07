@@ -8,7 +8,6 @@ import { useContext } from 'use-context-selector'
 import produce from 'immer'
 import {
   RiDeleteBinLine,
-  RiQuestionLine,
 } from '@remixicon/react'
 import Panel from '../base/feature-panel'
 import EditModal from './config-modal'
@@ -17,7 +16,7 @@ import type { IInputTypeIconProps } from './input-type-icon'
 import s from './style.module.css'
 import SelectVarType from './select-var-type'
 import { BracketsX as VarIcon } from '@/app/components/base/icons/src/vender/line/development'
-import Tooltip from '@/app/components/base/tooltip'
+import TooltipPlus from '@/app/components/base/tooltip-plus'
 import type { PromptVariable } from '@/models/debug'
 import { DEFAULT_VALUE_MAX_LEN, getMaxVarNameLength } from '@/config'
 import { checkKeys, getNewVar } from '@/utils/var'
@@ -282,11 +281,14 @@ const ConfigVar: FC<IConfigVarProps> = ({ promptVariables, readonly, onPromptVar
         <div className='flex items-center'>
           <div className='mr-1'>{t('appDebug.variableTitle')}</div>
           {!readonly && (
-            <Tooltip htmlContent={<div className='w-[180px]'>
-              {t('appDebug.variableTip')}
-            </div>} selector='config-var-tooltip'>
-              <RiQuestionLine className='w-[14px] h-[14px] text-gray-400' />
-            </Tooltip>
+            <TooltipPlus
+              popupContent={
+                <div className='w-[180px]'>
+                  {t('appDebug.variableTip')}
+                </div>
+              }
+              needsDelay={false}
+            />
           )}
         </div>
       }

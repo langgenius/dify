@@ -3,9 +3,6 @@ import type { FC } from 'react'
 import React, { useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { useBoolean } from 'ahooks'
-import {
-  RiQuestionLine,
-} from '@remixicon/react'
 import produce from 'immer'
 import { useContext } from 'use-context-selector'
 import ConfirmAddVar from './confirm-add-var'
@@ -13,7 +10,7 @@ import s from './style.module.css'
 import PromptEditorHeightResizeWrap from './prompt-editor-height-resize-wrap'
 import cn from '@/utils/classnames'
 import { type PromptVariable } from '@/models/debug'
-import Tooltip from '@/app/components/base/tooltip'
+import TooltipPlus from '@/app/components/base/tooltip-plus'
 import type { CompletionParams } from '@/types/app'
 import { AppType } from '@/types/app'
 import { getNewVar, getVars } from '@/utils/var'
@@ -156,13 +153,14 @@ const Prompt: FC<ISimplePromptInput> = ({
             <div className="flex items-center space-x-1">
               <div className='h2'>{mode !== AppType.completion ? t('appDebug.chatSubTitle') : t('appDebug.completionSubTitle')}</div>
               {!readonly && (
-                <Tooltip
-                  htmlContent={<div className='w-[180px]'>
-                    {t('appDebug.promptTip')}
-                  </div>}
-                  selector='config-prompt-tooltip'>
-                  <RiQuestionLine className='w-[14px] h-[14px] text-indigo-400' />
-                </Tooltip>
+                <TooltipPlus
+                  popupContent={
+                    <div className='w-[180px]'>
+                      {t('appDebug.promptTip')}
+                    </div>
+                  }
+                  needsDelay={false}
+                />
               )}
             </div>
             <div className='flex items-center'>

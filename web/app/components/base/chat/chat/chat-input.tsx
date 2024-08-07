@@ -225,6 +225,7 @@ const ChatInput: FC<ChatInputProps> = ({
                       <div>{t('common.operation.lineBreak')} Shift Enter</div>
                     </div>
                   }
+                  needsDelay={false}
                 >
                   {sendBtn}
                 </TooltipPlus>

@@ -5,10 +5,9 @@ import useSWR from 'swr'
 import {
   HandThumbDownIcon,
   HandThumbUpIcon,
-  InformationCircleIcon,
   XMarkIcon,
 } from '@heroicons/react/24/outline'
-import { RiEditFill } from '@remixicon/react'
+import { RiEditFill, RiQuestionLine } from '@remixicon/react'
 import { get } from 'lodash-es'
 import InfiniteScroll from 'react-infinite-scroll-component'
 import dayjs from 'dayjs'
@@ -379,7 +378,7 @@ function DetailPanel<T extends ChatConversationFullDetailResponse | CompletionCo
                 btnClassName='mr-4 !bg-gray-50 !py-1.5 !px-2.5 border-none font-normal'
                 btnElement={<>
                   <span className='text-[13px]'>{targetTone}</span>
-                  <InformationCircleIcon className='h-4 w-4 text-gray-800 ml-1.5' />
+                  <RiQuestionLine className='h-4 w-4 text-gray-800 ml-1.5' />
                 </>}
                 htmlContent={<div className='w-[280px]'>
                   <div className='flex justify-between py-2 px-4 font-medium text-sm text-gray-700'>

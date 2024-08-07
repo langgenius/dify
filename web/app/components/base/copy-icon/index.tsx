@@ -35,6 +35,7 @@ export const CopyIcon = ({ content }: Props) => {
           ? t(`${prefixEmbedded}.copied`)
           : t(`${prefixEmbedded}.copy`)) || ''
       }
+      needsDelay={false}
     >
       <div onMouseLeave={onMouseLeave}>
         {!isCopied

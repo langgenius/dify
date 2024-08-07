@@ -19,10 +19,6 @@ export type TooltipProps = {
   needsDelay?: boolean
 }
 
-const arrow = (
-  <svg className="absolute text-white h-2 w-full left-0 top-full" x="0px" y="0px" viewBox="0 0 255 255"><polygon className="fill-current" points="0,0 127.5,127.5 255,0"></polygon></svg>
-)
-
 const getArrow = (position: Placement) => {
   switch (position) {
     case 'top':
@@ -124,7 +120,7 @@ const Tooltip: FC<TooltipProps> = ({
         onMouseLeave={() => triggerMethod === 'hover' && handleLeave(true)}
         asChild={asChild}
       >
-        {children || <div className='p-1'><RiQuestionLine className={cn('text-text-tertiary hover:text-text-tertiary', iconStyle)} /></div>}
+        {children || <div className='p-[1px]'><RiQuestionLine className={cn('text-text-quaternary hover:text-text-tertiary', iconStyle)} /></div>}
       </PortalToFollowElemTrigger>
       <PortalToFollowElemContent
         className="z-[9999]"

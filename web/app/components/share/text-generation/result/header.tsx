@@ -7,7 +7,7 @@ import copy from 'copy-to-clipboard'
 import type { Feedbacktype } from '@/app/components/base/chat/chat/type'
 import Button from '@/app/components/base/button'
 import Toast from '@/app/components/base/toast'
-import Tooltip from '@/app/components/base/tooltip'
+import TooltipPlus from '@/app/components/base/tooltip-plus'
 
 type IResultHeaderProps = {
   result: string
@@ -41,9 +41,9 @@ const Header: FC<IResultHeaderProps> = ({
         </Button>
 
         {showFeedback && feedback.rating && feedback.rating === 'like' && (
-          <Tooltip
-            selector="undo-feedback-like"
-            content="Undo Great Rating"
+          <TooltipPlus
+            popupContent="Undo Great Rating"
+            needsDelay={false}
           >
             <div
               onClick={() => {
@@ -54,13 +54,13 @@ const Header: FC<IResultHeaderProps> = ({
               className='flex w-7 h-7 items-center justify-center rounded-md cursor-pointer  !text-primary-600 border border-primary-200 bg-primary-100 hover:border-primary-300 hover:bg-primary-200'>
               <HandThumbUpIcon width={16} height={16} />
             </div>
-          </Tooltip>
+          </TooltipPlus>
         )}
 
         {showFeedback && feedback.rating && feedback.rating === 'dislike' && (
-          <Tooltip
-            selector="undo-feedback-dislike"
-            content="Undo Undesirable Response"
+          <TooltipPlus
+            popupContent="Undo Undesirable Response"
+            needsDelay={false}
           >
             <div
               onClick={() => {
@@ -71,14 +71,14 @@ const Header: FC<IResultHeaderProps> = ({
               className='flex w-7 h-7 items-center justify-center rounded-md cursor-pointer  !text-red-600 border border-red-200 bg-red-100 hover:border-red-300 hover:bg-red-200'>
               <HandThumbDownIcon width={16} height={16} />
             </div>
-          </Tooltip>
+          </TooltipPlus>
         )}
 
         {showFeedback && !feedback.rating && (
           <div className='flex rounded-lg border border-gray-200 p-[1px] space-x-1'>
-            <Tooltip
-              selector="feedback-like"
-              content="Great Rating"
+            <TooltipPlus
+              popupContent="Great Rating"
+              needsDelay={false}
             >
               <div
                 onClick={() => {
@@ -89,10 +89,10 @@ const Header: FC<IResultHeaderProps> = ({
                 className='flex w-6 h-6 items-center justify-center rounded-md cursor-pointer hover:bg-gray-100'>
                 <HandThumbUpIcon width={16} height={16} />
               </div>
-            </Tooltip>
-            <Tooltip
-              selector="feedback-dislike"
-              content="Undesirable Response"
+            </TooltipPlus>
+            <TooltipPlus
+              popupContent="Undesirable Response"
+              needsDelay={false}
             >
               <div
                 onClick={() => {
@@ -103,7 +103,7 @@ const Header: FC<IResultHeaderProps> = ({
                 className='flex w-6 h-6 items-center justify-center rounded-md cursor-pointer hover:bg-gray-100'>
                 <HandThumbDownIcon width={16} height={16} />
               </div>
-            </Tooltip>
+            </TooltipPlus>
           </div>
         )}
       </div>

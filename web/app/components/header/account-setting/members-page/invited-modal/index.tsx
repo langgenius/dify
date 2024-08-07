@@ -8,7 +8,7 @@ import Modal from '@/app/components/base/modal'
 import Button from '@/app/components/base/button'
 import { IS_CE_EDITION } from '@/config'
 import type { InvitationResult } from '@/models/common'
-import Tooltip from '@/app/components/base/tooltip'
+import TooltipPlus from '@/app/components/base/tooltip-plus'
 
 export type SuccessInvationResult = Extract<InvitationResult, { status: 'success' }>
 export type FailedInvationResult = Extract<InvitationResult, { status: 'failed' }>
@@ -63,15 +63,15 @@ const InvitedModal = ({
                     {
                       failedInvationResults.map(item =>
                         <div key={item.email} className='flex justify-center border border-red-300 rounded-md px-1 bg-orange-50'>
-                          <Tooltip
-                            selector={`invitation-tag-${item.email}`}
-                            htmlContent={item.message}
+                          <TooltipPlus
+                            popupContent={item.message}
+                            needsDelay={false}
                           >
                             <div className='flex justify-center items-center text-sm gap-1'>
                               {item.email}
                               <QuestionMarkCircleIcon className='w-4 h-4 text-red-300' />
                             </div>
-                          </Tooltip>
+                          </TooltipPlus>
                         </div>,
                       )
                     }

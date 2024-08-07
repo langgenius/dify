@@ -2,14 +2,11 @@
 import type { FC } from 'react'
 import React from 'react'
 import { useTranslation } from 'react-i18next'
-import {
-  RiQuestionLine,
-} from '@remixicon/react'
 import type { Props } from './var-picker'
 import VarPicker from './var-picker'
 import cn from '@/utils/classnames'
 import { BracketsX } from '@/app/components/base/icons/src/vender/line/development'
-import Tooltip from '@/app/components/base/tooltip'
+import TooltipPlus from '@/app/components/base/tooltip-plus'
 
 const ContextVar: FC<Props> = (props) => {
   const { t } = useTranslation()
@@ -23,14 +20,14 @@ const ContextVar: FC<Props> = (props) => {
           <BracketsX className='w-4 h-4 text-primary-500' />
         </div>
         <div className='mr-1 text-sm font-medium text-gray-800'>{t('appDebug.feature.dataSet.queryVariable.title')}</div>
-        <Tooltip
-          htmlContent={<div className='w-[180px]'>
-            {t('appDebug.feature.dataSet.queryVariable.tip')}
-          </div>}
-          selector='context-var-tooltip'
-        >
-          <RiQuestionLine className='w-3.5 h-3.5 text-gray-400' />
-        </Tooltip>
+        <TooltipPlus
+          popupContent={
+            <div className='w-[180px]'>
+              {t('appDebug.feature.dataSet.queryVariable.tip')}
+            </div>
+          }
+          needsDelay={false}
+        />
       </div>
 
       <VarPicker {...props} />

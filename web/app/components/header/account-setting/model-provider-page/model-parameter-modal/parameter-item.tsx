@@ -1,14 +1,11 @@
 import type { FC } from 'react'
 import { useEffect, useRef, useState } from 'react'
-import {
-  RiQuestionLine,
-} from '@remixicon/react'
 import type { ModelParameterRule } from '../declarations'
 import { useLanguage } from '../hooks'
 import { isNullOrUndefined } from '../utils'
 import cn from '@/utils/classnames'
 import Switch from '@/app/components/base/switch'
-import Tooltip from '@/app/components/base/tooltip'
+import TooltipPlus from '@/app/components/base/tooltip-plus'
 import Slider from '@/app/components/base/slider'
 import Radio from '@/app/components/base/radio'
 import { SimpleSelect } from '@/app/components/base/select'
@@ -230,14 +227,12 @@ const ParameterItem: FC<ParameterItemProps> = ({
           </div>
           {
             parameterRule.help && (
-              <Tooltip
-                selector={`model-parameter-rule-${parameterRule.name}`}
-                htmlContent={(
+              <TooltipPlus
+                popupContent={(
                   <div className='w-[200px] whitespace-pre-wrap'>{parameterRule.help[language] || parameterRule.help.en_US}</div>
                 )}
-              >
-                <RiQuestionLine className='mr-1.5 w-3.5 h-3.5 text-gray-400' />
-              </Tooltip>
+                needsDelay={false}
+              />
             )
           }
           {

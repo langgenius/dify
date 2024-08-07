@@ -7,14 +7,12 @@ import { ArrowDownIcon, TrashIcon } from '@heroicons/react/24/outline'
 import { pick } from 'lodash-es'
 import {
   RiMoreFill,
-  RiQuestionLine,
 } from '@remixicon/react'
 import { useContext } from 'use-context-selector'
 import { useRouter } from 'next/navigation'
 import { useTranslation } from 'react-i18next'
 import dayjs from 'dayjs'
 import { Edit03 } from '../../base/icons/src/vender/solid/general'
-import TooltipPlus from '../../base/tooltip-plus'
 import { Globe01 } from '../../base/icons/src/vender/line/mapsAndTravel'
 import s from './style.module.css'
 import RenameModal from './rename-modal'
@@ -24,6 +22,7 @@ import Divider from '@/app/components/base/divider'
 import Popover from '@/app/components/base/popover'
 import Confirm from '@/app/components/base/confirm'
 import Tooltip from '@/app/components/base/tooltip'
+import TooltipPlus from '@/app/components/base/tooltip-plus'
 import { ToastContext } from '@/app/components/base/toast'
 import type { IndicatorProps } from '@/app/components/header/indicator'
 import Indicator from '@/app/components/header/indicator'
@@ -93,14 +92,13 @@ export const StatusItem: FC<{
     <span className={cn('text-gray-700 text-sm', textCls)}>{DOC_INDEX_STATUS_MAP[localStatus]?.text}</span>
     {
       errorMessage && (
-        <Tooltip
-          selector='dataset-document-detail-item-status'
-          htmlContent={
+        <TooltipPlus
+          popupContent={
             <div className='max-w-[260px] break-all'>{errorMessage}</div>
           }
-        >
-          <RiQuestionLine className='ml-1 w-[14px] h-[14px] text-gray-700' />
-        </Tooltip>
+          iconStyle='ml-1'
+          needsDelay={false}
+        />
       )
     }
   </div>
@@ -201,11 +199,14 @@ export const OperationAction: FC<{
     {isListScene && embeddingAvailable && (
       <>
         {archived
-          ? <Tooltip selector={`list-switch-${id}`} content={t('datasetDocuments.list.action.enableWarning') as string} className='!font-semibold'>
+          ? <TooltipPlus
+            popupContent={t('datasetDocuments.list.action.enableWarning')}
+            popupClassName='!font-semibold'
+          >
             <div>
               <Switch defaultValue={false} onChange={() => { }} disabled={true} size='md' />
             </div>
-          </Tooltip>
+          </TooltipPlus>
           : <Switch defaultValue={enabled} onChange={v => handleSwitch(v ? 'enable' : 'disable')} size='md' />
         }
         <Divider className='!ml-4 !mr-2 !h-3' type='vertical' />

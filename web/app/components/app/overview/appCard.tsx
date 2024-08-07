@@ -14,7 +14,7 @@ import EmbeddedModal from './embedded'
 import CustomizeModal from './customize'
 import style from './style.module.css'
 import type { ConfigParams } from './settings'
-import Tooltip from '@/app/components/base/tooltip'
+import TooltipPlus from '@/app/components/base/tooltip-plus'
 import AppBasic from '@/app/components/app-sidebar/basic'
 import { asyncRunSafe, randomString } from '@/utils'
 import Button from '@/app/components/base/button'
@@ -193,9 +193,8 @@ function AppCard({
                 />
               )}
               {isApp && isCurrentWorkspaceManager && (
-                <Tooltip
-                  content={t('appOverview.overview.appInfo.regenerate') || ''}
-                  selector={`code-generate-${randomString(8)}`}
+                <TooltipPlus
+                  popupContent={t('appOverview.overview.appInfo.regenerate') || ''}
                 >
                   <div
                     className="w-8 h-8 ml-0.5 cursor-pointer hover:bg-gray-200 rounded-lg"
@@ -206,7 +205,7 @@ function AppCard({
                       }`}
                     ></div>
                   </div>
-                </Tooltip>
+                </TooltipPlus>
               )}
             </div>
           </div>
@@ -225,18 +224,17 @@ function AppCard({
                 onClick={genClickFuncByName(op.opName)}
                 disabled={disabled}
               >
-                <Tooltip
-                  content={
+                <TooltipPlus
+                  popupContent={
                     t('appOverview.overview.appInfo.preUseReminder') ?? ''
                   }
-                  selector={`op-btn-${randomString(16)}`}
-                  className={disabled ? 'mt-[-8px]' : '!hidden'}
+                  popupClassName={disabled ? 'mt-[-8px]' : '!hidden'}
                 >
                   <div className="flex flex-row items-center">
                     <op.opIcon className="h-4 w-4 mr-1.5 stroke-[1.8px]" />
                     <span className="text-[13px]">{op.opName}</span>
                   </div>
-                </Tooltip>
+                </TooltipPlus>
               </Button>
             )
           })}

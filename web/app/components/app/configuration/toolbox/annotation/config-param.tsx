@@ -4,9 +4,6 @@ import React from 'react'
 import { useTranslation } from 'react-i18next'
 import { useContext } from 'use-context-selector'
 import { usePathname, useRouter } from 'next/navigation'
-import {
-  RiQuestionLine,
-} from '@remixicon/react'
 import ConfigParamModal from './config-param-modal'
 import Panel from '@/app/components/app/configuration/base/feature-panel'
 import { MessageFast } from '@/app/components/base/icons/src/vender/solid/communication'
@@ -35,9 +32,9 @@ export const Item: FC<{ title: string; tooltip: string; children: JSX.Element }>
           popupContent={
             <div className='max-w-[200px] leading-[18px] text-[13px] font-medium text-gray-800'>{tooltip}</div>
           }
-        >
-          <RiQuestionLine className='w-3.5 h-3.5 text-gray-400' />
-        </TooltipPlus>
+          iconStyle='w-3.5 h-3.5'
+          needsDelay={false}
+        />
       </div>
       <div>{children}</div>
     </div>

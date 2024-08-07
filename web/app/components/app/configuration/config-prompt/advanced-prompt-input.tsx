@@ -9,7 +9,6 @@ import produce from 'immer'
 import {
   RiDeleteBinLine,
   RiErrorWarningFill,
-  RiQuestionLine,
 } from '@remixicon/react'
 import s from './style.module.css'
 import MessageTypeSelector from './message-type-selector'
@@ -21,7 +20,7 @@ import {
   Clipboard,
   ClipboardCheck,
 } from '@/app/components/base/icons/src/vender/line/files'
-import Tooltip from '@/app/components/base/tooltip'
+import TooltipPlus from '@/app/components/base/tooltip-plus'
 import PromptEditor from '@/app/components/base/prompt-editor'
 import ConfigContext from '@/context/debug-configuration'
 import { getNewVar, getVars } from '@/utils/var'
@@ -173,13 +172,14 @@ const AdvancedPromptInput: FC<Props> = ({
 
                     <div className='text-sm font-semibold uppercase text-indigo-800'>{t('appDebug.pageTitle.line1')}
                     </div>
-                    <Tooltip
-                      htmlContent={<div className='w-[180px]'>
-                        {t('appDebug.promptTip')}
-                      </div>}
-                      selector='config-prompt-tooltip'>
-                      <RiQuestionLine className='w-[14px] h-[14px] text-indigo-400' />
-                    </Tooltip>
+                    <TooltipPlus
+                      popupContent={
+                        <div className='w-[180px]'>
+                          {t('appDebug.promptTip')}
+                        </div>
+                      }
+                      needsDelay={false}
+                    />
                   </div>)}
               <div className={cn(s.optionWrap, 'items-center space-x-1')}>
                 {canDelete && (

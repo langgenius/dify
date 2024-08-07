@@ -1,10 +1,9 @@
 'use client'
-import { useRef, useState } from 'react'
+import { useState } from 'react'
 import { t } from 'i18next'
 import copy from 'copy-to-clipboard'
 import s from './style.module.css'
-import Tooltip from '@/app/components/base/tooltip'
-import { randomString } from '@/utils'
+import TooltipPlus from '@/app/components/base/tooltip-plus'
 
 type ICopyBtnProps = {
   value: string
@@ -18,14 +17,12 @@ const CopyBtn = ({
   isPlain,
 }: ICopyBtnProps) => {
   const [isCopied, setIsCopied] = useState(false)
-  const selector = useRef(`copy-tooltip-${randomString(4)}`)
 
   return (
     <div className={`${className}`}>
-      <Tooltip
-        selector={selector.current}
-        content={(isCopied ? t('appApi.copied') : t('appApi.copy')) as string}
-        className='z-10'
+      <TooltipPlus
+        popupContent={(isCopied ? t('appApi.copied') : t('appApi.copy'))}
+        needsDelay={false}
       >
         <div
           className={'box-border p-0.5 flex items-center justify-center rounded-md bg-white cursor-pointer'}
@@ -41,7 +38,7 @@ const CopyBtn = ({
         >
           <div className={`w-6 h-6 rounded-md hover:bg-gray-50  ${s.copyIcon} ${isCopied ? s.copied : ''}`}></div>
         </div>
-      </Tooltip>
+      </TooltipPlus>
     </div>
   )
 }
