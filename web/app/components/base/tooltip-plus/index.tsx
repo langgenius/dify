@@ -3,32 +3,68 @@ import type { FC } from 'react'
 import React, { useEffect, useRef, useState } from 'react'
 import { useBoolean } from 'ahooks'
 import type { OffsetOptions, Placement } from '@floating-ui/react'
+import { RiQuestionLine } from '@remixicon/react'
 import cn from '@/utils/classnames'
 import { PortalToFollowElem, PortalToFollowElemContent, PortalToFollowElemTrigger } from '@/app/components/base/portal-to-follow-elem'
 export type TooltipProps = {
   position?: Placement
   triggerMethod?: 'hover' | 'click'
+  iconStyle?: string
   popupContent: React.ReactNode
-  children: React.ReactNode
+  children?: React.ReactNode
   hideArrow?: boolean
   popupClassName?: string
   offset?: OffsetOptions
   asChild?: boolean
+  needsDelay?: boolean
 }
 
 const arrow = (
   <svg className="absolute text-white h-2 w-full left-0 top-full" x="0px" y="0px" viewBox="0 0 255 255"><polygon className="fill-current" points="0,0 127.5,127.5 255,0"></polygon></svg>
 )
 
+const getArrow = (position: Placement) => {
+  switch (position) {
+    case 'top':
+      return (
+        <svg className="absolute text-components-tooltip-bg h-2 w-full left-0 top-full" x="0px" y="0px" viewBox="0 0 255 255">
+          <polygon className="fill-current" points="0,0 127.5,127.5 255,0"></polygon>
+        </svg>
+      )
+    case 'bottom':
+      return (
+        <svg className="absolute text-components-tooltip-bg h-2 w-full left-0 bottom-full" x="0px" y="0px" viewBox="0 0 255 255">
+          <polygon className="fill-current" points="0,255 127.5,127.5 255,255"></polygon>
+        </svg>
+      )
+    case 'right':
+      return (
+        <svg className="absolute text-components-tooltip-bg h-2 w-2 left-[-0.5rem] top-1/2 transform -translate-y-1/2" x="0px" y="0px" viewBox="0 0 255 255">
+          <polygon className="fill-current" points="255,0 127.5,127.5 255,255"></polygon>
+        </svg>
+      )
+    case 'left':
+      return (
+        <svg className="absolute text-components-tooltip-bg h-2 w-2 right-[-0.5rem] top-1/2 transform -translate-y-1/2" x="0px" y="0px" viewBox="0 0 255 255">
+          <polygon className="fill-current" points="0,0 127.5,127.5 0,255"></polygon>
+        </svg>
+      )
+    default:
+      return null
+  }
+}
+
 const Tooltip: FC<TooltipProps> = ({
   position = 'top',
   triggerMethod = 'hover',
+  iconStyle = 'w-[14px] h-[14px]',
   popupContent,
   children,
   hideArrow,
   popupClassName,
   offset,
   asChild,
+  needsDelay = true,
 }) => {
   const [open, setOpen] = useState(false)
   const [isHoverPopup, {
@@ -59,10 +95,15 @@ const Tooltip: FC<TooltipProps> = ({
       setNotHoverPopup()
 
     // give time to move to the popup
-    setTimeout(() => {
-      if (!isHoverPopupRef.current && !isHoverTriggerRef.current)
-        setOpen(false)
-    }, 500)
+    if (needsDelay) {
+      setTimeout(() => {
+        if (!isHoverPopupRef.current && !isHoverTriggerRef.current)
+          setOpen(false)
+      }, 500)
+    }
+    else {
+      setOpen(false)
+    }
   }
 
   return (
@@ -83,7 +124,7 @@ const Tooltip: FC<TooltipProps> = ({
         onMouseLeave={() => triggerMethod === 'hover' && handleLeave(true)}
         asChild={asChild}
       >
-        {children}
+        {children || <div className='p-1'><RiQuestionLine className={cn('text-text-tertiary hover:text-text-tertiary', iconStyle)} /></div>}
       </PortalToFollowElemTrigger>
       <PortalToFollowElemContent
         className="z-[9999]"
@@ -97,7 +138,7 @@ const Tooltip: FC<TooltipProps> = ({
           onMouseLeave={() => triggerMethod === 'hover' && handleLeave(false)}
         >
           {popupContent}
-          {!hideArrow && arrow}
+          {!hideArrow && getArrow(position)}
         </div>
       </PortalToFollowElemContent>
     </PortalToFollowElem>

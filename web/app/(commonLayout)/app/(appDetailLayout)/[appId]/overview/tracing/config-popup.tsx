@@ -123,7 +123,6 @@ const ConfigPopup: FC<PopupProps> = ({
                     popupContent={t(`${I18N_PREFIX}.disabledTip`)}
                   >
                     {switchContent}
-
                   </TooltipPlus>
                 )
                 : switchContent}

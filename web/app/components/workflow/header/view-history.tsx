@@ -101,6 +101,7 @@ const ViewHistory = ({
             !withText && (
               <TooltipPlus
                 popupContent={t('workflow.common.viewRunHistory')}
+                needsDelay={false}
               >
                 <div
                   className={cn('group flex items-center justify-center w-7 h-7 rounded-md hover:bg-state-accent-hover cursor-pointer', open && 'bg-state-accent-hover')}

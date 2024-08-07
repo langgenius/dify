@@ -16,6 +16,7 @@ const TipPopup = ({
     <TooltipPlus
       offset={4}
       hideArrow
+      needsDelay={false}
       popupClassName='!p-0 !bg-gray-25'
       popupContent={
         <div className='flex items-center gap-1 px-2 h-6 text-xs font-medium text-gray-700 rounded-lg border-[0.5px] border-black/5'>
