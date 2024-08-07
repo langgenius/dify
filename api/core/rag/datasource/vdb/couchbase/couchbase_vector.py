@@ -260,12 +260,12 @@ class CouchbaseVector(BaseVector):
     #     return [row['id'] for row in result.rows()]
 
     
-    # def delete_by_metadata_field(self, key: str, value: str) -> None:
-    #     query = f"""
-    #         DELETE FROM `{self._client_config.bucket_name}`.{self._client_config.scope_name}.{self._collection_name}
-    #         WHERE metadata.{key} = {value};
-    #         """
-    #     self._cluster.query(query)
+    def delete_by_metadata_field(self, key: str, value: str) -> None:
+        query = f"""
+            DELETE FROM `{self._client_config.bucket_name}`.{self._client_config.scope_name}.{self._collection_name}
+            WHERE metadata.{key} = {value};
+            """
+        self._cluster.query(query)
         
     def search_by_vector(
             self,
