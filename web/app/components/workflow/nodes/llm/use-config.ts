@@ -1,7 +1,7 @@
 import { useCallback, useEffect, useRef, useState } from 'react'
 import produce from 'immer'
 import { EditionType, VarType } from '../../types'
-import type { Memory, PromptItem, ValueSelector, Var, Variable } from '../../types'
+import type { Memory, PromptItem, ValueSelector, Var, Variable, VisionSetting } from '../../types'
 import { useStore } from '../../store'
 import {
   useIsChatMode,
@@ -147,13 +147,13 @@ const useConfig = (id: string, payload: LLMNodeType) => {
       model: model.name,
     },
   )
-  const isShowVisionConfig = !!currModel?.features?.includes(ModelFeatureEnum.vision)
+  const isVisionModel = !!currModel?.features?.includes(ModelFeatureEnum.vision)
   // change to vision model to set vision enabled, else disabled
   useEffect(() => {
     if (!modelChanged)
       return
     setModelChanged(false)
-    if (!isShowVisionConfig) {
+    if (!isVisionModel) {
       const newInputs = produce(inputs, (draft) => {
         draft.vision = {
           enabled: false,
@@ -169,6 +169,7 @@ const useConfig = (id: string, payload: LLMNodeType) => {
             enabled: true,
             configs: {
               detail: Resolution.high,
+              valueSelector: [],
             },
           }
         }
@@ -176,7 +177,7 @@ const useConfig = (id: string, payload: LLMNodeType) => {
       setInputs(newInputs)
     }
   // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [isShowVisionConfig, modelChanged])
+  }, [isVisionModel, modelChanged])
 
   // variables
   const isShowVars = (() => {
@@ -298,31 +299,18 @@ const useConfig = (id: string, payload: LLMNodeType) => {
       if (!draft.vision) {
         draft.vision = {
           enabled,
-          configs: {
-            detail: Resolution.high,
-          },
         }
       }
       else {
         draft.vision.enabled = enabled
-        if (!draft.vision.configs) {
-          draft.vision.configs = {
-            detail: Resolution.high,
-          }
-        }
       }
     })
     setInputs(newInputs)
   }, [inputs, setInputs])
 
-  const handleVisionResolutionChange = useCallback((newResolution: Resolution) => {
+  const handleVisionResolutionChange = useCallback((config: VisionSetting) => {
     const newInputs = produce(inputs, (draft) => {
-      if (!draft.vision.configs) {
-        draft.vision.configs = {
-          detail: Resolution.high,
-        }
-      }
-      draft.vision.configs.detail = newResolution
+      draft.vision.configs = config
     })
     setInputs(newInputs)
   }, [inputs, setInputs])
@@ -425,7 +413,7 @@ const useConfig = (id: string, payload: LLMNodeType) => {
     isCompletionModel,
     hasSetBlockStatus,
     shouldShowContextTip,
-    isShowVisionConfig,
+    isVisionModel,
     handleModelChanged,
     handleCompletionParamsChange,
     isShowVars,

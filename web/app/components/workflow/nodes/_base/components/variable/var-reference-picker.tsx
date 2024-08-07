@@ -37,7 +37,7 @@ const TRIGGER_DEFAULT_WIDTH = 227
 type Props = {
   className?: string
   nodeId: string
-  isShowNodeName: boolean
+  isShowNodeName?: boolean
   readonly: boolean
   value: ValueSelector | string
   onChange: (value: ValueSelector | string, varKindType: VarKindType, varInfo?: Var) => void
@@ -56,7 +56,7 @@ const VarReferencePicker: FC<Props> = ({
   nodeId,
   readonly,
   className,
-  isShowNodeName,
+  isShowNodeName = true,
   value,
   onOpen = () => { },
   onChange,

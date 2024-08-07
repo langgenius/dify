@@ -351,6 +351,7 @@ const translation = {
   vision: {
     name: '视觉',
     description: '开启视觉功能将允许模型输入图片，并根据图像内容的理解回答用户问题',
+    onlySupportVisionModelTip: '只有视觉模型配置视觉功能',
     settings: '设置',
     visionSettings: {
       title: '视觉设置',

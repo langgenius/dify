@@ -4,8 +4,8 @@ import { useTranslation } from 'react-i18next'
 import { RiQuestionLine } from '@remixicon/react'
 import MemoryConfig from '../_base/components/memory-config'
 import VarReferencePicker from '../_base/components/variable/var-reference-picker'
+import ConfigVision from '../_base/components/config-vision'
 import useConfig from './use-config'
-import ResolutionPicker from './components/resolution-picker'
 import type { LLMNodeType } from './types'
 import ConfigPrompt from './components/config-prompt'
 import VarList from '@/app/components/workflow/nodes/_base/components/variable/var-list'
@@ -14,14 +14,13 @@ import Field from '@/app/components/workflow/nodes/_base/components/field'
 import Split from '@/app/components/workflow/nodes/_base/components/split'
 import ModelParameterModal from '@/app/components/header/account-setting/model-provider-page/model-parameter-modal'
 import OutputVars, { VarItem } from '@/app/components/workflow/nodes/_base/components/output-vars'
-import { Resolution } from '@/types/app'
 import { InputVarType, type NodePanelProps } from '@/app/components/workflow/types'
 import BeforeRunForm from '@/app/components/workflow/nodes/_base/components/before-run-form'
 import type { Props as FormProps } from '@/app/components/workflow/nodes/_base/components/before-run-form/form'
 import ResultPanel from '@/app/components/workflow/run/result-panel'
 import TooltipPlus from '@/app/components/base/tooltip-plus'
 import Editor from '@/app/components/workflow/nodes/_base/components/prompt/editor'
-import Switch from '@/app/components/base/switch'
+
 const i18nPrefix = 'workflow.nodes.llm'
 
 const Panel: FC<NodePanelProps<LLMNodeType>> = ({
@@ -37,7 +36,7 @@ const Panel: FC<NodePanelProps<LLMNodeType>> = ({
     isChatMode,
     isCompletionModel,
     shouldShowContextTip,
-    isShowVisionConfig,
+    isVisionModel,
     handleModelChanged,
     hasSetBlockStatus,
     handleCompletionParamsChange,
@@ -103,7 +102,7 @@ const Panel: FC<NodePanelProps<LLMNodeType>> = ({
       )
     }
 
-    if (isShowVisionConfig) {
+    if (isVisionModel) {
       forms.push(
         {
           label: t(`${i18nPrefix}.vision`)!,
@@ -259,28 +258,15 @@ const Panel: FC<NodePanelProps<LLMNodeType>> = ({
         )}
 
         {/* Vision: GPT4-vision and so on */}
-        {isShowVisionConfig && (
-          <>
-            <Split />
-            <Field
-              title={t(`${i18nPrefix}.vision`)}
-              tooltip={t('appDebug.vision.description')!}
-              operations={
-                <Switch size='md' defaultValue={inputs.vision.enabled} onChange={handleVisionResolutionEnabledChange} />
-              }
-            >
-              {inputs.vision.enabled
-                ? (
-                  <ResolutionPicker
-                    value={inputs.vision.configs?.detail || Resolution.high}
-                    onChange={handleVisionResolutionChange}
-                  />
-                )
-                : null}
-
-            </Field>
-          </>
-        )}
+        <ConfigVision
+          nodeId={id}
+          readOnly={readOnly}
+          isVisionModel={isVisionModel}
+          enabled={inputs.vision.enabled}
+          onEnabledChange={handleVisionResolutionEnabledChange}
+          config={inputs.vision.configs}
+          onConfigChange={handleVisionResolutionChange}
+        />
       </div>
       <Split />
       <div className='px-4 pt-4 pb-2'>

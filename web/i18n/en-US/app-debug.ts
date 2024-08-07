@@ -356,6 +356,7 @@ const translation = {
   vision: {
     name: 'Vision',
     description: 'Enable Vision will allows the model to take in images and answer questions about them. ',
+    onlySupportVisionModelTip: 'Only supports vision models',
     settings: 'Settings',
     visionSettings: {
       title: 'Vision Settings',

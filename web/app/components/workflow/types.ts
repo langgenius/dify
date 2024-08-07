@@ -347,5 +347,5 @@ export type UploadFileSetting = {
 
 export type VisionSetting = {
   valueSelector: ValueSelector
-  resolution: Resolution
+  detail: Resolution
 }
