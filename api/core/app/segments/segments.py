@@ -85,7 +85,7 @@ class FileSegment(Segment):
 
 class ObjectSegment(Segment):
     value_type: SegmentType = SegmentType.OBJECT
-    value: Mapping[str, Segment]
+    value: Mapping[str, Any]
 
     @property
     def text(self) -> str:
@@ -101,9 +101,6 @@ class ObjectSegment(Segment):
     def markdown(self) -> str:
         # TODO: Use markdown code block
         return json.dumps(self.model_dump()['value'], ensure_ascii=False, indent=2)
-
-    def to_object(self):
-        return {k: v.to_object() for k, v in self.value.items()}
 
 
 class ArraySegment(Segment):

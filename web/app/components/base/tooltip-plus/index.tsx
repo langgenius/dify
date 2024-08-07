@@ -10,6 +10,7 @@ export type TooltipProps = {
   position?: Placement
   triggerMethod?: 'hover' | 'click'
   iconStyle?: string
+  disabled?: boolean
   popupContent: React.ReactNode
   children?: React.ReactNode
   hideArrow?: boolean
@@ -54,6 +55,7 @@ const Tooltip: FC<TooltipProps> = ({
   position = 'top',
   triggerMethod = 'hover',
   iconStyle = 'w-[14px] h-[14px]',
+  disabled = false,
   popupContent,
   children,
   hideArrow,
@@ -104,7 +106,7 @@ const Tooltip: FC<TooltipProps> = ({
 
   return (
     <PortalToFollowElem
-      open={open}
+      open={disabled ? false : open}
       onOpenChange={setOpen}
       placement={position}
       offset={offset ?? 10}
