@@ -319,3 +319,23 @@ class WorkflowService:
             )
         else:
             raise ValueError(f"Invalid app mode: {app_model.mode}")
+
+    @classmethod
+    def get_elapsed_time(cls, workflow_run_id: str) -> float:
+        """
+        Get elapsed time
+        """
+        elapsed_time = 0.0
+
+        # fetch workflow node execution by workflow_run_id
+        workflow_node_execution = (
+            db.session.query(WorkflowNodeExecution)
+            .filter(WorkflowNodeExecution.workflow_run_id == workflow_run_id)
+            .order_by(WorkflowNodeExecution.created_at.asc())
+            .all()
+        )
+
+        for workflow_node_execution in workflow_node_execution:
+            elapsed_time += workflow_node_execution.elapsed_time
+
+        return elapsed_time

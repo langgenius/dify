@@ -40,6 +40,7 @@ from models.workflow import (
     WorkflowRunStatus,
     WorkflowRunTriggeredFrom,
 )
+from services.workflow_service import WorkflowService
 
 
 class WorkflowCycleManage(WorkflowIterationCycleManage):
@@ -116,7 +117,7 @@ class WorkflowCycleManage(WorkflowIterationCycleManage):
         """
         workflow_run.status = WorkflowRunStatus.SUCCEEDED.value
         workflow_run.outputs = outputs
-        workflow_run.elapsed_time = time.perf_counter() - start_at
+        workflow_run.elapsed_time = WorkflowService.get_elapsed_time(workflow_run_id=workflow_run.id)
         workflow_run.total_tokens = total_tokens
         workflow_run.total_steps = total_steps
         workflow_run.finished_at = datetime.now(timezone.utc).replace(tzinfo=None)
@@ -159,7 +160,7 @@ class WorkflowCycleManage(WorkflowIterationCycleManage):
         """
         workflow_run.status = status.value
         workflow_run.error = error
-        workflow_run.elapsed_time = time.perf_counter() - start_at
+        workflow_run.elapsed_time = WorkflowService.get_elapsed_time(workflow_run_id=workflow_run.id)
         workflow_run.total_tokens = total_tokens
         workflow_run.total_steps = total_steps
         workflow_run.finished_at = datetime.now(timezone.utc).replace(tzinfo=None)
