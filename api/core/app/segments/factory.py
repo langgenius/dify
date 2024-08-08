@@ -75,8 +75,7 @@ def build_segment(value: Any, /) -> Segment:
         return FloatSegment(value=value)
     if isinstance(value, dict):
         # TODO: Limit the depth of the object
-        obj = {k: build_segment(v) for k, v in value.items()}
-        return ObjectSegment(value=obj)
+        return ObjectSegment(value=value)
     if isinstance(value, list):
         # TODO: Limit the depth of the array
         elements = [build_segment(v) for v in value]

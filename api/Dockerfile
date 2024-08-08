@@ -12,6 +12,7 @@ ENV POETRY_CACHE_DIR=/tmp/poetry_cache
 ENV POETRY_NO_INTERACTION=1
 ENV POETRY_VIRTUALENVS_IN_PROJECT=true
 ENV POETRY_VIRTUALENVS_CREATE=true
+ENV POETRY_REQUESTS_TIMEOUT=15
 
 FROM base AS packages
 
@@ -53,6 +54,9 @@ RUN apt-get update \
 ENV VIRTUAL_ENV=/app/api/.venv
 COPY --from=packages ${VIRTUAL_ENV} ${VIRTUAL_ENV}
 ENV PATH="${VIRTUAL_ENV}/bin:${PATH}"
+
+# Download nltk data
+RUN python -c "import nltk; nltk.download('punkt')"
 
 # Copy source code
 COPY . /app/api/

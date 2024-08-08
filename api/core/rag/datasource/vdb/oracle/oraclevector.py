@@ -234,16 +234,16 @@ class OracleVector(BaseVector):
                         entities.append(token)
             with self._get_cursor() as cur:
                 cur.execute(
-                    f"select meta, text FROM {self.table_name} WHERE CONTAINS(text, :1, 1) > 0 order by score(1) desc fetch first {top_k} rows only",
+                    f"select meta, text, embedding FROM {self.table_name} WHERE CONTAINS(text, :1, 1) > 0 order by score(1) desc fetch first {top_k} rows only",
                     [" ACCUM ".join(entities)]
                 )
                 docs = []
                 for record in cur:
-                    metadata, text = record
-                    docs.append(Document(page_content=text, metadata=metadata))
+                    metadata, text, embedding = record
+                    docs.append(Document(page_content=text, vector=embedding, metadata=metadata))
             return docs
         else:
-            return [Document(page_content="", metadata="")]
+            return [Document(page_content="", metadata={})]
         return []
 
     def delete(self) -> None:
