@@ -16,6 +16,9 @@ const nodeDefault: NodeDefault<ParameterExtractorNodeType> = {
       },
     },
     reasoning_mode: ReasoningModeType.prompt,
+    vision: {
+      enabled: false,
+    },
   },
   getAvailablePrevNodes(isChatMode: boolean) {
     const nodes = isChatMode
