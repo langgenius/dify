@@ -1,4 +1,4 @@
-model: zhipuai/glm4-9B-chat
+model: THUDM/glm-4-9b-chat
 label:
   en_US: THUDM/glm-4-9b-chat
 model_type: llm
@@ -24,7 +24,7 @@ parameter_rules:
   - name: frequency_penalty
     use_template: frequency_penalty
 pricing:
-  input: '0.6'
-  output: '0.6'
+  input: '0'
+  output: '0'
   unit: '0.000001'
   currency: RMB

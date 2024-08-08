@@ -214,7 +214,7 @@ class HunyuanLargeLanguageModel(LargeLanguageModel):
     def _handle_chat_response(self, credentials, model, prompt_messages, response):
         usage = self._calc_response_usage(model, credentials, response.Usage.PromptTokens,
                                           response.Usage.CompletionTokens)
-        assistant_prompt_message = PromptMessage(role="assistant")
+        assistant_prompt_message = AssistantPromptMessage()
         assistant_prompt_message.content = response.Choices[0].Message.Content
         result = LLMResult(
             model=model,

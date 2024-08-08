@@ -11,7 +11,7 @@ import HitHistoryNoData from './hit-history-no-data'
 import cn from '@/utils/classnames'
 import Drawer from '@/app/components/base/drawer-plus'
 import { MessageCheckRemove } from '@/app/components/base/icons/src/vender/line/communication'
-import DeleteConfirmModal from '@/app/components/base/modal/delete-confirm-modal'
+import Confirm from '@/app/components/base/confirm'
 import TabSlider from '@/app/components/base/tab-slider-plain'
 import { fetchHitHistoryList } from '@/service/annotation'
 import { APP_PAGE_LIMIT } from '@/config'
@@ -201,8 +201,20 @@ const ViewAnnotationModal: FC<Props> = ({
           />
         }
         body={(
-          <div className='p-6 pb-4 space-y-6'>
-            {activeTab === TabType.annotation ? annotationTab : hitHistoryTab}
+          <div>
+            <div className='p-6 pb-4 space-y-6'>
+              {activeTab === TabType.annotation ? annotationTab : hitHistoryTab}
+            </div>
+            <Confirm
+              isShow={showModal}
+              onCancel={() => setShowModal(false)}
+              onConfirm={async () => {
+                await onRemove()
+                setShowModal(false)
+                onHide()
+              }}
+              title={t('appDebug.feature.annotation.removeConfirm')}
+            />
           </div>
         )}
         foot={id
@@ -219,16 +231,6 @@ const ViewAnnotationModal: FC<Props> = ({
             </div>
           )
           : undefined}
-      />
-      <DeleteConfirmModal
-        isShow={showModal}
-        onHide={() => setShowModal(false)}
-        onRemove={async () => {
-          await onRemove()
-          setShowModal(false)
-          onHide()
-        }}
-        text={t('appDebug.feature.annotation.removeConfirm') as string}
       />
     </div>
 

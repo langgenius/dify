@@ -83,7 +83,7 @@ export const useChat = (
   const { t } = useTranslation()
   const { formatTime } = useTimestamp()
   const { notify } = useToastContext()
-  const connversationId = useRef('')
+  const conversationId = useRef('')
   const hasStopResponded = useRef(false)
   const [isResponding, setIsResponding] = useState(false)
   const isRespondingRef = useRef(false)
@@ -152,7 +152,7 @@ export const useChat = (
   }, [stopChat, handleResponding])
 
   const handleRestart = useCallback(() => {
-    connversationId.current = ''
+    conversationId.current = ''
     taskIdRef.current = ''
     handleStop()
     const newChatList = config?.opening_statement
@@ -248,7 +248,7 @@ export const useChat = (
 
     const bodyParams = {
       response_mode: 'streaming',
-      conversation_id: connversationId.current,
+      conversation_id: conversationId.current,
       ...data,
     }
     if (bodyParams?.files?.length) {
@@ -302,7 +302,7 @@ export const useChat = (
           }
 
           if (isFirstMessage && newConversationId)
-            connversationId.current = newConversationId
+            conversationId.current = newConversationId
 
           taskIdRef.current = taskId
           if (messageId)
@@ -322,11 +322,11 @@ export const useChat = (
             return
 
           if (onConversationComplete)
-            onConversationComplete(connversationId.current)
+            onConversationComplete(conversationId.current)
 
-          if (connversationId.current && !hasStopResponded.current && onGetConvesationMessages) {
+          if (conversationId.current && !hasStopResponded.current && onGetConvesationMessages) {
             const { data }: any = await onGetConvesationMessages(
-              connversationId.current,
+              conversationId.current,
               newAbortController => conversationMessagesAbortControllerRef.current = newAbortController,
             )
             const newResponseItem = data.find((item: any) => item.id === responseItem.id)
@@ -361,7 +361,7 @@ export const useChat = (
                     latency: newResponseItem.provider_response_latency.toFixed(2),
                   },
                   // for agent log
-                  conversationId: connversationId.current,
+                  conversationId: conversationId.current,
                   input: {
                     inputs: newResponseItem.inputs,
                     query: newResponseItem.query,
@@ -640,7 +640,7 @@ export const useChat = (
   return {
     chatList,
     setChatList,
-    conversationId: connversationId.current,
+    conversationId: conversationId.current,
     isResponding,
     setIsResponding,
     handleSend,
