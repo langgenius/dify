@@ -163,7 +163,7 @@ class LangSmithDataTrace(BaseTraceInstance):
 
             langsmith_run = LangSmithRunModel(
                 total_tokens=node_total_tokens,
-                name=node_name,
+                name=node_type,
                 inputs=inputs,
                 run_type=run_type,
                 start_time=created_at,

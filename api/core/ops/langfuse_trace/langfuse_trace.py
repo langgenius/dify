@@ -79,6 +79,8 @@ class LangFuseDataTrace(BaseTraceInstance):
                 metadata=trace_info.metadata,
                 session_id=trace_info.conversation_id,
                 tags=["message", "workflow"],
+                created_at=trace_info.start_time,
+                updated_at=trace_info.end_time,
             )
             self.add_trace(langfuse_trace_data=trace_data)
             workflow_span_data = LangfuseSpan(
@@ -162,7 +164,7 @@ class LangFuseDataTrace(BaseTraceInstance):
             if trace_info.message_id:
                 span_data = LangfuseSpan(
                     id=node_execution_id,
-                    name=node_name,
+                    name=node_type,
                     input=inputs,
                     output=outputs,
                     trace_id=trace_id,
