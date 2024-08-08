@@ -237,6 +237,8 @@ class OCILargeLanguageModel(LargeLanguageModel):
                     "numGenerations": 1,
                     "topK": -1}
             request_args["chatRequest"].update(args)
+        if stream:
+            request_args["chatRequest"]["isStream"] = True
         response = generative_ai_inference_client.chat(request_args)
         print(vars(response))
         # response = google_model.generate_content(
@@ -299,6 +301,11 @@ class OCILargeLanguageModel(LargeLanguageModel):
         :param prompt_messages: prompt messages
         :return: llm response chunk generator result
         """
+        events = response.data.events()
+        for stream in events:
+            chunk = json.loads(stream.data)
+
+
         index = -1
         for chunk in response:
             for part in chunk.parts:
