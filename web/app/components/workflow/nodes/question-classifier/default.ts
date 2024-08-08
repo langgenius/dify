@@ -26,6 +26,9 @@ const nodeDefault: NodeDefault<QuestionClassifierNodeType> = {
         name: '',
       },
     ],
+    vision: {
+      enabled: false,
+    },
   },
   getAvailablePrevNodes(isChatMode: boolean) {
     const nodes = isChatMode

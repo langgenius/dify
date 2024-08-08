@@ -17,7 +17,9 @@ type Params = {
   onChange: (payload: Payload) => void
 }
 const useConfigVision = (model: ModelConfig, {
-  payload,
+  payload = {
+    enabled: false,
+  },
   onChange,
 }: Params) => {
   const {
