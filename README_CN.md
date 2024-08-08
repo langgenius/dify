@@ -4,7 +4,7 @@
   <a href="https://cloud.dify.ai">Dify 云服务</a> ·
   <a href="https://docs.dify.ai/getting-started/install-self-hosted">自托管</a> ·
   <a href="https://docs.dify.ai">文档</a> ·
-  <a href="https://cal.com/guchenhe/dify-demo">预约演示</a>
+  <a href="https://udify.app/chat/22L1zSxg6yW1cWQg">（需用英文）常见问题解答 / 联系团队</a>
 </div>
 
 <p align="center">
