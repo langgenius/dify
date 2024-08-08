@@ -72,7 +72,6 @@ const AgentTools: FC = () => {
                   {t('appDebug.agent.tools.description')}
                 </div>
               }
-              needsDelay={false}
             />
           </div>
         }
@@ -122,7 +121,6 @@ const AgentTools: FC = () => {
                   <span className='text-gray-800 pr-2'>{item.provider_type === CollectionType.builtIn ? item.provider_name : item.tool_label}</span>
                   <TooltipPlus
                     popupContent={t('tools.toolNameUsageTip')}
-                    needsDelay={false}
                   >
                     <span className='text-gray-500'>{item.tool_name}</span>
                   </TooltipPlus>
@@ -134,6 +132,7 @@ const AgentTools: FC = () => {
                     <div className='flex items-center'>
                       <TooltipPlus
                         popupContent={t(`tools.${item.isDeleted ? 'toolRemoved' : 'notAuthorized'}`)}
+                        needsDelay
                       >
                         <div className='mr-1 p-1 rounded-md hover:bg-black/5  cursor-pointer' onClick={() => {
                           if (item.notAuthor)
@@ -159,6 +158,7 @@ const AgentTools: FC = () => {
                     <div className='hidden group-hover:flex items-center'>
                       <TooltipPlus
                         popupContent={t('tools.setBuiltInTools.infoAndSetting')}
+                        needsDelay
                       >
                         <div className='p-1 rounded-md hover:bg-black/5  cursor-pointer' onClick={() => {
                           setCurrentTool(item)

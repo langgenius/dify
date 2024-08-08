@@ -80,7 +80,6 @@ const Blocks = ({
                   <div className='text-xs text-gray-700 leading-[18px]'>{nodesExtraData[block.type].about}</div>
                 </div>
               )}
-              hideArrow
             >
               <div
                 key={block.type}

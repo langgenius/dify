@@ -55,7 +55,6 @@ const VoiceParamConfig: FC = () => {
                     ))}
                   </div>
                 }
-                needsDelay={false}
               />
             </div>
             <Listbox

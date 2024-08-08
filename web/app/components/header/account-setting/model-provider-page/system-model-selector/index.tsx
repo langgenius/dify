@@ -148,7 +148,6 @@ const SystemModel: FC<SystemModelSelectorProps> = ({
                     {t('common.modelProvider.systemReasoningModel.tip')}
                   </div>
                 }
-                needsDelay={false}
                 iconStyle='ml-0.5'
               />
             </div>

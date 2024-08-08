@@ -36,7 +36,6 @@ const ConfigVision: FC = () => {
                 {t('appDebug.vision.description')}
               </div>
             }
-            needsDelay={false}
           />
         </div>
       }

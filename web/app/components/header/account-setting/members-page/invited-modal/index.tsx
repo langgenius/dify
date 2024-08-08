@@ -65,7 +65,6 @@ const InvitedModal = ({
                         <div key={item.email} className='flex justify-center border border-red-300 rounded-md px-1 bg-orange-50'>
                           <TooltipPlus
                             popupContent={item.message}
-                            needsDelay={false}
                           >
                             <div className='flex justify-center items-center text-sm gap-1'>
                               {item.email}

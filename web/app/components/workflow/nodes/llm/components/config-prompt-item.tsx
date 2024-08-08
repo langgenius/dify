@@ -121,7 +121,6 @@ const ConfigPromptItem: FC<Props> = ({
             popupContent={
               <div className='max-w-[180px]'>{t(`${i18nPrefix}.roleDescription.${payload.role}`)}</div>
             }
-            needsDelay={false}
           />
         </div>
       }

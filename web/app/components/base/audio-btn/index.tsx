@@ -86,7 +86,6 @@ const AudioBtn = ({
     <div className={`inline-flex items-center justify-center ${(audioState === 'loading' || audioState === 'playing') ? 'mr-1' : className}`}>
       <TooltipPlus
         popupContent={tooltipContent}
-        needsDelay={false}
       >
         <button
           disabled={audioState === 'loading'}

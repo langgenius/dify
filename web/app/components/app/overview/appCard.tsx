@@ -194,7 +194,6 @@ function AppCard({
               )}
               {isApp && isCurrentWorkspaceManager && (
                 <TooltipPlus
-                  needsDelay={false}
                   popupContent={t('appOverview.overview.appInfo.regenerate') || ''}
                 >
                   <div

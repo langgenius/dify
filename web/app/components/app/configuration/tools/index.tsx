@@ -7,7 +7,6 @@ import {
   RiAddLine,
   RiArrowDownSLine,
   RiDeleteBinLine,
-  RiQuestionLine,
 } from '@remixicon/react'
 import ConfigContext from '@/context/debug-configuration'
 import Switch from '@/app/components/base/switch'
@@ -107,9 +106,14 @@ const Tools = () => {
           <div className='mr-1 text-sm font-semibold text-gray-800'>
             {t('appDebug.feature.tools.title')}
           </div>
-          <TooltipPlus popupContent={<div className='max-w-[160px]'>{t('appDebug.feature.tools.tips')}</div>}>
-            <RiQuestionLine className='w-3.5 h-3.5 text-gray-400' />
-          </TooltipPlus>
+          <TooltipPlus
+            popupContent={
+              <div className='max-w-[160px]'>
+                {t('appDebug.feature.tools.tips')}
+              </div>
+            }
+            iconStyle='w-3.5 h-3.5'
+          />
         </div>
         {
           !expanded && !!externalDataToolsConfig.length && (

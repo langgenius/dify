@@ -29,7 +29,6 @@ const ItemPanel: FC<Props> = ({
               {description}
             </div>
           }
-          needsDelay={false}
         >
         </TooltipPlus>
       </div>

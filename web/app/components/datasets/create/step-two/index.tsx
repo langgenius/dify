@@ -632,7 +632,6 @@ const StepTwo = ({
                               {t('datasetCreation.stepTwo.overlapTip')}
                             </div>
                           }
-                          needsDelay={false}
                         />
                       </div>
                       <input

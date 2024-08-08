@@ -33,7 +33,6 @@ export const Item: FC<{ title: string; tooltip: string; children: JSX.Element }>
             <div className='max-w-[200px] leading-[18px] text-[13px] font-medium text-gray-800'>{tooltip}</div>
           }
           iconStyle='w-3.5 h-3.5'
-          needsDelay={false}
         />
       </div>
       <div>{children}</div>

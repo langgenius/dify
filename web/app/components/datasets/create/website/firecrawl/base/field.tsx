@@ -1,9 +1,7 @@
 'use client'
 import type { FC } from 'react'
 import React from 'react'
-import {
-  RiQuestionLine,
-} from '@remixicon/react'
+
 import Input from './input'
 import cn from '@/utils/classnames'
 import TooltipPlus from '@/app/components/base/tooltip-plus'
@@ -37,11 +35,12 @@ const Field: FC<Props> = ({
         <div className={cn(labelClassName, 'flex items-center h-[18px] text-[13px] font-medium text-gray-900')}>{label} </div>
         {isRequired && <span className='ml-0.5 text-xs font-semibold text-[#D92D20]'>*</span>}
         {tooltip && (
-          <TooltipPlus popupContent={
-            <div className='w-[200px]'>{tooltip}</div>
-          }>
-            <RiQuestionLine className='relative top-[3px] w-3 h-3 ml-1 text-gray-500' />
-          </TooltipPlus>
+          <TooltipPlus
+            popupContent={
+              <div className='w-[200px]'>{tooltip}</div>
+            }
+            popupClassName='relative top-[3px] w-3 h-3 ml-1'
+          />
         )}
       </div>
       <Input

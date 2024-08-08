@@ -128,7 +128,6 @@ const DatasetCard = ({
               {!dataset.embedding_available && (
                 <TooltipPlus
                   popupContent={t('dataset.unavailableTip')}
-                  needsDelay={false}
                 >
                   <span className='shrink-0 inline-flex w-max ml-1 px-1 border border-gray-200 rounded-md text-gray-500 text-xs font-normal leading-[18px]'>{t('dataset.unavailable')}</span>
                 </TooltipPlus>

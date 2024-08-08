@@ -22,7 +22,6 @@ const CopyBtn = ({
     <div className={`${className}`}>
       <TooltipPlus
         popupContent={(isCopied ? t('appApi.copied') : t('appApi.copy'))}
-        needsDelay={false}
       >
         <div
           className={'box-border p-0.5 flex items-center justify-center rounded-md bg-white cursor-pointer'}

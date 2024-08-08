@@ -53,7 +53,6 @@ const UsageInfo: FC<Props> = ({
                   {tooltip}
                 </div>
               }
-              needsDelay={false}
             />
           )}
         </div>

@@ -98,7 +98,6 @@ const Trigger: FC<TriggerProps> = ({
                     ? MODEL_STATUS_TEXT[currentModel.status as string][language]
                     : ''
               }
-              needsDelay={false}
             >
               <AlertTriangle className='w-4 h-4 text-[#F79009]' />
             </TooltipPlus>

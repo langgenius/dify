@@ -43,7 +43,6 @@ const Header: FC<IResultHeaderProps> = ({
         {showFeedback && feedback.rating && feedback.rating === 'like' && (
           <TooltipPlus
             popupContent="Undo Great Rating"
-            needsDelay={false}
           >
             <div
               onClick={() => {
@@ -60,7 +59,6 @@ const Header: FC<IResultHeaderProps> = ({
         {showFeedback && feedback.rating && feedback.rating === 'dislike' && (
           <TooltipPlus
             popupContent="Undo Undesirable Response"
-            needsDelay={false}
           >
             <div
               onClick={() => {

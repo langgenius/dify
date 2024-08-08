@@ -20,7 +20,6 @@ const SuggestedQuestionsAfterAnswer: FC = () => {
                 {t('appDebug.feature.suggestedQuestionsAfterAnswer.description')}
               </div>
             }
-            needsDelay={false}
           />
         </div>
       }

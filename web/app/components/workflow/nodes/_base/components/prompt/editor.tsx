@@ -148,7 +148,6 @@ const Editor: FC<Props> = ({
                         <a className='text-[#155EEF]' target='_blank' href='https://jinja.palletsprojects.com/en/2.10.x/'>{t('workflow.common.learnMore')}</a>
                       </div>
                     }
-                    hideArrow
                   >
                     <div className={cn(editionType === EditionType.jinja2 && 'border-black/5 bg-white', 'flex h-[22px] items-center px-1.5 rounded-[5px] border border-transparent hover:border-black/5 space-x-0.5')}>
                       <Jinja className='w-6 h-3 text-gray-300' />

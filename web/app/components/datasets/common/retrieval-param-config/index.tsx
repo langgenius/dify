@@ -116,7 +116,6 @@ const RetrievalParamConfig: FC<Props> = ({
                 popupContent={
                   <div className="w-[200px]">{t('common.modelProvider.rerankModel.tip')}</div>
                 }
-                needsDelay={false}
               />
             </div>
           </div>

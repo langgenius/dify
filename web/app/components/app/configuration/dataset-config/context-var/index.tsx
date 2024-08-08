@@ -26,7 +26,6 @@ const ContextVar: FC<Props> = (props) => {
               {t('appDebug.feature.dataSet.queryVariable.tip')}
             </div>
           }
-          needsDelay={false}
         />
       </div>
 

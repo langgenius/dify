@@ -150,7 +150,6 @@ const WorkflowToolAsModal: FC<Props> = ({
                         {t('tools.createTool.nameForToolCallPlaceHolder')}
                       </div>
                     }
-                    needsDelay={false}
                   />
                 </div>
                 <input

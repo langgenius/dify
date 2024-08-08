@@ -58,11 +58,11 @@ const Tooltip: FC<TooltipProps> = ({
   disabled = false,
   popupContent,
   children,
-  hideArrow,
+  hideArrow = true,
   popupClassName,
   offset,
   asChild,
-  needsDelay = true,
+  needsDelay = false,
 }) => {
   const [open, setOpen] = useState(false)
   const [isHoverPopup, {
@@ -109,7 +109,7 @@ const Tooltip: FC<TooltipProps> = ({
       open={disabled ? false : open}
       onOpenChange={setOpen}
       placement={position}
-      offset={offset ?? 10}
+      offset={offset ?? 8}
     >
       <PortalToFollowElemTrigger
         onClick={() => triggerMethod === 'click' && setOpen(v => !v)}
@@ -120,6 +120,7 @@ const Tooltip: FC<TooltipProps> = ({
           }
         }}
         onMouseLeave={() => triggerMethod === 'hover' && handleLeave(true)}
+        className="block"
         asChild={asChild}
       >
         {children || <div className='p-[1px]'><RiQuestionLine className={cn('text-text-quaternary hover:text-text-tertiary', iconStyle)} /></div>}

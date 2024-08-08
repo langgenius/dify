@@ -52,7 +52,6 @@ const ShareQRCode = ({ content, selectorId, className }: Props) => {
   return (
     <TooltipPlus
       popupContent={t(`${prefixEmbedded}`) || ''}
-      needsDelay={false}
     >
       <div
         className={`w-8 h-8 cursor-pointer rounded-lg ${className ?? ''}`}

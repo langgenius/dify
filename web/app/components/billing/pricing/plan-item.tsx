@@ -2,9 +2,7 @@
 import type { FC } from 'react'
 import React from 'react'
 import { useTranslation } from 'react-i18next'
-import {
-  RiQuestionLine,
-} from '@remixicon/react'
+
 import { useContext } from 'use-context-selector'
 import { Plan } from '../type'
 import { ALL_PLANS, NUM_INFINITE, contactSalesUrl, contractSales, unAvailable } from '../config'
@@ -34,9 +32,8 @@ const KeyValue = ({ label, value, tooltip }: { label: string; value: string | nu
             popupContent={
               <div className='w-[200px]'>{tooltip}</div>
             }
-          >
-            <RiQuestionLine className='w-3 h-3 text-gray-400' />
-          </TooltipPlus>
+            iconStyle='w-3 h-3'
+          />
         )}
       </div>
       <div className='mt-0.5 text-gray-900'>{value}</div>
@@ -140,9 +137,8 @@ const PlanItem: FC<Props> = ({
                 popupContent={
                   <div className='w-[200px]'>{t('billing.plansCommon.supportItems.llmLoadingBalancingTooltip')}</div>
                 }
-              >
-                <RiQuestionLine className='w-3 h-3 text-gray-400' />
-              </TooltipPlus>
+                iconStyle='w-3 h-3'
+              />
             </div>
             <div className='mt-3.5 flex items-center space-x-1'>
               <div className='flex items-center'>
@@ -152,9 +148,8 @@ const PlanItem: FC<Props> = ({
                   popupContent={
                     <div className='w-[200px]'>{t('billing.plansCommon.ragAPIRequestTooltip')}</div>
                   }
-                >
-                  <RiQuestionLine className='w-3 h-3 text-gray-400' />
-                </TooltipPlus>
+                  iconStyle='w-3 h-3'
+                />
               </div>
               <div>{comingSoon}</div>
             </div>

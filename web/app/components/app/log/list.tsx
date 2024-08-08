@@ -343,7 +343,6 @@ function DetailPanel<T extends ChatConversationFullDetailResponse | CompletionCo
           {isChatMode && (
             <div className='flex items-center text-gray-700 text-[13px] leading-[18px]'>
               <TooltipPlus
-                hideArrow
                 popupContent={detail.id}>
                 <div className='max-w-[105px] truncate'>{detail.id}</div>
               </TooltipPlus>

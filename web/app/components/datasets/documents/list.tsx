@@ -95,8 +95,7 @@ export const StatusItem: FC<{
           popupContent={
             <div className='max-w-[260px] break-all'>{errorMessage}</div>
           }
-          iconStyle='ml-1'
-          needsDelay={false}
+          iconStyle='ml-1 w-4 h-4'
         />
       )
     }
@@ -201,6 +200,7 @@ export const OperationAction: FC<{
           ? <TooltipPlus
             popupContent={t('datasetDocuments.list.action.enableWarning')}
             popupClassName='!font-semibold'
+            needsDelay
           >
             <div>
               <Switch defaultValue={false} onChange={() => { }} disabled={true} size='md' />
@@ -223,6 +223,7 @@ export const OperationAction: FC<{
                 <TooltipPlus
                   popupContent={t('datasetDocuments.list.action.enableWarning')}
                   popupClassName='!font-semibold'
+                  needsDelay
                   disabled={!archived}
                 >
                   <div>
@@ -425,7 +426,10 @@ const DocumentList: FC<IDocumentListProps> = ({ embeddingAvailable, documents = 
                     }
                   </span>
                   <div className='group-hover:flex hidden'>
-                    <TooltipPlus popupContent={t('datasetDocuments.list.table.rename')}>
+                    <TooltipPlus
+                      popupContent={t('datasetDocuments.list.table.rename')}
+                      needsDelay
+                    >
                       <div
                         className='p-1 rounded-md cursor-pointer hover:bg-black/5'
                         onClick={(e) => {

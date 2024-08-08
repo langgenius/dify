@@ -62,7 +62,6 @@ const Command = ({
   return (
     <TooltipPlus
       popupContent={tip}
-      needsDelay={false}
     >
       <div
         className={cn(

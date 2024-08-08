@@ -42,7 +42,6 @@ const ParamConfigContent: FC = () => {
                     ))}
                   </div>
                 }
-                needsDelay={false}
               />
             </div>
             <RadioGroup

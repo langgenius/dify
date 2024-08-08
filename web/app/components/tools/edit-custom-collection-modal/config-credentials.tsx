@@ -114,7 +114,6 @@ const ConfigCredential: FC<Props> = ({
                           {t('tools.createTool.authMethod.keyTooltip')}
                         </div>
                       }
-                      needsDelay={false}
                       iconStyle='ml-0.5'
                     />
                   </div>

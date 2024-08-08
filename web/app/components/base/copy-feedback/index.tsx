@@ -34,7 +34,6 @@ const CopyFeedback = ({ content, selectorId, className }: Props) => {
           ? t(`${prefixEmbedded}.copied`)
           : t(`${prefixEmbedded}.copy`)) || ''
       }
-      needsDelay={false}
     >
       <div
         className={`w-8 h-8 cursor-pointer hover:bg-gray-100 rounded-lg ${

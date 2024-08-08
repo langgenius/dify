@@ -99,7 +99,6 @@ const CreateAppModal = ({ show, onSuccess, onClose }: CreateAppDialogProps) => {
         <div className='py-2 text-sm leading-[20px] font-medium text-gray-900'>{t('app.newApp.captionAppType')}</div>
         <div className='flex'>
           <TooltipPlus
-            hideArrow
             popupContent={
               <div className='max-w-[280px] leading-[18px] text-xs text-gray-700'>{t('app.newApp.chatbotDescription')}</div>
             }
@@ -120,7 +119,6 @@ const CreateAppModal = ({ show, onSuccess, onClose }: CreateAppDialogProps) => {
             </div>
           </TooltipPlus>
           <TooltipPlus
-            hideArrow
             popupContent={
               <div className='flex flex-col max-w-[320px] leading-[18px] text-xs'>
                 <div className='text-gray-700'>{t('app.newApp.completionDescription')}</div>
@@ -143,7 +141,6 @@ const CreateAppModal = ({ show, onSuccess, onClose }: CreateAppDialogProps) => {
             </div>
           </TooltipPlus>
           <TooltipPlus
-            hideArrow
             popupContent={
               <div className='max-w-[280px] leading-[18px] text-xs text-gray-700'>{t('app.newApp.agentDescription')}</div>
             }
@@ -164,7 +161,6 @@ const CreateAppModal = ({ show, onSuccess, onClose }: CreateAppDialogProps) => {
             </div>
           </TooltipPlus>
           <TooltipPlus
-            hideArrow
             popupContent={
               <div className='flex flex-col max-w-[320px] leading-[18px] text-xs'>
                 <div className='text-gray-700'>{t('app.newApp.workflowDescription')}</div>

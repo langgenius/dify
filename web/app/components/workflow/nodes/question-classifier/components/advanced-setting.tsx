@@ -2,9 +2,6 @@
 import type { FC } from 'react'
 import React from 'react'
 import { useTranslation } from 'react-i18next'
-import {
-  RiQuestionLine,
-} from '@remixicon/react'
 import MemoryConfig from '../../_base/components/memory-config'
 import Editor from '@/app/components/workflow/nodes/_base/components/prompt/editor'
 import type { Memory, Node, NodeOutPutVar } from '@/app/components/workflow/types'
@@ -50,12 +47,14 @@ const AdvancedSetting: FC<Props> = ({
         title={
           <div className='flex items-center space-x-1'>
             <span className='uppercase'>{t(`${i18nPrefix}.instruction`)}</span>
-            <TooltipPlus popupContent={
-              <div className='w-[120px]'>
-                {t(`${i18nPrefix}.instructionTip`)}
-              </div>}>
-              <RiQuestionLine className='w-3.5 h-3.5 ml-0.5 text-gray-400' />
-            </TooltipPlus>
+            <TooltipPlus
+              popupContent={
+                <div className='w-[120px]'>
+                  {t(`${i18nPrefix}.instructionTip`)}
+                </div>
+              }
+              iconStyle='w-3.5 h-3.5 ml-0.5'
+            />
           </div>
         }
         value={instruction}

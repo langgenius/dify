@@ -38,7 +38,6 @@ const ParamItem: FC<Props> = ({ className, id, name, noTooltip, tip, step = 0.1,
           {!noTooltip && (
             <TooltipPlus
               popupContent={<div className="w-[200px]">{tip}</div>}
-              needsDelay={false}
             />
           )}
 

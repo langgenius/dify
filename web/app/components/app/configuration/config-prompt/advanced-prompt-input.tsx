@@ -178,7 +178,6 @@ const AdvancedPromptInput: FC<Props> = ({
                           {t('appDebug.promptTip')}
                         </div>
                       }
-                      needsDelay={false}
                     />
                   </div>)}
               <div className={cn(s.optionWrap, 'items-center space-x-1')}>

@@ -1,7 +1,6 @@
 import type { FC } from 'react'
 import React from 'react'
 import { useTranslation } from 'react-i18next'
-import { RiQuestionLine } from '@remixicon/react'
 import MemoryConfig from '../_base/components/memory-config'
 import VarReferencePicker from '../_base/components/variable/var-reference-picker'
 import useConfig from './use-config'
@@ -208,9 +207,8 @@ const Panel: FC<NodePanelProps<LLMNodeType>> = ({
                 <div className='text-xs font-semibold text-gray-700 uppercase'>{t('workflow.nodes.common.memories.title')}</div>
                 <TooltipPlus
                   popupContent={t('workflow.nodes.common.memories.tip')}
-                >
-                  <RiQuestionLine className='w-3.5 h-3.5 text-gray-400' />
-                </TooltipPlus>
+                  iconStyle='w-3.5 h-3.5'
+                />
               </div>
               <div className='flex items-center h-[18px] px-1 rounded-[5px] border border-black/8 text-xs font-semibold text-gray-500 uppercase'>{t('workflow.nodes.common.memories.builtIn')}</div>
             </div>
@@ -223,9 +221,8 @@ const Panel: FC<NodePanelProps<LLMNodeType>> = ({
                     popupContent={
                       <div className='max-w-[180px]'>{t('workflow.nodes.llm.roleDescription.user')}</div>
                     }
-                  >
-                    <RiQuestionLine className='w-3.5 h-3.5 text-gray-400' />
-                  </TooltipPlus>
+                    iconStyle='w-3.5 h-3.5'
+                  />
                 </div>}
                 value={inputs.memory.query_prompt_template || '{{#sys.query#}}'}
                 onChange={handleSyeQueryChange}

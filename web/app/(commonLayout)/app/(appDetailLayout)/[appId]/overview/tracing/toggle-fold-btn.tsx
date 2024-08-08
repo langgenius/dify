@@ -27,7 +27,7 @@ const ToggleFoldBtn: FC<Props> = ({
     <div className='shrink-0 cursor-pointer text-[0px]' onClick={handleFoldChange}>
       <TooltipPlus
         popupContent={t(`${I18N_PREFIX}.${isFold ? 'expand' : 'collapse'}`)}
-        hideArrow
+        needsDelay
       >
         {isFold && (
           <div className='p-1 rounded-md text-gray-500 hover:text-gray-800 hover:bg-black/5'>

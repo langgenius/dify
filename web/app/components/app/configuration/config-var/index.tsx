@@ -287,7 +287,6 @@ const ConfigVar: FC<IConfigVarProps> = ({ promptVariables, readonly, onPromptVar
                   {t('appDebug.variableTip')}
                 </div>
               }
-              needsDelay={false}
             />
           )}
         </div>

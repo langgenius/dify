@@ -75,7 +75,6 @@ const TextAreaWithButton = ({
             </span>
             <TooltipPlus
               popupContent={t('dataset.retrieval.changeRetrievalMethod')}
-              needsDelay={false}
             >
               <div
                 onClick={onClickRetrievalMethod}
@@ -100,7 +99,6 @@ const TextAreaWithButton = ({
               ? (
                 <TooltipPlus
                   popupContent={t('datasetHitTesting.input.countWarning')}
-                  needsDelay={false}
                 >
                   <div>
                     <Tag color="red" className="!text-red-600">

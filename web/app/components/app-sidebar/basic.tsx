@@ -82,7 +82,6 @@ export default function AppBasic({ icon, icon_background, name, type, hoverTip, 
               popupClassName='ml-1'
               position='top'
               iconStyle='w-4 h-4'
-              hideArrow
             >
               <InformationCircleIcon className='w-4 h-4 ml-1 text-text-quaternary hover:text-text-tertiary' />
             </TooltipPlus>

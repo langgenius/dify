@@ -44,7 +44,6 @@ const Filed: FC<Props> = ({
                 <div className='w-[120px]'>
                   {tooltip}
                 </div>}
-              needsDelay={false}
               popupClassName='ml-1'
               iconStyle='w-4 h-4 ml-1'
             />

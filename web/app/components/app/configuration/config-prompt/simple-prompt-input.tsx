@@ -158,7 +158,6 @@ const Prompt: FC<ISimplePromptInput> = ({
                       {t('appDebug.promptTip')}
                     </div>
                   }
-                  needsDelay={false}
                 />
               )}
             </div>

@@ -5,7 +5,6 @@ import type { FC } from 'react'
 import { useTranslation } from 'react-i18next'
 import {
   RiAlertFill,
-  RiQuestionLine,
 } from '@remixicon/react'
 import WeightedScore from './weighted-score'
 import TopKItem from '@/app/components/base/param-item/top-k-item'
@@ -251,11 +250,14 @@ const ConfigContent: FC<Props> = ({
                     >
                       <div className='truncate'>{option.label}</div>
                       <TooltipPlus
-                        popupContent={<div className='w-[200px]'>{option.tips}</div>}
-                        hideArrow
-                      >
-                        <RiQuestionLine className='ml-0.5 w-3.5 h-4.5 text-text-quaternary' />
-                      </TooltipPlus>
+                        popupContent={
+                          <div className='w-[200px]'>
+                            {option.tips}
+                          </div>
+                        }
+                        popupClassName='ml-0.5'
+                        iconStyle='ml-0.5 w-3.5 h-3.5'
+                      />
                     </div>
                   ))
                 }
@@ -281,9 +283,15 @@ const ConfigContent: FC<Props> = ({
                     )
                   }
                   <div className='ml-2 leading-[32px] text-[13px] font-medium text-gray-900'>{t('common.modelProvider.rerankModel.key')}</div>
-                  <TooltipPlus popupContent={<div className="w-[200px]">{t('common.modelProvider.rerankModel.tip')}</div>}>
-                    <RiQuestionLine className='ml-0.5 w-[14px] h-[14px] text-gray-400' />
-                  </TooltipPlus>
+                  <TooltipPlus
+                    popupContent={
+                      <div className="w-[200px]">
+                        {t('common.modelProvider.rerankModel.tip')}
+                      </div>
+                    }
+                    popupClassName='ml-0.5'
+                    iconStyle='ml-0.5 w-3.5 h-3.5'
+                  />
                 </div>
                 <div>
                   <ModelSelector
@@ -363,9 +371,7 @@ const ConfigContent: FC<Props> = ({
             <div className='leading-[32px] text-[13px] font-medium text-gray-900'>{t('common.modelProvider.systemReasoningModel.key')}</div>
             <TooltipPlus
               popupContent={t('common.modelProvider.systemReasoningModel.tip')}
-            >
-              <RiQuestionLine className='w-3.5 h-4.5 text-gray-400' />
-            </TooltipPlus>
+            />
           </div>
           <ModelParameterModal
             isInWorkflow={isInWorkflow}

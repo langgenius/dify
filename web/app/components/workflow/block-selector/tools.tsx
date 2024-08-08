@@ -58,7 +58,6 @@ const Blocks = ({
                   <div className='text-xs text-gray-700 leading-[18px]'>{tool.description[language]}</div>
                 </div>
               )}
-              hideArrow
             >
               <div
                 className='flex items-center px-3 w-full h-8 rounded-lg hover:bg-gray-50 cursor-pointer'
@@ -76,7 +75,7 @@ const Blocks = ({
                   type={BlockEnum.Tool}
                   toolIcon={toolWithProvider.icon}
                 />
-                <div className='text-sm text-gray-900 truncate'>{tool.label[language]}</div>
+                <div className='text-sm text-gray-900 flex-1 min-w-0 truncate'>{tool.label[language]}</div>
               </div>
             </TooltipPlus>
           ))

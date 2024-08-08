@@ -3,7 +3,6 @@ import { useCallback } from 'react'
 import { useTranslation } from 'react-i18next'
 import {
   RiDeleteBinLine,
-  RiQuestionLine,
 } from '@remixicon/react'
 import type { ConfigurationMethodEnum, CustomConfigurationModelFixedFields, ModelLoadBalancingConfig, ModelLoadBalancingConfigEntry, ModelProvider } from '../declarations'
 import Indicator from '../../../indicator'
@@ -160,9 +159,11 @@ const ModelLoadBalancingConfigs = ({
           <div className='grow'>
             <div className='flex items-center gap-1 text-sm'>
               {t('common.modelProvider.loadBalancing')}
-              <TooltipPlus popupContent={t('common.modelProvider.loadBalancingInfo')} popupClassName='max-w-[300px]'>
-                <RiQuestionLine className='w-3 h-3 text-gray-400' />
-              </TooltipPlus>
+              <TooltipPlus
+                popupContent={t('common.modelProvider.loadBalancingInfo')}
+                popupClassName='max-w-[300px]'
+                iconStyle='w-3 h-3'
+              />
             </div>
             <div className='text-xs text-gray-500'>{t('common.modelProvider.loadBalancingDescription')}</div>
           </div>

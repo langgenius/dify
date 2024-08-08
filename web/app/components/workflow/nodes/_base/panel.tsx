@@ -130,7 +130,6 @@ const BasePanel: FC<BasePanelProps> = ({
                   <TooltipPlus
                     popupContent={t('workflow.panel.runThisStep')}
                     popupClassName='mr-1'
-                    needsDelay={false}
                   >
                     <div
                       className='flex items-center justify-center mr-1 w-6 h-6 rounded-md hover:bg-black/5 cursor-pointer'

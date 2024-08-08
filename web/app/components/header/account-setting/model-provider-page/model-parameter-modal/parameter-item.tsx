@@ -231,7 +231,6 @@ const ParameterItem: FC<ParameterItemProps> = ({
                 popupContent={(
                   <div className='w-[200px] whitespace-pre-wrap'>{parameterRule.help[language] || parameterRule.help.en_US}</div>
                 )}
-                needsDelay={false}
               />
             )
           }
