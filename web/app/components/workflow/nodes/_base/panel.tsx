@@ -129,6 +129,7 @@ const BasePanel: FC<BasePanelProps> = ({
                 canRunBySingle(data.type) && !nodesReadOnly && (
                   <TooltipPlus
                     popupContent={t('workflow.panel.runThisStep')}
+                    popupClassName='mr-1'
                     needsDelay={false}
                   >
                     <div

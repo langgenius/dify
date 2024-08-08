@@ -1,4 +1,7 @@
 import React from 'react'
+import {
+  InformationCircleIcon,
+} from '@heroicons/react/24/outline'
 import AppIcon from '../base/app-icon'
 import TooltipPlus from '@/app/components/base/tooltip-plus'
 
@@ -76,10 +79,13 @@ export default function AppBasic({ icon, icon_background, name, type, hoverTip, 
                   {hoverTip}
                 </div>
               }
+              popupClassName='ml-1'
               position='top'
               iconStyle='w-4 h-4'
               hideArrow
-            />
+            >
+              <InformationCircleIcon className='w-4 h-4 ml-1 text-text-quaternary hover:text-text-tertiary' />
+            </TooltipPlus>
           }
         </div>
         <div className={`text-xs font-normal text-gray-500 group-hover:text-gray-700 break-all ${textStyle?.extra ?? ''}`}>{type}</div>

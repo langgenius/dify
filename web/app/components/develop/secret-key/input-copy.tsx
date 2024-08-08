@@ -54,6 +54,7 @@ const InputCopy = ({
         <TooltipPlus
           popupContent={isCopied ? `${t('appApi.copied')}` : `${t('appApi.copy')}`}
           position='bottom'
+          needsDelay={false}
         >
           <div className="px-0.5 flex-shrink-0">
             <div className={`box-border w-[30px] h-[30px] flex items-center justify-center rounded-lg hover:bg-gray-100 cursor-pointer ${s.copyIcon} ${isCopied ? s.copied : ''}`} onClick={() => {

@@ -119,6 +119,8 @@ const SecretKeyModal = ({
                   <div className='flex flex-grow px-3'>
                     <TooltipPlus
                       popupContent={copyValue === api.token ? `${t('appApi.copied')}` : `${t('appApi.copy')}`}
+                      popupClassName='mr-1'
+                      needsDelay={false}
                     >
                       <div className={`flex items-center justify-center flex-shrink-0 w-6 h-6 mr-1 rounded-lg cursor-pointer hover:bg-gray-100 ${s.copyIcon} ${copyValue === api.token ? s.copied : ''}`} onClick={() => {
                         // setIsCopied(true)

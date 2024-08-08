@@ -104,6 +104,7 @@ const IconButton: FC<{
   return (
     <TooltipPlus
       popupContent={metadataMap[type].text}
+      needsDelay={false}
     >
       <button className={cn(s.iconWrapper, 'group', isChecked ? s.iconCheck : '')}>
         <TypeIcon

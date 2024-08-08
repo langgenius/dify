@@ -15,7 +15,11 @@ const HelpLink = ({
   const link = useNodeHelpLink(nodeType)
 
   return (
-    <TooltipPlus popupContent={t('common.userProfile.helpCenter')}>
+    <TooltipPlus
+      popupContent={t('common.userProfile.helpCenter')}
+      needsDelay={false}
+      popupClassName='mr-1'
+    >
       <a
         href={link}
         target='_blank'
