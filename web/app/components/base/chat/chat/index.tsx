@@ -21,7 +21,8 @@ import type {
 import type { ThemeBuilder } from '../embedded-chatbot/theme/theme-context'
 import Question from './question'
 import Answer from './answer'
-import ChatInput from './chat-input'
+// import ChatInput from './chat-input'
+import ChatInputArea from './chat-input-area'
 import TryToAsk from './try-to-ask'
 import { ChatContextProvider } from './context'
 import classNames from '@/utils/classnames'
@@ -261,9 +262,19 @@ const Chat: FC<ChatProps> = ({
                 />
               )
             }
-            {
+            {/* {
               !noChatInput && (
                 <ChatInput
+                  visionConfig={config?.file_upload?.image}
+                  speechToTextConfig={config?.speech_to_text}
+                  onSend={onSend}
+                  theme={themeBuilder?.theme}
+                />
+              )
+            } */}
+            {
+              !noChatInput && (
+                <ChatInputArea
                   visionConfig={config?.file_upload?.image}
                   speechToTextConfig={config?.speech_to_text}
                   onSend={onSend}

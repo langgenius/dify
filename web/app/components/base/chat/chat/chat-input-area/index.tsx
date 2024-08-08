@@ -1,6 +1,7 @@
 import {
   memo,
   useCallback,
+  useRef,
   useState,
 } from 'react'
 import Textarea from 'rc-textarea'
@@ -15,7 +16,7 @@ import type { Theme } from '../../embedded-chatbot/theme/theme-context'
 import { useTextAreaHeight } from './hooks'
 import Operation from './operation'
 import cn from '@/utils/classnames'
-import { FileListFlexOperation } from '@/app/components/base/file-uploader'
+// import { FileListFlexOperation } from '@/app/components/base/file-uploader'
 import VoiceInput from '@/app/components/base/voice-input'
 import { useToastContext } from '@/app/components/base/toast'
 
@@ -41,8 +42,37 @@ const ChatInputArea = ({
     handleTextareaResize,
     isMultipleLine,
   } = useTextAreaHeight()
-  const [value, setValue] = useState('')
+  const [query, setQuery] = useState('')
+  const isUseInputMethod = useRef(false)
   const [showVoiceInput, setShowVoiceInput] = useState(false)
+
+  const handleSend = () => {
+    if (onSend) {
+      if (!query || !query.trim()) {
+        notify({ type: 'info', message: t('appAnnotation.errorMessage.queryRequired') })
+        return
+      }
+      onSend(query)
+      setQuery('')
+    }
+  }
+
+  const handleKeyUp = (e: React.KeyboardEvent<HTMLTextAreaElement>) => {
+    if (e.code === 'Enter') {
+      e.preventDefault()
+      // prevent send message when using input method enter
+      if (!e.shiftKey && !isUseInputMethod.current)
+        handleSend()
+    }
+  }
+
+  const handleKeyDown = (e: React.KeyboardEvent<HTMLTextAreaElement>) => {
+    isUseInputMethod.current = e.nativeEvent.isComposing
+    if (e.code === 'Enter' && !e.shiftKey) {
+      setQuery(query.replace(/\n$/, ''))
+      e.preventDefault()
+    }
+  }
 
   const handleShowVoiceInput = useCallback(() => {
     (Recorder as any).getPermission().then(() => {
@@ -63,11 +93,11 @@ const ChatInputArea = ({
   return (
     <div
       className={cn(
-        'py-[9px] bg-components-panel-bg-blur border border-blue-300 rounded-xl shadow-md',
+        'py-[9px] bg-components-panel-bg-blur border border-components-chat-input-border rounded-xl shadow-md',
       )}
     >
-      <div className='relative px-[9px] max-h-[158px] overflow-y-auto'>
-        <FileListFlexOperation />
+      <div className='relative px-[9px] max-h-[158px] overflow-x-hidden overflow-y-auto'>
+        {/* <FileListFlexOperation /> */}
         <div
           ref={wrapperRef}
           className='flex items-center justify-between'
@@ -77,7 +107,7 @@ const ChatInputArea = ({
               ref={textValueRef}
               className='absolute w-auto h-auto p-1 leading-6 body-lg-regular pointer-events-none whitespace-pre invisible'
             >
-              {value}
+              {query}
             </div>
             <Textarea
               ref={textareaRef}
@@ -85,11 +115,13 @@ const ChatInputArea = ({
               placeholder='Enter message...'
               autoSize={{ minRows: 1 }}
               onResize={handleTextareaResize}
-              value={value}
+              value={query}
               onChange={(e) => {
-                setValue(e.target.value)
+                setQuery(e.target.value)
                 handleTextareaResize()
               }}
+              onKeyUp={handleKeyUp}
+              onKeyDown={handleKeyDown}
             />
           </div>
           {
@@ -100,7 +132,7 @@ const ChatInputArea = ({
           showVoiceInput && (
             <VoiceInput
               onCancel={() => setShowVoiceInput(false)}
-              onConverted={text => setValue(text)}
+              onConverted={text => setQuery(text)}
             />
           )
         }

@@ -36,7 +36,7 @@ const AgentContent: FC<AgentContentProps> = ({
   return (
     <div>
       {agent_thoughts?.map((thought, index) => (
-        <div key={index}>
+        <div key={index} className='px-2 py-1'>
           {thought.thought && (
             <Markdown content={thought.thought} />
           )}

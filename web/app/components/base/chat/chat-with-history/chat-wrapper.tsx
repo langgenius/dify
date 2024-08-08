@@ -129,23 +129,27 @@ const ChatWrapper = () => {
   ])
 
   return (
-    <Chat
-      appData={appData}
-      config={appConfig}
-      chatList={chatList}
-      isResponding={isResponding}
-      chatContainerInnerClassName={`mx-auto pt-6 w-full max-w-[720px] ${isMobile && 'px-4'}`}
-      chatFooterClassName='pb-4'
-      chatFooterInnerClassName={`mx-auto w-full max-w-[720px] ${isMobile && 'px-4'}`}
-      onSend={doSend}
-      onStopResponding={handleStop}
-      chatNode={chatNode}
-      allToolIcons={appMeta?.tool_icons || {}}
-      onFeedback={handleFeedback}
-      suggestedQuestions={suggestedQuestions}
-      hideProcessDetail
-      themeBuilder={themeBuilder}
-    />
+    <div
+      className='h-full bg-chatbot-bg overflow-hidden'
+    >
+      <Chat
+        appData={appData}
+        config={appConfig}
+        chatList={chatList}
+        isResponding={isResponding}
+        chatContainerInnerClassName={`mx-auto pt-6 w-full max-w-[720px] ${isMobile && 'px-4'}`}
+        chatFooterClassName='pb-4'
+        chatFooterInnerClassName={`mx-auto w-full max-w-[720px] ${isMobile && 'px-4'}`}
+        onSend={doSend}
+        onStopResponding={handleStop}
+        chatNode={chatNode}
+        allToolIcons={appMeta?.tool_icons || {}}
+        onFeedback={handleFeedback}
+        suggestedQuestions={suggestedQuestions}
+        hideProcessDetail
+        themeBuilder={themeBuilder}
+      />
+    </div>
   )
 }
 
