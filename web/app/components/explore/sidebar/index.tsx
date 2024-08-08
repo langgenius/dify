@@ -137,7 +137,6 @@ const SideBar: FC<IExploreSideBarProps> = ({
           title={t('explore.sidebar.delete.title')}
           content={t('explore.sidebar.delete.content')}
           isShow={showConfirm}
-          onClose={() => setShowConfirm(false)}
           onConfirm={handleDelete}
           onCancel={() => setShowConfirm(false)}
         />
