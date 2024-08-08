@@ -4,6 +4,7 @@ import { useTranslation } from 'react-i18next'
 import { RiCloseLine } from '@remixicon/react'
 import Modal from '@/app/components/base/modal'
 import Button from '@/app/components/base/button'
+import Textarea from '@/app/components/base/textarea'
 import Toast from '@/app/components/base/toast'
 import AppIcon from '@/app/components/base/app-icon'
 import EmojiPicker from '@/app/components/base/emoji-picker'
@@ -92,8 +93,8 @@ const CreateAppModal = ({
           {/* description */}
           <div className='pt-2'>
             <div className='py-2 text-sm font-medium leading-[20px] text-gray-900'>{t('app.newApp.captionDescription')}</div>
-            <textarea
-              className='w-full h-10 px-3 py-2 text-sm font-normal bg-gray-100 rounded-lg border border-transparent outline-none appearance-none caret-primary-600 placeholder:text-gray-400 hover:bg-gray-50 hover:border hover:border-gray-300 focus:bg-gray-50 focus:border focus:border-gray-300 focus:shadow-xs h-[80px] resize-none'
+            <Textarea
+              className='resize-none'
               placeholder={t('app.newApp.appDescriptionPlaceholder') || ''}
               value={description}
               onChange={e => setDescription(e.target.value)}

@@ -7,6 +7,7 @@ import { Trans, useTranslation } from 'react-i18next'
 import s from './style.module.css'
 import Modal from '@/app/components/base/modal'
 import Button from '@/app/components/base/button'
+import Textarea from '@/app/components/base/textarea'
 import AppIcon from '@/app/components/base/app-icon'
 import { SimpleSelect } from '@/app/components/base/select'
 import type { AppDetailResponse } from '@/models/app'
@@ -156,6 +157,10 @@ const SettingsModal: FC<ISettingsModalProps> = ({
     }
   }
 
+  const onDesChange = (value: string) => {
+    setInputInfo(item => ({ ...item, desc: value }))
+  }
+
   return (
     <>
       <Modal
@@ -180,11 +185,10 @@ const SettingsModal: FC<ISettingsModalProps> = ({
         </div>
         <div className={`mt-6 font-medium ${s.settingTitle} text-gray-900 `}>{t(`${prefixSettings}.webDesc`)}</div>
         <p className={`mt-1 ${s.settingsTip} text-gray-500`}>{t(`${prefixSettings}.webDescTip`)}</p>
-        <textarea
-          rows={3}
-          className={`mt-2 pt-2 pb-2 px-3 rounded-lg bg-gray-100 w-full ${s.settingsTip} text-gray-900`}
+        <Textarea
+          className='mt-2'
           value={inputInfo.desc}
-          onChange={onChange('desc')}
+          onChange={e => onDesChange(e.target.value)}
           placeholder={t(`${prefixSettings}.webDescPlaceholder`) as string}
         />
         <div className={`mt-6 mb-2 font-medium ${s.settingTitle} text-gray-900 `}>{t(`${prefixSettings}.language`)}</div>

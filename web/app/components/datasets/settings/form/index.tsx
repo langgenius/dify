@@ -13,6 +13,7 @@ import RetrievalMethodConfig from '@/app/components/datasets/common/retrieval-me
 import EconomicalRetrievalMethodConfig from '@/app/components/datasets/common/economical-retrieval-method-config'
 import { ToastContext } from '@/app/components/base/toast'
 import Button from '@/app/components/base/button'
+import Textarea from '@/app/components/base/textarea'
 import { updateDatasetSetting } from '@/service/datasets'
 import type { DataSetListResponse } from '@/models/datasets'
 import DatasetDetailContext from '@/context/dataset-detail'
@@ -175,9 +176,9 @@ const Form = () => {
           <div>{t('datasetSettings.form.desc')}</div>
         </div>
         <div className='w-full max-w-[480px]'>
-          <textarea
+          <Textarea
             disabled={!currentDataset?.embedding_available}
-            className={cn(`${inputClass} block mb-2 h-[120px] py-2 resize-none`, !currentDataset?.embedding_available && 'opacity-60')}
+            className='mb-2 h-[120px] resize-none'
             placeholder={t('datasetSettings.form.descPlaceholder') || ''}
             value={description}
             onChange={e => setDescription(e.target.value)}

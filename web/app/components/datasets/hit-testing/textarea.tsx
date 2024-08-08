@@ -6,6 +6,7 @@ import Tooltip from '../../base/tooltip'
 import { getIcon } from '../common/retrieval-method-info'
 import s from './style.module.css'
 import cn from '@/utils/classnames'
+import Textarea from '@/app/components/base/textarea'
 import DatasetDetailContext from '@/context/dataset-detail'
 import type { HitTestingResponse } from '@/models/datasets'
 import { hitTesting } from '@/service/datasets'
@@ -92,11 +93,11 @@ const TextAreaWithButton = ({
           <div className='h-2 rounded-tl-xl rounded-tr-xl bg-white'></div>
         </div>
         <div className='px-4 pb-11'>
-          <textarea
+          <Textarea
+            className='h-[220px] resize-none'
             value={text}
             onChange={handleTextChange}
             placeholder={t('datasetHitTesting.input.placeholder') as string}
-            className={s.textarea}
           />
           <div className="absolute inset-x-0 bottom-0 flex items-center justify-between mx-4 mt-2 mb-2">
             {text?.length > 200

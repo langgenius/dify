@@ -16,6 +16,7 @@ import { AppType, ModelModeType } from '@/types/app'
 import Select from '@/app/components/base/select'
 import { DEFAULT_VALUE_MAX_LEN } from '@/config'
 import Button from '@/app/components/base/button'
+import Textarea from '@/app/components/base/textarea'
 import Tooltip from '@/app/components/base/tooltip-plus'
 import TextGenerationImageUploader from '@/app/components/base/image-uploader/text-generation-image-uploader'
 import type { VisionFile, VisionSettings } from '@/types/app'
@@ -145,8 +146,8 @@ const PromptValuePanel: FC<IPromptValuePanelProps> = ({
                           />
                         )}
                         {type === 'paragraph' && (
-                          <textarea
-                            className="w-full px-3 text-sm leading-9 text-gray-900 border-0 rounded-lg grow h-[120px] bg-gray-50 focus:outline-none focus:ring-1 focus:ring-inset focus:ring-gray-200"
+                          <Textarea
+                            className='grow h-[120px]'
                             placeholder={`${name}${!required ? `(${t('appDebug.variableTable.optional')})` : ''}`}
                             value={inputs[key] ? `${inputs[key]}` : ''}
                             onChange={(e) => { handleInputValueChange(key, e.target.value) }}

@@ -9,6 +9,7 @@ import produce from 'immer'
 import type { Emoji, WorkflowToolProviderParameter, WorkflowToolProviderRequest } from '../types'
 import cn from '@/utils/classnames'
 import Drawer from '@/app/components/base/drawer-plus'
+import Textarea from '@/app/components/base/textarea'
 import Button from '@/app/components/base/button'
 import Toast from '@/app/components/base/toast'
 import EmojiPicker from '@/app/components/base/emoji-picker'
@@ -172,8 +173,7 @@ const WorkflowToolAsModal: FC<Props> = ({
               {/* description */}
               <div>
                 <div className='py-2 leading-5 text-sm font-medium text-gray-900'>{t('tools.createTool.description')}</div>
-                <textarea
-                  className='w-full px-3 py-2 text-sm font-normal bg-gray-100 rounded-lg border border-transparent outline-none appearance-none caret-primary-600 placeholder:text-gray-400 hover:bg-gray-50 hover:border hover:border-gray-300 focus:bg-gray-50 focus:border focus:border-gray-300 focus:shadow-xs h-[80px] resize-none'
+                <Textarea
                   placeholder={t('tools.createTool.descriptionPlaceholder') || ''}
                   value={description}
                   onChange={e => setDescription(e.target.value)}

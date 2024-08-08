@@ -13,6 +13,7 @@ import TestApi from './test-api'
 import cn from '@/utils/classnames'
 import Drawer from '@/app/components/base/drawer-plus'
 import Button from '@/app/components/base/button'
+import Textarea from '@/app/components/base/textarea'
 import EmojiPicker from '@/app/components/base/emoji-picker'
 import AppIcon from '@/app/components/base/app-icon'
 import { parseParamsSchema } from '@/service/tools'
@@ -72,7 +73,7 @@ const EditCustomCollectionModal: FC<Props> = ({
   }
   const schema = customCollection.schema
   const debouncedSchema = useDebounce(schema, { wait: 500 })
-  const setSchema = (schema: string) => {
+  const setSchema = (schema: any) => {
     const newCollection = produce(customCollection, (draft) => {
       draft.schema = schema
     })
@@ -226,12 +227,12 @@ const EditCustomCollectionModal: FC<Props> = ({
                   <GetSchema onChange={setSchema} />
 
                 </div>
-                <textarea
+                <Textarea
+                  className='h-[240px] resize-none'
                   value={schema}
                   onChange={e => setSchema(e.target.value)}
-                  className='w-full h-[240px] px-3 py-2 leading-4 text-xs font-normal text-gray-900 bg-gray-100 rounded-lg overflow-y-auto'
                   placeholder={t('tools.createTool.schemaPlaceHolder')!}
-                ></textarea>
+                />
               </div>
 
               {/* Available Tools  */}

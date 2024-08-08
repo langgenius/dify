@@ -3,6 +3,7 @@ import { useContext } from 'use-context-selector'
 import type { CodeBasedExtensionForm } from '@/models/common'
 import I18n from '@/context/i18n'
 import { PortalSelect } from '@/app/components/base/select'
+import Textarea from '@/app/components/base/textarea'
 import type { ModerationConfig } from '@/models/debug'
 
 type FormGenerationProps = {
@@ -44,10 +45,10 @@ const FormGeneration: FC<FormGenerationProps> = ({
             }
             {
               form.type === 'paragraph' && (
-                <div className='relative px-3 py-2 h-[88px] bg-gray-100 rounded-lg'>
-                  <textarea
+                <div className='relative'>
+                  <Textarea
+                    className='resize-none'
                     value={value?.[form.variable] || ''}
-                    className='block w-full h-full bg-transparent text-sm outline-none appearance-none resize-none'
                     placeholder={form.placeholder}
                     onChange={e => handleFormChange(form.variable, e.target.value)}
                   />

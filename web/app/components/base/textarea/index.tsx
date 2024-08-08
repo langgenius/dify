@@ -20,7 +20,6 @@ const textareaVariants = cva(
 
 export type TextareaProps = {
   value: string
-  onChange: (value: string) => void
   disabled?: boolean
   destructive?: boolean
   styleCss?: CSSProperties
@@ -40,7 +39,7 @@ const Textarea = React.forwardRef<HTMLTextAreaElement, TextareaProps>(
           className,
         )}
         value={value}
-        onChange={e => onChange(e.target.value)}
+        onChange={onChange}
         disabled={disabled}
         {...props}
       >

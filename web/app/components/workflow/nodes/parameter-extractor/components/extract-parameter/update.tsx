@@ -5,11 +5,11 @@ import { useBoolean } from 'ahooks'
 import { useTranslation } from 'react-i18next'
 import type { Param } from '../../types'
 import { ParamType } from '../../types'
-import cn from '@/utils/classnames'
 import AddButton from '@/app/components/base/button/add-button'
 import Modal from '@/app/components/base/modal'
 import Button from '@/app/components/base/button'
 import Field from '@/app/components/app/configuration/config-var/config-modal/field'
+import Textarea from '@/app/components/base/textarea'
 import Select from '@/app/components/base/select'
 import Switch from '@/app/components/base/switch'
 import Toast from '@/app/components/base/toast'
@@ -165,8 +165,7 @@ const AddExtractParameter: FC<Props> = ({
                 </Field>
               )}
               <Field title={t(`${i18nPrefix}.addExtractParameterContent.description`)}>
-                <textarea
-                  className={cn(inputClassName, '!h-[80px]')}
+                <Textarea
                   value={param.description}
                   onChange={e => handleParamChange('description')(e.target.value)}
                   placeholder={t(`${i18nPrefix}.addExtractParameterContent.descriptionPlaceholder`)!}

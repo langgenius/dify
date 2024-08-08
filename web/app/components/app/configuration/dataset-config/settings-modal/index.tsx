@@ -8,6 +8,7 @@ import { BookOpenIcon } from '@heroicons/react/24/outline'
 import cn from '@/utils/classnames'
 import IndexMethodRadio from '@/app/components/datasets/settings/index-method-radio'
 import Button from '@/app/components/base/button'
+import Textarea from '@/app/components/base/textarea'
 import type { DataSet } from '@/models/datasets'
 import { useToastContext } from '@/app/components/base/toast'
 import { updateDatasetSetting } from '@/service/datasets'
@@ -192,10 +193,10 @@ const SettingsModal: FC<SettingsModalProps> = ({
             {t('datasetSettings.form.desc')}
           </div>
           <div className='w-full'>
-            <textarea
+            <Textarea
               value={localeCurrentDataset.description || ''}
               onChange={e => handleValueChange('description', e.target.value)}
-              className='block px-3 py-2 w-full h-[88px] rounded-lg bg-gray-100 text-sm outline-none appearance-none resize-none'
+              className='resize-none'
               placeholder={t('datasetSettings.form.descPlaceholder') || ''}
             />
             <a className='mt-2 flex items-center h-[18px] px-3 text-xs text-gray-500' href="https://docs.dify.ai/features/datasets#how-to-write-a-good-dataset-description" target='_blank' rel='noopener noreferrer'>
