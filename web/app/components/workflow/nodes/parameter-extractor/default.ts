@@ -57,6 +57,8 @@ const nodeDefault: NodeDefault<ParameterExtractorNodeType> = {
           errorMessages = t(`${i18nPrefix}.errorMsg.fieldRequired`, { field: t(`${i18nPrefix}.nodes.parameterExtractor.addExtractParameterContent.descriptionPlaceholder`) })
       })
     }
+    if (!errorMessages && payload.vision.enabled && !payload.vision.configs?.valueSelector.length)
+      errorMessages = t(`${i18nPrefix}.errorMsg.fieldRequired`, { field: t(`${i18nPrefix}.errorMsg.fields.visionVariable`) })
     return {
       isValid: !errorMessages,
       errorMessage: errorMessages,

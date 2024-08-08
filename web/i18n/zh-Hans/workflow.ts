@@ -135,6 +135,7 @@ const translation = {
       code: '代码',
       model: '模型',
       rerankModel: 'Rerank 模型',
+      visionVariable: '视觉变量',
     },
     invalidVariable: '无效的变量',
   },

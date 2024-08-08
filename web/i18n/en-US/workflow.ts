@@ -135,6 +135,7 @@ const translation = {
       code: 'Code',
       model: 'Model',
       rerankModel: 'Rerank Model',
+      visionVariable: 'Vision Variable',
     },
     invalidVariable: 'Invalid variable',
   },
