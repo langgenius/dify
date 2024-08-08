@@ -2,3 +2,7 @@ model: embedding-2
 model_type: text-embedding
 model_properties:
   context_size: 512
+pricing:
+  input: '0.0005'
+  unit: '0.001'
+  currency: RMB
