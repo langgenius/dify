@@ -15,7 +15,9 @@ def test_validate_credentials():
     with pytest.raises(CredentialsValidateFailedError):
         model.validate_credentials(
             model="BAAI/bge-large-zh-v1.5",
-            credentials={"api_key": "invalid_key","endpoint_url":"/"},
+            credentials={
+                "api_key": "invalid_key"
+            },
         )
 
     model.validate_credentials(
