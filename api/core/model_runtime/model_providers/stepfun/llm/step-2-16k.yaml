@@ -1,16 +1,16 @@
-model: step-1v-32k
+model: step-2-16k
 label:
-  zh_Hans: step-1v-32k
-  en_US: step-1v-32k
+  zh_Hans: step-2-16k
+  en_US: step-2-16k
 model_type: llm
 features:
-  - vision
+  - agent-thought
   - tool-call
   - multi-tool-call
   - stream-tool-call
 model_properties:
   mode: chat
-  context_size: 32000
+  context_size: 16000
 parameter_rules:
   - name: temperature
     use_template: temperature
@@ -20,9 +20,9 @@ parameter_rules:
     use_template: max_tokens
     default: 1024
     min: 1
-    max: 32000
+    max: 16000
 pricing:
-  input: '0.015'
-  output: '0.070'
+  input: '0.038'
+  output: '0.120'
   unit: '0.001'
   currency: RMB
