@@ -119,7 +119,7 @@ const FormItem: FC<Props> = ({
           type === InputVarType.paragraph && (
             <Textarea
               value={value || ''}
-              onChange={onChange}
+              onChange={e => onChange(e.target.value)}
               placeholder={t('appDebug.variableConig.inputPlaceholder')!}
               autoFocus={autoFocus}
             />
