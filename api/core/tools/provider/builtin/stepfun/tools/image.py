@@ -29,7 +29,7 @@ class StepfunTool(BuiltinTool):
         )
 
         extra_body = {}
-        model = tool_parameters.get('model', 'step-1X-medium')
+        model = tool_parameters.get('model', 'step-1x-medium')
         if not model:
             return self.create_text_message('Please input model name')
         # prompt

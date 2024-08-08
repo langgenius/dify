@@ -2,19 +2,19 @@ identity:
   name: stepfun
   author: Stepfun
   label:
-    en_US: step-1X
+    en_US: step-1x
     zh_Hans: 阶跃星辰绘画
-    pt_BR: step-1X
+    pt_BR: step-1x
   description:
-    en_US: step-1X is a powerful drawing tool by stepfun, you can draw the image based on your prompt
-    zh_Hans: step-1X 系列是阶跃星辰提供的强大的绘画工具，它可以根据您的提示词绘制出您想要的图像。
-    pt_BR: step-1X is a powerful drawing tool by stepfun, you can draw the image based on your prompt
+    en_US: step-1x is a powerful drawing tool by stepfun, you can draw the image based on your prompt
+    zh_Hans: step-1x 系列是阶跃星辰提供的强大的绘画工具，它可以根据您的提示词绘制出您想要的图像。
+    pt_BR: step-1x is a powerful drawing tool by stepfun, you can draw the image based on your prompt
 description:
   human:
-    en_US: step-1X is a text to image tool
-    zh_Hans: step-1X 是一个文本/图像到图像的工具
-    pt_BR: step-1X is a text to image tool
-  llm: step-1X is a tool used to generate images from text or image
+    en_US: step-1x is a text to image tool
+    zh_Hans: step-1x 是一个文本/图像到图像的工具
+    pt_BR: step-1x is a text to image tool
+  llm: step-1x is a tool used to generate images from text or image
 parameters:
   - name: prompt
     type: string
@@ -24,10 +24,10 @@ parameters:
       zh_Hans: 提示词
       pt_BR: Prompt
     human_description:
-      en_US: Image prompt, you can check the official documentation of step-1X
-      zh_Hans: 图像提示词，您可以查看step-1X 的官方文档
-      pt_BR: Image prompt, you can check the official documentation of step-1X
-    llm_description: Image prompt of step-1X you should describe the image you want to generate as a list of words as possible as detailed
+      en_US: Image prompt, you can check the official documentation of step-1x
+      zh_Hans: 图像提示词，您可以查看step-1x 的官方文档
+      pt_BR: Image prompt, you can check the official documentation of step-1x
+    llm_description: Image prompt of step-1x you should describe the image you want to generate as a list of words as possible as detailed
     form: llm
   - name: model
     type: select
@@ -42,22 +42,22 @@ parameters:
       pt_BR: Model Name
     form: form
     options:
-      - value: step-1X-turbo
+      - value: step-1x-turbo
         label:
           en_US: turbo
           zh_Hans: turbo
           pt_BR: turbo
-      - value: step-1X-medium
+      - value: step-1x-medium
         label:
           en_US: medium
           zh_Hans: medium
           pt_BR: medium
-      - value: step-1X-large
+      - value: step-1x-large
         label:
           en_US: large
           zh_Hans: large
           pt_BR: large
-    default: step-1X-medium
+    default: step-1x-medium
   - name: size
     type: select
     required: false
