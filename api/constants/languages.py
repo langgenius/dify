@@ -16,6 +16,7 @@ language_timezone_mapping = {
     'pl-PL': 'Europe/Warsaw',
     'hi-IN': 'Asia/Kolkata',
     'tr-TR': 'Europe/Istanbul',
+    'fa-IR': 'Asia/Tehran',
 }
 
 languages = list(language_timezone_mapping.keys())

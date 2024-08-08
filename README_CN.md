@@ -4,7 +4,7 @@
   <a href="https://cloud.dify.ai">Dify 云服务</a> ·
   <a href="https://docs.dify.ai/getting-started/install-self-hosted">自托管</a> ·
   <a href="https://docs.dify.ai">文档</a> ·
-  <a href="https://cal.com/guchenhe/dify-demo">预约演示</a>
+  <a href="https://udify.app/chat/22L1zSxg6yW1cWQg">（需用英文）常见问题解答 / 联系团队</a>
 </div>
 
 <p align="center">
@@ -70,7 +70,7 @@ Dify 是一个开源的 LLM 应用开发平台。其直观的界面结合了 AI 
   广泛的 RAG 功能，涵盖从文档摄入到检索的所有内容，支持从 PDF、PPT 和其他常见文档格式中提取文本的开箱即用的支持。
 
 **5. Agent 智能体**: 
-  您可以基于 LLM 函数调用或 ReAct 定义 Agent，并为 Agent 添加预构建或自定义工具。Dify 为 AI Agent 提供了50多种内置工具，如谷歌搜索、DELL·E、Stable Diffusion 和 WolframAlpha 等。
+  您可以基于 LLM 函数调用或 ReAct 定义 Agent，并为 Agent 添加预构建或自定义工具。Dify 为 AI Agent 提供了50多种内置工具，如谷歌搜索、DALL·E、Stable Diffusion 和 WolframAlpha 等。
 
 **6. LLMOps**: 
   随时间监视和分析应用程序日志和性能。您可以根据生产数据和标注持续改进提示、数据集和模型。

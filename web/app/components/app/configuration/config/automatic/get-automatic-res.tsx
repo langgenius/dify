@@ -282,7 +282,6 @@ const GetAutomaticRes: FC<IGetAutomaticResProps> = ({
             title={t('appDebug.generate.overwriteTitle')}
             content={t('appDebug.generate.overwriteMessage')}
             isShow={showConfirmOverwrite}
-            onClose={() => setShowConfirmOverwrite(false)}
             onConfirm={() => {
               setShowConfirmOverwrite(false)
               onFinished(res!)

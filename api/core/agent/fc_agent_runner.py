@@ -62,6 +62,7 @@ class FunctionCallAgentRunner(BaseAgentRunner):
                 llm_usage.completion_tokens += usage.completion_tokens
                 llm_usage.prompt_price += usage.prompt_price
                 llm_usage.completion_price += usage.completion_price
+                llm_usage.total_price += usage.total_price
 
         model_instance = self.model_instance
 
