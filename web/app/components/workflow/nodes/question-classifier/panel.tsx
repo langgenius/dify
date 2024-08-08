@@ -92,9 +92,9 @@ const Panel: FC<NodePanelProps<QuestionClassifierNodeType>> = ({
           nodeId={id}
           readOnly={readOnly}
           isVisionModel={isVisionModel}
-          enabled={inputs.vision.enabled}
+          enabled={inputs.vision?.enabled}
           onEnabledChange={handleVisionResolutionEnabledChange}
-          config={inputs.vision.configs}
+          config={inputs.vision?.configs}
           onConfigChange={handleVisionResolutionChange}
         />
         <Field
