@@ -79,7 +79,7 @@ const nodeDefault: NodeDefault<LLMNodeType> = {
         })
       }
     }
-    if (!errorMessages && payload.vision.enabled && !payload.vision.configs?.valueSelector.length)
+    if (!errorMessages && payload.vision.enabled && !payload.vision.configs?.valueSelector?.length)
       errorMessages = t(`${i18nPrefix}.fieldRequired`, { field: t(`${i18nPrefix}.fields.visionVariable`) })
     return {
       isValid: !errorMessages,
