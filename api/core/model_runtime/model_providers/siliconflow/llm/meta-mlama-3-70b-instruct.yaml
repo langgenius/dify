@@ -1,6 +1,6 @@
-model: THUDM/glm-4-9b-chat
+model: meta-llama/Meta-Llama-3-70B-Instruct
 label:
-  en_US: THUDM/glm-4-9b-chat
+  en_US: meta-llama/Meta-Llama-3-70B-Instruct
 model_type: llm
 features:
   - agent-thought
@@ -24,7 +24,7 @@ parameter_rules:
   - name: frequency_penalty
     use_template: frequency_penalty
 pricing:
-  input: '0'
-  output: '0'
+  input: '4.13'
+  output: '4.13'
   unit: '0.000001'
   currency: RMB

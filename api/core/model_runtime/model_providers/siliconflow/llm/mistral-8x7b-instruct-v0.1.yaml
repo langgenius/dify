@@ -1,6 +1,6 @@
-model: THUDM/glm-4-9b-chat
+model: mistralai/Mixtral-8x7B-Instruct-v0.1
 label:
-  en_US: THUDM/glm-4-9b-chat
+  en_US: mistralai/Mixtral-8x7B-Instruct-v0.1
 model_type: llm
 features:
   - agent-thought
@@ -24,7 +24,7 @@ parameter_rules:
   - name: frequency_penalty
     use_template: frequency_penalty
 pricing:
-  input: '0'
-  output: '0'
+  input: '1.26'
+  output: '1.26'
   unit: '0.000001'
   currency: RMB

@@ -1,6 +1,6 @@
-model: THUDM/glm-4-9b-chat
+model: Qwen/Qwen2-1.5B-Instruct
 label:
-  en_US: THUDM/glm-4-9b-chat
+  en_US: Qwen/Qwen2-1.5B-Instruct
 model_type: llm
 features:
   - agent-thought
