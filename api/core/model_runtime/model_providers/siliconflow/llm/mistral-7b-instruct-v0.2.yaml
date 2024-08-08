@@ -1,6 +1,6 @@
-model: THUDM/glm-4-9b-chat
+model: mistralai/Mistral-7B-Instruct-v0.2
 label:
-  en_US: THUDM/glm-4-9b-chat
+  en_US: mistralai/Mistral-7B-Instruct-v0.2
 model_type: llm
 features:
   - agent-thought

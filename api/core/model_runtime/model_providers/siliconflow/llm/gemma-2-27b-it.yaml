@@ -1,12 +1,12 @@
-model: THUDM/glm-4-9b-chat
+model: google/gemma-2-27b-it
 label:
-  en_US: THUDM/glm-4-9b-chat
+  en_US: google/gemma-2-27b-it
 model_type: llm
 features:
   - agent-thought
 model_properties:
   mode: chat
-  context_size: 32768
+  context_size: 8196
 parameter_rules:
   - name: temperature
     use_template: temperature
@@ -24,7 +24,7 @@ parameter_rules:
   - name: frequency_penalty
     use_template: frequency_penalty
 pricing:
-  input: '0'
-  output: '0'
+  input: '1.26'
+  output: '1.26'
   unit: '0.000001'
   currency: RMB
