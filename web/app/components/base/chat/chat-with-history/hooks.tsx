@@ -37,10 +37,13 @@ import type {
 import { addFileInfos, sortAgentSorts } from '@/app/components/tools/utils'
 import { useToastContext } from '@/app/components/base/toast'
 import { changeLanguage } from '@/i18n/i18next-config'
+import { useAppFavicon } from '@/hooks/use-app-favicon'
 
 export const useChatWithHistory = (installedAppInfo?: InstalledApp) => {
   const isInstalledApp = useMemo(() => !!installedAppInfo, [installedAppInfo])
   const { data: appInfo, isLoading: appInfoLoading, error: appInfoError } = useSWR(installedAppInfo ? null : 'appInfo', fetchAppInfo)
+
+  useAppFavicon(!installedAppInfo, appInfo?.site.icon, appInfo?.site.icon_background)
 
   const appData = useMemo(() => {
     if (isInstalledApp) {
