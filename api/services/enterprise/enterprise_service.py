@@ -9,4 +9,4 @@ class EnterpriseService:
 
     @classmethod
     def get_app_web_sso_enabled(cls, app_code):
-        return EnterpriseRequest.send_request('GET', f'/console/api/enterprise/app-setting/sso?appCode={app_code}')
+        return EnterpriseRequest.send_request('GET', f'/app-sso-setting?appCode={app_code}')
