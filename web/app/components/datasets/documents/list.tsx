@@ -21,7 +21,6 @@ import Switch from '@/app/components/base/switch'
 import Divider from '@/app/components/base/divider'
 import Popover from '@/app/components/base/popover'
 import Confirm from '@/app/components/base/confirm'
-import Tooltip from '@/app/components/base/tooltip'
 import TooltipPlus from '@/app/components/base/tooltip-plus'
 import { ToastContext } from '@/app/components/base/toast'
 import type { IndicatorProps } from '@/app/components/header/indicator'
@@ -221,10 +220,9 @@ export const OperationAction: FC<{
                 <span className={cn(s.actionName, 'font-medium')}>
                   {!archived && enabled ? t('datasetDocuments.list.index.enable') : t('datasetDocuments.list.index.disable')}
                 </span>
-                <Tooltip
-                  selector={`detail-switch-${id}`}
-                  content={t('datasetDocuments.list.action.enableWarning') as string}
-                  className='!font-semibold'
+                <TooltipPlus
+                  popupContent={t('datasetDocuments.list.action.enableWarning')}
+                  popupClassName='!font-semibold'
                   disabled={!archived}
                 >
                   <div>
@@ -235,7 +233,7 @@ export const OperationAction: FC<{
                       size='md'
                     />
                   </div>
-                </Tooltip>
+                </TooltipPlus>
               </div>
               <div className='mx-4 pb-1 pt-0.5 text-xs text-gray-500'>
                 {!archived && enabled ? t('datasetDocuments.list.index.enableTip') : t('datasetDocuments.list.index.disableTip')}

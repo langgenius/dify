@@ -19,7 +19,6 @@ import { useTranslation } from 'react-i18next'
 import s from './style.module.css'
 import VarPanel from './var-panel'
 import cn from '@/utils/classnames'
-import { randomString } from '@/utils'
 import type { FeedbackFunc, Feedbacktype, IChatItem, SubmitAnnotationFunc } from '@/app/components/base/chat/chat/type'
 import type { Annotation, ChatConversationFullDetailResponse, ChatConversationGeneralDetail, ChatConversationsResponse, ChatMessage, ChatMessagesRequest, CompletionConversationFullDetailResponse, CompletionConversationGeneralDetail, CompletionConversationsResponse, LogAnnotation } from '@/models/log'
 import type { App } from '@/types/app'
@@ -27,7 +26,6 @@ import Loading from '@/app/components/base/loading'
 import Drawer from '@/app/components/base/drawer'
 import Popover from '@/app/components/base/popover'
 import Chat from '@/app/components/base/chat/chat'
-import Tooltip from '@/app/components/base/tooltip'
 import { ToastContext } from '@/app/components/base/toast'
 import { fetchChatConversationDetail, fetchChatMessages, fetchCompletionConversationDetail, updateLogMessageAnnotations, updateLogMessageFeedbacks } from '@/service/log'
 import { TONE_LIST } from '@/config'
@@ -638,19 +636,18 @@ const ConversationList: FC<IConversationList> = ({ logs, appDetail, onRefresh })
   // Annotated data needs to be highlighted
   const renderTdValue = (value: string | number | null, isEmptyStyle: boolean, isHighlight = false, annotation?: LogAnnotation) => {
     return (
-      <Tooltip
-        htmlContent={
+      <TooltipPlus
+        popupContent={
           <span className='text-xs text-gray-500 inline-flex items-center'>
             <RiEditFill className='w-3 h-3 mr-1' />{`${t('appLog.detail.annotationTip', { user: annotation?.account?.name })} ${formatTime(annotation?.created_at || dayjs().unix(), 'MM-DD hh:mm A')}`}
           </span>
         }
-        className={(isHighlight && !isChatMode) ? '' : '!hidden'}
-        selector={`highlight-${randomString(16)}`}
+        popupClassName={(isHighlight && !isChatMode) ? '' : '!hidden'}
       >
         <div className={cn(isEmptyStyle ? 'text-gray-400' : 'text-gray-700', !isHighlight ? '' : 'bg-orange-100', 'text-sm overflow-hidden text-ellipsis whitespace-nowrap')}>
           {value || '-'}
         </div>
-      </Tooltip>
+      </TooltipPlus>
     )
   }
 

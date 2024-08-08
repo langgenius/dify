@@ -3,7 +3,7 @@ import { useRef, useState } from 'react'
 import { t } from 'i18next'
 import { useParams, usePathname } from 'next/navigation'
 import s from './style.module.css'
-import Tooltip from '@/app/components/base/tooltip'
+import TooltipPlus from '@/app/components/base/tooltip-plus'
 import { randomString } from '@/utils'
 import Loading from '@/app/components/base/loading'
 import { AudioPlayerManager } from '@/app/components/base/audio-btn/audio.player.manager'
@@ -84,10 +84,8 @@ const AudioBtn = ({
 
   return (
     <div className={`${(audioState === 'loading' || audioState === 'playing') ? 'mr-1' : className}`}>
-      <Tooltip
-        selector={selector.current}
-        content={tooltipContent}
-        className='z-10'
+      <TooltipPlus
+        popupContent={tooltipContent}
       >
         <button
           disabled={audioState === 'loading'}
@@ -104,7 +102,7 @@ const AudioBtn = ({
               <div className={`w-6 h-6 rounded-md ${!isAudition ? 'w-4 h-4 hover:bg-gray-50' : 'hover:bg-gray-50'} ${(audioState === 'playing') ? s.pauseIcon : s.playIcon}`}></div>
             )}
         </button>
-      </Tooltip>
+      </TooltipPlus>
     </div>
   )
 }

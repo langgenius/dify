@@ -14,7 +14,7 @@ import {
 import { BLOCK_CLASSIFICATIONS } from './constants'
 import { useBlocks } from './hooks'
 import type { ToolDefaultValue } from './types'
-import Tooltip from '@/app/components/base/tooltip'
+import TooltipPlus from '@/app/components/base/tooltip-plus'
 
 type BlocksProps = {
   searchText: string
@@ -65,12 +65,11 @@ const Blocks = ({
         }
         {
           list.map(block => (
-            <Tooltip
+            <TooltipPlus
               key={block.type}
-              selector={`workflow-block-${block.type}`}
               position='right'
-              className='!p-0 !px-3 !py-2.5 !w-[200px] !leading-[18px] !text-xs !text-gray-700 !border-[0.5px] !border-black/5 !rounded-xl !shadow-lg'
-              htmlContent={(
+              popupClassName='!p-0 !px-3 !py-2.5 !w-[200px] !leading-[18px] !text-xs !text-gray-700 !border-[0.5px] !border-black/5 !rounded-xl !shadow-lg'
+              popupContent={(
                 <div>
                   <BlockIcon
                     size='md'
@@ -81,7 +80,7 @@ const Blocks = ({
                   <div className='text-xs text-gray-700 leading-[18px]'>{nodesExtraData[block.type].about}</div>
                 </div>
               )}
-              noArrow
+              hideArrow
             >
               <div
                 key={block.type}
@@ -94,7 +93,7 @@ const Blocks = ({
                 />
                 <div className='text-sm text-gray-900'>{block.title}</div>
               </div>
-            </Tooltip>
+            </TooltipPlus>
           ))
         }
       </div>

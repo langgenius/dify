@@ -11,7 +11,7 @@ export type TooltipProps = {
   triggerMethod?: 'hover' | 'click'
   iconStyle?: string
   disabled?: boolean
-  popupContent: React.ReactNode
+  popupContent?: React.ReactNode
   children?: React.ReactNode
   hideArrow?: boolean
   popupClassName?: string
@@ -54,7 +54,7 @@ const getArrow = (position: Placement) => {
 const Tooltip: FC<TooltipProps> = ({
   position = 'top',
   triggerMethod = 'hover',
-  iconStyle = 'w-[14px] h-[14px]',
+  iconStyle = 'w-3.5 h-3.5',
   disabled = false,
   popupContent,
   children,

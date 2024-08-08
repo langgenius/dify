@@ -12,7 +12,7 @@ const SuggestedQuestionsAfterAnswer: FC = () => {
   return (
     <Panel
       title={
-        <div className='flex items-center gap-2'>
+        <div className='flex items-center gap-1'>
           <div>{t('appDebug.feature.suggestedQuestionsAfterAnswer.title')}</div>
           <TooltipPlus
             popupContent={

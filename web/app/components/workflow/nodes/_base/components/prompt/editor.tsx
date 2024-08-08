@@ -166,6 +166,7 @@ const Editor: FC<Props> = ({
                 {!readOnly && (
                   <TooltipPlus
                     popupContent={`${t('workflow.common.insertVarTip')}`}
+                    hideArrow
                     asChild
                   >
                     <ActionButton onClick={handleInsertVariable}>

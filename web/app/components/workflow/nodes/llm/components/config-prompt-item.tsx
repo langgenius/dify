@@ -3,7 +3,6 @@ import type { FC } from 'react'
 import React, { useCallback, useEffect, useState } from 'react'
 import { uniqueId } from 'lodash-es'
 import { useTranslation } from 'react-i18next'
-import { RiQuestionLine } from '@remixicon/react'
 import type { ModelConfig, PromptItem, Variable } from '../../../types'
 import { EditionType } from '../../../types'
 import { useWorkflowStore } from '../../../store'
@@ -122,9 +121,8 @@ const ConfigPromptItem: FC<Props> = ({
             popupContent={
               <div className='max-w-[180px]'>{t(`${i18nPrefix}.roleDescription.${payload.role}`)}</div>
             }
-          >
-            <RiQuestionLine className='w-3.5 h-3.5 text-gray-400' />
-          </TooltipPlus>
+            needsDelay={false}
+          />
         </div>
       }
       value={payload.edition_type === EditionType.jinja2 ? (payload.jinja2_text || '') : payload.text}

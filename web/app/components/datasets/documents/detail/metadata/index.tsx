@@ -10,7 +10,7 @@ import s from './style.module.css'
 import cn from '@/utils/classnames'
 import Input from '@/app/components/base/input'
 import Button from '@/app/components/base/button'
-import Tooltip from '@/app/components/base/tooltip'
+import TooltipPlus from '@/app/components/base/tooltip-plus'
 import Radio from '@/app/components/base/radio'
 import Divider from '@/app/components/base/divider'
 import { ToastContext } from '@/app/components/base/toast'
@@ -102,14 +102,16 @@ const IconButton: FC<{
   const metadataMap = useMetadataMap()
 
   return (
-    <Tooltip content={metadataMap[type].text} selector={`doc-metadata-${type}`}>
+    <TooltipPlus
+      popupContent={metadataMap[type].text}
+    >
       <button className={cn(s.iconWrapper, 'group', isChecked ? s.iconCheck : '')}>
         <TypeIcon
           iconName={metadataMap[type].iconName || ''}
           className={`group-hover:bg-primary-600 ${isChecked ? '!bg-primary-600' : ''}`}
         />
       </button>
-    </Tooltip>
+    </TooltipPlus>
   )
 }
 
