@@ -60,7 +60,10 @@ const Command = ({
   }, [type, t])
 
   return (
-    <TooltipPlus popupContent={tip}>
+    <TooltipPlus
+      popupContent={tip}
+      needsDelay={false}
+    >
       <div
         className={cn(
           'flex items-center justify-center w-8 h-8 cursor-pointer rounded-md text-gray-500 hover:text-gray-800 hover:bg-black/5',
