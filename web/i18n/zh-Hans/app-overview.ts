@@ -54,10 +54,10 @@ const translation = {
         chatColorThemeInverted: '反转',
         invalidHexMessage: '无效的十六进制值',
         sso: {
-          label: 'SSO ENFORCEMENT',
-          title: 'Web Application SSO',
-          description: 'All users are required to login with SSO before using web application',
-          tooltip: 'Contact the administrator to enable Web Application SSO',
+          label: '认证设置',
+          title: 'WebApp 认证',
+          description: '启用后，所有用户都需要先认证后才能访问',
+          tooltip: '联系管理员以开启 Web 应用的 SSO 认证',
         },
         more: {
           entry: '展示更多设置',

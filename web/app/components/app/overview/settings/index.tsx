@@ -224,7 +224,7 @@ const SettingsModal: FC<ISettingsModalProps> = ({
           <div className='flex justify-between items-center'>
             <div className='font-medium system-sm-semibold flex-grow text-gray-900'>{t(`${prefixSettings}.sso.title`)}</div>
             <TooltipPlus disabled={systemFeatures.sso_enforced_for_web} popupContent={<div className='w-[180px]'>{t(`${prefixSettings}.sso.tooltip`)}</div>}>
-              <Switch disabled={!systemFeatures.sso_enforced_for_web} defaultValue={inputInfo.enable_sso} onChange={v => setInputInfo({ ...inputInfo, enable_sso: v })}></Switch>
+              <Switch disabled={!systemFeatures.sso_enforced_for_web} defaultValue={systemFeatures.sso_enforced_for_web && inputInfo.enable_sso} onChange={v => setInputInfo({ ...inputInfo, enable_sso: v })}></Switch>
             </TooltipPlus>
           </div>
           <p className='body-xs-regular text-gray-500'>{t(`${prefixSettings}.sso.description`)}</p>
