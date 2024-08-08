@@ -13,7 +13,7 @@ import DatasetFooter from './DatasetFooter'
 import ApiServer from './ApiServer'
 import Doc from './Doc'
 import TabSliderNew from '@/app/components/base/tab-slider-new'
-import SearchInput from '@/app/components/base/search-input'
+import Input from '@/app/components/base/input'
 import TagManagementModal from '@/app/components/base/tag-management'
 import TagFilter from '@/app/components/base/tag-management/filter'
 
@@ -79,7 +79,14 @@ const Container = () => {
         {activeTab === 'dataset' && (
           <div className='flex items-center gap-2'>
             <TagFilter type='knowledge' value={tagFilterValue} onChange={handleTagsChange} />
-            <SearchInput className='w-[200px]' value={keywords} onChange={handleKeywordsChange} />
+            <Input
+              showLeftIcon
+              showClearIcon
+              wrapperClassName='w-[200px]'
+              value={keywords}
+              onChange={e => handleKeywordsChange(e.target.value)}
+              onClear={() => handleKeywordsChange('')}
+            />
           </div>
         )}
         {activeTab === 'api' && data && <ApiServer apiBaseUrl={data.api_base_url || ''} />}

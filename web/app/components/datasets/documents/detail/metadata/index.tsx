@@ -78,8 +78,7 @@ export const FieldInfo: FC<IFieldInfoProps> = ({
                 placeholder={`${t('datasetDocuments.metadata.placeholder.add')}${label}`}
               />
               : <Input
-                className={s.input}
-                onChange={onUpdate}
+                onChange={e => onUpdate?.(e.target.value)}
                 value={value}
                 defaultValue={defaultValue}
                 placeholder={`${t('datasetDocuments.metadata.placeholder.add')}${label}`}

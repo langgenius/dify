@@ -12,6 +12,7 @@ type Props = {
 const FilterCondition: FC<Props> = ({
   hasSubVariable,
 }) => {
+  const [input, setInput] = React.useState('')
   return (
     <div>
       {hasSubVariable && <SubVariablePicker className="mb-2" />}
@@ -24,7 +25,7 @@ const FilterCondition: FC<Props> = ({
           ]}
           onSelect={() => { }}
         />
-        <Input className='grow h-8 text-components-input-text-filled system-sm-regular !text-[13px]' />
+        <Input className='grow' value={input} onChange={e => setInput(e.target.value)} />
       </div>
     </div>
   )
