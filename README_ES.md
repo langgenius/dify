@@ -4,7 +4,7 @@
   <a href="https://cloud.dify.ai">Dify Cloud</a> ·
   <a href="https://docs.dify.ai/getting-started/install-self-hosted">Auto-alojamiento</a> ·
   <a href="https://docs.dify.ai">Documentación</a> ·
-  <a href="https://cal.com/guchenhe/dify-demo">Programar demostración</a>
+  <a href="https://udify.app/chat/22L1zSxg6yW1cWQg">Consultas empresariales (en inglés)</a>
 </p>
 
 <p align="center">
@@ -70,7 +70,7 @@ Dify es una plataforma de desarrollo de aplicaciones de LLM de código abierto. 
 **5. Capacidades de agente**: 
   Puedes definir agent
 
-es basados en LLM Function Calling o ReAct, y agregar herramientas preconstruidas o personalizadas para el agente. Dify proporciona más de 50 herramientas integradas para agentes de IA, como Búsqueda de Google, DELL·E, Difusión Estable y WolframAlpha.
+es basados en LLM Function Calling o ReAct, y agregar herramientas preconstruidas o personalizadas para el agente. Dify proporciona más de 50 herramientas integradas para agentes de IA, como Búsqueda de Google, DALL·E, Difusión Estable y WolframAlpha.
 
 **6. LLMOps**: 
   Supervisa y analiza registros de aplicaciones y rendimiento a lo largo del tiempo. Podrías mejorar continuamente prompts, conjuntos de datos y modelos basados en datos de producción y anotaciones.

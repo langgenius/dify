@@ -4,7 +4,7 @@
   <a href="https://cloud.dify.ai">Dify Cloud</a> ·
   <a href="https://docs.dify.ai/getting-started/install-self-hosted">Self-hosting</a> ·
   <a href="https://docs.dify.ai">Documentation</a> ·
-  <a href="https://cal.com/guchenhe/60-min-meeting">Enterprise inquiry</a>
+  <a href="https://udify.app/chat/22L1zSxg6yW1cWQg">Enterprise inquiry</a>
 </p>
 
 <p align="center">
@@ -65,7 +65,7 @@ Dify is an open-source LLM app development platform. Its intuitive interface com
   Extensive RAG capabilities that cover everything from document ingestion to retrieval, with out-of-box support for text extraction from PDFs, PPTs, and other common document formats.
 
 **5. Agent capabilities**: 
-  You can define agents based on LLM Function Calling or ReAct, and add pre-built or custom tools for the agent. Dify provides 50+ built-in tools for AI agents, such as Google Search, DELL·E, Stable Diffusion and WolframAlpha.
+  You can define agents based on LLM Function Calling or ReAct, and add pre-built or custom tools for the agent. Dify provides 50+ built-in tools for AI agents, such as Google Search, DALL·E, Stable Diffusion and WolframAlpha.
 
 **6. LLMOps**: 
   Monitor and analyze application logs and performance over time. You could continuously improve prompts, datasets, and models based on production data and annotations.
