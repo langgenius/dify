@@ -5,22 +5,25 @@ import RemarkBreaks from 'remark-breaks'
 import RehypeKatex from 'rehype-katex'
 import RehypeRaw from 'rehype-raw'
 import RemarkGfm from 'remark-gfm'
+import DOMPurify from 'dompurify'
 import SyntaxHighlighter from 'react-syntax-highlighter'
 import { atelierHeathLight } from 'react-syntax-highlighter/dist/esm/styles/hljs'
 import type { RefObject } from 'react'
 import { memo, useEffect, useMemo, useRef, useState } from 'react'
 import type { CodeComponent } from 'react-markdown/lib/ast-to-react'
+import dynamic from 'next/dynamic'
 import cn from '@/utils/classnames'
 import CopyBtn from '@/app/components/base/copy-btn'
 import SVGBtn from '@/app/components/base/svg'
 import Flowchart from '@/app/components/base/mermaid'
-import { useChatContext } from '@/app/components/base/chat/chat/context'
 import ImageGallery from '@/app/components/base/image-gallery'
+import { useChatContext } from '@/app/components/base/chat/chat/context'
 import VideoGallery from '@/app/components/base/video-gallery'
 import AudioGallery from '@/app/components/base/audio-gallery'
 
 // Available language https://github.com/react-syntax-highlighter/react-syntax-highlighter/blob/master/AVAILABLE_LANGUAGES_HLJS.MD
 const capitalizationLanguageNameMap: Record<string, string> = {
+  amis: 'amis',
   sql: 'SQL',
   javascript: 'JavaScript',
   java: 'Java',
@@ -35,6 +38,10 @@ const capitalizationLanguageNameMap: Record<string, string> = {
   mermaid: 'Mermaid',
   markdown: 'MarkDown',
   makefile: 'MakeFile',
+  shell: 'Shell',
+  powershell: 'PowerShell',
+  json: 'JSON',
+  latex: 'Latex',
 }
 const getCorrectCapitalizationLanguageName = (language: string) => {
   if (!language)
@@ -47,8 +54,6 @@ const getCorrectCapitalizationLanguageName = (language: string) => {
 }
 
 const preprocessLaTeX = (content: string) => {
-  if (typeof content !== 'string')
-    return content
   return content.replace(/\\\[(.*?)\\\]/gs, (_, equation) => `$$${equation}$$`)
     .replace(/\\\((.*?)\\\)/gs, (_, equation) => `$$${equation}$$`)
     .replace(/(^|[^\\])\$(.+?)\$/gs, (_, prefix, equation) => `${prefix}$${equation}$`)
@@ -63,6 +68,7 @@ export function PreCode(props: { children: any }) {
         className="copy-code-button"
         onClick={() => {
           if (ref.current) {
+            // eslint-disable-next-line unused-imports/no-unused-vars
             const code = ref.current.innerText
             // copyToClipboard(code);
           }
@@ -73,6 +79,7 @@ export function PreCode(props: { children: any }) {
   )
 }
 
+// eslint-disable-next-line unused-imports/no-unused-vars
 const useLazyLoad = (ref: RefObject<Element>): boolean => {
   const [isIntersecting, setIntersecting] = useState<boolean>(false)
 
@@ -112,56 +119,54 @@ const CodeBlock: CodeComponent = memo(({ inline, className, children, ...props }
   const match = /language-(\w+)/.exec(className || '')
   const language = match?.[1]
   const languageShowName = getCorrectCapitalizationLanguageName(language || '')
+  const AmisRenderer = dynamic(() => import('@/app/components/base/amis'), { ssr: true })
 
   // Use `useMemo` to ensure that `SyntaxHighlighter` only re-renders when necessary
   return useMemo(() => {
-    return (!inline && match)
-      ? (
-        <div>
-          <div
-            className='flex justify-between h-8 items-center p-1 pl-3 border-b'
-            style={{
-              borderColor: 'rgba(0, 0, 0, 0.05)',
-            }}
-          >
-            <div className='text-[13px] text-gray-500 font-normal'>{languageShowName}</div>
-            <div style={{ display: 'flex' }}>
-              {language === 'mermaid'
-                && <SVGBtn
-                  isSVG={isSVG}
-                  setIsSVG={setIsSVG}
-                />
-              }
-              <CopyBtn
-                className='mr-1'
-                value={String(children).replace(/\n$/, '')}
-                isPlain
-              />
-            </div>
-          </div>
-          {(language === 'mermaid' && isSVG)
-            ? (<Flowchart PrimitiveCode={String(children).replace(/\n$/, '')} />)
-            : (<SyntaxHighlighter
-              {...props}
-              style={atelierHeathLight}
-              customStyle={{
-                paddingLeft: 12,
-                backgroundColor: '#fff',
+    return (language === 'amis')
+      ? (<AmisRenderer schema={String(children).replace(/\n$/, '')} />)
+      : ((!inline && match)
+        ? (
+          <div>
+            <div
+              className='flex justify-between h-8 items-center p-1 pl-3 border-b'
+              style={{
+                borderColor: 'rgba(0, 0, 0, 0.05)',
               }}
-              language={match[1]}
-              showLineNumbers
-              PreTag="div"
             >
-              {String(children).replace(/\n$/, '')}
-            </SyntaxHighlighter>)}
-        </div>
-      )
-      : (
-        <code {...props} className={className}>
-          {children}
-        </code>
-      )
-  }, [children, className, inline, isSVG, language, languageShowName, match, props])
+              <div className='text-[13px] text-gray-500 font-normal'>{languageShowName}</div>
+              <div style={{ display: 'flex' }}>
+                {language === 'mermaid' && <SVGBtn isSVG={isSVG} setIsSVG={setIsSVG} />}
+                <CopyBtn
+                  className='mr-1'
+                  value={String(children).replace(/\n$/, '')}
+                  isPlain
+                />
+              </div>
+            </div>
+            {(language === 'mermaid' && isSVG)
+              ? (<Flowchart PrimitiveCode={String(children).replace(/\n$/, '')} />)
+              : (<SyntaxHighlighter
+                {...props}
+                style={atelierHeathLight}
+                customStyle={{
+                  paddingLeft: 12,
+                  backgroundColor: '#fff',
+                }}
+                language={match[1]}
+                showLineNumbers
+                PreTag="div"
+              >
+                {String(children).replace(/\n$/, '')}
+              </SyntaxHighlighter>)}
+          </div>
+        )
+        : (
+          <code {...props} className={className}>
+            {children}
+          </code>
+        ))
+  }, [AmisRenderer, children, className, inline, isSVG, language, languageShowName, match, props])
 })
 
 CodeBlock.displayName = 'CodeBlock'
@@ -176,6 +181,7 @@ VideoBlock.displayName = 'VideoBlock'
 
 const AudioBlock: CodeComponent = memo(({ node }) => {
   const srcs = node.children.filter(child => 'properties' in child).map(child => (child as any).properties.src)
+  const titles = node.children.filter(child => 'value' in child).map(child => (child as any).value)
   if (srcs.length === 0)
     return null
   return <AudioGallery key={srcs.join()} srcs={srcs} />
@@ -189,11 +195,11 @@ const Paragraph = (paragraph: any) => {
     return (
       <>
         <ImageGallery srcs={[children_node[0].properties.src]} />
-        <p>{paragraph.children.slice(1)}</p>
+        <div>{paragraph.children.slice(1)}</div>
       </>
     )
   }
-  return <p>{paragraph.children}</p>
+  return <div>{paragraph.children}</div>
 }
 
 const Img = ({ src }: any) => {
@@ -213,6 +219,32 @@ const Link = ({ node, ...props }: any) => {
   }
 }
 
+const Iframe = ({ src, width, height, title, className }: any) => {
+  if (!src || typeof src !== 'string' || !src.startsWith('https://')) {
+    return null
+  }
+  else {
+    try {
+      const sanitizedSrc = DOMPurify.sanitize(src, { ALLOWED_TAGS: [], ALLOWED_ATTR: [] })
+      return (
+        <iframe
+          src={sanitizedSrc}
+          width={width ?? 500}
+          height={height ?? 750}
+          title={title}
+          allow="fullscreen"
+          className={`max-w-full align-middle border-none rounded-lg shadow-md hover:shadow-lg transition-shadow duration-300 ease-in-out mt-2 mb-2 ${className ?? className}`}
+          sandbox="allow-forms allow-pointer-lock allow-scripts allow-same-origin allow-top-navigation allow-modals"
+        />
+      )
+    }
+    catch (error) {
+      console.error('Error sanitizing iframe src:', error)
+      return null
+    }
+  }
+}
+
 export function Markdown(props: { content: string; className?: string }) {
   const latexContent = preprocessLaTeX(props.content)
   return (
@@ -225,7 +257,6 @@ export function Markdown(props: { content: string; className?: string }) {
           // The Rehype plug-in is used to remove the ref attribute of an element
           () => {
             return (tree) => {
-              // 引入方法迭代树
               const iterate = (node: any) => {
                 if (node.type === 'element' && !node.properties?.src && node.properties?.ref && node.properties.ref.startsWith('{') && node.properties.ref.endsWith('}'))
                   delete node.properties.ref
@@ -239,6 +270,7 @@ export function Markdown(props: { content: string; className?: string }) {
         ]}
         components={{
           code: CodeBlock,
+          iframe: Iframe,
           img: Img,
           video: VideoBlock,
           audio: AudioBlock,
