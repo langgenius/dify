@@ -12,15 +12,12 @@ export const fetchAppList: Fetcher<AppListResponse, { url: string; params?: Reco
 export const fetchAppDetail = ({ url, id }: { url: string; id: string }) => {
   return get<AppDetailResponse>(`${url}/${id}`)
 }
-
-export const fetchAppSSO = async ({ appId, appCode }: { appId?: string;appCode?: string }) => {
-  if (appId)
-    return get<AppSSOResponse>(`/enterprise/app-setting/sso?appId=${appId}`)
-
-  return get<AppSSOResponse>(`/enterprise/app-setting/sso?appCode=${appCode}`)
+//
+export const fetchAppSSO = async ({ appId }: { appId: string }) => {
+  return get<AppSSOResponse>(`/enterprise/app-setting/sso?appID=${appId}`)
 }
-export const updateAppSSO = async ({ id, userId, enabled }: { id: string;userId: string;enabled: boolean }) => {
-  return put('/enterprise/app-setting/sso', { body: { appId: id, userId, enabled } })
+export const updateAppSSO = async ({ id, enabled }: { id: string;enabled: boolean }) => {
+  return post('/enterprise/app-setting/sso', { body: { app_id: id, enabled } })
 }
 
 export const fetchAppTemplates: Fetcher<AppTemplatesResponse, { url: string }> = ({ url }) => {

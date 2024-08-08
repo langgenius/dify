@@ -31,7 +31,6 @@ const CardView: FC<ICardViewProps> = ({ appId }) => {
   const { notify } = useContext(ToastContext)
   const appDetail = useAppStore(state => state.appDetail)
   const setAppDetail = useAppStore(state => state.setAppDetail)
-  const userProfile = useContextSelector(AppContext, state => state.userProfile)
   const systemFeatures = useContextSelector(AppContext, state => state.systemFeatures)
 
   const updateAppDetail = async () => {
@@ -96,7 +95,7 @@ const CardView: FC<ICardViewProps> = ({ appId }) => {
       // backend service does not get userId from session or gateway, so we need to pass userId to backend
       // we should remove this when backend service can get userId from session or gateway
       const [sso_err] = await asyncRunSafe<AppSSO>(
-        updateAppSSO({ id: appId, userId: userProfile.id, enabled: params.enable_sso }) as Promise<AppSSO>,
+        updateAppSSO({ id: appId, enabled: params.enable_sso }) as Promise<AppSSO>,
       )
       if (sso_err) {
         handleCallbackResult(sso_err)
