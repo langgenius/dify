@@ -31,6 +31,8 @@ class FirecrawlAuth(ApiKeyAuthBase):
             }
         }
         response = self._post_request(f'{self.base_url}/v0/crawl', options, headers)
+        print("Fire crawl response ------------------------------------")
+        print("response", response.json())
         if response.status_code == 200:
             return True
         else:
@@ -53,4 +55,6 @@ class FirecrawlAuth(ApiKeyAuthBase):
             if response.text:
                 error_message = json.loads(response.text).get('error', 'Unknown error occurred')
                 raise Exception(f'Failed to authorize. Status code: {response.status_code}. Error: {error_message}')
+
+
             raise Exception(f'Unexpected error occurred while trying to authorize. Status code: {response.status_code}')

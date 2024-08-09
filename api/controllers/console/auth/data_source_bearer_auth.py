@@ -47,6 +47,7 @@ class ApiKeyAuthDataSourceBinding(Resource):
         parser.add_argument('credentials', type=dict, required=True, nullable=False, location='json')
         args = parser.parse_args()
         ApiKeyAuthService.validate_api_key_auth_args(args)
+        print("args", args)
         try:
             ApiKeyAuthService.create_provider_auth(current_user.current_tenant_id, args)
         except Exception as e:
