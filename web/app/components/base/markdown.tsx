@@ -11,7 +11,6 @@ import { atelierHeathLight } from 'react-syntax-highlighter/dist/esm/styles/hljs
 import type { RefObject } from 'react'
 import { memo, useEffect, useMemo, useRef, useState } from 'react'
 import type { CodeComponent } from 'react-markdown/lib/ast-to-react'
-import dynamic from 'next/dynamic'
 import cn from '@/utils/classnames'
 import CopyBtn from '@/app/components/base/copy-btn'
 import SVGBtn from '@/app/components/base/svg'
@@ -119,54 +118,51 @@ const CodeBlock: CodeComponent = memo(({ inline, className, children, ...props }
   const match = /language-(\w+)/.exec(className || '')
   const language = match?.[1]
   const languageShowName = getCorrectCapitalizationLanguageName(language || '')
-  const AmisRenderer = dynamic(() => import('@/app/components/base/amis'), { ssr: true })
 
   // Use `useMemo` to ensure that `SyntaxHighlighter` only re-renders when necessary
   return useMemo(() => {
-    return (language === 'amis')
-      ? (<AmisRenderer schema={String(children).replace(/\n$/, '')} />)
-      : ((!inline && match)
-        ? (
-          <div>
-            <div
-              className='flex justify-between h-8 items-center p-1 pl-3 border-b'
-              style={{
-                borderColor: 'rgba(0, 0, 0, 0.05)',
-              }}
-            >
-              <div className='text-[13px] text-gray-500 font-normal'>{languageShowName}</div>
-              <div style={{ display: 'flex' }}>
-                {language === 'mermaid' && <SVGBtn isSVG={isSVG} setIsSVG={setIsSVG} />}
-                <CopyBtn
-                  className='mr-1'
-                  value={String(children).replace(/\n$/, '')}
-                  isPlain
-                />
-              </div>
+    return (!inline && match)
+      ? (
+        <div>
+          <div
+            className='flex justify-between h-8 items-center p-1 pl-3 border-b'
+            style={{
+              borderColor: 'rgba(0, 0, 0, 0.05)',
+            }}
+          >
+            <div className='text-[13px] text-gray-500 font-normal'>{languageShowName}</div>
+            <div style={{ display: 'flex' }}>
+              {language === 'mermaid' && <SVGBtn isSVG={isSVG} setIsSVG={setIsSVG} />}
+              <CopyBtn
+                className='mr-1'
+                value={String(children).replace(/\n$/, '')}
+                isPlain
+              />
             </div>
-            {(language === 'mermaid' && isSVG)
-              ? (<Flowchart PrimitiveCode={String(children).replace(/\n$/, '')} />)
-              : (<SyntaxHighlighter
-                {...props}
-                style={atelierHeathLight}
-                customStyle={{
-                  paddingLeft: 12,
-                  backgroundColor: '#fff',
-                }}
-                language={match[1]}
-                showLineNumbers
-                PreTag="div"
-              >
-                {String(children).replace(/\n$/, '')}
-              </SyntaxHighlighter>)}
           </div>
-        )
-        : (
-          <code {...props} className={className}>
-            {children}
-          </code>
-        ))
-  }, [AmisRenderer, children, className, inline, isSVG, language, languageShowName, match, props])
+          {(language === 'mermaid' && isSVG)
+            ? (<Flowchart PrimitiveCode={String(children).replace(/\n$/, '')} />)
+            : (<SyntaxHighlighter
+              {...props}
+              style={atelierHeathLight}
+              customStyle={{
+                paddingLeft: 12,
+                backgroundColor: '#fff',
+              }}
+              language={match[1]}
+              showLineNumbers
+              PreTag="div"
+            >
+              {String(children).replace(/\n$/, '')}
+            </SyntaxHighlighter>)}
+        </div>
+      )
+      : (
+        <code {...props} className={className}>
+          {children}
+        </code>
+      )
+  }, [children, className, inline, isSVG, language, languageShowName, match, props])
 })
 
 CodeBlock.displayName = 'CodeBlock'
@@ -181,7 +177,6 @@ VideoBlock.displayName = 'VideoBlock'
 
 const AudioBlock: CodeComponent = memo(({ node }) => {
   const srcs = node.children.filter(child => 'properties' in child).map(child => (child as any).properties.src)
-  const titles = node.children.filter(child => 'value' in child).map(child => (child as any).value)
   if (srcs.length === 0)
     return null
   return <AudioGallery key={srcs.join()} srcs={srcs} />
