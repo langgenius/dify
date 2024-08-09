@@ -1,0 +1,26 @@
+identity:
+  author: Menghuan1918
+  name: doc2x
+  label:
+    en_US: Doc2X
+    zh_Hans: Doc2X
+  description:
+    en_US: Doc2X is a powerful general document OCR tool.
+    zh_Hans: Doc2X是一个强大的通用文档OCR工具。
+  icon: icon.svg
+  tags:
+    - image
+credentials_for_provider:
+  doc2x_api_key:
+    type: secret-input
+    required: true
+    label:
+      en_US: Doc2X API key
+      zh_Hans: Doc2X API密匙
+    placeholder:
+      en_US: Please input your Doc2X API key
+      zh_Hans: 请输入您的 Doc2X API密匙
+    help:
+      en_US: Get your Doc2X API key from the Doc2X personal center
+      zh_Hans: 从 Doc2X 个人中心获取您的 Doc2X API密匙
+    url: https://doc2x.noedgeai.com
