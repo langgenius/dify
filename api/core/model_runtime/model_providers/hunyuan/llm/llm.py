@@ -60,7 +60,6 @@ class HunyuanLargeLanguageModel(LargeLanguageModel):
 
         request.from_json_string(json.dumps(params))
         response = client.ChatCompletions(request)
-
         if stream:
             return self._handle_stream_chat_response(model, credentials, prompt_messages, response)
 

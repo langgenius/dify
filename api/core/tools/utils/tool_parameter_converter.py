@@ -18,6 +18,12 @@ class ToolParameterConverter:
             case ToolParameter.ToolParameterType.NUMBER:
                 return 'number'
 
+            case ToolParameter.ToolParameterType.OBJECT:
+                return 'object'
+
+            case ToolParameter.ToolParameterType.ARRAY:
+                return 'array'
+
             case _:
                 raise ValueError(f"Unsupported parameter type {parameter_type}")
 
@@ -60,6 +66,10 @@ class ToolParameterConverter:
                             return int(value)
                 case ToolParameter.ToolParameterType.FILE:
                     return value
+                case ToolParameter.ToolParameterType.OBJECT:
+                    return value or {}
+                case ToolParameter.ToolParameterType.ARRAY:
+                    return value or []
                 case _:
                     return str(value)
 

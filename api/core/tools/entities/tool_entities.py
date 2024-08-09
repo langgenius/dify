@@ -125,7 +125,6 @@ class ToolParameterOption(BaseModel):
         else:
             return value
 
-
 class ToolParameter(BaseModel):
     class ToolParameterType(str, Enum):
         STRING = "string"
@@ -134,6 +133,8 @@ class ToolParameter(BaseModel):
         SELECT = "select"
         SECRET_INPUT = "secret-input"
         FILE = "file"
+        OBJECT = "object"
+        ARRAY = "array"
 
     class ToolParameterForm(Enum):
         SCHEMA = "schema" # should be set while adding tool
@@ -152,6 +153,9 @@ class ToolParameter(BaseModel):
     min: Optional[Union[float, int]] = None
     max: Optional[Union[float, int]] = None
     options: Optional[list[ToolParameterOption]] = None
+    # for type of object, array
+    properties: Optional[list['ToolParameter']] = None
+    items: Optional['ToolParameter'] = None
 
     @classmethod
     def get_simple_instance(cls, 
