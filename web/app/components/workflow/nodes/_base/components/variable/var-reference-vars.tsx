@@ -15,6 +15,7 @@ import {
 import Input from '@/app/components/base/input'
 import { Env } from '@/app/components/base/icons/src/vender/line/others'
 import { checkKeys } from '@/utils/var'
+import { FILE_STRUCT } from '@/app/components/workflow/constants'
 
 type ObjectChildrenProps = {
   nodeId: string
@@ -45,7 +46,8 @@ const Item: FC<ItemProps> = ({
   onHovering,
   itemWidth,
 }) => {
-  const isObj = itemData.type === VarType.object && itemData.children && itemData.children.length > 0
+  const isObj = (itemData.type === VarType.object && itemData.children && itemData.children.length > 0) || itemData.type === VarType.file
+  const isFile = itemData.type === VarType.file
   const isSys = itemData.variable.startsWith('sys.')
   const isEnv = itemData.variable.startsWith('env.')
   const itemRef = useRef(null)
@@ -114,13 +116,25 @@ const Item: FC<ItemProps> = ({
       <PortalToFollowElemContent style={{
         zIndex: 100,
       }}>
-        {isObj && (
+        {(isObj && !isFile) && (
           // eslint-disable-next-line @typescript-eslint/no-use-before-define
           <ObjectChildren
             nodeId={nodeId}
             title={title}
             objPath={[...objPath, itemData.variable]}
             data={itemData.children as Var[]}
+            onChange={onChange}
+            onHovering={setIsChildrenHovering}
+            itemWidth={itemWidth}
+          />
+        )}
+        {isFile && (
+          // eslint-disable-next-line @typescript-eslint/no-use-before-define
+          <ObjectChildren
+            nodeId={nodeId}
+            title={title}
+            objPath={[...objPath, itemData.variable]}
+            data={FILE_STRUCT}
             onChange={onChange}
             onHovering={setIsChildrenHovering}
             itemWidth={itemWidth}
