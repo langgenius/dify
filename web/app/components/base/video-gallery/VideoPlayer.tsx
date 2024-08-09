@@ -40,12 +40,16 @@ const VideoPlayer: React.FC<VideoPlayerProps> = ({ src }) => {
   const [currentTime, setCurrentTime] = useState(0)
   const [duration, setDuration] = useState(0)
   const [isMuted, setIsMuted] = useState(false)
+  const [volume, setVolume] = useState(1)
   const [isDragging, setIsDragging] = useState(false)
   const [isControlsVisible, setIsControlsVisible] = useState(true)
-  const [controlsTimeout, setControlsTimeout] = useState<NodeJS.Timeout | null>(null)
   const [hoverTime, setHoverTime] = useState<number | null>(null)
   const videoRef = useRef<HTMLVideoElement>(null)
   const progressRef = useRef<HTMLDivElement>(null)
+  const volumeRef = useRef<HTMLDivElement>(null)
+  const controlsTimeoutRef = useRef<NodeJS.Timeout | null>(null)
+  const [isSmallSize, setIsSmallSize] = useState(false)
+  const containerRef = useRef<HTMLDivElement>(null)
 
   useEffect(() => {
     const video = videoRef.current
@@ -54,6 +58,7 @@ const VideoPlayer: React.FC<VideoPlayerProps> = ({ src }) => {
 
     const setVideoData = () => {
       setDuration(video.duration)
+      setVolume(video.volume)
     }
 
     const setVideoTime = () => {
@@ -76,33 +81,19 @@ const VideoPlayer: React.FC<VideoPlayerProps> = ({ src }) => {
   }, [src])
 
   useEffect(() => {
-    const handleMouseMove = (e: MouseEvent) => {
-      if (isDragging)
-      // eslint-disable-next-line @typescript-eslint/no-use-before-define
-        updateVideoProgress(e.clientX)
-    }
-
-    const handleMouseUp = () => {
-      setIsDragging(false)
-    }
-
-    if (isDragging) {
-      document.addEventListener('mousemove', handleMouseMove)
-      document.addEventListener('mouseup', handleMouseUp)
-    }
-
     return () => {
-      document.removeEventListener('mousemove', handleMouseMove)
-      document.removeEventListener('mouseup', handleMouseUp)
+      if (controlsTimeoutRef.current)
+        clearTimeout(controlsTimeoutRef.current)
     }
-  }, [isDragging])
+  }, [])
 
-  useEffect(() => {
-    return () => {
-      if (controlsTimeout)
-        clearTimeout(controlsTimeout)
-    }
-  }, [controlsTimeout])
+  const showControls = useCallback(() => {
+    setIsControlsVisible(true)
+    if (controlsTimeoutRef.current)
+      clearTimeout(controlsTimeoutRef.current)
+
+    controlsTimeoutRef.current = setTimeout(() => setIsControlsVisible(false), 3000)
+  }, [])
 
   const togglePlayPause = useCallback(() => {
     const video = videoRef.current
@@ -117,10 +108,13 @@ const VideoPlayer: React.FC<VideoPlayerProps> = ({ src }) => {
   const toggleMute = useCallback(() => {
     const video = videoRef.current
     if (video) {
-      video.muted = !video.muted
-      setIsMuted(!isMuted)
+      const newMutedState = !video.muted
+      video.muted = newMutedState
+      setIsMuted(newMutedState)
+      setVolume(newMutedState ? 0 : (video.volume > 0 ? video.volume : 1))
+      video.volume = newMutedState ? 0 : (video.volume > 0 ? video.volume : 1)
     }
-  }, [isMuted])
+  }, [])
 
   const toggleFullscreen = useCallback(() => {
     const video = videoRef.current
@@ -189,60 +183,94 @@ const VideoPlayer: React.FC<VideoPlayerProps> = ({ src }) => {
     }
   }, [isDragging, updateVideoProgress])
 
-  const handleProgressClick = useCallback((e: React.MouseEvent<HTMLDivElement>) => {
-    updateVideoProgress(e.clientX)
-  }, [updateVideoProgress])
+  const checkSize = useCallback(() => {
+    if (containerRef.current)
+      setIsSmallSize(containerRef.current.offsetWidth < 400)
+  }, [])
 
-  const showControls = useCallback(() => {
-    setIsControlsVisible(true)
-    if (controlsTimeout)
-      clearTimeout(controlsTimeout)
+  useEffect(() => {
+    checkSize()
+    window.addEventListener('resize', checkSize)
+    return () => window.removeEventListener('resize', checkSize)
+  }, [checkSize])
 
-    const timeout = setTimeout(() => setIsControlsVisible(false), 3000)
-    setControlsTimeout(timeout)
-  }, [controlsTimeout])
+  const handleVolumeChange = useCallback((e: React.MouseEvent<HTMLDivElement>) => {
+    const volumeBar = volumeRef.current
+    const video = videoRef.current
+    if (volumeBar && video) {
+      const rect = volumeBar.getBoundingClientRect()
+      const newVolume = (e.clientX - rect.left) / rect.width
+      const clampedVolume = Math.max(0, Math.min(1, newVolume))
+      video.volume = clampedVolume
+      setVolume(clampedVolume)
+      setIsMuted(clampedVolume === 0)
+    }
+  }, [])
 
   return (
-    <div
-      className={styles.videoPlayer}
-      onMouseMove={showControls}
-      onMouseEnter={showControls}
-    >
-      <video ref={videoRef} src={src} className={styles.video}/>
-      <div className={`${styles.controls} ${isControlsVisible ? styles.visible : styles.hidden}`}>
-        <div className={styles.topControls}>
-          <div className={styles.leftControls}>
-            <button className={styles.playPauseButton} onClick={togglePlayPause}>
-              {isPlaying ? <PauseIcon/> : <PlayIcon/>}
-            </button>
-            <button className={styles.muteButton} onClick={toggleMute}>
-              {isMuted ? <UnmuteIcon/> : <MuteIcon/>}
-            </button>
-            <span className={styles.time}>{formatTime(currentTime)} / {formatTime(duration)}</span>
-          </div>
-          <div className={styles.rightControls}>
-            <button className={styles.fullscreenButton} onClick={toggleFullscreen}>
-              <FullscreenIcon/>
-            </button>
-          </div>
-        </div>
-        <div
-          ref={progressRef}
-          className={styles.progressBar}
-          onClick={handleMouseDown}
-          onMouseMove={handleMouseMove}
-          onMouseLeave={handleMouseLeave}
-          onMouseDown={handleMouseDown}
-        >
-          <div className={styles.progress} style={{ width: `${(currentTime / duration) * 100}%` }} />
-          {hoverTime !== null && (
+    <div ref={containerRef} className={styles.videoPlayer} onMouseMove={showControls} onMouseEnter={showControls}>
+      <video ref={videoRef} src={src} className={styles.video} />
+      <div className={`${styles.controls} ${isControlsVisible ? styles.visible : styles.hidden} ${isSmallSize ? styles.smallSize : ''}`}>
+        <div className={styles.overlay}>
+          <div className={styles.progressBarContainer}>
             <div
-              className={styles.hoverTimeIndicator}
-              style={{ left: `${(hoverTime / duration) * 100}%` }}
+              ref={progressRef}
+              className={styles.progressBar}
+              onClick={handleMouseDown}
+              onMouseMove={handleMouseMove}
+              onMouseLeave={handleMouseLeave}
+              onMouseDown={handleMouseDown}
             >
-              {formatTime(hoverTime)}
+              <div className={styles.progress} style={{ width: `${(currentTime / duration) * 100}%` }} />
+              {hoverTime !== null && (
+                <div
+                  className={styles.hoverTimeIndicator}
+                  style={{ left: `${(hoverTime / duration) * 100}%` }}
+                >
+                  {formatTime(hoverTime)}
+                </div>
+              )}
             </div>
-          )}
+          </div>
+          <div className={styles.controlsContent}>
+            <div className={styles.leftControls}>
+              <button className={styles.playPauseButton} onClick={togglePlayPause}>
+                {isPlaying ? <PauseIcon /> : <PlayIcon />}
+              </button>
+              {!isSmallSize && (
+                <span className={styles.time}>{formatTime(currentTime)} / {formatTime(duration)}</span>
+              )}
+            </div>
+            <div className={styles.rightControls}>
+              <button className={styles.muteButton} onClick={toggleMute}>
+                {isMuted ? <UnmuteIcon /> : <MuteIcon />}
+              </button>
+              {!isSmallSize && (
+                <div className={styles.volumeControl}>
+                  <div
+                    ref={volumeRef}
+                    className={styles.volumeSlider}
+                    onClick={handleVolumeChange}
+                    onMouseDown={(e) => {
+                      handleVolumeChange(e)
+                      const handleMouseMove = (e: MouseEvent) => handleVolumeChange(e as unknown as React.MouseEvent<HTMLDivElement>)
+                      const handleMouseUp = () => {
+                        document.removeEventListener('mousemove', handleMouseMove)
+                        document.removeEventListener('mouseup', handleMouseUp)
+                      }
+                      document.addEventListener('mousemove', handleMouseMove)
+                      document.addEventListener('mouseup', handleMouseUp)
+                    }}
+                  >
+                    <div className={styles.volumeLevel} style={{ width: `${volume * 100}%` }} />
+                  </div>
+                </div>
+              )}
+              <button className={styles.fullscreenButton} onClick={toggleFullscreen}>
+                <FullscreenIcon />
+              </button>
+            </div>
+          </div>
         </div>
       </div>
     </div>

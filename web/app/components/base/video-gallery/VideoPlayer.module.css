@@ -3,7 +3,7 @@
   width: 100%;
   max-width: 800px;
   margin: 0 auto;
-  border-radius: 10px;
+  border-radius: 8px;
   overflow: hidden;
 }
 
@@ -17,17 +17,38 @@
   bottom: 0;
   left: 0;
   right: 0;
-  background: linear-gradient(to top, rgba(0, 0, 0, 0.7) 0%, rgba(0, 0, 0, 0) 100%);
-  padding: 10px;
+  width: 100%;
+  height: 100%;
+  display: flex;
+  flex-direction: column;
+  justify-content: flex-end;
+  transition: opacity 0.3s ease;
+}
+
+.controls.hidden {
+  opacity: 0;
+}
+
+.controls.visible {
+  opacity: 1;
+}
+
+.overlay {
+  background: linear-gradient(to top, rgba(0, 0, 0, 0.7) 0%, transparent 100%);
+  padding: 20px;
   display: flex;
   flex-direction: column;
 }
 
-.topControls {
+.progressBarContainer {
+  width: 100%;
+  margin-bottom: 10px;
+}
+
+.controlsContent {
   display: flex;
   justify-content: space-between;
   align-items: center;
-  margin-bottom: 10px;
 }
 
 .leftControls, .rightControls {
@@ -40,23 +61,47 @@
   border: none;
   color: white;
   cursor: pointer;
-  padding: 0;
-  margin-right: 15px;
+  padding: 5px;
+  margin-right: 10px;
   display: flex;
   align-items: center;
   justify-content: center;
-  opacity: 0.8;
-  transition: opacity 0.2s ease;
 }
 
 .playPauseButton:hover, .muteButton:hover, .fullscreenButton:hover {
-  opacity: 1;
+  background-color: rgba(255, 255, 255, 0.1);
+  border-radius: 50%;
 }
 
 .time {
   color: white;
   font-size: 14px;
-  margin-left: 5px;
+  margin-left: 10px;
+}
+
+.volumeControl {
+  display: flex;
+  align-items: center;
+  margin-right: 15px;
+}
+
+.volumeSlider {
+  width: 60px;
+  height: 4px;
+  background: rgba(255, 255, 255, 0.3);
+  border-radius: 2px;
+  cursor: pointer;
+  margin-left: 10px;
+  position: relative;
+}
+
+.volumeLevel {
+  position: absolute;
+  top: 0;
+  left: 0;
+  height: 100%;
+  background: #ffffff;
+  border-radius: 2px;
 }
 
 .progressBar {
@@ -76,7 +121,7 @@
 
 .progress {
   height: 100%;
-  background: #1db954;
+  background: #ffffff;
   transition: width 0.1s ease-in-out;
 }
 
@@ -103,4 +148,41 @@
   border-width: 4px;
   border-style: solid;
   border-color: rgba(0, 0, 0, 0.7) transparent transparent transparent;
+}
+
+.controls.smallSize .controlsContent {
+  justify-content: space-between;
+}
+
+.controls.smallSize .leftControls,
+.controls.smallSize .rightControls {
+  flex: 0 0 auto;
+  display: flex;
+  align-items: center;
+}
+
+.controls.smallSize .rightControls {
+  justify-content: flex-end;
+}
+
+.controls.smallSize .progressBarContainer {
+  margin-bottom: 5px;
+}
+
+.controls.smallSize .playPauseButton,
+.controls.smallSize .muteButton,
+.controls.smallSize .fullscreenButton {
+  padding: 3px;
+  margin-right: 5px;
+}
+
+.controls.smallSize .playPauseButton svg,
+.controls.smallSize .muteButton svg,
+.controls.smallSize .fullscreenButton svg {
+  width: 16px;
+  height: 16px;
+}
+
+.controls.smallSize .muteButton {
+  order: -1;
 }
