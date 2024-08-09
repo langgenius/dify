@@ -37,7 +37,6 @@ const ConfigString: FC<IConfigStringProps> = ({
 
           onChange(value)
         }}
-        className='h-9'
       />
     </div>
   )

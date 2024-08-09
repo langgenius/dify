@@ -5,6 +5,7 @@ import { useTranslation } from 'react-i18next'
 import produce from 'immer'
 import RemoveButton from '../remove-button'
 import VarReferencePicker from './var-reference-picker'
+import Input from '@/app/components/base/input'
 import type { ValueSelector, Var, Variable } from '@/app/components/workflow/types'
 import { VarType as VarKindType } from '@/app/components/workflow/nodes/tool/types'
 
@@ -75,13 +76,12 @@ const VarList: FC<Props> = ({
     <div className='space-y-2'>
       {list.map((item, index) => (
         <div className='flex items-center space-x-1' key={index}>
-          <input
-            readOnly={readonly}
+          <Input
+            wrapperClassName='w-[120px]'
+            disabled={readonly}
             value={list[index].variable}
             onChange={handleVarNameChange(index)}
             placeholder={t('workflow.common.variableNamePlaceholder')!}
-            className='w-[120px] h-8 leading-8 px-2.5 rounded-lg border-0 bg-gray-100  text-gray-900 text-[13px]  placeholder:text-gray-400 focus:outline-none focus:ring-1 focus:ring-inset focus:ring-gray-200'
-            type='text'
           />
           <VarReferencePicker
             nodeId={nodeId}

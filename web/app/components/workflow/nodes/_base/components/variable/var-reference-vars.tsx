@@ -1,10 +1,7 @@
 'use client'
 import type { FC } from 'react'
 import React, { useEffect, useRef, useState } from 'react'
-import { useBoolean, useHover } from 'ahooks'
-import {
-  RiSearchLine,
-} from '@remixicon/react'
+import { useHover } from 'ahooks'
 import { useTranslation } from 'react-i18next'
 import cn from '@/utils/classnames'
 import { type NodeOutPutVar, type ValueSelector, type Var, VarType } from '@/app/components/workflow/types'
@@ -15,7 +12,7 @@ import {
   PortalToFollowElemContent,
   PortalToFollowElemTrigger,
 } from '@/app/components/base/portal-to-follow-elem'
-import { XCircle } from '@/app/components/base/icons/src/vender/solid/general'
+import Input from '@/app/components/base/input'
 import { Env } from '@/app/components/base/icons/src/vender/line/others'
 import { checkKeys } from '@/utils/var'
 
@@ -235,40 +232,21 @@ const VarReferenceVars: FC<Props> = ({
     }
   })
 
-  const [isFocus, {
-    setFalse: setBlur,
-    setTrue: setFocus,
-  }] = useBoolean(false)
   return (
     <>
       {
         !hideSearch && (
           <>
-            <div
-              className={cn(searchBoxClassName, isFocus && 'shadow-sm bg-white', 'mb-2 mx-1 flex items-center px-2 rounded-lg bg-gray-100 ')}
-              onClick={e => e.stopPropagation()}
-            >
-
-              <RiSearchLine className='shrink-0 ml-[1px] mr-[5px] w-3.5 h-3.5 text-gray-400' />
-              <input
+            <div className={cn('mb-2 mx-1', searchBoxClassName)} onClick={e => e.stopPropagation()}>
+              <Input
+                showLeftIcon
+                showClearIcon
                 value={searchText}
-                className='grow px-0.5 py-[7px] text-[13px] text-gray-700 bg-transparent appearance-none outline-none caret-primary-600 placeholder:text-gray-400'
                 placeholder={t('workflow.common.searchVar') || ''}
                 onChange={e => setSearchText(e.target.value)}
-                onFocus={setFocus}
-                onBlur={setBlur}
+                onClear={() => setSearchText('')}
                 autoFocus
               />
-              {
-                searchText && (
-                  <div
-                    className='flex items-center justify-center ml-[5px] w-[18px] h-[18px] cursor-pointer'
-                    onClick={() => setSearchText('')}
-                  >
-                    <XCircle className='w-[14px] h-[14px] text-gray-400' />
-                  </div>
-                )
-              }
             </div>
             <div className='h-[0.5px] bg-black/5 relative left-[-4px]' style={{
               width: 'calc(100% + 8px)',

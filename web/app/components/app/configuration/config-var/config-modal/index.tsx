@@ -147,7 +147,6 @@ const ConfigModal: FC<IConfigModalProps> = ({
 
           <Field title={t('appDebug.variableConig.varName')}>
             <Input
-              className='h-9'
               value={variable}
               onChange={e => handlePayloadChange('variable')(e.target.value)}
               onBlur={handleVarKeyBlur}
@@ -156,7 +155,6 @@ const ConfigModal: FC<IConfigModalProps> = ({
           </Field>
           <Field title={t('appDebug.variableConig.labelName')}>
             <Input
-              className='h-9'
               value={label as string}
               onChange={e => handlePayloadChange('label')(e.target.value)}
               placeholder={t('appDebug.variableConig.inputPlaceholder')!}
