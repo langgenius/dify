@@ -461,7 +461,7 @@ class InstalledApp(db.Model):
         db.PrimaryKeyConstraint('id', name='installed_app_pkey'),
         db.Index('installed_app_tenant_id_idx', 'tenant_id'),
         db.Index('installed_app_app_id_idx', 'app_id'),
-        db.UniqueConstraint('tenant_id', 'app_id', name='unique_tenant_app')
+        db.UniqueConstraint('tenant_id', 'app_id', 'id', name='unique_tenant_app')
     )
 
     id = db.Column(StringUUID, server_default=db.text('uuid_generate_v4()'))

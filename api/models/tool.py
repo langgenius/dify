@@ -20,7 +20,7 @@ class ToolProvider(db.Model):
     __tablename__ = 'tool_providers'
     __table_args__ = (
         db.PrimaryKeyConstraint('id', name='tool_provider_pkey'),
-        db.UniqueConstraint('tenant_id', 'tool_name', name='unique_tool_provider_tool_name')
+        db.UniqueConstraint('tenant_id', 'tool_name','id',  name='unique_tool_provider_tool_name')
     )
 
     id = db.Column(StringUUID, server_default=db.text('uuid_generate_v4()'))
