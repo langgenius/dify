@@ -110,11 +110,11 @@ trace_info_info_map = {
 
 
 class TraceTaskName(str, Enum):
-    CONVERSATION_TRACE = 'conversation_trace'
-    WORKFLOW_TRACE = 'workflow_trace'
-    MESSAGE_TRACE = 'message_trace'
-    MODERATION_TRACE = 'moderation_trace'
-    SUGGESTED_QUESTION_TRACE = 'suggested_question_trace'
-    DATASET_RETRIEVAL_TRACE = 'dataset_retrieval_trace'
-    TOOL_TRACE = 'tool_trace'
-    GENERATE_NAME_TRACE = 'generate_name_trace'
+    CONVERSATION_TRACE = 'conversation'
+    WORKFLOW_TRACE = 'workflow'
+    MESSAGE_TRACE = 'message'
+    MODERATION_TRACE = 'moderation'
+    SUGGESTED_QUESTION_TRACE = 'suggested_question'
+    DATASET_RETRIEVAL_TRACE = 'dataset_retrieval'
+    TOOL_TRACE = 'tool'
+    GENERATE_NAME_TRACE = 'generate_conversation_name'
