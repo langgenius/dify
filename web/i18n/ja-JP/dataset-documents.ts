@@ -221,7 +221,7 @@ const translation = {
         paragraphs: '段落',
         hitCount: '検索回数',
         embeddingTime: '埋め込み時間',
-        embeddedSpend: '埋め込み時間',
+        embeddedSpend: '埋め込みコスト',
       },
     },
     languageMap: {

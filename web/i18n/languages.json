@@ -132,6 +132,13 @@
       "prompt_name": "Türkçe",
       "example": "Selam!",
       "supported": "true"
+    },
+    {
+      "value": "fa-IR",
+      "name": "Farsi (Iran)",
+      "prompt_name": "Farsi",
+      "example": "سلام, دیفای!",
+      "supported": true
     }
   ]
 }
