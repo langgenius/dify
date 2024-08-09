@@ -15,6 +15,7 @@ export enum BodyType {
   xWwwFormUrlencoded = 'x-www-form-urlencoded',
   rawText = 'raw-text',
   json = 'json',
+  binary = 'binary',
 }
 
 export type KeyValue = {

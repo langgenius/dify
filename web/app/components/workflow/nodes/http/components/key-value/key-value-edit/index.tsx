@@ -16,6 +16,7 @@ type Props = {
   list: KeyValue[]
   onChange: (newList: KeyValue[]) => void
   onAdd: () => void
+  isSupportFile?: boolean
   // onSwitchToBulkEdit: () => void
 }
 
@@ -25,6 +26,7 @@ const KeyValueList: FC<Props> = ({
   list,
   onChange,
   onAdd,
+  isSupportFile,
   // onSwitchToBulkEdit,
 }) => {
   const { t } = useTranslation()
@@ -79,6 +81,7 @@ const KeyValueList: FC<Props> = ({
             onAdd={onAdd}
             readonly={readonly}
             canRemove={list.length > 1}
+            isSupportFile={isSupportFile}
           />
         ))
       }

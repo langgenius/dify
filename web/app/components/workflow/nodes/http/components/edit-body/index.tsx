@@ -23,15 +23,17 @@ const allTypes = [
   BodyType.none,
   BodyType.formData,
   BodyType.xWwwFormUrlencoded,
-  BodyType.rawText,
   BodyType.json,
+  BodyType.rawText,
+  BodyType.binary,
 ]
 const bodyTextMap = {
   [BodyType.none]: 'none',
   [BodyType.formData]: 'form-data',
   [BodyType.xWwwFormUrlencoded]: 'x-www-form-urlencoded',
-  [BodyType.rawText]: 'raw text',
+  [BodyType.rawText]: 'raw',
   [BodyType.json]: 'JSON',
+  [BodyType.binary]: 'binary',
 }
 
 const EditBody: FC<Props> = ({
@@ -125,6 +127,7 @@ const EditBody: FC<Props> = ({
             list={body}
             onChange={setBody}
             onAdd={addBody}
+            isSupportFile={type === BodyType.formData}
           />
         )}
 

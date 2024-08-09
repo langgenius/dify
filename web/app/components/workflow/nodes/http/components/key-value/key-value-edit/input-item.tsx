@@ -18,6 +18,7 @@ type Props = {
   onRemove?: () => void
   placeholder?: string
   readOnly?: boolean
+  isSupportFile?: boolean
 }
 
 const InputItem: FC<Props> = ({
@@ -30,6 +31,7 @@ const InputItem: FC<Props> = ({
   onRemove,
   placeholder,
   readOnly,
+  isSupportFile,
 }) => {
   const { t } = useTranslation()
 
@@ -39,7 +41,11 @@ const InputItem: FC<Props> = ({
   const { availableVars, availableNodesWithParent } = useAvailableVarList(nodeId, {
     onlyLeafNodeVar: false,
     filterVar: (varPayload: Var) => {
-      return [VarType.string, VarType.number, VarType.secret].includes(varPayload.type)
+      const supportVarTypes = [VarType.string, VarType.number, VarType.secret]
+      if (isSupportFile)
+        supportVarTypes.push(...[VarType.file, VarType.arrayFile])
+
+      return supportVarTypes.includes(varPayload.type)
     },
   })
 

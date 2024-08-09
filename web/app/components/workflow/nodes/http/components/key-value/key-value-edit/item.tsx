@@ -20,6 +20,7 @@ type Props = {
   onRemove: () => void
   isLastItem: boolean
   onAdd: () => void
+  isSupportFile?: boolean
 }
 
 const KeyValueItem: FC<Props> = ({
@@ -33,6 +34,7 @@ const KeyValueItem: FC<Props> = ({
   onRemove,
   isLastItem,
   onAdd,
+  isSupportFile,
 }) => {
   const { t } = useTranslation()
 
@@ -71,6 +73,7 @@ const KeyValueItem: FC<Props> = ({
           onRemove={onRemove}
           placeholder={t(`${i18nPrefix}.value`)!}
           readOnly={readonly}
+          isSupportFile={isSupportFile}
         />
       </div>
     </div>
