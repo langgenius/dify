@@ -22,7 +22,8 @@ from core.app.entities.task_entities import (
 from core.app.task_pipeline.workflow_iteration_cycle_manage import WorkflowIterationCycleManage
 from core.file.file_obj import FileVar
 from core.model_runtime.utils.encoders import jsonable_encoder
-from core.ops.ops_trace_manager import TraceQueueManager, TraceTask, TraceTaskName
+from core.ops.entities.trace_entity import TraceTaskName
+from core.ops.ops_trace_manager import TraceQueueManager, TraceTask
 from core.tools.tool_manager import ToolManager
 from core.workflow.entities.node_entities import NodeRunMetadataKey, NodeType
 from core.workflow.nodes.tool.entities import ToolNodeData

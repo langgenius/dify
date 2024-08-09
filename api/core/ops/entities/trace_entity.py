@@ -1,4 +1,5 @@
 from datetime import datetime
+from enum import Enum
 from typing import Any, Optional, Union
 
 from pydantic import BaseModel, ConfigDict, field_validator
@@ -106,3 +107,14 @@ trace_info_info_map = {
     'ToolTraceInfo': ToolTraceInfo,
     'GenerateNameTraceInfo': GenerateNameTraceInfo,
 }
+
+
+class TraceTaskName(str, Enum):
+    CONVERSATION_TRACE = 'conversation'
+    WORKFLOW_TRACE = 'workflow'
+    MESSAGE_TRACE = 'message'
+    MODERATION_TRACE = 'moderation'
+    SUGGESTED_QUESTION_TRACE = 'suggested_question'
+    DATASET_RETRIEVAL_TRACE = 'dataset_retrieval'
+    TOOL_TRACE = 'tool'
+    GENERATE_NAME_TRACE = 'generate_conversation_name'
