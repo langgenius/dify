@@ -71,8 +71,6 @@ def _validate_web_sso_token(decoded, system_features, app_code):
 
     # Check if SSO is enforced for web, and if the token source is not SSO, raise an error and redirect to SSO login
     if system_features.sso_enforced_for_web:
-        if app_web_sso_enabled:
-            raise WebSSOAuthRequiredError()
         source = decoded.get('token_source')
         if not source or source != 'sso':
             raise WebSSOAuthRequiredError()
