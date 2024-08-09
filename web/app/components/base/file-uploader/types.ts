@@ -12,3 +12,11 @@ export enum FileTypeEnum {
   GIF = 'GIF',
   OTHER = 'OTHER',
 }
+
+export type TFile = {
+  file: File
+  _id: string
+  _fileId?: string
+  _progress?: number
+  _url?: string
+}

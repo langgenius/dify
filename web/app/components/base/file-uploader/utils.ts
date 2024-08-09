@@ -7,7 +7,7 @@ type FileUploadParams = {
   onErrorCallback: () => void
 }
 type FileUpload = (v: FileUploadParams, isPublic?: boolean, url?: string) => void
-export const imageUpload: FileUpload = ({
+export const fileUpload: FileUpload = ({
   file,
   onProgressCallback,
   onSuccessCallback,
