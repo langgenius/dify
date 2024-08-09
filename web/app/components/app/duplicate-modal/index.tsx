@@ -5,6 +5,7 @@ import s from './style.module.css'
 import cn from '@/utils/classnames'
 import Modal from '@/app/components/base/modal'
 import Button from '@/app/components/base/button'
+import Input from '@/app/components/base/input'
 import Toast from '@/app/components/base/toast'
 import AppIcon from '@/app/components/base/app-icon'
 import EmojiPicker from '@/app/components/base/emoji-picker'
@@ -66,10 +67,10 @@ const DuplicateAppModal = ({
           <div className={s.subTitle}>{t('explore.appCustomize.subTitle')}</div>
           <div className='flex items-center justify-between space-x-2'>
             <AppIcon size='large' onClick={() => { setShowEmojiPicker(true) }} className='cursor-pointer' icon={emoji.icon} background={emoji.icon_background} />
-            <input
+            <Input
               value={name}
               onChange={e => setName(e.target.value)}
-              className='h-10 px-3 text-sm font-normal bg-gray-100 rounded-lg grow'
+              className='h-10'
             />
           </div>
           {isAppsFull && <AppsFull loc='app-duplicate-create' />}

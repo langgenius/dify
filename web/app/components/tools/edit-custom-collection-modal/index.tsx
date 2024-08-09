@@ -13,6 +13,7 @@ import TestApi from './test-api'
 import cn from '@/utils/classnames'
 import Drawer from '@/app/components/base/drawer-plus'
 import Button from '@/app/components/base/button'
+import Input from '@/app/components/base/input'
 import Textarea from '@/app/components/base/textarea'
 import EmojiPicker from '@/app/components/base/emoji-picker'
 import AppIcon from '@/app/components/base/app-icon'
@@ -196,8 +197,8 @@ const EditCustomCollectionModal: FC<Props> = ({
                 <div className={fieldNameClassNames}>{t('tools.createTool.name')} <span className='ml-1 text-red-500'>*</span></div>
                 <div className='flex items-center justify-between gap-3'>
                   <AppIcon size='large' onClick={() => { setShowEmojiPicker(true) }} className='cursor-pointer' icon={emoji.content} background={emoji.background} />
-                  <input
-                    className='h-10 px-3 text-sm font-normal bg-gray-100 rounded-lg grow' placeholder={t('tools.createTool.toolNamePlaceHolder')!}
+                  <Input
+                    className='h-10 grow' placeholder={t('tools.createTool.toolNamePlaceHolder')!}
                     value={customCollection.provider}
                     onChange={(e) => {
                       const newCollection = produce(customCollection, (draft) => {
@@ -292,7 +293,7 @@ const EditCustomCollectionModal: FC<Props> = ({
               {/* Privacy Policy */}
               <div>
                 <div className={fieldNameClassNames}>{t('tools.createTool.privacyPolicy')}</div>
-                <input
+                <Input
                   value={customCollection.privacy_policy}
                   onChange={(e) => {
                     const newCollection = produce(customCollection, (draft) => {
@@ -300,12 +301,12 @@ const EditCustomCollectionModal: FC<Props> = ({
                     })
                     setCustomCollection(newCollection)
                   }}
-                  className='w-full h-10 px-3 text-sm font-normal bg-gray-100 rounded-lg grow' placeholder={t('tools.createTool.privacyPolicyPlaceholder') || ''} />
+                  className='h-10 grow' placeholder={t('tools.createTool.privacyPolicyPlaceholder') || ''} />
               </div>
 
               <div>
                 <div className={fieldNameClassNames}>{t('tools.createTool.customDisclaimer')}</div>
-                <input
+                <Input
                   value={customCollection.custom_disclaimer}
                   onChange={(e) => {
                     const newCollection = produce(customCollection, (draft) => {
@@ -313,7 +314,7 @@ const EditCustomCollectionModal: FC<Props> = ({
                     })
                     setCustomCollection(newCollection)
                   }}
-                  className='w-full h-10 px-3 text-sm font-normal bg-gray-100 rounded-lg grow' placeholder={t('tools.createTool.customDisclaimerPlaceholder') || ''} />
+                  className='h-10 grow' placeholder={t('tools.createTool.customDisclaimerPlaceholder') || ''} />
               </div>
 
             </div>

@@ -1,19 +1,16 @@
 /* eslint-disable multiline-ternary */
 'use client'
-import type { ChangeEvent, FC } from 'react'
+import type { FC } from 'react'
 import React, { useState } from 'react'
 import data from '@emoji-mart/data'
 import type { Emoji, EmojiMartData } from '@emoji-mart/data'
 import { SearchIndex, init } from 'emoji-mart'
-import {
-  MagnifyingGlassIcon,
-} from '@heroicons/react/24/outline'
 import { useTranslation } from 'react-i18next'
 import s from './style.module.css'
 import cn from '@/utils/classnames'
 import Divider from '@/app/components/base/divider'
 import Button from '@/app/components/base/button'
-
+import Input from '@/app/components/base/input'
 import Modal from '@/app/components/base/modal'
 
 declare global {
@@ -81,6 +78,7 @@ const EmojiPicker: FC<IEmojiPickerProps> = ({
 
   const [searchedEmojis, setSearchedEmojis] = useState<string[]>([])
   const [isSearching, setIsSearching] = useState(false)
+  const [inputValue, setInputValue] = useState('')
 
   return isModal ? <Modal
     onClose={() => { }}
@@ -91,15 +89,12 @@ const EmojiPicker: FC<IEmojiPickerProps> = ({
   >
     <div className='flex flex-col items-center w-full p-3'>
       <div className="relative w-full">
-        <div className="absolute inset-y-0 left-0 flex items-center pl-3 pointer-events-none">
-          <MagnifyingGlassIcon className="w-5 h-5 text-gray-400" aria-hidden="true" />
-        </div>
-        <input
-          type="search"
-          id="search"
-          className='block w-full h-10 px-3 pl-10 text-sm font-normal bg-gray-100 rounded-lg'
-          placeholder="Search emojis..."
-          onChange={async (e: ChangeEvent<HTMLInputElement>) => {
+        <Input
+          showLeftIcon
+          showClearIcon
+          value={inputValue}
+          onChange={async (e) => {
+            setInputValue(e.target.value)
             if (e.target.value === '') {
               setIsSearching(false)
             }
@@ -108,6 +103,10 @@ const EmojiPicker: FC<IEmojiPickerProps> = ({
               const emojis = await search(e.target.value)
               setSearchedEmojis(emojis)
             }
+          }}
+          onClear={() => {
+            setInputValue('')
+            setIsSearching(false)
           }}
         />
       </div>

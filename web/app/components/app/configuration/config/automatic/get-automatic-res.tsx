@@ -18,6 +18,7 @@ import cn from 'classnames'
 import s from './style.module.css'
 import Modal from '@/app/components/base/modal'
 import Button from '@/app/components/base/button'
+import Textarea from '@/app/components/base/textarea'
 import Toast from '@/app/components/base/toast'
 import { generateRule } from '@/service/debug'
 import ConfigPrompt from '@/app/components/app/configuration/config-prompt'
@@ -212,7 +213,11 @@ const GetAutomaticRes: FC<IGetAutomaticResProps> = ({
           <div className='mt-6'>
             <div className='text-[0px]'>
               <div className='mb-2 leading-5 text-sm font-medium text-gray-900'>{t('appDebug.generate.instruction')}</div>
-              <textarea className="w-full h-[200px] overflow-y-auto px-3 py-2 text-sm bg-gray-50 rounded-lg" placeholder={t('appDebug.generate.instructionPlaceHolder') as string} value={instruction} onChange={e => setInstruction(e.target.value)} />
+              <Textarea
+                className="h-[200px] resize-none"
+                placeholder={t('appDebug.generate.instructionPlaceHolder') as string}
+                value={instruction}
+                onChange={e => setInstruction(e.target.value)} />
             </div>
 
             <div className='mt-5 flex justify-end'>

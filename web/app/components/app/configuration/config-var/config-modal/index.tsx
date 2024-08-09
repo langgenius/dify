@@ -8,6 +8,7 @@ import ConfigSelect from '../config-select'
 import ConfigString from '../config-string'
 import SelectTypeItem from '../select-type-item'
 import Field from './field'
+import Input from '@/app/components/base/input'
 import Toast from '@/app/components/base/toast'
 import { checkKeys, getNewVarInWorkflow } from '@/utils/var'
 import ConfigContext from '@/context/debug-configuration'
@@ -28,8 +29,6 @@ export type IConfigModalProps = {
   onConfirm: (newValue: InputVar, moreInfo?: MoreInfo) => void
   supportFile?: boolean
 }
-
-const inputClassName = 'w-full px-3 text-sm leading-9 text-gray-900 border-0 rounded-lg grow h-9 bg-gray-100 focus:outline-none focus:ring-1 focus:ring-inset focus:ring-gray-200'
 
 const ConfigModal: FC<IConfigModalProps> = ({
   isCreate,
@@ -147,9 +146,8 @@ const ConfigModal: FC<IConfigModalProps> = ({
           </Field>
 
           <Field title={t('appDebug.variableConig.varName')}>
-            <input
-              type='text'
-              className={inputClassName}
+            <Input
+              className='h-9'
               value={variable}
               onChange={e => handlePayloadChange('variable')(e.target.value)}
               onBlur={handleVarKeyBlur}
@@ -157,9 +155,8 @@ const ConfigModal: FC<IConfigModalProps> = ({
             />
           </Field>
           <Field title={t('appDebug.variableConig.labelName')}>
-            <input
-              type='text'
-              className={inputClassName}
+            <Input
+              className='h-9'
               value={label as string}
               onChange={e => handlePayloadChange('label')(e.target.value)}
               placeholder={t('appDebug.variableConig.inputPlaceholder')!}

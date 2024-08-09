@@ -8,6 +8,7 @@ import { BookOpenIcon } from '@heroicons/react/24/outline'
 import cn from '@/utils/classnames'
 import IndexMethodRadio from '@/app/components/datasets/settings/index-method-radio'
 import Button from '@/app/components/base/button'
+import Input from '@/app/components/base/input'
 import Textarea from '@/app/components/base/textarea'
 import type { DataSet } from '@/models/datasets'
 import { useToastContext } from '@/app/components/base/toast'
@@ -181,10 +182,10 @@ const SettingsModal: FC<SettingsModalProps> = ({
           <div className={labelClass}>
             {t('datasetSettings.form.name')}
           </div>
-          <input
+          <Input
             value={localeCurrentDataset.name}
             onChange={e => handleValueChange('name', e.target.value)}
-            className='block px-3 w-full h-9 bg-gray-100 rounded-lg text-sm text-gray-900 outline-none appearance-none'
+            className='block h-9'
             placeholder={t('datasetSettings.form.namePlaceholder') || ''}
           />
         </div>

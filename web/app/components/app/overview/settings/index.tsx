@@ -7,6 +7,7 @@ import { Trans, useTranslation } from 'react-i18next'
 import s from './style.module.css'
 import Modal from '@/app/components/base/modal'
 import Button from '@/app/components/base/button'
+import Input from '@/app/components/base/input'
 import Textarea from '@/app/components/base/textarea'
 import AppIcon from '@/app/components/base/app-icon'
 import { SimpleSelect } from '@/app/components/base/select'
@@ -177,7 +178,8 @@ const SettingsModal: FC<ISettingsModalProps> = ({
             icon={emoji.icon}
             background={emoji.icon_background}
           />
-          <input className={`flex-grow rounded-lg h-10 box-border px-3 ${s.projectName} bg-gray-100`}
+          <Input
+            className='grow h-10'
             value={inputInfo.title}
             onChange={onChange('title')}
             placeholder={t('app.appNamePlaceholder') || ''}
@@ -207,7 +209,8 @@ const SettingsModal: FC<ISettingsModalProps> = ({
         </>}
         {isChat && <> <div className={`mt-8 font-medium ${s.settingTitle} text-gray-900`}>{t(`${prefixSettings}.chatColorTheme`)}</div>
           <p className={`mt-1 ${s.settingsTip} text-gray-500`}>{t(`${prefixSettings}.chatColorThemeDesc`)}</p>
-          <input className={`w-full mt-2 rounded-lg h-10 box-border px-3 ${s.projectName} bg-gray-100`}
+          <Input
+            className='mt-2 h-10'
             value={inputInfo.chatColorTheme ?? ''}
             onChange={onChange('chatColorTheme')}
             placeholder= 'E.g #A020F0'
@@ -225,7 +228,8 @@ const SettingsModal: FC<ISettingsModalProps> = ({
         {isShowMore && <>
           <hr className='w-full mt-6' />
           <div className={`mt-6 font-medium ${s.settingTitle} text-gray-900`}>{t(`${prefixSettings}.more.copyright`)}</div>
-          <input className={`w-full mt-2 rounded-lg h-10 box-border px-3 ${s.projectName} bg-gray-100`}
+          <Input
+            className='mt-2 h-10'
             value={inputInfo.copyright}
             onChange={onChange('copyright')}
             placeholder={t(`${prefixSettings}.more.copyRightPlaceholder`) as string}
@@ -237,14 +241,16 @@ const SettingsModal: FC<ISettingsModalProps> = ({
               components={{ privacyPolicyLink: <Link href={'https://docs.dify.ai/user-agreement/privacy-policy'} target='_blank' rel='noopener noreferrer' className='text-primary-600' /> }}
             />
           </p>
-          <input className={`w-full mt-2 rounded-lg h-10 box-border px-3 ${s.projectName} bg-gray-100`}
+          <Input
+            className='mt-2 h-10'
             value={inputInfo.privacyPolicy}
             onChange={onChange('privacyPolicy')}
             placeholder={t(`${prefixSettings}.more.privacyPolicyPlaceholder`) as string}
           />
           <div className={`mt-8 font-medium ${s.settingTitle} text-gray-900`}>{t(`${prefixSettings}.more.customDisclaimer`)}</div>
           <p className={`mt-1 ${s.settingsTip} text-gray-500`}>{t(`${prefixSettings}.more.customDisclaimerTip`)}</p>
-          <input className={`w-full mt-2 rounded-lg h-10 box-border px-3 ${s.projectName} bg-gray-100`}
+          <Input
+            className='mt-2 h-10'
             value={inputInfo.customDisclaimer}
             onChange={onChange('customDisclaimer')}
             placeholder={t(`${prefixSettings}.more.customDisclaimerPlaceholder`) as string}

@@ -24,6 +24,7 @@ import {
   fetchDefaultProcessRule,
 } from '@/service/datasets'
 import Button from '@/app/components/base/button'
+import Input from '@/app/components/base/input'
 import Loading from '@/app/components/base/loading'
 import FloatRightContainer from '@/app/components/base/float-right-container'
 import RetrievalMethodConfig from '@/app/components/datasets/common/retrieval-method-config'
@@ -603,9 +604,9 @@ const StepTwo = ({
                   <div className={s.formRow}>
                     <div className='w-full'>
                       <div className={s.label}>{t('datasetCreation.stepTwo.separator')}</div>
-                      <input
+                      <Input
                         type="text"
-                        className={s.input}
+                        className='h-9'
                         placeholder={t('datasetCreation.stepTwo.separatorPlaceholder') || ''} value={segmentIdentifier}
                         onChange={e => setSegmentIdentifier(e.target.value)}
                       />
@@ -614,9 +615,9 @@ const StepTwo = ({
                   <div className={s.formRow}>
                     <div className='w-full'>
                       <div className={s.label}>{t('datasetCreation.stepTwo.maxLength')}</div>
-                      <input
+                      <Input
                         type="number"
-                        className={s.input}
+                        className='h-9'
                         placeholder={t('datasetCreation.stepTwo.maxLength') || ''}
                         value={max}
                         min={1}
@@ -636,9 +637,9 @@ const StepTwo = ({
                           <RiQuestionLine className='ml-1 w-3.5 h-3.5 text-gray-400' />
                         </TooltipPlus>
                       </div>
-                      <input
+                      <Input
                         type="number"
-                        className={s.input}
+                        className='h-9'
                         placeholder={t('datasetCreation.stepTwo.overlap') || ''}
                         value={overlap}
                         min={1}
