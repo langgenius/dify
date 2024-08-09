@@ -1,7 +1,7 @@
 """support conversation variables
 
 Revision ID: d6fe54240771
-Revises: eeb2e349e6ac
+Revises: 1787fbae959a
 Create Date: 2024-08-04 09:02:17.702486
 
 """
@@ -12,7 +12,7 @@ import models as models
 
 # revision identifiers, used by Alembic.
 revision = 'd6fe54240771'
-down_revision = 'eeb2e349e6ac'
+down_revision = '1787fbae959a'
 branch_labels = None
 depends_on = None
 
