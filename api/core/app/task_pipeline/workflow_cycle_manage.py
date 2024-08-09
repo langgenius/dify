@@ -98,7 +98,6 @@ class WorkflowCycleManage(WorkflowIterationCycleManage):
 
     def _workflow_run_success(
         self, workflow_run: WorkflowRun,
-        start_at: float,
         total_tokens: int,
         total_steps: int,
         outputs: Optional[str] = None,
@@ -108,7 +107,6 @@ class WorkflowCycleManage(WorkflowIterationCycleManage):
         """
         Workflow run success
         :param workflow_run: workflow run
-        :param start_at: start time
         :param total_tokens: total tokens
         :param total_steps: total steps
         :param outputs: outputs
@@ -140,7 +138,6 @@ class WorkflowCycleManage(WorkflowIterationCycleManage):
 
     def _workflow_run_failed(
         self, workflow_run: WorkflowRun,
-        start_at: float,
         total_tokens: int,
         total_steps: int,
         status: WorkflowRunStatus,
@@ -151,7 +148,6 @@ class WorkflowCycleManage(WorkflowIterationCycleManage):
         """
         Workflow run failed
         :param workflow_run: workflow run
-        :param start_at: start time
         :param total_tokens: total tokens
         :param total_steps: total steps
         :param status: status
@@ -543,7 +539,6 @@ class WorkflowCycleManage(WorkflowIterationCycleManage):
         if isinstance(event, QueueStopEvent):
             workflow_run = self._workflow_run_failed(
                 workflow_run=workflow_run,
-                start_at=self._task_state.start_at,
                 total_tokens=self._task_state.total_tokens,
                 total_steps=self._task_state.total_steps,
                 status=WorkflowRunStatus.STOPPED,
@@ -566,7 +561,6 @@ class WorkflowCycleManage(WorkflowIterationCycleManage):
         elif isinstance(event, QueueWorkflowFailedEvent):
             workflow_run = self._workflow_run_failed(
                 workflow_run=workflow_run,
-                start_at=self._task_state.start_at,
                 total_tokens=self._task_state.total_tokens,
                 total_steps=self._task_state.total_steps,
                 status=WorkflowRunStatus.FAILED,
@@ -584,7 +578,6 @@ class WorkflowCycleManage(WorkflowIterationCycleManage):
 
             workflow_run = self._workflow_run_success(
                 workflow_run=workflow_run,
-                start_at=self._task_state.start_at,
                 total_tokens=self._task_state.total_tokens,
                 total_steps=self._task_state.total_steps,
                 outputs=outputs,
