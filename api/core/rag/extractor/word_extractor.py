@@ -228,7 +228,7 @@ class WordExtractor(BaseExtractor):
         def parse_paragraph(paragraph):
             paragraph_content = []
             for run in paragraph.runs:
-                if run.element.tag.endswith('r'):
+                if hasattr(run.element, 'tag') and isinstance(element.tag, str) and run.element.tag.endswith('r'):
                     drawing_elements = run.element.findall(
                         './/{http://schemas.openxmlformats.org/wordprocessingml/2006/main}drawing')
                     for drawing in drawing_elements:
@@ -248,13 +248,14 @@ class WordExtractor(BaseExtractor):
         paragraphs = doc.paragraphs.copy()
         tables = doc.tables.copy()
         for element in doc.element.body:
-            if element.tag.endswith('p'):  # paragraph
-                para = paragraphs.pop(0)
-                parsed_paragraph = parse_paragraph(para)
-                if parsed_paragraph:
-                    content.append(parsed_paragraph)
-            elif element.tag.endswith('tbl'):  # table
-                table = tables.pop(0)
-                content.append(self._table_to_markdown(table,image_map))
+            if hasattr(element, 'tag'):
+                if isinstance(element.tag, str) and element.tag.endswith('p'):  # paragraph
+                    para = paragraphs.pop(0)
+                    parsed_paragraph = parse_paragraph(para)
+                    if parsed_paragraph:
+                        content.append(parsed_paragraph)
+                elif isinstance(element.tag, str) and element.tag.endswith('tbl'):  # table
+                    table = tables.pop(0)
+                    content.append(self._table_to_markdown(table,image_map))
         return '\n'.join(content)
 

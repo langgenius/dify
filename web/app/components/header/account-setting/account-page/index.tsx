@@ -250,15 +250,29 @@ export default function AccountPage() {
           showCancel={false}
           type='warning'
           title={t('common.account.delete')}
-          content={<>
-            <div className='my-1 text-[#D92D20] text-sm leading-5'>
-              {t('common.account.deleteTip')}
-            </div>
-            <div className='mt-3 text-sm leading-5'>
-              <span>{t('common.account.deleteConfirmTip')}</span>
-              <a className='text-primary-600 cursor' href={`mailto:support@dify.ai?subject=Delete Account Request&body=Delete Account: ${userProfile.email}`} target='_blank'>support@dify.ai</a>
-            </div>
-          </>}
+          content={
+            <>
+              <div className='my-1 text-[#D92D20] text-sm leading-5'>
+                {t('common.account.deleteTip')}
+              </div>
+              <div className='mt-3 text-sm leading-5'>
+                <span>{t('common.account.deleteConfirmTip')}</span>
+                <a
+                  className='text-primary-600 cursor'
+                  href={`mailto:support@dify.ai?subject=Delete Account Request&body=Delete Account: ${userProfile.email}`}
+                  target='_blank'
+                  rel='noreferrer noopener'
+                  onClick={(e) => {
+                    e.preventDefault()
+                    window.location.href = e.currentTarget.href
+                  }}
+                >
+                  support@dify.ai
+                </a>
+              </div>
+              <div className='my-2 px-3 py-2 rounded-lg bg-gray-100 text-sm font-medium leading-5 text-gray-800'>{`${t('common.account.delete')}: ${userProfile.email}`}</div>
+            </>
+          }
           confirmText={t('common.operation.ok') as string}
         />
       )}

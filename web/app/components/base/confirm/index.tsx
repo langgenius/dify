@@ -89,7 +89,7 @@ function Confirm({
         <div className='flex flex-col items-start max-w-full rounded-2xl border-[0.5px] border-solid border-components-panel-border shadows-shadow-lg bg-components-panel-bg'>
           <div className='flex pt-6 pl-6 pr-6 pb-4 flex-col items-start gap-2 self-stretch'>
             <div className='title-2xl-semi-bold text-text-primary'>{title}</div>
-            <div className='system-md-regular text-text-tertiary'>{content}</div>
+            <div className='system-md-regular text-text-tertiary w-full'>{content}</div>
           </div>
           <div className='flex p-6 gap-2 justify-end items-start self-stretch'>
             {showCancel && <Button onClick={onCancel}>{cancelTxt}</Button>}
