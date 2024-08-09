@@ -8,7 +8,7 @@ class DeploymentConfig(BaseSettings):
     """
     APPLICATION_NAME: str = Field(
         description='application name',
-        default='langgenius/dify',
+        default='ChatBot',
     )
 
     TESTING: bool = Field(
@@ -18,7 +18,7 @@ class DeploymentConfig(BaseSettings):
 
     EDITION: str = Field(
         description='deployment edition',
-        default='SELF_HOSTED',
+        default='CLOUD',
     )
 
     DEPLOY_ENV: str = Field(

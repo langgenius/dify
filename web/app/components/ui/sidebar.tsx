@@ -1,143 +1,183 @@
 "use client";
-
-import type { LinkProps } from "next/link";
 import Link from "next/link";
-import React, { createContext, useContext, useState } from "react";
+import React, { createContext, useContext, useState, useEffect } from "react";
 import { AnimatePresence, motion } from "framer-motion";
-import { IconMenu2, IconX } from "@tabler/icons-react";
 import { cn } from "@/lib/utils";
-import { SideBar as NextUISidebar } from "@/app/components/next-ui/sidebar/index";
+import { usePathname } from "next/navigation";
+import { RiSettings3Fill, RiSettings3Line } from "@remixicon/react";
+import LogoSite from "../base/logo/logo-site";
+import { WorkspaceProvider } from "@/context/workspace-context";
+import AccountDropdown from "../header/account-dropdown";
 
-type Links = {
-  label: string;
-  href: string;
-  icon: React.JSX.Element | React.ReactNode;
-};
+// interface SidebarContextProps {
+//   open: boolean;
+//   setOpen: React.Dispatch<React.SetStateAction<boolean>>;
+//   isMobile: boolean;
+// }
 
-type SidebarContextProps = {
-  open: boolean;
-  setOpen: React.Dispatch<React.SetStateAction<boolean>>;
-  animate: boolean;
-};
+// const SidebarContext = createContext<SidebarContextProps | undefined>(
+//   undefined
+// );
 
-const SidebarContext = createContext<SidebarContextProps | undefined>(
-  undefined
-);
+// export const useSidebar = () => {
+//   const context = useContext(SidebarContext);
+//   if (!context)
+//     throw new Error("useSidebar must be used within a SidebarProvider");
+//   return context;
+// };
 
-export const useSidebar = () => {
-  const context = useContext(SidebarContext);
-  if (!context)
-    throw new Error("useSidebar must be used within a SidebarProvider");
+// export const SidebarProvider = ({
+//   children,
+// }: {
+//   children: React.ReactNode;
+// }) => {
+//   const [open, setOpen] = useState(false);
+//   const [isMobile, setIsMobile] = useState(false);
 
-  return context;
-};
+//   useEffect(() => {
+//     const checkMobile = () => setIsMobile(window.innerWidth < 768);
+//     checkMobile();
+//     window.addEventListener("resize", checkMobile);
+//     return () => window.removeEventListener("resize", checkMobile);
+//   }, []);
 
-export const SidebarProvider = ({
-  children,
-  open: openProp,
-  setOpen: setOpenProp,
-  animate = true,
-}: {
-  children: React.ReactNode;
-  open?: boolean;
-  setOpen?: React.Dispatch<React.SetStateAction<boolean>>;
-  animate?: boolean;
-}) => {
-  const [openState, setOpenState] = useState(false);
+//   return (
+//     <SidebarContext.Provider value={{ open, setOpen, isMobile }}>
+//       {children}
+//     </SidebarContext.Provider>
+//   );
+// };
 
-  const open = openProp !== undefined ? openProp : openState;
-  const setOpen = setOpenProp !== undefined ? setOpenProp : setOpenState;
+// export const Sidebar = ({ children }: { children: React.ReactNode }) => {
+//   return <SidebarProvider>{children}</SidebarProvider>;
+// };
+
+interface SidebarBodyProps extends React.HTMLAttributes<HTMLDivElement> {
+  items: {
+    label: string;
+    activeIcon: React.ReactNode;
+    inactiveIcon: React.ReactNode;
+    href: string;
+    position: "top" | "bottom";
+  }[];
+}
+
+export const SidebarBody = ({ items }: SidebarBodyProps) => {
+  const [isMobile, setIsMobile] = useState(false);
+  const [isOpen, setIsOpen] = useState(false);
+  const path = usePathname();
+  const activeLink = items.find((item) => path.includes(item.href))?.href;
+  const isSettingsPage = path.includes("/settings");
+
+  useEffect(() => {
+    const checkMobile = () => {
+      const mobile = window.innerWidth < 768;
+      setIsMobile(mobile);
+      if (mobile) setIsOpen(false);
+    };
+    checkMobile();
+    window.addEventListener("resize", checkMobile);
+    return () => window.removeEventListener("resize", checkMobile);
+  }, []);
 
   return (
-    <SidebarContext.Provider value={{ open, setOpen, animate }}>
-      {children}
-    </SidebarContext.Provider>
-  );
-};
-
-export const Sidebar = ({
-  children,
-  open,
-  setOpen,
-  animate,
-}: {
-  children: React.ReactNode;
-  open?: boolean;
-  setOpen?: React.Dispatch<React.SetStateAction<boolean>>;
-  animate?: boolean;
-}) => {
-  return (
-    <SidebarProvider open={open} setOpen={setOpen} animate={animate}>
-      {children}
-    </SidebarProvider>
-  );
-};
-
-export const DesktopSidebar = ({
-  className,
-  children,
-  ...props
-}: React.ComponentProps<typeof motion.div>) => {
-  const { open, setOpen, animate } = useSidebar();
-  return (
-    <>
-      <motion.div
-        className={cn(
-          "h-full px-4 py-4 hidden  md:flex md:flex-col bg-neutral-100 dark:bg-neutral-800 w-[300px] flex-shrink-0",
-          className
-        )}
-        animate={{
-          width: animate ? (open ? "300px" : "60px") : "300px",
-        }}
-        onMouseEnter={() => setOpen(true)}
-        onMouseLeave={() => setOpen(false)}
-        {...props}
-      >
-        {children}
-      </motion.div>
-    </>
-  );
-};
-
-export const SidebarLink = ({
-  link,
-  className,
-  ...props
-}: {
-  link: Links;
-  className?: string;
-  props?: LinkProps;
-}) => {
-  const { open, animate } = useSidebar();
-  return (
-    <Link
-      href={link.href}
+    <motion.div
       className={cn(
-        "flex items-center justify-start gap-2  group/sidebar py-2",
-        className
+        "px-2 py-4 flex flex-col flex-shrink-0 bg-gray-200 flex-nowrap border-x border-gray-300 border fixed h-screen left-0 top-0 z-10"
       )}
-      {...props}
+      initial={{ width: "60px" }}
+      animate={{ width: isOpen && !isMobile ? "200px" : "60px" }}
+      onHoverStart={() => !isMobile && setIsOpen(true)}
+      onHoverEnd={() => !isMobile && setIsOpen(false)}
+      transition={{ duration: 0.15 }}
     >
-      {link.icon}
-
-      <motion.span
-        animate={{
-          display: animate ? (open ? "inline-block" : "none") : "inline-block",
-          opacity: animate ? (open ? 1 : 0) : 1,
-        }}
-        className="text-neutral-700 dark:text-neutral-200 text-sm group-hover/sidebar:translate-x-1 transition duration-150 whitespace-pre inline-block !p-0 !m-0"
-      >
-        {link.label}
-      </motion.span>
-    </Link>
+      <div className="flex flex-col h-full">
+        <div className="flex flex-col gap-2 flex-grow">
+          <Link href="/apps" className="flex items-center mb-4">
+            <LogoSite className="h-10 w-auto" />
+          </Link>
+          <WorkspaceProvider>
+            <AccountDropdown isMobile={!isOpen} />
+          </WorkspaceProvider>
+          {items.map((item, index) => {
+            return (
+              <Link
+                href={item.href}
+                key={`navlink-${index}`}
+                className={cn(
+                  "flex flex-nowrap gap-2.5 items-center transition-all rounded-md",
+                  activeLink === item.href
+                    ? "bg-white shadow-sm"
+                    : "hover:bg-gray-300"
+                )}
+              >
+                <div className="p-2.5 rounded-md">
+                  {activeLink === item.href
+                    ? item.activeIcon
+                    : item.inactiveIcon}
+                </div>
+                {isOpen && !isMobile && (
+                  <div
+                    className={cn(
+                      "text-sm",
+                      activeLink === item.href && "font-medium"
+                    )}
+                  >
+                    {item.label}
+                  </div>
+                )}
+              </Link>
+            );
+          })}
+        </div>
+        <div className="mt-auto space-y-2">
+          <Link
+            href={"/settings"}
+            key={`navlink-settings`}
+            className={cn(
+              "flex flex-nowrap gap-2.5 items-center transition-all rounded-md",
+              isSettingsPage ? "bg-white shadow-sm" : "hover:bg-gray-300"
+            )}
+          >
+            <div className="p-2.5 rounded-md">
+              {isSettingsPage ? (
+                <RiSettings3Fill className="size-5" />
+              ) : (
+                <RiSettings3Line className="size-5" />
+              )}
+            </div>
+            {isOpen && !isMobile && (
+              <div className={cn("text-sm", isSettingsPage && "font-medium")}>
+                Settings
+              </div>
+            )}
+          </Link>
+        </div>
+      </div>
+    </motion.div>
   );
 };
 
-export const SidebarBody = (props: React.ComponentProps<typeof motion.div>) => {
-  return (
-    <>
-      <DesktopSidebar {...props} />
-    </>
-    // <NextUISidebar />
-  );
-};
+// export const SidebarLink = ({
+//   activeIcon,
+//   inactiveIcon,
+//   href,
+//   label,
+//   ...props
+// }: {
+//   activeIcon: React.ReactNode;
+//   isActive: boolean;
+//   label: string;
+//   inactiveIcon: React.ReactNode;
+//   href: string;
+// } & LinkProps) => {
+//   const { open } = useSidebar();
+//   const isActive = usePathname().includes(href);
+
+//   return (
+//     <Link href={href} className={cn("grid grid-cols-4 p-2 gap-2  ")} {...props}>
+//       <div className="w-[40px]">{isActive ? activeIcon : inactiveIcon}</div>
+//       <div className="w-[180px]  text-start">{label} </div>
+//     </Link>
+//   );
+// };

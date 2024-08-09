@@ -5,21 +5,29 @@ import { useBoolean } from "ahooks";
 import { useSelectedLayoutSegment } from "next/navigation";
 import { Bars3Icon } from "@heroicons/react/20/solid";
 import HeaderBillingBtn from "../billing/header-billing-btn";
-import { SidebarBody, Sidebar as UISidebar } from "@/app/components/ui/sidebar";
+import { SidebarBody } from "@/app/components/ui/sidebar";
 import AccountDropdown from "@/app/components/header/account-dropdown";
 import AppNav from "@/app/components/header/app-nav";
 import DatasetNav from "@/app/components/header/dataset-nav";
 import EnvNav from "@/app/components/header/env-nav";
 import ExploreNav from "@/app/components/header/explore-nav";
 import ToolsNav from "@/app/components/header/tools-nav";
-import GithubStar from "@/app/components/header/github-star";
 import { WorkspaceProvider } from "@/context/workspace-context";
 import { useAppContext } from "@/context/app-context";
 import LogoSite from "@/app/components/base/logo/logo-site";
 import useBreakpoints, { MediaType } from "@/hooks/use-breakpoints";
 import { useProviderContext } from "@/context/provider-context";
 import { useModalContext } from "@/context/modal-context";
-import { SideBar as NextUISidebar } from "@/app/components/next-ui/sidebar";
+import {
+  RiBook2Fill,
+  RiBook2Line,
+  RiHammerFill,
+  RiHammerLine,
+  RiPlanetFill,
+  RiPlanetLine,
+  RiRobot2Fill,
+  RiRobot2Line,
+} from "@remixicon/react";
 
 const navClassName = `
   flex items-center relative mr-0 sm:mr-3 px-3 h-8 rounded-xl
@@ -49,99 +57,64 @@ export function SidebarWrapper({ children }: SideBarWrapperProps) {
     hideNavMenu();
   }, [selectedSegment, hideNavMenu]);
 
+  const sidebarBodyItems: {
+    label: string;
+    href: string;
+    position: "top" | "bottom";
+    activeIcon: React.ReactNode;
+    inactiveIcon: React.ReactNode;
+  }[] = [];
+
+  if (!isCurrentWorkspaceDatasetOperator) {
+    sidebarBodyItems.push({
+      label: "Explore",
+      href: "/explore/apps",
+      activeIcon: <RiPlanetFill className="size-5" />,
+      inactiveIcon: <RiPlanetLine className="size-5" />,
+      position: "top",
+    });
+
+    sidebarBodyItems.push({
+      label: "Studio",
+      href: "/apps",
+      activeIcon: <RiRobot2Fill className="size-5" />,
+      inactiveIcon: <RiRobot2Line className="size-5" />,
+      position: "top",
+    });
+
+    sidebarBodyItems.push({
+      label: "Plugins",
+      href: "/tools",
+      activeIcon: <RiHammerFill className="size-5" />,
+      inactiveIcon: <RiHammerLine className="size-5" />,
+      position: "top",
+    });
+  }
+
+  if (isCurrentWorkspaceDatasetOperator || isCurrentWorkspaceEditor) {
+    sidebarBodyItems.push({
+      label: "Dataset",
+      href: "/datasets",
+      activeIcon: <RiBook2Fill className="size-5" />,
+      inactiveIcon: <RiBook2Line className="size-5" />,
+      position: "top",
+    });
+  }
+
   return (
     <div className="flex h-screen">
-      {/* <NextUISidebar
-        isOpen={sidebarOpen}
-        onOpenChange={setSidebarOpen}
-        isCollapsed={sidebarOpen}
-        setIsCollapsed={setSidebarOpen}
-        isMobile={isMobile}
-        company={{
-          key: "Home",
-          href: "/apps",
-          icon: <LogoSite className="h-8 w-auto" />,
-          element: (
-            <Link href="/apps" className="flex items-center">
-              <LogoSite className="h-8 w-auto" />
-            </Link>
-          ),
-        }}
-        exploreNav={
-          !isCurrentWorkspaceDatasetOperator ? (
-            <ExploreNav className={navClassName} />
-          ) : null
-        }
-        appNav={!isCurrentWorkspaceDatasetOperator ? <AppNav /> : null}
-        datasetNav={
-          isCurrentWorkspaceEditor || isCurrentWorkspaceDatasetOperator ? (
-            <DatasetNav />
-          ) : null
-        }
-        toolsNav={
-          !isCurrentWorkspaceDatasetOperator ? (
-            <ToolsNav className={navClassName} />
-          ) : null
-        }
-      ></NextUISidebar> */}
+      <SidebarBody items={sidebarBodyItems}>
+        {/* <div className="flex items-center justify-between p-5">
+          <Link href="/apps" className="flex items-center mb-4">
+            <LogoSite className="size-10 mx-auto" />
+          </Link>
+        </div> */}
 
-      <UISidebar open={sidebarOpen} setOpen={setSidebarOpen} animate={false}>
-        <SidebarBody className="flex flex-col h-full">
-          <div className="flex items-center justify-between p-4">
-            <Link href="/apps" className="flex items-center">
-              <LogoSite className="h-8 w-auto" />
-            </Link>
-            <GithubStar />
-          </div>
-
-          <nav className="flex-1 overflow-y-auto px-4">
-            {!isMobile && (
-              <div className="flex flex-col space-y-2">
-                {!isCurrentWorkspaceDatasetOperator && (
-                  <ExploreNav className={navClassName} />
-                )}
-                {!isCurrentWorkspaceDatasetOperator && <AppNav />}
-                {(isCurrentWorkspaceEditor ||
-                  isCurrentWorkspaceDatasetOperator) && <DatasetNav />}
-                {!isCurrentWorkspaceDatasetOperator && (
-                  <ToolsNav className={navClassName} />
-                )}
-              </div>
-            )}
-          </nav>
-
-          <div className="mt-auto p-4 space-y-4">
-            <EnvNav />
-            {enableBilling && (
-              <div className="select-none">
-                <HeaderBillingBtn onClick={handlePlanClick} />
-              </div>
-            )}
+        {/* <nav className="flex-1  overflow-hidden px-4">
+          <div className="flex flex-col space-y-2">
             <WorkspaceProvider>
-              <AccountDropdown isMobile={isMobile} />
+              <AccountDropdown isMobile={false} />
             </WorkspaceProvider>
-          </div>
-        </SidebarBody>
-      </UISidebar>
-
-      <div className="flex-1 flex flex-col">
-        {isMobile && (
-          <>
-            <div
-              className="flex items-center justify-center h-8 w-8 cursor-pointer"
-              onClick={() => setSidebarOpen(!sidebarOpen)}
-            >
-              <Bars3Icon className="h-6 w-6 text-gray-500" />
-            </div>
-            <Link href="/apps" className="flex items-center">
-              <LogoSite className="h-8 w-auto" />
-            </Link>
-            <GithubStar />
-          </>
-        )}
-
-        {isMobile && isShowNavMenu && (
-          <div className="w-full flex flex-col bg-white dark:bg-gray-800 shadow">
             {!isCurrentWorkspaceDatasetOperator && (
               <ExploreNav className={navClassName} />
             )}
@@ -152,10 +125,19 @@ export function SidebarWrapper({ children }: SideBarWrapperProps) {
               <ToolsNav className={navClassName} />
             )}
           </div>
-        )}
+        </nav> */}
 
-        {children}
-      </div>
+        {/* <div className="mt-auto p-4 space-y-4">
+          <EnvNav />
+          {enableBilling && (
+            <div className="select-none">
+              <HeaderBillingBtn onClick={handlePlanClick} />
+            </div>
+          )}
+        </div> */}
+      </SidebarBody>
+
+      <div className="flex-1 flex flex-col ml-[60px] z-0">{children}</div>
     </div>
   );
 }
