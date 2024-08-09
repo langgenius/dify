@@ -1,0 +1,117 @@
+identity:
+  name: record
+  author: Doug Lea
+  label:
+    en_US: Record Tool
+    zh_Hans: 数据记录工具
+description:
+  human:
+    en_US: The CRUD of each data records.
+    zh_Hans: 每条数据记录的增删改查
+  llm: A tool for CRUD each data records.
+parameters:
+  - name: app_token
+    type: string
+    required: true
+    label:
+      en_US: app token
+    human_description:
+      en_US: bitable app token
+      zh_Hans: 多维表格的唯一标识符 app_token
+    llm_description: bitable app token
+    form: llm
+  - name: table_id
+    type: string
+    required: true
+    label:
+      en_US: table id
+      zh_Hans: 数据表ID
+    human_description:
+      en_US: Data table unique identifier table_id
+      zh_Hans: 数据表唯一标识符 table_id
+    llm_description: bitable table id
+    form: llm
+
+  - name: operations
+    type: select
+    required: true
+    default: create
+    label:
+      en_US: Choose Record Operation
+      zh_Hans: 选择数据记录操作
+    human_description:
+      en_US: create,read,update,delete or list
+      zh_Hans: 请填入create,read,update,delete或list
+    form: llm
+    options:
+      - value: create
+        label:
+          en_US: create data record
+          zh_Hans: 创建数据记录
+      - value: read
+        label:
+          en_US: read data record
+          zh_Hans: 查询数据记录
+      - value: update
+        label:
+          en_US: update data record
+          zh_Hans: 更新数据记录
+      - value: delete
+        label:
+          en_US: delete data table
+          zh_Hans: 删除数据记录
+      - value: list
+        label:
+          en_US: view all data table
+          zh_Hans: 查看所有数据记录
+
+  - name: fields
+    type: string
+    required: false
+    label:
+      en_US: fields
+      zh_Hans: 数据表的列字段内容
+    human_description:
+      en_US: The fields of the Base data table are the columns of the data table.
+      zh_Hans: |
+        要增加一行多维表格记录，字段结构拼接例如 {"姓名":"张三","年龄":14}
+        不同类型字段的数据结构请参考数据结构概述：https://open.larkoffice.com/document/server-docs/docs/bitable-v1/bitable-structure
+    llm_description: |
+      要增加一行多维表格记录，字段结构拼接例如：{"姓名":"张三","年龄":14}
+    form: llm
+
+  - name: record_id
+    type: string
+    required: false
+    label:
+      en_US: record id
+      zh_Hans: 单条记录id
+    human_description:
+      en_US: Required for read, update, and delete operations.
+      zh_Hans: read,update,delete操作时必填
+    llm_description: The id of a single record
+    form: llm
+
+  - name: page_token
+    type: string
+    required: false
+    label:
+      en_US: page token
+      zh_Hans: 分页标记
+    human_description:
+      en_US: When reviewing the data table, select and fill in as needed to indicate the data table after this page
+      zh_Hans: 查看所有数据记录时选填，表示查看该页之后的数据表
+    llm_description: 分页标记，第一次请求不填，表示从头开始遍历；分页查询结果还有更多项时会同时返回新的 page_token，下次遍历可采用该 page_token 获取查询结果
+    form: llm
+  - name: page_size
+    type: string
+    required: false
+    default: 20
+    label:
+      en_US: page size
+      zh_Hans: 分页大小
+    human_description:
+      en_US: When reviewing the data table, select and fill in the page size. The default value is 20, and the maximum value is 100.
+      zh_Hans: 查看所有数据记录时选填，分页大小，默认值为 20，最大值为 100
+    llm_description: 查看所有数据记录时选填，分页大小，默认值为 20，最大值为 100
+    form: llm
