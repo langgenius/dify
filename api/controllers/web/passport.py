@@ -22,8 +22,9 @@ class PassportResource(Resource):
             raise Unauthorized('X-App-Code header is missing.')
 
         app_web_sso_enabled = EnterpriseService.get_app_web_sso_enabled(app_code).get('enabled', False)
-        if system_features.sso_enforced_for_web and app_web_sso_enabled:
-            raise WebSSOAuthRequiredError()
+        if system_features.sso_enforced_for_web:
+            if app_web_sso_enabled:
+                raise WebSSOAuthRequiredError()
         
         # get site from db and check if it is normal
         site = db.session.query(Site).filter(
