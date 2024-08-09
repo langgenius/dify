@@ -2,7 +2,7 @@
 import type { SVGProps } from 'react'
 import React, { useState } from 'react'
 import { useTranslation } from 'react-i18next'
-import s from './style.module.css'
+import cn from 'classnames'
 
 type InputProps = {
   placeholder?: string
@@ -27,10 +27,10 @@ const Input = ({ value, defaultValue, onChange, className = '', wrapperClassName
   const { t } = useTranslation()
   return (
     <div className={`relative inline-flex w-full ${wrapperClassName}`}>
-      {showPrefix && <span className={s.prefix}>{prefixIcon ?? <GlassIcon className='h-3.5 w-3.5 stroke-current text-gray-700 stroke-2' />}</span>}
+      {showPrefix && <span className='whitespace-nowrap absolute left-2 self-center'>{prefixIcon ?? <GlassIcon className='h-3.5 w-3.5 stroke-current text-gray-700 stroke-2' />}</span>}
       <input
         type={type ?? 'text'}
-        className={`${s.input} ${showPrefix ? '!pl-7' : ''} ${className}`}
+        className={cn('inline-flex h-7 w-full py-1 px-2 rounded-lg text-xs leading-normal bg-gray-100 caret-primary-600 hover:bg-gray-100 focus:ring-1 focus:ring-inset focus:ring-gray-200 focus-visible:outline-none focus:bg-white placeholder:text-gray-400', showPrefix ? '!pl-7' : '', className)}
         placeholder={placeholder ?? (showPrefix ? t('common.operation.search') ?? '' : 'please input')}
         value={localValue}
         onChange={(e) => {

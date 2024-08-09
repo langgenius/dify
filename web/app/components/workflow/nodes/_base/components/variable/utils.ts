@@ -15,7 +15,7 @@ import type { ParameterExtractorNodeType } from '../../../parameter-extractor/ty
 import type { IterationNodeType } from '../../../iteration/types'
 import { BlockEnum, InputVarType, VarType } from '@/app/components/workflow/types'
 import type { StartNodeType } from '@/app/components/workflow/nodes/start/types'
-import type { EnvironmentVariable, Node, NodeOutPutVar, ValueSelector, Var } from '@/app/components/workflow/types'
+import type { ConversationVariable, EnvironmentVariable, Node, NodeOutPutVar, ValueSelector, Var } from '@/app/components/workflow/types'
 import type { VariableAssignerNodeType } from '@/app/components/workflow/nodes/variable-assigner/types'
 import {
   HTTP_REQUEST_OUTPUT_STRUCT,
@@ -36,6 +36,10 @@ export const isSystemVar = (valueSelector: ValueSelector) => {
 
 export const isENV = (valueSelector: ValueSelector) => {
   return valueSelector[0] === 'env'
+}
+
+export const isConversationVar = (valueSelector: ValueSelector) => {
+  return valueSelector[0] === 'conversation'
 }
 
 const inputVarTypeToVarType = (type: InputVarType): VarType => {
@@ -246,13 +250,32 @@ const formatItem = (
       }) as Var[]
       break
     }
+
+    case 'conversation': {
+      res.vars = data.chatVarList.map((chatVar: ConversationVariable) => {
+        return {
+          variable: `conversation.${chatVar.name}`,
+          type: chatVar.value_type,
+          des: chatVar.description,
+        }
+      }) as Var[]
+      break
+    }
   }
 
   const selector = [id]
   res.vars = res.vars.filter((v) => {
     const { children } = v
-    if (!children)
-      return filterVar(v, selector)
+    if (!children) {
+      return filterVar(v, (() => {
+        const variableArr = v.variable.split('.')
+        const [first, ..._other] = variableArr
+        if (first === 'sys' || first === 'env' || first === 'conversation')
+          return variableArr
+
+        return [...selector, ...variableArr]
+      })())
+    }
 
     const obj = findExceptVarInObject(v, filterVar, selector)
     return obj?.children && obj?.children.length > 0
@@ -271,6 +294,7 @@ export const toNodeOutputVars = (
   isChatMode: boolean,
   filterVar = (_payload: Var, _selector: ValueSelector) => true,
   environmentVariables: EnvironmentVariable[] = [],
+  conversationVariables: ConversationVariable[] = [],
 ): NodeOutPutVar[] => {
   // ENV_NODE data format
   const ENV_NODE = {
@@ -281,9 +305,19 @@ export const toNodeOutputVars = (
       envList: environmentVariables,
     },
   }
+  // CHAT_VAR_NODE data format
+  const CHAT_VAR_NODE = {
+    id: 'conversation',
+    data: {
+      title: 'CONVERSATION',
+      type: 'conversation',
+      chatVarList: conversationVariables,
+    },
+  }
   const res = [
     ...nodes.filter(node => SUPPORT_OUTPUT_VARS_NODE.includes(node.data.type)),
     ...(environmentVariables.length > 0 ? [ENV_NODE] : []),
+    ...((isChatMode && conversationVariables.length) > 0 ? [CHAT_VAR_NODE] : []),
   ].map((node) => {
     return {
       ...formatItem(node, isChatMode, filterVar),
@@ -348,6 +382,7 @@ export const getVarType = ({
   isChatMode,
   isConstant,
   environmentVariables = [],
+  conversationVariables = [],
 }:
 {
   valueSelector: ValueSelector
@@ -357,6 +392,7 @@ export const getVarType = ({
   isChatMode: boolean
   isConstant?: boolean
   environmentVariables?: EnvironmentVariable[]
+  conversationVariables?: ConversationVariable[]
 }): VarType => {
   if (isConstant)
     return VarType.string
@@ -366,6 +402,7 @@ export const getVarType = ({
     isChatMode,
     undefined,
     environmentVariables,
+    conversationVariables,
   )
 
   const isIterationInnerVar = parentNode?.data.type === BlockEnum.Iteration
@@ -388,6 +425,7 @@ export const getVarType = ({
   }
   const isSystem = isSystemVar(valueSelector)
   const isEnv = isENV(valueSelector)
+  const isChatVar = isConversationVar(valueSelector)
   const startNode = availableNodes.find((node: any) => {
     return node.data.type === BlockEnum.Start
   })
@@ -400,7 +438,7 @@ export const getVarType = ({
 
   let type: VarType = VarType.string
   let curr: any = targetVar.vars
-  if (isSystem || isEnv) {
+  if (isSystem || isEnv || isChatVar) {
     return curr.find((v: any) => v.variable === (valueSelector as ValueSelector).join('.'))?.type
   }
   else {
@@ -426,6 +464,7 @@ export const toNodeAvailableVars = ({
   beforeNodes,
   isChatMode,
   environmentVariables,
+  conversationVariables,
   filterVar,
 }: {
   parentNode?: Node | null
@@ -435,6 +474,8 @@ export const toNodeAvailableVars = ({
   isChatMode: boolean
   // env
   environmentVariables?: EnvironmentVariable[]
+  // chat var
+  conversationVariables?: ConversationVariable[]
   filterVar: (payload: Var, selector: ValueSelector) => boolean
 }): NodeOutPutVar[] => {
   const beforeNodesOutputVars = toNodeOutputVars(
@@ -442,6 +483,7 @@ export const toNodeAvailableVars = ({
     isChatMode,
     filterVar,
     environmentVariables,
+    conversationVariables,
   )
   const isInIteration = parentNode?.data.type === BlockEnum.Iteration
   if (isInIteration) {
@@ -453,6 +495,7 @@ export const toNodeAvailableVars = ({
       availableNodes: beforeNodes,
       isChatMode,
       environmentVariables,
+      conversationVariables,
     })
     const iterationVar = {
       nodeId: iterationNode?.id,
