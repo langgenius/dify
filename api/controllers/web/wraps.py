@@ -68,18 +68,17 @@ def decode_jwt_token():
 
 def _validate_web_sso_token(decoded, system_features, app_code):
     app_web_sso_enabled = EnterpriseService.get_app_web_sso_enabled(app_code).get('enabled', False)
-    # if app web sso is not enabled pass
-    if not app_web_sso_enabled:
-        return
 
     # Check if SSO is enforced for web, and if the token source is not SSO, raise an error and redirect to SSO login
     if system_features.sso_enforced_for_web:
+        if app_web_sso_enabled:
+            raise WebSSOAuthRequiredError()
         source = decoded.get('token_source')
         if not source or source != 'sso':
             raise WebSSOAuthRequiredError()
 
     # Check if SSO is not enforced for web, and if the token source is SSO, raise an error and redirect to normal passport login
-    if not system_features.sso_enforced_for_web:
+    if not system_features.sso_enforced_for_web or not app_web_sso_enabled:
         source = decoded.get('token_source')
         if source and source == 'sso':
             raise Unauthorized('sso token expired.')
