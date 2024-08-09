@@ -1,0 +1,58 @@
+identity:
+  name: send_webhook_message
+  author: Doug Lea
+  label:
+    en_US: Send Webhook Message
+    zh_Hans: 使用自定义机器人发送飞书消息
+description:
+  human:
+    en_US: Send webhook message
+    zh_Hans: 使用自定义机器人发送飞书消息
+  llm: A tool for sending Lark messages using a custom robot.
+parameters:
+  - name: webhook
+    type: string
+    required: true
+    label:
+      en_US: webhook
+      zh_Hans: webhook 的地址
+    human_description:
+      en_US: The address of the webhook
+      zh_Hans: webhook 的地址
+    llm_description: webhook 的地址
+    form: llm
+
+  - name: msg_type
+    type: string
+    required: true
+    options:
+      - value: text
+        label:
+          en_US: text
+          zh_Hans: 文本
+      - value: interactive
+        label:
+          en_US: message card
+          zh_Hans: 消息卡片
+    label:
+      en_US: Message type
+      zh_Hans: 消息类型
+    human_description:
+      en_US: Message type, optional values are, text (text), interactive (message card).
+      zh_Hans: 消息类型，可选值有：text(文本)、interactive(消息卡片)。
+    llm_description: 消息类型，可选值有：text(文本)、interactive(消息卡片)。
+    form: llm
+
+  - name: content
+    type: string
+    required: true
+    label:
+      en_US: Message content
+      zh_Hans: 消息内容
+    human_description:
+      en_US: Message content
+      zh_Hans: |
+        消息内容，JSON 结构序列化后的字符串。不同 msg_type 对应不同内容，
+        具体格式说明参考：https://open.larkoffice.com/document/server-docs/im-v1/message-content-description/create_json
+    llm_description: 消息内容，JSON 结构序列化后的字符串。不同 msg_type 对应不同内容。
+    form: llm

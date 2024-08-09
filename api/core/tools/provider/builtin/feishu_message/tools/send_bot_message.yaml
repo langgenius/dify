@@ -1,0 +1,91 @@
+identity:
+  name: send_bot_message
+  author: Doug Lea
+  label:
+    en_US: Send Bot Message
+    zh_Hans: 发送飞书应用消息
+description:
+  human:
+    en_US: Send bot message
+    zh_Hans: 发送飞书应用消息
+  llm: A tool for sending Feishu application messages.
+parameters:
+  - name: receive_id_type
+    type: select
+    required: true
+    options:
+      - value: open_id
+        label:
+          en_US: open id
+          zh_Hans: open id
+      - value: union_id
+        label:
+          en_US: union id
+          zh_Hans: union id
+      - value: user_id
+        label:
+          en_US: user id
+          zh_Hans: user id
+      - value: email
+        label:
+          en_US: email
+          zh_Hans: email
+      - value: chat_id
+        label:
+          en_US: chat id
+          zh_Hans: chat id
+    label:
+      en_US: User ID Type
+      zh_Hans: 用户 ID 类型
+    human_description:
+      en_US: User ID Type
+      zh_Hans: 用户 ID 类型，可选值有 open_id、union_id、user_id、email、chat_id。
+    llm_description: 用户 ID 类型，可选值有 open_id、union_id、user_id、email、chat_id。
+    form: llm
+
+  - name: receive_id
+    type: string
+    required: true
+    label:
+      en_US: Receive Id
+      zh_Hans: 消息接收者的 ID
+    human_description:
+      en_US: The ID of the message receiver. The ID type should correspond to the query parameter receive_id_type.
+      zh_Hans: 消息接收者的 ID，ID 类型应与查询参数 receive_id_type 对应。
+    llm_description: 消息接收者的 ID，ID 类型应与查询参数 receive_id_type 对应。
+    form: llm
+
+  - name: msg_type
+    type: string
+    required: true
+    options:
+      - value: text
+        label:
+          en_US: text
+          zh_Hans: 文本
+      - value: interactive
+        label:
+          en_US: message card
+          zh_Hans: 消息卡片
+    label:
+      en_US: Message type
+      zh_Hans: 消息类型
+    human_description:
+      en_US: Message type, optional values are, text (text), interactive (message card).
+      zh_Hans: 消息类型，可选值有：text(文本)、interactive(消息卡片)。
+    llm_description: 消息类型，可选值有：text(文本)、interactive(消息卡片)。
+    form: llm
+
+  - name: content
+    type: string
+    required: true
+    label:
+      en_US: Message content
+      zh_Hans: 消息内容
+    human_description:
+      en_US: Message content
+      zh_Hans: |
+        消息内容，JSON 结构序列化后的字符串。不同 msg_type 对应不同内容，
+        具体格式说明参考：https://open.larkoffice.com/document/server-docs/im-v1/message-content-description/create_json
+    llm_description: 消息内容，JSON 结构序列化后的字符串。不同 msg_type 对应不同内容。
+    form: llm

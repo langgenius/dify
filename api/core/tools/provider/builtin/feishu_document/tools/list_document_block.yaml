@@ -1,0 +1,48 @@
+identity:
+  name: list_document_block
+  author: Doug Lea
+  label:
+    en_US: List Document Block
+    zh_Hans: 获取飞书文档所有块
+description:
+  human:
+    en_US: List document block
+    zh_Hans: 获取飞书文档所有块的富文本内容并分页返回。
+  llm: A tool to get all blocks of Feishu documents
+parameters:
+  - name: document_id
+    type: string
+    required: true
+    label:
+      en_US: document_id
+      zh_Hans: 飞书文档的唯一标识
+    human_description:
+      en_US: Unique ID of Feishu document document_id
+      zh_Hans: 飞书文档的唯一标识 document_id
+    llm_description: 飞书文档的唯一标识 document_id
+    form: llm
+
+  - name: page_size
+    type: number
+    required: false
+    default: 500
+    label:
+      en_US: page_size
+      zh_Hans: 分页大小
+    human_description:
+      en_US: Paging size, the default and maximum value is 500.
+      zh_Hans: 分页大小, 默认值和最大值为 500。
+    llm_description: 分页大小, 表示一次请求最多返回多少条数据，默认值和最大值为 500。
+    form: llm
+
+  - name: page_token
+    type: string
+    required: false
+    label:
+      en_US: page_token
+      zh_Hans: 分页标记
+    human_description:
+      en_US: Pagination tag, used to paginate query results so that more items can be obtained in the next traversal.
+      zh_Hans: 分页标记，用于分页查询结果，以便下次遍历时获取更多项。
+    llm_description: 分页标记，第一次请求不填，表示从头开始遍历；分页查询结果还有更多项时会同时返回新的 page_token，下次遍历可采用该 page_token 获取查询结果。
+    form: llm
