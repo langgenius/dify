@@ -379,8 +379,12 @@ class BedrockLargeLanguageModel(LargeLanguageModel):
                         if not message_content.data.startswith("data:"):
                             # fetch image data from url
                             try:
-                                image_content = requests.get(message_content.data).content
-                                mime_type, _ = mimetypes.guess_type(message_content.data)
+                                url = message_content.data
+                                image_content = requests.get(url).content
+                                if '?' in url:
+                                    url = url.split('?')[0]
+                                mime_type, _ = mimetypes.guess_type(url)
+                                base64_data = base64.b64encode(image_content).decode('utf-8')
                             except Exception as ex:
                                 raise ValueError(f"Failed to fetch image data from url {message_content.data}, {ex}")
                         else:
