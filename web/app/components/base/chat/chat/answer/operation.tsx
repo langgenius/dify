@@ -17,7 +17,7 @@ import {
   ThumbsDown,
   ThumbsUp,
 } from '@/app/components/base/icons/src/vender/line/alertsAndFeedback'
-import TooltipPlus from '@/app/components/base/tooltip-plus'
+import Tooltip from '@/app/components/base/tooltip'
 import Log from '@/app/components/base/chat/chat/log'
 
 type OperationProps = {
@@ -162,7 +162,7 @@ const Operation: FC<OperationProps> = ({
         {
           config?.supportFeedback && !localFeedback?.rating && onFeedback && !isOpeningStatement && (
             <div className='hidden group-hover:flex ml-1 shrink-0 items-center px-0.5 bg-white border-[0.5px] border-gray-100 shadow-md text-gray-500 rounded-lg'>
-              <TooltipPlus
+              <Tooltip
                 popupContent={t('appDebug.operation.agree')}
               >
                 <div
@@ -171,8 +171,8 @@ const Operation: FC<OperationProps> = ({
                 >
                   <ThumbsUp className='w-4 h-4' />
                 </div>
-              </TooltipPlus>
-              <TooltipPlus
+              </Tooltip>
+              <Tooltip
                 popupContent={t('appDebug.operation.disagree')}
               >
                 <div
@@ -181,13 +181,13 @@ const Operation: FC<OperationProps> = ({
                 >
                   <ThumbsDown className='w-4 h-4' />
                 </div>
-              </TooltipPlus>
+              </Tooltip>
             </div>
           )
         }
         {
           config?.supportFeedback && localFeedback?.rating && onFeedback && !isOpeningStatement && (
-            <TooltipPlus
+            <Tooltip
               popupContent={localFeedback.rating === 'like' ? t('appDebug.operation.cancelAgree') : t('appDebug.operation.cancelDisagree')}
             >
               <div
@@ -209,7 +209,7 @@ const Operation: FC<OperationProps> = ({
                   )
                 }
               </div>
-            </TooltipPlus>
+            </Tooltip>
           )
         }
       </div>

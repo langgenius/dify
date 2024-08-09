@@ -7,7 +7,7 @@ import {
 import { useBoolean } from 'ahooks'
 import type { DefaultTFuncReturn } from 'i18next'
 import cn from '@/utils/classnames'
-import TooltipPlus from '@/app/components/base/tooltip-plus'
+import Tooltip from '@/app/components/base/tooltip'
 
 type Props = {
   className?: string
@@ -39,13 +39,13 @@ const Filed: FC<Props> = ({
         <div className='flex items-center h-6'>
           <div className='system-sm-semibold-uppercase text-text-secondary'>{title}</div>
           {tooltip && (
-            <TooltipPlus
+            <Tooltip
               popupContent={
                 <div className='w-[120px]'>
                   {tooltip}
                 </div>}
               popupClassName='ml-1'
-              iconStyle='w-4 h-4 ml-1'
+              triggerClassName='w-4 h-4 ml-1'
             />
           )}
 

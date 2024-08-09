@@ -25,7 +25,7 @@ import { Env } from '@/app/components/base/icons/src/vender/line/others'
 import { VarBlockIcon } from '@/app/components/workflow/block-icon'
 import { Line3 } from '@/app/components/base/icons/src/public/common'
 import { isENV, isSystemVar } from '@/app/components/workflow/nodes/_base/components/variable/utils'
-import TooltipPlus from '@/app/components/base/tooltip-plus'
+import Tooltip from '@/app/components/base/tooltip'
 
 type WorkflowVariableBlockComponentProps = {
   nodeKey: string
@@ -111,9 +111,9 @@ const WorkflowVariableBlockComponent = ({
 
   if (!node && !isEnv) {
     return (
-      <TooltipPlus popupContent={t('workflow.errorMsg.invalidVariable')}>
+      <Tooltip popupContent={t('workflow.errorMsg.invalidVariable')}>
         {Item}
-      </TooltipPlus>
+      </Tooltip>
     )
   }
 

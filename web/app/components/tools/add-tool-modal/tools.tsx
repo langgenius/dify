@@ -13,7 +13,7 @@ import { Tag01 } from '@/app/components/base/icons/src/vender/line/financeAndECo
 import type { ToolWithProvider } from '@/app/components/workflow/types'
 import { BlockEnum } from '@/app/components/workflow/types'
 import BlockIcon from '@/app/components/workflow/block-icon'
-import TooltipPlus from '@/app/components/base/tooltip-plus'
+import Tooltip from '@/app/components/base/tooltip'
 import Button from '@/app/components/base/button'
 import { useGetLanguage } from '@/context/i18n'
 import { useStore as useLabelStore } from '@/app/components/tools/labels/store'
@@ -66,7 +66,7 @@ const Blocks = ({
           })()
           const added = !!addedTools?.find(v => v.provider_id === toolWithProvider.id && v.provider_type === toolWithProvider.type && v.tool_name === tool.name)
           return (
-            <TooltipPlus
+            <Tooltip
               key={tool.name}
               position='bottom'
               popupClassName='!p-0 !px-3 !py-2.5 !w-[210px] !leading-[18px] !text-xs !text-gray-700 !border-[0.5px] !border-black/5 !bg-transparent !rounded-xl !shadow-lg translate-x-[108px]'
@@ -90,6 +90,7 @@ const Blocks = ({
                   )}
                 </div>
               )}
+              needsDelay
             >
               <div className='group/item flex items-center w-full pl-3 pr-1 h-8 rounded-lg hover:bg-gray-50 cursor-pointer'>
                 <BlockIcon
@@ -124,7 +125,7 @@ const Blocks = ({
                   >{t('tools.auth.setup')}</Button>
                 )}
               </div>
-            </TooltipPlus>
+            </Tooltip>
           )
         })}
       </div>

@@ -4,7 +4,7 @@ import { v4 as uuid4 } from 'uuid'
 import { RiCloseLine } from '@remixicon/react'
 import { useContext } from 'use-context-selector'
 import Button from '@/app/components/base/button'
-import TooltipPlus from '@/app/components/base/tooltip-plus'
+import Tooltip from '@/app/components/base/tooltip'
 import { ToastContext } from '@/app/components/base/toast'
 import { useStore } from '@/app/components/workflow/store'
 import type { EnvironmentVariable } from '@/app/components/workflow/types'
@@ -99,13 +99,13 @@ const VariableModal = ({
               type === 'secret' && 'text-text-primary font-medium border-[1.5px] shadow-xs bg-components-option-card-option-selected-bg border-components-option-card-option-selected-border hover:border-components-option-card-option-selected-border',
             )} onClick={() => setType('secret')}>
               <span>Secret</span>
-              <TooltipPlus
+              <Tooltip
                 popupContent={
                   <div className='w-[240px]'>
                     {t('workflow.env.modal.secretTip')}
                   </div>
                 }
-                iconStyle='ml-0.5 w-[14px] h-[14px]'
+                triggerClassName='ml-0.5 w-3.5 h-3.5'
               />
             </div>
           </div>

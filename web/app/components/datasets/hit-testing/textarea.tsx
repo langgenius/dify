@@ -3,7 +3,7 @@ import Button from '../../base/button'
 import Tag from '../../base/tag'
 import { getIcon } from '../common/retrieval-method-info'
 import s from './style.module.css'
-import TooltipPlus from '@/app/components/base/tooltip-plus'
+import Tooltip from '@/app/components/base/tooltip'
 import cn from '@/utils/classnames'
 import type { HitTestingResponse } from '@/models/datasets'
 import { hitTesting } from '@/service/datasets'
@@ -73,7 +73,7 @@ const TextAreaWithButton = ({
             <span className="text-gray-800 font-semibold text-sm">
               {t('datasetHitTesting.input.title')}
             </span>
-            <TooltipPlus
+            <Tooltip
               popupContent={t('dataset.retrieval.changeRetrievalMethod')}
             >
               <div
@@ -83,7 +83,7 @@ const TextAreaWithButton = ({
                 <Icon className='w-3.5 h-3.5'></Icon>
                 <div className='text-xs font-medium'>{t(`dataset.retrieval.${retrievalMethod}.title`)}</div>
               </div>
-            </TooltipPlus>
+            </Tooltip>
           </div>
           <div className='h-2 rounded-tl-xl rounded-tr-xl bg-white'></div>
         </div>
@@ -97,7 +97,7 @@ const TextAreaWithButton = ({
           <div className="absolute inset-x-0 bottom-0 flex items-center justify-between mx-4 mt-2 mb-2">
             {text?.length > 200
               ? (
-                <TooltipPlus
+                <Tooltip
                   popupContent={t('datasetHitTesting.input.countWarning')}
                 >
                   <div>
@@ -107,7 +107,7 @@ const TextAreaWithButton = ({
                       200
                     </Tag>
                   </div>
-                </TooltipPlus>
+                </Tooltip>
               )
               : (
                 <Tag

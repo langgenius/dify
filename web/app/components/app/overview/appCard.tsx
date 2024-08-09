@@ -14,7 +14,7 @@ import EmbeddedModal from './embedded'
 import CustomizeModal from './customize'
 import style from './style.module.css'
 import type { ConfigParams } from './settings'
-import TooltipPlus from '@/app/components/base/tooltip-plus'
+import Tooltip from '@/app/components/base/tooltip'
 import AppBasic from '@/app/components/app-sidebar/basic'
 import { asyncRunSafe, randomString } from '@/utils'
 import Button from '@/app/components/base/button'
@@ -193,7 +193,7 @@ function AppCard({
                 />
               )}
               {isApp && isCurrentWorkspaceManager && (
-                <TooltipPlus
+                <Tooltip
                   popupContent={t('appOverview.overview.appInfo.regenerate') || ''}
                 >
                   <div
@@ -205,7 +205,7 @@ function AppCard({
                       }`}
                     ></div>
                   </div>
-                </TooltipPlus>
+                </Tooltip>
               )}
             </div>
           </div>
@@ -224,7 +224,7 @@ function AppCard({
                 onClick={genClickFuncByName(op.opName)}
                 disabled={disabled}
               >
-                <TooltipPlus
+                <Tooltip
                   popupContent={
                     t('appOverview.overview.appInfo.preUseReminder') ?? ''
                   }
@@ -234,7 +234,7 @@ function AppCard({
                     <op.opIcon className="h-4 w-4 mr-1.5 stroke-[1.8px]" />
                     <span className="text-[13px]">{op.opName}</span>
                   </div>
-                </TooltipPlus>
+                </Tooltip>
               </Button>
             )
           })}

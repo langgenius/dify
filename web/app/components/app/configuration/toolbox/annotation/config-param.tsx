@@ -7,7 +7,7 @@ import { usePathname, useRouter } from 'next/navigation'
 import ConfigParamModal from './config-param-modal'
 import Panel from '@/app/components/app/configuration/base/feature-panel'
 import { MessageFast } from '@/app/components/base/icons/src/vender/solid/communication'
-import TooltipPlus from '@/app/components/base/tooltip-plus'
+import Tooltip from '@/app/components/base/tooltip'
 import { LinkExternal02, Settings04 } from '@/app/components/base/icons/src/vender/line/general'
 import ConfigContext from '@/context/debug-configuration'
 import type { EmbeddingModelConfig } from '@/app/components/app/annotation/type'
@@ -28,11 +28,10 @@ export const Item: FC<{ title: string; tooltip: string; children: JSX.Element }>
     <div>
       <div className='flex items-center space-x-1'>
         <div>{title}</div>
-        <TooltipPlus
+        <Tooltip
           popupContent={
             <div className='max-w-[200px] leading-[18px] text-[13px] font-medium text-gray-800'>{tooltip}</div>
           }
-          iconStyle='w-3.5 h-3.5'
         />
       </div>
       <div>{children}</div>

@@ -9,7 +9,7 @@ import { BlockEnum } from '../types'
 import type { ToolWithProvider } from '../types'
 import IndexBar, { groupItems } from './index-bar'
 import type { ToolDefaultValue } from './types'
-import TooltipPlus from '@/app/components/base/tooltip-plus'
+import Tooltip from '@/app/components/base/tooltip'
 import Empty from '@/app/components/tools/add-tool-modal/empty'
 import { useGetLanguage } from '@/context/i18n'
 
@@ -42,7 +42,7 @@ const Blocks = ({
         </div>
         {
           list.map(tool => (
-            <TooltipPlus
+            <Tooltip
               key={tool.name}
               position='right'
               popupClassName='!p-0 !px-3 !py-2.5 !w-[200px] !leading-[18px] !text-xs !text-gray-700 !border-[0.5px] !border-black/5 !rounded-xl !shadow-lg'
@@ -77,7 +77,7 @@ const Blocks = ({
                 />
                 <div className='text-sm text-gray-900 flex-1 min-w-0 truncate'>{tool.label[language]}</div>
               </div>
-            </TooltipPlus>
+            </Tooltip>
           ))
         }
       </div>

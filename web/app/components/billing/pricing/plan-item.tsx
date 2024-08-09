@@ -2,12 +2,11 @@
 import type { FC } from 'react'
 import React from 'react'
 import { useTranslation } from 'react-i18next'
-
 import { useContext } from 'use-context-selector'
 import { Plan } from '../type'
 import { ALL_PLANS, NUM_INFINITE, contactSalesUrl, contractSales, unAvailable } from '../config'
 import Toast from '../../base/toast'
-import TooltipPlus from '../../base/tooltip-plus'
+import Tooltip from '../../base/tooltip'
 import { PlanRange } from './select-plan-range'
 import cn from '@/utils/classnames'
 import { useAppContext } from '@/context/app-context'
@@ -28,11 +27,10 @@ const KeyValue = ({ label, value, tooltip }: { label: string; value: string | nu
       <div className='flex items-center text-gray-500 space-x-1'>
         <div>{label}</div>
         {tooltip && (
-          <TooltipPlus
+          <Tooltip
             popupContent={
               <div className='w-[200px]'>{tooltip}</div>
             }
-            iconStyle='w-3 h-3'
           />
         )}
       </div>
@@ -133,22 +131,20 @@ const PlanItem: FC<Props> = ({
             <div className='mt-3.5 flex items-center space-x-1'>
               <span>+ </span>
               <div>{t('billing.plansCommon.supportItems.llmLoadingBalancing')}</div>
-              <TooltipPlus
+              <Tooltip
                 popupContent={
                   <div className='w-[200px]'>{t('billing.plansCommon.supportItems.llmLoadingBalancingTooltip')}</div>
                 }
-                iconStyle='w-3 h-3'
               />
             </div>
             <div className='mt-3.5 flex items-center space-x-1'>
               <div className='flex items-center'>
                 +
                 <div className='mr-0.5'>&nbsp;{t('billing.plansCommon.supportItems.ragAPIRequest')}</div>
-                <TooltipPlus
+                <Tooltip
                   popupContent={
                     <div className='w-[200px]'>{t('billing.plansCommon.ragAPIRequestTooltip')}</div>
                   }
-                  iconStyle='w-3 h-3'
                 />
               </div>
               <div>{comingSoon}</div>

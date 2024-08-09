@@ -13,7 +13,7 @@ import AppIcon from '@/app/components/base/app-icon'
 import MethodSelector from '@/app/components/tools/workflow-tool/method-selector'
 import LabelSelector from '@/app/components/tools/labels/selector'
 import ConfirmModal from '@/app/components/tools/workflow-tool/confirm-modal'
-import TooltipPlus from '@/app/components/base/tooltip-plus'
+import Tooltip from '@/app/components/base/tooltip'
 
 type Props = {
   isAdd?: boolean
@@ -144,7 +144,7 @@ const WorkflowToolAsModal: FC<Props> = ({
               <div>
                 <div className='flex items-center py-2 leading-5 text-sm font-medium text-gray-900'>
                   {t('tools.createTool.nameForToolCall')} <span className='ml-1 text-red-500'>*</span>
-                  <TooltipPlus
+                  <Tooltip
                     popupContent={
                       <div className='w-[180px]'>
                         {t('tools.createTool.nameForToolCallPlaceHolder')}

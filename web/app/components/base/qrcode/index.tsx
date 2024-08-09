@@ -3,7 +3,7 @@ import React, { useEffect, useRef, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import QRCode from 'qrcode.react'
 import QrcodeStyle from './style.module.css'
-import TooltipPlus from '@/app/components/base/tooltip-plus'
+import Tooltip from '@/app/components/base/tooltip'
 
 type Props = {
   content: string
@@ -50,7 +50,7 @@ const ShareQRCode = ({ content, selectorId, className }: Props) => {
   }
 
   return (
-    <TooltipPlus
+    <Tooltip
       popupContent={t(`${prefixEmbedded}`) || ''}
     >
       <div
@@ -73,7 +73,7 @@ const ShareQRCode = ({ content, selectorId, className }: Props) => {
           </div>
         )}
       </div>
-    </TooltipPlus>
+    </Tooltip>
   )
 }
 

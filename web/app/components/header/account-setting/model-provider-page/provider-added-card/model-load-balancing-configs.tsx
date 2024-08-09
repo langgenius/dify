@@ -8,7 +8,7 @@ import type { ConfigurationMethodEnum, CustomConfigurationModelFixedFields, Mode
 import Indicator from '../../../indicator'
 import CooldownTimer from './cooldown-timer'
 import classNames from '@/utils/classnames'
-import TooltipPlus from '@/app/components/base/tooltip-plus'
+import Tooltip from '@/app/components/base/tooltip'
 import Switch from '@/app/components/base/switch'
 import { Balance } from '@/app/components/base/icons/src/vender/line/financeAndECommerce'
 import { Edit02, Plus02 } from '@/app/components/base/icons/src/vender/line/general'
@@ -159,10 +159,10 @@ const ModelLoadBalancingConfigs = ({
           <div className='grow'>
             <div className='flex items-center gap-1 text-sm'>
               {t('common.modelProvider.loadBalancing')}
-              <TooltipPlus
+              <Tooltip
                 popupContent={t('common.modelProvider.loadBalancingInfo')}
                 popupClassName='max-w-[300px]'
-                iconStyle='w-3 h-3'
+                triggerClassName='w-3 h-3'
               />
             </div>
             <div className='text-xs text-gray-500'>{t('common.modelProvider.loadBalancingDescription')}</div>
@@ -192,9 +192,9 @@ const ModelLoadBalancingConfigs = ({
                           <CooldownTimer secondsRemaining={config.ttl} onFinish={() => clearCountdown(index)} />
                         )
                         : (
-                          <TooltipPlus popupContent={t('common.modelProvider.apiKeyStatusNormal')}>
+                          <Tooltip popupContent={t('common.modelProvider.apiKeyStatusNormal')}>
                             <Indicator color='green' />
-                          </TooltipPlus>
+                          </Tooltip>
                         )}
                     </div>
                     <div className='text-[13px] mr-1'>

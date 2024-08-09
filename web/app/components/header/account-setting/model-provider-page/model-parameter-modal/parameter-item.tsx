@@ -5,7 +5,7 @@ import { useLanguage } from '../hooks'
 import { isNullOrUndefined } from '../utils'
 import cn from '@/utils/classnames'
 import Switch from '@/app/components/base/switch'
-import TooltipPlus from '@/app/components/base/tooltip-plus'
+import Tooltip from '@/app/components/base/tooltip'
 import Slider from '@/app/components/base/slider'
 import Radio from '@/app/components/base/radio'
 import { SimpleSelect } from '@/app/components/base/select'
@@ -227,10 +227,12 @@ const ParameterItem: FC<ParameterItemProps> = ({
           </div>
           {
             parameterRule.help && (
-              <TooltipPlus
+              <Tooltip
                 popupContent={(
                   <div className='w-[200px] whitespace-pre-wrap'>{parameterRule.help[language] || parameterRule.help.en_US}</div>
                 )}
+                popupClassName='mr-1'
+                triggerClassName='mr-1 w-4 h-4'
               />
             )
           }

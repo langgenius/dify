@@ -39,7 +39,7 @@ import MessageLogModal from '@/app/components/base/message-log-modal'
 import { useStore as useAppStore } from '@/app/components/app/store'
 import { useAppContext } from '@/context/app-context'
 import useTimestamp from '@/hooks/use-timestamp'
-import TooltipPlus from '@/app/components/base/tooltip-plus'
+import Tooltip from '@/app/components/base/tooltip'
 import { CopyIcon } from '@/app/components/base/copy-icon'
 
 dayjs.extend(utc)
@@ -342,10 +342,11 @@ function DetailPanel<T extends ChatConversationFullDetailResponse | CompletionCo
           <div className='text-gray-500 text-[10px] leading-[14px]'>{isChatMode ? t('appLog.detail.conversationId') : t('appLog.detail.time')}</div>
           {isChatMode && (
             <div className='flex items-center text-gray-700 text-[13px] leading-[18px]'>
-              <TooltipPlus
-                popupContent={detail.id}>
+              <Tooltip
+                popupContent={detail.id}
+              >
                 <div className='max-w-[105px] truncate'>{detail.id}</div>
-              </TooltipPlus>
+              </Tooltip>
               <CopyIcon content={detail.id} />
             </div>
           )}
@@ -635,7 +636,7 @@ const ConversationList: FC<IConversationList> = ({ logs, appDetail, onRefresh })
   // Annotated data needs to be highlighted
   const renderTdValue = (value: string | number | null, isEmptyStyle: boolean, isHighlight = false, annotation?: LogAnnotation) => {
     return (
-      <TooltipPlus
+      <Tooltip
         popupContent={
           <span className='text-xs text-gray-500 inline-flex items-center'>
             <RiEditFill className='w-3 h-3 mr-1' />{`${t('appLog.detail.annotationTip', { user: annotation?.account?.name })} ${formatTime(annotation?.created_at || dayjs().unix(), 'MM-DD hh:mm A')}`}
@@ -646,7 +647,7 @@ const ConversationList: FC<IConversationList> = ({ logs, appDetail, onRefresh })
         <div className={cn(isEmptyStyle ? 'text-gray-400' : 'text-gray-700', !isHighlight ? '' : 'bg-orange-100', 'text-sm overflow-hidden text-ellipsis whitespace-nowrap')}>
           {value || '-'}
         </div>
-      </TooltipPlus>
+      </Tooltip>
     )
   }
 

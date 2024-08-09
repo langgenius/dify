@@ -41,7 +41,7 @@ import I18n from '@/context/i18n'
 import { IS_CE_EDITION } from '@/config'
 import { RETRIEVE_METHOD } from '@/types/app'
 import useBreakpoints, { MediaType } from '@/hooks/use-breakpoints'
-import TooltipPlus from '@/app/components/base/tooltip-plus'
+import Tooltip from '@/app/components/base/tooltip'
 import { useModelListAndDefaultModelAndCurrentProviderAndModel } from '@/app/components/header/account-setting/model-provider-page/hooks'
 import { LanguagesSupported } from '@/i18n/language'
 import { ModelTypeEnum } from '@/app/components/header/account-setting/model-provider-page/declarations'
@@ -554,12 +554,12 @@ const StepTwo = ({
               className='border-[0.5px] !h-8 hover:outline hover:outline-[0.5px] hover:outline-gray-300 text-gray-700 font-medium bg-white shadow-[0px_1px_2px_0px_rgba(16,24,40,0.05)]'
               onClick={setShowPreview}
             >
-              <TooltipPlus>
+              <Tooltip>
                 <div className="flex flex-row items-center">
                   <RocketLaunchIcon className="h-4 w-4 mr-1.5 stroke-[1.8px]" />
                   <span className="text-[13px]">{t('datasetCreation.stepTwo.previewTitleButton')}</span>
                 </div>
-              </TooltipPlus>
+              </Tooltip>
             </Button>
           )}
         </div>
@@ -626,7 +626,7 @@ const StepTwo = ({
                     <div className='w-full'>
                       <div className={s.label}>
                         {t('datasetCreation.stepTwo.overlap')}
-                        <TooltipPlus
+                        <Tooltip
                           popupContent={
                             <div className='max-w-[200px]'>
                               {t('datasetCreation.stepTwo.overlapTip')}

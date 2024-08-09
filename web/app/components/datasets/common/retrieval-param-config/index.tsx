@@ -8,7 +8,7 @@ import TopKItem from '@/app/components/base/param-item/top-k-item'
 import ScoreThresholdItem from '@/app/components/base/param-item/score-threshold-item'
 import { RETRIEVE_METHOD } from '@/types/app'
 import Switch from '@/app/components/base/switch'
-import TooltipPlus from '@/app/components/base/tooltip-plus'
+import Tooltip from '@/app/components/base/tooltip'
 import type { RetrievalConfig } from '@/types/app'
 import ModelSelector from '@/app/components/header/account-setting/model-provider-page/model-selector'
 import { useModelListAndDefaultModel } from '@/app/components/header/account-setting/model-provider-page/hooks'
@@ -112,7 +112,7 @@ const RetrievalParamConfig: FC<Props> = ({
             )}
             <div className='flex items-center'>
               <span className='mr-0.5'>{t('common.modelProvider.rerankModel.key')}</span>
-              <TooltipPlus
+              <Tooltip
                 popupContent={
                   <div className="w-[200px]">{t('common.modelProvider.rerankModel.tip')}</div>
                 }
@@ -189,11 +189,9 @@ const RetrievalParamConfig: FC<Props> = ({
                     onClick={() => handleChangeRerankMode(option.value)}
                   >
                     <div className='truncate'>{option.label}</div>
-                    <TooltipPlus
+                    <Tooltip
                       popupContent={<div className='w-[200px]'>{option.tips}</div>}
-                      needsDelay={false}
-                      iconStyle='ml-0.5 w-3.5 h-4.5'
-                      hideArrow
+                      triggerClassName='ml-0.5 w-3.5 h-4.5'
                     />
                   </div>
                 ))

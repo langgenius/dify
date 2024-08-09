@@ -2,7 +2,7 @@
 import type { FC } from 'react'
 import React from 'react'
 import cn from '@/utils/classnames'
-import TooltipPlus from '@/app/components/base/tooltip-plus'
+import Tooltip from '@/app/components/base/tooltip'
 type Props = {
   className?: string
   icon: JSX.Element
@@ -23,14 +23,14 @@ const ItemPanel: FC<Props> = ({
       <div className='flex items-center'>
         {icon}
         <div className='ml-3 mr-1 leading-6 text-sm font-semibold text-gray-800'>{name}</div>
-        <TooltipPlus
+        <Tooltip
           popupContent={
             <div className='w-[180px]'>
               {description}
             </div>
           }
         >
-        </TooltipPlus>
+        </Tooltip>
       </div>
       <div>
         {children}

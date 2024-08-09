@@ -22,7 +22,7 @@ import {
   fetchApiKeysList as fetchDatasetApiKeysList,
 } from '@/service/datasets'
 import type { CreateApiKeyResponse } from '@/models/app'
-import TooltipPlus from '@/app/components/base/tooltip-plus'
+import Tooltip from '@/app/components/base/tooltip'
 import Loading from '@/app/components/base/loading'
 import Confirm from '@/app/components/base/confirm'
 import useTimestamp from '@/hooks/use-timestamp'
@@ -117,7 +117,7 @@ const SecretKeyModal = ({
                   <div className='flex-shrink-0 px-3 truncate w-[200px]'>{formatTime(Number(api.created_at), t('appLog.dateTimeFormat') as string)}</div>
                   <div className='flex-shrink-0 px-3 truncate w-[200px]'>{api.last_used_at ? formatTime(Number(api.created_at), t('appLog.dateTimeFormat') as string) : t('appApi.never')}</div>
                   <div className='flex flex-grow px-3'>
-                    <TooltipPlus
+                    <Tooltip
                       popupContent={copyValue === api.token ? `${t('appApi.copied')}` : `${t('appApi.copy')}`}
                       popupClassName='mr-1'
                     >
@@ -126,7 +126,7 @@ const SecretKeyModal = ({
                         copy(api.token)
                         setCopyValue(api.token)
                       }}></div>
-                    </TooltipPlus>
+                    </Tooltip>
                     {isCurrentWorkspaceManager
                       && <div className={`flex items-center justify-center flex-shrink-0 w-6 h-6 rounded-lg cursor-pointer ${s.trashIcon}`} onClick={() => {
                         setDelKeyId(api.id)

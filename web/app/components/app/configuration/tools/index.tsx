@@ -10,7 +10,7 @@ import {
 } from '@remixicon/react'
 import ConfigContext from '@/context/debug-configuration'
 import Switch from '@/app/components/base/switch'
-import TooltipPlus from '@/app/components/base/tooltip-plus'
+import Tooltip from '@/app/components/base/tooltip'
 import { Tool03 } from '@/app/components/base/icons/src/vender/solid/general'
 import {
   Settings01,
@@ -106,13 +106,12 @@ const Tools = () => {
           <div className='mr-1 text-sm font-semibold text-gray-800'>
             {t('appDebug.feature.tools.title')}
           </div>
-          <TooltipPlus
+          <Tooltip
             popupContent={
               <div className='max-w-[160px]'>
                 {t('appDebug.feature.tools.tips')}
               </div>
             }
-            iconStyle='w-3.5 h-3.5'
           />
         </div>
         {
@@ -147,7 +146,7 @@ const Tools = () => {
                       background={item.icon_background}
                     />
                     <div className='mr-2 text-[13px] font-medium text-gray-800'>{item.label}</div>
-                    <TooltipPlus
+                    <Tooltip
                       popupContent={copied ? t('appApi.copied') : `${item.variable}, ${t('appApi.copy')}`}
                     >
                       <div
@@ -159,7 +158,7 @@ const Tools = () => {
                       >
                         {item.variable}
                       </div>
-                    </TooltipPlus>
+                    </Tooltip>
                   </div>
                   <div
                     className='hidden group-hover:flex items-center justify-center mr-1 w-6 h-6 hover:bg-black/5 rounded-md cursor-pointer'

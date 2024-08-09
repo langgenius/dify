@@ -8,7 +8,7 @@ import s from './style.module.css'
 import cn from '@/utils/classnames'
 import type { DataSet } from '@/models/datasets'
 import { formatNumber } from '@/utils/format'
-import TooltipPlus from '@/app/components/base/tooltip-plus'
+import Tooltip from '@/app/components/base/tooltip'
 
 export type ICardItemProps = {
   className?: string
@@ -38,11 +38,11 @@ const CardItem: FC<ICardItemProps> = ({
           <div className='flex items-center w-[160px] mr-1'>
             <div className={cn('text-[13px] leading-[18px] font-medium text-gray-800 overflow-hidden text-ellipsis whitespace-nowrap', !config.embedding_available && 'opacity-50')}>{config.name}</div>
             {!config.embedding_available && (
-              <TooltipPlus
+              <Tooltip
                 popupContent={t('dataset.unavailableTip')}
               >
                 <span className='shrink-0 inline-flex whitespace-nowrap px-1 border border-gray-200 rounded-md text-gray-500 text-xs font-normal leading-[18px]'>{t('dataset.unavailable')}</span>
-              </TooltipPlus>
+              </Tooltip>
             )}
           </div>
           <div className={cn('max-w-[150px] flex text-xs text-gray-500', !config.embedding_available && 'opacity-50')}>

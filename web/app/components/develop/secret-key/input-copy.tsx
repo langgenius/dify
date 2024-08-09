@@ -3,7 +3,7 @@ import React, { useEffect, useState } from 'react'
 import copy from 'copy-to-clipboard'
 import { t } from 'i18next'
 import s from './style.module.css'
-import TooltipPlus from '@/app/components/base/tooltip-plus'
+import Tooltip from '@/app/components/base/tooltip'
 
 type IInputCopyProps = {
   value?: string
@@ -41,16 +41,16 @@ const InputCopy = ({
             copy(value)
             setIsCopied(true)
           }}>
-            <TooltipPlus
+            <Tooltip
               popupContent={isCopied ? `${t('appApi.copied')}` : `${t('appApi.copy')}`}
               position='bottom'
             >
               {value}
-            </TooltipPlus>
+            </Tooltip>
           </div>
         </div>
         <div className="flex-shrink-0 h-4 bg-gray-200 border" />
-        <TooltipPlus
+        <Tooltip
           popupContent={isCopied ? `${t('appApi.copied')}` : `${t('appApi.copy')}`}
           position='bottom'
         >
@@ -61,7 +61,7 @@ const InputCopy = ({
             }}>
             </div>
           </div>
-        </TooltipPlus>
+        </Tooltip>
       </div>
     </div>
   )

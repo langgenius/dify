@@ -5,7 +5,7 @@ import style from './style.module.css'
 import cn from '@/utils/classnames'
 import Modal from '@/app/components/base/modal'
 import copyStyle from '@/app/components/base/copy-btn/style.module.css'
-import TooltipPlus from '@/app/components/base/tooltip-plus'
+import Tooltip from '@/app/components/base/tooltip'
 import { useAppContext } from '@/context/app-context'
 import { IS_CE_EDITION } from '@/config'
 import type { SiteInfo } from '@/models/share'
@@ -152,13 +152,13 @@ const Embedded = ({ siteInfo, isShow, onClose, appBaseUrl, accessToken, classNam
             {t(`${prefixEmbedded}.${option}`)}
           </div>
           <div className="flex items-center justify-center gap-1 p-2 rounded-lg">
-            <TooltipPlus
+            <Tooltip
               popupContent={(isCopied[option] ? t(`${prefixEmbedded}.copied`) : t(`${prefixEmbedded}.copy`)) || ''}
             >
               <div className="w-8 h-8 rounded-lg cursor-pointer hover:bg-gray-100">
                 <div onClick={onClickCopy} className={`w-full h-full ${copyStyle.copyIcon} ${isCopied[option] ? copyStyle.copied : ''}`}></div>
               </div>
-            </TooltipPlus>
+            </Tooltip>
           </div>
         </div>
         <div className="flex items-start justify-start w-full gap-2 p-3 overflow-x-auto">

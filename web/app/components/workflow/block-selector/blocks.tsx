@@ -14,7 +14,7 @@ import {
 import { BLOCK_CLASSIFICATIONS } from './constants'
 import { useBlocks } from './hooks'
 import type { ToolDefaultValue } from './types'
-import TooltipPlus from '@/app/components/base/tooltip-plus'
+import Tooltip from '@/app/components/base/tooltip'
 
 type BlocksProps = {
   searchText: string
@@ -65,7 +65,7 @@ const Blocks = ({
         }
         {
           list.map(block => (
-            <TooltipPlus
+            <Tooltip
               key={block.type}
               position='right'
               popupClassName='!p-0 !px-3 !py-2.5 !w-[200px] !leading-[18px] !text-xs !text-gray-700 !border-[0.5px] !border-black/5 !rounded-xl !shadow-lg'
@@ -92,7 +92,7 @@ const Blocks = ({
                 />
                 <div className='text-sm text-gray-900'>{block.title}</div>
               </div>
-            </TooltipPlus>
+            </Tooltip>
           ))
         }
       </div>

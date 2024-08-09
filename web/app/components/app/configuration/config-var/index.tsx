@@ -16,7 +16,7 @@ import type { IInputTypeIconProps } from './input-type-icon'
 import s from './style.module.css'
 import SelectVarType from './select-var-type'
 import { BracketsX as VarIcon } from '@/app/components/base/icons/src/vender/line/development'
-import TooltipPlus from '@/app/components/base/tooltip-plus'
+import Tooltip from '@/app/components/base/tooltip'
 import type { PromptVariable } from '@/models/debug'
 import { DEFAULT_VALUE_MAX_LEN, getMaxVarNameLength } from '@/config'
 import { checkKeys, getNewVar } from '@/utils/var'
@@ -281,7 +281,7 @@ const ConfigVar: FC<IConfigVarProps> = ({ promptVariables, readonly, onPromptVar
         <div className='flex items-center'>
           <div className='mr-1'>{t('appDebug.variableTitle')}</div>
           {!readonly && (
-            <TooltipPlus
+            <Tooltip
               popupContent={
                 <div className='w-[180px]'>
                   {t('appDebug.variableTip')}

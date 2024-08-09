@@ -20,7 +20,7 @@ import {
 import { Check } from '@/app/components/base/icons/src/vender/line/general'
 import { useModalContext } from '@/context/modal-context'
 import { useProviderContext } from '@/context/provider-context'
-import TooltipPlus from '@/app/components/base/tooltip-plus'
+import Tooltip from '@/app/components/base/tooltip'
 
 type PopupItemProps = {
   defaultModel?: DefaultModel
@@ -69,7 +69,7 @@ const PopupItem: FC<PopupItemProps> = ({
       </div>
       {
         model.models.map(modelItem => (
-          <TooltipPlus
+          <Tooltip
             key={modelItem.model}
             popupContent={modelItem.status !== ModelStatusEnum.active ? MODEL_STATUS_TEXT[modelItem.status][language] : undefined}
             position='right'
@@ -116,7 +116,7 @@ const PopupItem: FC<PopupItemProps> = ({
                 )
               }
             </div>
-          </TooltipPlus>
+          </Tooltip>
         ))
       }
     </div>

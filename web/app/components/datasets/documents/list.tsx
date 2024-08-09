@@ -21,7 +21,7 @@ import Switch from '@/app/components/base/switch'
 import Divider from '@/app/components/base/divider'
 import Popover from '@/app/components/base/popover'
 import Confirm from '@/app/components/base/confirm'
-import TooltipPlus from '@/app/components/base/tooltip-plus'
+import Tooltip from '@/app/components/base/tooltip'
 import { ToastContext } from '@/app/components/base/toast'
 import type { IndicatorProps } from '@/app/components/header/indicator'
 import Indicator from '@/app/components/header/indicator'
@@ -91,11 +91,11 @@ export const StatusItem: FC<{
     <span className={cn('text-gray-700 text-sm', textCls)}>{DOC_INDEX_STATUS_MAP[localStatus]?.text}</span>
     {
       errorMessage && (
-        <TooltipPlus
+        <Tooltip
           popupContent={
             <div className='max-w-[260px] break-all'>{errorMessage}</div>
           }
-          iconStyle='ml-1 w-4 h-4'
+          triggerClassName='ml-1 w-4 h-4'
         />
       )
     }
@@ -197,7 +197,7 @@ export const OperationAction: FC<{
     {isListScene && embeddingAvailable && (
       <>
         {archived
-          ? <TooltipPlus
+          ? <Tooltip
             popupContent={t('datasetDocuments.list.action.enableWarning')}
             popupClassName='!font-semibold'
             needsDelay
@@ -205,7 +205,7 @@ export const OperationAction: FC<{
             <div>
               <Switch defaultValue={false} onChange={() => { }} disabled={true} size='md' />
             </div>
-          </TooltipPlus>
+          </Tooltip>
           : <Switch defaultValue={enabled} onChange={v => handleSwitch(v ? 'enable' : 'disable')} size='md' />
         }
         <Divider className='!ml-4 !mr-2 !h-3' type='vertical' />
@@ -220,7 +220,7 @@ export const OperationAction: FC<{
                 <span className={cn(s.actionName, 'font-medium')}>
                   {!archived && enabled ? t('datasetDocuments.list.index.enable') : t('datasetDocuments.list.index.disable')}
                 </span>
-                <TooltipPlus
+                <Tooltip
                   popupContent={t('datasetDocuments.list.action.enableWarning')}
                   popupClassName='!font-semibold'
                   needsDelay
@@ -234,7 +234,7 @@ export const OperationAction: FC<{
                       size='md'
                     />
                   </div>
-                </TooltipPlus>
+                </Tooltip>
               </div>
               <div className='mx-4 pb-1 pt-0.5 text-xs text-gray-500'>
                 {!archived && enabled ? t('datasetDocuments.list.index.enableTip') : t('datasetDocuments.list.index.disableTip')}
@@ -426,7 +426,7 @@ const DocumentList: FC<IDocumentListProps> = ({ embeddingAvailable, documents = 
                     }
                   </span>
                   <div className='group-hover:flex hidden'>
-                    <TooltipPlus
+                    <Tooltip
                       popupContent={t('datasetDocuments.list.table.rename')}
                       needsDelay
                     >
@@ -439,7 +439,7 @@ const DocumentList: FC<IDocumentListProps> = ({ embeddingAvailable, documents = 
                       >
                         <Edit03 className='w-4 h-4 text-gray-500' />
                       </div>
-                    </TooltipPlus>
+                    </Tooltip>
                   </div>
                 </div>
 

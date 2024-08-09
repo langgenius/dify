@@ -6,7 +6,7 @@ import type { Props } from './var-picker'
 import VarPicker from './var-picker'
 import cn from '@/utils/classnames'
 import { BracketsX } from '@/app/components/base/icons/src/vender/line/development'
-import TooltipPlus from '@/app/components/base/tooltip-plus'
+import Tooltip from '@/app/components/base/tooltip'
 
 const ContextVar: FC<Props> = (props) => {
   const { t } = useTranslation()
@@ -20,7 +20,7 @@ const ContextVar: FC<Props> = (props) => {
           <BracketsX className='w-4 h-4 text-primary-500' />
         </div>
         <div className='mr-1 text-sm font-medium text-gray-800'>{t('appDebug.feature.dataSet.queryVariable.title')}</div>
-        <TooltipPlus
+        <Tooltip
           popupContent={
             <div className='w-[180px]'>
               {t('appDebug.feature.dataSet.queryVariable.tip')}

@@ -2,7 +2,7 @@
 import type { FC } from 'react'
 import React from 'react'
 import { useTranslation } from 'react-i18next'
-import TooltipPlus from '@/app/components/base/tooltip-plus'
+import Tooltip from '@/app/components/base/tooltip'
 import cn from '@/utils/classnames'
 import type { Credential } from '@/app/components/tools/types'
 import Drawer from '@/app/components/base/drawer-plus'
@@ -108,13 +108,13 @@ const ConfigCredential: FC<Props> = ({
                 <div>
                   <div className='flex items-center h-8 text-[13px] font-medium text-gray-900'>
                     {t('tools.createTool.authMethod.key')}
-                    <TooltipPlus
+                    <Tooltip
                       popupContent={
                         <div className='w-[261px] text-gray-500'>
                           {t('tools.createTool.authMethod.keyTooltip')}
                         </div>
                       }
-                      iconStyle='ml-0.5'
+                      triggerClassName='ml-0.5'
                     />
                   </div>
                   <input

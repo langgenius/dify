@@ -3,7 +3,7 @@ import { useState } from 'react'
 import { t } from 'i18next'
 import copy from 'copy-to-clipboard'
 import s from './style.module.css'
-import TooltipPlus from '@/app/components/base/tooltip-plus'
+import Tooltip from '@/app/components/base/tooltip'
 
 type ICopyBtnProps = {
   value: string
@@ -20,7 +20,7 @@ const CopyBtn = ({
 
   return (
     <div className={`${className}`}>
-      <TooltipPlus
+      <Tooltip
         popupContent={(isCopied ? t('appApi.copied') : t('appApi.copy'))}
       >
         <div
@@ -37,7 +37,7 @@ const CopyBtn = ({
         >
           <div className={`w-6 h-6 rounded-md hover:bg-gray-50  ${s.copyIcon} ${isCopied ? s.copied : ''}`}></div>
         </div>
-      </TooltipPlus>
+      </Tooltip>
     </div>
   )
 }

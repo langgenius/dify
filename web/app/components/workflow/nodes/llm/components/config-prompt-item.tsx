@@ -8,7 +8,7 @@ import { EditionType } from '../../../types'
 import { useWorkflowStore } from '../../../store'
 import Editor from '@/app/components/workflow/nodes/_base/components/prompt/editor'
 import TypeSelector from '@/app/components/workflow/nodes/_base/components/selector'
-import TooltipPlus from '@/app/components/base/tooltip-plus'
+import Tooltip from '@/app/components/base/tooltip'
 import { PromptRole } from '@/models/debug'
 
 const i18nPrefix = 'workflow.nodes.llm'
@@ -117,7 +117,7 @@ const ConfigPromptItem: FC<Props> = ({
               />
             )}
 
-          <TooltipPlus
+          <Tooltip
             popupContent={
               <div className='max-w-[180px]'>{t(`${i18nPrefix}.roleDescription.${payload.role}`)}</div>
             }

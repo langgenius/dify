@@ -20,7 +20,7 @@ import {
   Clipboard,
   ClipboardCheck,
 } from '@/app/components/base/icons/src/vender/line/files'
-import TooltipPlus from '@/app/components/base/tooltip-plus'
+import Tooltip from '@/app/components/base/tooltip'
 import PromptEditor from '@/app/components/base/prompt-editor'
 import ConfigContext from '@/context/debug-configuration'
 import { getNewVar, getVars } from '@/utils/var'
@@ -172,7 +172,7 @@ const AdvancedPromptInput: FC<Props> = ({
 
                     <div className='text-sm font-semibold uppercase text-indigo-800'>{t('appDebug.pageTitle.line1')}
                     </div>
-                    <TooltipPlus
+                    <Tooltip
                       popupContent={
                         <div className='w-[180px]'>
                           {t('appDebug.promptTip')}

@@ -4,7 +4,7 @@ import { RiRefreshLine } from '@remixicon/react'
 import { useTranslation } from 'react-i18next'
 import type { Theme } from './theme/theme-context'
 import { CssTransform } from './theme/utils'
-import TooltipPlus from '@/app/components/base/tooltip-plus'
+import Tooltip from '@/app/components/base/tooltip'
 
 export type IHeaderProps = {
   isMobile?: boolean
@@ -40,7 +40,7 @@ const Header: FC<IHeaderProps> = ({
           {title}
         </div>
       </div>
-      <TooltipPlus
+      <Tooltip
         popupContent={t('share.chat.resetChat')}
       >
         <div className='flex cursor-pointer hover:rounded-lg hover:bg-black/5 w-8 h-8 items-center justify-center' onClick={() => {
@@ -48,7 +48,7 @@ const Header: FC<IHeaderProps> = ({
         }}>
           <RiRefreshLine className="h-4 w-4 text-sm font-bold text-white" color={theme?.colorPathOnHeader}/>
         </div>
-      </TooltipPlus>
+      </Tooltip>
     </div>
   )
 }

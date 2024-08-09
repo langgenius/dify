@@ -4,7 +4,7 @@ import React from 'react'
 import { useTranslation } from 'react-i18next'
 import Panel from '@/app/components/app/configuration/base/feature-panel'
 import SuggestedQuestionsAfterAnswerIcon from '@/app/components/app/configuration/base/icons/suggested-questions-after-answer-icon'
-import TooltipPlus from '@/app/components/base/tooltip-plus'
+import Tooltip from '@/app/components/base/tooltip'
 
 const SuggestedQuestionsAfterAnswer: FC = () => {
   const { t } = useTranslation()
@@ -14,7 +14,7 @@ const SuggestedQuestionsAfterAnswer: FC = () => {
       title={
         <div className='flex items-center gap-1'>
           <div>{t('appDebug.feature.suggestedQuestionsAfterAnswer.title')}</div>
-          <TooltipPlus
+          <Tooltip
             popupContent={
               <div className='w-[180px]'>
                 {t('appDebug.feature.suggestedQuestionsAfterAnswer.description')}

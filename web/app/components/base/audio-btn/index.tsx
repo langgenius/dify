@@ -3,7 +3,7 @@ import { useRef, useState } from 'react'
 import { t } from 'i18next'
 import { useParams, usePathname } from 'next/navigation'
 import s from './style.module.css'
-import TooltipPlus from '@/app/components/base/tooltip-plus'
+import Tooltip from '@/app/components/base/tooltip'
 import { randomString } from '@/utils'
 import Loading from '@/app/components/base/loading'
 import { AudioPlayerManager } from '@/app/components/base/audio-btn/audio.player.manager'
@@ -84,7 +84,7 @@ const AudioBtn = ({
 
   return (
     <div className={`inline-flex items-center justify-center ${(audioState === 'loading' || audioState === 'playing') ? 'mr-1' : className}`}>
-      <TooltipPlus
+      <Tooltip
         popupContent={tooltipContent}
       >
         <button
@@ -104,7 +104,7 @@ const AudioBtn = ({
               </div>
             )}
         </button>
-      </TooltipPlus>
+      </Tooltip>
     </div>
   )
 }

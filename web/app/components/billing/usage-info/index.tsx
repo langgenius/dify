@@ -4,7 +4,7 @@ import React from 'react'
 import { useTranslation } from 'react-i18next'
 import ProgressBar from '../progress-bar'
 import { NUM_INFINITE } from '../config'
-import TooltipPlus from '@/app/components/base/tooltip-plus'
+import Tooltip from '@/app/components/base/tooltip'
 
 type Props = {
   className?: string
@@ -47,7 +47,7 @@ const UsageInfo: FC<Props> = ({
           <Icon className='w-4 h-4 text-gray-700' />
           <div className='mx-1 leading-5 text-sm font-medium text-gray-700'>{name}</div>
           {tooltip && (
-            <TooltipPlus
+            <Tooltip
               popupContent={
                 <div className='w-[180px]'>
                   {tooltip}

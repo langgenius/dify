@@ -5,7 +5,7 @@ import { useTranslation } from 'react-i18next'
 import MemoryConfig from '../../_base/components/memory-config'
 import Editor from '@/app/components/workflow/nodes/_base/components/prompt/editor'
 import type { Memory, Node, NodeOutPutVar } from '@/app/components/workflow/types'
-import TooltipPlus from '@/app/components/base/tooltip-plus'
+import Tooltip from '@/app/components/base/tooltip'
 const i18nPrefix = 'workflow.nodes.questionClassifiers'
 
 type Props = {
@@ -47,13 +47,13 @@ const AdvancedSetting: FC<Props> = ({
         title={
           <div className='flex items-center space-x-1'>
             <span className='uppercase'>{t(`${i18nPrefix}.instruction`)}</span>
-            <TooltipPlus
+            <Tooltip
               popupContent={
                 <div className='w-[120px]'>
                   {t(`${i18nPrefix}.instructionTip`)}
                 </div>
               }
-              iconStyle='w-3.5 h-3.5 ml-0.5'
+              triggerClassName='w-3.5 h-3.5 ml-0.5'
             />
           </div>
         }

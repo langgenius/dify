@@ -10,7 +10,7 @@ import s from './style.module.css'
 import PromptEditorHeightResizeWrap from './prompt-editor-height-resize-wrap'
 import cn from '@/utils/classnames'
 import { type PromptVariable } from '@/models/debug'
-import TooltipPlus from '@/app/components/base/tooltip-plus'
+import Tooltip from '@/app/components/base/tooltip'
 import type { CompletionParams } from '@/types/app'
 import { AppType } from '@/types/app'
 import { getNewVar, getVars } from '@/utils/var'
@@ -152,7 +152,7 @@ const Prompt: FC<ISimplePromptInput> = ({
             <div className="flex items-center space-x-1">
               <div className='h2'>{mode !== AppType.completion ? t('appDebug.chatSubTitle') : t('appDebug.completionSubTitle')}</div>
               {!readonly && (
-                <TooltipPlus
+                <Tooltip
                   popupContent={
                     <div className='w-[180px]'>
                       {t('appDebug.promptTip')}

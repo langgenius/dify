@@ -5,7 +5,7 @@ import { useTranslation } from 'react-i18next'
 import { useContext } from 'use-context-selector'
 import Panel from '../base/feature-panel'
 import ParamConfig from './param-config'
-import TooltipPlus from '@/app/components/base/tooltip-plus'
+import Tooltip from '@/app/components/base/tooltip'
 import Switch from '@/app/components/base/switch'
 import { Eye } from '@/app/components/base/icons/src/vender/solid/general'
 import ConfigContext from '@/context/debug-configuration'
@@ -30,7 +30,7 @@ const ConfigVision: FC = () => {
       title={
         <div className='flex items-center'>
           <div className='mr-1'>{t('appDebug.vision.name')}</div>
-          <TooltipPlus
+          <Tooltip
             popupContent={
               <div className='w-[180px]' >
                 {t('appDebug.vision.description')}

@@ -12,7 +12,7 @@ import type {
   DefaultModelResponse,
 } from '../declarations'
 import { ModelTypeEnum } from '../declarations'
-import TooltipPlus from '@/app/components/base/tooltip-plus'
+import Tooltip from '@/app/components/base/tooltip'
 import { Settings01 } from '@/app/components/base/icons/src/vender/line/general'
 import {
   PortalToFollowElem,
@@ -142,13 +142,13 @@ const SystemModel: FC<SystemModelSelectorProps> = ({
           <div className='px-6 py-1'>
             <div className='flex items-center h-8 text-[13px] font-medium text-gray-900'>
               {t('common.modelProvider.systemReasoningModel.key')}
-              <TooltipPlus
+              <Tooltip
                 popupContent={
                   <div className='w-[261px] text-gray-500'>
                     {t('common.modelProvider.systemReasoningModel.tip')}
                   </div>
                 }
-                iconStyle='ml-0.5'
+                triggerClassName='ml-0.5'
               />
             </div>
             <div>
@@ -162,14 +162,14 @@ const SystemModel: FC<SystemModelSelectorProps> = ({
           <div className='px-6 py-1'>
             <div className='flex items-center h-8 text-[13px] font-medium text-gray-900'>
               {t('common.modelProvider.embeddingModel.key')}
-              <TooltipPlus
+              <Tooltip
                 popupContent={
                   <div className='w-[261px] text-gray-500'>
                     {t('common.modelProvider.embeddingModel.tip')}
                   </div>
                 }
                 needsDelay={false}
-                iconStyle='ml-0.5'
+                triggerClassName='ml-0.5'
               />
             </div>
             <div>
@@ -183,14 +183,14 @@ const SystemModel: FC<SystemModelSelectorProps> = ({
           <div className='px-6 py-1'>
             <div className='flex items-center h-8 text-[13px] font-medium text-gray-900'>
               {t('common.modelProvider.rerankModel.key')}
-              <TooltipPlus
+              <Tooltip
                 popupContent={
                   <div className='w-[261px] text-gray-500'>
                     {t('common.modelProvider.rerankModel.tip')}
                   </div>
                 }
                 needsDelay={false}
-                iconStyle='ml-0.5'
+                triggerClassName='ml-0.5'
               />
             </div>
             <div>
@@ -204,14 +204,14 @@ const SystemModel: FC<SystemModelSelectorProps> = ({
           <div className='px-6 py-1'>
             <div className='flex items-center h-8 text-[13px] font-medium text-gray-900'>
               {t('common.modelProvider.speechToTextModel.key')}
-              <TooltipPlus
+              <Tooltip
                 popupContent={
                   <div className='w-[261px] text-gray-500'>
                     {t('common.modelProvider.speechToTextModel.tip')}
                   </div>
                 }
                 needsDelay={false}
-                iconStyle='ml-0.5'
+                triggerClassName='ml-0.5'
               />
             </div>
             <div>
@@ -225,14 +225,13 @@ const SystemModel: FC<SystemModelSelectorProps> = ({
           <div className='px-6 py-1'>
             <div className='flex items-center h-8 text-[13px] font-medium text-gray-900'>
               {t('common.modelProvider.ttsModel.key')}
-              <TooltipPlus
+              <Tooltip
                 popupContent={
                   <div className='w-[261px] text-gray-500'>
                     {t('common.modelProvider.ttsModel.tip')}
                   </div>
                 }
-                needsDelay={false}
-                iconStyle='ml-0.5'
+                triggerClassName='ml-0.5'
               />
             </div>
             <div>

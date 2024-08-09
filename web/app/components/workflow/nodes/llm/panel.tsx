@@ -18,7 +18,7 @@ import { InputVarType, type NodePanelProps } from '@/app/components/workflow/typ
 import BeforeRunForm from '@/app/components/workflow/nodes/_base/components/before-run-form'
 import type { Props as FormProps } from '@/app/components/workflow/nodes/_base/components/before-run-form/form'
 import ResultPanel from '@/app/components/workflow/run/result-panel'
-import TooltipPlus from '@/app/components/base/tooltip-plus'
+import Tooltip from '@/app/components/base/tooltip'
 import Editor from '@/app/components/workflow/nodes/_base/components/prompt/editor'
 import Switch from '@/app/components/base/switch'
 const i18nPrefix = 'workflow.nodes.llm'
@@ -205,9 +205,8 @@ const Panel: FC<NodePanelProps<LLMNodeType>> = ({
             <div className='flex justify-between items-center h-8 pl-3 pr-2 rounded-lg bg-gray-100'>
               <div className='flex items-center space-x-1'>
                 <div className='text-xs font-semibold text-gray-700 uppercase'>{t('workflow.nodes.common.memories.title')}</div>
-                <TooltipPlus
+                <Tooltip
                   popupContent={t('workflow.nodes.common.memories.tip')}
-                  iconStyle='w-3.5 h-3.5'
                 />
               </div>
               <div className='flex items-center h-[18px] px-1 rounded-[5px] border border-black/8 text-xs font-semibold text-gray-500 uppercase'>{t('workflow.nodes.common.memories.builtIn')}</div>
@@ -217,11 +216,10 @@ const Panel: FC<NodePanelProps<LLMNodeType>> = ({
               <Editor
                 title={<div className='flex items-center space-x-1'>
                   <div className='text-xs font-semibold text-gray-700 uppercase'>user</div>
-                  <TooltipPlus
+                  <Tooltip
                     popupContent={
                       <div className='max-w-[180px]'>{t('workflow.nodes.llm.roleDescription.user')}</div>
                     }
-                    iconStyle='w-3.5 h-3.5'
                   />
                 </div>}
                 value={inputs.memory.query_prompt_template || '{{#sys.query#}}'}

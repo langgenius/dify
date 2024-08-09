@@ -1,5 +1,6 @@
 import { CheckCircleIcon } from '@heroicons/react/24/solid'
-import { QuestionMarkCircleIcon, XMarkIcon } from '@heroicons/react/24/outline'
+import { XMarkIcon } from '@heroicons/react/24/outline'
+import { RiQuestionLine } from '@remixicon/react'
 import { useTranslation } from 'react-i18next'
 import { useMemo } from 'react'
 import InvitationLink from './invitation-link'
@@ -8,7 +9,7 @@ import Modal from '@/app/components/base/modal'
 import Button from '@/app/components/base/button'
 import { IS_CE_EDITION } from '@/config'
 import type { InvitationResult } from '@/models/common'
-import TooltipPlus from '@/app/components/base/tooltip-plus'
+import Tooltip from '@/app/components/base/tooltip'
 
 export type SuccessInvationResult = Extract<InvitationResult, { status: 'success' }>
 export type FailedInvationResult = Extract<InvitationResult, { status: 'failed' }>
@@ -63,14 +64,14 @@ const InvitedModal = ({
                     {
                       failedInvationResults.map(item =>
                         <div key={item.email} className='flex justify-center border border-red-300 rounded-md px-1 bg-orange-50'>
-                          <TooltipPlus
+                          <Tooltip
                             popupContent={item.message}
                           >
                             <div className='flex justify-center items-center text-sm gap-1'>
                               {item.email}
-                              <QuestionMarkCircleIcon className='w-4 h-4 text-red-300' />
+                              <RiQuestionLine className='w-4 h-4 text-red-300' />
                             </div>
-                          </TooltipPlus>
+                          </Tooltip>
                         </div>,
                       )
                     }

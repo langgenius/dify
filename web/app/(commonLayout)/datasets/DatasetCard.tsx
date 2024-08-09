@@ -10,7 +10,7 @@ import Confirm from '@/app/components/base/confirm'
 import { ToastContext } from '@/app/components/base/toast'
 import { checkIsUsedInApp, deleteDataset } from '@/service/datasets'
 import type { DataSet } from '@/models/datasets'
-import TooltipPlus from '@/app/components/base/tooltip-plus'
+import Tooltip from '@/app/components/base/tooltip'
 import { Folder } from '@/app/components/base/icons/src/vender/solid/files'
 import type { HtmlContentProps } from '@/app/components/base/popover'
 import CustomPopover from '@/app/components/base/popover'
@@ -126,11 +126,11 @@ const DatasetCard = ({
             <div className='flex items-center text-sm leading-5 font-semibold text-gray-800'>
               <div className={cn('truncate', !dataset.embedding_available && 'opacity-50 hover:opacity-100')} title={dataset.name}>{dataset.name}</div>
               {!dataset.embedding_available && (
-                <TooltipPlus
+                <Tooltip
                   popupContent={t('dataset.unavailableTip')}
                 >
                   <span className='shrink-0 inline-flex w-max ml-1 px-1 border border-gray-200 rounded-md text-gray-500 text-xs font-normal leading-[18px]'>{t('dataset.unavailable')}</span>
-                </TooltipPlus>
+                </Tooltip>
               )}
             </div>
             <div className='flex items-center mt-[1px] text-xs leading-[18px] text-gray-500'>

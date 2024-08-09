@@ -12,7 +12,7 @@ import RadioGroup from '@/app/components/app/configuration/config-vision/radio-g
 import type { Item } from '@/app/components/base/select'
 import ConfigContext from '@/context/debug-configuration'
 import { fetchAppVoices } from '@/service/apps'
-import TooltipPlus from '@/app/components/base/tooltip-plus'
+import Tooltip from '@/app/components/base/tooltip'
 import { languages } from '@/i18n/language'
 import { TtsAutoPlay } from '@/types/app'
 const VoiceParamConfig: FC = () => {
@@ -47,7 +47,7 @@ const VoiceParamConfig: FC = () => {
             <div className='mb-2 flex items-center  space-x-1'>
               <div
                 className='leading-[18px] text-[13px] font-semibold text-gray-800'>{t('appDebug.voice.voiceSettings.language')}</div>
-              <TooltipPlus
+              <Tooltip
                 popupContent={
                   <div className='w-[180px]'>
                     {t('appDebug.voice.voiceSettings.resolutionTooltip').split('\n').map(item => (

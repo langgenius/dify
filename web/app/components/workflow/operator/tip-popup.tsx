@@ -1,6 +1,6 @@
 import { memo } from 'react'
 import ShortcutsName from '../shortcuts-name'
-import TooltipPlus from '@/app/components/base/tooltip-plus'
+import Tooltip from '@/app/components/base/tooltip'
 
 type TipPopupProps = {
   title: string
@@ -13,7 +13,7 @@ const TipPopup = ({
   shortcuts,
 }: TipPopupProps) => {
   return (
-    <TooltipPlus
+    <Tooltip
       offset={4}
       popupClassName='!p-0 !bg-gray-25'
       popupContent={
@@ -26,7 +26,7 @@ const TipPopup = ({
       }
     >
       {children}
-    </TooltipPlus>
+    </Tooltip>
   )
 }
 

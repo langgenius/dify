@@ -8,7 +8,7 @@ import { MessageCheckRemove, MessageFastPlus } from '@/app/components/base/icons
 import { MessageFast } from '@/app/components/base/icons/src/vender/solid/communication'
 import { Edit04 } from '@/app/components/base/icons/src/vender/line/general'
 import RemoveAnnotationConfirmModal from '@/app/components/app/annotation/remove-annotation-confirm-modal'
-import TooltipPlus from '@/app/components/base/tooltip-plus'
+import Tooltip from '@/app/components/base/tooltip'
 import { addAnnotation, delAnnotation } from '@/service/annotation'
 import Toast from '@/app/components/base/toast'
 import { useProviderContext } from '@/context/provider-context'
@@ -99,7 +99,7 @@ const CacheCtrlBtn: FC<Props> = ({
           )
           : answer
             ? (
-              <TooltipPlus
+              <Tooltip
                 popupContent={t('appDebug.feature.annotation.add')}
                 needsDelay
               >
@@ -109,11 +109,11 @@ const CacheCtrlBtn: FC<Props> = ({
                 >
                   <MessageFastPlus className='w-4 h-4' />
                 </div>
-              </TooltipPlus>
+              </Tooltip>
             )
             : null
         }
-        <TooltipPlus
+        <Tooltip
           popupContent={t('appDebug.feature.annotation.edit')}
           needsDelay
         >
@@ -123,7 +123,7 @@ const CacheCtrlBtn: FC<Props> = ({
           >
             <Edit04 className='w-4 h-4' />
           </div>
-        </TooltipPlus>
+        </Tooltip>
 
       </div>
       <RemoveAnnotationConfirmModal

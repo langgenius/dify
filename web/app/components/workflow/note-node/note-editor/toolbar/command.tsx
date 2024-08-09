@@ -13,7 +13,7 @@ import {
 import { useStore } from '../store'
 import { useCommand } from './hooks'
 import cn from '@/utils/classnames'
-import TooltipPlus from '@/app/components/base/tooltip-plus'
+import Tooltip from '@/app/components/base/tooltip'
 
 type CommandProps = {
   type: 'bold' | 'italic' | 'strikethrough' | 'link' | 'bullet'
@@ -60,7 +60,7 @@ const Command = ({
   }, [type, t])
 
   return (
-    <TooltipPlus
+    <Tooltip
       popupContent={tip}
     >
       <div
@@ -76,7 +76,7 @@ const Command = ({
       >
         {icon}
       </div>
-    </TooltipPlus>
+    </Tooltip>
   )
 }
 

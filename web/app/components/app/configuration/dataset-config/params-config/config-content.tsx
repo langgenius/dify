@@ -22,7 +22,7 @@ import ModelSelector from '@/app/components/header/account-setting/model-provide
 import { useModelListAndDefaultModelAndCurrentProviderAndModel } from '@/app/components/header/account-setting/model-provider-page/hooks'
 import type { ModelConfig } from '@/app/components/workflow/types'
 import ModelParameterModal from '@/app/components/header/account-setting/model-provider-page/model-parameter-modal'
-import TooltipPlus from '@/app/components/base/tooltip-plus'
+import Tooltip from '@/app/components/base/tooltip'
 import { ModelTypeEnum } from '@/app/components/header/account-setting/model-provider-page/declarations'
 import type {
   DataSet,
@@ -172,7 +172,7 @@ const ConfigContent: FC<Props> = ({
           title={(
             <div className='flex items-center'>
               {t('appDebug.datasetConfig.retrieveOneWay.title')}
-              <TooltipPlus
+              <Tooltip
                 popupContent={(
                   <div className='w-[320px]'>
                     {t('dataset.nTo1RetrievalLegacy')}
@@ -180,7 +180,7 @@ const ConfigContent: FC<Props> = ({
                 )}
               >
                 <div className='ml-1 flex items-center px-[5px] h-[18px] rounded-[5px] border border-text-accent-secondary system-2xs-medium-uppercase text-text-accent-secondary'>legacy</div>
-              </TooltipPlus>
+              </Tooltip>
             </div>
           )}
           description={t('appDebug.datasetConfig.retrieveOneWay.description')}
@@ -249,14 +249,14 @@ const ConfigContent: FC<Props> = ({
                       onClick={() => handleRerankModeChange(option.value)}
                     >
                       <div className='truncate'>{option.label}</div>
-                      <TooltipPlus
+                      <Tooltip
                         popupContent={
                           <div className='w-[200px]'>
                             {option.tips}
                           </div>
                         }
                         popupClassName='ml-0.5'
-                        iconStyle='ml-0.5 w-3.5 h-3.5'
+                        triggerClassName='ml-0.5 w-3.5 h-3.5'
                       />
                     </div>
                   ))
@@ -283,14 +283,14 @@ const ConfigContent: FC<Props> = ({
                     )
                   }
                   <div className='ml-2 leading-[32px] text-[13px] font-medium text-gray-900'>{t('common.modelProvider.rerankModel.key')}</div>
-                  <TooltipPlus
+                  <Tooltip
                     popupContent={
                       <div className="w-[200px]">
                         {t('common.modelProvider.rerankModel.tip')}
                       </div>
                     }
                     popupClassName='ml-0.5'
-                    iconStyle='ml-0.5 w-3.5 h-3.5'
+                    triggerClassName='ml-0.5 w-3.5 h-3.5'
                   />
                 </div>
                 <div>
@@ -369,7 +369,7 @@ const ConfigContent: FC<Props> = ({
         <div className='mt-4'>
           <div className='flex items-center space-x-0.5'>
             <div className='leading-[32px] text-[13px] font-medium text-gray-900'>{t('common.modelProvider.systemReasoningModel.key')}</div>
-            <TooltipPlus
+            <Tooltip
               popupContent={t('common.modelProvider.systemReasoningModel.tip')}
             />
           </div>
