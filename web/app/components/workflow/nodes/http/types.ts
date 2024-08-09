@@ -1,4 +1,4 @@
-import type { CommonNodeType, Variable } from '@/app/components/workflow/types'
+import type { CommonNodeType, ValueSelector, Variable } from '@/app/components/workflow/types'
 
 export enum Method {
   get = 'get',
@@ -27,6 +27,7 @@ export type KeyValue = {
 export type Body = {
   type: BodyType
   data: string
+  binaryFileVariable?: ValueSelector
 }
 
 export enum AuthorizationType {

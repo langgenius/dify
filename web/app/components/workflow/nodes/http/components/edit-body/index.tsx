@@ -7,9 +7,10 @@ import { BodyType } from '../../types'
 import useKeyValueList from '../../hooks/use-key-value-list'
 import KeyValue from '../key-value'
 import useAvailableVarList from '../../../_base/hooks/use-available-var-list'
+import VarReferencePicker from '../../../_base/components/variable/var-reference-picker'
 import cn from '@/utils/classnames'
 import InputWithVar from '@/app/components/workflow/nodes/_base/components/prompt/editor'
-import type { Var } from '@/app/components/workflow/types'
+import type { ValueSelector, Var } from '@/app/components/workflow/types'
 import { VarType } from '@/app/components/workflow/types'
 
 type Props = {
@@ -77,6 +78,10 @@ const EditBody: FC<Props> = ({
     onChange(newBody)
   }, type === BodyType.json)
 
+  const filterOnlyFileVariable = (varPayload: Var) => {
+    return varPayload.type === VarType.file
+  }
+
   useEffect(() => {
     if (!isCurrentKeyValue)
       return
@@ -95,6 +100,13 @@ const EditBody: FC<Props> = ({
   const handleBodyValueChange = useCallback((value: string) => {
     const newBody = produce(payload, (draft: Body) => {
       draft.data = value
+    })
+    onChange(newBody)
+  }, [onChange, payload])
+
+  const handleBinaryFileChange = useCallback((value: ValueSelector | string) => {
+    const newBody = produce(payload, (draft: Body) => {
+      draft.binaryFileVariable = value as ValueSelector
     })
     onChange(newBody)
   }, [onChange, payload])
@@ -154,6 +166,16 @@ const EditBody: FC<Props> = ({
             nodesOutputVars={availableVars}
             availableNodes={availableNodes}
             readOnly={readonly}
+          />
+        )}
+
+        {type === BodyType.binary && (
+          <VarReferencePicker
+            nodeId={nodeId}
+            readonly={readonly}
+            value={payload.binaryFileVariable || []}
+            onChange={handleBinaryFileChange}
+            filterVar={filterOnlyFileVariable}
           />
         )}
       </div>

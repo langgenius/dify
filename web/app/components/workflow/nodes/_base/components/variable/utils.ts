@@ -39,10 +39,11 @@ export const isENV = (valueSelector: ValueSelector) => {
 }
 
 const inputVarTypeToVarType = (type: InputVarType): VarType => {
-  if (type === InputVarType.number)
-    return VarType.number
-
-  return VarType.string
+  return ({
+    [InputVarType.number]: VarType.number,
+    [InputVarType.singleFile]: VarType.file,
+    [InputVarType.multiFiles]: VarType.arrayFile,
+  } as any)[type] || VarType.string
 }
 
 const findExceptVarInObject = (obj: any, filterVar: (payload: Var, selector: ValueSelector) => boolean, value_selector: ValueSelector): Var => {

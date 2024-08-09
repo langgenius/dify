@@ -40,6 +40,9 @@ const nodeDefault: NodeDefault<HttpNodeType> = {
     if (!errorMessages && !payload.url)
       errorMessages = t('workflow.errorMsg.fieldRequired', { field: t('workflow.nodes.http.api') })
 
+    if (!errorMessages && payload.body.type === BodyType.binary && !payload.body.binaryFileVariable)
+      errorMessages = t('workflow.errorMsg.fieldRequired', { field: t('workflow.nodes.http.binaryFileVariable') })
+
     return {
       isValid: !errorMessages,
       errorMessage: errorMessages,

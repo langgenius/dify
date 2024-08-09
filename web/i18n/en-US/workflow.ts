@@ -323,6 +323,7 @@ const translation = {
       headers: 'Headers',
       params: 'Params',
       body: 'Body',
+      binaryFileVariable: 'Binary File Variable',
       outputVars: {
         body: 'Response Content',
         statusCode: 'Response Status Code',

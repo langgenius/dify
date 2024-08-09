@@ -10,7 +10,7 @@ type Props = {
   list: KeyValue[]
   onChange: (newList: KeyValue[]) => void
   onAdd: () => void
-  isSupportFile: boolean
+  isSupportFile?: boolean
   // toggleKeyValueEdit: () => void
 }
 

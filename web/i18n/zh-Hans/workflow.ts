@@ -323,6 +323,7 @@ const translation = {
       headers: 'Headers',
       params: 'Params',
       body: 'Body',
+      binaryFileVariable: 'Binary 文件变量',
       outputVars: {
         body: '响应内容',
         statusCode: '响应状态码',
