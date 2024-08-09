@@ -27,6 +27,7 @@ async function getKeysFromLanuage(language) {
         // console.log(camelCaseFileName)
         const content = fs.readFileSync(filePath, 'utf8')
         const translation = eval(transpile(content))
+        // console.log(translation)
         const keys = Object.keys(translation)
         const nestedKeys = []
         const iterateKeys = (obj, prefix = '') => {
