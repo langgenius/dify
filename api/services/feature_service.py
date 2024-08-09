@@ -41,7 +41,7 @@ class SystemFeatureModel(BaseModel):
     sso_enforced_for_signin_protocol: str = ''
     sso_enforced_for_web: bool = False
     sso_enforced_for_web_protocol: str = ''
-
+    enable_web_sso_switch_component: bool = False
 
 class FeatureService:
 
@@ -61,6 +61,7 @@ class FeatureService:
         system_features = SystemFeatureModel()
 
         if dify_config.ENTERPRISE_ENABLED:
+            system_features.enable_web_sso_switch_component = True
             cls._fulfill_params_from_enterprise(system_features)
 
         return system_features
