@@ -85,6 +85,42 @@ const translation = {
     workflow: 'Quy trình',
     completion: 'Hoàn thành',
   },
+  tracing: {
+    title: 'Theo dõi hiệu suất ứng dụng',
+    description: 'Cấu hình nhà cung cấp LLMOps bên thứ ba và theo dõi hiệu suất ứng dụng.',
+    config: 'Cấu hình',
+    collapse: 'Thu gọn',
+    expand: 'Mở rộng',
+    tracing: 'Theo dõi',
+    disabled: 'Đã tắt',
+    disabledTip: 'Vui lòng cấu hình nhà cung cấp trước',
+    enabled: 'Đang hoạt động',
+    tracingDescription: 'Ghi lại toàn bộ ngữ cảnh thực thi ứng dụng, bao gồm các cuộc gọi LLM, ngữ cảnh, lời nhắc, yêu cầu HTTP và nhiều hơn nữa, đến một nền tảng theo dõi của bên thứ ba.',
+    configProviderTitle: {
+      configured: 'Đã cấu hình',
+      notConfigured: 'Cấu hình nhà cung cấp để bật theo dõi',
+      moreProvider: 'Thêm nhà cung cấp',
+    },
+    langsmith: {
+      title: 'LangSmith',
+      description: 'Nền tảng phát triển tất cả trong một cho mọi bước của vòng đời ứng dụng được hỗ trợ bởi LLM.',
+    },
+    langfuse: {
+      title: 'Langfuse',
+      description: 'Theo dõi, đánh giá, quản lý lời nhắc và số liệu để gỡ lỗi và cải thiện ứng dụng LLM của bạn.',
+    },
+    inUse: 'Đang sử dụng',
+    configProvider: {
+      title: 'Cấu hình ',
+      placeholder: 'Nhập {{key}} của bạn',
+      project: 'Dự án',
+      publicKey: 'Khóa công khai',
+      secretKey: 'Khóa bí mật',
+      viewDocsLink: 'Xem tài liệu {{key}}',
+      removeConfirmTitle: 'Xóa cấu hình {{key}}?',
+      removeConfirmContent: 'Cấu hình hiện tại đang được sử dụng, việc xóa nó sẽ tắt tính năng Theo dõi.',
+    },
+  },
 }
 
 export default translation

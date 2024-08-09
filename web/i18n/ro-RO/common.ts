@@ -12,6 +12,7 @@ const translation = {
     cancel: 'Anulează',
     clear: 'Șterge',
     save: 'Salvează',
+    saveAndEnable: 'Salvează și Activează',
     edit: 'Editează',
     add: 'Adaugă',
     added: 'Adăugat',
@@ -407,7 +408,7 @@ const translation = {
     latestAvailable: 'Dify {{version}} este ultima versiune disponibilă.',
   },
   appMenus: {
-    overview: 'Prezentare generală',
+    overview: 'Monitorizare',
     promptEng: 'Orchestrare',
     apiAccess: 'Acces API',
     logAndAnn: 'Jurnale și Ann.',

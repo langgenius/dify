@@ -19,7 +19,7 @@ const translation = {
     goBackToEdit: '編集に戻る',
     conversationLog: '会話ログ',
     features: '機能',
-    debugAndPreview: 'デバッグとプレビュー',
+    debugAndPreview: 'プレビュー',
     restart: '再起動',
     currentDraft: '現在の下書き',
     currentDraftUnpublished: '現在の下書き（未公開）',
