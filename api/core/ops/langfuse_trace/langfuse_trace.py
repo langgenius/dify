@@ -180,7 +180,7 @@ class LangFuseDataTrace(BaseTraceInstance):
             else:
                 span_data = LangfuseSpan(
                     id=node_execution_id,
-                    name=node_name,
+                    name=node_type,
                     input=inputs,
                     output=outputs,
                     trace_id=trace_id,
@@ -198,7 +198,7 @@ class LangFuseDataTrace(BaseTraceInstance):
                 total_token = metadata.get("total_tokens", 0)
                 # add generation
                 generation_usage = GenerationUsage(
-                    totalTokens=total_token,
+                    total=total_token,
                 )
 
                 node_generation_data = LangfuseGeneration(

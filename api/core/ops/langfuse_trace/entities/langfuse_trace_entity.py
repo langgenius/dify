@@ -190,7 +190,6 @@ class GenerationUsage(BaseModel):
     total: Optional[int] = None
     input: Optional[int] = None
     output: Optional[int] = None
-    total: Optional[int] = None
     unit: Optional[UnitEnum] = None
     inputCost: Optional[float] = None
     outputCost: Optional[float] = None
