@@ -1,4 +1,5 @@
 from core.rag.datasource.vdb.couchbase.couchbase_vector import CouchbaseConfig, CouchbaseVector
+import time
 from core.rag.models.document import Document
 from tests.integration_tests.vdb.test_vector_store import (
     AbstractVectorTest,
@@ -9,6 +10,7 @@ from tests.integration_tests.vdb.test_vector_store import (
 
 class CouchbaseTest(AbstractVectorTest):
     def __init__(self):
+        time.sleep(15)
         super().__init__()
         self.vector = CouchbaseVector(
             collection_name=self.collection_name,
