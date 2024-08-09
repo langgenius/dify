@@ -24,7 +24,7 @@ const useConfig = (id: string, payload: IterationNodeType) => {
   const { inputs, setInputs } = useNodeCrud<IterationNodeType>(id, payload)
 
   const filterInputVar = useCallback((varPayload: Var) => {
-    return [VarType.array, VarType.arrayString, VarType.arrayNumber, VarType.arrayObject].includes(varPayload.type)
+    return [VarType.array, VarType.arrayString, VarType.arrayNumber, VarType.arrayObject, VarType.arrayFile].includes(varPayload.type)
   }, [])
 
   const handleInputChange = useCallback((input: ValueSelector | string) => {
