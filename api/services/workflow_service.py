@@ -328,14 +328,16 @@ class WorkflowService:
         elapsed_time = 0.0
 
         # fetch workflow node execution by workflow_run_id
-        workflow_node_execution = (
+        workflow_nodes = (
             db.session.query(WorkflowNodeExecution)
             .filter(WorkflowNodeExecution.workflow_run_id == workflow_run_id)
             .order_by(WorkflowNodeExecution.created_at.asc())
             .all()
         )
-
-        for workflow_node_execution in workflow_node_execution:
-            elapsed_time += workflow_node_execution.elapsed_time
+        if not workflow_nodes:
+            return elapsed_time
+        
+        for node in workflow_nodes:
+            elapsed_time += node.elapsed_time
 
         return elapsed_time
