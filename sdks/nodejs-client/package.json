@@ -4,7 +4,7 @@
   "description": "This is the Node.js SDK for the Dify.AI API, which allows you to easily integrate Dify.AI into your Node.js applications.",
   "main": "index.js",
   "type": "module",
-  "types":"index.d.ts",
+  "types": "index.d.ts",
   "keywords": [
     "Dify",
     "Dify.AI",
@@ -12,7 +12,8 @@
   ],
   "author": "Joel",
   "contributors": [
-    "<crazywoola> <<427733928@qq.com>> (https://github.com/crazywoola)"
+    "<crazywoola> <<427733928@qq.com>> (https://github.com/crazywoola)",
+    "<AnotiaWang> <<anotia0202@gmail.com>> (https://github.com/AnotiaWang)"
   ],
   "license": "MIT",
   "scripts": {
