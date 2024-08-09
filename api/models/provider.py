@@ -42,7 +42,7 @@ class Provider(db.Model):
     __table_args__ = (
         db.PrimaryKeyConstraint('id', name='provider_pkey'),
         db.Index('provider_tenant_id_provider_idx', 'tenant_id', 'provider_name'),
-        db.UniqueConstraint('tenant_id', 'provider_name', 'provider_type', 'quota_type', name='unique_provider_name_type_quota')
+        db.UniqueConstraint('tenant_id', 'provider_name', 'provider_type', 'quota_type', 'id', name='unique_provider_name_type_quota')
     )
 
     id = db.Column(StringUUID, server_default=db.text('uuid_generate_v4()'))
@@ -89,7 +89,7 @@ class ProviderModel(db.Model):
     __table_args__ = (
         db.PrimaryKeyConstraint('id', name='provider_model_pkey'),
         db.Index('provider_model_tenant_id_provider_idx', 'tenant_id', 'provider_name'),
-        db.UniqueConstraint('tenant_id', 'provider_name', 'model_name', 'model_type', name='unique_provider_model_name')
+        db.UniqueConstraint('tenant_id', 'provider_name', 'model_name', 'model_type', 'id', name='unique_provider_model_name')
     )
 
     id = db.Column(StringUUID, server_default=db.text('uuid_generate_v4()'))

@@ -18,7 +18,7 @@ class BuiltinToolProvider(db.Model):
     __table_args__ = (
         db.PrimaryKeyConstraint('id', name='tool_builtin_provider_pkey'),
         # one tenant can only have one tool provider with the same name
-        db.UniqueConstraint('tenant_id', 'provider', name='unique_builtin_tool_provider')
+        db.UniqueConstraint('tenant_id', 'provider', 'id', name='unique_builtin_tool_provider')
     )
 
     # id of the tool provider
@@ -45,7 +45,7 @@ class PublishedAppTool(db.Model):
     __tablename__ = 'tool_published_apps'
     __table_args__ = (
         db.PrimaryKeyConstraint('id', name='published_app_tool_pkey'),
-        db.UniqueConstraint('app_id', 'user_id', name='unique_published_app_tool')
+        db.UniqueConstraint('app_id', 'user_id', 'id', name='unique_published_app_tool')
     )
 
     # id of the tool provider
@@ -84,7 +84,7 @@ class ApiToolProvider(db.Model):
     __tablename__ = 'tool_api_providers'
     __table_args__ = (
         db.PrimaryKeyConstraint('id', name='tool_api_provider_pkey'),
-        db.UniqueConstraint('name', 'tenant_id', name='unique_api_tool_provider')
+        db.UniqueConstraint('name', 'tenant_id', 'id', name='unique_api_tool_provider')
     )
 
     id = db.Column(StringUUID, server_default=db.text('uuid_generate_v4()'))
@@ -140,7 +140,7 @@ class ToolLabelBinding(db.Model):
     __tablename__ = 'tool_label_bindings'
     __table_args__ = (
         db.PrimaryKeyConstraint('id', name='tool_label_bind_pkey'),
-        db.UniqueConstraint('tool_id', 'label_name', name='unique_tool_label_bind'),
+        db.UniqueConstraint('tool_id', 'label_name', 'id', name='unique_tool_label_bind'),
     )
 
     id = db.Column(StringUUID, server_default=db.text('uuid_generate_v4()'))
@@ -158,8 +158,8 @@ class WorkflowToolProvider(db.Model):
     __tablename__ = 'tool_workflow_providers'
     __table_args__ = (
         db.PrimaryKeyConstraint('id', name='tool_workflow_provider_pkey'),
-        db.UniqueConstraint('name', 'tenant_id', name='unique_workflow_tool_provider'),
-        db.UniqueConstraint('tenant_id', 'app_id', name='unique_workflow_tool_provider_app_id'),
+        db.UniqueConstraint('name', 'tenant_id', 'id', name='unique_workflow_tool_provider'),
+        db.UniqueConstraint('tenant_id', 'app_id', 'id', name='unique_workflow_tool_provider_app_id'),
     )
 
     id = db.Column(StringUUID, server_default=db.text('uuid_generate_v4()'))

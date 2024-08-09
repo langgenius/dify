@@ -584,11 +584,12 @@ class DatasetKeywordTable(db.Model):
     __tablename__ = 'dataset_keyword_tables'
     __table_args__ = (
         db.PrimaryKeyConstraint('id', name='dataset_keyword_table_pkey'),
+        db.UniqueConstraint('dataset_id', 'id', name='unique_dataset_id'),
         db.Index('dataset_keyword_table_dataset_id_idx', 'dataset_id'),
     )
 
     id = db.Column(StringUUID, primary_key=True, server_default=db.text('uuid_generate_v4()'))
-    dataset_id = db.Column(StringUUID, nullable=False, unique=True)
+    dataset_id = db.Column(StringUUID, nullable=False)
     keyword_table = db.Column(db.Text, nullable=False)
     data_source_type = db.Column(db.String(255), nullable=False,
                                  server_default=db.text("'database'::character varying"))
@@ -630,7 +631,7 @@ class Embedding(db.Model):
     __tablename__ = 'embeddings'
     __table_args__ = (
         db.PrimaryKeyConstraint('id', name='embedding_pkey'),
-        db.UniqueConstraint('model_name', 'hash', 'provider_name', name='embedding_hash_idx'),
+        db.UniqueConstraint('model_name', 'hash', 'provider_name', 'id',  name='embedding_hash_idx'),
         db.Index('created_at_idx', 'created_at')
     )
 

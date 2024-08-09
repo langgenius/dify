@@ -9,10 +9,13 @@ class CeleryTask(db.Model):
     """Task result/status."""
 
     __tablename__ = 'celery_taskmeta'
+    __table_args__ = (
+        db.UniqueConstraint('task_id', 'id', name='unique_task_id'),
+    )
 
     id = db.Column(db.Integer, db.Sequence('task_id_sequence'),
                    primary_key=True, autoincrement=True)
-    task_id = db.Column(db.String(155), unique=True)
+    task_id = db.Column(db.String(155))
     status = db.Column(db.String(50), default=states.PENDING)
     result = db.Column(db.PickleType, nullable=True)
     date_done = db.Column(db.DateTime, default=lambda: datetime.now(timezone.utc).replace(tzinfo=None),
@@ -30,10 +33,13 @@ class CeleryTaskSet(db.Model):
     """TaskSet result."""
 
     __tablename__ = 'celery_tasksetmeta'
+    __table_args__ = (
+        db.UniqueConstraint('taskset_id', 'id', name='unique_taskset_id'),
+    )
 
     id = db.Column(db.Integer, db.Sequence('taskset_id_sequence'),
                    autoincrement=True, primary_key=True)
-    taskset_id = db.Column(db.String(155), unique=True)
+    taskset_id = db.Column(db.String(155))
     result = db.Column(db.PickleType, nullable=True)
     date_done = db.Column(db.DateTime, default=lambda: datetime.now(timezone.utc).replace(tzinfo=None),
                           nullable=True)

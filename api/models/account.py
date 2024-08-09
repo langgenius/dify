@@ -200,7 +200,7 @@ class TenantAccountJoin(db.Model):
         db.PrimaryKeyConstraint('id', name='tenant_account_join_pkey'),
         db.Index('tenant_account_join_account_id_idx', 'account_id'),
         db.Index('tenant_account_join_tenant_id_idx', 'tenant_id'),
-        db.UniqueConstraint('tenant_id', 'account_id', name='unique_tenant_account_join')
+        db.UniqueConstraint('tenant_id', 'account_id', 'id', name='unique_tenant_account_join')
     )
 
     id = db.Column(StringUUID, server_default=db.text('uuid_generate_v4()'))
@@ -217,8 +217,8 @@ class AccountIntegrate(db.Model):
     __tablename__ = 'account_integrates'
     __table_args__ = (
         db.PrimaryKeyConstraint('id', name='account_integrate_pkey'),
-        db.UniqueConstraint('account_id', 'provider', name='unique_account_provider'),
-        db.UniqueConstraint('provider', 'open_id', name='unique_provider_open_id')
+        db.UniqueConstraint('account_id', 'provider', 'id', name='unique_account_provider'),
+        db.UniqueConstraint('provider', 'open_id', 'id', name='unique_provider_open_id')
     )
 
     id = db.Column(StringUUID, server_default=db.text('uuid_generate_v4()'))
