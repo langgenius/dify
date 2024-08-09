@@ -94,8 +94,6 @@ const CardView: FC<ICardViewProps> = ({ appId }) => {
       localStorage.setItem(NEED_REFRESH_APP_LIST_KEY, '1')
 
     if (systemFeatures.enable_web_sso_switch_component) {
-      // backend service does not get userId from session or gateway, so we need to pass userId to backend
-      // we should remove this when backend service can get userId from session or gateway
       const [sso_err] = await asyncRunSafe<AppSSO>(
         updateAppSSO({ id: appId, enabled: params.enable_sso }) as Promise<AppSSO>,
       )
