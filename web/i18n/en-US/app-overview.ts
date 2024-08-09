@@ -53,6 +53,12 @@ const translation = {
         chatColorThemeDesc: 'Set the color theme of the chatbot',
         chatColorThemeInverted: 'Inverted',
         invalidHexMessage: 'Invalid hex value',
+        sso: {
+          label: 'SSO ENFORCEMENT',
+          title: 'Web Application SSO',
+          description: 'All users are required to login with SSO before using web application',
+          tooltip: 'Contact the administrator to enable Web Application SSO',
+        },
         more: {
           entry: 'Show more settings',
           copyright: 'Copyright',

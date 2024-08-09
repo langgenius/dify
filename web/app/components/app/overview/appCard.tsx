@@ -27,10 +27,11 @@ import ShareQRCode from '@/app/components/base/qrcode'
 import SecretKeyButton from '@/app/components/develop/secret-key/secret-key-button'
 import type { AppDetailResponse } from '@/models/app'
 import { useAppContext } from '@/context/app-context'
+import type { AppSSO } from '@/types/app'
 
 export type IAppCardProps = {
   className?: string
-  appInfo: AppDetailResponse
+  appInfo: AppDetailResponse & Partial<AppSSO>
   cardType?: 'api' | 'webapp'
   customBgColor?: string
   onChangeStatus: (val: boolean) => Promise<void>
