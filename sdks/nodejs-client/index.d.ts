@@ -241,6 +241,7 @@ export interface DatasetDocumentDataSource_WebsiteCrawl {
 
 export type DatasetDocumentDataSource = DatasetDocumentDataSource_UploadFile | DatasetDocumentDataSource_WebsiteCrawl;
 export type DatasetDocumentIndexingStatus = 'waiting' | 'indexing' | 'completed' | 'error' | 'paused' | 'splitting' | 'parsing';
+export type DatasetDocumentDocumentForm = 'text_model' | 'qa_model';
 
 export type DatasetDocument = DatasetDocumentDataSource & {
   id: string;
@@ -261,15 +262,27 @@ export type DatasetDocument = DatasetDocumentDataSource & {
   display_status: 'queuing' | 'paused' | 'indexing' | 'error' | 'available' | 'disabled' | 'archived';
   word_count: number;
   hit_count: number;
-  doc_form: 'text_model';
+  doc_form: DatasetDocumentDocumentForm;
 }
 
-// --- CreateTextDocument ---
+// --- Create Document ---
 export interface CreateDocumentByTextOptions {
   name: string;
   text: string;
   indexing_technique?: DatasetIndexingTechnique;
   process_rule?: DatasetProcessRule;
+  /**
+   * Document segmenting format.
+   * Available options:
+   * - Text model: Normal segmenting strategy
+   * - Q&A model: Segment in Question & Answer format. Note: this will consume more tokens.
+  */
+  doc_form?: DatasetDocumentDocumentForm;
+  /** 
+   * Doc language, e.g. `Chinese Simplified`. For available options, please refer to Dify UI for now.
+   * Only requied when `doc_form` is `qa_model`.
+   */
+  doc_language?: string;
 }
 
 export interface CreateDocumentByFileOptions {
@@ -287,6 +300,18 @@ export interface CreateDocumentByFileOptions {
    * File to be uploaded. Can be a `ReadStream` (returned by `fs.createReadStream()`) or a filename string.
   */
   file: ReadStream | string;
+  /**
+   * Document segmenting format.
+   * Available options:
+   * - Text model: Normal segmenting strategy
+   * - Q&A model: Segment in Question & Answer format. Note: this will consume more tokens.
+  */
+  doc_form?: DatasetDocumentDocumentForm;
+  /** 
+   * Doc language, e.g. `Chinese Simplified`. For available options, please refer to Dify UI for now.
+   * Only requied when `doc_form` is `qa_model`.
+   */
+  doc_language?: string;
 }
 export interface CreateDocumentReturn {
   document: DatasetDocument;
@@ -335,7 +360,7 @@ export interface DocumentSegmentData {
 }
 export interface DocumentSegments {
   data: DocumentSegmentData[];
-  doc_form: 'text_model';
+  doc_form: DatasetDocumentDocumentForm;
 }
 
 // --- Add segment ---
