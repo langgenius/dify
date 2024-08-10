@@ -1,7 +1,7 @@
 identity:
   author: alterxyz
   name: ytelegraph
-  label: # 标签，用于前端展示
+  label:
     en_US: Telegraph
     zh_Hans: Telegraph
   description:
