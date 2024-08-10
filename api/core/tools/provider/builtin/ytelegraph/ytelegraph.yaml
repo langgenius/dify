@@ -1,0 +1,27 @@
+identity:
+  author: alterxyz
+  name: ytelegraph
+  label: # 标签，用于前端展示
+    en_US: Telegraph
+    zh_Hans: Telegraph
+  description:
+    en_US: A publishing tool that lets you create posts on Telegraph
+    zh_Hans: 一个可以让你在Telegraph上创建帖子的发布工具
+  icon: icon.svg
+  tags:
+    - social
+    - utilities
+credentials_for_provider:
+  access_token:
+    type: secret-input
+    required: true
+    label:
+      en_US: Access Token
+      zh_Hans: Access Token
+    placeholder:
+      en_US: Please enter your Telegraph account access token
+      zh_Hans: 请输入你的Telegraph账户访问令牌
+    help:
+      en_US: Get your Telegraph account access token from Telegraph
+      zh_Hans: 从Telegraph获取你的Telegraph账户访问令牌
+    url: https://alterxyz.org/766355

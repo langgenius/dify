@@ -1,0 +1,60 @@
+identity: # 工具的基本信息
+  name: ytg_create_page
+  author: alterxyz
+  label: # 标签，用于前端展示
+    en_US: TelegraphCreatePage # 英文标签
+    zh_Hans: Telegraph创建页面 # 中文标签
+description: # 描述，用于前端展示
+  human: # 用于前端展示的介绍，支持多语言
+    en_US: A tool for creating a page on Telegraph.
+    zh_Hans: 一个用于创建 Telegraph 页面的工具。
+  llm: A tool for creating a page on Telegraph. This tool will create a web blog post on Telegraph. The content format defaults to Markdown.  # 传递给LLM的介绍，同上，为了使得LLM更好理解这个参数，我们建议在这里写上关于这个参数尽可能详细的信息，让LLM能够理解这个参数
+parameters: # 参数列表
+  - name: title # 参数名称
+    type: string # 参数类型
+    required: true # 是否必填
+    label: # 参数标签
+      en_US: Title # 英文标签
+      zh_Hans: 标题 # 中文标签
+    human_description: # 用于前端展示的介绍，支持多语言
+      en_US: used for creating a page
+      zh_Hans: 用于创建页面的标题
+    llm_description: title for creating a page / blog post  # 传递给LLM的介绍，同上，为了使得LLM更好理解这个参数，我们建议在这里写上关于这个参数尽可能详细的信息，让LLM能够理解这个参数
+    form: llm # 这里使用llm是可以让LLM自行生成标题
+  - name: content
+    type: string
+    required: true
+    label:
+      en_US: Content of the page
+      zh_Hans: 文章内容
+    human_description: 
+      en_US: used for creating a page
+      zh_Hans: 用于创建页面的内容
+    llm_description: content for creating a page / blog post
+    form: llm
+  - name: author_name
+    type: string
+    required: false
+    label:
+      en_US: Author Name
+      zh_Hans: 作者名称
+    human_description:
+      en_US: Optional. Author name displayed below the article's title.
+      zh_Hans: 可选。显示在文章标题下方的作者名称。
+    llm_description: Author name, 0-128 characters in length. If not provided, the default name associated with the account will be used.
+    form: llm
+    max_length: 128
+  - name: author_url
+    type: string
+    required: false
+    label:
+      en_US: Author URL
+      zh_Hans: 作者链接
+    human_description:
+      en_US: Optional. Profile link for the author, opened when users click on the author's name below the title.
+      zh_Hans: 可选。作者的个人资料链接，当用户点击标题下方的作者名称时打开。
+    llm_description: Profile link for the author, 0-512 characters in length. Can be any link, not necessarily a Telegram profile or channel link.
+    form: llm
+    max_length: 512
+
+
