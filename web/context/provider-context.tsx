@@ -111,6 +111,7 @@ export const ProviderContextProvider = ({
 
   const fetchPlan = async () => {
     const data = await fetchCurrentPlanInfo();
+    console.log("curent plan info", data);
     const enabled = data.billing.enabled;
     setEnableBilling(enabled);
     setEnableReplaceWebAppLogo(data.can_replace_logo);

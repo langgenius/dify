@@ -6,6 +6,8 @@ class ApiKeyAuthFactory:
 
     def __init__(self, provider: str, credentials: dict):
         if provider == 'firecrawl':
+            print("------------------------------------")
+            print("credentials", credentials)
             self.auth = FirecrawlAuth(credentials)
         else:
             raise ValueError('Invalid provider')

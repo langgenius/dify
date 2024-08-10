@@ -178,7 +178,7 @@ class BillingService:
                "limit" : int(max_apps)
                 },
            "vector_space" : {
-               "size" :  int(cur_vector_space) ,
+               "size" :  cur_vector_space ,
                "limit" : int(max_vector_space)
                 },
            "documents_upload_quota" : {
