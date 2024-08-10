@@ -1,14 +1,13 @@
-from core.tools.provider.builtin_tool_provider import BuiltinToolProviderController
-from core.tools.errors import ToolProviderCredentialValidationError
-
-from core.tools.provider.builtin.ytelegraph.tools.ytg_create_page import YTGCreatePage
 import time
+from typing import Any
 
-from typing import Any, Dict
+from core.tools.errors import ToolProviderCredentialValidationError
+from core.tools.provider.builtin.ytelegraph.tools.ytg_create_page import YTGCreatePage
+from core.tools.provider.builtin_tool_provider import BuiltinToolProviderController
 
 
 class YTelegraphProviderController(BuiltinToolProviderController):
-    def _validate_credentials(self, credentials: Dict[str, Any]) -> None:
+    def _validate_credentials(self, credentials: dict[str, Any]) -> None:
         try:
             YTGCreatePage().fork_tool_runtime(runtime={'credentials': credentials}).invoke(
                 user_id='',
