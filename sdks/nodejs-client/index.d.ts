@@ -1,8 +1,10 @@
+import { Method } from "axios";
 import type { ReadStream } from "fs";
 
 // Types.d.ts
 export const BASE_URL: string;
-
+// FIXME: Clearer type definition
+export const routes: Record<string, { method: Method, url: (..._: any) => string }>;
 export type RequestMethods = 'GET' | 'POST' | 'PATCH' | 'DELETE';
 
 interface Params {
@@ -23,7 +25,17 @@ export interface DifyApiError {
 }
 
 export declare class DifyClient {
-  constructor(apiKey: string, baseUrl?: string);
+  constructor(
+    apiKey: string,
+    /** 
+     * The API base url.
+     * @default `https://api.dify.ai/v1`
+     */
+    baseUrl?: string
+  );
+
+  readonly apiKey: string;
+  readonly baseUrl: string;
 
   updateApiKey(apiKey: string): void;
 
@@ -398,7 +410,7 @@ export declare class DatasetClient extends DifyClient {
    * Query the Knowledge list.
    * @throws {DifyApiError}
    */
-  listDatasets(params: PaginationParams): Promise<PaginationResponse<Dataset>>;
+  listDatasets(params?: PaginationParams): Promise<PaginationResponse<Dataset>>;
 
   /** 
    * Delete a Knowledge.
@@ -461,13 +473,13 @@ export declare class DatasetClient extends DifyClient {
    * Get Knowledge document list
    * @throws {DifyApiError}
    */
-  listDocuments(dataset_id: string, params: PaginationParams): Promise<PaginationResponse<DatasetDocument>>;
+  listDocuments(dataset_id: string, params?: PaginationParams): Promise<PaginationResponse<DatasetDocument>>;
 
   /**
    * Add segment
    * @throws {DifyApiError}
    */
-  addSegment(dataset_id: string, document_id: string, options: AddSegmentOptions): Promise<DocumentSegments>;
+  addDocumentSegment(dataset_id: string, document_id: string, options: AddSegmentOptions): Promise<DocumentSegments>;
 
   /** 
    * Get document segments
