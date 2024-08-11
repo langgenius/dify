@@ -664,3 +664,7 @@ button:focus-within {
 @import '../components/base/modal/index.css';
 
 @tailwind utilities;
+
+#dify-chatbot-bubble-button {
+  background-color: #1C64F2 !important;
+}

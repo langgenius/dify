@@ -30,12 +30,29 @@ const LocaleLayout = ({ children }: { children: React.ReactNode }) => {
         <meta name="mobile-web-app-capable" content="yes" />
         <meta name="apple-mobile-web-app-capable" content="yes" />
         <meta name="apple-mobile-web-app-status-bar-style" content="default" />
-        <style>{`
+        {/* <style>{`
           #dify-chatbot-bubble-button {
             background-color: #1C64F2 !important;
           }
-        `}</style>
+        `}</style> */}
+        <script
+          dangerouslySetInnerHTML={{
+            __html: `
+              window.difyChatbotConfig = { 
+                token: 'kF3vftmb6m6LRsSW', 
+                isDev: true  , 
+                baseUrl : "http://127.0.0.1:3000/"
+              }
+            `,
+          }}
+        />
+        <script
+          src="http://127.0.0.1:3000/embed.min.js"
+          id="kF3vftmb6m6LRsSW"
+          defer
+        />
       </head>
+
       <body
         className="h-full select-auto"
         data-api-prefix={process.env.NEXT_PUBLIC_API_PREFIX}

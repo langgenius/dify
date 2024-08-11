@@ -83,13 +83,13 @@ export const SidebarBody = ({ items }: SidebarBodyProps) => {
   return (
     <motion.div
       className={cn(
-        "px-2 py-4 flex flex-col flex-shrink-0 bg-gray-200 flex-nowrap border-x border-gray-300 border fixed h-screen left-0 top-0 z-10"
+        "px-2 py-4 flex flex-col flex-shrink-0 backdrop-blur-md  flex-nowrap border-x border-gray-300 border fixed h-screen left-0 top-0 z-10"
       )}
       initial={{ width: "60px" }}
       animate={{ width: isOpen && !isMobile ? "200px" : "60px" }}
       onHoverStart={() => !isMobile && setIsOpen(true)}
       onHoverEnd={() => !isMobile && setIsOpen(false)}
-      transition={{ duration: 0.15 }}
+      transition={{ duration: 0.2 }}
     >
       <div className="flex flex-col h-full">
         <div className="flex flex-col gap-2 flex-grow">
@@ -116,16 +116,22 @@ export const SidebarBody = ({ items }: SidebarBodyProps) => {
                     ? item.activeIcon
                     : item.inactiveIcon}
                 </div>
-                {isOpen && !isMobile && (
-                  <div
-                    className={cn(
-                      "text-sm",
-                      activeLink === item.href && "font-medium"
-                    )}
-                  >
-                    {item.label}
-                  </div>
-                )}
+                <AnimatePresence>
+                  {isOpen && !isMobile && (
+                    <motion.div
+                      initial={{ x: -5 }}
+                      animate={{ x: 0 }}
+                      exit={{ x: -5 }}
+                      transition={{ duration: 0.1, ease: "linear" }}
+                      className={cn(
+                        "text-sm",
+                        activeLink === item.href && "font-medium"
+                      )}
+                    >
+                      {item.label}
+                    </motion.div>
+                  )}
+                </AnimatePresence>
               </Link>
             );
           })}

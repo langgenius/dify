@@ -31,9 +31,6 @@ class FirecrawlAuth(ApiKeyAuthBase):
             }
         }
         response = self._post_request(f'{self.base_url}/v0/crawl', options, headers)
-        print("Fire crawl response ------------------------------------")
-        print(response.status_code)
-        print(response.text)
         
         if response.status_code == 200:
             return True
@@ -41,9 +38,6 @@ class FirecrawlAuth(ApiKeyAuthBase):
             self._handle_error(response)
 
     def _prepare_headers(self):
-        print("-----------------------------------------")
-        print('api key ')
-        print("self.api_key", self.api_key)
         return {
             'Content-Type': 'application/json',
             'Authorization': f'Bearer {self.api_key}'
