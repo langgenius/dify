@@ -42,6 +42,66 @@ export const routes = {
     method: "POST",
     url: () => `/workflows/run`,
   },
+  createDataset: {
+    method: "POST",
+    url: () => `/datasets`,
+  },
+  listDatasets: {
+    method: "GET",
+    url: () => `/datasets`,
+  },
+  deleteDataset: {
+    method: "DELETE",
+    url: (dataset_id) => `/datasets/${dataset_id}`,
+  },
+  createDocumentByText: {
+    method: "POST",
+    url: (dataset_id) => `/datasets/${dataset_id}/document/create_by_text`,
+  },
+  createDocumentByFile: {
+    method: "POST",
+    url: (dataset_id) => `/datasets/${dataset_id}/document/create_by_file`,
+  },
+  updateDocumentByText: {
+    method: "POST",
+    url: (dataset_id, document_id) =>
+      `/datasets/${dataset_id}/documents/${document_id}/update_by_text`,
+  },
+  updateDocumentByFile: {
+    method: "POST",
+    url: (dataset_id, document_id) =>
+      `/datasets/${dataset_id}/documents/${document_id}/update_by_file`,
+  },
+  getDocumentEmbeddingStatus: {
+    method: "GET",
+    url: (dataset_id, batch) =>
+      `/datasets/${dataset_id}/documents/${batch}/indexing-status`,
+  },
+  deleteDocument: {
+    method: "DELETE",
+    url: (dataset_id, document_id) =>
+      `/datasets/${dataset_id}/documents/${document_id}`,
+  },
+  listDocuments: {
+    method: "GET",
+    url: (dataset_id) => `/datasets/${dataset_id}/documents`,
+  },
+  addDocumentSegment: {
+    method: "POST",
+    url: (dataset_id, document_id) => `/datasets/${dataset_id}/documents/${document_id}/segments`,
+  },
+  getDocumentSegments: {
+    method: "GET",
+    url: (dataset_id, document_id) => `/datasets/${dataset_id}/documents/${document_id}/segments`,
+  },
+  deleteDocumentSegment: {
+    method: "DELETE",
+    url: (dataset_id, document_id, segment_id) => `/datasets/${dataset_id}/documents/${document_id}/segments/${segment_id}`,
+  },
+  updateDocumentSegment: {
+    method: "POST",
+    url: (dataset_id, document_id, segment_id) => `/datasets/${dataset_id}/documents/${document_id}/segments/${segment_id}`,
+  },
 };
 
 export class DifyClient {
@@ -80,6 +140,7 @@ export class DifyClient {
         params,
         headers,
         responseType: "stream",
+        validateStatus: false,
       });
     } else {
       response = await axios({
@@ -89,7 +150,18 @@ export class DifyClient {
         params,
         headers,
         responseType: "json",
+        validateStatus: false,
       });
+    }
+
+    if (!response) {
+      throw new Error("No response from server");
+    }
+
+    if (response?.data.code !== undefined && response.data.code !== 200) {
+      throw new Error(
+        `${response.data.status} ${response.data.code}: ${response.data.message}`
+      );
     }
 
     return response;
@@ -238,6 +310,121 @@ export class ChatClient extends DifyClient {
       routes.deleteConversation.method,
       routes.deleteConversation.url(conversation_id),
       data
+    );
+  }
+}
+
+export class DatasetClient extends DifyClient {
+  async createDataset(name) {
+    const data = { name };
+    
+    return this.sendRequest(
+      routes.createDataset.method,
+      routes.createDataset.url(),
+      data,
+    );
+  }
+
+  async listDatasets(params) {
+    return this.sendRequest(
+      routes.listDatasets.method,
+      routes.listDatasets.url(),
+      null,
+      params,
+    );
+  }
+
+  async deleteDataset(dataset_id) {
+    return this.sendRequest(
+      routes.deleteDataset.method,
+      routes.deleteDataset.url(dataset_id),
+    );
+  }
+
+  async createDocumentByText(dataset_id, options) {
+    return this.sendRequest(
+      routes.createDocumentByText.method,
+      routes.createDocumentByText.url(dataset_id),
+      options,
+    );
+  }
+
+  async createDocumentByFile(dataset_id, options) {
+    return this.sendRequest(
+      routes.createDocumentByFile.method,
+      routes.createDocumentByFile.url(dataset_id),
+      options,
+    );
+  }
+
+  async updateDocumentByText(dataset_id, document_id, options) {
+    return this.sendRequest(
+      routes.updateDocumentByText.method,
+      routes.updateDocumentByText.url(dataset_id, document_id),
+      options,
+    );
+  }
+
+  async updateDocumentByFile(dataset_id, document_id, options) {
+    return this.sendRequest(
+      routes.updateDocumentByFile.method,
+      routes.updateDocumentByFile.url(dataset_id, document_id),
+      options,
+    );
+  }
+
+  async getDocumentEmbeddingStatus(dataset_id, batch) {
+    return this.sendRequest(
+      routes.getDocumentEmbeddingStatus.method,
+      routes.getDocumentEmbeddingStatus.url(dataset_id, batch),
+    );
+  }
+
+  async deleteDocument(dataset_id, document_id) {
+    return this.sendRequest(
+      routes.deleteDocument.method,
+      routes.deleteDocument.url(dataset_id, document_id),
+    );
+  }
+
+  async listDocuments(dataset_id, params) {
+    return this.sendRequest(
+      routes.listDocuments.method,
+      routes.listDocuments.url(dataset_id),
+      null,
+      params,
+    );
+  }
+
+  async addDocumentSegment(dataset_id, document_id, options) {
+    return this.sendRequest(
+      routes.addDocumentSegment.method,
+      routes.addDocumentSegment.url(dataset_id, document_id),
+      options,
+    );
+  }
+
+  async getDocumentSegments(dataset_id, document_id, params) {
+    return this.sendRequest(
+      routes.getDocumentSegments.method,
+      routes.getDocumentSegments.url(dataset_id, document_id),
+      null,
+      params,
+    );
+  }
+
+  async deleteDocumentSegment(dataset_id, document_id, segment_id) {
+    return this.sendRequest(
+      routes.deleteDocumentSegment.method,
+      routes.deleteDocumentSegment.url(dataset_id, document_id, segment_id),
+    );
+  }
+
+  async updateDocumentSegment(dataset_id, document_id, segment_id, options) {
+    return this.sendRequest(
+      routes.updateDocumentSegment.method,
+      routes.updateDocumentSegment.url(dataset_id, document_id, segment_id),
+      options,
     );
   }
 }
