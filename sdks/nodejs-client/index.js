@@ -1,4 +1,8 @@
 import axios from "axios";
+import { ReadStream, createReadStream } from "node:fs";
+import { mergeDefaultOptions } from "./utils.js";
+import FormData from "form-data";
+
 export const BASE_URL = "https://api.dify.ai/v1";
 
 export const routes = {
@@ -175,7 +179,7 @@ export class DifyClient {
     return this.sendRequest(
       routes.feedback.method,
       routes.feedback.url(message_id),
-      data
+      data,
     );
   }
 
@@ -317,7 +321,7 @@ export class ChatClient extends DifyClient {
 export class DatasetClient extends DifyClient {
   async createDataset(name) {
     const data = { name };
-    
+
     return this.sendRequest(
       routes.createDataset.method,
       routes.createDataset.url(),
@@ -342,19 +346,65 @@ export class DatasetClient extends DifyClient {
   }
 
   async createDocumentByText(dataset_id, options) {
+    const defaultOptions = {
+      process_rule: {
+        rules: {
+          pre_processing_rules: [],
+          segmentation: {
+            separator: "\n",
+            max_tokens: 1000,
+          }
+        }
+      }
+    }
+
     return this.sendRequest(
       routes.createDocumentByText.method,
       routes.createDocumentByText.url(dataset_id),
-      options,
+      mergeDefaultOptions(defaultOptions, options),
     );
   }
 
   async createDocumentByFile(dataset_id, options) {
+    if (!options?.file) {
+      throw new Error("No file provided");
+    }
+    let readStream;
+    if (typeof options.file === "string") {
+      readStream = createReadStream(options.file);
+    } else if (options.file instanceof ReadStream) {
+      readStream = options.file;
+    } else {
+      throw new Error("Invalid file provided. Accepts string or ReadStream");
+    }
+    const defaultOptions = {
+      process_rule: {
+        rules: {
+          pre_processing_rules: [],
+          segmentation: {
+            separator: "\n",
+            max_tokens: 1000,
+          }
+        }
+      }
+    }
+    // Make a copy of options without the file property
+    const _options = { ...options };
+    delete _options.file;
+
+    const data = new FormData();
+
+    data.append("file", readStream);
+    data.append("data", JSON.stringify(mergeDefaultOptions(defaultOptions, _options)));
+
     return this.sendRequest(
       routes.createDocumentByFile.method,
       routes.createDocumentByFile.url(dataset_id),
-      options,
-    );
+      data,
+      null,
+      false,
+      data.getHeaders(),
+    )
   }
 
   async updateDocumentByText(dataset_id, document_id, options) {
@@ -366,10 +416,34 @@ export class DatasetClient extends DifyClient {
   }
 
   async updateDocumentByFile(dataset_id, document_id, options) {
+    if (!options?.file) {
+      throw new Error("No file provided");
+    }
+    let readStream;
+    if (typeof options.file === "string") {
+      readStream = createReadStream(options.file);
+    } else if (options.file instanceof ReadStream) {
+      readStream = options.file;
+    } else {
+      throw new Error("Invalid file provided. Accepts string or ReadStream");
+    }
+
+    const data = new FormData();
+    data.append("file", readStream);
+    if (options.name) {
+      data.append("name", options.name);
+    }
+    if (options.process_rule) {
+      data.append("process_rule", JSON.stringify(options.process_rule));
+    }
+
     return this.sendRequest(
       routes.updateDocumentByFile.method,
       routes.updateDocumentByFile.url(dataset_id, document_id),
-      options,
+      data,
+      null,
+      false,
+      data.getHeaders(),
     );
   }
 

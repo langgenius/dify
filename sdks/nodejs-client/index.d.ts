@@ -112,27 +112,29 @@ export type DatasetProcessRule =
   | { mode: 'automatic' }
   | {
     mode: 'custom';
-    pre_processing_rules?: Array<{
-      /**
-       *  Unique identifier for the preprocessing rule.
-       * - `remove_extra_spaces`: Replace consecutive spaces, newlines, tabs
-       * - `remove_urls_emails`: Remove URLs and emails
-       */
-      id: 'remove_extra_spaces' | 'remove_urls_emails';
-      enabled: boolean;
-    }>;
-    /** Segmentation rules */
-    segmentation?: {
-      /**
-       * Custom segment identifier, currently only allows one delimiter to be set. Default is `\n`
-       * @default '\n'
-       */
-      separator?: string;
-      /**
-       *  Maximum length (tokens). Defaults to 1000.
-       * @default 1000
-       */
-      max_tokens?: number;
+    rules?: {
+      pre_processing_rules?: Array<{
+        /**
+         *  Unique identifier for the preprocessing rule.
+         * - `remove_extra_spaces`: Replace consecutive spaces, newlines, tabs
+         * - `remove_urls_emails`: Remove URLs and emails
+         */
+        id: 'remove_extra_spaces' | 'remove_urls_emails';
+        enabled: boolean;
+      }>;
+      /** Segmentation rules */
+      segmentation?: {
+        /**
+         * Custom segment identifier, currently only allows one delimiter to be set. Default is `\n`
+         * @default '\n'
+         */
+        separator?: string;
+        /**
+         *  Maximum length (tokens). Defaults to 1000.
+         * @default 1000
+         */
+        max_tokens?: number;
+      }
     }
   };
 export interface DatasetRetrievalModel {
@@ -281,8 +283,8 @@ export type DatasetDocument = DatasetDocumentDataSource & {
 export interface CreateDocumentByTextOptions {
   name: string;
   text: string;
-  indexing_technique?: DatasetIndexingTechnique;
-  process_rule?: DatasetProcessRule;
+  indexing_technique: DatasetIndexingTechnique;
+  process_rule: DatasetProcessRule;
   /**
    * Document segmenting format.
    * Available options:
@@ -306,8 +308,8 @@ export interface CreateDocumentByFileOptions {
    * - When original_document_id is not passed in, the new operation is performed on behalf of the document, and process_rule is required
   */
   original_document_id?: string;
-  indexing_technique?: DatasetIndexingTechnique;
-  process_rule?: DatasetProcessRule;
+  indexing_technique: DatasetIndexingTechnique;
+  process_rule: DatasetProcessRule;
   /**
    * File to be uploaded. Can be a `ReadStream` (returned by `fs.createReadStream()`) or a filename string.
   */
@@ -328,6 +330,13 @@ export interface CreateDocumentByFileOptions {
 export interface CreateDocumentReturn {
   document: DatasetDocument;
   batch: string;
+}
+
+// --- Update Document ---
+export interface UpdateDocumentOptions {
+  name?: string;
+  file: ReadStream | string;
+  process_rule?: DatasetProcessRule;
 }
 
 // --- DatasetDocument embedding status ---
@@ -450,7 +459,7 @@ export declare class DatasetClient extends DifyClient {
   updateDocumentByFile(
     dataset_id: string,
     document_id: string,
-    options: Partial<CreateDocumentByFileOptions> & { name?: string }
+    options: UpdateDocumentOptions
   ): Promise<CreateDocumentReturn>;
 
   /**
