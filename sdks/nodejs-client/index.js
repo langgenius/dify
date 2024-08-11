@@ -164,7 +164,7 @@ export class DifyClient {
       );
     }
 
-    return response;
+    return response.data;
   }
 
   messageFeedback(message_id, rating, user) {
