@@ -2,7 +2,7 @@
 import Link from "next/link";
 import React, { createContext, useContext, useState, useEffect } from "react";
 import { AnimatePresence, motion } from "framer-motion";
-import { cn } from "@/lib/utils";
+import { cn } from "../../../lib/utils";
 import { usePathname } from "next/navigation";
 import { RiSettings3Fill, RiSettings3Line } from "@remixicon/react";
 import LogoSite from "../base/logo/logo-site";
