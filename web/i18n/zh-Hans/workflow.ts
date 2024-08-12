@@ -149,6 +149,7 @@ const translation = {
   tabs: {
     'searchBlock': '搜索节点',
     'blocks': '节点',
+    'searchTool': '搜索工具',
     'tools': '工具',
     'allTool': '全部',
     'builtInTool': '内置',
