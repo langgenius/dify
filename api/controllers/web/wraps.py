@@ -59,18 +59,18 @@ def decode_jwt_token():
 
         return app_model, end_user
     except Unauthorized as e:
-        app_web_sso_enabled = EnterpriseService.get_app_web_sso_enabled(app_code).get('enabled', False)
-        if system_features.sso_enforced_for_web and app_web_sso_enabled:
-            raise WebSSOAuthRequiredError()
+        if system_features.sso_enforced_for_web:
+            app_web_sso_enabled = EnterpriseService.get_app_web_sso_enabled(app_code).get('enabled', False)
+            if app_web_sso_enabled:
+                raise WebSSOAuthRequiredError()
 
         raise Unauthorized(e.description)
 
 
 def _validate_web_sso_token(decoded, system_features, app_code):
-    app_web_sso_enabled = EnterpriseService.get_app_web_sso_enabled(app_code).get('enabled', False)
-
     # Check if SSO is enforced for web, and if the token source is not SSO, raise an error and redirect to SSO login
     if system_features.sso_enforced_for_web:
+        app_web_sso_enabled = EnterpriseService.get_app_web_sso_enabled(app_code).get('enabled', False)
         if app_web_sso_enabled:
             source = decoded.get('token_source')
             if not source or source != 'sso':
