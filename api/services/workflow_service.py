@@ -148,7 +148,8 @@ class WorkflowService:
             graph=draft_workflow.graph,
             features=draft_workflow.features,
             created_by=account.id,
-            environment_variables=draft_workflow.environment_variables
+            environment_variables=draft_workflow.environment_variables,
+            conversation_variables=draft_workflow.conversation_variables,
         )
 
         # commit db session changes
@@ -339,7 +340,7 @@ class WorkflowService:
         )
         if not workflow_nodes:
             return elapsed_time
-        
+
         for node in workflow_nodes:
             elapsed_time += node.elapsed_time
 
