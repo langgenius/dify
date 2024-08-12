@@ -554,7 +554,8 @@ const translation = {
   },
   fileUploader: {
     uploadFromComputer: 'Local upload',
-    pasteImageLink: 'Paste file link',
+    pasteFileLink: 'Paste file link',
+    pasteFileLinkInputPlaceholder: 'Enter URL...',
   },
   tag: {
     placeholder: 'All Tags',

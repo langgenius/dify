@@ -87,6 +87,7 @@ const ChatInputArea = ({
       ref={holdSpaceRef}
       speechToTextConfig={speechToTextConfig}
       onShowVoiceInput={handleShowVoiceInput}
+      onSend={handleSend}
     />
   )
 

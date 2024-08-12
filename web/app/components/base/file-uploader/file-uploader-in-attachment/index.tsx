@@ -37,7 +37,7 @@ const FileUploaderInAttachment = () => {
       <Button
         key={option.value}
         variant='tertiary'
-        className={cn('grow', open && 'bg-components-button-tertiary-bg-hover')}
+        className={cn('basis-1/2', open && 'bg-components-button-tertiary-bg-hover')}
       >
         {option.icon}
         <span className='ml-1'>{option.label}</span>

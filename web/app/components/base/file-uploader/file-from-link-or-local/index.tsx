@@ -44,7 +44,7 @@ const FileFromLinkOrLocal = ({
               <div className='flex items-center p-1 h-8 bg-components-input-bg-active border border-components-input-border-active rounded-lg shadow-xs'>
                 <input
                   className='grow block mr-0.5 px-1 bg-transparent system-sm-regular outline-none appearance-none'
-                  placeholder='Enter URL...'
+                  placeholder={t('common.fileUploader.pasteFileLinkInputPlaceholder') || ''}
                   value={url}
                   onChange={e => setUrl(e.target.value)}
                 />

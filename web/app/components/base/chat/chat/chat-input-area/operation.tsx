@@ -17,10 +17,12 @@ import cn from '@/utils/classnames'
 type OperationProps = {
   speechToTextConfig?: EnableType
   onShowVoiceInput?: () => void
+  onSend: () => void
 }
 const Operation = forwardRef<HTMLDivElement, OperationProps>(({
   speechToTextConfig,
   onShowVoiceInput,
+  onSend,
 }, ref) => {
   return (
     <div
@@ -48,6 +50,7 @@ const Operation = forwardRef<HTMLDivElement, OperationProps>(({
         <Button
           className='ml-3 px-0 w-8'
           variant='primary'
+          onClick={onSend}
         >
           <RiSendPlane2Fill className='w-4 h-4' />
         </Button>

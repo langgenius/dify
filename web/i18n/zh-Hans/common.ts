@@ -551,6 +551,7 @@ const translation = {
   fileUploader: {
     uploadFromComputer: '从本地上传',
     pasteFileLink: '粘贴文件链接',
+    pasteFileLinkInputPlaceholder: '输入文件链接',
   },
   tag: {
     placeholder: '全部标签',
