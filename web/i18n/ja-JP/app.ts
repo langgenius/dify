@@ -94,7 +94,7 @@ const translation = {
     title: 'アプリのパフォーマンスの追跡',
     description: 'サードパーティのLLMOpsサービスとトレースアプリケーションのパフォーマンス設定を行います。',
     config: '設定',
-    collapse: 'Collapse',
+    collapse: '折りたたむ',
     expand: '展開',
     tracing: '追跡',
     disabled: '無効しました',

@@ -81,6 +81,42 @@ const translation = {
     workflow: '워크플로우',
     completion: '완성',
   },
+  tracing: {
+    title: '앱 성능 추적',
+    description: '제3자 LLMOps 제공업체 구성 및 앱 성능 추적.',
+    config: '구성',
+    collapse: '접기',
+    expand: '펼치기',
+    tracing: '추적',
+    disabled: '비활성화됨',
+    disabledTip: '먼저 제공업체를 구성해 주세요',
+    enabled: '서비스 중',
+    tracingDescription: 'LLM 호출, 컨텍스트, 프롬프트, HTTP 요청 등 앱 실행의 전체 컨텍스트를 제3자 추적 플랫폼에 캡처합니다.',
+    configProviderTitle: {
+      configured: '구성됨',
+      notConfigured: '추적을 활성화하려면 제공업체를 구성하세요',
+      moreProvider: '더 많은 제공업체',
+    },
+    langsmith: {
+      title: 'LangSmith',
+      description: 'LLM 기반 애플리케이션 수명 주기의 모든 단계를 위한 올인원 개발자 플랫폼.',
+    },
+    langfuse: {
+      title: 'Langfuse',
+      description: 'LLM 애플리케이션을 디버그하고 개선하기 위한 추적, 평가, 프롬프트 관리 및 메트릭.',
+    },
+    inUse: '사용 중',
+    configProvider: {
+      title: '구성 ',
+      placeholder: '{{key}}를 입력하세요',
+      project: '프로젝트',
+      publicKey: '공개 키',
+      secretKey: '비밀 키',
+      viewDocsLink: '{{key}} 문서 보기',
+      removeConfirmTitle: '{{key}} 구성을 제거하시겠습니까?',
+      removeConfirmContent: '현재 구성이 사용 중입니다. 제거하면 추적 기능이 꺼집니다.',
+    },
+  },
 }
 
 export default translation

@@ -85,6 +85,42 @@ const translation = {
     workflow: 'Робочий процес',
     completion: 'Завершення',
   },
+  tracing: {
+    title: 'Відстеження продуктивності додатку',
+    description: 'Налаштування стороннього провайдера LLMOps та відстеження продуктивності додатку.',
+    config: 'Налаштувати',
+    collapse: 'Згорнути',
+    expand: 'Розгорнути',
+    tracing: 'Відстеження',
+    disabled: 'Вимкнено',
+    disabledTip: 'Спочатку налаштуйте провайдера',
+    enabled: 'В роботі',
+    tracingDescription: 'Захоплення повного контексту виконання додатку, включаючи виклики LLM, контекст, підказки, HTTP-запити та інше, на сторонню платформу відстеження.',
+    configProviderTitle: {
+      configured: 'Налаштовано',
+      notConfigured: 'Налаштуйте провайдера для увімкнення відстеження',
+      moreProvider: 'Більше провайдерів',
+    },
+    langsmith: {
+      title: 'LangSmith',
+      description: 'Універсальна платформа розробника для кожного етапу життєвого циклу додатку на основі LLM.',
+    },
+    langfuse: {
+      title: 'Langfuse',
+      description: 'Трасування, оцінки, управління підказками та метрики для налагодження та покращення вашого LLM-додатку.',
+    },
+    inUse: 'Використовується',
+    configProvider: {
+      title: 'Налаштувати ',
+      placeholder: 'Введіть ваш {{key}}',
+      project: 'Проект',
+      publicKey: 'Публічний ключ',
+      secretKey: 'Секретний ключ',
+      viewDocsLink: 'Переглянути документацію {{key}}',
+      removeConfirmTitle: 'Видалити налаштування {{key}}?',
+      removeConfirmContent: 'Поточне налаштування використовується, його видалення вимкне функцію Відстеження.',
+    },
+  },
 }
 
 export default translation
