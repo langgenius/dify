@@ -338,11 +338,7 @@ class ProviderManager:
 
         provider_name_to_provider_records_dict = defaultdict(list)
         for provider in providers:
-            if provider.provider_name in provider_name_to_provider_records_dict:
-                if provider.quota_type == ProviderQuotaType.PAID.value or provider.quota_type == ProviderQuotaType.FREE.value:
-                    provider_name_to_provider_records_dict[provider.provider_name].append(provider)
-            else:
-                provider_name_to_provider_records_dict[provider.provider_name].append(provider)
+            provider_name_to_provider_records_dict[provider.provider_name].append(provider)
 
         return provider_name_to_provider_records_dict
 
@@ -667,7 +663,7 @@ class ProviderManager:
         # Convert provider_records to dict
         quota_type_to_provider_records_dict = {}
         for provider_record in provider_records:
-            if provider_record.provider_type != ProviderType.SYSTEM.value:
+            if provider_record.provider_type != ProviderType.SYSTEM.value and provider_record.quota_type != ProviderQuotaType.PAID.value:
                 continue
 
             quota_type_to_provider_records_dict[ProviderQuotaType.value_of(provider_record.quota_type)] \
