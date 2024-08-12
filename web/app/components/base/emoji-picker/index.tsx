@@ -1,4 +1,3 @@
-/* eslint-disable multiline-ternary */
 'use client'
 import type { ChangeEvent, FC } from 'react'
 import React, { useState } from 'react'
@@ -11,16 +10,12 @@ import {
 import cn from '@/utils/classnames'
 import Divider from '@/app/components/base/divider'
 import { searchEmoji } from '@/utils/emoji'
-import classNames from "@/utils/classnames"
 
 declare global {
   namespace JSX {
     // eslint-disable-next-line @typescript-eslint/consistent-type-definitions
     interface IntrinsicElements {
-      'em-emoji': React.DetailedHTMLProps<
-        React.HTMLAttributes<HTMLElement>,
-        HTMLElement
-      >
+      'em-emoji': React.DetailedHTMLProps< React.HTMLAttributes<HTMLElement>, HTMLElement >
     }
   }
 }
@@ -66,12 +61,11 @@ const EmojiPicker: FC<IEmojiPickerProps> = ({
   const [isSearching, setIsSearching] = useState(false)
 
   React.useEffect(() => {
-    if (selectedEmoji && selectedBackground) {
+    if (selectedEmoji && selectedBackground)
       onSelect?.(selectedEmoji, selectedBackground)
-    }
-  }, [selectedEmoji, selectedBackground])
+  }, [onSelect, selectedEmoji, selectedBackground])
 
-  return <div className={classNames(className)}>
+  return <div className={cn(className)}>
     <div className='flex flex-col items-center w-full p-3'>
       <div className="relative w-full">
         <div className="absolute inset-y-0 left-0 flex items-center pl-3 pointer-events-none">

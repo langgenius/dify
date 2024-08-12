@@ -1,13 +1,15 @@
 'use client'
 
-import { PropsWithChildren, useState, type FC } from 'react'
-import { useAsyncEffect } from "ahooks"
+import { useState } from 'react'
+import type { FC, PropsWithChildren } from 'react'
+import { useAsyncEffect } from 'ahooks'
+import Image from 'next/image'
 import { init } from 'emoji-mart'
 import data from '@emoji-mart/data'
 import style from './style.module.css'
 import classNames from '@/utils/classnames'
-import { AppIconType } from "@/types/app"
-import { fetchAppIconPreviewUrl } from "@/service/apps"
+import type { AppIconType } from '@/types/app'
+import { fetchAppIconPreviewUrl } from '@/service/apps'
 
 init({ data })
 
@@ -28,7 +30,7 @@ const AppIconWrapper = ({
   background,
   className,
   onClick,
-  children
+  children,
 }: PropsWithChildren<Pick<AppIconProps, 'size' | 'rounded' | 'background' | 'className' | 'onClick'>>) => {
   const wrapperClassName = classNames(
     style.appIcon,
@@ -63,10 +65,10 @@ const AppIcon: FC<AppIconProps> = ({
 
   return <AppIconWrapper size={size} rounded={rounded} background={background} className={className} onClick={onClick}>
     {iconType === 'emoji'
-      ? innerIcon || ((icon && icon !== '') ? <em-emoji id={icon} /> : <em-emoji id='🤖' />)
+      ? (innerIcon || ((icon && icon !== '') ? <em-emoji id={icon} /> : <em-emoji id='🤖' />))
       : loading
         ? ''
-        : <img src={imageIconSrc} className="w-full h-full" />
+        : <Image src={imageIconSrc} className="w-full h-full" alt="App icon" />
     }
   </AppIconWrapper>
 }

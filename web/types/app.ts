@@ -6,7 +6,6 @@ import type {
   RerankingModeEnum,
   WeightedScoreEnum,
 } from '@/models/datasets'
-import { AppIconType } from '@/app/components/base/app-icon-picker'
 
 export enum Theme {
   light = 'light',
