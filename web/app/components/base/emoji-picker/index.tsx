@@ -8,21 +8,18 @@ import { init } from 'emoji-mart'
 import {
   MagnifyingGlassIcon,
 } from '@heroicons/react/24/outline'
-import { useTranslation } from 'react-i18next'
-import s from './style.module.css'
 import cn from '@/utils/classnames'
 import Divider from '@/app/components/base/divider'
-import Button from '@/app/components/base/button'
-import Modal from '@/app/components/base/modal'
 import { searchEmoji } from '@/utils/emoji'
+import classNames from "@/utils/classnames"
 
 declare global {
   namespace JSX {
     // eslint-disable-next-line @typescript-eslint/consistent-type-definitions
     interface IntrinsicElements {
       'em-emoji': React.DetailedHTMLProps<
-      React.HTMLAttributes<HTMLElement>,
-      HTMLElement
+        React.HTMLAttributes<HTMLElement>,
+        HTMLElement
       >
     }
   }
@@ -53,19 +50,14 @@ const backgroundColors = [
 ]
 
 type IEmojiPickerProps = {
-  isModal?: boolean
   onSelect?: (emoji: string, background: string) => void
-  onClose?: () => void
   className?: string
 }
 
 const EmojiPicker: FC<IEmojiPickerProps> = ({
-  isModal = true,
   onSelect,
-  onClose,
   className,
 }) => {
-  const { t } = useTranslation()
   const { categories } = data as EmojiMartData
   const [selectedEmoji, setSelectedEmoji] = useState('')
   const [selectedBackground, setSelectedBackground] = useState(backgroundColors[0])
@@ -73,13 +65,13 @@ const EmojiPicker: FC<IEmojiPickerProps> = ({
   const [searchedEmojis, setSearchedEmojis] = useState<string[]>([])
   const [isSearching, setIsSearching] = useState(false)
 
-  return isModal ? <Modal
-    onClose={() => { }}
-    isShow
-    closable={false}
-    wrapperClassName={className}
-    className={cn(s.container, '!w-[362px] !p-0')}
-  >
+  React.useEffect(() => {
+    if (selectedEmoji && selectedBackground) {
+      onSelect?.(selectedEmoji, selectedBackground)
+    }
+  }, [selectedEmoji, selectedBackground])
+
+  return <div className={classNames(className)}>
     <div className='flex flex-col items-center w-full p-3'>
       <div className="relative w-full">
         <div className="absolute inset-y-0 left-0 flex items-center pl-3 pointer-events-none">
@@ -178,24 +170,6 @@ const EmojiPicker: FC<IEmojiPickerProps> = ({
         })}
       </div>
     </div>
-    <Divider className='m-0' />
-    <div className='w-full flex items-center justify-center p-3 gap-2'>
-      <Button className='w-full' onClick={() => {
-        onClose && onClose()
-      }}>
-        {t('app.emoji.cancel')}
-      </Button>
-      <Button
-        disabled={selectedEmoji === ''}
-        variant="primary"
-        className='w-full'
-        onClick={() => {
-          onSelect && onSelect(selectedEmoji, selectedBackground)
-        }}>
-        {t('app.emoji.ok')}
-      </Button>
-    </div>
-  </Modal> : <>
-  </>
+  </div>
 }
 export default EmojiPicker

@@ -1,15 +1,20 @@
-import type { FC } from 'react'
+'use client'
 
-import data from '@emoji-mart/data'
+import { PropsWithChildren, useState, type FC } from 'react'
+import { useAsyncEffect } from "ahooks"
 import { init } from 'emoji-mart'
+import data from '@emoji-mart/data'
 import style from './style.module.css'
 import classNames from '@/utils/classnames'
+import { AppIconType } from "@/types/app"
+import { fetchAppIconPreviewUrl } from "@/service/apps"
 
 init({ data })
 
 export type AppIconProps = {
   size?: 'xs' | 'tiny' | 'small' | 'medium' | 'large'
   rounded?: boolean
+  iconType?: AppIconType
   icon?: string
   background?: string
   className?: string
@@ -17,31 +22,53 @@ export type AppIconProps = {
   onClick?: () => void
 }
 
+const AppIconWrapper = ({
+  size = 'medium',
+  rounded = false,
+  background,
+  className,
+  onClick,
+  children
+}: PropsWithChildren<Pick<AppIconProps, 'size' | 'rounded' | 'background' | 'className' | 'onClick'>>) => {
+  const wrapperClassName = classNames(
+    style.appIcon,
+    size !== 'medium' && style[size],
+    rounded && style.rounded,
+    className ?? '',
+  )
+  return <span className={wrapperClassName} style={{ background }} onClick={onClick}>{children}</span>
+}
+
 const AppIcon: FC<AppIconProps> = ({
   size = 'medium',
   rounded = false,
+  iconType = 'emoji',
   icon,
   background,
   className,
   innerIcon,
   onClick,
 }) => {
-  return (
-    <span
-      className={classNames(
-        style.appIcon,
-        size !== 'medium' && style[size],
-        rounded && style.rounded,
-        className ?? '',
-      )}
-      style={{
-        background,
-      }}
-      onClick={onClick}
-    >
-      {innerIcon || ((icon && icon !== '') ? <em-emoji id={icon} /> : <em-emoji id='🤖' />)}
-    </span>
-  )
+  const [imageIconSrc, setImageIconSrc] = useState('')
+  const [loading, setLoading] = useState(true)
+
+  useAsyncEffect(async () => {
+    if (iconType === 'image' && icon) {
+      setLoading(true)
+      const res = await fetchAppIconPreviewUrl({ fileID: icon })
+      setImageIconSrc(res)
+      setLoading(false)
+    }
+  }, [iconType, icon])
+
+  return <AppIconWrapper size={size} rounded={rounded} background={background} className={className} onClick={onClick}>
+    {iconType === 'emoji'
+      ? innerIcon || ((icon && icon !== '') ? <em-emoji id={icon} /> : <em-emoji id='🤖' />)
+      : loading
+        ? ''
+        : <img src={imageIconSrc} className="w-full h-full" />
+    }
+  </AppIconWrapper>
 }
 
 export default AppIcon

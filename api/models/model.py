@@ -6,7 +6,7 @@ from typing import Optional
 
 from flask import request
 from flask_login import UserMixin
-from sqlalchemy import Float, func, text
+from sqlalchemy import Float, func, text, Enum as DBEnum
 
 from configs import dify_config
 from core.file.tool_file_parser import ToolFileParser
@@ -50,6 +50,10 @@ class AppMode(Enum):
         raise ValueError(f'invalid mode value {value}')
 
 
+class IconType(Enum):
+    IMAGE = "image"
+    EMOJI = "emoji"
+
 class App(db.Model):
     __tablename__ = 'apps'
     __table_args__ = (
@@ -62,6 +66,7 @@ class App(db.Model):
     name = db.Column(db.String(255), nullable=False)
     description = db.Column(db.Text, nullable=False, server_default=db.text("''::character varying"))
     mode = db.Column(db.String(255), nullable=False)
+    icon_type = db.Column(db.String(255), nullable=True)
     icon = db.Column(db.String(255))
     icon_background = db.Column(db.String(255))
     app_model_config_id = db.Column(StringUUID, nullable=True)
@@ -1086,6 +1091,7 @@ class Site(db.Model):
     id = db.Column(StringUUID, server_default=db.text('uuid_generate_v4()'))
     app_id = db.Column(StringUUID, nullable=False)
     title = db.Column(db.String(255), nullable=False)
+    icon_type = db.Column(db.String(255), nullable=True)
     icon = db.Column(db.String(255))
     icon_background = db.Column(db.String(255))
     description = db.Column(db.Text)

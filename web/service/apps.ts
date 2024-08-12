@@ -9,6 +9,10 @@ export const fetchAppList: Fetcher<AppListResponse, { url: string; params?: Reco
   return get<AppListResponse>(url, { params })
 }
 
+export const fetchAppIconPreviewUrl = ({ fileID }: { fileID: string }) => {
+  return get<string>(`/apps/icon-preview-url/${fileID}`)
+}
+
 export const fetchAppDetail = ({ url, id }: { url: string; id: string }) => {
   return get<AppDetailResponse>(`${url}/${id}`)
 }

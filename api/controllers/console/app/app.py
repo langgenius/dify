@@ -17,6 +17,8 @@ from fields.app_fields import (
 from libs.login import login_required
 from services.app_dsl_service import AppDslService
 from services.app_service import AppService
+from core.file.upload_file_parser import UploadFileParser
+
 
 ALLOW_CREATE_APP_MODES = ['chat', 'agent-chat', 'advanced-chat', 'workflow', 'completion']
 
@@ -76,6 +78,12 @@ class AppListApi(Resource):
         app = app_service.create_app(current_user.current_tenant_id, args, current_user)
 
         return app, 201
+
+
+class AppIconPreviewUrlApi(Resource):
+     def get(self, file_id):
+        file_id = str(file_id)
+        return UploadFileParser.get_signed_temp_image_url(file_id)
 
 
 class AppImportApi(Resource):
@@ -363,6 +371,7 @@ class AppTraceApi(Resource):
 
 
 api.add_resource(AppListApi, '/apps')
+api.add_resource(AppIconPreviewUrlApi, '/apps/icon-preview-url/<uuid:file_id>')
 api.add_resource(AppImportApi, '/apps/import')
 api.add_resource(AppImportFromUrlApi, '/apps/import/url')
 api.add_resource(AppApi, '/apps/<uuid:app_id>')

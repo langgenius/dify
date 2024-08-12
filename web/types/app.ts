@@ -6,6 +6,7 @@ import type {
   RerankingModeEnum,
   WeightedScoreEnum,
 } from '@/models/datasets'
+import { AppIconType } from '@/app/components/base/app-icon-picker'
 
 export enum Theme {
   light = 'light',
@@ -297,6 +298,8 @@ export type SiteConfig = {
   show_workflow_steps: boolean
 }
 
+export type AppIconType = 'image' | 'emoji'
+
 /**
  * App
  */
@@ -308,6 +311,8 @@ export type App = {
   /** Description */
   description: string
 
+  /** Icon Type */
+  iconType: AppIconType
   /** Icon */
   icon: string
   /** Icon Background */
