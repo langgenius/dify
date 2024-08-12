@@ -36,13 +36,13 @@ const LocaleLayout = ({ children }: { children: React.ReactNode }) => {
               window.difyChatbotConfig = { 
                 token: 'kF3vftmb6m6LRsSW', 
                 isDev: true  , 
-                baseUrl : "http://127.0.0.1:3000/"
+                baseUrl : "http://127.0.0.1:4444/"
               }
             `,
           }}
         />
         <script
-          src="http://127.0.0.1:3000/embed.min.js"
+          src="http://127.0.0.1:4444/embed.min.js"
           id="kF3vftmb6m6LRsSW"
           defer
         />

@@ -1,10 +1,14 @@
-import os 
+import os
+
+from regex import F 
 from models.dataset import  Document
 from models.model import App, MessageAnnotation
 from services.tenant_plan_service import TenantPlanService
 from extensions.ext_database import db
 from models.account import Account, BasePlan, Tenant, TenantAccountJoin, TenantAccountRole, TenantPlan , PlanType , PlanInterval
 from services.stripe_service import StripeService
+
+FRONT_END_URL = os.getenv('CONSOLE_WEB_URL')
 
 
 
@@ -66,8 +70,8 @@ class BillingService:
 
         checkout_session = StripeService.create_checkout_session( customer_id ,
                                                                   price_id ,
-                                                                  "http://localhost:3000/apps" ,
-                                                                  "http://localhost:3000/apps" ,
+                                                                  f"{FRONT_END_URL}/apps" ,
+                                                                  f"{FRONT_END_URL}/apps" ,
                                                                   tenant_id)
 
         if not checkout_session:

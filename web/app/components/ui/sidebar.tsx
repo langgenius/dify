@@ -2,12 +2,19 @@
 import Link from "next/link";
 import React, { createContext, useContext, useState, useEffect } from "react";
 import { AnimatePresence, motion } from "framer-motion";
-import { cn } from "../../../lib/utils";
+
 import { usePathname } from "next/navigation";
 import { RiSettings3Fill, RiSettings3Line } from "@remixicon/react";
 import LogoSite from "../base/logo/logo-site";
 import { WorkspaceProvider } from "@/context/workspace-context";
 import AccountDropdown from "../header/account-dropdown";
+
+import { type ClassValue, clsx } from "clsx";
+import { twMerge } from "tailwind-merge";
+
+function cn(...inputs: ClassValue[]) {
+  return twMerge(clsx(inputs));
+}
 
 // interface SidebarContextProps {
 //   open: boolean;
