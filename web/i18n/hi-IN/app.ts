@@ -85,6 +85,42 @@ const translation = {
     workflow: 'वर्कफ़्लो',
     completion: 'समाप्ति',
   },
+  tracing: {
+    title: 'एप्लिकेशन प्रदर्शन ट्रेसिंग',
+    description: 'तृतीय-पक्ष LLMOps प्रदाता को कॉन्फ़िगर करना और एप्लिकेशन प्रदर्शन का ट्रेस करना।',
+    config: 'कॉन्फ़िगर करें',
+    collapse: 'संकुचित करें',
+    expand: 'विस्तृत करें',
+    tracing: 'ट्रेसिंग',
+    disabled: 'अक्षम',
+    disabledTip: 'कृपया पहले प्रदाता को कॉन्फ़िगर करें',
+    enabled: 'सेवा में',
+    tracingDescription: 'एप्लिकेशन निष्पादन का पूरा संदर्भ कैप्चर करें, जिसमें LLM कॉल, संदर्भ, प्रॉम्प्ट्स, HTTP अनुरोध और अधिक शामिल हैं, एक तृतीय-पक्ष ट्रेसिंग प्लेटफ़ॉर्म पर।',
+    configProviderTitle: {
+      configured: 'कॉन्फ़िगर किया गया',
+      notConfigured: 'ट्रेसिंग सक्षम करने के लिए प्रदाता कॉन्फ़िगर करें',
+      moreProvider: 'अधिक प्रदाता',
+    },
+    langsmith: {
+      title: 'LangSmith',
+      description: 'LLM-संचालित एप्लिकेशन जीवनचक्र के प्रत्येक चरण के लिए एक ऑल-इन-वन डेवलपर प्लेटफ़ॉर्म।',
+    },
+    langfuse: {
+      title: 'Langfuse',
+      description: 'आपके LLM एप्लिकेशन को डीबग और सुधारने के लिए ट्रेस, मूल्यांकन, प्रॉम्प्ट प्रबंधन और मेट्रिक्स।',
+    },
+    inUse: 'उपयोग में',
+    configProvider: {
+      title: 'कॉन्फ़िगर करें ',
+      placeholder: 'अपना {{key}} दर्ज करें',
+      project: 'प्रोजेक्ट',
+      publicKey: 'सार्वजनिक कुंजी',
+      secretKey: 'गुप्त कुंजी',
+      viewDocsLink: '{{key}} दस्तावेज़ देखें',
+      removeConfirmTitle: '{{key}} कॉन्फ़िगरेशन हटाएं?',
+      removeConfirmContent: 'वर्तमान कॉन्फ़िगरेशन उपयोग में है, इसे हटाने से ट्रेसिंग सुविधा बंद हो जाएगी।',
+    },
+  },
 }
 
 export default translation

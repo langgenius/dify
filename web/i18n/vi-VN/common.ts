@@ -12,6 +12,7 @@ const translation = {
     cancel: 'Hủy bỏ',
     clear: 'Xóa',
     save: 'Lưu',
+    saveAndEnable: 'Lưu & Kích hoạt',
     edit: 'Chỉnh sửa',
     add: 'Thêm',
     added: 'Đã thêm',
@@ -407,7 +408,7 @@ const translation = {
     latestAvailable: 'Dify {{version}} là phiên bản mới nhất hiện có.',
   },
   appMenus: {
-    overview: 'Tổng quan',
+    overview: 'Giám sát',
     promptEng: 'Orchestrate',
     apiAccess: 'Truy cập API',
     logAndAnn: 'Nhật ký & Thông báo',

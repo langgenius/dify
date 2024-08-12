@@ -218,7 +218,7 @@ const translation = {
     'template-transform': 'Convert data to string using Jinja template syntax',
     'http-request': 'Allow server requests to be sent over the HTTP protocol',
     'variable-assigner': 'Aggregate multi-branch variables into a single variable for unified configuration of downstream nodes.',
-    'assigner': 'TODO',
+    'assigner': 'The variable assignment node is used for assigning values to writable variables(like conversation variables).',
     'variable-aggregator': 'Aggregate multi-branch variables into a single variable for unified configuration of downstream nodes.',
     'iteration': 'Perform multiple steps on a list object until all results are outputted.',
     'parameter-extractor': 'Use LLM to extract structured parameters from natural language for tool invocations or HTTP requests.',

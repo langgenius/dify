@@ -65,13 +65,7 @@ const useConfig = (id: string, payload: AssignerNodeType) => {
     setInputs(newInputs)
   }, [inputs, setInputs, getCurrentVariableType, iterationNode, availableNodes, isChatMode, isSupportAppend])
 
-  const writeModeTypes = useMemo(() => {
-    const types = [WriteMode.Overwrite, WriteMode.Append, WriteMode.Clear]
-    if (!isSupportAppend(assignedVarType))
-      return types.filter(t => t !== WriteMode.Append)
-
-    return types
-  }, [assignedVarType, isSupportAppend])
+  const writeModeTypes = [WriteMode.Overwrite, WriteMode.Append, WriteMode.Clear]
 
   const handleWriteModeChange = useCallback((writeMode: WriteMode) => {
     return () => {

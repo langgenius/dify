@@ -218,7 +218,7 @@ const translation = {
     'template-transform': '使用 Jinja 模板语法将数据转换为字符串',
     'http-request': '允许通过 HTTP 协议发送服务器请求',
     'variable-assigner': '将多路分支的变量聚合为一个变量，以实现下游节点统一配置。',
-    'assigner': 'TODO',
+    'assigner': '变量赋值节点用于向可写入变量（例如会话变量）进行变量赋值。',
     'variable-aggregator': '将多路分支的变量聚合为一个变量，以实现下游节点统一配置。',
     'iteration': '对列表对象执行多次步骤直至输出所有结果。',
     'parameter-extractor': '利用 LLM 从自然语言内推理提取出结构化参数，用于后置的工具调用或 HTTP 请求。',
