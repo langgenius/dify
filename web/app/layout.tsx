@@ -30,11 +30,6 @@ const LocaleLayout = ({ children }: { children: React.ReactNode }) => {
         <meta name="mobile-web-app-capable" content="yes" />
         <meta name="apple-mobile-web-app-capable" content="yes" />
         <meta name="apple-mobile-web-app-status-bar-style" content="default" />
-        {/* <style>{`
-          #dify-chatbot-bubble-button {
-            background-color: #1C64F2 !important;
-          }
-        `}</style> */}
         <script
           dangerouslySetInnerHTML={{
             __html: `
