@@ -2,6 +2,7 @@ from typing import IO, Optional
 from urllib.parse import urljoin
 
 import requests
+
 from core.model_runtime.errors.invoke import InvokeBadRequestError
 from core.model_runtime.errors.validate import CredentialsValidateFailedError
 from core.model_runtime.model_providers.__base.speech2text_model import Speech2TextModel
