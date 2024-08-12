@@ -299,4 +299,4 @@ class ToolFile(db.Model):
     # mime type
     mimetype = db.Column(db.String(255), nullable=False)
     # original url
-    original_url = db.Column(db.String(255), nullable=True)
+    original_url = db.Column(db.String(2048), nullable=True)

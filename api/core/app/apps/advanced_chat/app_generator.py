@@ -89,7 +89,8 @@ class AdvancedChatAppGenerator(MessageBasedAppGenerator):
         )
 
         # get tracing instance
-        trace_manager = TraceQueueManager(app_id=app_model.id)
+        user_id = user.id if isinstance(user, Account) else user.session_id
+        trace_manager = TraceQueueManager(app_model.id, user_id)
 
         if invoke_from == InvokeFrom.DEBUGGER:
             # always enable retriever resource in debugger mode
