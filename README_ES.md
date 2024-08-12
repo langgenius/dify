@@ -158,7 +158,7 @@ Pon rápidamente Dify en funcionamiento en tu entorno con esta [guía de inicio 
 Usa nuestra [documentación](https://docs.dify.ai) para más referencias e instrucciones más detalladas.
 
 - **Dify para Empresas / Organizaciones</br>**
-Proporcionamos características adicionales centradas en la empresa. [Programa una reunión con nosotros](https://cal.com/guchenhe/30min) o [envíanos un correo electrónico](mailto:business@dify.ai?subject=[GitHub]Business%20License%20Inquiry) para discutir las necesidades empresariales. </br>
+Proporcionamos características adicionales centradas en la empresa. [Envíanos un correo electrónico](mailto:business@dify.ai?subject=[GitHub]Business%20License%20Inquiry) para discutir las necesidades empresariales. </br>
   > Para startups y pequeñas empresas que utilizan AWS, echa un vistazo a [Dify Premium en AWS Marketplace](https://aws.amazon.com/marketplace/pp/prodview-t22mebxzwjhu6) e impleméntalo en tu propio VPC de AWS con un clic. Es una AMI asequible que ofrece la opción de crear aplicaciones con logotipo y marca personalizados.
 
 
@@ -229,23 +229,6 @@ Al mismo tiempo, considera apoyar a Dify compartiéndolo en redes sociales y en 
 * [Reporte de problemas en GitHub](https://github.com/langgenius/dify/issues). Lo mejor para: errores que encuentres usando Dify.AI y propuestas de características. Consulta nuestra [Guía de contribución](https://github.com/langgenius/dify/blob/main/CONTRIBUTING.md).
 * [Discord](https://discord.gg/FngNHpbcY7). Lo mejor para: compartir tus aplicaciones y pasar el rato con la comunidad.
 * [Twitter](https://twitter.com/dify_ai). Lo mejor para: compartir tus aplicaciones y pasar el rato con la comunidad.
-
-O, programa una reunión directamente con un miembro del equipo:
-
-<table>
-  <tr>
-    <th>Punto de Contacto</th>
-    <th>Propósito</th>
-  </tr>
-  <tr>
-    <td><a href='https://cal.com/guchenhe/15min' target='_blank'><img class="schedule-button" src='https://github.com/langgenius/dify/assets/13230914/9ebcd111-1205-4d71-83d5-948d70b809f5' alt='Git-Hub-README-Button-3x' style="width: 180px; height: auto; object-fit: contain;"/></a></td>
-    <td>Consultas comerciales y retroalimentación del producto</td>
-  </tr>
-  <tr>
-    <td><a href='https://cal.com/pinkbanana' target='_blank'><img class="schedule-button" src='https://github.com/langgenius/dify/assets/13230914/d1edd00a-d7e4-4513-be6c-e57038e143fd' alt='Git-Hub-README-Button-2x' style="width: 180px; height: auto; object-fit: contain;"/></a></td>
-    <td>Contribuciones, problemas y solicitudes de características</td>
-  </tr>
-</table>
 
 ## Historial de Estrellas
 
