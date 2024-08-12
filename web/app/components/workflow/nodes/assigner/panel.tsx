@@ -50,13 +50,14 @@ const Panel: FC<NodePanelProps<AssignerNodeType>> = ({
         <Field
           title={t(`${i18nPrefix}.writeMode`)}
         >
-          <div className={cn('grid gap-2', isSupportAppend ? 'grid-cols-3' : 'grid-cols-2')}>
+          <div className={cn('grid gap-2 grid-cols-3')}>
             {writeModeTypes.map(type => (
               <OptionCard
                 key={type}
                 title={t(`${i18nPrefix}.${type}`)}
                 onSelect={handleWriteModeChange(type)}
                 selected={inputs.write_mode === type}
+                disabled={!isSupportAppend && type === WriteMode.Append}
               />
             ))}
           </div>
