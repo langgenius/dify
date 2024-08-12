@@ -13,7 +13,7 @@ identity:
     - productivity
 credentials_for_provider:
   searxng_base_url:
-    type: secret-input
+    type: text-input
     required: true
     label:
       en_US: SearXNG base URL
