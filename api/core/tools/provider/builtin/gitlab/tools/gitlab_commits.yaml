@@ -1,0 +1,57 @@
+identity: # 工具供应商的基本信息
+  name: gitlab_commits # 名称，唯一，不允许和其他供应商重名
+  author: Leo.Wang # 作者
+  label: # 标签，用于前端展示
+    en_US: Gitlab Commits # 英文标签
+    zh_Hans: Gitlab代码提交内容 # 中文标签
+description: # 描述，用于前端展示
+  human: # 用于前端展示的介绍，支持多语言
+    en_US: A tool for query gitlab commits. Input should be a exists username.
+    zh_Hans: 一个用于查询gitlab代码提交记录的的工具，输入的内容应该是一个已存在的用户名或者项目名。
+  llm: A tool for query gitlab commits. Input should be a exists username or project. # 传递给 LLM 的介绍，为了使得LLM更好理解这个工具，我们建议在这里写上关于这个工具尽可能详细的信息，让 LLM 能够理解并使用这个工具
+parameters: # 参数列表
+  - name: employee # 参数名称
+    type: string # 参数类型
+    required: false # 是否必填
+    label: # 参数标签
+      en_US: employee # 英文标签
+      zh_Hans: 员工用户名 # 中文标签
+    human_description: # 用于前端展示的介绍，支持多语言
+      en_US: employee
+      zh_Hans: 员工用户名
+    llm_description: employee for gitlab # 传递给LLM的介绍，同上，为了使得LLM更好理解这个参数，我们建议在这里写上关于这个参数尽可能详细的信息，让LLM能够理解这个参数
+    form: llm # 表单类型，llm表示这个参数需要由Agent自行推理出来，前端将不会展示这个参数
+  - name: project # 参数名称
+    type: string # 参数类型
+    required: true # 是否必填
+    label: # 参数标签
+      en_US: project # 英文标签
+      zh_Hans: 项目名 # 中文标签
+    human_description: # 用于前端展示的介绍，支持多语言
+      en_US: project
+      zh_Hans: 项目名
+    llm_description: project for gitlab # 传递给LLM的介绍，同上，为了使得LLM更好理解这个参数，我们建议在这里写上关于这个参数尽可能详细的信息，让LLM能够理解这个参数
+    form: llm # 表单类型，llm表示这个参数需要由Agent自行推理出来，前端将不会展示这个参数
+  - name: start_time # 参数名称
+    type: string # 参数类型
+    required: false # 是否必填
+    label: # 参数标签
+      en_US: start_time # 英文标签
+      zh_Hans: 开始时间 # 中文标签
+    human_description: # 用于前端展示的介绍，支持多语言
+      en_US: start_time
+      zh_Hans: 开始时间
+    llm_description: start_time for gitlab # 传递给LLM的介绍，同上，为了使得LLM更好理解这个参数，我们建议在这里写上关于这个参数尽可能详细的信息，让LLM能够理解这个参数
+    form: llm # 表单类型，llm表示这个参数需要由Agent自行推理出来，前端将不会展示这个参数
+  - name: end_time # 参数名称
+    type: string # 参数类型
+    required: false # 是否必填
+    label: # 参数标签
+      en_US: end_time # 英文标签
+      zh_Hans: 结束时间 # 中文标签
+    human_description: # 用于前端展示的介绍，支持多语言
+      en_US: end_time
+      zh_Hans: 结束时间
+    llm_description: end_time for gitlab # 传递给LLM的介绍，同上，为了使得LLM更好理解这个参数，我们建议在这里写上关于这个参数尽可能详细的信息，让LLM能够理解这个参数
+    form: llm # 表单类型，llm表示这个参数需要由Agent自行推理出来，前端将不会展示这个参数
+    
