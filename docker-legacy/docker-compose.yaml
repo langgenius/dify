@@ -48,7 +48,7 @@ services:
       DB_USERNAME: postgres
       DB_PASSWORD: difyai123456
       DB_HOST: db
-      DB_PORT: 5432
+      DB_PORT: 5433
       DB_DATABASE: dify
       # The configurations of redis connection.
       # It is consistent with the configuration in the 'redis' service below.
@@ -61,7 +61,7 @@ services:
       REDIS_DB: 0
       # The configurations of celery broker.
       # Use redis as the broker, and redis db 1 for celery broker.
-      CELERY_BROKER_URL: redis://:difyai123456@redis:6379/1
+      CELERY_BROKER_URL: redis://:difyai123456@redis:6380/1
       # Specifies the allowed origins for cross-origin requests to the Web API, e.g. https://dify.app or * for all origins.
       WEB_API_CORS_ALLOW_ORIGINS: "*"
       # Specifies the allowed origins for cross-origin requests to the console API, e.g. https://cloud.dify.ai or * for all origins.
@@ -243,7 +243,7 @@ services:
       DB_USERNAME: postgres
       DB_PASSWORD: difyai123456
       DB_HOST: db
-      DB_PORT: 5432
+      DB_PORT: 5433
       DB_DATABASE: dify
       # The configurations of redis cache connection.
       REDIS_HOST: redis
