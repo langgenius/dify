@@ -22,6 +22,7 @@ export const viewport: Viewport = {
 
 const LocaleLayout = ({ children }: { children: React.ReactNode }) => {
   const locale = getLocaleOnServer();
+  const BASE_URL = process.env.NEXT_PUBLIC_API_PREFIX;
 
   return (
     <html lang={locale ?? "en"} className="h-full" data-theme="light">
@@ -36,16 +37,12 @@ const LocaleLayout = ({ children }: { children: React.ReactNode }) => {
               window.difyChatbotConfig = { 
                 token: 'kF3vftmb6m6LRsSW', 
                 isDev: true  , 
-                baseUrl : "http://127.0.0.1:4444/"
+                baseUrl : "${BASE_URL}" 
               }
             `,
           }}
         />
-        <script
-          src="http://127.0.0.1:4444/embed.min.js"
-          id="kF3vftmb6m6LRsSW"
-          defer
-        />
+        <script src={`${BASE_URL}/embed.min.js`} id="kF3vftmb6m6LRsSW" defer />
       </head>
 
       <body
