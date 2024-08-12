@@ -24,7 +24,7 @@ export const useNodeHelpLink = (nodeType: BlockEnum) => {
         [BlockEnum.TemplateTransform]: 'template',
         [BlockEnum.VariableAssigner]: 'variable_assigner',
         [BlockEnum.VariableAggregator]: 'variable_assigner',
-        [BlockEnum.Assigner]: 'variable-assignment',
+        [BlockEnum.Assigner]: 'variable_assignment',
         [BlockEnum.Iteration]: 'iteration',
         [BlockEnum.ParameterExtractor]: 'parameter_extractor',
         [BlockEnum.HttpRequest]: 'http_request',
