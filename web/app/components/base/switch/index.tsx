@@ -11,7 +11,7 @@ type SwitchProps = {
   className?: string
 }
 
-const Switch = ({ onChange, size = 'lg', defaultValue = false, disabled = false, className }: SwitchProps) => {
+const Switch = ({ onChange, size = 'md', defaultValue = false, disabled = false, className }: SwitchProps) => {
   const [enabled, setEnabled] = useState(defaultValue)
   useEffect(() => {
     setEnabled(defaultValue)
