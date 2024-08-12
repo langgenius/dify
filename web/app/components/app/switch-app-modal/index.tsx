@@ -147,10 +147,6 @@ const SwitchAppModal = ({ show, appDetail, inAppDetail = false, onSuccess, onClo
             setShowConfirmDelete(false)
             setRemoveOriginal(false)
           }}
-          onClose={() => {
-            setShowConfirmDelete(false)
-            setRemoveOriginal(false)
-          }}
         />
       )}
     </>

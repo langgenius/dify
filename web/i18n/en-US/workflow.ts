@@ -176,6 +176,7 @@ const translation = {
   tabs: {
     'searchBlock': 'Search block',
     'blocks': 'Blocks',
+    'searchTool': 'Search tool',
     'tools': 'Tools',
     'allTool': 'All',
     'builtInTool': 'Built-in',

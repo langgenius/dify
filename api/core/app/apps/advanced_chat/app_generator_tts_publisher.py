@@ -5,7 +5,12 @@ import queue
 import re
 import threading
 
-from core.app.entities.queue_entities import QueueAgentMessageEvent, QueueLLMChunkEvent, QueueTextChunkEvent
+from core.app.entities.queue_entities import (
+    QueueAgentMessageEvent,
+    QueueLLMChunkEvent,
+    QueueNodeSucceededEvent,
+    QueueTextChunkEvent,
+)
 from core.model_manager import ModelManager
 from core.model_runtime.entities.model_entities import ModelType
 
@@ -88,6 +93,8 @@ class AppGeneratorTTSPublisher:
                     self.msg_text += message.event.chunk.delta.message.content
                 elif isinstance(message.event, QueueTextChunkEvent):
                     self.msg_text += message.event.text
+                elif isinstance(message.event, QueueNodeSucceededEvent):
+                    self.msg_text += message.event.outputs.get('output', '')
                 self.last_message = message
                 sentence_arr, text_tmp = self._extract_sentence(self.msg_text)
                 if len(sentence_arr) >= min(self.MAX_SENTENCE, 7):

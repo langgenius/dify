@@ -54,20 +54,10 @@ def test_object_variable_to_object():
     var = ObjectVariable(
         name='object',
         value={
-            'key1': ObjectVariable(
-                name='object',
-                value={
-                    'key2': StringVariable(name='key2', value='value2'),
-                },
-            ),
-            'key2': ArrayAnyVariable(
-                name='array',
-                value=[
-                    StringVariable(name='key5_1', value='value5_1'),
-                    IntegerVariable(name='key5_2', value=42),
-                    ObjectVariable(name='key5_3', value={}),
-                ],
-            ),
+            'key1': {
+                'key2': 'value2',
+            },
+            'key2': ['value5_1', 42, {}],
         },
     )
 

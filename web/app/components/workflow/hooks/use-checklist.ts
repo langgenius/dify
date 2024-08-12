@@ -16,7 +16,7 @@ import {
 } from '../utils'
 import {
   CUSTOM_NODE,
-  MAX_TREE_DEEPTH,
+  MAX_TREE_DEPTH,
 } from '../constants'
 import type { ToolNodeType } from '../nodes/tool/types'
 import { useIsChatMode } from './use-workflow'
@@ -119,8 +119,8 @@ export const useChecklistBeforePublish = () => {
       maxDepth,
     } = getValidTreeNodes(nodes.filter(node => node.type === CUSTOM_NODE), edges)
 
-    if (maxDepth > MAX_TREE_DEEPTH) {
-      notify({ type: 'error', message: t('workflow.common.maxTreeDepth', { depth: MAX_TREE_DEEPTH }) })
+    if (maxDepth > MAX_TREE_DEPTH) {
+      notify({ type: 'error', message: t('workflow.common.maxTreeDepth', { depth: MAX_TREE_DEPTH }) })
       return false
     }
 

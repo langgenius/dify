@@ -1,0 +1,134 @@
+identity:
+  name: lambda_translate_utils
+  author: AWS
+  label:
+    en_US: TranslateTool
+    zh_Hans: 翻译工具
+    pt_BR: TranslateTool
+  icon: icon.svg
+description:
+  human:
+    en_US: A util tools for LLM translation, extra deployment is needed on AWS. Please refer Github Repo - https://github.com/ybalbert001/dynamodb-rag
+    zh_Hans: 大语言模型翻译工具(专词映射获取)，需要在AWS上进行额外部署，可参考Github Repo - https://github.com/ybalbert001/dynamodb-rag
+    pt_BR: A util tools for LLM translation, specfic Lambda Function deployment is needed on AWS. Please refer Github Repo - https://github.com/ybalbert001/dynamodb-rag
+  llm: A util tools for translation.
+parameters:
+  - name: text_content
+    type: string
+    required: true
+    label:
+      en_US: source content for translation
+      zh_Hans: 待翻译原文
+      pt_BR: source content for translation
+    human_description:
+      en_US: source content for translation
+      zh_Hans: 待翻译原文
+      pt_BR: source content for translation
+    llm_description: source content for translation
+    form: llm
+  - name: src_lang
+    type: string
+    required: true
+    label:
+      en_US: source language code
+      zh_Hans: 原文语言代号
+      pt_BR: source language code
+    human_description:
+      en_US: source language code
+      zh_Hans: 原文语言代号
+      pt_BR: source language code
+    llm_description: source language code
+    form: llm
+  - name: dest_lang
+    type: string
+    required: true
+    label:
+      en_US: target language code
+      zh_Hans: 目标语言代号
+      pt_BR: target language code
+    human_description:
+      en_US: target language code
+      zh_Hans: 目标语言代号
+      pt_BR: target language code
+    llm_description: target language code
+    form: llm
+  - name: aws_region
+    type: string
+    required: false
+    label:
+      en_US: region of Lambda
+      zh_Hans: Lambda 所在的region
+      pt_BR: region of Lambda
+    human_description:
+      en_US: region of Lambda
+      zh_Hans: Lambda 所在的region
+      pt_BR: region of Lambda
+    llm_description: region of Lambda
+    form: form
+  - name: model_id
+    type: string
+    required: false
+    default: anthropic.claude-3-sonnet-20240229-v1:0
+    label:
+      en_US: LLM model_id in bedrock
+      zh_Hans: bedrock上的大语言模型model_id
+      pt_BR: LLM model_id in bedrock
+    human_description:
+      en_US: LLM model_id in bedrock
+      zh_Hans: bedrock上的大语言模型model_id
+      pt_BR: LLM model_id in bedrock
+    llm_description: LLM model_id in bedrock
+    form: form
+  - name: dictionary_name
+    type: string
+    required: false
+    label:
+      en_US: dictionary name for term mapping
+      zh_Hans: 专词映射表名称
+      pt_BR: dictionary name for term mapping
+    human_description:
+      en_US: dictionary name for term mapping
+      zh_Hans: 专词映射表名称
+      pt_BR: dictionary name for term mapping
+    llm_description: dictionary name for term mapping
+    form: form
+  - name: request_type
+    type: select
+    required: false
+    label:
+      en_US: request type
+      zh_Hans: 请求类型
+      pt_BR: request type
+    human_description:
+      en_US: request type
+      zh_Hans: 请求类型
+      pt_BR: request type
+    default: term_mapping
+    options:
+      - value: term_mapping
+        label:
+          en_US: term_mapping
+          zh_Hans: 专词映射
+      - value: segment_only
+        label:
+          en_US: segment_only
+          zh_Hans: 仅切词
+      - value: translate
+        label:
+          en_US: translate
+          zh_Hans: 翻译内容
+    form: form
+  - name: lambda_name
+    type: string
+    default: "translate_tool"
+    required: true
+    label:
+      en_US: AWS Lambda for term mapping retrieval
+      zh_Hans: 专词召回映射 - AWS Lambda
+      pt_BR: lambda name for term mapping retrieval
+    human_description:
+      en_US: AWS Lambda  for term mapping retrieval
+      zh_Hans: 专词召回映射 - AWS Lambda
+      pt_BR: AWS Lambda  for term mapping retrieval
+    llm_description: AWS Lambda  for term mapping retrieval
+    form: form

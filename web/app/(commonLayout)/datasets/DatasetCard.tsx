@@ -1,7 +1,7 @@
 'use client'
 
 import { useContext } from 'use-context-selector'
-import Link from 'next/link'
+import { useRouter } from 'next/navigation'
 import { useCallback, useEffect, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import {
@@ -33,6 +33,8 @@ const DatasetCard = ({
 }: DatasetCardProps) => {
   const { t } = useTranslation()
   const { notify } = useContext(ToastContext)
+  const { push } = useRouter()
+
   const { isCurrentWorkspaceDatasetOperator } = useAppContext()
   const [tags, setTags] = useState<Tag[]>(dataset.tags)
 
@@ -107,10 +109,13 @@ const DatasetCard = ({
 
   return (
     <>
-      <Link
-        href={`/datasets/${dataset.id}/documents`}
-        className='group flex col-span-1 bg-white border-2 border-solid border-transparent rounded-xl shadow-sm min-h-[160px] flex flex-col transition-all duration-200 ease-in-out cursor-pointer hover:shadow-lg'
+      <div
+        className='group col-span-1 bg-white border-2 border-solid border-transparent rounded-xl shadow-sm min-h-[160px] flex flex-col transition-all duration-200 ease-in-out cursor-pointer hover:shadow-lg'
         data-disable-nprogress={true}
+        onClick={(e) => {
+          e.preventDefault()
+          push(`/datasets/${dataset.id}/documents`)
+        }}
       >
         <div className='flex pt-[14px] px-[14px] pb-3 h-[66px] items-center gap-3 grow-0 shrink-0'>
           <div className={cn(
@@ -200,7 +205,7 @@ const DatasetCard = ({
             />
           </div>
         </div>
-      </Link>
+      </div>
       {showRenameModal && (
         <RenameDatasetModal
           show={showRenameModal}
@@ -214,7 +219,6 @@ const DatasetCard = ({
           title={t('dataset.deleteDatasetConfirmTitle')}
           content={confirmMessage}
           isShow={showConfirmDelete}
-          onClose={() => setShowConfirmDelete(false)}
           onConfirm={onConfirmDelete}
           onCancel={() => setShowConfirmDelete(false)}
         />

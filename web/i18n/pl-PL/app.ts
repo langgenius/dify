@@ -92,6 +92,42 @@ const translation = {
     workflow: 'Przepływ pracy',
     completion: 'Zakończenie',
   },
+  tracing: {
+    title: 'Śledzenie wydajności aplikacji',
+    description: 'Konfiguracja zewnętrznego dostawcy LLMOps i śledzenie wydajności aplikacji.',
+    config: 'Konfiguruj',
+    collapse: 'Zwiń',
+    expand: 'Rozwiń',
+    tracing: 'Śledzenie',
+    disabled: 'Wyłączone',
+    disabledTip: 'Najpierw skonfiguruj dostawcę',
+    enabled: 'W użyciu',
+    tracingDescription: 'Przechwytywanie pełnego kontekstu wykonania aplikacji, w tym wywołań LLM, kontekstu, promptów, żądań HTTP i więcej, do platformy śledzenia stron trzecich.',
+    configProviderTitle: {
+      configured: 'Skonfigurowano',
+      notConfigured: 'Skonfiguruj dostawcę, aby włączyć śledzenie',
+      moreProvider: 'Więcej dostawców',
+    },
+    langsmith: {
+      title: 'LangSmith',
+      description: 'Kompleksowa platforma deweloperska dla każdego etapu cyklu życia aplikacji opartej na LLM.',
+    },
+    langfuse: {
+      title: 'Langfuse',
+      description: 'Śledzenie, oceny, zarządzanie promptami i metryki do debugowania i ulepszania twojej aplikacji LLM.',
+    },
+    inUse: 'W użyciu',
+    configProvider: {
+      title: 'Konfiguruj ',
+      placeholder: 'Wprowadź swój {{key}}',
+      project: 'Projekt',
+      publicKey: 'Klucz publiczny',
+      secretKey: 'Klucz tajny',
+      viewDocsLink: 'Zobacz dokumentację {{key}}',
+      removeConfirmTitle: 'Usunąć konfigurację {{key}}?',
+      removeConfirmContent: 'Obecna konfiguracja jest w użyciu, jej usunięcie wyłączy funkcję Śledzenia.',
+    },
+  },
 }
 
 export default translation

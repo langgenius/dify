@@ -19,7 +19,7 @@ const translation = {
     goBackToEdit: '編集に戻る',
     conversationLog: '会話ログ',
     features: '機能',
-    debugAndPreview: 'デバッグとプレビュー',
+    debugAndPreview: 'プレビュー',
     restart: '再起動',
     currentDraft: '現在の下書き',
     currentDraftUnpublished: '現在の下書き（未公開）',
@@ -134,7 +134,7 @@ const translation = {
       variableValue: '変数値',
       code: 'コード',
       model: 'モデル',
-      rerankModel: '再ランクモデル',
+      rerankModel: 'Rerankモデル',
     },
     invalidVariable: '無効な変数',
   },
@@ -296,7 +296,7 @@ const translation = {
     },
     knowledgeRetrieval: {
       queryVariable: 'クエリ変数',
-      knowledge: '知識',
+      knowledge: 'ナレッジ',
       outputVars: {
         output: '検索されたセグメント化されたデータ',
         content: 'セグメント化されたコンテンツ',
