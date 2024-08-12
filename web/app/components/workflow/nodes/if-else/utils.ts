@@ -18,7 +18,30 @@ export const isComparisonOperatorNeedTranslate = (operator?: ComparisonOperator)
   return !notTranslateKey.includes(operator)
 }
 
-export const getOperators = (type?: VarType) => {
+export const getOperators = (type?: VarType, file?: { key: string }) => {
+  const isFile = !!file
+  if (isFile) {
+    const { key } = file
+
+    switch (key) {
+      case 'name':
+        return [
+          ComparisonOperator.contains,
+          ComparisonOperator.notContains,
+          ComparisonOperator.startWith,
+          ComparisonOperator.endWith,
+          ComparisonOperator.is,
+          ComparisonOperator.isNot,
+          ComparisonOperator.empty,
+          ComparisonOperator.notEmpty,
+        ]
+      case 'type':
+        return [
+          ComparisonOperator.in,
+          ComparisonOperator.notIn,
+        ]
+    }
+  }
   switch (type) {
     case VarType.string:
       return [

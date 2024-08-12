@@ -438,7 +438,23 @@ export const FILE_STRUCT: Var[] = [
   },
   {
     variable: 'type',
-    type: VarType.number,
+    type: VarType.string,
+  },
+  {
+    variable: 'extension',
+    type: VarType.string,
+  },
+  {
+    variable: 'mimetype',
+    type: VarType.string,
+  },
+  {
+    variable: 'transfer_method',
+    type: VarType.string,
+  },
+  {
+    variable: 'url',
+    type: VarType.string,
   },
 ]
 

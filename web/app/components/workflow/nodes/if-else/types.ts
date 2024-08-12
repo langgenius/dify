@@ -28,6 +28,8 @@ export enum ComparisonOperator {
   lessThanOrEqual = '≤',
   isNull = 'is null',
   isNotNull = 'is not null',
+  in = 'in',
+  notIn = 'not in',
 }
 
 export type Condition = {
@@ -49,6 +51,7 @@ export type IfElseNodeType = CommonNodeType & {
   logical_operator?: LogicalOperator
   conditions?: Condition[]
   cases: CaseItem[]
+  isInIteration: boolean
 }
 
 export type HandleAddCondition = (caseId: string, valueSelector: ValueSelector, varItem: Var) => void

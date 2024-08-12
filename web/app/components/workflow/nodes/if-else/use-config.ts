@@ -1,4 +1,4 @@
-import { useCallback } from 'react'
+import { useCallback, useMemo } from 'react'
 import produce from 'immer'
 import { v4 as uuid4 } from 'uuid'
 import type {
@@ -18,6 +18,7 @@ import {
   branchNameCorrect,
   getOperators,
 } from './utils'
+import useIsVarFileAttribute from './use-is-var-file-attribute'
 import useNodeCrud from '@/app/components/workflow/nodes/_base/hooks/use-node-crud'
 import {
   useEdgesInteractions,
@@ -45,6 +46,23 @@ const useConfig = (id: string, payload: IfElseNodeType) => {
   const filterNumberVar = useCallback((varPayload: Var) => {
     return varPayload.type === VarType.number
   }, [])
+
+  const {
+    getIsVarFileAttribute,
+  } = useIsVarFileAttribute({
+    nodeId: id,
+    isInIteration: payload.isInIteration,
+  })
+
+  const varsIsVarFileAttribute = useMemo(() => {
+    const conditions: Record<string, boolean> = {}
+    inputs.cases?.forEach((c) => {
+      c.conditions.forEach((condition) => {
+        conditions[condition.id] = getIsVarFileAttribute(condition.variable_selector)
+      })
+    })
+    return conditions
+  }, [inputs.cases, getIsVarFileAttribute])
 
   const {
     availableVars: availableNumberVars,
