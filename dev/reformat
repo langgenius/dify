@@ -9,7 +9,7 @@ if ! command -v ruff &> /dev/null || ! command -v dotenv-linter &> /dev/null; th
 fi
 
 # run ruff linter
-ruff check --fix --unsafe-fixes ./api
+ruff check --fix ./api
 
 # run dotenv-linter linter
 dotenv-linter ./api/.env.example ./web/.env.example
