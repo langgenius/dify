@@ -61,7 +61,7 @@ model_credential_schema:
       label:
         zh_Hans: 模型上下文长度
         en_US: Model context size
-      required: false
+      required: true
       show_on:
         - variable: __model_type
           value: llm
@@ -74,7 +74,7 @@ model_credential_schema:
       label:
         zh_Hans: 模型上下文长度
         en_US: Model context size
-      required: false
+      required: true
       show_on:
         - variable: __model_type
           value: text-embedding
