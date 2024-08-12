@@ -171,7 +171,7 @@ const translation = {
     'code': 'コード',
     'template-transform': 'テンプレート',
     'http-request': 'HTTPリクエスト',
-    'variable-assigner': '変数割り当て',
+    'variable-assigner': '変数代入',
     'variable-aggregator': '変数集約器',
     'iteration-start': 'イテレーション開始',
     'iteration': 'イテレーション',
@@ -387,11 +387,11 @@ const translation = {
       conditionNotSetup: '条件が設定されていません',
     },
     variableAssigner: {
-      title: '変数を割り当てる',
+      title: '変数を代入する',
       outputType: '出力タイプ',
       outputVarType: '出力変数のタイプ',
       varNotSet: '変数が設定されていません',
-      noVarTip: '割り当てる変数を追加してください',
+      noVarTip: '代入された変数を追加してください',
       type: {
         string: '文字列',
         number: '数値',
@@ -404,7 +404,7 @@ const translation = {
       outputVars: {
         varDescribe: '{{groupName}} 出力',
       },
-      setAssignVariable: '割り当て変数を設定',
+      setAssignVariable: '代入された変数を設定',
     },
     tool: {
       toAuthorize: '承認するには',
