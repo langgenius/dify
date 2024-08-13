@@ -1,15 +1,18 @@
-import React from 'react'
+import React from "react";
 
-import './style.css'
+import "./style.css";
+import LogoSite from "../logo/logo-site";
 type ILoadingProps = {
-  type?: 'area' | 'app'
-}
-const Loading = (
-  { type = 'area' }: ILoadingProps = { type: 'area' },
-) => {
+  type?: "area" | "app";
+};
+const Loading = ({ type = "area" }: ILoadingProps = { type: "area" }) => {
   return (
-    <div className={` min-h-screen flex w-full justify-center items-center ${type === 'app' ? 'h-full' : ''}`}>
-      <svg width="16" height="16" viewBox="0 0 16 16" fill="none" xmlns="http://www.w3.org/2000/svg" className='spin-animation'>
+    <div
+      className={` min-h-screen flex w-full justify-center items-center ${
+        type === "app" ? "h-full" : ""
+      }`}
+    >
+      {/* <svg width="16" height="16" viewBox="0 0 16 16" fill="none" xmlns="http://www.w3.org/2000/svg" className='spin-animation'>
         <g clipPath="url(#clip0_324_2488)">
           <path d="M15 0H10C9.44772 0 9 0.447715 9 1V6C9 6.55228 9.44772 7 10 7H15C15.5523 7 16 6.55228 16 6V1C16 0.447715 15.5523 0 15 0Z" fill="#1C64F2" />
           <path opacity="0.5" d="M15 9H10C9.44772 9 9 9.44772 9 10V15C9 15.5523 9.44772 16 10 16H15C15.5523 16 16 15.5523 16 15V10C16 9.44772 15.5523 9 15 9Z" fill="#1C64F2" />
@@ -21,9 +24,11 @@ const Loading = (
             <rect width="16" height="16" fill="white" />
           </clipPath>
         </defs>
-      </svg>
-
+      </svg> */}
+      <div className="animate-pulse">
+        <LogoSite className="h-12" />
+      </div>
     </div>
-  )
-}
-export default Loading
+  );
+};
+export default Loading;

@@ -20,6 +20,10 @@ const nextConfig = {
   },
   productionBrowserSourceMaps: false, // enable browser source map generation during the production build
   // Configure pageExtensions to include md and mdx
+
+  images: {
+    domains: ['app.chaindesk.ai'],
+  },
   pageExtensions: ['ts', 'tsx', 'js', 'jsx', 'md', 'mdx'],
   experimental: {
   },
