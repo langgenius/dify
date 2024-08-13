@@ -19,6 +19,7 @@ import {
 import type { StartNodeType } from '../nodes/start/types'
 import {
   useChecklistBeforePublish,
+  useIsChatMode,
   useNodesReadOnly,
   useNodesSyncDraft,
   useWorkflowMode,
@@ -31,6 +32,7 @@ import EditingTitle from './editing-title'
 import RunningTitle from './running-title'
 import RestoringTitle from './restoring-title'
 import ViewHistory from './view-history'
+import ChatVariableButton from './chat-variable-button'
 import EnvButton from './env-button'
 import Button from '@/app/components/base/button'
 import { useStore as useAppStore } from '@/app/components/app/store'
@@ -44,7 +46,8 @@ const Header: FC = () => {
   const appDetail = useAppStore(s => s.appDetail)
   const appSidebarExpand = useAppStore(s => s.appSidebarExpand)
   const appID = appDetail?.id
-  const { getNodesReadOnly } = useNodesReadOnly()
+  const isChatMode = useIsChatMode()
+  const { nodesReadOnly, getNodesReadOnly } = useNodesReadOnly()
   const publishedAt = useStore(s => s.publishedAt)
   const draftUpdatedAt = useStore(s => s.draftUpdatedAt)
   const toolPublished = useStore(s => s.toolPublished)
@@ -165,7 +168,8 @@ const Header: FC = () => {
       {
         normal && (
           <div className='flex items-center gap-2'>
-            <EnvButton />
+            {isChatMode && <ChatVariableButton disabled={nodesReadOnly} />}
+            <EnvButton disabled={nodesReadOnly} />
             <div className='w-[1px] h-3.5 bg-gray-200'></div>
             <RunAndHistory />
             <Button className='text-components-button-secondary-text' onClick={handleShowFeatures}>
@@ -176,7 +180,7 @@ const Header: FC = () => {
               {...{
                 publishedAt,
                 draftUpdatedAt,
-                disabled: Boolean(getNodesReadOnly()),
+                disabled: nodesReadOnly,
                 toolPublished,
                 inputs: variables,
                 onRefreshData: handleToolConfigureUpdate,

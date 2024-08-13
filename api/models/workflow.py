@@ -3,18 +3,18 @@ from collections.abc import Mapping, Sequence
 from enum import Enum
 from typing import Any, Optional, Union
 
+from sqlalchemy import func
+from sqlalchemy.orm import Mapped
+
 import contexts
 from constants import HIDDEN_VALUE
-from core.app.segments import (
-    SecretVariable,
-    Variable,
-    factory,
-)
+from core.app.segments import SecretVariable, Variable, factory
 from core.helper import encrypter
 from extensions.ext_database import db
 from libs import helper
-from models import StringUUID
-from models.account import Account
+
+from .account import Account
+from .types import StringUUID
 
 
 class CreatedByRole(Enum):
@@ -122,6 +122,7 @@ class Workflow(db.Model):
     updated_by = db.Column(StringUUID)
     updated_at = db.Column(db.DateTime)
     _environment_variables = db.Column('environment_variables', db.Text, nullable=False, server_default='{}')
+    _conversation_variables = db.Column('conversation_variables', db.Text, nullable=False, server_default='{}')
 
     @property
     def created_by_account(self):
@@ -249,8 +250,26 @@ class Workflow(db.Model):
             'graph': self.graph_dict,
             'features': self.features_dict,
             'environment_variables': [var.model_dump(mode='json') for var in environment_variables],
+            'conversation_variables': [var.model_dump(mode='json') for var in self.conversation_variables],
         }
         return result
+
+    @property
+    def conversation_variables(self) -> Sequence[Variable]:
+        # TODO: find some way to init `self._conversation_variables` when instance created.
+        if self._conversation_variables is None:
+            self._conversation_variables = '{}'
+
+        variables_dict: dict[str, Any] = json.loads(self._conversation_variables)
+        results = [factory.build_variable_from_mapping(v) for v in variables_dict.values()]
+        return results
+
+    @conversation_variables.setter
+    def conversation_variables(self, value: Sequence[Variable]) -> None:
+        self._conversation_variables = json.dumps(
+            {var.name: var.model_dump() for var in value},
+            ensure_ascii=False,
+        )
 
 
 class WorkflowRunTriggeredFrom(Enum):
@@ -702,3 +721,34 @@ class WorkflowAppLog(db.Model):
         created_by_role = CreatedByRole.value_of(self.created_by_role)
         return db.session.get(EndUser, self.created_by) \
             if created_by_role == CreatedByRole.END_USER else None
+
+
+class ConversationVariable(db.Model):
+    __tablename__ = 'workflow__conversation_variables'
+
+    id: Mapped[str] = db.Column(StringUUID, primary_key=True)
+    conversation_id: Mapped[str] = db.Column(StringUUID, nullable=False, primary_key=True)
+    app_id: Mapped[str] = db.Column(StringUUID, nullable=False, index=True)
+    data = db.Column(db.Text, nullable=False)
+    created_at = db.Column(db.DateTime, nullable=False, index=True, server_default=db.text('CURRENT_TIMESTAMP(0)'))
+    updated_at = db.Column(db.DateTime, nullable=False, server_default=func.current_timestamp(), onupdate=func.current_timestamp())
+
+    def __init__(self, *, id: str, app_id: str, conversation_id: str, data: str) -> None:
+        self.id = id
+        self.app_id = app_id
+        self.conversation_id = conversation_id
+        self.data = data
+
+    @classmethod
+    def from_variable(cls, *, app_id: str, conversation_id: str, variable: Variable) -> 'ConversationVariable':
+        obj = cls(
+            id=variable.id,
+            app_id=app_id,
+            conversation_id=conversation_id,
+            data=variable.model_dump_json(),
+        )
+        return obj
+
+    def to_variable(self) -> Variable:
+        mapping = json.loads(self.data)
+        return factory.build_variable_from_mapping(mapping)
