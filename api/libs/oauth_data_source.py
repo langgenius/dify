@@ -154,11 +154,11 @@ class NotionOAuth(OAuthDataSource):
         for page_result in page_results:
             page_id = page_result['id']
             page_name = 'Untitled'
-            for key in ['Name', 'title', 'Title', 'Page']:
-                if key in page_result['properties']:
-                    if len(page_result['properties'][key].get('title', [])) > 0:
-                        page_name = page_result['properties'][key]['title'][0]['plain_text']
-                        break
+            for key in page_result['properties']:
+                if 'title' in page_result['properties'][key] and page_result['properties'][key]['title']:
+                    title_list = page_result['properties'][key]['title']
+                    if len(title_list) > 0 and 'plain_text' in title_list[0]:
+                        page_name = title_list[0]['plain_text']
             page_icon = page_result['icon']
             if page_icon:
                 icon_type = page_icon['type']

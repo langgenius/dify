@@ -85,6 +85,42 @@ const translation = {
     workflow: 'Flux de lucru',
     completion: 'Finalizare',
   },
+  tracing: {
+    title: 'Urmărirea performanței aplicației',
+    description: 'Configurarea unui furnizor LLMOps terț și urmărirea performanței aplicației.',
+    config: 'Configurare',
+    collapse: 'Restrânge',
+    expand: 'Extinde',
+    tracing: 'Urmărire',
+    disabled: 'Dezactivat',
+    disabledTip: 'Vă rugăm să configurați mai întâi furnizorul',
+    enabled: 'În serviciu',
+    tracingDescription: 'Captează contextul complet al execuției aplicației, inclusiv apelurile LLM, context, prompt-uri, cereri HTTP și altele, către o platformă de urmărire terță.',
+    configProviderTitle: {
+      configured: 'Configurat',
+      notConfigured: 'Configurați furnizorul pentru a activa urmărirea',
+      moreProvider: 'Mai mulți furnizori',
+    },
+    langsmith: {
+      title: 'LangSmith',
+      description: 'O platformă de dezvoltare all-in-one pentru fiecare etapă a ciclului de viață al aplicației bazate pe LLM.',
+    },
+    langfuse: {
+      title: 'Langfuse',
+      description: 'Urmărire, evaluări, gestionarea prompt-urilor și metrici pentru depanarea și îmbunătățirea aplicației dvs. LLM.',
+    },
+    inUse: 'În utilizare',
+    configProvider: {
+      title: 'Configurare ',
+      placeholder: 'Introduceți {{key}}-ul dvs.',
+      project: 'Proiect',
+      publicKey: 'Cheie publică',
+      secretKey: 'Cheie secretă',
+      viewDocsLink: 'Vizualizați documentația {{key}}',
+      removeConfirmTitle: 'Eliminați configurația {{key}}?',
+      removeConfirmContent: 'Configurația curentă este în uz, eliminarea acesteia va dezactiva funcția de Urmărire.',
+    },
+  },
 }
 
 export default translation

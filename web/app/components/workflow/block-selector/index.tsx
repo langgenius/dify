@@ -5,6 +5,7 @@ import type {
 import {
   memo,
   useCallback,
+  useMemo,
   useState,
 } from 'react'
 import { useTranslation } from 'react-i18next'
@@ -14,6 +15,7 @@ import type {
 } from '@floating-ui/react'
 import type { BlockEnum, OnSelectBlock } from '../types'
 import Tabs from './tabs'
+import { TabsEnum } from './types'
 import {
   PortalToFollowElem,
   PortalToFollowElemContent,
@@ -63,6 +65,9 @@ const NodeSelector: FC<NodeSelectorProps> = ({
   const handleOpenChange = useCallback((newOpen: boolean) => {
     setLocalOpen(newOpen)
 
+    if (!newOpen)
+      setSearchText('')
+
     if (onOpenChange)
       onOpenChange(newOpen)
   }, [onOpenChange])
@@ -76,6 +81,19 @@ const NodeSelector: FC<NodeSelectorProps> = ({
     handleOpenChange(false)
     onSelect(type, toolDefaultValue)
   }, [handleOpenChange, onSelect])
+
+  const [activeTab, setActiveTab] = useState(noBlocks ? TabsEnum.Tools : TabsEnum.Blocks)
+  const handleActiveTabChange = useCallback((newActiveTab: TabsEnum) => {
+    setActiveTab(newActiveTab)
+  }, [])
+  const searchPlaceholder = useMemo(() => {
+    if (activeTab === TabsEnum.Blocks)
+      return t('workflow.tabs.searchBlock')
+
+    if (activeTab === TabsEnum.Tools)
+      return t('workflow.tabs.searchTool')
+    return ''
+  }, [activeTab, t])
 
   return (
     <PortalToFollowElem
@@ -114,12 +132,14 @@ const NodeSelector: FC<NodeSelectorProps> = ({
               showClearIcon
               autoFocus
               value={searchText}
-              placeholder={t('workflow.tabs.searchBlock') || ''}
+              placeholder={searchPlaceholder}
               onChange={e => setSearchText(e.target.value)}
               onClear={() => setSearchText('')}
             />
           </div>
           <Tabs
+            activeTab={activeTab}
+            onActiveTabChange={handleActiveTabChange}
             onSelect={handleSelect}
             searchText={searchText}
             availableBlocksTypes={availableBlocksTypes}

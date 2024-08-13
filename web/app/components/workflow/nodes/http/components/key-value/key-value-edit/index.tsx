@@ -18,6 +18,8 @@ type Props = {
   onAdd: () => void
   isSupportFile?: boolean
   // onSwitchToBulkEdit: () => void
+  keyNotSupportVar?: boolean
+  insertVarTipToLeft?: boolean
 }
 
 const KeyValueList: FC<Props> = ({
@@ -28,6 +30,8 @@ const KeyValueList: FC<Props> = ({
   onAdd,
   isSupportFile,
   // onSwitchToBulkEdit,
+  keyNotSupportVar,
+  insertVarTipToLeft,
 }) => {
   const { t } = useTranslation()
 
@@ -48,6 +52,9 @@ const KeyValueList: FC<Props> = ({
       onChange(newList)
     }
   }, [list, onChange])
+
+  if (!Array.isArray(list))
+    return null
 
   return (
     <div className='border border-gray-200 rounded-lg overflow-hidden'>
@@ -82,6 +89,8 @@ const KeyValueList: FC<Props> = ({
             readonly={readonly}
             canRemove={list.length > 1}
             isSupportFile={isSupportFile}
+            keyNotSupportVar={keyNotSupportVar}
+            insertVarTipToLeft={insertVarTipToLeft}
           />
         ))
       }

@@ -19,7 +19,7 @@ import {
 import { filterVar } from '../utils'
 import AddVariable from './add-variable'
 import NodeVariableItem from './node-variable-item'
-import { isENV, isSystemVar } from '@/app/components/workflow/nodes/_base/components/variable/utils'
+import { isConversationVar, isENV, isSystemVar } from '@/app/components/workflow/nodes/_base/components/variable/utils'
 import cn from '@/utils/classnames'
 
 const i18nPrefix = 'workflow.nodes.variableAssigner'
@@ -124,6 +124,8 @@ const NodeGroupItem = ({
         !!item.variables.length && item.variables.map((variable = [], index) => {
           const isSystem = isSystemVar(variable)
           const isEnv = isENV(variable)
+          const isChatVar = isConversationVar(variable)
+
           const node = isSystem ? nodes.find(node => node.data.type === BlockEnum.Start) : nodes.find(node => node.id === variable[0])
           const varName = isSystem ? `sys.${variable[variable.length - 1]}` : variable.slice(1).join('.')
 
@@ -131,6 +133,7 @@ const NodeGroupItem = ({
             <NodeVariableItem
               key={index}
               isEnv={isEnv}
+              isChatVar={isChatVar}
               node={node as Node}
               varName={varName}
               showBorder={showSelectedBorder || showSelectionBorder}

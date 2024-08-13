@@ -8,6 +8,7 @@ import type { ToolDefaultValue } from '@/app/components/workflow/block-selector/
 import type { VarType as VarKindType } from '@/app/components/workflow/nodes/tool/types'
 import type { NodeTracing } from '@/types/workflow'
 import type { Collection, Tool } from '@/app/components/tools/types'
+import type { ChatVarType } from '@/app/components/workflow/panel/chat-variable-panel/type'
 
 export enum BlockEnum {
   Start = 'start',
@@ -27,6 +28,7 @@ export enum BlockEnum {
   Iteration = 'iteration',
   DocExtractor = 'doc-extractor',
   ListFilter = 'list-filter',
+  Assigner = 'assigner', // is now named as VariableAssigner
 }
 
 export type Branch = {
@@ -111,6 +113,14 @@ export type EnvironmentVariable = {
   value_type: 'string' | 'number' | 'secret'
 }
 
+export type ConversationVariable = {
+  id: string
+  name: string
+  value_type: ChatVarType
+  value: any
+  description: string
+}
+
 export type VariableWithValue = {
   key: string
   value: string
@@ -136,6 +146,7 @@ export type InputVar = {
     nodeType: BlockEnum
     nodeName: string
     variable: string
+    isChatVar?: boolean
   }
   variable: string
   max_length?: number
@@ -214,6 +225,7 @@ export type Var = {
   isSelect?: boolean
   options?: string[]
   required?: boolean
+  des?: string
 }
 
 export type NodeOutPutVar = {

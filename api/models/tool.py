@@ -2,7 +2,8 @@ import json
 from enum import Enum
 
 from extensions.ext_database import db
-from models import StringUUID
+
+from .types import StringUUID
 
 
 class ToolProviderName(Enum):

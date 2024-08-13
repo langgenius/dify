@@ -478,6 +478,8 @@ export const useWorkflowInit = () => {
           return acc
         }, {} as Record<string, string>),
         environmentVariables: res.environment_variables?.map(env => env.value_type === 'secret' ? { ...env, value: '[__HIDDEN__]' } : env) || [],
+        // #TODO chatVar sync#
+        conversationVariables: res.conversation_variables || [],
       })
       setSyncWorkflowDraftHash(res.hash)
       setIsLoading(false)
@@ -498,6 +500,7 @@ export const useWorkflowInit = () => {
                   retriever_resource: { enabled: true },
                 },
                 environment_variables: [],
+                conversation_variables: [],
               },
             }).then((res) => {
               workflowStore.getState().setDraftUpdatedAt(res.updated_at)

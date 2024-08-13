@@ -264,7 +264,12 @@ const Workflow: FC<WorkflowProps> = memo(({
 
   const { shortcutsEnabled: workflowHistoryShortcutsEnabled } = useWorkflowHistoryStore()
 
-  useKeyPress(['delete', 'backspace'], handleNodesDelete)
+  useKeyPress(['delete', 'backspace'], (e) => {
+    if (isEventTargetInputArea(e.target as HTMLElement))
+      return
+
+    handleNodesDelete()
+  })
   useKeyPress(['delete', 'backspace'], handleEdgeDelete)
   useKeyPress(`${getKeyboardKeyCodeBySystem('ctrl')}.c`, (e) => {
     if (isEventTargetInputArea(e.target as HTMLElement))

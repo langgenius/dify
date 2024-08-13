@@ -69,7 +69,6 @@ const Prompt: FC<ISimplePromptInput> = ({
     hasSetBlockStatus,
     showSelectDataSet,
     externalDataToolsConfig,
-    isAgent,
   } = useContext(ConfigContext)
   const { notify } = useToastContext()
   const { setShowExternalDataToolModal } = useModalContext()
