@@ -181,6 +181,7 @@ zhipuai = "1.0.7"
 rank-bm25 = "~0.2.2"
 openpyxl = "^3.1.5"
 kaleido = "0.2.1"
+elasticsearch = "8.14.0"
 
 ############################################################
 # Tool dependencies required by tool implementations

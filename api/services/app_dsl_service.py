@@ -13,9 +13,9 @@ from services.workflow_service import WorkflowService
 
 logger = logging.getLogger(__name__)
 
-current_dsl_version = "0.1.0"
+current_dsl_version = "0.1.1"
 dsl_to_dify_version_mapping: dict[str, str] = {
-    "0.1.0": "0.6.0",  # dsl version -> from dify version
+    "0.1.1": "0.6.0",  # dsl version -> from dify version
 }
 
 
