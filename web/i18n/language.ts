@@ -28,7 +28,7 @@ export type I18nText = {
 
 export const languages = data.languages
 
-export const LanguagesSupported = languages.filter(item => item.supported).map(item => item.value)
+export const LanguagesSupported = languages.filter(item => item.supported && (item.value === 'en-US' || item.value === 'vi-VN')).map(item => item.value)
 
 export const getLanguage = (locale: string) => {
   if (locale === 'zh-Hans')
