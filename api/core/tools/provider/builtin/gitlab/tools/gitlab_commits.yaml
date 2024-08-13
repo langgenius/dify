@@ -54,4 +54,3 @@ parameters:
       zh_Hans: 结束时间
     llm_description: end_time for gitlab
     form: llm
-    
