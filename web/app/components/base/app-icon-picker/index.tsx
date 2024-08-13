@@ -14,8 +14,22 @@ import getCroppedImg from './utils'
 import type { AppIconType, ImageFile } from '@/types/app'
 import cn from '@/utils/classnames'
 
+type AppIconEmojiSelection = {
+  type: 'emoji'
+  icon: string
+  background: string
+}
+
+type AppIconImageSelection = {
+  type: 'image'
+  fileId: string
+  url: string
+}
+
+export type AppIconSelection = AppIconEmojiSelection | AppIconImageSelection
+
 type AppIconPickerProps = {
-  onSelect?: (iconType: AppIconType, icon: string, background?: string) => void
+  onSelect?: (payload: AppIconSelection) => void
   onClose?: () => void
   className?: string
 }
@@ -46,7 +60,11 @@ const AppIconPicker: FC<AppIconPickerProps> = ({
     onUpload: (imageFile: ImageFile) => {
       if (imageFile.fileId) {
         setUploading(false)
-        onSelect?.('image', imageFile.fileId)
+        onSelect?.({
+          type: 'image',
+          fileId: imageFile.fileId,
+          url: imageFile.url,
+        })
       }
     },
   })
@@ -58,8 +76,13 @@ const AppIconPicker: FC<AppIconPickerProps> = ({
 
   const handleSelect = async () => {
     if (activeTab === 'emoji') {
-      if (emoji)
-        onSelect?.('emoji', emoji.emoji, emoji.background)
+      if (emoji) {
+        onSelect?.({
+          type: 'emoji',
+          icon: emoji.emoji,
+          background: emoji.background,
+        })
+      }
     }
     else {
       if (!imageCropInfo)
