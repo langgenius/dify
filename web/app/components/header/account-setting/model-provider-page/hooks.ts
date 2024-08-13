@@ -217,12 +217,11 @@ export const useAnthropicBuyQuota = () => {
 export const useModelProviders = () => {
   const { data: providersData, mutate, isLoading } = useSWR('/workspaces/current/model-providers', fetchModelProviders)
 
-  const providers = ['openai', 'azure_openai', 'anthropic', 'google', 'nvidia', 'nvidia_nim', 'cohere', 'bedrock', 'ollama', 'mistralai', 'replicate',
-    'huggingface_hub', 'xinference', 'triton_inference_server', 'jina', 'openllm', 'localai', 'openai_api_compatible'];
-
+  // const providers = ['openai', 'azure_openai', 'anthropic', 'google', 'nvidia', 'nvidia_nim', 'cohere', 'bedrock', 'ollama', 'mistralai', 'replicate',
+  //   'huggingface_hub', 'xinference', 'triton_inference_server', 'jina', 'openllm', 'localai', 'openai_api_compatible'];
   return {
-    // data: providersData?.data || [],
-    data: providersData?.data ? providersData?.data?.filter(i => providers.includes(i.provider)) : [],
+    data: providersData?.data || [],
+    // data: providersData?.data ? providersData?.data?.filter(i => providers.includes(i.provider)) : [],
     mutate,
     isLoading,
   }
