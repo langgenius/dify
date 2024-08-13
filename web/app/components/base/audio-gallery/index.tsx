@@ -9,9 +9,7 @@ type Props = {
 const AudioGallery: React.FC<Props> = ({ srcs }) => {
   return (
     <div className={styles.audioGallery}>
-      {srcs.map((src, index) => (
-        <AudioPlayer key={`audio_${index}`} src={src} />
-      ))}
+      <div><br/>{srcs.map((src, index) => (<AudioPlayer key={`audio_${index}`} src={src}/>))}</div>
     </div>
   )
 }

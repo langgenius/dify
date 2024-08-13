@@ -237,9 +237,7 @@ const VideoPlayer: React.FC<VideoPlayerProps> = ({ src }) => {
               <button className={styles.playPauseButton} onClick={togglePlayPause}>
                 {isPlaying ? <PauseIcon /> : <PlayIcon />}
               </button>
-              {!isSmallSize && (
-                <span className={styles.time}>{formatTime(currentTime)} / {formatTime(duration)}</span>
-              )}
+              {!isSmallSize && (<span className={styles.time}>{formatTime(currentTime)} / {formatTime(duration)}</span>)}
             </div>
             <div className={styles.rightControls}>
               <button className={styles.muteButton} onClick={toggleMute}>

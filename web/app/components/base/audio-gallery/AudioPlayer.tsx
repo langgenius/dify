@@ -15,7 +15,6 @@ const AudioPlayer: React.FC<AudioPlayerProps> = ({ src }) => {
   const canvasRef = useRef<HTMLCanvasElement>(null)
   const [hasStartedPlaying, setHasStartedPlaying] = useState(false)
   const [hoverTime, setHoverTime] = useState(0)
-  const [desiredTime, setDesiredTime] = useState(0)
 
   useEffect(() => {
     const audio = audioRef.current
@@ -39,17 +38,6 @@ const AudioPlayer: React.FC<AudioPlayerProps> = ({ src }) => {
         setBufferedTime(audio.buffered.end(audio.buffered.length - 1))
     }
 
-    const handleCanPlayThrough = () => {
-      try {
-        setCurrentTime(desiredTime)
-        audio.currentTime = desiredTime
-        console.log('Audio can play through:', desiredTime, desiredTime)
-      }
-      catch (error) {
-        console.error('Error setting audio currentTime:', error)
-      }
-    }
-
     const handleEnded = () => {
       setIsPlaying(false)
     }
@@ -62,13 +50,13 @@ const AudioPlayer: React.FC<AudioPlayerProps> = ({ src }) => {
     generateWaveformData(src)
 
     return () => {
-      audio.removeEventListener('canplaythrough', handleCanPlayThrough)
+      // audio.removeEventListener('canplaythrough', handleCanPlayThrough)
       audio.removeEventListener('progress', handleProgress)
       audio.removeEventListener('loadedmetadata', setAudioData)
       audio.removeEventListener('timeupdate', setAudioTime)
       audio.removeEventListener('ended', handleEnded)
     }
-  }, [src, desiredTime])
+  }, [src])
 
   const generateWaveformData = async (audioSrc: string) => {
     const audioContext = new (window.AudioContext || (window as any).webkitAudioContext)()
@@ -123,42 +111,40 @@ const AudioPlayer: React.FC<AudioPlayerProps> = ({ src }) => {
   const handleCanvasInteraction = useCallback((e: React.MouseEvent | React.TouchEvent) => {
     e.preventDefault()
 
-    // Only allow changing play position after user has started playing
-    if (!hasStartedPlaying)
-      return
+    const getClientX = (event: React.MouseEvent | React.TouchEvent): number => {
+      if ('touches' in event)
+        return event.touches[0].clientX
 
-    const canvas = canvasRef.current
-    const audio = audioRef.current
-    if (!canvas || !audio)
-      return
-
-    const updateProgressFromEvent = (clientX: number) => {
-      const rect = canvas.getBoundingClientRect()
-      const percent = Math.min(Math.max(0, clientX - rect.left), rect.width) / rect.width
-
-      // Check if the clicked position is within any buffered range before updating progress
-      for (let i = 0; i < audio.buffered.length; i++) {
-        if (percent * duration >= audio.buffered.start(i) && percent * duration <= audio.buffered.end(i)) {
-          setDesiredTime(percent * duration)
-          audio.currentTime = percent * duration // directly set currentTime here
-          break
-        }
-      }
-
-      // If the audio was paused, resume playing after changing play position.
-      if (!isPlaying)
-        togglePlay()
+      return event.clientX
     }
 
-    let clientX
+    const updateProgress = (clientX: number) => {
+      const canvas = canvasRef.current
+      const audio = audioRef.current
+      if (!canvas || !audio)
+        return
 
-    if ('touches' in e && e.type === 'touchend')
-      clientX = e.changedTouches[0].clientX
-    else
-      clientX = 'touches' in e ? e.touches[0].clientX : e.clientX
+      const rect = canvas.getBoundingClientRect()
+      const percent = Math.min(Math.max(0, clientX - rect.left), rect.width) / rect.width
+      const newTime = percent * duration
 
-    updateProgressFromEvent(clientX)
-  }, [duration, hasStartedPlaying, isPlaying, togglePlay])
+      // Check if the new time is within any buffered range
+      const isBuffered = Array.from({ length: audio.buffered.length }, (_, i) => i)
+        .some(i => newTime >= audio.buffered.start(i) && newTime <= audio.buffered.end(i))
+
+      if (isBuffered) {
+        audio.currentTime = newTime
+        setCurrentTime(newTime)
+
+        if (!isPlaying) {
+          setIsPlaying(true)
+          audio.play().catch(error => console.error('Error playing audio:', error))
+        }
+      }
+    }
+
+    updateProgress(getClientX(e))
+  }, [duration, isPlaying])
 
   const formatTime = (time: number) => {
     const minutes = Math.floor(time / 60)
@@ -258,10 +244,11 @@ const AudioPlayer: React.FC<AudioPlayerProps> = ({ src }) => {
             width="300"
             height="25"
             onClick={handleCanvasInteraction}
-            onTouchEnd={handleCanvasInteraction}
+            onTouchStart={handleCanvasInteraction}
+            onMouseDown={handleCanvasInteraction}
             onMouseMove={handleMouseMove}
           />
-          <div className={styles.currentTime} style={{ left: `${(currentTime / duration) * 100}%`, bottom: '30px' }}>
+          <div className={styles.currentTime} style={{ left: `${(currentTime / duration) * 100}%`, bottom: '32px' }}>
             {formatTime(currentTime)}
           </div>
           <div className={styles.timeDisplay}>
