@@ -18,9 +18,6 @@ credentials_for_provider:
     label:
       en_US: SearXNG base URL
       zh_Hans: SearXNG base URL
-    help:
-      en_US: Please input your SearXNG base URL
-      zh_Hans: 请输入您的 SearXNG base URL
     placeholder:
       en_US: Please input your SearXNG base URL
       zh_Hans: 请输入您的 SearXNG base URL
