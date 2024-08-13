@@ -18,7 +18,7 @@ import ChatWrapper from './chat-wrapper'
 import cn from '@/utils/classnames'
 import { RefreshCcw01 } from '@/app/components/base/icons/src/vender/line/arrows'
 import { BubbleX } from '@/app/components/base/icons/src/vender/line/others'
-import TooltipPlus from '@/app/components/base/tooltip-plus'
+import Tooltip from '@/app/components/base/tooltip'
 import ActionButton, { ActionButtonState } from '@/app/components/base/action-button'
 import { useStore } from '@/app/components/workflow/store'
 
@@ -63,31 +63,31 @@ const DebugAndPreview = () => {
       <div className='shrink-0 flex items-center justify-between px-4 pt-3 pb-2 text-text-primary system-xl-semibold'>
         <div className='h-8'>{t('workflow.common.debugAndPreview').toLocaleUpperCase()}</div>
         <div className='flex items-center gap-1'>
-          <TooltipPlus
+          <Tooltip
             popupContent={t('common.operation.refresh')}
           >
             <ActionButton onClick={() => handleRestartChat()}>
               <RefreshCcw01 className='w-4 h-4' />
             </ActionButton>
-          </TooltipPlus>
+          </Tooltip>
           {varList.length > 0 && (
-            <TooltipPlus
+            <Tooltip
               popupContent={t('workflow.chatVariable.panelTitle')}
             >
               <ActionButton onClick={() => setShowConversationVariableModal(true)}>
                 <BubbleX className='w-4 h-4' />
               </ActionButton>
-            </TooltipPlus>
+            </Tooltip>
           )}
           {variables.length > 0 && (
             <div className='relative'>
-              <TooltipPlus
+              <Tooltip
                 popupContent={t('workflow.panel.userInputField')}
               >
                 <ActionButton state={expanded ? ActionButtonState.Active : undefined} onClick={() => setExpanded(!expanded)}>
                   <RiEqualizer2Line className='w-4 h-4' />
                 </ActionButton>
-              </TooltipPlus>
+              </Tooltip>
               {expanded && <div className='absolute z-10 bottom-[-17px] right-[5px] w-3 h-3 bg-components-panel-on-panel-item-bg border-l-[0.5px] border-t-[0.5px] border-components-panel-border-subtle rotate-45'/>}
             </div>
           )}
