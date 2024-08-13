@@ -40,10 +40,7 @@ const Filed: FC<Props> = ({
           <div className='system-sm-semibold-uppercase text-text-secondary'>{title}</div>
           {tooltip && (
             <Tooltip
-              popupContent={
-                <div className='w-[120px]'>
-                  {tooltip}
-                </div>}
+              popupContent={tooltip}
               popupClassName='ml-1'
               triggerClassName='w-4 h-4 ml-1'
             />

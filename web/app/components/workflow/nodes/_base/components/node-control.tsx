@@ -70,6 +70,7 @@ const NodeControl: FC<NodeControlProps> = ({
                   : (
                     <Tooltip
                       popupContent={t('workflow.panel.runThisStep')}
+                      asChild={false}
                     >
                       <RiPlayLargeLine className='w-3 h-3' />
                     </Tooltip>

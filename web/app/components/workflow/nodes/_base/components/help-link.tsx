@@ -17,8 +17,6 @@ const HelpLink = ({
   return (
     <TooltipPlus
       popupContent={t('common.userProfile.helpCenter')}
-      popupClassName='mr-1'
-      needsDelay
     >
       <a
         href={link}

@@ -207,6 +207,7 @@ const Panel: FC<NodePanelProps<LLMNodeType>> = ({
                 <div className='text-xs font-semibold text-gray-700 uppercase'>{t('workflow.nodes.common.memories.title')}</div>
                 <Tooltip
                   popupContent={t('workflow.nodes.common.memories.tip')}
+                  triggerClassName='w-4 h-4'
                 />
               </div>
               <div className='flex items-center h-[18px] px-1 rounded-[5px] border border-black/8 text-xs font-semibold text-gray-500 uppercase'>{t('workflow.nodes.common.memories.builtIn')}</div>
@@ -220,6 +221,7 @@ const Panel: FC<NodePanelProps<LLMNodeType>> = ({
                     popupContent={
                       <div className='max-w-[180px]'>{t('workflow.nodes.llm.roleDescription.user')}</div>
                     }
+                    triggerClassName='w-4 h-4'
                   />
                 </div>}
                 value={inputs.memory.query_prompt_template || '{{#sys.query#}}'}
