@@ -2,6 +2,17 @@
 
 server {
     listen ${NGINX_PORT};
+    listen [::]:${NGINX_PORT};
+    server_name ${NGINX_SERVER_NAME};
+
+    location / {
+        return 301 https://$host$request_uri;
+    }
+}
+
+server {
+    listen ${NGINX_SSL_PORT};
+    listen [::]:${NGINX_SSL_PORT};
     server_name ${NGINX_SERVER_NAME};
 
     location /console/api {
@@ -32,6 +43,28 @@ server {
     location / {
       proxy_pass http://host.docker.internal:8700;
       include proxy.conf;
+    }
+
+    location /advisor/ {
+        proxy_pass http://host.docker.internal:8501/;
+    }
+
+    location ^~ /advisor/static {
+        proxy_pass http://host.docker.internal:8501/static/;
+    }
+    
+    location ^~ /advisor/healthz {
+        proxy_pass http://host.docker.internal:8501/healthz;
+    }
+
+    location /advisor/_stcore/stream {
+        proxy_pass http://host.docker.internal:8501/_stcore/stream;
+        proxy_http_version 1.1;
+        proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+        proxy_set_header Host $host;
+        proxy_set_header Upgrade $http_upgrade;
+        proxy_set_header Connection "upgrade";
+        proxy_read_timeout 86400;
     }
 
     # placeholder for acme challenge location
