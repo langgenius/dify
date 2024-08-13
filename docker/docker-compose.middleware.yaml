@@ -10,7 +10,7 @@ services:
       POSTGRES_DB: ${POSTGRES_DB:-dify}
       PGDATA: ${PGDATA:-/var/lib/postgresql/data/pgdata}
     volumes:
-      - ./volumes/db/data:/var/lib/postgresql/data
+      - postgres_data:/var/lib/postgresql/data
     ports:
       - "${EXPOSE_POSTGRES_PORT:-5433}:5432"
 
@@ -105,3 +105,6 @@ networks:
   ssrf_proxy_network:
     driver: bridge
     internal: true
+
+volumes:
+  postgres_data:
