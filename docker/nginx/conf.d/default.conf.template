@@ -24,13 +24,14 @@ server {
       include proxy.conf;
     }
 
-    location / {
+    location /apps {
       proxy_pass http://web:3000;
       include proxy.conf;
     }
 
-    location /crag {
-      rewrite ^/crag(.*)$ /$1;
+    location / {
+      proxy_pass http://host.docker.internal:8700;
+      include proxy.conf;
     }
 
     # placeholder for acme challenge location
