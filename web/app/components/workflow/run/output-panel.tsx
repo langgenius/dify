@@ -19,7 +19,7 @@ const OutputPanel: FC<OutputPanelProps> = ({
   height,
 }) => {
   return (
-    <div className='bg-gray-50 py-2'>
+    <div className='bg-background-section-burn py-2'>
       {isRunning && (
         <div className='pt-4 pl-[26px]'>
           <LoadingAnim type='text' />

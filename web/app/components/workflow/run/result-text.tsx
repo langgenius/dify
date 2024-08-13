@@ -20,7 +20,7 @@ const ResultText: FC<ResultTextProps> = ({
 }) => {
   const { t } = useTranslation()
   return (
-    <div className='bg-gray-50 py-2'>
+    <div className='bg-background-section-burn py-2'>
       {isRunning && !outputs && (
         <div className='pt-4 pl-[26px]'>
           <LoadingAnim type='text' />
@@ -28,7 +28,7 @@ const ResultText: FC<ResultTextProps> = ({
       )}
       {!isRunning && error && (
         <div className='px-4'>
-          <div className='px-3 py-[10px] rounded-lg !bg-[#fef3f2] border-[0.5px] border-[rbga(0,0,0,0.05)] shadow-xs'>
+          <div className='px-3 py-[10px] rounded-lg !bg-[#fef3f2] border-[0.5px] border-[rgba(0,0,0,0.05)] shadow-xs'>
             <div className='text-xs leading-[18px] text-[#d92d20]'>{error}</div>
           </div>
         </div>

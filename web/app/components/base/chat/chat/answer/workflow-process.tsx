@@ -67,9 +67,9 @@ const WorkflowProcessItem = ({
   return (
     <div
       className={cn(
-        'mb-2 rounded-xl border-[0.5px] border-black/8',
+        'mb-2 rounded-xl border-[0.5px] border-components-panel-border',
         collapse ? 'py-[7px]' : hideInfo ? 'pt-2 pb-1' : 'py-2',
-        collapse && (!grayBg ? 'bg-white' : 'bg-gray-50'),
+        collapse && (!grayBg ? 'bg-components-panel-bg' : 'bg-background-section-burn'),
         hideInfo ? 'mx-[-8px] px-1' : 'w-full px-3',
       )}
       style={{
@@ -85,23 +85,23 @@ const WorkflowProcessItem = ({
       >
         {
           running && (
-            <RiLoader2Line className='shrink-0 mr-1 w-3 h-3 text-[#667085] animate-spin' />
+            <RiLoader2Line className='shrink-0 mr-1 w-3 h-3 text-text-accent animate-spin' />
           )
         }
         {
           succeeded && (
-            <CheckCircle className='shrink-0 mr-1 w-3 h-3 text-[#12B76A]' />
+            <CheckCircle className='shrink-0 mr-1 w-3 h-3 text-text-success' />
           )
         }
         {
           failed && (
-            <RiErrorWarningFill className='shrink-0 mr-1 w-3 h-3 text-[#F04438]' />
+            <RiErrorWarningFill className='shrink-0 mr-1 w-3 h-3 text-text-destructive' />
           )
         }
-        <div className='grow text-xs font-medium text-gray-700'>
+        <div className='grow text-xs font-medium text-text-secondary'>
           {t('workflow.common.workflowProcess')}
         </div>
-        <RiArrowRightSLine className={`'ml-1 w-3 h-3 text-gray-500' ${collapse ? '' : 'rotate-90'}`} />
+        <RiArrowRightSLine className={`'ml-1 w-3 h-3 text-text-tertiary' ${collapse ? '' : 'rotate-90'}`} />
       </div>
       {
         !collapse && (
