@@ -3,11 +3,12 @@ import {
   useMemo,
 } from 'react'
 import { useTranslation } from 'react-i18next'
-import type { ComparisonOperator } from '../types'
+import { ComparisonOperator } from '../types'
 import {
   comparisonOperatorNotRequireValue,
   isComparisonOperatorNeedTranslate,
 } from '../utils'
+import { FILE_TYPE_OPTIONS, TRANSFER_METHOD } from '../default'
 import { Variable02 } from '@/app/components/base/icons/src/vender/solid/development'
 import { Env } from '@/app/components/base/icons/src/vender/line/others'
 import cn from '@/utils/classnames'
@@ -41,6 +42,23 @@ const ConditionValue = ({
     })
   }, [notHasValue, value])
 
+  const isSelect = operator === ComparisonOperator.in || operator === ComparisonOperator.notIn
+  const selectName = useMemo(() => {
+    if (isSelect) {
+      const name = [...FILE_TYPE_OPTIONS, ...TRANSFER_METHOD].filter(item => item.value === value)[0]
+      return name
+        ? t(`workflow.nodes.ifElse.optionName.${name.i18nKey}`).replace(/{{#([^#]*)#}}/g, (a, b) => {
+          const arr: string[] = b.split('.')
+          if (isSystemVar(arr))
+            return `{{${b}}}`
+
+          return `{{${arr.slice(1).join('.')}}}`
+        })
+        : ''
+    }
+    return ''
+  }, [isSelect, t, value])
+
   return (
     <div className='flex items-center px-1 h-6 rounded-md bg-workflow-block-parma-bg'>
       {!isENV(variableSelector) && <Variable02 className='shrink-0 mr-1 w-3.5 h-3.5 text-text-accent' />}
@@ -62,7 +80,7 @@ const ConditionValue = ({
       </div>
       {
         !notHasValue && (
-          <div className='truncate text-xs text-text-secondary' title={formatValue}>{formatValue}</div>
+          <div className='truncate text-xs text-text-secondary' title={formatValue}>{isSelect ? selectName : formatValue}</div>
         )
       }
     </div>

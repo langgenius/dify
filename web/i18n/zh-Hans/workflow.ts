@@ -387,8 +387,8 @@ const translation = {
         'not empty': '不为空',
         'null': '空',
         'not null': '不为空',
-        'in': '在',
-        'not in': '不在',
+        'in': '是',
+        'not in': '不是',
       },
       optionName: {
         image: '图片',
