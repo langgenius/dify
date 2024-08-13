@@ -1,6 +1,7 @@
 import { BlockEnum, type NodeDefault } from '../../types'
 import { type IfElseNodeType, LogicalOperator } from './types'
 import { isEmptyRelatedOperator } from './utils'
+import { TransferMethod } from '@/types/app'
 import { ALL_CHAT_AVAILABLE_BLOCKS, ALL_COMPLETION_AVAILABLE_BLOCKS } from '@/app/components/workflow/constants'
 const i18nPrefix = 'workflow.errorMsg'
 
@@ -61,3 +62,15 @@ const nodeDefault: NodeDefault<IfElseNodeType> = {
 }
 
 export default nodeDefault
+
+export const FILE_TYPE_OPTIONS = [
+  { value: 'image', i18nKey: 'image' },
+  { value: 'doc', i18nKey: 'doc' },
+  { value: 'audio', i18nKey: 'audio' },
+  { value: 'video', i18nKey: 'video' },
+]
+
+export const TRANSFER_METHOD = [
+  { value: TransferMethod.local_file, i18nKey: 'localUpload' },
+  { value: TransferMethod.remote_url, i18nKey: 'url' },
+]

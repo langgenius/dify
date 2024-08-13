@@ -96,7 +96,7 @@ const Select: FC<ISelectProps> = ({
         <div className='group text-gray-800'>
           {allowSearch
             ? <Combobox.Input
-              className={`w-full rounded-lg border-0 ${bgClassName} py-1.5 pl-3 pr-10 shadow-sm sm:text-sm sm:leading-6 focus-visible:outline-none focus-visible:bg-gray-200 group-hover:bg-gray-200 cursor-not-allowed`}
+              className={classNames('w-full rounded-lg border-0  py-1.5 pl-3 pr-10 shadow-sm sm:text-sm sm:leading-6 focus-visible:outline-none focus-visible:bg-gray-200 group-hover:bg-gray-200 cursor-not-allowed', bgClassName)}
               onChange={(event) => {
                 if (!disabled)
                   setQuery(event.target.value)
@@ -200,7 +200,7 @@ const SimpleSelect: FC<ISelectProps> = ({
       }}
     >
       <div className={classNames('relative h-9', wrapperClassName)}>
-        <Listbox.Button className={`flex items-center w-full h-full rounded-lg border-0 bg-gray-100 pl-3 pr-10 sm:text-sm sm:leading-6 focus-visible:outline-none focus-visible:bg-gray-200 group-hover:bg-gray-200 ${disabled ? 'cursor-not-allowed' : 'cursor-pointer'} ${className}`}>
+        <Listbox.Button className={classNames(`flex items-center w-full h-full rounded-lg border-0 bg-gray-100 pl-3 pr-10 sm:text-sm sm:leading-6 focus-visible:outline-none focus-visible:bg-gray-200 group-hover:bg-gray-200 ${disabled ? 'cursor-not-allowed' : 'cursor-pointer'}`, className)}>
           <span className={classNames('block truncate text-left', !selectedItem?.name && 'text-gray-400')}>{selectedItem?.name ?? localPlaceholder}</span>
           <span className="absolute inset-y-0 right-0 flex items-center pr-2">
             {selectedItem

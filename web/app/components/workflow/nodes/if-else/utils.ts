@@ -82,6 +82,7 @@ export const getOperators = (type?: VarType, file?: { key: string }) => {
           ComparisonOperator.notEmpty,
         ]
     }
+    return []
   }
   switch (type) {
     case VarType.string:
