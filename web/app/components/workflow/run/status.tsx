@@ -22,11 +22,11 @@ const StatusPanel: FC<ResultProps> = ({
   return (
     <div
       className={cn(
-        'px-3 py-[10px] rounded-lg border-[0.5px] border-[rbga(0,0,0,0.05)] shadow-xs',
-        status === 'running' && '!bg-primary-50',
+        'px-3 py-[10px] rounded-lg border-[0.5px] border-[rgba(0,0,0,0.05)] shadow-xs',
         status === 'succeeded' && '!bg-[#ecfdf3]',
         status === 'failed' && '!bg-[#fef3f2]',
         status === 'stopped' && '!bg-[#fffaeb]',
+        status === 'running' && '!bg-primary-50',
       )}
     >
       <div className='flex'>
