@@ -189,9 +189,9 @@ outgoing:
   # are also supported: see
   #   https://2.python-requests.org/en/latest/user/advanced/#socks
   #
-  proxies:
-    all://:
-      - http://host.docker.internal:1080
+  #  proxies:
+  #    all://:
+  #      - http://host.docker.internal:1080
   #
   #  using_tor_proxy: true
   #
