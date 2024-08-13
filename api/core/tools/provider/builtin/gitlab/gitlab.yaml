@@ -1,27 +1,27 @@
-identity: # 工具供应商的基本信息
-  author: Leo.Wang # 作者
-  name: gitlab # 名称，唯一，不允许和其他供应商重名
-  label: # 标签，用于前端展示
-    en_US: Gitlab # 英文标签
-    zh_Hans: Gitlab # 中文标签
-  description: # 描述，用于前端展示
-    en_US: Gitlab plugin for commit # 英文描述
-    zh_Hans: 用于获取Gitlab commit的插件 # 中文描述
-  icon: gitlab.svg # 图标，需要放置在当前模块的_assets文件夹下
-credentials_for_provider: # 凭据字段
-  access_tokens: # 凭据字段名称
-    type: secret-input # 凭据字段类型
-    required: true # 是否必填
-    label: # 凭据字段标签
-      en_US: Gitlab access token # 英文标签
-      zh_Hans: Gitlab access token # 中文标签
-    placeholder: # 凭据字段占位符
-      en_US: Please input your Gitlab access token # 英文占位符
-      zh_Hans: 请输入你的 Gitlab access token # 中文占位符
-    help: # 凭据字段帮助文本
-      en_US: Get your Gitlab access token from Gitlab # 英文帮助文本
-      zh_Hans: 从 Gitlab 获取您的 access token # 中文帮助文本
-    url: https://docs.gitlab.com/16.9/ee/api/oauth2.html # 凭据字段帮助链接
+identity:
+  author: Leo.Wang
+  name: gitlab
+  label:
+    en_US: Gitlab
+    zh_Hans: Gitlab
+  description:
+    en_US: Gitlab plugin for commit
+    zh_Hans: 用于获取Gitlab commit的插件
+  icon: gitlab.svg
+credentials_for_provider:
+  access_tokens:
+    type: secret-input
+    required: true
+    label:
+      en_US: Gitlab access token
+      zh_Hans: Gitlab access token
+    placeholder:
+      en_US: Please input your Gitlab access token
+      zh_Hans: 请输入你的 Gitlab access token
+    help:
+      en_US: Get your Gitlab access token from Gitlab
+      zh_Hans: 从 Gitlab 获取您的 access token
+    url: https://docs.gitlab.com/16.9/ee/api/oauth2.html
   site_url:
     type: text-input
     required: false
