@@ -1,7 +1,7 @@
 const translation = {
   list: {
     title: 'Tài liệu',
-    desc: 'Tất cả các tệp của Kiến thức được hiển thị ở đây. Toàn bộ Kiến thức có thể được liên kết với trích dẫn của Dify hoặc được lập chỉ mục thông qua plugin Chat.',
+    desc: 'Tất cả các tệp của Kiến thức được hiển thị ở đây. Toàn bộ Kiến thức có thể được liên kết với trích dẫn của Base hoặc được lập chỉ mục thông qua plugin Chat.',
     addFile: 'Thêm tệp',
     addPages: 'Thêm trang',
     table: {
@@ -49,7 +49,7 @@ const translation = {
         tip: 'Bạn có thể tải lên tệp, đồng bộ từ trang web, hoặc từ ứng dụng web như Notion, GitHub, v.v.',
       },
       sync: {
-        tip: 'Dify sẽ định kỳ tải xuống tệp từ Notion của bạn và hoàn tất xử lý.',
+        tip: 'Base sẽ định kỳ tải xuống tệp từ Notion của bạn và hoàn tất xử lý.',
       },
     },
     delete: {
