@@ -80,7 +80,6 @@ def build_segment(value: Any, /) -> Segment:
     if isinstance(value, float):
         return FloatSegment(value=value)
     if isinstance(value, dict):
-        # TODO: Limit the depth of the object
         return ObjectSegment(value=value)
     if isinstance(value, list):
         return ArrayAnySegment(value=value)

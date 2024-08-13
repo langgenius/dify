@@ -1,8 +1,6 @@
 import { useState } from 'react'
 import type { FC } from 'react'
-import {
-  RiQuestionLine,
-} from '@remixicon/react'
+
 import { ValidatingTip } from '../../key-validator/ValidateStatus'
 import type {
   CredentialFormSchema,
@@ -18,7 +16,7 @@ import { useLanguage } from '../hooks'
 import Input from './Input'
 import cn from '@/utils/classnames'
 import { SimpleSelect } from '@/app/components/base/select'
-import Tooltip from '@/app/components/base/tooltip-plus'
+import Tooltip from '@/app/components/base/tooltip'
 import Radio from '@/app/components/base/radio'
 type FormProps = {
   className?: string
@@ -74,14 +72,14 @@ const Form: FC<FormProps> = ({
     const tooltip = formSchema.tooltip
     const tooltipContent = (tooltip && (
       <span className='ml-1 pt-1.5'>
-        <Tooltip popupContent={
-          // w-[100px] caused problem
-          <div className=''>
-            {tooltip[language] || tooltip.en_US}
-          </div>
-        } >
-          <RiQuestionLine className='w-3 h-3  text-gray-500' />
-        </Tooltip>
+        <Tooltip
+          popupContent={
+            // w-[100px] caused problem
+            <div className=''>
+              {tooltip[language] || tooltip.en_US}
+            </div>
+          }
+        />
       </span>))
     if (formSchema.type === FormTypeEnum.textInput || formSchema.type === FormTypeEnum.secretInput || formSchema.type === FormTypeEnum.textNumber) {
       const {
