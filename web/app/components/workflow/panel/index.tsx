@@ -13,6 +13,7 @@ import DebugAndPreview from './debug-and-preview'
 import Record from './record'
 import WorkflowPreview from './workflow-preview'
 import ChatRecord from './chat-record'
+import ChatVariablePanel from './chat-variable-panel'
 import EnvPanel from './env-panel'
 import cn from '@/utils/classnames'
 import { useStore as useAppStore } from '@/app/components/app/store'
@@ -25,6 +26,7 @@ const Panel: FC = () => {
   const historyWorkflowData = useStore(s => s.historyWorkflowData)
   const showDebugAndPreviewPanel = useStore(s => s.showDebugAndPreviewPanel)
   const showEnvPanel = useStore(s => s.showEnvPanel)
+  const showChatVariablePanel = useStore(s => s.showChatVariablePanel)
   const isRestoring = useStore(s => s.isRestoring)
   const {
     enableShortcuts,
@@ -88,6 +90,11 @@ const Panel: FC = () => {
       {
         showEnvPanel && (
           <EnvPanel />
+        )
+      }
+      {
+        showChatVariablePanel && (
+          <ChatVariablePanel />
         )
       }
     </div>

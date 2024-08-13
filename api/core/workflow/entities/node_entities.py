@@ -23,10 +23,12 @@ class NodeType(Enum):
     HTTP_REQUEST = 'http-request'
     TOOL = 'tool'
     VARIABLE_AGGREGATOR = 'variable-aggregator'
+    # TODO: merge this into VARIABLE_AGGREGATOR
     VARIABLE_ASSIGNER = 'variable-assigner'
     LOOP = 'loop'
     ITERATION = 'iteration'
     PARAMETER_EXTRACTOR = 'parameter-extractor'
+    CONVERSATION_VARIABLE_ASSIGNER = 'assigner'
 
     @classmethod
     def value_of(cls, value: str) -> 'NodeType':
