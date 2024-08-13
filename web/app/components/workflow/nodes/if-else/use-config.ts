@@ -190,6 +190,7 @@ const useConfig = (id: string, payload: IfElseNodeType) => {
     availableNodes: availableNodesWithParent,
     nodesOutputNumberVars: availableNumberVars,
     availableNumberNodes: availableNumberNodesWithParent,
+    varsIsVarFileAttribute,
   }
 }
 

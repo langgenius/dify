@@ -21,6 +21,7 @@ type ConditionListProps = {
   nodesOutputVars: NodeOutPutVar[]
   availableNodes: Node[]
   numberVariables: NodeOutPutVar[]
+  varsIsVarFileAttribute: Record<string, boolean>
 }
 const ConditionList = ({
   disabled,
@@ -31,6 +32,7 @@ const ConditionList = ({
   nodesOutputVars,
   availableNodes,
   numberVariables,
+  varsIsVarFileAttribute,
 }: ConditionListProps) => {
   const { conditions, logical_operator } = caseItem
 
@@ -65,6 +67,7 @@ const ConditionList = ({
             nodesOutputVars={nodesOutputVars}
             availableNodes={availableNodes}
             numberVariables={numberVariables}
+            file={varsIsVarFileAttribute[condition.id] ? { key: condition.variable_selector.slice(-1)[0] } : undefined}
           />
         ))
       }

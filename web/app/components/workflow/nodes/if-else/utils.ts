@@ -40,6 +40,47 @@ export const getOperators = (type?: VarType, file?: { key: string }) => {
           ComparisonOperator.in,
           ComparisonOperator.notIn,
         ]
+      case 'size':
+        return [
+          ComparisonOperator.largerThan,
+          ComparisonOperator.largerThanOrEqual,
+          ComparisonOperator.lessThan,
+          ComparisonOperator.lessThanOrEqual,
+        ]
+      case 'extension':
+        return [
+          ComparisonOperator.is,
+          ComparisonOperator.isNot,
+          ComparisonOperator.contains,
+          ComparisonOperator.notContains,
+        ]
+      case 'mimetype':
+        return [
+          ComparisonOperator.contains,
+          ComparisonOperator.notContains,
+          ComparisonOperator.startWith,
+          ComparisonOperator.endWith,
+          ComparisonOperator.is,
+          ComparisonOperator.isNot,
+          ComparisonOperator.empty,
+          ComparisonOperator.notEmpty,
+        ]
+      case 'transfer_method':
+        return [
+          ComparisonOperator.in,
+          ComparisonOperator.notIn,
+        ]
+      case 'url':
+        return [
+          ComparisonOperator.contains,
+          ComparisonOperator.notContains,
+          ComparisonOperator.startWith,
+          ComparisonOperator.endWith,
+          ComparisonOperator.is,
+          ComparisonOperator.isNot,
+          ComparisonOperator.empty,
+          ComparisonOperator.notEmpty,
+        ]
     }
   }
   switch (type) {

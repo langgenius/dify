@@ -387,6 +387,8 @@ const translation = {
         'not empty': 'is not empty',
         'null': 'is null',
         'not null': 'is not null',
+        'in': 'in',
+        'not in': 'not in',
       },
       enterValue: 'Enter value',
       addCondition: 'Add Condition',

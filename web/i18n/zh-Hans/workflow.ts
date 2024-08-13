@@ -387,6 +387,8 @@ const translation = {
         'not empty': '不为空',
         'null': '空',
         'not null': '不为空',
+        'in': '在',
+        'not in': '不在',
       },
       enterValue: '输入值',
       addCondition: '添加条件',

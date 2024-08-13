@@ -26,6 +26,7 @@ type ConditionItemProps = {
   disabled?: boolean
   caseId: string
   condition: Condition
+  file?: { key: string }
   onRemoveCondition: HandleRemoveCondition
   onUpdateCondition: HandleUpdateCondition
   nodesOutputVars: NodeOutPutVar[]
@@ -36,6 +37,7 @@ const ConditionItem = ({
   disabled,
   caseId,
   condition,
+  file,
   onRemoveCondition,
   onUpdateCondition,
   nodesOutputVars,
@@ -88,6 +90,7 @@ const ConditionItem = ({
             varType={condition.varType}
             value={condition.comparison_operator}
             onSelect={handleUpdateConditionOperator}
+            file={file}
           />
         </div>
         {

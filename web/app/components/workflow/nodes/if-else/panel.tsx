@@ -41,6 +41,7 @@ const Panel: FC<NodePanelProps<IfElseNodeType>> = ({
     handleUpdateConditionLogicalOperator,
     nodesOutputVars,
     availableNodes,
+    varsIsVarFileAttribute,
   } = useConfig(id, data)
   const [willDeleteCaseId, setWillDeleteCaseId] = useState('')
   const cases = inputs.cases || []
@@ -93,6 +94,7 @@ const Panel: FC<NodePanelProps<IfElseNodeType>> = ({
                         nodesOutputVars={nodesOutputVars}
                         availableNodes={availableNodes}
                         numberVariables={getAvailableVars(id, '', filterNumberVar)}
+                        varsIsVarFileAttribute={varsIsVarFileAttribute}
                       />
                     </div>
                   )

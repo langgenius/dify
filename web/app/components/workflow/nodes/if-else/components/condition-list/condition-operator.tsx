@@ -19,12 +19,14 @@ const i18nPrefix = 'workflow.nodes.ifElse'
 type ConditionOperatorProps = {
   disabled?: boolean
   varType: VarType
+  file?: { key: string }
   value?: string
   onSelect: (value: ComparisonOperator) => void
 }
 const ConditionOperator = ({
   disabled,
   varType,
+  file,
   value,
   onSelect,
 }: ConditionOperatorProps) => {
@@ -32,13 +34,13 @@ const ConditionOperator = ({
   const [open, setOpen] = useState(false)
 
   const options = useMemo(() => {
-    return getOperators(varType).map((o) => {
+    return getOperators(varType, file).map((o) => {
       return {
         label: isComparisonOperatorNeedTranslate(o) ? t(`${i18nPrefix}.comparisonOperator.${o}`) : o,
         value: o,
       }
     })
-  }, [t, varType])
+  }, [t, varType, file])
   const selectedOption = options.find(o => o.value === value)
 
   return (
