@@ -144,10 +144,10 @@ const NormalForm = () => {
 
   return (
     <>
-      <div className="w-full mx-auto">
+      {/* <div className="w-full mx-auto">
         <h2 className="text-[32px] font-bold text-gray-900">{t('login.pageTitle')}</h2>
         <p className='mt-1 text-sm text-gray-600'>{t('login.welcome')}</p>
-      </div>
+      </div> */}
 
       <div className="w-full mx-auto mt-8">
         <div className="bg-white ">
@@ -267,7 +267,7 @@ const NormalForm = () => {
             </>
           }
           {/*  agree to our Terms and Privacy Policy. */}
-          <div className="w-hull text-center block mt-2 text-xs text-gray-600">
+          {/* <div className="w-hull text-center block mt-2 text-xs text-gray-600">
             {t('login.tosDesc')}
             &nbsp;
             <Link
@@ -281,16 +281,16 @@ const NormalForm = () => {
               target='_blank' rel='noopener noreferrer'
               href='https://dify.ai/privacy'
             >{t('login.pp')}</Link>
-          </div>
+          </div> */}
 
-          {IS_CE_EDITION && <div className="w-hull text-center block mt-2 text-xs text-gray-600">
+          {/* {IS_CE_EDITION && <div className="w-hull text-center block mt-2 text-xs text-gray-600">
             {t('login.goToInit')}
             &nbsp;
             <Link
               className='text-primary-600'
               href='/install'
             >{t('login.setAdminAccount')}</Link>
-          </div>}
+          </div>} */}
 
         </div>
       </div>
