@@ -43,7 +43,6 @@ from models.workflow import (
     WorkflowRunStatus,
     WorkflowRunTriggeredFrom,
 )
-from services.workflow_service import WorkflowService
 
 
 class WorkflowCycleManage:

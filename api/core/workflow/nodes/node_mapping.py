@@ -13,6 +13,7 @@ from core.workflow.nodes.start.start_node import StartNode
 from core.workflow.nodes.template_transform.template_transform_node import TemplateTransformNode
 from core.workflow.nodes.tool.tool_node import ToolNode
 from core.workflow.nodes.variable_aggregator.variable_aggregator_node import VariableAggregatorNode
+from core.workflow.nodes.variable_assigner import VariableAssignerNode
 
 node_classes = {
     NodeType.START: StartNode,
@@ -29,5 +30,6 @@ node_classes = {
     NodeType.VARIABLE_AGGREGATOR: VariableAggregatorNode,
     NodeType.VARIABLE_ASSIGNER: VariableAggregatorNode,  # original name of VARIABLE_AGGREGATOR
     NodeType.ITERATION: IterationNode,
-    NodeType.PARAMETER_EXTRACTOR: ParameterExtractorNode
+    NodeType.PARAMETER_EXTRACTOR: ParameterExtractorNode,
+    NodeType.CONVERSATION_VARIABLE_ASSIGNER: VariableAssignerNode,
 }
