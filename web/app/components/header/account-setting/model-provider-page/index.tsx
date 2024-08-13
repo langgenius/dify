@@ -36,7 +36,7 @@ const ModelProviderPage = () => {
   const setShowModelModal = useModalContextSelector(state => state.setShowModelModal)
   const defaultModelNotConfigured = !textGenerationDefaultModel && !embeddingsDefaultModel && !speech2textDefaultModel && !rerankDefaultModel && !ttsDefaultModel
   const listProvider = ['openai', 'azure_openai', 'anthropic', 'google', 'nvidia', 'nvidia_nim', 'cohere', 'bedrock', 'ollama', 'mistralai', 'replicate',
-    'huggingface_hub', 'xinference', 'triton_inference_server', 'jina', 'openllm', 'localai', 'openai_api_compatible'];
+    'huggingface_hub', 'xinference', 'triton_inference_server', 'jina', 'openllm', 'localai', 'openai_api_compatible', 'sagemaker'];
   const [configedProviders, notConfigedProviders] = useMemo(() => {
     const configedProviders: ModelProvider[] = []
     const notConfigedProviders: ModelProvider[] = []
