@@ -62,7 +62,7 @@ class DatabaseConfig:
 
     DB_PORT: PositiveInt = Field(
         description='db port',
-        default=5432,
+        default=5433,
     )
 
     DB_USERNAME: str = Field(
