@@ -184,6 +184,7 @@ x-shared-env: &shared-api-worker-env
   SSRF_PROXY_HTTP_URL: ${SSRF_PROXY_HTTP_URL:-http://ssrf_proxy:3128}
   SSRF_PROXY_HTTPS_URL: ${SSRF_PROXY_HTTPS_URL:-http://ssrf_proxy:3128}
 
+name: cmc
 services:
   # API service
   api:
