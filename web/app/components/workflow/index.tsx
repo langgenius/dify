@@ -87,7 +87,7 @@ import { FeaturesProvider } from '@/app/components/base/features'
 import type { Features as FeaturesData } from '@/app/components/base/features/types'
 import { useFeaturesStore } from '@/app/components/base/features/hooks'
 import { useEventEmitterContextContext } from '@/context/event-emitter'
-import Confirm from '@/app/components/base/confirm/common'
+import Confirm from '@/app/components/base/confirm'
 
 const nodeTypes = {
   [CUSTOM_NODE]: CustomNode,
@@ -264,7 +264,12 @@ const Workflow: FC<WorkflowProps> = memo(({
 
   const { shortcutsEnabled: workflowHistoryShortcutsEnabled } = useWorkflowHistoryStore()
 
-  useKeyPress(['delete', 'backspace'], handleNodesDelete)
+  useKeyPress(['delete', 'backspace'], (e) => {
+    if (isEventTargetInputArea(e.target as HTMLElement))
+      return
+
+    handleNodesDelete()
+  })
   useKeyPress(['delete', 'backspace'], handleEdgeDelete)
   useKeyPress(`${getKeyboardKeyCodeBySystem('ctrl')}.c`, (e) => {
     if (isEventTargetInputArea(e.target as HTMLElement))
@@ -330,8 +335,7 @@ const Workflow: FC<WorkflowProps> = memo(({
             onCancel={() => setShowConfirm(undefined)}
             onConfirm={showConfirm.onConfirm}
             title={showConfirm.title}
-            desc={showConfirm.desc}
-            confirmWrapperClassName='!z-[11]'
+            content={showConfirm.desc}
           />
         )
       }

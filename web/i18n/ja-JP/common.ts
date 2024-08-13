@@ -443,7 +443,7 @@ const translation = {
     latestAvailable: 'Dify {{version}} が最新バージョンです。',
   },
   appMenus: {
-    overview: '概要',
+    overview: '監視',
     promptEng: 'オーケストレート',
     apiAccess: 'APIアクセス',
     logAndAnn: 'ログ＆アナウンス',

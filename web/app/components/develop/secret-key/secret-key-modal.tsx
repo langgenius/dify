@@ -154,10 +154,6 @@ const SecretKeyModal = ({
           title={`${t('appApi.actionMsg.deleteConfirmTitle')}`}
           content={`${t('appApi.actionMsg.deleteConfirmTips')}`}
           isShow={showConfirmDelete}
-          onClose={() => {
-            setDelKeyId('')
-            setShowConfirmDelete(false)
-          }}
           onConfirm={onDel}
           onCancel={() => {
             setDelKeyId('')

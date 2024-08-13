@@ -126,13 +126,14 @@ class MyScaleVector(BaseVector):
         where_str = f"WHERE dist < {1 - score_threshold}" if \
             self._metric.upper() == "COSINE" and order == SortOrder.ASC and score_threshold > 0.0 else ""
         sql = f"""
-            SELECT text, metadata, {dist} as dist FROM {self._config.database}.{self._collection_name}
+            SELECT text, vector, metadata, {dist} as dist FROM {self._config.database}.{self._collection_name}
             {where_str} ORDER BY dist {order.value} LIMIT {top_k}
         """
         try:
             return [
                 Document(
                     page_content=r["text"],
+                    vector=r['vector'],
                     metadata=r["metadata"],
                 )
                 for r in self._client.query(sql).named_results()

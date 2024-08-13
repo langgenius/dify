@@ -426,7 +426,6 @@ const AppInfo = ({ expand }: IAppInfoProps) => {
             title={t('app.deleteAppConfirmTitle')}
             content={t('app.deleteAppConfirmContent')}
             isShow={showConfirmDelete}
-            onClose={() => setShowConfirmDelete(false)}
             onConfirm={onConfirmDelete}
             onCancel={() => setShowConfirmDelete(false)}
           />
