@@ -60,7 +60,7 @@ const translation = {
   rerankSettings: 'Rerank設定',
   weightedScore: {
     title: 'ウェイト設定',
-    description: '割り当てられた重みを調整することで、並べ替え戦略はセマンティックマッチングとキーワードマッチングのどちらを優先するかを決定します。',
+    description: '代入られた重みを調整することで、並べ替え戦略はセマンティックマッチングとキーワードマッチングのどちらを優先するかを決定します。',
     semanticFirst: 'セマンティック優先',
     keywordFirst: 'キーワード優先',
     customized: 'カスタマイズ',

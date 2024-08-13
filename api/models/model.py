@@ -1116,7 +1116,7 @@ class Site(db.Model):
     @property
     def app_base_url(self):
         return (
-            dify_config.APP_WEB_URL if  dify_config.APP_WEB_URL else request.host_url.rstrip('/'))
+            dify_config.APP_WEB_URL if  dify_config.APP_WEB_URL else request.url_root.rstrip('/'))
 
 
 class ApiToken(db.Model):

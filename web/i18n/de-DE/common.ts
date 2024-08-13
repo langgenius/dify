@@ -12,6 +12,7 @@ const translation = {
     cancel: 'Abbrechen',
     clear: 'Leeren',
     save: 'Speichern',
+    saveAndEnable: 'Speichern und Aktivieren',
     edit: 'Bearbeiten',
     add: 'Hinzufügen',
     added: 'Hinzugefügt',
