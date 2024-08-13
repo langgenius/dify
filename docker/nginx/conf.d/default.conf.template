@@ -25,13 +25,38 @@ server {
       include proxy.conf;
     }
 
-    location /apps {
+    location / {
+      proxy_pass http://host.docker.internal:8700;
+      include proxy.conf;
+    }
+
+     location /apps {
       proxy_pass http://web:3000;
       include proxy.conf;
     }
 
-    location / {
-      proxy_pass http://host.docker.internal:8700;
+    location /app {
+      proxy_pass http://web:3000;
+      include proxy.conf;
+    }
+
+    location /explore {
+      proxy_pass http://web:3000;
+      include proxy.conf;
+    }
+
+    location /datasets {
+      proxy_pass http://web:3000;
+      include proxy.conf;
+    }
+
+    location /tools {
+      proxy_pass http://web:3000;
+      include proxy.conf;
+    }
+
+    location /chat {
+      proxy_pass http://web:3000;
       include proxy.conf;
     }
 
