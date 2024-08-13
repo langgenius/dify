@@ -157,7 +157,7 @@ DifyはオープンソースのLLMアプリケーション開発プラットフ�
 詳しくは[ドキュメント](https://docs.dify.ai)をご覧ください。
 
 - **企業/組織向けのDify</br>**
-企業中心の機能を提供しています。[こちらからミーティングを予約](https://cal.com/guchenhe/30min)したり、[メールを送信](mailto:business@dify.ai?subject=[GitHub]Business%20License%20Inquiry)して企業のニーズについて相談してください。 </br>
+企業中心の機能を提供しています。[メールを送信](mailto:business@dify.ai?subject=[GitHub]Business%20License%20Inquiry)して企業のニーズについて相談してください。 </br>
   > AWSを使用しているスタートアップ企業や中小企業の場合は、[AWS Marketplace](https://aws.amazon.com/marketplace/pp/prodview-t22mebxzwjhu6)のDify Premiumをチェックして、ワンクリックで自分のAWS VPCにデプロイできます。さらに、手頃な価格のAMIオファリングどして、ロゴやブランディングをカスタマイズしてアプリケーションを作成するオプションがあります。
 
 
@@ -227,28 +227,6 @@ docker compose up -d
 * [Discord](https://discord.gg/FngNHpbcY7). 主に: アプリケーションの共有やコミュニティとの交流。
 * [Twitter](https://twitter.com/dify_ai). 主に: アプリケーションの共有やコミュニティとの交流。
 
-または、直接チームメンバーとミーティングをスケジュール：
-
-<table>
-  <tr>
-    <th>連絡先</th>
-    <th>目的</th>
-  </tr>
-  <tr>
-    <td><a href='https://cal.com
-
-/guchenhe/30min'>ミーティング</a></td>
-    <td>無料の30分間のミーティングをスケジュール</td>
-  </tr>
-  <tr>
-    <td><a href='https://github.com/langgenius/dify/issues'>技術サポート</a></td>
-    <td>技術的な問題やサポートに関する質問</td>
-  </tr>
-  <tr>
-    <td><a href='mailto:business@dify.ai?subject=[GitHub]Business%20License%20Inquiry'>営業担当</a></td>
-    <td>法人ライセンスに関するお問い合わせ</td>
-  </tr>
-</table>
 
 
 ## ライセンス
