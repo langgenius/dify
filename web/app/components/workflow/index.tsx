@@ -285,7 +285,8 @@ const Workflow: FC<WorkflowProps> = memo(({
   }, { exactMatch: true, useCapture: true })
   useKeyPress(`${getKeyboardKeyCodeBySystem('ctrl')}.d`, handleNodesDuplicate, { exactMatch: true, useCapture: true })
   useKeyPress(`${getKeyboardKeyCodeBySystem('alt')}.r`, handleStartWorkflowRun, { exactMatch: true, useCapture: true })
-  useKeyPress(`${getKeyboardKeyCodeBySystem('alt')}.r`, handleStartWorkflowRun, { exactMatch: true, useCapture: true })
+
+  // useShortcut()
   useKeyPress(
     `${getKeyboardKeyCodeBySystem('ctrl')}.z`,
     () => workflowHistoryShortcutsEnabled && handleHistoryBack(),

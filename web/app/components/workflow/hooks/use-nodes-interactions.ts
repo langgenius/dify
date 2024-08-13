@@ -1107,6 +1107,13 @@ export const useNodesInteractions = () => {
         })
         newNode.id = newNode.id + index
 
+        // If only the iteration start node is copied, remove the isIterationStart flag
+        // This new node is movable and can be placed anywhere
+        if (clipboardElements.length === 1) {
+          if (newNode.data.isIterationStart)
+            newNode.data.isIterationStart = false
+        }
+
         let newChildren: Node[] = []
         if (nodeToPaste.data.type === BlockEnum.Iteration) {
           newNode.data._children = [];
