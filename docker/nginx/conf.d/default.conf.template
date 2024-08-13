@@ -60,6 +60,16 @@ server {
       include proxy.conf;
     }
 
+    location /signin {
+      proxy_pass http://web:3000;
+      include proxy.conf;
+    }
+
+    location /install {
+      proxy_pass http://web:3000;
+      include proxy.conf;
+    }
+
     location /advisor/ {
         proxy_pass http://host.docker.internal:8501/;
     }
