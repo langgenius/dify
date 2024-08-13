@@ -29,6 +29,10 @@ server {
       include proxy.conf;
     }
 
+    location /crag {
+      rewrite ^/crag(.*)$ /$1;
+    }
+
     # placeholder for acme challenge location
     ${ACME_CHALLENGE_LOCATION}
 
