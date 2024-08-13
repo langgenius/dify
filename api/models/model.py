@@ -6,7 +6,7 @@ from typing import Optional
 
 from flask import request
 from flask_login import UserMixin
-from sqlalchemy import Float, func, text, Enum as DBEnum
+from sqlalchemy import Float, func, text
 
 from configs import dify_config
 from core.file.tool_file_parser import ToolFileParser
