@@ -10,7 +10,11 @@ from uritemplate.variable import VariableValue
 
 from core.app.apps.base_app_queue_manager import GenerateTaskStoppedException
 from core.app.entities.app_invoke_entities import InvokeFrom
-from core.workflow.entities.node_entities import NodeRunMetadataKey, NodeType, UserFrom
+from core.workflow.entities.node_entities import (
+    NodeRunMetadataKey,
+    NodeType,
+    UserFrom,
+)
 from core.workflow.entities.variable_pool import VariablePool
 from core.workflow.graph_engine.condition_handlers.condition_manager import ConditionManager
 from core.workflow.graph_engine.entities.event import (
@@ -108,13 +112,29 @@ class GraphEngine:
                     if isinstance(item, NodeRunFailedEvent):
                         yield GraphRunFailedEvent(error=item.route_node_state.failed_reason or 'Unknown error.')
                         return
+                    elif isinstance(item, NodeRunSucceededEvent):
+                        if item.node_type == NodeType.END:
+                            self.graph_runtime_state.outputs = (item.route_node_state.node_run_result.outputs
+                                             if item.route_node_state.node_run_result
+                                                and item.route_node_state.node_run_result.outputs
+                                             else {})
+                        elif item.node_type == NodeType.ANSWER:
+                            if "answer" not in self.graph_runtime_state.outputs:
+                                self.graph_runtime_state.outputs["answer"] = ""
+
+                            self.graph_runtime_state.outputs["answer"] += "\n" + (item.route_node_state.node_run_result.outputs.get("answer", "")
+                                                               if item.route_node_state.node_run_result
+                                                                  and item.route_node_state.node_run_result.outputs
+                                                               else "")
+                        
+                            self.graph_runtime_state.outputs["answer"] = self.graph_runtime_state.outputs["answer"].strip()
                 except Exception as e:
                     logger.exception(f"Graph run failed: {str(e)}")
                     yield GraphRunFailedEvent(error=str(e))
                     return
 
             # trigger graph run success event
-            yield GraphRunSucceededEvent()
+            yield GraphRunSucceededEvent(outputs=self.graph_runtime_state.outputs)
         except GraphRunFailedError as e:
             yield GraphRunFailedEvent(error=e.error)
             return
@@ -163,6 +183,7 @@ class GraphEngine:
 
             # init workflow run state
             node_instance = node_cls(  # type: ignore
+                id=route_node_state.id,
                 config=node_config,
                 graph_init_params=self.init_params,
                 graph=self.graph,
@@ -192,6 +213,7 @@ class GraphEngine:
                 route_node_state.failed_reason = str(e)
                 yield NodeRunFailedEvent(
                     error=str(e),
+                    id=node_instance.id,
                     node_id=next_node_id,
                     node_type=node_type,
                     node_data=node_instance.node_data,
@@ -291,7 +313,7 @@ class GraphEngine:
 
                                 continue
                             elif isinstance(event, ParallelBranchRunFailedEvent):
-                                raise GraphRunFailedError(event.reason)
+                                raise GraphRunFailedError(event.error)
                         except queue.Empty:
                             continue
 
@@ -360,6 +382,7 @@ class GraphEngine:
         """
         # trigger node run start event
         yield NodeRunStartedEvent(
+            id=node_instance.id,
             node_id=node_instance.node_id,
             node_type=node_instance.node_type,
             node_data=node_instance.node_data,
@@ -383,7 +406,8 @@ class GraphEngine:
 
                     if run_result.status == WorkflowNodeExecutionStatus.FAILED:
                         yield NodeRunFailedEvent(
-                            error=route_node_state.failed_reason,
+                            error=route_node_state.failed_reason or 'Unknown error.',
+                            id=node_instance.id,
                             node_id=node_instance.node_id,
                             node_type=node_instance.node_type,
                             node_data=node_instance.node_data,
@@ -398,6 +422,10 @@ class GraphEngine:
                                 run_result.metadata.get(NodeRunMetadataKey.TOTAL_TOKENS)  # type: ignore[arg-type]
                             )
 
+                        if run_result.llm_usage:
+                            # use the latest usage
+                            self.graph_runtime_state.llm_usage += run_result.llm_usage
+
                         # append node output variables to variable pool
                         if run_result.outputs:
                             for variable_key, variable_value in run_result.outputs.items():
@@ -409,6 +437,7 @@ class GraphEngine:
                                 )
 
                         yield NodeRunSucceededEvent(
+                            id=node_instance.id,
                             node_id=node_instance.node_id,
                             node_type=node_instance.node_type,
                             node_data=node_instance.node_data,
@@ -420,6 +449,7 @@ class GraphEngine:
                     break
                 elif isinstance(item, RunStreamChunkEvent):
                     yield NodeRunStreamChunkEvent(
+                        id=node_instance.id,
                         node_id=node_instance.node_id,
                         node_type=node_instance.node_type,
                         node_data=node_instance.node_data,
@@ -431,6 +461,7 @@ class GraphEngine:
                     )
                 elif isinstance(item, RunRetrieverResourceEvent):
                     yield NodeRunRetrieverResourceEvent(
+                        id=node_instance.id,
                         node_id=node_instance.node_id,
                         node_type=node_instance.node_type,
                         node_data=node_instance.node_data,
@@ -450,6 +481,7 @@ class GraphEngine:
             route_node_state.failed_reason = "Workflow stopped."
             yield NodeRunFailedEvent(
                 error="Workflow stopped.",
+                id=node_instance.id,
                 node_id=node_instance.node_id,
                 node_type=node_instance.node_type,
                 node_data=node_instance.node_data,

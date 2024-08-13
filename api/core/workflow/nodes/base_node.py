@@ -16,11 +16,13 @@ class BaseNode(ABC):
     _node_type: NodeType
 
     def __init__(self,
+                 id: str,
                  config: Mapping[str, Any],
                  graph_init_params: GraphInitParams,
                  graph: Graph,
                  graph_runtime_state: GraphRuntimeState,
                  previous_node_id: Optional[str] = None) -> None:
+        self.id = id
         self.tenant_id = graph_init_params.tenant_id
         self.app_id = graph_init_params.app_id
         self.workflow_type = graph_init_params.workflow_type

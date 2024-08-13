@@ -3,28 +3,9 @@ from typing import Any, Optional
 
 from pydantic import BaseModel, ConfigDict
 
-from core.model_runtime.entities.llm_entities import LLMResult, LLMUsage
+from core.model_runtime.entities.llm_entities import LLMResult
 from core.model_runtime.utils.encoders import jsonable_encoder
-from core.workflow.entities.base_node_data_entities import BaseNodeData
-from core.workflow.entities.node_entities import NodeType
 from models.workflow import WorkflowNodeExecutionStatus
-
-
-class WorkflowStreamGenerateNodes(BaseModel):
-    """
-    WorkflowStreamGenerateNodes entity
-    """
-    end_node_id: str
-    stream_node_ids: list[str]
-
-
-class NodeExecutionInfo(BaseModel):
-    """
-    NodeExecutionInfo entity
-    """
-    workflow_node_execution_id: str
-    node_type: NodeType
-    start_at: float
 
 
 class TaskState(BaseModel):
@@ -46,27 +27,6 @@ class WorkflowTaskState(TaskState):
     WorkflowTaskState entity
     """
     answer: str = ""
-
-    workflow_run_id: Optional[str] = None
-    start_at: Optional[float] = None
-    total_tokens: int = 0
-    total_steps: int = 0
-
-    ran_node_execution_infos: dict[str, NodeExecutionInfo] = {}
-    latest_node_execution_info: Optional[NodeExecutionInfo] = None
-
-    current_stream_generate_state: Optional[WorkflowStreamGenerateNodes] = None
-
-    iteration_nested_node_ids: list[str] = None
-
-
-class AdvancedChatTaskState(WorkflowTaskState):
-    """
-    AdvancedChatTaskState entity
-    """
-    usage: LLMUsage
-
-    current_stream_generate_state: Optional[ChatflowStreamGenerateRoute] = None
 
 
 class StreamEvent(Enum):
@@ -398,8 +358,8 @@ class IterationNodeCompletedStreamResponse(StreamResponse):
         title: str
         outputs: Optional[dict] = None
         created_at: int
-        extras: dict = None
-        inputs: dict = None
+        extras: Optional[dict] = None
+        inputs: Optional[dict] = None
         status: WorkflowNodeExecutionStatus
         error: Optional[str] = None
         elapsed_time: float
@@ -552,25 +512,3 @@ class WorkflowAppBlockingResponse(AppBlockingResponse):
 
     workflow_run_id: str
     data: Data
-
-
-class WorkflowIterationState(BaseModel):
-    """
-    WorkflowIterationState entity
-    """
-
-    class Data(BaseModel):
-        """
-        Data entity
-        """
-        parent_iteration_id: Optional[str] = None
-        iteration_id: str
-        current_index: int
-        iteration_steps_boundary: list[int] = None
-        node_execution_id: str
-        started_at: float
-        inputs: dict = None
-        total_tokens: int = 0
-        node_data: BaseNodeData
-
-    current_iterations: dict[str, Data] = None

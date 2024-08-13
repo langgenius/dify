@@ -11,7 +11,7 @@ from core.model_runtime.utils.encoders import jsonable_encoder
 from core.workflow.entities.node_entities import NodeType
 from core.workflow.errors import WorkflowNodeRunFailedError
 from core.workflow.nodes.node_mapping import node_classes
-from core.workflow.workflow_engine_manager import WorkflowEngineManager
+from core.workflow.workflow_entry import WorkflowEntry
 from events.app_event import app_draft_workflow_was_synced, app_published_workflow_was_updated
 from extensions.ext_database import db
 from models.account import Account
@@ -209,11 +209,11 @@ class WorkflowService:
             raise ValueError('Workflow not initialized')
 
         # run draft workflow node
-        workflow_engine_manager = WorkflowEngineManager()
+        workflow_entry = WorkflowEntry()
         start_at = time.perf_counter()
 
         try:
-            node_instance, node_run_result = workflow_engine_manager.single_step_run(
+            node_instance, node_run_result = workflow_entry.single_step_run(
                 workflow=draft_workflow,
                 node_id=node_id,
                 user_inputs=user_inputs,

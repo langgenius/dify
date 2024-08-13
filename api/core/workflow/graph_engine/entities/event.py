@@ -1,4 +1,4 @@
-from collections.abc import Mapping
+from datetime import datetime
 from typing import Any, Optional
 
 from pydantic import BaseModel, Field
@@ -26,7 +26,8 @@ class GraphRunStartedEvent(BaseGraphEvent):
 
 
 class GraphRunSucceededEvent(BaseGraphEvent):
-    pass
+    outputs: Optional[dict[str, Any]] = None
+    """outputs"""
 
 
 class GraphRunFailedEvent(BaseGraphEvent):
@@ -39,6 +40,7 @@ class GraphRunFailedEvent(BaseGraphEvent):
 
 
 class BaseNodeEvent(GraphEngineEvent):
+    id: str = Field(..., description="node execution id")
     node_id: str = Field(..., description="node id")
     node_type: NodeType = Field(..., description="node type")
     node_data: BaseNodeData = Field(..., description="node data")
@@ -47,7 +49,8 @@ class BaseNodeEvent(GraphEngineEvent):
     """parallel id if node is in parallel"""
     parallel_start_node_id: Optional[str] = None
     """parallel start node id if node is in parallel"""
-    in_iteration_id: Optional[str] = Field(None, description="iteration id if node is in iteration")
+    in_iteration_id: Optional[str] = None
+    """iteration id if node is in iteration"""
 
 
 class NodeRunStartedEvent(BaseNodeEvent):
@@ -82,7 +85,8 @@ class NodeRunFailedEvent(BaseNodeEvent):
 class BaseParallelBranchEvent(GraphEngineEvent):
     parallel_id: str = Field(..., description="parallel id")
     parallel_start_node_id: str = Field(..., description="parallel start node id")
-    in_iteration_id: Optional[str] = Field(None, description="iteration id if node is in iteration")
+    in_iteration_id: Optional[str] = None
+    """iteration id if node is in iteration"""
 
 
 class ParallelBranchRunStartedEvent(BaseParallelBranchEvent):
@@ -103,6 +107,7 @@ class ParallelBranchRunFailedEvent(BaseParallelBranchEvent):
 
 
 class BaseIterationEvent(GraphEngineEvent):
+    iteration_id: str = Field(..., description="iteration node execution id")
     iteration_node_id: str = Field(..., description="iteration node id")
     iteration_node_type: NodeType = Field(..., description="node type, iteration or loop")
     iteration_node_data: BaseNodeData = Field(..., description="node data")
@@ -113,8 +118,9 @@ class BaseIterationEvent(GraphEngineEvent):
 
 
 class IterationRunStartedEvent(BaseIterationEvent):
-    inputs: Optional[Mapping[str, Any]] = None
-    metadata: Optional[Mapping[str, Any]] = None
+    start_at: datetime = Field(..., description="start at")
+    inputs: Optional[dict[str, Any]] = None
+    metadata: Optional[dict[str, Any]] = None
     predecessor_node_id: Optional[str] = None
 
 
@@ -124,16 +130,18 @@ class IterationRunNextEvent(BaseIterationEvent):
 
 
 class IterationRunSucceededEvent(BaseIterationEvent):
-    inputs: Optional[Mapping[str, Any]] = None
-    outputs: Optional[Mapping[str, Any]] = None
-    metadata: Optional[Mapping[str, Any]] = None
+    start_at: datetime = Field(..., description="start at")
+    inputs: Optional[dict[str, Any]] = None
+    outputs: Optional[dict[str, Any]] = None
+    metadata: Optional[dict[str, Any]] = None
     steps: int = 0
 
 
 class IterationRunFailedEvent(BaseIterationEvent):
-    inputs: Optional[Mapping[str, Any]] = None
-    outputs: Optional[Mapping[str, Any]] = None
-    metadata: Optional[Mapping[str, Any]] = None
+    start_at: datetime = Field(..., description="start at")
+    inputs: Optional[dict[str, Any]] = None
+    outputs: Optional[dict[str, Any]] = None
+    metadata: Optional[dict[str, Any]] = None
     steps: int = 0
     error: str = Field(..., description="failed reason")
 

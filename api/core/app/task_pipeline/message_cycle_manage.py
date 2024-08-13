@@ -8,7 +8,6 @@ from core.app.entities.app_invoke_entities import (
     AgentChatAppGenerateEntity,
     ChatAppGenerateEntity,
     CompletionAppGenerateEntity,
-    InvokeFrom,
 )
 from core.app.entities.queue_entities import (
     QueueAnnotationReplyEvent,
@@ -16,11 +15,11 @@ from core.app.entities.queue_entities import (
     QueueRetrieverResourcesEvent,
 )
 from core.app.entities.task_entities import (
-    AdvancedChatTaskState,
     EasyUITaskState,
     MessageFileStreamResponse,
     MessageReplaceStreamResponse,
     MessageStreamResponse,
+    WorkflowTaskState,
 )
 from core.llm_generator.llm_generator import LLMGenerator
 from core.tools.tool_file_manager import ToolFileManager
@@ -36,7 +35,7 @@ class MessageCycleManage:
         AgentChatAppGenerateEntity,
         AdvancedChatAppGenerateEntity
     ]
-    _task_state: Union[EasyUITaskState, AdvancedChatTaskState]
+    _task_state: Union[EasyUITaskState, WorkflowTaskState]
 
     def _generate_conversation_name(self, conversation: Conversation, query: str) -> Optional[Thread]:
         """
@@ -45,6 +44,9 @@ class MessageCycleManage:
         :param query: query
         :return: thread
         """
+        if isinstance(self._application_generate_entity, CompletionAppGenerateEntity):
+            return None
+
         is_first_message = self._application_generate_entity.conversation_id is None
         extras = self._application_generate_entity.extras
         auto_generate_conversation_name = extras.get('auto_generate_conversation_name', True)
@@ -52,7 +54,7 @@ class MessageCycleManage:
         if auto_generate_conversation_name and is_first_message:
             # start generate thread
             thread = Thread(target=self._generate_conversation_name_worker, kwargs={
-                'flask_app': current_app._get_current_object(),
+                'flask_app': current_app._get_current_object(), # type: ignore
                 'conversation_id': conversation.id,
                 'query': query
             })
@@ -74,6 +76,9 @@ class MessageCycleManage:
                 .filter(Conversation.id == conversation_id)
                 .first()
             )
+
+            if not conversation:
+                return
 
             if conversation.mode != AppMode.COMPLETION.value:
                 app_model = conversation.app
@@ -121,34 +126,13 @@ class MessageCycleManage:
         if self._application_generate_entity.app_config.additional_features.show_retrieve_source:
             self._task_state.metadata['retriever_resources'] = event.retriever_resources
 
-    def _get_response_metadata(self) -> dict:
-        """
-        Get response metadata by invoke from.
-        :return:
-        """
-        metadata = {}
-
-        # show_retrieve_source
-        if 'retriever_resources' in self._task_state.metadata:
-            metadata['retriever_resources'] = self._task_state.metadata['retriever_resources']
-
-        # show annotation reply
-        if 'annotation_reply' in self._task_state.metadata:
-            metadata['annotation_reply'] = self._task_state.metadata['annotation_reply']
-
-        # show usage
-        if self._application_generate_entity.invoke_from in [InvokeFrom.DEBUGGER, InvokeFrom.SERVICE_API]:
-            metadata['usage'] = self._task_state.metadata['usage']
-
-        return metadata
-
     def _message_file_to_stream_response(self, event: QueueMessageFileEvent) -> Optional[MessageFileStreamResponse]:
         """
         Message file to stream response.
         :param event: event
         :return:
         """
-        message_file: MessageFile = (
+        message_file = (
             db.session.query(MessageFile)
             .filter(MessageFile.id == event.message_file_id)
             .first()

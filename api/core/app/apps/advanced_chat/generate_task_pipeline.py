@@ -30,7 +30,6 @@ from core.app.entities.queue_entities import (
     QueueWorkflowSucceededEvent,
 )
 from core.app.entities.task_entities import (
-    AdvancedChatTaskState,
     ChatbotAppBlockingResponse,
     ChatbotAppStreamResponse,
     ErrorStreamResponse,
@@ -38,14 +37,15 @@ from core.app.entities.task_entities import (
     MessageAudioStreamResponse,
     MessageEndStreamResponse,
     StreamResponse,
+    WorkflowTaskState,
 )
 from core.app.task_pipeline.based_generate_task_pipeline import BasedGenerateTaskPipeline
 from core.app.task_pipeline.message_cycle_manage import MessageCycleManage
 from core.app.task_pipeline.workflow_cycle_manage import WorkflowCycleManage
-from core.model_runtime.entities.llm_entities import LLMUsage
 from core.model_runtime.utils.encoders import jsonable_encoder
 from core.ops.ops_trace_manager import TraceQueueManager
-from core.workflow.entities.node_entities import NodeType, SystemVariable
+from core.workflow.entities.node_entities import SystemVariable
+from core.workflow.graph_engine.entities.graph_runtime_state import GraphRuntimeState
 from events.message_event import message_was_created
 from extensions.ext_database import db
 from models.account import Account
@@ -62,15 +62,15 @@ class AdvancedChatAppGenerateTaskPipeline(BasedGenerateTaskPipeline, WorkflowCyc
     """
     AdvancedChatAppGenerateTaskPipeline is a class that generate stream output and state management for Application.
     """
-    _task_state: AdvancedChatTaskState
+    _task_state: WorkflowTaskState
     _application_generate_entity: AdvancedChatAppGenerateEntity
     _workflow: Workflow
     _user: Union[Account, EndUser]
     _workflow_system_variables: dict[SystemVariable, Any]
-    _iteration_nested_relations: dict[str, list[str]]
 
     def __init__(
-            self, application_generate_entity: AdvancedChatAppGenerateEntity,
+            self, 
+            application_generate_entity: AdvancedChatAppGenerateEntity,
             workflow: Workflow,
             queue_manager: AppQueueManager,
             conversation: Conversation,
@@ -105,12 +105,8 @@ class AdvancedChatAppGenerateTaskPipeline(BasedGenerateTaskPipeline, WorkflowCyc
             SystemVariable.USER_ID: user_id
         }
 
-        self._task_state = AdvancedChatTaskState(
-            usage=LLMUsage.empty_usage()
-        )
+        self._task_state = WorkflowTaskState()
 
-        self._iteration_nested_relations = self._get_iteration_nested_relations(self._workflow.graph_dict)
-        self._stream_generate_routes = self._get_stream_generate_routes()
         self._conversation_name_generate_thread = None
 
     def process(self):
@@ -131,6 +127,7 @@ class AdvancedChatAppGenerateTaskPipeline(BasedGenerateTaskPipeline, WorkflowCyc
         generator = self._wrapper_process_stream_response(
             trace_manager=self._application_generate_entity.trace_manager
         )
+        
         if self._stream:
             return self._to_stream_response(generator)
         else:
@@ -190,17 +187,18 @@ class AdvancedChatAppGenerateTaskPipeline(BasedGenerateTaskPipeline, WorkflowCyc
     def _wrapper_process_stream_response(self, trace_manager: Optional[TraceQueueManager] = None) -> \
             Generator[StreamResponse, None, None]:
 
-        publisher = None
+        tts_publisher = None
         task_id = self._application_generate_entity.task_id
         tenant_id = self._application_generate_entity.app_config.tenant_id
         features_dict = self._workflow.features_dict
 
         if features_dict.get('text_to_speech') and features_dict['text_to_speech'].get('enabled') and features_dict[
                 'text_to_speech'].get('autoPlay') == 'enabled':
-            publisher = AppGeneratorTTSPublisher(tenant_id, features_dict['text_to_speech'].get('voice'))
-        for response in self._process_stream_response(publisher=publisher, trace_manager=trace_manager):
+            tts_publisher = AppGeneratorTTSPublisher(tenant_id, features_dict['text_to_speech'].get('voice'))
+
+        for response in self._process_stream_response(tts_publisher=tts_publisher, trace_manager=trace_manager):
             while True:
-                audio_response = self._listenAudioMsg(publisher, task_id=task_id)
+                audio_response = self._listenAudioMsg(tts_publisher, task_id=task_id)
                 if audio_response:
                     yield audio_response
                 else:
@@ -211,9 +209,9 @@ class AdvancedChatAppGenerateTaskPipeline(BasedGenerateTaskPipeline, WorkflowCyc
         # timeout
         while (time.time() - start_listener_time) < TTS_AUTO_PLAY_TIMEOUT:
             try:
-                if not publisher:
+                if not tts_publisher:
                     break
-                audio_trunk = publisher.checkAndGetAudio()
+                audio_trunk = tts_publisher.checkAndGetAudio()
                 if audio_trunk is None:
                     # release cpu
                     # sleep 20 ms ( 40ms => 1280 byte audio file,20ms => 640 byte audio file)
@@ -231,26 +229,37 @@ class AdvancedChatAppGenerateTaskPipeline(BasedGenerateTaskPipeline, WorkflowCyc
 
     def _process_stream_response(
             self,
-            publisher: AppGeneratorTTSPublisher,
+            tts_publisher: Optional[AppGeneratorTTSPublisher] = None,
             trace_manager: Optional[TraceQueueManager] = None
     ) -> Generator[StreamResponse, None, None]:
         """
         Process stream response.
         :return:
         """
+        # init fake graph runtime state
+        graph_runtime_state = None
+        workflow_run = None
+        
         for message in self._queue_manager.listen():
-            if publisher:
-                publisher.publish(message=message)
+            if tts_publisher:
+                tts_publisher.publish(message=message)
+
             event = message.event
 
-            if isinstance(event, QueueErrorEvent):
+            if isinstance(event, QueuePingEvent):
+                yield self._ping_stream_response()
+            elif isinstance(event, QueueErrorEvent):
                 err = self._handle_error(event, self._message)
                 yield self._error_to_stream_response(err)
                 break
             elif isinstance(event, QueueWorkflowStartedEvent):
-                workflow_run = self._handle_workflow_start()
+                # override graph runtime state
+                graph_runtime_state = event.graph_runtime_state
 
-                self._message = db.session.query(Message).filter(Message.id == self._message.id).first()
+                # init workflow run
+                workflow_run = self._handle_workflow_run_start()
+
+                self._refetch_message()
                 self._message.workflow_run_id = workflow_run.id
 
                 db.session.commit()
@@ -262,76 +271,158 @@ class AdvancedChatAppGenerateTaskPipeline(BasedGenerateTaskPipeline, WorkflowCyc
                     workflow_run=workflow_run
                 )
             elif isinstance(event, QueueNodeStartedEvent):
-                workflow_node_execution = self._handle_node_start(event)
+                if not workflow_run:
+                    raise Exception('Workflow run not initialized.')
+        
+                workflow_node_execution = self._handle_node_execution_start(
+                    workflow_run=workflow_run, 
+                    event=event
+                )
 
                 yield self._workflow_node_start_to_stream_response(
                     event=event,
                     task_id=self._application_generate_entity.task_id,
                     workflow_node_execution=workflow_node_execution
                 )
-            elif isinstance(event, QueueNodeSucceededEvent | QueueNodeFailedEvent):
-                workflow_node_execution = self._handle_node_finished(event)
+            elif isinstance(event, QueueNodeSucceededEvent):
+                workflow_node_execution = self._handle_workflow_node_execution_success(event)
 
                 yield self._workflow_node_finish_to_stream_response(
                     task_id=self._application_generate_entity.task_id,
                     workflow_node_execution=workflow_node_execution
                 )
+            elif isinstance(event, QueueNodeFailedEvent):
+                workflow_node_execution = self._handle_workflow_node_execution_failed(event)
 
-                if isinstance(event, QueueNodeFailedEvent):
-                    yield from self._handle_iteration_exception(
-                        task_id=self._application_generate_entity.task_id,
-                        error=f'Child node failed: {event.error}'
-                    )
-            elif isinstance(event, QueueIterationStartEvent | QueueIterationNextEvent | QueueIterationCompletedEvent):
-                if isinstance(event, QueueIterationNextEvent):
-                    # clear ran node execution infos of current iteration
-                    iteration_relations = self._iteration_nested_relations.get(event.node_id)
-                    if iteration_relations:
-                        for node_id in iteration_relations:
-                            self._task_state.ran_node_execution_infos.pop(node_id, None)
-
-                yield self._handle_iteration_to_stream_response(self._application_generate_entity.task_id, event)
-                self._handle_iteration_operation(event)
-            elif isinstance(event, QueueStopEvent | QueueWorkflowSucceededEvent | QueueWorkflowFailedEvent):
-                workflow_run = self._handle_workflow_finished(
-                    event, conversation_id=self._conversation.id, trace_manager=trace_manager
+                yield self._workflow_node_finish_to_stream_response(
+                    task_id=self._application_generate_entity.task_id,
+                    workflow_node_execution=workflow_node_execution
                 )
-                if workflow_run:
-                    yield self._workflow_finish_to_stream_response(
-                        task_id=self._application_generate_entity.task_id,
-                        workflow_run=workflow_run
-                    )
+            elif isinstance(event, QueueIterationStartEvent):
+                if not workflow_run:
+                    raise Exception('Workflow run not initialized.')
+                
+                yield self._workflow_iteration_start_to_stream_response(
+                    task_id=self._application_generate_entity.task_id,
+                    workflow_run=workflow_run,
+                    event=event
+                )
+            elif isinstance(event, QueueIterationNextEvent):
+                if not workflow_run:
+                    raise Exception('Workflow run not initialized.')
+                
+                yield self._workflow_iteration_next_to_stream_response(
+                    task_id=self._application_generate_entity.task_id,
+                    workflow_run=workflow_run,
+                    event=event
+                )
+            elif isinstance(event, QueueIterationCompletedEvent):
+                if not workflow_run:
+                    raise Exception('Workflow run not initialized.')
+                
+                yield self._workflow_iteration_completed_to_stream_response(
+                    task_id=self._application_generate_entity.task_id,
+                    workflow_run=workflow_run,
+                    event=event
+                )
+            elif isinstance(event, QueueWorkflowSucceededEvent):
+                if not workflow_run:
+                    raise Exception('Workflow run not initialized.')
+                
+                if not graph_runtime_state:
+                    raise Exception('Graph runtime state not initialized.')
+                
+                workflow_run = self._handle_workflow_run_success(
+                    workflow_run=workflow_run,
+                    start_at=graph_runtime_state.start_at,
+                    total_tokens=graph_runtime_state.total_tokens,
+                    total_steps=graph_runtime_state.node_run_steps,
+                    outputs=json.dumps(event.outputs) if event.outputs else None,
+                    conversation_id=self._conversation.id,
+                    trace_manager=trace_manager,
+                )
 
-                    if workflow_run.status == WorkflowRunStatus.FAILED.value:
-                        err_event = QueueErrorEvent(error=ValueError(f'Run failed: {workflow_run.error}'))
-                        yield self._error_to_stream_response(self._handle_error(err_event, self._message))
-                        break
+                yield self._workflow_finish_to_stream_response(
+                    task_id=self._application_generate_entity.task_id,
+                    workflow_run=workflow_run
+                )
 
-                if isinstance(event, QueueStopEvent):
-                    # Save message
-                    self._save_message()
+                self._queue_manager.publish(
+                    QueueAdvancedChatMessageEndEvent(),
+                    PublishFrom.TASK_PIPELINE
+                )
+            elif isinstance(event, QueueWorkflowFailedEvent):
+                if not workflow_run:
+                    raise Exception('Workflow run not initialized.')
+                
+                if not graph_runtime_state:
+                    raise Exception('Graph runtime state not initialized.')
+                
+                workflow_run = self._handle_workflow_run_failed(
+                    workflow_run=workflow_run,
+                    start_at=graph_runtime_state.start_at,
+                    total_tokens=graph_runtime_state.total_tokens,
+                    total_steps=graph_runtime_state.node_run_steps,
+                    status=WorkflowRunStatus.FAILED,
+                    error=event.error,
+                    conversation_id=self._conversation.id,
+                    trace_manager=trace_manager,
+                )
 
-                    yield self._message_end_to_stream_response()
-                    break
-                else:
-                    self._queue_manager.publish(
-                        QueueAdvancedChatMessageEndEvent(),
-                        PublishFrom.TASK_PIPELINE
-                    )
-            elif isinstance(event, QueueAdvancedChatMessageEndEvent):
-                output_moderation_answer = self._handle_output_moderation_when_task_finished(self._task_state.answer)
-                if output_moderation_answer:
-                    self._task_state.answer = output_moderation_answer
-                    yield self._message_replace_to_stream_response(answer=output_moderation_answer)
+                yield self._workflow_finish_to_stream_response(
+                    task_id=self._application_generate_entity.task_id,
+                    workflow_run=workflow_run
+                )
+
+                err_event = QueueErrorEvent(error=ValueError(f'Run failed: {workflow_run.error}'))
+                yield self._error_to_stream_response(self._handle_error(err_event, self._message))
+                break
+            elif isinstance(event, QueueStopEvent):
+                if not workflow_run:
+                    raise Exception('Workflow run not initialized.')
+                
+                if not graph_runtime_state:
+                    raise Exception('Graph runtime state not initialized.')
+                
+                workflow_run = self._handle_workflow_run_failed(
+                    workflow_run=workflow_run,
+                    start_at=graph_runtime_state.start_at,
+                    total_tokens=graph_runtime_state.total_tokens,
+                    total_steps=graph_runtime_state.node_run_steps,
+                    status=WorkflowRunStatus.STOPPED,
+                    error='Workflow stopped.',
+                    conversation_id=self._conversation.id,
+                    trace_manager=trace_manager,
+                )
+
+                yield self._workflow_finish_to_stream_response(
+                    task_id=self._application_generate_entity.task_id,
+                    workflow_run=workflow_run
+                )
 
                 # Save message
-                self._save_message()
+                self._save_message(graph_runtime_state=graph_runtime_state)
 
                 yield self._message_end_to_stream_response()
+                break
             elif isinstance(event, QueueRetrieverResourcesEvent):
                 self._handle_retriever_resources(event)
+
+                self._refetch_message()
+
+                self._message.message_metadata = json.dumps(jsonable_encoder(self._task_state.metadata)) \
+                    if self._task_state.metadata else None
+                
+                db.session.commit()
+                db.session.close()
             elif isinstance(event, QueueAnnotationReplyEvent):
                 self._handle_annotation_reply(event)
+
+                self._message.message_metadata = json.dumps(jsonable_encoder(self._task_state.metadata)) \
+                    if self._task_state.metadata else None
+                
+                db.session.commit()
+                db.session.close()
             elif isinstance(event, QueueTextChunkEvent):
                 delta_text = event.text
                 if delta_text is None:
@@ -345,31 +436,44 @@ class AdvancedChatAppGenerateTaskPipeline(BasedGenerateTaskPipeline, WorkflowCyc
                 self._task_state.answer += delta_text
                 yield self._message_to_stream_response(delta_text, self._message.id)
             elif isinstance(event, QueueMessageReplaceEvent):
+                # published by moderation
                 yield self._message_replace_to_stream_response(answer=event.text)
-            elif isinstance(event, QueuePingEvent):
-                yield self._ping_stream_response()
+            elif isinstance(event, QueueAdvancedChatMessageEndEvent):
+                if not graph_runtime_state:
+                    raise Exception('Graph runtime state not initialized.')
+                
+                output_moderation_answer = self._handle_output_moderation_when_task_finished(self._task_state.answer)
+                if output_moderation_answer:
+                    self._task_state.answer = output_moderation_answer
+                    yield self._message_replace_to_stream_response(answer=output_moderation_answer)
+
+                # Save message
+                self._save_message(graph_runtime_state=graph_runtime_state)
+
+                yield self._message_end_to_stream_response()
             else:
                 continue
-        if publisher:
-            publisher.publish(None)
+        
+        if tts_publisher:
+            tts_publisher.publish(None)
+            
         if self._conversation_name_generate_thread:
             self._conversation_name_generate_thread.join()
 
-    def _save_message(self) -> None:
+    def _save_message(self, graph_runtime_state: GraphRuntimeState) -> None:
         """
         Save message.
         :return:
         """
-        self._message = db.session.query(Message).filter(Message.id == self._message.id).first()
+        self._refetch_message()
 
         self._message.answer = self._task_state.answer
         self._message.provider_response_latency = time.perf_counter() - self._start_at
         self._message.message_metadata = json.dumps(jsonable_encoder(self._task_state.metadata)) \
             if self._task_state.metadata else None
 
-        if self._task_state.metadata and self._task_state.metadata.get('usage'):
-            usage = LLMUsage(**self._task_state.metadata['usage'])
-
+        if graph_runtime_state.llm_usage:
+            usage = graph_runtime_state.llm_usage
             self._message.message_tokens = usage.prompt_tokens
             self._message.message_unit_price = usage.prompt_unit_price
             self._message.message_price_unit = usage.prompt_price_unit
@@ -404,26 +508,6 @@ class AdvancedChatAppGenerateTaskPipeline(BasedGenerateTaskPipeline, WorkflowCyc
             **extras
         )
 
-    def _get_iteration_nested_relations(self, graph: dict) -> dict[str, list[str]]:
-        """
-        Get iteration nested relations.
-        :param graph: graph
-        :return:
-        """
-        nodes = graph.get('nodes')
-
-        iteration_ids = [node.get('id') for node in nodes
-                         if node.get('data', {}).get('type') in [
-                             NodeType.ITERATION.value,
-                             NodeType.LOOP.value,
-                         ]]
-
-        return {
-            iteration_id: [
-                node.get('id') for node in nodes if node.get('data', {}).get('iteration_id') == iteration_id
-            ] for iteration_id in iteration_ids
-        }
-
     def _handle_output_moderation_chunk(self, text: str) -> bool:
         """
         Handle output moderation chunk.
@@ -449,3 +533,12 @@ class AdvancedChatAppGenerateTaskPipeline(BasedGenerateTaskPipeline, WorkflowCyc
                 self._output_moderation_handler.append_new_token(text)
 
         return False
+
+    def _refetch_message(self) -> None:
+        """
+        Refetch message.
+        :return:
+        """
+        message = db.session.query(Message).filter(Message.id == self._message.id).first()
+        if message:
+            self._message = message

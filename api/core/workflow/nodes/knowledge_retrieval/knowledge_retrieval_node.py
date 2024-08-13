@@ -1,3 +1,4 @@
+import logging
 from typing import Any, cast
 
 from sqlalchemy import func
@@ -19,6 +20,8 @@ from core.workflow.nodes.knowledge_retrieval.entities import KnowledgeRetrievalN
 from extensions.ext_database import db
 from models.dataset import Dataset, Document, DocumentSegment
 from models.workflow import WorkflowNodeExecutionStatus
+
+logger = logging.getLogger(__name__)
 
 default_retrieval_model = {
     'search_method': RetrievalMethod.SEMANTIC_SEARCH.value,
@@ -67,7 +70,7 @@ class KnowledgeRetrievalNode(BaseNode):
             )
 
         except Exception as e:
-
+            logger.exception("Error when running knowledge retrieval node")
             return NodeRunResult(
                 status=WorkflowNodeExecutionStatus.FAILED,
                 inputs=variables,

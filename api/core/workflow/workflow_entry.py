@@ -117,10 +117,11 @@ class WorkflowEntry:
                             graph_runtime_state=graph_engine.graph_runtime_state,
                             event=event
                         )
-                    yield event
+                yield event
         except GenerateTaskStoppedException:
             pass
         except Exception as e:
+            logger.exception("Unknown Error when workflow entry running")
             if callbacks:
                 for callback in callbacks:
                     callback.on_event(
@@ -205,7 +206,7 @@ class WorkflowEntry:
                 node_instance=node_instance
             )
 
-            # run node TODO
+            # run node
             node_run_result = node_instance.run(
                 variable_pool=variable_pool
             )
@@ -223,7 +224,7 @@ class WorkflowEntry:
         return node_instance, node_run_result
 
     @classmethod
-    def handle_special_values(cls, value: Optional[dict]) -> Optional[dict]:
+    def handle_special_values(cls, value: Optional[Mapping[str, Any]]) -> Optional[dict]:
         """
         Handle special values
         :param value: value
@@ -232,7 +233,7 @@ class WorkflowEntry:
         if not value:
             return None
 
-        new_value = value.copy()
+        new_value = dict(value) if value else {}
         if isinstance(new_value, dict):
             for key, val in new_value.items():
                 if isinstance(val, FileVar):

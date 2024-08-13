@@ -119,7 +119,8 @@ class QuestionClassifierNode(LLMNode):
                     NodeRunMetadataKey.TOTAL_TOKENS: usage.total_tokens,
                     NodeRunMetadataKey.TOTAL_PRICE: usage.total_price,
                     NodeRunMetadataKey.CURRENCY: usage.currency
-                }
+                },
+                llm_usage=usage
             )
 
         except ValueError as e:
@@ -131,7 +132,8 @@ class QuestionClassifierNode(LLMNode):
                     NodeRunMetadataKey.TOTAL_TOKENS: usage.total_tokens,
                     NodeRunMetadataKey.TOTAL_PRICE: usage.total_price,
                     NodeRunMetadataKey.CURRENCY: usage.currency
-                }
+                },
+                llm_usage=usage
             )
 
     @classmethod

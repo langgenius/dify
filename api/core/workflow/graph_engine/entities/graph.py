@@ -24,6 +24,8 @@ class GraphParallel(BaseModel):
     start_from_node_id: str = Field(..., description="start from node id")
     parent_parallel_id: Optional[str] = None
     """parent parallel id"""
+    parent_parallel_start_node_id: Optional[str] = None
+    """parent parallel start node id"""
     end_to_node_id: Optional[str] = None
     """end to node id"""
 
@@ -101,7 +103,7 @@ class Graph(BaseModel):
 
             # parse run condition
             run_condition = None
-            if edge_config.get('sourceHandle'):
+            if edge_config.get('sourceHandle') and edge_config.get('sourceHandle') != 'source':
                 run_condition = RunCondition(
                     type='branch_identify',
                     branch_identify=edge_config.get('sourceHandle')
@@ -176,7 +178,8 @@ class Graph(BaseModel):
         # init end stream param
         end_stream_param = EndStreamGeneratorRouter.init(
             node_id_config_mapping=node_id_config_mapping,
-            reverse_edge_mapping=reverse_edge_mapping
+            reverse_edge_mapping=reverse_edge_mapping,
+            node_parallel_mapping=node_parallel_mapping
         )
 
         # init graph
@@ -287,9 +290,17 @@ class Graph(BaseModel):
                 if all(node_id in node_parallel_mapping for node_id in parallel_node_ids):
                     parent_parallel_id = node_parallel_mapping[parallel_node_ids[0]]
 
+                if not parent_parallel_id:
+                    raise Exception(f"Parent parallel id not found for node ids {parallel_node_ids}")
+
+                parent_parallel = parallel_mapping.get(parent_parallel_id)
+                if not parent_parallel:
+                    raise Exception(f"Parent parallel {parent_parallel_id} not found")
+
                 parallel = GraphParallel(
                     start_from_node_id=start_node_id,
-                    parent_parallel_id=parent_parallel_id
+                    parent_parallel_id=parent_parallel.id,
+                    parent_parallel_start_node_id=parent_parallel.start_from_node_id
                 )
                 parallel_mapping[parallel.id] = parallel
 

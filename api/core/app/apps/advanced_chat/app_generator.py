@@ -4,7 +4,7 @@ import os
 import threading
 import uuid
 from collections.abc import Generator
-from typing import Union
+from typing import Any, Optional, Union
 
 from flask import Flask, current_app
 from pydantic import ValidationError
@@ -39,7 +39,7 @@ class AdvancedChatAppGenerator(MessageBasedAppGenerator):
             args: dict,
             invoke_from: InvokeFrom,
             stream: bool = True,
-    ) -> Union[dict, Generator[dict, None, None]]:
+    )  -> dict[str, Any] | Generator[str, Any, None]:
         """
         Generate App response.
 
@@ -67,7 +67,7 @@ class AdvancedChatAppGenerator(MessageBasedAppGenerator):
         # get conversation
         conversation = None
         if args.get('conversation_id'):
-            conversation = self._get_conversation_by_user(app_model, args.get('conversation_id'), user)
+            conversation = self._get_conversation_by_user(app_model, args.get('conversation_id', ''), user)
 
         # parse files
         files = args['files'] if args.get('files') else []
@@ -126,9 +126,9 @@ class AdvancedChatAppGenerator(MessageBasedAppGenerator):
                   user: Union[Account, EndUser],
                   invoke_from: InvokeFrom,
                   application_generate_entity: AdvancedChatAppGenerateEntity,
-                  conversation: Conversation = None,
+                  conversation: Optional[Conversation] = None,
                   stream: bool = True) \
-            -> Union[dict, Generator[dict, None, None]]:
+            -> dict[str, Any] | Generator[str, Any, None]:
         is_first_conversation = False
         if not conversation:
             is_first_conversation = True
@@ -157,7 +157,7 @@ class AdvancedChatAppGenerator(MessageBasedAppGenerator):
 
         # new thread
         worker_thread = threading.Thread(target=self._generate_worker, kwargs={
-            'flask_app': current_app._get_current_object(),
+            'flask_app': current_app._get_current_object(), # type: ignore
             'application_generate_entity': application_generate_entity,
             'queue_manager': queue_manager,
             'conversation_id': conversation.id,
@@ -209,13 +209,14 @@ class AdvancedChatAppGenerator(MessageBasedAppGenerator):
                 message = self._get_message(message_id)
 
                 # chatbot app
-                runner = AdvancedChatAppRunner()
-                runner.run(
+                runner = AdvancedChatAppRunner(
                     application_generate_entity=application_generate_entity,
                     queue_manager=queue_manager,
                     conversation=conversation,
                     message=message
                 )
+
+                runner.run()
             except GenerateTaskStoppedException:
                 pass
             except InvokeAuthorizationError:
@@ -227,7 +228,7 @@ class AdvancedChatAppGenerator(MessageBasedAppGenerator):
                 logger.exception("Validation Error when generating")
                 queue_manager.publish_error(e, PublishFrom.APPLICATION_MANAGER)
             except (ValueError, InvokeError) as e:
-                if os.environ.get("DEBUG") and os.environ.get("DEBUG").lower() == 'true':
+                if os.environ.get("DEBUG") and os.environ.get("DEBUG", "false").lower() == 'true':
                     logger.exception("Error when generating")
                 queue_manager.publish_error(e, PublishFrom.APPLICATION_MANAGER)
             except Exception as e:

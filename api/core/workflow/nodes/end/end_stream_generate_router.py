@@ -7,7 +7,8 @@ class EndStreamGeneratorRouter:
     @classmethod
     def init(cls,
              node_id_config_mapping: dict[str, dict],
-             reverse_edge_mapping: dict[str, list["GraphEdge"]]  # type: ignore[name-defined]
+             reverse_edge_mapping: dict[str, list["GraphEdge"]],  # type: ignore[name-defined]
+             node_parallel_mapping: dict[str, str]
              ) -> EndStreamParam:
         """
         Get stream generate routes.
@@ -17,6 +18,10 @@ class EndStreamGeneratorRouter:
         end_stream_variable_selectors_mapping: dict[str, list[list[str]]] = {}
         for end_node_id, node_config in node_id_config_mapping.items():
             if not node_config.get('data', {}).get('type') == NodeType.END.value:
+                continue
+
+            # skip end node in parallel
+            if end_node_id in node_parallel_mapping:
                 continue
 
             # get generate route for stream output

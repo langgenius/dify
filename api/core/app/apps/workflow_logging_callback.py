@@ -133,7 +133,7 @@ class WorkflowLoggingCallback(WorkflowCallback):
 
         self.print_text("\n[on_workflow_node_execute_succeeded]", color='green')
         self.print_text(f"Node ID: {route_node_state.node_id}", color='green')
-        self.print_text(f"Type: {node_type.value}", color='green')
+        self.print_text(f"Type: {node_type}", color='green')
 
         if route_node_state.node_run_result:
             node_run_result = route_node_state.node_run_result
@@ -145,7 +145,7 @@ class WorkflowLoggingCallback(WorkflowCallback):
             self.print_text(f"Outputs: {jsonable_encoder(node_run_result.outputs) if node_run_result.outputs else ''}",
                             color='green')
             self.print_text(
-                f"Metadata: {jsonable_encoder(node_run_result.execution_metadata) if node_run_result.execution_metadata else ''}",
+                f"Metadata: {jsonable_encoder(node_run_result.metadata) if node_run_result.metadata else ''}",
                 color='green')
 
     def on_workflow_node_execute_failed(
@@ -166,7 +166,7 @@ class WorkflowLoggingCallback(WorkflowCallback):
 
         self.print_text("\n[on_workflow_node_execute_failed]", color='red')
         self.print_text(f"Node ID: {route_node_state.node_id}", color='red')
-        self.print_text(f"Type: {node_type.value}", color='red')
+        self.print_text(f"Type: {node_type}", color='red')
 
         if route_node_state.node_run_result:
             node_run_result = route_node_state.node_run_result

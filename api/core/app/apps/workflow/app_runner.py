@@ -4,7 +4,6 @@ from typing import Optional, cast
 
 from core.app.apps.base_app_queue_manager import AppQueueManager
 from core.app.apps.workflow.app_config_manager import WorkflowAppConfig
-from core.app.apps.workflow.workflow_event_trigger_callback import WorkflowEventTriggerCallback
 from core.app.apps.workflow_logging_callback import WorkflowLoggingCallback
 from core.app.entities.app_invoke_entities import (
     InvokeFrom,
@@ -12,7 +11,7 @@ from core.app.entities.app_invoke_entities import (
 )
 from core.workflow.callbacks.base_workflow_callback import WorkflowCallback
 from core.workflow.entities.node_entities import SystemVariable, UserFrom
-from core.workflow.workflow_engine_manager import WorkflowEngineManager
+from core.workflow.workflow_entry import WorkflowEntry
 from extensions.ext_database import db
 from models.model import App, EndUser
 from models.workflow import Workflow
@@ -57,17 +56,14 @@ class WorkflowAppRunner:
 
         db.session.close()
 
-        workflow_callbacks: list[WorkflowCallback] = [WorkflowEventTriggerCallback(
-            queue_manager=queue_manager,
-            workflow=workflow
-        )]
+        workflow_callbacks: list[WorkflowCallback] = []
 
         if bool(os.environ.get("DEBUG", 'False').lower() == 'true'):
             workflow_callbacks.append(WorkflowLoggingCallback())
 
         # RUN WORKFLOW
-        workflow_engine_manager = WorkflowEngineManager()
-        workflow_engine_manager.run(
+        workflow_entry = WorkflowEntry()
+        workflow_entry.run(
             workflow=workflow,
             user_id=application_generate_entity.user_id,
             user_from=UserFrom.ACCOUNT
@@ -100,13 +96,10 @@ class WorkflowAppRunner:
         if not workflow:
             raise ValueError("Workflow not initialized")
         
-        workflow_callbacks = [WorkflowEventTriggerCallback(
-            queue_manager=queue_manager,
-            workflow=workflow
-        )]
+        workflow_callbacks = []
 
-        workflow_engine_manager = WorkflowEngineManager()
-        workflow_engine_manager.single_step_run_iteration_workflow_node(
+        workflow_entry = WorkflowEntry()
+        workflow_entry.single_step_run_iteration_workflow_node(
             workflow=workflow,
             node_id=node_id,
             user_id=user_id,

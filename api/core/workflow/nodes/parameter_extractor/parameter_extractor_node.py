@@ -175,7 +175,8 @@ class ParameterExtractorNode(LLMNode):
                 NodeRunMetadataKey.TOTAL_TOKENS: usage.total_tokens,
                 NodeRunMetadataKey.TOTAL_PRICE: usage.total_price,
                 NodeRunMetadataKey.CURRENCY: usage.currency
-            }
+            },
+            llm_usage=usage
         )
 
     def _invoke_llm(self, node_data_model: ModelConfig,

@@ -1,4 +1,4 @@
-from collections.abc import Mapping
+from datetime import datetime
 from enum import Enum
 from typing import Any, Optional
 
@@ -7,6 +7,7 @@ from pydantic import BaseModel, field_validator
 from core.model_runtime.entities.llm_entities import LLMResult, LLMResultChunk
 from core.workflow.entities.base_node_data_entities import BaseNodeData
 from core.workflow.entities.node_entities import NodeRunMetadataKey, NodeType
+from core.workflow.graph_engine.entities.graph_runtime_state import GraphRuntimeState
 
 
 class QueueEvent(str, Enum):
@@ -60,6 +61,7 @@ class QueueIterationStartEvent(AppQueueEvent):
     QueueIterationStartEvent entity
     """
     event: QueueEvent = QueueEvent.ITERATION_START
+    node_execution_id: str
     node_id: str
     node_type: NodeType
     node_data: BaseNodeData
@@ -67,11 +69,12 @@ class QueueIterationStartEvent(AppQueueEvent):
     """parallel id if node is in parallel"""
     parallel_start_node_id: Optional[str] = None
     """parallel start node id if node is in parallel"""
+    start_at: datetime
 
     node_run_index: int
-    inputs: Optional[Mapping[str, Any]] = None
+    inputs: Optional[dict[str, Any]] = None
     predecessor_node_id: Optional[str] = None
-    metadata: Optional[Mapping[str, Any]] = None
+    metadata: Optional[dict[str, Any]] = None
 
 class QueueIterationNextEvent(AppQueueEvent):
     """
@@ -80,8 +83,10 @@ class QueueIterationNextEvent(AppQueueEvent):
     event: QueueEvent = QueueEvent.ITERATION_NEXT
 
     index: int
+    node_execution_id: str
     node_id: str
     node_type: NodeType
+    node_data: BaseNodeData
     parallel_id: Optional[str] = None
     """parallel id if node is in parallel"""
     parallel_start_node_id: Optional[str] = None
@@ -108,17 +113,20 @@ class QueueIterationCompletedEvent(AppQueueEvent):
     """
     event: QueueEvent = QueueEvent.ITERATION_COMPLETED
 
+    node_execution_id: str
     node_id: str
     node_type: NodeType
+    node_data: BaseNodeData
     parallel_id: Optional[str] = None
     """parallel id if node is in parallel"""
     parallel_start_node_id: Optional[str] = None
     """parallel start node id if node is in parallel"""
+    start_at: datetime
     
     node_run_index: int
-    inputs: Optional[Mapping[str, Any]] = None
-    outputs: Optional[Mapping[str, Any]] = None
-    metadata: Optional[Mapping[str, Any]] = None
+    inputs: Optional[dict[str, Any]] = None
+    outputs: Optional[dict[str, Any]] = None
+    metadata: Optional[dict[str, Any]] = None
     steps: int = 0
 
     error: Optional[str] = None
@@ -130,7 +138,6 @@ class QueueTextChunkEvent(AppQueueEvent):
     """
     event: QueueEvent = QueueEvent.TEXT_CHUNK
     text: str
-    metadata: Optional[dict] = None
 
 
 class QueueAgentMessageEvent(AppQueueEvent):
@@ -185,6 +192,7 @@ class QueueWorkflowStartedEvent(AppQueueEvent):
     QueueWorkflowStartedEvent entity
     """
     event: QueueEvent = QueueEvent.WORKFLOW_STARTED
+    graph_runtime_state: GraphRuntimeState
 
 
 class QueueWorkflowSucceededEvent(AppQueueEvent):
@@ -192,6 +200,7 @@ class QueueWorkflowSucceededEvent(AppQueueEvent):
     QueueWorkflowSucceededEvent entity
     """
     event: QueueEvent = QueueEvent.WORKFLOW_SUCCEEDED
+    outputs: Optional[dict[str, Any]] = None
 
 
 class QueueWorkflowFailedEvent(AppQueueEvent):
@@ -208,6 +217,7 @@ class QueueNodeStartedEvent(AppQueueEvent):
     """
     event: QueueEvent = QueueEvent.NODE_STARTED
 
+    node_execution_id: str
     node_id: str
     node_type: NodeType
     node_data: BaseNodeData
@@ -217,6 +227,7 @@ class QueueNodeStartedEvent(AppQueueEvent):
     """parallel id if node is in parallel"""
     parallel_start_node_id: Optional[str] = None
     """parallel start node id if node is in parallel"""
+    start_at: datetime
 
 
 class QueueNodeSucceededEvent(AppQueueEvent):
@@ -225,6 +236,7 @@ class QueueNodeSucceededEvent(AppQueueEvent):
     """
     event: QueueEvent = QueueEvent.NODE_SUCCEEDED
 
+    node_execution_id: str
     node_id: str
     node_type: NodeType
     node_data: BaseNodeData
@@ -232,11 +244,12 @@ class QueueNodeSucceededEvent(AppQueueEvent):
     """parallel id if node is in parallel"""
     parallel_start_node_id: Optional[str] = None
     """parallel start node id if node is in parallel"""
+    start_at: datetime
 
-    inputs: Optional[Mapping[str, Any]] = None
-    process_data: Optional[Mapping[str, Any]] = None
-    outputs: Optional[Mapping[str, Any]] = None
-    execution_metadata: Optional[Mapping[NodeRunMetadataKey, Any]] = None
+    inputs: Optional[dict[str, Any]] = None
+    process_data: Optional[dict[str, Any]] = None
+    outputs: Optional[dict[str, Any]] = None
+    execution_metadata: Optional[dict[NodeRunMetadataKey, Any]] = None
 
     error: Optional[str] = None
 
@@ -247,6 +260,7 @@ class QueueNodeFailedEvent(AppQueueEvent):
     """
     event: QueueEvent = QueueEvent.NODE_FAILED
 
+    node_execution_id: str
     node_id: str
     node_type: NodeType
     node_data: BaseNodeData
@@ -254,10 +268,11 @@ class QueueNodeFailedEvent(AppQueueEvent):
     """parallel id if node is in parallel"""
     parallel_start_node_id: Optional[str] = None
     """parallel start node id if node is in parallel"""
+    start_at: datetime
 
-    inputs: Optional[Mapping[str, Any]] = None
-    process_data: Optional[Mapping[str, Any]] = None
-    outputs: Optional[Mapping[str, Any]] = None
+    inputs: Optional[dict[str, Any]] = None
+    process_data: Optional[dict[str, Any]] = None
+    outputs: Optional[dict[str, Any]] = None
 
     error: str
 

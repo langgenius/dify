@@ -1,5 +1,6 @@
 import logging
 from collections.abc import Generator
+from datetime import datetime, timezone
 from typing import Any, cast
 
 from configs import dify_config
@@ -123,10 +124,14 @@ class IterationNode(BaseNode):
             max_execution_time=dify_config.WORKFLOW_MAX_EXECUTION_TIME
         )
 
+        start_at = datetime.now(timezone.utc).replace(tzinfo=None)
+
         yield IterationRunStartedEvent(
+            iteration_id=self.id,
             iteration_node_id=self.node_id,
             iteration_node_type=self.node_type,
             iteration_node_data=self.node_data,
+            start_at=start_at,
             inputs=inputs,
             metadata={
                 "iterator_length": 1
@@ -135,6 +140,7 @@ class IterationNode(BaseNode):
         )
 
         yield IterationRunNextEvent(
+            iteration_id=self.id,
             iteration_node_id=self.node_id,
             iteration_node_type=self.node_type,
             iteration_node_data=self.node_data,
@@ -186,6 +192,7 @@ class IterationNode(BaseNode):
                             )
 
                         yield IterationRunNextEvent(
+                            iteration_id=self.id,
                             iteration_node_id=self.node_id,
                             iteration_node_type=self.node_type,
                             iteration_node_data=self.node_data,
@@ -197,9 +204,11 @@ class IterationNode(BaseNode):
                     if isinstance(event, GraphRunFailedEvent):
                         # iteration run failed
                         yield IterationRunFailedEvent(
+                            iteration_id=self.id,
                             iteration_node_id=self.node_id,
                             iteration_node_type=self.node_type,
                             iteration_node_data=self.node_data,
+                            start_at=start_at,
                             inputs=inputs,
                             outputs={
                                 "output": jsonable_encoder(outputs)
@@ -222,9 +231,11 @@ class IterationNode(BaseNode):
                     yield event
 
             yield IterationRunSucceededEvent(
+                iteration_id=self.id,
                 iteration_node_id=self.node_id,
                 iteration_node_type=self.node_type,
                 iteration_node_data=self.node_data,
+                start_at=start_at,
                 inputs=inputs,
                 outputs={
                     "output": jsonable_encoder(outputs)
@@ -247,9 +258,11 @@ class IterationNode(BaseNode):
             # iteration run failed
             logger.exception("Iteration run failed")
             yield IterationRunFailedEvent(
+                iteration_id=self.id,
                 iteration_node_id=self.node_id,
                 iteration_node_type=self.node_type,
                 iteration_node_data=self.node_data,
+                start_at=start_at,
                 inputs=inputs,
                 outputs={
                     "output": jsonable_encoder(outputs)
