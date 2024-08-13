@@ -73,7 +73,6 @@ const PopupItem: FC<PopupItemProps> = ({
             key={modelItem.model}
             popupContent={modelItem.status !== ModelStatusEnum.active ? MODEL_STATUS_TEXT[modelItem.status][language] : undefined}
             position='right'
-            needsDelay
           >
             <div
               key={modelItem.model}

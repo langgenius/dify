@@ -64,9 +64,11 @@ const FeatureIcon: FC<FeatureIconProps> = ({
       <Tooltip
         popupContent={t('common.modelProvider.featureSupported', { feature: ModelFeatureTextEnum.vision })}
       >
-        <ModelBadge className={`mr-0.5 !px-0 w-[18px] justify-center text-gray-500 ${className}`}>
-          <MagicEyes className='w-3 h-3' />
-        </ModelBadge>
+        <div className='inline-block cursor-help'>
+          <ModelBadge className={`mr-0.5 !px-0 w-[18px] justify-center text-gray-500 ${className}`}>
+            <MagicEyes className='w-3 h-3' />
+          </ModelBadge>
+        </div>
       </Tooltip>
     )
   }

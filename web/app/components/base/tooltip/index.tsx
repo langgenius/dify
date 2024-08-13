@@ -16,6 +16,7 @@ export type TooltipProps = {
   popupClassName?: string
   offset?: OffsetOptions
   needsDelay?: boolean
+  asChild?: boolean
 }
 
 const Tooltip: FC<TooltipProps> = ({
@@ -27,6 +28,7 @@ const Tooltip: FC<TooltipProps> = ({
   children,
   popupClassName,
   offset,
+  asChild = true,
   needsDelay = false,
 }) => {
   const [open, setOpen] = useState(false)
@@ -85,15 +87,14 @@ const Tooltip: FC<TooltipProps> = ({
           }
         }}
         onMouseLeave={() => triggerMethod === 'hover' && handleLeave(true)}
-        className="block"
-        asChild={true}
+        asChild={asChild}
       >
         {children || <div className={triggerClassName || 'p-[1px] w-3.5 h-3.5'}><RiQuestionLine className='text-text-quaternary hover:text-text-tertiary w-full h-full' /></div>}
       </PortalToFollowElemTrigger>
       <PortalToFollowElemContent
         className="z-[9999]"
       >
-        <div
+        {popupContent && (<div
           className={cn(
             'relative px-3 py-2 text-xs font-normal text-gray-700 bg-white rounded-md shadow-lg',
             popupClassName,
@@ -102,7 +103,7 @@ const Tooltip: FC<TooltipProps> = ({
           onMouseLeave={() => triggerMethod === 'hover' && handleLeave(false)}
         >
           {popupContent}
-        </div>
+        </div>)}
       </PortalToFollowElemContent>
     </PortalToFollowElem>
   )

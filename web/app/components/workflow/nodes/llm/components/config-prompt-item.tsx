@@ -121,6 +121,7 @@ const ConfigPromptItem: FC<Props> = ({
             popupContent={
               <div className='max-w-[180px]'>{t(`${i18nPrefix}.roleDescription.${payload.role}`)}</div>
             }
+            triggerClassName='w-4 h-4'
           />
         </div>
       }
