@@ -35,6 +35,7 @@ const nextConfig = {
     ignoreBuildErrors: true,
   },
   reactStrictMode: true,
+  basePath: '/crag', // <-- Add the basePath here
   async redirects() {
     return [
       {
