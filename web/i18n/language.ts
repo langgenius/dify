@@ -26,7 +26,7 @@ export type I18nText = {
   'fa-IR': string
 }
 
-export const languages = data.languages.filter(item => item.value === 'en-US' || item.value === 'vi-VN')
+export const languages = data.languages.filter(item => item.value === 'en-US' || item.value === 'vi-VN').reverse()
 
 export const LanguagesSupported = languages.filter(item => item.supported).map(item => item.value)
 
