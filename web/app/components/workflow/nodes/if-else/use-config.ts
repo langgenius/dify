@@ -136,13 +136,13 @@ const useConfig = (id: string, payload: IfElseNodeType) => {
           id: uuid4(),
           varType: varItem.type,
           variable_selector: valueSelector,
-          comparison_operator: getOperators(varItem.type)[0],
+          comparison_operator: getOperators(varItem.type, getIsVarFileAttribute(valueSelector) ? { key: valueSelector.slice(-1)[0] } : undefined)[0],
           value: '',
         })
       }
     })
     setInputs(newInputs)
-  }, [inputs, setInputs])
+  }, [getIsVarFileAttribute, inputs, setInputs])
 
   const handleRemoveCondition = useCallback<HandleRemoveCondition>((caseId, conditionId) => {
     const newInputs = produce(inputs, (draft) => {
