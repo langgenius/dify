@@ -274,7 +274,7 @@ const translation = {
       required: 'Mô hình nhúng là bắt buộc',
     },
     speechToTextModel: {
-      key: 'Mô hình Chuyển đổi Văn bản thành Tiếng nói',
+      key: 'Mô hình Chuyển đổi Tiếng nói thành Văn bản',
       tip: 'Thiết lập mô hình mặc định cho đầu vào chuyển đổi tiếng nói thành văn bản trong cuộc trò chuyện.',
     },
     ttsModel: {
