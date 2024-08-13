@@ -4,6 +4,7 @@ import logging
 from json import JSONDecodeError
 from typing import Optional
 
+from constants import HIDDEN_VALUE
 from core.entities.provider_configuration import ProviderConfiguration
 from core.helper import encrypter
 from core.helper.model_provider_cache import ProviderCredentialsCache, ProviderCredentialsCacheType
@@ -511,7 +512,7 @@ class ModelLoadBalancingService:
             for key, value in credentials.items():
                 if key in provider_credential_secret_variables:
                     # if send [__HIDDEN__] in secret input, it will be same as original value
-                    if value == '[__HIDDEN__]' and key in original_credentials:
+                    if value == HIDDEN_VALUE and key in original_credentials:
                         credentials[key] = encrypter.decrypt_token(tenant_id, original_credentials[key])
 
         if validate:

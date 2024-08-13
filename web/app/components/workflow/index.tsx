@@ -87,7 +87,7 @@ import { FeaturesProvider } from '@/app/components/base/features'
 import type { Features as FeaturesData } from '@/app/components/base/features/types'
 import { useFeaturesStore } from '@/app/components/base/features/hooks'
 import { useEventEmitterContextContext } from '@/context/event-emitter'
-import Confirm from '@/app/components/base/confirm/common'
+import Confirm from '@/app/components/base/confirm'
 
 const nodeTypes = {
   [CUSTOM_NODE]: CustomNode,
@@ -194,6 +194,10 @@ const Workflow: FC<WorkflowProps> = memo(({
       e.preventDefault()
     if ((e.key === 'z' || e.key === 'Z') && (e.ctrlKey || e.metaKey))
       e.preventDefault()
+    if ((e.key === 'y' || e.key === 'Y') && (e.ctrlKey || e.metaKey))
+      e.preventDefault()
+    if ((e.key === 's' || e.key === 'S') && (e.ctrlKey || e.metaKey))
+      e.preventDefault()
   })
   useEventListener('mousemove', (e) => {
     const containerClientRect = workflowContainerRef.current?.getBoundingClientRect()
@@ -260,7 +264,12 @@ const Workflow: FC<WorkflowProps> = memo(({
 
   const { shortcutsEnabled: workflowHistoryShortcutsEnabled } = useWorkflowHistoryStore()
 
-  useKeyPress('delete', handleNodesDelete)
+  useKeyPress(['delete', 'backspace'], (e) => {
+    if (isEventTargetInputArea(e.target as HTMLElement))
+      return
+
+    handleNodesDelete()
+  })
   useKeyPress(['delete', 'backspace'], handleEdgeDelete)
   useKeyPress(`${getKeyboardKeyCodeBySystem('ctrl')}.c`, (e) => {
     if (isEventTargetInputArea(e.target as HTMLElement))
@@ -310,7 +319,7 @@ const Workflow: FC<WorkflowProps> = memo(({
     >
       <SyncingDataModal />
       <CandidateNode />
-      <Header/>
+      <Header />
       <Panel />
       <Operator handleRedo={handleHistoryForward} handleUndo={handleHistoryBack} />
       {
@@ -326,8 +335,7 @@ const Workflow: FC<WorkflowProps> = memo(({
             onCancel={() => setShowConfirm(undefined)}
             onConfirm={showConfirm.onConfirm}
             title={showConfirm.title}
-            desc={showConfirm.desc}
-            confirmWrapperClassName='!z-[11]'
+            content={showConfirm.desc}
           />
         )
       }

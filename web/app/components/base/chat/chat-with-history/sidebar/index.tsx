@@ -121,7 +121,6 @@ const Sidebar = () => {
           title={t('share.chat.deleteConversation.title')}
           content={t('share.chat.deleteConversation.content') || ''}
           isShow
-          onClose={handleCancelConfirm}
           onCancel={handleCancelConfirm}
           onConfirm={handleDelete}
         />

@@ -89,7 +89,8 @@ class AdvancedChatAppGenerator(MessageBasedAppGenerator):
         )
 
         # get tracing instance
-        trace_manager = TraceQueueManager(app_id=app_model.id)
+        user_id = user.id if isinstance(user, Account) else user.session_id
+        trace_manager = TraceQueueManager(app_model.id, user_id)
 
         if invoke_from == InvokeFrom.DEBUGGER:
             # always enable retriever resource in debugger mode
@@ -112,7 +113,6 @@ class AdvancedChatAppGenerator(MessageBasedAppGenerator):
         contexts.tenant_id.set(application_generate_entity.app_config.tenant_id)
 
         return self._generate(
-            app_model=app_model,
             workflow=workflow,
             user=user,
             invoke_from=invoke_from,
@@ -121,7 +121,7 @@ class AdvancedChatAppGenerator(MessageBasedAppGenerator):
             stream=stream
         )
 
-    def _generate(self, app_model: App,
+    def _generate(self, *,
                   workflow: Workflow,
                   user: Union[Account, EndUser],
                   invoke_from: InvokeFrom,

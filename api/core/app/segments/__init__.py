@@ -1,6 +1,7 @@
 from .segment_group import SegmentGroup
 from .segments import (
     ArrayAnySegment,
+    ArraySegment,
     FileSegment,
     FloatSegment,
     IntegerSegment,
@@ -50,4 +51,5 @@ __all__ = [
     'ArrayNumberVariable',
     'ArrayObjectVariable',
     'ArrayFileVariable',
+    'ArraySegment',
 ]

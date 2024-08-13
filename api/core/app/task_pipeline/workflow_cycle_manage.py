@@ -24,7 +24,8 @@ from core.app.entities.task_entities import (
 )
 from core.file.file_obj import FileVar
 from core.model_runtime.utils.encoders import jsonable_encoder
-from core.ops.ops_trace_manager import TraceQueueManager, TraceTask, TraceTaskName
+from core.ops.entities.trace_entity import TraceTaskName
+from core.ops.ops_trace_manager import TraceQueueManager, TraceTask
 from core.tools.tool_manager import ToolManager
 from core.workflow.entities.node_entities import NodeType, SystemVariable
 from core.workflow.nodes.tool.entities import ToolNodeData
@@ -42,6 +43,7 @@ from models.workflow import (
     WorkflowRunStatus,
     WorkflowRunTriggeredFrom,
 )
+from services.workflow_service import WorkflowService
 
 
 class WorkflowCycleManage:
@@ -50,7 +52,7 @@ class WorkflowCycleManage:
     _user: Union[Account, EndUser]
     _task_state: WorkflowTaskState
     _workflow_system_variables: dict[SystemVariable, Any]
-    
+
     def _handle_workflow_run_start(self) -> WorkflowRun:
         max_sequence = (
             db.session.query(db.func.max(WorkflowRun.sequence_number))
@@ -71,7 +73,7 @@ class WorkflowCycleManage:
         inputs = WorkflowEntry.handle_special_values(inputs)
 
         triggered_from= (
-            WorkflowRunTriggeredFrom.DEBUGGING 
+            WorkflowRunTriggeredFrom.DEBUGGING
             if self._application_generate_entity.invoke_from == InvokeFrom.DEBUGGER
             else WorkflowRunTriggeredFrom.APP_RUN
         )
@@ -99,7 +101,7 @@ class WorkflowCycleManage:
         db.session.close()
 
         return workflow_run
-    
+
     def _handle_workflow_run_success(
         self,
         workflow_run: WorkflowRun,
@@ -121,7 +123,7 @@ class WorkflowCycleManage:
         :return:
         """
         workflow_run = self._refetch_workflow_run(workflow_run.id)
-        
+
         workflow_run.status = WorkflowRunStatus.SUCCEEDED.value
         workflow_run.outputs = outputs
         workflow_run.elapsed_time = time.perf_counter() - start_at
@@ -138,6 +140,7 @@ class WorkflowCycleManage:
                     TraceTaskName.WORKFLOW_TRACE,
                     workflow_run=workflow_run,
                     conversation_id=conversation_id,
+                    user_id=trace_manager.user_id,
                 )
             )
 
@@ -185,11 +188,12 @@ class WorkflowCycleManage:
                     TraceTaskName.WORKFLOW_TRACE,
                     workflow_run=workflow_run,
                     conversation_id=conversation_id,
+                    user_id=trace_manager.user_id,
                 )
             )
 
         return workflow_run
-    
+
     def _handle_node_execution_start(self, workflow_run: WorkflowRun, event: QueueNodeStartedEvent) -> WorkflowNodeExecution:
         # init workflow node execution
         workflow_node_execution = WorkflowNodeExecution()
@@ -250,7 +254,7 @@ class WorkflowCycleManage:
         :return:
         """
         workflow_node_execution = self._refetch_workflow_node_execution(event.node_execution_id)
-        
+
         inputs = WorkflowEntry.handle_special_values(event.inputs)
         outputs = WorkflowEntry.handle_special_values(event.outputs)
 
@@ -267,7 +271,7 @@ class WorkflowCycleManage:
         db.session.close()
 
         return workflow_node_execution
-    
+
     #################################################
     #             to stream responses               #
     #################################################
@@ -406,10 +410,10 @@ class WorkflowCycleManage:
                 files=self._fetch_files_from_node_outputs(workflow_node_execution.outputs_dict or {}),
             ),
         )
-    
+
     def _workflow_iteration_start_to_stream_response(
             self,
-            task_id: str, 
+            task_id: str,
             workflow_run: WorkflowRun,
             event: QueueIterationStartEvent
         ) -> IterationNodeStartStreamResponse:
@@ -434,7 +438,7 @@ class WorkflowCycleManage:
                 metadata=event.metadata or {}
             )
         )
-    
+
     def _workflow_iteration_next_to_stream_response(self, task_id: str, workflow_run: WorkflowRun, event: QueueIterationNextEvent) -> IterationNodeNextStreamResponse:
         """
         Workflow iteration next to stream response
@@ -457,7 +461,7 @@ class WorkflowCycleManage:
                 extras={}
             )
         )
-    
+
     def _workflow_iteration_completed_to_stream_response(self, task_id: str, workflow_run: WorkflowRun, event: QueueIterationCompletedEvent) -> IterationNodeCompletedStreamResponse:
         """
         Workflow iteration completed to stream response
@@ -552,10 +556,10 @@ class WorkflowCycleManage:
         """
         workflow_run = db.session.query(WorkflowRun).filter(
             WorkflowRun.id == workflow_run_id).first()
-        
+
         if not workflow_run:
             raise Exception(f'Workflow run not found: {workflow_run_id}')
-        
+
         return workflow_run
 
     def _refetch_workflow_node_execution(self, node_execution_id: str) -> WorkflowNodeExecution:
@@ -578,5 +582,5 @@ class WorkflowCycleManage:
 
         if not workflow_node_execution:
             raise Exception(f'Workflow node execution not found: {node_execution_id}')
-        
+
         return workflow_node_execution

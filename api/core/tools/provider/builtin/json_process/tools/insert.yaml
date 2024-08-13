@@ -47,10 +47,22 @@ parameters:
       pt_BR: New Value
     human_description:
       en_US: New Value
-      zh_Hans: 新值
+      zh_Hans: 插入的新值
       pt_BR: New Value
     llm_description: New Value to insert
     form: llm
+  - name: value_decode
+    type: boolean
+    default: false
+    label:
+      en_US: Decode Value
+      zh_Hans: 解码值
+      pt_BR: Decode Value
+    human_description:
+      en_US: Whether to decode the value to a JSON object
+      zh_Hans: 是否将值解码为 JSON 对象
+      pt_BR: Whether to decode the value to a JSON object
+    form: form
   - name: create_path
     type: select
     required: true

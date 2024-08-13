@@ -14,6 +14,7 @@ VariableValue = Union[str, int, float, dict, list, FileVar]
 
 SYSTEM_VARIABLE_NODE_ID = 'sys'
 ENVIRONMENT_VARIABLE_NODE_ID = 'env'
+CONVERSATION_VARIABLE_NODE_ID = 'conversation'
 
 
 class VariablePool(BaseModel):
@@ -40,6 +41,8 @@ class VariablePool(BaseModel):
         default_factory=list
     )
 
+    conversation_variables: Sequence[Variable] | None = None
+
     @model_validator(mode="after")
     def val_model_after(self):
         """
@@ -53,6 +56,10 @@ class VariablePool(BaseModel):
         # Add environment variables to the variable pool
         for var in self.environment_variables or []:
             self.add((ENVIRONMENT_VARIABLE_NODE_ID, var.name), var)
+
+        # Add conversation variables to the variable pool
+        for var in self.conversation_variables or []:
+            self.add((CONVERSATION_VARIABLE_NODE_ID, var.name), var)
 
         return self
 

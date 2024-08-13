@@ -74,6 +74,7 @@ class DraftWorkflowApi(Resource):
             parser.add_argument('hash', type=str, required=False, location='json')
             # TODO: set this to required=True after frontend is updated
             parser.add_argument('environment_variables', type=list, required=False, location='json')
+            parser.add_argument('conversation_variables', type=list, required=False, location='json')
             args = parser.parse_args()
         elif 'text/plain' in content_type:
             try:
@@ -88,7 +89,8 @@ class DraftWorkflowApi(Resource):
                     'graph': data.get('graph'),
                     'features': data.get('features'),
                     'hash': data.get('hash'),
-                    'environment_variables': data.get('environment_variables')
+                    'environment_variables': data.get('environment_variables'),
+                    'conversation_variables': data.get('conversation_variables'),
                 }
             except json.JSONDecodeError:
                 return {'message': 'Invalid JSON data'}, 400
@@ -100,6 +102,8 @@ class DraftWorkflowApi(Resource):
         try:
             environment_variables_list = args.get('environment_variables') or []
             environment_variables = [factory.build_variable_from_mapping(obj) for obj in environment_variables_list]
+            conversation_variables_list = args.get('conversation_variables') or []
+            conversation_variables = [factory.build_variable_from_mapping(obj) for obj in conversation_variables_list]
             workflow = workflow_service.sync_draft_workflow(
                 app_model=app_model,
                 graph=args['graph'],
@@ -107,6 +111,7 @@ class DraftWorkflowApi(Resource):
                 unique_hash=args.get('hash'),
                 account=current_user,
                 environment_variables=environment_variables,
+                conversation_variables=conversation_variables,
             )
         except WorkflowHashNotEqualError:
             raise DraftWorkflowNotSync()
