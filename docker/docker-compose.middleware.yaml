@@ -27,61 +27,54 @@ services:
       - "${EXPOSE_REDIS_PORT:-6380}:6379"
 
   # The DifySandbox
-  sandbox:
-    image: langgenius/dify-sandbox:0.2.1
-    restart: always
-    environment:
-      # The DifySandbox configurations
-      # Make sure you are changing this key for your deployment with a strong key.
-      # You can generate a strong key using `openssl rand -base64 42`.
-      API_KEY: ${SANDBOX_API_KEY:-dify-sandbox}
-      GIN_MODE: ${SANDBOX_GIN_MODE:-release}
-      WORKER_TIMEOUT: ${SANDBOX_WORKER_TIMEOUT:-15}
-      ENABLE_NETWORK: ${SANDBOX_ENABLE_NETWORK:-true}
-      HTTP_PROXY: ${SANDBOX_HTTP_PROXY:-http://ssrf_proxy:3128}
-      HTTPS_PROXY: ${SANDBOX_HTTPS_PROXY:-http://ssrf_proxy:3128}
-      SANDBOX_PORT: ${SANDBOX_PORT:-8194}
-    volumes:
-      - ./volumes/sandbox/dependencies:/dependencies
-    networks:
-      - ssrf_proxy_network
+  # sandbox:
+  #   image: langgenius/dify-sandbox:0.2.1
+  #   restart: always
+  #   environment:
+  #     # The DifySandbox configurations
+  #     # Make sure you are changing this key for your deployment with a strong key.
+  #     # You can generate a strong key using `openssl rand -base64 42`.
+  #     API_KEY: ${SANDBOX_API_KEY:-dify-sandbox}
+  #     GIN_MODE: ${SANDBOX_GIN_MODE:-release}
+  #     WORKER_TIMEOUT: ${SANDBOX_WORKER_TIMEOUT:-15}
+  #     ENABLE_NETWORK: ${SANDBOX_ENABLE_NETWORK:-true}
+  #     HTTP_PROXY: ${SANDBOX_HTTP_PROXY:-http://ssrf_proxy:3128}
+  #     HTTPS_PROXY: ${SANDBOX_HTTPS_PROXY:-http://ssrf_proxy:3128}
+  #     SANDBOX_PORT: ${SANDBOX_PORT:-8194}
+  #   volumes:
+  #     - ./volumes/sandbox/dependencies:/dependencies
+  #   networks:
+  #     - ssrf_proxy_network
 
   # ssrf_proxy server
   # for more information, please refer to
   # https://docs.dify.ai/learn-more/faq/self-host-faq#id-18.-why-is-ssrf_proxy-needed
-  ssrf_proxy:
-    image: ubuntu/squid:latest
-    restart: always
-    volumes:
-      - ./ssrf_proxy/squid.conf.template:/etc/squid/squid.conf.template
-      - ./ssrf_proxy/docker-entrypoint.sh:/docker-entrypoint-mount.sh
-    # entrypoint:
-    #   [
-    #     "sh",
-    #     "-c",
-    #     "cp /docker-entrypoint-mount.sh /docker-entrypoint.sh && sed -i 's/\r$$//' /docker-entrypoint.sh && chmod +x /docker-entrypoint.sh && /docker-entrypoint.sh",
-    #   ]
+  # ssrf_proxy:
+  #   image: ubuntu/squid:latest
+  #   restart: always
+  #   volumes:
+  #     - ./ssrf_proxy/squid.conf.template:/etc/squid/squid.conf.template
+  #     - ./ssrf_proxy/docker-entrypoint.sh:/docker-entrypoint-mount.sh
+  #   entrypoint:
+  #     [
+  #       "sh",
+  #       "-c",
+  #       "cp /docker-entrypoint-mount.sh /docker-entrypoint.sh && sed -i 's/\r$$//' /docker-entrypoint.sh && chmod +x /docker-entrypoint.sh && /docker-entrypoint.sh",
+  #     ]
 
-    entrypoint:
-      [
-        "sh",
-        "-c",
-        "ls -l /docker-entrypoint-mount.sh && file /docker-entrypoint-mount.sh && cat /docker-entrypoint-mount.sh",
-      ]
-
-    environment:
-      # pls clearly modify the squid env vars to fit your network environment.
-      HTTP_PORT: ${SSRF_HTTP_PORT:-3128}
-      COREDUMP_DIR: ${SSRF_COREDUMP_DIR:-/var/spool/squid}
-      REVERSE_PROXY_PORT: ${SSRF_REVERSE_PROXY_PORT:-8194}
-      SANDBOX_HOST: ${SSRF_SANDBOX_HOST:-sandbox}
-      SANDBOX_PORT: ${SANDBOX_PORT:-8194}
-    ports:
-      - "${EXPOSE_SSRF_PROXY_PORT:-3128}:${SSRF_HTTP_PORT:-3128}"
-      - "${EXPOSE_SANDBOX_PORT:-8194}:${SANDBOX_PORT:-8194}"
-    networks:
-      - ssrf_proxy_network
-      - default
+  #   environment:
+  #     # pls clearly modify the squid env vars to fit your network environment.
+  #     HTTP_PORT: ${SSRF_HTTP_PORT:-3128}
+  #     COREDUMP_DIR: ${SSRF_COREDUMP_DIR:-/var/spool/squid}
+  #     REVERSE_PROXY_PORT: ${SSRF_REVERSE_PROXY_PORT:-8194}
+  #     SANDBOX_HOST: ${SSRF_SANDBOX_HOST:-sandbox}
+  #     SANDBOX_PORT: ${SANDBOX_PORT:-8194}5433
+  #   ports:
+  #     - "${EXPOSE_SSRF_PROXY_PORT:-3128}:${SSRF_HTTP_PORT:-3128}"
+  #     - "${EXPOSE_SANDBOX_PORT:-8194}:${SANDBOX_PORT:-8194}"
+  #   networks:
+  #     - ssrf_proxy_network
+  #     - default
 
   # The Weaviate vector store.
   weaviate:
@@ -108,11 +101,11 @@ services:
     ports:
       - "${EXPOSE_WEAVIATE_PORT:-8888}:8080"
 
-networks:
-  # create a network between sandbox, api and ssrf_proxy, and can not access outside.
-  ssrf_proxy_network:
-    driver: bridge
-    internal: true
+# networks:
+# create a network between sandbox, api and ssrf_proxy, and can not access outside.
+# ssrf_proxy_network:
+#   driver: bridge
+#   internal: true
 
 volumes:
   postgres_data:
