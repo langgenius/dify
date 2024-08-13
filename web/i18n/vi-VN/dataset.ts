@@ -12,7 +12,7 @@ const translation = {
   datasetDeleted: 'Bộ kiến thức đã được xóa',
   datasetDeleteFailed: 'Xóa bộ kiến thức không thành công',
   didYouKnow: 'Bạn có biết?',
-  intro1: 'Bộ kiến thức có thể được tích hợp vào ứng dụng Dify ',
+  intro1: 'Bộ kiến thức có thể được tích hợp vào ứng dụng Base ',
   intro2: 'như một ngữ cảnh',
   intro3: ',',
   intro4: 'hoặc ',
