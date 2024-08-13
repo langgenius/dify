@@ -12,6 +12,7 @@ import HttpRequestDefault from './nodes/http/default'
 import ParameterExtractorDefault from './nodes/parameter-extractor/default'
 import ToolDefault from './nodes/tool/default'
 import VariableAssignerDefault from './nodes/variable-assigner/default'
+import AssignerDefault from './nodes/assigner/default'
 import EndNodeDefault from './nodes/end/default'
 import IterationDefault from './nodes/iteration/default'
 
@@ -132,6 +133,15 @@ export const NODES_EXTRA_DATA: Record<BlockEnum, NodesExtraData> = {
     getAvailablePrevNodes: VariableAssignerDefault.getAvailablePrevNodes,
     getAvailableNextNodes: VariableAssignerDefault.getAvailableNextNodes,
     checkValid: VariableAssignerDefault.checkValid,
+  },
+  [BlockEnum.Assigner]: {
+    author: 'Dify',
+    about: '',
+    availablePrevNodes: [],
+    availableNextNodes: [],
+    getAvailablePrevNodes: AssignerDefault.getAvailablePrevNodes,
+    getAvailableNextNodes: AssignerDefault.getAvailableNextNodes,
+    checkValid: AssignerDefault.checkValid,
   },
   [BlockEnum.VariableAggregator]: {
     author: 'Dify',
@@ -267,6 +277,12 @@ export const NODES_INITIAL_DATA = {
     variables: [],
     output_type: '',
     ...VariableAssignerDefault.defaultValue,
+  },
+  [BlockEnum.Assigner]: {
+    type: BlockEnum.Assigner,
+    title: '',
+    desc: '',
+    ...AssignerDefault.defaultValue,
   },
   [BlockEnum.Tool]: {
     type: BlockEnum.Tool,

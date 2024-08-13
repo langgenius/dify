@@ -12,6 +12,7 @@ const translation = {
     cancel: 'Annuler',
     clear: 'Effacer',
     save: 'Enregistrer',
+    saveAndEnable: 'Enregistrer et Activer',
     edit: 'Modifier',
     add: 'Ajouter',
     added: 'Ajouté',
@@ -408,7 +409,7 @@ const translation = {
     latestAvailable: 'Dify {{version}} est la dernière version disponible.',
   },
   appMenus: {
-    overview: 'Aperçu',
+    overview: 'Surveillance',
     promptEng: 'Orchestrer',
     apiAccess: 'Accès API',
     logAndAnn: 'Journaux & Annonces.',

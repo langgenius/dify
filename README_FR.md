@@ -29,14 +29,16 @@
 </p>
 
 <p align="center">
-  <a href="./README.md"><img alt="Commits le mois dernier" src="https://img.shields.io/badge/Anglais-d9d9d9"></a>
-  <a href="./README_CN.md"><img alt="Commits le mois dernier" src="https://img.shields.io/badge/简体中文-d9d9d9"></a>
-  <a href="./README_JA.md"><img alt="Commits le mois dernier" src="https://img.shields.io/badge/日本語-d9d9d9"></a>
-  <a href="./README_ES.md"><img alt="Commits le mois dernier" src="https://img.shields.io/badge/Español-d9d9d9"></a>
-  <a href="./README_KL.md"><img alt="Commits le mois dernier" src="https://img.shields.io/badge/Français-d9d9d9"></a>
-  <a href="./README_FR.md"><img alt="Commits le mois dernier" src="https://img.shields.io/badge/Klingon-d9d9d9"></a>
-  <a href="./README_KR.md"><img alt="Commits le mois dernier" src="https://img.shields.io/badge/한국어-d9d9d9"></a>
+  <a href="./README.md"><img alt="README in English" src="https://img.shields.io/badge/English-d9d9d9"></a>
+  <a href="./README_CN.md"><img alt="简体中文版自述文件" src="https://img.shields.io/badge/简体中文-d9d9d9"></a>
+  <a href="./README_JA.md"><img alt="日本語のREADME" src="https://img.shields.io/badge/日本語-d9d9d9"></a>
+  <a href="./README_ES.md"><img alt="README en Español" src="https://img.shields.io/badge/Español-d9d9d9"></a>
+  <a href="./README_FR.md"><img alt="README en Français" src="https://img.shields.io/badge/Français-d9d9d9"></a>
+  <a href="./README_KL.md"><img alt="README tlhIngan Hol" src="https://img.shields.io/badge/Klingon-d9d9d9"></a>
+  <a href="./README_KR.md"><img alt="README in Korean" src="https://img.shields.io/badge/한국어-d9d9d9"></a>
+  <a href="./README_AR.md"><img alt="README بالعربية" src="https://img.shields.io/badge/العربية-d9d9d9"></a>
   <a href="./README_TR.md"><img alt="Türkçe README" src="https://img.shields.io/badge/Türkçe-d9d9d9"></a>
+  <a href="./README_VI.md"><img alt="README Tiếng Việt" src="https://img.shields.io/badge/Ti%E1%BA%BFng%20Vi%E1%BB%87t-d9d9d9"></a>
 </p>
 
 #
@@ -156,7 +158,7 @@ Lancez rapidement Dify dans votre environnement avec ce [guide de démarrage](#q
 Utilisez notre [documentation](https://docs.dify.ai) pour plus de références et des instructions plus détaillées.
 
 - **Dify pour les entreprises / organisations</br>**
-Nous proposons des fonctionnalités supplémentaires adaptées aux entreprises. [Planifiez une réunion avec nous](https://cal.com/guchenhe/30min) ou [envoyez-nous un e-mail](mailto:business@dify.ai?subject=[GitHub]Business%20License%20Inquiry) pour discuter des besoins de l'entreprise. </br>
+Nous proposons des fonctionnalités supplémentaires adaptées aux entreprises. [Envoyez-nous un e-mail](mailto:business@dify.ai?subject=[GitHub]Business%20License%20Inquiry) pour discuter des besoins de l'entreprise. </br>
   > Pour les startups et les petites entreprises utilisant AWS, consultez [Dify Premium sur AWS Marketplace](https://aws.amazon.com/marketplace/pp/prodview-t22mebxzwjhu6) et déployez-le dans votre propre VPC AWS en un clic. C'est une offre AMI abordable avec la possibilité de créer des applications avec un logo et une marque personnalisés.
 
 
@@ -225,23 +227,6 @@ Dans le même temps, veuillez envisager de soutenir Dify en le partageant sur le
 * [Problèmes GitHub](https://github.com/langgenius/dify/issues). Meilleur pour: les bogues que vous rencontrez en utilisant Dify.AI et les propositions de fonctionnalités. Consultez notre [Guide de contribution](https://github.com/langgenius/dify/blob/main/CONTRIBUTING.md).
 * [Discord](https://discord.gg/FngNHpbcY7). Meilleur pour: partager vos applications et passer du temps avec la communauté.
 * [Twitter](https://twitter.com/dify_ai). Meilleur pour: partager vos applications et passer du temps avec la communauté.
-
-Ou, planifiez directement une réunion avec un membre de l'équipe:
-
-<table>
-  <tr>
-    <th>Point de contact</th>
-    <th>Objectif</th>
-  </tr>
-  <tr>
-    <td><a href='https://cal.com/guchenhe/15min' target='_blank'><img class="schedule-button" src='https://github.com/langgenius/dify/assets/13230914/9ebcd111-1205-4d71-83d5-948d70b809f5' alt='Git-Hub-README-Button-3x' style="width: 180px; height: auto; object-fit: contain;"/></a></td>
-    <td>Demandes commerciales & retours produit</td>
-  </tr>
-  <tr>
-    <td><a href='https://cal.com/pinkbanana' target='_blank'><img class="schedule-button" src='https://github.com/langgenius/dify/assets/13230914/d1edd00a-d7e4-4513-be6c-e57038e143fd' alt='Git-Hub-README-Button-2x' style="width: 180px; height: auto; object-fit: contain;"/></a></td>
-    <td>Contributions, problèmes & demandes de fonctionnalités</td>
-  </tr>
-</table>
 
 ## Historique des étoiles
 

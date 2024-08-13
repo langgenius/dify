@@ -72,6 +72,7 @@ class WorkflowService:
         unique_hash: Optional[str],
         account: Account,
         environment_variables: Sequence[Variable],
+        conversation_variables: Sequence[Variable],
     ) -> Workflow:
         """
         Sync draft workflow
@@ -99,7 +100,8 @@ class WorkflowService:
                 graph=json.dumps(graph),
                 features=json.dumps(features),
                 created_by=account.id,
-                environment_variables=environment_variables
+                environment_variables=environment_variables,
+                conversation_variables=conversation_variables,
             )
             db.session.add(workflow)
         # update draft workflow if found
@@ -109,6 +111,7 @@ class WorkflowService:
             workflow.updated_by = account.id
             workflow.updated_at = datetime.now(timezone.utc).replace(tzinfo=None)
             workflow.environment_variables = environment_variables
+            workflow.conversation_variables = conversation_variables
 
         # commit db session changes
         db.session.commit()
@@ -145,7 +148,8 @@ class WorkflowService:
             graph=draft_workflow.graph,
             features=draft_workflow.features,
             created_by=account.id,
-            environment_variables=draft_workflow.environment_variables
+            environment_variables=draft_workflow.environment_variables,
+            conversation_variables=draft_workflow.conversation_variables,
         )
 
         # commit db session changes
@@ -336,7 +340,7 @@ class WorkflowService:
         )
         if not workflow_nodes:
             return elapsed_time
-        
+
         for node in workflow_nodes:
             elapsed_time += node.elapsed_time
 
