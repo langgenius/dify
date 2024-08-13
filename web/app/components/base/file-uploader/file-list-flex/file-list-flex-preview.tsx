@@ -2,7 +2,7 @@ import {
   forwardRef,
   memo,
 } from 'react'
-import FileListItem from './file-list-item'
+import FileListFlexItem from './file-list-flex-item'
 
 const FileListFlexPreview = forwardRef<HTMLDivElement>((_, ref) => {
   return (
@@ -10,10 +10,10 @@ const FileListFlexPreview = forwardRef<HTMLDivElement>((_, ref) => {
       ref={ref}
       className='flex flex-wrap gap-2'
     >
-      <FileListItem />
-      <FileListItem />
-      <FileListItem isFile />
-      <FileListItem isFile />
+      <FileListFlexItem />
+      <FileListFlexItem />
+      <FileListFlexItem isFile />
+      <FileListFlexItem isFile />
     </div>
   )
 })

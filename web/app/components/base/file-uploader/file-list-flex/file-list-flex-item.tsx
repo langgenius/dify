@@ -8,7 +8,7 @@ type FileListItemProps = {
   isFile?: boolean
   className?: string
 }
-const FileListItem = ({
+const FileListFlexItem = ({
   isFile,
   className,
 }: FileListItemProps) => {
@@ -48,4 +48,4 @@ const FileListItem = ({
   )
 }
 
-export default memo(FileListItem)
+export default memo(FileListFlexItem)

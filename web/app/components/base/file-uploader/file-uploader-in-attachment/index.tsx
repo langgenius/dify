@@ -1,5 +1,4 @@
 import {
-  memo,
   useCallback,
 } from 'react'
 import {
@@ -8,6 +7,10 @@ import {
 } from '@remixicon/react'
 import { useTranslation } from 'react-i18next'
 import FileFromLinkOrLocal from '../file-from-link-or-local'
+import {
+  FileContextProvider,
+  useStore,
+} from '../store'
 import FileInAttachmentItem from './file-in-attachment-item'
 import Button from '@/app/components/base/button'
 import cn from '@/utils/classnames'
@@ -19,6 +22,7 @@ type Option = {
 }
 const FileUploaderInAttachment = () => {
   const { t } = useTranslation()
+  const files = useStore(s => s.files)
   const options = [
     {
       value: 'local',
@@ -68,11 +72,24 @@ const FileUploaderInAttachment = () => {
         {options.map(renderOption)}
       </div>
       <div className='mt-1 space-y-1'>
-        <FileInAttachmentItem />
-        <FileInAttachmentItem />
+        {
+          files.map(file => (
+            <FileInAttachmentItem
+              key={file._id}
+            />
+          ))
+        }
       </div>
     </div>
   )
 }
 
-export default memo(FileUploaderInAttachment)
+const FileUploaderInAttachmentWrapper = () => {
+  return (
+    <FileContextProvider>
+      <FileUploaderInAttachment />
+    </FileContextProvider>
+  )
+}
+
+export default FileUploaderInAttachmentWrapper
