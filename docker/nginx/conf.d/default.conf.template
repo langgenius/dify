@@ -5,16 +5,6 @@ server {
     listen [::]:${NGINX_PORT};
     server_name ${NGINX_SERVER_NAME};
 
-    location / {
-        return 301 https://$host$request_uri;
-    }
-}
-
-server {
-    listen ${NGINX_SSL_PORT};
-    listen [::]:${NGINX_SSL_PORT};
-    server_name ${NGINX_SERVER_NAME};
-
     location /console/api {
       proxy_pass http://api:5001;
       include proxy.conf;
