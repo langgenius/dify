@@ -103,10 +103,10 @@ class WorkflowEngineManager:
         :param workflow: Workflow instance
         :param user_id: user id
         :param user_from: user from
-        :param user_inputs: user variables inputs
-        :param system_inputs: system inputs, like: query, files
+        :param invoke_from: invoke from
         :param callbacks: workflow callbacks
         :param call_depth: call depth
+        :param variable_pool: variable pool
         """
         # fetch workflow graph
         graph = workflow.graph_dict
