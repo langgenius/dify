@@ -218,7 +218,6 @@ const SettingsModal: FC<ISettingsModalProps> = ({
             placeholder='E.g #A020F0'
           />
         </>}
-        {/* only show when enable sso feature */}
         {systemFeatures.enable_web_sso_switch_component && <div className='w-full mt-8'>
           <p className='system-xs-medium text-gray-500'>{t(`${prefixSettings}.sso.label`)}</p>
           <div className='flex justify-between items-center'>
