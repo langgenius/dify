@@ -89,10 +89,11 @@ class QuestionClassifierNode(LLMNode):
             process_data = {
                 'model_mode': model_config.mode,
                 'prompts': PromptMessageUtil.prompt_messages_to_prompt_for_saving(
-                    model_mode=model_config.mode,
-                    prompt_messages=prompt_messages
+                    model_mode=model_config.mode, prompt_messages=prompt_messages
                 ),
                 'usage': jsonable_encoder(usage),
+                'model_provider': model_config.provider,
+                'model_name': model_config.model,
             }
             outputs = {
                 'class_name': category_name

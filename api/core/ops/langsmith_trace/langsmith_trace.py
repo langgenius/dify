@@ -156,6 +156,12 @@ class LangSmithDataTrace(BaseTraceInstance):
             process_data = json.loads(node_execution.process_data) if node_execution.process_data else {}
             if process_data and process_data.get("model_mode") == "chat":
                 run_type = LangSmithRunType.llm
+                metadata.update(
+                    {
+                        'ls_provider': process_data.get('model_provider', ''),
+                        'ls_model_name': process_data.get('model_name', ''),
+                    }
+                )
             elif node_type == "knowledge-retrieval":
                 run_type = LangSmithRunType.retriever
             else:
@@ -178,6 +184,10 @@ class LangSmithDataTrace(BaseTraceInstance):
                 else trace_info.workflow_run_id,
                 tags=["node_execution"],
             )
+
+            if node_type == "llm":
+                langsmith_run.tags.append("llm")
+                langsmith_run.total_tokens = node_total_tokens
 
             self.add_run(langsmith_run)
 
