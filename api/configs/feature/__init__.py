@@ -58,17 +58,16 @@ class EndpointConfig(BaseSettings):
     """
     Module URL configs
     """
-    # TODO : update the variables in the production settings
     CONSOLE_API_URL: str = Field(
         description='The backend URL prefix of the console API.'
                     'used to concatenate the login authorization callback or notion integration callback.',
-        default=os.getenv('CONSOLE_API_URL'),
+        default=os.getenv("CONSOLE_API_URL"),
     )
 
     CONSOLE_WEB_URL: str = Field(
         description='The front-end URL prefix of the console web.'
                     'used to concatenate some front-end addresses and for CORS configuration use.',
-        default=os.getenv('CONSOLE_WEB_URL'),
+        default=os.getenv("CONSOLE_WEB_URL"),
     )
 
     SERVICE_API_URL: str = Field(
