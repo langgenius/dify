@@ -94,9 +94,9 @@ const translation = {
     },
     export: {
       title: 'シークレット環境変数をエクスポートしますか？',
-      checkbox: 'シクレート値をエクスポート',
+      checkbox: 'シークレット値をエクスポート',
       ignore: 'DSLをエクスポート',
-      export: 'シクレート値を含むDSLをエクスポート',
+      export: 'シークレット値を含むDSLをエクスポート',
     },
   },
   changeHistory: {
