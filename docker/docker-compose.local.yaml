@@ -194,7 +194,7 @@ services:
     # image: langgenius/dify-api
 
     build:
-      context: ./api
+      context: ../api
       dockerfile: Dockerfile
 
     restart: always
@@ -218,7 +218,7 @@ services:
   worker:
     # image: langgenius/dify-api
     build:
-      context: ./api
+      context: ../api
       dockerfile: Dockerfile
     restart: always
     environment:
@@ -240,8 +240,7 @@ services:
   web:
     # image: langgenius/dify-web
     build:
-      #TODO This is just for testing
-      context: ./web
+      context: ../web
       dockerfile: Dockerfile
 
     restart: always
@@ -313,8 +312,8 @@ services:
     image: ubuntu/squid:latest
     restart: always
     volumes:
-      - ./docker/ssrf_proxy/squid.conf.template:/etc/squid/squid.conf.template
-      - ./docker/ssrf_proxy/docker-entrypoint.sh:/docker-entrypoint-mount.sh
+      - ./ssrf_proxy/squid.conf.template:/etc/squid/squid.conf.template
+      - ./ssrf_proxy/docker-entrypoint.sh:/docker-entrypoint-mount.sh
     entrypoint:
       [
         "sh",
@@ -358,15 +357,15 @@ services:
     image: nginx:latest
     restart: always
     volumes:
-      - ./docker/nginx/nginx.conf.template:/etc/nginx/nginx.conf.template
-      - ./docker/nginx/proxy.conf.template:/etc/nginx/proxy.conf.template
-      - ./docker/nginx/https.conf.template:/etc/nginx/https.conf.template
-      - ./docker/nginx/conf.d:/etc/nginx/conf.d
-      - ./docker/nginx/docker-entrypoint.sh:/docker-entrypoint-mount.sh
-      - ./docker/nginx/ssl:/etc/ssl # cert dir (legacy)
-      # - ./volumes/certbot/conf/live:/etc/letsencrypt/live # cert dir (with certbot container)
-      # - ./volumes/certbot/conf:/etc/letsencrypt
-      # - ./volumes/certbot/www:/var/www/html
+      - ./nginx/nginx.conf.template:/etc/nginx/nginx.conf.template
+      - ./nginx/proxy.conf.template:/etc/nginx/proxy.conf.template
+      - ./nginx/https.conf.template:/etc/nginx/https.conf.template
+      - ./nginx/conf.d:/etc/nginx/conf.d
+      - ./nginx/docker-entrypoint.sh:/docker-entrypoint-mount.sh
+      - ./nginx/ssl:/etc/ssl # cert dir (legacy)
+      - ./volumes/certbot/conf/live:/etc/letsencrypt/live # cert dir (with certbot container)
+      - ./volumes/certbot/conf:/etc/letsencrypt
+      - ./volumes/certbot/www:/var/www/html
     entrypoint:
       [
         "sh",
