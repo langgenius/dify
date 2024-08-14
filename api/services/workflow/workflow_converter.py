@@ -201,6 +201,7 @@ class WorkflowConverter:
             features=json.dumps(features),
             created_by=account_id,
             environment_variables=[],
+            conversation_variables=[],
         )
 
         db.session.add(workflow)
