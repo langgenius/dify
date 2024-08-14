@@ -6,8 +6,8 @@ import Modal from '../modal'
 import Divider from '../divider'
 import Button from '../button'
 import { ImagePlus } from '../icons/src/vender/line/images'
-import EmojiPicker from '../emoji-picker'
 import { useLocalFileUploader } from '../image-uploader/hooks'
+import EmojiPickerInner from '../emoji-picker/Inner'
 import Uploader from './Uploader'
 import s from './style.module.css'
 import getCroppedImg from './utils'
@@ -120,7 +120,7 @@ const AppIconPicker: FC<AppIconPickerProps> = ({
 
     <Divider className='m-0' />
 
-    <EmojiPicker className={activeTab === 'emoji' ? 'block' : 'hidden'} onSelect={handleSelectEmoji} />
+    <EmojiPickerInner className={activeTab === 'emoji' ? 'block' : 'hidden'} onSelect={handleSelectEmoji} />
     <Uploader className={activeTab === 'image' ? 'block' : 'hidden'} onImageCropped={handleImageCropped} />
 
     <Divider className='m-0' />
