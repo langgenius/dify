@@ -3,6 +3,7 @@ import time
 from collections.abc import Mapping, Sequence
 from typing import Any, Optional, cast
 
+import contexts
 from configs import dify_config
 from core.app.apps.base_app_queue_manager import GenerateTaskStoppedException
 from core.app.entities.app_invoke_entities import InvokeFrom
@@ -97,7 +98,7 @@ class WorkflowEngineManager:
         invoke_from: InvokeFrom,
         callbacks: Sequence[WorkflowCallback],
         call_depth: int = 0,
-        variable_pool: VariablePool,
+        variable_pool: VariablePool | None = None,
     ) -> None:
         """
         :param workflow: Workflow instance
@@ -128,6 +129,8 @@ class WorkflowEngineManager:
             raise ValueError('Max workflow call depth {} reached.'.format(workflow_call_max_depth))
 
         # init workflow run state
+        if not variable_pool:
+            variable_pool = contexts.workflow_variable_pool.get()
         workflow_run_state = WorkflowRunState(
             workflow=workflow,
             start_at=time.perf_counter(),
