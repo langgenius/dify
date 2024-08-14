@@ -2,7 +2,6 @@
 
 server {
     listen ${NGINX_PORT};
-    listen [::]:${NGINX_PORT};
     server_name ${NGINX_SERVER_NAME};
 
     location /console/api {
@@ -25,48 +24,7 @@ server {
       include proxy.conf;
     }
 
-
     location / {
-      proxy_pass http://web:3000;
-      include proxy.conf;
-    }
-
-    location /apps {
-      proxy_pass http://web:3000;
-      include proxy.conf;
-    }
-
-    location /app {
-      proxy_pass http://web:3000;
-      include proxy.conf;
-    }
-
-    location /explore {
-      proxy_pass http://web:3000;
-      include proxy.conf;
-    }
-
-    location /datasets {
-      proxy_pass http://web:3000;
-      include proxy.conf;
-    }
-
-    location /tools {
-      proxy_pass http://web:3000;
-      include proxy.conf;
-    }
-
-    location /chat {
-      proxy_pass http://web:3000;
-      include proxy.conf;
-    }
-
-    location /signin {
-      proxy_pass http://web:3000;
-      include proxy.conf;
-    }
-
-    location /install {
       proxy_pass http://web:3000;
       include proxy.conf;
     }
