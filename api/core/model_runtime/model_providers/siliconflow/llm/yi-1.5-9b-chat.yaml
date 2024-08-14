@@ -1,4 +1,4 @@
-model: 01-ai/Yi-1.5-9B-Chat
+model: 01-ai/Yi-1.5-9B-Chat-16K
 label:
   en_US: 01-ai/Yi-1.5-9B-Chat-16K
 model_type: llm
@@ -24,7 +24,7 @@ parameter_rules:
   - name: frequency_penalty
     use_template: frequency_penalty
 pricing:
-  input: '0.42'
-  output: '0.42'
+  input: '0'
+  output: '0'
   unit: '0.000001'
   currency: RMB

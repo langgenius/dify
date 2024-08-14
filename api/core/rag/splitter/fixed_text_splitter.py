@@ -63,7 +63,7 @@ class FixedRecursiveCharacterTextSplitter(EnhanceRecursiveCharacterTextSplitter)
         if self._fixed_separator:
             chunks = text.split(self._fixed_separator)
         else:
-            chunks = list(text)
+            chunks = [text]
 
         final_chunks = []
         for chunk in chunks:

@@ -14,8 +14,8 @@ from core.file.upload_file_parser import UploadFileParser
 from extensions.ext_database import db
 from libs.helper import generate_string
 
-from . import StringUUID
 from .account import Account, Tenant
+from .types import StringUUID
 
 
 class DifySetup(db.Model):
@@ -1116,7 +1116,7 @@ class Site(db.Model):
     @property
     def app_base_url(self):
         return (
-            dify_config.APP_WEB_URL if  dify_config.APP_WEB_URL else request.host_url.rstrip('/'))
+            dify_config.APP_WEB_URL if  dify_config.APP_WEB_URL else request.url_root.rstrip('/'))
 
 
 class ApiToken(db.Model):

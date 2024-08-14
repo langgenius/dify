@@ -4,6 +4,7 @@ import { memo, useMemo } from 'react'
 import type { FC } from 'react'
 import { useTranslation } from 'react-i18next'
 import {
+  RiAlertFill,
   RiQuestionLine,
 } from '@remixicon/react'
 import WeightedScore from './weighted-score'
@@ -26,12 +27,12 @@ import TooltipPlus from '@/app/components/base/tooltip-plus'
 import { ModelTypeEnum } from '@/app/components/header/account-setting/model-provider-page/declarations'
 import type {
   DataSet,
-  WeightedScoreEnum,
 } from '@/models/datasets'
 import { RerankingModeEnum } from '@/models/datasets'
 import cn from '@/utils/classnames'
 import { useSelectedDatasetsMode } from '@/app/components/workflow/nodes/knowledge-retrieval/hooks'
 import Switch from '@/app/components/base/switch'
+import { useGetLanguage } from '@/context/i18n'
 
 type Props = {
   datasetConfigs: DatasetConfigs
@@ -43,6 +44,11 @@ type Props = {
   selectedDatasets?: DataSet[]
 }
 
+const LEGACY_LINK_MAP = {
+  en_US: 'https://docs.dify.ai/guides/knowledge-base/integrate-knowledge-within-application',
+  zh_Hans: 'https://docs.dify.ai/v/zh-hans/guides/knowledge-base/integrate_knowledge_within_application',
+} as Record<string, string>
+
 const ConfigContent: FC<Props> = ({
   datasetConfigs,
   onChange,
@@ -53,6 +59,7 @@ const ConfigContent: FC<Props> = ({
   selectedDatasets = [],
 }) => {
   const { t } = useTranslation()
+  const language = useGetLanguage()
   const selectedDatasetsMode = useSelectedDatasetsMode(selectedDatasets)
   const type = datasetConfigs.retrieval_model
   const setType = (value: RETRIEVE_TYPE) => {
@@ -105,12 +112,11 @@ const ConfigContent: FC<Props> = ({
     })
   }
 
-  const handleWeightedScoreChange = (value: { type: WeightedScoreEnum; value: number[] }) => {
+  const handleWeightedScoreChange = (value: { value: number[] }) => {
     const configs = {
       ...datasetConfigs,
       weights: {
         ...datasetConfigs.weights!,
-        weight_type: value.type,
         vector_setting: {
           ...datasetConfigs.weights!.vector_setting!,
           vector_weight: value.value[0],
@@ -167,7 +173,13 @@ const ConfigContent: FC<Props> = ({
           title={(
             <div className='flex items-center'>
               {t('appDebug.datasetConfig.retrieveOneWay.title')}
-              <TooltipPlus popupContent={<div className='w-[320px]'>{t('dataset.nTo1RetrievalLegacy')}</div>}>
+              <TooltipPlus
+                popupContent={(
+                  <div className='w-[320px]'>
+                    {t('dataset.nTo1RetrievalLegacy')}
+                  </div>
+                )}
+              >
                 <div className='ml-1 flex items-center px-[5px] h-[18px] rounded-[5px] border border-text-accent-secondary system-2xs-medium-uppercase text-text-accent-secondary'>legacy</div>
               </TooltipPlus>
             </div>
@@ -175,6 +187,22 @@ const ConfigContent: FC<Props> = ({
           description={t('appDebug.datasetConfig.retrieveOneWay.description')}
           isChosen={type === RETRIEVE_TYPE.oneWay}
           onChosen={() => { setType(RETRIEVE_TYPE.oneWay) }}
+          extra={(
+            <div className='flex pl-3 pr-1 py-3 border-t border-divider-subtle bg-state-warning-hover rounded-b-xl'>
+              <RiAlertFill className='shrink-0 mr-1.5 w-4 h-4 text-text-warning-secondary' />
+              <div className='system-xs-medium text-text-primary'>
+                {t('dataset.nTo1RetrievalLegacyLinkText')}
+                <a
+                  className='text-text-accent'
+                  href={LEGACY_LINK_MAP[language]}
+                  target='_blank'
+                  rel='noopener noreferrer'
+                >
+                  {t('dataset.nTo1RetrievalLegacyLink')}
+                </a>
+              </div>
+            </div>
+          )}
         />
         <RadioCard
           icon={<MultiPathRetrieval className='shrink-0 mr-3 w-9 h-9 rounded-lg' />}
@@ -281,7 +309,6 @@ const ConfigContent: FC<Props> = ({
               <div className='mt-2 space-y-4'>
                 <WeightedScore
                   value={{
-                    type: datasetConfigs.weights!.weight_type,
                     value: [
                       datasetConfigs.weights!.vector_setting.vector_weight,
                       datasetConfigs.weights!.keyword_setting.keyword_weight,

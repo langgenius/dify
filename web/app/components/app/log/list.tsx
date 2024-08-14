@@ -126,6 +126,7 @@ const getFormattedChatList = (messages: ChatMessage[], conversationId: string, t
         tokens: item.answer_tokens + item.message_tokens,
         latency: item.provider_response_latency.toFixed(2),
       },
+      citation: item.metadata?.retriever_resources,
       annotation: (() => {
         if (item.annotation_hit_history) {
           return {

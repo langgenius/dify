@@ -118,6 +118,7 @@ class ToolNode(BaseNode):
         for parameter_name in node_data.tool_parameters:
             parameter = tool_parameters_dictionary.get(parameter_name)
             if not parameter:
+                result[parameter_name] = None
                 continue
             if parameter.type == ToolParameter.ToolParameterType.FILE:
                 result[parameter_name] = [
@@ -174,13 +175,14 @@ class ToolNode(BaseNode):
                 ext = path.splitext(url)[1]
                 mimetype = response.meta.get('mime_type', 'image/jpeg')
                 filename = response.save_as or url.split('/')[-1]
+                transfer_method = response.meta.get('transfer_method', FileTransferMethod.TOOL_FILE)
 
                 # get tool file id
                 tool_file_id = url.split('/')[-1].split('.')[0]
                 result.append(FileVar(
                     tenant_id=self.tenant_id,
                     type=FileType.IMAGE,
-                    transfer_method=FileTransferMethod.TOOL_FILE,
+                    transfer_method=transfer_method,
                     url=url,
                     related_id=tool_file_id,
                     filename=filename,

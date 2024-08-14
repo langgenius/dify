@@ -28,7 +28,7 @@ class RetrievalService:
     @classmethod
     def retrieve(cls, retrival_method: str, dataset_id: str, query: str,
                  top_k: int, score_threshold: Optional[float] = .0,
-                 reranking_model: Optional[dict] = None, reranking_mode: Optional[str] = None,
+                 reranking_model: Optional[dict] = None, reranking_mode: Optional[str] = 'reranking_model',
                  weights: Optional[dict] = None):
         dataset = db.session.query(Dataset).filter(
             Dataset.id == dataset_id
@@ -36,10 +36,6 @@ class RetrievalService:
         if not dataset or dataset.available_document_count == 0 or dataset.available_segment_count == 0:
             return []
         all_documents = []
-        keyword_search_documents = []
-        embedding_search_documents = []
-        full_text_search_documents = []
-        hybrid_search_documents = []
         threads = []
         exceptions = []
         # retrieval_model source with keyword
