@@ -119,6 +119,7 @@ class ParameterType(Enum):
     INT = "int"
     STRING = "string"
     BOOLEAN = "boolean"
+    TEXT = "text"
 
 
 class ModelPropertyKey(Enum):
