@@ -28,7 +28,9 @@ from core.rag.datasource.vdb.vector_type import VectorType
 from core.rag.models.document import Document
 from extensions.ext_database import db
 from extensions.ext_redis import redis_client
-from models.dataset import Dataset, DatasetCollectionBinding
+from models.dataset import Dataset, DatasetCollectionBinding, TenantDatasetCollectionBinding, TidbAuthBinding
+import requests
+from requests.auth import HTTPDigestAuth
 
 if TYPE_CHECKING:
     from qdrant_client import grpc  # noqa
@@ -39,7 +41,7 @@ if TYPE_CHECKING:
     MetadataFilter = Union[DictFilter, common_types.Filter]
 
 
-class QdrantConfig(BaseModel):
+class TidbOnQdrantConfig(BaseModel):
     endpoint: str
     api_key: Optional[str] = None
     timeout: float = 20
@@ -67,9 +69,15 @@ class QdrantConfig(BaseModel):
             }
 
 
+class TidbConfig(BaseModel):
+    api_url: str
+    public_key: str
+    private_key: str
+
+
 class TidbOnQdrantVector(BaseVector):
 
-    def __init__(self, collection_name: str, group_id: str, config: QdrantConfig, distance_func: str = 'Cosine'):
+    def __init__(self, collection_name: str, group_id: str, config: TidbOnQdrantConfig, distance_func: str = 'Cosine'):
         super().__init__(collection_name)
         self._client_config = config
         self._client = qdrant_client.QdrantClient(**self._client_config.to_qdrant_params())
@@ -424,36 +432,109 @@ class TidbOnQdrantVector(BaseVector):
 
 class TidbOnQdrantVectorFactory(AbstractVectorFactory):
     def init_vector(self, dataset: Dataset, attributes: list, embeddings: Embeddings) -> TidbOnQdrantVector:
-        if dataset.collection_binding_id:
-            dataset_collection_binding = db.session.query(DatasetCollectionBinding). \
-                filter(DatasetCollectionBinding.id == dataset.collection_binding_id). \
-                one_or_none()
-            if dataset_collection_binding:
-                collection_name = dataset_collection_binding.collection_name
-            else:
-                raise ValueError('Dataset Collection Bindings is not exist!')
-        else:
-            if dataset.index_struct_dict:
-                class_prefix: str = dataset.index_struct_dict['vector_store']['class_prefix']
-                collection_name = class_prefix
-            else:
-                dataset_id = dataset.id
-                collection_name = Dataset.gen_collection_name_by_id(dataset_id)
+        tidb_auth_binding = db.session.query(TidbAuthBinding). \
+            filter(TidbAuthBinding.tenant_id == dataset.tenant_id). \
+            one_or_none()
+        if not tidb_auth_binding:
+            tidb_config = TidbConfig(api_url=dify_config.TIDB_API_URL,
+                                     public_key=dify_config.TIDB_PUBLIC_KEY,
+                                     private_key=dify_config.TIDB_PRIVATE_KEY
+                                     )
+            self.create_tidb_serverless_cluster(tidb_config, dataset.tenant_id.replace('-', ''),
+                                                       'regions/aws-us-east-1')
+            tidb_auth_binding = TidbAuthBinding(tenant_id=dataset.tenant_id, account='dify', password='dify123')
+            db.session.add(tidb_auth_binding)
+            db.session.commit()
 
-        if not dataset.index_struct_dict:
+        #
+        # dataset_collection_binding = db.session.query(TenantDatasetCollectionBinding). \
+        #     filter(TenantDatasetCollectionBinding.model_name == dataset.embedding_model,
+        #            TenantDatasetCollectionBinding.provider_name == dataset.embedding_model_provider,
+        #            TenantDatasetCollectionBinding.tenant_id == dataset.tenant_id). \
+        #     one_or_none()
+        # if dataset_collection_binding:
+        #     collection_name = dataset_collection_binding.collection_name
+        # else:
+        #     raise ValueError('Dataset Collection Bindings is not exist!')
+        #
+        # if not dataset.index_struct_dict:
+        #     dataset.index_struct = json.dumps(
+        #         self.gen_index_struct_dict(VectorType.QDRANT, collection_name))
+        if dataset.index_struct_dict:
+            class_prefix: str = dataset.index_struct_dict['vector_store']['class_prefix']
+            collection_name = class_prefix
+        else:
+            dataset_id = dataset.id
+            collection_name = Dataset.gen_collection_name_by_id(dataset_id)
             dataset.index_struct = json.dumps(
-                self.gen_index_struct_dict(VectorType.QDRANT, collection_name))
+                self.gen_index_struct_dict(VectorType.TIDB_ON_QDRANT, collection_name))
 
         config = current_app.config
+        TIDB_ON_QDRANT_API_KEY = f'{tidb_auth_binding.account}:{tidb_auth_binding.password}'
         return TidbOnQdrantVector(
             collection_name=collection_name,
             group_id=dataset.id,
-            config=QdrantConfig(
+            config=TidbOnQdrantConfig(
                 endpoint=dify_config.TIDB_ON_QDRANT_URL,
-                api_key=dify_config.TIDB_ON_QDRANT_API_KEY,
+                api_key=TIDB_ON_QDRANT_API_KEY,
                 root_path=config.root_path,
                 timeout=dify_config.TIDB_ON_QDRANT_CLIENT_TIMEOUT,
                 grpc_port=dify_config.TIDB_ON_QDRANT_GRPC_PORT,
                 prefer_grpc=dify_config.TIDB_ON_QDRANT_GRPC_ENABLED
             )
         )
+
+    def create_tidb_serverless_cluster(self, tidb_config: TidbConfig, display_name: str, region: str):
+        """
+        Creates a new TiDB Serverless cluster.
+        :param tidb_config: The configuration for the TiDB Cloud API.
+        :param display_name: The user-friendly display name of the cluster (required).
+        :param region: The region where the cluster will be created (required).
+
+        :return: The response from the API.
+        """
+        region_object = {
+            "name": region,
+        }
+
+        labels = {
+            "tidb.cloud/project": "1372813089454548012",
+        }
+        cluster_data = {
+            "displayName": display_name,
+            "region": region_object,
+            'labels': labels
+        }
+
+        response = requests.post(f"{tidb_config.api_url}/clusters",
+                                 json=cluster_data,
+                                 auth=HTTPDigestAuth(tidb_config.public_key, tidb_config.private_key))
+
+        if response.status_code == 200:
+            return response.json()
+        else:
+            response.raise_for_status()
+
+
+
+    def change_tidb_serverless_root_password(self, tidb_config: TidbConfig, cluster_id: str, new_password: str):
+        """
+        Changes the root password of a specific TiDB Serverless cluster.
+
+        :param tidb_config: The configuration for the TiDB Cloud API.
+        :param cluster_id: The ID of the cluster for which the password is to be changed (required).
+        :param new_password: The new password for the root user (required).
+        :return: The response from the API.
+        """
+
+        body = {
+            "password": new_password
+        }
+
+        response = requests.put(f"{tidb_config.api_url}/clusters/{cluster_id}/password", json=body,
+                                auth=HTTPDigestAuth(tidb_config.public_key, tidb_config.private_key))
+
+        if response.status_code == 200:
+            return response.json()
+        else:
+            response.raise_for_status()

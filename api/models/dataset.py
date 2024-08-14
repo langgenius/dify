@@ -448,6 +448,7 @@ class Document(db.Model):
             doc_language=data.get('doc_language')
         )
 
+
 class DocumentSegment(db.Model):
     __tablename__ = 'document_segments'
     __table_args__ = (
@@ -543,7 +544,6 @@ class DocumentSegment(db.Model):
             offset += len(signed_url) - (end - start)
 
         return text
-
 
 
 class AppDatasetJoin(db.Model):
@@ -666,20 +666,37 @@ class DatasetCollectionBinding(db.Model):
     created_at = db.Column(db.DateTime, nullable=False, server_default=db.text('CURRENT_TIMESTAMP(0)'))
 
 
-class TidbAuthBinding(db.Model):
-    __tablename__ = 'tidb_auth_bindings'
+class TenantDatasetCollectionBinding(db.Model):
+    __tablename__ = 'tenant_dataset_collection_bindings'
     __table_args__ = (
-        db.PrimaryKeyConstraint('id', name='dataset_collection_bindings_pkey'),
-        db.Index('provider_model_name_idx', 'provider_name', 'model_name')
+        db.PrimaryKeyConstraint('id', name='tenant_dataset_collection_bindings_pkey'),
+        db.Index('tenant_provider_model_name_idx', 'tenant_id', 'provider_name', 'model_name')
 
     )
 
     id = db.Column(StringUUID, primary_key=True, server_default=db.text('uuid_generate_v4()'))
     tenant_id = db.Column(StringUUID, nullable=False)
+    provider_name = db.Column(db.String(40), nullable=False)
     model_name = db.Column(db.String(255), nullable=False)
     type = db.Column(db.String(40), server_default=db.text("'dataset'::character varying"), nullable=False)
     collection_name = db.Column(db.String(64), nullable=False)
     created_at = db.Column(db.DateTime, nullable=False, server_default=db.text('CURRENT_TIMESTAMP(0)'))
+
+
+class TidbAuthBinding(db.Model):
+    __tablename__ = 'tidb_auth_bindings'
+    __table_args__ = (
+        db.PrimaryKeyConstraint('id', name='tidb_auth_bindings_pkey'),
+        db.Index('tidb_auth_bindings_tenant_idx', 'tenant_id')
+
+    )
+
+    id = db.Column(StringUUID, primary_key=True, server_default=db.text('uuid_generate_v4()'))
+    tenant_id = db.Column(StringUUID, nullable=False)
+    account = db.Column(db.String(255), nullable=False)
+    password = db.Column(db.String(255), nullable=False)
+    created_at = db.Column(db.DateTime, nullable=False, server_default=db.text('CURRENT_TIMESTAMP(0)'))
+
 
 class DatasetPermission(db.Model):
     __tablename__ = 'dataset_permissions'

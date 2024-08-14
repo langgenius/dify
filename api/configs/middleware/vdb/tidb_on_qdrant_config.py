@@ -33,3 +33,18 @@ class TidbOnQdrantConfig(BaseSettings):
         description='Tidb on Qdrant grpc port',
         default=6334,
     )
+
+    TIDB_PUBLIC_KEY: Optional[str] = Field(
+        description='Tidb account public key',
+        default=None,
+    )
+
+    TIDB_PRIVATE_KEY: Optional[str] = Field(
+        description='Tidb account private key',
+        default=None,
+    )
+
+    TIDB_API_URL: Optional[str] = Field(
+        description='Tidb API url',
+        default=None,
+    )
