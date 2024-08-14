@@ -208,7 +208,7 @@ services:
       - redis
     volumes:
       # Mount the storage directory to the container, for storing user files.
-      - ./volumes/app/storage:/app/api/storage
+      - ./docker/volumes/app/storage:/app/api/storage
     networks:
       - ssrf_proxy_network
       - default
@@ -231,7 +231,7 @@ services:
       - redis
     volumes:
       # Mount the storage directory to the container, for storing user files.
-      - ./volumes/app/storage:/app/api/storage
+      - ./docker/volumes/app/storage:/app/api/storage
     networks:
       - ssrf_proxy_network
       - default
@@ -240,7 +240,6 @@ services:
   web:
     # image: langgenius/dify-web
     build:
-      #TODO This is just for testing
       context: ./web
       dockerfile: Dockerfile
 
@@ -267,7 +266,7 @@ services:
                -c 'maintenance_work_mem=${POSTGRES_MAINTENANCE_WORK_MEM:-64MB}'
                -c 'effective_cache_size=${POSTGRES_EFFECTIVE_CACHE_SIZE:-4096MB}'
     volumes:
-      - ./volumes/db/data:/var/lib/postgresql/data
+      - ./docker/volumes/db/data:/var/lib/postgresql/data
     healthcheck:
       test: ["CMD", "pg_isready"]
       interval: 1s
@@ -280,7 +279,7 @@ services:
     restart: always
     volumes:
       # Mount the redis data directory to the container.
-      - ./volumes/redis/data:/data
+      - ./docker/volumes/redis/data:/data
     # Set the redis password when startup redis server.
     command: redis-server --requirepass ${REDIS_PASSWORD:-difyai123456}
     healthcheck:
@@ -302,7 +301,7 @@ services:
       HTTPS_PROXY: ${SANDBOX_HTTPS_PROXY:-http://ssrf_proxy:3128}
       SANDBOX_PORT: ${SANDBOX_PORT:-8194}
     volumes:
-      - ./volumes/sandbox/dependencies:/dependencies
+      - ./docker/volumes/sandbox/dependencies:/dependencies
     networks:
       - ssrf_proxy_network
 
@@ -406,7 +405,7 @@ services:
     restart: always
     volumes:
       # Mount the Weaviate data directory to the con tainer.
-      - ./volumes/weaviate:/var/lib/weaviate
+      - ./docker/volumes/weaviate:/var/lib/weaviate
     environment:
       # The Weaviate configurations
       # You can refer to the [Weaviate](https://weaviate.io/developers/weaviate/config-refs/env-vars) documentation for more information.
