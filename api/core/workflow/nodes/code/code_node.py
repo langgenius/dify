@@ -1,4 +1,5 @@
-from typing import Any, Mapping, Optional, Sequence, Union, cast
+from collections.abc import Mapping, Sequence
+from typing import Any, Optional, Union, cast
 
 from configs import dify_config
 from core.helper.code_executor.code_executor import CodeExecutionException, CodeExecutor, CodeLanguage

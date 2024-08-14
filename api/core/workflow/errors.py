@@ -1,4 +1,3 @@
-from core.workflow.entities.node_entities import NodeType
 from core.workflow.nodes.base_node import BaseNode
 
 

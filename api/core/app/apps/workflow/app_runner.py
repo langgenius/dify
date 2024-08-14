@@ -71,41 +71,41 @@ class WorkflowAppRunner(WorkflowBasedAppRunner):
 
         # if only single iteration run is requested
         if self.application_generate_entity.single_iteration_run:
-            node_id = self.application_generate_entity.single_iteration_run.node_id
-            user_inputs = self.application_generate_entity.single_iteration_run.inputs
-
-            generator = WorkflowEntry.single_step_run_iteration(
+            # if only single iteration run is requested
+            graph, variable_pool = self._get_graph_and_variable_pool_of_single_iteration(
                 workflow=workflow,
-                node_id=node_id,
-                user_id=self.application_generate_entity.user_id,
-                user_inputs=user_inputs,
-                callbacks=workflow_callbacks
+                node_id=self.application_generate_entity.single_iteration_run.node_id,
+                user_inputs=self.application_generate_entity.single_iteration_run.inputs
+            )
+        else:
+        
+            inputs = self.application_generate_entity.inputs
+            files = self.application_generate_entity.files
+        
+            # Create a variable pool.
+            system_inputs = {
+                SystemVariable.FILES: files,
+                SystemVariable.USER_ID: user_id,
+            }
+
+            variable_pool = VariablePool(
+                system_variables=system_inputs,
+                user_inputs=inputs,
+                environment_variables=workflow.environment_variables,
+                conversation_variables=[],
             )
 
-            for event in generator:
-                # TODO
-                self._handle_event(workflow_entry, event)
-            return
-        
-        inputs = self.application_generate_entity.inputs
-        files = self.application_generate_entity.files
-    
-        # Create a variable pool.
-        system_inputs = {
-            SystemVariable.FILES: files,
-            SystemVariable.USER_ID: user_id,
-        }
-
-        variable_pool = VariablePool(
-            system_variables=system_inputs,
-            user_inputs=inputs,
-            environment_variables=workflow.environment_variables,
-            conversation_variables=[],
-        )
+            # init graph
+            graph = self._init_graph(graph_config=workflow.graph_dict)
         
         # RUN WORKFLOW
         workflow_entry = WorkflowEntry(
-            workflow=workflow,
+            tenant_id=workflow.tenant_id,
+            app_id=workflow.app_id,
+            workflow_id=workflow.id,
+            workflow_type=workflow.type,
+            graph=graph,
+            graph_config=workflow.graph_dict,
             user_id=self.application_generate_entity.user_id,
             user_from=(
                 UserFrom.ACCOUNT

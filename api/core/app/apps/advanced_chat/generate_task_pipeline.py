@@ -276,25 +276,34 @@ class AdvancedChatAppGenerateTaskPipeline(BasedGenerateTaskPipeline, WorkflowCyc
                     event=event
                 )
 
-                yield self._workflow_node_start_to_stream_response(
+                response = self._workflow_node_start_to_stream_response(
                     event=event,
                     task_id=self._application_generate_entity.task_id,
                     workflow_node_execution=workflow_node_execution
                 )
+
+                if response:
+                    yield response
             elif isinstance(event, QueueNodeSucceededEvent):
                 workflow_node_execution = self._handle_workflow_node_execution_success(event)
 
-                yield self._workflow_node_finish_to_stream_response(
+                response = self._workflow_node_finish_to_stream_response(
                     task_id=self._application_generate_entity.task_id,
                     workflow_node_execution=workflow_node_execution
                 )
+
+                if response:
+                    yield response
             elif isinstance(event, QueueNodeFailedEvent):
                 workflow_node_execution = self._handle_workflow_node_execution_failed(event)
 
-                yield self._workflow_node_finish_to_stream_response(
+                response = self._workflow_node_finish_to_stream_response(
                     task_id=self._application_generate_entity.task_id,
                     workflow_node_execution=workflow_node_execution
                 )
+
+                if response:
+                    yield response
             elif isinstance(event, QueueIterationStartEvent):
                 if not workflow_run:
                     raise Exception('Workflow run not initialized.')

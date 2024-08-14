@@ -1,6 +1,6 @@
-from typing import Any, Mapping, Sequence, cast
+from collections.abc import Mapping, Sequence
+from typing import Any, cast
 
-from core.workflow.entities.base_node_data_entities import BaseNodeData
 from core.workflow.entities.node_entities import NodeRunResult, NodeType
 from core.workflow.nodes.base_node import BaseNode
 from core.workflow.nodes.if_else.entities import IfElseNodeData

@@ -1,7 +1,7 @@
 import json
-from collections.abc import Generator
+from collections.abc import Generator, Mapping, Sequence
 from copy import deepcopy
-from typing import Any, Mapping, Optional, Sequence, cast
+from typing import Any, Optional, cast
 
 from pydantic import BaseModel
 
@@ -24,7 +24,6 @@ from core.model_runtime.utils.encoders import jsonable_encoder
 from core.prompt.advanced_prompt_transform import AdvancedPromptTransform
 from core.prompt.entities.advanced_prompt_entities import CompletionModelPromptTemplate, MemoryConfig
 from core.prompt.utils.prompt_message_util import PromptMessageUtil
-from core.workflow.entities.base_node_data_entities import BaseNodeData
 from core.workflow.entities.node_entities import NodeRunMetadataKey, NodeRunResult, NodeType, SystemVariable
 from core.workflow.entities.variable_pool import VariablePool
 from core.workflow.graph_engine.entities.event import InNodeEvent

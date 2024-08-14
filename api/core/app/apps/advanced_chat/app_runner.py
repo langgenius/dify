@@ -7,7 +7,7 @@ from sqlalchemy import select
 from sqlalchemy.orm import Session
 
 from core.app.apps.advanced_chat.app_config_manager import AdvancedChatAppConfig
-from core.app.apps.base_app_queue_manager import AppQueueManager, PublishFrom
+from core.app.apps.base_app_queue_manager import AppQueueManager
 from core.app.apps.workflow_app_runner import WorkflowBasedAppRunner
 from core.app.apps.workflow_logging_callback import WorkflowLoggingCallback
 from core.app.entities.app_invoke_entities import (
@@ -15,7 +15,6 @@ from core.app.entities.app_invoke_entities import (
     InvokeFrom,
 )
 from core.app.entities.queue_entities import (
-    AppQueueEvent,
     QueueAnnotationReplyEvent,
     QueueStopEvent,
     QueueTextChunkEvent,
@@ -84,86 +83,84 @@ class AdvancedChatAppRunner(WorkflowBasedAppRunner):
         if bool(os.environ.get("DEBUG", 'False').lower() == 'true'):
             workflow_callbacks.append(WorkflowLoggingCallback())
 
-        # if only single iteration run is requested
         if self.application_generate_entity.single_iteration_run:
-            node_id = self.application_generate_entity.single_iteration_run.node_id
-            user_inputs = self.application_generate_entity.single_iteration_run.inputs
-
-            generator = WorkflowEntry.single_step_run_iteration(
+            # if only single iteration run is requested
+            graph, variable_pool = self._get_graph_and_variable_pool_of_single_iteration(
                 workflow=workflow,
-                node_id=node_id,
-                user_id=self.application_generate_entity.user_id,
-                user_inputs=user_inputs,
-                callbacks=workflow_callbacks
+                node_id=self.application_generate_entity.single_iteration_run.node_id,
+                user_inputs=self.application_generate_entity.single_iteration_run.inputs
+            )
+        else:
+            inputs = self.application_generate_entity.inputs
+            query = self.application_generate_entity.query
+            files = self.application_generate_entity.files
+            
+            # moderation
+            if self.handle_input_moderation(
+                    app_record=app_record,
+                    app_generate_entity=self.application_generate_entity,
+                    inputs=inputs,
+                    query=query,
+                    message_id=self.message.id
+            ):
+                return
+
+            # annotation reply
+            if self.handle_annotation_reply(
+                    app_record=app_record,
+                    message=self.message,
+                    query=query,
+                    app_generate_entity=self.application_generate_entity
+            ):
+                return
+
+            db.session.close()
+
+            # Init conversation variables
+            stmt = select(ConversationVariable).where(
+                ConversationVariable.app_id == self.conversation.app_id, ConversationVariable.conversation_id == self.conversation.id
+            )
+            with Session(db.engine) as session:
+                conversation_variables = session.scalars(stmt).all()
+                if not conversation_variables:
+                    conversation_variables = [
+                        ConversationVariable.from_variable(
+                            app_id=self.conversation.app_id, conversation_id=self.conversation.id, variable=variable
+                        )
+                        for variable in workflow.conversation_variables
+                    ]
+                    session.add_all(conversation_variables)
+                    session.commit()
+                # Convert database entities to variables
+                conversation_variables = [item.to_variable() for item in conversation_variables]
+
+            # Create a variable pool.
+            system_inputs = {
+                SystemVariable.QUERY: query,
+                SystemVariable.FILES: files,
+                SystemVariable.CONVERSATION_ID: self.conversation.id,
+                SystemVariable.USER_ID: user_id,
+            }
+
+            # init variable pool
+            variable_pool = VariablePool(
+                system_variables=system_inputs,
+                user_inputs=inputs,
+                environment_variables=workflow.environment_variables,
+                conversation_variables=conversation_variables,
             )
 
-            for event in generator:
-                # TODO
-                self._handle_event(workflow_entry, event)
-            return
-        
-        inputs = self.application_generate_entity.inputs
-        query = self.application_generate_entity.query
-        files = self.application_generate_entity.files
-        
-        # moderation
-        if self.handle_input_moderation(
-                app_record=app_record,
-                app_generate_entity=self.application_generate_entity,
-                inputs=inputs,
-                query=query,
-                message_id=self.message.id
-        ):
-            return
-
-        # annotation reply
-        if self.handle_annotation_reply(
-                app_record=app_record,
-                message=self.message,
-                query=query,
-                app_generate_entity=self.application_generate_entity
-        ):
-            return
-
-        db.session.close()
-
-        # Init conversation variables
-        stmt = select(ConversationVariable).where(
-            ConversationVariable.app_id == self.conversation.app_id, ConversationVariable.conversation_id == self.conversation.id
-        )
-        with Session(db.engine) as session:
-            conversation_variables = session.scalars(stmt).all()
-            if not conversation_variables:
-                conversation_variables = [
-                    ConversationVariable.from_variable(
-                        app_id=self.conversation.app_id, conversation_id=self.conversation.id, variable=variable
-                    )
-                    for variable in workflow.conversation_variables
-                ]
-                session.add_all(conversation_variables)
-                session.commit()
-            # Convert database entities to variables
-            conversation_variables = [item.to_variable() for item in conversation_variables]
-
-        # Create a variable pool.
-        system_inputs = {
-            SystemVariable.QUERY: query,
-            SystemVariable.FILES: files,
-            SystemVariable.CONVERSATION_ID: self.conversation.id,
-            SystemVariable.USER_ID: user_id,
-        }
-
-        # init variable pool
-        variable_pool = VariablePool(
-            system_variables=system_inputs,
-            user_inputs=inputs,
-            environment_variables=workflow.environment_variables,
-            conversation_variables=conversation_variables,
-        )
+            # init graph
+            graph = self._init_graph(graph_config=workflow.graph_dict)
 
         # RUN WORKFLOW
         workflow_entry = WorkflowEntry(
-            workflow=workflow,
+            tenant_id=workflow.tenant_id,
+            app_id=workflow.app_id,
+            workflow_id=workflow.id,
+            workflow_type=workflow.type,
+            graph=graph,
+            graph_config=workflow.graph_dict,
             user_id=self.application_generate_entity.user_id,
             user_from=(
                 UserFrom.ACCOUNT

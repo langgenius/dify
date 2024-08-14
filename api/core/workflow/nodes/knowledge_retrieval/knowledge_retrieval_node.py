@@ -1,5 +1,6 @@
 import logging
-from typing import Any, Mapping, Sequence, cast
+from collections.abc import Mapping, Sequence
+from typing import Any, cast
 
 from sqlalchemy import func
 
@@ -13,7 +14,6 @@ from core.model_runtime.entities.model_entities import ModelFeature, ModelType
 from core.model_runtime.model_providers.__base.large_language_model import LargeLanguageModel
 from core.rag.retrieval.dataset_retrieval import DatasetRetrieval
 from core.rag.retrieval.retrival_methods import RetrievalMethod
-from core.workflow.entities.base_node_data_entities import BaseNodeData
 from core.workflow.entities.node_entities import NodeRunResult, NodeType
 from core.workflow.nodes.base_node import BaseNode
 from core.workflow.nodes.knowledge_retrieval.entities import KnowledgeRetrievalNodeData

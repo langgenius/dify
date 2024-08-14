@@ -1,5 +1,6 @@
 import os
-from typing import Any, Mapping, Optional, Sequence, cast
+from collections.abc import Mapping, Sequence
+from typing import Any, Optional, cast
 
 from core.helper.code_executor.code_executor import CodeExecutionException, CodeExecutor, CodeLanguage
 from core.workflow.entities.node_entities import NodeRunResult, NodeType

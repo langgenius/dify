@@ -231,7 +231,6 @@ class WorkflowCycleManage:
         outputs = WorkflowEntry.handle_special_values(event.outputs)
 
         workflow_node_execution.status = WorkflowNodeExecutionStatus.SUCCEEDED.value
-        workflow_node_execution.elapsed_time = time.perf_counter() - event.start_at.timestamp()
         workflow_node_execution.inputs = json.dumps(inputs) if inputs else None
         workflow_node_execution.process_data = json.dumps(event.process_data) if event.process_data else None
         workflow_node_execution.outputs = json.dumps(outputs) if outputs else None
@@ -239,6 +238,7 @@ class WorkflowCycleManage:
             json.dumps(jsonable_encoder(event.execution_metadata)) if event.execution_metadata else None
         )
         workflow_node_execution.finished_at = datetime.now(timezone.utc).replace(tzinfo=None)
+        workflow_node_execution.elapsed_time = (workflow_node_execution.finished_at - event.start_at).total_seconds()
 
         db.session.commit()
         db.session.refresh(workflow_node_execution)
@@ -259,11 +259,11 @@ class WorkflowCycleManage:
 
         workflow_node_execution.status = WorkflowNodeExecutionStatus.FAILED.value
         workflow_node_execution.error = event.error
-        workflow_node_execution.elapsed_time = time.perf_counter() - event.start_at.timestamp()
         workflow_node_execution.finished_at = datetime.now(timezone.utc).replace(tzinfo=None)
         workflow_node_execution.inputs = json.dumps(inputs) if inputs else None
         workflow_node_execution.process_data = json.dumps(event.process_data) if event.process_data else None
         workflow_node_execution.outputs = json.dumps(outputs) if outputs else None
+        workflow_node_execution.elapsed_time = (workflow_node_execution.finished_at - event.start_at).total_seconds()
 
         db.session.commit()
         db.session.refresh(workflow_node_execution)
@@ -344,7 +344,7 @@ class WorkflowCycleManage:
 
     def _workflow_node_start_to_stream_response(
         self, event: QueueNodeStartedEvent, task_id: str, workflow_node_execution: WorkflowNodeExecution
-    ) -> NodeStartStreamResponse:
+    ) -> Optional[NodeStartStreamResponse]:
         """
         Workflow node start to stream response.
         :param event: queue node started event
@@ -352,6 +352,9 @@ class WorkflowCycleManage:
         :param workflow_node_execution: workflow node execution
         :return:
         """
+        if workflow_node_execution.node_type in [NodeType.ITERATION.value, NodeType.LOOP.value]:
+            return None
+
         response = NodeStartStreamResponse(
             task_id=task_id,
             workflow_run_id=workflow_node_execution.workflow_run_id,
@@ -380,13 +383,16 @@ class WorkflowCycleManage:
 
     def _workflow_node_finish_to_stream_response(
         self, task_id: str, workflow_node_execution: WorkflowNodeExecution
-    ) -> NodeFinishStreamResponse:
+    ) -> Optional[NodeFinishStreamResponse]:
         """
         Workflow node finish to stream response.
         :param task_id: task id
         :param workflow_node_execution: workflow node execution
         :return:
         """
+        if workflow_node_execution.node_type in [NodeType.ITERATION.value, NodeType.LOOP.value]:
+            return None
+        
         return NodeFinishStreamResponse(
             task_id=task_id,
             workflow_run_id=workflow_node_execution.workflow_run_id,
@@ -483,7 +489,7 @@ class WorkflowCycleManage:
                 inputs=event.inputs or {},
                 status=WorkflowNodeExecutionStatus.SUCCEEDED,
                 error=None,
-                elapsed_time=time.perf_counter() - event.start_at.timestamp(),
+                elapsed_time=(datetime.now(timezone.utc).replace(tzinfo=None) - event.start_at).total_seconds(),
                 total_tokens=event.metadata.get('total_tokens', 0) if event.metadata else 0,
                 execution_metadata=event.metadata,
                 finished_at=int(time.time()),

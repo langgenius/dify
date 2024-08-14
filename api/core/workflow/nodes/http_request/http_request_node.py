@@ -1,12 +1,12 @@
 import logging
+from collections.abc import Mapping, Sequence
 from mimetypes import guess_extension
 from os import path
-from typing import Any, Mapping, Sequence, cast
+from typing import Any, cast
 
 from core.app.segments import parser
 from core.file.file_obj import FileTransferMethod, FileType, FileVar
 from core.tools.tool_file_manager import ToolFileManager
-from core.workflow.entities.base_node_data_entities import BaseNodeData
 from core.workflow.entities.node_entities import NodeRunResult, NodeType
 from core.workflow.nodes.base_node import BaseNode
 from core.workflow.nodes.http_request.entities import (

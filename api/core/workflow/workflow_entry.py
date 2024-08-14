@@ -2,7 +2,7 @@ import logging
 import time
 import uuid
 from collections.abc import Generator, Mapping, Sequence
-from typing import Any, Optional, Type, cast
+from typing import Any, Optional, cast
 
 from configs import dify_config
 from core.app.app_config.entities import FileExtraConfig
@@ -11,7 +11,7 @@ from core.app.entities.app_invoke_entities import InvokeFrom
 from core.file.file_obj import FileTransferMethod, FileType, FileVar
 from core.workflow.callbacks.base_workflow_callback import WorkflowCallback
 from core.workflow.entities.base_node_data_entities import BaseNodeData
-from core.workflow.entities.node_entities import NodeRunResult, NodeType, UserFrom
+from core.workflow.entities.node_entities import NodeType, UserFrom
 from core.workflow.entities.variable_pool import VariablePool
 from core.workflow.errors import WorkflowNodeRunFailedError
 from core.workflow.graph_engine.entities.event import GraphEngineEvent, GraphRunFailedEvent, InNodeEvent
@@ -20,8 +20,7 @@ from core.workflow.graph_engine.entities.graph_init_params import GraphInitParam
 from core.workflow.graph_engine.entities.graph_runtime_state import GraphRuntimeState
 from core.workflow.graph_engine.graph_engine import GraphEngine
 from core.workflow.nodes.base_node import BaseNode
-from core.workflow.nodes.event import RunCompletedEvent, RunEvent
-from core.workflow.nodes.iteration.entities import IterationNodeData
+from core.workflow.nodes.event import RunEvent
 from core.workflow.nodes.llm.entities import LLMNodeData
 from core.workflow.nodes.node_mapping import node_classes
 from models.workflow import (
@@ -35,7 +34,12 @@ logger = logging.getLogger(__name__)
 class WorkflowEntry:
     def __init__(
             self,
-            workflow: Workflow,
+            tenant_id: str,
+            app_id: str,
+            workflow_id: str,
+            workflow_type: WorkflowType,
+            graph_config: Mapping[str, Any],
+            graph: Graph,
             user_id: str,
             user_from: UserFrom,
             invoke_from: InvokeFrom,
@@ -43,46 +47,29 @@ class WorkflowEntry:
             variable_pool: VariablePool
     ) -> None:
         """
-        :param workflow: Workflow instance
+        Init workflow entry
+        :param tenant_id: tenant id
+        :param app_id: app id
+        :param workflow_id: workflow id
+        :param workflow_type: workflow type
+        :param graph_config: workflow graph config
+        :param graph: workflow graph
         :param user_id: user id
         :param user_from: user from
-        :param invoke_from: invoke from service-api, web-app, debugger, explore
+        :param invoke_from: invoke from
         :param call_depth: call depth
         :param variable_pool: variable pool
-        :param single_step_run_iteration_id: single step run iteration id
         """
-        # fetch workflow graph
-        graph_config = workflow.graph_dict
-        if not graph_config:
-            raise ValueError('workflow graph not found')
-
-        if 'nodes' not in graph_config or 'edges' not in graph_config:
-            raise ValueError('nodes or edges not found in workflow graph')
-
-        if not isinstance(graph_config.get('nodes'), list):
-            raise ValueError('nodes in workflow graph must be a list')
-
-        if not isinstance(graph_config.get('edges'), list):
-            raise ValueError('edges in workflow graph must be a list')
-
         workflow_call_max_depth = dify_config.WORKFLOW_CALL_MAX_DEPTH
         if call_depth > workflow_call_max_depth:
             raise ValueError('Max workflow call depth {} reached.'.format(workflow_call_max_depth))
 
-        # init graph
-        graph = Graph.init(
-            graph_config=graph_config
-        )
-
-        if not graph:
-            raise ValueError('graph not found in workflow')
-
         # init workflow run state
         self.graph_engine = GraphEngine(
-            tenant_id=workflow.tenant_id,
-            app_id=workflow.app_id,
-            workflow_type=WorkflowType.value_of(workflow.type),
-            workflow_id=workflow.id,
+            tenant_id=tenant_id,
+            app_id=app_id,
+            workflow_type=workflow_type,
+            workflow_id=workflow_id,
             user_id=user_id,
             user_from=user_from,
             invoke_from=invoke_from,
@@ -125,152 +112,6 @@ class WorkflowEntry:
                 for callback in callbacks:
                     callback.on_event(
                         graph=self.graph_engine.graph,
-                        graph_init_params=graph_engine.init_params,
-                        graph_runtime_state=graph_engine.graph_runtime_state,
-                        event=GraphRunFailedEvent(
-                            error=str(e)
-                        )
-                    )
-            return
-
-    @classmethod
-    def single_step_run_iteration(
-        cls,
-        workflow: Workflow,
-        node_id: str,
-        user_id: str,
-        user_inputs: dict,
-        callbacks: Sequence[WorkflowCallback],
-    ) -> Generator[GraphEngineEvent, None, None]:
-        """
-        Single step run workflow node iteration
-        :param workflow: Workflow instance
-        :param node_id: node id
-        :param user_id: user id
-        :param user_inputs: user inputs
-        :return:
-        """
-        # fetch workflow graph
-        graph_config = workflow.graph_dict
-        if not graph_config:
-            raise ValueError('workflow graph not found')
-        
-        graph_config = cast(dict[str, Any], graph_config)
-
-        if 'nodes' not in graph_config or 'edges' not in graph_config:
-            raise ValueError('nodes or edges not found in workflow graph')
-
-        if not isinstance(graph_config.get('nodes'), list):
-            raise ValueError('nodes in workflow graph must be a list')
-
-        if not isinstance(graph_config.get('edges'), list):
-            raise ValueError('edges in workflow graph must be a list')
-
-        # filter nodes only in iteration
-        node_configs = [
-            node for node in graph_config.get('nodes', []) 
-            if node.get('id') == node_id or node.get('data', {}).get('iteration_id', '') == node_id
-        ]
-
-        graph_config['nodes'] = node_configs
-
-        node_ids = [node.get('id') for node in node_configs]
-
-        # filter edges only in iteration
-        edge_configs = [
-            edge for edge in graph_config.get('edges', []) 
-            if (edge.get('source') is None or edge.get('source') in node_ids) 
-            and (edge.get('target') is None or edge.get('target') in node_ids) 
-        ]
-
-        graph_config['edges'] = edge_configs
-
-        # init graph
-        graph = Graph.init(
-            graph_config=graph_config,
-            root_node_id=node_id
-        )
-
-        if not graph:
-            raise ValueError('graph not found in workflow')
-        
-        # fetch node config from node id
-        iteration_node_config = None
-        for node in node_configs:
-            if node.get('id') == node_id:
-                iteration_node_config = node
-                break
-
-        if not iteration_node_config:
-            raise ValueError('iteration node id not found in workflow graph')
-        
-        # Get node class
-        node_type = NodeType.value_of(iteration_node_config.get('data', {}).get('type'))
-        node_cls = node_classes.get(node_type)
-        node_cls = cast(type[BaseNode], node_cls)
-
-        # init variable pool
-        variable_pool = VariablePool(
-            system_variables={},
-            user_inputs={},
-            environment_variables=workflow.environment_variables,
-        )
-
-        try:
-            variable_mapping = node_cls.extract_variable_selector_to_variable_mapping(
-                graph_config=workflow.graph_dict, 
-                config=iteration_node_config
-            )
-        except NotImplementedError:
-            variable_mapping = {}
-
-        cls._mapping_user_inputs_to_variable_pool(
-            variable_mapping=variable_mapping,
-            user_inputs=user_inputs,
-            variable_pool=variable_pool,
-            tenant_id=workflow.tenant_id,
-            node_type=node_type,
-            node_data=IterationNodeData(**iteration_node_config.get('data', {}))
-        )
-
-        # init workflow run state
-        graph_engine = GraphEngine(
-            tenant_id=workflow.tenant_id,
-            app_id=workflow.app_id,
-            workflow_type=WorkflowType.value_of(workflow.type),
-            workflow_id=workflow.id,
-            user_id=user_id,
-            user_from=UserFrom.ACCOUNT,
-            invoke_from=InvokeFrom.DEBUGGER,
-            call_depth=1,
-            graph=graph,
-            graph_config=graph_config,
-            variable_pool=variable_pool,
-            max_execution_steps=dify_config.WORKFLOW_MAX_EXECUTION_STEPS,
-            max_execution_time=dify_config.WORKFLOW_MAX_EXECUTION_TIME
-        )
-
-        try:
-            # run workflow
-            generator = graph_engine.run()
-            for event in generator:
-                if callbacks:
-                    for callback in callbacks:
-                        callback.on_event(
-                            graph=graph_engine.graph,
-                            graph_init_params=graph_engine.init_params,
-                            graph_runtime_state=graph_engine.graph_runtime_state,
-                            event=event
-                        )
-                yield event
-        except GenerateTaskStoppedException:
-            pass
-        except Exception as e:
-            logger.exception("Unknown Error when workflow entry running")
-            if callbacks:
-                for callback in callbacks:
-                    callback.on_event(
-                        graph=graph_engine.graph,
                         graph_init_params=graph_engine.init_params,
                         graph_runtime_state=graph_engine.graph_runtime_state,
                         event=GraphRunFailedEvent(
@@ -366,7 +207,7 @@ class WorkflowEntry:
             except NotImplementedError:
                 variable_mapping = {}
 
-            cls._mapping_user_inputs_to_variable_pool(
+            cls.mapping_user_inputs_to_variable_pool(
                 variable_mapping=variable_mapping,
                 user_inputs=user_inputs,
                 variable_pool=variable_pool,
@@ -413,7 +254,7 @@ class WorkflowEntry:
         return new_value
 
     @classmethod
-    def _mapping_user_inputs_to_variable_pool(
+    def mapping_user_inputs_to_variable_pool(
         cls,
         variable_mapping: Mapping[str, Sequence[str]],
         user_inputs: dict,
@@ -428,11 +269,11 @@ class WorkflowEntry:
             if len(node_variable_list) < 1:
                 raise ValueError(f'Invalid node variable {node_variable}')
             
-            node_variable_key = node_variable_list[1:]
+            node_variable_key = '.'.join(node_variable_list[1:])
 
             if (
                 node_variable_key not in user_inputs
-                or node_variable not in user_inputs
+                and node_variable not in user_inputs
             ) and not variable_pool.get(variable_selector):
                 raise ValueError(f'Variable key {node_variable} not found in user inputs.')
 
