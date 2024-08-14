@@ -194,7 +194,7 @@ services:
     # image: langgenius/dify-api
 
     build:
-      context: ../api
+      context: ./api
       dockerfile: Dockerfile
 
     restart: always
@@ -218,7 +218,7 @@ services:
   worker:
     # image: langgenius/dify-api
     build:
-      context: ../api
+      context: ./api
       dockerfile: Dockerfile
     restart: always
     environment:
@@ -240,7 +240,8 @@ services:
   web:
     # image: langgenius/dify-web
     build:
-      context: ../web
+      #TODO This is just for testing
+      context: ./web
       dockerfile: Dockerfile
 
     restart: always
