@@ -70,25 +70,26 @@ const Container = () => {
 
   return (
     <div ref={containerRef} className='grow relative flex flex-col bg-gray-100 overflow-y-auto'>
-      <div className='sticky top-0 flex justify-between pt-4 px-12 pb-2 leading-[56px] bg-gray-100 z-10 flex-wrap gap-y-2'>
-        <TabSliderNew
-          value={activeTab}
-          onChange={newActiveTab => setActiveTab(newActiveTab)}
-          options={options}
-        />
-        {activeTab === 'dataset' && (
-          <div className='flex items-center gap-2'>
-            <TagFilter type='knowledge' value={tagFilterValue} onChange={handleTagsChange} />
-            <SearchInput className='w-[200px]' value={keywords} onChange={handleKeywordsChange} />
-          </div>
-        )}
-        {activeTab === 'api' && data && <ApiServer apiBaseUrl={data.api_base_url || ''} />}
+      <div className='sticky top-0 flex items-center pt-4 px-12 pb-2 leading-[56px] bg-gray-100 z-10 flex-wrap gap-y-2'>
+        <div className="flex items-center w-full justify-end">
+          <TabSliderNew
+            value={activeTab}
+            onChange={newActiveTab => setActiveTab(newActiveTab)}
+            options={options}
+            />
+          {activeTab === 'dataset' && (
+            <div className='flex items-center gap-2 ml-4'>
+              <SearchInput className='w-[200px]' value={keywords} onChange={handleKeywordsChange} />
+              <TagFilter type='knowledge' value={tagFilterValue} onChange={handleTagsChange} />
+            </div>
+          )}
+          {activeTab === 'api' && data && <ApiServer apiBaseUrl={data.api_base_url || ''} />}
+        </div>
       </div>
 
       {activeTab === 'dataset' && (
         <>
           <Datasets containerRef={containerRef} tags={tagIDs} keywords={searchKeywords} />
-          <DatasetFooter />
           {showTagManagementModal && (
             <TagManagementModal type='knowledge' show={showTagManagementModal} />
           )}

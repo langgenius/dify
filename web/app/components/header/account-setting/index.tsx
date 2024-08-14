@@ -131,12 +131,12 @@ export default function AccountSetting({
           icon: <RiAccountCircleLine className={iconClassName} />,
           activeIcon: <RiAccountCircleFill className={iconClassName} />,
         },
-        {
-          key: 'integrations',
-          name: t('common.settings.integrations'),
-          icon: <RiApps2AddLine className={iconClassName} />,
-          activeIcon: <RiApps2AddFill className={iconClassName} />,
-        },
+        // {
+        //   key: 'integrations',
+        //   name: t('common.settings.integrations'),
+        //   icon: <RiApps2AddLine className={iconClassName} />,
+        //   activeIcon: <RiApps2AddFill className={iconClassName} />,
+        // },
         {
           key: 'language',
           name: t('common.settings.language'),
@@ -220,7 +220,7 @@ export default function AccountSetting({
             {activeMenu === 'account' && <AccountPage />}
             {activeMenu === 'members' && <MembersPage />}
             {activeMenu === 'billing' && <BillingPage />}
-            {activeMenu === 'integrations' && <IntegrationsPage />}
+            {/* {activeMenu === 'integrations' && <IntegrationsPage />} */}
             {activeMenu === 'language' && <LanguagePage />}
             {activeMenu === 'provider' && <ModelProviderPage />}
             {activeMenu === 'data-source' && <DataSourcePage />}

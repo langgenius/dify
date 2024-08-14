@@ -135,9 +135,9 @@ const InstallForm = () => {
                     <button
                       type="button"
                       onClick={() => setShowPassword(!showPassword)}
-                      className="text-gray-400 hover:text-gray-500 focus:outline-none focus:text-gray-500"
+                      className="text-gray-400 hover:text-gray-500 focus:outline-none focus:text-gray-500 text-sm"
                     >
-                      {showPassword ? '👀' : '😝'}
+                      {showPassword ? 'Hide' : 'Show'}
                     </button>
                   </div>
                 </div>
@@ -153,15 +153,6 @@ const InstallForm = () => {
                 </Button>
               </div>
             </form>
-            <div className="block w-hull mt-2 text-xs text-gray-600">
-              {t('login.license.tip')}
-              &nbsp;
-              <Link
-                className='text-primary-600'
-                target='_blank' rel='noopener noreferrer'
-                href={'https://docs.dify.ai/user-agreement/open-source'}
-              >{t('login.license.link')}</Link>
-            </div>
           </div>
         </div>
       </>

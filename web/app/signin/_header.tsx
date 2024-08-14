@@ -12,13 +12,13 @@ const Header = () => {
 
   return <div className='flex items-center justify-between p-6 w-full'>
     <LogoSite />
-    <Select
+    {/* <Select
       value={locale}
       items={languages.filter(item => item.supported)}
       onChange={(value) => {
         setLocaleOnClient(value as Locale)
       }}
-    />
+    /> */}
 
   </div>
 }

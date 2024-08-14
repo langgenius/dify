@@ -224,7 +224,9 @@ const NormalForm = () => {
                 <div className='mb-4'>
                   <label htmlFor="password" className="my-2 flex items-center justify-between text-sm font-medium text-gray-900">
                     <span>{t('login.password')}</span>
-                    <Link href='/forgot-password' className='text-primary-600'>
+                    <Link href='/forgot-password' 
+                    className='text-primary-700'
+                    >
                       {t('login.forget')}
                     </Link>
                   </label>
@@ -246,9 +248,9 @@ const NormalForm = () => {
                       <button
                         type="button"
                         onClick={() => setShowPassword(!showPassword)}
-                        className="text-gray-400 hover:text-gray-500 focus:outline-none focus:text-gray-500"
+                        className="text-gray-400 hover:text-gray-500 focus:outline-none focus:text-gray-500 text-sm"
                       >
-                        {showPassword ? '👀' : '😝'}
+                        {showPassword ? 'Hide' : 'Show'}
                       </button>
                     </div>
                   </div>
@@ -273,13 +275,13 @@ const NormalForm = () => {
             <Link
               className='text-primary-600'
               target='_blank' rel='noopener noreferrer'
-              href='https://dify.ai/terms'
+              href='https://gnator.ai/privacy-policy/'
             >{t('login.tos')}</Link>
             &nbsp;&&nbsp;
             <Link
               className='text-primary-600'
               target='_blank' rel='noopener noreferrer'
-              href='https://dify.ai/privacy'
+              href='https://gnator.ai/privacy-policy/'
             >{t('login.pp')}</Link>
           </div>
 

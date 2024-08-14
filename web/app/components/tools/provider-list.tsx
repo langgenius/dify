@@ -70,21 +70,23 @@ const ProviderList = () => {
     <div className='relative flex overflow-hidden bg-gray-100 shrink-0 h-0 grow'>
       <div className='relative flex flex-col overflow-y-auto bg-gray-100 grow'>
         <div className={cn(
-          'sticky top-0 flex justify-between items-center pt-4 px-12 pb-2 leading-[56px] bg-gray-100 z-20 flex-wrap gap-y-2',
+          'sticky top-0 flex items-center pt-4 px-12 pb-2 leading-[56px] bg-gray-100 z-20 flex-wrap gap-y-2',
           currentProvider && 'pr-6',
         )}>
-          <TabSliderNew
-            value={activeTab}
-            onChange={(state) => {
-              setActiveTab(state)
-              if (state !== activeTab)
-                setCurrentProvider(undefined)
-            }}
-            options={options}
-          />
-          <div className='flex items-center gap-2'>
-            <LabelFilter value={tagFilterValue} onChange={handleTagsChange} />
-            <SearchInput className='w-[200px]' value={keywords} onChange={handleKeywordsChange} />
+          <div className="flex items-center w-full justify-end">
+            <TabSliderNew
+              value={activeTab}
+              onChange={(state) => {
+                setActiveTab(state)
+                if (state !== activeTab)
+                  setCurrentProvider(undefined)
+              }}
+              options={options}
+              />
+            <div className='flex items-center gap-2'>
+              <SearchInput className='w-[200px]' value={keywords} onChange={handleKeywordsChange} />
+              <LabelFilter value={tagFilterValue} onChange={handleTagsChange} />
+            </div>
           </div>
         </div>
         <div className={cn(

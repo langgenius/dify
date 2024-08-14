@@ -49,7 +49,7 @@ const MembersPage = () => {
     <>
       <div className='flex flex-col'>
         <div className='flex items-center mb-4 p-3 bg-gray-50 rounded-2xl'>
-          <LogoEmbededChatHeader className='!w-10 !h-10' />
+          {/* <LogoEmbededChatHeader className='!w-10 !h-10' /> */}
           <div className='grow mx-2'>
             <div className='text-sm font-medium text-gray-900'>{currentWorkspace?.name}</div>
             {enableBilling && (

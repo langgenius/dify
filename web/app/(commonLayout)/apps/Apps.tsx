@@ -82,7 +82,7 @@ const Apps = () => {
   ]
 
   useEffect(() => {
-    document.title = `${t('common.menus.apps')} -  Dify`
+    document.title = `${t('common.menus.apps')} -  GNator`
     if (localStorage.getItem(NEED_REFRESH_APP_LIST_KEY) === '1') {
       localStorage.removeItem(NEED_REFRESH_APP_LIST_KEY)
       mutate()
@@ -125,15 +125,17 @@ const Apps = () => {
 
   return (
     <>
-      <div className='sticky top-0 flex justify-between items-center pt-4 px-12 pb-2 leading-[56px] bg-gray-100 z-10 flex-wrap gap-y-2'>
-        <TabSliderNew
-          value={activeTab}
-          onChange={setActiveTab}
-          options={options}
-        />
-        <div className='flex items-center gap-2'>
-          <TagFilter type='app' value={tagFilterValue} onChange={handleTagsChange} />
-          <SearchInput className='w-[200px]' value={keywords} onChange={handleKeywordsChange} />
+      <div className='sticky top-0 flex items-center pt-4 px-12 pb-2 leading-[56px] bg-gray-100 z-10 flex-wrap gap-y-2'>
+        <div className="flex items-center w-full justify-end">
+          <TabSliderNew
+            value={activeTab}
+            onChange={setActiveTab}
+            options={options}
+          />
+          <div className='flex items-center gap-2 ml-4'>
+            <SearchInput className='w-[200px]' value={keywords} onChange={handleKeywordsChange} />
+            <TagFilter type='app' value={tagFilterValue} onChange={handleTagsChange} />
+          </div>
         </div>
       </div>
       <nav className='grid content-start grid-cols-1 gap-4 px-12 pt-2 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 grow shrink-0'>

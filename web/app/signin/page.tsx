@@ -53,7 +53,7 @@ gtag('config', 'AW-11217955271"');
       )}>
         <div className={
           cn(
-            'flex w-full flex-col bg-white shadow rounded-2xl shrink-0',
+            'flex flex-col bg-white shadow rounded-2xl shrink-0',
             'space-between',
           )
         }>
@@ -75,7 +75,7 @@ gtag('config', 'AW-11217955271"');
             <>
               <Forms />
               <div className='px-8 py-6 text-sm font-normal text-gray-500'>
-                © {new Date().getFullYear()} LangGenius, Inc. All rights reserved.
+                © {new Date().getFullYear()} GNator, Inc. All rights reserved.
               </div>
             </>
           )}

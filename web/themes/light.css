@@ -13,7 +13,7 @@ html[data-theme="light"] {
   --color-components-input-text-filled-disabled: #1018284D;
   --color-components-input-border-hover: #D0D5DC;
   --color-components-input-border-active-prompt-1: #0BA5EC;
-  --color-components-input-border-active-prompt-2: #155AEF;
+  --color-components-input-border-active-prompt-2: #0074d9;
 
   --color-components-kbd-bg-gray: #1018280A;
   --color-components-kbd-bg-white: #FFFFFF1F;
@@ -21,11 +21,11 @@ html[data-theme="light"] {
   --color-components-tooltip-bg: #FFFFFFF2;
 
   --color-components-button-primary-text: #FFFFFF;
-  --color-components-button-primary-bg: #155AEF;
+  --color-components-button-primary-bg: #0074d9;
   --color-components-button-primary-border: #1018280A;
-  --color-components-button-primary-bg-hover: #004AEB;
+  --color-components-button-primary-bg-hover: #144abd;
   --color-components-button-primary-border-hover: #10182814;
-  --color-components-button-primary-bg-disabled: #155AEF24;
+  --color-components-button-primary-bg-disabled: #0074d924;
   --color-components-button-primary-border-disabled: #FFFFFF00;
   --color-components-button-primary-text-disabled: #FFFFFF99;
 
@@ -76,7 +76,7 @@ html[data-theme="light"] {
   --color-components-button-destructive-ghost-text-disabled: #F0443833;
   --color-components-button-destructive-ghost-bg-hover: #FEE4E2;
 
-  --color-components-button-secondary-accent-text: #155AEF;
+  --color-components-button-secondary-accent-text: #0074d9;
   --color-components-button-secondary-accent-text-disabled: #B2CAFF;
   --color-components-button-secondary-accent-bg: #FFFFFF;
   --color-components-button-secondary-accent-bg-hover: #F2F4F7;
@@ -87,7 +87,7 @@ html[data-theme="light"] {
 
   --color-components-checkbox-icon: #FFFFFF;
   --color-components-checkbox-icon-disabled: #D0D5DC;
-  --color-components-checkbox-bg: #155AEF;
+  --color-components-checkbox-bg: #0074d9;
   --color-components-checkbox-bg-hover: #004AEB;
   --color-components-checkbox-bg-disabled: #F2F4F7;
   --color-components-checkbox-border: #D0D5DC;
@@ -96,7 +96,7 @@ html[data-theme="light"] {
   --color-components-checkbox-bg-unchecked: #FFFFFF;
   --color-components-checkbox-bg-unchecked-hover: #FFFFFF;
 
-  --color-components-radio-border-checked: #155AEF;
+  --color-components-radio-border-checked: #0074d9;
   --color-components-radio-border-checked-hover: #004AEB;
   --color-components-radio-border-checked-disabled: #F2F4F7;
   --color-components-radio-bg-disabled: #FFFFFF00;
@@ -108,7 +108,7 @@ html[data-theme="light"] {
 
   --color-components-toggle-knob: #FFFFFF;
   --color-components-toggle-knob-disabled: #FFFFFFF2;
-  --color-components-toggle-bg: #155AEF;
+  --color-components-toggle-bg: #0074d9;
   --color-components-toggle-bg-hover: #004AEB;
   --color-components-toggle-bg-disabled: #D1E0FF;
   --color-components-toggle-bg-unchecked: #E9EBF0;
@@ -137,7 +137,7 @@ html[data-theme="light"] {
   --color-components-panel-on-panel-item-bg-alt: #F9FAFB;
 
   --color-components-main-nav-nav-button-text: #495464;
-  --color-components-main-nav-nav-button-text-active: #155AEF;
+  --color-components-main-nav-nav-button-text-active: #0074d9;
   --color-components-main-nav-nav-button-bg: #FFFFFF00;
   --color-components-main-nav-nav-button-bg-active: #FCFCFD;
   --color-components-main-nav-nav-button-border: #FFFFFFF2;
@@ -166,7 +166,7 @@ html[data-theme="light"] {
   --color-components-option-card-option-bg-hover: #FFFFFF;
   --color-components-option-card-option-border-hover: #D0D5DC;
 
-  --color-components-tab-active: #155AEF;
+  --color-components-tab-active: #0074d9;
 
   --color-components-badge-white-to-dark: #FFFFFF;
   --color-components-badge-status-light-success-bg: #47CD89;
@@ -198,9 +198,9 @@ html[data-theme="light"] {
   --color-components-badge-bg-gray-soft: #1018280A;
 
   --color-components-chart-line: #296DFF;
-  --color-components-chart-area-1: #155AEF24;
-  --color-components-chart-area-2: #155AEF0A;
-  --color-components-chart-current-1: #155AEF;
+  --color-components-chart-area-1: #0074d924;
+  --color-components-chart-area-2: #0074d90A;
+  --color-components-chart-current-1: #0074d9;
   --color-components-chart-current-2: #D1E0FF;
   --color-components-chart-bg: #FFFFFF;
 
@@ -216,7 +216,7 @@ html[data-theme="light"] {
 
   --color-components-progress-brand-progress: #296DFF;
   --color-components-progress-brand-border: #296DFF;
-  --color-components-progress-brand-bg: #155AEF0A;
+  --color-components-progress-brand-bg: #0074d90A;
 
   --color-components-progress-white-progress: #FFFFFF;
   --color-components-progress-white-border: #FFFFFFF2;
@@ -227,7 +227,7 @@ html[data-theme="light"] {
   --color-components-progress-gray-bg: #C8CEDA05;
 
   --color-components-chat-input-audio-bg: #EFF4FF;
-  --color-components-chat-input-audio-wave: #155AEF24;
+  --color-components-chat-input-audio-wave: #0074d924;
   --color-components-chat-input-bg-mask-1: #FFFFFF03;
   --color-components-chat-input-bg-mask-2: #F2F4F7;
   --color-components-chat-input-border: #FFFFFF;
@@ -242,13 +242,13 @@ html[data-theme="light"] {
   --color-text-destructive-secondary: #F04438;
   --color-text-success-secondary: #17B26A;
   --color-text-warning-secondary: #F79009;
-  --color-text-accent: #155AEF;
+  --color-text-accent: #0074d9;
   --color-text-primary-on-surface: #FFFFFF;
   --color-text-placeholder: #98A2B2;
   --color-text-disabled: #D0D5DC;
   --color-text-accent-secondary: #296DFF;
-  --color-text-accent-light-mode-only: #155AEF;
-  --color-text-text-selected: #155AEF24;
+  --color-text-accent-light-mode-only: #0074d9;
+  --color-text-text-selected: #0074d924;
   --color-text-secondary-on-surface: #FFFFFFE5;
   --color-text-logo-text: #18222F;
   --color-text-empty-state-icon: #D0D5DC;
@@ -370,10 +370,10 @@ html[data-theme="light"] {
   --color-state-base-handle-hover: #1018284D;
 
   --color-state-accent-hover: #EFF4FF;
-  --color-state-accent-active: #155AEF14;
+  --color-state-accent-active: #0074d914;
   --color-state-accent-hover-alt: #D1E0FF;
   --color-state-accent-soild: #296DFF;
-  --color-state-accent-active-alt: #155AEF24;
+  --color-state-accent-active-alt: #0074d924;
 
   --color-state-destructive-hover: #FEF3F2;
   --color-state-destructive-hover-alt: #FEE4E2;
@@ -482,7 +482,7 @@ html[data-theme="light"] {
   --color-util-colors-blue-brand-blue-brand-300: #84ABFF;
   --color-util-colors-blue-brand-blue-brand-400: #5289FF;
   --color-util-colors-blue-brand-blue-brand-500: #296DFF;
-  --color-util-colors-blue-brand-blue-brand-600: #155AEF;
+  --color-util-colors-blue-brand-blue-brand-600: #0074d9;
   --color-util-colors-blue-brand-blue-brand-700: #004AEB;
 
   --color-util-colors-red-red-50: #FEF3F2;
