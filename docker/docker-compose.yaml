@@ -129,6 +129,7 @@ x-shared-env: &shared-api-worker-env
   ELASTICSEARCH_PORT: ${ELASTICSEARCH_PORT:-9200}
   ELASTICSEARCH_USERNAME: ${ELASTICSEARCH_USERNAME:-elastic}
   ELASTICSEARCH_PASSWORD: ${ELASTICSEARCH_PASSWORD:-elastic}
+  KIBANA_PORT: ${KIBANA_PORT:-5601}
   # AnalyticDB configuration
   ANALYTICDB_KEY_ID: ${ANALYTICDB_KEY_ID:-}
   ANALYTICDB_KEY_SECRET: ${ANALYTICDB_KEY_SECRET:-}
@@ -599,6 +600,7 @@ services:
     ports:
       - "${MYSCALE_PORT:-8123}:${MYSCALE_PORT:-8123}"
 
+  # https://www.elastic.co/guide/en/elasticsearch/reference/current/settings.html
   elasticsearch:
     image: docker.elastic.co/elasticsearch/elasticsearch:8.14.3
     container_name: elasticsearch
@@ -622,24 +624,30 @@ services:
       timeout: 10s
       retries: 50
 
-#  kibana:
-#    image: docker.elastic.co/kibana/kibana:8.14.3
-#    container_name: kibana
-#    restart: always
-#    environment:
-#      XPACK_ENCRYPTEDSAVEDOBJECTS_ENCRYPTIONKEY: d1a66dfd-c4d3-4a0a-8290-2abcb83ab3aa
-#      xpack.security.enabled: false
-#      xpack.security.enrollment.enabled: false
-#      xpack.security.http.ssl.enabled: false
-#      xpack.fleet.isAirGapped: true
-#    volumes:
-#      - ./volumes/elasticsearch/kibana/config:/usr/share/kibana/config
-#      # i18n.locale: zh-CN
-#      # server.port: 5601
-#      # server.host: 0.0.0.0
-#      # elasticsearch.hosts: ["http://localhost:9200", "http://127.0.0.1:9200"]
-#    ports:
-#      - 5601:5601
+  # https://www.elastic.co/guide/en/kibana/current/docker.html
+  kibana:
+    image: docker.elastic.co/kibana/kibana:8.14.3
+    container_name: kibana
+    profiles:
+      - elasticsearch
+    restart: always
+    environment:
+      NO_PROXY: elasticsearch,localhost
+      xpack.encryptedsavedobjects.encryptionKey: d1a66dfd-c4d3-4a0a-8290-2abcb83ab3aa
+      xpack.security.enabled: false
+      xpack.security.enrollment.enabled: false
+      xpack.security.http.ssl.enabled: false
+      xpack.fleet.isAirGapped: true
+      i18n.locale: zh-CN
+      server.port: 5601
+      elasticsearch.hosts: ["http://elasticsearch:9200"]
+    ports:
+      - "${KIBANA_PORT:-5601}:${KIBANA_PORT:-5601}"
+    healthcheck:
+      test: [ "CMD-SHELL", "curl -s http://localhost:5601 >/dev/null || exit 1" ]
+      interval: 30s
+      timeout: 10s
+      retries: 3
 
   # unstructured .
   # (if used, you need to set ETL_TYPE to Unstructured in the api & worker service.)
