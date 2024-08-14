@@ -143,21 +143,6 @@ const ZoomInOut: FC = () => {
     useCapture: true,
   })
 
-  useKeyPress('shift.2', (e) => {
-    if (workflowReadOnly)
-      return
-
-    if (isEventTargetInputArea(e.target as HTMLElement))
-      return
-
-    e.preventDefault()
-    zoomTo(2)
-    handleSyncWorkflowDraft()
-  }, {
-    exactMatch: true,
-    useCapture: true,
-  })
-
   useKeyPress('shift.5', (e) => {
     if (workflowReadOnly)
       return
