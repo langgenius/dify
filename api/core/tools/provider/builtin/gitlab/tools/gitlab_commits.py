@@ -74,7 +74,7 @@ class GitlabCommitsTool(BuiltinTool):
 
                 for commit in commits:
                     commit_sha = commit['id']
-                    print(f"\tCommit SHA: {commit_sha}")
+                    author_name = commit['author_name']
 
                     diff_url = f"{domain}/api/v4/projects/{project_id}/repository/commits/{commit_sha}/diff"
                     diff_response = requests.get(diff_url, headers=headers)
@@ -84,17 +84,14 @@ class GitlabCommitsTool(BuiltinTool):
                     for diff in diffs:
                         # Caculate code lines of changed
                         added_lines = diff['diff'].count('\n+')
-                        removed_lines = diff['diff'].count('\n-')
-                        total_changes = added_lines + removed_lines
 
-                        if total_changes > 1:
+                        if added_lines > 1:
                             final_code = ''.join([line[1:] for line in diff['diff'].split('\n') if line.startswith('+') and not line.startswith('+++')])
                             results.append({
-                                "project": project_name,
                                 "commit_sha": commit_sha,
+                                "author_name": author_name,
                                 "diff": final_code
                             })
-                            print(f"Commit code:{final_code}")
         except requests.RequestException as e:
             print(f"Error fetching data from GitLab: {e}")
         
