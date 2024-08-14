@@ -606,12 +606,14 @@ services:
       - elasticsearch
     restart: always
     environment:
-      - "ELASTIC_PASSWORD=${ELASTICSEARCH_USERNAME:-elastic}"
+      - "ELASTIC_PASSWORD=${ELASTICSEARCH_PASSWORD:-elastic}"
       - "cluster.name=dify-es-cluster"
       - "node.name=dify-es0"
       - "discovery.type=single-node"
       - "xpack.security.http.ssl.enabled=false"
       - "xpack.license.self_generated.type=trial"
+    volumes:
+      - ./volumes/elasticsearch/data:/usr/share/elasticsearch/data
     ports:
       - "${ELASTICSEARCH_PORT:-9200}:${ELASTICSEARCH_PORT:-9200}"
     healthcheck:
@@ -619,6 +621,25 @@ services:
       interval: 30s
       timeout: 10s
       retries: 50
+
+#  kibana:
+#    image: docker.elastic.co/kibana/kibana:8.14.3
+#    container_name: kibana
+#    restart: always
+#    environment:
+#      XPACK_ENCRYPTEDSAVEDOBJECTS_ENCRYPTIONKEY: d1a66dfd-c4d3-4a0a-8290-2abcb83ab3aa
+#      xpack.security.enabled: false
+#      xpack.security.enrollment.enabled: false
+#      xpack.security.http.ssl.enabled: false
+#      xpack.fleet.isAirGapped: true
+#    volumes:
+#      - ./volumes/elasticsearch/kibana/config:/usr/share/kibana/config
+#      # i18n.locale: zh-CN
+#      # server.port: 5601
+#      # server.host: 0.0.0.0
+#      # elasticsearch.hosts: ["http://localhost:9200", "http://127.0.0.1:9200"]
+#    ports:
+#      - 5601:5601
 
   # unstructured .
   # (if used, you need to set ETL_TYPE to Unstructured in the api & worker service.)
