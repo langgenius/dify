@@ -53,9 +53,9 @@ const Uploader: FC<UploaderProps> = ({
   const inputRef = createRef<HTMLInputElement>()
 
   return (
-    <div className="w-full px-3 py-1.5">
+    <div className={classNames(className, 'w-full px-3 py-1.5')}>
       <div
-        className={classNames(className,
+        className={classNames(
           isDragActive && 'border-primary-600',
           'relative aspect-square bg-gray-50 border-[1.5px] border-gray-200 border-dashed rounded-lg flex flex-col justify-center items-center text-gray-500')}
         onDragEnter={handleDragEnter}
