@@ -12,6 +12,7 @@ import { Theme } from '@/types/app'
 import type { ICurrentWorkspace, LangGeniusVersionResponse, UserProfileResponse } from '@/models/common'
 import MaintenanceNotice from '@/app/components/header/maintenance-notice'
 import type { SystemFeatures } from '@/types/feature'
+import { defaultSystemFeatures } from '@/types/feature'
 
 export type AppContextValue = {
   theme: Theme
@@ -55,13 +56,7 @@ const initialWorkspaceInfo: ICurrentWorkspace = {
 
 const AppContext = createContext<AppContextValue>({
   theme: Theme.light,
-  systemFeatures: {
-    sso_enforced_for_signin: false,
-    sso_enforced_for_signin_protocol: '',
-    sso_enforced_for_web: false,
-    sso_enforced_for_web_protocol: '',
-    enable_web_sso_switch_component: false,
-  },
+  systemFeatures: defaultSystemFeatures,
   setTheme: () => { },
   apps: [],
   mutateApps: () => { },
@@ -100,13 +95,7 @@ export const AppContextProvider: FC<AppContextProviderProps> = ({ children }) =>
   const { data: currentWorkspaceResponse, mutate: mutateCurrentWorkspace } = useSWR({ url: '/workspaces/current', params: {} }, fetchCurrentWorkspace)
 
   const { data: systemFeatures } = useSWR({ url: '/console/system-features' }, getSystemFeatures, {
-    fallbackData: {
-      sso_enforced_for_signin: false,
-      sso_enforced_for_signin_protocol: '',
-      sso_enforced_for_web: false,
-      sso_enforced_for_web_protocol: '',
-      enable_web_sso_switch_component: false,
-    },
+    fallbackData: defaultSystemFeatures,
   })
 
   const [userProfile, setUserProfile] = useState<UserProfileResponse>()
