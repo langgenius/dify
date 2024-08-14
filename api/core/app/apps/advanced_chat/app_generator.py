@@ -28,8 +28,8 @@ from core.app.entities.task_entities import ChatbotAppBlockingResponse, ChatbotA
 from core.file.message_file_parser import MessageFileParser
 from core.model_runtime.errors.invoke import InvokeAuthorizationError, InvokeError
 from core.ops.ops_trace_manager import TraceQueueManager
-from core.workflow.entities.node_entities import SystemVariable
 from core.workflow.entities.variable_pool import VariablePool
+from core.workflow.enums import SystemVariable
 from extensions.ext_database import db
 from models.account import Account
 from models.model import App, Conversation, EndUser, Message
