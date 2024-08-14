@@ -12,9 +12,10 @@ init({ data })
 export type AppIconProps = {
   size?: 'xs' | 'tiny' | 'small' | 'medium' | 'large'
   rounded?: boolean
-  iconType?: AppIconType
+  iconType?: AppIconType | null
   icon?: string
   background?: string
+  imageUrl?: string
   className?: string
   innerIcon?: React.ReactNode
   onClick?: () => void
@@ -23,9 +24,10 @@ export type AppIconProps = {
 const AppIcon: FC<AppIconProps> = ({
   size = 'medium',
   rounded = false,
-  iconType = 'emoji',
+  iconType,
   icon,
   background,
+  imageUrl,
   className,
   innerIcon,
   onClick,
@@ -38,10 +40,16 @@ const AppIcon: FC<AppIconProps> = ({
     'overflow-hidden',
   )
 
-  return <span className={wrapperClassName} style={{ background }} onClick={onClick}>
-    {iconType === 'emoji'
-      ? (innerIcon || ((icon && icon !== '') ? <em-emoji id={icon} /> : <em-emoji id='🤖' />))
-      : <img src={icon} className="w-full h-full" alt="app icon" />
+  const isValidImageIcon = iconType === 'image' && imageUrl
+
+  return <span
+    className={wrapperClassName}
+    style={{ background: isValidImageIcon ? undefined : (background || '#FFEAD5') }}
+    onClick={onClick}
+  >
+    {isValidImageIcon
+      ? <img src={imageUrl} className="w-full h-full" alt="app icon" />
+      : (innerIcon || ((icon && icon !== '') ? <em-emoji id={icon} /> : <em-emoji id='🤖' />))
     }
   </span>
 }

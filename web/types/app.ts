@@ -311,11 +311,13 @@ export type App = {
   description: string
 
   /** Icon Type */
-  iconType: AppIconType
-  /** Icon */
+  icon_type: AppIconType | null
+  /** Icon, stores file ID if icon_type is 'image' */
   icon: string
-  /** Icon Background */
+  /** Icon Background, only available when icon_type is null or 'emoji' */
   icon_background: string
+  /** Icon URL, only available when icon_type is 'image' */
+  icon_url: string
 
   /** Mode */
   mode: AppMode

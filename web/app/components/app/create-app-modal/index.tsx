@@ -64,13 +64,12 @@ const CreateAppModal = ({ show, onSuccess, onClose }: CreateAppDialogProps) => {
       return
     isCreatingRef.current = true
     try {
-      if (appIcon.type === 'image')
-        throw new Error('unimplemented')
       const app = await createApp({
         name,
         description,
-        icon: appIcon.icon,
-        icon_background: appIcon.background!,
+        icon_type: appIcon.type,
+        icon: appIcon.type === 'emoji' ? appIcon.icon : appIcon.fileId,
+        icon_background: appIcon.type === 'emoji' ? appIcon.background : undefined,
         mode: appMode,
       })
       notify({ type: 'success', message: t('app.newApp.appCreated') })
@@ -274,8 +273,9 @@ const CreateAppModal = ({ show, onSuccess, onClose }: CreateAppDialogProps) => {
         <div className='flex items-center justify-between space-x-2'>
           <AppIcon
             iconType={appIcon.type}
-            icon={appIcon.type === 'emoji' ? appIcon.icon : appIcon.url}
+            icon={appIcon.type === 'emoji' ? appIcon.icon : appIcon.fileId}
             background={appIcon.type === 'emoji' ? appIcon.background : undefined}
+            imageUrl={appIcon.type === 'image' ? appIcon.url : undefined}
             size='large' className='cursor-pointer'
             onClick={() => { setShowAppIconPicker(true) }}
           />

@@ -2,7 +2,7 @@ import type { Fetcher } from 'swr'
 import { del, get, patch, post, put } from './base'
 import type { ApikeysListResponse, AppDailyConversationsResponse, AppDailyEndUsersResponse, AppDetailResponse, AppListResponse, AppStatisticsResponse, AppTemplatesResponse, AppTokenCostsResponse, AppVoicesListResponse, CreateApiKeyResponse, GenerationIntroductionResponse, TracingConfig, TracingStatus, UpdateAppModelConfigResponse, UpdateAppSiteCodeResponse, UpdateOpenAIKeyResponse, ValidateOpenAIKeyResponse, WorkflowDailyConversationsResponse } from '@/models/app'
 import type { CommonResponse } from '@/models/common'
-import type { AppMode, ModelConfig } from '@/types/app'
+import type { AppIconType, AppMode, ModelConfig } from '@/types/app'
 import type { TracingProvider } from '@/app/(commonLayout)/app/(appDetailLayout)/[appId]/overview/tracing/type'
 
 export const fetchAppList: Fetcher<AppListResponse, { url: string; params?: Record<string, any> }> = ({ url, params }) => {
@@ -21,16 +21,16 @@ export const fetchAppTemplates: Fetcher<AppTemplatesResponse, { url: string }> =
   return get<AppTemplatesResponse>(url)
 }
 
-export const createApp: Fetcher<AppDetailResponse, { name: string; icon: string; icon_background: string; mode: AppMode; description?: string; config?: ModelConfig }> = ({ name, icon, icon_background, mode, description, config }) => {
-  return post<AppDetailResponse>('apps', { body: { name, icon, icon_background, mode, description, model_config: config } })
+export const createApp: Fetcher<AppDetailResponse, { name: string; icon_type?: AppIconType; icon?: string; icon_background?: string; mode: AppMode; description?: string; config?: ModelConfig }> = ({ name, icon_type, icon, icon_background, mode, description, config }) => {
+  return post<AppDetailResponse>('apps', { body: { name, icon_type, icon, icon_background, mode, description, model_config: config } })
 }
 
 export const updateAppInfo: Fetcher<AppDetailResponse, { appID: string; name: string; icon: string; icon_background: string; description: string }> = ({ appID, name, icon, icon_background, description }) => {
   return put<AppDetailResponse>(`apps/${appID}`, { body: { name, icon, icon_background, description } })
 }
 
-export const copyApp: Fetcher<AppDetailResponse, { appID: string; name: string; icon: string; icon_background: string; mode: AppMode; description?: string }> = ({ appID, name, icon, icon_background, mode, description }) => {
-  return post<AppDetailResponse>(`apps/${appID}/copy`, { body: { name, icon, icon_background, mode, description } })
+export const copyApp: Fetcher<AppDetailResponse, { appID: string; name: string; icon_type: AppIconType; icon: string; icon_background?: string; mode: AppMode; description?: string }> = ({ appID, name, icon_type, icon, icon_background, mode, description }) => {
+  return post<AppDetailResponse>(`apps/${appID}/copy`, { body: { name, icon_type, icon, icon_background, mode, description } })
 }
 
 export const exportAppConfig: Fetcher<{ data: string }, { appID: string; include?: boolean }> = ({ appID, include = false }) => {

@@ -119,6 +119,7 @@ class AppService:
         app.name = args['name']
         app.description = args.get('description', '')
         app.mode = args['mode']
+        app.icon_type = args.get('icon_type', 'emoji')
         app.icon = args['icon']
         app.icon_background = args['icon_background']
         app.tenant_id = tenant_id
