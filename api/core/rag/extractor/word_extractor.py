@@ -1,9 +1,12 @@
 """Abstract interface for document loader implementations."""
 import datetime
+import logging
 import mimetypes
 import os
+import re
 import tempfile
 import uuid
+import xml.etree.ElementTree as ET
 from urllib.parse import urlparse
 
 import requests
@@ -16,6 +19,7 @@ from extensions.ext_database import db
 from extensions.ext_storage import storage
 from models.model import UploadFile
 
+logger = logging.getLogger(__name__)
 
 class WordExtractor(BaseExtractor):
     """Load docx files.
@@ -197,10 +201,34 @@ class WordExtractor(BaseExtractor):
 
         image_map = self._extract_images_from_docx(doc, image_folder)
 
+        hyperlinks_url = None
+        url_pattern = re.compile(r'http://[^\s+]+//|https://[^\s+]+')
+        for para in doc.paragraphs:
+            for run in para.runs:
+                if run.text and hyperlinks_url:
+                    result = f'  [{run.text}]({hyperlinks_url})  '
+                    run.text = result
+                    hyperlinks_url = None
+                if 'HYPERLINK' in run.element.xml:
+                    try:
+                        xml = ET.XML(run.element.xml)
+                        x_child = [c for c in xml.iter() if c is not None]
+                        for x in x_child:
+                            if x_child is None:
+                                continue
+                            if x.tag.endswith('instrText'):
+                                for i in url_pattern.findall(x.text):
+                                    hyperlinks_url = str(i)
+                    except Exception as e:
+                        logger.error(e)
+
+
+
+
         def parse_paragraph(paragraph):
             paragraph_content = []
             for run in paragraph.runs:
-                if run.element.tag.endswith('r'):
+                if hasattr(run.element, 'tag') and isinstance(element.tag, str) and run.element.tag.endswith('r'):
                     drawing_elements = run.element.findall(
                         './/{http://schemas.openxmlformats.org/wordprocessingml/2006/main}drawing')
                     for drawing in drawing_elements:
@@ -220,13 +248,14 @@ class WordExtractor(BaseExtractor):
         paragraphs = doc.paragraphs.copy()
         tables = doc.tables.copy()
         for element in doc.element.body:
-            if element.tag.endswith('p'):  # paragraph
-                para = paragraphs.pop(0)
-                parsed_paragraph = parse_paragraph(para)
-                if parsed_paragraph:
-                    content.append(parsed_paragraph)
-            elif element.tag.endswith('tbl'):  # table
-                table = tables.pop(0)
-                content.append(self._table_to_markdown(table,image_map))
+            if hasattr(element, 'tag'):
+                if isinstance(element.tag, str) and element.tag.endswith('p'):  # paragraph
+                    para = paragraphs.pop(0)
+                    parsed_paragraph = parse_paragraph(para)
+                    if parsed_paragraph:
+                        content.append(parsed_paragraph)
+                elif isinstance(element.tag, str) and element.tag.endswith('tbl'):  # table
+                    table = tables.pop(0)
+                    content.append(self._table_to_markdown(table,image_map))
         return '\n'.join(content)
 

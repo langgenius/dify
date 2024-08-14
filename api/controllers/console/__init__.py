@@ -17,6 +17,7 @@ from .app import (
     audio,
     completion,
     conversation,
+    conversation_variables,
     generator,
     message,
     model_config,

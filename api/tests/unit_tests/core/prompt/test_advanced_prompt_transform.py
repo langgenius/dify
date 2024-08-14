@@ -2,8 +2,8 @@ from unittest.mock import MagicMock
 
 import pytest
 
-from core.app.app_config.entities import FileExtraConfig, ModelConfigEntity
-from core.file.file_obj import FileTransferMethod, FileType, FileVar
+from core.app.app_config.entities import ModelConfigEntity
+from core.file.file_obj import FileExtraConfig, FileTransferMethod, FileType, FileVar
 from core.memory.token_buffer_memory import TokenBufferMemory
 from core.model_runtime.entities.message_entities import AssistantPromptMessage, PromptMessageRole, UserPromptMessage
 from core.prompt.advanced_prompt_transform import AdvancedPromptTransform

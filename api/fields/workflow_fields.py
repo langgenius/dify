@@ -32,11 +32,12 @@ class EnvironmentVariableField(fields.Raw):
             return value
 
 
-environment_variable_fields = {
+conversation_variable_fields = {
     'id': fields.String,
     'name': fields.String,
-    'value': fields.Raw,
     'value_type': fields.String(attribute='value_type.value'),
+    'value': fields.Raw,
+    'description': fields.String,
 }
 
 workflow_fields = {
@@ -50,4 +51,5 @@ workflow_fields = {
     'updated_at': TimestampField,
     'tool_published': fields.Boolean,
     'environment_variables': fields.List(EnvironmentVariableField()),
+    'conversation_variables': fields.List(fields.Nested(conversation_variable_fields)),
 }

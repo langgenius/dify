@@ -49,8 +49,6 @@ const BlockInput: FC<IBlockInputProps> = ({
     setCurrentValue(value)
   }, [value])
 
-  const isContentChanged = value !== currentValue
-
   const contentEditableRef = useRef<HTMLTextAreaElement>(null)
   const [isEditing, setIsEditing] = useState<boolean>(false)
   useEffect(() => {
