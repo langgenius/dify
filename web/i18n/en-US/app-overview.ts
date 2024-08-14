@@ -55,9 +55,9 @@ const translation = {
         invalidHexMessage: 'Invalid hex value',
         sso: {
           label: 'SSO ENFORCEMENT',
-          title: 'Web Application SSO',
-          description: 'All users are required to login with SSO before using web application',
-          tooltip: 'Contact the administrator to enable Web Application SSO',
+          title: 'WebApp SSO',
+          description: 'All users are required to login with SSO before using WebApp',
+          tooltip: 'Contact the administrator to enable WebApp SSO',
         },
         more: {
           entry: 'Show more settings',
