@@ -2,10 +2,10 @@
 from abc import abstractmethod
 
 import requests
-from api.models.source import DataSourceBearerBinding
 from flask_login import current_user
 
 from extensions.ext_database import db
+from models.source import DataSourceBearerBinding
 
 
 class BearerDataSource:
