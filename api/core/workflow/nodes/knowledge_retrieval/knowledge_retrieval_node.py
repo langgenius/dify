@@ -1,5 +1,5 @@
 import logging
-from typing import Any, cast
+from typing import Any, Mapping, Sequence, cast
 
 from sqlalchemy import func
 
@@ -232,11 +232,21 @@ class KnowledgeRetrievalNode(BaseNode):
         return context_list
 
     @classmethod
-    def _extract_variable_selector_to_variable_mapping(cls, node_data: BaseNodeData) -> dict[str, list[str]]:
-        node_data = node_data
-        node_data = cast(cls._node_data_cls, node_data)
+    def _extract_variable_selector_to_variable_mapping(
+        cls, 
+        graph_config: Mapping[str, Any], 
+        node_id: str,
+        node_data: KnowledgeRetrievalNodeData
+    ) -> Mapping[str, Sequence[str]]:
+        """
+        Extract variable selector to variable mapping
+        :param graph_config: graph config
+        :param node_id: node id
+        :param node_data: node data
+        :return:
+        """
         variable_mapping = {}
-        variable_mapping['query'] = node_data.query_variable_selector
+        variable_mapping[node_id + '.query'] = node_data.query_variable_selector
         return variable_mapping
 
     def _fetch_model_config(self, node_data: KnowledgeRetrievalNodeData) -> tuple[

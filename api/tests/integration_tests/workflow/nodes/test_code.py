@@ -22,6 +22,7 @@ def test_execute_code(setup_code_executor_mock):
     # trim first 4 spaces at the beginning of each line
     code = '\n'.join([line[4:] for line in code.split('\n')])
     node = CodeNode(
+        id='test',
         tenant_id='1',
         app_id='1',
         workflow_id='1',

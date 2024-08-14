@@ -1,6 +1,6 @@
 import json
 import logging
-from typing import Optional, Union, cast
+from typing import Any, Mapping, Optional, Sequence, Union, cast
 
 from core.app.entities.app_invoke_entities import ModelConfigWithCredentialsEntity
 from core.memory.token_buffer_memory import TokenBufferMemory
@@ -137,9 +137,19 @@ class QuestionClassifierNode(LLMNode):
             )
 
     @classmethod
-    def _extract_variable_selector_to_variable_mapping(cls, node_data: BaseNodeData) -> dict[str, list[str]]:
-        node_data = node_data
-        node_data = cast(cls._node_data_cls, node_data)
+    def _extract_variable_selector_to_variable_mapping(
+        cls, 
+        graph_config: Mapping[str, Any], 
+        node_id: str,
+        node_data: QuestionClassifierNodeData
+    ) -> Mapping[str, Sequence[str]]:
+        """
+        Extract variable selector to variable mapping
+        :param graph_config: graph config
+        :param node_id: node id
+        :param node_data: node data
+        :return:
+        """
         variable_mapping = {'query': node_data.query_variable_selector}
         variable_selectors = []
         if node_data.instruction:
@@ -147,6 +157,11 @@ class QuestionClassifierNode(LLMNode):
             variable_selectors.extend(variable_template_parser.extract_variable_selectors())
         for variable_selector in variable_selectors:
             variable_mapping[variable_selector.variable] = variable_selector.value_selector
+
+        variable_mapping = {
+            node_id + '.' + key: value for key, value in variable_mapping.items()
+        }
+        
         return variable_mapping
 
     @classmethod

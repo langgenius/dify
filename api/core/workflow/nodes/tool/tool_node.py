@@ -221,9 +221,16 @@ class ToolNode(BaseNode):
         return [message.message for message in tool_response if message.type == ToolInvokeMessage.MessageType.JSON]
 
     @classmethod
-    def _extract_variable_selector_to_variable_mapping(cls, node_data: ToolNodeData) -> dict[str, list[str]]:
+    def _extract_variable_selector_to_variable_mapping(
+        cls, 
+        graph_config: Mapping[str, Any], 
+        node_id: str,
+        node_data: ToolNodeData
+    ) -> Mapping[str, Sequence[str]]:
         """
         Extract variable selector to variable mapping
+        :param graph_config: graph config
+        :param node_id: node id
         :param node_data: node data
         :return:
         """
@@ -238,5 +245,9 @@ class ToolNode(BaseNode):
                 result[parameter_name] = input.value
             elif input.type == 'constant':
                 pass
+
+        result = {
+            node_id + '.' + key: value for key, value in result.items()
+        }
 
         return result

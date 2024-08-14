@@ -50,7 +50,7 @@ class BasedGenerateTaskPipeline:
         self._output_moderation_handler = self._init_output_moderation()
         self._stream = stream
 
-    def _handle_error(self, event: QueueErrorEvent, message: Message) -> Exception:
+    def _handle_error(self, event: QueueErrorEvent, message: Optional[Message] = None) -> Exception:
         """
         Handle error event.
         :param event: event

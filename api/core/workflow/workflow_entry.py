@@ -1,6 +1,8 @@
 import logging
+import time
+import uuid
 from collections.abc import Generator, Mapping, Sequence
-from typing import Any, Optional, cast
+from typing import Any, Optional, Type, cast
 
 from configs import dify_config
 from core.app.app_config.entities import FileExtraConfig
@@ -8,13 +10,18 @@ from core.app.apps.base_app_queue_manager import GenerateTaskStoppedException
 from core.app.entities.app_invoke_entities import InvokeFrom
 from core.file.file_obj import FileTransferMethod, FileType, FileVar
 from core.workflow.callbacks.base_workflow_callback import WorkflowCallback
-from core.workflow.entities.node_entities import NodeRunResult, NodeType, SystemVariable, UserFrom
+from core.workflow.entities.base_node_data_entities import BaseNodeData
+from core.workflow.entities.node_entities import NodeRunResult, NodeType, UserFrom
 from core.workflow.entities.variable_pool import VariablePool
 from core.workflow.errors import WorkflowNodeRunFailedError
-from core.workflow.graph_engine.entities.event import GraphEngineEvent, GraphRunFailedEvent
+from core.workflow.graph_engine.entities.event import GraphEngineEvent, GraphRunFailedEvent, InNodeEvent
 from core.workflow.graph_engine.entities.graph import Graph
+from core.workflow.graph_engine.entities.graph_init_params import GraphInitParams
+from core.workflow.graph_engine.entities.graph_runtime_state import GraphRuntimeState
 from core.workflow.graph_engine.graph_engine import GraphEngine
 from core.workflow.nodes.base_node import BaseNode
+from core.workflow.nodes.event import RunCompletedEvent, RunEvent
+from core.workflow.nodes.iteration.entities import IterationNodeData
 from core.workflow.nodes.llm.entities import LLMNodeData
 from core.workflow.nodes.node_mapping import node_classes
 from models.workflow import (
@@ -32,18 +39,17 @@ class WorkflowEntry:
             user_id: str,
             user_from: UserFrom,
             invoke_from: InvokeFrom,
-            user_inputs: Mapping[str, Any],
-            system_inputs: Mapping[SystemVariable, Any],
-            call_depth: int = 0
+            call_depth: int,
+            variable_pool: VariablePool
     ) -> None:
         """
         :param workflow: Workflow instance
         :param user_id: user id
         :param user_from: user from
         :param invoke_from: invoke from service-api, web-app, debugger, explore
-        :param user_inputs: user variables inputs
-        :param system_inputs: system inputs, like: query, files
         :param call_depth: call depth
+        :param variable_pool: variable pool
+        :param single_step_run_iteration_id: single step run iteration id
         """
         # fetch workflow graph
         graph_config = workflow.graph_dict
@@ -70,13 +76,6 @@ class WorkflowEntry:
 
         if not graph:
             raise ValueError('graph not found in workflow')
-
-        # init variable pool
-        variable_pool = VariablePool(
-            system_variables=system_inputs,
-            user_inputs=user_inputs,
-            environment_variables=workflow.environment_variables,
-        )
 
         # init workflow run state
         self.graph_engine = GraphEngine(
@@ -134,10 +133,160 @@ class WorkflowEntry:
                     )
             return
 
-    def single_step_run(self, workflow: Workflow,
-                        node_id: str,
-                        user_id: str,
-                        user_inputs: dict) -> tuple[BaseNode, NodeRunResult]:
+    @classmethod
+    def single_step_run_iteration(
+        cls,
+        workflow: Workflow,
+        node_id: str,
+        user_id: str,
+        user_inputs: dict,
+        callbacks: Sequence[WorkflowCallback],
+    ) -> Generator[GraphEngineEvent, None, None]:
+        """
+        Single step run workflow node iteration
+        :param workflow: Workflow instance
+        :param node_id: node id
+        :param user_id: user id
+        :param user_inputs: user inputs
+        :return:
+        """
+        # fetch workflow graph
+        graph_config = workflow.graph_dict
+        if not graph_config:
+            raise ValueError('workflow graph not found')
+        
+        graph_config = cast(dict[str, Any], graph_config)
+
+        if 'nodes' not in graph_config or 'edges' not in graph_config:
+            raise ValueError('nodes or edges not found in workflow graph')
+
+        if not isinstance(graph_config.get('nodes'), list):
+            raise ValueError('nodes in workflow graph must be a list')
+
+        if not isinstance(graph_config.get('edges'), list):
+            raise ValueError('edges in workflow graph must be a list')
+
+        # filter nodes only in iteration
+        node_configs = [
+            node for node in graph_config.get('nodes', []) 
+            if node.get('id') == node_id or node.get('data', {}).get('iteration_id', '') == node_id
+        ]
+
+        graph_config['nodes'] = node_configs
+
+        node_ids = [node.get('id') for node in node_configs]
+
+        # filter edges only in iteration
+        edge_configs = [
+            edge for edge in graph_config.get('edges', []) 
+            if (edge.get('source') is None or edge.get('source') in node_ids) 
+            and (edge.get('target') is None or edge.get('target') in node_ids) 
+        ]
+
+        graph_config['edges'] = edge_configs
+
+        # init graph
+        graph = Graph.init(
+            graph_config=graph_config,
+            root_node_id=node_id
+        )
+
+        if not graph:
+            raise ValueError('graph not found in workflow')
+        
+        # fetch node config from node id
+        iteration_node_config = None
+        for node in node_configs:
+            if node.get('id') == node_id:
+                iteration_node_config = node
+                break
+
+        if not iteration_node_config:
+            raise ValueError('iteration node id not found in workflow graph')
+        
+        # Get node class
+        node_type = NodeType.value_of(iteration_node_config.get('data', {}).get('type'))
+        node_cls = node_classes.get(node_type)
+        node_cls = cast(type[BaseNode], node_cls)
+
+        # init variable pool
+        variable_pool = VariablePool(
+            system_variables={},
+            user_inputs={},
+            environment_variables=workflow.environment_variables,
+        )
+
+        try:
+            variable_mapping = node_cls.extract_variable_selector_to_variable_mapping(
+                graph_config=workflow.graph_dict, 
+                config=iteration_node_config
+            )
+        except NotImplementedError:
+            variable_mapping = {}
+
+        cls._mapping_user_inputs_to_variable_pool(
+            variable_mapping=variable_mapping,
+            user_inputs=user_inputs,
+            variable_pool=variable_pool,
+            tenant_id=workflow.tenant_id,
+            node_type=node_type,
+            node_data=IterationNodeData(**iteration_node_config.get('data', {}))
+        )
+
+        # init workflow run state
+        graph_engine = GraphEngine(
+            tenant_id=workflow.tenant_id,
+            app_id=workflow.app_id,
+            workflow_type=WorkflowType.value_of(workflow.type),
+            workflow_id=workflow.id,
+            user_id=user_id,
+            user_from=UserFrom.ACCOUNT,
+            invoke_from=InvokeFrom.DEBUGGER,
+            call_depth=1,
+            graph=graph,
+            graph_config=graph_config,
+            variable_pool=variable_pool,
+            max_execution_steps=dify_config.WORKFLOW_MAX_EXECUTION_STEPS,
+            max_execution_time=dify_config.WORKFLOW_MAX_EXECUTION_TIME
+        )
+
+        try:
+            # run workflow
+            generator = graph_engine.run()
+            for event in generator:
+                if callbacks:
+                    for callback in callbacks:
+                        callback.on_event(
+                            graph=graph_engine.graph,
+                            graph_init_params=graph_engine.init_params,
+                            graph_runtime_state=graph_engine.graph_runtime_state,
+                            event=event
+                        )
+                yield event
+        except GenerateTaskStoppedException:
+            pass
+        except Exception as e:
+            logger.exception("Unknown Error when workflow entry running")
+            if callbacks:
+                for callback in callbacks:
+                    callback.on_event(
+                        graph=graph_engine.graph,
+                        graph_init_params=graph_engine.init_params,
+                        graph_runtime_state=graph_engine.graph_runtime_state,
+                        event=GraphRunFailedEvent(
+                            error=str(e)
+                        )
+                    )
+            return
+
+    @classmethod
+    def single_step_run(
+        cls, 
+        workflow: Workflow,
+        node_id: str,
+        user_id: str,
+        user_inputs: dict
+    ) -> tuple[BaseNode, Generator[RunEvent | InNodeEvent, None, None]]:
         """
         Single step run workflow node
         :param workflow: Workflow instance
@@ -168,60 +317,73 @@ class WorkflowEntry:
         # Get node class
         node_type = NodeType.value_of(node_config.get('data', {}).get('type'))
         node_cls = node_classes.get(node_type)
+        node_cls = cast(type[BaseNode], node_cls)
 
         if not node_cls:
             raise ValueError(f'Node class not found for node type {node_type}')
+        
+        # init variable pool
+        variable_pool = VariablePool(
+            system_variables={},
+            user_inputs={},
+            environment_variables=workflow.environment_variables,
+        )
+
+        # init graph
+        graph = Graph.init(
+            graph_config=workflow.graph_dict
+        )
 
         # init workflow run state
-        node_instance = node_cls(
-            tenant_id=workflow.tenant_id,
-            app_id=workflow.app_id,
-            workflow_id=workflow.id,
-            user_id=user_id,
-            user_from=UserFrom.ACCOUNT,
-            invoke_from=InvokeFrom.DEBUGGER,
+        node_instance: BaseNode = node_cls(
+            id=str(uuid.uuid4()),
             config=node_config,
-            workflow_call_depth=0
+            graph_init_params=GraphInitParams(
+                tenant_id=workflow.tenant_id,
+                app_id=workflow.app_id,
+                workflow_type=WorkflowType.value_of(workflow.type),
+                workflow_id=workflow.id,
+                graph_config=workflow.graph_dict,
+                user_id=user_id,
+                user_from=UserFrom.ACCOUNT,
+                invoke_from=InvokeFrom.DEBUGGER,
+                call_depth=0
+            ),
+            graph=graph,
+            graph_runtime_state=GraphRuntimeState(
+                variable_pool=variable_pool,
+                start_at=time.perf_counter()
+            )
         )
 
         try:
-            # init variable pool
-            variable_pool = VariablePool(
-                system_variables={},
-                user_inputs={},
-                environment_variables=workflow.environment_variables,
-            )
-
             # variable selector to variable mapping
             try:
-                variable_mapping = node_cls.extract_variable_selector_to_variable_mapping(node_config)
+                variable_mapping = node_cls.extract_variable_selector_to_variable_mapping(
+                    graph_config=workflow.graph_dict, 
+                    config=node_config
+                )
             except NotImplementedError:
                 variable_mapping = {}
 
-            self._mapping_user_inputs_to_variable_pool(
+            cls._mapping_user_inputs_to_variable_pool(
                 variable_mapping=variable_mapping,
                 user_inputs=user_inputs,
                 variable_pool=variable_pool,
                 tenant_id=workflow.tenant_id,
-                node_instance=node_instance
+                node_type=node_type,
+                node_data=node_instance.node_data
             )
 
             # run node
-            node_run_result = node_instance.run(
-                variable_pool=variable_pool
-            )
+            generator = node_instance.run()
 
-            # sign output files
-            node_run_result.outputs = self.handle_special_values(node_run_result.outputs)
+            return node_instance, generator
         except Exception as e:
             raise WorkflowNodeRunFailedError(
-                node_id=node_instance.node_id,
-                node_type=node_instance.node_type,
-                node_title=node_instance.node_data.title,
+                node_instance=node_instance,
                 error=str(e)
             )
-
-        return node_instance, node_run_result
 
     @classmethod
     def handle_special_values(cls, value: Optional[Mapping[str, Any]]) -> Optional[dict]:
@@ -250,33 +412,49 @@ class WorkflowEntry:
 
         return new_value
 
-    def _mapping_user_inputs_to_variable_pool(self,
-                                              variable_mapping: dict,
-                                              user_inputs: dict,
-                                              variable_pool: VariablePool,
-                                              tenant_id: str,
-                                              node_instance: BaseNode):
-        for variable_key, variable_selector in variable_mapping.items():
-            if variable_key not in user_inputs and not variable_pool.get(variable_selector):
-                raise ValueError(f'Variable key {variable_key} not found in user inputs.')
+    @classmethod
+    def _mapping_user_inputs_to_variable_pool(
+        cls,
+        variable_mapping: Mapping[str, Sequence[str]],
+        user_inputs: dict,
+        variable_pool: VariablePool,
+        tenant_id: str,
+        node_type: NodeType,
+        node_data: BaseNodeData
+    ) -> None:
+        for node_variable, variable_selector in variable_mapping.items():
+            # fetch node id and variable key from node_variable
+            node_variable_list = node_variable.split('.')
+            if len(node_variable_list) < 1:
+                raise ValueError(f'Invalid node variable {node_variable}')
+            
+            node_variable_key = node_variable_list[1:]
+
+            if (
+                node_variable_key not in user_inputs
+                or node_variable not in user_inputs
+            ) and not variable_pool.get(variable_selector):
+                raise ValueError(f'Variable key {node_variable} not found in user inputs.')
 
             # fetch variable node id from variable selector
             variable_node_id = variable_selector[0]
             variable_key_list = variable_selector[1:]
+            variable_key_list = cast(list[str], variable_key_list)
 
-            # get value
-            value = user_inputs.get(variable_key)
+            # get input value
+            input_value = user_inputs.get(node_variable)
+            if not input_value:
+                input_value = user_inputs.get(node_variable_key)
 
             # FIXME: temp fix for image type
-            if node_instance.node_type == NodeType.LLM:
+            if node_type == NodeType.LLM:
                 new_value = []
-                if isinstance(value, list):
-                    node_data = node_instance.node_data
+                if isinstance(input_value, list):
                     node_data = cast(LLMNodeData, node_data)
 
                     detail = node_data.vision.configs.detail if node_data.vision.configs else None
 
-                    for item in value:
+                    for item in input_value:
                         if isinstance(item, dict) and 'type' in item and item['type'] == 'image':
                             transfer_method = FileTransferMethod.value_of(item.get('transfer_method'))
                             file = FileVar(
@@ -294,4 +472,4 @@ class WorkflowEntry:
                     value = new_value
 
             # append variable and value to variable pool
-            variable_pool.add([variable_node_id] + variable_key_list, value)
+            variable_pool.add([variable_node_id] + variable_key_list, input_value)

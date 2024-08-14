@@ -240,11 +240,8 @@ class AdvancedChatAppGenerateTaskPipeline(BasedGenerateTaskPipeline, WorkflowCyc
         graph_runtime_state = None
         workflow_run = None
         
-        for message in self._queue_manager.listen():
-            if tts_publisher:
-                tts_publisher.publish(message=message)
-
-            event = message.event
+        for queue_message in self._queue_manager.listen():
+            event = queue_message.event
 
             if isinstance(event, QueuePingEvent):
                 yield self._ping_stream_response()
@@ -433,6 +430,10 @@ class AdvancedChatAppGenerateTaskPipeline(BasedGenerateTaskPipeline, WorkflowCyc
                 if should_direct_answer:
                     continue
 
+                # only publish tts message at text chunk streaming
+                if tts_publisher:
+                    tts_publisher.publish(message=queue_message)
+
                 self._task_state.answer += delta_text
                 yield self._message_to_stream_response(delta_text, self._message.id)
             elif isinstance(event, QueueMessageReplaceEvent):
@@ -454,6 +455,7 @@ class AdvancedChatAppGenerateTaskPipeline(BasedGenerateTaskPipeline, WorkflowCyc
             else:
                 continue
         
+        # publish None when task finished
         if tts_publisher:
             tts_publisher.publish(None)
             

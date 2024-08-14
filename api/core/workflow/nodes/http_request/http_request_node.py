@@ -1,7 +1,7 @@
 import logging
 from mimetypes import guess_extension
 from os import path
-from typing import cast
+from typing import Any, Mapping, Sequence, cast
 
 from core.app.segments import parser
 from core.file.file_obj import FileTransferMethod, FileType, FileVar
@@ -107,13 +107,19 @@ class HttpRequestNode(BaseNode):
         return timeout
 
     @classmethod
-    def _extract_variable_selector_to_variable_mapping(cls, node_data: BaseNodeData) -> dict[str, list[str]]:
+    def _extract_variable_selector_to_variable_mapping(
+        cls, 
+        graph_config: Mapping[str, Any], 
+        node_id: str,
+        node_data: HttpRequestNodeData
+    ) -> Mapping[str, Sequence[str]]:
         """
         Extract variable selector to variable mapping
+        :param graph_config: graph config
+        :param node_id: node id
         :param node_data: node data
         :return:
         """
-        node_data = cast(HttpRequestNodeData, node_data)
         try:
             http_executor = HttpExecutor(node_data=node_data, timeout=HTTP_REQUEST_DEFAULT_TIMEOUT)
 
@@ -121,7 +127,7 @@ class HttpRequestNode(BaseNode):
 
             variable_mapping = {}
             for variable_selector in variable_selectors:
-                variable_mapping[variable_selector.variable] = variable_selector.value_selector
+                variable_mapping[node_id + '.' + variable_selector.variable] = variable_selector.value_selector
 
             return variable_mapping
         except Exception as e:

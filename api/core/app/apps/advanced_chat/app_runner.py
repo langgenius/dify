@@ -1,14 +1,14 @@
 import logging
 import os
 from collections.abc import Mapping
-from typing import Any, Optional, cast
+from typing import Any, cast
 
 from sqlalchemy import select
 from sqlalchemy.orm import Session
 
 from core.app.apps.advanced_chat.app_config_manager import AdvancedChatAppConfig
 from core.app.apps.base_app_queue_manager import AppQueueManager, PublishFrom
-from core.app.apps.base_app_runner import AppRunner
+from core.app.apps.workflow_app_runner import WorkflowBasedAppRunner
 from core.app.apps.workflow_logging_callback import WorkflowLoggingCallback
 from core.app.entities.app_invoke_entities import (
     AdvancedChatAppGenerateEntity,
@@ -17,52 +17,22 @@ from core.app.entities.app_invoke_entities import (
 from core.app.entities.queue_entities import (
     AppQueueEvent,
     QueueAnnotationReplyEvent,
-    QueueIterationCompletedEvent,
-    QueueIterationNextEvent,
-    QueueIterationStartEvent,
-    QueueNodeFailedEvent,
-    QueueNodeStartedEvent,
-    QueueNodeSucceededEvent,
-    QueueParallelBranchRunFailedEvent,
-    QueueParallelBranchRunStartedEvent,
-    QueueRetrieverResourcesEvent,
     QueueStopEvent,
     QueueTextChunkEvent,
-    QueueWorkflowFailedEvent,
-    QueueWorkflowStartedEvent,
-    QueueWorkflowSucceededEvent,
 )
 from core.moderation.base import ModerationException
 from core.workflow.callbacks.base_workflow_callback import WorkflowCallback
 from core.workflow.entities.node_entities import SystemVariable, UserFrom
 from core.workflow.entities.variable_pool import VariablePool
-from core.workflow.graph_engine.entities.event import (
-    GraphEngineEvent,
-    GraphRunFailedEvent,
-    GraphRunStartedEvent,
-    GraphRunSucceededEvent,
-    IterationRunFailedEvent,
-    IterationRunNextEvent,
-    IterationRunStartedEvent,
-    IterationRunSucceededEvent,
-    NodeRunFailedEvent,
-    NodeRunRetrieverResourceEvent,
-    NodeRunStartedEvent,
-    NodeRunStreamChunkEvent,
-    NodeRunSucceededEvent,
-    ParallelBranchRunFailedEvent,
-    ParallelBranchRunStartedEvent,
-    ParallelBranchRunSucceededEvent,
-)
 from core.workflow.workflow_entry import WorkflowEntry
 from extensions.ext_database import db
 from models.model import App, Conversation, EndUser, Message
-from models.workflow import ConversationVariable, Workflow
+from models.workflow import ConversationVariable
 
 logger = logging.getLogger(__name__)
 
 
-class AdvancedChatAppRunner(AppRunner):
+class AdvancedChatAppRunner(WorkflowBasedAppRunner):
     """
     AdvancedChat Application Runner
     """
@@ -80,8 +50,9 @@ class AdvancedChatAppRunner(AppRunner):
         :param conversation: conversation
         :param message: message
         """
+        super().__init__(queue_manager)
+
         self.application_generate_entity = application_generate_entity
-        self.queue_manager = queue_manager
         self.conversation = conversation
         self.message = message
 
@@ -101,10 +72,6 @@ class AdvancedChatAppRunner(AppRunner):
         if not workflow:
             raise ValueError('Workflow not initialized')
 
-        inputs = self.application_generate_entity.inputs
-        query = self.application_generate_entity.query
-        files = self.application_generate_entity.files
-
         user_id = None
         if self.application_generate_entity.invoke_from in [InvokeFrom.WEB_APP, InvokeFrom.SERVICE_API]:
             end_user = db.session.query(EndUser).filter(EndUser.id == self.application_generate_entity.user_id).first()
@@ -113,6 +80,32 @@ class AdvancedChatAppRunner(AppRunner):
         else:
             user_id = self.application_generate_entity.user_id
 
+        workflow_callbacks: list[WorkflowCallback] = []
+        if bool(os.environ.get("DEBUG", 'False').lower() == 'true'):
+            workflow_callbacks.append(WorkflowLoggingCallback())
+
+        # if only single iteration run is requested
+        if self.application_generate_entity.single_iteration_run:
+            node_id = self.application_generate_entity.single_iteration_run.node_id
+            user_inputs = self.application_generate_entity.single_iteration_run.inputs
+
+            generator = WorkflowEntry.single_step_run_iteration(
+                workflow=workflow,
+                node_id=node_id,
+                user_id=self.application_generate_entity.user_id,
+                user_inputs=user_inputs,
+                callbacks=workflow_callbacks
+            )
+
+            for event in generator:
+                # TODO
+                self._handle_event(workflow_entry, event)
+            return
+        
+        inputs = self.application_generate_entity.inputs
+        query = self.application_generate_entity.query
+        files = self.application_generate_entity.files
+        
         # moderation
         if self.handle_input_moderation(
                 app_record=app_record,
@@ -134,20 +127,16 @@ class AdvancedChatAppRunner(AppRunner):
 
         db.session.close()
 
-        workflow_callbacks: list[WorkflowCallback] = []
-        if bool(os.environ.get("DEBUG", 'False').lower() == 'true'):
-            workflow_callbacks.append(WorkflowLoggingCallback())
-
         # Init conversation variables
         stmt = select(ConversationVariable).where(
-            ConversationVariable.app_id == conversation.app_id, ConversationVariable.conversation_id == conversation.id
+            ConversationVariable.app_id == self.conversation.app_id, ConversationVariable.conversation_id == self.conversation.id
         )
         with Session(db.engine) as session:
             conversation_variables = session.scalars(stmt).all()
             if not conversation_variables:
                 conversation_variables = [
                     ConversationVariable.from_variable(
-                        app_id=conversation.app_id, conversation_id=conversation.id, variable=variable
+                        app_id=self.conversation.app_id, conversation_id=self.conversation.id, variable=variable
                     )
                     for variable in workflow.conversation_variables
                 ]
@@ -160,9 +149,11 @@ class AdvancedChatAppRunner(AppRunner):
         system_inputs = {
             SystemVariable.QUERY: query,
             SystemVariable.FILES: files,
-            SystemVariable.CONVERSATION_ID: conversation.id,
+            SystemVariable.CONVERSATION_ID: self.conversation.id,
             SystemVariable.USER_ID: user_id,
         }
+
+        # init variable pool
         variable_pool = VariablePool(
             system_variables=system_inputs,
             user_inputs=inputs,
@@ -174,9 +165,11 @@ class AdvancedChatAppRunner(AppRunner):
         workflow_entry = WorkflowEntry(
             workflow=workflow,
             user_id=self.application_generate_entity.user_id,
-            user_from=UserFrom.ACCOUNT
-            if self.application_generate_entity.invoke_from in [InvokeFrom.EXPLORE, InvokeFrom.DEBUGGER]
-            else UserFrom.END_USER,
+            user_from=(
+                UserFrom.ACCOUNT
+                if self.application_generate_entity.invoke_from in [InvokeFrom.EXPLORE, InvokeFrom.DEBUGGER]
+                else UserFrom.END_USER
+            ),
             invoke_from=self.application_generate_entity.invoke_from,
             call_depth=self.application_generate_entity.call_depth,
             variable_pool=variable_pool,
@@ -188,181 +181,6 @@ class AdvancedChatAppRunner(AppRunner):
 
         for event in generator:
             self._handle_event(workflow_entry, event)
-
-    def _handle_event(self, workflow_entry: WorkflowEntry, event: GraphEngineEvent) -> None:
-        """
-        Handle event
-        :param workflow_entry: workflow entry
-        :param event: event
-        """
-        if isinstance(event, GraphRunStartedEvent):
-            self._publish_event(
-                QueueWorkflowStartedEvent(
-                    graph_runtime_state=workflow_entry.graph_engine.graph_runtime_state
-                )
-            )
-        elif isinstance(event, GraphRunSucceededEvent):
-            self._publish_event(
-                QueueWorkflowSucceededEvent(outputs=event.outputs)
-            )
-        elif isinstance(event, GraphRunFailedEvent):
-            self._publish_event(
-                QueueWorkflowFailedEvent(error=event.error)
-            )
-        elif isinstance(event, NodeRunStartedEvent):
-            self._publish_event(
-                QueueNodeStartedEvent(
-                    node_execution_id=event.id,
-                    node_id=event.node_id,
-                    node_type=event.node_type,
-                    node_data=event.node_data,
-                    parallel_id=event.parallel_id,
-                    parallel_start_node_id=event.parallel_start_node_id,
-                    start_at=event.route_node_state.start_at,
-                    node_run_index=workflow_entry.graph_engine.graph_runtime_state.node_run_steps,
-                    predecessor_node_id=event.predecessor_node_id
-                )
-            )
-        elif isinstance(event, NodeRunSucceededEvent):
-            self._publish_event(
-                QueueNodeSucceededEvent(
-                    node_execution_id=event.id,
-                    node_id=event.node_id,
-                    node_type=event.node_type,
-                    node_data=event.node_data,
-                    parallel_id=event.parallel_id,
-                    parallel_start_node_id=event.parallel_start_node_id,
-                    start_at=event.route_node_state.start_at,
-                    inputs=event.route_node_state.node_run_result.inputs
-                    if event.route_node_state.node_run_result else {},
-                    process_data=event.route_node_state.node_run_result.process_data
-                    if event.route_node_state.node_run_result else {},
-                    outputs=event.route_node_state.node_run_result.outputs
-                    if event.route_node_state.node_run_result else {},
-                    execution_metadata=event.route_node_state.node_run_result.metadata
-                    if event.route_node_state.node_run_result else {},
-                )
-            )
-        elif isinstance(event, NodeRunFailedEvent):
-            self._publish_event(
-                QueueNodeFailedEvent(
-                    node_execution_id=event.id,
-                    node_id=event.node_id,
-                    node_type=event.node_type,
-                    node_data=event.node_data,
-                    parallel_id=event.parallel_id,
-                    parallel_start_node_id=event.parallel_start_node_id,
-                    start_at=event.route_node_state.start_at,
-                    inputs=event.route_node_state.node_run_result.inputs
-                    if event.route_node_state.node_run_result else {},
-                    process_data=event.route_node_state.node_run_result.process_data
-                    if event.route_node_state.node_run_result else {},
-                    outputs=event.route_node_state.node_run_result.outputs
-                    if event.route_node_state.node_run_result else {},
-                    error=event.route_node_state.node_run_result.error
-                    if event.route_node_state.node_run_result
-                       and event.route_node_state.node_run_result.error
-                    else "Unknown error"
-                )
-            )
-        elif isinstance(event, NodeRunStreamChunkEvent):
-            self._publish_event(
-                QueueTextChunkEvent(
-                    text=event.chunk_content
-                )
-            )
-        elif isinstance(event, NodeRunRetrieverResourceEvent):
-            self._publish_event(
-                QueueRetrieverResourcesEvent(
-                    retriever_resources=event.retriever_resources
-                )
-            )
-        elif isinstance(event, ParallelBranchRunStartedEvent):
-            self._publish_event(
-                QueueParallelBranchRunStartedEvent(
-                    parallel_id=event.parallel_id,
-                    parallel_start_node_id=event.parallel_start_node_id
-                )
-            )
-        elif isinstance(event, ParallelBranchRunSucceededEvent):
-            self._publish_event(
-                QueueParallelBranchRunStartedEvent(
-                    parallel_id=event.parallel_id,
-                    parallel_start_node_id=event.parallel_start_node_id
-                )
-            )
-        elif isinstance(event, ParallelBranchRunFailedEvent):
-            self._publish_event(
-                QueueParallelBranchRunFailedEvent(
-                    parallel_id=event.parallel_id,
-                    parallel_start_node_id=event.parallel_start_node_id,
-                    error=event.error
-                )
-            )
-        elif isinstance(event, IterationRunStartedEvent):
-            self._publish_event(
-                QueueIterationStartEvent(
-                    node_execution_id=event.iteration_id,
-                    node_id=event.iteration_node_id,
-                    node_type=event.iteration_node_type,
-                    node_data=event.iteration_node_data,
-                    parallel_id=event.parallel_id,
-                    parallel_start_node_id=event.parallel_start_node_id,
-                    start_at=event.start_at,
-                    node_run_index=workflow_entry.graph_engine.graph_runtime_state.node_run_steps,
-                    inputs=event.inputs,
-                    predecessor_node_id=event.predecessor_node_id,
-                    metadata=event.metadata
-                )
-            )
-        elif isinstance(event, IterationRunNextEvent):
-            self._publish_event(
-                QueueIterationNextEvent(
-                    node_execution_id=event.iteration_id,
-                    node_id=event.iteration_node_id,
-                    node_type=event.iteration_node_type,
-                    node_data=event.iteration_node_data,
-                    parallel_id=event.parallel_id,
-                    parallel_start_node_id=event.parallel_start_node_id,
-                    index=event.index,
-                    node_run_index=workflow_entry.graph_engine.graph_runtime_state.node_run_steps,
-                    output=event.pre_iteration_output,
-                )
-            )
-        elif isinstance(event, (IterationRunSucceededEvent | IterationRunFailedEvent)):
-            self._publish_event(
-                QueueIterationCompletedEvent(
-                    node_execution_id=event.iteration_id,
-                    node_id=event.iteration_node_id,
-                    node_type=event.iteration_node_type,
-                    node_data=event.iteration_node_data,
-                    parallel_id=event.parallel_id,
-                    parallel_start_node_id=event.parallel_start_node_id,
-                    start_at=event.start_at,
-                    node_run_index=workflow_entry.graph_engine.graph_runtime_state.node_run_steps,
-                    inputs=event.inputs,
-                    outputs=event.outputs,
-                    metadata=event.metadata,
-                    steps=event.steps,
-                    error=event.error if isinstance(event, IterationRunFailedEvent) else None
-                )
-            )
-
-    def get_workflow(self, app_model: App, workflow_id: str) -> Optional[Workflow]:
-        """
-        Get workflow
-        """
-        # fetch workflow by workflow_id
-        workflow = (
-            db.session.query(Workflow)
-            .filter(
-                Workflow.tenant_id == app_model.tenant_id, Workflow.app_id == app_model.id, Workflow.id == workflow_id
-            )
-            .first()
-        )
-
-        # return workflow
-        return workflow
 
     def handle_input_moderation(
             self,
@@ -449,10 +267,4 @@ class AdvancedChatAppRunner(AppRunner):
 
         self._publish_event(
             QueueStopEvent(stopped_by=stopped_by)
-        )
-
-    def _publish_event(self, event: AppQueueEvent) -> None:
-        self.queue_manager.publish(
-            event,
-            PublishFrom.APPLICATION_MANAGER
         )

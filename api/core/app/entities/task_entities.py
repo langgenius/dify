@@ -438,7 +438,7 @@ class WorkflowAppStreamResponse(AppStreamResponse):
     """
     WorkflowAppStreamResponse entity
     """
-    workflow_run_id: str
+    workflow_run_id: Optional[str] = None
 
 
 class AppBlockingResponse(BaseModel):

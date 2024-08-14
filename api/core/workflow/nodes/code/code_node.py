@@ -1,4 +1,4 @@
-from typing import Optional, Union, cast
+from typing import Any, Mapping, Optional, Sequence, Union, cast
 
 from configs import dify_config
 from core.helper.code_executor.code_executor import CodeExecutionException, CodeExecutor, CodeLanguage
@@ -314,13 +314,19 @@ class CodeNode(BaseNode):
         return transformed_result
 
     @classmethod
-    def _extract_variable_selector_to_variable_mapping(cls, node_data: CodeNodeData) -> dict[str, list[str]]:
+    def _extract_variable_selector_to_variable_mapping(
+        cls, 
+        graph_config: Mapping[str, Any], 
+        node_id: str,
+        node_data: CodeNodeData
+    ) -> Mapping[str, Sequence[str]]:
         """
         Extract variable selector to variable mapping
+        :param graph_config: graph config
+        :param node_id: node id
         :param node_data: node data
         :return:
         """
-
         return {
-            variable_selector.variable: variable_selector.value_selector for variable_selector in node_data.variables
+            node_id + '.' + variable_selector.variable: variable_selector.value_selector for variable_selector in node_data.variables
         }

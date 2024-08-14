@@ -1,7 +1,8 @@
-from typing import cast
+from typing import Any, Mapping, Sequence, cast
 
 from core.workflow.entities.base_node_data_entities import BaseNodeData
 from core.workflow.entities.node_entities import NodeRunResult, NodeType
+from core.workflow.graph_engine.entities.graph import Graph
 from core.workflow.nodes.answer.answer_stream_generate_router import AnswerStreamGeneratorRouter
 from core.workflow.nodes.answer.entities import (
     AnswerNodeData,
@@ -52,9 +53,16 @@ class AnswerNode(BaseNode):
         )
 
     @classmethod
-    def _extract_variable_selector_to_variable_mapping(cls, node_data: BaseNodeData) -> dict[str, list[str]]:
+    def _extract_variable_selector_to_variable_mapping(
+        cls, 
+        graph_config: Mapping[str, Any], 
+        node_id: str,
+        node_data: AnswerNodeData
+    ) -> Mapping[str, Sequence[str]]:
         """
         Extract variable selector to variable mapping
+        :param graph_config: graph config
+        :param node_id: node id
         :param node_data: node data
         :return:
         """
@@ -66,6 +74,6 @@ class AnswerNode(BaseNode):
 
         variable_mapping = {}
         for variable_selector in variable_selectors:
-            variable_mapping[variable_selector.variable] = variable_selector.value_selector
+            variable_mapping[node_id + '.' + variable_selector.variable] = variable_selector.value_selector
 
         return variable_mapping

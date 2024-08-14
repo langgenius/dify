@@ -1,5 +1,5 @@
 import os
-from typing import Optional, cast
+from typing import Any, Mapping, Optional, Sequence, cast
 
 from core.helper.code_executor.code_executor import CodeExecutionException, CodeExecutor, CodeLanguage
 from core.workflow.entities.node_entities import NodeRunResult, NodeType
@@ -77,13 +77,19 @@ class TemplateTransformNode(BaseNode):
         )
 
     @classmethod
-    def _extract_variable_selector_to_variable_mapping(cls, node_data: TemplateTransformNodeData) -> dict[
-        str, list[str]]:
+    def _extract_variable_selector_to_variable_mapping(
+        cls, 
+        graph_config: Mapping[str, Any], 
+        node_id: str,
+        node_data: TemplateTransformNodeData
+    ) -> Mapping[str, Sequence[str]]:
         """
         Extract variable selector to variable mapping
+        :param graph_config: graph config
+        :param node_id: node id
         :param node_data: node data
         :return:
         """
         return {
-            variable_selector.variable: variable_selector.value_selector for variable_selector in node_data.variables
+            node_id + '.' + variable_selector.variable: variable_selector.value_selector for variable_selector in node_data.variables
         }

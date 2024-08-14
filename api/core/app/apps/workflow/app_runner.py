@@ -1,9 +1,10 @@
 import logging
 import os
-from typing import Optional, cast
+from typing import cast
 
 from core.app.apps.base_app_queue_manager import AppQueueManager
 from core.app.apps.workflow.app_config_manager import WorkflowAppConfig
+from core.app.apps.workflow_app_runner import WorkflowBasedAppRunner
 from core.app.apps.workflow_logging_callback import WorkflowLoggingCallback
 from core.app.entities.app_invoke_entities import (
     InvokeFrom,
@@ -15,33 +16,44 @@ from core.workflow.entities.variable_pool import VariablePool
 from core.workflow.workflow_entry import WorkflowEntry
 from extensions.ext_database import db
 from models.model import App, EndUser
-from models.workflow import Workflow
 
 logger = logging.getLogger(__name__)
 
 
-class WorkflowAppRunner:
+class WorkflowAppRunner(WorkflowBasedAppRunner):
     """
     Workflow Application Runner
     """
 
-    def run(self, application_generate_entity: WorkflowAppGenerateEntity, queue_manager: AppQueueManager) -> None:
+    def __init__(
+            self,
+            application_generate_entity: WorkflowAppGenerateEntity,
+            queue_manager: AppQueueManager
+    ) -> None:
+        """
+        :param application_generate_entity: application generate entity
+        :param queue_manager: application queue manager
+        """
+        self.application_generate_entity = application_generate_entity
+        self.queue_manager = queue_manager
+
+    def run(self) -> None:
         """
         Run application
         :param application_generate_entity: application generate entity
         :param queue_manager: application queue manager
         :return:
         """
-        app_config = application_generate_entity.app_config
+        app_config = self.application_generate_entity.app_config
         app_config = cast(WorkflowAppConfig, app_config)
 
         user_id = None
-        if application_generate_entity.invoke_from in [InvokeFrom.WEB_APP, InvokeFrom.SERVICE_API]:
-            end_user = db.session.query(EndUser).filter(EndUser.id == application_generate_entity.user_id).first()
+        if self.application_generate_entity.invoke_from in [InvokeFrom.WEB_APP, InvokeFrom.SERVICE_API]:
+            end_user = db.session.query(EndUser).filter(EndUser.id == self.application_generate_entity.user_id).first()
             if end_user:
                 user_id = end_user.session_id
         else:
-            user_id = application_generate_entity.user_id
+            user_id = self.application_generate_entity.user_id
 
         app_record = db.session.query(App).filter(App.id == app_config.app_id).first()
         if not app_record:
@@ -51,82 +63,63 @@ class WorkflowAppRunner:
         if not workflow:
             raise ValueError('Workflow not initialized')
 
-        inputs = application_generate_entity.inputs
-        files = application_generate_entity.files
-
         db.session.close()
 
         workflow_callbacks: list[WorkflowCallback] = []
-
         if bool(os.environ.get('DEBUG', 'False').lower() == 'true'):
             workflow_callbacks.append(WorkflowLoggingCallback())
 
+        # if only single iteration run is requested
+        if self.application_generate_entity.single_iteration_run:
+            node_id = self.application_generate_entity.single_iteration_run.node_id
+            user_inputs = self.application_generate_entity.single_iteration_run.inputs
+
+            generator = WorkflowEntry.single_step_run_iteration(
+                workflow=workflow,
+                node_id=node_id,
+                user_id=self.application_generate_entity.user_id,
+                user_inputs=user_inputs,
+                callbacks=workflow_callbacks
+            )
+
+            for event in generator:
+                # TODO
+                self._handle_event(workflow_entry, event)
+            return
+        
+        inputs = self.application_generate_entity.inputs
+        files = self.application_generate_entity.files
+    
         # Create a variable pool.
         system_inputs = {
             SystemVariable.FILES: files,
             SystemVariable.USER_ID: user_id,
         }
+
         variable_pool = VariablePool(
             system_variables=system_inputs,
             user_inputs=inputs,
             environment_variables=workflow.environment_variables,
             conversation_variables=[],
         )
-
+        
         # RUN WORKFLOW
-        workflow_entry = WorkflowEntry()
-        workflow_entry.run(
+        workflow_entry = WorkflowEntry(
             workflow=workflow,
-            user_id=application_generate_entity.user_id,
-            user_from=UserFrom.ACCOUNT
-            if application_generate_entity.invoke_from in [InvokeFrom.EXPLORE, InvokeFrom.DEBUGGER]
-            else UserFrom.END_USER,
-            invoke_from=application_generate_entity.invoke_from,
-            callbacks=workflow_callbacks,
-            call_depth=application_generate_entity.call_depth,
+            user_id=self.application_generate_entity.user_id,
+            user_from=(
+                UserFrom.ACCOUNT
+                if self.application_generate_entity.invoke_from in [InvokeFrom.EXPLORE, InvokeFrom.DEBUGGER]
+                else UserFrom.END_USER
+            ),
+            invoke_from=self.application_generate_entity.invoke_from,
+            call_depth=self.application_generate_entity.call_depth,
             variable_pool=variable_pool,
         )
 
-    def single_iteration_run(
-        self, app_id: str, workflow_id: str, queue_manager: AppQueueManager, inputs: dict, node_id: str, user_id: str
-    ) -> None:
-        """
-        Single iteration run
-        """
-        app_record = db.session.query(App).filter(App.id == app_id).first()
-        if not app_record:
-            raise ValueError('App not found')
-
-        if not app_record.workflow_id:
-            raise ValueError('Workflow not initialized')
-
-        workflow = self.get_workflow(app_model=app_record, workflow_id=workflow_id)
-        if not workflow:
-            raise ValueError("Workflow not initialized")
-        
-        workflow_callbacks = []
-
-        workflow_entry = WorkflowEntry()
-        workflow_entry.single_step_run_iteration_workflow_node(
-            workflow=workflow,
-            node_id=node_id,
-            user_id=user_id,
-            user_inputs=inputs,
+        generator = workflow_entry.run(
             callbacks=workflow_callbacks
         )
 
-    def get_workflow(self, app_model: App, workflow_id: str) -> Optional[Workflow]:
-        """
-        Get workflow
-        """
-        # fetch workflow by workflow_id
-        workflow = (
-            db.session.query(Workflow)
-            .filter(
-                Workflow.tenant_id == app_model.tenant_id, Workflow.app_id == app_model.id, Workflow.id == workflow_id
-            )
-            .first()
-        )
-
-        # return workflow
-        return workflow
+        for event in generator:
+            self._handle_event(workflow_entry, event)

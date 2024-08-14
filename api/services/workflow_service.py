@@ -8,8 +8,9 @@ from core.app.apps.advanced_chat.app_config_manager import AdvancedChatAppConfig
 from core.app.apps.workflow.app_config_manager import WorkflowAppConfigManager
 from core.app.segments import Variable
 from core.model_runtime.utils.encoders import jsonable_encoder
-from core.workflow.entities.node_entities import NodeType
+from core.workflow.entities.node_entities import NodeRunResult, NodeType
 from core.workflow.errors import WorkflowNodeRunFailedError
+from core.workflow.nodes.event import RunCompletedEvent
 from core.workflow.nodes.node_mapping import node_classes
 from core.workflow.workflow_entry import WorkflowEntry
 from events.app_event import app_draft_workflow_was_synced, app_published_workflow_was_updated
@@ -213,81 +214,62 @@ class WorkflowService:
             raise ValueError('Workflow not initialized')
 
         # run draft workflow node
-        workflow_entry = WorkflowEntry()
         start_at = time.perf_counter()
 
         try:
-            node_instance, node_run_result = workflow_entry.single_step_run(
+            node_instance, generator = WorkflowEntry.single_step_run(
                 workflow=draft_workflow,
                 node_id=node_id,
                 user_inputs=user_inputs,
                 user_id=account.id,
             )
+
+            node_run_result: NodeRunResult | None = None
+            for event in generator:
+                if isinstance(event, RunCompletedEvent):
+                    node_run_result = event.run_result
+
+                    # sign output files
+                    node_run_result.outputs = WorkflowEntry.handle_special_values(node_run_result.outputs)
+                    break
+
+            if not node_run_result:
+                raise ValueError('Node run failed with no run result')
+            
+            run_succeeded = True if node_run_result.status == WorkflowNodeExecutionStatus.SUCCEEDED else False
+            error = node_run_result.error if not run_succeeded else None
         except WorkflowNodeRunFailedError as e:
-            workflow_node_execution = WorkflowNodeExecution(
-                tenant_id=app_model.tenant_id,
-                app_id=app_model.id,
-                workflow_id=draft_workflow.id,
-                triggered_from=WorkflowNodeExecutionTriggeredFrom.SINGLE_STEP.value,
-                index=1,
-                node_id=e.node_id,
-                node_type=e.node_type.value,
-                title=e.node_title,
-                status=WorkflowNodeExecutionStatus.FAILED.value,
-                error=e.error,
-                elapsed_time=time.perf_counter() - start_at,
-                created_by_role=CreatedByRole.ACCOUNT.value,
-                created_by=account.id,
-                created_at=datetime.now(timezone.utc).replace(tzinfo=None),
-                finished_at=datetime.now(timezone.utc).replace(tzinfo=None)
-            )
-            db.session.add(workflow_node_execution)
-            db.session.commit()
+            node_instance = e.node_instance
+            run_succeeded = False
+            node_run_result = None
+            error = e.error
 
-            return workflow_node_execution
+        workflow_node_execution = WorkflowNodeExecution()
+        workflow_node_execution.tenant_id = app_model.tenant_id
+        workflow_node_execution.app_id = app_model.id
+        workflow_node_execution.workflow_id = draft_workflow.id
+        workflow_node_execution.triggered_from = WorkflowNodeExecutionTriggeredFrom.SINGLE_STEP.value
+        workflow_node_execution.index = 1
+        workflow_node_execution.node_id = node_id
+        workflow_node_execution.node_type = node_instance.node_type.value
+        workflow_node_execution.title = node_instance.node_data.title
+        workflow_node_execution.elapsed_time = time.perf_counter() - start_at
+        workflow_node_execution.created_by_role = CreatedByRole.ACCOUNT.value
+        workflow_node_execution.created_by = account.id
+        workflow_node_execution.created_at = datetime.now(timezone.utc).replace(tzinfo=None)
+        workflow_node_execution.finished_at = datetime.now(timezone.utc).replace(tzinfo=None)
 
-        if node_run_result.status == WorkflowNodeExecutionStatus.SUCCEEDED:
+        if run_succeeded and node_run_result:
             # create workflow node execution
-            workflow_node_execution = WorkflowNodeExecution(
-                tenant_id=app_model.tenant_id,
-                app_id=app_model.id,
-                workflow_id=draft_workflow.id,
-                triggered_from=WorkflowNodeExecutionTriggeredFrom.SINGLE_STEP.value,
-                index=1,
-                node_id=node_id,
-                node_type=node_instance.node_type.value,
-                title=node_instance.node_data.title,
-                inputs=json.dumps(node_run_result.inputs) if node_run_result.inputs else None,
-                process_data=json.dumps(node_run_result.process_data) if node_run_result.process_data else None,
-                outputs=json.dumps(jsonable_encoder(node_run_result.outputs)) if node_run_result.outputs else None,
-                execution_metadata=(json.dumps(jsonable_encoder(node_run_result.metadata))
-                                    if node_run_result.metadata else None),
-                status=WorkflowNodeExecutionStatus.SUCCEEDED.value,
-                elapsed_time=time.perf_counter() - start_at,
-                created_by_role=CreatedByRole.ACCOUNT.value,
-                created_by=account.id,
-                created_at=datetime.now(timezone.utc).replace(tzinfo=None),
-                finished_at=datetime.now(timezone.utc).replace(tzinfo=None)
-            )
+            workflow_node_execution.inputs = json.dumps(node_run_result.inputs) if node_run_result.inputs else None
+            workflow_node_execution.process_data = json.dumps(node_run_result.process_data) if node_run_result.process_data else None
+            workflow_node_execution.outputs = json.dumps(jsonable_encoder(node_run_result.outputs)) if node_run_result.outputs else None
+            workflow_node_execution.execution_metadata = json.dumps(jsonable_encoder(node_run_result.metadata)) if node_run_result.metadata else None
+            workflow_node_execution.status = WorkflowNodeExecutionStatus.SUCCEEDED.value
         else:
             # create workflow node execution
-            workflow_node_execution = WorkflowNodeExecution(
-                tenant_id=app_model.tenant_id,
-                app_id=app_model.id,
-                workflow_id=draft_workflow.id,
-                triggered_from=WorkflowNodeExecutionTriggeredFrom.SINGLE_STEP.value,
-                index=1,
-                node_id=node_id,
-                node_type=node_instance.node_type.value,
-                title=node_instance.node_data.title,
-                status=node_run_result.status.value,
-                error=node_run_result.error,
-                elapsed_time=time.perf_counter() - start_at,
-                created_by_role=CreatedByRole.ACCOUNT.value,
-                created_by=account.id,
-                created_at=datetime.now(timezone.utc).replace(tzinfo=None),
-                finished_at=datetime.now(timezone.utc).replace(tzinfo=None)
-            )
+            workflow_node_execution.status = WorkflowNodeExecutionStatus.FAILED.value
+            workflow_node_execution.error = error
 
         db.session.add(workflow_node_execution)
         db.session.commit()

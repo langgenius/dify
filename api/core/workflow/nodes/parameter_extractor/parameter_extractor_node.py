@@ -1,6 +1,6 @@
 import json
 import uuid
-from typing import Optional, cast
+from typing import Any, Mapping, Optional, Sequence, cast
 
 from core.app.entities.app_invoke_entities import ModelConfigWithCredentialsEntity
 from core.memory.token_buffer_memory import TokenBufferMemory
@@ -701,15 +701,19 @@ class ParameterExtractorNode(LLMNode):
         return self._model_instance, self._model_config
 
     @classmethod
-    def _extract_variable_selector_to_variable_mapping(cls, node_data: ParameterExtractorNodeData) -> dict[
-        str, list[str]]:
+    def _extract_variable_selector_to_variable_mapping(
+        cls, 
+        graph_config: Mapping[str, Any], 
+        node_id: str,
+        node_data: ParameterExtractorNodeData
+    ) -> Mapping[str, Sequence[str]]:
         """
         Extract variable selector to variable mapping
+        :param graph_config: graph config
+        :param node_id: node id
         :param node_data: node data
         :return:
         """
-        node_data = node_data
-
         variable_mapping = {
             'query': node_data.query
         }
@@ -718,5 +722,9 @@ class ParameterExtractorNode(LLMNode):
             variable_template_parser = VariableTemplateParser(template=node_data.instruction)
             for selector in variable_template_parser.extract_variable_selectors():
                 variable_mapping[selector.variable] = selector.value_selector
+
+        variable_mapping = {
+            node_id + '.' + key: value for key, value in variable_mapping.items()
+        }
 
         return variable_mapping

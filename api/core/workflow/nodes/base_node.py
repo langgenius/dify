@@ -67,19 +67,35 @@ class BaseNode(ABC):
             yield from result
 
     @classmethod
-    def extract_variable_selector_to_variable_mapping(cls, config: dict):
+    def extract_variable_selector_to_variable_mapping(cls, graph_config: Mapping[str, Any], config: dict) -> Mapping[str, Sequence[str]]:
         """
         Extract variable selector to variable mapping
+        :param graph_config: graph config
         :param config: node config
         :return:
         """
+        node_id = config.get("id")
+        if not node_id:
+            raise ValueError("Node ID is required when extracting variable selector to variable mapping.")
+
         node_data = cls._node_data_cls(**config.get("data", {}))
-        return cls._extract_variable_selector_to_variable_mapping(node_data)
+        return cls._extract_variable_selector_to_variable_mapping(
+            graph_config=graph_config,
+            node_id=node_id,
+            node_data=node_data
+        )
 
     @classmethod
-    def _extract_variable_selector_to_variable_mapping(cls, node_data: BaseNodeData) -> Mapping[str, Sequence[str]]:
+    def _extract_variable_selector_to_variable_mapping(
+        cls, 
+        graph_config: Mapping[str, Any], 
+        node_id: str,
+        node_data: BaseNodeData
+    ) -> Mapping[str, Sequence[str]]:
         """
         Extract variable selector to variable mapping
+        :param graph_config: graph config
+        :param node_id: node id
         :param node_data: node data
         :return:
         """

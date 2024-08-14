@@ -1,10 +1,11 @@
 import logging
-from collections.abc import Generator
+from collections.abc import Generator, Mapping, Sequence
 from datetime import datetime, timezone
 from typing import Any, cast
 
 from configs import dify_config
 from core.model_runtime.utils.encoders import jsonable_encoder
+from core.workflow.entities.base_node_data_entities import BaseNodeData
 from core.workflow.entities.node_entities import NodeRunMetadataKey, NodeRunResult, NodeType
 from core.workflow.graph_engine.entities.event import (
     BaseGraphEvent,
@@ -287,12 +288,67 @@ class IterationNode(BaseNode):
             variable_pool.remove([self.node_id, 'item'])
     
     @classmethod
-    def _extract_variable_selector_to_variable_mapping(cls, node_data: IterationNodeData) -> dict[str, list[str]]:
+    def _extract_variable_selector_to_variable_mapping(
+        cls, 
+        graph_config: Mapping[str, Any], 
+        node_id: str,
+        node_data: IterationNodeData
+    ) -> Mapping[str, Sequence[str]]:
         """
         Extract variable selector to variable mapping
+        :param graph_config: graph config
+        :param node_id: node id
         :param node_data: node data
         :return:
         """
-        return {
-            'input_selector': node_data.iterator_selector,
+        variable_mapping = {
+            f'{node_id}.input_selector': node_data.iterator_selector,
         }
+
+        # init graph
+        iteration_graph = Graph.init(
+            graph_config=graph_config,
+            root_node_id=node_data.start_node_id
+        )
+
+        if not iteration_graph:
+            raise ValueError('iteration graph not found')
+        
+        for sub_node_id, sub_node_config in iteration_graph.node_id_config_mapping.items():
+            if sub_node_config.get('data', {}).get('iteration_id') != node_id:
+                continue
+
+            # variable selector to variable mapping
+            try:
+                # Get node class
+                from core.workflow.nodes.node_mapping import node_classes
+                node_type = NodeType.value_of(sub_node_config.get('data', {}).get('type'))
+                node_cls = node_classes.get(node_type)
+                if not node_cls:
+                    continue
+
+                node_cls = cast(BaseNode, node_cls)
+                
+                sub_node_variable_mapping = node_cls.extract_variable_selector_to_variable_mapping(
+                    graph_config=graph_config, 
+                    config=sub_node_config
+                )
+                sub_node_variable_mapping = cast(dict[str, list[str]], sub_node_variable_mapping)
+            except NotImplementedError:
+                sub_node_variable_mapping = {}
+
+            # remove iteration variables
+            sub_node_variable_mapping = {
+                sub_node_id + '.' + key: value for key, value in sub_node_variable_mapping.items()
+                if value[0] != node_id
+            }
+
+            variable_mapping.update(sub_node_variable_mapping)
+
+        # remove variable out from iteration
+        variable_mapping = {
+            key: value for key, value in variable_mapping.items()
+            if value[0] not in iteration_graph.node_ids
+        }
+        
+        return variable_mapping
