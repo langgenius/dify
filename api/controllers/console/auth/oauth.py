@@ -1,6 +1,7 @@
 import logging
 from datetime import datetime, timezone
 from typing import Optional
+import os 
 
 import requests
 from flask import current_app, redirect, request
@@ -18,6 +19,7 @@ from services.email_service import EmailService
 
 
 from .. import api
+
 
 
 def get_oauth_providers():

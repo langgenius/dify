@@ -1,5 +1,6 @@
 from typing import Optional
 
+import os 
 from pydantic import AliasChoices, Field, NonNegativeInt, PositiveInt, computed_field
 from pydantic_settings import BaseSettings
 
@@ -61,25 +62,25 @@ class EndpointConfig(BaseSettings):
     CONSOLE_API_URL: str = Field(
         description='The backend URL prefix of the console API.'
                     'used to concatenate the login authorization callback or notion integration callback.',
-        default='http://localhost:5001/',
+        default=os.getenv('CONSOLE_API_URL'),
     )
 
     CONSOLE_WEB_URL: str = Field(
         description='The front-end URL prefix of the console web.'
                     'used to concatenate some front-end addresses and for CORS configuration use.',
-        default='',
+        default=os.getenv('CONSOLE_WEB_URL'),
     )
 
     SERVICE_API_URL: str = Field(
         description='Service API Url prefix.'
                     'used to display Service API Base Url to the front-end.',
-        default='',
+        default=os.getenv('SERVICE_API_URL'),
     )
 
     APP_WEB_URL: str = Field(
         description='WebApp Url prefix.'
                     'used to display WebAPP API Base Url to the front-end.',
-        default='',
+        default=os.getenv('APP_WEB_URL'),
     )
 
 
@@ -278,16 +279,18 @@ class OAuthConfig(BaseSettings):
         default=None,
     )
 
+
     # TODO : update the variables in the production settings 
     GOOGLE_CLIENT_ID: Optional[str] = Field(
         description='Google client id for OAuth',
-        default="496157740953-jtorq1pmavl1rhacs2v5im5baausgjv6.apps.googleusercontent.com",
+        default=os.getenv('GOOGLE_CLIENT_ID'),
+        
         
     )
 
     GOOGLE_CLIENT_SECRET: Optional[str] = Field(
         description='Google client secret key for OAuth',
-        default="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",
+        default=os.getenv('GOOGLE_CLIENT_SECRET'),
     )
 
 
