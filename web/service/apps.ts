@@ -12,7 +12,7 @@ export const fetchAppList: Fetcher<AppListResponse, { url: string; params?: Reco
 export const fetchAppDetail = ({ url, id }: { url: string; id: string }) => {
   return get<AppDetailResponse>(`${url}/${id}`)
 }
-//
+
 export const fetchAppSSO = async ({ appId }: { appId: string }) => {
   return get<AppSSOResponse>(`/enterprise/app-setting/sso?appID=${appId}`)
 }
