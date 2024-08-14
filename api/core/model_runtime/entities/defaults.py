@@ -100,8 +100,8 @@ PARAMETER_RULE_TEMPLATE: dict[DefaultParameterName, dict] = {
         },
         'type': 'string',
         'help': {
-            'en_US': 'Set a response format, ensure the output from llm is a valid code block as possible, such as JSON, XML, etc.',
-            'zh_Hans': '设置一个返回格式，确保llm的输出尽可能是有效的代码块，如JSON、XML等',
+            'en_US': 'Set a response json schema will ensure LLM to adhere it.',
+            'zh_Hans': '设置返回的json schema，llm将按照它返回',
         },
         'required': False,
     },
