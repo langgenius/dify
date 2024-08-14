@@ -1,5 +1,4 @@
 services:
-  # The postgres database.
   db:
     image: postgres:15-alpine
     restart: always
@@ -9,8 +8,10 @@ services:
       POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-difyai123456}
       POSTGRES_DB: ${POSTGRES_DB:-dify}
       PGDATA: ${PGDATA:-/var/lib/postgresql/data/pgdata}
+
     volumes:
       - postgres_data:/var/lib/postgresql/data
+
     ports:
       - "${EXPOSE_POSTGRES_PORT:-5433}:5432"
 
@@ -43,6 +44,46 @@ services:
       AUTHORIZATION_ADMINLIST_USERS: ${WEAVIATE_AUTHORIZATION_ADMINLIST_USERS:-hello@dify.ai}
     ports:
       - "${EXPOSE_WEAVIATE_PORT:-8888}:8080"
+
+  api:
+    build:
+      context: ../api
+      dockerfile: Dockerfile
+    restart: always
+    depends_on:
+      - db
+      - redis
+      - weaviate
+    environment:
+      MODE: api
+    ports:
+      - "${EXPOSE_API_PORT:-5001}:5001"
+
+  worker:
+    build:
+      context: ../api
+      dockerfile: Dockerfile
+    restart: always
+    environment:
+      MODE: worker
+    depends_on:
+      - db
+      - redis
+      - weaviate
+
+  web:
+    build:
+      context: ../web
+      dockerfile: Dockerfile
+    restart: always
+    depends_on:
+      - api
+      - redis
+      - weaviate
+      - db
+
+    ports:
+      - "${EXPOSE_WEB_PORT:-4444}:3000"
 
 volumes:
   postgres_data:

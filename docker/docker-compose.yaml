@@ -22,23 +22,31 @@ x-shared-env: &shared-api-worker-env
   CELERY_WORKER_CLASS: ${CELERY_WORKER_CLASS:-}
   GUNICORN_TIMEOUT: ${GUNICORN_TIMEOUT:-360}
   CELERY_WORKER_AMOUNT: ${CELERY_WORKER_AMOUNT:-}
+  CELERY_AUTO_SCALE: ${CELERY_AUTO_SCALE:-false}
+  CELERY_MAX_WORKERS: ${CELERY_MAX_WORKERS:-}
+  CELERY_MIN_WORKERS: ${CELERY_MIN_WORKERS:-}
   API_TOOL_DEFAULT_CONNECT_TIMEOUT: ${API_TOOL_DEFAULT_CONNECT_TIMEOUT:-10}
   API_TOOL_DEFAULT_READ_TIMEOUT: ${API_TOOL_DEFAULT_READ_TIMEOUT:-60}
   DB_USERNAME: ${DB_USERNAME:-postgres}
   DB_PASSWORD: ${DB_PASSWORD:-difyai123456}
   DB_HOST: ${DB_HOST:-db}
-  DB_PORT: ${DB_PORT:-5433}
+  DB_PORT: ${DB_PORT:-5432}
   DB_DATABASE: ${DB_DATABASE:-dify}
   SQLALCHEMY_POOL_SIZE: ${SQLALCHEMY_POOL_SIZE:-30}
   SQLALCHEMY_POOL_RECYCLE: ${SQLALCHEMY_POOL_RECYCLE:-3600}
   SQLALCHEMY_ECHO: ${SQLALCHEMY_ECHO:-false}
+  POSTGRES_MAX_CONNECTIONS: ${POSTGRES_MAX_CONNECTIONS:-100}
+  POSTGRES_SHARED_BUFFERS: ${POSTGRES_SHARED_BUFFERS:-128MB}
+  POSTGRES_WORK_MEM: ${POSTGRES_WORK_MEM:-4MB}
+  POSTGRES_MAINTENANCE_WORK_MEM: ${POSTGRES_MAINTENANCE_WORK_MEM:-64MB}
+  POSTGRES_EFFECTIVE_CACHE_SIZE: ${POSTGRES_EFFECTIVE_CACHE_SIZE:-4096MB}
   REDIS_HOST: ${REDIS_HOST:-redis}
-  REDIS_PORT: ${REDIS_PORT:-6380}
+  REDIS_PORT: ${REDIS_PORT:-6379}
   REDIS_USERNAME: ${REDIS_USERNAME:-}
   REDIS_PASSWORD: ${REDIS_PASSWORD:-difyai123456}
   REDIS_USE_SSL: ${REDIS_USE_SSL:-false}
   REDIS_DB: 0
-  CELERY_BROKER_URL: ${CELERY_BROKER_URL:-redis://:difyai123456@redis:6380/1}
+  CELERY_BROKER_URL: ${CELERY_BROKER_URL:-redis://:difyai123456@redis:6379/1}
   BROKER_USE_SSL: ${BROKER_USE_SSL:-false}
   WEB_API_CORS_ALLOW_ORIGINS: ${WEB_API_CORS_ALLOW_ORIGINS:-*}
   CONSOLE_CORS_ALLOW_ORIGINS: ${CONSOLE_CORS_ALLOW_ORIGINS:-*}
@@ -73,7 +81,7 @@ x-shared-env: &shared-api-worker-env
   OCI_SECRET_KEY: ${OCI_SECRET_KEY:-}
   OCI_REGION: ${OCI_REGION:-}
   VECTOR_STORE: ${VECTOR_STORE:-weaviate}
-  WEAVIATE_ENDPOINT: ${WEAVIATE_ENDPOINT:-http://weaviate:8888}
+  WEAVIATE_ENDPOINT: ${WEAVIATE_ENDPOINT:-http://weaviate:8080}
   WEAVIATE_API_KEY: ${WEAVIATE_API_KEY:-WVF5YThaHlkYwhGUSmCRgsX3tD5ngdN8pkih}
   QDRANT_URL: ${QDRANT_URL:-http://qdrant:6333}
   QDRANT_API_KEY: ${QDRANT_API_KEY:-difyai123456}
@@ -117,6 +125,10 @@ x-shared-env: &shared-api-worker-env
   CHROMA_DATABASE: ${CHROMA_DATABASE:-default_database}
   CHROMA_AUTH_PROVIDER: ${CHROMA_AUTH_PROVIDER:-chromadb.auth.token_authn.TokenAuthClientProvider}
   CHROMA_AUTH_CREDENTIALS: ${CHROMA_AUTH_CREDENTIALS:-}
+  ELASTICSEARCH_HOST: ${ELASTICSEARCH_HOST:-127.0.0.1}
+  ELASTICSEARCH_PORT: ${ELASTICSEARCH_PORT:-9200}
+  ELASTICSEARCH_USERNAME: ${ELASTICSEARCH_USERNAME:-elastic}
+  ELASTICSEARCH_PASSWORD: ${ELASTICSEARCH_PASSWORD:-elastic}
   # AnalyticDB configuration
   ANALYTICDB_KEY_ID: ${ANALYTICDB_KEY_ID:-}
   ANALYTICDB_KEY_SECRET: ${ANALYTICDB_KEY_SECRET:-}
@@ -178,10 +190,13 @@ x-shared-env: &shared-api-worker-env
 
 services:
   # API service
-
-  # Instead of this use the source code to buildg the image
   api:
-    image: langgenius/dify-api:0.6.15
+    # image: langgenius/dify-api
+
+    build:
+      context: ../api
+      dockerfile: Dockerfile
+
     restart: always
     environment:
       # Use the shared environment variables.
@@ -201,7 +216,10 @@ services:
   # worker service
   # The Celery worker for processing the queue.
   worker:
-    image: langgenius/dify-api:0.6.15
+    # image: langgenius/dify-api
+    build:
+      context: ../api
+      dockerfile: Dockerfile
     restart: always
     environment:
       # Use the shared environment variables.
@@ -218,16 +236,19 @@ services:
       - ssrf_proxy_network
       - default
 
-  # Frontend web application.
-
-  # Instead of this use the source code to build the image
+  # Frontend web appliation.
   web:
-    image: langgenius/dify-web:0.6.15
+    # image: langgenius/dify-web
+    build:
+      context: ../web
+      dockerfile: Dockerfile
+
     restart: always
     environment:
       CONSOLE_API_URL: ${CONSOLE_API_URL:-}
       APP_API_URL: ${APP_API_URL:-}
       SENTRY_DSN: ${WEB_SENTRY_DSN:-}
+      NEXT_TELEMETRY_DISABLED: ${NEXT_TELEMETRY_DISABLED:-0}
 
   # The postgres database.
   db:
@@ -238,6 +259,12 @@ services:
       POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-difyai123456}
       POSTGRES_DB: ${POSTGRES_DB:-dify}
       PGDATA: ${PGDATA:-/var/lib/postgresql/data/pgdata}
+    command: >
+      postgres -c 'max_connections=${POSTGRES_MAX_CONNECTIONS:-100}'
+               -c 'shared_buffers=${POSTGRES_SHARED_BUFFERS:-128MB}'
+               -c 'work_mem=${POSTGRES_WORK_MEM:-4MB}'
+               -c 'maintenance_work_mem=${POSTGRES_MAINTENANCE_WORK_MEM:-64MB}'
+               -c 'effective_cache_size=${POSTGRES_EFFECTIVE_CACHE_SIZE:-4096MB}'
     volumes:
       - ./volumes/db/data:/var/lib/postgresql/data
     healthcheck:
@@ -280,7 +307,7 @@ services:
 
   # ssrf_proxy server
   # for more information, please refer to
-  # https://docs.dify.ai/getting-started/install-self-hosted/install-faq#id-16.-why-is-ssrf_proxy-needed
+  # https://docs.dify.ai/learn-more/faq/self-host-faq#id-18.-why-is-ssrf_proxy-needed
   ssrf_proxy:
     image: ubuntu/squid:latest
     restart: always
@@ -304,6 +331,26 @@ services:
       - ssrf_proxy_network
       - default
 
+  # Certbot service
+  # use `docker-compose --profile certbot up` to start the certbot service.
+  # certbot:
+  #   image: certbot/certbot
+  #   profiles:
+  #     - certbot
+  #   volumes:
+  #     - ./volumes/certbot/conf:/etc/letsencrypt
+  #     - ./volumes/certbot/www:/var/www/html
+  #     - ./volumes/certbot/logs:/var/log/letsencrypt
+  #     - ./volumes/certbot/conf/live:/etc/letsencrypt/live
+  #     - ./certbot/update-cert.template.txt:/update-cert.template.txt
+  #     - ./certbot/docker-entrypoint.sh:/docker-entrypoint.sh
+  #   environment:
+  #     - CERTBOT_EMAIL=${CERTBOT_EMAIL}
+  #     - CERTBOT_DOMAIN=${CERTBOT_DOMAIN}
+  #     - CERTBOT_OPTIONS=${CERTBOT_OPTIONS:-}
+  #   entrypoint: ["/docker-entrypoint.sh"]
+  #   command: ["tail", "-f", "/dev/null"]
+
   # The nginx reverse proxy.
   # used for reverse proxying the API service and Web service.
   nginx:
@@ -315,7 +362,10 @@ services:
       - ./nginx/https.conf.template:/etc/nginx/https.conf.template
       - ./nginx/conf.d:/etc/nginx/conf.d
       - ./nginx/docker-entrypoint.sh:/docker-entrypoint-mount.sh
-      - ./nginx/ssl:/etc/ssl
+      - ./nginx/ssl:/etc/ssl # cert dir (legacy)
+      - ./volumes/certbot/conf/live:/etc/letsencrypt/live # cert dir (with certbot container)
+      - ./volumes/certbot/conf:/etc/letsencrypt
+      - ./volumes/certbot/www:/var/www/html
     entrypoint:
       [
         "sh",
@@ -325,8 +375,8 @@ services:
     environment:
       NGINX_SERVER_NAME: ${NGINX_SERVER_NAME:-_}
       NGINX_HTTPS_ENABLED: ${NGINX_HTTPS_ENABLED:-false}
-      NGINX_SSL_PORT: ${NGINX_SSL_PORT:-9443}
-      NGINX_PORT: ${NGINX_PORT:-81}
+      NGINX_SSL_PORT: ${NGINX_SSL_PORT:-443}
+      NGINX_PORT: ${NGINX_PORT:-80}
       # You're required to add your own SSL certificates/keys to the `./nginx/ssl` directory
       # and modify the env vars below in .env if HTTPS_ENABLED is true.
       NGINX_SSL_CERT_FILENAME: ${NGINX_SSL_CERT_FILENAME:-dify.crt}
@@ -337,12 +387,14 @@ services:
       NGINX_KEEPALIVE_TIMEOUT: ${NGINX_KEEPALIVE_TIMEOUT:-65}
       NGINX_PROXY_READ_TIMEOUT: ${NGINX_PROXY_READ_TIMEOUT:-3600s}
       NGINX_PROXY_SEND_TIMEOUT: ${NGINX_PROXY_SEND_TIMEOUT:-3600s}
+      NGINX_ENABLE_CERTBOT_CHALLENGE: ${NGINX_ENABLE_CERTBOT_CHALLENGE:-false}
+      CERTBOT_DOMAIN: ${CERTBOT_DOMAIN:-}
     depends_on:
       - api
       - web
     ports:
-      - "${EXPOSE_NGINX_PORT:-81}:${NGINX_PORT:-81}"
-      - "${EXPOSE_NGINX_SSL_PORT:-9443}:${NGINX_SSL_PORT:-9443}"
+      - "${EXPOSE_NGINX_PORT:-80}:${NGINX_PORT:-80}"
+      - "${EXPOSE_NGINX_SSL_PORT:-443}:${NGINX_SSL_PORT:-443}"
 
   # The Weaviate vector store.
   weaviate:
@@ -404,7 +456,7 @@ services:
 
   # pgvecto-rs vector store
   pgvecto-rs:
-    image: tensorchord/pgvecto-rs:pg16-v0.2.0
+    image: tensorchord/pgvecto-rs:pg16-v0.3.0
     profiles:
       - pgvecto-rs
     restart: always
@@ -568,6 +620,38 @@ services:
       - ./volumes/myscale/config/users.d/custom_users_config.xml:/etc/clickhouse-server/users.d/custom_users_config.xml
     ports:
       - "${MYSCALE_PORT:-8123}:${MYSCALE_PORT:-8123}"
+
+  elasticsearch:
+    image: docker.elastic.co/elasticsearch/elasticsearch:8.14.3
+    container_name: elasticsearch
+    profiles:
+      - elasticsearch
+    restart: always
+    environment:
+      - "ELASTIC_PASSWORD=${ELASTICSEARCH_USERNAME:-elastic}"
+      - "cluster.name=dify-es-cluster"
+      - "node.name=dify-es0"
+      - "discovery.type=single-node"
+      - "xpack.security.http.ssl.enabled=false"
+      - "xpack.license.self_generated.type=trial"
+    ports:
+      - "${ELASTICSEARCH_PORT:-9200}:${ELASTICSEARCH_PORT:-9200}"
+    healthcheck:
+      test:
+        ["CMD", "curl", "-s", "http://localhost:9200/_cluster/health?pretty"]
+      interval: 30s
+      timeout: 10s
+      retries: 50
+
+  # unstructured .
+  # (if used, you need to set ETL_TYPE to Unstructured in the api & worker service.)
+  unstructured:
+    image: downloads.unstructured.io/unstructured-io/unstructured-api:latest
+    profiles:
+      - unstructured
+    restart: always
+    volumes:
+      - ./volumes/unstructured:/app/data
 
 networks:
   # create a network between sandbox, api and ssrf_proxy, and can not access outside.

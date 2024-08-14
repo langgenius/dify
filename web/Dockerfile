@@ -2,8 +2,6 @@
 FROM node:20.11-alpine3.19 AS base
 LABEL maintainer="inderjotsingh141@gmail.com"
 
-# if you located in China, you can use aliyun mirror to speed up
-# RUN sed -i 's/dl-cdn.alpinelinux.org/mirrors.aliyun.com/g' /etc/apk/repositories
 
 RUN apk add --no-cache tzdata
 
@@ -16,8 +14,6 @@ WORKDIR /app/web
 COPY package.json .
 COPY yarn.lock .
 
-# if you located in China, you can use taobao registry to speed up
-# RUN yarn install --frozen-lockfile --registry https://registry.npmmirror.com/
 
 RUN yarn install 
 
@@ -36,9 +32,10 @@ FROM base AS production
 ENV NODE_ENV=production
 ENV EDITION=SELF_HOSTED
 ENV DEPLOY_ENV=PRODUCTION
-ENV CONSOLE_API_URL=https://dify-backend.angeltools.xyz
-ENV APP_API_URL=https://dify-backend.angeltools.xyz
+ENV CONSOLE_API_URL=http://web:5001
+ENV APP_API_URL=http://web:5001
 ENV PORT=3000
+ENV NEXT_TELEMETRY_DISABLED=1
 
 # set timezone
 ENV TZ=UTC
