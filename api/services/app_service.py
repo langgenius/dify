@@ -19,7 +19,7 @@ from core.tools.utils.configuration import ToolParameterConfigurationManager
 from events.app_event import app_was_created
 from extensions.ext_database import db
 from models.account import Account
-from models.model import App, AppMode, AppModelConfig
+from models.model import App, AppMode, AppModelConfig, Site
 from models.tools import ApiToolProvider
 from services.tag_service import TagService
 from tasks.remove_app_and_related_data_task import remove_app_and_related_data_task
@@ -199,6 +199,23 @@ class AppService:
             app = ModifiedApp(app)
 
         return app
+    
+    def update_site_title(self, app: App, title: str):
+        """
+        Update the title of the Site record associated with the app instance.
+        :param app: App instance
+        :param title: new title
+        """
+        try:
+            site = db.session.query(Site).filter(Site.app_id == app.id).first()
+            if site:
+                site.title = title
+                site.updated_at = datetime.now(timezone.utc).replace(tzinfo=None)
+                db.session.commit()
+            else:
+                logging.warning(f"Site not found for app {app.id}")
+        except Exception as e:
+            logging.exception("Error updating the Site record: %s", e)
 
     def update_app(self, app: App, args: dict) -> App:
         """
@@ -213,6 +230,9 @@ class AppService:
         app.icon = args.get('icon')
         app.icon_background = args.get('icon_background')
         app.updated_at = datetime.now(timezone.utc).replace(tzinfo=None)
+
+        self.update_site_title(app, args.get('site_title'))
+
         db.session.commit()
 
         if app.max_active_requests is not None:
@@ -229,6 +249,9 @@ class AppService:
         """
         app.name = name
         app.updated_at = datetime.now(timezone.utc).replace(tzinfo=None)
+
+        self.update_site_title(app, name)
+
         db.session.commit()
 
         return app
