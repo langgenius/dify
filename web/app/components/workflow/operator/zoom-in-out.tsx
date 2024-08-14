@@ -274,11 +274,6 @@ const ZoomInOut: FC = () => {
                             <ShortcutsName keys={['shift', '1']} />
                           )
                         }
-                        {
-                          option.key === ZoomType.zoomTo200 && (
-                            <ShortcutsName keys={['shift', '2']} />
-                          )
-                        }
                       </div>
                     ))
                   }
