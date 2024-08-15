@@ -70,7 +70,7 @@ class PKCS1OAEP_Cipher:
         if mgfunc:
             self._mgf = mgfunc
         else:
-            self._mgf = lambda x,y: MGF1(x,y,self._hashObj)
+            self._mgf = lambda x, y: MGF1(x, y, self._hashObj)
 
         self._label = _copy_bytes(None, None, label)
         self._randfunc = randfunc
@@ -107,7 +107,7 @@ class PKCS1OAEP_Cipher:
 
         # See 7.1.1 in RFC3447
         modBits = Crypto.Util.number.size(self._key.n)
-        k = ceil_div(modBits, 8) # Convert from bits to bytes
+        k = ceil_div(modBits, 8)  # Convert from bits to bytes
         hLen = self._hashObj.digest_size
         mLen = len(message)
 
@@ -118,13 +118,13 @@ class PKCS1OAEP_Cipher:
         # Step 2a
         lHash = sha1(self._label).digest()
         # Step 2b
-        ps = b'\x00' * ps_len
+        ps = b"\x00" * ps_len
         # Step 2c
-        db = lHash + ps + b'\x01' + _copy_bytes(None, None, message)
+        db = lHash + ps + b"\x01" + _copy_bytes(None, None, message)
         # Step 2d
         ros = self._randfunc(hLen)
         # Step 2e
-        dbMask = self._mgf(ros, k-hLen-1)
+        dbMask = self._mgf(ros, k - hLen - 1)
         # Step 2f
         maskedDB = strxor(db, dbMask)
         # Step 2g
@@ -132,7 +132,7 @@ class PKCS1OAEP_Cipher:
         # Step 2h
         maskedSeed = strxor(ros, seedMask)
         # Step 2i
-        em = b'\x00' + maskedSeed + maskedDB
+        em = b"\x00" + maskedSeed + maskedDB
         # Step 3a (OS2IP)
         em_int = bytes_to_long(em)
         # Step 3b (RSAEP)
@@ -160,10 +160,10 @@ class PKCS1OAEP_Cipher:
         """
         # See 7.1.2 in RFC3447
         modBits = Crypto.Util.number.size(self._key.n)
-        k = ceil_div(modBits,8) # Convert from bits to bytes
+        k = ceil_div(modBits, 8)  # Convert from bits to bytes
         hLen = self._hashObj.digest_size
         # Step 1b and 1c
-        if len(ciphertext) != k or k<hLen+2:
+        if len(ciphertext) != k or k < hLen + 2:
             raise ValueError("Ciphertext with incorrect length.")
         # Step 2a (O2SIP)
         ct_int = bytes_to_long(ciphertext)
@@ -178,18 +178,18 @@ class PKCS1OAEP_Cipher:
         y = em[0]
         # y must be 0, but we MUST NOT check it here in order not to
         # allow attacks like Manger's (http://dl.acm.org/citation.cfm?id=704143)
-        maskedSeed = em[1:hLen+1]
-        maskedDB = em[hLen+1:]
+        maskedSeed = em[1 : hLen + 1]
+        maskedDB = em[hLen + 1 :]
         # Step 3c
         seedMask = self._mgf(maskedDB, hLen)
         # Step 3d
         seed = strxor(maskedSeed, seedMask)
         # Step 3e
-        dbMask = self._mgf(seed, k-hLen-1)
+        dbMask = self._mgf(seed, k - hLen - 1)
         # Step 3f
         db = strxor(maskedDB, dbMask)
         # Step 3g
-        one_pos = hLen + db[hLen:].find(b'\x01')
+        one_pos = hLen + db[hLen:].find(b"\x01")
         lHash1 = db[:hLen]
         invalid = bord(y) | int(one_pos < hLen)
         hash_compare = strxor(lHash1, lHash)
@@ -200,9 +200,10 @@ class PKCS1OAEP_Cipher:
         if invalid != 0:
             raise ValueError("Incorrect decryption.")
         # Step 4
-        return db[one_pos + 1:]
+        return db[one_pos + 1 :]
 
-def new(key, hashAlgo=None, mgfunc=None, label=b'', randfunc=None):
+
+def new(key, hashAlgo=None, mgfunc=None, label=b"", randfunc=None):
     """Return a cipher object :class:`PKCS1OAEP_Cipher` that can be used to perform PKCS#1 OAEP encryption or decryption.
 
     :param key:

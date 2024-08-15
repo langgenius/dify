@@ -5,6 +5,7 @@ import re
 
 password_pattern = r"^(?=.*[a-zA-Z])(?=.*\d).{8,}$"
 
+
 def valid_password(password):
     # Define a regex pattern for password rules
     pattern = password_pattern
@@ -12,11 +13,11 @@ def valid_password(password):
     if re.match(pattern, password) is not None:
         return password
 
-    raise ValueError('Not a valid password.')
+    raise ValueError("Not a valid password.")
 
 
 def hash_password(password_str, salt_byte):
-    dk = hashlib.pbkdf2_hmac('sha256', password_str.encode('utf-8'), salt_byte, 10000)
+    dk = hashlib.pbkdf2_hmac("sha256", password_str.encode("utf-8"), salt_byte, 10000)
     return binascii.hexlify(dk)
 
 
