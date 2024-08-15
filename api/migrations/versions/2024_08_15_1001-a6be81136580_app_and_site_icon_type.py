@@ -1,8 +1,8 @@
-"""add icon_type
+"""app and site icon type
 
-Revision ID: 44d0f8e91926
-Revises: eeb2e349e6ac
-Create Date: 2024-08-09 03:15:39.557824
+Revision ID: a6be81136580
+Revises: 8782057ff0dc
+Create Date: 2024-08-15 10:01:24.697888
 
 """
 import sqlalchemy as sa
@@ -11,8 +11,8 @@ from alembic import op
 import models as models
 
 # revision identifiers, used by Alembic.
-revision = '44d0f8e91926'
-down_revision = 'eeb2e349e6ac'
+revision = 'a6be81136580'
+down_revision = '8782057ff0dc'
 branch_labels = None
 depends_on = None
 
