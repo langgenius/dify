@@ -601,6 +601,7 @@ services:
       - "${MYSCALE_PORT:-8123}:${MYSCALE_PORT:-8123}"
 
   # https://www.elastic.co/guide/en/elasticsearch/reference/current/settings.html
+  # https://www.elastic.co/guide/en/elasticsearch/reference/current/docker.html#docker-prod-prerequisites
   elasticsearch:
     image: docker.elastic.co/elasticsearch/elasticsearch:8.14.3
     container_name: elasticsearch
@@ -612,18 +613,21 @@ services:
       cluster.name: dify-es-cluster
       node.name: dify-es0
       discovery.type: single-node
-      xpack.security.http.ssl.enabled: false
       xpack.license.self_generated.type: trial
+      xpack.security.enabled: false
+      xpack.security.enrollment.enabled: false
+      xpack.security.http.ssl.enabled: false
     volumes:
       - ./volumes/elasticsearch/data:/usr/share/elasticsearch/data
+    # todo: Bind environment and healthcheck after testing
     ports:
-      - ${ELASTICSEARCH_PORT:-9200}:9200
-#    healthcheck:
-#      test: ["CMD-SHELL", "curl -s -f http://localhost:9200/_cluster/health || exit 1"]
-#      interval: 30s
-#      timeout: 10s
-#      retries: 5
-#      start_period: 40s
+      - 9200:9200
+    #    healthcheck:
+    #      test: ["CMD-SHELL", "curl -s -f http://localhost:9200/_cluster/health || exit 1"]
+    #      interval: 30s
+    #      timeout: 10s
+    #      retries: 5
+    #      start_period: 40s
 
   # https://www.elastic.co/guide/en/kibana/current/docker.html
   # https://www.elastic.co/guide/en/kibana/current/settings.html
@@ -631,6 +635,8 @@ services:
     image: docker.elastic.co/kibana/kibana:8.14.3
     container_name: kibana
     profiles:
+      - elasticsearch
+    depends_on:
       - elasticsearch
     restart: always
     environment:
@@ -642,15 +648,15 @@ services:
       xpack.fleet.isAirGapped: true
       i18n.locale: zh-CN
       server.port: 5601
-      # elasticsearch.hosts: "http://elasticsearch:9200"
-      ELASTICSEARCH_HOSTS: '["http://elasticsearch:9200"]'
+      elasticsearch.hosts: "http://elasticsearch:9200"
+      # ELASTICSEARCH_HOSTS: '["http://elasticsearch:9200"]'
     ports:
-      - "${KIBANA_PORT:-5601}:${KIBANA_PORT:-5601}"
-#    healthcheck:
-#      test: [ "CMD-SHELL", "curl -s http://localhost:5601 >/dev/null || exit 1" ]
-#      interval: 30s
-#      timeout: 10s
-#      retries: 3
+      - ${KIBANA_PORT:-5601}:5601
+    #    healthcheck:
+    #      test: [ "CMD-SHELL", "curl -s http://localhost:5601 >/dev/null || exit 1" ]
+    #      interval: 30s
+    #      timeout: 10s
+    #      retries: 3
 
   # unstructured .
   # (if used, you need to set ETL_TYPE to Unstructured in the api & worker service.)
