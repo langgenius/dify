@@ -67,12 +67,14 @@ def sort_and_filter_position_map(original_position_map: dict[str, int], pin_list
     exclude_set = set(exclude_list) if exclude_list else set()
 
     # Add pins to position map
-    position_map = {name: idx for idx, name in enumerate(pin_list) if name in original_position_map}
+    position_map = {name: idx for idx, name in enumerate(pin_list)}
 
     # Add remaining positions to position map, respecting include and exclude lists
     start_idx = len(position_map)
     for name in positions:
-        if name in include_set and name not in exclude_set and name not in position_map:
+        if name in exclude_set:
+            position_map[name] = -1
+        elif name in include_set and name not in position_map:
             position_map[name] = start_idx
             start_idx += 1
     return position_map
@@ -94,7 +96,7 @@ def sort_by_position_map(
     if not position_map or not data:
         return data
 
-    filtered_data = [item for item in data if name_func(item) in position_map]
+    filtered_data = [item for item in data if position_map.get(name_func(item), 0) >= 0]
 
     return sorted(filtered_data, key=lambda x: position_map.get(name_func(x), float('inf')))
 
