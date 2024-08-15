@@ -99,7 +99,13 @@ class ObjectSegment(Segment):
 class ArraySegment(Segment):
     @property
     def markdown(self) -> str:
-        return '\n'.join(['- ' + item.markdown for item in self.value])
+        items = []
+        for item in self.value:
+            if hasattr(item, 'to_markdown'):
+                items.append(item.to_markdown())
+            else:
+                items.append(str(item))
+        return '\n'.join(items)
 
 
 class ArrayAnySegment(ArraySegment):
