@@ -54,7 +54,7 @@ const nodeDefault: NodeDefault<QuestionClassifierNodeType> = {
     if (!errorMessages && (payload.classes.some(item => !item.name)))
       errorMessages = t(`${i18nPrefix}.errorMsg.fieldRequired`, { field: t(`${i18nPrefix}.nodes.questionClassifiers.topicName`) })
 
-    if (!errorMessages && payload.vision.enabled && !payload.vision.configs?.valueSelector?.length)
+    if (!errorMessages && payload.vision?.enabled && !payload.vision.configs?.valueSelector?.length)
       errorMessages = t(`${i18nPrefix}.errorMsg.fieldRequired`, { field: t(`${i18nPrefix}.errorMsg.fields.visionVariable`) })
     return {
       isValid: !errorMessages,
