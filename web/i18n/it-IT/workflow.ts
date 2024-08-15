@@ -103,6 +103,33 @@ const translation = {
       export: 'Esporta DSL con valori segreti',
     },
   },
+  chatVariable: {
+    panelTitle: 'Variabili di Conversazione',
+    panelDescription: 'Le Variabili di Conversazione sono utilizzate per memorizzare informazioni interattive che il LLM deve ricordare, inclusi la cronologia delle conversazioni, i file caricati e le preferenze dell\'utente. Sono in lettura e scrittura.',
+    docLink: 'Visita la nostra documentazione per saperne di più.',
+    button: 'Aggiungi Variabile',
+    modal: {
+      title: 'Aggiungi Variabile di Conversazione',
+      editTitle: 'Modifica Variabile di Conversazione',
+      name: 'Nome',
+      namePlaceholder: 'Nome della variabile',
+      type: 'Tipo',
+      value: 'Valore Predefinito',
+      valuePlaceholder: 'Valore predefinito, lascia vuoto per non impostare',
+      description: 'Descrizione',
+      descriptionPlaceholder: 'Descrivi la variabile',
+      editInJSON: 'Modifica in JSON',
+      oneByOne: 'Aggiungi uno alla volta',
+      editInForm: 'Modifica nel Modulo',
+      arrayValue: 'Valore',
+      addArrayValue: 'Aggiungi Valore',
+      objectKey: 'Chiave',
+      objectType: 'Tipo',
+      objectValue: 'Valore Predefinito',
+    },
+    storedContent: 'Contenuto memorizzato',
+    updatedAt: 'Aggiornato il ',
+  },
   changeHistory: {
     title: 'Cronologia Modifiche',
     placeholder: 'Non hai ancora modificato nulla',
@@ -178,6 +205,7 @@ const translation = {
     'http-request': 'Richiesta HTTP',
     'variable-assigner': 'Assegnatore Variabili',
     'variable-aggregator': 'Aggregatore Variabili',
+    'assigner': 'Assegnatore di Variabili',
     'iteration-start': 'Inizio Iterazione',
     'iteration': 'Iterazione',
     'parameter-extractor': 'Estrattore Parametri',
@@ -200,6 +228,7 @@ const translation = {
       'Consenti l\'invio di richieste server tramite il protocollo HTTP',
     'variable-assigner':
       'Aggrega variabili multi-ramo in una singola variabile per la configurazione unificata dei nodi a valle.',
+    'assigner': 'Il nodo di assegnazione delle variabili è utilizzato per assegnare valori a variabili scrivibili (come le variabili di conversazione).',
     'variable-aggregator':
       'Aggrega variabili multi-ramo in una singola variabile per la configurazione unificata dei nodi a valle.',
     'iteration':
@@ -230,6 +259,7 @@ const translation = {
     checklistResolved: 'Tutti i problemi sono risolti',
     organizeBlocks: 'Organizza blocchi',
     change: 'Cambia',
+    optional: '(opzionale)',
   },
   nodes: {
     common: {
@@ -425,6 +455,17 @@ const translation = {
         varDescribe: 'Output {{groupName}}',
       },
       setAssignVariable: 'Imposta variabile assegnata',
+    },
+    assigner: {
+      'assignedVariable': 'Variabile Assegnata',
+      'writeMode': 'Modalità di Scrittura',
+      'writeModeTip': 'Quando la VARIABILE ASSEGNATA è un array, la modalità di aggiunta inserisce alla fine.',
+      'over-write': 'Sovrascrivere',
+      'append': 'Aggiungere',
+      'plus': 'Più',
+      'clear': 'Cancellare',
+      'setVariable': 'Imposta Variabile',
+      'variable': 'Variabile',
     },
     tool: {
       toAuthorize: 'Per autorizzare',

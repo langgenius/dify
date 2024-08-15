@@ -4,6 +4,7 @@ import time
 from collections.abc import Generator
 from typing import Any, Optional, Union, cast
 
+import contexts
 from constants.tts_auto_play_timeout import TTS_AUTO_PLAY_TIMEOUT, TTS_AUTO_PLAY_YIELD_CPU_TIME
 from core.app.apps.advanced_chat.app_generator_tts_publisher import AppGeneratorTTSPublisher, AudioTrunk
 from core.app.apps.base_app_queue_manager import AppQueueManager, PublishFrom
@@ -47,7 +48,8 @@ from core.file.file_obj import FileVar
 from core.model_runtime.entities.llm_entities import LLMUsage
 from core.model_runtime.utils.encoders import jsonable_encoder
 from core.ops.ops_trace_manager import TraceQueueManager
-from core.workflow.entities.node_entities import NodeType, SystemVariable
+from core.workflow.entities.node_entities import NodeType
+from core.workflow.enums import SystemVariable
 from core.workflow.nodes.answer.answer_node import AnswerNode
 from core.workflow.nodes.answer.entities import TextGenerateRouteChunk, VarGenerateRouteChunk
 from events.message_event import message_was_created
@@ -71,6 +73,7 @@ class AdvancedChatAppGenerateTaskPipeline(BasedGenerateTaskPipeline, WorkflowCyc
     _application_generate_entity: AdvancedChatAppGenerateEntity
     _workflow: Workflow
     _user: Union[Account, EndUser]
+    # Deprecated
     _workflow_system_variables: dict[SystemVariable, Any]
     _iteration_nested_relations: dict[str, list[str]]
 
@@ -81,7 +84,7 @@ class AdvancedChatAppGenerateTaskPipeline(BasedGenerateTaskPipeline, WorkflowCyc
             conversation: Conversation,
             message: Message,
             user: Union[Account, EndUser],
-            stream: bool
+            stream: bool,
     ) -> None:
         """
         Initialize AdvancedChatAppGenerateTaskPipeline.
@@ -103,11 +106,12 @@ class AdvancedChatAppGenerateTaskPipeline(BasedGenerateTaskPipeline, WorkflowCyc
         self._workflow = workflow
         self._conversation = conversation
         self._message = message
+        # Deprecated
         self._workflow_system_variables = {
             SystemVariable.QUERY: message.query,
             SystemVariable.FILES: application_generate_entity.files,
             SystemVariable.CONVERSATION_ID: conversation.id,
-            SystemVariable.USER_ID: user_id
+            SystemVariable.USER_ID: user_id,
         }
 
         self._task_state = AdvancedChatTaskState(
@@ -245,8 +249,7 @@ class AdvancedChatAppGenerateTaskPipeline(BasedGenerateTaskPipeline, WorkflowCyc
         """
         for message in self._queue_manager.listen():
             if (message.event
-                    and hasattr(message.event, 'metadata')
-                    and message.event.metadata
+                    and getattr(message.event, 'metadata', None)
                     and message.event.metadata.get('is_answer_previous_node', False)
                     and publisher):
                 publisher.publish(message=message)
@@ -613,7 +616,9 @@ class AdvancedChatAppGenerateTaskPipeline(BasedGenerateTaskPipeline, WorkflowCyc
 
                 if route_chunk_node_id == 'sys':
                     # system variable
-                    value = self._workflow_system_variables.get(SystemVariable.value_of(value_selector[1]))
+                    value = contexts.workflow_variable_pool.get().get(value_selector)
+                    if value:
+                        value = value.text
                 elif route_chunk_node_id in self._iteration_nested_relations:
                     # it's a iteration variable
                     if not self._iteration_state or route_chunk_node_id not in self._iteration_state.current_iterations:

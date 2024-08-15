@@ -133,9 +133,6 @@ class HttpRequestNode(BaseNode):
         """
         files = []
         mimetype, file_binary = response.extract_file()
-        # if not image, return directly
-        if 'image' not in mimetype:
-            return files
 
         if mimetype:
             # extract filename from url

@@ -22,6 +22,7 @@ from configs.middleware.vdb.pgvectors_config import PGVectoRSConfig
 from configs.middleware.vdb.qdrant_config import QdrantConfig
 from configs.middleware.vdb.relyt_config import RelytConfig
 from configs.middleware.vdb.tencent_vector_config import TencentVectorDBConfig
+from configs.middleware.vdb.tidb_on_qdrant_config import TidbOnQdrantConfig
 from configs.middleware.vdb.tidb_vector_config import TiDBVectorConfig
 from configs.middleware.vdb.weaviate_config import WeaviateConfig
 
@@ -199,5 +200,6 @@ class MiddlewareConfig(
     TencentVectorDBConfig,
     TiDBVectorConfig,
     WeaviateConfig,
+    TidbOnQdrantConfig,
 ):
     pass
