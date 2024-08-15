@@ -235,14 +235,14 @@ const ChatInput: FC<ChatInputProps> = ({
           {
             voiceInputShow && (
               <VoiceInput
-              onCancel={() => setVoiceInputShow(false)}
-              onConverted={(text) => {
-                setQuery(text)
-                requestAnimationFrame(() => {
-                  textAreaRef.current?.focus()
-                })
-              }}
-             />
+                onCancel={() => setVoiceInputShow(false)}
+                onConverted={(text) => {
+                  setQuery(text)
+                  requestAnimationFrame(() => {
+                    textAreaRef.current?.focus()
+                  })
+                }}
+              />
             )
           }
         </div>
