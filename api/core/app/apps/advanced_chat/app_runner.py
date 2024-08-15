@@ -3,6 +3,9 @@ import os
 from collections.abc import Mapping
 from typing import Any, cast
 
+from sqlalchemy import select
+from sqlalchemy.orm import Session
+
 from core.app.apps.advanced_chat.app_config_manager import AdvancedChatAppConfig
 from core.app.apps.base_app_queue_manager import AppQueueManager
 from core.app.apps.workflow_app_runner import WorkflowBasedAppRunner
@@ -18,8 +21,9 @@ from core.app.entities.queue_entities import (
 )
 from core.moderation.base import ModerationException
 from core.workflow.callbacks.base_workflow_callback import WorkflowCallback
-from core.workflow.entities.node_entities import SystemVariable, UserFrom
+from core.workflow.entities.node_entities import UserFrom
 from core.workflow.entities.variable_pool import VariablePool
+from core.workflow.enums import SystemVariable
 from core.workflow.workflow_entry import WorkflowEntry
 from extensions.ext_database import db
 from models.model import App, Conversation, EndUser, Message
