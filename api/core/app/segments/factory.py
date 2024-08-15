@@ -2,12 +2,10 @@ from collections.abc import Mapping
 from typing import Any
 
 from configs import dify_config
-from core.file.file_obj import FileVar
 
 from .exc import VariableError
 from .segments import (
     ArrayAnySegment,
-    FileSegment,
     FloatSegment,
     IntegerSegment,
     NoneSegment,
@@ -17,11 +15,9 @@ from .segments import (
 )
 from .types import SegmentType
 from .variables import (
-    ArrayFileVariable,
     ArrayNumberVariable,
     ArrayObjectVariable,
     ArrayStringVariable,
-    FileVariable,
     FloatVariable,
     IntegerVariable,
     ObjectVariable,
@@ -49,8 +45,6 @@ def build_variable_from_mapping(mapping: Mapping[str, Any], /) -> Variable:
             result = FloatVariable.model_validate(mapping)
         case SegmentType.NUMBER if not isinstance(value, float | int):
             raise VariableError(f'invalid number value {value}')
-        case SegmentType.FILE:
-            result = FileVariable.model_validate(mapping)
         case SegmentType.OBJECT if isinstance(value, dict):
             result = ObjectVariable.model_validate(mapping)
         case SegmentType.ARRAY_STRING if isinstance(value, list):
@@ -59,10 +53,6 @@ def build_variable_from_mapping(mapping: Mapping[str, Any], /) -> Variable:
             result = ArrayNumberVariable.model_validate(mapping)
         case SegmentType.ARRAY_OBJECT if isinstance(value, list):
             result = ArrayObjectVariable.model_validate(mapping)
-        case SegmentType.ARRAY_FILE if isinstance(value, list):
-            mapping = dict(mapping)
-            mapping['value'] = [{'value': v} for v in value]
-            result = ArrayFileVariable.model_validate(mapping)
         case _:
             raise VariableError(f'not supported value type {value_type}')
     if result.size > dify_config.MAX_VARIABLE_SIZE:
@@ -83,6 +73,4 @@ def build_segment(value: Any, /) -> Segment:
         return ObjectSegment(value=value)
     if isinstance(value, list):
         return ArrayAnySegment(value=value)
-    if isinstance(value, FileVar):
-        return FileSegment(value=value)
     raise ValueError(f'not supported value {value}')

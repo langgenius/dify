@@ -3,12 +3,9 @@ from uuid import uuid4
 import pytest
 
 from core.app.segments import (
-    ArrayFileVariable,
     ArrayNumberVariable,
     ArrayObjectVariable,
     ArrayStringVariable,
-    FileSegment,
-    FileVariable,
     FloatVariable,
     IntegerVariable,
     ObjectSegment,
@@ -147,83 +144,6 @@ def test_array_object_variable():
     assert isinstance(variable.value[0]['key2'], int)
     assert isinstance(variable.value[1]['key1'], str)
     assert isinstance(variable.value[1]['key2'], int)
-
-
-def test_file_variable():
-    mapping = {
-        'id': str(uuid4()),
-        'value_type': 'file',
-        'name': 'test_file',
-        'description': 'Description of the variable.',
-        'value': {
-            'id': str(uuid4()),
-            'tenant_id': 'tenant_id',
-            'type': 'image',
-            'transfer_method': 'local_file',
-            'url': 'url',
-            'related_id': 'related_id',
-            'extra_config': {
-                'image_config': {
-                    'width': 100,
-                    'height': 100,
-                },
-            },
-            'filename': 'filename',
-            'extension': 'extension',
-            'mime_type': 'mime_type',
-        },
-    }
-    variable = factory.build_variable_from_mapping(mapping)
-    assert isinstance(variable, FileVariable)
-
-
-def test_array_file_variable():
-    mapping = {
-        'id': str(uuid4()),
-        'value_type': 'array[file]',
-        'name': 'test_array_file',
-        'description': 'Description of the variable.',
-        'value': [
-            {
-                'id': str(uuid4()),
-                'tenant_id': 'tenant_id',
-                'type': 'image',
-                'transfer_method': 'local_file',
-                'url': 'url',
-                'related_id': 'related_id',
-                'extra_config': {
-                    'image_config': {
-                        'width': 100,
-                        'height': 100,
-                    },
-                },
-                'filename': 'filename',
-                'extension': 'extension',
-                'mime_type': 'mime_type',
-            },
-            {
-                'id': str(uuid4()),
-                'tenant_id': 'tenant_id',
-                'type': 'image',
-                'transfer_method': 'local_file',
-                'url': 'url',
-                'related_id': 'related_id',
-                'extra_config': {
-                    'image_config': {
-                        'width': 100,
-                        'height': 100,
-                    },
-                },
-                'filename': 'filename',
-                'extension': 'extension',
-                'mime_type': 'mime_type',
-            },
-        ],
-    }
-    variable = factory.build_variable_from_mapping(mapping)
-    assert isinstance(variable, ArrayFileVariable)
-    assert isinstance(variable.value[0], FileSegment)
-    assert isinstance(variable.value[1], FileSegment)
 
 
 def test_variable_cannot_large_than_5_kb():
