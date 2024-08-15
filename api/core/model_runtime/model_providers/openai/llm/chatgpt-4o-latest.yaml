@@ -1,7 +1,7 @@
-model: gpt-4o-mini
+model: chatgpt-4o-latest
 label:
-  zh_Hans: gpt-4o-mini
-  en_US: gpt-4o-mini
+  zh_Hans: chatgpt-4o-latest
+  en_US: chatgpt-4o-latest
 model_type: llm
 features:
   - multi-tool-call
@@ -37,11 +37,8 @@ parameter_rules:
     options:
       - text
       - json_object
-      - json_schema
-  - name: json_schema
-    use_template: json_schema
 pricing:
-  input: '0.15'
-  output: '0.60'
+  input: '2.50'
+  output: '10.00'
   unit: '0.000001'
   currency: USD

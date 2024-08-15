@@ -327,36 +327,36 @@ const EditCustomCollectionModal: FC<Props> = ({
                 <Button variant='primary' onClick={handleSave}>{t('common.operation.save')}</Button>
               </div>
             </div>
+            {showEmojiPicker && <EmojiPicker
+              onSelect={(icon, icon_background) => {
+                setEmoji({ content: icon, background: icon_background })
+                setShowEmojiPicker(false)
+              }}
+              onClose={() => {
+                setShowEmojiPicker(false)
+              }}
+            />}
+            {credentialsModalShow && (
+              <ConfigCredentials
+                positionCenter={isAdd}
+                credential={credential}
+                onChange={setCredential}
+                onHide={() => setCredentialsModalShow(false)}
+              />)
+            }
+            {isShowTestApi && (
+              <TestApi
+                positionCenter={isAdd}
+                tool={currTool as CustomParamSchema}
+                customCollection={customCollection}
+                onHide={() => setIsShowTestApi(false)}
+              />
+            )}
           </div>
         }
         isShowMask={true}
         clickOutsideNotOpen={true}
       />
-      {showEmojiPicker && <EmojiPicker
-        onSelect={(icon, icon_background) => {
-          setEmoji({ content: icon, background: icon_background })
-          setShowEmojiPicker(false)
-        }}
-        onClose={() => {
-          setShowEmojiPicker(false)
-        }}
-      />}
-      {credentialsModalShow && (
-        <ConfigCredentials
-          positionCenter={isAdd}
-          credential={credential}
-          onChange={setCredential}
-          onHide={() => setCredentialsModalShow(false)}
-        />)
-      }
-      {isShowTestApi && (
-        <TestApi
-          positionCenter={isAdd}
-          tool={currTool as CustomParamSchema}
-          customCollection={customCollection}
-          onHide={() => setIsShowTestApi(false)}
-        />
-      )}
     </>
 
   )
