@@ -42,7 +42,8 @@ from core.app.entities.task_entities import (
 from core.app.task_pipeline.based_generate_task_pipeline import BasedGenerateTaskPipeline
 from core.app.task_pipeline.workflow_cycle_manage import WorkflowCycleManage
 from core.ops.ops_trace_manager import TraceQueueManager
-from core.workflow.entities.node_entities import NodeType, SystemVariable
+from core.workflow.entities.node_entities import NodeType
+from core.workflow.enums import SystemVariable
 from core.workflow.nodes.end.end_node import EndNode
 from extensions.ext_database import db
 from models.account import Account
@@ -519,7 +520,7 @@ class WorkflowAppGenerateTaskPipeline(BasedGenerateTaskPipeline, WorkflowCycleMa
         """
         nodes = graph.get('nodes')
 
-        iteration_ids = [node.get('id') for node in nodes 
+        iteration_ids = [node.get('id') for node in nodes
                          if node.get('data', {}).get('type') in [
                              NodeType.ITERATION.value,
                              NodeType.LOOP.value,
@@ -530,4 +531,3 @@ class WorkflowAppGenerateTaskPipeline(BasedGenerateTaskPipeline, WorkflowCycleMa
                 node.get('id') for node in nodes if node.get('data', {}).get('iteration_id') == iteration_id
             ] for iteration_id in iteration_ids
         }
-    

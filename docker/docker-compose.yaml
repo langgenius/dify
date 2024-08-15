@@ -125,6 +125,10 @@ x-shared-env: &shared-api-worker-env
   CHROMA_DATABASE: ${CHROMA_DATABASE:-default_database}
   CHROMA_AUTH_PROVIDER: ${CHROMA_AUTH_PROVIDER:-chromadb.auth.token_authn.TokenAuthClientProvider}
   CHROMA_AUTH_CREDENTIALS: ${CHROMA_AUTH_CREDENTIALS:-}
+  ELASTICSEARCH_HOST: ${ELASTICSEARCH_HOST:-127.0.0.1}
+  ELASTICSEARCH_PORT: ${ELASTICSEARCH_PORT:-9200}
+  ELASTICSEARCH_USERNAME: ${ELASTICSEARCH_USERNAME:-elastic}
+  ELASTICSEARCH_PASSWORD: ${ELASTICSEARCH_PASSWORD:-elastic}
   # AnalyticDB configuration
   ANALYTICDB_KEY_ID: ${ANALYTICDB_KEY_ID:-}
   ANALYTICDB_KEY_SECRET: ${ANALYTICDB_KEY_SECRET:-}
@@ -187,7 +191,7 @@ x-shared-env: &shared-api-worker-env
 services:
   # API service
   api:
-    image: langgenius/dify-api:0.6.16
+    image: langgenius/dify-api:0.7.0
     restart: always
     environment:
       # Use the shared environment variables.
@@ -207,7 +211,7 @@ services:
   # worker service
   # The Celery worker for processing the queue.
   worker:
-    image: langgenius/dify-api:0.6.16
+    image: langgenius/dify-api:0.7.0
     restart: always
     environment:
       # Use the shared environment variables.
@@ -226,12 +230,13 @@ services:
 
   # Frontend web application.
   web:
-    image: langgenius/dify-web:0.6.16
+    image: langgenius/dify-web:0.7.0
     restart: always
     environment:
       CONSOLE_API_URL: ${CONSOLE_API_URL:-}
       APP_API_URL: ${APP_API_URL:-}
       SENTRY_DSN: ${WEB_SENTRY_DSN:-}
+      NEXT_TELEMETRY_DISABLED: ${NEXT_TELEMETRY_DISABLED:-0}
 
   # The postgres database.
   db:
@@ -582,7 +587,7 @@ services:
   # MyScale vector database
   myscale:
     container_name: myscale
-    image: myscale/myscaledb:1.6
+    image: myscale/myscaledb:1.6.4
     profiles:
       - myscale
     restart: always
@@ -593,6 +598,27 @@ services:
       - ./volumes/myscale/config/users.d/custom_users_config.xml:/etc/clickhouse-server/users.d/custom_users_config.xml
     ports:
       - "${MYSCALE_PORT:-8123}:${MYSCALE_PORT:-8123}"
+
+  elasticsearch:
+    image: docker.elastic.co/elasticsearch/elasticsearch:8.14.3
+    container_name: elasticsearch
+    profiles:
+      - elasticsearch
+    restart: always
+    environment:
+      - "ELASTIC_PASSWORD=${ELASTICSEARCH_USERNAME:-elastic}"
+      - "cluster.name=dify-es-cluster"
+      - "node.name=dify-es0"
+      - "discovery.type=single-node"
+      - "xpack.security.http.ssl.enabled=false"
+      - "xpack.license.self_generated.type=trial"
+    ports:
+      - "${ELASTICSEARCH_PORT:-9200}:${ELASTICSEARCH_PORT:-9200}"
+    healthcheck:
+      test: ["CMD", "curl", "-s", "http://localhost:9200/_cluster/health?pretty"]
+      interval: 30s
+      timeout: 10s
+      retries: 50
 
   # unstructured .
   # (if used, you need to set ETL_TYPE to Unstructured in the api & worker service.)
