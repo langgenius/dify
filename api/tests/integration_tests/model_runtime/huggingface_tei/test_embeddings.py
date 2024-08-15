@@ -1,12 +1,12 @@
 import os
 
 import pytest
-from api.core.model_runtime.model_providers.huggingface_tei.text_embedding.text_embedding import TeiHelper
 
 from core.model_runtime.entities.text_embedding_entities import TextEmbeddingResult
 from core.model_runtime.errors.validate import CredentialsValidateFailedError
 from core.model_runtime.model_providers.huggingface_tei.text_embedding.text_embedding import (
     HuggingfaceTeiTextEmbeddingModel,
+    TeiHelper,
 )
 from tests.integration_tests.model_runtime.__mock.huggingface_tei import MockTEIClass
 

@@ -587,7 +587,7 @@ services:
   # MyScale vector database
   myscale:
     container_name: myscale
-    image: myscale/myscaledb:1.6
+    image: myscale/myscaledb:1.6.4
     profiles:
       - myscale
     restart: always
