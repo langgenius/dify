@@ -922,10 +922,13 @@ class OpenAILargeLanguageModel(_CommonOpenAI, LargeLanguageModel):
                                   tools: Optional[list[PromptMessageTool]] = None) -> int:
         """Calculate num tokens for gpt-3.5-turbo and gpt-4 with tiktoken package.
 
-        Official documentation: https://github.com/openai/openai-cookbook/blob/
-        main/examples/How_to_format_inputs_to_ChatGPT_models.ipynb"""
+        Official documentation: https://github.com/openai/openai-cookbook/blob/main/examples/How_to_format_inputs_to_ChatGPT_models.ipynb"""
         if model.startswith('ft:'):
             model = model.split(':')[1]
+
+        # Currently, we can use gpt4o to calculate chatgpt-4o-latest's token.
+        if model == "chatgpt-4o-latest":
+            model = "gpt-4o"
 
         try:
             encoding = tiktoken.encoding_for_model(model)
@@ -946,7 +949,7 @@ class OpenAILargeLanguageModel(_CommonOpenAI, LargeLanguageModel):
             raise NotImplementedError(
                 f"get_num_tokens_from_messages() is not presently implemented "
                 f"for model {model}."
-                "See https://github.com/openai/openai-python/blob/main/chatml.md for "
+                "See https://platform.openai.com/docs/advanced-usage/managing-tokens for "
                 "information on how messages are converted to tokens."
             )
         num_tokens = 0
