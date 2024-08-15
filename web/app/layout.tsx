@@ -22,7 +22,7 @@ export const viewport: Viewport = {
 
 const LocaleLayout = ({ children }: { children: React.ReactNode }) => {
   const locale = getLocaleOnServer();
-  const BASE_URL = process.env.NEXT_PUBLIC_API_PREFIX;
+  const BASE_URL = process.env.NEXT_PUBLIC_URL;
 
   return (
     <html lang={locale ?? "en"} className="h-full" data-theme="light">
@@ -35,14 +35,14 @@ const LocaleLayout = ({ children }: { children: React.ReactNode }) => {
           dangerouslySetInnerHTML={{
             __html: `
               window.difyChatbotConfig = { 
-                token: 'kF3vftmb6m6LRsSW', 
+                token: 'U60QO9NuXuI1E8q4', 
                 isDev: true  , 
                 baseUrl : "${BASE_URL}" 
               }
             `,
           }}
         />
-        <script src={`${BASE_URL}/embed.min.js`} id="kF3vftmb6m6LRsSW" defer />
+        <script src={`${BASE_URL}/embed.min.js`} id="U60QO9NuXuI1E8q4" defer />
       </head>
 
       <body
