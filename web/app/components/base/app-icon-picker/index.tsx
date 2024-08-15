@@ -1,5 +1,5 @@
 import type { FC } from 'react'
-import { useState } from 'react'
+import { useCallback, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import type { Area } from 'react-easy-crop'
 import Modal from '../modal'
@@ -14,13 +14,13 @@ import getCroppedImg from './utils'
 import type { AppIconType, ImageFile } from '@/types/app'
 import cn from '@/utils/classnames'
 
-type AppIconEmojiSelection = {
+export type AppIconEmojiSelection = {
   type: 'emoji'
   icon: string
   background: string
 }
 
-type AppIconImageSelection = {
+export type AppIconImageSelection = {
   type: 'image'
   fileId: string
   url: string
@@ -48,9 +48,9 @@ const AppIconPicker: FC<AppIconPickerProps> = ({
   const [activeTab, setActiveTab] = useState<AppIconType>('emoji')
 
   const [emoji, setEmoji] = useState<{ emoji: string; background: string }>()
-  const handleSelectEmoji = (emoji: string, background: string) => {
+  const handleSelectEmoji = useCallback((emoji: string, background: string) => {
     setEmoji({ emoji, background })
-  }
+  }, [setEmoji])
 
   const [uploading, setUploading] = useState<boolean>()
 

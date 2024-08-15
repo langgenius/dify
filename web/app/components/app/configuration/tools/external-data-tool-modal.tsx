@@ -220,7 +220,6 @@ const ExternalDataToolModal: FC<ExternalDataToolModalProps> = ({
           <AppIcon size='large'
             onClick={() => { setShowEmojiPicker(true) }}
             className='!w-9 !h-9 rounded-lg border-[0.5px] border-black/5 cursor-pointer '
-            iconType="emoji"
             icon={localeData.icon}
             background={localeData.icon_background}
           />

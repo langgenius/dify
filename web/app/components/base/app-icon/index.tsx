@@ -14,8 +14,8 @@ export type AppIconProps = {
   rounded?: boolean
   iconType?: AppIconType | null
   icon?: string
-  background?: string
-  imageUrl?: string
+  background?: string | null
+  imageUrl?: string | null
   className?: string
   innerIcon?: React.ReactNode
   onClick?: () => void

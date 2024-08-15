@@ -21,11 +21,11 @@ export const createApp: Fetcher<AppDetailResponse, { name: string; icon_type?: A
   return post<AppDetailResponse>('apps', { body: { name, icon_type, icon, icon_background, mode, description, model_config: config } })
 }
 
-export const updateAppInfo: Fetcher<AppDetailResponse, { appID: string; name: string; icon: string; icon_background: string; description: string }> = ({ appID, name, icon, icon_background, description }) => {
-  return put<AppDetailResponse>(`apps/${appID}`, { body: { name, icon, icon_background, description } })
+export const updateAppInfo: Fetcher<AppDetailResponse, { appID: string; name: string; icon_type: AppIconType; icon: string; icon_background?: string; description: string }> = ({ appID, name, icon_type, icon, icon_background, description }) => {
+  return put<AppDetailResponse>(`apps/${appID}`, { body: { name, icon_type, icon, icon_background, description } })
 }
 
-export const copyApp: Fetcher<AppDetailResponse, { appID: string; name: string; icon_type: AppIconType; icon: string; icon_background?: string; mode: AppMode; description?: string }> = ({ appID, name, icon_type, icon, icon_background, mode, description }) => {
+export const copyApp: Fetcher<AppDetailResponse, { appID: string; name: string; icon_type: AppIconType; icon: string; icon_background?: string | null; mode: AppMode; description?: string }> = ({ appID, name, icon_type, icon, icon_background, mode, description }) => {
   return post<AppDetailResponse>(`apps/${appID}/copy`, { body: { name, icon_type, icon, icon_background, mode, description } })
 }
 
@@ -33,16 +33,16 @@ export const exportAppConfig: Fetcher<{ data: string }, { appID: string; include
   return get<{ data: string }>(`apps/${appID}/export?include_secret=${include}`)
 }
 
-export const importApp: Fetcher<AppDetailResponse, { data: string; name?: string; description?: string; icon?: string; icon_background?: string }> = ({ data, name, description, icon, icon_background }) => {
-  return post<AppDetailResponse>('apps/import', { body: { data, name, description, icon, icon_background } })
+export const importApp: Fetcher<AppDetailResponse, { data: string; name?: string; description?: string; icon_type?: AppIconType; icon?: string; icon_background?: string }> = ({ data, name, description, icon_type, icon, icon_background }) => {
+  return post<AppDetailResponse>('apps/import', { body: { data, name, description, icon_type, icon, icon_background } })
 }
 
 export const importAppFromUrl: Fetcher<AppDetailResponse, { url: string; name?: string; description?: string; icon?: string; icon_background?: string }> = ({ url, name, description, icon, icon_background }) => {
   return post<AppDetailResponse>('apps/import/url', { body: { url, name, description, icon, icon_background } })
 }
 
-export const switchApp: Fetcher<{ new_app_id: string }, { appID: string; name: string; icon: string; icon_background: string }> = ({ appID, name, icon, icon_background }) => {
-  return post<{ new_app_id: string }>(`apps/${appID}/convert-to-workflow`, { body: { name, icon, icon_background } })
+export const switchApp: Fetcher<{ new_app_id: string }, { appID: string; name: string; icon_type: AppIconType; icon: string; icon_background?: string | null }> = ({ appID, name, icon_type, icon, icon_background }) => {
+  return post<{ new_app_id: string }>(`apps/${appID}/convert-to-workflow`, { body: { name, icon_type, icon, icon_background } })
 }
 
 export const deleteApp: Fetcher<CommonResponse, string> = (appID) => {

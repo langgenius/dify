@@ -139,7 +139,6 @@ const Tools = () => {
                   <div className='grow flex items-center'>
                     <AppIcon size='large'
                       className='mr-2 !w-6 !h-6 rounded-md border-[0.5px] border-black/5'
-                      iconType="emoji"
                       icon={item.icon}
                       background={item.icon_background}
                     />

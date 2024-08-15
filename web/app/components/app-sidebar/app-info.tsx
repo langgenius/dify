@@ -59,6 +59,7 @@ const AppInfo = ({ expand }: IAppInfoProps) => {
 
   const onEdit: CreateAppModalProps['onConfirm'] = useCallback(async ({
     name,
+    icon_type,
     icon,
     icon_background,
     description,
@@ -69,6 +70,7 @@ const AppInfo = ({ expand }: IAppInfoProps) => {
       const app = await updateAppInfo({
         appID: appDetail.id,
         name,
+        icon_type,
         icon,
         icon_background,
         description,
@@ -415,9 +417,11 @@ const AppInfo = ({ expand }: IAppInfoProps) => {
         {showEditModal && (
           <CreateAppModal
             isEditModal
+            appName={appDetail.name}
+            appIconType={appDetail.icon_type}
             appIcon={appDetail.icon}
             appIconBackground={appDetail.icon_background}
-            appName={appDetail.name}
+            appIconUrl={appDetail.icon_url}
             appDescription={appDetail.description}
             show={showEditModal}
             onConfirm={onEdit}

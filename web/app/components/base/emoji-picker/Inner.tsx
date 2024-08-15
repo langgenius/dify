@@ -45,6 +45,8 @@ const backgroundColors = [
 ]
 
 type IEmojiPickerInnerProps = {
+  emoji?: string
+  background?: string
   onSelect?: (emoji: string, background: string) => void
   className?: string
 }

@@ -291,8 +291,10 @@ export type SiteConfig = {
   /** Custom Disclaimer */
   custom_disclaimer: string
 
+  icon_type: AppIconType | null
   icon: string
-  icon_background: string
+  icon_background: string | null
+  icon_url: string | null
 
   show_workflow_steps: boolean
 }
@@ -310,14 +312,17 @@ export type App = {
   /** Description */
   description: string
 
-  /** Icon Type */
+  /**
+   * Icon Type
+   * @default 'emoji'
+  */
   icon_type: AppIconType | null
   /** Icon, stores file ID if icon_type is 'image' */
   icon: string
   /** Icon Background, only available when icon_type is null or 'emoji' */
-  icon_background: string
+  icon_background: string | null
   /** Icon URL, only available when icon_type is 'image' */
-  icon_url: string
+  icon_url: string | null
 
   /** Mode */
   mode: AppMode

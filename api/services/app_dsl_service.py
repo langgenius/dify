@@ -210,6 +210,7 @@ class AppDslService:
                                                   account: Account,
                                                   name: str,
                                                   description: str,
+                                                  icon_type: str,
                                                   icon: str,
                                                   icon_background: str) -> App:
         """
@@ -221,6 +222,7 @@ class AppDslService:
         :param account: Account instance
         :param name: app name
         :param description: app description
+        :param icon_type: app icon type, "emoji" or "image"
         :param icon: app icon
         :param icon_background: app icon background
         """
@@ -234,6 +236,7 @@ class AppDslService:
             account=account,
             name=name,
             description=description,
+            icon_type=icon_type,
             icon=icon,
             icon_background=icon_background
         )
@@ -368,6 +371,7 @@ class AppDslService:
         :param account: Account instance
         :param name: app name
         :param description: app description
+        :param icon_type: app icon type, "emoji" or "image"
         :param icon: app icon
         :param icon_background: app icon background
         """

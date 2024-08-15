@@ -1,7 +1,6 @@
 'use client'
 import React, { useState } from 'react'
 import { useTranslation } from 'react-i18next'
-import type { AppIconSelection } from '../../base/app-icon-picker'
 import AppIconPicker from '../../base/app-icon-picker'
 import s from './style.module.css'
 import cn from '@/utils/classnames'
@@ -17,14 +16,14 @@ export type DuplicateAppModalProps = {
   appName: string
   icon_type: AppIconType | null
   icon: string
-  icon_background: string
-  icon_url: string
+  icon_background?: string | null
+  icon_url?: string | null
   show: boolean
   onConfirm: (info: {
     name: string
     icon_type: AppIconType
     icon: string
-    icon_background?: string
+    icon_background?: string | null
   }) => Promise<void>
   onHide: () => void
 }
@@ -44,10 +43,10 @@ const DuplicateAppModal = ({
   const [name, setName] = React.useState(appName)
 
   const [showAppIconPicker, setShowAppIconPicker] = useState(false)
-  const [appIcon, setAppIcon] = useState<AppIconSelection>(
+  const [appIcon, setAppIcon] = useState(
     icon_type === 'image'
-      ? { type: 'image', url: icon_url, fileId: icon }
-      : { type: 'emoji', icon, background: icon_background },
+      ? { type: 'image' as const, url: icon_url, fileId: icon }
+      : { type: 'emoji' as const, icon, background: icon_background },
   )
 
   const { plan, enableBilling } = useProviderContext()
@@ -108,8 +107,8 @@ const DuplicateAppModal = ({
         }}
         onClose={() => {
           setAppIcon(icon_type === 'image'
-            ? { type: 'image', url: icon_url, fileId: icon }
-            : { type: 'emoji', icon, background: icon_background })
+            ? { type: 'image', url: icon_url!, fileId: icon }
+            : { type: 'emoji', icon, background: icon_background! })
           setShowAppIconPicker(false)
         }}
       />}
