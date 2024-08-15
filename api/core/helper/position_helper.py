@@ -9,7 +9,7 @@ from core.tools.utils.yaml_utils import load_yaml_file
 
 def get_position_map(folder_path: str, *, file_name: str = "_position.yaml") -> dict[str, int]:
     """
-    Get the mapping from name to index from a YAML file.
+    Get the mapping from name to index from a YAML file
     :param folder_path:
     :param file_name: the YAML file name, default to '_position.yaml'
     :return: a dict with name as key and index as value
