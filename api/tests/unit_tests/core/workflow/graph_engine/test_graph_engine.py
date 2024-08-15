@@ -1,8 +1,9 @@
 from unittest.mock import patch
 
 from core.app.entities.app_invoke_entities import InvokeFrom
-from core.workflow.entities.node_entities import NodeRunMetadataKey, NodeRunResult, SystemVariable, UserFrom
+from core.workflow.entities.node_entities import NodeRunMetadataKey, NodeRunResult, UserFrom
 from core.workflow.entities.variable_pool import VariablePool
+from core.workflow.enums import SystemVariable
 from core.workflow.graph_engine.entities.event import (
     BaseNodeEvent,
     GraphRunFailedEvent,

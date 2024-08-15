@@ -8,12 +8,12 @@ import pytest
 from core.app.entities.app_invoke_entities import InvokeFrom, ModelConfigWithCredentialsEntity
 from core.entities.provider_configuration import ProviderConfiguration, ProviderModelBundle
 from core.entities.provider_entities import CustomConfiguration, CustomProviderConfiguration, SystemConfiguration
-from core.memory.token_buffer_memory import TokenBufferMemory
 from core.model_manager import ModelInstance
 from core.model_runtime.entities.model_entities import ModelType
 from core.model_runtime.model_providers.model_provider_factory import ModelProviderFactory
-from core.workflow.entities.node_entities import SystemVariable, UserFrom
+from core.workflow.entities.node_entities import UserFrom
 from core.workflow.entities.variable_pool import VariablePool
+from core.workflow.enums import SystemVariable
 from core.workflow.nodes.parameter_extractor.parameter_extractor_node import ParameterExtractorNode
 from extensions.ext_database import db
 from models.provider import ProviderType

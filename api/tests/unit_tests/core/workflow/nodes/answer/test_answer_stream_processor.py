@@ -2,8 +2,9 @@ import uuid
 from collections.abc import Generator
 from datetime import datetime, timezone
 
-from core.workflow.entities.node_entities import NodeType, SystemVariable
+from core.workflow.entities.node_entities import NodeType
 from core.workflow.entities.variable_pool import VariablePool
+from core.workflow.enums import SystemVariable
 from core.workflow.graph_engine.entities.event import (
     GraphEngineEvent,
     NodeRunStartedEvent,
