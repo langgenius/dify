@@ -6,6 +6,7 @@ from itertools import islice
 from typing import TYPE_CHECKING, Any, Optional, Union, cast
 
 import qdrant_client
+import requests
 from flask import current_app
 from pydantic import BaseModel
 from qdrant_client.http import models as rest
@@ -18,19 +19,19 @@ from qdrant_client.http.models import (
     TokenizerType,
 )
 from qdrant_client.local.qdrant_local import QdrantLocal
+from requests.auth import HTTPDigestAuth
 
 from configs import dify_config
 from core.rag.datasource.entity.embedding import Embeddings
 from core.rag.datasource.vdb.field import Field
+from core.rag.datasource.vdb.tidb_on_qdrant.tidb_service import TidbService
 from core.rag.datasource.vdb.vector_base import BaseVector
 from core.rag.datasource.vdb.vector_factory import AbstractVectorFactory
 from core.rag.datasource.vdb.vector_type import VectorType
 from core.rag.models.document import Document
 from extensions.ext_database import db
 from extensions.ext_redis import redis_client
-from models.dataset import Dataset, DatasetCollectionBinding, TenantDatasetCollectionBinding, TidbAuthBinding
-import requests
-from requests.auth import HTTPDigestAuth
+from models.dataset import Dataset, TidbAuthBinding
 
 if TYPE_CHECKING:
     from qdrant_client import grpc  # noqa
@@ -269,23 +270,11 @@ class TidbOnQdrantVector(BaseVector):
                 raise e
 
     def delete(self):
-        from qdrant_client.http import models
         from qdrant_client.http.exceptions import UnexpectedResponse
 
         try:
-            filter = models.Filter(
-                must=[
-                    models.FieldCondition(
-                        key="group_id",
-                        match=models.MatchValue(value=self._group_id),
-                    ),
-                ],
-            )
-            self._client.delete(
-                collection_name=self._collection_name,
-                points_selector=FilterSelector(
-                    filter=filter
-                ),
+            self._client.delete_collection(
+                collection_name=self._collection_name
             )
         except UnexpectedResponse as e:
             # Collection does not exist, so return
@@ -383,10 +372,6 @@ class TidbOnQdrantVector(BaseVector):
         scroll_filter = models.Filter(
             must=[
                 models.FieldCondition(
-                    key="group_id",
-                    match=models.MatchValue(value=self._group_id),
-                ),
-                models.FieldCondition(
                     key="page_content",
                     match=models.MatchText(text=query),
                 )
@@ -436,30 +421,37 @@ class TidbOnQdrantVectorFactory(AbstractVectorFactory):
             filter(TidbAuthBinding.tenant_id == dataset.tenant_id). \
             one_or_none()
         if not tidb_auth_binding:
-            tidb_config = TidbConfig(api_url=dify_config.TIDB_API_URL,
-                                     public_key=dify_config.TIDB_PUBLIC_KEY,
-                                     private_key=dify_config.TIDB_PRIVATE_KEY
-                                     )
-            self.create_tidb_serverless_cluster(tidb_config, dataset.tenant_id.replace('-', ''),
-                                                       'regions/aws-us-east-1')
-            tidb_auth_binding = TidbAuthBinding(tenant_id=dataset.tenant_id, account='dify', password='dify123')
-            db.session.add(tidb_auth_binding)
-            db.session.commit()
+            idle_tidb_auth_binding = db.session.query(TidbAuthBinding). \
+                filter(TidbAuthBinding.active == False). \
+                limit(1). \
+                one_or_none()
+            if idle_tidb_auth_binding:
+                idle_tidb_auth_binding.active = True
+                idle_tidb_auth_binding.tenant_id = dataset.tenant_id
+                db.session.commit()
+                TIDB_ON_QDRANT_API_KEY = f'{idle_tidb_auth_binding.account}:{idle_tidb_auth_binding.password}'
+            else:
+                new_cluster = TidbService.create_tidb_serverless_cluster(dify_config.TIDB_PROJECT_ID,
+                                                                         dify_config.TIDB_API_URL,
+                                                                         dify_config.TIDB_IAM_API_URL,
+                                                                         dify_config.TIDB_PUBLIC_KEY,
+                                                                         dify_config.TIDB_PRIVATE_KEY,
+                                                                         str(uuid.uuid4()).replace("-", "")[:16],
+                                                                         dify_config.TIDB_REGION)
+                new_tidb_auth_binding = TidbAuthBinding(cluster_id=new_cluster['cluster_id'],
+                                                        cluster_name=new_cluster['cluster_name'],
+                                                        account=new_cluster['account'],
+                                                        password=new_cluster['password'],
+                                                        tenant_id=dataset.tenant_id,
+                                                        active=True
+                                                        )
+                db.session.add(new_tidb_auth_binding)
+                db.session.commit()
+                TIDB_ON_QDRANT_API_KEY = f'{new_tidb_auth_binding.account}:{new_tidb_auth_binding.password}'
 
-        #
-        # dataset_collection_binding = db.session.query(TenantDatasetCollectionBinding). \
-        #     filter(TenantDatasetCollectionBinding.model_name == dataset.embedding_model,
-        #            TenantDatasetCollectionBinding.provider_name == dataset.embedding_model_provider,
-        #            TenantDatasetCollectionBinding.tenant_id == dataset.tenant_id). \
-        #     one_or_none()
-        # if dataset_collection_binding:
-        #     collection_name = dataset_collection_binding.collection_name
-        # else:
-        #     raise ValueError('Dataset Collection Bindings is not exist!')
-        #
-        # if not dataset.index_struct_dict:
-        #     dataset.index_struct = json.dumps(
-        #         self.gen_index_struct_dict(VectorType.QDRANT, collection_name))
+        else:
+            TIDB_ON_QDRANT_API_KEY = f'{tidb_auth_binding.account}:{tidb_auth_binding.password}'
+
         if dataset.index_struct_dict:
             class_prefix: str = dataset.index_struct_dict['vector_store']['class_prefix']
             collection_name = class_prefix
@@ -470,7 +462,7 @@ class TidbOnQdrantVectorFactory(AbstractVectorFactory):
                 self.gen_index_struct_dict(VectorType.TIDB_ON_QDRANT, collection_name))
 
         config = current_app.config
-        TIDB_ON_QDRANT_API_KEY = f'{tidb_auth_binding.account}:{tidb_auth_binding.password}'
+
         return TidbOnQdrantVector(
             collection_name=collection_name,
             group_id=dataset.id,

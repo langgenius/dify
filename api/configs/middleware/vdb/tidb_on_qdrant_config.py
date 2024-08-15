@@ -48,3 +48,18 @@ class TidbOnQdrantConfig(BaseSettings):
         description='Tidb API url',
         default=None,
     )
+
+    TIDB_IAM_API_URL: Optional[str] = Field(
+        description='Tidb IAM API url',
+        default=None,
+    )
+
+    TIDB_REGION: Optional[str] = Field(
+        description='Tidb serverless region',
+        default='regions/aws-us-east-1',
+    )
+
+    TIDB_PROJECT_ID: Optional[str] = Field(
+        description='Tidb project id',
+        default=None,
+    )

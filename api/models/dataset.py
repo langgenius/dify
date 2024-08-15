@@ -667,33 +667,19 @@ class DatasetCollectionBinding(db.Model):
     created_at = db.Column(db.DateTime, nullable=False, server_default=db.text('CURRENT_TIMESTAMP(0)'))
 
 
-class TenantDatasetCollectionBinding(db.Model):
-    __tablename__ = 'tenant_dataset_collection_bindings'
-    __table_args__ = (
-        db.PrimaryKeyConstraint('id', name='tenant_dataset_collection_bindings_pkey'),
-        db.Index('tenant_provider_model_name_idx', 'tenant_id', 'provider_name', 'model_name')
-
-    )
-
-    id = db.Column(StringUUID, primary_key=True, server_default=db.text('uuid_generate_v4()'))
-    tenant_id = db.Column(StringUUID, nullable=False)
-    provider_name = db.Column(db.String(40), nullable=False)
-    model_name = db.Column(db.String(255), nullable=False)
-    type = db.Column(db.String(40), server_default=db.text("'dataset'::character varying"), nullable=False)
-    collection_name = db.Column(db.String(64), nullable=False)
-    created_at = db.Column(db.DateTime, nullable=False, server_default=db.text('CURRENT_TIMESTAMP(0)'))
-
-
 class TidbAuthBinding(db.Model):
     __tablename__ = 'tidb_auth_bindings'
     __table_args__ = (
         db.PrimaryKeyConstraint('id', name='tidb_auth_bindings_pkey'),
-        db.Index('tidb_auth_bindings_tenant_idx', 'tenant_id')
-
+        db.Index('tidb_auth_bindings_tenant_idx', 'tenant_id'),
+        db.Index('tidb_auth_bindings_active_idx', 'active'),
+        db.Index('tidb_auth_bindings_created_at_idx', 'created_at'),
     )
-
     id = db.Column(StringUUID, primary_key=True, server_default=db.text('uuid_generate_v4()'))
-    tenant_id = db.Column(StringUUID, nullable=False)
+    tenant_id = db.Column(StringUUID, nullable=True)
+    cluster_id = db.Column(db.String(255), nullable=False)
+    cluster_name = db.Column(db.String(255), nullable=False)
+    active = db.Column(db.Boolean, nullable=False, server_default=db.text('false'))
     account = db.Column(db.String(255), nullable=False)
     password = db.Column(db.String(255), nullable=False)
     created_at = db.Column(db.DateTime, nullable=False, server_default=db.text('CURRENT_TIMESTAMP(0)'))

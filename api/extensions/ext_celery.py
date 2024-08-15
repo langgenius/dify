@@ -42,6 +42,7 @@ def init_app(app: Flask) -> Celery:
     imports = [
         "schedule.clean_embedding_cache_task",
         "schedule.clean_unused_datasets_task",
+        "schedule.create_tidb_serverless_task",
     ]
     day = app.config["CELERY_BEAT_SCHEDULER_TIME"]
     beat_schedule = {
@@ -52,6 +53,10 @@ def init_app(app: Flask) -> Celery:
         'clean_unused_datasets_task': {
             'task': 'schedule.clean_unused_datasets_task.clean_unused_datasets_task',
             'schedule': timedelta(days=day),
+        },
+        'create_tidb_serverless_task': {
+            'task': 'schedule.create_tidb_serverless_task.create_tidb_serverless_task',
+            'schedule': timedelta(seconds=10),
         }
     }
     celery_app.conf.update(
