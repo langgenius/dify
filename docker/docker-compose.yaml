@@ -608,8 +608,6 @@ services:
     profiles:
       - elasticsearch
     restart: always
-#    volumes:
-#      - ./volumes/elasticsearch/data:/usr/share/elasticsearch/data
     volumes:
       - dify_es01_data:/usr/share/elasticsearch/data
     environment:
