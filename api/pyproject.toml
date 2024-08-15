@@ -69,7 +69,18 @@ ignore = [
 ]
 
 [tool.ruff.format]
-quote-style = "single"
+exclude = [
+    "core/**/*.py",
+    "controllers/**/*.py",
+    "models/**/*.py",
+    "utils/**/*.py",
+    "migrations/**/*",
+    "services/**/*.py",
+    "tasks/**/*.py",
+    "tests/**/*.py",
+    "libs/**/*.py",
+    "configs/**/*.py",
+]
 
 [tool.pytest_env]
 OPENAI_API_KEY = "sk-IamNotARealKeyJustForMockTestKawaiiiiiiiiii"

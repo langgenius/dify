@@ -258,7 +258,7 @@ class MessageBasedAppGenerator(BaseAppGenerator):
 
         return introduction
 
-    def _get_conversation(self, conversation_id: str) -> Conversation:
+    def _get_conversation(self, conversation_id: str):
         """
         Get conversation by conversation id
         :param conversation_id: conversation id
@@ -269,6 +269,9 @@ class MessageBasedAppGenerator(BaseAppGenerator):
             .filter(Conversation.id == conversation_id)
             .first()
         )
+
+        if not conversation:
+            raise ConversationNotExistsError()
 
         return conversation
 

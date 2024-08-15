@@ -99,7 +99,7 @@ class MessageFileParser:
         # return all file objs
         return new_files
 
-    def transform_message_files(self, files: list[MessageFile], file_extra_config: FileExtraConfig) -> list[FileVar]:
+    def transform_message_files(self, files: list[MessageFile], file_extra_config: FileExtraConfig):
         """
         transform message files
 
@@ -144,7 +144,7 @@ class MessageFileParser:
 
         return type_file_objs
 
-    def _to_file_obj(self, file: Union[dict, MessageFile], file_extra_config: FileExtraConfig) -> FileVar:
+    def _to_file_obj(self, file: Union[dict, MessageFile], file_extra_config: FileExtraConfig):
         """
         transform file to file obj
 

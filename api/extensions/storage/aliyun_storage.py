@@ -8,23 +8,22 @@ from extensions.storage.base_storage import BaseStorage
 
 
 class AliyunStorage(BaseStorage):
-    """Implementation for aliyun storage.
-    """
+    """Implementation for aliyun storage."""
 
     def __init__(self, app: Flask):
         super().__init__(app)
 
         app_config = self.app.config
-        self.bucket_name = app_config.get('ALIYUN_OSS_BUCKET_NAME')
+        self.bucket_name = app_config.get("ALIYUN_OSS_BUCKET_NAME")
         oss_auth_method = aliyun_s3.Auth
         region = None
-        if app_config.get('ALIYUN_OSS_AUTH_VERSION') == 'v4':
+        if app_config.get("ALIYUN_OSS_AUTH_VERSION") == "v4":
             oss_auth_method = aliyun_s3.AuthV4
-            region = app_config.get('ALIYUN_OSS_REGION')
-        oss_auth = oss_auth_method(app_config.get('ALIYUN_OSS_ACCESS_KEY'), app_config.get('ALIYUN_OSS_SECRET_KEY'))
+            region = app_config.get("ALIYUN_OSS_REGION")
+        oss_auth = oss_auth_method(app_config.get("ALIYUN_OSS_ACCESS_KEY"), app_config.get("ALIYUN_OSS_SECRET_KEY"))
         self.client = aliyun_s3.Bucket(
             oss_auth,
-            app_config.get('ALIYUN_OSS_ENDPOINT'),
+            app_config.get("ALIYUN_OSS_ENDPOINT"),
             self.bucket_name,
             connect_timeout=30,
             region=region,
