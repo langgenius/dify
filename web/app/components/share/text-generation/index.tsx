@@ -36,6 +36,7 @@ import { DEFAULT_VALUE_MAX_LEN, appDefaultIconBackground } from '@/config'
 import Toast from '@/app/components/base/toast'
 import type { VisionFile, VisionSettings } from '@/types/app'
 import { Resolution, TransferMethod } from '@/types/app'
+import { useAppFavicon } from '@/hooks/use-app-favicon'
 
 const GROUP_SIZE = 5 // to avoid RPM(Request per minute) limit. The group task finished then the next group.
 enum TaskStatus {
@@ -363,6 +364,8 @@ const TextGeneration: FC<IMainProps> = ({
             title: installedAppInfo?.app.name,
             prompt_public: false,
             copyright: '',
+            icon: installedAppInfo?.app.icon,
+            icon_background: installedAppInfo?.app.icon_background,
           },
           plan: 'basic',
         }
@@ -407,6 +410,8 @@ const TextGeneration: FC<IMainProps> = ({
         document.title = `${siteInfo.title} - Powered by Dify`
     }
   }, [siteInfo?.title, canReplaceLogo])
+
+  useAppFavicon(!isInstalledApp, siteInfo?.icon, siteInfo?.icon_background)
 
   const [isShowResSidebar, { setTrue: doShowResSidebar, setFalse: hideResSidebar }] = useBoolean(false)
   const showResSidebar = () => {

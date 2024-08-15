@@ -1,8 +1,8 @@
 from unittest.mock import MagicMock
 
 from core.app.entities.app_invoke_entities import InvokeFrom
-from core.workflow.entities.node_entities import SystemVariable
 from core.workflow.entities.variable_pool import VariablePool
+from core.workflow.enums import SystemVariable
 from core.workflow.nodes.base_node import UserFrom
 from core.workflow.nodes.if_else.if_else_node import IfElseNode
 from extensions.ext_database import db

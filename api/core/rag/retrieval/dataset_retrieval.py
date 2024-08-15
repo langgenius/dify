@@ -14,7 +14,8 @@ from core.model_manager import ModelInstance, ModelManager
 from core.model_runtime.entities.message_entities import PromptMessageTool
 from core.model_runtime.entities.model_entities import ModelFeature, ModelType
 from core.model_runtime.model_providers.__base.large_language_model import LargeLanguageModel
-from core.ops.ops_trace_manager import TraceQueueManager, TraceTask, TraceTaskName
+from core.ops.entities.trace_entity import TraceTaskName
+from core.ops.ops_trace_manager import TraceQueueManager, TraceTask
 from core.ops.utils import measure_time
 from core.rag.data_post_processor.data_post_processor import DataPostProcessor
 from core.rag.datasource.keyword.jieba.jieba_keyword_table_handler import JiebaKeywordTableHandler
@@ -278,6 +279,7 @@ class DatasetRetrieval:
                         query=query,
                         top_k=top_k, score_threshold=score_threshold,
                         reranking_model=reranking_model,
+                        reranking_mode=retrieval_model_config.get('reranking_mode', 'reranking_model'),
                         weights=retrieval_model_config.get('weights', None),
                     )
                 self._on_query(query, [dataset_id], app_id, user_from, user_id)
@@ -431,10 +433,12 @@ class DatasetRetrieval:
                                                           dataset_id=dataset.id,
                                                           query=query,
                                                           top_k=top_k,
-                                                          score_threshold=retrieval_model['score_threshold']
+                                                          score_threshold=retrieval_model.get('score_threshold', .0)
                                                           if retrieval_model['score_threshold_enabled'] else None,
-                                                          reranking_model=retrieval_model['reranking_model']
+                                                          reranking_model=retrieval_model.get('reranking_model', None)
                                                           if retrieval_model['reranking_enable'] else None,
+                                                          reranking_mode=retrieval_model.get('reranking_mode')
+                                                          if retrieval_model.get('reranking_mode') else 'reranking_model',
                                                           weights=retrieval_model.get('weights', None),
                                                           )
 

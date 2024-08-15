@@ -8,6 +8,7 @@ import { PortalToFollowElem, PortalToFollowElemContent, PortalToFollowElemTrigge
 export type TooltipProps = {
   position?: Placement
   triggerMethod?: 'hover' | 'click'
+  disabled?: boolean
   popupContent: React.ReactNode
   children: React.ReactNode
   hideArrow?: boolean
@@ -23,6 +24,7 @@ const arrow = (
 const Tooltip: FC<TooltipProps> = ({
   position = 'top',
   triggerMethod = 'hover',
+  disabled = false,
   popupContent,
   children,
   hideArrow,
@@ -67,7 +69,7 @@ const Tooltip: FC<TooltipProps> = ({
 
   return (
     <PortalToFollowElem
-      open={open}
+      open={disabled ? false : open}
       onOpenChange={setOpen}
       placement={position}
       offset={offset ?? 10}

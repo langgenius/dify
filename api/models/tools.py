@@ -6,8 +6,9 @@ from core.tools.entities.common_entities import I18nObject
 from core.tools.entities.tool_bundle import ApiToolBundle
 from core.tools.entities.tool_entities import ApiProviderSchemaType, WorkflowToolParameterConfiguration
 from extensions.ext_database import db
-from models import StringUUID
-from models.model import Account, App, Tenant
+
+from .model import Account, App, Tenant
+from .types import StringUUID
 
 
 class BuiltinToolProvider(db.Model):
@@ -299,4 +300,4 @@ class ToolFile(db.Model):
     # mime type
     mimetype = db.Column(db.String(255), nullable=False)
     # original url
-    original_url = db.Column(db.String(255), nullable=True)
+    original_url = db.Column(db.String(2048), nullable=True)

@@ -17,6 +17,8 @@ type Props = {
   onChange: (newList: KeyValue[]) => void
   onAdd: () => void
   // onSwitchToBulkEdit: () => void
+  keyNotSupportVar?: boolean
+  insertVarTipToLeft?: boolean
 }
 
 const KeyValueList: FC<Props> = ({
@@ -26,6 +28,8 @@ const KeyValueList: FC<Props> = ({
   onChange,
   onAdd,
   // onSwitchToBulkEdit,
+  keyNotSupportVar,
+  insertVarTipToLeft,
 }) => {
   const { t } = useTranslation()
 
@@ -46,6 +50,9 @@ const KeyValueList: FC<Props> = ({
       onChange(newList)
     }
   }, [list, onChange])
+
+  if (!Array.isArray(list))
+    return null
 
   return (
     <div className='border border-gray-200 rounded-lg overflow-hidden'>
@@ -79,6 +86,8 @@ const KeyValueList: FC<Props> = ({
             onAdd={onAdd}
             readonly={readonly}
             canRemove={list.length > 1}
+            keyNotSupportVar={keyNotSupportVar}
+            insertVarTipToLeft={insertVarTipToLeft}
           />
         ))
       }

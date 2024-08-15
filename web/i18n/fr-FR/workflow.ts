@@ -19,7 +19,7 @@ const translation = {
     goBackToEdit: 'Retour à l\'éditeur',
     conversationLog: 'Journal de conversation',
     features: 'Fonctionnalités',
-    debugAndPreview: 'Déboguer et prévisualiser',
+    debugAndPreview: 'Aperçu',
     restart: 'Redémarrer',
     currentDraft: 'Brouillon actuel',
     currentDraftUnpublished: 'Brouillon actuel non publié',

@@ -15,6 +15,8 @@ help:
     en_US: https://cloud.siliconflow.cn/keys
 supported_model_types:
   - llm
+  - text-embedding
+  - speech2text
 configurate_methods:
   - predefined-model
 provider_credential_schema:

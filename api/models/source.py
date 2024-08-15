@@ -3,7 +3,8 @@ import json
 from sqlalchemy.dialects.postgresql import JSONB
 
 from extensions.ext_database import db
-from models import StringUUID
+
+from .types import StringUUID
 
 
 class DataSourceOauthBinding(db.Model):
