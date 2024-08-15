@@ -1,6 +1,15 @@
+- Meta-Llama-3.1-405B-Instruct-AWQ-INT4
+- Meta-Llama-3.1-8B-Instruct
+- Meta-Llama-3-70B-Instruct-GPTQ-Int4
+- Meta-Llama-3-8B-Instruct
 - Qwen2-72B-Instruct-GPTQ-Int4
+- Qwen2-72B-Instruct
 - Qwen2-7B
-- Qwen1.5-110B-Chat-GPTQ-Int4
+- Qwen-14B-Chat-Int4
 - Qwen1.5-72B-Chat-GPTQ-Int4
 - Qwen1.5-7B
-- Qwen-14B-Chat-Int4
+- Qwen1.5-110B-Chat-GPTQ-Int4
+- deepseek-v2-chat
+- deepseek-v2-lite-chat
+- Llama3-Chinese_v2
+- chatglm3-6b

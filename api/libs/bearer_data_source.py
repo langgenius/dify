@@ -2,10 +2,10 @@
 from abc import abstractmethod
 
 import requests
-from api.models.source import DataSourceBearerBinding
 from flask_login import current_user
 
 from extensions.ext_database import db
+from models.source import DataSourceBearerBinding
 
 
 class BearerDataSource:
@@ -25,7 +25,7 @@ class FireCrawlDataSource(BearerDataSource):
         TEST_CRAWL_SITE_URL = "https://www.google.com"
         FIRECRAWL_API_VERSION = "v0"
 
-        test_api_endpoint = self.api_base_url.rstrip('/') + f"/{FIRECRAWL_API_VERSION}/scrape"
+        test_api_endpoint = self.api_base_url.rstrip("/") + f"/{FIRECRAWL_API_VERSION}/scrape"
 
         headers = {
             "Authorization": f"Bearer {self.api_key}",
@@ -45,9 +45,9 @@ class FireCrawlDataSource(BearerDataSource):
         data_source_binding = DataSourceBearerBinding.query.filter(
             db.and_(
                 DataSourceBearerBinding.tenant_id == current_user.current_tenant_id,
-                DataSourceBearerBinding.provider == 'firecrawl',
+                DataSourceBearerBinding.provider == "firecrawl",
                 DataSourceBearerBinding.endpoint_url == self.api_base_url,
-                DataSourceBearerBinding.bearer_key == self.api_key
+                DataSourceBearerBinding.bearer_key == self.api_key,
             )
         ).first()
         if data_source_binding:
@@ -56,9 +56,9 @@ class FireCrawlDataSource(BearerDataSource):
         else:
             new_data_source_binding = DataSourceBearerBinding(
                 tenant_id=current_user.current_tenant_id,
-                provider='firecrawl',
+                provider="firecrawl",
                 endpoint_url=self.api_base_url,
-                bearer_key=self.api_key
+                bearer_key=self.api_key,
             )
             db.session.add(new_data_source_binding)
             db.session.commit()
