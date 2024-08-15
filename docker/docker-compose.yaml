@@ -129,7 +129,7 @@ x-shared-env: &shared-api-worker-env
   ELASTICSEARCH_PORT: ${ELASTICSEARCH_PORT:-9200}
   ELASTICSEARCH_USERNAME: ${ELASTICSEARCH_USERNAME:-elastic}
   ELASTICSEARCH_PASSWORD: ${ELASTICSEARCH_PASSWORD:-elastic}
-  # KIBANA_PORT: ${KIBANA_PORT:-5601}
+  KIBANA_PORT: ${KIBANA_PORT:-5601}
   # AnalyticDB configuration
   ANALYTICDB_KEY_ID: ${ANALYTICDB_KEY_ID:-}
   ANALYTICDB_KEY_SECRET: ${ANALYTICDB_KEY_SECRET:-}
@@ -608,6 +608,8 @@ services:
     profiles:
       - elasticsearch
     restart: always
+    volumes:
+      - ./volumes/elasticsearch/data:/usr/share/elasticsearch/data
     environment:
       - "ELASTIC_PASSWORD=${ELASTICSEARCH_USERNAME:-elastic}"
       - "cluster.name=dify-es-cluster"
