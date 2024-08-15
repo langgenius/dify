@@ -139,8 +139,7 @@ class LangSmithDataTrace(BaseTraceInstance):
                 json.loads(node_execution.execution_metadata) if node_execution.execution_metadata else {}
             )
             node_total_tokens = execution_metadata.get("total_tokens", 0)
-
-            metadata = json.loads(node_execution.execution_metadata) if node_execution.execution_metadata else {}
+            metadata = execution_metadata.copy()
             metadata.update(
                 {
                     "workflow_run_id": trace_info.workflow_run_id,
@@ -184,10 +183,6 @@ class LangSmithDataTrace(BaseTraceInstance):
                 else trace_info.workflow_run_id,
                 tags=["node_execution"],
             )
-
-            if node_type == "llm":
-                langsmith_run.tags.append("llm")
-                langsmith_run.total_tokens = node_total_tokens
 
             self.add_run(langsmith_run)
 
