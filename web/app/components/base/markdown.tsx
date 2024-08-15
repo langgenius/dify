@@ -14,6 +14,7 @@ import cn from '@/utils/classnames'
 import CopyBtn from '@/app/components/base/copy-btn'
 import SVGBtn from '@/app/components/base/svg'
 import Flowchart from '@/app/components/base/mermaid'
+import ImageGallery from '@/app/components/base/image-gallery'
 
 // Available language https://github.com/react-syntax-highlighter/react-syntax-highlighter/blob/master/AVAILABLE_LANGUAGES_HLJS.MD
 const capitalizationLanguageNameMap: Record<string, string> = {
@@ -188,15 +189,9 @@ export function Markdown(props: { content: string; className?: string }) {
         ]}
         components={{
           code: CodeBlock,
-          img({ src, alt, ...props }) {
+          img({ src }) {
             return (
-              // eslint-disable-next-line @next/next/no-img-element
-              <img
-                src={src}
-                alt={alt}
-                className="max-w-full h-auto align-middle border-none rounded-lg shadow-md hover:shadow-lg transition-shadow duration-300 ease-in-out mt-2 mb-2"
-                {...props}
-              />
+              <ImageGallery srcs={[src || '']} />
             )
           },
           p: (paragraph) => {
@@ -206,12 +201,7 @@ export function Markdown(props: { content: string; className?: string }) {
 
               return (
                 <>
-                  {/* eslint-disable-next-line @next/next/no-img-element */}
-                  <img
-                    src={image.properties.src}
-                    className="max-w-full h-auto align-middle border-none rounded-lg shadow-md hover:shadow-lg transition-shadow duration-300 ease-in-out mt-2 mb-2"
-                    alt={image.properties.alt}
-                  />
+                  <ImageGallery srcs={[image.properties.src]} />
                   <p>{paragraph.children.slice(1)}</p>
                 </>
               )
