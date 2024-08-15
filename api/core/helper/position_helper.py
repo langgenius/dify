@@ -4,6 +4,7 @@ from collections.abc import Callable
 from typing import Any
 
 from configs import dify_config
+from constants.position import POSITION_EXCLUDED
 from core.tools.utils.yaml_utils import load_yaml_file
 
 
@@ -73,7 +74,7 @@ def sort_and_filter_position_map(original_position_map: dict[str, int], pin_list
     start_idx = len(position_map)
     for name in positions:
         if name in exclude_set:
-            position_map[name] = -1
+            position_map[name] = POSITION_EXCLUDED
         elif name in include_set and name not in position_map:
             position_map[name] = start_idx
             start_idx += 1
@@ -96,8 +97,7 @@ def sort_by_position_map(
     if not position_map or not data:
         return data
 
-    filtered_data = [item for item in data if position_map.get(name_func(item), 0) >= 0]
-
+    filtered_data = [item for item in data if position_map.get(name_func(item), POSITION_EXCLUDED+1) != POSITION_EXCLUDED]
     return sorted(filtered_data, key=lambda x: position_map.get(name_func(x), float('inf')))
 
 
