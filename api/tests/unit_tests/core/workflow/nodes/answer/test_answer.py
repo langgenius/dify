@@ -1,4 +1,5 @@
 import time
+import uuid
 from unittest.mock import MagicMock
 
 from core.app.entities.app_invoke_entities import InvokeFrom
@@ -62,6 +63,7 @@ def test_execute_answer():
     pool.add(['llm', 'text'], 'You are a helpful AI.')
 
     node = AnswerNode(
+        id=str(uuid.uuid4()),
         graph_init_params=init_params,
         graph=graph,
         graph_runtime_state=GraphRuntimeState(

@@ -1,4 +1,5 @@
 import time
+import uuid
 from unittest.mock import patch
 
 from core.app.entities.app_invoke_entities import InvokeFrom
@@ -161,6 +162,7 @@ def test_run():
     pool.add(['pe', 'list_output'], ["dify-1", "dify-2"])
 
     iteration_node = IterationNode(
+        id=str(uuid.uuid4()),
         graph_init_params=init_params,
         graph=graph,
         graph_runtime_state=GraphRuntimeState(

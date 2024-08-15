@@ -1,4 +1,5 @@
 import time
+import uuid
 from unittest.mock import MagicMock
 
 from core.app.entities.app_invoke_entities import InvokeFrom
@@ -65,6 +66,7 @@ def test_execute_if_else_result_true():
     pool.add(['start', 'not_null'], '1212')
 
     node = IfElseNode(
+        id=str(uuid.uuid4()),
         graph_init_params=init_params,
         graph=graph,
         graph_runtime_state=GraphRuntimeState(
@@ -254,6 +256,7 @@ def test_execute_if_else_result_false():
     pool.add(['start', 'array_not_contains'], ['ab', 'def'])
 
     node = IfElseNode(
+        id=str(uuid.uuid4()),
         graph_init_params=init_params,
         graph=graph,
         graph_runtime_state=GraphRuntimeState(

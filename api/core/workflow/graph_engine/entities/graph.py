@@ -290,17 +290,16 @@ class Graph(BaseModel):
                 if all(node_id in node_parallel_mapping for node_id in parallel_node_ids):
                     parent_parallel_id = node_parallel_mapping[parallel_node_ids[0]]
 
-                if not parent_parallel_id:
-                    raise Exception(f"Parent parallel id not found for node ids {parallel_node_ids}")
-
-                parent_parallel = parallel_mapping.get(parent_parallel_id)
-                if not parent_parallel:
-                    raise Exception(f"Parent parallel {parent_parallel_id} not found")
+                parent_parallel = None
+                if parent_parallel_id:
+                    parent_parallel = parallel_mapping.get(parent_parallel_id)
+                    if not parent_parallel:
+                        raise Exception(f"Parent parallel {parent_parallel_id} not found")
 
                 parallel = GraphParallel(
                     start_from_node_id=start_node_id,
-                    parent_parallel_id=parent_parallel.id,
-                    parent_parallel_start_node_id=parent_parallel.start_from_node_id
+                    parent_parallel_id=parent_parallel.id if parent_parallel else None,
+                    parent_parallel_start_node_id=parent_parallel.start_from_node_id if parent_parallel else None
                 )
                 parallel_mapping[parallel.id] = parallel
 

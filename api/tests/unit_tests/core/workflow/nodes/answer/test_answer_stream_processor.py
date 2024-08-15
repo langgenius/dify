@@ -1,3 +1,4 @@
+import uuid
 from collections.abc import Generator
 from datetime import datetime, timezone
 
@@ -38,11 +39,13 @@ def _publish_events(graph: Graph, next_node_id: str) -> Generator[GraphEngineEve
         parallel = graph.parallel_mapping.get(parallel_id)
         parallel_start_node_id = parallel.start_from_node_id if parallel else None
 
+    node_execution_id = str(uuid.uuid4())
     node_config = graph.node_id_config_mapping[next_node_id]
     node_type = NodeType.value_of(node_config.get("data", {}).get("type"))
     mock_node_data = StartNodeData(**{"title": "demo", "variables": []})
 
     yield NodeRunStartedEvent(
+        id=node_execution_id,
         node_id=next_node_id,
         node_type=node_type,
         node_data=mock_node_data,
@@ -55,6 +58,7 @@ def _publish_events(graph: Graph, next_node_id: str) -> Generator[GraphEngineEve
         length = int(next_node_id[-1])
         for i in range(0, length):
             yield NodeRunStreamChunkEvent(
+                id=node_execution_id,
                 node_id=next_node_id,
                 node_type=node_type,
                 node_data=mock_node_data,
@@ -68,6 +72,7 @@ def _publish_events(graph: Graph, next_node_id: str) -> Generator[GraphEngineEve
     route_node_state.status = RouteNodeState.Status.SUCCESS
     route_node_state.finished_at = datetime.now(timezone.utc).replace(tzinfo=None)
     yield NodeRunSucceededEvent(
+        id=node_execution_id,
         node_id=next_node_id,
         node_type=node_type,
         node_data=mock_node_data,

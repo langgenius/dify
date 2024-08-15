@@ -96,6 +96,7 @@ class AnswerStreamProcessor(StreamProcessor):
                 if route_chunk.type == GenerateRouteChunk.ChunkType.TEXT:
                     route_chunk = cast(TextGenerateRouteChunk, route_chunk)
                     yield NodeRunStreamChunkEvent(
+                        id=event.id,
                         node_id=event.node_id,
                         node_type=event.node_type,
                         node_data=event.node_data,
@@ -121,6 +122,7 @@ class AnswerStreamProcessor(StreamProcessor):
 
                     if text:
                         yield NodeRunStreamChunkEvent(
+                            id=event.id,
                             node_id=event.node_id,
                             node_type=event.node_type,
                             node_data=event.node_data,

@@ -267,7 +267,7 @@ def test_run_parallel_in_workflow(mock_close, mock_remove):
             ]:
                 assert item.parallel_id is not None
 
-        assert len(items) == 21
+        assert len(items) == 18
         assert isinstance(items[0], GraphRunStartedEvent)
         assert isinstance(items[1], NodeRunStartedEvent)
         assert items[1].route_node_state.node_id == 'start'
