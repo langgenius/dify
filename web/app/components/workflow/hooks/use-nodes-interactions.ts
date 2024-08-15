@@ -1045,10 +1045,8 @@ export const useNodesInteractions = () => {
 
     const selectedNode = nodes.find(node => node.data.selected && node.data.type !== BlockEnum.Start)
 
-    if (selectedNode) {
-      console.log(`The selected node's position is: ${selectedNode.position.x}, ${selectedNode.position.y}`)
+    if (selectedNode)
       setClipboardElements([selectedNode])
-    }
   }, [getNodesReadOnly, store, workflowStore])
 
   const handleNodesPaste = useCallback(() => {
@@ -1072,7 +1070,6 @@ export const useNodesInteractions = () => {
       const { x, y } = getTopLeftNodePosition(clipboardElements)
       const { screenToFlowPosition } = reactflow
       const currentPosition = screenToFlowPosition({ x: mousePosition.pageX, y: mousePosition.pageY })
-      console.log(`The current position is: ${currentPosition.x}, ${currentPosition.y}`)
       const offsetX = currentPosition.x - x
       const offsetY = currentPosition.y - y
       clipboardElements.forEach((nodeToPaste, index) => {

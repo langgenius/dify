@@ -1,75 +1,23 @@
-import { useCallback, useEffect, useMemo } from 'react'
-import { useWorkflowStore } from '../store'
+// import { useCallback, useEffect, useMemo } from 'react'
+// import { useWorkflowStore } from '../store'
+import { useReactFlow } from 'reactflow'
+import { useKeyPress } from 'ahooks'
 import {
   getKeyboardKeyCodeBySystem,
   isEventTargetInputArea,
 } from '../utils'
 import { useWorkflowHistoryStore } from '../workflow-history-store'
+import { useWorkflowStore } from '../store'
 import {
   useEdgesInteractions,
   useNodesInteractions,
+  useNodesReadOnly,
+  useNodesSyncDraft,
   useWorkflowMoveMode,
   useWorkflowOrganize,
+  useWorkflowReadOnly,
   useWorkflowStartRun,
-  useWorkflowZoom,
 } from '.'
-
-type ShortcutHandler = (e: KeyboardEvent) => void
-
-type ShortcutConfig = {
-  keys: string | string[]
-  handler: keyof ShortcutHandlers
-  options?: { exactMatch?: boolean; useCapture?: boolean }
-  condition?: keyof ShortcutConditions
-}
-
-type ShortcutHandlers = {
-  handleNodesCopy: ShortcutHandler
-  handleNodesPaste: ShortcutHandler
-  handleNodesDuplicate: ShortcutHandler
-  handleNodesDelete: ShortcutHandler
-  handleEdgeDelete: ShortcutHandler
-  handleStartWorkflowRun: ShortcutHandler
-  handleHistoryBack: ShortcutHandler
-  handleHistoryForward: ShortcutHandler
-  handleModePointer: ShortcutHandler
-  handleModeHand: ShortcutHandler
-  handleGoLayout: ShortcutHandler
-  handleFitView: ShortcutHandler
-  handleBackToOriginalSize: ShortcutHandler
-  handleSizeToHalf: ShortcutHandler
-  handleZoomOut: ShortcutHandler
-  handleZoomIn: ShortcutHandler
-}
-
-type ShortcutConditions = {
-  workflowHistoryShortcutsEnabled: boolean
-}
-
-const createShortcutConfig = (): ShortcutConfig[] => {
-  const ctrlKey = getKeyboardKeyCodeBySystem('ctrl')
-  const altKey = getKeyboardKeyCodeBySystem('alt')
-  const shiftKey = getKeyboardKeyCodeBySystem('shift')
-
-  return [
-    { keys: ['delete', 'backspace'], handler: 'handleNodesDelete' },
-    { keys: ['delete', 'backspace'], handler: 'handleEdgeDelete' },
-    { keys: `${ctrlKey}.c`, handler: 'handleNodesCopy', options: { exactMatch: true, useCapture: true } },
-    { keys: `${ctrlKey}.v`, handler: 'handleNodesPaste', options: { exactMatch: true, useCapture: true } },
-    { keys: `${ctrlKey}.d`, handler: 'handleNodesDuplicate', options: { exactMatch: true, useCapture: true } },
-    { keys: `${altKey}.r`, handler: 'handleStartWorkflowRun', options: { exactMatch: true, useCapture: true } },
-    { keys: `${ctrlKey}.z`, handler: 'handleHistoryBack', options: { exactMatch: true, useCapture: true }, condition: 'workflowHistoryShortcutsEnabled' },
-    { keys: [`${ctrlKey}.y`, `${ctrlKey}.${shiftKey}.z`], handler: 'handleHistoryForward', options: { exactMatch: true, useCapture: true }, condition: 'workflowHistoryShortcutsEnabled' },
-    { keys: 'h', handler: 'handleModeHand', options: { exactMatch: true, useCapture: true } },
-    { keys: 'v', handler: 'handleModePointer', options: { exactMatch: true, useCapture: true } },
-    { keys: `${ctrlKey}.o`, handler: 'handleGoLayout', options: { exactMatch: true, useCapture: true } },
-    { keys: `${ctrlKey}.1`, handler: 'handleFitView', options: { exactMatch: true, useCapture: true } },
-    { keys: `${shiftKey}.1`, handler: 'handleBackToOriginalSize', options: { exactMatch: true, useCapture: true } },
-    { keys: `${shiftKey}.5`, handler: 'handleSizeToHalf', options: { exactMatch: true, useCapture: true } },
-    { keys: `${ctrlKey}.-`, handler: 'handleZoomOut', options: { exactMatch: true, useCapture: true } },
-    { keys: `${ctrlKey}.=`, handler: 'handleZoomIn', options: { exactMatch: true, useCapture: true } },
-  ]
-}
 
 export const useShortcuts = (): void => {
   const {
@@ -80,100 +28,200 @@ export const useShortcuts = (): void => {
     handleHistoryBack,
     handleHistoryForward,
   } = useNodesInteractions()
-
+  const { handleStartWorkflowRun } = useWorkflowStartRun()
+  const { shortcutsEnabled: workflowHistoryShortcutsEnabled } = useWorkflowHistoryStore()
+  const { handleSyncWorkflowDraft } = useNodesSyncDraft()
+  const { handleEdgeDelete } = useEdgesInteractions()
+  const { handleGoLayout } = useWorkflowOrganize()
+  const { getNodesReadOnly } = useNodesReadOnly()
+  const { workflowReadOnly } = useWorkflowReadOnly()
+  const workflowStore = useWorkflowStore()
+  const { showFeaturesPanel } = workflowStore.getState()
   const {
     handleModeHand,
     handleModePointer,
   } = useWorkflowMoveMode()
 
   const {
-    handleGoLayout,
-  } = useWorkflowOrganize()
+    zoomIn,
+    zoomOut,
+    zoomTo,
+    fitView,
+  } = useReactFlow()
 
-  const {
-    handleFitView,
-    handleBackToOriginalSize,
-    handleSizeToHalf,
-    handleZoomOut,
-    handleZoomIn,
-  } = useWorkflowZoom()
-
-  const { handleEdgeDelete } = useEdgesInteractions()
-  const { handleStartWorkflowRun } = useWorkflowStartRun()
-  const { shortcutsEnabled: workflowHistoryShortcutsEnabled } = useWorkflowHistoryStore()
-  const workflowStore = useWorkflowStore()
-
-  const handlers: ShortcutHandlers = useMemo(() => ({
-    handleNodesCopy,
-    handleNodesPaste,
-    handleNodesDuplicate,
-    handleNodesDelete,
-    handleEdgeDelete,
-    handleStartWorkflowRun,
-    handleHistoryBack,
-    handleHistoryForward,
-    handleModeHand,
-    handleModePointer,
-    handleGoLayout,
-    handleFitView,
-    handleBackToOriginalSize,
-    handleSizeToHalf,
-    handleZoomOut,
-    handleZoomIn,
-  }), [handleNodesCopy, handleNodesPaste, handleNodesDuplicate, handleNodesDelete,
-    handleEdgeDelete, handleStartWorkflowRun, handleHistoryBack, handleHistoryForward,
-    handleModeHand, handleModePointer, handleGoLayout, handleFitView, handleBackToOriginalSize,
-    handleSizeToHalf, handleZoomOut, handleZoomIn])
-
-  const conditions: ShortcutConditions = useMemo(() => ({
-    workflowHistoryShortcutsEnabled,
-  }), [workflowHistoryShortcutsEnabled])
-
-  const shortcutConfig = useMemo(() => createShortcutConfig(), [])
-
-  const handleKeyPress = useCallback((e: KeyboardEvent): void => {
-    const { showFeaturesPanel } = workflowStore.getState()
+  useKeyPress(['delete', 'backspace'], (e) => {
     if (isEventTargetInputArea(e.target as HTMLElement) || showFeaturesPanel)
       return
 
-    const ctrlKey = e.ctrlKey || e.metaKey
-    const altKey = e.altKey
-    const shiftKey = e.shiftKey
+    handleNodesDelete()
+  })
 
-    let pressedKey = e.key.toLowerCase()
-    if (shiftKey && e.key.match(/^[!@#$%^&*()_+\-=\[\]{};':"\\|,.<>\/?]$/))
-      pressedKey = e.code.replace('Digit', '')
+  useKeyPress(['delete', 'backspace'], (e) => {
+    if (isEventTargetInputArea(e.target as HTMLElement || showFeaturesPanel))
+      return
 
-    const modifiers = [
-      ctrlKey && getKeyboardKeyCodeBySystem('ctrl'),
-      altKey && getKeyboardKeyCodeBySystem('alt'),
-      shiftKey && getKeyboardKeyCodeBySystem('shift'),
-    ].filter(Boolean).join('.')
+    handleEdgeDelete()
+  })
 
-    const fullPressedKey = modifiers ? `${modifiers}.${pressedKey}` : pressedKey
+  useKeyPress(`${getKeyboardKeyCodeBySystem('ctrl')}.c`, (e) => {
+    if (isEventTargetInputArea(e.target as HTMLElement || showFeaturesPanel))
+      return
 
-    for (const { keys, handler, options, condition } of shortcutConfig) {
-      const matchedKey = Array.isArray(keys)
-        ? keys.some(k => options?.exactMatch ? k.toLowerCase() === fullPressedKey : fullPressedKey.includes(k.toLowerCase()))
-        : options?.exactMatch ? keys.toLowerCase() === fullPressedKey : fullPressedKey.includes(keys.toLowerCase())
+    handleNodesCopy()
+  }, { exactMatch: true, useCapture: true })
 
-      if (matchedKey) {
-        if (condition && !conditions[condition])
-          return
+  useKeyPress(`${getKeyboardKeyCodeBySystem('ctrl')}.v`, (e) => {
+    if (isEventTargetInputArea(e.target as HTMLElement || showFeaturesPanel))
+      return
 
-        if (handlers[handler]) {
-          e.preventDefault()
-          handlers[handler](e)
-        }
-        break
-      }
-    }
-  }, [handlers, conditions, shortcutConfig, workflowStore])
+    handleNodesPaste()
+  }, { exactMatch: true, useCapture: true })
 
-  useEffect(() => {
-    window.addEventListener('keydown', handleKeyPress, true)
-    return () => {
-      window.removeEventListener('keydown', handleKeyPress, true)
-    }
-  }, [handleKeyPress])
+  useKeyPress(`${getKeyboardKeyCodeBySystem('ctrl')}.d`, (e) => {
+    if (isEventTargetInputArea(e.target as HTMLElement || showFeaturesPanel))
+      return
+
+    handleNodesDuplicate()
+  }, { exactMatch: true, useCapture: true })
+  useKeyPress(`${getKeyboardKeyCodeBySystem('alt')}.r`, (e) => {
+    if (isEventTargetInputArea(e.target as HTMLElement || showFeaturesPanel))
+      return
+
+    handleStartWorkflowRun()
+  }, { exactMatch: true, useCapture: true })
+
+  useKeyPress(`${getKeyboardKeyCodeBySystem('alt')}.r`, (e) => {
+    if (isEventTargetInputArea(e.target as HTMLElement || showFeaturesPanel))
+      return
+
+    handleStartWorkflowRun()
+  }, { exactMatch: true, useCapture: true })
+
+  useKeyPress(
+    `${getKeyboardKeyCodeBySystem('ctrl')}.z`, (e) => {
+      if (isEventTargetInputArea(e.target as HTMLElement || showFeaturesPanel))
+        return
+
+      workflowHistoryShortcutsEnabled && handleHistoryBack()
+    },
+    { exactMatch: true, useCapture: true },
+  )
+
+  useKeyPress(
+    [`${getKeyboardKeyCodeBySystem('ctrl')}.y`, `${getKeyboardKeyCodeBySystem('ctrl')}.shift.z`],
+    (e) => {
+      if (isEventTargetInputArea(e.target as HTMLElement || showFeaturesPanel))
+        return
+
+      workflowHistoryShortcutsEnabled && handleHistoryForward()
+    },
+    { exactMatch: true, useCapture: true },
+  )
+  useKeyPress('h', (e) => {
+    if (getNodesReadOnly())
+      return
+
+    if (isEventTargetInputArea(e.target as HTMLElement || showFeaturesPanel))
+      return
+
+    e.preventDefault()
+    handleModeHand()
+  }, {
+    exactMatch: true,
+    useCapture: true,
+  })
+
+  useKeyPress('v', (e) => {
+    if (isEventTargetInputArea(e.target as HTMLElement || showFeaturesPanel))
+      return
+
+    e.preventDefault()
+    handleModePointer()
+  }, {
+    exactMatch: true,
+    useCapture: true,
+  })
+
+  useKeyPress(`${getKeyboardKeyCodeBySystem('ctrl')}.o`, (e) => {
+    if (isEventTargetInputArea(e.target as HTMLElement || showFeaturesPanel))
+      return
+
+    e.preventDefault()
+    handleGoLayout()
+  }, { exactMatch: true, useCapture: true })
+
+  useKeyPress(`${getKeyboardKeyCodeBySystem('ctrl')}.1`, (e) => {
+    if (isEventTargetInputArea(e.target as HTMLElement || showFeaturesPanel))
+      return
+
+    e.preventDefault()
+    if (workflowReadOnly)
+      return
+
+    fitView()
+    handleSyncWorkflowDraft()
+  }, {
+    exactMatch: true,
+    useCapture: true,
+  })
+
+  useKeyPress('shift.1', (e) => {
+    if (workflowReadOnly)
+      return
+
+    if (isEventTargetInputArea(e.target as HTMLElement) || showFeaturesPanel)
+      return
+
+    e.preventDefault()
+    zoomTo(1)
+    handleSyncWorkflowDraft()
+  }, {
+    exactMatch: true,
+    useCapture: true,
+  })
+
+  useKeyPress('shift.5', (e) => {
+    if (workflowReadOnly)
+      return
+
+    if (isEventTargetInputArea(e.target as HTMLElement) || showFeaturesPanel)
+      return
+
+    e.preventDefault()
+    zoomTo(0.5)
+    handleSyncWorkflowDraft()
+  }, {
+    exactMatch: true,
+    useCapture: true,
+  })
+
+  useKeyPress(`${getKeyboardKeyCodeBySystem('ctrl')}.dash`, (e) => {
+    e.preventDefault()
+    if (workflowReadOnly)
+      return
+
+    if (isEventTargetInputArea(e.target as HTMLElement) || showFeaturesPanel)
+      return
+
+    zoomOut()
+    handleSyncWorkflowDraft()
+  }, {
+    exactMatch: true,
+    useCapture: true,
+  })
+
+  useKeyPress(`${getKeyboardKeyCodeBySystem('ctrl')}.equalsign`, (e) => {
+    e.preventDefault()
+    if (workflowReadOnly)
+      return
+
+    if (isEventTargetInputArea(e.target as HTMLElement) || showFeaturesPanel)
+      return
+
+    zoomIn()
+    handleSyncWorkflowDraft()
+  }, {
+    exactMatch: true,
+    useCapture: true,
+  })
 }
