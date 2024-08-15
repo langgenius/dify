@@ -23,8 +23,9 @@ from core.model_runtime.utils.encoders import jsonable_encoder
 from core.prompt.advanced_prompt_transform import AdvancedPromptTransform
 from core.prompt.entities.advanced_prompt_entities import CompletionModelPromptTemplate, MemoryConfig
 from core.prompt.utils.prompt_message_util import PromptMessageUtil
-from core.workflow.entities.node_entities import NodeRunMetadataKey, NodeRunResult, NodeType, SystemVariable
+from core.workflow.entities.node_entities import NodeRunMetadataKey, NodeRunResult, NodeType
 from core.workflow.entities.variable_pool import VariablePool
+from core.workflow.enums import SystemVariable
 from core.workflow.nodes.base_node import BaseNode
 from core.workflow.nodes.llm.entities import (
     LLMNodeChatModelMessage,
@@ -201,8 +202,8 @@ class LLMNode(BaseNode):
             usage = LLMUsage.empty_usage()
 
         return full_text, usage
-    
-    def _transform_chat_messages(self, 
+
+    def _transform_chat_messages(self,
         messages: list[LLMNodeChatModelMessage] | LLMNodeCompletionModelPromptTemplate
     ) -> list[LLMNodeChatModelMessage] | LLMNodeCompletionModelPromptTemplate:
         """
@@ -249,13 +250,13 @@ class LLMNode(BaseNode):
                 # check if it's a context structure
                 if 'metadata' in d and '_source' in d['metadata'] and 'content' in d:
                     return d['content']
-                
+
                 # else, parse the dict
                 try:
                     return json.dumps(d, ensure_ascii=False)
                 except Exception:
                     return str(d)
-                
+
             if isinstance(value, str):
                 value = value
             elif isinstance(value, list):
