@@ -27,7 +27,7 @@ RUN poetry install --sync --no-cache --no-root
 FROM base AS production
 
 ENV FLASK_APP=app.py
-ENV EDITION=SELF_HOSTED
+ENV EDITION=CLOUD
 ENV DEPLOY_ENV=PRODUCTION
 ENV CONSOLE_API_URL=http://127.0.0.1:5001
 ENV CONSOLE_WEB_URL=http://127.0.0.1:3000

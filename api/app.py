@@ -70,7 +70,7 @@ class DifyApp(Flask):
 # -------------
 
 
-config_type = os.getenv('EDITION', default='SELF_HOSTED')  # ce edition first
+config_type = os.getenv('EDITION', default='CLOUD')  # ce edition first
 
 
 # ----------------------------
