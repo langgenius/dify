@@ -47,9 +47,9 @@ const getCorrectCapitalizationLanguageName = (language: string) => {
 const preprocessLaTeX = (content: string) => {
   if (typeof content !== 'string')
     return content
-  return content.replace(/\\\[(.*?)\\\]/gs, (_, equation) => `$$${equation}$$`)
-    .replace(/\\\((.*?)\\\)/gs, (_, equation) => `$$${equation}$$`)
-    .replace(/(^|[^\\])\$(.+?)\$/gs, (_, prefix, equation) => `${prefix}$${equation}$`)
+  return content.replace(/\\\[(.*?)\\\]/g, (_, equation) => `$$${equation}$$`)
+    .replace(/\\\((.*?)\\\)/g, (_, equation) => `$$${equation}$$`)
+    .replace(/(^|[^\\])\$(.+?)\$/g, (_, prefix, equation) => `${prefix}$${equation}$`)
 }
 
 export function PreCode(props: { children: any }) {
@@ -59,12 +59,6 @@ export function PreCode(props: { children: any }) {
     <pre ref={ref}>
       <span
         className="copy-code-button"
-        onClick={() => {
-          if (ref.current) {
-            const code = ref.current.innerText
-            // copyToClipboard(code);
-          }
-        }}
       ></span>
       {props.children}
     </pre>
@@ -173,7 +167,7 @@ const CodeBlock: CodeComponent = memo(({ inline, className, children, ...props }
           {children}
         </code>
       )
-  }, [children, className, inline, isSVG, language, languageShowName, match, props])
+  }, [chartData, children, className, inline, isSVG, language, languageShowName, match, props])
 })
 
 CodeBlock.displayName = 'CodeBlock'
