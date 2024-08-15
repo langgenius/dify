@@ -11,16 +11,16 @@ from extensions.storage.base_storage import BaseStorage
 
 
 class GoogleStorage(BaseStorage):
-    """Implementation for google storage.
-    """
+    """Implementation for google storage."""
+
     def __init__(self, app: Flask):
         super().__init__(app)
         app_config = self.app.config
-        self.bucket_name = app_config.get('GOOGLE_STORAGE_BUCKET_NAME')
-        service_account_json_str = app_config.get('GOOGLE_STORAGE_SERVICE_ACCOUNT_JSON_BASE64')
+        self.bucket_name = app_config.get("GOOGLE_STORAGE_BUCKET_NAME")
+        service_account_json_str = app_config.get("GOOGLE_STORAGE_SERVICE_ACCOUNT_JSON_BASE64")
         # if service_account_json_str is empty, use Application Default Credentials
         if service_account_json_str:
-            service_account_json = base64.b64decode(service_account_json_str).decode('utf-8')
+            service_account_json = base64.b64decode(service_account_json_str).decode("utf-8")
             # convert str to object
             service_account_obj = json.loads(service_account_json)
             self.client = GoogleCloudStorage.Client.from_service_account_info(service_account_obj)
@@ -43,9 +43,10 @@ class GoogleStorage(BaseStorage):
         def generate(filename: str = filename) -> Generator:
             bucket = self.client.get_bucket(self.bucket_name)
             blob = bucket.get_blob(filename)
-            with closing(blob.open(mode='rb')) as blob_stream:
+            with closing(blob.open(mode="rb")) as blob_stream:
                 while chunk := blob_stream.read(4096):
                     yield chunk
+
         return generate()
 
     def download(self, filename, target_filepath):
