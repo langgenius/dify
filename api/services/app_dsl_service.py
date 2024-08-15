@@ -285,6 +285,8 @@ class AppDslService:
         # sync draft workflow
         environment_variables_list = workflow_data.get('environment_variables') or []
         environment_variables = [factory.build_variable_from_mapping(obj) for obj in environment_variables_list]
+        conversation_variables_list = workflow_data.get('conversation_variables') or []
+        conversation_variables = [factory.build_variable_from_mapping(obj) for obj in conversation_variables_list]
         draft_workflow = workflow_service.sync_draft_workflow(
             app_model=app_model,
             graph=workflow_data.get('graph', {}),
@@ -292,6 +294,7 @@ class AppDslService:
             unique_hash=unique_hash,
             account=account,
             environment_variables=environment_variables,
+            conversation_variables=conversation_variables,
         )
 
         return draft_workflow
