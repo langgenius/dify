@@ -229,7 +229,7 @@ const translation = {
     'variable-assigner':
       'Aggrega variabili multi-ramo in una singola variabile per la configurazione unificata dei nodi a valle.',
     'assigner': 'Il nodo di assegnazione delle variabili è utilizzato per assegnare valori a variabili scrivibili (come le variabili di conversazione).',
-      'variable-aggregator':
+    'variable-aggregator':
       'Aggrega variabili multi-ramo in una singola variabile per la configurazione unificata dei nodi a valle.',
     'iteration':
       'Esegui più passaggi su un oggetto lista fino a quando tutti i risultati non sono stati prodotti.',

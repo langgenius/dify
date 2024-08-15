@@ -209,7 +209,7 @@ const translation = {
     'template-transform': 'Daten in Zeichenfolgen mit Jinja-Vorlagensyntax umwandeln',
     'http-request': 'Ermöglichen, dass Serveranforderungen über das HTTP-Protokoll gesendet werden',
     'variable-assigner': 'Variablen aus mehreren Zweigen in eine einzige Variable zusammenführen, um eine einheitliche Konfiguration der nachgelagerten Knoten zu ermöglichen.',
-    'assigner': 'Der Variablenzuweisungsknoten wird verwendet, um beschreibbaren Variablen (wie Gesprächsvariablen) Werte zuzuweisen.',    
+    'assigner': 'Der Variablenzuweisungsknoten wird verwendet, um beschreibbaren Variablen (wie Gesprächsvariablen) Werte zuzuweisen.',
     'variable-aggregator': 'Variablen aus mehreren Zweigen in eine einzige Variable zusammenführen, um eine einheitliche Konfiguration der nachgelagerten Knoten zu ermöglichen.',
     'iteration': 'Mehrere Schritte an einem Listenobjekt ausführen, bis alle Ergebnisse ausgegeben wurden.',
     'parameter-extractor': 'Verwenden Sie LLM, um strukturierte Parameter aus natürlicher Sprache für Werkzeugaufrufe oder HTTP-Anfragen zu extrahieren.',
