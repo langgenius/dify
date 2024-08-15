@@ -4,10 +4,10 @@ x-shared-env: &shared-api-worker-env
   FLASK_DEBUG: ${FLASK_DEBUG:-false}
   SECRET_KEY: ${SECRET_KEY:-sk-9f73s3ljTXVcMT3Blb3ljTqtsKiGHXVcMT3BlbkFJLK7U}
   INIT_PASSWORD: ${INIT_PASSWORD:-}
-  CONSOLE_WEB_URL: ${CONSOLE_WEB_URL:-}
-  CONSOLE_API_URL: ${CONSOLE_API_URL:-}
-  SERVICE_API_URL: ${SERVICE_API_URL:-}
-  APP_WEB_URL: ${APP_WEB_URL:-}
+  CONSOLE_WEB_URL: ${CONSOLE_WEB_URL:-https://dify.angeltools.xyz}
+  CONSOLE_API_URL: ${CONSOLE_API_URL:-https://dify.angeltools.xyz}
+  SERVICE_API_URL: ${SERVICE_API_URL:-https://dify.angeltools.xyz}
+  APP_WEB_URL: ${APP_WEB_URL:-https://dify.angeltools.xyz}
   CHECK_UPDATE_URL: ${CHECK_UPDATE_URL:-https://updates.dify.ai}
   OPENAI_API_BASE: ${OPENAI_API_BASE:-https://api.openai.com/v1}
   FILES_URL: ${FILES_URL:-}
@@ -198,6 +198,9 @@ x-shared-env: &shared-api-worker-env
   NEXT_PUBLIC_URL: ${NEXT_PUBLIC_URL:-https://dify.angeltools.xyz}
   NEXT_PUBLIC_DEPLOY_ENV: ${NEXT_PUBLIC_DEPLOY_ENV:-PRODUCTION}
   NEXT_PUBLIC_EDITION: ${NEXT_PUBLIC_EDITION:-CLOUD}
+  EDITION: ${EDITION:-CLOUD}
+  GOOGLE_CLIENT_ID: ${GOOGLE_CLIENT_ID:-496157740953-jtorq1pmavl1rhacs2v5im5baausgjv6.apps.googleusercontent.com}
+  GOOGLE_CLIENT_SECRET: ${GOOGLE_CLIENT_SECRET:-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}
 
 services:
   # API service

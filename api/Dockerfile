@@ -29,10 +29,11 @@ FROM base AS production
 ENV FLASK_APP=app.py
 ENV EDITION=CLOUD
 ENV DEPLOY_ENV=PRODUCTION
-ENV CONSOLE_API_URL=http://127.0.0.1:5001
-ENV CONSOLE_WEB_URL=http://127.0.0.1:3000
-ENV SERVICE_API_URL=http://127.0.0.1:5001
-ENV APP_WEB_URL=http://127.0.0.1:3000
+ENV CONSOLE_API_URL=https://dify.angeltools.xyz
+ENV CONSOLE_WEB_URL=https://dify.angeltools.xyz
+ENV SERVICE_API_URL=https://dify.angeltools.xyz
+ENV APP_WEB_URL=https://dify.angeltools.xyz
+
 
 EXPOSE 5001
 

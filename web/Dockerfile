@@ -32,8 +32,8 @@ FROM base AS production
 ENV NODE_ENV=production
 ENV EDITION=CLOUD
 ENV DEPLOY_ENV=PRODUCTION
-ENV CONSOLE_API_URL=http://web:5001
-ENV APP_API_URL=http://web:5001
+ENV CONSOLE_API_URL=https://dify.angeltools.xyz
+ENV APP_API_URL=https://dify.angeltools.xyz
 ENV PORT=3000
 ENV NEXT_TELEMETRY_DISABLED=1
 

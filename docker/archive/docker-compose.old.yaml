@@ -13,7 +13,7 @@ services:
       - postgres_data:/var/lib/postgresql/data
 
     ports:
-      - "${EXPOSE_POSTGRES_PORT:-5433}:5432"
+      - "${EXPOSE_POSTGRES_PORT:-5432}:5432"
 
   redis:
     image: redis:6-alpine
@@ -22,7 +22,7 @@ services:
       - ./volumes/redis/data:/data
     command: redis-server --requirepass difyai123456
     ports:
-      - "${EXPOSE_REDIS_PORT:-6380}:6379"
+      - "${EXPOSE_REDIS_PORT:-6379}:6379"
 
   weaviate:
     image: semitechnologies/weaviate:1.19.0
@@ -43,7 +43,7 @@ services:
       AUTHORIZATION_ADMINLIST_ENABLED: ${WEAVIATE_AUTHORIZATION_ADMINLIST_ENABLED:-true}
       AUTHORIZATION_ADMINLIST_USERS: ${WEAVIATE_AUTHORIZATION_ADMINLIST_USERS:-hello@dify.ai}
     ports:
-      - "${EXPOSE_WEAVIATE_PORT:-8888}:8080"
+      - "${EXPOSE_WEAVIATE_PORT:-8080}:8080"
 
   api:
     build:
@@ -83,7 +83,7 @@ services:
       - db
 
     ports:
-      - "${EXPOSE_WEB_PORT:-4444}:3000"
+      - "${EXPOSE_WEB_PORT:-3000}:3000"
 
 volumes:
   postgres_data:

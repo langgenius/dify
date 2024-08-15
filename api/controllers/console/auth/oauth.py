@@ -158,7 +158,7 @@ class EmailLogin(Resource):
                 verification_code = EmailService.create_verification_code(email)
 
                 if verification_code['success'] == False:
-                    return { "result" : "failure" ,  'message': "Error sending message, Please try again after some time  "}, 500
+                    return { "result" : "failure" ,  'message': "Error sending email, Please try again after some time  "}, 500
 
                 magic_link = f'{dify_config.CONSOLE_API_URL}/console/api/oauth/authorize/magic-link?code={verification_code["code"]}'
 
