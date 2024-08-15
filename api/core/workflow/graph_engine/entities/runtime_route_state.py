@@ -43,6 +43,8 @@ class RouteNodeState(BaseModel):
     paused_by: Optional[str] = None
     """paused by"""
 
+    index: int = 1
+
     def set_finished(self, run_result: NodeRunResult) -> None:
         """
         Node finished

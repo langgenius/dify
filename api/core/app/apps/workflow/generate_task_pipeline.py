@@ -50,6 +50,7 @@ from models.workflow import (
     WorkflowAppLog,
     WorkflowAppLogCreatedFrom,
     WorkflowRun,
+    WorkflowRunStatus,
 )
 
 logger = logging.getLogger(__name__)
@@ -304,7 +305,7 @@ class WorkflowAppGenerateTaskPipeline(BasedGenerateTaskPipeline, WorkflowCycleMa
                     workflow_run=workflow_run,
                     event=event
                 )
-            elif isinstance(event, QueueStopEvent | QueueWorkflowSucceededEvent | QueueWorkflowFailedEvent):
+            elif isinstance(event, QueueWorkflowSucceededEvent):
                 if not workflow_run:
                     raise Exception('Workflow run not initialized.')
                 
@@ -317,6 +318,31 @@ class WorkflowAppGenerateTaskPipeline(BasedGenerateTaskPipeline, WorkflowCycleMa
                     total_tokens=graph_runtime_state.total_tokens,
                     total_steps=graph_runtime_state.node_run_steps,
                     outputs=json.dumps(event.outputs) if isinstance(event, QueueWorkflowSucceededEvent) and event.outputs else None,
+                    conversation_id=None,
+                    trace_manager=trace_manager,
+                )
+
+                # save workflow app log
+                self._save_workflow_app_log(workflow_run)
+
+                yield self._workflow_finish_to_stream_response(
+                    task_id=self._application_generate_entity.task_id,
+                    workflow_run=workflow_run
+                )
+            elif isinstance(event, QueueWorkflowFailedEvent | QueueStopEvent):
+                if not workflow_run:
+                    raise Exception('Workflow run not initialized.')
+                
+                if not graph_runtime_state:
+                    raise Exception('Graph runtime state not initialized.')
+                
+                workflow_run = self._handle_workflow_run_failed(
+                    workflow_run=workflow_run,
+                    start_at=graph_runtime_state.start_at,
+                    total_tokens=graph_runtime_state.total_tokens,
+                    total_steps=graph_runtime_state.node_run_steps,
+                    status=WorkflowRunStatus.FAILED if isinstance(event, QueueWorkflowFailedEvent) else WorkflowRunStatus.STOPPED,
+                    error=event.error if isinstance(event, QueueWorkflowFailedEvent) else event.get_stop_reason(),
                     conversation_id=None,
                     trace_manager=trace_manager,
                 )

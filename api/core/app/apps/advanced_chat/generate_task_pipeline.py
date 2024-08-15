@@ -384,28 +384,23 @@ class AdvancedChatAppGenerateTaskPipeline(BasedGenerateTaskPipeline, WorkflowCyc
                 yield self._error_to_stream_response(self._handle_error(err_event, self._message))
                 break
             elif isinstance(event, QueueStopEvent):
-                if not workflow_run:
-                    raise Exception('Workflow run not initialized.')
-                
-                if not graph_runtime_state:
-                    raise Exception('Graph runtime state not initialized.')
-                
-                workflow_run = self._handle_workflow_run_failed(
-                    workflow_run=workflow_run,
-                    start_at=graph_runtime_state.start_at,
-                    total_tokens=graph_runtime_state.total_tokens,
-                    total_steps=graph_runtime_state.node_run_steps,
-                    status=WorkflowRunStatus.STOPPED,
-                    error='Workflow stopped.',
-                    conversation_id=self._conversation.id,
-                    trace_manager=trace_manager,
-                )
+                if workflow_run and graph_runtime_state:
+                    workflow_run = self._handle_workflow_run_failed(
+                        workflow_run=workflow_run,
+                        start_at=graph_runtime_state.start_at,
+                        total_tokens=graph_runtime_state.total_tokens,
+                        total_steps=graph_runtime_state.node_run_steps,
+                        status=WorkflowRunStatus.STOPPED,
+                        error=event.get_stop_reason(),
+                        conversation_id=self._conversation.id,
+                        trace_manager=trace_manager,
+                    )
 
-                yield self._workflow_finish_to_stream_response(
-                    task_id=self._application_generate_entity.task_id,
-                    workflow_run=workflow_run
-                )
-
+                    yield self._workflow_finish_to_stream_response(
+                        task_id=self._application_generate_entity.task_id,
+                        workflow_run=workflow_run
+                    )
+                
                 # Save message
                 self._save_message(graph_runtime_state=graph_runtime_state)
 
@@ -471,7 +466,7 @@ class AdvancedChatAppGenerateTaskPipeline(BasedGenerateTaskPipeline, WorkflowCyc
         if self._conversation_name_generate_thread:
             self._conversation_name_generate_thread.join()
 
-    def _save_message(self, graph_runtime_state: GraphRuntimeState) -> None:
+    def _save_message(self, graph_runtime_state: Optional[GraphRuntimeState] = None) -> None:
         """
         Save message.
         :return:
@@ -483,7 +478,7 @@ class AdvancedChatAppGenerateTaskPipeline(BasedGenerateTaskPipeline, WorkflowCyc
         self._message.message_metadata = json.dumps(jsonable_encoder(self._task_state.metadata)) \
             if self._task_state.metadata else None
 
-        if graph_runtime_state.llm_usage:
+        if graph_runtime_state and graph_runtime_state.llm_usage:
             usage = graph_runtime_state.llm_usage
             self._message.message_tokens = usage.prompt_tokens
             self._message.message_unit_price = usage.prompt_unit_price
@@ -511,7 +506,10 @@ class AdvancedChatAppGenerateTaskPipeline(BasedGenerateTaskPipeline, WorkflowCyc
         """
         extras = {}
         if self._task_state.metadata:
-            extras['metadata'] = self._task_state.metadata
+            extras['metadata'] = self._task_state.metadata.copy()
+            
+            if 'annotation_reply' in extras['metadata']:
+                del extras['metadata']['annotation_reply']
 
         return MessageEndStreamResponse(
             task_id=self._application_generate_entity.task_id,

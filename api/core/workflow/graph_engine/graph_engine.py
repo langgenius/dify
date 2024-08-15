@@ -39,7 +39,7 @@ from core.workflow.graph_engine.entities.runtime_route_state import RouteNodeSta
 from core.workflow.nodes.answer.answer_stream_processor import AnswerStreamProcessor
 from core.workflow.nodes.base_node import BaseNode
 from core.workflow.nodes.end.end_stream_processor import EndStreamProcessor
-from core.workflow.nodes.event import RunCompletedEvent, RunEvent, RunRetrieverResourceEvent, RunStreamChunkEvent
+from core.workflow.nodes.event import RunCompletedEvent, RunRetrieverResourceEvent, RunStreamChunkEvent
 from core.workflow.nodes.node_mapping import node_classes
 from extensions.ext_database import db
 from models.workflow import WorkflowNodeExecutionStatus, WorkflowType
@@ -193,12 +193,19 @@ class GraphEngine:
 
             try:
                 # run node
-                yield from self._run_node(
+                generator = self._run_node(
                     node_instance=node_instance,
                     route_node_state=route_node_state,
                     parallel_id=in_parallel_id,
                     parallel_start_node_id=parallel_start_node_id
                 )
+
+                for item in generator:
+                    if isinstance(item, NodeRunStartedEvent):
+                        self.graph_runtime_state.node_run_steps += 1
+                        item.route_node_state.index = self.graph_runtime_state.node_run_steps
+
+                    yield item
 
                 self.graph_runtime_state.node_run_state.node_state_mapping[route_node_state.id] = route_node_state
 
@@ -393,8 +400,6 @@ class GraphEngine:
         )
 
         db.session.close()
-
-        self.graph_runtime_state.node_run_steps += 1
 
         try:
             # run node

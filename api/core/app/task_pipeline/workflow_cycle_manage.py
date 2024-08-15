@@ -178,6 +178,23 @@ class WorkflowCycleManage:
         workflow_run.finished_at = datetime.now(timezone.utc).replace(tzinfo=None)
 
         db.session.commit()
+
+        running_workflow_node_executions = db.session.query(WorkflowNodeExecution).filter(
+            WorkflowNodeExecution.tenant_id == workflow_run.tenant_id,
+            WorkflowNodeExecution.app_id == workflow_run.app_id,
+            WorkflowNodeExecution.workflow_id == workflow_run.workflow_id,
+            WorkflowNodeExecution.triggered_from == WorkflowNodeExecutionTriggeredFrom.WORKFLOW_RUN.value,
+            WorkflowNodeExecution.workflow_run_id == workflow_run.id,
+            WorkflowNodeExecution.status == WorkflowNodeExecutionStatus.RUNNING.value
+        ).all()
+
+        for workflow_node_execution in running_workflow_node_executions:
+            workflow_node_execution.status = WorkflowNodeExecutionStatus.FAILED.value
+            workflow_node_execution.error = error
+            workflow_node_execution.finished_at = datetime.now(timezone.utc).replace(tzinfo=None)
+            workflow_node_execution.elapsed_time = (workflow_node_execution.finished_at - workflow_node_execution.created_at).total_seconds()
+            db.session.commit()
+
         db.session.refresh(workflow_run)
         db.session.close()
 

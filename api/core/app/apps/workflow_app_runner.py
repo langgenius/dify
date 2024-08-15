@@ -1,4 +1,5 @@
-from typing import Any, Mapping, Optional, cast
+from collections.abc import Mapping
+from typing import Any, Optional, cast
 
 from core.app.apps.base_app_queue_manager import AppQueueManager, PublishFrom
 from core.app.apps.base_app_runner import AppRunner
@@ -198,7 +199,7 @@ class WorkflowBasedAppRunner(AppRunner):
                     parallel_id=event.parallel_id,
                     parallel_start_node_id=event.parallel_start_node_id,
                     start_at=event.route_node_state.start_at,
-                    node_run_index=workflow_entry.graph_engine.graph_runtime_state.node_run_steps,
+                    node_run_index=event.route_node_state.index,
                     predecessor_node_id=event.predecessor_node_id
                 )
             )

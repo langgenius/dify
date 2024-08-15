@@ -324,6 +324,19 @@ class QueueStopEvent(AppQueueEvent):
     event: QueueEvent = QueueEvent.STOP
     stopped_by: StopBy
 
+    def get_stop_reason(self) -> str:
+        """
+        To stop reason
+        """
+        reason_mapping = {
+            QueueStopEvent.StopBy.USER_MANUAL: 'Stopped by user.',
+            QueueStopEvent.StopBy.ANNOTATION_REPLY: 'Stopped by annotation reply.',
+            QueueStopEvent.StopBy.OUTPUT_MODERATION: 'Stopped by output moderation.',
+            QueueStopEvent.StopBy.INPUT_MODERATION: 'Stopped by input moderation.'
+        }
+        
+        return reason_mapping.get(self.stopped_by, 'Stopped by unknown reason.')
+
 
 class QueueMessage(BaseModel):
     """
