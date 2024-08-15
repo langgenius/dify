@@ -121,12 +121,14 @@ const AppPublisher = ({
           variant='primary'
           className='pl-3 pr-2'
           disabled={disabled}
+          onClick={handleTrigger}
         >
           {t('workflow.common.publish')}
           <RiArrowDownSLine className='w-4 h-4 ml-0.5' />
         </Button>
       </PortalToFollowElemTrigger>
       <PortalToFollowElemContent className='z-[11]'>
+
         <div className='w-[336px] bg-white rounded-2xl border-[0.5px] border-gray-200 shadow-xl'>
           <div className='p-4 pt-3'>
             <div className='flex items-center h-6 text-xs font-medium text-gray-500 uppercase'>

@@ -152,7 +152,7 @@ const Button = React.forwardRef<HTMLButtonElement, ButtonProps>(
       <NextUIButton
         ref={ref}
         variant={variantMap[variant as keyof typeof variantMap] || "solid"}
-        size={sizeMap[size as keyof typeof sizeMap] || "md"}
+        size={sizeMap[(size as keyof typeof sizeMap) ?? "small"]}
         color={destructive ? "danger" : "default"}
         isLoading={loading}
         style={styleCss}
