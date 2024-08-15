@@ -642,7 +642,8 @@ services:
       xpack.fleet.isAirGapped: true
       i18n.locale: zh-CN
       server.port: 5601
-      ELASTICSEARCH_HOSTS: ["http://elasticsearch:9200"]
+      elasticsearch.hosts: "http://elasticsearch:9200"
+      # ELASTICSEARCH_HOSTS: ["http://elasticsearch:9200"]
     ports:
       - "${KIBANA_PORT:-5601}:${KIBANA_PORT:-5601}"
     healthcheck:
