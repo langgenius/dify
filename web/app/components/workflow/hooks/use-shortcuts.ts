@@ -151,7 +151,6 @@ export const useShortcuts = (): void => {
     ].filter(Boolean).join('.')
 
     const fullPressedKey = modifiers ? `${modifiers}.${pressedKey}` : pressedKey
-    console.log(fullPressedKey)
 
     for (const { keys, handler, options, condition } of shortcutConfig) {
       const matchedKey = Array.isArray(keys)
