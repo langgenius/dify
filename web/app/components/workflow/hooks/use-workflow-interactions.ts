@@ -4,13 +4,19 @@ import {
 } from 'react'
 import { useTranslation } from 'react-i18next'
 import { useReactFlow } from 'reactflow'
-import { useWorkflowStore } from '../store'
+import { useStore, useWorkflowStore } from '../store'
 import { DSL_EXPORT_CHECK, WORKFLOW_DATA_UPDATE } from '../constants'
 import type { WorkflowDataUpdator } from '../types'
 import {
   initialEdges,
   initialNodes,
 } from '../utils'
+import {
+  useNodesReadOnly,
+  useSelectionInteractions,
+  useWorkflow,
+  useWorkflowReadOnly,
+} from '../hooks'
 import { useEdgesInteractions } from './use-edges-interactions'
 import { useNodesInteractions } from './use-nodes-interactions'
 import { useNodesSyncDraft } from './use-nodes-sync-draft'
@@ -36,6 +42,109 @@ export const useWorkflowInteractions = () => {
 
   return {
     handleCancelDebugAndPreviewPanel,
+  }
+}
+
+export const useWorkflowMoveMode = () => {
+  const setControlMode = useStore(s => s.setControlMode)
+  const {
+    getNodesReadOnly,
+  } = useNodesReadOnly()
+  const { handleSelectionCancel } = useSelectionInteractions()
+
+  const handleModePointer = useCallback(() => {
+    if (getNodesReadOnly())
+      return
+
+    setControlMode('pointer')
+  }, [getNodesReadOnly, setControlMode])
+
+  const handleModeHand = useCallback(() => {
+    if (getNodesReadOnly())
+      return
+
+    setControlMode('hand')
+    handleSelectionCancel()
+  }, [getNodesReadOnly, setControlMode, handleSelectionCancel])
+
+  return {
+    handleModePointer,
+    handleModeHand,
+  }
+}
+
+export const useWorkflowOrganize = () => {
+  const { handleLayout } = useWorkflow()
+  const { getNodesReadOnly } = useNodesReadOnly()
+
+  const handleGoLayout = useCallback(() => {
+    if (getNodesReadOnly())
+      return
+
+    handleLayout()
+  }, [getNodesReadOnly, handleLayout])
+
+  return {
+    handleGoLayout,
+  }
+}
+
+export const useWorkflowZoom = () => {
+  const { handleSyncWorkflowDraft } = useNodesSyncDraft()
+  const { workflowReadOnly } = useWorkflowReadOnly()
+  const {
+    zoomIn,
+    zoomOut,
+    zoomTo,
+    fitView,
+  } = useReactFlow()
+
+  const handleFitView = useCallback(() => {
+    if (workflowReadOnly)
+      return
+
+    fitView()
+    handleSyncWorkflowDraft()
+  }, [workflowReadOnly, fitView, handleSyncWorkflowDraft])
+
+  const handleBackToOriginalSize = useCallback(() => {
+    if (workflowReadOnly)
+      return
+
+    zoomTo(1)
+    handleSyncWorkflowDraft()
+  }, [workflowReadOnly, zoomTo, handleSyncWorkflowDraft])
+
+  const handleSizeToHalf = useCallback(() => {
+    if (workflowReadOnly)
+      return
+
+    zoomTo(0.5)
+    handleSyncWorkflowDraft()
+  }, [workflowReadOnly, zoomTo, handleSyncWorkflowDraft])
+
+  const handleZoomOut = useCallback(() => {
+    if (workflowReadOnly)
+      return
+
+    zoomOut()
+    handleSyncWorkflowDraft()
+  }, [workflowReadOnly, zoomOut, handleSyncWorkflowDraft])
+
+  const handleZoomIn = useCallback(() => {
+    if (workflowReadOnly)
+      return
+
+    zoomIn()
+    handleSyncWorkflowDraft()
+  }, [workflowReadOnly, zoomIn, handleSyncWorkflowDraft])
+
+  return {
+    handleFitView,
+    handleBackToOriginalSize,
+    handleSizeToHalf,
+    handleZoomOut,
+    handleZoomIn,
   }
 }
 
