@@ -192,7 +192,9 @@ name: cmc
 services:
   # API service
   api:
-    image: langgenius/dify-api:0.7.0
+    # image: langgenius/dify-api:0.7.0
+    build:
+      context: ../api
     restart: always
     environment:
       # Use the shared environment variables.
@@ -214,7 +216,9 @@ services:
   # worker service
   # The Celery worker for processing the queue.
   worker:
-    image: langgenius/dify-api:0.7.0
+    # image: langgenius/dify-api:0.7.0
+    build:
+      context: ../api
     restart: always
     environment:
       # Use the shared environment variables.
