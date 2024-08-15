@@ -5,8 +5,6 @@ from typing import Any
 
 from pydantic import BaseModel, ConfigDict, field_validator
 
-from core.file.file_obj import FileVar
-
 from .types import SegmentType
 
 
@@ -78,14 +76,7 @@ class IntegerSegment(Segment):
     value: int
 
 
-class FileSegment(Segment):
-    value_type: SegmentType = SegmentType.FILE
-    # TODO: embed FileVar in this model.
-    value: FileVar
 
-    @property
-    def markdown(self) -> str:
-        return self.value.to_markdown()
 
 
 class ObjectSegment(Segment):
@@ -130,7 +121,3 @@ class ArrayObjectSegment(ArraySegment):
     value_type: SegmentType = SegmentType.ARRAY_OBJECT
     value: Sequence[Mapping[str, Any]]
 
-
-class ArrayFileSegment(ArraySegment):
-    value_type: SegmentType = SegmentType.ARRAY_FILE
-    value: Sequence[FileSegment]

@@ -6,7 +6,7 @@ from typing_extensions import deprecated
 
 from core.app.segments import Segment, Variable, factory
 from core.file.file_obj import FileVar
-from core.workflow.entities.node_entities import SystemVariable
+from core.workflow.enums import SystemVariable
 
 VariableValue = Union[str, int, float, dict, list, FileVar]
 
