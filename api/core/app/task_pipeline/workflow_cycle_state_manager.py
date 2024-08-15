@@ -2,7 +2,7 @@ from typing import Any, Union
 
 from core.app.entities.app_invoke_entities import AdvancedChatAppGenerateEntity, WorkflowAppGenerateEntity
 from core.app.entities.task_entities import AdvancedChatTaskState, WorkflowTaskState
-from core.workflow.entities.node_entities import SystemVariable
+from core.workflow.enums import SystemVariable
 from models.account import Account
 from models.model import EndUser
 from models.workflow import Workflow
