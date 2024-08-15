@@ -56,7 +56,7 @@ def init_app(app: Flask) -> Celery:
         },
         'create_tidb_serverless_task': {
             'task': 'schedule.create_tidb_serverless_task.create_tidb_serverless_task',
-            'schedule': timedelta(seconds=10),
+            'schedule': timedelta(hours=1),
         }
     }
     celery_app.conf.update(beat_schedule=beat_schedule, imports=imports)
