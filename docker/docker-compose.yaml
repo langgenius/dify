@@ -125,7 +125,7 @@ x-shared-env: &shared-api-worker-env
   CHROMA_DATABASE: ${CHROMA_DATABASE:-default_database}
   CHROMA_AUTH_PROVIDER: ${CHROMA_AUTH_PROVIDER:-chromadb.auth.token_authn.TokenAuthClientProvider}
   CHROMA_AUTH_CREDENTIALS: ${CHROMA_AUTH_CREDENTIALS:-}
-  ELASTICSEARCH_HOST: ${ELASTICSEARCH_HOST:-127.0.0.1}
+  ELASTICSEARCH_HOST: ${ELASTICSEARCH_HOST:-0.0.0.0}
   ELASTICSEARCH_PORT: ${ELASTICSEARCH_PORT:-9200}
   ELASTICSEARCH_USERNAME: ${ELASTICSEARCH_USERNAME:-elastic}
   ELASTICSEARCH_PASSWORD: ${ELASTICSEARCH_PASSWORD:-elastic}
@@ -617,7 +617,7 @@ services:
     volumes:
       - ./volumes/elasticsearch/data:/usr/share/elasticsearch/data
     ports:
-      - "${ELASTICSEARCH_PORT:-9200}:9200"
+      - ${ELASTICSEARCH_PORT:-9200}:9200
     healthcheck:
       test: ["CMD-SHELL", "curl -s -f http://localhost:9200/_cluster/health || exit 1"]
       interval: 30s
@@ -642,8 +642,8 @@ services:
       xpack.fleet.isAirGapped: true
       i18n.locale: zh-CN
       server.port: 5601
-      elasticsearch.hosts: "http://elasticsearch:9200"
-      # ELASTICSEARCH_HOSTS: ["http://elasticsearch:9200"]
+      # elasticsearch.hosts: "http://elasticsearch:9200"
+      ELASTICSEARCH_HOSTS: '["http://elasticsearch:9200"]'
     ports:
       - "${KIBANA_PORT:-5601}:${KIBANA_PORT:-5601}"
     healthcheck:
