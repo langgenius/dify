@@ -12,6 +12,7 @@ import CodeEditor from '../editor/code-editor'
 import { CodeLanguage } from '../../../code/types'
 import TextEditor from '../editor/text-editor'
 import Select from '@/app/components/base/select'
+import Input from '@/app/components/base/input'
 import Textarea from '@/app/components/base/textarea'
 import TextGenerationImageUploader from '@/app/components/base/image-uploader/text-generation-image-uploader'
 import { Resolution } from '@/types/app'
@@ -100,9 +101,7 @@ const FormItem: FC<Props> = ({
       <div className='grow'>
         {
           type === InputVarType.textInput && (
-            <input
-              className="w-full px-3 text-sm leading-8 text-gray-900 border-0 rounded-lg grow h-8 bg-gray-50 focus:outline-none focus:ring-1 focus:ring-inset focus:ring-gray-200"
-              type="text"
+            <Input
               value={value || ''}
               onChange={e => onChange(e.target.value)}
               placeholder={t('appDebug.variableConig.inputPlaceholder')!}

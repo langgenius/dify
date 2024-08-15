@@ -307,7 +307,7 @@ const GenerationItem: FC<IGenerationItemProps> = ({
             <div className={`flex ${contentClassName}`}>
               <div className='grow w-0'>
                 {siteInfo && siteInfo.show_workflow_steps && workflowProcessData && (
-                  <WorkflowProcessItem grayBg hideInfo data={workflowProcessData} expand={workflowProcessData.expand} hideProcessDetail={hideProcessDetail} />
+                  <WorkflowProcessItem grayBg data={workflowProcessData} expand={workflowProcessData.expand} hideProcessDetail={hideProcessDetail} />
                 )}
                 {workflowProcessData && !isError && (
                   <ResultTab data={workflowProcessData} content={content} currentTab={currentTab} onCurrentTabChange={setCurrentTab} />

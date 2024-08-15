@@ -140,7 +140,6 @@ const Answer: FC<AnswerProps> = ({
                 <WorkflowProcess
                   data={workflowProcess}
                   item={item}
-                  hideInfo
                   hideProcessDetail={hideProcessDetail}
                 />
               )
@@ -151,7 +150,6 @@ const Answer: FC<AnswerProps> = ({
                 <WorkflowProcess
                   data={workflowProcess}
                   item={item}
-                  hideInfo
                   hideProcessDetail={hideProcessDetail}
                 />
               )

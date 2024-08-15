@@ -20,17 +20,13 @@ import { useStore as useAppStore } from '@/app/components/app/store'
 type WorkflowProcessProps = {
   data: WorkflowProcess
   item?: ChatItem
-  grayBg?: boolean
   expand?: boolean
-  hideInfo?: boolean
   hideProcessDetail?: boolean
 }
 const WorkflowProcessItem = ({
   data,
   item,
-  grayBg,
   expand = false,
-  hideInfo = false,
   hideProcessDetail = false,
 }: WorkflowProcessProps) => {
   const { t } = useTranslation()
@@ -40,6 +36,8 @@ const WorkflowProcessItem = ({
   const failed = data.status === WorkflowRunningStatus.Failed || data.status === WorkflowRunningStatus.Stopped
 
   const background = useMemo(() => {
+    if (collapse)
+      return 'linear-gradient(90deg, rgba(200, 206, 218, 0.20) 0%, rgba(200, 206, 218, 0.04) 100%)'
     if (running && !collapse)
       return 'linear-gradient(180deg, #E1E4EA 0%, #EAECF0 100%)'
 
@@ -67,41 +65,36 @@ const WorkflowProcessItem = ({
   return (
     <div
       className={cn(
-        'mb-2 rounded-xl border-[0.5px] border-components-panel-border',
-        collapse ? 'py-[7px]' : hideInfo ? 'pt-2 pb-1' : 'py-2',
-        collapse && (!grayBg ? 'bg-components-panel-bg' : 'bg-background-section-burn'),
-        hideInfo ? 'mx-[-8px] px-1' : 'w-full px-3',
+        '-mx-1 px-2.5 rounded-xl border-[0.5px]',
+        collapse ? 'py-[7px] border-components-panel-border' : 'pt-[7px] px-1 pb-1 border-components-panel-border-subtle',
       )}
       style={{
         background,
       }}
     >
       <div
-        className={cn(
-          'flex items-center h-[18px] cursor-pointer',
-          hideInfo && 'px-[6px]',
-        )}
+        className={cn('flex items-center cursor-pointer', !collapse && 'px-1.5')}
         onClick={() => setCollapse(!collapse)}
       >
         {
           running && (
-            <RiLoader2Line className='shrink-0 mr-1 w-3 h-3 text-text-accent animate-spin' />
+            <RiLoader2Line className='shrink-0 mr-1 w-3.5 h-3.5 text-text-tertiary' />
           )
         }
         {
           succeeded && (
-            <CheckCircle className='shrink-0 mr-1 w-3 h-3 text-text-success' />
+            <CheckCircle className='shrink-0 mr-1 w-3.5 h-3.5 text-text-success' />
           )
         }
         {
           failed && (
-            <RiErrorWarningFill className='shrink-0 mr-1 w-3 h-3 text-text-destructive' />
+            <RiErrorWarningFill className='shrink-0 mr-1 w-3.5 h-3.5 text-text-destructive' />
           )
         }
-        <div className='grow text-xs font-medium text-text-secondary'>
+        <div className={cn('system-xs-medium text-text-secondary', !collapse && 'grow')}>
           {t('workflow.common.workflowProcess')}
         </div>
-        <RiArrowRightSLine className={`'ml-1 w-3 h-3 text-text-tertiary' ${collapse ? '' : 'rotate-90'}`} />
+        <RiArrowRightSLine className={`'ml-1 w-4 h-4 text-text-tertiary' ${collapse ? '' : 'rotate-90'}`} />
       </div>
       {
         !collapse && (
@@ -111,7 +104,7 @@ const WorkflowProcessItem = ({
                 <div key={node.id} className='mb-1 last-of-type:mb-0'>
                   <NodePanel
                     nodeInfo={node}
-                    hideInfo={hideInfo}
+                    inMessage
                     hideProcessDetail={hideProcessDetail}
                     onShowIterationDetail={showIterationDetail}
                   />

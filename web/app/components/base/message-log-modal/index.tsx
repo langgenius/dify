@@ -39,7 +39,7 @@ const MessageLogModal: FC<MessageLogModalProps> = ({
 
   return (
     <div
-      className={cn('relative flex flex-col py-3 bg-components-panel-bg border-[0.5px] border-components-panel-border rounded-xl shadow-xl z-10')}
+      className={cn('relative flex flex-col pt-3 bg-components-panel-bg border-[0.5px] border-components-panel-border rounded-xl shadow-xl z-10')}
       style={{
         width: fixedWidth ? width : 480,
         ...(!fixedWidth

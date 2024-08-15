@@ -62,7 +62,7 @@ const StatusPanel: FC<ResultProps> = ({
         </div>
         <div className='flex-[33%] max-w-[152px]'>
           <div className='mb-1 text-text-tertiary system-2xs-medium-uppercase'>{t('runLog.resultPanel.time')}</div>
-          <div className='flex items-center gap-1 system-sm-medium'>
+          <div className='flex items-center gap-1 system-sm-medium text-text-secondary'>
             {status === 'running' && (
               <div className='w-16 h-2 rounded-sm bg-text-quaternary' />
             )}
@@ -73,7 +73,7 @@ const StatusPanel: FC<ResultProps> = ({
         </div>
         <div className='flex-[33%]'>
           <div className='mb-1 text-text-tertiary system-2xs-medium-uppercase'>{t('runLog.resultPanel.tokens')}</div>
-          <div className='flex items-center gap-1 system-sm-medium'>
+          <div className='flex items-center gap-1 system-sm-medium text-text-secondary'>
             {status === 'running' && (
               <div className='w-20 h-2 rounded-sm bg-text-quaternary' />
             )}
