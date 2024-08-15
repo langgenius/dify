@@ -11,5 +11,8 @@ fi
 # run ruff linter
 ruff check --fix ./api
 
+# run ruff formatter
+ruff format ./api
+
 # run dotenv-linter linter
 dotenv-linter ./api/.env.example ./web/.env.example

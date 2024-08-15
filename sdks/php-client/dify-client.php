@@ -9,9 +9,9 @@ class DifyClient {
     protected $base_url;
     protected $client;
 
-    public function __construct($api_key) {
+    public function __construct($api_key, $base_url = null) {
         $this->api_key = $api_key;
-        $this->base_url = "https://api.dify.ai/v1/";
+        $this->base_url = $base_url ?? "https://api.dify.ai/v1/";
         $this->client = new Client([
             'base_uri' => $this->base_url,
             'headers' => [
@@ -80,6 +80,25 @@ class DifyClient {
 
         return $multipart;
     }
+
+
+    public function text_to_audio($text, $user, $streaming = false) {
+        $data = [
+            'text' => $text,
+            'user' => $user,
+            'streaming' => $streaming
+        ];
+
+        return $this->send_request('POST', 'text-to-audio', $data);
+    }
+
+    public function get_meta($user) {
+        $params = [
+            'user' => $user
+        ];
+
+        return $this->send_request('GET', 'meta',null, $params);
+    }
 }
 
 class CompletionClient extends DifyClient {
@@ -126,6 +145,16 @@ class ChatClient extends DifyClient {
         return $this->send_request('GET', 'messages', null, $params);
     }
 
+    
+    public function stop_message($task_id, $user) {
+        $data = ['user' => $user];
+        return $this->send_request('POST', "chat-messages/{$task_id}/stop", $data);
+    }
+
+
+
+
+
     public function get_conversations($user, $first_id = null, $limit = null, $pinned = null) {
         $params = [
             'user' => $user,
@@ -142,5 +171,24 @@ class ChatClient extends DifyClient {
             'user' => $user,
         ];
         return $this->send_request('PATCH', "conversations/{$conversation_id}", $data);
+    }
+
+    public function audio_to_text($audio_file, $user) {
+        $data = [
+            'user' => $user,
+        ];
+        $options = [
+            'multipart' => $this->prepareMultipart($data, $files)
+        ];
+        return $this->file_client->request('POST', 'audio-to-text', $options);
+        
+    }
+
+        
+    public function get_suggestions($message_id, $user) {
+        $params = [
+            'user' => $user
+        ]
+        return $this->send_request('GET', "messages/{$message_id}/suggested", null, $params);
     }
 }

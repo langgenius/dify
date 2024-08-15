@@ -24,7 +24,8 @@ export type NodeTracing = {
     total_tokens: number
     total_price: number
     currency: string
-    steps_boundary: number[]
+    iteration_id?: string
+    iteration_index?: number
   }
   metadata: {
     iterator_length: number

@@ -2,7 +2,7 @@ version: '3'
 services:
   # API service
   api:
-    image: langgenius/dify-api:0.6.16
+    image: langgenius/dify-api:0.7.0
     restart: always
     environment:
       # Startup mode, 'api' starts the API server.
@@ -169,6 +169,11 @@ services:
       CHROMA_DATABASE: default_database
       CHROMA_AUTH_PROVIDER: chromadb.auth.token_authn.TokenAuthClientProvider
       CHROMA_AUTH_CREDENTIALS: xxxxxx
+      # ElasticSearch Config
+      ELASTICSEARCH_HOST: 127.0.0.1
+      ELASTICSEARCH_PORT: 9200
+      ELASTICSEARCH_USERNAME: elastic
+      ELASTICSEARCH_PASSWORD: elastic
       # Mail configuration, support: resend, smtp
       MAIL_TYPE: ''
       # default send from email address, if not specified
@@ -224,7 +229,7 @@ services:
   # worker service
   # The Celery worker for processing the queue.
   worker:
-    image: langgenius/dify-api:0.6.16
+    image: langgenius/dify-api:0.7.0
     restart: always
     environment:
       CONSOLE_WEB_URL: ''
@@ -371,6 +376,11 @@ services:
       CHROMA_DATABASE: default_database
       CHROMA_AUTH_PROVIDER: chromadb.auth.token_authn.TokenAuthClientProvider
       CHROMA_AUTH_CREDENTIALS: xxxxxx
+      # ElasticSearch Config
+      ELASTICSEARCH_HOST: 127.0.0.1
+      ELASTICSEARCH_PORT: 9200
+      ELASTICSEARCH_USERNAME: elastic
+      ELASTICSEARCH_PASSWORD: elastic
       # Notion import configuration, support public and internal
       NOTION_INTEGRATION_TYPE: public
       NOTION_CLIENT_SECRET: you-client-secret
@@ -390,7 +400,7 @@ services:
 
   # Frontend web application.
   web:
-    image: langgenius/dify-web:0.6.16
+    image: langgenius/dify-web:0.7.0
     restart: always
     environment:
       # The base URL of console application api server, refers to the Console base URL of WEB service if console domain is

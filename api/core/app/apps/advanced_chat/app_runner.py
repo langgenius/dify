@@ -3,9 +3,6 @@ import os
 from collections.abc import Mapping
 from typing import Any, cast
 
-from sqlalchemy import select
-from sqlalchemy.orm import Session
-
 from core.app.apps.advanced_chat.app_config_manager import AdvancedChatAppConfig
 from core.app.apps.base_app_queue_manager import AppQueueManager
 from core.app.apps.workflow_app_runner import WorkflowBasedAppRunner
@@ -94,7 +91,7 @@ class AdvancedChatAppRunner(WorkflowBasedAppRunner):
             inputs = self.application_generate_entity.inputs
             query = self.application_generate_entity.query
             files = self.application_generate_entity.files
-            
+
             # moderation
             if self.handle_input_moderation(
                     app_record=app_record,

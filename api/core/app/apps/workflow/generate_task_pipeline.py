@@ -41,7 +41,9 @@ from core.app.entities.task_entities import (
 from core.app.task_pipeline.based_generate_task_pipeline import BasedGenerateTaskPipeline
 from core.app.task_pipeline.workflow_cycle_manage import WorkflowCycleManage
 from core.ops.ops_trace_manager import TraceQueueManager
-from core.workflow.entities.node_entities import SystemVariable
+from core.workflow.entities.node_entities import NodeType
+from core.workflow.enums import SystemVariable
+from core.workflow.nodes.end.end_node import EndNode
 from extensions.ext_database import db
 from models.account import Account
 from models.model import EndUser
@@ -179,7 +181,7 @@ class WorkflowAppGenerateTaskPipeline(BasedGenerateTaskPipeline, WorkflowCycleMa
         if features_dict.get('text_to_speech') and features_dict['text_to_speech'].get('enabled') and features_dict[
                 'text_to_speech'].get('autoPlay') == 'enabled':
             tts_publisher = AppGeneratorTTSPublisher(tenant_id, features_dict['text_to_speech'].get('voice'))
-        
+
         for response in self._process_stream_response(tts_publisher=tts_publisher, trace_manager=trace_manager):
             while True:
                 audio_response = self._listenAudioMsg(tts_publisher, task_id=task_id)
@@ -246,7 +248,7 @@ class WorkflowAppGenerateTaskPipeline(BasedGenerateTaskPipeline, WorkflowCycleMa
                     raise Exception('Workflow run not initialized.')
 
                 workflow_node_execution = self._handle_node_execution_start(
-                    workflow_run=workflow_run, 
+                    workflow_run=workflow_run,
                     event=event
                 )
 
@@ -281,7 +283,7 @@ class WorkflowAppGenerateTaskPipeline(BasedGenerateTaskPipeline, WorkflowCycleMa
             elif isinstance(event, QueueIterationStartEvent):
                 if not workflow_run:
                     raise Exception('Workflow run not initialized.')
-                
+
                 yield self._workflow_iteration_start_to_stream_response(
                     task_id=self._application_generate_entity.task_id,
                     workflow_run=workflow_run,
@@ -290,7 +292,7 @@ class WorkflowAppGenerateTaskPipeline(BasedGenerateTaskPipeline, WorkflowCycleMa
             elif isinstance(event, QueueIterationNextEvent):
                 if not workflow_run:
                     raise Exception('Workflow run not initialized.')
-                
+
                 yield self._workflow_iteration_next_to_stream_response(
                     task_id=self._application_generate_entity.task_id,
                     workflow_run=workflow_run,
@@ -299,7 +301,7 @@ class WorkflowAppGenerateTaskPipeline(BasedGenerateTaskPipeline, WorkflowCycleMa
             elif isinstance(event, QueueIterationCompletedEvent):
                 if not workflow_run:
                     raise Exception('Workflow run not initialized.')
-                
+
                 yield self._workflow_iteration_completed_to_stream_response(
                     task_id=self._application_generate_entity.task_id,
                     workflow_run=workflow_run,
@@ -308,10 +310,10 @@ class WorkflowAppGenerateTaskPipeline(BasedGenerateTaskPipeline, WorkflowCycleMa
             elif isinstance(event, QueueWorkflowSucceededEvent):
                 if not workflow_run:
                     raise Exception('Workflow run not initialized.')
-                
+
                 if not graph_runtime_state:
                     raise Exception('Graph runtime state not initialized.')
-                
+
                 workflow_run = self._handle_workflow_run_success(
                     workflow_run=workflow_run,
                     start_at=graph_runtime_state.start_at,
@@ -332,10 +334,10 @@ class WorkflowAppGenerateTaskPipeline(BasedGenerateTaskPipeline, WorkflowCycleMa
             elif isinstance(event, QueueWorkflowFailedEvent | QueueStopEvent):
                 if not workflow_run:
                     raise Exception('Workflow run not initialized.')
-                
+
                 if not graph_runtime_state:
                     raise Exception('Graph runtime state not initialized.')
-                
+
                 workflow_run = self._handle_workflow_run_failed(
                     workflow_run=workflow_run,
                     start_at=graph_runtime_state.start_at,

@@ -33,7 +33,7 @@ logger = logging.getLogger(__name__)
 
 class AdvancedChatAppGenerator(MessageBasedAppGenerator):
     def generate(
-            self, 
+            self,
             app_model: App,
             workflow: Workflow,
             user: Union[Account, EndUser],
@@ -121,7 +121,7 @@ class AdvancedChatAppGenerator(MessageBasedAppGenerator):
             conversation=conversation,
             stream=stream
         )
-    
+
     def single_iteration_generate(self, app_model: App,
                                   workflow: Workflow,
                                   node_id: str,
@@ -141,10 +141,10 @@ class AdvancedChatAppGenerator(MessageBasedAppGenerator):
         """
         if not node_id:
             raise ValueError('node_id is required')
-        
+
         if args.get('inputs') is None:
             raise ValueError('inputs is required')
-        
+
         # convert to app config
         app_config = AdvancedChatAppConfigManager.get_app_config(
             app_model=app_model,
@@ -191,7 +191,7 @@ class AdvancedChatAppGenerator(MessageBasedAppGenerator):
             -> dict[str, Any] | Generator[str, Any, None]:
         """
         Generate App response.
-        
+
         :param workflow: Workflow
         :param user: account or end user
         :param invoke_from: invoke from source
@@ -232,8 +232,7 @@ class AdvancedChatAppGenerator(MessageBasedAppGenerator):
             'queue_manager': queue_manager,
             'conversation_id': conversation.id,
             'message_id': message.id,
-            'user': user,
-            'context': contextvars.copy_context()
+            'context': contextvars.copy_context(),
         })
 
         worker_thread.start()
@@ -246,7 +245,7 @@ class AdvancedChatAppGenerator(MessageBasedAppGenerator):
             conversation=conversation,
             message=message,
             user=user,
-            stream=stream
+            stream=stream,
         )
 
         return AdvancedChatAppGenerateResponseConverter.convert(
@@ -259,7 +258,6 @@ class AdvancedChatAppGenerator(MessageBasedAppGenerator):
                          queue_manager: AppQueueManager,
                          conversation_id: str,
                          message_id: str,
-                         user: Account,
                          context: contextvars.Context) -> None:
         """
         Generate worker in a new thread.
@@ -307,14 +305,17 @@ class AdvancedChatAppGenerator(MessageBasedAppGenerator):
             finally:
                 db.session.close()
 
-    def _handle_advanced_chat_response(self, application_generate_entity: AdvancedChatAppGenerateEntity,
-                                       workflow: Workflow,
-                                       queue_manager: AppQueueManager,
-                                       conversation: Conversation,
-                                       message: Message,
-                                       user: Union[Account, EndUser],
-                                       stream: bool = False) \
-            -> Union[ChatbotAppBlockingResponse, Generator[ChatbotAppStreamResponse, None, None]]:
+    def _handle_advanced_chat_response(
+        self,
+        *,
+        application_generate_entity: AdvancedChatAppGenerateEntity,
+        workflow: Workflow,
+        queue_manager: AppQueueManager,
+        conversation: Conversation,
+        message: Message,
+        user: Union[Account, EndUser],
+        stream: bool = False,
+    ) -> Union[ChatbotAppBlockingResponse, Generator[ChatbotAppStreamResponse, None, None]]:
         """
         Handle response.
         :param application_generate_entity: application generate entity
@@ -334,7 +335,7 @@ class AdvancedChatAppGenerator(MessageBasedAppGenerator):
             conversation=conversation,
             message=message,
             user=user,
-            stream=stream
+            stream=stream,
         )
 
         try:

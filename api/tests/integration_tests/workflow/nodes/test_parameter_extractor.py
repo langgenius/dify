@@ -362,7 +362,7 @@ def test_extract_json_response():
         {
             "location": "kawaii"
         }
-        hello world.                          
+        hello world.
     """)
 
     assert result['location'] == 'kawaii'

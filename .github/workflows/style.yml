@@ -45,6 +45,10 @@ jobs:
         if: steps.changed-files.outputs.any_changed == 'true'
         run: poetry run -C api dotenv-linter ./api/.env.example ./web/.env.example
 
+      - name: Ruff formatter check
+        if: steps.changed-files.outputs.any_changed == 'true'
+        run: poetry run -C api ruff format --check ./api
+
       - name: Lint hints
         if: failure()
         run: echo "Please run 'dev/reformat' to fix the fixable linting errors."

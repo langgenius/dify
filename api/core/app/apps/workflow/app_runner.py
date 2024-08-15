@@ -11,7 +11,8 @@ from core.app.entities.app_invoke_entities import (
     WorkflowAppGenerateEntity,
 )
 from core.workflow.callbacks.base_workflow_callback import WorkflowCallback
-from core.workflow.entities.node_entities import SystemVariable, UserFrom
+from core.workflow.enums import SystemVariable
+from core.workflow.entities.node_entities import UserFrom
 from core.workflow.entities.variable_pool import VariablePool
 from core.workflow.workflow_entry import WorkflowEntry
 from extensions.ext_database import db

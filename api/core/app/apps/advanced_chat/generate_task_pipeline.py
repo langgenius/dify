@@ -44,7 +44,7 @@ from core.app.task_pipeline.message_cycle_manage import MessageCycleManage
 from core.app.task_pipeline.workflow_cycle_manage import WorkflowCycleManage
 from core.model_runtime.utils.encoders import jsonable_encoder
 from core.ops.ops_trace_manager import TraceQueueManager
-from core.workflow.entities.node_entities import SystemVariable
+from core.workflow.enums import SystemVariable
 from core.workflow.graph_engine.entities.graph_runtime_state import GraphRuntimeState
 from events.message_event import message_was_created
 from extensions.ext_database import db
@@ -69,14 +69,14 @@ class AdvancedChatAppGenerateTaskPipeline(BasedGenerateTaskPipeline, WorkflowCyc
     _workflow_system_variables: dict[SystemVariable, Any]
 
     def __init__(
-            self, 
+            self,
             application_generate_entity: AdvancedChatAppGenerateEntity,
             workflow: Workflow,
             queue_manager: AppQueueManager,
             conversation: Conversation,
             message: Message,
             user: Union[Account, EndUser],
-            stream: bool
+            stream: bool,
     ) -> None:
         """
         Initialize AdvancedChatAppGenerateTaskPipeline.
@@ -102,7 +102,7 @@ class AdvancedChatAppGenerateTaskPipeline(BasedGenerateTaskPipeline, WorkflowCyc
             SystemVariable.QUERY: message.query,
             SystemVariable.FILES: application_generate_entity.files,
             SystemVariable.CONVERSATION_ID: conversation.id,
-            SystemVariable.USER_ID: user_id
+            SystemVariable.USER_ID: user_id,
         }
 
         self._task_state = WorkflowTaskState()
@@ -127,7 +127,7 @@ class AdvancedChatAppGenerateTaskPipeline(BasedGenerateTaskPipeline, WorkflowCyc
         generator = self._wrapper_process_stream_response(
             trace_manager=self._application_generate_entity.trace_manager
         )
-        
+
         if self._stream:
             return self._to_stream_response(generator)
         else:
@@ -239,7 +239,7 @@ class AdvancedChatAppGenerateTaskPipeline(BasedGenerateTaskPipeline, WorkflowCyc
         # init fake graph runtime state
         graph_runtime_state = None
         workflow_run = None
-        
+
         for queue_message in self._queue_manager.listen():
             event = queue_message.event
 
@@ -270,9 +270,9 @@ class AdvancedChatAppGenerateTaskPipeline(BasedGenerateTaskPipeline, WorkflowCyc
             elif isinstance(event, QueueNodeStartedEvent):
                 if not workflow_run:
                     raise Exception('Workflow run not initialized.')
-        
+
                 workflow_node_execution = self._handle_node_execution_start(
-                    workflow_run=workflow_run, 
+                    workflow_run=workflow_run,
                     event=event
                 )
 
@@ -307,7 +307,7 @@ class AdvancedChatAppGenerateTaskPipeline(BasedGenerateTaskPipeline, WorkflowCyc
             elif isinstance(event, QueueIterationStartEvent):
                 if not workflow_run:
                     raise Exception('Workflow run not initialized.')
-                
+
                 yield self._workflow_iteration_start_to_stream_response(
                     task_id=self._application_generate_entity.task_id,
                     workflow_run=workflow_run,
@@ -316,7 +316,7 @@ class AdvancedChatAppGenerateTaskPipeline(BasedGenerateTaskPipeline, WorkflowCyc
             elif isinstance(event, QueueIterationNextEvent):
                 if not workflow_run:
                     raise Exception('Workflow run not initialized.')
-                
+
                 yield self._workflow_iteration_next_to_stream_response(
                     task_id=self._application_generate_entity.task_id,
                     workflow_run=workflow_run,
@@ -325,7 +325,7 @@ class AdvancedChatAppGenerateTaskPipeline(BasedGenerateTaskPipeline, WorkflowCyc
             elif isinstance(event, QueueIterationCompletedEvent):
                 if not workflow_run:
                     raise Exception('Workflow run not initialized.')
-                
+
                 yield self._workflow_iteration_completed_to_stream_response(
                     task_id=self._application_generate_entity.task_id,
                     workflow_run=workflow_run,
@@ -334,10 +334,10 @@ class AdvancedChatAppGenerateTaskPipeline(BasedGenerateTaskPipeline, WorkflowCyc
             elif isinstance(event, QueueWorkflowSucceededEvent):
                 if not workflow_run:
                     raise Exception('Workflow run not initialized.')
-                
+
                 if not graph_runtime_state:
                     raise Exception('Graph runtime state not initialized.')
-                
+
                 workflow_run = self._handle_workflow_run_success(
                     workflow_run=workflow_run,
                     start_at=graph_runtime_state.start_at,
@@ -360,10 +360,10 @@ class AdvancedChatAppGenerateTaskPipeline(BasedGenerateTaskPipeline, WorkflowCyc
             elif isinstance(event, QueueWorkflowFailedEvent):
                 if not workflow_run:
                     raise Exception('Workflow run not initialized.')
-                
+
                 if not graph_runtime_state:
                     raise Exception('Graph runtime state not initialized.')
-                
+
                 workflow_run = self._handle_workflow_run_failed(
                     workflow_run=workflow_run,
                     start_at=graph_runtime_state.start_at,
@@ -400,7 +400,7 @@ class AdvancedChatAppGenerateTaskPipeline(BasedGenerateTaskPipeline, WorkflowCyc
                         task_id=self._application_generate_entity.task_id,
                         workflow_run=workflow_run
                     )
-                
+
                 # Save message
                 self._save_message(graph_runtime_state=graph_runtime_state)
 
@@ -413,7 +413,7 @@ class AdvancedChatAppGenerateTaskPipeline(BasedGenerateTaskPipeline, WorkflowCyc
 
                 self._message.message_metadata = json.dumps(jsonable_encoder(self._task_state.metadata)) \
                     if self._task_state.metadata else None
-                
+
                 db.session.commit()
                 db.session.close()
             elif isinstance(event, QueueAnnotationReplyEvent):
@@ -421,7 +421,7 @@ class AdvancedChatAppGenerateTaskPipeline(BasedGenerateTaskPipeline, WorkflowCyc
 
                 self._message.message_metadata = json.dumps(jsonable_encoder(self._task_state.metadata)) \
                     if self._task_state.metadata else None
-                
+
                 db.session.commit()
                 db.session.close()
             elif isinstance(event, QueueTextChunkEvent):
@@ -446,7 +446,7 @@ class AdvancedChatAppGenerateTaskPipeline(BasedGenerateTaskPipeline, WorkflowCyc
             elif isinstance(event, QueueAdvancedChatMessageEndEvent):
                 if not graph_runtime_state:
                     raise Exception('Graph runtime state not initialized.')
-                
+
                 output_moderation_answer = self._handle_output_moderation_when_task_finished(self._task_state.answer)
                 if output_moderation_answer:
                     self._task_state.answer = output_moderation_answer
@@ -458,11 +458,11 @@ class AdvancedChatAppGenerateTaskPipeline(BasedGenerateTaskPipeline, WorkflowCyc
                 yield self._message_end_to_stream_response()
             else:
                 continue
-        
+
         # publish None when task finished
         if tts_publisher:
             tts_publisher.publish(None)
-            
+
         if self._conversation_name_generate_thread:
             self._conversation_name_generate_thread.join()
 
@@ -507,7 +507,7 @@ class AdvancedChatAppGenerateTaskPipeline(BasedGenerateTaskPipeline, WorkflowCyc
         extras = {}
         if self._task_state.metadata:
             extras['metadata'] = self._task_state.metadata.copy()
-            
+
             if 'annotation_reply' in extras['metadata']:
                 del extras['metadata']['annotation_reply']
 
