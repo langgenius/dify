@@ -1,5 +1,3 @@
-// import { useCallback, useEffect, useMemo } from 'react'
-// import { useWorkflowStore } from '../store'
 import { useReactFlow } from 'reactflow'
 import { useKeyPress } from 'ahooks'
 import {
@@ -36,7 +34,6 @@ export const useShortcuts = (): void => {
   const { getNodesReadOnly } = useNodesReadOnly()
   const { workflowReadOnly } = useWorkflowReadOnly()
   const workflowStore = useWorkflowStore()
-  const { showFeaturesPanel } = workflowStore.getState()
   const {
     handleModeHand,
     handleModePointer,
@@ -49,49 +46,62 @@ export const useShortcuts = (): void => {
     fitView,
   } = useReactFlow()
 
+  const shouldHandleShortcut = (e: KeyboardEvent) => {
+    const { showFeaturesPanel } = workflowStore.getState()
+    return !(isEventTargetInputArea(e.target as HTMLElement) || showFeaturesPanel)
+  }
+
   useKeyPress(['delete', 'backspace'], (e) => {
-    if (isEventTargetInputArea(e.target as HTMLElement) || showFeaturesPanel)
+    e.preventDefault()
+    if (!shouldHandleShortcut(e))
       return
 
     handleNodesDelete()
   })
 
   useKeyPress(['delete', 'backspace'], (e) => {
-    if (isEventTargetInputArea(e.target as HTMLElement || showFeaturesPanel))
+    e.preventDefault()
+    if (!shouldHandleShortcut(e))
       return
 
     handleEdgeDelete()
   })
 
   useKeyPress(`${getKeyboardKeyCodeBySystem('ctrl')}.c`, (e) => {
-    if (isEventTargetInputArea(e.target as HTMLElement || showFeaturesPanel))
+    e.preventDefault()
+    if (!shouldHandleShortcut(e))
       return
 
     handleNodesCopy()
   }, { exactMatch: true, useCapture: true })
 
   useKeyPress(`${getKeyboardKeyCodeBySystem('ctrl')}.v`, (e) => {
-    if (isEventTargetInputArea(e.target as HTMLElement || showFeaturesPanel))
+    e.preventDefault()
+    if (!shouldHandleShortcut(e))
       return
 
     handleNodesPaste()
   }, { exactMatch: true, useCapture: true })
 
   useKeyPress(`${getKeyboardKeyCodeBySystem('ctrl')}.d`, (e) => {
-    if (isEventTargetInputArea(e.target as HTMLElement || showFeaturesPanel))
+    e.preventDefault()
+    if (!shouldHandleShortcut(e))
       return
 
     handleNodesDuplicate()
   }, { exactMatch: true, useCapture: true })
+
   useKeyPress(`${getKeyboardKeyCodeBySystem('alt')}.r`, (e) => {
-    if (isEventTargetInputArea(e.target as HTMLElement || showFeaturesPanel))
+    e.preventDefault()
+    if (!shouldHandleShortcut(e))
       return
 
     handleStartWorkflowRun()
   }, { exactMatch: true, useCapture: true })
 
   useKeyPress(`${getKeyboardKeyCodeBySystem('alt')}.r`, (e) => {
-    if (isEventTargetInputArea(e.target as HTMLElement || showFeaturesPanel))
+    e.preventDefault()
+    if (!shouldHandleShortcut(e))
       return
 
     handleStartWorkflowRun()
@@ -99,7 +109,8 @@ export const useShortcuts = (): void => {
 
   useKeyPress(
     `${getKeyboardKeyCodeBySystem('ctrl')}.z`, (e) => {
-      if (isEventTargetInputArea(e.target as HTMLElement || showFeaturesPanel))
+      e.preventDefault()
+      if (!shouldHandleShortcut(e))
         return
 
       workflowHistoryShortcutsEnabled && handleHistoryBack()
@@ -110,7 +121,8 @@ export const useShortcuts = (): void => {
   useKeyPress(
     [`${getKeyboardKeyCodeBySystem('ctrl')}.y`, `${getKeyboardKeyCodeBySystem('ctrl')}.shift.z`],
     (e) => {
-      if (isEventTargetInputArea(e.target as HTMLElement || showFeaturesPanel))
+      e.preventDefault()
+      if (!shouldHandleShortcut(e))
         return
 
       workflowHistoryShortcutsEnabled && handleHistoryForward()
@@ -118,13 +130,13 @@ export const useShortcuts = (): void => {
     { exactMatch: true, useCapture: true },
   )
   useKeyPress('h', (e) => {
+    e.preventDefault()
+    if (!shouldHandleShortcut(e))
+      return
+
     if (getNodesReadOnly())
       return
 
-    if (isEventTargetInputArea(e.target as HTMLElement || showFeaturesPanel))
-      return
-
-    e.preventDefault()
     handleModeHand()
   }, {
     exactMatch: true,
@@ -132,10 +144,10 @@ export const useShortcuts = (): void => {
   })
 
   useKeyPress('v', (e) => {
-    if (isEventTargetInputArea(e.target as HTMLElement || showFeaturesPanel))
+    e.preventDefault()
+    if (!shouldHandleShortcut(e))
       return
 
-    e.preventDefault()
     handleModePointer()
   }, {
     exactMatch: true,
@@ -143,18 +155,18 @@ export const useShortcuts = (): void => {
   })
 
   useKeyPress(`${getKeyboardKeyCodeBySystem('ctrl')}.o`, (e) => {
-    if (isEventTargetInputArea(e.target as HTMLElement || showFeaturesPanel))
+    e.preventDefault()
+    if (!shouldHandleShortcut(e))
       return
 
-    e.preventDefault()
     handleGoLayout()
   }, { exactMatch: true, useCapture: true })
 
   useKeyPress(`${getKeyboardKeyCodeBySystem('ctrl')}.1`, (e) => {
-    if (isEventTargetInputArea(e.target as HTMLElement || showFeaturesPanel))
+    e.preventDefault()
+    if (!shouldHandleShortcut(e))
       return
 
-    e.preventDefault()
     if (workflowReadOnly)
       return
 
@@ -166,10 +178,11 @@ export const useShortcuts = (): void => {
   })
 
   useKeyPress('shift.1', (e) => {
+    e.preventDefault()
     if (workflowReadOnly)
       return
 
-    if (isEventTargetInputArea(e.target as HTMLElement) || showFeaturesPanel)
+    if (!shouldHandleShortcut(e))
       return
 
     e.preventDefault()
@@ -181,13 +194,13 @@ export const useShortcuts = (): void => {
   })
 
   useKeyPress('shift.5', (e) => {
+    e.preventDefault()
+    if (!shouldHandleShortcut(e))
+      return
+
     if (workflowReadOnly)
       return
 
-    if (isEventTargetInputArea(e.target as HTMLElement) || showFeaturesPanel)
-      return
-
-    e.preventDefault()
     zoomTo(0.5)
     handleSyncWorkflowDraft()
   }, {
@@ -197,10 +210,10 @@ export const useShortcuts = (): void => {
 
   useKeyPress(`${getKeyboardKeyCodeBySystem('ctrl')}.dash`, (e) => {
     e.preventDefault()
-    if (workflowReadOnly)
+    if (!shouldHandleShortcut(e))
       return
 
-    if (isEventTargetInputArea(e.target as HTMLElement) || showFeaturesPanel)
+    if (workflowReadOnly)
       return
 
     zoomOut()
@@ -212,10 +225,10 @@ export const useShortcuts = (): void => {
 
   useKeyPress(`${getKeyboardKeyCodeBySystem('ctrl')}.equalsign`, (e) => {
     e.preventDefault()
-    if (workflowReadOnly)
+    if (!shouldHandleShortcut(e))
       return
 
-    if (isEventTargetInputArea(e.target as HTMLElement) || showFeaturesPanel)
+    if (workflowReadOnly)
       return
 
     zoomIn()
