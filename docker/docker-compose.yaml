@@ -616,7 +616,7 @@ services:
       node.name: dify-es0
       discovery.type: single-node
       xpack.license.self_generated.type: trial
-      xpack.security.enabled: false
+      xpack.security.enabled: true
       xpack.security.enrollment.enabled: false
       xpack.security.http.ssl.enabled: false
     # todo: Bind environment and healthcheck after testing
