@@ -238,9 +238,7 @@ const ChatInput: FC<ChatInputProps> = ({
                 onCancel={() => setVoiceInputShow(false)}
                 onConverted={(text) => {
                   setQuery(text)
-                  requestAnimationFrame(() => {
-                    textAreaRef.current?.focus()
-                  })
+                  textAreaRef.current?.focus()
                 }}
               />
             )
