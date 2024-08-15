@@ -43,6 +43,18 @@ class DifyClient:
             "user": user
         }
         return self._send_request_with_files("POST", "/files/upload", data=data, files=files)
+    
+    def text_to_audio(self, text:str, user:str, streaming:bool=False):
+        data = {
+            "text": text,
+            "user": user,
+            "streaming": streaming
+        }
+        return self._send_request("POST", "/text-to-audio", data=data)
+    
+    def get_meta(self,user):
+        params = { "user": user}
+        return self._send_request("GET", f"/meta", params=params)
 
 
 class CompletionClient(DifyClient):
@@ -71,6 +83,12 @@ class ChatClient(DifyClient):
 
         return self._send_request("POST", "/chat-messages", data,
                                   stream=True if response_mode == "streaming" else False)
+    def stop_message(self, task_id, user):
+        data = {"user": user}
+        return self._send_request("POST", f"/chat-messages/{task_id}/stop", data)   
+
+
+
 
     def get_conversation_messages(self, user, conversation_id=None, first_id=None, limit=None):
         params = {"user": user}
@@ -91,3 +109,14 @@ class ChatClient(DifyClient):
     def rename_conversation(self, conversation_id, name, user):
         data = {"name": name, "user": user}
         return self._send_request("POST", f"/conversations/{conversation_id}/name", data)
+    
+    def audio_to_text(self, audio_file, user):
+        data = {"user": user}
+        files = {"audio_file": audio_file}
+        return self._send_request_with_files("POST", "/audio-to-text", data, files)
+
+
+    def get_suggested(self, message_id, user:str):
+        params = {"user": user}
+        return self._send_request("GET", f"/messages/{message_id}/suggested", params=params)
+
