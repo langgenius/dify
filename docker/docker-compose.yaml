@@ -608,6 +608,8 @@ services:
     profiles:
       - elasticsearch
     restart: always
+    volumes:
+      - ./volumes/elasticsearch/data:/usr/share/elasticsearch/data
     environment:
       ELASTIC_PASSWORD: ${ELASTICSEARCH_PASSWORD:-elastic}
       cluster.name: dify-es-cluster
@@ -617,17 +619,15 @@ services:
       xpack.security.enabled: false
       xpack.security.enrollment.enabled: false
       xpack.security.http.ssl.enabled: false
-    volumes:
-      - ./volumes/elasticsearch/data:/usr/share/elasticsearch/data
     # todo: Bind environment and healthcheck after testing
     ports:
       - 9200:9200
-    #    healthcheck:
-    #      test: ["CMD-SHELL", "curl -s -f http://localhost:9200/_cluster/health || exit 1"]
-    #      interval: 30s
-    #      timeout: 10s
-    #      retries: 5
-    #      start_period: 40s
+    healthcheck:
+      test: [ "CMD", "curl",  "--fail" , "http://elasticsearch:9200/_cluster/health?wait_for_status=green&timeout=1s", "||", "exit", "1" ]
+      interval: 30s
+      timeout: 10s
+      retries: 5
+      start_period: 40s
 
   # https://www.elastic.co/guide/en/kibana/current/docker.html
   # https://www.elastic.co/guide/en/kibana/current/settings.html
@@ -640,23 +640,22 @@ services:
       - elasticsearch
     restart: always
     environment:
-      NO_PROXY: elasticsearch,localhost
-      xpack.encryptedsavedobjects.encryptionKey: d1a66dfd-c4d3-4a0a-8290-2abcb83ab3aa
-      xpack.security.enabled: false
-      xpack.security.enrollment.enabled: false
-      xpack.security.http.ssl.enabled: false
-      xpack.fleet.isAirGapped: true
-      i18n.locale: zh-CN
-      server.port: 5601
-      elasticsearch.hosts: "http://elasticsearch:9200"
-      # ELASTICSEARCH_HOSTS: '["http://elasticsearch:9200"]'
+      - XPACK_ENCRYPTEDSAVEDOBJECTS_ENCRYPTIONKEY=d1a66dfd-c4d3-4a0a-8290-2abcb83ab3aa
+      - NO_PROXY=localhost,127.0.0.1,elasticsearch,kibana
+      - XPACK_SECURITY_ENABLED=true
+      - XPACK_SECURITY_ENROLLMENT_ENABLED=false
+      - XPACK_SECURITY_HTTP_SSL_ENABLED=false
+      - XPACK_FLEET_ISAIRGAPPED=true
+      - I18N_LOCALE=zh-CN
+      - SERVER_PORT=5601
+      - ELASTICSEARCH_HOSTS="http://elasticsearch:9200"
     ports:
       - ${KIBANA_PORT:-5601}:5601
-    #    healthcheck:
-    #      test: [ "CMD-SHELL", "curl -s http://localhost:5601 >/dev/null || exit 1" ]
-    #      interval: 30s
-    #      timeout: 10s
-    #      retries: 3
+    healthcheck:
+      test: [ "CMD-SHELL", "curl -s http://localhost:5601 >/dev/null || exit 1" ]
+      interval: 30s
+      timeout: 10s
+      retries: 3
 
   # unstructured .
   # (if used, you need to set ETL_TYPE to Unstructured in the api & worker service.)
