@@ -622,12 +622,6 @@ services:
     # todo: Bind environment and healthcheck after testing
     ports:
       - 9200:9200
-    healthcheck:
-      test: [ "CMD", "curl",  "--fail" , "http://elasticsearch:9200/_cluster/health?wait_for_status=green&timeout=1s", "||", "exit", "1" ]
-      interval: 30s
-      timeout: 10s
-      retries: 5
-      start_period: 40s
 
   # https://www.elastic.co/guide/en/kibana/current/docker.html
   # https://www.elastic.co/guide/en/kibana/current/settings.html
