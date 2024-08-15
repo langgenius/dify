@@ -620,7 +620,7 @@ services:
       - xpack.security.enrollment.enabled=false
       - xpack.security.http.ssl.enabled=false
     ports:
-      - "${ELASTICSEARCH_PORT:-9200}:${ELASTICSEARCH_PORT:-9200}"
+      - ${ELASTICSEARCH_PORT:-9200}:9200
     healthcheck:
       test: ["CMD", "curl", "-s", "http://localhost:9200/_cluster/health?pretty"]
       interval: 30s
