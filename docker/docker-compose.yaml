@@ -125,10 +125,11 @@ x-shared-env: &shared-api-worker-env
   CHROMA_DATABASE: ${CHROMA_DATABASE:-default_database}
   CHROMA_AUTH_PROVIDER: ${CHROMA_AUTH_PROVIDER:-chromadb.auth.token_authn.TokenAuthClientProvider}
   CHROMA_AUTH_CREDENTIALS: ${CHROMA_AUTH_CREDENTIALS:-}
-  ELASTICSEARCH_HOST: ${ELASTICSEARCH_HOST:-127.0.0.1}
+  ELASTICSEARCH_HOST: ${ELASTICSEARCH_HOST:-0.0.0.0}
   ELASTICSEARCH_PORT: ${ELASTICSEARCH_PORT:-9200}
   ELASTICSEARCH_USERNAME: ${ELASTICSEARCH_USERNAME:-elastic}
   ELASTICSEARCH_PASSWORD: ${ELASTICSEARCH_PASSWORD:-elastic}
+  KIBANA_PORT: ${KIBANA_PORT:-5601}
   # AnalyticDB configuration
   ANALYTICDB_KEY_ID: ${ANALYTICDB_KEY_ID:-}
   ANALYTICDB_KEY_SECRET: ${ANALYTICDB_KEY_SECRET:-}
@@ -599,26 +600,60 @@ services:
     ports:
       - "${MYSCALE_PORT:-8123}:${MYSCALE_PORT:-8123}"
 
+  # https://www.elastic.co/guide/en/elasticsearch/reference/current/settings.html
+  # https://www.elastic.co/guide/en/elasticsearch/reference/current/docker.html#docker-prod-prerequisites
   elasticsearch:
     image: docker.elastic.co/elasticsearch/elasticsearch:8.14.3
     container_name: elasticsearch
     profiles:
       - elasticsearch
     restart: always
+    volumes:
+      - dify_es01_data:/usr/share/elasticsearch/data
     environment:
-      - "ELASTIC_PASSWORD=${ELASTICSEARCH_USERNAME:-elastic}"
-      - "cluster.name=dify-es-cluster"
-      - "node.name=dify-es0"
-      - "discovery.type=single-node"
-      - "xpack.security.http.ssl.enabled=false"
-      - "xpack.license.self_generated.type=trial"
+      - ELASTIC_PASSWORD=${ELASTICSEARCH_PASSWORD:-elastic}
+      - cluster.name=dify-es-cluster
+      - node.name=dify-es0
+      - discovery.type=single-node
+      - xpack.license.self_generated.type=trial
+      - xpack.security.enabled=true
+      - xpack.security.enrollment.enabled=false
+      - xpack.security.http.ssl.enabled=false
     ports:
-      - "${ELASTICSEARCH_PORT:-9200}:${ELASTICSEARCH_PORT:-9200}"
+      - ${ELASTICSEARCH_PORT:-9200}:9200
     healthcheck:
       test: ["CMD", "curl", "-s", "http://localhost:9200/_cluster/health?pretty"]
       interval: 30s
       timeout: 10s
       retries: 50
+
+  # https://www.elastic.co/guide/en/kibana/current/docker.html
+  # https://www.elastic.co/guide/en/kibana/current/settings.html
+  kibana:
+    image: docker.elastic.co/kibana/kibana:8.14.3
+    container_name: kibana
+    profiles:
+      - elasticsearch
+    depends_on:
+      - elasticsearch
+    restart: always
+    environment:
+      - XPACK_ENCRYPTEDSAVEDOBJECTS_ENCRYPTIONKEY=d1a66dfd-c4d3-4a0a-8290-2abcb83ab3aa
+      - NO_PROXY=localhost,127.0.0.1,elasticsearch,kibana
+      - XPACK_SECURITY_ENABLED=true
+      - XPACK_SECURITY_ENROLLMENT_ENABLED=false
+      - XPACK_SECURITY_HTTP_SSL_ENABLED=false
+      - XPACK_FLEET_ISAIRGAPPED=true
+      - I18N_LOCALE=zh-CN
+      - SERVER_PORT=5601
+      - ELASTICSEARCH_HOSTS="http://elasticsearch:9200"
+    ports:
+      - ${KIBANA_PORT:-5601}:5601
+    healthcheck:
+      test: [ "CMD-SHELL", "curl -s http://localhost:5601 >/dev/null || exit 1" ]
+      interval: 30s
+      timeout: 10s
+      retries: 3
 
   # unstructured .
   # (if used, you need to set ETL_TYPE to Unstructured in the api & worker service.)
@@ -643,3 +678,4 @@ networks:
 
 volumes:
   oradata:
+  dify_es01_data:
