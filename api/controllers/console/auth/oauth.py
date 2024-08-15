@@ -11,7 +11,7 @@ from constants.languages import languages
 from extensions.ext_database import db
 from libs.helper import get_remote_ip
 from libs.oauth import GitHubOAuth, GoogleOAuth, OAuthUserInfo
-from models.account import Account, AccountStatus, AccountIntegrate
+from models.account import Account, AccountIntegrate, AccountStatus
 from services.account_service import AccountService, RegisterService, TenantService
 
 from .. import api

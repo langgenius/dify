@@ -7,11 +7,11 @@ from flask_restful import Resource, reqparse
 import services
 from controllers.console import api
 from controllers.console.setup import setup_required
+from extensions.ext_database import db
 from libs.helper import email, get_remote_ip
 from libs.password import valid_password
 from models.account import Account, AccountIntegrate
 from services.account_service import AccountService, TenantService
-from extensions.ext_database import db
 
 
 class LoginApi(Resource):
