@@ -190,9 +190,9 @@ class MessageBasedAppGenerator(BaseAppGenerator):
             db.session.add(conversation)
             db.session.commit()
             db.session.refresh(conversation)
-
-        conversation.updated_at = datetime.now(timezone.utc).replace(tzinfo=None)
-        db.session.commit()
+        else:
+            conversation.updated_at = datetime.now(timezone.utc).replace(tzinfo=None)
+            db.session.commit()
 
         message = Message(
             app_id=app_config.app_id,
