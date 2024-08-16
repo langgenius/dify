@@ -99,8 +99,6 @@ type Shape = {
   setWorkflowTools: (tools: ToolWithProvider[]) => void
   clipboardElements: Node[]
   setClipboardElements: (clipboardElements: Node[]) => void
-  shortcutsDisabled: boolean
-  setShortcutsDisabled: (shortcutsDisabled: boolean) => void
   showDebugAndPreviewPanel: boolean
   setShowDebugAndPreviewPanel: (showDebugAndPreviewPanel: boolean) => void
   showEnvPanel: boolean
@@ -217,8 +215,6 @@ export const createWorkflowStore = () => {
     setWorkflowTools: workflowTools => set(() => ({ workflowTools })),
     clipboardElements: [],
     setClipboardElements: clipboardElements => set(() => ({ clipboardElements })),
-    shortcutsDisabled: false,
-    setShortcutsDisabled: shortcutsDisabled => set(() => ({ shortcutsDisabled })),
     showDebugAndPreviewPanel: false,
     setShowDebugAndPreviewPanel: showDebugAndPreviewPanel => set(() => ({ showDebugAndPreviewPanel })),
     showEnvPanel: false,
