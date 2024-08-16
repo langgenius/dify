@@ -109,8 +109,8 @@ class ChatClient(DifyClient):
 
         return self._send_request("GET", "/messages", params=params)
     
-    def rename_conversation(self, conversation_id, name, user):
-        data = {"name": name, "user": user}
+    def rename_conversation(self, conversation_id, name,auto_generate:bool, user:str):
+        data = {"name": name, "auto_generate": auto_generate,"user": user}
         return self._send_request("POST", f"/conversations/{conversation_id}/name", data)
 
     def delete_conversation(self, conversation_id, user):

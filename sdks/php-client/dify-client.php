@@ -167,10 +167,11 @@ class ChatClient extends DifyClient {
         return $this->send_request('GET', 'messages', null, $params);
     }
     
-    public function rename_conversation($conversation_id, $name, $user) {
+    public function rename_conversation($conversation_id, $name,$auto_generate, $user) {
         $data = [
             'name' => $name,
             'user' => $user,
+            'auto_generate' => $auto_generate
         ];
         return $this->send_request('PATCH', "conversations/{$conversation_id}", $data);
     }

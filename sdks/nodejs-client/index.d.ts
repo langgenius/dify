@@ -77,7 +77,7 @@ export declare class ChatClient extends DifyClient {
     limit?: number | null
   ): Promise<any>;
 
-  renameConversation(conversation_id: string, name: string, user: User): Promise<any>;
+  renameConversation(conversation_id: string, name: string,  user: User,auto_generate:boolean): Promise<any>;
 
   deleteConversation(conversation_id: string, user: User): Promise<any>;
   
