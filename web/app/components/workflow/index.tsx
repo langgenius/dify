@@ -168,7 +168,7 @@ const Workflow: FC<WorkflowProps> = memo(({
     return () => {
       handleSyncWorkflowDraft(true, true)
     }
-  }, [handleSyncWorkflowDraft])
+  }, [])
 
   const { handleRefreshWorkflowDraft } = useWorkflowUpdate()
   const handleSyncWorkflowDraftWhenPageClose = useCallback(() => {

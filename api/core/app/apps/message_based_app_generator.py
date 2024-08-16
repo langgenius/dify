@@ -138,6 +138,7 @@ class MessageBasedAppGenerator(BaseAppGenerator):
         """
         Initialize generate records
         :param application_generate_entity: application generate entity
+        :conversation conversation
         :return:
         """
         app_config = application_generate_entity.app_config

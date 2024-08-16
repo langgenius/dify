@@ -811,7 +811,7 @@ class ProviderManager:
             -> list[ModelSettings]:
         """
         Convert to model settings.
-
+        :param provider_entity: provider entity
         :param provider_model_settings: provider model settings include enabled, load balancing enabled
         :param load_balancing_model_configs: load balancing model configs
         :return:
