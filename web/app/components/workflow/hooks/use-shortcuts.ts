@@ -3,6 +3,7 @@ import { useKeyPress } from 'ahooks'
 import { useCallback } from 'react'
 import {
   getKeyboardKeyCodeBySystem,
+  isEventTargetInputArea,
 } from '../utils'
 import { useWorkflowHistoryStore } from '../workflow-history-store'
 import { useWorkflowStore } from '../store'
@@ -42,20 +43,10 @@ export const useShortcuts = (): void => {
     fitView,
   } = useReactFlow()
 
-  const isInputElement = useCallback((target: EventTarget | null): boolean => {
-    if (!target || !(target instanceof HTMLElement))
-      return false
-    return (
-      target.tagName === 'INPUT'
-      || target.tagName === 'TEXTAREA'
-      || target.isContentEditable
-    )
-  }, [])
-
   const shouldHandleShortcut = useCallback((e: KeyboardEvent) => {
     const { showFeaturesPanel } = workflowStore.getState()
-    return !showFeaturesPanel && !isInputElement(e.target as HTMLElement)
-  }, [workflowStore, isInputElement])
+    return !showFeaturesPanel && !isEventTargetInputArea(e.target as HTMLElement)
+  }, [workflowStore, isEventTargetInputArea])
 
   useKeyPress(['delete', 'backspace'], (e) => {
     if (shouldHandleShortcut(e)) {
