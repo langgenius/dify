@@ -73,7 +73,7 @@ const Tooltip: FC<TooltipProps> = ({
 
   return (
     <PortalToFollowElem
-      open={disabled ? false : open}
+      open={!disabled && open}
       onOpenChange={setOpen}
       placement={position}
       offset={offset ?? 8}
