@@ -1,0 +1,38 @@
+identity:
+  author: Leo.Wang
+  name: gitlab
+  label:
+    en_US: Gitlab
+    zh_Hans: Gitlab
+  description:
+    en_US: Gitlab plugin for commit
+    zh_Hans: 用于获取Gitlab commit的插件
+  icon: gitlab.svg
+credentials_for_provider:
+  access_tokens:
+    type: secret-input
+    required: true
+    label:
+      en_US: Gitlab access token
+      zh_Hans: Gitlab access token
+    placeholder:
+      en_US: Please input your Gitlab access token
+      zh_Hans: 请输入你的 Gitlab access token
+    help:
+      en_US: Get your Gitlab access token from Gitlab
+      zh_Hans: 从 Gitlab 获取您的 access token
+    url: https://docs.gitlab.com/16.9/ee/api/oauth2.html
+  site_url:
+    type: text-input
+    required: false
+    default: 'https://gitlab.com'
+    label:
+      en_US: Gitlab site url
+      zh_Hans: Gitlab site url
+    placeholder:
+      en_US: Please input your Gitlab site url
+      zh_Hans: 请输入你的 Gitlab site url
+    help:
+      en_US: Find your Gitlab url
+      zh_Hans: 找到你的Gitlab url
+    url: https://gitlab.com/help

@@ -1,0 +1,56 @@
+identity:
+  name: gitlab_commits
+  author: Leo.Wang
+  label:
+    en_US: Gitlab Commits
+    zh_Hans: Gitlab代码提交内容
+description:
+  human:
+    en_US: A tool for query gitlab commits. Input should be a exists username.
+    zh_Hans: 一个用于查询gitlab代码提交记录的的工具，输入的内容应该是一个已存在的用户名或者项目名。
+  llm: A tool for query gitlab commits. Input should be a exists username or project.
+parameters:
+  - name: employee
+    type: string
+    required: false
+    label:
+      en_US: employee
+      zh_Hans: 员工用户名
+    human_description:
+      en_US: employee
+      zh_Hans: 员工用户名
+    llm_description: employee for gitlab
+    form: llm
+  - name: project
+    type: string
+    required: true
+    label:
+      en_US: project
+      zh_Hans: 项目名
+    human_description:
+      en_US: project
+      zh_Hans: 项目名
+    llm_description: project for gitlab
+    form: llm
+  - name: start_time
+    type: string
+    required: false
+    label:
+      en_US: start_time
+      zh_Hans: 开始时间
+    human_description:
+      en_US: start_time
+      zh_Hans: 开始时间
+    llm_description: start_time for gitlab
+    form: llm
+  - name: end_time
+    type: string
+    required: false
+    label:
+      en_US: end_time
+      zh_Hans: 结束时间
+    human_description:
+      en_US: end_time
+      zh_Hans: 结束时间
+    llm_description: end_time for gitlab
+    form: llm

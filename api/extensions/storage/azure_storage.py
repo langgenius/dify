@@ -9,16 +9,15 @@ from extensions.storage.base_storage import BaseStorage
 
 
 class AzureStorage(BaseStorage):
-    """Implementation for azure storage.
-    """
+    """Implementation for azure storage."""
 
     def __init__(self, app: Flask):
         super().__init__(app)
         app_config = self.app.config
-        self.bucket_name = app_config.get('AZURE_BLOB_CONTAINER_NAME')
-        self.account_url = app_config.get('AZURE_BLOB_ACCOUNT_URL')
-        self.account_name = app_config.get('AZURE_BLOB_ACCOUNT_NAME')
-        self.account_key = app_config.get('AZURE_BLOB_ACCOUNT_KEY')
+        self.bucket_name = app_config.get("AZURE_BLOB_CONTAINER_NAME")
+        self.account_url = app_config.get("AZURE_BLOB_ACCOUNT_URL")
+        self.account_name = app_config.get("AZURE_BLOB_ACCOUNT_NAME")
+        self.account_key = app_config.get("AZURE_BLOB_ACCOUNT_KEY")
 
     def save(self, filename, data):
         client = self._sync_client()
@@ -39,6 +38,7 @@ class AzureStorage(BaseStorage):
             blob = client.get_blob_client(container=self.bucket_name, blob=filename)
             blob_data = blob.download_blob()
             yield from blob_data.chunks()
+
         return generate(filename)
 
     def download(self, filename, target_filepath):
@@ -62,17 +62,17 @@ class AzureStorage(BaseStorage):
         blob_container.delete_blob(filename)
 
     def _sync_client(self):
-        cache_key = 'azure_blob_sas_token_{}_{}'.format(self.account_name, self.account_key)
+        cache_key = "azure_blob_sas_token_{}_{}".format(self.account_name, self.account_key)
         cache_result = redis_client.get(cache_key)
         if cache_result is not None:
-            sas_token = cache_result.decode('utf-8')
+            sas_token = cache_result.decode("utf-8")
         else:
             sas_token = generate_account_sas(
                 account_name=self.account_name,
                 account_key=self.account_key,
                 resource_types=ResourceTypes(service=True, container=True, object=True),
                 permission=AccountSasPermissions(read=True, write=True, delete=True, list=True, add=True, create=True),
-                expiry=datetime.now(timezone.utc).replace(tzinfo=None) + timedelta(hours=1)
+                expiry=datetime.now(timezone.utc).replace(tzinfo=None) + timedelta(hours=1),
             )
             redis_client.set(cache_key, sas_token, ex=3000)
         return BlobServiceClient(account_url=self.account_url, credential=sas_token)
