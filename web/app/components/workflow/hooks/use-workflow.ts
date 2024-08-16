@@ -442,7 +442,7 @@ export const useWorkflowInit = () => {
 
   useEffect(() => {
     handleGetInitialWorkflowData()
-  }, [handleGetInitialWorkflowData])
+  }, [])
 
   const handleFetchPreloadData = useCallback(async () => {
     try {
