@@ -172,7 +172,7 @@ const Apps = () => {
           options={options}
         /> */}
         <div className="flex items-center gap-2">
-          <CreateNewApp onSuccess={mutate} />
+          {isCurrentWorkspaceEditor && <CreateNewApp onSuccess={mutate} />}
           <TagFilter
             type="app"
             value={tagFilterValue}

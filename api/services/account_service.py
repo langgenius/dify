@@ -1,3 +1,4 @@
+import os 
 import base64
 import logging
 import secrets
@@ -609,7 +610,7 @@ class RegisterService:
             language=account.interface_language,
             to=email,
             token=token,
-            inviter_name=inviter.name if inviter else 'Dify',
+            inviter_name=inviter.name if inviter else  os.getenv('APP_NAME'),
             workspace_name=tenant.name,
         )
 

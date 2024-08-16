@@ -27,7 +27,7 @@ const translation = {
     'Discuss with team members, contributors and developers on different channels.',
   roadmap: 'See our roadmap',
   newApp: {
-    startFromBlank: 'Create from Blank',
+    startFromBlank: 'Create',
     startFromTemplate: 'Create from Template',
     captionAppType: 'What type of app do you want to create?',
     chatbotDescription: 'Build a chat-based application. This app uses a question-and-answer format, allowing for multiple rounds of continuous conversation.',

@@ -100,7 +100,7 @@ export const SidebarBody = ({ items }: SidebarBodyProps) => {
     >
       <div className="flex flex-col h-full">
         <div className="flex flex-col gap-2 flex-grow">
-          <Link href="/apps" className="flex items-center mb-4">
+          <Link href="/studio" className="flex items-center mb-4">
             <LogoSite className="h-10 w-auto" />
           </Link>
           <WorkspaceProvider>

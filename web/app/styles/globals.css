@@ -668,3 +668,14 @@ button:focus-within {
 #dify-chatbot-bubble-button {
   background-color: #1C64F2 !important;
 }
+
+
+
+
+.textGradient {
+  background: linear-gradient(to right, rgba(16, 74, 225, 1) 0, rgba(0, 152, 238, 1) 100%);
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  background-clip: text;
+  text-fill-color: transparent;
+}
