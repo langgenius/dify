@@ -30,6 +30,16 @@ export enum ComparisonOperator {
   isNotNull = 'is not null',
   in = 'in',
   notIn = 'not in',
+  allOf = 'all of',
+}
+
+export type SubVariableCondition = {
+  id: string
+  path: string
+  type: VarType
+  comparison_operator?: ComparisonOperator
+  value: string
+  numberVarType?: NumberVarType
 }
 
 export type Condition = {
@@ -39,6 +49,7 @@ export type Condition = {
   comparison_operator?: ComparisonOperator
   value: string
   numberVarType?: NumberVarType
+  sub_variable_condition?: SubVariableCondition[]
 }
 
 export type CaseItem = {

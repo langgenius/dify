@@ -17,6 +17,7 @@ import cn from '@/utils/classnames'
 import Button from '@/app/components/base/button'
 
 type Props = {
+  isSubVariable?: boolean
   nodeId: string
   cases: CaseItem[]
   readOnly: boolean
@@ -33,10 +34,11 @@ type Props = {
 }
 
 const ConditionWrap: FC<Props> = ({
+  isSubVariable,
   nodeId: id,
   cases,
   readOnly,
-  handleSortCase,
+  handleSortCase = () => { },
   handleUpdateCondition,
   handleRemoveCondition,
   handleUpdateConditionLogicalOperator,
@@ -65,6 +67,7 @@ const ConditionWrap: FC<Props> = ({
       handle='.handle'
       ghostClass='bg-components-panel-bg'
       animation={150}
+      disabled={readOnly || isSubVariable}
     >
       {
         cases.map((item, index) => (

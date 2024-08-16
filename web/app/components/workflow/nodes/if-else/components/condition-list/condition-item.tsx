@@ -13,10 +13,12 @@ import type {
 } from '../../types'
 import {
   ComparisonOperator,
+  LogicalOperator,
 } from '../../types'
 import { comparisonOperatorNotRequireValue } from '../../utils'
 import ConditionNumberInput from '../condition-number-input'
 import { FILE_TYPE_OPTIONS, TRANSFER_METHOD } from '../../default'
+import ConditionWrap from '../condition-wrap'
 import ConditionOperator from './condition-operator'
 import ConditionInput from './condition-input'
 import VariableTag from '@/app/components/workflow/nodes/_base/components/variable-tag'
@@ -81,10 +83,10 @@ const ConditionItem = ({
     onUpdateCondition(caseId, condition.id, newCondition)
   }, [caseId, condition, onUpdateCondition])
 
-  const isSelect = condition.comparison_operator && [ComparisonOperator.in, ComparisonOperator.notIn].includes(condition.comparison_operator)
+  const isSelect = condition.comparison_operator && [ComparisonOperator.in, ComparisonOperator.notIn, ComparisonOperator.allOf].includes(condition.comparison_operator)
   const selectOptions = useMemo(() => {
     if (isSelect) {
-      if (file?.key === 'type') {
+      if (file?.key === 'type' || condition.comparison_operator === ComparisonOperator.allOf) {
         return FILE_TYPE_OPTIONS.map(item => ({
           name: t(`${optionNameI18NPrefix}.${item.i18nKey}`),
           value: item.value,
@@ -99,8 +101,11 @@ const ConditionItem = ({
       return []
     }
     return []
-  }, [file?.key, isSelect, t])
+  }, [condition.comparison_operator, file?.key, isSelect, t])
 
+  const isSubVariable = condition.varType === VarType.arrayFile && [ComparisonOperator.contains, ComparisonOperator.notContains].includes(condition.comparison_operator!)
+
+  const isNotInput = isSelect || isSubVariable
   return (
     <div className='flex mb-1 last-of-type:mb-0'>
       <div className={cn(
@@ -124,7 +129,7 @@ const ConditionItem = ({
           />
         </div>
         {
-          !comparisonOperatorNotRequireValue(condition.comparison_operator) && !isSelect && condition.varType !== VarType.number && (
+          !comparisonOperatorNotRequireValue(condition.comparison_operator) && !isNotInput && condition.varType !== VarType.number && (
             <div className='px-2 py-1 max-h-[100px] border-t border-t-divider-subtle overflow-y-auto'>
               <ConditionInput
                 disabled={disabled}
@@ -137,7 +142,7 @@ const ConditionItem = ({
           )
         }
         {
-          !comparisonOperatorNotRequireValue(condition.comparison_operator) && !isSelect && condition.varType === VarType.number && (
+          !comparisonOperatorNotRequireValue(condition.comparison_operator) && !isNotInput && condition.varType === VarType.number && (
             <div className='px-2 py-1 pt-[3px] border-t border-t-divider-subtle'>
               <ConditionNumberInput
                 numberVarType={condition.numberVarType}
@@ -158,6 +163,31 @@ const ConditionItem = ({
                 defaultValue={condition.value}
                 items={selectOptions}
                 onSelect={item => handleUpdateConditionValue(item.value as string)}
+              />
+            </div>
+          )
+        }
+        {
+          !comparisonOperatorNotRequireValue(condition.comparison_operator) && isSubVariable && (
+            <div className='p-1'>
+              <ConditionWrap
+                isSubVariable
+                readOnly={!!disabled}
+                nodeId=''
+                cases={[{
+                  case_id: '0',
+                  conditions: [],
+                  logical_operator: LogicalOperator.and,
+                }]}
+                handleRemoveCase={() => { }}
+                handleAddCondition={() => { }}
+                handleUpdateCondition={() => { }}
+                handleRemoveCondition={() => { }}
+                handleUpdateConditionLogicalOperator={() => { }}
+                nodesOutputVars={[]}
+                availableNodes={[]}
+                varsIsVarFileAttribute={{}}
+                filterVar={() => true}
               />
             </div>
           )

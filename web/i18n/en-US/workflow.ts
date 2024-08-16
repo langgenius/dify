@@ -420,6 +420,7 @@ const translation = {
         'not null': 'is not null',
         'in': 'in',
         'not in': 'not in',
+        'all of': 'all of',
       },
       optionName: {
         image: 'Image',

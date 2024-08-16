@@ -420,6 +420,7 @@ const translation = {
         'not null': '不为空',
         'in': '是',
         'not in': '不是',
+        'all of': '全部是',
       },
       optionName: {
         image: '图片',
