@@ -46,7 +46,7 @@ export const useShortcuts = (): void => {
   const shouldHandleShortcut = useCallback((e: KeyboardEvent) => {
     const { showFeaturesPanel } = workflowStore.getState()
     return !showFeaturesPanel && !isEventTargetInputArea(e.target as HTMLElement)
-  }, [workflowStore, isEventTargetInputArea])
+  }, [workflowStore])
 
   useKeyPress(['delete', 'backspace'], (e) => {
     if (shouldHandleShortcut(e)) {
