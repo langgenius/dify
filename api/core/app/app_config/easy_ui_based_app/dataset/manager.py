@@ -93,6 +93,7 @@ class DatasetConfigManager:
                     reranking_model=dataset_configs.get('reranking_model'),
                     weights=dataset_configs.get('weights'),
                     reranking_enabled=dataset_configs.get('reranking_enabled', True),
+                    rerank_mode=dataset_configs["reranking_mode"],
                 )
             )
 
