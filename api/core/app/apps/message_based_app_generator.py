@@ -1,5 +1,4 @@
 import json
-import logging
 from collections.abc import Generator
 from typing import Optional, Union
 from datetime import datetime, timezone
@@ -30,8 +29,6 @@ from models.account import Account
 from models.model import App, AppMode, AppModelConfig, Conversation, EndUser, Message, MessageFile
 from services.errors.app_model_config import AppModelConfigBrokenError
 from services.errors.conversation import ConversationCompletedError, ConversationNotExistsError
-
-logger = logging.getLogger(__name__)
 
 
 class MessageBasedAppGenerator(BaseAppGenerator):
@@ -79,7 +76,6 @@ class MessageBasedAppGenerator(BaseAppGenerator):
             if e.args[0] == "I/O operation on closed file.":  # ignore this error
                 raise GenerateTaskStoppedException()
             else:
-                logger.exception(e)
                 raise e
 
     def _get_conversation_by_user(self, app_model: App, conversation_id: str,
