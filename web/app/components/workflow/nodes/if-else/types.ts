@@ -33,23 +33,15 @@ export enum ComparisonOperator {
   allOf = 'all of',
 }
 
-export type SubVariableCondition = {
-  id: string
-  path: string
-  type: VarType
-  comparison_operator?: ComparisonOperator
-  value: string
-  numberVarType?: NumberVarType
-}
-
 export type Condition = {
   id: string
   varType: VarType
-  variable_selector: ValueSelector
+  variable_selector?: ValueSelector
+  key?: string // sub variable key
   comparison_operator?: ComparisonOperator
   value: string
   numberVarType?: NumberVarType
-  sub_variable_condition?: SubVariableCondition[]
+  sub_variable_condition?: CaseItem
 }
 
 export type CaseItem = {
@@ -66,6 +58,7 @@ export type IfElseNodeType = CommonNodeType & {
 }
 
 export type HandleAddCondition = (caseId: string, valueSelector: ValueSelector, varItem: Var) => void
+export type HandleAddSubVariableCondition = (caseId: string, conditionId: string) => void
 export type HandleRemoveCondition = (caseId: string, conditionId: string) => void
 export type HandleUpdateCondition = (caseId: string, conditionId: string, newCondition: Condition) => void
 export type HandleUpdateConditionLogicalOperator = (caseId: string, value: LogicalOperator) => void

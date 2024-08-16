@@ -2,6 +2,7 @@ import { RiLoopLeftLine } from '@remixicon/react'
 import { LogicalOperator } from '../../types'
 import type {
   CaseItem,
+  HandleAddSubVariableCondition,
   HandleRemoveCondition,
   HandleUpdateCondition,
   HandleUpdateConditionLogicalOperator,
@@ -13,6 +14,7 @@ import type {
 } from '@/app/components/workflow/types'
 
 type ConditionListProps = {
+  isSubVariable?: boolean
   disabled?: boolean
   caseItem: CaseItem
   onUpdateCondition: HandleUpdateCondition
@@ -22,8 +24,10 @@ type ConditionListProps = {
   availableNodes: Node[]
   numberVariables: NodeOutPutVar[]
   varsIsVarFileAttribute: Record<string, boolean>
+  onAddSubVariableCondition?: HandleAddSubVariableCondition
 }
 const ConditionList = ({
+  isSubVariable,
   disabled,
   caseItem,
   onUpdateCondition,
@@ -33,6 +37,7 @@ const ConditionList = ({
   availableNodes,
   numberVariables,
   varsIsVarFileAttribute,
+  onAddSubVariableCondition,
 }: ConditionListProps) => {
   const { conditions, logical_operator } = caseItem
 
@@ -67,7 +72,9 @@ const ConditionList = ({
             nodesOutputVars={nodesOutputVars}
             availableNodes={availableNodes}
             numberVariables={numberVariables}
-            file={varsIsVarFileAttribute[condition.id] ? { key: condition.variable_selector.slice(-1)[0] } : undefined}
+            file={varsIsVarFileAttribute[condition.id] ? { key: (condition.variable_selector || []).slice(-1)[0] } : undefined}
+            isSubVariableKey={isSubVariable}
+            onAddSubVariableCondition={onAddSubVariableCondition}
           />
         ))
       }

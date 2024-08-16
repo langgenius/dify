@@ -74,3 +74,5 @@ export const TRANSFER_METHOD = [
   { value: TransferMethod.local_file, i18nKey: 'localUpload' },
   { value: TransferMethod.remote_url, i18nKey: 'url' },
 ]
+
+export const SUB_VARIABLES = ['type', 'size', 'name', 'url', 'extension', 'mime_type', 'transfer_method', 'url']

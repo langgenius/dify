@@ -9,6 +9,7 @@ import { LogicalOperator } from './types'
 import type {
   CaseItem,
   HandleAddCondition,
+  HandleAddSubVariableCondition,
   HandleRemoveCondition,
   HandleUpdateCondition,
   HandleUpdateConditionLogicalOperator,
@@ -58,7 +59,7 @@ const useConfig = (id: string, payload: IfElseNodeType) => {
     const conditions: Record<string, boolean> = {}
     inputs.cases?.forEach((c) => {
       c.conditions.forEach((condition) => {
-        conditions[condition.id] = getIsVarFileAttribute(condition.variable_selector)
+        conditions[condition.id] = getIsVarFileAttribute(condition.variable_selector!)
       })
     })
     return conditions
@@ -165,6 +166,36 @@ const useConfig = (id: string, payload: IfElseNodeType) => {
     setInputs(newInputs)
   }, [inputs, setInputs])
 
+  const handleAddSubVariableCondition = useCallback<HandleAddSubVariableCondition>((caseId: string, conditionId: string) => {
+    const newInputs = produce(inputs, (draft) => {
+      // debugger
+      const condition = draft.cases?.find(item => item.case_id === caseId)?.conditions.find(item => item.id === conditionId)
+      if (!condition)
+        return
+      if (!condition?.sub_variable_condition) {
+        condition.sub_variable_condition = {
+          case_id: uuid4(),
+          logical_operator: LogicalOperator.and,
+          conditions: [],
+        }
+      }
+      const subVarCondition = condition.sub_variable_condition
+      if (subVarCondition) {
+        if (!subVarCondition.conditions)
+          subVarCondition.conditions = []
+
+        subVarCondition.conditions.push({
+          id: uuid4(),
+          key: '',
+          varType: VarType.string,
+          comparison_operator: undefined,
+          value: '',
+        })
+      }
+    })
+    setInputs(newInputs)
+  }, [inputs, setInputs])
+
   const handleUpdateConditionLogicalOperator = useCallback<HandleUpdateConditionLogicalOperator>((caseId, value) => {
     const newInputs = produce(inputs, (draft) => {
       const targetCase = draft.cases?.find(item => item.case_id === caseId)
@@ -185,6 +216,7 @@ const useConfig = (id: string, payload: IfElseNodeType) => {
     handleAddCondition,
     handleRemoveCondition,
     handleUpdateCondition,
+    handleAddSubVariableCondition,
     handleUpdateConditionLogicalOperator,
     nodesOutputVars: availableVars,
     availableNodes: availableNodesWithParent,

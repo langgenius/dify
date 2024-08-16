@@ -5,19 +5,20 @@ import {
 } from 'react'
 import { useTranslation } from 'react-i18next'
 import { RiDeleteBinLine } from '@remixicon/react'
+import produce from 'immer'
 import type { VarType as NumberVarType } from '../../../tool/types'
 import type {
   Condition,
+  HandleAddSubVariableCondition,
   HandleRemoveCondition,
   HandleUpdateCondition,
 } from '../../types'
 import {
   ComparisonOperator,
-  LogicalOperator,
 } from '../../types'
 import { comparisonOperatorNotRequireValue } from '../../utils'
 import ConditionNumberInput from '../condition-number-input'
-import { FILE_TYPE_OPTIONS, TRANSFER_METHOD } from '../../default'
+import { FILE_TYPE_OPTIONS, SUB_VARIABLES, TRANSFER_METHOD } from '../../default'
 import ConditionWrap from '../condition-wrap'
 import ConditionOperator from './condition-operator'
 import ConditionInput from './condition-input'
@@ -29,7 +30,6 @@ import type {
 import { VarType } from '@/app/components/workflow/types'
 import cn from '@/utils/classnames'
 import { SimpleSelect as Select } from '@/app/components/base/select'
-
 const optionNameI18NPrefix = 'workflow.nodes.ifElse.optionName'
 
 type ConditionItemProps = {
@@ -37,22 +37,26 @@ type ConditionItemProps = {
   caseId: string
   condition: Condition
   file?: { key: string }
+  isSubVariableKey?: boolean
   onRemoveCondition: HandleRemoveCondition
   onUpdateCondition: HandleUpdateCondition
   nodesOutputVars: NodeOutPutVar[]
   availableNodes: Node[]
   numberVariables: NodeOutPutVar[]
+  onAddSubVariableCondition?: HandleAddSubVariableCondition
 }
 const ConditionItem = ({
   disabled,
   caseId,
   condition,
   file,
+  isSubVariableKey,
   onRemoveCondition,
   onUpdateCondition,
   nodesOutputVars,
   availableNodes,
   numberVariables,
+  onAddSubVariableCondition,
 }: ConditionItemProps) => {
   const { t } = useTranslation()
 
@@ -104,8 +108,21 @@ const ConditionItem = ({
   }, [condition.comparison_operator, file?.key, isSelect, t])
 
   const isSubVariable = condition.varType === VarType.arrayFile && [ComparisonOperator.contains, ComparisonOperator.notContains].includes(condition.comparison_operator!)
-
   const isNotInput = isSelect || isSubVariable
+
+  const isSubVarSelect = isSubVariableKey
+  const subVarOptions = SUB_VARIABLES.map(item => ({
+    name: item,
+    value: item,
+  }))
+
+  const handleSubVarKeyChange = useCallback((key: string) => {
+    const newCondition = produce(condition, (draft) => {
+      draft.key = key
+    })
+    onUpdateCondition(caseId, condition.id, newCondition)
+  }, [caseId, condition, onUpdateCondition])
+
   return (
     <div className='flex mb-1 last-of-type:mb-0'>
       <div className={cn(
@@ -114,10 +131,23 @@ const ConditionItem = ({
       )}>
         <div className='flex items-center p-1'>
           <div className='grow w-0'>
-            <VariableTag
-              valueSelector={condition.variable_selector}
-              varType={condition.varType}
-            />
+            {isSubVarSelect
+              ? (
+                <Select
+                  wrapperClassName='h-6'
+                  className='pl-0 text-xs'
+                  defaultValue={condition.value}
+                  items={subVarOptions}
+                  onSelect={item => handleSubVarKeyChange(item.value as string)}
+                />
+              )
+              : (
+                <VariableTag
+                  valueSelector={condition.variable_selector || []}
+                  varType={condition.varType}
+                />
+              )}
+
           </div>
           <div className='mx-1 w-[1px] h-3 bg-divider-regular'></div>
           <ConditionOperator
@@ -172,13 +202,12 @@ const ConditionItem = ({
             <div className='p-1'>
               <ConditionWrap
                 isSubVariable
+                conditionId={condition.id}
+                caseId={caseId}
                 readOnly={!!disabled}
                 nodeId=''
-                cases={[{
-                  case_id: '0',
-                  conditions: [],
-                  logical_operator: LogicalOperator.and,
-                }]}
+                cases={condition.sub_variable_condition ? [condition.sub_variable_condition] : []}
+                handleAddSubVariableCondition={onAddSubVariableCondition}
                 handleRemoveCase={() => { }}
                 handleAddCondition={() => { }}
                 handleUpdateCondition={() => { }}

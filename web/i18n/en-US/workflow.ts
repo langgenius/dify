@@ -434,6 +434,7 @@ const translation = {
       addCondition: 'Add Condition',
       conditionNotSetup: 'Condition NOT setup',
       selectVariable: 'Select variable...',
+      addSubVariable: 'Sub Variable',
     },
     variableAssigner: {
       title: 'Assign variables',
