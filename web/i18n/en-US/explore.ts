@@ -16,8 +16,8 @@ const translation = {
     },
   },
   apps: {
-    title: 'Explore Templates by Dify',
-    description: 'Use these template apps instantly or customize your own apps based on the templates.',
+    title: 'Chatbot Studio',
+    description: 'Create your chatbot or modify existing ones.',
     allCategories: 'Recommended',
   },
   appCard: {

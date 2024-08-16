@@ -221,10 +221,10 @@ const AppCard = ({ app, onRefresh }: AppCardProps) => {
         <button className={s.actionItem} onClick={onClickDuplicate}>
           <span className={s.actionName}>{t("app.duplicate")}</span>
         </button>
-        <button className={s.actionItem} onClick={onClickExport}>
+        {/* <button className={s.actionItem} onClick={onClickExport}>
           <span className={s.actionName}>{t("app.export")}</span>
-        </button>
-        {(app.mode === "completion" || app.mode === "chat") && (
+        </button> */}
+        {/* {(app.mode === "completion" || app.mode === "chat") && (
           <>
             <Divider className="!my-1" />
             <div
@@ -236,7 +236,7 @@ const AppCard = ({ app, onRefresh }: AppCardProps) => {
               </span>
             </div>
           </>
-        )}
+        )} */}
         <Divider className="!my-1" />
         <div
           className={cn(s.actionItem, s.deleteActionItem, "group")}
@@ -266,12 +266,16 @@ const AppCard = ({ app, onRefresh }: AppCardProps) => {
       >
         <div className="flex pt-[14px] px-[14px] pb-3 h-[66px] items-center gap-3 grow-0 shrink-0">
           <div className="relative shrink-0">
-            <AppIcon
+            {/* <AppIcon
               size="large"
               icon={app.icon}
               background={app.icon_background}
-            />
-            <span className="absolute bottom-[-3px] right-[-3px] w-4 h-4 p-0.5 bg-white rounded border-[0.5px] border-[rgba(0,0,0,0.02)] shadow-sm">
+            /> */}
+            <div className="bg-gray-200 size-10 border rounded-md flex items-center justify-center">
+              <ChatBot className="size-7  text-[#1570EF]" />
+            </div>
+
+            {/* <span className="absolute bottom-[-3px] right-[-3px] w-4 h-4 p-0.5 bg-white rounded border-[0.5px] border-[rgba(0,0,0,0.02)] shadow-sm">
               {app.mode === "advanced-chat" && (
                 <ChatBot className="w-3 h-3 text-[#1570EF]" />
               )}
@@ -287,7 +291,7 @@ const AppCard = ({ app, onRefresh }: AppCardProps) => {
               {app.mode === "workflow" && (
                 <Route className="w-3 h-3 text-[#f79009]" />
               )}
-            </span>
+            </span> */}
           </div>
           <div className="grow w-0 py-[1px]">
             <div className="flex items-center text-sm leading-5 font-semibold text-gray-800">

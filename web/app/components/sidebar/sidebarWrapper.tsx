@@ -66,29 +66,30 @@ export function SidebarWrapper({ children }: SideBarWrapperProps) {
   }[] = [];
 
   if (!isCurrentWorkspaceDatasetOperator) {
-    sidebarBodyItems.push({
-      label: "Explore",
-      href: "/explore/apps",
-      activeIcon: <RiPlanetFill className="size-5" />,
-      inactiveIcon: <RiPlanetLine className="size-5" />,
-      position: "top",
-    });
+    // sidebarBodyItems.push({
+    //   label: "Explore",
+    //   href: "/explore/apps",
+    //   activeIcon: <RiPlanetFill className="size-5" />,
+    //   inactiveIcon: <RiPlanetLine className="size-5" />,
+    //   position: "top",
+    // });
 
     sidebarBodyItems.push({
       label: "Studio",
-      href: "/apps",
+      href: "/studio",
       activeIcon: <RiRobot2Fill className="size-5" />,
       inactiveIcon: <RiRobot2Line className="size-5" />,
       position: "top",
     });
 
-    sidebarBodyItems.push({
-      label: "Plugins",
-      href: "/tools",
-      activeIcon: <RiHammerFill className="size-5" />,
-      inactiveIcon: <RiHammerLine className="size-5" />,
-      position: "top",
-    });
+    // TODO: we don't needs tools for now
+    // sidebarBodyItems.push({
+    //   label: "Plugins",
+    //   href: "/tools",
+    //   activeIcon: <RiHammerFill className="size-5" />,
+    //   inactiveIcon: <RiHammerLine className="size-5" />,
+    //   position: "top",
+    // });
   }
 
   if (isCurrentWorkspaceDatasetOperator || isCurrentWorkspaceEditor) {

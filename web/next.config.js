@@ -22,8 +22,17 @@ const nextConfig = {
   // Configure pageExtensions to include md and mdx
 
   images: {
-    domains: ['app.chaindesk.ai'],
+    remotePatterns : [
+          {
+        protocol: 'https',
+        hostname: 'app.chaindesk.ai',
+        pathname: '**',
+      },
+    ]
   },
+
+
+
   pageExtensions: ['ts', 'tsx', 'js', 'jsx', 'md', 'mdx'],
   experimental: {
   },
@@ -43,7 +52,7 @@ const nextConfig = {
     return [
       {
         source: '/',
-        destination: '/apps',
+        destination: '/studio',
         permanent: false,
       },
     ]
