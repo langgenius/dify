@@ -24,13 +24,15 @@ from models.account import Account
 def run(script):
     return subprocess.getstatusoutput("source /root/.bashrc && " + script)
 
+
 class AppIconUrlField(fields.Raw):
     def output(self, key, obj):
         if obj is None:
             return None
-        if obj.icon_type == 'image':
+        if obj.icon_type == "image":
             return UploadFileParser.get_signed_temp_image_url(obj.icon)
         return None
+
 
 class TimestampField(fields.Raw):
     def format(self, value) -> int:
