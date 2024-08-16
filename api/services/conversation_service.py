@@ -10,6 +10,7 @@ from models.account import Account
 from models.model import App, Conversation, EndUser, Message
 from services.errors.conversation import ConversationNotExistsError, LastConversationNotExistsError
 from services.errors.message import MessageNotExistsError
+from datetime import datetime, timezone
 
 
 class ConversationService:
@@ -78,6 +79,7 @@ class ConversationService:
             return cls.auto_generate_name(app_model, conversation)
         else:
             conversation.name = name
+            conversation.updated_at = datetime.now(timezone.utc).replace(tzinfo=None)
             db.session.commit()
 
         return conversation
