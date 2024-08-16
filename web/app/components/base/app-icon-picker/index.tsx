@@ -13,7 +13,7 @@ import s from './style.module.css'
 import getCroppedImg from './utils'
 import type { AppIconType, ImageFile } from '@/types/app'
 import cn from '@/utils/classnames'
-
+import { DISABLE_UPLOAD_IMAGE_AS_ICON } from '@/config'
 export type AppIconEmojiSelection = {
   type: 'emoji'
   icon: string
@@ -101,7 +101,7 @@ const AppIconPicker: FC<AppIconPickerProps> = ({
     wrapperClassName={className}
     className={cn(s.container, '!w-[362px] !p-0')}
   >
-    <div className="p-2 pb-0 w-full">
+    {!DISABLE_UPLOAD_IMAGE_AS_ICON && <div className="p-2 pb-0 w-full">
       <div className='p-1 flex items-center justify-center gap-2 bg-background-body rounded-xl'>
         {tabs.map(tab => (
           <button
@@ -116,7 +116,7 @@ const AppIconPicker: FC<AppIconPickerProps> = ({
           </button>
         ))}
       </div>
-    </div>
+    </div>}
 
     <Divider className='m-0' />
 
