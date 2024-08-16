@@ -1482,7 +1482,7 @@ class SegmentService:
                 db.session.add(segment)
                 db.session.commit()
                 # update segment index task
-                if args['keywords']:
+                if 'keywords' in args:
                     keyword = Keyword(dataset)
                     keyword.delete_by_ids([segment.index_node_id])
                     document = RAGDocument(
