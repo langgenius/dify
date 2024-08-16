@@ -46,17 +46,17 @@ class ConversationService:
                 raise LastConversationNotExistsError()
 
             conversations = base_query.filter(
-                Conversation.created_at < last_conversation.created_at,
+                Conversation.updated_at < last_conversation.updated_at,
                 Conversation.id != last_conversation.id
-            ).order_by(Conversation.created_at.desc()).limit(limit).all()
+            ).order_by(Conversation.updated_at.desc()).limit(limit).all()
         else:
-            conversations = base_query.order_by(Conversation.created_at.desc()).limit(limit).all()
+            conversations = base_query.order_by(Conversation.updated_at.desc()).limit(limit).all()
 
         has_more = False
         if len(conversations) == limit:
             current_page_first_conversation = conversations[-1]
             rest_count = base_query.filter(
-                Conversation.created_at < current_page_first_conversation.created_at,
+                Conversation.updated_at < current_page_first_conversation.updated_at,
                 Conversation.id != current_page_first_conversation.id
             ).count()
 
