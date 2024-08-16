@@ -1429,7 +1429,10 @@ class SegmentService:
                 segment_data_list.append(segment_document)
 
                 pre_segment_data_list.append(segment_document)
-                keywords_list.append(segment_item['keywords'])
+                if 'keywords' in segment_item:
+                    keywords_list.append(segment_item['keywords'])
+                else:
+                    keywords_list.append(None)
 
             try:
                 # save vector index
