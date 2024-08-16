@@ -29,7 +29,10 @@ class AppIconUrlField(fields.Raw):
     def output(self, key, obj):
         if obj is None:
             return None
-        if obj.icon_type == "image":
+
+        from models.model import IconType
+
+        if obj.icon_type == IconType.IMAGE.value:
             return UploadFileParser.get_signed_temp_image_url(obj.icon)
         return None
 
