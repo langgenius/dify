@@ -37,6 +37,10 @@ class AnswerStreamProcessor(StreamProcessor):
 
                 yield event
             elif isinstance(event, NodeRunStreamChunkEvent):
+                if event.in_iteration_id:
+                    yield event
+                    continue
+                
                 if event.route_node_state.node_id in self.current_stream_chunk_generating_node_ids:
                     stream_out_answer_node_ids = self.current_stream_chunk_generating_node_ids[
                         event.route_node_state.node_id

@@ -98,9 +98,6 @@ class WorkflowEntry:
                 if callbacks:
                     for callback in callbacks:
                         callback.on_event(
-                            graph=self.graph_engine.graph,
-                            graph_init_params=graph_engine.init_params,
-                            graph_runtime_state=graph_engine.graph_runtime_state,
                             event=event
                         )
                 yield event
@@ -111,9 +108,6 @@ class WorkflowEntry:
             if callbacks:
                 for callback in callbacks:
                     callback.on_event(
-                        graph=self.graph_engine.graph,
-                        graph_init_params=graph_engine.init_params,
-                        graph_runtime_state=graph_engine.graph_runtime_state,
                         event=GraphRunFailedEvent(
                             error=str(e)
                         )

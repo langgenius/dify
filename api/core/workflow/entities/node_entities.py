@@ -56,6 +56,8 @@ class NodeRunMetadataKey(Enum):
     TOOL_INFO = 'tool_info'
     ITERATION_ID = 'iteration_id'
     ITERATION_INDEX = 'iteration_index'
+    PARALLEL_ID = 'parallel_id'
+    PARALLEL_START_NODE_ID = 'parallel_start_node_id'
 
 
 class NodeRunResult(BaseModel):

@@ -11,6 +11,9 @@ from core.app.entities.queue_entities import (
     QueueNodeFailedEvent,
     QueueNodeStartedEvent,
     QueueNodeSucceededEvent,
+    QueueParallelBranchRunFailedEvent,
+    QueueParallelBranchRunStartedEvent,
+    QueueParallelBranchRunSucceededEvent,
 )
 from core.app.entities.task_entities import (
     IterationNodeCompletedStreamResponse,
@@ -18,6 +21,8 @@ from core.app.entities.task_entities import (
     IterationNodeStartStreamResponse,
     NodeFinishStreamResponse,
     NodeStartStreamResponse,
+    ParallelBranchFinishedStreamResponse,
+    ParallelBranchStartStreamResponse,
     WorkflowFinishStreamResponse,
     WorkflowStartStreamResponse,
     WorkflowTaskState,
@@ -432,6 +437,56 @@ class WorkflowCycleManage:
                 finished_at=int(workflow_node_execution.finished_at.timestamp()),
                 files=self._fetch_files_from_node_outputs(workflow_node_execution.outputs_dict or {}),
             ),
+        )
+    
+    def _workflow_parallel_branch_start_to_stream_response(
+            self,
+            task_id: str,
+            workflow_run: WorkflowRun,
+            event: QueueParallelBranchRunStartedEvent
+        ) -> ParallelBranchStartStreamResponse:
+        """
+        Workflow parallel branch start to stream response
+        :param task_id: task id
+        :param workflow_run: workflow run
+        :param event: parallel branch run started event
+        :return:
+        """
+        return ParallelBranchStartStreamResponse(
+            task_id=task_id,
+            workflow_run_id=workflow_run.id,
+            data=ParallelBranchStartStreamResponse.Data(
+                parallel_id=event.parallel_id,
+                parallel_branch_id=event.parallel_start_node_id,
+                iteration_id=event.in_iteration_id,
+                created_at=int(time.time()),
+            )
+        )
+    
+    def _workflow_parallel_branch_finished_to_stream_response(
+            self,
+            task_id: str,
+            workflow_run: WorkflowRun,
+            event: QueueParallelBranchRunSucceededEvent | QueueParallelBranchRunFailedEvent
+        ) -> ParallelBranchFinishedStreamResponse:
+        """
+        Workflow parallel branch finished to stream response
+        :param task_id: task id
+        :param workflow_run: workflow run
+        :param event: parallel branch run succeeded or failed event
+        :return:
+        """
+        return ParallelBranchFinishedStreamResponse(
+            task_id=task_id,
+            workflow_run_id=workflow_run.id,
+            data=ParallelBranchFinishedStreamResponse.Data(
+                parallel_id=event.parallel_id,
+                parallel_branch_id=event.parallel_start_node_id,
+                iteration_id=event.in_iteration_id,
+                status='succeeded' if isinstance(event, QueueParallelBranchRunSucceededEvent) else 'failed',
+                error=event.error if isinstance(event, QueueParallelBranchRunFailedEvent) else None,
+                created_at=int(time.time()),
+            )
         )
 
     def _workflow_iteration_start_to_stream_response(

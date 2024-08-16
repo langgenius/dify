@@ -334,7 +334,7 @@ class QueueStopEvent(AppQueueEvent):
             QueueStopEvent.StopBy.OUTPUT_MODERATION: 'Stopped by output moderation.',
             QueueStopEvent.StopBy.INPUT_MODERATION: 'Stopped by input moderation.'
         }
-        
+
         return reason_mapping.get(self.stopped_by, 'Stopped by unknown reason.')
 
 
@@ -370,6 +370,8 @@ class QueueParallelBranchRunStartedEvent(AppQueueEvent):
 
     parallel_id: str
     parallel_start_node_id: str
+    in_iteration_id: Optional[str] = None
+    """iteration id if node is in iteration"""
 
 
 class QueueParallelBranchRunSucceededEvent(AppQueueEvent):
@@ -380,6 +382,8 @@ class QueueParallelBranchRunSucceededEvent(AppQueueEvent):
 
     parallel_id: str
     parallel_start_node_id: str
+    in_iteration_id: Optional[str] = None
+    """iteration id if node is in iteration"""
 
 
 class QueueParallelBranchRunFailedEvent(AppQueueEvent):
@@ -390,4 +394,6 @@ class QueueParallelBranchRunFailedEvent(AppQueueEvent):
 
     parallel_id: str
     parallel_start_node_id: str
+    in_iteration_id: Optional[str] = None
+    """iteration id if node is in iteration"""
     error: str

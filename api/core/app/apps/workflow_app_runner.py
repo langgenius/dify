@@ -13,6 +13,7 @@ from core.app.entities.queue_entities import (
     QueueNodeSucceededEvent,
     QueueParallelBranchRunFailedEvent,
     QueueParallelBranchRunStartedEvent,
+    QueueParallelBranchRunSucceededEvent,
     QueueRetrieverResourcesEvent,
     QueueTextChunkEvent,
     QueueWorkflowFailedEvent,
@@ -261,14 +262,16 @@ class WorkflowBasedAppRunner(AppRunner):
             self._publish_event(
                 QueueParallelBranchRunStartedEvent(
                     parallel_id=event.parallel_id,
-                    parallel_start_node_id=event.parallel_start_node_id
+                    parallel_start_node_id=event.parallel_start_node_id,
+                    in_iteration_id=event.in_iteration_id
                 )
             )
         elif isinstance(event, ParallelBranchRunSucceededEvent):
             self._publish_event(
-                QueueParallelBranchRunStartedEvent(
+                QueueParallelBranchRunSucceededEvent(
                     parallel_id=event.parallel_id,
-                    parallel_start_node_id=event.parallel_start_node_id
+                    parallel_start_node_id=event.parallel_start_node_id,
+                    in_iteration_id=event.in_iteration_id
                 )
             )
         elif isinstance(event, ParallelBranchRunFailedEvent):
@@ -276,6 +279,7 @@ class WorkflowBasedAppRunner(AppRunner):
                 QueueParallelBranchRunFailedEvent(
                     parallel_id=event.parallel_id,
                     parallel_start_node_id=event.parallel_start_node_id,
+                    in_iteration_id=event.in_iteration_id,
                     error=event.error
                 )
             )

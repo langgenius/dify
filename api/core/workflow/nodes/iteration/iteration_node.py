@@ -157,14 +157,15 @@ class IterationNode(BaseNode):
                     event.in_iteration_id = self.node_id
 
                 if isinstance(event, NodeRunSucceededEvent):
-                    metadata = event.route_node_state.node_run_result.metadata
-                    if not metadata:
-                        metadata = {}
+                    if event.route_node_state.node_run_result:
+                        metadata = event.route_node_state.node_run_result.metadata
+                        if not metadata:
+                            metadata = {}
 
-                    if NodeRunMetadataKey.ITERATION_ID not in metadata:
-                        metadata[NodeRunMetadataKey.ITERATION_ID] = self.node_id
-                        metadata[NodeRunMetadataKey.ITERATION_INDEX] = variable_pool.get_any([self.node_id, 'index'])
-                        event.route_node_state.node_run_result.metadata = metadata
+                        if NodeRunMetadataKey.ITERATION_ID not in metadata:
+                            metadata[NodeRunMetadataKey.ITERATION_ID] = self.node_id
+                            metadata[NodeRunMetadataKey.ITERATION_INDEX] = variable_pool.get_any([self.node_id, 'index'])
+                            event.route_node_state.node_run_result.metadata = metadata
 
                     yield event
 
