@@ -67,7 +67,7 @@ const Sidebar = () => {
             <AppIcon
               className='mr-3'
               size='small'
-              iconType={ appData?.site.icon_type}
+              iconType={appData?.site.icon_type}
               icon={appData?.site.icon}
               background={appData?.site.icon_background}
               imageUrl={appData?.site.icon_url}
