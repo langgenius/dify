@@ -34,16 +34,17 @@ const CardView: FC<ICardViewProps> = ({ appId }) => {
   const systemFeatures = useContextSelector(AppContext, state => state.systemFeatures)
 
   const updateAppDetail = async () => {
-    fetchAppDetail({ url: '/apps', id: appId }).then((res) => {
+    try {
+      const res = await fetchAppDetail({ url: '/apps', id: appId })
       if (systemFeatures.enable_web_sso_switch_component) {
-        fetchAppSSO({ appId }).then((ssoRes) => {
-          setAppDetail({ ...res, enable_sso: ssoRes.enabled })
-        })
+        const ssoRes = await fetchAppSSO({ appId })
+        setAppDetail({ ...res, enable_sso: ssoRes.enabled })
       }
       else {
         setAppDetail({ ...res })
       }
-    })
+    }
+    catch (error) { console.error(error) }
   }
 
   const handleCallbackResult = (err: Error | null, message?: string) => {
