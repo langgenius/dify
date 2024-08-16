@@ -10,7 +10,6 @@ import { BlockEnum } from '../types'
 import { useWorkflowUpdate } from '../hooks'
 import {
   useNodesReadOnly,
-  useWorkflowReadOnly,
 } from './use-workflow'
 import { syncWorkflowDraft } from '@/service/workflow'
 import { useFeaturesStore } from '@/app/components/base/features/hooks'
@@ -21,7 +20,6 @@ export const useNodesSyncDraft = () => {
   const workflowStore = useWorkflowStore()
   const featuresStore = useFeaturesStore()
   const { getNodesReadOnly } = useNodesReadOnly()
-  const { getWorkflowReadOnly } = useWorkflowReadOnly()
   const { handleRefreshWorkflowDraft } = useWorkflowUpdate()
   const debouncedSyncWorkflowDraft = useStore(s => s.debouncedSyncWorkflowDraft)
   const params = useParams()
