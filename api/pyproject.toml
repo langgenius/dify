@@ -73,12 +73,10 @@ exclude = [
     "core/**/*.py",
     "controllers/**/*.py",
     "models/**/*.py",
-    "utils/**/*.py",
     "migrations/**/*",
     "services/**/*.py",
     "tasks/**/*.py",
     "tests/**/*.py",
-    "libs/**/*.py",
     "configs/**/*.py",
 ]
 
