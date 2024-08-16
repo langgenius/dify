@@ -333,19 +333,8 @@ export const useWorkflow = () => {
     return nodes.find(node => node.id === nodeId) || nodes.find(node => node.data.type === BlockEnum.Start)
   }, [store])
 
-  // const enableShortcuts = useCallback(() => {
-  //   const { setShortcutsDisabled } = workflowStore.getState()
-  //   setShortcutsDisabled(false)
-  // }, [workflowStore])
-
-  // const disableShortcuts = useCallback(() => {
-  //   const { setShortcutsDisabled } = workflowStore.getState()
-  //   setShortcutsDisabled(true)
-  // }, [workflowStore])
-
   return {
     setPanelWidth,
-    // handleLayout,
     getTreeLeafNodes,
     getBeforeNodesInSameBranch,
     getBeforeNodesInSameBranchIncludeParent,
@@ -359,8 +348,6 @@ export const useWorkflow = () => {
     getNode,
     getBeforeNodeById,
     getIterationNodeChildren,
-    // enableShortcuts,
-    // disableShortcuts,
   }
 }
 
