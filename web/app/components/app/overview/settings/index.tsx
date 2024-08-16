@@ -42,7 +42,7 @@ export type ConfigParams = {
   icon: string
   icon_background: string
   show_workflow_steps: boolean
-  enable_sso: boolean
+  enable_sso?: boolean
 }
 
 const prefixSettings = 'appOverview.overview.appInfo.settings'
@@ -146,7 +146,7 @@ const SettingsModal: FC<ISettingsModalProps> = ({
       icon: emoji.icon,
       icon_background: emoji.icon_background,
       show_workflow_steps: inputInfo.show_workflow_steps,
-      enable_sso: inputInfo.enable_sso!,
+      enable_sso: inputInfo.enable_sso,
     }
     await onSave?.(params)
     setSaveLoading(false)
