@@ -5,8 +5,8 @@ identity:
     en_US: Gitlab
     zh_Hans: Gitlab
   description:
-    en_US: Gitlab plugin for commit
-    zh_Hans: 用于获取Gitlab commit的插件
+    en_US: Gitlab plugin,only support v4 api.
+    zh_Hans: 用于获取Gitlab内容的插件,目前仅支持v4版本api。
   icon: gitlab.svg
 credentials_for_provider:
   access_tokens:
