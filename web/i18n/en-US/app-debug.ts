@@ -410,7 +410,7 @@ const translation = {
     },
   },
   inputs: {
-    title: 'Debug and Preview',
+    title: 'Debug & Preview',
     noPrompt: 'Try write some prompt in pre-prompt input',
     userInputField: 'User Input Field',
     noVar: 'Fill in the value of the variable, which will be automatically replaced in the prompt word every time a new session is started.',

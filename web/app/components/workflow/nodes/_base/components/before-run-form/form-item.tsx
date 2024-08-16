@@ -91,7 +91,7 @@ const FormItem: FC<Props> = ({
   const isContext = type === InputVarType.contexts
   const isIterator = type === InputVarType.iterator
   return (
-    <div className={`${className}`}>
+    <div className={cn(className)}>
       {!isArrayLikeType && (
         <div className='h-6 mb-1 flex items-center gap-1 text-text-secondary system-sm-semibold'>
           <div className='truncate'>{typeof payload.label === 'object' ? nodeKey : payload.label}</div>
@@ -112,8 +112,7 @@ const FormItem: FC<Props> = ({
 
         {
           type === InputVarType.number && (
-            <input
-              className="w-full px-3 text-sm leading-8 text-gray-900 border-0 rounded-lg grow h-8 bg-gray-50 focus:outline-none focus:ring-1 focus:ring-inset focus:ring-gray-200"
+            <Input
               type="number"
               value={value || ''}
               onChange={e => onChange(e.target.value)}
@@ -157,6 +156,7 @@ const FormItem: FC<Props> = ({
           )
         }
 
+        {/* #TODO# file type new form  */}
         {
           type === InputVarType.files && (
             <TextGenerationImageUploader
@@ -186,7 +186,7 @@ const FormItem: FC<Props> = ({
                     (value as any).length > 1
                       ? (<RiDeleteBinLine
                         onClick={handleArrayItemRemove(index)}
-                        className='mr-1 w-3.5 h-3.5 text-gray-500 cursor-pointer'
+                        className='mr-1 w-3.5 h-3.5 text-text-tertiary cursor-pointer'
                       />)
                       : undefined
                   }
@@ -212,7 +212,7 @@ const FormItem: FC<Props> = ({
                     (value as any).length > 1
                       ? (<RiDeleteBinLine
                         onClick={handleArrayItemRemove(index)}
-                        className='mr-1 w-3.5 h-3.5 text-gray-500 cursor-pointer'
+                        className='mr-1 w-3.5 h-3.5 text-text-tertiary cursor-pointer'
                       />)
                       : undefined
                   }

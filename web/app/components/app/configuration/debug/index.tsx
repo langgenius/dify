@@ -7,6 +7,7 @@ import { setAutoFreeze } from 'immer'
 import { useBoolean } from 'ahooks'
 import {
   RiAddLine,
+  RiEqualizer2Line,
 } from '@remixicon/react'
 import { useContext } from 'use-context-selector'
 import { useShallow } from 'zustand/react/shallow'
@@ -23,11 +24,15 @@ import {
   APP_CHAT_WITH_MULTIPLE_MODEL_RESTART,
 } from './types'
 import { AppType, ModelModeType, TransferMethod } from '@/types/app'
+import ChatUserInput from '@/app/components/app/configuration/debug/chat-user-input'
 import PromptValuePanel from '@/app/components/app/configuration/prompt-value-panel'
 import ConfigContext from '@/context/debug-configuration'
 import { ToastContext } from '@/app/components/base/toast'
 import { sendCompletionMessage } from '@/service/debug'
 import Button from '@/app/components/base/button'
+import { RefreshCcw01 } from '@/app/components/base/icons/src/vender/line/arrows'
+import TooltipPlus from '@/app/components/base/tooltip-plus'
+import ActionButton, { ActionButtonState } from '@/app/components/base/action-button'
 import type { ModelConfig as BackendModelConfig, VisionFile } from '@/types/app'
 import { promptVariablesToUserInputsForm } from '@/utils/model-config'
 import TextGeneration from '@/app/components/app/text-generate/item'
@@ -391,49 +396,71 @@ const Debug: FC<IDebug> = ({
     adjustModalWidth()
   }, [])
 
+  const [expanded, setExpanded] = useState(true)
+
   return (
     <>
-      <div className="shrink-0 pt-4 px-6">
-        <div className='flex items-center justify-between mb-2'>
-          <div className='h2 '>{t('appDebug.inputs.title')}</div>
+      <div className="shrink-0">
+        <div className='flex items-center justify-between px-4 pt-3 pb-2'>
+          <div className='text-text-primary system-xl-semibold'>{t('appDebug.inputs.title')}</div>
           <div className='flex items-center'>
             {
               debugWithMultipleModel
                 ? (
                   <>
                     <Button
-                      variant='secondary-accent'
+                      variant='ghost-accent'
                       onClick={() => onMultipleModelConfigsChange(true, [...multipleModelConfigs, { id: `${Date.now()}`, model: '', provider: '', parameters: {} }])}
                       disabled={multipleModelConfigs.length >= 4}
                     >
                       <RiAddLine className='mr-1 w-3.5 h-3.5' />
                       {t('common.modelProvider.addModel')}({multipleModelConfigs.length}/4)
                     </Button>
-                    <div className='mx-2 w-[1px] h-[14px] bg-gray-200' />
+                    <div className='mx-2 w-[1px] h-[14px] bg-divider-regular' />
                   </>
                 )
                 : null
             }
             {mode !== AppType.completion && (
-              <Button variant='secondary-accent' className='gap-1' onClick={clearConversation}>
-                <svg width="16" height="16" viewBox="0 0 16 16" fill="none" xmlns="http://www.w3.org/2000/svg">
-                  <path d="M2.66663 2.66629V5.99963H3.05463M3.05463 5.99963C3.49719 4.90505 4.29041 3.98823 5.30998 3.39287C6.32954 2.7975 7.51783 2.55724 8.68861 2.70972C9.85938 2.8622 10.9465 3.39882 11.7795 4.23548C12.6126 5.07213 13.1445 6.16154 13.292 7.33296M3.05463 5.99963H5.99996M13.3333 13.333V9.99963H12.946M12.946 9.99963C12.5028 11.0936 11.7093 12.0097 10.6898 12.6045C9.67038 13.1993 8.48245 13.4393 7.31203 13.2869C6.1416 13.1344 5.05476 12.5982 4.22165 11.7621C3.38854 10.926 2.8562 9.83726 2.70796 8.66629M12.946 9.99963H9.99996" stroke="#1C64F2" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" />
-                </svg>
-                <span className='text-primary-600 text-[13px] font-semibold'>{t('common.operation.refresh')}</span>
-              </Button>
+              <>
+                <TooltipPlus
+                  popupContent={t('common.operation.refresh')}
+                >
+                  <ActionButton onClick={clearConversation}>
+                    <RefreshCcw01 className='w-4 h-4' />
+                  </ActionButton>
+                </TooltipPlus>
+                <div className='relative ml-1 mr-2'>
+                  <TooltipPlus
+                    popupContent={t('workflow.panel.userInputField')}
+                  >
+                    <ActionButton state={expanded ? ActionButtonState.Active : undefined} onClick={() => setExpanded(!expanded)}>
+                      <RiEqualizer2Line className='w-4 h-4' />
+                    </ActionButton>
+                  </TooltipPlus>
+                  {expanded && <div className='absolute z-10 bottom-[-18px] right-[5px] w-3 h-3 bg-components-panel-on-panel-item-bg border-l-[0.5px] border-t-[0.5px] border-components-panel-border-subtle rotate-45'/>}
+                </div>
+              </>
             )}
           </div>
         </div>
-        <PromptValuePanel
-          appType={mode as AppType}
-          onSend={handleSendTextCompletion}
-          inputs={inputs}
-          visionConfig={{
-            ...visionConfig,
-            image_file_size_limit: fileUploadConfigResponse?.image_file_size_limit,
-          }}
-          onVisionFilesChange={setCompletionFiles}
-        />
+        {mode !== AppType.completion && expanded && (
+          <div className='mx-3 mt-1'>
+            <ChatUserInput inputs={inputs} />
+          </div>
+        )}
+        {mode === AppType.completion && (
+          <PromptValuePanel
+            appType={mode as AppType}
+            onSend={handleSendTextCompletion}
+            inputs={inputs}
+            visionConfig={{
+              ...visionConfig,
+              image_file_size_limit: fileUploadConfigResponse?.image_file_size_limit,
+            }}
+            onVisionFilesChange={setCompletionFiles}
+          />
+        )}
       </div>
       {
         debugWithMultipleModel && (
@@ -481,7 +508,7 @@ const Debug: FC<IDebug> = ({
             )}
             {/* Text  Generation */}
             {mode === AppType.completion && (
-              <div className="mt-6 px-6 pb-4">
+              <div className="mt-6 px-3 pb-4">
                 <GroupName name={t('appDebug.result')} />
                 {(completionRes || isResponding) && (
                   <TextGeneration

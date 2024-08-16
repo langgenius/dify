@@ -222,18 +222,6 @@ const PromptValuePanel: FC<IPromptValuePanelProps> = ({
 
 export default React.memo(PromptValuePanel)
 
-function replaceStringWithValuesWithFormat(str: string, promptVariables: PromptVariable[], inputs: Record<string, any>) {
-  return str.replace(/\{\{([^}]+)\}\}/g, (match, key) => {
-    const name = inputs[key]
-    if (name) { // has set value
-      return `<div class='inline-block px-1 rounded-md text-gray-900' style='background: rgba(16, 24, 40, 0.1)'>${name}</div>`
-    }
-
-    const valueObj: PromptVariable | undefined = promptVariables.find(v => v.key === key)
-    return `<div class='inline-block px-1 rounded-md text-gray-500' style='background: rgba(16, 24, 40, 0.05)'>${valueObj ? valueObj.name : match}</div>`
-  })
-}
-
 export function replaceStringWithValues(str: string, promptVariables: PromptVariable[], inputs: Record<string, any>) {
   return str.replace(/\{\{([^}]+)\}\}/g, (match, key) => {
     const name = inputs[key]
@@ -244,9 +232,4 @@ export function replaceStringWithValues(str: string, promptVariables: PromptVari
     const valueObj: PromptVariable | undefined = promptVariables.find(v => v.key === key)
     return valueObj ? `{{${valueObj.name}}}` : match
   })
-}
-
-// \n -> br
-function format(str: string) {
-  return str.replaceAll('\n', '<br>')
 }
