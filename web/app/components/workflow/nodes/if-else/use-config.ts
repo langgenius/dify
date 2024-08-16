@@ -31,8 +31,8 @@ const useConfig = (id: string, payload: IfElseNodeType) => {
   const { handleEdgeDeleteByDeleteBranch } = useEdgesInteractions()
   const { inputs, setInputs } = useNodeCrud<IfElseNodeType>(id, payload)
 
-  const filterVar = useCallback((varPayload: Var) => {
-    return varPayload.type !== VarType.arrayFile
+  const filterVar = useCallback(() => {
+    return true
   }, [])
 
   const {
