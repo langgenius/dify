@@ -1,19 +1,17 @@
 import { useReactFlow } from 'reactflow'
 import { useKeyPress } from 'ahooks'
+import { useCallback } from 'react'
 import {
   getKeyboardKeyCodeBySystem,
-  isEventTargetInputArea,
 } from '../utils'
 import { useWorkflowHistoryStore } from '../workflow-history-store'
 import { useWorkflowStore } from '../store'
 import {
   useEdgesInteractions,
   useNodesInteractions,
-  useNodesReadOnly,
   useNodesSyncDraft,
   useWorkflowMoveMode,
   useWorkflowOrganize,
-  useWorkflowReadOnly,
   useWorkflowStartRun,
 } from '.'
 
@@ -30,14 +28,12 @@ export const useShortcuts = (): void => {
   const { shortcutsEnabled: workflowHistoryShortcutsEnabled } = useWorkflowHistoryStore()
   const { handleSyncWorkflowDraft } = useNodesSyncDraft()
   const { handleEdgeDelete } = useEdgesInteractions()
-  const { handleGoLayout } = useWorkflowOrganize()
-  const { getNodesReadOnly } = useNodesReadOnly()
-  const { workflowReadOnly } = useWorkflowReadOnly()
   const workflowStore = useWorkflowStore()
   const {
     handleModeHand,
     handleModePointer,
   } = useWorkflowMoveMode()
+  const { handleLayout } = useWorkflowOrganize()
 
   const {
     zoomIn,
@@ -46,193 +42,152 @@ export const useShortcuts = (): void => {
     fitView,
   } = useReactFlow()
 
-  const shouldHandleShortcut = (e: KeyboardEvent) => {
+  const isInputElement = useCallback((target: EventTarget | null): boolean => {
+    if (!target || !(target instanceof HTMLElement))
+      return false
+    return (
+      target.tagName === 'INPUT'
+      || target.tagName === 'TEXTAREA'
+      || target.isContentEditable
+    )
+  }, [])
+
+  const shouldHandleShortcut = useCallback((e: KeyboardEvent) => {
     const { showFeaturesPanel } = workflowStore.getState()
-    return !(isEventTargetInputArea(e.target as HTMLElement) || showFeaturesPanel)
-  }
+    return !showFeaturesPanel && !isInputElement(e.target as HTMLElement)
+  }, [workflowStore, isInputElement])
 
   useKeyPress(['delete', 'backspace'], (e) => {
-    e.preventDefault()
-    if (!shouldHandleShortcut(e))
-      return
-
-    handleNodesDelete()
-  })
-
-  useKeyPress(['delete', 'backspace'], (e) => {
-    e.preventDefault()
-    if (!shouldHandleShortcut(e))
-      return
-
-    handleEdgeDelete()
+    if (shouldHandleShortcut(e)) {
+      e.preventDefault()
+      handleNodesDelete()
+      handleEdgeDelete()
+    }
   })
 
   useKeyPress(`${getKeyboardKeyCodeBySystem('ctrl')}.c`, (e) => {
-    e.preventDefault()
-    if (!shouldHandleShortcut(e))
-      return
-
-    handleNodesCopy()
+    if (shouldHandleShortcut(e)) {
+      e.preventDefault()
+      handleNodesCopy()
+    }
   }, { exactMatch: true, useCapture: true })
 
   useKeyPress(`${getKeyboardKeyCodeBySystem('ctrl')}.v`, (e) => {
-    e.preventDefault()
-    if (!shouldHandleShortcut(e))
-      return
-
-    handleNodesPaste()
+    if (shouldHandleShortcut(e)) {
+      e.preventDefault()
+      handleNodesPaste()
+    }
   }, { exactMatch: true, useCapture: true })
 
   useKeyPress(`${getKeyboardKeyCodeBySystem('ctrl')}.d`, (e) => {
-    e.preventDefault()
-    if (!shouldHandleShortcut(e))
-      return
-
-    handleNodesDuplicate()
-  }, { exactMatch: true, useCapture: true })
-
-  useKeyPress(`${getKeyboardKeyCodeBySystem('alt')}.r`, (e) => {
-    e.preventDefault()
-    if (!shouldHandleShortcut(e))
-      return
-
-    handleStartWorkflowRun()
-  }, { exactMatch: true, useCapture: true })
-
-  useKeyPress(`${getKeyboardKeyCodeBySystem('alt')}.r`, (e) => {
-    e.preventDefault()
-    if (!shouldHandleShortcut(e))
-      return
-
-    handleStartWorkflowRun()
-  }, { exactMatch: true, useCapture: true })
-
-  useKeyPress(
-    `${getKeyboardKeyCodeBySystem('ctrl')}.z`, (e) => {
+    if (shouldHandleShortcut(e)) {
       e.preventDefault()
-      if (!shouldHandleShortcut(e))
-        return
+      handleNodesDuplicate()
+    }
+  }, { exactMatch: true, useCapture: true })
 
+  useKeyPress(`${getKeyboardKeyCodeBySystem('alt')}.r`, (e) => {
+    if (shouldHandleShortcut(e)) {
+      e.preventDefault()
+      handleStartWorkflowRun()
+    }
+  }, { exactMatch: true, useCapture: true })
+
+  useKeyPress(`${getKeyboardKeyCodeBySystem('ctrl')}.z`, (e) => {
+    if (shouldHandleShortcut(e)) {
+      e.preventDefault()
       workflowHistoryShortcutsEnabled && handleHistoryBack()
-    },
-    { exactMatch: true, useCapture: true },
-  )
+    }
+  }, { exactMatch: true, useCapture: true })
 
   useKeyPress(
     [`${getKeyboardKeyCodeBySystem('ctrl')}.y`, `${getKeyboardKeyCodeBySystem('ctrl')}.shift.z`],
     (e) => {
-      e.preventDefault()
-      if (!shouldHandleShortcut(e))
-        return
-
-      workflowHistoryShortcutsEnabled && handleHistoryForward()
+      if (shouldHandleShortcut(e)) {
+        e.preventDefault()
+        workflowHistoryShortcutsEnabled && handleHistoryForward()
+      }
     },
     { exactMatch: true, useCapture: true },
   )
+
   useKeyPress('h', (e) => {
-    e.preventDefault()
-    if (!shouldHandleShortcut(e))
-      return
-
-    if (getNodesReadOnly())
-      return
-
-    handleModeHand()
+    if (shouldHandleShortcut(e)) {
+      e.preventDefault()
+      handleModeHand()
+    }
   }, {
     exactMatch: true,
     useCapture: true,
   })
 
   useKeyPress('v', (e) => {
-    e.preventDefault()
-    if (!shouldHandleShortcut(e))
-      return
-
-    handleModePointer()
+    if (shouldHandleShortcut(e)) {
+      e.preventDefault()
+      handleModePointer()
+    }
   }, {
     exactMatch: true,
     useCapture: true,
   })
 
   useKeyPress(`${getKeyboardKeyCodeBySystem('ctrl')}.o`, (e) => {
-    e.preventDefault()
-    if (!shouldHandleShortcut(e))
-      return
-
-    handleGoLayout()
+    if (shouldHandleShortcut(e)) {
+      e.preventDefault()
+      handleLayout()
+    }
   }, { exactMatch: true, useCapture: true })
 
   useKeyPress(`${getKeyboardKeyCodeBySystem('ctrl')}.1`, (e) => {
-    e.preventDefault()
-    if (!shouldHandleShortcut(e))
-      return
-
-    if (workflowReadOnly)
-      return
-
-    fitView()
-    handleSyncWorkflowDraft()
+    if (shouldHandleShortcut(e)) {
+      e.preventDefault()
+      fitView()
+      handleSyncWorkflowDraft()
+    }
   }, {
     exactMatch: true,
     useCapture: true,
   })
 
   useKeyPress('shift.1', (e) => {
-    e.preventDefault()
-    if (workflowReadOnly)
-      return
-
-    if (!shouldHandleShortcut(e))
-      return
-
-    e.preventDefault()
-    zoomTo(1)
-    handleSyncWorkflowDraft()
+    if (shouldHandleShortcut(e)) {
+      e.preventDefault()
+      zoomTo(1)
+      handleSyncWorkflowDraft()
+    }
   }, {
     exactMatch: true,
     useCapture: true,
   })
 
   useKeyPress('shift.5', (e) => {
-    e.preventDefault()
-    if (!shouldHandleShortcut(e))
-      return
-
-    if (workflowReadOnly)
-      return
-
-    zoomTo(0.5)
-    handleSyncWorkflowDraft()
+    if (shouldHandleShortcut(e)) {
+      e.preventDefault()
+      zoomTo(0.5)
+      handleSyncWorkflowDraft()
+    }
   }, {
     exactMatch: true,
     useCapture: true,
   })
 
   useKeyPress(`${getKeyboardKeyCodeBySystem('ctrl')}.dash`, (e) => {
-    e.preventDefault()
-    if (!shouldHandleShortcut(e))
-      return
-
-    if (workflowReadOnly)
-      return
-
-    zoomOut()
-    handleSyncWorkflowDraft()
+    if (shouldHandleShortcut(e)) {
+      e.preventDefault()
+      zoomOut()
+      handleSyncWorkflowDraft()
+    }
   }, {
     exactMatch: true,
     useCapture: true,
   })
 
   useKeyPress(`${getKeyboardKeyCodeBySystem('ctrl')}.equalsign`, (e) => {
-    e.preventDefault()
-    if (!shouldHandleShortcut(e))
-      return
-
-    if (workflowReadOnly)
-      return
-
-    zoomIn()
-    handleSyncWorkflowDraft()
+    if (shouldHandleShortcut(e)) {
+      e.preventDefault()
+      zoomIn()
+      handleSyncWorkflowDraft()
+    }
   }, {
     exactMatch: true,
     useCapture: true,

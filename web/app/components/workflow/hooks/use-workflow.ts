@@ -7,19 +7,19 @@ import {
 import dayjs from 'dayjs'
 import { uniqBy } from 'lodash-es'
 import { useContext } from 'use-context-selector'
-import produce from 'immer'
+// import produce from 'immer'
 import {
   getIncomers,
   getOutgoers,
-  useReactFlow,
+  // useReactFlow,
   useStoreApi,
 } from 'reactflow'
 import type {
   Connection,
 } from 'reactflow'
-import {
-  getLayoutByDagre,
-} from '../utils'
+// import {
+//   getLayoutByDagre,
+// } from '../utils'
 import type {
   Edge,
   Node,
@@ -34,15 +34,15 @@ import {
   useWorkflowStore,
 } from '../store'
 import {
-  CUSTOM_NODE,
+  // CUSTOM_NODE,
   SUPPORT_OUTPUT_VARS_NODE,
 } from '../constants'
 import { CUSTOM_NOTE_NODE } from '../note-node/constants'
 import { findUsedVarNodes, getNodeOutputVars, updateNodeVars } from '../nodes/_base/components/variable/utils'
 import { useNodesExtraData } from './use-nodes-data'
 import { useWorkflowTemplate } from './use-workflow-template'
-import { useNodesSyncDraft } from './use-nodes-sync-draft'
-import { WorkflowHistoryEvent, useWorkflowHistory } from './use-workflow-history'
+// import { useNodesSyncDraft } from './use-nodes-sync-draft'
+// import { WorkflowHistoryEvent, useWorkflowHistory } from './use-workflow-history'
 import { useStore as useAppStore } from '@/app/components/app/store'
 import {
   fetchNodesDefaultConfigs,
@@ -68,67 +68,70 @@ export const useIsChatMode = () => {
 export const useWorkflow = () => {
   const { locale } = useContext(I18n)
   const store = useStoreApi()
-  const reactflow = useReactFlow()
+  // const reactflow = useReactFlow()
   const workflowStore = useWorkflowStore()
   const nodesExtraData = useNodesExtraData()
-  const { handleSyncWorkflowDraft } = useNodesSyncDraft()
-  const { saveStateToHistory } = useWorkflowHistory()
+  // const { handleSyncWorkflowDraft } = useNodesSyncDraft()
+  // const { saveStateToHistory } = useWorkflowHistory()
 
   const setPanelWidth = useCallback((width: number) => {
     localStorage.setItem('workflow-node-panel-width', `${width}`)
     workflowStore.setState({ panelWidth: width })
   }, [workflowStore])
 
-  const handleLayout = useCallback(async () => {
-    workflowStore.setState({ nodeAnimation: true })
-    const {
-      getNodes,
-      edges,
-      setNodes,
-    } = store.getState()
-    const { setViewport } = reactflow
-    const nodes = getNodes()
-    const layout = getLayoutByDagre(nodes, edges)
-    const rankMap = {} as Record<string, Node>
+  // const handleLayout = useCallback(async () => {
+  //   const { getNodesReadOnly } = useNodesReadOnly()
+  //   if (getNodesReadOnly())
+  //     return
+  //   workflowStore.setState({ nodeAnimation: true })
+  //   const {
+  //     getNodes,
+  //     edges,
+  //     setNodes,
+  //   } = store.getState()
+  //   const { setViewport } = reactflow
+  //   const nodes = getNodes()
+  //   const layout = getLayoutByDagre(nodes, edges)
+  //   const rankMap = {} as Record<string, Node>
 
-    nodes.forEach((node) => {
-      if (!node.parentId && node.type === CUSTOM_NODE) {
-        const rank = layout.node(node.id).rank!
+  //   nodes.forEach((node) => {
+  //     if (!node.parentId && node.type === CUSTOM_NODE) {
+  //       const rank = layout.node(node.id).rank!
 
-        if (!rankMap[rank]) {
-          rankMap[rank] = node
-        }
-        else {
-          if (rankMap[rank].position.y > node.position.y)
-            rankMap[rank] = node
-        }
-      }
-    })
+  //       if (!rankMap[rank]) {
+  //         rankMap[rank] = node
+  //       }
+  //       else {
+  //         if (rankMap[rank].position.y > node.position.y)
+  //           rankMap[rank] = node
+  //       }
+  //     }
+  //   })
 
-    const newNodes = produce(nodes, (draft) => {
-      draft.forEach((node) => {
-        if (!node.parentId && node.type === CUSTOM_NODE) {
-          const nodeWithPosition = layout.node(node.id)
+  //   const newNodes = produce(nodes, (draft) => {
+  //     draft.forEach((node) => {
+  //       if (!node.parentId && node.type === CUSTOM_NODE) {
+  //         const nodeWithPosition = layout.node(node.id)
 
-          node.position = {
-            x: nodeWithPosition.x - node.width! / 2,
-            y: nodeWithPosition.y - node.height! / 2 + rankMap[nodeWithPosition.rank!].height! / 2,
-          }
-        }
-      })
-    })
-    setNodes(newNodes)
-    const zoom = 0.7
-    setViewport({
-      x: 0,
-      y: 0,
-      zoom,
-    })
-    saveStateToHistory(WorkflowHistoryEvent.LayoutOrganize)
-    setTimeout(() => {
-      handleSyncWorkflowDraft()
-    })
-  }, [workflowStore, store, reactflow, saveStateToHistory, handleSyncWorkflowDraft])
+  //         node.position = {
+  //           x: nodeWithPosition.x - node.width! / 2,
+  //           y: nodeWithPosition.y - node.height! / 2 + rankMap[nodeWithPosition.rank!].height! / 2,
+  //         }
+  //       }
+  //     })
+  //   })
+  //   setNodes(newNodes)
+  //   const zoom = 0.7
+  //   setViewport({
+  //     x: 0,
+  //     y: 0,
+  //     zoom,
+  //   })
+  //   saveStateToHistory(WorkflowHistoryEvent.LayoutOrganize)
+  //   setTimeout(() => {
+  //     handleSyncWorkflowDraft()
+  //   })
+  // }, [useNodesReadOnly, workflowStore, store, reactflow, saveStateToHistory, handleSyncWorkflowDraft])
 
   const getTreeLeafNodes = useCallback((nodeId: string) => {
     const {
@@ -404,7 +407,7 @@ export const useWorkflow = () => {
 
   return {
     setPanelWidth,
-    handleLayout,
+    // handleLayout,
     getTreeLeafNodes,
     getBeforeNodesInSameBranch,
     getBeforeNodesInSameBranchIncludeParent,

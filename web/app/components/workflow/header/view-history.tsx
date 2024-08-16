@@ -58,6 +58,7 @@ const ViewHistory = ({
     handleCancelDebugAndPreviewPanel,
   } = useWorkflowInteractions()
   const workflowStore = useWorkflowStore()
+  const setControlMode = useStore(s => s.setControlMode)
   const { appDetail, setCurrentLogItem, setShowMessageLogModal } = useAppStore(useShallow(state => ({
     appDetail: state.appDetail,
     setCurrentLogItem: state.setCurrentLogItem,
@@ -173,6 +174,7 @@ const ViewHistory = ({
                           setOpen(false)
                           handleNodesCancelSelected()
                           handleCancelDebugAndPreviewPanel()
+                          setControlMode('hand')
                         }}
                       >
                         {

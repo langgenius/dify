@@ -24,7 +24,7 @@ const Control = () => {
   const { t } = useTranslation()
   const controlMode = useStore(s => s.controlMode)
   const { handleModePointer, handleModeHand } = useWorkflowMoveMode()
-  const { handleGoLayout } = useWorkflowOrganize()
+  const { handleLayout } = useWorkflowOrganize()
   const { handleAddNote } = useOperator()
   const {
     nodesReadOnly,
@@ -85,7 +85,7 @@ const Control = () => {
             'flex items-center justify-center w-8 h-8 rounded-lg hover:bg-black/5 hover:text-gray-700 cursor-pointer',
             `${nodesReadOnly && '!cursor-not-allowed opacity-50'}`,
           )}
-          onClick={handleGoLayout}
+          onClick={handleLayout}
         >
           <RiFunctionAddLine className='w-4 h-4' />
         </div>

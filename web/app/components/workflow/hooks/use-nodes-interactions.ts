@@ -48,6 +48,7 @@ import { useHelpline } from './use-helpline'
 import {
   useNodesReadOnly,
   useWorkflow,
+  useWorkflowReadOnly,
 } from './use-workflow'
 import { WorkflowHistoryEvent, useWorkflowHistory } from './use-workflow-history'
 
@@ -62,6 +63,7 @@ export const useNodesInteractions = () => {
     getAfterNodesInSameBranch,
   } = useWorkflow()
   const { getNodesReadOnly } = useNodesReadOnly()
+  const { getWorkflowReadOnly } = useWorkflowReadOnly()
   const { handleSetHelpline } = useHelpline()
   const {
     handleNodeIterationChildDrag,
@@ -1219,7 +1221,7 @@ export const useNodesInteractions = () => {
   }, [getNodesReadOnly, store, handleSyncWorkflowDraft, saveStateToHistory])
 
   const handleHistoryBack = useCallback(() => {
-    if (getNodesReadOnly())
+    if (getNodesReadOnly() || getWorkflowReadOnly())
       return
 
     const { setEdges, setNodes } = store.getState()
@@ -1231,10 +1233,10 @@ export const useNodesInteractions = () => {
 
     setEdges(edges)
     setNodes(nodes)
-  }, [store, undo, workflowHistoryStore, getNodesReadOnly])
+  }, [store, undo, workflowHistoryStore, getNodesReadOnly, getWorkflowReadOnly])
 
   const handleHistoryForward = useCallback(() => {
-    if (getNodesReadOnly())
+    if (getNodesReadOnly() || getWorkflowReadOnly())
       return
 
     const { setEdges, setNodes } = store.getState()
@@ -1246,7 +1248,7 @@ export const useNodesInteractions = () => {
 
     setEdges(edges)
     setNodes(nodes)
-  }, [redo, store, workflowHistoryStore, getNodesReadOnly])
+  }, [redo, store, workflowHistoryStore, getNodesReadOnly, getWorkflowReadOnly])
 
   return {
     handleNodeDragStart,

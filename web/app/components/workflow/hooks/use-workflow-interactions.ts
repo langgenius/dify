@@ -3,23 +3,28 @@ import {
   useState,
 } from 'react'
 import { useTranslation } from 'react-i18next'
-import { useReactFlow } from 'reactflow'
+import { useReactFlow, useStoreApi } from 'reactflow'
+import produce from 'immer'
 import { useStore, useWorkflowStore } from '../store'
-import { DSL_EXPORT_CHECK, WORKFLOW_DATA_UPDATE } from '../constants'
-import type { WorkflowDataUpdator } from '../types'
 import {
+  CUSTOM_NODE, DSL_EXPORT_CHECK,
+  WORKFLOW_DATA_UPDATE,
+} from '../constants'
+import type { Node, WorkflowDataUpdator } from '../types'
+import {
+  getLayoutByDagre,
   initialEdges,
   initialNodes,
 } from '../utils'
 import {
   useNodesReadOnly,
   useSelectionInteractions,
-  useWorkflow,
   useWorkflowReadOnly,
 } from '../hooks'
 import { useEdgesInteractions } from './use-edges-interactions'
 import { useNodesInteractions } from './use-nodes-interactions'
 import { useNodesSyncDraft } from './use-nodes-sync-draft'
+import { WorkflowHistoryEvent, useWorkflowHistory } from './use-workflow-history'
 import { useEventEmitterContextContext } from '@/context/event-emitter'
 import { fetchWorkflowDraft } from '@/service/workflow'
 import { exportAppConfig } from '@/service/apps'
@@ -74,24 +79,73 @@ export const useWorkflowMoveMode = () => {
 }
 
 export const useWorkflowOrganize = () => {
-  const { handleLayout } = useWorkflow()
+  const workflowStore = useWorkflowStore()
+  const store = useStoreApi()
+  const reactflow = useReactFlow()
   const { getNodesReadOnly } = useNodesReadOnly()
+  const { saveStateToHistory } = useWorkflowHistory()
+  const { handleSyncWorkflowDraft } = useNodesSyncDraft()
 
-  const handleGoLayout = useCallback(() => {
+  const handleLayout = useCallback(async () => {
     if (getNodesReadOnly())
       return
+    workflowStore.setState({ nodeAnimation: true })
+    const {
+      getNodes,
+      edges,
+      setNodes,
+    } = store.getState()
+    const { setViewport } = reactflow
+    const nodes = getNodes()
+    const layout = getLayoutByDagre(nodes, edges)
+    const rankMap = {} as Record<string, Node>
 
-    handleLayout()
-  }, [getNodesReadOnly, handleLayout])
+    nodes.forEach((node) => {
+      if (!node.parentId && node.type === CUSTOM_NODE) {
+        const rank = layout.node(node.id).rank!
 
+        if (!rankMap[rank]) {
+          rankMap[rank] = node
+        }
+        else {
+          if (rankMap[rank].position.y > node.position.y)
+            rankMap[rank] = node
+        }
+      }
+    })
+
+    const newNodes = produce(nodes, (draft) => {
+      draft.forEach((node) => {
+        if (!node.parentId && node.type === CUSTOM_NODE) {
+          const nodeWithPosition = layout.node(node.id)
+
+          node.position = {
+            x: nodeWithPosition.x - node.width! / 2,
+            y: nodeWithPosition.y - node.height! / 2 + rankMap[nodeWithPosition.rank!].height! / 2,
+          }
+        }
+      })
+    })
+    setNodes(newNodes)
+    const zoom = 0.7
+    setViewport({
+      x: 0,
+      y: 0,
+      zoom,
+    })
+    saveStateToHistory(WorkflowHistoryEvent.LayoutOrganize)
+    setTimeout(() => {
+      handleSyncWorkflowDraft()
+    })
+  }, [getNodesReadOnly, store, reactflow, workflowStore, handleSyncWorkflowDraft, saveStateToHistory])
   return {
-    handleGoLayout,
+    handleLayout,
   }
 }
 
 export const useWorkflowZoom = () => {
   const { handleSyncWorkflowDraft } = useNodesSyncDraft()
-  const { workflowReadOnly } = useWorkflowReadOnly()
+  const { getWorkflowReadOnly } = useWorkflowReadOnly()
   const {
     zoomIn,
     zoomOut,
@@ -100,44 +154,44 @@ export const useWorkflowZoom = () => {
   } = useReactFlow()
 
   const handleFitView = useCallback(() => {
-    if (workflowReadOnly)
+    if (getWorkflowReadOnly())
       return
 
     fitView()
     handleSyncWorkflowDraft()
-  }, [workflowReadOnly, fitView, handleSyncWorkflowDraft])
+  }, [getWorkflowReadOnly, fitView, handleSyncWorkflowDraft])
 
   const handleBackToOriginalSize = useCallback(() => {
-    if (workflowReadOnly)
+    if (getWorkflowReadOnly())
       return
 
     zoomTo(1)
     handleSyncWorkflowDraft()
-  }, [workflowReadOnly, zoomTo, handleSyncWorkflowDraft])
+  }, [getWorkflowReadOnly, zoomTo, handleSyncWorkflowDraft])
 
   const handleSizeToHalf = useCallback(() => {
-    if (workflowReadOnly)
+    if (getWorkflowReadOnly())
       return
 
     zoomTo(0.5)
     handleSyncWorkflowDraft()
-  }, [workflowReadOnly, zoomTo, handleSyncWorkflowDraft])
+  }, [getWorkflowReadOnly, zoomTo, handleSyncWorkflowDraft])
 
   const handleZoomOut = useCallback(() => {
-    if (workflowReadOnly)
+    if (getWorkflowReadOnly())
       return
 
     zoomOut()
     handleSyncWorkflowDraft()
-  }, [workflowReadOnly, zoomOut, handleSyncWorkflowDraft])
+  }, [getWorkflowReadOnly, zoomOut, handleSyncWorkflowDraft])
 
   const handleZoomIn = useCallback(() => {
-    if (workflowReadOnly)
+    if (getWorkflowReadOnly())
       return
 
     zoomIn()
     handleSyncWorkflowDraft()
-  }, [workflowReadOnly, zoomIn, handleSyncWorkflowDraft])
+  }, [getWorkflowReadOnly, zoomIn, handleSyncWorkflowDraft])
 
   return {
     handleFitView,

@@ -8,7 +8,10 @@ import {
 } from '../store'
 import { BlockEnum } from '../types'
 import { useWorkflowUpdate } from '../hooks'
-import { useNodesReadOnly } from './use-workflow'
+import {
+  useNodesReadOnly,
+  useWorkflowReadOnly,
+} from './use-workflow'
 import { syncWorkflowDraft } from '@/service/workflow'
 import { useFeaturesStore } from '@/app/components/base/features/hooks'
 import { API_PREFIX } from '@/config'
@@ -18,6 +21,7 @@ export const useNodesSyncDraft = () => {
   const workflowStore = useWorkflowStore()
   const featuresStore = useFeaturesStore()
   const { getNodesReadOnly } = useNodesReadOnly()
+  const { getWorkflowReadOnly } = useWorkflowReadOnly()
   const { handleRefreshWorkflowDraft } = useWorkflowUpdate()
   const debouncedSyncWorkflowDraft = useStore(s => s.debouncedSyncWorkflowDraft)
   const params = useParams()
