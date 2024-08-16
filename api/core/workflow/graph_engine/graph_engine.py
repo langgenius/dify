@@ -320,14 +320,18 @@ class GraphEngine:
                                 break
 
                             yield event
-                            if isinstance(event, ParallelBranchRunSucceededEvent):
-                                succeeded_count += 1
-                                if succeeded_count == len(threads):
-                                    q.put(None)
+                            if isinstance(event, NodeRunSucceededEvent) and event.node_data.title == 'LLM 4':
+                                print("LLM 4 succeeded")
 
-                                continue
-                            elif isinstance(event, ParallelBranchRunFailedEvent):
-                                raise GraphRunFailedError(event.error)
+                            if event.parallel_id == parallel_id:
+                                if isinstance(event, ParallelBranchRunSucceededEvent):
+                                    succeeded_count += 1
+                                    if succeeded_count == len(threads):
+                                        q.put(None)
+
+                                    continue
+                                elif isinstance(event, ParallelBranchRunFailedEvent):
+                                    raise GraphRunFailedError(event.error)
                         except queue.Empty:
                             continue
 
