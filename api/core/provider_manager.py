@@ -284,6 +284,9 @@ class ProviderManager:
             only_active=False
         )
 
+        if not all_models:
+            raise ValueError(f"No available model for model type {model_type}.")
+
         return all_models[0].provider.provider, all_models[0].model
 
     def update_default_model_record(self, tenant_id: str, model_type: ModelType, provider: str, model: str) \
