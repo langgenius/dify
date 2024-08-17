@@ -1,5 +1,4 @@
 from typing import Any
-import tiktoken
 
 from core.helper import ssrf_proxy
 from core.tools.entities.tool_entities import ToolInvokeMessage
