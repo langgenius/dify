@@ -681,7 +681,7 @@ class ProviderManager:
         # Convert provider_records to dict
         quota_type_to_provider_records_dict = {}
         for provider_record in provider_records:
-            if provider_record.provider_type != ProviderType.SYSTEM.value:
+            if provider_record.provider_type != ProviderType.SYSTEM.value and provider_record.quota_type != ProviderQuotaType.PAID.value:
                 continue
 
             quota_type_to_provider_records_dict[ProviderQuotaType.value_of(provider_record.quota_type)] \
@@ -829,7 +829,7 @@ class ProviderManager:
             -> list[ModelSettings]:
         """
         Convert to model settings.
-
+        :param provider_entity: provider entity
         :param provider_model_settings: provider model settings include enabled, load balancing enabled
         :param load_balancing_model_configs: load balancing model configs
         :return:
