@@ -7,13 +7,11 @@ import produce from 'immer'
 import {
   RiDeleteBinLine,
   RiHammerFill,
-  RiQuestionLine,
 } from '@remixicon/react'
 import { useFormattingChangedDispatcher } from '../../../debug/hooks'
 import SettingBuiltInTool from './setting-built-in-tool'
 import cn from '@/utils/classnames'
 import Panel from '@/app/components/app/configuration/base/feature-panel'
-import Tooltip from '@/app/components/base/tooltip'
 import { InfoCircle } from '@/app/components/base/icons/src/vender/line/general'
 import OperationBtn from '@/app/components/app/configuration/base/operation-btn'
 import AppIcon from '@/app/components/base/app-icon'
@@ -23,7 +21,7 @@ import type { AgentTool } from '@/types/app'
 import { type Collection, CollectionType } from '@/app/components/tools/types'
 import { MAX_TOOLS_NUM } from '@/config'
 import { AlertTriangle } from '@/app/components/base/icons/src/vender/solid/alertsAndFeedback'
-import TooltipPlus from '@/app/components/base/tooltip-plus'
+import Tooltip from '@/app/components/base/tooltip'
 import { DefaultToolIcon } from '@/app/components/base/icons/src/public/other'
 import AddToolModal from '@/app/components/tools/add-tool-modal'
 
@@ -68,11 +66,13 @@ const AgentTools: FC = () => {
         title={
           <div className='flex items-center'>
             <div className='mr-1'>{t('appDebug.agent.tools.name')}</div>
-            <Tooltip htmlContent={<div className='w-[180px]'>
-              {t('appDebug.agent.tools.description')}
-            </div>} selector='config-tools-tooltip'>
-              <RiQuestionLine className='w-[14px] h-[14px] text-gray-400' />
-            </Tooltip>
+            <Tooltip
+              popupContent={
+                <div className='w-[180px]'>
+                  {t('appDebug.agent.tools.description')}
+                </div>
+              }
+            />
           </div>
         }
         headerRight={
@@ -119,19 +119,20 @@ const AgentTools: FC = () => {
                   className={cn((item.isDeleted || item.notAuthor) ? 'line-through opacity-50' : '', 'grow w-0 ml-2 leading-[18px] text-[13px] font-medium text-gray-800  truncate')}
                 >
                   <span className='text-gray-800 pr-2'>{item.provider_type === CollectionType.builtIn ? item.provider_name : item.tool_label}</span>
-                  <TooltipPlus
+                  <Tooltip
                     popupContent={t('tools.toolNameUsageTip')}
                   >
                     <span className='text-gray-500'>{item.tool_name}</span>
-                  </TooltipPlus>
+                  </Tooltip>
                 </div>
               </div>
               <div className='shrink-0 ml-1 flex items-center'>
                 {(item.isDeleted || item.notAuthor)
                   ? (
                     <div className='flex items-center'>
-                      <TooltipPlus
+                      <Tooltip
                         popupContent={t(`tools.${item.isDeleted ? 'toolRemoved' : 'notAuthorized'}`)}
+                        needsDelay
                       >
                         <div className='mr-1 p-1 rounded-md hover:bg-black/5  cursor-pointer' onClick={() => {
                           if (item.notAuthor)
@@ -139,7 +140,7 @@ const AgentTools: FC = () => {
                         }}>
                           <AlertTriangle className='w-4 h-4 text-[#F79009]' />
                         </div>
-                      </TooltipPlus>
+                      </Tooltip>
 
                       <div className='p-1 rounded-md hover:bg-black/5 cursor-pointer' onClick={() => {
                         const newModelConfig = produce(modelConfig, (draft) => {
@@ -155,16 +156,17 @@ const AgentTools: FC = () => {
                   )
                   : (
                     <div className='hidden group-hover:flex items-center'>
-                      <TooltipPlus
+                      <Tooltip
                         popupContent={t('tools.setBuiltInTools.infoAndSetting')}
+                        needsDelay
                       >
-                        <div className='mr-1 p-1 rounded-md hover:bg-black/5  cursor-pointer' onClick={() => {
+                        <div className='p-1 rounded-md hover:bg-black/5  cursor-pointer' onClick={() => {
                           setCurrentTool(item)
                           setIsShowSettingTool(true)
                         }}>
                           <InfoCircle className='w-4 h-4 text-gray-500' />
                         </div>
-                      </TooltipPlus>
+                      </Tooltip>
 
                       <div className='p-1 rounded-md hover:bg-black/5 cursor-pointer' onClick={() => {
                         const newModelConfig = produce(modelConfig, (draft) => {

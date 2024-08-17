@@ -169,7 +169,7 @@ const EditCustomCollectionModal: FC<Props> = ({
       return ''
 
     try {
-      const path = new URL(url).pathname
+      const path = decodeURI(new URL(url).pathname)
       return path || ''
     }
     catch (e) {

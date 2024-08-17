@@ -549,13 +549,15 @@ class DatasetRetrievalSettingApi(Resource):
     def get(self):
         vector_type = dify_config.VECTOR_STORE
         match vector_type:
-            case VectorType.MILVUS | VectorType.RELYT | VectorType.PGVECTOR | VectorType.TIDB_VECTOR | VectorType.CHROMA | VectorType.TENCENT:
+            case VectorType.MILVUS | VectorType.RELYT | VectorType.PGVECTOR | VectorType.TIDB_VECTOR \
+                 | VectorType.CHROMA | VectorType.TENCENT:
                 return {
                     'retrieval_method': [
                         RetrievalMethod.SEMANTIC_SEARCH.value
                     ]
                 }
-            case VectorType.QDRANT | VectorType.WEAVIATE | VectorType.OPENSEARCH | VectorType.ANALYTICDB | VectorType.MYSCALE | VectorType.ORACLE | VectorType.ELASTICSEARCH:
+            case VectorType.QDRANT | VectorType.WEAVIATE | VectorType.OPENSEARCH | (
+            VectorType.ANALYTICDB) | VectorType.MYSCALE | VectorType.ORACLE | VectorType.TIDB_ON_QDRANT | VectorType.ELASTICSEARCH:
                 return {
                     'retrieval_method': [
                         RetrievalMethod.SEMANTIC_SEARCH.value,

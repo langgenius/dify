@@ -1,10 +1,6 @@
 import React from 'react'
-import {
-  InformationCircleIcon,
-} from '@heroicons/react/24/outline'
-import Tooltip from '../base/tooltip'
 import AppIcon from '../base/app-icon'
-import { randomString } from '@/utils'
+import Tooltip from '@/app/components/base/tooltip'
 
 export type IAppBasicProps = {
   iconType?: 'app' | 'api' | 'dataset' | 'webapp' | 'notion'
@@ -74,9 +70,17 @@ export default function AppBasic({ icon, icon_background, name, type, hoverTip, 
         <div className={`flex flex-row items-center text-sm font-semibold text-gray-700 group-hover:text-gray-900 break-all ${textStyle?.main ?? ''}`}>
           {name}
           {hoverTip
-            && <Tooltip content={hoverTip} selector={`a${randomString(16)}`}>
-              <InformationCircleIcon className='w-4 h-4 ml-1 text-gray-400' />
-            </Tooltip>}
+            && <Tooltip
+              popupContent={
+                <div className='w-[240px]'>
+                  {hoverTip}
+                </div>
+              }
+              popupClassName='ml-1'
+              triggerClassName='w-4 h-4 ml-1'
+              position='top'
+            />
+          }
         </div>
         <div className={`text-xs font-normal text-gray-500 group-hover:text-gray-700 break-all ${textStyle?.extra ?? ''}`}>{type}</div>
       </div>}
