@@ -14,7 +14,7 @@ class ModelConfig(BaseModel):
     features: list[ModelFeature]
 
 
-ModelConfigs: dict[str, ModelConfig] = {
+configs: dict[str, ModelConfig] = {
     'Doubao-pro-4k': ModelConfig(
         properties=ModelProperties(context_size=4096, max_tokens=4096, mode=LLMMode.CHAT),
         features=[ModelFeature.TOOL_CALL]
@@ -79,7 +79,7 @@ ModelConfigs: dict[str, ModelConfig] = {
 
 def get_model_config(credentials: dict)->ModelConfig:
     base_model = credentials.get('base_model_name', '')
-    model_configs = ModelConfigs.get(base_model)
+    model_configs = configs.get(base_model)
     if not model_configs:
         return ModelConfig(
                 properties=ModelProperties(
