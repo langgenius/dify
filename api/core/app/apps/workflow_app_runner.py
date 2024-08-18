@@ -199,6 +199,8 @@ class WorkflowBasedAppRunner(AppRunner):
                     node_data=event.node_data,
                     parallel_id=event.parallel_id,
                     parallel_start_node_id=event.parallel_start_node_id,
+                    parent_parallel_id=event.parent_parallel_id,
+                    parent_parallel_start_node_id=event.parent_parallel_start_node_id,
                     start_at=event.route_node_state.start_at,
                     node_run_index=event.route_node_state.index,
                     predecessor_node_id=event.predecessor_node_id
@@ -213,6 +215,8 @@ class WorkflowBasedAppRunner(AppRunner):
                     node_data=event.node_data,
                     parallel_id=event.parallel_id,
                     parallel_start_node_id=event.parallel_start_node_id,
+                    parent_parallel_id=event.parent_parallel_id,
+                    parent_parallel_start_node_id=event.parent_parallel_start_node_id,
                     start_at=event.route_node_state.start_at,
                     inputs=event.route_node_state.node_run_result.inputs
                     if event.route_node_state.node_run_result else {},
@@ -233,6 +237,8 @@ class WorkflowBasedAppRunner(AppRunner):
                     node_data=event.node_data,
                     parallel_id=event.parallel_id,
                     parallel_start_node_id=event.parallel_start_node_id,
+                    parent_parallel_id=event.parent_parallel_id,
+                    parent_parallel_start_node_id=event.parent_parallel_start_node_id,
                     start_at=event.route_node_state.start_at,
                     inputs=event.route_node_state.node_run_result.inputs
                     if event.route_node_state.node_run_result else {},
@@ -263,6 +269,8 @@ class WorkflowBasedAppRunner(AppRunner):
                 QueueParallelBranchRunStartedEvent(
                     parallel_id=event.parallel_id,
                     parallel_start_node_id=event.parallel_start_node_id,
+                    parent_parallel_id=event.parent_parallel_id,
+                    parent_parallel_start_node_id=event.parent_parallel_start_node_id,
                     in_iteration_id=event.in_iteration_id
                 )
             )
@@ -271,6 +279,8 @@ class WorkflowBasedAppRunner(AppRunner):
                 QueueParallelBranchRunSucceededEvent(
                     parallel_id=event.parallel_id,
                     parallel_start_node_id=event.parallel_start_node_id,
+                    parent_parallel_id=event.parent_parallel_id,
+                    parent_parallel_start_node_id=event.parent_parallel_start_node_id,
                     in_iteration_id=event.in_iteration_id
                 )
             )
@@ -279,6 +289,8 @@ class WorkflowBasedAppRunner(AppRunner):
                 QueueParallelBranchRunFailedEvent(
                     parallel_id=event.parallel_id,
                     parallel_start_node_id=event.parallel_start_node_id,
+                    parent_parallel_id=event.parent_parallel_id,
+                    parent_parallel_start_node_id=event.parent_parallel_start_node_id,
                     in_iteration_id=event.in_iteration_id,
                     error=event.error
                 )
@@ -292,6 +304,8 @@ class WorkflowBasedAppRunner(AppRunner):
                     node_data=event.iteration_node_data,
                     parallel_id=event.parallel_id,
                     parallel_start_node_id=event.parallel_start_node_id,
+                    parent_parallel_id=event.parent_parallel_id,
+                    parent_parallel_start_node_id=event.parent_parallel_start_node_id,
                     start_at=event.start_at,
                     node_run_index=workflow_entry.graph_engine.graph_runtime_state.node_run_steps,
                     inputs=event.inputs,
@@ -308,6 +322,8 @@ class WorkflowBasedAppRunner(AppRunner):
                     node_data=event.iteration_node_data,
                     parallel_id=event.parallel_id,
                     parallel_start_node_id=event.parallel_start_node_id,
+                    parent_parallel_id=event.parent_parallel_id,
+                    parent_parallel_start_node_id=event.parent_parallel_start_node_id,
                     index=event.index,
                     node_run_index=workflow_entry.graph_engine.graph_runtime_state.node_run_steps,
                     output=event.pre_iteration_output,
@@ -322,6 +338,8 @@ class WorkflowBasedAppRunner(AppRunner):
                     node_data=event.iteration_node_data,
                     parallel_id=event.parallel_id,
                     parallel_start_node_id=event.parallel_start_node_id,
+                    parent_parallel_id=event.parent_parallel_id,
+                    parent_parallel_start_node_id=event.parent_parallel_start_node_id,
                     start_at=event.start_at,
                     node_run_index=workflow_entry.graph_engine.graph_runtime_state.node_run_steps,
                     inputs=event.inputs,

@@ -55,8 +55,6 @@ class AnswerStreamProcessor(StreamProcessor):
                     yield event
             elif isinstance(event, NodeRunSucceededEvent):
                 yield event
-                if event.node_data.title == 'LLM 4':
-                    print("LLM 4 succeeded1")
                 if event.route_node_state.node_id in self.current_stream_chunk_generating_node_ids:
                     # update self.route_position after all stream event finished
                     for answer_node_id in self.current_stream_chunk_generating_node_ids[event.route_node_state.node_id]:

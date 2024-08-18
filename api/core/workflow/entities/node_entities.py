@@ -58,6 +58,8 @@ class NodeRunMetadataKey(Enum):
     ITERATION_INDEX = 'iteration_index'
     PARALLEL_ID = 'parallel_id'
     PARALLEL_START_NODE_ID = 'parallel_start_node_id'
+    PARENT_PARALLEL_ID = 'parent_parallel_id'
+    PARENT_PARALLEL_START_NODE_ID = 'parent_parallel_start_node_id'
 
 
 class NodeRunResult(BaseModel):

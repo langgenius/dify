@@ -219,6 +219,8 @@ class NodeStartStreamResponse(StreamResponse):
         inputs: Optional[dict] = None
         created_at: int
         extras: dict = {}
+        parallel_id: Optional[str] = None
+        parallel_start_node_id: Optional[str] = None
 
     event: StreamEvent = StreamEvent.NODE_STARTED
     workflow_run_id: str
@@ -238,7 +240,9 @@ class NodeStartStreamResponse(StreamResponse):
                 "predecessor_node_id": self.data.predecessor_node_id,
                 "inputs": None,
                 "created_at": self.data.created_at,
-                "extras": {}
+                "extras": {},
+                "parallel_id": self.data.parallel_id,
+                "parallel_start_node_id": self.data.parallel_start_node_id,
             }
         }
 
@@ -268,6 +272,8 @@ class NodeFinishStreamResponse(StreamResponse):
         created_at: int
         finished_at: int
         files: Optional[list[dict]] = []
+        parallel_id: Optional[str] = None
+        parallel_start_node_id: Optional[str] = None
 
     event: StreamEvent = StreamEvent.NODE_FINISHED
     workflow_run_id: str
@@ -294,7 +300,9 @@ class NodeFinishStreamResponse(StreamResponse):
                 "execution_metadata": None,
                 "created_at": self.data.created_at,
                 "finished_at": self.data.finished_at,
-                "files": []
+                "files": [],
+                "parallel_id": self.data.parallel_id,
+                "parallel_start_node_id": self.data.parallel_start_node_id,
             }
         }
     
@@ -310,6 +318,8 @@ class ParallelBranchStartStreamResponse(StreamResponse):
         """
         parallel_id: str
         parallel_branch_id: str
+        parent_parallel_id: Optional[str] = None
+        parent_parallel_start_node_id: Optional[str] = None
         iteration_id: Optional[str] = None
         created_at: int
 
@@ -329,6 +339,8 @@ class ParallelBranchFinishedStreamResponse(StreamResponse):
         """
         parallel_id: str
         parallel_branch_id: str
+        parent_parallel_id: Optional[str] = None
+        parent_parallel_start_node_id: Optional[str] = None
         iteration_id: Optional[str] = None
         status: str
         error: Optional[str] = None
@@ -356,6 +368,8 @@ class IterationNodeStartStreamResponse(StreamResponse):
         extras: dict = {}
         metadata: dict = {}
         inputs: dict = {}
+        parallel_id: Optional[str] = None
+        parallel_start_node_id: Optional[str] = None
 
     event: StreamEvent = StreamEvent.ITERATION_STARTED
     workflow_run_id: str
@@ -379,6 +393,8 @@ class IterationNodeNextStreamResponse(StreamResponse):
         created_at: int
         pre_iteration_output: Optional[Any] = None
         extras: dict = {}
+        parallel_id: Optional[str] = None
+        parallel_start_node_id: Optional[str] = None
 
     event: StreamEvent = StreamEvent.ITERATION_NEXT
     workflow_run_id: str
@@ -409,6 +425,8 @@ class IterationNodeCompletedStreamResponse(StreamResponse):
         execution_metadata: Optional[dict] = None
         finished_at: int
         steps: int
+        parallel_id: Optional[str] = None
+        parallel_start_node_id: Optional[str] = None
 
     event: StreamEvent = StreamEvent.ITERATION_COMPLETED
     workflow_run_id: str

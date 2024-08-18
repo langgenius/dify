@@ -390,6 +390,8 @@ class WorkflowCycleManage:
                 predecessor_node_id=workflow_node_execution.predecessor_node_id,
                 inputs=workflow_node_execution.inputs_dict,
                 created_at=int(workflow_node_execution.created_at.timestamp()),
+                parallel_id=event.parallel_id,
+                parallel_start_node_id=event.parallel_start_node_id,
             ),
         )
 
@@ -405,10 +407,14 @@ class WorkflowCycleManage:
         return response
 
     def _workflow_node_finish_to_stream_response(
-        self, task_id: str, workflow_node_execution: WorkflowNodeExecution
+        self, 
+        event: QueueNodeSucceededEvent | QueueNodeFailedEvent, 
+        task_id: str, 
+        workflow_node_execution: WorkflowNodeExecution
     ) -> Optional[NodeFinishStreamResponse]:
         """
         Workflow node finish to stream response.
+        :param event: queue node succeeded or failed event
         :param task_id: task id
         :param workflow_node_execution: workflow node execution
         :return:
@@ -436,6 +442,8 @@ class WorkflowCycleManage:
                 created_at=int(workflow_node_execution.created_at.timestamp()),
                 finished_at=int(workflow_node_execution.finished_at.timestamp()),
                 files=self._fetch_files_from_node_outputs(workflow_node_execution.outputs_dict or {}),
+                parallel_id=event.parallel_id,
+                parallel_start_node_id=event.parallel_start_node_id,
             ),
         )
     
@@ -458,6 +466,8 @@ class WorkflowCycleManage:
             data=ParallelBranchStartStreamResponse.Data(
                 parallel_id=event.parallel_id,
                 parallel_branch_id=event.parallel_start_node_id,
+                parent_parallel_id=event.parent_parallel_id,
+                parent_parallel_start_node_id=event.parent_parallel_start_node_id,
                 iteration_id=event.in_iteration_id,
                 created_at=int(time.time()),
             )
@@ -482,6 +492,8 @@ class WorkflowCycleManage:
             data=ParallelBranchFinishedStreamResponse.Data(
                 parallel_id=event.parallel_id,
                 parallel_branch_id=event.parallel_start_node_id,
+                parent_parallel_id=event.parent_parallel_id,
+                parent_parallel_start_node_id=event.parent_parallel_start_node_id,
                 iteration_id=event.in_iteration_id,
                 status='succeeded' if isinstance(event, QueueParallelBranchRunSucceededEvent) else 'failed',
                 error=event.error if isinstance(event, QueueParallelBranchRunFailedEvent) else None,
@@ -513,7 +525,9 @@ class WorkflowCycleManage:
                 created_at=int(time.time()),
                 extras={},
                 inputs=event.inputs or {},
-                metadata=event.metadata or {}
+                metadata=event.metadata or {},
+                parallel_id=event.parallel_id,
+                parallel_start_node_id=event.parallel_start_node_id,
             )
         )
 
@@ -536,7 +550,9 @@ class WorkflowCycleManage:
                 index=event.index,
                 pre_iteration_output=event.output,
                 created_at=int(time.time()),
-                extras={}
+                extras={},
+                parallel_id=event.parallel_id,
+                parallel_start_node_id=event.parallel_start_node_id,
             )
         )
 
@@ -566,7 +582,9 @@ class WorkflowCycleManage:
                 total_tokens=event.metadata.get('total_tokens', 0) if event.metadata else 0,
                 execution_metadata=event.metadata,
                 finished_at=int(time.time()),
-                steps=event.steps
+                steps=event.steps,
+                parallel_id=event.parallel_id,
+                parallel_start_node_id=event.parallel_start_node_id,
             )
         )
 

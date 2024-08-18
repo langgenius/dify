@@ -69,6 +69,10 @@ class QueueIterationStartEvent(AppQueueEvent):
     """parallel id if node is in parallel"""
     parallel_start_node_id: Optional[str] = None
     """parallel start node id if node is in parallel"""
+    parent_parallel_id: Optional[str] = None
+    """parent parallel id if node is in parallel"""
+    parent_parallel_start_node_id: Optional[str] = None
+    """parent parallel start node id if node is in parallel"""
     start_at: datetime
 
     node_run_index: int
@@ -91,6 +95,10 @@ class QueueIterationNextEvent(AppQueueEvent):
     """parallel id if node is in parallel"""
     parallel_start_node_id: Optional[str] = None
     """parallel start node id if node is in parallel"""
+    parent_parallel_id: Optional[str] = None
+    """parent parallel id if node is in parallel"""
+    parent_parallel_start_node_id: Optional[str] = None
+    """parent parallel start node id if node is in parallel"""
 
     node_run_index: int
     output: Optional[Any] = None # output for the current iteration
@@ -121,6 +129,10 @@ class QueueIterationCompletedEvent(AppQueueEvent):
     """parallel id if node is in parallel"""
     parallel_start_node_id: Optional[str] = None
     """parallel start node id if node is in parallel"""
+    parent_parallel_id: Optional[str] = None
+    """parent parallel id if node is in parallel"""
+    parent_parallel_start_node_id: Optional[str] = None
+    """parent parallel start node id if node is in parallel"""
     start_at: datetime
     
     node_run_index: int
@@ -227,6 +239,10 @@ class QueueNodeStartedEvent(AppQueueEvent):
     """parallel id if node is in parallel"""
     parallel_start_node_id: Optional[str] = None
     """parallel start node id if node is in parallel"""
+    parent_parallel_id: Optional[str] = None
+    """parent parallel id if node is in parallel"""
+    parent_parallel_start_node_id: Optional[str] = None
+    """parent parallel start node id if node is in parallel"""
     start_at: datetime
 
 
@@ -244,6 +260,10 @@ class QueueNodeSucceededEvent(AppQueueEvent):
     """parallel id if node is in parallel"""
     parallel_start_node_id: Optional[str] = None
     """parallel start node id if node is in parallel"""
+    parent_parallel_id: Optional[str] = None
+    """parent parallel id if node is in parallel"""
+    parent_parallel_start_node_id: Optional[str] = None
+    """parent parallel start node id if node is in parallel"""
     start_at: datetime
 
     inputs: Optional[dict[str, Any]] = None
@@ -268,6 +288,10 @@ class QueueNodeFailedEvent(AppQueueEvent):
     """parallel id if node is in parallel"""
     parallel_start_node_id: Optional[str] = None
     """parallel start node id if node is in parallel"""
+    parent_parallel_id: Optional[str] = None
+    """parent parallel id if node is in parallel"""
+    parent_parallel_start_node_id: Optional[str] = None
+    """parent parallel start node id if node is in parallel"""
     start_at: datetime
 
     inputs: Optional[dict[str, Any]] = None
@@ -370,6 +394,10 @@ class QueueParallelBranchRunStartedEvent(AppQueueEvent):
 
     parallel_id: str
     parallel_start_node_id: str
+    parent_parallel_id: Optional[str] = None
+    """parent parallel id if node is in parallel"""
+    parent_parallel_start_node_id: Optional[str] = None
+    """parent parallel start node id if node is in parallel"""
     in_iteration_id: Optional[str] = None
     """iteration id if node is in iteration"""
 
@@ -382,6 +410,10 @@ class QueueParallelBranchRunSucceededEvent(AppQueueEvent):
 
     parallel_id: str
     parallel_start_node_id: str
+    parent_parallel_id: Optional[str] = None
+    """parent parallel id if node is in parallel"""
+    parent_parallel_start_node_id: Optional[str] = None
+    """parent parallel start node id if node is in parallel"""
     in_iteration_id: Optional[str] = None
     """iteration id if node is in iteration"""
 
@@ -394,6 +426,10 @@ class QueueParallelBranchRunFailedEvent(AppQueueEvent):
 
     parallel_id: str
     parallel_start_node_id: str
+    parent_parallel_id: Optional[str] = None
+    """parent parallel id if node is in parallel"""
+    parent_parallel_start_node_id: Optional[str] = None
+    """parent parallel start node id if node is in parallel"""
     in_iteration_id: Optional[str] = None
     """iteration id if node is in iteration"""
     error: str
