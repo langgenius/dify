@@ -244,7 +244,7 @@ class VolcengineMaaSLargeLanguageModel(LargeLanguageModel):
 
         model_properties = {}
         model_properties[ModelPropertyKey.CONTEXT_SIZE] = model_config.properties.context_size
-        model_properties[ModelPropertyKey.MODE] = model_config.properties.mode
+        model_properties[ModelPropertyKey.MODE] = model_config.properties.mode.value
        
         entity = AIModelEntity(
             model=model,
