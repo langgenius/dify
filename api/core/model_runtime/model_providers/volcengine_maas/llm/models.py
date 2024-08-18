@@ -95,7 +95,7 @@ def get_model_config(credentials: dict)->ModelConfig:
 def get_v2_req_params(credentials: dict, model_parameters: dict, 
                       stop: list[str] | None=None):
     req_params = {}
-    # predefined propeties
+    # predefined properties
     model_configs = get_model_config(credentials)
     if model_configs:
         req_params['max_prompt_tokens'] = model_configs.properties.context_size
