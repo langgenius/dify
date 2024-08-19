@@ -51,6 +51,10 @@ export const useWorkflowInteractions = () => {
 }
 
 export const useWorkflowMoveMode = () => {
+  const enum ControlMode {
+    Pointer = 'pointer',
+    Hand = 'hand',
+  }
   const setControlMode = useStore(s => s.setControlMode)
   const {
     getNodesReadOnly,
@@ -61,14 +65,14 @@ export const useWorkflowMoveMode = () => {
     if (getNodesReadOnly())
       return
 
-    setControlMode('pointer')
+    setControlMode(ControlMode.Pointer)
   }, [getNodesReadOnly, setControlMode])
 
   const handleModeHand = useCallback(() => {
     if (getNodesReadOnly())
       return
 
-    setControlMode('hand')
+    setControlMode(ControlMode.Hand)
     handleSelectionCancel()
   }, [getNodesReadOnly, setControlMode, handleSelectionCancel])
 

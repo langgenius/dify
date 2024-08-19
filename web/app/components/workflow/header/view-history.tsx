@@ -71,6 +71,9 @@ const ViewHistory = ({
 
   const data = isChatMode ? chatList : runList
   const isLoading = isChatMode ? chatListLoading : runListLoading
+  enum ControlMode {
+    HAND = 'hand',
+  }
 
   return (
     (
@@ -174,7 +177,7 @@ const ViewHistory = ({
                           setOpen(false)
                           handleNodesCancelSelected()
                           handleCancelDebugAndPreviewPanel()
-                          setControlMode('hand')
+                          setControlMode(ControlMode.HAND)
                         }}
                       >
                         {
