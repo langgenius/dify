@@ -73,8 +73,8 @@ const Logs: FC<ILogsProps> = ({ appDetail }) => {
 
   return (
     <div className='flex flex-col h-full'>
-      <h1 className='text-md font-semibold text-gray-900'>{t('appLog.workflowTitle')}</h1>
-      <p className='flex text-sm font-normal text-gray-500'>{t('appLog.workflowSubtitle')}</p>
+      <h1 className='text-text-primary system-xl-semibold'>{t('appLog.workflowTitle')}</h1>
+      <p className='text-text-tertiary system-sm-regular'>{t('appLog.workflowSubtitle')}</p>
       <div className='flex flex-col py-4 flex-1'>
         <Filter queryParams={queryParams} setQueryParams={setQueryParams} />
         {/* workflow log */}
