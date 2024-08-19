@@ -1,12 +1,10 @@
-"use client";
-
 import React from "react";
 import Navbar from "./navbar";
 import SiteLogo from "@/app/components/base/logo/logo-site";
 import FeatureSection from "./feature-section";
 import FeatCard from "./feat-card";
 import UseCaseCard from "./use-case-card";
-import { Integration } from "./intergration-animation";
+import { Integration } from "./integration-animation";
 import ShimmerButton from "@/app/components/shimmer";
 import { Testimonial } from "./testimonials";
 import Image from "next/image";
