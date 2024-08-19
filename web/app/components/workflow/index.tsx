@@ -33,6 +33,9 @@ import type {
   EnvironmentVariable,
   Node,
 } from './types'
+import {
+  ControlMode,
+} from './types'
 import { WorkflowContextProvider } from './context'
 import {
   useDSL,
@@ -345,14 +348,14 @@ const Workflow: FC<WorkflowProps> = memo(({
         nodesConnectable={!nodesReadOnly}
         nodesFocusable={!nodesReadOnly}
         edgesFocusable={!nodesReadOnly}
-        panOnDrag={controlMode === 'hand' && !workflowReadOnly}
+        panOnDrag={controlMode === ControlMode.Hand && !workflowReadOnly}
         zoomOnPinch={!workflowReadOnly}
         zoomOnScroll={!workflowReadOnly}
         zoomOnDoubleClick={!workflowReadOnly}
         isValidConnection={isValidConnection}
         selectionKeyCode={null}
         selectionMode={SelectionMode.Partial}
-        selectionOnDrag={controlMode === 'pointer' && !workflowReadOnly}
+        selectionOnDrag={controlMode === ControlMode.Pointer && !workflowReadOnly}
         minZoom={0.25}
       >
         <Background

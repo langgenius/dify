@@ -14,6 +14,9 @@ import {
   useWorkflowMoveMode,
   useWorkflowOrganize,
 } from '../hooks'
+import {
+  ControlMode,
+} from '../types'
 import { useStore } from '../store'
 import AddBlock from './add-block'
 import TipPopup from './tip-popup'
@@ -58,7 +61,7 @@ const Control = () => {
         <div
           className={cn(
             'flex items-center justify-center mr-[1px] w-8 h-8 rounded-lg cursor-pointer',
-            controlMode === 'pointer' ? 'bg-primary-50 text-primary-600' : 'hover:bg-black/5 hover:text-gray-700',
+            controlMode === ControlMode.Pointer ? 'bg-primary-50 text-primary-600' : 'hover:bg-black/5 hover:text-gray-700',
             `${nodesReadOnly && '!cursor-not-allowed opacity-50'}`,
           )}
           onClick={handleModePointer}
@@ -70,7 +73,7 @@ const Control = () => {
         <div
           className={cn(
             'flex items-center justify-center w-8 h-8 rounded-lg cursor-pointer',
-            controlMode === 'hand' ? 'bg-primary-50 text-primary-600' : 'hover:bg-black/5 hover:text-gray-700',
+            controlMode === ControlMode.Hand ? 'bg-primary-50 text-primary-600' : 'hover:bg-black/5 hover:text-gray-700',
             `${nodesReadOnly && '!cursor-not-allowed opacity-50'}`,
           )}
           onClick={handleModeHand}

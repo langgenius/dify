@@ -11,6 +11,7 @@ import {
   WORKFLOW_DATA_UPDATE,
 } from '../constants'
 import type { Node, WorkflowDataUpdator } from '../types'
+import { ControlMode } from '../types'
 import {
   getLayoutByDagre,
   initialEdges,
@@ -51,10 +52,6 @@ export const useWorkflowInteractions = () => {
 }
 
 export const useWorkflowMoveMode = () => {
-  const enum ControlMode {
-    Pointer = 'pointer',
-    Hand = 'hand',
-  }
   const setControlMode = useStore(s => s.setControlMode)
   const {
     getNodesReadOnly,
