@@ -68,21 +68,28 @@ const ConditionItem = ({
 
   const [isHovered, setIsHovered] = useState(false)
 
+  const doUpdateCondition = useCallback((newCondition: Condition) => {
+    if (isSubVariableKey)
+      onUpdateSubVariableCondition?.(caseId, conditionId, condition.id, newCondition)
+    else
+      onUpdateCondition(caseId, condition.id, newCondition)
+  }, [caseId, condition, conditionId, isSubVariableKey, onUpdateCondition, onUpdateSubVariableCondition])
+
   const handleUpdateConditionOperator = useCallback((value: ComparisonOperator) => {
     const newCondition = {
       ...condition,
       comparison_operator: value,
     }
-    onUpdateCondition(caseId, condition.id, newCondition)
-  }, [caseId, condition, onUpdateCondition])
+    doUpdateCondition(newCondition)
+  }, [condition, doUpdateCondition])
 
   const handleUpdateConditionValue = useCallback((value: string) => {
     const newCondition = {
       ...condition,
       value,
     }
-    onUpdateCondition(caseId, condition.id, newCondition)
-  }, [caseId, condition, onUpdateCondition])
+    doUpdateCondition(newCondition)
+  }, [condition, doUpdateCondition])
 
   const handleUpdateConditionNumberVarType = useCallback((numberVarType: NumberVarType) => {
     const newCondition = {

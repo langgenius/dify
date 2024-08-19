@@ -40,8 +40,8 @@ type Props = {
 
 const ConditionWrap: FC<Props> = ({
   isSubVariable,
-  caseId: conditionParentCaseId,
-  conditionId: parentConditionId,
+  caseId,
+  conditionId,
   nodeId: id,
   cases = [],
   readOnly,
@@ -118,8 +118,8 @@ const ConditionWrap: FC<Props> = ({
                       <ConditionList
                         disabled={readOnly}
                         caseItem={item}
-                        caseId={isSubVariable ? conditionParentCaseId! : item.case_id}
-                        conditionId={parentConditionId}
+                        caseId={isSubVariable ? caseId! : item.case_id}
+                        conditionId={conditionId}
                         onUpdateCondition={handleUpdateCondition}
                         onRemoveCondition={handleRemoveCondition}
                         onUpdateConditionLogicalOperator={handleUpdateConditionLogicalOperator}
@@ -146,7 +146,7 @@ const ConditionWrap: FC<Props> = ({
                       <Button
                         size='small'
                         disabled={readOnly}
-                        onClick={() => handleAddSubVariableCondition?.(conditionParentCaseId!, parentConditionId!)}
+                        onClick={() => handleAddSubVariableCondition?.(caseId!, conditionId!)}
                       >
                         <RiAddLine className='mr-1 w-3.5 h-3.5' />
                         {t('workflow.nodes.ifElse.addSubVariable')}
@@ -190,7 +190,7 @@ const ConditionWrap: FC<Props> = ({
         <Button
           size='small'
           disabled={readOnly}
-          onClick={() => handleAddSubVariableCondition?.(conditionParentCaseId!, parentConditionId!)}
+          onClick={() => handleAddSubVariableCondition?.(caseId!, conditionId!)}
         >
           <RiAddLine className='mr-1 w-3.5 h-3.5' />
           {t('workflow.nodes.ifElse.addSubVariable')}
