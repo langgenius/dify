@@ -15,6 +15,7 @@ from sqlalchemy import desc, asc
 
 
 class ConversationService:
+
     @classmethod
     def pagination_by_last_id(cls, app_model: App, user: Optional[Union[Account, EndUser]],
                               last_id: Optional[str], limit: int,

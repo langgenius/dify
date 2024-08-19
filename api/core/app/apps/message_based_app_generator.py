@@ -34,17 +34,17 @@ from services.errors.conversation import ConversationCompletedError, Conversatio
 class MessageBasedAppGenerator(BaseAppGenerator):
 
     def _handle_response(
-        self, application_generate_entity: Union[
-            ChatAppGenerateEntity,
-            CompletionAppGenerateEntity,
-            AgentChatAppGenerateEntity,
-            AdvancedChatAppGenerateEntity
-        ],
-        queue_manager: AppQueueManager,
-        conversation: Conversation,
-        message: Message,
-        user: Union[Account, EndUser],
-        stream: bool = False,
+            self, application_generate_entity: Union[
+                ChatAppGenerateEntity,
+                CompletionAppGenerateEntity,
+                AgentChatAppGenerateEntity,
+                AdvancedChatAppGenerateEntity
+            ],
+            queue_manager: AppQueueManager,
+            conversation: Conversation,
+            message: Message,
+            user: Union[Account, EndUser],
+            stream: bool = False,
     ) -> Union[
         ChatbotAppBlockingResponse,
         CompletionAppBlockingResponse,
