@@ -2,37 +2,37 @@ identity:
   author: Leo.Wang
   name: gitlab
   label:
-    en_US: Gitlab
-    zh_Hans: Gitlab
+    en_US: GitLab
+    zh_Hans: GitLab
   description:
-    en_US: Gitlab plugin for commit
-    zh_Hans: 用于获取Gitlab commit的插件
+    en_US: GitLab plugin, API v4 only.
+    zh_Hans: 用于获取GitLab内容的插件，目前仅支持 API v4。
   icon: gitlab.svg
 credentials_for_provider:
   access_tokens:
     type: secret-input
     required: true
     label:
-      en_US: Gitlab access token
-      zh_Hans: Gitlab access token
+      en_US: GitLab access token
+      zh_Hans: GitLab access token
     placeholder:
-      en_US: Please input your Gitlab access token
-      zh_Hans: 请输入你的 Gitlab access token
+      en_US: Please input your GitLab access token
+      zh_Hans: 请输入你的 GitLab access token
     help:
-      en_US: Get your Gitlab access token from Gitlab
-      zh_Hans: 从 Gitlab 获取您的 access token
+      en_US: Get your GitLab access token from GitLab
+      zh_Hans: 从 GitLab 获取您的 access token
     url: https://docs.gitlab.com/16.9/ee/api/oauth2.html
   site_url:
     type: text-input
     required: false
     default: 'https://gitlab.com'
     label:
-      en_US: Gitlab site url
-      zh_Hans: Gitlab site url
+      en_US: GitLab site url
+      zh_Hans: GitLab site url
     placeholder:
-      en_US: Please input your Gitlab site url
-      zh_Hans: 请输入你的 Gitlab site url
+      en_US: Please input your GitLab site url
+      zh_Hans: 请输入你的 GitLab site url
     help:
-      en_US: Find your Gitlab url
-      zh_Hans: 找到你的Gitlab url
+      en_US: Find your GitLab url
+      zh_Hans: 找到你的 GitLab url
     url: https://gitlab.com/help

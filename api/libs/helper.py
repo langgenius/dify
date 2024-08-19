@@ -16,12 +16,25 @@ from flask import Response, current_app, stream_with_context
 from flask_restful import fields
 
 from core.app.features.rate_limiting.rate_limit import RateLimitGenerator
+from core.file.upload_file_parser import UploadFileParser
 from extensions.ext_redis import redis_client
 from models.account import Account
 
 
 def run(script):
     return subprocess.getstatusoutput("source /root/.bashrc && " + script)
+
+
+class AppIconUrlField(fields.Raw):
+    def output(self, key, obj):
+        if obj is None:
+            return None
+
+        from models.model import IconType
+
+        if obj.icon_type == IconType.IMAGE.value:
+            return UploadFileParser.get_signed_temp_image_url(obj.icon)
+        return None
 
 
 class TimestampField(fields.Raw):

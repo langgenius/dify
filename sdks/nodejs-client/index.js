@@ -2,29 +2,54 @@ import axios from "axios";
 export const BASE_URL = "https://api.dify.ai/v1";
 
 export const routes = {
-  application: {
-    method: "GET",
-    url: () => `/parameters`,
-  },
+  //  app's
   feedback: {
     method: "POST",
     url: (message_id) => `/messages/${message_id}/feedbacks`,
   },
+  application: {
+    method: "GET",
+    url: () => `/parameters`,
+  },
+  fileUpload: {
+    method: "POST",
+    url: () => `/files/upload`,
+  },
+  textToAudio: {
+    method: "POST",
+    url: () => `/text-to-audio`,
+  },
+  getMeta: {
+    method: "GET",
+    url: () => `/meta`,
+  },
+
+  // completion's
   createCompletionMessage: {
     method: "POST",
     url: () => `/completion-messages`,
   },
+
+  // chat's
   createChatMessage: {
     method: "POST",
     url: () => `/chat-messages`,
   },
-  getConversationMessages: {
+  getSuggested:{
     method: "GET",
-    url: () => `/messages`,
+    url: (message_id) => `/messages/${message_id}/suggested`,
+  },
+  stopChatMessage: {
+    method: "POST",
+    url: (task_id) => `/chat-messages/${task_id}/stop`,
   },
   getConversations: {
     method: "GET",
     url: () => `/conversations`,
+  },
+  getConversationMessages: {
+    method: "GET",
+    url: () => `/messages`,
   },
   renameConversation: {
     method: "POST",
@@ -34,14 +59,21 @@ export const routes = {
     method: "DELETE",
     url: (conversation_id) => `/conversations/${conversation_id}`,
   },
-  fileUpload: {
+  audioToText: {
     method: "POST",
-    url: () => `/files/upload`,
+    url: () => `/audio-to-text`,
   },
+
+  // workflow‘s
   runWorkflow: {
     method: "POST",
     url: () => `/workflows/run`,
   },
+  stopWorkflow: {
+    method: "POST",
+    url: (task_id) => `/workflows/${task_id}/stop`,
+  }
+
 };
 
 export class DifyClient {
@@ -129,6 +161,31 @@ export class DifyClient {
       }
     );
   }
+
+  textToAudio(text, user, streaming = false) {
+    const data = {
+      text,
+      user,
+      streaming
+    };
+    return this.sendRequest(
+      routes.textToAudio.method,
+      routes.textToAudio.url(),
+      data,
+      null,
+      streaming
+    );
+  }
+
+  getMeta(user) {
+    const params = { user };
+    return this.sendRequest(
+      routes.meta.method,
+      routes.meta.url(),
+      null,
+      params
+    );
+  }
 }
 
 export class CompletionClient extends DifyClient {
@@ -191,6 +248,34 @@ export class ChatClient extends DifyClient {
     );
   }
 
+  getSuggested(message_id, user) {
+    const data = { user };
+    return this.sendRequest(
+      routes.getSuggested.method,
+      routes.getSuggested.url(message_id),
+      data
+    );
+  }
+
+  stopMessage(task_id, user) {
+    const data = { user };
+    return this.sendRequest(
+      routes.stopChatMessage.method,
+      routes.stopChatMessage.url(task_id),
+      data
+    );
+  }
+
+  getConversations(user, first_id = null, limit = null, pinned = null) {
+    const params = { user, first_id: first_id, limit, pinned };
+    return this.sendRequest(
+      routes.getConversations.method,
+      routes.getConversations.url(),
+      null,
+      params
+    );
+  }
+
   getConversationMessages(
     user,
     conversation_id = "",
@@ -213,16 +298,6 @@ export class ChatClient extends DifyClient {
     );
   }
 
-  getConversations(user, first_id = null, limit = null, pinned = null) {
-    const params = { user, first_id: first_id, limit, pinned };
-    return this.sendRequest(
-      routes.getConversations.method,
-      routes.getConversations.url(),
-      null,
-      params
-    );
-  }
-
   renameConversation(conversation_id, name, user, auto_generate) {
     const data = { name, user, auto_generate };
     return this.sendRequest(
@@ -237,6 +312,48 @@ export class ChatClient extends DifyClient {
     return this.sendRequest(
       routes.deleteConversation.method,
       routes.deleteConversation.url(conversation_id),
+      data
+    );
+  }
+
+
+  audioToText(data) {
+    return this.sendRequest(
+      routes.audioToText.method,
+      routes.audioToText.url(),
+      data,
+      null,
+      false,
+      {
+        "Content-Type": 'multipart/form-data'
+      }
+    );
+  }
+
+}
+
+export class WorkflowClient extends DifyClient {
+  run(inputs,user,stream) {
+    const data = { 
+      inputs, 
+      response_mode: stream ? "streaming" : "blocking",
+      user 
+    };
+  
+    return this.sendRequest(
+        routes.runWorkflow.method,
+        routes.runWorkflow.url(),
+        data,
+        null,
+        stream
+    );
+  }
+
+  stop(task_id, user) {
+    const data = { user };
+    return this.sendRequest(
+      routes.stopWorkflow.method,
+      routes.stopWorkflow.url(task_id),
       data
     );
   }

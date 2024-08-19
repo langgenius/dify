@@ -10,11 +10,11 @@ import Button from '@/app/components/base/button'
 import AppIcon from '@/app/components/base/app-icon'
 import { SimpleSelect } from '@/app/components/base/select'
 import type { AppDetailResponse } from '@/models/app'
-import type { Language } from '@/types/app'
-import EmojiPicker from '@/app/components/base/emoji-picker'
+import type { AppIconType, Language } from '@/types/app'
 import { useToastContext } from '@/app/components/base/toast'
-
 import { languages } from '@/i18n/language'
+import type { AppIconSelection } from '@/app/components/base/app-icon-picker'
+import AppIconPicker from '@/app/components/base/app-icon-picker'
 
 export type ISettingsModalProps = {
   isChat: boolean
@@ -35,8 +35,9 @@ export type ConfigParams = {
   copyright: string
   privacy_policy: string
   custom_disclaimer: string
+  icon_type: AppIconType
   icon: string
-  icon_background: string
+  icon_background?: string
   show_workflow_steps: boolean
 }
 
@@ -51,9 +52,12 @@ const SettingsModal: FC<ISettingsModalProps> = ({
 }) => {
   const { notify } = useToastContext()
   const [isShowMore, setIsShowMore] = useState(false)
-  const { icon, icon_background } = appInfo
   const {
     title,
+    icon_type,
+    icon,
+    icon_background,
+    icon_url,
     description,
     chat_color_theme,
     chat_color_theme_inverted,
@@ -76,9 +80,13 @@ const SettingsModal: FC<ISettingsModalProps> = ({
   const [language, setLanguage] = useState(default_language)
   const [saveLoading, setSaveLoading] = useState(false)
   const { t } = useTranslation()
-  // Emoji Picker
-  const [showEmojiPicker, setShowEmojiPicker] = useState(false)
-  const [emoji, setEmoji] = useState({ icon, icon_background })
+
+  const [showAppIconPicker, setShowAppIconPicker] = useState(false)
+  const [appIcon, setAppIcon] = useState<AppIconSelection>(
+    icon_type === 'image'
+      ? { type: 'image', url: icon_url!, fileId: icon }
+      : { type: 'emoji', icon, background: icon_background! },
+  )
 
   useEffect(() => {
     setInputInfo({
@@ -92,7 +100,9 @@ const SettingsModal: FC<ISettingsModalProps> = ({
       show_workflow_steps,
     })
     setLanguage(default_language)
-    setEmoji({ icon, icon_background })
+    setAppIcon(icon_type === 'image'
+      ? { type: 'image', url: icon_url!, fileId: icon }
+      : { type: 'emoji', icon, background: icon_background! })
   }, [appInfo])
 
   const onHide = () => {
@@ -135,8 +145,9 @@ const SettingsModal: FC<ISettingsModalProps> = ({
       copyright: inputInfo.copyright,
       privacy_policy: inputInfo.privacyPolicy,
       custom_disclaimer: inputInfo.customDisclaimer,
-      icon: emoji.icon,
-      icon_background: emoji.icon_background,
+      icon_type: appIcon.type,
+      icon: appIcon.type === 'emoji' ? appIcon.icon : appIcon.fileId,
+      icon_background: appIcon.type === 'emoji' ? appIcon.background : undefined,
       show_workflow_steps: inputInfo.show_workflow_steps,
     }
     await onSave?.(params)
@@ -167,10 +178,12 @@ const SettingsModal: FC<ISettingsModalProps> = ({
         <div className={`mt-6 font-medium ${s.settingTitle} text-gray-900`}>{t(`${prefixSettings}.webName`)}</div>
         <div className='flex mt-2'>
           <AppIcon size='large'
-            onClick={() => { setShowEmojiPicker(true) }}
+            onClick={() => { setShowAppIconPicker(true) }}
             className='cursor-pointer !mr-3 self-center'
-            icon={emoji.icon}
-            background={emoji.icon_background}
+            iconType={appIcon.type}
+            icon={appIcon.type === 'image' ? appIcon.fileId : appIcon.icon}
+            background={appIcon.type === 'image' ? undefined : appIcon.background}
+            imageUrl={appIcon.type === 'image' ? appIcon.url : undefined}
           />
           <input className={`flex-grow rounded-lg h-10 box-border px-3 ${s.projectName} bg-gray-100`}
             value={inputInfo.title}
@@ -250,14 +263,16 @@ const SettingsModal: FC<ISettingsModalProps> = ({
           <Button className='mr-2' onClick={onHide}>{t('common.operation.cancel')}</Button>
           <Button variant='primary' onClick={onClickSave} loading={saveLoading}>{t('common.operation.save')}</Button>
         </div>
-        {showEmojiPicker && <EmojiPicker
-          onSelect={(icon, icon_background) => {
-            setEmoji({ icon, icon_background })
-            setShowEmojiPicker(false)
+        {showAppIconPicker && <AppIconPicker
+          onSelect={(payload) => {
+            setAppIcon(payload)
+            setShowAppIconPicker(false)
           }}
           onClose={() => {
-            setEmoji({ icon: appInfo.site.icon, icon_background: appInfo.site.icon_background })
-            setShowEmojiPicker(false)
+            setAppIcon(icon_type === 'image'
+              ? { type: 'image', url: icon_url!, fileId: icon }
+              : { type: 'emoji', icon, background: icon_background! })
+            setShowAppIconPicker(false)
           }}
         />}
       </Modal >
