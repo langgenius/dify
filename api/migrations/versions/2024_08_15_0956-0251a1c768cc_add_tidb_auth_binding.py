@@ -1,7 +1,7 @@
 """add-tidb-auth-binding
 
 Revision ID: 0251a1c768cc
-Revises: 63a83fcf12ba
+Revises: a6be81136580
 Create Date: 2024-08-15 09:56:59.012490
 
 """
@@ -12,7 +12,7 @@ import models as models
 
 # revision identifiers, used by Alembic.
 revision = '0251a1c768cc'
-down_revision = '8782057ff0dc'
+down_revision = 'a6be81136580'
 branch_labels = None
 depends_on = None
 
