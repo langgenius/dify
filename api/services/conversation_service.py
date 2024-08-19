@@ -1,6 +1,7 @@
+from datetime import datetime, timezone
 from typing import Optional, Union
 
-from sqlalchemy import or_
+from sqlalchemy import asc, desc, or_
 
 from core.app.entities.app_invoke_entities import InvokeFrom
 from core.llm_generator.llm_generator import LLMGenerator
@@ -10,12 +11,9 @@ from models.account import Account
 from models.model import App, Conversation, EndUser, Message
 from services.errors.conversation import ConversationNotExistsError, LastConversationNotExistsError
 from services.errors.message import MessageNotExistsError
-from datetime import datetime, timezone
-from sqlalchemy import desc, asc
 
 
 class ConversationService:
-
     @classmethod
     def pagination_by_last_id(cls, app_model: App, user: Optional[Union[Account, EndUser]],
                               last_id: Optional[str], limit: int,
@@ -41,7 +39,7 @@ class ConversationService:
         if exclude_ids is not None:
             base_query = base_query.filter(~Conversation.id.in_(exclude_ids))
 
-        # define sort fields and directions
+        # 定义排序字段和方向
         sort_field, sort_direction = cls._get_sort_params(sort_by)
 
         if last_id:
@@ -49,10 +47,11 @@ class ConversationService:
             if not last_conversation:
                 raise LastConversationNotExistsError()
 
-            # build filters based on sorting
+            # 根据排序方式构建过滤条件
             filter_condition = cls._build_filter_condition(sort_field, sort_direction, last_conversation)
             base_query = base_query.filter(filter_condition)
 
+        # 应用排序
         base_query = base_query.order_by(sort_direction(getattr(Conversation, sort_field)))
 
         conversations = base_query.limit(limit).all()
@@ -60,7 +59,7 @@ class ConversationService:
         has_more = False
         if len(conversations) == limit:
             current_page_last_conversation = conversations[-1]
-            # construct filter conditions for remaining quantity query
+            # 构建剩余数量查询的过滤条件
             rest_filter_condition = cls._build_filter_condition(sort_field, sort_direction,
                                                                 current_page_last_conversation, is_next_page=True)
             rest_count = base_query.filter(rest_filter_condition).count()
