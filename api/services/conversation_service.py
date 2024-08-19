@@ -1,4 +1,4 @@
-from typing import Optional, Union
+from typing import Optional, Union, Tuple
 
 from sqlalchemy import or_
 
@@ -11,6 +11,7 @@ from models.model import App, Conversation, EndUser, Message
 from services.errors.conversation import ConversationNotExistsError, LastConversationNotExistsError
 from services.errors.message import MessageNotExistsError
 from datetime import datetime, timezone
+from sqlalchemy import desc, asc
 
 
 class ConversationService:
@@ -19,7 +20,8 @@ class ConversationService:
                               last_id: Optional[str], limit: int,
                               invoke_from: InvokeFrom,
                               include_ids: Optional[list] = None,
-                              exclude_ids: Optional[list] = None) -> InfiniteScrollPagination:
+                              exclude_ids: Optional[list] = None,
+                              sort_by: str = '-updated_at') -> InfiniteScrollPagination:
         if not user:
             return InfiniteScrollPagination(data=[], limit=limit, has_more=False)
 
@@ -38,28 +40,29 @@ class ConversationService:
         if exclude_ids is not None:
             base_query = base_query.filter(~Conversation.id.in_(exclude_ids))
 
-        if last_id:
-            last_conversation = base_query.filter(
-                Conversation.id == last_id,
-            ).first()
+        # define sort fields and directions
+        sort_field, sort_direction = cls._get_sort_params(sort_by)
 
+        if last_id:
+            last_conversation = base_query.filter(Conversation.id == last_id).first()
             if not last_conversation:
                 raise LastConversationNotExistsError()
 
-            conversations = base_query.filter(
-                Conversation.updated_at < last_conversation.updated_at,
-                Conversation.id != last_conversation.id
-            ).order_by(Conversation.updated_at.desc()).limit(limit).all()
-        else:
-            conversations = base_query.order_by(Conversation.updated_at.desc()).limit(limit).all()
+            # build filters based on sorting
+            filter_condition = cls._build_filter_condition(sort_field, sort_direction, last_conversation)
+            base_query = base_query.filter(filter_condition)
+
+        base_query = base_query.order_by(sort_direction(getattr(Conversation, sort_field)))
+
+        conversations = base_query.limit(limit).all()
 
         has_more = False
         if len(conversations) == limit:
-            current_page_first_conversation = conversations[-1]
-            rest_count = base_query.filter(
-                Conversation.updated_at < current_page_first_conversation.updated_at,
-                Conversation.id != current_page_first_conversation.id
-            ).count()
+            current_page_last_conversation = conversations[-1]
+            # construct filter conditions for remaining quantity query
+            rest_filter_condition = cls._build_filter_condition(sort_field, sort_direction,
+                                                                current_page_last_conversation, is_next_page=True)
+            rest_count = base_query.filter(rest_filter_condition).count()
 
             if rest_count > 0:
                 has_more = True
@@ -69,6 +72,21 @@ class ConversationService:
             limit=limit,
             has_more=has_more
         )
+
+    @classmethod
+    def _get_sort_params(cls, sort_by: str) -> Tuple[str, callable]:
+        if sort_by.startswith('-'):
+            return sort_by[1:], desc
+        return sort_by, asc
+
+    @classmethod
+    def _build_filter_condition(cls, sort_field: str, sort_direction: callable, reference_conversation: Conversation,
+                                is_next_page: bool = False):
+        field_value = getattr(reference_conversation, sort_field)
+        if (sort_direction == desc and not is_next_page) or (sort_direction == asc and is_next_page):
+            return getattr(Conversation, sort_field) < field_value
+        else:
+            return getattr(Conversation, sort_field) > field_value
 
     @classmethod
     def rename(cls, app_model: App, conversation_id: str,
@@ -89,9 +107,9 @@ class ConversationService:
         # get conversation first message
         message = db.session.query(Message) \
             .filter(
-                Message.app_id == app_model.id,
-                Message.conversation_id == conversation.id
-            ).order_by(Message.created_at.asc()).first()
+            Message.app_id == app_model.id,
+            Message.conversation_id == conversation.id
+        ).order_by(Message.created_at.asc()).first()
 
         if not message:
             raise MessageNotExistsError()
