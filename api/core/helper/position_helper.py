@@ -73,11 +73,16 @@ def sort_and_filter_position_map(original_position_map: dict[str, int], pin_list
     # Add remaining positions to position map, respecting include and exclude lists
     start_idx = len(position_map)
     for name in positions:
+        if name in position_map:
+            continue  # skip pinned items
         if name in exclude_set:
             position_map[name] = POSITION_EXCLUDED
-        elif name in include_set and name not in position_map:
+        elif name in include_set:
             position_map[name] = start_idx
             start_idx += 1
+        else:
+            position_map[name] = POSITION_EXCLUDED
+
     return position_map
 
 
