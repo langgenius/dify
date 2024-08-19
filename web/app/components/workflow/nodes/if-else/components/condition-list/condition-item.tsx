@@ -12,6 +12,7 @@ import type {
   HandleAddSubVariableCondition,
   HandleRemoveCondition,
   HandleUpdateCondition,
+  HandleUpdateSubVariableCondition,
 } from '../../types'
 import {
   ComparisonOperator,
@@ -35,11 +36,14 @@ const optionNameI18NPrefix = 'workflow.nodes.ifElse.optionName'
 type ConditionItemProps = {
   disabled?: boolean
   caseId: string
-  condition: Condition
+  conditionId: string // in isSubVariableKey it's the value of the parent condition's id
+  condition: Condition // condition may the condition of case or condition of sub variable
   file?: { key: string }
   isSubVariableKey?: boolean
+  subVariableKeyCaseId?: string
   onRemoveCondition: HandleRemoveCondition
   onUpdateCondition: HandleUpdateCondition
+  onUpdateSubVariableCondition?: HandleUpdateSubVariableCondition
   nodesOutputVars: NodeOutPutVar[]
   availableNodes: Node[]
   numberVariables: NodeOutPutVar[]
@@ -48,11 +52,13 @@ type ConditionItemProps = {
 const ConditionItem = ({
   disabled,
   caseId,
+  conditionId,
   condition,
   file,
   isSubVariableKey,
   onRemoveCondition,
   onUpdateCondition,
+  onUpdateSubVariableCondition,
   nodesOutputVars,
   availableNodes,
   numberVariables,
@@ -120,8 +126,8 @@ const ConditionItem = ({
     const newCondition = produce(condition, (draft) => {
       draft.key = key
     })
-    onUpdateCondition(caseId, condition.id, newCondition)
-  }, [caseId, condition, onUpdateCondition])
+    onUpdateSubVariableCondition?.(caseId, conditionId, condition.id, newCondition)
+  }, [caseId, condition, conditionId, onUpdateSubVariableCondition])
 
   return (
     <div className='flex mb-1 last-of-type:mb-0'>
@@ -136,7 +142,7 @@ const ConditionItem = ({
                 <Select
                   wrapperClassName='h-6'
                   className='pl-0 text-xs'
-                  defaultValue={condition.value}
+                  defaultValue={condition.key}
                   items={subVarOptions}
                   onSelect={item => handleSubVarKeyChange(item.value as string)}
                 />
@@ -202,15 +208,16 @@ const ConditionItem = ({
             <div className='p-1'>
               <ConditionWrap
                 isSubVariable
-                conditionId={condition.id}
                 caseId={caseId}
+                conditionId={conditionId}
                 readOnly={!!disabled}
                 nodeId=''
                 cases={condition.sub_variable_condition ? [condition.sub_variable_condition] : []}
                 handleAddSubVariableCondition={onAddSubVariableCondition}
                 handleRemoveCase={() => { }}
                 handleAddCondition={() => { }}
-                handleUpdateCondition={() => { }}
+                handleUpdateCondition={onUpdateCondition}
+                handleUpdateSubVariableCondition={onUpdateSubVariableCondition}
                 handleRemoveCondition={() => { }}
                 handleUpdateConditionLogicalOperator={() => { }}
                 nodesOutputVars={[]}

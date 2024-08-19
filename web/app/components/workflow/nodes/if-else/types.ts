@@ -61,4 +61,5 @@ export type HandleAddCondition = (caseId: string, valueSelector: ValueSelector, 
 export type HandleAddSubVariableCondition = (caseId: string, conditionId: string) => void
 export type HandleRemoveCondition = (caseId: string, conditionId: string) => void
 export type HandleUpdateCondition = (caseId: string, conditionId: string, newCondition: Condition) => void
+export type HandleUpdateSubVariableCondition = (caseId: string, conditionId: string, subConditionId: string, newSubCondition: Condition) => void
 export type HandleUpdateConditionLogicalOperator = (caseId: string, value: LogicalOperator) => void

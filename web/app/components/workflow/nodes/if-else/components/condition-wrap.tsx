@@ -8,7 +8,7 @@ import {
   RiDeleteBinLine,
   RiDraggable,
 } from '@remixicon/react'
-import type { CaseItem, HandleAddCondition, HandleAddSubVariableCondition, HandleRemoveCondition, HandleUpdateCondition, HandleUpdateConditionLogicalOperator } from '../types'
+import type { CaseItem, HandleAddCondition, HandleAddSubVariableCondition, HandleRemoveCondition, HandleUpdateCondition, HandleUpdateConditionLogicalOperator, HandleUpdateSubVariableCondition } from '../types'
 import type { Node, NodeOutPutVar, Var } from '../../../types'
 import { VarType } from '../../../types'
 import { useGetAvailableVars } from '../../variable-assigner/hooks'
@@ -19,8 +19,8 @@ import Button from '@/app/components/base/button'
 
 type Props = {
   isSubVariable?: boolean
-  conditionId?: string
   caseId?: string
+  conditionId?: string
   nodeId: string
   cases: CaseItem[]
   readOnly: boolean
@@ -28,6 +28,7 @@ type Props = {
   handleRemoveCase: (caseId: string) => void
   handleAddCondition?: HandleAddCondition
   handleAddSubVariableCondition?: HandleAddSubVariableCondition
+  handleUpdateSubVariableCondition?: HandleUpdateSubVariableCondition
   handleUpdateCondition: HandleUpdateCondition
   handleRemoveCondition: HandleRemoveCondition
   handleUpdateConditionLogicalOperator: HandleUpdateConditionLogicalOperator
@@ -39,8 +40,8 @@ type Props = {
 
 const ConditionWrap: FC<Props> = ({
   isSubVariable,
-  conditionId: parentConditionId,
   caseId: conditionParentCaseId,
+  conditionId: parentConditionId,
   nodeId: id,
   cases = [],
   readOnly,
@@ -50,6 +51,7 @@ const ConditionWrap: FC<Props> = ({
   handleAddCondition,
   handleRemoveCondition,
   handleAddSubVariableCondition,
+  handleUpdateSubVariableCondition,
   handleUpdateConditionLogicalOperator,
   nodesOutputVars,
   availableNodes,
@@ -116,6 +118,8 @@ const ConditionWrap: FC<Props> = ({
                       <ConditionList
                         disabled={readOnly}
                         caseItem={item}
+                        caseId={isSubVariable ? conditionParentCaseId! : item.case_id}
+                        conditionId={parentConditionId}
                         onUpdateCondition={handleUpdateCondition}
                         onRemoveCondition={handleRemoveCondition}
                         onUpdateConditionLogicalOperator={handleUpdateConditionLogicalOperator}
@@ -124,6 +128,7 @@ const ConditionWrap: FC<Props> = ({
                         numberVariables={getAvailableVars(id, '', filterNumberVar)}
                         varsIsVarFileAttribute={varsIsVarFileAttribute}
                         onAddSubVariableCondition={handleAddSubVariableCondition}
+                        onUpdateSubVariableCondition={handleUpdateSubVariableCondition}
                         isSubVariable={isSubVariable}
                       />
                     </div>

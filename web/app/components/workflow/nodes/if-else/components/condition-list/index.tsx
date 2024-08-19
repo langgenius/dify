@@ -6,6 +6,7 @@ import type {
   HandleRemoveCondition,
   HandleUpdateCondition,
   HandleUpdateConditionLogicalOperator,
+  HandleUpdateSubVariableCondition,
 } from '../../types'
 import ConditionItem from './condition-item'
 import type {
@@ -16,6 +17,8 @@ import type {
 type ConditionListProps = {
   isSubVariable?: boolean
   disabled?: boolean
+  caseId: string
+  conditionId?: string
   caseItem: CaseItem
   onUpdateCondition: HandleUpdateCondition
   onUpdateConditionLogicalOperator: HandleUpdateConditionLogicalOperator
@@ -25,10 +28,13 @@ type ConditionListProps = {
   numberVariables: NodeOutPutVar[]
   varsIsVarFileAttribute: Record<string, boolean>
   onAddSubVariableCondition?: HandleAddSubVariableCondition
+  onUpdateSubVariableCondition?: HandleUpdateSubVariableCondition
 }
 const ConditionList = ({
   isSubVariable,
   disabled,
+  caseId,
+  conditionId,
   caseItem,
   onUpdateCondition,
   onUpdateConditionLogicalOperator,
@@ -38,6 +44,7 @@ const ConditionList = ({
   numberVariables,
   varsIsVarFileAttribute,
   onAddSubVariableCondition,
+  onUpdateSubVariableCondition,
 }: ConditionListProps) => {
   const { conditions, logical_operator } = caseItem
 
@@ -65,7 +72,8 @@ const ConditionList = ({
           <ConditionItem
             key={condition.id}
             disabled={disabled}
-            caseId={caseItem.case_id}
+            caseId={caseId}
+            conditionId={isSubVariable ? conditionId! : condition.id}
             condition={condition}
             onUpdateCondition={onUpdateCondition}
             onRemoveCondition={onRemoveCondition}
@@ -75,6 +83,7 @@ const ConditionList = ({
             file={varsIsVarFileAttribute[condition.id] ? { key: (condition.variable_selector || []).slice(-1)[0] } : undefined}
             isSubVariableKey={isSubVariable}
             onAddSubVariableCondition={onAddSubVariableCondition}
+            onUpdateSubVariableCondition={onUpdateSubVariableCondition}
           />
         ))
       }

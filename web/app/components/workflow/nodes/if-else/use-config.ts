@@ -13,6 +13,7 @@ import type {
   HandleRemoveCondition,
   HandleUpdateCondition,
   HandleUpdateConditionLogicalOperator,
+  HandleUpdateSubVariableCondition,
   IfElseNodeType,
 } from './types'
 import {
@@ -165,6 +166,22 @@ const useConfig = (id: string, payload: IfElseNodeType) => {
     })
     setInputs(newInputs)
   }, [inputs, setInputs])
+  // console.log(inputs.cases)
+
+  const handleUpdateSubVariableCondition = useCallback<HandleUpdateSubVariableCondition>((caseId, conditionId, subConditionId, newSubCondition) => {
+    const newInputs = produce(inputs, (draft) => {
+      const targetCase = draft.cases?.find(item => item.case_id === caseId)
+      if (targetCase) {
+        const targetCondition = targetCase.conditions.find(item => item.id === conditionId)
+        if (targetCondition && targetCondition.sub_variable_condition) {
+          const targetSubCondition = targetCondition.sub_variable_condition.conditions.find(item => item.id === subConditionId)
+          if (targetSubCondition)
+            Object.assign(targetSubCondition, newSubCondition)
+        }
+      }
+    })
+    setInputs(newInputs)
+  }, [inputs, setInputs])
 
   const handleAddSubVariableCondition = useCallback<HandleAddSubVariableCondition>((caseId: string, conditionId: string) => {
     const newInputs = produce(inputs, (draft) => {
@@ -217,6 +234,7 @@ const useConfig = (id: string, payload: IfElseNodeType) => {
     handleRemoveCondition,
     handleUpdateCondition,
     handleAddSubVariableCondition,
+    handleUpdateSubVariableCondition,
     handleUpdateConditionLogicalOperator,
     nodesOutputVars: availableVars,
     availableNodes: availableNodesWithParent,

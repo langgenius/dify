@@ -31,6 +31,7 @@ const Panel: FC<NodePanelProps<IfElseNodeType>> = ({
     handleUpdateCondition,
     handleRemoveCondition,
     handleAddSubVariableCondition,
+    handleUpdateSubVariableCondition,
     handleUpdateConditionLogicalOperator,
     nodesOutputVars,
     availableNodes,
@@ -51,6 +52,7 @@ const Panel: FC<NodePanelProps<IfElseNodeType>> = ({
         handleRemoveCondition={handleRemoveCondition}
         handleUpdateConditionLogicalOperator={handleUpdateConditionLogicalOperator}
         handleAddSubVariableCondition={handleAddSubVariableCondition}
+        handleUpdateSubVariableCondition={handleUpdateSubVariableCondition}
         nodesOutputVars={nodesOutputVars}
         availableNodes={availableNodes}
         varsIsVarFileAttribute={varsIsVarFileAttribute}
