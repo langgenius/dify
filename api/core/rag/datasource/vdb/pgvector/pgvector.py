@@ -156,15 +156,13 @@ class PGVector(BaseVector):
 
         with self._get_cursor() as cur:
             cur.execute(
-                f"""
-                SELECT meta, text, ts_rank(to_tsvector(coalesce(text, '')), to_tsquery(%s)) AS score
+                f"""SELECT meta, text, ts_rank(to_tsvector(coalesce(text, '')), to_tsquery(%s)) AS score
                 FROM {self.table_name}
                 WHERE to_tsvector(text) @@ plainto_tsquery(%s)
                 ORDER BY score DESC
-                LIMIT {top_k}
-                """
-                ,
-                (query, query),
+                LIMIT {top_k}""",
+                # f"'{query}'" is required in order to account for whitespace in query
+                (f"'{query}'", f"'{query}'"),
             )
 
             docs = []
