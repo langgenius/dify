@@ -34,7 +34,7 @@ services:
 
   # The DifySandbox
   sandbox:
-    image: langgenius/dify-sandbox:0.2.1
+    image: langgenius/dify-sandbox:0.2.6
     restart: always
     environment:
       # The DifySandbox configurations
