@@ -97,7 +97,15 @@ def sort_by_position_map(
     if not position_map or not data:
         return data
 
-    filtered_data = [item for item in data if position_map.get(name_func(item), POSITION_EXCLUDED+1) != POSITION_EXCLUDED]
+    # filter out the items that are marked "excluded" in the position map
+    filtered_data = []
+    for item in data:
+        name = name_func(item)
+        if name in position_map:  # case 1: name is in the position map
+            if position_map[name] != POSITION_EXCLUDED:
+                filtered_data.append(item)
+        else:  # case 2: name is not in the position map
+            filtered_data.append(item)
     return sorted(filtered_data, key=lambda x: position_map.get(name_func(x), float('inf')))
 
 
