@@ -111,6 +111,12 @@ class AppService:
                         'completion_params': {}
                     }
             else:
+                provider, model = model_manager.get_default_provider_model_name(
+                    tenant_id=account.current_tenant_id,
+                    model_type=ModelType.LLM
+                )
+                default_model_config['model']['provider'] = provider
+                default_model_config['model']['name'] = model
                 default_model_dict = default_model_config['model']
 
             default_model_config['model'] = json.dumps(default_model_dict)
@@ -190,13 +196,14 @@ class AppService:
                 """
                 Modified App class
                 """
+
                 def __init__(self, app):
                     self.__dict__.update(app.__dict__)
 
                 @property
                 def app_model_config(self):
                     return model_config
-                
+
             app = ModifiedApp(app)
 
         return app
