@@ -131,7 +131,7 @@ class MessageSuggestedApi(Resource):
         except services.errors.message.MessageNotExistsError:
             raise NotFound("Message Not Exists.")
         except SuggestedQuestionsAfterAnswerDisabledError:
-            raise BadRequest("Message Not Exists.")
+            raise BadRequest("Suggested Questions Is Disabled.")
         except Exception:
             logging.exception("internal server error.")
             raise InternalServerError()

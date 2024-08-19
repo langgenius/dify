@@ -6,13 +6,14 @@ from typing_extensions import deprecated
 
 from core.app.segments import Segment, Variable, factory
 from core.file.file_obj import FileVar
-from core.workflow.entities.node_entities import SystemVariable
+from core.workflow.enums import SystemVariable
 
 VariableValue = Union[str, int, float, dict, list, FileVar]
 
 
 SYSTEM_VARIABLE_NODE_ID = 'sys'
 ENVIRONMENT_VARIABLE_NODE_ID = 'env'
+CONVERSATION_VARIABLE_NODE_ID = 'conversation'
 
 
 class VariablePool:
@@ -21,6 +22,7 @@ class VariablePool:
         system_variables: Mapping[SystemVariable, Any],
         user_inputs: Mapping[str, Any],
         environment_variables: Sequence[Variable],
+        conversation_variables: Sequence[Variable] | None = None,
     ) -> None:
         # system variables
         # for example:
@@ -44,8 +46,12 @@ class VariablePool:
             self.add((SYSTEM_VARIABLE_NODE_ID, key.value), value)
 
         # Add environment variables to the variable pool
-        for var in environment_variables or []:
+        for var in environment_variables:
             self.add((ENVIRONMENT_VARIABLE_NODE_ID, var.name), var)
+
+        # Add conversation variables to the variable pool
+        for var in conversation_variables or []:
+            self.add((CONVERSATION_VARIABLE_NODE_ID, var.name), var)
 
     def add(self, selector: Sequence[str], value: Any, /) -> None:
         """

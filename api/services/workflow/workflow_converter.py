@@ -6,7 +6,6 @@ from core.app.app_config.entities import (
     DatasetRetrieveConfigEntity,
     EasyUIBasedAppConfig,
     ExternalDataVariableEntity,
-    FileExtraConfig,
     ModelConfigEntity,
     PromptTemplateEntity,
     VariableEntity,
@@ -14,6 +13,7 @@ from core.app.app_config.entities import (
 from core.app.apps.agent_chat.app_config_manager import AgentChatAppConfigManager
 from core.app.apps.chat.app_config_manager import ChatAppConfigManager
 from core.app.apps.completion.app_config_manager import CompletionAppConfigManager
+from core.file.file_obj import FileExtraConfig
 from core.helper import encrypter
 from core.model_runtime.entities.llm_entities import LLMMode
 from core.model_runtime.utils.encoders import jsonable_encoder
@@ -35,6 +35,7 @@ class WorkflowConverter:
     def convert_to_workflow(self, app_model: App,
                             account: Account,
                             name: str,
+                            icon_type: str,
                             icon: str,
                             icon_background: str) -> App:
         """
@@ -50,6 +51,7 @@ class WorkflowConverter:
         :param account: Account
         :param name: new app name
         :param icon: new app icon
+        :param icon_type: new app icon type
         :param icon_background: new app icon background
         :return: new App instance
         """
@@ -66,6 +68,7 @@ class WorkflowConverter:
         new_app.name = name if name else app_model.name + '(workflow)'
         new_app.mode = AppMode.ADVANCED_CHAT.value \
             if app_model.mode == AppMode.CHAT.value else AppMode.WORKFLOW.value
+        new_app.icon_type = icon_type if icon_type else app_model.icon_type
         new_app.icon = icon if icon else app_model.icon
         new_app.icon_background = icon_background if icon_background else app_model.icon_background
         new_app.enable_site = app_model.enable_site
@@ -201,6 +204,7 @@ class WorkflowConverter:
             features=json.dumps(features),
             created_by=account_id,
             environment_variables=[],
+            conversation_variables=[],
         )
 
         db.session.add(workflow)
@@ -589,6 +593,7 @@ class WorkflowConverter:
         Replace Template Variables
         :param template: template
         :param variables: list of variables
+        :param external_data_variable_node_mapping: external data variable node mapping
         :return:
         """
         for v in variables:

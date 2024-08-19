@@ -1429,7 +1429,10 @@ class SegmentService:
                 segment_data_list.append(segment_document)
 
                 pre_segment_data_list.append(segment_document)
-                keywords_list.append(segment_item['keywords'])
+                if 'keywords' in segment_item:
+                    keywords_list.append(segment_item['keywords'])
+                else:
+                    keywords_list.append(None)
 
             try:
                 # save vector index
@@ -1482,7 +1485,7 @@ class SegmentService:
                 db.session.add(segment)
                 db.session.commit()
                 # update segment index task
-                if args['keywords']:
+                if 'keywords' in args:
                     keyword = Keyword(dataset)
                     keyword.delete_by_ids([segment.index_node_id])
                     document = RAGDocument(

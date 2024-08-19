@@ -4,7 +4,6 @@ import { useTranslation } from 'react-i18next'
 import { RiAddLine } from '@remixicon/react'
 import Button from '@/app/components/base/button'
 import VariableModal from '@/app/components/workflow/panel/env-panel/variable-modal'
-// import cn from '@/utils/classnames'
 import {
   PortalToFollowElem,
   PortalToFollowElemContent,

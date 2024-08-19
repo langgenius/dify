@@ -1,0 +1,29 @@
+identity:
+  author: Sakura4036
+  name: crossref
+  label:
+    en_US: CrossRef
+    zh_Hans: CrossRef
+  description:
+    en_US: Crossref is a cross-publisher reference linking registration query system using DOI technology created in 2000. Crossref establishes cross-database links between the reference list and citation full text of papers, making it very convenient for readers to access the full text of papers.
+    zh_Hans: Crossref是于2000年创建的使用DOI技术的跨出版商参考文献链接注册查询系统。Crossref建立了在论文的参考文献列表和引文全文之间的跨数据库链接，使得读者能够非常便捷地获取文献全文。
+  icon: icon.svg
+  tags:
+    - search
+credentials_for_provider:
+  mailto:
+    type: text-input
+    required: true
+    label:
+      en_US: email address
+      zh_Hans: email地址
+      pt_BR: email address
+    placeholder:
+      en_US: Please input your email address
+      zh_Hans: 请输入你的email地址
+      pt_BR: Please input your email address
+    help:
+      en_US: According to the requirements of Crossref, an email address is required
+      zh_Hans: 根据Crossref的要求，需要提供一个邮箱地址
+      pt_BR: According to the requirements of Crossref, an email address is required
+    url: https://api.crossref.org/swagger-ui/index.html
