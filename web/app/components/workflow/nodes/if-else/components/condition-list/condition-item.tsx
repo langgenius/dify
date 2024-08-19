@@ -6,6 +6,7 @@ import {
 import { useTranslation } from 'react-i18next'
 import { RiDeleteBinLine } from '@remixicon/react'
 import produce from 'immer'
+import { XMarkIcon } from '@heroicons/react/20/solid'
 import type { VarType as NumberVarType } from '../../../tool/types'
 import type {
   Condition,
@@ -33,6 +34,7 @@ import type {
 import { VarType } from '@/app/components/workflow/types'
 import cn from '@/utils/classnames'
 import { SimpleSelect as Select } from '@/app/components/base/select'
+import { Variable02 } from '@/app/components/base/icons/src/vender/solid/development'
 const optionNameI18NPrefix = 'workflow.nodes.ifElse.optionName'
 
 type ConditionItemProps = {
@@ -166,6 +168,17 @@ const ConditionItem = ({
                   defaultValue={condition.key}
                   items={subVarOptions}
                   onSelect={item => handleSubVarKeyChange(item.value as string)}
+                  renderTrigger={item => (
+                    item
+                      ? <div className='flex items-center'>
+                        <div className='flex px-1.5 items-center h-6 rounded-md border-[0.5px] border-components-panel-border-subtle bg-components-badge-white-to-dark shadow-xs text-text-accent'>
+                          <Variable02 className='w-3.5 h-3.5 text-text-accent' />
+                          <div className='ml-0.5 system-xs-medium'>{item?.name}</div>
+                        </div>
+                        <XMarkIcon className='ml-0.5 w-3.5 h-3.5 text-gray-400' onClick={() => handleSubVarKeyChange('')} />
+                      </div>
+                      : <div className='text-gray-300 system-xs-medium'>{t('common.placeholder.select')}</div>
+                  )}
                 />
               )
               : (

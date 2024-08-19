@@ -29,6 +29,7 @@ export type Item = {
 export type ISelectProps = {
   className?: string
   wrapperClassName?: string
+  renderTrigger?: (value: Item | null) => JSX.Element | null
   items?: Item[]
   defaultValue?: number | string
   disabled?: boolean
@@ -168,6 +169,7 @@ const Select: FC<ISelectProps> = ({
 const SimpleSelect: FC<ISelectProps> = ({
   className,
   wrapperClassName = '',
+  renderTrigger,
   items = defaultItems,
   defaultValue = 1,
   disabled = false,
@@ -203,27 +205,29 @@ const SimpleSelect: FC<ISelectProps> = ({
     >
       <div className={classNames('relative h-9', wrapperClassName)}>
         <Listbox.Button className={classNames(`flex items-center w-full h-full rounded-lg border-0 bg-gray-100 pl-3 pr-10 sm:text-sm sm:leading-6 focus-visible:outline-none focus-visible:bg-gray-200 group-hover:bg-gray-200 ${disabled ? 'cursor-not-allowed' : 'cursor-pointer'}`, className)}>
-          <span className={classNames('block truncate text-left', !selectedItem?.name && 'text-gray-400')}>{selectedItem?.name ?? localPlaceholder}</span>
-          <span className="absolute inset-y-0 right-0 flex items-center pr-2">
-            {selectedItem
-              ? (
-                <XMarkIcon
-                  onClick={(e) => {
-                    e.stopPropagation()
-                    setSelectedItem(null)
-                    onSelect({ name: '', value: '' })
-                  }}
-                  className="h-5 w-5 text-gray-400 cursor-pointer"
-                  aria-hidden="false"
-                />
-              )
-              : (
-                <ChevronDownIcon
-                  className="h-5 w-5 text-gray-400"
-                  aria-hidden="true"
-                />
-              )}
-          </span>
+          {renderTrigger ? renderTrigger(selectedItem) : <span className={classNames('block truncate text-left', !selectedItem?.name && 'text-gray-400')}>{selectedItem?.name ?? localPlaceholder}</span>}
+          {!renderTrigger && (
+            <span className="absolute inset-y-0 right-0 flex items-center pr-2">
+              {selectedItem
+                ? (
+                  <XMarkIcon
+                    onClick={(e) => {
+                      e.stopPropagation()
+                      setSelectedItem(null)
+                      onSelect({ name: '', value: '' })
+                    }}
+                    className="h-5 w-5 text-gray-400 cursor-pointer"
+                    aria-hidden="false"
+                  />
+                )
+                : (
+                  <ChevronDownIcon
+                    className="h-5 w-5 text-gray-400"
+                    aria-hidden="true"
+                  />
+                )}
+            </span>
+          )}
         </Listbox.Button>
         {!disabled && (
           <Transition
