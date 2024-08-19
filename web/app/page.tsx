@@ -4,7 +4,7 @@ import SiteLogo from "@/app/components/base/logo/logo-site";
 import FeatureSection from "@/app/components/landing/feature-section";
 import FeatCard from "@/app/components/landing/feat-card";
 import UseCaseCard from "@/app/components/landing/usecase-card";
-import { Integration } from "@/app/components/landing/integration-animation";
+// import { Integration } from "@/app/components/landing/integration-animation";
 import ShimmerButton from "@/app/components/shimmer";
 import { Testimonial } from "@/app/components/landing/testimonials";
 import Image from "next/image";
@@ -204,7 +204,7 @@ export default function Page() {
           imageDirection="left"
         />
       </div>
-      <AppIntergration />
+      {/* <AppIntergration /> */}
       <ModelAgnosticCarousel images={modelImages} />
       <Footer />
     </div>
@@ -378,13 +378,13 @@ function ModelAgnosticCarousel({ images }: { images: string[] }) {
   );
 }
 
-function AppIntergration() {
-  return (
-    <div className="flex flex-col border rounded-2xl mx-4 bg-gradient-to-b from-blue-100 to-white lg:mx-auto max-w-7xl pb-10 px-4 my-16">
-      <h1 className="text-center translate-y-8 z-20 sm:text-4xl text-2xl">
-        Unlimited Integrations
-      </h1>
-      <Integration />
-    </div>
-  );
-}
+// function AppIntergration() {
+//   return (
+//     <div className="flex flex-col border rounded-2xl mx-4 bg-gradient-to-b from-blue-100 to-white lg:mx-auto max-w-7xl pb-10 px-4 my-16">
+//       <h1 className="text-center translate-y-8 z-20 sm:text-4xl text-2xl">
+//         Unlimited Integrations
+//       </h1>
+//       <Integration />
+//     </div>
+//   );
+// }
