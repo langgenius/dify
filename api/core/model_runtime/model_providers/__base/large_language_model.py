@@ -185,7 +185,7 @@ if you are not sure about the structure.
                 stream=stream,
                 user=user
             )
-        
+
         model_parameters.pop("response_format")
         stop = stop or []
         stop.extend(["\n```", "```\n"])
@@ -249,10 +249,10 @@ if you are not sure about the structure.
                     prompt_messages=prompt_messages,
                     input_generator=new_generator()
                 )
-            
+
         return response
 
-    def _code_block_mode_stream_processor(self, model: str, prompt_messages: list[PromptMessage], 
+    def _code_block_mode_stream_processor(self, model: str, prompt_messages: list[PromptMessage],
                                           input_generator: Generator[LLMResultChunk, None, None]
                                         ) -> Generator[LLMResultChunk, None, None]:
         """
@@ -310,7 +310,7 @@ if you are not sure about the structure.
                     )
                 )
 
-    def _code_block_mode_stream_processor_with_backtick(self, model: str, prompt_messages: list, 
+    def _code_block_mode_stream_processor_with_backtick(self, model: str, prompt_messages: list,
                                         input_generator:  Generator[LLMResultChunk, None, None]) \
                                     ->  Generator[LLMResultChunk, None, None]:
         """
@@ -470,7 +470,7 @@ if you are not sure about the structure.
         :return: full response or stream response chunk generator result
         """
         raise NotImplementedError
-    
+
     @abstractmethod
     def get_num_tokens(self, model: str, credentials: dict, prompt_messages: list[PromptMessage],
                        tools: Optional[list[PromptMessageTool]] = None) -> int:
@@ -791,6 +791,13 @@ if you are not sure about the structure.
             elif parameter_rule.type == ParameterType.STRING:
                 if not isinstance(parameter_value, str):
                     raise ValueError(f"Model Parameter {parameter_name} should be string.")
+
+                # validate options
+                if parameter_rule.options and parameter_value not in parameter_rule.options:
+                    raise ValueError(f"Model Parameter {parameter_name} should be one of {parameter_rule.options}.")
+            elif parameter_rule.type == ParameterType.TEXT:
+                if not isinstance(parameter_value, str):
+                    raise ValueError(f"Model Parameter {parameter_name} should be text.")
 
                 # validate options
                 if parameter_rule.options and parameter_value not in parameter_rule.options:
