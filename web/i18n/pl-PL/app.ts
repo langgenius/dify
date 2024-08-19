@@ -76,6 +76,8 @@ const translation = {
   iconPicker: {
     ok: 'OK',
     cancel: 'Anuluj',
+    emoji: 'Emoji',
+    image: 'Obraz',
   },
   switch: 'Przełącz na Orkiestrację Przepływu Pracy',
   switchTipStart:

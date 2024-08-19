@@ -69,6 +69,8 @@ const translation = {
   iconPicker: {
     ok: '確認',
     cancel: '取消',
+    emoji: '表情符號',
+    image: '圖片',
   },
   switch: '遷移為工作流編排',
   switchTipStart: '將為您建立一個使用工作流編排的新應用。新應用將',
