@@ -11,8 +11,9 @@ import type {
   HandleAddCondition,
   HandleAddSubVariableCondition,
   HandleRemoveCondition,
+  HandleToggleConditionLogicalOperator,
+  HandleToggleSubVariableConditionLogicalOperator,
   HandleUpdateCondition,
-  HandleUpdateConditionLogicalOperator,
   HandleUpdateSubVariableCondition,
   IfElseNodeType,
 } from './types'
@@ -166,26 +167,18 @@ const useConfig = (id: string, payload: IfElseNodeType) => {
     })
     setInputs(newInputs)
   }, [inputs, setInputs])
-  // console.log(inputs.cases)
 
-  const handleUpdateSubVariableCondition = useCallback<HandleUpdateSubVariableCondition>((caseId, conditionId, subConditionId, newSubCondition) => {
+  const handleToggleConditionLogicalOperator = useCallback<HandleToggleConditionLogicalOperator>((caseId) => {
     const newInputs = produce(inputs, (draft) => {
       const targetCase = draft.cases?.find(item => item.case_id === caseId)
-      if (targetCase) {
-        const targetCondition = targetCase.conditions.find(item => item.id === conditionId)
-        if (targetCondition && targetCondition.sub_variable_condition) {
-          const targetSubCondition = targetCondition.sub_variable_condition.conditions.find(item => item.id === subConditionId)
-          if (targetSubCondition)
-            Object.assign(targetSubCondition, newSubCondition)
-        }
-      }
+      if (targetCase)
+        targetCase.logical_operator = targetCase.logical_operator === LogicalOperator.and ? LogicalOperator.or : LogicalOperator.and
     })
     setInputs(newInputs)
   }, [inputs, setInputs])
 
   const handleAddSubVariableCondition = useCallback<HandleAddSubVariableCondition>((caseId: string, conditionId: string) => {
     const newInputs = produce(inputs, (draft) => {
-      // debugger
       const condition = draft.cases?.find(item => item.case_id === caseId)?.conditions.find(item => item.id === conditionId)
       if (!condition)
         return
@@ -213,11 +206,43 @@ const useConfig = (id: string, payload: IfElseNodeType) => {
     setInputs(newInputs)
   }, [inputs, setInputs])
 
-  const handleUpdateConditionLogicalOperator = useCallback<HandleUpdateConditionLogicalOperator>((caseId, value) => {
+  const handleRemoveSubVariableCondition = useCallback((caseId: string, conditionId: string, subConditionId: string) => {
+    const newInputs = produce(inputs, (draft) => {
+      const condition = draft.cases?.find(item => item.case_id === caseId)?.conditions.find(item => item.id === conditionId)
+      if (!condition)
+        return
+      if (!condition?.sub_variable_condition)
+        return
+      const subVarCondition = condition.sub_variable_condition
+      if (subVarCondition)
+        subVarCondition.conditions = subVarCondition.conditions.filter(item => item.id !== subConditionId)
+    })
+    setInputs(newInputs)
+  }, [inputs, setInputs])
+
+  const handleUpdateSubVariableCondition = useCallback<HandleUpdateSubVariableCondition>((caseId, conditionId, subConditionId, newSubCondition) => {
     const newInputs = produce(inputs, (draft) => {
       const targetCase = draft.cases?.find(item => item.case_id === caseId)
-      if (targetCase)
-        targetCase.logical_operator = value
+      if (targetCase) {
+        const targetCondition = targetCase.conditions.find(item => item.id === conditionId)
+        if (targetCondition && targetCondition.sub_variable_condition) {
+          const targetSubCondition = targetCondition.sub_variable_condition.conditions.find(item => item.id === subConditionId)
+          if (targetSubCondition)
+            Object.assign(targetSubCondition, newSubCondition)
+        }
+      }
+    })
+    setInputs(newInputs)
+  }, [inputs, setInputs])
+
+  const handleToggleSubVariableConditionLogicalOperator = useCallback<HandleToggleSubVariableConditionLogicalOperator>((caseId, conditionId) => {
+    const newInputs = produce(inputs, (draft) => {
+      const targetCase = draft.cases?.find(item => item.case_id === caseId)
+      if (targetCase) {
+        const targetCondition = targetCase.conditions.find(item => item.id === conditionId)
+        if (targetCondition && targetCondition.sub_variable_condition)
+          targetCondition.sub_variable_condition.logical_operator = targetCondition.sub_variable_condition.logical_operator === LogicalOperator.and ? LogicalOperator.or : LogicalOperator.and
+      }
     })
     setInputs(newInputs)
   }, [inputs, setInputs])
@@ -233,9 +258,11 @@ const useConfig = (id: string, payload: IfElseNodeType) => {
     handleAddCondition,
     handleRemoveCondition,
     handleUpdateCondition,
+    handleToggleConditionLogicalOperator,
     handleAddSubVariableCondition,
     handleUpdateSubVariableCondition,
-    handleUpdateConditionLogicalOperator,
+    handleRemoveSubVariableCondition,
+    handleToggleSubVariableConditionLogicalOperator,
     nodesOutputVars: availableVars,
     availableNodes: availableNodesWithParent,
     nodesOutputNumberVars: availableNumberVars,

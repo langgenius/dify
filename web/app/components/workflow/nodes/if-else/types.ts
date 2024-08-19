@@ -58,8 +58,11 @@ export type IfElseNodeType = CommonNodeType & {
 }
 
 export type HandleAddCondition = (caseId: string, valueSelector: ValueSelector, varItem: Var) => void
-export type HandleAddSubVariableCondition = (caseId: string, conditionId: string) => void
 export type HandleRemoveCondition = (caseId: string, conditionId: string) => void
 export type HandleUpdateCondition = (caseId: string, conditionId: string, newCondition: Condition) => void
+export type HandleToggleConditionLogicalOperator = (caseId: string) => void
+
+export type HandleAddSubVariableCondition = (caseId: string, conditionId: string) => void
+export type handleRemoveSubVariableCondition = (caseId: string, conditionId: string, subConditionId: string) => void
 export type HandleUpdateSubVariableCondition = (caseId: string, conditionId: string, subConditionId: string, newSubCondition: Condition) => void
-export type HandleUpdateConditionLogicalOperator = (caseId: string, value: LogicalOperator) => void
+export type HandleToggleSubVariableConditionLogicalOperator = (caseId: string, conditionId: string) => void

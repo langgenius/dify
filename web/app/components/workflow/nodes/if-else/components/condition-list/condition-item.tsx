@@ -11,8 +11,10 @@ import type {
   Condition,
   HandleAddSubVariableCondition,
   HandleRemoveCondition,
+  HandleToggleSubVariableConditionLogicalOperator,
   HandleUpdateCondition,
   HandleUpdateSubVariableCondition,
+  handleRemoveSubVariableCondition,
 } from '../../types'
 import {
   ComparisonOperator,
@@ -41,13 +43,15 @@ type ConditionItemProps = {
   file?: { key: string }
   isSubVariableKey?: boolean
   subVariableKeyCaseId?: string
-  onRemoveCondition: HandleRemoveCondition
-  onUpdateCondition: HandleUpdateCondition
+  onRemoveCondition?: HandleRemoveCondition
+  onUpdateCondition?: HandleUpdateCondition
+  onAddSubVariableCondition?: HandleAddSubVariableCondition
+  onRemoveSubVariableCondition?: handleRemoveSubVariableCondition
   onUpdateSubVariableCondition?: HandleUpdateSubVariableCondition
+  onToggleSubVariableConditionLogicalOperator?: HandleToggleSubVariableConditionLogicalOperator
   nodesOutputVars: NodeOutPutVar[]
   availableNodes: Node[]
   numberVariables: NodeOutPutVar[]
-  onAddSubVariableCondition?: HandleAddSubVariableCondition
 }
 const ConditionItem = ({
   disabled,
@@ -58,11 +62,13 @@ const ConditionItem = ({
   isSubVariableKey,
   onRemoveCondition,
   onUpdateCondition,
+  onAddSubVariableCondition,
+  onRemoveSubVariableCondition,
   onUpdateSubVariableCondition,
+  onToggleSubVariableConditionLogicalOperator,
   nodesOutputVars,
   availableNodes,
   numberVariables,
-  onAddSubVariableCondition,
 }: ConditionItemProps) => {
   const { t } = useTranslation()
 
@@ -72,7 +78,7 @@ const ConditionItem = ({
     if (isSubVariableKey)
       onUpdateSubVariableCondition?.(caseId, conditionId, condition.id, newCondition)
     else
-      onUpdateCondition(caseId, condition.id, newCondition)
+      onUpdateCondition?.(caseId, condition.id, newCondition)
   }, [caseId, condition, conditionId, isSubVariableKey, onUpdateCondition, onUpdateSubVariableCondition])
 
   const handleUpdateConditionOperator = useCallback((value: ComparisonOperator) => {
@@ -97,8 +103,8 @@ const ConditionItem = ({
       numberVarType,
       value: '',
     }
-    onUpdateCondition(caseId, condition.id, newCondition)
-  }, [caseId, condition, onUpdateCondition])
+    doUpdateCondition(newCondition)
+  }, [condition, doUpdateCondition])
 
   const isSelect = condition.comparison_operator && [ComparisonOperator.in, ComparisonOperator.notIn, ComparisonOperator.allOf].includes(condition.comparison_operator)
   const selectOptions = useMemo(() => {
@@ -136,6 +142,13 @@ const ConditionItem = ({
     onUpdateSubVariableCondition?.(caseId, conditionId, condition.id, newCondition)
   }, [caseId, condition, conditionId, onUpdateSubVariableCondition])
 
+  const doRemoveCondition = useCallback(() => {
+    if (isSubVariableKey)
+      onRemoveSubVariableCondition?.(caseId, conditionId, condition.id)
+    else
+      onRemoveCondition?.(caseId, condition.id)
+  }, [caseId, condition, conditionId, isSubVariableKey, onRemoveCondition, onRemoveSubVariableCondition])
+
   return (
     <div className='flex mb-1 last-of-type:mb-0'>
       <div className={cn(
@@ -149,6 +162,7 @@ const ConditionItem = ({
                 <Select
                   wrapperClassName='h-6'
                   className='pl-0 text-xs'
+                  optionWrapClassName='w-[165px] max-h-none'
                   defaultValue={condition.key}
                   items={subVarOptions}
                   onSelect={item => handleSubVarKeyChange(item.value as string)}
@@ -218,19 +232,11 @@ const ConditionItem = ({
                 caseId={caseId}
                 conditionId={conditionId}
                 readOnly={!!disabled}
-                nodeId=''
                 cases={condition.sub_variable_condition ? [condition.sub_variable_condition] : []}
                 handleAddSubVariableCondition={onAddSubVariableCondition}
-                handleRemoveCase={() => { }}
-                handleAddCondition={() => { }}
-                handleUpdateCondition={onUpdateCondition}
+                handleRemoveSubVariableCondition={onRemoveSubVariableCondition}
                 handleUpdateSubVariableCondition={onUpdateSubVariableCondition}
-                handleRemoveCondition={() => { }}
-                handleUpdateConditionLogicalOperator={() => { }}
-                nodesOutputVars={[]}
-                availableNodes={[]}
-                varsIsVarFileAttribute={{}}
-                filterVar={() => true}
+                handleToggleSubVariableConditionLogicalOperator={onToggleSubVariableConditionLogicalOperator}
               />
             </div>
           )
@@ -240,7 +246,7 @@ const ConditionItem = ({
         className='shrink-0 flex items-center justify-center ml-1 mt-1 w-6 h-6 rounded-lg cursor-pointer hover:bg-state-destructive-hover text-text-tertiary hover:text-text-destructive'
         onMouseEnter={() => setIsHovered(true)}
         onMouseLeave={() => setIsHovered(false)}
-        onClick={() => onRemoveCondition(caseId, condition.id)}
+        onClick={doRemoveCondition}
       >
         <RiDeleteBinLine className='w-4 h-4' />
       </div>

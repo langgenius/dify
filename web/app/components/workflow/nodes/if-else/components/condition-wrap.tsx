@@ -8,7 +8,7 @@ import {
   RiDeleteBinLine,
   RiDraggable,
 } from '@remixicon/react'
-import type { CaseItem, HandleAddCondition, HandleAddSubVariableCondition, HandleRemoveCondition, HandleUpdateCondition, HandleUpdateConditionLogicalOperator, HandleUpdateSubVariableCondition } from '../types'
+import type { CaseItem, HandleAddCondition, HandleAddSubVariableCondition, HandleRemoveCondition, HandleToggleConditionLogicalOperator, HandleToggleSubVariableConditionLogicalOperator, HandleUpdateCondition, HandleUpdateSubVariableCondition, handleRemoveSubVariableCondition } from '../types'
 import type { Node, NodeOutPutVar, Var } from '../../../types'
 import { VarType } from '../../../types'
 import { useGetAvailableVars } from '../../variable-assigner/hooks'
@@ -21,28 +21,30 @@ type Props = {
   isSubVariable?: boolean
   caseId?: string
   conditionId?: string
-  nodeId: string
   cases: CaseItem[]
   readOnly: boolean
   handleSortCase?: (sortedCases: (CaseItem & { id: string })[]) => void
-  handleRemoveCase: (caseId: string) => void
+  handleRemoveCase?: (caseId: string) => void
   handleAddCondition?: HandleAddCondition
+  handleRemoveCondition?: HandleRemoveCondition
+  handleUpdateCondition?: HandleUpdateCondition
+  handleToggleConditionLogicalOperator?: HandleToggleConditionLogicalOperator
   handleAddSubVariableCondition?: HandleAddSubVariableCondition
+  handleRemoveSubVariableCondition?: handleRemoveSubVariableCondition
   handleUpdateSubVariableCondition?: HandleUpdateSubVariableCondition
-  handleUpdateCondition: HandleUpdateCondition
-  handleRemoveCondition: HandleRemoveCondition
-  handleUpdateConditionLogicalOperator: HandleUpdateConditionLogicalOperator
-  nodesOutputVars: NodeOutPutVar[]
-  availableNodes: Node[]
-  varsIsVarFileAttribute: Record<string, boolean>
-  filterVar: (varPayload: Var) => boolean
+  handleToggleSubVariableConditionLogicalOperator?: HandleToggleSubVariableConditionLogicalOperator
+  nodeId?: string
+  nodesOutputVars?: NodeOutPutVar[]
+  availableNodes?: Node[]
+  varsIsVarFileAttribute?: Record<string, boolean>
+  filterVar?: (varPayload: Var) => boolean
 }
 
 const ConditionWrap: FC<Props> = ({
   isSubVariable,
   caseId,
   conditionId,
-  nodeId: id,
+  nodeId: id = '',
   cases = [],
   readOnly,
   handleSortCase = () => { },
@@ -50,13 +52,15 @@ const ConditionWrap: FC<Props> = ({
   handleUpdateCondition,
   handleAddCondition,
   handleRemoveCondition,
+  handleToggleConditionLogicalOperator,
   handleAddSubVariableCondition,
+  handleRemoveSubVariableCondition,
   handleUpdateSubVariableCondition,
-  handleUpdateConditionLogicalOperator,
-  nodesOutputVars,
-  availableNodes,
-  varsIsVarFileAttribute,
-  filterVar,
+  handleToggleSubVariableConditionLogicalOperator,
+  nodesOutputVars = [],
+  availableNodes = [],
+  varsIsVarFileAttribute = {},
+  filterVar = () => true,
 }) => {
   const { t } = useTranslation()
 
@@ -122,13 +126,15 @@ const ConditionWrap: FC<Props> = ({
                         conditionId={conditionId}
                         onUpdateCondition={handleUpdateCondition}
                         onRemoveCondition={handleRemoveCondition}
-                        onUpdateConditionLogicalOperator={handleUpdateConditionLogicalOperator}
+                        onToggleConditionLogicalOperator={handleToggleConditionLogicalOperator}
                         nodesOutputVars={nodesOutputVars}
                         availableNodes={availableNodes}
                         numberVariables={getAvailableVars(id, '', filterNumberVar)}
                         varsIsVarFileAttribute={varsIsVarFileAttribute}
                         onAddSubVariableCondition={handleAddSubVariableCondition}
+                        onRemoveSubVariableCondition={handleRemoveSubVariableCondition}
                         onUpdateSubVariableCondition={handleUpdateSubVariableCondition}
+                        onToggleSubVariableConditionLogicalOperator={handleToggleSubVariableConditionLogicalOperator}
                         isSubVariable={isSubVariable}
                       />
                     </div>
@@ -168,7 +174,7 @@ const ConditionWrap: FC<Props> = ({
                         size='small'
                         variant='ghost'
                         disabled={readOnly}
-                        onClick={() => handleRemoveCase(item.case_id)}
+                        onClick={() => handleRemoveCase?.(item.case_id)}
                         onMouseEnter={() => setWillDeleteCaseId(item.case_id)}
                         onMouseLeave={() => setWillDeleteCaseId('')}
                       >

@@ -37,6 +37,7 @@ export type ISelectProps = {
   bgClassName?: string
   placeholder?: string
   overlayClassName?: string
+  optionWrapClassName?: string
   optionClassName?: string
   renderOption?: ({
     item,
@@ -172,6 +173,7 @@ const SimpleSelect: FC<ISelectProps> = ({
   disabled = false,
   onSelect,
   placeholder,
+  optionWrapClassName,
   optionClassName,
   renderOption,
 }) => {
@@ -231,7 +233,7 @@ const SimpleSelect: FC<ISelectProps> = ({
             leaveTo="opacity-0"
           >
 
-            <Listbox.Options className="absolute z-10 mt-1 px-1 max-h-60 w-full overflow-auto rounded-md bg-white py-1 text-base shadow-lg border-gray-200 border-[0.5px] focus:outline-none sm:text-sm">
+            <Listbox.Options className={classNames('absolute z-10 mt-1 px-1 max-h-60 w-full overflow-auto rounded-md bg-white py-1 text-base shadow-lg border-gray-200 border-[0.5px] focus:outline-none sm:text-sm', optionWrapClassName)}>
               {items.map((item: Item) => (
                 <Listbox.Option
                   key={item.value}

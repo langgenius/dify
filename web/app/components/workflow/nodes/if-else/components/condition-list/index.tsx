@@ -1,18 +1,21 @@
 import { RiLoopLeftLine } from '@remixicon/react'
-import { LogicalOperator } from '../../types'
+import { useCallback } from 'react'
 import type {
   CaseItem,
   HandleAddSubVariableCondition,
   HandleRemoveCondition,
+  HandleToggleConditionLogicalOperator,
+  HandleToggleSubVariableConditionLogicalOperator,
   HandleUpdateCondition,
-  HandleUpdateConditionLogicalOperator,
   HandleUpdateSubVariableCondition,
+  handleRemoveSubVariableCondition,
 } from '../../types'
 import ConditionItem from './condition-item'
 import type {
   Node,
   NodeOutPutVar,
 } from '@/app/components/workflow/types'
+import cn from '@/utils/classnames'
 
 type ConditionListProps = {
   isSubVariable?: boolean
@@ -20,15 +23,17 @@ type ConditionListProps = {
   caseId: string
   conditionId?: string
   caseItem: CaseItem
-  onUpdateCondition: HandleUpdateCondition
-  onUpdateConditionLogicalOperator: HandleUpdateConditionLogicalOperator
-  onRemoveCondition: HandleRemoveCondition
+  onRemoveCondition?: HandleRemoveCondition
+  onUpdateCondition?: HandleUpdateCondition
+  onToggleConditionLogicalOperator?: HandleToggleConditionLogicalOperator
   nodesOutputVars: NodeOutPutVar[]
   availableNodes: Node[]
   numberVariables: NodeOutPutVar[]
   varsIsVarFileAttribute: Record<string, boolean>
   onAddSubVariableCondition?: HandleAddSubVariableCondition
+  onRemoveSubVariableCondition?: handleRemoveSubVariableCondition
   onUpdateSubVariableCondition?: HandleUpdateSubVariableCondition
+  onToggleSubVariableConditionLogicalOperator?: HandleToggleSubVariableConditionLogicalOperator
 }
 const ConditionList = ({
   isSubVariable,
@@ -37,19 +42,28 @@ const ConditionList = ({
   conditionId,
   caseItem,
   onUpdateCondition,
-  onUpdateConditionLogicalOperator,
   onRemoveCondition,
+  onToggleConditionLogicalOperator,
+  onAddSubVariableCondition,
+  onRemoveSubVariableCondition,
+  onUpdateSubVariableCondition,
+  onToggleSubVariableConditionLogicalOperator,
   nodesOutputVars,
   availableNodes,
   numberVariables,
   varsIsVarFileAttribute,
-  onAddSubVariableCondition,
-  onUpdateSubVariableCondition,
 }: ConditionListProps) => {
   const { conditions, logical_operator } = caseItem
 
+  const doToggleConditionLogicalOperator = useCallback(() => {
+    if (isSubVariable)
+      onToggleSubVariableConditionLogicalOperator?.(caseId!, conditionId!)
+    else
+      onToggleConditionLogicalOperator?.(caseId)
+  }, [caseId, conditionId, isSubVariable, onToggleConditionLogicalOperator, onToggleSubVariableConditionLogicalOperator])
+
   return (
-    <div className='relative pl-[60px]'>
+    <div className={cn('relative', !isSubVariable && 'pl-[60px]')}>
       {
         conditions.length > 1 && (
           <div className='absolute top-0 bottom-0 left-0 w-[60px]'>
@@ -57,9 +71,7 @@ const ConditionList = ({
             <div className='absolute top-1/2 -translate-y-1/2 right-0 w-4 h-[29px] bg-components-panel-bg'></div>
             <div
               className='absolute top-1/2 right-1 -translate-y-1/2 flex items-center px-1 h-[21px] rounded-md border-[0.5px] border-components-button-secondary-border shadow-xs bg-components-button-secondary-bg text-text-accent-secondary text-[10px] font-semibold cursor-pointer'
-              onClick={() => {
-                onUpdateConditionLogicalOperator(caseItem.case_id, caseItem.logical_operator === LogicalOperator.and ? LogicalOperator.or : LogicalOperator.and)
-              }}
+              onClick={doToggleConditionLogicalOperator}
             >
               {logical_operator.toUpperCase()}
               <RiLoopLeftLine className='ml-0.5 w-3 h-3' />
@@ -77,13 +89,15 @@ const ConditionList = ({
             condition={condition}
             onUpdateCondition={onUpdateCondition}
             onRemoveCondition={onRemoveCondition}
+            onAddSubVariableCondition={onAddSubVariableCondition}
+            onRemoveSubVariableCondition={onRemoveSubVariableCondition}
+            onUpdateSubVariableCondition={onUpdateSubVariableCondition}
+            onToggleSubVariableConditionLogicalOperator={onToggleSubVariableConditionLogicalOperator}
             nodesOutputVars={nodesOutputVars}
             availableNodes={availableNodes}
             numberVariables={numberVariables}
             file={varsIsVarFileAttribute[condition.id] ? { key: (condition.variable_selector || []).slice(-1)[0] } : undefined}
             isSubVariableKey={isSubVariable}
-            onAddSubVariableCondition={onAddSubVariableCondition}
-            onUpdateSubVariableCondition={onUpdateSubVariableCondition}
           />
         ))
       }
