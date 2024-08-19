@@ -17,7 +17,7 @@ import {
   useWorkflowInteractions,
   useWorkflowRun,
 } from '../hooks'
-import { WorkflowRunningStatus } from '../types'
+import { ControlMode, WorkflowRunningStatus } from '../types'
 import cn from '@/utils/classnames'
 import {
   PortalToFollowElem,
@@ -71,9 +71,6 @@ const ViewHistory = ({
 
   const data = isChatMode ? chatList : runList
   const isLoading = isChatMode ? chatListLoading : runListLoading
-  enum ControlMode {
-    HAND = 'hand',
-  }
 
   return (
     (
@@ -177,7 +174,7 @@ const ViewHistory = ({
                           setOpen(false)
                           handleNodesCancelSelected()
                           handleCancelDebugAndPreviewPanel()
-                          setControlMode(ControlMode.HAND)
+                          setControlMode(ControlMode.Hand)
                         }}
                       >
                         {
