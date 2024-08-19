@@ -3,7 +3,7 @@
 import React, { forwardRef, useRef } from "react";
 import SiteLogo from "@/app/components/base/logo/logo-site";
 
-import { cn } from "@/lib/utils";
+import { cn } from "./utils ";
 import { AnimatedBeam } from "@/app/components/animate-beam";
 
 const Circle = forwardRef<

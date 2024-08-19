@@ -2,7 +2,7 @@
 
 import React from "react";
 import { Card, CardHeader, CardBody, CardFooter } from "@nextui-org/card";
-import { cn } from "@/lib/utils";
+import { cn } from "./utils ";
 import Image from "next/image";
 
 interface FeatCardProps {

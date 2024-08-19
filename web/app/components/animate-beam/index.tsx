@@ -3,7 +3,12 @@
 import { RefObject, useEffect, useId, useState } from "react";
 import { motion } from "framer-motion";
 
-import { cn } from "@/lib/utils";
+import { type ClassValue, clsx } from "clsx";
+import { twMerge } from "tailwind-merge";
+
+export function cn(...inputs: ClassValue[]) {
+  return twMerge(clsx(inputs));
+}
 
 export interface AnimatedBeamProps {
   className?: string;

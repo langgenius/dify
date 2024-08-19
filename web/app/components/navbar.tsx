@@ -1,6 +1,5 @@
 "use client";
 import * as React from "react";
-import { Button } from "@/app/components/base/button";
 import SiteLogo from "@/app/components/base/logo/logo-site";
 import Link from "next/link";
 

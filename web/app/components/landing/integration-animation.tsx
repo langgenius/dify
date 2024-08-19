@@ -3,7 +3,12 @@
 import React, { forwardRef, useRef } from "react";
 import SiteLogo from "@/app/components/base/logo/logo-site";
 
-import { cn } from "@/lib/utils";
+import { type ClassValue, clsx } from "clsx";
+import { twMerge } from "tailwind-merge";
+
+export function cn(...inputs: ClassValue[]) {
+  return twMerge(clsx(inputs));
+}
 import { AnimatedBeam } from "@/app/components/animate-beam";
 
 const Circle = forwardRef<

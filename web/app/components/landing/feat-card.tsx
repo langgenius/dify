@@ -2,7 +2,12 @@
 
 import React from "react";
 import { Card, CardHeader, CardBody, CardFooter } from "@nextui-org/card";
-import { cn } from "@/lib/utils";
+import { type ClassValue, clsx } from "clsx";
+import { twMerge } from "tailwind-merge";
+
+export function cn(...inputs: ClassValue[]) {
+  return twMerge(clsx(inputs));
+}
 import Image from "next/image";
 
 interface FeatCardProps {
