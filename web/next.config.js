@@ -50,15 +50,15 @@ const nextConfig = {
     ignoreBuildErrors: true,
   },
   reactStrictMode: true,
-  async redirects() {
-    return [
-      {
-        source: '/',
-         destination: '/landing',
-        permanent: false,
-      },
-    ]
-  },
+  // async redirects() {
+  //   return [
+  //     {
+  //       source: '/',
+  //        destination: '/landing',
+  //       permanent: false,
+  //     },
+  //   ]
+  // },
   output: 'standalone',
 }
 
