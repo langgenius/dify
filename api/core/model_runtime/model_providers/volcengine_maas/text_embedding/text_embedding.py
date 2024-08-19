@@ -30,7 +30,7 @@ from core.model_runtime.model_providers.volcengine_maas.errors import (
     RateLimitErrors,
     ServerUnavailableErrors,
 )
-from core.model_runtime.model_providers.volcengine_maas.text_embedding.models import ModelConfigs
+from core.model_runtime.model_providers.volcengine_maas.text_embedding.models import get_model_config
 from core.model_runtime.model_providers.volcengine_maas.volc_sdk import MaasException
 
 
@@ -115,14 +115,10 @@ class VolcengineMaaSTextEmbeddingModel(TextEmbeddingModel):
         """
             generate custom model entities from credentials
         """
-        model_properties = ModelConfigs.get(
-            credentials['base_model_name'], {}).get('model_properties', {}).copy()
-        if credentials.get('context_size'):
-            model_properties[ModelPropertyKey.CONTEXT_SIZE] = int(
-                credentials.get('context_size', 4096))
-        if credentials.get('max_chunks'):
-            model_properties[ModelPropertyKey.MAX_CHUNKS] = int(
-                credentials.get('max_chunks', 4096))
+        model_config = get_model_config(credentials)
+        model_properties = {}
+        model_properties[ModelPropertyKey.CONTEXT_SIZE] = model_config.properties.context_size
+        model_properties[ModelPropertyKey.MAX_CHUNKS] = model_config.properties.max_chunks
         entity = AIModelEntity(
             model=model,
             label=I18nObject(en_US=model),

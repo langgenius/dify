@@ -35,7 +35,10 @@ from core.model_runtime.model_providers.volcengine_maas.errors import (
     RateLimitErrors,
     ServerUnavailableErrors,
 )
-from core.model_runtime.model_providers.volcengine_maas.llm.models import ModelConfigs
+from core.model_runtime.model_providers.volcengine_maas.llm.models import (
+    get_model_config,
+    get_v2_req_params,
+)
 from core.model_runtime.model_providers.volcengine_maas.volc_sdk import MaasException
 
 logger = logging.getLogger(__name__)
@@ -95,37 +98,12 @@ class VolcengineMaaSLargeLanguageModel(LargeLanguageModel):
             -> LLMResult | Generator:
 
         client = MaaSClient.from_credential(credentials)
-
-        req_params = ModelConfigs.get(
-            credentials['base_model_name'], {}).get('req_params', {}).copy()
-        if credentials.get('context_size'):
-            req_params['max_prompt_tokens'] = credentials.get('context_size')
-        if credentials.get('max_tokens'):
-            req_params['max_new_tokens'] = credentials.get('max_tokens')
-        if model_parameters.get('max_tokens'):
-            req_params['max_new_tokens'] = model_parameters.get('max_tokens')
-        if model_parameters.get('temperature'):
-            req_params['temperature'] = model_parameters.get('temperature')
-        if model_parameters.get('top_p'):
-            req_params['top_p'] = model_parameters.get('top_p')
-        if model_parameters.get('top_k'):
-            req_params['top_k'] = model_parameters.get('top_k')
-        if model_parameters.get('presence_penalty'):
-            req_params['presence_penalty'] = model_parameters.get(
-                'presence_penalty')
-        if model_parameters.get('frequency_penalty'):
-            req_params['frequency_penalty'] = model_parameters.get(
-                'frequency_penalty')
-        if stop:
-            req_params['stop'] = stop
-
+        req_params = get_v2_req_params(credentials, model_parameters, stop)
         extra_model_kwargs = {}
-        
         if tools:
             extra_model_kwargs['tools'] = [
                 MaaSClient.transform_tool_prompt_to_maas_config(tool) for tool in tools
             ]
-
         resp = MaaSClient.wrap_exception(
             lambda: client.chat(req_params, prompt_messages, stream, **extra_model_kwargs))
         if not stream:
@@ -197,10 +175,8 @@ class VolcengineMaaSLargeLanguageModel(LargeLanguageModel):
         """
             used to define customizable model schema
         """
-        max_tokens = ModelConfigs.get(
-            credentials['base_model_name'], {}).get('req_params', {}).get('max_new_tokens')
-        if credentials.get('max_tokens'):
-            max_tokens = int(credentials.get('max_tokens'))
+        model_config = get_model_config(credentials)
+    
         rules = [
             ParameterRule(
                 name='temperature',
@@ -234,10 +210,10 @@ class VolcengineMaaSLargeLanguageModel(LargeLanguageModel):
                 name='presence_penalty',
                 type=ParameterType.FLOAT,
                 use_template='presence_penalty',
-                label={
-                    'en_US': 'Presence Penalty',
-                    'zh_Hans': '存在惩罚',
-                },
+                label=I18nObject(
+                    en_US='Presence Penalty',
+                    zh_Hans= '存在惩罚',
+                ),
                 min=-2.0,
                 max=2.0,
             ),
@@ -245,10 +221,10 @@ class VolcengineMaaSLargeLanguageModel(LargeLanguageModel):
                 name='frequency_penalty',
                 type=ParameterType.FLOAT,
                 use_template='frequency_penalty',
-                label={
-                    'en_US': 'Frequency Penalty',
-                    'zh_Hans': '频率惩罚',
-                },
+                label=I18nObject(
+                    en_US= 'Frequency Penalty',
+                    zh_Hans= '频率惩罚',
+                ),
                 min=-2.0,
                 max=2.0,
             ),
@@ -257,7 +233,7 @@ class VolcengineMaaSLargeLanguageModel(LargeLanguageModel):
                 type=ParameterType.INT,
                 use_template='max_tokens',
                 min=1,
-                max=max_tokens,
+                max=model_config.properties.max_tokens,
                 default=512,
                 label=I18nObject(
                     zh_Hans='最大生成长度',
@@ -266,17 +242,10 @@ class VolcengineMaaSLargeLanguageModel(LargeLanguageModel):
             ),
         ]
 
-        model_properties = ModelConfigs.get(
-            credentials['base_model_name'], {}).get('model_properties', {}).copy()
-        if credentials.get('mode'):
-            model_properties[ModelPropertyKey.MODE] = credentials.get('mode')
-        if credentials.get('context_size'):
-            model_properties[ModelPropertyKey.CONTEXT_SIZE] = int(
-                credentials.get('context_size', 4096))
-
-        model_features = ModelConfigs.get(
-            credentials['base_model_name'], {}).get('features', [])
-
+        model_properties = {}
+        model_properties[ModelPropertyKey.CONTEXT_SIZE] = model_config.properties.context_size
+        model_properties[ModelPropertyKey.MODE] = model_config.properties.mode.value
+       
         entity = AIModelEntity(
             model=model,
             label=I18nObject(
@@ -286,7 +255,7 @@ class VolcengineMaaSLargeLanguageModel(LargeLanguageModel):
             model_type=ModelType.LLM,
             model_properties=model_properties,
             parameter_rules=rules,
-            features=model_features,
+            features=model_config.features,
         )
 
         return entity
