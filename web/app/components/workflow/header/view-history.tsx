@@ -17,7 +17,7 @@ import {
   useWorkflowInteractions,
   useWorkflowRun,
 } from '../hooks'
-import { WorkflowRunningStatus } from '../types'
+import { ControlMode, WorkflowRunningStatus } from '../types'
 import cn from '@/utils/classnames'
 import {
   PortalToFollowElem,
@@ -58,6 +58,7 @@ const ViewHistory = ({
     handleCancelDebugAndPreviewPanel,
   } = useWorkflowInteractions()
   const workflowStore = useWorkflowStore()
+  const setControlMode = useStore(s => s.setControlMode)
   const { appDetail, setCurrentLogItem, setShowMessageLogModal } = useAppStore(useShallow(state => ({
     appDetail: state.appDetail,
     setCurrentLogItem: state.setCurrentLogItem,
@@ -173,6 +174,7 @@ const ViewHistory = ({
                           setOpen(false)
                           handleNodesCancelSelected()
                           handleCancelDebugAndPreviewPanel()
+                          setControlMode(ControlMode.Hand)
                         }}
                       >
                         {

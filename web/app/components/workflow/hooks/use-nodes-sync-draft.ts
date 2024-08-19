@@ -8,7 +8,9 @@ import {
 } from '../store'
 import { BlockEnum } from '../types'
 import { useWorkflowUpdate } from '../hooks'
-import { useNodesReadOnly } from './use-workflow'
+import {
+  useNodesReadOnly,
+} from './use-workflow'
 import { syncWorkflowDraft } from '@/service/workflow'
 import { useFeaturesStore } from '@/app/components/base/features/hooks'
 import { API_PREFIX } from '@/config'

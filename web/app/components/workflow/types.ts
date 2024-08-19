@@ -29,6 +29,11 @@ export enum BlockEnum {
   Assigner = 'assigner', // is now named as VariableAssigner
 }
 
+export enum ControlMode {
+  Pointer = 'pointer',
+  Hand = 'hand',
+}
+
 export type Branch = {
   id: string
   name: string
