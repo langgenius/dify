@@ -85,7 +85,7 @@ const Container = () => {
       className="grow relative flex flex-col bg-gray-100 overflow-y-auto"
     >
       <div className="sticky top-0 flex flex-col pt-4 px-12 pb-2 leading-[56px] bg-gray-100 z-10 flex-wrap gap-y-2">
-        <div className={`mb-1 textGradient text-xl font-semibold`}>
+        <div className={`mb-1 text-blue-700 text-xl font-semibold`}>
           Datesets
         </div>
 
@@ -121,7 +121,7 @@ const Container = () => {
             </div>
           )}
           {activeTab === "api" && data && (
-            <>
+            <div className="flex gap-2">
               {isCurrentWorkspaceEditor && (
                 <Button
                   variant={"primary"}
@@ -131,7 +131,7 @@ const Container = () => {
                 </Button>
               )}
               <ApiServer apiBaseUrl={data.api_base_url || ""} />
-            </>
+            </div>
           )}
         </div>
       </div>

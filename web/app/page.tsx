@@ -380,7 +380,10 @@ function ModelAgnosticCarousel({ images }: { images: string[] }) {
 
 function AppIntergration() {
   return (
-    <div className="flex flex-col border rounded-2xl mx-4 bg-gradient-to-b from-blue-100 to-white lg:mx-auto max-w-7xl pb-10 px-4 my-16">
+    <div
+      id="integrations"
+      className="flex flex-col border rounded-2xl mx-4 bg-gradient-to-b from-blue-100 to-white lg:mx-auto max-w-7xl pb-10 px-4 my-16"
+    >
       <h1 className="text-center translate-y-8 z-20 sm:text-4xl text-2xl">
         Unlimited Integrations
       </h1>

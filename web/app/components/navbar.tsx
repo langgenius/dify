@@ -13,7 +13,7 @@ export default function navbar() {
 
   return (
     <nav className="fixed top-2 left-0 right-0  text-black  z-50  p-4  ">
-      <div className="flex max-w-7xl bg-white mx-auto justify-between items-center border px-2 rounded-full   h-[48px] backdrop-blur-xl">
+      <div className="flex max-w-5xl bg-white mx-auto justify-between items-center border px-2 rounded-full   h-[48px] backdrop-blur-xl">
         <div className="flex items-center gap-3 ">
           <Link href="/">
             <SiteLogo />
@@ -31,7 +31,7 @@ export default function navbar() {
             Features
           </div>
           <div
-            onClick={() => handleNavigation("intergartions")}
+            onClick={() => handleNavigation("integrations")}
             className="cursor-pointer"
           >
             Integration
