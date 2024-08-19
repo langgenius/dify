@@ -1,14 +1,16 @@
 from flask_restful import fields
 
-from libs.helper import TimestampField
+from libs.helper import AppIconUrlField, TimestampField
 
 app_detail_kernel_fields = {
     "id": fields.String,
     "name": fields.String,
     "description": fields.String,
     "mode": fields.String(attribute="mode_compatible_with_agent"),
+    "icon_type": fields.String,
     "icon": fields.String,
     "icon_background": fields.String,
+    "icon_url": AppIconUrlField,
 }
 
 related_app_list = {
@@ -71,8 +73,10 @@ app_partial_fields = {
     "max_active_requests": fields.Raw(),
     "description": fields.String(attribute="desc_or_prompt"),
     "mode": fields.String(attribute="mode_compatible_with_agent"),
+    "icon_type": fields.String,
     "icon": fields.String,
     "icon_background": fields.String,
+    "icon_url": AppIconUrlField,
     "model_config": fields.Nested(model_config_partial_fields, attribute="app_model_config", allow_null=True),
     "created_at": TimestampField,
     "tags": fields.List(fields.Nested(tag_fields)),
@@ -104,8 +108,10 @@ site_fields = {
     "access_token": fields.String(attribute="code"),
     "code": fields.String,
     "title": fields.String,
+    "icon_type": fields.String,
     "icon": fields.String,
     "icon_background": fields.String,
+    "icon_url": AppIconUrlField,
     "description": fields.String,
     "default_language": fields.String,
     "chat_color_theme": fields.String,
@@ -125,8 +131,10 @@ app_detail_fields_with_site = {
     "name": fields.String,
     "description": fields.String,
     "mode": fields.String(attribute="mode_compatible_with_agent"),
+    "icon_type": fields.String,
     "icon": fields.String,
     "icon_background": fields.String,
+    "icon_url": AppIconUrlField,
     "enable_site": fields.Boolean,
     "enable_api": fields.Boolean,
     "model_config": fields.Nested(model_config_fields, attribute="app_model_config", allow_null=True),
