@@ -1,6 +1,6 @@
 import time
 import requests
-from typing import Any, Union, List
+from typing import Any, Union
 
 from core.tools.tool.builtin_tool import BuiltinTool
 from core.tools.entities.tool_entities import ToolInvokeMessage
@@ -31,11 +31,12 @@ class CrossRefQueryTitleAPI:
     def __init__(self, mailto: str):
         self.mailto = mailto
 
-    def _query(self, query: str, rows: int = 3, offset: int = 0, sort: str = 'relevance', order: str = 'desc', fuzzy_query: bool = False) -> List[dict]:
+    def _query(self, query: str, rows: int = 3, offset: int = 0, sort: str = 'relevance', order: str = 'desc', fuzzy_query: bool = False) -> list[dict]:
         url = self.query_url_template.format(query=query, rows=rows, offset=offset, sort=sort, order=order, mailto=self.mailto)
         response = requests.get(url)
         response.raise_for_status()
         rate_limit = int(response.headers['x-ratelimit-limit'])
+        # convert time string to seconds
         rate_interval = convert_time_str_to_seconds(response.headers['x-ratelimit-interval'])
 
         self.rate_limit = rate_limit
@@ -57,9 +58,10 @@ class CrossRefQueryTitleAPI:
                 return [paper]
         return []
 
-    def query(self, query: str, rows: int = 3, sort: str = 'relevance', order: str = 'desc', fuzzy_query: bool = False) -> List[dict]:
+    def query(self, query: str, rows: int = 3, sort: str = 'relevance', order: str = 'desc', fuzzy_query: bool = False) -> list[dict]:
         rows = min(rows, self.max_limit)
         if rows > self.rate_limit:
+            # query multiple times
             query_times = rows // self.rate_limit + 1
             results = []
 
@@ -68,11 +70,13 @@ class CrossRefQueryTitleAPI:
                 if fuzzy_query:
                     results.extend(result)
                 else:
+                    # fuzzy_query=False, only one result
                     if result:
                         return result
                 time.sleep(self.rate_interval)
             return results
         else:
+            # query once
             return self._query(query, rows, sort=sort, order=order, fuzzy_query=fuzzy_query)
 
 
