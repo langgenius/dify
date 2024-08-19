@@ -48,6 +48,7 @@ import { useHelpline } from './use-helpline'
 import {
   useNodesReadOnly,
   useWorkflow,
+  useWorkflowReadOnly,
 } from './use-workflow'
 import { WorkflowHistoryEvent, useWorkflowHistory } from './use-workflow-history'
 
@@ -62,6 +63,7 @@ export const useNodesInteractions = () => {
     getAfterNodesInSameBranch,
   } = useWorkflow()
   const { getNodesReadOnly } = useNodesReadOnly()
+  const { getWorkflowReadOnly } = useWorkflowReadOnly()
   const { handleSetHelpline } = useHelpline()
   const {
     handleNodeIterationChildDrag,
@@ -1029,14 +1031,7 @@ export const useNodesInteractions = () => {
     if (getNodesReadOnly())
       return
 
-    const {
-      setClipboardElements,
-      shortcutsDisabled,
-      showFeaturesPanel,
-    } = workflowStore.getState()
-
-    if (shortcutsDisabled || showFeaturesPanel)
-      return
+    const { setClipboardElements } = workflowStore.getState()
 
     const {
       getNodes,
@@ -1062,13 +1057,8 @@ export const useNodesInteractions = () => {
 
     const {
       clipboardElements,
-      shortcutsDisabled,
-      showFeaturesPanel,
       mousePosition,
     } = workflowStore.getState()
-
-    if (shortcutsDisabled || showFeaturesPanel)
-      return
 
     const {
       getNodes,
@@ -1106,6 +1096,11 @@ export const useNodesInteractions = () => {
           zIndex: nodeToPaste.zIndex,
         })
         newNode.id = newNode.id + index
+
+        // If only the iteration start node is copied, remove the isIterationStart flag
+        // This new node is movable and can be placed anywhere
+        if (clipboardElements.length === 1 && newNode.data.isIterationStart)
+          newNode.data.isIterationStart = false
 
         let newChildren: Node[] = []
         if (nodeToPaste.data.type === BlockEnum.Iteration) {
@@ -1146,14 +1141,6 @@ export const useNodesInteractions = () => {
       return
 
     const {
-      shortcutsDisabled,
-      showFeaturesPanel,
-    } = workflowStore.getState()
-
-    if (shortcutsDisabled || showFeaturesPanel)
-      return
-
-    const {
       getNodes,
       edges,
     } = store.getState()
@@ -1175,7 +1162,7 @@ export const useNodesInteractions = () => {
 
     if (selectedNode)
       handleNodeDelete(selectedNode.id)
-  }, [store, workflowStore, getNodesReadOnly, handleNodeDelete])
+  }, [store, getNodesReadOnly, handleNodeDelete])
 
   const handleNodeResize = useCallback((nodeId: string, params: ResizeParamsWithDirection) => {
     if (getNodesReadOnly())
@@ -1234,14 +1221,7 @@ export const useNodesInteractions = () => {
   }, [getNodesReadOnly, store, handleSyncWorkflowDraft, saveStateToHistory])
 
   const handleHistoryBack = useCallback(() => {
-    if (getNodesReadOnly())
-      return
-
-    const {
-      shortcutsDisabled,
-    } = workflowStore.getState()
-
-    if (shortcutsDisabled)
+    if (getNodesReadOnly() || getWorkflowReadOnly())
       return
 
     const { setEdges, setNodes } = store.getState()
@@ -1253,17 +1233,10 @@ export const useNodesInteractions = () => {
 
     setEdges(edges)
     setNodes(nodes)
-  }, [store, undo, workflowHistoryStore, workflowStore, getNodesReadOnly])
+  }, [store, undo, workflowHistoryStore, getNodesReadOnly, getWorkflowReadOnly])
 
   const handleHistoryForward = useCallback(() => {
-    if (getNodesReadOnly())
-      return
-
-    const {
-      shortcutsDisabled,
-    } = workflowStore.getState()
-
-    if (shortcutsDisabled)
+    if (getNodesReadOnly() || getWorkflowReadOnly())
       return
 
     const { setEdges, setNodes } = store.getState()
@@ -1275,7 +1248,7 @@ export const useNodesInteractions = () => {
 
     setEdges(edges)
     setNodes(nodes)
-  }, [redo, store, workflowHistoryStore, workflowStore, getNodesReadOnly])
+  }, [redo, store, workflowHistoryStore, getNodesReadOnly, getWorkflowReadOnly])
 
   return {
     handleNodeDragStart,
