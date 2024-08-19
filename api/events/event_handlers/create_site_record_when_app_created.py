@@ -11,6 +11,7 @@ def handle(sender, **kwargs):
     site = Site(
         app_id=app.id,
         title=app.name,
+        icon_type=app.icon_type,
         icon=app.icon,
         icon_background=app.icon_background,
         default_language=account.interface_language,

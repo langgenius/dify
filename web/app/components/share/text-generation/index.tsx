@@ -411,7 +411,13 @@ const TextGeneration: FC<IMainProps> = ({
     }
   }, [siteInfo?.title, canReplaceLogo])
 
-  useAppFavicon(!isInstalledApp, siteInfo?.icon, siteInfo?.icon_background)
+  useAppFavicon({
+    enable: !isInstalledApp,
+    icon_type: siteInfo?.icon_type,
+    icon: siteInfo?.icon,
+    icon_background: siteInfo?.icon_background,
+    icon_url: siteInfo?.icon_url,
+  })
 
   const [isShowResSidebar, { setTrue: doShowResSidebar, setFalse: hideResSidebar }] = useBoolean(false)
   const showResSidebar = () => {
