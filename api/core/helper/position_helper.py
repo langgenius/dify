@@ -106,6 +106,7 @@ def sort_by_position_map(
                 filtered_data.append(item)
         else:  # case 2: name is not in the position map
             filtered_data.append(item)
+
     return sorted(filtered_data, key=lambda x: position_map.get(name_func(x), float('inf')))
 
 
