@@ -53,19 +53,22 @@ class SegmentApi(DatasetApiResource):
                 raise ProviderNotInitializeError(
                     "No Embedding Model available. Please configure a valid provider "
                     "in the Settings -> Model Provider.")
-            except ProviderTokenNotInitError as ex:
+            except ProviderTokenNotInitError as ex:   
                 raise ProviderNotInitializeError(ex.description)
         # validate args
         parser = reqparse.RequestParser()
         parser.add_argument('segments', type=list, required=False, nullable=True, location='json')
         args = parser.parse_args()
-        for args_item in args['segments']:
-            SegmentService.segment_create_args_validate(args_item, document)
-        segments = SegmentService.multi_create_segment(args['segments'], document, dataset)
-        return {
-            'data': marshal(segments, segment_fields),
-            'doc_form': document.doc_form
-        }, 200
+        if args['segments'] is not None:
+            for args_item in args['segments']:
+                SegmentService.segment_create_args_validate(args_item, document)
+            segments = SegmentService.multi_create_segment(args['segments'], document, dataset)
+            return {
+                'data': marshal(segments, segment_fields),
+                'doc_form': document.doc_form
+            }, 200
+        else:
+            return {"error": "Segemtns is required"}, 400
 
     def get(self, tenant_id, dataset_id, document_id):
         """Create single segment."""

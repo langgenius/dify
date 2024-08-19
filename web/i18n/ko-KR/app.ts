@@ -63,7 +63,7 @@ const translation = {
   editAppTitle: '앱 정보 편집하기',
   editDone: '앱 정보가 업데이트되었습니다',
   editFailed: '앱 정보 업데이트 실패',
-  emoji: {
+  iconPicker: {
     ok: '확인',
     cancel: '취소',
   },

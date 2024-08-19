@@ -1,6 +1,7 @@
 import {
   memo,
   useCallback,
+  useEffect,
   useRef,
 } from 'react'
 import { useTranslation } from 'react-i18next'
@@ -54,14 +55,33 @@ const NoteNode = ({
     handleNodeDelete(id)
   }, [id, handleNodeDelete])
 
+  const preventZoom = (e: WheelEvent) => {
+    if (data.selected && e.ctrlKey) {
+      e.preventDefault()
+      e.stopPropagation()
+    }
+  }
+
   useClickAway(() => {
     handleNodeDataUpdateWithSyncDraft({ id, data: { selected: false } })
   }, ref)
+
+  useEffect(() => {
+    const node = ref.current
+    if (node)
+      node.addEventListener('wheel', preventZoom, { passive: false })
+
+    return () => {
+      if (node)
+        node.removeEventListener('wheel', preventZoom)
+    }
+  }, [data.selected])
 
   return (
     <div
       className={cn(
         'flex flex-col relative rounded-md shadow-xs border hover:shadow-md',
+        data.selected && 'nodrag nopan nowheel',
       )}
       style={{
         background: THEME_MAP[theme].bg,
@@ -102,7 +122,7 @@ const NoteNode = ({
           }
           <div className='grow px-3 py-2.5 overflow-y-auto'>
             <div className={cn(
-              data.selected && 'nodrag nopan nowheel cursor-text',
+              data.selected && 'cursor-text',
             )}>
               <NoteEditor
                 containerElement={ref.current}

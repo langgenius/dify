@@ -67,7 +67,7 @@ const translation = {
   editAppTitle: 'Chỉnh sửa thông tin ứng dụng',
   editDone: 'Thông tin ứng dụng đã được cập nhật',
   editFailed: 'Không thể cập nhật thông tin ứng dụng',
-  emoji: {
+  iconPicker: {
     ok: 'Đồng ý',
     cancel: 'Hủy',
   },
