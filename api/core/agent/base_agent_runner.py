@@ -449,7 +449,7 @@ class BaseAgentRunner(AppRunner):
                         try:
                             tool_responses = json.loads(agent_thought.observation)
                         except Exception as e:
-                            tool_responses = { tool: agent_thought.observation for tool in tools }
+                            tool_responses = dict.fromkeys(tools, agent_thought.observation)
 
                         for tool in tools:
                             # generate a uuid for tool call

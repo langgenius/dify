@@ -1322,9 +1322,7 @@ class MessageAgentThought(db.Model):
                 }
         except Exception as e:
             if self.observation:
-                return {
-                    tool: self.observation for tool in tools
-                }
+                return dict.fromkeys(tools, self.observation)
 
 
 class DatasetRetrieverResource(db.Model):
