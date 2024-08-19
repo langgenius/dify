@@ -60,7 +60,7 @@ const LikedItem = ({
   return (
     <Link className={classNames(s.itemWrapper, 'px-2', isMobile && 'justify-center')} href={`/app/${detail?.id}/overview`}>
       <div className={classNames(s.iconWrapper, 'mr-0')}>
-        <AppIcon size='tiny' icon={detail?.icon} background={detail?.icon_background} />
+        <AppIcon size='tiny' iconType={detail.icon_type} icon={detail.icon} background={detail.icon_background} imageUrl={detail.icon_url} />
         {type === 'app' && (
           <span className='absolute bottom-[-2px] right-[-2px] w-3.5 h-3.5 p-0.5 bg-white rounded border-[0.5px] border-[rgba(0,0,0,0.02)] shadow-sm'>
             {detail.mode === 'advanced-chat' && (

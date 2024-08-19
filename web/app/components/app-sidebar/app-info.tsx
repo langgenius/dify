@@ -59,6 +59,7 @@ const AppInfo = ({ expand }: IAppInfoProps) => {
 
   const onEdit: CreateAppModalProps['onConfirm'] = useCallback(async ({
     name,
+    icon_type,
     icon,
     icon_background,
     description,
@@ -69,6 +70,7 @@ const AppInfo = ({ expand }: IAppInfoProps) => {
       const app = await updateAppInfo({
         appID: appDetail.id,
         name,
+        icon_type,
         icon,
         icon_background,
         description,
@@ -86,13 +88,14 @@ const AppInfo = ({ expand }: IAppInfoProps) => {
     }
   }, [appDetail, mutateApps, notify, setAppDetail, t])
 
-  const onCopy: DuplicateAppModalProps['onConfirm'] = async ({ name, icon, icon_background }) => {
+  const onCopy: DuplicateAppModalProps['onConfirm'] = async ({ name, icon_type, icon, icon_background }) => {
     if (!appDetail)
       return
     try {
       const newApp = await copyApp({
         appID: appDetail.id,
         name,
+        icon_type,
         icon,
         icon_background,
         mode: appDetail.mode,
@@ -194,7 +197,13 @@ const AppInfo = ({ expand }: IAppInfoProps) => {
         >
           <div className={cn('flex p-1 rounded-lg', open && 'bg-gray-100', isCurrentWorkspaceEditor && 'hover:bg-gray-100 cursor-pointer')}>
             <div className='relative shrink-0 mr-2'>
-              <AppIcon size={expand ? 'large' : 'small'} icon={appDetail.icon} background={appDetail.icon_background} />
+              <AppIcon
+                size={expand ? 'large' : 'small'}
+                iconType={appDetail.icon_type}
+                icon={appDetail.icon}
+                background={appDetail.icon_background}
+                imageUrl={appDetail.icon_url}
+              />
               <span className={cn(
                 'absolute bottom-[-3px] right-[-3px] w-4 h-4 p-0.5 bg-white rounded border-[0.5px] border-[rgba(0,0,0,0.02)] shadow-sm',
                 !expand && '!w-3.5 !h-3.5 !bottom-[-2px] !right-[-2px]',
@@ -257,7 +266,13 @@ const AppInfo = ({ expand }: IAppInfoProps) => {
             {/* header */}
             <div className={cn('flex pl-4 pt-3 pr-3', !appDetail.description && 'pb-2')}>
               <div className='relative shrink-0 mr-2'>
-                <AppIcon size="large" icon={appDetail.icon} background={appDetail.icon_background} />
+                <AppIcon
+                  size="large"
+                  iconType={appDetail.icon_type}
+                  icon={appDetail.icon}
+                  background={appDetail.icon_background}
+                  imageUrl={appDetail.icon_url}
+                />
                 <span className='absolute bottom-[-3px] right-[-3px] w-4 h-4 p-0.5 bg-white rounded border-[0.5px] border-[rgba(0,0,0,0.02)] shadow-sm'>
                   {appDetail.mode === 'advanced-chat' && (
                     <ChatBot className='w-3 h-3 text-[#1570EF]' />
@@ -402,9 +417,11 @@ const AppInfo = ({ expand }: IAppInfoProps) => {
         {showEditModal && (
           <CreateAppModal
             isEditModal
+            appName={appDetail.name}
+            appIconType={appDetail.icon_type}
             appIcon={appDetail.icon}
             appIconBackground={appDetail.icon_background}
-            appName={appDetail.name}
+            appIconUrl={appDetail.icon_url}
             appDescription={appDetail.description}
             show={showEditModal}
             onConfirm={onEdit}
@@ -414,8 +431,10 @@ const AppInfo = ({ expand }: IAppInfoProps) => {
         {showDuplicateModal && (
           <DuplicateAppModal
             appName={appDetail.name}
+            icon_type={appDetail.icon_type}
             icon={appDetail.icon}
             icon_background={appDetail.icon_background}
+            icon_url={appDetail.icon_url}
             show={showDuplicateModal}
             onConfirm={onCopy}
             onHide={() => setShowDuplicateModal(false)}

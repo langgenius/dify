@@ -71,7 +71,7 @@ const translation = {
   editAppTitle: 'ویرایش اطلاعات برنامه',
   editDone: 'اطلاعات برنامه به‌روزرسانی شد',
   editFailed: 'به‌روزرسانی اطلاعات برنامه ناموفق بود',
-  emoji: {
+  iconPicker: {
     ok: 'باشه',
     cancel: 'لغو',
   },

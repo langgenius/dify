@@ -1,5 +1,5 @@
 import type { DataSourceNotionPage } from './common'
-import type { AppMode, RetrievalConfig } from '@/types/app'
+import type { AppIconType, AppMode, RetrievalConfig } from '@/types/app'
 import type { Tag } from '@/app/components/base/tag-management/constant'
 
 export enum DataSourceType {
@@ -425,8 +425,10 @@ export type RelatedApp = {
   id: string
   name: string
   mode: AppMode
+  icon_type: AppIconType | null
   icon: string
   icon_background: string
+  icon_url: string
 }
 
 export type RelatedAppResponse = {

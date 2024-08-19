@@ -67,7 +67,7 @@ const translation = {
   editAppTitle: 'Редагувати інформацію про додаток',
   editDone: 'Інформація про додаток оновлена',
   editFailed: 'Не вдалося оновити інформацію про додаток',
-  emoji: {
+  iconPicker: {
     ok: 'OK',
     cancel: 'Скасувати',
   },

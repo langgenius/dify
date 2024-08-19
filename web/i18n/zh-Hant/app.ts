@@ -66,7 +66,7 @@ const translation = {
   editAppTitle: '編輯應用資訊',
   editDone: '應用資訊已更新',
   editFailed: '更新應用資訊失敗',
-  emoji: {
+  iconPicker: {
     ok: '確認',
     cancel: '取消',
   },

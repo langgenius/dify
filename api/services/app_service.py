@@ -119,6 +119,7 @@ class AppService:
         app.name = args['name']
         app.description = args.get('description', '')
         app.mode = args['mode']
+        app.icon_type = args.get('icon_type', 'emoji')
         app.icon = args['icon']
         app.icon_background = args['icon_background']
         app.tenant_id = tenant_id
@@ -210,6 +211,7 @@ class AppService:
         app.name = args.get('name')
         app.description = args.get('description', '')
         app.max_active_requests = args.get('max_active_requests')
+        app.icon_type = args.get('icon_type', 'emoji')
         app.icon = args.get('icon')
         app.icon_background = args.get('icon_background')
         app.updated_at = datetime.now(timezone.utc).replace(tzinfo=None)

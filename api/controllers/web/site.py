@@ -6,6 +6,7 @@ from configs import dify_config
 from controllers.web import api
 from controllers.web.wraps import WebApiResource
 from extensions.ext_database import db
+from libs.helper import AppIconUrlField
 from models.account import TenantStatus
 from models.model import Site
 from services.feature_service import FeatureService
@@ -28,8 +29,10 @@ class AppSiteApi(WebApiResource):
         'title': fields.String,
         'chat_color_theme': fields.String,
         'chat_color_theme_inverted': fields.Boolean,
+        'icon_type': fields.String,
         'icon': fields.String,
         'icon_background': fields.String,
+        'icon_url': AppIconUrlField,
         'description': fields.String,
         'copyright': fields.String,
         'privacy_policy': fields.String,

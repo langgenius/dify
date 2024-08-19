@@ -72,7 +72,7 @@ const translation = {
   editAppTitle: 'アプリ情報を編集する',
   editDone: 'アプリ情報が更新されました',
   editFailed: 'アプリ情報の更新に失敗しました',
-  emoji: {
+  iconPicker: {
     ok: 'OK',
     cancel: 'キャンセル',
   },

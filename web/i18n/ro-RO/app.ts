@@ -67,7 +67,7 @@ const translation = {
   editAppTitle: 'Editează Info Aplicație',
   editDone: 'Informațiile despre aplicație au fost actualizate',
   editFailed: 'Actualizarea informațiilor despre aplicație a eșuat',
-  emoji: {
+  iconPicker: {
     ok: 'OK',
     cancel: 'Anulează',
   },

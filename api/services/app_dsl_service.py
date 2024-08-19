@@ -82,6 +82,7 @@ class AppDslService:
         # get app basic info
         name = args.get("name") if args.get("name") else app_data.get('name')
         description = args.get("description") if args.get("description") else app_data.get('description', '')
+        icon_type = args.get("icon_type") if args.get("icon_type") else app_data.get('icon_type')
         icon = args.get("icon") if args.get("icon") else app_data.get('icon')
         icon_background = args.get("icon_background") if args.get("icon_background") \
             else app_data.get('icon_background')
@@ -96,6 +97,7 @@ class AppDslService:
                 account=account,
                 name=name,
                 description=description,
+                icon_type=icon_type,
                 icon=icon,
                 icon_background=icon_background
             )
@@ -107,6 +109,7 @@ class AppDslService:
                 account=account,
                 name=name,
                 description=description,
+                icon_type=icon_type,
                 icon=icon,
                 icon_background=icon_background
             )
@@ -165,8 +168,8 @@ class AppDslService:
             "app": {
                 "name": app_model.name,
                 "mode": app_model.mode,
-                "icon": app_model.icon,
-                "icon_background": app_model.icon_background,
+                "icon": '🤖' if app_model.icon_type == 'image' else app_model.icon,
+                "icon_background": '#FFEAD5' if app_model.icon_type == 'image' else app_model.icon_background,
                 "description": app_model.description
             }
         }
@@ -207,6 +210,7 @@ class AppDslService:
                                                   account: Account,
                                                   name: str,
                                                   description: str,
+                                                  icon_type: str,
                                                   icon: str,
                                                   icon_background: str) -> App:
         """
@@ -218,6 +222,7 @@ class AppDslService:
         :param account: Account instance
         :param name: app name
         :param description: app description
+        :param icon_type: app icon type, "emoji" or "image"
         :param icon: app icon
         :param icon_background: app icon background
         """
@@ -231,6 +236,7 @@ class AppDslService:
             account=account,
             name=name,
             description=description,
+            icon_type=icon_type,
             icon=icon,
             icon_background=icon_background
         )
@@ -307,6 +313,7 @@ class AppDslService:
                                                       account: Account,
                                                       name: str,
                                                       description: str,
+                                                      icon_type: str,
                                                       icon: str,
                                                       icon_background: str) -> App:
         """
@@ -331,6 +338,7 @@ class AppDslService:
             account=account,
             name=name,
             description=description,
+            icon_type=icon_type,
             icon=icon,
             icon_background=icon_background
         )
@@ -358,6 +366,7 @@ class AppDslService:
                     account: Account,
                     name: str,
                     description: str,
+                    icon_type: str,
                     icon: str,
                     icon_background: str) -> App:
         """
@@ -368,6 +377,7 @@ class AppDslService:
         :param account: Account instance
         :param name: app name
         :param description: app description
+        :param icon_type: app icon type, "emoji" or "image"
         :param icon: app icon
         :param icon_background: app icon background
         """
@@ -376,6 +386,7 @@ class AppDslService:
             mode=app_mode.value,
             name=name,
             description=description,
+            icon_type=icon_type,
             icon=icon,
             icon_background=icon_background,
             enable_site=True,

@@ -75,6 +75,7 @@ const AppCard = ({ app, onRefresh }: AppCardProps) => {
 
   const onEdit: CreateAppModalProps['onConfirm'] = useCallback(async ({
     name,
+    icon_type,
     icon,
     icon_background,
     description,
@@ -83,6 +84,7 @@ const AppCard = ({ app, onRefresh }: AppCardProps) => {
       await updateAppInfo({
         appID: app.id,
         name,
+        icon_type,
         icon,
         icon_background,
         description,
@@ -101,11 +103,12 @@ const AppCard = ({ app, onRefresh }: AppCardProps) => {
     }
   }, [app.id, mutateApps, notify, onRefresh, t])
 
-  const onCopy: DuplicateAppModalProps['onConfirm'] = async ({ name, icon, icon_background }) => {
+  const onCopy: DuplicateAppModalProps['onConfirm'] = async ({ name, icon_type, icon, icon_background }) => {
     try {
       const newApp = await copyApp({
         appID: app.id,
         name,
+        icon_type,
         icon,
         icon_background,
         mode: app.mode,
@@ -258,8 +261,10 @@ const AppCard = ({ app, onRefresh }: AppCardProps) => {
           <div className='relative shrink-0'>
             <AppIcon
               size="large"
+              iconType={app.icon_type}
               icon={app.icon}
               background={app.icon_background}
+              imageUrl={app.icon_url}
             />
             <span className='absolute bottom-[-3px] right-[-3px] w-4 h-4 p-0.5 bg-white rounded border-[0.5px] border-[rgba(0,0,0,0.02)] shadow-sm'>
               {app.mode === 'advanced-chat' && (
@@ -360,9 +365,11 @@ const AppCard = ({ app, onRefresh }: AppCardProps) => {
       {showEditModal && (
         <EditAppModal
           isEditModal
+          appName={app.name}
+          appIconType={app.icon_type}
           appIcon={app.icon}
           appIconBackground={app.icon_background}
-          appName={app.name}
+          appIconUrl={app.icon_url}
           appDescription={app.description}
           show={showEditModal}
           onConfirm={onEdit}
@@ -372,8 +379,10 @@ const AppCard = ({ app, onRefresh }: AppCardProps) => {
       {showDuplicateModal && (
         <DuplicateAppModal
           appName={app.name}
+          icon_type={app.icon_type}
           icon={app.icon}
           icon_background={app.icon_background}
+          icon_url={app.icon_url}
           show={showDuplicateModal}
           onConfirm={onCopy}
           onHide={() => setShowDuplicateModal(false)}
