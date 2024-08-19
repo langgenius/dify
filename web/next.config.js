@@ -1,4 +1,5 @@
-const { codeInspectorPlugin } = require('code-inspector-plugin')
+// const { codeInspectorPlugin } = require('code-inspector-plugin')
+
 const withMDX = require('@next/mdx')({
   extension: /\.mdx?$/,
   options: {
@@ -14,12 +15,13 @@ const withMDX = require('@next/mdx')({
 
 /** @type {import('next').NextConfig} */
 const nextConfig = {
-  webpack: (config, { dev, isServer }) => {
-    config.plugins.push(codeInspectorPlugin({ bundler: 'webpack' }))
-    return config
-  },
+  // webpack: (config, { dev, isServer }) => {
+  //   config.plugins.push(codeInspectorPlugin({ bundler: 'webpack' }))
+  //   return config
+  // },
+
+
   productionBrowserSourceMaps: false, // enable browser source map generation during the production build
-  // Configure pageExtensions to include md and mdx
 
   images: {
     remotePatterns : [
