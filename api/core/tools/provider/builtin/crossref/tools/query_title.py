@@ -1,13 +1,17 @@
+from typing import Any, Union
+
 import time
 import requests
-from typing import Any, Union
 
 from core.tools.tool.builtin_tool import BuiltinTool
 from core.tools.entities.tool_entities import ToolInvokeMessage
 
 
 def convert_time_str_to_seconds(time_str: str) -> int:
-    # example: 1s -> 1,  1m30s -> 90, 1h30m -> 5400, 1h30m30s -> 5430
+    """
+    Convert a time string to seconds.
+    example: 1s -> 1,  1m30s -> 90, 1h30m -> 5400, 1h30m30s -> 5430
+    """
     time_str = time_str.lower().strip().replace(' ', '')
     seconds = 0
     if 'h' in time_str:
@@ -22,7 +26,10 @@ def convert_time_str_to_seconds(time_str: str) -> int:
 
 
 class CrossRefQueryTitleAPI:
-    # doc: https://github.com/CrossRef/rest-api-doc
+    """
+    Tool for querying the metadata of a publication using its title.
+    Crossref API doc: https://github.com/CrossRef/rest-api-doc
+    """
     query_url_template: str = "https://api.crossref.org/works?query.bibliographic={query}&rows={rows}&offset={offset}&sort={sort}&order={order}&mailto={mailto}"
     rate_limit: int = 50
     rate_interval: float = 1
@@ -31,7 +38,15 @@ class CrossRefQueryTitleAPI:
     def __init__(self, mailto: str):
         self.mailto = mailto
 
-    def _query(self, query: str, rows: int = 3, offset: int = 0, sort: str = 'relevance', order: str = 'desc', fuzzy_query: bool = False) -> list[dict]:
+    def _query(self, query: str, rows: int = 5, offset: int = 0, sort: str = 'relevance', order: str = 'desc', fuzzy_query: bool = False) -> list[dict]:
+        """
+        Query the metadata of a publication using its title.
+        :param query: the title of the publication
+        :param rows: the number of results to return
+        :param sort: the sort field
+        :param order: the sort order
+        :param fuzzy_query: whether to return all items that match the query
+        """
         url = self.query_url_template.format(query=query, rows=rows, offset=offset, sort=sort, order=order, mailto=self.mailto)
         response = requests.get(url)
         response.raise_for_status()
@@ -58,7 +73,15 @@ class CrossRefQueryTitleAPI:
                 return [paper]
         return []
 
-    def query(self, query: str, rows: int = 3, sort: str = 'relevance', order: str = 'desc', fuzzy_query: bool = False) -> list[dict]:
+    def query(self, query: str, rows: int = 5, sort: str = 'relevance', order: str = 'desc', fuzzy_query: bool = False) -> list[dict]:
+        """
+        Query the metadata of a publication using its title.
+        :param query: the title of the publication
+        :param rows: the number of results to return
+        :param sort: the sort field
+        :param order: the sort order
+        :param fuzzy_query: whether to return all items that match the query
+        """
         rows = min(rows, self.max_limit)
         if rows > self.rate_limit:
             # query multiple times
@@ -81,6 +104,9 @@ class CrossRefQueryTitleAPI:
 
 
 class CrossRefQueryTitleTool(BuiltinTool):
+    """
+    Tool for querying the metadata of a publication using its title.
+    """
     def _invoke(self, user_id: str, tool_parameters: dict[str, Any]) -> Union[ToolInvokeMessage, list[ToolInvokeMessage]]:
         query = tool_parameters.get('query')
         fuzzy_query = tool_parameters.get('fuzzy_query', False)
