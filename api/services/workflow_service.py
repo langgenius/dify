@@ -72,6 +72,7 @@ class WorkflowService:
         unique_hash: Optional[str],
         account: Account,
         environment_variables: Sequence[Variable],
+        conversation_variables: Sequence[Variable],
     ) -> Workflow:
         """
         Sync draft workflow
@@ -99,7 +100,8 @@ class WorkflowService:
                 graph=json.dumps(graph),
                 features=json.dumps(features),
                 created_by=account.id,
-                environment_variables=environment_variables
+                environment_variables=environment_variables,
+                conversation_variables=conversation_variables,
             )
             db.session.add(workflow)
         # update draft workflow if found
@@ -109,6 +111,7 @@ class WorkflowService:
             workflow.updated_by = account.id
             workflow.updated_at = datetime.now(timezone.utc).replace(tzinfo=None)
             workflow.environment_variables = environment_variables
+            workflow.conversation_variables = conversation_variables
 
         # commit db session changes
         db.session.commit()
@@ -145,7 +148,8 @@ class WorkflowService:
             graph=draft_workflow.graph,
             features=draft_workflow.features,
             created_by=account.id,
-            environment_variables=draft_workflow.environment_variables
+            environment_variables=draft_workflow.environment_variables,
+            conversation_variables=draft_workflow.conversation_variables,
         )
 
         # commit db session changes
@@ -298,6 +302,7 @@ class WorkflowService:
             app_model=app_model,
             account=account,
             name=args.get('name'),
+            icon_type=args.get('icon_type'),
             icon=args.get('icon'),
             icon_background=args.get('icon_background'),
         )
@@ -319,3 +324,25 @@ class WorkflowService:
             )
         else:
             raise ValueError(f"Invalid app mode: {app_model.mode}")
+
+    @classmethod
+    def get_elapsed_time(cls, workflow_run_id: str) -> float:
+        """
+        Get elapsed time
+        """
+        elapsed_time = 0.0
+
+        # fetch workflow node execution by workflow_run_id
+        workflow_nodes = (
+            db.session.query(WorkflowNodeExecution)
+            .filter(WorkflowNodeExecution.workflow_run_id == workflow_run_id)
+            .order_by(WorkflowNodeExecution.created_at.asc())
+            .all()
+        )
+        if not workflow_nodes:
+            return elapsed_time
+
+        for node in workflow_nodes:
+            elapsed_time += node.elapsed_time
+
+        return elapsed_time

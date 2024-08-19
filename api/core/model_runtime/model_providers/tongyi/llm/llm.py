@@ -159,6 +159,8 @@ You should also complete the text started with ``` but not tell ``` directly.
         """
         if model in ['qwen-turbo-chat', 'qwen-plus-chat']:
             model = model.replace('-chat', '')
+        if model == 'farui-plus':
+            model = 'qwen-farui-plus'
 
         if model in self.tokenizers:
             tokenizer = self.tokenizers[model]
@@ -497,12 +499,13 @@ You should also complete the text started with ``` but not tell ``` directly.
                 content = prompt_message.content
                 if not content:
                     content = ' '
-                tongyi_messages.append({
+                message = {
                     'role': 'assistant',
-                    'content': content if not rich_content else [{"text": content}],
-                    'tool_calls': [tool_call.model_dump() for tool_call in
-                                   prompt_message.tool_calls] if prompt_message.tool_calls else None
-                })
+                    'content': content if not rich_content else [{"text": content}]
+                }
+                if prompt_message.tool_calls:
+                    message['tool_calls'] = [tool_call.model_dump() for tool_call in prompt_message.tool_calls]
+                tongyi_messages.append(message)
             elif isinstance(prompt_message, ToolPromptMessage):
                 tongyi_messages.append({
                     "role": "tool",

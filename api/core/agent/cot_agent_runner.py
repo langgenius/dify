@@ -79,6 +79,7 @@ class CotAgentRunner(BaseAgentRunner, ABC):
                 llm_usage.completion_tokens += usage.completion_tokens
                 llm_usage.prompt_price += usage.prompt_price
                 llm_usage.completion_price += usage.completion_price
+                llm_usage.total_price += usage.total_price
 
         model_instance = self.model_instance
 
@@ -291,6 +292,8 @@ class CotAgentRunner(BaseAgentRunner, ABC):
         handle invoke action
         :param action: action
         :param tool_instances: tool instances
+        :param message_file_ids: message file ids
+        :param trace_manager: trace manager
         :return: observation, meta
         """
         # action is tool call, invoke tool

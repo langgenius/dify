@@ -69,7 +69,6 @@ const Prompt: FC<ISimplePromptInput> = ({
     hasSetBlockStatus,
     showSelectDataSet,
     externalDataToolsConfig,
-    isAgent,
   } = useContext(ConfigContext)
   const { notify } = useToastContext()
   const { setShowExternalDataToolModal } = useModalContext()
@@ -166,7 +165,7 @@ const Prompt: FC<ISimplePromptInput> = ({
               )}
             </div>
             <div className='flex items-center'>
-              {!isAgent && !readonly && !isMobile && (
+              {!readonly && !isMobile && (
                 <AutomaticBtn onClick={showAutomaticTrue} />
               )}
             </div>

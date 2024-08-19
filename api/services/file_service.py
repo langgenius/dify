@@ -109,7 +109,7 @@ class FileService:
             tenant_id=current_user.current_tenant_id,
             storage_type=dify_config.STORAGE_TYPE,
             key=file_key,
-            name=text_name + '.txt',
+            name=text_name,
             size=len(text),
             extension='txt',
             mime_type='text/plain',

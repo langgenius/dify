@@ -8,6 +8,7 @@ from core.workflow.callbacks.base_workflow_callback import WorkflowCallback
 from core.workflow.entities.base_node_data_entities import BaseIterationState, BaseNodeData
 from core.workflow.entities.node_entities import NodeRunResult, NodeType
 from core.workflow.entities.variable_pool import VariablePool
+from models import WorkflowNodeExecutionStatus
 
 
 class UserFrom(Enum):
@@ -49,6 +50,8 @@ class BaseNode(ABC):
 
     callbacks: Sequence[WorkflowCallback]
 
+    is_answer_previous_node: bool = False
+
     def __init__(self, tenant_id: str,
                  app_id: str,
                  workflow_id: str,
@@ -89,14 +92,19 @@ class BaseNode(ABC):
         :param variable_pool: variable pool
         :return:
         """
-        result = self._run(
-            variable_pool=variable_pool
-        )
+        try:
+            result = self._run(
+                variable_pool=variable_pool
+            )
+            self.node_run_result = result
+            return result
+        except Exception as e:
+            return NodeRunResult(
+                status=WorkflowNodeExecutionStatus.FAILED,
+                error=str(e),
+            )
 
-        self.node_run_result = result
-        return result
-
-    def publish_text_chunk(self, text: str, value_selector: list[str] = None) -> None:
+    def publish_text_chunk(self, text: str, value_selector: list[str] | None = None) -> None:
         """
         Publish text chunk
         :param text: chunk text
@@ -110,6 +118,7 @@ class BaseNode(ABC):
                     text=text,
                     metadata={
                         "node_type": self.node_type,
+                        "is_answer_previous_node": self.is_answer_previous_node,
                         "value_selector": value_selector
                     }
                 )

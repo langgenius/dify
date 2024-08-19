@@ -1,0 +1,46 @@
+identity:
+  author: Stepfun
+  name: stepfun
+  label:
+    en_US: Image-1X
+    zh_Hans: 阶跃星辰绘画
+    pt_BR: Image-1X
+  description:
+    en_US: Image-1X
+    zh_Hans: 阶跃星辰绘画
+    pt_BR: Image-1X
+  icon: icon.png
+  tags:
+    - image
+    - productivity
+credentials_for_provider:
+  stepfun_api_key:
+    type: secret-input
+    required: true
+    label:
+      en_US: Stepfun API key
+      zh_Hans: 阶跃星辰API key
+      pt_BR: Stepfun API key
+    help:
+      en_US: Please input your stepfun API key
+      zh_Hans: 请输入你的阶跃星辰 API key
+      pt_BR: Please input your stepfun API key
+    placeholder:
+      en_US: Please input your stepfun API key
+      zh_Hans: 请输入你的阶跃星辰 API key
+      pt_BR: Please input your stepfun API key
+  stepfun_base_url:
+    type: text-input
+    required: false
+    label:
+      en_US: Stepfun base URL
+      zh_Hans: 阶跃星辰 base URL
+      pt_BR: Stepfun base URL
+    help:
+      en_US: Please input your Stepfun base URL
+      zh_Hans: 请输入你的阶跃星辰 base URL
+      pt_BR: Please input your Stepfun base URL
+    placeholder:
+      en_US: Please input your Stepfun base URL
+      zh_Hans: 请输入你的阶跃星辰 base URL
+      pt_BR: Please input your Stepfun base URL

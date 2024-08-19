@@ -4,7 +4,7 @@ from typing import Any
 from uuid import UUID, uuid4
 
 from numpy import ndarray
-from pgvecto_rs.sqlalchemy import Vector
+from pgvecto_rs.sqlalchemy import VECTOR
 from pydantic import BaseModel, model_validator
 from sqlalchemy import Float, String, create_engine, insert, select, text
 from sqlalchemy import text as sql_text
@@ -67,7 +67,7 @@ class PGVectoRS(BaseVector):
             )
             text: Mapped[str] = mapped_column(String)
             meta: Mapped[dict] = mapped_column(postgresql.JSONB)
-            vector: Mapped[ndarray] = mapped_column(Vector(dim))
+            vector: Mapped[ndarray] = mapped_column(VECTOR(dim))
 
         self._table = _Table
         self._distance_op = "<=>"

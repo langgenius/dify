@@ -271,9 +271,8 @@ class ModelInstance:
 
         :param content_text: text content to be translated
         :param tenant_id: user tenant id
-        :param user: unique user id
         :param voice: model timbre
-        :param streaming: output is streaming
+        :param user: unique user id
         :return: text for given audio file
         """
         if not isinstance(self.model_type_instance, TTSModel):
@@ -401,6 +400,10 @@ class LBModelManager:
                  managed_credentials: Optional[dict] = None) -> None:
         """
         Load balancing model manager
+        :param tenant_id: tenant_id
+        :param provider: provider
+        :param model_type: model_type
+        :param model: model name
         :param load_balancing_configs: all load balancing configurations
         :param managed_credentials: credentials if load balancing configuration name is __inherit__
         """

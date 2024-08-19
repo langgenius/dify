@@ -4,7 +4,6 @@ import type { FC, SVGProps } from 'react'
 import React, { useCallback, useEffect, useState } from 'react'
 import { useBoolean, useDebounceFn } from 'ahooks'
 import { ArrowDownIcon, TrashIcon } from '@heroicons/react/24/outline'
-import { ExclamationCircleIcon } from '@heroicons/react/24/solid'
 import { pick } from 'lodash-es'
 import {
   RiMoreFill,
@@ -23,8 +22,7 @@ import cn from '@/utils/classnames'
 import Switch from '@/app/components/base/switch'
 import Divider from '@/app/components/base/divider'
 import Popover from '@/app/components/base/popover'
-import Modal from '@/app/components/base/modal'
-import Button from '@/app/components/base/button'
+import Confirm from '@/app/components/base/confirm'
 import Tooltip from '@/app/components/base/tooltip'
 import { ToastContext } from '@/app/components/base/toast'
 import type { IndicatorProps } from '@/app/components/header/indicator'
@@ -294,25 +292,16 @@ export const OperationAction: FC<{
         className={`flex justify-end !w-[200px] h-fit !z-20 ${className}`}
       />
     )}
-    {showModal && <Modal isShow={showModal} onClose={() => setShowModal(false)} className={s.delModal} closable>
-      <div>
-        <div className={s.warningWrapper}>
-          <ExclamationCircleIcon className={s.warningIcon} />
-        </div>
-        <div className='text-xl font-semibold text-gray-900 mb-1'>{t('datasetDocuments.list.delete.title')}</div>
-        <div className='text-sm text-gray-500 mb-10'>{t('datasetDocuments.list.delete.content')}</div>
-        <div className='flex gap-2 justify-end'>
-          <Button onClick={() => setShowModal(false)}>{t('common.operation.cancel')}</Button>
-          <Button
-            variant='warning'
-            onClick={() => onOperate('delete')}
-            className='border-red-700'
-          >
-            {t('common.operation.sure')}
-          </Button>
-        </div>
-      </div>
-    </Modal>}
+    {showModal
+      && <Confirm
+        isShow={showModal}
+        title={t('datasetDocuments.list.delete.title')}
+        content={t('datasetDocuments.list.delete.content')}
+        confirmText={t('common.operation.sure')}
+        onConfirm={() => onOperate('delete')}
+        onCancel={() => setShowModal(false)}
+      />
+    }
 
     {isShowRenameModal && currDocument && (
       <RenameModal

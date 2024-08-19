@@ -2,19 +2,20 @@ from collections.abc import Mapping, Sequence
 from os import path
 from typing import Any, cast
 
-from core.app.segments import parser
+from core.app.segments import ArrayAnyVariable, parser
 from core.callback_handler.workflow_tool_callback_handler import DifyWorkflowCallbackHandler
 from core.file.file_obj import FileTransferMethod, FileType, FileVar
 from core.tools.entities.tool_entities import ToolInvokeMessage, ToolParameter
 from core.tools.tool_engine import ToolEngine
 from core.tools.tool_manager import ToolManager
 from core.tools.utils.message_transformer import ToolFileMessageTransformer
-from core.workflow.entities.node_entities import NodeRunMetadataKey, NodeRunResult, NodeType, SystemVariable
+from core.workflow.entities.node_entities import NodeRunMetadataKey, NodeRunResult, NodeType
 from core.workflow.entities.variable_pool import VariablePool
+from core.workflow.enums import SystemVariable
 from core.workflow.nodes.base_node import BaseNode
 from core.workflow.nodes.tool.entities import ToolNodeData
 from core.workflow.utils.variable_template_parser import VariableTemplateParser
-from models.workflow import WorkflowNodeExecutionStatus
+from models import WorkflowNodeExecutionStatus
 
 
 class ToolNode(BaseNode):
@@ -118,6 +119,7 @@ class ToolNode(BaseNode):
         for parameter_name in node_data.tool_parameters:
             parameter = tool_parameters_dictionary.get(parameter_name)
             if not parameter:
+                result[parameter_name] = None
                 continue
             if parameter.type == ToolParameter.ToolParameterType.FILE:
                 result[parameter_name] = [
@@ -139,9 +141,9 @@ class ToolNode(BaseNode):
         return result
 
     def _fetch_files(self, variable_pool: VariablePool) -> list[FileVar]:
-        # FIXME: ensure this is a ArrayVariable contains FileVariable.
         variable = variable_pool.get(['sys', SystemVariable.FILES.value])
-        return [file_var.value for file_var in variable.value] if variable else []
+        assert isinstance(variable, ArrayAnyVariable)
+        return list(variable.value) if variable else []
 
     def _convert_tool_messages(self, messages: list[ToolInvokeMessage]):
         """
@@ -174,13 +176,14 @@ class ToolNode(BaseNode):
                 ext = path.splitext(url)[1]
                 mimetype = response.meta.get('mime_type', 'image/jpeg')
                 filename = response.save_as or url.split('/')[-1]
+                transfer_method = response.meta.get('transfer_method', FileTransferMethod.TOOL_FILE)
 
                 # get tool file id
                 tool_file_id = url.split('/')[-1].split('.')[0]
                 result.append(FileVar(
                     tenant_id=self.tenant_id,
                     type=FileType.IMAGE,
-                    transfer_method=FileTransferMethod.TOOL_FILE,
+                    transfer_method=transfer_method,
                     url=url,
                     related_id=tool_file_id,
                     filename=filename,

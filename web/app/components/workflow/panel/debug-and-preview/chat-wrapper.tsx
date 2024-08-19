@@ -14,6 +14,7 @@ import {
 import type { StartNodeType } from '../../nodes/start/types'
 import Empty from './empty'
 import UserInput from './user-input'
+import ConversationVariableModal from './conversation-variable-modal'
 import { useChat } from './hooks'
 import type { ChatWrapperRefType } from './index'
 import Chat from '@/app/components/base/chat/chat'
@@ -25,7 +26,13 @@ import {
 } from '@/service/debug'
 import { useStore as useAppStore } from '@/app/components/app/store'
 
-const ChatWrapper = forwardRef<ChatWrapperRefType>((_, ref) => {
+type ChatWrapperProps = {
+  showConversationVariableModal: boolean
+  onConversationModalHide: () => void
+  showInputsFieldsPanel: boolean
+}
+
+const ChatWrapper = forwardRef<ChatWrapperRefType, ChatWrapperProps>(({ showConversationVariableModal, onConversationModalHide, showInputsFieldsPanel }, ref) => {
   const nodes = useNodes<StartNodeType>()
   const startNode = nodes.find(node => node.data.type === BlockEnum.Start)
   const startVariables = startNode?.data.variables
@@ -87,33 +94,41 @@ const ChatWrapper = forwardRef<ChatWrapperRefType>((_, ref) => {
   }, [handleRestart])
 
   return (
-    <Chat
-      config={{
-        ...config,
-        supportCitationHitInfo: true,
-      } as any}
-      chatList={chatList}
-      isResponding={isResponding}
-      chatContainerClassName='px-4'
-      chatContainerInnerClassName='pt-6'
-      chatFooterClassName='px-4 rounded-bl-2xl'
-      chatFooterInnerClassName='pb-4'
-      onSend={doSend}
-      onStopResponding={handleStop}
-      chatNode={(
-        <>
-          <UserInput />
-          {
-            !chatList.length && (
-              <Empty />
-            )
-          }
-        </>
+    <>
+      <Chat
+        config={{
+          ...config,
+          supportCitationHitInfo: true,
+        } as any}
+        chatList={chatList}
+        isResponding={isResponding}
+        chatContainerClassName='px-3'
+        chatContainerInnerClassName='pt-6'
+        chatFooterClassName='px-4 rounded-bl-2xl'
+        chatFooterInnerClassName='pb-4'
+        onSend={doSend}
+        onStopResponding={handleStop}
+        chatNode={(
+          <>
+            {showInputsFieldsPanel && <UserInput />}
+            {
+              !chatList.length && (
+                <Empty />
+              )
+            }
+          </>
+        )}
+        suggestedQuestions={suggestedQuestions}
+        showPromptLog
+        chatAnswerContainerInner='!pr-2'
+      />
+      {showConversationVariableModal && (
+        <ConversationVariableModal
+          conversationID={conversationId}
+          onHide={onConversationModalHide}
+        />
       )}
-      suggestedQuestions={suggestedQuestions}
-      showPromptLog
-      chatAnswerContainerInner='!pr-2'
-    />
+    </>
   )
 })
 

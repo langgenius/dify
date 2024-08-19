@@ -10,7 +10,7 @@ def handle(sender, **kwargs):
     installed_app = InstalledApp(
         tenant_id=app.tenant_id,
         app_id=app.id,
-        app_owner_tenant_id=app.tenant_id
+        app_owner_tenant_id=app.tenant_id,
     )
     db.session.add(installed_app)
     db.session.commit()

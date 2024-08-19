@@ -49,24 +49,24 @@ class GitHubOAuth(OAuth):
 
     def get_authorization_url(self):
         params = {
-            'client_id': self.client_id,
-            'redirect_uri': self.redirect_uri,
-            'scope': 'user:email'  # Request only basic user information
+            "client_id": self.client_id,
+            "redirect_uri": self.redirect_uri,
+            "scope": "user:email",  # Request only basic user information
         }
         return f"{self._AUTH_URL}?{urllib.parse.urlencode(params)}"
 
     def get_access_token(self, code: str):
         data = {
-            'client_id': self.client_id,
-            'client_secret': self.client_secret,
-            'code': code,
-            'redirect_uri': self.redirect_uri
+            "client_id": self.client_id,
+            "client_secret": self.client_secret,
+            "code": code,
+            "redirect_uri": self.redirect_uri,
         }
-        headers = {'Accept': 'application/json'}
+        headers = {"Accept": "application/json"}
         response = requests.post(self._TOKEN_URL, data=data, headers=headers)
 
         response_json = response.json()
-        access_token = response_json.get('access_token')
+        access_token = response_json.get("access_token")
 
         if not access_token:
             raise ValueError(f"Error in GitHub OAuth: {response_json}")
@@ -75,19 +75,19 @@ class GitHubOAuth(OAuth):
         return access_token
 
     def get_raw_user_info(self, token: str):
-        headers = {'Authorization': f"token {token}"}
+        headers = {"Authorization": f"token {token}"}
         response = requests.get(self._USER_INFO_URL, headers=headers)
         response.raise_for_status()
         user_info = response.json()
 
         email_response = requests.get(self._EMAIL_INFO_URL, headers=headers)
         email_info = email_response.json()
-        primary_email = next((email for email in email_info if email['primary'] == True), None)
+        primary_email = next((email for email in email_info if email["primary"] == True), None)
 
-        return {**user_info, 'email': primary_email['email']}
+        return {**user_info, "email": primary_email["email"]}
 
     def _transform_user_info(self, raw_info: dict) -> OAuthUserInfo:
-        email = raw_info.get('email')
+        email = raw_info.get("email")
         if not email:
             email = f"{raw_info['id']}+{raw_info['login']}@users.noreply.github.com"
         return OAuthUserInfo(
@@ -116,26 +116,26 @@ class GoogleOAuth(OAuth):
 
     def get_authorization_url(self):
         params = {
-            'client_id': self.client_id,
-            'response_type': 'code',
-            'redirect_uri': self.redirect_uri,
-            'scope': 'openid email'
+            "client_id": self.client_id,
+            "response_type": "code",
+            "redirect_uri": self.redirect_uri,
+            "scope": "openid email",
         }
         return f"{self._AUTH_URL}?{urllib.parse.urlencode(params)}"
 
     def get_access_token(self, code: str):
         data = {
-            'client_id': self.client_id,
-            'client_secret': self.client_secret,
-            'code': code,
-            'grant_type': 'authorization_code',
-            'redirect_uri': self.redirect_uri
+            "client_id": self.client_id,
+            "client_secret": self.client_secret,
+            "code": code,
+            "grant_type": "authorization_code",
+            "redirect_uri": self.redirect_uri,
         }
-        headers = {'Accept': 'application/json'}
+        headers = {"Accept": "application/json"}
         response = requests.post(self._TOKEN_URL, data=data, headers=headers)
 
         response_json = response.json()
-        access_token = response_json.get('access_token')
+        access_token = response_json.get("access_token")
 
         if not access_token:
             raise ValueError(f"Error in Google OAuth: {response_json}")
@@ -144,7 +144,7 @@ class GoogleOAuth(OAuth):
         return access_token
 
     def get_raw_user_info(self, token: str):
-        headers = {'Authorization': f"Bearer {token}"}
+        headers = {"Authorization": f"Bearer {token}"}
         response = requests.get(self._USER_INFO_URL, headers=headers)
         response.raise_for_status()
         return response.json()
@@ -163,4 +163,3 @@ class GoogleOAuth(OAuth):
         }
         headers = {'Content-type': 'application/x-www-form-urlencoded'}
         requests.get(self._LOGOUT_URL, params=data, headers=headers)
-

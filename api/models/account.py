@@ -4,7 +4,8 @@ import json
 from flask_login import UserMixin
 
 from extensions.ext_database import db
-from models import StringUUID
+
+from .types import StringUUID
 
 
 class AccountStatus(str, enum.Enum):
