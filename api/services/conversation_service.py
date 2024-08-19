@@ -1,4 +1,4 @@
-from typing import Optional, Union, Tuple
+from typing import Optional, Union
 
 from sqlalchemy import or_
 
@@ -74,7 +74,7 @@ class ConversationService:
         )
 
     @classmethod
-    def _get_sort_params(cls, sort_by: str) -> Tuple[str, callable]:
+    def _get_sort_params(cls, sort_by: str) -> tuple[str, callable]:
         if sort_by.startswith('-'):
             return sort_by[1:], desc
         return sort_by, asc
