@@ -12,6 +12,7 @@ const translation = {
     cancel: 'रद्द करें',
     clear: 'साफ करें',
     save: 'सहेजें',
+    saveAndEnable: 'सहेजें और सक्षम करें',
     edit: 'संपादित करें',
     add: 'जोड़ें',
     added: 'जोड़ा गया',
@@ -454,7 +455,7 @@ const translation = {
     latestAvailable: 'Dify {{version}} नवीनतम उपलब्ध संस्करण है।',
   },
   appMenus: {
-    overview: 'अवलोकन',
+    overview: 'निगरानी',
     promptEng: 'समन्वय करें',
     apiAccess: 'API एक्सेस',
     logAndAnn: 'लॉग्स और घोषणाएँ',

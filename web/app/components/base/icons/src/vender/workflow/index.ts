@@ -1,4 +1,5 @@
 export { default as Answer } from './Answer'
+export { default as Assigner } from './Assigner'
 export { default as Code } from './Code'
 export { default as End } from './End'
 export { default as Home } from './Home'

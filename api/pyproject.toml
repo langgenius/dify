@@ -69,7 +69,16 @@ ignore = [
 ]
 
 [tool.ruff.format]
-quote-style = "single"
+exclude = [
+    "core/**/*.py",
+    "controllers/**/*.py",
+    "models/**/*.py",
+    "migrations/**/*",
+    "services/**/*.py",
+    "tasks/**/*.py",
+    "tests/**/*.py",
+    "configs/**/*.py",
+]
 
 [tool.pytest_env]
 OPENAI_API_KEY = "sk-IamNotARealKeyJustForMockTestKawaiiiiiiiiii"
@@ -93,6 +102,8 @@ CODE_MAX_STRING_LENGTH = "80000"
 CODE_EXECUTION_ENDPOINT = "http://127.0.0.1:8194"
 CODE_EXECUTION_API_KEY = "dify-sandbox"
 FIRECRAWL_API_KEY = "fc-"
+TEI_EMBEDDING_SERVER_URL = "http://a.abc.com:11451"
+TEI_RERANK_SERVER_URL = "http://a.abc.com:11451"
 
 [tool.poetry]
 name = "dify-api"
@@ -108,7 +119,7 @@ authlib = "1.3.1"
 azure-identity = "1.16.1"
 azure-storage-blob = "12.13.0"
 beautifulsoup4 = "4.12.2"
-boto3 = "1.34.136"
+boto3 = "1.34.148"
 bs4 = "~0.0.1"
 cachetools = "~5.3.0"
 celery = "~5.3.6"
@@ -179,6 +190,7 @@ zhipuai = "1.0.7"
 rank-bm25 = "~0.2.2"
 openpyxl = "^3.1.5"
 kaleido = "0.2.1"
+elasticsearch = "8.14.0"
 
 ############################################################
 # Tool dependencies required by tool implementations
@@ -240,5 +252,5 @@ pytest-mock = "~3.14.0"
 optional = true
 
 [tool.poetry.group.lint.dependencies]
-ruff = "~0.5.1"
+ruff = "~0.6.1"
 dotenv-linter = "~0.5.0"

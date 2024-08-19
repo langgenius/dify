@@ -1,8 +1,10 @@
 import logging
 import time
+from collections.abc import Callable
 
 import click
 from celery import shared_task
+from sqlalchemy import delete
 from sqlalchemy.exc import SQLAlchemyError
 
 from extensions.ext_database import db
@@ -28,7 +30,7 @@ from models.model import (
 )
 from models.tools import WorkflowToolProvider
 from models.web import PinnedConversation, SavedMessage
-from models.workflow import Workflow, WorkflowAppLog, WorkflowNodeExecution, WorkflowRun
+from models.workflow import ConversationVariable, Workflow, WorkflowAppLog, WorkflowNodeExecution, WorkflowRun
 
 
 @shared_task(queue='app_deletion', bind=True, max_retries=3)
@@ -54,6 +56,7 @@ def remove_app_and_related_data_task(self, tenant_id: str, app_id: str):
         _delete_app_tag_bindings(tenant_id, app_id)
         _delete_end_users(tenant_id, app_id)
         _delete_trace_app_configs(tenant_id, app_id)
+        _delete_conversation_variables(app_id=app_id)
 
         end_at = time.perf_counter()
         logging.info(click.style(f'App and related data deleted: {app_id} latency: {end_at - start_at}', fg='green'))
@@ -225,6 +228,13 @@ def _delete_app_conversations(tenant_id: str, app_id: str):
         "conversation"
     )
 
+def _delete_conversation_variables(*, app_id: str):
+    stmt = delete(ConversationVariable).where(ConversationVariable.app_id == app_id)
+    with db.engine.connect() as conn:
+        conn.execute(stmt)
+        conn.commit()
+        logging.info(click.style(f"Deleted conversation variables for app {app_id}", fg='green'))
+
 
 def _delete_app_messages(tenant_id: str, app_id: str):
     def del_message(message_id: str):
@@ -299,7 +309,7 @@ def _delete_trace_app_configs(tenant_id: str, app_id: str):
     )
 
 
-def _delete_records(query_sql: str, params: dict, delete_func: callable, name: str) -> None:
+def _delete_records(query_sql: str, params: dict, delete_func: Callable, name: str) -> None:
     while True:
         with db.engine.begin() as conn:
             rs = conn.execute(db.text(query_sql), params)

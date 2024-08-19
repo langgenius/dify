@@ -67,7 +67,7 @@ const translation = {
   editAppTitle: 'Uygulama Bilgilerini Düzenle',
   editDone: 'Uygulama bilgileri güncellendi',
   editFailed: 'Uygulama bilgileri güncellenemedi',
-  emoji: {
+  iconPicker: {
     ok: 'Tamam',
     cancel: 'İptal',
   },

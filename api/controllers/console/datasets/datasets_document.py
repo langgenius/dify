@@ -178,11 +178,20 @@ class DatasetDocumentListApi(Resource):
                 .subquery()
 
             query = query.outerjoin(sub_query, sub_query.c.document_id == Document.id) \
-                .order_by(sort_logic(db.func.coalesce(sub_query.c.total_hit_count, 0)))
+                .order_by(
+                    sort_logic(db.func.coalesce(sub_query.c.total_hit_count, 0)),
+                    sort_logic(Document.position),
+                )
         elif sort == 'created_at':
-            query = query.order_by(sort_logic(Document.created_at))
+            query = query.order_by(
+                sort_logic(Document.created_at),
+                sort_logic(Document.position),
+            )
         else:
-            query = query.order_by(desc(Document.created_at))
+            query = query.order_by(
+                desc(Document.created_at),
+                desc(Document.position),
+            )
 
         paginated_documents = query.paginate(
             page=page, per_page=limit, max_per_page=100, error_out=False)

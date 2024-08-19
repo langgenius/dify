@@ -1,4 +1,4 @@
-model: deepseek-ai/deepseek-v2-chat
+model: deepseek-ai/DeepSeek-V2-Chat
 label:
   en_US: deepseek-ai/DeepSeek-V2-Chat
 model_type: llm
