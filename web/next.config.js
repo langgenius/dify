@@ -48,16 +48,16 @@ const nextConfig = {
     ignoreBuildErrors: true,
   },
   reactStrictMode: true,
-  // async redirects() {
-  //   return [
-  //     {
-  //       source: '/',
-  //        destination: '/landing',
-  //       permanent: false,
-  //     },
-  //   ]
-  // },
-  // output: 'standalone',
+  async redirects() {
+    return [
+      {
+        source: '/',
+         destination: '/landing',
+        permanent: false,
+      },
+    ]
+  },
+  output: 'standalone',
 }
 
 module.exports = withMDX(nextConfig)
