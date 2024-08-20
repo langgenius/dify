@@ -189,9 +189,9 @@ name: cmc
 services:
   # API service
   api:
-    image: langgenius/dify-api:0.7.1
-    # build:
-      # context: ../api
+    # image: langgenius/dify-api:0.7.1
+    build:
+      context: ../api
     restart: always
     environment:
       # Use the shared environment variables.
