@@ -44,7 +44,7 @@ class StockNews(Resource):
         
         return get_recent_stock_news(ticker)
 
-class StockFinancial(Resource):
+class StockFinance(Resource):
     def get(self):
         ticker = request.args.get('ticker', '')
         
@@ -61,4 +61,4 @@ api.add_resource(StockIndexApi, '/')
 api.add_resource(StockTicker, '/ticker')
 api.add_resource(StockPrice, '/price')
 api.add_resource(StockNews, '/news')
-api.add_resource(StockFinancial, '/financial')
+api.add_resource(StockFinance, '/finance')
