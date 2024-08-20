@@ -5,7 +5,9 @@ from configs import dify_config
 from controllers.stock_api import api
 from controllers.stock_api.wraps import get_stock_price, get_recent_stock_news, get_financial_data
 import os
+import logging
 
+logger = logging.getLogger(__name__)
 
 TICKERS_FILE_PATH = os.path.join(os.path.dirname(__file__), 'tickers.csv')
 
@@ -26,17 +28,24 @@ class StockTicker(Resource):
 class StockPrice(Resource):
     def get(self):
         ticker = request.args.get('ticker', '')
-        return jsonify(get_stock_price(ticker))
+        
+        price = get_stock_price(ticker)
+        logger.info(f"get_stock_price {price}")
+        return jsonify(price)
     
 class StockNews(Resource):
     def get(self):
         ticker = request.args.get('ticker', '')
+        
         return get_recent_stock_news(ticker)
 
 class StockFinancial(Resource):
     def get(self):
         ticker = request.args.get('ticker', '')
-        return jsonify(get_financial_data(ticker))
+        
+        finance = get_financial_data(ticker)
+        logger.info(f"get_financial_data {finance}")
+        return jsonify(finance)
 
 api.add_resource(StockIndexApi, '/')
 api.add_resource(StockTicker, '/ticker')
