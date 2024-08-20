@@ -49,7 +49,7 @@ from core.model_runtime.entities.llm_entities import LLMUsage
 from core.model_runtime.utils.encoders import jsonable_encoder
 from core.ops.ops_trace_manager import TraceQueueManager
 from core.workflow.entities.node_entities import NodeType
-from core.workflow.enums import SystemVariable
+from core.workflow.enums import SystemVariableKey
 from core.workflow.nodes.answer.answer_node import AnswerNode
 from core.workflow.nodes.answer.entities import TextGenerateRouteChunk, VarGenerateRouteChunk
 from events.message_event import message_was_created
@@ -74,7 +74,7 @@ class AdvancedChatAppGenerateTaskPipeline(BasedGenerateTaskPipeline, WorkflowCyc
     _workflow: Workflow
     _user: Union[Account, EndUser]
     # Deprecated
-    _workflow_system_variables: dict[SystemVariable, Any]
+    _workflow_system_variables: dict[SystemVariableKey, Any]
     _iteration_nested_relations: dict[str, list[str]]
 
     def __init__(
@@ -108,10 +108,10 @@ class AdvancedChatAppGenerateTaskPipeline(BasedGenerateTaskPipeline, WorkflowCyc
         self._message = message
         # Deprecated
         self._workflow_system_variables = {
-            SystemVariable.QUERY: message.query,
-            SystemVariable.FILES: application_generate_entity.files,
-            SystemVariable.CONVERSATION_ID: conversation.id,
-            SystemVariable.USER_ID: user_id,
+            SystemVariableKey.QUERY: message.query,
+            SystemVariableKey.FILES: application_generate_entity.files,
+            SystemVariableKey.CONVERSATION_ID: conversation.id,
+            SystemVariableKey.USER_ID: user_id,
         }
 
         self._task_state = AdvancedChatTaskState(
