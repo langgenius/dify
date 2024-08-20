@@ -70,6 +70,8 @@ const translation = {
   iconPicker: {
     ok: 'Tamam',
     cancel: 'İptal',
+    emoji: 'Emoji',
+    image: 'Görsel',
   },
   switch: 'Workflow Orkestrasyonuna Geç',
   switchTipStart: 'Sizin için yeni bir uygulama kopyası oluşturulacak ve yeni kopya Workflow Orkestrasyonuna geçecektir. Yeni kopya ',
