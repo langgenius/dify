@@ -682,3 +682,65 @@ class DatasetPermission(db.Model):
     tenant_id = db.Column(StringUUID, nullable=False)
     has_permission = db.Column(db.Boolean, nullable=False, server_default=db.text('true'))
     created_at = db.Column(db.DateTime, nullable=False, server_default=db.text('CURRENT_TIMESTAMP(0)'))
+
+
+class ExternalApiTemplates(db.Model):
+    __tablename__ = 'external_api_templates'
+    __table_args__ = (
+        db.PrimaryKeyConstraint('id', name='external_api_template_pkey'),
+        db.Index('external_api_templates_tenant_idx', 'tenant_id'),
+        db.Index('external_api_templates_name_idx', 'name'),
+    )
+
+    id = db.Column(StringUUID, nullable=False,
+                   server_default=db.text('uuid_generate_v4()'))
+    name = db.Column(db.String(255), nullable=False)
+    tenant_id = db.Column(StringUUID, nullable=False)
+    settings = db.Column(db.Text, nullable=True)
+    created_by = db.Column(StringUUID, nullable=False)
+    created_at = db.Column(db.DateTime, nullable=False,
+                           server_default=db.text('CURRENT_TIMESTAMP(0)'))
+    updated_by = db.Column(StringUUID, nullable=True)
+    updated_at = db.Column(db.DateTime, nullable=False,
+                           server_default=db.text('CURRENT_TIMESTAMP(0)'))
+
+    def to_dict(self):
+        return {
+            'id': self.id,
+            'tenant_id': self.tenant_id,
+            'name': self.name,
+            'settings': self.settings_dict,
+            'created_by': self.created_by,
+            'created_at': self.created_at,
+        }
+
+    @property
+    def settings_dict(self):
+        try:
+            return json.loads(self.settings) if self.settings else None
+        except JSONDecodeError:
+            return None
+
+
+class ExternalKnowledgeBindings(db.Model):
+    __tablename__ = 'external_knowledge_bindings'
+    __table_args__ = (
+        db.PrimaryKeyConstraint('id', name='external_knowledge_bindings_pkey'),
+        db.Index('external_knowledge_bindings_tenant_idx', 'tenant_id'),
+        db.Index('external_knowledge_bindings_dataset_idx', 'dataset_id'),
+        db.Index('external_knowledge_bindings_external_knowledge_idx', 'external_knowledge_id'),
+        db.Index('external_knowledge_bindings_external_api_template_idx', 'external_api_template_id'),
+    )
+
+    id = db.Column(StringUUID, nullable=False,
+                   server_default=db.text('uuid_generate_v4()'))
+    tenant_id = db.Column(StringUUID, nullable=False)
+    external_api_template_id = db.Column(StringUUID, nullable=False)
+    dataset_id = db.Column(StringUUID, nullable=False)
+    external_knowledge_id = db.Column(db.Text, nullable=False)
+    created_by = db.Column(StringUUID, nullable=False)
+    created_at = db.Column(db.DateTime, nullable=False,
+                           server_default=db.text('CURRENT_TIMESTAMP(0)'))
+    updated_by = db.Column(StringUUID, nullable=True)
+    updated_at = db.Column(db.DateTime, nullable=False,
+                           server_default=db.text('CURRENT_TIMESTAMP(0)'))
