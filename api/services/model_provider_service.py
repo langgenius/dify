@@ -401,7 +401,7 @@ class ModelProviderService:
                 )
             ) if result else None
         except Exception as e:
-            logger.error(f"get_default_model_of_model_type error: {e}")
+            logger.info(f"get_default_model_of_model_type error: {e}")
             return None
 
     def update_default_model_of_model_type(self, tenant_id: str, model_type: str, provider: str, model: str) -> None:
