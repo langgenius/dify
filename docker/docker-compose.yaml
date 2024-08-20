@@ -202,6 +202,7 @@ services:
     volumes:
       # Mount the storage directory to the container, for storing user files.
       - ./volumes/app/storage:/app/api/storage
+      - ../api/controllers:/app/api/controllers
     networks:
       - ssrf_proxy_network
       - default
@@ -232,7 +233,9 @@ services:
 
   # Frontend web application.
   web:
-    image: langgenius/dify-web:0.7.1
+    # image: langgenius/dify-web:0.7.1
+    build: 
+      context: ../web
     restart: always
     environment:
       CONSOLE_API_URL: ${CONSOLE_API_URL:-}
