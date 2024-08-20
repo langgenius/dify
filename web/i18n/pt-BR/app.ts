@@ -70,6 +70,8 @@ const translation = {
   iconPicker: {
     ok: 'OK',
     cancel: 'Cancelar',
+    emoji: 'Emoji',
+    image: 'Imagem',
   },
   switch: 'Mudar para Orquestração de Fluxo de Trabalho',
   switchTipStart: 'Será criada uma nova cópia do aplicativo para você e a nova cópia mudará para Orquestração de Fluxo de Trabalho. A nova cópia não permitirá a ',
