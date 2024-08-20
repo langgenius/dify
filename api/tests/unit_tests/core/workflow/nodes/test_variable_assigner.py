@@ -52,7 +52,7 @@ def test_overwrite_string_variable():
         input_variable,
     )
 
-    with mock.patch('core.workflow.nodes.variable_assigner.update_conversation_variable') as mock_run:
+    with mock.patch('core.workflow.nodes.variable_assigner.node.update_conversation_variable') as mock_run:
         node.run(variable_pool)
         mock_run.assert_called_once()
 
@@ -103,7 +103,7 @@ def test_append_variable_to_array():
         input_variable,
     )
 
-    with mock.patch('core.workflow.nodes.variable_assigner.update_conversation_variable') as mock_run:
+    with mock.patch('core.workflow.nodes.variable_assigner.node.update_conversation_variable') as mock_run:
         node.run(variable_pool)
         mock_run.assert_called_once()
 
