@@ -7,7 +7,7 @@ import csv
 import os
 
 
-TICKERS_FILE_PATH = os.path.join(os.path.dirname(__file__), 'api/controllers/stock_api', 'tickers.csv')
+TICKERS_FILE_PATH = os.path.join(os.path.dirname(__file__), 'tickers.csv')
 
 class StockIndexApi(Resource):
     def get(self):
