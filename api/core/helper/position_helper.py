@@ -52,6 +52,7 @@ def get_provider_position_map(folder_path: str, file_name: str = "_position.yaml
 def pin_position_map(original_position_map: dict[str, int], pin_list: list[str]) -> dict[str, int]:
     """
     Pin the items in the pin list to the beginning of the position map.
+    Overall logic: exclude > include > pin
     :param position_map: the position map to be sorted and filtered
     :param pin_list: the list of pins to be put at the beginning
     :return: the sorted position map
@@ -79,6 +80,7 @@ def is_filtered(
 ) -> bool:
     """
     Chcek if the object should be filtered out.
+    Overall logic: exclude > include > pin
     :param include_set: the set of names to be included
     :param exclude_set: the set of names to be excluded
     :param name_func: the function to get the name of the object
