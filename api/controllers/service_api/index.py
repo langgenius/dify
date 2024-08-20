@@ -7,7 +7,7 @@ from controllers.service_api import api
 class IndexApi(Resource):
     def get(self):
         return {
-            "welcome": "Dify OpenAPI",
+            "welcome": "OpenAPI",
             "api_version": "v1",
             "server_version": dify_config.CURRENT_VERSION,
         }
