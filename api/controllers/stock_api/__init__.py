@@ -6,5 +6,4 @@ bp = Blueprint('stock_api', __name__, url_prefix='/stock')
 api = ExternalApi(bp)
 
 
-from .app import app
-from . import stock
+from .app import app, stock
