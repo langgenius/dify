@@ -700,6 +700,7 @@ class IndexingRunner:
                 DatasetDocument.tokens: tokens,
                 DatasetDocument.completed_at: datetime.datetime.now(datetime.timezone.utc).replace(tzinfo=None),
                 DatasetDocument.indexing_latency: indexing_end_at - indexing_start_at,
+                DatasetDocument.error: None,
             }
         )
 
