@@ -242,13 +242,14 @@ const ParameterItem: FC<ParameterItemProps> = ({
                   <div className='w-[200px] whitespace-pre-wrap'>{parameterRule.help[language] || parameterRule.help.en_US}</div>
                 )}
                 popupClassName='mr-1'
-                triggerClassName='mr-1 w-4 h-4'
+                triggerClassName='mr-1 w-4 h-4 shrink-0'
               />
             )
           }
           {
             !parameterRule.required && parameterRule.name !== 'stop' && (
               <Switch
+                className='mr-1'
                 defaultValue={!isNullOrUndefined(value)}
                 onChange={handleSwitch}
                 size='md'
