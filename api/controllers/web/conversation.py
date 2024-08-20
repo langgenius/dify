@@ -26,6 +26,8 @@ class ConversationListApi(WebApiResource):
         parser.add_argument('last_id', type=uuid_value, location='args')
         parser.add_argument('limit', type=int_range(1, 100), required=False, default=20, location='args')
         parser.add_argument('pinned', type=str, choices=['true', 'false', None], location='args')
+        parser.add_argument('sort_by', type=str, choices=['created_at', '-created_at', 'updated_at', '-updated_at'],
+                            required=False, default='-updated_at', location='args')
         args = parser.parse_args()
 
         pinned = None
@@ -40,6 +42,7 @@ class ConversationListApi(WebApiResource):
                 limit=args['limit'],
                 invoke_from=InvokeFrom.WEB_APP,
                 pinned=pinned,
+                sort_by=args['sort_by']
             )
         except LastConversationNotExistsError:
             raise NotFound("Last Conversation Not Exists.")

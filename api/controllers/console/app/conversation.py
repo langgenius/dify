@@ -154,6 +154,8 @@ class ChatConversationApi(Resource):
         parser.add_argument('message_count_gte', type=int_range(1, 99999), required=False, location='args')
         parser.add_argument('page', type=int_range(1, 99999), required=False, default=1, location='args')
         parser.add_argument('limit', type=int_range(1, 100), required=False, default=20, location='args')
+        parser.add_argument('sort_by', type=str, choices=['created_at', '-created_at', 'updated_at', '-updated_at'],
+                            required=False, default='-updated_at', location='args')
         args = parser.parse_args()
 
         subquery = (
@@ -225,7 +227,17 @@ class ChatConversationApi(Resource):
         if app_model.mode == AppMode.ADVANCED_CHAT.value:
             query = query.where(Conversation.invoke_from != InvokeFrom.DEBUGGER.value)
 
-        query = query.order_by(Conversation.created_at.desc())
+        match args['sort_by']:
+            case 'created_at':
+                query = query.order_by(Conversation.created_at.asc())
+            case '-created_at':
+                query = query.order_by(Conversation.created_at.desc())
+            case 'updated_at':
+                query = query.order_by(Conversation.updated_at.asc())
+            case '-updated_at':
+                query = query.order_by(Conversation.updated_at.desc())
+            case _:
+                query = query.order_by(Conversation.created_at.desc())
 
         conversations = db.paginate(
             query,

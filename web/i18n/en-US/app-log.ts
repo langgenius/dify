@@ -4,7 +4,8 @@ const translation = {
   dateTimeFormat: 'MM/DD/YYYY hh:mm A',
   table: {
     header: {
-      time: 'Time',
+      updatedTime: 'Updated time',
+      time: 'Created time',
       endUser: 'End User',
       input: 'Input',
       output: 'Output',
@@ -69,6 +70,9 @@ const translation = {
       annotated: 'Annotated Improvements ({{count}} items)',
       not_annotated: 'Not Annotated',
     },
+    sortBy: 'Sort by:',
+    descending: 'descending',
+    ascending: 'ascending',
   },
   workflowTitle: 'Workflow Logs',
   workflowSubtitle: 'The log recorded the operation of Automate.',

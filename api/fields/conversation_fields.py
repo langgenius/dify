@@ -150,6 +150,7 @@ conversation_with_summary_fields = {
     "summary": fields.String(attribute="summary_or_query"),
     "read_at": TimestampField,
     "created_at": TimestampField,
+    "updated_at": TimestampField,
     "annotated": fields.Boolean,
     "model_config": fields.Nested(simple_model_config_fields),
     "message_count": fields.Integer,

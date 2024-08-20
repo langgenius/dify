@@ -4,7 +4,8 @@ const translation = {
   dateTimeFormat: 'MM/DD/YYYY hh:mm A',
   table: {
     header: {
-      time: 'Zeit',
+      updatedTime: 'Aktualisierungszeit',
+      time: 'Erstellungszeit',
       endUser: 'Endbenutzer',
       input: 'Eingabe',
       output: 'Ausgabe',
