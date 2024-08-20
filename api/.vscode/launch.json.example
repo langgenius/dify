@@ -5,8 +5,8 @@
             "name": "Python: Flask",
             "type": "debugpy",
             "request": "launch",
-            "python": "${workspaceFolder}/api/.venv/bin/python",
-            "cwd": "${workspaceFolder}/api",
+            "python": "${workspaceFolder}/.venv/bin/python",
+            "cwd": "${workspaceFolder}",
             "envFile": ".env",
             "module": "flask",
             "justMyCode": true,
@@ -18,15 +18,15 @@
             "args": [
                 "run",
                 "--host=0.0.0.0",
-                "--port=5001",
+                "--port=5001"
             ]
         },
         {
             "name": "Python: Celery",
             "type": "debugpy",
             "request": "launch",
-            "python": "${workspaceFolder}/api/.venv/bin/python",
-            "cwd": "${workspaceFolder}/api",
+            "python": "${workspaceFolder}/.venv/bin/python",
+            "cwd": "${workspaceFolder}",
             "module": "celery",
             "justMyCode": true,
             "envFile": ".env",
