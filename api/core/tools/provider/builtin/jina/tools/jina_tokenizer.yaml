@@ -60,5 +60,11 @@ parameters:
     label:
       en_US: Tokenizer
     human_description:
-      en_US: cl100k_base - gpt-4,gpt-3.5-turbo,gpt-3.5;  o200k_base - gpt-4o,gpt-4o-mini; p50k_base - text-davinci-003,text-davinci-002
+      en_US: |
+        · cl100k_base --- gpt-4, gpt-3.5-turbo, gpt-3.5
+        · o200k_base  --- gpt-4o, gpt-4o-mini
+        · p50k_base   --- text-davinci-003, text-davinci-002
+        · r50k_base   --- text-davinci-001, text-curie-001
+        · p50k_edit   --- text-davinci-edit-001, code-davinci-edit-001
+        · gpt2        --- gpt-2
     form: form
