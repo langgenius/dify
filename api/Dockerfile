@@ -5,6 +5,7 @@ WORKDIR /app/api
 
 # Install Poetry
 ENV POETRY_VERSION=1.8.3
+RUN poetry lock --no-update
 RUN pip install --no-cache-dir poetry==${POETRY_VERSION}
 
 # Configure Poetry
