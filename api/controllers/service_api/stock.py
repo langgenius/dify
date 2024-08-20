@@ -2,6 +2,7 @@ from flask_restful import Resource
 
 from configs import dify_config
 from controllers.service_api import api
+from tools import get_stock_price, get_recent_stock_news, get_financial_data
 
 
 class StockApi(Resource):
@@ -14,3 +15,12 @@ class StockApi(Resource):
 
 
 api.add_resource(StockApi, '/stock')
+
+@api.route('/stock_ticker', methods=['GET'])
+def get_stock_ticker():
+    return {
+        "welcome": "Stock Ticker",
+        "api_version": "v1",
+        "server_version": dify_config.CURRENT_VERSION,
+    }
+    
