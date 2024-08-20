@@ -3,8 +3,8 @@ from flask_restful import Resource, fields, marshal_with
 
 from configs import dify_config
 from controllers.service_api import api
-from controllers.service_api.app.error import AppUnavailableError
-from controllers.service_api.wraps import validate_app_token
+from controllers.stock.app.error import AppUnavailableError
+from controllers.stock.wraps import validate_app_token
 from models.model import App, AppMode
 from services.app_service import AppService
 

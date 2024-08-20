@@ -206,6 +206,7 @@ def register_blueprints(app):
     from controllers.inner_api import bp as inner_api_bp
     from controllers.service_api import bp as service_api_bp
     from controllers.web import bp as web_bp
+    from controllers.stock import bp as stock_bp
 
     CORS(
         service_api_bp,
@@ -240,6 +241,8 @@ def register_blueprints(app):
     app.register_blueprint(files_bp)
 
     app.register_blueprint(inner_api_bp)
+    
+    app.register_blueprint(stock_bp)
 
 
 # create app
