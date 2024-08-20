@@ -5,7 +5,8 @@ const translation = {
   dateTimeFormat: 'MM/DD/YYYY hh:mm A',
   table: {
     header: {
-      time: 'Ora',
+      updatedTime: 'Ora di aggiornamento',
+      time: 'Ora di creazione',
       endUser: 'Utente Finale',
       input: 'Input',
       output: 'Output',
@@ -73,6 +74,9 @@ const translation = {
       annotated: 'Miglioramenti Annotati ({{count}} elementi)',
       not_annotated: 'Non Annotati',
     },
+    sortBy: 'Ordina per:',
+    descending: 'decrescente',
+    ascending: 'crescente',
   },
   workflowTitle: 'Registri del Workflow',
   workflowSubtitle: 'Il registro ha registrato il funzionamento di Automate.',
