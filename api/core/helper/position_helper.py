@@ -76,7 +76,7 @@ def is_filtered(
         exclude_set: set[str],
         data: Any,
         name_func: Callable[[Any], str],
-) -> list[Any]:
+) -> bool:
     """
     Chcek if the object should be filtered out.
     :param include_set: the set of names to be included

@@ -402,7 +402,7 @@ class ToolManager:
             db_builtin_providers: list[BuiltinToolProvider] = db.session.query(BuiltinToolProvider). \
                 filter(BuiltinToolProvider.tenant_id == tenant_id).all()
 
-            def find_db_builtin_provider(provider): return next(
+            find_db_builtin_provider = lambda provider: next(
                 (x for x in db_builtin_providers if x.provider == provider),
                 None
             )
