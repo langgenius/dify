@@ -1,6 +1,6 @@
 from flask_restful import Resource
 
-from controllers.stock import api
+from controllers.stock_api import api
 
 
 class StockIndexApi(Resource):

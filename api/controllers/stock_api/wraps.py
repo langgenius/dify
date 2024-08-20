@@ -206,14 +206,14 @@ def create_or_update_end_user_for_user_id(app_model: App, user_id: Optional[str]
         EndUser.tenant_id == app_model.tenant_id,
         EndUser.app_id == app_model.id,
         EndUser.session_id == user_id,
-        EndUser.type == 'service_api'
+        EndUser.type == 'stock_api'
     ).first()
 
     if end_user is None:
         end_user = EndUser(
             tenant_id=app_model.tenant_id,
             app_id=app_model.id,
-            type='service_api',
+            type='stock_api',
             is_anonymous=True if user_id == 'DEFAULT-USER' else False,
             session_id=user_id
         )
