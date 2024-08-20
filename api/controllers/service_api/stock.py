@@ -12,15 +12,14 @@ class StockApi(Resource):
             "api_version": "v1",
             "server_version": dify_config.CURRENT_VERSION,
         }
+        
+    def get_stock_ticker():
+        return {
+            "welcome": "Stock Ticker",
+            "api_version": "v1",
+            "server_version": dify_config.CURRENT_VERSION,
+        }
 
 
 api.add_resource(StockApi, '/stock')
-
-@api.route('/stock_ticker', methods=['GET'])
-def get_stock_ticker():
-    return {
-        "welcome": "Stock Ticker",
-        "api_version": "v1",
-        "server_version": dify_config.CURRENT_VERSION,
-    }
-    
+api.add_resource(StockApi.get_stock_ticker, '/stock_ticker')
