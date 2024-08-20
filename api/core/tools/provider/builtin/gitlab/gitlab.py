@@ -29,6 +29,6 @@ class GitlabProvider(BuiltinToolProviderController):
                 if response.status_code != 200:
                     raise ToolProviderCredentialValidationError((response.json()).get('message'))
             except Exception as e:
-                raise ToolProviderCredentialValidationError("Gitlab Access Tokens and Api Version is invalid. {}".format(e))
+                raise ToolProviderCredentialValidationError("Gitlab Access Tokens is invalid. {}".format(e))
         except Exception as e:
             raise ToolProviderCredentialValidationError(str(e))

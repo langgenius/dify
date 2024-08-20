@@ -3,8 +3,8 @@ from uuid import uuid4
 
 from core.app.entities.app_invoke_entities import InvokeFrom
 from core.app.segments import ArrayStringVariable, StringVariable
-from core.workflow.entities.node_entities import SystemVariable
 from core.workflow.entities.variable_pool import VariablePool
+from core.workflow.enums import SystemVariable
 from core.workflow.nodes.base_node import UserFrom
 from core.workflow.nodes.variable_assigner import VariableAssignerNode, WriteMode
 

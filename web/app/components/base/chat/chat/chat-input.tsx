@@ -49,6 +49,7 @@ const ChatInput: FC<ChatInputProps> = ({
   const { t } = useTranslation()
   const { notify } = useContext(ToastContext)
   const [voiceInputShow, setVoiceInputShow] = useState(false)
+  const textAreaRef = useRef<HTMLTextAreaElement>(null)
   const {
     files,
     onUpload,
@@ -89,7 +90,7 @@ const ChatInput: FC<ChatInputProps> = ({
   }
 
   const handleKeyUp = (e: React.KeyboardEvent<HTMLTextAreaElement>) => {
-    if (e.code === 'Enter') {
+    if (e.key === 'Enter') {
       e.preventDefault()
       // prevent send message when using input method enter
       if (!e.shiftKey && !isUseInputMethod.current)
@@ -99,7 +100,7 @@ const ChatInput: FC<ChatInputProps> = ({
 
   const handleKeyDown = (e: React.KeyboardEvent<HTMLTextAreaElement>) => {
     isUseInputMethod.current = e.nativeEvent.isComposing
-    if (e.code === 'Enter' && !e.shiftKey) {
+    if (e.key === 'Enter' && !e.shiftKey) {
       setQuery(query.replace(/\n$/, ''))
       e.preventDefault()
     }
@@ -176,6 +177,7 @@ const ChatInput: FC<ChatInputProps> = ({
             )
           }
           <Textarea
+            ref={textAreaRef}
             className={`
               block w-full px-2 pr-[118px] py-[7px] leading-5 max-h-none text-sm text-gray-700 outline-none appearance-none resize-none
               ${visionConfig?.enabled && 'pl-12'}
@@ -234,7 +236,10 @@ const ChatInput: FC<ChatInputProps> = ({
             voiceInputShow && (
               <VoiceInput
                 onCancel={() => setVoiceInputShow(false)}
-                onConverted={text => setQuery(text)}
+                onConverted={(text) => {
+                  setQuery(text)
+                  textAreaRef.current?.focus()
+                }}
               />
             )
           }

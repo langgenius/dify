@@ -4,7 +4,7 @@ from werkzeug.exceptions import HTTPException
 
 
 class BaseHTTPException(HTTPException):
-    error_code: str = 'unknown'
+    error_code: str = "unknown"
     data: Optional[dict] = None
 
     def __init__(self, description=None, response=None):

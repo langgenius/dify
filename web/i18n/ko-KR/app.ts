@@ -63,9 +63,11 @@ const translation = {
   editAppTitle: '앱 정보 편집하기',
   editDone: '앱 정보가 업데이트되었습니다',
   editFailed: '앱 정보 업데이트 실패',
-  emoji: {
+  iconPicker: {
     ok: '확인',
     cancel: '취소',
+    emoji: '이모지',
+    image: '이미지',
   },
   switch: '워크플로우 오케스트레이션으로 전환하기',
   switchTipStart: '새로운 앱의 복사본이 생성되어 새로운 복사본이 워크플로우 오케스트레이션으로 전환됩니다. 새로운 복사본은 ',

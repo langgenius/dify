@@ -16,6 +16,7 @@ from models.model import Site
 def parse_app_site_args():
     parser = reqparse.RequestParser()
     parser.add_argument('title', type=str, required=False, location='json')
+    parser.add_argument('icon_type', type=str, required=False, location='json')
     parser.add_argument('icon', type=str, required=False, location='json')
     parser.add_argument('icon_background', type=str, required=False, location='json')
     parser.add_argument('description', type=str, required=False, location='json')
@@ -53,6 +54,7 @@ class AppSite(Resource):
 
         for attr_name in [
             'title',
+            'icon_type',
             'icon',
             'icon_background',
             'description',

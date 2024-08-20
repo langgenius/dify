@@ -7,6 +7,7 @@ from typing import Optional
 from flask import request
 from flask_login import UserMixin
 from sqlalchemy import Float, func, text
+from sqlalchemy.orm import Mapped, mapped_column
 
 from configs import dify_config
 from core.file.tool_file_parser import ToolFileParser
@@ -50,6 +51,10 @@ class AppMode(Enum):
         raise ValueError(f'invalid mode value {value}')
 
 
+class IconType(Enum):
+    IMAGE = "image"
+    EMOJI = "emoji"
+
 class App(db.Model):
     __tablename__ = 'apps'
     __table_args__ = (
@@ -62,6 +67,7 @@ class App(db.Model):
     name = db.Column(db.String(255), nullable=False)
     description = db.Column(db.Text, nullable=False, server_default=db.text("''::character varying"))
     mode = db.Column(db.String(255), nullable=False)
+    icon_type = db.Column(db.String(255), nullable=True)
     icon = db.Column(db.String(255))
     icon_background = db.Column(db.String(255))
     app_model_config_id = db.Column(StringUUID, nullable=True)
@@ -512,12 +518,12 @@ class Conversation(db.Model):
     from_account_id = db.Column(StringUUID)
     read_at = db.Column(db.DateTime)
     read_account_id = db.Column(StringUUID)
+    dialogue_count: Mapped[int] = mapped_column(default=0)
     created_at = db.Column(db.DateTime, nullable=False, server_default=db.text('CURRENT_TIMESTAMP(0)'))
     updated_at = db.Column(db.DateTime, nullable=False, server_default=db.text('CURRENT_TIMESTAMP(0)'))
 
     messages = db.relationship("Message", backref="conversation", lazy='select', passive_deletes="all")
-    message_annotations = db.relationship("MessageAnnotation", backref="conversation", lazy='select',
-                                          passive_deletes="all")
+    message_annotations = db.relationship("MessageAnnotation", backref="conversation", lazy='select', passive_deletes="all")
 
     is_deleted = db.Column(db.Boolean, nullable=False, server_default=db.text('false'))
 
@@ -1086,6 +1092,7 @@ class Site(db.Model):
     id = db.Column(StringUUID, server_default=db.text('uuid_generate_v4()'))
     app_id = db.Column(StringUUID, nullable=False)
     title = db.Column(db.String(255), nullable=False)
+    icon_type = db.Column(db.String(255), nullable=True)
     icon = db.Column(db.String(255))
     icon_background = db.Column(db.String(255))
     description = db.Column(db.Text)
@@ -1315,9 +1322,7 @@ class MessageAgentThought(db.Model):
                 }
         except Exception as e:
             if self.observation:
-                return {
-                    tool: self.observation for tool in tools
-                }
+                return dict.fromkeys(tools, self.observation)
 
 
 class DatasetRetrieverResource(db.Model):
