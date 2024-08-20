@@ -1,16 +1,13 @@
 from flask_restful import Resource
 
-from configs import dify_config
-from controllers.service_api import api
+from controllers.stock import api
 
 
-class IndexApi(Resource):
+class StockIndexApi(Resource):
     def get(self):
         return {
             "welcome": "Stock OpenAPI",
             "api_version": "v1",
-            "server_version": dify_config.CURRENT_VERSION,
         }
 
-
-api.add_resource(IndexApi, '/')
+api.add_resource(StockIndexApi, '/')
