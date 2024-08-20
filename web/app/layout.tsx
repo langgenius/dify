@@ -16,7 +16,6 @@ export const metadata: Metadata = {
     index: true,
     follow: true,
   },
-  metadataBase: new URL(process.env.NEXT_PUBLIC_URL as string),
   openGraph: {
     type: "website",
     url: process.env.NEXT_PUBLIC_URL,
