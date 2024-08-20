@@ -1,6 +1,7 @@
 import json
 from datetime import datetime, timezone
 
+from core.helper import ssrf_proxy
 from extensions.ext_database import db
 from extensions.ext_redis import redis_client
 from libs import helper
@@ -169,8 +170,21 @@ class ExternalDatasetService:
 
         return dataset
 
-
     @staticmethod
-    def process_external_api(api_template_id: str, data_source: dict, process_parameter: dict):
-        pass
+    def process_external_api(self, headers: dict[str, Any]) -> httpx.Response:
+        """
+        do http request depending on api bundle
+        """
+        kwargs = {
+            'url': self.server_url,
+            'headers': headers,
+            'params': self.params,
+            'timeout': (self.timeout.connect, self.timeout.read, self.timeout.write),
+            'follow_redirects': True,
+        }
 
+        if self.method in ('get', 'head', 'post', 'put', 'delete', 'patch'):
+            response = getattr(ssrf_proxy, self.method)(data=self.body, files=self.files, **kwargs)
+        else:
+            raise ValueError(f'Invalid http method {self.method}')
+        return response
