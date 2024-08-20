@@ -26,7 +26,7 @@ class StockTicker(Resource):
 class StockPrice(Resource):
     def get(self):
         ticker = request.args.get('ticker', '')
-        return get_stock_price(ticker)
+        return jsonify(get_stock_price(ticker))
     
 class StockNews(Resource):
     def get(self):
@@ -36,7 +36,7 @@ class StockNews(Resource):
 class StockFinancial(Resource):
     def get(self):
         ticker = request.args.get('ticker', '')
-        return get_financial_data(ticker)
+        return jsonify(get_financial_data(ticker))
 
 api.add_resource(StockIndexApi, '/')
 api.add_resource(StockTicker, '/ticker')
