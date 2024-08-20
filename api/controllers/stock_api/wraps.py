@@ -1,5 +1,5 @@
 from collections.abc import Callable
-from datetime import datetime, timezone
+from datetime import datetime, timezone, date
 from enum import Enum
 from functools import wraps
 from typing import Optional
@@ -16,7 +16,6 @@ from models.account import Account, Tenant, TenantAccountJoin, TenantStatus
 from models.model import ApiToken, App, EndUser
 from services.feature_service import FeatureService
 
-from datetime import date, timedelta
 import pandas as pd
 import requests
 from vnstock3 import Vnstock
@@ -212,14 +211,14 @@ def create_or_update_end_user_for_user_id(app_model: App, user_id: Optional[str]
         EndUser.tenant_id == app_model.tenant_id,
         EndUser.app_id == app_model.id,
         EndUser.session_id == user_id,
-        EndUser.type == 'stock_api'
+        EndUser.type == 'service_api'
     ).first()
 
     if end_user is None:
         end_user = EndUser(
             tenant_id=app_model.tenant_id,
             app_id=app_model.id,
-            type='stock_api',
+            type='service_api',
             is_anonymous=True if user_id == 'DEFAULT-USER' else False,
             session_id=user_id
         )
@@ -229,10 +228,14 @@ def create_or_update_end_user_for_user_id(app_model: App, user_id: Optional[str]
     return end_user
 
 
+class DatasetApiResource(Resource):
+    method_decorators = [validate_dataset_token]
+
+
+
+
 # get stock history of the company
 def get_stock_price(ticker, history=200):
-    with open("company.json", 'a') as file:
-        file.write(f'\nget stock price for ticker: {ticker}')
     today = date.today()
     start_date = today - timedelta(days=history)
     stock = Vnstock().stock(symbol=ticker.strip(), source='TCBS')
@@ -270,8 +273,6 @@ def get_financial_statements(ticker):
     stock = Vnstock().stock(symbol=ticker.upper(), source='VCI')
     data = stock.finance.balance_sheet(period='year', lang='en')
     return data
-
-
 
 def get_recent_stock_news(ticker):
     # get company name from ticker
@@ -323,7 +324,3 @@ def fetch_article_content(url):
     paragraphs = content_div.find_all('p')
     main_content = "\n".join(p.text.strip() for p in paragraphs)
     return main_content
-
-
-class DatasetApiResource(Resource):
-    method_decorators = [validate_dataset_token]
