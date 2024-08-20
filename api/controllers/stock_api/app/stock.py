@@ -1,5 +1,5 @@
 from flask_restful import Resource
-from flask import request
+from flask import request, make_response
 
 from configs import dify_config
 from controllers.stock_api import api
@@ -24,8 +24,10 @@ class StockTicker(Resource):
         with open(TICKERS_FILE_PATH, 'r') as file:
             company_data = file.read()
 
-        logger.info(f"ticker {type(company_data)} {company_data}") 
-        return company_data
+        logger.info(f"ticker {type(company_data)} {company_data}")
+        response = make_response(company_data)
+        response.headers['Content-Type'] = 'text/plain; charset=utf-8'
+        return response
         
 class StockPrice(Resource):
     def get(self):
