@@ -2,7 +2,7 @@ from unittest.mock import MagicMock
 
 from core.app.entities.app_invoke_entities import InvokeFrom
 from core.workflow.entities.variable_pool import VariablePool
-from core.workflow.enums import SystemVariable
+from core.workflow.enums import SystemVariableKey
 from core.workflow.nodes.answer.answer_node import AnswerNode
 from core.workflow.nodes.base_node import UserFrom
 from extensions.ext_database import db
@@ -29,8 +29,8 @@ def test_execute_answer():
 
     # construct variable pool
     pool = VariablePool(system_variables={
-        SystemVariable.FILES: [],
-        SystemVariable.USER_ID: 'aaa'
+        SystemVariableKey.FILES: [],
+        SystemVariableKey.USER_ID: 'aaa'
     }, user_inputs={}, environment_variables=[])
     pool.add(['start', 'weather'], 'sunny')
     pool.add(['llm', 'text'], 'You are a helpful AI.')

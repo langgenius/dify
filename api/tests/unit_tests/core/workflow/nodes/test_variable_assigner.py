@@ -4,7 +4,7 @@ from uuid import uuid4
 from core.app.entities.app_invoke_entities import InvokeFrom
 from core.app.segments import ArrayStringVariable, StringVariable
 from core.workflow.entities.variable_pool import VariablePool
-from core.workflow.enums import SystemVariable
+from core.workflow.enums import SystemVariableKey
 from core.workflow.nodes.base_node import UserFrom
 from core.workflow.nodes.variable_assigner import VariableAssignerNode, WriteMode
 
@@ -42,7 +42,7 @@ def test_overwrite_string_variable():
     )
 
     variable_pool = VariablePool(
-        system_variables={SystemVariable.CONVERSATION_ID: 'conversation_id'},
+        system_variables={SystemVariableKey.CONVERSATION_ID: 'conversation_id'},
         user_inputs={},
         environment_variables=[],
         conversation_variables=[conversation_variable],
@@ -93,7 +93,7 @@ def test_append_variable_to_array():
     )
 
     variable_pool = VariablePool(
-        system_variables={SystemVariable.CONVERSATION_ID: 'conversation_id'},
+        system_variables={SystemVariableKey.CONVERSATION_ID: 'conversation_id'},
         user_inputs={},
         environment_variables=[],
         conversation_variables=[conversation_variable],
@@ -137,7 +137,7 @@ def test_clear_array():
     )
 
     variable_pool = VariablePool(
-        system_variables={SystemVariable.CONVERSATION_ID: 'conversation_id'},
+        system_variables={SystemVariableKey.CONVERSATION_ID: 'conversation_id'},
         user_inputs={},
         environment_variables=[],
         conversation_variables=[conversation_variable],
