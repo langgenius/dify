@@ -1,5 +1,6 @@
 import json
 from collections.abc import Mapping, Sequence
+from datetime import datetime
 from enum import Enum
 from typing import Any, Optional, Union
 
@@ -110,19 +111,32 @@ class Workflow(db.Model):
         db.Index('workflow_version_idx', 'tenant_id', 'app_id', 'version'),
     )
 
-    id = db.Column(StringUUID, server_default=db.text('uuid_generate_v4()'))
-    tenant_id = db.Column(StringUUID, nullable=False)
-    app_id = db.Column(StringUUID, nullable=False)
-    type = db.Column(db.String(255), nullable=False)
-    version = db.Column(db.String(255), nullable=False)
-    graph = db.Column(db.Text)
-    features = db.Column(db.Text)
-    created_by = db.Column(StringUUID, nullable=False)
-    created_at = db.Column(db.DateTime, nullable=False, server_default=db.text('CURRENT_TIMESTAMP(0)'))
-    updated_by = db.Column(StringUUID)
-    updated_at = db.Column(db.DateTime)
-    _environment_variables = db.Column('environment_variables', db.Text, nullable=False, server_default='{}')
-    _conversation_variables = db.Column('conversation_variables', db.Text, nullable=False, server_default='{}')
+    id: Mapped[str] = db.Column(StringUUID, server_default=db.text('uuid_generate_v4()'))
+    tenant_id: Mapped[str] = db.Column(StringUUID, nullable=False)
+    app_id: Mapped[str] = db.Column(StringUUID, nullable=False)
+    type: Mapped[str] = db.Column(db.String(255), nullable=False)
+    version: Mapped[str] = db.Column(db.String(255), nullable=False)
+    graph: Mapped[str] = db.Column(db.Text)
+    features: Mapped[str] = db.Column(db.Text)
+    created_by: Mapped[str] = db.Column(StringUUID, nullable=False)
+    created_at: Mapped[datetime] = db.Column(db.DateTime, nullable=False, server_default=db.text('CURRENT_TIMESTAMP(0)'))
+    updated_by: Mapped[str] = db.Column(StringUUID)
+    updated_at: Mapped[datetime] = db.Column(db.DateTime)
+    _environment_variables: Mapped[str] = db.Column('environment_variables', db.Text, nullable=False, server_default='{}')
+    _conversation_variables: Mapped[str] = db.Column('conversation_variables', db.Text, nullable=False, server_default='{}')
+
+    def __init__(self, *, tenant_id: str, app_id: str, type: str, version: str, graph: str,
+                 features: str, created_by: str, environment_variables: Sequence[Variable],
+                 conversation_variables: Sequence[Variable]):
+        self.tenant_id = tenant_id
+        self.app_id = app_id
+        self.type = type
+        self.version = version
+        self.graph = graph
+        self.features = features
+        self.created_by = created_by
+        self.environment_variables = environment_variables or []
+        self.conversation_variables = conversation_variables or []
 
     @property
     def created_by_account(self):
@@ -724,7 +738,7 @@ class WorkflowAppLog(db.Model):
 
 
 class ConversationVariable(db.Model):
-    __tablename__ = 'workflow__conversation_variables'
+    __tablename__ = 'workflow_conversation_variables'
 
     id: Mapped[str] = db.Column(StringUUID, primary_key=True)
     conversation_id: Mapped[str] = db.Column(StringUUID, nullable=False, primary_key=True)
