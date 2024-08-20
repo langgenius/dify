@@ -13,13 +13,13 @@ class StockApi(Resource):
             "server_version": dify_config.CURRENT_VERSION,
         }
         
-    def get_stock_ticker():
+class StockTicker(Resource):
+    def get(self):
         return {
             "welcome": "Stock Ticker",
             "api_version": "v1",
             "server_version": dify_config.CURRENT_VERSION,
         }
 
-
 api.add_resource(StockApi, '/stock')
-api.add_resource(StockApi.get_stock_ticker, '/stock_ticker')
+api.add_resource(StockTicker, '/stock_ticker')
