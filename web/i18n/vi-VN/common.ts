@@ -76,9 +76,9 @@ const translation = {
   },
   model: {
     params: {
-      temperature: 'Nhiệt độ',
+      temperature: 'Độ sáng tạo',
       temperatureTip:
-        'Kiểm soát độ ngẫu nhiên: Giảm nhiệt độ dẫn đến ít kết quả ngẫu nhiên hơn. Khi nhiệt độ gần bằng 0, mô hình sẽ trở nên xác định và lặp lại.',
+        'Kiểm soát độ ngẫu nhiên: Giảm độ sáng tạo dẫn đến ít kết quả ngẫu nhiên hơn. Khi độ sáng tạo gần bằng 0, mô hình sẽ trở nên xác định và lặp lại.',
       top_p: 'Top P',
       top_pTip:
         'Kiểm soát đa dạng thông qua lấy mẫu nhân nhóm: 0.5 có nghĩa là nửa số tùy chọn có khả năng cao được xem xét.',

@@ -70,6 +70,8 @@ const translation = {
   iconPicker: {
     ok: 'Đồng ý',
     cancel: 'Hủy',
+    emoji: 'Biểu tượng cảm xúc',
+    image: 'Hình ảnh',
   },
   switch: 'Chuyển sang quản lý quy trình',
   switchTipStart: 'Một bản sao ứng dụng mới sẽ được tạo và chuyển sang quản lý quy trình. Bản sao mới sẽ ',
