@@ -6,7 +6,7 @@ from controllers.stock_api import api
 class StockIndexApi(Resource):
     def get(self):
         return {
-            "welcome": "Stock OpenAPI Index",
+            "welcome": "Stock OpenAPI",
             "api_version": "v1",
         }
 

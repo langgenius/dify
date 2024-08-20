@@ -5,14 +5,6 @@ from controllers.stock_api import api
 from controllers.stock_api.wraps import get_stock_price, get_recent_stock_news, get_financial_data
 
 
-class StockInfo(Resource):
-    def get(self):
-        return {
-            "welcome": "StockApi",
-            "api_version": "v1",
-            "server_version": dify_config.CURRENT_VERSION,
-        }
-        
 class StockTicker(Resource):
     def get(self):
         return {
@@ -20,6 +12,14 @@ class StockTicker(Resource):
             "api_version": "v1",
             "server_version": dify_config.CURRENT_VERSION,
         }
+        
+class StockCompany(Resource):
+    def get(self):
+        return {
+            "welcome": "Stock Info",
+            "api_version": "v1",
+            "server_version": dify_config.CURRENT_VERSION,
+        }
 
-api.add_resource(StockInfo, '/info')
 api.add_resource(StockTicker, '/ticker')
+api.add_resource(StockCompany, '/company')
