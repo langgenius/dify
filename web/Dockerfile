@@ -36,6 +36,7 @@ ENV CONSOLE_API_URL=https://dify.angeltools.xyz
 ENV APP_API_URL=https://dify.angeltools.xyz
 ENV PORT=3000
 ENV NEXT_TELEMETRY_DISABLED=1
+ENV NEXT_APP_NAME=ChatBotX
 
 # set timezone
 ENV TZ=UTC
@@ -57,6 +58,7 @@ COPY docker/entrypoint.sh ./entrypoint.sh
 
 ARG COMMIT_SHA
 ENV COMMIT_SHA=${COMMIT_SHA}
+
 
 EXPOSE 3000
 ENTRYPOINT ["/bin/sh", "./entrypoint.sh"]
