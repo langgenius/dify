@@ -319,8 +319,8 @@ class Graph(BaseModel):
 
                 end_to_node_id: Optional[str] = None
                 for node_id in node_parallel_mapping:
-                    if not end_to_node_id and edge_mapping.get(node_id):
-                        node_edges = edge_mapping[node_id]
+                    node_edges = edge_mapping.get(node_id)
+                    if not end_to_node_id and node_edges and len(node_edges) == 1:
                         target_node_id = node_edges[0].target_node_id
                         if node_parallel_mapping.get(target_node_id) == parent_parallel_id:
                             end_to_node_id = target_node_id
