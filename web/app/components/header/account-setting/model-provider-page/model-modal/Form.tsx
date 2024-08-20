@@ -1,4 +1,4 @@
-import { useState } from 'react'
+import { Fragment, useState } from 'react'
 import type { FC } from 'react'
 
 import { ValidatingTip } from '../../key-validator/ValidateStatus'
@@ -66,6 +66,16 @@ const Form: FC<FormProps> = ({
       })
     }
     onChange({ ...value, [key]: val, ...shouldClearVariable })
+  }
+
+  // convert tooltip '\n' to <br />
+  const renderTooltipContent = (content: string) => {
+    return content.split('\n').map((line, index, array) => (
+      <Fragment key={index}>
+        {line}
+        {index < array.length - 1 && <br />}
+      </Fragment>
+    ))
   }
 
   const renderField = (formSchema: CredentialFormSchema) => {

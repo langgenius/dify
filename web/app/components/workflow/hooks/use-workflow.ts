@@ -60,12 +60,8 @@ export const useIsChatMode = () => {
 export const useWorkflow = () => {
   const { locale } = useContext(I18n)
   const store = useStoreApi()
-  // const reactflow = useReactFlow()
   const workflowStore = useWorkflowStore()
   const nodesExtraData = useNodesExtraData()
-  // const { handleSyncWorkflowDraft } = useNodesSyncDraft()
-  // const { saveStateToHistory } = useWorkflowHistory()
-
   const setPanelWidth = useCallback((width: number) => {
     localStorage.setItem('workflow-node-panel-width', `${width}`)
     workflowStore.setState({ panelWidth: width })

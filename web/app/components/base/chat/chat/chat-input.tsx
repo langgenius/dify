@@ -90,7 +90,7 @@ const ChatInput: FC<ChatInputProps> = ({
   }
 
   const handleKeyUp = (e: React.KeyboardEvent<HTMLTextAreaElement>) => {
-    if (e.code === 'Enter') {
+    if (e.key === 'Enter') {
       e.preventDefault()
       // prevent send message when using input method enter
       if (!e.shiftKey && !isUseInputMethod.current)
@@ -100,7 +100,7 @@ const ChatInput: FC<ChatInputProps> = ({
 
   const handleKeyDown = (e: React.KeyboardEvent<HTMLTextAreaElement>) => {
     isUseInputMethod.current = e.nativeEvent.isComposing
-    if (e.code === 'Enter' && !e.shiftKey) {
+    if (e.key === 'Enter' && !e.shiftKey) {
       setQuery(query.replace(/\n$/, ''))
       e.preventDefault()
     }

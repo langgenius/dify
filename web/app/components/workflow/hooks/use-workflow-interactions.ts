@@ -11,6 +11,7 @@ import {
   WORKFLOW_DATA_UPDATE,
 } from '../constants'
 import type { Node, WorkflowDataUpdator } from '../types'
+import { ControlMode } from '../types'
 import {
   getLayoutByDagre,
   initialEdges,
@@ -61,14 +62,14 @@ export const useWorkflowMoveMode = () => {
     if (getNodesReadOnly())
       return
 
-    setControlMode('pointer')
+    setControlMode(ControlMode.Pointer)
   }, [getNodesReadOnly, setControlMode])
 
   const handleModeHand = useCallback(() => {
     if (getNodesReadOnly())
       return
 
-    setControlMode('hand')
+    setControlMode(ControlMode.Hand)
     handleSelectionCancel()
   }, [getNodesReadOnly, setControlMode, handleSelectionCancel])
 
