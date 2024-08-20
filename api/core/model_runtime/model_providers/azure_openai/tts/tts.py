@@ -70,7 +70,7 @@ class AzureOpenAIText2SpeechModel(_CommonAzureOpenAI, TTSModel):
             # doc: https://platform.openai.com/docs/guides/text-to-speech
             credentials_kwargs = self._to_credential_kwargs(credentials)
             client = AzureOpenAI(**credentials_kwargs)
-            # max font is 4096,there is 3500 limit for each request
+            # max length is 4096 characters, there is 3500 limit for each request
             max_length = 3500
             if len(content_text) > max_length:
                 sentences = self._split_text_into_sentences(content_text, max_length=max_length)
