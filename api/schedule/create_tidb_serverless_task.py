@@ -3,7 +3,6 @@ import time
 import uuid
 
 import click
-from werkzeug.exceptions import NotFound
 
 import app
 from configs import dify_config
