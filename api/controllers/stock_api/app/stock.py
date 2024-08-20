@@ -32,7 +32,7 @@ class StockPrice(Resource):
         price = get_stock_price(ticker)
         logger.info(f"get_stock_price {price}")
         return {
-            "data": price.to_dict()      
+            "data": f"{price}"
         }
     
 class StockNews(Resource):
@@ -48,7 +48,7 @@ class StockFinancial(Resource):
         finance = get_financial_data(ticker)
         logger.info(f"get_financial_data {finance}")
         return {
-            "data": finance.to_dict()        
+            "data": f"{finance}"
         }
 
 api.add_resource(StockIndexApi, '/')
