@@ -5,7 +5,7 @@ from controllers.service_api import api
 from controllers.service_api.wraps import get_stock_price, get_recent_stock_news, get_financial_data
 
 
-class StockApi(Resource):
+class StockInfo(Resource):
     def get(self):
         return {
             "welcome": "StockApi",
@@ -21,5 +21,5 @@ class StockTicker(Resource):
             "server_version": dify_config.CURRENT_VERSION,
         }
 
-api.add_resource(StockApi, '/stock')
-api.add_resource(StockTicker, '/stock_ticker')
+api.add_resource(StockInfo, '/info')
+api.add_resource(StockTicker, '/ticker')

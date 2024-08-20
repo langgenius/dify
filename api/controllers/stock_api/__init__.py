@@ -8,3 +8,4 @@ api = ExternalApi(bp)
 
 from . import index
 from .app import app
+from . import stock
