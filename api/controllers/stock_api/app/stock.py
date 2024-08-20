@@ -1,4 +1,5 @@
 from flask_restful import Resource
+from flask import request, jsonify
 
 from configs import dify_config
 from controllers.stock_api import api
@@ -24,15 +25,18 @@ class StockTicker(Resource):
         
 class StockPrice(Resource):
     def get(self):
-        return get_stock_price("VCB")
+        ticker = request.args.get('ticker')
+        return get_stock_price(ticker)
     
 class StockNews(Resource):
     def get(self):
-        return get_recent_stock_news("VCB")
+        ticker = request.args.get('ticker')
+        return get_recent_stock_news(ticker)
 
 class StockFinancial(Resource):
     def get(self):
-        return get_financial_data("VCB")
+        ticker = request.args.get('ticker')
+        return get_financial_data(ticker)
 
 api.add_resource(StockIndexApi, '/')
 api.add_resource(StockTicker, '/ticker')
