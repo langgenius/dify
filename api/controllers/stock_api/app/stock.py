@@ -24,7 +24,7 @@ class StockTicker(Resource):
         with open(TICKERS_FILE_PATH, 'r') as file:
             company_data = file.read()
 
-        logger.info(f"ticker {type(company_data)} {company_data}")
+        logger.info(f"ticker {type(company_data)} \n {company_data}")
         response = make_response(company_data)
         response.headers['Content-Type'] = 'text/plain; charset=utf-8'
         return response
