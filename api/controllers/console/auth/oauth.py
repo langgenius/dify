@@ -91,7 +91,7 @@ class OAuthCallback(Resource):
 
         token = AccountService.login(account, ip_address=get_remote_ip(request))
 
-        return redirect(f'{dify_config.CONSOLE_WEB_URL}?console_token={token}')
+        return redirect(f'{dify_config.CONSOLE_WEB_URL}/studio?console_token={token}')
 
 
 def _get_account_by_openid_or_email(provider: str, user_info: OAuthUserInfo) -> Optional[Account]:
@@ -226,7 +226,7 @@ class EmailCallback(Resource):
 
             token = AccountService.login(account, ip_address=get_remote_ip(request))
 
-            return redirect(f'{dify_config.CONSOLE_WEB_URL}?console_token={token}')
+            return redirect(f'{dify_config.CONSOLE_WEB_URL}/studio?console_token={token}')
 
 
 
