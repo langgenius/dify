@@ -29,11 +29,12 @@ class StockPrice(Resource):
     def get(self):
         ticker = request.args.get('ticker', '')
         
-        price = get_stock_price(ticker)
-        logger.info(f"get_stock_price {price}")
-        return {
-            "data": f"{price}"
-        }
+        result = get_stock_price(ticker)
+        logger.info(f"get_stock_price {result}")
+        
+        data = result.to_dict(orient='records')
+        
+        return data
     
 class StockNews(Resource):
     def get(self):
@@ -45,11 +46,15 @@ class StockFinancial(Resource):
     def get(self):
         ticker = request.args.get('ticker', '')
         
-        finance = get_financial_data(ticker)
-        logger.info(f"get_financial_data {finance}")
-        return {
-            "data": f"{finance}"
-        }
+        result = get_financial_data(ticker)
+        logger.info(f"get_financial_data {result}")
+        
+        data = result.to_dict(orient='records')
+        return data
+
+        # return {
+        #     "data": f"{finance}"
+        # }
 
 api.add_resource(StockIndexApi, '/')
 api.add_resource(StockTicker, '/ticker')

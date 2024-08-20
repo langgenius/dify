@@ -242,7 +242,7 @@ def get_stock_price(ticker, history=200):
     start_date = today - timedelta(days=history)
     stock = Vnstock().stock(symbol=ticker.strip(), source='TCBS')
     data = stock.quote.history(start=start_date.strftime('%Y-%m-%d'),end=today.strftime('%Y-%m-%d'))
-    logger.info(f"wraps get_stock_price {data}")
+    # logger.info(f"wraps get_stock_price {data}")
     return data
 
 # Function to safely get data and handle exceptions
@@ -270,7 +270,7 @@ def get_financial_data(ticker):
         'Financial Ratios Yearly': safe_get_data(stock_finance.finance.ratio, period='year', lang='en'),
         'Financial Ratios Quarterly': safe_get_data(stock_finance.finance.ratio, period='quarter', lang='en').head(nquarter),
     }
-    logger.info(f"wraps get_financial_data {company_data}")
+    # logger.info(f"wraps get_financial_data {company_data}")
     return company_data
 
 def get_financial_statements(ticker):
