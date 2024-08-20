@@ -6,6 +6,7 @@ from core.model_runtime.model_providers.__base.model_provider import ModelProvid
 
 logger = logging.getLogger(__name__)
 
+
 class SiliconflowProvider(ModelProvider):
 
     def validate_provider_credentials(self, credentials: dict) -> None:
@@ -19,7 +20,7 @@ class SiliconflowProvider(ModelProvider):
             model_instance = self.get_model_instance(ModelType.LLM)
 
             model_instance.validate_credentials(
-                model='deepseek-ai/deepseek-v2-chat',
+                model='deepseek-ai/DeepSeek-V2-Chat',
                 credentials=credentials
             )
         except CredentialsValidateFailedError as ex:

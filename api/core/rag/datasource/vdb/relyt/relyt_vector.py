@@ -105,7 +105,7 @@ class RelytVector(BaseVector):
             redis_client.set(collection_exist_cache_key, 1, ex=3600)
 
     def add_texts(self, documents: list[Document], embeddings: list[list[float]], **kwargs):
-        from pgvecto_rs.sqlalchemy import Vector
+        from pgvecto_rs.sqlalchemy import VECTOR
 
         ids = [str(uuid.uuid1()) for _ in documents]
         metadatas = [d.metadata for d in documents]
@@ -118,7 +118,7 @@ class RelytVector(BaseVector):
             self._collection_name,
             Base.metadata,
             Column("id", TEXT, primary_key=True),
-            Column("embedding", Vector(len(embeddings[0]))),
+            Column("embedding", VECTOR(len(embeddings[0]))),
             Column("document", String, nullable=True),
             Column("metadata", JSON, nullable=True),
             extend_existing=True,
@@ -169,7 +169,7 @@ class RelytVector(BaseVector):
         Args:
             ids: List of ids to delete.
         """
-        from pgvecto_rs.sqlalchemy import Vector
+        from pgvecto_rs.sqlalchemy import VECTOR
 
         if ids is None:
             raise ValueError("No ids provided to delete.")
@@ -179,7 +179,7 @@ class RelytVector(BaseVector):
             self._collection_name,
             Base.metadata,
             Column("id", TEXT, primary_key=True),
-            Column("embedding", Vector(self.embedding_dimension)),
+            Column("embedding", VECTOR(self.embedding_dimension)),
             Column("document", String, nullable=True),
             Column("metadata", JSON, nullable=True),
             extend_existing=True,

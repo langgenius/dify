@@ -76,7 +76,7 @@ class OAICompatEmbeddingModel(_CommonOAI_API_Compat, TextEmbeddingModel):
             num_tokens = self._get_num_tokens_by_gpt2(text)
 
             if num_tokens >= context_size:
-                cutoff = int(len(text) * (np.floor(context_size / num_tokens)))
+                cutoff = int(np.floor(len(text) * (context_size / num_tokens)))
                 # if num tokens is larger than context length, only use the start
                 inputs.append(text[0: cutoff])
             else:

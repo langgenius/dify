@@ -138,6 +138,7 @@ class MessageBasedAppGenerator(BaseAppGenerator):
         """
         Initialize generate records
         :param application_generate_entity: application generate entity
+        :conversation conversation
         :return:
         """
         app_config = application_generate_entity.app_config
@@ -258,7 +259,7 @@ class MessageBasedAppGenerator(BaseAppGenerator):
 
         return introduction
 
-    def _get_conversation(self, conversation_id: str) -> Conversation:
+    def _get_conversation(self, conversation_id: str):
         """
         Get conversation by conversation id
         :param conversation_id: conversation id
@@ -269,6 +270,9 @@ class MessageBasedAppGenerator(BaseAppGenerator):
             .filter(Conversation.id == conversation_id)
             .first()
         )
+
+        if not conversation:
+            raise ConversationNotExistsError()
 
         return conversation
 

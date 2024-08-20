@@ -71,7 +71,7 @@ class ResetPasswordApi(Resource):
         # AccountService.update_password(account, new_password)
 
         # todo: Send email
-        # MAILCHIMP_API_KEY = current_app.config['MAILCHIMP_TRANSACTIONAL_API_KEY']
+        # MAILCHIMP_API_KEY = dify_config.MAILCHIMP_TRANSACTIONAL_API_KEY
         # mailchimp = MailchimpTransactional(MAILCHIMP_API_KEY)
 
         # message = {
@@ -92,7 +92,7 @@ class ResetPasswordApi(Resource):
         #     'message': message,
         #     # required for transactional email
         #     ' settings': {
-        #         'sandbox_mode': current_app.config['MAILCHIMP_SANDBOX_MODE'],
+        #         'sandbox_mode': dify_config.MAILCHIMP_SANDBOX_MODE,
         #     },
         # })
 

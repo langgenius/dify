@@ -3,9 +3,7 @@ label:
   en_US: 01-ai/Yi-1.5-6B-Chat
 model_type: llm
 features:
-  - multi-tool-call
   - agent-thought
-  - stream-tool-call
 model_properties:
   mode: chat
   context_size: 4096
@@ -26,7 +24,7 @@ parameter_rules:
   - name: frequency_penalty
     use_template: frequency_penalty
 pricing:
-  input: '0.35'
-  output: '0.35'
+  input: '0'
+  output: '0'
   unit: '0.000001'
   currency: RMB

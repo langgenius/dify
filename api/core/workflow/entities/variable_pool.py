@@ -4,15 +4,16 @@ from typing import Any, Union
 
 from typing_extensions import deprecated
 
-from core.app.segments import Variable, factory
+from core.app.segments import Segment, Variable, factory
 from core.file.file_obj import FileVar
-from core.workflow.entities.node_entities import SystemVariable
+from core.workflow.enums import SystemVariable
 
 VariableValue = Union[str, int, float, dict, list, FileVar]
 
 
 SYSTEM_VARIABLE_NODE_ID = 'sys'
 ENVIRONMENT_VARIABLE_NODE_ID = 'env'
+CONVERSATION_VARIABLE_NODE_ID = 'conversation'
 
 
 class VariablePool:
@@ -21,6 +22,7 @@ class VariablePool:
         system_variables: Mapping[SystemVariable, Any],
         user_inputs: Mapping[str, Any],
         environment_variables: Sequence[Variable],
+        conversation_variables: Sequence[Variable] | None = None,
     ) -> None:
         # system variables
         # for example:
@@ -33,7 +35,7 @@ class VariablePool:
         # The first element of the selector is the node id, it's the first-level key in the dictionary.
         # Other elements of the selector are the keys in the second-level dictionary. To get the key, we hash the
         # elements of the selector except the first one.
-        self._variable_dictionary: dict[str, dict[int, Variable]] = defaultdict(dict)
+        self._variable_dictionary: dict[str, dict[int, Segment]] = defaultdict(dict)
 
         # TODO: This user inputs is not used for pool.
         self.user_inputs = user_inputs
@@ -44,8 +46,12 @@ class VariablePool:
             self.add((SYSTEM_VARIABLE_NODE_ID, key.value), value)
 
         # Add environment variables to the variable pool
-        for var in environment_variables or []:
+        for var in environment_variables:
             self.add((ENVIRONMENT_VARIABLE_NODE_ID, var.name), var)
+
+        # Add conversation variables to the variable pool
+        for var in conversation_variables or []:
+            self.add((CONVERSATION_VARIABLE_NODE_ID, var.name), var)
 
     def add(self, selector: Sequence[str], value: Any, /) -> None:
         """
@@ -67,15 +73,15 @@ class VariablePool:
         if value is None:
             return
 
-        if not isinstance(value, Variable):
-            v = factory.build_anonymous_variable(value)
-        else:
+        if isinstance(value, Segment):
             v = value
+        else:
+            v = factory.build_segment(value)
 
         hash_key = hash(tuple(selector[1:]))
         self._variable_dictionary[selector[0]][hash_key] = v
 
-    def get(self, selector: Sequence[str], /) -> Variable | None:
+    def get(self, selector: Sequence[str], /) -> Segment | None:
         """
         Retrieves the value from the variable pool based on the given selector.
 

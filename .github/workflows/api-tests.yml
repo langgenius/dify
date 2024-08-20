@@ -21,6 +21,7 @@ jobs:
         python-version:
           - "3.10"
           - "3.11"
+          - "3.12"
 
     steps:
       - name: Checkout code
@@ -75,7 +76,7 @@ jobs:
       - name: Run Workflow
         run: poetry run -C api bash dev/pytest/pytest_workflow.sh
 
-      - name: Set up Vector Stores (Weaviate, Qdrant, PGVector, Milvus, PgVecto-RS, Chroma, MyScale)
+      - name: Set up Vector Stores (Weaviate, Qdrant, PGVector, Milvus, PgVecto-RS, Chroma, MyScale, ElasticSearch)
         uses: hoverkraft-tech/compose-action@v2.0.0
         with:
           compose-file: |
@@ -89,6 +90,6 @@ jobs:
             pgvecto-rs
             pgvector
             chroma
-            myscale
+            elasticsearch
       - name: Test Vector Stores
         run: poetry run -C api bash dev/pytest/pytest_vdb.sh

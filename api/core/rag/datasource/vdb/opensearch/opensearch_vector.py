@@ -192,7 +192,9 @@ class OpenSearchVector(BaseVector):
         docs = []
         for hit in response['hits']['hits']:
             metadata = hit['_source'].get(Field.METADATA_KEY.value)
-            doc = Document(page_content=hit['_source'].get(Field.CONTENT_KEY.value), metadata=metadata)
+            vector = hit['_source'].get(Field.VECTOR.value)
+            page_content = hit['_source'].get(Field.CONTENT_KEY.value)
+            doc = Document(page_content=page_content, vector=vector, metadata=metadata)
             docs.append(doc)
 
         return docs

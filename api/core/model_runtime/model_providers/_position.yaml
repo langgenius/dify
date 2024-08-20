@@ -6,6 +6,7 @@
 - nvidia
 - nvidia_nim
 - cohere
+- upstage
 - bedrock
 - togetherai
 - openrouter
@@ -35,3 +36,4 @@
 - hunyuan
 - siliconflow
 - perfxcloud
+- zhinao

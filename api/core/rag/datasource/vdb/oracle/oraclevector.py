@@ -55,7 +55,7 @@ CREATE TABLE IF NOT EXISTS {table_name} (
 )
 """
 SQL_CREATE_INDEX = """
-CREATE INDEX idx_docs_{table_name} ON {table_name}(text) 
+CREATE INDEX IF NOT EXISTS idx_docs_{table_name} ON {table_name}(text) 
 INDEXTYPE IS CTXSYS.CONTEXT PARAMETERS 
 ('FILTER CTXSYS.NULL_FILTER SECTION GROUP CTXSYS.HTML_SECTION_GROUP LEXER sys.my_chinese_vgram_lexer')
 """
@@ -234,21 +234,21 @@ class OracleVector(BaseVector):
                         entities.append(token)
             with self._get_cursor() as cur:
                 cur.execute(
-                    f"select meta, text FROM {self.table_name} WHERE CONTAINS(text, :1, 1) > 0 order by score(1) desc fetch first {top_k} rows only",
+                    f"select meta, text, embedding FROM {self.table_name} WHERE CONTAINS(text, :1, 1) > 0 order by score(1) desc fetch first {top_k} rows only",
                     [" ACCUM ".join(entities)]
                 )
                 docs = []
                 for record in cur:
-                    metadata, text = record
-                    docs.append(Document(page_content=text, metadata=metadata))
+                    metadata, text, embedding = record
+                    docs.append(Document(page_content=text, vector=embedding, metadata=metadata))
             return docs
         else:
-            return [Document(page_content="", metadata="")]
+            return [Document(page_content="", metadata={})]
         return []
 
     def delete(self) -> None:
         with self._get_cursor() as cur:
-            cur.execute(f"DROP TABLE IF EXISTS {self.table_name}")
+            cur.execute(f"DROP TABLE IF EXISTS {self.table_name} cascade constraints")
 
     def _create_collection(self, dimension: int):
         cache_key = f"vector_indexing_{self._collection_name}"

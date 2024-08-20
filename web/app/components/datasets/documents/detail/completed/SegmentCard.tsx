@@ -4,15 +4,13 @@ import { ArrowUpRightIcon } from '@heroicons/react/24/outline'
 import { useTranslation } from 'react-i18next'
 import {
   RiDeleteBinLine,
-  RiErrorWarningFill,
 } from '@remixicon/react'
 import { StatusItem } from '../../list'
 import { DocumentTitle } from '../index'
 import s from './style.module.css'
 import { SegmentIndexTag } from './index'
 import cn from '@/utils/classnames'
-import Modal from '@/app/components/base/modal'
-import Button from '@/app/components/base/button'
+import Confirm from '@/app/components/base/confirm'
 import Switch from '@/app/components/base/switch'
 import Divider from '@/app/components/base/divider'
 import Indicator from '@/app/components/header/indicator'
@@ -217,26 +215,15 @@ const SegmentCard: FC<ISegmentCardProps> = ({
               </div>
             </>
         )}
-      {showModal && <Modal isShow={showModal} onClose={() => setShowModal(false)} className={s.delModal} closable>
-        <div>
-          <div className={s.warningWrapper}>
-            <RiErrorWarningFill className='w-6 h-6 text-red-600' />
-          </div>
-          <div className='text-xl font-semibold text-gray-900 mb-1'>{t('datasetDocuments.segment.delete')}</div>
-          <div className='flex gap-2 justify-end'>
-            <Button onClick={() => setShowModal(false)}>{t('common.operation.cancel')}</Button>
-            <Button
-              variant='warning'
-              onClick={async () => {
-                await onDelete?.(id)
-              }}
-              className='border-red-700'
-            >
-              {t('common.operation.sure')}
-            </Button>
-          </div>
-        </div>
-      </Modal>}
+      {showModal
+        && <Confirm
+          isShow={showModal}
+          title={t('datasetDocuments.segment.delete')}
+          confirmText={t('common.operation.sure')}
+          onConfirm={async () => { await onDelete?.(id) }}
+          onCancel={() => setShowModal(false)}
+        />
+      }
     </div>
   )
 }

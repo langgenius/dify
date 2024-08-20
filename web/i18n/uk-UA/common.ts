@@ -12,6 +12,7 @@ const translation = {
     cancel: 'Скасувати',
     clear: 'Очистити',
     save: 'Зберегти',
+    saveAndEnable: 'Зберегти та Увімкнути',
     edit: 'Редагувати',
     add: 'Додати',
     added: 'Додано',
@@ -408,7 +409,7 @@ const translation = {
     latestAvailable: 'Dify {{version}} – це найновіша доступна версія.',
   },
   appMenus: {
-    overview: 'Огляд',
+    overview: 'Моніторинг',
     promptEng: 'Налаштування',
     apiAccess: 'Доступ до API',
     logAndAnn: 'Журнали та Повідомлення.',

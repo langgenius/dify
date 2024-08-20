@@ -33,7 +33,7 @@ const translation = {
     },
     hybrid_search: {
       title: '混合检索',
-      description: '同时执行全文检索和向量检索，并应用重排序步骤，从两类查询结果中选择匹配用户问题的最佳结果，需配置 Rerank 模型 API',
+      description: '同时执行全文检索和向量检索，并应用重排序步骤，从两类查询结果中选择匹配用户问题的最佳结果，用户可以选择设置权重或配置重新排序模型。',
       recommend: '推荐',
     },
     invertedIndex: {
@@ -45,6 +45,32 @@ const translation = {
   },
   docsFailedNotice: '文档无法被索引',
   retry: '重试',
+  indexingTechnique: {
+    high_quality: '高质量',
+    economy: '经济',
+  },
+  indexingMethod: {
+    semantic_search: '向量检索',
+    full_text_search: '全文检索',
+    hybrid_search: '混合检索',
+    invertedIndex: '倒排索引',
+  },
+  mixtureHighQualityAndEconomicTip: '混合使用高质量和经济型知识库需要配置 Rerank 模型。',
+  inconsistentEmbeddingModelTip: '当所选知识库配置的 Embedding 模型不一致时，需要配置 Rerank 模型。',
+  retrievalSettings: '召回设置',
+  rerankSettings: 'Rerank 设置',
+  weightedScore: {
+    title: '权重设置',
+    description: '通过调整分配的权重，重新排序策略确定是优先进行语义匹配还是关键字匹配。',
+    semanticFirst: '语义优先',
+    keywordFirst: '关键词优先',
+    customized: '自定义',
+    semantic: '语义',
+    keyword: '关键词',
+  },
+  nTo1RetrievalLegacy: '9 月 1 日起我们将不再提供此能力，推荐使用最新的多路召回获得更好的检索效果。',
+  nTo1RetrievalLegacyLink: '了解更多',
+  nTo1RetrievalLegacyLinkText: '9 月 1 日起我们将不再提供此能力。',
 }
 
 export default translation

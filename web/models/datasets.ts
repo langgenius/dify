@@ -1,5 +1,5 @@
 import type { DataSourceNotionPage } from './common'
-import type { AppMode, RetrievalConfig } from '@/types/app'
+import type { AppIconType, AppMode, RetrievalConfig } from '@/types/app'
 import type { Tag } from '@/app/components/base/tag-management/constant'
 
 export enum DataSourceType {
@@ -425,8 +425,10 @@ export type RelatedApp = {
   id: string
   name: string
   mode: AppMode
+  icon_type: AppIconType | null
   icon: string
   icon_background: string
+  icon_url: string
 }
 
 export type RelatedAppResponse = {
@@ -448,4 +450,47 @@ export enum DocForm {
 export type ErrorDocsResponse = {
   data: IndexingStatusResponse[]
   total: number
+}
+
+export type SelectedDatasetsMode = {
+  allHighQuality: boolean
+  allHighQualityVectorSearch: boolean
+  allHighQualityFullTextSearch: boolean
+  allEconomic: boolean
+  mixtureHighQualityAndEconomic: boolean
+  inconsistentEmbeddingModel: boolean
+}
+
+export enum WeightedScoreEnum {
+  SemanticFirst = 'semantic_first',
+  KeywordFirst = 'keyword_first',
+  Customized = 'customized',
+}
+
+export enum RerankingModeEnum {
+  RerankingModel = 'reranking_model',
+  WeightedScore = 'weighted_score',
+}
+
+export const DEFAULT_WEIGHTED_SCORE = {
+  allHighQualityVectorSearch: {
+    semantic: 1.0,
+    keyword: 0,
+  },
+  allHighQualityFullTextSearch: {
+    semantic: 0,
+    keyword: 1.0,
+  },
+  semanticFirst: {
+    semantic: 0.7,
+    keyword: 0.3,
+  },
+  keywordFirst: {
+    semantic: 0.3,
+    keyword: 0.7,
+  },
+  other: {
+    semantic: 0.7,
+    keyword: 0.3,
+  },
 }

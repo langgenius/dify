@@ -2,6 +2,10 @@ import type { AnnotationReplyConfig, ChatPromptConfig, CompletionPromptConfig, D
 import type { CollectionType } from '@/app/components/tools/types'
 import type { LanguagesSupported } from '@/i18n/language'
 import type { Tag } from '@/app/components/base/tag-management/constant'
+import type {
+  RerankingModeEnum,
+  WeightedScoreEnum,
+} from '@/models/datasets'
 
 export enum Theme {
   light = 'light',
@@ -287,11 +291,15 @@ export type SiteConfig = {
   /** Custom Disclaimer */
   custom_disclaimer: string
 
+  icon_type: AppIconType | null
   icon: string
-  icon_background: string
+  icon_background: string | null
+  icon_url: string | null
 
   show_workflow_steps: boolean
 }
+
+export type AppIconType = 'image' | 'emoji'
 
 /**
  * App
@@ -304,10 +312,17 @@ export type App = {
   /** Description */
   description: string
 
-  /** Icon */
+  /**
+   * Icon Type
+   * @default 'emoji'
+  */
+  icon_type: AppIconType | null
+  /** Icon, stores file ID if icon_type is 'image' */
   icon: string
-  /** Icon Background */
-  icon_background: string
+  /** Icon Background, only available when icon_type is null or 'emoji' */
+  icon_background: string | null
+  /** Icon URL, only available when icon_type is 'image' */
+  icon_url: string | null
 
   /** Mode */
   mode: AppMode
@@ -403,4 +418,16 @@ export type RetrievalConfig = {
   top_k: number
   score_threshold_enabled: boolean
   score_threshold: number
+  reranking_mode?: RerankingModeEnum
+  weights?: {
+    weight_type: WeightedScoreEnum
+    vector_setting: {
+      vector_weight: number
+      embedding_provider_name: string
+      embedding_model_name: string
+    }
+    keyword_setting: {
+      keyword_weight: number
+    }
+  }
 }
