@@ -5,53 +5,30 @@ export default function Footer() {
   return (
     <footer className="bg-black text-white">
       <div className="mx-auto max-w-screen-xl space-y-8 px-4 py-16 sm:px-6 lg:space-y-16 lg:px-8">
-        <div className="grid grid-cols-1 gap-8 lg:grid-cols-3">
+        <div className="grid grid-cols-1 gap-8 lg:grid-cols-2">
           <div>
             <SiteLogo className="size-10" />
 
             <p className="mt-4 max-w-xs ">
-              Lorem ipsum dolor, sit amet consectetur adipisicing elit. Esse non
-              cupiditate quae nam molestias.
+              ChatBotX is a platform that provides a suite of AI-powered tools
+              for businesses.
             </p>
           </div>
 
-          <div className="grid grid-cols-1 gap-8 sm:grid-cols-2 lg:col-span-2 lg:grid-cols-4">
+          <div className="grid grid-cols-1 gap-8 sm:grid-cols-2">
             <div>
-              <p className="font-medium ">Services</p>
+              <p className="font-medium ">Contact</p>
 
               <ul className="mt-6 space-y-4 text-sm">
                 <li>
                   <a href="#" className=" transition hover:opacity-75">
-                    {" "}
-                    1on1 Coaching{" "}
+                    Email
                   </a>
                 </li>
 
                 <li>
                   <a href="#" className=" transition hover:opacity-75">
-                    {" "}
-                    Company Review{" "}
-                  </a>
-                </li>
-
-                <li>
-                  <a href="#" className=" transition hover:opacity-75">
-                    {" "}
-                    Accounts Review{" "}
-                  </a>
-                </li>
-
-                <li>
-                  <a href="#" className=" transition hover:opacity-75">
-                    {" "}
-                    HR Consulting{" "}
-                  </a>
-                </li>
-
-                <li>
-                  <a href="#" className=" transition hover:opacity-75">
-                    {" "}
-                    SEO Optimisation{" "}
+                    Support
                   </a>
                 </li>
               </ul>
@@ -84,7 +61,7 @@ export default function Footer() {
               </ul>
             </div>
 
-            <div>
+            {/* <div>
               <p className="font-medium ">Helpful Links</p>
 
               <ul className="mt-6 space-y-4 text-sm">
@@ -109,8 +86,8 @@ export default function Footer() {
                   </a>
                 </li>
               </ul>
-            </div>
-
+            </div> */}
+            {/* 
             <div>
               <p className="font-medium ">Legal</p>
 
@@ -143,13 +120,11 @@ export default function Footer() {
                   </a>
                 </li>
               </ul>
-            </div>
+            </div> */}
           </div>
         </div>
 
-        <p className="text-xs ">
-          &copy; 2024. Company Name. All rights reserved.
-        </p>
+        <p className="text-xs ">&copy; 2024. ChatBotX. All rights reserved.</p>
       </div>
     </footer>
   );

@@ -1,4 +1,4 @@
-import type { Viewport } from "next";
+import type { Metadata, Viewport } from "next";
 import I18nServer from "./components/i18n-server";
 import BrowerInitor from "./components/browser-initor";
 import SentryInitor from "./components/sentry-initor";
@@ -7,10 +7,24 @@ import { getLocaleOnServer } from "@/i18n/server";
 import "./styles/globals.css";
 import "./styles/markdown.scss";
 import { NextUIProvider } from "@nextui-org/react";
-import Script from "next/script";
 
-export const metadata = {
-  title: "Dify",
+export const metadata: Metadata = {
+  title: process.env.NEXT_APP_NAME || "ChatBotX",
+  description:
+    "ChatbotX is an  LLM app development platform. Its intuitive interface combines AI workflow, RAG pipeline, agent capabilities, model management, observability features and more, allowing you to quickly go from prototype to production. Here's a list of the core features:",
+  robots: {
+    index: true,
+    follow: true,
+  },
+  openGraph: {
+    type: "website",
+    url: process.env.NEXT_PUBLIC_URL,
+    images: [
+      {
+        url: "/og/image.png",
+      },
+    ],
+  },
 };
 
 export const viewport: Viewport = {

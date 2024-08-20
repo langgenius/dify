@@ -687,24 +687,22 @@ button:focus-within {
 
 
 
-@layer components {
-  .custom-shadow-blue {
+.custom-shadow-blue {
     @apply shadow-[0_1px_4px_rgba(33,47,132,0.2),0_0_0_1px_rgba(65,126,255,0.1),inset_0_-3px_rgba(65,126,255,0.12),0_4px_100px_rgba(2,88,219,0.1)];
   }
 
-  .custom-shadow-green {
+.custom-shadow-green {
     @apply shadow-[0_1px_4px_rgba(22,101,52,0.2),0_0_0_1px_rgba(34,197,94,0.1),inset_0_-3px_rgba(34,197,94,0.12),0_4px_100px_rgba(21,128,61,0.1)];
   }
 
-  .custom-shadow-yellow {
+.custom-shadow-yellow {
     @apply shadow-[0_1px_4px_rgba(161,98,7,0.2),0_0_0_1px_rgba(234,179,8,0.1),inset_0_-3px_rgba(234,179,8,0.12),0_4px_100px_rgba(202,138,4,0.1)];
   }
 
-  .custom-shadow-purple {
+.custom-shadow-purple {
     @apply shadow-[0_1px_4px_rgba(88,28,135,0.2),0_0_0_1px_rgba(168,85,247,0.1),inset_0_-3px_rgba(168,85,247,0.12),0_4px_100px_rgba(126,34,206,0.1)];
   }
 
-  .custom-shadow-pink {
+.custom-shadow-pink {
     @apply shadow-[0_1px_4px_rgba(157,23,77,0.2),0_0_0_1px_rgba(236,72,153,0.1),inset_0_-3px_rgba(236,72,153,0.12),0_4px_100px_rgba(219,39,119,0.1)];
   }
-}

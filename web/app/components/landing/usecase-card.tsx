@@ -65,7 +65,7 @@ export default function UseCaseCard({
     >
       <div
         className={cn(
-          "flex bg-white justify-between gap-2 items-center mx-auto custom-shadow-color p-3 px-5 rounded-full text-xl sm:text-2xl font-semibold",
+          "flex bg-white justify-between gap-2 items-center mx-auto  p-3 px-5 rounded-full text-xl sm:text-2xl font-semibold",
           `custom-shadow-${colorScheme}`
         )}
       >

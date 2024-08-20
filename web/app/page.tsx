@@ -4,6 +4,7 @@ import SiteLogo from "@/app/components/base/logo/logo-site";
 import FeatureSection from "@/app/components/landing/feature-section";
 import FeatCard from "@/app/components/landing/feat-card";
 import UseCaseCard from "@/app/components/landing/usecase-card";
+import type { Metadata } from "next";
 import { Integration } from "@/app/components/landing/integration-animation";
 import ShimmerButton from "@/app/components/shimmer";
 import { Testimonial } from "@/app/components/landing/testimonials";
@@ -270,7 +271,7 @@ function Hero() {
         <div className="flex flex-col mt-6 gap-2">
           <div className="z-10 flex  items-center justify-center">
             <Link href="/studio">
-              <ShimmerButton className="shadow-2xl">
+              <ShimmerButton>
                 <span className="whitespace-pre-wrap text-center text-sm  font-medium leading-none tracking-tight text-white dark:from-white dark:to-slate-900/10 ">
                   Create a AI Chatbot
                 </span>
@@ -290,10 +291,10 @@ function Hero() {
             title="Chat with your website visitors"
           />
           <FeatCard
-            targetElement="education-copilot"
+            targetElement="features"
             className="bg-violet-400"
             imageUrl="/features/small-purple.png"
-            title="Automate customer engagement"
+            title="AI Student support"
           />
           <FeatCard
             targetElement="ai-employee-agent"
@@ -358,7 +359,7 @@ function ModelAgnosticCarousel({ images }: { images: string[] }) {
               key={index + "-testimonials"}
               className="p-2 rounded-md overflow-hidden border shadow-sm"
             >
-              <div className="relative size-20  bg-white rounded-md">
+              <div className="relative size-16  bg-white rounded-md">
                 <Image
                   src={image}
                   alt="image"
@@ -377,7 +378,7 @@ function ModelAgnosticCarousel({ images }: { images: string[] }) {
               key={index + "-testimonials"}
               className="p-2 rounded-md overflow-hidden border shadow-sm"
             >
-              <div className="relative size-20  bg-white rounded-md">
+              <div className="relative size-16  bg-white rounded-md">
                 <Image
                   src={image}
                   alt="image"
@@ -396,7 +397,7 @@ function ModelAgnosticCarousel({ images }: { images: string[] }) {
               key={index + "-testimonials"}
               className="p-2 rounded-md overflow-hidden border shadow-sm"
             >
-              <div className="relative size-20  bg-white rounded-md">
+              <div className="relative size-16  bg-white rounded-md">
                 <Image
                   src={image}
                   alt="image"

@@ -22,7 +22,7 @@ const LogoSite: FC<LogoSiteProps> = ({ className, ...props }) => {
       width={2048}
       height={75}
       {...props}
-      src="https://app.chaindesk.ai/_next/image?url=%2Flogo.png&w=2048&q=75"
+      src="/logo.png"
       className={classNames("block object-contain w-auto h-10", className)}
       alt="logo"
     />

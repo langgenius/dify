@@ -23,15 +23,6 @@ const nextConfig = {
 
   productionBrowserSourceMaps: false, // enable browser source map generation during the production build
 
-  images: {
-    remotePatterns : [
-          {
-        protocol: 'https',
-        hostname: 'app.chaindesk.ai',
-        pathname: '**',
-      },
-    ]
-  },
 
 
 

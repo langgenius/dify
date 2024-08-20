@@ -16,14 +16,17 @@ export default function navbar() {
     <nav className="fixed top-2 left-0 right-0  text-black  z-50  p-4  ">
       <div className="flex max-w-7xl bg-white mx-auto justify-between items-center border px-2 rounded-full   h-[48px] backdrop-blur-xl">
         <div className="flex items-center gap-3 ">
-          <Link href="/">
-            <SiteLogo />
+          <Link href="/" className="flex gap-2 items-center">
+            <>
+              <SiteLogo />
+            </>
+            <span className="font-medium text-xl">ChatbotX</span>
           </Link>
         </div>
 
         <div className="flex  items-center gap-4 mr-2 text-sm">
-          <Link href="/prices" className="cursor-pointer">
-            Prices
+          <Link href="/billing" className="cursor-pointer">
+            Plans
           </Link>
           <div
             onClick={() => handleNavigation("features")}
@@ -32,10 +35,22 @@ export default function navbar() {
             Features
           </div>
           <div
-            onClick={() => handleNavigation("intergartions")}
+            onClick={() => handleNavigation("integrations")}
             className="cursor-pointer"
           >
             Integration
+          </div>
+
+          <div className="hidden md:block">
+            <Link href="/studio" className="cursor-pointer">
+              <Button
+                className="rounded-2xl"
+                variant={"primary"}
+                size={"small"}
+              >
+                Create a Chatbot
+              </Button>
+            </Link>
           </div>
         </div>
       </div>
