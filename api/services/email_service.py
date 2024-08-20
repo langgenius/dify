@@ -116,7 +116,7 @@ class EmailService:
         <tbody>
         <tr style="width:100%">
         <td style="padding:32px;">
-        <img src="https://your-chatbot-logo-url.com/logo.png" alt="ChatBot Logo" style="display:block;margin:0 auto 24px;width:120px;height:auto;" />
+        <img src="https://app.chaindesk.ai/_next/image?url=%2Flogo.png&w=2048&q=75" alt="ChatBot Logo" style="display:block;margin:0 auto 24px;width:120px;height:auto;" />
         <h1 style="font-size:28px;letter-spacing:-0.5px;line-height:1.3;font-weight:600;color:#333;text-align:center;margin-bottom:24px;">Welcome to ChatBot</h1>
         <p style="font-size:16px;line-height:1.5;margin:0 0 24px;color:#555;text-align:center;">Thank you for choosing ChatBot. To complete your login, please use the button below or enter the verification code.</p>
         <table align="center" width="100%" border="0" cellPadding="0" cellSpacing="0" role="presentation" style="padding:0 0 24px">
