@@ -9,7 +9,11 @@ import ShimmerButton from "@/app/components/shimmer";
 import { Testimonial } from "@/app/components/landing/testimonials";
 import Image from "next/image";
 import Footer from "@/app/components/landing/footer";
-import { RiMessage2Line } from "@remixicon/react";
+import {
+  RiMessage2Line,
+  RiTimerFlashLine,
+  RiShoppingCartLine,
+} from "@remixicon/react";
 import {
   Accordion,
   AccordionItem,
@@ -21,7 +25,7 @@ import Link from "next/link";
 
 const AllFeaturesHeading = () => {
   return (
-    <div className="flex justify-between gap-2 items-center  mx-auto  custom-shadow-pink p-3 px-5 rounded-full text-lg sm:text-2xl ">
+    <div className="flex justify-between gap-2 items-center  mx-auto  custom-shadow-purple p-3 px-5 rounded-full text-lg sm:text-2xl ">
       <span className="">🌟 </span>
       <h1 className=" text-center font-medium">
         AI Copilots trained on your Data
@@ -35,31 +39,31 @@ const AllFeaturesAccordionContent = [
   {
     title: "Education: Virtual Campus Copilot",
     content:
-      "Botsonic acts as an always-on virtual campus guide, helping students navigate course options, registration processes, and campus resources, dramatically improving the student experience.",
+      "Chatbotx acts as an always-on virtual campus guide, helping students navigate course options, registration processes, and campus resources, dramatically improving the student experience.",
   },
   {
     title: "Real Estate: AI Property Assistant",
     content:
-      "Botsonic enables real estate agencies to provide instant property details, schedule viewings, and offer personalized buying advice, enhancing customer engagement and sales efficiency.",
+      "Chatbotx enables real estate agencies to provide instant property details, schedule viewings, and offer personalized buying advice, enhancing customer engagement and sales efficiency.",
   },
   {
     title: "Healthcare: Virtual Health Advisor",
     content:
-      "AI agents powered by Botsonic provide patients with information on treatments, schedule appointments, and help with prescription management, thereby elevating patient care.",
+      "AI agents powered by Chatbotx provide patients with information on treatments, schedule appointments, and help with prescription management, thereby elevating patient care.",
   },
   {
     title: "Retail: AI Shopping Assitant ",
     content:
-      "Botsonic revolutionizes online shopping experiences by providing personalized product recommendations, handling transactions, and offering post-purchase support.",
+      "Chatbotx revolutionizes online shopping experiences by providing personalized product recommendations, handling transactions, and offering post-purchase support.",
   },
   {
     title: "Hospitality : Conciege AI  Copilot",
     content:
-      "Botsonic delivers a tailored concierge experience for guests by managing bookings, answering FAQs about amenities, and offering local recommendations.",
+      "Chatbotx delivers a tailored concierge experience for guests by managing bookings, answering FAQs about amenities, and offering local recommendations.",
   },
   {
     content:
-      "Botsonic provides travellers with interactive planning assistance, real-time itinerary adjustments, and local insights to ensure a seamless travel experience.",
+      "Chatbotx provides travellers with interactive planning assistance, real-time itinerary adjustments, and local insights to ensure a seamless travel experience.",
     title: "Travel: Interactive Travel Planner",
   },
 ];
@@ -100,16 +104,16 @@ const AllFeaturesAccordion = ({
 const RightFeature = () => {
   return (
     <div className="max-h-[500px] overflow-hidden rounded-3xl">
-      <div className="relative w-full  flex items-center justify-center h-full overflow-hidden rounded-3xl bg-pink-100  px-10 pt-10">
+      <div className="relative w-full  flex items-center justify-center h-full overflow-hidden rounded-3xl bg-purple-100  px-10 pt-10">
         <Image
-          src="/features/pink.png"
+          src="/features/purple.png"
           alt="pink"
           className="object-contain aspect-auto border-[15px] border-gray-100 rounded-lg"
           width={350}
           height={350}
           quality={100}
           style={{
-            boxShadow: "1px -1px 24px 14px rgba(251, 207, 232)",
+            boxShadow: "rgb(167, 139, 250) 1px -1px 141px 51px",
           }}
         />
       </div>
@@ -117,13 +121,31 @@ const RightFeature = () => {
   );
 };
 
-const features = [
+const emplyeeFeatures = [
   "Empower your workforce by enabling instant access to information",
   "Easy access to HR and company resources via any device",
   "Accelerate onboarding with personalized learning paths",
   "Automate workflows across your business systems",
   "Navigate time-off, benefits, and payroll effortlessly",
   "Support employees in their native language",
+];
+
+const supportFeatures = [
+  "Train instantly on your support content",
+  "Serve global customers in 50+ languages",
+  "Integrate on the web, WhatsApp, SMS, and other channels",
+  "Automatically measure resolutions",
+  "Seamless live agent handoff for complex queries",
+  "Understand the impact on key metrics like CSAT",
+];
+
+const salesSupportFeatures = [
+  "Engage customers with personalized recommendations",
+  "Provide support and upsell services across web, mobile, and social media",
+  "Expand your market reach with multilingual sales support",
+  "Reduce operational costs by up to 60%",
+  "Automate and streamline the shopping experience on any platform",
+  "Generate high-quality leads through intelligent interaction",
 ];
 
 const modelImages = [
@@ -138,9 +160,35 @@ const modelImages = [
   "/models/replicate.png",
 ];
 
+function ChatBotScript() {
+  const BASE_URL = process.env.NEXT_PUBLIC_URL;
+
+  return (
+    <>
+      <script
+        dangerouslySetInnerHTML={{
+          __html: `
+      window.difyChatbotConfig = { 
+        token: 'U60QO9NuXuI1E8q4', 
+        isDev: true  , 
+        baseUrl : "${BASE_URL}" 
+      }
+    `,
+        }}
+      />
+      <script
+        src="https://dify.angeltools.xyz/embed.min.js"
+        id="U60QO9NuXuI1E8q4"
+        defer
+      ></script>
+    </>
+  );
+}
+
 export default function Page() {
   return (
     <div className="h-screen w-full overflow-y-auto">
+      <ChatBotScript />
       <Navbar />
       <Hero />
 
@@ -148,11 +196,11 @@ export default function Page() {
       <Testimonial />
 
       <FeatureSection
-        borderColor="border-pink-300"
+        borderColor="border-violet-300"
         top={<AllFeaturesHeading />}
         left={
           <AllFeaturesAccordion
-            title="How various industries are already using Botsonic"
+            title="How various industries are already using Chatbotx"
             accordionContent={AllFeaturesAccordionContent}
           />
         }
@@ -161,10 +209,21 @@ export default function Page() {
 
       <div className="flex flex-col gap-10">
         <UseCaseCard
-          features={features}
-          colorScheme="blue"
+          features={supportFeatures}
+          colorScheme="pink"
           targetKey="ai-support-agent"
-          icon={<RiMessage2Line className="text-blue-700" />}
+          icon={<RiTimerFlashLine className="text-pink-700" />}
+          title="24x7 Customer Support"
+          description="Resolve 70% of customer questions. Instantly."
+          imageSrc="/features/pink.png"
+          imageDirection="right"
+        />
+
+        <UseCaseCard
+          features={emplyeeFeatures}
+          targetKey="ai-employee-agent"
+          colorScheme="purple"
+          icon={<RiMessage2Line className="text-purple-600" />}
           title="Automated Employee Support"
           description="Enhance Workplace Efficiency and Morale. Effortlessly."
           imageSrc="/features/blue.png"
@@ -172,35 +231,15 @@ export default function Page() {
         />
 
         <UseCaseCard
-          features={features}
+          features={salesSupportFeatures}
           colorScheme="yellow"
-          targetKey="education-copilot"
-          icon={<RiMessage2Line className="text-yellow-600" />}
-          title="Automated Employee Support"
-          description="Enhance Workplace Efficiency and Morale. Effortlessly."
-          imageSrc="/features/yellow.png"
-          imageDirection="left"
-        />
-
-        <UseCaseCard
-          features={features}
-          targetKey="ai-employee-agent"
-          colorScheme="pink"
-          icon={<RiMessage2Line className="text-pink-600" />}
-          title="Automated Employee Support"
-          description="Enhance Workplace Efficiency and Morale. Effortlessly."
-          imageSrc="/features/pink.png"
-          imageDirection="right"
-        />
-
-        <UseCaseCard
-          features={features}
-          colorScheme="purple"
           targetKey="ai-sales-agent"
-          icon={<RiMessage2Line className="text-purple-600" />}
-          title="Automated Employee Support"
-          description="Enhance Workplace Efficiency and Morale. Effortlessly."
-          imageSrc="/features/purple.png"
+          icon={<RiShoppingCartLine className="text-yellow-600" />}
+          title="AI-Enhanced Conversational Commerce
+"
+          description="Revolutionize Customer Engagement
+and Drive Sales"
+          imageSrc="/features/yellow.png"
           imageDirection="left"
         />
       </div>
@@ -223,7 +262,7 @@ function Hero() {
           <strong> in Minutes </strong>
         </h1>
         <h2 className="text-base sm:text-lg ">
-          Botsonic scans your website, files and help center to automatically
+          Chatbotx scans your website, files and help center to automatically
           handle 70% of customer queries, and automate customer engagement,
           support, sales, and more.
         </h2>

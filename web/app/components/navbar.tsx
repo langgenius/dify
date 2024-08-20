@@ -20,7 +20,7 @@ export default function navbar() {
           </Link>
         </div>
 
-        <div className="flex  items-center gap-4 mr-2 text-sm">
+        <div className="flex  items-center gap-4 mr-4 font-medium text-sm">
           <Link href="/prices" className="cursor-pointer">
             Prices
           </Link>

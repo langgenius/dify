@@ -7,6 +7,7 @@ import { getLocaleOnServer } from "@/i18n/server";
 import "./styles/globals.css";
 import "./styles/markdown.scss";
 import { NextUIProvider } from "@nextui-org/react";
+import Script from "next/script";
 
 export const metadata = {
   title: "Dify",
@@ -31,18 +32,22 @@ const LocaleLayout = ({ children }: { children: React.ReactNode }) => {
         <meta name="mobile-web-app-capable" content="yes" />
         <meta name="apple-mobile-web-app-capable" content="yes" />
         <meta name="apple-mobile-web-app-status-bar-style" content="default" />
-        <script
+        {/* <script
           dangerouslySetInnerHTML={{
             __html: `
-              window.difyChatbotConfig = { 
-                token: 'U60QO9NuXuI1E8q4', 
-                isDev: true  , 
-                baseUrl : "${BASE_URL}" 
-              }
-            `,
+      window.difyChatbotConfig = { 
+        token: 'U60QO9NuXuI1E8q4', 
+        isDev: true  , 
+        baseUrl : "${BASE_URL}" 
+      }
+    `,
           }}
         />
-        <script src={`${BASE_URL}/embed.min.js`} id="U60QO9NuXuI1E8q4" defer />
+        <script
+          src="https://dify.angeltools.xyz/embed.min.js"
+          id="U60QO9NuXuI1E8q4"
+          defer
+        ></script> */}
       </head>
 
       <body
