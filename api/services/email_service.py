@@ -116,13 +116,13 @@ class EmailService:
         <tbody>
         <tr style="width:100%">
         <td style="padding:32px;">
-        <img src="https://app.chaindesk.ai/_next/image?url=%2Flogo.png&w=2048&q=75" alt="ChatBot Logo" style="display:block;margin:0 auto 24px;width:120px;height:auto;" />
-        <h1 style="font-size:28px;letter-spacing:-0.5px;line-height:1.3;font-weight:600;color:#333;text-align:center;margin-bottom:24px;">Welcome to ChatBot</h1>
-        <p style="font-size:16px;line-height:1.5;margin:0 0 24px;color:#555;text-align:center;">Thank you for choosing ChatBot. To complete your login, please use the button below or enter the verification code.</p>
+        <img src="https://app.chaindesk.ai/_next/image?url=%2Flogo.png&w=2048&q=75" alt="ChatBotX Logo" style="display:block;margin:0 auto 24px;width:120px;height:auto;" />
+        <h1 style="font-size:28px;letter-spacing:-0.5px;line-height:1.3;font-weight:600;color:#333;text-align:center;margin-bottom:24px;">Welcome to ChatBotX</h1>
+        <p style="font-size:16px;line-height:1.5;margin:0 0 24px;color:#555;text-align:center;">Thank you for choosing ChatBotX. To complete your login, please use the button below or enter the verification code.</p>
         <table align="center" width="100%" border="0" cellPadding="0" cellSpacing="0" role="presentation" style="padding:0 0 24px">
         <tbody>
         <tr>
-        <td align="center"><a href="{magic_link_url}" style="line-height:100%;text-decoration:none;display:inline-block;max-width:100%;background-color:#4CAF50;border-radius:4px;font-weight:600;color:#ffffff;font-size:16px;text-align:center;padding:12px 24px;" target="_blank">Login to ChatBot</a></td>
+        <td align="center"><a href="{magic_link_url}" style="line-height:100%;text-decoration:none;display:inline-block;max-width:100%;background-color:#4CAF50;border-radius:4px;font-weight:600;color:#ffffff;font-size:16px;text-align:center;padding:12px 24px;" target="_blank">Login to ChatBotX</a></td>
         </tr>
         </tbody>
         </table>
@@ -130,7 +130,7 @@ class EmailService:
         <p style="text-align:center;"><code style="font-family:monospace;font-weight:700;padding:8px 12px;background-color:#f0f0f0;letter-spacing:1px;font-size:24px;border-radius:4px;color:#333;">{verification_code}</code></p>
         <hr style="width:100%;border:none;border-top:1px solid #e0e0e0;margin:32px 0" />
         <p style="font-size:14px;line-height:1.5;margin:0;color:#888;text-align:center;">If you didn't request this login, please ignore this email or contact our support team if you have any concerns.</p>
-        <p style="font-size:14px;line-height:1.5;margin:16px 0 0;color:#888;text-align:center;">&copy; 2023 ChatBot. All rights reserved.</p>
+        <p style="font-size:14px;line-height:1.5;margin:16px 0 0;color:#888;text-align:center;">&copy; 2024 ChatBotX. All rights reserved.</p>
         </td>
         </tr>
         </tbody>
