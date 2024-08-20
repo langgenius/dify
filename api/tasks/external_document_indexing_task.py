@@ -1,4 +1,5 @@
 import datetime
+import json
 import logging
 import time
 
@@ -8,8 +9,10 @@ from celery import shared_task
 from configs import dify_config
 from core.indexing_runner import DocumentIsPausedException, IndexingRunner
 from extensions.ext_database import db
+from extensions.ext_storage import storage
 from models.dataset import Dataset, Document, ExternalApiTemplates
 from models.model import UploadFile
+from services.external_knowledge_service import ExternalDatasetService
 from services.feature_service import FeatureService
 
 
@@ -23,7 +26,6 @@ def external_document_indexing_task(dataset_id: str, api_template_id: str, data_
     :param process_parameter:
     Usage: external_document_indexing_task.delay(dataset_id, document_id)
     """
-    documents = []
     start_at = time.perf_counter()
 
     dataset = db.session.query(Dataset).filter(Dataset.id == dataset_id).first()
@@ -40,7 +42,7 @@ def external_document_indexing_task(dataset_id: str, api_template_id: str, data_
     if not api_template:
         logging.info(click.style('Processed external dataset: {} failed, api template: {} not exit.'.format(dataset_id, api_template_id), fg='red'))
         return
-    file_resource = []
+    files = {}
     if data_source["type"] == "upload_file":
         upload_file_list = data_source["info_list"]['file_info_list']['file_ids']
         for file_id in upload_file_list:
@@ -49,14 +51,23 @@ def external_document_indexing_task(dataset_id: str, api_template_id: str, data_
                 UploadFile.id == file_id
             ).first()
             if file:
-                file_resource.append(file)
+                files[file.id] = (file.name, storage.load_once(file.key), file.mime_type)
     try:
+        settings = ExternalDatasetService.get_api_template_settings(json.loads(api_template.settings))
         # assemble headers
-        headers = self._assembling_headers()
+        headers = ExternalDatasetService.assembling_headers(settings.authorization, settings.headers)
 
         # do http request
-        response = self._do_http_request(headers)
+        response = ExternalDatasetService.process_external_api(settings, headers, process_parameter, files)
+        if response.status_code != 200:
+            logging.info(click.style('Processed external dataset: {} failed, status code: {}'.format(dataset.id, response.status_code), fg='red'))
+            return
+
+        end_at = time.perf_counter()
+        logging.info(
+            click.style('Processed external dataset: {} successful, latency: {}'.format(dataset.id, end_at - start_at), fg='green'))
     except DocumentIsPausedException as ex:
         logging.info(click.style(str(ex), fg='yellow'))
+
     except Exception:
         pass

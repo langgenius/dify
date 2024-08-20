@@ -1,5 +1,9 @@
 import json
+from copy import deepcopy
 from datetime import datetime, timezone
+from typing import Any, Union, Optional
+
+import httpx
 
 from core.helper import ssrf_proxy
 from extensions.ext_database import db
@@ -16,7 +20,7 @@ from models.dataset import (
     Document,
     DocumentSegment, ExternalApiTemplates, ExternalKnowledgeBindings,
 )
-
+from services.entities.external_knowledge_entities.external_knowledge_entities import Authorization, ApiTemplateSetting
 
 
 class ExternalDatasetService:
@@ -171,20 +175,52 @@ class ExternalDatasetService:
         return dataset
 
     @staticmethod
-    def process_external_api(self, headers: dict[str, Any]) -> httpx.Response:
+    def process_external_api(settings: ApiTemplateSetting,
+                             headers: Union[None, dict[str, Any]],
+                             parameter: Union[None, dict[str, Any]],
+                             files: Union[None, dict[str, Any]]) -> httpx.Response:
         """
         do http request depending on api bundle
         """
+
         kwargs = {
-            'url': self.server_url,
+            'url': settings.url,
             'headers': headers,
-            'params': self.params,
-            'timeout': (self.timeout.connect, self.timeout.read, self.timeout.write),
             'follow_redirects': True,
         }
 
-        if self.method in ('get', 'head', 'post', 'put', 'delete', 'patch'):
-            response = getattr(ssrf_proxy, self.method)(data=self.body, files=self.files, **kwargs)
+        if settings.request_method in ('get', 'head', 'post', 'put', 'delete', 'patch'):
+            response = getattr(ssrf_proxy, settings.request_method)(data=parameter, files=files, **kwargs)
         else:
-            raise ValueError(f'Invalid http method {self.method}')
+            raise ValueError(f'Invalid http method {settings.request_method}')
         return response
+
+    @staticmethod
+    def assembling_headers(authorization: Authorization, headers: Optional[dict] = None) -> dict[str, Any]:
+        authorization = deepcopy(authorization)
+        if headers:
+            headers = deepcopy(headers)
+        else:
+            headers= {}
+        if authorization.type == 'api-key':
+            if authorization.config is None:
+                raise ValueError('authorization config is required')
+
+            if authorization.config.api_key is None:
+                raise ValueError('api_key is required')
+
+            if not authorization.config.header:
+                authorization.config.header = 'Authorization'
+
+            if authorization.config.type == 'bearer':
+                headers[authorization.config.header] = f'Bearer {authorization.config.api_key}'
+            elif authorization.config.type == 'basic':
+                headers[authorization.config.header] = f'Basic {authorization.config.api_key}'
+            elif authorization.config.type == 'custom':
+                headers[authorization.config.header] = authorization.config.api_key
+
+        return headers
+
+    @staticmethod
+    def get_api_template_settings(settings: dict) -> ApiTemplateSetting:
+        return ApiTemplateSetting.parse_obj(settings)
