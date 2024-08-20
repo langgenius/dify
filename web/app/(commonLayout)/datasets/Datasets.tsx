@@ -111,7 +111,7 @@ export function NoApps() {
         <CardTitle>Why so empty?</CardTitle>
       </CardHeader>
       <CardContent className="text-muted-foreground text-center">
-        It looks like you haven&#39;t created any apps yet. Get started by
+        It looks like you haven&#39;t created any data yet. Get started by
         clicking the button below.
       </CardContent>
       <CardFooter className="flex justify-center items-center">
