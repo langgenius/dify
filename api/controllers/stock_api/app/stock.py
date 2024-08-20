@@ -16,18 +16,16 @@ class StockIndexApi(Resource):
 class StockTicker(Resource):
     def get(self):
         return {
-            "welcome": "Stock Ticker",
+            "welcome": "Ticker",
             "api_version": "v1",
             "server_version": dify_config.CURRENT_VERSION,
         }
         
 class StockCompany(Resource):
     def get(self):
-        return {
-            "welcome": "Stock Info",
-            "api_version": "v1",
-            "server_version": dify_config.CURRENT_VERSION,
-        }
+        with open('tickers.csv', 'r') as file:
+            company_data = file.read()      
+        return company_data
 
 api.add_resource(StockIndexApi, '/')
 api.add_resource(StockTicker, '/ticker')
