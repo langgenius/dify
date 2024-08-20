@@ -112,7 +112,7 @@ const translation = {
   },
   menus: {
     status: 'beta',
-    explore: 'My Apps',
+    explore: 'Gallery',
     apps: 'Editor',
     plugins: 'Plugins',
     pluginsTips: 'Integrate third-party plugins or create ChatGPT-compatible AI-Plugins.',
@@ -120,7 +120,7 @@ const translation = {
     datasetsTips: 'COMING SOON: Import your own text data or write data in real-time via Webhook for LLM context enhancement.',
     newApp: 'New App',
     newDataset: 'Create Knowledge',
-    tools: 'Equipments',
+    tools: 'Connect',
   },
   userProfile: {
     settings: 'Settings',

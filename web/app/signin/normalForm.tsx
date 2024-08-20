@@ -285,14 +285,14 @@ const NormalForm = () => {
             >{t('login.pp')}</Link>
           </div>
 
-          {IS_CE_EDITION && <div className="w-hull text-center block mt-2 text-xs text-gray-600">
+          {/* {IS_CE_EDITION && <div className="w-hull text-center block mt-2 text-xs text-gray-600">
             {t('login.goToInit')}
             &nbsp;
             <Link
               className='text-primary-600'
               href='/install'
             >{t('login.setAdminAccount')}</Link>
-          </div>}
+          </div>} */}
 
         </div>
       </div>
