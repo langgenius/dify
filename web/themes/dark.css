@@ -10,7 +10,7 @@ html[data-theme="dark"] {
   --color-components-input-bg-destructive: #FFFFFF03;
   --color-components-input-bg-disabled: #FFFFFF08;
   --color-components-input-text-disabled: #C8CEDA4D;
-  --color-components-input-text-filled-disabled: #C8CEDA66;
+  --color-components-input-text-filled-disabled: #C8CEDA99;
   --color-components-input-border-hover: #3A3A40;
   --color-components-input-border-active-prompt-1: #36BFFA;
   --color-components-input-border-active-prompt-2: #296DFF;
@@ -57,7 +57,7 @@ html[data-theme="dark"] {
   --color-components-button-destructive-primary-border-hover: #FFFFFF33;
   --color-components-button-destructive-primary-border-disabled: #FFFFFF14;
 
-  --color-components-button-destructive-secondary-text: #F04438;
+  --color-components-button-destructive-secondary-text: #F97066;
   --color-components-button-destructive-secondary-text-disabled: #F0443833;
   --color-components-button-destructive-secondary-bg: #FFFFFF1F;
   --color-components-button-destructive-secondary-bg-hover: #F0443824;
@@ -66,13 +66,13 @@ html[data-theme="dark"] {
   --color-components-button-destructive-secondary-border-hover: #FFFFFF1F;
   --color-components-button-destructive-secondary-border-disabled: #F0443814;
 
-  --color-components-button-destructive-tertiary-text: #F04438;
+  --color-components-button-destructive-tertiary-text: #F97066;
   --color-components-button-destructive-tertiary-text-disabled: #F0443833;
   --color-components-button-destructive-tertiary-bg: #F0443824;
   --color-components-button-destructive-tertiary-bg-hover: #F0443840;
   --color-components-button-destructive-tertiary-bg-disabled: #F0443814;
 
-  --color-components-button-destructive-ghost-text: #F04438;
+  --color-components-button-destructive-ghost-text: #F97066;
   --color-components-button-destructive-ghost-text-disabled: #F0443833;
   --color-components-button-destructive-ghost-bg-hover: #F0443824;
 
@@ -135,6 +135,8 @@ html[data-theme="dark"] {
   --color-components-panel-on-panel-item-bg: #27272B;
   --color-components-panel-on-panel-item-bg-hover: #3A3A40;
   --color-components-panel-on-panel-item-bg-alt: #3A3A40;
+
+  --color-components-panel-bg-transparent: #22222500;
 
   --color-components-main-nav-nav-button-text: #C8CEDA99;
   --color-components-main-nav-nav-button-text-active: #F4F4F5;
@@ -204,7 +206,7 @@ html[data-theme="dark"] {
   --color-components-chart-current-2: #155AEF4D;
   --color-components-chart-bg: #18181BF2;
 
-  --color-components-actionbar-bg: #18181BCC;
+  --color-components-actionbar-bg: #222225;
   --color-components-actionbar-border: #C8CEDA14;
 
   --color-components-dropzone-bg-alt: #18181BCC;
@@ -227,19 +229,29 @@ html[data-theme="dark"] {
   --color-components-progress-gray-bg: #C8CEDA05;
 
   --color-components-chat-input-audio-bg: #155AEF33;
-  --color-components-chat-input-audio-wave: #C8CEDA24;
+  --color-components-chat-input-audio-wave-default: #C8CEDA24;
   --color-components-chat-input-bg-mask-1: #18181B0A;
   --color-components-chat-input-bg-mask-2: #18181B99;
   --color-components-chat-input-border: #C8CEDA33;
+  --color-components-chat-input-audio-wave-active: #84ABFF;
+  --color-components-chat-input-audio-bg-alt: #18181BE5;
+
+  --color-components-Avatar-shape-fill-stop-0: #FFFFFFF2;
+  --color-components-Avatar-shape-fill-stop-100: #FFFFFFCC;
+
+  --color-components-Avatar-bg-mask-stop-0: #FFFFFF33;
+  --color-components-Avatar-bg-mask-stop-100: #FFFFFF08;
+
+  --color-components-Avatar-default-avatar-bg: #222225;
 
   --color-text-primary: #FBFBFC;
   --color-text-secondary: #D9D9DE;
   --color-text-tertiary: #C8CEDA99;
   --color-text-quaternary: #C8CEDA66;
-  --color-text-destructive: #F04438;
+  --color-text-destructive: #F97066;
   --color-text-success: #17B26A;
   --color-text-warning: #F79009;
-  --color-text-destructive-secondary: #F04438;
+  --color-text-destructive-secondary: #F97066;
   --color-text-success-secondary: #47CD89;
   --color-text-warning-secondary: #FDB022;
   --color-text-accent: #5289FF;
@@ -252,17 +264,20 @@ html[data-theme="dark"] {
   --color-text-secondary-on-surface: #FFFFFFE5;
   --color-text-logo-text: #E9E9EC;
   --color-text-empty-state-icon: #C8CEDA4D;
+  --color-text-inverted: #FFFFFF;
 
   --color-background-body: #1D1D20;
   --color-background-default-subtle: #222225;
   --color-background-neurtral-subtle: #1D1D20;
-  --color-background-sidenav-bg: #18181B80;
+  --color-background-sidenav-bg: #27272AEB;
   --color-background-default: #222225;
   --color-background-soft: #18181B40;
   --color-background-gradient-bg-fill-chat-bg-1: #222225;
   --color-background-gradient-bg-fill-chat-bg-2: #1D1D20;
   --color-background-gradient-bg-fill-chat-bubble-bg-1: #C8CEDA14;
   --color-background-gradient-bg-fill-chat-bubble-bg-2: #C8CEDA05;
+  --color-background-gradient-bg-fill-debug-bg-1: #C8CEDA14;
+  --color-background-gradient-bg-fill-debug-bg-2: #18181B0A;
 
   --color-background-gradient-mask-gray: #18181B14;
   --color-background-gradient-mask-transparent: #00000000;
@@ -299,11 +314,7 @@ html[data-theme="dark"] {
   --color-shadow-shadow-10: #00000066;
 
   --color-workflow-block-border: #FFFFFF14;
-  --color-workflow-block-panel-bg: #27272B;
-  --color-workflow-block-border: #FFFFFF14;
   --color-workflow-block-parma-bg: #FFFFFF0D;
-  --color-workflow-block-nav-bg: #1D1D20;
-  --color-workflow-block-nav-border-right: #FFFFFF0D;
   --color-workflow-block-bg: #27272B;
 
   --color-workflow-canvas-workflow-dot-color: #8585AD26;
@@ -557,6 +568,34 @@ html[data-theme="dark"] {
   --color-util-colors-gray-gray-600: #98A2B2;
   --color-util-colors-gray-gray-700: #D0D5DC;
 
+  --color-util-colors-green-light-green-light-50: #15290A;
+  --color-util-colors-green-light-green-light-100: #2B5314;
+  --color-util-colors-green-light-green-light-200: #326212;
+  --color-util-colors-green-light-green-light-300: #3B7C0F;
+  --color-util-colors-green-light-green-light-500: #66C61C;
+  --color-util-colors-green-light-green-light-400: #4CA30D;
+  --color-util-colors-green-light-green-light-600: #85E13A;
+  --color-util-colors-green-light-green-light-700: #A6EF67;
+
+  --color-util-colors-rose-rose-50: #510B24;
+  --color-util-colors-rose-rose-100: #89123E;
+  --color-util-colors-rose-rose-200: #A11043;
+  --color-util-colors-rose-rose-300: #C01048;
+  --color-util-colors-rose-rose-400: #E31B54;
+  --color-util-colors-rose-rose-500: #F63D68;
+  --color-util-colors-rose-rose-600: #FD6F8E;
+  --color-util-colors-rose-rose-700: #FEA3B4;
+
+  --color-util-colors-midnight-midnight-50: #171C22;
+  --color-util-colors-midnight-midnight-100: #202431;
+  --color-util-colors-midnight-midnight-200: #2F3648;
+  --color-util-colors-midnight-midnight-300: #3E465E;
+  --color-util-colors-midnight-midnight-400: #5D698D;
+  --color-util-colors-midnight-midnight-500: #828DAD;
+  --color-util-colors-midnight-midnight-600: #A7AEC5;
+  --color-util-colors-midnight-midnight-700: #C6CBD9;
+
   --color-third-party-LangChain: #FFFFFF;
   --color-third-party-Langfuse: #FFFFFF;
+  --color-third-party-Github: #FFFFFF;
 }
