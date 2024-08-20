@@ -7,5 +7,6 @@ api = ExternalApi(bp)
 
 
 from . import index
+from . import stock
 from .app import app, audio, completion, conversation, file, message, workflow
 from .dataset import dataset, document, segment
