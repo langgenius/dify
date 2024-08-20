@@ -1,5 +1,5 @@
 from flask_restful import Resource
-from flask import request, jsonify
+from flask import request
 
 from configs import dify_config
 from controllers.stock_api import api
@@ -30,11 +30,13 @@ class StockPrice(Resource):
         ticker = request.args.get('ticker', '')
         
         result = get_stock_price(ticker)
-        logger.info(f"get_stock_price {result}")
-        
-        data = result.to_dict(orient='records')
-        
-        return data
+        logger.info(f"get_stock_price {type(result)} {result}")
+        return f"{result}"
+        # return {
+        #     "data": f"{result}"
+        # }
+        # data = result.to_dict(orient='records')
+        # return data
     
 class StockNews(Resource):
     def get(self):
@@ -47,14 +49,13 @@ class StockFinancial(Resource):
         ticker = request.args.get('ticker', '')
         
         result = get_financial_data(ticker)
-        logger.info(f"get_financial_data {result}")
-        
-        data = result.to_dict(orient='records')
-        return data
-
+        logger.info(f"get_financial_data {type(result)} {result}")
+        return f"{result}"
         # return {
-        #     "data": f"{finance}"
+        #     "data": f"{result}"
         # }
+        # data = result.to_dict(orient='records')
+        # return data
 
 api.add_resource(StockIndexApi, '/')
 api.add_resource(StockTicker, '/ticker')
