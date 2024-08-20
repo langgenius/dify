@@ -22,7 +22,9 @@ class StockIndexApi(Resource):
 class StockTicker(Resource):
     def get(self):
         with open(TICKERS_FILE_PATH, 'r') as file:
-            company_data = file.read()      
+            company_data = file.read()
+
+        logger.info(f"ticker {type(company_data)} {company_data}") 
         return company_data
         
 class StockPrice(Resource):
@@ -32,17 +34,14 @@ class StockPrice(Resource):
         result = get_stock_price(ticker)
         logger.info(f"get_stock_price {type(result)} {result}")
         return f"{result}"
-        # return {
-        #     "data": f"{result}"
-        # }
-        # data = result.to_dict(orient='records')
-        # return data
     
 class StockNews(Resource):
     def get(self):
         ticker = request.args.get('ticker', '')
-        
-        return get_recent_stock_news(ticker)
+
+        result = get_recent_stock_news(ticker)
+        logger.info(f"get_recent_stock_news {type(result)} {result}")
+        return result
 
 class StockFinance(Resource):
     def get(self):
