@@ -13,8 +13,8 @@ export default function navbar() {
   };
 
   return (
-    <nav className="fixed top-2 left-0 right-0  text-black  z-50  p-4  ">
-      <div className="flex max-w-7xl bg-white mx-auto justify-between items-center border px-2 rounded-full   h-[48px] backdrop-blur-xl">
+    <nav className="fixed top-2 left-0 right-0  text-black  z-[1000]  p-4  ">
+      <div className="flex max-w-7xl  bg-white mx-auto justify-between items-center border px-2 rounded-full   h-[48px] backdrop-blur-xl">
         <div className="flex items-center gap-3 ">
           <Link href="/" className="flex gap-2 items-center">
             <>
@@ -24,7 +24,7 @@ export default function navbar() {
           </Link>
         </div>
 
-        <div className="flex  items-center gap-4 text-sm">
+        <div className="flex  items-center gap-3 text-sm">
           <Link href="/billing" className="cursor-pointer">
             Plans
           </Link>
@@ -49,6 +49,18 @@ export default function navbar() {
                 size={"small"}
               >
                 Create a Chatbot
+              </Button>
+            </Link>
+          </div>
+
+          <div className="hidden md:block">
+            <Link href="/login" className="cursor-pointer">
+              <Button
+                className="rounded-2xl"
+                variant={"secondary"}
+                size={"small"}
+              >
+                Login
               </Button>
             </Link>
           </div>

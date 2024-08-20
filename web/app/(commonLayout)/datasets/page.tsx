@@ -1,13 +1,11 @@
-import Container from './Container'
+import Container from "./Container";
 
 const AppList = async () => {
-  return (
-    <Container />
-  )
-}
+  return <Container />;
+};
 
 export const metadata = {
-  title: 'Datasets - Dify',
-}
+  title: "Datasets - ChatBotX",
+};
 
-export default AppList
+export default AppList;

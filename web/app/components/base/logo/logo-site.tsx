@@ -19,8 +19,8 @@ const LogoSite: FC<LogoSiteProps> = ({ className, ...props }) => {
     theme === "light" ? "/logo/logo-site.png" : `/logo/logo-site-${theme}.png`;
   return (
     <Image
-      width={2048}
-      height={75}
+      width={50}
+      height={50}
       {...props}
       src="/logo.png"
       className={classNames("block object-contain w-auto h-10", className)}

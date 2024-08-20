@@ -4,7 +4,6 @@ import SiteLogo from "@/app/components/base/logo/logo-site";
 import FeatureSection from "@/app/components/landing/feature-section";
 import FeatCard from "@/app/components/landing/feat-card";
 import UseCaseCard from "@/app/components/landing/usecase-card";
-import type { Metadata } from "next";
 import { Integration } from "@/app/components/landing/integration-animation";
 import ShimmerButton from "@/app/components/shimmer";
 import { Testimonial } from "@/app/components/landing/testimonials";

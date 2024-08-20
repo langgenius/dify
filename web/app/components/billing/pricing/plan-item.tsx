@@ -26,6 +26,7 @@ type Props = {
   plan: Plan;
   planRange: PlanRange;
   canPay: boolean;
+  isLoggedIn: boolean;
 };
 
 const KeyValue = ({
@@ -80,7 +81,13 @@ const style = {
       "hover:shadow-lg hover:!text-white hover:!bg-[#F79009] hover:!border-[#DC6803] active:!text-white active:!bg-[#DC6803] active:!border-[#DC6803]",
   },
 };
-const PlanItem: FC<Props> = ({ plan, currentPlan, planRange, canPay }) => {
+const PlanItem: FC<Props> = ({
+  plan,
+  currentPlan,
+  planRange,
+  canPay,
+  isLoggedIn,
+}) => {
   const { t } = useTranslation();
   const { locale } = useContext(I18n);
 

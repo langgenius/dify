@@ -10,6 +10,9 @@ import PlanItem from "./plan-item";
 import { useProviderContext } from "@/context/provider-context";
 import GridMask from "@/app/components/base/grid-mask";
 import { useAppContext } from "@/context/app-context";
+import { Button } from "@/app/components/base/button";
+import Link from "next/link";
+import Toast from "../../base/toast";
 
 type Props = {
   onCancel?: () => void;
@@ -18,11 +21,24 @@ type Props = {
 const Pricing: FC<Props> = ({ onCancel }) => {
   const { t } = useTranslation();
   const { plan } = useProviderContext();
+  const { userProfile } = useAppContext();
   const { isCurrentWorkspaceManager } = useAppContext();
+
   const canPay = isCurrentWorkspaceManager;
   const [planRange, setPlanRange] = React.useState<PlanRange>(
     PlanRange.monthly
   );
+
+  const isLoggedIn = !(userProfile?.id === "");
+
+  if (!isLoggedIn) {
+    Toast.notify({
+      type: "error",
+      message: t("Login First To Buy Plan"),
+      className: "z-[1001]",
+      duration: 10000,
+    });
+  }
 
   return createPortal(
     <div
@@ -30,35 +46,39 @@ const Pricing: FC<Props> = ({ onCancel }) => {
       onClick={(e) => e.stopPropagation()}
     >
       <GridMask wrapperClassName="grow">
-        <div className="grow width-[0] mt-6 p-6 flex flex-col items-center">
+        <div className="grow  width-[0] mt-28 p-6 flex flex-col items-center">
           <div className="mb-3 leading-[38px] text-[30px] font-semibold text-gray-900">
             {t("billing.plansCommon.title")}
           </div>
           <SelectPlanRange value={planRange} onChange={setPlanRange} />
-          <div className="mt-8 pb-6 w-full justify-center flex-nowrap flex space-x-3">
+          <div className="mt-8 pb-6 max-w-7xl mx-auto justify-center grid grid-cols-1 sm:grid-cols-2  lg:grid-cols-4 space-x-3">
             <PlanItem
               currentPlan={plan.type}
               plan={Plan.sandbox}
               planRange={planRange}
               canPay={canPay}
+              isLoggedIn
             />
             <PlanItem
               currentPlan={plan.type}
               plan={Plan.professional}
               planRange={planRange}
               canPay={canPay}
+              isLoggedIn
             />
             <PlanItem
               currentPlan={plan.type}
               plan={Plan.team}
               planRange={planRange}
               canPay={canPay}
+              isLoggedIn
             />
             <PlanItem
               currentPlan={plan.type}
               plan={Plan.enterprise}
               planRange={planRange}
               canPay={canPay}
+              isLoggedIn
             />
           </div>
         </div>

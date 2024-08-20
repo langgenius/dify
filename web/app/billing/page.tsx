@@ -1,6 +1,12 @@
 import React from "react";
-import Billing from "../components/billing/pricing";
+import Billing from "@/app/components/billing/pricing";
+import Navbar from "@/app/components/landing/navbar";
 
 export default function page() {
-  return <Billing />;
+  return (
+    <>
+      <Navbar />
+      <Billing />;
+    </>
+  );
 }
