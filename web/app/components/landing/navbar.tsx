@@ -25,23 +25,23 @@ export default function navbar() {
         </div>
 
         <div className="flex  items-center gap-3 text-sm">
-          <Link href="/billing" className="cursor-pointer">
+          <Link href="/billing" className="cursor-pointer hidden md:block">
             Plans
           </Link>
           <div
             onClick={() => handleNavigation("features")}
-            className="cursor-pointer"
+            className="cursor-pointer hidden md:block"
           >
             Features
           </div>
           <div
             onClick={() => handleNavigation("integrations")}
-            className="cursor-pointer"
+            className="cursor-pointer hidden md:block"
           >
             Integration
           </div>
 
-          <div className="hidden md:block">
+          <div className="">
             <Link href="/studio" className="cursor-pointer">
               <Button
                 className="rounded-2xl"
@@ -54,7 +54,7 @@ export default function navbar() {
           </div>
 
           <div className="hidden md:block">
-            <Link href="/login" className="cursor-pointer">
+            <Link href="/signin" className="cursor-pointer">
               <Button
                 className="rounded-2xl"
                 variant={"secondary"}

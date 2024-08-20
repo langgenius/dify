@@ -131,7 +131,7 @@ const variantMap = {
 const sizeMap = {
   small: "sm",
   medium: "md",
-  large: "lg",
+  large: "md",
 } as Record<string, NextUIButtonProps["size"]>;
 
 const Button = React.forwardRef<HTMLButtonElement, ButtonProps>(
