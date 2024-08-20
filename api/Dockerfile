@@ -7,13 +7,18 @@ WORKDIR /app/api
 ENV POETRY_VERSION=1.8.3
 RUN pip install --no-cache-dir poetry==${POETRY_VERSION}
 
+# Create Python virtual environment
+ENV VIRTUAL_ENV=/opt/venv
+RUN python -m venv ${VIRTUAL_ENV}
+
 # Configure Poetry
 ENV POETRY_CACHE_DIR=/tmp/poetry_cache
 ENV POETRY_NO_INTERACTION=1
-ENV POETRY_VIRTUALENVS_IN_PROJECT=true
+ENV POETRY_VIRTUALENVS_IN_PROJECT=false
 ENV POETRY_VIRTUALENVS_CREATE=true
 ENV POETRY_REQUESTS_TIMEOUT=15
 
+# packages stage
 FROM base AS packages
 
 RUN apt-get update \
@@ -51,7 +56,6 @@ RUN apt-get update \
     && rm -rf /var/lib/apt/lists/*
 
 # Copy Python environment and packages
-ENV VIRTUAL_ENV=/app/api/.venv
 COPY --from=packages ${VIRTUAL_ENV} ${VIRTUAL_ENV}
 ENV PATH="${VIRTUAL_ENV}/bin:${PATH}"
 
