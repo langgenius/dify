@@ -12,7 +12,7 @@ from core.app.entities.app_invoke_entities import (
 )
 from core.workflow.callbacks.base_workflow_callback import WorkflowCallback
 from core.workflow.entities.variable_pool import VariablePool
-from core.workflow.enums import SystemVariable
+from core.workflow.enums import SystemVariableKey
 from core.workflow.nodes.base_node import UserFrom
 from core.workflow.workflow_engine_manager import WorkflowEngineManager
 from extensions.ext_database import db
@@ -67,8 +67,8 @@ class WorkflowAppRunner:
 
         # Create a variable pool.
         system_inputs = {
-            SystemVariable.FILES: files,
-            SystemVariable.USER_ID: user_id,
+            SystemVariableKey.FILES: files,
+            SystemVariableKey.USER_ID: user_id,
         }
         variable_pool = VariablePool(
             system_variables=system_inputs,

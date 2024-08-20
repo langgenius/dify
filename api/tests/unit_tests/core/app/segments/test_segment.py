@@ -1,13 +1,13 @@
 from core.app.segments import SecretVariable, StringSegment, parser
 from core.helper import encrypter
 from core.workflow.entities.variable_pool import VariablePool
-from core.workflow.enums import SystemVariable
+from core.workflow.enums import SystemVariableKey
 
 
 def test_segment_group_to_text():
     variable_pool = VariablePool(
         system_variables={
-            SystemVariable('user_id'): 'fake-user-id',
+            SystemVariableKey('user_id'): 'fake-user-id',
         },
         user_inputs={},
         environment_variables=[
@@ -42,7 +42,7 @@ def test_convert_constant_to_segment_group():
 def test_convert_variable_to_segment_group():
     variable_pool = VariablePool(
         system_variables={
-            SystemVariable('user_id'): 'fake-user-id',
+            SystemVariableKey('user_id'): 'fake-user-id',
         },
         user_inputs={},
         environment_variables=[],

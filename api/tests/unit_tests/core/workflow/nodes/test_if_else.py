@@ -2,7 +2,7 @@ from unittest.mock import MagicMock
 
 from core.app.entities.app_invoke_entities import InvokeFrom
 from core.workflow.entities.variable_pool import VariablePool
-from core.workflow.enums import SystemVariable
+from core.workflow.enums import SystemVariableKey
 from core.workflow.nodes.base_node import UserFrom
 from core.workflow.nodes.if_else.if_else_node import IfElseNode
 from extensions.ext_database import db
@@ -119,8 +119,8 @@ def test_execute_if_else_result_true():
 
     # construct variable pool
     pool = VariablePool(system_variables={
-        SystemVariable.FILES: [],
-        SystemVariable.USER_ID: 'aaa'
+        SystemVariableKey.FILES: [],
+        SystemVariableKey.USER_ID: 'aaa'
     }, user_inputs={}, environment_variables=[])
     pool.add(['start', 'array_contains'], ['ab', 'def'])
     pool.add(['start', 'array_not_contains'], ['ac', 'def'])
@@ -182,8 +182,8 @@ def test_execute_if_else_result_false():
 
     # construct variable pool
     pool = VariablePool(system_variables={
-        SystemVariable.FILES: [],
-        SystemVariable.USER_ID: 'aaa'
+        SystemVariableKey.FILES: [],
+        SystemVariableKey.USER_ID: 'aaa'
     }, user_inputs={}, environment_variables=[])
     pool.add(['start', 'array_contains'], ['1ab', 'def'])
     pool.add(['start', 'array_not_contains'], ['ab', 'def'])

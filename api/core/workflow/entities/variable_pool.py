@@ -6,20 +6,20 @@ from typing_extensions import deprecated
 
 from core.app.segments import Segment, Variable, factory
 from core.file.file_obj import FileVar
-from core.workflow.enums import SystemVariable
+from core.workflow.enums import SystemVariableKey
 
 VariableValue = Union[str, int, float, dict, list, FileVar]
 
 
-SYSTEM_VARIABLE_NODE_ID = 'sys'
-ENVIRONMENT_VARIABLE_NODE_ID = 'env'
-CONVERSATION_VARIABLE_NODE_ID = 'conversation'
+SYSTEM_VARIABLE_NODE_ID = "sys"
+ENVIRONMENT_VARIABLE_NODE_ID = "env"
+CONVERSATION_VARIABLE_NODE_ID = "conversation"
 
 
 class VariablePool:
     def __init__(
         self,
-        system_variables: Mapping[SystemVariable, Any],
+        system_variables: Mapping[SystemVariableKey, Any],
         user_inputs: Mapping[str, Any],
         environment_variables: Sequence[Variable],
         conversation_variables: Sequence[Variable] | None = None,
@@ -68,7 +68,7 @@ class VariablePool:
             None
         """
         if len(selector) < 2:
-            raise ValueError('Invalid selector')
+            raise ValueError("Invalid selector")
 
         if value is None:
             return
@@ -95,13 +95,13 @@ class VariablePool:
             ValueError: If the selector is invalid.
         """
         if len(selector) < 2:
-            raise ValueError('Invalid selector')
+            raise ValueError("Invalid selector")
         hash_key = hash(tuple(selector[1:]))
         value = self._variable_dictionary[selector[0]].get(hash_key)
 
         return value
 
-    @deprecated('This method is deprecated, use `get` instead.')
+    @deprecated("This method is deprecated, use `get` instead.")
     def get_any(self, selector: Sequence[str], /) -> Any | None:
         """
         Retrieves the value from the variable pool based on the given selector.
@@ -116,7 +116,7 @@ class VariablePool:
             ValueError: If the selector is invalid.
         """
         if len(selector) < 2:
-            raise ValueError('Invalid selector')
+            raise ValueError("Invalid selector")
         hash_key = hash(tuple(selector[1:]))
         value = self._variable_dictionary[selector[0]].get(hash_key)
         return value.to_object() if value else None
