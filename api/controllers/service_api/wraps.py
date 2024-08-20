@@ -223,6 +223,5 @@ def create_or_update_end_user_for_user_id(app_model: App, user_id: Optional[str]
     return end_user
 
 
-
 class DatasetApiResource(Resource):
     method_decorators = [validate_dataset_token]
