@@ -2,7 +2,7 @@ from collections.abc import Mapping, Sequence
 from os import path
 from typing import Any, cast
 
-from core.app.segments import ArrayAnyVariable, parser, ArrayAnySegment
+from core.app.segments import ArrayAnySegment, ArrayAnyVariable, parser
 from core.callback_handler.workflow_tool_callback_handler import DifyWorkflowCallbackHandler
 from core.file.file_obj import FileTransferMethod, FileType, FileVar
 from core.tools.entities.tool_entities import ToolInvokeMessage, ToolParameter
