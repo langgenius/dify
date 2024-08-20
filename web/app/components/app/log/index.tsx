@@ -61,7 +61,7 @@ const Logs: FC<ILogsProps> = ({ appDetail }) => {
     ...(queryParams.period !== 'all'
       ? {
         start: dayjs().subtract(queryParams.period as number, 'day').startOf('day').format('YYYY-MM-DD HH:mm'),
-        end: dayjs().format('YYYY-MM-DD HH:mm'),
+        end: dayjs().endOf('day').format('YYYY-MM-DD HH:mm'),
       }
       : {}),
     ...omit(queryParams, ['period']),
