@@ -43,8 +43,6 @@ class ElasticSearchVector(BaseVector):
     def __init__(self, index_name: str, config: ElasticSearchConfig, attributes: list):
         super().__init__(index_name.lower())
         self._client = self._init_client(config)
-        self._version = self._get_version()
-        self._check_version()
         self._attributes = attributes
 
     def _init_client(self, config: ElasticSearchConfig) -> Elasticsearch:
@@ -66,14 +64,6 @@ class ElasticSearchVector(BaseVector):
 
         return client
 
-    def _get_version(self) -> str:
-        info = self._client.info()
-        return info['version']['number']
-
-    def _check_version(self):
-        if self._version < '8.0.0':
-            raise ValueError("Elasticsearch vector database version must be greater than 8.0.0")
-
     def get_type(self) -> str:
         return 'elasticsearch'
 
@@ -87,15 +77,15 @@ class ElasticSearchVector(BaseVector):
                                    Field.VECTOR.value: embeddings[i] if embeddings[i] else None,
                                    Field.METADATA_KEY.value: documents[i].metadata if documents[i].metadata else {}
                                })
-        self._client.indices.refresh(index=self._collection_name)
+        self._client.indices.refresh(index=self._collection_name.lower())
         return uuids
 
     def text_exists(self, id: str) -> bool:
-        return self._client.exists(index=self._collection_name, id=id).__bool__()
+        return self._client.exists(index=self._collection_name.lower(), id=id).__bool__()
 
     def delete_by_ids(self, ids: list[str]) -> None:
         for id in ids:
-            self._client.delete(index=self._collection_name, id=id)
+            self._client.delete(index=self._collection_name.lower(), id=id)
 
     def delete_by_metadata_field(self, key: str, value: str) -> None:
         query_str = {
@@ -105,13 +95,13 @@ class ElasticSearchVector(BaseVector):
                 }
             }
         }
-        results = self._client.search(index=self._collection_name, body=query_str)
+        results = self._client.search(index=self._collection_name.lower(), body=query_str)
         ids = [hit['_id'] for hit in results['hits']['hits']]
         if ids:
             self.delete_by_ids(ids)
 
     def delete(self) -> None:
-        self._client.indices.delete(index=self._collection_name)
+        self._client.indices.delete(index=self._collection_name.lower())
 
     def search_by_vector(self, query_vector: list[float], **kwargs: Any) -> list[Document]:
         top_k = kwargs.get("top_k", 10)
@@ -126,7 +116,7 @@ class ElasticSearchVector(BaseVector):
             "size": top_k
         }
 
-        results = self._client.search(index=self._collection_name, body=query_str)
+        results = self._client.search(index=self._collection_name.lower(), body=query_str)
 
         docs_and_scores = []
         for hit in results['hits']['hits']:
@@ -150,7 +140,7 @@ class ElasticSearchVector(BaseVector):
                 Field.CONTENT_KEY.value: query
             }
         }
-        results = self._client.search(index=self._collection_name, query=query_str)
+        results = self._client.search(index=self._collection_name.lower(), query=query_str)
         docs = []
         for hit in results['hits']['hits']:
             docs.append(Document(
