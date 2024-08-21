@@ -258,7 +258,7 @@ def get_financial_data(ticker):
     # Create a stock object for financial data
     ticker = ticker.strip().upper()
     stock_finance = Vnstock().stock(symbol=ticker, source='VCI')
-    nquarter = 13
+    nquarter = 4
     # Create a dictionary to store all dataframes
     company_data = {
         'Balance Sheet Yearly': safe_get_data(stock_finance.finance.balance_sheet, period='year', lang='en'),

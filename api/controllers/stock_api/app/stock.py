@@ -34,7 +34,7 @@ class StockPrice(Resource):
         ticker = request.args.get('ticker', '')
         
         result = get_stock_price(ticker)
-        logger.info(f"get_stock_price {type(result)} {result}")
+        # logger.info(f"get_stock_price {type(result)} {result}")
         return f"{result}"
     
 class StockNews(Resource):
@@ -42,7 +42,7 @@ class StockNews(Resource):
         ticker = request.args.get('ticker', '')
 
         result = get_recent_stock_news(ticker)
-        logger.info(f"get_recent_stock_news {type(result)} {result}")
+        # logger.info(f"get_recent_stock_news {type(result)} {result}")
         return result
 
 class StockFinance(Resource):
