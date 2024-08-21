@@ -23,7 +23,7 @@ from models.model import App, AppMode, AppModelConfig
 from models.tools import ApiToolProvider
 from services.tag_service import TagService
 from tasks.remove_app_and_related_data_task import remove_app_and_related_data_task
-
+from sqlalchemy import text as sql_text
 
 class AppService:
     def get_paginate_apps(self, tenant_id: str, args: dict) -> Pagination | None:
@@ -222,6 +222,9 @@ class AppService:
         app.icon = args.get('icon')
         app.icon_background = args.get('icon_background')
         app.updated_at = datetime.now(timezone.utc).replace(tzinfo=None)
+        # When the 'apps' table is updated, update the 'title' field in the 'sites' table
+        update_site_sql = sql_text("UPDATE sites SET title = :title WHERE app_id = :app_id")
+        db.session.execute(update_site_sql, {"title": app.name, "app_id": app.id})
         db.session.commit()
 
         if app.max_active_requests is not None:
