@@ -1,7 +1,7 @@
 """add node_execution_id into node_executions
 
 Revision ID: 675b5321501b
-Revises: 2dbe42621d96
+Revises: 0251a1c768cc
 Create Date: 2024-08-12 10:54:02.259331
 
 """
@@ -12,7 +12,7 @@ import models as models
 
 # revision identifiers, used by Alembic.
 revision = '675b5321501b'
-down_revision = '2dbe42621d96'
+down_revision = '0251a1c768cc'
 branch_labels = None
 depends_on = None
 
