@@ -68,6 +68,7 @@ const Panel = (props: PanelProps) => {
         ...tagList,
         newTag,
       ])
+      setKeywords('')
       setCreating(false)
       onCreate()
     }
