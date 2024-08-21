@@ -13,7 +13,8 @@ class WebConversationService:
     @classmethod
     def pagination_by_last_id(cls, app_model: App, user: Optional[Union[Account, EndUser]],
                               last_id: Optional[str], limit: int, invoke_from: InvokeFrom,
-                              pinned: Optional[bool] = None) -> InfiniteScrollPagination:
+                              pinned: Optional[bool] = None,
+                              sort_by='-updated_at') -> InfiniteScrollPagination:
         include_ids = None
         exclude_ids = None
         if pinned is not None:
@@ -36,6 +37,7 @@ class WebConversationService:
             invoke_from=invoke_from,
             include_ids=include_ids,
             exclude_ids=exclude_ids,
+            sort_by=sort_by
         )
 
     @classmethod

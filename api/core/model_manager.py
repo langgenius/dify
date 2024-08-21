@@ -271,9 +271,8 @@ class ModelInstance:
 
         :param content_text: text content to be translated
         :param tenant_id: user tenant id
-        :param user: unique user id
         :param voice: model timbre
-        :param streaming: output is streaming
+        :param user: unique user id
         :return: text for given audio file
         """
         if not isinstance(self.model_type_instance, TTSModel):
@@ -369,6 +368,15 @@ class ModelManager:
 
         return ModelInstance(provider_model_bundle, model)
 
+    def get_default_provider_model_name(self, tenant_id: str, model_type: ModelType) -> tuple[str, str]:
+        """
+        Return first provider and the first model in the provider
+        :param tenant_id: tenant id
+        :param model_type: model type
+        :return: provider name, model name
+        """
+        return self._provider_manager.get_first_provider_first_model(tenant_id, model_type)
+
     def get_default_model_instance(self, tenant_id: str, model_type: ModelType) -> ModelInstance:
         """
         Get default model instance
@@ -401,6 +409,10 @@ class LBModelManager:
                  managed_credentials: Optional[dict] = None) -> None:
         """
         Load balancing model manager
+        :param tenant_id: tenant_id
+        :param provider: provider
+        :param model_type: model_type
+        :param model: model name
         :param load_balancing_configs: all load balancing configurations
         :param managed_credentials: credentials if load balancing configuration name is __inherit__
         """
@@ -498,7 +510,6 @@ class LBModelManager:
             self._model,
             config.id
         )
-
 
         res = redis_client.exists(cooldown_cache_key)
         res = cast(bool, res)

@@ -7,7 +7,7 @@ from core.app.entities.app_invoke_entities import InvokeFrom
 from core.app.segments import ArrayStringVariable, StringVariable
 from core.workflow.entities.node_entities import UserFrom
 from core.workflow.entities.variable_pool import VariablePool
-from core.workflow.enums import SystemVariable
+from core.workflow.enums import SystemVariableKey
 from core.workflow.graph_engine.entities.graph import Graph
 from core.workflow.graph_engine.entities.graph_init_params import GraphInitParams
 from core.workflow.graph_engine.entities.graph_runtime_state import GraphRuntimeState
@@ -72,7 +72,7 @@ def test_overwrite_string_variable():
 
     # construct variable pool
     variable_pool = VariablePool(
-        system_variables={SystemVariable.CONVERSATION_ID: 'conversation_id'},
+        system_variables={SystemVariableKey.CONVERSATION_ID: 'conversation_id'},
         user_inputs={},
         environment_variables=[],
         conversation_variables=[conversation_variable],
@@ -101,7 +101,7 @@ def test_overwrite_string_variable():
         },
     )
 
-    with mock.patch('core.workflow.nodes.variable_assigner.update_conversation_variable') as mock_run:
+    with mock.patch('core.workflow.nodes.variable_assigner.node.update_conversation_variable') as mock_run:
         list(node.run())
         mock_run.assert_called_once()
 
@@ -165,7 +165,7 @@ def test_append_variable_to_array():
     )
 
     variable_pool = VariablePool(
-        system_variables={SystemVariable.CONVERSATION_ID: 'conversation_id'},
+        system_variables={SystemVariableKey.CONVERSATION_ID: 'conversation_id'},
         user_inputs={},
         environment_variables=[],
         conversation_variables=[conversation_variable],
@@ -193,7 +193,7 @@ def test_append_variable_to_array():
         },
     )
 
-    with mock.patch('core.workflow.nodes.variable_assigner.update_conversation_variable') as mock_run:
+    with mock.patch('core.workflow.nodes.variable_assigner.node.update_conversation_variable') as mock_run:
         list(node.run())
         mock_run.assert_called_once()
 
@@ -250,7 +250,7 @@ def test_clear_array():
     )
 
     variable_pool = VariablePool(
-        system_variables={SystemVariable.CONVERSATION_ID: 'conversation_id'},
+        system_variables={SystemVariableKey.CONVERSATION_ID: 'conversation_id'},
         user_inputs={},
         environment_variables=[],
         conversation_variables=[conversation_variable],

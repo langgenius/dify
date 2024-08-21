@@ -1,5 +1,6 @@
 x-shared-env: &shared-api-worker-env
   LOG_LEVEL: ${LOG_LEVEL:-INFO}
+  LOG_FILE: ${LOG_FILE:-}
   DEBUG: ${DEBUG:-false}
   FLASK_DEBUG: ${FLASK_DEBUG:-false}
   SECRET_KEY: ${SECRET_KEY:-sk-9f73s3ljTXVcMT3Blb3ljTqtsKiGHXVcMT3BlbkFJLK7U}
@@ -176,6 +177,8 @@ x-shared-env: &shared-api-worker-env
   CODE_EXECUTION_API_KEY: ${SANDBOX_API_KEY:-dify-sandbox}
   CODE_MAX_NUMBER: ${CODE_MAX_NUMBER:-9223372036854775807}
   CODE_MIN_NUMBER: ${CODE_MIN_NUMBER:--9223372036854775808}
+  CODE_MAX_DEPTH: ${CODE_MAX_DEPTH:-5}
+  CODE_MAX_PRECISION: ${CODE_MAX_PRECISION:-20}
   CODE_MAX_STRING_LENGTH: ${CODE_MAX_STRING_LENGTH:-80000}
   TEMPLATE_TRANSFORM_MAX_LENGTH: ${TEMPLATE_TRANSFORM_MAX_LENGTH:-80000}
   CODE_MAX_STRING_ARRAY_LENGTH: ${CODE_MAX_STRING_ARRAY_LENGTH:-30}
@@ -187,7 +190,7 @@ x-shared-env: &shared-api-worker-env
 services:
   # API service
   api:
-    image: langgenius/dify-api:0.7.0
+    image: langgenius/dify-api:0.7.1
     restart: always
     environment:
       # Use the shared environment variables.
@@ -207,7 +210,7 @@ services:
   # worker service
   # The Celery worker for processing the queue.
   worker:
-    image: langgenius/dify-api:0.7.0
+    image: langgenius/dify-api:0.7.1
     restart: always
     environment:
       # Use the shared environment variables.
@@ -226,7 +229,7 @@ services:
 
   # Frontend web application.
   web:
-    image: langgenius/dify-web:0.7.0
+    image: langgenius/dify-web:0.7.1
     restart: always
     environment:
       CONSOLE_API_URL: ${CONSOLE_API_URL:-}
@@ -271,7 +274,7 @@ services:
 
   # The DifySandbox
   sandbox:
-    image: langgenius/dify-sandbox:0.2.1
+    image: langgenius/dify-sandbox:0.2.6
     restart: always
     environment:
       # The DifySandbox configurations

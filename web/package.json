@@ -1,6 +1,6 @@
 {
   "name": "dify-web",
-  "version": "0.7.0",
+  "version": "0.7.1",
   "private": true,
   "engines": {
     "node": ">=18.17.0"
@@ -68,6 +68,7 @@
     "react": "~18.2.0",
     "react-18-input-autosize": "^3.0.0",
     "react-dom": "~18.2.0",
+    "react-easy-crop": "^5.0.8",
     "react-error-boundary": "^4.0.2",
     "react-headless-pagination": "^1.1.4",
     "react-hook-form": "^7.51.4",
@@ -142,7 +143,8 @@
   },
   "resolutions": {
     "@types/react": "~18.2.0",
-    "@types/react-dom": "~18.2.0"
+    "@types/react-dom": "~18.2.0",
+    "string-width": "4.2.3"
   },
   "lint-staged": {
     "**/*.js?(x)": [

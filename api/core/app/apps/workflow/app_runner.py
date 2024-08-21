@@ -13,7 +13,7 @@ from core.app.entities.app_invoke_entities import (
 from core.workflow.callbacks.base_workflow_callback import WorkflowCallback
 from core.workflow.entities.node_entities import UserFrom
 from core.workflow.entities.variable_pool import VariablePool
-from core.workflow.enums import SystemVariable
+from core.workflow.enums import SystemVariableKey
 from core.workflow.workflow_entry import WorkflowEntry
 from extensions.ext_database import db
 from models.model import App, EndUser
@@ -79,14 +79,14 @@ class WorkflowAppRunner(WorkflowBasedAppRunner):
                 user_inputs=self.application_generate_entity.single_iteration_run.inputs
             )
         else:
-        
+
             inputs = self.application_generate_entity.inputs
             files = self.application_generate_entity.files
-        
+
             # Create a variable pool.
             system_inputs = {
-                SystemVariable.FILES: files,
-                SystemVariable.USER_ID: user_id,
+                SystemVariableKey.FILES: files,
+                SystemVariableKey.USER_ID: user_id,
             }
 
             variable_pool = VariablePool(
@@ -98,7 +98,7 @@ class WorkflowAppRunner(WorkflowBasedAppRunner):
 
             # init graph
             graph = self._init_graph(graph_config=workflow.graph_dict)
-        
+
         # RUN WORKFLOW
         workflow_entry = WorkflowEntry(
             tenant_id=workflow.tenant_id,

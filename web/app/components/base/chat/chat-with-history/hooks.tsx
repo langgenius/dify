@@ -43,7 +43,13 @@ export const useChatWithHistory = (installedAppInfo?: InstalledApp) => {
   const isInstalledApp = useMemo(() => !!installedAppInfo, [installedAppInfo])
   const { data: appInfo, isLoading: appInfoLoading, error: appInfoError } = useSWR(installedAppInfo ? null : 'appInfo', fetchAppInfo)
 
-  useAppFavicon(!installedAppInfo, appInfo?.site.icon, appInfo?.site.icon_background)
+  useAppFavicon({
+    enable: !installedAppInfo,
+    icon_type: appInfo?.site.icon_type,
+    icon: appInfo?.site.icon,
+    icon_background: appInfo?.site.icon_background,
+    icon_url: appInfo?.site.icon_url,
+  })
 
   const appData = useMemo(() => {
     if (isInstalledApp) {
@@ -52,8 +58,10 @@ export const useChatWithHistory = (installedAppInfo?: InstalledApp) => {
         app_id: id,
         site: {
           title: app.name,
+          icon_type: app.icon_type,
           icon: app.icon,
           icon_background: app.icon_background,
+          icon_url: app.icon_url,
           prompt_public: false,
           copyright: '',
           show_workflow_steps: true,

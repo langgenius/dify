@@ -3,6 +3,7 @@ from collections.abc import Mapping, Sequence
 from typing import Any
 
 from core.workflow.entities.node_entities import NodeRunResult, NodeType
+from core.workflow.entities.variable_pool import SYSTEM_VARIABLE_NODE_ID, VariablePool
 from core.workflow.nodes.base_node import BaseNode
 from core.workflow.nodes.start.entities import StartNodeData
 from models.workflow import WorkflowNodeExecutionStatus
@@ -17,22 +18,22 @@ class StartNode(BaseNode):
         Run node
         :return:
         """
-        # Get cleaned inputs
-        cleaned_inputs = dict(self.graph_runtime_state.variable_pool.user_inputs)
+        node_inputs = dict(self.graph_runtime_state.variable_pool.user_inputs)
+        system_inputs = self.graph_runtime_state.variable_pool.system_variables
 
-        for var in self.graph_runtime_state.variable_pool.system_variables:
-            cleaned_inputs['sys.' + var.value] = self.graph_runtime_state.variable_pool.system_variables[var]
+        for var in system_inputs:
+            node_inputs[SYSTEM_VARIABLE_NODE_ID + '.' + var] = system_inputs[var]
 
         return NodeRunResult(
             status=WorkflowNodeExecutionStatus.SUCCEEDED,
-            inputs=cleaned_inputs,
-            outputs=cleaned_inputs
+            inputs=node_inputs,
+            outputs=node_inputs
         )
 
     @classmethod
     def _extract_variable_selector_to_variable_mapping(
-        cls, 
-        graph_config: Mapping[str, Any], 
+        cls,
+        graph_config: Mapping[str, Any],
         node_id: str,
         node_data: StartNodeData
     ) -> Mapping[str, Sequence[str]]:

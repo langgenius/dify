@@ -23,6 +23,8 @@ from core.app.entities.task_entities import ChatbotAppBlockingResponse, ChatbotA
 from core.file.message_file_parser import MessageFileParser
 from core.model_runtime.errors.invoke import InvokeAuthorizationError, InvokeError
 from core.ops.ops_trace_manager import TraceQueueManager
+from core.workflow.entities.variable_pool import VariablePool
+from core.workflow.enums import SystemVariableKey
 from extensions.ext_database import db
 from models.account import Account
 from models.model import App, Conversation, EndUser, Message
@@ -67,8 +69,9 @@ class AdvancedChatAppGenerator(MessageBasedAppGenerator):
 
         # get conversation
         conversation = None
-        if args.get('conversation_id'):
-            conversation = self._get_conversation_by_user(app_model, args.get('conversation_id', ''), user)
+        conversation_id = args.get('conversation_id')
+        if conversation_id:
+            conversation = self._get_conversation_by_user(app_model=app_model, conversation_id=conversation_id, user=user)
 
         # parse files
         files = args['files'] if args.get('files') else []
@@ -225,6 +228,62 @@ class AdvancedChatAppGenerator(MessageBasedAppGenerator):
             message_id=message.id
         )
 
+        # Init conversation variables
+        stmt = select(ConversationVariable).where(
+            ConversationVariable.app_id == conversation.app_id, ConversationVariable.conversation_id == conversation.id
+        )
+        with Session(db.engine) as session:
+            conversation_variables = session.scalars(stmt).all()
+            if not conversation_variables:
+                # Create conversation variables if they don't exist.
+                conversation_variables = [
+                    ConversationVariable.from_variable(
+                        app_id=conversation.app_id, conversation_id=conversation.id, variable=variable
+                    )
+                    for variable in workflow.conversation_variables
+                ]
+                session.add_all(conversation_variables)
+            # Convert database entities to variables.
+            conversation_variables = [item.to_variable() for item in conversation_variables]
+
+            session.commit()
+
+            # Increment dialogue count.
+            conversation.dialogue_count += 1
+
+            conversation_id = conversation.id
+            conversation_dialogue_count = conversation.dialogue_count
+            db.session.commit()
+            db.session.refresh(conversation)
+
+        inputs = application_generate_entity.inputs
+        query = application_generate_entity.query
+        files = application_generate_entity.files
+
+        user_id = None
+        if application_generate_entity.invoke_from in [InvokeFrom.WEB_APP, InvokeFrom.SERVICE_API]:
+            end_user = db.session.query(EndUser).filter(EndUser.id == application_generate_entity.user_id).first()
+            if end_user:
+                user_id = end_user.session_id
+        else:
+            user_id = application_generate_entity.user_id
+
+        # Create a variable pool.
+        system_inputs = {
+            SystemVariableKey.QUERY: query,
+            SystemVariableKey.FILES: files,
+            SystemVariableKey.CONVERSATION_ID: conversation_id,
+            SystemVariableKey.USER_ID: user_id,
+            SystemVariableKey.DIALOGUE_COUNT: conversation_dialogue_count,
+        }
+        variable_pool = VariablePool(
+            system_variables=system_inputs,
+            user_inputs=inputs,
+            environment_variables=workflow.environment_variables,
+            conversation_variables=conversation_variables,
+        )
+        contexts.workflow_variable_pool.set(variable_pool)
+
         # new thread
         worker_thread = threading.Thread(target=self._generate_worker, kwargs={
             'flask_app': current_app._get_current_object(), # type: ignore
@@ -296,7 +355,7 @@ class AdvancedChatAppGenerator(MessageBasedAppGenerator):
                 logger.exception("Validation Error when generating")
                 queue_manager.publish_error(e, PublishFrom.APPLICATION_MANAGER)
             except (ValueError, InvokeError) as e:
-                if os.environ.get("DEBUG") and os.environ.get("DEBUG", "false").lower() == 'true':
+                if os.environ.get("DEBUG", "false").lower() == 'true':
                     logger.exception("Error when generating")
                 queue_manager.publish_error(e, PublishFrom.APPLICATION_MANAGER)
             except Exception as e:

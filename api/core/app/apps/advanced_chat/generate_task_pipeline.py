@@ -47,7 +47,7 @@ from core.app.task_pipeline.message_cycle_manage import MessageCycleManage
 from core.app.task_pipeline.workflow_cycle_manage import WorkflowCycleManage
 from core.model_runtime.utils.encoders import jsonable_encoder
 from core.ops.ops_trace_manager import TraceQueueManager
-from core.workflow.enums import SystemVariable
+from core.workflow.enums import SystemVariableKey
 from core.workflow.graph_engine.entities.graph_runtime_state import GraphRuntimeState
 from events.message_event import message_was_created
 from extensions.ext_database import db
@@ -69,7 +69,7 @@ class AdvancedChatAppGenerateTaskPipeline(BasedGenerateTaskPipeline, WorkflowCyc
     _application_generate_entity: AdvancedChatAppGenerateEntity
     _workflow: Workflow
     _user: Union[Account, EndUser]
-    _workflow_system_variables: dict[SystemVariable, Any]
+    _workflow_system_variables: dict[SystemVariableKey, Any]
 
     def __init__(
             self,
@@ -102,10 +102,10 @@ class AdvancedChatAppGenerateTaskPipeline(BasedGenerateTaskPipeline, WorkflowCyc
         self._conversation = conversation
         self._message = message
         self._workflow_system_variables = {
-            SystemVariable.QUERY: message.query,
-            SystemVariable.FILES: application_generate_entity.files,
-            SystemVariable.CONVERSATION_ID: conversation.id,
-            SystemVariable.USER_ID: user_id,
+            SystemVariableKey.QUERY: message.query,
+            SystemVariableKey.FILES: application_generate_entity.files,
+            SystemVariableKey.CONVERSATION_ID: conversation.id,
+            SystemVariableKey.USER_ID: user_id,
         }
 
         self._task_state = WorkflowTaskState()
@@ -312,7 +312,7 @@ class AdvancedChatAppGenerateTaskPipeline(BasedGenerateTaskPipeline, WorkflowCyc
             elif isinstance(event, QueueParallelBranchRunStartedEvent):
                 if not workflow_run:
                     raise Exception('Workflow run not initialized.')
-                
+
                 yield self._workflow_parallel_branch_start_to_stream_response(
                     task_id=self._application_generate_entity.task_id,
                     workflow_run=workflow_run,
@@ -321,7 +321,7 @@ class AdvancedChatAppGenerateTaskPipeline(BasedGenerateTaskPipeline, WorkflowCyc
             elif isinstance(event, QueueParallelBranchRunSucceededEvent | QueueParallelBranchRunFailedEvent):
                 if not workflow_run:
                     raise Exception('Workflow run not initialized.')
-                
+
                 yield self._workflow_parallel_branch_finished_to_stream_response(
                     task_id=self._application_generate_entity.task_id,
                     workflow_run=workflow_run,

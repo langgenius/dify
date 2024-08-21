@@ -41,7 +41,9 @@ from core.app.entities.task_entities import (
 from core.app.task_pipeline.based_generate_task_pipeline import BasedGenerateTaskPipeline
 from core.app.task_pipeline.workflow_cycle_manage import WorkflowCycleManage
 from core.ops.ops_trace_manager import TraceQueueManager
-from core.workflow.enums import SystemVariable
+from core.workflow.entities.node_entities import NodeType
+from core.workflow.enums import SystemVariableKey
+from core.workflow.nodes.end.end_node import EndNode
 from extensions.ext_database import db
 from models.account import Account
 from models.model import EndUser
@@ -64,7 +66,7 @@ class WorkflowAppGenerateTaskPipeline(BasedGenerateTaskPipeline, WorkflowCycleMa
     _user: Union[Account, EndUser]
     _task_state: WorkflowTaskState
     _application_generate_entity: WorkflowAppGenerateEntity
-    _workflow_system_variables: dict[SystemVariable, Any]
+    _workflow_system_variables: dict[SystemVariableKey, Any]
 
     def __init__(self, application_generate_entity: WorkflowAppGenerateEntity,
                  workflow: Workflow,
@@ -88,8 +90,8 @@ class WorkflowAppGenerateTaskPipeline(BasedGenerateTaskPipeline, WorkflowCycleMa
 
         self._workflow = workflow
         self._workflow_system_variables = {
-            SystemVariable.FILES: application_generate_entity.files,
-            SystemVariable.USER_ID: user_id
+            SystemVariableKey.FILES: application_generate_entity.files,
+            SystemVariableKey.USER_ID: user_id
         }
 
         self._task_state = WorkflowTaskState()

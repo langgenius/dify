@@ -1,0 +1,23 @@
+identity:
+  name: crossref_query_doi
+  author: Sakura4036
+  label:
+    en_US: CrossRef Query DOI
+    zh_Hans: CrossRef DOI 查询
+    pt_BR: CrossRef Query DOI
+description:
+  human:
+    en_US: A tool for searching literature information using CrossRef by DOI.
+    zh_Hans: 一个使用CrossRef通过DOI获取文献信息的工具。
+    pt_BR: A tool for searching literature information using CrossRef by DOI.
+  llm: A tool for searching literature information using CrossRef by DOI.
+parameters:
+  - name: doi
+    type: string
+    required: true
+    label:
+      en_US: DOI
+      zh_Hans: DOI
+      pt_BR: DOI
+    llm_description: DOI for searching in CrossRef
+    form: llm

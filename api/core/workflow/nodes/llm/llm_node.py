@@ -25,7 +25,7 @@ from core.prompt.entities.advanced_prompt_entities import CompletionModelPromptT
 from core.prompt.utils.prompt_message_util import PromptMessageUtil
 from core.workflow.entities.node_entities import NodeRunMetadataKey, NodeRunResult, NodeType
 from core.workflow.entities.variable_pool import VariablePool
-from core.workflow.enums import SystemVariable
+from core.workflow.enums import SystemVariableKey
 from core.workflow.graph_engine.entities.event import InNodeEvent
 from core.workflow.nodes.base_node import BaseNode
 from core.workflow.nodes.event import RunCompletedEvent, RunEvent, RunRetrieverResourceEvent, RunStreamChunkEvent
@@ -110,7 +110,7 @@ class LLMNode(BaseNode):
             # fetch prompt messages
             prompt_messages, stop = self._fetch_prompt_messages(
                 node_data=node_data,
-                query=variable_pool.get_any(['sys', SystemVariable.QUERY.value])
+                query=variable_pool.get_any(['sys', SystemVariableKey.QUERY.value])
                 if node_data.memory else None,
                 query_prompt_template=node_data.memory.query_prompt_template if node_data.memory else None,
                 inputs=inputs,
@@ -370,7 +370,7 @@ class LLMNode(BaseNode):
 
                 inputs[variable_selector.variable] = variable_value
 
-        return inputs  # type: ignore
+        return inputs
 
     def _fetch_files(self, node_data: LLMNodeData, variable_pool: VariablePool) -> list["FileVar"]:
         """
@@ -382,7 +382,7 @@ class LLMNode(BaseNode):
         if not node_data.vision.enabled:
             return []
 
-        files = variable_pool.get_any(['sys', SystemVariable.FILES.value])
+        files = variable_pool.get_any(['sys', SystemVariableKey.FILES.value])
         if not files:
             return []
 
@@ -543,7 +543,7 @@ class LLMNode(BaseNode):
             return None
 
         # get conversation id
-        conversation_id = variable_pool.get_any(['sys', SystemVariable.CONVERSATION_ID.value])
+        conversation_id = variable_pool.get_any(['sys', SystemVariableKey.CONVERSATION_ID.value])
         if conversation_id is None:
             return None
 
@@ -722,10 +722,10 @@ class LLMNode(BaseNode):
             variable_mapping['#context#'] = node_data.context.variable_selector
 
         if node_data.vision.enabled:
-            variable_mapping['#files#'] = ['sys', SystemVariable.FILES.value]
+            variable_mapping['#files#'] = ['sys', SystemVariableKey.FILES.value]
 
         if node_data.memory:
-            variable_mapping['#sys.query#'] = ['sys', SystemVariable.QUERY.value]
+            variable_mapping['#sys.query#'] = ['sys', SystemVariableKey.QUERY.value]
 
         if node_data.prompt_config:
             enable_jinja = False

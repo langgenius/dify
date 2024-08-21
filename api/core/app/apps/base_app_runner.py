@@ -256,6 +256,7 @@ class AppRunner:
         :param invoke_result: invoke result
         :param queue_manager: application queue manager
         :param stream: stream
+        :param agent: agent
         :return:
         """
         if not stream:
@@ -278,6 +279,7 @@ class AppRunner:
         Handle invoke result direct
         :param invoke_result: invoke result
         :param queue_manager: application queue manager
+        :param agent: agent
         :return:
         """
         queue_manager.publish(
@@ -293,6 +295,7 @@ class AppRunner:
         Handle invoke result
         :param invoke_result: invoke result
         :param queue_manager: application queue manager
+        :param agent: agent
         :return:
         """
         model = None

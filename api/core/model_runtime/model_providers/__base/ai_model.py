@@ -151,9 +151,9 @@ class AIModel(ABC):
             os.path.join(provider_model_type_path, model_schema_yaml)
             for model_schema_yaml in os.listdir(provider_model_type_path)
             if not model_schema_yaml.startswith('__')
-               and not model_schema_yaml.startswith('_')
-               and os.path.isfile(os.path.join(provider_model_type_path, model_schema_yaml))
-               and model_schema_yaml.endswith('.yaml')
+            and not model_schema_yaml.startswith('_')
+            and os.path.isfile(os.path.join(provider_model_type_path, model_schema_yaml))
+            and model_schema_yaml.endswith('.yaml')
         ]
 
         # get _position.yaml file path

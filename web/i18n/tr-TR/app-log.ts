@@ -4,7 +4,8 @@ const translation = {
   dateTimeFormat: 'GG/AA/YYYY ss:dd ÖÖ/ÖS',
   table: {
     header: {
-      time: 'Zaman',
+      updatedTime: 'Güncellenme zamanı',
+      time: 'Oluşturulma zamanı',
       endUser: 'Son Kullanıcı',
       input: 'Girdi',
       output: 'Çıktı',
@@ -69,6 +70,9 @@ const translation = {
       annotated: 'Açıklamalı İyileştirmeler ({{count}} öğe)',
       not_annotated: 'Açıklanmamış',
     },
+    sortBy: 'Sıralama ölçütü:',
+    descending: 'azalan',
+    ascending: 'artan',
   },
   workflowTitle: 'Workflow Günlükleri',
   workflowSubtitle: 'Günlük, Automate\'in çalışmasını kaydetmiştir.',
