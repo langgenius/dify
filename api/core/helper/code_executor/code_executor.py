@@ -21,7 +21,7 @@ logger = logging.getLogger(__name__)
 CODE_EXECUTION_ENDPOINT = dify_config.CODE_EXECUTION_ENDPOINT
 CODE_EXECUTION_API_KEY = dify_config.CODE_EXECUTION_API_KEY
 
-CODE_EXECUTION_TIMEOUT = Timeout(connect=10, read=60)
+CODE_EXECUTION_TIMEOUT = Timeout(connect=10, write=10, read=60, pool=None)
 
 class CodeExecutionException(Exception):
     pass
