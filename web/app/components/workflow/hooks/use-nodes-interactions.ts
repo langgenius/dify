@@ -320,16 +320,6 @@ export const useNodesInteractions = () => {
     if (sourceNode?.type === CUSTOM_NOTE_NODE || targetNode?.type === CUSTOM_NOTE_NODE)
       return
 
-    const needDeleteEdges = edges.filter((edge) => {
-      if (
-        (edge.source === source && edge.sourceHandle === sourceHandle)
-        || (edge.target === target && edge.targetHandle === targetHandle && targetNode?.data.type !== BlockEnum.VariableAssigner && targetNode?.data.type !== BlockEnum.VariableAggregator)
-      )
-        return true
-
-      return false
-    })
-    const needDeleteEdgesIds = needDeleteEdges.map(edge => edge.id)
     const newEdge = {
       id: `${source}-${sourceHandle}-${target}-${targetHandle}`,
       type: 'custom',
@@ -347,7 +337,6 @@ export const useNodesInteractions = () => {
     }
     const nodesConnectedSourceOrTargetHandleIdsMap = getNodesConnectedSourceOrTargetHandleIdsMap(
       [
-        ...needDeleteEdges.map(edge => ({ type: 'remove', edge })),
         { type: 'add', edge: newEdge },
       ],
       nodes,
@@ -364,11 +353,7 @@ export const useNodesInteractions = () => {
     })
     setNodes(newNodes)
     const newEdges = produce(edges, (draft) => {
-      const filtered = draft.filter(edge => !needDeleteEdgesIds.includes(edge.id))
-
-      filtered.push(newEdge)
-
-      return filtered
+      draft.push(newEdge)
     })
     setEdges(newEdges)
 

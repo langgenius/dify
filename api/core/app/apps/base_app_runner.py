@@ -1,6 +1,6 @@
 import time
-from collections.abc import Generator
-from typing import TYPE_CHECKING, Optional, Union
+from collections.abc import Generator, Mapping
+from typing import TYPE_CHECKING, Any, Optional, Union
 
 from core.app.app_config.entities import ExternalDataVariableEntity, PromptTemplateEntity
 from core.app.apps.base_app_queue_manager import AppQueueManager, PublishFrom
@@ -347,7 +347,7 @@ class AppRunner:
             self, app_id: str,
             tenant_id: str,
             app_generate_entity: AppGenerateEntity,
-            inputs: dict,
+            inputs: Mapping[str, Any],
             query: str,
             message_id: str,
     ) -> tuple[bool, dict, str]:
