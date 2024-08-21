@@ -8,7 +8,7 @@ from models.provider import Provider, ProviderType
 @message_was_created.connect
 def handle(sender, **kwargs):
     message = sender
-    application_generate_entity = kwargs.get('application_generate_entity')
+    application_generate_entity = kwargs.get("application_generate_entity")
 
     if not isinstance(application_generate_entity, ChatAppGenerateEntity | AgentChatAppGenerateEntity):
         return
@@ -39,7 +39,7 @@ def handle(sender, **kwargs):
         elif quota_unit == QuotaUnit.CREDITS:
             used_quota = 1
 
-            if 'gpt-4' in model_config.model:
+            if "gpt-4" in model_config.model:
                 used_quota = 20
         else:
             used_quota = 1
@@ -50,6 +50,6 @@ def handle(sender, **kwargs):
             Provider.provider_name == model_config.provider,
             Provider.provider_type == ProviderType.SYSTEM.value,
             Provider.quota_type == system_configuration.current_quota_type.value,
-            Provider.quota_limit > Provider.quota_used
-        ).update({'quota_used': Provider.quota_used + used_quota})
+            Provider.quota_limit > Provider.quota_used,
+        ).update({"quota_used": Provider.quota_used + used_quota})
         db.session.commit()

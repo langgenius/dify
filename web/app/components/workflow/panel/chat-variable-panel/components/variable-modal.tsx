@@ -237,8 +237,14 @@ const ChatVariableModal = ({
       setType(chatVar.value_type)
       setValue(chatVar.value)
       setDes(chatVar.description)
-      setEditInJSON(false)
       setObjectValue(getObjectValue())
+      if (chatVar.value_type === ChatVarType.ArrayObject) {
+        setEditorContent(JSON.stringify(chatVar.value))
+        setEditInJSON(true)
+      }
+      else {
+        setEditInJSON(false)
+      }
     }
   }, [chatVar, getObjectValue])
 

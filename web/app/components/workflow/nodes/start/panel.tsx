@@ -84,17 +84,30 @@ const Panel: FC<NodePanelProps<StartNodeType>> = ({
               />
               {
                 isChatMode && (
-                  <VarItem
-                    readonly
-                    payload={{
-                      variable: 'sys.conversation_id',
-                    } as any}
-                    rightContent={
-                      <div className='text-xs font-normal text-gray-500'>
-                        String
-                      </div>
-                    }
-                  />
+                  <>
+                    <VarItem
+                      readonly
+                      payload={{
+                        variable: 'sys.dialogue_count',
+                      } as any}
+                      rightContent={
+                        <div className='text-xs font-normal text-gray-500'>
+                          Number
+                        </div>
+                      }
+                    />
+                    <VarItem
+                      readonly
+                      payload={{
+                        variable: 'sys.conversation_id',
+                      } as any}
+                      rightContent={
+                        <div className='text-xs font-normal text-gray-500'>
+                          String
+                        </div>
+                      }
+                    />
+                  </>
                 )
               }
               <VarItem

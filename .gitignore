@@ -178,3 +178,4 @@ pyrightconfig.json
 api/.vscode
 
 .idea/
+.vscode

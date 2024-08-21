@@ -8,6 +8,8 @@ import {
 } from '@remixicon/react'
 import { useRouter } from 'next/navigation'
 import { useContext, useContextSelector } from 'use-context-selector'
+import AppIconPicker from '../../base/app-icon-picker'
+import type { AppIconSelection } from '../../base/app-icon-picker'
 import s from './style.module.css'
 import cn from '@/utils/classnames'
 import AppsContext, { useAppContext } from '@/context/app-context'
@@ -20,7 +22,6 @@ import Button from '@/app/components/base/button'
 import Input from '@/app/components/base/input'
 import Textarea from '@/app/components/base/textarea'
 import AppIcon from '@/app/components/base/app-icon'
-import EmojiPicker from '@/app/components/base/emoji-picker'
 import AppsFull from '@/app/components/billing/apps-full-in-dialog'
 import { AiText, ChatBot, CuteRobote } from '@/app/components/base/icons/src/vender/solid/communication'
 import { Route } from '@/app/components/base/icons/src/vender/solid/mapsAndTravel'
@@ -42,8 +43,8 @@ const CreateAppModal = ({ show, onSuccess, onClose }: CreateAppDialogProps) => {
 
   const [appMode, setAppMode] = useState<AppMode>('chat')
   const [showChatBotType, setShowChatBotType] = useState<boolean>(true)
-  const [emoji, setEmoji] = useState({ icon: '🤖', icon_background: '#FFEAD5' })
-  const [showEmojiPicker, setShowEmojiPicker] = useState(false)
+  const [appIcon, setAppIcon] = useState<AppIconSelection>({ type: 'emoji', icon: '🤖', background: '#FFEAD5' })
+  const [showAppIconPicker, setShowAppIconPicker] = useState(false)
   const [name, setName] = useState('')
   const [description, setDescription] = useState('')
 
@@ -68,8 +69,9 @@ const CreateAppModal = ({ show, onSuccess, onClose }: CreateAppDialogProps) => {
       const app = await createApp({
         name,
         description,
-        icon: emoji.icon,
-        icon_background: emoji.icon_background,
+        icon_type: appIcon.type,
+        icon: appIcon.type === 'emoji' ? appIcon.icon : appIcon.fileId,
+        icon_background: appIcon.type === 'emoji' ? appIcon.background : undefined,
         mode: appMode,
       })
       notify({ type: 'success', message: t('app.newApp.appCreated') })
@@ -83,7 +85,7 @@ const CreateAppModal = ({ show, onSuccess, onClose }: CreateAppDialogProps) => {
       notify({ type: 'error', message: t('app.newApp.appCreateFailed') })
     }
     isCreatingRef.current = false
-  }, [name, notify, t, appMode, emoji.icon, emoji.icon_background, description, onSuccess, onClose, mutateApps, push, isCurrentWorkspaceEditor])
+  }, [name, notify, t, appMode, appIcon, description, onSuccess, onClose, mutateApps, push, isCurrentWorkspaceEditor])
 
   return (
     <Modal
@@ -271,7 +273,14 @@ const CreateAppModal = ({ show, onSuccess, onClose }: CreateAppDialogProps) => {
       <div className='pt-2 px-8'>
         <div className='py-2 text-sm font-medium leading-[20px] text-gray-900'>{t('app.newApp.captionName')}</div>
         <div className='flex items-center justify-between space-x-2'>
-          <AppIcon size='large' onClick={() => { setShowEmojiPicker(true) }} className='cursor-pointer' icon={emoji.icon} background={emoji.icon_background} />
+          <AppIcon
+            iconType={appIcon.type}
+            icon={appIcon.type === 'emoji' ? appIcon.icon : appIcon.fileId}
+            background={appIcon.type === 'emoji' ? appIcon.background : undefined}
+            imageUrl={appIcon.type === 'image' ? appIcon.url : undefined}
+            size='large' className='cursor-pointer'
+            onClick={() => { setShowAppIconPicker(true) }}
+          />
           <Input
             value={name}
             onChange={e => setName(e.target.value)}
@@ -279,14 +288,13 @@ const CreateAppModal = ({ show, onSuccess, onClose }: CreateAppDialogProps) => {
             className='grow h-10'
           />
         </div>
-        {showEmojiPicker && <EmojiPicker
-          onSelect={(icon, icon_background) => {
-            setEmoji({ icon, icon_background })
-            setShowEmojiPicker(false)
+        {showAppIconPicker && <AppIconPicker
+          onSelect={(payload) => {
+            setAppIcon(payload)
+            setShowAppIconPicker(false)
           }}
           onClose={() => {
-            setEmoji({ icon: '🤖', icon_background: '#FFEAD5' })
-            setShowEmojiPicker(false)
+            setShowAppIconPicker(false)
           }}
         />}
       </div>

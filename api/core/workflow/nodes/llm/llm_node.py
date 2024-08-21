@@ -1,14 +1,13 @@
 import json
 from collections.abc import Generator
 from copy import deepcopy
-from typing import Optional, cast
+from typing import TYPE_CHECKING, Optional, cast
 
 from core.app.entities.app_invoke_entities import ModelConfigWithCredentialsEntity
 from core.app.entities.queue_entities import QueueRetrieverResourcesEvent
 from core.entities.model_entities import ModelStatus
 from core.entities.provider_entities import QuotaUnit
 from core.errors.error import ModelCurrentlyNotSupportError, ProviderTokenNotInitError, QuotaExceededError
-from core.file.file_obj import FileVar
 from core.memory.token_buffer_memory import TokenBufferMemory
 from core.model_manager import ModelInstance, ModelManager
 from core.model_runtime.entities.llm_entities import LLMUsage
@@ -25,7 +24,7 @@ from core.prompt.entities.advanced_prompt_entities import CompletionModelPromptT
 from core.prompt.utils.prompt_message_util import PromptMessageUtil
 from core.workflow.entities.node_entities import NodeRunMetadataKey, NodeRunResult, NodeType
 from core.workflow.entities.variable_pool import VariablePool
-from core.workflow.enums import SystemVariable
+from core.workflow.enums import SystemVariableKey
 from core.workflow.nodes.base_node import BaseNode
 from core.workflow.nodes.llm.entities import (
     LLMNodeChatModelMessage,
@@ -38,6 +37,10 @@ from extensions.ext_database import db
 from models.model import Conversation
 from models.provider import Provider, ProviderType
 from models.workflow import WorkflowNodeExecutionStatus
+
+if TYPE_CHECKING:
+    from core.file.file_obj import FileVar
+
 
 
 class LLMNode(BaseNode):
@@ -71,7 +74,7 @@ class LLMNode(BaseNode):
             node_inputs = {}
 
             # fetch files
-            files: list[FileVar] = self._fetch_files(node_data, variable_pool)
+            files = self._fetch_files(node_data, variable_pool)
 
             if files:
                 node_inputs['#files#'] = [file.to_dict() for file in files]
@@ -91,7 +94,7 @@ class LLMNode(BaseNode):
             # fetch prompt messages
             prompt_messages, stop = self._fetch_prompt_messages(
                 node_data=node_data,
-                query=variable_pool.get_any(['sys', SystemVariable.QUERY.value])
+                query=variable_pool.get_any(['sys', SystemVariableKey.QUERY.value])
                 if node_data.memory else None,
                 query_prompt_template=node_data.memory.query_prompt_template if node_data.memory else None,
                 inputs=inputs,
@@ -322,7 +325,7 @@ class LLMNode(BaseNode):
 
         return inputs
 
-    def _fetch_files(self, node_data: LLMNodeData, variable_pool: VariablePool) -> list[FileVar]:
+    def _fetch_files(self, node_data: LLMNodeData, variable_pool: VariablePool) -> list["FileVar"]:
         """
         Fetch files
         :param node_data: node data
@@ -332,7 +335,7 @@ class LLMNode(BaseNode):
         if not node_data.vision.enabled:
             return []
 
-        files = variable_pool.get_any(['sys', SystemVariable.FILES.value])
+        files = variable_pool.get_any(['sys', SystemVariableKey.FILES.value])
         if not files:
             return []
 
@@ -497,7 +500,7 @@ class LLMNode(BaseNode):
             return None
 
         # get conversation id
-        conversation_id = variable_pool.get_any(['sys', SystemVariable.CONVERSATION_ID.value])
+        conversation_id = variable_pool.get_any(['sys', SystemVariableKey.CONVERSATION_ID.value])
         if conversation_id is None:
             return None
 
@@ -521,7 +524,7 @@ class LLMNode(BaseNode):
                                query: Optional[str],
                                query_prompt_template: Optional[str],
                                inputs: dict[str, str],
-                               files: list[FileVar],
+                               files: list["FileVar"],
                                context: Optional[str],
                                memory: Optional[TokenBufferMemory],
                                model_config: ModelConfigWithCredentialsEntity) \
@@ -669,10 +672,10 @@ class LLMNode(BaseNode):
             variable_mapping['#context#'] = node_data.context.variable_selector
 
         if node_data.vision.enabled:
-            variable_mapping['#files#'] = ['sys', SystemVariable.FILES.value]
+            variable_mapping['#files#'] = ['sys', SystemVariableKey.FILES.value]
 
         if node_data.memory:
-            variable_mapping['#sys.query#'] = ['sys', SystemVariable.QUERY.value]
+            variable_mapping['#sys.query#'] = ['sys', SystemVariableKey.QUERY.value]
 
         if node_data.prompt_config:
             enable_jinja = False

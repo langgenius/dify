@@ -21,8 +21,8 @@ def batch_import_annotations_task(job_id: str, content_list: list[dict], app_id:
     Add annotation to index.
     :param job_id: job_id
     :param content_list: content list
-    :param tenant_id: tenant id
     :param app_id: app id
+    :param tenant_id: tenant id
     :param user_id: user_id
 
     """

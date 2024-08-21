@@ -2,24 +2,24 @@ identity:
   name: gitlab_commits
   author: Leo.Wang
   label:
-    en_US: Gitlab Commits
-    zh_Hans: Gitlab代码提交内容
+    en_US: GitLab Commits
+    zh_Hans: GitLab 提交内容查询
 description:
   human:
-    en_US: A tool for query gitlab commits. Input should be a exists username.
-    zh_Hans: 一个用于查询gitlab代码提交记录的的工具，输入的内容应该是一个已存在的用户名或者项目名。
-  llm: A tool for query gitlab commits. Input should be a exists username or project.
+    en_US: A tool for query GitLab commits, Input should be a exists username or projec.
+    zh_Hans: 一个用于查询 GitLab 代码提交内容的工具，输入的内容应该是一个已存在的用户名或者项目名。
+  llm: A tool for query GitLab commits, Input should be a exists username or project.
 parameters:
-  - name: employee
+  - name: username
     type: string
     required: false
     label:
-      en_US: employee
+      en_US: username
       zh_Hans: 员工用户名
     human_description:
-      en_US: employee
+      en_US: username
       zh_Hans: 员工用户名
-    llm_description: employee for gitlab
+    llm_description: User name for GitLab
     form: llm
   - name: project
     type: string
@@ -30,7 +30,7 @@ parameters:
     human_description:
       en_US: project
       zh_Hans: 项目名
-    llm_description: project for gitlab
+    llm_description: project for GitLab
     form: llm
   - name: start_time
     type: string
@@ -41,7 +41,7 @@ parameters:
     human_description:
       en_US: start_time
       zh_Hans: 开始时间
-    llm_description: start_time for gitlab
+    llm_description: Start time for GitLab
     form: llm
   - name: end_time
     type: string
@@ -52,5 +52,26 @@ parameters:
     human_description:
       en_US: end_time
       zh_Hans: 结束时间
-    llm_description: end_time for gitlab
+    llm_description: End time for GitLab
+    form: llm
+  - name: change_type
+    type: select
+    required: false
+    options:
+      - value: all
+        label:
+          en_US: all
+          zh_Hans: 所有
+      - value: new
+        label:
+          en_US: new
+          zh_Hans: 新增
+    default: all
+    label:
+      en_US: change_type
+      zh_Hans: 变更类型
+    human_description:
+      en_US: change_type
+      zh_Hans: 变更类型
+    llm_description: Content change type for GitLab
     form: llm

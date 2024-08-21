@@ -302,6 +302,7 @@ class WorkflowService:
             app_model=app_model,
             account=account,
             name=args.get('name'),
+            icon_type=args.get('icon_type'),
             icon=args.get('icon'),
             icon_background=args.get('icon_background'),
         )

@@ -123,7 +123,7 @@ const NodePanel: FC<Props> = ({
                 <div
                   className='flex items-center h-[34px] justify-between px-3 bg-background-section-burn border-[0.5px] border-components-panel-border rounded-lg cursor-pointer'
                   onClick={handleOnShowIterationDetail}>
-                  <div className='system-sm-medium text-text-secondary'>{t('workflow.nodes.iteration.iteration', { count: nodeInfo.metadata?.iterator_length })}</div>
+                  <div className='system-sm-medium text-text-secondary'>{t('workflow.nodes.iteration.iteration', { count: nodeInfo.metadata?.iterator_length || nodeInfo.details?.length })}</div>
                   {justShowIterationNavArrow
                     ? (
                       <RiArrowRightSLine className='w-3.5 h-3.5 text-text-tertiary' />

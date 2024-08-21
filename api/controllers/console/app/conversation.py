@@ -33,7 +33,7 @@ class CompletionConversationApi(Resource):
     @get_app_model(mode=AppMode.COMPLETION)
     @marshal_with(conversation_pagination_fields)
     def get(self, app_model):
-        if not current_user.is_admin_or_owner:
+        if not current_user.is_editor:
             raise Forbidden()
         parser = reqparse.RequestParser()
         parser.add_argument('keyword', type=str, location='args')
@@ -108,7 +108,7 @@ class CompletionConversationDetailApi(Resource):
     @get_app_model(mode=AppMode.COMPLETION)
     @marshal_with(conversation_message_detail_fields)
     def get(self, app_model, conversation_id):
-        if not current_user.is_admin_or_owner:
+        if not current_user.is_editor:
             raise Forbidden()
         conversation_id = str(conversation_id)
 
@@ -119,7 +119,7 @@ class CompletionConversationDetailApi(Resource):
     @account_initialization_required
     @get_app_model(mode=[AppMode.CHAT, AppMode.AGENT_CHAT, AppMode.ADVANCED_CHAT])
     def delete(self, app_model, conversation_id):
-        if not current_user.is_admin_or_owner:
+        if not current_user.is_editor:
             raise Forbidden()
         conversation_id = str(conversation_id)
 
@@ -154,6 +154,8 @@ class ChatConversationApi(Resource):
         parser.add_argument('message_count_gte', type=int_range(1, 99999), required=False, location='args')
         parser.add_argument('page', type=int_range(1, 99999), required=False, default=1, location='args')
         parser.add_argument('limit', type=int_range(1, 100), required=False, default=20, location='args')
+        parser.add_argument('sort_by', type=str, choices=['created_at', '-created_at', 'updated_at', '-updated_at'],
+                            required=False, default='-updated_at', location='args')
         args = parser.parse_args()
 
         subquery = (
@@ -225,7 +227,17 @@ class ChatConversationApi(Resource):
         if app_model.mode == AppMode.ADVANCED_CHAT.value:
             query = query.where(Conversation.invoke_from != InvokeFrom.DEBUGGER.value)
 
-        query = query.order_by(Conversation.created_at.desc())
+        match args['sort_by']:
+            case 'created_at':
+                query = query.order_by(Conversation.created_at.asc())
+            case '-created_at':
+                query = query.order_by(Conversation.created_at.desc())
+            case 'updated_at':
+                query = query.order_by(Conversation.updated_at.asc())
+            case '-updated_at':
+                query = query.order_by(Conversation.updated_at.desc())
+            case _:
+                query = query.order_by(Conversation.created_at.desc())
 
         conversations = db.paginate(
             query,
@@ -256,7 +268,7 @@ class ChatConversationDetailApi(Resource):
     @get_app_model(mode=[AppMode.CHAT, AppMode.AGENT_CHAT, AppMode.ADVANCED_CHAT])
     @account_initialization_required
     def delete(self, app_model, conversation_id):
-        if not current_user.is_admin_or_owner:
+        if not current_user.is_editor:
             raise Forbidden()
         conversation_id = str(conversation_id)
 

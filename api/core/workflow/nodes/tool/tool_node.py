@@ -2,7 +2,7 @@ from collections.abc import Mapping, Sequence
 from os import path
 from typing import Any, cast
 
-from core.app.segments import ArrayAnyVariable, parser
+from core.app.segments import ArrayAnySegment, ArrayAnyVariable, parser
 from core.callback_handler.workflow_tool_callback_handler import DifyWorkflowCallbackHandler
 from core.file.file_obj import FileTransferMethod, FileType, FileVar
 from core.tools.entities.tool_entities import ToolInvokeMessage, ToolParameter
@@ -11,7 +11,7 @@ from core.tools.tool_manager import ToolManager
 from core.tools.utils.message_transformer import ToolFileMessageTransformer
 from core.workflow.entities.node_entities import NodeRunMetadataKey, NodeRunResult, NodeType
 from core.workflow.entities.variable_pool import VariablePool
-from core.workflow.enums import SystemVariable
+from core.workflow.enums import SystemVariableKey
 from core.workflow.nodes.base_node import BaseNode
 from core.workflow.nodes.tool.entities import ToolNodeData
 from core.workflow.utils.variable_template_parser import VariableTemplateParser
@@ -141,8 +141,8 @@ class ToolNode(BaseNode):
         return result
 
     def _fetch_files(self, variable_pool: VariablePool) -> list[FileVar]:
-        variable = variable_pool.get(['sys', SystemVariable.FILES.value])
-        assert isinstance(variable, ArrayAnyVariable)
+        variable = variable_pool.get(['sys', SystemVariableKey.FILES.value])
+        assert isinstance(variable, ArrayAnyVariable | ArrayAnySegment)
         return list(variable.value) if variable else []
 
     def _convert_tool_messages(self, messages: list[ToolInvokeMessage]):
