@@ -6,7 +6,6 @@ from sqlalchemy.orm import Session
 from core.app.segments import SegmentType, Variable, factory
 from core.workflow.entities.base_node_data_entities import BaseNodeData
 from core.workflow.entities.node_entities import NodeRunResult, NodeType
-from core.workflow.entities.variable_pool import VariablePool
 from core.workflow.nodes.base_node import BaseNode
 from extensions.ext_database import db
 from models import ConversationVariable, WorkflowNodeExecutionStatus
