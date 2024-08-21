@@ -4,7 +4,6 @@ import React from 'react'
 import { useTranslation } from 'react-i18next'
 import { RiDeleteBinLine } from '@remixicon/react'
 import { Edit02 } from '../../base/icons/src/vender/line/general'
-import s from './style.module.css'
 import type { AnnotationItem } from './type'
 import RemoveAnnotationConfirmModal from './remove-annotation-confirm-modal'
 import cn from '@/utils/classnames'
@@ -27,21 +26,21 @@ const List: FC<Props> = ({
   const [showConfirmDelete, setShowConfirmDelete] = React.useState(false)
   return (
     <div className='overflow-x-auto'>
-      <table className={cn(s.logTable, 'w-full min-w-[440px] border-collapse border-0 text-sm')} >
-        <thead className="h-8 leading-8 border-b border-gray-200 text-gray-500 font-bold">
-          <tr className='uppercase'>
-            <td className='whitespace-nowrap'>{t('appAnnotation.table.header.question')}</td>
-            <td className='whitespace-nowrap'>{t('appAnnotation.table.header.answer')}</td>
-            <td className='whitespace-nowrap'>{t('appAnnotation.table.header.createdAt')}</td>
-            <td className='whitespace-nowrap'>{t('appAnnotation.table.header.hits')}</td>
-            <td className='whitespace-nowrap w-[96px]'>{t('appAnnotation.table.header.actions')}</td>
+      <table className={cn('mt-2 w-full min-w-[440px] border-collapse border-0')}>
+        <thead className='system-xs-medium-uppercase text-text-tertiary'>
+          <tr>
+            <td className='pl-2 pr-1 w-5 rounded-l-lg bg-background-section-burn whitespace-nowrap'>{t('appAnnotation.table.header.question')}</td>
+            <td className='pl-3 py-1.5 bg-background-section-burn whitespace-nowrap'>{t('appAnnotation.table.header.answer')}</td>
+            <td className='pl-3 py-1.5 bg-background-section-burn whitespace-nowrap'>{t('appAnnotation.table.header.createdAt')}</td>
+            <td className='pl-3 py-1.5 bg-background-section-burn whitespace-nowrap'>{t('appAnnotation.table.header.hits')}</td>
+            <td className='pl-3 py-1.5 rounded-r-lg bg-background-section-burn whitespace-nowrap w-[96px]'>{t('appAnnotation.table.header.actions')}</td>
           </tr>
         </thead>
-        <tbody className="text-gray-500">
+        <tbody className="text-text-secondary system-sm-regular">
           {list.map(item => (
             <tr
               key={item.id}
-              className={'border-b border-gray-200 h-8 hover:bg-gray-50 cursor-pointer'}
+              className='border-b border-divider-subtle hover:bg-background-default-hover cursor-pointer'
               onClick={
                 () => {
                   onView(item)
@@ -49,16 +48,16 @@ const List: FC<Props> = ({
               }
             >
               <td
-                className='whitespace-nowrap overflow-hidden text-ellipsis max-w-[250px]'
+                className='p-3 pr-2 whitespace-nowrap overflow-hidden text-ellipsis max-w-[250px]'
                 title={item.question}
               >{item.question}</td>
               <td
-                className='whitespace-nowrap overflow-hidden text-ellipsis max-w-[250px]'
+                className='p-3 pr-2 whitespace-nowrap overflow-hidden text-ellipsis max-w-[250px]'
                 title={item.answer}
               >{item.answer}</td>
-              <td>{formatTime(item.created_at, t('appLog.dateTimeFormat') as string)}</td>
-              <td>{item.hit_count}</td>
-              <td className='w-[96px]' onClick={e => e.stopPropagation()}>
+              <td className='p-3 pr-2'>{formatTime(item.created_at, t('appLog.dateTimeFormat') as string)}</td>
+              <td className='p-3 pr-2'>{item.hit_count}</td>
+              <td className='w-[96px] p-3 pr-2' onClick={e => e.stopPropagation()}>
                 {/* Actions */}
                 <div className='flex space-x-2 text-gray-500'>
                   <div

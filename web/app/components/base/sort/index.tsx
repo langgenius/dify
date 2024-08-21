@@ -47,7 +47,7 @@ const Sort: FC<Props> = ({
             className='block'
           >
             <div className={cn(
-              'flex items-center px-2 py-1.5 rounded-l-lg bg-components-input-bg-normal cursor-pointer hover:bg-state-base-hover-alt',
+              'flex items-center px-2 py-1 rounded-l-lg bg-components-input-bg-normal cursor-pointer hover:bg-state-base-hover-alt',
               open && '!bg-state-base-hover-alt hover:bg-state-base-hover-alt',
             )}>
               <div className='p-1 flex items-center gap-0.5'>
@@ -80,7 +80,7 @@ const Sort: FC<Props> = ({
           </PortalToFollowElemContent>
         </div>
       </PortalToFollowElem>
-      <div className='ml-px p-2.5 rounded-r-lg bg-components-button-tertiary-bg hover:bg-components-button-tertiary-bg-hover cursor-pointer' onClick={() => onSelect(`${order ? '' : '-'}${value}`)}>
+      <div className='ml-px p-2 rounded-r-lg bg-components-button-tertiary-bg hover:bg-components-button-tertiary-bg-hover cursor-pointer' onClick={() => onSelect(`${order ? '' : '-'}${value}`)}>
         {!order && <RiSortAsc className='w-4 h-4 text-components-button-tertiary-text' />}
         {order && <RiSortDesc className='w-4 h-4 text-components-button-tertiary-text' />}
       </div>

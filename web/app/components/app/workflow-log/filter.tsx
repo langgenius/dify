@@ -14,21 +14,19 @@ type IFilterProps = {
 const Filter: FC<IFilterProps> = ({ queryParams, setQueryParams }: IFilterProps) => {
   const { t } = useTranslation()
   return (
-    <div className='flex items-center gap-2 mb-2'>
-      <div className="relative rounded-md">
-        <Chip
-          value={queryParams.status || 'all'}
-          onSelect={(item) => {
-            setQueryParams({ ...queryParams, status: item.value as string })
-          }}
-          onClear={() => setQueryParams({ ...queryParams, status: 'all' })}
-          items={[{ value: 'all', name: 'All' },
-            { value: 'succeeded', name: 'Success' },
-            { value: 'failed', name: 'Fail' },
-            { value: 'stopped', name: 'Stop' },
-          ]}
-        />
-      </div>
+    <div className='flex flex-row flex-wrap gap-2 mb-2'>
+      <Chip
+        value={queryParams.status || 'all'}
+        onSelect={(item) => {
+          setQueryParams({ ...queryParams, status: item.value as string })
+        }}
+        onClear={() => setQueryParams({ ...queryParams, status: 'all' })}
+        items={[{ value: 'all', name: 'All' },
+          { value: 'succeeded', name: 'Success' },
+          { value: 'failed', name: 'Fail' },
+          { value: 'stopped', name: 'Stop' },
+        ]}
+      />
       <Input
         wrapperClassName='w-[200px]'
         showLeftIcon

@@ -150,8 +150,8 @@ const Annotation: FC<Props> = ({
 
   return (
     <div className='flex flex-col h-full'>
-      <p className='flex text-sm font-normal text-gray-500'>{t('appLog.description')}</p>
-      <div className='grow flex flex-col py-4 '>
+      <p className='text-text-tertiary system-sm-regular'>{t('appLog.description')}</p>
+      <div className='flex flex-col py-4 flex-1'>
         <Filter appId={appDetail.id} queryParams={queryParams} setQueryParams={setQueryParams}>
           <div className='flex items-center space-x-2'>
             {isChatApp && (
