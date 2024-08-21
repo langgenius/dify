@@ -5,7 +5,7 @@ import { createPortal } from "react-dom";
 import { useTranslation } from "react-i18next";
 import { RiCloseLine } from "@remixicon/react";
 import { Plan } from "../type";
-import SelectPlanRange, { PlanRange } from "./select-plan-range";
+import SelectPlanRange, { PlanRange, LoginAppeal } from "./select-plan-range";
 import PlanItem from "./plan-item";
 import { useProviderContext } from "@/context/provider-context";
 import GridMask from "@/app/components/base/grid-mask";
@@ -31,15 +31,6 @@ const Pricing: FC<Props> = ({ onCancel }) => {
 
   const isLoggedIn = !(userProfile?.id === "");
 
-  if (!isLoggedIn) {
-    Toast.notify({
-      type: "error",
-      message: t("Login First To Buy Plan"),
-      className: "z-[1001]",
-      duration: 10000,
-    });
-  }
-
   return createPortal(
     <div
       className="fixed inset-0 flex bg-white z-[1000] overflow-auto"
@@ -51,6 +42,9 @@ const Pricing: FC<Props> = ({ onCancel }) => {
             {t("billing.plansCommon.title")}
           </div>
           <SelectPlanRange value={planRange} onChange={setPlanRange} />
+
+          {!isLoggedIn && <LoginAppeal />}
+
           <div className="mt-8 pb-6 max-w-7xl mx-auto justify-center grid grid-cols-1 sm:grid-cols-2  lg:grid-cols-4 space-x-3">
             <PlanItem
               currentPlan={plan.type}

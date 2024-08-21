@@ -13,7 +13,7 @@ export default function navbar() {
   };
 
   return (
-    <nav className="fixed top-2 left-0 right-0  text-black  z-[1000]  p-4  ">
+    <nav className="fixed top-2 left-0 right-0  text-black  z-[1001]  p-4  ">
       <div className="flex max-w-7xl  bg-white mx-auto justify-between items-center border px-2 rounded-full   h-[48px] backdrop-blur-xl">
         <div className="flex items-center gap-3 ">
           <Link href="/" className="flex gap-2 items-center">
