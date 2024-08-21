@@ -16,7 +16,7 @@ import PreviewItem, { PreviewType } from './preview-item'
 import LanguageSelect from './language-select'
 import s from './index.module.css'
 import cn from '@/utils/classnames'
-import type { CrawlOptions, CrawlResultItem, CreateDocumentReq, CustomFile, FileIndexingEstimateResponse, FullDocumentDetail, IndexingEstimateParams, IndexingEstimateResponse, NotionInfo, PreProcessingRule, ProcessRule, Rules, createDocumentResponse } from '@/models/datasets'
+import type { CrawlOptions, CrawlResultItem, CreateDocumentReq, CustomFile, FileIndexingEstimateResponse, FullDocumentDetail, IndexingEstimateParams, NotionInfo, PreProcessingRule, ProcessRule, Rules, createDocumentResponse } from '@/models/datasets'
 import {
   createDocument,
   createFirstDocument,
@@ -132,7 +132,6 @@ const StepTwo = ({
   const [showPreview, { setTrue: setShowPreview, setFalse: hidePreview }] = useBoolean()
   const [customFileIndexingEstimate, setCustomFileIndexingEstimate] = useState<FileIndexingEstimateResponse | null>(null)
   const [automaticFileIndexingEstimate, setAutomaticFileIndexingEstimate] = useState<FileIndexingEstimateResponse | null>(null)
-  const [estimateTokes, setEstimateTokes] = useState<Pick<IndexingEstimateResponse, 'tokens' | 'total_price'> | null>(null)
 
   const fileIndexingEstimate = (() => {
     return segmentationType === SegmentType.AUTO ? automaticFileIndexingEstimate : customFileIndexingEstimate
@@ -193,13 +192,10 @@ const StepTwo = ({
   const fetchFileIndexingEstimate = async (docForm = DocForm.TEXT) => {
     // eslint-disable-next-line @typescript-eslint/no-use-before-define
     const res = await didFetchFileIndexingEstimate(getFileIndexingEstimateParams(docForm)!)
-    if (segmentationType === SegmentType.CUSTOM) {
+    if (segmentationType === SegmentType.CUSTOM)
       setCustomFileIndexingEstimate(res)
-    }
-    else {
+    else
       setAutomaticFileIndexingEstimate(res)
-      indexType === IndexingType.QUALIFIED && setEstimateTokes({ tokens: res.tokens, total_price: res.total_price })
-    }
   }
 
   const confirmChangeCustomConfig = () => {
@@ -691,16 +687,6 @@ const StepTwo = ({
                       {!hasSetIndexType && <span className={s.recommendTag}>{t('datasetCreation.stepTwo.recommend')}</span>}
                     </div>
                     <div className={s.tip}>{t('datasetCreation.stepTwo.qualifiedTip')}</div>
-                    <div className='pb-0.5 text-xs font-medium text-gray-500'>{t('datasetCreation.stepTwo.emstimateCost')}</div>
-                    {
-                      estimateTokes
-                        ? (
-                          <div className='text-xs font-medium text-gray-800'>{formatNumber(estimateTokes.tokens)} tokens(<span className='text-yellow-500'>${formatNumber(estimateTokes.total_price)}</span>)</div>
-                        )
-                        : (
-                          <div className={s.calculating}>{t('datasetCreation.stepTwo.calculating')}</div>
-                        )
-                    }
                   </div>
                   {!isAPIKeySet && (
                     <div className={s.warningTip}>
@@ -727,8 +713,6 @@ const StepTwo = ({
                   <div className={s.typeHeader}>
                     <div className={s.title}>{t('datasetCreation.stepTwo.economical')}</div>
                     <div className={s.tip}>{t('datasetCreation.stepTwo.economicalTip')}</div>
-                    <div className='pb-0.5 text-xs font-medium text-gray-500'>{t('datasetCreation.stepTwo.emstimateCost')}</div>
-                    <div className='text-xs font-medium text-gray-800'>0 tokens</div>
                   </div>
                 </div>
               )}
