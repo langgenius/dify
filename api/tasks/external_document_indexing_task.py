@@ -59,9 +59,11 @@ def external_document_indexing_task(dataset_id: str, api_template_id: str, data_
 
         # do http request
         response = ExternalDatasetService.process_external_api(settings, headers, process_parameter, files)
-        if response.status_code != 200:
-            logging.info(click.style('Processed external dataset: {} failed, status code: {}'.format(dataset.id, response.status_code), fg='red'))
-            return
+        job_id = response.json().get('job_id')
+        if job_id:
+            # save job_id to dataset
+            dataset.job_id = job_id
+            db.session.commit()
 
         end_at = time.perf_counter()
         logging.info(
