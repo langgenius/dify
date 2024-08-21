@@ -123,11 +123,8 @@ const Panel = (props: PanelProps) => {
     handleValueChange()
   })
 
-  const onMouseLeave = async () => {
-    props.onClose?.()
-  }
   return (
-    <div className='relative w-full bg-white rounded-lg border-[0.5px] border-gray-200' onMouseLeave={onMouseLeave}>
+    <div className='relative w-full bg-white rounded-lg border-[0.5px] border-gray-200'>
       <div className='p-2 border-b-[0.5px] border-black/5'>
         <SearchInput placeholder={t('common.tag.selectorPlaceholder') || ''} white value={keywords} onChange={handleKeywordsChange} />
       </div>
