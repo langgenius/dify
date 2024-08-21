@@ -33,7 +33,7 @@ class S3Storage(BaseStorage):
             self.client.head_bucket(Bucket=self.bucket_name)
         except ClientError as e:
             # if bucket not exists, create it
-            if e.response['Error']['Code'] == '404':
+            if e.response["Error"]["Code"] == "404":
                 self.client.create_bucket(Bucket=self.bucket_name)
             else:
                 # other error, raise exception
