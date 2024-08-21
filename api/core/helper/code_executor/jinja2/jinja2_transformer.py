@@ -1,14 +1,9 @@
 from textwrap import dedent
 
-from core.helper.code_executor.python3.python3_transformer import Python3TemplateTransformer
 from core.helper.code_executor.template_transformer import TemplateTransformer
 
 
 class Jinja2TemplateTransformer(TemplateTransformer):
-    @classmethod
-    def get_standard_packages(cls) -> set[str]:
-        return {'jinja2'} | Python3TemplateTransformer.get_standard_packages()
-
     @classmethod
     def transform_response(cls, response: str) -> dict:
         """

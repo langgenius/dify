@@ -29,15 +29,6 @@ def test_python3_with_code_template():
     assert result == {'result': 'HelloWorld'}
 
 
-def test_python3_list_default_available_packages():
-    packages = Python3CodeProvider.get_default_available_packages()
-    assert len(packages) > 0
-    assert {'requests', 'httpx'}.issubset(p['name'] for p in packages)
-
-    # check JSON serializable
-    assert len(str(json.dumps(packages))) > 0
-
-
 def test_python3_get_runner_script():
     runner_script = Python3TemplateTransformer.get_runner_script()
     assert runner_script.count(Python3TemplateTransformer._code_placeholder) == 1

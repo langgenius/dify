@@ -67,7 +67,6 @@ class CodeNode(BaseNode):
                 language=code_language,
                 code=code,
                 inputs=variables,
-                dependencies=node_data.dependencies
             )
 
             # Transform result

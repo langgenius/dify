@@ -3,7 +3,7 @@ from core.helper.code_executor.code_executor import CodeExecutor, CodeLanguage
 
 class Jinja2Formatter:
     @classmethod
-    def format(cls, template: str, inputs: str) -> str:
+    def format(cls, template: str, inputs: dict) -> str:
         """
         Format template
         :param template: template
