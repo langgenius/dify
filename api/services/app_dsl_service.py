@@ -168,7 +168,8 @@ class AppDslService:
             "app": {
                 "name": app_model.name,
                 "mode": app_model.mode,
-                "icon": '🤖' if app_model.icon_type == 'image' else app_model.icon,
+                "icon_type": app_model.icon_type,
+                "icon": app_model.icon,
                 "icon_background": '#FFEAD5' if app_model.icon_type == 'image' else app_model.icon_background,
                 "description": app_model.description
             }
