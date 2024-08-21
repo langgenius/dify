@@ -19,7 +19,7 @@ import type {
 import {
   ComparisonOperator,
 } from '../../types'
-import { comparisonOperatorNotRequireValue } from '../../utils'
+import { comparisonOperatorNotRequireValue, getOperators } from '../../utils'
 import ConditionNumberInput from '../condition-number-input'
 import { FILE_TYPE_OPTIONS, SUB_VARIABLES, TRANSFER_METHOD } from '../../default'
 import ConditionWrap from '../condition-wrap'
@@ -141,7 +141,13 @@ const ConditionItem = ({
   const handleSubVarKeyChange = useCallback((key: string) => {
     const newCondition = produce(condition, (draft) => {
       draft.key = key
+      if (key === 'size')
+        draft.varType = VarType.number
+      else
+        draft.varType = VarType.string
+      draft.comparison_operator = getOperators(undefined, { key })[0]
     })
+
     onUpdateSubVariableCondition?.(caseId, conditionId, condition.id, newCondition)
   }, [caseId, condition, conditionId, onUpdateSubVariableCondition])
 
@@ -179,6 +185,7 @@ const ConditionItem = ({
                       </div>
                       : <div className='text-gray-300 system-xs-medium'>{t('common.placeholder.select')}</div>
                   )}
+                  hideChecked
                 />
               )
               : (
@@ -195,7 +202,7 @@ const ConditionItem = ({
             varType={condition.varType}
             value={condition.comparison_operator}
             onSelect={handleUpdateConditionOperator}
-            file={file}
+            file={isSubVariableKey ? { key: condition.key! } : file}
           />
         </div>
         {

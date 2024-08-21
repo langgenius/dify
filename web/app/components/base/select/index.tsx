@@ -40,6 +40,7 @@ export type ISelectProps = {
   overlayClassName?: string
   optionWrapClassName?: string
   optionClassName?: string
+  hideChecked?: boolean
   renderOption?: ({
     item,
     selected,
@@ -177,6 +178,7 @@ const SimpleSelect: FC<ISelectProps> = ({
   placeholder,
   optionWrapClassName,
   optionClassName,
+  hideChecked,
   renderOption,
 }) => {
   const { t } = useTranslation()
@@ -257,7 +259,7 @@ const SimpleSelect: FC<ISelectProps> = ({
                         ? renderOption({ item, selected })
                         : (<>
                           <span className={classNames('block', selected && 'font-normal')}>{item.name}</span>
-                          {selected && (
+                          {selected && !hideChecked && (
                             <span
                               className={classNames(
                                 'absolute inset-y-0 right-0 flex items-center pr-4 text-gray-700',
