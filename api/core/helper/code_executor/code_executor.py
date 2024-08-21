@@ -4,7 +4,7 @@ from enum import Enum
 from threading import Lock
 from typing import Literal, Optional
 
-from httpx import get, post
+from httpx import Timeout, get, post
 from pydantic import BaseModel
 from yarl import URL
 
@@ -21,7 +21,7 @@ logger = logging.getLogger(__name__)
 CODE_EXECUTION_ENDPOINT = dify_config.CODE_EXECUTION_ENDPOINT
 CODE_EXECUTION_API_KEY = dify_config.CODE_EXECUTION_API_KEY
 
-CODE_EXECUTION_TIMEOUT = (10, 60)
+CODE_EXECUTION_TIMEOUT = Timeout(connect=10, write=10, read=60, pool=None)
 
 class CodeExecutionException(Exception):
     pass
@@ -116,7 +116,7 @@ class CodeExecutor:
         if response.data.error:
             raise CodeExecutionException(response.data.error)
         
-        return response.data.stdout
+        return response.data.stdout or ''
 
     @classmethod
     def execute_workflow_code_template(cls, language: CodeLanguage, code: str, inputs: dict, dependencies: Optional[list[CodeDependency]] = None) -> dict:

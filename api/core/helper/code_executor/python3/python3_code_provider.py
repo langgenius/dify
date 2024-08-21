@@ -13,7 +13,7 @@ class Python3CodeProvider(CodeNodeProvider):
     def get_default_code(cls) -> str:
         return dedent(
             """
-            def main(arg1: int, arg2: int) -> dict:
+            def main(arg1: str, arg2: str) -> dict:
                 return {
                     "result": arg1 + arg2,
                 }
