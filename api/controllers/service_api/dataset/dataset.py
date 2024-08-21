@@ -10,7 +10,7 @@ from core.model_runtime.entities.model_entities import ModelType
 from core.provider_manager import ProviderManager
 from fields.dataset_fields import dataset_detail_fields
 from libs.login import current_user
-from models.dataset import Dataset
+from models.dataset import Dataset, DatasetPermissionEnum
 from services.dataset_service import DatasetService
 
 
@@ -78,6 +78,8 @@ class DatasetListApi(DatasetApiResource):
         parser.add_argument('indexing_technique', type=str, location='json',
                             choices=Dataset.INDEXING_TECHNIQUE_LIST,
                             help='Invalid indexing technique.')
+        parser.add_argument('permission', type=str, location='json', choices=(
+            DatasetPermissionEnum.ONLY_ME, DatasetPermissionEnum.ALL_TEAM, DatasetPermissionEnum.PARTIAL_TEAM), help='Invalid permission.', required=False, nullable=False)
         args = parser.parse_args()
 
         try:
@@ -85,7 +87,8 @@ class DatasetListApi(DatasetApiResource):
                 tenant_id=tenant_id,
                 name=args['name'],
                 indexing_technique=args['indexing_technique'],
-                account=current_user
+                account=current_user,
+                permission=args['permission']
             )
         except services.errors.dataset.DatasetNameDuplicateError:
             raise DatasetNameDuplicateError()

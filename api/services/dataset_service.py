@@ -27,6 +27,7 @@ from models.dataset import (
     Dataset,
     DatasetCollectionBinding,
     DatasetPermission,
+    DatasetPermissionEnum,
     DatasetProcessRule,
     DatasetQuery,
     Document,
@@ -80,21 +81,21 @@ class DatasetService:
                 if permitted_dataset_ids:
                     query = query.filter(
                         db.or_(
-                            Dataset.permission == 'all_team_members',
-                            db.and_(Dataset.permission == 'only_me', Dataset.created_by == user.id),
-                            db.and_(Dataset.permission == 'partial_members', Dataset.id.in_(permitted_dataset_ids))
+                            Dataset.permission == DatasetPermissionEnum.ALL_TEAM,
+                            db.and_(Dataset.permission == DatasetPermissionEnum.ONLY_ME, Dataset.created_by == user.id),
+                            db.and_(Dataset.permission == DatasetPermissionEnum.PARTIAL_TEAM, Dataset.id.in_(permitted_dataset_ids))
                         )
                     )
                 else:
                     query = query.filter(
                         db.or_(
-                            Dataset.permission == 'all_team_members',
-                            db.and_(Dataset.permission == 'only_me', Dataset.created_by == user.id)
+                            Dataset.permission == DatasetPermissionEnum.ALL_TEAM,
+                            db.and_(Dataset.permission == DatasetPermissionEnum.ONLY_ME, Dataset.created_by == user.id)
                         )
                     )
         else:
             # if no user, only show datasets that are shared with all team members
-            query = query.filter(Dataset.permission == 'all_team_members')
+            query = query.filter(Dataset.permission == DatasetPermissionEnum.ALL_TEAM)
 
         if search:
             query = query.filter(Dataset.name.ilike(f'%{search}%'))
@@ -330,7 +331,7 @@ class DatasetService:
             raise NoPermissionError(
                 'You do not have permission to access this dataset.'
             )
-        if dataset.permission == 'only_me' and dataset.created_by != user.id:
+        if dataset.permission == DatasetPermissionEnum.ONLY_ME and dataset.created_by != user.id:
             logging.debug(
                 f'User {user.id} does not have permission to access dataset {dataset.id}'
             )
@@ -351,11 +352,11 @@ class DatasetService:
 
     @staticmethod
     def check_dataset_operator_permission(user: Account = None, dataset: Dataset = None):
-        if dataset.permission == 'only_me':
+        if dataset.permission == DatasetPermissionEnum.ONLY_ME:
             if dataset.created_by != user.id:
                 raise NoPermissionError('You do not have permission to access this dataset.')
 
-        elif dataset.permission == 'partial_members':
+        elif dataset.permission == DatasetPermissionEnum.PARTIAL_TEAM:
             if not any(
                 dp.dataset_id == dataset.id for dp in DatasetPermission.query.filter_by(account_id=user.id).all()
             ):
