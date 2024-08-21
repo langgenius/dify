@@ -128,7 +128,7 @@ class ToolNode(BaseNode):
                 if isinstance(tool_input.value, list) and tool_input.value:
                     tool_input_first_value = tool_input.value[0]
                     variable = variable_pool.get([tool_input_first_value, SystemVariable.FILES.value])
-                    files = [file_var.value for file_var in variable.value] if variable else []
+                    files = list(variable.value) if variable else []
                     result[parameter_name] = [
                         v.to_dict() for v in files
                     ]
