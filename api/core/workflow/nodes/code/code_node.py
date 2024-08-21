@@ -23,7 +23,7 @@ MAX_NUMBER_ARRAY_LENGTH = dify_config.CODE_MAX_NUMBER_ARRAY_LENGTH
 
 class CodeNode(BaseNode):
     _node_data_cls = CodeNodeData
-    node_type = NodeType.CODE
+    _node_type = NodeType.CODE
 
     @classmethod
     def get_default_config(cls, filters: Optional[dict] = None) -> dict:
@@ -48,8 +48,7 @@ class CodeNode(BaseNode):
         :param variable_pool: variable pool
         :return:
         """
-        node_data = self.node_data
-        node_data: CodeNodeData = cast(self._node_data_cls, node_data)
+        node_data = cast(CodeNodeData, self.node_data)
 
         # Get code language
         code_language = node_data.code_language
