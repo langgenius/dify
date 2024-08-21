@@ -80,7 +80,6 @@ const Chat: FC<ChatProps> = ({
   showPromptLog,
   questionIcon,
   answerIcon,
-  allToolIcons,
   onAnnotationAdded,
   onAnnotationEdited,
   onAnnotationRemoved,
@@ -183,7 +182,6 @@ const Chat: FC<ChatProps> = ({
       showPromptLog={showPromptLog}
       questionIcon={questionIcon}
       answerIcon={answerIcon}
-      allToolIcons={allToolIcons}
       onSend={onSend}
       onAnnotationAdded={onAnnotationAdded}
       onAnnotationEdited={onAnnotationEdited}
@@ -214,7 +212,6 @@ const Chat: FC<ChatProps> = ({
                       config={config}
                       answerIcon={answerIcon}
                       responding={isLast && isResponding}
-                      allToolIcons={allToolIcons}
                       showPromptLog={showPromptLog}
                       chatAnswerContainerInner={chatAnswerContainerInner}
                       hideProcessDetail={hideProcessDetail}

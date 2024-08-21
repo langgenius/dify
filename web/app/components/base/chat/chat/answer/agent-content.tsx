@@ -7,17 +7,14 @@ import type {
 import { Markdown } from '@/app/components/base/markdown'
 import Thought from '@/app/components/base/chat/chat/thought'
 import ImageGallery from '@/app/components/base/image-gallery'
-import type { Emoji } from '@/app/components/tools/types'
 
 type AgentContentProps = {
   item: ChatItem
   responding?: boolean
-  allToolIcons?: Record<string, string | Emoji>
 }
 const AgentContent: FC<AgentContentProps> = ({
   item,
   responding,
-  allToolIcons,
 }) => {
   const {
     annotation,
@@ -45,7 +42,6 @@ const AgentContent: FC<AgentContentProps> = ({
           {!!thought.tool && (
             <Thought
               thought={thought}
-              allToolIcons={allToolIcons || {}}
               isFinished={!!thought.observation || !responding}
             />
           )}

@@ -19,7 +19,6 @@ import { MessageFast } from '@/app/components/base/icons/src/vender/solid/commun
 import LoadingAnim from '@/app/components/base/chat/chat/loading-anim'
 import Citation from '@/app/components/base/chat/chat/citation'
 import { EditTitle } from '@/app/components/app/annotation/edit-annotation-modal/edit-item'
-import type { Emoji } from '@/app/components/tools/types'
 import type { AppData } from '@/models/share'
 import cn from '@/utils/classnames'
 
@@ -30,7 +29,6 @@ type AnswerProps = {
   config?: ChatConfig
   answerIcon?: ReactNode
   responding?: boolean
-  allToolIcons?: Record<string, string | Emoji>
   showPromptLog?: boolean
   chatAnswerContainerInner?: string
   hideProcessDetail?: boolean
@@ -43,7 +41,6 @@ const Answer: FC<AnswerProps> = ({
   config,
   answerIcon,
   responding,
-  allToolIcons,
   showPromptLog,
   chatAnswerContainerInner,
   hideProcessDetail,
@@ -171,7 +168,6 @@ const Answer: FC<AnswerProps> = ({
                 <AgentContent
                   item={item}
                   responding={responding}
-                  allToolIcons={allToolIcons}
                 />
               )
             }
