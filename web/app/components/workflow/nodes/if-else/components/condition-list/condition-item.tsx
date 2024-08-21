@@ -198,7 +198,7 @@ const ConditionItem = ({
                           <div className='ml-0.5 truncate system-xs-medium'>{item?.name}</div>
                         </div>
                       </div>
-                      : <div className='text-gray-300 system-xs-medium'>{t('common.placeholder.select')}</div>
+                      : <div className='text-left text-components-input-text-placeholder system-sm-regular'>{t('common.placeholder.select')}</div>
                   )}
                   hideChecked
                 />

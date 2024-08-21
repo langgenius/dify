@@ -221,13 +221,13 @@ const SimpleSelect: FC<ISelectProps> = ({
                       setSelectedItem(null)
                       onSelect({ name: '', value: '' })
                     }}
-                    className="h-5 w-5 text-gray-400 cursor-pointer"
+                    className="h-4 w-4 text-text-quaternary cursor-pointer"
                     aria-hidden="false"
                   />
                 )
                 : (
                   <ChevronDownIcon
-                    className="h-5 w-5 text-gray-400"
+                    className="h-4 w-4 text-text-quaternary group-hover/simple-select:text-text-secondary"
                     aria-hidden="true"
                   />
                 )}
