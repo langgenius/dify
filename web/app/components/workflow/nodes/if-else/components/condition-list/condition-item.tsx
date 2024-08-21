@@ -29,6 +29,7 @@ import VariableTag from '@/app/components/workflow/nodes/_base/components/variab
 import type {
   Node,
   NodeOutPutVar,
+  Var,
 } from '@/app/components/workflow/types'
 import { VarType } from '@/app/components/workflow/types'
 import cn from '@/utils/classnames'
@@ -51,9 +52,11 @@ type ConditionItemProps = {
   onRemoveSubVariableCondition?: handleRemoveSubVariableCondition
   onUpdateSubVariableCondition?: HandleUpdateSubVariableCondition
   onToggleSubVariableConditionLogicalOperator?: HandleToggleSubVariableConditionLogicalOperator
+  nodeId: string
   nodesOutputVars: NodeOutPutVar[]
   availableNodes: Node[]
   numberVariables: NodeOutPutVar[]
+  filterVar: (varPayload: Var) => boolean
 }
 const ConditionItem = ({
   className,
@@ -69,9 +72,11 @@ const ConditionItem = ({
   onRemoveSubVariableCondition,
   onUpdateSubVariableCondition,
   onToggleSubVariableConditionLogicalOperator,
+  nodeId,
   nodesOutputVars,
   availableNodes,
   numberVariables,
+  filterVar,
 }: ConditionItemProps) => {
   const { t } = useTranslation()
 
@@ -274,6 +279,10 @@ const ConditionItem = ({
                 handleRemoveSubVariableCondition={onRemoveSubVariableCondition}
                 handleUpdateSubVariableCondition={onUpdateSubVariableCondition}
                 handleToggleSubVariableConditionLogicalOperator={onToggleSubVariableConditionLogicalOperator}
+                nodeId={nodeId}
+                nodesOutputVars={nodesOutputVars}
+                availableNodes={availableNodes}
+                filterVar={filterVar}
               />
             </div>
           )

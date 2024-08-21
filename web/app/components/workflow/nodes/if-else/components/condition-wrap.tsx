@@ -33,11 +33,11 @@ type Props = {
   handleRemoveSubVariableCondition?: handleRemoveSubVariableCondition
   handleUpdateSubVariableCondition?: HandleUpdateSubVariableCondition
   handleToggleSubVariableConditionLogicalOperator?: HandleToggleSubVariableConditionLogicalOperator
-  nodeId?: string
-  nodesOutputVars?: NodeOutPutVar[]
-  availableNodes?: Node[]
+  nodeId: string
+  nodesOutputVars: NodeOutPutVar[]
+  availableNodes: Node[]
   varsIsVarFileAttribute?: Record<string, boolean>
-  filterVar?: (varPayload: Var) => boolean
+  filterVar: (varPayload: Var) => boolean
 }
 
 const ConditionWrap: FC<Props> = ({
@@ -127,8 +127,10 @@ const ConditionWrap: FC<Props> = ({
                         onUpdateCondition={handleUpdateCondition}
                         onRemoveCondition={handleRemoveCondition}
                         onToggleConditionLogicalOperator={handleToggleConditionLogicalOperator}
+                        nodeId={id}
                         nodesOutputVars={nodesOutputVars}
                         availableNodes={availableNodes}
+                        filterVar={filterVar}
                         numberVariables={getAvailableVars(id, '', filterNumberVar)}
                         varsIsVarFileAttribute={varsIsVarFileAttribute}
                         onAddSubVariableCondition={handleAddSubVariableCondition}

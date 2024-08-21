@@ -15,6 +15,7 @@ import ConditionItem from './condition-item'
 import type {
   Node,
   NodeOutPutVar,
+  Var,
 } from '@/app/components/workflow/types'
 import cn from '@/utils/classnames'
 
@@ -27,9 +28,11 @@ type ConditionListProps = {
   onRemoveCondition?: HandleRemoveCondition
   onUpdateCondition?: HandleUpdateCondition
   onToggleConditionLogicalOperator?: HandleToggleConditionLogicalOperator
+  nodeId: string
   nodesOutputVars: NodeOutPutVar[]
   availableNodes: Node[]
   numberVariables: NodeOutPutVar[]
+  filterVar: (varPayload: Var) => boolean
   varsIsVarFileAttribute: Record<string, boolean>
   onAddSubVariableCondition?: HandleAddSubVariableCondition
   onRemoveSubVariableCondition?: handleRemoveSubVariableCondition
@@ -49,10 +52,12 @@ const ConditionList = ({
   onRemoveSubVariableCondition,
   onUpdateSubVariableCondition,
   onToggleSubVariableConditionLogicalOperator,
+  nodeId,
   nodesOutputVars,
   availableNodes,
   numberVariables,
   varsIsVarFileAttribute,
+  filterVar,
 }: ConditionListProps) => {
   const { conditions, logical_operator } = caseItem
 
@@ -106,8 +111,10 @@ const ConditionList = ({
             onRemoveSubVariableCondition={onRemoveSubVariableCondition}
             onUpdateSubVariableCondition={onUpdateSubVariableCondition}
             onToggleSubVariableConditionLogicalOperator={onToggleSubVariableConditionLogicalOperator}
+            nodeId={nodeId}
             nodesOutputVars={nodesOutputVars}
             availableNodes={availableNodes}
+            filterVar={filterVar}
             numberVariables={numberVariables}
             file={varsIsVarFileAttribute[condition.id] ? { key: (condition.variable_selector || []).slice(-1)[0] } : undefined}
             isSubVariableKey={isSubVariable}
