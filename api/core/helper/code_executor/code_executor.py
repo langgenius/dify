@@ -3,7 +3,7 @@ from enum import Enum
 from threading import Lock
 from typing import Optional
 
-from httpx import post
+from httpx import Timeout, post
 from pydantic import BaseModel
 from yarl import URL
 
