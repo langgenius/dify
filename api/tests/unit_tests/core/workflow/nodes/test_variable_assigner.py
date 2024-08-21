@@ -274,7 +274,7 @@ def test_clear_array():
         },
     )
 
-    with mock.patch('core.workflow.nodes.variable_assigner.update_conversation_variable') as mock_run:
+    with mock.patch('core.workflow.nodes.variable_assigner.node.update_conversation_variable') as mock_run:
         list(node.run())
         mock_run.assert_called_once()
 

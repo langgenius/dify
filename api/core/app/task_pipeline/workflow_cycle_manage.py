@@ -33,7 +33,7 @@ from core.ops.entities.trace_entity import TraceTaskName
 from core.ops.ops_trace_manager import TraceQueueManager, TraceTask
 from core.tools.tool_manager import ToolManager
 from core.workflow.entities.node_entities import NodeType
-from core.workflow.enums import SystemVariable
+from core.workflow.enums import SystemVariableKey
 from core.workflow.nodes.tool.entities import ToolNodeData
 from core.workflow.workflow_entry import WorkflowEntry
 from extensions.ext_database import db
@@ -56,7 +56,7 @@ class WorkflowCycleManage:
     _workflow: Workflow
     _user: Union[Account, EndUser]
     _task_state: WorkflowTaskState
-    _workflow_system_variables: dict[SystemVariable, Any]
+    _workflow_system_variables: dict[SystemVariableKey, Any]
 
     def _handle_workflow_run_start(self) -> WorkflowRun:
         max_sequence = (

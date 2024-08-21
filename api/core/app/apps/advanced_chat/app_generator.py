@@ -228,62 +228,6 @@ class AdvancedChatAppGenerator(MessageBasedAppGenerator):
             message_id=message.id
         )
 
-        # Init conversation variables
-        stmt = select(ConversationVariable).where(
-            ConversationVariable.app_id == conversation.app_id, ConversationVariable.conversation_id == conversation.id
-        )
-        with Session(db.engine) as session:
-            conversation_variables = session.scalars(stmt).all()
-            if not conversation_variables:
-                # Create conversation variables if they don't exist.
-                conversation_variables = [
-                    ConversationVariable.from_variable(
-                        app_id=conversation.app_id, conversation_id=conversation.id, variable=variable
-                    )
-                    for variable in workflow.conversation_variables
-                ]
-                session.add_all(conversation_variables)
-            # Convert database entities to variables.
-            conversation_variables = [item.to_variable() for item in conversation_variables]
-
-            session.commit()
-
-            # Increment dialogue count.
-            conversation.dialogue_count += 1
-
-            conversation_id = conversation.id
-            conversation_dialogue_count = conversation.dialogue_count
-            db.session.commit()
-            db.session.refresh(conversation)
-
-        inputs = application_generate_entity.inputs
-        query = application_generate_entity.query
-        files = application_generate_entity.files
-
-        user_id = None
-        if application_generate_entity.invoke_from in [InvokeFrom.WEB_APP, InvokeFrom.SERVICE_API]:
-            end_user = db.session.query(EndUser).filter(EndUser.id == application_generate_entity.user_id).first()
-            if end_user:
-                user_id = end_user.session_id
-        else:
-            user_id = application_generate_entity.user_id
-
-        # Create a variable pool.
-        system_inputs = {
-            SystemVariableKey.QUERY: query,
-            SystemVariableKey.FILES: files,
-            SystemVariableKey.CONVERSATION_ID: conversation_id,
-            SystemVariableKey.USER_ID: user_id,
-            SystemVariableKey.DIALOGUE_COUNT: conversation_dialogue_count,
-        }
-        variable_pool = VariablePool(
-            system_variables=system_inputs,
-            user_inputs=inputs,
-            environment_variables=workflow.environment_variables,
-            conversation_variables=conversation_variables,
-        )
-        contexts.workflow_variable_pool.set(variable_pool)
-
         # new thread
         worker_thread = threading.Thread(target=self._generate_worker, kwargs={
             'flask_app': current_app._get_current_object(), # type: ignore

@@ -4,7 +4,7 @@ from datetime import datetime, timezone
 
 from core.workflow.entities.node_entities import NodeType
 from core.workflow.entities.variable_pool import VariablePool
-from core.workflow.enums import SystemVariable
+from core.workflow.enums import SystemVariableKey
 from core.workflow.graph_engine.entities.event import (
     GraphEngineEvent,
     NodeRunStartedEvent,
@@ -198,10 +198,10 @@ def test_process():
     )
 
     variable_pool = VariablePool(system_variables={
-        SystemVariable.QUERY: 'what\'s the weather in SF',
-        SystemVariable.FILES: [],
-        SystemVariable.CONVERSATION_ID: 'abababa',
-        SystemVariable.USER_ID: 'aaa'
+        SystemVariableKey.QUERY: 'what\'s the weather in SF',
+        SystemVariableKey.FILES: [],
+        SystemVariableKey.CONVERSATION_ID: 'abababa',
+        SystemVariableKey.USER_ID: 'aaa'
     }, user_inputs={})
 
     answer_stream_processor = AnswerStreamProcessor(

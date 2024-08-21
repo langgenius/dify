@@ -3,7 +3,7 @@ from unittest.mock import patch
 from core.app.entities.app_invoke_entities import InvokeFrom
 from core.workflow.entities.node_entities import NodeRunMetadataKey, NodeRunResult, UserFrom
 from core.workflow.entities.variable_pool import VariablePool
-from core.workflow.enums import SystemVariable
+from core.workflow.enums import SystemVariableKey
 from core.workflow.graph_engine.entities.event import (
     BaseNodeEvent,
     GraphRunFailedEvent,
@@ -201,8 +201,8 @@ def test_run_parallel_in_workflow(mock_close, mock_remove):
     )
 
     variable_pool = VariablePool(system_variables={
-        SystemVariable.FILES: [],
-        SystemVariable.USER_ID: 'aaa'
+        SystemVariableKey.FILES: [],
+        SystemVariableKey.USER_ID: 'aaa'
     }, user_inputs={
         "query": "hi"
     })
@@ -363,10 +363,10 @@ def test_run_parallel_in_chatflow(mock_close, mock_remove):
     )
 
     variable_pool = VariablePool(system_variables={
-        SystemVariable.QUERY: 'what\'s the weather in SF',
-        SystemVariable.FILES: [],
-        SystemVariable.CONVERSATION_ID: 'abababa',
-        SystemVariable.USER_ID: 'aaa'
+        SystemVariableKey.QUERY: 'what\'s the weather in SF',
+        SystemVariableKey.FILES: [],
+        SystemVariableKey.CONVERSATION_ID: 'abababa',
+        SystemVariableKey.USER_ID: 'aaa'
     }, user_inputs={})
 
     graph_engine = GraphEngine(
@@ -521,10 +521,10 @@ def test_run_branch(mock_close, mock_remove):
     )
 
     variable_pool = VariablePool(system_variables={
-        SystemVariable.QUERY: 'hi',
-        SystemVariable.FILES: [],
-        SystemVariable.CONVERSATION_ID: 'abababa',
-        SystemVariable.USER_ID: 'aaa'
+        SystemVariableKey.QUERY: 'hi',
+        SystemVariableKey.FILES: [],
+        SystemVariableKey.CONVERSATION_ID: 'abababa',
+        SystemVariableKey.USER_ID: 'aaa'
     }, user_inputs={
         "uid": "takato"
     })

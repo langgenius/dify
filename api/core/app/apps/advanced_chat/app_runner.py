@@ -23,11 +23,11 @@ from core.moderation.base import ModerationException
 from core.workflow.callbacks.base_workflow_callback import WorkflowCallback
 from core.workflow.entities.node_entities import UserFrom
 from core.workflow.entities.variable_pool import VariablePool
-from core.workflow.enums import SystemVariable
+from core.workflow.enums import SystemVariableKey
 from core.workflow.workflow_entry import WorkflowEntry
 from extensions.ext_database import db
 from models.model import App, Conversation, EndUser, Message
-from models.workflow import ConversationVariable
+from models.workflow import ConversationVariable, WorkflowType
 
 logger = logging.getLogger(__name__)
 
@@ -124,6 +124,7 @@ class AdvancedChatAppRunner(WorkflowBasedAppRunner):
             with Session(db.engine) as session:
                 conversation_variables = session.scalars(stmt).all()
                 if not conversation_variables:
+                    # Create conversation variables if they don't exist.
                     conversation_variables = [
                         ConversationVariable.from_variable(
                             app_id=self.conversation.app_id, conversation_id=self.conversation.id, variable=variable
@@ -131,16 +132,24 @@ class AdvancedChatAppRunner(WorkflowBasedAppRunner):
                         for variable in workflow.conversation_variables
                     ]
                     session.add_all(conversation_variables)
-                    session.commit()
-                # Convert database entities to variables
+                # Convert database entities to variables.
                 conversation_variables = [item.to_variable() for item in conversation_variables]
+
+                session.commit()
+
+                # Increment dialogue count.
+                self.conversation.dialogue_count += 1
+
+                conversation_dialogue_count = self.conversation.dialogue_count
+                db.session.commit()
 
             # Create a variable pool.
             system_inputs = {
-                SystemVariable.QUERY: query,
-                SystemVariable.FILES: files,
-                SystemVariable.CONVERSATION_ID: self.conversation.id,
-                SystemVariable.USER_ID: user_id,
+                SystemVariableKey.QUERY: query,
+                SystemVariableKey.FILES: files,
+                SystemVariableKey.CONVERSATION_ID: self.conversation.id,
+                SystemVariableKey.USER_ID: user_id,
+                SystemVariableKey.DIALOGUE_COUNT: conversation_dialogue_count,
             }
 
             # init variable pool
@@ -159,7 +168,7 @@ class AdvancedChatAppRunner(WorkflowBasedAppRunner):
             tenant_id=workflow.tenant_id,
             app_id=workflow.app_id,
             workflow_id=workflow.id,
-            workflow_type=workflow.type,
+            workflow_type=WorkflowType.value_of(workflow.type),
             graph=graph,
             graph_config=workflow.graph_dict,
             user_id=self.application_generate_entity.user_id,

@@ -3,7 +3,7 @@ from collections.abc import Mapping, Sequence
 from typing import Any
 
 from core.workflow.entities.node_entities import NodeRunResult, NodeType
-from core.workflow.entities.variable_pool import SYSTEM_VARIABLE_NODE_ID, VariablePool
+from core.workflow.entities.variable_pool import SYSTEM_VARIABLE_NODE_ID
 from core.workflow.nodes.base_node import BaseNode
 from core.workflow.nodes.start.entities import StartNodeData
 from models.workflow import WorkflowNodeExecutionStatus

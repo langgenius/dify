@@ -5,7 +5,7 @@ from unittest.mock import patch
 from core.app.entities.app_invoke_entities import InvokeFrom
 from core.workflow.entities.node_entities import NodeRunResult, UserFrom
 from core.workflow.entities.variable_pool import VariablePool
-from core.workflow.enums import SystemVariable
+from core.workflow.enums import SystemVariableKey
 from core.workflow.graph_engine.entities.graph import Graph
 from core.workflow.graph_engine.entities.graph_init_params import GraphInitParams
 from core.workflow.graph_engine.entities.graph_runtime_state import GraphRuntimeState
@@ -155,10 +155,10 @@ def test_run():
 
     # construct variable pool
     pool = VariablePool(system_variables={
-        SystemVariable.QUERY: 'dify',
-        SystemVariable.FILES: [],
-        SystemVariable.CONVERSATION_ID: 'abababa',
-        SystemVariable.USER_ID: '1'
+        SystemVariableKey.QUERY: 'dify',
+        SystemVariableKey.FILES: [],
+        SystemVariableKey.CONVERSATION_ID: 'abababa',
+        SystemVariableKey.USER_ID: '1'
     }, user_inputs={}, environment_variables=[])
     pool.add(['pe', 'list_output'], ["dify-1", "dify-2"])
 

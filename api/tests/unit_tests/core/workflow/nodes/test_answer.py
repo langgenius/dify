@@ -90,8 +90,8 @@ def test_execute_answer():
 
     # construct variable pool
     pool = VariablePool(system_variables={
-        SystemVariable.FILES: [],
-        SystemVariable.USER_ID: 'aaa'
+        SystemVariableKey.FILES: [],
+        SystemVariableKey.USER_ID: 'aaa'
     }, user_inputs={}, environment_variables=[])
     pool.add(['start', 'weather'], 'sunny')
     pool.add(['llm', 'text'], 'You are a helpful AI.')
