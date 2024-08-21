@@ -37,6 +37,7 @@ import { Variable02 } from '@/app/components/base/icons/src/vender/solid/develop
 const optionNameI18NPrefix = 'workflow.nodes.ifElse.optionName'
 
 type ConditionItemProps = {
+  className?: string
   disabled?: boolean
   caseId: string
   conditionId: string // in isSubVariableKey it's the value of the parent condition's id
@@ -55,6 +56,7 @@ type ConditionItemProps = {
   numberVariables: NodeOutPutVar[]
 }
 const ConditionItem = ({
+  className,
   disabled,
   caseId,
   conditionId,
@@ -151,7 +153,7 @@ const ConditionItem = ({
   }, [caseId, condition, conditionId, isSubVariableKey, onRemoveCondition, onRemoveSubVariableCondition])
 
   return (
-    <div className='flex mb-1 last-of-type:mb-0'>
+    <div className={cn('flex mb-1 last-of-type:mb-0', className)}>
       <div className={cn(
         'grow bg-components-input-bg-normal rounded-lg',
         isHovered && 'bg-state-destructive-hover',
@@ -170,9 +172,9 @@ const ConditionItem = ({
                   renderTrigger={item => (
                     item
                       ? <div className='flex justify-start cursor-pointer'>
-                        <div className='inline-flex px-1.5 items-center h-6 rounded-md border-[0.5px] border-components-panel-border-subtle bg-components-badge-white-to-dark shadow-xs text-text-accent'>
-                          <Variable02 className='w-3.5 h-3.5 text-text-accent' />
-                          <div className='ml-0.5 system-xs-medium'>{item?.name}</div>
+                        <div className='inline-flex max-w-full px-1.5 items-center h-6 rounded-md border-[0.5px] border-components-panel-border-subtle bg-components-badge-white-to-dark shadow-xs text-text-accent'>
+                          <Variable02 className='shrink-0 w-3.5 h-3.5 text-text-accent' />
+                          <div className='ml-0.5 truncate system-xs-medium'>{item?.name}</div>
                         </div>
                       </div>
                       : <div className='text-gray-300 system-xs-medium'>{t('common.placeholder.select')}</div>

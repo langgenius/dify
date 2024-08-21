@@ -1,14 +1,15 @@
 import { RiLoopLeftLine } from '@remixicon/react'
-import { useCallback } from 'react'
-import type {
-  CaseItem,
-  HandleAddSubVariableCondition,
-  HandleRemoveCondition,
-  HandleToggleConditionLogicalOperator,
-  HandleToggleSubVariableConditionLogicalOperator,
-  HandleUpdateCondition,
-  HandleUpdateSubVariableCondition,
-  handleRemoveSubVariableCondition,
+import { useCallback, useMemo } from 'react'
+import {
+  type CaseItem,
+  type HandleAddSubVariableCondition,
+  type HandleRemoveCondition,
+  type HandleToggleConditionLogicalOperator,
+  type HandleToggleSubVariableConditionLogicalOperator,
+  type HandleUpdateCondition,
+  type HandleUpdateSubVariableCondition,
+  LogicalOperator,
+  type handleRemoveSubVariableCondition,
 } from '../../types'
 import ConditionItem from './condition-item'
 import type {
@@ -62,15 +63,26 @@ const ConditionList = ({
       onToggleConditionLogicalOperator?.(caseId)
   }, [caseId, conditionId, isSubVariable, onToggleConditionLogicalOperator, onToggleSubVariableConditionLogicalOperator])
 
+  const conditionItemClassName = useMemo(() => {
+    if (!isSubVariable)
+      return ''
+    if (conditions.length < 2)
+      return ''
+    return logical_operator === LogicalOperator.and ? 'pl-[51px]' : 'pl-[42px]'
+  }, [conditions.length, isSubVariable, logical_operator])
   return (
     <div className={cn('relative', !isSubVariable && 'pl-[60px]')}>
       {
         conditions.length > 1 && (
-          <div className='absolute top-0 bottom-0 left-0 w-[60px]'>
+          <div className={cn(
+            'absolute top-0 bottom-0 left-0 w-[60px]',
+            isSubVariable && logical_operator === LogicalOperator.and && 'left-[-10px]',
+            isSubVariable && logical_operator === LogicalOperator.or && 'left-[-18px]',
+          )}>
             <div className='absolute top-4 bottom-4 left-[46px] w-2.5 border border-divider-deep rounded-l-[8px] border-r-0'></div>
             <div className='absolute top-1/2 -translate-y-1/2 right-0 w-4 h-[29px] bg-components-panel-bg'></div>
             <div
-              className='absolute top-1/2 right-1 -translate-y-1/2 flex items-center px-1 h-[21px] rounded-md border-[0.5px] border-components-button-secondary-border shadow-xs bg-components-button-secondary-bg text-text-accent-secondary text-[10px] font-semibold cursor-pointer'
+              className='absolute top-1/2 right-1 -translate-y-1/2 flex items-center px-1 h-[21px] rounded-md border-[0.5px] border-components-button-secondary-border shadow-xs bg-components-button-secondary-bg text-text-accent-secondary text-[10px] font-semibold cursor-pointer select-none'
               onClick={doToggleConditionLogicalOperator}
             >
               {logical_operator.toUpperCase()}
@@ -83,6 +95,7 @@ const ConditionList = ({
         caseItem.conditions.map(condition => (
           <ConditionItem
             key={condition.id}
+            className={conditionItemClassName}
             disabled={disabled}
             caseId={caseId}
             conditionId={isSubVariable ? conditionId! : condition.id}

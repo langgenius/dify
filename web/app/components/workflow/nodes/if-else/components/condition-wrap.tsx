@@ -91,7 +91,7 @@ const ConditionWrap: FC<Props> = ({
                   'group relative rounded-[10px] bg-components-panel-bg',
                   willDeleteCaseId === item.case_id && 'bg-state-destructive-hover',
                   !isSubVariable && 'py-1 px-3 min-h-[40px] ',
-                  isSubVariable && 'p-2 pr-1',
+                  isSubVariable && 'px-1 py-2',
                 )}
               >
                 {!isSubVariable && (
