@@ -428,7 +428,7 @@ class OAIAPICompatLargeLanguageModel(_CommonOAI_API_Compat, LargeLanguageModel):
                 if new_tool_call.function.arguments:
                     tool_call.function.arguments += new_tool_call.function.arguments
 
-        finish_reason = 'Unknown'
+        finish_reason = None  # The default value of finish_reason is None
 
         for chunk in response.iter_lines(decode_unicode=True, delimiter=delimiter):
             chunk = chunk.strip()
@@ -437,6 +437,8 @@ class OAIAPICompatLargeLanguageModel(_CommonOAI_API_Compat, LargeLanguageModel):
                 if chunk.startswith(':'):
                     continue
                 decoded_chunk = chunk.strip().lstrip('data: ').lstrip()
+                if decoded_chunk == '[DONE]':  # Some provider returns "data: [DONE]"
+                    continue
 
                 try:
                     chunk_json = json.loads(decoded_chunk)
