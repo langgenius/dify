@@ -81,21 +81,21 @@ class DatasetService:
                 if permitted_dataset_ids:
                     query = query.filter(
                         db.or_(
-                            Dataset.permission == 'all_team_members',
-                            db.and_(Dataset.permission == 'only_me', Dataset.created_by == user.id),
-                            db.and_(Dataset.permission == 'partial_members', Dataset.id.in_(permitted_dataset_ids))
+                            Dataset.permission == DatasetPermissionEnum.ALL_TEAM',
+                            db.and_(Dataset.permission == DatasetPermissionEnum.ONLY_ME, Dataset.created_by == user.id),
+                            db.and_(Dataset.permission == DatasetPermissionEnum.PARTIAL_TEAM, Dataset.id.in_(permitted_dataset_ids))
                         )
                     )
                 else:
                     query = query.filter(
                         db.or_(
-                            Dataset.permission == 'all_team_members',
+                            Dataset.permission == DatasetPermissionEnum.ALL_TEAM,
                             db.and_(Dataset.permission == 'only_me', Dataset.created_by == user.id)
                         )
                     )
         else:
             # if no user, only show datasets that are shared with all team members
-            query = query.filter(Dataset.permission == 'all_team_members')
+            query = query.filter(Dataset.permission == DatasetPermissionEnum.ALL_TEAM)
 
         if search:
             query = query.filter(Dataset.name.ilike(f'%{search}%'))
