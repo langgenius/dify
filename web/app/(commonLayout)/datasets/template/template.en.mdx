@@ -236,6 +236,12 @@ import { Row, Col, Properties, Property, Heading, SubProperty, Paragraph } from 
       <Property name='name' type='string' key='name'>
         Knowledge name
       </Property>
+      <Property name='permission' type='string' key='permission'>
+        Permission
+          - <code>only_me</code> Only me
+          - <code>all_team_members</code> All team members
+          - <code>partial_members</code> Partial members
+      </Property>
     </Properties>
   </Col>
   <Col sticky>
@@ -243,14 +249,15 @@ import { Row, Col, Properties, Property, Heading, SubProperty, Paragraph } from 
       title="Request" 
       tag="POST" 
       label="/datasets"
-      targetCode={`curl --location --request POST '${props.apiBaseUrl}/datasets' \\\n--header 'Authorization: Bearer {api_key}' \\\n--header 'Content-Type: application/json' \\\n--data-raw '{"name": "name"}'`}
+      targetCode={`curl --location --request POST '${props.apiBaseUrl}/datasets' \\\n--header 'Authorization: Bearer {api_key}' \\\n--header 'Content-Type: application/json' \\\n--data-raw '{"name": "name", "permission": "only_me"}'`}
     >
     ```bash {{ title: 'cURL' }}
     curl --location --request POST '${apiBaseUrl}/v1/datasets' \
     --header 'Authorization: Bearer {api_key}' \
     --header 'Content-Type: application/json' \
     --data-raw '{
-      "name": "name"
+      "name": "name",
+      "permission": "only_me"
     }'
     ```
     </CodeGroup>

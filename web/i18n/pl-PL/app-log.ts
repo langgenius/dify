@@ -5,7 +5,8 @@ const translation = {
   dateTimeFormat: 'DD/MM/YYYY HH:mm',
   table: {
     header: {
-      time: 'Czas',
+      updatedTime: 'Czas aktualizacji',
+      time: 'Czas utworzenia',
       endUser: 'Użytkownik końcowy',
       input: 'Wejście',
       output: 'Wyjście',
@@ -73,6 +74,9 @@ const translation = {
       annotated: 'Zanotowane usprawnienia ({{count}} elementów)',
       not_annotated: 'Nie zanotowane',
     },
+    sortBy: 'Sortuj według:',
+    descending: 'malejąco',
+    ascending: 'rosnąco',
   },
   workflowTitle: 'Dzienniki przepływu pracy',
   workflowSubtitle: 'Dziennik zarejestrował operację Automatyzacji.',
