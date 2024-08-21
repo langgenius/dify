@@ -10,14 +10,11 @@ from configs import dify_config
 from core.agent.entities import AgentToolEntity
 from core.app.entities.app_invoke_entities import InvokeFrom
 from core.helper.module_import_helper import load_single_subclass_from_source
+from core.helper.position_helper import is_filtered
 from core.model_runtime.utils.encoders import jsonable_encoder
 from core.tools.entities.api_entities import UserToolProvider, UserToolProviderTypeLiteral
 from core.tools.entities.common_entities import I18nObject
-from core.tools.entities.tool_entities import (
-    ApiProviderAuthType,
-    ToolInvokeFrom,
-    ToolParameter,
-)
+from core.tools.entities.tool_entities import ApiProviderAuthType, ToolInvokeFrom, ToolParameter
 from core.tools.errors import ToolProviderNotFoundError
 from core.tools.provider.api_tool_provider import ApiToolProviderController
 from core.tools.provider.builtin._positions import BuiltinToolProviderSort
@@ -26,10 +23,7 @@ from core.tools.tool.api_tool import ApiTool
 from core.tools.tool.builtin_tool import BuiltinTool
 from core.tools.tool.tool import Tool
 from core.tools.tool_label_manager import ToolLabelManager
-from core.tools.utils.configuration import (
-    ToolConfigurationManager,
-    ToolParameterConfigurationManager,
-)
+from core.tools.utils.configuration import ToolConfigurationManager, ToolParameterConfigurationManager
 from core.tools.utils.tool_parameter_converter import ToolParameterConverter
 from core.workflow.nodes.tool.entities import ToolEntity
 from extensions.ext_database import db
@@ -37,6 +31,7 @@ from models.tools import ApiToolProvider, BuiltinToolProvider, WorkflowToolProvi
 from services.tools.tools_transform_service import ToolTransformService
 
 logger = logging.getLogger(__name__)
+
 
 class ToolManager:
     _builtin_provider_lock = Lock()
@@ -107,7 +102,7 @@ class ToolManager:
                          tenant_id: str,
                          invoke_from: InvokeFrom = InvokeFrom.DEBUGGER,
                          tool_invoke_from: ToolInvokeFrom = ToolInvokeFrom.AGENT) \
-        -> Union[BuiltinTool, ApiTool]:
+            -> Union[BuiltinTool, ApiTool]:
         """
             get the tool runtime
 
@@ -346,7 +341,7 @@ class ToolManager:
                     provider_class = load_single_subclass_from_source(
                         module_name=f'core.tools.provider.builtin.{provider}.{provider}',
                         script_path=path.join(path.dirname(path.realpath(__file__)),
-                                            'provider', 'builtin', provider, f'{provider}.py'),
+                                              'provider', 'builtin', provider, f'{provider}.py'),
                         parent_type=BuiltinToolProviderController)
                     provider: BuiltinToolProviderController = provider_class()
                     cls._builtin_providers[provider.identity.name] = provider
@@ -414,6 +409,15 @@ class ToolManager:
 
             # append builtin providers
             for provider in builtin_providers:
+                # handle include, exclude
+                if is_filtered(
+                        include_set=dify_config.POSITION_TOOL_INCLUDES_SET,
+                        exclude_set=dify_config.POSITION_TOOL_EXCLUDES_SET,
+                        data=provider,
+                        name_func=lambda x: x.identity.name
+                ):
+                    continue
+
                 user_provider = ToolTransformService.builtin_provider_to_user_provider(
                     provider_controller=provider,
                     db_provider=find_db_builtin_provider(provider.identity.name),
@@ -473,7 +477,7 @@ class ToolManager:
 
     @classmethod
     def get_api_provider_controller(cls, tenant_id: str, provider_id: str) -> tuple[
-        ApiToolProviderController, dict[str, Any]]:
+            ApiToolProviderController, dict[str, Any]]:
         """
             get the api provider
 
@@ -592,5 +596,6 @@ class ToolManager:
             return json.loads(provider.icon)
         else:
             raise ValueError(f"provider type {provider_type} not found")
+
 
 ToolManager.load_builtin_providers_cache()

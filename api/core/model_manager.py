@@ -368,6 +368,15 @@ class ModelManager:
 
         return ModelInstance(provider_model_bundle, model)
 
+    def get_default_provider_model_name(self, tenant_id: str, model_type: ModelType) -> tuple[str, str]:
+        """
+        Return first provider and the first model in the provider
+        :param tenant_id: tenant id
+        :param model_type: model type
+        :return: provider name, model name
+        """
+        return self._provider_manager.get_first_provider_first_model(tenant_id, model_type)
+
     def get_default_model_instance(self, tenant_id: str, model_type: ModelType) -> ModelInstance:
         """
         Get default model instance
@@ -501,7 +510,6 @@ class LBModelManager:
             self._model,
             config.id
         )
-
 
         res = redis_client.exists(cooldown_cache_key)
         res = cast(bool, res)
