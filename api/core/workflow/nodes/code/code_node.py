@@ -13,7 +13,7 @@ from models.workflow import WorkflowNodeExecutionStatus
 
 MAX_NUMBER = dify_config.CODE_MAX_NUMBER
 MIN_NUMBER = dify_config.CODE_MIN_NUMBER
-MAX_PRECISION = 20
+MAX_PRECISION = dify_config.CODE_MAX_PRECISION
 MAX_DEPTH = dify_config.CODE_MAX_DEPTH
 MAX_STRING_LENGTH = dify_config.CODE_MAX_STRING_LENGTH
 MAX_STRING_ARRAY_LENGTH = dify_config.CODE_MAX_STRING_ARRAY_LENGTH
