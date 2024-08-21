@@ -81,7 +81,7 @@ class DatasetService:
                 if permitted_dataset_ids:
                     query = query.filter(
                         db.or_(
-                            Dataset.permission == DatasetPermissionEnum.ALL_TEAM',
+                            Dataset.permission == DatasetPermissionEnum.ALL_TEAM,
                             db.and_(Dataset.permission == DatasetPermissionEnum.ONLY_ME, Dataset.created_by == user.id),
                             db.and_(Dataset.permission == DatasetPermissionEnum.PARTIAL_TEAM, Dataset.id.in_(permitted_dataset_ids))
                         )
@@ -90,7 +90,7 @@ class DatasetService:
                     query = query.filter(
                         db.or_(
                             Dataset.permission == DatasetPermissionEnum.ALL_TEAM,
-                            db.and_(Dataset.permission == 'only_me', Dataset.created_by == user.id)
+                            db.and_(Dataset.permission == DatasetPermissionEnum.ONLY_ME, Dataset.created_by == user.id)
                         )
                     )
         else:
@@ -146,7 +146,7 @@ class DatasetService:
         return datasets.items, datasets.total
 
     @staticmethod
-    def create_empty_dataset(tenant_id: str, name: str, indexing_technique: Optional[str], account: Account, permission: Optional[str]):
+    def create_empty_dataset(tenant_id: str, name: str, indexing_technique: Optional[str], account: Account):
         # check if dataset name already exists
         if Dataset.query.filter_by(name=name, tenant_id=tenant_id).first():
             raise DatasetNameDuplicateError(
@@ -166,7 +166,6 @@ class DatasetService:
         dataset.tenant_id = tenant_id
         dataset.embedding_model_provider = embedding_model.provider if embedding_model else None
         dataset.embedding_model = embedding_model.model if embedding_model else None
-        dataset.permission = permission if permission else DatasetPermissionEnum.ONLY_ME
         db.session.add(dataset)
         db.session.commit()
         return dataset
@@ -332,7 +331,7 @@ class DatasetService:
             raise NoPermissionError(
                 'You do not have permission to access this dataset.'
             )
-        if dataset.permission == 'only_me' and dataset.created_by != user.id:
+        if dataset.permission == DatasetPermissionEnum.ONLY_ME and dataset.created_by != user.id:
             logging.debug(
                 f'User {user.id} does not have permission to access dataset {dataset.id}'
             )
@@ -353,11 +352,11 @@ class DatasetService:
 
     @staticmethod
     def check_dataset_operator_permission(user: Account = None, dataset: Dataset = None):
-        if dataset.permission == 'only_me':
+        if dataset.permission == DatasetPermissionEnum.ONLY_ME:
             if dataset.created_by != user.id:
                 raise NoPermissionError('You do not have permission to access this dataset.')
 
-        elif dataset.permission == 'partial_members':
+        elif dataset.permission == DatasetPermissionEnum.PARTIAL_TEAM:
             if not any(
                 dp.dataset_id == dataset.id for dp in DatasetPermission.query.filter_by(account_id=user.id).all()
             ):
