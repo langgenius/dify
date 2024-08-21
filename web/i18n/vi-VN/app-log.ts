@@ -4,7 +4,8 @@ const translation = {
   dateTimeFormat: 'MM/DD/YYYY hh:mm A',
   table: {
     header: {
-      time: 'Thời gian',
+      updatedTime: 'Thời gian cập nhật',
+      time: 'Thời gian tạo',
       endUser: 'Người dùng cuối',
       input: 'Đầu vào',
       output: 'Đầu ra',
@@ -69,6 +70,9 @@ const translation = {
       annotated: 'Đã chú thích ({{count}} mục)',
       not_annotated: 'Chưa chú thích',
     },
+    sortBy: 'Sắp xếp theo:',
+    descending: 'giảm dần',
+    ascending: 'tăng dần',
   },
   workflowTitle: 'Nhật ký quy trình làm việc',
   workflowSubtitle: 'Nhật ký ghi lại hoạt động của Tự động hóa.',

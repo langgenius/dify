@@ -4,7 +4,8 @@ const translation = {
   dateTimeFormat: 'MM/DD/YYYY hh:mm A',
   table: {
     header: {
-      time: 'Час',
+      updatedTime: 'Час оновлення',
+      time: 'Час створення',
       endUser: 'Кінцевий Користувач',
       input: 'Введення',
       output: 'Виведення',
@@ -69,6 +70,9 @@ const translation = {
       annotated: 'Покращення з Анотацією ({{count}} елементів)',
       not_annotated: 'Без Анотації',
     },
+    sortBy: 'Сортувати за:',
+    descending: 'спадаючий',
+    ascending: 'зростаючий',
   },
   workflowTitle: 'Журнали Робочого Процесу',
   workflowSubtitle: 'Журнал зареєстрував роботу Автоматизації.',

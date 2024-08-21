@@ -4,7 +4,8 @@ const translation = {
   dateTimeFormat: 'MM/DD/YYYY hh:mm A',
   table: {
     header: {
-      time: 'Heure',
+      updatedTime: 'Heure de mise à jour',
+      time: 'Heure de création',
       endUser: 'Utilisateur final',
       input: 'Entrée',
       output: 'Sortie',
@@ -69,6 +70,9 @@ const translation = {
       annotated: 'Améliorations annotées ({{count}} éléments)',
       not_annotated: 'Non annoté',
     },
+    sortBy: 'Trier par :',
+    descending: 'décroissant',
+    ascending: 'croissant',
   },
   workflowTitle: 'Journaux de workflow',
   workflowSubtitle: 'Le journal enregistre l\'opération d\'Automate.',
