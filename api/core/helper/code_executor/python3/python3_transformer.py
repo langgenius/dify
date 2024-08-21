@@ -5,30 +5,6 @@ from core.helper.code_executor.template_transformer import TemplateTransformer
 
 class Python3TemplateTransformer(TemplateTransformer):
     @classmethod
-    def get_standard_packages(cls) -> set[str]:
-        return {
-            'base64',
-            'binascii',
-            'collections',
-            'datetime',
-            'functools',
-            'hashlib',
-            'hmac',
-            'itertools',
-            'json',
-            'math',
-            'operator',
-            'os',
-            'random',
-            're',
-            'string',
-            'sys',
-            'time',
-            'traceback',
-            'uuid',
-        }
-
-    @classmethod
     def get_runner_script(cls) -> str:
         runner_script = dedent(f"""
             # declare main function
