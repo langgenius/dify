@@ -440,7 +440,7 @@ const translation = {
     assigner: {
       'assignedVariable': '赋值的变量',
       'writeMode': '写入模式',
-      'writeModeTip': '赋值的变量为数组时，可添加变量至数组末尾。',
+      'writeModeTip': '使用追加模式时，赋值的变量必须是数组类型。',
       'over-write': '覆盖',
       'append': '追加',
       'plus': '加',

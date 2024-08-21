@@ -440,7 +440,7 @@ const translation = {
     assigner: {
       'assignedVariable': 'Assigned Variable',
       'writeMode': 'Write Mode',
-      'writeModeTip': 'When ASSIGNED VARIABLE is an array, append mode adds to the end.',
+      'writeModeTip': 'Append mode: Available for array variables only.',
       'over-write': 'Overwrite',
       'append': 'Append',
       'plus': 'Plus',
