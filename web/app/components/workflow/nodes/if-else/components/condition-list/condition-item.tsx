@@ -248,13 +248,15 @@ const ConditionItem = ({
         }
         {
           !comparisonOperatorNotRequireValue(condition.comparison_operator) && isSelect && (
-            <div className='p-1'>
+            <div className='border-t border-t-divider-subtle'>
               <Select
-                wrapperClassName='h-6'
-                className='pl-0 text-xs'
+                wrapperClassName='h-8'
+                className='px-2 text-xs rounded-t-none'
                 defaultValue={condition.value}
                 items={selectOptions}
                 onSelect={item => handleUpdateConditionValue(item.value as string)}
+                hideChecked
+                notClearable
               />
             </div>
           )
