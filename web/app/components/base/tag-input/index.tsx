@@ -63,7 +63,6 @@ const TagInput: FC<TagInputProps> = ({
   }
 
   const handleBlur = () => {
-    setValue('')
     setFocused(false)
   }
 
