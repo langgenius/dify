@@ -30,6 +30,7 @@ class ModelProviderService:
     """
     Model Provider Service
     """
+
     def __init__(self) -> None:
         self.provider_manager = ProviderManager()
 
@@ -387,18 +388,21 @@ class ModelProviderService:
             tenant_id=tenant_id,
             model_type=model_type_enum
         )
-
-        return DefaultModelResponse(
-            model=result.model,
-            model_type=result.model_type,
-            provider=SimpleProviderEntityResponse(
-                provider=result.provider.provider,
-                label=result.provider.label,
-                icon_small=result.provider.icon_small,
-                icon_large=result.provider.icon_large,
-                supported_model_types=result.provider.supported_model_types
-            )
-        ) if result else None
+        try:
+            return DefaultModelResponse(
+                model=result.model,
+                model_type=result.model_type,
+                provider=SimpleProviderEntityResponse(
+                    provider=result.provider.provider,
+                    label=result.provider.label,
+                    icon_small=result.provider.icon_small,
+                    icon_large=result.provider.icon_large,
+                    supported_model_types=result.provider.supported_model_types
+                )
+            ) if result else None
+        except Exception as e:
+            logger.info(f"get_default_model_of_model_type error: {e}")
+            return None
 
     def update_default_model_of_model_type(self, tenant_id: str, model_type: str, provider: str, model: str) -> None:
         """

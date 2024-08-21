@@ -406,6 +406,7 @@ class DataSetConfig(BaseSettings):
         default=False,
     )
 
+
 class WorkspaceConfig(BaseSettings):
     """
     Workspace configs
@@ -442,6 +443,63 @@ class CeleryBeatConfig(BaseSettings):
     )
 
 
+class PositionConfig(BaseSettings):
+
+    POSITION_PROVIDER_PINS: str = Field(
+        description='The heads of model providers',
+        default='',
+    )
+
+    POSITION_PROVIDER_INCLUDES: str = Field(
+        description='The included model providers',
+        default='',
+    )
+
+    POSITION_PROVIDER_EXCLUDES: str = Field(
+        description='The excluded model providers',
+        default='',
+    )
+
+    POSITION_TOOL_PINS: str = Field(
+        description='The heads of tools',
+        default='',
+    )
+
+    POSITION_TOOL_INCLUDES: str = Field(
+        description='The included tools',
+        default='',
+    )
+
+    POSITION_TOOL_EXCLUDES: str = Field(
+        description='The excluded tools',
+        default='',
+    )
+
+    @computed_field
+    def POSITION_PROVIDER_PINS_LIST(self) -> list[str]:
+        return [item.strip() for item in self.POSITION_PROVIDER_PINS.split(',') if item.strip() != '']
+
+    @computed_field
+    def POSITION_PROVIDER_INCLUDES_SET(self) -> set[str]:
+        return {item.strip() for item in self.POSITION_PROVIDER_INCLUDES.split(',') if item.strip() != ''}
+
+    @computed_field
+    def POSITION_PROVIDER_EXCLUDES_SET(self) -> set[str]:
+        return {item.strip() for item in self.POSITION_PROVIDER_EXCLUDES.split(',') if item.strip() != ''}
+
+    @computed_field
+    def POSITION_TOOL_PINS_LIST(self) -> list[str]:
+        return [item.strip() for item in self.POSITION_TOOL_PINS.split(',') if item.strip() != '']
+
+    @computed_field
+    def POSITION_TOOL_INCLUDES_SET(self) -> set[str]:
+        return {item.strip() for item in self.POSITION_TOOL_INCLUDES.split(',') if item.strip() != ''}
+
+    @computed_field
+    def POSITION_TOOL_EXCLUDES_SET(self) -> set[str]:
+        return {item.strip() for item in self.POSITION_TOOL_EXCLUDES.split(',') if item.strip() != ''}
+
+
 class FeatureConfig(
     # place the configs in alphabet order
     AppExecutionConfig,
@@ -466,6 +524,7 @@ class FeatureConfig(
     UpdateConfig,
     WorkflowConfig,
     WorkspaceConfig,
+    PositionConfig,
 
     # hosted services config
     HostedServiceConfig,
