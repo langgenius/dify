@@ -24,7 +24,7 @@ from fields.app_fields import related_app_list
 from fields.dataset_fields import dataset_detail_fields, dataset_query_detail_fields
 from fields.document_fields import document_status_fields
 from libs.login import login_required
-from models.dataset import Dataset, Document, DocumentSegment
+from models.dataset import Dataset, DatasetPermissionEnum, Document, DocumentSegment
 from models.model import ApiToken, UploadFile
 from services.dataset_service import DatasetPermissionService, DatasetService, DocumentService
 
@@ -202,7 +202,7 @@ class DatasetApi(Resource):
                             nullable=True,
                             help='Invalid indexing technique.')
         parser.add_argument('permission', type=str, location='json', choices=(
-            'only_me', 'all_team_members', 'partial_members'), help='Invalid permission.'
+            DatasetPermissionEnum.ONLY_ME, DatasetPermissionEnum.ALL_TEAM, DatasetPermissionEnum.PARTIAL_TEAM), help='Invalid permission.'
                             )
         parser.add_argument('embedding_model', type=str,
                             location='json', help='Invalid embedding model.')
@@ -239,7 +239,7 @@ class DatasetApi(Resource):
                 tenant_id, dataset_id_str, data.get('partial_member_list')
             )
         # clear partial member list when permission is only_me or all_team_members
-        elif data.get('permission') == 'only_me' or data.get('permission') == 'all_team_members':
+        elif data.get('permission') == DatasetPermissionEnum.ONLY_ME or data.get('permission') == DatasetPermissionEnum.ALL_TEAM:
             DatasetPermissionService.clear_partial_member_list(dataset_id_str)
 
         partial_member_list = DatasetPermissionService.get_dataset_partial_member_list(dataset_id_str)

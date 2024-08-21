@@ -1,4 +1,5 @@
 import base64
+import enum
 import hashlib
 import hmac
 import json
@@ -21,6 +22,11 @@ from .account import Account
 from .model import App, Tag, TagBinding, UploadFile
 from .types import StringUUID
 
+
+class DatasetPermissionEnum(str, enum.Enum):
+    ONLY_ME = 'only_me'
+    ALL_TEAM = 'all_team_members'
+    PARTIAL_TEAM = 'partial_members'
 
 class Dataset(db.Model):
     __tablename__ = 'datasets'
