@@ -24,7 +24,7 @@ class StockTicker(Resource):
         with open(TICKERS_FILE_PATH, 'r') as file:
             company_data = file.read()
 
-        logger.info(f"ticker {type(company_data)} \n {company_data}")
+        # logger.info(f"ticker {type(company_data)} \n {company_data}")
         response = make_response(company_data)
         response.headers['Content-Type'] = 'text/plain; charset=utf-8'
         return response
@@ -52,11 +52,6 @@ class StockFinance(Resource):
         result = get_financial_data(ticker)
         logger.info(f"get_financial_data {type(result)} {result}")
         return f"{result}"
-        # return {
-        #     "data": f"{result}"
-        # }
-        # data = result.to_dict(orient='records')
-        # return data
 
 api.add_resource(StockIndexApi, '/')
 api.add_resource(StockTicker, '/ticker')
