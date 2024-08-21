@@ -551,7 +551,13 @@ const TextGeneration: FC<IMainProps> = ({
           <div className='mb-6'>
             <div className='flex items-center justify-between'>
               <div className='flex items-center space-x-3'>
-                <AppIcon size="small" icon={siteInfo.icon} background={siteInfo.icon_background || appDefaultIconBackground} />
+                <AppIcon
+                  size="small"
+                  iconType={siteInfo.icon_type}
+                  icon={siteInfo.icon}
+                  background={siteInfo.icon_background || appDefaultIconBackground}
+                  imageUrl={siteInfo.icon_url}
+                />
                 <div className='text-lg font-semibold text-gray-800'>{siteInfo.title}</div>
               </div>
               {!isPC && (
