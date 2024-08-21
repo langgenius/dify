@@ -13,6 +13,7 @@ from libs.login import current_user
 from models.dataset import Dataset, DatasetPermissionEnum
 from services.dataset_service import DatasetService
 
+
 def _validate_name(name):
     if not name or len(name) < 1 or len(name) > 40:
         raise ValueError('Name must be between 1 to 40 characters.')

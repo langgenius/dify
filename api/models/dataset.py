@@ -1,5 +1,5 @@
-import enum
 import base64
+import enum
 import hashlib
 import hmac
 import json
@@ -21,6 +21,7 @@ from extensions.ext_storage import storage
 from .account import Account
 from .model import App, Tag, TagBinding, UploadFile
 from .types import StringUUID
+
 
 class DatasetPermissionEnum(str, enum.Enum):
     ONLY_ME = 'only_me'
