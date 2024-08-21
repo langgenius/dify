@@ -54,7 +54,7 @@ export const getOperators = (type?: VarType, file?: { key: string }) => {
           ComparisonOperator.contains,
           ComparisonOperator.notContains,
         ]
-      case 'mimetype':
+      case 'mime_type':
         return [
           ComparisonOperator.contains,
           ComparisonOperator.notContains,

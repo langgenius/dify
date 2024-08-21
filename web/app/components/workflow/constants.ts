@@ -461,7 +461,7 @@ export const FILE_STRUCT: Var[] = [
     type: VarType.string,
   },
   {
-    variable: 'mimetype',
+    variable: 'mime_type',
     type: VarType.string,
   },
   {

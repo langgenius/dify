@@ -93,6 +93,8 @@ const ConditionItem = ({
   }, [condition, doUpdateCondition])
 
   const handleUpdateConditionValue = useCallback((value: string) => {
+    if (value === condition.value)
+      return
     const newCondition = {
       ...condition,
       value,
@@ -109,16 +111,28 @@ const ConditionItem = ({
     doUpdateCondition(newCondition)
   }, [condition, doUpdateCondition])
 
+  const isSubVariable = condition.varType === VarType.arrayFile && [ComparisonOperator.contains, ComparisonOperator.notContains].includes(condition.comparison_operator!)
+  const fileAttr = useMemo(() => {
+    if (file)
+      return file
+    if (isSubVariableKey) {
+      return {
+        key: condition.key!,
+      }
+    }
+    return undefined
+  }, [condition.key, file, isSubVariableKey])
+
   const isSelect = condition.comparison_operator && [ComparisonOperator.in, ComparisonOperator.notIn, ComparisonOperator.allOf].includes(condition.comparison_operator)
   const selectOptions = useMemo(() => {
     if (isSelect) {
-      if (file?.key === 'type' || condition.comparison_operator === ComparisonOperator.allOf) {
+      if (fileAttr?.key === 'type' || condition.comparison_operator === ComparisonOperator.allOf) {
         return FILE_TYPE_OPTIONS.map(item => ({
           name: t(`${optionNameI18NPrefix}.${item.i18nKey}`),
           value: item.value,
         }))
       }
-      if (file?.key === 'transfer_method') {
+      if (fileAttr?.key === 'transfer_method') {
         return TRANSFER_METHOD.map(item => ({
           name: t(`${optionNameI18NPrefix}.${item.i18nKey}`),
           value: item.value,
@@ -127,9 +141,8 @@ const ConditionItem = ({
       return []
     }
     return []
-  }, [condition.comparison_operator, file?.key, isSelect, t])
+  }, [condition.comparison_operator, fileAttr?.key, isSelect, t])
 
-  const isSubVariable = condition.varType === VarType.arrayFile && [ComparisonOperator.contains, ComparisonOperator.notContains].includes(condition.comparison_operator!)
   const isNotInput = isSelect || isSubVariable
 
   const isSubVarSelect = isSubVariableKey
@@ -145,6 +158,8 @@ const ConditionItem = ({
         draft.varType = VarType.number
       else
         draft.varType = VarType.string
+
+      draft.value = ''
       draft.comparison_operator = getOperators(undefined, { key })[0]
     })
 
@@ -202,7 +217,7 @@ const ConditionItem = ({
             varType={condition.varType}
             value={condition.comparison_operator}
             onSelect={handleUpdateConditionOperator}
-            file={isSubVariableKey ? { key: condition.key! } : file}
+            file={fileAttr}
           />
         </div>
         {
