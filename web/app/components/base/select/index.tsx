@@ -206,9 +206,10 @@ const SimpleSelect: FC<ISelectProps> = ({
       }}
     >
       <div className={classNames('relative h-9', wrapperClassName)}>
-        {renderTrigger ? <Listbox.Button className='w-full'>{renderTrigger(selectedItem)}</Listbox.Button> : <span className={classNames('block truncate text-left', !selectedItem?.name && 'text-gray-400')}>{selectedItem?.name ?? localPlaceholder}</span>}
+        {renderTrigger && <Listbox.Button className='w-full'>{renderTrigger(selectedItem)}</Listbox.Button>}
         {!renderTrigger && (
           <Listbox.Button className={classNames(`flex items-center w-full h-full rounded-lg border-0 bg-gray-100 pl-3 pr-10 sm:text-sm sm:leading-6 focus-visible:outline-none focus-visible:bg-gray-200 group-hover:bg-gray-200 ${disabled ? 'cursor-not-allowed' : 'cursor-pointer'}`, className)}>
+            <span className={classNames('block truncate text-left', !selectedItem?.name && 'text-gray-400')}>{selectedItem?.name ?? localPlaceholder}</span>
             <span className="absolute inset-y-0 right-0 flex items-center pr-2">
               {selectedItem
                 ? (
