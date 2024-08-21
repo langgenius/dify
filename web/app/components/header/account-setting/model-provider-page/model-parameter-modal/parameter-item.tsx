@@ -41,7 +41,7 @@ const ParameterItem: FC<ParameterItemProps> = ({
 
     if (parameterRule.type === 'int' || parameterRule.type === 'float')
       defaultValue = isNullOrUndefined(parameterRule.default) ? (parameterRule.min || 0) : parameterRule.default
-    else if (parameterRule.type === 'string')
+    else if (parameterRule.type === 'string' || parameterRule.type === 'text')
       defaultValue = parameterRule.options?.length ? (parameterRule.default || '') : (parameterRule.default || '')
     else if (parameterRule.type === 'boolean')
       defaultValue = !isNullOrUndefined(parameterRule.default) ? parameterRule.default : false
