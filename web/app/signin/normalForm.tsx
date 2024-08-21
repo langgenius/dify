@@ -1,16 +1,15 @@
 'use client'
-import React, { useEffect, useReducer, useState } from 'react'
+import React, { useReducer, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { useRouter } from 'next/navigation'
-import useSWR from 'swr'
 import Link from 'next/link'
 import Toast from '../components/base/toast'
-import style from './page.module.css'
-import classNames from '@/utils/classnames'
-import { IS_CE_EDITION, SUPPORT_MAIL_LOGIN, apiPrefix, emailRegex } from '@/config'
+import SSOAuthButton from './components/sso-auth-button'
+import GoogleAuthButton from './components/google-auth-button'
+import GithubAuthButton from './components/github-auth-button'
+import { IS_CE_EDITION, SUPPORT_MAIL_LOGIN, emailRegex } from '@/config'
 import Button from '@/app/components/base/button'
-import { login, oauth } from '@/service/common'
-import { getPurifyHref } from '@/utils'
+import { login } from '@/service/common'
 
 type IState = {
   formValid: boolean
@@ -110,37 +109,37 @@ const NormalForm = () => {
     }
   }
 
-  const { data: github, error: github_error } = useSWR(state.github
-    ? ({
-      url: '/oauth/login/github',
-      // params: {
-      //   provider: 'github',
-      // },
-    })
-    : null, oauth)
+  // const { data: github, error: github_error } = useSWR(state.github
+  //   ? ({
+  //     url: '/oauth/login/github',
+  //     // params: {
+  //     //   provider: 'github',
+  //     // },
+  //   })
+  //   : null, oauth)
 
-  const { data: google, error: google_error } = useSWR(state.google
-    ? ({
-      url: '/oauth/login/google',
-      // params: {
-      //   provider: 'google',
-      // },
-    })
-    : null, oauth)
+  // const { data: google, error: google_error } = useSWR(state.google
+  //   ? ({
+  //     url: '/oauth/login/google',
+  //     // params: {
+  //     //   provider: 'google',
+  //     // },
+  //   })
+  //   : null, oauth)
 
-  useEffect(() => {
-    if (github_error !== undefined)
-      dispatch({ type: 'github_login_failed' })
-    if (github)
-      window.location.href = github.redirect_url
-  }, [github, github_error])
+  // useEffect(() => {
+  //   if (github_error !== undefined)
+  //     dispatch({ type: 'github_login_failed' })
+  //   if (github)
+  //     window.location.href = github.redirect_url
+  // }, [github, github_error])
 
-  useEffect(() => {
-    if (google_error !== undefined)
-      dispatch({ type: 'google_login_failed' })
-    if (google)
-      window.location.href = google.redirect_url
-  }, [google, google_error])
+  // useEffect(() => {
+  //   if (google_error !== undefined)
+  //     dispatch({ type: 'google_login_failed' })
+  //   if (google)
+  //     window.location.href = google.redirect_url
+  // }, [google, google_error])
 
   return (
     <>
@@ -154,40 +153,13 @@ const NormalForm = () => {
 
           <div className="flex flex-col gap-3 mt-6">
             <div className='w-full'>
-              <a href={getPurifyHref(`${apiPrefix}/oauth/login/github`)}>
-                <Button
-                  disabled={isLoading}
-                  className='w-full hover:!bg-gray-50'
-                >
-                  <>
-                    <span className={
-                      classNames(
-                        style.githubIcon,
-                        'w-5 h-5 mr-2',
-                      )
-                    } />
-                    <span className="truncate text-gray-800">{t('login.withGitHub')}</span>
-                  </>
-                </Button>
-              </a>
+              <GithubAuthButton disabled={isLoading} />
             </div>
             <div className='w-full'>
-              <a href={getPurifyHref(`${apiPrefix}/oauth/login/google`)}>
-                <Button
-                  disabled={isLoading}
-                  className='w-full hover:!bg-gray-50'
-                >
-                  <>
-                    <span className={
-                      classNames(
-                        style.googleIcon,
-                        'w-5 h-5 mr-2',
-                      )
-                    } />
-                    <span className="truncate text-gray-800">{t('login.withGoogle')}</span>
-                  </>
-                </Button>
-              </a>
+              <GoogleAuthButton disabled={isLoading} />
+            </div>
+            <div className='w-full'>
+              <SSOAuthButton />
             </div>
           </div>
 
