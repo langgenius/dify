@@ -13,8 +13,8 @@ from models.workflow import WorkflowNodeExecutionStatus
 
 MAX_NUMBER = dify_config.CODE_MAX_NUMBER
 MIN_NUMBER = dify_config.CODE_MIN_NUMBER
-MAX_PRECISION = 20
-MAX_DEPTH = 5
+MAX_PRECISION = dify_config.CODE_MAX_PRECISION
+MAX_DEPTH = dify_config.CODE_MAX_DEPTH
 MAX_STRING_LENGTH = dify_config.CODE_MAX_STRING_LENGTH
 MAX_STRING_ARRAY_LENGTH = dify_config.CODE_MAX_STRING_ARRAY_LENGTH
 MAX_OBJECT_ARRAY_LENGTH = dify_config.CODE_MAX_OBJECT_ARRAY_LENGTH
@@ -23,7 +23,7 @@ MAX_NUMBER_ARRAY_LENGTH = dify_config.CODE_MAX_NUMBER_ARRAY_LENGTH
 
 class CodeNode(BaseNode):
     _node_data_cls = CodeNodeData
-    node_type = NodeType.CODE
+    _node_type = NodeType.CODE
 
     @classmethod
     def get_default_config(cls, filters: Optional[dict] = None) -> dict:
@@ -48,8 +48,7 @@ class CodeNode(BaseNode):
         :param variable_pool: variable pool
         :return:
         """
-        node_data = self.node_data
-        node_data: CodeNodeData = cast(self._node_data_cls, node_data)
+        node_data = cast(CodeNodeData, self.node_data)
 
         # Get code language
         code_language = node_data.code_language
@@ -68,7 +67,6 @@ class CodeNode(BaseNode):
                 language=code_language,
                 code=code,
                 inputs=variables,
-                dependencies=node_data.dependencies
             )
 
             # Transform result

@@ -4,7 +4,8 @@ const translation = {
   dateTimeFormat: 'DD/MM/YYYY hh:mm A',
   table: {
     header: {
-      time: 'Oră',
+      updatedTime: 'Timp actualizare',
+      time: 'Timp creare',
       endUser: 'Utilizator final',
       input: 'Intrare',
       output: 'Ieșire',
@@ -69,6 +70,9 @@ const translation = {
       annotated: 'Îmbunătățiri annotate ({{count}} elemente)',
       not_annotated: 'Fără annotări',
     },
+    sortBy: 'Sortează după:',
+    descending: 'descrescător',
+    ascending: 'crescător',
   },
   workflowTitle: 'Jurnale de flux de lucru',
   workflowSubtitle: 'Jurnalul a înregistrat operațiunea Automate.',
