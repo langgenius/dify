@@ -5,6 +5,13 @@ from typing import Any, Optional, Union
 from azure.ai.inference import ChatCompletionsClient
 from azure.ai.inference.models import StreamingChatCompletionsUpdate
 from azure.core.credentials import AzureKeyCredential
+from azure.core.exceptions import (
+    ServiceRequestError,
+    ServiceUnavailableError,
+    TooManyRequests,
+    ClientAuthenticationError,
+    HttpResponseError,
+)
 
 from core.model_runtime.callbacks.base_callback import Callback
 from core.model_runtime.entities.llm_entities import LLMResult, LLMResultChunk, LLMResultChunkDelta, LLMUsage
@@ -19,12 +26,15 @@ from core.model_runtime.entities.model_entities import (
   I18nObject,
   ModelType,
   ParameterRule,
-  ParameterType, ModelPropertyKey
+  ParameterType,
 )
 from core.model_runtime.errors.invoke import (
   InvokeBadRequestError,
   InvokeConnectionError,
   InvokeError,
+  InvokeServerUnavailableError,
+  InvokeRateLimitError,
+  InvokeAuthorizationError
 )
 from core.model_runtime.errors.validate import CredentialsValidateFailedError
 from core.model_runtime.model_providers.__base.large_language_model import LargeLanguageModel
@@ -248,34 +258,35 @@ class AzureAIStudioLargeLanguageModel(LargeLanguageModel):
 
   @property
   def _invoke_error_mapping(self) -> dict[type[InvokeError], list[type[Exception]]]:
-      """
-      Map model invoke error to unified error
-      The key is the error type thrown to the caller
-      The value is the error type thrown by the model,
-      which needs to be converted into a unified error type for the caller.
+    """
+    Map model invoke error to unified error
+    The key is the error type thrown to the caller
+    The value is the error type thrown by the model,
+    which needs to be converted into a unified error type for the caller.
 
-      :return: Invoke error mapping
-      """
-      # You may need to adjust this based on the specific exceptions thrown by the Azure AI Studio SDK
-      return {
-          InvokeConnectionError: [
-              ConnectionError
-          ],
-        #   InvokeServerUnavailableError: [
-              
-        #   ],
-        #   InvokeRateLimitError: [
-        #       RateLimitExceededError
-        #   ],
-        #   InvokeAuthorizationError: [
-        #       AuthenticationError
-        #   ],
-          InvokeBadRequestError: [
-              ValueError,
-              TypeError
-          ]
-      }
-
+    :return: Invoke error mapping
+    """
+    return {
+        InvokeConnectionError: [
+            ConnectionError,
+            ServiceRequestError,
+        ],
+        InvokeServerUnavailableError: [
+            ServiceUnavailableError,
+        ],
+        InvokeRateLimitError: [
+            TooManyRequests,
+        ],
+        InvokeAuthorizationError: [
+            ClientAuthenticationError,
+        ],
+        InvokeBadRequestError: [
+            ValueError,
+            TypeError,
+            HttpResponseError,
+        ]
+    }
+  
   def get_customizable_model_schema(self, model: str, credentials: dict) -> AIModelEntity | None:
       """
       Used to define customizable model schema
