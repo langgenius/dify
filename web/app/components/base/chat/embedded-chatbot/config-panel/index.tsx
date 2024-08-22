@@ -48,9 +48,12 @@ const ConfigPanel = () => {
               <>
                 <div className='flex items-center h-8 text-2xl font-semibold text-gray-800'>
                   <AppIcon
+                    iconType={appData?.site.icon_type}
                     icon={appData?.site.icon}
+                    imageUrl={appData?.site.icon_url}
                     background='transparent'
                     size='small'
+                    className="mr-2"
                   />
                   {appData?.site.title}
                 </div>
