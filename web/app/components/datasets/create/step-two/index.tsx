@@ -44,8 +44,10 @@ import { RETRIEVE_METHOD } from '@/types/app'
 import useBreakpoints, { MediaType } from '@/hooks/use-breakpoints'
 import Tooltip from '@/app/components/base/tooltip'
 import TooltipPlus from '@/app/components/base/tooltip-plus'
-import { useModelListAndDefaultModelAndCurrentProviderAndModel } from '@/app/components/header/account-setting/model-provider-page/hooks'
+import { useDefaultModel, useModelList, useModelListAndDefaultModelAndCurrentProviderAndModel } from '@/app/components/header/account-setting/model-provider-page/hooks'
 import { LanguagesSupported } from '@/i18n/language'
+import ModelSelector from '@/app/components/header/account-setting/model-provider-page/model-selector'
+import type { DefaultModel } from '@/app/components/header/account-setting/model-provider-page/declarations'
 import { ModelTypeEnum } from '@/app/components/header/account-setting/model-provider-page/declarations'
 import { Globe01 } from '@/app/components/base/icons/src/vender/line/mapsAndTravel'
 
@@ -112,7 +114,7 @@ const StepTwo = ({
   const [previewScrolled, setPreviewScrolled] = useState(false)
   const [segmentationType, setSegmentationType] = useState<SegmentType>(SegmentType.AUTO)
   const [segmentIdentifier, setSegmentIdentifier] = useState('\\n')
-  const [max, setMax] = useState(500)
+  const [max, setMax] = useState(5000) // default chunk length
   const [overlap, setOverlap] = useState(50)
   const [rules, setRules] = useState<PreProcessingRule[]>([])
   const [defaultConfig, setDefaultConfig] = useState<Rules>()
@@ -307,6 +309,19 @@ const StepTwo = ({
     defaultModel: rerankDefaultModel,
     currentModel: isRerankDefaultModelVaild,
   } = useModelListAndDefaultModelAndCurrentProviderAndModel(ModelTypeEnum.rerank)
+  const { data: embeddingModelList } = useModelList(ModelTypeEnum.textEmbedding)
+  const { data: defaultEmbeddingModel } = useDefaultModel(ModelTypeEnum.textEmbedding)
+  const [embeddingModel, setEmbeddingModel] = useState<DefaultModel>(
+    currentDataset?.embedding_model
+      ? {
+        provider: currentDataset.embedding_model_provider,
+        model: currentDataset.embedding_model,
+      }
+      : {
+        provider: defaultEmbeddingModel?.provider.provider || '',
+        model: defaultEmbeddingModel?.model || '',
+      },
+  )
   const getCreationParams = () => {
     let params
     if (segmentationType === SegmentType.CUSTOM && overlap > max) {
@@ -321,6 +336,8 @@ const StepTwo = ({
         process_rule: getProcessRule(),
         // eslint-disable-next-line @typescript-eslint/no-use-before-define
         retrieval_model: retrievalConfig, // Readonly. If want to changed, just go to settings page.
+        embedding_model: embeddingModel.model, // Readonly
+        embedding_model_provider: embeddingModel.provider, // Readonly
       } as CreateDocumentReq
     }
     else { // create
@@ -357,6 +374,8 @@ const StepTwo = ({
         doc_language: docLanguage,
 
         retrieval_model: postRetrievalConfig,
+        embedding_model: embeddingModel.model,
+        embedding_model_provider: embeddingModel.provider,
       } as CreateDocumentReq
       if (dataSourceType === DataSourceType.FILE) {
         params.data_source.info_list.file_info_list = {
@@ -672,7 +691,7 @@ const StepTwo = ({
                     !isAPIKeySet && s.disabled,
                     !hasSetIndexType && indexType === IndexingType.QUALIFIED && s.active,
                     hasSetIndexType && s.disabled,
-                    hasSetIndexType && '!w-full',
+                    hasSetIndexType && '!w-full !min-h-[96px]',
                   )}
                   onClick={() => {
                     if (isAPIKeySet)
@@ -704,7 +723,7 @@ const StepTwo = ({
                     s.indexItem,
                     !hasSetIndexType && indexType === IndexingType.ECONOMICAL && s.active,
                     hasSetIndexType && s.disabled,
-                    hasSetIndexType && '!w-full',
+                    hasSetIndexType && '!w-full !min-h-[96px]',
                   )}
                   onClick={changeToEconomicalType}
                 >
@@ -717,7 +736,7 @@ const StepTwo = ({
                 </div>
               )}
             </div>
-            {hasSetIndexType && (
+            {hasSetIndexType && indexType === IndexingType.ECONOMICAL && (
               <div className='mt-2 text-xs text-gray-500 font-medium'>
                 {t('datasetCreation.stepTwo.indexSettedTip')}
                 <Link className='text-[#155EEF]' href={`/datasets/${datasetId}/settings`}>{t('datasetCreation.stepTwo.datasetSettingLink')}</Link>
@@ -752,12 +771,32 @@ const StepTwo = ({
                 )}
               </div>
             )}
+            {/* Embedding model */}
+            {indexType === IndexingType.QUALIFIED && (
+              <div className='mb-2'>
+                <div className={cn(s.label, datasetId && 'flex justify-between items-center')}>{t('datasetSettings.form.embeddingModel')}</div>
+                <ModelSelector
+                  readonly={!!datasetId}
+                  defaultModel={embeddingModel}
+                  modelList={embeddingModelList}
+                  onSelect={(model: DefaultModel) => {
+                    setEmbeddingModel(model)
+                  }}
+                />
+                {!!datasetId && (
+                  <div className='mt-2 text-xs text-gray-500 font-medium'>
+                    {t('datasetCreation.stepTwo.indexSettedTip')}
+                    <Link className='text-[#155EEF]' href={`/datasets/${datasetId}/settings`}>{t('datasetCreation.stepTwo.datasetSettingLink')}</Link>
+                  </div>
+                )}
+              </div>
+            )}
             {/* Retrieval Method Config */}
             <div>
               {!datasetId
                 ? (
                   <div className={s.label}>
-                    {t('datasetSettings.form.retrievalSetting.title')}
+                    <div className='shrink-0 mr-4'>{t('datasetSettings.form.retrievalSetting.title')}</div>
                     <div className='leading-[18px] text-xs font-normal text-gray-500'>
                       <a target='_blank' rel='noopener noreferrer' href='https://docs.dify.ai/guides/knowledge-base/create-knowledge-and-upload-documents#id-6-retrieval-settings' className='text-[#155eef]'>{t('datasetSettings.form.retrievalSetting.learnMore')}</a>
                       {t('datasetSettings.form.retrievalSetting.longDescription')}

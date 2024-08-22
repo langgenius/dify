@@ -121,10 +121,6 @@
   @apply pb-1;
 }
 
-.radioItem.indexItem .typeHeader .tip {
-  @apply pb-3;
-}
-
 .radioItem .typeIcon {
   position: absolute;
   top: 18px;
