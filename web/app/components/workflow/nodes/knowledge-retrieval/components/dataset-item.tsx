@@ -44,7 +44,7 @@ const DatasetItem: FC<Props> = ({
   }, [hideSettingsModal, onChange])
 
   return (
-    <div className='flex items-center h-10 justify-between rounded-xl px-2 bg-white border border-gray-200  cursor-pointer group/dataset-item'>
+    <div className='flex items-center h-10 justify-between rounded-lg px-2 bg-components-panel-on-panel-item-bg hover:bg-components-panel-on-panel-item-bg-hover border-[0.5px] border-components-panel-border-subtle  cursor-pointer group/dataset-item'>
       <div className='w-0 grow flex items-center space-x-1.5'>
         {
           payload.data_source_type === DataSourceType.NOTION
@@ -57,7 +57,7 @@ const DatasetItem: FC<Props> = ({
               <Folder className='w-4 h-4 text-[#444CE7]' />
             </div>
         }
-        <div className='w-0 grow text-[13px] font-normal text-gray-800 truncate'>{payload.name}</div>
+        <div className='w-0 grow text-text-secondary system-sm-medium truncate'>{payload.name}</div>
       </div>
       {!readonly && (
         <div className='hidden group-hover/dataset-item:flex shrink-0 ml-2  items-center space-x-1'>
