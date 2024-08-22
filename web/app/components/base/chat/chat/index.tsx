@@ -16,6 +16,7 @@ import type {
   ChatConfig,
   ChatItem,
   Feedback,
+  OnRegenerate,
   OnSend,
 } from '../types'
 import type { ThemeBuilder } from '../embedded-chatbot/theme/theme-context'
@@ -42,6 +43,7 @@ export type ChatProps = {
   onStopResponding?: () => void
   noChatInput?: boolean
   onSend?: OnSend
+  onRegenerate?: OnRegenerate
   chatContainerClassName?: string
   chatContainerInnerClassName?: string
   chatFooterClassName?: string
@@ -66,6 +68,7 @@ const Chat: FC<ChatProps> = ({
   appData,
   config,
   onSend,
+  onRegenerate,
   chatList,
   isResponding,
   noStopResponding,
@@ -184,6 +187,7 @@ const Chat: FC<ChatProps> = ({
       answerIcon={answerIcon}
       allToolIcons={allToolIcons}
       onSend={onSend}
+      onRegenerate={onRegenerate}
       onAnnotationAdded={onAnnotationAdded}
       onAnnotationEdited={onAnnotationEdited}
       onAnnotationRemoved={onAnnotationRemoved}

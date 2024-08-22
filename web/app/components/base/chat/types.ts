@@ -65,6 +65,8 @@ export type ChatItem = IChatItem & {
 
 export type OnSend = (message: string, files?: VisionFile[]) => void
 
+export type OnRegenerate = (chatItem: ChatItem) => void
+
 export type Callback = {
   onSuccess: () => void
 }

@@ -2,6 +2,7 @@ import { useCallback, useEffect, useMemo } from 'react'
 import Chat from '../chat'
 import type {
   ChatConfig,
+  ChatItem,
   OnSend,
 } from '../types'
 import { useChat } from '../chat/hooks'
@@ -43,6 +44,7 @@ const ChatWrapper = () => {
   }, [appParams, currentConversationItem?.introduction, currentConversationId])
   const {
     chatList,
+    handleUpdateChatList,
     handleSend,
     handleStop,
     isResponding,
@@ -91,6 +93,22 @@ const ChatWrapper = () => {
     isInstalledApp,
     appId,
   ])
+
+  const doRegenerate = useCallback((chatItem: ChatItem) => {
+    const index = chatList.findIndex(item => item.id === chatItem.id)
+    if (index === -1)
+      return
+
+    const prevMessages = chatList.slice(0, index)
+    const prevMessage = prevMessages.pop()
+
+    if (!prevMessage)
+      return
+
+    handleUpdateChatList(prevMessages)
+    doSend(prevMessage.content, prevMessage.message_files)
+  }, [chatList, handleUpdateChatList, doSend])
+
   const chatNode = useMemo(() => {
     if (inputsForms.length) {
       return (
@@ -138,6 +156,7 @@ const ChatWrapper = () => {
       chatFooterClassName='pb-4'
       chatFooterInnerClassName={`mx-auto w-full max-w-[720px] ${isMobile && 'px-4'}`}
       onSend={doSend}
+      onRegenerate={doRegenerate}
       onStopResponding={handleStop}
       chatNode={chatNode}
       allToolIcons={appMeta?.tool_icons || {}}

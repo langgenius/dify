@@ -7,6 +7,7 @@ import {
 import { useTranslation } from 'react-i18next'
 import type { ChatItem } from '../../types'
 import { useChatContext } from '../context'
+import RegenerateBtn from '@/app/components/base/regenerate-btn'
 import cn from '@/utils/classnames'
 import CopyBtn from '@/app/components/base/copy-btn'
 import { MessageFast } from '@/app/components/base/icons/src/vender/solid/communication'
@@ -45,6 +46,7 @@ const Operation: FC<OperationProps> = ({
     onAnnotationEdited,
     onAnnotationRemoved,
     onFeedback,
+    onRegenerate,
   } = useChatContext()
   const [isShowReplyModal, setIsShowReplyModal] = useState(false)
   const {
@@ -160,8 +162,11 @@ const Operation: FC<OperationProps> = ({
           )
         }
         {
+          !isOpeningStatement && <RegenerateBtn className='hidden group-hover:block mr-1' onClick={() => onRegenerate?.(item)} />
+        }
+        {
           config?.supportFeedback && !localFeedback?.rating && onFeedback && !isOpeningStatement && (
-            <div className='hidden group-hover:flex ml-1 shrink-0 items-center px-0.5 bg-white border-[0.5px] border-gray-100 shadow-md text-gray-500 rounded-lg'>
+            <div className='hidden group-hover:flex shrink-0 items-center px-0.5 bg-white border-[0.5px] border-gray-100 shadow-md text-gray-500 rounded-lg'>
               <TooltipPlus popupContent={t('appDebug.operation.agree')}>
                 <div
                   className='flex items-center justify-center mr-0.5 w-6 h-6 rounded-md hover:bg-black/5 hover:text-gray-800 cursor-pointer'

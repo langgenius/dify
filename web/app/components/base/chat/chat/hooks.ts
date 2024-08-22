@@ -639,7 +639,7 @@ export const useChat = (
 
   return {
     chatList,
-    setChatList,
+    handleUpdateChatList,
     conversationId: conversationId.current,
     isResponding,
     setIsResponding,
