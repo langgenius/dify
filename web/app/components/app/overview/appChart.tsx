@@ -36,12 +36,15 @@ const COMMON_COLOR_MAP = {
 }
 
 type IColorType = 'green' | 'orange' | 'blue'
-type IChartType = 'conversations' | 'endUsers' | 'costs' | 'workflowCosts'
+type IChartType = 'messages' | 'conversations' | 'endUsers' | 'costs' | 'workflowCosts'
 type IChartConfigType = { colorType: IColorType; showTokens?: boolean }
 
 const commonDateFormat = 'MMM D, YYYY'
 
 const CHART_TYPE_CONFIG: Record<string, IChartConfigType> = {
+  messages: {
+    colorType: 'green',
+  },
   conversations: {
     colorType: 'green',
   },
@@ -89,7 +92,7 @@ export type IChartProps = {
   unit?: string
   yMax?: number
   chartType: IChartType
-  chartData: AppDailyConversationsResponse | AppDailyEndUsersResponse | AppTokenCostsResponse | { data: Array<{ date: string; count: number }> }
+  chartData: getAppDailyMessagesResponse | AppDailyConversationsResponse | AppDailyEndUsersResponse | AppTokenCostsResponse | { data: Array<{ date: string; count: number }> }
 }
 
 const Chart: React.FC<IChartProps> = ({
@@ -279,7 +282,7 @@ export const ConversationsChart: FC<IBizChartProps> = ({ id, period }) => {
     return <Loading />
   const noDataFlag = !response.data || response.data.length === 0
   return <Chart
-    basicInfo={{ title: t('appOverview.analysis.totalMessages.title'), explanation: t('appOverview.analysis.totalMessages.explanation'), timePeriod: period.name }}
+    basicInfo={{ title: t('appOverview.analysis.totalConversations.title'), explanation: t('appOverview.analysis.totalConversations.explanation'), timePeriod: period.name }}
     chartData={!noDataFlag ? response : { data: getDefaultChartData(period.query ?? defaultPeriod) }}
     chartType='conversations'
     {...(noDataFlag && { yMax: 500 })}
