@@ -45,7 +45,7 @@ type ConditionItemProps = {
   condition: Condition // condition may the condition of case or condition of sub variable
   file?: { key: string }
   isSubVariableKey?: boolean
-  subVariableKeyCaseId?: string
+  isValueFieldShort?: boolean
   onRemoveCondition?: HandleRemoveCondition
   onUpdateCondition?: HandleUpdateCondition
   onAddSubVariableCondition?: HandleAddSubVariableCondition
@@ -66,6 +66,7 @@ const ConditionItem = ({
   condition,
   file,
   isSubVariableKey,
+  isValueFieldShort,
   onRemoveCondition,
   onUpdateCondition,
   onAddSubVariableCondition,
@@ -89,6 +90,15 @@ const ConditionItem = ({
       onUpdateCondition?.(caseId, condition.id, newCondition)
   }, [caseId, condition, conditionId, isSubVariableKey, onUpdateCondition, onUpdateSubVariableCondition])
 
+  const canChooseOperator = useMemo(() => {
+    if (disabled)
+      return false
+
+    if (isSubVariableKey)
+      return !!condition.key
+
+    return true
+  }, [condition.key, disabled, isSubVariableKey])
   const handleUpdateConditionOperator = useCallback((value: ComparisonOperator) => {
     const newCondition = {
       ...condition,
@@ -218,7 +228,7 @@ const ConditionItem = ({
           </div>
           <div className='mx-1 w-[1px] h-3 bg-divider-regular'></div>
           <ConditionOperator
-            disabled={disabled}
+            disabled={!canChooseOperator}
             varType={condition.varType}
             value={condition.comparison_operator}
             onSelect={handleUpdateConditionOperator}
@@ -247,6 +257,7 @@ const ConditionItem = ({
                 value={condition.value}
                 onValueChange={handleUpdateConditionValue}
                 variables={numberVariables}
+                isShort={isValueFieldShort}
               />
             </div>
           )

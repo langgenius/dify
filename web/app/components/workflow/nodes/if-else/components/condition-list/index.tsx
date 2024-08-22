@@ -68,6 +68,12 @@ const ConditionList = ({
       onToggleConditionLogicalOperator?.(caseId)
   }, [caseId, conditionId, isSubVariable, onToggleConditionLogicalOperator, onToggleSubVariableConditionLogicalOperator])
 
+  const isValueFieldShort = useMemo(() => {
+    if (isSubVariable && conditions.length > 1)
+      return true
+
+    return false
+  }, [conditions.length, isSubVariable])
   const conditionItemClassName = useMemo(() => {
     if (!isSubVariable)
       return ''
@@ -75,6 +81,7 @@ const ConditionList = ({
       return ''
     return logical_operator === LogicalOperator.and ? 'pl-[51px]' : 'pl-[42px]'
   }, [conditions.length, isSubVariable, logical_operator])
+
   return (
     <div className={cn('relative', !isSubVariable && 'pl-[60px]')}>
       {
@@ -105,6 +112,7 @@ const ConditionList = ({
             caseId={caseId}
             conditionId={isSubVariable ? conditionId! : condition.id}
             condition={condition}
+            isValueFieldShort={isValueFieldShort}
             onUpdateCondition={onUpdateCondition}
             onRemoveCondition={onRemoveCondition}
             onAddSubVariableCondition={onAddSubVariableCondition}

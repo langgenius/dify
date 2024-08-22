@@ -17,10 +17,12 @@ import cn from '@/utils/classnames'
 type VariableTagProps = {
   valueSelector: ValueSelector
   varType: VarType
+  isShort?: boolean
 }
 const VariableTag = ({
   valueSelector,
   varType,
+  isShort,
 }: VariableTagProps) => {
   const nodes = useNodes<CommonNodeType>()
   const node = useMemo(() => {
@@ -63,7 +65,7 @@ const VariableTag = ({
         {variableName}
       </div>
       {
-        varType && (
+        !isShort && varType && (
           <div className='shrink-0 ml-0.5 text-text-tertiary'>{capitalize(varType)}</div>
         )
       }
