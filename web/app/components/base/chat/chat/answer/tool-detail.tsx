@@ -49,7 +49,7 @@ const ToolDetail = ({
               <div className='flex items-center justify-between px-2 pt-1 h-7 system-xs-semibold-uppercase'>
                 {t('tools.thought.requestTitle')}
               </div>
-              <div className='pt-1 px-3 pb-2 code-xs-regular'>
+              <div className='pt-1 px-3 pb-2 code-xs-regular break-words'>
                 {input}
               </div>
             </div>
@@ -57,7 +57,7 @@ const ToolDetail = ({
               <div className='flex items-center justify-between px-2 pt-1 h-7 system-xs-semibold-uppercase'>
                 {t('tools.thought.responseTitle')}
               </div>
-              <div className='pt-1 px-3 pb-2 code-xs-regular'>
+              <div className='pt-1 px-3 pb-2 code-xs-regular break-words'>
                 {output}
               </div>
             </div>

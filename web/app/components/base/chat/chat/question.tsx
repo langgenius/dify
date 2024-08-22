@@ -32,7 +32,7 @@ const Question: FC<QuestionProps> = ({
     <div className='flex justify-end mb-2 last:mb-0 pl-10'>
       <div className='group relative mr-4'>
         <div
-          className='px-4 py-3 bg-util-colors-blue-brand-blue-brand-500 rounded-2xl text-sm text-gray-900'
+          className='px-4 py-3 bg-[#D1E9FF]/50 rounded-2xl text-sm text-gray-900'
           style={theme?.chatBubbleColorStyle ? CssTransform(theme.chatBubbleColorStyle) : {}}
         >
           {
