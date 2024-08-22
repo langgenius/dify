@@ -115,8 +115,6 @@ class AdvancedChatAppRunner(WorkflowBasedAppRunner):
             ):
                 return
 
-            db.session.close()
-
             # Init conversation variables
             stmt = select(ConversationVariable).where(
                 ConversationVariable.app_id == self.conversation.app_id, ConversationVariable.conversation_id == self.conversation.id
@@ -137,11 +135,11 @@ class AdvancedChatAppRunner(WorkflowBasedAppRunner):
 
                 session.commit()
 
-                # Increment dialogue count.
-                self.conversation.dialogue_count += 1
+            # Increment dialogue count.
+            self.conversation.dialogue_count += 1
 
-                conversation_dialogue_count = self.conversation.dialogue_count
-                db.session.commit()
+            conversation_dialogue_count = self.conversation.dialogue_count
+            db.session.commit()
 
             # Create a variable pool.
             system_inputs = {
@@ -162,6 +160,8 @@ class AdvancedChatAppRunner(WorkflowBasedAppRunner):
 
             # init graph
             graph = self._init_graph(graph_config=workflow.graph_dict)
+
+        db.session.close()
 
         # RUN WORKFLOW
         workflow_entry = WorkflowEntry(
