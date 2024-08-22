@@ -10,8 +10,8 @@ import { useTranslation } from 'react-i18next'
 import { formatNumber } from '@/utils/format'
 import Basic from '@/app/components/app-sidebar/basic'
 import Loading from '@/app/components/base/loading'
-import type { AppDailyConversationsResponse, AppDailyEndUsersResponse, AppTokenCostsResponse } from '@/models/app'
-import { getAppDailyConversations, getAppDailyEndUsers, getAppStatistics, getAppTokenCosts, getWorkflowDailyConversations } from '@/service/apps'
+import type { AppDailyMessagesResponse,AppDailyConversationsResponse, AppDailyEndUsersResponse, AppTokenCostsResponse } from '@/models/app'
+import { getAppDailyMessages,getAppDailyConversations, getAppDailyEndUsers, getAppStatistics, getAppTokenCosts, getWorkflowDailyConversations } from '@/service/apps'
 const valueFormatter = (v: string | number) => v
 
 const COLOR_TYPE_MAP = {
@@ -256,6 +256,20 @@ const getDefaultChartData = ({ start, end, key = 'count' }: { start: string; end
     item.date = dayjs(start).add(index, 'day').format(commonDateFormat)
     return item
   })
+}
+
+export const MessagesChart: FC<IBizChartProps> = ({ id, period }) => {
+  const { t } = useTranslation()
+  const { data: response } = useSWR({ url: `/apps/${id}/statistics/daily-messages`, params: period.query }, getAppDailyMessages)
+  if (!response)
+    return <Loading />
+  const noDataFlag = !response.data || response.data.length === 0
+  return <Chart
+    basicInfo={{ title: t('appOverview.analysis.totalMessages.title'), explanation: t('appOverview.analysis.totalMessages.explanation'), timePeriod: period.name }}
+    chartData={!noDataFlag ? response : { data: getDefaultChartData(period.query ?? defaultPeriod) }}
+    chartType='messages'
+    {...(noDataFlag && { yMax: 500 })}
+  />
 }
 
 export const ConversationsChart: FC<IBizChartProps> = ({ id, period }) => {
