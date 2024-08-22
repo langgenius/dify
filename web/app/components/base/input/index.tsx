@@ -72,11 +72,11 @@ const Input = ({
       />
       {showClearIcon && value && !disabled && !destructive && (
         <div className={cn('absolute right-2 top-1/2 -translate-y-1/2 group p-[1px] cursor-pointer')} onClick={onClear}>
-          <RiCloseCircleFill className='w-3.5 h-3.5 text-text-quaternary cursor-pointer group-hover:text-text-tertiary'/>
+          <RiCloseCircleFill className='w-3.5 h-3.5 text-text-quaternary cursor-pointer group-hover:text-text-tertiary' />
         </div>
       )}
       {destructive && (
-        <RiErrorWarningLine className='absolute right-2 top-1/2 -translate-y-1/2 w-4 h-4 text-text-destructive-secondary'/>
+        <RiErrorWarningLine className='absolute right-2 top-1/2 -translate-y-1/2 w-4 h-4 text-text-destructive-secondary' />
       )}
     </div>
   )

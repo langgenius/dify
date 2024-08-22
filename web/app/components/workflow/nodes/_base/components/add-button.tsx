@@ -5,6 +5,7 @@ import {
   RiAddLine,
 } from '@remixicon/react'
 import cn from '@/utils/classnames'
+import Button from '@/app/components/base/button'
 
 type Props = {
   className?: string
@@ -18,13 +19,15 @@ const AddButton: FC<Props> = ({
   onClick,
 }) => {
   return (
-    <div
-      className={cn(className, 'flex items-center h-7 justify-center bg-gray-100 hover:bg-gray-200 rounded-lg cursor-pointer text-xs font-medium text-gray-700 space-x-1')}
+    <Button
+      className={cn('w-full', className)}
+      variant='tertiary'
+      size='medium'
       onClick={onClick}
     >
-      <RiAddLine className='w-3.5 h-3.5' />
+      <RiAddLine className='mr-1 w-3.5 h-3.5' />
       <div>{text}</div>
-    </div>
+    </Button>
   )
 }
 export default React.memo(AddButton)
