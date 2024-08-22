@@ -52,6 +52,7 @@ class ModelInvokeCompleted(BaseModel):
     """
     text: str
     usage: LLMUsage
+    finish_reason: Optional[str] = None
 
 
 class LLMNode(BaseNode):

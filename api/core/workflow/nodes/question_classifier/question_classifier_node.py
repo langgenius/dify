@@ -74,12 +74,12 @@ class QuestionClassifierNode(LLMNode):
 
         result_text = ''
         usage = LLMUsage.empty_usage()
-        finished_reason = None
+        finish_reason = None
         for event in generator:
             if isinstance(event, ModelInvokeCompleted):
                 result_text = event.text
                 usage = event.usage
-                finished_reason = event.finished_reason
+                finish_reason = event.finish_reason
                 break
 
         category_name = node_data.classes[0].name
