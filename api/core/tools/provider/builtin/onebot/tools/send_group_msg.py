@@ -1,9 +1,9 @@
-from typing import Any, Dict, List, Union
+from typing import Any, Union
 
 import requests
 
-from core.tools.tool.builtin_tool import BuiltinTool
 from core.tools.entities.tool_entities import ToolInvokeMessage
+from core.tools.tool.builtin_tool import BuiltinTool
 
 
 class SendGroupMsg(BuiltinTool):
@@ -12,8 +12,8 @@ class SendGroupMsg(BuiltinTool):
     def _invoke(
             self,
             user_id: str,
-            tool_parameters: Dict[str, Any]
-        ) -> Union[ToolInvokeMessage, List[ToolInvokeMessage]]:
+            tool_parameters: dict[str, Any]
+        ) -> Union[ToolInvokeMessage, list[ToolInvokeMessage]]:
 
         # Get parameters
         send_group_id = tool_parameters.get('group_id', '')

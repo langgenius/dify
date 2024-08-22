@@ -1,10 +1,7 @@
 from typing import Any
-from core.tools.entities.tool_entities import ToolInvokeMessage, ToolProviderType
-from core.tools.tool.tool import Tool
-from core.tools.provider.builtin_tool_provider import BuiltinToolProviderController
-from core.tools.errors import ToolProviderCredentialValidationError
 
-from core.tools.provider.builtin.onebot.tools.send_private_msg import SendPrivateMsg
+from core.tools.errors import ToolProviderCredentialValidationError
+from core.tools.provider.builtin_tool_provider import BuiltinToolProviderController
 
 
 class OneBotProvider(BuiltinToolProviderController):
