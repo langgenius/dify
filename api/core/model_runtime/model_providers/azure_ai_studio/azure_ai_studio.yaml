@@ -1,0 +1,65 @@
+provider: azure_ai_studio
+label:
+  zh_Hans: Azure AI Studio
+  en_US: Azure AI Studio
+icon_small:
+  en_US: icon_s_en.png
+icon_large:
+  en_US: icon_l_en.png
+description:
+  en_US: Azure AI Studio
+  zh_Hans: Azure AI Studio
+background: "#93c5fd"
+help:
+  title:
+    en_US: How to deploy customized model on Azure AI Studio
+    zh_Hans: 如何在Azure AI Studio上的私有化部署的模型
+  url:
+    en_US: https://learn.microsoft.com/en-us/azure/ai-studio/how-to/deploy-models
+    zh_Hans: https://learn.microsoft.com/zh-cn/azure/ai-studio/how-to/deploy-models
+supported_model_types:
+  - llm
+  - rerank
+configurate_methods:
+  - customizable-model
+model_credential_schema:
+  model:
+    label:
+      en_US: Model Name
+      zh_Hans: 模型名称
+    placeholder:
+      en_US: Enter your model name
+      zh_Hans: 输入模型名称
+  credential_form_schemas:
+    - variable: endpoint
+      label:
+        en_US: Azure AI Studio Endpoint
+      type: text-input
+      required: true
+      placeholder:
+        zh_Hans: 请输入你的Azure AI Studio推理端点
+        en_US: 'Enter your API Endpoint, eg: https://example.com'
+    - variable: api_key
+      required: true
+      label:
+        en_US: API Key
+        zh_Hans: API Key
+      type: secret-input
+      placeholder:
+        en_US: Enter your Azure AI Studio API Key
+        zh_Hans: 在此输入您的 Azure AI Studio API Key
+      show_on:
+        - variable: __model_type
+          value: llm
+    - variable: jwt_token
+      required: true
+      label:
+        en_US: JWT Token
+        zh_Hans: JWT令牌
+      type: secret-input
+      placeholder:
+        en_US: Enter your Azure AI Studio JWT Token
+        zh_Hans: 在此输入您的 Azure AI Studio 推理 API Key
+      show_on:
+        - variable: __model_type
+          value: rerank

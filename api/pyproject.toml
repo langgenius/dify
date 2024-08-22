@@ -193,6 +193,8 @@ zhipuai = "1.0.7"
 # Related transparent dependencies with pinned verion
 # required by main implementations
 ############################################################
+azure-ai-ml = "^1.19.0"
+azure-ai-inference = "^1.0.0b3"
 [tool.poetry.group.indriect.dependencies]
 kaleido = "0.2.1"
 rank-bm25 = "~0.2.2"
