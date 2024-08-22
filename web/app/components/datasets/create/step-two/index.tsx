@@ -5,7 +5,6 @@ import { useContext } from 'use-context-selector'
 import { useBoolean } from 'ahooks'
 import { XMarkIcon } from '@heroicons/react/20/solid'
 import { RocketLaunchIcon } from '@heroicons/react/24/outline'
-import cn from 'classnames'
 import {
   RiCloseLine,
   RiQuestionLine,
@@ -16,6 +15,7 @@ import RetrievalMethodInfo from '../../common/retrieval-method-info'
 import PreviewItem, { PreviewType } from './preview-item'
 import LanguageSelect from './language-select'
 import s from './index.module.css'
+import cn from '@/utils/classnames'
 import type { CrawlOptions, CrawlResultItem, CreateDocumentReq, CustomFile, FileIndexingEstimateResponse, FullDocumentDetail, IndexingEstimateParams, IndexingEstimateResponse, NotionInfo, PreProcessingRule, ProcessRule, Rules, createDocumentResponse } from '@/models/datasets'
 import {
   createDocument,
@@ -775,7 +775,7 @@ const StepTwo = ({
                   <div className={s.label}>
                     {t('datasetSettings.form.retrievalSetting.title')}
                     <div className='leading-[18px] text-xs font-normal text-gray-500'>
-                      <a target='_blank' rel='noopener noreferrer' href='https://docs.dify.ai/features/retrieval-augment' className='text-[#155eef]'>{t('datasetSettings.form.retrievalSetting.learnMore')}</a>
+                      <a target='_blank' rel='noopener noreferrer' href='https://docs.dify.ai/guides/knowledge-base/create-knowledge-and-upload-documents#id-6-retrieval-settings' className='text-[#155eef]'>{t('datasetSettings.form.retrievalSetting.learnMore')}</a>
                       {t('datasetSettings.form.retrievalSetting.longDescription')}
                     </div>
                   </div>

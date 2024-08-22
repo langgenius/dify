@@ -75,7 +75,7 @@ class DatasetDocumentSegmentListApi(Resource):
         )
 
         if last_id is not None:
-            last_segment = DocumentSegment.query.get(str(last_id))
+            last_segment = db.session.get(DocumentSegment, str(last_id))
             if last_segment:
                 query = query.filter(
                     DocumentSegment.position > last_segment.position)
@@ -223,8 +223,7 @@ class DatasetDocumentSegmentAddApi(Resource):
         document = DocumentService.get_document(dataset_id, document_id)
         if not document:
             raise NotFound('Document not found.')
-        # The role of the current user in the ta table must be admin or owner
-        if not current_user.is_admin_or_owner:
+        if not current_user.is_editor:
             raise Forbidden()
         # check embedding model setting
         if dataset.indexing_technique == 'high_quality':
@@ -347,7 +346,7 @@ class DatasetDocumentSegmentUpdateApi(Resource):
         if not segment:
             raise NotFound('Segment not found.')
         # The role of the current user in the ta table must be admin or owner
-        if not current_user.is_admin_or_owner:
+        if not current_user.is_editor:
             raise Forbidden()
         try:
             DatasetService.check_dataset_permission(dataset, current_user)

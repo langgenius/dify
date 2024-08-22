@@ -52,7 +52,8 @@ class XinferenceSpeech2TextModel(Speech2TextModel):
 
             # initialize client
             client = Client(
-                base_url=credentials['server_url']
+                base_url=credentials['server_url'],
+                api_key=credentials.get('api_key'),
             )
 
             xinference_client = client.get_model(model_uid=credentials['model_uid'])
@@ -99,9 +100,9 @@ class XinferenceSpeech2TextModel(Speech2TextModel):
         }
 
     def _speech2text_invoke(
-        self, 
-        model: str, 
-        credentials: dict, 
+        self,
+        model: str,
+        credentials: dict,
         file: IO[bytes],
         language: Optional[str] = None,
         prompt: Optional[str] = None,
@@ -121,17 +122,24 @@ class XinferenceSpeech2TextModel(Speech2TextModel):
         :param temperature: The sampling temperature, between 0 and 1. Higher values like 0.8 will make the output mor            e random,while lower values like 0.2 will make it more focused and deterministic.If set to 0, the model wi            ll use log probability to automatically increase the temperature until certain thresholds are hit.
         :return: text for given audio file
         """
-        if credentials['server_url'].endswith('/'):
-            credentials['server_url'] = credentials['server_url'][:-1]
+        server_url = credentials['server_url']
+        model_uid = credentials['model_uid']
+        api_key = credentials.get('api_key')
+        if server_url.endswith('/'):
+            server_url = server_url[:-1]
+        auth_headers = {'Authorization': f'Bearer {api_key}'} if api_key else {}
 
-        handle = RESTfulAudioModelHandle(credentials['model_uid'],credentials['server_url'],auth_headers={})
-        response = handle.transcriptions(
-            audio=file,
-            language = language,
-            prompt = prompt,
-            response_format = response_format,
-            temperature = temperature
-        )
+        try:
+            handle = RESTfulAudioModelHandle(model_uid, server_url, auth_headers)
+            response = handle.transcriptions(
+                audio=file,
+                language=language,
+                prompt=prompt,
+                response_format=response_format,
+                temperature=temperature
+            )
+        except RuntimeError as e:
+            raise InvokeServerUnavailableError(str(e))
 
         return response["text"]
 

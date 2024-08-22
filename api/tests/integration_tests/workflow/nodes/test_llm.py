@@ -10,8 +10,8 @@ from core.entities.provider_entities import CustomConfiguration, CustomProviderC
 from core.model_manager import ModelInstance
 from core.model_runtime.entities.model_entities import ModelType
 from core.model_runtime.model_providers import ModelProviderFactory
-from core.workflow.entities.node_entities import SystemVariable
 from core.workflow.entities.variable_pool import VariablePool
+from core.workflow.enums import SystemVariableKey
 from core.workflow.nodes.base_node import UserFrom
 from core.workflow.nodes.llm.llm_node import LLMNode
 from extensions.ext_database import db
@@ -66,12 +66,12 @@ def test_execute_llm(setup_openai_mock):
 
     # construct variable pool
     pool = VariablePool(system_variables={
-        SystemVariable.QUERY: 'what\'s the weather today?',
-        SystemVariable.FILES: [],
-        SystemVariable.CONVERSATION_ID: 'abababa',
-        SystemVariable.USER_ID: 'aaa'
-    }, user_inputs={})
-    pool.append_variable(node_id='abc', variable_key_list=['output'], value='sunny')
+        SystemVariableKey.QUERY: 'what\'s the weather today?',
+        SystemVariableKey.FILES: [],
+        SystemVariableKey.CONVERSATION_ID: 'abababa',
+        SystemVariableKey.USER_ID: 'aaa'
+    }, user_inputs={}, environment_variables=[])
+    pool.add(['abc', 'output'], 'sunny')
 
     credentials = {
         'openai_api_key': os.environ.get('OPENAI_API_KEY')
@@ -181,12 +181,12 @@ def test_execute_llm_with_jinja2(setup_code_executor_mock, setup_openai_mock):
 
     # construct variable pool
     pool = VariablePool(system_variables={
-        SystemVariable.QUERY: 'what\'s the weather today?',
-        SystemVariable.FILES: [],
-        SystemVariable.CONVERSATION_ID: 'abababa',
-        SystemVariable.USER_ID: 'aaa'
-    }, user_inputs={})
-    pool.append_variable(node_id='abc', variable_key_list=['output'], value='sunny')
+        SystemVariableKey.QUERY: 'what\'s the weather today?',
+        SystemVariableKey.FILES: [],
+        SystemVariableKey.CONVERSATION_ID: 'abababa',
+        SystemVariableKey.USER_ID: 'aaa'
+    }, user_inputs={}, environment_variables=[])
+    pool.add(['abc', 'output'], 'sunny')
 
     credentials = {
         'openai_api_key': os.environ.get('OPENAI_API_KEY')

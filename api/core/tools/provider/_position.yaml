@@ -2,11 +2,13 @@
 - bing
 - duckduckgo
 - searchapi
+- serper
 - searxng
 - dalle
 - azuredalle
 - stability
 - wikipedia
+- nominatim
 - yahoo
 - arxiv
 - pubmed
@@ -29,3 +31,4 @@
 - feishu
 - feishu_base
 - slack
+- tianditu

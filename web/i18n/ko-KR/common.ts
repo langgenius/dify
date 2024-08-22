@@ -12,6 +12,7 @@ const translation = {
     cancel: '취소',
     clear: '지우기',
     save: '저장',
+    saveAndEnable: '저장 및 활성화',
     edit: '편집',
     add: '추가',
     added: '추가됨',
@@ -115,6 +116,7 @@ const translation = {
   },
   userProfile: {
     settings: '설정',
+    emailSupport: '이메일 지원',
     workspace: '작업 공간',
     createWorkspace: '작업 공간 만들기',
     helpCenter: '도움말 센터',
@@ -403,7 +405,7 @@ const translation = {
     latestAvailable: 'Dify {{version}} 최신 버전입니다.',
   },
   appMenus: {
-    overview: '개요',
+    overview: '모니터링',
     promptEng: '오케스트레이트',
     apiAccess: 'API 액세스',
     logAndAnn: '로그 및 어노테이션',

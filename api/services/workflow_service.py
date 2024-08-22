@@ -1,12 +1,12 @@
 import json
 import time
+from collections.abc import Sequence
 from datetime import datetime, timezone
 from typing import Optional
 
-import yaml
-
 from core.app.apps.advanced_chat.app_config_manager import AdvancedChatAppConfigManager
 from core.app.apps.workflow.app_config_manager import WorkflowAppConfigManager
+from core.app.segments import Variable
 from core.model_runtime.utils.encoders import jsonable_encoder
 from core.workflow.entities.node_entities import NodeType
 from core.workflow.errors import WorkflowNodeRunFailedError
@@ -63,11 +63,17 @@ class WorkflowService:
 
         return workflow
 
-    def sync_draft_workflow(self, app_model: App,
-                            graph: dict,
-                            features: dict,
-                            unique_hash: Optional[str],
-                            account: Account) -> Workflow:
+    def sync_draft_workflow(
+        self,
+        *,
+        app_model: App,
+        graph: dict,
+        features: dict,
+        unique_hash: Optional[str],
+        account: Account,
+        environment_variables: Sequence[Variable],
+        conversation_variables: Sequence[Variable],
+    ) -> Workflow:
         """
         Sync draft workflow
         :raises WorkflowHashNotEqualError
@@ -75,10 +81,8 @@ class WorkflowService:
         # fetch draft workflow by app_model
         workflow = self.get_draft_workflow(app_model=app_model)
 
-        if workflow:
-            # validate unique hash
-            if workflow.unique_hash != unique_hash:
-                raise WorkflowHashNotEqualError()
+        if workflow and workflow.unique_hash != unique_hash:
+            raise WorkflowHashNotEqualError()
 
         # validate features structure
         self.validate_features_structure(
@@ -95,7 +99,9 @@ class WorkflowService:
                 version='draft',
                 graph=json.dumps(graph),
                 features=json.dumps(features),
-                created_by=account.id
+                created_by=account.id,
+                environment_variables=environment_variables,
+                conversation_variables=conversation_variables,
             )
             db.session.add(workflow)
         # update draft workflow if found
@@ -104,6 +110,8 @@ class WorkflowService:
             workflow.features = json.dumps(features)
             workflow.updated_by = account.id
             workflow.updated_at = datetime.now(timezone.utc).replace(tzinfo=None)
+            workflow.environment_variables = environment_variables
+            workflow.conversation_variables = conversation_variables
 
         # commit db session changes
         db.session.commit()
@@ -113,56 +121,6 @@ class WorkflowService:
 
         # return draft workflow
         return workflow
-
-    def import_draft_workflow(self, app_model: App,
-                              data: str,
-                              account: Account) -> Workflow:
-        """
-        Import draft workflow
-        :param app_model: App instance
-        :param data: import data
-        :param account: Account instance
-        :return:
-        """
-        try:
-            import_data = yaml.safe_load(data)
-        except yaml.YAMLError as e:
-            raise ValueError("Invalid YAML format in data argument.")
-
-        app_data = import_data.get('app')
-        workflow = import_data.get('workflow')
-
-        if not app_data:
-            raise ValueError("Missing app in data argument")
-
-        app_mode = AppMode.value_of(app_data.get('mode'))
-        if app_mode not in [AppMode.ADVANCED_CHAT, AppMode.WORKFLOW]:
-            raise ValueError("Only support import workflow in advanced-chat or workflow app.")
-
-        if app_data.get('mode') != app_model.mode:
-            raise ValueError(f"App mode {app_data.get('mode')} is not matched with current app mode {app_model.mode}")
-
-        if not workflow:
-            raise ValueError("Missing workflow in data argument "
-                             "when app mode is advanced-chat or workflow")
-
-        # fetch draft workflow by app_model
-        current_draft_workflow = self.get_draft_workflow(app_model=app_model)
-        if current_draft_workflow:
-            unique_hash = current_draft_workflow.unique_hash
-        else:
-            unique_hash = None
-
-        # sync draft workflow
-        draft_workflow = self.sync_draft_workflow(
-            app_model=app_model,
-            graph=workflow.get('graph'),
-            features=workflow.get('features'),
-            unique_hash=unique_hash,
-            account=account
-        )
-
-        return draft_workflow
 
     def publish_workflow(self, app_model: App,
                          account: Account,
@@ -189,7 +147,9 @@ class WorkflowService:
             version=str(datetime.now(timezone.utc).replace(tzinfo=None)),
             graph=draft_workflow.graph,
             features=draft_workflow.features,
-            created_by=account.id
+            created_by=account.id,
+            environment_variables=draft_workflow.environment_variables,
+            conversation_variables=draft_workflow.conversation_variables,
         )
 
         # commit db session changes
@@ -342,6 +302,7 @@ class WorkflowService:
             app_model=app_model,
             account=account,
             name=args.get('name'),
+            icon_type=args.get('icon_type'),
             icon=args.get('icon'),
             icon_background=args.get('icon_background'),
         )
@@ -363,3 +324,25 @@ class WorkflowService:
             )
         else:
             raise ValueError(f"Invalid app mode: {app_model.mode}")
+
+    @classmethod
+    def get_elapsed_time(cls, workflow_run_id: str) -> float:
+        """
+        Get elapsed time
+        """
+        elapsed_time = 0.0
+
+        # fetch workflow node execution by workflow_run_id
+        workflow_nodes = (
+            db.session.query(WorkflowNodeExecution)
+            .filter(WorkflowNodeExecution.workflow_run_id == workflow_run_id)
+            .order_by(WorkflowNodeExecution.created_at.asc())
+            .all()
+        )
+        if not workflow_nodes:
+            return elapsed_time
+
+        for node in workflow_nodes:
+            elapsed_time += node.elapsed_time
+
+        return elapsed_time

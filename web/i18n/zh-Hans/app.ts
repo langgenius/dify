@@ -13,6 +13,10 @@ const translation = {
   exportFailed: '导出 DSL 失败',
   importDSL: '导入 DSL 文件',
   createFromConfigFile: '通过 DSL 文件创建',
+  importFromDSL: '导入 DSL',
+  importFromDSLFile: '文件',
+  importFromDSLUrl: 'URL',
+  importFromDSLUrlPlaceholder: '输入 DSL 文件的 URL',
   deleteAppConfirmTitle: '确认删除应用?',
   deleteAppConfirmContent:
     '删除应用将无法撤销。用户将不能访问你的应用，所有 Prompt 编排配置和日志均将一并被删除。',
@@ -66,9 +70,11 @@ const translation = {
   editAppTitle: '编辑应用信息',
   editDone: '应用信息已更新',
   editFailed: '更新应用信息失败',
-  emoji: {
+  iconPicker: {
     ok: '确认',
     cancel: '取消',
+    emoji: '表情符号',
+    image: '图片',
   },
   switch: '迁移为工作流编排',
   switchTipStart: '将为您创建一个使用工作流编排的新应用。新应用将',

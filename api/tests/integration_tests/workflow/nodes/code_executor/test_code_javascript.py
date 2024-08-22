@@ -28,14 +28,6 @@ def test_javascript_with_code_template():
         inputs={'arg1': 'Hello', 'arg2': 'World'})
     assert result == {'result': 'HelloWorld'}
 
-
-def test_javascript_list_default_available_packages():
-    packages = JavascriptCodeProvider.get_default_available_packages()
-
-    # no default packages available for javascript
-    assert len(packages) == 0
-
-
 def test_javascript_get_runner_script():
     runner_script = NodeJsTemplateTransformer.get_runner_script()
     assert runner_script.count(NodeJsTemplateTransformer._code_placeholder) == 1

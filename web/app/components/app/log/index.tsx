@@ -24,6 +24,7 @@ export type QueryParam = {
   period?: number | string
   annotation_status?: string
   keyword?: string
+  sort_by?: string
 }
 
 const ThreeDotsIcon = ({ className }: SVGProps<SVGElement>) => {
@@ -52,8 +53,15 @@ const EmptyElement: FC<{ appUrl: string }> = ({ appUrl }) => {
 
 const Logs: FC<ILogsProps> = ({ appDetail }) => {
   const { t } = useTranslation()
-  const [queryParams, setQueryParams] = useState<QueryParam>({ period: 7, annotation_status: 'all' })
+  const [queryParams, setQueryParams] = useState<QueryParam>({
+    period: 7,
+    annotation_status: 'all',
+    sort_by: '-created_at',
+  })
   const [currPage, setCurrPage] = React.useState<number>(0)
+
+  // Get the app type first
+  const isChatMode = appDetail.mode !== 'completion'
 
   const query = {
     page: currPage + 1,
@@ -61,9 +69,10 @@ const Logs: FC<ILogsProps> = ({ appDetail }) => {
     ...(queryParams.period !== 'all'
       ? {
         start: dayjs().subtract(queryParams.period as number, 'day').startOf('day').format('YYYY-MM-DD HH:mm'),
-        end: dayjs().format('YYYY-MM-DD HH:mm'),
+        end: dayjs().endOf('day').format('YYYY-MM-DD HH:mm'),
       }
       : {}),
+    ...(isChatMode ? { sort_by: queryParams.sort_by } : {}),
     ...omit(queryParams, ['period']),
   }
 
@@ -72,9 +81,6 @@ const Logs: FC<ILogsProps> = ({ appDetail }) => {
       return 'chat'
     return appType
   }
-
-  // Get the app type first
-  const isChatMode = appDetail.mode !== 'completion'
 
   // When the details are obtained, proceed to the next request
   const { data: chatConversations, mutate: mutateChatList } = useSWR(() => isChatMode
@@ -97,7 +103,7 @@ const Logs: FC<ILogsProps> = ({ appDetail }) => {
     <div className='flex flex-col h-full'>
       <p className='flex text-sm font-normal text-gray-500'>{t('appLog.description')}</p>
       <div className='flex flex-col py-4 flex-1'>
-        <Filter appId={appDetail.id} queryParams={queryParams} setQueryParams={setQueryParams} />
+        <Filter isChatMode={isChatMode} appId={appDetail.id} queryParams={queryParams} setQueryParams={setQueryParams} />
         {total === undefined
           ? <Loading type='app' />
           : total > 0

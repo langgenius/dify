@@ -12,6 +12,7 @@ import HttpRequestDefault from './nodes/http/default'
 import ParameterExtractorDefault from './nodes/parameter-extractor/default'
 import ToolDefault from './nodes/tool/default'
 import VariableAssignerDefault from './nodes/variable-assigner/default'
+import AssignerDefault from './nodes/assigner/default'
 import EndNodeDefault from './nodes/end/default'
 import IterationDefault from './nodes/iteration/default'
 
@@ -132,6 +133,15 @@ export const NODES_EXTRA_DATA: Record<BlockEnum, NodesExtraData> = {
     getAvailablePrevNodes: VariableAssignerDefault.getAvailablePrevNodes,
     getAvailableNextNodes: VariableAssignerDefault.getAvailableNextNodes,
     checkValid: VariableAssignerDefault.checkValid,
+  },
+  [BlockEnum.Assigner]: {
+    author: 'Dify',
+    about: '',
+    availablePrevNodes: [],
+    availableNextNodes: [],
+    getAvailablePrevNodes: AssignerDefault.getAvailablePrevNodes,
+    getAvailableNextNodes: AssignerDefault.getAvailableNextNodes,
+    checkValid: AssignerDefault.checkValid,
   },
   [BlockEnum.VariableAggregator]: {
     author: 'Dify',
@@ -268,6 +278,12 @@ export const NODES_INITIAL_DATA = {
     output_type: '',
     ...VariableAssignerDefault.defaultValue,
   },
+  [BlockEnum.Assigner]: {
+    type: BlockEnum.Assigner,
+    title: '',
+    desc: '',
+    ...AssignerDefault.defaultValue,
+  },
   [BlockEnum.Tool]: {
     type: BlockEnum.Tool,
     title: '',
@@ -280,7 +296,7 @@ export const NODE_WIDTH = 240
 export const X_OFFSET = 60
 export const NODE_WIDTH_X_OFFSET = NODE_WIDTH + X_OFFSET
 export const Y_OFFSET = 39
-export const MAX_TREE_DEEPTH = 50
+export const MAX_TREE_DEPTH = 50
 export const START_INITIAL_POSITION = { x: 80, y: 282 }
 export const AUTO_LAYOUT_OFFSET = {
   x: -42,
@@ -360,7 +376,7 @@ export const HTTP_REQUEST_OUTPUT_STRUCT: Var[] = [
   },
   {
     variable: 'headers',
-    type: VarType.string,
+    type: VarType.object,
   },
   {
     variable: 'files',
@@ -377,6 +393,10 @@ export const TOOL_OUTPUT_STRUCT: Var[] = [
     variable: 'files',
     type: VarType.arrayFile,
   },
+  {
+    variable: 'json',
+    type: VarType.arrayObject,
+  },
 ]
 
 export const PARAMETER_EXTRACTOR_COMMON_STRUCT: Var[] = [
@@ -392,3 +412,4 @@ export const PARAMETER_EXTRACTOR_COMMON_STRUCT: Var[] = [
 
 export const WORKFLOW_DATA_UPDATE = 'WORKFLOW_DATA_UPDATE'
 export const CUSTOM_NODE = 'custom'
+export const DSL_EXPORT_CHECK = 'DSL_EXPORT_CHECK'

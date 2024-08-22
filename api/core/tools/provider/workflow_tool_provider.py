@@ -1,6 +1,6 @@
 from typing import Optional
 
-from core.app.app_config.entities import VariableEntity
+from core.app.app_config.entities import VariableEntity, VariableEntityType
 from core.app.apps.workflow.app_config_manager import WorkflowAppConfigManager
 from core.tools.entities.common_entities import I18nObject
 from core.tools.entities.tool_entities import (
@@ -18,6 +18,13 @@ from models.model import App, AppMode
 from models.tools import WorkflowToolProvider
 from models.workflow import Workflow
 
+VARIABLE_TO_PARAMETER_TYPE_MAPPING = {
+    VariableEntityType.TEXT_INPUT: ToolParameter.ToolParameterType.STRING,
+    VariableEntityType.PARAGRAPH: ToolParameter.ToolParameterType.STRING,
+    VariableEntityType.SELECT: ToolParameter.ToolParameterType.SELECT,
+    VariableEntityType.NUMBER: ToolParameter.ToolParameterType.NUMBER,
+}
+
 
 class WorkflowToolProviderController(ToolProviderController):
     provider_id: str
@@ -28,7 +35,7 @@ class WorkflowToolProviderController(ToolProviderController):
 
         if not app:
             raise ValueError('app not found')
-        
+
         controller = WorkflowToolProviderController(**{
             'identity': {
                 'author': db_provider.user.name if db_provider.user_id and db_provider.user else '',
@@ -46,7 +53,7 @@ class WorkflowToolProviderController(ToolProviderController):
             'credentials_schema': {},
             'provider_id': db_provider.id or '',
         })
-        
+
         # init tools
 
         controller.tools = [controller._get_db_provider_tool(db_provider, app)]
@@ -56,7 +63,7 @@ class WorkflowToolProviderController(ToolProviderController):
     @property
     def provider_type(self) -> ToolProviderType:
         return ToolProviderType.WORKFLOW
-    
+
     def _get_db_provider_tool(self, db_provider: WorkflowToolProvider, app: App) -> WorkflowTool:
         """
             get db provider tool
@@ -93,23 +100,11 @@ class WorkflowToolProviderController(ToolProviderController):
             if variable:
                 parameter_type = None
                 options = None
-                if variable.type in [
-                    VariableEntity.Type.TEXT_INPUT, 
-                    VariableEntity.Type.PARAGRAPH, 
-                ]:
-                    parameter_type = ToolParameter.ToolParameterType.STRING
-                elif variable.type in [
-                    VariableEntity.Type.SELECT
-                ]:
-                    parameter_type = ToolParameter.ToolParameterType.SELECT
-                elif variable.type in [
-                    VariableEntity.Type.NUMBER
-                ]:
-                    parameter_type = ToolParameter.ToolParameterType.NUMBER
-                else:
+                if variable.type not in VARIABLE_TO_PARAMETER_TYPE_MAPPING:
                     raise ValueError(f'unsupported variable type {variable.type}')
-                
-                if variable.type == VariableEntity.Type.SELECT and variable.options:
+                parameter_type = VARIABLE_TO_PARAMETER_TYPE_MAPPING[variable.type]
+
+                if variable.type == VariableEntityType.SELECT and variable.options:
                     options = [
                         ToolParameterOption(
                             value=option,
@@ -200,7 +195,7 @@ class WorkflowToolProviderController(ToolProviderController):
         """
         if self.tools is not None:
             return self.tools
-        
+
         db_providers: WorkflowToolProvider = db.session.query(WorkflowToolProvider).filter(
             WorkflowToolProvider.tenant_id == tenant_id,
             WorkflowToolProvider.app_id == self.provider_id,
@@ -208,11 +203,11 @@ class WorkflowToolProviderController(ToolProviderController):
 
         if not db_providers:
             return []
-        
+
         self.tools = [self._get_db_provider_tool(db_providers, db_providers.app)]
 
         return self.tools
-    
+
     def get_tool(self, tool_name: str) -> Optional[WorkflowTool]:
         """
             get tool by name
@@ -226,5 +221,5 @@ class WorkflowToolProviderController(ToolProviderController):
         for tool in self.tools:
             if tool.identity.name == tool_name:
                 return tool
-        
+
         return None

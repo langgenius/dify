@@ -1,5 +1,6 @@
 from threading import Lock
 from time import time
+from typing import Optional
 
 from requests.adapters import HTTPAdapter
 from requests.exceptions import ConnectionError, MissingSchema, Timeout
@@ -15,9 +16,11 @@ class XinferenceModelExtraParameter:
     context_length: int = 2048
     support_function_call: bool = False
     support_vision: bool = False
+    model_family: Optional[str]
 
     def __init__(self, model_format: str, model_handle_type: str, model_ability: list[str],
-                 support_function_call: bool, support_vision: bool, max_tokens: int, context_length: int) -> None:
+                 support_function_call: bool, support_vision: bool, max_tokens: int, context_length: int,
+                 model_family: Optional[str]) -> None:
         self.model_format = model_format
         self.model_handle_type = model_handle_type
         self.model_ability = model_ability
@@ -25,19 +28,20 @@ class XinferenceModelExtraParameter:
         self.support_vision = support_vision
         self.max_tokens = max_tokens
         self.context_length = context_length
+        self.model_family = model_family
 
 cache = {}
 cache_lock = Lock()
 
 class XinferenceHelper:
     @staticmethod
-    def get_xinference_extra_parameter(server_url: str, model_uid: str) -> XinferenceModelExtraParameter:
+    def get_xinference_extra_parameter(server_url: str, model_uid: str, api_key: str) -> XinferenceModelExtraParameter:
         XinferenceHelper._clean_cache()
         with cache_lock:
             if model_uid not in cache:
                 cache[model_uid] = {
                     'expires': time() + 300,
-                    'value': XinferenceHelper._get_xinference_extra_parameter(server_url, model_uid)
+                    'value': XinferenceHelper._get_xinference_extra_parameter(server_url, model_uid, api_key)
                 }
             return cache[model_uid]['value']
 
@@ -52,7 +56,7 @@ class XinferenceHelper:
             pass
 
     @staticmethod
-    def _get_xinference_extra_parameter(server_url: str, model_uid: str) -> XinferenceModelExtraParameter:
+    def _get_xinference_extra_parameter(server_url: str, model_uid: str, api_key: str) -> XinferenceModelExtraParameter:
         """
             get xinference model extra parameter like model_format and model_handle_type
         """
@@ -66,9 +70,10 @@ class XinferenceHelper:
         session = Session()
         session.mount('http://', HTTPAdapter(max_retries=3))
         session.mount('https://', HTTPAdapter(max_retries=3))
+        headers = {'Authorization': f'Bearer {api_key}'} if api_key else {}
 
         try:
-            response = session.get(url, timeout=10)
+            response = session.get(url, headers=headers, timeout=10)
         except (MissingSchema, ConnectionError, Timeout) as e:
             raise RuntimeError(f'get xinference model extra parameter failed, url: {url}, error: {e}')
         if response.status_code != 200:
@@ -78,9 +83,16 @@ class XinferenceHelper:
 
         model_format = response_json.get('model_format', 'ggmlv3')
         model_ability = response_json.get('model_ability', [])
+        model_family = response_json.get('model_family', None)
 
         if response_json.get('model_type') == 'embedding':
             model_handle_type = 'embedding'
+        elif response_json.get('model_type') == 'audio':
+            model_handle_type = 'audio'
+            if model_family and model_family in ['ChatTTS', 'CosyVoice']:
+                model_ability.append('text-to-audio')
+            else:
+                model_ability.append('audio-to-text')
         elif model_format == 'ggmlv3' and 'chatglm' in response_json['model_name']:
             model_handle_type = 'chatglm'
         elif 'generate' in model_ability:
@@ -88,7 +100,7 @@ class XinferenceHelper:
         elif 'chat' in model_ability:
             model_handle_type = 'chat'
         else:
-            raise NotImplementedError(f'xinference model handle type {model_handle_type} is not supported')
+            raise NotImplementedError('xinference model handle type is not supported')
 
         support_function_call = 'tools' in model_ability
         support_vision = 'vision' in model_ability
@@ -103,5 +115,6 @@ class XinferenceHelper:
             support_function_call=support_function_call,
             support_vision=support_vision,
             max_tokens=max_tokens,
-            context_length=context_length
+            context_length=context_length,
+            model_family=model_family
         )

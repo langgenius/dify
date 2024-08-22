@@ -1,8 +1,8 @@
-from flask import current_app
 from flask_login import current_user
 from flask_restful import Resource, abort, marshal_with, reqparse
 
 import services
+from configs import dify_config
 from controllers.console import api
 from controllers.console.setup import setup_required
 from controllers.console.wraps import account_initialization_required, cloud_edition_billing_resource_check
@@ -48,7 +48,7 @@ class MemberInviteEmailApi(Resource):
 
         inviter = current_user
         invitation_results = []
-        console_web_url = current_app.config.get("CONSOLE_WEB_URL")
+        console_web_url = dify_config.CONSOLE_WEB_URL
         for invitee_email in invitee_emails:
             try:
                 token = RegisterService.invite_new_member(inviter.current_tenant, invitee_email, interface_language, role=invitee_role, inviter=inviter)
@@ -117,7 +117,7 @@ class MemberUpdateRoleApi(Resource):
         if not TenantAccountRole.is_valid_role(new_role):
             return {'code': 'invalid-role', 'message': 'Invalid role'}, 400
 
-        member = Account.query.get(str(member_id))
+        member = db.session.get(Account, str(member_id))
         if not member:
             abort(404)
 
@@ -131,7 +131,20 @@ class MemberUpdateRoleApi(Resource):
         return {'result': 'success'}
 
 
+class DatasetOperatorMemberListApi(Resource):
+    """List all members of current tenant."""
+
+    @setup_required
+    @login_required
+    @account_initialization_required
+    @marshal_with(account_with_role_list_fields)
+    def get(self):
+        members = TenantService.get_dataset_operator_members(current_user.current_tenant)
+        return {'result': 'success', 'accounts': members}, 200
+
+
 api.add_resource(MemberListApi, '/workspaces/current/members')
 api.add_resource(MemberInviteEmailApi, '/workspaces/current/members/invite-email')
 api.add_resource(MemberCancelInviteApi, '/workspaces/current/members/<uuid:member_id>')
 api.add_resource(MemberUpdateRoleApi, '/workspaces/current/members/<uuid:member_id>/update-role')
+api.add_resource(DatasetOperatorMemberListApi, '/workspaces/current/dataset-operators')

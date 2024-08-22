@@ -1,10 +1,10 @@
 'use client'
 import { useTranslation } from 'react-i18next'
-import classNames from 'classnames'
 import Link from 'next/link'
 import dayjs from 'dayjs'
 import { RiCloseLine } from '@remixicon/react'
 import s from './index.module.css'
+import classNames from '@/utils/classnames'
 import Modal from '@/app/components/base/modal'
 import type { LangGeniusVersionResponse } from '@/models/common'
 import { IS_CE_EDITION } from '@/config'
@@ -45,7 +45,7 @@ export default function AccountAbout({
                 IS_CE_EDITION
                   ? <Link href={'https://github.com/langgenius/dify/blob/main/LICENSE'} target='_blank' rel='noopener noreferrer'>Open Source License</Link>
                   : <>
-                    <Link href='https://dify.ai/privacy' target='_blank' rel='noopener noreferrer'>Privacy Policy</Link>,
+                    <Link href='https://dify.ai/privacy' target='_blank' rel='noopener noreferrer'>Privacy Policy</Link>,<span> </span>
                     <Link href='https://dify.ai/terms' target='_blank' rel='noopener noreferrer'>Terms of Service</Link>
                   </>
               }

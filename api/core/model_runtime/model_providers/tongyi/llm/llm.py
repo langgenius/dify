@@ -159,6 +159,8 @@ You should also complete the text started with ``` but not tell ``` directly.
         """
         if model in ['qwen-turbo-chat', 'qwen-plus-chat']:
             model = model.replace('-chat', '')
+        if model == 'farui-plus':
+            model = 'qwen-farui-plus'
 
         if model in self.tokenizers:
             tokenizer = self.tokenizers[model]
@@ -262,6 +264,10 @@ You should also complete the text started with ``` but not tell ``` directly.
         :param prompt_messages: prompt messages
         :return: llm response
         """
+        if response.status_code != 200 and response.status_code != HTTPStatus.OK:
+            raise ServiceUnavailableError(
+                response.message
+            )
         # transform assistant message to prompt message
         assistant_prompt_message = AssistantPromptMessage(
             content=response.output.choices[0].message.content,
@@ -421,7 +427,7 @@ You should also complete the text started with ``` but not tell ``` directly.
             raise ValueError(f"Got unknown type {message}")
 
         return message_text
-    
+
     def _convert_messages_to_prompt(self, messages: list[PromptMessage]) -> str:
         """
         Format a list of messages into a full prompt for the Anthropic model
@@ -493,10 +499,13 @@ You should also complete the text started with ``` but not tell ``` directly.
                 content = prompt_message.content
                 if not content:
                     content = ' '
-                tongyi_messages.append({
+                message = {
                     'role': 'assistant',
-                    'content': content if not rich_content else [{"text": content}],
-                })
+                    'content': content if not rich_content else [{"text": content}]
+                }
+                if prompt_message.tool_calls:
+                    message['tool_calls'] = [tool_call.model_dump() for tool_call in prompt_message.tool_calls]
+                tongyi_messages.append(message)
             elif isinstance(prompt_message, ToolPromptMessage):
                 tongyi_messages.append({
                     "role": "tool",

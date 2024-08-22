@@ -2,10 +2,10 @@
 
 import type { ChangeEvent, FC } from 'react'
 import React, { useCallback, useEffect, useRef, useState } from 'react'
-import classNames from 'classnames'
 import { useTranslation } from 'react-i18next'
 import { varHighlightHTML } from '../../app/configuration/base/var-highlight'
 import Toast from '../toast'
+import classNames from '@/utils/classnames'
 import { checkKeys } from '@/utils/var'
 
 // regex to match the {{}} and replace it with a span
@@ -48,8 +48,6 @@ const BlockInput: FC<IBlockInputProps> = ({
   useEffect(() => {
     setCurrentValue(value)
   }, [value])
-
-  const isContentChanged = value !== currentValue
 
   const contentEditableRef = useRef<HTMLTextAreaElement>(null)
   const [isEditing, setIsEditing] = useState<boolean>(false)

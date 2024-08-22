@@ -17,9 +17,9 @@ import timezone from 'dayjs/plugin/timezone'
 import { createContext, useContext } from 'use-context-selector'
 import { useShallow } from 'zustand/react/shallow'
 import { useTranslation } from 'react-i18next'
-import cn from 'classnames'
 import s from './style.module.css'
 import VarPanel from './var-panel'
+import cn from '@/utils/classnames'
 import { randomString } from '@/utils'
 import type { FeedbackFunc, Feedbacktype, IChatItem, SubmitAnnotationFunc } from '@/app/components/base/chat/chat/type'
 import type { Annotation, ChatConversationFullDetailResponse, ChatConversationGeneralDetail, ChatConversationsResponse, ChatMessage, ChatMessagesRequest, CompletionConversationFullDetailResponse, CompletionConversationGeneralDetail, CompletionConversationsResponse, LogAnnotation } from '@/models/log'
@@ -126,6 +126,7 @@ const getFormattedChatList = (messages: ChatMessage[], conversationId: string, t
         tokens: item.answer_tokens + item.message_tokens,
         latency: item.provider_response_latency.toFixed(2),
       },
+      citation: item.metadata?.retriever_resources,
       annotation: (() => {
         if (item.annotation_hit_history) {
           return {
@@ -495,7 +496,7 @@ function DetailPanel<T extends ChatConversationFullDetailResponse | CompletionCo
             >
               <Chat
                 config={{
-                  app_id: appDetail?.id,
+                  appId: appDetail?.id,
                   text_to_speech: {
                     enabled: true,
                   },
@@ -670,12 +671,13 @@ const ConversationList: FC<IConversationList> = ({ logs, appDetail, onRefresh })
         <thead className="h-8 leading-8 border-b border-gray-200 text-gray-500 font-bold">
           <tr>
             <td className='w-[1.375rem] whitespace-nowrap'></td>
-            <td className='whitespace-nowrap'>{t('appLog.table.header.time')}</td>
-            <td className='whitespace-nowrap'>{t('appLog.table.header.endUser')}</td>
             <td className='whitespace-nowrap'>{isChatMode ? t('appLog.table.header.summary') : t('appLog.table.header.input')}</td>
+            <td className='whitespace-nowrap'>{t('appLog.table.header.endUser')}</td>
             <td className='whitespace-nowrap'>{isChatMode ? t('appLog.table.header.messageCount') : t('appLog.table.header.output')}</td>
             <td className='whitespace-nowrap'>{t('appLog.table.header.userRate')}</td>
             <td className='whitespace-nowrap'>{t('appLog.table.header.adminRate')}</td>
+            <td className='whitespace-nowrap'>{t('appLog.table.header.updatedTime')}</td>
+            <td className='whitespace-nowrap'>{t('appLog.table.header.time')}</td>
           </tr>
         </thead>
         <tbody className="text-gray-500">
@@ -691,11 +693,10 @@ const ConversationList: FC<IConversationList> = ({ logs, appDetail, onRefresh })
                 setCurrentConversation(log)
               }}>
               <td className='text-center align-middle'>{!log.read_at && <span className='inline-block bg-[#3F83F8] h-1.5 w-1.5 rounded'></span>}</td>
-              <td className='w-[160px]'>{formatTime(log.created_at, t('appLog.dateTimeFormat') as string)}</td>
-              <td>{renderTdValue(endUser || defaultValue, !endUser)}</td>
               <td style={{ maxWidth: isChatMode ? 300 : 200 }}>
                 {renderTdValue(leftValue || t('appLog.table.empty.noChat'), !leftValue, isChatMode && log.annotated)}
               </td>
+              <td>{renderTdValue(endUser || defaultValue, !endUser)}</td>
               <td style={{ maxWidth: isChatMode ? 100 : 200 }}>
                 {renderTdValue(rightValue === 0 ? 0 : (rightValue || t('appLog.table.empty.noOutput')), !rightValue, !isChatMode && !!log.annotation?.content, log.annotation)}
               </td>
@@ -717,6 +718,8 @@ const ConversationList: FC<IConversationList> = ({ logs, appDetail, onRefresh })
                   </>
                 }
               </td>
+              <td className='w-[160px]'>{formatTime(log.updated_at, t('appLog.dateTimeFormat') as string)}</td>
+              <td className='w-[160px]'>{formatTime(log.created_at, t('appLog.dateTimeFormat') as string)}</td>
             </tr>
           })}
         </tbody>

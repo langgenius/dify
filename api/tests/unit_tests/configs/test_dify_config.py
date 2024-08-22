@@ -1,3 +1,4 @@
+import os
 from textwrap import dedent
 
 import pytest
@@ -21,6 +22,7 @@ def example_env_file(tmp_path, monkeypatch) -> str:
 
 
 def test_dify_config_undefined_entry(example_env_file):
+    # NOTE: See https://github.com/microsoft/pylance-release/issues/6099 for more details about this type error.
     # load dotenv file with pydantic-settings
     config = DifyConfig(_env_file=example_env_file)
 
@@ -43,9 +45,13 @@ def test_dify_config(example_env_file):
     assert config.SENTRY_TRACES_SAMPLE_RATE == 1.0
 
 
+# NOTE: If there is a `.env` file in your Workspace, this test might not succeed as expected.
+# This is due to `pymilvus` loading all the variables from the `.env` file into `os.environ`.
 def test_flask_configs(example_env_file):
     flask_app = Flask('app')
-    flask_app.config.from_mapping(DifyConfig(_env_file=example_env_file).model_dump())
+    # clear system environment variables
+    os.environ.clear()
+    flask_app.config.from_mapping(DifyConfig(_env_file=example_env_file).model_dump())  # pyright: ignore
     config = flask_app.config
 
     # configs read from pydantic-settings

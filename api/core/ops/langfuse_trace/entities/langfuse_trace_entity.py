@@ -50,10 +50,11 @@ class LangfuseTrace(BaseModel):
     """
     Langfuse trace model
     """
+
     id: Optional[str] = Field(
         default=None,
         description="The id of the trace can be set, defaults to a random id. Used to link traces to external systems "
-                    "or when creating a distributed trace. Traces are upserted on id.",
+        "or when creating a distributed trace. Traces are upserted on id.",
     )
     name: Optional[str] = Field(
         default=None,
@@ -68,7 +69,7 @@ class LangfuseTrace(BaseModel):
     metadata: Optional[dict[str, Any]] = Field(
         default=None,
         description="Additional metadata of the trace. Can be any JSON object. Metadata is merged when being updated "
-                    "via the API.",
+        "via the API.",
     )
     user_id: Optional[str] = Field(
         default=None,
@@ -81,22 +82,22 @@ class LangfuseTrace(BaseModel):
     version: Optional[str] = Field(
         default=None,
         description="The version of the trace type. Used to understand how changes to the trace type affect metrics. "
-                    "Useful in debugging.",
+        "Useful in debugging.",
     )
     release: Optional[str] = Field(
         default=None,
         description="The release identifier of the current deployment. Used to understand how changes of different "
-                    "deployments affect metrics. Useful in debugging.",
+        "deployments affect metrics. Useful in debugging.",
     )
     tags: Optional[list[str]] = Field(
         default=None,
         description="Tags are used to categorize or label traces. Traces can be filtered by tags in the UI and GET "
-                    "API. Tags can also be changed in the UI. Tags are merged and never deleted via the API.",
+        "API. Tags can also be changed in the UI. Tags are merged and never deleted via the API.",
     )
     public: Optional[bool] = Field(
         default=None,
         description="You can make a trace public to share it via a public link. This allows others to view the trace "
-                    "without needing to log in or be members of your Langfuse project.",
+        "without needing to log in or be members of your Langfuse project.",
     )
 
     @field_validator("input", "output")
@@ -109,6 +110,7 @@ class LangfuseSpan(BaseModel):
     """
     Langfuse span model
     """
+
     id: Optional[str] = Field(
         default=None,
         description="The id of the span can be set, otherwise a random id is generated. Spans are upserted on id.",
@@ -140,17 +142,17 @@ class LangfuseSpan(BaseModel):
     metadata: Optional[dict[str, Any]] = Field(
         default=None,
         description="Additional metadata of the span. Can be any JSON object. Metadata is merged when being updated "
-                    "via the API.",
+        "via the API.",
     )
     level: Optional[str] = Field(
         default=None,
         description="The level of the span. Can be DEBUG, DEFAULT, WARNING or ERROR. Used for sorting/filtering of "
-                    "traces with elevated error levels and for highlighting in the UI.",
+        "traces with elevated error levels and for highlighting in the UI.",
     )
     status_message: Optional[str] = Field(
         default=None,
         description="The status message of the span. Additional field for context of the event. E.g. the error "
-                    "message of an error event.",
+        "message of an error event.",
     )
     input: Optional[Union[str, dict[str, Any], list, None]] = Field(
         default=None, description="The input of the span. Can be any JSON object."
@@ -161,7 +163,7 @@ class LangfuseSpan(BaseModel):
     version: Optional[str] = Field(
         default=None,
         description="The version of the span type. Used to understand how changes to the span type affect metrics. "
-                    "Useful in debugging.",
+        "Useful in debugging.",
     )
     parent_observation_id: Optional[str] = Field(
         default=None,
@@ -185,10 +187,9 @@ class UnitEnum(str, Enum):
 class GenerationUsage(BaseModel):
     promptTokens: Optional[int] = None
     completionTokens: Optional[int] = None
-    totalTokens: Optional[int] = None
+    total: Optional[int] = None
     input: Optional[int] = None
     output: Optional[int] = None
-    total: Optional[int] = None
     unit: Optional[UnitEnum] = None
     inputCost: Optional[float] = None
     outputCost: Optional[float] = None
@@ -224,15 +225,13 @@ class LangfuseGeneration(BaseModel):
     completion_start_time: Optional[datetime | str] = Field(
         default=None,
         description="The time at which the completion started (streaming). Set it to get latency analytics broken "
-                    "down into time until completion started and completion duration.",
+        "down into time until completion started and completion duration.",
     )
     end_time: Optional[datetime | str] = Field(
         default=None,
         description="The time at which the generation ended. Automatically set by generation.end().",
     )
-    model: Optional[str] = Field(
-        default=None, description="The name of the model used for the generation."
-    )
+    model: Optional[str] = Field(default=None, description="The name of the model used for the generation.")
     model_parameters: Optional[dict[str, Any]] = Field(
         default=None,
         description="The parameters of the model used for the generation; can be any key-value pairs.",
@@ -248,27 +247,27 @@ class LangfuseGeneration(BaseModel):
     usage: Optional[GenerationUsage] = Field(
         default=None,
         description="The usage object supports the OpenAi structure with tokens and a more generic version with "
-                    "detailed costs and units.",
+        "detailed costs and units.",
     )
     metadata: Optional[dict[str, Any]] = Field(
         default=None,
         description="Additional metadata of the generation. Can be any JSON object. Metadata is merged when being "
-                    "updated via the API.",
+        "updated via the API.",
     )
     level: Optional[LevelEnum] = Field(
         default=None,
         description="The level of the generation. Can be DEBUG, DEFAULT, WARNING or ERROR. Used for sorting/filtering "
-                    "of traces with elevated error levels and for highlighting in the UI.",
+        "of traces with elevated error levels and for highlighting in the UI.",
     )
     status_message: Optional[str] = Field(
         default=None,
         description="The status message of the generation. Additional field for context of the event. E.g. the error "
-                    "message of an error event.",
+        "message of an error event.",
     )
     version: Optional[str] = Field(
         default=None,
         description="The version of the generation type. Used to understand how changes to the span type affect "
-                    "metrics. Useful in debugging.",
+        "metrics. Useful in debugging.",
     )
 
     model_config = ConfigDict(protected_namespaces=())
@@ -277,4 +276,3 @@ class LangfuseGeneration(BaseModel):
     def ensure_dict(cls, v, info: ValidationInfo):
         field_name = info.field_name
         return validate_input_output(v, field_name)
-

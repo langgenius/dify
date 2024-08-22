@@ -4,9 +4,9 @@ import { useContext, useContextSelector } from 'use-context-selector'
 import { useRouter } from 'next/navigation'
 import { useCallback, useEffect, useState } from 'react'
 import { useTranslation } from 'react-i18next'
-import cn from 'classnames'
 import { RiMoreFill } from '@remixicon/react'
 import s from './style.module.css'
+import cn from '@/utils/classnames'
 import type { App } from '@/types/app'
 import Confirm from '@/app/components/base/confirm'
 import { ToastContext } from '@/app/components/base/toast'
@@ -28,6 +28,9 @@ import EditAppModal from '@/app/components/explore/create-app-modal'
 import SwitchAppModal from '@/app/components/app/switch-app-modal'
 import type { Tag } from '@/app/components/base/tag-management/constant'
 import TagSelector from '@/app/components/base/tag-management/selector'
+import type { EnvironmentVariable } from '@/app/components/workflow/types'
+import DSLExportConfirmModal from '@/app/components/workflow/dsl-export-confirm-modal'
+import { fetchWorkflowDraft } from '@/service/workflow'
 
 export type AppCardProps = {
   app: App
@@ -50,6 +53,7 @@ const AppCard = ({ app, onRefresh }: AppCardProps) => {
   const [showDuplicateModal, setShowDuplicateModal] = useState(false)
   const [showSwitchModal, setShowSwitchModal] = useState<boolean>(false)
   const [showConfirmDelete, setShowConfirmDelete] = useState(false)
+  const [secretEnvList, setSecretEnvList] = useState<EnvironmentVariable[]>([])
 
   const onConfirmDelete = useCallback(async () => {
     try {
@@ -71,6 +75,7 @@ const AppCard = ({ app, onRefresh }: AppCardProps) => {
 
   const onEdit: CreateAppModalProps['onConfirm'] = useCallback(async ({
     name,
+    icon_type,
     icon,
     icon_background,
     description,
@@ -79,6 +84,7 @@ const AppCard = ({ app, onRefresh }: AppCardProps) => {
       await updateAppInfo({
         appID: app.id,
         name,
+        icon_type,
         icon,
         icon_background,
         description,
@@ -97,11 +103,12 @@ const AppCard = ({ app, onRefresh }: AppCardProps) => {
     }
   }, [app.id, mutateApps, notify, onRefresh, t])
 
-  const onCopy: DuplicateAppModalProps['onConfirm'] = async ({ name, icon, icon_background }) => {
+  const onCopy: DuplicateAppModalProps['onConfirm'] = async ({ name, icon_type, icon, icon_background }) => {
     try {
       const newApp = await copyApp({
         appID: app.id,
         name,
+        icon_type,
         icon,
         icon_background,
         mode: app.mode,
@@ -123,14 +130,36 @@ const AppCard = ({ app, onRefresh }: AppCardProps) => {
     }
   }
 
-  const onExport = async () => {
+  const onExport = async (include = false) => {
     try {
-      const { data } = await exportAppConfig(app.id)
+      const { data } = await exportAppConfig({
+        appID: app.id,
+        include,
+      })
       const a = document.createElement('a')
       const file = new Blob([data], { type: 'application/yaml' })
       a.href = URL.createObjectURL(file)
       a.download = `${app.name}.yml`
       a.click()
+    }
+    catch (e) {
+      notify({ type: 'error', message: t('app.exportFailed') })
+    }
+  }
+
+  const exportCheck = async () => {
+    if (app.mode !== 'workflow' && app.mode !== 'advanced-chat') {
+      onExport()
+      return
+    }
+    try {
+      const workflowDraft = await fetchWorkflowDraft(`/apps/${app.id}/workflows/draft`)
+      const list = (workflowDraft.environment_variables || []).filter(env => env.value_type === 'secret')
+      if (list.length === 0) {
+        onExport()
+        return
+      }
+      setSecretEnvList(list)
     }
     catch (e) {
       notify({ type: 'error', message: t('app.exportFailed') })
@@ -164,7 +193,7 @@ const AppCard = ({ app, onRefresh }: AppCardProps) => {
       e.stopPropagation()
       props.onClick?.()
       e.preventDefault()
-      onExport()
+      exportCheck()
     }
     const onClickSwitch = async (e: React.MouseEvent<HTMLDivElement>) => {
       e.stopPropagation()
@@ -232,8 +261,10 @@ const AppCard = ({ app, onRefresh }: AppCardProps) => {
           <div className='relative shrink-0'>
             <AppIcon
               size="large"
+              iconType={app.icon_type}
               icon={app.icon}
               background={app.icon_background}
+              imageUrl={app.icon_url}
             />
             <span className='absolute bottom-[-3px] right-[-3px] w-4 h-4 p-0.5 bg-white rounded border-[0.5px] border-[rgba(0,0,0,0.02)] shadow-sm'>
               {app.mode === 'advanced-chat' && (
@@ -300,7 +331,7 @@ const AppCard = ({ app, onRefresh }: AppCardProps) => {
                   />
                 </div>
               </div>
-              <div className='!hidden group-hover:!flex shrink-0 mx-1 w-[1px] h-[14px] bg-gray-200'/>
+              <div className='!hidden group-hover:!flex shrink-0 mx-1 w-[1px] h-[14px] bg-gray-200' />
               <div className='!hidden group-hover:!flex shrink-0'>
                 <CustomPopover
                   htmlContent={<Operations />}
@@ -334,9 +365,11 @@ const AppCard = ({ app, onRefresh }: AppCardProps) => {
       {showEditModal && (
         <EditAppModal
           isEditModal
+          appName={app.name}
+          appIconType={app.icon_type}
           appIcon={app.icon}
           appIconBackground={app.icon_background}
-          appName={app.name}
+          appIconUrl={app.icon_url}
           appDescription={app.description}
           show={showEditModal}
           onConfirm={onEdit}
@@ -346,8 +379,10 @@ const AppCard = ({ app, onRefresh }: AppCardProps) => {
       {showDuplicateModal && (
         <DuplicateAppModal
           appName={app.name}
+          icon_type={app.icon_type}
           icon={app.icon}
           icon_background={app.icon_background}
+          icon_url={app.icon_url}
           show={showDuplicateModal}
           onConfirm={onCopy}
           onHide={() => setShowDuplicateModal(false)}
@@ -366,9 +401,15 @@ const AppCard = ({ app, onRefresh }: AppCardProps) => {
           title={t('app.deleteAppConfirmTitle')}
           content={t('app.deleteAppConfirmContent')}
           isShow={showConfirmDelete}
-          onClose={() => setShowConfirmDelete(false)}
           onConfirm={onConfirmDelete}
           onCancel={() => setShowConfirmDelete(false)}
+        />
+      )}
+      {secretEnvList.length > 0 && (
+        <DSLExportConfirmModal
+          envList={secretEnvList}
+          onConfirm={onExport}
+          onClose={() => setSecretEnvList([])}
         />
       )}
     </>

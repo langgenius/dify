@@ -1,7 +1,10 @@
 import logging
+import time
 from collections.abc import Generator
 from typing import Any, Optional, Union
 
+from constants.tts_auto_play_timeout import TTS_AUTO_PLAY_TIMEOUT, TTS_AUTO_PLAY_YIELD_CPU_TIME
+from core.app.apps.advanced_chat.app_generator_tts_publisher import AppGeneratorTTSPublisher, AudioTrunk
 from core.app.apps.base_app_queue_manager import AppQueueManager
 from core.app.entities.app_invoke_entities import (
     InvokeFrom,
@@ -25,6 +28,8 @@ from core.app.entities.queue_entities import (
 )
 from core.app.entities.task_entities import (
     ErrorStreamResponse,
+    MessageAudioEndStreamResponse,
+    MessageAudioStreamResponse,
     StreamResponse,
     TextChunkStreamResponse,
     TextReplaceStreamResponse,
@@ -37,7 +42,8 @@ from core.app.entities.task_entities import (
 from core.app.task_pipeline.based_generate_task_pipeline import BasedGenerateTaskPipeline
 from core.app.task_pipeline.workflow_cycle_manage import WorkflowCycleManage
 from core.ops.ops_trace_manager import TraceQueueManager
-from core.workflow.entities.node_entities import NodeType, SystemVariable
+from core.workflow.entities.node_entities import NodeType
+from core.workflow.enums import SystemVariableKey
 from core.workflow.nodes.end.end_node import EndNode
 from extensions.ext_database import db
 from models.account import Account
@@ -61,7 +67,7 @@ class WorkflowAppGenerateTaskPipeline(BasedGenerateTaskPipeline, WorkflowCycleMa
     _user: Union[Account, EndUser]
     _task_state: WorkflowTaskState
     _application_generate_entity: WorkflowAppGenerateEntity
-    _workflow_system_variables: dict[SystemVariable, Any]
+    _workflow_system_variables: dict[SystemVariableKey, Any]
     _iteration_nested_relations: dict[str, list[str]]
 
     def __init__(self, application_generate_entity: WorkflowAppGenerateEntity,
@@ -86,8 +92,8 @@ class WorkflowAppGenerateTaskPipeline(BasedGenerateTaskPipeline, WorkflowCycleMa
 
         self._workflow = workflow
         self._workflow_system_variables = {
-            SystemVariable.FILES: application_generate_entity.files,
-            SystemVariable.USER_ID: user_id
+            SystemVariableKey.FILES: application_generate_entity.files,
+            SystemVariableKey.USER_ID: user_id
         }
 
         self._task_state = WorkflowTaskState(
@@ -105,7 +111,7 @@ class WorkflowAppGenerateTaskPipeline(BasedGenerateTaskPipeline, WorkflowCycleMa
         db.session.refresh(self._user)
         db.session.close()
 
-        generator = self._process_stream_response(
+        generator = self._wrapper_process_stream_response(
             trace_manager=self._application_generate_entity.trace_manager
         )
         if self._stream:
@@ -161,8 +167,58 @@ class WorkflowAppGenerateTaskPipeline(BasedGenerateTaskPipeline, WorkflowCycleMa
                 stream_response=stream_response
             )
 
+    def _listenAudioMsg(self, publisher, task_id: str):
+        if not publisher:
+            return None
+        audio_msg: AudioTrunk = publisher.checkAndGetAudio()
+        if audio_msg and audio_msg.status != "finish":
+            return MessageAudioStreamResponse(audio=audio_msg.audio, task_id=task_id)
+        return None
+
+    def _wrapper_process_stream_response(self, trace_manager: Optional[TraceQueueManager] = None) -> \
+            Generator[StreamResponse, None, None]:
+
+        publisher = None
+        task_id = self._application_generate_entity.task_id
+        tenant_id = self._application_generate_entity.app_config.tenant_id
+        features_dict = self._workflow.features_dict
+
+        if features_dict.get('text_to_speech') and features_dict['text_to_speech'].get('enabled') and features_dict[
+                'text_to_speech'].get('autoPlay') == 'enabled':
+            publisher = AppGeneratorTTSPublisher(tenant_id, features_dict['text_to_speech'].get('voice'))
+        for response in self._process_stream_response(publisher=publisher, trace_manager=trace_manager):
+            while True:
+                audio_response = self._listenAudioMsg(publisher, task_id=task_id)
+                if audio_response:
+                    yield audio_response
+                else:
+                    break
+            yield response
+
+        start_listener_time = time.time()
+        while (time.time() - start_listener_time) < TTS_AUTO_PLAY_TIMEOUT:
+            try:
+                if not publisher:
+                    break
+                audio_trunk = publisher.checkAndGetAudio()
+                if audio_trunk is None:
+                    # release cpu
+                    # sleep 20 ms ( 40ms => 1280 byte audio file,20ms => 640 byte audio file)
+                    time.sleep(TTS_AUTO_PLAY_YIELD_CPU_TIME)
+                    continue
+                if audio_trunk.status == "finish":
+                    break
+                else:
+                    yield MessageAudioStreamResponse(audio=audio_trunk.audio, task_id=task_id)
+            except Exception as e:
+                logger.error(e)
+                break
+        yield MessageAudioEndStreamResponse(audio='', task_id=task_id)
+
+
     def _process_stream_response(
         self,
+        publisher: AppGeneratorTTSPublisher,
         trace_manager: Optional[TraceQueueManager] = None
     ) -> Generator[StreamResponse, None, None]:
         """
@@ -170,6 +226,8 @@ class WorkflowAppGenerateTaskPipeline(BasedGenerateTaskPipeline, WorkflowCycleMa
         :return:
         """
         for message in self._queue_manager.listen():
+            if publisher:
+                publisher.publish(message=message)
             event = message.event
 
             if isinstance(event, QueueErrorEvent):
@@ -250,6 +308,10 @@ class WorkflowAppGenerateTaskPipeline(BasedGenerateTaskPipeline, WorkflowCycleMa
                 yield self._ping_stream_response()
             else:
                 continue
+
+        if publisher:
+            publisher.publish(None)
+
 
     def _save_workflow_app_log(self, workflow_run: WorkflowRun) -> None:
         """
@@ -458,7 +520,7 @@ class WorkflowAppGenerateTaskPipeline(BasedGenerateTaskPipeline, WorkflowCycleMa
         """
         nodes = graph.get('nodes')
 
-        iteration_ids = [node.get('id') for node in nodes 
+        iteration_ids = [node.get('id') for node in nodes
                          if node.get('data', {}).get('type') in [
                              NodeType.ITERATION.value,
                              NodeType.LOOP.value,
@@ -469,4 +531,3 @@ class WorkflowAppGenerateTaskPipeline(BasedGenerateTaskPipeline, WorkflowCycleMa
                 node.get('id') for node in nodes if node.get('data', {}).get('iteration_id') == iteration_id
             ] for iteration_id in iteration_ids
         }
-    

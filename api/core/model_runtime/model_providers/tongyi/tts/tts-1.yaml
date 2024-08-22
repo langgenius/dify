@@ -129,7 +129,7 @@ model_properties:
     - mode: "sambert-waan-v1"
       name: "Waan（泰语女声）"
       language: [ "th-TH" ]
-  word_limit: 120
+  word_limit: 7000
   audio_type: 'mp3'
   max_workers: 5
 pricing:

@@ -3,13 +3,13 @@ import type { FC } from 'react'
 import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { useContext } from 'use-context-selector'
 import { useTranslation } from 'react-i18next'
-import cn from 'classnames'
 import { useBoolean } from 'ahooks'
 import { BlockEnum } from '../types'
 import OutputPanel from './output-panel'
 import ResultPanel from './result-panel'
 import TracingPanel from './tracing-panel'
 import IterationResultPanel from './iteration-result-panel'
+import cn from '@/utils/classnames'
 import { ToastContext } from '@/app/components/base/toast'
 import Loading from '@/app/components/base/loading'
 import { fetchRunDetail, fetchTracingList } from '@/service/log'
@@ -63,30 +63,25 @@ const RunPanel: FC<RunProps> = ({ hideResult, activeTab = 'RESULT', runID, getRe
   const formatNodeList = useCallback((list: NodeTracing[]) => {
     const allItems = list.reverse()
     const result: NodeTracing[] = []
-    let iterationIndexInfos: {
-      start: number
-      end: number
-    }[] = []
+    let iterationIndex = 0
     allItems.forEach((item) => {
-      const { node_type, index, execution_metadata } = item
+      const { node_type, execution_metadata } = item
       if (node_type !== BlockEnum.Iteration) {
-        let isInIteration = false
-        let isIterationFirstNode = false
-        iterationIndexInfos.forEach(({ start, end }) => {
-          if (index >= start && index < end) {
-            if (index === start)
-              isIterationFirstNode = true
+        const isInIteration = !!execution_metadata?.iteration_id
 
-            isInIteration = true
-          }
-        })
         if (isInIteration) {
           const iterationDetails = result[result.length - 1].details!
-          if (isIterationFirstNode)
-            iterationDetails!.push([item])
+          const currentIterationIndex = execution_metadata?.iteration_index
+          const isIterationFirstNode = iterationIndex !== currentIterationIndex || iterationDetails.length === 0
 
-          else
+          if (isIterationFirstNode) {
+            iterationDetails!.push([item])
+            iterationIndex = currentIterationIndex!
+          }
+
+          else {
             iterationDetails[iterationDetails.length - 1].push(item)
+          }
 
           return
         }
@@ -96,26 +91,6 @@ const RunPanel: FC<RunProps> = ({ hideResult, activeTab = 'RESULT', runID, getRe
         return
       }
 
-      const { steps_boundary } = execution_metadata
-      iterationIndexInfos = []
-      steps_boundary.forEach((boundary, index) => {
-        if (index === 0) {
-          iterationIndexInfos.push({
-            start: boundary,
-            end: 0,
-          })
-        }
-        else if (index === steps_boundary.length - 1) {
-          iterationIndexInfos[iterationIndexInfos.length - 1].end = boundary
-        }
-        else {
-          iterationIndexInfos[iterationIndexInfos.length - 1].end = boundary
-          iterationIndexInfos.push({
-            start: boundary,
-            end: 0,
-          })
-        }
-      })
       result.push({
         ...item,
         details: [],

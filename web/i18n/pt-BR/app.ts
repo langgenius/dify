@@ -67,9 +67,11 @@ const translation = {
   editAppTitle: 'Editar Informações do Aplicativo',
   editDone: 'Informações do aplicativo atualizadas',
   editFailed: 'Falha ao atualizar informações do aplicativo',
-  emoji: {
+  iconPicker: {
     ok: 'OK',
     cancel: 'Cancelar',
+    emoji: 'Emoji',
+    image: 'Imagem',
   },
   switch: 'Mudar para Orquestração de Fluxo de Trabalho',
   switchTipStart: 'Será criada uma nova cópia do aplicativo para você e a nova cópia mudará para Orquestração de Fluxo de Trabalho. A nova cópia não permitirá a ',
@@ -84,6 +86,42 @@ const translation = {
     agent: 'Agente',
     workflow: 'Fluxo de trabalho',
     completion: 'Conclusão',
+  },
+  tracing: {
+    title: 'Rastreamento de desempenho do aplicativo',
+    description: 'Configurando um provedor LLMOps de terceiros e rastreando o desempenho do aplicativo.',
+    config: 'Configurar',
+    collapse: 'Recolher',
+    expand: 'Expandir',
+    tracing: 'Rastreamento',
+    disabled: 'Desativado',
+    disabledTip: 'Por favor, configure o provedor primeiro',
+    enabled: 'Em serviço',
+    tracingDescription: 'Captura o contexto completo da execução do aplicativo, incluindo chamadas LLM, contexto, prompts, solicitações HTTP e mais, para uma plataforma de rastreamento de terceiros.',
+    configProviderTitle: {
+      configured: 'Configurado',
+      notConfigured: 'Configure o provedor para habilitar o rastreamento',
+      moreProvider: 'Mais provedores',
+    },
+    langsmith: {
+      title: 'LangSmith',
+      description: 'Uma plataforma de desenvolvedor completa para cada etapa do ciclo de vida do aplicativo impulsionado por LLM.',
+    },
+    langfuse: {
+      title: 'Langfuse',
+      description: 'Rastreamentos, avaliações, gerenciamento de prompts e métricas para depurar e melhorar seu aplicativo LLM.',
+    },
+    inUse: 'Em uso',
+    configProvider: {
+      title: 'Configurar ',
+      placeholder: 'Insira sua {{key}}',
+      project: 'Projeto',
+      publicKey: 'Chave Pública',
+      secretKey: 'Chave Secreta',
+      viewDocsLink: 'Ver documentação de {{key}}',
+      removeConfirmTitle: 'Remover configuração de {{key}}?',
+      removeConfirmContent: 'A configuração atual está em uso, removê-la desligará o recurso de Rastreamento.',
+    },
   },
 }
 

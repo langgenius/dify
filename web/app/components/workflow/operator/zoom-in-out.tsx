@@ -5,12 +5,10 @@ import {
   useCallback,
   useState,
 } from 'react'
-import cn from 'classnames'
 import {
   RiZoomInLine,
   RiZoomOutLine,
 } from '@remixicon/react'
-import { useKeyPress } from 'ahooks'
 import { useTranslation } from 'react-i18next'
 import {
   useReactFlow,
@@ -21,12 +19,11 @@ import {
   useWorkflowReadOnly,
 } from '../hooks'
 import {
-  getKeyboardKeyCodeBySystem,
   getKeyboardKeyNameBySystem,
-  isEventTargetInputArea,
 } from '../utils'
 import ShortcutsName from '../shortcuts-name'
 import TipPopup from './tip-popup'
+import cn from '@/utils/classnames'
 import {
   PortalToFollowElem,
   PortalToFollowElemContent,
@@ -115,87 +112,6 @@ const ZoomInOut: FC = () => {
 
     handleSyncWorkflowDraft()
   }
-
-  useKeyPress(`${getKeyboardKeyCodeBySystem('ctrl')}.1`, (e) => {
-    e.preventDefault()
-    if (workflowReadOnly)
-      return
-
-    fitView()
-    handleSyncWorkflowDraft()
-  }, {
-    exactMatch: true,
-    useCapture: true,
-  })
-
-  useKeyPress('shift.1', (e) => {
-    if (workflowReadOnly)
-      return
-
-    if (isEventTargetInputArea(e.target as HTMLElement))
-      return
-
-    e.preventDefault()
-    zoomTo(1)
-    handleSyncWorkflowDraft()
-  }, {
-    exactMatch: true,
-    useCapture: true,
-  })
-
-  useKeyPress('shift.2', (e) => {
-    if (workflowReadOnly)
-      return
-
-    if (isEventTargetInputArea(e.target as HTMLElement))
-      return
-
-    e.preventDefault()
-    zoomTo(2)
-    handleSyncWorkflowDraft()
-  }, {
-    exactMatch: true,
-    useCapture: true,
-  })
-
-  useKeyPress('shift.5', (e) => {
-    if (workflowReadOnly)
-      return
-
-    if (isEventTargetInputArea(e.target as HTMLElement))
-      return
-
-    e.preventDefault()
-    zoomTo(0.5)
-    handleSyncWorkflowDraft()
-  }, {
-    exactMatch: true,
-    useCapture: true,
-  })
-
-  useKeyPress(`${getKeyboardKeyCodeBySystem('ctrl')}.dash`, (e) => {
-    e.preventDefault()
-    if (workflowReadOnly)
-      return
-
-    zoomOut()
-    handleSyncWorkflowDraft()
-  }, {
-    exactMatch: true,
-    useCapture: true,
-  })
-
-  useKeyPress(`${getKeyboardKeyCodeBySystem('ctrl')}.equalsign`, (e) => {
-    e.preventDefault()
-    if (workflowReadOnly)
-      return
-
-    zoomIn()
-    handleSyncWorkflowDraft()
-  }, {
-    exactMatch: true,
-    useCapture: true,
-  })
 
   const handleTrigger = useCallback(() => {
     if (getWorkflowReadOnly())
@@ -287,11 +203,6 @@ const ZoomInOut: FC = () => {
                         {
                           option.key === ZoomType.zoomTo100 && (
                             <ShortcutsName keys={['shift', '1']} />
-                          )
-                        }
-                        {
-                          option.key === ZoomType.zoomTo200 && (
-                            <ShortcutsName keys={['shift', '2']} />
                           )
                         }
                       </div>

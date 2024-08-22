@@ -2,8 +2,8 @@
 import type { FC } from 'react'
 import Editor, { loader } from '@monaco-editor/react'
 import React, { useEffect, useRef, useState } from 'react'
-import cn from 'classnames'
 import Base from '../base'
+import cn from '@/utils/classnames'
 import { CodeLanguage } from '@/app/components/workflow/nodes/code/types'
 
 import './style.css'
@@ -15,7 +15,7 @@ const CODE_EDITOR_LINE_HEIGHT = 18
 
 export type Props = {
   value?: string | object
-  placeholder?: string
+  placeholder?: JSX.Element | string
   onChange?: (value: string) => void
   title?: JSX.Element
   language: CodeLanguage
@@ -167,7 +167,7 @@ const CodeEditor: FC<Props> = ({
         }}
         onMount={handleEditorDidMount}
       />
-      {!outPutValue && <div className='pointer-events-none absolute left-[36px] top-0 leading-[18px] text-[13px] font-normal text-gray-300'>{placeholder}</div>}
+      {!outPutValue && !isFocus && <div className='pointer-events-none absolute left-[36px] top-0 leading-[18px] text-[13px] font-normal text-gray-300'>{placeholder}</div>}
     </>
   )
 

@@ -25,12 +25,18 @@ parameters:
     type: select
     required: true
     options:
-      - value: gpt-3.5
+      - value: gpt-4o-mini
         label:
-          en_US: GPT-3.5
+          en_US: GPT-4o-mini
       - value: claude-3-haiku
         label:
           en_US: Claude 3
+      - value: llama-3-70b
+        label:
+          en_US: Llama 3
+      - value: mixtral-8x7b
+        label:
+          en_US: Mixtral
     default: gpt-3.5
     label:
       en_US: Choose Model

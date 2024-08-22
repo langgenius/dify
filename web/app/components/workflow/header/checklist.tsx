@@ -11,7 +11,6 @@ import {
   RiCloseLine,
   RiListCheck3,
 } from '@remixicon/react'
-import cn from 'classnames'
 import BlockIcon from '../block-icon'
 import {
   useChecklist,
@@ -21,6 +20,7 @@ import type {
   CommonEdgeType,
   CommonNodeType,
 } from '../types'
+import cn from '@/utils/classnames'
 import {
   PortalToFollowElem,
   PortalToFollowElemContent,
@@ -57,22 +57,15 @@ const WorkflowChecklist = ({
       <PortalToFollowElemTrigger onClick={() => !disabled && setOpen(v => !v)}>
         <div
           className={cn(
-            'relative flex items-center justify-center p-0.5 w-8 h-8 rounded-lg border-[0.5px] border-gray-200 bg-white shadow-xs',
+            'relative ml-0.5 flex items-center justify-center w-7 h-7 rounded-md',
             disabled && 'opacity-50 cursor-not-allowed',
           )}
         >
           <div
-            className={`
-              group flex items-center justify-center w-full h-full rounded-md cursor-pointer
-              hover:bg-primary-50
-              ${open && 'bg-primary-50'}
-            `}
+            className={cn('group flex items-center justify-center w-full h-full rounded-md cursor-pointer hover:bg-state-accent-hover', open && 'bg-state-accent-hover')}
           >
             <RiListCheck3
-              className={`
-                w-4 h-4 group-hover:text-primary-600
-                ${open ? 'text-primary-600' : 'text-gray-500'}`
-              }
+              className={cn('w-4 h-4 group-hover:text-components-button-secondary-accent-text', open ? 'text-components-button-secondary-accent-text' : 'text-components-button-ghost-text')}
             />
           </div>
           {
@@ -122,7 +115,9 @@ const WorkflowChecklist = ({
                               className='mr-1.5'
                               toolIcon={node.toolIcon}
                             />
-                            {node.title}
+                            <span className='grow truncate'>
+                              {node.title}
+                            </span>
                           </div>
                           <div className='border-t-[0.5px] border-t-black/2'>
                             {

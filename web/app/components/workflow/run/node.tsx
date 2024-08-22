@@ -2,7 +2,6 @@
 import { useTranslation } from 'react-i18next'
 import type { FC } from 'react'
 import { useCallback, useEffect, useState } from 'react'
-import cn from 'classnames'
 import {
   RiArrowRightSLine,
   RiCheckboxCircleLine,
@@ -12,6 +11,7 @@ import {
 import BlockIcon from '../block-icon'
 import { BlockEnum } from '../types'
 import Split from '../nodes/_base/components/split'
+import cn from '@/utils/classnames'
 import CodeEditor from '@/app/components/workflow/nodes/_base/components/editor/code-editor'
 import { CodeLanguage } from '@/app/components/workflow/nodes/code/types'
 import { AlertTriangle } from '@/app/components/base/icons/src/vender/line/alertsAndFeedback'
@@ -123,7 +123,7 @@ const NodePanel: FC<Props> = ({
                 <div
                   className='flex items-center h-[34px] justify-between px-3 bg-gray-100 border-[0.5px] border-gray-200 rounded-lg cursor-pointer'
                   onClick={handleOnShowIterationDetail}>
-                  <div className='leading-[18px] text-[13px] font-medium text-gray-700'>{t('workflow.nodes.iteration.iteration', { count: nodeInfo.metadata?.iterator_length || (nodeInfo.execution_metadata?.steps_boundary?.length - 1) })}</div>
+                  <div className='leading-[18px] text-[13px] font-medium text-gray-700'>{t('workflow.nodes.iteration.iteration', { count: nodeInfo.metadata?.iterator_length || nodeInfo.details?.length })}</div>
                   {justShowIterationNavArrow
                     ? (
                       <RiArrowRightSLine className='w-3.5 h-3.5 text-gray-500' />

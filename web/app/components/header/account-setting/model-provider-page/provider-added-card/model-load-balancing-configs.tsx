@@ -1,4 +1,3 @@
-import classNames from 'classnames'
 import type { Dispatch, SetStateAction } from 'react'
 import { useCallback } from 'react'
 import { useTranslation } from 'react-i18next'
@@ -9,6 +8,7 @@ import {
 import type { ConfigurationMethodEnum, CustomConfigurationModelFixedFields, ModelLoadBalancingConfig, ModelLoadBalancingConfigEntry, ModelProvider } from '../declarations'
 import Indicator from '../../../indicator'
 import CooldownTimer from './cooldown-timer'
+import classNames from '@/utils/classnames'
 import TooltipPlus from '@/app/components/base/tooltip-plus'
 import Switch from '@/app/components/base/switch'
 import { Balance } from '@/app/components/base/icons/src/vender/line/financeAndECommerce'

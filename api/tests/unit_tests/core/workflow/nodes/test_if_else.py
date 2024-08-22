@@ -1,8 +1,8 @@
 from unittest.mock import MagicMock
 
 from core.app.entities.app_invoke_entities import InvokeFrom
-from core.workflow.entities.node_entities import SystemVariable
 from core.workflow.entities.variable_pool import VariablePool
+from core.workflow.enums import SystemVariableKey
 from core.workflow.nodes.base_node import UserFrom
 from core.workflow.nodes.if_else.if_else_node import IfElseNode
 from extensions.ext_database import db
@@ -119,26 +119,26 @@ def test_execute_if_else_result_true():
 
     # construct variable pool
     pool = VariablePool(system_variables={
-        SystemVariable.FILES: [],
-        SystemVariable.USER_ID: 'aaa'
-    }, user_inputs={})
-    pool.append_variable(node_id='start', variable_key_list=['array_contains'], value=['ab', 'def'])
-    pool.append_variable(node_id='start', variable_key_list=['array_not_contains'], value=['ac', 'def'])
-    pool.append_variable(node_id='start', variable_key_list=['contains'], value='cabcde')
-    pool.append_variable(node_id='start', variable_key_list=['not_contains'], value='zacde')
-    pool.append_variable(node_id='start', variable_key_list=['start_with'], value='abc')
-    pool.append_variable(node_id='start', variable_key_list=['end_with'], value='zzab')
-    pool.append_variable(node_id='start', variable_key_list=['is'], value='ab')
-    pool.append_variable(node_id='start', variable_key_list=['is_not'], value='aab')
-    pool.append_variable(node_id='start', variable_key_list=['empty'], value='')
-    pool.append_variable(node_id='start', variable_key_list=['not_empty'], value='aaa')
-    pool.append_variable(node_id='start', variable_key_list=['equals'], value=22)
-    pool.append_variable(node_id='start', variable_key_list=['not_equals'], value=23)
-    pool.append_variable(node_id='start', variable_key_list=['greater_than'], value=23)
-    pool.append_variable(node_id='start', variable_key_list=['less_than'], value=21)
-    pool.append_variable(node_id='start', variable_key_list=['greater_than_or_equal'], value=22)
-    pool.append_variable(node_id='start', variable_key_list=['less_than_or_equal'], value=21)
-    pool.append_variable(node_id='start', variable_key_list=['not_null'], value='1212')
+        SystemVariableKey.FILES: [],
+        SystemVariableKey.USER_ID: 'aaa'
+    }, user_inputs={}, environment_variables=[])
+    pool.add(['start', 'array_contains'], ['ab', 'def'])
+    pool.add(['start', 'array_not_contains'], ['ac', 'def'])
+    pool.add(['start', 'contains'], 'cabcde')
+    pool.add(['start', 'not_contains'], 'zacde')
+    pool.add(['start', 'start_with'], 'abc')
+    pool.add(['start', 'end_with'], 'zzab')
+    pool.add(['start', 'is'], 'ab')
+    pool.add(['start', 'is_not'], 'aab')
+    pool.add(['start', 'empty'], '')
+    pool.add(['start', 'not_empty'], 'aaa')
+    pool.add(['start', 'equals'], 22)
+    pool.add(['start', 'not_equals'], 23)
+    pool.add(['start', 'greater_than'], 23)
+    pool.add(['start', 'less_than'], 21)
+    pool.add(['start', 'greater_than_or_equal'], 22)
+    pool.add(['start', 'less_than_or_equal'], 21)
+    pool.add(['start', 'not_null'], '1212')
 
     # Mock db.session.close()
     db.session.close = MagicMock()
@@ -182,11 +182,11 @@ def test_execute_if_else_result_false():
 
     # construct variable pool
     pool = VariablePool(system_variables={
-        SystemVariable.FILES: [],
-        SystemVariable.USER_ID: 'aaa'
-    }, user_inputs={})
-    pool.append_variable(node_id='start', variable_key_list=['array_contains'], value=['1ab', 'def'])
-    pool.append_variable(node_id='start', variable_key_list=['array_not_contains'], value=['ab', 'def'])
+        SystemVariableKey.FILES: [],
+        SystemVariableKey.USER_ID: 'aaa'
+    }, user_inputs={}, environment_variables=[])
+    pool.add(['start', 'array_contains'], ['1ab', 'def'])
+    pool.add(['start', 'array_not_contains'], ['ab', 'def'])
 
     # Mock db.session.close()
     db.session.close = MagicMock()

@@ -1,8 +1,8 @@
 'use client'
-import cn from 'classnames'
 import { useTranslation } from 'react-i18next'
 import { PlusIcon } from '@heroicons/react/20/solid'
 import Button from '../../base/button'
+import cn from '@/utils/classnames'
 import type { App } from '@/models/explore'
 import AppIcon from '@/app/components/base/app-icon'
 import { AiText, ChatBot, CuteRobote } from '@/app/components/base/icons/src/vender/solid/communication'
@@ -26,7 +26,13 @@ const AppCard = ({
     <div className={cn('group flex col-span-1 bg-white border-2 border-solid border-transparent rounded-lg shadow-sm min-h-[160px] flex flex-col transition-all duration-200 ease-in-out cursor-pointer hover:shadow-lg')}>
       <div className='flex pt-[14px] px-[14px] pb-3 h-[66px] items-center gap-3 grow-0 shrink-0'>
         <div className='relative shrink-0'>
-          <AppIcon size='large' icon={app.app.icon} background={app.app.icon_background} />
+          <AppIcon
+            size='large'
+            iconType={app.app.icon_type}
+            icon={app.app.icon}
+            background={app.app.icon_background}
+            imageUrl={app.app.icon_url}
+          />
           <span className='absolute bottom-[-3px] right-[-3px] w-4 h-4 p-0.5 bg-white rounded border-[0.5px] border-[rgba(0,0,0,0.02)] shadow-sm'>
             {appBasicInfo.mode === 'advanced-chat' && (
               <ChatBot className='w-3 h-3 text-[#1570EF]' />

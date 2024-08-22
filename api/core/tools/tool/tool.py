@@ -1,13 +1,13 @@
 from abc import ABC, abstractmethod
+from collections.abc import Mapping
 from copy import deepcopy
 from enum import Enum
-from typing import Any, Optional, Union
+from typing import TYPE_CHECKING, Any, Optional, Union
 
 from pydantic import BaseModel, ConfigDict, field_validator
 from pydantic_core.core_schema import ValidationInfo
 
 from core.app.entities.app_invoke_entities import InvokeFrom
-from core.file.file_obj import FileVar
 from core.tools.entities.tool_entities import (
     ToolDescription,
     ToolIdentity,
@@ -21,6 +21,9 @@ from core.tools.entities.tool_entities import (
 )
 from core.tools.tool_file_manager import ToolFileManager
 from core.tools.utils.tool_parameter_converter import ToolParameterConverter
+
+if TYPE_CHECKING:
+    from core.file.file_obj import FileVar
 
 
 class Tool(BaseModel, ABC):
@@ -75,7 +78,7 @@ class Tool(BaseModel, ABC):
             description=self.description.model_copy() if self.description else None,
             runtime=Tool.Runtime(**runtime),
         )
-    
+
     @abstractmethod
     def tool_provider_type(self) -> ToolProviderType:
         """
@@ -83,7 +86,7 @@ class Tool(BaseModel, ABC):
 
             :return: the tool provider type
         """
-    
+
     def load_variables(self, variables: ToolRuntimeVariablePool):
         """
             load variables from database
@@ -98,7 +101,7 @@ class Tool(BaseModel, ABC):
         """
         if not self.variables:
             return
-        
+
         self.variables.set_file(self.identity.name, variable_name, image_key)
 
     def set_text_variable(self, variable_name: str, text: str) -> None:
@@ -107,9 +110,9 @@ class Tool(BaseModel, ABC):
         """
         if not self.variables:
             return
-        
+
         self.variables.set_text(self.identity.name, variable_name, text)
-        
+
     def get_variable(self, name: Union[str, Enum]) -> Optional[ToolRuntimeVariable]:
         """
             get a variable
@@ -119,14 +122,14 @@ class Tool(BaseModel, ABC):
         """
         if not self.variables:
             return None
-        
+
         if isinstance(name, Enum):
             name = name.value
-        
+
         for variable in self.variables.pool:
             if variable.name == name:
                 return variable
-            
+
         return None
 
     def get_default_image_variable(self) -> Optional[ToolRuntimeVariable]:
@@ -137,9 +140,9 @@ class Tool(BaseModel, ABC):
         """
         if not self.variables:
             return None
-        
+
         return self.get_variable(self.VARIABLE_KEY.IMAGE)
-    
+
     def get_variable_file(self, name: Union[str, Enum]) -> Optional[bytes]:
         """
             get a variable file
@@ -150,7 +153,7 @@ class Tool(BaseModel, ABC):
         variable = self.get_variable(name)
         if not variable:
             return None
-        
+
         if not isinstance(variable, ToolRuntimeImageVariable):
             return None
 
@@ -159,9 +162,9 @@ class Tool(BaseModel, ABC):
         file_binary = ToolFileManager.get_file_binary_by_message_file_id(message_file_id)
         if not file_binary:
             return None
-        
+
         return file_binary[0]
-    
+
     def list_variables(self) -> list[ToolRuntimeVariable]:
         """
             list all variables
@@ -170,9 +173,9 @@ class Tool(BaseModel, ABC):
         """
         if not self.variables:
             return []
-        
+
         return self.variables.pool
-    
+
     def list_default_image_variables(self) -> list[ToolRuntimeVariable]:
         """
             list all image variables
@@ -181,17 +184,18 @@ class Tool(BaseModel, ABC):
         """
         if not self.variables:
             return []
-        
+
         result = []
-        
+
         for variable in self.variables.pool:
             if variable.name.startswith(self.VARIABLE_KEY.IMAGE.value):
                 result.append(variable)
 
         return result
 
-    def invoke(self, user_id: str, tool_parameters: dict[str, Any]) -> list[ToolInvokeMessage]:
+    def invoke(self, user_id: str, tool_parameters: Mapping[str, Any]) -> list[ToolInvokeMessage]:
         # update tool_parameters
+        # TODO: Fix type error.
         if self.runtime.runtime_parameters:
             tool_parameters.update(self.runtime.runtime_parameters)
 
@@ -208,7 +212,7 @@ class Tool(BaseModel, ABC):
 
         return result
 
-    def _transform_tool_parameters_type(self, tool_parameters: dict[str, Any]) -> dict[str, Any]:
+    def _transform_tool_parameters_type(self, tool_parameters: Mapping[str, Any]) -> dict[str, Any]:
         """
         Transform tool parameters type
         """
@@ -223,7 +227,7 @@ class Tool(BaseModel, ABC):
     @abstractmethod
     def _invoke(self, user_id: str, tool_parameters: dict[str, Any]) -> Union[ToolInvokeMessage, list[ToolInvokeMessage]]:
         pass
-    
+
     def validate_credentials(self, credentials: dict[str, Any], parameters: dict[str, Any]) -> None:
         """
             validate the credentials
@@ -241,8 +245,8 @@ class Tool(BaseModel, ABC):
 
             :return: the runtime parameters
         """
-        return self.parameters
-    
+        return self.parameters or []
+
     def get_all_runtime_parameters(self) -> list[ToolParameter]:
         """
             get all runtime parameters
@@ -276,7 +280,7 @@ class Tool(BaseModel, ABC):
                 parameters.append(parameter)
 
         return parameters
-    
+
     def create_image_message(self, image: str, save_as: str = '') -> ToolInvokeMessage:
         """
             create an image message
@@ -284,18 +288,18 @@ class Tool(BaseModel, ABC):
             :param image: the url of the image
             :return: the image message
         """
-        return ToolInvokeMessage(type=ToolInvokeMessage.MessageType.IMAGE, 
-                                 message=image, 
+        return ToolInvokeMessage(type=ToolInvokeMessage.MessageType.IMAGE,
+                                 message=image,
                                  save_as=save_as)
-    
-    def create_file_var_message(self, file_var: FileVar) -> ToolInvokeMessage:
+
+    def create_file_var_message(self, file_var: "FileVar") -> ToolInvokeMessage:
         return ToolInvokeMessage(type=ToolInvokeMessage.MessageType.FILE_VAR,
                                  message='',
                                  meta={
                                      'file_var': file_var
                                  },
                                  save_as='')
-    
+
     def create_link_message(self, link: str, save_as: str = '') -> ToolInvokeMessage:
         """
             create a link message
@@ -303,10 +307,10 @@ class Tool(BaseModel, ABC):
             :param link: the url of the link
             :return: the link message
         """
-        return ToolInvokeMessage(type=ToolInvokeMessage.MessageType.LINK, 
-                                 message=link, 
+        return ToolInvokeMessage(type=ToolInvokeMessage.MessageType.LINK,
+                                 message=link,
                                  save_as=save_as)
-    
+
     def create_text_message(self, text: str, save_as: str = '') -> ToolInvokeMessage:
         """
             create a text message
@@ -319,7 +323,7 @@ class Tool(BaseModel, ABC):
             message=text,
             save_as=save_as
         )
-    
+
     def create_blob_message(self, blob: bytes, meta: dict = None, save_as: str = '') -> ToolInvokeMessage:
         """
             create a blob message

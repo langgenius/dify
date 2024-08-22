@@ -1,9 +1,9 @@
 from enum import Enum
 from typing import Optional
 
-from flask import current_app
 from pydantic import BaseModel, ConfigDict
 
+from configs import dify_config
 from core.entities.model_entities import ModelWithProviderEntity, ProviderModelWithStatusEntity
 from core.entities.provider_entities import QuotaConfiguration
 from core.model_runtime.entities.common_entities import I18nObject
@@ -67,7 +67,7 @@ class ProviderResponse(BaseModel):
     def __init__(self, **data) -> None:
         super().__init__(**data)
 
-        url_prefix = (current_app.config.get("CONSOLE_API_URL")
+        url_prefix = (dify_config.CONSOLE_API_URL
                       + f"/console/api/workspaces/current/model-providers/{self.provider}")
         if self.icon_small is not None:
             self.icon_small = I18nObject(
@@ -96,7 +96,7 @@ class ProviderWithModelsResponse(BaseModel):
     def __init__(self, **data) -> None:
         super().__init__(**data)
 
-        url_prefix = (current_app.config.get("CONSOLE_API_URL")
+        url_prefix = (dify_config.CONSOLE_API_URL
                       + f"/console/api/workspaces/current/model-providers/{self.provider}")
         if self.icon_small is not None:
             self.icon_small = I18nObject(
@@ -119,7 +119,7 @@ class SimpleProviderEntityResponse(SimpleProviderEntity):
     def __init__(self, **data) -> None:
         super().__init__(**data)
 
-        url_prefix = (current_app.config.get("CONSOLE_API_URL")
+        url_prefix = (dify_config.CONSOLE_API_URL
                       + f"/console/api/workspaces/current/model-providers/{self.provider}")
         if self.icon_small is not None:
             self.icon_small = I18nObject(

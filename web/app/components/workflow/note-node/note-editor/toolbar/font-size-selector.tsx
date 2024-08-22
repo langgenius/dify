@@ -1,8 +1,8 @@
 import { memo } from 'react'
-import cn from 'classnames'
 import { RiFontSize } from '@remixicon/react'
 import { useTranslation } from 'react-i18next'
 import { useFontSize } from './hooks'
+import cn from '@/utils/classnames'
 import {
   PortalToFollowElem,
   PortalToFollowElemContent,

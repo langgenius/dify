@@ -85,7 +85,8 @@ class XinferenceAILargeLanguageModel(LargeLanguageModel):
             tools=tools, stop=stop, stream=stream, user=user,
             extra_model_kwargs=XinferenceHelper.get_xinference_extra_parameter(
                 server_url=credentials['server_url'],
-                model_uid=credentials['model_uid']
+                model_uid=credentials['model_uid'],
+                api_key=credentials.get('api_key'),
             )
         )
 
@@ -106,7 +107,8 @@ class XinferenceAILargeLanguageModel(LargeLanguageModel):
 
             extra_param = XinferenceHelper.get_xinference_extra_parameter(
                 server_url=credentials['server_url'],
-                model_uid=credentials['model_uid']
+                model_uid=credentials['model_uid'],
+                api_key=credentials.get('api_key')
             )
             if 'completion_type' not in credentials:
                 if 'chat' in extra_param.model_ability:
@@ -396,7 +398,8 @@ class XinferenceAILargeLanguageModel(LargeLanguageModel):
         else:
             extra_args = XinferenceHelper.get_xinference_extra_parameter(
                 server_url=credentials['server_url'],
-                model_uid=credentials['model_uid']
+                model_uid=credentials['model_uid'],
+                api_key=credentials.get('api_key')
             )
 
             if 'chat' in extra_args.model_ability:
@@ -453,15 +456,18 @@ class XinferenceAILargeLanguageModel(LargeLanguageModel):
         if credentials['server_url'].endswith('/'):
             credentials['server_url'] = credentials['server_url'][:-1]
 
+        api_key = credentials.get('api_key') or "abc"
+
         client = OpenAI(
             base_url=f'{credentials["server_url"]}/v1',
-            api_key='abc',
+            api_key=api_key,
             max_retries=3,
             timeout=60,
         )
 
         xinference_client = Client(
             base_url=credentials['server_url'],
+            api_key=credentials.get('api_key'),
         )
 
         xinference_model = xinference_client.get_model(credentials['model_uid'])

@@ -1,26 +1,28 @@
-import { useTranslation } from 'react-i18next'
 import useNodeInfo from './use-node-info'
 import {
   useIsChatMode,
   useWorkflow,
+  useWorkflowVariables,
 } from '@/app/components/workflow/hooks'
-import { toNodeAvailableVars } from '@/app/components/workflow/nodes/_base/components/variable/utils'
 import type { ValueSelector, Var } from '@/app/components/workflow/types'
 type Params = {
   onlyLeafNodeVar?: boolean
+  hideEnv?: boolean
+  hideChatVar?: boolean
   filterVar: (payload: Var, selector: ValueSelector) => boolean
 }
 
 const useAvailableVarList = (nodeId: string, {
   onlyLeafNodeVar,
   filterVar,
+  hideEnv,
+  hideChatVar,
 }: Params = {
   onlyLeafNodeVar: false,
   filterVar: () => true,
 }) => {
-  const { t } = useTranslation()
-
   const { getTreeLeafNodes, getBeforeNodesInSameBranch } = useWorkflow()
+  const { getNodeAvailableVars } = useWorkflowVariables()
   const isChatMode = useIsChatMode()
 
   const availableNodes = onlyLeafNodeVar ? getTreeLeafNodes(nodeId) : getBeforeNodesInSameBranch(nodeId)
@@ -29,12 +31,13 @@ const useAvailableVarList = (nodeId: string, {
     parentNode: iterationNode,
   } = useNodeInfo(nodeId)
 
-  const availableVars = toNodeAvailableVars({
+  const availableVars = getNodeAvailableVars({
     parentNode: iterationNode,
-    t,
     beforeNodes: availableNodes,
     isChatMode,
     filterVar,
+    hideEnv,
+    hideChatVar,
   })
 
   return {

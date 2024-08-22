@@ -13,7 +13,6 @@ import {
 } from '@floating-ui/react'
 import { useTranslation } from 'react-i18next'
 import { useClickAway } from 'ahooks'
-import cn from 'classnames'
 import {
   RiEditLine,
   RiExternalLinkLine,
@@ -21,6 +20,7 @@ import {
 } from '@remixicon/react'
 import { useStore } from '../../store'
 import { useLink } from './hooks'
+import cn from '@/utils/classnames'
 import Button from '@/app/components/base/button'
 
 type LinkEditorComponentProps = {

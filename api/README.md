@@ -11,7 +11,9 @@
 
    ```bash
    cd ../docker
-   docker compose -f docker-compose.middleware.yaml -p dify up -d
+   cp middleware.env.example middleware.env
+   # change the profile to other vector database if you are not using weaviate
+   docker compose -f docker-compose.middleware.yaml --profile weaviate -p dify up -d
    cd ../api
    ```
 
@@ -66,7 +68,7 @@
 10. If you need to debug local async processing, please start the worker service.
 
    ```bash
-   poetry run python -m celery -A app.celery worker -P gevent -c 1 --loglevel INFO -Q dataset,generation,mail,ops_trace
+   poetry run python -m celery -A app.celery worker -P gevent -c 1 --loglevel INFO -Q dataset,generation,mail,ops_trace,app_deletion
    ```
 
    The started celery app handles the async tasks, e.g. dataset importing and documents indexing.

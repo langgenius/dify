@@ -5,9 +5,9 @@ from typing import Any
 
 import psycopg2.extras
 import psycopg2.pool
-from flask import current_app
 from pydantic import BaseModel, model_validator
 
+from configs import dify_config
 from core.rag.datasource.entity.embedding import Embeddings
 from core.rag.datasource.vdb.vector_base import BaseVector
 from core.rag.datasource.vdb.vector_factory import AbstractVectorFactory
@@ -45,7 +45,7 @@ CREATE TABLE IF NOT EXISTS {table_name} (
     text TEXT NOT NULL,
     meta JSONB NOT NULL,
     embedding vector({dimension}) NOT NULL
-) using heap; 
+) using heap;
 """
 
 
@@ -152,8 +152,27 @@ class PGVector(BaseVector):
         return docs
 
     def search_by_full_text(self, query: str, **kwargs: Any) -> list[Document]:
-        # do not support bm25 search
-        return []
+        top_k = kwargs.get("top_k", 5)
+
+        with self._get_cursor() as cur:
+            cur.execute(
+                f"""SELECT meta, text, ts_rank(to_tsvector(coalesce(text, '')), to_tsquery(%s)) AS score
+                FROM {self.table_name}
+                WHERE to_tsvector(text) @@ plainto_tsquery(%s)
+                ORDER BY score DESC
+                LIMIT {top_k}""",
+                # f"'{query}'" is required in order to account for whitespace in query
+                (f"'{query}'", f"'{query}'"),
+            )
+
+            docs = []
+
+            for record in cur:
+                metadata, text, score = record
+                metadata["score"] = score
+                docs.append(Document(page_content=text, metadata=metadata))
+
+        return docs
 
     def delete(self) -> None:
         with self._get_cursor() as cur:
@@ -185,14 +204,13 @@ class PGVectorFactory(AbstractVectorFactory):
             dataset.index_struct = json.dumps(
                 self.gen_index_struct_dict(VectorType.PGVECTOR, collection_name))
 
-        config = current_app.config
         return PGVector(
             collection_name=collection_name,
             config=PGVectorConfig(
-                host=config.get("PGVECTOR_HOST"),
-                port=config.get("PGVECTOR_PORT"),
-                user=config.get("PGVECTOR_USER"),
-                password=config.get("PGVECTOR_PASSWORD"),
-                database=config.get("PGVECTOR_DATABASE"),
+                host=dify_config.PGVECTOR_HOST,
+                port=dify_config.PGVECTOR_PORT,
+                user=dify_config.PGVECTOR_USER,
+                password=dify_config.PGVECTOR_PASSWORD,
+                database=dify_config.PGVECTOR_DATABASE,
             ),
         )

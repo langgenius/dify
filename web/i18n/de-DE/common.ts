@@ -12,6 +12,7 @@ const translation = {
     cancel: 'Abbrechen',
     clear: 'Leeren',
     save: 'Speichern',
+    saveAndEnable: 'Speichern und Aktivieren',
     edit: 'Bearbeiten',
     add: 'Hinzufügen',
     added: 'Hinzugefügt',
@@ -119,6 +120,7 @@ const translation = {
   },
   userProfile: {
     settings: 'Einstellungen',
+    emailSupport: 'E-Mail-Support',
     workspace: 'Arbeitsbereich',
     createWorkspace: 'Arbeitsbereich erstellen',
     helpCenter: 'Hilfe',

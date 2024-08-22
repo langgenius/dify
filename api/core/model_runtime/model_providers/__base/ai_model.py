@@ -151,9 +151,9 @@ class AIModel(ABC):
             os.path.join(provider_model_type_path, model_schema_yaml)
             for model_schema_yaml in os.listdir(provider_model_type_path)
             if not model_schema_yaml.startswith('__')
-               and not model_schema_yaml.startswith('_')
-               and os.path.isfile(os.path.join(provider_model_type_path, model_schema_yaml))
-               and model_schema_yaml.endswith('.yaml')
+            and not model_schema_yaml.startswith('_')
+            and os.path.isfile(os.path.join(provider_model_type_path, model_schema_yaml))
+            and model_schema_yaml.endswith('.yaml')
         ]
 
         # get _position.yaml file path
@@ -162,7 +162,7 @@ class AIModel(ABC):
         # traverse all model_schema_yaml_paths
         for model_schema_yaml_path in model_schema_yaml_paths:
             # read yaml data from yaml file
-            yaml_data = load_yaml_file(model_schema_yaml_path, ignore_error=True)
+            yaml_data = load_yaml_file(model_schema_yaml_path)
 
             new_parameter_rules = []
             for parameter_rule in yaml_data.get('parameter_rules', []):

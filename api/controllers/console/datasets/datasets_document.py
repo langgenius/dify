@@ -178,11 +178,20 @@ class DatasetDocumentListApi(Resource):
                 .subquery()
 
             query = query.outerjoin(sub_query, sub_query.c.document_id == Document.id) \
-                .order_by(sort_logic(db.func.coalesce(sub_query.c.total_hit_count, 0)))
+                .order_by(
+                    sort_logic(db.func.coalesce(sub_query.c.total_hit_count, 0)),
+                    sort_logic(Document.position),
+                )
         elif sort == 'created_at':
-            query = query.order_by(sort_logic(Document.created_at))
+            query = query.order_by(
+                sort_logic(Document.created_at),
+                sort_logic(Document.position),
+            )
         else:
-            query = query.order_by(desc(Document.created_at))
+            query = query.order_by(
+                desc(Document.created_at),
+                desc(Document.position),
+            )
 
         paginated_documents = query.paginate(
             page=page, per_page=limit, max_per_page=100, error_out=False)
@@ -228,7 +237,7 @@ class DatasetDocumentListApi(Resource):
             raise NotFound('Dataset not found.')
 
         # The role of the current user in the ta table must be admin, owner, or editor
-        if not current_user.is_editor:
+        if not current_user.is_dataset_editor:
             raise Forbidden()
 
         try:
@@ -294,6 +303,11 @@ class DatasetInitApi(Resource):
         parser.add_argument('retrieval_model', type=dict, required=False, nullable=False,
                             location='json')
         args = parser.parse_args()
+
+        # The role of the current user in the ta table must be admin, owner, or editor, or dataset_operator
+        if not current_user.is_dataset_editor:
+            raise Forbidden()
+
         if args['indexing_technique'] == 'high_quality':
             try:
                 model_manager = ModelManager()
@@ -757,14 +771,18 @@ class DocumentStatusApi(DocumentResource):
         dataset = DatasetService.get_dataset(dataset_id)
         if dataset is None:
             raise NotFound("Dataset not found.")
+
+        # The role of the current user in the ta table must be admin, owner, or editor
+        if not current_user.is_dataset_editor:
+            raise Forbidden()
+
         # check user's model setting
         DatasetService.check_dataset_model_setting(dataset)
 
-        document = self.get_document(dataset_id, document_id)
+        # check user's permission
+        DatasetService.check_dataset_permission(dataset, current_user)
 
-        # The role of the current user in the ta table must be admin, owner, or editor
-        if not current_user.is_editor:
-            raise Forbidden()
+        document = self.get_document(dataset_id, document_id)
 
         indexing_cache_key = 'document_{}_indexing'.format(document.id)
         cache_result = redis_client.get(indexing_cache_key)
@@ -955,10 +973,11 @@ class DocumentRenameApi(DocumentResource):
     @account_initialization_required
     @marshal_with(document_fields)
     def post(self, dataset_id, document_id):
-        # The role of the current user in the ta table must be admin or owner
-        if not current_user.is_admin_or_owner:
+        # The role of the current user in the ta table must be admin, owner, editor, or dataset_operator
+        if not current_user.is_dataset_editor:
             raise Forbidden()
-
+        dataset = DatasetService.get_dataset(dataset_id)
+        DatasetService.check_dataset_operator_permission(current_user, dataset)
         parser = reqparse.RequestParser()
         parser.add_argument('name', type=str, required=True, nullable=False, location='json')
         args = parser.parse_args()

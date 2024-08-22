@@ -1,15 +1,17 @@
+from collections.abc import Mapping
 from enum import Enum
 from typing import Any, Optional
 
 from pydantic import BaseModel
 
-from models.workflow import WorkflowNodeExecutionStatus
+from models import WorkflowNodeExecutionStatus
 
 
 class NodeType(Enum):
     """
     Node Types.
     """
+
     START = 'start'
     END = 'end'
     ANSWER = 'answer'
@@ -22,10 +24,12 @@ class NodeType(Enum):
     HTTP_REQUEST = 'http-request'
     TOOL = 'tool'
     VARIABLE_AGGREGATOR = 'variable-aggregator'
+    # TODO: merge this into VARIABLE_AGGREGATOR
     VARIABLE_ASSIGNER = 'variable-assigner'
     LOOP = 'loop'
     ITERATION = 'iteration'
     PARAMETER_EXTRACTOR = 'parameter-extractor'
+    CONVERSATION_VARIABLE_ASSIGNER = 'assigner'
 
     @classmethod
     def value_of(cls, value: str) -> 'NodeType':
@@ -41,33 +45,11 @@ class NodeType(Enum):
         raise ValueError(f'invalid node type value {value}')
 
 
-class SystemVariable(Enum):
-    """
-    System Variables.
-    """
-    QUERY = 'query'
-    FILES = 'files'
-    CONVERSATION_ID = 'conversation_id'
-    USER_ID = 'user_id'
-
-    @classmethod
-    def value_of(cls, value: str) -> 'SystemVariable':
-        """
-        Get value of given system variable.
-
-        :param value: system variable value
-        :return: system variable
-        """
-        for system_variable in cls:
-            if system_variable.value == value:
-                return system_variable
-        raise ValueError(f'invalid system variable value {value}')
-
-
 class NodeRunMetadataKey(Enum):
     """
     Node Run Metadata Key.
     """
+
     TOTAL_TOKENS = 'total_tokens'
     TOTAL_PRICE = 'total_price'
     CURRENCY = 'currency'
@@ -80,11 +62,12 @@ class NodeRunResult(BaseModel):
     """
     Node Run Result.
     """
+
     status: WorkflowNodeExecutionStatus = WorkflowNodeExecutionStatus.RUNNING
 
-    inputs: Optional[dict] = None  # node inputs
+    inputs: Optional[Mapping[str, Any]] = None  # node inputs
     process_data: Optional[dict] = None  # process data
-    outputs: Optional[dict] = None  # node outputs
+    outputs: Optional[Mapping[str, Any]] = None  # node outputs
     metadata: Optional[dict[NodeRunMetadataKey, Any]] = None  # node metadata
 
     edge_source_handle: Optional[str] = None  # source handle id of node with multiple branches
