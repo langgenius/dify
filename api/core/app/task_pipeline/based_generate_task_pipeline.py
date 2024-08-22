@@ -68,16 +68,18 @@ class BasedGenerateTaskPipeline:
             err = Exception(e.description if getattr(e, 'description', None) is not None else str(e))
 
         if message:
-            message = db.session.query(Message).filter(Message.id == message.id).first()
-            err_desc = self._error_to_desc(err)
-            message.status = 'error'
-            message.error = err_desc
+            refetch_message = db.session.query(Message).filter(Message.id == message.id).first()
 
-            db.session.commit()
+            if refetch_message:
+                err_desc = self._error_to_desc(err)
+                refetch_message.status = 'error'
+                refetch_message.error = err_desc
+
+                db.session.commit()
 
         return err
 
-    def _error_to_desc(cls, e: Exception) -> str:
+    def _error_to_desc(self, e: Exception) -> str:
         """
         Error to desc.
         :param e: exception

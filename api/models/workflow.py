@@ -581,6 +581,8 @@ class WorkflowNodeExecution(db.Model):
                  'triggered_from', 'workflow_run_id'),
         db.Index('workflow_node_execution_node_run_idx', 'tenant_id', 'app_id', 'workflow_id',
                  'triggered_from', 'node_id'),
+        db.Index('workflow_node_execution_id_idx', 'tenant_id', 'app_id', 'workflow_id',
+                 'triggered_from', 'node_execution_id'),
     )
 
     id = db.Column(StringUUID, server_default=db.text('uuid_generate_v4()'))
@@ -591,6 +593,7 @@ class WorkflowNodeExecution(db.Model):
     workflow_run_id = db.Column(StringUUID)
     index = db.Column(db.Integer, nullable=False)
     predecessor_node_id = db.Column(db.String(255))
+    node_execution_id = db.Column(db.String(255), nullable=True)
     node_id = db.Column(db.String(255), nullable=False)
     node_type = db.Column(db.String(255), nullable=False)
     title = db.Column(db.String(255), nullable=False)

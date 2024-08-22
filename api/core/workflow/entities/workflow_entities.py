@@ -66,8 +66,7 @@ class WorkflowRunState:
         self.variable_pool = variable_pool
 
         self.total_tokens = 0
-        self.workflow_nodes_and_results = []
 
-        self.current_iteration_state = None
         self.workflow_node_steps = 1
         self.workflow_node_runs = []
+        self.current_iteration_state = None

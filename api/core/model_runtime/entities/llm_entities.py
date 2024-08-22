@@ -63,6 +63,39 @@ class LLMUsage(ModelUsage):
             latency=0.0
         )
 
+    def plus(self, other: 'LLMUsage') -> 'LLMUsage':
+        """
+        Add two LLMUsage instances together.
+
+        :param other: Another LLMUsage instance to add
+        :return: A new LLMUsage instance with summed values
+        """
+        if self.total_tokens == 0:
+            return other
+        else:
+            return LLMUsage(
+                prompt_tokens=self.prompt_tokens + other.prompt_tokens,
+                prompt_unit_price=other.prompt_unit_price,
+                prompt_price_unit=other.prompt_price_unit,
+                prompt_price=self.prompt_price + other.prompt_price,
+                completion_tokens=self.completion_tokens + other.completion_tokens,
+                completion_unit_price=other.completion_unit_price,
+                completion_price_unit=other.completion_price_unit,
+                completion_price=self.completion_price + other.completion_price,
+                total_tokens=self.total_tokens + other.total_tokens,
+                total_price=self.total_price + other.total_price,
+                currency=other.currency,
+                latency=self.latency + other.latency
+            )
+
+    def __add__(self, other: 'LLMUsage') -> 'LLMUsage':
+        """
+        Overload the + operator to add two LLMUsage instances.
+
+        :param other: Another LLMUsage instance to add
+        :return: A new LLMUsage instance with summed values
+        """
+        return self.plus(other)
 
 class LLMResult(BaseModel):
     """
