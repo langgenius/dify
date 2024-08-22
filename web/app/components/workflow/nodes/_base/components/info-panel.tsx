@@ -13,11 +13,11 @@ const InfoPanel: FC<Props> = ({
 }) => {
   return (
     <div>
-      <div className='px-[5px] py-[3px] bg-gray-100 rounded-md'>
-        <div className='leading-4 text-[10px] font-medium text-gray-500 uppercase'>
+      <div className='px-[5px] py-[3px] bg-workflow-block-parma-bg rounded-md'>
+        <div className='text-text-secondary system-2xs-semibold-uppercase uppercase'>
           {title}
         </div>
-        <div className='leading-4 text-xs font-normal text-gray-700 break-words'>
+        <div className='text-text-tertiary system-xs-regular break-words'>
           {content}
         </div>
       </div>
