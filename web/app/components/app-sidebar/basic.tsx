@@ -5,7 +5,7 @@ import Tooltip from '@/app/components/base/tooltip'
 export type IAppBasicProps = {
   iconType?: 'app' | 'api' | 'dataset' | 'webapp' | 'notion'
   icon?: string
-  icon_background?: string
+  icon_background?: string | null
   name: string
   type: string | React.ReactNode
   hoverTip?: string

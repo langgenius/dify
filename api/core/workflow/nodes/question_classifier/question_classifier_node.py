@@ -74,10 +74,12 @@ class QuestionClassifierNode(LLMNode):
 
         result_text = ''
         usage = LLMUsage.empty_usage()
+        finish_reason = None
         for event in generator:
             if isinstance(event, ModelInvokeCompleted):
                 result_text = event.text
                 usage = event.usage
+                finish_reason = event.finish_reason
                 break
 
         category_name = node_data.classes[0].name
@@ -104,6 +106,7 @@ class QuestionClassifierNode(LLMNode):
                     prompt_messages=prompt_messages
                 ),
                 'usage': jsonable_encoder(usage),
+                'finish_reason': finish_reason
             }
             outputs = {
                 'class_name': category_name

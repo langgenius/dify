@@ -52,6 +52,7 @@ class ModelInvokeCompleted(BaseModel):
     """
     text: str
     usage: LLMUsage
+    finish_reason: Optional[str] = None
 
 
 class LLMNode(BaseNode):
@@ -138,12 +139,14 @@ class LLMNode(BaseNode):
 
             result_text = ''
             usage = LLMUsage.empty_usage()
+            finish_reason = None
             for event in generator:
                 if isinstance(event, RunStreamChunkEvent):
                     yield event
                 elif isinstance(event, ModelInvokeCompleted):
                     result_text = event.text
                     usage = event.usage
+                    finish_reason = event.finish_reason
                     break
         except Exception as e:
             yield RunCompletedEvent(
@@ -158,7 +161,8 @@ class LLMNode(BaseNode):
 
         outputs = {
             'text': result_text,
-            'usage': jsonable_encoder(usage)
+            'usage': jsonable_encoder(usage),
+            'finish_reason': finish_reason
         }
 
         yield RunCompletedEvent(
@@ -227,6 +231,7 @@ class LLMNode(BaseNode):
         prompt_messages: list[PromptMessage] = []
         full_text = ''
         usage = None
+        finish_reason = None
         for result in invoke_result:
             text = result.delta.message.content
             full_text += text
@@ -245,12 +250,16 @@ class LLMNode(BaseNode):
             if not usage and result.delta.usage:
                 usage = result.delta.usage
 
+            if not finish_reason and result.delta.finish_reason:
+                finish_reason = result.delta.finish_reason
+
         if not usage:
             usage = LLMUsage.empty_usage()
 
         yield ModelInvokeCompleted(
             text=full_text,
-            usage=usage
+            usage=usage,
+            finish_reason=finish_reason
         )
 
     def _transform_chat_messages(self,
