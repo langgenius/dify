@@ -695,6 +695,7 @@ class ExternalApiTemplates(db.Model):
     id = db.Column(StringUUID, nullable=False,
                    server_default=db.text('uuid_generate_v4()'))
     name = db.Column(db.String(255), nullable=False)
+    description = db.Column(db.String(255), nullable=False)
     tenant_id = db.Column(StringUUID, nullable=False)
     settings = db.Column(db.Text, nullable=True)
     created_by = db.Column(StringUUID, nullable=False)
@@ -709,6 +710,7 @@ class ExternalApiTemplates(db.Model):
             'id': self.id,
             'tenant_id': self.tenant_id,
             'name': self.name,
+            'description': self.description,
             'settings': self.settings_dict,
             'created_by': self.created_by,
             'created_at': self.created_at,

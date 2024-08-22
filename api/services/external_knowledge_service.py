@@ -48,29 +48,14 @@ class ExternalDatasetService:
         return api_templates.items, api_templates.total
 
     @classmethod
-    def validate_api_list(cls, api_settings: list[dict]):
+    def validate_api_list(cls, api_settings: dict):
         if not api_settings:
             raise ValueError('api list is empty')
-        for api_settings_dict in api_settings:
-            if not api_settings_dict.get('method'):
-                raise ValueError('api name is required')
+        if 'endpoint' not in api_settings and not api_settings['endpoint']:
+            raise ValueError('endpoint is required')
+        if 'api_key' not in api_settings and not api_settings['api_key']:
+            raise ValueError('api_key is required')
 
-            if not api_settings_dict.get('url'):
-                raise ValueError('api url is required')
-
-            if api_settings_dict.get('authorization'):
-                if not api_settings_dict.get('authorization').get('type'):
-                    raise ValueError('authorization type is required')
-                if api_settings_dict.get('authorization').get('type') == 'bearer':
-                    if not api_settings_dict.get('authorization').get('api_key'):
-                        raise ValueError('authorization token is required')
-                if api_settings_dict.get('authorization').get('type') == 'custom':
-                    if not api_settings_dict.get('authorization').get('header'):
-                        raise ValueError('authorization header is required')
-
-            if api_settings_dict.get('method') in ['create', 'update']:
-                if not api_settings_dict.get('callback_setting'):
-                    raise ValueError('callback_setting is required for create and update method')
 
     @staticmethod
     def create_api_template(tenant_id: str, user_id: str, args: dict) -> ExternalApiTemplates:
