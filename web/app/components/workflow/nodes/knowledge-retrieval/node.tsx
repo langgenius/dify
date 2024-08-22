@@ -36,11 +36,11 @@ const Node: FC<NodeProps<KnowledgeRetrievalNodeType>> = ({
     <div className='mb-1 px-3 py-1'>
       <div className='space-y-0.5'>
         {selectedDatasets.map(({ id, name }) => (
-          <div key={id} className='flex items-center h-[26px] bg-gray-100 rounded-md  px-1 text-xs font-normal text-gray-700'>
+          <div key={id} className='flex items-center h-[26px] bg-workflow-block-parma-bg rounded-md  px-1 text-xs font-normal text-gray-700'>
             <div className='mr-1 shrink-0 p-1 bg-[#F5F8FF] rounded-md border-[0.5px] border-[#E0EAFF]'>
               <Folder className='w-3 h-3 text-[#444CE7]' />
             </div>
-            <div className='grow w-0 text-xs font-normal text-gray-700 truncate'>
+            <div className='grow w-0 text-text-secondary system-xs-regular truncate'>
               {name}
             </div>
           </div>
