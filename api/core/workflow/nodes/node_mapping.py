@@ -5,6 +5,7 @@ from core.workflow.nodes.end.end_node import EndNode
 from core.workflow.nodes.http_request.http_request_node import HttpRequestNode
 from core.workflow.nodes.if_else.if_else_node import IfElseNode
 from core.workflow.nodes.iteration.iteration_node import IterationNode
+from core.workflow.nodes.iteration.iteration_start_node import IterationStartNode
 from core.workflow.nodes.knowledge_retrieval.knowledge_retrieval_node import KnowledgeRetrievalNode
 from core.workflow.nodes.llm.llm_node import LLMNode
 from core.workflow.nodes.parameter_extractor.parameter_extractor_node import ParameterExtractorNode
@@ -30,6 +31,7 @@ node_classes = {
     NodeType.VARIABLE_AGGREGATOR: VariableAggregatorNode,
     NodeType.VARIABLE_ASSIGNER: VariableAggregatorNode,  # original name of VARIABLE_AGGREGATOR
     NodeType.ITERATION: IterationNode,
+    NodeType.ITERATION_START: IterationStartNode,
     NodeType.PARAMETER_EXTRACTOR: ParameterExtractorNode,
     NodeType.CONVERSATION_VARIABLE_ASSIGNER: VariableAssignerNode,
 }

@@ -28,6 +28,7 @@ class NodeType(Enum):
     VARIABLE_ASSIGNER = 'variable-assigner'
     LOOP = 'loop'
     ITERATION = 'iteration'
+    ITERATION_START = 'iteration-start'  # fake start node for iteration
     PARAMETER_EXTRACTOR = 'parameter-extractor'
     CONVERSATION_VARIABLE_ASSIGNER = 'assigner'
 
