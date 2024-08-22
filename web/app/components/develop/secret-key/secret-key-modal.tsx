@@ -115,7 +115,7 @@ const SecretKeyModal = ({
                 <div className='flex items-center text-sm font-normal text-gray-700 border-b border-solid h-9' key={api.id}>
                   <div className='flex-shrink-0 w-64 px-3 font-mono truncate'>{generateToken(api.token)}</div>
                   <div className='flex-shrink-0 px-3 truncate w-[200px]'>{formatTime(Number(api.created_at), t('appLog.dateTimeFormat') as string)}</div>
-                  <div className='flex-shrink-0 px-3 truncate w-[200px]'>{api.last_used_at ? formatTime(Number(api.created_at), t('appLog.dateTimeFormat') as string) : t('appApi.never')}</div>
+                  <div className='flex-shrink-0 px-3 truncate w-[200px]'>{api.last_used_at ? formatTime(Number(api.last_used_at), t('appLog.dateTimeFormat') as string) : t('appApi.never')}</div>
                   <div className='flex flex-grow px-3'>
                     <Tooltip
                       selector={`key-${api.token}`}
