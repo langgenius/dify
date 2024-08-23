@@ -2,12 +2,31 @@
 import Link from 'next/link'
 import { RiArrowLeftLine, RiMailSendFill } from '@remixicon/react'
 import { useTranslation } from 'react-i18next'
+import { useState } from 'react'
 import Countdown from './countdown'
 import Button from '@/app/components/base/button'
 import Input from '@/app/components/base/input'
+import Toast from '@/app/components/base/toast'
 
 export default function CheckCode() {
   const { t } = useTranslation()
+  const [code, setVerifyCode] = useState('')
+
+  const verify = async () => {
+    if (!code.trim()) {
+      Toast.notify({
+        type: 'error',
+        message: t('login.checkCode.emptyCode'),
+      })
+      return
+    }
+    if (!/\d{6}/.test(code)) {
+      Toast.notify({
+        type: 'error',
+        message: t('login.checkCode.invalidCode'),
+      })
+    }
+  }
 
   return <div className='flex flex-col gap-3'>
     <div className='bg-background-default-dodge text-text-accent-light-mode-only border-[0.5px] shadow inline-flex  w-14 h-14 justify-center items-center rounded-2xl text-2xl'>
@@ -24,8 +43,8 @@ export default function CheckCode() {
 
     <form action="">
       <label htmlFor="code" className='text-text-secondary text-sm font-semibold mb-1'>{t('login.checkCode.verificationCode')}</label>
-      <Input className='px-3 mt-1 leading-5 h-9' placeholder={t('login.checkCode.verificationCodePlaceholder') as string} />
-      <Button className='my-3 w-full' variant='primary'>{t('login.checkCode.verify')}</Button>
+      <Input value={code} onChange={setVerifyCode} max-length={6} className='px-3 mt-1 leading-5 h-9 appearance-none' placeholder={t('login.checkCode.verificationCodePlaceholder') as string} />
+      <Button className='my-3 w-full' variant='primary' onClick={verify}>{t('login.checkCode.verify')}</Button>
       <Countdown />
     </form>
     <div className='py-2'>
