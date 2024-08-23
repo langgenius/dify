@@ -1,145 +1,46 @@
-'use client'
-import React, { useReducer, useState } from 'react'
+import React, { useEffect, useState } from 'react'
 import { useTranslation } from 'react-i18next'
-import { useRouter } from 'next/navigation'
 import Link from 'next/link'
-import Toast from '../components/base/toast'
-import SSOAuthButton from './components/sso-auth-button'
-import GoogleAuthButton from './components/google-auth-button'
-import GithubAuthButton from './components/github-auth-button'
-import { IS_CE_EDITION, SUPPORT_MAIL_LOGIN, emailRegex } from '@/config'
-import Button from '@/app/components/base/button'
-import { login } from '@/service/common'
+import Loading from '../components/base/loading'
+import SSOAuthButton from './components/sso-auth'
+import MailAndCodeAuth from './components/mail-and-code-auth'
+import MailAndPasswordAuth from './components/mail-and-password-auth'
+import SocialAuth from './components/social-auth'
+import { IS_CE_EDITION } from '@/config'
+import { defaultSystemFeatures } from '@/types/feature'
+import { getSystemFeatures } from '@/service/common'
+import cn from '@/utils/classnames'
 
-type IState = {
-  formValid: boolean
-  github: boolean
-  google: boolean
-}
-
-type IAction = {
-  type: 'login' | 'login_failed' | 'github_login' | 'github_login_failed' | 'google_login' | 'google_login_failed'
-}
-
-function reducer(state: IState, action: IAction) {
-  switch (action.type) {
-    case 'login':
-      return {
-        ...state,
-        formValid: true,
-      }
-    case 'login_failed':
-      return {
-        ...state,
-        formValid: true,
-      }
-    case 'github_login':
-      return {
-        ...state,
-        github: true,
-      }
-    case 'github_login_failed':
-      return {
-        ...state,
-        github: false,
-      }
-    case 'google_login':
-      return {
-        ...state,
-        google: true,
-      }
-    case 'google_login_failed':
-      return {
-        ...state,
-        google: false,
-      }
-    default:
-      throw new Error('Unknown action.')
-  }
-}
+type AuthType = 'password' | 'code' | 'sso' | 'social'
 
 const NormalForm = () => {
   const { t } = useTranslation()
-  const useEmailLogin = IS_CE_EDITION || SUPPORT_MAIL_LOGIN
+  const [authType, updateAuthType] = useState('code')
+  const [enabledAuthType, updateEnabledAuthType] = useState<AuthType[]>(['password', 'code', 'sso', 'social'])
 
-  const router = useRouter()
+  const [isLoading, setIsLoading] = useState(true)
+  const [systemFeatures, setSystemFeatures] = useState(defaultSystemFeatures)
 
-  const [state, dispatch] = useReducer(reducer, {
-    formValid: false,
-    github: false,
-    google: false,
-  })
-
-  const [showPassword, setShowPassword] = useState(false)
-  const [email, setEmail] = useState('')
-  const [password, setPassword] = useState('')
-
-  const [isLoading, setIsLoading] = useState(false)
-  const handleEmailPasswordLogin = async () => {
-    if (!emailRegex.test(email)) {
-      Toast.notify({
-        type: 'error',
-        message: t('login.error.emailInValid'),
-      })
-      return
-    }
-    try {
-      setIsLoading(true)
-      const res = await login({
-        url: '/login',
-        body: {
-          email,
-          password,
-          remember_me: true,
-        },
-      })
-      if (res.result === 'success') {
-        localStorage.setItem('console_token', res.data)
-        router.replace('/apps')
-      }
-      else {
-        Toast.notify({
-          type: 'error',
-          message: res.data,
-        })
-      }
-    }
-    finally {
+  useEffect(() => {
+    getSystemFeatures().then((res) => {
+      console.log('🚀 ~ getSystemFeatures ~ res:', res)
+      setSystemFeatures(res)
+    }).finally(() => {
       setIsLoading(false)
-    }
+    })
+  }, [])
+
+  if (isLoading) {
+    return <div className={
+      cn(
+        'flex flex-col items-center w-full grow justify-center',
+        'px-6',
+        'md:px-[108px]',
+      )
+    }>
+      <Loading type='area' />
+    </div>
   }
-
-  // const { data: github, error: github_error } = useSWR(state.github
-  //   ? ({
-  //     url: '/oauth/login/github',
-  //     // params: {
-  //     //   provider: 'github',
-  //     // },
-  //   })
-  //   : null, oauth)
-
-  // const { data: google, error: google_error } = useSWR(state.google
-  //   ? ({
-  //     url: '/oauth/login/google',
-  //     // params: {
-  //     //   provider: 'google',
-  //     // },
-  //   })
-  //   : null, oauth)
-
-  // useEffect(() => {
-  //   if (github_error !== undefined)
-  //     dispatch({ type: 'github_login_failed' })
-  //   if (github)
-  //     window.location.href = github.redirect_url
-  // }, [github, github_error])
-
-  // useEffect(() => {
-  //   if (google_error !== undefined)
-  //     dispatch({ type: 'google_login_failed' })
-  //   if (google)
-  //     window.location.href = google.redirect_url
-  // }, [google, google_error])
 
   return (
     <>
@@ -152,91 +53,32 @@ const NormalForm = () => {
         <div className="bg-white ">
 
           <div className="flex flex-col gap-3 mt-6">
-            <div className='w-full'>
-              <GithubAuthButton disabled={isLoading} />
-            </div>
-            <div className='w-full'>
-              <GoogleAuthButton disabled={isLoading} />
-            </div>
-            <div className='w-full'>
-              <SSOAuthButton />
-            </div>
+            {enabledAuthType.includes('social') && <SocialAuth />}
+            {enabledAuthType.includes('sso') && <div className='w-full'><SSOAuthButton /></div>}
           </div>
 
-          <>
-            <div className="relative mt-6">
+          {(enabledAuthType.includes('code') || enabledAuthType.includes('password'))
+            && <div className="relative mt-6">
               <div className="absolute inset-0 flex items-center" aria-hidden="true">
                 <div className="w-full border-t border-gray-300" />
               </div>
               <div className="relative flex justify-center text-sm">
-                <span className="px-2 text-gray-300 bg-white">OR</span>
+                <span className="px-2 text-gray-300 bg-white">{t('login.or')}</span>
               </div>
-            </div>
+            </div>}
+          {enabledAuthType.includes('code') && authType === 'code' && <>
+            <MailAndCodeAuth />
+            {enabledAuthType.includes('password') && <div className='cursor-pointer py-1 text-center' onClick={() => { updateAuthType('password') }}>
+              <span className='text-xs text-components-button-secondary-accent-text'>{t('login.usePassword')}</span>
+            </div>}
+          </>}
+          {enabledAuthType.includes('password') && authType === 'password' && <>
+            <MailAndPasswordAuth />
+            {enabledAuthType.includes('code') && <div className='cursor-pointer py-1 text-center' onClick={() => { updateAuthType('code') }}>
+              <span className='text-xs text-components-button-secondary-accent-text'>{t('login.useVerificationCode')}</span>
+            </div>}
+          </>}
 
-            <form onSubmit={() => { }}>
-              <div className='mb-5'>
-                <label htmlFor="email" className="my-2 block text-sm font-medium text-gray-900">
-                  {t('login.email')}
-                </label>
-                <div className="mt-1">
-                  <input
-                    value={email}
-                    onChange={e => setEmail(e.target.value)}
-                    id="email"
-                    type="email"
-                    autoComplete="email"
-                    placeholder={t('login.emailPlaceholder') || ''}
-                    className={'appearance-none block w-full rounded-lg pl-[14px] px-3 py-2 border border-gray-200 hover:border-gray-300 hover:shadow-sm focus:outline-none focus:ring-primary-500 focus:border-primary-500 placeholder-gray-400 caret-primary-600 sm:text-sm'}
-                  />
-                </div>
-              </div>
-
-              <div className='mb-4'>
-                <label htmlFor="password" className="my-2 flex items-center justify-between text-sm font-medium text-gray-900">
-                  <span>{t('login.password')}</span>
-                  <Link href='/forgot-password' className='text-primary-600'>
-                    {t('login.forget')}
-                  </Link>
-                </label>
-                <div className="relative mt-1">
-                  <input
-                    id="password"
-                    value={password}
-                    onChange={e => setPassword(e.target.value)}
-                    onKeyDown={(e) => {
-                      if (e.key === 'Enter')
-                        handleEmailPasswordLogin()
-                    }}
-                    type={showPassword ? 'text' : 'password'}
-                    autoComplete="current-password"
-                    placeholder={t('login.passwordPlaceholder') || ''}
-                    className={'appearance-none block w-full rounded-lg pl-[14px] px-3 py-2 border border-gray-200 hover:border-gray-300 hover:shadow-sm focus:outline-none focus:ring-primary-500 focus:border-primary-500 placeholder-gray-400 caret-primary-600 sm:text-sm pr-10'}
-                  />
-                  <div className="absolute inset-y-0 right-0 flex items-center pr-3">
-                    <button
-                      type="button"
-                      onClick={() => setShowPassword(!showPassword)}
-                      className="text-gray-400 hover:text-gray-500 focus:outline-none focus:text-gray-500"
-                    >
-                      {showPassword ? '👀' : '😝'}
-                    </button>
-                  </div>
-                </div>
-              </div>
-
-              <div className='mb-2'>
-                <Button
-                  tabIndex={0}
-                  variant='primary'
-                  onClick={handleEmailPasswordLogin}
-                  disabled={isLoading}
-                  className="w-full"
-                >{t('login.signBtn')}</Button>
-              </div>
-            </form>
-          </>
-
-          {/*  agree to our Terms and Privacy Policy. */}
           <div className="w-hull text-center block mt-2 text-xs text-gray-600">
             {t('login.tosDesc')}
             &nbsp;
