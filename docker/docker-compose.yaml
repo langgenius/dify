@@ -405,6 +405,7 @@ services:
       - ./volumes/weaviate:/var/lib/weaviate
     ports:
       - "8080:8080"
+      - "50051:50051"
     extra_hosts:
       - "host.docker.internal:172.17.0.1"
     environment:
