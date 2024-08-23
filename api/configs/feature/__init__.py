@@ -214,21 +214,13 @@ class HttpConfig(BaseSettings):
 
     HTTP_REQUEST_NODE_MAX_BINARY_SIZE: PositiveInt = Field(
         description='',
-        default=1024 * 1024 * 10,
+        default=10 * 1024 * 1024,
     )
 
     HTTP_REQUEST_NODE_MAX_TEXT_SIZE: PositiveInt = Field(
         description='',
-        default=1024 * 1024 * 1,
+        default=1 * 1024 * 1024,
     )
-
-    @computed_field
-    def HTTP_REQUEST_NODE_READABLE_MAX_BINARY_SIZE(self) -> str:
-        return f'{self.HTTP_REQUEST_NODE_MAX_BINARY_SIZE / 1024 / 1024:.2f}MB'
-
-    @computed_field
-    def HTTP_REQUEST_NODE_READABLE_MAX_TEXT_SIZE(self) -> str:
-        return f'{self.HTTP_REQUEST_NODE_MAX_TEXT_SIZE / 1024 / 1024:.2f}MB'
 
     SSRF_PROXY_HTTP_URL: Optional[str] = Field(
         description='HTTP URL for SSRF proxy',
