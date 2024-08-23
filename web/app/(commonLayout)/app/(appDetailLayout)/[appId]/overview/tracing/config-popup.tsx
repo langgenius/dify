@@ -85,7 +85,7 @@ const ConfigPopup: FC<PopupProps> = ({
     <ProviderPanel
       type={TracingProvider.langSmith}
       readOnly={readOnly}
-      Config={langSmithConfig}
+      config={langSmithConfig}
       hasConfigured={!!langSmithConfig}
       onConfig={handleOnConfig(TracingProvider.langSmith)}
       isChosen={chosenProvider === TracingProvider.langSmith}
@@ -97,7 +97,7 @@ const ConfigPopup: FC<PopupProps> = ({
     <ProviderPanel
       type={TracingProvider.langfuse}
       readOnly={readOnly}
-      Config={langFuseConfig}
+      config={langFuseConfig}
       hasConfigured={!!langFuseConfig}
       onConfig={handleOnConfig(TracingProvider.langfuse)}
       isChosen={chosenProvider === TracingProvider.langfuse}

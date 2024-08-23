@@ -14,7 +14,7 @@ type Props = {
   type: TracingProvider
   readOnly: boolean
   isChosen: boolean
-  Config: any
+  config: any
   onChoose: () => void
   hasConfigured: boolean
   onConfig: () => void
@@ -31,7 +31,7 @@ const ProviderPanel: FC<Props> = ({
   type,
   readOnly,
   isChosen,
-  Config,
+  config,
   onChoose,
   hasConfigured,
   onConfig,
@@ -48,7 +48,7 @@ const ProviderPanel: FC<Props> = ({
     e.preventDefault()
     e.stopPropagation()
 
-    const url = `${Config?.host}/project/${Config?.project_key}`
+    const url = `${config?.host}/project/${config?.project_key}`
     window.open(url, '_blank', 'noopener,noreferrer')
   }, [])
 
