@@ -54,12 +54,36 @@ class CodeExecutionSandboxConfig(BaseSettings):
 
     CODE_MAX_NUMBER: int = 9223372036854775807
     CODE_MIN_NUMBER: int = -9223372036854775808
-    CODE_MAX_DEPTH: int = 5
-    CODE_MAX_PRECISION: int = 20
-    CODE_MAX_STRING_LENGTH: int = 80000
-    CODE_MAX_STRING_ARRAY_LENGTH: int = 30
-    CODE_MAX_OBJECT_ARRAY_LENGTH: int = 30
-    CODE_MAX_NUMBER_ARRAY_LENGTH: int = 1000
+
+    CODE_MAX_DEPTH: PositiveInt = Field(
+        description='max depth for code execution',
+        default=5,
+    )
+
+    CODE_MAX_PRECISION: PositiveInt = Field(
+        description='max precision digits for float type in code execution',
+        default=20,
+    )
+
+    CODE_MAX_STRING_LENGTH: PositiveInt = Field(
+        description='max string length for code execution',
+        default=80000,
+    )
+
+    CODE_MAX_STRING_ARRAY_LENGTH: PositiveInt = Field(
+        description='',
+        default=30,
+    )
+
+    CODE_MAX_OBJECT_ARRAY_LENGTH: PositiveInt = Field(
+        description='',
+        default=30,
+    )
+
+    CODE_MAX_NUMBER_ARRAY_LENGTH: PositiveInt = Field(
+        description='',
+        default=1000,
+    )
 
 
 class EndpointConfig(BaseSettings):
