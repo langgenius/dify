@@ -180,8 +180,15 @@ class HttpConfig(BaseSettings):
     def HTTP_REQUEST_NODE_READABLE_MAX_TEXT_SIZE(self) -> str:
         return f'{self.HTTP_REQUEST_NODE_MAX_TEXT_SIZE / 1024 / 1024:.2f}MB'
 
-    SSRF_PROXY_HTTP_URL: Optional[str] = None
-    SSRF_PROXY_HTTPS_URL: Optional[str] = None
+    SSRF_PROXY_HTTP_URL: Optional[str] = Field(
+        description='HTTP URL for SSRF proxy',
+        default=None,
+    )
+
+    SSRF_PROXY_HTTPS_URL: Optional[str] = Field(
+        description='HTTPS URL for SSRF proxy',
+        default=None,
+    )
 
 
 class InnerAPIConfig(BaseSettings):
