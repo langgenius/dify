@@ -10,13 +10,10 @@ def test_invoke_embedding_v1():
     model = WenxinTextEmbeddingModel()
 
     response = model.invoke(
-        model='embedding-v1',
-        credentials={
-            'api_key': os.environ.get('WENXIN_API_KEY'),
-            'secret_key': os.environ.get('WENXIN_SECRET_KEY')
-        },
-        texts=['hello', '你好', 'xxxxx'],
-        user="abc-123"
+        model="embedding-v1",
+        credentials={"api_key": os.environ.get("WENXIN_API_KEY"), "secret_key": os.environ.get("WENXIN_SECRET_KEY")},
+        texts=["hello", "你好", "xxxxx"],
+        user="abc-123",
     )
 
     assert isinstance(response, TextEmbeddingResult)
@@ -29,13 +26,10 @@ def test_invoke_embedding_bge_large_en():
     model = WenxinTextEmbeddingModel()
 
     response = model.invoke(
-        model='bge-large-en',
-        credentials={
-            'api_key': os.environ.get('WENXIN_API_KEY'),
-            'secret_key': os.environ.get('WENXIN_SECRET_KEY')
-        },
-        texts=['hello', '你好', 'xxxxx'],
-        user="abc-123"
+        model="bge-large-en",
+        credentials={"api_key": os.environ.get("WENXIN_API_KEY"), "secret_key": os.environ.get("WENXIN_SECRET_KEY")},
+        texts=["hello", "你好", "xxxxx"],
+        user="abc-123",
     )
 
     assert isinstance(response, TextEmbeddingResult)
@@ -48,13 +42,10 @@ def test_invoke_embedding_bge_large_zh():
     model = WenxinTextEmbeddingModel()
 
     response = model.invoke(
-        model='bge-large-zh',
-        credentials={
-            'api_key': os.environ.get('WENXIN_API_KEY'),
-            'secret_key': os.environ.get('WENXIN_SECRET_KEY')
-        },
-        texts=['hello', '你好', 'xxxxx'],
-        user="abc-123"
+        model="bge-large-zh",
+        credentials={"api_key": os.environ.get("WENXIN_API_KEY"), "secret_key": os.environ.get("WENXIN_SECRET_KEY")},
+        texts=["hello", "你好", "xxxxx"],
+        user="abc-123",
     )
 
     assert isinstance(response, TextEmbeddingResult)
@@ -67,13 +58,10 @@ def test_invoke_embedding_tao_8k():
     model = WenxinTextEmbeddingModel()
 
     response = model.invoke(
-        model='tao-8k',
-        credentials={
-            'api_key': os.environ.get('WENXIN_API_KEY'),
-            'secret_key': os.environ.get('WENXIN_SECRET_KEY')
-        },
-        texts=['hello', '你好', 'xxxxx'],
-        user="abc-123"
+        model="tao-8k",
+        credentials={"api_key": os.environ.get("WENXIN_API_KEY"), "secret_key": os.environ.get("WENXIN_SECRET_KEY")},
+        texts=["hello", "你好", "xxxxx"],
+        user="abc-123",
     )
 
     assert isinstance(response, TextEmbeddingResult)

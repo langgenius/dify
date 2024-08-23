@@ -14,67 +14,61 @@ def test_validate_credentials_for_chat_model():
 
     with pytest.raises(CredentialsValidateFailedError):
         model.validate_credentials(
-            model='NOT IMPORTANT',
+            model="NOT IMPORTANT",
             credentials={
-                'server_url': 'invalid_key',
-            }
+                "server_url": "invalid_key",
+            },
         )
 
     model.validate_credentials(
-        model='NOT IMPORTANT',
+        model="NOT IMPORTANT",
         credentials={
-            'server_url': os.environ.get('OPENLLM_SERVER_URL'),
-        }
+            "server_url": os.environ.get("OPENLLM_SERVER_URL"),
+        },
     )
+
 
 def test_invoke_model():
     model = OpenLLMLargeLanguageModel()
 
     response = model.invoke(
-        model='NOT IMPORTANT',
+        model="NOT IMPORTANT",
         credentials={
-            'server_url': os.environ.get('OPENLLM_SERVER_URL'),
+            "server_url": os.environ.get("OPENLLM_SERVER_URL"),
         },
-        prompt_messages=[
-            UserPromptMessage(
-                content='Hello World!'
-            )
-        ],
+        prompt_messages=[UserPromptMessage(content="Hello World!")],
         model_parameters={
-            'temperature': 0.7,
-            'top_p': 1.0,
-            'top_k': 1,
+            "temperature": 0.7,
+            "top_p": 1.0,
+            "top_k": 1,
         },
-        stop=['you'],
+        stop=["you"],
         user="abc-123",
-        stream=False
+        stream=False,
     )
 
     assert isinstance(response, LLMResult)
     assert len(response.message.content) > 0
     assert response.usage.total_tokens > 0
 
+
 def test_invoke_stream_model():
     model = OpenLLMLargeLanguageModel()
 
     response = model.invoke(
-        model='NOT IMPORTANT',
+        model="NOT IMPORTANT",
         credentials={
-            'server_url': os.environ.get('OPENLLM_SERVER_URL'),
+            "server_url": os.environ.get("OPENLLM_SERVER_URL"),
         },
-        prompt_messages=[
-            UserPromptMessage(
-                content='Hello World!'
-            )
-        ],
+        prompt_messages=[UserPromptMessage(content="Hello World!")],
         model_parameters={
-            'temperature': 0.7,
-            'top_p': 1.0,
-            'top_k': 1,
+            "temperature": 0.7,
+            "top_p": 1.0,
+            "top_k": 1,
         },
-        stop=['you'],
+        stop=["you"],
         stream=True,
-        user="abc-123"
+        user="abc-123",
     )
 
     assert isinstance(response, Generator)
@@ -84,20 +78,17 @@ def test_invoke_stream_model():
         assert isinstance(chunk.delta.message, AssistantPromptMessage)
         assert len(chunk.delta.message.content) > 0 if chunk.delta.finish_reason is None else True
 
+
 def test_get_num_tokens():
     model = OpenLLMLargeLanguageModel()
 
     response = model.get_num_tokens(
-        model='NOT IMPORTANT',
+        model="NOT IMPORTANT",
         credentials={
-            'server_url': os.environ.get('OPENLLM_SERVER_URL'),
+            "server_url": os.environ.get("OPENLLM_SERVER_URL"),
         },
-        prompt_messages=[
-            UserPromptMessage(
-                content='Hello World!'
-            )
-        ],
-        tools=[]
+        prompt_messages=[UserPromptMessage(content="Hello World!")],
+        tools=[],
     )
 
     assert isinstance(response, int)
