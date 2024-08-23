@@ -52,6 +52,15 @@ class CodeExecutionSandboxConfig(BaseSettings):
         default='dify-sandbox',
     )
 
+    CODE_MAX_NUMBER: int = 9223372036854775807
+    CODE_MIN_NUMBER: int = -9223372036854775808
+    CODE_MAX_DEPTH: int = 5
+    CODE_MAX_PRECISION: int = 20
+    CODE_MAX_STRING_LENGTH: int = 80000
+    CODE_MAX_STRING_ARRAY_LENGTH: int = 30
+    CODE_MAX_OBJECT_ARRAY_LENGTH: int = 30
+    CODE_MAX_NUMBER_ARRAY_LENGTH: int = 1000
+
 
 class EndpointConfig(BaseSettings):
     """
@@ -291,8 +300,7 @@ class ModerationConfig(BaseSettings):
     Moderation in app configs.
     """
 
-    # todo: to be clarified in usage and unit
-    OUTPUT_MODERATION_BUFFER_SIZE: PositiveInt = Field(
+    MODERATION_BUFFER_SIZE: PositiveInt = Field(
         description='buffer size for moderation',
         default=300,
     )

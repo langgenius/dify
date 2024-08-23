@@ -35,15 +35,6 @@ class DifyConfig(
         extra='ignore',
     )
 
-    CODE_MAX_NUMBER: int = 9223372036854775807
-    CODE_MIN_NUMBER: int = -9223372036854775808
-    CODE_MAX_DEPTH: int = 5
-    CODE_MAX_PRECISION: int = 20
-    CODE_MAX_STRING_LENGTH: int = 80000
-    CODE_MAX_STRING_ARRAY_LENGTH: int = 30
-    CODE_MAX_OBJECT_ARRAY_LENGTH: int = 30
-    CODE_MAX_NUMBER_ARRAY_LENGTH: int = 1000
-
     HTTP_REQUEST_MAX_CONNECT_TIMEOUT: int = 300
     HTTP_REQUEST_MAX_READ_TIMEOUT: int = 600
     HTTP_REQUEST_MAX_WRITE_TIMEOUT: int = 600
@@ -61,7 +52,5 @@ class DifyConfig(
 
     SSRF_PROXY_HTTP_URL: str | None = None
     SSRF_PROXY_HTTPS_URL: str | None = None
-
-    MODERATION_BUFFER_SIZE: int = Field(default=300, description='The buffer size for moderation.')
 
     MAX_VARIABLE_SIZE: int = Field(default=5 * 1024, description='The maximum size of a variable. default is 5KB.')
