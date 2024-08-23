@@ -264,6 +264,11 @@ class WorkflowConfig(BaseSettings):
         default=5,
     )
 
+    MAX_VARIABLE_SIZE: PositiveInt = Field(
+        description='The maximum size in bytes of a variable. default to 5KB.',
+        default=5 * 1024,
+    )
+
 
 class OAuthConfig(BaseSettings):
     """

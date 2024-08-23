@@ -53,4 +53,3 @@ class DifyConfig(
     SSRF_PROXY_HTTP_URL: str | None = None
     SSRF_PROXY_HTTPS_URL: str | None = None
 
-    MAX_VARIABLE_SIZE: int = Field(default=5 * 1024, description='The maximum size of a variable. default is 5KB.')
