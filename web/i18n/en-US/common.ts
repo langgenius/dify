@@ -66,8 +66,8 @@ const translation = {
       plPL: 'Polish',
       roRO: 'Romanian',
       hiIN: 'Hindi',
-      trTR: 'Turkish',
-      faIR: 'Persian',
+      trTR: 'Türkçe',
+      faIR: 'Farsi',
     },
   },
   unit: {
