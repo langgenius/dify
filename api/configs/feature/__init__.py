@@ -52,12 +52,12 @@ class CodeExecutionSandboxConfig(BaseSettings):
         default='dify-sandbox',
     )
 
-    CODE_MAX_NUMBER: PositiveInt =Field(
+    CODE_MAX_NUMBER: PositiveInt = Field(
         description='max depth for code execution',
         default=-9223372036854775807,
     )
 
-    CODE_MIN_NUMBER: NegativeInt =Field(
+    CODE_MIN_NUMBER: NegativeInt = Field(
         description='',
         default=-9223372036854775807,
     )
@@ -197,11 +197,30 @@ class HttpConfig(BaseSettings):
     def WEB_API_CORS_ALLOW_ORIGINS(self) -> list[str]:
         return self.inner_WEB_API_CORS_ALLOW_ORIGINS.split(',')
 
-    HTTP_REQUEST_MAX_CONNECT_TIMEOUT: int = 300
-    HTTP_REQUEST_MAX_READ_TIMEOUT: int = 600
-    HTTP_REQUEST_MAX_WRITE_TIMEOUT: int = 600
-    HTTP_REQUEST_NODE_MAX_BINARY_SIZE: int = 1024 * 1024 * 10
-    HTTP_REQUEST_NODE_MAX_TEXT_SIZE: int = 1024 * 1024
+    HTTP_REQUEST_MAX_CONNECT_TIMEOUT: NonNegativeInt = Field(
+        description='',
+        default=300,
+    )
+
+    HTTP_REQUEST_MAX_READ_TIMEOUT: NonNegativeInt = Field(
+        description='',
+        default=600,
+    )
+
+    HTTP_REQUEST_MAX_WRITE_TIMEOUT: NonNegativeInt = Field(
+        description='',
+        default=600,
+    )
+
+    HTTP_REQUEST_NODE_MAX_BINARY_SIZE: PositiveInt = Field(
+        description='',
+        default=1024 * 1024 * 10,
+    )
+
+    HTTP_REQUEST_NODE_MAX_TEXT_SIZE: PositiveInt = Field(
+        description='',
+        default=1024 * 1024 * 1,
+    )
 
     @computed_field
     def HTTP_REQUEST_NODE_READABLE_MAX_BINARY_SIZE(self) -> str:
