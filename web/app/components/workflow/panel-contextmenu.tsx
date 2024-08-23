@@ -68,6 +68,7 @@ const PanelContextmenu = () => {
             mainAxis: -36,
             crossAxis: -4,
           }}
+          useShortcut={false}
         />
         <div
           className='flex items-center justify-between px-3 h-8 text-sm text-gray-700 rounded-lg cursor-pointer hover:bg-gray-50'
