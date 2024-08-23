@@ -20,25 +20,42 @@ class SendPrivateMsg(BuiltinTool):
         
         message = tool_parameters.get('message', '')
         if not message:
-            raise ValueError('Message is empty.')
+            return self.create_json_message(
+                {
+                    'error': 'Message is empty.'
+                }
+            )
         
         auto_escape = tool_parameters.get('auto_escape', False)
 
-        resp = requests.post(
-            f'{self.runtime.credentials['ob11_http_url']}/send_private_msg',
-            json={
-                'user_id': send_user_id,
-                'message': message,
-                'auto_escape': auto_escape
-            },
-            headers={
-                'Authorization': 'Bearer ' + self.runtime.credentials['access_token']
-            }
-        )
+        try:
+            resp = requests.post(
+                f'{self.runtime.credentials['ob11_http_url']}/send_private_msg',
+                json={
+                    'user_id': send_user_id,
+                    'message': message,
+                    'auto_escape': auto_escape
+                },
+                headers={
+                    'Authorization': 'Bearer ' + self.runtime.credentials['access_token']
+                }
+            )
 
-        if resp.status_code != 200:
-            raise ValueError(f'Failed to send private message: {resp.text}')
+            if resp.status_code != 200:
+                return self.create_json_message(
+                    {
+                        'error': f'Failed to send private message: {resp.text}'
+                    }
+                )
         
-        return self.create_json_message(
-            resp.json()
-        )
+            return self.create_json_message(
+                {
+                    'response': resp.json()
+                }
+            )
+        except Exception as e:
+            return self.create_json_message(
+                {
+                    'error': f'Failed to send private message: {e}'
+                }
+            )

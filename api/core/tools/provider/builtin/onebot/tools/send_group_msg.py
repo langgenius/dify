@@ -20,25 +20,43 @@ class SendGroupMsg(BuiltinTool):
         
         message = tool_parameters.get('message', '')
         if not message:
-            raise ValueError('Message is empty.')
+            return self.create_json_message(
+                {
+                    'error': 'Message is empty.'
+                }
+            )
         
         auto_escape = tool_parameters.get('auto_escape', False)
 
-        resp = requests.post(
-            f'{self.runtime.credentials['ob11_http_url']}/send_group_msg',
-            json={
-                'group_id': send_group_id,
-                'message': message,
-                'auto_escape': auto_escape
-            },
-            headers={
-                'Authorization': 'Bearer ' + self.runtime.credentials['access_token']
-            }
-        )
+        try:
 
-        if resp.status_code != 200:
-            raise ValueError(f'Failed to send group message: {resp.text}')
-        
-        return self.create_json_message(
-            resp.json()
-        )
+            resp = requests.post(
+                f'{self.runtime.credentials['ob11_http_url']}/send_group_msg',
+                json={
+                    'group_id': send_group_id,
+                    'message': message,
+                    'auto_escape': auto_escape
+                },
+                headers={
+                    'Authorization': 'Bearer ' + self.runtime.credentials['access_token']
+                }
+            )
+
+            if resp.status_code != 200:
+                return self.create_json_message(
+                    {
+                        'error': f'Failed to send group message: {resp.text}'
+                    }
+                )
+
+            return self.create_json_message(
+                {
+                    'response': resp.json()
+                }
+            )
+        except Exception as e:
+            return self.create_json_message(
+                {
+                    'error': f'Failed to send group message: {e}'
+                }
+            )
