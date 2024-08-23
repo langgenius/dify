@@ -31,6 +31,7 @@ parameter_rules:
       en_US: specifying the format that the model must output
     required: false
     options:
+      - text
       - json_object
 pricing:
   input: '0.012'
