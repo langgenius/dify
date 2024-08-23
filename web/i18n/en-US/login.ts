@@ -71,6 +71,17 @@ const translation = {
   activated: 'Sign in now',
   adminInitPassword: 'Admin initialization password',
   validate: 'Validate',
+  checkCode: {
+    checkYourEmail: 'Check your email',
+    tips: 'We send a verification code to <strong>{{email}}</strong>',
+    validTime: 'Bear in mind that the code is valid for 5 minutes',
+    verificationCode: 'Verification code',
+    verificationCodePlaceholder: 'Enter 6-digit code',
+    verify: 'Verify',
+    didNotReceiveCode: 'Didn\'t receive the code?',
+    resend: 'Resend',
+    useAnotherMethod: 'Use another method',
+  },
 }
 
 export default translation
