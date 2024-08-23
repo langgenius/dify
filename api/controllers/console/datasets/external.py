@@ -35,10 +35,12 @@ def _validate_name(name):
         raise ValueError('Name must be between 1 to 100 characters.')
     return name
 
+
 def _validate_description_length(description):
     if len(description) > 400:
         raise ValueError('Description cannot exceed 400 characters.')
     return description
+
 
 class ExternalApiTemplateListApi(Resource):
 
@@ -73,6 +75,9 @@ class ExternalApiTemplateListApi(Resource):
         parser.add_argument('name', nullable=False, required=True,
                             help='type is required. Name must be between 1 to 100 characters.',
                             type=_validate_name)
+        parser.add_argument('description', nullable=False, required=True,
+                            help='description is required. Description must be between 1 to 400 characters.',
+                            type=_validate_description_length)
         parser.add_argument('settings', type=list, location='json',
                             nullable=False,
                             required=True, )
@@ -118,6 +123,9 @@ class ExternalApiTemplateApi(Resource):
         parser.add_argument('name', nullable=False, required=True,
                             help='type is required. Name must be between 1 to 100 characters.',
                             type=_validate_name)
+        parser.add_argument('description', nullable=False, required=True,
+                            help='description is required. Description must be between 1 to 400 characters.',
+                            type=_validate_description_length)
         parser.add_argument('settings', type=list, location='json',
                             nullable=False,
                             required=True, )
@@ -170,10 +178,10 @@ class ExternalDatasetInitApi(Resource):
 
         parser = reqparse.RequestParser()
         parser.add_argument('api_template_id', type=str, required=True, nullable=True, location='json')
-        parser.add_argument('name', nullable=False, required=True,
-                            help='name is required. Name must be between 1 to 100 characters.',
-                            type=_validate_name)
-        parser.add_argument('description', type=str, required=True, nullable=True, location='json')
+        # parser.add_argument('name', nullable=False, required=True,
+        #                     help='name is required. Name must be between 1 to 100 characters.',
+        #                     type=_validate_name)
+        # parser.add_argument('description', type=str, required=True, nullable=True, location='json')
         parser.add_argument('data_source', type=dict, required=True, nullable=True, location='json')
         parser.add_argument('process_parameter', type=dict, required=True, nullable=True, location='json')
 
@@ -210,4 +218,3 @@ class ExternalDatasetInitApi(Resource):
 api.add_resource(ExternalApiTemplateListApi, '/datasets/external-api-template')
 api.add_resource(ExternalApiTemplateApi, '/datasets/external-api-template/<uuid:api_template_id>')
 api.add_resource(ExternalApiUseCheckApi, '/datasets/external-api-template/<uuid:api_template_id>/use-check')
-

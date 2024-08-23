@@ -64,6 +64,7 @@ class ExternalDatasetService:
             created_by=user_id,
             updated_by=user_id,
             name=args.get('name'),
+            description=args.get('description', ''),
             settings=json.dumps(args.get('settings'), ensure_ascii=False),
         )
 
@@ -87,6 +88,7 @@ class ExternalDatasetService:
             raise ValueError('api template not found')
 
         api_template.name = args.get('name')
+        api_template.description = args.get('description', '')
         api_template.settings = json.dumps(args.get('settings'), ensure_ascii=False)
         api_template.updated_by = user_id
         api_template.updated_at = datetime.now(timezone.utc).replace(tzinfo=None)
@@ -125,10 +127,10 @@ class ExternalDatasetService:
             raise ValueError('api template not found')
         settings = json.loads(api_template.settings)
         for settings in settings:
-            if settings.get('method') == 'create':
-                parameters = settings.get('parameters')
-                for parameter in parameters:
-                    if parameter.get('required') and not process_parameter.get(parameter.get('name')):
+            custom_parameters = settings.get('document_process_setting')
+            if custom_parameters:
+                for parameter in custom_parameters:
+                    if parameter.get('required', False) and not process_parameter.get(parameter.get('name')):
                         raise ValueError(f'{parameter.get("name")} is required')
 
     @staticmethod
