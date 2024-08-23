@@ -84,8 +84,11 @@ class VolcengineMaaSLargeLanguageModel(LargeLanguageModel):
     @staticmethod
     def _validate_credentials_v3(credentials: dict) -> None:
         client = ArkClientV3.from_credentials(credentials)
-        client.chat(max_tokens=16, temperature=0.7, top_p=0.9,
-                    messages=[UserPromptMessage(content='ping\nAnswer: ')], )
+        try:
+            client.chat(max_tokens=16, temperature=0.7, top_p=0.9,
+                        messages=[UserPromptMessage(content='ping\nAnswer: ')], )
+        except Exception as e:
+            raise CredentialsValidateFailedError(e)
 
     def get_num_tokens(self, model: str, credentials: dict, prompt_messages: list[PromptMessage],
                        tools: list[PromptMessageTool] | None = None) -> int:
