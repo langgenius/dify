@@ -67,7 +67,9 @@ const translation = {
     semantic: 'セマンティクス',
     keyword: 'キーワード',
   },
-  nTo1RetrievalLegacy: '製品計画によると、N To 1 Retrievalは9月に正式に廃止される予定です。それまでは通常通り使用できます。',
+  nTo1RetrievalLegacy: '製品計画によると、N-to-1 Retrievalは9月に正式に廃止される予定です。それまでは通常通り使用できます。',
+  nTo1RetrievalLegacyLink: '詳細を見る',
+  nTo1RetrievalLegacyLinkText: ' N-to-1 retrievalは9月に正式に廃止されます。',
 }
 
 export default translation
