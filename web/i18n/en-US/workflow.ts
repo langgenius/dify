@@ -19,6 +19,7 @@ const translation = {
     goBackToEdit: 'Go back to editor',
     conversationLog: 'Conversation Log',
     features: 'Features',
+    featuresDescription: 'Enhance web app user experience',
     debugAndPreview: 'Preview',
     restart: 'Restart',
     currentDraft: 'Current Draft',

@@ -19,6 +19,7 @@ const translation = {
     goBackToEdit: '返回编辑模式',
     conversationLog: '对话记录',
     features: '功能',
+    featuresDescription: '增强 web app 用户体验',
     debugAndPreview: '预览',
     restart: '重新开始',
     currentDraft: '当前草稿',
