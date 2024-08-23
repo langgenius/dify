@@ -11,6 +11,11 @@ class DeploymentConfig(BaseSettings):
         default='langgenius/dify',
     )
 
+    DEBUG: bool = Field(
+        description='whether to enable debug mode.',
+        default=False,
+    )
+
     TESTING: bool = Field(
         description='',
         default=False,
