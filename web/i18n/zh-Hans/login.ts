@@ -73,6 +73,17 @@ const translation = {
   activated: '现在登录',
   adminInitPassword: '管理员初始化密码',
   validate: '验证',
+  checkCode: {
+    checkYourEmail: '验证您的电子邮件',
+    tips: '验证码已经发送到您的邮箱<strong>{{email}}</strong>',
+    validTime: '请注意验证码5分钟内有效',
+    verificationCode: '验证码',
+    verificationCodePlaceholder: '输入6位验证码',
+    verify: '验证',
+    didNotReceiveCode: '没有收到验证码？',
+    resend: '重新发送',
+    useAnotherMethod: '使用其他方式登陆',
+  },
 }
 
 export default translation
