@@ -614,7 +614,7 @@ class DatasetRetrieval:
                                top_k: int, score_threshold: float) -> list[Document]:
         filter_documents = []
         for document in all_documents:
-            if score_threshold and document.metadata['score'] >= score_threshold:
+            if score_threshold is None or document.metadata['score'] >= score_threshold:
                 filter_documents.append(document)
         if not filter_documents:
             return []
