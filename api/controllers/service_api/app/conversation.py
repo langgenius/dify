@@ -25,6 +25,8 @@ class ConversationApi(Resource):
         parser = reqparse.RequestParser()
         parser.add_argument('last_id', type=uuid_value, location='args')
         parser.add_argument('limit', type=int_range(1, 100), required=False, default=20, location='args')
+        parser.add_argument('sort_by', type=str, choices=['created_at', '-created_at', 'updated_at', '-updated_at'],
+                            required=False, default='-updated_at', location='args')
         args = parser.parse_args()
 
         try:
@@ -33,7 +35,8 @@ class ConversationApi(Resource):
                 user=end_user,
                 last_id=args['last_id'],
                 limit=args['limit'],
-                invoke_from=InvokeFrom.SERVICE_API
+                invoke_from=InvokeFrom.SERVICE_API,
+                sort_by=args['sort_by']
             )
         except services.errors.conversation.LastConversationNotExistsError:
             raise NotFound("Last Conversation Not Exists.")

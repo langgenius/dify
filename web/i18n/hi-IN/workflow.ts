@@ -95,6 +95,33 @@ const translation = {
       export: 'गुप्त मानों के साथ DSL निर्यात करें',
     },
   },
+  chatVariable: {
+    panelTitle: 'वार्तालाप चर',
+    panelDescription: 'वार्तालाप चर का उपयोग इंटरैक्टिव जानकारी संग्रहित करने के लिए किया जाता है जिसे LLM को याद रखने की आवश्यकता होती है, जिसमें वार्तालाप इतिहास, अपलोड की गई फाइलें, उपयोगकर्ता प्राथमिकताएं शामिल हैं। वे पठनीय और लेखनीय हैं।',
+    docLink: 'अधिक जानने के लिए हमारे दस्तावेज़ देखें।',
+    button: 'चर जोड़ें',
+    modal: {
+      title: 'वार्तालाप चर जोड़ें',
+      editTitle: 'वार्तालाप चर संपादित करें',
+      name: 'नाम',
+      namePlaceholder: 'चर का नाम',
+      type: 'प्रकार',
+      value: 'डिफ़ॉल्ट मान',
+      valuePlaceholder: 'डिफ़ॉल्ट मान, सेट न करने के लिए खाली छोड़ दें',
+      description: 'विवरण',
+      descriptionPlaceholder: 'चर का वर्णन करें',
+      editInJSON: 'JSON में संपादित करें',
+      oneByOne: 'एक-एक करके जोड़ें',
+      editInForm: 'फॉर्म में संपादित करें',
+      arrayValue: 'मान',
+      addArrayValue: 'मान जोड़ें',
+      objectKey: 'कुंजी',
+      objectType: 'प्रकार',
+      objectValue: 'डिफ़ॉल्ट मान',
+    },
+    storedContent: 'संग्रहीत सामग्री',
+    updatedAt: 'अपडेट किया गया ',
+  },
   changeHistory: {
     title: 'परिवर्तन इतिहास',
     placeholder: 'आपने अभी तक कुछ भी नहीं बदला है',
@@ -169,6 +196,7 @@ const translation = {
     'http-request': 'एचटीटीपी अनुरोध',
     'variable-assigner': 'वेरिएबल एग्रीगेटर',
     'variable-aggregator': 'वेरिएबल एग्रीगेटर',
+    'assigner': 'चर असाइनर',
     'iteration-start': 'पुनरावृत्ति प्रारंभ',
     'iteration': 'पुनरावृत्ति',
     'parameter-extractor': 'पैरामीटर निष्कर्षक',
@@ -190,6 +218,7 @@ const translation = {
     'http-request': 'HTTP प्रोटोकॉल पर सर्वर अनुरोधों को भेजने की अनुमति दें',
     'variable-assigner':
       'डाउनस्ट्रीम नोड्स की एकीकृत कॉन्फ़िगरेशन के लिए बहु-शाखा चर को एकल चर में संकलित करें।',
+    'assigner': 'चर असाइनमेंट नोड का उपयोग लिखने योग्य चर (जैसे वार्तालाप चर) को मान असाइन करने के लिए किया जाता है।',
     'variable-aggregator':
       'डाउनस्ट्रीम नोड्स की एकीकृत कॉन्फ़िगरेशन के लिए बहु-शाखा चर को एकल चर में संकलित करें।',
     'iteration':
@@ -220,6 +249,7 @@ const translation = {
     checklistResolved: 'सभी समस्याएं हल हो गई हैं',
     organizeBlocks: 'ब्लॉक्स को व्यवस्थित करें',
     change: 'बदलें',
+    optional: '(वैकल्पिक)',
   },
   nodes: {
     common: {
@@ -413,6 +443,17 @@ const translation = {
         varDescribe: '{{groupName}} आउटपुट',
       },
       setAssignVariable: 'असाइन वेरिएबल सेट करें',
+    },
+    assigner: {
+      'assignedVariable': 'असाइन किया गया चर',
+      'writeMode': 'लिखने का मोड',
+      'writeModeTip': 'जब असाइन किया गया चर एक सरणी होता है, तो जोड़ने का मोड अंत में जोड़ता है।',
+      'over-write': 'ओवरराइट करें',
+      'append': 'जोड़ें',
+      'plus': 'जमा',
+      'clear': 'साफ़ करें',
+      'setVariable': 'चर सेट करें',
+      'variable': 'चर',
     },
     tool: {
       toAuthorize: 'अधिकृत करने के लिए',

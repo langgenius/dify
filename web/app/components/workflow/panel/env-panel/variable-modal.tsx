@@ -80,7 +80,7 @@ const VariableModal = ({
       <div className='px-4 py-2'>
         {/* type */}
         <div className='mb-4'>
-          <div className='mb-1 text-text-secondary system-sm-semibold'>{t('workflow.env.modal.type')}</div>
+          <div className='mb-1 h-6 flex items-center text-text-secondary system-sm-semibold'>{t('workflow.env.modal.type')}</div>
           <div className='flex gap-2'>
             <div className={cn(
               'w-[106px] flex items-center justify-center p-2 radius-md bg-components-option-card-option-bg border border-components-option-card-option-border text-text-secondary system-sm-regular cursor-pointer hover:shadow-xs hover:bg-components-option-card-option-bg-hover hover:border-components-option-card-option-border-hover',
@@ -111,11 +111,11 @@ const VariableModal = ({
         </div>
         {/* name */}
         <div className='mb-4'>
-          <div className='mb-1 text-text-secondary system-sm-semibold'>{t('workflow.env.modal.name')}</div>
+          <div className='mb-1 h-6 flex items-center text-text-secondary system-sm-semibold'>{t('workflow.env.modal.name')}</div>
           <div className='flex'>
             <input
               tabIndex={0}
-              className='block px-3 w-full h-9 bg-components-input-bg-normal system-sm-regular radius-md border border-transparent appearance-none outline-none caret-primary-600 hover:border-components-input-border-hover hover:bg-components-input-bg-hover focus:bg-components-input-bg-active focus:border-components-input-border-active focus:shadow-xs placeholder:system-sm-regular placeholder:text-components-input-text-placeholder'
+              className='block px-3 w-full h-8 bg-components-input-bg-normal system-sm-regular radius-md border border-transparent appearance-none outline-none caret-primary-600 hover:border-components-input-border-hover hover:bg-components-input-bg-hover focus:bg-components-input-bg-active focus:border-components-input-border-active focus:shadow-xs placeholder:system-sm-regular placeholder:text-components-input-text-placeholder'
               placeholder={t('workflow.env.modal.namePlaceholder') || ''}
               value={name}
               onChange={e => handleNameChange(e.target.value)}
@@ -125,11 +125,11 @@ const VariableModal = ({
         </div>
         {/* value */}
         <div className=''>
-          <div className='mb-1 text-text-secondary system-sm-semibold'>{t('workflow.env.modal.value')}</div>
+          <div className='mb-1 h-6 flex items-center text-text-secondary system-sm-semibold'>{t('workflow.env.modal.value')}</div>
           <div className='flex'>
             <input
               tabIndex={0}
-              className='block px-3 w-full h-9 bg-components-input-bg-normal system-sm-regular radius-md border border-transparent appearance-none outline-none caret-primary-600 hover:border-components-input-border-hover hover:bg-components-input-bg-hover focus:bg-components-input-bg-active focus:border-components-input-border-active focus:shadow-xs placeholder:system-sm-regular placeholder:text-components-input-text-placeholder'
+              className='block px-3 w-full h-8 bg-components-input-bg-normal system-sm-regular radius-md border border-transparent appearance-none outline-none caret-primary-600 hover:border-components-input-border-hover hover:bg-components-input-bg-hover focus:bg-components-input-bg-active focus:border-components-input-border-active focus:shadow-xs placeholder:system-sm-regular placeholder:text-components-input-text-placeholder'
               placeholder={t('workflow.env.modal.valuePlaceholder') || ''}
               value={value}
               onChange={e => setValue(e.target.value)}

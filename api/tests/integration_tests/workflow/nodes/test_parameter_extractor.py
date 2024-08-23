@@ -12,8 +12,8 @@ from core.memory.token_buffer_memory import TokenBufferMemory
 from core.model_manager import ModelInstance
 from core.model_runtime.entities.model_entities import ModelType
 from core.model_runtime.model_providers.model_provider_factory import ModelProviderFactory
-from core.workflow.entities.node_entities import SystemVariable
 from core.workflow.entities.variable_pool import VariablePool
+from core.workflow.enums import SystemVariableKey
 from core.workflow.nodes.base_node import UserFrom
 from core.workflow.nodes.parameter_extractor.parameter_extractor_node import ParameterExtractorNode
 from extensions.ext_database import db
@@ -119,10 +119,10 @@ def test_function_calling_parameter_extractor(setup_openai_mock):
 
     # construct variable pool
     pool = VariablePool(system_variables={
-        SystemVariable.QUERY: 'what\'s the weather in SF',
-        SystemVariable.FILES: [],
-        SystemVariable.CONVERSATION_ID: 'abababa',
-        SystemVariable.USER_ID: 'aaa'
+        SystemVariableKey.QUERY: 'what\'s the weather in SF',
+        SystemVariableKey.FILES: [],
+        SystemVariableKey.CONVERSATION_ID: 'abababa',
+        SystemVariableKey.USER_ID: 'aaa'
     }, user_inputs={}, environment_variables=[])
 
     result = node.run(pool)
@@ -177,10 +177,10 @@ def test_instructions(setup_openai_mock):
 
     # construct variable pool
     pool = VariablePool(system_variables={
-        SystemVariable.QUERY: 'what\'s the weather in SF',
-        SystemVariable.FILES: [],
-        SystemVariable.CONVERSATION_ID: 'abababa',
-        SystemVariable.USER_ID: 'aaa'
+        SystemVariableKey.QUERY: 'what\'s the weather in SF',
+        SystemVariableKey.FILES: [],
+        SystemVariableKey.CONVERSATION_ID: 'abababa',
+        SystemVariableKey.USER_ID: 'aaa'
     }, user_inputs={}, environment_variables=[])
 
     result = node.run(pool)
@@ -243,10 +243,10 @@ def test_chat_parameter_extractor(setup_anthropic_mock):
 
     # construct variable pool
     pool = VariablePool(system_variables={
-        SystemVariable.QUERY: 'what\'s the weather in SF',
-        SystemVariable.FILES: [],
-        SystemVariable.CONVERSATION_ID: 'abababa',
-        SystemVariable.USER_ID: 'aaa'
+        SystemVariableKey.QUERY: 'what\'s the weather in SF',
+        SystemVariableKey.FILES: [],
+        SystemVariableKey.CONVERSATION_ID: 'abababa',
+        SystemVariableKey.USER_ID: 'aaa'
     }, user_inputs={}, environment_variables=[])
 
     result = node.run(pool)
@@ -307,10 +307,10 @@ def test_completion_parameter_extractor(setup_openai_mock):
 
     # construct variable pool
     pool = VariablePool(system_variables={
-        SystemVariable.QUERY: 'what\'s the weather in SF',
-        SystemVariable.FILES: [],
-        SystemVariable.CONVERSATION_ID: 'abababa',
-        SystemVariable.USER_ID: 'aaa'
+        SystemVariableKey.QUERY: 'what\'s the weather in SF',
+        SystemVariableKey.FILES: [],
+        SystemVariableKey.CONVERSATION_ID: 'abababa',
+        SystemVariableKey.USER_ID: 'aaa'
     }, user_inputs={}, environment_variables=[])
 
     result = node.run(pool)
@@ -363,7 +363,7 @@ def test_extract_json_response():
         {
             "location": "kawaii"
         }
-        hello world.                          
+        hello world.
     """)
 
     assert result['location'] == 'kawaii'
@@ -420,10 +420,10 @@ def test_chat_parameter_extractor_with_memory(setup_anthropic_mock):
 
     # construct variable pool
     pool = VariablePool(system_variables={
-        SystemVariable.QUERY: 'what\'s the weather in SF',
-        SystemVariable.FILES: [],
-        SystemVariable.CONVERSATION_ID: 'abababa',
-        SystemVariable.USER_ID: 'aaa'
+        SystemVariableKey.QUERY: 'what\'s the weather in SF',
+        SystemVariableKey.FILES: [],
+        SystemVariableKey.CONVERSATION_ID: 'abababa',
+        SystemVariableKey.USER_ID: 'aaa'
     }, user_inputs={}, environment_variables=[])
 
     result = node.run(pool)

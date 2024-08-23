@@ -67,9 +67,11 @@ const translation = {
   editAppTitle: 'Editează Info Aplicație',
   editDone: 'Informațiile despre aplicație au fost actualizate',
   editFailed: 'Actualizarea informațiilor despre aplicație a eșuat',
-  emoji: {
+  iconPicker: {
     ok: 'OK',
     cancel: 'Anulează',
+    emoji: 'Emoji',
+    image: 'Imagine',
   },
   switch: 'Comută la Orchestrare Flux de Lucru',
   switchTipStart: 'O nouă copie a aplicației va fi creată pentru tine, iar noua copie va comuta la Orchestrare Flux de Lucru. Noua copie ',

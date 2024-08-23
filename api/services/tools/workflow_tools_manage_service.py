@@ -32,6 +32,7 @@ class WorkflowToolManageService:
         :param description: the description
         :param parameters: the parameters
         :param privacy_policy: the privacy policy
+        :param labels: labels
         :return: the created tool
         """
         WorkflowToolConfigurationUtils.check_parameter_configurations(parameters)
@@ -92,7 +93,14 @@ class WorkflowToolManageService:
         Update a workflow tool.
         :param user_id: the user id
         :param tenant_id: the tenant id
-        :param tool: the tool
+        :param workflow_tool_id: workflow tool id
+        :param name: name
+        :param label: label
+        :param icon: icon
+        :param description: description
+        :param parameters: parameters
+        :param privacy_policy: privacy policy
+        :param labels: labels
         :return: the updated tool
         """
         WorkflowToolConfigurationUtils.check_parameter_configurations(parameters)

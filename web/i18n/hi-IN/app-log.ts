@@ -4,7 +4,8 @@ const translation = {
   dateTimeFormat: 'MM/DD/YYYY hh:mm A',
   table: {
     header: {
-      time: 'समय',
+      updatedTime: 'अपडेट का समय',
+      time: 'बनाने का समय',
       endUser: 'अंतिम उपयोगकर्ता',
       input: 'इनपुट',
       output: 'आउटपुट',
@@ -71,6 +72,9 @@ const translation = {
       annotated: 'एनोटेट किए गए सुधार ({{count}} आइटम)',
       not_annotated: 'एनोटेट नहीं किया गया',
     },
+    sortBy: 'इसके अनुसार क्रमबद्ध करें:',
+    descending: 'अवरोही',
+    ascending: 'आरोही',
   },
   workflowTitle: 'वर्कफ़्लो लॉग्स',
   workflowSubtitle: 'यह लॉग ऑटोमेटे के ऑपरेशन को रिकॉर्ड करता है।',

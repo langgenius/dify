@@ -67,9 +67,11 @@ const translation = {
   editAppTitle: 'Chỉnh sửa thông tin ứng dụng',
   editDone: 'Thông tin ứng dụng đã được cập nhật',
   editFailed: 'Không thể cập nhật thông tin ứng dụng',
-  emoji: {
+  iconPicker: {
     ok: 'Đồng ý',
     cancel: 'Hủy',
+    emoji: 'Biểu tượng cảm xúc',
+    image: 'Hình ảnh',
   },
   switch: 'Chuyển sang quản lý quy trình',
   switchTipStart: 'Một bản sao ứng dụng mới sẽ được tạo và chuyển sang quản lý quy trình. Bản sao mới sẽ ',

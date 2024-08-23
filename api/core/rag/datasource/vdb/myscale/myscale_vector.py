@@ -93,7 +93,7 @@ class MyScaleVector(BaseVector):
 
     @staticmethod
     def escape_str(value: Any) -> str:
-        return "".join(f"\\{c}" if c in ("\\", "'") else c for c in str(value))
+        return "".join(" " if c in ("\\", "'") else c for c in str(value))
 
     def text_exists(self, id: str) -> bool:
         results = self._client.query(f"SELECT id FROM {self._config.database}.{self._collection_name} WHERE id='{id}'")
@@ -118,7 +118,7 @@ class MyScaleVector(BaseVector):
         return self._search(f"distance(vector, {str(query_vector)})", self._vec_order, **kwargs)
 
     def search_by_full_text(self, query: str, **kwargs: Any) -> list[Document]:
-        return self._search(f"TextSearch(text, '{query}')", SortOrder.DESC, **kwargs)
+        return self._search(f"TextSearch('enable_nlq=false')(text, '{query}')", SortOrder.DESC, **kwargs)
 
     def _search(self, dist: str, order: SortOrder, **kwargs: Any) -> list[Document]:
         top_k = kwargs.get("top_k", 5)
