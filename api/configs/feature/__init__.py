@@ -54,7 +54,7 @@ class CodeExecutionSandboxConfig(BaseSettings):
 
     CODE_MAX_NUMBER: PositiveInt = Field(
         description='max depth for code execution',
-        default=-9223372036854775807,
+        default=9223372036854775807,
     )
 
     CODE_MIN_NUMBER: NegativeInt = Field(
