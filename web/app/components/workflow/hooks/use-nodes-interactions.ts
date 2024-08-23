@@ -1027,7 +1027,7 @@ export const useNodesInteractions = () => {
     handleNodeSelect(node.id)
   }, [workflowStore, handleNodeSelect])
 
-  const handleNodesCopy = useCallback(() => {
+  const handleNodesCopy = useCallback((nodeId?: string) => {
     if (getNodesReadOnly())
       return
 
@@ -1038,17 +1038,27 @@ export const useNodesInteractions = () => {
     } = store.getState()
 
     const nodes = getNodes()
-    const bundledNodes = nodes.filter(node => node.data._isBundled && node.data.type !== BlockEnum.Start && !node.data.isInIteration)
 
-    if (bundledNodes.length) {
-      setClipboardElements(bundledNodes)
-      return
+    if (nodeId) {
+      // If nodeId is provided, copy that specific node
+      const nodeToCopy = nodes.find(node => node.id === nodeId && node.data.type !== BlockEnum.Start)
+      if (nodeToCopy)
+        setClipboardElements([nodeToCopy])
     }
+    else {
+      // If no nodeId is provided, fall back to the current behavior
+      const bundledNodes = nodes.filter(node => node.data._isBundled && node.data.type !== BlockEnum.Start && !node.data.isInIteration)
 
-    const selectedNode = nodes.find(node => node.data.selected && node.data.type !== BlockEnum.Start)
+      if (bundledNodes.length) {
+        setClipboardElements(bundledNodes)
+        return
+      }
 
-    if (selectedNode)
-      setClipboardElements([selectedNode])
+      const selectedNode = nodes.find(node => node.data.selected && node.data.type !== BlockEnum.Start)
+
+      if (selectedNode)
+        setClipboardElements([selectedNode])
+    }
   }, [getNodesReadOnly, store, workflowStore])
 
   const handleNodesPaste = useCallback(() => {
@@ -1128,11 +1138,11 @@ export const useNodesInteractions = () => {
     }
   }, [getNodesReadOnly, workflowStore, store, reactflow, saveStateToHistory, handleSyncWorkflowDraft, handleNodeIterationChildrenCopy])
 
-  const handleNodesDuplicate = useCallback(() => {
+  const handleNodesDuplicate = useCallback((nodeId?: string) => {
     if (getNodesReadOnly())
       return
 
-    handleNodesCopy()
+    handleNodesCopy(nodeId)
     handleNodesPaste()
   }, [getNodesReadOnly, handleNodesCopy, handleNodesPaste])
 
