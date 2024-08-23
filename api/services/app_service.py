@@ -111,6 +111,12 @@ class AppService:
                         'completion_params': {}
                     }
             else:
+                provider, model = model_manager.get_default_provider_model_name(
+                    tenant_id=account.current_tenant_id,
+                    model_type=ModelType.LLM
+                )
+                default_model_config['model']['provider'] = provider
+                default_model_config['model']['name'] = model
                 default_model_dict = default_model_config['model']
 
             default_model_config['model'] = json.dumps(default_model_dict)
@@ -119,6 +125,7 @@ class AppService:
         app.name = args['name']
         app.description = args.get('description', '')
         app.mode = args['mode']
+        app.icon_type = args.get('icon_type', 'emoji')
         app.icon = args['icon']
         app.icon_background = args['icon_background']
         app.tenant_id = tenant_id
@@ -189,13 +196,14 @@ class AppService:
                 """
                 Modified App class
                 """
+
                 def __init__(self, app):
                     self.__dict__.update(app.__dict__)
 
                 @property
                 def app_model_config(self):
                     return model_config
-                
+
             app = ModifiedApp(app)
 
         return app
@@ -210,6 +218,7 @@ class AppService:
         app.name = args.get('name')
         app.description = args.get('description', '')
         app.max_active_requests = args.get('max_active_requests')
+        app.icon_type = args.get('icon_type', 'emoji')
         app.icon = args.get('icon')
         app.icon_background = args.get('icon_background')
         app.updated_at = datetime.now(timezone.utc).replace(tzinfo=None)

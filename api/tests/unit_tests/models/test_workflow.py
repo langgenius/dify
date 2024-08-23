@@ -11,7 +11,17 @@ def test_environment_variables():
     contexts.tenant_id.set('tenant_id')
 
     # Create a Workflow instance
-    workflow = Workflow()
+    workflow = Workflow(
+        tenant_id='tenant_id',
+        app_id='app_id',
+        type='workflow',
+        version='draft',
+        graph='{}',
+        features='{}',
+        created_by='account_id',
+        environment_variables=[],
+        conversation_variables=[],
+    )
 
     # Create some EnvironmentVariable instances
     variable1 = StringVariable.model_validate({'name': 'var1', 'value': 'value1', 'id': str(uuid4())})
@@ -35,7 +45,17 @@ def test_update_environment_variables():
     contexts.tenant_id.set('tenant_id')
 
     # Create a Workflow instance
-    workflow = Workflow()
+    workflow = Workflow(
+        tenant_id='tenant_id',
+        app_id='app_id',
+        type='workflow',
+        version='draft',
+        graph='{}',
+        features='{}',
+        created_by='account_id',
+        environment_variables=[],
+        conversation_variables=[],
+    )
 
     # Create some EnvironmentVariable instances
     variable1 = StringVariable.model_validate({'name': 'var1', 'value': 'value1', 'id': str(uuid4())})
@@ -70,9 +90,17 @@ def test_to_dict():
     contexts.tenant_id.set('tenant_id')
 
     # Create a Workflow instance
-    workflow = Workflow()
-    workflow.graph = '{}'
-    workflow.features = '{}'
+    workflow = Workflow(
+        tenant_id='tenant_id',
+        app_id='app_id',
+        type='workflow',
+        version='draft',
+        graph='{}',
+        features='{}',
+        created_by='account_id',
+        environment_variables=[],
+        conversation_variables=[],
+    )
 
     # Create some EnvironmentVariable instances
 

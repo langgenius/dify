@@ -1,4 +1,5 @@
 import ReactMarkdown from 'react-markdown'
+import ReactEcharts from 'echarts-for-react'
 import 'katex/dist/katex.min.css'
 import RemarkMath from 'remark-math'
 import RemarkBreaks from 'remark-breaks'
@@ -22,7 +23,6 @@ import AudioGallery from '@/app/components/base/audio-gallery'
 
 // Available language https://github.com/react-syntax-highlighter/react-syntax-highlighter/blob/master/AVAILABLE_LANGUAGES_HLJS.MD
 const capitalizationLanguageNameMap: Record<string, string> = {
-  amis: 'amis',
   sql: 'SQL',
   javascript: 'JavaScript',
   java: 'Java',
@@ -37,6 +37,7 @@ const capitalizationLanguageNameMap: Record<string, string> = {
   mermaid: 'Mermaid',
   markdown: 'MarkDown',
   makefile: 'MakeFile',
+  echarts: 'ECharts',
   shell: 'Shell',
   powershell: 'PowerShell',
   json: 'JSON',
@@ -53,9 +54,11 @@ const getCorrectCapitalizationLanguageName = (language: string) => {
 }
 
 const preprocessLaTeX = (content: string) => {
-  return content.replace(/\\\[(.*?)\\\]/gs, (_, equation) => `$$${equation}$$`)
-    .replace(/\\\((.*?)\\\)/gs, (_, equation) => `$$${equation}$$`)
-    .replace(/(^|[^\\])\$(.+?)\$/gs, (_, prefix, equation) => `${prefix}$${equation}$`)
+  if (typeof content !== 'string')
+    return content
+  return content.replace(/\\\[(.*?)\\\]/g, (_, equation) => `$$${equation}$$`)
+    .replace(/\\\((.*?)\\\)/g, (_, equation) => `$$${equation}$$`)
+    .replace(/(^|[^\\])\$(.+?)\$/g, (_, prefix, equation) => `${prefix}$${equation}$`)
 }
 
 export function PreCode(props: { children: any }) {
@@ -65,13 +68,6 @@ export function PreCode(props: { children: any }) {
     <pre ref={ref}>
       <span
         className="copy-code-button"
-        onClick={() => {
-          if (ref.current) {
-            // eslint-disable-next-line unused-imports/no-unused-vars
-            const code = ref.current.innerText
-            // copyToClipboard(code);
-          }
-        }}
       ></span>
       {props.children}
     </pre>
@@ -118,6 +114,14 @@ const CodeBlock: CodeComponent = memo(({ inline, className, children, ...props }
   const match = /language-(\w+)/.exec(className || '')
   const language = match?.[1]
   const languageShowName = getCorrectCapitalizationLanguageName(language || '')
+  let chartData = JSON.parse(String('{"title":{"text":"Something went wrong."}}').replace(/\n$/, ''))
+  if (language === 'echarts') {
+    try {
+      chartData = JSON.parse(String(children).replace(/\n$/, ''))
+    }
+    catch (error) {
+    }
+  }
 
   // Use `useMemo` to ensure that `SyntaxHighlighter` only re-renders when necessary
   return useMemo(() => {
@@ -142,19 +146,23 @@ const CodeBlock: CodeComponent = memo(({ inline, className, children, ...props }
           </div>
           {(language === 'mermaid' && isSVG)
             ? (<Flowchart PrimitiveCode={String(children).replace(/\n$/, '')} />)
-            : (<SyntaxHighlighter
-              {...props}
-              style={atelierHeathLight}
-              customStyle={{
-                paddingLeft: 12,
-                backgroundColor: '#fff',
-              }}
-              language={match[1]}
-              showLineNumbers
-              PreTag="div"
-            >
-              {String(children).replace(/\n$/, '')}
-            </SyntaxHighlighter>)}
+            : (
+              (language === 'echarts')
+                ? (<div style={{ minHeight: '250px', minWidth: '250px' }}><ReactEcharts option={chartData}>
+                </ReactEcharts></div>)
+                : (<SyntaxHighlighter
+                  {...props}
+                  style={atelierHeathLight}
+                  customStyle={{
+                    paddingLeft: 12,
+                    backgroundColor: '#fff',
+                  }}
+                  language={match[1]}
+                  showLineNumbers
+                  PreTag="div"
+                >
+                  {String(children).replace(/\n$/, '')}
+                </SyntaxHighlighter>))}
         </div>
       )
       : (
@@ -162,7 +170,7 @@ const CodeBlock: CodeComponent = memo(({ inline, className, children, ...props }
           {children}
         </code>
       )
-  }, [children, className, inline, isSVG, language, languageShowName, match, props])
+  }, [chartData, children, className, inline, isSVG, language, languageShowName, match, props])
 })
 
 CodeBlock.displayName = 'CodeBlock'

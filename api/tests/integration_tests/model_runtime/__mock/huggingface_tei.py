@@ -1,5 +1,4 @@
-
-from api.core.model_runtime.model_providers.huggingface_tei.tei_helper import TeiModelExtraParameter
+from core.model_runtime.model_providers.huggingface_tei.tei_helper import TeiModelExtraParameter
 
 
 class MockTEIClass:
@@ -12,7 +11,7 @@ class MockTEIClass:
             model_type = 'embedding'
 
         return TeiModelExtraParameter(model_type=model_type, max_input_length=512, max_client_batch_size=1)
-    
+
     @staticmethod
     def invoke_tokenize(server_url: str, texts: list[str]) -> list[list[dict]]:
         # Use space as token separator, and split the text into tokens

@@ -142,6 +142,12 @@ button:focus-within {
   line-height: 12px;
 }
 
+.system-2xs-regular {
+  font-size: 10px;
+  font-weight: 400;
+  line-height: 12px;
+}
+
 .system-2xs-medium {
   font-size: 10px;
   font-weight: 500;

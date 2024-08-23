@@ -13,9 +13,9 @@ from services.workflow_service import WorkflowService
 
 logger = logging.getLogger(__name__)
 
-current_dsl_version = "0.1.0"
+current_dsl_version = "0.1.1"
 dsl_to_dify_version_mapping: dict[str, str] = {
-    "0.1.0": "0.6.0",  # dsl version -> from dify version
+    "0.1.1": "0.6.0",  # dsl version -> from dify version
 }
 
 
@@ -82,6 +82,7 @@ class AppDslService:
         # get app basic info
         name = args.get("name") if args.get("name") else app_data.get('name')
         description = args.get("description") if args.get("description") else app_data.get('description', '')
+        icon_type = args.get("icon_type") if args.get("icon_type") else app_data.get('icon_type')
         icon = args.get("icon") if args.get("icon") else app_data.get('icon')
         icon_background = args.get("icon_background") if args.get("icon_background") \
             else app_data.get('icon_background')
@@ -96,6 +97,7 @@ class AppDslService:
                 account=account,
                 name=name,
                 description=description,
+                icon_type=icon_type,
                 icon=icon,
                 icon_background=icon_background
             )
@@ -107,6 +109,7 @@ class AppDslService:
                 account=account,
                 name=name,
                 description=description,
+                icon_type=icon_type,
                 icon=icon,
                 icon_background=icon_background
             )
@@ -165,8 +168,8 @@ class AppDslService:
             "app": {
                 "name": app_model.name,
                 "mode": app_model.mode,
-                "icon": app_model.icon,
-                "icon_background": app_model.icon_background,
+                "icon": '🤖' if app_model.icon_type == 'image' else app_model.icon,
+                "icon_background": '#FFEAD5' if app_model.icon_type == 'image' else app_model.icon_background,
                 "description": app_model.description
             }
         }
@@ -207,6 +210,7 @@ class AppDslService:
                                                   account: Account,
                                                   name: str,
                                                   description: str,
+                                                  icon_type: str,
                                                   icon: str,
                                                   icon_background: str) -> App:
         """
@@ -218,6 +222,7 @@ class AppDslService:
         :param account: Account instance
         :param name: app name
         :param description: app description
+        :param icon_type: app icon type, "emoji" or "image"
         :param icon: app icon
         :param icon_background: app icon background
         """
@@ -231,6 +236,7 @@ class AppDslService:
             account=account,
             name=name,
             description=description,
+            icon_type=icon_type,
             icon=icon,
             icon_background=icon_background
         )
@@ -238,6 +244,8 @@ class AppDslService:
         # init draft workflow
         environment_variables_list = workflow_data.get('environment_variables') or []
         environment_variables = [factory.build_variable_from_mapping(obj) for obj in environment_variables_list]
+        conversation_variables_list = workflow_data.get('conversation_variables') or []
+        conversation_variables = [factory.build_variable_from_mapping(obj) for obj in conversation_variables_list]
         workflow_service = WorkflowService()
         draft_workflow = workflow_service.sync_draft_workflow(
             app_model=app,
@@ -246,6 +254,7 @@ class AppDslService:
             unique_hash=None,
             account=account,
             environment_variables=environment_variables,
+            conversation_variables=conversation_variables,
         )
         workflow_service.publish_workflow(
             app_model=app,
@@ -282,6 +291,8 @@ class AppDslService:
         # sync draft workflow
         environment_variables_list = workflow_data.get('environment_variables') or []
         environment_variables = [factory.build_variable_from_mapping(obj) for obj in environment_variables_list]
+        conversation_variables_list = workflow_data.get('conversation_variables') or []
+        conversation_variables = [factory.build_variable_from_mapping(obj) for obj in conversation_variables_list]
         draft_workflow = workflow_service.sync_draft_workflow(
             app_model=app_model,
             graph=workflow_data.get('graph', {}),
@@ -289,6 +300,7 @@ class AppDslService:
             unique_hash=unique_hash,
             account=account,
             environment_variables=environment_variables,
+            conversation_variables=conversation_variables,
         )
 
         return draft_workflow
@@ -301,6 +313,7 @@ class AppDslService:
                                                       account: Account,
                                                       name: str,
                                                       description: str,
+                                                      icon_type: str,
                                                       icon: str,
                                                       icon_background: str) -> App:
         """
@@ -325,6 +338,7 @@ class AppDslService:
             account=account,
             name=name,
             description=description,
+            icon_type=icon_type,
             icon=icon,
             icon_background=icon_background
         )
@@ -352,6 +366,7 @@ class AppDslService:
                     account: Account,
                     name: str,
                     description: str,
+                    icon_type: str,
                     icon: str,
                     icon_background: str) -> App:
         """
@@ -362,6 +377,7 @@ class AppDslService:
         :param account: Account instance
         :param name: app name
         :param description: app description
+        :param icon_type: app icon type, "emoji" or "image"
         :param icon: app icon
         :param icon_background: app icon background
         """
@@ -370,6 +386,7 @@ class AppDslService:
             mode=app_mode.value,
             name=name,
             description=description,
+            icon_type=icon_type,
             icon=icon,
             icon_background=icon_background,
             enable_site=True,

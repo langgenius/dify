@@ -5,8 +5,7 @@ from urllib.parse import parse_qs, urlparse
 
 import requests
 
-from core.app.app_config.entities import FileExtraConfig
-from core.file.file_obj import FileBelongsTo, FileTransferMethod, FileType, FileVar
+from core.file.file_obj import FileBelongsTo, FileExtraConfig, FileTransferMethod, FileType, FileVar
 from extensions.ext_database import db
 from models.account import Account
 from models.model import EndUser, MessageFile, UploadFile
@@ -100,7 +99,7 @@ class MessageFileParser:
         # return all file objs
         return new_files
 
-    def transform_message_files(self, files: list[MessageFile], file_extra_config: FileExtraConfig) -> list[FileVar]:
+    def transform_message_files(self, files: list[MessageFile], file_extra_config: FileExtraConfig):
         """
         transform message files
 
@@ -145,7 +144,7 @@ class MessageFileParser:
 
         return type_file_objs
 
-    def _to_file_obj(self, file: Union[dict, MessageFile], file_extra_config: FileExtraConfig) -> FileVar:
+    def _to_file_obj(self, file: Union[dict, MessageFile], file_extra_config: FileExtraConfig):
         """
         transform file to file obj
 
