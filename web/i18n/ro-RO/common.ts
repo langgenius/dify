@@ -59,6 +59,10 @@ const translation = {
       ruRU: 'Rusă',
       ukUA: 'Ucraineană',
       viVN: 'Vietnameză',
+      roRO: 'Română',
+      hiIN: 'Hindi',
+      trTR: 'Turcă',
+      faIR: 'Persană',
     },
   },
   unit: {

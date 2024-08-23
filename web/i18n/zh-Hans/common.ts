@@ -64,6 +64,10 @@ const translation = {
       ukUA: '乌克兰语',
       viVN: '越南语',
       plPL: '波兰语',
+      roRO: '罗马尼亚语',
+      hiIN: '印地语',
+      trTR: '土耳其语',
+      faIR: '波斯语',
     },
   },
   unit: {

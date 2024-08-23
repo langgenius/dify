@@ -45,6 +45,7 @@ const translation = {
   voice: {
     language: {
       zhHans: 'Tiếng Trung',
+      zhHant: 'Tiếng Trung phồn thể',
       enUS: 'Tiếng Anh',
       deDE: 'Tiếng Đức',
       frFR: 'Tiếng Pháp',
@@ -59,6 +60,10 @@ const translation = {
       ukUA: 'Tiếng Ukraina',
       viVN: 'Tiếng Việt',
       plPL: 'Tiếng Ba Lan',
+      roRO: 'Tiếng Rumani',
+      hiIN: 'Tiếng Hindi',
+      trTR: 'Tiếng Thổ Nhĩ Kỳ',
+      faIR: 'Tiếng Ba Tư',
     },
   },
   unit: {

@@ -64,6 +64,10 @@ const translation = {
       ukUA: 'यूक्रेनी',
       viVN: 'वियतनामी',
       plPL: 'पोलिश',
+      roRO: 'रोमानियाई',
+      hiIN: 'हिन्दी',
+      trTR: 'तुर्की',
+      faIR: 'फ़ारसी',
     },
   },
   unit: {
