@@ -235,7 +235,7 @@ class HttpExecutor:
         if executor_response.is_file:
             if executor_response.size > dify_config.HTTP_REQUEST_NODE_MAX_BINARY_SIZE:
                 raise ValueError(
-                    f'File size is too large, max size is {dify_config.HTTP_REQUEST_NODE_READABLE_MAX_TEXT_SIZE},'
+                    f'File size is too large, max size is {dify_config.HTTP_REQUEST_NODE_MAX_BINARY_SIZE},'
                     f' but current size is {executor_response.readable_size}.'
                 )
         else:
