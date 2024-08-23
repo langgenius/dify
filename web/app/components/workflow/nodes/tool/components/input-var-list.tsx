@@ -133,9 +133,9 @@ const InputVarList: FC<Props> = ({
           return (
             <div key={variable} className='space-y-1'>
               <div className='flex items-center h-[18px] space-x-2'>
-                <span className='text-[13px] font-medium text-gray-900'>{label[language] || label.en_US}</span>
-                <span className='text-xs font-normal text-gray-500'>{paramType(type)}</span>
-                {required && <span className='leading-[18px] text-xs font-normal text-[#EC4A0A]'>Required</span>}
+                <span className='text-text-secondary code-sm-semibold'>{label[language] || label.en_US}</span>
+                <span className='text-text-tertiary system-xs-regular'>{paramType(type)}</span>
+                {required && <span className='text-util-colors-orange-dark-orange-dark-600 system-xs-regular'>Required</span>}
               </div>
               {isString && (
                 <Input
@@ -189,7 +189,7 @@ const InputVarList: FC<Props> = ({
                   filterVar={(varPayload: Var) => varPayload.type === VarType.arrayFile}
                 />
               )}
-              {tooltip && <div className='leading-[18px] text-xs font-normal text-gray-600'>{tooltip[language] || tooltip.en_US}</div>}
+              {tooltip && <div className='text-text-tertiary body-xs-regular'>{tooltip[language] || tooltip.en_US}</div>}
             </div>
           )
         })
