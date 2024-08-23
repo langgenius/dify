@@ -5,7 +5,7 @@ import { useWorkflowStore } from '../store'
 export const usePanelInteractions = () => {
   const workflowStore = useWorkflowStore()
 
-  const handlePaneContextMenu = useCallback((e: MouseEvent) => {
+  const handlePanelContextMenu = useCallback((e: MouseEvent) => {
     e.preventDefault()
     const container = document.querySelector('#workflow-container')
     const { x, y } = container!.getBoundingClientRect()
@@ -17,7 +17,7 @@ export const usePanelInteractions = () => {
     })
   }, [workflowStore])
 
-  const handlePaneContextmenuCancel = useCallback(() => {
+  const handlePanelContextmenuCancel = useCallback(() => {
     workflowStore.setState({
       panelMenu: undefined,
     })
@@ -30,8 +30,8 @@ export const usePanelInteractions = () => {
   }, [workflowStore])
 
   return {
-    handlePaneContextMenu,
-    handlePaneContextmenuCancel,
+    handlePanelContextMenu,
+    handlePanelContextmenuCancel,
     handleNodeContextmenuCancel,
   }
 }

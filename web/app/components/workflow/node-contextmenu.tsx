@@ -13,14 +13,14 @@ import { usePanelInteractions } from './hooks'
 const NodeContextmenu = () => {
   const ref = useRef(null)
   const nodes = useNodes()
-  const { handleNodeContextmenuCancel, handlePaneContextmenuCancel } = usePanelInteractions()
+  const { handleNodeContextmenuCancel, handlePanelContextmenuCancel } = usePanelInteractions()
   const nodeMenu = useStore(s => s.nodeMenu)
   const currentNode = nodes.find(node => node.id === nodeMenu?.nodeId) as Node
 
   useEffect(() => {
     if (nodeMenu)
-      handlePaneContextmenuCancel()
-  }, [nodeMenu, handlePaneContextmenuCancel])
+      handlePanelContextmenuCancel()
+  }, [nodeMenu, handlePanelContextmenuCancel])
 
   useClickAway(() => {
     handleNodeContextmenuCancel()

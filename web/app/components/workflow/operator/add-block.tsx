@@ -1,7 +1,6 @@
 import {
   memo,
   useCallback,
-  useState,
 } from 'react'
 import { RiAddCircleFill } from '@remixicon/react'
 import { useStoreApi } from 'reactflow'
@@ -16,7 +15,7 @@ import {
   usePanelInteractions,
 } from '../hooks'
 import { NODES_INITIAL_DATA } from '../constants'
-import { useWorkflowStore } from '../store'
+import { useStore, useWorkflowStore } from '../store'
 import TipPopup from './tip-popup'
 import cn from '@/utils/classnames'
 import BlockSelector from '@/app/components/workflow/block-selector'
@@ -39,15 +38,17 @@ const AddBlock = ({
   const store = useStoreApi()
   const workflowStore = useWorkflowStore()
   const { nodesReadOnly } = useNodesReadOnly()
-  const { handlePaneContextmenuCancel } = usePanelInteractions()
-  const [open, setOpen] = useState(false)
+  const { handlePanelContextmenuCancel } = usePanelInteractions()
   const { availableNextBlocks } = useAvailableBlocks(BlockEnum.Start, false)
 
+  const showAddBlock = useStore(state => state.showAddBlock)
+  const setShowAddBlock = useStore(state => state.setShowAddBlock)
+
   const handleOpenChange = useCallback((open: boolean) => {
-    setOpen(open)
+    setShowAddBlock(open)
     if (!open)
-      handlePaneContextmenuCancel()
-  }, [handlePaneContextmenuCancel])
+      handlePanelContextmenuCancel()
+  }, [setShowAddBlock, handlePanelContextmenuCancel])
 
   const handleSelect = useCallback<OnSelectBlock>((type, toolDefaultValue) => {
     const {
@@ -90,7 +91,7 @@ const AddBlock = ({
 
   return (
     <BlockSelector
-      open={open}
+      open={showAddBlock}
       onOpenChange={handleOpenChange}
       disabled={nodesReadOnly}
       onSelect={handleSelect}
