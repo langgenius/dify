@@ -90,6 +90,7 @@ const translation = {
     title: '追蹤應用程式效能',
     description: '配置第三方LLMOps提供商並追蹤應用程式效能。',
     config: '配置',
+    view: '查看',
     collapse: '收起',
     expand: '展開',
     tracing: '追蹤',
