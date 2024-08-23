@@ -37,8 +37,6 @@ export const useShortcuts = (): void => {
   const { handleLayout } = useWorkflowOrganize()
 
   const {
-    zoomIn,
-    zoomOut,
     zoomTo,
     getZoom,
     fitView,
