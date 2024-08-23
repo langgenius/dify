@@ -5,7 +5,7 @@ import { useTranslation } from 'react-i18next'
 import { TracingProvider } from './type'
 import cn from '@/utils/classnames'
 import { LangfuseIconBig, LangsmithIconBig } from '@/app/components/base/icons/src/public/tracing'
-import { Settings04 } from '@/app/components/base/icons/src/vender/line/general'
+import { Settings04, View } from '@/app/components/base/icons/src/vender/line/general'
 
 const I18N_PREFIX = 'app.tracing'
 
@@ -13,6 +13,7 @@ type Props = {
   type: TracingProvider
   readOnly: boolean
   isChosen: boolean
+  Config: any
   onChoose: () => void
   hasConfigured: boolean
   onConfig: () => void
@@ -29,6 +30,7 @@ const ProviderPanel: FC<Props> = ({
   type,
   readOnly,
   isChosen,
+  Config,
   onChoose,
   hasConfigured,
   onConfig,
@@ -40,6 +42,14 @@ const ProviderPanel: FC<Props> = ({
     e.stopPropagation()
     onConfig()
   }, [onConfig])
+
+  const viewBtnClick = useCallback((e: React.MouseEvent) => {
+    e.preventDefault()
+    e.stopPropagation()
+
+    const url = `${Config?.host}/project/${Config?.project_key}`
+    window.open(url, '_blank', 'noopener,noreferrer')
+  }, [Config?.host, Config?.project_key])
 
   const handleChosen = useCallback((e: React.MouseEvent) => {
     e.stopPropagation()
@@ -58,12 +68,20 @@ const ProviderPanel: FC<Props> = ({
           {isChosen && <div className='ml-1 flex items-center h-4  px-1 rounded-[4px] border border-primary-500 leading-4 text-xs font-medium text-primary-500 uppercase '>{t(`${I18N_PREFIX}.inUse`)}</div>}
         </div>
         {!readOnly && (
-          <div
-            className='flex px-2 items-center h-6 bg-white rounded-md border-[0.5px] border-gray-200 shadow-xs cursor-pointer text-gray-700 space-x-1'
-            onClick={handleConfigBtnClick}
-          >
-            <Settings04 className='w-3 h-3' />
-            <div className='text-xs font-medium'>{t(`${I18N_PREFIX}.config`)}</div>
+          <div className={'flex justify-between items-center space-x-1'}>
+            {hasConfigured && (
+              <div className='flex px-2 items-center h-6 bg-white rounded-md border-[0.5px] border-gray-200 shadow-xs cursor-pointer text-gray-700 space-x-1' onClick={viewBtnClick} >
+                <View className='w-3 h-3'/>
+                <div className='text-xs font-medium'>{t(`${I18N_PREFIX}.view`)}</div>
+              </div>
+            )}
+            <div
+              className='flex px-2 items-center h-6 bg-white rounded-md border-[0.5px] border-gray-200 shadow-xs cursor-pointer text-gray-700 space-x-1'
+              onClick={handleConfigBtnClick}
+            >
+              <Settings04 className='w-3 h-3' />
+              <div className='text-xs font-medium'>{t(`${I18N_PREFIX}.config`)}</div>
+            </div>
           </div>
         )}
 
