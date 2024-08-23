@@ -1,58 +1,61 @@
-import {
-  memo,
-  useCallback,
-  useState,
-} from 'react'
+import React, { memo, useCallback, useEffect, useState } from 'react'
 import { RiAddCircleFill } from '@remixicon/react'
 import { useStoreApi } from 'reactflow'
 import { useTranslation } from 'react-i18next'
 import type { OffsetOptions } from '@floating-ui/react'
-import {
-  generateNewNode,
-} from '../utils'
+import { generateNewNode } from '../utils'
 import {
   useAvailableBlocks,
   useNodesReadOnly,
   usePanelInteractions,
 } from '../hooks'
 import { NODES_INITIAL_DATA } from '../constants'
-import { useWorkflowStore } from '../store'
+import { useStore, useWorkflowStore } from '../store'
 import TipPopup from './tip-popup'
 import cn from '@/utils/classnames'
 import BlockSelector from '@/app/components/workflow/block-selector'
-import type {
-  OnSelectBlock,
-} from '@/app/components/workflow/types'
-import {
-  BlockEnum,
-} from '@/app/components/workflow/types'
+import type { OnSelectBlock } from '@/app/components/workflow/types'
+import { BlockEnum } from '@/app/components/workflow/types'
 
 type AddBlockProps = {
   renderTrigger?: (open: boolean) => React.ReactNode
   offset?: OffsetOptions
+  useShortcut?: boolean
 }
+
 const AddBlock = ({
   renderTrigger,
   offset,
+  useShortcut = false,
 }: AddBlockProps) => {
   const { t } = useTranslation()
   const store = useStoreApi()
   const workflowStore = useWorkflowStore()
   const { nodesReadOnly } = useNodesReadOnly()
-  const { handlePaneContextmenuCancel } = usePanelInteractions()
-  const [open, setOpen] = useState(false)
+  const { handlePanelContextmenuCancel } = usePanelInteractions()
   const { availableNextBlocks } = useAvailableBlocks(BlockEnum.Start, false)
 
+  const showAddBlock = useStore(state => state.showAddBlock)
+  const setShowAddBlock = useStore(state => state.setShowAddBlock)
+
+  const [isOpen, setIsOpen] = useState(false)
+
+  useEffect(() => {
+    if (useShortcut && showAddBlock)
+      setIsOpen(true)
+  }, [useShortcut, showAddBlock])
+
   const handleOpenChange = useCallback((open: boolean) => {
-    setOpen(open)
+    setIsOpen(open)
+    if (useShortcut)
+      setShowAddBlock(open)
+
     if (!open)
-      handlePaneContextmenuCancel()
-  }, [handlePaneContextmenuCancel])
+      handlePanelContextmenuCancel()
+  }, [useShortcut, setShowAddBlock, handlePanelContextmenuCancel])
 
   const handleSelect = useCallback<OnSelectBlock>((type, toolDefaultValue) => {
-    const {
-      getNodes,
-    } = store.getState()
+    const { getNodes } = store.getState()
     const nodes = getNodes()
     const nodesWithSameType = nodes.filter(node => node.data.type === type)
     const newNode = generateNewNode({
@@ -67,16 +70,12 @@ const AddBlock = ({
         y: 0,
       },
     })
-    workflowStore.setState({
-      candidateNode: newNode,
-    })
+    workflowStore.setState({ candidateNode: newNode })
   }, [store, workflowStore, t])
 
   const renderTriggerElement = useCallback((open: boolean) => {
     return (
-      <TipPopup
-        title={t('workflow.common.addBlock')}
-      >
+      <TipPopup title={t('workflow.common.addBlock')} shortcuts={['shift', 'a']}>
         <div className={cn(
           'flex items-center justify-center w-8 h-8 rounded-lg hover:bg-black/5 hover:text-gray-700 cursor-pointer',
           `${nodesReadOnly && '!cursor-not-allowed opacity-50'}`,
@@ -90,7 +89,7 @@ const AddBlock = ({
 
   return (
     <BlockSelector
-      open={open}
+      open={isOpen}
       onOpenChange={handleOpenChange}
       disabled={nodesReadOnly}
       onSelect={handleSelect}

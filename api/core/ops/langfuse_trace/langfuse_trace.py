@@ -419,3 +419,11 @@ class LangFuseDataTrace(BaseTraceInstance):
         except Exception as e:
             logger.debug(f"LangFuse API check failed: {str(e)}")
             raise ValueError(f"LangFuse API check failed: {str(e)}")
+
+    def get_project_key(self):
+        try:
+            projects = self.langfuse_client.client.projects.get()
+            return projects.data[0].id
+        except Exception as e:
+            logger.debug(f"LangFuse get project key failed: {str(e)}")
+            raise ValueError(f"LangFuse get project key failed: {str(e)}")

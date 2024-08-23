@@ -90,6 +90,13 @@ export const useShortcuts = (): void => {
     }
   }, { exactMatch: true, useCapture: true })
 
+  useKeyPress(`${getKeyboardKeyCodeBySystem('shift')}.a`, (e) => {
+    if (shouldHandleShortcut(e)) {
+      e.preventDefault()
+      workflowStore.setState({ showAddBlock: true })
+    }
+  }, { exactMatch: true, useCapture: true })
+
   useKeyPress(`${getKeyboardKeyCodeBySystem('alt')}.r`, (e) => {
     if (shouldHandleShortcut(e)) {
       e.preventDefault()

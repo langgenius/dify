@@ -44,7 +44,9 @@ const Control = () => {
 
   return (
     <div className='flex items-center p-0.5 rounded-lg border-[0.5px] border-gray-100 bg-white shadow-lg text-gray-500'>
-      <AddBlock />
+      <AddBlock
+        useShortcut={true}
+      />
       <TipPopup title={t('workflow.nodes.note.addNote')}>
         <div
           className={cn(

@@ -51,6 +51,32 @@ const translation = {
   },
   docsFailedNotice: 'nie udało się zindeksować dokumentów',
   retry: 'Ponów',
+  indexingTechnique: {
+    high_quality: 'WJ',
+    economy: 'EKO',
+  },
+  indexingMethod: {
+    semantic_search: 'WEKTOR',
+    full_text_search: 'PEŁNY TEKST',
+    hybrid_search: 'HYBRYDOWY',
+    invertedIndex: 'ODWRÓCONY',
+  },
+  mixtureHighQualityAndEconomicTip: 'Model ponownego rankingu jest wymagany dla mieszanki wysokiej jakości i ekonomicznych baz wiedzy.',
+  inconsistentEmbeddingModelTip: 'Model ponownego rankingu jest wymagany, jeśli modele osadzania wybranych baz wiedzy są niespójne.',
+  retrievalSettings: 'Ustawienia wyszukiwania',
+  rerankSettings: 'Ustawienia ponownego rankingu',
+  weightedScore: {
+    title: 'Ważona ocena',
+    description: 'Poprzez dostosowanie przypisanych wag, ta strategia ponownego rankingu określa, czy priorytetowo traktować dopasowanie semantyczne czy słów kluczowych.',
+    semanticFirst: 'Najpierw semantyczne',
+    keywordFirst: 'Najpierw słowa kluczowe',
+    customized: 'Dostosowane',
+    semantic: 'Semantyczne',
+    keyword: 'Słowo kluczowe',
+  },
+  nTo1RetrievalLegacy: 'Wyszukiwanie N-do-1 zostanie oficjalnie wycofane od września. Zaleca się korzystanie z najnowszego wyszukiwania wielościeżkowego, aby uzyskać lepsze wyniki.',
+  nTo1RetrievalLegacyLink: 'Dowiedz się więcej',
+  nTo1RetrievalLegacyLinkText: 'Wyszukiwanie N-do-1 zostanie oficjalnie wycofane we wrześniu.',
 }
 
 export default translation

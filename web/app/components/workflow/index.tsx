@@ -239,8 +239,8 @@ const Workflow: FC<WorkflowProps> = memo(({
     handleSelectionDrag,
   } = useSelectionInteractions()
   const {
-    handlePaneContextMenu,
-    handlePaneContextmenuCancel,
+    handlePanelContextMenu,
+    handlePanelContextmenuCancel,
   } = usePanelInteractions()
   const {
     isValidConnection,
@@ -304,7 +304,7 @@ const Workflow: FC<WorkflowProps> = memo(({
           <UpdateDSLModal
             onCancel={() => setShowImportDSLModal(false)}
             onBackup={exportCheck}
-            onImport={handlePaneContextmenuCancel}
+            onImport={handlePanelContextmenuCancel}
           />
         )
       }
@@ -338,7 +338,7 @@ const Workflow: FC<WorkflowProps> = memo(({
         onSelectionStart={handleSelectionStart}
         onSelectionChange={handleSelectionChange}
         onSelectionDrag={handleSelectionDrag}
-        onPaneContextMenu={handlePaneContextMenu}
+        onPaneContextMenu={handlePanelContextMenu}
         connectionLineComponent={CustomConnectionLine}
         connectionLineContainerStyle={{ zIndex: ITERATION_CHILDREN_Z_INDEX }}
         defaultViewport={viewport}
