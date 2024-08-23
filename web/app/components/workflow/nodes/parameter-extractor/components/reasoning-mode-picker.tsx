@@ -4,30 +4,9 @@ import React, { useCallback } from 'react'
 import { useTranslation } from 'react-i18next'
 import { ReasoningModeType } from '../types'
 import Field from '../../_base/components/field'
-import cn from '@/utils/classnames'
+import OptionCard from '../../_base/components/option-card'
 
 const i18nPrefix = 'workflow.nodes.parameterExtractor'
-
-type ItemProps = {
-  isChosen: boolean
-  text: string
-  onClick: () => void
-}
-
-const Item: FC<ItemProps> = ({
-  isChosen,
-  text,
-  onClick,
-}) => {
-  return (
-    <div
-      className={cn(isChosen ? 'border-[1.5px] border-primary-400 bg-white' : 'border border-gray-100 bg-gray-25', 'grow w-0 shrink-0 flex items-center h-8 justify-center rounded-lg cursor-pointer text-[13px] font-normal text-gray-900')}
-      onClick={() => !isChosen ? onClick() : () => { }}
-    >
-      {text}
-    </div>
-  )
-}
 
 type Props = {
   type: ReasoningModeType
@@ -51,16 +30,16 @@ const ReasoningModePicker: FC<Props> = ({
       title={t(`${i18nPrefix}.reasoningMode`)}
       tooltip={t(`${i18nPrefix}.reasoningModeTip`)!}
     >
-      <div className='flex space-x-1'>
-        <Item
-          isChosen={type === ReasoningModeType.functionCall}
-          text='Function/Tool Calling'
-          onClick={handleChange(ReasoningModeType.functionCall)}
+      <div className='grid grid-cols-2 gap-x-1'>
+        <OptionCard
+          title='Function/Tool Calling'
+          onSelect={handleChange(ReasoningModeType.functionCall)}
+          selected={type === ReasoningModeType.functionCall}
         />
-        <Item
-          isChosen={type === ReasoningModeType.prompt}
-          text='Prompt'
-          onClick={handleChange(ReasoningModeType.prompt)}
+        <OptionCard
+          title='Prompt'
+          selected={type === ReasoningModeType.prompt}
+          onSelect={handleChange(ReasoningModeType.prompt)}
         />
       </div>
     </Field>
