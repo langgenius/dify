@@ -75,7 +75,7 @@ const AddBlock = ({
 
   const renderTriggerElement = useCallback((open: boolean) => {
     return (
-      <TipPopup title={t('workflow.common.addBlock')}>
+      <TipPopup title={t('workflow.common.addBlock')} shortcuts={['shift', 'a']}>
         <div className={cn(
           'flex items-center justify-center w-8 h-8 rounded-lg hover:bg-black/5 hover:text-gray-700 cursor-pointer',
           `${nodesReadOnly && '!cursor-not-allowed opacity-50'}`,
