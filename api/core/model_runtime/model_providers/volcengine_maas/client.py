@@ -18,6 +18,7 @@ from volcenginesdkarkruntime.types.chat import (
 )
 from volcenginesdkarkruntime.types.chat.chat_completion_content_part_image_param import ImageURL
 from volcenginesdkarkruntime.types.chat.chat_completion_message_tool_call_param import Function
+from volcenginesdkarkruntime.types.create_embedding_response import CreateEmbeddingResponse
 from volcenginesdkarkruntime.types.shared_params import FunctionDefinition
 
 from core.model_runtime.entities.message_entities import (
@@ -49,9 +50,9 @@ class ArkClientV3:
 
     @staticmethod
     def is_compatible_with_legacy(credentials: dict) -> bool:
-        sdk_version = credentials.get("sdk_version", "v2")
+        sdk_version = credentials.get("sdk_version")
         endpoint = credentials.get("api_endpoint_host")
-        return sdk_version == "v2" and endpoint == "maas-api.ml-platform-cn-beijing.volces.com"
+        return sdk_version is None and endpoint == "maas-api.ml-platform-cn-beijing.volces.com"
 
     @classmethod
     def from_credentials(cls, credentials):
@@ -195,3 +196,6 @@ class ArkClientV3:
             if not chunk.choices:
                 continue
             yield chunk
+
+    def embeddings(self, texts: list[str]) -> CreateEmbeddingResponse:
+        return self.ark.embeddings.create(model=self.endpoint_id, input=texts)
