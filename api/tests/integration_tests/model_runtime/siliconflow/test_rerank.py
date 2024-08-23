@@ -13,9 +13,7 @@ def test_validate_credentials():
     with pytest.raises(CredentialsValidateFailedError):
         model.validate_credentials(
             model="BAAI/bge-reranker-v2-m3",
-            credentials={
-                "api_key": "invalid_key"
-            },
+            credentials={"api_key": "invalid_key"},
         )
 
     model.validate_credentials(
@@ -30,17 +28,17 @@ def test_invoke_model():
     model = SiliconflowRerankModel()
 
     result = model.invoke(
-        model='BAAI/bge-reranker-v2-m3',
+        model="BAAI/bge-reranker-v2-m3",
         credentials={
             "api_key": os.environ.get("API_KEY"),
         },
         query="Who is Kasumi?",
         docs=[
-            "Kasumi is a girl's name of Japanese origin meaning \"mist\".",
+            'Kasumi is a girl\'s name of Japanese origin meaning "mist".',
             "Her music is a kawaii bass, a mix of future bass, pop, and kawaii music ",
-            "and she leads a team named PopiParty."
+            "and she leads a team named PopiParty.",
         ],
-        score_threshold=0.8
+        score_threshold=0.8,
     )
 
     assert isinstance(result, RerankResult)
