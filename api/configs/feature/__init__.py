@@ -1,6 +1,6 @@
 from typing import Optional
 
-from pydantic import AliasChoices, Field, NonNegativeInt, PositiveInt, computed_field
+from pydantic import AliasChoices, Field, NegativeInt, NonNegativeInt, PositiveInt, computed_field
 from pydantic_settings import BaseSettings
 
 from configs.feature.hosted_service import HostedServiceConfig
@@ -52,8 +52,15 @@ class CodeExecutionSandboxConfig(BaseSettings):
         default='dify-sandbox',
     )
 
-    CODE_MAX_NUMBER: int = 9223372036854775807
-    CODE_MIN_NUMBER: int = -9223372036854775808
+    CODE_MAX_NUMBER: PositiveInt =Field(
+        description='max depth for code execution',
+        default=-9223372036854775807,
+    )
+
+    CODE_MIN_NUMBER: NegativeInt =Field(
+        description='',
+        default=-9223372036854775807,
+    )
 
     CODE_MAX_DEPTH: PositiveInt = Field(
         description='max depth for code execution',
