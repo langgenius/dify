@@ -45,6 +45,32 @@ const translation = {
   },
   docsFailedNotice: 'Dokumente konnten nicht indiziert werden',
   retry: 'Wiederholen',
+  indexingTechnique: {
+    high_quality: 'HQ',
+    economy: 'ECO',
+  },
+  indexingMethod: {
+    semantic_search: 'VEKTOR',
+    full_text_search: 'VOLLTEXT',
+    hybrid_search: 'HYBRID',
+    invertedIndex: 'INVERTIERT',
+  },
+  mixtureHighQualityAndEconomicTip: 'Für die Mischung von hochwertigen und wirtschaftlichen Wissensbasen ist das Rerank-Modell erforderlich.',
+  inconsistentEmbeddingModelTip: 'Das Rerank-Modell ist erforderlich, wenn die Embedding-Modelle der ausgewählten Wissensbasen inkonsistent sind.',
+  retrievalSettings: 'Abrufeinstellungen',
+  rerankSettings: 'Rerank-Einstellungen',
+  weightedScore: {
+    title: 'Gewichtete Bewertung',
+    description: 'Durch Anpassung der zugewiesenen Gewichte bestimmt diese Rerank-Strategie, ob semantische oder Schlüsselwort-Übereinstimmung priorisiert werden soll.',
+    semanticFirst: 'Semantik zuerst',
+    keywordFirst: 'Schlüsselwort zuerst',
+    customized: 'Angepasst',
+    semantic: 'Semantisch',
+    keyword: 'Schlüsselwort',
+  },
+  nTo1RetrievalLegacy: 'N-zu-1-Abruf wird ab September offiziell eingestellt. Es wird empfohlen, den neuesten Multi-Pfad-Abruf zu verwenden, um bessere Ergebnisse zu erzielen.',
+  nTo1RetrievalLegacyLink: 'Mehr erfahren',
+  nTo1RetrievalLegacyLinkText: 'N-zu-1-Abruf wird im September offiziell eingestellt.',
 }
 
 export default translation
