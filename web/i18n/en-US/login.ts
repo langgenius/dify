@@ -9,7 +9,6 @@ const translation = {
   namePlaceholder: 'Your username',
   forget: 'Forgot your password?',
   signBtn: 'Sign in',
-  sso: 'Continue with SSO',
   installBtn: 'Set up',
   setAdminAccount: 'Setting up an admin account',
   setAdminAccountDesc: 'Maximum privileges for admin account, which can be used to create applications and manage LLM providers, etc.',
@@ -81,6 +80,8 @@ const translation = {
     didNotReceiveCode: 'Didn\'t receive the code?',
     resend: 'Resend',
     useAnotherMethod: 'Use another method',
+    emptyCode: 'Code is required',
+    invalidCode: 'Invalid code',
   },
 }
 
