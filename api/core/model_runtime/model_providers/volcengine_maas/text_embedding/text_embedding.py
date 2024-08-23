@@ -22,16 +22,16 @@ from core.model_runtime.errors.invoke import (
 )
 from core.model_runtime.errors.validate import CredentialsValidateFailedError
 from core.model_runtime.model_providers.__base.text_embedding_model import TextEmbeddingModel
-from core.model_runtime.model_providers.volcengine_maas.client import MaaSClient
-from core.model_runtime.model_providers.volcengine_maas.errors import (
+from core.model_runtime.model_providers.volcengine_maas.legacy.client import MaaSClient
+from core.model_runtime.model_providers.volcengine_maas.legacy.errors import (
     AuthErrors,
     BadRequestErrors,
     ConnectionErrors,
+    MaasException,
     RateLimitErrors,
     ServerUnavailableErrors,
 )
 from core.model_runtime.model_providers.volcengine_maas.text_embedding.models import get_model_config
-from core.model_runtime.model_providers.volcengine_maas.volc_sdk import MaasException
 
 
 class VolcengineMaaSTextEmbeddingModel(TextEmbeddingModel):

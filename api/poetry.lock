@@ -8855,6 +8855,28 @@ files = [
 ]
 
 [[package]]
+name = "volcengine-python-sdk"
+version = "1.0.97"
+description = "Volcengine SDK for Python"
+optional = false
+python-versions = "*"
+files = [
+    {file = "volcengine-python-sdk-1.0.97.tar.gz", hash = "sha256:247f4d84657a85775e572734308067cc4447cafd2e1d9106edfa4cecfe5e936b"},
+]
+
+[package.dependencies]
+anyio = {version = ">=3.5.0,<5", optional = true, markers = "extra == \"ark\""}
+certifi = ">=2017.4.17"
+httpx = {version = ">=0.23.0,<1", optional = true, markers = "extra == \"ark\""}
+pydantic = {version = ">=1.9.0,<3", optional = true, markers = "extra == \"ark\""}
+python-dateutil = ">=2.1"
+six = ">=1.10"
+urllib3 = ">=1.23"
+
+[package.extras]
+ark = ["anyio (>=3.5.0,<5)", "cached-property", "httpx (>=0.23.0,<1)", "pydantic (>=1.9.0,<3)"]
+
+[[package]]
 name = "watchfiles"
 version = "0.23.0"
 description = "Simple, modern and high performance file watching and code reload in python."
