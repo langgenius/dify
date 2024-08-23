@@ -1,15 +1,13 @@
 import logging
-import time
 from enum import Enum
 from threading import Lock
-from typing import Literal, Optional
+from typing import Optional
 
-from httpx import get, post
+from httpx import Timeout, post
 from pydantic import BaseModel
 from yarl import URL
 
 from configs import dify_config
-from core.helper.code_executor.entities import CodeDependency
 from core.helper.code_executor.javascript.javascript_transformer import NodeJsTemplateTransformer
 from core.helper.code_executor.jinja2.jinja2_transformer import Jinja2TemplateTransformer
 from core.helper.code_executor.python3.python3_transformer import Python3TemplateTransformer
@@ -21,7 +19,7 @@ logger = logging.getLogger(__name__)
 CODE_EXECUTION_ENDPOINT = dify_config.CODE_EXECUTION_ENDPOINT
 CODE_EXECUTION_API_KEY = dify_config.CODE_EXECUTION_API_KEY
 
-CODE_EXECUTION_TIMEOUT = (10, 60)
+CODE_EXECUTION_TIMEOUT = Timeout(connect=10, write=10, read=60, pool=None)
 
 class CodeExecutionException(Exception):
     pass
@@ -66,8 +64,7 @@ class CodeExecutor:
     def execute_code(cls, 
                      language: CodeLanguage, 
                      preload: str, 
-                     code: str, 
-                     dependencies: Optional[list[CodeDependency]] = None) -> str:
+                     code: str) -> str:
         """
         Execute code
         :param language: code language
@@ -86,9 +83,6 @@ class CodeExecutor:
             'preload': preload,
             'enable_network': True
         }
-
-        if dependencies:
-            data['dependencies'] = [dependency.model_dump() for dependency in dependencies]
 
         try:
             response = post(str(url), json=data, headers=headers, timeout=CODE_EXECUTION_TIMEOUT)
@@ -116,10 +110,10 @@ class CodeExecutor:
         if response.data.error:
             raise CodeExecutionException(response.data.error)
         
-        return response.data.stdout
+        return response.data.stdout or ''
 
     @classmethod
-    def execute_workflow_code_template(cls, language: CodeLanguage, code: str, inputs: dict, dependencies: Optional[list[CodeDependency]] = None) -> dict:
+    def execute_workflow_code_template(cls, language: CodeLanguage, code: str, inputs: dict) -> dict:
         """
         Execute code
         :param language: code language
@@ -131,67 +125,12 @@ class CodeExecutor:
         if not template_transformer:
             raise CodeExecutionException(f'Unsupported language {language}')
 
-        runner, preload, dependencies = template_transformer.transform_caller(code, inputs, dependencies)
+        runner, preload = template_transformer.transform_caller(code, inputs)
 
         try:
-            response = cls.execute_code(language, preload, runner, dependencies)
+            response = cls.execute_code(language, preload, runner)
         except CodeExecutionException as e:
             raise e
 
         return template_transformer.transform_response(response)
     
-    @classmethod
-    def list_dependencies(cls, language: str) -> list[CodeDependency]:
-        if language not in cls.supported_dependencies_languages:
-            return []
-
-        with cls.dependencies_cache_lock:
-            if language in cls.dependencies_cache:
-                # check expiration
-                dependencies = cls.dependencies_cache[language]
-                if dependencies['expiration'] > time.time():
-                    return dependencies['data']
-                # remove expired cache
-                del cls.dependencies_cache[language]
-        
-        dependencies = cls._get_dependencies(language)
-        with cls.dependencies_cache_lock:
-            cls.dependencies_cache[language] = {
-                'data': dependencies,
-                'expiration': time.time() + 60
-            }
-        
-        return dependencies
-        
-    @classmethod
-    def _get_dependencies(cls, language: Literal['python3']) -> list[CodeDependency]:
-        """
-        List dependencies
-        """
-        url = URL(CODE_EXECUTION_ENDPOINT) / 'v1' / 'sandbox' / 'dependencies'
-
-        headers = {
-            'X-Api-Key': CODE_EXECUTION_API_KEY
-        }
-
-        running_language = cls.code_language_to_running_language.get(language)
-        if isinstance(running_language, Enum):
-            running_language = running_language.value
-
-        data = {
-            'language': running_language,
-        }
-
-        try:
-            response = get(str(url), params=data, headers=headers, timeout=CODE_EXECUTION_TIMEOUT)
-            if response.status_code != 200:
-                raise Exception(f'Failed to list dependencies, got status code {response.status_code}, please check if the sandbox service is running')
-            response = response.json()
-            dependencies = response.get('data', {}).get('dependencies', [])
-            return [
-                CodeDependency(**dependency) for dependency in dependencies
-                if dependency.get('name') not in Python3TemplateTransformer.get_standard_packages()
-            ]
-        except Exception as e:
-            logger.exception(f'Failed to list dependencies: {e}')
-            return []
