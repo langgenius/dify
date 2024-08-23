@@ -83,6 +83,8 @@ const translation = {
     didNotReceiveCode: '没有收到验证码？',
     resend: '重新发送',
     useAnotherMethod: '使用其他方式登陆',
+    emptyCode: '验证码不能为空',
+    invalidCode: '验证码无效',
   },
 }
 

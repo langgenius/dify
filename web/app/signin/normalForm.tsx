@@ -23,7 +23,6 @@ const NormalForm = () => {
 
   useEffect(() => {
     getSystemFeatures().then((res) => {
-      console.log('🚀 ~ getSystemFeatures ~ res:', res)
       setSystemFeatures(res)
     }).finally(() => {
       setIsLoading(false)
@@ -54,7 +53,7 @@ const NormalForm = () => {
 
           <div className="flex flex-col gap-3 mt-6">
             {enabledAuthType.includes('social') && <SocialAuth />}
-            {enabledAuthType.includes('sso') && <div className='w-full'><SSOAuthButton /></div>}
+            {enabledAuthType.includes('sso') && <div className='w-full'><SSOAuthButton protocol={systemFeatures.sso_enforced_for_signin_protocol} /></div>}
           </div>
 
           {(enabledAuthType.includes('code') || enabledAuthType.includes('password'))
