@@ -45,6 +45,32 @@ const translation = {
   },
   docsFailedNotice: 'no se pudieron indexar los documentos',
   retry: 'Reintentar',
+  indexingTechnique: {
+    high_quality: 'AC',
+    economy: 'ECO',
+  },
+  indexingMethod: {
+    semantic_search: 'VECTOR',
+    full_text_search: 'TEXTO COMPLETO',
+    hybrid_search: 'HÍBRIDO',
+    invertedIndex: 'INVERTIDO',
+  },
+  mixtureHighQualityAndEconomicTip: 'Se requiere el modelo de reclasificación para la mezcla de bases de conocimiento de alta calidad y económicas.',
+  inconsistentEmbeddingModelTip: 'Se requiere el modelo de reclasificación si los modelos de incrustación de las bases de conocimiento seleccionadas son inconsistentes.',
+  retrievalSettings: 'Configuración de recuperación',
+  rerankSettings: 'Configuración de reclasificación',
+  weightedScore: {
+    title: 'Puntuación ponderada',
+    description: 'Al ajustar los pesos asignados, esta estrategia de reclasificación determina si se debe priorizar la coincidencia semántica o de palabras clave.',
+    semanticFirst: 'Semántica primero',
+    keywordFirst: 'Palabra clave primero',
+    customized: 'Personalizado',
+    semantic: 'Semántico',
+    keyword: 'Palabra clave',
+  },
+  nTo1RetrievalLegacy: 'La recuperación N-a-1 será oficialmente obsoleta a partir de septiembre. Se recomienda utilizar la última recuperación de múltiples rutas para obtener mejores resultados.',
+  nTo1RetrievalLegacyLink: 'Más información',
+  nTo1RetrievalLegacyLinkText: 'La recuperación N-a-1 será oficialmente obsoleta en septiembre.',
 }
 
 export default translation

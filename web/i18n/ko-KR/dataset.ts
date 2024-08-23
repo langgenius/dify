@@ -44,6 +44,32 @@ const translation = {
   },
   docsFailedNotice: '문서 인덱스에 실패했습니다',
   retry: '재시도',
+  indexingTechnique: {
+    high_quality: 'HQ',
+    economy: '이코노미',
+  },
+  indexingMethod: {
+    semantic_search: '벡터',
+    full_text_search: '전체 텍스트',
+    hybrid_search: '하이브리드',
+    invertedIndex: '역인덱스',
+  },
+  mixtureHighQualityAndEconomicTip: '고품질과 경제적 지식 베이스의 혼합을 위해서는 재순위 모델이 필요합니다.',
+  inconsistentEmbeddingModelTip: '선택된 지식 베이스의 임베딩 모델이 일관되지 않은 경우 재순위 모델이 필요합니다.',
+  retrievalSettings: '검색 설정',
+  rerankSettings: '재순위 설정',
+  weightedScore: {
+    title: '가중 점수',
+    description: '할당된 가중치를 조정함으로써, 이 재순위 전략은 의미론적 일치 또는 키워드 일치 중 어느 것을 우선시할지 결정합니다.',
+    semanticFirst: '의미론 우선',
+    keywordFirst: '키워드 우선',
+    customized: '사용자 정의',
+    semantic: '의미론적',
+    keyword: '키워드',
+  },
+  nTo1RetrievalLegacy: 'N-대-1 검색은 9월부터 공식적으로 더 이상 사용되지 않습니다. 더 나은 결과를 얻으려면 최신 다중 경로 검색을 사용하는 것이 좋습니다.',
+  nTo1RetrievalLegacyLink: '자세히 알아보기',
+  nTo1RetrievalLegacyLinkText: 'N-대-1 검색은 9월에 공식적으로 더 이상 사용되지 않습니다.',
 }
 
 export default translation

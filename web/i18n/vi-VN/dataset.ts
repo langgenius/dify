@@ -45,6 +45,32 @@ const translation = {
   },
   docsFailedNotice: 'tài liệu không được lập chỉ mục',
   retry: 'Thử lại',
+  indexingTechnique: {
+    high_quality: 'CHẤT LƯỢNG',
+    economy: 'TIẾT KIỆM',
+  },
+  indexingMethod: {
+    semantic_search: 'VECTOR',
+    full_text_search: 'VĂN BẢN ĐẦY ĐỦ',
+    hybrid_search: 'KẾT HỢP',
+    invertedIndex: 'ĐẢO NGƯỢC',
+  },
+  mixtureHighQualityAndEconomicTip: 'Mô hình xếp hạng lại là cần thiết cho sự kết hợp của các cơ sở kiến thức chất lượng cao và tiết kiệm.',
+  inconsistentEmbeddingModelTip: 'Mô hình xếp hạng lại là cần thiết nếu các mô hình nhúng của các cơ sở kiến thức được chọn không nhất quán.',
+  retrievalSettings: 'Cài đặt truy xuất',
+  rerankSettings: 'Cài đặt xếp hạng lại',
+  weightedScore: {
+    title: 'Điểm số có trọng số',
+    description: 'Bằng cách điều chỉnh trọng số được gán, chiến lược xếp hạng lại này xác định liệu ưu tiên khớp ngữ nghĩa hay từ khóa.',
+    semanticFirst: 'Ngữ nghĩa trước',
+    keywordFirst: 'Từ khóa trước',
+    customized: 'Tùy chỉnh',
+    semantic: 'Ngữ nghĩa',
+    keyword: 'Từ khóa',
+  },
+  nTo1RetrievalLegacy: 'Truy xuất N-đến-1 sẽ chính thức bị loại bỏ từ tháng 9. Khuyến nghị sử dụng truy xuất đa đường dẫn mới nhất để có kết quả tốt hơn.',
+  nTo1RetrievalLegacyLink: 'Tìm hiểu thêm',
+  nTo1RetrievalLegacyLinkText: 'Truy xuất N-đến-1 sẽ chính thức bị loại bỏ vào tháng 9.',
 }
 
 export default translation

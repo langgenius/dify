@@ -45,6 +45,32 @@ const translation = {
   },
   docsFailedNotice: 'documentele nu au putut fi indexate',
   retry: 'Reîncercați',
+  indexingTechnique: {
+    high_quality: 'IC',
+    economy: 'ECO',
+  },
+  indexingMethod: {
+    semantic_search: 'VECTOR',
+    full_text_search: 'TEXT COMPLET',
+    hybrid_search: 'HIBRID',
+    invertedIndex: 'INVERSAT',
+  },
+  mixtureHighQualityAndEconomicTip: 'Modelul de reclasificare este necesar pentru amestecul de baze de cunoștințe de înaltă calitate și economice.',
+  inconsistentEmbeddingModelTip: 'Modelul de reclasificare este necesar dacă modelele de încorporare ale bazelor de cunoștințe selectate sunt inconsistente.',
+  retrievalSettings: 'Setări de recuperare',
+  rerankSettings: 'Setări de reclasificare',
+  weightedScore: {
+    title: 'Scor ponderat',
+    description: 'Prin ajustarea ponderilor atribuite, această strategie de reclasificare determină dacă să prioritizeze potrivirea semantică sau pe cea a cuvintelor cheie.',
+    semanticFirst: 'Semantic primul',
+    keywordFirst: 'Cuvânt cheie primul',
+    customized: 'Personalizat',
+    semantic: 'Semantic',
+    keyword: 'Cuvânt cheie',
+  },
+  nTo1RetrievalLegacy: 'Recuperarea N-la-1 va fi oficial depreciată din septembrie. Se recomandă utilizarea celei mai recente recuperări cu căi multiple pentru a obține rezultate mai bune.',
+  nTo1RetrievalLegacyLink: 'Află mai multe',
+  nTo1RetrievalLegacyLinkText: 'Recuperarea N-la-1 va fi oficial depreciată în septembrie.',
 }
 
 export default translation

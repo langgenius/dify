@@ -52,6 +52,32 @@ const translation = {
   },
   docsFailedNotice: 'दस्तावेज़ों को अनुक्रमित करने में विफल',
   retry: 'पुनः प्रयास करें',
+  indexingTechnique: {
+    high_quality: 'उच्च गुणवत्ता',
+    economy: 'किफायती',
+  },
+  indexingMethod: {
+    semantic_search: 'वेक्टर',
+    full_text_search: 'पूर्ण पाठ',
+    hybrid_search: 'हाइब्रिड',
+    invertedIndex: 'उल्टा',
+  },
+  mixtureHighQualityAndEconomicTip: 'उच्च गुणवत्ता और किफायती ज्ञान आधारों के मिश्रण के लिए पुनः रैंकिंग मॉडल आवश्यक है।',
+  inconsistentEmbeddingModelTip: 'यदि चयनित ज्ञान आधारों के एम्बेडिंग मॉडल असंगत हैं, तो पुनः रैंकिंग मॉडल आवश्यक है।',
+  retrievalSettings: 'पुनर्प्राप्ति सेटिंग्स',
+  rerankSettings: 'पुनः रैंकिंग सेटिंग्स',
+  weightedScore: {
+    title: 'भारित स्कोर',
+    description: 'आवंटित भारों को समायोजित करके, यह पुनः रैंकिंग रणनीति निर्धारित करती है कि शब्दार्थ या कीवर्ड मिलान को प्राथमिकता दी जाए।',
+    semanticFirst: 'शब्दार्थ पहले',
+    keywordFirst: 'कीवर्ड पहले',
+    customized: 'अनुकूलित',
+    semantic: 'शब्दार्थ',
+    keyword: 'कीवर्ड',
+  },
+  nTo1RetrievalLegacy: 'N-से-1 पुनर्प्राप्ति सितंबर से आधिकारिक तौर पर बंद कर दी जाएगी। बेहतर परिणाम प्राप्त करने के लिए नवीनतम बहु-मार्ग पुनर्प्राप्ति का उपयोग करने की सिफारिश की जाती है।',
+  nTo1RetrievalLegacyLink: 'और जानें',
+  nTo1RetrievalLegacyLinkText: 'N-से-1 पुनर्प्राप्ति सितंबर में आधिकारिक तौर पर बंद कर दी जाएगी।',
 }
 
 export default translation
