@@ -237,11 +237,11 @@ const translation = {
     typeSelect: 'Auswählen',
   },
   varKeyError: {
-    canNoBeEmpty: 'Variablenschlüssel darf nicht leer sein',
-    tooLong: 'Variablenschlüssel: {{key}} zu lang. Darf nicht länger als 30 Zeichen sein',
-    notValid: 'Variablenschlüssel: {{key}} ist ungültig. Darf nur Buchstaben, Zahlen und Unterstriche enthalten',
-    notStartWithNumber: 'Variablenschlüssel: {{key}} darf nicht mit einer Zahl beginnen',
-    keyAlreadyExists: 'Variablenschlüssel: :{{key}} existiert bereits',
+    canNoBeEmpty: '{{key}} ist erforderlich',
+    tooLong: '{{key}} zu lang. Darf nicht länger als 30 Zeichen sein',
+    notValid: '{{key}} ist ungültig. Darf nur Buchstaben, Zahlen und Unterstriche enthalten',
+    notStartWithNumber: '{{key}} darf nicht mit einer Zahl beginnen',
+    keyAlreadyExists: '{{key}} existiert bereits',
   },
   otherError: {
     promptNoBeEmpty: 'Prompt darf nicht leer sein',

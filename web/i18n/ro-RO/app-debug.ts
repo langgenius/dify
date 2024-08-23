@@ -254,11 +254,11 @@ const translation = {
     typeSelect: 'Selectează',
   },
   varKeyError: {
-    canNoBeEmpty: 'Cheia variabilei nu poate fi goală',
-    tooLong: 'Cheia variabilei: {{key}} este prea lungă. Nu poate fi mai lungă de 30 de caractere',
-    notValid: 'Cheia variabilei: {{key}} este nevalidă. Poate conține doar litere, cifre și sublinieri',
-    notStartWithNumber: 'Cheia variabilei: {{key}} nu poate începe cu un număr',
-    keyAlreadyExists: 'Cheia variabilei: :{{key}} deja există',
+    canNoBeEmpty: '{{key}} este necesară',
+    tooLong: '{{key}} este prea lungă. Nu poate fi mai lungă de 30 de caractere',
+    notValid: '{{key}} este nevalidă. Poate conține doar litere, cifre și sublinieri',
+    notStartWithNumber: '{{key}} nu poate începe cu un număr',
+    keyAlreadyExists: ':{{key}} deja există',
   },
   otherError: {
     promptNoBeEmpty: 'Promptul nu poate fi gol',

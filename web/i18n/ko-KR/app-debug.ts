@@ -248,11 +248,11 @@ const translation = {
     typeSelect: '선택',
   },
   varKeyError: {
-    canNoBeEmpty: '변수 키를 비울 수 없습니다',
-    tooLong: '변수 키: {{key}}가 너무 깁니다. 30자를 넘을 수 없습니다',
-    notValid: '변수 키: {{key}}가 유효하지 않습니다. 문자, 숫자, 밑줄만 포함할 수 있습니다',
-    notStartWithNumber: '변수 키: {{key}}는 숫자로 시작할 수 없습니다',
-    keyAlreadyExists: '변수 키: {{key}}는 이미 존재합니다',
+    canNoBeEmpty: '{{key}}가 필요합니다',
+    tooLong: '{{key}}가 너무 깁니다. 30자를 넘을 수 없습니다',
+    notValid: '{{key}}가 유효하지 않습니다. 문자, 숫자, 밑줄만 포함할 수 있습니다',
+    notStartWithNumber: '{{key}}는 숫자로 시작할 수 없습니다',
+    keyAlreadyExists: '{{key}}는 이미 존재합니다',
   },
   otherError: {
     promptNoBeEmpty: '프롬프트를 비울 수 없습니다',
