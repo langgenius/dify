@@ -248,11 +248,11 @@ const translation = {
     typeSelect: 'Seleccionar',
   },
   varKeyError: {
-    canNoBeEmpty: 'La clave de la variable no puede estar vacía',
-    tooLong: 'Clave de la variable: {{key}} demasiado larga. No puede tener más de 30 caracteres',
-    notValid: 'Clave de la variable: {{key}} no es válida. Solo puede contener letras, números y guiones bajos',
-    notStartWithNumber: 'Clave de la variable: {{key}} no puede comenzar con un número',
-    keyAlreadyExists: 'Clave de la variable: {{key}} ya existe',
+    canNoBeEmpty: 'Se requiere {{key}}',
+    tooLong: '{{key}} demasiado larga. No puede tener más de 30 caracteres',
+    notValid: '{{key}} no es válida. Solo puede contener letras, números y guiones bajos',
+    notStartWithNumber: '{{key}} no puede comenzar con un número',
+    keyAlreadyExists: '{{key}} ya existe',
   },
   otherError: {
     promptNoBeEmpty: 'La indicación no puede estar vacía',
