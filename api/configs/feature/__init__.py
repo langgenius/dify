@@ -1,6 +1,6 @@
 from typing import Optional
 
-from pydantic import AliasChoices, Field, NonNegativeInt, PositiveInt, computed_field
+from pydantic import AliasChoices, Field, NegativeInt, NonNegativeInt, PositiveInt, computed_field
 from pydantic_settings import BaseSettings
 
 from configs.feature.hosted_service import HostedServiceConfig
@@ -50,6 +50,46 @@ class CodeExecutionSandboxConfig(BaseSettings):
     CODE_EXECUTION_API_KEY: str = Field(
         description='API key for code execution service',
         default='dify-sandbox',
+    )
+
+    CODE_MAX_NUMBER: PositiveInt = Field(
+        description='max depth for code execution',
+        default=9223372036854775807,
+    )
+
+    CODE_MIN_NUMBER: NegativeInt = Field(
+        description='',
+        default=-9223372036854775807,
+    )
+
+    CODE_MAX_DEPTH: PositiveInt = Field(
+        description='max depth for code execution',
+        default=5,
+    )
+
+    CODE_MAX_PRECISION: PositiveInt = Field(
+        description='max precision digits for float type in code execution',
+        default=20,
+    )
+
+    CODE_MAX_STRING_LENGTH: PositiveInt = Field(
+        description='max string length for code execution',
+        default=80000,
+    )
+
+    CODE_MAX_STRING_ARRAY_LENGTH: PositiveInt = Field(
+        description='',
+        default=30,
+    )
+
+    CODE_MAX_OBJECT_ARRAY_LENGTH: PositiveInt = Field(
+        description='',
+        default=30,
+    )
+
+    CODE_MAX_NUMBER_ARRAY_LENGTH: PositiveInt = Field(
+        description='',
+        default=1000,
     )
 
 
@@ -157,6 +197,41 @@ class HttpConfig(BaseSettings):
     def WEB_API_CORS_ALLOW_ORIGINS(self) -> list[str]:
         return self.inner_WEB_API_CORS_ALLOW_ORIGINS.split(',')
 
+    HTTP_REQUEST_MAX_CONNECT_TIMEOUT: NonNegativeInt = Field(
+        description='',
+        default=300,
+    )
+
+    HTTP_REQUEST_MAX_READ_TIMEOUT: NonNegativeInt = Field(
+        description='',
+        default=600,
+    )
+
+    HTTP_REQUEST_MAX_WRITE_TIMEOUT: NonNegativeInt = Field(
+        description='',
+        default=600,
+    )
+
+    HTTP_REQUEST_NODE_MAX_BINARY_SIZE: PositiveInt = Field(
+        description='',
+        default=10 * 1024 * 1024,
+    )
+
+    HTTP_REQUEST_NODE_MAX_TEXT_SIZE: PositiveInt = Field(
+        description='',
+        default=1 * 1024 * 1024,
+    )
+
+    SSRF_PROXY_HTTP_URL: Optional[str] = Field(
+        description='HTTP URL for SSRF proxy',
+        default=None,
+    )
+
+    SSRF_PROXY_HTTPS_URL: Optional[str] = Field(
+        description='HTTPS URL for SSRF proxy',
+        default=None,
+    )
+
 
 class InnerAPIConfig(BaseSettings):
     """
@@ -255,6 +330,11 @@ class WorkflowConfig(BaseSettings):
         default=5,
     )
 
+    MAX_VARIABLE_SIZE: PositiveInt = Field(
+        description='The maximum size in bytes of a variable. default to 5KB.',
+        default=5 * 1024,
+    )
+
 
 class OAuthConfig(BaseSettings):
     """
@@ -291,8 +371,7 @@ class ModerationConfig(BaseSettings):
     Moderation in app configs.
     """
 
-    # todo: to be clarified in usage and unit
-    OUTPUT_MODERATION_BUFFER_SIZE: PositiveInt = Field(
+    MODERATION_BUFFER_SIZE: PositiveInt = Field(
         description='buffer size for moderation',
         default=300,
     )
@@ -444,7 +523,6 @@ class CeleryBeatConfig(BaseSettings):
 
 
 class PositionConfig(BaseSettings):
-
     POSITION_PROVIDER_PINS: str = Field(
         description='The heads of model providers',
         default='',
