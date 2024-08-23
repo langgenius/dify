@@ -77,7 +77,6 @@ exclude = [
     "services/**/*.py",
     "tasks/**/*.py",
     "tests/**/*.py",
-    "configs/**/*.py",
 ]
 
 [tool.pytest_env]

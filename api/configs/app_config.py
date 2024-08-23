@@ -25,11 +25,11 @@ class DifyConfig(
 ):
     model_config = SettingsConfigDict(
         # read from dotenv format config file
-        env_file='.env',
-        env_file_encoding='utf-8',
+        env_file=".env",
+        env_file_encoding="utf-8",
         frozen=True,
         # ignore extra attributes
-        extra='ignore',
+        extra="ignore",
     )
 
     # Before adding any config,
