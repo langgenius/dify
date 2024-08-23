@@ -1,4 +1,3 @@
-from pydantic import Field, computed_field
 from pydantic_settings import SettingsConfigDict
 
 from configs.deploy import DeploymentConfig
@@ -24,8 +23,6 @@ class DifyConfig(
     # **Before using, please contact business@dify.ai by email to inquire about licensing matters.**
     EnterpriseFeatureConfig,
 ):
-    DEBUG: bool = Field(default=False, description='whether to enable debug mode.')
-
     model_config = SettingsConfigDict(
         # read from dotenv format config file
         env_file='.env',
@@ -35,21 +32,7 @@ class DifyConfig(
         extra='ignore',
     )
 
-    HTTP_REQUEST_MAX_CONNECT_TIMEOUT: int = 300
-    HTTP_REQUEST_MAX_READ_TIMEOUT: int = 600
-    HTTP_REQUEST_MAX_WRITE_TIMEOUT: int = 600
-    HTTP_REQUEST_NODE_MAX_BINARY_SIZE: int = 1024 * 1024 * 10
-
-    @computed_field
-    def HTTP_REQUEST_NODE_READABLE_MAX_BINARY_SIZE(self) -> str:
-        return f'{self.HTTP_REQUEST_NODE_MAX_BINARY_SIZE / 1024 / 1024:.2f}MB'
-
-    HTTP_REQUEST_NODE_MAX_TEXT_SIZE: int = 1024 * 1024
-
-    @computed_field
-    def HTTP_REQUEST_NODE_READABLE_MAX_TEXT_SIZE(self) -> str:
-        return f'{self.HTTP_REQUEST_NODE_MAX_TEXT_SIZE / 1024 / 1024:.2f}MB'
-
-    SSRF_PROXY_HTTP_URL: str | None = None
-    SSRF_PROXY_HTTPS_URL: str | None = None
-
+    # Before adding any config,
+    # please consider to arrange it in the proper config group of existed or added
+    # for better readability and maintainability.
+    # Thanks for your concentration and consideration.

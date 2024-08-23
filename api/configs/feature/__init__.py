@@ -166,6 +166,23 @@ class HttpConfig(BaseSettings):
     def WEB_API_CORS_ALLOW_ORIGINS(self) -> list[str]:
         return self.inner_WEB_API_CORS_ALLOW_ORIGINS.split(',')
 
+    HTTP_REQUEST_MAX_CONNECT_TIMEOUT: int = 300
+    HTTP_REQUEST_MAX_READ_TIMEOUT: int = 600
+    HTTP_REQUEST_MAX_WRITE_TIMEOUT: int = 600
+    HTTP_REQUEST_NODE_MAX_BINARY_SIZE: int = 1024 * 1024 * 10
+    HTTP_REQUEST_NODE_MAX_TEXT_SIZE: int = 1024 * 1024
+
+    @computed_field
+    def HTTP_REQUEST_NODE_READABLE_MAX_BINARY_SIZE(self) -> str:
+        return f'{self.HTTP_REQUEST_NODE_MAX_BINARY_SIZE / 1024 / 1024:.2f}MB'
+
+    @computed_field
+    def HTTP_REQUEST_NODE_READABLE_MAX_TEXT_SIZE(self) -> str:
+        return f'{self.HTTP_REQUEST_NODE_MAX_TEXT_SIZE / 1024 / 1024:.2f}MB'
+
+    SSRF_PROXY_HTTP_URL: Optional[str] = None
+    SSRF_PROXY_HTTPS_URL: Optional[str] = None
+
 
 class InnerAPIConfig(BaseSettings):
     """
@@ -457,7 +474,6 @@ class CeleryBeatConfig(BaseSettings):
 
 
 class PositionConfig(BaseSettings):
-
     POSITION_PROVIDER_PINS: str = Field(
         description='The heads of model providers',
         default='',
