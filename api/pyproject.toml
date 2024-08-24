@@ -191,6 +191,7 @@ zhipuai = "1.0.7"
 # Related transparent dependencies with pinned verion
 # required by main implementations
 ############################################################
+volcengine-python-sdk = {extras = ["ark"], version = "^1.0.98"}
 [tool.poetry.group.indriect.dependencies]
 kaleido = "0.2.1"
 rank-bm25 = "~0.2.2"
