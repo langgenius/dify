@@ -6,17 +6,17 @@ from azure.ai.inference import ChatCompletionsClient
 from azure.ai.inference.models import StreamingChatCompletionsUpdate
 from azure.core.credentials import AzureKeyCredential
 from azure.core.exceptions import (
-    ServiceRequestError,
-    ServiceResponseError,
     ClientAuthenticationError,
-    HttpResponseError,
     DecodeError,
+    DeserializationError,
+    HttpResponseError,
     ResourceExistsError,
-    ResourceNotFoundError,
     ResourceModifiedError,
+    ResourceNotFoundError,
     ResourceNotModifiedError,
     SerializationError,
-    DeserializationError
+    ServiceRequestError,
+    ServiceResponseError,
 )
 
 from core.model_runtime.callbacks.base_callback import Callback
@@ -39,7 +39,6 @@ from core.model_runtime.errors.invoke import (
     InvokeBadRequestError,
     InvokeConnectionError,
     InvokeError,
-    InvokeRateLimitError,
     InvokeServerUnavailableError,
 )
 from core.model_runtime.errors.validate import CredentialsValidateFailedError
