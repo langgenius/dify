@@ -110,7 +110,6 @@ class ElasticSearchVector(BaseVector):
                 "knn": {
                     "field": Field.VECTOR.value,
                     "query_vector": query_vector,
-                    "k": top_k
                 }
             },
             "size": top_k

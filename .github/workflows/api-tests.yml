@@ -91,5 +91,6 @@ jobs:
             pgvector
             chroma
             elasticsearch
+          up-flags: --wait
       - name: Test Vector Stores
         run: poetry run -C api bash dev/pytest/pytest_vdb.sh

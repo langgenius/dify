@@ -617,6 +617,7 @@ services:
       - xpack.security.enabled=true
       - xpack.security.enrollment.enabled=false
       - xpack.security.http.ssl.enabled=false
+      - network.bind_host=0.0.0.0
     ports:
       - ${ELASTICSEARCH_PORT:-9200}:9200
     healthcheck:
