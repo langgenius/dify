@@ -10,8 +10,8 @@ import { useTranslation } from 'react-i18next'
 import { formatNumber } from '@/utils/format'
 import Basic from '@/app/components/app-sidebar/basic'
 import Loading from '@/app/components/base/loading'
-import type { AppDailyMessagesResponse,AppDailyConversationsResponse, AppDailyEndUsersResponse, AppTokenCostsResponse } from '@/models/app'
-import { getAppDailyMessages,getAppDailyConversations, getAppDailyEndUsers, getAppStatistics, getAppTokenCosts, getWorkflowDailyConversations } from '@/service/apps'
+import type { AppDailyConversationsResponse, AppDailyEndUsersResponse, AppDailyMessagesResponse, AppTokenCostsResponse } from '@/models/app'
+import { getAppDailyConversations, getAppDailyEndUsers, getAppDailyMessages, getAppStatistics, getAppTokenCosts, getWorkflowDailyConversations } from '@/service/apps'
 const valueFormatter = (v: string | number) => v
 
 const COLOR_TYPE_MAP = {
@@ -92,7 +92,7 @@ export type IChartProps = {
   unit?: string
   yMax?: number
   chartType: IChartType
-  chartData: getAppDailyMessagesResponse | AppDailyConversationsResponse | AppDailyEndUsersResponse | AppTokenCostsResponse | { data: Array<{ date: string; count: number }> }
+  chartData: AppDailyMessagesResponse | AppDailyConversationsResponse | AppDailyEndUsersResponse | AppTokenCostsResponse | { data: Array<{ date: string; count: number }> }
 }
 
 const Chart: React.FC<IChartProps> = ({
