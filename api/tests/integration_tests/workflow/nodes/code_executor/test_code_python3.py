@@ -10,8 +10,8 @@ CODE_LANGUAGE = CodeLanguage.PYTHON3
 
 def test_python3_plain():
     code = 'print("Hello World")'
-    result = CodeExecutor.execute_code(language=CODE_LANGUAGE, preload='', code=code)
-    assert result == 'Hello World\n'
+    result = CodeExecutor.execute_code(language=CODE_LANGUAGE, preload="", code=code)
+    assert result == "Hello World\n"
 
 
 def test_python3_json():
@@ -19,14 +19,15 @@ def test_python3_json():
     import json
     print(json.dumps({'Hello': 'World'}))
     """)
-    result = CodeExecutor.execute_code(language=CODE_LANGUAGE, preload='', code=code)
+    result = CodeExecutor.execute_code(language=CODE_LANGUAGE, preload="", code=code)
     assert result == '{"Hello": "World"}\n'
 
 
 def test_python3_with_code_template():
     result = CodeExecutor.execute_workflow_code_template(
-        language=CODE_LANGUAGE, code=Python3CodeProvider.get_default_code(), inputs={'arg1': 'Hello', 'arg2': 'World'})
-    assert result == {'result': 'HelloWorld'}
+        language=CODE_LANGUAGE, code=Python3CodeProvider.get_default_code(), inputs={"arg1": "Hello", "arg2": "World"}
+    )
+    assert result == {"result": "HelloWorld"}
 
 
 def test_python3_get_runner_script():

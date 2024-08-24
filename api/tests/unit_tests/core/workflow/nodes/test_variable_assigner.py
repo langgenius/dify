@@ -14,7 +14,7 @@ from core.workflow.graph_engine.entities.graph_runtime_state import GraphRuntime
 from core.workflow.nodes.variable_assigner import VariableAssignerNode, WriteMode
 from models.workflow import WorkflowType
 
-DEFAULT_NODE_ID = 'node_id'
+DEFAULT_NODE_ID = "node_id"
 
 
 def test_overwrite_string_variable():
@@ -60,19 +60,19 @@ def test_overwrite_string_variable():
 
     conversation_variable = StringVariable(
         id=str(uuid4()),
-        name='test_conversation_variable',
-        value='the first value',
+        name="test_conversation_variable",
+        value="the first value",
     )
 
     input_variable = StringVariable(
         id=str(uuid4()),
-        name='test_string_variable',
-        value='the second value',
+        name="test_string_variable",
+        value="the second value",
     )
 
     # construct variable pool
     variable_pool = VariablePool(
-        system_variables={SystemVariableKey.CONVERSATION_ID: 'conversation_id'},
+        system_variables={SystemVariableKey.CONVERSATION_ID: "conversation_id"},
         user_inputs={},
         environment_variables=[],
         conversation_variables=[conversation_variable],
@@ -105,10 +105,10 @@ def test_overwrite_string_variable():
         list(node.run())
         mock_run.assert_called_once()
 
-    got = variable_pool.get(['conversation', conversation_variable.name])
+    got = variable_pool.get(["conversation", conversation_variable.name])
     assert got is not None
-    assert got.value == 'the second value'
-    assert got.to_object() == 'the second value'
+    assert got.value == "the second value"
+    assert got.to_object() == "the second value"
 
 
 def test_append_variable_to_array():
@@ -154,18 +154,18 @@ def test_append_variable_to_array():
 
     conversation_variable = ArrayStringVariable(
         id=str(uuid4()),
-        name='test_conversation_variable',
-        value=['the first value'],
+        name="test_conversation_variable",
+        value=["the first value"],
     )
 
     input_variable = StringVariable(
         id=str(uuid4()),
-        name='test_string_variable',
-        value='the second value',
+        name="test_string_variable",
+        value="the second value",
     )
 
     variable_pool = VariablePool(
-        system_variables={SystemVariableKey.CONVERSATION_ID: 'conversation_id'},
+        system_variables={SystemVariableKey.CONVERSATION_ID: "conversation_id"},
         user_inputs={},
         environment_variables=[],
         conversation_variables=[conversation_variable],
@@ -197,9 +197,9 @@ def test_append_variable_to_array():
         list(node.run())
         mock_run.assert_called_once()
 
-    got = variable_pool.get(['conversation', conversation_variable.name])
+    got = variable_pool.get(["conversation", conversation_variable.name])
     assert got is not None
-    assert got.to_object() == ['the first value', 'the second value']
+    assert got.to_object() == ["the first value", "the second value"]
 
 
 def test_clear_array():
@@ -245,8 +245,8 @@ def test_clear_array():
 
     conversation_variable = ArrayStringVariable(
         id=str(uuid4()),
-        name='test_conversation_variable',
-        value=['the first value'],
+        name="test_conversation_variable",
+        value=["the first value"],
     )
 
     variable_pool = VariablePool(
@@ -265,11 +265,11 @@ def test_clear_array():
             start_at=time.perf_counter()
         ),
         config={
-            'id': 'node_id',
-            'data': {
-                'assigned_variable_selector': ['conversation', conversation_variable.name],
-                'write_mode': WriteMode.CLEAR.value,
-                'input_variable_selector': [],
+            "id": "node_id",
+            "data": {
+                "assigned_variable_selector": ["conversation", conversation_variable.name],
+                "write_mode": WriteMode.CLEAR.value,
+                "input_variable_selector": [],
             },
         },
     )
@@ -278,6 +278,6 @@ def test_clear_array():
         list(node.run())
         mock_run.assert_called_once()
 
-    got = variable_pool.get(['conversation', conversation_variable.name])
+    got = variable_pool.get(["conversation", conversation_variable.name])
     assert got is not None
     assert got.to_object() == []
