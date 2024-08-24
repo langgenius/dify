@@ -10,14 +10,6 @@ def test_validate_provider_credentials():
     provider = BaichuanProvider()
 
     with pytest.raises(CredentialsValidateFailedError):
-        provider.validate_provider_credentials(
-            credentials={
-                'api_key': 'hahahaha'
-            }
-        )
+        provider.validate_provider_credentials(credentials={"api_key": "hahahaha"})
 
-    provider.validate_provider_credentials(
-        credentials={
-            'api_key': os.environ.get('BAICHUAN_API_KEY')
-        }
-    )
+    provider.validate_provider_credentials(credentials={"api_key": os.environ.get("BAICHUAN_API_KEY")})

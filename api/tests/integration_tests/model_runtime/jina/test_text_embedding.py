@@ -11,18 +11,10 @@ def test_validate_credentials():
     model = JinaTextEmbeddingModel()
 
     with pytest.raises(CredentialsValidateFailedError):
-        model.validate_credentials(
-            model='jina-embeddings-v2-base-en',
-            credentials={
-                'api_key': 'invalid_key'
-            }
-        )
+        model.validate_credentials(model="jina-embeddings-v2-base-en", credentials={"api_key": "invalid_key"})
 
     model.validate_credentials(
-        model='jina-embeddings-v2-base-en',
-        credentials={
-            'api_key': os.environ.get('JINA_API_KEY')
-        }
+        model="jina-embeddings-v2-base-en", credentials={"api_key": os.environ.get("JINA_API_KEY")}
     )
 
 
@@ -30,15 +22,12 @@ def test_invoke_model():
     model = JinaTextEmbeddingModel()
 
     result = model.invoke(
-        model='jina-embeddings-v2-base-en',
+        model="jina-embeddings-v2-base-en",
         credentials={
-            'api_key': os.environ.get('JINA_API_KEY'),
+            "api_key": os.environ.get("JINA_API_KEY"),
         },
-        texts=[
-            "hello",
-            "world"
-        ],
-        user="abc-123"
+        texts=["hello", "world"],
+        user="abc-123",
     )
 
     assert isinstance(result, TextEmbeddingResult)
@@ -50,14 +39,11 @@ def test_get_num_tokens():
     model = JinaTextEmbeddingModel()
 
     num_tokens = model.get_num_tokens(
-        model='jina-embeddings-v2-base-en',
+        model="jina-embeddings-v2-base-en",
         credentials={
-            'api_key': os.environ.get('JINA_API_KEY'),
+            "api_key": os.environ.get("JINA_API_KEY"),
         },
-        texts=[
-            "hello",
-            "world"
-        ]
+        texts=["hello", "world"],
     )
 
     assert num_tokens == 6

@@ -1,6 +1,7 @@
 from typing import Any, Union
 
 import requests
+from yarl import URL
 
 from core.tools.entities.tool_entities import ToolInvokeMessage
 from core.tools.tool.builtin_tool import BuiltinTool
@@ -29,8 +30,10 @@ class SendPrivateMsg(BuiltinTool):
         auto_escape = tool_parameters.get('auto_escape', False)
 
         try:
+            url = URL(self.runtime.credentials['ob11_http_url']) / 'send_private_msg'
+
             resp = requests.post(
-                f'{self.runtime.credentials['ob11_http_url']}/send_private_msg',
+                url,
                 json={
                     'user_id': send_user_id,
                     'message': message,
