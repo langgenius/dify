@@ -10,15 +10,15 @@ from tests.integration_tests.vdb.test_vector_store import AbstractVectorTest, ge
 @pytest.fixture
 def tidb_vector():
     return TiDBVector(
-        collection_name='test_collection',
+        collection_name="test_collection",
         config=TiDBVectorConfig(
             host="xxx.eu-central-1.xxx.aws.tidbcloud.com",
             port="4000",
             user="xxx.root",
             password="xxxxxx",
             database="dify",
-            program_name="langgenius/dify"
-        )
+            program_name="langgenius/dify",
+        ),
     )
 
 
@@ -40,7 +40,7 @@ class TiDBVectorTest(AbstractVectorTest):
         assert len(hits_by_full_text) == 0
 
     def get_ids_by_metadata_field(self):
-        ids = self.vector.get_ids_by_metadata_field(key='document_id', value=self.example_doc_id)
+        ids = self.vector.get_ids_by_metadata_field(key="document_id", value=self.example_doc_id)
         assert len(ids) == 0
 
 
@@ -50,12 +50,12 @@ def test_tidb_vector(setup_mock_redis, setup_tidbvector_mock, tidb_vector, mock_
 
 @pytest.fixture
 def mock_session():
-    with patch('core.rag.datasource.vdb.tidb_vector.tidb_vector.Session', new_callable=MagicMock) as mock_session:
+    with patch("core.rag.datasource.vdb.tidb_vector.tidb_vector.Session", new_callable=MagicMock) as mock_session:
         yield mock_session
 
 
 @pytest.fixture
 def setup_tidbvector_mock(tidb_vector, mock_session):
-    with patch('core.rag.datasource.vdb.tidb_vector.tidb_vector.create_engine'):
-        with patch.object(tidb_vector._engine, 'connect'):
+    with patch("core.rag.datasource.vdb.tidb_vector.tidb_vector.create_engine"):
+        with patch.object(tidb_vector._engine, "connect"):
             yield tidb_vector
