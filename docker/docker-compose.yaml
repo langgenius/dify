@@ -607,7 +607,7 @@ services:
       - elasticsearch
     restart: always
     volumes:
-      - ./volumes/elasticsearch/data:/usr/share/elasticsearch/data
+      - dify_es01_data:/usr/share/elasticsearch/data
     environment:
       - ELASTIC_PASSWORD=${ELASTICSEARCH_PASSWORD:-elastic}
       - cluster.name=dify-es-cluster
@@ -677,3 +677,4 @@ networks:
 
 volumes:
   oradata:
+  dify_es01_data:
