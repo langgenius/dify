@@ -10,26 +10,26 @@ class RelytConfig(BaseSettings):
     """
 
     RELYT_HOST: Optional[str] = Field(
-        description='Relyt host',
+        description="Relyt host",
         default=None,
     )
 
     RELYT_PORT: PositiveInt = Field(
-        description='Relyt port',
+        description="Relyt port",
         default=9200,
     )
 
     RELYT_USER: Optional[str] = Field(
-        description='Relyt user',
+        description="Relyt user",
         default=None,
     )
 
     RELYT_PASSWORD: Optional[str] = Field(
-        description='Relyt password',
+        description="Relyt password",
         default=None,
     )
 
     RELYT_DATABASE: Optional[str] = Field(
-        description='Relyt database',
-        default='default',
+        description="Relyt database",
+        default="default",
     )
