@@ -6,11 +6,17 @@ from azure.ai.inference import ChatCompletionsClient
 from azure.ai.inference.models import StreamingChatCompletionsUpdate
 from azure.core.credentials import AzureKeyCredential
 from azure.core.exceptions import (
+    ServiceRequestError,
+    ServiceResponseError,
     ClientAuthenticationError,
     HttpResponseError,
-    ServiceRequestError,
-    ServiceUnavailableError,
-    TooManyRequests,
+    DecodeError,
+    ResourceExistsError,
+    ResourceNotFoundError,
+    ResourceModifiedError,
+    ResourceNotModifiedError,
+    SerializationError,
+    DeserializationError
 )
 
 from core.model_runtime.callbacks.base_callback import Callback
@@ -269,22 +275,23 @@ class AzureAIStudioLargeLanguageModel(LargeLanguageModel):
         """
         return {
             InvokeConnectionError: [
-                ConnectionError,
                 ServiceRequestError,
             ],
             InvokeServerUnavailableError: [
-                ServiceUnavailableError,
-            ],
-            InvokeRateLimitError: [
-                TooManyRequests,
+                ServiceResponseError,
             ],
             InvokeAuthorizationError: [
                 ClientAuthenticationError,
             ],
             InvokeBadRequestError: [
-                ValueError,
-                TypeError,
                 HttpResponseError,
+                DecodeError,
+                ResourceExistsError,
+                ResourceNotFoundError,
+                ResourceModifiedError,
+                ResourceNotModifiedError,
+                SerializationError,
+                DeserializationError,
             ],
         }
 
