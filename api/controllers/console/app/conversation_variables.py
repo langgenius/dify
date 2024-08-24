@@ -21,7 +21,7 @@ class ConversationVariablesApi(Resource):
     @marshal_with(paginated_conversation_variable_fields)
     def get(self, app_model):
         parser = reqparse.RequestParser()
-        parser.add_argument('conversation_id', type=str, location='args')
+        parser.add_argument("conversation_id", type=str, location="args")
         args = parser.parse_args()
 
         stmt = (
@@ -29,10 +29,10 @@ class ConversationVariablesApi(Resource):
             .where(ConversationVariable.app_id == app_model.id)
             .order_by(ConversationVariable.created_at)
         )
-        if args['conversation_id']:
-            stmt = stmt.where(ConversationVariable.conversation_id == args['conversation_id'])
+        if args["conversation_id"]:
+            stmt = stmt.where(ConversationVariable.conversation_id == args["conversation_id"])
         else:
-            raise ValueError('conversation_id is required')
+            raise ValueError("conversation_id is required")
 
         # NOTE: This is a temporary solution to avoid performance issues.
         page = 1
@@ -43,14 +43,14 @@ class ConversationVariablesApi(Resource):
             rows = session.scalars(stmt).all()
 
         return {
-            'page': page,
-            'limit': page_size,
-            'total': len(rows),
-            'has_more': False,
-            'data': [
+            "page": page,
+            "limit": page_size,
+            "total": len(rows),
+            "has_more": False,
+            "data": [
                 {
-                    'created_at': row.created_at,
-                    'updated_at': row.updated_at,
+                    "created_at": row.created_at,
+                    "updated_at": row.updated_at,
                     **row.to_variable().model_dump(),
                 }
                 for row in rows
@@ -58,4 +58,4 @@ class ConversationVariablesApi(Resource):
         }
 
 
-api.add_resource(ConversationVariablesApi, '/apps/<uuid:app_id>/conversation-variables')
+api.add_resource(ConversationVariablesApi, "/apps/<uuid:app_id>/conversation-variables")
