@@ -15,6 +15,7 @@ from libs.helper import datetime_string
 from libs.login import login_required
 from models.model import AppMode
 
+
 class DailyMessageStatistic(Resource):
 
     @setup_required
