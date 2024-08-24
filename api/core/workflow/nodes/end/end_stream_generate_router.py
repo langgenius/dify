@@ -62,13 +62,12 @@ class EndStreamGeneratorRouter:
             if node_id != 'sys' and node_id in node_id_config_mapping:
                 node = node_id_config_mapping[node_id]
                 node_type = node.get('data', {}).get('type')
-                if node_type == NodeType.LLM.value and variable_selector.value_selector[1] == 'text':
+                if (
+                    variable_selector.value_selector not in value_selectors
+                    and node_type == NodeType.LLM.value 
+                    and variable_selector.value_selector[1] == 'text'
+                ):
                     value_selectors.append(variable_selector.value_selector)
-
-        # remove duplicates
-        value_selector_tuples = [tuple(item) for item in value_selectors]
-        unique_value_selector_tuples = list(set(value_selector_tuples))
-        value_selectors = [list(item) for item in unique_value_selector_tuples]
 
         return value_selectors
 

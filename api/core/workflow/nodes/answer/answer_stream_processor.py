@@ -203,7 +203,7 @@ class AnswerStreamProcessor(StreamProcessor):
         return files
 
     @classmethod
-    def _get_file_var_from_value(self, value: dict | list) -> Optional[dict]:
+    def _get_file_var_from_value(cls, value: dict | list) -> Optional[dict]:
         """
         Get file var from value
         :param value: variable value

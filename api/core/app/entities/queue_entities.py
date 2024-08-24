@@ -150,6 +150,8 @@ class QueueTextChunkEvent(AppQueueEvent):
     """
     event: QueueEvent = QueueEvent.TEXT_CHUNK
     text: str
+    from_variable_selector: Optional[list[str]] = None
+    """from variable selector"""
 
 
 class QueueAgentMessageEvent(AppQueueEvent):
