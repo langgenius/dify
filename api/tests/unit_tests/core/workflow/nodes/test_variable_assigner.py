@@ -8,41 +8,41 @@ from core.workflow.enums import SystemVariableKey
 from core.workflow.nodes.base_node import UserFrom
 from core.workflow.nodes.variable_assigner import VariableAssignerNode, WriteMode
 
-DEFAULT_NODE_ID = 'node_id'
+DEFAULT_NODE_ID = "node_id"
 
 
 def test_overwrite_string_variable():
     conversation_variable = StringVariable(
         id=str(uuid4()),
-        name='test_conversation_variable',
-        value='the first value',
+        name="test_conversation_variable",
+        value="the first value",
     )
 
     input_variable = StringVariable(
         id=str(uuid4()),
-        name='test_string_variable',
-        value='the second value',
+        name="test_string_variable",
+        value="the second value",
     )
 
     node = VariableAssignerNode(
-        tenant_id='tenant_id',
-        app_id='app_id',
-        workflow_id='workflow_id',
-        user_id='user_id',
+        tenant_id="tenant_id",
+        app_id="app_id",
+        workflow_id="workflow_id",
+        user_id="user_id",
         user_from=UserFrom.ACCOUNT,
         invoke_from=InvokeFrom.DEBUGGER,
         config={
-            'id': 'node_id',
-            'data': {
-                'assigned_variable_selector': ['conversation', conversation_variable.name],
-                'write_mode': WriteMode.OVER_WRITE.value,
-                'input_variable_selector': [DEFAULT_NODE_ID, input_variable.name],
+            "id": "node_id",
+            "data": {
+                "assigned_variable_selector": ["conversation", conversation_variable.name],
+                "write_mode": WriteMode.OVER_WRITE.value,
+                "input_variable_selector": [DEFAULT_NODE_ID, input_variable.name],
             },
         },
     )
 
     variable_pool = VariablePool(
-        system_variables={SystemVariableKey.CONVERSATION_ID: 'conversation_id'},
+        system_variables={SystemVariableKey.CONVERSATION_ID: "conversation_id"},
         user_inputs={},
         environment_variables=[],
         conversation_variables=[conversation_variable],
@@ -52,48 +52,48 @@ def test_overwrite_string_variable():
         input_variable,
     )
 
-    with mock.patch('core.workflow.nodes.variable_assigner.node.update_conversation_variable') as mock_run:
+    with mock.patch("core.workflow.nodes.variable_assigner.node.update_conversation_variable") as mock_run:
         node.run(variable_pool)
         mock_run.assert_called_once()
 
-    got = variable_pool.get(['conversation', conversation_variable.name])
+    got = variable_pool.get(["conversation", conversation_variable.name])
     assert got is not None
-    assert got.value == 'the second value'
-    assert got.to_object() == 'the second value'
+    assert got.value == "the second value"
+    assert got.to_object() == "the second value"
 
 
 def test_append_variable_to_array():
     conversation_variable = ArrayStringVariable(
         id=str(uuid4()),
-        name='test_conversation_variable',
-        value=['the first value'],
+        name="test_conversation_variable",
+        value=["the first value"],
     )
 
     input_variable = StringVariable(
         id=str(uuid4()),
-        name='test_string_variable',
-        value='the second value',
+        name="test_string_variable",
+        value="the second value",
     )
 
     node = VariableAssignerNode(
-        tenant_id='tenant_id',
-        app_id='app_id',
-        workflow_id='workflow_id',
-        user_id='user_id',
+        tenant_id="tenant_id",
+        app_id="app_id",
+        workflow_id="workflow_id",
+        user_id="user_id",
         user_from=UserFrom.ACCOUNT,
         invoke_from=InvokeFrom.DEBUGGER,
         config={
-            'id': 'node_id',
-            'data': {
-                'assigned_variable_selector': ['conversation', conversation_variable.name],
-                'write_mode': WriteMode.APPEND.value,
-                'input_variable_selector': [DEFAULT_NODE_ID, input_variable.name],
+            "id": "node_id",
+            "data": {
+                "assigned_variable_selector": ["conversation", conversation_variable.name],
+                "write_mode": WriteMode.APPEND.value,
+                "input_variable_selector": [DEFAULT_NODE_ID, input_variable.name],
             },
         },
     )
 
     variable_pool = VariablePool(
-        system_variables={SystemVariableKey.CONVERSATION_ID: 'conversation_id'},
+        system_variables={SystemVariableKey.CONVERSATION_ID: "conversation_id"},
         user_inputs={},
         environment_variables=[],
         conversation_variables=[conversation_variable],
@@ -103,41 +103,41 @@ def test_append_variable_to_array():
         input_variable,
     )
 
-    with mock.patch('core.workflow.nodes.variable_assigner.node.update_conversation_variable') as mock_run:
+    with mock.patch("core.workflow.nodes.variable_assigner.node.update_conversation_variable") as mock_run:
         node.run(variable_pool)
         mock_run.assert_called_once()
 
-    got = variable_pool.get(['conversation', conversation_variable.name])
+    got = variable_pool.get(["conversation", conversation_variable.name])
     assert got is not None
-    assert got.to_object() == ['the first value', 'the second value']
+    assert got.to_object() == ["the first value", "the second value"]
 
 
 def test_clear_array():
     conversation_variable = ArrayStringVariable(
         id=str(uuid4()),
-        name='test_conversation_variable',
-        value=['the first value'],
+        name="test_conversation_variable",
+        value=["the first value"],
     )
 
     node = VariableAssignerNode(
-        tenant_id='tenant_id',
-        app_id='app_id',
-        workflow_id='workflow_id',
-        user_id='user_id',
+        tenant_id="tenant_id",
+        app_id="app_id",
+        workflow_id="workflow_id",
+        user_id="user_id",
         user_from=UserFrom.ACCOUNT,
         invoke_from=InvokeFrom.DEBUGGER,
         config={
-            'id': 'node_id',
-            'data': {
-                'assigned_variable_selector': ['conversation', conversation_variable.name],
-                'write_mode': WriteMode.CLEAR.value,
-                'input_variable_selector': [],
+            "id": "node_id",
+            "data": {
+                "assigned_variable_selector": ["conversation", conversation_variable.name],
+                "write_mode": WriteMode.CLEAR.value,
+                "input_variable_selector": [],
             },
         },
     )
 
     variable_pool = VariablePool(
-        system_variables={SystemVariableKey.CONVERSATION_ID: 'conversation_id'},
+        system_variables={SystemVariableKey.CONVERSATION_ID: "conversation_id"},
         user_inputs={},
         environment_variables=[],
         conversation_variables=[conversation_variable],
@@ -145,6 +145,6 @@ def test_clear_array():
 
     node.run(variable_pool)
 
-    got = variable_pool.get(['conversation', conversation_variable.name])
+    got = variable_pool.get(["conversation", conversation_variable.name])
     assert got is not None
     assert got.to_object() == []
