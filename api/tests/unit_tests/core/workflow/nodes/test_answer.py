@@ -24,60 +24,47 @@ def test_execute_answer():
             },
         ],
         "nodes": [
+            {"data": {"type": "start"}, "id": "start"},
             {
                 "data": {
-                    "type": "start"
+                    "title": "123",
+                    "type": "answer",
+                    "answer": "Today's weather is {{#start.weather#}}\n{{#llm.text#}}\n{{img}}\nFin.",
                 },
-                "id": "start"
+                "id": "answer",
             },
-            {
-                "data": {
-                    'title': '123',
-                    'type': 'answer',
-                    'answer': 'Today\'s weather is {{#start.weather#}}\n{{#llm.text#}}\n{{img}}\nFin.'
-                },
-                "id": "answer"
-            },
-        ]
+        ],
     }
 
-    graph = Graph.init(
-        graph_config=graph_config
-    )
+    graph = Graph.init(graph_config=graph_config)
 
     init_params = GraphInitParams(
-        tenant_id='1',
-        app_id='1',
+        tenant_id="1",
+        app_id="1",
         workflow_type=WorkflowType.WORKFLOW,
-        workflow_id='1',
+        workflow_id="1",
         graph_config=graph_config,
-        user_id='1',
+        user_id="1",
         user_from=UserFrom.ACCOUNT,
         invoke_from=InvokeFrom.DEBUGGER,
-        call_depth=0
+        call_depth=0,
     )
 
     # construct variable pool
     variable_pool = VariablePool(
-        system_variables={
-            SystemVariableKey.FILES: [],
-            SystemVariableKey.USER_ID: 'aaa'
-        },
+        system_variables={SystemVariableKey.FILES: [], SystemVariableKey.USER_ID: "aaa"},
         user_inputs={},
         environment_variables=[],
         conversation_variables=[],
     )
-    variable_pool.add(['start', 'weather'], 'sunny')
-    variable_pool.add(['llm', 'text'], 'You are a helpful AI.')
+    variable_pool.add(["start", "weather"], "sunny")
+    variable_pool.add(["llm", "text"], "You are a helpful AI.")
 
     node = AnswerNode(
         id=str(uuid.uuid4()),
         graph_init_params=init_params,
         graph=graph,
-        graph_runtime_state=GraphRuntimeState(
-            variable_pool=variable_pool,
-            start_at=time.perf_counter()
-        ),
+        graph_runtime_state=GraphRuntimeState(variable_pool=variable_pool, start_at=time.perf_counter()),
         config={
             "id": "answer",
             "data": {

@@ -27,35 +27,28 @@ def test_overwrite_string_variable():
             },
         ],
         "nodes": [
-            {
-                "data": {
-                    "type": "start"
-                },
-                "id": "start"
-            },
+            {"data": {"type": "start"}, "id": "start"},
             {
                 "data": {
                     "type": "assigner",
                 },
-                "id": "assigner"
+                "id": "assigner",
             },
-        ]
+        ],
     }
 
-    graph = Graph.init(
-        graph_config=graph_config
-    )
+    graph = Graph.init(graph_config=graph_config)
 
     init_params = GraphInitParams(
-        tenant_id='1',
-        app_id='1',
+        tenant_id="1",
+        app_id="1",
         workflow_type=WorkflowType.WORKFLOW,
-        workflow_id='1',
+        workflow_id="1",
         graph_config=graph_config,
-        user_id='1',
+        user_id="1",
         user_from=UserFrom.ACCOUNT,
         invoke_from=InvokeFrom.DEBUGGER,
-        call_depth=0
+        call_depth=0,
     )
 
     conversation_variable = StringVariable(
@@ -87,21 +80,18 @@ def test_overwrite_string_variable():
         id=str(uuid.uuid4()),
         graph_init_params=init_params,
         graph=graph,
-        graph_runtime_state=GraphRuntimeState(
-            variable_pool=variable_pool,
-            start_at=time.perf_counter()
-        ),
+        graph_runtime_state=GraphRuntimeState(variable_pool=variable_pool, start_at=time.perf_counter()),
         config={
-            'id': 'node_id',
-            'data': {
-                'assigned_variable_selector': ['conversation', conversation_variable.name],
-                'write_mode': WriteMode.OVER_WRITE.value,
-                'input_variable_selector': [DEFAULT_NODE_ID, input_variable.name],
+            "id": "node_id",
+            "data": {
+                "assigned_variable_selector": ["conversation", conversation_variable.name],
+                "write_mode": WriteMode.OVER_WRITE.value,
+                "input_variable_selector": [DEFAULT_NODE_ID, input_variable.name],
             },
         },
     )
 
-    with mock.patch('core.workflow.nodes.variable_assigner.node.update_conversation_variable') as mock_run:
+    with mock.patch("core.workflow.nodes.variable_assigner.node.update_conversation_variable") as mock_run:
         list(node.run())
         mock_run.assert_called_once()
 
@@ -121,35 +111,28 @@ def test_append_variable_to_array():
             },
         ],
         "nodes": [
-            {
-                "data": {
-                    "type": "start"
-                },
-                "id": "start"
-            },
+            {"data": {"type": "start"}, "id": "start"},
             {
                 "data": {
                     "type": "assigner",
                 },
-                "id": "assigner"
+                "id": "assigner",
             },
-        ]
+        ],
     }
 
-    graph = Graph.init(
-        graph_config=graph_config
-    )
+    graph = Graph.init(graph_config=graph_config)
 
     init_params = GraphInitParams(
-        tenant_id='1',
-        app_id='1',
+        tenant_id="1",
+        app_id="1",
         workflow_type=WorkflowType.WORKFLOW,
-        workflow_id='1',
+        workflow_id="1",
         graph_config=graph_config,
-        user_id='1',
+        user_id="1",
         user_from=UserFrom.ACCOUNT,
         invoke_from=InvokeFrom.DEBUGGER,
-        call_depth=0
+        call_depth=0,
     )
 
     conversation_variable = ArrayStringVariable(
@@ -179,21 +162,18 @@ def test_append_variable_to_array():
         id=str(uuid.uuid4()),
         graph_init_params=init_params,
         graph=graph,
-        graph_runtime_state=GraphRuntimeState(
-            variable_pool=variable_pool,
-            start_at=time.perf_counter()
-        ),
+        graph_runtime_state=GraphRuntimeState(variable_pool=variable_pool, start_at=time.perf_counter()),
         config={
-            'id': 'node_id',
-            'data': {
-                'assigned_variable_selector': ['conversation', conversation_variable.name],
-                'write_mode': WriteMode.APPEND.value,
-                'input_variable_selector': [DEFAULT_NODE_ID, input_variable.name],
+            "id": "node_id",
+            "data": {
+                "assigned_variable_selector": ["conversation", conversation_variable.name],
+                "write_mode": WriteMode.APPEND.value,
+                "input_variable_selector": [DEFAULT_NODE_ID, input_variable.name],
             },
         },
     )
 
-    with mock.patch('core.workflow.nodes.variable_assigner.node.update_conversation_variable') as mock_run:
+    with mock.patch("core.workflow.nodes.variable_assigner.node.update_conversation_variable") as mock_run:
         list(node.run())
         mock_run.assert_called_once()
 
@@ -212,35 +192,28 @@ def test_clear_array():
             },
         ],
         "nodes": [
-            {
-                "data": {
-                    "type": "start"
-                },
-                "id": "start"
-            },
+            {"data": {"type": "start"}, "id": "start"},
             {
                 "data": {
                     "type": "assigner",
                 },
-                "id": "assigner"
+                "id": "assigner",
             },
-        ]
+        ],
     }
 
-    graph = Graph.init(
-        graph_config=graph_config
-    )
+    graph = Graph.init(graph_config=graph_config)
 
     init_params = GraphInitParams(
-        tenant_id='1',
-        app_id='1',
+        tenant_id="1",
+        app_id="1",
         workflow_type=WorkflowType.WORKFLOW,
-        workflow_id='1',
+        workflow_id="1",
         graph_config=graph_config,
-        user_id='1',
+        user_id="1",
         user_from=UserFrom.ACCOUNT,
         invoke_from=InvokeFrom.DEBUGGER,
-        call_depth=0
+        call_depth=0,
     )
 
     conversation_variable = ArrayStringVariable(
@@ -250,7 +223,7 @@ def test_clear_array():
     )
 
     variable_pool = VariablePool(
-        system_variables={SystemVariableKey.CONVERSATION_ID: 'conversation_id'},
+        system_variables={SystemVariableKey.CONVERSATION_ID: "conversation_id"},
         user_inputs={},
         environment_variables=[],
         conversation_variables=[conversation_variable],
@@ -260,10 +233,7 @@ def test_clear_array():
         id=str(uuid.uuid4()),
         graph_init_params=init_params,
         graph=graph,
-        graph_runtime_state=GraphRuntimeState(
-            variable_pool=variable_pool,
-            start_at=time.perf_counter()
-        ),
+        graph_runtime_state=GraphRuntimeState(variable_pool=variable_pool, start_at=time.perf_counter()),
         config={
             "id": "node_id",
             "data": {
@@ -274,7 +244,7 @@ def test_clear_array():
         },
     )
 
-    with mock.patch('core.workflow.nodes.variable_assigner.node.update_conversation_variable') as mock_run:
+    with mock.patch("core.workflow.nodes.variable_assigner.node.update_conversation_variable") as mock_run:
         list(node.run())
         mock_run.assert_called_once()
 

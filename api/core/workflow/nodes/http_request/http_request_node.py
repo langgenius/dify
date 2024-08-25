@@ -53,7 +53,10 @@ class HttpRequestNode(BaseNode):
         node_data: HttpRequestNodeData = cast(HttpRequestNodeData, self.node_data)
         # TODO: Switch to use segment directly
         if node_data.authorization.config and node_data.authorization.config.api_key:
-            node_data.authorization.config.api_key = parser.convert_template(template=node_data.authorization.config.api_key, variable_pool=variable_pool).text
+            node_data.authorization.config.api_key = parser.convert_template(
+                template=node_data.authorization.config.api_key, 
+                variable_pool=self.graph_runtime_state.variable_pool
+                ).text
 
         # init http executor
         http_executor = None
