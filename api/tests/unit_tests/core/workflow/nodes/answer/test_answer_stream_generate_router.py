@@ -54,72 +54,56 @@ def test_init():
                 "id": "llm1-source-answer-target",
                 "source": "llm1",
                 "target": "answer",
-            }
+            },
         ],
         "nodes": [
+            {"data": {"type": "start"}, "id": "start"},
             {
                 "data": {
-                    "type": "start"
+                    "type": "llm",
                 },
-                "id": "start"
+                "id": "llm1",
             },
             {
                 "data": {
                     "type": "llm",
                 },
-                "id": "llm1"
+                "id": "llm2",
             },
             {
                 "data": {
                     "type": "llm",
                 },
-                "id": "llm2"
+                "id": "llm3",
             },
             {
                 "data": {
                     "type": "llm",
                 },
-                "id": "llm3"
+                "id": "llm4",
             },
             {
                 "data": {
                     "type": "llm",
                 },
-                "id": "llm4"
+                "id": "llm5",
             },
             {
-                "data": {
-                    "type": "llm",
-                },
-                "id": "llm5"
-            },
-            {
-                "data": {
-                    "type": "answer",
-                    "title": "answer",
-                    "answer": "1{{#llm2.text#}}2"
-                },
+                "data": {"type": "answer", "title": "answer", "answer": "1{{#llm2.text#}}2"},
                 "id": "answer",
             },
             {
-                "data": {
-                    "type": "answer",
-                    "title": "answer2",
-                    "answer": "1{{#llm3.text#}}2"
-                },
+                "data": {"type": "answer", "title": "answer2", "answer": "1{{#llm3.text#}}2"},
                 "id": "answer2",
             },
         ],
     }
 
-    graph = Graph.init(
-        graph_config=graph_config
-    )
+    graph = Graph.init(graph_config=graph_config)
 
     answer_stream_generate_route = AnswerStreamGeneratorRouter.init(
-        node_id_config_mapping=graph.node_id_config_mapping,
-        reverse_edge_mapping=graph.reverse_edge_mapping
+        node_id_config_mapping=graph.node_id_config_mapping, reverse_edge_mapping=graph.reverse_edge_mapping
     )
 
-    assert answer_stream_generate_route.answer_dependencies['answer'] == ['answer2']
-    assert answer_stream_generate_route.answer_dependencies['answer2'] == []
+    assert answer_stream_generate_route.answer_dependencies["answer"] == ["answer2"]
+    assert answer_stream_generate_route.answer_dependencies["answer2"] == []

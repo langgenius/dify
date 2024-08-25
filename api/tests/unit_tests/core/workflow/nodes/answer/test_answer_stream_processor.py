@@ -18,7 +18,7 @@ from core.workflow.nodes.start.entities import StartNodeData
 
 
 def _recursive_process(graph: Graph, next_node_id: str) -> Generator[GraphEngineEvent, None, None]:
-    if next_node_id == 'start':
+    if next_node_id == "start":
         yield from _publish_events(graph, next_node_id)
 
     for edge in graph.edge_mapping.get(next_node_id, []):
@@ -29,10 +29,7 @@ def _recursive_process(graph: Graph, next_node_id: str) -> Generator[GraphEngine
 
 
 def _publish_events(graph: Graph, next_node_id: str) -> Generator[GraphEngineEvent, None, None]:
-    route_node_state = RouteNodeState(
-        node_id=next_node_id,
-        start_at=datetime.now(timezone.utc).replace(tzinfo=None)
-    )
+    route_node_state = RouteNodeState(node_id=next_node_id, start_at=datetime.now(timezone.utc).replace(tzinfo=None))
 
     parallel_id = graph.node_parallel_mapping.get(next_node_id)
     parallel_start_node_id = None
@@ -52,10 +49,10 @@ def _publish_events(graph: Graph, next_node_id: str) -> Generator[GraphEngineEve
         node_data=mock_node_data,
         route_node_state=route_node_state,
         parallel_id=graph.node_parallel_mapping.get(next_node_id),
-        parallel_start_node_id=parallel_start_node_id
+        parallel_start_node_id=parallel_start_node_id,
     )
 
-    if 'llm' in next_node_id:
+    if "llm" in next_node_id:
         length = int(next_node_id[-1])
         for i in range(0, length):
             yield NodeRunStreamChunkEvent(
@@ -67,7 +64,7 @@ def _publish_events(graph: Graph, next_node_id: str) -> Generator[GraphEngineEve
                 route_node_state=route_node_state,
                 from_variable_selector=[next_node_id, "text"],
                 parallel_id=parallel_id,
-                parallel_start_node_id=parallel_start_node_id
+                parallel_start_node_id=parallel_start_node_id,
             )
 
     route_node_state.status = RouteNodeState.Status.SUCCESS
@@ -79,7 +76,7 @@ def _publish_events(graph: Graph, next_node_id: str) -> Generator[GraphEngineEve
         node_data=mock_node_data,
         route_node_state=route_node_state,
         parallel_id=parallel_id,
-        parallel_start_node_id=parallel_start_node_id
+        parallel_start_node_id=parallel_start_node_id,
     )
 
 
@@ -135,79 +132,64 @@ def test_process():
                 "id": "llm1-source-answer-target",
                 "source": "llm1",
                 "target": "answer",
-            }
+            },
         ],
         "nodes": [
+            {"data": {"type": "start"}, "id": "start"},
             {
                 "data": {
-                    "type": "start"
+                    "type": "llm",
                 },
-                "id": "start"
+                "id": "llm1",
             },
             {
                 "data": {
                     "type": "llm",
                 },
-                "id": "llm1"
+                "id": "llm2",
             },
             {
                 "data": {
                     "type": "llm",
                 },
-                "id": "llm2"
+                "id": "llm3",
             },
             {
                 "data": {
                     "type": "llm",
                 },
-                "id": "llm3"
+                "id": "llm4",
             },
             {
                 "data": {
                     "type": "llm",
                 },
-                "id": "llm4"
+                "id": "llm5",
             },
             {
-                "data": {
-                    "type": "llm",
-                },
-                "id": "llm5"
-            },
-            {
-                "data": {
-                    "type": "answer",
-                    "title": "answer",
-                    "answer": "a{{#llm2.text#}}b"
-                },
+                "data": {"type": "answer", "title": "answer", "answer": "a{{#llm2.text#}}b"},
                 "id": "answer",
             },
             {
-                "data": {
-                    "type": "answer",
-                    "title": "answer2",
-                    "answer": "c{{#llm3.text#}}d"
-                },
+                "data": {"type": "answer", "title": "answer2", "answer": "c{{#llm3.text#}}d"},
                 "id": "answer2",
             },
         ],
     }
 
-    graph = Graph.init(
-        graph_config=graph_config
+    graph = Graph.init(graph_config=graph_config)
+
+    variable_pool = VariablePool(
+        system_variables={
+            SystemVariableKey.QUERY: "what's the weather in SF",
+            SystemVariableKey.FILES: [],
+            SystemVariableKey.CONVERSATION_ID: "abababa",
+            SystemVariableKey.USER_ID: "aaa",
+        },
+        user_inputs={},
     )
 
-    variable_pool = VariablePool(system_variables={
-        SystemVariableKey.QUERY: 'what\'s the weather in SF',
-        SystemVariableKey.FILES: [],
-        SystemVariableKey.CONVERSATION_ID: 'abababa',
-        SystemVariableKey.USER_ID: 'aaa'
-    }, user_inputs={})
-
-    answer_stream_processor = AnswerStreamProcessor(
-        graph=graph,
-        variable_pool=variable_pool
-    )
+    answer_stream_processor = AnswerStreamProcessor(graph=graph, variable_pool=variable_pool)
 
     def graph_generator() -> Generator[GraphEngineEvent, None, None]:
         # print("")
@@ -215,10 +197,10 @@ def test_process():
             # print("[ORIGIN]", event.__class__.__name__ + ":", event.route_node_state.node_id,
             #       " " + (event.chunk_content if isinstance(event, NodeRunStreamChunkEvent) else ""))
             if isinstance(event, NodeRunSucceededEvent):
-                if 'llm' in event.route_node_state.node_id:
+                if "llm" in event.route_node_state.node_id:
                     variable_pool.add(
                         [event.route_node_state.node_id, "text"],
-                        "".join(str(i) for i in range(0, int(event.route_node_state.node_id[-1])))
+                        "".join(str(i) for i in range(0, int(event.route_node_state.node_id[-1]))),
                     )
             yield event
 

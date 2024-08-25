@@ -32,33 +32,22 @@ def test_init():
                 "id": "http-source-answer2-target",
                 "source": "http",
                 "target": "answer2",
-            }
+            },
         ],
         "nodes": [
-            {
-                "data": {
-                    "type": "start"
-                },
-                "id": "start"
-            },
+            {"data": {"type": "start"}, "id": "start"},
             {
                 "data": {
                     "type": "llm",
                 },
-                "id": "llm"
+                "id": "llm",
             },
             {
-                "data": {
-                    "type": "answer",
-                    "title": "answer",
-                    "answer": "1"
-                },
+                "data": {"type": "answer", "title": "answer", "answer": "1"},
                 "id": "answer",
             },
             {
-                "data": {
-                    "type": "question-classifier"
-                },
+                "data": {"type": "question-classifier"},
                 "id": "qc",
             },
             {
@@ -68,19 +57,13 @@ def test_init():
                 "id": "http",
             },
             {
-                "data": {
-                    "type": "answer",
-                    "title": "answer",
-                    "answer": "1"
-                },
+                "data": {"type": "answer", "title": "answer", "answer": "1"},
                 "id": "answer2",
-            }
+            },
         ],
     }
 
-    graph = Graph.init(
-        graph_config=graph_config
-    )
+    graph = Graph.init(graph_config=graph_config)
 
     start_node_id = "start"
 
@@ -127,7 +110,7 @@ def test__init_iteration_graph():
                 "source": "code",
                 "sourceHandle": "source",
                 "target": "iteration",
-            }
+            },
         ],
         "nodes": [
             {
@@ -143,17 +126,11 @@ def test__init_iteration_graph():
                 "id": "llm",
             },
             {
-                "data": {
-                    "type": "answer",
-                    "title": "answer",
-                    "answer": "1"
-                },
+                "data": {"type": "answer", "title": "answer", "answer": "1"},
                 "id": "answer",
             },
             {
-                "data": {
-                    "type": "iteration"
-                },
+                "data": {"type": "iteration"},
                 "id": "iteration",
             },
             {
@@ -171,11 +148,7 @@ def test__init_iteration_graph():
                 "parentId": "iteration",
             },
             {
-                "data": {
-                    "type": "answer",
-                    "title": "answer",
-                    "answer": "1"
-                },
+                "data": {"type": "answer", "title": "answer", "answer": "1"},
                 "id": "answer-in-iteration",
                 "parentId": "iteration",
             },
@@ -184,27 +157,18 @@ def test__init_iteration_graph():
                     "type": "code",
                 },
                 "id": "code",
-            }
-        ]
+            },
+        ],
     }
 
-    graph = Graph.init(
-        graph_config=graph_config,
-        root_node_id="template-transform-in-iteration"
-    )
+    graph = Graph.init(graph_config=graph_config, root_node_id="template-transform-in-iteration")
     graph.add_extra_edge(
         source_node_id="answer-in-iteration",
         target_node_id="template-transform-in-iteration",
         run_condition=RunCondition(
             type="condition",
-            conditions=[
-                Condition(
-                    variable_selector=["iteration", "index"],
-                    comparison_operator="≤",
-                    value="5"
-                )
-            ]
-        )
+            conditions=[Condition(variable_selector=["iteration", "index"], comparison_operator="≤", value="5")],
+        ),
     )
 
     # iteration:
@@ -248,47 +212,36 @@ def test_parallels_graph():
                 "id": "llm3-source-answer-target",
                 "source": "llm3",
                 "target": "answer",
-            }
+            },
         ],
         "nodes": [
+            {"data": {"type": "start"}, "id": "start"},
             {
                 "data": {
-                    "type": "start"
+                    "type": "llm",
                 },
-                "id": "start"
+                "id": "llm1",
             },
             {
                 "data": {
                     "type": "llm",
                 },
-                "id": "llm1"
+                "id": "llm2",
             },
             {
                 "data": {
                     "type": "llm",
                 },
-                "id": "llm2"
+                "id": "llm3",
             },
             {
-                "data": {
-                    "type": "llm",
-                },
-                "id": "llm3"
-            },
-            {
-                "data": {
-                    "type": "answer",
-                    "title": "answer",
-                    "answer": "1"
-                },
+                "data": {"type": "answer", "title": "answer", "answer": "1"},
                 "id": "answer",
             },
         ],
     }
 
-    graph = Graph.init(
-        graph_config=graph_config
-    )
+    graph = Graph.init(graph_config=graph_config)
 
     assert graph.root_node_id == "start"
     for i in range(3):
@@ -330,47 +283,36 @@ def test_parallels_graph2():
                 "id": "llm2-source-answer-target",
                 "source": "llm2",
                 "target": "answer",
-            }
+            },
         ],
         "nodes": [
+            {"data": {"type": "start"}, "id": "start"},
             {
                 "data": {
-                    "type": "start"
+                    "type": "llm",
                 },
-                "id": "start"
+                "id": "llm1",
             },
             {
                 "data": {
                     "type": "llm",
                 },
-                "id": "llm1"
+                "id": "llm2",
             },
             {
                 "data": {
                     "type": "llm",
                 },
-                "id": "llm2"
+                "id": "llm3",
             },
             {
-                "data": {
-                    "type": "llm",
-                },
-                "id": "llm3"
-            },
-            {
-                "data": {
-                    "type": "answer",
-                    "title": "answer",
-                    "answer": "1"
-                },
+                "data": {"type": "answer", "title": "answer", "answer": "1"},
                 "id": "answer",
             },
         ],
     }
 
-    graph = Graph.init(
-        graph_config=graph_config
-    )
+    graph = Graph.init(graph_config=graph_config)
 
     assert graph.root_node_id == "start"
     for i in range(3):
@@ -407,44 +349,33 @@ def test_parallels_graph3():
             },
         ],
         "nodes": [
+            {"data": {"type": "start"}, "id": "start"},
             {
                 "data": {
-                    "type": "start"
+                    "type": "llm",
                 },
-                "id": "start"
+                "id": "llm1",
             },
             {
                 "data": {
                     "type": "llm",
                 },
-                "id": "llm1"
+                "id": "llm2",
             },
             {
                 "data": {
                     "type": "llm",
                 },
-                "id": "llm2"
+                "id": "llm3",
             },
             {
-                "data": {
-                    "type": "llm",
-                },
-                "id": "llm3"
-            },
-            {
-                "data": {
-                    "type": "answer",
-                    "title": "answer",
-                    "answer": "1"
-                },
+                "data": {"type": "answer", "title": "answer", "answer": "1"},
                 "id": "answer",
             },
         ],
     }
 
-    graph = Graph.init(
-        graph_config=graph_config
-    )
+    graph = Graph.init(graph_config=graph_config)
 
     assert graph.root_node_id == "start"
     for i in range(3):
@@ -504,65 +435,54 @@ def test_parallels_graph4():
                 "id": "code3-source-answer-target",
                 "source": "code3",
                 "target": "answer",
-            }
+            },
         ],
         "nodes": [
-            {
-                "data": {
-                    "type": "start"
-                },
-                "id": "start"
-            },
+            {"data": {"type": "start"}, "id": "start"},
             {
                 "data": {
                     "type": "llm",
                 },
-                "id": "llm1"
+                "id": "llm1",
             },
             {
                 "data": {
                     "type": "code",
                 },
-                "id": "code1"
+                "id": "code1",
             },
             {
                 "data": {
                     "type": "llm",
                 },
-                "id": "llm2"
+                "id": "llm2",
             },
             {
                 "data": {
                     "type": "code",
                 },
-                "id": "code2"
+                "id": "code2",
             },
             {
                 "data": {
                     "type": "llm",
                 },
-                "id": "llm3"
+                "id": "llm3",
             },
             {
                 "data": {
                     "type": "code",
                 },
-                "id": "code3"
+                "id": "code3",
             },
             {
-                "data": {
-                    "type": "answer",
-                    "title": "answer",
-                    "answer": "1"
-                },
+                "data": {"type": "answer", "title": "answer", "answer": "1"},
                 "id": "answer",
             },
         ],
     }
 
-    graph = Graph.init(
-        graph_config=graph_config
-    )
+    graph = Graph.init(graph_config=graph_config)
 
     assert graph.root_node_id == "start"
     for i in range(3):
@@ -641,77 +561,66 @@ def test_parallels_graph5():
                 "id": "code2-source-answer-target",
                 "source": "code2",
                 "target": "answer",
-            }
+            },
         ],
         "nodes": [
-            {
-                "data": {
-                    "type": "start"
-                },
-                "id": "start"
-            },
+            {"data": {"type": "start"}, "id": "start"},
             {
                 "data": {
                     "type": "llm",
                 },
-                "id": "llm1"
+                "id": "llm1",
             },
             {
                 "data": {
                     "type": "code",
                 },
-                "id": "code1"
+                "id": "code1",
             },
             {
                 "data": {
                     "type": "llm",
                 },
-                "id": "llm2"
+                "id": "llm2",
             },
             {
                 "data": {
                     "type": "code",
                 },
-                "id": "code2"
+                "id": "code2",
             },
             {
                 "data": {
                     "type": "llm",
                 },
-                "id": "llm3"
+                "id": "llm3",
             },
             {
                 "data": {
                     "type": "code",
                 },
-                "id": "code3"
+                "id": "code3",
             },
             {
-                "data": {
-                    "type": "answer",
-                    "title": "answer",
-                    "answer": "1"
-                },
+                "data": {"type": "answer", "title": "answer", "answer": "1"},
                 "id": "answer",
             },
             {
                 "data": {
                     "type": "llm",
                 },
-                "id": "llm4"
+                "id": "llm4",
             },
             {
                 "data": {
                     "type": "llm",
                 },
-                "id": "llm5"
+                "id": "llm5",
             },
         ],
     }
 
-    graph = Graph.init(
-        graph_config=graph_config
-    )
+    graph = Graph.init(graph_config=graph_config)
 
     assert graph.root_node_id == "start"
     for i in range(5):
@@ -786,65 +695,54 @@ def test_parallels_graph6():
                 "id": "code3-source-answer-target",
                 "source": "code3",
                 "target": "answer",
-            }
+            },
         ],
         "nodes": [
-            {
-                "data": {
-                    "type": "start"
-                },
-                "id": "start"
-            },
+            {"data": {"type": "start"}, "id": "start"},
             {
                 "data": {
                     "type": "llm",
                 },
-                "id": "llm1"
+                "id": "llm1",
             },
             {
                 "data": {
                     "type": "code",
                 },
-                "id": "code1"
+                "id": "code1",
             },
             {
                 "data": {
                     "type": "llm",
                 },
-                "id": "llm2"
+                "id": "llm2",
             },
             {
                 "data": {
                     "type": "code",
                 },
-                "id": "code2"
+                "id": "code2",
             },
             {
                 "data": {
                     "type": "llm",
                 },
-                "id": "llm3"
+                "id": "llm3",
             },
             {
                 "data": {
                     "type": "code",
                 },
-                "id": "code3"
+                "id": "code3",
             },
             {
-                "data": {
-                    "type": "answer",
-                    "title": "answer",
-                    "answer": "1"
-                },
+                "data": {"type": "answer", "title": "answer", "answer": "1"},
                 "id": "answer",
             },
         ],
     }
 
-    graph = Graph.init(
-        graph_config=graph_config
-    )
+    graph = Graph.init(graph_config=graph_config)
 
     assert graph.root_node_id == "start"
     for i in range(3):
