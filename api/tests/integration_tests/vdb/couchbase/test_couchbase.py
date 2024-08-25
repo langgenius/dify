@@ -10,7 +10,7 @@ from tests.integration_tests.vdb.test_vector_store import (
 
 class CouchbaseTest(AbstractVectorTest):
     def __init__(self):
-        time.sleep(15)
+        time.sleep(20)
         super().__init__()
         self.vector = CouchbaseVector(
             collection_name=self.collection_name,
