@@ -45,6 +45,32 @@ const translation = {
   },
   docsFailedNotice: 'Les documents n\'ont pas pu être indexés',
   retry: 'Réessayer',
+  indexingTechnique: {
+    high_quality: 'HQ',
+    economy: 'ÉCO',
+  },
+  indexingMethod: {
+    semantic_search: 'VECTEUR',
+    full_text_search: 'TEXTE INTÉGRAL',
+    hybrid_search: 'HYBRIDE',
+    invertedIndex: 'INVERSÉ',
+  },
+  mixtureHighQualityAndEconomicTip: 'Le modèle de reclassement est nécessaire pour le mélange de bases de connaissances de haute qualité et économiques.',
+  inconsistentEmbeddingModelTip: 'Le modèle de reclassement est nécessaire si les modèles d\'incorporation des bases de connaissances sélectionnées sont incohérents.',
+  retrievalSettings: 'Paramètres de récupération',
+  rerankSettings: 'Paramètres de reclassement',
+  weightedScore: {
+    title: 'Score pondéré',
+    description: 'En ajustant les poids attribués, cette stratégie de reclassement détermine s\'il faut prioriser la correspondance sémantique ou par mots-clés.',
+    semanticFirst: 'Sémantique d\'abord',
+    keywordFirst: 'Mot-clé d\'abord',
+    customized: 'Personnalisé',
+    semantic: 'Sémantique',
+    keyword: 'Mot-clé',
+  },
+  nTo1RetrievalLegacy: 'La récupération N-à-1 sera officiellement obsolète à partir de septembre. Il est recommandé d\'utiliser la dernière récupération multi-chemins pour obtenir de meilleurs résultats.',
+  nTo1RetrievalLegacyLink: 'En savoir plus',
+  nTo1RetrievalLegacyLinkText: 'La récupération N-à-1 sera officiellement obsolète en septembre.',
 }
 
 export default translation
