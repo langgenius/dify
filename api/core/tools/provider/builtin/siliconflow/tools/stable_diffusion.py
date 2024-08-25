@@ -1,5 +1,6 @@
-import requests
 from typing import Any, Union
+
+import requests
 
 from core.tools.entities.tool_entities import ToolInvokeMessage
 from core.tools.tool.builtin_tool import BuiltinTool
@@ -19,8 +20,7 @@ class StableDiffusionTool(BuiltinTool):
         headers = {
             "accept": "application/json",
             "content-type": "application/json",
-            "authorization": "Bearer "
-            + self.runtime.credentials["siliconFlow_api_key"],
+            "authorization": f"Bearer {self.runtime.credentials['siliconFlow_api_key']}",
         }
 
         model = tool_parameters.get("model", "sd_3")

@@ -1,5 +1,6 @@
-import requests
 from typing import Any, Union
+
+import requests
 
 from core.tools.entities.tool_entities import ToolInvokeMessage
 from core.tools.tool.builtin_tool import BuiltinTool
@@ -18,8 +19,7 @@ class FluxTool(BuiltinTool):
         headers = {
             "accept": "application/json",
             "content-type": "application/json",
-            "authorization": "Bearer "
-            + self.runtime.credentials["siliconFlow_api_key"],
+            "authorization": f"Bearer {self.runtime.credentials['siliconFlow_api_key']}",
         }
 
         payload = {
