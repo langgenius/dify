@@ -80,7 +80,7 @@ class ElasticSearchVector(BaseVector):
     def add_texts(self, documents: list[Document], embeddings: list[list[float]], **kwargs):
         uuids = self._get_uuids(documents)
         for i in range(len(documents)):
-            self._client.index(index=self._collection_name.lower(),
+            self._client.index(index=self._collection_name,
                                id=uuids[i],
                                document={
                                    Field.CONTENT_KEY.value: documents[i].page_content,
@@ -115,18 +115,13 @@ class ElasticSearchVector(BaseVector):
 
     def search_by_vector(self, query_vector: list[float], **kwargs: Any) -> list[Document]:
         top_k = kwargs.get("top_k", 10)
-        query_str = {
-            "query": {
-                "knn": {
-                    "field": Field.VECTOR.value,
-                    "query_vector": query_vector,
-                    "k": top_k
-                }
-            },
-            "size": top_k
+        knn = {
+            "field": Field.VECTOR.value,
+            "query_vector": query_vector,
+            "k": top_k
         }
 
-        results = self._client.search(index=self._collection_name, body=query_str)
+        results = self._client.search(index=self._collection_name, knn=knn, size=top_k)
 
         docs_and_scores = []
         for hit in results['hits']['hits']:
@@ -169,14 +164,14 @@ class ElasticSearchVector(BaseVector):
     def create_collection(
             self, embeddings: list, metadatas: Optional[list[dict]] = None, index_params: Optional[dict] = None
     ):
-        lock_name = f'vector_indexing_lock_{self._collection_name.lower()}'
+        lock_name = f'vector_indexing_lock_{self._collection_name}'
         with redis_client.lock(lock_name, timeout=20):
-            collection_exist_cache_key = f'vector_indexing_{self._collection_name.lower()}'
+            collection_exist_cache_key = f'vector_indexing_{self._collection_name}'
             if redis_client.get(collection_exist_cache_key):
-                logger.info(f"Collection {self._collection_name.lower()} already exists.")
+                logger.info(f"Collection {self._collection_name} already exists.")
                 return
 
-            if not self._client.indices.exists(index=self._collection_name.lower()):
+            if not self._client.indices.exists(index=self._collection_name):
                 dim = len(embeddings[0])
                 mappings = {
                     "properties": {
@@ -194,7 +189,7 @@ class ElasticSearchVector(BaseVector):
                         }
                     }
                 }
-                self._client.indices.create(index=self._collection_name.lower(), mappings=mappings)
+                self._client.indices.create(index=self._collection_name, mappings=mappings)
 
             redis_client.set(collection_exist_cache_key, 1, ex=3600)
 
