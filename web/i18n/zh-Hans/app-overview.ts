@@ -53,6 +53,12 @@ const translation = {
         chatColorThemeDesc: '设置聊天机器人的颜色主题',
         chatColorThemeInverted: '反转',
         invalidHexMessage: '无效的十六进制值',
+        sso: {
+          label: '单点登录认证',
+          title: 'WebApp SSO 认证',
+          description: '启用后，所有用户都需要先进行 SSO 认证才能访问',
+          tooltip: '联系管理员以开启 WebApp SSO 认证',
+        },
         more: {
           entry: '展示更多设置',
           copyright: '版权',
