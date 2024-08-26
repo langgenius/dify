@@ -35,17 +35,13 @@ class InstalledAppWorkflowRunApi(InstalledAppResource):
             raise NotWorkflowAppError()
 
         parser = reqparse.RequestParser()
-        parser.add_argument('inputs', type=dict, required=True, nullable=False, location='json')
-        parser.add_argument('files', type=list, required=False, location='json')
+        parser.add_argument("inputs", type=dict, required=True, nullable=False, location="json")
+        parser.add_argument("files", type=list, required=False, location="json")
         args = parser.parse_args()
 
         try:
             response = AppGenerateService.generate(
-                app_model=app_model,
-                user=current_user,
-                args=args,
-                invoke_from=InvokeFrom.EXPLORE,
-                streaming=True
+                app_model=app_model, user=current_user, args=args, invoke_from=InvokeFrom.EXPLORE, streaming=True
             )
 
             return helper.compact_generate_response(response)
@@ -76,10 +72,10 @@ class InstalledAppWorkflowTaskStopApi(InstalledAppResource):
 
         AppQueueManager.set_stop_flag(task_id, InvokeFrom.EXPLORE, current_user.id)
 
-        return {
-            "result": "success"
-        }
+        return {"result": "success"}
 
 
-api.add_resource(InstalledAppWorkflowRunApi, '/installed-apps/<uuid:installed_app_id>/workflows/run')
-api.add_resource(InstalledAppWorkflowTaskStopApi, '/installed-apps/<uuid:installed_app_id>/workflows/tasks/<string:task_id>/stop')
+api.add_resource(InstalledAppWorkflowRunApi, "/installed-apps/<uuid:installed_app_id>/workflows/run")
+api.add_resource(
+    InstalledAppWorkflowTaskStopApi, "/installed-apps/<uuid:installed_app_id>/workflows/tasks/<string:task_id>/stop"
+)

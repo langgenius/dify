@@ -13,36 +13,39 @@ class ToolFilePreviewApi(Resource):
 
         parser = reqparse.RequestParser()
 
-        parser.add_argument('timestamp', type=str, required=True, location='args')
-        parser.add_argument('nonce', type=str, required=True, location='args')
-        parser.add_argument('sign', type=str, required=True, location='args')
+        parser.add_argument("timestamp", type=str, required=True, location="args")
+        parser.add_argument("nonce", type=str, required=True, location="args")
+        parser.add_argument("sign", type=str, required=True, location="args")
 
         args = parser.parse_args()
 
-        if not ToolFileManager.verify_file(file_id=file_id,
-                                            timestamp=args['timestamp'],
-                                            nonce=args['nonce'],
-                                            sign=args['sign'],
+        if not ToolFileManager.verify_file(
+            file_id=file_id,
+            timestamp=args["timestamp"],
+            nonce=args["nonce"],
+            sign=args["sign"],
         ):
-            raise Forbidden('Invalid request.')
-        
+            raise Forbidden("Invalid request.")
+
         try:
             result = ToolFileManager.get_file_generator_by_tool_file_id(
                 file_id,
             )
 
             if not result:
-                raise NotFound('file is not found')
-            
+                raise NotFound("file is not found")
+
             generator, mimetype = result
         except Exception:
             raise UnsupportedFileTypeError()
 
         return Response(generator, mimetype=mimetype)
 
-api.add_resource(ToolFilePreviewApi, '/files/tools/<uuid:file_id>.<string:extension>')
+
+api.add_resource(ToolFilePreviewApi, "/files/tools/<uuid:file_id>.<string:extension>")
+
 
 class UnsupportedFileTypeError(BaseHTTPException):
-    error_code = 'unsupported_file_type'
+    error_code = "unsupported_file_type"
     description = "File type not allowed."
     code = 415

@@ -14,7 +14,6 @@ from services.conversation_service import ConversationService
 
 
 class ConversationApi(Resource):
-
     @validate_app_token(fetch_user_arg=FetchUserArg(fetch_from=WhereisUserArg.QUERY))
     @marshal_with(conversation_infinite_scroll_pagination_fields)
     def get(self, app_model: App, end_user: EndUser):
@@ -23,20 +22,26 @@ class ConversationApi(Resource):
             raise NotChatAppError()
 
         parser = reqparse.RequestParser()
-        parser.add_argument('last_id', type=uuid_value, location='args')
-        parser.add_argument('limit', type=int_range(1, 100), required=False, default=20, location='args')
-        parser.add_argument('sort_by', type=str, choices=['created_at', '-created_at', 'updated_at', '-updated_at'],
-                            required=False, default='-updated_at', location='args')
+        parser.add_argument("last_id", type=uuid_value, location="args")
+        parser.add_argument("limit", type=int_range(1, 100), required=False, default=20, location="args")
+        parser.add_argument(
+            "sort_by",
+            type=str,
+            choices=["created_at", "-created_at", "updated_at", "-updated_at"],
+            required=False,
+            default="-updated_at",
+            location="args",
+        )
         args = parser.parse_args()
 
         try:
             return ConversationService.pagination_by_last_id(
                 app_model=app_model,
                 user=end_user,
-                last_id=args['last_id'],
-                limit=args['limit'],
+                last_id=args["last_id"],
+                limit=args["limit"],
                 invoke_from=InvokeFrom.SERVICE_API,
-                sort_by=args['sort_by']
+                sort_by=args["sort_by"],
             )
         except services.errors.conversation.LastConversationNotExistsError:
             raise NotFound("Last Conversation Not Exists.")
@@ -56,11 +61,10 @@ class ConversationDetailApi(Resource):
             ConversationService.delete(app_model, conversation_id, end_user)
         except services.errors.conversation.ConversationNotExistsError:
             raise NotFound("Conversation Not Exists.")
-        return {'result': 'success'}, 200
+        return {"result": "success"}, 200
 
 
 class ConversationRenameApi(Resource):
-
     @validate_app_token(fetch_user_arg=FetchUserArg(fetch_from=WhereisUserArg.JSON))
     @marshal_with(simple_conversation_fields)
     def post(self, app_model: App, end_user: EndUser, c_id):
@@ -71,22 +75,16 @@ class ConversationRenameApi(Resource):
         conversation_id = str(c_id)
 
         parser = reqparse.RequestParser()
-        parser.add_argument('name', type=str, required=False, location='json')
-        parser.add_argument('auto_generate', type=bool, required=False, default=False, location='json')
+        parser.add_argument("name", type=str, required=False, location="json")
+        parser.add_argument("auto_generate", type=bool, required=False, default=False, location="json")
         args = parser.parse_args()
 
         try:
-            return ConversationService.rename(
-                app_model,
-                conversation_id,
-                end_user,
-                args['name'],
-                args['auto_generate']
-            )
+            return ConversationService.rename(app_model, conversation_id, end_user, args["name"], args["auto_generate"])
         except services.errors.conversation.ConversationNotExistsError:
             raise NotFound("Conversation Not Exists.")
 
 
-api.add_resource(ConversationRenameApi, '/conversations/<uuid:c_id>/name', endpoint='conversation_name')
-api.add_resource(ConversationApi, '/conversations')
-api.add_resource(ConversationDetailApi, '/conversations/<uuid:c_id>', endpoint='conversation_detail')
+api.add_resource(ConversationRenameApi, "/conversations/<uuid:c_id>/name", endpoint="conversation_name")
+api.add_resource(ConversationApi, "/conversations")
+api.add_resource(ConversationDetailApi, "/conversations/<uuid:c_id>", endpoint="conversation_detail")

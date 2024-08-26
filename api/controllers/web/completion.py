@@ -28,30 +28,25 @@ from services.app_generate_service import AppGenerateService
 
 # define completion api for user
 class CompletionApi(WebApiResource):
-
     def post(self, app_model, end_user):
-        if app_model.mode != 'completion':
+        if app_model.mode != "completion":
             raise NotCompletionAppError()
 
         parser = reqparse.RequestParser()
-        parser.add_argument('inputs', type=dict, required=True, location='json')
-        parser.add_argument('query', type=str, location='json', default='')
-        parser.add_argument('files', type=list, required=False, location='json')
-        parser.add_argument('response_mode', type=str, choices=['blocking', 'streaming'], location='json')
-        parser.add_argument('retriever_from', type=str, required=False, default='web_app', location='json')
+        parser.add_argument("inputs", type=dict, required=True, location="json")
+        parser.add_argument("query", type=str, location="json", default="")
+        parser.add_argument("files", type=list, required=False, location="json")
+        parser.add_argument("response_mode", type=str, choices=["blocking", "streaming"], location="json")
+        parser.add_argument("retriever_from", type=str, required=False, default="web_app", location="json")
 
         args = parser.parse_args()
 
-        streaming = args['response_mode'] == 'streaming'
-        args['auto_generate_name'] = False
+        streaming = args["response_mode"] == "streaming"
+        args["auto_generate_name"] = False
 
         try:
             response = AppGenerateService.generate(
-                app_model=app_model,
-                user=end_user,
-                args=args,
-                invoke_from=InvokeFrom.WEB_APP,
-                streaming=streaming
+                app_model=app_model, user=end_user, args=args, invoke_from=InvokeFrom.WEB_APP, streaming=streaming
             )
 
             return helper.compact_generate_response(response)
@@ -79,12 +74,12 @@ class CompletionApi(WebApiResource):
 
 class CompletionStopApi(WebApiResource):
     def post(self, app_model, end_user, task_id):
-        if app_model.mode != 'completion':
+        if app_model.mode != "completion":
             raise NotCompletionAppError()
 
         AppQueueManager.set_stop_flag(task_id, InvokeFrom.WEB_APP, end_user.id)
 
-        return {'result': 'success'}, 200
+        return {"result": "success"}, 200
 
 
 class ChatApi(WebApiResource):
@@ -94,25 +89,21 @@ class ChatApi(WebApiResource):
             raise NotChatAppError()
 
         parser = reqparse.RequestParser()
-        parser.add_argument('inputs', type=dict, required=True, location='json')
-        parser.add_argument('query', type=str, required=True, location='json')
-        parser.add_argument('files', type=list, required=False, location='json')
-        parser.add_argument('response_mode', type=str, choices=['blocking', 'streaming'], location='json')
-        parser.add_argument('conversation_id', type=uuid_value, location='json')
-        parser.add_argument('retriever_from', type=str, required=False, default='web_app', location='json')
+        parser.add_argument("inputs", type=dict, required=True, location="json")
+        parser.add_argument("query", type=str, required=True, location="json")
+        parser.add_argument("files", type=list, required=False, location="json")
+        parser.add_argument("response_mode", type=str, choices=["blocking", "streaming"], location="json")
+        parser.add_argument("conversation_id", type=uuid_value, location="json")
+        parser.add_argument("retriever_from", type=str, required=False, default="web_app", location="json")
 
         args = parser.parse_args()
 
-        streaming = args['response_mode'] == 'streaming'
-        args['auto_generate_name'] = False
+        streaming = args["response_mode"] == "streaming"
+        args["auto_generate_name"] = False
 
         try:
             response = AppGenerateService.generate(
-                app_model=app_model,
-                user=end_user,
-                args=args,
-                invoke_from=InvokeFrom.WEB_APP,
-                streaming=streaming
+                app_model=app_model, user=end_user, args=args, invoke_from=InvokeFrom.WEB_APP, streaming=streaming
             )
 
             return helper.compact_generate_response(response)
@@ -146,10 +137,10 @@ class ChatStopApi(WebApiResource):
 
         AppQueueManager.set_stop_flag(task_id, InvokeFrom.WEB_APP, end_user.id)
 
-        return {'result': 'success'}, 200
+        return {"result": "success"}, 200
 
 
-api.add_resource(CompletionApi, '/completion-messages')
-api.add_resource(CompletionStopApi, '/completion-messages/<string:task_id>/stop')
-api.add_resource(ChatApi, '/chat-messages')
-api.add_resource(ChatStopApi, '/chat-messages/<string:task_id>/stop')
+api.add_resource(CompletionApi, "/completion-messages")
+api.add_resource(CompletionStopApi, "/completion-messages/<string:task_id>/stop")
+api.add_resource(ChatApi, "/chat-messages")
+api.add_resource(ChatStopApi, "/chat-messages/<string:task_id>/stop")
