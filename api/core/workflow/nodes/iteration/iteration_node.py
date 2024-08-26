@@ -64,7 +64,7 @@ class IterationNode(BaseNode):
             ):
                 start_node_ids.append(node_config.get('id'))
 
-        if len(start_node_ids) > 1:
+        if len(start_node_ids) > 0:
             # add new fake iteration start node that connect to all start nodes
             root_node_id = f"{self.node_id}-start"
             graph_config['nodes'].append({
@@ -81,6 +81,9 @@ class IterationNode(BaseNode):
                     "target": start_node_id
                 })
         else:
+            if not self.node_data.start_node_id:
+                raise ValueError(f'field start_node_id in iteration {self.node_id} not found')
+
             root_node_id = self.node_data.start_node_id
 
         # init graph
