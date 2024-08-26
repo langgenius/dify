@@ -2,24 +2,23 @@ import React, { useEffect, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import Link from 'next/link'
 import Loading from '../components/base/loading'
-import SSOAuthButton from './components/sso-auth'
 import MailAndCodeAuth from './components/mail-and-code-auth'
 import MailAndPasswordAuth from './components/mail-and-password-auth'
 import SocialAuth from './components/social-auth'
-import { IS_CE_EDITION } from '@/config'
-import { defaultSystemFeatures } from '@/types/feature'
-import { getSystemFeatures } from '@/service/common'
+import SSOAuth from './components/sso-auth'
 import cn from '@/utils/classnames'
+import { IS_CE_EDITION } from '@/config'
+import { getSystemFeatures } from '@/service/common'
+import { defaultSystemFeatures } from '@/types/feature'
 
 type AuthType = 'password' | 'code' | 'sso' | 'social'
 
 const NormalForm = () => {
   const { t } = useTranslation()
-  const [authType, updateAuthType] = useState('code')
-  const [enabledAuthType, updateEnabledAuthType] = useState<AuthType[]>(['password', 'code', 'sso', 'social'])
-
   const [isLoading, setIsLoading] = useState(true)
   const [systemFeatures, setSystemFeatures] = useState(defaultSystemFeatures)
+  const [authType, updateAuthType] = useState('code')
+  const [enabledAuthType, updateEnabledAuthType] = useState<AuthType[]>(['password', 'code', 'sso', 'social'])
 
   const shouldShowORLine = (enabledAuthType.includes('code') || enabledAuthType.includes('password')) && (enabledAuthType.includes('social') || enabledAuthType.includes('sso'))
 
@@ -30,7 +29,6 @@ const NormalForm = () => {
       setIsLoading(false)
     })
   }, [])
-
   if (isLoading) {
     return <div className={
       cn(
@@ -52,10 +50,11 @@ const NormalForm = () => {
 
       <div className="w-full mx-auto mt-8">
         <div className="bg-white ">
-
           <div className="flex flex-col gap-3 mt-6">
             {enabledAuthType.includes('social') && <SocialAuth />}
-            {enabledAuthType.includes('sso') && <div className='w-full'><SSOAuthButton protocol={systemFeatures.sso_enforced_for_signin_protocol} /></div>}
+            {enabledAuthType.includes('sso') && <div className='w-full'>
+              <SSOAuth protocol={systemFeatures.sso_enforced_for_signin_protocol} />
+            </div>}
           </div>
 
           {shouldShowORLine && <div className="relative mt-6">
@@ -78,7 +77,6 @@ const NormalForm = () => {
               <span className='text-xs text-components-button-secondary-accent-text'>{t('login.useVerificationCode')}</span>
             </div>}
           </>}
-
           <div className="w-hull text-center block mt-2 text-xs text-gray-600">
             {t('login.tosDesc')}
             &nbsp;

@@ -3,12 +3,14 @@ import Link from 'next/link'
 import { RiArrowLeftLine, RiMailSendFill } from '@remixicon/react'
 import { useTranslation } from 'react-i18next'
 import { useState } from 'react'
+import { useRouter } from 'next/navigation'
 import Countdown from './countdown'
 import Button from '@/app/components/base/button'
 import Input from '@/app/components/base/input'
 import Toast from '@/app/components/base/toast'
 
 export default function CheckCode() {
+  const router = useRouter()
   const { t } = useTranslation()
   const [code, setVerifyCode] = useState('')
 
@@ -25,7 +27,9 @@ export default function CheckCode() {
         type: 'error',
         message: t('login.checkCode.invalidCode'),
       })
+      return
     }
+    router.replace('/signin?console_token=123')
   }
 
   return <div className='flex flex-col gap-3'>
