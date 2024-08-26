@@ -8,16 +8,11 @@ from tests.integration_tests.vdb.test_vector_store import (
 class ElasticSearchVectorTest(AbstractVectorTest):
     def __init__(self):
         super().__init__()
-        self.attributes = ['doc_id', 'dataset_id', 'document_id', 'doc_hash']
+        self.attributes = ["doc_id", "dataset_id", "document_id", "doc_hash"]
         self.vector = ElasticSearchVector(
             index_name=self.collection_name.lower(),
-            config=ElasticSearchConfig(
-                host='http://localhost',
-                port='9200',
-                username='elastic',
-                password='elastic'
-            ),
-            attributes=self.attributes
+            config=ElasticSearchConfig(host="http://localhost", port="9200", username="elastic", password="elastic"),
+            attributes=self.attributes,
         )
 
 

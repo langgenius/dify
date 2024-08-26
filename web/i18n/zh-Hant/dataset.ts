@@ -45,6 +45,32 @@ const translation = {
   },
   docsFailedNotice: '文件無法被索引',
   retry: '重試',
+  indexingTechnique: {
+    high_quality: '高質量',
+    economy: '經濟',
+  },
+  indexingMethod: {
+    semantic_search: '向量',
+    full_text_search: '全文',
+    hybrid_search: '混合',
+    invertedIndex: '倒排索引',
+  },
+  mixtureHighQualityAndEconomicTip: '混合高質量和經濟知識庫需要重新排序模型。',
+  inconsistentEmbeddingModelTip: '如果選定知識庫的嵌入模型不一致，則需要重新排序模型。',
+  retrievalSettings: '檢索設置',
+  rerankSettings: '重新排序設置',
+  weightedScore: {
+    title: '加權分數',
+    description: '通過調整分配的權重，此重新排序策略決定是優先考慮語義匹配還是關鍵詞匹配。',
+    semanticFirst: '語義優先',
+    keywordFirst: '關鍵詞優先',
+    customized: '自定義',
+    semantic: '語義',
+    keyword: '關鍵詞',
+  },
+  nTo1RetrievalLegacy: 'N對1檢索將從9月起正式棄用。建議使用最新的多路徑檢索以獲得更好的結果。',
+  nTo1RetrievalLegacyLink: '了解更多',
+  nTo1RetrievalLegacyLinkText: 'N對1檢索將於9月正式棄用。',
 }
 
 export default translation
