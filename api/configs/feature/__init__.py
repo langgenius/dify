@@ -175,12 +175,12 @@ class HttpConfig(BaseSettings):
     HTTP configs
     """
 
-    BIND_HOST: str = Field(
+    DIFY_BIND_ADDRESS: str = Field(
         description="binding host",
         default="0.0.0.0",
     )
 
-    BIND_PORT: PositiveInt = Field(
+    DIFY_PORT: PositiveInt = Field(
         description="binding port",
         default=5001,
     )
