@@ -13,4 +13,4 @@ class IndexApi(Resource):
         }
 
 
-api.add_resource(IndexApi, '/')
+api.add_resource(IndexApi, "/")
