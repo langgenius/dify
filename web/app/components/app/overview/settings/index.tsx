@@ -215,14 +215,19 @@ const SettingsModal: FC<ISettingsModalProps> = ({
           defaultValue={language}
           onSelect={item => setLanguage(item.value as Language)}
         />
-        {(appInfo.mode === 'workflow' || appInfo.mode === 'advanced-chat') && <>
-          <div className={`mt-6 mb-2 font-medium ${s.settingTitle} text-gray-900 `}>{t(`${prefixSettings}.workflow.title`)}</div>
-          <SimpleSelect
-            items={[{ name: t(`${prefixSettings}.workflow.show`), value: 'true' }, { name: t(`${prefixSettings}.workflow.hide`), value: 'false' }]}
-            defaultValue={inputInfo.show_workflow_steps ? 'true' : 'false'}
-            onSelect={item => setInputInfo({ ...inputInfo, show_workflow_steps: item.value === 'true' })}
-          />
-        </>}
+        <div className='w-full mt-8'>
+          <p className='system-xs-medium text-gray-500'>{t(`${prefixSettings}.workflow.title`)}</p>
+          <div className='flex justify-between items-center'>
+            <div className='font-medium system-sm-semibold flex-grow text-gray-900'>{t(`${prefixSettings}.workflow.subTitle`)}</div>
+            <Switch
+              disabled={!(appInfo.mode === 'workflow' || appInfo.mode === 'advanced-chat')}
+              defaultValue={inputInfo.show_workflow_steps}
+              onChange={v => setInputInfo({ ...inputInfo, show_workflow_steps: v })}
+            />
+          </div>
+          <p className='body-xs-regular text-gray-500'>{t(`${prefixSettings}.workflow.showDesc`)}</p>
+        </div>
+
         {isChat && <> <div className={`mt-8 font-medium ${s.settingTitle} text-gray-900`}>{t(`${prefixSettings}.chatColorTheme`)}</div>
           <p className={`mt-1 ${s.settingsTip} text-gray-500`}>{t(`${prefixSettings}.chatColorThemeDesc`)}</p>
           <input className={`w-full mt-2 rounded-lg h-10 box-border px-3 ${s.projectName} bg-gray-100`}
