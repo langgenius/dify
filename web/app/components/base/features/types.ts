@@ -4,6 +4,8 @@ export type EnabledOrDisabled = {
   enabled?: boolean
 }
 
+export type MoreLikeThis = EnabledOrDisabled
+
 export type OpeningStatement = EnabledOrDisabled & {
   opening_statement?: string
   suggested_questions?: string[]
@@ -34,6 +36,7 @@ export type FileUpload = {
 }
 
 export enum FeatureEnum {
+  moreLikeThis = 'moreLikeThis',
   opening = 'opening',
   suggested = 'suggested',
   text2speech = 'text2speech',
@@ -44,6 +47,7 @@ export enum FeatureEnum {
 }
 
 export type Features = {
+  [FeatureEnum.moreLikeThis]?: MoreLikeThis
   [FeatureEnum.opening]?: OpeningStatement
   [FeatureEnum.suggested]?: SuggestedQuestionsAfterAnswer
   [FeatureEnum.text2speech]?: TextToSpeech

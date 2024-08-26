@@ -4,6 +4,7 @@ import {
 } from 'react'
 import { useStore } from './store'
 import {
+  useIsChatMode,
   useNodesReadOnly,
   useNodesSyncDraft,
 } from './hooks'
@@ -11,6 +12,7 @@ import NewFeaturePanel from '@/app/components/base/features/new-feature-panel'
 
 const Features = () => {
   const setShowFeaturesPanel = useStore(s => s.setShowFeaturesPanel)
+  const isChatMode = useIsChatMode()
   const { nodesReadOnly } = useNodesReadOnly()
   const { handleSyncWorkflowDraft } = useNodesSyncDraft()
 
@@ -21,6 +23,7 @@ const Features = () => {
   return (
     <NewFeaturePanel
       show
+      isChatMode={isChatMode}
       disabled={nodesReadOnly}
       onChange={handleFeaturesChange}
       onClose={() => setShowFeaturesPanel(false)}

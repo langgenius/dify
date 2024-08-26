@@ -22,6 +22,9 @@ export type FeaturesStore = ReturnType<typeof createFeaturesStore>
 export const createFeaturesStore = (initProps?: Partial<FeaturesState>) => {
   const DEFAULT_PROPS: FeaturesState = {
     features: {
+      moreLikeThis: {
+        enabled: false,
+      },
       opening: {
         enabled: false,
       },
