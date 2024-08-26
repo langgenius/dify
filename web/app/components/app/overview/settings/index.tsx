@@ -15,7 +15,7 @@ import type { AppDetailResponse } from '@/models/app'
 import type { AppIconType, AppSSO, Language } from '@/types/app'
 import { useToastContext } from '@/app/components/base/toast'
 import { languages } from '@/i18n/language'
-import TooltipPlus from '@/app/components/base/tooltip-plus'
+import Tooltip from '@/app/components/base/tooltip'
 import AppContext from '@/context/app-context'
 import type { AppIconSelection } from '@/app/components/base/app-icon-picker'
 import AppIconPicker from '@/app/components/base/app-icon-picker'
@@ -240,9 +240,15 @@ const SettingsModal: FC<ISettingsModalProps> = ({
           <p className='system-xs-medium text-gray-500'>{t(`${prefixSettings}.sso.label`)}</p>
           <div className='flex justify-between items-center'>
             <div className='font-medium system-sm-semibold flex-grow text-gray-900'>{t(`${prefixSettings}.sso.title`)}</div>
-            <TooltipPlus disabled={systemFeatures.sso_enforced_for_web} popupContent={<div className='w-[180px]'>{t(`${prefixSettings}.sso.tooltip`)}</div>}>
+            <Tooltip
+              disabled={systemFeatures.sso_enforced_for_web}
+              popupContent={
+                <div className='w-[180px]'>{t(`${prefixSettings}.sso.tooltip`)}</div>
+              }
+              asChild={false}
+            >
               <Switch disabled={!systemFeatures.sso_enforced_for_web} defaultValue={systemFeatures.sso_enforced_for_web && inputInfo.enable_sso} onChange={v => setInputInfo({ ...inputInfo, enable_sso: v })}></Switch>
-            </TooltipPlus>
+            </Tooltip>
           </div>
           <p className='body-xs-regular text-gray-500'>{t(`${prefixSettings}.sso.description`)}</p>
         </div>}
