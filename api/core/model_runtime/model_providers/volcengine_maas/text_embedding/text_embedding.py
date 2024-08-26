@@ -22,16 +22,17 @@ from core.model_runtime.errors.invoke import (
 )
 from core.model_runtime.errors.validate import CredentialsValidateFailedError
 from core.model_runtime.model_providers.__base.text_embedding_model import TextEmbeddingModel
-from core.model_runtime.model_providers.volcengine_maas.client import MaaSClient
-from core.model_runtime.model_providers.volcengine_maas.errors import (
+from core.model_runtime.model_providers.volcengine_maas.client import ArkClientV3
+from core.model_runtime.model_providers.volcengine_maas.legacy.client import MaaSClient
+from core.model_runtime.model_providers.volcengine_maas.legacy.errors import (
     AuthErrors,
     BadRequestErrors,
     ConnectionErrors,
+    MaasException,
     RateLimitErrors,
     ServerUnavailableErrors,
 )
 from core.model_runtime.model_providers.volcengine_maas.text_embedding.models import get_model_config
-from core.model_runtime.model_providers.volcengine_maas.volc_sdk import MaasException
 
 
 class VolcengineMaaSTextEmbeddingModel(TextEmbeddingModel):
@@ -51,6 +52,14 @@ class VolcengineMaaSTextEmbeddingModel(TextEmbeddingModel):
         :param user: unique user id
         :return: embeddings result
         """
+        if ArkClientV3.is_legacy(credentials):
+            return self._generate_v2(model, credentials, texts, user)
+
+        return self._generate_v3(model, credentials, texts, user)
+
+    def _generate_v2(self, model: str, credentials: dict,
+                     texts: list[str], user: Optional[str] = None) \
+            -> TextEmbeddingResult:
         client = MaaSClient.from_credential(credentials)
         resp = MaaSClient.wrap_exception(lambda: client.embeddings(texts))
 
@@ -60,6 +69,23 @@ class VolcengineMaaSTextEmbeddingModel(TextEmbeddingModel):
         result = TextEmbeddingResult(
             model=model,
             embeddings=[v['embedding'] for v in resp['data']],
+            usage=usage
+        )
+
+        return result
+
+    def _generate_v3(self, model: str, credentials: dict,
+                     texts: list[str], user: Optional[str] = None) \
+            -> TextEmbeddingResult:
+        client = ArkClientV3.from_credentials(credentials)
+        resp = client.embeddings(texts)
+
+        usage = self._calc_response_usage(
+            model=model, credentials=credentials, tokens=resp.usage.total_tokens)
+
+        result = TextEmbeddingResult(
+            model=model,
+            embeddings=[v.embedding for v in resp.data],
             usage=usage
         )
 
@@ -88,10 +114,21 @@ class VolcengineMaaSTextEmbeddingModel(TextEmbeddingModel):
         :param credentials: model credentials
         :return:
         """
+        if ArkClientV3.is_legacy(credentials):
+            return self._validate_credentials_v2(model, credentials)
+        return self._validate_credentials_v3(model, credentials)
+
+    def _validate_credentials_v2(self, model: str, credentials: dict) -> None:
         try:
             self._invoke(model=model, credentials=credentials, texts=['ping'])
         except MaasException as e:
             raise CredentialsValidateFailedError(e.message)
+
+    def _validate_credentials_v3(self, model: str, credentials: dict) -> None:
+        try:
+            self._invoke(model=model, credentials=credentials, texts=['ping'])
+        except Exception as e:
+            raise CredentialsValidateFailedError(e)
 
     @property
     def _invoke_error_mapping(self) -> dict[type[InvokeError], list[type[Exception]]]:
@@ -116,9 +153,10 @@ class VolcengineMaaSTextEmbeddingModel(TextEmbeddingModel):
             generate custom model entities from credentials
         """
         model_config = get_model_config(credentials)
-        model_properties = {}
-        model_properties[ModelPropertyKey.CONTEXT_SIZE] = model_config.properties.context_size
-        model_properties[ModelPropertyKey.MAX_CHUNKS] = model_config.properties.max_chunks
+        model_properties = {
+            ModelPropertyKey.CONTEXT_SIZE: model_config.properties.context_size,
+            ModelPropertyKey.MAX_CHUNKS: model_config.properties.max_chunks
+        }
         entity = AIModelEntity(
             model=model,
             label=I18nObject(en_US=model),
