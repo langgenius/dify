@@ -78,6 +78,16 @@ const translation = {
     importFailure: 'Import failure',
     importSuccess: 'Import success',
     parallelRun: 'Parallel Run',
+    parallelTip: {
+      click: {
+        title: 'Click',
+        desc: ' to add',
+      },
+      drag: {
+        title: 'Drag',
+        desc: ' to connect',
+      },
+    },
   },
   env: {
     envPanelTitle: 'Environment Variables',
