@@ -7,7 +7,7 @@ import cn from '@/utils/classnames'
 import Toast from '@/app/components/base/toast'
 import { getUserOAuth2SSOUrl, getUserOIDCSSOUrl, getUserSAMLSSOUrl } from '@/service/sso'
 import Button from '@/app/components/base/button'
-
+// !WARNING merge to components/sso-auth, ready to delete
 type UserSSOFormProps = {
   protocol: string
 }

@@ -8,11 +8,11 @@ import Toast from '@/app/components/base/toast'
 import { getUserOAuth2SSOUrl, getUserOIDCSSOUrl, getUserSAMLSSOUrl } from '@/service/sso'
 import Button from '@/app/components/base/button'
 
-type UserSSOFormProps = {
+type SSOAuthProps = {
   protocol: string
 }
 
-const UserSSOForm: FC<UserSSOFormProps> = ({
+const SSOAuth: FC<SSOAuthProps> = ({
   protocol,
 }) => {
   const searchParams = useSearchParams()
@@ -85,4 +85,4 @@ const UserSSOForm: FC<UserSSOFormProps> = ({
   )
 }
 
-export default UserSSOForm
+export default SSOAuth
