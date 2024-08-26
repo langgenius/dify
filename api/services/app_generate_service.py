@@ -10,8 +10,9 @@ from core.app.apps.workflow.app_generator import WorkflowAppGenerator
 from core.app.entities.app_invoke_entities import InvokeFrom
 from core.app.features.rate_limiting import RateLimit
 from models.model import Account, App, AppMode, EndUser
+from services.errors.llm import InvokeRateLimitError
 from services.workflow_service import WorkflowService
-
+from openai._exceptions import RateLimitError
 
 class AppGenerateService:
     @classmethod
@@ -86,6 +87,8 @@ class AppGenerateService:
                 )
             else:
                 raise ValueError(f"Invalid app mode {app_model.mode}")
+        except RateLimitError as e:
+            raise InvokeRateLimitError(str(e))
         finally:
             if not streaming:
                 rate_limit.exit(request_id)

@@ -3,7 +3,8 @@ import logging
 import flask_login
 from flask_restful import Resource, reqparse
 from werkzeug.exceptions import InternalServerError, NotFound
-
+from services.errors.llm import InvokeRateLimitError
+from controllers.web.error import InvokeRateLimitError as InvokeRateLimitHttpError
 import services
 from controllers.console import api
 from controllers.console.app.error import (
@@ -135,6 +136,8 @@ class ChatMessageApi(Resource):
             raise ProviderQuotaExceededError()
         except ModelCurrentlyNotSupportError:
             raise ProviderModelCurrentlyNotSupportError()
+        except InvokeRateLimitError as ex:
+            raise InvokeRateLimitHttpError(ex.description)
         except InvokeError as e:
             raise CompletionRequestError(e.description)
         except (ValueError, AppInvokeQuotaExceededError) as e:
