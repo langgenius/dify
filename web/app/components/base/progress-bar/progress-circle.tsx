@@ -2,6 +2,7 @@ import { memo } from 'react'
 import cn from '@/utils/classnames'
 
 type ProgressCircleProps = {
+  className?: string
   percentage?: number
   size?: number
   circleStrokeWidth?: number
@@ -11,6 +12,7 @@ type ProgressCircleProps = {
 }
 
 const ProgressCircle: React.FC<ProgressCircleProps> = ({
+  className,
   percentage = 0,
   size = 12,
   circleStrokeWidth = 1,
@@ -38,6 +40,7 @@ const ProgressCircle: React.FC<ProgressCircleProps> = ({
       width={size + circleStrokeWidth}
       height={size + circleStrokeWidth}
       viewBox={`0 0 ${size + circleStrokeWidth} ${size + circleStrokeWidth}`}
+      className={className}
     >
       <circle
         className={cn(
