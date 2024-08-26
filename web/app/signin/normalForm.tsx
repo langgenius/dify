@@ -21,6 +21,8 @@ const NormalForm = () => {
   const [isLoading, setIsLoading] = useState(true)
   const [systemFeatures, setSystemFeatures] = useState(defaultSystemFeatures)
 
+  const shouldShowORLine = (enabledAuthType.includes('code') || enabledAuthType.includes('password')) && (enabledAuthType.includes('social') || enabledAuthType.includes('sso'))
+
   useEffect(() => {
     getSystemFeatures().then((res) => {
       setSystemFeatures(res)
@@ -56,15 +58,14 @@ const NormalForm = () => {
             {enabledAuthType.includes('sso') && <div className='w-full'><SSOAuthButton protocol={systemFeatures.sso_enforced_for_signin_protocol} /></div>}
           </div>
 
-          {(enabledAuthType.includes('code') || enabledAuthType.includes('password'))
-            && <div className="relative mt-6">
-              <div className="absolute inset-0 flex items-center" aria-hidden="true">
-                <div className="w-full border-t border-gray-300" />
-              </div>
-              <div className="relative flex justify-center text-sm">
-                <span className="px-2 text-gray-300 bg-white">{t('login.or')}</span>
-              </div>
-            </div>}
+          {shouldShowORLine && <div className="relative mt-6">
+            <div className="absolute inset-0 flex items-center" aria-hidden="true">
+              <div className="w-full border-t border-gray-300" />
+            </div>
+            <div className="relative flex justify-center text-sm">
+              <span className="px-2 text-gray-300 bg-white">{t('login.or')}</span>
+            </div>
+          </div>}
           {enabledAuthType.includes('code') && authType === 'code' && <>
             <MailAndCodeAuth />
             {enabledAuthType.includes('password') && <div className='cursor-pointer py-1 text-center' onClick={() => { updateAuthType('password') }}>
