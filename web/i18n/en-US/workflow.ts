@@ -77,6 +77,7 @@ const translation = {
     overwriteAndImport: 'Overwrite and Import',
     importFailure: 'Import failure',
     importSuccess: 'Import success',
+    parallelRun: 'Parallel Run',
   },
   env: {
     envPanelTitle: 'Environment Variables',

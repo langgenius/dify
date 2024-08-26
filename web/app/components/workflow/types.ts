@@ -54,6 +54,7 @@ export type CommonNodeType<T = {}> = {
   _holdAddVariablePopup?: boolean
   _iterationLength?: number
   _iterationIndex?: number
+  _inParallelHovering?: boolean
   isIterationStart?: boolean
   isInIteration?: boolean
   iteration_id?: string

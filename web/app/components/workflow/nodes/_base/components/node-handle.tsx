@@ -125,9 +125,8 @@ export const NodeSourceHandle = memo(({
   }, [])
   const handleHandleClick = useCallback((e: MouseEvent) => {
     e.stopPropagation()
-    if (!connected)
-      setOpen(v => !v)
-  }, [connected])
+    setOpen(v => !v)
+  }, [])
   const handleSelect = useCallback((type: BlockEnum, toolDefaultValue?: ToolDefaultValue) => {
     handleNodeAdd(
       {
@@ -163,7 +162,7 @@ export const NodeSourceHandle = memo(({
         onClick={handleHandleClick}
       >
         {
-          !connected && isConnectable && !getNodesReadOnly() && (
+          isConnectable && !getNodesReadOnly() && (
             <BlockSelector
               open={open}
               onOpenChange={handleOpenChange}
