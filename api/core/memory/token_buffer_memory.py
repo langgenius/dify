@@ -36,10 +36,10 @@ class TokenBufferMemory:
             Message.query,
             Message.answer,
             Message.created_at,
-            Message.workflow_run_id
+            Message.workflow_run_id,
+            Message.parent_message_id,
         ).filter(
             Message.conversation_id == self.conversation.id,
-            Message.answer != ''
         ).order_by(Message.created_at.desc())
 
         if message_limit and message_limit > 0:
@@ -49,7 +49,12 @@ class TokenBufferMemory:
 
         messages = query.limit(message_limit).all()
 
-        messages = list(reversed(messages))
+        # instead of all messages from the conversation, we only need to extract messages that belong to the thread of last message
+        from core.prompt.utils.prompt_message_util import PromptMessageUtil
+        thread_messages = PromptMessageUtil.extract_thread_messages(messages)
+        thread_messages.pop(0)
+        messages = list(reversed(thread_messages))
+
         message_file_parser = MessageFileParser(
             tenant_id=app_record.tenant_id,
             app_id=app_record.id

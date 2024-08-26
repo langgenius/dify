@@ -70,8 +70,9 @@ class MessageService:
             if rest_count > 0:
                 has_more = True
 
-        # history_messages = list(reversed(history_messages))
-        history_messages = list(history_messages)
+        from core.prompt.utils.prompt_message_util import PromptMessageUtil
+        thread_messages = PromptMessageUtil.extract_thread_messages(history_messages)
+        history_messages = list(reversed(thread_messages))
 
         return InfiniteScrollPagination(
             data=history_messages,

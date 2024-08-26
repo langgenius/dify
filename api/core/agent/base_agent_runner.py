@@ -427,7 +427,11 @@ class BaseAgentRunner(AppRunner):
 
         messages: list[Message] = db.session.query(Message).filter(
             Message.conversation_id == self.message.conversation_id,
-        ).order_by(Message.created_at.asc()).all()
+        ).order_by(Message.created_at.desc()).all()
+
+        from core.prompt.utils.prompt_message_util import PromptMessageUtil
+        thread_messages = PromptMessageUtil.extract_thread_messages(messages)
+        messages = list(reversed(thread_messages))
 
         for message in messages:
             if message.id == self.message.id:
