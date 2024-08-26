@@ -85,7 +85,7 @@ parameters:
   - name: guidance_scale
     type: number
     required: true
-    default: 7
+    default: 7.5
     min: 0
     max: 100
     label:
