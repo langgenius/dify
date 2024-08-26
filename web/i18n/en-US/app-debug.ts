@@ -68,17 +68,17 @@ const translation = {
     },
     speechToText: {
       title: 'Speech to Text',
-      description: 'Once enabled, you can use voice input.',
+      description: 'Voice input can be used in chat.',
       resDes: 'Voice input is enabled',
     },
     textToSpeech: {
       title: 'Text to Speech',
-      description: 'Once enabled, text can be converted to speech.',
+      description: 'Conversation messages can be converted to speech.',
       resDes: 'Text to Audio is enabled',
     },
     citation: {
       title: 'Citations and Attributions',
-      description: 'Once enabled, show source document and attributed section of the generated content.',
+      description: 'Show source document and attributed section of the generated content.',
       resDes: 'Citations and Attributions is enabled',
     },
     annotation: {
@@ -384,8 +384,8 @@ const translation = {
       resolutionTooltip: 'Text-to-speech voice support language。',
       voice: 'Voice',
       autoPlay: 'Auto Play',
-      autoPlayEnabled: 'Turn On',
-      autoPlayDisabled: 'Turn Off',
+      autoPlayEnabled: 'On',
+      autoPlayDisabled: 'Off',
     },
   },
   openingStatement: {

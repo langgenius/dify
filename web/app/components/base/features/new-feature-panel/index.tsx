@@ -3,20 +3,27 @@ import { useTranslation } from 'react-i18next'
 import produce from 'immer'
 import {
   RiCloseLine,
+  RiEqualizer2Line,
   RiQuestionLine,
   RiSparklingFill,
 } from '@remixicon/react'
 import {
   Citations,
   Microphone01,
+  TextToAudio,
   VirtualAssistant,
 } from '@/app/components/base/icons/src/vender/features'
 import DialogWrapper from '@/app/components/base/features/new-feature-panel/dialog-wrapper'
 import { useFeatures, useFeaturesStore } from '@/app/components/base/features/hooks'
+import { useDefaultModel } from '@/app/components/header/account-setting/model-provider-page/hooks'
+import { ModelTypeEnum } from '@/app/components/header/account-setting/model-provider-page/declarations'
 import type { OnFeaturesChange } from '@/app/components/base/features/types'
 import { FeatureEnum } from '@/app/components/base/features/types'
+import { TtsAutoPlay } from '@/types/app'
+import { languages } from '@/i18n/language'
 import Switch from '@/app/components/base/switch'
 import Tooltip from '@/app/components/base/tooltip'
+import Button from '@/app/components/base/button'
 
 type Props = {
   show: boolean
@@ -28,6 +35,10 @@ type Props = {
 
 const NewFeaturePanel = ({ show, isChatMode, onChange, onClose }: Props) => {
   const { t } = useTranslation()
+  const { data: speech2textDefaultModel } = useDefaultModel(ModelTypeEnum.speech2text)
+  const { data: text2speechDefaultModel } = useDefaultModel(ModelTypeEnum.tts)
+  const textToSpeech = useFeatures(s => s.features.text2speech) // .language .voice .autoPlay
+  const languageInfo = languages.find(i => i.value === textToSpeech?.language)
   const features = useFeatures(s => s.features)
   const featuresStore = useFeaturesStore()
 
@@ -90,7 +101,7 @@ const NewFeaturePanel = ({ show, isChatMode, onChange, onClose }: Props) => {
             </div>
           )}
           {/* speech to text */}
-          {isChatMode && (
+          {isChatMode && speech2textDefaultModel && (
             <div className='mb-1 p-3 border-t-[0.5px] border-l-[0.5px] border-effects-highlight rounded-xl bg-background-section-burn'>
               <div className='mb-2 flex items-center gap-2'>
                 <div className='shrink-0 p-1 rounded-lg border-[0.5px] border-divider-subtle shadow-xs bg-util-colors-violet-violet-600'>
@@ -102,6 +113,49 @@ const NewFeaturePanel = ({ show, isChatMode, onChange, onClose }: Props) => {
                 <Switch className='shrink-0' onChange={value => handleChange(FeatureEnum.speech2text, value)} defaultValue={!!features.speech2text?.enabled} />
               </div>
               <div className='min-h-8 text-text-tertiary system-xs-regular line-clamp-2'>{t('appDebug.feature.speechToText.description')}</div>
+            </div>
+          )}
+          {/* text to speech */}
+          {text2speechDefaultModel && (
+            <div className='group mb-1 p-3 border-t-[0.5px] border-l-[0.5px] border-effects-highlight rounded-xl bg-background-section-burn'>
+              <div className='mb-2 flex items-center gap-2'>
+                <div className='shrink-0 p-1 rounded-lg border-[0.5px] border-divider-subtle shadow-xs bg-util-colors-violet-violet-600'>
+                  <TextToAudio className='w-4 h-4 text-text-primary-on-surface' />
+                </div>
+                <div className='grow flex items-center text-text-secondary system-sm-semibold'>
+                  {t('appDebug.feature.textToSpeech.title')}
+                </div>
+                <Switch className='shrink-0' onChange={value => handleChange(FeatureEnum.text2speech, value)} defaultValue={!!features.text2speech?.enabled} />
+              </div>
+              {!features.text2speech?.enabled && (
+                <div className='min-h-8 text-text-tertiary system-xs-regular line-clamp-2'>{t('appDebug.feature.textToSpeech.description')}</div>
+              )}
+              {!!features.text2speech?.enabled && (
+                <>
+                  <div className='group-hover:hidden pt-0.5 flex items-center gap-4'>
+                    <div className=''>
+                      <div className='mb-0.5 text-text-tertiary system-2xs-medium-uppercase'>{t('appDebug.voice.voiceSettings.language')}</div>
+                      <div className='text-text-secondary system-xs-regular'>{languageInfo?.name || '-'}</div>
+                    </div>
+                    <div className='w-px h-[27px] bg-divider-subtle rotate-12'></div>
+                    <div className=''>
+                      <div className='mb-0.5 text-text-tertiary system-2xs-medium-uppercase'>{t('appDebug.voice.voiceSettings.voice')}</div>
+                      <div className='text-text-secondary system-xs-regular'>{features.text2speech?.voice || t('appDebug.voice.defaultDisplay')}</div>
+                    </div>
+                    <div className='w-px h-[27px] bg-divider-subtle rotate-12'></div>
+                    <div className=''>
+                      <div className='mb-0.5 text-text-tertiary system-2xs-medium-uppercase'>{t('appDebug.voice.voiceSettings.autoPlay')}</div>
+                      <div className='text-text-secondary system-xs-regular'>{features.text2speech?.autoPlay === TtsAutoPlay.enabled ? t('appDebug.voice.voiceSettings.autoPlayEnabled') : t('appDebug.voice.voiceSettings.autoPlayDisabled')}</div>
+                    </div>
+                  </div>
+                  <div className='hidden group-hover:block'>
+                    <Button className='w-full'>
+                      <RiEqualizer2Line className='mr-1 w-4 h-4' />
+                      {t('appDebug.voice.voiceSettings.title')}
+                    </Button>
+                  </div>
+                </>
+              )}
             </div>
           )}
           {/* follow up */}
