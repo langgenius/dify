@@ -201,6 +201,6 @@ class MiddlewareConfig(
     TencentVectorDBConfig,
     TiDBVectorConfig,
     WeaviateConfig,
-    ElasticsearchConfig
+    ElasticsearchConfig,
 ):
     pass
