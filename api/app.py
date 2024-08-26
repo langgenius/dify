@@ -309,4 +309,4 @@ def pool_stat():
 
 
 if __name__ == "__main__":
-    app.run(host="0.0.0.0", port=5001)
+    app.run(host=dify_config.BIND_HOST, port=dify_config.BIND_PORT, debug=dify_config.DEBUG)

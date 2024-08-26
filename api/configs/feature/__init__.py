@@ -175,6 +175,16 @@ class HttpConfig(BaseSettings):
     HTTP configs
     """
 
+    BIND_HOST: str = Field(
+        description="binding host",
+        default="0.0.0.0",
+    )
+
+    BIND_PORT: PositiveInt = Field(
+        description="binding port",
+        default=5001,
+    )
+
     API_COMPRESSION_ENABLED: bool = Field(
         description="whether to enable HTTP response compression of gzip",
         default=False,
