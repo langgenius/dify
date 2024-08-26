@@ -616,6 +616,7 @@ class DatasetRetrieval:
         for document in all_documents:
             if score_threshold is None or document.metadata['score'] >= score_threshold:
                 filter_documents.append(document)
+
         if not filter_documents:
             return []
         filter_documents = sorted(filter_documents, key=lambda x: x.metadata['score'], reverse=True)
