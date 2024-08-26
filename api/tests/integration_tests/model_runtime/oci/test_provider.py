@@ -3,7 +3,7 @@ import os
 import pytest
 
 from core.model_runtime.errors.validate import CredentialsValidateFailedError
-from core.model_runtime.model_providers.oci_genai.oci_genai import OCIGENAIProvider
+from core.model_runtime.model_providers.oci.oci import OCIGENAIProvider
 
 
 def test_validate_provider_credentials():
@@ -16,6 +16,7 @@ def test_validate_provider_credentials():
 
     provider.validate_provider_credentials(
         credentials={
-            'api_key': 'g3n3k0jPt0NO6eEPeLJLDHSeaeH2QxSQtmVaRI7X'
+            'oci_config_content': os.environ.get('OCI_CONFIG_CONTENT'),
+            'oci_key_content': os.environ.get('OCI_KEY_CONTENT'),
         }
     )
