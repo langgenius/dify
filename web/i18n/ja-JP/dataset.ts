@@ -56,7 +56,7 @@ const translation = {
   },
   mixtureHighQualityAndEconomicTip: '高品質なナレッジベースと経済的なナレッジベースを混在させるには、Rerankモデルを構成する必要がある。',
   inconsistentEmbeddingModelTip: '選択されたナレッジベースが一貫性のない埋め込みモデルで構成されている場合、Rerankモデルの構成が必要です。',
-  retrievalSettings: '設定を回収',
+  retrievalSettings: '検索設定',
   rerankSettings: 'Rerank設定',
   weightedScore: {
     title: 'ウェイト設定',
