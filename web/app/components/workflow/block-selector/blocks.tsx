@@ -67,10 +67,9 @@ const Blocks = ({
           list.map(block => (
             <Tooltip
               key={block.type}
-              selector={`workflow-block-${block.type}`}
               position='right'
-              className='!p-0 !px-3 !py-2.5 !w-[200px] !leading-[18px] !text-xs !text-gray-700 !border-[0.5px] !border-black/5 !rounded-xl !shadow-lg'
-              htmlContent={(
+              popupClassName='!p-0 !px-3 !py-2.5 !w-[200px] !leading-[18px] !text-xs !text-gray-700 !border-[0.5px] !border-black/5 !rounded-xl !shadow-lg'
+              popupContent={(
                 <div>
                   <BlockIcon
                     size='md'
@@ -81,7 +80,6 @@ const Blocks = ({
                   <div className='text-xs text-gray-700 leading-[18px]'>{nodesExtraData[block.type].about}</div>
                 </div>
               )}
-              noArrow
             >
               <div
                 key={block.type}

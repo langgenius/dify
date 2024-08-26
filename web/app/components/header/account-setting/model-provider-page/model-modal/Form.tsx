@@ -1,8 +1,6 @@
 import { Fragment, useState } from 'react'
 import type { FC } from 'react'
-import {
-  RiQuestionLine,
-} from '@remixicon/react'
+import { RiQuestionLine } from '@remixicon/react'
 import { ValidatingTip } from '../../key-validator/ValidateStatus'
 import type {
   CredentialFormSchema,
@@ -18,7 +16,7 @@ import { useLanguage } from '../hooks'
 import Input from './Input'
 import cn from '@/utils/classnames'
 import { SimpleSelect } from '@/app/components/base/select'
-import Tooltip from '@/app/components/base/tooltip-plus'
+import Tooltip from '@/app/components/base/tooltip'
 import Radio from '@/app/components/base/radio'
 type FormProps = {
   className?: string

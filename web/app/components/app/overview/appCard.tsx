@@ -195,8 +195,7 @@ function AppCard({
               )}
               {isApp && isCurrentWorkspaceManager && (
                 <Tooltip
-                  content={t('appOverview.overview.appInfo.regenerate') || ''}
-                  selector={`code-generate-${randomString(8)}`}
+                  popupContent={t('appOverview.overview.appInfo.regenerate') || ''}
                 >
                   <div
                     className="w-8 h-8 ml-0.5 cursor-pointer hover:bg-gray-200 rounded-lg"
@@ -227,11 +226,10 @@ function AppCard({
                 disabled={disabled}
               >
                 <Tooltip
-                  content={
+                  popupContent={
                     t('appOverview.overview.appInfo.preUseReminder') ?? ''
                   }
-                  selector={`op-btn-${randomString(16)}`}
-                  className={disabled ? 'mt-[-8px]' : '!hidden'}
+                  popupClassName={disabled ? 'mt-[-8px]' : '!hidden'}
                 >
                   <div className="flex flex-row items-center">
                     <op.opIcon className="h-4 w-4 mr-1.5 stroke-[1.8px]" />

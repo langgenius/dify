@@ -13,7 +13,7 @@ import {
 } from '@/app/components/header/account-setting/model-provider-page/declarations'
 import { useDebugConfigurationContext } from '@/context/debug-configuration'
 import { CubeOutline } from '@/app/components/base/icons/src/vender/line/shapes'
-import TooltipPlus from '@/app/components/base/tooltip-plus'
+import Tooltip from '@/app/components/base/tooltip'
 import { AlertTriangle } from '@/app/components/base/icons/src/vender/line/alertsAndFeedback'
 import { useLanguage } from '@/app/components/header/account-setting/model-provider-page/hooks'
 
@@ -111,9 +111,9 @@ const ModelParameterTrigger: FC<ModelParameterTriggerProps> = ({
           <RiArrowDownSLine className={`w-3 h-3 ${(currentModel && currentProvider) ? 'text-gray-800' : 'text-primary-600'}`} />
           {
             currentModel && currentModel.status !== ModelStatusEnum.active && (
-              <TooltipPlus popupContent={MODEL_STATUS_TEXT[currentModel.status][language]}>
+              <Tooltip popupContent={MODEL_STATUS_TEXT[currentModel.status][language]}>
                 <AlertTriangle className='w-4 h-4 text-[#F79009]' />
-              </TooltipPlus>
+              </Tooltip>
             )
           }
         </div>

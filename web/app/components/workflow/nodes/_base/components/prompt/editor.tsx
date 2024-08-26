@@ -31,7 +31,7 @@ import { useEventEmitterContextContext } from '@/context/event-emitter'
 import { PROMPT_EDITOR_INSERT_QUICKLY } from '@/app/components/base/prompt-editor/plugins/update-block'
 import { Variable02 } from '@/app/components/base/icons/src/vender/solid/development'
 import ActionButton from '@/app/components/base/action-button'
-import TooltipPlus from '@/app/components/base/tooltip-plus'
+import Tooltip from '@/app/components/base/tooltip'
 import CodeEditor from '@/app/components/workflow/nodes/_base/components/editor/code-editor/editor-support-vars'
 import Switch from '@/app/components/base/switch'
 import { Jinja } from '@/app/components/base/icons/src/vender/workflow'
@@ -141,14 +141,14 @@ const Editor: FC<Props> = ({
               {/* Operations */}
               <div className='flex items-center space-x-[2px]'>
                 {isSupportJinja && (
-                  <TooltipPlus
+                  <Tooltip
                     popupContent={
                       <div>
                         <div>{t('workflow.common.enableJinja')}</div>
                         <a className='text-[#155EEF]' target='_blank' href='https://jinja.palletsprojects.com/en/2.10.x/'>{t('workflow.common.learnMore')}</a>
                       </div>
                     }
-                    hideArrow
+                    needsDelay
                   >
                     <div className={cn(editionType === EditionType.jinja2 && 'border-black/5 bg-white', 'flex h-[22px] items-center px-1.5 rounded-[5px] border border-transparent hover:border-black/5 space-x-0.5')}>
                       <Jinja className='w-6 h-3 text-gray-300' />
@@ -160,18 +160,17 @@ const Editor: FC<Props> = ({
                         }}
                       />
                     </div>
-                  </TooltipPlus>
+                  </Tooltip>
 
                 )}
                 {!readOnly && (
-                  <TooltipPlus
+                  <Tooltip
                     popupContent={`${t('workflow.common.insertVarTip')}`}
-                    asChild
                   >
                     <ActionButton onClick={handleInsertVariable}>
                       <Variable02 className='w-4 h-4' />
                     </ActionButton>
-                  </TooltipPlus>
+                  </Tooltip>
                 )}
                 {showRemove && (
                   <ActionButton onClick={onRemove}>
