@@ -64,7 +64,6 @@ class OCITextEmbeddingModel(TextEmbeddingModel):
         for i, text in enumerate(texts):
 
             # Here token count is only an approximation based on the GPT2 tokenizer
-            # TODO: Optimize for better token estimation and chunking
             num_tokens = self._get_num_tokens_by_gpt2(text)
 
             if num_tokens >= context_size:
