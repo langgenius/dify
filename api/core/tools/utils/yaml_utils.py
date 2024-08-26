@@ -26,7 +26,6 @@ def load_yaml_file(file_path: str, ignore_error: bool = True, default_value: Any
                 raise YAMLError(f'Failed to load YAML file {file_path}: {e}')
     except Exception as e:
         if ignore_error:
-            logger.debug(f'Failed to load YAML file {file_path}: {e}')
             return default_value
         else:
             raise e
