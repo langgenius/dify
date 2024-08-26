@@ -4,9 +4,7 @@ import { useContext } from 'use-context-selector'
 import { useRouter } from 'next/navigation'
 import { useCallback, useEffect, useState } from 'react'
 import { useTranslation } from 'react-i18next'
-import {
-  RiMoreFill,
-} from '@remixicon/react'
+import { RiMoreFill } from '@remixicon/react'
 import cn from '@/utils/classnames'
 import Confirm from '@/app/components/base/confirm'
 import { ToastContext } from '@/app/components/base/toast'
@@ -129,10 +127,9 @@ const DatasetCard = ({
               <div className={cn('truncate', !dataset.embedding_available && 'opacity-50 hover:opacity-100')} title={dataset.name}>{dataset.name}</div>
               {!dataset.embedding_available && (
                 <Tooltip
-                  selector={`dataset-tag-${dataset.id}`}
-                  htmlContent={t('dataset.unavailableTip')}
+                  popupContent={t('dataset.unavailableTip')}
                 >
-                  <span className='shrink-0 inline-flex w-max ml-1 px-1 border boder-gray-200 rounded-md text-gray-500 text-xs font-normal leading-[18px]'>{t('dataset.unavailable')}</span>
+                  <span className='shrink-0 inline-flex w-max ml-1 px-1 border border-gray-200 rounded-md text-gray-500 text-xs font-normal leading-[18px]'>{t('dataset.unavailable')}</span>
                 </Tooltip>
               )}
             </div>

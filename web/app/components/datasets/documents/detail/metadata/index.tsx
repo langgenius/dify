@@ -102,7 +102,9 @@ const IconButton: FC<{
   const metadataMap = useMetadataMap()
 
   return (
-    <Tooltip content={metadataMap[type].text} selector={`doc-metadata-${type}`}>
+    <Tooltip
+      popupContent={metadataMap[type].text}
+    >
       <button className={cn(s.iconWrapper, 'group', isChecked ? s.iconCheck : '')}>
         <TypeIcon
           iconName={metadataMap[type].iconName || ''}

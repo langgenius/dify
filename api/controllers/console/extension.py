@@ -13,23 +13,18 @@ from services.code_based_extension_service import CodeBasedExtensionService
 
 
 class CodeBasedExtensionAPI(Resource):
-
     @setup_required
     @login_required
     @account_initialization_required
     def get(self):
         parser = reqparse.RequestParser()
-        parser.add_argument('module', type=str, required=True, location='args')
+        parser.add_argument("module", type=str, required=True, location="args")
         args = parser.parse_args()
 
-        return {
-            'module': args['module'],
-            'data': CodeBasedExtensionService.get_code_based_extension(args['module'])
-        }
+        return {"module": args["module"], "data": CodeBasedExtensionService.get_code_based_extension(args["module"])}
 
 
 class APIBasedExtensionAPI(Resource):
-
     @setup_required
     @login_required
     @account_initialization_required
@@ -44,23 +39,22 @@ class APIBasedExtensionAPI(Resource):
     @marshal_with(api_based_extension_fields)
     def post(self):
         parser = reqparse.RequestParser()
-        parser.add_argument('name', type=str, required=True, location='json')
-        parser.add_argument('api_endpoint', type=str, required=True, location='json')
-        parser.add_argument('api_key', type=str, required=True, location='json')
+        parser.add_argument("name", type=str, required=True, location="json")
+        parser.add_argument("api_endpoint", type=str, required=True, location="json")
+        parser.add_argument("api_key", type=str, required=True, location="json")
         args = parser.parse_args()
 
         extension_data = APIBasedExtension(
             tenant_id=current_user.current_tenant_id,
-            name=args['name'],
-            api_endpoint=args['api_endpoint'],
-            api_key=args['api_key']
+            name=args["name"],
+            api_endpoint=args["api_endpoint"],
+            api_key=args["api_key"],
         )
 
         return APIBasedExtensionService.save(extension_data)
 
 
 class APIBasedExtensionDetailAPI(Resource):
-
     @setup_required
     @login_required
     @account_initialization_required
@@ -82,16 +76,16 @@ class APIBasedExtensionDetailAPI(Resource):
         extension_data_from_db = APIBasedExtensionService.get_with_tenant_id(tenant_id, api_based_extension_id)
 
         parser = reqparse.RequestParser()
-        parser.add_argument('name', type=str, required=True, location='json')
-        parser.add_argument('api_endpoint', type=str, required=True, location='json')
-        parser.add_argument('api_key', type=str, required=True, location='json')
+        parser.add_argument("name", type=str, required=True, location="json")
+        parser.add_argument("api_endpoint", type=str, required=True, location="json")
+        parser.add_argument("api_key", type=str, required=True, location="json")
         args = parser.parse_args()
 
-        extension_data_from_db.name = args['name']
-        extension_data_from_db.api_endpoint = args['api_endpoint']
+        extension_data_from_db.name = args["name"]
+        extension_data_from_db.api_endpoint = args["api_endpoint"]
 
-        if args['api_key'] != HIDDEN_VALUE:
-            extension_data_from_db.api_key = args['api_key']
+        if args["api_key"] != HIDDEN_VALUE:
+            extension_data_from_db.api_key = args["api_key"]
 
         return APIBasedExtensionService.save(extension_data_from_db)
 
@@ -106,10 +100,10 @@ class APIBasedExtensionDetailAPI(Resource):
 
         APIBasedExtensionService.delete(extension_data_from_db)
 
-        return {'result': 'success'}
+        return {"result": "success"}
 
 
-api.add_resource(CodeBasedExtensionAPI, '/code-based-extension')
+api.add_resource(CodeBasedExtensionAPI, "/code-based-extension")
 
-api.add_resource(APIBasedExtensionAPI, '/api-based-extension')
-api.add_resource(APIBasedExtensionDetailAPI, '/api-based-extension/<uuid:id>')
+api.add_resource(APIBasedExtensionAPI, "/api-based-extension")
+api.add_resource(APIBasedExtensionDetailAPI, "/api-based-extension/<uuid:id>")

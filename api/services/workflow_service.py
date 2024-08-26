@@ -39,11 +39,13 @@ class WorkflowService:
         Get draft workflow
         """
         # fetch draft workflow by app_model
-        workflow = db.session.query(Workflow).filter(
-            Workflow.tenant_id == app_model.tenant_id,
-            Workflow.app_id == app_model.id,
-            Workflow.version == 'draft'
-        ).first()
+        workflow = (
+            db.session.query(Workflow)
+            .filter(
+                Workflow.tenant_id == app_model.tenant_id, Workflow.app_id == app_model.id, Workflow.version == "draft"
+            )
+            .first()
+        )
 
         # return draft workflow
         return workflow
@@ -57,11 +59,15 @@ class WorkflowService:
             return None
 
         # fetch published workflow by workflow_id
-        workflow = db.session.query(Workflow).filter(
-            Workflow.tenant_id == app_model.tenant_id,
-            Workflow.app_id == app_model.id,
-            Workflow.id == app_model.workflow_id
-        ).first()
+        workflow = (
+            db.session.query(Workflow)
+            .filter(
+                Workflow.tenant_id == app_model.tenant_id,
+                Workflow.app_id == app_model.id,
+                Workflow.id == app_model.workflow_id,
+            )
+            .first()
+        )
 
         return workflow
 
@@ -87,10 +93,7 @@ class WorkflowService:
             raise WorkflowHashNotEqualError()
 
         # validate features structure
-        self.validate_features_structure(
-            app_model=app_model,
-            features=features
-        )
+        self.validate_features_structure(app_model=app_model, features=features)
 
         # create draft workflow if not found
         if not workflow:
@@ -98,7 +101,7 @@ class WorkflowService:
                 tenant_id=app_model.tenant_id,
                 app_id=app_model.id,
                 type=WorkflowType.from_app_mode(app_model.mode).value,
-                version='draft',
+                version="draft",
                 graph=json.dumps(graph),
                 features=json.dumps(features),
                 created_by=account.id,
@@ -124,9 +127,7 @@ class WorkflowService:
         # return draft workflow
         return workflow
 
-    def publish_workflow(self, app_model: App,
-                         account: Account,
-                         draft_workflow: Optional[Workflow] = None) -> Workflow:
+    def publish_workflow(self, app_model: App, account: Account, draft_workflow: Optional[Workflow] = None) -> Workflow:
         """
         Publish workflow from draft
 
@@ -139,7 +140,7 @@ class WorkflowService:
             draft_workflow = self.get_draft_workflow(app_model=app_model)
 
         if not draft_workflow:
-            raise ValueError('No valid workflow found.')
+            raise ValueError("No valid workflow found.")
 
         # create new workflow
         workflow = Workflow(
@@ -201,17 +202,16 @@ class WorkflowService:
 
         return default_config
 
-    def run_draft_workflow_node(self, app_model: App,
-                                node_id: str,
-                                user_inputs: dict,
-                                account: Account) -> WorkflowNodeExecution:
+    def run_draft_workflow_node(
+        self, app_model: App, node_id: str, user_inputs: dict, account: Account
+    ) -> WorkflowNodeExecution:
         """
         Run draft workflow node
         """
         # fetch draft workflow by app_model
         draft_workflow = self.get_draft_workflow(app_model=app_model)
         if not draft_workflow:
-            raise ValueError('Workflow not initialized')
+            raise ValueError("Workflow not initialized")
 
         # run draft workflow node
         start_at = time.perf_counter()
@@ -235,7 +235,7 @@ class WorkflowService:
 
             if not node_run_result:
                 raise ValueError('Node run failed with no run result')
-            
+
             run_succeeded = True if node_run_result.status == WorkflowNodeExecutionStatus.SUCCEEDED else False
             error = node_run_result.error if not run_succeeded else None
         except WorkflowNodeRunFailedError as e:
@@ -290,16 +290,16 @@ class WorkflowService:
         workflow_converter = WorkflowConverter()
 
         if app_model.mode not in [AppMode.CHAT.value, AppMode.COMPLETION.value]:
-            raise ValueError(f'Current App mode: {app_model.mode} is not supported convert to workflow.')
+            raise ValueError(f"Current App mode: {app_model.mode} is not supported convert to workflow.")
 
         # convert to workflow
         new_app = workflow_converter.convert_to_workflow(
             app_model=app_model,
             account=account,
-            name=args.get('name'),
-            icon_type=args.get('icon_type'),
-            icon=args.get('icon'),
-            icon_background=args.get('icon_background'),
+            name=args.get("name"),
+            icon_type=args.get("icon_type"),
+            icon=args.get("icon"),
+            icon_background=args.get("icon_background"),
         )
 
         return new_app
@@ -307,15 +307,11 @@ class WorkflowService:
     def validate_features_structure(self, app_model: App, features: dict) -> dict:
         if app_model.mode == AppMode.ADVANCED_CHAT.value:
             return AdvancedChatAppConfigManager.config_validate(
-                tenant_id=app_model.tenant_id,
-                config=features,
-                only_structure_validate=True
+                tenant_id=app_model.tenant_id, config=features, only_structure_validate=True
             )
         elif app_model.mode == AppMode.WORKFLOW.value:
             return WorkflowAppConfigManager.config_validate(
-                tenant_id=app_model.tenant_id,
-                config=features,
-                only_structure_validate=True
+                tenant_id=app_model.tenant_id, config=features, only_structure_validate=True
             )
         else:
             raise ValueError(f"Invalid app mode: {app_model.mode}")
