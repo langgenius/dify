@@ -15,6 +15,7 @@ from controllers.web.error import (
     ProviderNotInitializeError,
     ProviderQuotaExceededError,
 )
+from controllers.web.error import InvokeRateLimitError as InvokeRateLimitHttpError
 from controllers.web.wraps import WebApiResource
 from core.app.apps.base_app_queue_manager import AppQueueManager
 from core.app.entities.app_invoke_entities import InvokeFrom
@@ -24,6 +25,7 @@ from libs import helper
 from libs.helper import uuid_value
 from models.model import AppMode
 from services.app_generate_service import AppGenerateService
+from services.errors.llm import InvokeRateLimitError
 
 
 # define completion api for user
@@ -120,6 +122,8 @@ class ChatApi(WebApiResource):
             raise ProviderQuotaExceededError()
         except ModelCurrentlyNotSupportError:
             raise ProviderModelCurrentlyNotSupportError()
+        except InvokeRateLimitError as ex:
+            raise InvokeRateLimitHttpError(ex.description)
         except InvokeError as e:
             raise CompletionRequestError(e.description)
         except ValueError as e:
