@@ -350,7 +350,8 @@ class ProviderManager:
 
         return default_model
 
-    def _get_all_providers(self, tenant_id: str) -> dict[str, list[Provider]]:
+    @staticmethod
+    def _get_all_providers(tenant_id: str) -> dict[str, list[Provider]]:
         """
         Get all provider records of the workspace.
 
@@ -369,7 +370,8 @@ class ProviderManager:
 
         return provider_name_to_provider_records_dict
 
-    def _get_all_provider_models(self, tenant_id: str) -> dict[str, list[ProviderModel]]:
+    @staticmethod
+    def _get_all_provider_models(tenant_id: str) -> dict[str, list[ProviderModel]]:
         """
         Get all provider model records of the workspace.
 
@@ -389,7 +391,8 @@ class ProviderManager:
 
         return provider_name_to_provider_model_records_dict
 
-    def _get_all_preferred_model_providers(self, tenant_id: str) -> dict[str, TenantPreferredModelProvider]:
+    @staticmethod
+    def _get_all_preferred_model_providers(tenant_id: str) -> dict[str, TenantPreferredModelProvider]:
         """
         Get All preferred provider types of the workspace.
 
@@ -408,7 +411,8 @@ class ProviderManager:
 
         return provider_name_to_preferred_provider_type_records_dict
 
-    def _get_all_provider_model_settings(self, tenant_id: str) -> dict[str, list[ProviderModelSetting]]:
+    @staticmethod
+    def _get_all_provider_model_settings(tenant_id: str) -> dict[str, list[ProviderModelSetting]]:
         """
         Get All provider model settings of the workspace.
 
@@ -427,7 +431,8 @@ class ProviderManager:
 
         return provider_name_to_provider_model_settings_dict
 
-    def _get_all_provider_load_balancing_configs(self, tenant_id: str) -> dict[str, list[LoadBalancingModelConfig]]:
+    @staticmethod
+    def _get_all_provider_load_balancing_configs(tenant_id: str) -> dict[str, list[LoadBalancingModelConfig]]:
         """
         Get All provider load balancing configs of the workspace.
 
@@ -458,7 +463,8 @@ class ProviderManager:
 
         return provider_name_to_provider_load_balancing_model_configs_dict
 
-    def _init_trial_provider_records(self, tenant_id: str,
+    @staticmethod
+    def _init_trial_provider_records(tenant_id: str,
                                      provider_name_to_provider_records_dict: dict[str, list]) -> dict[str, list]:
         """
         Initialize trial provider records if not exists.
@@ -791,7 +797,8 @@ class ProviderManager:
             credentials=current_using_credentials
         )
 
-    def _choice_current_using_quota_type(self, quota_configurations: list[QuotaConfiguration]) -> ProviderQuotaType:
+    @staticmethod
+    def _choice_current_using_quota_type(quota_configurations: list[QuotaConfiguration]) -> ProviderQuotaType:
         """
         Choice current using quota type.
         paid quotas > provider free quotas > hosting trial quotas
@@ -818,7 +825,8 @@ class ProviderManager:
 
         raise ValueError('No quota type available')
 
-    def _extract_secret_variables(self, credential_form_schemas: list[CredentialFormSchema]) -> list[str]:
+    @staticmethod
+    def _extract_secret_variables(credential_form_schemas: list[CredentialFormSchema]) -> list[str]:
         """
         Extract secret input form variables.
 
