@@ -1,0 +1,121 @@
+identity:
+  name: stable_diffusion
+  author: hjlarry
+  label:
+    en_US: Stable Diffusion
+  icon: icon.svg
+description:
+  human:
+    en_US: Generate image via SiliconFlow's stable diffusion model.
+  llm: This tool is used to generate image from prompt via SiliconFlow's stable diffusion model.
+parameters:
+  - name: prompt
+    type: string
+    required: true
+    label:
+      en_US: prompt
+      zh_Hans: 提示词
+    human_description:
+      en_US: The text prompt used to generate the image.
+      zh_Hans: 用于生成图片的文字提示词
+    llm_description: this prompt text will be used to generate image.
+    form: llm
+  - name: negative_prompt
+    type: string
+    label:
+      en_US: negative prompt
+      zh_Hans: 负面提示词
+    human_description:
+      en_US: Describe what you don't want included in the image.
+      zh_Hans: 描述您不希望包含在图片中的内容。
+    llm_description: Describe what you don't want included in the image.
+    form: llm
+  - name: model
+    type: select
+    required: true
+    options:
+      - value: sd_3
+        label:
+          en_US: Stable Diffusion 3
+      - value: sd_xl
+        label:
+          en_US: Stable Diffusion XL
+    default: sd_3
+    label:
+      en_US: Choose Image Model
+      zh_Hans: 选择生成图片的模型
+    form: form
+  - name: image_size
+    type: select
+    required: true
+    options:
+      - value: 1024x1024
+        label:
+          en_US: 1024x1024
+      - value: 1024x2048
+        label:
+          en_US: 1024x2048
+      - value: 1152x2048
+        label:
+          en_US: 1152x2048
+      - value: 1536x1024
+        label:
+          en_US: 1536x1024
+      - value: 1536x2048
+        label:
+          en_US: 1536x2048
+      - value: 2048x1152
+        label:
+          en_US: 2048x1152
+    default: 1024x1024
+    label:
+      en_US: Choose Image Size
+      zh_Hans: 选择生成图片的大小
+    form: form
+  - name: batch_size
+    type: number
+    required: true
+    default: 1
+    min: 1
+    max: 4
+    label:
+      en_US: Number Images
+      zh_Hans: 生成图片的数量
+    form: form
+  - name: guidance_scale
+    type: number
+    required: true
+    default: 7.5
+    min: 0
+    max: 100
+    label:
+      en_US: Guidance Scale
+      zh_Hans: 与提示词紧密性
+    human_description:
+      en_US: Classifier Free Guidance. How close you want the model to stick to your prompt when looking for a related image to show you.
+      zh_Hans: 无分类器引导。您希望模型在寻找相关图片向您展示时，与您的提示保持多紧密的关联度。
+    form: form
+  - name: num_inference_steps
+    type: number
+    required: true
+    default: 20
+    min: 1
+    max: 100
+    label:
+      en_US: Num Inference Steps
+      zh_Hans: 生成图片的步数
+    human_description:
+      en_US: The number of inference steps to perform. More steps produce higher quality but take longer.
+      zh_Hans: 执行的推理步骤数量。更多的步骤可以产生更高质量的结果，但需要更长的时间。
+    form: form
+  - name: seed
+    type: number
+    min: 0
+    max: 9999999999
+    label:
+      en_US: Seed
+      zh_Hans: 种子
+    human_description:
+      en_US: The same seed and prompt can produce similar images.
+      zh_Hans: 相同的种子和提示可以产生相似的图像。
+    form: form
