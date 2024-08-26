@@ -126,6 +126,12 @@ export type ConversationVariable = {
   description: string
 }
 
+export type GlobalVariable = {
+  name: string
+  value_type: 'string' | 'number'
+  description: string
+}
+
 export type VariableWithValue = {
   key: string
   value: string
