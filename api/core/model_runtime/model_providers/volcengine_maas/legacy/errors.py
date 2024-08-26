@@ -1,4 +1,4 @@
-from core.model_runtime.model_providers.volcengine_maas.volc_sdk import MaasException
+from core.model_runtime.model_providers.volcengine_maas.legacy.volc_sdk import MaasException
 
 
 class ClientSDKRequestError(MaasException):

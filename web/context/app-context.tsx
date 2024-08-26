@@ -6,16 +6,19 @@ import { createContext, useContext, useContextSelector } from 'use-context-selec
 import type { FC, ReactNode } from 'react'
 import { fetchAppList } from '@/service/apps'
 import Loading from '@/app/components/base/loading'
-import { fetchCurrentWorkspace, fetchLanggeniusVersion, fetchUserProfile } from '@/service/common'
+import { fetchCurrentWorkspace, fetchLanggeniusVersion, fetchUserProfile, getSystemFeatures } from '@/service/common'
 import type { App } from '@/types/app'
 import { Theme } from '@/types/app'
 import type { ICurrentWorkspace, LangGeniusVersionResponse, UserProfileResponse } from '@/models/common'
 import MaintenanceNotice from '@/app/components/header/maintenance-notice'
+import type { SystemFeatures } from '@/types/feature'
+import { defaultSystemFeatures } from '@/types/feature'
 
 export type AppContextValue = {
   theme: Theme
   setTheme: (theme: Theme) => void
   apps: App[]
+  systemFeatures: SystemFeatures
   mutateApps: VoidFunction
   userProfile: UserProfileResponse
   mutateUserProfile: VoidFunction
@@ -53,6 +56,7 @@ const initialWorkspaceInfo: ICurrentWorkspace = {
 
 const AppContext = createContext<AppContextValue>({
   theme: Theme.light,
+  systemFeatures: defaultSystemFeatures,
   setTheme: () => { },
   apps: [],
   mutateApps: () => { },
@@ -89,6 +93,10 @@ export const AppContextProvider: FC<AppContextProviderProps> = ({ children }) =>
   const { data: appList, mutate: mutateApps } = useSWR({ url: '/apps', params: { page: 1, limit: 30, name: '' } }, fetchAppList)
   const { data: userProfileResponse, mutate: mutateUserProfile } = useSWR({ url: '/account/profile', params: {} }, fetchUserProfile)
   const { data: currentWorkspaceResponse, mutate: mutateCurrentWorkspace } = useSWR({ url: '/workspaces/current', params: {} }, fetchCurrentWorkspace)
+
+  const { data: systemFeatures } = useSWR({ url: '/console/system-features' }, getSystemFeatures, {
+    fallbackData: defaultSystemFeatures,
+  })
 
   const [userProfile, setUserProfile] = useState<UserProfileResponse>()
   const [langeniusVersionInfo, setLangeniusVersionInfo] = useState<LangGeniusVersionResponse>(initialLangeniusVersionInfo)
@@ -136,6 +144,7 @@ export const AppContextProvider: FC<AppContextProviderProps> = ({ children }) =>
       theme,
       setTheme: handleSetTheme,
       apps: appList.data,
+      systemFeatures,
       mutateApps,
       userProfile,
       mutateUserProfile,

@@ -8,6 +8,7 @@ from controllers.web.error import WebSSOAuthRequiredError
 from extensions.ext_database import db
 from libs.passport import PassportService
 from models.model import App, EndUser, Site
+from services.enterprise.enterprise_service import EnterpriseService
 from services.feature_service import FeatureService
 
 
@@ -26,7 +27,7 @@ def validate_jwt_token(view=None):
 
 def decode_jwt_token():
     system_features = FeatureService.get_system_features()
-
+    app_code = request.headers.get('X-App-Code')
     try:
         auth_header = request.headers.get('Authorization')
         if auth_header is None:
@@ -54,25 +55,31 @@ def decode_jwt_token():
         if not end_user:
             raise NotFound()
 
-        _validate_web_sso_token(decoded, system_features)
+        _validate_web_sso_token(decoded, system_features, app_code)
 
         return app_model, end_user
     except Unauthorized as e:
         if system_features.sso_enforced_for_web:
-            raise WebSSOAuthRequiredError()
+            app_web_sso_enabled = EnterpriseService.get_app_web_sso_enabled(app_code).get('enabled', False)
+            if app_web_sso_enabled:
+                raise WebSSOAuthRequiredError()
 
         raise Unauthorized(e.description)
 
 
-def _validate_web_sso_token(decoded, system_features):
+def _validate_web_sso_token(decoded, system_features, app_code):
+    app_web_sso_enabled = False
+    
     # Check if SSO is enforced for web, and if the token source is not SSO, raise an error and redirect to SSO login
     if system_features.sso_enforced_for_web:
-        source = decoded.get('token_source')
-        if not source or source != 'sso':
-            raise WebSSOAuthRequiredError()
+        app_web_sso_enabled = EnterpriseService.get_app_web_sso_enabled(app_code).get('enabled', False)
+        if app_web_sso_enabled:
+            source = decoded.get('token_source')
+            if not source or source != 'sso':
+                raise WebSSOAuthRequiredError()
 
     # Check if SSO is not enforced for web, and if the token source is SSO, raise an error and redirect to normal passport login
-    if not system_features.sso_enforced_for_web:
+    if not system_features.sso_enforced_for_web or not app_web_sso_enabled:
         source = decoded.get('token_source')
         if source and source == 'sso':
             raise Unauthorized('sso token expired.')
