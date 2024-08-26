@@ -6,6 +6,11 @@ import {
   RiQuestionLine,
   RiSparklingFill,
 } from '@remixicon/react'
+import {
+  Citations,
+  Microphone01,
+  VirtualAssistant,
+} from '@/app/components/base/icons/src/vender/features'
 import DialogWrapper from '@/app/components/base/features/new-feature-panel/dialog-wrapper'
 import { useFeatures, useFeaturesStore } from '@/app/components/base/features/hooks'
 import type { OnFeaturesChange } from '@/app/components/base/features/types'
@@ -81,7 +86,52 @@ const NewFeaturePanel = ({ show, isChatMode, onChange, onClose }: Props) => {
                 </div>
                 <Switch className='shrink-0' onChange={value => handleChange(FeatureEnum.moreLikeThis, value)} defaultValue={!!features.moreLikeThis?.enabled} />
               </div>
-              <div className='text-text-tertiary system-xs-regular line-clamp-2'>{t('appDebug.feature.moreLikeThis.description')}</div>
+              <div className='min-h-8 text-text-tertiary system-xs-regular line-clamp-2'>{t('appDebug.feature.moreLikeThis.description')}</div>
+            </div>
+          )}
+          {/* speech to text */}
+          {isChatMode && (
+            <div className='mb-1 p-3 border-t-[0.5px] border-l-[0.5px] border-effects-highlight rounded-xl bg-background-section-burn'>
+              <div className='mb-2 flex items-center gap-2'>
+                <div className='shrink-0 p-1 rounded-lg border-[0.5px] border-divider-subtle shadow-xs bg-util-colors-violet-violet-600'>
+                  <Microphone01 className='w-4 h-4 text-text-primary-on-surface' />
+                </div>
+                <div className='grow flex items-center text-text-secondary system-sm-semibold'>
+                  {t('appDebug.feature.speechToText.title')}
+                </div>
+                <Switch className='shrink-0' onChange={value => handleChange(FeatureEnum.speech2text, value)} defaultValue={!!features.speech2text?.enabled} />
+              </div>
+              <div className='min-h-8 text-text-tertiary system-xs-regular line-clamp-2'>{t('appDebug.feature.speechToText.description')}</div>
+            </div>
+          )}
+          {/* follow up */}
+          {isChatMode && (
+            <div className='mb-1 p-3 border-t-[0.5px] border-l-[0.5px] border-effects-highlight rounded-xl bg-background-section-burn'>
+              <div className='mb-2 flex items-center gap-2'>
+                <div className='shrink-0 p-1 rounded-lg border-[0.5px] border-divider-subtle shadow-xs bg-util-colors-blue-light-blue-light-500'>
+                  <VirtualAssistant className='w-4 h-4 text-text-primary-on-surface' />
+                </div>
+                <div className='grow flex items-center text-text-secondary system-sm-semibold'>
+                  {t('appDebug.feature.suggestedQuestionsAfterAnswer.title')}
+                </div>
+                <Switch className='shrink-0' onChange={value => handleChange(FeatureEnum.suggested, value)} defaultValue={!!features.suggested?.enabled} />
+              </div>
+              <div className='min-h-8 text-text-tertiary system-xs-regular line-clamp-2'>{t('appDebug.feature.suggestedQuestionsAfterAnswer.description')}</div>
+            </div>
+          )}
+          {/* citations & attributions */}
+          {isChatMode && (
+            <div className='mb-1 p-3 border-t-[0.5px] border-l-[0.5px] border-effects-highlight rounded-xl bg-background-section-burn'>
+              <div className='mb-2 flex items-center gap-2'>
+                <div className='shrink-0 p-1 rounded-lg border-[0.5px] border-divider-subtle shadow-xs bg-util-colors-warning-warning-500'>
+                  <Citations className='w-4 h-4 text-text-primary-on-surface' />
+                </div>
+                <div className='grow flex items-center text-text-secondary system-sm-semibold'>
+                  {t('appDebug.feature.citation.title')}
+                </div>
+                <Switch className='shrink-0' onChange={value => handleChange(FeatureEnum.citation, value)} defaultValue={!!features.citation?.enabled} />
+              </div>
+              <div className='min-h-8 text-text-tertiary system-xs-regular line-clamp-2'>{t('appDebug.feature.citation.description')}</div>
             </div>
           )}
         </div>
