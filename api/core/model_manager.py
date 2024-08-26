@@ -517,8 +517,8 @@ class LBModelManager:
         res = cast(bool, res)
         return res
 
-    @classmethod
-    def get_config_in_cooldown_and_ttl(cls, tenant_id: str,
+    @staticmethod
+    def get_config_in_cooldown_and_ttl(tenant_id: str,
                                        provider: str,
                                        model_type: ModelType,
                                        model: str,
