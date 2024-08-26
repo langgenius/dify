@@ -75,43 +75,44 @@ class AppDslService:
         # check or repair dsl version
         import_data = cls._check_or_fix_dsl(import_data)
 
-        app_data = import_data.get('app')
+        app_data = import_data.get("app")
         if not app_data:
             raise ValueError("Missing app in data argument")
 
         # get app basic info
-        name = args.get("name") if args.get("name") else app_data.get('name')
-        description = args.get("description") if args.get("description") else app_data.get('description', '')
-        icon_type = args.get("icon_type") if args.get("icon_type") else app_data.get('icon_type')
-        icon = args.get("icon") if args.get("icon") else app_data.get('icon')
-        icon_background = args.get("icon_background") if args.get("icon_background") \
-            else app_data.get('icon_background')
+        name = args.get("name") if args.get("name") else app_data.get("name")
+        description = args.get("description") if args.get("description") else app_data.get("description", "")
+        icon_type = args.get("icon_type") if args.get("icon_type") else app_data.get("icon_type")
+        icon = args.get("icon") if args.get("icon") else app_data.get("icon")
+        icon_background = (
+            args.get("icon_background") if args.get("icon_background") else app_data.get("icon_background")
+        )
 
         # import dsl and create app
-        app_mode = AppMode.value_of(app_data.get('mode'))
+        app_mode = AppMode.value_of(app_data.get("mode"))
         if app_mode in [AppMode.ADVANCED_CHAT, AppMode.WORKFLOW]:
             app = cls._import_and_create_new_workflow_based_app(
                 tenant_id=tenant_id,
                 app_mode=app_mode,
-                workflow_data=import_data.get('workflow'),
+                workflow_data=import_data.get("workflow"),
                 account=account,
                 name=name,
                 description=description,
                 icon_type=icon_type,
                 icon=icon,
-                icon_background=icon_background
+                icon_background=icon_background,
             )
         elif app_mode in [AppMode.CHAT, AppMode.AGENT_CHAT, AppMode.COMPLETION]:
             app = cls._import_and_create_new_model_config_based_app(
                 tenant_id=tenant_id,
                 app_mode=app_mode,
-                model_config_data=import_data.get('model_config'),
+                model_config_data=import_data.get("model_config"),
                 account=account,
                 name=name,
                 description=description,
                 icon_type=icon_type,
                 icon=icon,
-                icon_background=icon_background
+                icon_background=icon_background,
             )
         else:
             raise ValueError("Invalid app mode")
@@ -134,27 +135,26 @@ class AppDslService:
         # check or repair dsl version
         import_data = cls._check_or_fix_dsl(import_data)
 
-        app_data = import_data.get('app')
+        app_data = import_data.get("app")
         if not app_data:
             raise ValueError("Missing app in data argument")
 
         # import dsl and overwrite app
-        app_mode = AppMode.value_of(app_data.get('mode'))
+        app_mode = AppMode.value_of(app_data.get("mode"))
         if app_mode not in [AppMode.ADVANCED_CHAT, AppMode.WORKFLOW]:
             raise ValueError("Only support import workflow in advanced-chat or workflow app.")
 
-        if app_data.get('mode') != app_model.mode:
-            raise ValueError(
-                f"App mode {app_data.get('mode')} is not matched with current app mode {app_mode.value}")
+        if app_data.get("mode") != app_model.mode:
+            raise ValueError(f"App mode {app_data.get('mode')} is not matched with current app mode {app_mode.value}")
 
         return cls._import_and_overwrite_workflow_based_app(
             app_model=app_model,
-            workflow_data=import_data.get('workflow'),
+            workflow_data=import_data.get("workflow"),
             account=account,
         )
 
     @classmethod
-    def export_dsl(cls, app_model: App, include_secret:bool = False) -> str:
+    def export_dsl(cls, app_model: App, include_secret: bool = False) -> str:
         """
         Export app
         :param app_model: App instance
@@ -168,14 +168,16 @@ class AppDslService:
             "app": {
                 "name": app_model.name,
                 "mode": app_model.mode,
-                "icon": '🤖' if app_model.icon_type == 'image' else app_model.icon,
-                "icon_background": '#FFEAD5' if app_model.icon_type == 'image' else app_model.icon_background,
-                "description": app_model.description
-            }
+                "icon": "🤖" if app_model.icon_type == "image" else app_model.icon,
+                "icon_background": "#FFEAD5" if app_model.icon_type == "image" else app_model.icon_background,
+                "description": app_model.description,
+            },
         }
 
         if app_mode in [AppMode.ADVANCED_CHAT, AppMode.WORKFLOW]:
-            cls._append_workflow_export_data(export_data=export_data, app_model=app_model, include_secret=include_secret)
+            cls._append_workflow_export_data(
+                export_data=export_data, app_model=app_model, include_secret=include_secret
+            )
         else:
             cls._append_model_config_export_data(export_data, app_model)
 
@@ -188,31 +190,35 @@ class AppDslService:
 
         :param import_data: import data
         """
-        if not import_data.get('version'):
-            import_data['version'] = "0.1.0"
+        if not import_data.get("version"):
+            import_data["version"] = "0.1.0"
 
-        if not import_data.get('kind') or import_data.get('kind') != "app":
-            import_data['kind'] = "app"
+        if not import_data.get("kind") or import_data.get("kind") != "app":
+            import_data["kind"] = "app"
 
-        if import_data.get('version') != current_dsl_version:
+        if import_data.get("version") != current_dsl_version:
             # Currently only one DSL version, so no difference checks or compatibility fixes will be performed.
-            logger.warning(f"DSL version {import_data.get('version')} is not compatible "
-                           f"with current version {current_dsl_version}, related to "
-                           f"Dify version {dsl_to_dify_version_mapping.get(current_dsl_version)}.")
+            logger.warning(
+                f"DSL version {import_data.get('version')} is not compatible "
+                f"with current version {current_dsl_version}, related to "
+                f"Dify version {dsl_to_dify_version_mapping.get(current_dsl_version)}."
+            )
 
         return import_data
 
     @classmethod
-    def _import_and_create_new_workflow_based_app(cls,
-                                                  tenant_id: str,
-                                                  app_mode: AppMode,
-                                                  workflow_data: dict,
-                                                  account: Account,
-                                                  name: str,
-                                                  description: str,
-                                                  icon_type: str,
-                                                  icon: str,
-                                                  icon_background: str) -> App:
+    def _import_and_create_new_workflow_based_app(
+        cls,
+        tenant_id: str,
+        app_mode: AppMode,
+        workflow_data: dict,
+        account: Account,
+        name: str,
+        description: str,
+        icon_type: str,
+        icon: str,
+        icon_background: str,
+    ) -> App:
         """
         Import app dsl and create new workflow based app
 
@@ -227,8 +233,7 @@ class AppDslService:
         :param icon_background: app icon background
         """
         if not workflow_data:
-            raise ValueError("Missing workflow in data argument "
-                             "when app mode is advanced-chat or workflow")
+            raise ValueError("Missing workflow in data argument " "when app mode is advanced-chat or workflow")
 
         app = cls._create_app(
             tenant_id=tenant_id,
@@ -238,37 +243,32 @@ class AppDslService:
             description=description,
             icon_type=icon_type,
             icon=icon,
-            icon_background=icon_background
+            icon_background=icon_background,
         )
 
         # init draft workflow
-        environment_variables_list = workflow_data.get('environment_variables') or []
+        environment_variables_list = workflow_data.get("environment_variables") or []
         environment_variables = [factory.build_variable_from_mapping(obj) for obj in environment_variables_list]
-        conversation_variables_list = workflow_data.get('conversation_variables') or []
+        conversation_variables_list = workflow_data.get("conversation_variables") or []
         conversation_variables = [factory.build_variable_from_mapping(obj) for obj in conversation_variables_list]
         workflow_service = WorkflowService()
         draft_workflow = workflow_service.sync_draft_workflow(
             app_model=app,
-            graph=workflow_data.get('graph', {}),
-            features=workflow_data.get('../core/app/features', {}),
+            graph=workflow_data.get("graph", {}),
+            features=workflow_data.get("../core/app/features", {}),
             unique_hash=None,
             account=account,
             environment_variables=environment_variables,
             conversation_variables=conversation_variables,
         )
-        workflow_service.publish_workflow(
-            app_model=app,
-            account=account,
-            draft_workflow=draft_workflow
-        )
+        workflow_service.publish_workflow(app_model=app, account=account, draft_workflow=draft_workflow)
 
         return app
 
     @classmethod
-    def _import_and_overwrite_workflow_based_app(cls,
-                                                 app_model: App,
-                                                 workflow_data: dict,
-                                                 account: Account) -> Workflow:
+    def _import_and_overwrite_workflow_based_app(
+        cls, app_model: App, workflow_data: dict, account: Account
+    ) -> Workflow:
         """
         Import app dsl and overwrite workflow based app
 
@@ -277,8 +277,7 @@ class AppDslService:
         :param account: Account instance
         """
         if not workflow_data:
-            raise ValueError("Missing workflow in data argument "
-                             "when app mode is advanced-chat or workflow")
+            raise ValueError("Missing workflow in data argument " "when app mode is advanced-chat or workflow")
 
         # fetch draft workflow by app_model
         workflow_service = WorkflowService()
@@ -289,14 +288,14 @@ class AppDslService:
             unique_hash = None
 
         # sync draft workflow
-        environment_variables_list = workflow_data.get('environment_variables') or []
+        environment_variables_list = workflow_data.get("environment_variables") or []
         environment_variables = [factory.build_variable_from_mapping(obj) for obj in environment_variables_list]
-        conversation_variables_list = workflow_data.get('conversation_variables') or []
+        conversation_variables_list = workflow_data.get("conversation_variables") or []
         conversation_variables = [factory.build_variable_from_mapping(obj) for obj in conversation_variables_list]
         draft_workflow = workflow_service.sync_draft_workflow(
             app_model=app_model,
-            graph=workflow_data.get('graph', {}),
-            features=workflow_data.get('features', {}),
+            graph=workflow_data.get("graph", {}),
+            features=workflow_data.get("features", {}),
             unique_hash=unique_hash,
             account=account,
             environment_variables=environment_variables,
@@ -306,16 +305,18 @@ class AppDslService:
         return draft_workflow
 
     @classmethod
-    def _import_and_create_new_model_config_based_app(cls,
-                                                      tenant_id: str,
-                                                      app_mode: AppMode,
-                                                      model_config_data: dict,
-                                                      account: Account,
-                                                      name: str,
-                                                      description: str,
-                                                      icon_type: str,
-                                                      icon: str,
-                                                      icon_background: str) -> App:
+    def _import_and_create_new_model_config_based_app(
+        cls,
+        tenant_id: str,
+        app_mode: AppMode,
+        model_config_data: dict,
+        account: Account,
+        name: str,
+        description: str,
+        icon_type: str,
+        icon: str,
+        icon_background: str,
+    ) -> App:
         """
         Import app dsl and create new model config based app
 
@@ -329,8 +330,7 @@ class AppDslService:
         :param icon_background: app icon background
         """
         if not model_config_data:
-            raise ValueError("Missing model_config in data argument "
-                             "when app mode is chat, agent-chat or completion")
+            raise ValueError("Missing model_config in data argument " "when app mode is chat, agent-chat or completion")
 
         app = cls._create_app(
             tenant_id=tenant_id,
@@ -340,7 +340,7 @@ class AppDslService:
             description=description,
             icon_type=icon_type,
             icon=icon,
-            icon_background=icon_background
+            icon_background=icon_background,
         )
 
         app_model_config = AppModelConfig()
@@ -352,23 +352,22 @@ class AppDslService:
 
         app.app_model_config_id = app_model_config.id
 
-        app_model_config_was_updated.send(
-            app,
-            app_model_config=app_model_config
-        )
+        app_model_config_was_updated.send(app, app_model_config=app_model_config)
 
         return app
 
     @classmethod
-    def _create_app(cls,
-                    tenant_id: str,
-                    app_mode: AppMode,
-                    account: Account,
-                    name: str,
-                    description: str,
-                    icon_type: str,
-                    icon: str,
-                    icon_background: str) -> App:
+    def _create_app(
+        cls,
+        tenant_id: str,
+        app_mode: AppMode,
+        account: Account,
+        name: str,
+        description: str,
+        icon_type: str,
+        icon: str,
+        icon_background: str,
+    ) -> App:
         """
         Create new app
 
@@ -390,7 +389,7 @@ class AppDslService:
             icon=icon,
             icon_background=icon_background,
             enable_site=True,
-            enable_api=True
+            enable_api=True,
         )
 
         db.session.add(app)
@@ -412,7 +411,7 @@ class AppDslService:
         if not workflow:
             raise ValueError("Missing draft workflow configuration, please check.")
 
-        export_data['workflow'] = workflow.to_dict(include_secret=include_secret)
+        export_data["workflow"] = workflow.to_dict(include_secret=include_secret)
 
     @classmethod
     def _append_model_config_export_data(cls, export_data: dict, app_model: App) -> None:
@@ -425,4 +424,4 @@ class AppDslService:
         if not app_model_config:
             raise ValueError("Missing app configuration, please check.")
 
-        export_data['model_config'] = app_model_config.to_dict()
+        export_data["model_config"] = app_model_config.to_dict()

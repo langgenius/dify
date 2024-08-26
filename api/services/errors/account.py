@@ -55,4 +55,3 @@ class RoleAlreadyAssignedError(BaseServiceError):
 
 class RateLimitExceededError(BaseServiceError):
     pass
-
