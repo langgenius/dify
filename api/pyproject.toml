@@ -74,7 +74,6 @@ exclude = [
     "controllers/**/*.py",
     "models/**/*.py",
     "migrations/**/*",
-    "services/**/*.py",
 ]
 
 [tool.pytest_env]

@@ -10,59 +10,65 @@ from models.model import App, Conversation, EndUser, Message, MessageAgentThough
 
 class AgentService:
     @classmethod
-    def get_agent_logs(cls, app_model: App, 
-                       conversation_id: str,
-                       message_id: str) -> dict:
+    def get_agent_logs(cls, app_model: App, conversation_id: str, message_id: str) -> dict:
         """
         Service to get agent logs
         """
-        conversation: Conversation = db.session.query(Conversation).filter(
-            Conversation.id == conversation_id,
-            Conversation.app_id == app_model.id,
-        ).first()
+        conversation: Conversation = (
+            db.session.query(Conversation)
+            .filter(
+                Conversation.id == conversation_id,
+                Conversation.app_id == app_model.id,
+            )
+            .first()
+        )
 
         if not conversation:
             raise ValueError(f"Conversation not found: {conversation_id}")
 
-        message: Message = db.session.query(Message).filter(
-            Message.id == message_id,
-            Message.conversation_id == conversation_id,
-        ).first()
+        message: Message = (
+            db.session.query(Message)
+            .filter(
+                Message.id == message_id,
+                Message.conversation_id == conversation_id,
+            )
+            .first()
+        )
 
         if not message:
             raise ValueError(f"Message not found: {message_id}")
-        
+
         agent_thoughts: list[MessageAgentThought] = message.agent_thoughts
 
         if conversation.from_end_user_id:
             # only select name field
-            executor = db.session.query(EndUser, EndUser.name).filter(
-                EndUser.id == conversation.from_end_user_id
-            ).first()
+            executor = (
+                db.session.query(EndUser, EndUser.name).filter(EndUser.id == conversation.from_end_user_id).first()
+            )
         else:
-            executor = db.session.query(Account, Account.name).filter(
-                Account.id == conversation.from_account_id
-            ).first()
-        
+            executor = (
+                db.session.query(Account, Account.name).filter(Account.id == conversation.from_account_id).first()
+            )
+
         if executor:
             executor = executor.name
         else:
-            executor = 'Unknown'
+            executor = "Unknown"
 
         timezone = pytz.timezone(current_user.timezone)
 
         result = {
-            'meta': {
-                'status': 'success',
-                'executor': executor,
-                'start_time': message.created_at.astimezone(timezone).isoformat(),
-                'elapsed_time': message.provider_response_latency,
-                'total_tokens': message.answer_tokens + message.message_tokens,
-                'agent_mode': app_model.app_model_config.agent_mode_dict.get('strategy', 'react'),
-                'iterations': len(agent_thoughts),
+            "meta": {
+                "status": "success",
+                "executor": executor,
+                "start_time": message.created_at.astimezone(timezone).isoformat(),
+                "elapsed_time": message.provider_response_latency,
+                "total_tokens": message.answer_tokens + message.message_tokens,
+                "agent_mode": app_model.app_model_config.agent_mode_dict.get("strategy", "react"),
+                "iterations": len(agent_thoughts),
             },
-            'iterations': [],
-            'files': message.files,
+            "iterations": [],
+            "files": message.files,
         }
 
         agent_config = AgentConfigManager.convert(app_model.app_model_config.to_dict())
@@ -86,12 +92,12 @@ class AgentService:
                 tool_input = tool_inputs.get(tool_name, {})
                 tool_output = tool_outputs.get(tool_name, {})
                 tool_meta_data = tool_meta.get(tool_name, {})
-                tool_config = tool_meta_data.get('tool_config', {})
-                if tool_config.get('tool_provider_type', '') != 'dataset-retrieval':
+                tool_config = tool_meta_data.get("tool_config", {})
+                if tool_config.get("tool_provider_type", "") != "dataset-retrieval":
                     tool_icon = ToolManager.get_tool_icon(
                         tenant_id=app_model.tenant_id,
-                        provider_type=tool_config.get('tool_provider_type', ''),
-                        provider_id=tool_config.get('tool_provider', ''),
+                        provider_type=tool_config.get("tool_provider_type", ""),
+                        provider_id=tool_config.get("tool_provider", ""),
                     )
                     if not tool_icon:
                         tool_entity = find_agent_tool(tool_name)
@@ -102,30 +108,34 @@ class AgentService:
                                 provider_id=tool_entity.provider_id,
                             )
                 else:
-                    tool_icon = ''
+                    tool_icon = ""
 
-                tool_calls.append({
-                    'status': 'success' if not tool_meta_data.get('error') else 'error',
-                    'error': tool_meta_data.get('error'),
-                    'time_cost': tool_meta_data.get('time_cost', 0),
-                    'tool_name': tool_name,
-                    'tool_label': tool_label,
-                    'tool_input': tool_input,
-                    'tool_output': tool_output,
-                    'tool_parameters': tool_meta_data.get('tool_parameters', {}),
-                    'tool_icon': tool_icon,
-                })
+                tool_calls.append(
+                    {
+                        "status": "success" if not tool_meta_data.get("error") else "error",
+                        "error": tool_meta_data.get("error"),
+                        "time_cost": tool_meta_data.get("time_cost", 0),
+                        "tool_name": tool_name,
+                        "tool_label": tool_label,
+                        "tool_input": tool_input,
+                        "tool_output": tool_output,
+                        "tool_parameters": tool_meta_data.get("tool_parameters", {}),
+                        "tool_icon": tool_icon,
+                    }
+                )
 
-            result['iterations'].append({
-                'tokens': agent_thought.tokens,
-                'tool_calls': tool_calls,
-                'tool_raw': {
-                    'inputs': agent_thought.tool_input,
-                    'outputs': agent_thought.observation,
-                },
-                'thought': agent_thought.thought,
-                'created_at': agent_thought.created_at.isoformat(),
-                'files': agent_thought.files,
-            })
+            result["iterations"].append(
+                {
+                    "tokens": agent_thought.tokens,
+                    "tool_calls": tool_calls,
+                    "tool_raw": {
+                        "inputs": agent_thought.tool_input,
+                        "outputs": agent_thought.observation,
+                    },
+                    "thought": agent_thought.thought,
+                    "created_at": agent_thought.created_at.isoformat(),
+                    "files": agent_thought.files,
+                }
+            )
 
         return result
