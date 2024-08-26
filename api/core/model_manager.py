@@ -44,7 +44,8 @@ class ModelInstance:
             credentials=self.credentials
         )
 
-    def _fetch_credentials_from_bundle(self, provider_model_bundle: ProviderModelBundle, model: str) -> dict:
+    @staticmethod
+    def _fetch_credentials_from_bundle(provider_model_bundle: ProviderModelBundle, model: str) -> dict:
         """
         Fetch credentials from provider model bundle
         :param provider_model_bundle: provider model bundle
@@ -63,7 +64,8 @@ class ModelInstance:
 
         return credentials
 
-    def _get_load_balancing_manager(self, configuration: ProviderConfiguration,
+    @staticmethod
+    def _get_load_balancing_manager(configuration: ProviderConfiguration,
                                     model_type: ModelType,
                                     model: str,
                                     credentials: dict) -> Optional["LBModelManager"]:
