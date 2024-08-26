@@ -45,9 +45,11 @@ const translation = {
         webDescPlaceholder: 'Enter the description of the WebApp',
         language: 'Language',
         workflow: {
-          title: 'Workflow Steps',
+          title: 'Workflow',
+          subTitle: 'Workflow Details',
           show: 'Show',
           hide: 'Hide',
+          showDesc: 'Show or hide workflow details in WebApp',
         },
         chatColorTheme: 'Chat color theme',
         chatColorThemeDesc: 'Set the color theme of the chatbot',
