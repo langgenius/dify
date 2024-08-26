@@ -1,6 +1,8 @@
 from collections.abc import Generator
 from typing import Any, Union
 
+from openai._exceptions import RateLimitError
+
 from configs import dify_config
 from core.app.apps.advanced_chat.app_generator import AdvancedChatAppGenerator
 from core.app.apps.agent_chat.app_generator import AgentChatAppGenerator
@@ -12,7 +14,7 @@ from core.app.features.rate_limiting import RateLimit
 from models.model import Account, App, AppMode, EndUser
 from services.errors.llm import InvokeRateLimitError
 from services.workflow_service import WorkflowService
-from openai._exceptions import RateLimitError
+
 
 class AppGenerateService:
     @classmethod

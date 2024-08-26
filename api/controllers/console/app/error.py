@@ -120,8 +120,10 @@ class TracingConfigCheckError(BaseHTTPException):
     description = "Invalid Credentials."
     code = 400
 
+
 class InvokeRateLimitError(BaseHTTPException):
     """Raised when the Invoke returns rate limit error."""
+
     error_code = "rate_limit_error"
     description = "Rate Limit Error"
     code = 429

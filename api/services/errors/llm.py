@@ -3,6 +3,7 @@ from typing import Optional
 
 class InvokeError(Exception):
     """Base class for all LLM exceptions."""
+
     description: Optional[str] = None
 
     def __init__(self, description: Optional[str] = None) -> None:
@@ -14,7 +15,5 @@ class InvokeError(Exception):
 
 class InvokeRateLimitError(InvokeError):
     """Raised when the Invoke returns rate limit error."""
+
     description = "Rate Limit Error"
-
-
-
