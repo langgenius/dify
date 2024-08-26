@@ -8,6 +8,7 @@ type DialogProps = {
   children: ReactNode
   show: boolean
   onClose?: () => void
+  inWorkflow?: boolean
 }
 
 const DialogWrapper = ({
@@ -15,6 +16,7 @@ const DialogWrapper = ({
   children,
   show,
   onClose,
+  inWorkflow = true,
 }: DialogProps) => {
   const close = useCallback(() => onClose?.(), [onClose])
   return (
@@ -33,7 +35,7 @@ const DialogWrapper = ({
         </Transition.Child>
 
         <div className="fixed inset-0">
-          <div className="flex flex-col items-end justify-center min-h-full pt-[112px] pb-2">
+          <div className={cn('flex flex-col items-end justify-center min-h-full pb-2', inWorkflow ? 'pt-[112px]' : 'pt-[56px]')}>
             <Transition.Child
               as={Fragment}
               enter="ease-out duration-300"
@@ -43,7 +45,7 @@ const DialogWrapper = ({
               leaveFrom="opacity-100 scale-100"
               leaveTo="opacity-0 scale-95"
             >
-              <Dialog.Panel className={cn('grow relative w-[420px] h-[calc(100vh-120px)] p-0 overflow-hidden text-left align-middle transition-all transform border-t-[0.5px] border-l-[0.5px] border-b-[0.5px] border-components-panel-border shadow-xl rounded-l-2xl', className)}>
+              <Dialog.Panel className={cn('grow flex relative w-[420px] h-0 p-0 overflow-hidden text-left align-middle transition-all transform bg-components-panel-bg-alt border-t-[0.5px] border-l-[0.5px] border-b-[0.5px] border-components-panel-border shadow-xl rounded-l-2xl', className)}>
                 {children}
               </Dialog.Panel>
             </Transition.Child>

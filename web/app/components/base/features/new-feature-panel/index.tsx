@@ -14,11 +14,10 @@ const NewFeaturePanel = ({ show, onClose }: Props) => {
 
   return (
     <DialogWrapper
-      className='flex'
       show={show}
       onClose={onClose}
     >
-      <div className='grow flex flex-col h-full bg-components-panel-bg-alt'>
+      <div className='grow flex flex-col h-full'>
         <div className='shrink-0 flex justify-between p-4 pb-3'>
           <div>
             <div className='text-text-primary system-xl-semibold'>{t('workflow.common.features')}</div>
