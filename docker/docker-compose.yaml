@@ -210,6 +210,8 @@ services:
     networks:
       - ssrf_proxy_network
       - default
+    ports:
+      - 5001:5001
     extra_hosts:
       - "host.docker.internal:172.17.0.1"
 
@@ -537,6 +539,7 @@ services:
     command: minio server /minio_data --console-address ":9001"
     ports:
       - 9001:9001
+      - 9000:9000
     healthcheck:
       test: [ "CMD", "curl", "-f", "http://localhost:9000/minio/health/live" ]
       interval: 30s
