@@ -156,6 +156,7 @@ class ModelProviderModelApi(Resource):
                         credentials=args['credentials']
                     )
                 except CredentialsValidateFailedError as ex:
+                    logging.exception(f"save model credentials error: {ex}")
                     raise ValueError(str(ex))
 
         return {'result': 'success'}, 200
