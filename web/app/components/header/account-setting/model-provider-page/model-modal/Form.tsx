@@ -1,6 +1,5 @@
 import { Fragment, useState } from 'react'
 import type { FC } from 'react'
-
 import { ValidatingTip } from '../../key-validator/ValidateStatus'
 import type {
   CredentialFormSchema,

@@ -1,0 +1,21 @@
+identity:
+  author: hjlarry
+  name: siliconflow
+  label:
+    en_US: SiliconFlow
+    zh_CN: 硅基流动
+  description:
+    en_US: The image generation API provided by SiliconFlow includes Flux and Stable Diffusion models.
+    zh_CN: 硅基流动提供的图片生成 API，包含 Flux 和 Stable Diffusion 模型。
+  icon: icon.svg
+  tags:
+    - image
+credentials_for_provider:
+  siliconFlow_api_key:
+    type: secret-input
+    required: true
+    label:
+      en_US: SiliconFlow API Key
+    placeholder:
+      en_US: Please input your SiliconFlow API key
+    url: https://cloud.siliconflow.cn/account/ak

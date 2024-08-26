@@ -3,9 +3,8 @@ import type { FC } from 'react'
 import React, { useCallback } from 'react'
 import type { VariantProps } from 'class-variance-authority'
 import { cva } from 'class-variance-authority'
-import { RiQuestionLine } from '@remixicon/react'
 import cn from '@/utils/classnames'
-import TooltipPlus from '@/app/components/base/tooltip'
+import Tooltip from '@/app/components/base/tooltip'
 
 const variants = cva([], {
   variants: {
@@ -59,15 +58,16 @@ const OptionCard: FC<Props> = ({
       onClick={handleSelect}
     >
       <span>{title}</span>
-      {tooltip && <TooltipPlus
-        popupContent={<div className='w-[240px]'
-        >
-          {tooltip}
-        </div>}
-        asChild={false}
-      >
-        <RiQuestionLine className='ml-0.5 w-[14px] h-[14px] text-text-quaternary' />
-      </TooltipPlus>}
+      {tooltip
+        && <Tooltip
+          popupContent={
+            <div className='w-[240px]'>
+              {tooltip}
+            </div>
+          }
+          asChild={false}
+        />
+      }
     </div>
   )
 }

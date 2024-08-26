@@ -43,7 +43,7 @@ export type ConfigParams = {
   icon: string
   icon_background?: string
   show_workflow_steps: boolean
-  enable_sso: boolean
+  enable_sso?: boolean
 }
 
 const prefixSettings = 'appOverview.overview.appInfo.settings'
@@ -157,7 +157,7 @@ const SettingsModal: FC<ISettingsModalProps> = ({
       icon: appIcon.type === 'emoji' ? appIcon.icon : appIcon.fileId,
       icon_background: appIcon.type === 'emoji' ? appIcon.background : undefined,
       show_workflow_steps: inputInfo.show_workflow_steps,
-      enable_sso: inputInfo.enable_sso!,
+      enable_sso: inputInfo.enable_sso,
     }
     await onSave?.(params)
     setSaveLoading(false)
@@ -235,7 +235,11 @@ const SettingsModal: FC<ISettingsModalProps> = ({
           <p className='system-xs-medium text-gray-500'>{t(`${prefixSettings}.sso.label`)}</p>
           <div className='flex justify-between items-center'>
             <div className='font-medium system-sm-semibold flex-grow text-gray-900'>{t(`${prefixSettings}.sso.title`)}</div>
-            <Tooltip asChild={false} disabled={systemFeatures.sso_enforced_for_web} popupContent={<div className='w-[180px]'>{t(`${prefixSettings}.sso.tooltip`)}</div>}>
+            <Tooltip
+              disabled={systemFeatures.sso_enforced_for_web}
+              popupContent={<div className='w-[180px]'>{t(`${prefixSettings}.sso.tooltip`)}</div>}
+              asChild={false}
+            >
               <Switch disabled={!systemFeatures.sso_enforced_for_web} defaultValue={systemFeatures.sso_enforced_for_web && inputInfo.enable_sso} onChange={v => setInputInfo({ ...inputInfo, enable_sso: v })}></Switch>
             </Tooltip>
           </div>

@@ -16,7 +16,7 @@ export const fetchAppDetail = ({ url, id }: { url: string; id: string }) => {
 export const fetchAppSSO = async ({ appId }: { appId: string }) => {
   return get<AppSSOResponse>(`/enterprise/app-setting/sso?appID=${appId}`)
 }
-export const updateAppSSO = async ({ id, enabled }: { id: string;enabled: boolean }) => {
+export const updateAppSSO = async ({ id, enabled }: { id: string; enabled: boolean }) => {
   return post('/enterprise/app-setting/sso', { body: { app_id: id, enabled } })
 }
 
