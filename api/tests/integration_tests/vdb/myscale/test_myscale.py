@@ -21,7 +21,7 @@ class MyScaleVectorTest(AbstractVectorTest):
         )
 
     def get_ids_by_metadata_field(self):
-        ids = self.vector.get_ids_by_metadata_field(key='document_id', value=self.example_doc_id)
+        ids = self.vector.get_ids_by_metadata_field(key="document_id", value=self.example_doc_id)
         assert len(ids) == 1
 
 

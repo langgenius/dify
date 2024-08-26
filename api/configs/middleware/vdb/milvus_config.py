@@ -10,31 +10,31 @@ class MilvusConfig(BaseSettings):
     """
 
     MILVUS_HOST: Optional[str] = Field(
-        description='Milvus host',
+        description="Milvus host",
         default=None,
     )
 
     MILVUS_PORT: PositiveInt = Field(
-        description='Milvus RestFul API port',
+        description="Milvus RestFul API port",
         default=9091,
     )
 
     MILVUS_USER: Optional[str] = Field(
-        description='Milvus user',
+        description="Milvus user",
         default=None,
     )
 
     MILVUS_PASSWORD: Optional[str] = Field(
-        description='Milvus password',
+        description="Milvus password",
         default=None,
     )
 
     MILVUS_SECURE: bool = Field(
-        description='whether to use SSL connection for Milvus',
+        description="whether to use SSL connection for Milvus",
         default=False,
     )
 
     MILVUS_DATABASE: str = Field(
-        description='Milvus database, default to `default`',
-        default='default',
+        description="Milvus database, default to `default`",
+        default="default",
     )
