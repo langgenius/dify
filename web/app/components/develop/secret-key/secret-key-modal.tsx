@@ -118,9 +118,8 @@ const SecretKeyModal = ({
                   <div className='flex-shrink-0 px-3 truncate w-[200px]'>{api.last_used_at ? formatTime(Number(api.last_used_at), t('appLog.dateTimeFormat') as string) : t('appApi.never')}</div>
                   <div className='flex flex-grow px-3'>
                     <Tooltip
-                      selector={`key-${api.token}`}
-                      content={copyValue === api.token ? `${t('appApi.copied')}` : `${t('appApi.copy')}`}
-                      className='z-10'
+                      popupContent={copyValue === api.token ? `${t('appApi.copied')}` : `${t('appApi.copy')}`}
+                      popupClassName='mr-1'
                     >
                       <div className={`flex items-center justify-center flex-shrink-0 w-6 h-6 mr-1 rounded-lg cursor-pointer hover:bg-gray-100 ${s.copyIcon} ${copyValue === api.token ? s.copied : ''}`} onClick={() => {
                         // setIsCopied(true)

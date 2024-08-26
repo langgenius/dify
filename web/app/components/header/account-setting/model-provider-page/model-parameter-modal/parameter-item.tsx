@@ -1,8 +1,5 @@
 import type { FC } from 'react'
 import { useEffect, useRef, useState } from 'react'
-import {
-  RiQuestionLine,
-} from '@remixicon/react'
 import type { ModelParameterRule } from '../declarations'
 import { useLanguage } from '../hooks'
 import { isNullOrUndefined } from '../utils'
@@ -241,18 +238,18 @@ const ParameterItem: FC<ParameterItemProps> = ({
           {
             parameterRule.help && (
               <Tooltip
-                selector={`model-parameter-rule-${parameterRule.name}`}
-                htmlContent={(
+                popupContent={(
                   <div className='w-[200px] whitespace-pre-wrap'>{parameterRule.help[language] || parameterRule.help.en_US}</div>
                 )}
-              >
-                <RiQuestionLine className='mr-1.5 w-3.5 h-3.5 text-gray-400' />
-              </Tooltip>
+                popupClassName='mr-1'
+                triggerClassName='mr-1 w-4 h-4 shrink-0'
+              />
             )
           }
           {
             !parameterRule.required && parameterRule.name !== 'stop' && (
               <Switch
+                className='mr-1'
                 defaultValue={!isNullOrUndefined(value)}
                 onChange={handleSwitch}
                 size='md'
