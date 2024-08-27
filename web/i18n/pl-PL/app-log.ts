@@ -7,7 +7,7 @@ const translation = {
     header: {
       updatedTime: 'Czas aktualizacji',
       time: 'Czas utworzenia',
-      endUser: 'Użytkownik końcowy',
+      endUser: 'Użytkownik końcowy lub konto',
       input: 'Wejście',
       output: 'Wyjście',
       summary: 'Tytuł',
@@ -18,7 +18,7 @@ const translation = {
       status: 'STATUS',
       runtime: 'CZAS DZIAŁANIA',
       tokens: 'TOKENY',
-      user: 'UŻYTKOWNIK KOŃCOWY',
+      user: 'UŻYTKOWNIK KOŃCOWY LUB KONTO',
       version: 'WERSJA',
     },
     pagination: {

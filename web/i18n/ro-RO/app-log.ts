@@ -6,7 +6,7 @@ const translation = {
     header: {
       updatedTime: 'Timp actualizare',
       time: 'Timp creare',
-      endUser: 'Utilizator final',
+      endUser: 'Utilizator final sau cont',
       input: 'Intrare',
       output: 'Ieșire',
       summary: 'Titlu',
@@ -17,7 +17,7 @@ const translation = {
       status: 'STARE',
       runtime: 'TIMP DE RULARE',
       tokens: 'JETOANE',
-      user: 'UTILIZATOR FINAL',
+      user: 'UTILIZATOR FINAL SAU CONT',
       version: 'VERSIUNE',
     },
     pagination: {
