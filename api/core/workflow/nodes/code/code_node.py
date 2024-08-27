@@ -90,7 +90,7 @@ class CodeNode(BaseNode):
         
         if len(value) > dify_config.CODE_MAX_STRING_LENGTH:
             raise ValueError(f'The length of output variable `{variable}` must be'
-                             f' less than {dify_config.CODE_MAX_STRING_ARRAY_LENGTH} characters')
+                             f' less than {dify_config.CODE_MAX_STRING_LENGTH} characters')
 
         return value.replace('\x00', '')
 
