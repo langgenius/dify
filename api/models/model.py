@@ -490,7 +490,6 @@ class InstalledApp(db.Model):
         return tenant
 
 
-
 class Conversation(db.Model):
     __tablename__ = 'conversations'
     __table_args__ = (
@@ -620,6 +619,15 @@ class Conversation(db.Model):
             end_user = db.session.query(EndUser).filter(EndUser.id == self.from_end_user_id).first()
             if end_user:
                 return end_user.session_id
+
+        return None
+
+    @property
+    def from_account_name(self):
+        if self.from_account_id:
+            account = db.session.query(Account).filter(Account.id == self.from_account_id).first()
+            if account:
+                return account.name
 
         return None
 

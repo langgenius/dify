@@ -6,7 +6,7 @@ const translation = {
     header: {
       updatedTime: 'Aktualisierungszeit',
       time: 'Erstellungszeit',
-      endUser: 'Endbenutzer',
+      endUser: 'Endbenutzer oder Konto',
       input: 'Eingabe',
       output: 'Ausgabe',
       summary: 'Titel',
