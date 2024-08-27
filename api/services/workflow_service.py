@@ -235,7 +235,7 @@ class WorkflowService:
 
             if not node_run_result:
                 raise ValueError('Node run failed with no run result')
-            
+
             run_succeeded = True if node_run_result.status == WorkflowNodeExecutionStatus.SUCCEEDED else False
             error = node_run_result.error if not run_succeeded else None
         except WorkflowNodeRunFailedError as e:

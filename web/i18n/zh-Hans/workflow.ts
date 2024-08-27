@@ -77,6 +77,17 @@ const translation = {
     overwriteAndImport: '覆盖并导入',
     importFailure: '导入失败',
     importSuccess: '导入成功',
+    parallelRun: '并行运行',
+    parallelTip: {
+      click: {
+        title: '点击',
+        desc: '添加节点',
+      },
+      drag: {
+        title: '拖拽',
+        desc: '连接节点',
+      },
+    },
   },
   env: {
     envPanelTitle: '环境变量',

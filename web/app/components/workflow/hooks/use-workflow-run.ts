@@ -1,5 +1,6 @@
 import { useCallback } from 'react'
 import {
+  getIncomers,
   useReactFlow,
   useStoreApi,
 } from 'reactflow'
@@ -8,6 +9,7 @@ import { v4 as uuidV4 } from 'uuid'
 import { usePathname } from 'next/navigation'
 import { useWorkflowStore } from '../store'
 import { useNodesSyncDraft } from '../hooks'
+import type { Node } from '../types'
 import {
   NodeRunningStatus,
   WorkflowRunningStatus,
@@ -288,11 +290,12 @@ export const useWorkflowRun = () => {
               draft[currentNodeIndex].data._runningStatus = NodeRunningStatus.Running
             })
             setNodes(newNodes)
+            const incomeNodesId = getIncomers({ id: data.node_id } as Node, newNodes, edges).filter(node => node.data._runningStatus === NodeRunningStatus.Succeeded).map(node => node.id)
             const newEdges = produce(edges, (draft) => {
-              const edge = draft.find(edge => edge.target === data.node_id && edge.source === prevNodeId)
-
-              if (edge)
-                edge.data = { ...edge.data, _runned: true } as any
+              draft.forEach((edge) => {
+                if (edge.target === data.node_id && incomeNodesId.includes(edge.source))
+                  edge.data = { ...edge.data, _runned: true } as any
+              })
             })
             setEdges(newEdges)
           }
@@ -469,6 +472,12 @@ export const useWorkflowRun = () => {
 
           if (onIterationFinish)
             onIterationFinish(params)
+        },
+        onParallelBranchStarted: (params) => {
+          // console.log(params, 'parallel start')
+        },
+        onParallelBranchFinished: (params) => {
+          // console.log(params, 'finished')
         },
         onTextChunk: (params) => {
           const { data: { text } } = params

@@ -143,7 +143,13 @@ class GraphEngine:
             yield GraphRunFailedEvent(error=str(e))
             raise e
 
-    def _run(self, start_node_id: str, in_parallel_id: Optional[str] = None) -> Generator[GraphEngineEvent, None, None]:
+    def _run(
+            self, 
+            start_node_id: str, 
+            in_parallel_id: Optional[str] = None,
+            parent_parallel_id: Optional[str] = None,
+            parent_parallel_start_node_id: Optional[str] = None
+        ) -> Generator[GraphEngineEvent, None, None]:
         parallel_start_node_id = None
         if in_parallel_id:
             parallel_start_node_id = start_node_id
@@ -197,7 +203,9 @@ class GraphEngine:
                     node_instance=node_instance,
                     route_node_state=route_node_state,
                     parallel_id=in_parallel_id,
-                    parallel_start_node_id=parallel_start_node_id
+                    parallel_start_node_id=parallel_start_node_id,
+                    parent_parallel_id=parent_parallel_id,
+                    parent_parallel_start_node_id=parent_parallel_start_node_id
                 )
 
                 for item in generator:
@@ -227,8 +235,8 @@ class GraphEngine:
                     route_node_state=route_node_state,
                     parallel_id=in_parallel_id,
                     parallel_start_node_id=parallel_start_node_id,
-                    parent_parallel_id=in_parallel_id,
-                    parent_parallel_start_node_id=parallel_start_node_id
+                    parent_parallel_id=parent_parallel_id,
+                    parent_parallel_start_node_id=parent_parallel_start_node_id
                 )
                 raise e
 
@@ -374,7 +382,9 @@ class GraphEngine:
                 # run node
                 generator = self._run(
                     start_node_id=parallel_start_node_id,
-                    in_parallel_id=parallel_id
+                    in_parallel_id=parallel_id,
+                    parent_parallel_id=parent_parallel_id,
+                    parent_parallel_start_node_id=parent_parallel_start_node_id
                 )
 
                 for item in generator:

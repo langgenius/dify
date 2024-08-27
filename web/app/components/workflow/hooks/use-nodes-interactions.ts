@@ -12,6 +12,7 @@ import type {
 } from 'reactflow'
 import {
   getConnectedEdges,
+  getIncomers,
   getOutgoers,
   useReactFlow,
   useStoreApi,
@@ -207,6 +208,20 @@ export const useNodesInteractions = () => {
       })
     })
     setEdges(newEdges)
+    const incomesNodes = getIncomers(node, nodes, edges)
+    if (incomesNodes.length) {
+      const incomesNodesOutgoersId = incomesNodes.map(incomeNode => getOutgoers(incomeNode, nodes, edges)).flat().map(outgoer => outgoer.id)
+
+      if (incomesNodesOutgoersId.length > 1) {
+        const newNodes = produce(nodes, (draft) => {
+          draft.forEach((n) => {
+            if (incomesNodesOutgoersId.includes(n.id))
+              n.data._inParallelHovering = true
+          })
+        })
+        setNodes(newNodes)
+      }
+    }
   }, [store, workflowStore, getNodesReadOnly])
 
   const handleNodeLeave = useCallback<NodeMouseHandler>((_, node) => {
@@ -229,6 +244,7 @@ export const useNodesInteractions = () => {
     const newNodes = produce(getNodes(), (draft) => {
       draft.forEach((node) => {
         node.data._isEntering = false
+        node.data._inParallelHovering = false
       })
     })
     setNodes(newNodes)

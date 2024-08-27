@@ -51,37 +51,11 @@ class IterationNode(BaseNode):
         }
 
         graph_config = self.graph_config
+    
+        if not self.node_data.start_node_id:
+            raise ValueError(f'field start_node_id in iteration {self.node_id} not found')
 
-        # find nodes in current iteration and donot have source and have have start_node_in_iteration flag
-        # these nodes are the start nodes of the iteration (in version of parallel support)
-        start_node_ids = []
-        for node_config in graph_config['nodes']:
-            if (
-                node_config.get('data', {}).get('iteration_id')
-                and node_config.get('data', {}).get('iteration_id') == self.node_id 
-                and not node_config.get('source')
-                and node_config.get('data', {}).get('start_node_in_iteration', False)
-            ):
-                start_node_ids.append(node_config.get('id'))
-
-        if len(start_node_ids) > 1:
-            # add new fake iteration start node that connect to all start nodes
-            root_node_id = f"{self.node_id}-start"
-            graph_config['nodes'].append({
-                "id": root_node_id,
-                "data": {
-                    "title": "iteration start",
-                    "type": NodeType.ITERATION_START.value,
-                }
-            })
-
-            for start_node_id in start_node_ids:
-                graph_config['edges'].append({
-                    "source": root_node_id,
-                    "target": start_node_id
-                })
-        else:
-            root_node_id = self.node_data.start_node_id
+        root_node_id = self.node_data.start_node_id
 
         # init graph
         iteration_graph = Graph.init(

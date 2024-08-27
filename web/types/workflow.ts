@@ -187,6 +187,36 @@ export type IterationFinishedResponse = {
   }
 }
 
+export type ParallelBranchStartedResponse = {
+  task_id: string
+  workflow_run_id: string
+  event: string
+  data: {
+    parallel_id: string
+    parallel_start_node_id: string
+    parent_parallel_id: string
+    parent_parallel_start_node_id: string
+    iteration_id?: string
+    created_at: number
+  }
+}
+
+export type ParallelBranchFinishedResponse = {
+  task_id: string
+  workflow_run_id: string
+  event: string
+  data: {
+    parallel_id: string
+    parallel_start_node_id: string
+    parent_parallel_id: string
+    parent_parallel_start_node_id: string
+    iteration_id?: string
+    status: string
+    created_at: number
+    error: string
+  }
+}
+
 export type TextChunkResponse = {
   task_id: string
   workflow_run_id: string

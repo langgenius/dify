@@ -9,6 +9,7 @@ import {
   Handle,
   Position,
 } from 'reactflow'
+import { useTranslation } from 'react-i18next'
 import { BlockEnum } from '../../../types'
 import type { Node } from '../../../types'
 import BlockSelector from '../../../block-selector'
@@ -19,6 +20,7 @@ import {
   useNodesReadOnly,
 } from '../../../hooks'
 import { useStore } from '../../../store'
+import Tooltip from '@/app/components/base/tooltip'
 
 type NodeHandleProps = {
   handleId: string
@@ -112,6 +114,7 @@ export const NodeSourceHandle = memo(({
   handleClassName,
   nodeSelectorClassName,
 }: NodeHandleProps) => {
+  const { t } = useTranslation()
   const notInitialWorkflow = useStore(s => s.notInitialWorkflow)
   const [open, setOpen] = useState(false)
   const { handleNodeAdd } = useNodesInteractions()
@@ -125,9 +128,8 @@ export const NodeSourceHandle = memo(({
   }, [])
   const handleHandleClick = useCallback((e: MouseEvent) => {
     e.stopPropagation()
-    if (!connected)
-      setOpen(v => !v)
-  }, [connected])
+    setOpen(v => !v)
+  }, [])
   const handleSelect = useCallback((type: BlockEnum, toolDefaultValue?: ToolDefaultValue) => {
     handleNodeAdd(
       {
@@ -147,7 +149,20 @@ export const NodeSourceHandle = memo(({
   }, [notInitialWorkflow, data.type])
 
   return (
-    <>
+    <Tooltip
+      popupContent={(
+        <div className='system-xs-regular text-text-tertiary'>
+          <div>
+            <span className='system-xs-medium text-text-secondary'>{t('workflow.common.parallelTip.click.title')}</span>
+            {t('workflow.common.parallelTip.click.desc')}
+          </div>
+          <div>
+            <span className='system-xs-medium text-text-secondary'>{t('workflow.common.parallelTip.drag.title')}</span>
+            {t('workflow.common.parallelTip.drag.desc')}
+          </div>
+        </div>
+      )}
+    >
       <Handle
         id={handleId}
         type='source'
@@ -163,7 +178,7 @@ export const NodeSourceHandle = memo(({
         onClick={handleHandleClick}
       >
         {
-          !connected && isConnectable && !getNodesReadOnly() && (
+          isConnectable && !getNodesReadOnly() && (
             <BlockSelector
               open={open}
               onOpenChange={handleOpenChange}
@@ -181,7 +196,7 @@ export const NodeSourceHandle = memo(({
           )
         }
       </Handle>
-    </>
+    </Tooltip>
   )
 })
 NodeSourceHandle.displayName = 'NodeSourceHandle'

@@ -215,6 +215,16 @@ def test_run_parallel():
                 "target": "answer-3",
             },
             {
+                "id": "iteration-start-source-tt-target",
+                "source": "iteration-start",
+                "target": "tt",
+            },
+            {
+                "id": "iteration-start-source-tt-2-target",
+                "source": "iteration-start",
+                "target": "tt-2",
+            },
+            {
                 "id": "tt-source-if-else-target",
                 "source": "tt",
                 "target": "if-else",
@@ -250,7 +260,7 @@ def test_run_parallel():
                     "output_selector": ["tt", "output"],
                     "output_type": "array[string]",
                     "startNodeType": "template-transform",
-                    "start_node_id": "tt",
+                    "start_node_id": "iteration-start",
                     "title": "iteration",
                     "type": "iteration",
                 },
@@ -268,7 +278,14 @@ def test_run_parallel():
             {
                 "data": {
                     "iteration_id": "iteration-1",
-                    "start_node_in_iteration": True,
+                    "title": "iteration-start",
+                    "type": "iteration-start",
+                },
+                "id": "iteration-start",
+            },
+            {
+                "data": {
+                    "iteration_id": "iteration-1",
                     "template": "{{ arg1 }} 123",
                     "title": "template transform",
                     "type": "template-transform",
@@ -279,7 +296,6 @@ def test_run_parallel():
             {
                 "data": {
                     "iteration_id": "iteration-1",
-                    "start_node_in_iteration": True,
                     "template": "{{ arg1 }} 321",
                     "title": "template transform",
                     "type": "template-transform",
@@ -372,6 +388,7 @@ def test_run_parallel():
                 "output_selector": ["tt", "output"],
                 "output_type": "array[string]",
                 "startNodeType": "template-transform",
+                "start_node_id": "iteration-start",
                 "title": "迭代",
                 "type": "iteration",
             },
