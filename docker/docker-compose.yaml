@@ -442,7 +442,7 @@ services:
       PGDATA: ${PGVECTOR_PGDATA:-/var/lib/postgresql/data/pgdata}
     volumes:
       - ./volumes/pgvector/data:/var/lib/postgresql/data
-    port:
+    ports:
       - "5434:${PGVECTOR_PORT:-5432}"
     healthcheck:
       test: [ "CMD", "pg_isready" ]
