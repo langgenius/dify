@@ -5,10 +5,9 @@ import useSWR from 'swr'
 import {
   HandThumbDownIcon,
   HandThumbUpIcon,
-  InformationCircleIcon,
   XMarkIcon,
 } from '@heroicons/react/24/outline'
-import { RiEditFill } from '@remixicon/react'
+import { RiEditFill, RiQuestionLine } from '@remixicon/react'
 import { get } from 'lodash-es'
 import InfiniteScroll from 'react-infinite-scroll-component'
 import dayjs from 'dayjs'
@@ -19,7 +18,6 @@ import { useShallow } from 'zustand/react/shallow'
 import { useTranslation } from 'react-i18next'
 import VarPanel from './var-panel'
 import cn from '@/utils/classnames'
-import { randomString } from '@/utils'
 import type { FeedbackFunc, Feedbacktype, IChatItem, SubmitAnnotationFunc } from '@/app/components/base/chat/chat/type'
 import type { Annotation, ChatConversationFullDetailResponse, ChatConversationGeneralDetail, ChatConversationsResponse, ChatMessage, ChatMessagesRequest, CompletionConversationFullDetailResponse, CompletionConversationGeneralDetail, CompletionConversationsResponse, LogAnnotation } from '@/models/log'
 import type { App } from '@/types/app'
@@ -27,7 +25,6 @@ import Loading from '@/app/components/base/loading'
 import Drawer from '@/app/components/base/drawer'
 import Popover from '@/app/components/base/popover'
 import Chat from '@/app/components/base/chat/chat'
-import Tooltip from '@/app/components/base/tooltip'
 import { ToastContext } from '@/app/components/base/toast'
 import { fetchChatConversationDetail, fetchChatMessages, fetchCompletionConversationDetail, updateLogMessageAnnotations, updateLogMessageFeedbacks } from '@/service/log'
 import { TONE_LIST } from '@/config'
@@ -41,7 +38,7 @@ import MessageLogModal from '@/app/components/base/message-log-modal'
 import { useStore as useAppStore } from '@/app/components/app/store'
 import { useAppContext } from '@/context/app-context'
 import useTimestamp from '@/hooks/use-timestamp'
-import TooltipPlus from '@/app/components/base/tooltip-plus'
+import Tooltip from '@/app/components/base/tooltip'
 import { CopyIcon } from '@/app/components/base/copy-icon'
 
 dayjs.extend(utc)
@@ -345,11 +342,11 @@ function DetailPanel<T extends ChatConversationFullDetailResponse | CompletionCo
           <div className='text-gray-500 text-[10px] leading-[14px]'>{isChatMode ? t('appLog.detail.conversationId') : t('appLog.detail.time')}</div>
           {isChatMode && (
             <div className='flex items-center text-gray-700 text-[13px] leading-[18px]'>
-              <TooltipPlus
-                hideArrow
-                popupContent={detail.id}>
+              <Tooltip
+                popupContent={detail.id}
+              >
                 <div className='max-w-[105px] truncate'>{detail.id}</div>
-              </TooltipPlus>
+              </Tooltip>
               <CopyIcon content={detail.id} />
             </div>
           )}
@@ -379,7 +376,7 @@ function DetailPanel<T extends ChatConversationFullDetailResponse | CompletionCo
                 btnClassName='mr-4 !bg-gray-50 !py-1.5 !px-2.5 border-none font-normal'
                 btnElement={<>
                   <span className='text-[13px]'>{targetTone}</span>
-                  <InformationCircleIcon className='h-4 w-4 text-gray-800 ml-1.5' />
+                  <RiQuestionLine className='h-4 w-4 text-gray-800 ml-1.5' />
                 </>}
                 htmlContent={<div className='w-[280px]'>
                   <div className='flex justify-between py-2 px-4 font-medium text-sm text-gray-700'>
@@ -640,13 +637,12 @@ const ConversationList: FC<IConversationList> = ({ logs, appDetail, onRefresh })
   const renderTdValue = (value: string | number | null, isEmptyStyle: boolean, isHighlight = false, annotation?: LogAnnotation) => {
     return (
       <Tooltip
-        htmlContent={
+        popupContent={
           <span className='text-xs text-text-tertiary inline-flex items-center'>
             <RiEditFill className='w-3 h-3 mr-1' />{`${t('appLog.detail.annotationTip', { user: annotation?.account?.name })} ${formatTime(annotation?.created_at || dayjs().unix(), 'MM-DD hh:mm A')}`}
           </span>
         }
-        className={(isHighlight && !isChatMode) ? '' : '!hidden'}
-        selector={`highlight-${randomString(16)}`}
+        popupClassName={(isHighlight && !isChatMode) ? '' : '!hidden'}
       >
         <div className={cn(isEmptyStyle ? 'text-text-quaternary' : 'text-text-secondary', !isHighlight ? '' : 'bg-orange-100', 'system-sm-regular overflow-hidden text-ellipsis whitespace-nowrap')}>
           {value || '-'}
@@ -681,7 +677,7 @@ const ConversationList: FC<IConversationList> = ({ logs, appDetail, onRefresh })
         </thead>
         <tbody className="text-text-secondary system-sm-regular">
           {logs.data.map((log: any) => {
-            const endUser = log.from_end_user_session_id
+            const endUser = log.from_end_user_session_id || log.from_account_name
             const leftValue = get(log, isChatMode ? 'name' : 'message.inputs.query') || (!isChatMode ? (get(log, 'message.query') || get(log, 'message.inputs.default_input')) : '') || ''
             const rightValue = get(log, isChatMode ? 'message_count' : 'message.answer')
             return <tr

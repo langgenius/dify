@@ -5,7 +5,6 @@ import produce from 'immer'
 import { useTranslation } from 'react-i18next'
 import type { KeyValue } from '../../../types'
 import KeyValueItem from './item'
-// import TooltipPlus from '@/app/components/base/tooltip-plus'
 // import { EditList } from '@/app/components/base/icons/src/vender/solid/communication'
 
 const i18nPrefix = 'workflow.nodes.http'

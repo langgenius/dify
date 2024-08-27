@@ -233,11 +233,11 @@ const translation = {
     typeSelect: '下拉選項',
   },
   varKeyError: {
-    canNoBeEmpty: '變數不能為空',
-    tooLong: '變數: {{key}} 長度太長。不能超過 30 個字元',
-    notValid: '變數: {{key}} 非法。只能包含英文字元，數字和下劃線',
-    notStartWithNumber: '變數: {{key}} 不能以數字開頭',
-    keyAlreadyExists: '變數:{{key}} 已存在',
+    canNoBeEmpty: '{{key}} 是必要的',
+    tooLong: '{{key}} 長度太長。不能超過 30 個字元',
+    notValid: '{{key}} 非法。只能包含英文字元，數字和下劃線',
+    notStartWithNumber: '{{key}} 不能以數字開頭',
+    keyAlreadyExists: '{{key}} 已存在',
   },
   otherError: {
     promptNoBeEmpty: '提示詞不能為空',

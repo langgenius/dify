@@ -31,7 +31,7 @@ import { ToastContext } from '@/app/components/base/toast'
 import { sendCompletionMessage } from '@/service/debug'
 import Button from '@/app/components/base/button'
 import { RefreshCcw01 } from '@/app/components/base/icons/src/vender/line/arrows'
-import TooltipPlus from '@/app/components/base/tooltip-plus'
+import TooltipPlus from '@/app/components/base/tooltip'
 import ActionButton, { ActionButtonState } from '@/app/components/base/action-button'
 import type { ModelConfig as BackendModelConfig, VisionFile } from '@/types/app'
 import { promptVariablesToUserInputsForm } from '@/utils/model-config'
@@ -438,7 +438,7 @@ const Debug: FC<IDebug> = ({
                       <RiEqualizer2Line className='w-4 h-4' />
                     </ActionButton>
                   </TooltipPlus>
-                  {expanded && <div className='absolute z-10 bottom-[-18px] right-[5px] w-3 h-3 bg-components-panel-on-panel-item-bg border-l-[0.5px] border-t-[0.5px] border-components-panel-border-subtle rotate-45'/>}
+                  {expanded && <div className='absolute z-10 bottom-[-18px] right-[5px] w-3 h-3 bg-components-panel-on-panel-item-bg border-l-[0.5px] border-t-[0.5px] border-components-panel-border-subtle rotate-45' />}
                 </div>
               </>
             )}

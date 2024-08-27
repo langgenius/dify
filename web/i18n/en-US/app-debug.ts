@@ -290,11 +290,11 @@ const translation = {
     typeSelect: 'Select',
   },
   varKeyError: {
-    canNoBeEmpty: 'Variable key can not be empty',
-    tooLong: 'Variable key: {{key}} too length. Can not be longer then 30 characters',
-    notValid: 'Variable key: {{key}} is invalid. Can only contain letters, numbers, and underscores',
-    notStartWithNumber: 'Variable key: {{key}} can not start with a number',
-    keyAlreadyExists: 'Variable key: :{{key}} already exists',
+    canNoBeEmpty: '{{key}} is required',
+    tooLong: '{{key}} is too length. Can not be longer then 30 characters',
+    notValid: '{{key}} is invalid. Can only contain letters, numbers, and underscores',
+    notStartWithNumber: '{{key}} can not start with a number',
+    keyAlreadyExists: '{{key}} already exists',
   },
   otherError: {
     promptNoBeEmpty: 'Prompt can not be empty',
@@ -346,7 +346,6 @@ const translation = {
     'maxNumberOfUploads': 'Max number of uploads',
     'maxNumberTip': 'Max 15MB each',
     'errorMsg': {
-      varNameRequired: 'Variable name is required',
       labelNameRequired: 'Label name is required',
       varNameCanBeRepeat: 'Variable name can not be repeated',
       atLeastOneOption: 'At least one option is required',

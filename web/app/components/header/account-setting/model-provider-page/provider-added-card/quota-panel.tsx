@@ -10,8 +10,7 @@ import {
   MODEL_PROVIDER_QUOTA_GET_PAID,
 } from '../utils'
 import PriorityUseTip from './priority-use-tip'
-import { InfoCircle } from '@/app/components/base/icons/src/vender/line/general'
-import TooltipPlus from '@/app/components/base/tooltip-plus'
+import Tooltip from '@/app/components/base/tooltip'
 import { formatNumber } from '@/utils/format'
 
 type QuotaPanelProps = {
@@ -32,13 +31,12 @@ const QuotaPanel: FC<QuotaPanelProps> = ({
     <div className='group relative shrink-0 min-w-[112px] px-3 py-2 rounded-lg bg-white/[0.3] border-[0.5px] border-black/5'>
       <div className='flex items-center mb-2 h-4 text-xs font-medium text-gray-500'>
         {t('common.modelProvider.quota')}
-        <TooltipPlus popupContent={
+        <Tooltip popupContent={
           openaiOrAnthropic
             ? t('common.modelProvider.card.tip')
             : t('common.modelProvider.quotaTip')
-        }>
-          <InfoCircle className='ml-0.5 w-3 h-3 text-gray-400' />
-        </TooltipPlus>
+        }
+        />
       </div>
       {
         currentQuota && (

@@ -90,7 +90,7 @@ const WorkflowAppLogList: FC<ILogs> = ({ logs, appDetail, onRefresh }) => {
         </thead>
         <tbody className="text-text-secondary system-sm-regular">
           {logs.data.map((log: WorkflowAppLogDetail) => {
-            const endUser = log.created_by_end_user ? log.created_by_end_user.session_id : defaultValue
+            const endUser = log.created_by_end_user ? log.created_by_end_user.session_id : log.created_by_account ? log.created_by_account.name : defaultValue
             return <tr
               key={log.id}
               className={cn('border-b border-divider-subtle hover:bg-background-default-hover cursor-pointer', currentLog?.id !== log.id ? '' : 'bg-background-default-hover')}
