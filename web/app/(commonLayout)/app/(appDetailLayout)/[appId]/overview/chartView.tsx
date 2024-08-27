@@ -4,7 +4,7 @@ import dayjs from 'dayjs'
 import quarterOfYear from 'dayjs/plugin/quarterOfYear'
 import { useTranslation } from 'react-i18next'
 import type { PeriodParams } from '@/app/components/app/overview/appChart'
-import { AvgResponseTime, AvgSessionInteractions, AvgUserInteractions, ConversationsChart, CostChart, EndUsersChart, TokenPerSecond, UserSatisfactionRate, WorkflowCostChart, WorkflowDailyTerminalsChart, WorkflowMessagesChart } from '@/app/components/app/overview/appChart'
+import { AvgResponseTime, AvgSessionInteractions, AvgUserInteractions, ConversationsChart, CostChart, EndUsersChart, MessagesChart, TokenPerSecond, UserSatisfactionRate, WorkflowCostChart, WorkflowDailyTerminalsChart, WorkflowMessagesChart } from '@/app/components/app/overview/appChart'
 import type { Item } from '@/app/components/base/select'
 import { SimpleSelect } from '@/app/components/base/select'
 import { TIME_PERIOD_LIST } from '@/app/components/app/log/filter'
@@ -77,6 +77,11 @@ export default function ChartView({ appId }: IChartViewProps) {
         <div className='grid gap-6 grid-cols-1 xl:grid-cols-2 w-full mb-6'>
           <UserSatisfactionRate period={period} id={appId} />
           <CostChart period={period} id={appId} />
+        </div>
+      )}
+      {!isWorkflow && isChatApp && (
+        <div className='grid gap-6 grid-cols-1 xl:grid-cols-2 w-full mb-6'>
+          <MessagesChart period={period} id={appId} />
         </div>
       )}
       {isWorkflow && (
