@@ -15,12 +15,6 @@ from core.helper.code_executor.template_transformer import TemplateTransformer
 
 logger = logging.getLogger(__name__)
 
-# Code Executor
-CODE_EXECUTION_ENDPOINT = dify_config.CODE_EXECUTION_ENDPOINT
-CODE_EXECUTION_API_KEY = dify_config.CODE_EXECUTION_API_KEY
-
-CODE_EXECUTION_TIMEOUT = Timeout(connect=10, write=10, read=60, pool=None)
-
 class CodeExecutionException(Exception):
     pass
 
@@ -71,10 +65,10 @@ class CodeExecutor:
         :param code: code
         :return:
         """
-        url = URL(CODE_EXECUTION_ENDPOINT) / 'v1' / 'sandbox' / 'run'
+        url = URL(str(dify_config.CODE_EXECUTION_ENDPOINT)) / 'v1' / 'sandbox' / 'run'
 
         headers = {
-            'X-Api-Key': CODE_EXECUTION_API_KEY
+            'X-Api-Key': dify_config.CODE_EXECUTION_API_KEY
         }
 
         data = {
@@ -85,7 +79,12 @@ class CodeExecutor:
         }
 
         try:
-            response = post(str(url), json=data, headers=headers, timeout=CODE_EXECUTION_TIMEOUT)
+            response = post(str(url), json=data, headers=headers,
+                            timeout=Timeout(
+                                connect=dify_config.CODE_EXECUTION_CONNECT_TIMEOUT,
+                                read=dify_config.CODE_EXECUTION_READ_TIMEOUT,
+                                write=dify_config.CODE_EXECUTION_WRITE_TIMEOUT,
+                                pool=None))
             if response.status_code == 503:
                 raise CodeExecutionException('Code execution service is unavailable')
             elif response.status_code != 200:
@@ -96,7 +95,7 @@ class CodeExecutor:
             raise CodeExecutionException('Failed to execute code, which is likely a network issue,'
                                          ' please check if the sandbox service is running.'
                                          f' ( Error: {str(e)} )')
-        
+
         try:
             response = response.json()
         except:
@@ -104,12 +103,12 @@ class CodeExecutor:
 
         if (code := response.get('code')) != 0:
             raise CodeExecutionException(f"Got error code: {code}. Got error msg: {response.get('message')}")
-        
+
         response = CodeExecutionResponse(**response)
-        
+
         if response.data.error:
             raise CodeExecutionException(response.data.error)
-        
+
         return response.data.stdout or ''
 
     @classmethod
@@ -133,4 +132,3 @@ class CodeExecutor:
             raise e
 
         return template_transformer.transform_response(response)
-    
