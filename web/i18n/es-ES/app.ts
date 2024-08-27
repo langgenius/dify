@@ -67,9 +67,11 @@ const translation = {
   editAppTitle: 'Editar información de la app',
   editDone: 'Información de la app actualizada',
   editFailed: 'Error al actualizar información de la app',
-  emoji: {
+  iconPicker: {
     ok: 'OK',
     cancel: 'Cancelar',
+    emoji: 'Emoji',
+    image: 'Imagen',
   },
   switch: 'Cambiar a Orquestación de Flujo de Trabajo',
   switchTipStart: 'Se creará una nueva copia de la app para ti y la nueva copia cambiará a Orquestación de Flujo de Trabajo. La nueva copia no permitirá',

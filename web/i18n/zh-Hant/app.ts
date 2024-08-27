@@ -66,9 +66,11 @@ const translation = {
   editAppTitle: '編輯應用資訊',
   editDone: '應用資訊已更新',
   editFailed: '更新應用資訊失敗',
-  emoji: {
+  iconPicker: {
     ok: '確認',
     cancel: '取消',
+    emoji: '表情符號',
+    image: '圖片',
   },
   switch: '遷移為工作流編排',
   switchTipStart: '將為您建立一個使用工作流編排的新應用。新應用將',
@@ -88,6 +90,7 @@ const translation = {
     title: '追蹤應用程式效能',
     description: '配置第三方LLMOps提供商並追蹤應用程式效能。',
     config: '配置',
+    view: '查看',
     collapse: '收起',
     expand: '展開',
     tracing: '追蹤',

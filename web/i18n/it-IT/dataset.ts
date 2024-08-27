@@ -52,6 +52,32 @@ const translation = {
   },
   docsFailedNotice: 'documenti non riusciti a essere indicizzati',
   retry: 'Riprova',
+  indexingTechnique: {
+    high_quality: 'AQ',
+    economy: 'ECO',
+  },
+  indexingMethod: {
+    semantic_search: 'VETTORE',
+    full_text_search: 'TESTO COMPLETO',
+    hybrid_search: 'IBRIDO',
+    invertedIndex: 'INVERTITO',
+  },
+  mixtureHighQualityAndEconomicTip: 'Il modello di riclassificazione è necessario per la miscela di basi di conoscenza di alta qualità ed economiche.',
+  inconsistentEmbeddingModelTip: 'Il modello di riclassificazione è necessario se i modelli di embedding delle basi di conoscenza selezionate sono incoerenti.',
+  retrievalSettings: 'Impostazioni di recupero',
+  rerankSettings: 'Impostazioni di riclassificazione',
+  weightedScore: {
+    title: 'Punteggio ponderato',
+    description: 'Regolando i pesi assegnati, questa strategia di riclassificazione determina se dare priorità alla corrispondenza semantica o per parole chiave.',
+    semanticFirst: 'Semantica prima',
+    keywordFirst: 'Parola chiave prima',
+    customized: 'Personalizzato',
+    semantic: 'Semantico',
+    keyword: 'Parola chiave',
+  },
+  nTo1RetrievalLegacy: 'Il recupero N-a-1 sarà ufficialmente deprecato da settembre. Si consiglia di utilizzare il più recente recupero multi-percorso per ottenere risultati migliori.',
+  nTo1RetrievalLegacyLink: 'Scopri di più',
+  nTo1RetrievalLegacyLinkText: 'Il recupero N-a-1 sarà ufficialmente deprecato a settembre.',
 }
 
 export default translation

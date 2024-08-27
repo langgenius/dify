@@ -17,14 +17,14 @@ import {
   useWorkflowInteractions,
   useWorkflowRun,
 } from '../hooks'
-import { WorkflowRunningStatus } from '../types'
+import { ControlMode, WorkflowRunningStatus } from '../types'
 import cn from '@/utils/classnames'
 import {
   PortalToFollowElem,
   PortalToFollowElemContent,
   PortalToFollowElemTrigger,
 } from '@/app/components/base/portal-to-follow-elem'
-import TooltipPlus from '@/app/components/base/tooltip-plus'
+import Tooltip from '@/app/components/base/tooltip'
 import { useStore as useAppStore } from '@/app/components/app/store'
 import {
   ClockPlay,
@@ -58,6 +58,7 @@ const ViewHistory = ({
     handleCancelDebugAndPreviewPanel,
   } = useWorkflowInteractions()
   const workflowStore = useWorkflowStore()
+  const setControlMode = useStore(s => s.setControlMode)
   const { appDetail, setCurrentLogItem, setShowMessageLogModal } = useAppStore(useShallow(state => ({
     appDetail: state.appDetail,
     setCurrentLogItem: state.setCurrentLogItem,
@@ -99,7 +100,7 @@ const ViewHistory = ({
           }
           {
             !withText && (
-              <TooltipPlus
+              <Tooltip
                 popupContent={t('workflow.common.viewRunHistory')}
               >
                 <div
@@ -111,7 +112,7 @@ const ViewHistory = ({
                 >
                   <ClockPlay className={cn('w-4 h-4 group-hover:text-components-button-secondary-accent-text', open ? 'text-components-button-secondary-accent-text' : 'text-components-button-ghost-text')} />
                 </div>
-              </TooltipPlus>
+              </Tooltip>
             )
           }
         </PortalToFollowElemTrigger>
@@ -173,6 +174,7 @@ const ViewHistory = ({
                           setOpen(false)
                           handleNodesCancelSelected()
                           handleCancelDebugAndPreviewPanel()
+                          setControlMode(ControlMode.Hand)
                         }}
                       >
                         {

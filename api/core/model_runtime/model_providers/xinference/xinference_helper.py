@@ -35,13 +35,13 @@ cache_lock = Lock()
 
 class XinferenceHelper:
     @staticmethod
-    def get_xinference_extra_parameter(server_url: str, model_uid: str) -> XinferenceModelExtraParameter:
+    def get_xinference_extra_parameter(server_url: str, model_uid: str, api_key: str) -> XinferenceModelExtraParameter:
         XinferenceHelper._clean_cache()
         with cache_lock:
             if model_uid not in cache:
                 cache[model_uid] = {
                     'expires': time() + 300,
-                    'value': XinferenceHelper._get_xinference_extra_parameter(server_url, model_uid)
+                    'value': XinferenceHelper._get_xinference_extra_parameter(server_url, model_uid, api_key)
                 }
             return cache[model_uid]['value']
 
@@ -56,7 +56,7 @@ class XinferenceHelper:
             pass
 
     @staticmethod
-    def _get_xinference_extra_parameter(server_url: str, model_uid: str) -> XinferenceModelExtraParameter:
+    def _get_xinference_extra_parameter(server_url: str, model_uid: str, api_key: str) -> XinferenceModelExtraParameter:
         """
             get xinference model extra parameter like model_format and model_handle_type
         """
@@ -70,9 +70,10 @@ class XinferenceHelper:
         session = Session()
         session.mount('http://', HTTPAdapter(max_retries=3))
         session.mount('https://', HTTPAdapter(max_retries=3))
+        headers = {'Authorization': f'Bearer {api_key}'} if api_key else {}
 
         try:
-            response = session.get(url, timeout=10)
+            response = session.get(url, headers=headers, timeout=10)
         except (MissingSchema, ConnectionError, Timeout) as e:
             raise RuntimeError(f'get xinference model extra parameter failed, url: {url}, error: {e}')
         if response.status_code != 200:

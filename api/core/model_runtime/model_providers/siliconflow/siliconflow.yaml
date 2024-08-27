@@ -12,10 +12,12 @@ help:
     en_US: Get your API Key from SiliconFlow
     zh_Hans: 从 SiliconFlow 获取 API Key
   url:
-    en_US: https://cloud.siliconflow.cn/keys
+    en_US: https://cloud.siliconflow.cn/account/ak
 supported_model_types:
   - llm
   - text-embedding
+  - rerank
+  - speech2text
 configurate_methods:
   - predefined-model
 provider_credential_schema:

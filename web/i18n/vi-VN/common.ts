@@ -45,6 +45,7 @@ const translation = {
   voice: {
     language: {
       zhHans: 'Tiếng Trung',
+      zhHant: 'Tiếng Trung phồn thể',
       enUS: 'Tiếng Anh',
       deDE: 'Tiếng Đức',
       frFR: 'Tiếng Pháp',
@@ -59,6 +60,10 @@ const translation = {
       ukUA: 'Tiếng Ukraina',
       viVN: 'Tiếng Việt',
       plPL: 'Tiếng Ba Lan',
+      roRO: 'Tiếng Rumani',
+      hiIN: 'Tiếng Hindi',
+      trTR: 'Tiếng Thổ Nhĩ Kỳ',
+      faIR: 'Tiếng Ba Tư',
     },
   },
   unit: {
@@ -76,9 +81,9 @@ const translation = {
   },
   model: {
     params: {
-      temperature: 'Nhiệt độ',
+      temperature: 'Độ sáng tạo',
       temperatureTip:
-        'Kiểm soát độ ngẫu nhiên: Giảm nhiệt độ dẫn đến ít kết quả ngẫu nhiên hơn. Khi nhiệt độ gần bằng 0, mô hình sẽ trở nên xác định và lặp lại.',
+        'Kiểm soát độ ngẫu nhiên: Giảm độ sáng tạo dẫn đến ít kết quả ngẫu nhiên hơn. Khi độ sáng tạo gần bằng 0, mô hình sẽ trở nên xác định và lặp lại.',
       top_p: 'Top P',
       top_pTip:
         'Kiểm soát đa dạng thông qua lấy mẫu nhân nhóm: 0.5 có nghĩa là nửa số tùy chọn có khả năng cao được xem xét.',

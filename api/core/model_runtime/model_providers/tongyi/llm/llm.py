@@ -159,6 +159,8 @@ You should also complete the text started with ``` but not tell ``` directly.
         """
         if model in ['qwen-turbo-chat', 'qwen-plus-chat']:
             model = model.replace('-chat', '')
+        if model == 'farui-plus':
+            model = 'qwen-farui-plus'
 
         if model in self.tokenizers:
             tokenizer = self.tokenizers[model]
