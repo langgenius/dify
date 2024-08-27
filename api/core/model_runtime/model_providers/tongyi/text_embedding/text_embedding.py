@@ -137,9 +137,19 @@ class TongyiTextEmbeddingModel(_CommonTongyi, TextEmbeddingModel):
                 input=text,
                 text_type="document",
             )
-            data = response.output["embeddings"][0]
-            embeddings.append(data["embedding"])
-            embedding_used_tokens += response.usage["total_tokens"]
+            if response.output and "embeddings" in response.output and response.output["embeddings"]:
+                data = response.output["embeddings"][0]
+                if "embedding" in data:
+                    embeddings.append(data["embedding"])
+                else:
+                    raise ValueError("Embedding data is missing in the response.")
+            else:
+                raise ValueError("Response output is missing or does not contain embeddings.")
+            
+            if response.usage and "total_tokens" in response.usage:
+                embedding_used_tokens += response.usage["total_tokens"]
+            else:
+                raise ValueError("Response usage is missing or does not contain total tokens.")
 
         return [list(map(float, e)) for e in embeddings], embedding_used_tokens
 
