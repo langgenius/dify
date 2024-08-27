@@ -629,14 +629,17 @@ const StepTwo = ({
                   <div className={s.formRow}>
                     <div className='w-full'>
                       <div className={s.label}>{t('datasetCreation.stepTwo.maxLength')}</div>
-                      <input
-                        type="number"
-                        className={s.input}
-                        placeholder={t('datasetCreation.stepTwo.maxLength') || ''}
-                        value={max}
-                        min={1}
-                        onChange={e => setMax(parseInt(e.target.value.replace(/^0+/, ''), 10))}
-                      />
+                      <div className='relative w-full'>
+                        <input
+                          type="number"
+                          className={s.input}
+                          placeholder={t('datasetCreation.stepTwo.maxLength') || ''}
+                          value={max}
+                          min={1}
+                          onChange={e => setMax(parseInt(e.target.value.replace(/^0+/, ''), 10))}
+                        />
+                        <div className='absolute top-2.5 right-2.5 text-text-tertiary system-sm-regular'>Tokens</div>
+                      </div>
                     </div>
                   </div>
                   <div className={s.formRow}>
@@ -651,14 +654,17 @@ const StepTwo = ({
                           <RiQuestionLine className='ml-1 w-3.5 h-3.5 text-gray-400' />
                         </TooltipPlus>
                       </div>
-                      <input
-                        type="number"
-                        className={s.input}
-                        placeholder={t('datasetCreation.stepTwo.overlap') || ''}
-                        value={overlap}
-                        min={1}
-                        onChange={e => setOverlap(parseInt(e.target.value.replace(/^0+/, ''), 10))}
-                      />
+                      <div className='relative w-full'>
+                        <input
+                          type="number"
+                          className={s.input}
+                          placeholder={t('datasetCreation.stepTwo.overlap') || ''}
+                          value={overlap}
+                          min={1}
+                          onChange={e => setOverlap(parseInt(e.target.value.replace(/^0+/, ''), 10))}
+                        />
+                        <div className='absolute top-2.5 right-2.5 text-text-tertiary system-sm-regular'>Tokens</div>
+                      </div>
                     </div>
                   </div>
                   <div className={s.formRow}>
