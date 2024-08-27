@@ -10,10 +10,16 @@ export type Limit = {
   size?: number
 }
 
+export type Condition = {
+  key: string
+  comparison_operator: string
+  value: string
+}
+
 export type ListFilterNodeType = CommonNodeType & {
   variable: ValueSelector
-  filterBy: []
-  orderBy: {
+  filter_by: Condition[]
+  order_by: {
     enabled: boolean
     key: ValueSelector | string
     value: OrderBy

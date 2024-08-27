@@ -62,7 +62,7 @@ const useConfig = (id: string, payload: ListFilterNodeType) => {
 
   const handleOrderByEnabledChange = useCallback((enabled: boolean) => {
     const newInputs = produce(inputs, (draft) => {
-      draft.orderBy.enabled = enabled
+      draft.order_by.enabled = enabled
     })
     setInputs(newInputs)
   }, [inputs, setInputs])
@@ -70,7 +70,7 @@ const useConfig = (id: string, payload: ListFilterNodeType) => {
   const handleOrderByTypeChange = useCallback((type: OrderBy) => {
     return () => {
       const newInputs = produce(inputs, (draft) => {
-        draft.orderBy.value = type
+        draft.order_by.value = type
       })
       setInputs(newInputs)
     }

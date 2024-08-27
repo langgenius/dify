@@ -60,14 +60,14 @@ const Panel: FC<NodePanelProps<ListFilterNodeType>> = ({
           title={t(`${i18nPrefix}.orderBy`)}
           operations={
             <Switch
-              defaultValue={inputs.orderBy?.enabled}
+              defaultValue={inputs.order_by?.enabled}
               onChange={handleOrderByEnabledChange}
               size='md'
               disabled={readOnly}
             />
           }
         >
-          {inputs.orderBy?.enabled
+          {inputs.order_by?.enabled
             ? (
               <div className='flex items-center justify-between'>
                 {hasSubVariable && (
@@ -77,12 +77,12 @@ const Panel: FC<NodePanelProps<ListFilterNodeType>> = ({
                   <OptionCard
                     title={t(`${i18nPrefix}.asc`)}
                     onSelect={handleOrderByTypeChange(OrderBy.ASC)}
-                    selected={inputs.orderBy.value === OrderBy.ASC}
+                    selected={inputs.order_by.value === OrderBy.ASC}
                   />
                   <OptionCard
                     title={t(`${i18nPrefix}.desc`)}
                     onSelect={handleOrderByTypeChange(OrderBy.DESC)}
-                    selected={inputs.orderBy.value === OrderBy.DESC}
+                    selected={inputs.order_by.value === OrderBy.DESC}
                   />
                 </div>
               </div>
