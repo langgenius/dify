@@ -13,18 +13,10 @@ def test_validate_credentials():
     model = TongyiLargeLanguageModel()
 
     with pytest.raises(CredentialsValidateFailedError):
-        model.validate_credentials(
-            model='qwen-turbo',
-            credentials={
-                'dashscope_api_key': 'invalid_key'
-            }
-        )
+        model.validate_credentials(model="qwen-turbo", credentials={"dashscope_api_key": "invalid_key"})
 
     model.validate_credentials(
-        model='qwen-turbo',
-        credentials={
-            'dashscope_api_key': os.environ.get('TONGYI_DASHSCOPE_API_KEY')
-        }
+        model="qwen-turbo", credentials={"dashscope_api_key": os.environ.get("TONGYI_DASHSCOPE_API_KEY")}
     )
 
 
@@ -32,22 +24,13 @@ def test_invoke_model():
     model = TongyiLargeLanguageModel()
 
     response = model.invoke(
-        model='qwen-turbo',
-        credentials={
-            'dashscope_api_key': os.environ.get('TONGYI_DASHSCOPE_API_KEY')
-        },
-        prompt_messages=[
-            UserPromptMessage(
-                content='Who are you?'
-            )
-        ],
-        model_parameters={
-            'temperature': 0.5,
-            'max_tokens': 10
-        },
-        stop=['How'],
+        model="qwen-turbo",
+        credentials={"dashscope_api_key": os.environ.get("TONGYI_DASHSCOPE_API_KEY")},
+        prompt_messages=[UserPromptMessage(content="Who are you?")],
+        model_parameters={"temperature": 0.5, "max_tokens": 10},
+        stop=["How"],
         stream=False,
-        user="abc-123"
+        user="abc-123",
     )
 
     assert isinstance(response, LLMResult)
@@ -58,22 +41,12 @@ def test_invoke_stream_model():
     model = TongyiLargeLanguageModel()
 
     response = model.invoke(
-        model='qwen-turbo',
-        credentials={
-            'dashscope_api_key': os.environ.get('TONGYI_DASHSCOPE_API_KEY')
-        },
-        prompt_messages=[
-            UserPromptMessage(
-                content='Hello World!'
-            )
-        ],
-        model_parameters={
-            'temperature': 0.5,
-            'max_tokens': 100,
-            'seed': 1234
-        },
+        model="qwen-turbo",
+        credentials={"dashscope_api_key": os.environ.get("TONGYI_DASHSCOPE_API_KEY")},
+        prompt_messages=[UserPromptMessage(content="Hello World!")],
+        model_parameters={"temperature": 0.5, "max_tokens": 100, "seed": 1234},
         stream=True,
-        user="abc-123"
+        user="abc-123",
     )
 
     assert isinstance(response, Generator)
@@ -89,18 +62,14 @@ def test_get_num_tokens():
     model = TongyiLargeLanguageModel()
 
     num_tokens = model.get_num_tokens(
-        model='qwen-turbo',
-        credentials={
-            'dashscope_api_key': os.environ.get('TONGYI_DASHSCOPE_API_KEY')
-        },
+        model="qwen-turbo",
+        credentials={"dashscope_api_key": os.environ.get("TONGYI_DASHSCOPE_API_KEY")},
         prompt_messages=[
             SystemPromptMessage(
-                content='You are a helpful AI assistant.',
+                content="You are a helpful AI assistant.",
             ),
-            UserPromptMessage(
-                content='Hello World!'
-            )
-        ]
+            UserPromptMessage(content="Hello World!"),
+        ],
     )
 
     assert num_tokens == 12

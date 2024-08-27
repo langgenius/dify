@@ -21,14 +21,13 @@ from services.errors.account import RateLimitExceededError
 
 
 class ForgotPasswordSendEmailApi(Resource):
-
     @setup_required
     def post(self):
         parser = reqparse.RequestParser()
-        parser.add_argument('email', type=str, required=True, location='json')
+        parser.add_argument("email", type=str, required=True, location="json")
         args = parser.parse_args()
 
-        email = args['email']
+        email = args["email"]
 
         if not email_validate(email):
             raise InvalidEmailError()
@@ -49,38 +48,36 @@ class ForgotPasswordSendEmailApi(Resource):
 
 
 class ForgotPasswordCheckApi(Resource):
-
     @setup_required
     def post(self):
         parser = reqparse.RequestParser()
-        parser.add_argument('token', type=str, required=True, nullable=False, location='json')
+        parser.add_argument("token", type=str, required=True, nullable=False, location="json")
         args = parser.parse_args()
-        token = args['token']
+        token = args["token"]
 
         reset_data = AccountService.get_reset_password_data(token)
 
         if reset_data is None:
-            return {'is_valid': False, 'email': None}
-        return {'is_valid': True, 'email': reset_data.get('email')}
+            return {"is_valid": False, "email": None}
+        return {"is_valid": True, "email": reset_data.get("email")}
 
 
 class ForgotPasswordResetApi(Resource):
-
     @setup_required
     def post(self):
         parser = reqparse.RequestParser()
-        parser.add_argument('token', type=str, required=True, nullable=False, location='json')
-        parser.add_argument('new_password', type=valid_password, required=True, nullable=False, location='json')
-        parser.add_argument('password_confirm', type=valid_password, required=True, nullable=False, location='json')
+        parser.add_argument("token", type=str, required=True, nullable=False, location="json")
+        parser.add_argument("new_password", type=valid_password, required=True, nullable=False, location="json")
+        parser.add_argument("password_confirm", type=valid_password, required=True, nullable=False, location="json")
         args = parser.parse_args()
 
-        new_password = args['new_password']
-        password_confirm = args['password_confirm']
+        new_password = args["new_password"]
+        password_confirm = args["password_confirm"]
 
         if str(new_password).strip() != str(password_confirm).strip():
             raise PasswordMismatchError()
 
-        token = args['token']
+        token = args["token"]
         reset_data = AccountService.get_reset_password_data(token)
 
         if reset_data is None:
@@ -94,14 +91,14 @@ class ForgotPasswordResetApi(Resource):
         password_hashed = hash_password(new_password, salt)
         base64_password_hashed = base64.b64encode(password_hashed).decode()
 
-        account = Account.query.filter_by(email=reset_data.get('email')).first()
+        account = Account.query.filter_by(email=reset_data.get("email")).first()
         account.password = base64_password_hashed
         account.password_salt = base64_salt
         db.session.commit()
 
-        return {'result': 'success'}
+        return {"result": "success"}
 
 
-api.add_resource(ForgotPasswordSendEmailApi, '/forgot-password')
-api.add_resource(ForgotPasswordCheckApi, '/forgot-password/validity')
-api.add_resource(ForgotPasswordResetApi, '/forgot-password/resets')
+api.add_resource(ForgotPasswordSendEmailApi, "/forgot-password")
+api.add_resource(ForgotPasswordCheckApi, "/forgot-password/validity")
+api.add_resource(ForgotPasswordResetApi, "/forgot-password/resets")

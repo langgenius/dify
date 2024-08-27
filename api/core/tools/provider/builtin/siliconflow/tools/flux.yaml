@@ -1,0 +1,73 @@
+identity:
+  name: flux
+  author: hjlarry
+  label:
+    en_US: Flux
+  icon: icon.svg
+description:
+  human:
+    en_US: Generate image via SiliconFlow's flux schnell.
+  llm: This tool is used to generate image from prompt via SiliconFlow's flux schnell model.
+parameters:
+  - name: prompt
+    type: string
+    required: true
+    label:
+      en_US: prompt
+      zh_Hans: 提示词
+    human_description:
+      en_US: The text prompt used to generate the image.
+      zh_Hans: 用于生成图片的文字提示词
+    llm_description: this prompt text will be used to generate image.
+    form: llm
+  - name: image_size
+    type: select
+    required: true
+    options:
+      - value: 1024x1024
+        label:
+          en_US: 1024x1024
+      - value: 768x1024
+        label:
+          en_US: 768x1024
+      - value: 576x1024
+        label:
+          en_US: 576x1024
+      - value: 512x1024
+        label:
+          en_US: 512x1024
+      - value: 1024x576
+        label:
+          en_US: 1024x576
+      - value: 768x512
+        label:
+          en_US: 768x512
+    default: 1024x1024
+    label:
+      en_US: Choose Image Size
+      zh_Hans: 选择生成的图片大小
+    form: form
+  - name: num_inference_steps
+    type: number
+    required: true
+    default: 20
+    min: 1
+    max: 100
+    label:
+      en_US: Num Inference Steps
+      zh_Hans: 生成图片的步数
+    form: form
+    human_description:
+      en_US: The number of inference steps to perform. More steps produce higher quality but take longer.
+      zh_Hans: 执行的推理步骤数量。更多的步骤可以产生更高质量的结果，但需要更长的时间。
+  - name: seed
+    type: number
+    min: 0
+    max: 9999999999
+    label:
+      en_US: Seed
+      zh_Hans: 种子
+    human_description:
+      en_US: The same seed and prompt can produce similar images.
+      zh_Hans: 相同的种子和提示可以产生相似的图像。
+    form: form
