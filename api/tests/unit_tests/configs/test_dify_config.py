@@ -87,4 +87,4 @@ def test_flask_configs(example_env_file):
     assert config["WEB_API_CORS_ALLOW_ORIGINS"] == ["*"]
 
     assert str(config["CODE_EXECUTION_ENDPOINT"]) == "http://sandbox:8194/"
-    assert URL(str(config["CODE_EXECUTION_ENDPOINT"])) / "v1" == URL("http://sandbox:8194/v1/")
+    assert str(URL(str(config["CODE_EXECUTION_ENDPOINT"])) / "v1") =="http://sandbox:8194/v1/"
