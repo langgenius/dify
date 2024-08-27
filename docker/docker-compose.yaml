@@ -234,8 +234,8 @@ services:
     networks:
       - ssrf_proxy_network
       - default
-    extra_hosts:
-      - "host.docker.internal:172.17.0.1"
+    # extra_hosts:
+      # - "host.docker.internal:172.17.0.1"
 
   # Frontend web application.
   web:
