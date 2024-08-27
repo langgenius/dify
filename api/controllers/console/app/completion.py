@@ -17,6 +17,7 @@ from controllers.console.app.error import (
 from controllers.console.app.wraps import get_app_model
 from controllers.console.setup import setup_required
 from controllers.console.wraps import account_initialization_required
+from controllers.web.error import InvokeRateLimitError as InvokeRateLimitHttpError
 from core.app.apps.base_app_queue_manager import AppQueueManager
 from core.app.entities.app_invoke_entities import InvokeFrom
 from core.errors.error import (
@@ -31,6 +32,7 @@ from libs.helper import uuid_value
 from libs.login import login_required
 from models.model import AppMode
 from services.app_generate_service import AppGenerateService
+from services.errors.llm import InvokeRateLimitError
 
 
 # define completion message api for user
@@ -135,6 +137,8 @@ class ChatMessageApi(Resource):
             raise ProviderQuotaExceededError()
         except ModelCurrentlyNotSupportError:
             raise ProviderModelCurrentlyNotSupportError()
+        except InvokeRateLimitError as ex:
+            raise InvokeRateLimitHttpError(ex.description)
         except InvokeError as e:
             raise CompletionRequestError(e.description)
         except (ValueError, AppInvokeQuotaExceededError) as e:

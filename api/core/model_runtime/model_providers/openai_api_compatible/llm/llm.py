@@ -649,7 +649,7 @@ class OAIAPICompatLargeLanguageModel(_CommonOAI_API_Compat, LargeLanguageModel):
         else:
             raise ValueError(f"Got unknown type {message}")
 
-        if message.name:
+        if message.name and message_dict.get("role", "") != "tool":
             message_dict["name"] = message.name
 
         return message_dict
