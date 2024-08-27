@@ -6,7 +6,7 @@ const translation = {
     header: {
       updatedTime: 'Güncellenme zamanı',
       time: 'Oluşturulma zamanı',
-      endUser: 'Son Kullanıcı',
+      endUser: 'Son Kullanıcı veya Hesap',
       input: 'Girdi',
       output: 'Çıktı',
       summary: 'Başlık',
@@ -17,7 +17,7 @@ const translation = {
       status: 'DURUM',
       runtime: 'ÇALIŞMA SÜRESİ',
       tokens: 'TOKENLAR',
-      user: 'SON KULLANICI',
+      user: 'SON KULLANICI VEYA HESAP',
       version: 'VERSİYON',
     },
     pagination: {
