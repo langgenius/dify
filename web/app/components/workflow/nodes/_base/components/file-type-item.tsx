@@ -47,7 +47,7 @@ const FileTypeItem: FC<Props> = ({
               <span className='shrink-0 w-4 h-4 bg-[#00B2EA]'></span>
               <div className='ml-2 text-text-primary system-sm-medium'>{t(`appDebug.variableConig.file.${type}.name`)}</div>
             </div>
-            <div className='p-3'>
+            <div className='p-3' onClick={e => e.stopPropagation()}>
               <TagInput
                 items={customFileTypes}
                 onChange={onCustomFileTypesChange}

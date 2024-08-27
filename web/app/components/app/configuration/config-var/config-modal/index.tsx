@@ -15,7 +15,7 @@ import { checkKeys, getNewVarInWorkflow } from '@/utils/var'
 import ConfigContext from '@/context/debug-configuration'
 import type { InputVar, MoreInfo, UploadFileSetting } from '@/app/components/workflow/types'
 import Modal from '@/app/components/base/modal'
-import { ChangeType, InputVarType } from '@/app/components/workflow/types'
+import { ChangeType, InputVarType, SupportUploadFileTypes } from '@/app/components/workflow/types'
 import FileUploadSetting from '@/app/components/workflow/nodes/_base/components/file-upload-setting'
 import Checkbox from '@/app/components/base/checkbox'
 import { DEFAULT_FILE_UPLOAD_SETTING } from '@/app/components/workflow/constants'
@@ -147,6 +147,19 @@ const ConfigModal: FC<IConfigModalProps> = ({
       })
       if (hasRepeatedItem) {
         Toast.notify({ type: 'error', message: t('appDebug.variableConig.errorMsg.optionRepeat') })
+        return
+      }
+      onConfirm(tempPayload, moreInfo)
+    }
+    else if ([InputVarType.singleFile, InputVarType.multiFiles].includes(type)) {
+      if (tempPayload.allowed_file_types?.length === 0) {
+        const errorMessages = t('workflow.errorMsg.fieldRequired', { field: t('appDebug.variableConig.file.supportFileTypes') })
+        Toast.notify({ type: 'error', message: errorMessages })
+        return
+      }
+      if (tempPayload.allowed_file_types?.includes(SupportUploadFileTypes.custom) && !tempPayload.allowed_file_extensions?.length) {
+        const errorMessages = t('workflow.errorMsg.fieldRequired', { field: t('appDebug.variableConig.file.custom.name') })
+        Toast.notify({ type: 'error', message: errorMessages })
         return
       }
       onConfirm(tempPayload, moreInfo)
