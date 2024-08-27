@@ -56,17 +56,17 @@ class CodeExecutionSandboxConfig(BaseSettings):
     )
 
     CODE_EXECUTION_CONNECT_TIMEOUT: Optional[float] = Field(
-        description="connect timeout in seconds for code execution request, default to 10.0",
+        description="connect timeout in seconds for code execution request",
         default=10.0,
     )
 
     CODE_EXECUTION_READ_TIMEOUT: Optional[float] = Field(
-        description="read timeout in seconds for code execution request, default to 60.0",
+        description="read timeout in seconds for code execution request",
         default=60.0,
     )
 
     CODE_EXECUTION_WRITE_TIMEOUT: Optional[float] = Field(
-        description="write timeout in seconds for code execution request, default to 10.0",
+        description="write timeout in seconds for code execution request",
         default=10.0,
     )
 
