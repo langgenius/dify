@@ -10,7 +10,6 @@ import {
 } from '@remixicon/react'
 import Link from 'next/link'
 import { groupBy } from 'lodash-es'
-import RetrievalMethodInfo from '../../common/retrieval-method-info'
 import PreviewItem, { PreviewType } from './preview-item'
 import LanguageSelect from './language-select'
 import s from './index.module.css'
@@ -785,34 +784,21 @@ const StepTwo = ({
                 )}
 
               <div className='max-w-[640px]'>
-                {!datasetId
-                  ? (<>
-                    {getIndexing_technique() === IndexingType.QUALIFIED
-                      ? (
-                        <RetrievalMethodConfig
-                          value={retrievalConfig}
-                          onChange={setRetrievalConfig}
-                        />
-                      )
-                      : (
-                        <EconomicalRetrievalMethodConfig
-                          value={retrievalConfig}
-                          onChange={setRetrievalConfig}
-                        />
-                      )}
-                  </>)
-                  : (
-                    <div>
-                      <RetrievalMethodInfo
+                {
+                  getIndexing_technique() === IndexingType.QUALIFIED
+                    ? (
+                      <RetrievalMethodConfig
                         value={retrievalConfig}
+                        onChange={setRetrievalConfig}
                       />
-                      <div className='mt-2 text-xs text-gray-500 font-medium'>
-                        {t('datasetCreation.stepTwo.retrivalSettedTip')}
-                        <Link className='text-[#155EEF]' href={`/datasets/${datasetId}/settings`}>{t('datasetCreation.stepTwo.datasetSettingLink')}</Link>
-                      </div>
-                    </div>
-                  )}
-
+                    )
+                    : (
+                      <EconomicalRetrievalMethodConfig
+                        value={retrievalConfig}
+                        onChange={setRetrievalConfig}
+                      />
+                    )
+                }
               </div>
             </div>
 
