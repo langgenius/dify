@@ -12,13 +12,18 @@ export type ISelectTypeItemProps = {
   onClick: () => void
 }
 
+const i18nFileTypeMap: Record<string, string> = {
+  'file': 'single-file',
+  'file-list': 'multi-files',
+}
+
 const SelectTypeItem: FC<ISelectTypeItemProps> = ({
   type,
   selected,
   onClick,
 }) => {
   const { t } = useTranslation()
-  const typeName = t(`appDebug.variableConig.${type}`)
+  const typeName = t(`appDebug.variableConig.${i18nFileTypeMap[type] || type}`)
 
   return (
     <div

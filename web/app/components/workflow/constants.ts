@@ -474,6 +474,13 @@ export const FILE_STRUCT: Var[] = [
   },
 ]
 
+export const DEFAULT_FILE_UPLOAD_SETTING = {
+  allowed_file_upload_methods: ['local_file', 'remote_url'],
+  max_length: 5,
+  allowed_file_types: ['image'],
+  allowed_file_extensions: [],
+}
+
 export const WORKFLOW_DATA_UPDATE = 'WORKFLOW_DATA_UPDATE'
 export const CUSTOM_NODE = 'custom'
 export const DSL_EXPORT_CHECK = 'DSL_EXPORT_CHECK'

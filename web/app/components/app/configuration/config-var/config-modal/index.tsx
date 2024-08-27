@@ -3,6 +3,7 @@ import type { FC } from 'react'
 import React, { useCallback, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { useContext } from 'use-context-selector'
+import produce from 'immer'
 import ModalFoot from '../modal-foot'
 import ConfigSelect from '../config-select'
 import ConfigString from '../config-string'
@@ -17,6 +18,8 @@ import Modal from '@/app/components/base/modal'
 import { ChangeType, InputVarType } from '@/app/components/workflow/types'
 import FileUploadSetting from '@/app/components/workflow/nodes/_base/components/file-upload-setting'
 import Checkbox from '@/app/components/base/checkbox'
+import { DEFAULT_FILE_UPLOAD_SETTING } from '@/app/components/workflow/constants'
+import { DEFAULT_VALUE_MAX_LEN } from '@/config'
 
 const TEXT_MAX_LENGTH = 256
 
@@ -44,8 +47,8 @@ const ConfigModal: FC<IConfigModalProps> = ({
   const { type, label, variable, options, max_length } = tempPayload
 
   const isStringInput = type === InputVarType.textInput || type === InputVarType.paragraph
-  const checkVariableName = useCallback((value: string) => {
-    const { isValid, errorMessageKey } = checkKeys([value], false)
+  const checkVariableName = useCallback((value: string, canBeEmpty?: boolean) => {
+    const { isValid, errorMessageKey } = checkKeys([value], canBeEmpty)
     if (!isValid) {
       Toast.notify({
         type: 'error',
@@ -68,9 +71,28 @@ const ConfigModal: FC<IConfigModalProps> = ({
     }
   }, [])
 
+  const handleTypeChange = useCallback((type: InputVarType) => {
+    return () => {
+      const newPayload = produce(tempPayload, (draft) => {
+        draft.type = type
+        if ([InputVarType.singleFile, InputVarType.multiFiles].includes(type)) {
+          (Object.keys(DEFAULT_FILE_UPLOAD_SETTING)).forEach((key) => {
+            if (key !== 'max_length')
+              (draft as any)[key] = (DEFAULT_FILE_UPLOAD_SETTING as any)[key]
+          })
+          if (type === InputVarType.multiFiles)
+            draft.max_length = DEFAULT_FILE_UPLOAD_SETTING.max_length
+        }
+        if (type === InputVarType.paragraph)
+          draft.max_length = DEFAULT_VALUE_MAX_LEN
+      })
+      setTempPayload(newPayload)
+    }
+  }, [tempPayload])
+
   const handleVarKeyBlur = useCallback((e: any) => {
     const varName = e.target.value
-    if (!checkVariableName(varName) || tempPayload.label)
+    if (!checkVariableName(varName, true) || tempPayload.label)
       return
 
     setTempPayload((prev) => {
@@ -145,13 +167,13 @@ const ConfigModal: FC<IConfigModalProps> = ({
 
           <Field title={t('appDebug.variableConig.fieldType')}>
             <div className='grid grid-cols-3 gap-2'>
-              <SelectTypeItem type={InputVarType.textInput} selected={type === InputVarType.textInput} onClick={() => handlePayloadChange('type')(InputVarType.textInput)} />
-              <SelectTypeItem type={InputVarType.paragraph} selected={type === InputVarType.paragraph} onClick={() => handlePayloadChange('type')(InputVarType.paragraph)} />
-              <SelectTypeItem type={InputVarType.select} selected={type === InputVarType.select} onClick={() => handlePayloadChange('type')(InputVarType.select)} />
-              <SelectTypeItem type={InputVarType.number} selected={type === InputVarType.number} onClick={() => handlePayloadChange('type')(InputVarType.number)} />
+              <SelectTypeItem type={InputVarType.textInput} selected={type === InputVarType.textInput} onClick={handleTypeChange(InputVarType.textInput)} />
+              <SelectTypeItem type={InputVarType.paragraph} selected={type === InputVarType.paragraph} onClick={handleTypeChange(InputVarType.paragraph)} />
+              <SelectTypeItem type={InputVarType.select} selected={type === InputVarType.select} onClick={handleTypeChange(InputVarType.select)} />
+              <SelectTypeItem type={InputVarType.number} selected={type === InputVarType.number} onClick={handleTypeChange(InputVarType.number)} />
               {supportFile && <>
-                <SelectTypeItem type={InputVarType.singleFile} selected={type === InputVarType.singleFile} onClick={() => handlePayloadChange('type')(InputVarType.singleFile)} />
-                <SelectTypeItem type={InputVarType.multiFiles} selected={type === InputVarType.multiFiles} onClick={() => handlePayloadChange('type')(InputVarType.multiFiles)} />
+                <SelectTypeItem type={InputVarType.singleFile} selected={type === InputVarType.singleFile} onClick={handleTypeChange(InputVarType.singleFile)} />
+                <SelectTypeItem type={InputVarType.multiFiles} selected={type === InputVarType.multiFiles} onClick={handleTypeChange(InputVarType.multiFiles)} />
               </>}
             </div>
           </Field>

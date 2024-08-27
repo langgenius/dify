@@ -147,8 +147,8 @@ export enum InputVarType {
   json = 'json', // obj, array
   contexts = 'contexts', // knowledge retrieval
   iterator = 'iterator', // iteration input
-  singleFile = 'single-file',
-  multiFiles = 'multi-files',
+  singleFile = 'file',
+  multiFiles = 'file-list',
 }
 
 export type InputVar = {
@@ -362,10 +362,10 @@ export enum SupportUploadFileTypes {
 }
 
 export type UploadFileSetting = {
-  uploadMethod: TransferMethod
-  maxUploadNumLimit?: number // multiple files upload limit
-  supportFileTypes: SupportUploadFileTypes
-  customFileTypes?: string[]
+  allowed_file_upload_methods: TransferMethod[]
+  allowed_file_types: SupportUploadFileTypes[]
+  allowed_file_extensions?: string[]
+  max_length: number
 }
 
 export type VisionSetting = {

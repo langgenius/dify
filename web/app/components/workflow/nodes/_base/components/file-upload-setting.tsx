@@ -25,15 +25,18 @@ const FileUploadSetting: FC<Props> = ({
   const { t } = useTranslation()
 
   const {
-    uploadMethod,
-    maxUploadNumLimit,
-    supportFileTypes,
-    customFileTypes,
+    allowed_file_upload_methods,
+    max_length,
+    allowed_file_types,
+    allowed_file_extensions,
   } = payload
 
   const handleSupportFileTypeChange = useCallback((type: SupportUploadFileTypes) => {
     const newPayload = produce(payload, (draft) => {
-      draft.supportFileTypes = type
+      if (draft.allowed_file_types.includes(type))
+        draft.allowed_file_types = draft.allowed_file_types.filter(v => v !== type)
+      else
+        draft.allowed_file_types.push(type)
     })
     onChange(newPayload)
   }, [onChange, payload])
@@ -41,7 +44,10 @@ const FileUploadSetting: FC<Props> = ({
   const handleUploadMethodChange = useCallback((method: TransferMethod) => {
     return () => {
       const newPayload = produce(payload, (draft) => {
-        draft.uploadMethod = method
+        if (method === TransferMethod.all)
+          draft.allowed_file_upload_methods = [TransferMethod.local_file, TransferMethod.remote_url]
+        else
+          draft.allowed_file_upload_methods = [method]
       })
       onChange(newPayload)
     }
@@ -49,7 +55,7 @@ const FileUploadSetting: FC<Props> = ({
 
   const handleCustomFileTypesChange = useCallback((customFileTypes: string[]) => {
     const newPayload = produce(payload, (draft) => {
-      draft.customFileTypes = customFileTypes.map((v) => {
+      draft.allowed_file_extensions = customFileTypes.map((v) => {
         if (v.startsWith('.'))
           return v
         return `.${v}`
@@ -60,7 +66,7 @@ const FileUploadSetting: FC<Props> = ({
 
   const handleMaxUploadNumLimitChange = useCallback((value: number) => {
     const newPayload = produce(payload, (draft) => {
-      draft.maxUploadNumLimit = value
+      draft.max_length = value
     })
     onChange(newPayload)
   }, [onChange, payload])
@@ -76,16 +82,16 @@ const FileUploadSetting: FC<Props> = ({
               <FileTypeItem
                 key={type}
                 type={type as SupportUploadFileTypes.image | SupportUploadFileTypes.document | SupportUploadFileTypes.audio | SupportUploadFileTypes.video}
-                selected={supportFileTypes === type}
+                selected={allowed_file_types.includes(type)}
                 onSelect={handleSupportFileTypeChange}
               />
             ))
           }
           <FileTypeItem
             type={SupportUploadFileTypes.custom}
-            selected={supportFileTypes === SupportUploadFileTypes.custom}
+            selected={allowed_file_types.includes(SupportUploadFileTypes.custom)}
             onSelect={handleSupportFileTypeChange}
-            customFileTypes={customFileTypes}
+            customFileTypes={allowed_file_extensions}
             onCustomFileTypesChange={handleCustomFileTypesChange}
           />
         </div>
@@ -97,17 +103,17 @@ const FileUploadSetting: FC<Props> = ({
         <div className='grid grid-cols-3 gap-2'>
           <OptionCard
             title='Local Upload'
-            selected={uploadMethod === TransferMethod.local_file}
+            selected={allowed_file_upload_methods.length === 1 && allowed_file_upload_methods.includes(TransferMethod.local_file)}
             onSelect={handleUploadMethodChange(TransferMethod.local_file)}
           />
           <OptionCard
             title="URL"
-            selected={uploadMethod === TransferMethod.remote_url}
+            selected={allowed_file_upload_methods.length === 1 && allowed_file_upload_methods.includes(TransferMethod.remote_url)}
             onSelect={handleUploadMethodChange(TransferMethod.remote_url)}
           />
           <OptionCard
             title="Both"
-            selected={uploadMethod === TransferMethod.all}
+            selected={allowed_file_upload_methods.includes(TransferMethod.local_file) && allowed_file_upload_methods.includes(TransferMethod.remote_url)}
             onSelect={handleUploadMethodChange(TransferMethod.all)}
           />
         </div>
@@ -120,7 +126,7 @@ const FileUploadSetting: FC<Props> = ({
           <div>
             <div className='mb-1.5 text-text-tertiary body-xs-regular'>{t('appDebug.variableConig.maxNumberTip')}</div>
             <InputNumberWithSlider
-              value={maxUploadNumLimit || 1}
+              value={max_length}
               min={1}
               max={10}
               onChange={handleMaxUploadNumLimitChange}
