@@ -88,7 +88,7 @@ class CodeNode(BaseNode):
             else:
                 raise ValueError(f"Output variable `{variable}` must be a string")
         
-        if len(value) > dify_config.CODE_MAX_STRING_ARRAY_LENGTH:
+        if len(value) > dify_config.CODE_MAX_STRING_LENGTH:
             raise ValueError(f'The length of output variable `{variable}` must be'
                              f' less than {dify_config.CODE_MAX_STRING_ARRAY_LENGTH} characters')
 
