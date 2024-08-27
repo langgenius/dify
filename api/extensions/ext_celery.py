@@ -10,6 +10,17 @@ def init_app(app: Flask) -> Celery:
             with app.app_context():
                 return self.run(*args, **kwargs)
 
+    broker_transport_options = {}
+
+    if app.config["CELERY_USE_SENTINEL"]:
+
+        broker_transport_options = {
+            'master_name': app.config["CELERY_SENTINEL_SERVICE_NAME"],
+            'sentinel_kwargs': {
+                'socket_timeout': app.config('CELERY_SENTINEL_SOCKET_TIMEOUT', 0.1),
+            }
+        }
+
     celery_app = Celery(
         app.name,
         task_cls=FlaskTask,
@@ -28,6 +39,7 @@ def init_app(app: Flask) -> Celery:
 
     celery_app.conf.update(
         result_backend=app.config["CELERY_RESULT_BACKEND"],
+        broker_transport_options=broker_transport_options,
         broker_connection_retry_on_startup=True,
     )
 
