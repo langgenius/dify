@@ -524,7 +524,7 @@ services:
 
   milvus-standalone:
     container_name: milvus-standalone
-    image: milvusdb/milvus:v2.3.1
+    image: milvusdb/milvus:v2.4.9
     profiles:
       - milvus
     command: [ "milvus", "run", "standalone" ]
@@ -543,6 +543,9 @@ services:
     depends_on:
       - "etcd"
       - "minio"
+    ports:
+      - "19530:19530"
+      - "9091:9091"    
     networks:
       - milvus
 
