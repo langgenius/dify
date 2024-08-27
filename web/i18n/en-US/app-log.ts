@@ -17,7 +17,7 @@ const translation = {
       status: 'STATUS',
       runtime: 'RUN TIME',
       tokens: 'TOKENS',
-      user: 'END-USER OR ACCOUNT',
+      user: 'End User or Account',
       version: 'VERSION',
     },
     pagination: {
