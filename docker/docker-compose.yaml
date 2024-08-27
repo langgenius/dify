@@ -212,8 +212,6 @@ services:
       - default
     ports:
       - 5001:5001
-    # extra_hosts:
-      # - "host.docker.internal:172.17.0.1"
 
   # worker service
   # The Celery worker for processing the queue.
@@ -234,8 +232,6 @@ services:
     networks:
       - ssrf_proxy_network
       - default
-    # extra_hosts:
-      # - "host.docker.internal:172.17.0.1"
 
   # Frontend web application.
   web:
@@ -395,7 +391,6 @@ services:
   weaviate:
     image: semitechnologies/weaviate:1.19.0
     profiles:
-      - ''
       - weaviate
     restart: always
     volumes:
@@ -434,6 +429,7 @@ services:
   pgvector:
     image: pgvector/pgvector:pg16
     profiles:
+      - ''
       - pgvector
     restart: always
     environment:
@@ -530,6 +526,7 @@ services:
     container_name: milvus-minio
     image: minio/minio:RELEASE.2023-03-20T20-16-18Z
     profiles:
+      - ''
       - milvus
     environment:
       MINIO_ACCESS_KEY: ${MINIO_ACCESS_KEY:-minioadmin}
