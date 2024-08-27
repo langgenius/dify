@@ -301,6 +301,11 @@ export type DatasetDocument = DatasetDocumentDataSource & {
   doc_form: DatasetDocumentDocumentForm;
 }
 
+// --- Create Dataset ---
+export interface CreateDatasetOptions {
+  permission: DatasetPermission;
+}
+
 // --- Create Document ---
 export interface CreateDocumentByTextOptions {
   name: string;
@@ -435,7 +440,7 @@ export declare class DatasetClient extends DifyClient {
    * Create an empty Knowledge.
    * @throws {DifyApiError}
    */
-  createDataset(name: string): Promise<Dataset>;
+  createDataset(name: string, options: CreateDatasetOptions): Promise<Dataset>;
 
   /**
    * Query the Knowledge list.

@@ -436,8 +436,9 @@ export class WorkflowClient extends DifyClient {
 }
 
 export class DatasetClient extends DifyClient {
-  async createDataset(name) {
-    const data = { name };
+  async createDataset(name, options) {
+    const { permission } = options ?? {};
+    const data = { name, permission };
 
     return this.sendRequest(
       routes.createDataset.method,
