@@ -212,8 +212,8 @@ services:
       - default
     ports:
       - 5001:5001
-    extra_hosts:
-      - "host.docker.internal:172.17.0.1"
+    # extra_hosts:
+      # - "host.docker.internal:172.17.0.1"
 
   # worker service
   # The Celery worker for processing the queue.
@@ -388,8 +388,8 @@ services:
     ports:
       - "${EXPOSE_NGINX_PORT:-80}:${NGINX_PORT:-80}"
       - "${EXPOSE_NGINX_SSL_PORT:-443}:${NGINX_SSL_PORT:-443}"
-    extra_hosts:
-      - "host.docker.internal:172.17.0.1"
+    # extra_hosts:
+      # - "host.docker.internal:172.17.0.1"
 
   # The Weaviate vector store.
   weaviate:
