@@ -428,7 +428,6 @@ const DocumentList: FC<IDocumentListProps> = ({ embeddingAvailable, documents = 
                   <div className='group-hover:flex hidden'>
                     <Tooltip
                       popupContent={t('datasetDocuments.list.table.rename')}
-                      needsDelay
                     >
                       <div
                         className='p-1 rounded-md cursor-pointer hover:bg-black/5'
