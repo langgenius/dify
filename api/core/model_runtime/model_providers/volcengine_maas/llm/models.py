@@ -38,7 +38,7 @@ configs: dict[str, ModelConfig] = {
     ),
     'Doubao-lite-128k': ModelConfig(
         properties=ModelProperties(context_size=131072, max_tokens=4096, mode=LLMMode.CHAT),
-        features=[ModelFeature.TOOL_CALL]
+        features=[]
     ),
     'Skylark2-pro-4k': ModelConfig(
         properties=ModelProperties(context_size=4096, max_tokens=4096, mode=LLMMode.CHAT),
