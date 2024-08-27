@@ -31,6 +31,8 @@ export enum ComparisonOperator {
   in = 'in',
   notIn = 'not in',
   allOf = 'all of',
+  exists = 'exists',
+  notExists = 'not exists',
 }
 
 export type Condition = {

@@ -421,6 +421,8 @@ const translation = {
         'in': 'in',
         'not in': 'not in',
         'all of': 'all of',
+        'exists': 'exists',
+        'not exists': 'not exists',
       },
       optionName: {
         image: 'Image',

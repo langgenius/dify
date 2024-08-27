@@ -107,6 +107,11 @@ export const getOperators = (type?: VarType, file?: { key: string }) => {
         ComparisonOperator.empty,
         ComparisonOperator.notEmpty,
       ]
+    case VarType.file:
+      return [
+        ComparisonOperator.exists,
+        ComparisonOperator.notExists,
+      ]
     case VarType.arrayString:
     case VarType.arrayNumber:
       return [
@@ -143,7 +148,7 @@ export const comparisonOperatorNotRequireValue = (operator?: ComparisonOperator)
   if (!operator)
     return false
 
-  return [ComparisonOperator.empty, ComparisonOperator.notEmpty, ComparisonOperator.isNull, ComparisonOperator.isNotNull].includes(operator)
+  return [ComparisonOperator.empty, ComparisonOperator.notEmpty, ComparisonOperator.isNull, ComparisonOperator.isNotNull, ComparisonOperator.exists, ComparisonOperator.notExists].includes(operator)
 }
 
 export const branchNameCorrect = (branches: Branch[]) => {

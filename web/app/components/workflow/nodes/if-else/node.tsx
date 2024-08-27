@@ -35,10 +35,10 @@ const IfElseNode: FC<NodeProps<IfElseNodeType>> = (props) => {
             <div className='space-y-0.5'>
               {caseItem.conditions.map((condition, i) => (
                 <div key={condition.id} className='relative'>
-                  {(condition.variable_selector?.length > 0 && condition.comparison_operator && (isEmptyRelatedOperator(condition.comparison_operator!) ? true : !!condition.value))
+                  {((condition.variable_selector && condition.variable_selector?.length > 0) && condition.comparison_operator && (isEmptyRelatedOperator(condition.comparison_operator!) ? true : !!condition.value))
                     ? (
                       <ConditionValue
-                        variableSelector={condition.variable_selector}
+                        variableSelector={condition.variable_selector!}
                         operator={condition.comparison_operator}
                         value={condition.value}
                       />

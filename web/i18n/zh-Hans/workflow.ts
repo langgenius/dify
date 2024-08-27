@@ -421,6 +421,8 @@ const translation = {
         'in': '是',
         'not in': '不是',
         'all of': '全部是',
+        'exists': '存在',
+        'not exists': '不存在',
       },
       optionName: {
         image: '图片',
