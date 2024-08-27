@@ -3,9 +3,9 @@ from textwrap import dedent
 
 import pytest
 from flask import Flask
-from configs.app_config import DifyConfig
 from yarl import URL
 
+from configs.app_config import DifyConfig
 
 EXAMPLE_ENV_FILENAME = ".env"
 
