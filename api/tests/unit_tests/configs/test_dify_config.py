@@ -3,8 +3,9 @@ from textwrap import dedent
 
 import pytest
 from flask import Flask
-
 from configs.app_config import DifyConfig
+from yarl import URL
+
 
 EXAMPLE_ENV_FILENAME = ".env"
 
@@ -85,4 +86,5 @@ def test_flask_configs(example_env_file):
     assert config["CONSOLE_CORS_ALLOW_ORIGINS"] == ["https://example.com"]
     assert config["WEB_API_CORS_ALLOW_ORIGINS"] == ["*"]
 
-    assert str(config["CODE_EXECUTION_ENDPOINT"]) == "http://sandbox:8194"
+    assert str(config["CODE_EXECUTION_ENDPOINT"]) == "http://sandbox:8194/"
+    assert URL(str(config["CODE_EXECUTION_ENDPOINT"])) / "v1" == URL("http://sandbox:8194/v1/")
