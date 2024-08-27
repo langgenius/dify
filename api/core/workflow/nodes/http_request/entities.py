@@ -5,8 +5,6 @@ from pydantic import BaseModel, ValidationInfo, field_validator
 from configs import dify_config
 from core.workflow.entities.base_node_data_entities import BaseNodeData
 
-MAX_WRITE_TIMEOUT = dify_config.HTTP_REQUEST_MAX_WRITE_TIMEOUT
-
 
 class HttpRequestNodeAuthorizationConfig(BaseModel):
     type: Literal[None, 'basic', 'bearer', 'custom']
