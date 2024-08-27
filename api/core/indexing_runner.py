@@ -720,6 +720,7 @@ class IndexingRunner:
                 document_ids = [document.metadata['doc_id'] for document in documents]
                 db.session.query(DocumentSegment).filter(
                     DocumentSegment.document_id == document_id,
+                    DocumentSegment.dataset_id == dataset_id,
                     DocumentSegment.index_node_id.in_(document_ids),
                     DocumentSegment.status == "indexing"
                 ).update({
@@ -751,6 +752,7 @@ class IndexingRunner:
             document_ids = [document.metadata['doc_id'] for document in chunk_documents]
             db.session.query(DocumentSegment).filter(
                 DocumentSegment.document_id == dataset_document.id,
+                DocumentSegment.dataset_id == dataset.id,
                 DocumentSegment.index_node_id.in_(document_ids),
                 DocumentSegment.status == "indexing"
             ).update({
