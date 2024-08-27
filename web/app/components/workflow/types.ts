@@ -55,6 +55,7 @@ export type CommonNodeType<T = {}> = {
   _iterationLength?: number
   _iterationIndex?: number
   _inParallelHovering?: boolean
+  start_node_in_iteration?: boolean
   isIterationStart?: boolean
   isInIteration?: boolean
   iteration_id?: string
