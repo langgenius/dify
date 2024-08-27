@@ -16,6 +16,60 @@ from libs.login import login_required
 from models.model import AppMode
 
 
+class DailyMessageStatistic(Resource):
+    @setup_required
+    @login_required
+    @account_initialization_required
+    @get_app_model
+    def get(self, app_model):
+        account = current_user
+
+        parser = reqparse.RequestParser()
+        parser.add_argument("start", type=datetime_string("%Y-%m-%d %H:%M"), location="args")
+        parser.add_argument("end", type=datetime_string("%Y-%m-%d %H:%M"), location="args")
+        args = parser.parse_args()
+
+        sql_query = """
+        SELECT date(DATE_TRUNC('day', created_at AT TIME ZONE 'UTC' AT TIME ZONE :tz )) AS date, count(*) AS message_count
+            FROM messages where app_id = :app_id 
+        """
+        arg_dict = {"tz": account.timezone, "app_id": app_model.id}
+
+        timezone = pytz.timezone(account.timezone)
+        utc_timezone = pytz.utc
+
+        if args["start"]:
+            start_datetime = datetime.strptime(args["start"], "%Y-%m-%d %H:%M")
+            start_datetime = start_datetime.replace(second=0)
+
+            start_datetime_timezone = timezone.localize(start_datetime)
+            start_datetime_utc = start_datetime_timezone.astimezone(utc_timezone)
+
+            sql_query += " and created_at >= :start"
+            arg_dict["start"] = start_datetime_utc
+
+        if args["end"]:
+            end_datetime = datetime.strptime(args["end"], "%Y-%m-%d %H:%M")
+            end_datetime = end_datetime.replace(second=0)
+
+            end_datetime_timezone = timezone.localize(end_datetime)
+            end_datetime_utc = end_datetime_timezone.astimezone(utc_timezone)
+
+            sql_query += " and created_at < :end"
+            arg_dict["end"] = end_datetime_utc
+
+        sql_query += " GROUP BY date order by date"
+
+        response_data = []
+
+        with db.engine.begin() as conn:
+            rs = conn.execute(db.text(sql_query), arg_dict)
+            for i in rs:
+                response_data.append({"date": str(i.date), "message_count": i.message_count})
+
+        return jsonify({"data": response_data})
+
+
 class DailyConversationStatistic(Resource):
     @setup_required
     @login_required
@@ -419,6 +473,7 @@ WHERE app_id = :app_id"""
         return jsonify({"data": response_data})
 
 
+api.add_resource(DailyMessageStatistic, "/apps/<uuid:app_id>/statistics/daily-messages")
 api.add_resource(DailyConversationStatistic, "/apps/<uuid:app_id>/statistics/daily-conversations")
 api.add_resource(DailyTerminalsStatistic, "/apps/<uuid:app_id>/statistics/daily-end-users")
 api.add_resource(DailyTokenCostStatistic, "/apps/<uuid:app_id>/statistics/token-costs")

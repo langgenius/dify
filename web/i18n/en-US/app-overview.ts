@@ -127,7 +127,11 @@ const translation = {
     tokenPS: 'Token/s',
     totalMessages: {
       title: 'Total Messages',
-      explanation: 'Daily AI interactions count; prompt engineering/debugging excluded.',
+      explanation: 'Daily AI interactions count.',
+    },
+    totalConversations: {
+      title: 'Total Conversations',
+      explanation: 'Daily AI conversations count; prompt engineering/debugging excluded.',
     },
     activeUsers: {
       title: 'Active Users',

@@ -77,6 +77,10 @@ export type CreateAppResponse = App
 
 export type UpdateAppSiteCodeResponse = { app_id: string } & SiteConfig
 
+export type AppDailyMessagesResponse = {
+  data: Array<{ date: string; message_count: number }>
+}
+
 export type AppDailyConversationsResponse = {
   data: Array<{ date: string; conversation_count: number }>
 }
