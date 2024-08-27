@@ -26,16 +26,15 @@ class OpsService:
         decrypt_tracing_config = OpsTraceManager.decrypt_tracing_config(
             tenant_id, tracing_provider, trace_config_data.tracing_config
         )
+        new_decrypt_tracing_config = OpsTraceManager.obfuscated_decrypt_token(tracing_provider, decrypt_tracing_config)
+
         if tracing_provider == "langfuse" and (
             "project_key" not in decrypt_tracing_config or not decrypt_tracing_config.get("project_key")
         ):
             project_key = OpsTraceManager.get_trace_config_project_key(decrypt_tracing_config, tracing_provider)
-            decrypt_tracing_config["project_key"] = project_key
+            new_decrypt_tracing_config.update({"project_key": project_key})
 
-        decrypt_tracing_config = OpsTraceManager.obfuscated_decrypt_token(tracing_provider, decrypt_tracing_config)
-
-        trace_config_data.tracing_config = decrypt_tracing_config
-
+        trace_config_data.tracing_config = new_decrypt_tracing_config
         return trace_config_data.to_dict()
 
     @classmethod
@@ -79,7 +78,7 @@ class OpsService:
         # get tenant id
         tenant_id = db.session.query(App).filter(App.id == app_id).first().tenant_id
         tracing_config = OpsTraceManager.encrypt_tracing_config(tenant_id, tracing_provider, tracing_config)
-        if tracing_provider == "langfuse":
+        if tracing_provider == "langfuse" and project_key:
             tracing_config["project_key"] = project_key
         trace_config_data = TraceAppConfig(
             app_id=app_id,
