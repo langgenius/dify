@@ -56,18 +56,20 @@ const translation = {
   },
   mixtureHighQualityAndEconomicTip: '高品質なナレッジベースと経済的なナレッジベースを混在させるには、Rerankモデルを構成する必要がある。',
   inconsistentEmbeddingModelTip: '選択されたナレッジベースが一貫性のない埋め込みモデルで構成されている場合、Rerankモデルの構成が必要です。',
-  retrievalSettings: '設定を回収',
+  retrievalSettings: '検索設定',
   rerankSettings: 'Rerank設定',
   weightedScore: {
     title: 'ウェイト設定',
-    description: '代入られた重みを調整することで、並べ替え戦略はセマンティックマッチングとキーワードマッチングのどちらを優先するかを決定します。',
+    description: '重みを調整することで、並べ替え戦略はセマンティックマッチングとキーワードマッチングのどちらを優先するかを決定します。',
     semanticFirst: 'セマンティック優先',
     keywordFirst: 'キーワード優先',
     customized: 'カスタマイズ',
     semantic: 'セマンティクス',
     keyword: 'キーワード',
   },
-  nTo1RetrievalLegacy: '製品計画によると、N To 1 Retrievalは9月に正式に廃止される予定です。それまでは通常通り使用できます。',
+  nTo1RetrievalLegacy: '製品計画によると、N-to-1 Retrievalは9月に正式に廃止される予定です。それまでは通常通り使用できます。',
+  nTo1RetrievalLegacyLink: '詳細を見る',
+  nTo1RetrievalLegacyLinkText: ' N-to-1 retrievalは9月に正式に廃止されます。',
 }
 
 export default translation

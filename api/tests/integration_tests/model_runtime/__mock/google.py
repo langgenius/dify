@@ -12,63 +12,46 @@ from google.generativeai.client import _ClientManager, configure
 from google.generativeai.types import GenerateContentResponse
 from google.generativeai.types.generation_types import BaseGenerateContentResponse
 
-current_api_key = ''
+current_api_key = ""
+
 
 class MockGoogleResponseClass:
     _done = False
 
     def __iter__(self):
-        full_response_text = 'it\'s google!'
+        full_response_text = "it's google!"
 
         for i in range(0, len(full_response_text) + 1, 1):
             if i == len(full_response_text):
                 self._done = True
                 yield GenerateContentResponse(
-                    done=True,
-                    iterator=None,
-                    result=glm.GenerateContentResponse({
-
-                    }),
-                    chunks=[]
+                    done=True, iterator=None, result=glm.GenerateContentResponse({}), chunks=[]
                 )
             else:
                 yield GenerateContentResponse(
-                    done=False,
-                    iterator=None,
-                    result=glm.GenerateContentResponse({
-
-                    }),
-                    chunks=[]
+                    done=False, iterator=None, result=glm.GenerateContentResponse({}), chunks=[]
                 )
 
+
 class MockGoogleResponseCandidateClass:
-    finish_reason = 'stop'
+    finish_reason = "stop"
 
     @property
     def content(self) -> gag_content.Content:
-        return gag_content.Content(
-            parts=[
-                gag_content.Part(text='it\'s google!')
-            ]
-        )
+        return gag_content.Content(parts=[gag_content.Part(text="it's google!")])
+
 
 class MockGoogleClass:
     @staticmethod
     def generate_content_sync() -> GenerateContentResponse:
-        return GenerateContentResponse(
-            done=True,
-            iterator=None,
-            result=glm.GenerateContentResponse({
-
-            }),
-            chunks=[]
-        )
+        return GenerateContentResponse(done=True, iterator=None, result=glm.GenerateContentResponse({}), chunks=[])
 
     @staticmethod
     def generate_content_stream() -> Generator[GenerateContentResponse, None, None]:
         return MockGoogleResponseClass()
 
-    def generate_content(self: GenerativeModel,
+    def generate_content(
+        self: GenerativeModel,
         contents: content_types.ContentsType,
         *,
         generation_config: generation_config_types.GenerationConfigType | None = None,
@@ -79,21 +62,21 @@ class MockGoogleClass:
         global current_api_key
 
         if len(current_api_key) < 16:
-            raise Exception('Invalid API key')
+            raise Exception("Invalid API key")
 
         if stream:
             return MockGoogleClass.generate_content_stream()
-        
+
         return MockGoogleClass.generate_content_sync()
-    
+
     @property
     def generative_response_text(self) -> str:
-        return 'it\'s google!'
-    
+        return "it's google!"
+
     @property
     def generative_response_candidates(self) -> list[MockGoogleResponseCandidateClass]:
         return [MockGoogleResponseCandidateClass()]
-    
+
     def make_client(self: _ClientManager, name: str):
         global current_api_key
 
@@ -121,7 +104,8 @@ class MockGoogleClass:
 
         if not self.default_metadata:
             return client
-    
+
+
 @pytest.fixture
 def setup_google_mock(request, monkeypatch: MonkeyPatch):
     monkeypatch.setattr(BaseGenerateContentResponse, "text", MockGoogleClass.generative_response_text)

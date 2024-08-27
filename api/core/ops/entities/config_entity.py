@@ -21,6 +21,7 @@ class LangfuseConfig(BaseTracingConfig):
     """
     public_key: str
     secret_key: str
+    project_key: str
     host: str = 'https://api.langfuse.com'
 
     @field_validator("host")

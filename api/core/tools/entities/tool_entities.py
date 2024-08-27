@@ -148,7 +148,7 @@ class ToolParameter(BaseModel):
     form: ToolParameterForm = Field(..., description="The form of the parameter, schema/form/llm")
     llm_description: Optional[str] = None
     required: Optional[bool] = False
-    default: Optional[Union[int, str]] = None
+    default: Optional[Union[float, int, str]] = None
     min: Optional[Union[float, int]] = None
     max: Optional[Union[float, int]] = None
     options: Optional[list[ToolParameterOption]] = None

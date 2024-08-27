@@ -14,26 +14,26 @@ def test_validate_credentials():
 
     with pytest.raises(CredentialsValidateFailedError):
         model.validate_credentials(
-            model='NOT IMPORTANT',
+            model="NOT IMPORTANT",
             credentials={
-                'api_endpoint_host': 'maas-api.ml-platform-cn-beijing.volces.com',
-                'volc_region': 'cn-beijing',
-                'volc_access_key_id': 'INVALID',
-                'volc_secret_access_key': 'INVALID',
-                'endpoint_id': 'INVALID',
-                'base_model_name': 'Doubao-embedding',
-            }
+                "api_endpoint_host": "maas-api.ml-platform-cn-beijing.volces.com",
+                "volc_region": "cn-beijing",
+                "volc_access_key_id": "INVALID",
+                "volc_secret_access_key": "INVALID",
+                "endpoint_id": "INVALID",
+                "base_model_name": "Doubao-embedding",
+            },
         )
 
     model.validate_credentials(
-        model='NOT IMPORTANT',
+        model="NOT IMPORTANT",
         credentials={
-            'api_endpoint_host': 'maas-api.ml-platform-cn-beijing.volces.com',
-            'volc_region': 'cn-beijing',
-            'volc_access_key_id': os.environ.get('VOLC_API_KEY'),
-            'volc_secret_access_key': os.environ.get('VOLC_SECRET_KEY'),
-            'endpoint_id': os.environ.get('VOLC_EMBEDDING_ENDPOINT_ID'),
-            'base_model_name': 'Doubao-embedding',
+            "api_endpoint_host": "maas-api.ml-platform-cn-beijing.volces.com",
+            "volc_region": "cn-beijing",
+            "volc_access_key_id": os.environ.get("VOLC_API_KEY"),
+            "volc_secret_access_key": os.environ.get("VOLC_SECRET_KEY"),
+            "endpoint_id": os.environ.get("VOLC_EMBEDDING_ENDPOINT_ID"),
+            "base_model_name": "Doubao-embedding",
         },
     )
 
@@ -42,20 +42,17 @@ def test_invoke_model():
     model = VolcengineMaaSTextEmbeddingModel()
 
     result = model.invoke(
-        model='NOT IMPORTANT',
+        model="NOT IMPORTANT",
         credentials={
-            'api_endpoint_host': 'maas-api.ml-platform-cn-beijing.volces.com',
-            'volc_region': 'cn-beijing',
-            'volc_access_key_id': os.environ.get('VOLC_API_KEY'),
-            'volc_secret_access_key': os.environ.get('VOLC_SECRET_KEY'),
-            'endpoint_id': os.environ.get('VOLC_EMBEDDING_ENDPOINT_ID'),
-            'base_model_name': 'Doubao-embedding',
+            "api_endpoint_host": "maas-api.ml-platform-cn-beijing.volces.com",
+            "volc_region": "cn-beijing",
+            "volc_access_key_id": os.environ.get("VOLC_API_KEY"),
+            "volc_secret_access_key": os.environ.get("VOLC_SECRET_KEY"),
+            "endpoint_id": os.environ.get("VOLC_EMBEDDING_ENDPOINT_ID"),
+            "base_model_name": "Doubao-embedding",
         },
-        texts=[
-            "hello",
-            "world"
-        ],
-        user="abc-123"
+        texts=["hello", "world"],
+        user="abc-123",
     )
 
     assert isinstance(result, TextEmbeddingResult)
@@ -67,19 +64,16 @@ def test_get_num_tokens():
     model = VolcengineMaaSTextEmbeddingModel()
 
     num_tokens = model.get_num_tokens(
-        model='NOT IMPORTANT',
+        model="NOT IMPORTANT",
         credentials={
-            'api_endpoint_host': 'maas-api.ml-platform-cn-beijing.volces.com',
-            'volc_region': 'cn-beijing',
-            'volc_access_key_id': os.environ.get('VOLC_API_KEY'),
-            'volc_secret_access_key': os.environ.get('VOLC_SECRET_KEY'),
-            'endpoint_id': os.environ.get('VOLC_EMBEDDING_ENDPOINT_ID'),
-            'base_model_name': 'Doubao-embedding',
+            "api_endpoint_host": "maas-api.ml-platform-cn-beijing.volces.com",
+            "volc_region": "cn-beijing",
+            "volc_access_key_id": os.environ.get("VOLC_API_KEY"),
+            "volc_secret_access_key": os.environ.get("VOLC_SECRET_KEY"),
+            "endpoint_id": os.environ.get("VOLC_EMBEDDING_ENDPOINT_ID"),
+            "base_model_name": "Doubao-embedding",
         },
-        texts=[
-            "hello",
-            "world"
-        ]
+        texts=["hello", "world"],
     )
 
     assert num_tokens == 2

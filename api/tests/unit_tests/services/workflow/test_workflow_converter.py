@@ -14,6 +14,7 @@ from core.app.app_config.entities import (
     ModelConfigEntity,
     PromptTemplateEntity,
     VariableEntity,
+    VariableEntityType,
 )
 from core.helper import encrypter
 from core.model_runtime.entities.llm_entities import LLMMode
@@ -25,23 +26,24 @@ from services.workflow.workflow_converter import WorkflowConverter
 
 @pytest.fixture
 def default_variables():
-    return [
+    value = [
         VariableEntity(
             variable="text_input",
             label="text-input",
-            type=VariableEntity.Type.TEXT_INPUT
+            type=VariableEntityType.TEXT_INPUT,
         ),
         VariableEntity(
             variable="paragraph",
             label="paragraph",
-            type=VariableEntity.Type.PARAGRAPH
+            type=VariableEntityType.PARAGRAPH,
         ),
         VariableEntity(
             variable="select",
             label="select",
-            type=VariableEntity.Type.SELECT
-        )
+            type=VariableEntityType.SELECT,
+        ),
     ]
+    return value
 
 
 def test__convert_to_start_node(default_variables):
@@ -81,18 +83,12 @@ def test__convert_to_http_request_node_for_chatbot(default_variables):
 
     external_data_variables = [
         ExternalDataVariableEntity(
-            variable="external_variable",
-            type="api",
-            config={
-                "api_based_extension_id": api_based_extension_id
-            }
+            variable="external_variable", type="api", config={"api_based_extension_id": api_based_extension_id}
         )
     ]
 
     nodes, _ = workflow_converter._convert_to_http_request_node(
-        app_model=app_model,
-        variables=default_variables,
-        external_data_variables=external_data_variables
+        app_model=app_model, variables=default_variables, external_data_variables=external_data_variables
     )
 
     assert len(nodes) == 2
@@ -103,10 +99,7 @@ def test__convert_to_http_request_node_for_chatbot(default_variables):
     assert http_request_node["data"]["method"] == "post"
     assert http_request_node["data"]["url"] == mock_api_based_extension.api_endpoint
     assert http_request_node["data"]["authorization"]["type"] == "api-key"
-    assert http_request_node["data"]["authorization"]["config"] == {
-        "type": "bearer",
-        "api_key": "api_key"
-    }
+    assert http_request_node["data"]["authorization"]["config"] == {"type": "bearer", "api_key": "api_key"}
     assert http_request_node["data"]["body"]["type"] == "json"
 
     body_data = http_request_node["data"]["body"]["data"]
@@ -151,18 +144,12 @@ def test__convert_to_http_request_node_for_workflow_app(default_variables):
 
     external_data_variables = [
         ExternalDataVariableEntity(
-            variable="external_variable",
-            type="api",
-            config={
-                "api_based_extension_id": api_based_extension_id
-            }
+            variable="external_variable", type="api", config={"api_based_extension_id": api_based_extension_id}
         )
     ]
 
     nodes, _ = workflow_converter._convert_to_http_request_node(
-        app_model=app_model,
-        variables=default_variables,
-        external_data_variables=external_data_variables
+        app_model=app_model, variables=default_variables, external_data_variables=external_data_variables
     )
 
     assert len(nodes) == 2
@@ -173,10 +160,7 @@ def test__convert_to_http_request_node_for_workflow_app(default_variables):
     assert http_request_node["data"]["method"] == "post"
     assert http_request_node["data"]["url"] == mock_api_based_extension.api_endpoint
     assert http_request_node["data"]["authorization"]["type"] == "api-key"
-    assert http_request_node["data"]["authorization"]["config"] == {
-        "type": "bearer",
-        "api_key": "api_key"
-    }
+    assert http_request_node["data"]["authorization"]["config"] == {"type": "bearer", "api_key": "api_key"}
     assert http_request_node["data"]["body"]["type"] == "json"
 
     body_data = http_request_node["data"]["body"]["data"]
@@ -205,37 +189,25 @@ def test__convert_to_knowledge_retrieval_node_for_chatbot():
             retrieve_strategy=DatasetRetrieveConfigEntity.RetrieveStrategy.MULTIPLE,
             top_k=5,
             score_threshold=0.8,
-            reranking_model={
-                'reranking_provider_name': 'cohere',
-                'reranking_model_name': 'rerank-english-v2.0'
-            },
-            reranking_enabled=True
-        )
+            reranking_model={"reranking_provider_name": "cohere", "reranking_model_name": "rerank-english-v2.0"},
+            reranking_enabled=True,
+        ),
     )
 
-    model_config = ModelConfigEntity(
-        provider='openai',
-        model='gpt-4',
-        mode='chat',
-        parameters={},
-        stop=[]
-    )
+    model_config = ModelConfigEntity(provider="openai", model="gpt-4", mode="chat", parameters={}, stop=[])
 
     node = WorkflowConverter()._convert_to_knowledge_retrieval_node(
-        new_app_mode=new_app_mode,
-        dataset_config=dataset_config,
-        model_config=model_config
+        new_app_mode=new_app_mode, dataset_config=dataset_config, model_config=model_config
     )
 
     assert node["data"]["type"] == "knowledge-retrieval"
     assert node["data"]["query_variable_selector"] == ["sys", "query"]
     assert node["data"]["dataset_ids"] == dataset_config.dataset_ids
-    assert (node["data"]["retrieval_mode"]
-            == dataset_config.retrieve_config.retrieve_strategy.value)
+    assert node["data"]["retrieval_mode"] == dataset_config.retrieve_config.retrieve_strategy.value
     assert node["data"]["multiple_retrieval_config"] == {
         "top_k": dataset_config.retrieve_config.top_k,
         "score_threshold": dataset_config.retrieve_config.score_threshold,
-        "reranking_model": dataset_config.retrieve_config.reranking_model
+        "reranking_model": dataset_config.retrieve_config.reranking_model,
     }
 
 
@@ -249,37 +221,25 @@ def test__convert_to_knowledge_retrieval_node_for_workflow_app():
             retrieve_strategy=DatasetRetrieveConfigEntity.RetrieveStrategy.MULTIPLE,
             top_k=5,
             score_threshold=0.8,
-            reranking_model={
-                'reranking_provider_name': 'cohere',
-                'reranking_model_name': 'rerank-english-v2.0'
-            },
-            reranking_enabled=True
-        )
+            reranking_model={"reranking_provider_name": "cohere", "reranking_model_name": "rerank-english-v2.0"},
+            reranking_enabled=True,
+        ),
     )
 
-    model_config = ModelConfigEntity(
-        provider='openai',
-        model='gpt-4',
-        mode='chat',
-        parameters={},
-        stop=[]
-    )
+    model_config = ModelConfigEntity(provider="openai", model="gpt-4", mode="chat", parameters={}, stop=[])
 
     node = WorkflowConverter()._convert_to_knowledge_retrieval_node(
-        new_app_mode=new_app_mode,
-        dataset_config=dataset_config,
-        model_config=model_config
+        new_app_mode=new_app_mode, dataset_config=dataset_config, model_config=model_config
     )
 
     assert node["data"]["type"] == "knowledge-retrieval"
     assert node["data"]["query_variable_selector"] == ["start", dataset_config.retrieve_config.query_variable]
     assert node["data"]["dataset_ids"] == dataset_config.dataset_ids
-    assert (node["data"]["retrieval_mode"]
-            == dataset_config.retrieve_config.retrieve_strategy.value)
+    assert node["data"]["retrieval_mode"] == dataset_config.retrieve_config.retrieve_strategy.value
     assert node["data"]["multiple_retrieval_config"] == {
         "top_k": dataset_config.retrieve_config.top_k,
         "score_threshold": dataset_config.retrieve_config.score_threshold,
-        "reranking_model": dataset_config.retrieve_config.reranking_model
+        "reranking_model": dataset_config.retrieve_config.reranking_model,
     }
 
 
@@ -291,14 +251,12 @@ def test__convert_to_llm_node_for_chatbot_simple_chat_model(default_variables):
     workflow_converter = WorkflowConverter()
     start_node = workflow_converter._convert_to_start_node(default_variables)
     graph = {
-        "nodes": [
-            start_node
-        ],
-        "edges": []  # no need
+        "nodes": [start_node],
+        "edges": [],  # no need
     }
 
     model_config_mock = MagicMock(spec=ModelConfigEntity)
-    model_config_mock.provider = 'openai'
+    model_config_mock.provider = "openai"
     model_config_mock.model = model
     model_config_mock.mode = model_mode.value
     model_config_mock.parameters = {}
@@ -306,7 +264,7 @@ def test__convert_to_llm_node_for_chatbot_simple_chat_model(default_variables):
 
     prompt_template = PromptTemplateEntity(
         prompt_type=PromptTemplateEntity.PromptType.SIMPLE,
-        simple_prompt_template="You are a helpful assistant {{text_input}}, {{paragraph}}, {{select}}."
+        simple_prompt_template="You are a helpful assistant {{text_input}}, {{paragraph}}, {{select}}.",
     )
 
     llm_node = workflow_converter._convert_to_llm_node(
@@ -314,17 +272,17 @@ def test__convert_to_llm_node_for_chatbot_simple_chat_model(default_variables):
         new_app_mode=new_app_mode,
         model_config=model_config_mock,
         graph=graph,
-        prompt_template=prompt_template
+        prompt_template=prompt_template,
     )
 
     assert llm_node["data"]["type"] == "llm"
-    assert llm_node["data"]["model"]['name'] == model
-    assert llm_node["data"]['model']["mode"] == model_mode.value
+    assert llm_node["data"]["model"]["name"] == model
+    assert llm_node["data"]["model"]["mode"] == model_mode.value
     template = prompt_template.simple_prompt_template
     for v in default_variables:
-        template = template.replace('{{' + v.variable + '}}', '{{#start.' + v.variable + '#}}')
-    assert llm_node["data"]["prompt_template"][0]['text'] == template + '\n'
-    assert llm_node["data"]['context']['enabled'] is False
+        template = template.replace("{{" + v.variable + "}}", "{{#start." + v.variable + "#}}")
+    assert llm_node["data"]["prompt_template"][0]["text"] == template + "\n"
+    assert llm_node["data"]["context"]["enabled"] is False
 
 
 def test__convert_to_llm_node_for_chatbot_simple_completion_model(default_variables):
@@ -335,14 +293,12 @@ def test__convert_to_llm_node_for_chatbot_simple_completion_model(default_variab
     workflow_converter = WorkflowConverter()
     start_node = workflow_converter._convert_to_start_node(default_variables)
     graph = {
-        "nodes": [
-            start_node
-        ],
-        "edges": []  # no need
+        "nodes": [start_node],
+        "edges": [],  # no need
     }
 
     model_config_mock = MagicMock(spec=ModelConfigEntity)
-    model_config_mock.provider = 'openai'
+    model_config_mock.provider = "openai"
     model_config_mock.model = model
     model_config_mock.mode = model_mode.value
     model_config_mock.parameters = {}
@@ -350,7 +306,7 @@ def test__convert_to_llm_node_for_chatbot_simple_completion_model(default_variab
 
     prompt_template = PromptTemplateEntity(
         prompt_type=PromptTemplateEntity.PromptType.SIMPLE,
-        simple_prompt_template="You are a helpful assistant {{text_input}}, {{paragraph}}, {{select}}."
+        simple_prompt_template="You are a helpful assistant {{text_input}}, {{paragraph}}, {{select}}.",
     )
 
     llm_node = workflow_converter._convert_to_llm_node(
@@ -358,17 +314,17 @@ def test__convert_to_llm_node_for_chatbot_simple_completion_model(default_variab
         new_app_mode=new_app_mode,
         model_config=model_config_mock,
         graph=graph,
-        prompt_template=prompt_template
+        prompt_template=prompt_template,
     )
 
     assert llm_node["data"]["type"] == "llm"
-    assert llm_node["data"]["model"]['name'] == model
-    assert llm_node["data"]['model']["mode"] == model_mode.value
+    assert llm_node["data"]["model"]["name"] == model
+    assert llm_node["data"]["model"]["mode"] == model_mode.value
     template = prompt_template.simple_prompt_template
     for v in default_variables:
-        template = template.replace('{{' + v.variable + '}}', '{{#start.' + v.variable + '#}}')
-    assert llm_node["data"]["prompt_template"]['text'] == template + '\n'
-    assert llm_node["data"]['context']['enabled'] is False
+        template = template.replace("{{" + v.variable + "}}", "{{#start." + v.variable + "#}}")
+    assert llm_node["data"]["prompt_template"]["text"] == template + "\n"
+    assert llm_node["data"]["context"]["enabled"] is False
 
 
 def test__convert_to_llm_node_for_chatbot_advanced_chat_model(default_variables):
@@ -379,14 +335,12 @@ def test__convert_to_llm_node_for_chatbot_advanced_chat_model(default_variables)
     workflow_converter = WorkflowConverter()
     start_node = workflow_converter._convert_to_start_node(default_variables)
     graph = {
-        "nodes": [
-            start_node
-        ],
-        "edges": []  # no need
+        "nodes": [start_node],
+        "edges": [],  # no need
     }
 
     model_config_mock = MagicMock(spec=ModelConfigEntity)
-    model_config_mock.provider = 'openai'
+    model_config_mock.provider = "openai"
     model_config_mock.model = model
     model_config_mock.mode = model_mode.value
     model_config_mock.parameters = {}
@@ -394,12 +348,16 @@ def test__convert_to_llm_node_for_chatbot_advanced_chat_model(default_variables)
 
     prompt_template = PromptTemplateEntity(
         prompt_type=PromptTemplateEntity.PromptType.ADVANCED,
-        advanced_chat_prompt_template=AdvancedChatPromptTemplateEntity(messages=[
-            AdvancedChatMessageEntity(text="You are a helpful assistant named {{name}}.\n\nContext:\n{{#context#}}",
-                                      role=PromptMessageRole.SYSTEM),
-            AdvancedChatMessageEntity(text="Hi.", role=PromptMessageRole.USER),
-            AdvancedChatMessageEntity(text="Hello!", role=PromptMessageRole.ASSISTANT),
-        ])
+        advanced_chat_prompt_template=AdvancedChatPromptTemplateEntity(
+            messages=[
+                AdvancedChatMessageEntity(
+                    text="You are a helpful assistant named {{name}}.\n\nContext:\n{{#context#}}",
+                    role=PromptMessageRole.SYSTEM,
+                ),
+                AdvancedChatMessageEntity(text="Hi.", role=PromptMessageRole.USER),
+                AdvancedChatMessageEntity(text="Hello!", role=PromptMessageRole.ASSISTANT),
+            ]
+        ),
     )
 
     llm_node = workflow_converter._convert_to_llm_node(
@@ -407,18 +365,18 @@ def test__convert_to_llm_node_for_chatbot_advanced_chat_model(default_variables)
         new_app_mode=new_app_mode,
         model_config=model_config_mock,
         graph=graph,
-        prompt_template=prompt_template
+        prompt_template=prompt_template,
     )
 
     assert llm_node["data"]["type"] == "llm"
-    assert llm_node["data"]["model"]['name'] == model
-    assert llm_node["data"]['model']["mode"] == model_mode.value
+    assert llm_node["data"]["model"]["name"] == model
+    assert llm_node["data"]["model"]["mode"] == model_mode.value
     assert isinstance(llm_node["data"]["prompt_template"], list)
     assert len(llm_node["data"]["prompt_template"]) == len(prompt_template.advanced_chat_prompt_template.messages)
     template = prompt_template.advanced_chat_prompt_template.messages[0].text
     for v in default_variables:
-        template = template.replace('{{' + v.variable + '}}', '{{#start.' + v.variable + '#}}')
-    assert llm_node["data"]["prompt_template"][0]['text'] == template
+        template = template.replace("{{" + v.variable + "}}", "{{#start." + v.variable + "#}}")
+    assert llm_node["data"]["prompt_template"][0]["text"] == template
 
 
 def test__convert_to_llm_node_for_workflow_advanced_completion_model(default_variables):
@@ -429,14 +387,12 @@ def test__convert_to_llm_node_for_workflow_advanced_completion_model(default_var
     workflow_converter = WorkflowConverter()
     start_node = workflow_converter._convert_to_start_node(default_variables)
     graph = {
-        "nodes": [
-            start_node
-        ],
-        "edges": []  # no need
+        "nodes": [start_node],
+        "edges": [],  # no need
     }
 
     model_config_mock = MagicMock(spec=ModelConfigEntity)
-    model_config_mock.provider = 'openai'
+    model_config_mock.provider = "openai"
     model_config_mock.model = model
     model_config_mock.mode = model_mode.value
     model_config_mock.parameters = {}
@@ -446,12 +402,9 @@ def test__convert_to_llm_node_for_workflow_advanced_completion_model(default_var
         prompt_type=PromptTemplateEntity.PromptType.ADVANCED,
         advanced_completion_prompt_template=AdvancedCompletionPromptTemplateEntity(
             prompt="You are a helpful assistant named {{name}}.\n\nContext:\n{{#context#}}\n\n"
-                   "Human: hi\nAssistant: ",
-            role_prefix=AdvancedCompletionPromptTemplateEntity.RolePrefixEntity(
-                user="Human",
-                assistant="Assistant"
-            )
-        )
+            "Human: hi\nAssistant: ",
+            role_prefix=AdvancedCompletionPromptTemplateEntity.RolePrefixEntity(user="Human", assistant="Assistant"),
+        ),
     )
 
     llm_node = workflow_converter._convert_to_llm_node(
@@ -459,14 +412,14 @@ def test__convert_to_llm_node_for_workflow_advanced_completion_model(default_var
         new_app_mode=new_app_mode,
         model_config=model_config_mock,
         graph=graph,
-        prompt_template=prompt_template
+        prompt_template=prompt_template,
     )
 
     assert llm_node["data"]["type"] == "llm"
-    assert llm_node["data"]["model"]['name'] == model
-    assert llm_node["data"]['model']["mode"] == model_mode.value
+    assert llm_node["data"]["model"]["name"] == model
+    assert llm_node["data"]["model"]["mode"] == model_mode.value
     assert isinstance(llm_node["data"]["prompt_template"], dict)
     template = prompt_template.advanced_completion_prompt_template.prompt
     for v in default_variables:
-        template = template.replace('{{' + v.variable + '}}', '{{#start.' + v.variable + '#}}')
-    assert llm_node["data"]["prompt_template"]['text'] == template
+        template = template.replace("{{" + v.variable + "}}", "{{#start." + v.variable + "#}}")
+    assert llm_node["data"]["prompt_template"]["text"] == template

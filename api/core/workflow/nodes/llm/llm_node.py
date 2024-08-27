@@ -24,7 +24,7 @@ from core.prompt.entities.advanced_prompt_entities import CompletionModelPromptT
 from core.prompt.utils.prompt_message_util import PromptMessageUtil
 from core.workflow.entities.node_entities import NodeRunMetadataKey, NodeRunResult, NodeType
 from core.workflow.entities.variable_pool import VariablePool
-from core.workflow.enums import SystemVariable
+from core.workflow.enums import SystemVariableKey
 from core.workflow.nodes.base_node import BaseNode
 from core.workflow.nodes.llm.entities import (
     LLMNodeChatModelMessage,
@@ -94,7 +94,7 @@ class LLMNode(BaseNode):
             # fetch prompt messages
             prompt_messages, stop = self._fetch_prompt_messages(
                 node_data=node_data,
-                query=variable_pool.get_any(['sys', SystemVariable.QUERY.value])
+                query=variable_pool.get_any(['sys', SystemVariableKey.QUERY.value])
                 if node_data.memory else None,
                 query_prompt_template=node_data.memory.query_prompt_template if node_data.memory else None,
                 inputs=inputs,
@@ -113,7 +113,7 @@ class LLMNode(BaseNode):
             }
 
             # handle invoke result
-            result_text, usage = self._invoke_llm(
+            result_text, usage, finish_reason = self._invoke_llm(
                 node_data_model=node_data.model,
                 model_instance=model_instance,
                 prompt_messages=prompt_messages,
@@ -129,7 +129,8 @@ class LLMNode(BaseNode):
 
         outputs = {
             'text': result_text,
-            'usage': jsonable_encoder(usage)
+            'usage': jsonable_encoder(usage),
+            'finish_reason': finish_reason
         }
 
         return NodeRunResult(
@@ -167,14 +168,14 @@ class LLMNode(BaseNode):
         )
 
         # handle invoke result
-        text, usage = self._handle_invoke_result(
+        text, usage, finish_reason = self._handle_invoke_result(
             invoke_result=invoke_result
         )
 
         # deduct quota
         self.deduct_llm_quota(tenant_id=self.tenant_id, model_instance=model_instance, usage=usage)
 
-        return text, usage
+        return text, usage, finish_reason
 
     def _handle_invoke_result(self, invoke_result: Generator) -> tuple[str, LLMUsage]:
         """
@@ -186,6 +187,7 @@ class LLMNode(BaseNode):
         prompt_messages = []
         full_text = ''
         usage = None
+        finish_reason = None
         for result in invoke_result:
             text = result.delta.message.content
             full_text += text
@@ -201,10 +203,13 @@ class LLMNode(BaseNode):
             if not usage and result.delta.usage:
                 usage = result.delta.usage
 
+            if not finish_reason and result.delta.finish_reason:
+                finish_reason = result.delta.finish_reason
+
         if not usage:
             usage = LLMUsage.empty_usage()
 
-        return full_text, usage
+        return full_text, usage, finish_reason
 
     def _transform_chat_messages(self,
         messages: list[LLMNodeChatModelMessage] | LLMNodeCompletionModelPromptTemplate
@@ -335,7 +340,7 @@ class LLMNode(BaseNode):
         if not node_data.vision.enabled:
             return []
 
-        files = variable_pool.get_any(['sys', SystemVariable.FILES.value])
+        files = variable_pool.get_any(['sys', SystemVariableKey.FILES.value])
         if not files:
             return []
 
@@ -500,7 +505,7 @@ class LLMNode(BaseNode):
             return None
 
         # get conversation id
-        conversation_id = variable_pool.get_any(['sys', SystemVariable.CONVERSATION_ID.value])
+        conversation_id = variable_pool.get_any(['sys', SystemVariableKey.CONVERSATION_ID.value])
         if conversation_id is None:
             return None
 
@@ -672,10 +677,10 @@ class LLMNode(BaseNode):
             variable_mapping['#context#'] = node_data.context.variable_selector
 
         if node_data.vision.enabled:
-            variable_mapping['#files#'] = ['sys', SystemVariable.FILES.value]
+            variable_mapping['#files#'] = ['sys', SystemVariableKey.FILES.value]
 
         if node_data.memory:
-            variable_mapping['#sys.query#'] = ['sys', SystemVariable.QUERY.value]
+            variable_mapping['#sys.query#'] = ['sys', SystemVariableKey.QUERY.value]
 
         if node_data.prompt_config:
             enable_jinja = False
