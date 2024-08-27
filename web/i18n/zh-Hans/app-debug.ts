@@ -321,6 +321,7 @@ const translation = {
     'labelName': '显示名称',
     'required': '必填',
     'file': {
+      supportFileTypes: '支持的文件类型',
       image: {
         name: '图片',
       },

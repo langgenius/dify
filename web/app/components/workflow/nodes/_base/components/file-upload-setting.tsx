@@ -33,10 +33,20 @@ const FileUploadSetting: FC<Props> = ({
 
   const handleSupportFileTypeChange = useCallback((type: SupportUploadFileTypes) => {
     const newPayload = produce(payload, (draft) => {
-      if (draft.allowed_file_types.includes(type))
-        draft.allowed_file_types = draft.allowed_file_types.filter(v => v !== type)
-      else
-        draft.allowed_file_types.push(type)
+      if (type === SupportUploadFileTypes.custom) {
+        if (!draft.allowed_file_types.includes(SupportUploadFileTypes.custom))
+          draft.allowed_file_types = [SupportUploadFileTypes.custom]
+
+        else
+          draft.allowed_file_types = draft.allowed_file_types.filter(v => v !== type)
+      }
+      else {
+        draft.allowed_file_types = draft.allowed_file_types.filter(v => v !== SupportUploadFileTypes.custom)
+        if (draft.allowed_file_types.includes(type))
+          draft.allowed_file_types = draft.allowed_file_types.filter(v => v !== type)
+        else
+          draft.allowed_file_types.push(type)
+      }
     })
     onChange(newPayload)
   }, [onChange, payload])
@@ -74,7 +84,7 @@ const FileUploadSetting: FC<Props> = ({
   return (
     <div>
       <Field
-        title='SupportFile Types'
+        title={t('appDebug.variableConig.file.supportFileTypes')}
       >
         <div className='space-y-1'>
           {
@@ -83,14 +93,14 @@ const FileUploadSetting: FC<Props> = ({
                 key={type}
                 type={type as SupportUploadFileTypes.image | SupportUploadFileTypes.document | SupportUploadFileTypes.audio | SupportUploadFileTypes.video}
                 selected={allowed_file_types.includes(type)}
-                onSelect={handleSupportFileTypeChange}
+                onToggle={handleSupportFileTypeChange}
               />
             ))
           }
           <FileTypeItem
             type={SupportUploadFileTypes.custom}
             selected={allowed_file_types.includes(SupportUploadFileTypes.custom)}
-            onSelect={handleSupportFileTypeChange}
+            onToggle={handleSupportFileTypeChange}
             customFileTypes={allowed_file_extensions}
             onCustomFileTypesChange={handleCustomFileTypesChange}
           />

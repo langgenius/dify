@@ -10,7 +10,7 @@ import TagInput from '@/app/components/base/tag-input'
 type Props = {
   type: SupportUploadFileTypes.image | SupportUploadFileTypes.document | SupportUploadFileTypes.audio | SupportUploadFileTypes.video | SupportUploadFileTypes.custom
   selected: boolean
-  onSelect: (type: SupportUploadFileTypes) => void
+  onToggle: (type: SupportUploadFileTypes) => void
   onCustomFileTypesChange?: (customFileTypes: string[]) => void
   customFileTypes?: string[]
 }
@@ -18,26 +18,25 @@ type Props = {
 const FileTypeItem: FC<Props> = ({
   type,
   selected,
-  onSelect,
+  onToggle,
   customFileTypes = [],
   onCustomFileTypesChange = () => { },
 }) => {
   const { t } = useTranslation()
 
   const handleOnSelect = useCallback(() => {
-    if (!selected)
-      onSelect(type)
-  }, [selected, onSelect, type])
+    onToggle(type)
+  }, [onToggle, type])
 
   const isCustomSelected = type === SupportUploadFileTypes.custom && selected
 
   return (
     <div
       className={cn(
-        'rounded-lg bg-components-option-card-option-bg border border-components-option-card-option-border',
+        'rounded-lg bg-components-option-card-option-bg border border-components-option-card-option-border cursor-pointer select-none',
         !isCustomSelected && 'py-2 px-3',
         selected && 'border-[1.5px] bg-components-option-card-option-selected-bg border-components-option-card-option-selected-border',
-        !selected && 'cursor-pointer hover:bg-components-option-card-option-bg-hover hover:border-components-option-card-option-border-hover',
+        !selected && 'hover:bg-components-option-card-option-bg-hover hover:border-components-option-card-option-border-hover',
       )}
       onClick={handleOnSelect}
     >

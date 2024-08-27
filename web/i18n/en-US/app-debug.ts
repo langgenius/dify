@@ -325,6 +325,7 @@ const translation = {
     'content': 'Content',
     'required': 'Required',
     'file': {
+      supportFileTypes: 'Support File Types',
       image: {
         name: 'Image',
       },
