@@ -31,6 +31,7 @@ from core.model_runtime.entities.message_entities import (
 from core.model_runtime.entities.model_entities import ModelFeature
 from core.model_runtime.model_providers.__base.large_language_model import LargeLanguageModel
 from core.model_runtime.utils.encoders import jsonable_encoder
+from core.prompt.utils.extract_thread_messages import extract_thread_messages
 from core.tools.entities.tool_entities import (
     ToolParameter,
     ToolRuntimeVariablePool,
@@ -429,9 +430,7 @@ class BaseAgentRunner(AppRunner):
             Message.conversation_id == self.message.conversation_id,
         ).order_by(Message.created_at.desc()).all()
 
-        from core.prompt.utils.prompt_message_util import PromptMessageUtil
-        thread_messages = PromptMessageUtil.extract_thread_messages(messages)
-        messages = list(reversed(thread_messages))
+        messages = list(reversed(extract_thread_messages(messages)))
 
         for message in messages:
             if message.id == self.message.id:

@@ -65,7 +65,7 @@ const DebugWithSingleModel = forwardRef<DebugWithSingleModelRefType, DebugWithSi
   )
   useFormattingChangedSubscription(chatList)
 
-  const doSend: OnSend = useCallback((message, files, last_answer) => {
+  const doSend: OnSend = useCallback((message, files, is_regenerate, last_answer) => {
     if (checkCanSend && !checkCanSend())
       return
     const currentProvider = textGenerationModelList.find(item => item.provider === modelConfig.provider)
@@ -86,6 +86,7 @@ const DebugWithSingleModel = forwardRef<DebugWithSingleModelRefType, DebugWithSi
       query: message,
       inputs,
       model_config: configData,
+      is_regenerate: !!is_regenerate,
       parent_message_id: last_answer?.id,
     }
 
@@ -100,7 +101,7 @@ const DebugWithSingleModel = forwardRef<DebugWithSingleModelRefType, DebugWithSi
         onGetSuggestedQuestions: (responseItemId, getAbortController) => fetchSuggestedQuestions(appId, responseItemId, getAbortController),
       },
     )
-  }, [appId, checkCanSend, completionParams, chatList, config, handleSend, inputs, modelConfig, textGenerationModelList, visionConfig.enabled])
+  }, [appId, checkCanSend, completionParams, config, handleSend, inputs, modelConfig, textGenerationModelList, visionConfig.enabled])
 
   const doRegenerate = useCallback((chatItem: ChatItem) => {
     const index = chatList.findIndex(item => item.id === chatItem.id)
@@ -111,11 +112,11 @@ const DebugWithSingleModel = forwardRef<DebugWithSingleModelRefType, DebugWithSi
     const question = prevMessages.pop()
     const lastAnswer = prevMessages.at(-1)
 
-    if (!question || !lastAnswer)
+    if (!question)
       return
 
     handleUpdateChatList(prevMessages)
-    doSend(question.content, question.message_files, lastAnswer.isOpeningStatement ? undefined : lastAnswer)
+    doSend(question.content, question.message_files, true, (!lastAnswer || lastAnswer.isOpeningStatement) ? undefined : lastAnswer)
   }, [chatList, handleUpdateChatList, doSend])
 
   const allToolIcons = useMemo(() => {

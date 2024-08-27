@@ -214,6 +214,7 @@ class MessageBasedAppGenerator(BaseAppGenerator):
             answer_tokens=0,
             answer_unit_price=0,
             answer_price_unit=0,
+            is_regenerated=application_generate_entity.is_regenerate,
             parent_message_id=application_generate_entity.parent_message_id or None,
             provider_response_latency=0,
             total_price=0,

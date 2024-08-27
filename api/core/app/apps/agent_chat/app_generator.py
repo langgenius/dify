@@ -112,7 +112,7 @@ class AgentChatAppGenerator(MessageBasedAppGenerator):
         # get tracing instance
         user_id = user.id if isinstance(user, Account) else user.session_id
         trace_manager = TraceQueueManager(app_model.id, user_id)
-
+        print('----------', args.get('is_regenerate'))
         # init application generate entity
         application_generate_entity = AgentChatAppGenerateEntity(
             task_id=str(uuid.uuid4()),
@@ -122,6 +122,7 @@ class AgentChatAppGenerator(MessageBasedAppGenerator):
             inputs=conversation.inputs if conversation else self._get_cleaned_inputs(inputs, app_config),
             query=query,
             files=file_objs,
+            is_regenerate=args.get('is_regenerate', False),
             parent_message_id=args.get('parent_message_id'),
             user_id=user.id,
             stream=stream,

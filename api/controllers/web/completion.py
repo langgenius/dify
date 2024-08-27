@@ -94,6 +94,7 @@ class ChatApi(WebApiResource):
         parser.add_argument("files", type=list, required=False, location="json")
         parser.add_argument("response_mode", type=str, choices=["blocking", "streaming"], location="json")
         parser.add_argument("conversation_id", type=uuid_value, location="json")
+        parser.add_argument("is_regenerate", type=bool, required=False, default=False, location="json")
         parser.add_argument("parent_message_id", type=uuid_value, required=False, location="json")
         parser.add_argument("retriever_from", type=str, required=False, default="web_app", location="json")
 

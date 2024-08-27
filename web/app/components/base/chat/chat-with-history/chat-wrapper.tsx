@@ -64,12 +64,13 @@ const ChatWrapper = () => {
       currentChatInstanceRef.current.handleStop = handleStop
   }, [])
 
-  const doSend: OnSend = useCallback((message, files, last_answer) => {
+  const doSend: OnSend = useCallback((message, files, is_regenerate, last_answer) => {
     const data: any = {
       query: message,
       inputs: currentConversationId ? currentConversationItem?.inputs : newConversationInputs,
       conversation_id: currentConversationId,
-      parent_message_id: last_answer?.id,
+      is_regenerate: !!is_regenerate,
+      parent_message_id: last_answer?.id || null,
     }
 
     if (appConfig?.file_upload?.image.enabled && files?.length)
@@ -104,11 +105,11 @@ const ChatWrapper = () => {
     const question = prevMessages.pop()
     const lastAnswer = prevMessages.at(-1)
 
-    if (!question || !lastAnswer)
+    if (!question)
       return
 
     handleUpdateChatList(prevMessages)
-    doSend(question.content, question.message_files, lastAnswer.isOpeningStatement ? undefined : lastAnswer)
+    doSend(question.content, question.message_files, true, (!lastAnswer || lastAnswer.isOpeningStatement) ? undefined : lastAnswer)
   }, [chatList, handleUpdateChatList, doSend])
 
   const chatNode = useMemo(() => {

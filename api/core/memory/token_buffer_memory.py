@@ -11,6 +11,7 @@ from core.model_runtime.entities.message_entities import (
     TextPromptMessageContent,
     UserPromptMessage,
 )
+from core.prompt.utils.extract_thread_messages import extract_thread_messages
 from extensions.ext_database import db
 from models.model import AppMode, Conversation, Message, MessageFile
 from models.workflow import WorkflowRun
@@ -37,6 +38,7 @@ class TokenBufferMemory:
             Message.answer,
             Message.created_at,
             Message.workflow_run_id,
+            Message.is_regenerated,
             Message.parent_message_id,
         ).filter(
             Message.conversation_id == self.conversation.id,
@@ -50,8 +52,7 @@ class TokenBufferMemory:
         messages = query.limit(message_limit).all()
 
         # instead of all messages from the conversation, we only need to extract messages that belong to the thread of last message
-        from core.prompt.utils.prompt_message_util import PromptMessageUtil
-        thread_messages = PromptMessageUtil.extract_thread_messages(messages)
+        thread_messages = extract_thread_messages(messages)
         thread_messages.pop(0)
         messages = list(reversed(thread_messages))
 

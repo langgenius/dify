@@ -62,6 +62,8 @@ retriever_resource_fields = {
 message_fields = {
     "id": fields.String,
     "conversation_id": fields.String,
+    "is_regenerated": fields.Boolean,
+    "parent_message_id": fields.String,
     "inputs": fields.Raw,
     "query": fields.String,
     "answer": fields.String(attribute="re_sign_file_url_answer"),

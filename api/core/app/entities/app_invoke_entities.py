@@ -117,6 +117,7 @@ class ChatAppGenerateEntity(EasyUIBasedAppGenerateEntity):
     Chat Application Generate Entity.
     """
     conversation_id: Optional[str] = None
+    is_regenerate: bool
     parent_message_id: Optional[str] = None
 
 
@@ -132,6 +133,7 @@ class AgentChatAppGenerateEntity(EasyUIBasedAppGenerateEntity):
     Agent Chat Application Generate Entity.
     """
     conversation_id: Optional[str] = None
+    is_regenerate: bool
     parent_message_id: Optional[str] = None
 
 
