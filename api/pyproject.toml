@@ -188,6 +188,8 @@ zhipuai = "1.0.7"
 # Related transparent dependencies with pinned verion
 # required by main implementations
 ############################################################
+azure-ai-ml = "^1.19.0"
+azure-ai-inference = "^1.0.0b3"
 volcengine-python-sdk = {extras = ["ark"], version = "^1.0.98"}
 [tool.poetry.group.indriect.dependencies]
 kaleido = "0.2.1"
