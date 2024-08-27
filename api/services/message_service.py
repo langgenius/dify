@@ -34,6 +34,7 @@ class MessageService:
         conversation_id: str,
         first_id: Optional[str],
         limit: int,
+        order: str = "asc",
     ) -> InfiniteScrollPagination:
         if not user:
             return InfiniteScrollPagination(data=[], limit=limit, has_more=False)
@@ -90,6 +91,9 @@ class MessageService:
 
             if rest_count > 0:
                 has_more = True
+
+        if order == "asc":
+            history_messages = list(reversed(history_messages))
 
         return InfiniteScrollPagination(data=history_messages, limit=limit, has_more=has_more)
 
