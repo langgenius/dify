@@ -124,7 +124,7 @@ const StepTwo = ({
     (datasetId && documentDetail) ? documentDetail.doc_form : DocForm.TEXT,
   )
   const [docLanguage, setDocLanguage] = useState<string>(
-    (datasetId && documentDetail) ? documentDetail.doc_language : (locale !== LanguagesSupported[1] ? 'English' : 'Chinese')
+    (datasetId && documentDetail) ? documentDetail.doc_language : (locale !== LanguagesSupported[1] ? 'English' : 'Chinese'),
   )
   const [QATipHide, setQATipHide] = useState(false)
   const [previewSwitched, setPreviewSwitched] = useState(false)
