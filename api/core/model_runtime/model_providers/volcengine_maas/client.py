@@ -53,7 +53,7 @@ class ArkClientV3:
         if credentials.get("api_endpoint_host") == DEFAULT_V3_ENDPOINT:
             return False
         # only v3 support api_key
-        if credentials.get("api_key"):
+        if credentials.get("auth_method") == "api_key":
             return False
         # these cases are considered as sdk v2
         # - modified default v2 endpoint
@@ -75,7 +75,7 @@ class ArkClientV3:
             "sk": credentials['volc_secret_access_key'],
         }
         if cls.is_compatible_with_legacy(credentials):
-            args["base_url"] = "https://ark.cn-beijing.volces.com/api/v3"
+            args["base_url"] = DEFAULT_V3_ENDPOINT
 
         client = ArkClientV3(
             **args
