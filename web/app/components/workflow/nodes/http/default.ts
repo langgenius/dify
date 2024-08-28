@@ -16,7 +16,7 @@ const nodeDefault: NodeDefault<HttpNodeType> = {
     params: '',
     body: {
       type: BodyType.none,
-      data: '',
+      data: [],
     },
     timeout: {
       max_connect_timeout: 0,
