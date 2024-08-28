@@ -62,7 +62,7 @@ const useConfigVision = (model: ModelConfig, {
         enabled: true,
         configs: {
           detail: Resolution.high,
-          valueSelector: [],
+          variable_selector: [],
         },
       })
     }

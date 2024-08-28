@@ -369,6 +369,6 @@ export type UploadFileSetting = {
 }
 
 export type VisionSetting = {
-  valueSelector: ValueSelector
+  variable_selector: ValueSelector
   detail: Resolution
 }

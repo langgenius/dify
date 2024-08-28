@@ -30,7 +30,7 @@ const ConfigVision: FC<Props> = ({
   nodeId,
   config = {
     detail: Resolution.high,
-    valueSelector: [],
+    variable_selector: [],
   },
   onConfigChange,
 }) => {
@@ -48,7 +48,7 @@ const ConfigVision: FC<Props> = ({
 
   const handleVarSelectorChange = useCallback((valueSelector: ValueSelector | string) => {
     const newConfig = produce(config, (draft) => {
-      draft.valueSelector = valueSelector as ValueSelector
+      draft.variable_selector = valueSelector as ValueSelector
     })
     onConfigChange(newConfig)
   }, [config, onConfigChange])
@@ -74,7 +74,7 @@ const ConfigVision: FC<Props> = ({
               className='mb-4'
               filterVar={filterVar}
               nodeId={nodeId}
-              value={config.valueSelector || []}
+              value={config.variable_selector || []}
               onChange={handleVarSelectorChange}
               readonly={readOnly}
             />
