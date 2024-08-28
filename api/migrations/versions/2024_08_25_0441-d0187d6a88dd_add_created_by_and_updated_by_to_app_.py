@@ -1,7 +1,7 @@
 """add created_by and updated_by to app, modelconfig, and site
 
 Revision ID: d0187d6a88dd
-Revises: 2dbe42621d96
+Revises: 675b5321501b
 Create Date: 2024-08-25 04:41:18.157397
 
 """
@@ -13,7 +13,7 @@ import models as models
 
 # revision identifiers, used by Alembic.
 revision = "d0187d6a88dd"
-down_revision = "2dbe42621d96"
+down_revision = "675b5321501b"
 branch_labels = None
 depends_on = None
 
