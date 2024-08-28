@@ -346,6 +346,8 @@ class AppDslService:
         app_model_config = AppModelConfig()
         app_model_config = app_model_config.from_model_config_dict(model_config_data)
         app_model_config.app_id = app.id
+        app_model_config.created_by = account.id
+        app_model_config.updated_by = account.id
 
         db.session.add(app_model_config)
         db.session.commit()
@@ -390,6 +392,8 @@ class AppDslService:
             icon_background=icon_background,
             enable_site=True,
             enable_api=True,
+            created_by=account.id,
+            updated_by=account.id,
         )
 
         db.session.add(app)
