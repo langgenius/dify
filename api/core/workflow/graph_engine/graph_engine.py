@@ -366,6 +366,12 @@ class GraphEngine:
 
         # new thread
         for edge in edge_mappings:
+            if (
+                edge.target_node_id not in self.graph.node_parallel_mapping
+                or self.graph.node_parallel_mapping.get(edge.target_node_id, '') != parallel_id
+            ):
+                continue
+
             thread = threading.Thread(target=self._run_parallel_node, kwargs={
                 'flask_app': current_app._get_current_object(),  # type: ignore[attr-defined]
                 'q': q,
