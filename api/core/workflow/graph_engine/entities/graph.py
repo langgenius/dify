@@ -282,15 +282,16 @@ class Graph(BaseModel):
         """
         Check whether it is connected to the previous node
         """
-        new_route = list(route)
+        last_node_id = route[-1]
 
-        for graph_edge in edge_mapping.get(new_route[-1], []):
+        for graph_edge in edge_mapping.get(last_node_id, []):
             if not graph_edge.target_node_id:
                 continue
 
-            if graph_edge.target_node_id in new_route:
+            if graph_edge.target_node_id in route:
                 raise ValueError(f"Node {graph_edge.source_node_id} is connected to the previous node, please check the graph.")
 
+            new_route = route[:]
             new_route.append(graph_edge.target_node_id)
             cls._check_connected_to_previous_node(
                 route=new_route,
