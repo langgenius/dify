@@ -9,7 +9,7 @@ import Field from '@/app/components/workflow/nodes/_base/components/field'
 import Switch from '@/app/components/base/switch'
 import { type ValueSelector, type Var, VarType, type VisionSetting } from '@/app/components/workflow/types'
 import { Resolution } from '@/types/app'
-import TooltipPlus from '@/app/components/base/tooltip'
+import Tooltip from '@/app/components/base/tooltip'
 const i18nPrefix = 'workflow.nodes.llm'
 
 type Props = {
@@ -58,13 +58,12 @@ const ConfigVision: FC<Props> = ({
       title={t(`${i18nPrefix}.vision`)}
       tooltip={t('appDebug.vision.description')!}
       operations={
-        <TooltipPlus
-          hideArrow
+        <Tooltip
           popupContent={t('appDebug.vision.onlySupportVisionModelTip')!}
           disabled={isVisionModel}
         >
           <Switch disabled={readOnly || !isVisionModel} size='md' defaultValue={!isVisionModel ? false : enabled} onChange={onEnabledChange} />
-        </TooltipPlus>
+        </Tooltip>
       }
     >
       {(enabled && isVisionModel)

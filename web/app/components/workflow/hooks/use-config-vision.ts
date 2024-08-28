@@ -1,5 +1,6 @@
 import produce from 'immer'
 import { useCallback } from 'react'
+import { useIsChatMode } from './use-workflow'
 import type { ModelConfig, VisionSetting } from '@/app/components/workflow/types'
 import { useTextGenerationCurrentProviderAndModelAndModelList } from '@/app/components/header/account-setting/model-provider-page/hooks'
 import {
@@ -31,6 +32,8 @@ const useConfigVision = (model: ModelConfig, {
     },
   )
 
+  const isChatMode = useIsChatMode()
+
   const getIsVisionModel = useCallback(() => {
     return !!currModel?.features?.includes(ModelFeatureEnum.vision)
   }, [currModel])
@@ -40,9 +43,15 @@ const useConfigVision = (model: ModelConfig, {
   const handleVisionResolutionEnabledChange = useCallback((enabled: boolean) => {
     const newPayload = produce(payload, (draft) => {
       draft.enabled = enabled
+      if (enabled && isChatMode) {
+        draft.configs = {
+          detail: Resolution.high,
+          variable_selector: ['sys', 'files'],
+        }
+      }
     })
     onChange(newPayload)
-  }, [onChange, payload])
+  }, [isChatMode, onChange, payload])
 
   const handleVisionResolutionChange = useCallback((config: VisionSetting) => {
     const newPayload = produce(payload, (draft) => {
