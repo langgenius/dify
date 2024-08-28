@@ -267,7 +267,7 @@ class OCILargeLanguageModel(LargeLanguageModel):
             if not valid_value:
                 raise InvokeBadRequestError("Does not support function calling")
         if model.startswith("cohere"):
-            print("run cohere " * 10)
+            #print("run cohere " * 10)
             for message in prompt_messages[:-1]:
                 text = ""
                 if isinstance(message.content, str):
@@ -285,7 +285,7 @@ class OCILargeLanguageModel(LargeLanguageModel):
                     "chatHistory": chathistory, }
             request_args["chatRequest"].update(args)
         elif model.startswith("meta"):
-            print("run meta " * 10)
+            #print("run meta " * 10)
             meta_messages = []
             for message in prompt_messages:
                 text = message.content
@@ -298,10 +298,10 @@ class OCILargeLanguageModel(LargeLanguageModel):
 
         if stream:
             request_args["chatRequest"]["isStream"] = True
-        print("final request" + "|" * 20)
-        print(request_args)
+        #print("final request" + "|" * 20)
+        #print(request_args)
         response = client.chat(request_args)
-        print(vars(response))
+        #print(vars(response))
 
         if stream:
             return self._handle_generate_stream_response(model, credentials, response, prompt_messages)
@@ -356,7 +356,7 @@ class OCILargeLanguageModel(LargeLanguageModel):
         events = response.data.events()
         for stream in events:
             chunk = json.loads(stream.data)
-            print(chunk)
+            #print(chunk)
             #chunk: {'apiFormat': 'COHERE', 'text': 'Hello'}
 
 
