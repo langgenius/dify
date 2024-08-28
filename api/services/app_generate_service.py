@@ -13,6 +13,7 @@ from core.app.entities.app_invoke_entities import InvokeFrom
 from core.app.features.rate_limiting import RateLimit
 from models.model import Account, App, AppMode, EndUser
 from models.workflow import Workflow
+from services.errors.llm import InvokeRateLimitError
 from services.workflow_service import WorkflowService
 
 
