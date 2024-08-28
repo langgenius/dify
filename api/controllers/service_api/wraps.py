@@ -115,8 +115,7 @@ def cloud_edition_billing_resource_check(resource: str, api_token_type: str):
 
 def cloud_edition_billing_knowledge_limit_check(
     resource: str,
-    api_token_type: str,
-    error_msg: str = "To unlock this feature and elevate your Dify experience, please upgrade to a paid plan.",
+    api_token_type: str
 ):
     def interceptor(view):
         @wraps(view)
@@ -126,7 +125,7 @@ def cloud_edition_billing_knowledge_limit_check(
             if features.billing.enabled:
                 if resource == "add_segment":
                     if features.billing.subscription.plan == "sandbox":
-                        raise Forbidden(error_msg)
+                        raise Forbidden("To unlock this feature and elevate your Dify experience, please upgrade to a paid plan.")
                 else:
                     return view(*args, **kwargs)
 

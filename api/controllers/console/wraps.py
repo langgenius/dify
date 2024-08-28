@@ -84,10 +84,7 @@ def cloud_edition_billing_resource_check(resource: str):
     return interceptor
 
 
-def cloud_edition_billing_knowledge_limit_check(
-    resource: str,
-    error_msg: str = "To unlock this feature and elevate your Dify experience, please upgrade to a paid plan.",
-):
+def cloud_edition_billing_knowledge_limit_check(resource: str):
     def interceptor(view):
         @wraps(view)
         def decorated(*args, **kwargs):
@@ -95,7 +92,7 @@ def cloud_edition_billing_knowledge_limit_check(
             if features.billing.enabled:
                 if resource == "add_segment":
                     if features.billing.subscription.plan == "sandbox":
-                        abort(403, error_msg)
+                        abort(403, "To unlock this feature and elevate your Dify experience, please upgrade to a paid plan.")
                 else:
                     return view(*args, **kwargs)
 
