@@ -10,6 +10,7 @@
 - wikipedia
 - nominatim
 - yahoo
+- alphavantage
 - arxiv
 - pubmed
 - stablediffusion
@@ -30,5 +31,7 @@
 - dingtalk
 - feishu
 - feishu_base
+- feishu_document
+- feishu_message
 - slack
 - tianditu
