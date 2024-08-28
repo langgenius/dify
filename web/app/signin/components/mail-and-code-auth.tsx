@@ -1,20 +1,33 @@
 import { useState } from 'react'
 import { useTranslation } from 'react-i18next'
+import { useSearchParams } from 'next/navigation'
 import Input from '@/app/components/base/input'
 import Button from '@/app/components/base/button'
 import { emailRegex } from '@/config'
 import Toast from '@/app/components/base/toast'
 
-export default function MailAndCodeAuth() {
+type MailAndCodeAuthProps = {
+  isInvite: boolean
+}
+
+export default function MailAndCodeAuth({ isInvite }: MailAndCodeAuthProps) {
   const { t } = useTranslation()
-  const [email, setEmail] = useState('')
+  const searchParams = useSearchParams()
+  const emailFromLink = searchParams.get('email') as string
+  const [email, setEmail] = useState(isInvite ? emailFromLink : '')
 
   const handleGetEMailVerificationCode = async () => {
+    if (!email) {
+      Toast.notify({ type: 'error', message: t('login.error.emailEmpty') })
+      return
+    }
+
     if (!emailRegex.test(email)) {
       Toast.notify({
         type: 'error',
         message: t('login.error.emailInValid'),
       })
+      return
     }
     window.location.href = '/signin/check-code'
   }

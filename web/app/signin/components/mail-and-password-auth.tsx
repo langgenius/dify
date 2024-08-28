@@ -2,19 +2,30 @@ import Link from 'next/link'
 import router from 'next/router'
 import { useState } from 'react'
 import { useTranslation } from 'react-i18next'
+import { useSearchParams } from 'next/navigation'
 import Button from '@/app/components/base/button'
 import Toast from '@/app/components/base/toast'
 import { emailRegex } from '@/config'
 import { login } from '@/service/common'
 
-export default function MailAndPasswordAuth() {
+type MailAndPasswordAuthProps = {
+  isInvite: boolean
+}
+
+export default function MailAndPasswordAuth({ isInvite }: MailAndPasswordAuthProps) {
   const { t } = useTranslation()
+  const searchParams = useSearchParams()
   const [showPassword, setShowPassword] = useState(false)
-  const [email, setEmail] = useState('')
+  const emailFromLink = searchParams.get('email') as string
+  const [email, setEmail] = useState(isInvite ? emailFromLink : '')
   const [password, setPassword] = useState('')
 
   const [isLoading, setIsLoading] = useState(false)
   const handleEmailPasswordLogin = async () => {
+    if (!email) {
+      Toast.notify({ type: 'error', message: t('login.error.emailEmpty') })
+      return
+    }
     if (!emailRegex.test(email)) {
       Toast.notify({
         type: 'error',
@@ -57,6 +68,8 @@ export default function MailAndPasswordAuth() {
         <input
           value={email}
           onChange={e => setEmail(e.target.value)}
+          disabled={isInvite}
+          readOnly={isInvite}
           id="email"
           type="email"
           autoComplete="email"
