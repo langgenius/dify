@@ -9,6 +9,7 @@ const nodeDefault: NodeDefault<IterationNodeType> = {
     start_node_id: '',
     iterator_selector: [],
     output_selector: [],
+    _children: [],
   },
   getAvailablePrevNodes(isChatMode: boolean) {
     const nodes = isChatMode

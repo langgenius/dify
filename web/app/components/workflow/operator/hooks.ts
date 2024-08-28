@@ -11,7 +11,7 @@ export const useOperator = () => {
   const { userProfile } = useAppContext()
 
   const handleAddNote = useCallback(() => {
-    const newNode = generateNewNode({
+    const { newNode } = generateNewNode({
       type: CUSTOM_NOTE_NODE,
       data: {
         title: '',
