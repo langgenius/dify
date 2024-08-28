@@ -45,7 +45,7 @@ const MoreLikeThis = ({
       title={t('appDebug.feature.moreLikeThis.title')}
       tooltip={t('appDebug.feature.moreLikeThis.tip')}
       value={!!features.moreLikeThis?.enabled}
-      description={t('appDebug.feature.moreLikeThis.description')}
+      description={t('appDebug.feature.moreLikeThis.description')!}
       onChange={state => handleChange(FeatureEnum.moreLikeThis, state)}
     />
   )

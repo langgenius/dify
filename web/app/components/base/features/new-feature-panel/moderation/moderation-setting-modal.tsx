@@ -3,6 +3,7 @@ import { useState } from 'react'
 import useSWR from 'swr'
 import { useContext } from 'use-context-selector'
 import { useTranslation } from 'react-i18next'
+import { RiCloseLine } from '@remixicon/react'
 import ModerationContent from './moderation-content'
 import FormGeneration from './form-generation'
 import ApiBasedExtensionSelector from '@/app/components/header/account-setting/api-based-extension-page/selector'
@@ -237,10 +238,11 @@ const ModerationSettingModal: FC<ModerationSettingModalProps> = ({
     <Modal
       isShow
       onClose={() => { }}
-      className='!p-8 !pb-6 !mt-14 !max-w-none !w-[640px]'
+      className='!p-6 !mt-14 !max-w-none !w-[600px]'
     >
-      <div className='mb-2 text-xl font-semibold text-[#1D2939]'>
-        {t('appDebug.feature.moderation.modal.title')}
+      <div className='flex items-center justify-between'>
+        <div className='text-text-primary title-2xl-semi-bold'>{t('appDebug.feature.moderation.modal.title')}</div>
+        <div className='p-1 cursor-pointer' onClick={onCancel}><RiCloseLine className='w-4 h-4 text-text-tertiary'/></div>
       </div>
       <div className='py-2'>
         <div className='leading-9 text-sm font-medium text-gray-900'>

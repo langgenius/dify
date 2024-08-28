@@ -21,6 +21,7 @@ import Switch from '@/app/components/base/switch'
 import Button from '@/app/components/base/button'
 
 import MoreLikeThis from '@/app/components/base/features/new-feature-panel/more-like-this'
+import Moderation from '@/app/components/base/features/new-feature-panel/moderation'
 import SpeechToText from '@/app/components/base/features/new-feature-panel/speech-to-text'
 import TextToSpeech from '@/app/components/base/features/new-feature-panel/text-to-speech'
 import FollowUp from '@/app/components/base/features/new-feature-panel/follow-up'
@@ -88,6 +89,7 @@ const NewFeaturePanel = ({
           {!isChatMode && (
             <MoreLikeThis onChange={onChange} />
           )}
+          <Moderation onChange={onChange} />
           {isChatMode && speech2textDefaultModel && (
             <SpeechToText onChange={onChange} />
           )}

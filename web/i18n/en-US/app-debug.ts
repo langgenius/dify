@@ -163,9 +163,10 @@ const translation = {
     moderation: {
       title: 'Content moderation',
       description: 'Secure model output by using moderation API or maintaining a sensitive word list.',
-      allEnabled: 'INPUT/OUTPUT Content Enabled',
-      inputEnabled: 'INPUT Content Enabled',
-      outputEnabled: 'OUTPUT Content Enabled',
+      contentEnableLabel: 'Enabled moderate content',
+      allEnabled: 'INPUT & OUTPUT',
+      inputEnabled: 'INPUT',
+      outputEnabled: 'OUTPUT',
       modal: {
         title: 'Content moderation settings',
         provider: {

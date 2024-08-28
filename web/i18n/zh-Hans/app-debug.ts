@@ -163,9 +163,10 @@ const translation = {
     moderation: {
       title: '内容审查',
       description: '您可以调用审查 API 或者维护敏感词库来使模型更安全地输出。',
-      allEnabled: '审查输入/审查输出 内容已启用',
-      inputEnabled: '审查输入内容已启用',
-      outputEnabled: '审查输出内容已启用',
+      contentEnableLabel: '启用审查内容',
+      allEnabled: '输入内容和输出内容',
+      inputEnabled: '输入内容',
+      outputEnabled: '输出内容',
       modal: {
         title: '内容审查设置',
         provider: {

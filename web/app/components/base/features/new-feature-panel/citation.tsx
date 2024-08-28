@@ -44,7 +44,7 @@ const Citation = ({
       }
       title={t('appDebug.feature.citation.title')}
       value={!!features.citation?.enabled}
-      description={t('appDebug.feature.citation.description')}
+      description={t('appDebug.feature.citation.description')!}
       onChange={state => handleChange(FeatureEnum.citation, state)}
     />
   )

@@ -44,7 +44,7 @@ const FollowUp = ({
       }
       title={t('appDebug.feature.suggestedQuestionsAfterAnswer.title')}
       value={!!features.suggested?.enabled}
-      description={t('appDebug.feature.suggestedQuestionsAfterAnswer.description')}
+      description={t('appDebug.feature.suggestedQuestionsAfterAnswer.description')!}
       onChange={state => handleChange(FeatureEnum.suggested, state)}
     />
   )
