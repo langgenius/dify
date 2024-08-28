@@ -1,5 +1,4 @@
 import json
-
 from collections.abc import Generator
 from copy import deepcopy
 from typing import TYPE_CHECKING, Optional, cast

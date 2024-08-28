@@ -1,4 +1,5 @@
 from typing import Any, cast
+
 from sqlalchemy import func
 
 from core.app.app_config.entities import DatasetRetrieveConfigEntity
