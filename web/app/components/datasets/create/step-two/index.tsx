@@ -123,7 +123,9 @@ const StepTwo = ({
   const [docForm, setDocForm] = useState<DocForm | string>(
     (datasetId && documentDetail) ? documentDetail.doc_form : DocForm.TEXT,
   )
-  const [docLanguage, setDocLanguage] = useState<string>(locale !== LanguagesSupported[1] ? 'English' : 'Chinese')
+  const [docLanguage, setDocLanguage] = useState<string>(
+    (datasetId && documentDetail) ? documentDetail.doc_language : (locale !== LanguagesSupported[1] ? 'English' : 'Chinese'),
+  )
   const [QATipHide, setQATipHide] = useState(false)
   const [previewSwitched, setPreviewSwitched] = useState(false)
   const [showPreview, { setTrue: setShowPreview, setFalse: hidePreview }] = useBoolean()
