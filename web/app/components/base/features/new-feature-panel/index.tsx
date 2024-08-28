@@ -21,6 +21,7 @@ import Switch from '@/app/components/base/switch'
 import Button from '@/app/components/base/button'
 
 import MoreLikeThis from '@/app/components/base/features/new-feature-panel/more-like-this'
+import ConversationOpener from '@/app/components/base/features/new-feature-panel/conversation-opener'
 import Moderation from '@/app/components/base/features/new-feature-panel/moderation'
 import SpeechToText from '@/app/components/base/features/new-feature-panel/speech-to-text'
 import TextToSpeech from '@/app/components/base/features/new-feature-panel/text-to-speech'
@@ -88,6 +89,9 @@ const NewFeaturePanel = ({
         <div className='grow overflow-y-auto px-4 pb-4'>
           {!isChatMode && (
             <MoreLikeThis onChange={onChange} />
+          )}
+          {isChatMode && (
+            <ConversationOpener onChange={onChange} />
           )}
           <Moderation onChange={onChange} />
           {isChatMode && speech2textDefaultModel && (

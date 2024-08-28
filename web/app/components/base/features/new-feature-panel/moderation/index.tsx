@@ -8,7 +8,6 @@ import { ContentModeration } from '@/app/components/base/icons/src/vender/featur
 import FeatureCard from '@/app/components/base/features/new-feature-panel/feature-card'
 import Button from '@/app/components/base/button'
 import { useFeatures, useFeaturesStore } from '@/app/components/base/features/hooks'
-import { useStore } from '@/app/components/workflow/store'
 import type { OnFeaturesChange } from '@/app/components/base/features/types'
 import { FeatureEnum } from '@/app/components/base/features/types'
 import { fetchCodeBasedExtensionList } from '@/service/common'
@@ -25,7 +24,6 @@ const Moderation = ({
   onChange,
 }: Props) => {
   const { t } = useTranslation()
-  const setShowFeaturesPanel = useStore(s => s.setShowFeaturesPanel)
   const { setShowModerationSettingModal } = useModalContext()
   const { locale } = useContext(I18n)
   const featuresStore = useFeaturesStore()
@@ -51,12 +49,12 @@ const Moderation = ({
           draft.moderation = newModeration
         })
         setFeatures(newFeatures)
-        setShowFeaturesPanel(true)
         if (onChange)
           onChange(newFeatures)
       },
       onCancelCallback: () => {
-        setShowFeaturesPanel(true)
+        if (onChange)
+          onChange(features)
       },
     })
   }
@@ -85,7 +83,6 @@ const Moderation = ({
             draft.moderation = newModeration
           })
           setFeatures(newFeatures)
-          setShowFeaturesPanel(true)
           if (onChange)
             onChange(newFeatures)
         },
@@ -94,13 +91,21 @@ const Moderation = ({
             draft.moderation = { enabled: false }
           })
           setFeatures(newFeatures)
-          setShowFeaturesPanel(true)
           if (onChange)
             onChange(newFeatures)
         },
       })
     }
-  }, [featuresStore, onChange])
+
+    if (!enabled) {
+      const newFeatures = produce(features, (draft) => {
+        draft.moderation = { enabled: false }
+      })
+      setFeatures(newFeatures)
+      if (onChange)
+        onChange(newFeatures)
+    }
+  }, [featuresStore, onChange, setShowModerationSettingModal])
 
   const providerContent = useMemo(() => {
     if (moderation?.type === 'openai_moderation')
@@ -111,7 +116,7 @@ const Moderation = ({
       return t('common.apiBasedExtension.selector.title')
     else
       return codeBasedExtensionList?.data.find(item => item.name === moderation?.type)?.label[locale] || '-'
-  }, [codeBasedExtensionList, moderation])
+  }, [codeBasedExtensionList?.data, locale, moderation?.type, t])
 
   const enableContent = useMemo(() => {
     if (moderation?.config?.inputs_config?.enabled && moderation.config?.outputs_config?.enabled)
@@ -120,7 +125,7 @@ const Moderation = ({
       return t('appDebug.feature.moderation.inputEnabled')
     else if (moderation?.config?.outputs_config?.enabled)
       return t('appDebug.feature.moderation.outputEnabled')
-  }, [moderation])
+  }, [moderation?.config?.inputs_config?.enabled, moderation?.config?.outputs_config?.enabled, t])
 
   return (
     <FeatureCard

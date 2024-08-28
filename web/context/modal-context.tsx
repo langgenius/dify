@@ -26,6 +26,8 @@ import type {
 import ModelLoadBalancingEntryModal from '@/app/components/header/account-setting/model-provider-page/model-modal/model-load-balancing-entry-modal'
 import type { ModelLoadBalancingModalProps } from '@/app/components/header/account-setting/model-provider-page/provider-added-card/model-load-balancing-modal'
 import ModelLoadBalancingModal from '@/app/components/header/account-setting/model-provider-page/provider-added-card/model-load-balancing-modal'
+import OpeningSettingModal from '@/app/components/base/features/new-feature-panel/conversation-opener/modal'
+import type { OpeningStatement } from '@/app/components/base/features/types'
 
 export type ModalState<T> = {
   payload: T
@@ -54,6 +56,7 @@ export type ModalContextState = {
   setShowModelModal: Dispatch<SetStateAction<ModalState<ModelModalType> | null>>
   setShowModelLoadBalancingModal: Dispatch<SetStateAction<ModelLoadBalancingModalProps | null>>
   setShowModelLoadBalancingEntryModal: Dispatch<SetStateAction<ModalState<LoadBalancingEntryModalType> | null>>
+  setShowOpeningModal: Dispatch<SetStateAction<ModalState<OpeningStatement> | null>>
 }
 const ModalContext = createContext<ModalContextState>({
   setShowAccountSettingModal: () => { },
@@ -65,6 +68,7 @@ const ModalContext = createContext<ModalContextState>({
   setShowModelModal: () => { },
   setShowModelLoadBalancingModal: () => { },
   setShowModelLoadBalancingEntryModal: () => { },
+  setShowOpeningModal: () => { },
 })
 
 export const useModalContext = () => useContext(ModalContext)
@@ -88,6 +92,7 @@ export const ModalContextProvider = ({
   const [showModelModal, setShowModelModal] = useState<ModalState<ModelModalType> | null>(null)
   const [showModelLoadBalancingModal, setShowModelLoadBalancingModal] = useState<ModelLoadBalancingModalProps | null>(null)
   const [showModelLoadBalancingEntryModal, setShowModelLoadBalancingEntryModal] = useState<ModalState<LoadBalancingEntryModalType> | null>(null)
+  const [showOpeningModal, setShowOpeningModal] = useState<ModalState<OpeningStatement> | null>(null)
   const searchParams = useSearchParams()
   const router = useRouter()
   const [showPricingModal, setShowPricingModal] = useState(searchParams.get('show-pricing') === '1')
@@ -127,6 +132,12 @@ export const ModalContextProvider = ({
     setShowModelLoadBalancingEntryModal(null)
   }, [showModelLoadBalancingEntryModal])
 
+  const handleCancelOpeningModal = useCallback(() => {
+    setShowOpeningModal(null)
+    if (showOpeningModal?.onCancelCallback)
+      showOpeningModal.onCancelCallback()
+  }, [showOpeningModal])
+
   const handleSaveModelLoadBalancingEntryModal = useCallback((entry: ModelLoadBalancingConfigEntry) => {
     showModelLoadBalancingEntryModal?.onSaveCallback?.({
       ...showModelLoadBalancingEntryModal.payload,
@@ -164,6 +175,12 @@ export const ModalContextProvider = ({
     return true
   }
 
+  const handleSaveOpeningModal = (newOpening: OpeningStatement) => {
+    if (showOpeningModal?.onSaveCallback)
+      showOpeningModal.onSaveCallback(newOpening)
+    setShowOpeningModal(null)
+  }
+
   return (
     <ModalContext.Provider value={{
       setShowAccountSettingModal,
@@ -175,6 +192,7 @@ export const ModalContextProvider = ({
       setShowModelModal,
       setShowModelLoadBalancingModal,
       setShowModelLoadBalancingEntryModal,
+      setShowOpeningModal,
     }}>
       <>
         {children}
@@ -263,6 +281,12 @@ export const ModalContextProvider = ({
             />
           )
         }
+        {showOpeningModal && (
+          <OpeningSettingModal
+            data={showOpeningModal.payload}
+            onSave={handleSaveOpeningModal}
+            onCancel={handleCancelOpeningModal} />
+        )}
       </>
     </ModalContext.Provider>
   )

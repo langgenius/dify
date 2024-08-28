@@ -18,7 +18,8 @@ const Features = () => {
 
   const handleFeaturesChange = useCallback(() => {
     handleSyncWorkflowDraft()
-  }, [handleSyncWorkflowDraft])
+    setShowFeaturesPanel(true)
+  }, [handleSyncWorkflowDraft, setShowFeaturesPanel])
 
   return (
     <NewFeaturePanel
