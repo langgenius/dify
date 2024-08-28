@@ -98,7 +98,7 @@ const AnnotationReplyConfig: FC<Props> = ({
             let isEmbeddingModelChanged = false
             if (
               embeddingModel.embedding_model_name !== annotationConfig.embedding_model.embedding_model_name
-              && embeddingModel.embedding_provider_name !== annotationConfig.embedding_model.embedding_provider_name
+              || embeddingModel.embedding_provider_name !== annotationConfig.embedding_model.embedding_provider_name
             ) {
               await onEmbeddingChange(embeddingModel)
               isEmbeddingModelChanged = true
