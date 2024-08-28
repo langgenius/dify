@@ -32,6 +32,7 @@ import AgentLogModal from '@/app/components/base/agent-log-modal'
 import PromptLogModal from '@/app/components/base/prompt-log-modal'
 import { useStore as useAppStore } from '@/app/components/app/store'
 import type { AppData } from '@/models/share'
+import useBreakpoints, { MediaType } from '@/hooks/use-breakpoints'
 
 export type ChatProps = {
   appData?: AppData
@@ -105,6 +106,8 @@ const Chat: FC<ChatProps> = ({
   const chatFooterRef = useRef<HTMLDivElement>(null)
   const chatFooterInnerRef = useRef<HTMLDivElement>(null)
   const userScrolledRef = useRef(false)
+  const media = useBreakpoints()
+  const isMobile = media === MediaType.mobile
 
   const handleScrolltoBottom = useCallback(() => {
     if (chatContainerRef.current && !userScrolledRef.current)
@@ -270,7 +273,7 @@ const Chat: FC<ChatProps> = ({
               display: "block",
               margin: "auto",
               height: "calc(50% - 16px)",
-              width: "50%"
+              width: isMobile ? "100%" : "50%"
             }}
           ></iframe>
           <div
