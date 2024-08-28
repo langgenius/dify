@@ -411,7 +411,8 @@ class IndexingRunner:
 
         return text_docs
 
-    def filter_string(self, text):
+    @staticmethod
+    def filter_string(text):
         text = re.sub(r'<\|', '<', text)
         text = re.sub(r'\|>', '>', text)
         text = re.sub(r'[\x00-\x08\x0B\x0C\x0E-\x1F\x7F\xEF\xBF\xBE]', '', text)
@@ -419,7 +420,8 @@ class IndexingRunner:
         text = re.sub('\uFFFE', '', text)
         return text
 
-    def _get_splitter(self, processing_rule: DatasetProcessRule,
+    @staticmethod
+    def _get_splitter(processing_rule: DatasetProcessRule,
                       embedding_model_instance: Optional[ModelInstance]) -> TextSplitter:
         """
         Get the NodeParser object according to the processing rule.
@@ -611,7 +613,8 @@ class IndexingRunner:
 
         return all_documents
 
-    def _document_clean(self, text: str, processing_rule: DatasetProcessRule) -> str:
+    @staticmethod
+    def _document_clean(text: str, processing_rule: DatasetProcessRule) -> str:
         """
         Clean the document text according to the processing rules.
         """
@@ -640,7 +643,8 @@ class IndexingRunner:
 
         return text
 
-    def format_split_text(self, text):
+    @staticmethod
+    def format_split_text(text):
         regex = r"Q\d+:\s*(.*?)\s*A\d+:\s*([\s\S]*?)(?=Q\d+:|$)"
         matches = re.findall(regex, text, re.UNICODE)
 
@@ -704,7 +708,8 @@ class IndexingRunner:
             }
         )
 
-    def _process_keyword_index(self, flask_app, dataset_id, document_id, documents):
+    @staticmethod
+    def _process_keyword_index(flask_app, dataset_id, document_id, documents):
         with flask_app.app_context():
             dataset = Dataset.query.filter_by(id=dataset_id).first()
             if not dataset:
@@ -715,6 +720,7 @@ class IndexingRunner:
                 document_ids = [document.metadata['doc_id'] for document in documents]
                 db.session.query(DocumentSegment).filter(
                     DocumentSegment.document_id == document_id,
+                    DocumentSegment.dataset_id == dataset_id,
                     DocumentSegment.index_node_id.in_(document_ids),
                     DocumentSegment.status == "indexing"
                 ).update({
@@ -746,6 +752,7 @@ class IndexingRunner:
             document_ids = [document.metadata['doc_id'] for document in chunk_documents]
             db.session.query(DocumentSegment).filter(
                 DocumentSegment.document_id == dataset_document.id,
+                DocumentSegment.dataset_id == dataset.id,
                 DocumentSegment.index_node_id.in_(document_ids),
                 DocumentSegment.status == "indexing"
             ).update({
@@ -758,13 +765,15 @@ class IndexingRunner:
 
             return tokens
 
-    def _check_document_paused_status(self, document_id: str):
+    @staticmethod
+    def _check_document_paused_status(document_id: str):
         indexing_cache_key = 'document_{}_is_paused'.format(document_id)
         result = redis_client.get(indexing_cache_key)
         if result:
             raise DocumentIsPausedException()
 
-    def _update_document_index_status(self, document_id: str, after_indexing_status: str,
+    @staticmethod
+    def _update_document_index_status(document_id: str, after_indexing_status: str,
                                       extra_update_params: Optional[dict] = None) -> None:
         """
         Update the document indexing status.
@@ -786,14 +795,16 @@ class IndexingRunner:
         DatasetDocument.query.filter_by(id=document_id).update(update_params)
         db.session.commit()
 
-    def _update_segments_by_document(self, dataset_document_id: str, update_params: dict) -> None:
+    @staticmethod
+    def _update_segments_by_document(dataset_document_id: str, update_params: dict) -> None:
         """
         Update the document segment by document id.
         """
         DocumentSegment.query.filter_by(document_id=dataset_document_id).update(update_params)
         db.session.commit()
 
-    def batch_add_segments(self, segments: list[DocumentSegment], dataset: Dataset):
+    @staticmethod
+    def batch_add_segments(segments: list[DocumentSegment], dataset: Dataset):
         """
         Batch add segments index processing
         """

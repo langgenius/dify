@@ -64,7 +64,7 @@ model_credential_schema:
         en_US: API Endpoint Host
         zh_Hans: API Endpoint Host
       type: text-input
-      default: maas-api.ml-platform-cn-beijing.volces.com
+      default: https://ark.cn-beijing.volces.com/api/v3
       placeholder:
         en_US: Enter your API Endpoint Host
         zh_Hans: 输入 API Endpoint Host
