@@ -1,3 +1,5 @@
+from datetime import datetime, timezone
+
 from flask_login import current_user
 from flask_restful import Resource, marshal_with, reqparse
 from werkzeug.exceptions import Forbidden, NotFound
@@ -71,6 +73,8 @@ class AppSite(Resource):
             if value is not None:
                 setattr(site, attr_name, value)
 
+        site.updated_by = current_user.id
+        site.updated_at = datetime.now(timezone.utc).replace(tzinfo=None)
         db.session.commit()
 
         return site
@@ -93,6 +97,8 @@ class AppSiteAccessTokenReset(Resource):
             raise NotFound
 
         site.code = Site.generate_code(16)
+        site.updated_by = current_user.id
+        site.updated_at = datetime.now(timezone.utc).replace(tzinfo=None)
         db.session.commit()
 
         return site
