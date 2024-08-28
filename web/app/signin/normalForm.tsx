@@ -1,6 +1,7 @@
 import React, { useEffect, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import Link from 'next/link'
+import { useSearchParams } from 'next/navigation'
 import Loading from '../components/base/loading'
 import MailAndCodeAuth from './components/mail-and-code-auth'
 import MailAndPasswordAuth from './components/mail-and-password-auth'
@@ -15,10 +16,16 @@ type AuthType = 'password' | 'code' | 'sso' | 'social'
 
 const NormalForm = () => {
   const { t } = useTranslation()
+  const searchParams = useSearchParams()
+  const token = searchParams.get('token')
+  const email = searchParams.get('email') || ''
+  const spaceName = searchParams.get('space') || ''
   const [isLoading, setIsLoading] = useState(true)
   const [systemFeatures, setSystemFeatures] = useState(defaultSystemFeatures)
   const [authType, updateAuthType] = useState('code')
   const [enabledAuthType, updateEnabledAuthType] = useState<AuthType[]>(['password', 'code', 'sso', 'social'])
+
+  const isInviteLink = Boolean(token && token !== 'null')
 
   const shouldShowORLine = (enabledAuthType.includes('code') || enabledAuthType.includes('password')) && (enabledAuthType.includes('social') || enabledAuthType.includes('sso'))
 
@@ -43,12 +50,16 @@ const NormalForm = () => {
 
   return (
     <>
-      <div className="w-full mx-auto">
-        <h2 className="text-2xl font-bold text-gray-900">{t('login.pageTitle')}</h2>
-        <p className='mt-1 text-sm text-gray-600'>{t('login.welcome')}</p>
-      </div>
-
       <div className="w-full mx-auto mt-8">
+        {token
+          ? <div className="w-full mx-auto">
+            <h2 className="text-2xl font-bold text-gray-900">{t('login.join')}{spaceName}</h2>
+            <p className='mt-1 text-sm text-gray-600'>{t('login.joinTipStart')}{spaceName}{t('login.joinTipEnd')}</p>
+          </div>
+          : <div className="w-full mx-auto">
+            <h2 className="text-2xl font-bold text-gray-900">{t('login.pageTitle')}</h2>
+            <p className='mt-1 text-sm text-gray-600'>{t('login.welcome')}</p>
+          </div>}
         <div className="bg-white ">
           <div className="flex flex-col gap-3 mt-6">
             {enabledAuthType.includes('social') && <SocialAuth />}
@@ -66,13 +77,13 @@ const NormalForm = () => {
             </div>
           </div>}
           {enabledAuthType.includes('code') && authType === 'code' && <>
-            <MailAndCodeAuth />
+            <MailAndCodeAuth isInvite={isInviteLink} />
             {enabledAuthType.includes('password') && <div className='cursor-pointer py-1 text-center' onClick={() => { updateAuthType('password') }}>
               <span className='text-xs text-components-button-secondary-accent-text'>{t('login.usePassword')}</span>
             </div>}
           </>}
           {enabledAuthType.includes('password') && authType === 'password' && <>
-            <MailAndPasswordAuth />
+            <MailAndPasswordAuth isInvite={isInviteLink} />
             {enabledAuthType.includes('code') && <div className='cursor-pointer py-1 text-center' onClick={() => { updateAuthType('code') }}>
               <span className='text-xs text-components-button-secondary-accent-text'>{t('login.useVerificationCode')}</span>
             </div>}
