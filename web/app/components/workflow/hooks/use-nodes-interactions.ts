@@ -334,10 +334,10 @@ export const useNodesInteractions = () => {
     if (targetNode?.parentId !== sourceNode?.parentId)
       return
 
-    if (targetNode?.data.isIterationStart)
+    if (sourceNode?.type === CUSTOM_NOTE_NODE || targetNode?.type === CUSTOM_NOTE_NODE)
       return
 
-    if (sourceNode?.type === CUSTOM_NOTE_NODE || targetNode?.type === CUSTOM_NOTE_NODE)
+    if (edges.find(edge => edge.source === source && edge.sourceHandle === sourceHandle && edge.target === target && edge.targetHandle === targetHandle))
       return
 
     const newEdge = {
@@ -398,14 +398,12 @@ export const useNodesInteractions = () => {
           return
       }
 
-      if (!node.data.isIterationStart) {
-        setConnectingNodePayload({
-          nodeId,
-          nodeType: node.data.type,
-          handleType,
-          handleId,
-        })
-      }
+      setConnectingNodePayload({
+        nodeId,
+        nodeType: node.data.type,
+        handleType,
+        handleId,
+      })
     }
   }, [store, workflowStore, getNodesReadOnly])
 
@@ -771,9 +769,6 @@ export const useNodesInteractions = () => {
             node.data.start_node_id = newNode.id
             node.data.startNodeType = newNode.data.type
           }
-
-          if (node.id === nextNodeId && node.data.isIterationStart)
-            node.data.isIterationStart = false
         })
         draft.push(newNode)
         if (newIterationStartNode)
@@ -1117,7 +1112,6 @@ export const useNodesInteractions = () => {
           zIndex: nodeToPaste.zIndex,
         })
         newNode.id = newNode.id + index
-        // If only the iteration start node is copied, remove the isIterationStart flag
         // This new node is movable and can be placed anywhere
         let newChildren: Node[] = []
         if (nodeToPaste.data.type === BlockEnum.Iteration) {

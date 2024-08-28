@@ -50,6 +50,7 @@ import {
 } from '@/service/tools'
 import I18n from '@/context/i18n'
 import { CollectionType } from '@/app/components/tools/types'
+import { CUSTOM_ITERATION_START_NODE } from '@/app/components/workflow/nodes/iteration-start/constants'
 
 export const useIsChatMode = () => {
   const appDetail = useAppStore(s => s.appDetail)
@@ -77,7 +78,7 @@ export const useWorkflow = () => {
     const currentNode = nodes.find(node => node.id === nodeId)
 
     if (currentNode?.parentId)
-      startNode = nodes.find(node => node.parentId === currentNode.parentId && node.data.isIterationStart)
+      startNode = nodes.find(node => node.parentId === currentNode.parentId && node.type === CUSTOM_ITERATION_START_NODE)
 
     if (!startNode)
       return []
@@ -283,9 +284,6 @@ export const useWorkflow = () => {
     const nodes = getNodes()
     const sourceNode: Node = nodes.find(node => node.id === source)!
     const targetNode: Node = nodes.find(node => node.id === target)!
-
-    if (targetNode.data.isIterationStart)
-      return false
 
     if (sourceNode.type === CUSTOM_NOTE_NODE || targetNode.type === CUSTOM_NOTE_NODE)
       return false
