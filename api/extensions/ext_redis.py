@@ -3,7 +3,7 @@ from redis.connection import Connection, SSLConnection
 from redis.sentinel import Sentinel
 
 
-class RedisClientWrapper:
+class RedisClientWrapper(redis.Redis):
     def __init__(self):
         self._client = None
 
