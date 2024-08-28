@@ -350,7 +350,7 @@ export const toNodeOutputVars = (
   const res = [
     ...nodes.filter(node => SUPPORT_OUTPUT_VARS_NODE.includes(node.data.type)),
     ...(environmentVariables.length > 0 ? [ENV_NODE] : []),
-    ...((isChatMode && conversationVariables.length) > 0 ? [CHAT_VAR_NODE] : []),
+    ...((isChatMode && conversationVariables.length > 0) ? [CHAT_VAR_NODE] : []),
   ].map((node) => {
     return {
       ...formatItem(node, isChatMode, filterVar),
@@ -619,7 +619,7 @@ export const getNodeUsedVars = (node: Node): ValueSelector[] => {
     }
     case BlockEnum.IfElse: {
       res = (data as IfElseNodeType).conditions?.map((c) => {
-        return c.variable_selector
+        return c.variable_selector || []
       }) || []
       break
     }
@@ -681,7 +681,7 @@ export const getNodeUsedVars = (node: Node): ValueSelector[] => {
   return res || []
 }
 
-// used can be used in iteration node
+// can be used in iteration node
 export const getNodeUsedVarPassToServerKey = (node: Node, valueSelector: ValueSelector): string | string[] => {
   const { data } = node
   const { type } = data
@@ -700,7 +700,7 @@ export const getNodeUsedVarPassToServerKey = (node: Node, valueSelector: ValueSe
       break
     }
     case BlockEnum.IfElse: {
-      const targetVar = (data as IfElseNodeType).conditions?.find(c => c.variable_selector.join('.') === valueSelector.join('.'))
+      const targetVar = (data as IfElseNodeType).conditions?.find(c => c.variable_selector?.join('.') === valueSelector.join('.'))
       if (targetVar)
         res = `#${valueSelector.join('.')}#`
       break
@@ -821,7 +821,7 @@ export const updateNodeVars = (oldNode: Node, oldVarSelector: ValueSelector, new
         const payload = data as IfElseNodeType
         if (payload.conditions) {
           payload.conditions = payload.conditions.map((c) => {
-            if (c.variable_selector.join('.') === oldVarSelector.join('.'))
+            if (c.variable_selector?.join('.') === oldVarSelector.join('.'))
               c.variable_selector = newVarSelector
             return c
           })
