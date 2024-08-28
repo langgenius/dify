@@ -8,17 +8,20 @@ const SignIn = () => {
   const router = useRouter()
   const searchParams = useSearchParams()
   const consoleToken = searchParams.get('console_token')
-  const invitationCode = searchParams.get('invitation_code')
+  const invitationToken = searchParams.get('token')
+  const step = searchParams.get('step')
   useEffect(() => {
+    if (invitationToken || step)
+      return
+
     if (consoleToken) {
       localStorage.setItem('console_token', consoleToken)
-      if (!invitationCode)
-        router.replace('/apps')
+      router.replace('/apps')
     }
-  }, [consoleToken, invitationCode, router])
-  if (!consoleToken)
+  }, [consoleToken, invitationToken, router, step])
+  if (invitationToken || !consoleToken)
     return <NormalForm />
-  else if (invitationCode)
+  if (step === 'next')
     return <OneMoreStep />
   return null
 }
