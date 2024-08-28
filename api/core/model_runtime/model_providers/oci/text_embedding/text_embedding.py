@@ -112,6 +112,19 @@ class OCITextEmbeddingModel(TextEmbeddingModel):
         """
         return sum(self._get_num_tokens_by_gpt2(text) for text in texts)
 
+    def get_num_characters(self, model: str, credentials: dict, texts: list[str]) -> int:
+        """
+        Get number of tokens for given prompt messages
+
+        :param model: model name
+        :param credentials: model credentials
+        :param texts: texts to embed
+        :return:
+        """
+        characters = 0
+        for text in texts:
+            characters += len(text)
+        return characters
     def validate_credentials(self, model: str, credentials: dict) -> None:
         """
         Validate model credentials
@@ -169,7 +182,7 @@ class OCITextEmbeddingModel(TextEmbeddingModel):
         request_args["servingMode"]["modelId"] = model
         request_args["inputs"] = texts
         response = client.embed_text(request_args)
-        return response.data.embeddings, 0
+        return response.data.embeddings, self.get_num_characters(model=model, credentials=credentials, texts=texts)
 
     def _calc_response_usage(self, model: str, credentials: dict, tokens: int) -> EmbeddingUsage:
         """

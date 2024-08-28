@@ -20,7 +20,7 @@ class OCIGENAIProvider(ModelProvider):
         try:
             model_instance = self.get_model_instance(ModelType.LLM)
 
-            # Use `gemini-pro` model for validate,
+            # Use `cohere.command-r-plus` model for validate,
             model_instance.validate_credentials(
                 model='cohere.command-r-plus',
                 credentials=credentials

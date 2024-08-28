@@ -147,10 +147,23 @@ class OCILargeLanguageModel(LargeLanguageModel):
 
         return self._get_num_tokens_by_gpt2(prompt)
 
+    def get_num_characters(self, model: str, credentials: dict, prompt_messages: list[PromptMessage],
+                       tools: Optional[list[PromptMessageTool]] = None) -> int:
+        """
+        Get number of tokens for given prompt messages
+
+        :param model: model name
+        :param credentials: model credentials
+        :param prompt_messages: prompt messages
+        :param tools: tools for tool calling
+        :return:md = genai.GenerativeModel(model)
+        """
+        prompt = self._convert_messages_to_prompt(prompt_messages)
+
+        return len(prompt)
+
     def _convert_messages_to_prompt(self, messages: list[PromptMessage]) -> str:
         """
-        Format a list of messages into a full prompt for the Google model
-
         :param messages: List of PromptMessage to combine.
         :return: Combined string with necessary human_prompt and ai_prompt tags.
         """
@@ -202,6 +215,7 @@ class OCILargeLanguageModel(LargeLanguageModel):
         #    config_kwargs["stop_sequences"] = stop
 
         # initialize client
+        # ref: https://docs.oracle.com/en-us/iaas/api/#/en/generative-ai-inference/20231130/ChatResult/Chat
         oci_config = copy.deepcopy(oci_config_template)
         if "oci_config_content" in credentials:
             oci_config_content = base64.b64decode(credentials.get('oci_config_content')).decode('utf-8')
@@ -246,6 +260,8 @@ class OCILargeLanguageModel(LargeLanguageModel):
         #        history[-1]["parts"].extend(content["parts"])
         #    else:
         #        history.append(content)
+
+        # temporary not implement the tool call function
         valid_value = self._is_tool_call_supported(model, stream)
         if tools is not None and len(tools) > 0:
             if not valid_value:
@@ -309,8 +325,8 @@ class OCILargeLanguageModel(LargeLanguageModel):
         )
 
         # calculate num tokens
-        prompt_tokens = self.get_num_tokens(model, credentials, prompt_messages)
-        completion_tokens = self.get_num_tokens(model, credentials, [assistant_prompt_message])
+        prompt_tokens = self.get_num_characters(model, credentials, prompt_messages)
+        completion_tokens = self.get_num_characters(model, credentials, [assistant_prompt_message])
 
         # transform usage
         usage = self._calc_response_usage(model, credentials, prompt_tokens, completion_tokens)
@@ -347,8 +363,6 @@ class OCILargeLanguageModel(LargeLanguageModel):
 
         #for chunk in response:
             #for part in chunk.parts:
-
-
             #if part.function_call:
             #    assistant_prompt_message.tool_calls = [
             #        AssistantPromptMessage.ToolCall(
@@ -382,8 +396,8 @@ class OCILargeLanguageModel(LargeLanguageModel):
                 )
             else:
                 # calculate num tokens
-                prompt_tokens = self.get_num_tokens(model, credentials, prompt_messages)
-                completion_tokens = self.get_num_tokens(model, credentials, [assistant_prompt_message])
+                prompt_tokens = self.get_num_characters(model, credentials, prompt_messages)
+                completion_tokens = self.get_num_characters(model, credentials, [assistant_prompt_message])
 
                 # transform usage
                 usage = self._calc_response_usage(model, credentials, prompt_tokens, completion_tokens)

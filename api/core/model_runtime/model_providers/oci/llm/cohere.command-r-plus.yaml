@@ -46,7 +46,7 @@ parameter_rules:
     default: 600
     max: 4000
 pricing:
-  input: '3'
-  output: '15'
-  unit: '0.000001'
+  input: '0.0219'
+  output: '0.0219'
+  unit: '0.0001'
   currency: USD

@@ -44,9 +44,9 @@ parameter_rules:
   - name: maxTokens
     use_template: max_tokens
     default: 600
-    max: 000
+    max: 4000
 pricing:
-  input: '0.5'
-  output: '1.5'
-  unit: '0.000001'
+  input: '0.004'
+  output: '0.004'
+  unit: '0.0001'
   currency: USD
