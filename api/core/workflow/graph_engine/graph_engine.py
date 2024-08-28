@@ -270,10 +270,10 @@ class GraphEngine:
 
                 next_node_id = edge.target_node_id
             else:
+                final_node_id = None
+
                 if any(edge.run_condition for edge in edge_mappings):
                     # if nodes has run conditions, get node id which branch to take based on the run condition results
-                    final_node_id = None
-
                     condition_edge_mappings = {}
                     for edge in edge_mappings:
                         if edge.run_condition:
@@ -331,12 +331,14 @@ class GraphEngine:
 
                     for item in parallel_generator:
                         if isinstance(item, str):
-                            next_node_id = item
+                            final_node_id = item
                         else:
                             yield item
 
-                    if not next_node_id:
+                    if not final_node_id:
                         break
+
+                    next_node_id = final_node_id
 
             if in_parallel_id and self.graph.node_parallel_mapping.get(next_node_id, '') != in_parallel_id:
                 break
