@@ -90,17 +90,18 @@ class HttpRequestNode(BaseNode):
             },
         )
 
-    def _get_request_timeout(self, node_data: HttpRequestNodeData) -> HttpRequestNodeTimeout:
+    @staticmethod
+    def _get_request_timeout(node_data: HttpRequestNodeData) -> HttpRequestNodeTimeout:
         timeout = node_data.timeout
         if timeout is None:
             return HTTP_REQUEST_DEFAULT_TIMEOUT
 
-        timeout.connect = timeout.connect or HTTP_REQUEST_DEFAULT_TIMEOUT.connect
-        timeout.connect = min(timeout.connect, dify_config.HTTP_REQUEST_MAX_CONNECT_TIMEOUT)
-        timeout.read = timeout.read or HTTP_REQUEST_DEFAULT_TIMEOUT.read
-        timeout.read = min(timeout.read, dify_config.HTTP_REQUEST_MAX_READ_TIMEOUT)
-        timeout.write = timeout.write or HTTP_REQUEST_DEFAULT_TIMEOUT.write
-        timeout.write = min(timeout.write, dify_config.HTTP_REQUEST_MAX_WRITE_TIMEOUT)
+        timeout.connect = min(timeout.connect or HTTP_REQUEST_DEFAULT_TIMEOUT.connect,
+                              dify_config.HTTP_REQUEST_MAX_CONNECT_TIMEOUT)
+        timeout.read = min(timeout.read or HTTP_REQUEST_DEFAULT_TIMEOUT.read,
+                           dify_config.HTTP_REQUEST_MAX_READ_TIMEOUT)
+        timeout.write = min(timeout.write or HTTP_REQUEST_DEFAULT_TIMEOUT.write,
+                            dify_config.HTTP_REQUEST_MAX_WRITE_TIMEOUT)
         return timeout
 
     @classmethod
