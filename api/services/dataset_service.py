@@ -136,7 +136,9 @@ class DatasetService:
         return datasets.items, datasets.total
 
     @staticmethod
-    def create_empty_dataset(tenant_id: str, name: str, indexing_technique: Optional[str], account: Account, permission: Optional[str]):
+    def create_empty_dataset(
+        tenant_id: str, name: str, indexing_technique: Optional[str], account: Account, permission: Optional[str]
+    ):
         # check if dataset name already exists
         if Dataset.query.filter_by(name=name, tenant_id=tenant_id).first():
             raise DatasetNameDuplicateError(f"Dataset with name {name} already exists.")
