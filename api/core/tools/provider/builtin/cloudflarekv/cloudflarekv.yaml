@@ -1,0 +1,39 @@
+identity:
+  author: AlterXYZ
+  name: cloudflarekv
+  label:
+    en_US: Cloudflare Workers KV
+    zh_Hans: Cloudflare Workers KV
+  description:
+    en_US: A global, low-latency, key-value data storage.
+    zh_Hans: 一个全球性的、低延迟的键值数据存储服务。
+  icon: icon.svg
+  tags:
+    - utilities
+credentials_for_provider:
+  api_token:
+    type: secret-input
+    required: true
+    label:
+      en_US: API Token
+      zh_Hans: API 令牌
+    placeholder:
+      en_US: Please enter your Cloudflare API token
+      zh_Hans: 请输入您的 Cloudflare API 令牌
+    help:
+      en_US: Get your Cloudflare API token from the Cloudflare dashboard
+      zh_Hans: 从 Cloudflare 仪表板获取您的 API 令牌
+    url: https://developers.cloudflare.com/fundamentals/api/get-started/create-token/
+  account_id:
+    type: secret-input
+    required: true
+    label:
+      en_US: Account ID
+      zh_Hans: 账户 ID
+    placeholder:
+      en_US: Please enter your Cloudflare account ID
+      zh_Hans: 请输入您的 Cloudflare 账户 ID
+    help:
+      en_US: Enter your Cloudflare account ID
+      zh_Hans: 输入您的 Cloudflare ID
+    url: https://ezdify.alterxyz.org/demo/cf_account_id_by_api_with_dify/

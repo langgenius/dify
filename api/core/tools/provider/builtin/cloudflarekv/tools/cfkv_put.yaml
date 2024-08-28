@@ -1,0 +1,45 @@
+identity:
+  name: cfkv_put
+  author: AlterXYZ
+  label:
+    en_US: Cloudflare KV Put
+    zh_Hans: Cloudflare KV 存储
+description:
+  human:
+    en_US: A tool for putting a key-value pair into Cloudflare Workers KV.
+    zh_Hans: 一个用于向 Cloudflare Workers KV 中存储键值对的工具。
+  llm: A tool for putting a key-value pair into Cloudflare Workers KV. This tool will store a key-value pair in the specified Cloudflare KV namespace.
+parameters:
+  - name: key
+    type: string
+    required: true
+    label:
+      en_US: Key
+      zh_Hans: 键
+    human_description:
+      en_US: The key for the key-value pair
+      zh_Hans: 键值对的键
+    llm_description: The key for the key-value pair to be stored in Cloudflare KV
+    form: llm
+  - name: value
+    type: string
+    required: true
+    label:
+      en_US: Value
+      zh_Hans: 值
+    human_description:
+      en_US: The value for the key-value pair
+      zh_Hans: 键值对的值
+    llm_description: The value for the key-value pair to be stored in Cloudflare KV
+    form: llm
+  - name: namespace_id
+    type: string
+    required: true
+    label:
+      en_US: Namespace ID
+      zh_Hans: 命名空间 ID
+    human_description:
+      en_US: The ID of the Cloudflare KV namespace
+      zh_Hans: Cloudflare KV 命名空间的 ID
+    llm_description: The ID of the Cloudflare KV namespace where the key-value pair will be stored. Should be pre-configured in the Cloudflare account.
+    form: llm

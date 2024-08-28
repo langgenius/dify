@@ -1,0 +1,34 @@
+identity:
+  name: cfkv_get
+  author: alterxyz
+  label:
+    en_US: CloudflareKVGet
+    zh_Hans: Cloudflare KV 获取
+description:
+  human:
+    en_US: A tool for getting a value by key from Cloudflare Workers KV.
+    zh_Hans: 一个用于从 Cloudflare Workers KV 中获取指定键的值的工具。
+  llm: A tool for retrieving a value by key from Cloudflare Workers KV. This tool will fetch the value associated with the specified key from the given Cloudflare KV namespace.
+parameters:
+  - name: key_name
+    type: string
+    required: true
+    label:
+      en_US: Key Name
+      zh_Hans: 键名
+    human_description:
+      en_US: The key name to retrieve the value for
+      zh_Hans: 要获取值的键名
+    llm_description: The key name for which to retrieve the associated value from Cloudflare KV
+    form: llm
+  - name: namespace_id
+    type: string
+    required: true
+    label:
+      en_US: Namespace ID
+      zh_Hans: 命名空间 ID
+    human_description:
+      en_US: The ID of the Cloudflare KV namespace
+      zh_Hans: Cloudflare KV 命名空间的 ID
+    llm_description: The ID of the Cloudflare KV namespace from which to retrieve the value
+    form: llm
