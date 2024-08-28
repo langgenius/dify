@@ -4,9 +4,6 @@ import time
 from collections.abc import Mapping
 from typing import Any, Optional, cast
 
-from sqlalchemy import select
-from sqlalchemy.orm import Session
-
 from core.app.apps.advanced_chat.app_config_manager import AdvancedChatAppConfig
 from core.app.apps.advanced_chat.workflow_event_trigger_callback import WorkflowEventTriggerCallback
 from core.app.apps.base_app_queue_manager import AppQueueManager, PublishFrom
@@ -19,13 +16,10 @@ from core.app.entities.app_invoke_entities import (
 from core.app.entities.queue_entities import QueueAnnotationReplyEvent, QueueStopEvent, QueueTextChunkEvent
 from core.moderation.base import ModerationException
 from core.workflow.callbacks.base_workflow_callback import WorkflowCallback
-from core.workflow.entities.node_entities import SystemVariable
-from core.workflow.entities.variable_pool import VariablePool
 from core.workflow.nodes.base_node import UserFrom
 from core.workflow.workflow_engine_manager import WorkflowEngineManager
 from extensions.ext_database import db
-from models.model import App, Conversation, EndUser, Message
-from models.workflow import ConversationVariable, Workflow
+from models import App, Message, Workflow
 
 logger = logging.getLogger(__name__)
 
@@ -39,7 +33,6 @@ class AdvancedChatAppRunner(AppRunner):
         self,
         application_generate_entity: AdvancedChatAppGenerateEntity,
         queue_manager: AppQueueManager,
-        conversation: Conversation,
         message: Message,
     ) -> None:
         """
@@ -63,15 +56,6 @@ class AdvancedChatAppRunner(AppRunner):
 
         inputs = application_generate_entity.inputs
         query = application_generate_entity.query
-        files = application_generate_entity.files
-
-        user_id = None
-        if application_generate_entity.invoke_from in [InvokeFrom.WEB_APP, InvokeFrom.SERVICE_API]:
-            end_user = db.session.query(EndUser).filter(EndUser.id == application_generate_entity.user_id).first()
-            if end_user:
-                user_id = end_user.session_id
-        else:
-            user_id = application_generate_entity.user_id
 
         # moderation
         if self.handle_input_moderation(
@@ -103,38 +87,6 @@ class AdvancedChatAppRunner(AppRunner):
         if bool(os.environ.get('DEBUG', 'False').lower() == 'true'):
             workflow_callbacks.append(WorkflowLoggingCallback())
 
-        # Init conversation variables
-        stmt = select(ConversationVariable).where(
-            ConversationVariable.app_id == conversation.app_id, ConversationVariable.conversation_id == conversation.id
-        )
-        with Session(db.engine) as session:
-            conversation_variables = session.scalars(stmt).all()
-            if not conversation_variables:
-                conversation_variables = [
-                    ConversationVariable.from_variable(
-                        app_id=conversation.app_id, conversation_id=conversation.id, variable=variable
-                    )
-                    for variable in workflow.conversation_variables
-                ]
-                session.add_all(conversation_variables)
-                session.commit()
-            # Convert database entities to variables
-            conversation_variables = [item.to_variable() for item in conversation_variables]
-
-        # Create a variable pool.
-        system_inputs = {
-            SystemVariable.QUERY: query,
-            SystemVariable.FILES: files,
-            SystemVariable.CONVERSATION_ID: conversation.id,
-            SystemVariable.USER_ID: user_id,
-        }
-        variable_pool = VariablePool(
-            system_variables=system_inputs,
-            user_inputs=inputs,
-            environment_variables=workflow.environment_variables,
-            conversation_variables=conversation_variables,
-        )
-
         # RUN WORKFLOW
         workflow_engine_manager = WorkflowEngineManager()
         workflow_engine_manager.run_workflow(
@@ -146,7 +98,6 @@ class AdvancedChatAppRunner(AppRunner):
             invoke_from=application_generate_entity.invoke_from,
             callbacks=workflow_callbacks,
             call_depth=application_generate_entity.call_depth,
-            variable_pool=variable_pool,
         )
 
     def single_iteration_run(
@@ -155,7 +106,7 @@ class AdvancedChatAppRunner(AppRunner):
         """
         Single iteration run
         """
-        app_record: App = db.session.query(App).filter(App.id == app_id).first()
+        app_record = db.session.query(App).filter(App.id == app_id).first()
         if not app_record:
             raise ValueError('App not found')
 

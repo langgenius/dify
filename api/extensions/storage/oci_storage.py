@@ -12,14 +12,14 @@ class OCIStorage(BaseStorage):
     def __init__(self, app: Flask):
         super().__init__(app)
         app_config = self.app.config
-        self.bucket_name = app_config.get('OCI_BUCKET_NAME')
+        self.bucket_name = app_config.get("OCI_BUCKET_NAME")
         self.client = boto3.client(
-                    's3',
-                    aws_secret_access_key=app_config.get('OCI_SECRET_KEY'),
-                    aws_access_key_id=app_config.get('OCI_ACCESS_KEY'),
-                    endpoint_url=app_config.get('OCI_ENDPOINT'),
-                    region_name=app_config.get('OCI_REGION')
-                )
+            "s3",
+            aws_secret_access_key=app_config.get("OCI_SECRET_KEY"),
+            aws_access_key_id=app_config.get("OCI_ACCESS_KEY"),
+            endpoint_url=app_config.get("OCI_ENDPOINT"),
+            region_name=app_config.get("OCI_REGION"),
+        )
 
     def save(self, filename, data):
         self.client.put_object(Bucket=self.bucket_name, Key=filename, Body=data)
@@ -27,9 +27,9 @@ class OCIStorage(BaseStorage):
     def load_once(self, filename: str) -> bytes:
         try:
             with closing(self.client) as client:
-                data = client.get_object(Bucket=self.bucket_name, Key=filename)['Body'].read()
+                data = client.get_object(Bucket=self.bucket_name, Key=filename)["Body"].read()
         except ClientError as ex:
-            if ex.response['Error']['Code'] == 'NoSuchKey':
+            if ex.response["Error"]["Code"] == "NoSuchKey":
                 raise FileNotFoundError("File not found")
             else:
                 raise
@@ -40,12 +40,13 @@ class OCIStorage(BaseStorage):
             try:
                 with closing(self.client) as client:
                     response = client.get_object(Bucket=self.bucket_name, Key=filename)
-                    yield from response['Body'].iter_chunks()
+                    yield from response["Body"].iter_chunks()
             except ClientError as ex:
-                if ex.response['Error']['Code'] == 'NoSuchKey':
+                if ex.response["Error"]["Code"] == "NoSuchKey":
                     raise FileNotFoundError("File not found")
                 else:
                     raise
+
         return generate()
 
     def download(self, filename, target_filepath):

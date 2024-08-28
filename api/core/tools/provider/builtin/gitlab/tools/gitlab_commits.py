@@ -18,6 +18,7 @@ class GitlabCommitsTool(BuiltinTool):
         employee = tool_parameters.get('employee', '')
         start_time = tool_parameters.get('start_time', '')
         end_time = tool_parameters.get('end_time', '')
+        change_type = tool_parameters.get('change_type', 'all')
 
         if not project:
             return self.create_text_message('Project is required')
@@ -36,11 +37,11 @@ class GitlabCommitsTool(BuiltinTool):
             site_url = 'https://gitlab.com'
         
         # Get commit content
-        result = self.fetch(user_id, site_url, access_token, project, employee, start_time, end_time)
+        result = self.fetch(user_id, site_url, access_token, project, employee, start_time, end_time, change_type)
 
-        return self.create_text_message(json.dumps(result, ensure_ascii=False))
+        return [self.create_json_message(item) for item in result]
     
-    def fetch(self,user_id: str, site_url: str, access_token: str, project: str, employee: str = None, start_time: str = '', end_time: str = '') -> list[dict[str, Any]]:
+    def fetch(self,user_id: str, site_url: str, access_token: str, project: str, employee: str = None, start_time: str = '', end_time: str = '', change_type: str = '') -> list[dict[str, Any]]:
         domain = site_url
         headers = {"PRIVATE-TOKEN": access_token}
         results = []
@@ -74,7 +75,7 @@ class GitlabCommitsTool(BuiltinTool):
 
                 for commit in commits:
                     commit_sha = commit['id']
-                    print(f"\tCommit SHA: {commit_sha}")
+                    author_name = commit['author_name']
 
                     diff_url = f"{domain}/api/v4/projects/{project_id}/repository/commits/{commit_sha}/diff"
                     diff_response = requests.get(diff_url, headers=headers)
@@ -87,14 +88,23 @@ class GitlabCommitsTool(BuiltinTool):
                         removed_lines = diff['diff'].count('\n-')
                         total_changes = added_lines + removed_lines
 
-                        if total_changes > 1:
-                            final_code = ''.join([line[1:] for line in diff['diff'].split('\n') if line.startswith('+') and not line.startswith('+++')])
-                            results.append({
-                                "project": project_name,
-                                "commit_sha": commit_sha,
-                                "diff": final_code
-                            })
-                            print(f"Commit code:{final_code}")
+                        if change_type == "new":
+                            if added_lines > 1:
+                                final_code = ''.join([line[1:] for line in diff['diff'].split('\n') if line.startswith('+') and not line.startswith('+++')])
+                                results.append({
+                                    "commit_sha": commit_sha,
+                                    "author_name": author_name,
+                                    "diff": final_code
+                                })
+                        else:
+                            if total_changes > 1:
+                                final_code = ''.join([line[1:] for line in diff['diff'].split('\n') if (line.startswith('+') or line.startswith('-')) and not line.startswith('+++') and not line.startswith('---')])
+                                final_code_escaped = json.dumps(final_code)[1:-1]  # Escape the final code
+                                results.append({
+                                    "commit_sha": commit_sha,
+                                    "author_name": author_name,
+                                    "diff": final_code_escaped
+                                })
         except requests.RequestException as e:
             print(f"Error fetching data from GitLab: {e}")
         

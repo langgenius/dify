@@ -7,11 +7,9 @@ import { XMarkIcon } from '@heroicons/react/20/solid'
 import { RocketLaunchIcon } from '@heroicons/react/24/outline'
 import {
   RiCloseLine,
-  RiQuestionLine,
 } from '@remixicon/react'
 import Link from 'next/link'
 import { groupBy } from 'lodash-es'
-import RetrievalMethodInfo from '../../common/retrieval-method-info'
 import PreviewItem, { PreviewType } from './preview-item'
 import LanguageSelect from './language-select'
 import s from './index.module.css'
@@ -43,7 +41,6 @@ import { IS_CE_EDITION } from '@/config'
 import { RETRIEVE_METHOD } from '@/types/app'
 import useBreakpoints, { MediaType } from '@/hooks/use-breakpoints'
 import Tooltip from '@/app/components/base/tooltip'
-import TooltipPlus from '@/app/components/base/tooltip-plus'
 import { useModelListAndDefaultModelAndCurrentProviderAndModel } from '@/app/components/header/account-setting/model-provider-page/hooks'
 import { LanguagesSupported } from '@/i18n/language'
 import { ModelTypeEnum } from '@/app/components/header/account-setting/model-provider-page/declarations'
@@ -126,7 +123,9 @@ const StepTwo = ({
   const [docForm, setDocForm] = useState<DocForm | string>(
     (datasetId && documentDetail) ? documentDetail.doc_form : DocForm.TEXT,
   )
-  const [docLanguage, setDocLanguage] = useState<string>(locale !== LanguagesSupported[1] ? 'English' : 'Chinese')
+  const [docLanguage, setDocLanguage] = useState<string>(
+    (datasetId && documentDetail) ? documentDetail.doc_language : (locale !== LanguagesSupported[1] ? 'English' : 'Chinese'),
+  )
   const [QATipHide, setQATipHide] = useState(false)
   const [previewSwitched, setPreviewSwitched] = useState(false)
   const [showPreview, { setTrue: setShowPreview, setFalse: hidePreview }] = useBoolean()
@@ -556,7 +555,7 @@ const StepTwo = ({
               className='border-[0.5px] !h-8 hover:outline hover:outline-[0.5px] hover:outline-gray-300 text-gray-700 font-medium bg-white shadow-[0px_1px_2px_0px_rgba(16,24,40,0.05)]'
               onClick={setShowPreview}
             >
-              <Tooltip selector='data-preview-toggle'>
+              <Tooltip>
                 <div className="flex flex-row items-center">
                   <RocketLaunchIcon className="h-4 w-4 mr-1.5 stroke-[1.8px]" />
                   <span className="text-[13px]">{t('datasetCreation.stepTwo.previewTitleButton')}</span>
@@ -628,13 +627,13 @@ const StepTwo = ({
                     <div className='w-full'>
                       <div className={s.label}>
                         {t('datasetCreation.stepTwo.overlap')}
-                        <TooltipPlus popupContent={
-                          <div className='max-w-[200px]'>
-                            {t('datasetCreation.stepTwo.overlapTip')}
-                          </div>
-                        }>
-                          <RiQuestionLine className='ml-1 w-3.5 h-3.5 text-gray-400' />
-                        </TooltipPlus>
+                        <Tooltip
+                          popupContent={
+                            <div className='max-w-[200px]'>
+                              {t('datasetCreation.stepTwo.overlapTip')}
+                            </div>
+                          }
+                        />
                       </div>
                       <input
                         type="number"
@@ -787,34 +786,21 @@ const StepTwo = ({
                 )}
 
               <div className='max-w-[640px]'>
-                {!datasetId
-                  ? (<>
-                    {getIndexing_technique() === IndexingType.QUALIFIED
-                      ? (
-                        <RetrievalMethodConfig
-                          value={retrievalConfig}
-                          onChange={setRetrievalConfig}
-                        />
-                      )
-                      : (
-                        <EconomicalRetrievalMethodConfig
-                          value={retrievalConfig}
-                          onChange={setRetrievalConfig}
-                        />
-                      )}
-                  </>)
-                  : (
-                    <div>
-                      <RetrievalMethodInfo
+                {
+                  getIndexing_technique() === IndexingType.QUALIFIED
+                    ? (
+                      <RetrievalMethodConfig
                         value={retrievalConfig}
+                        onChange={setRetrievalConfig}
                       />
-                      <div className='mt-2 text-xs text-gray-500 font-medium'>
-                        {t('datasetCreation.stepTwo.retrivalSettedTip')}
-                        <Link className='text-[#155EEF]' href={`/datasets/${datasetId}/settings`}>{t('datasetCreation.stepTwo.datasetSettingLink')}</Link>
-                      </div>
-                    </div>
-                  )}
-
+                    )
+                    : (
+                      <EconomicalRetrievalMethodConfig
+                        value={retrievalConfig}
+                        onChange={setRetrievalConfig}
+                      />
+                    )
+                }
               </div>
             </div>
 

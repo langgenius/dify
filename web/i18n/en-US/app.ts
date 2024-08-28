@@ -71,9 +71,11 @@ const translation = {
   editAppTitle: 'Edit App Info',
   editDone: 'App info updated',
   editFailed: 'Failed to update app info',
-  emoji: {
+  iconPicker: {
     ok: 'OK',
     cancel: 'Cancel',
+    emoji: 'Emoji',
+    image: 'Image',
   },
   switch: 'Switch to Workflow Orchestrate',
   switchTipStart: 'A new app copy will be created for you, and the new copy will switch to Workflow Orchestrate. The new copy will ',
@@ -93,6 +95,7 @@ const translation = {
     title: 'Tracing app performance',
     description: 'Configuring a Third-Party LLMOps provider and tracing app performance.',
     config: 'Config',
+    view: 'View',
     collapse: 'Collapse',
     expand: 'Expand',
     tracing: 'Tracing',

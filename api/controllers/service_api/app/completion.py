@@ -33,21 +33,21 @@ from services.app_generate_service import AppGenerateService
 class CompletionApi(Resource):
     @validate_app_token(fetch_user_arg=FetchUserArg(fetch_from=WhereisUserArg.JSON, required=True))
     def post(self, app_model: App, end_user: EndUser):
-        if app_model.mode != 'completion':
+        if app_model.mode != "completion":
             raise AppUnavailableError()
 
         parser = reqparse.RequestParser()
-        parser.add_argument('inputs', type=dict, required=True, location='json')
-        parser.add_argument('query', type=str, location='json', default='')
-        parser.add_argument('files', type=list, required=False, location='json')
-        parser.add_argument('response_mode', type=str, choices=['blocking', 'streaming'], location='json')
-        parser.add_argument('retriever_from', type=str, required=False, default='dev', location='json')
+        parser.add_argument("inputs", type=dict, required=True, location="json")
+        parser.add_argument("query", type=str, location="json", default="")
+        parser.add_argument("files", type=list, required=False, location="json")
+        parser.add_argument("response_mode", type=str, choices=["blocking", "streaming"], location="json")
+        parser.add_argument("retriever_from", type=str, required=False, default="dev", location="json")
 
         args = parser.parse_args()
 
-        streaming = args['response_mode'] == 'streaming'
+        streaming = args["response_mode"] == "streaming"
 
-        args['auto_generate_name'] = False
+        args["auto_generate_name"] = False
 
         try:
             response = AppGenerateService.generate(
@@ -84,12 +84,12 @@ class CompletionApi(Resource):
 class CompletionStopApi(Resource):
     @validate_app_token(fetch_user_arg=FetchUserArg(fetch_from=WhereisUserArg.JSON, required=True))
     def post(self, app_model: App, end_user: EndUser, task_id):
-        if app_model.mode != 'completion':
+        if app_model.mode != "completion":
             raise AppUnavailableError()
 
         AppQueueManager.set_stop_flag(task_id, InvokeFrom.SERVICE_API, end_user.id)
 
-        return {'result': 'success'}, 200
+        return {"result": "success"}, 200
 
 
 class ChatApi(Resource):
@@ -100,25 +100,21 @@ class ChatApi(Resource):
             raise NotChatAppError()
 
         parser = reqparse.RequestParser()
-        parser.add_argument('inputs', type=dict, required=True, location='json')
-        parser.add_argument('query', type=str, required=True, location='json')
-        parser.add_argument('files', type=list, required=False, location='json')
-        parser.add_argument('response_mode', type=str, choices=['blocking', 'streaming'], location='json')
-        parser.add_argument('conversation_id', type=uuid_value, location='json')
-        parser.add_argument('retriever_from', type=str, required=False, default='dev', location='json')
-        parser.add_argument('auto_generate_name', type=bool, required=False, default=True, location='json')
+        parser.add_argument("inputs", type=dict, required=True, location="json")
+        parser.add_argument("query", type=str, required=True, location="json")
+        parser.add_argument("files", type=list, required=False, location="json")
+        parser.add_argument("response_mode", type=str, choices=["blocking", "streaming"], location="json")
+        parser.add_argument("conversation_id", type=uuid_value, location="json")
+        parser.add_argument("retriever_from", type=str, required=False, default="dev", location="json")
+        parser.add_argument("auto_generate_name", type=bool, required=False, default=True, location="json")
 
         args = parser.parse_args()
 
-        streaming = args['response_mode'] == 'streaming'
+        streaming = args["response_mode"] == "streaming"
 
         try:
             response = AppGenerateService.generate(
-                app_model=app_model,
-                user=end_user,
-                args=args,
-                invoke_from=InvokeFrom.SERVICE_API,
-                streaming=streaming
+                app_model=app_model, user=end_user, args=args, invoke_from=InvokeFrom.SERVICE_API, streaming=streaming
             )
 
             return helper.compact_generate_response(response)
@@ -153,10 +149,10 @@ class ChatStopApi(Resource):
 
         AppQueueManager.set_stop_flag(task_id, InvokeFrom.SERVICE_API, end_user.id)
 
-        return {'result': 'success'}, 200
+        return {"result": "success"}, 200
 
 
-api.add_resource(CompletionApi, '/completion-messages')
-api.add_resource(CompletionStopApi, '/completion-messages/<string:task_id>/stop')
-api.add_resource(ChatApi, '/chat-messages')
-api.add_resource(ChatStopApi, '/chat-messages/<string:task_id>/stop')
+api.add_resource(CompletionApi, "/completion-messages")
+api.add_resource(CompletionStopApi, "/completion-messages/<string:task_id>/stop")
+api.add_resource(ChatApi, "/chat-messages")
+api.add_resource(ChatStopApi, "/chat-messages/<string:task_id>/stop")

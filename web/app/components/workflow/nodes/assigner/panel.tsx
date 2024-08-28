@@ -49,7 +49,6 @@ const Panel: FC<NodePanelProps<AssignerNodeType>> = ({
         </Field>
         <Field
           title={t(`${i18nPrefix}.writeMode`)}
-          tooltip={t(`${i18nPrefix}.writeModeTip`)!}
         >
           <div className={cn('grid gap-2 grid-cols-3')}>
             {writeModeTypes.map(type => (
@@ -59,6 +58,7 @@ const Panel: FC<NodePanelProps<AssignerNodeType>> = ({
                 onSelect={handleWriteModeChange(type)}
                 selected={inputs.write_mode === type}
                 disabled={!isSupportAppend && type === WriteMode.Append}
+                tooltip={type === WriteMode.Append ? t(`${i18nPrefix}.writeModeTip`)! : undefined}
               />
             ))}
           </div>

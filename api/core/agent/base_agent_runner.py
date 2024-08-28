@@ -64,15 +64,19 @@ class BaseAgentRunner(AppRunner):
         """
         Agent runner
         :param tenant_id: tenant id
+        :param application_generate_entity: application generate entity
+        :param conversation: conversation
         :param app_config: app generate entity
         :param model_config: model config
         :param config: dataset config
         :param queue_manager: queue manager
         :param message: message
         :param user_id: user id
-        :param agent_llm_callback: agent llm callback
-        :param callback: callback
         :param memory: memory
+        :param prompt_messages: prompt messages
+        :param variables_pool: variables pool
+        :param db_variables: db variables
+        :param model_instance: model instance
         """
         self.tenant_id = tenant_id
         self.application_generate_entity = application_generate_entity
@@ -445,7 +449,7 @@ class BaseAgentRunner(AppRunner):
                         try:
                             tool_responses = json.loads(agent_thought.observation)
                         except Exception as e:
-                            tool_responses = { tool: agent_thought.observation for tool in tools }
+                            tool_responses = dict.fromkeys(tools, agent_thought.observation)
 
                         for tool in tools:
                             # generate a uuid for tool call

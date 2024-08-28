@@ -29,7 +29,6 @@ from services.hit_testing_service import HitTestingService
 
 
 class HitTestingApi(Resource):
-
     @setup_required
     @login_required
     @account_initialization_required
@@ -46,8 +45,8 @@ class HitTestingApi(Resource):
             raise Forbidden(str(e))
 
         parser = reqparse.RequestParser()
-        parser.add_argument('query', type=str, location='json')
-        parser.add_argument('retrieval_model', type=dict, required=False, location='json')
+        parser.add_argument("query", type=str, location="json")
+        parser.add_argument("retrieval_model", type=dict, required=False, location="json")
         args = parser.parse_args()
 
         HitTestingService.hit_testing_args_check(args)
@@ -55,13 +54,13 @@ class HitTestingApi(Resource):
         try:
             response = HitTestingService.retrieve(
                 dataset=dataset,
-                query=args['query'],
+                query=args["query"],
                 account=current_user,
-                retrieval_model=args['retrieval_model'],
-                limit=10
+                retrieval_model=args["retrieval_model"],
+                limit=10,
             )
 
-            return {"query": response['query'], 'records': marshal(response['records'], hit_testing_record_fields)}
+            return {"query": response["query"], "records": marshal(response["records"], hit_testing_record_fields)}
         except services.errors.index.IndexNotInitializedError:
             raise DatasetNotInitializedError()
         except ProviderTokenNotInitError as ex:
@@ -73,7 +72,8 @@ class HitTestingApi(Resource):
         except LLMBadRequestError:
             raise ProviderNotInitializeError(
                 "No Embedding Model or Reranking Model available. Please configure a valid provider "
-                "in the Settings -> Model Provider.")
+                "in the Settings -> Model Provider."
+            )
         except InvokeError as e:
             raise CompletionRequestError(e.description)
         except ValueError as e:
@@ -83,4 +83,4 @@ class HitTestingApi(Resource):
             raise InternalServerError(str(e))
 
 
-api.add_resource(HitTestingApi, '/datasets/<uuid:dataset_id>/hit-testing')
+api.add_resource(HitTestingApi, "/datasets/<uuid:dataset_id>/hit-testing")
