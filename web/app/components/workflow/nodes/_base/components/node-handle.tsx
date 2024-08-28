@@ -40,9 +40,7 @@ export const NodeTargetHandle = memo(({
   const { getNodesReadOnly } = useNodesReadOnly()
   const connected = data._connectedTargetHandleIds?.includes(handleId)
   const { availablePrevBlocks } = useAvailableBlocks(data.type, data.isInIteration)
-  const isConnectable = !!availablePrevBlocks.length && (
-    !data.isIterationStart
-  )
+  const isConnectable = !!availablePrevBlocks.length
 
   const handleOpenChange = useCallback((v: boolean) => {
     setOpen(v)

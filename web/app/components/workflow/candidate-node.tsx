@@ -18,6 +18,7 @@ import { getIterationStartNode } from './utils'
 import CustomNode from './nodes'
 import CustomNoteNode from './note-node'
 import { CUSTOM_NOTE_NODE } from './note-node/constants'
+import { BlockEnum } from './types'
 
 const CandidateNode = () => {
   const store = useStoreApi()
@@ -53,7 +54,8 @@ const CandidateNode = () => {
             y,
           },
         })
-        draft.push(getIterationStartNode(candidateNode.id))
+        if (candidateNode.data.type === BlockEnum.Iteration)
+          draft.push(getIterationStartNode(candidateNode.id))
       })
       setNodes(newNodes)
       if (candidateNode.type === CUSTOM_NOTE_NODE)
