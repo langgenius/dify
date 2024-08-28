@@ -5,6 +5,7 @@ import { RiEqualizer2Line } from '@remixicon/react'
 import { TextToAudio } from '@/app/components/base/icons/src/vender/features'
 import FeatureCard from '@/app/components/base/features/new-feature-panel/feature-card'
 import Button from '@/app/components/base/button'
+import VoiceSettings from '@/app/components/base/features/new-feature-panel/text-to-speech/voice-settings'
 import { useFeatures, useFeaturesStore } from '@/app/components/base/features/hooks'
 import type { OnFeaturesChange } from '@/app/components/base/features/types'
 import { FeatureEnum } from '@/app/components/base/features/types'
@@ -21,6 +22,7 @@ const TextToSpeech = ({
   const { t } = useTranslation()
   const textToSpeech = useFeatures(s => s.features.text2speech) // .language .voice .autoPlay
   const languageInfo = languages.find(i => i.value === textToSpeech?.language)
+  const [modalOpen, setModalOpen] = useState(false)
   const [isHovering, setIsHovering] = useState(false)
   const features = useFeatures(s => s.features)
   const featuresStore = useFeaturesStore()
@@ -61,7 +63,7 @@ const TextToSpeech = ({
         )}
         {!!features.text2speech?.enabled && (
           <>
-            {!isHovering && (
+            {!isHovering && !modalOpen && (
               <div className='pt-0.5 flex items-center gap-4'>
                 <div className=''>
                   <div className='mb-0.5 text-text-tertiary system-2xs-medium-uppercase'>{t('appDebug.voice.voiceSettings.language')}</div>
@@ -79,11 +81,13 @@ const TextToSpeech = ({
                 </div>
               </div>
             )}
-            {isHovering && (
-              <Button className='w-full'>
-                <RiEqualizer2Line className='mr-1 w-4 h-4' />
-                {t('appDebug.voice.voiceSettings.title')}
-              </Button>
+            {(isHovering || modalOpen) && (
+              <VoiceSettings open={modalOpen} onOpen={setModalOpen} onChange={onChange}>
+                <Button className='w-full'>
+                  <RiEqualizer2Line className='mr-1 w-4 h-4' />
+                  {t('appDebug.voice.voiceSettings.title')}
+                </Button>
+              </VoiceSettings>
             )}
           </>
         )}
