@@ -19,14 +19,13 @@ class RunConditionHandler(ABC):
     @abstractmethod
     def check(self,
               graph_runtime_state: GraphRuntimeState,
-              previous_route_node_state: RouteNodeState,
-              target_node_id: str) -> bool:
+              previous_route_node_state: RouteNodeState
+        ) -> bool:
         """
         Check if the condition can be executed
 
         :param graph_runtime_state: graph runtime state
         :param previous_route_node_state: previous route node state
-        :param target_node_id: target node id
         :return: bool
         """
         raise NotImplementedError

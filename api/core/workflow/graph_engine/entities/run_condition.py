@@ -1,3 +1,4 @@
+import hashlib
 from typing import Literal, Optional
 
 from pydantic import BaseModel
@@ -14,3 +15,7 @@ class RunCondition(BaseModel):
 
     conditions: Optional[list[Condition]] = None
     """conditions to run the node, required when type is condition"""
+
+    @property
+    def hash(self) -> str:
+        return hashlib.sha256(self.model_dump_json().encode()).hexdigest()

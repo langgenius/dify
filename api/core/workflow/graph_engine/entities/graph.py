@@ -314,8 +314,22 @@ class Graph(BaseModel):
         target_node_edges = edge_mapping.get(start_node_id, [])
         if len(target_node_edges) > 1:
             # fetch all node ids in current parallels
-            parallel_node_ids = [graph_edge.target_node_id
-                                 for graph_edge in target_node_edges if graph_edge.run_condition is None]
+            parallel_node_ids = []
+            condition_edge_mappings = {}
+            for graph_edge in target_node_edges:
+                if graph_edge.run_condition is None:
+                    parallel_node_ids.append(graph_edge.target_node_id)
+                else:
+                    condition_hash = graph_edge.run_condition.hash
+                    if not condition_hash in condition_edge_mappings:
+                        condition_edge_mappings[condition_hash] = []
+
+                    condition_edge_mappings[condition_hash].append(graph_edge)
+
+            for _, graph_edges in condition_edge_mappings.items():
+                if len(graph_edges) > 1:
+                    for graph_edge in graph_edges:
+                        parallel_node_ids.append(graph_edge.target_node_id)
 
             # any target node id in node_parallel_mapping
             if parallel_node_ids:
