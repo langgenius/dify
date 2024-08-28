@@ -28,6 +28,11 @@ export type I18nText = {
 
 export const languages = data.languages
 
+export const shortenLanguages = data.languages.map(language => ({
+  ...language,
+  value: language.value.slice(0, 2),
+}))
+
 export const LanguagesSupported = languages.filter(item => item.supported).map(item => item.value)
 
 export const getLanguage = (locale: string) => {

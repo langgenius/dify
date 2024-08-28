@@ -321,6 +321,15 @@ const translation = {
       autoPlayDisabled: 'Đã tắt',
     },
   },
+  speechtotext: {
+    settings: 'Cài đặt',
+    speechtotextSettings: {
+      title: 'Cài đặt giọng nói',
+      languageRecognition: 'Nhận diện ngôn ngữ',
+      auto: 'Tự động',
+      custom: 'Tuỳ chỉnh',
+    },
+  },
   openingStatement: {
     title: 'Mở đầu cuộc trò chuyện',
     add: 'Thêm',

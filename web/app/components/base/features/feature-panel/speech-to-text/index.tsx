@@ -1,9 +1,15 @@
 'use client'
 import React, { type FC } from 'react'
 import { useTranslation } from 'react-i18next'
+import type { OnFeaturesChange } from '../../types'
+import ParamsConfig from './params-config'
 import { Microphone01 } from '@/app/components/base/icons/src/vender/solid/mediaAndDevices'
+type SpeechtotextProps = {
+  onChange?: OnFeaturesChange
+  disabled?: boolean
+}
 
-const SpeechToTextConfig: FC = () => {
+const SpeechToTextConfig: FC<SpeechtotextProps> = ({ onChange, disabled }) => {
   const { t } = useTranslation()
 
   return (
@@ -16,6 +22,9 @@ const SpeechToTextConfig: FC = () => {
       </div>
       <div className='grow'></div>
       <div className='text-xs text-gray-500'>{t('appDebug.feature.speechToText.resDes')}</div>
+      <div className='shrink-0 flex items-center'>
+        <ParamsConfig onChange={onChange} disabled={disabled} />
+      </div>
     </div>
   )
 }

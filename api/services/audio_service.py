@@ -24,7 +24,16 @@ logger = logging.getLogger(__name__)
 
 class AudioService:
     @classmethod
-    def transcript_asr(cls, app_model: App, file: FileStorage, end_user: Optional[str] = None):
+    def transcript_asr(
+            cls, 
+            app_model: App, 
+            file: FileStorage, 
+            end_user: Optional[str] = None,
+            language: Optional[str] = None,
+            prompt: Optional[str] = None,
+            response_format: Optional[str] = "json",
+            temperature: Optional[float] = 0,
+            ):
         if app_model.mode in [AppMode.ADVANCED_CHAT.value, AppMode.WORKFLOW.value]:
             workflow = app_model.workflow
             if workflow is None:
@@ -33,11 +42,25 @@ class AudioService:
             features_dict = workflow.features_dict
             if 'speech_to_text' not in features_dict or not features_dict['speech_to_text'].get('enabled'):
                 raise ValueError("Speech to text is not enabled")
+            if features_dict["speech_to_text"]["language_recognition"] == "auto":
+                language = None
+            else:
+                language = features_dict["speech_to_text"].get("language") or language
         else:
             app_model_config: AppModelConfig = app_model.app_model_config
 
-            if not app_model_config.speech_to_text_dict['enabled']:
+            if not hasattr(app_model_config, 'speech_to_text_dict') or not app_model_config.speech_to_text_dict.get('enabled'):
                 raise ValueError("Speech to text is not enabled")
+
+            speech_to_text_dict = app_model_config.speech_to_text_dict
+
+            if not speech_to_text_dict.get('enabled', False):
+                raise ValueError("Speech to text is not enabled")
+            
+            if speech_to_text_dict.get("language_recognition") == "auto":
+                language = None
+            else:
+                language = speech_to_text_dict.get("language")
 
         if file is None:
             raise NoAudioUploadedServiceError()
@@ -64,7 +87,7 @@ class AudioService:
         buffer = io.BytesIO(file_content)
         buffer.name = 'temp.mp3'
 
-        return {"text": model_instance.invoke_speech2text(file=buffer, user=end_user)}
+        return {"text": model_instance.invoke_speech2text(file=buffer, user=end_user, language=language, prompt=prompt, response_format=response_format, temperature=temperature)}
 
     @classmethod
     def transcript_tts(cls, app_model: App, text: Optional[str] = None,

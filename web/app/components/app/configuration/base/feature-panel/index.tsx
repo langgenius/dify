@@ -3,6 +3,7 @@ import type { FC, ReactNode } from 'react'
 import React from 'react'
 import cn from '@/utils/classnames'
 import ParamsConfig from '@/app/components/app/configuration/config-voice/param-config'
+import ParamsConfigSpeechToText from '@/app/components/app/configuration/speech-to-text-config'
 
 export type IFeaturePanelProps = {
   className?: string
@@ -14,6 +15,7 @@ export type IFeaturePanelProps = {
   noBodySpacing?: boolean
   children?: ReactNode
   isShowTextToSpeech?: boolean
+  isShowSpeechToText?: boolean
 }
 
 const FeaturePanel: FC<IFeaturePanelProps> = ({
@@ -26,6 +28,7 @@ const FeaturePanel: FC<IFeaturePanelProps> = ({
   noBodySpacing,
   children,
   isShowTextToSpeech,
+  isShowSpeechToText,
 }) => {
   return (
     <div
@@ -47,6 +50,9 @@ const FeaturePanel: FC<IFeaturePanelProps> = ({
             {headerRight && <div>{headerRight}</div>}
             {isShowTextToSpeech && <div className='flex items-center'>
               <ParamsConfig />
+            </div>}
+            {isShowSpeechToText && <div className='flex items-center'>
+              <ParamsConfigSpeechToText />
             </div>}
           </div>
         </div>

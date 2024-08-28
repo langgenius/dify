@@ -378,6 +378,11 @@ export enum TtsAutoPlay {
   disabled = 'disabled',
 }
 
+export enum LanguageRecognition {
+  auto = 'auto',
+  custom = 'custom',
+}
+
 export const ALLOW_FILE_EXTENSIONS = ['png', 'jpg', 'jpeg', 'webp', 'gif']
 
 export type VisionSettings = {

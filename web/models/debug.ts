@@ -1,4 +1,4 @@
-import type { AgentStrategy, ModelModeType, RETRIEVE_TYPE, ToolItem, TtsAutoPlay } from '@/types/app'
+import type { AgentStrategy, LanguageRecognition, ModelModeType, RETRIEVE_TYPE, ToolItem, TtsAutoPlay } from '@/types/app'
 import type {
   RerankingModeEnum,
 } from '@/models/datasets'
@@ -76,7 +76,11 @@ export type MoreLikeThisConfig = {
 
 export type SuggestedQuestionsAfterAnswerConfig = MoreLikeThisConfig
 
-export type SpeechToTextConfig = MoreLikeThisConfig
+export type SpeechToTextConfig = {
+  enabled: boolean
+  language?: string
+  language_recognition?: LanguageRecognition
+}
 
 export type TextToSpeechConfig = {
   enabled: boolean

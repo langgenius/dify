@@ -364,6 +364,15 @@ const translation = {
       autoPlayDisabled: 'Turn Off',
     },
   },
+  speechtotext: {
+    settings: 'Settings',
+    speechtotextSettings: {
+      title: 'Speech to Text Settings',
+      languageRecognition: 'Language recognition',
+      auto: 'Auto',
+      custom: 'Custom',
+    },
+  },
   openingStatement: {
     title: 'Conversation Opener',
     add: 'Add',

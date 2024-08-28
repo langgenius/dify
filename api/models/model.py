@@ -264,7 +264,7 @@ class AppModelConfig(db.Model):
     @property
     def speech_to_text_dict(self) -> dict:
         return json.loads(self.speech_to_text) if self.speech_to_text \
-            else {"enabled": False}
+            else {"enabled": False, "language_recognition": "auto", "language": "en"}
 
     @property
     def text_to_speech_dict(self) -> dict:

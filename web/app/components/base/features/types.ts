@@ -1,4 +1,4 @@
-import type { TransferMethod, TtsAutoPlay } from '@/types/app'
+import type { LanguageRecognition, TransferMethod, TtsAutoPlay } from '@/types/app'
 
 export type EnabledOrDisabled = {
   enabled?: boolean
@@ -17,7 +17,10 @@ export type TextToSpeech = EnabledOrDisabled & {
   autoPlay?: TtsAutoPlay
 }
 
-export type SpeechToText = EnabledOrDisabled
+export type SpeechToText = EnabledOrDisabled & {
+  language?: string
+  language_recognition?: LanguageRecognition
+}
 
 export type RetrieverResource = EnabledOrDisabled
 
