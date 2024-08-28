@@ -13,12 +13,11 @@ def init_app(app: Flask) -> Celery:
     broker_transport_options = {}
 
     if app.config.get("CELERY_USE_SENTINEL"):
-
         broker_transport_options = {
-            'master_name': app.config.get("CELERY_SENTINEL_MASTER_NAME"),
-            'sentinel_kwargs': {
-                'socket_timeout': app.config.get('CELERY_SENTINEL_SOCKET_TIMEOUT', 0.1),
-            }
+            "master_name": app.config.get("CELERY_SENTINEL_MASTER_NAME"),
+            "sentinel_kwargs": {
+                "socket_timeout": app.config.get("CELERY_SENTINEL_SOCKET_TIMEOUT", 0.1),
+            },
         }
 
     celery_app = Celery(
