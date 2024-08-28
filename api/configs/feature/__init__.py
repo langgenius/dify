@@ -1,6 +1,6 @@
 from typing import Optional
 
-from pydantic import AliasChoices, Field, HttpUrl, NegativeInt, NonNegativeInt, PositiveInt, computed_field
+from pydantic import AliasChoices, Field, HttpUrl, NegativeInt, NonNegativeInt, PositiveInt, computed_field, conint
 from pydantic_settings import BaseSettings
 
 from configs.feature.hosted_service import HostedServiceConfig
@@ -217,18 +217,18 @@ class HttpConfig(BaseSettings):
     def WEB_API_CORS_ALLOW_ORIGINS(self) -> list[str]:
         return self.inner_WEB_API_CORS_ALLOW_ORIGINS.split(",")
 
-    HTTP_REQUEST_MAX_CONNECT_TIMEOUT: NonNegativeInt = Field(
-        description="",
+    HTTP_REQUEST_MAX_CONNECT_TIMEOUT: conint(ge=10) = Field(
+        description="connect timeout in seconds for HTTP request, which should be no less than 60",
         default=300,
     )
 
-    HTTP_REQUEST_MAX_READ_TIMEOUT: NonNegativeInt = Field(
-        description="",
+    HTTP_REQUEST_MAX_READ_TIMEOUT: conint(ge=60) = Field(
+        description="read timeout in seconds for HTTP request, which should be no less than 60",
         default=600,
     )
 
-    HTTP_REQUEST_MAX_WRITE_TIMEOUT: NonNegativeInt = Field(
-        description="",
+    HTTP_REQUEST_MAX_WRITE_TIMEOUT: conint(ge=10) = Field(
+        description="read timeout in seconds for HTTP request, which should be no less than 10",
         default=600,
     )
 

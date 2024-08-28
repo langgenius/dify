@@ -19,9 +19,9 @@ from core.workflow.nodes.http_request.http_executor import HttpExecutor, HttpExe
 from models.workflow import WorkflowNodeExecutionStatus
 
 HTTP_REQUEST_DEFAULT_TIMEOUT = HttpRequestNodeTimeout(
-    connect=min(10, dify_config.HTTP_REQUEST_MAX_CONNECT_TIMEOUT),
-    read=min(60, dify_config.HTTP_REQUEST_MAX_READ_TIMEOUT),
-    write=min(20, dify_config.HTTP_REQUEST_MAX_WRITE_TIMEOUT),
+    connect=dify_config.HTTP_REQUEST_MAX_CONNECT_TIMEOUT,
+    read=dify_config.HTTP_REQUEST_MAX_READ_TIMEOUT,
+    write=dify_config.HTTP_REQUEST_MAX_WRITE_TIMEOUT,
 )
 
 
@@ -96,12 +96,9 @@ class HttpRequestNode(BaseNode):
         if timeout is None:
             return HTTP_REQUEST_DEFAULT_TIMEOUT
 
-        timeout.connect = min(timeout.connect or HTTP_REQUEST_DEFAULT_TIMEOUT.connect,
-                              dify_config.HTTP_REQUEST_MAX_CONNECT_TIMEOUT)
-        timeout.read = min(timeout.read or HTTP_REQUEST_DEFAULT_TIMEOUT.read,
-                           dify_config.HTTP_REQUEST_MAX_READ_TIMEOUT)
-        timeout.write = min(timeout.write or HTTP_REQUEST_DEFAULT_TIMEOUT.write,
-                            dify_config.HTTP_REQUEST_MAX_WRITE_TIMEOUT)
+        timeout.connect = timeout.connect or HTTP_REQUEST_DEFAULT_TIMEOUT.connect
+        timeout.read = timeout.read or HTTP_REQUEST_DEFAULT_TIMEOUT.read
+        timeout.write = timeout.write or HTTP_REQUEST_DEFAULT_TIMEOUT.write
         return timeout
 
     @classmethod
