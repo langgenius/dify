@@ -103,11 +103,7 @@ class AppGenerateService:
         return max_active_requests
 
     @classmethod
-    def generate_single_iteration(cls, app_model: App,
-                                  user: Account,
-                                  node_id: str,
-                                  args: Any,
-                                  streaming: bool = True):
+    def generate_single_iteration(cls, app_model: App, user: Account, node_id: str, args: Any, streaming: bool = True):
         if app_model.mode == AppMode.ADVANCED_CHAT.value:
             workflow = cls._get_workflow(app_model, InvokeFrom.DEBUGGER)
             return AdvancedChatAppGenerator().single_iteration_generate(

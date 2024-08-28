@@ -234,7 +234,7 @@ class WorkflowService:
                     break
 
             if not node_run_result:
-                raise ValueError('Node run failed with no run result')
+                raise ValueError("Node run failed with no run result")
 
             run_succeeded = True if node_run_result.status == WorkflowNodeExecutionStatus.SUCCEEDED else False
             error = node_run_result.error if not run_succeeded else None
@@ -262,9 +262,15 @@ class WorkflowService:
         if run_succeeded and node_run_result:
             # create workflow node execution
             workflow_node_execution.inputs = json.dumps(node_run_result.inputs) if node_run_result.inputs else None
-            workflow_node_execution.process_data = json.dumps(node_run_result.process_data) if node_run_result.process_data else None
-            workflow_node_execution.outputs = json.dumps(jsonable_encoder(node_run_result.outputs)) if node_run_result.outputs else None
-            workflow_node_execution.execution_metadata = json.dumps(jsonable_encoder(node_run_result.metadata)) if node_run_result.metadata else None
+            workflow_node_execution.process_data = (
+                json.dumps(node_run_result.process_data) if node_run_result.process_data else None
+            )
+            workflow_node_execution.outputs = (
+                json.dumps(jsonable_encoder(node_run_result.outputs)) if node_run_result.outputs else None
+            )
+            workflow_node_execution.execution_metadata = (
+                json.dumps(jsonable_encoder(node_run_result.metadata)) if node_run_result.metadata else None
+            )
             workflow_node_execution.status = WorkflowNodeExecutionStatus.SUCCEEDED.value
         else:
             # create workflow node execution

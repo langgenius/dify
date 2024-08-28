@@ -19,14 +19,17 @@ import type {
 import { BlockEnum } from './types'
 import {
   CUSTOM_NODE,
+  ITERATION_CHILDREN_Z_INDEX,
   ITERATION_NODE_Z_INDEX,
   NODE_WIDTH_X_OFFSET,
   START_INITIAL_POSITION,
 } from './constants'
+import { CUSTOM_ITERATION_START_NODE } from './nodes/iteration-start/constants'
 import type { QuestionClassifierNodeType } from './nodes/question-classifier/types'
 import type { IfElseNodeType } from './nodes/if-else/types'
 import { branchNameCorrect } from './nodes/if-else/utils'
 import type { ToolNodeType } from './nodes/tool/types'
+import type { IterationNodeType } from './nodes/iteration/types'
 import { CollectionType } from '@/app/components/tools/types'
 import { toolParametersToFormSchemas } from '@/app/components/tools/utils/to-form-schema'
 
@@ -84,9 +87,129 @@ const getCycleEdges = (nodes: Node[], edges: Edge[]) => {
   return cycleEdges
 }
 
+export function getIterationStartNode(iterationId: string): Node {
+  return generateNewNode({
+    id: `${iterationId}start`,
+    type: CUSTOM_ITERATION_START_NODE,
+    data: {
+      title: '',
+      desc: '',
+      type: BlockEnum.IterationStart,
+    },
+    position: {
+      x: 24,
+      y: 68,
+    },
+    zIndex: ITERATION_CHILDREN_Z_INDEX,
+    parentId: iterationId,
+    selectable: false,
+    draggable: false,
+  }).newNode
+}
+
+export function generateNewNode({ data, position, id, zIndex, type, ...rest }: Omit<Node, 'id'> & { id?: string }): {
+  newNode: Node
+  newIterationStartNode?: Node
+} {
+  const newNode = {
+    id: id || `${Date.now()}`,
+    type: type || CUSTOM_NODE,
+    data,
+    position,
+    targetPosition: Position.Left,
+    sourcePosition: Position.Right,
+    zIndex: data.type === BlockEnum.Iteration ? ITERATION_NODE_Z_INDEX : zIndex,
+    ...rest,
+  } as Node
+
+  if (data.type === BlockEnum.Iteration) {
+    const newIterationStartNode = getIterationStartNode(newNode.id);
+    (newNode.data as IterationNodeType).start_node_id = newIterationStartNode.id;
+    (newNode.data as IterationNodeType)._children = [newIterationStartNode.id]
+    return {
+      newNode,
+      newIterationStartNode,
+    }
+  }
+
+  return {
+    newNode,
+  }
+}
+
+export const preprocessNodesAndEdges = (nodes: Node[], edges: Edge[]) => {
+  const hasIterationNode = nodes.some(node => node.data.type === BlockEnum.Iteration)
+
+  if (!hasIterationNode) {
+    return {
+      nodes,
+      edges,
+    }
+  }
+  const nodesMap = nodes.reduce((prev, next) => {
+    prev[next.id] = next
+    return prev
+  }, {} as Record<string, Node>)
+  const iterationNodesWithStartNode = []
+  const iterationNodesWithoutStartNode = []
+
+  for (let i = 0; i < nodes.length; i++) {
+    const currentNode = nodes[i] as Node<IterationNodeType>
+
+    if (currentNode.data.type === BlockEnum.Iteration) {
+      if (currentNode.data.start_node_id) {
+        if (nodesMap[currentNode.data.start_node_id]?.type !== CUSTOM_ITERATION_START_NODE)
+          iterationNodesWithStartNode.push(currentNode)
+      }
+      else {
+        iterationNodesWithoutStartNode.push(currentNode)
+      }
+    }
+  }
+  const newIterationStartNodesMap = {} as Record<string, Node>
+  const newIterationStartNodes = [...iterationNodesWithStartNode, ...iterationNodesWithoutStartNode].map((iterationNode, index) => {
+    const newNode = getIterationStartNode(iterationNode.id)
+    newNode.id = newNode.id + index
+    newIterationStartNodesMap[iterationNode.id] = newNode
+    return newNode
+  })
+  const newEdges = iterationNodesWithStartNode.map((iterationNode) => {
+    const newNode = newIterationStartNodesMap[iterationNode.id]
+    const startNode = nodesMap[iterationNode.data.start_node_id]
+    const source = newNode.id
+    const sourceHandle = 'source'
+    const target = startNode.id
+    const targetHandle = 'target'
+    return {
+      id: `${source}-${sourceHandle}-${target}-${targetHandle}`,
+      type: 'custom',
+      source,
+      sourceHandle,
+      target,
+      targetHandle,
+      data: {
+        sourceType: newNode.data.type,
+        targetType: startNode.data.type,
+        isInIteration: true,
+        iteration_id: startNode.parentId,
+        _connectedNodeIsSelected: true,
+      },
+      zIndex: ITERATION_CHILDREN_Z_INDEX,
+    }
+  })
+  nodes.forEach((node) => {
+    if (node.data.type === BlockEnum.Iteration && newIterationStartNodesMap[node.id])
+      (node.data as IterationNodeType).start_node_id = newIterationStartNodesMap[node.id].id
+  })
+
+  return {
+    nodes: [...nodes, ...newIterationStartNodes],
+    edges: [...edges, ...newEdges],
+  }
+}
+
 export const initialNodes = (originNodes: Node[], originEdges: Edge[]) => {
-  const nodes = cloneDeep(originNodes)
-  const edges = cloneDeep(originEdges)
+  const { nodes, edges } = preprocessNodesAndEdges(cloneDeep(originNodes), cloneDeep(originEdges))
   const firstNode = nodes[0]
 
   if (!firstNode?.position) {
@@ -148,8 +271,7 @@ export const initialNodes = (originNodes: Node[], originEdges: Edge[]) => {
 }
 
 export const initialEdges = (originEdges: Edge[], originNodes: Node[]) => {
-  const nodes = cloneDeep(originNodes)
-  const edges = cloneDeep(originEdges)
+  const { nodes, edges } = preprocessNodesAndEdges(cloneDeep(originNodes), cloneDeep(originEdges))
   let selectedNode: Node | null = null
   const nodesMap = nodes.reduce((acc, node) => {
     acc[node.id] = node
@@ -289,19 +411,6 @@ export const getNodesConnectedSourceOrTargetHandleIdsMap = (changes: ConnectedSo
   })
 
   return nodesConnectedSourceOrTargetHandleIdsMap
-}
-
-export const generateNewNode = ({ data, position, id, zIndex, type, ...rest }: Omit<Node, 'id'> & { id?: string }) => {
-  return {
-    id: id || `${Date.now()}`,
-    type: type || CUSTOM_NODE,
-    data,
-    position,
-    targetPosition: Position.Left,
-    sourcePosition: Position.Right,
-    zIndex: data.type === BlockEnum.Iteration ? ITERATION_NODE_Z_INDEX : zIndex,
-    ...rest,
-  } as Node
 }
 
 export const genNewNodeTitleFromOld = (oldTitle: string) => {
