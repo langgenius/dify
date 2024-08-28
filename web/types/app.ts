@@ -348,6 +348,10 @@ export type App = {
   tags: Tag[]
 }
 
+export type AppSSO = {
+  enable_sso: boolean
+}
+
 /**
  * App Template
  */

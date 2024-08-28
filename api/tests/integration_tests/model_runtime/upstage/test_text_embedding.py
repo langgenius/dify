@@ -8,41 +8,31 @@ from core.model_runtime.model_providers.upstage.text_embedding.text_embedding im
 from tests.integration_tests.model_runtime.__mock.openai import setup_openai_mock
 
 
-@pytest.mark.parametrize('setup_openai_mock', [['text_embedding']], indirect=True)
+@pytest.mark.parametrize("setup_openai_mock", [["text_embedding"]], indirect=True)
 def test_validate_credentials(setup_openai_mock):
     model = UpstageTextEmbeddingModel()
 
     with pytest.raises(CredentialsValidateFailedError):
         model.validate_credentials(
-            model='solar-embedding-1-large-passage',
-            credentials={
-                'upstage_api_key': 'invalid_key'
-            }
+            model="solar-embedding-1-large-passage", credentials={"upstage_api_key": "invalid_key"}
         )
 
     model.validate_credentials(
-        model='solar-embedding-1-large-passage',
-        credentials={
-            'upstage_api_key': os.environ.get('UPSTAGE_API_KEY')
-        }
+        model="solar-embedding-1-large-passage", credentials={"upstage_api_key": os.environ.get("UPSTAGE_API_KEY")}
     )
 
-@pytest.mark.parametrize('setup_openai_mock', [['text_embedding']], indirect=True)
+
+@pytest.mark.parametrize("setup_openai_mock", [["text_embedding"]], indirect=True)
 def test_invoke_model(setup_openai_mock):
     model = UpstageTextEmbeddingModel()
 
     result = model.invoke(
-        model='solar-embedding-1-large-passage',
+        model="solar-embedding-1-large-passage",
         credentials={
-            'upstage_api_key': os.environ.get('UPSTAGE_API_KEY'),
+            "upstage_api_key": os.environ.get("UPSTAGE_API_KEY"),
         },
-        texts=[
-            "hello",
-            "world",
-            " ".join(["long_text"] * 100),
-            " ".join(["another_long_text"] * 100)
-        ],
-        user="abc-123"
+        texts=["hello", "world", " ".join(["long_text"] * 100), " ".join(["another_long_text"] * 100)],
+        user="abc-123",
     )
 
     assert isinstance(result, TextEmbeddingResult)
@@ -54,14 +44,11 @@ def test_get_num_tokens():
     model = UpstageTextEmbeddingModel()
 
     num_tokens = model.get_num_tokens(
-        model='solar-embedding-1-large-passage',
+        model="solar-embedding-1-large-passage",
         credentials={
-            'upstage_api_key': os.environ.get('UPSTAGE_API_KEY'),
+            "upstage_api_key": os.environ.get("UPSTAGE_API_KEY"),
         },
-        texts=[
-            "hello",
-            "world"
-        ]
+        texts=["hello", "world"],
     )
 
     assert num_tokens == 5

@@ -1,5 +1,5 @@
 import type { LangFuseConfig, LangSmithConfig, TracingProvider } from '@/app/(commonLayout)/app/(appDetailLayout)/[appId]/overview/tracing/type'
-import type { App, AppTemplate, SiteConfig } from '@/types/app'
+import type { App, AppSSO, AppTemplate, SiteConfig } from '@/types/app'
 
 /* export type App = {
   id: string
@@ -67,6 +67,7 @@ export type AppListResponse = {
 }
 
 export type AppDetailResponse = App
+export type AppSSOResponse = { enabled: AppSSO['enable_sso'] }
 
 export type AppTemplatesResponse = {
   data: AppTemplate[]
@@ -75,6 +76,10 @@ export type AppTemplatesResponse = {
 export type CreateAppResponse = App
 
 export type UpdateAppSiteCodeResponse = { app_id: string } & SiteConfig
+
+export type AppDailyMessagesResponse = {
+  data: Array<{ date: string; message_count: number }>
+}
 
 export type AppDailyConversationsResponse = {
   data: Array<{ date: string; conversation_count: number }>

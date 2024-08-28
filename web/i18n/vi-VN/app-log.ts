@@ -6,7 +6,7 @@ const translation = {
     header: {
       updatedTime: 'Thời gian cập nhật',
       time: 'Thời gian tạo',
-      endUser: 'Người dùng cuối',
+      endUser: 'Người dùng cuối hoặc tài khoản',
       input: 'Đầu vào',
       output: 'Đầu ra',
       summary: 'Tóm tắt',
@@ -17,7 +17,7 @@ const translation = {
       status: 'TRẠNG THÁI',
       runtime: 'THỜI GIAN CHẠY',
       tokens: 'TOKEN',
-      user: 'NGƯỜI DÙNG CUỐI',
+      user: 'NGƯỜI DÙNG CUỐI HOẶC TÀI KHOẢN',
       version: 'PHIÊN BẢN',
     },
     pagination: {

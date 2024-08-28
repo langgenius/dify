@@ -1,6 +1,6 @@
 import type { Fetcher } from 'swr'
 import { del, get, patch, post, put } from './base'
-import type { ApikeysListResponse, AppDailyConversationsResponse, AppDailyEndUsersResponse, AppDetailResponse, AppListResponse, AppStatisticsResponse, AppTemplatesResponse, AppTokenCostsResponse, AppVoicesListResponse, CreateApiKeyResponse, GenerationIntroductionResponse, TracingConfig, TracingStatus, UpdateAppModelConfigResponse, UpdateAppSiteCodeResponse, UpdateOpenAIKeyResponse, ValidateOpenAIKeyResponse, WorkflowDailyConversationsResponse } from '@/models/app'
+import type { ApikeysListResponse, AppDailyConversationsResponse, AppDailyEndUsersResponse, AppDailyMessagesResponse, AppDetailResponse, AppListResponse, AppSSOResponse, AppStatisticsResponse, AppTemplatesResponse, AppTokenCostsResponse, AppVoicesListResponse, CreateApiKeyResponse, GenerationIntroductionResponse, TracingConfig, TracingStatus, UpdateAppModelConfigResponse, UpdateAppSiteCodeResponse, UpdateOpenAIKeyResponse, ValidateOpenAIKeyResponse, WorkflowDailyConversationsResponse } from '@/models/app'
 import type { CommonResponse } from '@/models/common'
 import type { AppIconType, AppMode, ModelConfig } from '@/types/app'
 import type { TracingProvider } from '@/app/(commonLayout)/app/(appDetailLayout)/[appId]/overview/tracing/type'
@@ -11,6 +11,13 @@ export const fetchAppList: Fetcher<AppListResponse, { url: string; params?: Reco
 
 export const fetchAppDetail = ({ url, id }: { url: string; id: string }) => {
   return get<AppDetailResponse>(`${url}/${id}`)
+}
+
+export const fetchAppSSO = async ({ appId }: { appId: string }) => {
+  return get<AppSSOResponse>(`/enterprise/app-setting/sso?appID=${appId}`)
+}
+export const updateAppSSO = async ({ id, enabled }: { id: string; enabled: boolean }) => {
+  return post('/enterprise/app-setting/sso', { body: { app_id: id, enabled } })
 }
 
 export const fetchAppTemplates: Fetcher<AppTemplatesResponse, { url: string }> = ({ url }) => {
@@ -68,6 +75,10 @@ export const updateAppSiteAccessToken: Fetcher<UpdateAppSiteCodeResponse, { url:
 
 export const updateAppSiteConfig = ({ url, body }: { url: string; body: Record<string, any> }) => {
   return post<AppDetailResponse>(url, { body })
+}
+
+export const getAppDailyMessages: Fetcher<AppDailyMessagesResponse, { url: string; params: Record<string, any> }> = ({ url, params }) => {
+  return get<AppDailyMessagesResponse>(url, { params })
 }
 
 export const getAppDailyConversations: Fetcher<AppDailyConversationsResponse, { url: string; params: Record<string, any> }> = ({ url, params }) => {
