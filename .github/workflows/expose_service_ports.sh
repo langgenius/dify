@@ -10,4 +10,4 @@ yq eval '.services["elasticsearch"].ports += ["9200:9200"]' -i docker/docker-com
 yq eval '.services.couchbase-server.ports += ["8091-8096:8091-8096"]' -i docker/docker-compose.yaml
 yq eval '.services.couchbase-server.ports += ["11210:11210"]' -i docker/docker-compose.yaml
 
-echo "Ports exposed for sandbox, weaviate, qdrant, couchbase, chroma, milvus, pgvector, pgvecto-rs, elasticsearch."
+echo "Ports exposed for sandbox, weaviate, qdrant, chroma, milvus, pgvector, pgvecto-rs, elasticsearch, couchbase."
