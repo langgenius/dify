@@ -189,15 +189,25 @@ def compact_generate_response(response: Union[dict, RateLimitGenerator]) -> Resp
 
 class TokenManager:
     @classmethod
-    def generate_token(cls, account: Account, token_type: str, additional_data: dict = None) -> str:
-        old_token = cls._get_current_token_for_account(account.id, token_type)
-        if old_token:
-            if isinstance(old_token, bytes):
-                old_token = old_token.decode("utf-8")
-            cls.revoke_token(old_token, token_type)
+    def generate_token(
+        cls, token_type: str, account: Optional[Account] = None, email: Optional[str] = None,
+        additional_data: dict = None
+    ) -> str:
+        if account is None and email is None:
+            raise ValueError("Account or email must be provided")
+
+        account_id = account.id if account else None
+        account_email = account.email if account else email
+
+        if account_id:
+            old_token = cls._get_current_token_for_account(account_id, token_type)
+            if old_token:
+                if isinstance(old_token, bytes):
+                    old_token = old_token.decode("utf-8")
+                cls.revoke_token(old_token, token_type)
 
         token = str(uuid.uuid4())
-        token_data = {"account_id": account.id, "email": account.email, "token_type": token_type}
+        token_data = {"account_id": account_id, "email": account_email, "token_type": token_type}
         if additional_data:
             token_data.update(additional_data)
 
@@ -206,7 +216,9 @@ class TokenManager:
         expiry_time = int(expiry_hours * 60 * 60)
         redis_client.setex(token_key, expiry_time, json.dumps(token_data))
 
-        cls._set_current_token_for_account(account.id, token, token_type, expiry_hours)
+        if account_id:
+            cls._set_current_token_for_account(account.id, token, token_type, expiry_hours)
+
         return token
 
     @classmethod

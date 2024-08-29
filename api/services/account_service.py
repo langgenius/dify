@@ -159,6 +159,24 @@ class AccountService:
         return account
 
     @staticmethod
+    def create_user_through_env(
+        email: str, name: str, interface_language: str, password: Optional[str] = None
+    ) -> Account:
+        """create account"""
+        if dify_config.ALLOW_REGISTER:
+            account = AccountService.create_account(
+                email=email, name=name, interface_language=interface_language, password=password
+            )
+        else:
+            raise Unauthorized("Register is not allowed.")
+        if dify_config.ALLOW_CREATE_WORKSPACE:
+            TenantService.create_owner_tenant_if_not_exist(account=account)
+        else:
+            raise Unauthorized("Create workspace is not allowed.")
+
+        return account
+
+    @staticmethod
     def link_account_integrate(provider: str, open_id: str, account: Account) -> None:
         """Link account integrate"""
         try:
@@ -231,13 +249,20 @@ class AccountService:
         return AccountService.load_user(account_id)
 
     @classmethod
-    def send_reset_password_email(cls, account):
+    def send_reset_password_email(cls, account: Optional[Account] = None, email: Optional[str] = None):
         if cls.reset_password_rate_limiter.is_rate_limited(account.email):
             raise RateLimitExceededError(f"Rate limit exceeded for email: {account.email}. Please try again later.")
 
-        token = TokenManager.generate_token(account, "reset_password")
-        send_reset_password_mail_task.delay(language=account.interface_language, to=account.email, token=token)
-        cls.reset_password_rate_limiter.increment_rate_limit(account.email)
+        code = "".join([str(random.randint(0, 9)) for _ in range(6)])
+        token = TokenManager.generate_token(
+            account=account, email=email, token_type="reset_password", additional_data={"code": code}
+        )
+        send_reset_password_mail_task.delay(
+            language=account.interface_language if account else languages[0],
+            to=account.email if account else email,
+            code=code,
+        )
+        cls.reset_password_rate_limiter.increment_rate_limit(account.email if account else email)
         return token
 
     @classmethod
@@ -249,12 +274,14 @@ class AccountService:
         return TokenManager.get_token_data(token, "reset_password")
 
     @classmethod
-    def send_email_code_login_email(cls, account: Account):
+    def send_email_code_login_email(cls, account: Optional[Account] = None, email: Optional[str] = None):
         code = "".join([str(random.randint(0, 9)) for _ in range(6)])
-        token = TokenManager.generate_token(account, "email_code_login", {"code": code})
+        token = TokenManager.generate_token(
+            account=account, email=email, token_type="email_code_login", additional_data={"code": code}
+        )
         send_email_code_login_mail_task.delay(
-            language=account.interface_language,
-            to=account.email,
+            language=account.interface_language if account else languages[0],
+            to=account.email if account else email,
             code=code,
         )
 

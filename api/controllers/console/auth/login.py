@@ -12,7 +12,6 @@ from controllers.console.auth.error import (
     EmailLoginCodeError,
     InvalidEmailError,
     InvalidTokenError,
-    NotAllowCreateWorkspaceError,
 )
 from controllers.console.setup import setup_required
 from libs.helper import email, get_remote_ip
@@ -32,8 +31,6 @@ class LoginApi(Resource):
         parser.add_argument("password", type=valid_password, required=True, location="json")
         parser.add_argument("remember_me", type=bool, required=False, default=False, location="json")
         args = parser.parse_args()
-
-        # todo: Verify the recaptcha
 
         try:
             account = AccountService.authenticate(args["email"], args["password"])
@@ -63,12 +60,31 @@ class LogoutApi(Resource):
         return {"result": "success"}
 
 
+class ResetPasswordSendEmailApi(Resource):
+    @setup_required
+    def post(self):
+        parser = reqparse.RequestParser()
+        parser.add_argument("email", type=email, required=True, location="json")
+        args = parser.parse_args()
+
+        account = AccountService.get_user_through_email(args["email"])
+        if account is None:
+            if dify_config.ALLOW_REGISTER:
+                token = AccountService.send_reset_password_email(email=args["email"])
+            else:
+                raise InvalidEmailError()
+        else:
+            token = AccountService.send_reset_password_email(account=account)
+
+        return {"result": "success", "data": token}
+
+
 class ResetPasswordApi(Resource):
     @setup_required
     def get(self):
-        # parser = reqparse.RequestParser()
-        # parser.add_argument('email', type=email, required=True, location='json')
-        # args = parser.parse_args()
+        parser = reqparse.RequestParser()
+        parser.add_argument("email", type=email, required=True, location="json")
+        args = parser.parse_args()
 
         # import mailchimp_transactional as MailchimpTransactional
         # from mailchimp_transactional.api_client import ApiClientError
@@ -123,9 +139,13 @@ class EmailCodeLoginSendEmailApi(Resource):
 
         account = AccountService.get_user_through_email(args["email"])
         if account is None:
-            raise InvalidEmailError()
+            if dify_config.ALLOW_REGISTER:
+                token = AccountService.send_email_code_login_email(email=args["email"])
+            else:
+                raise InvalidEmailError()
+        else:
+            token = AccountService.send_email_code_login_email(account=account)
 
-        token = AccountService.send_email_code_login_email(account)
         return {"result": "success", "data": token}
 
 
@@ -153,25 +173,17 @@ class EmailCodeLoginApi(Resource):
         AccountService.revoke_email_code_login_token(args["token"])
         account = AccountService.get_user_through_email(user_email)
         if account is None:
-            # through environment variable, control whether to allow user to register and create workspace
-            if dify_config.ALLOW_REGISTER:
-                account = AccountService.create_account(
-                    email=user_email, name=user_email, interface_language=languages[0]
-                )
-            else:
-                raise InvalidEmailError()
-            if dify_config.ALLOW_CREATE_WORKSPACE:
-                TenantService.create_owner_tenant_if_not_exist(account=account)
-            else:
-                raise NotAllowCreateWorkspaceError()
+            account = AccountService.create_user_through_env(
+                email=user_email, name=user_email, interface_language=languages[0]
+            )
 
-        else:
-            token = AccountService.login(account, ip_address=get_remote_ip(request))
+        token = AccountService.login(account, ip_address=get_remote_ip(request))
 
-            return {"result": "success", "data": token}
+        return {"result": "success", "data": token}
 
 
 api.add_resource(LoginApi, "/login")
 api.add_resource(LogoutApi, "/logout")
 api.add_resource(EmailCodeLoginSendEmailApi, "/email-code-login")
 api.add_resource(EmailCodeLoginApi, "/email-code-login/validity")
+api.add_resource(ResetPasswordApi, "/reset-password")
