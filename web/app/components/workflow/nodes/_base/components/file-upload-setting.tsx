@@ -14,12 +14,14 @@ import { TransferMethod } from '@/types/app'
 type Props = {
   payload: UploadFileSetting
   isMultiple: boolean
+  inFeaturePanel?: boolean
   onChange: (payload: UploadFileSetting) => void
 }
 
 const FileUploadSetting: FC<Props> = ({
   payload,
   isMultiple,
+  inFeaturePanel = false,
   onChange,
 }) => {
   const { t } = useTranslation()
@@ -83,29 +85,31 @@ const FileUploadSetting: FC<Props> = ({
 
   return (
     <div>
-      <Field
-        title={t('appDebug.variableConig.file.supportFileTypes')}
-      >
-        <div className='space-y-1'>
-          {
-            [SupportUploadFileTypes.image, SupportUploadFileTypes.document, SupportUploadFileTypes.audio, SupportUploadFileTypes.video].map((type: SupportUploadFileTypes) => (
-              <FileTypeItem
-                key={type}
-                type={type as SupportUploadFileTypes.image | SupportUploadFileTypes.document | SupportUploadFileTypes.audio | SupportUploadFileTypes.video}
-                selected={allowed_file_types.includes(type)}
-                onToggle={handleSupportFileTypeChange}
-              />
-            ))
-          }
-          <FileTypeItem
-            type={SupportUploadFileTypes.custom}
-            selected={allowed_file_types.includes(SupportUploadFileTypes.custom)}
-            onToggle={handleSupportFileTypeChange}
-            customFileTypes={allowed_file_extensions}
-            onCustomFileTypesChange={handleCustomFileTypesChange}
-          />
-        </div>
-      </Field>
+      {!inFeaturePanel && (
+        <Field
+          title={t('appDebug.variableConig.file.supportFileTypes')}
+        >
+          <div className='space-y-1'>
+            {
+              [SupportUploadFileTypes.image, SupportUploadFileTypes.document, SupportUploadFileTypes.audio, SupportUploadFileTypes.video].map((type: SupportUploadFileTypes) => (
+                <FileTypeItem
+                  key={type}
+                  type={type as SupportUploadFileTypes.image | SupportUploadFileTypes.document | SupportUploadFileTypes.audio | SupportUploadFileTypes.video}
+                  selected={allowed_file_types.includes(type)}
+                  onToggle={handleSupportFileTypeChange}
+                />
+              ))
+            }
+            <FileTypeItem
+              type={SupportUploadFileTypes.custom}
+              selected={allowed_file_types.includes(SupportUploadFileTypes.custom)}
+              onToggle={handleSupportFileTypeChange}
+              customFileTypes={allowed_file_extensions}
+              onCustomFileTypesChange={handleCustomFileTypesChange}
+            />
+          </div>
+        </Field>
+      )}
       <Field
         title='Upload File Types'
         className='mt-4'
@@ -140,6 +144,32 @@ const FileUploadSetting: FC<Props> = ({
               min={1}
               max={10}
               onChange={handleMaxUploadNumLimitChange}
+            />
+          </div>
+        </Field>
+      )}
+      {inFeaturePanel && (
+        <Field
+          title={t('appDebug.variableConig.file.supportFileTypes')}
+          className='mt-4'
+        >
+          <div className='space-y-1'>
+            {
+              [SupportUploadFileTypes.image, SupportUploadFileTypes.document, SupportUploadFileTypes.audio, SupportUploadFileTypes.video].map((type: SupportUploadFileTypes) => (
+                <FileTypeItem
+                  key={type}
+                  type={type as SupportUploadFileTypes.image | SupportUploadFileTypes.document | SupportUploadFileTypes.audio | SupportUploadFileTypes.video}
+                  selected={allowed_file_types.includes(type)}
+                  onToggle={handleSupportFileTypeChange}
+                />
+              ))
+            }
+            <FileTypeItem
+              type={SupportUploadFileTypes.custom}
+              selected={allowed_file_types.includes(SupportUploadFileTypes.custom)}
+              onToggle={handleSupportFileTypeChange}
+              customFileTypes={allowed_file_extensions}
+              onCustomFileTypesChange={handleCustomFileTypesChange}
             />
           </div>
         </Field>

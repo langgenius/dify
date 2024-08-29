@@ -7,10 +7,7 @@ import {
   RiEqualizer2Line,
   RiExternalLinkLine,
 } from '@remixicon/react'
-import {
-  FolderUpload,
-  MessageFast,
-} from '@/app/components/base/icons/src/vender/features'
+import { MessageFast } from '@/app/components/base/icons/src/vender/features'
 import DialogWrapper from '@/app/components/base/features/new-feature-panel/dialog-wrapper'
 import { useFeatures, useFeaturesStore } from '@/app/components/base/features/hooks'
 import { useDefaultModel } from '@/app/components/header/account-setting/model-provider-page/hooks'
@@ -25,6 +22,7 @@ import ConversationOpener from '@/app/components/base/features/new-feature-panel
 import Moderation from '@/app/components/base/features/new-feature-panel/moderation'
 import SpeechToText from '@/app/components/base/features/new-feature-panel/speech-to-text'
 import TextToSpeech from '@/app/components/base/features/new-feature-panel/text-to-speech'
+import FileUpload from '@/app/components/base/features/new-feature-panel/file-upload'
 import FollowUp from '@/app/components/base/features/new-feature-panel/follow-up'
 import Citation from '@/app/components/base/features/new-feature-panel/citation'
 
@@ -100,18 +98,7 @@ const NewFeaturePanel = ({
           {text2speechDefaultModel && (
             <TextToSpeech onChange={onChange} />
           )}
-          {/* file upload ##TODO## */}
-          <div className='group mb-1 p-3 border-t-[0.5px] border-l-[0.5px] border-effects-highlight rounded-xl bg-background-section-burn'>
-            <div className='mb-2 flex items-center gap-2'>
-              <div className='shrink-0 p-1 rounded-lg border-[0.5px] border-divider-subtle shadow-xs bg-util-colors-blue-blue-600'>
-                <FolderUpload className='w-4 h-4 text-text-primary-on-surface' />
-              </div>
-              <div className='grow flex items-center text-text-secondary system-sm-semibold'>
-                File upload
-              </div>
-              <Switch className='shrink-0' onChange={value => handleChange(FeatureEnum.text2speech, value)} defaultValue={!!features.text2speech?.enabled} />
-            </div>
-          </div>
+          <FileUpload onChange={onChange} />
           {isChatMode && (
             <FollowUp onChange={onChange} />
           )}

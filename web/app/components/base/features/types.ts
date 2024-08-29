@@ -33,7 +33,11 @@ export type FileUpload = {
     number_limits?: number
     transfer_methods?: TransferMethod[]
   }
-}
+  allowed_file_types?: string[]
+  allowed_file_extensions?: string[]
+  allowed_file_upload_methods?: string[]
+  number_limits?: number
+} & EnabledOrDisabled
 
 export enum FeatureEnum {
   moreLikeThis = 'moreLikeThis',

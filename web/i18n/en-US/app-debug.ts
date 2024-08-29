@@ -199,6 +199,13 @@ const translation = {
         },
       },
     },
+    fileUpload: {
+      title: 'File Upload',
+      description: 'The chat input box allows uploading of images, documents, and other files.',
+      supportedTypes: 'Support File Types',
+      numberLimit: 'Max uploads',
+      modalTitle: 'File Upload Setting',
+    },
   },
   generate: {
     title: 'Prompt Generator',

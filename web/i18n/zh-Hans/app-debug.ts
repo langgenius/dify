@@ -199,6 +199,13 @@ const translation = {
         },
       },
     },
+    fileUpload: {
+      title: '文件上传',
+      description: '聊天输入框支持上传文件。类型包括图片、文档以及其它类型',
+      supportedTypes: '支持的文件类型',
+      numberLimit: '最大上传数',
+      modalTitle: '文件上传设置',
+    },
   },
   generate: {
     title: '提示词生成器',
