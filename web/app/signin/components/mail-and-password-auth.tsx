@@ -7,6 +7,7 @@ import Button from '@/app/components/base/button'
 import Toast from '@/app/components/base/toast'
 import { emailRegex } from '@/config'
 import { login } from '@/service/common'
+import Input from '@/app/components/base/input'
 
 type MailAndPasswordAuthProps = {
   isInvite: boolean
@@ -65,16 +66,15 @@ export default function MailAndPasswordAuth({ isInvite }: MailAndPasswordAuthPro
         {t('login.email')}
       </label>
       <div className="mt-1">
-        <input
+        <Input
           value={email}
           onChange={e => setEmail(e.target.value)}
           disabled={isInvite}
-          readOnly={isInvite}
           id="email"
           type="email"
           autoComplete="email"
           placeholder={t('login.emailPlaceholder') || ''}
-          className={'appearance-none block w-full rounded-lg pl-[14px] px-3 py-2 border border-gray-200 hover:border-gray-300 hover:shadow-sm focus:outline-none focus:ring-primary-500 focus:border-primary-500 placeholder-gray-400 caret-primary-600 sm:text-sm'}
+          className='px-3 h-9'
         />
       </div>
     </div>
@@ -87,7 +87,7 @@ export default function MailAndPasswordAuth({ isInvite }: MailAndPasswordAuthPro
         </Link>
       </label>
       <div className="relative mt-1">
-        <input
+        <Input
           id="password"
           value={password}
           onChange={e => setPassword(e.target.value)}
@@ -98,7 +98,7 @@ export default function MailAndPasswordAuth({ isInvite }: MailAndPasswordAuthPro
           type={showPassword ? 'text' : 'password'}
           autoComplete="current-password"
           placeholder={t('login.passwordPlaceholder') || ''}
-          className={'appearance-none block w-full rounded-lg pl-[14px] px-3 py-2 border border-gray-200 hover:border-gray-300 hover:shadow-sm focus:outline-none focus:ring-primary-500 focus:border-primary-500 placeholder-gray-400 caret-primary-600 sm:text-sm pr-10'}
+          className='px-3 h-9'
         />
         <div className="absolute inset-y-0 right-0 flex items-center pr-3">
           <button
