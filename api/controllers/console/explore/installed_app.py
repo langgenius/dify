@@ -35,6 +35,7 @@ class InstalledAppsListApi(Resource):
                 "uninstallable": current_tenant_id == installed_app.app_owner_tenant_id,
             }
             for installed_app in installed_apps
+            if installed_app.app is not None
         ]
         installed_apps.sort(
             key=lambda app: (
