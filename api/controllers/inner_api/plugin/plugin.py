@@ -7,7 +7,7 @@ from controllers.console.setup import setup_required
 from controllers.inner_api import api
 from controllers.inner_api.plugin.wraps import get_tenant, plugin_data
 from controllers.inner_api.wraps import plugin_inner_api_only
-from core.plugin.backwards_invocation.model import PluginBackwardsInvocation
+from core.plugin.backwards_invocation.model import PluginModelBackwardsInvocation
 from core.plugin.entities.request import (
     RequestInvokeLLM,
     RequestInvokeModeration,
@@ -29,7 +29,7 @@ class PluginInvokeLLMApi(Resource):
     @plugin_data(payload_type=RequestInvokeLLM)
     def post(self, user_id: str, tenant_model: Tenant, payload: RequestInvokeLLM):
         def generator():
-            response = PluginBackwardsInvocation.invoke_llm(user_id, tenant_model, payload)
+            response = PluginModelBackwardsInvocation.invoke_llm(user_id, tenant_model, payload)
             if isinstance(response, Generator):
                 for chunk in response:
                     yield chunk.model_dump_json().encode() + b'\n\n'

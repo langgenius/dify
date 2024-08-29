@@ -20,6 +20,7 @@ from fields.workflow_run_fields import workflow_run_node_execution_fields
 from libs import helper
 from libs.helper import TimestampField, uuid_value
 from libs.login import current_user, login_required
+from models.account import Account
 from models.model import App, AppMode
 from services.app_dsl_service import AppDslService
 from services.app_generate_service import AppGenerateService
@@ -97,6 +98,9 @@ class DraftWorkflowApi(Resource):
         else:
             abort(415)
 
+        if not isinstance(current_user, Account):
+            raise Forbidden()
+
         workflow_service = WorkflowService()
 
         try:
@@ -136,6 +140,9 @@ class DraftWorkflowImportApi(Resource):
         # The role of the current user in the ta table must be admin, owner, or editor
         if not current_user.is_editor:
             raise Forbidden()
+        
+        if not isinstance(current_user, Account):
+            raise Forbidden()
 
         parser = reqparse.RequestParser()
         parser.add_argument("data", type=str, required=True, nullable=False, location="json")
@@ -159,6 +166,9 @@ class AdvancedChatDraftWorkflowRunApi(Resource):
         """
         # The role of the current user in the ta table must be admin, owner, or editor
         if not current_user.is_editor:
+            raise Forbidden()
+        
+        if not isinstance(current_user, Account):
             raise Forbidden()
 
         parser = reqparse.RequestParser()
@@ -197,6 +207,9 @@ class AdvancedChatDraftRunIterationNodeApi(Resource):
         # The role of the current user in the ta table must be admin, owner, or editor
         if not current_user.is_editor:
             raise Forbidden()
+        
+        if not isinstance(current_user, Account):
+            raise Forbidden()
 
         parser = reqparse.RequestParser()
         parser.add_argument("inputs", type=dict, location="json")
@@ -231,6 +244,9 @@ class WorkflowDraftRunIterationNodeApi(Resource):
         # The role of the current user in the ta table must be admin, owner, or editor
         if not current_user.is_editor:
             raise Forbidden()
+        
+        if not isinstance(current_user, Account):
+            raise Forbidden()
 
         parser = reqparse.RequestParser()
         parser.add_argument("inputs", type=dict, location="json")
@@ -264,6 +280,9 @@ class DraftWorkflowRunApi(Resource):
         """
         # The role of the current user in the ta table must be admin, owner, or editor
         if not current_user.is_editor:
+            raise Forbidden()
+        
+        if not isinstance(current_user, Account):
             raise Forbidden()
 
         parser = reqparse.RequestParser()
@@ -315,14 +334,21 @@ class DraftWorkflowNodeRunApi(Resource):
         # The role of the current user in the ta table must be admin, owner, or editor
         if not current_user.is_editor:
             raise Forbidden()
+        
+        if not isinstance(current_user, Account):
+            raise Forbidden()
 
         parser = reqparse.RequestParser()
         parser.add_argument("inputs", type=dict, required=True, nullable=False, location="json")
         args = parser.parse_args()
 
+        inputs = args.get("inputs")
+        if inputs == None:
+            raise ValueError("missing inputs")
+
         workflow_service = WorkflowService()
         workflow_node_execution = workflow_service.run_draft_workflow_node(
-            app_model=app_model, node_id=node_id, user_inputs=args.get("inputs"), account=current_user
+            app_model=app_model, node_id=node_id, user_inputs=inputs, account=current_user
         )
 
         return workflow_node_execution
@@ -359,6 +385,9 @@ class PublishedWorkflowApi(Resource):
         """
         # The role of the current user in the ta table must be admin, owner, or editor
         if not current_user.is_editor:
+            raise Forbidden()
+        
+        if not isinstance(current_user, Account):
             raise Forbidden()
 
         workflow_service = WorkflowService()
@@ -397,15 +426,20 @@ class DefaultBlockConfigApi(Resource):
         # The role of the current user in the ta table must be admin, owner, or editor
         if not current_user.is_editor:
             raise Forbidden()
+        
+        if not isinstance(current_user, Account):
+            raise Forbidden()
 
         parser = reqparse.RequestParser()
         parser.add_argument("q", type=str, location="args")
         args = parser.parse_args()
 
+        q = args.get("q")
+
         filters = None
-        if args.get("q"):
+        if q:
             try:
-                filters = json.loads(args.get("q"))
+                filters = json.loads(q)
             except json.JSONDecodeError:
                 raise ValueError("Invalid filters")
 
@@ -427,6 +461,9 @@ class ConvertToWorkflowApi(Resource):
         """
         # The role of the current user in the ta table must be admin, owner, or editor
         if not current_user.is_editor:
+            raise Forbidden()
+        
+        if not isinstance(current_user, Account):
             raise Forbidden()
 
         if request.data:

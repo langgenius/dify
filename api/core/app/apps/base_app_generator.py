@@ -1,5 +1,5 @@
-from collections.abc import Generator, Mapping
 import json
+from collections.abc import Generator, Mapping
 from typing import Any, Optional, Union
 
 from core.app.app_config.entities import AppConfig, VariableEntity, VariableEntityType
