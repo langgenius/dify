@@ -4,7 +4,7 @@ import os
 import threading
 import uuid
 from collections.abc import Generator
-from typing import Any, Literal, Union, overload
+from typing import Literal, Union, overload
 
 from flask import Flask, current_app
 from pydantic import ValidationError
