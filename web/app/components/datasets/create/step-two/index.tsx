@@ -10,7 +10,6 @@ import {
 } from '@remixicon/react'
 import Link from 'next/link'
 import { groupBy } from 'lodash-es'
-import RetrievalMethodInfo from '../../common/retrieval-method-info'
 import PreviewItem, { PreviewType } from './preview-item'
 import LanguageSelect from './language-select'
 import s from './index.module.css'
@@ -124,7 +123,9 @@ const StepTwo = ({
   const [docForm, setDocForm] = useState<DocForm | string>(
     (datasetId && documentDetail) ? documentDetail.doc_form : DocForm.TEXT,
   )
-  const [docLanguage, setDocLanguage] = useState<string>(locale !== LanguagesSupported[1] ? 'English' : 'Chinese')
+  const [docLanguage, setDocLanguage] = useState<string>(
+    (datasetId && documentDetail) ? documentDetail.doc_language : (locale !== LanguagesSupported[1] ? 'English' : 'Chinese'),
+  )
   const [QATipHide, setQATipHide] = useState(false)
   const [previewSwitched, setPreviewSwitched] = useState(false)
   const [showPreview, { setTrue: setShowPreview, setFalse: hidePreview }] = useBoolean()
@@ -785,34 +786,21 @@ const StepTwo = ({
                 )}
 
               <div className='max-w-[640px]'>
-                {!datasetId
-                  ? (<>
-                    {getIndexing_technique() === IndexingType.QUALIFIED
-                      ? (
-                        <RetrievalMethodConfig
-                          value={retrievalConfig}
-                          onChange={setRetrievalConfig}
-                        />
-                      )
-                      : (
-                        <EconomicalRetrievalMethodConfig
-                          value={retrievalConfig}
-                          onChange={setRetrievalConfig}
-                        />
-                      )}
-                  </>)
-                  : (
-                    <div>
-                      <RetrievalMethodInfo
+                {
+                  getIndexing_technique() === IndexingType.QUALIFIED
+                    ? (
+                      <RetrievalMethodConfig
                         value={retrievalConfig}
+                        onChange={setRetrievalConfig}
                       />
-                      <div className='mt-2 text-xs text-gray-500 font-medium'>
-                        {t('datasetCreation.stepTwo.retrivalSettedTip')}
-                        <Link className='text-[#155EEF]' href={`/datasets/${datasetId}/settings`}>{t('datasetCreation.stepTwo.datasetSettingLink')}</Link>
-                      </div>
-                    </div>
-                  )}
-
+                    )
+                    : (
+                      <EconomicalRetrievalMethodConfig
+                        value={retrievalConfig}
+                        onChange={setRetrievalConfig}
+                      />
+                    )
+                }
               </div>
             </div>
 

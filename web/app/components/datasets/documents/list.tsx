@@ -405,7 +405,7 @@ const DocumentList: FC<IDocumentListProps> = ({ embeddingAvailable, documents = 
         <tbody className="text-gray-700">
           {localDocs.map((doc) => {
             const isFile = doc.data_source_type === DataSourceType.FILE
-            const fileType = isFile ? doc.data_source_detail_dict?.upload_file.extension : ''
+            const fileType = isFile ? doc.data_source_detail_dict?.upload_file?.extension : ''
             return <tr
               key={doc.id}
               className={'border-b border-gray-200 h-8 hover:bg-gray-50 cursor-pointer'}

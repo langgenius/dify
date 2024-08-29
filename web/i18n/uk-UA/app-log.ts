@@ -6,7 +6,7 @@ const translation = {
     header: {
       updatedTime: 'Час оновлення',
       time: 'Час створення',
-      endUser: 'Кінцевий Користувач',
+      endUser: 'Кінцевий Користувач або Обліковий Запис',
       input: 'Введення',
       output: 'Виведення',
       summary: 'Заголовок',
@@ -17,7 +17,7 @@ const translation = {
       status: 'СТАТУС',
       runtime: 'ЧАС ВИКОНАННЯ',
       tokens: 'ТОКЕНИ',
-      user: 'КІНЦЕВИЙ КОРИСТУВАЧ',
+      user: 'КІНЦЕВИЙ КОРИСТУВАЧ АБО ОБЛІКОВИЙ ЗАПИС',
       version: 'ВЕРСІЯ',
     },
     pagination: {

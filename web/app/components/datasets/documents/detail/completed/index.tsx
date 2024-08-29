@@ -391,7 +391,7 @@ const Completed: FC<ICompletedProps> = ({
           defaultValue={'all'}
           className={s.select}
           wrapperClassName='h-fit w-[120px] mr-2' />
-        <Input showPrefix wrapperClassName='!w-52' className='!h-8' onChange={debounce(setSearchValue, 500)} />
+        <Input showLeftIcon wrapperClassName='!w-52' className='!h-8' onChange={debounce(e => setSearchValue(e.target.value), 500)} />
       </div>
       <InfiniteVirtualList
         embeddingAvailable={embeddingAvailable}
