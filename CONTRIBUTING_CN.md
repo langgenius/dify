@@ -8,7 +8,7 @@
 
 ## 在开始之前
 
-[查找](https://github.com/langgenius/dify/issues?q=is:issue+is:closed)现有问题，或 [创建](https://github.com/langgenius/dify/issues/new/choose) 一个新问题。我们将问题分为两类：
+[查找](https://github.com/langgenius/dify/issues?q=is:issue+is:open)现有问题，或 [创建](https://github.com/langgenius/dify/issues/new/choose) 一个新问题。我们将问题分为两类：
 
 ### 功能请求：
 
