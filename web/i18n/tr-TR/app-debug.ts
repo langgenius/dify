@@ -362,6 +362,16 @@ const translation = {
       autoPlayDisabled: 'Kapalı',
     },
   },
+  speechToText: {
+    settings: 'Ayarlar',
+    speechToTextSettings: {
+      title: 'Konuşma Tanıma Ayarları',
+      languageRecognition: 'Dil tanıma',
+      resolutionTooltip: 'Konuşma tanıma ses destek dili.',
+      auto: 'Otomatik',
+      custom: 'Özel',
+    },
+  },
   openingStatement: {
     title: 'Konuşma Başlatıcı',
     add: 'Ekle',

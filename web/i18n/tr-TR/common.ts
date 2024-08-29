@@ -87,6 +87,10 @@ const translation = {
       uk: 'Ukraynaca',
       vi: 'Vietnamca',
       pl: 'Lehçe',
+      ro: 'Romence',
+      hi: 'Hintçe',
+      tr: 'Türkçe',
+      fa: 'Farsça',
     },
   },
   unit: {

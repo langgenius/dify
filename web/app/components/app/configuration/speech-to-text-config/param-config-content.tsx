@@ -2,9 +2,6 @@
 import type { FC } from 'react'
 import { useContext } from 'use-context-selector'
 import React, { Fragment, useMemo } from 'react'
-import {
-  RiQuestionLine,
-} from '@remixicon/react'
 import { useTranslation } from 'react-i18next'
 import { Listbox, Transition } from '@headlessui/react'
 import { CheckIcon, ChevronDownIcon } from '@heroicons/react/20/solid'
@@ -28,19 +25,19 @@ const VoiceParamConfig: FC = () => {
 
   return (
     <div>
-      <div className='leading-6 text-base font-semibold text-gray-800'>{t('appDebug.speechtotext.speechtotextSettings.title')}</div>
+      <div className='leading-6 text-base font-semibold text-gray-800'>{t('appDebug.speechToText.speechToTextSettings.title')}</div>
       <div className='pt-3 space-y-6'>
         <div
-          className='mb-2 leading-[18px] text-[13px] font-semibold text-gray-800'>{t('appDebug.speechtotext.speechtotextSettings.languageRecognition')}</div>
+          className='mb-2 leading-[18px] text-[13px] font-semibold text-gray-800'>{t('appDebug.speechToText.speechToTextSettings.languageRecognition')}</div>
         <RadioGroup
           className='space-x-3'
           options={[
             {
-              label: t('appDebug.speechtotext.speechtotextSettings.auto'),
+              label: t('appDebug.speechToText.speechToTextSettings.auto'),
               value: LanguageRecognition.auto,
             },
             {
-              label: t('appDebug.speechtotext.speechtotextSettings.custom'),
+              label: t('appDebug.speechToText.speechToTextSettings.custom'),
               value: LanguageRecognition.custom,
             },
           ]}
@@ -59,13 +56,15 @@ const VoiceParamConfig: FC = () => {
             <div className='mb-2 flex items-center  space-x-1'>
               <div
                 className='leading-[18px] text-[13px] font-semibold text-gray-800'>{t('appDebug.voice.voiceSettings.language')}</div>
-              <Tooltip htmlContent={<div className='w-[180px]'>
-                {t('appDebug.voice.voiceSettings.resolutionTooltip').split('\n').map(item => (
-                  <div key={item}>{item}</div>
-                ))}
-              </div>} selector='config-resolution-tooltip'>
-                <RiQuestionLine className='w-[14px] h-[14px] text-gray-400' />
-              </Tooltip>
+              <Tooltip
+                popupContent={
+                  <div className='w-[180px]'>
+                    {t('appDebug.speechToText.speechToTextSettings.resolutionTooltip').split('\n').map(item => (
+                      <div key={item}>{item}</div>
+                    ))}
+                  </div>
+                }
+              />
             </div>
             <Listbox
               value={languageItem}

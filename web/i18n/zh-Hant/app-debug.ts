@@ -306,6 +306,16 @@ const translation = {
       autoPlayDisabled: '關閉',
     },
   },
+  speechToText: {
+    settings: '設定',
+    speechToTextSettings: {
+      title: '語音轉文字設定',
+      languageRecognition: '語言識別',
+      resolutionTooltip: '語音轉文字支援的語言。',
+      auto: '自動',
+      custom: '自訂',
+    },
+  },
   openingStatement: {
     title: '對話開場白',
     add: '新增開場白',

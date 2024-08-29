@@ -322,6 +322,16 @@ const translation = {
       autoPlayDisabled: 'Cierre',
     },
   },
+  speechToText: {
+    settings: 'Configuración',
+    speechToTextSettings: {
+      title: 'Configuración de voz a texto',
+      languageRecognition: 'Reconocimiento de idioma',
+      resolutionTooltip: 'Idioma de soporte de voz para voz a texto.',
+      auto: 'Automático',
+      custom: 'Personalizado',
+    },
+  },
   openingStatement: {
     title: 'Apertura de Conversación',
     add: 'Agregar',

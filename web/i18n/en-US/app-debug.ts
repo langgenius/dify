@@ -363,11 +363,12 @@ const translation = {
       autoPlayDisabled: 'Turn Off',
     },
   },
-  speechtotext: {
+  speechToText: {
     settings: 'Settings',
-    speechtotextSettings: {
+    speechToTextSettings: {
       title: 'Speech to Text Settings',
       languageRecognition: 'Language recognition',
+      resolutionTooltip: 'Speech-to-text voice support language。',
       auto: 'Auto',
       custom: 'Custom',
     },

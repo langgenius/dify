@@ -83,6 +83,10 @@ const translation = {
       uk: 'Ucraniano',
       vi: 'Vietnamita',
       pl: 'Polonês',
+      ro: 'Romeno',
+      hi: 'Hindi',
+      tr: 'Turco',
+      fa: 'Persa',
     },
   },
   unit: {

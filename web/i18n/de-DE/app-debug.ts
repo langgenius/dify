@@ -293,6 +293,16 @@ const translation = {
       voice: 'Stimme',
     },
   },
+  speechToText: {
+    settings: 'Einstellungen',
+    speechToTextSettings: {
+      title: 'Sprache-zu-Text-Einstellungen',
+      languageRecognition: 'Spracherkennung',
+      resolutionTooltip: 'Sprache-zu-Text-Stimmunterstützungssprache.',
+      auto: 'Automatisch',
+      custom: 'Benutzerdefiniert',
+    },
+  },
   openingStatement: {
     title: 'Gesprächseröffner',
     add: 'Hinzufügen',

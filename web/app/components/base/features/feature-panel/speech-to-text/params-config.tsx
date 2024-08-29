@@ -34,7 +34,7 @@ const ParamsConfig = ({
       <PortalToFollowElemTrigger onClick={() => !disabled && setOpen(v => !v)}>
         <div className={cn('flex items-center rounded-md h-7 px-3 space-x-1 text-gray-700 cursor-pointer hover:bg-gray-200', open && 'bg-gray-200')}>
           <Settings01 className='w-3.5 h-3.5 ' />
-          <div className='ml-1 leading-[18px] text-xs font-medium '>{t('appDebug.speechtotext.settings')}</div>
+          <div className='ml-1 leading-[18px] text-xs font-medium '>{t('appDebug.speechToText.settings')}</div>
         </div>
       </PortalToFollowElemTrigger>
       <PortalToFollowElemContent style={{ zIndex: 50 }}>

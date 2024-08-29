@@ -30,7 +30,7 @@ const ParamsConfig: FC = () => {
           <div className='ml-1 leading-[18px] text-xs font-medium '>{t('appDebug.voice.settings')}</div>
         </div>
       </PortalToFollowElemTrigger>
-      <PortalToFollowElemContent style={{ zIndex: 50 }}>
+      <PortalToFollowElemContent style={{ zIndex: 50, top: '-80px' }}>
         <div className='w-80 sm:w-[412px] p-4 bg-white rounded-lg border-[0.5px] border-gray-200 shadow-lg space-y-3'>
           <ParamConfigSpeechTotext />
         </div>

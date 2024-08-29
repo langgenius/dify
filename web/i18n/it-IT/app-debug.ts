@@ -357,6 +357,16 @@ const translation = {
       autoPlayDisabled: 'Spento',
     },
   },
+  speechToText: {
+    settings: 'Impostazioni',
+    speechToTextSettings: {
+      title: 'Impostazioni di riconoscimento vocale',
+      languageRecognition: 'Riconoscimento della lingua',
+      resolutionTooltip: 'Lingua di supporto vocale per il riconoscimento vocale.',
+      auto: 'Automatico',
+      custom: 'Personalizzato',
+    },
+  },
   openingStatement: {
     title: 'Iniziatore di conversazione',
     add: 'Aggiungi',

@@ -330,6 +330,16 @@ const translation = {
       custom: 'Tuỳ chỉnh',
     },
   },
+  speechToText: {
+    settings: 'Cài đặt',
+    speechToTextSettings: {
+      title: 'Cài đặt nhận dạng giọng nói',
+      languageRecognition: 'Nhận dạng ngôn ngữ',
+      resolutionTooltip: 'Ngôn ngữ hỗ trợ giọng nói cho nhận dạng giọng nói.',
+      auto: 'Tự động',
+      custom: 'Tùy chỉnh',
+    },
+  },
   openingStatement: {
     title: 'Mở đầu cuộc trò chuyện',
     add: 'Thêm',

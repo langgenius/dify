@@ -354,6 +354,16 @@ const translation = {
       autoPlayDisabled: 'सोडा',
     },
   },
+  speechToText: {
+    settings: 'सेटिंग्स',
+    speechToTextSettings: {
+      title: 'स्पीच टू टेक्स्ट सेटिंग्स',
+      languageRecognition: 'भाषा पहचान',
+      resolutionTooltip: 'स्पीच-टू-टेक्स्ट आवाज समर्थन भाषा।',
+      auto: 'स्वचालित',
+      custom: 'कस्टम',
+    },
+  },
   openingStatement: {
     title: 'संवाद प्रारंभक',
     add: 'जोड़ें',

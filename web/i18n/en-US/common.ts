@@ -87,6 +87,10 @@ const translation = {
       uk: 'Ukrainian',
       vi: 'Vietnamese',
       pl: 'Polish',
+      ro: 'Romanian',
+      hi: 'Hindi',
+      tr: 'Türkçe',
+      fa: 'Farsi',
     },
   },
   unit: {

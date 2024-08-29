@@ -352,6 +352,16 @@ const translation = {
       autoPlayDisabled: 'zamknięcie',
     },
   },
+  speechToText: {
+    settings: 'Ustawienia',
+    speechToTextSettings: {
+      title: 'Ustawienia rozpoznawania mowy',
+      languageRecognition: 'Rozpoznawanie języka',
+      resolutionTooltip: 'Język obsługi głosowej dla rozpoznawania mowy.',
+      auto: 'Automatycznie',
+      custom: 'Niestandardowe',
+    },
+  },
   openingStatement: {
     title: 'Wstęp do rozmowy',
     add: 'Dodaj',

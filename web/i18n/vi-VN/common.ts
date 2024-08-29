@@ -83,6 +83,10 @@ const translation = {
       uk: 'Tiếng Ukraina',
       vi: 'Tiếng Việt',
       pl: 'Tiếng Ba Lan',
+      ro: 'Tiếng Rumani',
+      hi: 'Tiếng Hindi',
+      tr: 'Tiếng Thổ Nhĩ Kỳ',
+      fa: 'Tiếng Ba Tư',
     },
   },
   unit: {

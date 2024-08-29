@@ -358,6 +358,16 @@ const translation = {
       autoPlayDisabled: '關閉',
     },
   },
+  speechToText: {
+    settings: '設定',
+    speechToTextSettings: {
+      title: '音声認識設定',
+      languageRecognition: '言語認識',
+      resolutionTooltip: '音声認識の音声サポート言語。',
+      auto: '自動',
+      custom: 'カスタム',
+    },
+  },
   openingStatement: {
     title: '会話開始',
     add: '追加',
