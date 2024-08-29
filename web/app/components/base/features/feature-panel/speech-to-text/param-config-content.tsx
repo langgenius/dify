@@ -12,7 +12,7 @@ import type { OnFeaturesChange } from '../../types'
 import classNames from '@/utils/classnames'
 import type { Item } from '@/app/components/base/select'
 import Tooltip from '@/app/components/base/tooltip'
-import { shortenLanguages } from '@/i18n/language'
+import { shortenedLanguages } from '@/i18n/language'
 import RadioGroup from '@/app/components/app/configuration/config-vision/radio-group'
 import { LanguageRecognition } from '@/types/app'
 
@@ -27,7 +27,7 @@ const SpeechToTextParamConfig = ({
   const featuresStore = useFeaturesStore()
 
   const languageItem = useMemo(() => {
-    return shortenLanguages.find(item => item.value === speech2text?.language)
+    return shortenedLanguages.find(item => item.value === speech2text?.language)
   }, [speech2text?.language])
 
   const handleChange = (value: Record<string, string>) => {
@@ -120,7 +120,7 @@ const SpeechToTextParamConfig = ({
 
                   <Listbox.Options
                     className="absolute z-10 mt-1 px-1 max-h-60 w-full overflow-auto rounded-md bg-white py-1 text-base shadow-lg border-gray-200 border-[0.5px] focus:outline-none sm:text-sm">
-                    {shortenLanguages.map((item: Item) => (
+                    {shortenedLanguages.map((item: Item) => (
                       <Listbox.Option
                         key={item.value}
                         className={({ active }) =>

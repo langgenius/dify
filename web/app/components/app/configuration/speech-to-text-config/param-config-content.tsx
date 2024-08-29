@@ -10,7 +10,7 @@ import RadioGroup from '@/app/components/app/configuration/config-vision/radio-g
 import type { Item } from '@/app/components/base/select'
 import ConfigContext from '@/context/debug-configuration'
 import Tooltip from '@/app/components/base/tooltip'
-import { shortenLanguages } from '@/i18n/language'
+import { shortenedLanguages } from '@/i18n/language'
 import { LanguageRecognition } from '@/types/app'
 const VoiceParamConfig: FC = () => {
   const { t } = useTranslation()
@@ -20,7 +20,7 @@ const VoiceParamConfig: FC = () => {
   } = useContext(ConfigContext)
 
   const languageItem = useMemo(() => {
-    return shortenLanguages.find(item => item.value === speechToTextConfig?.language)
+    return shortenedLanguages.find(item => item.value === speechToTextConfig?.language)
   }, [speechToTextConfig?.language])
 
   return (
@@ -97,7 +97,7 @@ const VoiceParamConfig: FC = () => {
 
                   <Listbox.Options
                     className="absolute z-10 mt-1 px-1 max-h-60 w-full overflow-auto rounded-md bg-white py-1 text-base shadow-lg border-gray-200 border-[0.5px] focus:outline-none sm:text-sm">
-                    {shortenLanguages.map((item: Item) => (
+                    {shortenedLanguages.map((item: Item) => (
                       <Listbox.Option
                         key={item.value}
                         className={({ active }) =>
