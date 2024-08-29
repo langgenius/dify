@@ -1,6 +1,6 @@
 import time
 
-from flask_restful import Resource, reqparse
+from flask_restful import Resource
 
 from controllers.console.setup import setup_required
 from controllers.inner_api import api
@@ -117,16 +117,13 @@ class PluginInvokeAppApi(Resource):
     @get_tenant
     @plugin_data(payload_type=RequestInvokeApp)
     def post(self, user_id: str, tenant_model: Tenant, payload: RequestInvokeApp):
-        parser = reqparse.RequestParser()
-        args = parser.parse_args()
-
         response = PluginAppBackwardsInvocation.invoke_app(
             app_id=payload.app_id,
             user_id=user_id,
             tenant_id=tenant_model.id,
             conversation_id=payload.conversation_id,
             query=payload.query,
-            stream=payload.stream,
+            stream=payload.response_mode == 'streaming',
             inputs=payload.inputs,
             files=payload.files
         )

@@ -105,4 +105,4 @@ class RequestInvokeApp(BaseModel):
     conversation_id: Optional[str] = None
     user: Optional[str] = None
     files: list[dict] = Field(default_factory=list)
-    stream: bool = Field(default=False)
+    

@@ -11,7 +11,7 @@ class BaseBackwardsInvocation:
             for chunk in response:
                 if isinstance(chunk, BaseModel):
                     yield chunk.model_dump_json().encode() + b'\n\n'
-                if isinstance(chunk, str):
+                elif isinstance(chunk, str):
                     yield f"event: {chunk}\n\n".encode()
                 else:
                     yield json.dumps(chunk).encode() + b'\n\n'
