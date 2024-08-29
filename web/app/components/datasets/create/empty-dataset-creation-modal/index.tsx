@@ -58,7 +58,7 @@ const EmptyDatasetCreationModal = ({
       <div className={s.tip}>{t('datasetCreation.stepOne.modal.tip')}</div>
       <div className={s.form}>
         <div className={s.label}>{t('datasetCreation.stepOne.modal.input')}</div>
-        <Input className='!h-8' value={inputValue} placeholder={t('datasetCreation.stepOne.modal.placeholder') || ''} onChange={setInputValue} />
+        <Input className='!h-8' value={inputValue} placeholder={t('datasetCreation.stepOne.modal.placeholder') || ''} onChange={e => setInputValue(e.target.value)} />
       </div>
       <div className='flex flex-row-reverse'>
         <Button className='w-24 ml-2' variant='primary' onClick={submit}>{t('datasetCreation.stepOne.modal.confirmButton')}</Button>
