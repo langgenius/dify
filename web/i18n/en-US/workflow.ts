@@ -87,6 +87,7 @@ const translation = {
         title: 'Drag',
         desc: ' to connect',
       },
+      limit: 'Parallelism is limited to {{num}} branches.',
     },
   },
   env: {

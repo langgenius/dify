@@ -326,6 +326,7 @@ export const ITERATION_PADDING = {
   bottom: 20,
   left: 16,
 }
+export const PARALLEL_LIMIT = 10
 
 export const RETRIEVAL_OUTPUT_STRUCT = `{
   "content": "",

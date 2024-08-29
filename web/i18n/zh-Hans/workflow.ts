@@ -87,6 +87,7 @@ const translation = {
         title: '拖拽',
         desc: '连接节点',
       },
+      limit: '并行分支限制为 {{num}} 个',
     },
   },
   env: {

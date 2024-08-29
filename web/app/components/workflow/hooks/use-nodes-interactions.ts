@@ -17,6 +17,7 @@ import {
   useReactFlow,
   useStoreApi,
 } from 'reactflow'
+import { uniq } from 'lodash-es'
 import type { ToolDefaultValue } from '../block-selector/types'
 import type {
   Edge,
@@ -212,7 +213,7 @@ export const useNodesInteractions = () => {
     setEdges(newEdges)
     const incomesNodes = getIncomers(node, nodes, edges)
     if (incomesNodes.length) {
-      const incomesNodesOutgoersId = incomesNodes.map(incomeNode => getOutgoers(incomeNode, nodes, edges)).flat().map(outgoer => outgoer.id)
+      const incomesNodesOutgoersId = uniq(incomesNodes.map(incomeNode => getOutgoers(incomeNode, nodes, edges)).flat().map(outgoer => outgoer.id))
 
       if (incomesNodesOutgoersId.length > 1) {
         const newNodes = produce(nodes, (draft) => {
