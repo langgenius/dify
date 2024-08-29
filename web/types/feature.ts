@@ -4,6 +4,9 @@ export type SystemFeatures = {
   sso_enforced_for_web: boolean
   sso_enforced_for_web_protocol: string
   enable_web_sso_switch_component: boolean
+  enable_email_code_login: boolean
+  enable_email_password_login: boolean
+  enable_social_oauth_login: boolean
 }
 
 export const defaultSystemFeatures: SystemFeatures = {
@@ -12,4 +15,7 @@ export const defaultSystemFeatures: SystemFeatures = {
   sso_enforced_for_web: false,
   sso_enforced_for_web_protocol: '',
   enable_web_sso_switch_component: false,
+  enable_email_code_login: false,
+  enable_email_password_login: true,
+  enable_social_oauth_login: false,
 }
