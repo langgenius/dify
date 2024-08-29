@@ -1,6 +1,7 @@
 from collections.abc import Generator, Mapping
 from typing import Optional, Union
 
+from controllers.service_api.wraps import create_or_update_end_user_for_user_id
 from core.app.apps.advanced_chat.app_generator import AdvancedChatAppGenerator
 from core.app.apps.agent_chat.app_generator import AgentChatAppGenerator
 from core.app.apps.chat.app_generator import ChatAppGenerator
@@ -29,7 +30,10 @@ class PluginAppBackwardsInvocation(BaseBackwardsInvocation):
         invoke app
         """
         app = cls._get_app(app_id, tenant_id)
-        user = cls._get_user(user_id)
+        if not user_id:
+            user = create_or_update_end_user_for_user_id(app)
+        else:
+            user = cls._get_user(user_id)
 
         conversation_id = conversation_id or ""
 
@@ -178,10 +182,13 @@ class PluginAppBackwardsInvocation(BaseBackwardsInvocation):
         """
         get app
         """
-        app = db.session.query(App). \
-            filter(App.id == app_id). \
-            filter(App.tenant_id == tenant_id). \
-            first()
+        try:
+            app = db.session.query(App). \
+                filter(App.id == app_id). \
+                filter(App.tenant_id == tenant_id). \
+                first()
+        except Exception:
+            raise ValueError("app not found")
         
         if not app:
             raise ValueError("app not found")
