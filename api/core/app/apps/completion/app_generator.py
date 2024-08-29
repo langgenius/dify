@@ -3,7 +3,7 @@ import os
 import threading
 import uuid
 from collections.abc import Generator
-from typing import Any, Union
+from typing import Any, Literal, Union, overload
 
 from flask import Flask, current_app
 from pydantic import ValidationError
@@ -30,12 +30,31 @@ logger = logging.getLogger(__name__)
 
 
 class CompletionAppGenerator(MessageBasedAppGenerator):
-    def generate(self, app_model: App,
-                 user: Union[Account, EndUser],
-                 args: Any,
-                 invoke_from: InvokeFrom,
-                 stream: bool = True) \
-            -> Union[dict, Generator[dict, None, None]]:
+    @overload
+    def generate(
+        self, app_model: App,
+        user: Union[Account, EndUser],
+        args: Any,
+        invoke_from: InvokeFrom,
+        stream: Literal[True] = True,
+    ) -> Generator[dict, None, None]: ...
+
+    @overload
+    def generate(
+        self, app_model: App,
+        user: Union[Account, EndUser],
+        args: Any,
+        invoke_from: InvokeFrom,
+        stream: Literal[False] = False,
+    ) -> dict: ...
+
+    def generate(
+        self, app_model: App,
+        user: Union[Account, EndUser],
+        args: Any,
+        invoke_from: InvokeFrom,
+        stream: bool = True
+    ) -> Union[dict, Generator[dict, None, None]]:
         """
         Generate App response.
 
