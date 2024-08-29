@@ -308,3 +308,9 @@ export const verifyForgotPasswordToken: Fetcher<CommonResponse & { is_valid: boo
 
 export const changePasswordWithToken: Fetcher<CommonResponse, { url: string; body: { token: string; new_password: string; password_confirm: string } }> = ({ url, body }) =>
   post<CommonResponse>(url, { body })
+
+export const getEMailLoginCode = (email: string) =>
+  post<CommonResponse & { token: string }>('/email-code-login', { body: { email } })
+
+export const emailLoginWithCode = (data: { email: string;code: string;token: string }) =>
+  post<CommonResponse & { data: string }>('/email-code-login/validity', { body: data })
