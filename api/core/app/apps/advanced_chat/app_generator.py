@@ -4,7 +4,7 @@ import os
 import threading
 import uuid
 from collections.abc import Generator
-from typing import Union
+from typing import Literal, Union, overload
 
 from flask import Flask, current_app
 from pydantic import ValidationError
@@ -39,6 +39,26 @@ logger = logging.getLogger(__name__)
 
 
 class AdvancedChatAppGenerator(MessageBasedAppGenerator):
+    @overload
+    def generate(
+        self, app_model: App,
+        workflow: Workflow,
+        user: Union[Account, EndUser],
+        args: dict,
+        invoke_from: InvokeFrom,
+        stream: Literal[True] = True,
+    ) -> Generator[str, None, None]: ...
+
+    @overload
+    def generate(
+        self, app_model: App,
+        workflow: Workflow,
+        user: Union[Account, EndUser],
+        args: dict,
+        invoke_from: InvokeFrom,
+        stream: Literal[False] = False,
+    ) -> dict: ...
+
     def generate(
         self, app_model: App,
         workflow: Workflow,
