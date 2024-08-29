@@ -75,7 +75,7 @@ class ArkClientV3:
         if credentials.get("auth_method") == "api_key":
             args = {
                 **args,
-                "api_key": credentials['api_key'],
+                "api_key": credentials['volc_api_key'],
             }
         else:
             args = {
