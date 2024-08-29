@@ -612,6 +612,18 @@ class PositionConfig(BaseSettings):
 
 
 class LoginConfig(BaseSettings):
+    ENABLE_EMAIL_CODE_LOGIN: bool = Field(
+        description="whether to enable email code login",
+        default=True,
+    )
+    ENABLE_EMAIL_PASSWORD_LOGIN: bool = Field(
+        description="whether to enable email password login",
+        default=True,
+    )
+    ENABLE_SOCIAL_OAUTH_LOGIN: bool = Field(
+        description="whether to enable github/google oauth login",
+        default=True,
+    )
     EMAIL_CODE_LOGIN_TOKEN_EXPIRY_HOURS: PositiveFloat = Field(
         description="expiry time in hours for email code login token",
         default=1 / 12,
