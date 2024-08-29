@@ -218,23 +218,15 @@ class HttpConfig(BaseSettings):
         return self.inner_WEB_API_CORS_ALLOW_ORIGINS.split(",")
 
     HTTP_REQUEST_MAX_CONNECT_TIMEOUT: Annotated[
-        int, Field(ge=10, description="connect timeout in seconds for HTTP request, which should be no less than 60")
+        int, Field(ge=10, description="connect timeout in seconds for HTTP request")
     ] = 10
 
     HTTP_REQUEST_MAX_READ_TIMEOUT: Annotated[
-        int,
-        Field(
-            ge=60,
-            description="read timeout in seconds for HTTP request, which should be no less than 60",
-        ),
+        int, Field(ge=60, description="read timeout in seconds for HTTP request")
     ] = 60
 
     HTTP_REQUEST_MAX_WRITE_TIMEOUT: Annotated[
-        int,
-        Field(
-            ge=10,
-            description="read timeout in seconds for HTTP request, which should be no less than 10",
-        ),
+        int, Field(ge=10, description="read timeout in seconds for HTTP request")
     ] = 20
 
     HTTP_REQUEST_NODE_MAX_BINARY_SIZE: PositiveInt = Field(
