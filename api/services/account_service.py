@@ -1,5 +1,6 @@
 import base64
 import logging
+import random
 import secrets
 import uuid
 from datetime import datetime, timedelta, timezone
@@ -34,6 +35,7 @@ from services.errors.account import (
     RoleAlreadyAssignedError,
     TenantNotFound,
 )
+from tasks.mail_email_code_login import send_email_code_login_mail_task
 from tasks.mail_invite_member_task import send_invite_member_mail_task
 from tasks.mail_reset_password_task import send_reset_password_mail_task
 
@@ -157,6 +159,24 @@ class AccountService:
         return account
 
     @staticmethod
+    def create_user_through_env(
+        email: str, name: str, interface_language: str, password: Optional[str] = None
+    ) -> Account:
+        """create account"""
+        if dify_config.ALLOW_REGISTER:
+            account = AccountService.create_account(
+                email=email, name=name, interface_language=interface_language, password=password
+            )
+        else:
+            raise Unauthorized("Register is not allowed.")
+        if dify_config.ALLOW_CREATE_WORKSPACE:
+            TenantService.create_owner_tenant_if_not_exist(account=account)
+        else:
+            raise Unauthorized("Create workspace is not allowed.")
+
+        return account
+
+    @staticmethod
     def link_account_integrate(provider: str, open_id: str, account: Account) -> None:
         """Link account integrate"""
         try:
@@ -229,13 +249,23 @@ class AccountService:
         return AccountService.load_user(account_id)
 
     @classmethod
-    def send_reset_password_email(cls, account):
-        if cls.reset_password_rate_limiter.is_rate_limited(account.email):
-            raise RateLimitExceededError(f"Rate limit exceeded for email: {account.email}. Please try again later.")
+    def send_reset_password_email(cls, account: Optional[Account] = None, email: Optional[str] = None):
+        account_email = account.email if account else email
+        account_language = account.interface_language if account else languages[0]
 
-        token = TokenManager.generate_token(account, "reset_password")
-        send_reset_password_mail_task.delay(language=account.interface_language, to=account.email, token=token)
-        cls.reset_password_rate_limiter.increment_rate_limit(account.email)
+        if cls.reset_password_rate_limiter.is_rate_limited(account.email):
+            raise RateLimitExceededError(f"Rate limit exceeded for email: {account_email}. Please try again later.")
+
+        code = "".join([str(random.randint(0, 9)) for _ in range(6)])
+        token = TokenManager.generate_token(
+            account=account, email=email, token_type="reset_password", additional_data={"code": code}
+        )
+        send_reset_password_mail_task.delay(
+            language=account_language,
+            to=account_email,
+            code=code,
+        )
+        cls.reset_password_rate_limiter.increment_rate_limit(account_email)
         return token
 
     @classmethod
@@ -245,6 +275,39 @@ class AccountService:
     @classmethod
     def get_reset_password_data(cls, token: str) -> Optional[dict[str, Any]]:
         return TokenManager.get_token_data(token, "reset_password")
+
+    @classmethod
+    def send_email_code_login_email(cls, account: Optional[Account] = None, email: Optional[str] = None):
+        code = "".join([str(random.randint(0, 9)) for _ in range(6)])
+        token = TokenManager.generate_token(
+            account=account, email=email, token_type="email_code_login", additional_data={"code": code}
+        )
+        send_email_code_login_mail_task.delay(
+            language=account.interface_language if account else languages[0],
+            to=account.email if account else email,
+            code=code,
+        )
+
+        return token
+
+    @classmethod
+    def get_email_code_login_data(cls, token: str) -> Optional[dict[str, Any]]:
+        return TokenManager.get_token_data(token, "email_code_login")
+
+    @classmethod
+    def revoke_email_code_login_token(cls, token: str):
+        TokenManager.revoke_token(token, "email_code_login")
+
+    @classmethod
+    def get_user_through_email(cls, email: str):
+        account = db.session.query(Account).filter(Account.email == email).first()
+        if not account:
+            return None
+
+        if account.status in [AccountStatus.BANNED.value, AccountStatus.CLOSED.value]:
+            raise Unauthorized("Account is banned or closed.")
+
+        return account
 
 
 def _get_login_cache_key(*, account_id: str, token: str):

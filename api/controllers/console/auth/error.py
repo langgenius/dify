@@ -29,3 +29,9 @@ class PasswordResetRateLimitExceededError(BaseHTTPException):
     error_code = "password_reset_rate_limit_exceeded"
     description = "Password reset rate limit exceeded. Try again later."
     code = 429
+
+
+class EmailCodeError(BaseHTTPException):
+    error_code = "email_code_error"
+    description = "Email code is invalid or expired."
+    code = 400

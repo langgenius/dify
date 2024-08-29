@@ -42,6 +42,9 @@ class SystemFeatureModel(BaseModel):
     sso_enforced_for_web: bool = False
     sso_enforced_for_web_protocol: str = ""
     enable_web_sso_switch_component: bool = False
+    enable_email_code_login: bool = dify_config.ENABLE_EMAIL_CODE_LOGIN
+    enable_email_password_login: bool = dify_config.ENABLE_EMAIL_PASSWORD_LOGIN
+    enable_social_oauth_login: bool = dify_config.ENABLE_SOCIAL_OAUTH_LOGIN
 
 
 class FeatureService:
