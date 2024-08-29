@@ -96,6 +96,9 @@ class ToolInvokeMessage(BaseModel):
     class JsonMessage(BaseModel):
         json_object: dict
 
+    class BlobMessage(BaseModel):
+        blob: bytes
+
     class MessageType(Enum):
         TEXT = "text"
         IMAGE = "image"
@@ -109,7 +112,7 @@ class ToolInvokeMessage(BaseModel):
     """
         plain text, image url or link url
     """
-    message: JsonMessage | TextMessage | None
+    message: JsonMessage | TextMessage | BlobMessage | None
     meta: dict[str, Any] | None = None
     save_as: str = ''
 
@@ -321,7 +324,7 @@ class ToolRuntimeVariablePool(BaseModel):
 
         self.pool.append(variable)
 
-    def set_file(self, tool_name: str, value: str, name: str = None) -> None:
+    def set_file(self, tool_name: str, value: str, name: Optional[str] = None) -> None:
         """
             set an image variable
 

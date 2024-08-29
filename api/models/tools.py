@@ -1,6 +1,7 @@
 import json
 
 from sqlalchemy import ForeignKey
+from sqlalchemy.orm import DeclarativeBase, Mapped, mapped_column
 
 from core.tools.entities.common_entities import I18nObject
 from core.tools.entities.tool_bundle import ApiToolBundle
@@ -277,7 +278,7 @@ class ToolConversationVariables(db.Model):
     def variables(self) -> dict:
         return json.loads(self.variables_str)
     
-class ToolFile(db.Model):
+class ToolFile(DeclarativeBase):
     """
     store the file created by agent
     """
@@ -288,16 +289,17 @@ class ToolFile(db.Model):
         db.Index('tool_file_conversation_id_idx', 'conversation_id'),
     )
 
-    id = db.Column(StringUUID, server_default=db.text('uuid_generate_v4()'))
+    id: Mapped[str] = mapped_column(StringUUID, default=db.text('uuid_generate_v4()'))
     # conversation user id
-    user_id = db.Column(StringUUID, nullable=False)
+    user_id: Mapped[str] = mapped_column(StringUUID)
     # tenant id
-    tenant_id = db.Column(StringUUID, nullable=False)
+    tenant_id: Mapped[StringUUID] = mapped_column(StringUUID)
     # conversation id
-    conversation_id = db.Column(StringUUID, nullable=True)
+    conversation_id: Mapped[StringUUID] = mapped_column(nullable=True)
     # file key
-    file_key = db.Column(db.String(255), nullable=False)
+    file_key: Mapped[str] = mapped_column(db.String(255), nullable=False)
     # mime type
-    mimetype = db.Column(db.String(255), nullable=False)
+    mimetype: Mapped[str] = mapped_column(db.String(255), nullable=False)
     # original url
-    original_url = db.Column(db.String(2048), nullable=True)
+    original_url: Mapped[str] = mapped_column(db.String(2048), nullable=True)
+    

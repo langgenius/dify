@@ -1,4 +1,4 @@
-from collections.abc import Mapping, Sequence
+from collections.abc import Generator, Mapping, Sequence
 from os import path
 from typing import Any, cast
 
@@ -145,7 +145,7 @@ class ToolNode(BaseNode):
         assert isinstance(variable, ArrayAnyVariable | ArrayAnySegment)
         return list(variable.value) if variable else []
 
-    def _convert_tool_messages(self, messages: list[ToolInvokeMessage]):
+    def _convert_tool_messages(self, messages: Generator[ToolInvokeMessage, None, None]):
         """
         Convert ToolInvokeMessages into tuple[plain_text, files]
         """
