@@ -54,7 +54,7 @@ const KeyValueItem: FC<Props> = ({
       })
       onChange(newPayload)
     }
-  }, [onChange, onAdd, isLastItem, payload])
+  }, [onChange, payload])
 
   const filterOnlyFileVariable = (varPayload: Var) => {
     return [VarType.file, VarType.arrayFile].includes(varPayload.type)
@@ -109,6 +109,8 @@ const KeyValueItem: FC<Props> = ({
               value={payload.file || []}
               onChange={handleChange('file')}
               filterVar={filterOnlyFileVariable}
+              isInTable
+              onRemove={onRemove}
             />
           )
           : (
