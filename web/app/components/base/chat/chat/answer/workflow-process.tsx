@@ -108,6 +108,7 @@ const WorkflowProcessItem = ({
             {
               <TracingPanel
                 list={data.tracing}
+                onShowIterationDetail={showIterationDetail}
               />
             }
           </div>

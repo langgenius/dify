@@ -61,7 +61,6 @@ function buildLogTree(nodes: NodeTracing[]): TracingNodeProps[] {
 
   // Count parallel children (for figuring out if we need to use letters)
   for (const node of nodes) {
-    console.log(node)
     const parent_parallel_id = node.execution_metadata?.parent_parallel_id ?? null
     const parallel_id = node.execution_metadata?.parallel_id ?? null
 
@@ -188,7 +187,7 @@ const TracingPanel: FC<TracingPanelProps> = ({ list, onShowIterationDetail }) =>
           </div>
           <div className={`pl-2 relative ${isCollapsed ? 'hidden' : ''}`}>
             <div className={cn(
-              'absolute top-0 bottom-0 left-1.5 w-[2px]',
+              'absolute top-0 bottom-0 left-[5px] w-[2px]',
               isHovered ? 'bg-text-accent-secondary' : 'bg-divider-subtle',
             )}></div>
             {node.children.map(renderNode)}
@@ -197,9 +196,10 @@ const TracingPanel: FC<TracingPanelProps> = ({ list, onShowIterationDetail }) =>
       )
     }
     else {
+      const isHovered = hoveredParallel === node.id
       return (
         <div key={node.id}>
-          <div className="pl-4 text-text-quaternary system-2xs-medium-uppercase">
+          <div className={cn('pl-4 -mb-1.5 system-2xs-medium-uppercase', isHovered ? 'text-text-tertiary' : 'text-text-quaternary')}>
             {node.branchTitle}
           </div>
           <NodePanel
