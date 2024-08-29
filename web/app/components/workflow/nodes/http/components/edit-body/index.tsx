@@ -63,9 +63,19 @@ const EditBody: FC<Props> = ({
 
   const handleTypeChange = useCallback((e: React.ChangeEvent<HTMLInputElement>) => {
     const newType = e.target.value as BodyType
+    const hasKeyValue = [BodyType.formData, BodyType.xWwwFormUrlencoded].includes(newType)
     onChange({
       type: newType,
-      data: [],
+      data: hasKeyValue
+        ? [
+          {
+            id: uniqueId(UNIQUE_ID_PREFIX),
+            type: BodyPayloadValueType.text,
+            key: '',
+            value: '',
+          },
+        ]
+        : [],
     })
   }, [onChange])
 
