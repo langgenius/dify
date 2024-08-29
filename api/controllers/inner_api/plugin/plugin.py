@@ -6,10 +6,13 @@ from controllers.console.setup import setup_required
 from controllers.inner_api import api
 from controllers.inner_api.plugin.wraps import get_tenant, plugin_data
 from controllers.inner_api.wraps import plugin_inner_api_only
+from core.plugin.backwards_invocation.app import PluginAppBackwardsInvocation
 from core.plugin.backwards_invocation.model import PluginModelBackwardsInvocation
 from core.plugin.entities.request import (
+    RequestInvokeApp,
     RequestInvokeLLM,
     RequestInvokeModeration,
+    RequestInvokeNode,
     RequestInvokeRerank,
     RequestInvokeSpeech2Text,
     RequestInvokeTextEmbedding,
@@ -104,21 +107,33 @@ class PluginInvokeNodeApi(Resource):
     @setup_required
     @plugin_inner_api_only
     @get_tenant
-    def post(self, user_id: str, tenant_model: Tenant):
-        parser = reqparse.RequestParser()
-        args = parser.parse_args()
-
-        return {'message': 'success'}
+    @plugin_data(payload_type=RequestInvokeNode)
+    def post(self, user_id: str, tenant_model: Tenant, payload: RequestInvokeNode):
+        pass
 
 class PluginInvokeAppApi(Resource):
     @setup_required
     @plugin_inner_api_only
     @get_tenant
-    def post(self, user_id: str, tenant_model: Tenant):
+    @plugin_data(payload_type=RequestInvokeApp)
+    def post(self, user_id: str, tenant_model: Tenant, payload: RequestInvokeApp):
         parser = reqparse.RequestParser()
         args = parser.parse_args()
 
-        return {'message': 'success'}
+        response = PluginAppBackwardsInvocation.invoke_app(
+            app_id=payload.app_id,
+            user_id=user_id,
+            tenant_id=tenant_model.id,
+            conversation_id=payload.conversation_id,
+            query=payload.query,
+            stream=payload.stream,
+            inputs=payload.inputs,
+            files=payload.files
+        )
+        
+        return compact_generate_response(
+            PluginAppBackwardsInvocation.convert_to_event_stream(response)
+        )
 
 api.add_resource(PluginInvokeLLMApi, '/invoke/llm')
 api.add_resource(PluginInvokeTextEmbeddingApi, '/invoke/text-embedding')
