@@ -65,7 +65,7 @@ const VoiceParamConfig = ({
 
   return (
     <>
-      <div className='mb-4 flex items-center'>
+      <div className='mb-4 flex items-center justify-between'>
         <div className='text-text-primary system-xl-semibold'>{t('appDebug.voice.voiceSettings.title')}</div>
         <div className='p-1 cursor-pointer' onClick={onClose}><RiCloseLine className='w-4 h-4 text-text-tertiary'/></div>
       </div>

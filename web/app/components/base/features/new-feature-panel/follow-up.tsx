@@ -8,10 +8,12 @@ import type { OnFeaturesChange } from '@/app/components/base/features/types'
 import { FeatureEnum } from '@/app/components/base/features/types'
 
 type Props = {
+  disabled?: boolean
   onChange?: OnFeaturesChange
 }
 
 const FollowUp = ({
+  disabled,
   onChange,
 }: Props) => {
   const { t } = useTranslation()
@@ -46,6 +48,7 @@ const FollowUp = ({
       value={!!features.suggested?.enabled}
       description={t('appDebug.feature.suggestedQuestionsAfterAnswer.description')!}
       onChange={state => handleChange(FeatureEnum.suggested, state)}
+      disabled={disabled}
     />
   )
 }

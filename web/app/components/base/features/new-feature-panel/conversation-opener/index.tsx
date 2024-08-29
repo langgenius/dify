@@ -77,6 +77,7 @@ const ConversationOpener = ({
       onChange={state => handleChange(FeatureEnum.opening, state)}
       onMouseEnter={() => setIsHovering(true)}
       onMouseLeave={() => setIsHovering(false)}
+      disabled={disabled}
     >
       <>
         {!opening?.enabled && (
@@ -90,7 +91,7 @@ const ConversationOpener = ({
               </div>
             )}
             {isHovering && (
-              <Button className='w-full' onClick={handleOpenOpeningModal}>
+              <Button className='w-full' onClick={handleOpenOpeningModal} disabled={disabled}>
                 <RiEditLine className='mr-1 w-4 h-4' />
                 {t('appDebug.openingStatement.writeOpener')}
               </Button>

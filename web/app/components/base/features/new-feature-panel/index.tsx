@@ -39,6 +39,7 @@ const NewFeaturePanel = ({
   show,
   showAnnotation = false,
   isChatMode,
+  disabled,
   onChange,
   onClose,
 }: Props) => {
@@ -86,24 +87,24 @@ const NewFeaturePanel = ({
         {/* list */}
         <div className='grow overflow-y-auto px-4 pb-4'>
           {!isChatMode && (
-            <MoreLikeThis onChange={onChange} />
+            <MoreLikeThis disabled={disabled} onChange={onChange} />
           )}
           {isChatMode && (
-            <ConversationOpener onChange={onChange} />
+            <ConversationOpener disabled={disabled} onChange={onChange} />
           )}
-          <Moderation onChange={onChange} />
+          <Moderation disabled={disabled} onChange={onChange} />
           {isChatMode && speech2textDefaultModel && (
-            <SpeechToText onChange={onChange} />
+            <SpeechToText disabled={disabled} onChange={onChange} />
           )}
           {text2speechDefaultModel && (
-            <TextToSpeech onChange={onChange} />
+            <TextToSpeech disabled={disabled} onChange={onChange} />
           )}
-          <FileUpload onChange={onChange} />
+          <FileUpload disabled={disabled} onChange={onChange} />
           {isChatMode && (
-            <FollowUp onChange={onChange} />
+            <FollowUp disabled={disabled} onChange={onChange} />
           )}
           {isChatMode && (
-            <Citation onChange={onChange} />
+            <Citation disabled={disabled} onChange={onChange} />
           )}
           {/* annotation reply ##TODO## */}
           {showAnnotation && (

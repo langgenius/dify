@@ -12,14 +12,17 @@ import type {
 import Button from '@/app/components/base/button'
 import ActionButton from '@/app/components/base/action-button'
 import { FileUploaderInChatInput } from '@/app/components/base/file-uploader'
+import type { FileUpload } from '@/app/components/base/features/types'
 import cn from '@/utils/classnames'
 
 type OperationProps = {
+  visionConfig?: FileUpload
   speechToTextConfig?: EnableType
   onShowVoiceInput?: () => void
   onSend: () => void
 }
 const Operation = forwardRef<HTMLDivElement, OperationProps>(({
+  visionConfig,
   speechToTextConfig,
   onShowVoiceInput,
   onSend,
@@ -35,7 +38,7 @@ const Operation = forwardRef<HTMLDivElement, OperationProps>(({
         ref={ref}
       >
         <div className='flex items-center space-x-1'>
-          <FileUploaderInChatInput />
+          {visionConfig?.enabled && <FileUploaderInChatInput />}
           {
             speechToTextConfig?.enabled && (
               <ActionButton

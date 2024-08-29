@@ -206,6 +206,11 @@ const translation = {
       numberLimit: 'Max uploads',
       modalTitle: 'File Upload Setting',
     },
+    bar: {
+      empty: 'Enable feature to enhance web app user experience',
+      enableText: 'Features Enabled',
+      manage: 'Manage',
+    },
   },
   generate: {
     title: 'Prompt Generator',

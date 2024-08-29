@@ -139,6 +139,7 @@ const Moderation = ({
       onChange={state => handleChange(FeatureEnum.moderation, state)}
       onMouseEnter={() => setIsHovering(true)}
       onMouseLeave={() => setIsHovering(false)}
+      disabled={disabled}
     >
       <>
         {!moderation?.enabled && (
@@ -160,7 +161,7 @@ const Moderation = ({
               </div>
             )}
             {isHovering && (
-              <Button className='w-full' onClick={handleOpenModerationSettingModal}>
+              <Button className='w-full' onClick={handleOpenModerationSettingModal} disabled={disabled}>
                 <RiEqualizer2Line className='mr-1 w-4 h-4' />
                 {t('common.operation.settings')}
               </Button>

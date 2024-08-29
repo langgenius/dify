@@ -8,10 +8,12 @@ import type { OnFeaturesChange } from '@/app/components/base/features/types'
 import { FeatureEnum } from '@/app/components/base/features/types'
 
 type Props = {
+  disabled?: boolean
   onChange?: OnFeaturesChange
 }
 
 const Citation = ({
+  disabled,
   onChange,
 }: Props) => {
   const { t } = useTranslation()
@@ -46,6 +48,7 @@ const Citation = ({
       value={!!features.citation?.enabled}
       description={t('appDebug.feature.citation.description')!}
       onChange={state => handleChange(FeatureEnum.citation, state)}
+      disabled={disabled}
     />
   )
 }

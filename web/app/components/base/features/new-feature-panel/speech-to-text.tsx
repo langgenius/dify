@@ -8,10 +8,12 @@ import type { OnFeaturesChange } from '@/app/components/base/features/types'
 import { FeatureEnum } from '@/app/components/base/features/types'
 
 type Props = {
+  disabled: boolean
   onChange?: OnFeaturesChange
 }
 
 const SpeechToText = ({
+  disabled,
   onChange,
 }: Props) => {
   const { t } = useTranslation()
@@ -46,6 +48,7 @@ const SpeechToText = ({
       value={!!features.speech2text?.enabled}
       description={t('appDebug.feature.speechToText.description')!}
       onChange={state => handleChange(FeatureEnum.speech2text, state)}
+      disabled={disabled}
     />
   )
 }

@@ -13,10 +13,12 @@ import { languages } from '@/i18n/language'
 import { TtsAutoPlay } from '@/types/app'
 
 type Props = {
+  disabled: boolean
   onChange?: OnFeaturesChange
 }
 
 const TextToSpeech = ({
+  disabled,
   onChange,
 }: Props) => {
   const { t } = useTranslation()
@@ -56,6 +58,7 @@ const TextToSpeech = ({
       onChange={state => handleChange(FeatureEnum.text2speech, state)}
       onMouseEnter={() => setIsHovering(true)}
       onMouseLeave={() => setIsHovering(false)}
+      disabled={disabled}
     >
       <>
         {!features.text2speech?.enabled && (
@@ -82,8 +85,8 @@ const TextToSpeech = ({
               </div>
             )}
             {(isHovering || modalOpen) && (
-              <VoiceSettings open={modalOpen} onOpen={setModalOpen} onChange={onChange}>
-                <Button className='w-full'>
+              <VoiceSettings open={modalOpen && !disabled} onOpen={setModalOpen} onChange={onChange}>
+                <Button className='w-full' disabled={disabled}>
                   <RiEqualizer2Line className='mr-1 w-4 h-4' />
                   {t('appDebug.voice.voiceSettings.title')}
                 </Button>

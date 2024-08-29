@@ -19,7 +19,7 @@ import { useChat } from './hooks'
 import type { ChatWrapperRefType } from './index'
 import Chat from '@/app/components/base/chat/chat'
 import type { OnSend } from '@/app/components/base/chat/types'
-import { useFeaturesStore } from '@/app/components/base/features/hooks'
+import { useFeatures } from '@/app/components/base/features/hooks'
 import {
   fetchSuggestedQuestions,
   stopChatMessageResponding,
@@ -38,10 +38,8 @@ const ChatWrapper = forwardRef<ChatWrapperRefType, ChatWrapperProps>(({ showConv
   const startVariables = startNode?.data.variables
   const appDetail = useAppStore(s => s.appDetail)
   const workflowStore = useWorkflowStore()
-  const featuresStore = useFeaturesStore()
   const inputs = useStore(s => s.inputs)
-  const features = featuresStore!.getState().features
-
+  const features = useFeatures(s => s.features)
   const config = useMemo(() => {
     return {
       opening_statement: features.opening?.opening_statement || '',
@@ -54,6 +52,7 @@ const ChatWrapper = forwardRef<ChatWrapperRefType, ChatWrapperProps>(({ showConv
       file_upload: features.file,
     }
   }, [features])
+  const setShowFeaturesPanel = useStore(s => s.setShowFeaturesPanel)
 
   const {
     conversationId,
@@ -105,7 +104,9 @@ const ChatWrapper = forwardRef<ChatWrapperRefType, ChatWrapperProps>(({ showConv
         chatContainerClassName='px-3'
         chatContainerInnerClassName='pt-6'
         chatFooterClassName='px-4 rounded-bl-2xl'
-        chatFooterInnerClassName='pb-4'
+        chatFooterInnerClassName='pb-2'
+        showFeatureBar
+        onFeatureBarClick={setShowFeaturesPanel}
         onSend={doSend}
         onStopResponding={handleStop}
         chatNode={(

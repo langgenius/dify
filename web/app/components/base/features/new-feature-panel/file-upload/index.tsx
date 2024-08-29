@@ -11,10 +11,12 @@ import type { OnFeaturesChange } from '@/app/components/base/features/types'
 import { FeatureEnum } from '@/app/components/base/features/types'
 
 type Props = {
+  disabled: boolean
   onChange?: OnFeaturesChange
 }
 
 const FileUpload = ({
+  disabled,
   onChange,
 }: Props) => {
   const { t } = useTranslation()
@@ -57,6 +59,7 @@ const FileUpload = ({
       onChange={state => handleChange(FeatureEnum.file, state)}
       onMouseEnter={() => setIsHovering(true)}
       onMouseLeave={() => setIsHovering(false)}
+      disabled={disabled}
     >
       <>
         {!file?.enabled && (
@@ -79,14 +82,14 @@ const FileUpload = ({
             )}
             {(isHovering || modalOpen) && (
               <SettingModal
-                open={modalOpen}
+                open={modalOpen && !disabled}
                 onOpen={(v) => {
                   setModalOpen(v)
                   setIsHovering(v)
                 }}
                 onChange={onChange}
               >
-                <Button className='w-full'>
+                <Button className='w-full' disabled={disabled}>
                   <RiEqualizer2Line className='mr-1 w-4 h-4' />
                   {t('common.operation.settings')}
                 </Button>

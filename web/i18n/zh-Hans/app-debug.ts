@@ -206,6 +206,11 @@ const translation = {
       numberLimit: '最大上传数',
       modalTitle: '文件上传设置',
     },
+    bar: {
+      empty: '开启功能增强 webapp 用户体验',
+      enableText: '功能已开启',
+      manage: '管理',
+    },
   },
   generate: {
     title: '提示词生成器',

@@ -61,6 +61,8 @@ export type ChatProps = {
   hideProcessDetail?: boolean
   hideLogModal?: boolean
   themeBuilder?: ThemeBuilder
+  showFeatureBar?: boolean
+  onFeatureBarClick?: (state: boolean) => void
 }
 
 const Chat: FC<ChatProps> = ({
@@ -89,6 +91,8 @@ const Chat: FC<ChatProps> = ({
   hideProcessDetail,
   hideLogModal,
   themeBuilder,
+  showFeatureBar,
+  onFeatureBarClick,
 }) => {
   const { t } = useTranslation()
   const { currentLogItem, setCurrentLogItem, showPromptLogModal, setShowPromptLogModal, showAgentLogModal, setShowAgentLogModal } = useAppStore(useShallow(state => ({
@@ -272,7 +276,10 @@ const Chat: FC<ChatProps> = ({
             {
               !noChatInput && (
                 <ChatInputArea
-                  visionConfig={config?.file_upload?.image}
+                  showFeatureBar={showFeatureBar}
+                  featureBarDisabled={isResponding}
+                  onFeatureBarClick={onFeatureBarClick}
+                  visionConfig={config?.file_upload}
                   speechToTextConfig={config?.speech_to_text}
                   onSend={onSend}
                   theme={themeBuilder?.theme}

@@ -8,10 +8,12 @@ import type { OnFeaturesChange } from '@/app/components/base/features/types'
 import { FeatureEnum } from '@/app/components/base/features/types'
 
 type Props = {
+  disabled?: boolean
   onChange?: OnFeaturesChange
 }
 
 const MoreLikeThis = ({
+  disabled,
   onChange,
 }: Props) => {
   const { t } = useTranslation()
@@ -47,6 +49,7 @@ const MoreLikeThis = ({
       value={!!features.moreLikeThis?.enabled}
       description={t('appDebug.feature.moreLikeThis.description')!}
       onChange={state => handleChange(FeatureEnum.moreLikeThis, state)}
+      disabled={disabled}
     />
   )
 }
