@@ -128,7 +128,7 @@ const AppDetailLayout: FC<IAppDetailLayoutProps> = (props) => {
       if (e.status === 404)
         router.replace('/apps')
     })
-  }, [appId, isCurrentWorkspaceEditor])
+  }, [appId, isCurrentWorkspaceEditor, systemFeatures])
 
   useUnmount(() => {
     setAppDetail()
