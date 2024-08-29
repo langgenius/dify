@@ -219,17 +219,17 @@ class HttpConfig(BaseSettings):
 
     HTTP_REQUEST_MAX_CONNECT_TIMEOUT: conint(ge=10) = Field(
         description="connect timeout in seconds for HTTP request, which should be no less than 60",
-        default=300,
+        default=10,
     )
 
     HTTP_REQUEST_MAX_READ_TIMEOUT: conint(ge=60) = Field(
         description="read timeout in seconds for HTTP request, which should be no less than 60",
-        default=600,
+        default=60,
     )
 
     HTTP_REQUEST_MAX_WRITE_TIMEOUT: conint(ge=10) = Field(
         description="read timeout in seconds for HTTP request, which should be no less than 10",
-        default=600,
+        default=20,
     )
 
     HTTP_REQUEST_NODE_MAX_BINARY_SIZE: PositiveInt = Field(
