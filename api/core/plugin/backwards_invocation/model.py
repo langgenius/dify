@@ -2,12 +2,13 @@ from collections.abc import Generator
 
 from core.model_manager import ModelManager
 from core.model_runtime.entities.llm_entities import LLMResult, LLMResultChunk
+from core.plugin.backwards_invocation.base import BaseBackwardsInvocation
 from core.plugin.entities.request import RequestInvokeLLM
 from core.workflow.nodes.llm.llm_node import LLMNode
 from models.account import Tenant
 
 
-class PluginBackwardsInvocation:
+class PluginModelBackwardsInvocation(BaseBackwardsInvocation):
     @classmethod
     def invoke_llm(
         cls, user_id: str, tenant: Tenant, payload: RequestInvokeLLM
@@ -47,3 +48,5 @@ class PluginBackwardsInvocation:
             if response.usage:
                 LLMNode.deduct_llm_quota(tenant_id=tenant.id, model_instance=model_instance, usage=response.usage)
             return response
+    
+    

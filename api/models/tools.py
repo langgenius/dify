@@ -278,7 +278,10 @@ class ToolConversationVariables(db.Model):
     def variables(self) -> dict:
         return json.loads(self.variables_str)
     
-class ToolFile(DeclarativeBase):
+class Base(DeclarativeBase):
+    pass
+
+class ToolFile(Base):
     """
     store the file created by agent
     """
@@ -293,9 +296,9 @@ class ToolFile(DeclarativeBase):
     # conversation user id
     user_id: Mapped[str] = mapped_column(StringUUID)
     # tenant id
-    tenant_id: Mapped[StringUUID] = mapped_column(StringUUID)
+    tenant_id: Mapped[str] = mapped_column(StringUUID)
     # conversation id
-    conversation_id: Mapped[StringUUID] = mapped_column(nullable=True)
+    conversation_id: Mapped[str] = mapped_column(StringUUID, nullable=True)
     # file key
     file_key: Mapped[str] = mapped_column(db.String(255), nullable=False)
     # mime type

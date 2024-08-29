@@ -1,4 +1,4 @@
-from typing import Any, Optional
+from typing import Any, Literal, Optional
 
 from pydantic import BaseModel, Field, field_validator
 
@@ -93,3 +93,15 @@ class RequestInvokeNode(BaseModel):
     """
     Request to invoke node
     """
+
+class RequestInvokeApp(BaseModel):
+    """
+    Request to invoke app
+    """
+    app_id: str
+    inputs: dict[str, Any]
+    query: Optional[str] = None
+    response_mode: Literal["blocking", "streaming"]
+    conversation_id: Optional[str] = None
+    user: Optional[str] = None
+    files: list[dict] = Field(default_factory=list)

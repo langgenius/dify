@@ -1,5 +1,4 @@
 import time
-from collections.abc import Generator
 
 from flask_restful import Resource, reqparse
 
@@ -30,14 +29,9 @@ class PluginInvokeLLMApi(Resource):
     def post(self, user_id: str, tenant_model: Tenant, payload: RequestInvokeLLM):
         def generator():
             response = PluginModelBackwardsInvocation.invoke_llm(user_id, tenant_model, payload)
-            if isinstance(response, Generator):
-                for chunk in response:
-                    yield chunk.model_dump_json().encode() + b'\n\n'
-            else:
-                yield response.model_dump_json().encode() + b'\n\n'
+            return PluginModelBackwardsInvocation.convert_to_event_stream(response)
 
         return compact_generate_response(generator())
-
 
 class PluginInvokeTextEmbeddingApi(Resource):
     @setup_required
