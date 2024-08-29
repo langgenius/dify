@@ -116,6 +116,15 @@ class PluginInvokeNodeApi(Resource):
 
         return {'message': 'success'}
 
+class PluginInvokeAppApi(Resource):
+    @setup_required
+    @plugin_inner_api_only
+    @get_tenant
+    def post(self, user_id: str, tenant_model: Tenant):
+        parser = reqparse.RequestParser()
+        args = parser.parse_args()
+
+        return {'message': 'success'}
 
 api.add_resource(PluginInvokeLLMApi, '/invoke/llm')
 api.add_resource(PluginInvokeTextEmbeddingApi, '/invoke/text-embedding')
@@ -125,3 +134,4 @@ api.add_resource(PluginInvokeSpeech2TextApi, '/invoke/speech2text')
 api.add_resource(PluginInvokeModerationApi, '/invoke/moderation')
 api.add_resource(PluginInvokeToolApi, '/invoke/tool')
 api.add_resource(PluginInvokeNodeApi, '/invoke/node')
+api.add_resource(PluginInvokeAppApi, '/invoke/app')
