@@ -203,7 +203,8 @@ class TokenManager:
 
         expiry_hours = current_app.config[f"{token_type.upper()}_TOKEN_EXPIRY_HOURS"]
         token_key = cls._get_token_key(token, token_type)
-        redis_client.setex(token_key, expiry_hours * 60 * 60, json.dumps(token_data))
+        expiry_time = int(expiry_hours * 60 * 60)
+        redis_client.setex(token_key, expiry_time, json.dumps(token_data))
 
         cls._set_current_token_for_account(account.id, token, token_type, expiry_hours)
         return token
@@ -234,9 +235,12 @@ class TokenManager:
         return current_token
 
     @classmethod
-    def _set_current_token_for_account(cls, account_id: str, token: str, token_type: str, expiry_hours: int):
+    def _set_current_token_for_account(
+        cls, account_id: str, token: str, token_type: str, expiry_hours: Union[int, float]
+    ):
         key = cls._get_account_token_key(account_id, token_type)
-        redis_client.setex(key, expiry_hours * 60 * 60, token)
+        expiry_time = int(expiry_hours * 60 * 60)
+        redis_client.setex(key, expiry_time, token)
 
     @classmethod
     def _get_account_token_key(cls, account_id: str, token_type: str) -> str:

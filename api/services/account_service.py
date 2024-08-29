@@ -1,5 +1,6 @@
 import base64
 import logging
+import random
 import secrets
 import uuid
 from datetime import datetime, timedelta, timezone
@@ -34,6 +35,7 @@ from services.errors.account import (
     RoleAlreadyAssignedError,
     TenantNotFound,
 )
+from tasks.mail_email_code_login import send_email_code_login_mail_task
 from tasks.mail_invite_member_task import send_invite_member_mail_task
 from tasks.mail_reset_password_task import send_reset_password_mail_task
 
@@ -245,6 +247,37 @@ class AccountService:
     @classmethod
     def get_reset_password_data(cls, token: str) -> Optional[dict[str, Any]]:
         return TokenManager.get_token_data(token, "reset_password")
+
+    @classmethod
+    def send_email_code_login_email(cls, account: Account):
+        code = "".join([str(random.randint(0, 9)) for _ in range(6)])
+        token = TokenManager.generate_token(account, "email_code_login", {"code": code})
+        send_email_code_login_mail_task.delay(
+            language=account.interface_language,
+            to=account.email,
+            code=code,
+        )
+
+        return token
+
+    @classmethod
+    def get_email_code_login_data(cls, token: str) -> Optional[dict[str, Any]]:
+        return TokenManager.get_token_data(token, "email_code_login")
+
+    @classmethod
+    def revoke_email_code_login_token(cls, token: str):
+        TokenManager.revoke_token(token, "email_code_login")
+
+    @classmethod
+    def get_user_through_email(cls, email: str):
+        account = db.session.query(Account).filter(Account.email == email).first()
+        if not account:
+            return None
+
+        if account.status in [AccountStatus.BANNED.value, AccountStatus.CLOSED.value]:
+            raise Unauthorized("Account is banned or closed.")
+
+        return account
 
 
 def _get_login_cache_key(*, account_id: str, token: str):

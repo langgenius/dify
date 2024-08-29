@@ -5,7 +5,15 @@ from flask import request
 from flask_restful import Resource, reqparse
 
 import services
+from configs import dify_config
+from constants.languages import languages
 from controllers.console import api
+from controllers.console.auth.error import (
+    EmailLoginCodeError,
+    InvalidEmailError,
+    InvalidTokenError,
+    NotAllowCreateWorkspaceError,
+)
 from controllers.console.setup import setup_required
 from libs.helper import email, get_remote_ip
 from libs.password import valid_password
@@ -106,5 +114,64 @@ class ResetPasswordApi(Resource):
         return {"result": "success"}
 
 
+class EmailCodeLoginSendEmailApi(Resource):
+    @setup_required
+    def post(self):
+        parser = reqparse.RequestParser()
+        parser.add_argument("email", type=str, required=True, location="json")
+        args = parser.parse_args()
+
+        account = AccountService.get_user_through_email(args["email"])
+        if account is None:
+            raise InvalidEmailError()
+
+        token = AccountService.send_email_code_login_email(account)
+        return {"result": "success", "data": token}
+
+
+class EmailCodeLoginApi(Resource):
+    @setup_required
+    def post(self):
+        parser = reqparse.RequestParser()
+        parser.add_argument("email", type=str, required=True, location="json")
+        parser.add_argument("code", type=str, required=True, location="json")
+        parser.add_argument("token", type=str, required=True, location="json")
+        args = parser.parse_args()
+
+        user_email = args["email"]
+
+        token_data = AccountService.get_email_code_login_data(args["token"])
+        if token_data is None:
+            raise InvalidTokenError()
+
+        if token_data["email"] != args["email"]:
+            raise InvalidEmailError()
+
+        if token_data["code"] != args["code"]:
+            raise EmailLoginCodeError()
+
+        AccountService.revoke_email_code_login_token(args["token"])
+        account = AccountService.get_user_through_email(user_email)
+        if account is None:
+            # through environment variable, control whether to allow user to register and create workspace
+            if dify_config.ALLOW_REGISTER:
+                account = AccountService.create_account(
+                    email=user_email, name=user_email, interface_language=languages[0]
+                )
+            else:
+                raise InvalidEmailError()
+            if dify_config.ALLOW_CREATE_WORKSPACE:
+                TenantService.create_owner_tenant_if_not_exist(account=account)
+            else:
+                raise NotAllowCreateWorkspaceError()
+
+        else:
+            token = AccountService.login(account, ip_address=get_remote_ip(request))
+
+            return {"result": "success", "data": token}
+
+
 api.add_resource(LoginApi, "/login")
 api.add_resource(LogoutApi, "/logout")
+api.add_resource(EmailCodeLoginSendEmailApi, "/email-code-login")
+api.add_resource(EmailCodeLoginApi, "/email-code-login/validity")

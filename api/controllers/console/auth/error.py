@@ -29,3 +29,15 @@ class PasswordResetRateLimitExceededError(BaseHTTPException):
     error_code = "password_reset_rate_limit_exceeded"
     description = "Password reset rate limit exceeded. Try again later."
     code = 429
+
+
+class EmailLoginCodeError(BaseHTTPException):
+    error_code = "email_login_code_error"
+    description = "Email login code is invalid or expired."
+    code = 400
+
+
+class NotAllowCreateWorkspaceError(BaseHTTPException):
+    error_code = "workspace_not_found"
+    description = "Workspace not found."
+    code = 400
