@@ -35,7 +35,7 @@ class ChatAppGenerator(MessageBasedAppGenerator):
         args: Any,
         invoke_from: InvokeFrom,
         stream: Literal[True] = True,
-    ) -> Generator[str, None, None]: ...
+    ) -> Generator[dict | str, None, None]: ...
 
     @overload
     def generate(
@@ -46,13 +46,22 @@ class ChatAppGenerator(MessageBasedAppGenerator):
         stream: Literal[False] = False,
     ) -> dict: ...
 
+    @overload
+    def generate(
+        self, app_model: App,
+        user: Union[Account, EndUser],
+        args: Any,
+        invoke_from: InvokeFrom,
+        stream: bool = False,
+    ) -> Union[dict, Generator[dict | str, None, None]]: ...
+
     def generate(
         self, app_model: App,
         user: Union[Account, EndUser],
         args: Any,
         invoke_from: InvokeFrom,
         stream: bool = True,
-    ) -> Union[dict, Generator[str, None, None]]:
+    ) -> Union[dict, Generator[dict | str, None, None]]:
         """
         Generate App response.
 

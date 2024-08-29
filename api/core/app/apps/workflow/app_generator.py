@@ -40,7 +40,8 @@ class WorkflowAppGenerator(BaseAppGenerator):
         args: dict,
         invoke_from: InvokeFrom,
         stream: Literal[True] = True,
-    ) -> Generator[str, None, None]: ...
+        call_depth: int = 0,
+    ) -> Generator[dict | str, None, None]: ...
 
     @overload
     def generate(
@@ -50,7 +51,19 @@ class WorkflowAppGenerator(BaseAppGenerator):
         args: dict,
         invoke_from: InvokeFrom,
         stream: Literal[False] = False,
+        call_depth: int = 0,
     ) -> dict: ...
+
+    @overload
+    def generate(
+        self, app_model: App,
+        workflow: Workflow,
+        user: Union[Account, EndUser],
+        args: dict,
+        invoke_from: InvokeFrom,
+        stream: bool = False,
+        call_depth: int = 0,
+    ) -> dict | Generator[dict | str, None, None]: ...
 
     def generate(
         self, app_model: App,
@@ -127,7 +140,7 @@ class WorkflowAppGenerator(BaseAppGenerator):
         application_generate_entity: WorkflowAppGenerateEntity,
         invoke_from: InvokeFrom,
         stream: bool = True,
-    ) -> Union[dict, Generator[str, None, None]]:
+    ) -> Union[dict, Generator[str | dict, None, None]]:
         """
         Generate App response.
 
@@ -173,7 +186,7 @@ class WorkflowAppGenerator(BaseAppGenerator):
     def single_iteration_generate(self, app_model: App,
                                   workflow: Workflow,
                                   node_id: str,
-                                  user: Account,
+                                  user: Account | EndUser,
                                   args: dict,
                                   stream: bool = True):
         """

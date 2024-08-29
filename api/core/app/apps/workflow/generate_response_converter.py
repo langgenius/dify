@@ -1,4 +1,3 @@
-import json
 from collections.abc import Generator
 from typing import cast
 
@@ -36,7 +35,7 @@ class WorkflowAppGenerateResponseConverter(AppGenerateResponseConverter):
 
     @classmethod
     def convert_stream_full_response(cls, stream_response: Generator[WorkflowAppStreamResponse, None, None]) \
-            -> Generator[str, None, None]:
+            -> Generator[dict | str, None, None]:
         """
         Convert stream full response.
         :param stream_response: stream response
@@ -60,11 +59,11 @@ class WorkflowAppGenerateResponseConverter(AppGenerateResponseConverter):
                 response_chunk.update(data)
             else:
                 response_chunk.update(sub_stream_response.to_dict())
-            yield json.dumps(response_chunk)
+            yield response_chunk
 
     @classmethod
     def convert_stream_simple_response(cls, stream_response: Generator[WorkflowAppStreamResponse, None, None]) \
-            -> Generator[str, None, None]:
+            -> Generator[dict | str, None, None]:
         """
         Convert stream simple response.
         :param stream_response: stream response
@@ -90,4 +89,4 @@ class WorkflowAppGenerateResponseConverter(AppGenerateResponseConverter):
                 response_chunk.update(sub_stream_response.to_ignore_detail_dict())
             else:
                 response_chunk.update(sub_stream_response.to_dict())
-            yield json.dumps(response_chunk)
+            yield response_chunk

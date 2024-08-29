@@ -1,5 +1,6 @@
-from collections.abc import Mapping
-from typing import Any, Optional
+from collections.abc import Generator, Mapping
+import json
+from typing import Any, Optional, Union
 
 from core.app.app_config.entities import AppConfig, VariableEntity, VariableEntityType
 
@@ -54,3 +55,20 @@ class BaseAppGenerator:
         if isinstance(value, str):
             return value.replace('\x00', '')
         return value
+
+    @classmethod
+    def convert_to_event_stream(cls, generator: Union[dict, Generator[dict| str, None, None]]):
+        """
+        Convert messages into event stream
+        """
+        if isinstance(generator, dict):
+            return generator
+        else:
+            def gen():
+                for message in generator:
+                    if isinstance(message, dict):
+                        yield f'data: {json.dumps(message)}\n\n'
+                    else:
+                        yield f'event: {message}\n\n'
+            
+            return gen()

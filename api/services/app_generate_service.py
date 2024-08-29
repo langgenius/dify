@@ -42,48 +42,58 @@ class AppGenerateService:
             request_id = rate_limit.enter(request_id)
             if app_model.mode == AppMode.COMPLETION.value:
                 return rate_limit.generate(
-                    CompletionAppGenerator().generate(
-                        app_model=app_model, user=user, args=args, invoke_from=invoke_from, stream=streaming
+                    CompletionAppGenerator.convert_to_event_stream(
+                        CompletionAppGenerator().generate(
+                            app_model=app_model, user=user, args=args, invoke_from=invoke_from, stream=streaming
+                        ),
                     ),
                     request_id,
                 )
             elif app_model.mode == AppMode.AGENT_CHAT.value or app_model.is_agent:
                 return rate_limit.generate(
-                    AgentChatAppGenerator().generate(
-                        app_model=app_model, user=user, args=args, invoke_from=invoke_from, stream=streaming
+                    AgentChatAppGenerator.convert_to_event_stream(
+                        AgentChatAppGenerator().generate(
+                            app_model=app_model, user=user, args=args, invoke_from=invoke_from, stream=streaming
+                        ),
                     ),
                     request_id,
                 )
             elif app_model.mode == AppMode.CHAT.value:
                 return rate_limit.generate(
-                    ChatAppGenerator().generate(
-                        app_model=app_model, user=user, args=args, invoke_from=invoke_from, stream=streaming
+                    ChatAppGenerator.convert_to_event_stream(
+                        ChatAppGenerator().generate(
+                            app_model=app_model, user=user, args=args, invoke_from=invoke_from, stream=streaming
+                        ),
                     ),
                     request_id,
                 )
             elif app_model.mode == AppMode.ADVANCED_CHAT.value:
                 workflow = cls._get_workflow(app_model, invoke_from)
                 return rate_limit.generate(
-                    AdvancedChatAppGenerator().generate(
+                    AdvancedChatAppGenerator.convert_to_event_stream(
+                        AdvancedChatAppGenerator().generate(
                         app_model=app_model,
                         workflow=workflow,
                         user=user,
                         args=args,
                         invoke_from=invoke_from,
                         stream=streaming,
+                        ),
                     ),
                     request_id,
                 )
             elif app_model.mode == AppMode.WORKFLOW.value:
                 workflow = cls._get_workflow(app_model, invoke_from)
                 return rate_limit.generate(
-                    WorkflowAppGenerator().generate(
-                        app_model=app_model,
-                        workflow=workflow,
-                        user=user,
-                        args=args,
-                        invoke_from=invoke_from,
-                        stream=streaming,
+                    WorkflowAppGenerator.convert_to_event_stream(
+                        WorkflowAppGenerator().generate(
+                            app_model=app_model,
+                            workflow=workflow,
+                            user=user,
+                            args=args,
+                            invoke_from=invoke_from,
+                            stream=streaming,
+                        ),
                     ),
                     request_id,
                 )
@@ -108,13 +118,17 @@ class AppGenerateService:
     ):
         if app_model.mode == AppMode.ADVANCED_CHAT.value:
             workflow = cls._get_workflow(app_model, InvokeFrom.DEBUGGER)
-            return AdvancedChatAppGenerator().single_iteration_generate(
-                app_model=app_model, workflow=workflow, node_id=node_id, user=user, args=args, stream=streaming
+            return AdvancedChatAppGenerator.convert_to_event_stream(
+                AdvancedChatAppGenerator().single_iteration_generate(
+                    app_model=app_model, workflow=workflow, node_id=node_id, user=user, args=args, stream=streaming
+                )
             )
         elif app_model.mode == AppMode.WORKFLOW.value:
             workflow = cls._get_workflow(app_model, InvokeFrom.DEBUGGER)
-            return WorkflowAppGenerator().single_iteration_generate(
-                app_model=app_model, workflow=workflow, node_id=node_id, user=user, args=args, stream=streaming
+            return AdvancedChatAppGenerator.convert_to_event_stream( 
+                WorkflowAppGenerator().single_iteration_generate(
+                    app_model=app_model, workflow=workflow, node_id=node_id, user=user, args=args, stream=streaming
+                )
             )
         else:
             raise ValueError(f"Invalid app mode {app_model.mode}")

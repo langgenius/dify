@@ -21,24 +21,16 @@ class AppGenerateResponseConverter(ABC):
             if isinstance(response, AppBlockingResponse):
                 return cls.convert_blocking_full_response(response)
             else:
-                def _generate_full_response() -> Generator[str, Any, None]:
-                    for chunk in cls.convert_stream_full_response(response):
-                        if chunk == 'ping':
-                            yield f'event: {chunk}\n\n'
-                        else:
-                            yield f'data: {chunk}\n\n'
+                def _generate_full_response() -> Generator[dict | str, Any, None]:
+                    yield from cls.convert_stream_simple_response(response)
 
                 return _generate_full_response()
         else:
             if isinstance(response, AppBlockingResponse):
                 return cls.convert_blocking_simple_response(response)
             else:
-                def _generate_simple_response() -> Generator[str, Any, None]:
-                    for chunk in cls.convert_stream_simple_response(response):
-                        if chunk == 'ping':
-                            yield f'event: {chunk}\n\n'
-                        else:
-                            yield f'data: {chunk}\n\n'
+                def _generate_simple_response() -> Generator[dict | str, Any, None]:
+                    yield from cls.convert_stream_simple_response(response)
 
                 return _generate_simple_response()
 
@@ -55,7 +47,7 @@ class AppGenerateResponseConverter(ABC):
     @classmethod
     @abstractmethod
     def convert_stream_full_response(cls, stream_response: Generator[AppStreamResponse, None, None]) \
-            -> Generator[str, None, None]:
+            -> Generator[dict | str, None, None]:
         raise NotImplementedError
 
     @classmethod
