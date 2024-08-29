@@ -1726,21 +1726,25 @@ requests-toolbelt = ">=0.9.1"
 
 [[package]]
 name = "cohere"
-version = "5.2.6"
+version = "5.8.1"
 description = ""
 optional = false
 python-versions = "<4.0,>=3.8"
 files = [
-    {file = "cohere-5.2.6-py3-none-any.whl", hash = "sha256:256b4ed00f47eb315401d7f28834655714f098382908e7d0ad5c98225aa6a57d"},
-    {file = "cohere-5.2.6.tar.gz", hash = "sha256:15d13682706fbafc8cf700e195f628389a643eb7ebd6d7c5e9d6e1ebd3f942fb"},
+    {file = "cohere-5.8.1-py3-none-any.whl", hash = "sha256:92362c651dfbfef8c5d34e95de394578d7197ed7875c6fcbf101e84b60db7fbd"},
+    {file = "cohere-5.8.1.tar.gz", hash = "sha256:4c0c4468f15f9ad7fb7af15cc9f7305cd6df51243d69e203682be87e9efa5071"},
 ]
 
 [package.dependencies]
+boto3 = ">=1.34.0,<2.0.0"
 fastavro = ">=1.9.4,<2.0.0"
 httpx = ">=0.21.2"
+httpx-sse = "0.4.0"
+parameterized = ">=0.9.0,<0.10.0"
 pydantic = ">=1.9.2"
+pydantic-core = ">=2.18.2,<3.0.0"
 requests = ">=2.0.0,<3.0.0"
-tokenizers = ">=0.15.2,<0.16.0"
+tokenizers = ">=0.15,<1"
 types-requests = ">=2.0.0,<3.0.0"
 typing_extensions = ">=4.0.0"
 
@@ -3851,6 +3855,17 @@ http2 = ["h2 (>=3,<5)"]
 socks = ["socksio (==1.*)"]
 
 [[package]]
+name = "httpx-sse"
+version = "0.4.0"
+description = "Consume Server-Sent Event (SSE) messages with HTTPX."
+optional = false
+python-versions = ">=3.8"
+files = [
+    {file = "httpx-sse-0.4.0.tar.gz", hash = "sha256:1e81a3a3070ce322add1d3529ed42eb5f70817f45ed6ec915ab753f961139721"},
+    {file = "httpx_sse-0.4.0-py3-none-any.whl", hash = "sha256:f329af6eae57eaa2bdfd962b42524764af68075ea87370a2de920af5341e318f"},
+]
+
+[[package]]
 name = "huggingface-hub"
 version = "0.16.4"
 description = "Client library to download and publish models, datasets and other repos on the huggingface.co hub"
@@ -5915,6 +5930,20 @@ spss = ["pyreadstat (>=1.2.0)"]
 sql-other = ["SQLAlchemy (>=2.0.0)", "adbc-driver-postgresql (>=0.8.0)", "adbc-driver-sqlite (>=0.8.0)"]
 test = ["hypothesis (>=6.46.1)", "pytest (>=7.3.2)", "pytest-xdist (>=2.2.0)"]
 xml = ["lxml (>=4.9.2)"]
+
+[[package]]
+name = "parameterized"
+version = "0.9.0"
+description = "Parameterized testing with any Python test framework"
+optional = false
+python-versions = ">=3.7"
+files = [
+    {file = "parameterized-0.9.0-py2.py3-none-any.whl", hash = "sha256:4e0758e3d41bea3bbd05ec14fc2c24736723f243b28d702081aef438c9372b1b"},
+    {file = "parameterized-0.9.0.tar.gz", hash = "sha256:7fc905272cefa4f364c1a3429cbbe9c0f98b793988efb5bf90aac80f08db09b1"},
+]
+
+[package.extras]
+dev = ["jinja2"]
 
 [[package]]
 name = "peewee"
@@ -8483,13 +8512,13 @@ files = [
 
 [[package]]
 name = "tidb-vector"
-version = "0.0.9"
+version = "0.0.12"
 description = "A Python client for TiDB Vector"
 optional = false
 python-versions = "<4.0,>=3.8.1"
 files = [
-    {file = "tidb_vector-0.0.9-py3-none-any.whl", hash = "sha256:db060ee1c981326d3882d0810e0b8b57811f278668f9381168997b360c4296c2"},
-    {file = "tidb_vector-0.0.9.tar.gz", hash = "sha256:e10680872532808e1bcffa7a92dd2b05bb65d63982f833edb3c6cd590dec7709"},
+    {file = "tidb_vector-0.0.12-py3-none-any.whl", hash = "sha256:f4886f8b317365aba18b8bbab606d026ba70576b854f465eb6e6b498140224b5"},
+    {file = "tidb_vector-0.0.12.tar.gz", hash = "sha256:27dd7bfd0504df36221651a43ee5c7865b80cbc9fb24f2e3833d2d819dcedc11"},
 ]
 
 [package.dependencies]
@@ -10063,4 +10092,4 @@ cffi = ["cffi (>=1.11)"]
 [metadata]
 lock-version = "2.0"
 python-versions = ">=3.10,<3.13"
-content-hash = "e4c00268514d26bd07c6b72925e0e3b4558ec972895d252e60e9571e3ac38895"
+content-hash = "10415cea97a868b451b782c8cb58ea066a7d1a0edd47e3eb22e76b24c72a34e2"
