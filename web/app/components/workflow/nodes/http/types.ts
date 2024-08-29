@@ -39,7 +39,6 @@ export type BodyPayload = {
 export type Body = {
   type: BodyType
   data: string | BodyPayload // string is deprecated, it would convert to BodyPayload after loaded
-  binaryFileVariable?: ValueSelector
 }
 
 export enum AuthorizationType {

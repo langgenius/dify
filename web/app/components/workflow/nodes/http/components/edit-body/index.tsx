@@ -89,7 +89,7 @@ const EditBody: FC<Props> = ({
   }, [onChange, payload])
 
   const filterOnlyFileVariable = (varPayload: Var) => {
-    return varPayload.type === VarType.file
+    return [VarType.file, VarType.arrayFile].includes(varPayload.type)
   }
 
   const handleBodyValueChange = useCallback((value: string) => {
@@ -109,7 +109,13 @@ const EditBody: FC<Props> = ({
 
   const handleBinaryFileChange = useCallback((value: ValueSelector | string) => {
     const newBody = produce(payload, (draft: Body) => {
-      draft.binaryFileVariable = value as ValueSelector
+      if ((draft.data as BodyPayload).length === 0) {
+        (draft.data as BodyPayload).push({
+          id: uniqueId(UNIQUE_ID_PREFIX),
+          type: BodyPayloadValueType.file,
+        })
+      }
+      (draft.data as BodyPayload)[0].file = value as ValueSelector
     })
     onChange(newBody)
   }, [onChange, payload])
@@ -172,12 +178,11 @@ const EditBody: FC<Props> = ({
           />
         )}
 
-        {/* TODO */}
         {type === BodyType.binary && (
           <VarReferencePicker
             nodeId={nodeId}
             readonly={readonly}
-            value={payload.binaryFileVariable || []}
+            value={bodyPayload[0]?.file || []}
             onChange={handleBinaryFileChange}
             filterVar={filterOnlyFileVariable}
           />
