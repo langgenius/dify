@@ -1,4 +1,3 @@
-
 from core.model_runtime.entities.model_entities import DefaultParameterName
 
 PARAMETER_RULE_TEMPLATE: dict[DefaultParameterName, dict] = {
@@ -94,5 +93,16 @@ PARAMETER_RULE_TEMPLATE: dict[DefaultParameterName, dict] = {
         },
         'required': False,
         'options': ['JSON', 'XML'],
-    }
+    },
+    DefaultParameterName.JSON_SCHEMA: {
+        'label': {
+            'en_US': 'JSON Schema',
+        },
+        'type': 'text',
+        'help': {
+            'en_US': 'Set a response json schema will ensure LLM to adhere it.',
+            'zh_Hans': '设置返回的json schema，llm将按照它返回',
+        },
+        'required': False,
+    },
 }

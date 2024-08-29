@@ -1,6 +1,5 @@
 import json
 import logging
-from collections.abc import Generator
 from typing import Optional, Union
 
 from configs import dify_config
@@ -9,7 +8,6 @@ from core.tools.entities.common_entities import I18nObject
 from core.tools.entities.tool_bundle import ApiToolBundle
 from core.tools.entities.tool_entities import (
     ApiProviderAuthType,
-    ToolInvokeMessage,
     ToolParameter,
     ToolProviderCredentials,
     ToolProviderType,
@@ -24,46 +22,39 @@ from models.tools import ApiToolProvider, BuiltinToolProvider, WorkflowToolProvi
 
 logger = logging.getLogger(__name__)
 
+
 class ToolTransformService:
     @classmethod
     def get_tool_provider_icon_url(cls, provider_type: str, provider_name: str, icon: str) -> Union[str, dict]:
         """
-            get tool provider icon url
+        get tool provider icon url
         """
-        url_prefix = (dify_config.CONSOLE_API_URL
-                      + "/console/api/workspaces/current/tool-provider/")
-        
+        url_prefix = dify_config.CONSOLE_API_URL + "/console/api/workspaces/current/tool-provider/"
+
         if provider_type == ToolProviderType.BUILT_IN.value:
-            return url_prefix + 'builtin/' + provider_name + '/icon'
+            return url_prefix + "builtin/" + provider_name + "/icon"
         elif provider_type in [ToolProviderType.API.value, ToolProviderType.WORKFLOW.value]:
             try:
                 return json.loads(icon)
             except:
-                return {
-                    "background": "#252525",
-                    "content": "\ud83d\ude01"
-                }
-        
-        return ''
-        
-    @classmethod
-    def repack_provider(cls, provider: Union[dict, UserToolProvider]):
-        """
-            repack provider
+                return {"background": "#252525", "content": "\ud83d\ude01"}
 
-            :param provider: the provider dict
+        return ""
+
+    @staticmethod
+    def repack_provider(provider: Union[dict, UserToolProvider]):
         """
-        if isinstance(provider, dict) and 'icon' in provider:
-            provider['icon'] = ToolTransformService.get_tool_provider_icon_url(
-                provider_type=provider['type'],
-                provider_name=provider['name'],
-                icon=provider['icon']
+        repack provider
+
+        :param provider: the provider dict
+        """
+        if isinstance(provider, dict) and "icon" in provider:
+            provider["icon"] = ToolTransformService.get_tool_provider_icon_url(
+                provider_type=provider["type"], provider_name=provider["name"], icon=provider["icon"]
             )
         elif isinstance(provider, UserToolProvider):
             provider.icon = ToolTransformService.get_tool_provider_icon_url(
-                provider_type=provider.type.value,
-                provider_name=provider.name,
-                icon=provider.icon
+                provider_type=provider.type.value, provider_name=provider.name, icon=provider.icon
             )
 
     @classmethod
@@ -95,14 +86,13 @@ class ToolTransformService:
             masked_credentials={},
             is_team_authorization=False,
             tools=[],
-            labels=provider_controller.tool_labels
+            labels=provider_controller.tool_labels,
         )
 
         # get credentials schema
         schema = provider_controller.get_credentials_schema()
         for name, value in schema.items():
-            result.masked_credentials[name] = \
-                ToolProviderCredentials.CredentialsType.default(value.type)
+            result.masked_credentials[name] = ToolProviderCredentials.CredentialsType.default(value.type)
 
         # check if the provider need credentials
         if not provider_controller.need_credentials:
@@ -116,8 +106,7 @@ class ToolTransformService:
 
                 # init tool configuration
                 tool_configuration = ToolConfigurationManager(
-                    tenant_id=db_provider.tenant_id, 
-                    provider_controller=provider_controller
+                    tenant_id=db_provider.tenant_id, provider_controller=provider_controller
                 )
                 # decrypt the credentials and mask the credentials
                 decrypted_credentials = tool_configuration.decrypt_tool_credentials(credentials=credentials)
@@ -127,10 +116,9 @@ class ToolTransformService:
                 result.original_credentials = decrypted_credentials
 
         return result
-    
-    @classmethod
+
+    @staticmethod
     def api_provider_to_controller(
-        cls,
         db_provider: ApiToolProvider,
     ) -> ApiToolProviderController:
         """
@@ -139,26 +127,23 @@ class ToolTransformService:
         # package tool provider controller
         controller = ApiToolProviderController.from_db(
             db_provider=db_provider,
-            auth_type=ApiProviderAuthType.API_KEY if db_provider.credentials['auth_type'] == 'api_key' else 
-            ApiProviderAuthType.NONE
+            auth_type=ApiProviderAuthType.API_KEY
+            if db_provider.credentials["auth_type"] == "api_key"
+            else ApiProviderAuthType.NONE,
         )
 
         return controller
-    
-    @classmethod
-    def workflow_provider_to_controller(
-        cls,
-        db_provider: WorkflowToolProvider
-    ) -> WorkflowToolProviderController:
+
+    @staticmethod
+    def workflow_provider_to_controller(db_provider: WorkflowToolProvider) -> WorkflowToolProviderController:
         """
         convert provider controller to provider
         """
         return WorkflowToolProviderController.from_db(db_provider)
-    
+
     @staticmethod
     def workflow_provider_to_user_provider(
-        provider_controller: WorkflowToolProviderController,
-        labels: list[str] = None
+        provider_controller: WorkflowToolProviderController, labels: list[str] = None
     ):
         """
         convert provider controller to user provider
@@ -180,7 +165,7 @@ class ToolTransformService:
             masked_credentials={},
             is_team_authorization=True,
             tools=[],
-            labels=labels or []
+            labels=labels or [],
         )
 
     @classmethod
@@ -189,16 +174,16 @@ class ToolTransformService:
         provider_controller: ApiToolProviderController,
         db_provider: ApiToolProvider,
         decrypt_credentials: bool = True,
-        labels: list[str] = None
+        labels: list[str] = None,
     ) -> UserToolProvider:
         """
         convert provider controller to user provider
         """
-        username = 'Anonymous'
+        username = "Anonymous"
         try:
             username = db_provider.user.name
         except Exception as e:
-            logger.error(f'failed to get user name for api provider {db_provider.id}: {str(e)}')
+            logger.error(f"failed to get user name for api provider {db_provider.id}: {str(e)}")
         # add provider into providers
         credentials = db_provider.credentials
         result = UserToolProvider(
@@ -218,14 +203,13 @@ class ToolTransformService:
             masked_credentials={},
             is_team_authorization=True,
             tools=[],
-            labels=labels or []
+            labels=labels or [],
         )
 
         if decrypt_credentials:
             # init tool configuration
             tool_configuration = ToolConfigurationManager(
-                tenant_id=db_provider.tenant_id, 
-                provider_controller=provider_controller
+                tenant_id=db_provider.tenant_id, provider_controller=provider_controller
             )
 
             # decrypt the credentials and mask the credentials
@@ -235,24 +219,25 @@ class ToolTransformService:
             result.masked_credentials = masked_credentials
 
         return result
-    
-    @classmethod
+
+    @staticmethod
     def tool_to_user_tool(
-        cls,
-        tool: Union[ApiToolBundle, WorkflowTool, Tool], 
-        credentials: dict = None, 
+        tool: Union[ApiToolBundle, WorkflowTool, Tool],
+        credentials: dict = None,
         tenant_id: str = None,
-        labels: list[str] = None
+        labels: list[str] = None,
     ) -> UserTool:
         """
         convert tool to user tool
         """
         if isinstance(tool, Tool):
             # fork tool runtime
-            tool = tool.fork_tool_runtime(runtime={
-                'credentials': credentials,
-                'tenant_id': tenant_id,
-            })
+            tool = tool.fork_tool_runtime(
+                runtime={
+                    "credentials": credentials,
+                    "tenant_id": tenant_id,
+                }
+            )
 
             # get tool parameters
             parameters = tool.parameters or []
@@ -277,25 +262,14 @@ class ToolTransformService:
                 label=tool.identity.label,
                 description=tool.description.human,
                 parameters=current_parameters,
-                labels=labels
+                labels=labels,
             )
         if isinstance(tool, ApiToolBundle):
             return UserTool(
                 author=tool.author,
                 name=tool.operation_id,
-                label=I18nObject(
-                    en_US=tool.operation_id,
-                    zh_Hans=tool.operation_id
-                ),
-                description=I18nObject(
-                    en_US=tool.summary or '',
-                    zh_Hans=tool.summary or ''
-                ),
+                label=I18nObject(en_US=tool.operation_id, zh_Hans=tool.operation_id),
+                description=I18nObject(en_US=tool.summary or "", zh_Hans=tool.summary or ""),
                 parameters=tool.parameters,
-                labels=labels
+                labels=labels,
             )
-        
-    @classmethod
-    def transform_messages_to_dict(cls, responses: Generator[ToolInvokeMessage, None, None]):
-        for response in responses:
-            yield response.model_dump()

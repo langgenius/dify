@@ -24,7 +24,7 @@ const ConfirmAddVar: FC<IConfirmAddVarProps> = ({
   varNameArr,
   onConfrim,
   onCancel,
-  onHide,
+  // onHide,
 }) => {
   const { t } = useTranslation()
   const mainContentRef = useRef<HTMLDivElement>(null)

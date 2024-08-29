@@ -13,7 +13,7 @@ from models.dataset import Dataset, Document, DocumentSegment
 from services.feature_service import FeatureService
 
 
-@shared_task(queue='dataset')
+@shared_task(queue="dataset")
 def retry_document_indexing_task(dataset_id: str, document_ids: list[str]):
     """
     Async process document
@@ -27,22 +27,23 @@ def retry_document_indexing_task(dataset_id: str, document_ids: list[str]):
 
     dataset = db.session.query(Dataset).filter(Dataset.id == dataset_id).first()
     for document_id in document_ids:
-        retry_indexing_cache_key = 'document_{}_is_retried'.format(document_id)
+        retry_indexing_cache_key = "document_{}_is_retried".format(document_id)
         # check document limit
         features = FeatureService.get_features(dataset.tenant_id)
         try:
             if features.billing.enabled:
                 vector_space = features.vector_space
                 if 0 < vector_space.limit <= vector_space.size:
-                    raise ValueError("Your total number of documents plus the number of uploads have over the limit of "
-                                     "your subscription.")
+                    raise ValueError(
+                        "Your total number of documents plus the number of uploads have over the limit of "
+                        "your subscription."
+                    )
         except Exception as e:
-            document = db.session.query(Document).filter(
-                Document.id == document_id,
-                Document.dataset_id == dataset_id
-            ).first()
+            document = (
+                db.session.query(Document).filter(Document.id == document_id, Document.dataset_id == dataset_id).first()
+            )
             if document:
-                document.indexing_status = 'error'
+                document.indexing_status = "error"
                 document.error = str(e)
                 document.stopped_at = datetime.datetime.utcnow()
                 db.session.add(document)
@@ -50,11 +51,10 @@ def retry_document_indexing_task(dataset_id: str, document_ids: list[str]):
             redis_client.delete(retry_indexing_cache_key)
             return
 
-        logging.info(click.style('Start retry document: {}'.format(document_id), fg='green'))
-        document = db.session.query(Document).filter(
-            Document.id == document_id,
-            Document.dataset_id == dataset_id
-        ).first()
+        logging.info(click.style("Start retry document: {}".format(document_id), fg="green"))
+        document = (
+            db.session.query(Document).filter(Document.id == document_id, Document.dataset_id == dataset_id).first()
+        )
         try:
             if document:
                 # clean old data
@@ -70,7 +70,7 @@ def retry_document_indexing_task(dataset_id: str, document_ids: list[str]):
                         db.session.delete(segment)
                     db.session.commit()
 
-                document.indexing_status = 'parsing'
+                document.indexing_status = "parsing"
                 document.processing_started_at = datetime.datetime.utcnow()
                 db.session.add(document)
                 db.session.commit()
@@ -79,13 +79,13 @@ def retry_document_indexing_task(dataset_id: str, document_ids: list[str]):
                 indexing_runner.run([document])
                 redis_client.delete(retry_indexing_cache_key)
         except Exception as ex:
-            document.indexing_status = 'error'
+            document.indexing_status = "error"
             document.error = str(ex)
             document.stopped_at = datetime.datetime.utcnow()
             db.session.add(document)
             db.session.commit()
-            logging.info(click.style(str(ex), fg='yellow'))
+            logging.info(click.style(str(ex), fg="yellow"))
             redis_client.delete(retry_indexing_cache_key)
             pass
     end_at = time.perf_counter()
-    logging.info(click.style('Retry dataset: {} latency: {}'.format(dataset_id, end_at - start_at), fg='green'))
+    logging.info(click.style("Retry dataset: {} latency: {}".format(dataset_id, end_at - start_at), fg="green"))

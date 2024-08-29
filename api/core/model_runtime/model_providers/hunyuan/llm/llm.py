@@ -36,7 +36,8 @@ class HunyuanLargeLanguageModel(LargeLanguageModel):
 
         custom_parameters = {
             'Temperature': model_parameters.get('temperature', 0.0),
-            'TopP': model_parameters.get('top_p', 1.0)
+            'TopP': model_parameters.get('top_p', 1.0),
+            'EnableEnhancement': model_parameters.get('enable_enhance', True)
         }
 
         params = {
@@ -213,7 +214,7 @@ class HunyuanLargeLanguageModel(LargeLanguageModel):
     def _handle_chat_response(self, credentials, model, prompt_messages, response):
         usage = self._calc_response_usage(model, credentials, response.Usage.PromptTokens,
                                           response.Usage.CompletionTokens)
-        assistant_prompt_message = PromptMessage(role="assistant")
+        assistant_prompt_message = AssistantPromptMessage()
         assistant_prompt_message.content = response.Choices[0].Message.Content
         result = LLMResult(
             model=model,

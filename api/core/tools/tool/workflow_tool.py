@@ -72,6 +72,7 @@ class WorkflowTool(Tool):
             yield self.create_file_var_message(file)
         
         yield self.create_text_message(json.dumps(outputs, ensure_ascii=False))
+        yield self.create_json_message(outputs)
 
     def _get_user(self, user_id: str) -> Union[EndUser, Account]:
         """

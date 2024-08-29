@@ -64,6 +64,10 @@ const translation = {
       ukUA: 'ウクライナ語',
       viVN: 'ベトナム語',
       plPL: 'ポーランド語',
+      roRO: 'ルーマニア語',
+      hiIN: 'ヒンディー語',
+      trTR: 'トルコ語',
+      faIR: 'ペルシア語',
     },
   },
   unit: {
@@ -292,8 +296,8 @@ const translation = {
       tip: '会話でのテキスト-to-音声入力に使用するデフォルトモデルを設定します。',
     },
     rerankModel: {
-      key: '再ランクモデル',
-      tip: '再ランクモデルは、ユーザークエリとの意味的一致に基づいて候補文書リストを再配置し、意味的ランキングの結果を向上させます。',
+      key: 'Rerankモデル',
+      tip: 'Rerankモデルは、ユーザークエリとの意味的一致に基づいて候補文書リストを再配置し、意味的ランキングの結果を向上させます。',
     },
     apiKey: 'API-キー',
     quota: 'クォータ',
@@ -305,7 +309,7 @@ const translation = {
       tip: 'このモデルは削除されました。別のモデルを追加するか、別のモデルを選択してください。',
       emptyTip: '利用可能なモデルはありません',
       emptySetting: '設定に移動して構成してください',
-      rerankTip: '再ランクモデルを設定してください',
+      rerankTip: 'Rerankモデルを設定してください',
     },
     card: {
       quota: 'クォータ',
@@ -443,7 +447,7 @@ const translation = {
     latestAvailable: 'Dify {{version}} が最新バージョンです。',
   },
   appMenus: {
-    overview: '概要',
+    overview: '監視',
     promptEng: 'オーケストレート',
     apiAccess: 'APIアクセス',
     logAndAnn: 'ログ＆アナウンス',

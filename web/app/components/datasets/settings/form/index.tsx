@@ -163,12 +163,14 @@ const Form = () => {
         <div className={labelClass}>
           <div>{t('datasetSettings.form.name')}</div>
         </div>
-        <input
-          disabled={!currentDataset?.embedding_available}
-          className={cn(inputClass, !currentDataset?.embedding_available && 'opacity-60', 'h-9')}
-          value={name}
-          onChange={e => setName(e.target.value)}
-        />
+        <div className='w-full max-w-[480px]'>
+          <input
+            disabled={!currentDataset?.embedding_available}
+            className={cn(inputClass, !currentDataset?.embedding_available && 'opacity-60', 'h-9')}
+            value={name}
+            onChange={e => setName(e.target.value)}
+          />
+        </div>
       </div>
       <div className={rowClass}>
         <div className={labelClass}>
@@ -264,20 +266,18 @@ const Form = () => {
             )}
         </div>
       </div>
-      {currentDataset?.embedding_available && (
-        <div className={rowClass}>
-          <div className={labelClass} />
-          <div className='w-[480px]'>
-            <Button
-              className='min-w-24'
-              variant='primary'
-              onClick={handleSave}
-            >
-              {t('datasetSettings.form.save')}
-            </Button>
-          </div>
+      <div className={rowClass}>
+        <div className={labelClass} />
+        <div className='w-[480px]'>
+          <Button
+            className='min-w-24'
+            variant='primary'
+            onClick={handleSave}
+          >
+            {t('datasetSettings.form.save')}
+          </Button>
         </div>
-      )}
+      </div>
     </div>
   )
 }

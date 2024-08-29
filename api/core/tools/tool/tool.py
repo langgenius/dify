@@ -2,13 +2,12 @@ from abc import ABC, abstractmethod
 from collections.abc import Generator, Mapping
 from copy import deepcopy
 from enum import Enum
-from typing import Any, Optional, Union
+from typing import TYPE_CHECKING, Any, Optional, Union
 
 from pydantic import BaseModel, ConfigDict, field_validator
 from pydantic_core.core_schema import ValidationInfo
 
 from core.app.entities.app_invoke_entities import InvokeFrom
-from core.file.file_obj import FileVar
 from core.tools.entities.tool_entities import (
     ToolDescription,
     ToolIdentity,
@@ -22,6 +21,9 @@ from core.tools.entities.tool_entities import (
 )
 from core.tools.tool_file_manager import ToolFileManager
 from core.tools.utils.tool_parameter_converter import ToolParameterConverter
+
+if TYPE_CHECKING:
+    from core.file.file_obj import FileVar
 
 
 class Tool(BaseModel, ABC):
@@ -286,12 +288,17 @@ class Tool(BaseModel, ABC):
         :param image: the url of the image
         :return: the image message
         """
-        return ToolInvokeMessage(type=ToolInvokeMessage.MessageType.IMAGE, message=image, save_as=save_as)
+        return ToolInvokeMessage(type=ToolInvokeMessage.MessageType.IMAGE,
+                                 message=image,
+                                 save_as=save_as)
 
-    def create_file_var_message(self, file_var: FileVar) -> ToolInvokeMessage:
-        return ToolInvokeMessage(
-            type=ToolInvokeMessage.MessageType.FILE_VAR, message='', meta={'file_var': file_var}, save_as=''
-        )
+    def create_file_var_message(self, file_var: "FileVar") -> ToolInvokeMessage:
+        return ToolInvokeMessage(type=ToolInvokeMessage.MessageType.FILE_VAR,
+                                 message=None,
+                                 meta={
+                                     'file_var': file_var
+                                 },
+                                 save_as='')
 
     def create_link_message(self, link: str, save_as: str = '') -> ToolInvokeMessage:
         """
@@ -300,7 +307,9 @@ class Tool(BaseModel, ABC):
         :param link: the url of the link
         :return: the link message
         """
-        return ToolInvokeMessage(type=ToolInvokeMessage.MessageType.LINK, message=link, save_as=save_as)
+        return ToolInvokeMessage(type=ToolInvokeMessage.MessageType.LINK,
+                                 message=link,
+                                 save_as=save_as)
 
     def create_text_message(self, text: str, save_as: str = '') -> ToolInvokeMessage:
         """
@@ -309,7 +318,11 @@ class Tool(BaseModel, ABC):
         :param text: the text
         :return: the text message
         """
-        return ToolInvokeMessage(type=ToolInvokeMessage.MessageType.TEXT, message=text, save_as=save_as)
+        return ToolInvokeMessage(
+            type=ToolInvokeMessage.MessageType.TEXT,
+            message=text,
+            save_as=save_as
+        )
 
     def create_blob_message(self, blob: bytes, meta: Optional[dict] = None, save_as: str = '') -> ToolInvokeMessage:
         """

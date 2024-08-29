@@ -37,3 +37,8 @@ parameter_rules:
     default: 1024
     min: 1
     max: 8192
+pricing:
+  input: '0.0001'
+  output: '0.0001'
+  unit: '0.001'
+  currency: RMB

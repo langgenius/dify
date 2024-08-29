@@ -2,20 +2,19 @@
 import type { FC } from 'react'
 import React from 'react'
 import { useTranslation } from 'react-i18next'
-import {
-  RiQuestionLine,
-} from '@remixicon/react'
+
 import cn from '@/utils/classnames'
 import TopKItem from '@/app/components/base/param-item/top-k-item'
 import ScoreThresholdItem from '@/app/components/base/param-item/score-threshold-item'
 import { RETRIEVE_METHOD } from '@/types/app'
 import Switch from '@/app/components/base/switch'
-import Tooltip from '@/app/components/base/tooltip-plus'
+import Tooltip from '@/app/components/base/tooltip'
 import type { RetrievalConfig } from '@/types/app'
 import ModelSelector from '@/app/components/header/account-setting/model-provider-page/model-selector'
 import { useModelListAndDefaultModel } from '@/app/components/header/account-setting/model-provider-page/hooks'
 import { ModelTypeEnum } from '@/app/components/header/account-setting/model-provider-page/declarations'
 import {
+  DEFAULT_WEIGHTED_SCORE,
   RerankingModeEnum,
   WeightedScoreEnum,
 } from '@/models/datasets'
@@ -69,12 +68,12 @@ const RetrievalParamConfig: FC<Props> = ({
       result.weights = {
         weight_type: WeightedScoreEnum.Customized,
         vector_setting: {
-          vector_weight: 0.5,
+          vector_weight: DEFAULT_WEIGHTED_SCORE.other.semantic,
           embedding_provider_name: '',
           embedding_model_name: '',
         },
         keyword_setting: {
-          keyword_weight: 0.5,
+          keyword_weight: DEFAULT_WEIGHTED_SCORE.other.keyword,
         },
       }
     }
@@ -113,9 +112,11 @@ const RetrievalParamConfig: FC<Props> = ({
             )}
             <div className='flex items-center'>
               <span className='mr-0.5'>{t('common.modelProvider.rerankModel.key')}</span>
-              <Tooltip popupContent={<div className="w-[200px]">{t('common.modelProvider.rerankModel.tip')}</div>}>
-                <RiQuestionLine className='w-[14px] h-[14px] text-gray-400' />
-              </Tooltip>
+              <Tooltip
+                popupContent={
+                  <div className="w-[200px]">{t('common.modelProvider.rerankModel.tip')}</div>
+                }
+              />
             </div>
           </div>
           <ModelSelector
@@ -190,10 +191,8 @@ const RetrievalParamConfig: FC<Props> = ({
                     <div className='truncate'>{option.label}</div>
                     <Tooltip
                       popupContent={<div className='w-[200px]'>{option.tips}</div>}
-                      hideArrow
-                    >
-                      <RiQuestionLine className='ml-0.5 w-3.5 h-4.5 text-text-quaternary' />
-                    </Tooltip>
+                      triggerClassName='ml-0.5 w-3.5 h-4.5'
+                    />
                   </div>
                 ))
               }
@@ -202,7 +201,6 @@ const RetrievalParamConfig: FC<Props> = ({
               value.reranking_mode === RerankingModeEnum.WeightedScore && (
                 <WeightedScore
                   value={{
-                    type: value.weights!.weight_type,
                     value: [
                       value.weights!.vector_setting.vector_weight,
                       value.weights!.keyword_setting.keyword_weight,
@@ -213,7 +211,6 @@ const RetrievalParamConfig: FC<Props> = ({
                       ...value,
                       weights: {
                         ...value.weights!,
-                        weight_type: v.type,
                         vector_setting: {
                           ...value.weights!.vector_setting,
                           vector_weight: v.value[0],

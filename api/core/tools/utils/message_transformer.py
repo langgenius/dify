@@ -2,7 +2,7 @@ import logging
 from collections.abc import Generator
 from mimetypes import guess_extension
 
-from core.file.file_obj import FileTransferMethod, FileType, FileVar
+from core.file.file_obj import FileTransferMethod, FileType
 from core.tools.entities.tool_entities import ToolInvokeMessage
 from core.tools.tool_file_manager import ToolFileManager
 
@@ -26,12 +26,12 @@ class ToolFileMessageTransformer:
                 # try to download image
                 try:
                     file = ToolFileManager.create_file_by_url(
-                        user_id=user_id, 
+                        user_id=user_id,
                         tenant_id=tenant_id,
                         conversation_id=conversation_id,
                         file_url=message.message
                     )
-                    
+
                     url = f'/files/tools/{file.id}{guess_extension(file.mimetype) or ".png"}'
 
                     yield ToolInvokeMessage(
@@ -54,14 +54,14 @@ class ToolFileMessageTransformer:
                 # if message is str, encode it to bytes
                 if isinstance(message.message, str):
                     message.message = message.message.encode('utf-8')
-                
+
                 file = ToolFileManager.create_file_by_raw(
                     user_id=user_id, tenant_id=tenant_id,
                     conversation_id=conversation_id,
                     file_binary=message.message,
                     mimetype=mimetype
                 )
-                                                            
+
                 url = cls.get_tool_file_url(file.id, guess_extension(file.mimetype))
 
                 # check if file is image
@@ -80,7 +80,7 @@ class ToolFileMessageTransformer:
                         meta=message.meta.copy() if message.meta is not None else {},
                     )
             elif message.type == ToolInvokeMessage.MessageType.FILE_VAR:
-                file_var: FileVar = message.meta.get('file_var')
+                file_var = message.meta.get('file_var')
                 if file_var:
                     if file_var.transfer_method == FileTransferMethod.TOOL_FILE:
                         url = cls.get_tool_file_url(file_var.related_id, file_var.extension)
@@ -100,7 +100,7 @@ class ToolFileMessageTransformer:
                             )
             else:
                 yield message
-    
+
     @classmethod
     def get_tool_file_url(cls, tool_file_id: str, extension: str) -> str:
         return f'/files/tools/{tool_file_id}{extension or ".bin"}'

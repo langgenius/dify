@@ -1,0 +1,2 @@
+class VariableError(Exception):
+    pass

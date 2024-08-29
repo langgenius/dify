@@ -51,7 +51,7 @@ const Chatbot = () => {
       else
         document.title = `${site.title} - Powered by Dify`
     }
-  }, [site, customConfig])
+  }, [site, customConfig, themeBuilder])
 
   if (appInfoLoading) {
     return (
@@ -88,9 +88,7 @@ const Chatbot = () => {
               {!isMobile && (
                 <div className='absolute top-2.5 right-3 z-20'>
                   <Tooltip
-                    selector={'embed-scene-restart-button'}
-                    htmlContent={t('share.chat.resetChat')}
-                    position='top'
+                    popupContent={t('share.chat.resetChat')}
                   >
                     <div className='p-1.5 bg-white border-[0.5px] border-gray-100 rounded-lg shadow-md cursor-pointer' onClick={handleNewConversation}>
                       <RiLoopLeftLine className="h-4 w-4 text-gray-500"/>

@@ -58,7 +58,8 @@ class HostingConfiguration:
 
         self.moderation_config = self.init_moderation_config(config)
 
-    def init_azure_openai(self, app_config: Config) -> HostingProvider:
+    @staticmethod
+    def init_azure_openai(app_config: Config) -> HostingProvider:
         quota_unit = QuotaUnit.TIMES
         if app_config.get("HOSTED_AZURE_OPENAI_ENABLED"):
             credentials = {
@@ -73,6 +74,8 @@ class HostingConfiguration:
                 quota_limit=hosted_quota_limit,
                 restrict_models=[
                     RestrictModel(model="gpt-4", base_model_name="gpt-4", model_type=ModelType.LLM),
+                    RestrictModel(model="gpt-4o", base_model_name="gpt-4o", model_type=ModelType.LLM),
+                    RestrictModel(model="gpt-4o-mini", base_model_name="gpt-4o-mini", model_type=ModelType.LLM),
                     RestrictModel(model="gpt-4-32k", base_model_name="gpt-4-32k", model_type=ModelType.LLM),
                     RestrictModel(model="gpt-4-1106-preview", base_model_name="gpt-4-1106-preview", model_type=ModelType.LLM),
                     RestrictModel(model="gpt-4-vision-preview", base_model_name="gpt-4-vision-preview", model_type=ModelType.LLM),
@@ -143,7 +146,8 @@ class HostingConfiguration:
             quota_unit=quota_unit,
         )
 
-    def init_anthropic(self, app_config: Config) -> HostingProvider:
+    @staticmethod
+    def init_anthropic(app_config: Config) -> HostingProvider:
         quota_unit = QuotaUnit.TOKENS
         quotas = []
 
@@ -178,7 +182,8 @@ class HostingConfiguration:
             quota_unit=quota_unit,
         )
 
-    def init_minimax(self, app_config: Config) -> HostingProvider:
+    @staticmethod
+    def init_minimax(app_config: Config) -> HostingProvider:
         quota_unit = QuotaUnit.TOKENS
         if app_config.get("HOSTED_MINIMAX_ENABLED"):
             quotas = [FreeHostingQuota()]
@@ -195,7 +200,8 @@ class HostingConfiguration:
             quota_unit=quota_unit,
         )
 
-    def init_spark(self, app_config: Config) -> HostingProvider:
+    @staticmethod
+    def init_spark(app_config: Config) -> HostingProvider:
         quota_unit = QuotaUnit.TOKENS
         if app_config.get("HOSTED_SPARK_ENABLED"):
             quotas = [FreeHostingQuota()]
@@ -212,7 +218,8 @@ class HostingConfiguration:
             quota_unit=quota_unit,
         )
 
-    def init_zhipuai(self, app_config: Config) -> HostingProvider:
+    @staticmethod
+    def init_zhipuai(app_config: Config) -> HostingProvider:
         quota_unit = QuotaUnit.TOKENS
         if app_config.get("HOSTED_ZHIPUAI_ENABLED"):
             quotas = [FreeHostingQuota()]
@@ -229,7 +236,8 @@ class HostingConfiguration:
             quota_unit=quota_unit,
         )
 
-    def init_moderation_config(self, app_config: Config) -> HostedModerationConfig:
+    @staticmethod
+    def init_moderation_config(app_config: Config) -> HostedModerationConfig:
         if app_config.get("HOSTED_MODERATION_ENABLED") \
                 and app_config.get("HOSTED_MODERATION_PROVIDERS"):
             return HostedModerationConfig(

@@ -3,13 +3,13 @@ import time
 from collections.abc import Mapping, Sequence
 from typing import Any, Optional, cast
 
+import contexts
 from configs import dify_config
-from core.app.app_config.entities import FileExtraConfig
 from core.app.apps.base_app_queue_manager import GenerateTaskStoppedException
 from core.app.entities.app_invoke_entities import InvokeFrom
-from core.file.file_obj import FileTransferMethod, FileType, FileVar
+from core.file.file_obj import FileExtraConfig, FileTransferMethod, FileType, FileVar
 from core.workflow.callbacks.base_workflow_callback import WorkflowCallback
-from core.workflow.entities.node_entities import NodeRunMetadataKey, NodeRunResult, NodeType, SystemVariable
+from core.workflow.entities.node_entities import NodeRunMetadataKey, NodeRunResult, NodeType
 from core.workflow.entities.variable_pool import VariablePool, VariableValue
 from core.workflow.entities.workflow_entities import WorkflowNodeAndResult, WorkflowRunState
 from core.workflow.errors import WorkflowNodeRunFailedError
@@ -30,6 +30,7 @@ from core.workflow.nodes.start.start_node import StartNode
 from core.workflow.nodes.template_transform.template_transform_node import TemplateTransformNode
 from core.workflow.nodes.tool.tool_node import ToolNode
 from core.workflow.nodes.variable_aggregator.variable_aggregator_node import VariableAggregatorNode
+from core.workflow.nodes.variable_assigner import VariableAssignerNode
 from extensions.ext_database import db
 from models.workflow import (
     Workflow,
@@ -51,7 +52,8 @@ node_classes: Mapping[NodeType, type[BaseNode]] = {
     NodeType.VARIABLE_AGGREGATOR: VariableAggregatorNode,
     NodeType.VARIABLE_ASSIGNER: VariableAggregatorNode,
     NodeType.ITERATION: IterationNode,
-    NodeType.PARAMETER_EXTRACTOR: ParameterExtractorNode
+    NodeType.PARAMETER_EXTRACTOR: ParameterExtractorNode,
+    NodeType.CONVERSATION_VARIABLE_ASSIGNER: VariableAssignerNode,
 }
 
 logger = logging.getLogger(__name__)
@@ -94,19 +96,18 @@ class WorkflowEngineManager:
         user_id: str,
         user_from: UserFrom,
         invoke_from: InvokeFrom,
-        user_inputs: Mapping[str, Any],
-        system_inputs: Mapping[SystemVariable, Any],
         callbacks: Sequence[WorkflowCallback],
-        call_depth: int = 0
+        call_depth: int = 0,
+        variable_pool: VariablePool | None = None,
     ) -> None:
         """
         :param workflow: Workflow instance
         :param user_id: user id
         :param user_from: user from
-        :param user_inputs: user variables inputs
-        :param system_inputs: system inputs, like: query, files
+        :param invoke_from: invoke from
         :param callbacks: workflow callbacks
         :param call_depth: call depth
+        :param variable_pool: variable pool
         """
         # fetch workflow graph
         graph = workflow.graph_dict
@@ -122,18 +123,14 @@ class WorkflowEngineManager:
         if not isinstance(graph.get('edges'), list):
             raise ValueError('edges in workflow graph must be a list')
 
-        # init variable pool
-        variable_pool = VariablePool(
-            system_variables=system_inputs,
-            user_inputs=user_inputs,
-            environment_variables=workflow.environment_variables,
-        )
 
         workflow_call_max_depth = dify_config.WORKFLOW_CALL_MAX_DEPTH
         if call_depth > workflow_call_max_depth:
             raise ValueError('Max workflow call depth {} reached.'.format(workflow_call_max_depth))
 
         # init workflow run state
+        if not variable_pool:
+            variable_pool = contexts.workflow_variable_pool.get()
         workflow_run_state = WorkflowRunState(
             workflow=workflow,
             start_at=time.perf_counter(),
@@ -177,6 +174,19 @@ class WorkflowEngineManager:
         graph = workflow.graph_dict
 
         try:
+            answer_prov_node_ids = []
+            for node in graph.get('nodes', []):
+                if node.get('id', '') == 'answer':
+                    try:
+                        answer_prov_node_ids.append(node.get('data', {})
+                                                    .get('answer', '')
+                                                    .replace('#', '')
+                                                    .replace('.text', '')
+                                                    .replace('{{', '')
+                                                    .replace('}}', '').split('.')[0])
+                    except Exception as e:
+                        logger.error(e)
+
             predecessor_node: BaseNode | None = None
             current_iteration_node: BaseIterationNode | None = None
             has_entry_node = False
@@ -301,6 +311,9 @@ class WorkflowEngineManager:
                     else:
                         next_node = self._get_node(workflow_run_state=workflow_run_state, graph=graph, node_id=next_node_id, callbacks=callbacks)
 
+                if next_node and next_node.node_id in answer_prov_node_ids:
+                    next_node.is_answer_previous_node = True
+
                 # run workflow, run multiple target nodes in the future
                 self._run_workflow_node(
                     workflow_run_state=workflow_run_state,
@@ -387,6 +400,7 @@ class WorkflowEngineManager:
                 system_variables={},
                 user_inputs={},
                 environment_variables=workflow.environment_variables,
+                conversation_variables=workflow.conversation_variables,
             )
 
             if node_cls is None:
@@ -452,6 +466,7 @@ class WorkflowEngineManager:
             system_variables={},
             user_inputs={},
             environment_variables=workflow.environment_variables,
+            conversation_variables=workflow.conversation_variables,
         )
 
         # variable selector to variable mapping
@@ -854,6 +869,10 @@ class WorkflowEngineManager:
 
             raise ValueError(f"Node {node.node_data.title} run failed: {node_run_result.error}")
 
+        if node.is_answer_previous_node and not isinstance(node, LLMNode):
+            if not node_run_result.metadata:
+                node_run_result.metadata = {}
+            node_run_result.metadata["is_answer_previous_node"]=True
         workflow_nodes_and_result.result = node_run_result
 
         # node run success
