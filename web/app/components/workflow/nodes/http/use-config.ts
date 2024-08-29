@@ -1,4 +1,4 @@
-import { useCallback, useEffect } from 'react'
+import { useCallback, useEffect, useState } from 'react'
 import produce from 'immer'
 import { useBoolean } from 'ahooks'
 import useVarList from '../_base/hooks/use-var-list'
@@ -26,6 +26,8 @@ const useConfig = (id: string, payload: HttpNodeType) => {
     setInputs,
   })
 
+  const [isDataReady, setIsDataReady] = useState(false)
+
   useEffect(() => {
     const isReady = defaultConfig && Object.keys(defaultConfig).length > 0
     if (isReady) {
@@ -38,6 +40,7 @@ const useConfig = (id: string, payload: HttpNodeType) => {
         newInputs.body.data = transformToBodyPayload(bodyData, [BodyType.formData, BodyType.xWwwFormUrlencoded].includes(newInputs.body.type))
 
       setInputs(newInputs)
+      setIsDataReady(true)
     }
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [defaultConfig])
@@ -151,6 +154,7 @@ const useConfig = (id: string, payload: HttpNodeType) => {
 
   return {
     readOnly,
+    isDataReady,
     inputs,
     handleVarListChange,
     handleAddVariable,
