@@ -1,0 +1,7 @@
+2024-08-29 14:19:47,997.997 WARNING [MainThread] [ext_mail.py:51] - MAIL_TYPE is not set
+2024-08-29 14:19:49,130.130 WARNING [MainThread] [_internal.py:97] -  * Debugger is active!
+2024-08-29 14:19:49,149.149 INFO [MainThread] [_internal.py:97] -  * Debugger PIN: 295-617-850
+2024-08-29 15:39:50,583.583 INFO [MainThread] [_internal.py:97] -  * Detected change in '/Users/namvu/Documents/Work/SenVai/Code/Dify/SenVai/dify/api/services/audio_service.py', reloading
+2024-08-29 15:40:00,172.172 WARNING [MainThread] [ext_mail.py:51] - MAIL_TYPE is not set
+2024-08-29 15:40:01,221.221 WARNING [MainThread] [_internal.py:97] -  * Debugger is active!
+2024-08-29 15:40:01,239.239 INFO [MainThread] [_internal.py:97] -  * Debugger PIN: 295-617-850
