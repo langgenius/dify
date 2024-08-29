@@ -122,6 +122,7 @@ class DatasetListApi(Resource):
                 name=args["name"],
                 indexing_technique=args["indexing_technique"],
                 account=current_user,
+                permission=DatasetPermissionEnum.ONLY_ME,
             )
         except services.errors.dataset.DatasetNameDuplicateError:
             raise DatasetNameDuplicateError()
