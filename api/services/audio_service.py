@@ -49,9 +49,8 @@ class AudioService:
         else:
             app_model_config: AppModelConfig = app_model.app_model_config
 
-            if not hasattr(app_model_config, "speech_to_text_dict") or not app_model_config.speech_to_text_dict.get(
-                "enabled"
-            ):
+            if (not hasattr(app_model_config, "speech_to_text_dict") or 
+                not app_model_config.speech_to_text_dict.get("enabled")):
                 raise ValueError("Speech to text is not enabled")
 
             speech_to_text_dict = app_model_config.speech_to_text_dict
