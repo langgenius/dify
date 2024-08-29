@@ -6,6 +6,7 @@ import {
 } from 'react'
 import dayjs from 'dayjs'
 import { uniqBy } from 'lodash-es'
+import { useTranslation } from 'react-i18next'
 import { useContext } from 'use-context-selector'
 import {
   getIncomers,
@@ -29,6 +30,7 @@ import {
   useWorkflowStore,
 } from '../store'
 import {
+  PARALLEL_LIMIT,
   SUPPORT_OUTPUT_VARS_NODE,
 } from '../constants'
 import { CUSTOM_NOTE_NODE } from '../note-node/constants'
@@ -59,6 +61,7 @@ export const useIsChatMode = () => {
 }
 
 export const useWorkflow = () => {
+  const { t } = useTranslation()
   const { locale } = useContext(I18n)
   const store = useStoreApi()
   const workflowStore = useWorkflowStore()
@@ -287,6 +290,14 @@ export const useWorkflow = () => {
 
     if (sourceNode.type === CUSTOM_NOTE_NODE || targetNode.type === CUSTOM_NOTE_NODE)
       return false
+
+    const sourceNodeOutgoers = getOutgoers(sourceNode, nodes, edges)
+
+    if (sourceNodeOutgoers.length > PARALLEL_LIMIT - 1) {
+      const { setShowTips } = workflowStore.getState()
+      setShowTips(t('workflow.common.parallelTip.limit', { num: PARALLEL_LIMIT }))
+      return false
+    }
 
     if (sourceNode && targetNode) {
       const sourceNodeAvailableNextNodes = nodesExtraData[sourceNode.data.type].availableNextNodes

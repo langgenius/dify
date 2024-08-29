@@ -164,6 +164,8 @@ type Shape = {
   setShowImportDSLModal: (showImportDSLModal: boolean) => void
   showAddBlock: boolean
   setShowAddBlock: (showAddBlock: boolean) => void
+  showTips: string
+  setShowTips: (showTips: string) => void
 }
 
 export const createWorkflowStore = () => {
@@ -266,6 +268,8 @@ export const createWorkflowStore = () => {
     setShowImportDSLModal: showImportDSLModal => set(() => ({ showImportDSLModal })),
     showAddBlock: false,
     setShowAddBlock: showAddBlock => set(() => ({ showAddBlock })),
+    showTips: '',
+    setShowTips: showTips => set(() => ({ showTips })),
   }))
 }
 
