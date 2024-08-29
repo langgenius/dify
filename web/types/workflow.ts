@@ -44,6 +44,8 @@ export type NodeTracing = {
   extras?: any
   expand?: boolean // for UI
   details?: NodeTracing[][] // iteration detail
+  parallel_id?: string
+  parallel_start_node_id?: string
 }
 
 export type FetchWorkflowDraftResponse = {

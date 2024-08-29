@@ -4,7 +4,7 @@ import React, { useCallback } from 'react'
 import { useTranslation } from 'react-i18next'
 import { RiCloseLine } from '@remixicon/react'
 import { ArrowNarrowLeft } from '../../base/icons/src/vender/line/arrows'
-import NodePanel from './node'
+import TracingPanel from './tracing-panel'
 import cn from '@/utils/classnames'
 import type { NodeTracing } from '@/types/workflow'
 const i18nPrefix = 'workflow.singleRun'
@@ -32,10 +32,10 @@ const IterationResultPanel: FC<Props> = ({
             {t(`${i18nPrefix}.testRunIteration`)}
           </div>
           <div className='ml-2 shrink-0 p-1 cursor-pointer' onClick={onHide}>
-            <RiCloseLine className='w-4 h-4 text-gray-500 ' />
+            <RiCloseLine className='w-4 h-4 text-text-tertiary ' />
           </div>
         </div>
-        <div className='flex items-center py-2 space-x-1 text-primary-600 cursor-pointer' onClick={onBack}>
+        <div className='flex items-center py-2 space-x-1 text-text-accent cursor-pointer' onClick={onBack}>
           <ArrowNarrowLeft className='w-4 h-4' />
           <div className='leading-[18px] text-[13px] font-medium'>{t(`${i18nPrefix}.back`)}</div>
         </div>
@@ -43,25 +43,10 @@ const IterationResultPanel: FC<Props> = ({
       {/* List */}
       <div className={cn(!noWrap ? 'h-0 grow' : 'max-h-full', 'overflow-y-auto px-4 pb-4 bg-gray-50')}>
         {list.map((iteration, index) => (
-          <div key={index} className={cn('my-4', index === 0 && 'mt-2')}>
-            <div className='flex items-center'>
-              <div className='shrink-0 leading-[18px] text-xs font-semibold text-gray-500 uppercase'>{t(`${i18nPrefix}.iteration`)} {index + 1}</div>
-              <div
-                className='ml-3 grow w-0 h-px'
-                style={{ background: 'linear-gradient(to right, #F3F4F6, rgba(243, 244, 246, 0))' }}
-              ></div>
-            </div>
-            <div className='mt-0.5 space-y-1'>
-              {iteration.map(node => (
-                <NodePanel
-                  key={node.id}
-                  className='!px-0 !py-0'
-                  nodeInfo={node}
-                  notShowIterationNav
-                />
-              ))}
-            </div>
-          </div>
+          <TracingPanel
+            list={iteration}
+            key={index}
+          />
         ))}
       </div>
     </>

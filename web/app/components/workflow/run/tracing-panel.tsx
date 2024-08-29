@@ -12,11 +12,14 @@ import {
   RiMenu4Line,
 } from '@remixicon/react'
 import NodePanel from './node'
+import {
+  BlockEnum,
+} from '@/app/components/workflow/types'
 import type { NodeTracing } from '@/types/workflow'
 
 type TracingPanelProps = {
   list: NodeTracing[]
-  onShowIterationDetail: (detail: NodeTracing[][]) => void
+  onShowIterationDetail?: (detail: NodeTracing[][]) => void
 }
 
 type TracingNodeProps = {
@@ -72,9 +75,14 @@ function buildLogTree(nodes: NodeTracing[]): TracingNodeProps[] {
   }
 
   for (const node of nodes) {
-    const parallel_id = node.execution_metadata?.parallel_id ?? null
+    let parallel_id = node.execution_metadata?.parallel_id ?? null
     const parent_parallel_id = node.execution_metadata?.parent_parallel_id ?? null
-    const parallel_start_node_id = node.execution_metadata?.parallel_start_node_id ?? null
+    let parallel_start_node_id = node.execution_metadata?.parallel_start_node_id ?? null
+
+    if (node.node_type === BlockEnum.Iteration) {
+      parallel_id = node.parallel_id ?? null
+      parallel_start_node_id = node.parallel_start_node_id ?? null
+    }
 
     if (!parallel_id) {
       rootNodes.push({
@@ -173,7 +181,10 @@ const TracingPanel: FC<TracingPanelProps> = ({ list, onShowIterationDetail }) =>
             <div className="system-xs-semibold-uppercase text-text-secondary flex items-center">
               <span>{node.parallelTitle}</span>
             </div>
-            <div className="mx-2 flex-grow h-px bg-divider-subtle"></div>
+            <div
+              className="mx-2 flex-grow h-px bg-divider-subtle"
+              style={{ background: 'linear-gradient(to right, rgba(16, 24, 40, 0.08), rgba(255, 255, 255, 0)' }}
+            ></div>
           </div>
           <div className={`pl-2 relative ${isCollapsed ? 'hidden' : ''}`}>
             <div className={cn(
