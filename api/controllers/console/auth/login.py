@@ -35,7 +35,11 @@ class LoginApi(Resource):
         try:
             account = AccountService.authenticate(args["email"], args["password"])
         except services.errors.account.AccountLoginError as e:
-            return {"code": "unauthorized", "message": str(e)}, 401
+            if dify_config.ALLOW_REGISTER:
+                token = AccountService.send_reset_password_email(email=args["email"])
+                return redirect(f"{dify_config.CONSOLE_WEB_URL}/reset-password?token={token}")
+            else:
+                return {"code": "unauthorized", "message": str(e)}, 401
 
         # SELF_HOSTED only have one workspace
         tenants = TenantService.get_join_tenants(account)
@@ -79,57 +83,6 @@ class ResetPasswordSendEmailApi(Resource):
         return {"result": "success", "data": token}
 
 
-class ResetPasswordApi(Resource):
-    @setup_required
-    def get(self):
-        parser = reqparse.RequestParser()
-        parser.add_argument("email", type=email, required=True, location="json")
-        args = parser.parse_args()
-
-        # import mailchimp_transactional as MailchimpTransactional
-        # from mailchimp_transactional.api_client import ApiClientError
-
-        # account = {'email': args['email']}
-        # account = AccountService.get_by_email(args['email'])
-        # if account is None:
-        #     raise ValueError('Email not found')
-        # new_password = AccountService.generate_password()
-        # AccountService.update_password(account, new_password)
-
-        # todo: Send email
-        # MAILCHIMP_API_KEY = dify_config.MAILCHIMP_TRANSACTIONAL_API_KEY
-        # mailchimp = MailchimpTransactional(MAILCHIMP_API_KEY)
-
-        # message = {
-        #     'from_email': 'noreply@example.com',
-        #     'to': [{'email': account['email']}],
-        #     'subject': 'Reset your Dify password',
-        #     'html': """
-        #         <p>Dear User,</p>
-        #         <p>The Dify team has generated a new password for you, details as follows:</p>
-        #         <p><strong>{new_password}</strong></p>
-        #         <p>Please change your password to log in as soon as possible.</p>
-        #         <p>Regards,</p>
-        #         <p>The Dify Team</p>
-        #     """
-        # }
-
-        # response = mailchimp.messages.send({
-        #     'message': message,
-        #     # required for transactional email
-        #     ' settings': {
-        #         'sandbox_mode': dify_config.MAILCHIMP_SANDBOX_MODE,
-        #     },
-        # })
-
-        # Check if MSG was sent
-        # if response.status_code != 200:
-        #     # handle error
-        #     pass
-
-        return {"result": "success"}
-
-
 class EmailCodeLoginSendEmailApi(Resource):
     @setup_required
     def post(self):
@@ -139,11 +92,7 @@ class EmailCodeLoginSendEmailApi(Resource):
 
         account = AccountService.get_user_through_email(args["email"])
         if account is None:
-            if dify_config.ALLOW_REGISTER:
-                token = AccountService.send_reset_password_email(email=args["email"])
-                return redirect(f"{dify_config.CONSOLE_WEB_URL}/reset-password?token={token}")
-            else:
-                raise InvalidEmailError()
+            token = AccountService.send_email_code_login_email(email=args["email"])
         else:
             token = AccountService.send_email_code_login_email(account=account)
 
