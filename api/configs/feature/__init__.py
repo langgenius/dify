@@ -1,8 +1,7 @@
-from typing import Optional
+from typing import Annotated, Optional
 
 from pydantic import AliasChoices, Field, HttpUrl, NegativeInt, NonNegativeInt, PositiveInt, computed_field, conint
 from pydantic_settings import BaseSettings
-from typing_extensions import Annotated
 
 from configs.feature.hosted_service import HostedServiceConfig
 
@@ -218,20 +217,29 @@ class HttpConfig(BaseSettings):
     def WEB_API_CORS_ALLOW_ORIGINS(self) -> list[str]:
         return self.inner_WEB_API_CORS_ALLOW_ORIGINS.split(",")
 
-    HTTP_REQUEST_MAX_CONNECT_TIMEOUT: Annotated[int, Field(ge=10)] = Field(
-        description="connect timeout in seconds for HTTP request, which should be no less than 60",
-        default=10,
-    )
+    HTTP_REQUEST_MAX_CONNECT_TIMEOUT: Annotated[int, Field(ge=10)] = Annotated[
+        int,
+        Field(
+            description="connect timeout in seconds for HTTP request, which should be no less than 60",
+            default=10,
+        ),
+    ]
 
-    HTTP_REQUEST_MAX_READ_TIMEOUT: Annotated[int, Field(ge=60)] = Field(
-        description="read timeout in seconds for HTTP request, which should be no less than 60",
-        default=60,
-    )
+    HTTP_REQUEST_MAX_READ_TIMEOUT: Annotated[int, Field(ge=60)] = Annotated[
+        int,
+        Field(
+            description="read timeout in seconds for HTTP request, which should be no less than 60",
+            default=60,
+        ),
+    ]
 
-    HTTP_REQUEST_MAX_WRITE_TIMEOUT: Annotated[int, Field(ge=10)] = Field(
-        description="read timeout in seconds for HTTP request, which should be no less than 10",
-        default=20,
-    )
+    HTTP_REQUEST_MAX_WRITE_TIMEOUT: Annotated[int, Field(ge=10)] = Annotated[
+        int,
+        Field(
+            description="read timeout in seconds for HTTP request, which should be no less than 10",
+            default=20,
+        ),
+    ]
 
     HTTP_REQUEST_NODE_MAX_BINARY_SIZE: PositiveInt = Field(
         description="",
