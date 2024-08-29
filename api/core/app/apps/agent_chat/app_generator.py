@@ -32,16 +32,16 @@ class AgentChatAppGenerator(MessageBasedAppGenerator):
     def generate(
         self, app_model: App,
         user: Union[Account, EndUser],
-        args: Any,
+        args: dict,
         invoke_from: InvokeFrom,
         stream: Literal[True] = True,
-    ) -> Generator[dict, None, None]: ...
+    ) -> Generator[str, None, None]: ...
 
     @overload
     def generate(
         self, app_model: App,
         user: Union[Account, EndUser],
-        args: Any,
+        args: dict,
         invoke_from: InvokeFrom,
         stream: Literal[False] = False,
     ) -> dict: ...
@@ -51,7 +51,7 @@ class AgentChatAppGenerator(MessageBasedAppGenerator):
                  args: Any,
                  invoke_from: InvokeFrom,
                  stream: bool = True) \
-            -> Union[dict, Generator[dict, None, None]]:
+            -> Union[dict, Generator[str, None, None]]:
         """
         Generate App response.
 

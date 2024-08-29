@@ -34,27 +34,26 @@ class CompletionAppGenerator(MessageBasedAppGenerator):
     def generate(
         self, app_model: App,
         user: Union[Account, EndUser],
-        args: Any,
+        args: dict,
         invoke_from: InvokeFrom,
         stream: Literal[True] = True,
-    ) -> Generator[dict, None, None]: ...
+    ) -> Generator[str, None, None]: ...
 
     @overload
     def generate(
         self, app_model: App,
         user: Union[Account, EndUser],
-        args: Any,
+        args: dict,
         invoke_from: InvokeFrom,
         stream: Literal[False] = False,
     ) -> dict: ...
 
-    def generate(
-        self, app_model: App,
-        user: Union[Account, EndUser],
-        args: Any,
-        invoke_from: InvokeFrom,
-        stream: bool = True
-    ) -> Union[dict, Generator[dict, None, None]]:
+    def generate(self, app_model: App,
+                 user: Union[Account, EndUser],
+                 args: Any,
+                 invoke_from: InvokeFrom,
+                 stream: bool = True) \
+            -> Union[dict, Generator[str, None, None]]:
         """
         Generate App response.
 
@@ -222,7 +221,7 @@ class CompletionAppGenerator(MessageBasedAppGenerator):
                                 user: Union[Account, EndUser],
                                 invoke_from: InvokeFrom,
                                 stream: bool = True) \
-            -> Union[dict, Generator[dict, None, None]]:
+            -> Union[dict, Generator[str, None, None]]:
         """
         Generate App response.
 
