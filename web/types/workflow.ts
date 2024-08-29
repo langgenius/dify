@@ -26,6 +26,10 @@ export type NodeTracing = {
     currency: string
     iteration_id?: string
     iteration_index?: number
+    parallel_id?: string
+    parallel_start_node_id?: string
+    parent_parallel_id?: string
+    parent_parallel_start_node_id?: string
   }
   metadata: {
     iterator_length: number
