@@ -2,10 +2,14 @@ import base64
 import logging
 import secrets
 
+from flask import request
 from flask_restful import Resource, reqparse
 
+from configs import dify_config
+from constants.languages import languages
 from controllers.console import api
 from controllers.console.auth.error import (
+    EmailCodeError,
     InvalidEmailError,
     InvalidTokenError,
     PasswordMismatchError,
@@ -13,7 +17,7 @@ from controllers.console.auth.error import (
 )
 from controllers.console.setup import setup_required
 from extensions.ext_database import db
-from libs.helper import email as email_validate
+from libs.helper import email, get_remote_ip
 from libs.password import hash_password, valid_password
 from models.account import Account
 from services.account_service import AccountService
@@ -24,42 +28,48 @@ class ForgotPasswordSendEmailApi(Resource):
     @setup_required
     def post(self):
         parser = reqparse.RequestParser()
-        parser.add_argument("email", type=str, required=True, location="json")
+        parser.add_argument("email", type=email, required=True, location="json")
         args = parser.parse_args()
 
-        email = args["email"]
-
-        if not email_validate(email):
-            raise InvalidEmailError()
-
-        account = Account.query.filter_by(email=email).first()
-
-        if account:
+        account = Account.query.filter_by(email=args["email"]).first()
+        token = None
+        if account is None:
+            if dify_config.ALLOW_REGISTER:
+                token = AccountService.send_reset_password_email(email=args["email"])
+            else:
+                raise InvalidEmailError()
+        elif account:
             try:
-                AccountService.send_reset_password_email(account=account)
+                token = AccountService.send_reset_password_email(account=account, email=args["email"])
             except RateLimitExceededError:
-                logging.warning(f"Rate limit exceeded for email: {account.email}")
+                logging.warning(f"Rate limit exceeded for email: {args["email"]}")
                 raise PasswordResetRateLimitExceededError()
-        else:
-            # Return success to avoid revealing email registration status
-            logging.warning(f"Attempt to reset password for unregistered email: {email}")
 
-        return {"result": "success"}
+        return {"result": "success", "data": token}
 
 
 class ForgotPasswordCheckApi(Resource):
     @setup_required
     def post(self):
         parser = reqparse.RequestParser()
+        parser.add_argument("email", type=str, required=True, location="json")
+        parser.add_argument("code", type=str, required=True, location="json")
         parser.add_argument("token", type=str, required=True, nullable=False, location="json")
         args = parser.parse_args()
-        token = args["token"]
 
-        reset_data = AccountService.get_reset_password_data(token)
+        user_email = args["email"]
 
-        if reset_data is None:
-            return {"is_valid": False, "email": None}
-        return {"is_valid": True, "email": reset_data.get("email")}
+        token_data = AccountService.get_reset_password_data(args["token"])
+        if token_data is None:
+            raise InvalidTokenError()
+
+        if user_email != token_data.get("email"):
+            raise InvalidEmailError()
+
+        if args["code"] != token_data.get("code"):
+            raise EmailCodeError()
+
+        return {"is_valid": True, "email": token_data.get("email")}
 
 
 class ForgotPasswordResetApi(Resource):
@@ -92,11 +102,21 @@ class ForgotPasswordResetApi(Resource):
         base64_password_hashed = base64.b64encode(password_hashed).decode()
 
         account = Account.query.filter_by(email=reset_data.get("email")).first()
-        account.password = base64_password_hashed
-        account.password_salt = base64_salt
-        db.session.commit()
+        if account:
+            account.password = base64_password_hashed
+            account.password_salt = base64_salt
+            db.session.commit()
+        else:
+            account = AccountService.create_user_through_env(
+                email=reset_data.get("email"),
+                name=reset_data.get("email"),
+                password=password_confirm,
+                interface_language=languages[0],
+            )
 
-        return {"result": "success"}
+        token = AccountService.login(account, ip_address=get_remote_ip(request))
+
+        return {"result": "success", "data": token}
 
 
 api.add_resource(ForgotPasswordSendEmailApi, "/forgot-password")

@@ -31,7 +31,7 @@ class PasswordResetRateLimitExceededError(BaseHTTPException):
     code = 429
 
 
-class EmailLoginCodeError(BaseHTTPException):
-    error_code = "email_login_code_error"
-    description = "Email login code is invalid or expired."
+class EmailCodeError(BaseHTTPException):
+    error_code = "email_code_error"
+    description = "Email code is invalid or expired."
     code = 400
