@@ -3,33 +3,55 @@ import Link from 'next/link'
 import { RiArrowLeftLine, RiMailSendFill } from '@remixicon/react'
 import { useTranslation } from 'react-i18next'
 import { useState } from 'react'
-import { useRouter } from 'next/navigation'
+import { useRouter, useSearchParams } from 'next/navigation'
 import Countdown from './countdown'
 import Button from '@/app/components/base/button'
 import Input from '@/app/components/base/input'
 import Toast from '@/app/components/base/toast'
+import { emailLoginWithCode, getEMailLoginCode } from '@/service/common'
 
 export default function CheckCode() {
-  const router = useRouter()
   const { t } = useTranslation()
+  const router = useRouter()
+  const searchParams = useSearchParams()
+  const email = searchParams.get('email') as string
+  const token = searchParams.get('token') as string
   const [code, setVerifyCode] = useState('')
+  const [loading, setIsLoading] = useState(false)
 
   const verify = async () => {
-    if (!code.trim()) {
-      Toast.notify({
-        type: 'error',
-        message: t('login.checkCode.emptyCode'),
-      })
-      return
+    try {
+      if (!code.trim()) {
+        Toast.notify({
+          type: 'error',
+          message: t('login.checkCode.emptyCode'),
+        })
+        return
+      }
+      if (!/\d{6}/.test(code)) {
+        Toast.notify({
+          type: 'error',
+          message: t('login.checkCode.invalidCode'),
+        })
+        return
+      }
+      setIsLoading(true)
+      const ret = await emailLoginWithCode({ email, code, token })
+      localStorage.setItem('console_token', ret.data)
+      router.replace('/apps')
     }
-    if (!/\d{6}/.test(code)) {
-      Toast.notify({
-        type: 'error',
-        message: t('login.checkCode.invalidCode'),
-      })
-      return
+    catch (error) { console.error(error) }
+    finally {
+      setIsLoading(false)
     }
-    router.replace('/signin?console_token=123')
+  }
+
+  const resendCode = async () => {
+    try {
+      const ret = await getEMailLoginCode(email)
+      router.replace(`/signin/check-code?token=${ret.token}&email=${encodeURIComponent(email)}`)
+    }
+    catch (error) { console.error(error) }
   }
 
   return <div className='flex flex-col gap-3'>
@@ -39,7 +61,7 @@ export default function CheckCode() {
     <div className='pt-3 pb-4'>
       <h2 className='text-4xl font-semibold'>{t('login.checkCode.checkYourEmail')}</h2>
       <p className='text-text-secondary text-sm mt-2 leading-5'>
-        <span dangerouslySetInnerHTML={{ __html: t('login.checkCode.tips', { email: 'evan@dify.ai' }) as string }}></span>
+        <span dangerouslySetInnerHTML={{ __html: t('login.checkCode.tips', { email }) as string }}></span>
         <br />
         {t('login.checkCode.validTime')}
       </p>
@@ -47,9 +69,9 @@ export default function CheckCode() {
 
     <form action="">
       <label htmlFor="code" className='text-text-secondary text-sm font-semibold mb-1'>{t('login.checkCode.verificationCode')}</label>
-      <Input value={code} onChange={setVerifyCode} max-length={6} className='px-3 mt-1 leading-5 h-9 appearance-none' placeholder={t('login.checkCode.verificationCodePlaceholder') as string} />
-      <Button className='my-3 w-full' variant='primary' onClick={verify}>{t('login.checkCode.verify')}</Button>
-      <Countdown />
+      <Input value={code} onChange={e => setVerifyCode(e.target.value)} max-length={6} className='px-3 mt-1 leading-5 h-9 appearance-none' placeholder={t('login.checkCode.verificationCodePlaceholder') as string} />
+      <Button loading={loading} disabled={loading} className='my-3 w-full' variant='primary' onClick={verify}>{t('login.checkCode.verify')}</Button>
+      <Countdown onResend={resendCode} />
     </form>
     <div className='py-2'>
       <div className='bg-gradient-to-r from-white/[0.01] via-[#101828]/8 to-white/[0.01] h-px'></div>

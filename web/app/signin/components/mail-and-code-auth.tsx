@@ -1,10 +1,11 @@
 import { useState } from 'react'
 import { useTranslation } from 'react-i18next'
-import { useSearchParams } from 'next/navigation'
+import { useRouter, useSearchParams } from 'next/navigation'
 import Input from '@/app/components/base/input'
 import Button from '@/app/components/base/button'
 import { emailRegex } from '@/config'
 import Toast from '@/app/components/base/toast'
+import { getEMailLoginCode } from '@/service/common'
 
 type MailAndCodeAuthProps = {
   isInvite: boolean
@@ -12,24 +13,36 @@ type MailAndCodeAuthProps = {
 
 export default function MailAndCodeAuth({ isInvite }: MailAndCodeAuthProps) {
   const { t } = useTranslation()
+  const router = useRouter()
   const searchParams = useSearchParams()
   const emailFromLink = searchParams.get('email') as string
   const [email, setEmail] = useState(isInvite ? emailFromLink : '')
+  const [loading, setIsLoading] = useState(false)
 
   const handleGetEMailVerificationCode = async () => {
-    if (!email) {
-      Toast.notify({ type: 'error', message: t('login.error.emailEmpty') })
-      return
-    }
+    try {
+      if (!email) {
+        Toast.notify({ type: 'error', message: t('login.error.emailEmpty') })
+        return
+      }
 
-    if (!emailRegex.test(email)) {
-      Toast.notify({
-        type: 'error',
-        message: t('login.error.emailInValid'),
-      })
-      return
+      if (!emailRegex.test(email)) {
+        Toast.notify({
+          type: 'error',
+          message: t('login.error.emailInValid'),
+        })
+        return
+      }
+      setIsLoading(true)
+      const ret = await getEMailLoginCode(email)
+      router.push(`/signin/check-code?token=${ret.token}&email=${encodeURIComponent(email)}`)
     }
-    window.location.href = '/signin/check-code'
+    catch (error) {
+      console.error(error)
+    }
+    finally {
+      setIsLoading(false)
+    }
   }
 
   return (<form onSubmit={() => { }}>
@@ -39,7 +52,7 @@ export default function MailAndCodeAuth({ isInvite }: MailAndCodeAuthProps) {
         <Input id='email' type="email" disabled={isInvite} value={email} placeholder={t('login.emailPlaceholder') as string} onChange={e => setEmail(e.target.value)} className="px-3 h-9" />
       </div>
       <div className='mt-3'>
-        <Button variant='primary' className='w-full' onClick={handleGetEMailVerificationCode}>{t('login.continueWithCode')}</Button>
+        <Button loading={loading} disabled={loading} variant='primary' className='w-full' onClick={handleGetEMailVerificationCode}>{t('login.continueWithCode')}</Button>
       </div>
     </div>
   </form>
