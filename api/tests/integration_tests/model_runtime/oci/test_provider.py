@@ -17,6 +17,6 @@ def test_validate_provider_credentials():
     provider.validate_provider_credentials(
         credentials={
             'oci_config_content': os.environ.get('OCI_CONFIG_CONTENT'),
-            'oci_key_content': os.environ.get('OCI_KEY_CONTENT'),
+            'oci_key_content': os.environ.get('OCI_KEY_CONTENT')
         }
     )

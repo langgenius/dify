@@ -14,8 +14,8 @@ def test_validate_credentials():
         model.validate_credentials(
             model='cohere.embed-multilingual-v3.0',
             credentials={
-                'api_key': 'invalid_key',
-                'oci_api_profile': 'invalid_key'
+                'oci_config_content': 'invalid_key',
+                'oci_key_content': 'invalid_key'
             }
         )
 
@@ -23,8 +23,7 @@ def test_validate_credentials():
         model='cohere.embed-multilingual-v3.0',
         credentials={
             'oci_config_content': os.environ.get('OCI_CONFIG_CONTENT'),
-            'oci_key_content': os.environ.get('OCI_KEY_CONTENT'),
-            'oci_api_profile': os.environ.get('OCI_API_PROFILE', 'GENERATEAI')
+            'oci_key_content': os.environ.get('OCI_KEY_CONTENT')
         }
     )
 
@@ -36,8 +35,7 @@ def test_invoke_model():
         model='cohere.embed-multilingual-v3.0',
         credentials={
             'oci_config_content': os.environ.get('OCI_CONFIG_CONTENT'),
-            'oci_key_content': os.environ.get('OCI_KEY_CONTENT'),
-            'oci_api_profile': os.environ.get('OCI_API_PROFILE')
+            'oci_key_content': os.environ.get('OCI_KEY_CONTENT')
         },
         texts=[
             "hello",
@@ -60,8 +58,7 @@ def test_get_num_tokens():
         model='cohere.embed-multilingual-v3.0',
         credentials={
             'oci_config_content': os.environ.get('OCI_CONFIG_CONTENT'),
-            'oci_key_content': os.environ.get('OCI_KEY_CONTENT'),
-            'oci_api_profile': os.environ.get('OCI_API_PROFILE')
+            'oci_key_content': os.environ.get('OCI_KEY_CONTENT')
         },
         texts=[
             "hello",

@@ -22,9 +22,8 @@ def test_validate_credentials():
         model.validate_credentials(
             model='cohere.command-r-plus',
             credentials={
-                'oci_api_profile': 'invalid_key',
-                'secret_id': 'invalid_key',
-                'secret_key': 'invalid_key'
+                'oci_config_content': 'invalid_key',
+                'oci_key_content': 'invalid_key'
             }
         )
 
@@ -32,9 +31,7 @@ def test_validate_credentials():
         model='cohere.command-r-plus',
         credentials={
             'oci_config_content': os.environ.get('OCI_CONFIG_CONTENT'),
-            'oci_key_content': os.environ.get('OCI_KEY_CONTENT'),
-            'secret_id': os.environ.get('SECRET_ID'),
-            'secret_key': os.environ.get('SECRET_KEY')
+            'oci_key_content': os.environ.get('OCI_KEY_CONTENT')
         }
     )
 
@@ -46,9 +43,7 @@ def test_invoke_model():
         model='cohere.command-r-plus',
         credentials={
             'oci_config_content': os.environ.get('OCI_CONFIG_CONTENT'),
-            'oci_key_content': os.environ.get('OCI_KEY_CONTENT'),
-            'secret_id': os.environ.get('SECRET_ID'),
-            'secret_key': os.environ.get('SECRET_KEY')
+            'oci_key_content': os.environ.get('OCI_KEY_CONTENT')
         },
         prompt_messages=[
             UserPromptMessage(
@@ -75,9 +70,7 @@ def test_invoke_stream_model():
         model='meta.llama-3-70b-instruct',
         credentials={
             'oci_config_content': os.environ.get('OCI_CONFIG_CONTENT'),
-            'oci_key_content': os.environ.get('OCI_KEY_CONTENT'),
-            'secret_id': os.environ.get('SECRET_ID'),
-            'secret_key': os.environ.get('SECRET_KEY')
+            'oci_key_content': os.environ.get('OCI_KEY_CONTENT')
         },
         prompt_messages=[
             UserPromptMessage(
@@ -109,9 +102,7 @@ def test_invoke_model_with_function():
         model='cohere.command-r-plus',
         credentials={
             'oci_config_content': os.environ.get('OCI_CONFIG_CONTENT'),
-            'oci_key_content': os.environ.get('OCI_KEY_CONTENT'),
-            'secret_id': os.environ.get('SECRET_ID'),
-            'secret_key': os.environ.get('SECRET_KEY')
+            'oci_key_content': os.environ.get('OCI_KEY_CONTENT')
         },
         prompt_messages=[
             UserPromptMessage(
@@ -160,9 +151,7 @@ def test_get_num_tokens():
         model='cohere.command-r-plus',
         credentials={
             'oci_config_content': os.environ.get('OCI_CONFIG_CONTENT'),
-            'oci_key_content': os.environ.get('OCI_KEY_CONTENT'),
-            'secret_id': os.environ.get('SECRET_ID'),
-            'secret_key': os.environ.get('SECRET_KEY')
+            'oci_key_content': os.environ.get('OCI_KEY_CONTENT')
         },
         prompt_messages=[
             SystemPromptMessage(
