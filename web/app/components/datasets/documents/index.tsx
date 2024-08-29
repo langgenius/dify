@@ -201,10 +201,10 @@ const Documents: FC<IDocumentsProps> = ({ datasetId }) => {
       <div className='flex flex-col px-6 py-4 flex-1'>
         <div className='flex items-center justify-between flex-wrap'>
           <Input
-            showPrefix
+            showLeftIcon
             wrapperClassName='!w-[200px]'
             className='!h-8 !text-[13px]'
-            onChange={debounce(setSearchValue, 500)}
+            onChange={debounce(e => setSearchValue(e.target.value), 500)}
             value={searchValue}
           />
           <div className='flex gap-2 justify-center items-center !h-8'>
