@@ -137,7 +137,7 @@ class DatasetService:
 
     @staticmethod
     def create_empty_dataset(
-        tenant_id: str, name: str, indexing_technique: Optional[str], account: Account, permission: Optional[str]
+        tenant_id: str, name: str, indexing_technique: Optional[str], account: Account, permission: Optional[str] = None
     ):
         # check if dataset name already exists
         if Dataset.query.filter_by(name=name, tenant_id=tenant_id).first():
