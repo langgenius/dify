@@ -12,19 +12,16 @@ def test_validate_credentials():
 
     with pytest.raises(CredentialsValidateFailedError):
         model.validate_credentials(
-            model='cohere.embed-multilingual-v3.0',
-            credentials={
-                'oci_config_content': 'invalid_key',
-                'oci_key_content': 'invalid_key'
-            }
+            model="cohere.embed-multilingual-v3.0",
+            credentials={"oci_config_content": "invalid_key", "oci_key_content": "invalid_key"},
         )
 
     model.validate_credentials(
-        model='cohere.embed-multilingual-v3.0',
+        model="cohere.embed-multilingual-v3.0",
         credentials={
-            'oci_config_content': os.environ.get('OCI_CONFIG_CONTENT'),
-            'oci_key_content': os.environ.get('OCI_KEY_CONTENT')
-        }
+            "oci_config_content": os.environ.get("OCI_CONFIG_CONTENT"),
+            "oci_key_content": os.environ.get("OCI_KEY_CONTENT"),
+        },
     )
 
 
@@ -32,38 +29,30 @@ def test_invoke_model():
     model = OCITextEmbeddingModel()
 
     result = model.invoke(
-        model='cohere.embed-multilingual-v3.0',
+        model="cohere.embed-multilingual-v3.0",
         credentials={
-            'oci_config_content': os.environ.get('OCI_CONFIG_CONTENT'),
-            'oci_key_content': os.environ.get('OCI_KEY_CONTENT')
+            "oci_config_content": os.environ.get("OCI_CONFIG_CONTENT"),
+            "oci_key_content": os.environ.get("OCI_KEY_CONTENT"),
         },
-        texts=[
-            "hello",
-            "world",
-            " ".join(["long_text"] * 100),
-            " ".join(["another_long_text"] * 100)
-        ],
-        user="abc-123"
+        texts=["hello", "world", " ".join(["long_text"] * 100), " ".join(["another_long_text"] * 100)],
+        user="abc-123",
     )
 
     assert isinstance(result, TextEmbeddingResult)
     assert len(result.embeddings) == 4
-    #assert result.usage.total_tokens == 811
+    # assert result.usage.total_tokens == 811
 
 
 def test_get_num_tokens():
     model = OCITextEmbeddingModel()
 
     num_tokens = model.get_num_tokens(
-        model='cohere.embed-multilingual-v3.0',
+        model="cohere.embed-multilingual-v3.0",
         credentials={
-            'oci_config_content': os.environ.get('OCI_CONFIG_CONTENT'),
-            'oci_key_content': os.environ.get('OCI_KEY_CONTENT')
+            "oci_config_content": os.environ.get("OCI_CONFIG_CONTENT"),
+            "oci_key_content": os.environ.get("OCI_KEY_CONTENT"),
         },
-        texts=[
-            "hello",
-            "world"
-        ]
+        texts=["hello", "world"],
     )
 
     assert num_tokens == 2

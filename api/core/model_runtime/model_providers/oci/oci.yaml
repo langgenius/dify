@@ -39,4 +39,4 @@ provider_credential_schema:
       required: true
       placeholder:
         zh_Hans: 在此输入您的 oci api key 文件的内容(base64.b64encode("pem file content".encode('utf-8')))
-        en_US: Enter your oci api key file's content(base64.b64encode("pem file content".encode('utf-8')) )
+        en_US: Enter your oci api key file's content(base64.b64encode("pem file content".encode('utf-8')))
