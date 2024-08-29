@@ -289,14 +289,20 @@ type PortalSelectProps = {
   onSelect: (value: Item) => void
   items: Item[]
   placeholder?: string
+  triggerClassName?: string
+  triggerClassNameFn?: (open: boolean) => string
   popupClassName?: string
+  readonly?: boolean
 }
 const PortalSelect: FC<PortalSelectProps> = ({
   value,
   onSelect,
   items,
   placeholder,
+  triggerClassName,
+  triggerClassNameFn,
   popupClassName,
+  readonly,
 }) => {
   const { t } = useTranslation()
   const [open, setOpen] = useState(false)
@@ -310,11 +316,11 @@ const PortalSelect: FC<PortalSelectProps> = ({
       placement='bottom-start'
       offset={4}
     >
-      <PortalToFollowElemTrigger onClick={() => setOpen(v => !v)} className='w-full'>
+      <PortalToFollowElemTrigger onClick={() => !readonly && setOpen(v => !v)} className='w-full'>
         <div
-          className={`
-            flex items-center justify-between px-2.5 h-9 rounded-lg border-0 bg-gray-100 text-sm cursor-pointer 
-          `}
+          className={classNames(`
+            flex items-center justify-between px-2.5 h-9 rounded-lg border-0 bg-gray-100 text-sm ${readonly ? 'cursor-not-allowed' : 'cursor-pointer'} 
+          `, triggerClassName, triggerClassNameFn?.(open))}
           title={selectedItem?.name}
         >
           <span
@@ -352,7 +358,7 @@ const PortalSelect: FC<PortalSelectProps> = ({
                 {item.name}
               </span>
               {item.value === value && (
-                <CheckIcon className='shrink-0 h-4 w-4' />
+                <CheckIcon className='shrink-0 h-4 w-4 text-text-accent' />
               )}
             </div>
           ))}

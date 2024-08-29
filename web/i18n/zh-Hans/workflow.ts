@@ -348,6 +348,7 @@ const translation = {
       apiPlaceholder: '输入 URL，输入变量时请键入‘/’',
       notStartWithHttp: 'API 应该以 http:// 或 https:// 开头',
       key: '键',
+      type: '类型',
       value: '值',
       bulkEdit: '批量编辑',
       keyValueEdit: '键值编辑',

@@ -5,7 +5,7 @@ import produce from 'immer'
 import { useTranslation } from 'react-i18next'
 import type { KeyValue } from '../../../types'
 import KeyValueItem from './item'
-// import { EditList } from '@/app/components/base/icons/src/vender/solid/communication'
+import cn from '@/utils/classnames'
 
 const i18nPrefix = 'workflow.nodes.http'
 
@@ -57,22 +57,10 @@ const KeyValueList: FC<Props> = ({
 
   return (
     <div className='border border-divider-regular rounded-lg overflow-hidden'>
-      <div className='flex items-center h-7 leading-7 text-text-tertiary system-xs-medium-uppercase'>
-        <div className='w-1/2 h-full pl-3 border-r border-divider-regular'>{t(`${i18nPrefix}.key`)}</div>
-        <div className='flex w-1/2 h-full pl-3 pr-1 items-center justify-between'>
-          <div>{t(`${i18nPrefix}.value`)}</div>
-          {/* {!readonly && (
-            <TooltipPlus
-              popupContent={t(`${i18nPrefix}.bulkEdit`)}
-            >
-              <div
-                className='p-1 cursor-pointer rounded-md hover:bg-black/5 text-gray-500 hover:text-gray-800'
-                onClick={onSwitchToBulkEdit}
-              >
-                <EditList className='w-3 h-3' />
-              </div>
-            </TooltipPlus>)} */}
-        </div>
+      <div className={cn('flex items-center h-7 leading-7 text-text-tertiary system-xs-medium-uppercase')}>
+        <div className={cn('h-full pl-3 border-r border-divider-regular', isSupportFile ? 'w-[140px]' : 'w-1/2')}>{t(`${i18nPrefix}.key`)}</div>
+        {isSupportFile && <div className='shrink-0 w-[70px] h-full pl-3 border-r border-divider-regular'>{t(`${i18nPrefix}.type`)}</div>}
+        <div className={cn('h-full pl-3 pr-1 items-center justify-between', isSupportFile ? 'grow' : 'w-1/2')}>{t(`${i18nPrefix}.value`)}</div>
       </div>
       {
         list.map((item, index) => (

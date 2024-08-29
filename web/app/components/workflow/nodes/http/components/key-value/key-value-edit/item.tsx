@@ -4,8 +4,12 @@ import React, { useCallback } from 'react'
 import { useTranslation } from 'react-i18next'
 import produce from 'immer'
 import type { KeyValue } from '../../../types'
+import VarReferencePicker from '../../../../_base/components/variable/var-reference-picker'
 import InputItem from './input-item'
 import cn from '@/utils/classnames'
+import { PortalSelect } from '@/app/components/base/select'
+import type { ValueSelector, Var } from '@/app/components/workflow/types'
+import { VarType } from '@/app/components/workflow/types'
 // import Input from '@/app/components/base/input'
 
 const i18nPrefix = 'workflow.nodes.http'
@@ -44,20 +48,22 @@ const KeyValueItem: FC<Props> = ({
   const { t } = useTranslation()
 
   const handleChange = useCallback((key: string) => {
-    return (value: string) => {
+    return (value: string | ValueSelector) => {
       const newPayload = produce(payload, (draft: any) => {
         draft[key] = value
       })
       onChange(newPayload)
-      if (key === 'value' && isLastItem)
-        onAdd()
     }
   }, [onChange, onAdd, isLastItem, payload])
+
+  const filterOnlyFileVariable = (varPayload: Var) => {
+    return [VarType.file, VarType.arrayFile].includes(varPayload.type)
+  }
 
   return (
     // group class name is for hover row show remove button
     <div className={cn(className, 'group flex h-min-7 border-t border-gray-200')}>
-      <div className='w-1/2 border-r border-gray-200'>
+      <div className={cn('shrink-0 border-r border-divider-regular', isSupportFile ? 'w-[140px]' : 'w-1/2')}>
         {!keyNotSupportVar
           ? (
             <InputItem
@@ -79,19 +85,47 @@ const KeyValueItem: FC<Props> = ({
             />
           )}
       </div>
-      <div className='w-1/2'>
-        <InputItem
-          instanceId={`http-value-${instanceId}`}
-          nodeId={nodeId}
-          value={payload.value}
-          onChange={handleChange('value')}
-          hasRemove={!readonly && canRemove}
-          onRemove={onRemove}
-          placeholder={t(`${i18nPrefix}.value`)!}
-          readOnly={readonly}
-          isSupportFile={isSupportFile}
-          insertVarTipToLeft={insertVarTipToLeft}
-        />
+      {isSupportFile && (
+        <div className='shrink-0 w-[70px] border-r border-divider-regular'>
+          <PortalSelect
+            value={payload.type!}
+            onSelect={item => handleChange('type')(item.value as string)}
+            items={[
+              { name: 'text', value: 'text' },
+              { name: 'file', value: 'file' },
+            ]}
+            readonly={readonly}
+            triggerClassName='rounded-none h-7'
+            triggerClassNameFn={isOpen => isOpen ? 'bg-state-base-hover' : 'bg-transparent'}
+            popupClassName='w-[80px] h-7'
+          />
+        </div>)}
+      <div className={cn(isSupportFile ? 'grow' : 'w-1/2')} onClick={() => isLastItem && onAdd()}>
+        {(isSupportFile && payload.type === 'file')
+          ? (
+            <VarReferencePicker
+              nodeId={nodeId}
+              readonly={readonly}
+              value={payload.file || []}
+              onChange={handleChange('file')}
+              filterVar={filterOnlyFileVariable}
+            />
+          )
+          : (
+            <InputItem
+              instanceId={`http-value-${instanceId}`}
+              nodeId={nodeId}
+              value={payload.value}
+              onChange={handleChange('value')}
+              hasRemove={!readonly && canRemove}
+              onRemove={onRemove}
+              placeholder={t(`${i18nPrefix}.value`)!}
+              readOnly={readonly}
+              isSupportFile={isSupportFile}
+              insertVarTipToLeft={insertVarTipToLeft}
+            />
+          )}
+
       </div>
     </div>
   )

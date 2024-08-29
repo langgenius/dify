@@ -117,7 +117,7 @@ const EditBody: FC<Props> = ({
     onChange(newBody)
   }, [onChange, payload])
 
-  const handleBinaryFileChange = useCallback((value: ValueSelector | string) => {
+  const handleFileChange = useCallback((value: ValueSelector | string) => {
     const newBody = produce(payload, (draft: Body) => {
       if ((draft.data as BodyPayload).length === 0) {
         (draft.data as BodyPayload).push({
@@ -193,7 +193,7 @@ const EditBody: FC<Props> = ({
             nodeId={nodeId}
             readonly={readonly}
             value={bodyPayload[0]?.file || []}
-            onChange={handleBinaryFileChange}
+            onChange={handleFileChange}
             filterVar={filterOnlyFileVariable}
           />
         )}

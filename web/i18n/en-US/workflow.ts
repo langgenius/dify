@@ -348,6 +348,7 @@ const translation = {
       apiPlaceholder: 'Enter URL, type ‘/’ insert variable',
       notStartWithHttp: 'API should start with http:// or https://',
       key: 'Key',
+      type: 'Type',
       value: 'Value',
       bulkEdit: 'Bulk Edit',
       keyValueEdit: 'Key-Value Edit',
