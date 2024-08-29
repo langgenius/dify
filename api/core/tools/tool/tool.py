@@ -1,5 +1,5 @@
 from abc import ABC, abstractmethod
-from collections.abc import Generator, Mapping
+from collections.abc import Generator
 from copy import deepcopy
 from enum import Enum
 from typing import TYPE_CHECKING, Any, Optional, Union

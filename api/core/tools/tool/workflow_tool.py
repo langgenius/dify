@@ -48,6 +48,8 @@ class WorkflowTool(Tool):
         from core.app.apps.workflow.app_generator import WorkflowAppGenerator
         generator = WorkflowAppGenerator()
 
+        assert self.runtime and self.runtime.invoke_from
+
         result = generator.generate(
             app_model=app, 
             workflow=workflow, 
@@ -154,7 +156,7 @@ class WorkflowTool(Tool):
                     try:
                         file_var_list = [FileVar(**f) for f in file]
                         for file_var in file_var_list:
-                            file_dict = {
+                            file_dict: dict[str, Any] = {
                                 'transfer_method': file_var.transfer_method.value,
                                 'type': file_var.type.value,
                             }
