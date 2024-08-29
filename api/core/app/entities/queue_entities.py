@@ -3,6 +3,7 @@ from typing import Any, Optional
 
 from pydantic import BaseModel, field_validator
 
+from core.app.entities.task_entities import StreamResponse
 from core.model_runtime.entities.llm_entities import LLMResult, LLMResultChunk
 from core.workflow.entities.base_node_data_entities import BaseNodeData
 from core.workflow.entities.node_entities import NodeType
@@ -50,6 +51,7 @@ class QueueLLMChunkEvent(AppQueueEvent):
     event: QueueEvent = QueueEvent.LLM_CHUNK
     chunk: LLMResultChunk
 
+
 class QueueIterationStartEvent(AppQueueEvent):
     """
     QueueIterationStartEvent entity
@@ -64,6 +66,7 @@ class QueueIterationStartEvent(AppQueueEvent):
     predecessor_node_id: Optional[str] = None
     metadata: Optional[dict] = None
 
+
 class QueueIterationNextEvent(AppQueueEvent):
     """
     QueueIterationNextEvent entity
@@ -75,7 +78,7 @@ class QueueIterationNextEvent(AppQueueEvent):
     node_type: NodeType
 
     node_run_index: int
-    output: Optional[Any] = None # output for the current iteration
+    output: Optional[Any] = None  # output for the current iteration
 
     @field_validator('output', mode='before')
     @classmethod
@@ -89,17 +92,19 @@ class QueueIterationNextEvent(AppQueueEvent):
             return v
         raise ValueError('output must be a valid type')
 
+
 class QueueIterationCompletedEvent(AppQueueEvent):
     """
     QueueIterationCompletedEvent entity
     """
-    event:QueueEvent = QueueEvent.ITERATION_COMPLETED
+    event: QueueEvent = QueueEvent.ITERATION_COMPLETED
 
     node_id: str
     node_type: NodeType
-    
+
     node_run_index: int
     outputs: dict
+
 
 class QueueTextChunkEvent(AppQueueEvent):
     """
@@ -117,7 +122,7 @@ class QueueAgentMessageEvent(AppQueueEvent):
     event: QueueEvent = QueueEvent.AGENT_MESSAGE
     chunk: LLMResultChunk
 
-    
+
 class QueueMessageReplaceEvent(AppQueueEvent):
     """
     QueueMessageReplaceEvent entity
@@ -262,6 +267,7 @@ class QueueStopEvent(AppQueueEvent):
     """
     QueueStopEvent entity
     """
+
     class StopBy(Enum):
         """
         Stop by enum
@@ -297,3 +303,11 @@ class WorkflowQueueMessage(QueueMessage):
     WorkflowQueueMessage entity
     """
     pass
+
+
+class ForwardQueueMessage(AppQueueEvent):
+    """
+    WorkflowQueueMessage entity
+    """
+    event: QueueEvent = QueueEvent.PING
+    response: StreamResponse

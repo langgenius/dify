@@ -5,6 +5,7 @@ from core.app.entities.queue_entities import (
     MessageQueueMessage,
     QueueAdvancedChatMessageEndEvent,
     QueueErrorEvent,
+    QueueEvent,
     QueueMessage,
     QueueMessageEndEvent,
     QueueStopEvent,
@@ -54,6 +55,9 @@ class MessageBasedAppQueueManager(AppQueueManager):
                              | QueueErrorEvent
                              | QueueMessageEndEvent
                              | QueueAdvancedChatMessageEndEvent):
+            self.stop_listen()
+        elif event.event in (QueueEvent.STOP, QueueEvent.ERROR, QueueEvent.MESSAGE_END,
+                             QueueEvent.WORKFLOW_SUCCEEDED, QueueEvent.WORKFLOW_FAILED):
             self.stop_listen()
 
         if pub_from == PublishFrom.APPLICATION_MANAGER and self._is_stopped():
