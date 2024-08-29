@@ -221,6 +221,7 @@ const Chat: FC<ChatProps> = ({
                       showPromptLog={showPromptLog}
                       chatAnswerContainerInner={chatAnswerContainerInner}
                       hideProcessDetail={hideProcessDetail}
+                      noChatInput={noChatInput}
                     />
                   )
                 }

@@ -29,6 +29,7 @@ type OperationProps = {
   maxSize: number
   contentWidth: number
   hasWorkflowProcess: boolean
+  noChatInput?: boolean
 }
 const Operation: FC<OperationProps> = ({
   item,
@@ -38,6 +39,7 @@ const Operation: FC<OperationProps> = ({
   maxSize,
   contentWidth,
   hasWorkflowProcess,
+  noChatInput,
 }) => {
   const { t } = useTranslation()
   const {
@@ -162,7 +164,7 @@ const Operation: FC<OperationProps> = ({
           )
         }
         {
-          !isOpeningStatement && <RegenerateBtn className='hidden group-hover:block mr-1' onClick={() => onRegenerate?.(item)} />
+          !isOpeningStatement && !noChatInput && <RegenerateBtn className='hidden group-hover:block mr-1' onClick={() => onRegenerate?.(item)} />
         }
         {
           config?.supportFeedback && !localFeedback?.rating && onFeedback && !isOpeningStatement && (
