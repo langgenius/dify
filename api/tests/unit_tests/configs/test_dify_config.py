@@ -19,7 +19,7 @@ def example_env_file(tmp_path, monkeypatch) -> str:
             """
         CONSOLE_API_URL=https://example.com
         CONSOLE_WEB_URL=https://example.com
-        HTTP_REQUEST_MAX_WRITE_TIMEOUT=20
+        HTTP_REQUEST_MAX_WRITE_TIMEOUT=30
         """
         )
     )
@@ -53,7 +53,7 @@ def test_dify_config(example_env_file):
     assert config.HTTP_REQUEST_MAX_READ_TIMEOUT == 60
 
     # annotated field with configured value
-    assert config.HTTP_REQUEST_MAX_WRITE_TIMEOUT == 20
+    assert config.HTTP_REQUEST_MAX_WRITE_TIMEOUT == 30
 
 
 # NOTE: If there is a `.env` file in your Workspace, this test might not succeed as expected.
