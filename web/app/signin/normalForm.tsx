@@ -1,7 +1,7 @@
 import React, { useEffect, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import Link from 'next/link'
-import { useSearchParams } from 'next/navigation'
+import { useRouter, useSearchParams } from 'next/navigation'
 import Loading from '../components/base/loading'
 import MailAndCodeAuth from './components/mail-and-code-auth'
 import MailAndPasswordAuth from './components/mail-and-password-auth'
@@ -11,31 +11,44 @@ import cn from '@/utils/classnames'
 import { IS_CE_EDITION } from '@/config'
 import { getSystemFeatures } from '@/service/common'
 import { defaultSystemFeatures } from '@/types/feature'
-
-type AuthType = 'password' | 'code' | 'sso' | 'social'
+import Toast from '@/app/components/base/toast'
 
 const NormalForm = () => {
   const { t } = useTranslation()
+  const router = useRouter()
   const searchParams = useSearchParams()
+  const consoleToken = searchParams.get('console_token')
+  const message = searchParams.get('message')
   const token = searchParams.get('token')
   const email = searchParams.get('email') || ''
   const spaceName = searchParams.get('space') || ''
   const [isLoading, setIsLoading] = useState(true)
   const [systemFeatures, setSystemFeatures] = useState(defaultSystemFeatures)
-  const [authType, updateAuthType] = useState('code')
-  const [enabledAuthType, updateEnabledAuthType] = useState<AuthType[]>(['password', 'code', 'sso', 'social'])
+  const [authType, updateAuthType] = useState('password')
+  const [showORLine, setShowORLine] = useState(false)
 
   const isInviteLink = Boolean(token && token !== 'null')
 
-  const shouldShowORLine = (enabledAuthType.includes('code') || enabledAuthType.includes('password')) && (enabledAuthType.includes('social') || enabledAuthType.includes('sso'))
-
   useEffect(() => {
+    if (consoleToken) {
+      localStorage.setItem('console_token', consoleToken)
+      router.replace('/apps')
+      return
+    }
+
+    if (message) {
+      Toast.notify({
+        type: 'error',
+        message,
+      })
+    }
     getSystemFeatures().then((res) => {
-      setSystemFeatures(res)
+      setSystemFeatures({ ...defaultSystemFeatures, ...res })
+      setShowORLine((res.enable_social_oauth_login || res.sso_enforced_for_signin) && (res.enable_email_code_login || res.enable_email_password_login))
     }).finally(() => {
       setIsLoading(false)
     })
-  }, [])
+  }, [consoleToken, message, router])
   if (isLoading) {
     return <div className={
       cn(
@@ -62,13 +75,13 @@ const NormalForm = () => {
           </div>}
         <div className="bg-white ">
           <div className="flex flex-col gap-3 mt-6">
-            {enabledAuthType.includes('social') && <SocialAuth />}
-            {enabledAuthType.includes('sso') && <div className='w-full'>
+            {systemFeatures.enable_social_oauth_login && <SocialAuth />}
+            {systemFeatures.sso_enforced_for_signin && <div className='w-full'>
               <SSOAuth protocol={systemFeatures.sso_enforced_for_signin_protocol} />
             </div>}
           </div>
 
-          {shouldShowORLine && <div className="relative mt-6">
+          {showORLine && <div className="relative mt-6">
             <div className="absolute inset-0 flex items-center" aria-hidden="true">
               <div className="w-full border-t border-gray-300" />
             </div>
@@ -76,18 +89,22 @@ const NormalForm = () => {
               <span className="px-2 text-gray-300 bg-white">{t('login.or')}</span>
             </div>
           </div>}
-          {enabledAuthType.includes('code') && authType === 'code' && <>
-            <MailAndCodeAuth isInvite={isInviteLink} />
-            {enabledAuthType.includes('password') && <div className='cursor-pointer py-1 text-center' onClick={() => { updateAuthType('password') }}>
-              <span className='text-xs text-components-button-secondary-accent-text'>{t('login.usePassword')}</span>
-            </div>}
-          </>}
-          {enabledAuthType.includes('password') && authType === 'password' && <>
-            <MailAndPasswordAuth isInvite={isInviteLink} />
-            {enabledAuthType.includes('code') && <div className='cursor-pointer py-1 text-center' onClick={() => { updateAuthType('code') }}>
-              <span className='text-xs text-components-button-secondary-accent-text'>{t('login.useVerificationCode')}</span>
-            </div>}
-          </>}
+          {
+            (systemFeatures.enable_email_code_login || systemFeatures.enable_email_password_login) && <>
+              {systemFeatures.enable_email_code_login && authType === 'code' && <>
+                <MailAndCodeAuth isInvite={isInviteLink} />
+                {systemFeatures.enable_email_password_login && <div className='cursor-pointer py-1 text-center' onClick={() => { updateAuthType('password') }}>
+                  <span className='text-xs text-components-button-secondary-accent-text'>{t('login.usePassword')}</span>
+                </div>}
+              </>}
+              {systemFeatures.enable_email_password_login && authType === 'password' && <>
+                <MailAndPasswordAuth isInvite={isInviteLink} />
+                {systemFeatures.enable_email_code_login && <div className='cursor-pointer py-1 text-center' onClick={() => { updateAuthType('code') }}>
+                  <span className='text-xs text-components-button-secondary-accent-text'>{t('login.useVerificationCode')}</span>
+                </div>}
+              </>}
+            </>
+          }
           <div className="w-hull text-center block mt-2 text-xs text-gray-600">
             {t('login.tosDesc')}
             &nbsp;

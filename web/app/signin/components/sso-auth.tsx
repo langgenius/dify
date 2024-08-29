@@ -1,7 +1,7 @@
 'use client'
-import { useRouter, useSearchParams } from 'next/navigation'
+import { useRouter } from 'next/navigation'
 import type { FC } from 'react'
-import { useEffect, useState } from 'react'
+import { useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { Lock01 } from '@/app/components/base/icons/src/vender/solid/security'
 import Toast from '@/app/components/base/toast'
@@ -15,28 +15,10 @@ type SSOAuthProps = {
 const SSOAuth: FC<SSOAuthProps> = ({
   protocol,
 }) => {
-  const searchParams = useSearchParams()
-  const consoleToken = searchParams.get('console_token')
-  const message = searchParams.get('message')
-
   const router = useRouter()
   const { t } = useTranslation()
 
   const [isLoading, setIsLoading] = useState(false)
-
-  useEffect(() => {
-    if (consoleToken) {
-      localStorage.setItem('console_token', consoleToken)
-      router.replace('/apps')
-    }
-
-    if (message) {
-      Toast.notify({
-        type: 'error',
-        message,
-      })
-    }
-  }, [])
 
   const handleSSOLogin = () => {
     setIsLoading(true)

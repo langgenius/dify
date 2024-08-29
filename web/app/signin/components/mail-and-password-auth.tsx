@@ -1,8 +1,7 @@
 import Link from 'next/link'
-import router from 'next/router'
 import { useState } from 'react'
 import { useTranslation } from 'react-i18next'
-import { useSearchParams } from 'next/navigation'
+import { useRouter, useSearchParams } from 'next/navigation'
 import Button from '@/app/components/base/button'
 import Toast from '@/app/components/base/toast'
 import { emailRegex } from '@/config'
@@ -15,6 +14,7 @@ type MailAndPasswordAuthProps = {
 
 export default function MailAndPasswordAuth({ isInvite }: MailAndPasswordAuthProps) {
   const { t } = useTranslation()
+  const router = useRouter()
   const searchParams = useSearchParams()
   const [showPassword, setShowPassword] = useState(false)
   const emailFromLink = searchParams.get('email') as string
