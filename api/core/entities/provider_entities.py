@@ -128,10 +128,6 @@ class BasicProviderConfig(BaseModel):
                     return mode
             raise ValueError(f'invalid mode value {value}')
 
-        @staticmethod
-        def default(value: str) -> str:
-            return ""
-    
     type: Type = Field(..., description="The type of the credentials")
     name: str = Field(..., description="The name of the credentials")
 

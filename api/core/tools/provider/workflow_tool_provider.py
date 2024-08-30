@@ -208,8 +208,12 @@ class WorkflowToolProviderController(ToolProviderController):
 
         if not db_providers:
             return []
+        
+        app = db_providers.app
+        if not app:
+            raise ValueError("can not read app of workflow")
 
-        self.tools = [self._get_db_provider_tool(db_providers, db_providers.app)]
+        self.tools = [self._get_db_provider_tool(db_providers, app)]
 
         return self.tools
 

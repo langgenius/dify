@@ -26,7 +26,7 @@ class UserToolProvider(BaseModel):
     author: str
     name: str # identifier
     description: I18nObject
-    icon: str
+    icon: str | dict
     label: I18nObject # label
     type: ToolProviderType
     masked_credentials: Optional[dict] = None

@@ -28,10 +28,13 @@ class BuiltinToolManageService:
         tools = provider_controller.get_tools()
 
         tool_provider_configurations = ToolConfigurationManager(
-            tenant_id=tenant_id, provider_controller=provider_controller
+            tenant_id=tenant_id,
+            config=provider_controller.get_credentials_schema(),
+            provider_type=provider_controller.provider_type.value,
+            provider_identity=provider_controller.identity.name,
         )
         # check if user has added the provider
-        builtin_provider: BuiltinToolProvider = (
+        builtin_provider: BuiltinToolProvider | None = (
             db.session.query(BuiltinToolProvider)
             .filter(
                 BuiltinToolProvider.tenant_id == tenant_id,
@@ -75,7 +78,7 @@ class BuiltinToolManageService:
         update builtin tool provider
         """
         # get if the provider exists
-        provider: BuiltinToolProvider = (
+        provider: BuiltinToolProvider | None = (
             db.session.query(BuiltinToolProvider)
             .filter(
                 BuiltinToolProvider.tenant_id == tenant_id,
@@ -89,7 +92,13 @@ class BuiltinToolManageService:
             provider_controller = ToolManager.get_builtin_provider(provider_name)
             if not provider_controller.need_credentials:
                 raise ValueError(f"provider {provider_name} does not need credentials")
-            tool_configuration = ToolConfigurationManager(tenant_id=tenant_id, provider_controller=provider_controller)
+            tool_configuration = ToolConfigurationManager(
+                tenant_id=tenant_id,
+                config=provider_controller.get_credentials_schema(),
+                provider_type=provider_controller.provider_type.value,
+                provider_identity=provider_controller.identity.name,
+            )
+
             # get original credentials if exists
             if provider is not None:
                 original_credentials = tool_configuration.decrypt_tool_credentials(provider.credentials)
@@ -132,7 +141,7 @@ class BuiltinToolManageService:
         """
         get builtin tool provider credentials
         """
-        provider: BuiltinToolProvider = (
+        provider_obj: BuiltinToolProvider | None = (
             db.session.query(BuiltinToolProvider)
             .filter(
                 BuiltinToolProvider.tenant_id == tenant_id,
@@ -141,12 +150,17 @@ class BuiltinToolManageService:
             .first()
         )
 
-        if provider is None:
+        if provider_obj is None:
             return {}
 
-        provider_controller = ToolManager.get_builtin_provider(provider.provider)
-        tool_configuration = ToolConfigurationManager(tenant_id=tenant_id, provider_controller=provider_controller)
-        credentials = tool_configuration.decrypt_tool_credentials(provider.credentials)
+        provider_controller = ToolManager.get_builtin_provider(provider_obj.provider)
+        tool_configuration = ToolConfigurationManager(
+            tenant_id=tenant_id,
+            config=provider_controller.get_credentials_schema(),
+            provider_type=provider_controller.provider_type.value,
+            provider_identity=provider_controller.identity.name,
+        )
+        credentials = tool_configuration.decrypt_tool_credentials(provider_obj.credentials)
         credentials = tool_configuration.mask_tool_credentials(credentials)
         return credentials
 
@@ -155,7 +169,7 @@ class BuiltinToolManageService:
         """
         delete tool provider
         """
-        provider: BuiltinToolProvider = (
+        provider_obj: BuiltinToolProvider | None = (
             db.session.query(BuiltinToolProvider)
             .filter(
                 BuiltinToolProvider.tenant_id == tenant_id,
@@ -164,15 +178,20 @@ class BuiltinToolManageService:
             .first()
         )
 
-        if provider is None:
+        if provider_obj is None:
             raise ValueError(f"you have not added provider {provider_name}")
 
-        db.session.delete(provider)
+        db.session.delete(provider_obj)
         db.session.commit()
 
         # delete cache
         provider_controller = ToolManager.get_builtin_provider(provider_name)
-        tool_configuration = ToolConfigurationManager(tenant_id=tenant_id, provider_controller=provider_controller)
+        tool_configuration = ToolConfigurationManager(
+            tenant_id=tenant_id,
+            config=provider_controller.get_credentials_schema(),
+            provider_type=provider_controller.provider_type.value,
+            provider_identity=provider_controller.identity.name,
+        )
         tool_configuration.delete_tool_credentials_cache()
 
         return {"result": "success"}
@@ -212,8 +231,8 @@ class BuiltinToolManageService:
             try:
                 # handle include, exclude
                 if is_filtered(
-                    include_set=dify_config.POSITION_TOOL_INCLUDES_SET,
-                    exclude_set=dify_config.POSITION_TOOL_EXCLUDES_SET,
+                    include_set=dify_config.POSITION_TOOL_INCLUDES_SET,  # type: ignore
+                    exclude_set=dify_config.POSITION_TOOL_EXCLUDES_SET,  # type: ignore
                     data=provider_controller,
                     name_func=lambda x: x.identity.name,
                 ):

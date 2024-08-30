@@ -4,7 +4,7 @@ from datetime import datetime
 from sqlalchemy import or_
 
 from core.model_runtime.utils.encoders import jsonable_encoder
-from core.tools.entities.api_entities import UserToolProvider
+from core.tools.entities.api_entities import UserTool, UserToolProvider
 from core.tools.provider.workflow_tool_provider import WorkflowToolProviderController
 from core.tools.tool_label_manager import ToolLabelManager
 from core.tools.utils.workflow_configuration_sync import WorkflowToolConfigurationUtils
@@ -32,7 +32,7 @@ class WorkflowToolManageService:
         description: str,
         parameters: list[dict],
         privacy_policy: str = "",
-        labels: list[str] = None,
+        labels: list[str] | None = None,
     ) -> dict:
         """
         Create a workflow tool.
@@ -62,12 +62,12 @@ class WorkflowToolManageService:
         if existing_workflow_tool_provider is not None:
             raise ValueError(f"Tool with name {name} or app_id {workflow_app_id} already exists")
 
-        app: App = db.session.query(App).filter(App.id == workflow_app_id, App.tenant_id == tenant_id).first()
+        app: App | None = db.session.query(App).filter(App.id == workflow_app_id, App.tenant_id == tenant_id).first()
 
         if app is None:
             raise ValueError(f"App {workflow_app_id} not found")
 
-        workflow: Workflow = app.workflow
+        workflow: Workflow | None = app.workflow
         if workflow is None:
             raise ValueError(f"Workflow not found for app {workflow_app_id}")
 
@@ -106,7 +106,7 @@ class WorkflowToolManageService:
         description: str,
         parameters: list[dict],
         privacy_policy: str = "",
-        labels: list[str] = None,
+        labels: list[str] | None = None,
     ) -> dict:
         """
         Update a workflow tool.
@@ -138,7 +138,7 @@ class WorkflowToolManageService:
         if existing_workflow_tool_provider is not None:
             raise ValueError(f"Tool with name {name} already exists")
 
-        workflow_tool_provider: WorkflowToolProvider = (
+        workflow_tool_provider: WorkflowToolProvider | None = (
             db.session.query(WorkflowToolProvider)
             .filter(WorkflowToolProvider.tenant_id == tenant_id, WorkflowToolProvider.id == workflow_tool_id)
             .first()
@@ -147,14 +147,14 @@ class WorkflowToolManageService:
         if workflow_tool_provider is None:
             raise ValueError(f"Tool {workflow_tool_id} not found")
 
-        app: App = (
+        app: App | None = (
             db.session.query(App).filter(App.id == workflow_tool_provider.app_id, App.tenant_id == tenant_id).first()
         )
 
         if app is None:
             raise ValueError(f"App {workflow_tool_provider.app_id} not found")
 
-        workflow: Workflow = app.workflow
+        workflow: Workflow | None = app.workflow
         if workflow is None:
             raise ValueError(f"Workflow not found for app {workflow_tool_provider.app_id}")
 
@@ -243,36 +243,12 @@ class WorkflowToolManageService:
         :param workflow_app_id: the workflow app id
         :return: the tool
         """
-        db_tool: WorkflowToolProvider = (
+        db_tool: WorkflowToolProvider | None = (
             db.session.query(WorkflowToolProvider)
             .filter(WorkflowToolProvider.tenant_id == tenant_id, WorkflowToolProvider.id == workflow_tool_id)
             .first()
         )
-
-        if db_tool is None:
-            raise ValueError(f"Tool {workflow_tool_id} not found")
-
-        workflow_app: App = db.session.query(App).filter(App.id == db_tool.app_id, App.tenant_id == tenant_id).first()
-
-        if workflow_app is None:
-            raise ValueError(f"App {db_tool.app_id} not found")
-
-        tool = ToolTransformService.workflow_provider_to_controller(db_tool)
-
-        return {
-            "name": db_tool.name,
-            "label": db_tool.label,
-            "workflow_tool_id": db_tool.id,
-            "workflow_app_id": db_tool.app_id,
-            "icon": json.loads(db_tool.icon),
-            "description": db_tool.description,
-            "parameters": jsonable_encoder(db_tool.parameter_configurations),
-            "tool": ToolTransformService.tool_to_user_tool(
-                tool.get_tools(user_id, tenant_id)[0], labels=ToolLabelManager.get_tool_labels(tool)
-            ),
-            "synced": workflow_app.workflow.version == db_tool.version,
-            "privacy_policy": db_tool.privacy_policy,
-        }
+        return cls._get_workflow_tool(db_tool)
 
     @classmethod
     def get_workflow_tool_by_app_id(cls, user_id: str, tenant_id: str, workflow_app_id: str) -> dict:
@@ -283,19 +259,31 @@ class WorkflowToolManageService:
         :param workflow_app_id: the workflow app id
         :return: the tool
         """
-        db_tool: WorkflowToolProvider = (
+        db_tool: WorkflowToolProvider | None = (
             db.session.query(WorkflowToolProvider)
             .filter(WorkflowToolProvider.tenant_id == tenant_id, WorkflowToolProvider.app_id == workflow_app_id)
             .first()
         )
-
+        return cls._get_workflow_tool(db_tool)
+    
+    @classmethod
+    def _get_workflow_tool(cls, db_tool: WorkflowToolProvider | None):
+        """
+        Get a workflow tool.
+        :db_tool: the database tool
+        :return: the tool
+        """
         if db_tool is None:
-            raise ValueError(f"Tool {workflow_app_id} not found")
+            raise ValueError("Tool not found")
 
-        workflow_app: App = db.session.query(App).filter(App.id == db_tool.app_id, App.tenant_id == tenant_id).first()
+        workflow_app: App | None = db.session.query(App).filter(App.id == db_tool.app_id, App.tenant_id == db_tool.tenant_id).first()
 
         if workflow_app is None:
             raise ValueError(f"App {db_tool.app_id} not found")
+        
+        workflow = workflow_app.workflow
+        if not workflow:
+            raise ValueError("Workflow not found")
 
         tool = ToolTransformService.workflow_provider_to_controller(db_tool)
 
@@ -308,14 +296,14 @@ class WorkflowToolManageService:
             "description": db_tool.description,
             "parameters": jsonable_encoder(db_tool.parameter_configurations),
             "tool": ToolTransformService.tool_to_user_tool(
-                tool.get_tools(user_id, tenant_id)[0], labels=ToolLabelManager.get_tool_labels(tool)
+                tool.get_tools(db_tool.tenant_id)[0], labels=ToolLabelManager.get_tool_labels(tool)
             ),
-            "synced": workflow_app.workflow.version == db_tool.version,
+            "synced": workflow.version == db_tool.version,
             "privacy_policy": db_tool.privacy_policy,
         }
 
     @classmethod
-    def list_single_workflow_tools(cls, user_id: str, tenant_id: str, workflow_tool_id: str) -> list[dict]:
+    def list_single_workflow_tools(cls, user_id: str, tenant_id: str, workflow_tool_id: str) -> list[UserTool]:
         """
         List workflow tool provider tools.
         :param user_id: the user id
@@ -323,7 +311,7 @@ class WorkflowToolManageService:
         :param workflow_app_id: the workflow app id
         :return: the list of tools
         """
-        db_tool: WorkflowToolProvider = (
+        db_tool: WorkflowToolProvider | None = (
             db.session.query(WorkflowToolProvider)
             .filter(WorkflowToolProvider.tenant_id == tenant_id, WorkflowToolProvider.id == workflow_tool_id)
             .first()
@@ -336,6 +324,7 @@ class WorkflowToolManageService:
 
         return [
             ToolTransformService.tool_to_user_tool(
-                tool.get_tools(user_id, tenant_id)[0], labels=ToolLabelManager.get_tool_labels(tool)
+                tool=tool.get_tools(db_tool.tenant_id)[0], 
+                labels=ToolLabelManager.get_tool_labels(tool)
             )
         ]

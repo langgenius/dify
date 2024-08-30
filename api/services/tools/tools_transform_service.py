@@ -1,6 +1,6 @@
 import json
 import logging
-from typing import Optional, Union
+from typing import Literal, Optional, Union, overload
 
 from configs import dify_config
 from core.entities.provider_entities import ProviderConfig
@@ -25,7 +25,7 @@ logger = logging.getLogger(__name__)
 
 class ToolTransformService:
     @classmethod
-    def get_tool_provider_icon_url(cls, provider_type: str, provider_name: str, icon: str) -> Union[str, dict]:
+    def get_tool_provider_icon_url(cls, provider_type: str, provider_name: str, icon: str | dict) -> Union[str, dict]:
         """
         get tool provider icon url
         """
@@ -35,7 +35,9 @@ class ToolTransformService:
             return url_prefix + "builtin/" + provider_name + "/icon"
         elif provider_type in [ToolProviderType.API.value, ToolProviderType.WORKFLOW.value]:
             try:
-                return json.loads(icon)
+                if isinstance(icon, str):
+                    return json.loads(icon)
+                return icon
             except:
                 return {"background": "#252525", "content": "\ud83d\ude01"}
 
@@ -92,7 +94,8 @@ class ToolTransformService:
         # get credentials schema
         schema = provider_controller.get_credentials_schema()
         for name, value in schema.items():
-            result.masked_credentials[name] = ProviderConfig.Type.default(value.type)
+            if result.masked_credentials:
+                result.masked_credentials[name] = ""
 
         # check if the provider need credentials
         if not provider_controller.need_credentials:
@@ -184,9 +187,14 @@ class ToolTransformService:
         """
         username = "Anonymous"
         try:
-            username = db_provider.user.name
+            user = db_provider.user
+            if not user:
+                raise ValueError("user not found")
+            
+            username = user.name
         except Exception as e:
             logger.error(f"failed to get user name for api provider {db_provider.id}: {str(e)}")
+
         # add provider into providers
         credentials = db_provider.credentials
         result = UserToolProvider(
@@ -266,9 +274,9 @@ class ToolTransformService:
                 author=tool.identity.author,
                 name=tool.identity.name,
                 label=tool.identity.label,
-                description=tool.description.human,
+                description=tool.description.human if tool.description else I18nObject(en_US=''),
                 parameters=current_parameters,
-                labels=labels,
+                labels=labels or [],
             )
         if isinstance(tool, ApiToolBundle):
             return UserTool(
@@ -277,5 +285,5 @@ class ToolTransformService:
                 label=I18nObject(en_US=tool.operation_id, zh_Hans=tool.operation_id),
                 description=I18nObject(en_US=tool.summary or "", zh_Hans=tool.summary or ""),
                 parameters=tool.parameters,
-                labels=labels,
+                labels=labels or [],
             )
