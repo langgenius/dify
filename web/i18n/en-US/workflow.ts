@@ -88,6 +88,7 @@ const translation = {
         desc: ' to connect',
       },
       limit: 'Parallelism is limited to {{num}} branches.',
+      depthLimit: 'Parallel nesting layer limit of {{num}} layers',
     },
   },
   env: {

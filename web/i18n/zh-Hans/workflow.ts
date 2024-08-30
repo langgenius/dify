@@ -88,6 +88,7 @@ const translation = {
         desc: '连接节点',
       },
       limit: '并行分支限制为 {{num}} 个',
+      depthLimit: '并行嵌套层数限制 {{num}} 层',
     },
   },
   env: {

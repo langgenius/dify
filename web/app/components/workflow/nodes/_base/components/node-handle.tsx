@@ -19,12 +19,11 @@ import {
   useIsChatMode,
   useNodesInteractions,
   useNodesReadOnly,
+  useWorkflow,
 } from '../../../hooks'
 import {
   useStore,
-  useWorkflowStore,
 } from '../../../store'
-import { PARALLEL_LIMIT } from '../../../constants'
 import Tooltip from '@/app/components/base/tooltip'
 
 type NodeHandleProps = {
@@ -119,13 +118,13 @@ export const NodeSourceHandle = memo(({
 }: NodeHandleProps) => {
   const { t } = useTranslation()
   const notInitialWorkflow = useStore(s => s.notInitialWorkflow)
-  const workflowStore = useWorkflowStore()
   const [open, setOpen] = useState(false)
   const { handleNodeAdd } = useNodesInteractions()
   const { getNodesReadOnly } = useNodesReadOnly()
   const { availableNextBlocks } = useAvailableBlocks(data.type, data.isInIteration)
   const isConnectable = !!availableNextBlocks.length
   const isChatMode = useIsChatMode()
+  const { checkParallelLimit } = useWorkflow()
 
   const connected = data._connectedSourceHandleIds?.includes(handleId)
   const handleOpenChange = useCallback((v: boolean) => {
@@ -133,13 +132,9 @@ export const NodeSourceHandle = memo(({
   }, [])
   const handleHandleClick = useCallback((e: MouseEvent) => {
     e.stopPropagation()
-    if (data._connectedSourceHandleIds!.length > PARALLEL_LIMIT - 1) {
-      const { setShowTips } = workflowStore.getState()
-      setShowTips(t('workflow.common.parallelTip.limit', { num: PARALLEL_LIMIT }))
-      return
-    }
-    setOpen(v => !v)
-  }, [data._connectedSourceHandleIds])
+    if (checkParallelLimit(id))
+      setOpen(v => !v)
+  }, [checkParallelLimit, id])
   const handleSelect = useCallback((type: BlockEnum, toolDefaultValue?: ToolDefaultValue) => {
     handleNodeAdd(
       {
@@ -156,7 +151,7 @@ export const NodeSourceHandle = memo(({
   useEffect(() => {
     if (notInitialWorkflow && data.type === BlockEnum.Start && !isChatMode)
       setOpen(true)
-  }, [notInitialWorkflow, data.type])
+  }, [notInitialWorkflow, data.type, isChatMode])
 
   return (
     <Tooltip
