@@ -307,7 +307,7 @@ class WorkflowQueueMessage(QueueMessage):
 
 class ForwardQueueMessage(AppQueueEvent):
     """
-    WorkflowQueueMessage entity
+    ForwardQueueMessage entity
     """
     event: QueueEvent = QueueEvent.PING
     response: StreamResponse
