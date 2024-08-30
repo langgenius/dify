@@ -329,7 +329,12 @@ export const useWorkflowRun = () => {
           else {
             const nodes = getNodes()
             setWorkflowRunningData(produce(workflowRunningData!, (draft) => {
-              const currentIndex = draft.tracing!.findIndex(trace => trace.node_id === data.node_id)
+              const currentIndex = draft.tracing!.findIndex((trace) => {
+                if (!trace.execution_metadata?.parallel_id)
+                  return trace.node_id === data.node_id
+
+                return trace.node_id === data.node_id && trace.execution_metadata?.parallel_id === data.execution_metadata?.parallel_id
+              })
 
               if (currentIndex > -1 && draft.tracing) {
                 draft.tracing[currentIndex] = {

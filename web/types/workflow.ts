@@ -144,6 +144,7 @@ export type NodeFinishedResponse = {
       total_tokens: number
       total_price: number
       currency: string
+      parallel_id?: string
     }
     created_at: number
   }
