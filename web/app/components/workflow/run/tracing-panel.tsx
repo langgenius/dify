@@ -82,10 +82,9 @@ function buildLogTree(nodes: NodeTracing[]): TracingNodeProps[] {
     if (node.node_type === BlockEnum.Iteration) {
       parallel_id = node.parallel_id ?? null
       parallel_start_node_id = node.parallel_start_node_id ?? null
-      console.log(node)
     }
 
-    if (!parallel_id) {
+    if (!parallel_id || node.node_type === BlockEnum.End) {
       rootNodes.push({
         id: node.id,
         isParallel: false,
