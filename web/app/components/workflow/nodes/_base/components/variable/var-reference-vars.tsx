@@ -46,8 +46,8 @@ const Item: FC<ItemProps> = ({
   onHovering,
   itemWidth,
 }) => {
-  const isObj = (itemData.type === VarType.object && itemData.children && itemData.children.length > 0) || itemData.type === VarType.file
   const isFile = itemData.type === VarType.file
+  const isObj = ([VarType.object, VarType.file].includes(itemData.type) && itemData.children && itemData.children.length > 0)
   const isSys = itemData.variable.startsWith('sys.')
   const isEnv = itemData.variable.startsWith('env.')
   const isChatVar = itemData.variable.startsWith('conversation.')

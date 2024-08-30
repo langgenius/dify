@@ -14,6 +14,7 @@ import type { ToolNodeType } from '../../../tool/types'
 import type { ParameterExtractorNodeType } from '../../../parameter-extractor/types'
 import type { IterationNodeType } from '../../../iteration/types'
 import type { ListFilterNodeType } from '../../../list-filter/types'
+import { OUTPUT_FILE_SUB_VARIABLES } from '../../../if-else/default'
 import { BlockEnum, InputVarType, VarType } from '@/app/components/workflow/types'
 import type { StartNodeType } from '@/app/components/workflow/nodes/start/types'
 import type { ConversationVariable, EnvironmentVariable, Node, NodeOutPutVar, ValueSelector, Var } from '@/app/components/workflow/types'
@@ -75,8 +76,6 @@ const formatItem = (
   filterVar: (payload: Var, selector: ValueSelector) => boolean,
 ): NodeOutPutVar => {
   const { id, data } = item
-
-  console.log(data.type)
 
   const res: NodeOutPutVar = {
     nodeId: id,
@@ -303,27 +302,57 @@ const formatItem = (
   }
 
   const selector = [id]
+
   res.vars = res.vars.filter((v) => {
-    const { children } = v
-    if (!children) {
-      return filterVar(v, (() => {
-        const variableArr = v.variable.split('.')
-        const [first, ..._other] = variableArr
-        if (first === 'sys' || first === 'env' || first === 'conversation')
-          return variableArr
+    const isCurrentMatched = filterVar(v, (() => {
+      const variableArr = v.variable.split('.')
+      const [first, ..._other] = variableArr
+      if (first === 'sys' || first === 'env' || first === 'conversation')
+        return variableArr
 
-        return [...selector, ...variableArr]
-      })())
-    }
+      return [...selector, ...variableArr]
+    })())
+    if (isCurrentMatched)
+      return true
 
-    const obj = findExceptVarInObject(v, filterVar, selector)
+    const isFile = v.type === VarType.file
+    const children = (() => {
+      if (isFile) {
+        return OUTPUT_FILE_SUB_VARIABLES.map((key) => {
+          return {
+            variable: key,
+            type: key === 'size' ? VarType.number : VarType.string,
+          }
+        })
+      }
+      return v.children
+    })()
+    if (!children)
+      return false
+
+    const obj = findExceptVarInObject(isFile ? { ...v, children } : v, filterVar, selector)
     return obj?.children && obj?.children.length > 0
   }).map((v) => {
-    const { children } = v
+    const isFile = v.type === VarType.file
+
+    const { children } = (() => {
+      if (isFile) {
+        return {
+          children: OUTPUT_FILE_SUB_VARIABLES.map((key) => {
+            return {
+              variable: key,
+              type: key === 'size' ? VarType.number : VarType.string,
+            }
+          }),
+        }
+      }
+      return v
+    })()
+
     if (!children)
       return v
 
-    return findExceptVarInObject(v, filterVar, selector)
+    return findExceptVarInObject(isFile ? { ...v, children } : v, filterVar, selector)
   })
 
   return res
