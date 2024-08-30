@@ -86,6 +86,9 @@ const translation = {
     emptyCode: '验证码不能为空',
     invalidCode: '验证码无效',
   },
+  resetPassword: '重置密码',
+  resetPasswordDesc: '请输入您的电子邮件地址以重置密码。我们将向您发送一封电子邮件。',
+  backToLogin: '返回登陆',
 }
 
 export default translation
