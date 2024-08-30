@@ -4,6 +4,26 @@ from redis.sentinel import Sentinel
 
 
 class RedisClientWrapper(redis.Redis):
+    """
+    A wrapper class for the Redis client that addresses the issue where the global
+    `redis_client` variable cannot be updated when a new Redis instance is returned
+    by Sentinel.
+
+    This class allows for deferred initialization of the Redis client, enabling the
+    client to be re-initialized with a new instance when necessary. This is particularly
+    useful in scenarios where the Redis instance may change dynamically, such as during
+    a failover in a Sentinel-managed Redis setup.
+
+    Attributes:
+        _client (redis.Redis): The actual Redis client instance. It remains None until
+                               initialized with the `initialize` method.
+
+    Methods:
+        initialize(client): Initializes the Redis client if it hasn't been initialized already.
+        __getattr__(item): Delegates attribute access to the Redis client, raising an error
+                           if the client is not initialized.
+    """
+
     def __init__(self):
         self._client = None
 
