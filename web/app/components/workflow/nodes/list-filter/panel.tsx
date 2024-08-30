@@ -32,6 +32,7 @@ const Panel: FC<NodePanelProps<ListFilterNodeType>> = ({
     handleFilterChange,
     handleLimitChange,
     handleOrderByEnabledChange,
+    handleOrderByKeyChange,
     handleOrderByTypeChange,
   } = useConfig(id, data)
 
@@ -81,7 +82,7 @@ const Panel: FC<NodePanelProps<ListFilterNodeType>> = ({
                   <div className='grow mr-2'>
                     <SubVariablePicker
                       value={inputs.order_by.key as string}
-                      onChange={() => { }}
+                      onChange={handleOrderByKeyChange}
                     />
                   </div>
                 )}

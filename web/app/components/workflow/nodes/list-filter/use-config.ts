@@ -106,6 +106,13 @@ const useConfig = (id: string, payload: ListFilterNodeType) => {
     setInputs(newInputs)
   }, [inputs, setInputs])
 
+  const handleOrderByKeyChange = useCallback((key: string) => {
+    const newInputs = produce(inputs, (draft) => {
+      draft.order_by.key = key
+    })
+    setInputs(newInputs)
+  }, [inputs, setInputs])
+
   const handleOrderByTypeChange = useCallback((type: OrderBy) => {
     return () => {
       const newInputs = produce(inputs, (draft) => {
@@ -126,6 +133,7 @@ const useConfig = (id: string, payload: ListFilterNodeType) => {
     handleFilterChange,
     handleLimitChange,
     handleOrderByEnabledChange,
+    handleOrderByKeyChange,
     handleOrderByTypeChange,
   }
 }

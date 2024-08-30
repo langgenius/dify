@@ -1,6 +1,7 @@
 'use client'
 import type { FC } from 'react'
 import React, { useCallback } from 'react'
+import { useTranslation } from 'react-i18next'
 import { SUB_VARIABLES } from '../../if-else/default'
 import type { Item } from '@/app/components/base/select'
 import { SimpleSelect as Select } from '@/app/components/base/select'
@@ -18,6 +19,7 @@ const SubVariablePicker: FC<Props> = ({
   onChange,
   className,
 }) => {
+  const { t } = useTranslation()
   const subVarOptions = SUB_VARIABLES.map(item => ({
     value: item,
     name: item,
@@ -46,7 +48,7 @@ const SubVariablePicker: FC<Props> = ({
         defaultValue={value}
         onSelect={handleChange}
         className='!text-[13px]'
-        placeholder='Select sub variable key'
+        placeholder={t('workflow.nodes.listFilter.selectVariableKeyPlaceholder')!}
         optionClassName='pl-4 pr-5 py-0'
         renderOption={renderOption}
       />

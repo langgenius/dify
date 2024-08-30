@@ -562,6 +562,7 @@ const translation = {
     listFilter: {
       inputVar: '输入变量',
       filterCondition: '过滤条件',
+      selectVariableKeyPlaceholder: '选择子变量的 Key',
       limit: '限制',
       orderBy: '排序',
       asc: '升序',
