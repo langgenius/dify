@@ -650,7 +650,7 @@ export const getNodeUsedVars = (node: Node): ValueSelector[] => {
     }
     case BlockEnum.HttpRequest: {
       const payload = (data as HttpNodeType)
-      res = matchNotSystemVars([payload.url, payload.headers, payload.params, payload.body.data])
+      res = matchNotSystemVars([payload.url, payload.headers, payload.params, typeof payload.body.data === 'string' ? payload.body.data : payload.body.data.map(d => d.value).join('')])
       break
     }
     case BlockEnum.Tool: {
@@ -868,7 +868,17 @@ export const updateNodeVars = (oldNode: Node, oldVarSelector: ValueSelector, new
         payload.url = replaceOldVarInText(payload.url, oldVarSelector, newVarSelector)
         payload.headers = replaceOldVarInText(payload.headers, oldVarSelector, newVarSelector)
         payload.params = replaceOldVarInText(payload.params, oldVarSelector, newVarSelector)
-        payload.body.data = replaceOldVarInText(payload.body.data, oldVarSelector, newVarSelector)
+        if (typeof payload.body.data === 'string') {
+          payload.body.data = replaceOldVarInText(payload.body.data, oldVarSelector, newVarSelector)
+        }
+        else {
+          payload.body.data = payload.body.data.map((d) => {
+            return {
+              ...d,
+              value: replaceOldVarInText(d.value || '', oldVarSelector, newVarSelector),
+            }
+          })
+        }
         break
       }
       case BlockEnum.Tool: {
