@@ -425,9 +425,6 @@ class DocumentBatchIndexingEstimateApi(DocumentResource):
         batch = str(batch)
         documents = self.get_batch_documents(dataset_id, batch)
         response = {
-            "tokens": 0,
-            "total_price": 0,
-            "currency": "USD",
             "total_segments": 0,
             "preview": []
         }
