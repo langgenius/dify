@@ -1,6 +1,6 @@
-from collections.abc import Generator, Sequence
+from collections.abc import Generator, Iterable, Sequence
 from os import path
-from typing import Any, Iterable, cast
+from typing import Any, cast
 
 from core.app.segments import ArrayAnySegment, ArrayAnyVariable, parser
 from core.callback_handler.workflow_tool_callback_handler import DifyWorkflowCallbackHandler
