@@ -39,11 +39,11 @@ const ConversationOpener = ({
         })
         setFeatures(newFeatures)
         if (onChange)
-          onChange(newFeatures)
+          onChange()
       },
       onCancelCallback: () => {
         if (onChange)
-          onChange(features)
+          onChange()
       },
     })
   }, [disabled, featuresStore, onChange, opening, setShowOpeningModal])
@@ -62,7 +62,7 @@ const ConversationOpener = ({
     })
     setFeatures(newFeatures)
     if (onChange)
-      onChange(newFeatures)
+      onChange()
   }, [featuresStore, onChange])
 
   return (

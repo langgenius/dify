@@ -60,7 +60,7 @@ const VoiceParamConfig = ({
 
     setFeatures(newFeatures)
     if (onChange)
-      onChange(newFeatures)
+      onChange()
   }
 
   return (

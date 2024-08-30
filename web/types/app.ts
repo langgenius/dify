@@ -245,6 +245,7 @@ export type ModelConfig = {
   }
   files?: VisionFile[]
   created_at?: number
+  updated_at?: number
 }
 
 export type Language = typeof LanguagesSupported[number]

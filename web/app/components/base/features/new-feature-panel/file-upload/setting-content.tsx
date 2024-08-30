@@ -49,7 +49,7 @@ const SettingContent = ({
 
     setFeatures(newFeatures)
     if (onChange)
-      onChange(newFeatures)
+      onChange()
   }, [featuresStore, onChange, tempPayload])
 
   return (

@@ -12,7 +12,7 @@ import {
 import Chat from '@/app/components/base/chat/chat'
 import { useChat } from '@/app/components/base/chat/chat/hooks'
 import { useDebugConfigurationContext } from '@/context/debug-configuration'
-import type { OnSend } from '@/app/components/base/chat/types'
+import type { ChatConfig, OnSend } from '@/app/components/base/chat/types'
 import { useProviderContext } from '@/context/provider-context'
 import {
   fetchConversationMessages,
@@ -22,6 +22,8 @@ import {
 import Avatar from '@/app/components/base/avatar'
 import { useAppContext } from '@/context/app-context'
 import { ModelFeatureEnum } from '@/app/components/header/account-setting/model-provider-page/declarations'
+import { useStore as useAppStore } from '@/app/components/app/store'
+import { useFeatures } from '@/app/components/base/features/hooks'
 
 type DebugWithSingleModelProps = {
   checkCanSend?: () => boolean
@@ -42,7 +44,23 @@ const DebugWithSingleModel = forwardRef<DebugWithSingleModelRefType, DebugWithSi
     completionParams,
   } = useDebugConfigurationContext()
   const { textGenerationModelList } = useProviderContext()
-  const config = useConfigFromDebugContext()
+  const features = useFeatures(s => s.features)
+  const configTemplate = useConfigFromDebugContext()
+  const config = useMemo(() => {
+    return {
+      ...configTemplate,
+      more_like_this: features.moreLikeThis,
+      opening_statement: features.opening?.opening_statement || '',
+      suggested_questions: features.opening?.suggested_questions || [],
+      sensitive_word_avoidance: features.moderation,
+      speech_to_text: features.speech2text,
+      text_to_speech: features.text2speech,
+      file_upload: features.file,
+      suggested_questions_after_answer: features.suggested,
+      retriever_resource: features.citation,
+      // ##TODO## annotation_reply
+    } as ChatConfig
+  }, [configTemplate, features])
   const {
     chatList,
     isResponding,
@@ -114,13 +132,17 @@ const DebugWithSingleModel = forwardRef<DebugWithSingleModelRefType, DebugWithSi
     }
   }, [handleRestart])
 
+  const setShowAppConfigureFeaturesModal = useAppStore(s => s.setShowAppConfigureFeaturesModal)
+
   return (
     <Chat
       config={config}
       chatList={chatList}
       isResponding={isResponding}
       chatContainerClassName='px-3 pt-6'
-      chatFooterClassName='px-3 pt-10 pb-2'
+      chatFooterClassName='px-3 pt-10 pb-0'
+      showFeatureBar
+      onFeatureBarClick={setShowAppConfigureFeaturesModal}
       suggestedQuestions={suggestedQuestions}
       onSend={doSend}
       onStopResponding={handleStop}

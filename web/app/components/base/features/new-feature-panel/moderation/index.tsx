@@ -54,7 +54,7 @@ const Moderation = ({
       },
       onCancelCallback: () => {
         if (onChange)
-          onChange(features)
+          onChange()
       },
     })
   }
@@ -92,7 +92,7 @@ const Moderation = ({
           })
           setFeatures(newFeatures)
           if (onChange)
-            onChange(newFeatures)
+            onChange()
         },
       })
     }

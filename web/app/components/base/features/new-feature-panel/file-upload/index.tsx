@@ -44,7 +44,7 @@ const FileUpload = ({
     })
     setFeatures(newFeatures)
     if (onChange)
-      onChange(newFeatures)
+      onChange()
   }, [featuresStore, onChange])
 
   return (

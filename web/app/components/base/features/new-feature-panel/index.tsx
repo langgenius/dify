@@ -33,6 +33,7 @@ type Props = {
   disabled: boolean
   onChange?: OnFeaturesChange
   onClose: () => void
+  inWorkflow?: boolean
 }
 
 const NewFeaturePanel = ({
@@ -42,6 +43,7 @@ const NewFeaturePanel = ({
   disabled,
   onChange,
   onClose,
+  inWorkflow = true,
 }: Props) => {
   const { t } = useTranslation()
   const router = useRouter()
@@ -74,6 +76,7 @@ const NewFeaturePanel = ({
     <DialogWrapper
       show={show}
       onClose={onClose}
+      inWorkflow={inWorkflow}
     >
       <div className='grow flex flex-col h-full'>
         {/* header */}

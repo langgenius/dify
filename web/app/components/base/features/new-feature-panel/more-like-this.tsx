@@ -34,7 +34,7 @@ const MoreLikeThis = ({
     })
     setFeatures(newFeatures)
     if (onChange)
-      onChange(newFeatures)
+      onChange()
   }, [featuresStore, onChange])
 
   return (

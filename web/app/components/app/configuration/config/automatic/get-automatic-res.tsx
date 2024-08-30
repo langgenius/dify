@@ -262,6 +262,7 @@ const GetAutomaticRes: FC<IGetAutomaticResProps> = ({
                   {(mode !== AppType.completion && res?.opening_statement) && (
                     <div className='mt-7'>
                       <GroupName name={t('appDebug.feature.groupChat.title')} />
+                      {/* ##TODO## use new style of opening */}
                       <OpeningStatement
                         value={res?.opening_statement || ''}
                         readonly

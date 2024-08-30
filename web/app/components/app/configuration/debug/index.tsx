@@ -449,6 +449,7 @@ const Debug: FC<IDebug> = ({
             <ChatUserInput inputs={inputs} />
           </div>
         )}
+        {/* ##TODO## new style of completion */}
         {mode === AppType.completion && (
           <PromptValuePanel
             appType={mode as AppType}
