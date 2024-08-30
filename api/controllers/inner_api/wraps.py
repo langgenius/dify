@@ -46,6 +46,8 @@ def enterprise_inner_api_user_auth(view):
             user_id = user_id.split(" ")[1]
 
         inner_api_key = request.headers.get("X-Inner-Api-Key")
+        if not inner_api_key:
+            raise ValueError("inner api key not found")
 
         data_to_sign = f"DIFY {user_id}"
 

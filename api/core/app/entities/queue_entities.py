@@ -60,7 +60,7 @@ class QueueIterationStartEvent(AppQueueEvent):
     node_data: BaseNodeData
 
     node_run_index: int
-    inputs: dict = None
+    inputs: Optional[dict] = None
     predecessor_node_id: Optional[str] = None
     metadata: Optional[dict] = None
 

@@ -1,7 +1,9 @@
+from collections.abc import Mapping
 from typing import Any, Literal, Optional
 
 from pydantic import BaseModel, Field, field_validator
 
+from core.entities.provider_entities import BasicProviderConfig
 from core.model_runtime.entities.message_entities import (
     AssistantPromptMessage,
     PromptMessage,
@@ -30,11 +32,10 @@ class RequestInvokeLLM(BaseRequestInvokeModel):
     """
     Request to invoke LLM
     """
-
     model_type: ModelType = ModelType.LLM
     mode: str
     model_parameters: dict[str, Any] = Field(default_factory=dict)
-    prompt_messages: list[PromptMessage]
+    prompt_messages: list[PromptMessage] = Field(default_factory=list)
     tools: Optional[list[PromptMessageTool]] = Field(default_factory=list)
     stop: Optional[list[str]] = Field(default_factory=list)
     stream: Optional[bool] = False
@@ -105,4 +106,11 @@ class RequestInvokeApp(BaseModel):
     conversation_id: Optional[str] = None
     user: Optional[str] = None
     files: list[dict] = Field(default_factory=list)
-    
+
+class RequestInvokeEncrypt(BaseModel):
+    """
+    Request to encryption
+    """
+    opt: Literal["encrypt", "decrypt"]
+    data: dict = Field(default_factory=dict)
+    config: Mapping[str, BasicProviderConfig] = Field(default_factory=Mapping)

@@ -10,8 +10,8 @@ from core.tools.entities.tool_bundle import ApiToolBundle
 from core.tools.entities.tool_entities import (
     ApiProviderAuthType,
     ApiProviderSchemaType,
+    ProviderConfig,
     ToolCredentialsOption,
-    ToolProviderCredentials,
 )
 from core.tools.provider.api_tool_provider import ApiToolProviderController
 from core.tools.tool_label_manager import ToolLabelManager
@@ -39,9 +39,9 @@ class ApiToolManageService:
                 raise ValueError(f"invalid schema: {str(e)}")
 
             credentials_schema = [
-                ToolProviderCredentials(
+                ProviderConfig(
                     name="auth_type",
-                    type=ToolProviderCredentials.CredentialsType.SELECT,
+                    type=ProviderConfig.Type.SELECT,
                     required=True,
                     default="none",
                     options=[
@@ -50,17 +50,17 @@ class ApiToolManageService:
                     ],
                     placeholder=I18nObject(en_US="Select auth type", zh_Hans="选择认证方式"),
                 ),
-                ToolProviderCredentials(
+                ProviderConfig(
                     name="api_key_header",
-                    type=ToolProviderCredentials.CredentialsType.TEXT_INPUT,
+                    type=ProviderConfig.Type.TEXT_INPUT,
                     required=False,
                     placeholder=I18nObject(en_US="Enter api key header", zh_Hans="输入 api key header，如：X-API-KEY"),
                     default="api_key",
                     help=I18nObject(en_US="HTTP header name for api key", zh_Hans="HTTP 头部字段名，用于传递 api key"),
                 ),
-                ToolProviderCredentials(
+                ProviderConfig(
                     name="api_key_value",
-                    type=ToolProviderCredentials.CredentialsType.TEXT_INPUT,
+                    type=ProviderConfig.Type.TEXT_INPUT,
                     required=False,
                     placeholder=I18nObject(en_US="Enter api key", zh_Hans="输入 api key"),
                     default="",

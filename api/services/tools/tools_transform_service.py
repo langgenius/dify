@@ -8,8 +8,8 @@ from core.tools.entities.common_entities import I18nObject
 from core.tools.entities.tool_bundle import ApiToolBundle
 from core.tools.entities.tool_entities import (
     ApiProviderAuthType,
+    ProviderConfig,
     ToolParameter,
-    ToolProviderCredentials,
     ToolProviderType,
 )
 from core.tools.provider.api_tool_provider import ApiToolProviderController
@@ -92,7 +92,7 @@ class ToolTransformService:
         # get credentials schema
         schema = provider_controller.get_credentials_schema()
         for name, value in schema.items():
-            result.masked_credentials[name] = ToolProviderCredentials.CredentialsType.default(value.type)
+            result.masked_credentials[name] = ProviderConfig.Type.default(value.type)
 
         # check if the provider need credentials
         if not provider_controller.need_credentials:

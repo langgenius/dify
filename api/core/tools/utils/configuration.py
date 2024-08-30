@@ -7,8 +7,8 @@ from core.helper import encrypter
 from core.helper.tool_parameter_cache import ToolParameterCache, ToolParameterCacheType
 from core.helper.tool_provider_cache import ToolProviderCredentialsCache, ToolProviderCredentialsCacheType
 from core.tools.entities.tool_entities import (
+    ProviderConfig,
     ToolParameter,
-    ToolProviderCredentials,
     ToolProviderType,
 )
 from core.tools.provider.tool_provider import ToolProviderController
@@ -36,7 +36,7 @@ class ToolConfigurationManager(BaseModel):
         # get fields need to be decrypted
         fields = self.provider_controller.get_credentials_schema()
         for field_name, field in fields.items():
-            if field.type == ToolProviderCredentials.CredentialsType.SECRET_INPUT:
+            if field.type == ProviderConfig.Type.SECRET_INPUT:
                 if field_name in credentials:
                     encrypted = encrypter.encrypt_token(self.tenant_id, credentials[field_name])
                     credentials[field_name] = encrypted
@@ -54,7 +54,7 @@ class ToolConfigurationManager(BaseModel):
         # get fields need to be decrypted
         fields = self.provider_controller.get_credentials_schema()
         for field_name, field in fields.items():
-            if field.type == ToolProviderCredentials.CredentialsType.SECRET_INPUT:
+            if field.type == ProviderConfig.Type.SECRET_INPUT:
                 if field_name in credentials:
                     if len(credentials[field_name]) > 6:
                         credentials[field_name] = \
@@ -84,7 +84,7 @@ class ToolConfigurationManager(BaseModel):
         # get fields need to be decrypted
         fields = self.provider_controller.get_credentials_schema()
         for field_name, field in fields.items():
-            if field.type == ToolProviderCredentials.CredentialsType.SECRET_INPUT:
+            if field.type == ProviderConfig.Type.SECRET_INPUT:
                 if field_name in credentials:
                     try:
                         credentials[field_name] = encrypter.decrypt_token(self.tenant_id, credentials[field_name])

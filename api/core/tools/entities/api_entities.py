@@ -4,7 +4,7 @@ from pydantic import BaseModel
 
 from core.model_runtime.utils.encoders import jsonable_encoder
 from core.tools.entities.common_entities import I18nObject
-from core.tools.entities.tool_entities import ToolProviderCredentials, ToolProviderType
+from core.tools.entities.tool_entities import ProviderConfig, ToolProviderType
 from core.tools.tool.tool import ToolParameter
 
 
@@ -62,4 +62,4 @@ class UserToolProvider(BaseModel):
         }
 
 class UserToolProviderCredentials(BaseModel):
-    credentials: dict[str, ToolProviderCredentials]
+    credentials: dict[str, ProviderConfig]

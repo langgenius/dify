@@ -3,8 +3,8 @@ from core.tools.entities.common_entities import I18nObject
 from core.tools.entities.tool_bundle import ApiToolBundle
 from core.tools.entities.tool_entities import (
     ApiProviderAuthType,
+    ProviderConfig,
     ToolCredentialsOption,
-    ToolProviderCredentials,
     ToolProviderType,
 )
 from core.tools.provider.tool_provider import ToolProviderController
@@ -20,10 +20,10 @@ class ApiToolProviderController(ToolProviderController):
     @staticmethod
     def from_db(db_provider: ApiToolProvider, auth_type: ApiProviderAuthType) -> 'ApiToolProviderController':
         credentials_schema = {
-            'auth_type': ToolProviderCredentials(
+            'auth_type': ProviderConfig(
                 name='auth_type',
                 required=True,
-                type=ToolProviderCredentials.CredentialsType.SELECT,
+                type=ProviderConfig.Type.SELECT,
                 options=[
                     ToolCredentialsOption(value='none', label=I18nObject(en_US='None', zh_Hans='无')),
                     ToolCredentialsOption(value='api_key', label=I18nObject(en_US='api_key', zh_Hans='api_key'))
@@ -38,30 +38,30 @@ class ApiToolProviderController(ToolProviderController):
         if auth_type == ApiProviderAuthType.API_KEY:
             credentials_schema = {
                 **credentials_schema,
-                'api_key_header': ToolProviderCredentials(
+                'api_key_header': ProviderConfig(
                     name='api_key_header',
                     required=False,
                     default='api_key',
-                    type=ToolProviderCredentials.CredentialsType.TEXT_INPUT,
+                    type=ProviderConfig.Type.TEXT_INPUT,
                     help=I18nObject(
                         en_US='The header name of the api key',
                         zh_Hans='携带 api key 的 header 名称'
                     )
                 ),
-                'api_key_value': ToolProviderCredentials(
+                'api_key_value': ProviderConfig(
                     name='api_key_value',
                     required=True,
-                    type=ToolProviderCredentials.CredentialsType.SECRET_INPUT,
+                    type=ProviderConfig.Type.SECRET_INPUT,
                     help=I18nObject(
                         en_US='The api key',
                         zh_Hans='api key的值'
                     )
                 ),
-                'api_key_header_prefix': ToolProviderCredentials(
+                'api_key_header_prefix': ProviderConfig(
                     name='api_key_header_prefix',
                     required=False,
                     default='basic',
-                    type=ToolProviderCredentials.CredentialsType.SELECT,
+                    type=ProviderConfig.Type.SELECT,
                     help=I18nObject(
                         en_US='The prefix of the api key header',
                         zh_Hans='api key header 的前缀'

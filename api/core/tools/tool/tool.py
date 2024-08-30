@@ -55,7 +55,7 @@ class Tool(BaseModel, ABC):
         invoke_from: Optional[InvokeFrom] = None
         tool_invoke_from: Optional[ToolInvokeFrom] = None
         credentials: Optional[dict[str, Any]] = None
-        runtime_parameters: Optional[dict[str, Any]] = None
+        runtime_parameters: dict[str, Any] = Field(default_factory=dict)
 
     runtime: Optional[Runtime] = None
     variables: Optional[ToolRuntimeVariablePool] = None

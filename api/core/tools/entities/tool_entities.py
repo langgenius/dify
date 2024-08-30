@@ -3,6 +3,7 @@ from typing import Any, Optional, Union, cast
 
 from pydantic import BaseModel, Field, field_validator
 
+from core.entities.parameter_entities import AppSelectorScope, CommonParameterType, ModelConfigScope
 from core.tools.entities.common_entities import I18nObject
 
 
@@ -137,12 +138,12 @@ class ToolParameterOption(BaseModel):
 
 class ToolParameter(BaseModel):
     class ToolParameterType(str, Enum):
-        STRING = "string"
-        NUMBER = "number"
-        BOOLEAN = "boolean"
-        SELECT = "select"
-        SECRET_INPUT = "secret-input"
-        FILE = "file"
+        STRING = CommonParameterType.STRING.value
+        NUMBER = CommonParameterType.NUMBER.value
+        BOOLEAN = CommonParameterType.BOOLEAN.value
+        SELECT = CommonParameterType.SELECT.value
+        SECRET_INPUT = CommonParameterType.SECRET_INPUT.value
+        FILE = CommonParameterType.FILE.value
 
     class ToolParameterForm(Enum):
         SCHEMA = "schema" # should be set while adding tool
@@ -151,16 +152,17 @@ class ToolParameter(BaseModel):
 
     name: str = Field(..., description="The name of the parameter")
     label: I18nObject = Field(..., description="The label presented to the user")
-    human_description: Optional[I18nObject] = Field(None, description="The description presented to the user")
-    placeholder: Optional[I18nObject] = Field(None, description="The placeholder presented to the user")
+    human_description: Optional[I18nObject] = Field(default=None, description="The description presented to the user")
+    placeholder: Optional[I18nObject] = Field(default=None, description="The placeholder presented to the user")
     type: ToolParameterType = Field(..., description="The type of the parameter")
+    scope: AppSelectorScope | ModelConfigScope | None = None
     form: ToolParameterForm = Field(..., description="The form of the parameter, schema/form/llm")
     llm_description: Optional[str] = None
     required: Optional[bool] = False
     default: Optional[Union[float, int, str]] = None
     min: Optional[Union[float, int]] = None
     max: Optional[Union[float, int]] = None
-    options: Optional[list[ToolParameterOption]] = None
+    options: list[ToolParameterOption] = Field(default_factory=list)
 
     @classmethod
     def get_simple_instance(cls,
@@ -210,57 +212,6 @@ class ToolIdentity(BaseModel):
     label: I18nObject = Field(..., description="The label of the tool")
     provider: str = Field(..., description="The provider of the tool")
     icon: Optional[str] = None
-
-class ToolCredentialsOption(BaseModel):
-    value: str = Field(..., description="The value of the option")
-    label: I18nObject = Field(..., description="The label of the option")
-
-class ToolProviderCredentials(BaseModel):
-    class CredentialsType(Enum):
-        SECRET_INPUT = "secret-input"
-        TEXT_INPUT = "text-input"
-        SELECT = "select"
-        BOOLEAN = "boolean"
-
-        @classmethod
-        def value_of(cls, value: str) -> "ToolProviderCredentials.CredentialsType":
-            """
-            Get value of given mode.
-
-            :param value: mode value
-            :return: mode
-            """
-            for mode in cls:
-                if mode.value == value:
-                    return mode
-            raise ValueError(f'invalid mode value {value}')
-
-        @staticmethod
-        def default(value: str) -> str:
-            return ""
-
-    name: str = Field(..., description="The name of the credentials")
-    type: CredentialsType = Field(..., description="The type of the credentials")
-    required: bool = False
-    default: Optional[Union[int, str]] = None
-    options: Optional[list[ToolCredentialsOption]] = None
-    label: Optional[I18nObject] = None
-    help: Optional[I18nObject] = None
-    url: Optional[str] = None
-    placeholder: Optional[I18nObject] = None
-
-    def to_dict(self) -> dict:
-        return {
-            'name': self.name,
-            'type': self.type.value,
-            'required': self.required,
-            'default': self.default,
-            'options': self.options,
-            'help': self.help.to_dict() if self.help else None,
-            'label': self.label.to_dict() if self.label else None,
-            'url': self.url,
-            'placeholder': self.placeholder.to_dict() if self.placeholder else None,
-        }
 
 class ToolRuntimeVariableType(Enum):
     TEXT = "text"

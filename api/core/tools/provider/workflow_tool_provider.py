@@ -1,4 +1,7 @@
+from collections.abc import Mapping
 from typing import Optional
+
+from pydantic import Field
 
 from core.app.app_config.entities import VariableEntity, VariableEntityType
 from core.app.apps.workflow.app_config_manager import WorkflowAppConfigManager
@@ -28,6 +31,7 @@ VARIABLE_TO_PARAMETER_TYPE_MAPPING = {
 
 class WorkflowToolProviderController(ToolProviderController):
     provider_id: str
+    tools: list[WorkflowTool] = Field(default_factory=list)
 
     @classmethod
     def from_db(cls, db_provider: WorkflowToolProvider) -> 'WorkflowToolProviderController':
@@ -71,16 +75,17 @@ class WorkflowToolProviderController(ToolProviderController):
             :param app: the app
             :return: the tool
         """
-        workflow: Workflow = db.session.query(Workflow).filter(
+        workflow: Workflow | None = db.session.query(Workflow).filter(
             Workflow.app_id == db_provider.app_id,
             Workflow.version == db_provider.version
         ).first()
+
         if not workflow:
             raise ValueError('workflow not found')
 
         # fetch start node
-        graph: dict = workflow.graph_dict
-        features_dict: dict = workflow.features_dict
+        graph: Mapping = workflow.graph_dict
+        features_dict: Mapping = workflow.features_dict
         features = WorkflowAppConfigManager.convert_features(
             config_dict=features_dict,
             app_mode=AppMode.WORKFLOW
@@ -89,7 +94,7 @@ class WorkflowToolProviderController(ToolProviderController):
         parameters = db_provider.parameter_configurations
         variables = WorkflowToolConfigurationUtils.get_workflow_graph_variables(graph)
 
-        def fetch_workflow_variable(variable_name: str) -> VariableEntity:
+        def fetch_workflow_variable(variable_name: str) -> VariableEntity | None:
             return next(filter(lambda x: x.variable == variable_name, variables), None)
 
         user = db_provider.user
@@ -99,7 +104,7 @@ class WorkflowToolProviderController(ToolProviderController):
             variable = fetch_workflow_variable(parameter.name)
             if variable:
                 parameter_type = None
-                options = None
+                options = []
                 if variable.type not in VARIABLE_TO_PARAMETER_TYPE_MAPPING:
                     raise ValueError(f'unsupported variable type {variable.type}')
                 parameter_type = VARIABLE_TO_PARAMETER_TYPE_MAPPING[variable.type]
@@ -185,7 +190,7 @@ class WorkflowToolProviderController(ToolProviderController):
             label=db_provider.label
         )
 
-    def get_tools(self, user_id: str, tenant_id: str) -> list[WorkflowTool]:
+    def get_tools(self, tenant_id: str) -> list[WorkflowTool]:
         """
             fetch tools from database
 
@@ -196,7 +201,7 @@ class WorkflowToolProviderController(ToolProviderController):
         if self.tools is not None:
             return self.tools
 
-        db_providers: WorkflowToolProvider = db.session.query(WorkflowToolProvider).filter(
+        db_providers: WorkflowToolProvider | None = db.session.query(WorkflowToolProvider).filter(
             WorkflowToolProvider.tenant_id == tenant_id,
             WorkflowToolProvider.app_id == self.provider_id,
         ).first()

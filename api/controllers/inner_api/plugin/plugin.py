@@ -10,6 +10,7 @@ from core.plugin.backwards_invocation.app import PluginAppBackwardsInvocation
 from core.plugin.backwards_invocation.model import PluginModelBackwardsInvocation
 from core.plugin.entities.request import (
     RequestInvokeApp,
+    RequestInvokeEncrypt,
     RequestInvokeLLM,
     RequestInvokeModeration,
     RequestInvokeNode,
@@ -131,6 +132,14 @@ class PluginInvokeAppApi(Resource):
         return compact_generate_response(
             PluginAppBackwardsInvocation.convert_to_event_stream(response)
         )
+
+class PluginInvokeEncryptApi(Resource):
+    @setup_required
+    @plugin_inner_api_only
+    @get_tenant
+    @plugin_data(payload_type=RequestInvokeEncrypt)
+    def post(self, user_id: str, tenant_model: Tenant, payload: RequestInvokeEncrypt):
+        """"""
 
 api.add_resource(PluginInvokeLLMApi, '/invoke/llm')
 api.add_resource(PluginInvokeTextEmbeddingApi, '/invoke/text-embedding')

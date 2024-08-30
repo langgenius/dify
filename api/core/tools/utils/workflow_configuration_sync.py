@@ -1,3 +1,5 @@
+from collections.abc import Mapping
+
 from core.app.app_config.entities import VariableEntity
 from core.tools.entities.tool_entities import WorkflowToolParameterConfiguration
 
@@ -13,7 +15,7 @@ class WorkflowToolConfigurationUtils:
                 raise ValueError('invalid parameter configuration')
 
     @classmethod
-    def get_workflow_graph_variables(cls, graph: dict) -> list[VariableEntity]:
+    def get_workflow_graph_variables(cls, graph: Mapping) -> list[VariableEntity]:
         """
         get workflow graph variables
         """
@@ -44,5 +46,3 @@ class WorkflowToolConfigurationUtils:
         for parameter in tool_configurations:
             if parameter.name not in variable_names:
                 raise ValueError('parameter configuration mismatch, please republish the tool to update')
-
-        return True
