@@ -30,6 +30,7 @@ import {
   useWorkflowStore,
 } from '../store'
 import {
+  // PARALLEL_DEPTH_LIMIT,
   PARALLEL_LIMIT,
   SUPPORT_OUTPUT_VARS_NODE,
 } from '../constants'
@@ -279,6 +280,53 @@ export const useWorkflow = () => {
     return isUsed
   }, [isVarUsedInNodes])
 
+  const checkParallelLimit = useCallback((nodeId: string) => {
+    const {
+      getNodes,
+      edges,
+    } = store.getState()
+    const nodes = getNodes()
+    const currentNode = nodes.find(node => node.id === nodeId)!
+    const sourceNodeOutgoers = getOutgoers(currentNode, nodes, edges)
+    if (sourceNodeOutgoers.length > PARALLEL_LIMIT - 1) {
+      const { setShowTips } = workflowStore.getState()
+      setShowTips(t('workflow.common.parallelTip.limit', { num: PARALLEL_LIMIT }))
+      return false
+    }
+    // if (sourceNodeOutgoers.length > 0) {
+    //   let hasOverDepth = false
+    //   let parallelDepth = 1
+    //   const traverse = (root: Node, depth: number) => {
+    //     if (depth > PARALLEL_DEPTH_LIMIT) {
+    //       hasOverDepth = true
+    //       return
+    //     }
+    //     if (depth > parallelDepth)
+    //       parallelDepth = depth
+
+    //     const incomerNodes = getIncomers(root, nodes, edges)
+
+    //     if (incomerNodes.length) {
+    //       incomerNodes.forEach((incomer) => {
+    //         const incomerOutgoers = getOutgoers(incomer, nodes, edges)
+
+    //         if (incomerOutgoers.length > 1)
+    //           traverse(incomer, depth + 1)
+    //         else
+    //           traverse(incomer, depth)
+    //       })
+    //     }
+    //   }
+    //   traverse(currentNode, parallelDepth)
+    //   if (hasOverDepth) {
+    //     const { setShowTips } = workflowStore.getState()
+    //     setShowTips(t('workflow.common.parallelTip.depthLimit', { num: PARALLEL_DEPTH_LIMIT }))
+    //     return false
+    //   }
+    // }
+    return true
+  }, [store, workflowStore, t])
+
   const isValidConnection = useCallback(({ source, target }: Connection) => {
     const {
       edges,
@@ -288,16 +336,11 @@ export const useWorkflow = () => {
     const sourceNode: Node = nodes.find(node => node.id === source)!
     const targetNode: Node = nodes.find(node => node.id === target)!
 
+    if (!checkParallelLimit(source!))
+      return false
+
     if (sourceNode.type === CUSTOM_NOTE_NODE || targetNode.type === CUSTOM_NOTE_NODE)
       return false
-
-    const sourceNodeOutgoers = getOutgoers(sourceNode, nodes, edges)
-
-    if (sourceNodeOutgoers.length > PARALLEL_LIMIT - 1) {
-      const { setShowTips } = workflowStore.getState()
-      setShowTips(t('workflow.common.parallelTip.limit', { num: PARALLEL_LIMIT }))
-      return false
-    }
 
     if (sourceNode && targetNode) {
       const sourceNodeAvailableNextNodes = nodesExtraData[sourceNode.data.type].availableNextNodes
@@ -325,7 +368,7 @@ export const useWorkflow = () => {
     }
 
     return !hasCycle(targetNode)
-  }, [store, nodesExtraData])
+  }, [store, nodesExtraData, checkParallelLimit])
 
   const formatTimeFromNow = useCallback((time: number) => {
     return dayjs(time).locale(locale === 'zh-Hans' ? 'zh-cn' : locale).fromNow()
@@ -348,6 +391,7 @@ export const useWorkflow = () => {
     isVarUsedInNodes,
     removeUsedVarInNodes,
     isNodeVarsUsedInNodes,
+    checkParallelLimit,
     isValidConnection,
     formatTimeFromNow,
     getNode,

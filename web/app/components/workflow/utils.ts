@@ -95,6 +95,7 @@ export function getIterationStartNode(iterationId: string): Node {
       title: '',
       desc: '',
       type: BlockEnum.IterationStart,
+      isInIteration: true,
     },
     position: {
       x: 24,
