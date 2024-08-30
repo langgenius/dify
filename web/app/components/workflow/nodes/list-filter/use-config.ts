@@ -77,6 +77,8 @@ const useConfig = (id: string, payload: ListFilterNodeType) => {
       const { varType, itemVarType } = getType(draft.variable)
       const isFileArray = varType === VarType.arrayFile
 
+      draft.var_type = varType
+      draft.item_var_type = itemVarType
       draft.filter_by = [{
         key: isFileArray ? 'name' : '',
         comparison_operator: getOperators(itemVarType, isFileArray ? { key: 'name' } : undefined)[0],

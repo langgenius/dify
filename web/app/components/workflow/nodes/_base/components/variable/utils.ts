@@ -13,6 +13,7 @@ import { VarType as ToolVarType } from '../../../tool/types'
 import type { ToolNodeType } from '../../../tool/types'
 import type { ParameterExtractorNodeType } from '../../../parameter-extractor/types'
 import type { IterationNodeType } from '../../../iteration/types'
+import type { ListFilterNodeType } from '../../../list-filter/types'
 import { BlockEnum, InputVarType, VarType } from '@/app/components/workflow/types'
 import type { StartNodeType } from '@/app/components/workflow/nodes/start/types'
 import type { ConversationVariable, EnvironmentVariable, Node, NodeOutPutVar, ValueSelector, Var } from '@/app/components/workflow/types'
@@ -74,6 +75,8 @@ const formatItem = (
   filterVar: (payload: Var, selector: ValueSelector) => boolean,
 ): NodeOutPutVar => {
   const { id, data } = item
+
+  console.log(data.type)
 
   const res: NodeOutPutVar = {
     nodeId: id,
@@ -257,18 +260,21 @@ const formatItem = (
     }
 
     case BlockEnum.ListFilter: {
+      if (!(data as ListFilterNodeType).var_type)
+        break
+
       res.vars = [
         {
           variable: 'result',
-          type: VarType.array, // TODO dyn value
+          type: (data as ListFilterNodeType).var_type,
         },
         {
           variable: 'first_record',
-          type: VarType.string, // TODO dyn value
+          type: (data as ListFilterNodeType).item_var_type,
         },
         {
           variable: 'last_record',
-          type: VarType.string, // TODO dyn value
+          type: (data as ListFilterNodeType).item_var_type,
         },
       ]
       break
@@ -1037,6 +1043,13 @@ export const getNodeOutputVars = (node: Node, isChatMode: boolean): ValueSelecto
 
     case BlockEnum.Iteration: {
       res.push([id, 'output'])
+      break
+    }
+
+    case BlockEnum.ListFilter: {
+      res.push([id, 'result'])
+      res.push([id, 'first_record'])
+      res.push([id, 'last_record'])
       break
     }
   }
