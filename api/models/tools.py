@@ -1,12 +1,13 @@
 import json
 
 from sqlalchemy import ForeignKey
-from sqlalchemy.orm import DeclarativeBase, Mapped, mapped_column
+from sqlalchemy.orm import Mapped, mapped_column
 
 from core.tools.entities.common_entities import I18nObject
 from core.tools.entities.tool_bundle import ApiToolBundle
 from core.tools.entities.tool_entities import ApiProviderSchemaType, WorkflowToolParameterConfiguration
 from extensions.ext_database import db
+from models.base import Base
 
 from .model import Account, App, Tenant
 from .types import StringUUID
@@ -277,9 +278,6 @@ class ToolConversationVariables(db.Model):
     @property
     def variables(self) -> dict:
         return json.loads(self.variables_str)
-    
-class Base(DeclarativeBase):
-    pass
 
 class ToolFile(Base):
     """

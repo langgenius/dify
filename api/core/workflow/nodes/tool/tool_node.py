@@ -1,4 +1,4 @@
-from collections.abc import Generator, Mapping, Sequence
+from collections.abc import Generator, Sequence
 from os import path
 from typing import Any, cast
 
@@ -100,7 +100,7 @@ class ToolNode(BaseNode):
         variable_pool: VariablePool,
         node_data: ToolNodeData,
         for_log: bool = False,
-    ) -> Mapping[str, Any]:
+    ) -> dict[str, Any]:
         """
         Generate parameters based on the given tool parameters, variable pool, and node data.
 
@@ -110,7 +110,7 @@ class ToolNode(BaseNode):
             node_data (ToolNodeData): The data associated with the tool node.
 
         Returns:
-            Mapping[str, Any]: A dictionary containing the generated parameters.
+            dict[str, Any]: A dictionary containing the generated parameters.
 
         """
         tool_parameters_dictionary = {parameter.name: parameter for parameter in tool_parameters}

@@ -14,6 +14,7 @@ from core.file.tool_file_parser import ToolFileParser
 from core.file.upload_file_parser import UploadFileParser
 from extensions.ext_database import db
 from libs.helper import generate_string
+from models.base import Base
 
 from .account import Account, Tenant
 from .types import StringUUID
@@ -211,7 +212,7 @@ class App(db.Model):
         return tags if tags else []
 
 
-class AppModelConfig(db.Model):
+class AppModelConfig(Base):
     __tablename__ = 'app_model_configs'
     __table_args__ = (
         db.PrimaryKeyConstraint('id', name='app_model_config_pkey'),
@@ -550,6 +551,9 @@ class Conversation(db.Model):
             else:
                 app_model_config = db.session.query(AppModelConfig).filter(
                     AppModelConfig.id == self.app_model_config_id).first()
+                
+                if not app_model_config:
+                    raise ValueError("app config not found")
 
                 model_config = app_model_config.to_dict()
 
@@ -640,7 +644,7 @@ class Conversation(db.Model):
         return self.override_model_configs is not None
 
 
-class Message(db.Model):
+class Message(Base):
     __tablename__ = 'messages'
     __table_args__ = (
         db.PrimaryKeyConstraint('id', name='message_pkey'),
@@ -932,7 +936,7 @@ class MessageFeedback(db.Model):
         return account
 
 
-class MessageFile(db.Model):
+class MessageFile(Base):
     __tablename__ = 'message_files'
     __table_args__ = (
         db.PrimaryKeyConstraint('id', name='message_file_pkey'),
@@ -940,15 +944,15 @@ class MessageFile(db.Model):
         db.Index('message_file_created_by_idx', 'created_by')
     )
 
-    id = db.Column(StringUUID, server_default=db.text('uuid_generate_v4()'))
-    message_id = db.Column(StringUUID, nullable=False)
-    type = db.Column(db.String(255), nullable=False)
-    transfer_method = db.Column(db.String(255), nullable=False)
-    url = db.Column(db.Text, nullable=True)
-    belongs_to = db.Column(db.String(255), nullable=True)
-    upload_file_id = db.Column(StringUUID, nullable=True)
-    created_by_role = db.Column(db.String(255), nullable=False)
-    created_by = db.Column(StringUUID, nullable=False)
+    id: Mapped[str] = mapped_column(StringUUID, default=db.text('uuid_generate_v4()'))
+    message_id: Mapped[str] = mapped_column(StringUUID, nullable=False)
+    type: Mapped[str] = mapped_column(db.String(255), nullable=False)
+    transfer_method: Mapped[str] = mapped_column(db.String(255), nullable=False)
+    url: Mapped[str] = mapped_column(db.Text, nullable=True)
+    belongs_to: Mapped[str] = mapped_column(db.String(255), nullable=True)
+    upload_file_id: Mapped[str] = mapped_column(StringUUID, nullable=True)
+    created_by_role: Mapped[str] = mapped_column(db.String(255), nullable=False)
+    created_by: Mapped[str] = mapped_column(StringUUID, nullable=False)
     created_at = db.Column(db.DateTime, nullable=False, server_default=db.text('CURRENT_TIMESTAMP(0)'))
 
 
