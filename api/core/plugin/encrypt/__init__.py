@@ -12,7 +12,7 @@ class PluginEncrypter:
         encrypter = ProviderConfigEncrypter(
             tenant_id=tenant.id,
             config=payload.data,
-            provider_type=payload.type,
+            provider_type=payload.namespace,
             provider_identity=payload.identity,
         )
 
