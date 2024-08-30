@@ -26,6 +26,7 @@ const Panel: FC<NodePanelProps<ListFilterNodeType>> = ({
     readOnly,
     inputs,
     itemVarType,
+    itemVarTypeShowName,
     hasSubVariable,
     handleVarChanges,
     filterVar,
@@ -103,29 +104,30 @@ const Panel: FC<NodePanelProps<ListFilterNodeType>> = ({
             )
             : null}
         </Field>
-
+        <Split />
         <LimitConfig
           config={inputs.limit}
           onChange={handleLimitChange}
           readonly={readOnly}
         />
       </div>
+      <Split />
       <div className='px-4 pt-4 pb-2'>
         <OutputVars>
           <>
             <VarItem
               name='result'
-              type='Array[x]'
+              type={`Array[${itemVarTypeShowName}]`}
               description={t(`${i18nPrefix}.outputVars.result`)}
             />
             <VarItem
               name='first_record'
-              type='x'
+              type={itemVarTypeShowName}
               description={t(`${i18nPrefix}.outputVars.first_record`)}
             />
             <VarItem
               name='last_record'
-              type='x'
+              type={itemVarTypeShowName}
               description={t(`${i18nPrefix}.outputVars.last_record`)}
             />
           </>

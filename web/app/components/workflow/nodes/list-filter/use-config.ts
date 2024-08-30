@@ -63,6 +63,12 @@ const useConfig = (id: string, payload: ListFilterNodeType) => {
 
   const { varType, itemVarType } = getType()
 
+  const itemVarTypeShowName = useMemo(() => {
+    if (!inputs.variable)
+      return '?'
+    return [itemVarType.substring(0, 1).toUpperCase(), itemVarType.substring(1)].join('')
+  }, [inputs.variable, itemVarType])
+
   const hasSubVariable = [VarType.arrayFile].includes(varType)
 
   const handleVarChanges = useCallback((variable: ValueSelector | string) => {
@@ -128,6 +134,7 @@ const useConfig = (id: string, payload: ListFilterNodeType) => {
     filterVar,
     varType,
     itemVarType,
+    itemVarTypeShowName,
     hasSubVariable,
     handleVarChanges,
     handleFilterChange,
