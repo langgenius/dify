@@ -39,7 +39,7 @@ class BuiltinToolProviderController(ToolProviderController):
 
         super().__init__(**{
             'identity': provider_yaml['identity'],
-            'credentials_schema': provider_yaml.get('credentials_for_provider', None),
+            'credentials_schema': provider_yaml.get('credentials_for_provider', {}) or {},
         })
 
     def _get_builtin_tools(self) -> list[BuiltinTool]:

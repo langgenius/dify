@@ -206,7 +206,16 @@ class Tool(BaseModel, ABC):
             tool_parameters=tool_parameters,
         )
 
-        return result
+        if isinstance(result, ToolInvokeMessage):
+            def single_generator():
+                yield result
+            return single_generator()
+        elif isinstance(result, list):
+            def generator():
+                yield from result
+            return generator()
+        else:
+            return result
 
     def _transform_tool_parameters_type(self, tool_parameters: dict[str, Any]) -> dict[str, Any]:
         """
@@ -223,7 +232,7 @@ class Tool(BaseModel, ABC):
         return result
 
     @abstractmethod
-    def _invoke(self, user_id: str, tool_parameters: dict[str, Any]) -> Generator[ToolInvokeMessage, None, None]:
+    def _invoke(self, user_id: str, tool_parameters: dict[str, Any]) -> ToolInvokeMessage | list[ToolInvokeMessage] | Generator[ToolInvokeMessage, None, None]:
         pass
 
     def validate_credentials(self, credentials: dict[str, Any], parameters: dict[str, Any]) -> None:

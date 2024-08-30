@@ -1,21 +1,23 @@
 
+from pydantic import Field
+
+from core.entities.provider_entities import ProviderConfig
 from core.tools.entities.common_entities import I18nObject
 from core.tools.entities.tool_bundle import ApiToolBundle
 from core.tools.entities.tool_entities import (
     ApiProviderAuthType,
-    ProviderConfig,
-    ToolCredentialsOption,
     ToolProviderType,
 )
 from core.tools.provider.tool_provider import ToolProviderController
 from core.tools.tool.api_tool import ApiTool
-from core.tools.tool.tool import Tool
 from extensions.ext_database import db
 from models.tools import ApiToolProvider
 
 
 class ApiToolProviderController(ToolProviderController):
     provider_id: str
+    tenant_id: str
+    tools: list[ApiTool] = Field(default_factory=list)
 
     @staticmethod
     def from_db(db_provider: ApiToolProvider, auth_type: ApiProviderAuthType) -> 'ApiToolProviderController':
@@ -25,8 +27,8 @@ class ApiToolProviderController(ToolProviderController):
                 required=True,
                 type=ProviderConfig.Type.SELECT,
                 options=[
-                    ToolCredentialsOption(value='none', label=I18nObject(en_US='None', zh_Hans='无')),
-                    ToolCredentialsOption(value='api_key', label=I18nObject(en_US='api_key', zh_Hans='api_key'))
+                    ProviderConfig.Option(value='none', label=I18nObject(en_US='None', zh_Hans='无')),
+                    ProviderConfig.Option(value='api_key', label=I18nObject(en_US='api_key', zh_Hans='api_key'))
                 ],
                 default='none',
                 help=I18nObject(
@@ -67,9 +69,9 @@ class ApiToolProviderController(ToolProviderController):
                         zh_Hans='api key header 的前缀'
                     ),
                     options=[
-                        ToolCredentialsOption(value='basic', label=I18nObject(en_US='Basic', zh_Hans='Basic')),
-                        ToolCredentialsOption(value='bearer', label=I18nObject(en_US='Bearer', zh_Hans='Bearer')),
-                        ToolCredentialsOption(value='custom', label=I18nObject(en_US='Custom', zh_Hans='Custom'))
+                        ProviderConfig.Option(value='basic', label=I18nObject(en_US='Basic', zh_Hans='Basic')),
+                        ProviderConfig.Option(value='bearer', label=I18nObject(en_US='Bearer', zh_Hans='Bearer')),
+                        ProviderConfig.Option(value='custom', label=I18nObject(en_US='Custom', zh_Hans='Custom'))
                     ]
                 )
             }
@@ -96,6 +98,7 @@ class ApiToolProviderController(ToolProviderController):
             },
             'credentials_schema': credentials_schema,
             'provider_id': db_provider.id or '',
+            'tenant_id': db_provider.tenant_id or '',
         })
 
     @property
@@ -142,7 +145,7 @@ class ApiToolProviderController(ToolProviderController):
 
         return self.tools
 
-    def get_tools(self, user_id: str, tenant_id: str) -> list[ApiTool]:
+    def get_tools(self, tenant_id: str) -> list[ApiTool]:
         """
             fetch tools from database
 
@@ -153,7 +156,7 @@ class ApiToolProviderController(ToolProviderController):
         if self.tools is not None:
             return self.tools
         
-        tools: list[Tool] = []
+        tools: list[ApiTool] = []
 
         # get tenant api providers
         db_providers: list[ApiToolProvider] = db.session.query(ApiToolProvider).filter(
@@ -179,7 +182,7 @@ class ApiToolProviderController(ToolProviderController):
             :return: the tool
         """
         if self.tools is None:
-            self.get_tools()
+            self.get_tools(self.tenant_id)
 
         for tool in self.tools:
             if tool.identity.name == tool_name:

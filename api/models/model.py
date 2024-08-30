@@ -7,7 +7,7 @@ from typing import Optional
 from flask import request
 from flask_login import UserMixin
 from sqlalchemy import Float, func, text
-from sqlalchemy.orm import Mapped, mapped_column
+from sqlalchemy.orm import Mapped, mapped_column, relationship
 
 from configs import dify_config
 from core.file.tool_file_parser import ToolFileParser
@@ -495,14 +495,14 @@ class InstalledApp(db.Model):
         return tenant
 
 
-class Conversation(db.Model):
+class Conversation(Base):
     __tablename__ = 'conversations'
     __table_args__ = (
         db.PrimaryKeyConstraint('id', name='conversation_pkey'),
         db.Index('conversation_app_from_user_idx', 'app_id', 'from_source', 'from_end_user_id')
     )
 
-    id = db.Column(StringUUID, server_default=db.text('uuid_generate_v4()'))
+    id: Mapped[str] = mapped_column(StringUUID, server_default=db.text('uuid_generate_v4()'))
     app_id = db.Column(StringUUID, nullable=False)
     app_model_config_id = db.Column(StringUUID, nullable=True)
     model_provider = db.Column(db.String(255), nullable=True)
@@ -526,8 +526,8 @@ class Conversation(db.Model):
     created_at = db.Column(db.DateTime, nullable=False, server_default=db.text('CURRENT_TIMESTAMP(0)'))
     updated_at = db.Column(db.DateTime, nullable=False, server_default=db.text('CURRENT_TIMESTAMP(0)'))
 
-    messages = db.relationship("Message", backref="conversation", lazy='select', passive_deletes="all")
-    message_annotations = db.relationship("MessageAnnotation", backref="conversation", lazy='select', passive_deletes="all")
+    messages: Mapped[list["Message"]] = relationship("Message", backref="conversation", lazy='select', passive_deletes="all")
+    message_annotations: Mapped[list["MessageAnnotation"]] = relationship("MessageAnnotation", backref="conversation", lazy='select', passive_deletes="all")
 
     is_deleted = db.Column(db.Boolean, nullable=False, server_default=db.text('false'))
 
@@ -660,10 +660,10 @@ class Message(Base):
     model_provider = db.Column(db.String(255), nullable=True)
     model_id = db.Column(db.String(255), nullable=True)
     override_model_configs = db.Column(db.Text)
-    conversation_id = db.Column(StringUUID, db.ForeignKey('conversations.id'), nullable=False)
-    inputs = db.Column(db.JSON)
-    query = db.Column(db.Text, nullable=False)
-    message = db.Column(db.JSON, nullable=False)
+    conversation_id: Mapped[str] = mapped_column(StringUUID, db.ForeignKey('conversations.id'), nullable=False)
+    inputs: Mapped[str] = mapped_column(db.JSON)
+    query: Mapped[str] = mapped_column(db.Text, nullable=False)
+    message: Mapped[str] = mapped_column(db.JSON, nullable=False)
     message_tokens = db.Column(db.Integer, nullable=False, server_default=db.text('0'))
     message_unit_price = db.Column(db.Numeric(10, 4), nullable=False)
     message_price_unit = db.Column(db.Numeric(10, 7), nullable=False, server_default=db.text('0.001'))
@@ -944,7 +944,7 @@ class MessageFile(Base):
         db.Index('message_file_created_by_idx', 'created_by')
     )
 
-    id: Mapped[str] = mapped_column(StringUUID, default=db.text('uuid_generate_v4()'))
+    id: Mapped[str] = mapped_column(StringUUID, server_default=db.text('uuid_generate_v4()'))
     message_id: Mapped[str] = mapped_column(StringUUID, nullable=False)
     type: Mapped[str] = mapped_column(db.String(255), nullable=False)
     transfer_method: Mapped[str] = mapped_column(db.String(255), nullable=False)
@@ -956,7 +956,7 @@ class MessageFile(Base):
     created_at = db.Column(db.DateTime, nullable=False, server_default=db.text('CURRENT_TIMESTAMP(0)'))
 
 
-class MessageAnnotation(db.Model):
+class MessageAnnotation(Base):
     __tablename__ = 'message_annotations'
     __table_args__ = (
         db.PrimaryKeyConstraint('id', name='message_annotation_pkey'),
@@ -967,7 +967,7 @@ class MessageAnnotation(db.Model):
 
     id = db.Column(StringUUID, server_default=db.text('uuid_generate_v4()'))
     app_id = db.Column(StringUUID, nullable=False)
-    conversation_id = db.Column(StringUUID, db.ForeignKey('conversations.id'), nullable=True)
+    conversation_id: Mapped[str] = mapped_column(StringUUID, db.ForeignKey('conversations.id'), nullable=True)
     message_id = db.Column(StringUUID, nullable=True)
     question = db.Column(db.Text, nullable=True)
     content = db.Column(db.Text, nullable=False)

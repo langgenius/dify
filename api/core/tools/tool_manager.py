@@ -116,7 +116,12 @@ class ToolManager:
             # decrypt the credentials
             credentials = builtin_provider.credentials
             controller = cls.get_builtin_provider(provider_id)
-            tool_configuration = ToolConfigurationManager(tenant_id=tenant_id, provider_controller=controller)
+            tool_configuration = ToolConfigurationManager(
+                tenant_id=tenant_id, 
+                config=controller.get_credentials_schema(),
+                provider_type=controller.provider_type.value,
+                provider_identity=controller.identity.name
+            )
 
             decrypted_credentials = tool_configuration.decrypt_tool_credentials(credentials)
 
@@ -135,7 +140,12 @@ class ToolManager:
             api_provider, credentials = cls.get_api_provider_controller(tenant_id, provider_id)
 
             # decrypt the credentials
-            tool_configuration = ToolConfigurationManager(tenant_id=tenant_id, provider_controller=api_provider)
+            tool_configuration = ToolConfigurationManager(
+                tenant_id=tenant_id, 
+                config=api_provider.get_credentials_schema(),
+                provider_type=api_provider.provider_type.value,
+                provider_identity=api_provider.identity.name
+            )
             decrypted_credentials = tool_configuration.decrypt_tool_credentials(credentials)
 
             return cast(ApiTool, api_provider.get_tool(tool_name).fork_tool_runtime(runtime={
@@ -513,7 +523,12 @@ class ToolManager:
             provider_obj, ApiProviderAuthType.API_KEY if credentials['auth_type'] == 'api_key' else ApiProviderAuthType.NONE
         )
         # init tool configuration
-        tool_configuration = ToolConfigurationManager(tenant_id=tenant_id, provider_controller=controller)
+        tool_configuration = ToolConfigurationManager(
+            tenant_id=tenant_id,
+            config=controller.get_credentials_schema(),
+            provider_type=controller.provider_type.value,
+            provider_identity=controller.identity.name
+        )
 
         decrypted_credentials = tool_configuration.decrypt_tool_credentials(credentials)
         masked_credentials = tool_configuration.mask_tool_credentials(decrypted_credentials)

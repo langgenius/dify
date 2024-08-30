@@ -1,7 +1,7 @@
 from abc import ABC, abstractmethod
 from typing import Any
 
-from pydantic import BaseModel, Field
+from pydantic import BaseModel, ConfigDict, Field
 
 from core.entities.provider_entities import ProviderConfig
 from core.tools.entities.tool_entities import (
@@ -16,6 +16,8 @@ class ToolProviderController(BaseModel, ABC):
     identity: ToolProviderIdentity
     tools: list[Tool] = Field(default_factory=list)
     credentials_schema: dict[str, ProviderConfig] = Field(default_factory=dict)
+
+    model_config = ConfigDict(validate_assignment=True)
 
     def get_credentials_schema(self) -> dict[str, ProviderConfig]:
         """

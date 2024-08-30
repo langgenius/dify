@@ -3,12 +3,12 @@ import logging
 from typing import Optional, Union
 
 from configs import dify_config
+from core.entities.provider_entities import ProviderConfig
 from core.tools.entities.api_entities import UserTool, UserToolProvider
 from core.tools.entities.common_entities import I18nObject
 from core.tools.entities.tool_bundle import ApiToolBundle
 from core.tools.entities.tool_entities import (
     ApiProviderAuthType,
-    ProviderConfig,
     ToolParameter,
     ToolProviderType,
 )
@@ -106,7 +106,10 @@ class ToolTransformService:
 
                 # init tool configuration
                 tool_configuration = ToolConfigurationManager(
-                    tenant_id=db_provider.tenant_id, provider_controller=provider_controller
+                    tenant_id=db_provider.tenant_id,
+                    config=provider_controller.get_credentials_schema(),
+                    provider_type=provider_controller.provider_type.value,
+                    provider_identity=provider_controller.identity.name
                 )
                 # decrypt the credentials and mask the credentials
                 decrypted_credentials = tool_configuration.decrypt_tool_credentials(credentials=credentials)
@@ -143,7 +146,7 @@ class ToolTransformService:
 
     @staticmethod
     def workflow_provider_to_user_provider(
-        provider_controller: WorkflowToolProviderController, labels: list[str] = None
+        provider_controller: WorkflowToolProviderController, labels: list[str] | None = None
     ):
         """
         convert provider controller to user provider
@@ -174,7 +177,7 @@ class ToolTransformService:
         provider_controller: ApiToolProviderController,
         db_provider: ApiToolProvider,
         decrypt_credentials: bool = True,
-        labels: list[str] = None,
+        labels: list[str] | None = None,
     ) -> UserToolProvider:
         """
         convert provider controller to user provider
@@ -209,7 +212,10 @@ class ToolTransformService:
         if decrypt_credentials:
             # init tool configuration
             tool_configuration = ToolConfigurationManager(
-                tenant_id=db_provider.tenant_id, provider_controller=provider_controller
+                tenant_id=db_provider.tenant_id,
+                config=provider_controller.get_credentials_schema(),
+                provider_type=provider_controller.provider_type.value,
+                provider_identity=provider_controller.identity.name
             )
 
             # decrypt the credentials and mask the credentials
@@ -223,9 +229,9 @@ class ToolTransformService:
     @staticmethod
     def tool_to_user_tool(
         tool: Union[ApiToolBundle, WorkflowTool, Tool],
-        credentials: dict = None,
-        tenant_id: str = None,
-        labels: list[str] = None,
+        credentials: dict | None = None,
+        tenant_id: str | None = None,
+        labels: list[str] | None = None,
     ) -> UserTool:
         """
         convert tool to user tool

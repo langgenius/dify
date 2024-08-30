@@ -4,8 +4,8 @@ from typing import Optional, Union
 from pydantic import BaseModel, ConfigDict, Field
 
 from core.entities.parameter_entities import AppSelectorScope, CommonParameterType, ModelConfigScope
-from core.model_runtime.entities.common_entities import I18nObject
 from core.model_runtime.entities.model_entities import ModelType
+from core.tools.entities.common_entities import I18nObject
 from models.provider import ProviderQuotaType
 
 
@@ -143,7 +143,7 @@ class ProviderConfig(BasicProviderConfig):
         value: str = Field(..., description="The value of the option")
         label: I18nObject = Field(..., description="The label of the option")
 
-    scope: AppSelectorScope | ModelConfigScope | None
+    scope: AppSelectorScope | ModelConfigScope | None = None
     required: bool = False
     default: Optional[Union[int, str]] = None
     options: Optional[list[Option]] = None

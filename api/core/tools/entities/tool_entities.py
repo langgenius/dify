@@ -25,7 +25,7 @@ class ToolLabelEnum(Enum):
     UTILITIES = 'utilities'
     OTHER = 'other'
 
-class ToolProviderType(Enum):
+class ToolProviderType(str, Enum):
     """
         Enum class for tool provider
     """
@@ -181,7 +181,7 @@ class ToolParameter(BaseModel):
         if options:
             option_objs = [ToolParameterOption(value=option, label=I18nObject(en_US=option, zh_Hans=option)) for option in options]
         else:
-            option_objs = None
+            option_objs = []
         return cls(
             name=name,
             label=I18nObject(en_US='', zh_Hans=''),

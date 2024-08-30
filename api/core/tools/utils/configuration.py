@@ -1,23 +1,25 @@
+from collections.abc import Mapping
 from copy import deepcopy
 from typing import Any
 
 from pydantic import BaseModel
 
+from core.entities.provider_entities import BasicProviderConfig
 from core.helper import encrypter
 from core.helper.tool_parameter_cache import ToolParameterCache, ToolParameterCacheType
 from core.helper.tool_provider_cache import ToolProviderCredentialsCache, ToolProviderCredentialsCacheType
 from core.tools.entities.tool_entities import (
-    ProviderConfig,
     ToolParameter,
     ToolProviderType,
 )
-from core.tools.provider.tool_provider import ToolProviderController
 from core.tools.tool.tool import Tool
 
 
 class ToolConfigurationManager(BaseModel):
     tenant_id: str
-    provider_controller: ToolProviderController
+    config: Mapping[str, BasicProviderConfig]
+    provider_type: str
+    provider_identity: str
 
     def _deep_copy(self, credentials: dict[str, str]) -> dict[str, str]:
         """
@@ -34,9 +36,9 @@ class ToolConfigurationManager(BaseModel):
         credentials = self._deep_copy(credentials)
 
         # get fields need to be decrypted
-        fields = self.provider_controller.get_credentials_schema()
+        fields = self.config
         for field_name, field in fields.items():
-            if field.type == ProviderConfig.Type.SECRET_INPUT:
+            if field.type == BasicProviderConfig.Type.SECRET_INPUT:
                 if field_name in credentials:
                     encrypted = encrypter.encrypt_token(self.tenant_id, credentials[field_name])
                     credentials[field_name] = encrypted
@@ -52,9 +54,9 @@ class ToolConfigurationManager(BaseModel):
         credentials = self._deep_copy(credentials)
 
         # get fields need to be decrypted
-        fields = self.provider_controller.get_credentials_schema()
+        fields = self.config
         for field_name, field in fields.items():
-            if field.type == ProviderConfig.Type.SECRET_INPUT:
+            if field.type == BasicProviderConfig.Type.SECRET_INPUT:
                 if field_name in credentials:
                     if len(credentials[field_name]) > 6:
                         credentials[field_name] = \
@@ -74,7 +76,7 @@ class ToolConfigurationManager(BaseModel):
         """
         cache = ToolProviderCredentialsCache(
             tenant_id=self.tenant_id, 
-            identity_id=f'{self.provider_controller.provider_type.value}.{self.provider_controller.identity.name}',
+            identity_id=f'{self.provider_type}.{self.provider_identity}',
             cache_type=ToolProviderCredentialsCacheType.PROVIDER
         )
         cached_credentials = cache.get()
@@ -82,9 +84,9 @@ class ToolConfigurationManager(BaseModel):
             return cached_credentials
         credentials = self._deep_copy(credentials)
         # get fields need to be decrypted
-        fields = self.provider_controller.get_credentials_schema()
+        fields = self.config
         for field_name, field in fields.items():
-            if field.type == ProviderConfig.Type.SECRET_INPUT:
+            if field.type == BasicProviderConfig.Type.SECRET_INPUT:
                 if field_name in credentials:
                     try:
                         credentials[field_name] = encrypter.decrypt_token(self.tenant_id, credentials[field_name])
@@ -97,7 +99,7 @@ class ToolConfigurationManager(BaseModel):
     def delete_tool_credentials_cache(self):
         cache = ToolProviderCredentialsCache(
             tenant_id=self.tenant_id, 
-            identity_id=f'{self.provider_controller.provider_type.value}.{self.provider_controller.identity.name}',
+            identity_id=f'{self.provider_type}.{self.provider_identity}',
             cache_type=ToolProviderCredentialsCacheType.PROVIDER
         )
         cache.delete()

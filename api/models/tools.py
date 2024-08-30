@@ -77,10 +77,10 @@ class PublishedAppTool(db.Model):
         return I18nObject(**json.loads(self.description))
     
     @property
-    def app(self) -> App:
+    def app(self) -> App | None:
         return db.session.query(App).filter(App.id == self.app_id).first()
 
-class ApiToolProvider(db.Model):
+class ApiToolProvider(Base):
     """
     The table stores the api providers.
     """
@@ -290,7 +290,7 @@ class ToolFile(Base):
         db.Index('tool_file_conversation_id_idx', 'conversation_id'),
     )
 
-    id: Mapped[str] = mapped_column(StringUUID, default=db.text('uuid_generate_v4()'))
+    id: Mapped[str] = mapped_column(StringUUID, server_default=db.text('uuid_generate_v4()'))
     # conversation user id
     user_id: Mapped[str] = mapped_column(StringUUID)
     # tenant id
