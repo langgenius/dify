@@ -24,7 +24,7 @@ from core.tools.tool.builtin_tool import BuiltinTool
 from core.tools.tool.tool import Tool
 from core.tools.tool.workflow_tool import WorkflowTool
 from core.tools.tool_label_manager import ToolLabelManager
-from core.tools.utils.configuration import ToolConfigurationManager, ToolParameterConfigurationManager
+from core.tools.utils.configuration import ProviderConfigEncrypter, ToolParameterConfigurationManager
 from core.tools.utils.tool_parameter_converter import ToolParameterConverter
 from core.workflow.nodes.tool.entities import ToolEntity
 from extensions.ext_database import db
@@ -116,14 +116,14 @@ class ToolManager:
             # decrypt the credentials
             credentials = builtin_provider.credentials
             controller = cls.get_builtin_provider(provider_id)
-            tool_configuration = ToolConfigurationManager(
+            tool_configuration = ProviderConfigEncrypter(
                 tenant_id=tenant_id, 
                 config=controller.get_credentials_schema(),
                 provider_type=controller.provider_type.value,
                 provider_identity=controller.identity.name
             )
 
-            decrypted_credentials = tool_configuration.decrypt_tool_credentials(credentials)
+            decrypted_credentials = tool_configuration.decrypt(credentials)
 
             return cast(BuiltinTool, builtin_tool.fork_tool_runtime(runtime={
                 'tenant_id': tenant_id,
@@ -140,13 +140,13 @@ class ToolManager:
             api_provider, credentials = cls.get_api_provider_controller(tenant_id, provider_id)
 
             # decrypt the credentials
-            tool_configuration = ToolConfigurationManager(
+            tool_configuration = ProviderConfigEncrypter(
                 tenant_id=tenant_id, 
                 config=api_provider.get_credentials_schema(),
                 provider_type=api_provider.provider_type.value,
                 provider_identity=api_provider.identity.name
             )
-            decrypted_credentials = tool_configuration.decrypt_tool_credentials(credentials)
+            decrypted_credentials = tool_configuration.decrypt(credentials)
 
             return cast(ApiTool, api_provider.get_tool(tool_name).fork_tool_runtime(runtime={
                 'tenant_id': tenant_id,
@@ -523,14 +523,14 @@ class ToolManager:
             provider_obj, ApiProviderAuthType.API_KEY if credentials['auth_type'] == 'api_key' else ApiProviderAuthType.NONE
         )
         # init tool configuration
-        tool_configuration = ToolConfigurationManager(
+        tool_configuration = ProviderConfigEncrypter(
             tenant_id=tenant_id,
             config=controller.get_credentials_schema(),
             provider_type=controller.provider_type.value,
             provider_identity=controller.identity.name
         )
 
-        decrypted_credentials = tool_configuration.decrypt_tool_credentials(credentials)
+        decrypted_credentials = tool_configuration.decrypt(credentials)
         masked_credentials = tool_configuration.mask_tool_credentials(decrypted_credentials)
 
         try:

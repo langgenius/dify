@@ -8,6 +8,7 @@ from controllers.inner_api.plugin.wraps import get_tenant, plugin_data
 from controllers.inner_api.wraps import plugin_inner_api_only
 from core.plugin.backwards_invocation.app import PluginAppBackwardsInvocation
 from core.plugin.backwards_invocation.model import PluginModelBackwardsInvocation
+from core.plugin.encrypt import PluginEncrypter
 from core.plugin.entities.request import (
     RequestInvokeApp,
     RequestInvokeEncrypt,
@@ -139,7 +140,10 @@ class PluginInvokeEncryptApi(Resource):
     @get_tenant
     @plugin_data(payload_type=RequestInvokeEncrypt)
     def post(self, user_id: str, tenant_model: Tenant, payload: RequestInvokeEncrypt):
-        """"""
+        """
+        encrypt or decrypt data
+        """
+        return PluginEncrypter.invoke_encrypt(tenant_model, payload)
 
 api.add_resource(PluginInvokeLLMApi, '/invoke/llm')
 api.add_resource(PluginInvokeTextEmbeddingApi, '/invoke/text-embedding')
@@ -150,3 +154,4 @@ api.add_resource(PluginInvokeModerationApi, '/invoke/moderation')
 api.add_resource(PluginInvokeToolApi, '/invoke/tool')
 api.add_resource(PluginInvokeNodeApi, '/invoke/node')
 api.add_resource(PluginInvokeAppApi, '/invoke/app')
+api.add_resource(PluginInvokeEncryptApi, '/invoke/encrypt')

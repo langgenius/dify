@@ -112,5 +112,7 @@ class RequestInvokeEncrypt(BaseModel):
     Request to encryption
     """
     opt: Literal["encrypt", "decrypt"]
+    type: Literal["endpoint"]
+    identity: str
     data: dict = Field(default_factory=dict)
     config: Mapping[str, BasicProviderConfig] = Field(default_factory=Mapping)

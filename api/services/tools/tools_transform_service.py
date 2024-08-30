@@ -16,7 +16,7 @@ from core.tools.provider.builtin_tool_provider import BuiltinToolProviderControl
 from core.tools.provider.workflow_tool_provider import WorkflowToolProviderController
 from core.tools.tool.tool import Tool
 from core.tools.tool.workflow_tool import WorkflowTool
-from core.tools.utils.configuration import ToolConfigurationManager
+from core.tools.utils.configuration import ProviderConfigEncrypter
 from models.tools import ApiToolProvider, BuiltinToolProvider, WorkflowToolProvider
 
 logger = logging.getLogger(__name__)
@@ -107,15 +107,15 @@ class ToolTransformService:
                 credentials = db_provider.credentials
 
                 # init tool configuration
-                tool_configuration = ToolConfigurationManager(
+                tool_configuration = ProviderConfigEncrypter(
                     tenant_id=db_provider.tenant_id,
                     config=provider_controller.get_credentials_schema(),
                     provider_type=provider_controller.provider_type.value,
                     provider_identity=provider_controller.identity.name
                 )
                 # decrypt the credentials and mask the credentials
-                decrypted_credentials = tool_configuration.decrypt_tool_credentials(credentials=credentials)
-                masked_credentials = tool_configuration.mask_tool_credentials(credentials=decrypted_credentials)
+                decrypted_credentials = tool_configuration.decrypt(data=credentials)
+                masked_credentials = tool_configuration.mask_tool_credentials(data=decrypted_credentials)
 
                 result.masked_credentials = masked_credentials
                 result.original_credentials = decrypted_credentials
@@ -218,7 +218,7 @@ class ToolTransformService:
 
         if decrypt_credentials:
             # init tool configuration
-            tool_configuration = ToolConfigurationManager(
+            tool_configuration = ProviderConfigEncrypter(
                 tenant_id=db_provider.tenant_id,
                 config=provider_controller.get_credentials_schema(),
                 provider_type=provider_controller.provider_type.value,
@@ -226,8 +226,8 @@ class ToolTransformService:
             )
 
             # decrypt the credentials and mask the credentials
-            decrypted_credentials = tool_configuration.decrypt_tool_credentials(credentials=credentials)
-            masked_credentials = tool_configuration.mask_tool_credentials(credentials=decrypted_credentials)
+            decrypted_credentials = tool_configuration.decrypt(data=credentials)
+            masked_credentials = tool_configuration.mask_tool_credentials(data=decrypted_credentials)
 
             result.masked_credentials = masked_credentials
 

@@ -10,7 +10,7 @@ from core.tools.provider.builtin._positions import BuiltinToolProviderSort
 from core.tools.provider.tool_provider import ToolProviderController
 from core.tools.tool_label_manager import ToolLabelManager
 from core.tools.tool_manager import ToolManager
-from core.tools.utils.configuration import ToolConfigurationManager
+from core.tools.utils.configuration import ProviderConfigEncrypter
 from extensions.ext_database import db
 from models.tools import BuiltinToolProvider
 from services.tools.tools_transform_service import ToolTransformService
@@ -27,7 +27,7 @@ class BuiltinToolManageService:
         provider_controller: ToolProviderController = ToolManager.get_builtin_provider(provider)
         tools = provider_controller.get_tools()
 
-        tool_provider_configurations = ToolConfigurationManager(
+        tool_provider_configurations = ProviderConfigEncrypter(
             tenant_id=tenant_id,
             config=provider_controller.get_credentials_schema(),
             provider_type=provider_controller.provider_type.value,
@@ -47,7 +47,7 @@ class BuiltinToolManageService:
         if builtin_provider is not None:
             # get credentials
             credentials = builtin_provider.credentials
-            credentials = tool_provider_configurations.decrypt_tool_credentials(credentials)
+            credentials = tool_provider_configurations.decrypt(credentials)
 
         result = []
         for tool in tools:
@@ -92,7 +92,7 @@ class BuiltinToolManageService:
             provider_controller = ToolManager.get_builtin_provider(provider_name)
             if not provider_controller.need_credentials:
                 raise ValueError(f"provider {provider_name} does not need credentials")
-            tool_configuration = ToolConfigurationManager(
+            tool_configuration = ProviderConfigEncrypter(
                 tenant_id=tenant_id,
                 config=provider_controller.get_credentials_schema(),
                 provider_type=provider_controller.provider_type.value,
@@ -101,7 +101,7 @@ class BuiltinToolManageService:
 
             # get original credentials if exists
             if provider is not None:
-                original_credentials = tool_configuration.decrypt_tool_credentials(provider.credentials)
+                original_credentials = tool_configuration.decrypt(provider.credentials)
                 masked_credentials = tool_configuration.mask_tool_credentials(original_credentials)
                 # check if the credential has changed, save the original credential
                 for name, value in credentials.items():
@@ -110,7 +110,7 @@ class BuiltinToolManageService:
             # validate credentials
             provider_controller.validate_credentials(credentials)
             # encrypt credentials
-            credentials = tool_configuration.encrypt_tool_credentials(credentials)
+            credentials = tool_configuration.encrypt(credentials)
         except (ToolProviderNotFoundError, ToolNotFoundError, ToolProviderCredentialValidationError) as e:
             raise ValueError(str(e))
 
@@ -154,13 +154,13 @@ class BuiltinToolManageService:
             return {}
 
         provider_controller = ToolManager.get_builtin_provider(provider_obj.provider)
-        tool_configuration = ToolConfigurationManager(
+        tool_configuration = ProviderConfigEncrypter(
             tenant_id=tenant_id,
             config=provider_controller.get_credentials_schema(),
             provider_type=provider_controller.provider_type.value,
             provider_identity=provider_controller.identity.name,
         )
-        credentials = tool_configuration.decrypt_tool_credentials(provider_obj.credentials)
+        credentials = tool_configuration.decrypt(provider_obj.credentials)
         credentials = tool_configuration.mask_tool_credentials(credentials)
         return credentials
 
@@ -186,7 +186,7 @@ class BuiltinToolManageService:
 
         # delete cache
         provider_controller = ToolManager.get_builtin_provider(provider_name)
-        tool_configuration = ToolConfigurationManager(
+        tool_configuration = ProviderConfigEncrypter(
             tenant_id=tenant_id,
             config=provider_controller.get_credentials_schema(),
             provider_type=provider_controller.provider_type.value,
