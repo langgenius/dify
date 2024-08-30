@@ -245,9 +245,13 @@ def test_parallels_graph():
 
     assert graph.root_node_id == "start"
     for i in range(3):
-        assert graph.edge_mapping.get("start")[i].target_node_id == f"llm{i+1}"
-        assert graph.edge_mapping.get(f"llm{i+1}") is not None
-        assert graph.edge_mapping.get(f"llm{i+1}")[0].target_node_id == "answer"
+        start_edges = graph.edge_mapping.get("start")
+        assert start_edges is not None
+        assert start_edges[i].target_node_id == f"llm{i+1}"
+
+        llm_edges = graph.edge_mapping.get(f"llm{i+1}")
+        assert llm_edges is not None
+        assert llm_edges[0].target_node_id == "answer"
 
     assert len(graph.parallel_mapping) == 1
     assert len(graph.node_parallel_mapping) == 3

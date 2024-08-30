@@ -382,7 +382,12 @@ export const useChat = (
             }))
           }
           else {
-            const currentIndex = responseItem.workflowProcess!.tracing!.findIndex(item => item.node_id === data.node_id)
+            const currentIndex = responseItem.workflowProcess!.tracing!.findIndex((item) => {
+              if (!item.execution_metadata?.parallel_id)
+                return item.node_id === data.node_id
+
+              return item.node_id === data.node_id && item.execution_metadata?.parallel_id === data.execution_metadata?.parallel_id
+            })
             responseItem.workflowProcess!.tracing[currentIndex] = {
               ...(responseItem.workflowProcess!.tracing[currentIndex].extras
                 ? { extras: responseItem.workflowProcess!.tracing[currentIndex].extras }

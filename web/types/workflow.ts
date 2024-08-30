@@ -26,6 +26,10 @@ export type NodeTracing = {
     currency: string
     iteration_id?: string
     iteration_index?: number
+    parallel_id?: string
+    parallel_start_node_id?: string
+    parent_parallel_id?: string
+    parent_parallel_start_node_id?: string
   }
   metadata: {
     iterator_length: number
@@ -40,6 +44,8 @@ export type NodeTracing = {
   extras?: any
   expand?: boolean // for UI
   details?: NodeTracing[][] // iteration detail
+  parallel_id?: string
+  parallel_start_node_id?: string
 }
 
 export type FetchWorkflowDraftResponse = {
@@ -138,6 +144,7 @@ export type NodeFinishedResponse = {
       total_tokens: number
       total_price: number
       currency: string
+      parallel_id?: string
     }
     created_at: number
   }
