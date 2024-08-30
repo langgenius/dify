@@ -8,7 +8,7 @@ import Countdown from './countdown'
 import Button from '@/app/components/base/button'
 import Input from '@/app/components/base/input'
 import Toast from '@/app/components/base/toast'
-import { emailLoginWithCode, sendEMailLoginCode } from '@/service/common'
+import { sendResetPasswordCode, verifyResetPasswordCode } from '@/service/common'
 
 export default function CheckCode() {
   const { t } = useTranslation()
@@ -36,9 +36,8 @@ export default function CheckCode() {
         return
       }
       setIsLoading(true)
-      const ret = await emailLoginWithCode({ email, code, token })
-      localStorage.setItem('console_token', ret.data)
-      router.replace('/apps')
+      const ret = await verifyResetPasswordCode({ email, code, token })
+      ret.is_valid && router.push(`/reset-password/set-password?token=${encodeURIComponent(token)}&email=${encodeURIComponent(email)}`)
     }
     catch (error) { console.error(error) }
     finally {
@@ -48,8 +47,9 @@ export default function CheckCode() {
 
   const resendCode = async () => {
     try {
-      const ret = await sendEMailLoginCode(email)
-      router.replace(`/signin/check-code?token=${ret.data}&email=${encodeURIComponent(email)}`)
+      const res = await sendResetPasswordCode(email)
+      if (res.result === 'success')
+        router.push(`/reset-password/check-code?token=${encodeURIComponent(res.data)}&email=${encodeURIComponent(email)}`)
     }
     catch (error) { console.error(error) }
   }

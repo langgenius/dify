@@ -82,7 +82,7 @@ export default function MailAndPasswordAuth({ isInvite }: MailAndPasswordAuthPro
     <div className='mb-3'>
       <label htmlFor="password" className="my-2 flex items-center justify-between text-sm font-medium text-gray-900">
         <span>{t('login.password')}</span>
-        <Link href='/forgot-password' className='text-primary-600'>
+        <Link href='/reset-password' className='text-primary-600'>
           {t('login.forget')}
         </Link>
       </label>

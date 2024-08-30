@@ -83,6 +83,9 @@ const translation = {
     emptyCode: 'Code is required',
     invalidCode: 'Invalid code',
   },
+  resetPassword: 'Reset Password',
+  resetPasswordDesc: 'Type the email you used to sign up on Dify and we will send you a password reset email.',
+  backToLogin: 'Back to login',
 }
 
 export default translation

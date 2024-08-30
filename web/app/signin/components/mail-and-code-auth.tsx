@@ -5,7 +5,7 @@ import Input from '@/app/components/base/input'
 import Button from '@/app/components/base/button'
 import { emailRegex } from '@/config'
 import Toast from '@/app/components/base/toast'
-import { getEMailLoginCode } from '@/service/common'
+import { sendEMailLoginCode } from '@/service/common'
 
 type MailAndCodeAuthProps = {
   isInvite: boolean
@@ -34,8 +34,11 @@ export default function MailAndCodeAuth({ isInvite }: MailAndCodeAuthProps) {
         return
       }
       setIsLoading(true)
-      const ret = await getEMailLoginCode(email)
-      router.push(`/signin/check-code?token=${ret.token}&email=${encodeURIComponent(email)}`)
+      const ret = await sendEMailLoginCode(email)
+      if (ret.result === 'success') {
+        localStorage.setItem('leftTime', '59000')
+        router.push(`/signin/check-code?token=${encodeURIComponent(ret.data)}&email=${encodeURIComponent(email)}`)
+      }
     }
     catch (error) {
       console.error(error)
