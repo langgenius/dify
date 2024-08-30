@@ -287,28 +287,28 @@ class DatasetInitApi(Resource):
             raise Forbidden()
 
         parser = reqparse.RequestParser()
-        parser.add_argument(
-            "indexing_technique",
-            type=str,
-            choices=Dataset.INDEXING_TECHNIQUE_LIST,
-            required=True,
-            nullable=False,
-            location="json",
-        )
-        parser.add_argument("data_source", type=dict, required=True, nullable=True, location="json")
-        parser.add_argument("process_rule", type=dict, required=True, nullable=True, location="json")
-        parser.add_argument("doc_form", type=str, default="text_model", required=False, nullable=False, location="json")
-        parser.add_argument(
-            "doc_language", type=str, default="English", required=False, nullable=False, location="json"
-        )
-        parser.add_argument("retrieval_model", type=dict, required=False, nullable=False, location="json")
+        parser.add_argument('indexing_technique', type=str, choices=Dataset.INDEXING_TECHNIQUE_LIST, required=True,
+                            nullable=False, location='json')
+        parser.add_argument('data_source', type=dict, required=True, nullable=True, location='json')
+        parser.add_argument('process_rule', type=dict, required=True, nullable=True, location='json')
+        parser.add_argument('doc_form', type=str, default='text_model', required=False, nullable=False, location='json')
+        parser.add_argument('doc_language', type=str, default='English', required=False, nullable=False,
+                            location='json')
+        parser.add_argument('retrieval_model', type=dict, required=False, nullable=False,
+                            location='json')
+        parser.add_argument('embedding_model', type=str,  required=False, nullable=True,
+                            location='json')
+        parser.add_argument('embedding_model_provider', type=str, required=False, nullable=True,
+                            location='json')
         args = parser.parse_args()
 
         # The role of the current user in the ta table must be admin, owner, or editor, or dataset_operator
         if not current_user.is_dataset_editor:
             raise Forbidden()
 
-        if args["indexing_technique"] == "high_quality":
+        if args['indexing_technique'] == 'high_quality':
+            if args['embedding_model'] is None or args['embedding_model_provider'] is None:
+                raise ValueError('embedding model and embedding model provider are required for high quality indexing.')
             try:
                 model_manager = ModelManager()
                 model_manager.get_default_model_instance(

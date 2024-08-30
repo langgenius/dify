@@ -227,6 +227,8 @@ export type DocumentReq = {
 export type CreateDocumentReq = DocumentReq & {
   data_source: DataSource
   retrieval_model: RetrievalConfig
+  embedding_model: string
+  embedding_model_provider: string
 }
 
 export type IndexingEstimateParams = DocumentReq & Partial<DataSource> & {

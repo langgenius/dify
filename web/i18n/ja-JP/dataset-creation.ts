@@ -136,7 +136,7 @@ const translation = {
     previewSwitchTipEnd: ' 追加のトークンが消費されます',
     characters: '文字',
     indexSettedTip: 'インデックス方法を変更するには、',
-    retrivalSettedTip: 'インデックス方法を変更するには、',
+    retrivalSettedTip: '検索方法を変更するには、',
     datasetSettingLink: 'ナレッジ設定',
   },
   stepThree: {
