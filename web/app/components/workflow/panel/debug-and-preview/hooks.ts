@@ -405,6 +405,7 @@ export const useChat = (
   return {
     conversationId: conversationId.current,
     chatList,
+    handleUpdateChatList,
     handleSend,
     handleStop,
     handleRestart,

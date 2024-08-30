@@ -132,6 +132,8 @@ class AdvancedChatAppGenerator(MessageBasedAppGenerator):
             inputs=conversation.inputs if conversation else self._get_cleaned_inputs(inputs, app_config),
             query=query,
             files=file_objs,
+            is_regenerate=args.get('is_regenerate', False),
+            parent_message_id=args.get('parent_message_id'),
             user_id=user.id,
             stream=stream,
             invoke_from=invoke_from,

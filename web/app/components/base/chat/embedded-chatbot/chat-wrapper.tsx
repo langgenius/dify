@@ -2,6 +2,7 @@ import { useCallback, useEffect, useMemo } from 'react'
 import Chat from '../chat'
 import type {
   ChatConfig,
+  ChatItem,
   OnSend,
 } from '../types'
 import { useChat } from '../chat/hooks'
@@ -49,6 +50,7 @@ const ChatWrapper = () => {
     handleStop,
     isResponding,
     suggestedQuestions,
+    handleUpdateChatList,
   } = useChat(
     appConfig,
     {
@@ -64,11 +66,13 @@ const ChatWrapper = () => {
       currentChatInstanceRef.current.handleStop = handleStop
   }, [])
 
-  const doSend: OnSend = useCallback((message, files) => {
+  const doSend: OnSend = useCallback((message, files, is_regenerate, last_answer) => {
     const data: any = {
       query: message,
       inputs: currentConversationId ? currentConversationItem?.inputs : newConversationInputs,
       conversation_id: currentConversationId,
+      is_regenerate: !!is_regenerate,
+      parent_message_id: last_answer?.id || null,
     }
 
     if (appConfig?.file_upload?.image.enabled && files?.length)
@@ -93,6 +97,23 @@ const ChatWrapper = () => {
     isInstalledApp,
     appId,
   ])
+
+  const doRegenerate = useCallback((chatItem: ChatItem) => {
+    const index = chatList.findIndex(item => item.id === chatItem.id)
+    if (index === -1)
+      return
+
+    const prevMessages = chatList.slice(0, index)
+    const question = prevMessages.pop()
+    const lastAnswer = prevMessages.at(-1)
+
+    if (!question)
+      return
+
+    handleUpdateChatList(prevMessages)
+    doSend(question.content, question.message_files, true, (!lastAnswer || lastAnswer.isOpeningStatement) ? undefined : lastAnswer)
+  }, [chatList, handleUpdateChatList, doSend])
+
   const chatNode = useMemo(() => {
     if (inputsForms.length) {
       return (
@@ -124,6 +145,7 @@ const ChatWrapper = () => {
       chatFooterClassName='pb-4'
       chatFooterInnerClassName={cn('mx-auto w-full max-w-[720px] tablet:px-4', isMobile && 'px-4')}
       onSend={doSend}
+      onRegenerate={doRegenerate}
       onStopResponding={handleStop}
       chatNode={chatNode}
       allToolIcons={appMeta?.tool_icons || {}}

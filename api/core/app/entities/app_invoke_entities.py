@@ -145,6 +145,8 @@ class AdvancedChatAppGenerateEntity(AppGenerateEntity):
     app_config: WorkflowUIBasedAppConfig
 
     conversation_id: Optional[str] = None
+    is_regenerate: bool
+    parent_message_id: Optional[str] = None
     query: str
 
     class SingleIterationRunEntity(BaseModel):

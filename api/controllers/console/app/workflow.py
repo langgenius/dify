@@ -166,6 +166,9 @@ class AdvancedChatDraftWorkflowRunApi(Resource):
         parser.add_argument("query", type=str, required=True, location="json", default="")
         parser.add_argument("files", type=list, location="json")
         parser.add_argument("conversation_id", type=uuid_value, location="json")
+        parser.add_argument("is_regenerate", type=bool, required=False, default=False, location="json")
+        parser.add_argument("parent_message_id", type=uuid_value, required=False, location="json")
+
         args = parser.parse_args()
 
         try:
