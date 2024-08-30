@@ -1,10 +1,8 @@
 import json
 from datetime import datetime
 
-from sqlalchemy import ForeignKey
 from sqlalchemy.orm import Mapped, mapped_column
 
-from core.tools.entities.common_entities import I18nObject
 from core.tools.entities.tool_bundle import ApiToolBundle
 from core.tools.entities.tool_entities import ApiProviderSchemaType, WorkflowToolParameterConfiguration
 from extensions.ext_database import db
