@@ -18,6 +18,7 @@ type Props = {
   onChange: (condition: Condition) => void
   varType: VarType
   hasSubVariable: boolean
+  readOnly: boolean
 }
 
 const FilterCondition: FC<Props> = ({
@@ -25,6 +26,7 @@ const FilterCondition: FC<Props> = ({
   varType,
   onChange,
   hasSubVariable,
+  readOnly,
 }) => {
   const { t } = useTranslation()
   const isSelect = [ComparisonOperator.in, ComparisonOperator.notIn, ComparisonOperator.allOf].includes(condition.comparison_operator)
@@ -74,10 +76,12 @@ const FilterCondition: FC<Props> = ({
       )}
       <div className='flex space-x-1'>
         <ConditionOperator
+          className='h-8 bg-components-input-bg-normal'
           varType={varType}
           value={condition.comparison_operator}
           onSelect={handleChange('comparison_operator')}
           file={hasSubVariable ? { key: condition.key } : undefined}
+          disabled={readOnly}
         />
         {!comparisonOperatorNotRequireValue(condition.comparison_operator) && (
           <>
@@ -87,7 +91,7 @@ const FilterCondition: FC<Props> = ({
                 defaultValue={condition.value}
                 onSelect={item => handleChange('value')(item.value)}
                 className='!text-[13px]'
-                wrapperClassName='grow'
+                wrapperClassName='grow h-8'
                 placeholder='Select value'
               />
             )}

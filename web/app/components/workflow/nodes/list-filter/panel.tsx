@@ -61,6 +61,7 @@ const Panel: FC<NodePanelProps<ListFilterNodeType>> = ({
             onChange={handleFilterChange}
             varType={itemVarType}
             hasSubVariable={hasSubVariable}
+            readOnly={readOnly}
           />
         </Field>
         <Split />

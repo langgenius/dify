@@ -17,6 +17,7 @@ import cn from '@/utils/classnames'
 const i18nPrefix = 'workflow.nodes.ifElse'
 
 type ConditionOperatorProps = {
+  className?: string
   disabled?: boolean
   varType: VarType
   file?: { key: string }
@@ -24,6 +25,7 @@ type ConditionOperatorProps = {
   onSelect: (value: ComparisonOperator) => void
 }
 const ConditionOperator = ({
+  className,
   disabled,
   varType,
   file,
@@ -55,7 +57,7 @@ const ConditionOperator = ({
     >
       <PortalToFollowElemTrigger onClick={() => setOpen(v => !v)}>
         <Button
-          className={cn('shrink-0', !selectedOption && 'opacity-50')}
+          className={cn('shrink-0', !selectedOption && 'opacity-50', className)}
           size='small'
           variant='ghost'
           disabled={disabled}
