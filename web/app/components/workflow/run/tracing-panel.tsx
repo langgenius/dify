@@ -112,13 +112,27 @@ function buildLogTree(nodes: NodeTracing[]): TracingNodeProps[] {
         }
       }
       const branchTitle = parallel_start_node_id === node.node_id ? getBranchTitle(parent_parallel_id, parallelStacks[parallel_id].children.length + 1) : ''
-      parallelStacks[parallel_id].children.push({
-        id: node.id,
-        isParallel: false,
-        data: node,
-        children: [],
-        branchTitle,
-      })
+      if (branchTitle) {
+        parallelStacks[parallel_id].children.push({
+          id: node.id,
+          isParallel: false,
+          data: node,
+          children: [],
+          branchTitle,
+        })
+      }
+      else {
+        const sameBranchIndex = parallelStacks[parallel_id].children.findLastIndex(c =>
+          c.data?.execution_metadata.parallel_start_node_id === node.execution_metadata.parallel_start_node_id,
+        )
+        parallelStacks[parallel_id].children.splice(sameBranchIndex + 1, 0, {
+          id: node.id,
+          isParallel: false,
+          data: node,
+          children: [],
+          branchTitle,
+        })
+      }
     }
   }
 
