@@ -516,22 +516,21 @@ class Graph(BaseModel):
                         duplicate_end_node_ids[(node_id, node_id2)] = branch_node_ids
                 
         for (node_id, node_id2), branch_node_ids in duplicate_end_node_ids.items():
-            if node_id not in merge_branch_node_ids or node_id2 not in branch_node_ids:
-                continue
-            
             # check which node is after
             if cls._is_node2_after_node1(
                 node1_id=node_id,
                 node2_id=node_id2,
                 edge_mapping=edge_mapping
             ):
-                del merge_branch_node_ids[node_id]
+                if node_id in merge_branch_node_ids:
+                    del merge_branch_node_ids[node_id]
             elif cls._is_node2_after_node1(
                 node1_id=node_id2,
                 node2_id=node_id,
                 edge_mapping=edge_mapping
             ):
-                del merge_branch_node_ids[node_id2]
+                if node_id2 in merge_branch_node_ids:
+                    del merge_branch_node_ids[node_id2]
 
         branches_merge_node_ids: dict[str, str] = {}
         for node_id, branch_node_ids in merge_branch_node_ids.items():

@@ -19,6 +19,9 @@ from core.app.entities.queue_entities import (
     QueueNodeFailedEvent,
     QueueNodeStartedEvent,
     QueueNodeSucceededEvent,
+    QueueParallelBranchRunFailedEvent,
+    QueueParallelBranchRunStartedEvent,
+    QueueParallelBranchRunSucceededEvent,
     QueuePingEvent,
     QueueStopEvent,
     QueueTextChunkEvent,
@@ -280,6 +283,24 @@ class WorkflowAppGenerateTaskPipeline(BasedGenerateTaskPipeline, WorkflowCycleMa
 
                 if response:
                     yield response
+            elif isinstance(event, QueueParallelBranchRunStartedEvent):
+                if not workflow_run:
+                    raise Exception('Workflow run not initialized.')
+
+                yield self._workflow_parallel_branch_start_to_stream_response(
+                    task_id=self._application_generate_entity.task_id,
+                    workflow_run=workflow_run,
+                    event=event
+                )
+            elif isinstance(event, QueueParallelBranchRunSucceededEvent | QueueParallelBranchRunFailedEvent):
+                if not workflow_run:
+                    raise Exception('Workflow run not initialized.')
+
+                yield self._workflow_parallel_branch_finished_to_stream_response(
+                    task_id=self._application_generate_entity.task_id,
+                    workflow_run=workflow_run,
+                    event=event
+                )
             elif isinstance(event, QueueIterationStartEvent):
                 if not workflow_run:
                     raise Exception('Workflow run not initialized.')

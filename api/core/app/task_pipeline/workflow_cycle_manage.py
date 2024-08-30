@@ -392,6 +392,8 @@ class WorkflowCycleManage:
                 created_at=int(workflow_node_execution.created_at.timestamp()),
                 parallel_id=event.parallel_id,
                 parallel_start_node_id=event.parallel_start_node_id,
+                parent_parallel_id=event.parent_parallel_id,
+                parent_parallel_start_node_id=event.parent_parallel_start_node_id,
             ),
         )
 
@@ -444,6 +446,8 @@ class WorkflowCycleManage:
                 files=self._fetch_files_from_node_outputs(workflow_node_execution.outputs_dict or {}),
                 parallel_id=event.parallel_id,
                 parallel_start_node_id=event.parallel_start_node_id,
+                parent_parallel_id=event.parent_parallel_id,
+                parent_parallel_start_node_id=event.parent_parallel_start_node_id,
             ),
         )
     
