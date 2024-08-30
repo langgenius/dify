@@ -80,7 +80,7 @@ const translation = {
   },
   env: {
     envPanelTitle: '环境变量',
-    envDescription: '环境变量是一种存储敏感信息的方法，如 API 密钥、数据库密码等。它们被存储在工作流程中，而不是代码中，以便在不同环墋中共享。',
+    envDescription: '环境变量是一种存储敏感信息的方法，如 API 密钥、数据库密码等。它们被存储在工作流程中，而不是代码中，以便在不同环境中共享。',
     envPanelButton: '添加环境变量',
     modal: {
       title: '添加环境变量',
