@@ -123,7 +123,7 @@ function buildLogTree(nodes: NodeTracing[]): TracingNodeProps[] {
       }
       else {
         const sameBranchIndex = parallelStacks[parallel_id].children.findLastIndex(c =>
-          c.data?.execution_metadata.parallel_start_node_id === node.execution_metadata.parallel_start_node_id,
+          c.data?.execution_metadata.parallel_start_node_id === node.execution_metadata?.parallel_start_node_id,
         )
         parallelStacks[parallel_id].children.splice(sameBranchIndex + 1, 0, {
           id: node.id,
