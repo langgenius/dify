@@ -1,3 +1,4 @@
+import type { ComparisonOperator } from '../if-else/types'
 import type { CommonNodeType, ValueSelector } from '@/app/components/workflow/types'
 
 export enum OrderBy {
@@ -12,8 +13,8 @@ export type Limit = {
 
 export type Condition = {
   key: string
-  comparison_operator: string
-  value: string
+  comparison_operator: ComparisonOperator
+  value: string | number
 }
 
 export type ListFilterNodeType = CommonNodeType & {
