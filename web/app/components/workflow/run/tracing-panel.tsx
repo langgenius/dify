@@ -77,10 +77,12 @@ function buildLogTree(nodes: NodeTracing[]): TracingNodeProps[] {
     let parallel_id = node.execution_metadata?.parallel_id ?? null
     const parent_parallel_id = node.execution_metadata?.parent_parallel_id ?? null
     let parallel_start_node_id = node.execution_metadata?.parallel_start_node_id ?? null
+    const parent_parallel_start_node_id = node.execution_metadata?.parent_parallel_start_node_id ?? null
 
     if (node.node_type === BlockEnum.Iteration) {
       parallel_id = node.parallel_id ?? null
       parallel_start_node_id = node.parallel_start_node_id ?? null
+      console.log(node)
     }
 
     if (!parallel_id) {
@@ -103,7 +105,10 @@ function buildLogTree(nodes: NodeTracing[]): TracingNodeProps[] {
         parallelStacks[parallel_id] = newParallelGroup
 
         if (parent_parallel_id && parallelStacks[parent_parallel_id]) {
-          parallelStacks[parent_parallel_id].children.push(newParallelGroup)
+          const sameBranchIndex = parallelStacks[parent_parallel_id].children.findLastIndex(c =>
+            c.data?.execution_metadata.parallel_start_node_id === parent_parallel_start_node_id,
+          )
+          parallelStacks[parent_parallel_id].children.splice(sameBranchIndex + 1, 0, newParallelGroup)
           newParallelGroup.parallelTitle = getParallelTitle(parent_parallel_id)
         }
         else {
@@ -123,7 +128,7 @@ function buildLogTree(nodes: NodeTracing[]): TracingNodeProps[] {
       }
       else {
         const sameBranchIndex = parallelStacks[parallel_id].children.findLastIndex(c =>
-          c.data?.execution_metadata.parallel_start_node_id === node.execution_metadata?.parallel_start_node_id,
+          c.data?.execution_metadata.parallel_start_node_id === parallel_start_node_id,
         )
         parallelStacks[parallel_id].children.splice(sameBranchIndex + 1, 0, {
           id: node.id,
