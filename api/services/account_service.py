@@ -253,7 +253,7 @@ class AccountService:
         account_email = account.email if account else email
         account_language = account.interface_language if account else languages[0]
 
-        if cls.reset_password_rate_limiter.is_rate_limited(account.email):
+        if cls.reset_password_rate_limiter.is_rate_limited(account_email):
             raise RateLimitExceededError(f"Rate limit exceeded for email: {account_email}. Please try again later.")
 
         code = "".join([str(random.randint(0, 9)) for _ in range(6)])
