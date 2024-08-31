@@ -6,7 +6,6 @@ from typing import Optional, Union, cast
 import cohere
 from cohere import (
     ChatMessage,
-    ChatStreamRequestToolResultsItem,
     GenerateStreamedResponse,
     GenerateStreamedResponse_StreamEnd,
     GenerateStreamedResponse_StreamError,
@@ -20,6 +19,7 @@ from cohere import (
     Tool,
     ToolCall,
     ToolParameterDefinitionsValue,
+    ToolResult,
 )
 from cohere.core import RequestOptions
 
@@ -497,7 +497,7 @@ class CohereLargeLanguageModel(LargeLanguageModel):
                 index += 1
 
     def _convert_prompt_messages_to_message_and_chat_histories(self, prompt_messages: list[PromptMessage]) \
-            -> tuple[str, list[ChatMessage], list[ChatStreamRequestToolResultsItem]]:
+            -> tuple[str, list[ChatMessage], list[ToolResult]]:
         """
         Convert prompt messages to message and chat histories
         :param prompt_messages: prompt messages
@@ -510,7 +510,7 @@ class CohereLargeLanguageModel(LargeLanguageModel):
                 prompt_message = cast(AssistantPromptMessage, prompt_message)
                 if prompt_message.tool_calls:
                     for tool_call in prompt_message.tool_calls:
-                        latest_tool_call_n_outputs.append(ChatStreamRequestToolResultsItem(
+                        latest_tool_call_n_outputs.append(ToolResult(
                             call=ToolCall(
                                 name=tool_call.function.name,
                                 parameters=json.loads(tool_call.function.arguments)
@@ -527,7 +527,7 @@ class CohereLargeLanguageModel(LargeLanguageModel):
                     i = 0
                     for tool_call_n_outputs in latest_tool_call_n_outputs:
                         if tool_call_n_outputs.call.name == prompt_message.tool_call_id:
-                            latest_tool_call_n_outputs[i] = ChatStreamRequestToolResultsItem(
+                            latest_tool_call_n_outputs[i] = ToolResult(
                                 call=ToolCall(
                                     name=tool_call_n_outputs.call.name,
                                     parameters=tool_call_n_outputs.call.parameters

@@ -1726,13 +1726,13 @@ requests-toolbelt = ">=0.9.1"
 
 [[package]]
 name = "cohere"
-version = "5.8.1"
+version = "5.9.0"
 description = ""
 optional = false
 python-versions = "<4.0,>=3.8"
 files = [
-    {file = "cohere-5.8.1-py3-none-any.whl", hash = "sha256:92362c651dfbfef8c5d34e95de394578d7197ed7875c6fcbf101e84b60db7fbd"},
-    {file = "cohere-5.8.1.tar.gz", hash = "sha256:4c0c4468f15f9ad7fb7af15cc9f7305cd6df51243d69e203682be87e9efa5071"},
+    {file = "cohere-5.9.0-py3-none-any.whl", hash = "sha256:7c70cc9e6ade3355e00aa4a77fcb5662b32261a3237e00975d92b97bb5f3c0c9"},
+    {file = "cohere-5.9.0.tar.gz", hash = "sha256:74e5b6e1fed0f617c26dfb8ef1cfccf8334321a51cc886c37374047916d71568"},
 ]
 
 [package.dependencies]
@@ -10092,4 +10092,4 @@ cffi = ["cffi (>=1.11)"]
 [metadata]
 lock-version = "2.0"
 python-versions = ">=3.10,<3.13"
-content-hash = "10415cea97a868b451b782c8cb58ea066a7d1a0edd47e3eb22e76b24c72a34e2"
+content-hash = "e2c6e9741aab25088e84d6b6bb2f4f449100504d5d3a7276d4a24d4510bf5920"
