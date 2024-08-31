@@ -1,0 +1,40 @@
+identity:
+  name: discord_webhook
+  author: Ice Yao
+  label:
+    en_US: Incoming Webhook to send message
+    zh_Hans: 通过入站Webhook发送消息
+    pt_BR: Incoming Webhook to send message
+  icon: icon.svg
+description:
+  human:
+    en_US: Sending a message on Discord via the Incoming Webhook
+    zh_Hans: 通过入站Webhook在Discord上发送消息
+    pt_BR: Sending a message on Discord via the Incoming Webhook
+  llm: A tool for sending messages to a chat on Discord.
+parameters:
+  - name: webhook_url
+    type: string
+    required: true
+    label:
+      en_US: Discord Incoming Webhook url
+      zh_Hans: Discord入站Webhook的url
+      pt_BR: Discord Incoming Webhook url
+    human_description:
+      en_US: Discord Incoming Webhook url
+      zh_Hans: Discord入站Webhook的url
+      pt_BR: Discord Incoming Webhook url
+    form: form
+  - name: content
+    type: string
+    required: true
+    label:
+      en_US: content
+      zh_Hans: 消息内容
+      pt_BR: content
+    human_description:
+      en_US: Content to sent to the channel or person.
+      zh_Hans: 消息内容文本
+      pt_BR: Content to sent to the channel or person.
+    llm_description: Content of the message
+    form: llm
