@@ -1,5 +1,6 @@
 import base64
 import os
+import re
 import tempfile
 import uuid
 from collections.abc import Generator
@@ -483,9 +484,15 @@ You should also complete the text started with ``` but not tell ``` directly.
                                 # convert image base64 data to file in /tmp
                                 image_url = self._save_base64_image_to_file(message_content.data)
 
-                            sub_message_dict = {
-                                "image": image_url
-                            }
+                            is_video_url = re.search(r'\.(mp4|webm|ogg|mov|avi|mkv|flv|wmv)$', image_url, re.IGNORECASE)
+                            if is_video_url:
+                                sub_message_dict = {
+                                    "video": image_url
+                                }
+                            else:
+                                sub_message_dict = {
+                                    "image": image_url
+                                }
                             sub_messages.append(sub_message_dict)
 
                     # resort sub_messages to ensure text is always at last

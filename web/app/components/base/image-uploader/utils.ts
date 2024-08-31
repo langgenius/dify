@@ -34,3 +34,7 @@ export const imageUpload: ImageUpload = ({
       onErrorCallback()
     })
 }
+
+export const isVideoLink = (url: string): boolean => {
+  return /\.(mp4|mov|avi|mkv|flv|wmv)$/i.test(url)
+}

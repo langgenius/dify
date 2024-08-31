@@ -5,6 +5,7 @@ import {
   RiCloseLine,
   RiLoader2Line,
 } from '@remixicon/react'
+import videoThumbImg from './video-thumb.png'
 import cn from '@/utils/classnames'
 import { RefreshCcw01 } from '@/app/components/base/icons/src/vender/line/arrows'
 import { AlertTriangle } from '@/app/components/base/icons/src/vender/solid/alertsAndFeedback'
@@ -12,6 +13,7 @@ import Tooltip from '@/app/components/base/tooltip'
 import type { ImageFile } from '@/types/app'
 import { TransferMethod } from '@/types/app'
 import ImagePreview from '@/app/components/base/image-uploader/image-preview'
+import { isVideoLink } from '@/app/components/base/image-uploader/utils'
 
 type ImageListProps = {
   list: ImageFile[]
@@ -101,17 +103,22 @@ const ImageList: FC<ImageListProps> = ({
             onLoad={() => handleImageLinkLoadSuccess(item)}
             onError={() => handleImageLinkLoadError(item)}
             src={
-              item.type === TransferMethod.remote_url
-                ? item.url
-                : item.base64Url
-            }
-            onClick={() =>
-              item.progress === 100
-              && setImagePreviewUrl(
-                (item.type === TransferMethod.remote_url
+              isVideoLink(item.url)
+                ? videoThumbImg.src
+                : item.type === TransferMethod.remote_url
                   ? item.url
-                  : item.base64Url) as string,
-              )
+                  : item.base64Url
+            }
+            onClick={
+              isVideoLink(item.url)
+                ? undefined
+                : () =>
+                  item.progress === 100
+                  && setImagePreviewUrl(
+                    (item.type === TransferMethod.remote_url
+                      ? item.url
+                      : item.base64Url) as string,
+                  )
             }
           />
           {!readonly && (

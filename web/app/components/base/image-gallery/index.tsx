@@ -4,6 +4,7 @@ import React, { useState } from 'react'
 import s from './style.module.css'
 import cn from '@/utils/classnames'
 import ImagePreview from '@/app/components/base/image-uploader/image-preview'
+import { isVideoLink } from '@/app/components/base/image-uploader/utils'
 
 type Props = {
   srcs: string[]
@@ -38,16 +39,18 @@ const ImageGallery: FC<Props> = ({
     <div className={cn(s[`img-${imgNum}`], 'flex flex-wrap')}>
       {/* TODO: support preview */}
       {srcs.map((src, index) => (
-        // eslint-disable-next-line @next/next/no-img-element
-        <img
-          key={index}
-          className={s.item}
-          style={imgStyle}
-          src={src}
-          alt=''
-          onClick={() => setImagePreviewUrl(src)}
-          onError={e => e.currentTarget.remove()}
-        />
+
+        isVideoLink(src)
+          ? <video key={index} className={s.item} style={imgStyle} src={src} controls />
+          : <img
+            key={index}
+            className={s.item}
+            style={imgStyle}
+            src={src}
+            alt=''
+            onClick={() => setImagePreviewUrl(src)}
+            onError={e => e.currentTarget.remove()}
+          />
       ))}
       {
         imagePreviewUrl && (
