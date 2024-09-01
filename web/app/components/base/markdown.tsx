@@ -8,7 +8,7 @@ import RemarkGfm from 'remark-gfm'
 import SyntaxHighlighter from 'react-syntax-highlighter'
 import { atelierHeathLight } from 'react-syntax-highlighter/dist/esm/styles/hljs'
 import type { RefObject } from 'react'
-import { memo, useEffect, useMemo, useRef, useState } from 'react'
+import { Component, memo, useEffect, useMemo, useRef, useState } from 'react'
 import type { CodeComponent } from 'react-markdown/lib/ast-to-react'
 import cn from '@/utils/classnames'
 import CopyBtn from '@/app/components/base/copy-btn'
@@ -104,7 +104,7 @@ const CodeBlock: CodeComponent = memo(({ inline, className, children, ...props }
   const match = /language-(\w+)/.exec(className || '')
   const language = match?.[1]
   const languageShowName = getCorrectCapitalizationLanguageName(language || '')
-  let chartData = JSON.parse(String('{"title":{"text":"Something went wrong."}}').replace(/\n$/, ''))
+  let chartData = JSON.parse(String('{"title":{"text":"ECharts error - Wrong JSON format."}}').replace(/\n$/, ''))
   if (language === 'echarts') {
     try {
       chartData = JSON.parse(String(children).replace(/\n$/, ''))
@@ -143,10 +143,10 @@ const CodeBlock: CodeComponent = memo(({ inline, className, children, ...props }
             ? (<Flowchart PrimitiveCode={String(children).replace(/\n$/, '')} />)
             : (
               (language === 'echarts')
-                ? (<div style={{ minHeight: '250px', minWidth: '250px' }}><ReactEcharts
+                ? (<div style={{ minHeight: '250px', minWidth: '250px' }}><ErrorBoundary><ReactEcharts
                   option={chartData}
                 >
-                </ReactEcharts></div>)
+                </ReactEcharts></ErrorBoundary></div>)
                 : (<SyntaxHighlighter
                   {...props}
                   style={atelierHeathLight}
@@ -210,4 +210,26 @@ export function Markdown(props: { content: string; className?: string }) {
       </ReactMarkdown>
     </div>
   )
+}
+
+// **Add an ECharts runtime error handler
+// Avoid error #7832 (Crash when ECharts accesses undefined objects)
+// This can happen when a component attempts to access an undefined object that references an unregistered map, causing the program to crash.
+
+export default class ErrorBoundary extends Component {
+  constructor(props) {
+    super(props)
+    this.state = { hasError: false }
+  }
+
+  componentDidCatch(error, errorInfo) {
+    this.setState({ hasError: true })
+    console.error(error, errorInfo)
+  }
+
+  render() {
+    if (this.state.hasError)
+      return <div>Oops! ECharts reported a runtime error. <br />(see the browser console for more information)</div>
+    return this.props.children
+  }
 }
