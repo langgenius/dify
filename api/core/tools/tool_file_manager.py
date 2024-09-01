@@ -57,22 +57,32 @@ class ToolFileManager:
 
     @staticmethod
     def create_file_by_raw(
-        user_id: str, tenant_id: str, conversation_id: Optional[str], file_binary: bytes, mimetype: str
+        *,
+        user_id: str,
+        tenant_id: str,
+        conversation_id: Optional[str],
+        file_binary: bytes,
+        mimetype: str,
     ) -> ToolFile:
-        """
-        create file
-        """
         extension = guess_extension(mimetype) or ".bin"
         unique_name = uuid4().hex
-        filename = f"tools/{tenant_id}/{unique_name}{extension}"
-        storage.save(filename, file_binary)
+        filename = f"{unique_name}{extension}"
+        filepath = f"tools/{tenant_id}/{filename}"
+        storage.save(filepath, file_binary)
 
         tool_file = ToolFile(
-            user_id=user_id, tenant_id=tenant_id, conversation_id=conversation_id, file_key=filename, mimetype=mimetype
+            user_id=user_id,
+            tenant_id=tenant_id,
+            conversation_id=conversation_id,
+            file_key=filepath,
+            mimetype=mimetype,
+            name=filename,
+            size=len(file_binary),
         )
 
         db.session.add(tool_file)
         db.session.commit()
+        db.session.refresh(tool_file)
 
         return tool_file
 
@@ -80,46 +90,39 @@ class ToolFileManager:
     def create_file_by_url(
         user_id: str,
         tenant_id: str,
-        conversation_id: str,
+        conversation_id: str | None,
         file_url: str,
     ) -> ToolFile:
-        """
-        create file
-        """
         # try to download image
-        response = get(file_url)
-        response.raise_for_status()
-        blob = response.content
+        try:
+            response = get(file_url)
+            response.raise_for_status()
+            blob = response.content
+        except Exception as e:
+            logger.error(f"Failed to download file from {file_url}: {e}")
+            raise
+
         mimetype = guess_type(file_url)[0] or "octet/stream"
         extension = guess_extension(mimetype) or ".bin"
         unique_name = uuid4().hex
-        filename = f"tools/{tenant_id}/{unique_name}{extension}"
-        storage.save(filename, blob)
+        filename = f"{unique_name}{extension}"
+        filepath = f"tools/{tenant_id}/{filename}"
+        storage.save(filepath, blob)
 
         tool_file = ToolFile(
             user_id=user_id,
             tenant_id=tenant_id,
             conversation_id=conversation_id,
-            file_key=filename,
+            file_key=filepath,
             mimetype=mimetype,
             original_url=file_url,
+            name=filename,
+            size=len(blob),
         )
 
         db.session.add(tool_file)
         db.session.commit()
 
-        return tool_file
-
-    @staticmethod
-    def create_file_by_key(
-        user_id: str, tenant_id: str, conversation_id: str, file_key: str, mimetype: str
-    ) -> ToolFile:
-        """
-        create file
-        """
-        tool_file = ToolFile(
-            user_id=user_id, tenant_id=tenant_id, conversation_id=conversation_id, file_key=file_key, mimetype=mimetype
-        )
         return tool_file
 
     @staticmethod
@@ -131,7 +134,7 @@ class ToolFileManager:
 
         :return: the binary of the file, mime type
         """
-        tool_file: ToolFile = (
+        tool_file = (
             db.session.query(ToolFile)
             .filter(
                 ToolFile.id == id,
@@ -155,7 +158,7 @@ class ToolFileManager:
 
         :return: the binary of the file, mime type
         """
-        message_file: MessageFile = (
+        message_file = (
             db.session.query(MessageFile)
             .filter(
                 MessageFile.id == id,
@@ -166,13 +169,16 @@ class ToolFileManager:
         # Check if message_file is not None
         if message_file is not None:
             # get tool file id
-            tool_file_id = message_file.url.split("/")[-1]
-            # trim extension
-            tool_file_id = tool_file_id.split(".")[0]
+            if message_file.url is not None:
+                tool_file_id = message_file.url.split("/")[-1]
+                # trim extension
+                tool_file_id = tool_file_id.split(".")[0]
+            else:
+                tool_file_id = None
         else:
             tool_file_id = None
 
-        tool_file: ToolFile = (
+        tool_file = (
             db.session.query(ToolFile)
             .filter(
                 ToolFile.id == tool_file_id,
@@ -196,7 +202,7 @@ class ToolFileManager:
 
         :return: the binary of the file, mime type
         """
-        tool_file: ToolFile = (
+        tool_file = (
             db.session.query(ToolFile)
             .filter(
                 ToolFile.id == tool_file_id,

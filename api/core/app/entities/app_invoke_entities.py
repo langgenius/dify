@@ -1,4 +1,4 @@
-from collections.abc import Mapping
+from collections.abc import Mapping, Sequence
 from enum import Enum
 from typing import Any, Optional
 
@@ -6,7 +6,7 @@ from pydantic import BaseModel, ConfigDict
 
 from core.app.app_config.entities import AppConfig, EasyUIBasedAppConfig, WorkflowUIBasedAppConfig
 from core.entities.provider_configuration import ProviderModelBundle
-from core.file.file_obj import FileVar
+from core.file.models import File
 from core.model_runtime.entities.model_entities import AIModelEntity
 from core.ops.ops_trace_manager import TraceQueueManager
 
@@ -22,7 +22,7 @@ class InvokeFrom(Enum):
     DEBUGGER = "debugger"
 
     @classmethod
-    def value_of(cls, value: str) -> "InvokeFrom":
+    def value_of(cls, value: str):
         """
         Get value of given mode.
 
@@ -81,7 +81,7 @@ class AppGenerateEntity(BaseModel):
     app_config: AppConfig
 
     inputs: Mapping[str, Any]
-    files: list[FileVar] = []
+    files: Sequence[File]
     user_id: str
 
     # extras

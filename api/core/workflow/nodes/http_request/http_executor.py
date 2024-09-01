@@ -1,22 +1,35 @@
 import json
+from collections.abc import Mapping, Sequence
 from copy import deepcopy
 from random import randint
-from typing import Any, Optional, Union
+from typing import Any, Literal
 from urllib.parse import urlencode
 
 import httpx
 
 from configs import dify_config
+from core.file import file_manager
 from core.helper import ssrf_proxy
-from core.workflow.entities.variable_entities import VariableSelector
 from core.workflow.entities.variable_pool import VariablePool
 from core.workflow.nodes.http_request.entities import (
     HttpRequestNodeAuthorization,
-    HttpRequestNodeBody,
     HttpRequestNodeData,
     HttpRequestNodeTimeout,
 )
-from core.workflow.utils.variable_template_parser import VariableTemplateParser
+
+BODY_TYPE_TO_CONTENT_TYPE = {
+    "json": "application/json",
+    "x-www-form-urlencoded": "application/x-www-form-urlencoded",
+    "form-data": "multipart/form-data",
+    "raw-text": "text/plain",
+}
+NON_FILE_CONTENT_TYPES = (
+    "application/json",
+    "application/xml",
+    "text/html",
+    "text/plain",
+    "application/x-www-form-urlencoded",
+)
 
 
 class HttpExecutorResponse:
@@ -25,54 +38,37 @@ class HttpExecutorResponse:
 
     def __init__(self, response: httpx.Response):
         self.response = response
-        self.headers = dict(response.headers) if isinstance(self.response, httpx.Response) else {}
+        self.headers = dict(response.headers)
 
     @property
-    def is_file(self) -> bool:
-        """
-        check if response is file
-        """
-        content_type = self.get_content_type()
-        file_content_types = ["image", "audio", "video"]
+    def is_file(self):
+        content_type = self.content_type
+        content_disposition = self.response.headers.get("Content-Disposition", "")
 
-        return any(v in content_type for v in file_content_types)
-
-    def get_content_type(self) -> str:
-        return self.headers.get("content-type", "")
-
-    def extract_file(self) -> tuple[str, bytes]:
-        """
-        extract file from response if content type is file related
-        """
-        if self.is_file:
-            return self.get_content_type(), self.body
-
-        return "", b""
+        return "attachment" in content_disposition or (
+            not any(non_file in content_type for non_file in NON_FILE_CONTENT_TYPES)
+            and any(file_type in content_type for file_type in ("application/", "image/", "audio/", "video/"))
+        )
 
     @property
-    def content(self) -> str:
-        if isinstance(self.response, httpx.Response):
-            return self.response.text
-        else:
-            raise ValueError(f"Invalid response type {type(self.response)}")
+    def content_type(self) -> str:
+        return self.headers.get("Content-Type", "")
 
     @property
-    def body(self) -> bytes:
-        if isinstance(self.response, httpx.Response):
-            return self.response.content
-        else:
-            raise ValueError(f"Invalid response type {type(self.response)}")
+    def text(self) -> str:
+        return self.response.text
+
+    @property
+    def content(self) -> bytes:
+        return self.response.content
 
     @property
     def status_code(self) -> int:
-        if isinstance(self.response, httpx.Response):
-            return self.response.status_code
-        else:
-            raise ValueError(f"Invalid response type {type(self.response)}")
+        return self.response.status_code
 
     @property
     def size(self) -> int:
-        return len(self.body)
+        return len(self.content)
 
     @property
     def readable_size(self) -> str:
@@ -85,152 +81,154 @@ class HttpExecutorResponse:
 
 
 class HttpExecutor:
-    server_url: str
-    method: str
-    authorization: HttpRequestNodeAuthorization
-    params: dict[str, Any]
-    headers: dict[str, Any]
-    body: Union[None, str]
-    files: Union[None, dict[str, Any]]
-    boundary: str
-    variable_selectors: list[VariableSelector]
+    method: Literal["get", "head", "post", "put", "delete", "patch"]
+    url: str
+    params: Mapping[str, str] | None
+    content: str | bytes | None
+    data: Mapping[str, Any] | None
+    files: Mapping[str, bytes] | None
+    json: Any
+    headers: dict[str, str]
+    auth: HttpRequestNodeAuthorization
     timeout: HttpRequestNodeTimeout
+
+    boundary: str
 
     def __init__(
         self,
+        *,
         node_data: HttpRequestNodeData,
         timeout: HttpRequestNodeTimeout,
-        variable_pool: Optional[VariablePool] = None,
+        variable_pool: VariablePool,
     ):
-        self.server_url = node_data.url
+        # If authorization API key is present, convert the API key using the variable pool
+        if node_data.authorization.type == "api-key":
+            if node_data.authorization.config is None:
+                raise ValueError("authorization config is required")
+            node_data.authorization.config.api_key = variable_pool.convert_template(
+                node_data.authorization.config.api_key
+            ).text
+
+        self.url: str = node_data.url
         self.method = node_data.method
-        self.authorization = node_data.authorization
+        self.auth = node_data.authorization
         self.timeout = timeout
-        self.params = {}
+        self.params = None
         self.headers = {}
-        self.body = None
+        self.content = None
         self.files = None
+        self.data = None
+        self.json = None
 
         # init template
-        self.variable_selectors = []
-        self._init_template(node_data, variable_pool)
+        self.variable_pool = variable_pool
+        self.node_data = node_data
+        self._initialize()
 
-    @staticmethod
-    def _is_json_body(body: HttpRequestNodeBody):
-        """
-        check if body is json
-        """
-        if body and body.type == "json" and body.data:
-            try:
-                json.loads(body.data)
-                return True
-            except:
-                return False
+    def _initialize(self):
+        self._init_url()
+        self._init_params()
+        self._init_headers()
+        self._init_body()
 
-        return False
+    def _init_url(self):
+        self.url = self.variable_pool.convert_template(self.node_data.url).text
 
-    @staticmethod
-    def _to_dict(convert_text: str):
-        """
-        Convert the string like `aa:bb\n cc:dd` to dict `{aa:bb, cc:dd}`
-        """
-        kv_paris = convert_text.split("\n")
-        result = {}
-        for kv in kv_paris:
-            if not kv.strip():
-                continue
+    def _init_params(self):
+        params = self.variable_pool.convert_template(self.node_data.params).text
+        self.params = _plain_text_to_dict(params)
 
-            kv = kv.split(":", maxsplit=1)
-            if len(kv) == 1:
-                k, v = kv[0], ""
-            else:
-                k, v = kv
-            result[k.strip()] = v
-        return result
+    def _init_headers(self):
+        headers = self.variable_pool.convert_template(self.node_data.headers).text
+        self.headers = _plain_text_to_dict(headers)
 
-    def _init_template(self, node_data: HttpRequestNodeData, variable_pool: Optional[VariablePool] = None):
-        # extract all template in url
-        self.server_url, server_url_variable_selectors = self._format_template(node_data.url, variable_pool)
+        body = self.node_data.body
+        if body is None:
+            return
+        if "content-type" not in (k.lower() for k in self.headers) and body.type in BODY_TYPE_TO_CONTENT_TYPE:
+            self.headers["Content-Type"] = BODY_TYPE_TO_CONTENT_TYPE[body.type]
+        if body.type == "form-data":
+            self.boundary = f"----WebKitFormBoundary{_generate_random_string(16)}"
+            self.headers["Content-Type"] = f"multipart/form-data; boundary={self.boundary}"
 
-        # extract all template in params
-        params, params_variable_selectors = self._format_template(node_data.params, variable_pool)
-        self.params = self._to_dict(params)
+    def _init_body(self):
+        body = self.node_data.body
+        if body is not None:
+            data = body.data
+            match body.type:
+                case "none":
+                    self.content = ""
+                case "raw-text":
+                    self.content = self.variable_pool.convert_template(data[0].value).text
+                case "json":
+                    json_object = json.loads(data[0].value)
+                    self.json = self._parse_object_contains_variables(json_object)
+                case "binary":
+                    file_selector = data[0].file
+                    file_variable = self.variable_pool.get_file(file_selector)
+                    if file_variable is None:
+                        raise ValueError(f"cannot fetch file with selector {file_selector}")
+                    file = file_variable.value
+                    if file.related_id is None:
+                        raise ValueError(f"file {file.related_id} not found")
+                    self.content = file_manager.download(upload_file_id=file.related_id, tenant_id=file.tenant_id)
+                case "x-www-form-urlencoded":
+                    form_data = {
+                        self.variable_pool.convert_template(item.key).text: self.variable_pool.convert_template(
+                            item.value
+                        ).text
+                        for item in data
+                    }
+                    self.data = form_data
+                case "form-data":
+                    form_data = {
+                        self.variable_pool.convert_template(item.key).text: self.variable_pool.convert_template(
+                            item.value
+                        ).text
+                        for item in filter(lambda item: item.type == "text", data)
+                    }
+                    file_selectors = {
+                        self.variable_pool.convert_template(item.key).text: item.file
+                        for item in filter(lambda item: item.type == "file", data)
+                    }
+                    files = {k: self.variable_pool.get_file(selector) for k, selector in file_selectors.items()}
+                    files = {k: v for k, v in files.items() if v is not None}
+                    files = {k: variable.value for k, variable in files.items()}
+                    files = {
+                        k: file_manager.download(upload_file_id=v.related_id, tenant_id=v.tenant_id)
+                        for k, v in files.items()
+                        if v.related_id is not None
+                    }
 
-        # extract all template in headers
-        headers, headers_variable_selectors = self._format_template(node_data.headers, variable_pool)
-        self.headers = self._to_dict(headers)
-
-        # extract all template in body
-        body_data_variable_selectors = []
-        if node_data.body:
-            # check if it's a valid JSON
-            is_valid_json = self._is_json_body(node_data.body)
-
-            body_data = node_data.body.data or ""
-            if body_data:
-                body_data, body_data_variable_selectors = self._format_template(body_data, variable_pool, is_valid_json)
-
-            content_type_is_set = any(key.lower() == "content-type" for key in self.headers)
-            if node_data.body.type == "json" and not content_type_is_set:
-                self.headers["Content-Type"] = "application/json"
-            elif node_data.body.type == "x-www-form-urlencoded" and not content_type_is_set:
-                self.headers["Content-Type"] = "application/x-www-form-urlencoded"
-
-            if node_data.body.type in {"form-data", "x-www-form-urlencoded"}:
-                body = self._to_dict(body_data)
-
-                if node_data.body.type == "form-data":
-                    self.files = {k: ("", v) for k, v in body.items()}
-                    random_str = lambda n: "".join([chr(randint(97, 122)) for _ in range(n)])
-                    self.boundary = f"----WebKitFormBoundary{random_str(16)}"
-
-                    self.headers["Content-Type"] = f"multipart/form-data; boundary={self.boundary}"
-                else:
-                    self.body = urlencode(body)
-            elif node_data.body.type in {"json", "raw-text"}:
-                self.body = body_data
-            elif node_data.body.type == "none":
-                self.body = ""
-
-        self.variable_selectors = (
-            server_url_variable_selectors
-            + params_variable_selectors
-            + headers_variable_selectors
-            + body_data_variable_selectors
-        )
+                    self.data = form_data
+                    self.files = files
 
     def _assembling_headers(self) -> dict[str, Any]:
-        authorization = deepcopy(self.authorization)
+        authorization = deepcopy(self.auth)
         headers = deepcopy(self.headers) or {}
-        if self.authorization.type == "api-key":
-            if self.authorization.config is None:
+        if self.auth.type == "api-key":
+            if self.auth.config is None:
                 raise ValueError("self.authorization config is required")
             if authorization.config is None:
                 raise ValueError("authorization config is required")
 
-            if self.authorization.config.api_key is None:
+            if self.auth.config.api_key is None:
                 raise ValueError("api_key is required")
 
             if not authorization.config.header:
                 authorization.config.header = "Authorization"
 
-            if self.authorization.config.type == "bearer":
+            if self.auth.config.type == "bearer":
                 headers[authorization.config.header] = f"Bearer {authorization.config.api_key}"
-            elif self.authorization.config.type == "basic":
+            elif self.auth.config.type == "basic":
                 headers[authorization.config.header] = f"Basic {authorization.config.api_key}"
-            elif self.authorization.config.type == "custom":
-                headers[authorization.config.header] = authorization.config.api_key
+            elif self.auth.config.type == "custom":
+                headers[authorization.config.header] = authorization.config.api_key or ""
 
         return headers
 
     def _validate_and_parse_response(self, response: httpx.Response) -> HttpExecutorResponse:
-        """
-        validate the response
-        """
-        if isinstance(response, httpx.Response):
-            executor_response = HttpExecutorResponse(response)
-        else:
-            raise ValueError(f"Invalid response type {type(response)}")
+        executor_response = HttpExecutorResponse(response)
 
         threshold_size = (
             dify_config.HTTP_REQUEST_NODE_MAX_BINARY_SIZE
@@ -250,94 +248,133 @@ class HttpExecutor:
         """
         do http request depending on api bundle
         """
-        kwargs = {
-            "url": self.server_url,
+        if self.method not in {"get", "head", "post", "put", "delete", "patch"}:
+            raise ValueError(f"Invalid http method {self.method}")
+
+        request_args = {
+            "url": self.url,
+            "data": self.data,
+            "files": self.files,
+            "json": self.json,
+            "content": self.content,
             "headers": headers,
             "params": self.params,
             "timeout": (self.timeout.connect, self.timeout.read, self.timeout.write),
             "follow_redirects": True,
         }
 
-        if self.method in {"get", "head", "post", "put", "delete", "patch"}:
-            response = getattr(ssrf_proxy, self.method)(data=self.body, files=self.files, **kwargs)
-        else:
-            raise ValueError(f"Invalid http method {self.method}")
+        response = getattr(ssrf_proxy, self.method)(**request_args)
         return response
 
     def invoke(self) -> HttpExecutorResponse:
-        """
-        invoke http request
-        """
         # assemble headers
         headers = self._assembling_headers()
-
         # do http request
         response = self._do_http_request(headers)
-
         # validate response
         return self._validate_and_parse_response(response)
 
-    def to_raw_request(self) -> str:
-        """
-        convert to raw request
-        """
-        server_url = self.server_url
+    def to_log(self):
+        url = self.url
         if self.params:
-            server_url += f"?{urlencode(self.params)}"
-
-        raw_request = f"{self.method.upper()} {server_url} HTTP/1.1\n"
-
+            url += f"?{urlencode(self.params)}"
+        raw = f"{self.method.upper()} {url} HTTP/1.1\n"
         headers = self._assembling_headers()
         for k, v in headers.items():
-            # get authorization header
-            if self.authorization.type == "api-key":
+            if self.auth.type == "api-key":
                 authorization_header = "Authorization"
-                if self.authorization.config and self.authorization.config.header:
-                    authorization_header = self.authorization.config.header
-
+                if self.auth.config and self.auth.config.header:
+                    authorization_header = self.auth.config.header
                 if k.lower() == authorization_header.lower():
-                    raw_request += f'{k}: {"*" * len(v)}\n'
+                    raw += f'{k}: {"*" * len(v)}\n'
                     continue
+            raw += f"{k}: {v}\n"
+        raw += "\n"
 
-            raw_request += f"{k}: {v}\n"
-
-        raw_request += "\n"
-
-        # if files, use multipart/form-data with boundary
         if self.files:
+            # if files, use multipart/form-data with boundary
             boundary = self.boundary
-            raw_request += f"--{boundary}"
+            raw += f"--{boundary}"
             for k, v in self.files.items():
-                raw_request += f'\nContent-Disposition: form-data; name="{k}"\n\n'
-                raw_request += f"{v[1]}\n"
-                raw_request += f"--{boundary}"
-            raw_request += "--"
-        else:
-            raw_request += self.body or ""
+                raw += f'\nContent-Disposition: form-data; name="{k}"\n\n'
+                raw += f"{v[1]}\n"
+                raw += f"--{boundary}"
+            raw += "--"
+        elif self.node_data.body:
+            if self.content:
+                # for binary content
+                if isinstance(self.content, str):
+                    raw += self.content
+                elif isinstance(self.content, bytes):
+                    raw += self.content.decode("utf-8", errors="replace")
+            elif self.data and self.node_data.body.type == "x-www-form-urlencoded":
+                # for x-www-form-urlencoded
+                raw += urlencode(self.data)
+            elif self.data and self.node_data.body.type == "form-data":
+                # for form-data
+                boundary = self.boundary
+                for key, value in self.data.items():
+                    raw += f"--{boundary}\r\n"
+                    raw += f'Content-Disposition: form-data; name="{key}"\r\n\r\n'
+                    raw += f"{value}\r\n"
+                raw += f"--{boundary}--\r\n"
+            elif self.json:
+                # for json
+                raw += json.dumps(self.json)
+            elif self.node_data.body.type == "raw-text":
+                # for raw text
+                raw += self.node_data.body.data[0].value
 
-        return raw_request
+        return raw
 
-    def _format_template(
-        self, template: str, variable_pool: Optional[VariablePool], escape_quotes: bool = False
-    ) -> tuple[str, list[VariableSelector]]:
-        """
-        format template
-        """
-        variable_template_parser = VariableTemplateParser(template=template)
-        variable_selectors = variable_template_parser.extract_variable_selectors()
+    def _parse_object_contains_variables(self, obj: str | dict | list, /) -> Mapping[str, Any] | Sequence[Any] | str:
+        if isinstance(obj, dict):
+            return {k: self._parse_object_contains_variables(v) for k, v in obj.items()}
+        elif isinstance(obj, list):
+            return [self._parse_object_contains_variables(v) for v in obj]
+        elif isinstance(obj, str):
+            return self.variable_pool.convert_template(obj).text
 
-        if variable_pool:
-            variable_value_mapping = {}
-            for variable_selector in variable_selectors:
-                variable = variable_pool.get_any(variable_selector.value_selector)
-                if variable is None:
-                    raise ValueError(f"Variable {variable_selector.variable} not found")
-                if escape_quotes and isinstance(variable, str):
-                    value = variable.replace('"', '\\"').replace("\n", "\\n")
-                else:
-                    value = variable
-                variable_value_mapping[variable_selector.variable] = value
 
-            return variable_template_parser.format(variable_value_mapping), variable_selectors
-        else:
-            return template, variable_selectors
+def _plain_text_to_dict(text: str, /) -> dict[str, str]:
+    """
+    Convert a string of key-value pairs to a dictionary.
+
+    Each line in the input string represents a key-value pair.
+    Keys and values are separated by ':'.
+    Empty values are allowed.
+
+    Examples:
+        'aa:bb\n cc:dd'  -> {'aa': 'bb', 'cc': 'dd'}
+        'aa:\n cc:dd\n'  -> {'aa': '', 'cc': 'dd'}
+        'aa\n cc : dd'   -> {'aa': '', 'cc': 'dd'}
+
+    Args:
+        convert_text (str): The input string to convert.
+
+    Returns:
+        dict[str, str]: A dictionary of key-value pairs.
+    """
+    return {
+        key.strip(): (value[0].strip() if value else "")
+        for line in text.splitlines()
+        if line.strip()
+        for key, *value in [line.split(":", 1)]
+    }
+
+
+def _generate_random_string(n: int) -> str:
+    """
+    Generate a random string of lowercase ASCII letters.
+
+    Args:
+        n (int): The length of the random string to generate.
+
+    Returns:
+        str: A random string of lowercase ASCII letters with length n.
+
+    Example:
+        >>> _generate_random_string(5)
+        'abcde'
+    """
+    return "".join([chr(randint(97, 122)) for _ in range(n)])

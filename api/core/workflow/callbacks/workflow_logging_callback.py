@@ -1,7 +1,6 @@
 from typing import Optional
 
 from core.model_runtime.utils.encoders import jsonable_encoder
-from core.workflow.callbacks.base_workflow_callback import WorkflowCallback
 from core.workflow.graph_engine.entities.event import (
     GraphEngineEvent,
     GraphRunFailedEvent,
@@ -19,6 +18,8 @@ from core.workflow.graph_engine.entities.event import (
     ParallelBranchRunStartedEvent,
     ParallelBranchRunSucceededEvent,
 )
+
+from .base_workflow_callback import WorkflowCallback
 
 _TEXT_COLOR_MAPPING = {
     "blue": "36;1",
