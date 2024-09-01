@@ -385,6 +385,8 @@ export const useChat = (
             const currentIndex = responseItem.workflowProcess!.tracing!.findIndex((item) => {
               if (!item.execution_metadata?.parallel_id)
                 return item.node_id === data.node_id
+              if (item.execution_metadata?.parallel_id === data.execution_metadata?.parallel_id)
+                return item.node_id === data.node_id && item.execution_metadata?.parallel_start_node_id === data.execution_metadata?.parallel_start_node_id
 
               return item.node_id === data.node_id && item.execution_metadata?.parallel_id === data.execution_metadata?.parallel_id
             })
