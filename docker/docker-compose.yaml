@@ -1,6 +1,5 @@
 x-shared-env: &shared-api-worker-env
   LOG_LEVEL: ${LOG_LEVEL:-INFO}
-  LOG_FILE: ${LOG_FILE:-}
   DEBUG: ${DEBUG:-false}
   FLASK_DEBUG: ${FLASK_DEBUG:-false}
   SECRET_KEY: ${SECRET_KEY:-sk-9f73s3ljTXVcMT3Blb3ljTqtsKiGHXVcMT3BlbkFJLK7U}
@@ -23,11 +22,6 @@ x-shared-env: &shared-api-worker-env
   CELERY_WORKER_CLASS: ${CELERY_WORKER_CLASS:-}
   GUNICORN_TIMEOUT: ${GUNICORN_TIMEOUT:-360}
   CELERY_WORKER_AMOUNT: ${CELERY_WORKER_AMOUNT:-}
-  CELERY_AUTO_SCALE: ${CELERY_AUTO_SCALE:-false}
-  CELERY_MAX_WORKERS: ${CELERY_MAX_WORKERS:-}
-  CELERY_MIN_WORKERS: ${CELERY_MIN_WORKERS:-}
-  API_TOOL_DEFAULT_CONNECT_TIMEOUT: ${API_TOOL_DEFAULT_CONNECT_TIMEOUT:-10}
-  API_TOOL_DEFAULT_READ_TIMEOUT: ${API_TOOL_DEFAULT_READ_TIMEOUT:-60}
   DB_USERNAME: ${DB_USERNAME:-postgres}
   DB_PASSWORD: ${DB_PASSWORD:-difyai123456}
   DB_HOST: ${DB_HOST:-db}
@@ -75,7 +69,6 @@ x-shared-env: &shared-api-worker-env
   ALIYUN_OSS_ENDPOINT: ${ALIYUN_OSS_ENDPOINT:-}
   ALIYUN_OSS_REGION: ${ALIYUN_OSS_REGION:-}
   ALIYUN_OSS_AUTH_VERSION: ${ALIYUN_OSS_AUTH_VERSION:-v4}
-  ALIYUN_OSS_PATHS: ${ALIYUN_OSS_PATH:-}
   TENCENT_COS_BUCKET_NAME: ${TENCENT_COS_BUCKET_NAME:-}
   TENCENT_COS_SECRET_KEY: ${TENCENT_COS_SECRET_KEY:-}
   TENCENT_COS_SECRET_ID: ${TENCENT_COS_SECRET_ID:-}
@@ -139,11 +132,6 @@ x-shared-env: &shared-api-worker-env
   CHROMA_DATABASE: ${CHROMA_DATABASE:-default_database}
   CHROMA_AUTH_PROVIDER: ${CHROMA_AUTH_PROVIDER:-chromadb.auth.token_authn.TokenAuthClientProvider}
   CHROMA_AUTH_CREDENTIALS: ${CHROMA_AUTH_CREDENTIALS:-}
-  ELASTICSEARCH_HOST: ${ELASTICSEARCH_HOST:-0.0.0.0}
-  ELASTICSEARCH_PORT: ${ELASTICSEARCH_PORT:-9200}
-  ELASTICSEARCH_USERNAME: ${ELASTICSEARCH_USERNAME:-elastic}
-  ELASTICSEARCH_PASSWORD: ${ELASTICSEARCH_PASSWORD:-elastic}
-  KIBANA_PORT: ${KIBANA_PORT:-5601}
   # AnalyticDB configuration
   ANALYTICDB_KEY_ID: ${ANALYTICDB_KEY_ID:-}
   ANALYTICDB_KEY_SECRET: ${ANALYTICDB_KEY_SECRET:-}
@@ -195,13 +183,12 @@ x-shared-env: &shared-api-worker-env
   CODE_EXECUTION_API_KEY: ${SANDBOX_API_KEY:-dify-sandbox}
   CODE_MAX_NUMBER: ${CODE_MAX_NUMBER:-9223372036854775807}
   CODE_MIN_NUMBER: ${CODE_MIN_NUMBER:--9223372036854775808}
-  CODE_MAX_DEPTH: ${CODE_MAX_DEPTH:-5}
-  CODE_MAX_PRECISION: ${CODE_MAX_PRECISION:-20}
   CODE_MAX_STRING_LENGTH: ${CODE_MAX_STRING_LENGTH:-80000}
   TEMPLATE_TRANSFORM_MAX_LENGTH: ${TEMPLATE_TRANSFORM_MAX_LENGTH:-80000}
   CODE_MAX_STRING_ARRAY_LENGTH: ${CODE_MAX_STRING_ARRAY_LENGTH:-30}
   CODE_MAX_OBJECT_ARRAY_LENGTH: ${CODE_MAX_OBJECT_ARRAY_LENGTH:-30}
   CODE_MAX_NUMBER_ARRAY_LENGTH: ${CODE_MAX_NUMBER_ARRAY_LENGTH:-1000}
+
 
 services:
   # API service
@@ -249,7 +236,6 @@ services:
       CONSOLE_API_URL: ${CONSOLE_API_URL:-}
       APP_API_URL: ${APP_API_URL:-}
       SENTRY_DSN: ${WEB_SENTRY_DSN:-}
-      NEXT_TELEMETRY_DISABLED: ${NEXT_TELEMETRY_DISABLED:-0}
 
   # The postgres database.
   db:
@@ -260,12 +246,6 @@ services:
       POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-difyai123456}
       POSTGRES_DB: ${POSTGRES_DB:-dify}
       PGDATA: ${PGDATA:-/var/lib/postgresql/data/pgdata}
-    command: >
-      postgres -c 'max_connections=${POSTGRES_MAX_CONNECTIONS:-100}'
-               -c 'shared_buffers=${POSTGRES_SHARED_BUFFERS:-128MB}'
-               -c 'work_mem=${POSTGRES_WORK_MEM:-4MB}'
-               -c 'maintenance_work_mem=${POSTGRES_MAINTENANCE_WORK_MEM:-64MB}'
-               -c 'effective_cache_size=${POSTGRES_EFFECTIVE_CACHE_SIZE:-4096MB}'
     volumes:
       - ./volumes/db/data:/var/lib/postgresql/data
     healthcheck:
@@ -426,7 +406,7 @@ services:
 
   # pgvecto-rs vector store
   pgvecto-rs:
-    image: tensorchord/pgvecto-rs:pg16-v0.3.0
+    image: tensorchord/pgvecto-rs:pg16-v0.2.0
     profiles:
       - pgvecto-rs
     restart: always
@@ -489,7 +469,7 @@ services:
       - ./volumes/milvus/etcd:/etcd
     command: etcd -advertise-client-urls=http://127.0.0.1:2379 -listen-client-urls http://0.0.0.0:2379 --data-dir /etcd
     healthcheck:
-      test: [ "CMD", "etcdctl", "endpoint", "health" ]
+      test: ["CMD", "etcdctl", "endpoint", "health"]
       interval: 30s
       timeout: 20s
       retries: 3
@@ -508,7 +488,7 @@ services:
       - ./volumes/milvus/minio:/minio_data
     command: minio server /minio_data --console-address ":9001"
     healthcheck:
-      test: [ "CMD", "curl", "-f", "http://localhost:9000/minio/health/live" ]
+      test: ["CMD", "curl", "-f", "http://localhost:9000/minio/health/live"]
       interval: 30s
       timeout: 20s
       retries: 3
@@ -520,7 +500,7 @@ services:
     image: milvusdb/milvus:v2.3.1
     profiles:
       - milvus
-    command: [ "milvus", "run", "standalone" ]
+    command: ["milvus", "run", "standalone"]
     environment:
       ETCD_ENDPOINTS: ${ETCD_ENDPOINTS:-etcd:2379}
       MINIO_ADDRESS: ${MINIO_ADDRESS:-minio:9000}
@@ -528,7 +508,7 @@ services:
     volumes:
       - ./volumes/milvus/milvus:/var/lib/milvus
     healthcheck:
-      test: [ "CMD", "curl", "-f", "http://localhost:9091/healthz" ]
+      test: ["CMD", "curl", "-f", "http://localhost:9091/healthz"]
       interval: 30s
       start_period: 90s
       timeout: 20s
@@ -582,7 +562,7 @@ services:
   # MyScale vector database
   myscale:
     container_name: myscale
-    image: myscale/myscaledb:1.6.4
+    image: myscale/myscaledb:1.6
     profiles:
       - myscale
     restart: always
@@ -594,6 +574,7 @@ services:
     ports:
       - ${MYSCALE_PORT:-8123}:${MYSCALE_PORT:-8123}
 
+<<<<<<< HEAD
   # https://www.elastic.co/guide/en/elasticsearch/reference/current/settings.html
   # https://www.elastic.co/guide/en/elasticsearch/reference/current/docker.html#docker-prod-prerequisites
   elasticsearch:
@@ -659,8 +640,9 @@ services:
     volumes:
       - ./volumes/unstructured:/app/data
 
+=======
+>>>>>>> f85325740 (Update docker-compose.yaml)
 networks:
-  # create a network between sandbox, api and can not access outside.
   milvus:
     driver: bridge
   opensearch-net:
@@ -669,4 +651,3 @@ networks:
 
 volumes:
   oradata:
-  dify_es01_data:
