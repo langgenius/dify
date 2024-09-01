@@ -305,6 +305,8 @@ services:
       - CERTBOT_OPTIONS=${CERTBOT_OPTIONS:-}
     entrypoint: [ "/docker-entrypoint.sh" ]
     command: [ "tail", "-f", "/dev/null" ]
+    networks:
+      - default
 
   # The Weaviate vector store.
   weaviate:
@@ -534,6 +536,7 @@ services:
     ports:
       - ${MYSCALE_PORT:-8123}:${MYSCALE_PORT:-8123}
 
+<<<<<<< HEAD
   # https://www.elastic.co/guide/en/elasticsearch/reference/current/settings.html
   # https://www.elastic.co/guide/en/elasticsearch/reference/current/docker.html#docker-prod-prerequisites
   elasticsearch:
@@ -600,7 +603,6 @@ services:
       - ./volumes/unstructured:/app/data
 
 networks:
-  # create a network between sandbox, api and can not access outside.
   milvus:
     driver: bridge
   opensearch-net:
