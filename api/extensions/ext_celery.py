@@ -1,7 +1,40 @@
 from datetime import timedelta
+from pathlib import Path
 
-from celery import Celery, Task
+from celery import Celery, Task, bootsteps
+from celery.signals import beat_init, worker_ready, worker_shutdown
 from flask import Flask
+
+# File for validating worker readiness
+READINESS_FILE = Path("/tmp/dify_celery_ready")
+# File for validating worker liveness
+HEARTBEAT_FILE = Path("/tmp/dify_celery_worker_heartbeat")
+
+HEARTBEAT_UPDATE_INTERVAL = 1.0  # seconds
+
+
+class LivenessProbe(bootsteps.StartStopStep):
+    requires = {"celery.worker.components:Timer"}
+
+    def __init__(self, parent, **kwargs):
+        super().__init__(parent, **kwargs)
+        self.requests = []
+        self.tref = None
+
+    def start(self, worker):
+        self.tref = worker.timer.call_repeatedly(
+            HEARTBEAT_UPDATE_INTERVAL,
+            self.update_heartbeat_file,
+            (worker,),
+            priority=10,
+        )
+        READINESS_FILE.touch()
+
+    def stop(self, worker):
+        HEARTBEAT_FILE.unlink(missing_ok=True)
+
+    def update_heartbeat_file(self, worker):
+        HEARTBEAT_FILE.touch()
 
 
 def init_app(app: Flask) -> Celery:
@@ -55,5 +88,23 @@ def init_app(app: Flask) -> Celery:
         },
     }
     celery_app.conf.update(beat_schedule=beat_schedule, imports=imports)
+
+    # add LivenessProbe
+    celery_app.steps["worker"].add(LivenessProbe)
+
+    # add worker signals
+    @worker_ready.connect
+    def worker_ready_handler(**_):
+        READINESS_FILE.touch()
+
+    @worker_shutdown.connect
+    def worker_shutdown_handler(**_):
+        READINESS_FILE.unlink(missing_ok=True)
+        HEARTBEAT_FILE.unlink(missing_ok=True)
+
+    # add beat signals
+    @beat_init.connect
+    def beat_init_handler(**_):
+        READINESS_FILE.touch()
 
     return celery_app
