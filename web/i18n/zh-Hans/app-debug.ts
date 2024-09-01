@@ -430,6 +430,7 @@ const translation = {
     run: '运行',
   },
   result: '结果',
+  noResult: '输出结果展示在这',
   datasetConfig: {
     settingTitle: '召回设置',
     knowledgeTip: '点击 “+” 按钮添加知识库',

@@ -16,7 +16,7 @@ import type {
 import { useToastContext } from '@/app/components/base/toast'
 import { TransferMethod } from '@/types/app'
 import type { VisionFile } from '@/types/app'
-import { replaceStringWithValues } from '@/app/components/app/configuration/prompt-value-panel'
+import { replaceStringWithValues } from '@/app/components/app/configuration/prompt-value-panel/utils'
 
 type GetAbortController = (abortController: AbortController) => void
 type SendCallback = {

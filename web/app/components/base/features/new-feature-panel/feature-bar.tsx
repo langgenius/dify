@@ -9,11 +9,13 @@ import { useFeatures } from '@/app/components/base/features/hooks'
 import cn from '@/utils/classnames'
 
 type Props = {
+  isChatMode?: boolean
   disabled?: boolean
   onFeatureBarClick?: (state: boolean) => void
 }
 
 const FeatureBar = ({
+  isChatMode = true,
   disabled,
   onFeatureBarClick,
 }: Props) => {
@@ -22,8 +24,13 @@ const FeatureBar = ({
   const [modalOpen, setModalOpen] = useState(false)
 
   const noFeatureEnabled = useMemo(() => {
-    return !Object.values(features).some(f => f.enabled)
-  }, [features])
+    // completion app citation is always true but not enabled for setting
+    const data = {
+      ...features,
+      citation: { enabled: isChatMode ? features.citation?.enabled : false },
+    }
+    return !Object.values(data).some(f => f.enabled)
+  }, [features, isChatMode])
 
   return (
     <div className='-translate-y-2 m-1 mt-0 px-2.5 py-2 pt-4 bg-util-colors-indigo-indigo-50 rounded-b-[10px] border-l border-b border-r border-components-panel-border-subtle'>
@@ -102,7 +109,7 @@ const FeatureBar = ({
                 </div>
               </Tooltip>
             )}
-            {!!features.citation?.enabled && (
+            {isChatMode && !!features.citation?.enabled && (
               <Tooltip
                 popupContent={t('appDebug.feature.citation.title')}
               >

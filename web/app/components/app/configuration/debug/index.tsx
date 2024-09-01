@@ -8,6 +8,7 @@ import { useBoolean } from 'ahooks'
 import {
   RiAddLine,
   RiEqualizer2Line,
+  RiSparklingFill,
 } from '@remixicon/react'
 import { useContext } from 'use-context-selector'
 import { useShallow } from 'zustand/react/shallow'
@@ -47,6 +48,7 @@ import { useProviderContext } from '@/context/provider-context'
 import AgentLogModal from '@/app/components/base/agent-log-modal'
 import PromptLogModal from '@/app/components/base/prompt-log-modal'
 import { useStore as useAppStore } from '@/app/components/app/store'
+import { useFeatures } from '@/app/components/base/features/hooks'
 
 type IDebug = {
   isAPIKeySet: boolean
@@ -82,8 +84,8 @@ const Debug: FC<IDebug> = ({
     speechToTextConfig,
     textToSpeechConfig,
     citationConfig,
-    moderationConfig,
-    moreLikeThisConfig,
+    // moderationConfig,
+    // moreLikeThisConfig,
     formattingChanged,
     setFormattingChanged,
     dataSets,
@@ -200,6 +202,7 @@ const Debug: FC<IDebug> = ({
 
   const [completionRes, setCompletionRes] = useState('')
   const [messageId, setMessageId] = useState<string | null>(null)
+  const features = useFeatures(s => s.features)
 
   const sendTextCompletion = async () => {
     if (isResponding) {
@@ -230,36 +233,33 @@ const Debug: FC<IDebug> = ({
       completion_prompt_config: {},
       user_input_form: promptVariablesToUserInputsForm(modelConfig.configs.prompt_variables),
       dataset_query_variable: contextVar || '',
-      opening_statement: introduction,
-      suggested_questions_after_answer: suggestedQuestionsAfterAnswerConfig,
-      speech_to_text: speechToTextConfig,
-      retriever_resource: citationConfig,
-      sensitive_word_avoidance: moderationConfig,
-      more_like_this: moreLikeThisConfig,
-      model: {
-        provider: modelConfig.provider,
-        name: modelConfig.model_id,
-        mode: modelConfig.mode,
-        completion_params: completionParams as any,
-      },
-      text_to_speech: {
-        enabled: false,
-        voice: '',
-        language: '',
-      },
-      agent_mode: {
-        enabled: false,
-        tools: [],
-      },
       dataset_configs: {
         ...datasetConfigs,
         datasets: {
           datasets: [...postDatasets],
         } as any,
       },
+      agent_mode: {
+        enabled: false,
+        tools: [],
+      },
+      model: {
+        provider: modelConfig.provider,
+        name: modelConfig.model_id,
+        mode: modelConfig.mode,
+        completion_params: completionParams as any,
+      },
+      more_like_this: features.moreLikeThis as any,
+      sensitive_word_avoidance: features.moderation as any,
+      text_to_speech: features.text2speech as any,
+      // ##TODO## file_upload
       file_upload: {
         image: visionConfig,
       },
+      opening_statement: introduction,
+      suggested_questions_after_answer: suggestedQuestionsAfterAnswerConfig,
+      speech_to_text: speechToTextConfig,
+      retriever_resource: citationConfig,
     }
 
     if (isAdvancedMode) {
@@ -449,7 +449,6 @@ const Debug: FC<IDebug> = ({
             <ChatUserInput inputs={inputs} />
           </div>
         )}
-        {/* ##TODO## new style of completion */}
         {mode === AppType.completion && (
           <PromptValuePanel
             appType={mode as AppType}
@@ -509,26 +508,36 @@ const Debug: FC<IDebug> = ({
             )}
             {/* Text  Generation */}
             {mode === AppType.completion && (
-              <div className="mt-6 px-3 pb-4">
-                <GroupName name={t('appDebug.result')} />
+              <>
                 {(completionRes || isResponding) && (
-                  <TextGeneration
-                    className="mt-2"
-                    content={completionRes}
-                    isLoading={!completionRes && isResponding}
-                    isShowTextToSpeech={textToSpeechConfig.enabled && !!text2speechDefaultModel}
-                    isResponding={isResponding}
-                    isInstalledApp={false}
-                    messageId={messageId}
-                    isError={false}
-                    onRetry={() => { }}
-                    supportAnnotation
-                    appId={appId}
-                    varList={varList}
-                    siteInfo={null}
-                  />
+                  <>
+                    <div className='mx-4 mt-3'><GroupName name={t('appDebug.result')} /></div>
+                    <div className='mx-3 mb-8'>
+                      <TextGeneration
+                        className="mt-2"
+                        content={completionRes}
+                        isLoading={!completionRes && isResponding}
+                        isShowTextToSpeech={textToSpeechConfig.enabled && !!text2speechDefaultModel}
+                        isResponding={isResponding}
+                        isInstalledApp={false}
+                        messageId={messageId}
+                        isError={false}
+                        onRetry={() => { }}
+                        supportAnnotation
+                        appId={appId}
+                        varList={varList}
+                        siteInfo={null}
+                      />
+                    </div>
+                  </>
                 )}
-              </div>
+                {!completionRes && !isResponding && (
+                  <div className='grow flex flex-col items-center justify-center gap-2'>
+                    <RiSparklingFill className='w-12 h-12 text-text-empty-state-icon' />
+                    <div className='text-text-quaternary system-sm-regular'>{t('appDebug.noResult')}</div>
+                  </div>
+                )}
+              </>
             )}
             {mode === AppType.completion && showPromptLogModal && (
               <PromptLogModal

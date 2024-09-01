@@ -437,6 +437,7 @@ const translation = {
     run: 'RUN',
   },
   result: 'Output Text',
+  noResult: 'Output will be displayed here.',
   datasetConfig: {
     settingTitle: 'Retrieval settings',
     knowledgeTip: 'Click the “+” button to add knowledge',

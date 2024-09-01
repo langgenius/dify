@@ -18,7 +18,7 @@ import type {
 import { TransferMethod } from '@/types/app'
 import { useToastContext } from '@/app/components/base/toast'
 import { ssePost } from '@/service/base'
-import { replaceStringWithValues } from '@/app/components/app/configuration/prompt-value-panel'
+import { replaceStringWithValues } from '@/app/components/app/configuration/prompt-value-panel/utils'
 import type { Annotation } from '@/models/log'
 import { WorkflowRunningStatus } from '@/app/components/workflow/types'
 import useTimestamp from '@/hooks/use-timestamp'

@@ -212,7 +212,7 @@ export type ModelConfig = {
   user_input_form: UserInputFormItem[]
   dataset_query_variable?: string
   more_like_this: {
-    enabled: boolean
+    enabled?: boolean
   }
   suggested_questions_after_answer: {
     enabled: boolean
