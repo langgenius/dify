@@ -2,7 +2,6 @@ import uuid
 from collections.abc import Generator
 from datetime import datetime, timezone
 
-from core.workflow.entities.node_entities import NodeType
 from core.workflow.entities.variable_pool import VariablePool
 from core.workflow.enums import SystemVariableKey
 from core.workflow.graph_engine.entities.event import (
@@ -15,6 +14,7 @@ from core.workflow.graph_engine.entities.graph import Graph
 from core.workflow.graph_engine.entities.runtime_route_state import RouteNodeState
 from core.workflow.nodes.answer.answer_stream_processor import AnswerStreamProcessor
 from core.workflow.nodes.start.entities import StartNodeData
+from enums import NodeType
 
 
 def _recursive_process(graph: Graph, next_node_id: str) -> Generator[GraphEngineEvent, None, None]:

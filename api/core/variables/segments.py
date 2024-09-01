@@ -5,6 +5,8 @@ from typing import Any
 
 from pydantic import BaseModel, ConfigDict, field_validator
 
+from core.file import File
+
 from .types import SegmentType
 
 
@@ -39,6 +41,9 @@ class Segment(BaseModel):
 
     @property
     def size(self) -> int:
+        """
+        Return the size of the value in bytes.
+        """
         return sys.getsizeof(self.value)
 
     def to_object(self) -> Any:
@@ -99,11 +104,25 @@ class ArraySegment(Segment):
     def markdown(self) -> str:
         items = []
         for item in self.value:
-            if hasattr(item, "to_markdown"):
-                items.append(item.to_markdown())
-            else:
-                items.append(str(item))
+            items.append(str(item))
         return "\n".join(items)
+
+
+class FileSegment(Segment):
+    value_type: SegmentType = SegmentType.FILE
+    value: File
+
+    @property
+    def markdown(self) -> str:
+        return self.value.markdown
+
+    @property
+    def log(self) -> str:
+        return str(self.value)
+
+    @property
+    def text(self) -> str:
+        return str(self.value)
 
 
 class ArrayAnySegment(ArraySegment):
@@ -124,3 +143,15 @@ class ArrayNumberSegment(ArraySegment):
 class ArrayObjectSegment(ArraySegment):
     value_type: SegmentType = SegmentType.ARRAY_OBJECT
     value: Sequence[Mapping[str, Any]]
+
+
+class ArrayFileSegment(ArraySegment):
+    value_type: SegmentType = SegmentType.ARRAY_FILE
+    value: Sequence[File]
+
+    @property
+    def markdown(self) -> str:
+        items = []
+        for item in self.value:
+            items.append(item.markdown)
+        return "\n".join(items)

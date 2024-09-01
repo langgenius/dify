@@ -2,29 +2,32 @@ from collections.abc import Mapping
 from typing import Any
 
 from configs import dify_config
-
-from .exc import VariableError
-from .segments import (
+from core.file import File
+from core.variables import (
     ArrayAnySegment,
+    ArrayFileSegment,
+    ArrayNumberSegment,
+    ArrayNumberVariable,
+    ArrayObjectSegment,
+    ArrayObjectVariable,
+    ArrayStringSegment,
+    ArrayStringVariable,
+    FileSegment,
     FloatSegment,
+    FloatVariable,
     IntegerSegment,
+    IntegerVariable,
     NoneSegment,
     ObjectSegment,
-    Segment,
-    StringSegment,
-)
-from .types import SegmentType
-from .variables import (
-    ArrayNumberVariable,
-    ArrayObjectVariable,
-    ArrayStringVariable,
-    FloatVariable,
-    IntegerVariable,
     ObjectVariable,
     SecretVariable,
+    Segment,
+    SegmentType,
+    StringSegment,
     StringVariable,
     Variable,
 )
+from core.variables.exc import VariableError
 
 
 def build_variable_from_mapping(mapping: Mapping[str, Any], /) -> Variable:
@@ -71,6 +74,22 @@ def build_segment(value: Any, /) -> Segment:
         return FloatSegment(value=value)
     if isinstance(value, dict):
         return ObjectSegment(value=value)
+    if isinstance(value, File):
+        return FileSegment(value=value)
     if isinstance(value, list):
-        return ArrayAnySegment(value=value)
+        items = [build_segment(item) for item in value]
+        types = {item.value_type for item in items}
+        if len(types) != 1:
+            return ArrayAnySegment(value=value)
+        match types.pop():
+            case SegmentType.STRING:
+                return ArrayStringSegment(value=value)
+            case SegmentType.NUMBER:
+                return ArrayNumberSegment(value=value)
+            case SegmentType.OBJECT:
+                return ArrayObjectSegment(value=value)
+            case SegmentType.FILE:
+                return ArrayFileSegment(value=value)
+            case _:
+                raise ValueError(f"not supported value {value}")
     raise ValueError(f"not supported value {value}")

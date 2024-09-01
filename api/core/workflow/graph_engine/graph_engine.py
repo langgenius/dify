@@ -10,11 +10,7 @@ from flask import Flask, current_app
 
 from core.app.apps.base_app_queue_manager import GenerateTaskStoppedError
 from core.app.entities.app_invoke_entities import InvokeFrom
-from core.workflow.entities.node_entities import (
-    NodeRunMetadataKey,
-    NodeType,
-    UserFrom,
-)
+from core.workflow.entities.node_entities import NodeRunMetadataKey
 from core.workflow.entities.variable_pool import VariablePool, VariableValue
 from core.workflow.graph_engine.condition_handlers.condition_manager import ConditionManager
 from core.workflow.graph_engine.entities.event import (
@@ -41,6 +37,7 @@ from core.workflow.nodes.base_node import BaseNode
 from core.workflow.nodes.end.end_stream_processor import EndStreamProcessor
 from core.workflow.nodes.event import RunCompletedEvent, RunRetrieverResourceEvent, RunStreamChunkEvent
 from core.workflow.nodes.node_mapping import node_classes
+from enums import NodeType, UserFrom
 from extensions.ext_database import db
 from models.workflow import WorkflowNodeExecutionStatus, WorkflowType
 

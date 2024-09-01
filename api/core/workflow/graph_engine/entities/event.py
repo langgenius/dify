@@ -4,8 +4,8 @@ from typing import Any, Optional
 from pydantic import BaseModel, Field
 
 from core.workflow.entities.base_node_data_entities import BaseNodeData
-from core.workflow.entities.node_entities import NodeType
 from core.workflow.graph_engine.entities.runtime_route_state import RouteNodeState
+from enums import NodeType
 
 
 class GraphEngineEvent(BaseModel):

@@ -51,7 +51,4 @@ class ToolNodeData(BaseNodeData, ToolEntity):
                 raise ValueError("value must be a string, int, float, or bool")
             return typ
 
-    """
-    Tool Node Schema
-    """
     tool_parameters: dict[str, ToolInput]
