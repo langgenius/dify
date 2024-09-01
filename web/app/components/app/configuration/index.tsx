@@ -19,7 +19,7 @@ import {
 import type { ModelAndParameter } from '@/app/components/app/configuration/debug/types'
 import Button from '@/app/components/base/button'
 import Loading from '@/app/components/base/loading'
-import AppPublisher from '@/app/components/app/app-publisher'
+import AppPublisher from '@/app/components/app/app-publisher/features-wrapper'
 import type {
   AnnotationReplyConfig,
   DatasetConfigs,
@@ -638,7 +638,7 @@ const Configuration: FC = () => {
     else { return promptEmpty }
   })()
   const contextVarEmpty = mode === AppType.completion && dataSets.length > 0 && !hasSetContextVar
-  const onPublish = async (modelAndParameter?: ModelAndParameter) => {
+  const onPublish = async (modelAndParameter?: ModelAndParameter, features?: FeaturesData) => {
     const modelId = modelAndParameter?.model || modelConfig.model_id
     const promptTemplate = modelConfig.configs.prompt_template
     const promptVariables = modelConfig.configs.prompt_variables
@@ -679,14 +679,19 @@ const Configuration: FC = () => {
       completion_prompt_config: {},
       user_input_form: promptVariablesToUserInputsForm(promptVariables),
       dataset_query_variable: contextVar || '',
-      opening_statement: introduction || '',
-      suggested_questions: suggestedQuestions || [],
-      more_like_this: moreLikeThisConfig,
-      suggested_questions_after_answer: suggestedQuestionsAfterAnswerConfig,
-      speech_to_text: speechToTextConfig,
-      text_to_speech: textToSpeechConfig,
-      retriever_resource: citationConfig,
-      sensitive_word_avoidance: moderationConfig,
+      //  features
+      more_like_this: features?.moreLikeThis as any,
+      opening_statement: features?.opening?.opening_statement || '',
+      suggested_questions: features?.opening?.suggested_questions || [],
+      sensitive_word_avoidance: features?.moderation as any,
+      speech_to_text: features?.speech2text as any,
+      text_to_speech: features?.text2speech as any,
+      // ##TODO## file_upload
+      file_upload: {
+        image: visionConfig,
+      },
+      suggested_questions_after_answer: features?.suggested as any,
+      retriever_resource: features?.citation as any,
       agent_mode: {
         ...modelConfig.agentConfig,
         strategy: isFunctionCall ? AgentStrategy.functionCall : AgentStrategy.react,
@@ -702,9 +707,6 @@ const Configuration: FC = () => {
         datasets: {
           datasets: [...postDatasets],
         } as any,
-      },
-      file_upload: {
-        image: visionConfig,
       },
     }
 
