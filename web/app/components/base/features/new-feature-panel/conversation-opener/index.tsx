@@ -6,18 +6,23 @@ import { LoveMessage } from '@/app/components/base/icons/src/vender/features'
 import FeatureCard from '@/app/components/base/features/new-feature-panel/feature-card'
 import Button from '@/app/components/base/button'
 import { useFeatures, useFeaturesStore } from '@/app/components/base/features/hooks'
-import type { OnFeaturesChange, OpeningStatement } from '@/app/components/base/features/types'
+import type { OnFeaturesChange } from '@/app/components/base/features/types'
 import { FeatureEnum } from '@/app/components/base/features/types'
 import { useModalContext } from '@/context/modal-context'
+import type { PromptVariable } from '@/models/debug'
 
 type Props = {
   disabled?: boolean
   onChange?: OnFeaturesChange
+  promptVariables?: PromptVariable[]
+  onAutoAddPromptVariable?: (variable: PromptVariable[]) => void
 }
 
 const ConversationOpener = ({
   disabled,
   onChange,
+  promptVariables,
+  onAutoAddPromptVariable,
 }: Props) => {
   const { t } = useTranslation()
   const { setShowOpeningModal } = useModalContext()
@@ -32,7 +37,11 @@ const ConversationOpener = ({
       setFeatures,
     } = featuresStore!.getState()
     setShowOpeningModal({
-      payload: opening as OpeningStatement,
+      payload: {
+        ...opening,
+        promptVariables,
+        onAutoAddPromptVariable,
+      },
       onSaveCallback: (newOpening) => {
         const newFeatures = produce(features, (draft) => {
           draft.opening = newOpening
@@ -46,7 +55,7 @@ const ConversationOpener = ({
           onChange()
       },
     })
-  }, [disabled, featuresStore, onChange, opening, setShowOpeningModal])
+  }, [disabled, featuresStore, onAutoAddPromptVariable, onChange, opening, promptVariables, setShowOpeningModal])
 
   const handleChange = useCallback((type: FeatureEnum, enabled: boolean) => {
     const {

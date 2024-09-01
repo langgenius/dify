@@ -118,7 +118,7 @@ const FeatureBar = ({
                 </div>
               </Tooltip>
             )}
-            {/* annotation reply ##TODO## */}
+            {/* ##TODO## annotation_reply */}
           </div>
           <div className='grow text-text-tertiary body-xs-regular'>{t('appDebug.feature.bar.enableText')}</div>
           <Button className='shrink-0' variant='ghost-accent' size='small' onClick={() => onFeatureBarClick?.(true)}>

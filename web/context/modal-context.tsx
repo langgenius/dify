@@ -18,7 +18,7 @@ import type {
 } from '@/app/components/header/account-setting/model-provider-page/declarations'
 
 import Pricing from '@/app/components/billing/pricing'
-import type { ModerationConfig } from '@/models/debug'
+import type { ModerationConfig, PromptVariable } from '@/models/debug'
 import type {
   ApiBasedExtension,
   ExternalDataTool,
@@ -56,7 +56,10 @@ export type ModalContextState = {
   setShowModelModal: Dispatch<SetStateAction<ModalState<ModelModalType> | null>>
   setShowModelLoadBalancingModal: Dispatch<SetStateAction<ModelLoadBalancingModalProps | null>>
   setShowModelLoadBalancingEntryModal: Dispatch<SetStateAction<ModalState<LoadBalancingEntryModalType> | null>>
-  setShowOpeningModal: Dispatch<SetStateAction<ModalState<OpeningStatement> | null>>
+  setShowOpeningModal: Dispatch<SetStateAction<ModalState<OpeningStatement & {
+    promptVariables?: PromptVariable[]
+    onAutoAddPromptVariable?: (variable: PromptVariable[]) => void
+  }> | null>>
 }
 const ModalContext = createContext<ModalContextState>({
   setShowAccountSettingModal: () => { },
@@ -92,7 +95,10 @@ export const ModalContextProvider = ({
   const [showModelModal, setShowModelModal] = useState<ModalState<ModelModalType> | null>(null)
   const [showModelLoadBalancingModal, setShowModelLoadBalancingModal] = useState<ModelLoadBalancingModalProps | null>(null)
   const [showModelLoadBalancingEntryModal, setShowModelLoadBalancingEntryModal] = useState<ModalState<LoadBalancingEntryModalType> | null>(null)
-  const [showOpeningModal, setShowOpeningModal] = useState<ModalState<OpeningStatement> | null>(null)
+  const [showOpeningModal, setShowOpeningModal] = useState<ModalState<OpeningStatement & {
+    promptVariables?: PromptVariable[]
+    onAutoAddPromptVariable?: (variable: PromptVariable[]) => void
+  }> | null>(null)
   const searchParams = useSearchParams()
   const router = useRouter()
   const [showPricingModal, setShowPricingModal] = useState(searchParams.get('show-pricing') === '1')
@@ -285,7 +291,10 @@ export const ModalContextProvider = ({
           <OpeningSettingModal
             data={showOpeningModal.payload}
             onSave={handleSaveOpeningModal}
-            onCancel={handleCancelOpeningModal} />
+            onCancel={handleCancelOpeningModal}
+            promptVariables={showOpeningModal.payload.promptVariables}
+            onAutoAddPromptVariable={showOpeningModal.payload.onAutoAddPromptVariable}
+          />
         )}
       </>
     </ModalContext.Provider>

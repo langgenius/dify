@@ -466,6 +466,12 @@ const Configuration: FC = () => {
     if (flag)
       formattingChangedDispatcher()
   }, [formattingChangedDispatcher, setShowAppConfigureFeaturesModal])
+  const handleAddPromptVariable = useCallback((variable: PromptVariable[]) => {
+    const newModelConfig = produce(modelConfig, (draft: ModelConfig) => {
+      draft.configs.prompt_variables = variable
+    })
+    setModelConfig(newModelConfig)
+  }, [modelConfig])
 
   useEffect(() => {
     (async () => {
@@ -994,6 +1000,8 @@ const Configuration: FC = () => {
               disabled={false}
               onChange={handleFeaturesChange}
               onClose={() => setShowAppConfigureFeaturesModal(false)}
+              promptVariables={modelConfig.configs.prompt_variables}
+              onAutoAddPromptVariable={handleAddPromptVariable}
             />
           )}
         </>

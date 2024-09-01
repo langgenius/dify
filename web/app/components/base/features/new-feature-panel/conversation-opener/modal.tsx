@@ -1,16 +1,23 @@
-import React, { useEffect, useState } from 'react'
+import React, { useCallback, useEffect, useState } from 'react'
 import { useTranslation } from 'react-i18next'
+import { useBoolean } from 'ahooks'
 import produce from 'immer'
 import { ReactSortable } from 'react-sortablejs'
 import { RiAddLine, RiAsterisk, RiCloseLine, RiDeleteBinLine, RiDraggable } from '@remixicon/react'
 import Modal from '@/app/components/base/modal'
 import Button from '@/app/components/base/button'
+import ConfirmAddVar from '@/app/components/app/configuration/config-prompt/confirm-add-var'
 import type { OpeningStatement } from '@/app/components/base/features/types'
+import { getInputKeys } from '@/app/components/base/block-input'
+import type { PromptVariable } from '@/models/debug'
+import { getNewVar } from '@/utils/var'
 
 type OpeningSettingModalProps = {
   data: OpeningStatement
   onSave: (newState: OpeningStatement) => void
   onCancel: () => void
+  promptVariables?: PromptVariable[]
+  onAutoAddPromptVariable?: (variable: PromptVariable[]) => void
 }
 
 const MAX_QUESTION_NUM = 5
@@ -19,6 +26,8 @@ const OpeningSettingModal = ({
   data,
   onSave,
   onCancel,
+  promptVariables = [],
+  onAutoAddPromptVariable,
 }: OpeningSettingModalProps) => {
   const { t } = useTranslation()
   const [tempValue, setTempValue] = useState(data?.opening_statement || '')
@@ -26,8 +35,29 @@ const OpeningSettingModal = ({
     setTempValue(data.opening_statement || '')
   }, [data.opening_statement])
   const [tempSuggestedQuestions, setTempSuggestedQuestions] = useState(data.suggested_questions || [])
+  const [isShowConfirmAddVar, { setTrue: showConfirmAddVar, setFalse: hideConfirmAddVar }] = useBoolean(false)
+  const [notIncludeKeys, setNotIncludeKeys] = useState<string[]>([])
 
-  const handleSave = () => {
+  const handleSave = useCallback((ignoreVariablesCheck?: boolean) => {
+    if (!ignoreVariablesCheck) {
+      const keys = getInputKeys(tempValue)
+      const promptKeys = promptVariables.map(item => item.key)
+      let notIncludeKeys: string[] = []
+
+      if (promptKeys.length === 0) {
+        if (keys.length > 0)
+          notIncludeKeys = keys
+      }
+      else {
+        notIncludeKeys = keys.filter(key => !promptKeys.includes(key))
+      }
+
+      if (notIncludeKeys.length > 0) {
+        setNotIncludeKeys(notIncludeKeys)
+        showConfirmAddVar()
+        return
+      }
+    }
     const newOpening = produce(data, (draft) => {
       if (draft) {
         draft.opening_statement = tempValue
@@ -35,7 +65,21 @@ const OpeningSettingModal = ({
       }
     })
     onSave(newOpening)
-  }
+  }, [data, onSave, promptVariables, showConfirmAddVar, tempSuggestedQuestions, tempValue])
+
+  const cancelAutoAddVar = useCallback(() => {
+    hideConfirmAddVar()
+    handleSave(true)
+  }, [handleSave, hideConfirmAddVar])
+
+  const autoAddVar = useCallback(() => {
+    onAutoAddPromptVariable?.([
+      ...promptVariables,
+      ...notIncludeKeys.map(key => getNewVar(key, 'string')),
+    ])
+    hideConfirmAddVar()
+    handleSave(true)
+  }, [handleSave, hideConfirmAddVar, notIncludeKeys, onAutoAddPromptVariable, promptVariables])
 
   const renderQuestions = () => {
     return (
@@ -137,11 +181,19 @@ const OpeningSettingModal = ({
         </Button>
         <Button
           variant='primary'
-          onClick={handleSave}
+          onClick={() => handleSave()}
         >
           {t('common.operation.save')}
         </Button>
       </div>
+      {isShowConfirmAddVar && (
+        <ConfirmAddVar
+          varNameArr={notIncludeKeys}
+          onConfrim={autoAddVar}
+          onCancel={cancelAutoAddVar}
+          onHide={hideConfirmAddVar}
+        />
+      )}
     </Modal>
   )
 }

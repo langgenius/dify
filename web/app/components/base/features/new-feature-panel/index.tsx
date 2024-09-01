@@ -25,6 +25,7 @@ import TextToSpeech from '@/app/components/base/features/new-feature-panel/text-
 import FileUpload from '@/app/components/base/features/new-feature-panel/file-upload'
 import FollowUp from '@/app/components/base/features/new-feature-panel/follow-up'
 import Citation from '@/app/components/base/features/new-feature-panel/citation'
+import type { PromptVariable } from '@/models/debug'
 
 type Props = {
   show: boolean
@@ -34,6 +35,8 @@ type Props = {
   onChange?: OnFeaturesChange
   onClose: () => void
   inWorkflow?: boolean
+  promptVariables?: PromptVariable[]
+  onAutoAddPromptVariable?: (variable: PromptVariable[]) => void
 }
 
 const NewFeaturePanel = ({
@@ -44,6 +47,8 @@ const NewFeaturePanel = ({
   onChange,
   onClose,
   inWorkflow = true,
+  promptVariables,
+  onAutoAddPromptVariable,
 }: Props) => {
   const { t } = useTranslation()
   const router = useRouter()
@@ -93,7 +98,12 @@ const NewFeaturePanel = ({
             <MoreLikeThis disabled={disabled} onChange={onChange} />
           )}
           {isChatMode && (
-            <ConversationOpener disabled={disabled} onChange={onChange} />
+            <ConversationOpener
+              disabled={disabled}
+              onChange={onChange}
+              promptVariables={promptVariables}
+              onAutoAddPromptVariable={onAutoAddPromptVariable}
+            />
           )}
           <Moderation disabled={disabled} onChange={onChange} />
           {isChatMode && speech2textDefaultModel && (
@@ -109,7 +119,7 @@ const NewFeaturePanel = ({
           {isChatMode && (
             <Citation disabled={disabled} onChange={onChange} />
           )}
-          {/* annotation reply ##TODO## */}
+          {/* ##TODO## annotation_reply */}
           {showAnnotation && (
             <div className='group mb-1 p-3 border-t-[0.5px] border-l-[0.5px] border-effects-highlight rounded-xl bg-background-section-burn'>
               <div className='mb-2 flex items-center gap-2'>
