@@ -7,6 +7,7 @@ from .segments import (
     ArrayNumberSegment,
     ArrayObjectSegment,
     ArrayStringSegment,
+    FileSegment,
     FloatSegment,
     IntegerSegment,
     NoneSegment,
@@ -73,3 +74,7 @@ class SecretVariable(StringVariable):
 class NoneVariable(NoneSegment, Variable):
     value_type: SegmentType = SegmentType.NONE
     value: None = None
+
+
+class FileVariable(FileSegment, Variable):
+    pass

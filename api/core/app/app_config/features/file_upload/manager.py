@@ -1,12 +1,12 @@
 from collections.abc import Mapping
-from typing import Any, Optional
+from typing import Any
 
-from core.file.file_obj import FileExtraConfig
+from core.file.models import FileExtraConfig
 
 
 class FileUploadConfigManager:
     @classmethod
-    def convert(cls, config: Mapping[str, Any], is_vision: bool = True) -> Optional[FileExtraConfig]:
+    def convert(cls, config: Mapping[str, Any], is_vision: bool = True):
         """
         Convert model config to model config
 
@@ -17,17 +17,17 @@ class FileUploadConfigManager:
         if file_upload_dict:
             if file_upload_dict.get("image"):
                 if "enabled" in file_upload_dict["image"] and file_upload_dict["image"]["enabled"]:
-                    image_config = {
-                        "number_limits": file_upload_dict["image"]["number_limits"],
-                        "transfer_methods": file_upload_dict["image"]["transfer_methods"],
+                    data = {
+                        "image_config": {
+                            "number_limits": file_upload_dict["image"]["number_limits"],
+                            "transfer_methods": file_upload_dict["image"]["transfer_methods"],
+                        }
                     }
 
                     if is_vision:
-                        image_config["detail"] = file_upload_dict["image"]["detail"]
+                        data["image_config"]["detail"] = file_upload_dict["image"]["detail"]
 
-                    return FileExtraConfig(image_config=image_config)
-
-        return None
+                    return FileExtraConfig.model_validate(data)
 
     @classmethod
     def validate_and_set_defaults(cls, config: dict, is_vision: bool = True) -> tuple[dict, list[str]]:

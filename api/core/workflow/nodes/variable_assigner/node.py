@@ -3,12 +3,15 @@ from typing import cast
 from sqlalchemy import select
 from sqlalchemy.orm import Session
 
-from core.app.segments import SegmentType, Variable, factory
+from core.variables import SegmentType, Variable
 from core.workflow.entities.base_node_data_entities import BaseNodeData
-from core.workflow.entities.node_entities import NodeRunResult, NodeType
+from core.workflow.entities.node_entities import NodeRunResult
 from core.workflow.nodes.base_node import BaseNode
+from enums import NodeType
 from extensions.ext_database import db
-from models import ConversationVariable, WorkflowNodeExecutionStatus
+from factories import variable_factory
+from models import ConversationVariable
+from models.workflow import WorkflowNodeExecutionStatus
 
 from .exc import VariableAssignerNodeError
 from .node_data import VariableAssignerData, WriteMode
@@ -80,12 +83,12 @@ def update_conversation_variable(conversation_id: str, variable: Variable):
 def get_zero_value(t: SegmentType):
     match t:
         case SegmentType.ARRAY_OBJECT | SegmentType.ARRAY_STRING | SegmentType.ARRAY_NUMBER:
-            return factory.build_segment([])
+            return variable_factory.build_segment([])
         case SegmentType.OBJECT:
-            return factory.build_segment({})
+            return variable_factory.build_segment({})
         case SegmentType.STRING:
-            return factory.build_segment("")
+            return variable_factory.build_segment("")
         case SegmentType.NUMBER:
-            return factory.build_segment(0)
+            return variable_factory.build_segment(0)
         case _:
             raise VariableAssignerNodeError(f"unsupported variable type: {t}")

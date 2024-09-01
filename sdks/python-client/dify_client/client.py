@@ -56,7 +56,7 @@ class DifyClient:
     
     def get_meta(self,user):
         params = { "user": user}
-        return self._send_request("GET", f"/meta", params=params)
+        return self._send_request("GET", "/meta", params=params)
 
 
 class CompletionClient(DifyClient):

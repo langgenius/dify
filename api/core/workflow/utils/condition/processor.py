@@ -1,7 +1,7 @@
 from collections.abc import Sequence
 from typing import Any, Optional
 
-from core.file.file_obj import FileVar
+from core.file.models import File
 from core.workflow.entities.variable_pool import VariablePool
 from core.workflow.utils.condition.entities import Condition
 from core.workflow.utils.variable_template_parser import VariableTemplateParser
@@ -47,7 +47,7 @@ class ConditionProcessor:
 
     def evaluate_condition(
         self,
-        actual_value: Optional[str | int | float | dict[Any, Any] | list[Any] | FileVar | None],
+        actual_value: Optional[str | int | float | dict[Any, Any] | list[Any] | File | None],
         comparison_operator: str,
         expected_value: Optional[str] = None,
     ) -> bool:

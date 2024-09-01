@@ -1,6 +1,8 @@
 import json
+from typing import Optional
 
 from sqlalchemy import ForeignKey
+from sqlalchemy.orm import Mapped
 
 from core.tools.entities.common_entities import I18nObject
 from core.tools.entities.tool_bundle import ApiToolBundle
@@ -288,27 +290,33 @@ class ToolConversationVariables(db.Model):
 
 
 class ToolFile(db.Model):
-    """
-    store the file created by agent
-    """
-
     __tablename__ = "tool_files"
     __table_args__ = (
         db.PrimaryKeyConstraint("id", name="tool_file_pkey"),
-        # add index for conversation_id
         db.Index("tool_file_conversation_id_idx", "conversation_id"),
     )
 
     id = db.Column(StringUUID, server_default=db.text("uuid_generate_v4()"))
-    # conversation user id
-    user_id = db.Column(StringUUID, nullable=False)
-    # tenant id
-    tenant_id = db.Column(StringUUID, nullable=False)
-    # conversation id
-    conversation_id = db.Column(StringUUID, nullable=True)
-    # file key
-    file_key = db.Column(db.String(255), nullable=False)
-    # mime type
-    mimetype = db.Column(db.String(255), nullable=False)
-    # original url
-    original_url = db.Column(db.String(2048), nullable=True)
+    user_id: Mapped[str] = db.Column(StringUUID, nullable=False)
+    tenant_id: Mapped[str] = db.Column(StringUUID, nullable=False)
+    conversation_id: Mapped[Optional[str]] = db.Column(StringUUID, nullable=True)
+    file_key: Mapped[str] = db.Column(db.String(255), nullable=False)
+    mimetype: Mapped[str] = db.Column(db.String(255), nullable=False)
+    original_url: Mapped[Optional[str]] = db.Column(db.String(2048), nullable=True)
+
+    def __init__(
+        self,
+        *,
+        user_id: str,
+        tenant_id: str,
+        conversation_id: Optional[str] = None,
+        file_key: str,
+        mimetype: str,
+        original_url: Optional[str] = None,
+    ):
+        self.user_id = user_id
+        self.tenant_id = tenant_id
+        self.conversation_id = conversation_id
+        self.file_key = file_key
+        self.mimetype = mimetype
+        self.original_url = original_url

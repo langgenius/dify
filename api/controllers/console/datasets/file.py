@@ -4,6 +4,7 @@ from flask_restful import Resource, marshal_with
 
 import services
 from configs import dify_config
+from constants import ALLOWED_EXTENSIONS, UNSTRUCTURED_ALLOWED_EXTENSIONS
 from controllers.console import api
 from controllers.console.datasets.error import (
     FileTooLargeError,
@@ -15,7 +16,7 @@ from controllers.console.setup import setup_required
 from controllers.console.wraps import account_initialization_required, cloud_edition_billing_resource_check
 from fields.file_fields import file_fields, upload_config_fields
 from libs.login import login_required
-from services.file_service import ALLOWED_EXTENSIONS, UNSTRUCTURED_ALLOWED_EXTENSIONS, FileService
+from services.file_service import FileService
 
 PREVIEW_WORDS_LIMIT = 3000
 
@@ -51,7 +52,7 @@ class FileApi(Resource):
         if len(request.files) > 1:
             raise TooManyFilesError()
         try:
-            upload_file = FileService.upload_file(file, current_user)
+            upload_file = FileService.upload_file(file=file, user=current_user)
         except services.errors.file.FileTooLargeError as file_too_large_error:
             raise FileTooLargeError(file_too_large_error.description)
         except services.errors.file.UnsupportedFileTypeError:

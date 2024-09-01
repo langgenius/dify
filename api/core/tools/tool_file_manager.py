@@ -57,7 +57,12 @@ class ToolFileManager:
 
     @staticmethod
     def create_file_by_raw(
-        user_id: str, tenant_id: str, conversation_id: Optional[str], file_binary: bytes, mimetype: str
+        *,
+        user_id: str,
+        tenant_id: str,
+        conversation_id: Optional[str],
+        file_binary: bytes,
+        mimetype: str,
     ) -> ToolFile:
         """
         create file
@@ -68,7 +73,11 @@ class ToolFileManager:
         storage.save(filename, file_binary)
 
         tool_file = ToolFile(
-            user_id=user_id, tenant_id=tenant_id, conversation_id=conversation_id, file_key=filename, mimetype=mimetype
+            user_id=user_id,
+            tenant_id=tenant_id,
+            conversation_id=conversation_id,
+            file_key=filename,
+            mimetype=mimetype,
         )
 
         db.session.add(tool_file)

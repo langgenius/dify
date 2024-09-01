@@ -17,12 +17,12 @@ from core.app.apps.base_app_queue_manager import AppQueueManager, GenerateTaskSt
 from core.app.apps.message_based_app_generator import MessageBasedAppGenerator
 from core.app.apps.message_based_app_queue_manager import MessageBasedAppQueueManager
 from core.app.entities.app_invoke_entities import AgentChatAppGenerateEntity, InvokeFrom
-from core.file.message_file_parser import MessageFileParser
 from core.model_runtime.errors.invoke import InvokeAuthorizationError, InvokeError
 from core.ops.ops_trace_manager import TraceQueueManager
+from enums import CreatedByRole
 from extensions.ext_database import db
-from models.account import Account
-from models.model import App, EndUser
+from factories import file_factory
+from models import Account, App, EndUser
 
 logger = logging.getLogger(__name__)
 
@@ -97,12 +97,19 @@ class AgentChatAppGenerator(MessageBasedAppGenerator):
             # always enable retriever resource in debugger mode
             override_model_config_dict["retriever_resource"] = {"enabled": True}
 
+        role = CreatedByRole.ACCOUNT if isinstance(user, Account) else CreatedByRole.END_USER
+
         # parse files
         files = args["files"] if args.get("files") else []
-        message_file_parser = MessageFileParser(tenant_id=app_model.tenant_id, app_id=app_model.id)
         file_extra_config = FileUploadConfigManager.convert(override_model_config_dict or app_model_config.to_dict())
         if file_extra_config:
-            file_objs = message_file_parser.validate_and_transform_files_arg(files, file_extra_config, user)
+            file_objs = file_factory.build_from_mappings(
+                mappings=files,
+                tenant_id=app_model.tenant_id,
+                user_id=user.id,
+                role=role,
+                config=file_extra_config,
+            )
         else:
             file_objs = []
 
@@ -115,8 +122,7 @@ class AgentChatAppGenerator(MessageBasedAppGenerator):
         )
 
         # get tracing instance
-        user_id = user.id if isinstance(user, Account) else user.session_id
-        trace_manager = TraceQueueManager(app_model.id, user_id)
+        trace_manager = TraceQueueManager(app_model.id, user.id if isinstance(user, Account) else user.session_id)
 
         # init application generate entity
         application_generate_entity = AgentChatAppGenerateEntity(
@@ -124,7 +130,9 @@ class AgentChatAppGenerator(MessageBasedAppGenerator):
             app_config=app_config,
             model_conf=ModelConfigConverter.convert(app_config),
             conversation_id=conversation.id if conversation else None,
-            inputs=conversation.inputs if conversation else self._get_cleaned_inputs(inputs, app_config),
+            inputs=conversation.inputs
+            if conversation
+            else self._prepare_user_inputs(user_inputs=inputs, app_config=app_config, user_id=user.id, role=role),
             query=query,
             files=file_objs,
             user_id=user.id,

@@ -119,7 +119,7 @@ def create_app() -> Flask:
 
     logging.basicConfig(
         level=app.config.get("LOG_LEVEL"),
-        format=app.config.get("LOG_FORMAT"),
+        format=app.config["LOG_FORMAT"],
         datefmt=app.config.get("LOG_DATEFORMAT"),
         handlers=log_handlers,
         force=True,
@@ -136,6 +136,7 @@ def create_app() -> Flask:
             return datetime.utcfromtimestamp(seconds).astimezone(timezone).timetuple()
 
         for handler in logging.root.handlers:
+            assert handler.formatter
             handler.formatter.converter = time_converter
     initialize_extensions(app)
     register_blueprints(app)

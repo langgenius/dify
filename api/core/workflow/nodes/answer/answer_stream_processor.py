@@ -2,7 +2,7 @@ import logging
 from collections.abc import Generator
 from typing import Optional, cast
 
-from core.file.file_obj import FileVar
+from core.file.models import File
 from core.workflow.entities.variable_pool import VariablePool
 from core.workflow.graph_engine.entities.event import (
     GraphEngineEvent,
@@ -213,9 +213,9 @@ class AnswerStreamProcessor(StreamProcessor):
             return None
 
         if isinstance(value, dict):
-            if "__variant" in value and value["__variant"] == FileVar.__name__:
+            if "__variant" in value and value["__variant"] == File.__name__:
                 return value
-        elif isinstance(value, FileVar):
+        elif isinstance(value, File):
             return value.to_dict()
 
         return None

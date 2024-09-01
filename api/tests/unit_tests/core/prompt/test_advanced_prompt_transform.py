@@ -3,9 +3,14 @@ from unittest.mock import MagicMock
 import pytest
 
 from core.app.app_config.entities import ModelConfigEntity
-from core.file.file_obj import FileExtraConfig, FileTransferMethod, FileType, FileVar
+from core.file import File, FileExtraConfig, FileTransferMethod, FileType, ImageConfig
 from core.memory.token_buffer_memory import TokenBufferMemory
-from core.model_runtime.entities.message_entities import AssistantPromptMessage, PromptMessageRole, UserPromptMessage
+from core.model_runtime.entities.message_entities import (
+    AssistantPromptMessage,
+    ImagePromptMessageContent,
+    PromptMessageRole,
+    UserPromptMessage,
+)
 from core.prompt.advanced_prompt_transform import AdvancedPromptTransform
 from core.prompt.entities.advanced_prompt_entities import ChatModelMessage, CompletionModelPromptTemplate, MemoryConfig
 from core.prompt.utils.prompt_template_parser import PromptTemplateParser
@@ -123,17 +128,13 @@ def test__get_chat_model_prompt_messages_with_files_no_memory(get_chat_model_arg
     model_config_mock, _, messages, inputs, context = get_chat_model_args
 
     files = [
-        FileVar(
+        File(
             id="file1",
             tenant_id="tenant1",
             type=FileType.IMAGE,
             transfer_method=FileTransferMethod.REMOTE_URL,
             url="https://example.com/image1.jpg",
-            extra_config=FileExtraConfig(
-                image_config={
-                    "detail": "high",
-                }
-            ),
+            extra_config=FileExtraConfig(image_config=ImageConfig(detail=ImagePromptMessageContent.DETAIL.HIGH)),
         )
     ]
 

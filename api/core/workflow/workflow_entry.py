@@ -8,10 +8,9 @@ from configs import dify_config
 from core.app.app_config.entities import FileExtraConfig
 from core.app.apps.base_app_queue_manager import GenerateTaskStoppedError
 from core.app.entities.app_invoke_entities import InvokeFrom
-from core.file.file_obj import FileTransferMethod, FileType, FileVar
-from core.workflow.callbacks.base_workflow_callback import WorkflowCallback
+from core.file.models import File, FileTransferMethod, FileType, ImageConfig
+from core.workflow.callbacks import WorkflowCallback
 from core.workflow.entities.base_node_data_entities import BaseNodeData
-from core.workflow.entities.node_entities import NodeType, UserFrom
 from core.workflow.entities.variable_pool import VariablePool
 from core.workflow.errors import WorkflowNodeRunFailedError
 from core.workflow.graph_engine.entities.event import GraphEngineEvent, GraphRunFailedEvent, InNodeEvent
@@ -23,6 +22,7 @@ from core.workflow.nodes.base_node import BaseNode
 from core.workflow.nodes.event import RunEvent
 from core.workflow.nodes.llm.entities import LLMNodeData
 from core.workflow.nodes.node_mapping import node_classes
+from enums import NodeType, UserFrom
 from models.workflow import (
     Workflow,
     WorkflowType,
@@ -218,12 +218,12 @@ class WorkflowEntry:
         new_value = dict(value) if value else {}
         if isinstance(new_value, dict):
             for key, val in new_value.items():
-                if isinstance(val, FileVar):
+                if isinstance(val, File):
                     new_value[key] = val.to_dict()
                 elif isinstance(val, list):
                     new_val = []
                     for v in val:
-                        if isinstance(v, FileVar):
+                        if isinstance(v, File):
                             new_val.append(v.to_dict())
                         else:
                             new_val.append(v)
@@ -276,7 +276,7 @@ class WorkflowEntry:
                     for item in input_value:
                         if isinstance(item, dict) and "type" in item and item["type"] == "image":
                             transfer_method = FileTransferMethod.value_of(item.get("transfer_method"))
-                            file = FileVar(
+                            file = File(
                                 tenant_id=tenant_id,
                                 type=FileType.IMAGE,
                                 transfer_method=transfer_method,
@@ -284,7 +284,9 @@ class WorkflowEntry:
                                 related_id=item.get("upload_file_id")
                                 if transfer_method == FileTransferMethod.LOCAL_FILE
                                 else None,
-                                extra_config=FileExtraConfig(image_config={"detail": detail} if detail else None),
+                                extra_config=FileExtraConfig(
+                                    image_config=ImageConfig(detail=detail) if detail else None
+                                ),
                             )
                             new_value.append(file)
 

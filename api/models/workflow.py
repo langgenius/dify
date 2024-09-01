@@ -9,9 +9,10 @@ from sqlalchemy.orm import Mapped
 
 import contexts
 from constants import HIDDEN_VALUE
-from core.app.segments import SecretVariable, Variable, factory
 from core.helper import encrypter
+from core.variables import SecretVariable, Variable
 from extensions.ext_database import db
+from factories import variable_factory
 from libs import helper
 
 from .account import Account
@@ -227,7 +228,7 @@ class Workflow(db.Model):
         tenant_id = contexts.tenant_id.get()
 
         environment_variables_dict: dict[str, Any] = json.loads(self._environment_variables)
-        results = [factory.build_variable_from_mapping(v) for v in environment_variables_dict.values()]
+        results = [variable_factory.build_variable_from_mapping(v) for v in environment_variables_dict.values()]
 
         # decrypt secret variables value
         decrypt_func = (
@@ -288,7 +289,7 @@ class Workflow(db.Model):
             self._conversation_variables = "{}"
 
         variables_dict: dict[str, Any] = json.loads(self._conversation_variables)
-        results = [factory.build_variable_from_mapping(v) for v in variables_dict.values()]
+        results = [variable_factory.build_variable_from_mapping(v) for v in variables_dict.values()]
         return results
 
     @conversation_variables.setter
@@ -297,28 +298,6 @@ class Workflow(db.Model):
             {var.name: var.model_dump() for var in value},
             ensure_ascii=False,
         )
-
-
-class WorkflowRunTriggeredFrom(Enum):
-    """
-    Workflow Run Triggered From Enum
-    """
-
-    DEBUGGING = "debugging"
-    APP_RUN = "app-run"
-
-    @classmethod
-    def value_of(cls, value: str) -> "WorkflowRunTriggeredFrom":
-        """
-        Get value of given mode.
-
-        :param value: mode value
-        :return: mode
-        """
-        for mode in cls:
-            if mode.value == value:
-                return mode
-        raise ValueError(f"invalid workflow run triggered from value {value}")
 
 
 class WorkflowRunStatus(Enum):
@@ -672,7 +651,7 @@ class WorkflowNodeExecution(db.Model):
 
         extras = {}
         if self.execution_metadata_dict:
-            from core.workflow.entities.node_entities import NodeType
+            from enums import NodeType
 
             if self.node_type == NodeType.TOOL.value and "tool_info" in self.execution_metadata_dict:
                 tool_info = self.execution_metadata_dict["tool_info"]
@@ -800,4 +779,4 @@ class ConversationVariable(db.Model):
 
     def to_variable(self) -> Variable:
         mapping = json.loads(self.data)
-        return factory.build_variable_from_mapping(mapping)
+        return variable_factory.build_variable_from_mapping(mapping)

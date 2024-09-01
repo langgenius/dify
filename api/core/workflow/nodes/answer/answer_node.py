@@ -1,7 +1,7 @@
 from collections.abc import Mapping, Sequence
 from typing import Any, cast
 
-from core.workflow.entities.node_entities import NodeRunResult, NodeType
+from core.workflow.entities.node_entities import NodeRunResult
 from core.workflow.nodes.answer.answer_stream_generate_router import AnswerStreamGeneratorRouter
 from core.workflow.nodes.answer.entities import (
     AnswerNodeData,
@@ -11,6 +11,7 @@ from core.workflow.nodes.answer.entities import (
 )
 from core.workflow.nodes.base_node import BaseNode
 from core.workflow.utils.variable_template_parser import VariableTemplateParser
+from enums import NodeType
 from models.workflow import WorkflowNodeExecutionStatus
 
 

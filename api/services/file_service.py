@@ -9,54 +9,40 @@ from werkzeug.datastructures import FileStorage
 from werkzeug.exceptions import NotFound
 
 from configs import dify_config
-from core.file.upload_file_parser import UploadFileParser
+from constants import (
+    ALLOWED_EXTENSIONS,
+    AUDIO_EXTENSIONS,
+    IMAGE_EXTENSIONS,
+    UNSTRUCTURED_ALLOWED_EXTENSIONS,
+    VIDEO_EXTENSIONS,
+)
+from core.file import helpers as file_helpers
 from core.rag.extractor.extract_processor import ExtractProcessor
 from extensions.ext_database import db
 from extensions.ext_storage import storage
 from models.account import Account
 from models.model import EndUser, UploadFile
-from services.errors.file import FileTooLargeError, UnsupportedFileTypeError
-
-IMAGE_EXTENSIONS = ["jpg", "jpeg", "png", "webp", "gif", "svg"]
-IMAGE_EXTENSIONS.extend([ext.upper() for ext in IMAGE_EXTENSIONS])
-
-ALLOWED_EXTENSIONS = ["txt", "markdown", "md", "pdf", "html", "htm", "xlsx", "xls", "docx", "csv"]
-UNSTRUCTURED_ALLOWED_EXTENSIONS = [
-    "txt",
-    "markdown",
-    "md",
-    "pdf",
-    "html",
-    "htm",
-    "xlsx",
-    "xls",
-    "docx",
-    "csv",
-    "eml",
-    "msg",
-    "pptx",
-    "ppt",
-    "xml",
-    "epub",
-]
+from services.errors.file import FileNotExistsError, FileTooLargeError, UnsupportedFileTypeError
 
 PREVIEW_WORDS_LIMIT = 3000
 
 
 class FileService:
     @staticmethod
-    def upload_file(file: FileStorage, user: Union[Account, EndUser], only_image: bool = False) -> UploadFile:
+    def upload_file(file: FileStorage, user: Union[Account, EndUser]) -> UploadFile:
+        # get file name
         filename = file.filename
-        extension = file.filename.split(".")[-1]
+        if not filename:
+            raise FileNotExistsError
+        extension = filename.split(".")[-1]
         if len(filename) > 200:
             filename = filename.split(".")[0][:200] + "." + extension
-        etl_type = dify_config.ETL_TYPE
         allowed_extensions = (
-            UNSTRUCTURED_ALLOWED_EXTENSIONS + IMAGE_EXTENSIONS
-            if etl_type == "Unstructured"
-            else ALLOWED_EXTENSIONS + IMAGE_EXTENSIONS
+            UNSTRUCTURED_ALLOWED_EXTENSIONS if dify_config.ETL_TYPE == "Unstructured" else ALLOWED_EXTENSIONS
         )
-        if extension.lower() not in allowed_extensions or only_image and extension.lower() not in IMAGE_EXTENSIONS:
+        allowed_extensions = allowed_extensions + IMAGE_EXTENSIONS + VIDEO_EXTENSIONS + AUDIO_EXTENSIONS
+
+        if extension not in allowed_extensions:
             raise UnsupportedFileTypeError()
 
         # read file content
@@ -65,16 +51,22 @@ class FileService:
         # get file size
         file_size = len(file_content)
 
-        if extension.lower() in IMAGE_EXTENSIONS:
+        # select file size limit
+        if extension in IMAGE_EXTENSIONS:
             file_size_limit = dify_config.UPLOAD_IMAGE_FILE_SIZE_LIMIT * 1024 * 1024
+        elif extension in VIDEO_EXTENSIONS:
+            file_size_limit = dify_config.UPLOAD_VIDEO_FILE_SIZE_LIMIT * 1024 * 1024
+        elif extension in AUDIO_EXTENSIONS:
+            file_size_limit = dify_config.UPLOAD_AUDIO_FILE_SIZE_LIMIT * 1024 * 1024
         else:
             file_size_limit = dify_config.UPLOAD_FILE_SIZE_LIMIT * 1024 * 1024
 
+        # check if the file size is exceeded
         if file_size > file_size_limit:
             message = f"File size exceeded. {file_size} > {file_size_limit}"
             raise FileTooLargeError(message)
 
-        # user uuid as file name
+        # generate file key
         file_uuid = str(uuid.uuid4())
 
         if isinstance(user, Account):
@@ -162,7 +154,7 @@ class FileService:
 
     @staticmethod
     def get_image_preview(file_id: str, timestamp: str, nonce: str, sign: str) -> tuple[Generator, str]:
-        result = UploadFileParser.verify_image_file_signature(file_id, timestamp, nonce, sign)
+        result = file_helpers.verify_file_signature(upload_file_id=file_id, timestamp=timestamp, nonce=nonce, sign=sign)
         if not result:
             raise NotFound("File not found or signature is invalid")
 

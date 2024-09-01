@@ -40,27 +40,39 @@ class Storage:
             self.storage_runner = LocalStorage(app=app)
 
     def save(self, filename, data):
+        if not self.storage_runner:
+            raise ValueError("storage runner is not initialized")
         self.storage_runner.save(filename, data)
 
-    def load(self, filename: str, stream: bool = False) -> Union[bytes, Generator]:
+    def load(self, filename: str, /, *, stream: bool = False) -> Union[bytes, Generator]:
         if stream:
             return self.load_stream(filename)
         else:
             return self.load_once(filename)
 
     def load_once(self, filename: str) -> bytes:
+        if not self.storage_runner:
+            raise ValueError("storage runner is not initialized")
         return self.storage_runner.load_once(filename)
 
     def load_stream(self, filename: str) -> Generator:
+        if not self.storage_runner:
+            raise ValueError("storage runner is not initialized")
         return self.storage_runner.load_stream(filename)
 
     def download(self, filename, target_filepath):
+        if not self.storage_runner:
+            raise ValueError("storage runner is not initialized")
         self.storage_runner.download(filename, target_filepath)
 
     def exists(self, filename):
+        if not self.storage_runner:
+            raise ValueError("storage runner is not initialized")
         return self.storage_runner.exists(filename)
 
     def delete(self, filename):
+        if not self.storage_runner:
+            raise ValueError("storage runner is not initialized")
         return self.storage_runner.delete(filename)
 
 

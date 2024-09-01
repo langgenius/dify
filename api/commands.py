@@ -19,7 +19,7 @@ from extensions.ext_redis import redis_client
 from libs.helper import email as email_validate
 from libs.password import hash_password, password_pattern, valid_password
 from libs.rsa import generate_key_pair
-from models.account import Tenant
+from models import Tenant
 from models.dataset import Dataset, DatasetCollectionBinding, DocumentSegment
 from models.dataset import Document as DatasetDocument
 from models.model import Account, App, AppAnnotationSetting, AppMode, Conversation, MessageAnnotation
@@ -453,14 +453,14 @@ def convert_to_agent_apps():
         # fetch first 1000 apps
         sql_query = """SELECT a.id AS id FROM apps a
             INNER JOIN app_model_configs am ON a.app_model_config_id=am.id
-            WHERE a.mode = 'chat' 
-            AND am.agent_mode is not null 
+            WHERE a.mode = 'chat'
+            AND am.agent_mode is not null
             AND (
-				am.agent_mode like '%"strategy": "function_call"%' 
+				am.agent_mode like '%"strategy": "function_call"%'
                 OR am.agent_mode  like '%"strategy": "react"%'
-			) 
+			)
             AND (
-				am.agent_mode like '{"enabled": true%' 
+				am.agent_mode like '{"enabled": true%'
                 OR am.agent_mode like '{"max_iteration": %'
 			) ORDER BY a.created_at DESC LIMIT 1000
         """

@@ -1,7 +1,8 @@
 import logging
 from mimetypes import guess_extension
+from typing import Optional
 
-from core.file.file_obj import FileTransferMethod, FileType
+from core.file.models import FileTransferMethod, FileType
 from core.tools.entities.tool_entities import ToolInvokeMessage
 from core.tools.tool_file_manager import ToolFileManager
 
@@ -55,6 +56,8 @@ class ToolFileMessageTransformer:
                 if isinstance(message.message, str):
                     message.message = message.message.encode("utf-8")
 
+                # FIXME: should do a type check here.
+                assert isinstance(message.message, bytes)
                 file = ToolFileManager.create_file_by_raw(
                     user_id=user_id,
                     tenant_id=tenant_id,
@@ -63,7 +66,7 @@ class ToolFileMessageTransformer:
                     mimetype=mimetype,
                 )
 
-                url = cls.get_tool_file_url(file.id, guess_extension(file.mimetype))
+                url = cls.get_tool_file_url(tool_file_id=file.id, extension=guess_extension(file.mimetype))
 
                 # check if file is image
                 if "image" in mimetype:
@@ -113,5 +116,5 @@ class ToolFileMessageTransformer:
         return result
 
     @classmethod
-    def get_tool_file_url(cls, tool_file_id: str, extension: str) -> str:
+    def get_tool_file_url(cls, tool_file_id: str, extension: Optional[str]) -> str:
         return f'/files/tools/{tool_file_id}{extension or ".bin"}'

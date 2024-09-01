@@ -27,15 +27,15 @@ from core.app.entities.task_entities import (
     WorkflowStartStreamResponse,
     WorkflowTaskState,
 )
-from core.file.file_obj import FileVar
+from core.file.models import File
 from core.model_runtime.utils.encoders import jsonable_encoder
 from core.ops.entities.trace_entity import TraceTaskName
 from core.ops.ops_trace_manager import TraceQueueManager, TraceTask
 from core.tools.tool_manager import ToolManager
-from core.workflow.entities.node_entities import NodeType
 from core.workflow.enums import SystemVariableKey
 from core.workflow.nodes.tool.entities import ToolNodeData
 from core.workflow.workflow_entry import WorkflowEntry
+from enums import NodeType, WorkflowRunTriggeredFrom
 from extensions.ext_database import db
 from models.account import Account
 from models.model import EndUser
@@ -47,7 +47,6 @@ from models.workflow import (
     WorkflowNodeExecutionTriggeredFrom,
     WorkflowRun,
     WorkflowRunStatus,
-    WorkflowRunTriggeredFrom,
 )
 
 
@@ -609,11 +608,11 @@ class WorkflowCycleManage:
         if not outputs_dict:
             return []
 
-        files = []
-        for output_var, output_value in outputs_dict.items():
-            file_vars = self._fetch_files_from_variable_value(output_value)
-            if file_vars:
-                files.extend(file_vars)
+        files = [self._fetch_files_from_variable_value(output_value) for output_value in outputs_dict.values()]
+        # Remove None
+        files = [file for file in files if file]
+        # Flatten list
+        files = [file for sublist in files for file in sublist]
 
         return files
 
@@ -649,9 +648,9 @@ class WorkflowCycleManage:
             return None
 
         if isinstance(value, dict):
-            if "__variant" in value and value["__variant"] == FileVar.__name__:
+            if "__variant" in value and value["__variant"] == File.__name__:
                 return value
-        elif isinstance(value, FileVar):
+        elif isinstance(value, File):
             return value.to_dict()
 
         return None

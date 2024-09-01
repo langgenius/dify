@@ -19,7 +19,7 @@ from controllers.console.setup import setup_required
 from events.tenant_event import tenant_was_created
 from libs.helper import email, get_remote_ip
 from libs.password import valid_password
-from models.account import Account
+from models import Account
 from services.account_service import AccountService, TenantService
 from services.errors.workspace import WorkSpaceNotAllowedCreateError
 

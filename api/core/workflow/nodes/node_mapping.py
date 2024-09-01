@@ -1,4 +1,3 @@
-from core.workflow.entities.node_entities import NodeType
 from core.workflow.nodes.answer.answer_node import AnswerNode
 from core.workflow.nodes.code.code_node import CodeNode
 from core.workflow.nodes.end.end_node import EndNode
@@ -15,6 +14,7 @@ from core.workflow.nodes.template_transform.template_transform_node import Templ
 from core.workflow.nodes.tool.tool_node import ToolNode
 from core.workflow.nodes.variable_aggregator.variable_aggregator_node import VariableAggregatorNode
 from core.workflow.nodes.variable_assigner import VariableAssignerNode
+from enums import NodeType
 
 node_classes = {
     NodeType.START: StartNode,

@@ -13,14 +13,14 @@ from controllers.console.setup import setup_required
 from controllers.console.wraps import account_initialization_required
 from core.app.apps.base_app_queue_manager import AppQueueManager
 from core.app.entities.app_invoke_entities import InvokeFrom
-from core.app.segments import factory
-from core.errors.error import AppInvokeQuotaExceededError
+from factories import variable_factory
 from fields.workflow_fields import workflow_fields
 from fields.workflow_run_fields import workflow_run_node_execution_fields
 from libs import helper
 from libs.helper import TimestampField, uuid_value
 from libs.login import current_user, login_required
-from models.model import App, AppMode
+from models import App
+from models.model import AppMode
 from services.app_dsl_service import AppDslService
 from services.app_generate_service import AppGenerateService
 from services.errors.app import WorkflowHashNotEqualError
@@ -101,9 +101,13 @@ class DraftWorkflowApi(Resource):
 
         try:
             environment_variables_list = args.get("environment_variables") or []
-            environment_variables = [factory.build_variable_from_mapping(obj) for obj in environment_variables_list]
+            environment_variables = [
+                variable_factory.build_variable_from_mapping(obj) for obj in environment_variables_list
+            ]
             conversation_variables_list = args.get("conversation_variables") or []
-            conversation_variables = [factory.build_variable_from_mapping(obj) for obj in conversation_variables_list]
+            conversation_variables = [
+                variable_factory.build_variable_from_mapping(obj) for obj in conversation_variables_list
+            ]
             workflow = workflow_service.sync_draft_workflow(
                 app_model=app_model,
                 graph=args["graph"],
@@ -271,17 +275,15 @@ class DraftWorkflowRunApi(Resource):
         parser.add_argument("files", type=list, required=False, location="json")
         args = parser.parse_args()
 
-        try:
-            response = AppGenerateService.generate(
-                app_model=app_model, user=current_user, args=args, invoke_from=InvokeFrom.DEBUGGER, streaming=True
-            )
+        response = AppGenerateService.generate(
+            app_model=app_model,
+            user=current_user,
+            args=args,
+            invoke_from=InvokeFrom.DEBUGGER,
+            streaming=True,
+        )
 
-            return helper.compact_generate_response(response)
-        except (ValueError, AppInvokeQuotaExceededError) as e:
-            raise e
-        except Exception as e:
-            logging.exception("internal server error.")
-            raise InternalServerError()
+        return helper.compact_generate_response(response)
 
 
 class WorkflowTaskStopApi(Resource):
