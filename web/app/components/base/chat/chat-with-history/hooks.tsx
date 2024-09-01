@@ -12,10 +12,10 @@ import produce from 'immer'
 import type {
   Callback,
   ChatConfig,
-  ChatItem,
   Feedback,
 } from '../types'
 import { CONVERSATION_ID_INFO } from '../constants'
+import { getPrevChatList } from '../utils'
 import {
   delConversation,
   fetchAppInfo,
@@ -34,29 +34,9 @@ import type {
   AppData,
   ConversationItem,
 } from '@/models/share'
-import { addFileInfos, sortAgentSorts } from '@/app/components/tools/utils'
 import { useToastContext } from '@/app/components/base/toast'
 import { changeLanguage } from '@/i18n/i18next-config'
 import { useAppFavicon } from '@/hooks/use-app-favicon'
-
-function appendQAToChatList(chatList: ChatItem[], item: any) {
-  // we append answer first and then question since will reverse the whole chatList later
-  chatList.push({
-    id: item.id,
-    content: item.answer,
-    agent_thoughts: addFileInfos(item.agent_thoughts ? sortAgentSorts(item.agent_thoughts) : item.agent_thoughts, item.message_files),
-    feedback: item.feedback,
-    isAnswer: true,
-    citation: item.retriever_resources,
-    message_files: item.message_files?.filter((file: any) => file.belongs_to === 'assistant') || [],
-  })
-  chatList.push({
-    id: `question-${item.id}`,
-    content: item.query,
-    isAnswer: false,
-    message_files: item.message_files?.filter((file: any) => file.belongs_to === 'user') || [],
-  })
-}
 
 export const useChatWithHistory = (installedAppInfo?: InstalledApp) => {
   const isInstalledApp = useMemo(() => !!installedAppInfo, [installedAppInfo])
@@ -126,35 +106,12 @@ export const useChatWithHistory = (installedAppInfo?: InstalledApp) => {
   const { data: appConversationData, isLoading: appConversationDataLoading, mutate: mutateAppConversationData } = useSWR(['appConversationData', isInstalledApp, appId, false], () => fetchConversations(isInstalledApp, appId, undefined, false, 100))
   const { data: appChatListData, isLoading: appChatListDataLoading } = useSWR(chatShouldReloadKey ? ['appChatList', chatShouldReloadKey, isInstalledApp, appId] : null, () => fetchChatList(chatShouldReloadKey, isInstalledApp, appId))
 
-  const appPrevChatList = useMemo(() => {
-    const data = appChatListData?.data || []
-    const chatList: ChatItem[] = []
-
-    if (currentConversationId && data.length) {
-      let nextMessageId = null
-      for (const item of data) {
-        if (item.is_regenerated && !item.parent_message_id) {
-          appendQAToChatList(chatList, item)
-          break
-        }
-
-        if (!nextMessageId) {
-          appendQAToChatList(chatList, item)
-          if (item.parent_message_id)
-            nextMessageId = item.parent_message_id
-        }
-        else {
-          if (item.id === nextMessageId) {
-            appendQAToChatList(chatList, item)
-            nextMessageId = item.parent_message_id
-          }
-        }
-      }
-      chatList.reverse()
-    }
-
-    return chatList
-  }, [appChatListData, currentConversationId])
+  const appPrevChatList = useMemo(
+    () => (currentConversationId && appChatListData?.data.length)
+      ? getPrevChatList(appChatListData.data)
+      : [],
+    [appChatListData, currentConversationId],
+  )
 
   const [showNewConversationItemInList, setShowNewConversationItemInList] = useState(false)
 

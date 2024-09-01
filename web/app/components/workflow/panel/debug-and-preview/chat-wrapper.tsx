@@ -58,6 +58,7 @@ const ChatWrapper = forwardRef<ChatWrapperRefType, ChatWrapperProps>(({ showConv
   const {
     conversationId,
     chatList,
+    chatListRef,
     handleUpdateChatList,
     handleStop,
     isResponding,
@@ -74,21 +75,21 @@ const ChatWrapper = forwardRef<ChatWrapperRefType, ChatWrapperProps>(({ showConv
     taskId => stopChatMessageResponding(appDetail!.id, taskId),
   )
 
-  const doSend = useCallback<OnSend>((query, files, is_regenerate, last_answer) => {
+  const doSend = useCallback<OnSend>((query, files, is_regenerate = false, last_answer) => {
     handleSend(
       {
         query,
         files,
         inputs: workflowStore.getState().inputs,
         conversation_id: conversationId,
-        is_regenerate: !!is_regenerate,
-        parent_message_id: last_answer?.id || null,
+        is_regenerate,
+        parent_message_id: last_answer?.id || chatListRef.current.at(-1)?.id || null,
       },
       {
         onGetSuggestedQuestions: (messageId, getAbortController) => fetchSuggestedQuestions(appDetail!.id, messageId, getAbortController),
       },
     )
-  }, [conversationId, handleSend, workflowStore, appDetail])
+  }, [chatListRef, conversationId, handleSend, workflowStore, appDetail])
 
   const doRegenerate = useCallback((chatItem: ChatItem) => {
     const index = chatList.findIndex(item => item.id === chatItem.id)

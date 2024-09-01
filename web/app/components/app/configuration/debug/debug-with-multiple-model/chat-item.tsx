@@ -46,6 +46,7 @@ const ChatItem: FC<ChatItemProps> = ({
   const config = useConfigFromDebugContext()
   const {
     chatList,
+    chatListRef,
     isResponding,
     handleSend,
     suggestedQuestions,
@@ -80,6 +81,8 @@ const ChatItem: FC<ChatItemProps> = ({
       query: message,
       inputs,
       model_config: configData,
+      is_regenerate: false,
+      parent_message_id: chatListRef.current.at(-1)?.id || null,
     }
 
     if (visionConfig.enabled && files?.length && supportVision)
@@ -93,7 +96,7 @@ const ChatItem: FC<ChatItemProps> = ({
         onGetSuggestedQuestions: (responseItemId, getAbortController) => fetchSuggestedQuestions(appId, responseItemId, getAbortController),
       },
     )
-  }, [appId, config, handleSend, inputs, modelAndParameter, textGenerationModelList, visionConfig.enabled])
+  }, [appId, config, handleSend, inputs, modelAndParameter, textGenerationModelList, visionConfig.enabled, chatListRef])
 
   const { eventEmitter } = useEventEmitterContextContext()
   eventEmitter?.useSubscription((v: any) => {

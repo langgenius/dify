@@ -45,6 +45,7 @@ const DebugWithSingleModel = forwardRef<DebugWithSingleModelRefType, DebugWithSi
   const config = useConfigFromDebugContext()
   const {
     chatList,
+    chatListRef,
     isResponding,
     handleSend,
     suggestedQuestions,
@@ -65,7 +66,7 @@ const DebugWithSingleModel = forwardRef<DebugWithSingleModelRefType, DebugWithSi
   )
   useFormattingChangedSubscription(chatList)
 
-  const doSend: OnSend = useCallback((message, files, is_regenerate, last_answer) => {
+  const doSend: OnSend = useCallback((message, files, is_regenerate = false, last_answer) => {
     if (checkCanSend && !checkCanSend())
       return
     const currentProvider = textGenerationModelList.find(item => item.provider === modelConfig.provider)
@@ -86,8 +87,8 @@ const DebugWithSingleModel = forwardRef<DebugWithSingleModelRefType, DebugWithSi
       query: message,
       inputs,
       model_config: configData,
-      is_regenerate: !!is_regenerate,
-      parent_message_id: last_answer?.id,
+      is_regenerate,
+      parent_message_id: last_answer?.id || chatListRef.current.at(-1)?.id || null,
     }
 
     if (visionConfig.enabled && files?.length && supportVision)
@@ -101,7 +102,7 @@ const DebugWithSingleModel = forwardRef<DebugWithSingleModelRefType, DebugWithSi
         onGetSuggestedQuestions: (responseItemId, getAbortController) => fetchSuggestedQuestions(appId, responseItemId, getAbortController),
       },
     )
-  }, [appId, checkCanSend, completionParams, config, handleSend, inputs, modelConfig, textGenerationModelList, visionConfig.enabled])
+  }, [chatListRef, appId, checkCanSend, completionParams, config, handleSend, inputs, modelConfig, textGenerationModelList, visionConfig.enabled])
 
   const doRegenerate = useCallback((chatItem: ChatItem) => {
     const index = chatList.findIndex(item => item.id === chatItem.id)
