@@ -1,8 +1,9 @@
 from typing import Any
+
 import requests
 
 from core.tools.errors import ToolProviderCredentialValidationError
-from core.tools.provider.builtin.perplexity.tools.perplexity_search import PerplexityAITool, PERPLEXITY_API_URL
+from core.tools.provider.builtin.perplexity.tools.perplexity_search import PERPLEXITY_API_URL
 from core.tools.provider.builtin_tool_provider import BuiltinToolProviderController
 
 
