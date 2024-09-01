@@ -12,16 +12,18 @@ import {
 } from './context'
 import type { DebugWithMultipleModelContextType } from './context'
 import { useEventEmitterContextContext } from '@/context/event-emitter'
-import ChatInput from '@/app/components/base/chat/chat/chat-input'
+import ChatInputArea from '@/app/components/base/chat/chat/chat-input-area'
 import type { VisionFile } from '@/app/components/base/chat/types'
 import { useDebugConfigurationContext } from '@/context/debug-configuration'
+import { useFeatures } from '@/app/components/base/features/hooks'
+import { useStore as useAppStore } from '@/app/components/app/store'
 
 const DebugWithMultipleModel = () => {
   const {
     mode,
-    speechToTextConfig,
     visionConfig,
   } = useDebugConfigurationContext()
+  const speech2text = useFeatures(s => s.features.speech2text)
   const {
     multipleModelConfigs,
     checkCanSend,
@@ -92,6 +94,8 @@ const DebugWithMultipleModel = () => {
     }
   }, [twoLine, threeLine, fourLine])
 
+  const setShowAppConfigureFeaturesModal = useAppStore(s => s.setShowAppConfigureFeaturesModal)
+
   return (
     <div className='flex flex-col h-full'>
       <div
@@ -121,18 +125,17 @@ const DebugWithMultipleModel = () => {
           ))
         }
       </div>
-      {/* ##TODO## */}
-      {
-        isChatMode && (
-          <div className='shrink-0 pb-4 px-6'>
-            <ChatInput
-              onSend={handleSend}
-              speechToTextConfig={speechToTextConfig}
-              visionConfig={visionConfig}
-            />
-          </div>
-        )
-      }
+      {isChatMode && (
+        <div className='shrink-0 pb-0 px-6'>
+          <ChatInputArea
+            showFeatureBar
+            onFeatureBarClick={setShowAppConfigureFeaturesModal}
+            onSend={handleSend}
+            speechToTextConfig={speech2text as any}
+            visionConfig={visionConfig}
+          />
+        </div>
+      )}
     </div>
   )
 }

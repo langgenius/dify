@@ -263,16 +263,6 @@ const Chat: FC<ChatProps> = ({
                 />
               )
             }
-            {/* {
-              !noChatInput && (
-                <ChatInput
-                  visionConfig={config?.file_upload?.image}
-                  speechToTextConfig={config?.speech_to_text}
-                  onSend={onSend}
-                  theme={themeBuilder?.theme}
-                />
-              )
-            } */}
             {
               !noChatInput && (
                 <ChatInputArea

@@ -445,7 +445,7 @@ const Debug: FC<IDebug> = ({
           </div>
         </div>
         {mode !== AppType.completion && expanded && (
-          <div className='mx-3 mt-1'>
+          <div className='mx-3'>
             <ChatUserInput inputs={inputs} />
           </div>
         )}
