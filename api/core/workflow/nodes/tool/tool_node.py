@@ -2,20 +2,19 @@ from collections.abc import Mapping, Sequence
 from os import path
 from typing import Any, cast
 
-from core.app.segments import ArrayAnySegment, ArrayAnyVariable, parser
 from core.callback_handler.workflow_tool_callback_handler import DifyWorkflowCallbackHandler
-from core.file.file_obj import FileTransferMethod, FileType, FileVar
+from core.file.models import File, FileTransferMethod, FileType
 from core.tools.entities.tool_entities import ToolInvokeMessage, ToolParameter
 from core.tools.tool_engine import ToolEngine
 from core.tools.tool_manager import ToolManager
 from core.tools.utils.message_transformer import ToolFileMessageTransformer
-from core.workflow.entities.node_entities import NodeRunMetadataKey, NodeRunResult, NodeType
+from core.workflow.entities.node_entities import NodeRunMetadataKey, NodeRunResult
 from core.workflow.entities.variable_pool import VariablePool
-from core.workflow.enums import SystemVariableKey
 from core.workflow.nodes.base_node import BaseNode
 from core.workflow.nodes.tool.entities import ToolNodeData
 from core.workflow.utils.variable_template_parser import VariableTemplateParser
-from models import WorkflowNodeExecutionStatus
+from enums import NodeType
+from models.workflow import WorkflowNodeExecutionStatus
 
 
 class ToolNode(BaseNode):
@@ -34,7 +33,10 @@ class ToolNode(BaseNode):
         node_data = cast(ToolNodeData, self.node_data)
 
         # fetch tool icon
-        tool_info = {"provider_type": node_data.provider_type, "provider_id": node_data.provider_id}
+        tool_info = {
+            "provider_type": node_data.provider_type,
+            "provider_id": node_data.provider_id,
+        }
 
         # get tool runtime
         try:
@@ -45,14 +47,18 @@ class ToolNode(BaseNode):
             return NodeRunResult(
                 status=WorkflowNodeExecutionStatus.FAILED,
                 inputs={},
-                metadata={NodeRunMetadataKey.TOOL_INFO: tool_info},
+                metadata={
+                    NodeRunMetadataKey.TOOL_INFO: tool_info,
+                },
                 error=f"Failed to get tool runtime: {str(e)}",
             )
 
         # get parameters
         tool_parameters = tool_runtime.get_runtime_parameters() or []
         parameters = self._generate_parameters(
-            tool_parameters=tool_parameters, variable_pool=self.graph_runtime_state.variable_pool, node_data=node_data
+            tool_parameters=tool_parameters,
+            variable_pool=self.graph_runtime_state.variable_pool,
+            node_data=node_data,
         )
         parameters_for_log = self._generate_parameters(
             tool_parameters=tool_parameters,
@@ -74,7 +80,9 @@ class ToolNode(BaseNode):
             return NodeRunResult(
                 status=WorkflowNodeExecutionStatus.FAILED,
                 inputs=parameters_for_log,
-                metadata={NodeRunMetadataKey.TOOL_INFO: tool_info},
+                metadata={
+                    NodeRunMetadataKey.TOOL_INFO: tool_info,
+                },
                 error=f"Failed to invoke tool: {str(e)}",
             )
 
@@ -83,8 +91,14 @@ class ToolNode(BaseNode):
 
         return NodeRunResult(
             status=WorkflowNodeExecutionStatus.SUCCEEDED,
-            outputs={"text": plain_text, "files": files, "json": json},
-            metadata={NodeRunMetadataKey.TOOL_INFO: tool_info},
+            outputs={
+                "text": plain_text,
+                "files": files,
+                "json": json,
+            },
+            metadata={
+                NodeRunMetadataKey.TOOL_INFO: tool_info,
+            },
             inputs=parameters_for_log,
         )
 
@@ -116,29 +130,25 @@ class ToolNode(BaseNode):
             if not parameter:
                 result[parameter_name] = None
                 continue
-            if parameter.type == ToolParameter.ToolParameterType.FILE:
-                result[parameter_name] = [v.to_dict() for v in self._fetch_files(variable_pool)]
+            tool_input = node_data.tool_parameters[parameter_name]
+            if tool_input.type == "variable":
+                variable = variable_pool.get(tool_input.value)
+                if variable is None:
+                    raise ValueError(f"variable {tool_input.value} not exists")
+                parameter_value = variable.value
+            elif tool_input.type in {"mixed", "constant"}:
+                segment_group = variable_pool.convert_template(str(tool_input.value))
+                parameter_value = segment_group.log if for_log else segment_group.text
             else:
-                tool_input = node_data.tool_parameters[parameter_name]
-                if tool_input.type == "variable":
-                    # TODO: check if the variable exists in the variable pool
-                    parameter_value = variable_pool.get(tool_input.value).value
-                else:
-                    segment_group = parser.convert_template(
-                        template=str(tool_input.value),
-                        variable_pool=variable_pool,
-                    )
-                    parameter_value = segment_group.log if for_log else segment_group.text
-                result[parameter_name] = parameter_value
+                raise ValueError(f"unknown tool input type '{tool_input.type}'")
+            result[parameter_name] = parameter_value
 
         return result
 
-    def _fetch_files(self, variable_pool: VariablePool) -> list[FileVar]:
-        variable = variable_pool.get(["sys", SystemVariableKey.FILES.value])
-        assert isinstance(variable, ArrayAnyVariable | ArrayAnySegment)
-        return list(variable.value) if variable else []
-
-    def _convert_tool_messages(self, messages: list[ToolInvokeMessage]) -> tuple[str, list[FileVar], list[dict]]:
+    def _convert_tool_messages(
+        self,
+        messages: list[ToolInvokeMessage],
+    ):
         """
         Convert ToolInvokeMessages into tuple[plain_text, files]
         """
@@ -156,7 +166,7 @@ class ToolNode(BaseNode):
 
         return plain_text, files, json
 
-    def _extract_tool_response_binary(self, tool_response: list[ToolInvokeMessage]) -> list[FileVar]:
+    def _extract_tool_response_binary(self, tool_response: list[ToolInvokeMessage]) -> list[File]:
         """
         Extract tool response binary
         """
@@ -173,11 +183,11 @@ class ToolNode(BaseNode):
                 # get tool file id
                 tool_file_id = url.split("/")[-1].split(".")[0]
                 result.append(
-                    FileVar(
+                    File(
                         tenant_id=self.tenant_id,
                         type=FileType.IMAGE,
                         transfer_method=transfer_method,
-                        url=url,
+                        remote_url=url,
                         related_id=tool_file_id,
                         filename=filename,
                         extension=ext,
@@ -188,7 +198,7 @@ class ToolNode(BaseNode):
                 # get tool file id
                 tool_file_id = response.message.split("/")[-1].split(".")[0]
                 result.append(
-                    FileVar(
+                    File(
                         tenant_id=self.tenant_id,
                         type=FileType.IMAGE,
                         transfer_method=FileTransferMethod.TOOL_FILE,
@@ -200,6 +210,9 @@ class ToolNode(BaseNode):
                 )
             elif response.type == ToolInvokeMessage.MessageType.LINK:
                 pass  # TODO:
+            elif response.type == ToolInvokeMessage.MessageType.FILE:
+                assert response.meta is not None
+                result.append(response.meta["file"])
 
         return result
 

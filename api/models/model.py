@@ -1,22 +1,35 @@
 import json
 import re
 import uuid
+from collections.abc import Mapping, Sequence
+from datetime import datetime
 from enum import Enum
-from typing import Optional
+from typing import Any, Optional
 
 from flask import request
 from flask_login import UserMixin
+from pydantic import BaseModel, Field
 from sqlalchemy import Float, func, text
 from sqlalchemy.orm import Mapped, mapped_column
 
 from configs import dify_config
+from core.file import FILE_MODEL_IDENTITY, File
+from core.file import helpers as file_helpers
 from core.file.tool_file_parser import ToolFileParser
-from core.file.upload_file_parser import UploadFileParser
+from enums import FileTransferMethod, FileType
 from extensions.ext_database import db
 from libs.helper import generate_string
 
 from .account import Account, Tenant
 from .types import StringUUID
+
+
+class FileUploadConfig(BaseModel):
+    enabled: bool = Field(default=False)
+    allowed_file_types: Sequence[FileType] = Field(default_factory=list)
+    allowed_extensions: Sequence[str] = Field(default_factory=list)
+    allowed_upload_methods: Sequence[FileTransferMethod] = Field(default_factory=list)
+    number_limits: int = Field(default=0, gt=0, le=6)
 
 
 class DifySetup(db.Model):
@@ -530,7 +543,7 @@ class Conversation(db.Model):
     mode = db.Column(db.String(255), nullable=False)
     name = db.Column(db.String(255), nullable=False)
     summary = db.Column(db.Text)
-    inputs = db.Column(db.JSON)
+    _inputs: Mapped[dict] = mapped_column("inputs", db.JSON)
     introduction = db.Column(db.Text)
     system_instruction = db.Column(db.Text)
     system_instruction_tokens = db.Column(db.Integer, nullable=False, server_default=db.text("0"))
@@ -551,6 +564,28 @@ class Conversation(db.Model):
     )
 
     is_deleted = db.Column(db.Boolean, nullable=False, server_default=db.text("false"))
+
+    @property
+    def inputs(self):
+        inputs = self._inputs.copy()
+        for key, value in inputs.items():
+            if isinstance(value, dict) and value.get("model_identity") == FILE_MODEL_IDENTITY:
+                inputs[key] = File.model_validate(value)
+            elif isinstance(value, list) and all(
+                isinstance(item, dict) and item.get("model_identity") == FILE_MODEL_IDENTITY for item in value
+            ):
+                inputs[key] = [File.model_validate(item) for item in value]
+        return inputs
+
+    @inputs.setter
+    def inputs(self, value: Mapping[str, Any]):
+        inputs = dict(value)
+        for k, v in inputs.items():
+            if isinstance(v, File):
+                inputs[k] = v.model_dump()
+            elif isinstance(v, list) and all(isinstance(item, File) for item in v):
+                inputs[k] = [item.model_dump() for item in v]
+        self._inputs = inputs
 
     @property
     def model_config(self):
@@ -700,8 +735,8 @@ class Message(db.Model):
     model_id = db.Column(db.String(255), nullable=True)
     override_model_configs = db.Column(db.Text)
     conversation_id = db.Column(StringUUID, db.ForeignKey("conversations.id"), nullable=False)
-    inputs = db.Column(db.JSON)
-    query = db.Column(db.Text, nullable=False)
+    _inputs: Mapped[dict] = mapped_column("inputs", db.JSON)
+    query: Mapped[str] = db.Column(db.Text, nullable=False)
     message = db.Column(db.JSON, nullable=False)
     message_tokens = db.Column(db.Integer, nullable=False, server_default=db.text("0"))
     message_unit_price = db.Column(db.Numeric(10, 4), nullable=False)
@@ -725,6 +760,28 @@ class Message(db.Model):
     updated_at = db.Column(db.DateTime, nullable=False, server_default=db.text("CURRENT_TIMESTAMP(0)"))
     agent_based = db.Column(db.Boolean, nullable=False, server_default=db.text("false"))
     workflow_run_id = db.Column(StringUUID)
+
+    @property
+    def inputs(self):
+        inputs = self._inputs.copy()
+        for key, value in inputs.items():
+            if isinstance(value, dict) and value.get("model_identity") == FILE_MODEL_IDENTITY:
+                inputs[key] = File.model_validate(value)
+            elif isinstance(value, list) and all(
+                isinstance(item, dict) and item.get("model_identity") == FILE_MODEL_IDENTITY for item in value
+            ):
+                inputs[key] = [File.model_validate(item) for item in value]
+        return inputs
+
+    @inputs.setter
+    def inputs(self, value: Mapping[str, Any]):
+        inputs = dict(value)
+        for k, v in inputs.items():
+            if isinstance(v, File):
+                inputs[k] = v.model_dump()
+            elif isinstance(v, list) and all(isinstance(item, File) for item in v):
+                inputs[k] = [item.model_dump() for item in v]
+        self._inputs = inputs
 
     @property
     def re_sign_file_url_answer(self) -> str:
@@ -784,7 +841,7 @@ class Message(db.Model):
                 if not upload_file_id:
                     continue
 
-                sign_url = UploadFileParser.get_signed_temp_image_url(upload_file_id)
+                sign_url = file_helpers.get_signed_image_url(upload_file_id)
 
             re_sign_file_url_answer = re_sign_file_url_answer.replace(url, sign_url)
 
@@ -881,11 +938,7 @@ class Message(db.Model):
             url = message_file.url
             if message_file.type == "image":
                 if message_file.transfer_method == "local_file":
-                    upload_file = (
-                        db.session.query(UploadFile).filter(UploadFile.id == message_file.upload_file_id).first()
-                    )
-
-                    url = UploadFileParser.get_image_data(upload_file=upload_file, force_url=True)
+                    url = file_helpers.get_signed_image_url(message_file.upload_file_id)
                 if message_file.transfer_method == "tool_file":
                     # get tool file id
                     tool_file_id = message_file.url.split("/")[-1]
@@ -1250,21 +1303,58 @@ class UploadFile(db.Model):
         db.Index("upload_file_tenant_idx", "tenant_id"),
     )
 
-    id = db.Column(StringUUID, server_default=db.text("uuid_generate_v4()"))
-    tenant_id = db.Column(StringUUID, nullable=False)
-    storage_type = db.Column(db.String(255), nullable=False)
-    key = db.Column(db.String(255), nullable=False)
-    name = db.Column(db.String(255), nullable=False)
-    size = db.Column(db.Integer, nullable=False)
-    extension = db.Column(db.String(255), nullable=False)
-    mime_type = db.Column(db.String(255), nullable=True)
-    created_by_role = db.Column(db.String(255), nullable=False, server_default=db.text("'account'::character varying"))
-    created_by = db.Column(StringUUID, nullable=False)
-    created_at = db.Column(db.DateTime, nullable=False, server_default=db.text("CURRENT_TIMESTAMP(0)"))
-    used = db.Column(db.Boolean, nullable=False, server_default=db.text("false"))
-    used_by = db.Column(StringUUID, nullable=True)
-    used_at = db.Column(db.DateTime, nullable=True)
-    hash = db.Column(db.String(255), nullable=True)
+    id: Mapped[str] = db.Column(StringUUID, server_default=db.text("uuid_generate_v4()"))
+    tenant_id: Mapped[str] = db.Column(StringUUID, nullable=False)
+    storage_type: Mapped[str] = db.Column(db.String(255), nullable=False)
+    key: Mapped[str] = db.Column(db.String(255), nullable=False)
+    name: Mapped[str] = db.Column(db.String(255), nullable=False)
+    size: Mapped[int] = db.Column(db.Integer, nullable=False)
+    extension: Mapped[str] = db.Column(db.String(255), nullable=False)
+    mime_type: Mapped[str] = db.Column(db.String(255), nullable=True)
+    created_by_role: Mapped[str] = db.Column(
+        db.String(255), nullable=False, server_default=db.text("'account'::character varying")
+    )
+    created_by: Mapped[str] = db.Column(StringUUID, nullable=False)
+    created_at: Mapped[datetime] = db.Column(
+        db.DateTime, nullable=False, server_default=db.text("CURRENT_TIMESTAMP(0)")
+    )
+    used: Mapped[bool] = db.Column(db.Boolean, nullable=False, server_default=db.text("false"))
+    used_by: Mapped[str | None] = db.Column(StringUUID, nullable=True)
+    used_at: Mapped[datetime | None] = db.Column(db.DateTime, nullable=True)
+    hash: Mapped[str | None] = db.Column(db.String(255), nullable=True)
+
+    def __init__(
+        self,
+        *,
+        tenant_id: str,
+        storage_type: str,
+        key: str,
+        name: str,
+        size: int,
+        extension: str,
+        mime_type: str,
+        created_by_role: str,
+        created_by: str,
+        created_at: datetime,
+        used: bool,
+        used_by: str | None = None,
+        used_at: datetime | None = None,
+        hash: str | None = None,
+    ) -> None:
+        self.tenant_id = tenant_id
+        self.storage_type = storage_type
+        self.key = key
+        self.name = name
+        self.size = size
+        self.extension = extension
+        self.mime_type = mime_type
+        self.created_by_role = created_by_role
+        self.created_by = created_by
+        self.created_at = created_at
+        self.used = used
+        self.used_by = used_by
+        self.used_at = used_at
+        self.hash = hash
 
 
 class ApiRequest(db.Model):

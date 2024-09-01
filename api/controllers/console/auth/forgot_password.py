@@ -15,7 +15,7 @@ from controllers.console.setup import setup_required
 from extensions.ext_database import db
 from libs.helper import email as email_validate
 from libs.password import hash_password, valid_password
-from models.account import Account
+from models import Account
 from services.account_service import AccountService
 from services.errors.account import RateLimitExceededError
 

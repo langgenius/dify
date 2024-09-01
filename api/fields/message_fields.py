@@ -3,6 +3,8 @@ from flask_restful import fields
 from fields.conversation_fields import message_file_fields
 from libs.helper import TimestampField
 
+from .raws import FilesContainedField
+
 feedback_fields = {"rating": fields.String}
 
 retriever_resource_fields = {
@@ -63,7 +65,7 @@ message_fields = {
     "id": fields.String,
     "conversation_id": fields.String,
     "parent_message_id": fields.String,
-    "inputs": fields.Raw,
+    "inputs": FilesContainedField,
     "query": fields.String,
     "answer": fields.String(attribute="re_sign_file_url_answer"),
     "feedback": fields.Nested(feedback_fields, attribute="user_feedback", allow_null=True),

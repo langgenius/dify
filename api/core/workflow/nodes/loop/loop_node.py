@@ -1,9 +1,9 @@
 from typing import Any
 
-from core.workflow.entities.node_entities import NodeType
 from core.workflow.nodes.base_node import BaseNode
 from core.workflow.nodes.loop.entities import LoopNodeData, LoopState
 from core.workflow.utils.condition.entities import Condition
+from enums import NodeType
 
 
 class LoopNode(BaseNode):

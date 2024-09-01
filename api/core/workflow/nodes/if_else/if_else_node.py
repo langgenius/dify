@@ -1,10 +1,15 @@
 from collections.abc import Mapping, Sequence
-from typing import Any, cast
+from typing import Any, Literal, cast
 
-from core.workflow.entities.node_entities import NodeRunResult, NodeType
+from typing_extensions import deprecated
+
+from core.workflow.entities.node_entities import NodeRunResult
+from core.workflow.entities.variable_pool import VariablePool
 from core.workflow.nodes.base_node import BaseNode
 from core.workflow.nodes.if_else.entities import IfElseNodeData
+from core.workflow.utils.condition.entities import Condition
 from core.workflow.utils.condition.processor import ConditionProcessor
+from enums import NodeType
 from models.workflow import WorkflowNodeExecutionStatus
 
 
@@ -32,12 +37,11 @@ class IfElseNode(BaseNode):
             # Check if the new cases structure is used
             if node_data.cases:
                 for case in node_data.cases:
-                    input_conditions, group_result = condition_processor.process_conditions(
-                        variable_pool=self.graph_runtime_state.variable_pool, conditions=case.conditions
+                    input_conditions, group_result, final_result = condition_processor.process_conditions(
+                        variable_pool=self.graph_runtime_state.variable_pool,
+                        conditions=case.conditions,
+                        operator=case.logical_operator,
                     )
-
-                    # Apply the logical operator for the current case
-                    final_result = all(group_result) if case.logical_operator == "and" else any(group_result)
 
                     process_datas["condition_results"].append(
                         {
@@ -53,12 +57,14 @@ class IfElseNode(BaseNode):
                         break
 
             else:
+                # TODO: Update database then remove this
                 # Fallback to old structure if cases are not defined
-                input_conditions, group_result = condition_processor.process_conditions(
-                    variable_pool=self.graph_runtime_state.variable_pool, conditions=node_data.conditions
+                input_conditions, group_result, final_result = _should_not_use_old_function(
+                    condition_processor=condition_processor,
+                    variable_pool=self.graph_runtime_state.variable_pool,
+                    conditions=node_data.conditions or [],
+                    operator=node_data.logical_operator or "and",
                 )
-
-                final_result = all(group_result) if node_data.logical_operator == "and" else any(group_result)
 
                 selected_case_id = "true" if final_result else "false"
 
@@ -97,3 +103,18 @@ class IfElseNode(BaseNode):
         :return:
         """
         return {}
+
+
+@deprecated("This function is deprecated. You should use the new cases structure.")
+def _should_not_use_old_function(
+    *,
+    condition_processor: ConditionProcessor,
+    variable_pool: VariablePool,
+    conditions: list[Condition],
+    operator: Literal["and", "or"],
+):
+    return condition_processor.process_conditions(
+        variable_pool=variable_pool,
+        conditions=conditions,
+        operator=operator,
+    )

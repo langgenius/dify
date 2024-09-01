@@ -5,7 +5,7 @@ from typing import Any, cast
 
 from configs import dify_config
 from core.model_runtime.utils.encoders import jsonable_encoder
-from core.workflow.entities.node_entities import NodeRunMetadataKey, NodeRunResult, NodeType
+from core.workflow.entities.node_entities import NodeRunMetadataKey, NodeRunResult
 from core.workflow.graph_engine.entities.event import (
     BaseGraphEvent,
     BaseNodeEvent,
@@ -23,6 +23,7 @@ from core.workflow.graph_engine.entities.graph import Graph
 from core.workflow.nodes.base_node import BaseNode
 from core.workflow.nodes.event import RunCompletedEvent, RunEvent
 from core.workflow.nodes.iteration.entities import IterationNodeData
+from enums import NodeType
 from models.workflow import WorkflowNodeExecutionStatus
 
 logger = logging.getLogger(__name__)
@@ -177,7 +178,7 @@ class IterationNode(BaseNode):
 
                 # remove all nodes outputs from variable pool
                 for node_id in iteration_graph.node_ids:
-                    variable_pool.remove_node(node_id)
+                    variable_pool.remove([node_id])
 
                 # move to next iteration
                 current_index = variable_pool.get([self.node_id, "index"])

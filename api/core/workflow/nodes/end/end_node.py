@@ -1,9 +1,10 @@
 from collections.abc import Mapping, Sequence
 from typing import Any, cast
 
-from core.workflow.entities.node_entities import NodeRunResult, NodeType
+from core.workflow.entities.node_entities import NodeRunResult
 from core.workflow.nodes.base_node import BaseNode
 from core.workflow.nodes.end.entities import EndNodeData
+from enums import NodeType
 from models.workflow import WorkflowNodeExecutionStatus
 
 
@@ -22,10 +23,15 @@ class EndNode(BaseNode):
 
         outputs = {}
         for variable_selector in output_variables:
-            value = self.graph_runtime_state.variable_pool.get_any(variable_selector.value_selector)
+            variable = self.graph_runtime_state.variable_pool.get(variable_selector.value_selector)
+            value = variable.to_object() if variable is not None else None
             outputs[variable_selector.variable] = value
 
-        return NodeRunResult(status=WorkflowNodeExecutionStatus.SUCCEEDED, inputs=outputs, outputs=outputs)
+        return NodeRunResult(
+            status=WorkflowNodeExecutionStatus.SUCCEEDED,
+            inputs=outputs,
+            outputs=outputs,
+        )
 
     @classmethod
     def _extract_variable_selector_to_variable_mapping(

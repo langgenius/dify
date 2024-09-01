@@ -1,3 +1,4 @@
+from collections.abc import Mapping
 from enum import Enum
 from typing import Any, Optional
 
@@ -119,6 +120,7 @@ class MessageEndStreamResponse(StreamResponse):
     event: StreamEvent = StreamEvent.MESSAGE_END
     id: str
     metadata: dict = {}
+    files: Optional[list[Mapping[str, Any]]] = None
 
 
 class MessageFileStreamResponse(StreamResponse):
