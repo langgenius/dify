@@ -38,14 +38,10 @@ function appendQAToChatList(chatList: ChatItem[], item: any) {
 }
 
 /**
- * Computes the chat list for display.
+ * Computes the latest thread messages from all messages of the conversation.
  *
- * @param appChatListData - The history chat list data from the backend. This includes all history messages and may contain branches.
- * @param currentConversationId - The ID of the current conversation.
+ * @param fetchedMessages - The history chat list data from the backend, sorted by created_at in descending order. This includes all flattened history messages of the conversation.
  * @returns An array of ChatItems representing the latest thread.
- *
- * Note: The chat list from the backend includes all history messages and may contain branches.
- * This function only computes the latest thread from that list.
  */
 function getPrevChatList(fetchedMessages: any[]) {
   const ret: ChatItem[] = []
