@@ -43,7 +43,7 @@ def get_oauth_providers():
 
 
 class OAuthLogin(Resource):
-    def get(self, provider: str):
+    def get(self, provider: str, invite_toke: Optional[str] = None):
         OAUTH_PROVIDERS = get_oauth_providers()
         with current_app.app_context():
             oauth_provider = OAUTH_PROVIDERS.get(provider)
@@ -51,7 +51,7 @@ class OAuthLogin(Resource):
         if not oauth_provider:
             return {"error": "Invalid provider"}, 400
 
-        auth_url = oauth_provider.get_authorization_url()
+        auth_url = oauth_provider.get_authorization_url(invite_toke)
         return redirect(auth_url)
 
 
@@ -64,12 +64,22 @@ class OAuthCallback(Resource):
             return {"error": "Invalid provider"}, 400
 
         code = request.args.get("code")
+        state = request.args.get("state")
+        invite_token = None
+        if state:
+            invite_token = state
+
         try:
             token = oauth_provider.get_access_token(code)
             user_info = oauth_provider.get_user_info(token)
         except requests.exceptions.HTTPError as e:
             logging.exception(f"An error occurred during the OAuth process with {provider}: {e.response.text}")
             return {"error": "OAuth process failed"}, 400
+
+        if invite_token:
+            return redirect(
+                f"{dify_config.CONSOLE_WEB_URL}/invite-settings?invite_token={invite_token}"
+            )
 
         try:
             account = _generate_account(provider, user_info)
