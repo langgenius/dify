@@ -725,7 +725,9 @@ class RegisterService:
         }
 
     @classmethod
-    def _get_invitation_by_token(cls, token: str, workspace_id: str, email: str) -> Optional[dict[str, str]]:
+    def _get_invitation_by_token(
+        cls, token: str, workspace_id: Optional[str] = None, email: Optional[str] = None
+    ) -> Optional[dict[str, str]]:
         if workspace_id is not None and email is not None:
             email_hash = sha256(email.encode()).hexdigest()
             cache_key = f"member_invite_token:{workspace_id}, {email_hash}:{token}"
