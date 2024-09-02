@@ -125,7 +125,7 @@ class EmailCodeLoginApi(Resource):
         AccountService.revoke_email_code_login_token(args["token"])
         account = AccountService.get_user_through_email(user_email)
         if account is None:
-            account = AccountService.create_user_through_env(
+            account = AccountService.create_account_and_tenant(
                 email=user_email, name=user_email, interface_language=languages[0]
             )
 

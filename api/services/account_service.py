@@ -133,6 +133,8 @@ class AccountService:
         email: str, name: str, interface_language: str, password: Optional[str] = None, interface_theme: str = "light"
     ) -> Account:
         """create account"""
+        if not dify_config.ALLOW_REGISTER:
+            raise Unauthorized("Register is not allowed.")
         account = Account()
         account.email = email
         account.name = name
@@ -160,20 +162,14 @@ class AccountService:
         return account
 
     @staticmethod
-    def create_user_through_env(
+    def create_account_and_tenant(
         email: str, name: str, interface_language: str, password: Optional[str] = None
     ) -> Account:
         """create account"""
-        if dify_config.ALLOW_REGISTER:
-            account = AccountService.create_account(
-                email=email, name=name, interface_language=interface_language, password=password
-            )
-        else:
-            raise Unauthorized("Register is not allowed.")
-        if dify_config.ALLOW_CREATE_WORKSPACE:
-            TenantService.create_owner_tenant_if_not_exist(account=account)
-        else:
-            raise Unauthorized("Create workspace is not allowed.")
+        account = AccountService.create_account(
+            email=email, name=name, interface_language=interface_language, password=password
+        )
+        TenantService.create_owner_tenant_if_not_exist(account=account)
 
         return account
 
@@ -319,6 +315,8 @@ class TenantService:
     @staticmethod
     def create_tenant(name: str) -> Tenant:
         """Create tenant"""
+        if not dify_config.ALLOW_CREATE_WORKSPACE:
+            raise Unauthorized("Create workspace is not allowed.")
         tenant = Tenant(name=name)
 
         db.session.add(tenant)
