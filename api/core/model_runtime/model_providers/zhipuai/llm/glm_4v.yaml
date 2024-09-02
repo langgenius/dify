@@ -34,4 +34,9 @@ parameter_rules:
     use_template: max_tokens
     default: 1024
     min: 1
-    max: 8192
+    max: 1024
+pricing:
+  input: '0.05'
+  output: '0.05'
+  unit: '0.001'
+  currency: RMB
