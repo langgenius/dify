@@ -1,14 +1,15 @@
 import datetime
 
+from flask import request
 from flask_restful import Resource, reqparse
 
 from constants.languages import supported_language
 from controllers.console import api
 from controllers.console.error import AlreadyActivateError
 from extensions.ext_database import db
-from libs.helper import email, str_len, timezone
+from libs.helper import email, get_remote_ip, str_len, timezone
 from models.account import AccountStatus, Tenant
-from services.account_service import RegisterService
+from services.account_service import AccountService, RegisterService
 
 
 class ActivateCheckApi(Resource):
@@ -67,7 +68,9 @@ class ActivateApi(Resource):
         account.initialized_at = datetime.datetime.now(datetime.timezone.utc).replace(tzinfo=None)
         db.session.commit()
 
-        return {"result": "success"}
+        token = AccountService.login(account, ip_address=get_remote_ip(request))
+
+        return {"result": "success", "data": token}
 
 
 api.add_resource(ActivateCheckApi, "/activate/check")
