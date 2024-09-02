@@ -48,7 +48,6 @@ class ActivateApi(Resource):
         parser.add_argument("email", type=email, required=False, nullable=True, location="json")
         parser.add_argument("token", type=str, required=True, nullable=False, location="json")
         parser.add_argument("name", type=str_len(30), required=True, nullable=False, location="json")
-        parser.add_argument("password", type=valid_password, required=True, nullable=False, location="json")
         parser.add_argument(
             "interface_language", type=supported_language, required=True, nullable=False, location="json"
         )
@@ -64,15 +63,6 @@ class ActivateApi(Resource):
         account = invitation["account"]
         account.name = args["name"]
 
-        # generate password salt
-        salt = secrets.token_bytes(16)
-        base64_salt = base64.b64encode(salt).decode()
-
-        # encrypt password with salt
-        password_hashed = hash_password(args["password"], salt)
-        base64_password_hashed = base64.b64encode(password_hashed).decode()
-        account.password = base64_password_hashed
-        account.password_salt = base64_salt
         account.interface_language = args["interface_language"]
         account.timezone = args["timezone"]
         account.interface_theme = "light"
