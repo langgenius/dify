@@ -421,6 +421,7 @@ const WorkflowWrap = memo(() => {
     citation: features.retriever_resource || { enabled: false },
     moderation: features.sensitive_word_avoidance || { enabled: false },
   }
+  // getParallelInfo(nodesData, edgesData)
 
   return (
     <ReactFlowProvider>
