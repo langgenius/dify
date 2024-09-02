@@ -51,7 +51,7 @@ class OAuthLogin(Resource):
         if not oauth_provider:
             return {"error": "Invalid provider"}, 400
 
-        auth_url = oauth_provider.get_authorization_url(invite_token)
+        auth_url = oauth_provider.get_authorization_url(invite_token=invite_token)
         return redirect(auth_url)
 
 
