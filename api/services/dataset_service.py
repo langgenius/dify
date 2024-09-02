@@ -1080,8 +1080,8 @@ class DocumentService:
             data_source_type=document_data["data_source"]["type"],
             indexing_technique=document_data.get('indexing_technique', 'high_quality'),
             created_by=account.id,
-            embedding_model=document_data.get('embedding_model', None),
-            embedding_model_provider=document_data.get('embedding_model_provider', None),
+            embedding_model=document_data.get('embedding_model'),
+            embedding_model_provider=document_data.get('embedding_model_provider'),
             collection_binding_id=dataset_collection_binding_id,
             retrieval_model=retrieval_model,
         )
