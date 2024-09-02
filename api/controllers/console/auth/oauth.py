@@ -5,8 +5,8 @@ from typing import Optional
 import requests
 from flask import current_app, redirect, request
 from flask_restful import Resource
+from werkzeug.exceptions import Unauthorized
 
-import services
 from configs import dify_config
 from constants.languages import languages
 from extensions.ext_database import db
@@ -81,8 +81,9 @@ class OAuthCallback(Resource):
 
         try:
             account = _generate_account(provider, user_info)
-        except services.errors.account.AccountNotFound as e:
+        except Unauthorized:
             return redirect(f"{dify_config.CONSOLE_WEB_URL}/signin?message=AccountNotFound")
+
         # Check account status
         if account.status == AccountStatus.BANNED.value or account.status == AccountStatus.CLOSED.value:
             return {"error": "Account is banned or closed."}, 403
@@ -92,7 +93,10 @@ class OAuthCallback(Resource):
             account.initialized_at = datetime.now(timezone.utc).replace(tzinfo=None)
             db.session.commit()
 
-        TenantService.create_owner_tenant_if_not_exist(account)
+        try:
+            TenantService.create_owner_tenant_if_not_exist(account)
+        except Unauthorized:
+            return redirect(f"{dify_config.CONSOLE_WEB_URL}/signin?message=WorkspaceNotFound")
 
         token = AccountService.login(account, ip_address=get_remote_ip(request))
 
