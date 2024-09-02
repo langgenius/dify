@@ -79,7 +79,8 @@ const translation = {
   },
   answerIcon: {
     title: 'Use WebApp icon to replace 🤖',
-    description: 'Wether to use the WebApp icon to replace 🤖 in the interface',
+    description: 'Wether to use the WebApp icon to replace 🤖 in the shared application',
+    descriptionInExplore: 'Whether to use the WebApp icon to replace 🤖 in Explore',
   },
   switch: 'Switch to Workflow Orchestrate',
   switchTipStart: 'A new app copy will be created for you, and the new copy will switch to Workflow Orchestrate. The new copy will ',

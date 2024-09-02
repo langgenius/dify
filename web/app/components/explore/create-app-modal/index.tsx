@@ -137,7 +137,7 @@ const CreateAppModal = ({
                   onChange={v => setUseIconAsAnswerIcon(v)}
                 />
               </div>
-              <p className='body-xs-regular text-gray-500'>{t('app.answerIcon.description')}</p>
+              <p className='body-xs-regular text-gray-500'>{t('app.answerIcon.descriptionInExplore')}</p>
             </div>
           )}
           {!isEditModal && isAppsFull && <AppsFull loc='app-explore-create' />}
