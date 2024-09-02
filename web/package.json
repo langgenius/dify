@@ -22,6 +22,8 @@
   "dependencies": {
     "@babel/runtime": "^7.22.3",
     "@dagrejs/dagre": "^1.1.2",
+    "html2canvas": "^1.4.1",
+    "weixin-js-sdk": "^1.6.5",
     "@emoji-mart/data": "^1.1.2",
     "@floating-ui/react": "^0.25.2",
     "@formatjs/intl-localematcher": "^0.5.4",

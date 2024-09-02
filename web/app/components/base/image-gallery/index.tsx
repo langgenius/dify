@@ -53,6 +53,7 @@ const ImageGallery: FC<Props> = ({
         imagePreviewUrl && (
           <ImagePreview
             url={imagePreviewUrl}
+            title='Preview'
             onCancel={() => setImagePreviewUrl('')}
           />
         )
