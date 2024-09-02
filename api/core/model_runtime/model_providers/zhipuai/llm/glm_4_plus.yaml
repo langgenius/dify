@@ -1,6 +1,6 @@
-model: glm-4-flash
+model: glm-4-plus
 label:
-  en_US: glm-4-flash
+  en_US: glm-4-plus
 model_type: llm
 features:
   - multi-tool-call
@@ -38,7 +38,7 @@ parameter_rules:
     min: 1
     max: 8192
 pricing:
-  input: '0'
-  output: '0'
+  input: '0.05'
+  output: '0.05'
   unit: '0.001'
   currency: RMB

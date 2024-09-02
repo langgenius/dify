@@ -173,21 +173,18 @@ class ChatConversationApi(Resource):
 
         if args["keyword"]:
             keyword_filter = "%{}%".format(args["keyword"])
-            query = (
-                query.join(
-                    Message,
-                    Message.conversation_id == Conversation.id,
-                )
-                .join(subquery, subquery.c.conversation_id == Conversation.id)
-                .filter(
-                    or_(
-                        Message.query.ilike(keyword_filter),
-                        Message.answer.ilike(keyword_filter),
-                        Conversation.name.ilike(keyword_filter),
-                        Conversation.introduction.ilike(keyword_filter),
-                        subquery.c.from_end_user_session_id.ilike(keyword_filter),
-                    ),
-                )
+            message_subquery = (
+                db.session.query(Message.conversation_id)
+                .filter(or_(Message.query.ilike(keyword_filter), Message.answer.ilike(keyword_filter)))
+                .subquery()
+            )
+            query = query.join(subquery, subquery.c.conversation_id == Conversation.id).filter(
+                or_(
+                    Conversation.id.in_(message_subquery),
+                    Conversation.name.ilike(keyword_filter),
+                    Conversation.introduction.ilike(keyword_filter),
+                    subquery.c.from_end_user_session_id.ilike(keyword_filter),
+                ),
             )
 
         account = current_user
