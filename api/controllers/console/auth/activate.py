@@ -1,6 +1,4 @@
-import base64
 import datetime
-import secrets
 
 from flask_restful import Resource, reqparse
 
@@ -9,7 +7,6 @@ from controllers.console import api
 from controllers.console.error import AlreadyActivateError
 from extensions.ext_database import db
 from libs.helper import email, str_len, timezone
-from libs.password import hash_password, valid_password
 from models.account import AccountStatus, Tenant
 from services.account_service import RegisterService
 
@@ -35,7 +32,7 @@ class ActivateCheckApi(Resource):
             invitee_email = data.get("email", "Unknown Email")
             return {
                 "is_valid": invitation is not None,
-                "data": {"workspace_name": workspace_name, "workspace_id": workspace_id, "email": invitee_email}
+                "data": {"workspace_name": workspace_name, "workspace_id": workspace_id, "email": invitee_email},
             }
         else:
             return {"is_valid": False}
