@@ -35,11 +35,13 @@ class LoginApi(Resource):
         try:
             account = AccountService.authenticate(args["email"], args["password"])
         except services.errors.account.AccountLoginError as e:
-            if dify_config.ALLOW_REGISTER:
-                token = AccountService.send_reset_password_email(email=args["email"])
-                return redirect(f"{dify_config.CONSOLE_WEB_URL}/reset-password?token={token}")
-            else:
+            return {"code": "unauthorized", "message": str(e)}, 401
+        except services.errors.account.AccountNotFound as e:
+            if not dify_config.ALLOW_REGISTER:
                 return {"code": "unauthorized", "message": str(e)}, 401
+
+            token = AccountService.send_reset_password_email(email=args["email"])
+            return redirect(f"{dify_config.CONSOLE_WEB_URL}/reset-password?token={token}")
 
         # SELF_HOSTED only have one workspace
         tenants = TenantService.get_join_tenants(account)
