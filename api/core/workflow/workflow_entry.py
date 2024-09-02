@@ -44,7 +44,8 @@ class WorkflowEntry:
             user_from: UserFrom,
             invoke_from: InvokeFrom,
             call_depth: int,
-            variable_pool: VariablePool
+            variable_pool: VariablePool,
+            thread_pool_id: Optional[str] = None
     ) -> None:
         """
         Init workflow entry
@@ -59,7 +60,9 @@ class WorkflowEntry:
         :param invoke_from: invoke from
         :param call_depth: call depth
         :param variable_pool: variable pool
+        :param thread_pool_id: thread pool id
         """
+        # check call depth
         workflow_call_max_depth = dify_config.WORKFLOW_CALL_MAX_DEPTH
         if call_depth > workflow_call_max_depth:
             raise ValueError('Max workflow call depth {} reached.'.format(workflow_call_max_depth))
@@ -78,7 +81,8 @@ class WorkflowEntry:
             graph_config=graph_config,
             variable_pool=variable_pool,
             max_execution_steps=dify_config.WORKFLOW_MAX_EXECUTION_STEPS,
-            max_execution_time=dify_config.WORKFLOW_MAX_EXECUTION_TIME
+            max_execution_time=dify_config.WORKFLOW_MAX_EXECUTION_TIME,
+            thread_pool_id=thread_pool_id
         )
 
     def run(

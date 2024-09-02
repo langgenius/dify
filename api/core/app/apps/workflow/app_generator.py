@@ -4,7 +4,7 @@ import os
 import threading
 import uuid
 from collections.abc import Generator
-from typing import Any, Literal, Union, overload
+from typing import Any, Literal, Optional, Union, overload
 
 from flask import Flask, current_app
 from pydantic import ValidationError
@@ -40,6 +40,8 @@ class WorkflowAppGenerator(BaseAppGenerator):
         args: dict,
         invoke_from: InvokeFrom,
         stream: Literal[True] = True,
+        call_depth: int = 0,
+        workflow_thread_pool_id: Optional[str] = None
     ) -> Generator[str, None, None]: ...
 
     @overload
@@ -50,6 +52,8 @@ class WorkflowAppGenerator(BaseAppGenerator):
         args: dict,
         invoke_from: InvokeFrom,
         stream: Literal[False] = False,
+        call_depth: int = 0,
+        workflow_thread_pool_id: Optional[str] = None
     ) -> dict: ...
 
     def generate(
@@ -61,6 +65,7 @@ class WorkflowAppGenerator(BaseAppGenerator):
         invoke_from: InvokeFrom,
         stream: bool = True,
         call_depth: int = 0,
+        workflow_thread_pool_id: Optional[str] = None
     ):
         """
         Generate App response.
@@ -72,6 +77,7 @@ class WorkflowAppGenerator(BaseAppGenerator):
         :param invoke_from: invoke from source
         :param stream: is stream
         :param call_depth: call depth
+        :param workflow_thread_pool_id: workflow thread pool id
         """
         inputs = args['inputs']
 
@@ -119,6 +125,7 @@ class WorkflowAppGenerator(BaseAppGenerator):
             application_generate_entity=application_generate_entity,
             invoke_from=invoke_from,
             stream=stream,
+            workflow_thread_pool_id=workflow_thread_pool_id
         )
 
     def _generate(
@@ -129,6 +136,7 @@ class WorkflowAppGenerator(BaseAppGenerator):
         application_generate_entity: WorkflowAppGenerateEntity,
         invoke_from: InvokeFrom,
         stream: bool = True,
+        workflow_thread_pool_id: Optional[str] = None
     ) -> dict[str, Any] | Generator[str, None, None]:
         """
         Generate App response.
@@ -139,6 +147,7 @@ class WorkflowAppGenerator(BaseAppGenerator):
         :param application_generate_entity: application generate entity
         :param invoke_from: invoke from source
         :param stream: is stream
+        :param workflow_thread_pool_id: workflow thread pool id
         """
         # init queue manager
         queue_manager = WorkflowAppQueueManager(
@@ -153,7 +162,8 @@ class WorkflowAppGenerator(BaseAppGenerator):
             'flask_app': current_app._get_current_object(), # type: ignore
             'application_generate_entity': application_generate_entity,
             'queue_manager': queue_manager,
-            'context': contextvars.copy_context()
+            'context': contextvars.copy_context(),
+            'workflow_thread_pool_id': workflow_thread_pool_id
         })
 
         worker_thread.start()
@@ -231,12 +241,14 @@ class WorkflowAppGenerator(BaseAppGenerator):
     def _generate_worker(self, flask_app: Flask,
                          application_generate_entity: WorkflowAppGenerateEntity,
                          queue_manager: AppQueueManager,
-                         context: contextvars.Context) -> None:
+                         context: contextvars.Context,
+                         workflow_thread_pool_id: Optional[str] = None) -> None:
         """
         Generate worker in a new thread.
         :param flask_app: Flask app
         :param application_generate_entity: application generate entity
         :param queue_manager: queue manager
+        :param workflow_thread_pool_id: workflow thread pool id
         :return:
         """
         for var, val in context.items():
@@ -246,7 +258,8 @@ class WorkflowAppGenerator(BaseAppGenerator):
                 # workflow app
                 runner = WorkflowAppRunner(
                     application_generate_entity=application_generate_entity,
-                    queue_manager=queue_manager
+                    queue_manager=queue_manager,
+                    workflow_thread_pool_id=workflow_thread_pool_id
                 )
 
                 runner.run()
