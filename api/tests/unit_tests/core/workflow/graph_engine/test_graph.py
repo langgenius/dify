@@ -700,6 +700,11 @@ def test_parallels_graph6():
                 "source": "code3",
                 "target": "answer",
             },
+            {
+                "id": "llm3-source-answer-target",
+                "source": "llm3",
+                "target": "answer",
+            },
         ],
         "nodes": [
             {"data": {"type": "start"}, "id": "start"},

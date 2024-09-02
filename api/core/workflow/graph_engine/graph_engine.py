@@ -352,7 +352,13 @@ class GraphEngine:
         # if nodes has no run conditions, parallel run all nodes
         parallel_id = self.graph.node_parallel_mapping.get(edge_mappings[0].target_node_id)
         if not parallel_id:
-            raise GraphRunFailedError(f'Node {edge_mappings[0].target_node_id} related parallel not found.')
+            node_id = edge_mappings[0].target_node_id
+            node_config = self.graph.node_id_config_mapping.get(node_id)
+            if not node_config:
+                raise GraphRunFailedError(f'Node {node_id} related parallel not found.')
+
+            node_title = node_config.get('data', {}).get('title')
+            raise GraphRunFailedError(f'Node {node_title} related parallel not found.')
 
         parallel = self.graph.parallel_mapping.get(parallel_id)
         if not parallel:
