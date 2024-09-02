@@ -78,8 +78,8 @@ const translation = {
     image: 'Image',
   },
   answerIcon: {
-    title: 'Use app icon as answer icon',
-    description: 'Whether to use the app icon as the answer icon in the chat interface',
+    title: 'Use WebApp icon to replace 🤖',
+    description: 'Wether to use the WebApp icon to replace 🤖 in the interface',
   },
   switch: 'Switch to Workflow Orchestrate',
   switchTipStart: 'A new app copy will be created for you, and the new copy will switch to Workflow Orchestrate. The new copy will ',
