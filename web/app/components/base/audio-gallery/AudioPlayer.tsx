@@ -21,11 +21,6 @@ const AudioPlayer: React.FC<AudioPlayerProps> = ({ src }) => {
     if (!audio)
       return
 
-    // Start loading audio data immediately after component loads
-    audio.play().then(() => {
-      audio.pause()
-    })
-
     const setAudioData = () => {
       setDuration(audio.duration)
     }
@@ -33,6 +28,7 @@ const AudioPlayer: React.FC<AudioPlayerProps> = ({ src }) => {
     const setAudioTime = () => {
       setCurrentTime(audio.currentTime)
     }
+
     const handleProgress = () => {
       if (audio.buffered.length > 0)
         setBufferedTime(audio.buffered.end(audio.buffered.length - 1))
@@ -41,20 +37,25 @@ const AudioPlayer: React.FC<AudioPlayerProps> = ({ src }) => {
     const handleEnded = () => {
       setIsPlaying(false)
     }
-    audio.addEventListener('progress', handleProgress)
+
     audio.addEventListener('loadedmetadata', setAudioData)
     audio.addEventListener('timeupdate', setAudioTime)
+    audio.addEventListener('progress', handleProgress)
     audio.addEventListener('ended', handleEnded)
 
+    // Preload audio metadata
+    audio.load()
+
+    // Delayed generation of waveform data
     // eslint-disable-next-line @typescript-eslint/no-use-before-define
-    generateWaveformData(src)
+    const timer = setTimeout(() => generateWaveformData(src), 1000)
 
     return () => {
-      // audio.removeEventListener('canplaythrough', handleCanPlayThrough)
-      audio.removeEventListener('progress', handleProgress)
       audio.removeEventListener('loadedmetadata', setAudioData)
       audio.removeEventListener('timeupdate', setAudioTime)
+      audio.removeEventListener('progress', handleProgress)
       audio.removeEventListener('ended', handleEnded)
+      clearTimeout(timer)
     }
   }, [src])
 
@@ -67,7 +68,7 @@ const AudioPlayer: React.FC<AudioPlayerProps> = ({ src }) => {
     const channelData = audioBuffer.getChannelData(0)
 
     // Calculate the number of samples we want to take from the channel data.
-    const samples = Math.min(100, channelData.length)
+    const samples = Math.min(90, channelData.length)
 
     // Calculate the size of each sample block.
     const blockSize = Math.floor(channelData.length / samples)
@@ -83,7 +84,7 @@ const AudioPlayer: React.FC<AudioPlayerProps> = ({ src }) => {
         sum += Math.abs(channelData[j])
 
       // Multiply the average by a constant factor to increase its size.
-      waveformData.push((sum / blockSize) * 5) // Increase this factor as needed
+      waveformData.push((sum / blockSize) * 4) // Increase this factor as needed
     }
 
     setWaveformData(waveformData)
@@ -114,7 +115,6 @@ const AudioPlayer: React.FC<AudioPlayerProps> = ({ src }) => {
     const getClientX = (event: React.MouseEvent | React.TouchEvent): number => {
       if ('touches' in event)
         return event.touches[0].clientX
-
       return event.clientX
     }
 
@@ -128,18 +128,16 @@ const AudioPlayer: React.FC<AudioPlayerProps> = ({ src }) => {
       const percent = Math.min(Math.max(0, clientX - rect.left), rect.width) / rect.width
       const newTime = percent * duration
 
-      // Check if the new time is within any buffered range
-      const isBuffered = Array.from({ length: audio.buffered.length }, (_, i) => i)
-        .some(i => newTime >= audio.buffered.start(i) && newTime <= audio.buffered.end(i))
+      // Removes the buffer check, allowing drag to any location
+      audio.currentTime = newTime
+      setCurrentTime(newTime)
 
-      if (isBuffered) {
-        audio.currentTime = newTime
-        setCurrentTime(newTime)
-
-        if (!isPlaying) {
-          setIsPlaying(true)
-          audio.play().catch(error => console.error('Error playing audio:', error))
-        }
+      if (!isPlaying) {
+        setIsPlaying(true)
+        audio.play().catch((error) => {
+          console.error('Error playing audio:', error)
+          setIsPlaying(false)
+        })
       }
     }
 
@@ -225,9 +223,9 @@ const AudioPlayer: React.FC<AudioPlayerProps> = ({ src }) => {
       <button className={styles.playButton} onClick={togglePlay}>
         {isPlaying
           ? (
-            <svg viewBox="0 0 24 24" width="15" height="15">
-              <rect x="6" y="4" width="4" height="16" />
-              <rect x="14" y="4" width="4" height="16" />
+            <svg viewBox="0 0 24 24" width="18" height="18">
+              <rect x="6" y="4" width="3" height="16" />
+              <rect x="14" y="4" width="3" height="16" />
             </svg>
           )
           : (
@@ -244,9 +242,8 @@ const AudioPlayer: React.FC<AudioPlayerProps> = ({ src }) => {
             width="300"
             height="25"
             onClick={handleCanvasInteraction}
-            onTouchStart={handleCanvasInteraction}
-            onMouseDown={handleCanvasInteraction}
             onMouseMove={handleMouseMove}
+            onMouseDown={handleCanvasInteraction}
           />
           <div className={styles.currentTime} style={{ left: `${(currentTime / duration) * 100}%`, bottom: '32px' }}>
             {formatTime(currentTime)}

@@ -5,9 +5,9 @@
   border-radius: 10px;
   padding: 10px 15px;
   width: 100%;
-  max-width: 500px;
-  box-shadow: 0 2px 10px rgba(0, 0, 0, 0.1);
-  height: 42px;
+  max-width: 360px;
+  max-height: 36px;
+  box-shadow: 0 1px 5px rgba(0, 0, 0, 0.1);
 }
 
 .playButton {
@@ -21,8 +21,7 @@
   display: flex;
   align-items: center;
   justify-content: center;
-  margin-right: 15px;
-  transition: background-color 0.3s;
+  transition: background-color 0.1s;
 }
 
 .playButton:hover {
@@ -44,7 +43,7 @@
   position: absolute;
   top: 0;
   left: 0;
-  width: 100%;
+  width: 95%;
   height: 100%;
 }
 
@@ -83,12 +82,6 @@
   border-radius: 10px;
   position: absolute;
   right: 5px;
-  bottom: 5px;
-}
-
-.playButton svg{
-   width:15px;
-   height:15px;
 }
 
 .playButton svg path,
