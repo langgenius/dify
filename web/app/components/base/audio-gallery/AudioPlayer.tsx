@@ -223,13 +223,13 @@ const AudioPlayer: React.FC<AudioPlayerProps> = ({ src }) => {
       <button className={styles.playButton} onClick={togglePlay}>
         {isPlaying
           ? (
-            <svg viewBox="0 0 24 24" width="18" height="18">
-              <rect x="6" y="4" width="3" height="16" />
-              <rect x="14" y="4" width="3" height="16" />
+            <svg viewBox="0 0 24 24" width="15" height="15">
+              <rect x="6" y="4" width="3" height="15" />
+              <rect x="14" y="4" width="3" height="15" />
             </svg>
           )
           : (
-            <svg viewBox="0 0 24 24" width="20" height="20">
+            <svg viewBox="0 0 24 24" width="15" height="15">
               <path d="M8 5v14l11-7z" fill="currentColor" />
             </svg>
           )}
@@ -243,7 +243,7 @@ const AudioPlayer: React.FC<AudioPlayerProps> = ({ src }) => {
             onMouseMove={handleMouseMove}
             onMouseDown={handleCanvasInteraction}
           />
-          <div className={styles.currentTime} style={{ left: `${(currentTime / duration) * 100}%`, bottom: '32px' }}>
+          <div className={styles.currentTime} style={{ left: `${(currentTime / duration) * 88}%`, bottom: '28px' }}>
             {formatTime(currentTime)}
           </div>
           <div className={styles.timeDisplay}>

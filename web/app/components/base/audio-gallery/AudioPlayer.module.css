@@ -42,15 +42,19 @@
 .waveform {
   position: absolute;
   top: 0;
-  left: 4px;
-  width: 92%;
+  left: 5px;
+  width: 90%;
   height: 100%;
 }
 
 .progressBar {
   position: absolute;
   top: 0;
-  left: 0;
+  left: 0;opacity: 0.5;
+  border-radius: 2px;
+  flex: none;
+  order: 55;
+  flex-grow: 0;
   height: 100%;
   background-color: rgba(66, 133, 244, 0.3);
   pointer-events: none;
@@ -59,7 +63,12 @@
 .timeDisplay {
   position: absolute;
   color: #296DFF;
+  opacity: 0.8;
+  border-radius: 2px;
   top: 0;
+  flex: none;
+  order: 0;
+  flex-grow: 0;
   right: -15px; /* Adjust this value as needed */
   height: 100%;
   width: 50px; /* Adjust this value as needed */
@@ -74,6 +83,7 @@
     background-color: rgba(255,255,255,.8);
     padding: 2px 4px;
     border-radius:10px;
+    box-shadow: 0 1px 5px rgba(0, 0, 0, 0.08);
 }
 
 .duration {
