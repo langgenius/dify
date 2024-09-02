@@ -42,8 +42,7 @@ def get_oauth_providers():
 
 
 class OAuthLogin(Resource):
-    def get(self, provider: str):
-        invite_token = request.args.get("invite_token") or None
+    def get(self, provider: str, invite_toke: Optional[str] = None):
         OAUTH_PROVIDERS = get_oauth_providers()
         with current_app.app_context():
             oauth_provider = OAUTH_PROVIDERS.get(provider)
@@ -51,7 +50,7 @@ class OAuthLogin(Resource):
         if not oauth_provider:
             return {"error": "Invalid provider"}, 400
 
-        auth_url = oauth_provider.get_authorization_url(invite_token=invite_token)
+        auth_url = oauth_provider.get_authorization_url(invite_toke)
         return redirect(auth_url)
 
 
