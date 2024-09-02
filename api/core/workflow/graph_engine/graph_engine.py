@@ -1,9 +1,8 @@
-from concurrent.futures import ThreadPoolExecutor, wait
 import logging
 import queue
-import threading
 import time
 from collections.abc import Generator, Mapping
+from concurrent.futures import ThreadPoolExecutor, wait
 from typing import Any, Optional
 
 from flask import Flask, current_app
