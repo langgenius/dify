@@ -15,6 +15,7 @@ class AliyunStorage(BaseStorage):
 
         app_config = self.app.config
         self.bucket_name = app_config.get("ALIYUN_OSS_BUCKET_NAME")
+        self.folder = app.config.get("ALIYUN_OSS_PATH")
         oss_auth_method = aliyun_s3.Auth
         region = None
         if app_config.get("ALIYUN_OSS_AUTH_VERSION") == "v4":
@@ -30,15 +31,29 @@ class AliyunStorage(BaseStorage):
         )
 
     def save(self, filename, data):
+        if not self.folder or self.folder.endswith("/"):
+            filename = self.folder + filename
+        else:
+            filename = self.folder + "/" + filename
         self.client.put_object(filename, data)
 
     def load_once(self, filename: str) -> bytes:
+        if not self.folder or self.folder.endswith("/"):
+            filename = self.folder + filename
+        else:
+            filename = self.folder + "/" + filename
+
         with closing(self.client.get_object(filename)) as obj:
             data = obj.read()
         return data
 
     def load_stream(self, filename: str) -> Generator:
         def generate(filename: str = filename) -> Generator:
+            if not self.folder or self.folder.endswith("/"):
+                filename = self.folder + filename
+            else:
+                filename = self.folder + "/" + filename
+
             with closing(self.client.get_object(filename)) as obj:
                 while chunk := obj.read(4096):
                     yield chunk
@@ -46,10 +61,24 @@ class AliyunStorage(BaseStorage):
         return generate()
 
     def download(self, filename, target_filepath):
+        if not self.folder or self.folder.endswith("/"):
+            filename = self.folder + filename
+        else:
+            filename = self.folder + "/" + filename
+
         self.client.get_object_to_file(filename, target_filepath)
 
     def exists(self, filename):
+        if not self.folder or self.folder.endswith("/"):
+            filename = self.folder + filename
+        else:
+            filename = self.folder + "/" + filename
+
         return self.client.object_exists(filename)
 
     def delete(self, filename):
+        if not self.folder or self.folder.endswith("/"):
+            filename = self.folder + filename
+        else:
+            filename = self.folder + "/" + filename
         self.client.delete_object(filename)
