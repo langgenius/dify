@@ -4,7 +4,7 @@ import os
 import threading
 import uuid
 from collections.abc import Generator
-from typing import Any, Union
+from typing import Any, Literal, Union, overload
 
 from flask import Flask, current_app
 from pydantic import ValidationError
@@ -32,8 +32,28 @@ logger = logging.getLogger(__name__)
 
 
 class WorkflowAppGenerator(BaseAppGenerator):
+    @overload
     def generate(
-        self, 
+        self, app_model: App,
+        workflow: Workflow,
+        user: Union[Account, EndUser],
+        args: dict,
+        invoke_from: InvokeFrom,
+        stream: Literal[True] = True,
+    ) -> Generator[str, None, None]: ...
+
+    @overload
+    def generate(
+        self, app_model: App,
+        workflow: Workflow,
+        user: Union[Account, EndUser],
+        args: dict,
+        invoke_from: InvokeFrom,
+        stream: Literal[False] = False,
+    ) -> dict: ...
+
+    def generate(
+        self,
         app_model: App,
         workflow: Workflow,
         user: Union[Account, EndUser],
@@ -109,7 +129,7 @@ class WorkflowAppGenerator(BaseAppGenerator):
         application_generate_entity: WorkflowAppGenerateEntity,
         invoke_from: InvokeFrom,
         stream: bool = True,
-    ) -> dict[str, Any] | Generator[str, Any, None]:
+    ) -> dict[str, Any] | Generator[str, None, None]:
         """
         Generate App response.
 
@@ -228,7 +248,7 @@ class WorkflowAppGenerator(BaseAppGenerator):
                     application_generate_entity=application_generate_entity,
                     queue_manager=queue_manager
                 )
-                
+
                 runner.run()
             except GenerateTaskStoppedException:
                 pass

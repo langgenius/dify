@@ -1,4 +1,4 @@
-from typing import Optional
+from typing import Annotated, Optional
 
 from pydantic import AliasChoices, Field, HttpUrl, NegativeInt, NonNegativeInt, PositiveInt, computed_field
 from pydantic_settings import BaseSettings
@@ -217,20 +217,17 @@ class HttpConfig(BaseSettings):
     def WEB_API_CORS_ALLOW_ORIGINS(self) -> list[str]:
         return self.inner_WEB_API_CORS_ALLOW_ORIGINS.split(",")
 
-    HTTP_REQUEST_MAX_CONNECT_TIMEOUT: NonNegativeInt = Field(
-        description="",
-        default=300,
-    )
+    HTTP_REQUEST_MAX_CONNECT_TIMEOUT: Annotated[
+        PositiveInt, Field(ge=10, description="connect timeout in seconds for HTTP request")
+    ] = 10
 
-    HTTP_REQUEST_MAX_READ_TIMEOUT: NonNegativeInt = Field(
-        description="",
-        default=600,
-    )
+    HTTP_REQUEST_MAX_READ_TIMEOUT: Annotated[
+        PositiveInt, Field(ge=60, description="read timeout in seconds for HTTP request")
+    ] = 60
 
-    HTTP_REQUEST_MAX_WRITE_TIMEOUT: NonNegativeInt = Field(
-        description="",
-        default=600,
-    )
+    HTTP_REQUEST_MAX_WRITE_TIMEOUT: Annotated[
+        PositiveInt, Field(ge=10, description="read timeout in seconds for HTTP request")
+    ] = 20
 
     HTTP_REQUEST_NODE_MAX_BINARY_SIZE: PositiveInt = Field(
         description="",

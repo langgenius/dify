@@ -39,7 +39,7 @@ class FileApi(Resource):
     @login_required
     @account_initialization_required
     @marshal_with(file_fields)
-    @cloud_edition_billing_resource_check(resource="documents")
+    @cloud_edition_billing_resource_check("documents")
     def post(self):
         # get file from request
         file = request.files["file"]
