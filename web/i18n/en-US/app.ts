@@ -77,6 +77,10 @@ const translation = {
     emoji: 'Emoji',
     image: 'Image',
   },
+  answerIcon: {
+    title: 'Use app icon as answer icon',
+    description: 'Whether to use the app icon as the answer icon in the chat interface',
+  },
   switch: 'Switch to Workflow Orchestrate',
   switchTipStart: 'A new app copy will be created for you, and the new copy will switch to Workflow Orchestrate. The new copy will ',
   switchTip: 'not allow',
