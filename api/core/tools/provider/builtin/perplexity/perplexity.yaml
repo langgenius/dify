@@ -1,0 +1,26 @@
+identity:
+  author: Dify
+  name: perplexity
+  label:
+    en_US: Perplexity
+    zh_Hans: Perplexity
+  description:
+    en_US: Perplexity.AI
+    zh_Hans: Perplexity.AI
+  icon: icon.svg
+  tags:
+    - search
+credentials_for_provider:
+  perplexity_api_key:
+    type: secret-input
+    required: true
+    label:
+      en_US: Perplexity API key
+      zh_Hans: Perplexity API key
+    placeholder:
+      en_US: Please input your Perplexity API key
+      zh_Hans: 请输入你的 Perplexity API key
+    help:
+      en_US: Get your Perplexity API key from Perplexity
+      zh_Hans: 从 Perplexity 获取您的 Perplexity API key
+    url: https://www.perplexity.ai/settings/api

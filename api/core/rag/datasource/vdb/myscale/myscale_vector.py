@@ -122,7 +122,7 @@ class MyScaleVector(BaseVector):
 
     def _search(self, dist: str, order: SortOrder, **kwargs: Any) -> list[Document]:
         top_k = kwargs.get("top_k", 5)
-        score_threshold = kwargs.get("score_threshold", 0.0)
+        score_threshold = kwargs.get('score_threshold') or 0.0
         where_str = f"WHERE dist < {1 - score_threshold}" if \
             self._metric.upper() == "COSINE" and order == SortOrder.ASC and score_threshold > 0.0 else ""
         sql = f"""

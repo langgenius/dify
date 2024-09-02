@@ -1,9 +1,6 @@
 import type { FC } from 'react'
 import { useState } from 'react'
 import { useTranslation } from 'react-i18next'
-import {
-  RiQuestionLine,
-} from '@remixicon/react'
 import ModelSelector from '../model-selector'
 import {
   useModelList,
@@ -146,13 +143,13 @@ const SystemModel: FC<SystemModelSelectorProps> = ({
             <div className='flex items-center h-8 text-[13px] font-medium text-gray-900'>
               {t('common.modelProvider.systemReasoningModel.key')}
               <Tooltip
-                selector='model-page-system-reasoning-model-tip'
-                htmlContent={
-                  <div className='w-[261px] text-gray-500'>{t('common.modelProvider.systemReasoningModel.tip')}</div>
+                popupContent={
+                  <div className='w-[261px] text-gray-500'>
+                    {t('common.modelProvider.systemReasoningModel.tip')}
+                  </div>
                 }
-              >
-                <RiQuestionLine className='ml-0.5 w-[14px] h-[14px] text-gray-400' />
-              </Tooltip>
+                triggerClassName='ml-0.5 w-4 h-4 shrink-0'
+              />
             </div>
             <div>
               <ModelSelector
@@ -166,13 +163,13 @@ const SystemModel: FC<SystemModelSelectorProps> = ({
             <div className='flex items-center h-8 text-[13px] font-medium text-gray-900'>
               {t('common.modelProvider.embeddingModel.key')}
               <Tooltip
-                selector='model-page-system-embedding-model-tip'
-                htmlContent={
-                  <div className='w-[261px] text-gray-500'>{t('common.modelProvider.embeddingModel.tip')}</div>
+                popupContent={
+                  <div className='w-[261px] text-gray-500'>
+                    {t('common.modelProvider.embeddingModel.tip')}
+                  </div>
                 }
-              >
-                <RiQuestionLine className='ml-0.5 w-[14px] h-[14px] text-gray-400' />
-              </Tooltip>
+                triggerClassName='ml-0.5 w-4 h-4 shrink-0'
+              />
             </div>
             <div>
               <ModelSelector
@@ -186,13 +183,13 @@ const SystemModel: FC<SystemModelSelectorProps> = ({
             <div className='flex items-center h-8 text-[13px] font-medium text-gray-900'>
               {t('common.modelProvider.rerankModel.key')}
               <Tooltip
-                selector='model-page-system-rerankModel-model-tip'
-                htmlContent={
-                  <div className='w-[261px] text-gray-500'>{t('common.modelProvider.rerankModel.tip')}</div>
+                popupContent={
+                  <div className='w-[261px] text-gray-500'>
+                    {t('common.modelProvider.rerankModel.tip')}
+                  </div>
                 }
-              >
-                <RiQuestionLine className='ml-0.5 w-[14px] h-[14px] text-gray-400' />
-              </Tooltip>
+                triggerClassName='ml-0.5 w-4 h-4 shrink-0'
+              />
             </div>
             <div>
               <ModelSelector
@@ -206,13 +203,13 @@ const SystemModel: FC<SystemModelSelectorProps> = ({
             <div className='flex items-center h-8 text-[13px] font-medium text-gray-900'>
               {t('common.modelProvider.speechToTextModel.key')}
               <Tooltip
-                selector='model-page-system-speechToText-model-tip'
-                htmlContent={
-                  <div className='w-[261px] text-gray-500'>{t('common.modelProvider.speechToTextModel.tip')}</div>
+                popupContent={
+                  <div className='w-[261px] text-gray-500'>
+                    {t('common.modelProvider.speechToTextModel.tip')}
+                  </div>
                 }
-              >
-                <RiQuestionLine className='ml-0.5 w-[14px] h-[14px] text-gray-400' />
-              </Tooltip>
+                triggerClassName='ml-0.5 w-4 h-4 shrink-0'
+              />
             </div>
             <div>
               <ModelSelector
@@ -226,13 +223,13 @@ const SystemModel: FC<SystemModelSelectorProps> = ({
             <div className='flex items-center h-8 text-[13px] font-medium text-gray-900'>
               {t('common.modelProvider.ttsModel.key')}
               <Tooltip
-                selector='model-page-system-tts-model-tip'
-                htmlContent={
-                  <div className='w-[261px] text-gray-500'>{t('common.modelProvider.ttsModel.tip')}</div>
+                popupContent={
+                  <div className='w-[261px] text-gray-500'>
+                    {t('common.modelProvider.ttsModel.tip')}
+                  </div>
                 }
-              >
-                <RiQuestionLine className='ml-0.5 w-[14px] h-[14px] text-gray-400' />
-              </Tooltip>
+                triggerClassName='ml-0.5 w-4 h-4 shrink-0'
+              />
             </div>
             <div>
               <ModelSelector

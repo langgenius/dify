@@ -7,21 +7,24 @@ CODE_LANGUAGE = CodeLanguage.JINJA2
 
 
 def test_jinja2():
-    template = 'Hello {{template}}'
-    inputs = base64.b64encode(b'{"template": "World"}').decode('utf-8')
-    code = (Jinja2TemplateTransformer.get_runner_script()
-            .replace(Jinja2TemplateTransformer._code_placeholder, template)
-            .replace(Jinja2TemplateTransformer._inputs_placeholder, inputs))
-    result = CodeExecutor.execute_code(language=CODE_LANGUAGE,
-                                       preload=Jinja2TemplateTransformer.get_preload_script(),
-                                       code=code)
-    assert result == '<<RESULT>>Hello World<<RESULT>>\n'
+    template = "Hello {{template}}"
+    inputs = base64.b64encode(b'{"template": "World"}').decode("utf-8")
+    code = (
+        Jinja2TemplateTransformer.get_runner_script()
+        .replace(Jinja2TemplateTransformer._code_placeholder, template)
+        .replace(Jinja2TemplateTransformer._inputs_placeholder, inputs)
+    )
+    result = CodeExecutor.execute_code(
+        language=CODE_LANGUAGE, preload=Jinja2TemplateTransformer.get_preload_script(), code=code
+    )
+    assert result == "<<RESULT>>Hello World<<RESULT>>\n"
 
 
 def test_jinja2_with_code_template():
     result = CodeExecutor.execute_workflow_code_template(
-        language=CODE_LANGUAGE, code='Hello {{template}}', inputs={'template': 'World'})
-    assert result == {'result': 'Hello World'}
+        language=CODE_LANGUAGE, code="Hello {{template}}", inputs={"template": "World"}
+    )
+    assert result == {"result": "Hello World"}
 
 
 def test_jinja2_get_runner_script():
