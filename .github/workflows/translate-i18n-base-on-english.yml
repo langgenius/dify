@@ -33,7 +33,7 @@ jobs:
         uses: actions/setup-node@v2
         with:
           node-version: 'lts/*'
-      
+
       - name: Install dependencies
         if: env.FILES_CHANGED == 'true'
         run: yarn install --frozen-lockfile
