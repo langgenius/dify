@@ -14,7 +14,6 @@ from libs.helper import get_remote_ip
 from libs.oauth import GitHubOAuth, GoogleOAuth, OAuthUserInfo
 from models.account import Account, AccountStatus
 from services.account_service import AccountService, RegisterService, TenantService
-from services.errors.account import AccountNotFound
 
 from .. import api
 
@@ -44,7 +43,7 @@ def get_oauth_providers():
 
 class OAuthLogin(Resource):
     def get(self, provider: str):
-        invite_token = request.args.get('invite_token') or None
+        invite_token = request.args.get("invite_token") or None
         OAUTH_PROVIDERS = get_oauth_providers()
         with current_app.app_context():
             oauth_provider = OAUTH_PROVIDERS.get(provider)
@@ -78,9 +77,7 @@ class OAuthCallback(Resource):
             return {"error": "OAuth process failed"}, 400
 
         if invite_token:
-            return redirect(
-                f"{dify_config.CONSOLE_WEB_URL}/invite-settings?invite_token={invite_token}"
-            )
+            return redirect(f"{dify_config.CONSOLE_WEB_URL}/invite-settings?invite_token={invite_token}")
 
         try:
             account = _generate_account(provider, user_info)
