@@ -332,6 +332,8 @@ export const useWorkflowRun = () => {
               const currentIndex = draft.tracing!.findIndex((trace) => {
                 if (!trace.execution_metadata?.parallel_id)
                   return trace.node_id === data.node_id
+                if (trace.execution_metadata?.parallel_id === data.execution_metadata?.parallel_id)
+                  return trace.node_id === data.node_id && trace.execution_metadata?.parallel_start_node_id === data.execution_metadata?.parallel_start_node_id
 
                 return trace.node_id === data.node_id && trace.execution_metadata?.parallel_id === data.execution_metadata?.parallel_id
               })

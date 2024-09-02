@@ -37,7 +37,7 @@ function buildLogTree(nodes: NodeTracing[]): TracingNodeProps[] {
   const levelCounts: { [key: string]: number } = {}
   const parallelChildCounts: { [key: string]: Set<string> } = {}
 
-  function getParallelTitle(parentId: string | null): string {
+  const getParallelTitle = (parentId: string | null): string => {
     const levelKey = parentId || 'root'
     if (!levelCounts[levelKey])
       levelCounts[levelKey] = 0
@@ -50,7 +50,7 @@ function buildLogTree(nodes: NodeTracing[]): TracingNodeProps[] {
     return `PARALLEL-${levelNumber}${letter}`
   }
 
-  function getBranchTitle(parentId: string | null, branchNum: number): string {
+  const getBranchTitle = (parentId: string | null, branchNum: number): string => {
     const levelKey = parentId || 'root'
     const parentTitle = parentId ? parallelStacks[parentId].parallelTitle : ''
     const levelNumber = parentTitle ? parseInt(parentTitle.split('-')[1]) + 1 : 1
@@ -153,6 +153,7 @@ const TracingPanel: FC<TracingPanelProps> = ({ list, onShowIterationDetail }) =>
       const newSet = new Set(prev)
       if (newSet.has(id))
         newSet.delete(id)
+
       else
         newSet.add(id)
 
@@ -165,12 +166,18 @@ const TracingPanel: FC<TracingPanelProps> = ({ list, onShowIterationDetail }) =>
   }, [])
 
   const handleParallelMouseLeave = useCallback((e: React.MouseEvent) => {
-    const relatedTarget = e.relatedTarget as HTMLElement
-    const closestParallel = relatedTarget?.closest('[data-parallel-id]')
-    if (closestParallel)
-      setHoveredParallel(closestParallel.getAttribute('data-parallel-id'))
-    else
+    const relatedTarget = e.relatedTarget as Element | null
+    if (relatedTarget && 'closest' in relatedTarget) {
+      const closestParallel = relatedTarget.closest('[data-parallel-id]')
+      if (closestParallel)
+        setHoveredParallel(closestParallel.getAttribute('data-parallel-id'))
+
+      else
+        setHoveredParallel(null)
+    }
+    else {
       setHoveredParallel(null)
+    }
   }, [])
 
   const renderNode = (node: TracingNodeProps) => {

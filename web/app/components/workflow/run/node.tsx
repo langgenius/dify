@@ -76,7 +76,7 @@ const NodePanel: FC<Props> = ({
       <div className='group transition-all bg-background-default border border-components-panel-border rounded-[10px] shadows-shadow-xs hover:shadow-md'>
         <div
           className={cn(
-            'flex items-center pl-1 pr-2 cursor-pointer',
+            'flex items-center pl-1 pr-3 cursor-pointer',
             hideInfo ? 'py-2' : 'py-1.5',
             !collapseState && (hideInfo ? '!pb-1' : '!pb-1.5'),
           )}
