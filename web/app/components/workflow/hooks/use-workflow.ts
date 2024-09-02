@@ -29,8 +29,9 @@ import {
   useStore,
   useWorkflowStore,
 } from '../store'
+import { getParallelInfo } from '../utils'
 import {
-  // PARALLEL_DEPTH_LIMIT,
+  PARALLEL_DEPTH_LIMIT,
   PARALLEL_LIMIT,
   SUPPORT_OUTPUT_VARS_NODE,
 } from '../constants'
@@ -293,39 +294,26 @@ export const useWorkflow = () => {
       setShowTips(t('workflow.common.parallelTip.limit', { num: PARALLEL_LIMIT }))
       return false
     }
-    // if (sourceNodeOutgoers.length > 0) {
-    //   let hasOverDepth = false
-    //   let parallelDepth = 1
-    //   const traverse = (root: Node, depth: number) => {
-    //     if (depth > PARALLEL_DEPTH_LIMIT) {
-    //       hasOverDepth = true
-    //       return
-    //     }
-    //     if (depth > parallelDepth)
-    //       parallelDepth = depth
 
-    //     const incomerNodes = getIncomers(root, nodes, edges)
-
-    //     if (incomerNodes.length) {
-    //       incomerNodes.forEach((incomer) => {
-    //         const incomerOutgoers = getOutgoers(incomer, nodes, edges)
-
-    //         if (incomerOutgoers.length > 1)
-    //           traverse(incomer, depth + 1)
-    //         else
-    //           traverse(incomer, depth)
-    //       })
-    //     }
-    //   }
-    //   traverse(currentNode, parallelDepth)
-    //   if (hasOverDepth) {
-    //     const { setShowTips } = workflowStore.getState()
-    //     setShowTips(t('workflow.common.parallelTip.depthLimit', { num: PARALLEL_DEPTH_LIMIT }))
-    //     return false
-    //   }
-    // }
     return true
   }, [store, workflowStore, t])
+
+  const checkNestedParallelLimit = useCallback((nodes: Node[], edges: Edge[], parentNodeId?: string) => {
+    const parallelList = getParallelInfo(nodes, edges, parentNodeId)
+    console.log(parallelList, 'parallelList')
+
+    for (let i = 0; i < parallelList.length; i++) {
+      const parallel = parallelList[i]
+
+      if (parallel.depth > PARALLEL_DEPTH_LIMIT) {
+        const { setShowTips } = workflowStore.getState()
+        setShowTips(t('workflow.common.parallelTip.depthLimit', { num: PARALLEL_DEPTH_LIMIT }))
+        return false
+      }
+    }
+
+    return true
+  }, [])
 
   const isValidConnection = useCallback(({ source, target }: Connection) => {
     const {
@@ -392,6 +380,7 @@ export const useWorkflow = () => {
     removeUsedVarInNodes,
     isNodeVarsUsedInNodes,
     checkParallelLimit,
+    checkNestedParallelLimit,
     isValidConnection,
     formatTimeFromNow,
     getNode,
