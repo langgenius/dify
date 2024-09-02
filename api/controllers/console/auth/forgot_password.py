@@ -107,7 +107,7 @@ class ForgotPasswordResetApi(Resource):
             account.password_salt = base64_salt
             db.session.commit()
         else:
-            account = AccountService.create_user_through_env(
+            account = AccountService.create_account_and_tenant(
                 email=reset_data.get("email"),
                 name=reset_data.get("email"),
                 password=password_confirm,
