@@ -39,6 +39,7 @@ class AppSiteApi(WebApiResource):
         "default_language": fields.String,
         "prompt_public": fields.Boolean,
         "show_workflow_steps": fields.Boolean,
+        "use_icon_as_answer_icon": fields.Boolean,
     }
 
     app_fields = {

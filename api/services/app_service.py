@@ -221,6 +221,7 @@ class AppService:
         app.icon_type = args.get("icon_type", "emoji")
         app.icon = args.get("icon")
         app.icon_background = args.get("icon_background")
+        app.use_icon_as_answer_icon = args.get("use_icon_as_answer_icon", False)
         app.updated_by = current_user.id
         app.updated_at = datetime.now(timezone.utc).replace(tzinfo=None)
         db.session.commit()

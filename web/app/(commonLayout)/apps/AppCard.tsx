@@ -79,6 +79,7 @@ const AppCard = ({ app, onRefresh }: AppCardProps) => {
     icon,
     icon_background,
     description,
+    use_icon_as_answer_icon,
   }) => {
     try {
       await updateAppInfo({
@@ -88,6 +89,7 @@ const AppCard = ({ app, onRefresh }: AppCardProps) => {
         icon,
         icon_background,
         description,
+        use_icon_as_answer_icon,
       })
       setShowEditModal(false)
       notify({
@@ -370,6 +372,8 @@ const AppCard = ({ app, onRefresh }: AppCardProps) => {
           appIconBackground={app.icon_background}
           appIconUrl={app.icon_url}
           appDescription={app.description}
+          appMode={app.mode}
+          appUseIconAsAnswerIcon={app.use_icon_as_answer_icon}
           show={showEditModal}
           onConfirm={onEdit}
           onHide={() => setShowEditModal(false)}
