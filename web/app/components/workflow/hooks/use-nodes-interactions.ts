@@ -64,6 +64,7 @@ export const useNodesInteractions = () => {
   const { store: workflowHistoryStore } = useWorkflowHistoryStore()
   const { handleSyncWorkflowDraft } = useNodesSyncDraft()
   const {
+    checkNestedParallelLimit,
     getAfterNodesInSameBranch,
   } = useWorkflow()
   const { getNodesReadOnly } = useNodesReadOnly()
@@ -372,14 +373,17 @@ export const useNodesInteractions = () => {
         }
       })
     })
-    setNodes(newNodes)
     const newEdges = produce(edges, (draft) => {
       draft.push(newEdge)
     })
-    setEdges(newEdges)
 
-    handleSyncWorkflowDraft()
-    saveStateToHistory(WorkflowHistoryEvent.NodeConnect)
+    if (checkNestedParallelLimit(newNodes, newEdges, targetNode?.parentId)) {
+      setNodes(newNodes)
+      setEdges(newEdges)
+
+      handleSyncWorkflowDraft()
+      saveStateToHistory(WorkflowHistoryEvent.NodeConnect)
+    }
   }, [getNodesReadOnly, store, handleSyncWorkflowDraft, saveStateToHistory])
 
   const handleNodeConnectStart = useCallback<OnConnectStart>((_, { nodeId, handleType, handleId }) => {
@@ -672,7 +676,7 @@ export const useNodesInteractions = () => {
         if (newIterationStartNode)
           draft.push(newIterationStartNode)
       })
-      setNodes(newNodes)
+
       if (newNode.data.type === BlockEnum.VariableAssigner || newNode.data.type === BlockEnum.VariableAggregator) {
         const { setShowAssignVariablePopup } = workflowStore.getState()
 
@@ -696,7 +700,14 @@ export const useNodesInteractions = () => {
         })
         draft.push(newEdge)
       })
-      setEdges(newEdges)
+
+      if (checkNestedParallelLimit(newNodes, newEdges, prevNode.parentId)) {
+        setNodes(newNodes)
+        setEdges(newEdges)
+      }
+      else {
+        return false
+      }
     }
     if (!prevNodeId && nextNodeId) {
       const nextNodeIndex = nodes.findIndex(node => node.id === nextNodeId)
@@ -775,7 +786,6 @@ export const useNodesInteractions = () => {
         if (newIterationStartNode)
           draft.push(newIterationStartNode)
       })
-      setNodes(newNodes)
       if (newEdge) {
         const newEdges = produce(edges, (draft) => {
           draft.forEach((item) => {
@@ -786,7 +796,21 @@ export const useNodesInteractions = () => {
           })
           draft.push(newEdge)
         })
-        setEdges(newEdges)
+
+        if (checkNestedParallelLimit(newNodes, newEdges, nextNode.parentId)) {
+          setNodes(newNodes)
+          setEdges(newEdges)
+        }
+        else {
+          return false
+        }
+      }
+      else {
+        if (checkNestedParallelLimit(newNodes, edges))
+          setNodes(newNodes)
+
+        else
+          return false
       }
     }
     if (prevNodeId && nextNodeId) {
