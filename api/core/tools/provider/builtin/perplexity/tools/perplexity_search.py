@@ -65,5 +65,8 @@ class PerplexityAITool(BuiltinTool):
         response = requests.post(url=PERPLEXITY_API_URL, json=payload, headers=headers)
         response.raise_for_status()
         valuable_res = self._parse_response(response.json())
-        text_response = json.dumps(valuable_res, ensure_ascii=False, indent=2)
-        return self.create_text_message(text_response)
+        
+        return [
+            self.create_json_message(valuable_res),
+            self.create_text_message(json.dumps(valuable_res, ensure_ascii=False, indent=2))
+        ]
