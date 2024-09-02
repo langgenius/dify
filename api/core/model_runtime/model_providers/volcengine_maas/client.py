@@ -71,11 +71,24 @@ class ArkClientV3:
         args = {
             "base_url": credentials['api_endpoint_host'],
             "region": credentials['volc_region'],
-            "ak": credentials['volc_access_key_id'],
-            "sk": credentials['volc_secret_access_key'],
         }
+        if credentials.get("auth_method") == "api_key":
+            args = {
+                **args,
+                "api_key": credentials['volc_api_key'],
+            }
+        else:
+            args = {
+                **args,
+                "ak": credentials['volc_access_key_id'],
+                "sk": credentials['volc_secret_access_key'],
+            }
+
         if cls.is_compatible_with_legacy(credentials):
-            args["base_url"] = DEFAULT_V3_ENDPOINT
+            args = {
+                **args,
+                "base_url": DEFAULT_V3_ENDPOINT
+            }
 
         client = ArkClientV3(
             **args
