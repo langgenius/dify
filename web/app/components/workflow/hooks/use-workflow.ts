@@ -300,7 +300,6 @@ export const useWorkflow = () => {
 
   const checkNestedParallelLimit = useCallback((nodes: Node[], edges: Edge[], parentNodeId?: string) => {
     const parallelList = getParallelInfo(nodes, edges, parentNodeId)
-    console.log(parallelList, 'parallelList')
 
     for (let i = 0; i < parallelList.length; i++) {
       const parallel = parallelList[i]
@@ -313,7 +312,7 @@ export const useWorkflow = () => {
     }
 
     return true
-  }, [])
+  }, [t, workflowStore])
 
   const isValidConnection = useCallback(({ source, target }: Connection) => {
     const {

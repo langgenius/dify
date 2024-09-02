@@ -90,6 +90,9 @@ const translation = {
       limit: 'Parallelism is limited to {{num}} branches.',
       depthLimit: 'Parallel nesting layer limit of {{num}} layers',
     },
+    disconnect: 'Disconnect',
+    jumpToNode: 'Jump to this node',
+    addParallelNode: 'Add Parallel Node',
   },
   env: {
     envPanelTitle: 'Environment Variables',
