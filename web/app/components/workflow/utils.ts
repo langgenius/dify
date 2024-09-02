@@ -748,7 +748,5 @@ export const getParallelInfo = (nodes: Node[], edges: Edge[], parentNodeId?: str
     traverse(nodeHandle)
   }
 
-  console.log(parallelList, 'parallelList')
-
   return parallelList
 }
