@@ -1,0 +1,27 @@
+identity:
+  name: query_stock
+  author: zhuhao
+  label:
+    en_US: query_stock
+    zh_Hans: query_stock
+    pt_BR: query_stock
+description:
+  human:
+    en_US: Retrieve information such as daily opening price, daily highest price, daily lowest price, daily closing price, and daily trading volume for a specified stock symbol.
+    zh_Hans: 获取指定股票代码的每日开盘价、每日最高价、每日最低价、每日收盘价和每日交易量等信息。
+    pt_BR: Retrieve information such as daily opening price, daily highest price, daily lowest price, daily closing price, and daily trading volume for a specified stock symbol
+  llm: Retrieve information such as daily opening price, daily highest price, daily lowest price, daily closing price, and daily trading volume for a specified stock symbol
+parameters:
+  - name: code
+    type: string
+    required: true
+    label:
+      en_US: stock code
+      zh_Hans: 股票代码
+      pt_BR: stock code
+    human_description:
+      en_US: stock code
+      zh_Hans: 股票代码
+      pt_BR: stock code
+    llm_description: stock code for query from alphavantage
+    form: llm

@@ -67,9 +67,11 @@ export const useWorkflowStartRun = () => {
       setShowDebugAndPreviewPanel,
       setHistoryWorkflowData,
       setShowEnvPanel,
+      setShowChatVariablePanel,
     } = workflowStore.getState()
 
     setShowEnvPanel(false)
+    setShowChatVariablePanel(false)
 
     if (showDebugAndPreviewPanel)
       handleCancelDebugAndPreviewPanel()

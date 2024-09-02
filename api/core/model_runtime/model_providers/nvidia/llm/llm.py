@@ -34,8 +34,10 @@ class NVIDIALargeLanguageModel(OAIAPICompatLargeLanguageModel):
         'meta/llama-3.1-8b-instruct': '',
         'meta/llama-3.1-70b-instruct': '',
         'meta/llama-3.1-405b-instruct': '',
-        'google/recurrentgemma-2b': ''
-        
+        'google/recurrentgemma-2b': '',
+        'nvidia/nemotron-4-340b-instruct': '',
+        'microsoft/phi-3-medium-128k-instruct':'',
+        'microsoft/phi-3-mini-128k-instruct':''
     }
 
     def _invoke(self, model: str, credentials: dict,

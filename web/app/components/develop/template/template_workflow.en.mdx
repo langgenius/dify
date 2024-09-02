@@ -69,7 +69,7 @@ Workflow applications offers non-session support and is ideal for translation, a
     - `task_id` (string) Task ID, used for request tracking and the below Stop Generate API
     - `data` (object) detail of result
       - `id` (string) ID of workflow execution
-      - `workflow_id` (string) ID of relatied workflow
+      - `workflow_id` (string) ID of related workflow
       - `status` (string) status of execution, `running` / `succeeded` / `failed` / `stopped`
       - `outputs` (json) Optional content of output
       - `error` (string) Optional reason of error
@@ -94,7 +94,7 @@ Workflow applications offers non-session support and is ideal for translation, a
       - `event` (string) fixed to `workflow_started`
       - `data` (object) detail
         - `id` (string) Unique ID of workflow execution
-        - `workflow_id` (string) ID of relatied workflow
+        - `workflow_id` (string) ID of related workflow
         - `sequence_number` (int) Self-increasing serial number, self-increasing in the App, starting from 1
         - `created_at` (timestamp) Creation timestamp, e.g., 1705395332
     - `event: node_started` node execution started
@@ -138,7 +138,7 @@ Workflow applications offers non-session support and is ideal for translation, a
       - `event` (string) fixed to `workflow_finished`
       - `data` (object) detail
         - `id` (string) ID of workflow execution
-        - `workflow_id` (string) ID of relatied workflow
+        - `workflow_id` (string) ID of related workflow
         - `status` (string) status of execution, `running` / `succeeded` / `failed` / `stopped`
         - `outputs` (json) Optional content of output
         - `error` (string) Optional reason of error
@@ -237,7 +237,7 @@ Workflow applications offers non-session support and is ideal for translation, a
     - `workflow_id` (string) Workflow ID, can be obtained from the streaming chunk return
     ### Response
     - `id` (string) ID of workflow execution
-    - `workflow_id` (string) ID of relatied workflow
+    - `workflow_id` (string) ID of related workflow
     - `status` (string) status of execution, `running` / `succeeded` / `failed` / `stopped`
     - `inputs` (json) content of input
     - `outputs` (json) content of output

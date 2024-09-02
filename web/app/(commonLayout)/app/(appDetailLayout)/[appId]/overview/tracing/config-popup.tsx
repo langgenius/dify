@@ -10,7 +10,7 @@ import { TracingProvider } from './type'
 import ProviderConfigModal from './provider-config-modal'
 import Indicator from '@/app/components/header/indicator'
 import Switch from '@/app/components/base/switch'
-import TooltipPlus from '@/app/components/base/tooltip-plus'
+import Tooltip from '@/app/components/base/tooltip'
 
 const I18N_PREFIX = 'app.tracing'
 
@@ -85,6 +85,7 @@ const ConfigPopup: FC<PopupProps> = ({
     <ProviderPanel
       type={TracingProvider.langSmith}
       readOnly={readOnly}
+      config={langSmithConfig}
       hasConfigured={!!langSmithConfig}
       onConfig={handleOnConfig(TracingProvider.langSmith)}
       isChosen={chosenProvider === TracingProvider.langSmith}
@@ -96,6 +97,7 @@ const ConfigPopup: FC<PopupProps> = ({
     <ProviderPanel
       type={TracingProvider.langfuse}
       readOnly={readOnly}
+      config={langFuseConfig}
       hasConfigured={!!langFuseConfig}
       onConfig={handleOnConfig(TracingProvider.langfuse)}
       isChosen={chosenProvider === TracingProvider.langfuse}
@@ -119,12 +121,11 @@ const ConfigPopup: FC<PopupProps> = ({
             <>
               {providerAllNotConfigured
                 ? (
-                  <TooltipPlus
+                  <Tooltip
                     popupContent={t(`${I18N_PREFIX}.disabledTip`)}
                   >
                     {switchContent}
-
-                  </TooltipPlus>
+                  </Tooltip>
                 )
                 : switchContent}
             </>

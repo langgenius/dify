@@ -1,43 +1,83 @@
-'use client'
-import type { SVGProps } from 'react'
-import React, { useState } from 'react'
+import type { CSSProperties } from 'react'
+import React from 'react'
 import { useTranslation } from 'react-i18next'
-import s from './style.module.css'
+import { RiCloseCircleFill, RiErrorWarningLine, RiSearchLine } from '@remixicon/react'
+import { type VariantProps, cva } from 'class-variance-authority'
+import cn from '@/utils/classnames'
 
-type InputProps = {
-  placeholder?: string
-  value?: string
-  defaultValue?: string
-  onChange?: (v: string) => void
-  className?: string
-  wrapperClassName?: string
-  type?: string
-  showPrefix?: React.ReactNode
-  prefixIcon?: React.ReactNode
-}
-
-const GlassIcon = ({ className }: SVGProps<SVGElement>) => (
-  <svg width="14" height="14" viewBox="0 0 14 14" fill="none" xmlns="http://www.w3.org/2000/svg" className={className ?? ''}>
-    <path d="M12.25 12.25L10.2084 10.2083M11.6667 6.70833C11.6667 9.44675 9.44675 11.6667 6.70833 11.6667C3.96992 11.6667 1.75 9.44675 1.75 6.70833C1.75 3.96992 3.96992 1.75 6.70833 1.75C9.44675 1.75 11.6667 3.96992 11.6667 6.70833Z" stroke="#344054" strokeWidth="1.25" strokeLinecap="round" strokeLinejoin="round" />
-  </svg>
+export const inputVariants = cva(
+  '',
+  {
+    variants: {
+      size: {
+        regular: 'px-3 radius-md system-sm-regular',
+        large: 'px-4 radius-lg system-md-regular',
+      },
+    },
+    defaultVariants: {
+      size: 'regular',
+    },
+  },
 )
 
-const Input = ({ value, defaultValue, onChange, className = '', wrapperClassName = '', placeholder, type, showPrefix, prefixIcon }: InputProps) => {
-  const [localValue, setLocalValue] = useState(value ?? defaultValue)
+export type InputProps = {
+  showLeftIcon?: boolean
+  showClearIcon?: boolean
+  onClear?: () => void
+  disabled?: boolean
+  destructive?: boolean
+  wrapperClassName?: string
+  styleCss?: CSSProperties
+} & React.InputHTMLAttributes<HTMLInputElement> & VariantProps<typeof inputVariants>
+
+const Input = ({
+  size,
+  disabled,
+  destructive,
+  showLeftIcon,
+  showClearIcon,
+  onClear,
+  wrapperClassName,
+  className,
+  styleCss,
+  value,
+  placeholder,
+  onChange,
+  ...props
+}: InputProps) => {
   const { t } = useTranslation()
   return (
-    <div className={`relative inline-flex w-full ${wrapperClassName}`}>
-      {showPrefix && <span className={s.prefix}>{prefixIcon ?? <GlassIcon className='h-3.5 w-3.5 stroke-current text-gray-700 stroke-2' />}</span>}
+    <div className={cn('relative w-full', wrapperClassName)}>
+      {showLeftIcon && <RiSearchLine className={cn('absolute left-2 top-1/2 -translate-y-1/2 w-4 h-4 text-components-input-text-placeholder')} />}
       <input
-        type={type ?? 'text'}
-        className={`${s.input} ${showPrefix ? '!pl-7' : ''} ${className}`}
-        placeholder={placeholder ?? (showPrefix ? t('common.operation.search') ?? '' : 'please input')}
-        value={localValue}
-        onChange={(e) => {
-          setLocalValue(e.target.value)
-          onChange && onChange(e.target.value)
-        }}
+        style={styleCss}
+        className={cn(
+          'w-full py-[7px] bg-components-input-bg-normal border border-transparent text-components-input-text-filled hover:bg-components-input-bg-hover hover:border-components-input-border-hover focus:bg-components-input-bg-active focus:border-components-input-border-active focus:shadow-xs placeholder:text-components-input-text-placeholder appearance-none outline-none caret-primary-600',
+          inputVariants({ size }),
+          showLeftIcon && 'pl-[26px]',
+          showLeftIcon && size === 'large' && 'pl-7',
+          showClearIcon && value && 'pr-[26px]',
+          showClearIcon && value && size === 'large' && 'pr-7',
+          destructive && 'pr-[26px]',
+          destructive && size === 'large' && 'pr-7',
+          disabled && 'bg-components-input-bg-disabled border-transparent text-components-input-text-filled-disabled cursor-not-allowed hover:bg-components-input-bg-disabled hover:border-transparent',
+          destructive && 'bg-components-input-bg-destructive border-components-input-border-destructive text-components-input-text-filled hover:bg-components-input-bg-destructive hover:border-components-input-border-destructive focus:bg-components-input-bg-destructive focus:border-components-input-border-destructive',
+          className,
+        )}
+        placeholder={placeholder ?? (showLeftIcon ? t('common.operation.search') ?? '' : 'please input')}
+        value={value}
+        onChange={onChange}
+        disabled={disabled}
+        {...props}
       />
+      {showClearIcon && value && !disabled && !destructive && (
+        <div className={cn('absolute right-2 top-1/2 -translate-y-1/2 group p-[1px] cursor-pointer')} onClick={onClear}>
+          <RiCloseCircleFill className='w-3.5 h-3.5 text-text-quaternary cursor-pointer group-hover:text-text-tertiary' />
+        </div>
+      )}
+      {destructive && (
+        <RiErrorWarningLine className='absolute right-2 top-1/2 -translate-y-1/2 w-4 h-4 text-text-destructive-secondary' />
+      )}
     </div>
   )
 }

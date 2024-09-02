@@ -64,6 +64,10 @@ const translation = {
       ukUA: 'ウクライナ語',
       viVN: 'ベトナム語',
       plPL: 'ポーランド語',
+      roRO: 'ルーマニア語',
+      hiIN: 'ヒンディー語',
+      trTR: 'トルコ語',
+      faIR: 'ペルシア語',
     },
   },
   unit: {
@@ -443,7 +447,7 @@ const translation = {
     latestAvailable: 'Dify {{version}} が最新バージョンです。',
   },
   appMenus: {
-    overview: '概要',
+    overview: '監視',
     promptEng: 'オーケストレート',
     apiAccess: 'APIアクセス',
     logAndAnn: 'ログ＆アナウンス',

@@ -12,6 +12,7 @@ const translation = {
     cancel: '취소',
     clear: '지우기',
     save: '저장',
+    saveAndEnable: '저장 및 활성화',
     edit: '편집',
     add: '추가',
     added: '추가됨',
@@ -59,6 +60,10 @@ const translation = {
       ukUA: '우크라이나어',
       viVN: '베트남어',
       plPL: '폴란드어',
+      roRO: '루마니아어',
+      hiIN: '힌디어',
+      trTR: '터키어',
+      faIR: '페르시아어',
     },
   },
   unit: {
@@ -404,7 +409,7 @@ const translation = {
     latestAvailable: 'Dify {{version}} 최신 버전입니다.',
   },
   appMenus: {
-    overview: '개요',
+    overview: '모니터링',
     promptEng: '오케스트레이트',
     apiAccess: 'API 액세스',
     logAndAnn: '로그 및 어노테이션',

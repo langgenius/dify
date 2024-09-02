@@ -75,6 +75,7 @@ const AppCard = ({ app, onRefresh }: AppCardProps) => {
 
   const onEdit: CreateAppModalProps['onConfirm'] = useCallback(async ({
     name,
+    icon_type,
     icon,
     icon_background,
     description,
@@ -83,6 +84,7 @@ const AppCard = ({ app, onRefresh }: AppCardProps) => {
       await updateAppInfo({
         appID: app.id,
         name,
+        icon_type,
         icon,
         icon_background,
         description,
@@ -101,11 +103,12 @@ const AppCard = ({ app, onRefresh }: AppCardProps) => {
     }
   }, [app.id, mutateApps, notify, onRefresh, t])
 
-  const onCopy: DuplicateAppModalProps['onConfirm'] = async ({ name, icon, icon_background }) => {
+  const onCopy: DuplicateAppModalProps['onConfirm'] = async ({ name, icon_type, icon, icon_background }) => {
     try {
       const newApp = await copyApp({
         appID: app.id,
         name,
+        icon_type,
         icon,
         icon_background,
         mode: app.mode,
@@ -252,14 +255,16 @@ const AppCard = ({ app, onRefresh }: AppCardProps) => {
           e.preventDefault()
           getRedirection(isCurrentWorkspaceEditor, app, push)
         }}
-        className='group flex col-span-1 bg-white border-2 border-solid border-transparent rounded-xl shadow-sm min-h-[160px] flex flex-col transition-all duration-200 ease-in-out cursor-pointer hover:shadow-lg'
+        className='relative group col-span-1 bg-white border-2 border-solid border-transparent rounded-xl shadow-sm flex flex-col transition-all duration-200 ease-in-out cursor-pointer hover:shadow-lg'
       >
         <div className='flex pt-[14px] px-[14px] pb-3 h-[66px] items-center gap-3 grow-0 shrink-0'>
           <div className='relative shrink-0'>
             <AppIcon
               size="large"
+              iconType={app.icon_type}
               icon={app.icon}
               background={app.icon_background}
+              imageUrl={app.icon_url}
             />
             <span className='absolute bottom-[-3px] right-[-3px] w-4 h-4 p-0.5 bg-white rounded border-[0.5px] border-[rgba(0,0,0,0.02)] shadow-sm'>
               {app.mode === 'advanced-chat' && (
@@ -292,17 +297,16 @@ const AppCard = ({ app, onRefresh }: AppCardProps) => {
             </div>
           </div>
         </div>
-        <div
-          className={cn(
-            'grow mb-2 px-[14px] max-h-[72px] text-xs leading-normal text-gray-500 group-hover:line-clamp-2 group-hover:max-h-[36px]',
-            tags.length ? 'line-clamp-2' : 'line-clamp-4',
-          )}
-          title={app.description}
-        >
-          {app.description}
+        <div className='title-wrapper h-[90px] px-[14px] text-xs leading-normal text-gray-500'>
+          <div
+            className={cn(tags.length ? 'line-clamp-2' : 'line-clamp-4', 'group-hover:line-clamp-2')}
+            title={app.description}
+          >
+            {app.description}
+          </div>
         </div>
         <div className={cn(
-          'items-center shrink-0 mt-1 pt-1 pl-[14px] pr-[6px] pb-[6px] h-[42px]',
+          'absolute bottom-1 left-0 right-0 items-center shrink-0 pt-1 pl-[14px] pr-[6px] pb-[6px] h-[42px]',
           tags.length ? 'flex' : '!hidden group-hover:!flex',
         )}>
           {isCurrentWorkspaceEditor && (
@@ -360,9 +364,11 @@ const AppCard = ({ app, onRefresh }: AppCardProps) => {
       {showEditModal && (
         <EditAppModal
           isEditModal
+          appName={app.name}
+          appIconType={app.icon_type}
           appIcon={app.icon}
           appIconBackground={app.icon_background}
-          appName={app.name}
+          appIconUrl={app.icon_url}
           appDescription={app.description}
           show={showEditModal}
           onConfirm={onEdit}
@@ -372,8 +378,10 @@ const AppCard = ({ app, onRefresh }: AppCardProps) => {
       {showDuplicateModal && (
         <DuplicateAppModal
           appName={app.name}
+          icon_type={app.icon_type}
           icon={app.icon}
           icon_background={app.icon_background}
+          icon_url={app.icon_url}
           show={showDuplicateModal}
           onConfirm={onCopy}
           onHide={() => setShowDuplicateModal(false)}
@@ -392,7 +400,6 @@ const AppCard = ({ app, onRefresh }: AppCardProps) => {
           title={t('app.deleteAppConfirmTitle')}
           content={t('app.deleteAppConfirmContent')}
           isShow={showConfirmDelete}
-          onClose={() => setShowConfirmDelete(false)}
           onConfirm={onConfirmDelete}
           onCancel={() => setShowConfirmDelete(false)}
         />

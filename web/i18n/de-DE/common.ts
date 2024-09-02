@@ -12,6 +12,7 @@ const translation = {
     cancel: 'Abbrechen',
     clear: 'Leeren',
     save: 'Speichern',
+    saveAndEnable: 'Speichern und Aktivieren',
     edit: 'Bearbeiten',
     add: 'Hinzufügen',
     added: 'Hinzugefügt',
@@ -59,6 +60,10 @@ const translation = {
       ukUA: 'Ukrainisch',
       viVN: 'Vietnamesisch',
       plPL: 'Polnisch',
+      roRO: 'Rumänisch',
+      hiIN: 'Hindi',
+      trTR: 'Türkisch',
+      faIR: 'Persisch',
     },
   },
   unit: {

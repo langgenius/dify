@@ -25,7 +25,7 @@ class UnstructuredWordExtractor(BaseExtractor):
         from unstructured.file_utils.filetype import FileType, detect_filetype
 
         unstructured_version = tuple(
-            [int(x) for x in __unstructured_version__.split(".")]
+            int(x) for x in __unstructured_version__.split(".")
         )
         # check the file extension
         try:

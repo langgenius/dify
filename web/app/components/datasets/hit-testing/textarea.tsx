@@ -1,12 +1,10 @@
-import { useContext } from 'use-context-selector'
 import { useTranslation } from 'react-i18next'
 import Button from '../../base/button'
 import Tag from '../../base/tag'
-import Tooltip from '../../base/tooltip'
 import { getIcon } from '../common/retrieval-method-info'
 import s from './style.module.css'
+import Tooltip from '@/app/components/base/tooltip'
 import cn from '@/utils/classnames'
-import DatasetDetailContext from '@/context/dataset-detail'
 import type { HitTestingResponse } from '@/models/datasets'
 import { hitTesting } from '@/service/datasets'
 import { asyncRunSafe } from '@/utils'
@@ -40,7 +38,6 @@ const TextAreaWithButton = ({
   onSubmit: _onSubmit,
 }: TextAreaWithButtonIProps) => {
   const { t } = useTranslation()
-  const { indexingTechnique } = useContext(DatasetDetailContext)
 
   function handleTextChange(event: any) {
     setText(event.target.value)
@@ -77,8 +74,7 @@ const TextAreaWithButton = ({
               {t('datasetHitTesting.input.title')}
             </span>
             <Tooltip
-              selector={'change-retrieval-method'}
-              htmlContent={t('dataset.retrieval.changeRetrievalMethod')}
+              popupContent={t('dataset.retrieval.changeRetrievalMethod')}
             >
               <div
                 onClick={onClickRetrievalMethod}
@@ -102,8 +98,7 @@ const TextAreaWithButton = ({
             {text?.length > 200
               ? (
                 <Tooltip
-                  content={t('datasetHitTesting.input.countWarning') as string}
-                  selector="hit-testing-warning"
+                  popupContent={t('datasetHitTesting.input.countWarning')}
                 >
                   <div>
                     <Tag color="red" className="!text-red-600">

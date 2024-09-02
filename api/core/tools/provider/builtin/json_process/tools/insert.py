@@ -36,21 +36,26 @@ class JSONParseTool(BuiltinTool):
         # get create path
         create_path = tool_parameters.get('create_path', False)
 
+        # get value decode.
+        # if true, it will be decoded to an dict
+        value_decode = tool_parameters.get('value_decode', False)
+
         ensure_ascii = tool_parameters.get('ensure_ascii', True)
         try:
-            result = self._insert(content, query, new_value, ensure_ascii, index, create_path)
+            result = self._insert(content, query, new_value, ensure_ascii, value_decode, index, create_path)
             return self.create_text_message(str(result))
         except Exception:
             return self.create_text_message('Failed to insert JSON content')
 
-    def _insert(self, origin_json, query, new_value, ensure_ascii: bool, index=None, create_path=False):
+    def _insert(self, origin_json, query, new_value, ensure_ascii: bool, value_decode: bool, index=None, create_path=False):
         try:
             input_data = json.loads(origin_json)
             expr = parse(query)
-            try:
-                new_value = json.loads(new_value)
-            except json.JSONDecodeError:
-                new_value = new_value
+            if value_decode is True:
+                try:
+                    new_value = json.loads(new_value)
+                except json.JSONDecodeError:
+                    return "Cannot decode new value to json object"
 
             matches = expr.find(input_data)
 
