@@ -1,6 +1,4 @@
-import base64
 import datetime
-import secrets
 
 from flask_restful import Resource, reqparse
 
@@ -9,7 +7,6 @@ from controllers.console import api
 from controllers.console.error import AlreadyActivateError
 from extensions.ext_database import db
 from libs.helper import email, str_len, timezone
-from libs.password import hash_password, valid_password
 from models.account import AccountStatus, Tenant
 from services.account_service import RegisterService
 
@@ -35,7 +32,7 @@ class ActivateCheckApi(Resource):
             invitee_email = data.get("email", "Unknown Email")
             return {
                 "is_valid": invitation is not None,
-                "data": {"workspace_name": workspace_name, "workspace_id": workspace_id, "email": invitee_email}
+                "data": {"workspace_name": workspace_name, "workspace_id": workspace_id, "email": invitee_email},
             }
         else:
             return {"is_valid": False}
@@ -48,7 +45,6 @@ class ActivateApi(Resource):
         parser.add_argument("email", type=email, required=False, nullable=True, location="json")
         parser.add_argument("token", type=str, required=True, nullable=False, location="json")
         parser.add_argument("name", type=str_len(30), required=True, nullable=False, location="json")
-        parser.add_argument("password", type=valid_password, required=True, nullable=False, location="json")
         parser.add_argument(
             "interface_language", type=supported_language, required=True, nullable=False, location="json"
         )
@@ -64,15 +60,6 @@ class ActivateApi(Resource):
         account = invitation["account"]
         account.name = args["name"]
 
-        # generate password salt
-        salt = secrets.token_bytes(16)
-        base64_salt = base64.b64encode(salt).decode()
-
-        # encrypt password with salt
-        password_hashed = hash_password(args["password"], salt)
-        base64_password_hashed = base64.b64encode(password_hashed).decode()
-        account.password = base64_password_hashed
-        account.password_salt = base64_salt
         account.interface_language = args["interface_language"]
         account.timezone = args["timezone"]
         account.interface_theme = "light"
