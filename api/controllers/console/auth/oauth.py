@@ -43,7 +43,8 @@ def get_oauth_providers():
 
 
 class OAuthLogin(Resource):
-    def get(self, provider: str, invite_toke: Optional[str] = None):
+    def get(self, provider: str):
+        invite_token = request.args.get('invite_token') or None
         OAUTH_PROVIDERS = get_oauth_providers()
         with current_app.app_context():
             oauth_provider = OAUTH_PROVIDERS.get(provider)
@@ -51,7 +52,7 @@ class OAuthLogin(Resource):
         if not oauth_provider:
             return {"error": "Invalid provider"}, 400
 
-        auth_url = oauth_provider.get_authorization_url(invite_toke)
+        auth_url = oauth_provider.get_authorization_url(invite_token)
         return redirect(auth_url)
 
 
@@ -114,7 +115,7 @@ def _generate_account(provider: str, user_info: OAuthUserInfo):
     # Get account by openid or email.
     account = _get_account_by_openid_or_email(provider, user_info)
 
-    if not account and dify_config.ALLOW_REGISTER:
+    if not account:
         account_name = user_info.name if user_info.name else "Dify"
         account = RegisterService.register(
             email=user_info.email, name=account_name, password=None, open_id=user_info.id, provider=provider
@@ -128,8 +129,6 @@ def _generate_account(provider: str, user_info: OAuthUserInfo):
             interface_language = languages[0]
         account.interface_language = interface_language
         db.session.commit()
-    else:
-        raise AccountNotFound()
 
     # Link account
     AccountService.link_account_integrate(provider, user_info.id, account)
