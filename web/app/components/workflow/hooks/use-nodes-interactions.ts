@@ -384,7 +384,7 @@ export const useNodesInteractions = () => {
       handleSyncWorkflowDraft()
       saveStateToHistory(WorkflowHistoryEvent.NodeConnect)
     }
-  }, [getNodesReadOnly, store, handleSyncWorkflowDraft, saveStateToHistory])
+  }, [getNodesReadOnly, store, handleSyncWorkflowDraft, saveStateToHistory, checkNestedParallelLimit])
 
   const handleNodeConnectStart = useCallback<OnConnectStart>((_, { nodeId, handleType, handleId }) => {
     if (getNodesReadOnly())
@@ -930,7 +930,7 @@ export const useNodesInteractions = () => {
     }
     handleSyncWorkflowDraft()
     saveStateToHistory(WorkflowHistoryEvent.NodeAdd)
-  }, [getNodesReadOnly, store, t, handleSyncWorkflowDraft, saveStateToHistory, workflowStore, getAfterNodesInSameBranch])
+  }, [getNodesReadOnly, store, t, handleSyncWorkflowDraft, saveStateToHistory, workflowStore, getAfterNodesInSameBranch, checkNestedParallelLimit])
 
   const handleNodeChange = useCallback((
     currentNodeId: string,
@@ -1254,6 +1254,42 @@ export const useNodesInteractions = () => {
     saveStateToHistory(WorkflowHistoryEvent.NodeResize)
   }, [getNodesReadOnly, store, handleSyncWorkflowDraft, saveStateToHistory])
 
+  const handleNodeDisconnect = useCallback((nodeId: string) => {
+    if (getNodesReadOnly())
+      return
+
+    const {
+      getNodes,
+      setNodes,
+      edges,
+      setEdges,
+    } = store.getState()
+    const nodes = getNodes()
+    const currentNode = nodes.find(node => node.id === nodeId)!
+    const connectedEdges = getConnectedEdges([currentNode], edges)
+    const nodesConnectedSourceOrTargetHandleIdsMap = getNodesConnectedSourceOrTargetHandleIdsMap(
+      connectedEdges.map(edge => ({ type: 'remove', edge })),
+      nodes,
+    )
+    const newNodes = produce(nodes, (draft: Node[]) => {
+      draft.forEach((node) => {
+        if (nodesConnectedSourceOrTargetHandleIdsMap[node.id]) {
+          node.data = {
+            ...node.data,
+            ...nodesConnectedSourceOrTargetHandleIdsMap[node.id],
+          }
+        }
+      })
+    })
+    setNodes(newNodes)
+    const newEdges = produce(edges, (draft) => {
+      return draft.filter(edge => !connectedEdges.find(connectedEdge => connectedEdge.id === edge.id))
+    })
+    setEdges(newEdges)
+    handleSyncWorkflowDraft()
+    saveStateToHistory(WorkflowHistoryEvent.EdgeDelete)
+  }, [store, getNodesReadOnly, handleSyncWorkflowDraft, saveStateToHistory])
+
   const handleHistoryBack = useCallback(() => {
     if (getNodesReadOnly() || getWorkflowReadOnly())
       return
@@ -1306,6 +1342,7 @@ export const useNodesInteractions = () => {
     handleNodesDuplicate,
     handleNodesDelete,
     handleNodeResize,
+    handleNodeDisconnect,
     handleHistoryBack,
     handleHistoryForward,
   }

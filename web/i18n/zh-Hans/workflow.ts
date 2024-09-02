@@ -90,6 +90,9 @@ const translation = {
       limit: '并行分支限制为 {{num}} 个',
       depthLimit: '并行嵌套层数限制 {{num}} 层',
     },
+    disconnect: '断开连接',
+    jumpToNode: '跳转到节点',
+    addParallelNode: '添加并行节点',
   },
   env: {
     envPanelTitle: '环境变量',

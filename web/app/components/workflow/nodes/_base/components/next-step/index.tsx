@@ -1,4 +1,5 @@
-import { memo } from 'react'
+import { memo, useMemo } from 'react'
+import { useTranslation } from 'react-i18next'
 import {
   getConnectedEdges,
   getOutgoers,
@@ -8,13 +9,11 @@ import {
 import { useToolIcon } from '../../../../hooks'
 import BlockIcon from '../../../../block-icon'
 import type {
-  Branch,
   Node,
 } from '../../../../types'
 import { BlockEnum } from '../../../../types'
-import Add from './add'
-import Item from './item'
 import Line from './line'
+import Container from './container'
 
 type NextStepProps = {
   selectedNode: Node
@@ -22,14 +21,32 @@ type NextStepProps = {
 const NextStep = ({
   selectedNode,
 }: NextStepProps) => {
+  const { t } = useTranslation()
   const data = selectedNode.data
   const toolIcon = useToolIcon(data)
   const store = useStoreApi()
-  const branches = data._targetBranches || []
+  const branches = useMemo(() => {
+    return data._targetBranches || []
+  }, [data])
   const nodeWithBranches = data.type === BlockEnum.IfElse || data.type === BlockEnum.QuestionClassifier
   const edges = useEdges()
   const outgoers = getOutgoers(selectedNode as Node, store.getState().getNodes(), edges)
   const connectedEdges = getConnectedEdges([selectedNode] as Node[], edges).filter(edge => edge.source === selectedNode!.id)
+
+  const branchesOutgoers = useMemo(() => {
+    if (!branches?.length)
+      return []
+
+    return branches.map((branch) => {
+      const connected = connectedEdges.filter(edge => edge.sourceHandle === branch.id)
+      const nextNodes = connected.map(edge => outgoers.find(outgoer => outgoer.id === edge.target)!)
+
+      return {
+        branch,
+        nextNodes,
+      }
+    })
+  }, [branches, connectedEdges, outgoers])
 
   return (
     <div className='flex py-1'>
@@ -39,59 +56,32 @@ const NextStep = ({
           toolIcon={toolIcon}
         />
       </div>
-      <Line linesNumber={nodeWithBranches ? branches.length : 1} />
-      <div className='grow'>
+      <Line
+        list={nodeWithBranches ? branchesOutgoers.map(item => item.nextNodes.length + 1) : [1]}
+      />
+      <div className='grow space-y-2'>
         {
-          !nodeWithBranches && !!outgoers.length && (
-            <Item
-              nodeId={outgoers[0].id}
-              data={outgoers[0].data}
-              sourceHandle='source'
-            />
-          )
-        }
-        {
-          !nodeWithBranches && !outgoers.length && (
-            <Add
+          !nodeWithBranches && (
+            <Container
               nodeId={selectedNode!.id}
               nodeData={selectedNode!.data}
               sourceHandle='source'
+              nextNodes={outgoers}
             />
           )
         }
         {
-          !!branches?.length && nodeWithBranches && (
-            branches.map((branch: Branch) => {
-              const connected = connectedEdges.find(edge => edge.sourceHandle === branch.id)
-              const target = outgoers.find(outgoer => outgoer.id === connected?.target)
-
+          nodeWithBranches && (
+            branchesOutgoers.map((item, index) => {
               return (
-                <div
-                  key={branch.id}
-                  className='mb-3 last-of-type:mb-0'
-                >
-                  {
-                    connected && (
-                      <Item
-                        data={target!.data!}
-                        nodeId={target!.id}
-                        sourceHandle={branch.id}
-                        branchName={branch.name}
-                      />
-                    )
-                  }
-                  {
-                    !connected && (
-                      <Add
-                        key={branch.id}
-                        nodeId={selectedNode!.id}
-                        nodeData={selectedNode!.data}
-                        sourceHandle={branch.id}
-                        branchName={branch.name}
-                      />
-                    )
-                  }
-                </div>
+                <Container
+                  key={item.branch.id}
+                  nodeId={selectedNode!.id}
+                  nodeData={selectedNode!.data}
+                  sourceHandle={item.branch.id}
+                  nextNodes={item.nextNodes}
+                  branchName={item.branch.name || `${t('workflow.nodes.questionClassifiers.class')} ${index + 1}`}
+                />
               )
             })
           )
