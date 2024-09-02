@@ -5,7 +5,7 @@
   border-radius: 10px;
   padding: 10px 15px;
   width: 100%;
-  max-width: 360px;
+  max-width: 420px;
   max-height: 36px;
   box-shadow: 0 1px 5px rgba(0, 0, 0, 0.1);
 }
@@ -42,8 +42,8 @@
 .waveform {
   position: absolute;
   top: 0;
-  left: 0;
-  width: 95%;
+  left: 4px;
+  width: 92%;
   height: 100%;
 }
 

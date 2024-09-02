@@ -239,8 +239,6 @@ const AudioPlayer: React.FC<AudioPlayerProps> = ({ src }) => {
           <canvas
             ref={canvasRef}
             className={styles.waveform}
-            width="300"
-            height="25"
             onClick={handleCanvasInteraction}
             onMouseMove={handleMouseMove}
             onMouseDown={handleCanvasInteraction}
