@@ -14,7 +14,6 @@ from libs.helper import get_remote_ip
 from libs.oauth import GitHubOAuth, GoogleOAuth, OAuthUserInfo
 from models.account import Account, AccountStatus
 from services.account_service import AccountService, RegisterService, TenantService
-from services.errors.account import AccountNotFound
 
 from .. import api
 
@@ -44,6 +43,7 @@ def get_oauth_providers():
 
 class OAuthLogin(Resource):
     def get(self, provider: str):
+        invite_token = request.args.get("invite_token") or None
         OAUTH_PROVIDERS = get_oauth_providers()
         with current_app.app_context():
             oauth_provider = OAUTH_PROVIDERS.get(provider)
@@ -51,7 +51,7 @@ class OAuthLogin(Resource):
         if not oauth_provider:
             return {"error": "Invalid provider"}, 400
 
-        auth_url = oauth_provider.get_authorization_url()
+        auth_url = oauth_provider.get_authorization_url(invite_token)
         return redirect(auth_url)
 
 
@@ -64,12 +64,20 @@ class OAuthCallback(Resource):
             return {"error": "Invalid provider"}, 400
 
         code = request.args.get("code")
+        state = request.args.get("state")
+        invite_token = None
+        if state:
+            invite_token = state
+
         try:
             token = oauth_provider.get_access_token(code)
             user_info = oauth_provider.get_user_info(token)
         except requests.exceptions.HTTPError as e:
             logging.exception(f"An error occurred during the OAuth process with {provider}: {e.response.text}")
             return {"error": "OAuth process failed"}, 400
+
+        if invite_token:
+            return redirect(f"{dify_config.CONSOLE_WEB_URL}/invite-settings?invite_token={invite_token}")
 
         try:
             account = _generate_account(provider, user_info)
@@ -104,7 +112,7 @@ def _generate_account(provider: str, user_info: OAuthUserInfo):
     # Get account by openid or email.
     account = _get_account_by_openid_or_email(provider, user_info)
 
-    if not account and dify_config.ALLOW_REGISTER:
+    if not account:
         account_name = user_info.name if user_info.name else "Dify"
         account = RegisterService.register(
             email=user_info.email, name=account_name, password=None, open_id=user_info.id, provider=provider
@@ -118,8 +126,6 @@ def _generate_account(provider: str, user_info: OAuthUserInfo):
             interface_language = languages[0]
         account.interface_language = interface_language
         db.session.commit()
-    else:
-        raise AccountNotFound()
 
     # Link account
     AccountService.link_account_integrate(provider, user_info.id, account)
