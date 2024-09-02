@@ -32,16 +32,16 @@ parameters:
     options:
       - value: llama-3.1-sonar-small-128k-online
         label:
-          en_US: Llama 3.1 Sonar Small (8B)
-          zh_Hans: Llama 3.1 Sonar Small (8B)
+          en_US: llama-3.1-sonar-small-128k-online
+          zh_Hans: llama-3.1-sonar-small-128k-online
       - value: llama-3.1-sonar-large-128k-online
         label:
-          en_US: Llama 3.1 Sonar Large (70B)
-          zh_Hans: Llama 3.1 Sonar Large (70B)
+          en_US: llama-3.1-sonar-large-128k-online
+          zh_Hans: llama-3.1-sonar-large-128k-online
       - value: llama-3.1-sonar-huge-128k-online
         label:
-          en_US: Llama 3.1 Sonar Huge (405B)
-          zh_Hans: Llama 3.1 Sonar Huge (405B)
+          en_US: llama-3.1-sonar-huge-128k-online
+          zh_Hans: llama-3.1-sonar-huge-128k-online
   - name: max_tokens
     type: number
     required: false
