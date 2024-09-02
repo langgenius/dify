@@ -21,7 +21,8 @@ class BaseNode(ABC):
                  graph_init_params: GraphInitParams,
                  graph: Graph,
                  graph_runtime_state: GraphRuntimeState,
-                 previous_node_id: Optional[str] = None) -> None:
+                 previous_node_id: Optional[str] = None,
+                 thread_pool_id: Optional[str] = None) -> None:
         self.id = id
         self.tenant_id = graph_init_params.tenant_id
         self.app_id = graph_init_params.app_id
@@ -35,6 +36,7 @@ class BaseNode(ABC):
         self.graph = graph
         self.graph_runtime_state = graph_runtime_state
         self.previous_node_id = previous_node_id
+        self.thread_pool_id = thread_pool_id
 
         node_id = config.get("id")
         if not node_id:

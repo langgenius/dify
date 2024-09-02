@@ -1,6 +1,6 @@
 import logging
 import os
-from typing import cast
+from typing import Optional, cast
 
 from core.app.apps.base_app_queue_manager import AppQueueManager
 from core.app.apps.workflow.app_config_manager import WorkflowAppConfig
@@ -29,14 +29,17 @@ class WorkflowAppRunner(WorkflowBasedAppRunner):
     def __init__(
             self,
             application_generate_entity: WorkflowAppGenerateEntity,
-            queue_manager: AppQueueManager
+            queue_manager: AppQueueManager,
+            workflow_thread_pool_id: Optional[str] = None
     ) -> None:
         """
         :param application_generate_entity: application generate entity
         :param queue_manager: application queue manager
+        :param workflow_thread_pool_id: workflow thread pool id
         """
         self.application_generate_entity = application_generate_entity
         self.queue_manager = queue_manager
+        self.workflow_thread_pool_id = workflow_thread_pool_id
 
     def run(self) -> None:
         """
@@ -116,6 +119,7 @@ class WorkflowAppRunner(WorkflowBasedAppRunner):
             invoke_from=self.application_generate_entity.invoke_from,
             call_depth=self.application_generate_entity.call_depth,
             variable_pool=variable_pool,
+            thread_pool_id=self.workflow_thread_pool_id
         )
 
         generator = workflow_entry.run(
