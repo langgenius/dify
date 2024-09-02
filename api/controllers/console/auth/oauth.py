@@ -77,7 +77,7 @@ class OAuthCallback(Resource):
             return {"error": "OAuth process failed"}, 400
 
         if invite_token:
-            return redirect(f"{dify_config.CONSOLE_WEB_URL}/invite-settings?invite_token={invite_token}")
+            return redirect(f"{dify_config.CONSOLE_WEB_URL}/signin/invite-settings?invite_token={invite_token}")
 
         try:
             account = _generate_account(provider, user_info)
