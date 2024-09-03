@@ -25,6 +25,7 @@ from services.errors.account import (
     AccountLoginError,
     AccountNotFound,
     AccountNotLinkTenantError,
+    AccountPasswordError,
     AccountRegisterError,
     CannotOperateSelfError,
     CurrentPasswordIncorrectError,
@@ -98,13 +99,14 @@ class AccountService:
         if account.status == AccountStatus.BANNED.value or account.status == AccountStatus.CLOSED.value:
             raise AccountLoginError("Account is banned or closed.")
 
+        if account.password is None or not compare_password(password, account.password, account.password_salt):
+            raise AccountPasswordError("Invalid email or password.")
+
         if account.status == AccountStatus.PENDING.value:
             account.status = AccountStatus.ACTIVE.value
             account.initialized_at = datetime.now(timezone.utc).replace(tzinfo=None)
             db.session.commit()
 
-        if account.password is None or not compare_password(password, account.password, account.password_salt):
-            raise AccountLoginError("Invalid email or password.")
         return account
 
     @staticmethod
@@ -134,7 +136,9 @@ class AccountService:
     ) -> Account:
         """create account"""
         if not dify_config.ALLOW_REGISTER:
-            raise Unauthorized("Register is not allowed.")
+            from controllers.console.error import NotAllowedRegister
+
+            raise NotAllowedRegister()
         account = Account()
         account.email = email
         account.name = name
@@ -316,7 +320,9 @@ class TenantService:
     def create_tenant(name: str) -> Tenant:
         """Create tenant"""
         if not dify_config.ALLOW_CREATE_WORKSPACE:
-            raise Unauthorized("Create workspace is not allowed.")
+            from controllers.console.error import NotAllowedCreateWorkspace
+
+            raise NotAllowedCreateWorkspace()
         tenant = Tenant(name=name)
 
         db.session.add(tenant)
@@ -601,6 +607,7 @@ class RegisterService:
         provider: Optional[str] = None,
         language: Optional[str] = None,
         status: Optional[AccountStatus] = None,
+        is_invite_member: Optional[bool] = False,
     ) -> Account:
         db.session.begin_nested()
         """Register account"""
@@ -614,12 +621,15 @@ class RegisterService:
             if open_id is not None or provider is not None:
                 AccountService.link_account_integrate(provider, open_id, account)
             if dify_config.EDITION != "SELF_HOSTED":
-                tenant = TenantService.create_tenant(f"{account.name}'s Workspace")
+                should_create_workspace = not is_invite_member or (
+                    is_invite_member and dify_config.ALLOW_CREATE_WORKSPACE
+                )
 
-                TenantService.create_tenant_member(tenant, account, role="owner")
-                account.current_tenant = tenant
-
-                tenant_was_created.send(tenant)
+                if should_create_workspace:
+                    tenant = TenantService.create_tenant(f"{account.name}'s Workspace")
+                    TenantService.create_tenant_member(tenant, account, role="owner")
+                    account.current_tenant = tenant
+                    tenant_was_created.send(tenant)
 
             db.session.commit()
         except Exception as e:
@@ -640,7 +650,9 @@ class RegisterService:
             TenantService.check_member_permission(tenant, inviter, None, "add")
             name = email.split("@")[0]
 
-            account = cls.register(email=email, name=name, language=language, status=AccountStatus.PENDING)
+            account = cls.register(
+                email=email, name=name, language=language, status=AccountStatus.PENDING, is_invite_member=True
+            )
             # Create new tenant member for invited tenant
             TenantService.create_tenant_member(tenant, account, role)
             TenantService.switch_tenant(account, tenant.id)
