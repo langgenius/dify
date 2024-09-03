@@ -1,7 +1,7 @@
 import React, { useMemo, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { RiApps2AddLine, RiArrowRightLine, RiSparklingFill } from '@remixicon/react'
-import { Citations, ContentModeration, FolderUpload, LoveMessage, Microphone01, TextToAudio, VirtualAssistant } from '@/app/components/base/icons/src/vender/features'
+import { Citations, ContentModeration, FolderUpload, LoveMessage, MessageFast, Microphone01, TextToAudio, VirtualAssistant } from '@/app/components/base/icons/src/vender/features'
 import Button from '@/app/components/base/button'
 import Tooltip from '@/app/components/base/tooltip'
 import VoiceSettings from '@/app/components/base/features/new-feature-panel/text-to-speech/voice-settings'
@@ -118,7 +118,15 @@ const FeatureBar = ({
                 </div>
               </Tooltip>
             )}
-            {/* ##TODO## annotation_reply */}
+            {isChatMode && !!features.annotationReply?.enabled && (
+              <Tooltip
+                popupContent={t('appDebug.feature.annotation.title')}
+              >
+                <div className='shrink-0 p-1 rounded-lg border-[0.5px] border-divider-subtle shadow-xs bg-util-colors-indigo-indigo-600'>
+                  <MessageFast className='w-3.5 h-3.5 text-text-primary-on-surface' />
+                </div>
+              </Tooltip>
+            )}
           </div>
           <div className='grow text-text-tertiary body-xs-regular'>{t('appDebug.feature.bar.enableText')}</div>
           <Button className='shrink-0' variant='ghost-accent' size='small' onClick={() => onFeatureBarClick?.(true)}>

@@ -2,7 +2,7 @@
 import type { FC } from 'react'
 import React from 'react'
 import { useTranslation } from 'react-i18next'
-import Slider from '@/app/components/app/configuration/toolbox/score-slider/base-slider'
+import Slider from '@/app/components/base/features/new-feature-panel/annotation-reply/score-slider/base-slider'
 
 type Props = {
   className?: string

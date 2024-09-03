@@ -7,7 +7,6 @@ import { useFormattingChangedDispatcher } from '../debug/hooks'
 import DatasetConfig from '../dataset-config'
 import HistoryPanel from '../config-prompt/conversation-histroy/history-panel'
 import ConfigVision from '../config-vision'
-import useAnnotationConfig from '../toolbox/annotation/use-annotation-config'
 import AgentTools from './agent/agent-tools'
 import ConfigContext from '@/context/debug-configuration'
 import ConfigPrompt from '@/app/components/app/configuration/config-prompt'
@@ -15,25 +14,18 @@ import ConfigVar from '@/app/components/app/configuration/config-var'
 import { type ModelConfig, type PromptVariable } from '@/models/debug'
 import type { AppType } from '@/types/app'
 import { ModelModeType } from '@/types/app'
-import ConfigParamModal from '@/app/components/app/configuration/toolbox/annotation/config-param-modal'
-import AnnotationFullModal from '@/app/components/billing/annotation-full/modal'
 
 const Config: FC = () => {
   const {
-    appId,
     mode,
     isAdvancedMode,
     modelModeType,
     isAgent,
-    // canReturnToSimpleMode,
-    // setPromptMode,
     hasSetBlockStatus,
     showHistoryModal,
     modelConfig,
     setModelConfig,
     setPrevPromptConfig,
-    annotationConfig,
-    setAnnotationConfig,
   } = useContext(ConfigContext)
   const isChatApp = ['advanced-chat', 'agent-chat', 'chat'].includes(mode)
   const formattingChangedDispatcher = useFormattingChangedDispatcher()
@@ -60,20 +52,6 @@ const Config: FC = () => {
     })
     setModelConfig(newModelConfig)
   }
-
-  const {
-    handleEnableAnnotation,
-    // setScore,
-    // handleDisableAnnotation,
-    isShowAnnotationConfigInit,
-    setIsShowAnnotationConfigInit,
-    isShowAnnotationFullModal,
-    setIsShowAnnotationFullModal,
-  } = useAnnotationConfig({
-    appId,
-    annotationConfig,
-    setAnnotationConfig,
-  })
 
   return (
     <>
@@ -109,27 +87,6 @@ const Config: FC = () => {
           <HistoryPanel
             showWarning={!hasSetBlockStatus.history}
             onShowEditModal={showHistoryModal}
-          />
-        )}
-
-        <ConfigParamModal
-          appId={appId}
-          isInit
-          isShow={isShowAnnotationConfigInit}
-          onHide={() => {
-            setIsShowAnnotationConfigInit(false)
-            // showChooseFeatureTrue()
-          }}
-          onSave={async (embeddingModel, score) => {
-            await handleEnableAnnotation(embeddingModel, score)
-            setIsShowAnnotationConfigInit(false)
-          }}
-          annotationConfig={annotationConfig}
-        />
-        {isShowAnnotationFullModal && (
-          <AnnotationFullModal
-            show={isShowAnnotationFullModal}
-            onHide={() => setIsShowAnnotationFullModal(false)}
           />
         )}
       </div>

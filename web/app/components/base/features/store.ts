@@ -46,6 +46,7 @@ export const createFeaturesStore = (initProps?: Partial<FeaturesState>) => {
       file: {
         image: {
           enabled: false,
+          detail: 'high',
           number_limits: 3,
           transfer_methods: [TransferMethod.local_file, TransferMethod.remote_url],
         },

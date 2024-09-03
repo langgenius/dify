@@ -30,6 +30,7 @@ export type SensitiveWordAvoidance = EnabledOrDisabled & {
 
 export type FileUpload = {
   image?: EnabledOrDisabled & {
+    detail?: 'high' | 'low'
     number_limits?: number
     transfer_methods?: TransferMethod[]
   }

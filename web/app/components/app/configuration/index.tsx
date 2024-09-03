@@ -284,7 +284,7 @@ const Configuration: FC = () => {
     setModelConfig(_publishedConfig.modelConfig)
     setCompletionParams(_publishedConfig.completionParams)
     setDataSets(modelConfig.dataSets || [])
-    // feature
+    // reset feature
     setIntroduction(modelConfig.opening_statement!)
     setMoreLikeThisConfig(modelConfig.more_like_this || {
       enabled: false,
@@ -446,6 +446,7 @@ const Configuration: FC = () => {
       text2speech: modelConfig.text_to_speech || { enabled: false },
       file: {
         image: {
+          detail: modelConfig.file_upload?.image?.detail || Resolution.high,
           enabled: !!modelConfig.file_upload?.image?.enabled,
           number_limits: modelConfig.file_upload?.image?.number_limits || 3,
           transfer_methods: modelConfig.file_upload?.image?.transfer_methods || ['local_file', 'remote_url'],
@@ -741,12 +742,6 @@ const Configuration: FC = () => {
     return true
   }
 
-  const [restoreConfirmOpen, setRestoreConfirmOpen] = useState(false)
-  const resetAppConfig = () => {
-    syncToPublishedConfig(publishedConfig!)
-    setRestoreConfirmOpen(false)
-  }
-
   const [showUseGPT4Confirm, setShowUseGPT4Confirm] = useState(false)
 
   const {
@@ -907,7 +902,8 @@ const Configuration: FC = () => {
                       debugWithMultipleModel,
                       multipleModelConfigs,
                       onPublish,
-                      onRestore: () => setRestoreConfirmOpen(true),
+                      publishedConfig: publishedConfig!,
+                      resetAppConfig: () => syncToPublishedConfig(publishedConfig!),
                     }} />
                   </div>
                 </div>
@@ -933,15 +929,6 @@ const Configuration: FC = () => {
               </div>}
             </div>
           </div>
-          {restoreConfirmOpen && (
-            <Confirm
-              title={t('appDebug.resetConfig.title')}
-              content={t('appDebug.resetConfig.message')}
-              isShow={restoreConfirmOpen}
-              onConfirm={resetAppConfig}
-              onCancel={() => setRestoreConfirmOpen(false)}
-            />
-          )}
           {showUseGPT4Confirm && (
             <Confirm
               title={t('appDebug.trailUseGPT4Info.title')}

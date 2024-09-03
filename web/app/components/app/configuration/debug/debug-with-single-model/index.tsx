@@ -58,7 +58,7 @@ const DebugWithSingleModel = forwardRef<DebugWithSingleModelRefType, DebugWithSi
       file_upload: features.file,
       suggested_questions_after_answer: features.suggested,
       retriever_resource: features.citation,
-      // ##TODO## annotation_reply
+      annotation_reply: features.annotationReply,
     } as ChatConfig
   }, [configTemplate, features])
   const {
