@@ -15,6 +15,7 @@ from controllers.console.auth.error import (
     PasswordMismatchError,
     PasswordResetRateLimitExceededError,
 )
+from controllers.console.error import NotAllowedRegister
 from controllers.console.setup import setup_required
 from extensions.ext_database import db
 from libs.helper import email, get_remote_ip
@@ -37,7 +38,7 @@ class ForgotPasswordSendEmailApi(Resource):
             if dify_config.ALLOW_REGISTER:
                 token = AccountService.send_reset_password_email(email=args["email"])
             else:
-                raise InvalidEmailError()
+                raise NotAllowedRegister()
         elif account:
             try:
                 token = AccountService.send_reset_password_email(account=account, email=args["email"])
