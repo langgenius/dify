@@ -138,7 +138,7 @@ const PanelOperatorPopup = ({
                 className='flex items-center justify-between px-3 h-8 text-sm text-gray-700 rounded-lg cursor-pointer hover:bg-gray-50'
                 onClick={() => {
                   onClosePopup()
-                  handleNodesDuplicate()
+                  handleNodesDuplicate(id)
                 }}
               >
                 {t('workflow.common.duplicate')}

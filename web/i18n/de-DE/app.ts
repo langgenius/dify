@@ -46,9 +46,11 @@ const translation = {
   editAppTitle: 'App-Informationen bearbeiten',
   editDone: 'App-Informationen wurden aktualisiert',
   editFailed: 'Aktualisierung der App-Informationen fehlgeschlagen',
-  emoji: {
+  iconPicker: {
     ok: 'OK',
     cancel: 'Abbrechen',
+    emoji: 'Emoji',
+    image: 'Bild',
   },
   switch: 'Zu Workflow-Orchestrierung wechseln',
   switchTipStart: 'Eine neue App-Kopie wird für Sie erstellt, und die neue Kopie wird zur Workflow-Orchestrierung wechseln. Die neue Kopie wird ',

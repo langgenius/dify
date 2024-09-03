@@ -284,11 +284,11 @@ const translation = {
     typeSelect: '選択',
   },
   varKeyError: {
-    canNoBeEmpty: '変数キーを空にすることはできません',
-    tooLong: '変数キー: {{key}} が長すぎます。30文字を超えることはできません',
-    notValid: '変数キー: {{key}} が無効です。文字、数字、アンダースコアのみを含めることができます',
-    notStartWithNumber: '変数キー: {{key}} は数字で始めることはできません',
-    keyAlreadyExists: '変数キー: {{key}} はすでに存在します',
+    canNoBeEmpty: '{{key}} は必須です',
+    tooLong: '{{key}} が長すぎます。30文字を超えることはできません',
+    notValid: '{{key}} が無効です。文字、数字、アンダースコアのみを含めることができます',
+    notStartWithNumber: '{{key}} は数字で始めることはできません',
+    keyAlreadyExists: '{{key}} はすでに存在します',
   },
   otherError: {
     promptNoBeEmpty: 'プロンプトを空にすることはできません',

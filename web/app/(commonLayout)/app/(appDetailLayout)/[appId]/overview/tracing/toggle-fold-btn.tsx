@@ -3,7 +3,7 @@ import { ChevronDoubleDownIcon } from '@heroicons/react/20/solid'
 import type { FC } from 'react'
 import { useTranslation } from 'react-i18next'
 import React, { useCallback } from 'react'
-import TooltipPlus from '@/app/components/base/tooltip-plus'
+import Tooltip from '@/app/components/base/tooltip'
 
 const I18N_PREFIX = 'app.tracing'
 
@@ -25,9 +25,8 @@ const ToggleFoldBtn: FC<Props> = ({
   return (
     // text-[0px] to hide spacing between tooltip elements
     <div className='shrink-0 cursor-pointer text-[0px]' onClick={handleFoldChange}>
-      <TooltipPlus
+      <Tooltip
         popupContent={t(`${I18N_PREFIX}.${isFold ? 'expand' : 'collapse'}`)}
-        hideArrow
       >
         {isFold && (
           <div className='p-1 rounded-md text-gray-500 hover:text-gray-800 hover:bg-black/5'>
@@ -39,7 +38,7 @@ const ToggleFoldBtn: FC<Props> = ({
             <ChevronDoubleDownIcon className='w-4 h-4 transform rotate-180' />
           </div>
         )}
-      </TooltipPlus>
+      </Tooltip>
     </div>
   )
 }

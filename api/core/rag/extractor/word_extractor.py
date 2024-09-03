@@ -170,6 +170,8 @@ class WordExtractor(BaseExtractor):
             if run.element.xpath('.//a:blip'):
                 for blip in run.element.xpath('.//a:blip'):
                     image_id = blip.get("{http://schemas.openxmlformats.org/officeDocument/2006/relationships}embed")
+                    if not image_id:
+                        continue
                     image_part = paragraph.part.rels[image_id].target_part
 
                     if image_part in image_map:
@@ -256,6 +258,6 @@ class WordExtractor(BaseExtractor):
                         content.append(parsed_paragraph)
                 elif isinstance(element.tag, str) and element.tag.endswith('tbl'):  # table
                     table = tables.pop(0)
-                    content.append(self._table_to_markdown(table,image_map))
+                    content.append(self._table_to_markdown(table, image_map))
         return '\n'.join(content)
 

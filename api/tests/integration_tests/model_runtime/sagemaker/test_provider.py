@@ -10,10 +10,6 @@ def test_validate_provider_credentials():
     provider = SageMakerProvider()
 
     with pytest.raises(CredentialsValidateFailedError):
-        provider.validate_provider_credentials(
-            credentials={}
-        )
+        provider.validate_provider_credentials(credentials={})
 
-    provider.validate_provider_credentials(
-        credentials={}
-    )
+    provider.validate_provider_credentials(credentials={})

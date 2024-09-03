@@ -84,7 +84,8 @@ class MoonshotLargeLanguageModel(OAIAPICompatLargeLanguageModel):
 
     def _add_custom_parameters(self, credentials: dict) -> None:
         credentials['mode'] = 'chat'
-        credentials['endpoint_url'] = 'https://api.moonshot.cn/v1'
+        if 'endpoint_url' not in credentials or credentials['endpoint_url'] == "":
+            credentials['endpoint_url'] = 'https://api.moonshot.cn/v1'
 
     def _add_function_call(self, model: str, credentials: dict) -> None:
         model_schema = self.get_model_schema(model, credentials)
