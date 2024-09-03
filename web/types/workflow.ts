@@ -33,6 +33,7 @@ export type NodeTracing = {
   }
   metadata: {
     iterator_length: number
+    iterator_index: number
   }
   created_at: number
   created_by: {
@@ -46,6 +47,8 @@ export type NodeTracing = {
   details?: NodeTracing[][] // iteration detail
   parallel_id?: string
   parallel_start_node_id?: string
+  parent_parallel_id?: string
+  parent_parallel_start_node_id?: string
 }
 
 export type FetchWorkflowDraftResponse = {
