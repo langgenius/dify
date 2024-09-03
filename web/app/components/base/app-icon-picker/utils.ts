@@ -93,6 +93,10 @@ export default async function getCroppedImg(
         resolve(file)
       else
         reject(new Error('Could not create a blob'))
-    }, 'image/jpeg')
+    }, 'image/png')
   })
+}
+
+export function isAnimatedImage(file: { name: string }) {
+  return (file?.name?.endsWith('.webp') || file?.name?.endsWith('.gif'))
 }

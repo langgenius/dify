@@ -8,12 +8,12 @@ import classNames from 'classnames'
 
 import { ImagePlus } from '../icons/src/vender/line/images'
 import { useDraggableUploader } from './hooks'
+import { isAnimatedImage } from './utils'
 import { ALLOW_FILE_EXTENSIONS } from '@/types/app'
 
 type UploaderProps = {
   className?: string
-  onImageCropped?: (tempUrl: string, croppedAreaPixels: Area, fileName: string) => void
-}
+  onImageCropped?: (tempUrl: string, croppedAreaPixels: Area, fileName: string, file?: File) => void }
 
 const Uploader: FC<UploaderProps> = ({
   className,
@@ -38,8 +38,11 @@ const Uploader: FC<UploaderProps> = ({
 
   const handleLocalFileInput = (e: ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0]
-    if (file)
+    if (file) {
       setInputImage({ file, url: URL.createObjectURL(file) })
+      if (isAnimatedImage(file))
+        onImageCropped?.(URL.createObjectURL(file), { x: 0, y: 0, width: 0, height: 0 }, file.name, file)
+    }
   }
 
   const {
@@ -51,6 +54,25 @@ const Uploader: FC<UploaderProps> = ({
   } = useDraggableUploader((file: File) => setInputImage({ file, url: URL.createObjectURL(file) }))
 
   const inputRef = createRef<HTMLInputElement>()
+
+  const handleShowImage = () => {
+    if (isAnimatedImage(inputImage?.file || { name: '' })) {
+      return (
+        <img src={inputImage?.url} alt='' />
+      )
+    }
+    return (
+      <Cropper
+        image={inputImage?.url}
+        crop={crop}
+        zoom={zoom}
+        aspect={1}
+        onCropChange={setCrop}
+        onCropComplete={onCropComplete}
+        onZoomChange={setZoom}
+      />
+    )
+  }
 
   return (
     <div className={classNames(className, 'w-full px-3 py-1.5')}>
@@ -79,15 +101,7 @@ const Uploader: FC<UploaderProps> = ({
               </div>
               <div className="text-xs pointer-events-none">Supports PNG, JPG, JPEG, WEBP and GIF</div>
             </>
-            : <Cropper
-              image={inputImage.url}
-              crop={crop}
-              zoom={zoom}
-              aspect={1}
-              onCropChange={setCrop}
-              onCropComplete={onCropComplete}
-              onZoomChange={setZoom}
-            />
+            : handleShowImage()
         }
       </div>
     </div>
