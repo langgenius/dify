@@ -10,6 +10,7 @@ const translation = {
     unpinnedTitle: '对话列表',
     newChatDefaultName: '新的对话',
     resetChat: '重置对话',
+    captureImage: '消息截图',
     powerBy: 'Powered by',
     prompt: '提示词',
     privatePromptConfigTitle: '对话设置',

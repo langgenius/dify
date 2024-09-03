@@ -1,9 +1,8 @@
 import type { FC } from 'react'
-import React, { useCallback, useRef, useState } from 'react'
+import React, { useCallback, useEffect, useRef, useState } from 'react'
 import { t } from 'i18next'
 import { createPortal } from 'react-dom'
-import { RiAddBoxLine, RiCloseLine, RiDownloadCloud2Line, RiZoomInLine, RiZoomOutLine } from '@remixicon/react'
-
+import { RiAddBoxLine, RiCloseLine, RiDownloadCloud2Line, RiFileCopyLine, RiZoomInLine, RiZoomOutLine } from '@remixicon/react'
 import Tooltip from '@/app/components/base/tooltip'
 import Toast from '@/app/components/base/toast'
 
@@ -15,7 +14,7 @@ type ImagePreviewProps = {
 
 const isBase64 = (str: string): boolean => {
   try {
-    return Buffer.from(str, 'base64').toString('base64') === str
+    return btoa(atob(str)) === str
   }
   catch (err) {
     return false
@@ -32,6 +31,7 @@ const ImagePreview: FC<ImagePreviewProps> = ({
   const [isDragging, setIsDragging] = useState(false)
   const imgRef = useRef<HTMLImageElement>(null)
   const dragStartRef = useRef({ x: 0, y: 0 })
+  const [isCopied, setIsCopied] = useState(false)
 
   const openInNewTab = () => {
     // Open in a new window, considering the case when the page is inside an iframe
@@ -50,9 +50,16 @@ const ImagePreview: FC<ImagePreviewProps> = ({
       })
     }
   }
-
   const downloadImage = () => {
-    if (url.startsWith('http') || url.startsWith('https') || url.startsWith('data:image')) {
+    // Open in a new window, considering the case when the page is inside an iframe
+    if (url.startsWith('http') || url.startsWith('https')) {
+      const a = document.createElement('a')
+      a.href = url
+      a.download = title
+      a.click()
+    }
+    else if (url.startsWith('data:image')) {
+      // Base64 image
       const a = document.createElement('a')
       a.href = url
       a.download = title
@@ -80,9 +87,65 @@ const ImagePreview: FC<ImagePreviewProps> = ({
     })
   }
 
+  const imageTobase64ToBlob = (base64: string, type = 'image/png'): Blob => {
+    const byteCharacters = atob(base64)
+    const byteArrays = []
+
+    for (let offset = 0; offset < byteCharacters.length; offset += 512) {
+      const slice = byteCharacters.slice(offset, offset + 512)
+      const byteNumbers = new Array(slice.length)
+      for (let i = 0; i < slice.length; i++)
+        byteNumbers[i] = slice.charCodeAt(i)
+
+      const byteArray = new Uint8Array(byteNumbers)
+      byteArrays.push(byteArray)
+    }
+
+    return new Blob(byteArrays, { type })
+  }
+
+  const imageCopy = useCallback(() => {
+    const shareImage = async () => {
+      try {
+        const base64Data = url.split(',')[1]
+        const blob = imageTobase64ToBlob(base64Data, 'image/png')
+
+        await navigator.clipboard.write([
+          new ClipboardItem({
+            [blob.type]: blob,
+          }),
+        ])
+        setIsCopied(true)
+
+        Toast.notify({
+          type: 'success',
+          message: t('common.operation.imageCopied'),
+        })
+      }
+      catch (err) {
+        console.error('Failed to copy image:', err)
+
+        const link = document.createElement('a')
+        link.href = url
+        link.download = `${title}.png`
+        document.body.appendChild(link)
+        link.click()
+        document.body.removeChild(link)
+
+        Toast.notify({
+          type: 'info',
+          message: t('common.operation.imageDownloaded'),
+        })
+      }
+    }
+    shareImage()
+  }, [title, url])
+
   const handleWheel = useCallback((e: React.WheelEvent<HTMLDivElement>) => {
-    const delta = e.deltaY < 0 ? 1 : -1
-    setScale(prevScale => Math.max(prevScale + delta, 0.5))
+    if (e.deltaY < 0)
+      zoomIn()
+    else
+      zoomOut()
   }, [])
 
   const handleMouseDown = useCallback((e: React.MouseEvent<HTMLDivElement>) => {
@@ -117,6 +180,13 @@ const ImagePreview: FC<ImagePreviewProps> = ({
     setIsDragging(false)
   }, [])
 
+  useEffect(() => {
+    document.addEventListener('mouseup', handleMouseUp)
+    return () => {
+      document.removeEventListener('mouseup', handleMouseUp)
+    }
+  }, [handleMouseUp])
+
   return createPortal(
     <div className='fixed inset-0 p-8 flex items-center justify-center bg-black/80 z-[1000] image-preview-container'
       onClick={e => e.stopPropagation()}
@@ -136,31 +206,39 @@ const ImagePreview: FC<ImagePreviewProps> = ({
           transition: isDragging ? 'none' : 'transform 0.2s ease-in-out',
         }}
       />
-      <Tooltip popupContent={(t('common.operation.zoomOut') ?? 'Zoom Out')}>
+      <Tooltip popupContent={t('common.operation.copyImage')}>
+        <div className='absolute top-6 right-48 flex items-center justify-center w-8 h-8 rounded-lg cursor-pointer'
+          onClick={imageCopy}>
+          {isCopied
+            ? <RiFileCopyLine className='w-4 h-4 text-green-500'/>
+            : <RiFileCopyLine className='w-4 h-4 text-white'/>}
+        </div>
+      </Tooltip>
+      <Tooltip popupContent={t('common.operation.zoomOut')}>
         <div className='absolute top-6 right-40 flex items-center justify-center w-8 h-8 rounded-lg cursor-pointer'
           onClick={zoomOut}>
           <RiZoomOutLine className='w-4 h-4 text-white'/>
         </div>
       </Tooltip>
-      <Tooltip popupContent={(t('common.operation.zoomIn') ?? 'Zoom In')}>
+      <Tooltip popupContent={t('common.operation.zoomIn')}>
         <div className='absolute top-6 right-32 flex items-center justify-center w-8 h-8 rounded-lg cursor-pointer'
           onClick={zoomIn}>
           <RiZoomInLine className='w-4 h-4 text-white'/>
         </div>
       </Tooltip>
-      <Tooltip popupContent={(t('common.operation.download') ?? 'Download Image')}>
+      <Tooltip popupContent={t('common.operation.download')}>
         <div className='absolute top-6 right-24 flex items-center justify-center w-8 h-8 rounded-lg cursor-pointer'
           onClick={downloadImage}>
           <RiDownloadCloud2Line className='w-4 h-4 text-white'/>
         </div>
       </Tooltip>
-      <Tooltip popupContent={(t('common.operation.openInNewTab') ?? 'Open in new tab')}>
+      <Tooltip popupContent={t('common.operation.openInNewTab')}>
         <div className='absolute top-6 right-16 flex items-center justify-center w-8 h-8 rounded-lg cursor-pointer'
           onClick={openInNewTab}>
           <RiAddBoxLine className='w-4 h-4 text-white'/>
         </div>
       </Tooltip>
-      <Tooltip popupContent={(t('common.operation.close') ?? 'Close Windows')}>
+      <Tooltip popupContent={t('common.operation.close')}>
         <div
           className='absolute top-6 right-6 flex items-center justify-center w-8 h-8 bg-white/8 rounded-lg backdrop-blur-[2px] cursor-pointer'
           onClick={onCancel}>
