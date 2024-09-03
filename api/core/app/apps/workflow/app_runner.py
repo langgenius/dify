@@ -17,6 +17,7 @@ from core.workflow.enums import SystemVariableKey
 from core.workflow.workflow_entry import WorkflowEntry
 from extensions.ext_database import db
 from models.model import App, EndUser
+from models.workflow import WorkflowType
 
 logger = logging.getLogger(__name__)
 
@@ -107,7 +108,7 @@ class WorkflowAppRunner(WorkflowBasedAppRunner):
             tenant_id=workflow.tenant_id,
             app_id=workflow.app_id,
             workflow_id=workflow.id,
-            workflow_type=workflow.type,
+            workflow_type=WorkflowType.value_of(workflow.type),
             graph=graph,
             graph_config=workflow.graph_dict,
             user_id=self.application_generate_entity.user_id,

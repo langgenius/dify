@@ -438,14 +438,18 @@ class AdvancedChatAppGenerateTaskPipeline(BasedGenerateTaskPipeline, WorkflowCyc
                     if self._task_state.metadata else None
 
                 db.session.commit()
+                db.session.refresh(self._message)
                 db.session.close()
             elif isinstance(event, QueueAnnotationReplyEvent):
                 self._handle_annotation_reply(event)
+
+                self._refetch_message()
 
                 self._message.message_metadata = json.dumps(jsonable_encoder(self._task_state.metadata)) \
                     if self._task_state.metadata else None
 
                 db.session.commit()
+                db.session.refresh(self._message)
                 db.session.close()
             elif isinstance(event, QueueTextChunkEvent):
                 delta_text = event.text
