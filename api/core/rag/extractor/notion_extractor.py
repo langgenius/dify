@@ -281,20 +281,25 @@ class NotionExtractor(BaseExtractor):
                     for table_header_cell_text in tabel_header_cell:
                         text = table_header_cell_text["text"]["content"]
                         table_header_cell_texts.append(text)
-            # get table columns text and format
+                else:
+                    table_header_cell_texts.append('')
+            # Initialize Markdown table with headers
+            markdown_table = "| " + " | ".join(table_header_cell_texts) + " |\n"
+            markdown_table += "| " + " | ".join(['---'] * len(table_header_cell_texts)) + " |\n"
+
+            # Process data to format each row in Markdown table format
             results = data["results"]
             for i in range(len(results) - 1):
                 column_texts = []
-                tabel_column_cells = data["results"][i + 1]['table_row']['cells']
-                for j in range(len(tabel_column_cells)):
-                    if tabel_column_cells[j]:
-                        for table_column_cell_text in tabel_column_cells[j]:
+                table_column_cells = data["results"][i + 1]['table_row']['cells']
+                for j in range(len(table_column_cells)):
+                    if table_column_cells[j]:
+                        for table_column_cell_text in table_column_cells[j]:
                             column_text = table_column_cell_text["text"]["content"]
-                            column_texts.append(f'{table_header_cell_texts[j]}:{column_text}')
-
-                cur_result_text = "\n".join(column_texts)
-                result_lines_arr.append(cur_result_text)
-
+                            column_texts.append(column_text)
+                # Add row to Markdown table
+                markdown_table += "| " + " | ".join(column_texts) + " |\n"
+            result_lines_arr.append(markdown_table)
             if data["next_cursor"] is None:
                 done = True
                 break
