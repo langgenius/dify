@@ -16,7 +16,7 @@ export default function CheckCode() {
   const searchParams = useSearchParams()
   const email = decodeURIComponent(searchParams.get('email') as string)
   const token = decodeURIComponent(searchParams.get('token') as string)
-  const invite_token = decodeURIComponent(searchParams.get('invite_token') as string)
+  const invite_token = decodeURIComponent(searchParams.get('invite_token') || '')
   const [code, setVerifyCode] = useState('')
   const [loading, setIsLoading] = useState(false)
 
