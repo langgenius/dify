@@ -11,8 +11,10 @@ import {
 import BlockIcon from '../block-icon'
 import { BlockEnum } from '../types'
 import Split from '../nodes/_base/components/split'
+import { Iteration } from '@/app/components/base/icons/src/vender/workflow'
 import cn from '@/utils/classnames'
 import CodeEditor from '@/app/components/workflow/nodes/_base/components/editor/code-editor'
+import Button from '@/app/components/base/button'
 import { CodeLanguage } from '@/app/components/workflow/nodes/code/types'
 import { AlertTriangle } from '@/app/components/base/icons/src/vender/line/alertsAndFeedback'
 import type { NodeTracing } from '@/types/workflow'
@@ -66,7 +68,7 @@ const NodePanel: FC<Props> = ({
   }, [nodeInfo.expand, setCollapseState])
 
   const isIterationNode = nodeInfo.node_type === BlockEnum.Iteration
-  const handleOnShowIterationDetail = (e: React.MouseEvent<HTMLDivElement>) => {
+  const handleOnShowIterationDetail = (e: React.MouseEvent<HTMLButtonElement>) => {
     e.stopPropagation()
     e.nativeEvent.stopImmediatePropagation()
     onShowIterationDetail?.(nodeInfo.details || [])
@@ -120,21 +122,23 @@ const NodePanel: FC<Props> = ({
             {/* The nav to the iteration detail */}
             {isIterationNode && !notShowIterationNav && (
               <div className='mt-2 mb-1 !px-2'>
-                <div
-                  className='flex items-center h-[34px] justify-between px-3 bg-gray-100 border-[0.5px] border-gray-200 rounded-lg cursor-pointer'
-                  onClick={handleOnShowIterationDetail}>
-                  <div className='leading-[18px] text-[13px] font-medium text-gray-700'>{t('workflow.nodes.iteration.iteration', { count: nodeInfo.metadata?.iterator_length || nodeInfo.details?.length })}</div>
+                <Button
+                  className='flex items-center w-full self-stretch gap-2 px-3 py-2 bg-components-button-tertiary-bg-hover hover:bg-components-button-tertiary-bg-hover rounded-lg cursor-pointer border-none'
+                  onClick={handleOnShowIterationDetail}
+                >
+                  <Iteration className='w-4 h-4 text-components-button-tertiary-text flex-shrink-0' />
+                  <div className='flex-1 text-left system-sm-medium text-components-button-tertiary-text'>{t('workflow.nodes.iteration.iteration', { count: nodeInfo.metadata?.iterator_length || nodeInfo.details?.length })}</div>
                   {justShowIterationNavArrow
                     ? (
-                      <RiArrowRightSLine className='w-3.5 h-3.5 text-gray-500' />
+                      <RiArrowRightSLine className='w-4 h-4 text-components-button-tertiary-text flex-shrink-0' />
                     )
                     : (
                       <div className='flex items-center space-x-1 text-[#155EEF]'>
                         <div className='text-[13px] font-normal '>{t('workflow.common.viewDetailInTracingPanel')}</div>
-                        <RiArrowRightSLine className='w-3.5 h-3.5' />
+                        <RiArrowRightSLine className='w-4 h-4 text-components-button-tertiary-text flex-shrink-0' />
                       </div>
                     )}
-                </div>
+                </Button>
                 <Split className='mt-2' />
               </div>
             )}

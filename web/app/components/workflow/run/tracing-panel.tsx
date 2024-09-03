@@ -20,6 +20,7 @@ import type { NodeTracing } from '@/types/workflow'
 type TracingPanelProps = {
   list: NodeTracing[]
   onShowIterationDetail?: (detail: NodeTracing[][]) => void
+  className?: string
 }
 
 type TracingNodeProps = {
@@ -44,7 +45,7 @@ function buildLogTree(nodes: NodeTracing[]): TracingNodeProps[] {
 
     levelCounts[levelKey]++
 
-    const parentTitle = parentId ? parallelStacks[parentId].parallelTitle : ''
+    const parentTitle = parentId ? parallelStacks[parentId]?.parallelTitle : ''
     const levelNumber = parentTitle ? parseInt(parentTitle.split('-')[1]) + 1 : 1
     const letter = parallelChildCounts[levelKey]?.size > 1 ? String.fromCharCode(64 + levelCounts[levelKey]) : ''
     return `PARALLEL-${levelNumber}${letter}`
@@ -52,7 +53,7 @@ function buildLogTree(nodes: NodeTracing[]): TracingNodeProps[] {
 
   const getBranchTitle = (parentId: string | null, branchNum: number): string => {
     const levelKey = parentId || 'root'
-    const parentTitle = parentId ? parallelStacks[parentId].parallelTitle : ''
+    const parentTitle = parentId ? parallelStacks[parentId]?.parallelTitle : ''
     const levelNumber = parentTitle ? parseInt(parentTitle.split('-')[1]) + 1 : 1
     const letter = parallelChildCounts[levelKey]?.size > 1 ? String.fromCharCode(64 + levelCounts[levelKey]) : ''
     const branchLetter = String.fromCharCode(64 + branchNum)
@@ -126,9 +127,12 @@ function buildLogTree(nodes: NodeTracing[]): TracingNodeProps[] {
         })
       }
       else {
-        const sameBranchIndex = parallelStacks[parallel_id].children.findLastIndex(c =>
+        let sameBranchIndex = parallelStacks[parallel_id].children.findLastIndex(c =>
           c.data?.execution_metadata.parallel_start_node_id === parallel_start_node_id,
         )
+        if (parallelStacks[parallel_id].children[sameBranchIndex + 1]?.isParallel)
+          sameBranchIndex++
+
         parallelStacks[parallel_id].children.splice(sameBranchIndex + 1, 0, {
           id: node.id,
           isParallel: false,
@@ -143,7 +147,7 @@ function buildLogTree(nodes: NodeTracing[]): TracingNodeProps[] {
   return rootNodes
 }
 
-const TracingPanel: FC<TracingPanelProps> = ({ list, onShowIterationDetail }) => {
+const TracingPanel: FC<TracingPanelProps> = ({ list, onShowIterationDetail, className }) => {
   const treeNodes = buildLogTree(list)
   const [collapsedNodes, setCollapsedNodes] = useState<Set<string>>(new Set())
   const [hoveredParallel, setHoveredParallel] = useState<string | null>(null)
@@ -238,7 +242,7 @@ const TracingPanel: FC<TracingPanelProps> = ({ list, onShowIterationDetail }) =>
   }
 
   return (
-    <div className='bg-components-panel-bg py-2'>
+    <div className={cn(className || 'bg-components-panel-bg', 'py-2')}>
       {treeNodes.map(renderNode)}
     </div>
   )

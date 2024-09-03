@@ -145,6 +145,8 @@ export type NodeFinishedResponse = {
       total_price: number
       currency: string
       parallel_id?: string
+      parallel_start_node_id?: string
+      iteration_index?: number
     }
     created_at: number
   }
@@ -159,6 +161,8 @@ export type IterationStartedResponse = {
     node_id: string
     metadata: {
       iterator_length: number
+      iteration_id: string
+      iteration_index: number
     }
     created_at: number
     extras?: any
