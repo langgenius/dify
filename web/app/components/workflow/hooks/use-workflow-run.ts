@@ -255,7 +255,7 @@ export const useWorkflowRun = () => {
             setWorkflowRunningData(produce(workflowRunningData!, (draft) => {
               const tracing = draft.tracing!
               const iterations = tracing[tracing.length - 1]
-              const currIteration = iterations.details![iterations.details!.length - 1]
+              const currIteration = [iterations.details![iterations.details!.length - 1]]
               currIteration.push({
                 ...data,
                 status: NodeRunningStatus.Running,
@@ -320,10 +320,6 @@ export const useWorkflowRun = () => {
 
               if (iterations && iterations.details) {
                 const iterationIndex = data.execution_metadata?.iteration_index || 0
-                // console.log(`the current iteration index is ${iterationIndex}`)
-
-                // console.log(JSON.parse(JSON.stringify(iterations.details)))
-
                 if (!iterations.details[iterationIndex])
                   iterations.details[iterationIndex] = []
 
@@ -331,17 +327,18 @@ export const useWorkflowRun = () => {
                 const nodeIndex = currIteration.findIndex(node =>
                   node.node_id === data.node_id,
                 )
-
-                if (nodeIndex !== -1) {
-                  currIteration[nodeIndex] = {
-                    ...(currIteration[nodeIndex].extras ? { extras: currIteration[nodeIndex].extras } : {}),
-                    ...data,
-                  } as any
-                }
-                else {
-                  currIteration.push({
-                    ...data,
-                  } as any)
+                if (data.status === NodeRunningStatus.Succeeded) {
+                  if (nodeIndex !== -1) {
+                    currIteration[nodeIndex] = {
+                      ...currIteration[nodeIndex],
+                      ...data,
+                    } as any
+                  }
+                  else {
+                    currIteration.push({
+                      ...data,
+                    } as any)
+                  }
                 }
               }
             }))
