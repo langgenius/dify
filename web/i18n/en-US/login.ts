@@ -9,6 +9,10 @@ const translation = {
   namePlaceholder: 'Your username',
   forget: 'Forgot your password?',
   signBtn: 'Sign in',
+  continueWithCode: 'Continue With Code',
+  usePassword: 'Use Password',
+  useVerificationCode: 'Use Verification Code',
+  or: 'OR',
   installBtn: 'Set up',
   setAdminAccount: 'Setting up an admin account',
   setAdminAccountDesc: 'Maximum privileges for admin account, which can be used to create applications and manage LLM providers, etc.',
@@ -86,6 +90,7 @@ const translation = {
   resetPassword: 'Reset Password',
   resetPasswordDesc: 'Type the email you used to sign up on Dify and we will send you a password reset email.',
   backToLogin: 'Back to login',
+  setYourAccount: 'Set Your Account',
 }
 
 export default translation

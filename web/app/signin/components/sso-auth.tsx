@@ -1,5 +1,5 @@
 'use client'
-import { useRouter } from 'next/navigation'
+import { useRouter, useSearchParams } from 'next/navigation'
 import type { FC } from 'react'
 import { useState } from 'react'
 import { useTranslation } from 'react-i18next'
@@ -17,20 +17,22 @@ const SSOAuth: FC<SSOAuthProps> = ({
 }) => {
   const router = useRouter()
   const { t } = useTranslation()
+  const searchParams = useSearchParams()
+  const invite_token = decodeURIComponent(searchParams.get('invite_token') || '')
 
   const [isLoading, setIsLoading] = useState(false)
 
   const handleSSOLogin = () => {
     setIsLoading(true)
     if (protocol === 'saml') {
-      getUserSAMLSSOUrl().then((res) => {
+      getUserSAMLSSOUrl(invite_token).then((res) => {
         router.push(res.url)
       }).finally(() => {
         setIsLoading(false)
       })
     }
     else if (protocol === 'oidc') {
-      getUserOIDCSSOUrl().then((res) => {
+      getUserOIDCSSOUrl(invite_token).then((res) => {
         document.cookie = `user-oidc-state=${res.state}`
         router.push(res.url)
       }).finally(() => {
@@ -38,7 +40,7 @@ const SSOAuth: FC<SSOAuthProps> = ({
       })
     }
     else if (protocol === 'oauth2') {
-      getUserOAuth2SSOUrl().then((res) => {
+      getUserOAuth2SSOUrl(invite_token).then((res) => {
         document.cookie = `user-oauth2-state=${res.state}`
         router.push(res.url)
       }).finally(() => {
