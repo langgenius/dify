@@ -41,7 +41,12 @@ class IterationNode(BaseNode):
         Run the node.
         """
         self.node_data = cast(IterationNodeData, self.node_data)
-        iterator_list_value = self.graph_runtime_state.variable_pool.get_any(self.node_data.iterator_selector)
+        iterator_list_segment = self.graph_runtime_state.variable_pool.get(self.node_data.iterator_selector)
+
+        if not iterator_list_segment:
+            raise ValueError(f"Iterator variable {self.node_data.iterator_selector} not found")
+        
+        iterator_list_value = iterator_list_segment.to_object()
 
         if not isinstance(iterator_list_value, list):
             raise ValueError(f"Invalid iterator value: {iterator_list_value}, please provide a list.")
@@ -138,7 +143,7 @@ class IterationNode(BaseNode):
             start_at=start_at,
             inputs=inputs,
             metadata={
-                "iterator_length": 1
+                "iterator_length": len(iterator_list_value)
             },
             predecessor_node_id=self.previous_node_id
         )
