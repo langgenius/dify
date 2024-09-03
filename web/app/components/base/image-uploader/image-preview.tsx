@@ -1,12 +1,11 @@
 import type { FC } from 'react'
-import React, { useCallback, useEffect, useRef, useState } from 'react'
+import React, { useCallback, useRef, useState } from 'react'
 import { t } from 'i18next'
 import { createPortal } from 'react-dom'
-import { RiAddBoxLine, RiCloseLine, RiDownloadCloud2Line, RiFileCopyLine, RiWechatFill, RiZoomInLine, RiZoomOutLine } from '@remixicon/react'
-import wx from 'weixin-js-sdk'
+import { RiAddBoxLine, RiCloseLine, RiDownloadCloud2Line, RiZoomInLine, RiZoomOutLine } from '@remixicon/react'
+
 import Tooltip from '@/app/components/base/tooltip'
 import Toast from '@/app/components/base/toast'
-import useBreakpoints, { MediaType } from '@/hooks/use-breakpoints'
 
 type ImagePreviewProps = {
   url: string
@@ -16,7 +15,7 @@ type ImagePreviewProps = {
 
 const isBase64 = (str: string): boolean => {
   try {
-    return btoa(atob(str)) === str
+    return Buffer.from(str, 'base64').toString('base64') === str
   }
   catch (err) {
     return false
@@ -33,9 +32,6 @@ const ImagePreview: FC<ImagePreviewProps> = ({
   const [isDragging, setIsDragging] = useState(false)
   const imgRef = useRef<HTMLImageElement>(null)
   const dragStartRef = useRef({ x: 0, y: 0 })
-  const [isCopied, setIsCopied] = useState(false)
-  const media = useBreakpoints()
-  const isMobile = media === MediaType.mobile
 
   const openInNewTab = () => {
     // Open in a new window, considering the case when the page is inside an iframe
@@ -54,16 +50,9 @@ const ImagePreview: FC<ImagePreviewProps> = ({
       })
     }
   }
+
   const downloadImage = () => {
-    // Open in a new window, considering the case when the page is inside an iframe
-    if (url.startsWith('http') || url.startsWith('https')) {
-      const a = document.createElement('a')
-      a.href = url
-      a.download = title
-      a.click()
-    }
-    else if (url.startsWith('data:image')) {
-      // Base64 image
+    if (url.startsWith('http') || url.startsWith('https') || url.startsWith('data:image')) {
       const a = document.createElement('a')
       a.href = url
       a.download = title
@@ -91,97 +80,9 @@ const ImagePreview: FC<ImagePreviewProps> = ({
     })
   }
 
-  const imageTobase64ToBlob = (base64: string, type = 'image/png'): Blob => {
-    const byteCharacters = atob(base64)
-    const byteArrays = []
-
-    for (let offset = 0; offset < byteCharacters.length; offset += 512) {
-      const slice = byteCharacters.slice(offset, offset + 512)
-      const byteNumbers = new Array(slice.length)
-      for (let i = 0; i < slice.length; i++)
-        byteNumbers[i] = slice.charCodeAt(i)
-
-      const byteArray = new Uint8Array(byteNumbers)
-      byteArrays.push(byteArray)
-    }
-
-    return new Blob(byteArrays, { type })
-  }
-
-  const shareToWeChat = useCallback(() => {
-    const isWeixinBrowser = /MicroMessenger/i.test(navigator.userAgent)
-    console.log(isWeixinBrowser)
-    if (isWeixinBrowser) {
-      wx.ready(() => {
-        wx.updateAppMessageShareData({
-          title,
-          desc: 'Check out this image!',
-          link: url,
-          imgUrl: url,
-          success() {
-            Toast.notify({
-              type: 'success',
-              message: t('common.operation.shareSuccess') || 'Share operation successful',
-            })
-          },
-          cancel() {
-            Toast.notify({
-              type: 'info',
-              message: t('common.operation.shareCancel') || 'Share operation canceled',
-            })
-          },
-        })
-        wx.showOptionMenu()
-      })
-
-      Toast.notify({
-        type: 'info',
-        message: t('common.operation.useWeChatShare') || 'Please use WeChat\'s built-in share function',
-      })
-    }
-    else {
-      const shareImage = async () => {
-        try {
-          const base64Data = url.split(',')[1]
-          const blob = imageTobase64ToBlob(base64Data, 'image/png')
-
-          await navigator.clipboard.write([
-            new ClipboardItem({
-              [blob.type]: blob,
-            }),
-          ])
-          setIsCopied(true)
-
-          Toast.notify({
-            type: 'success',
-            message: t('common.operation.imageCopied') || 'Image copied to clipboard. You can now paste it to share.',
-          })
-        }
-        catch (err) {
-          console.error('Failed to copy image:', err)
-
-          const link = document.createElement('a')
-          link.href = url
-          link.download = 'shared-image.png'
-          document.body.appendChild(link)
-          link.click()
-          document.body.removeChild(link)
-
-          Toast.notify({
-            type: 'info',
-            message: t('common.operation.imageDownloaded') || 'Image downloaded. You can now share it manually.',
-          })
-        }
-      }
-      shareImage()
-    }
-  }, [title, url])
-
   const handleWheel = useCallback((e: React.WheelEvent<HTMLDivElement>) => {
-    if (e.deltaY < 0)
-      zoomIn()
-    else
-      zoomOut()
+    const delta = e.deltaY < 0 ? 1 : -1
+    setScale(prevScale => Math.max(prevScale + delta, 0.5))
   }, [])
 
   const handleMouseDown = useCallback((e: React.MouseEvent<HTMLDivElement>) => {
@@ -216,13 +117,6 @@ const ImagePreview: FC<ImagePreviewProps> = ({
     setIsDragging(false)
   }, [])
 
-  useEffect(() => {
-    document.addEventListener('mouseup', handleMouseUp)
-    return () => {
-      document.removeEventListener('mouseup', handleMouseUp)
-    }
-  }, [handleMouseUp])
-
   return createPortal(
     <div className='fixed inset-0 p-8 flex items-center justify-center bg-black/80 z-[1000] image-preview-container'
       onClick={e => e.stopPropagation()}
@@ -242,31 +136,6 @@ const ImagePreview: FC<ImagePreviewProps> = ({
           transition: isDragging ? 'none' : 'transform 0.2s ease-in-out',
         }}
       />
-      {/* <Tooltip popupContent={(t('common.operation.imageEdit') ?? 'Image Edit')}> */}
-      {/*  <div className='absolute top-6 right-56 flex items-center justify-center w-8 h-8 rounded-lg cursor-pointer' */}
-      {/*    onClick={zoomIn}> */}
-      {/*    <RiImageEditLine className='w-4 h-4 text-white'/> */}
-      {/*  </div> */}
-      {/* </Tooltip> */}
-      {isMobile
-        ? (
-          <Tooltip popupContent={(t('common.operation.shareToWeChat') ?? 'Share to WeChat')}>
-            <div className='absolute top-6 right-48 flex items-center justify-center w-8 h-8 rounded-lg cursor-pointer'
-              onClick={shareToWeChat}>
-              <RiWechatFill className='w-4 h-4 text-white'/>
-            </div>
-          </Tooltip>
-        )
-        : (
-          <Tooltip popupContent={(t('common.operation.copyImage') ?? 'Copy Image')}>
-            <div className='absolute top-6 right-48 flex items-center justify-center w-8 h-8 rounded-lg cursor-pointer'
-              onClick={shareToWeChat}>
-              {isCopied
-                ? <RiFileCopyLine className='w-4 h-4 text-green-500'/>
-                : <RiFileCopyLine className='w-4 h-4 text-white'/>}
-            </div>
-          </Tooltip>
-        )}
       <Tooltip popupContent={(t('common.operation.zoomOut') ?? 'Zoom Out')}>
         <div className='absolute top-6 right-40 flex items-center justify-center w-8 h-8 rounded-lg cursor-pointer'
           onClick={zoomOut}>
