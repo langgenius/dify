@@ -1,5 +1,5 @@
 import type { FC } from 'react'
-import React, { useCallback, useEffect, useRef, useState } from 'react'
+import React, { useCallback, useRef, useState } from 'react'
 import { t } from 'i18next'
 import { createPortal } from 'react-dom'
 import { RiAddBoxLine, RiCloseLine, RiDownloadCloud2Line, RiZoomInLine, RiZoomOutLine } from '@remixicon/react'
@@ -116,13 +116,6 @@ const ImagePreview: FC<ImagePreviewProps> = ({
   const handleMouseUp = useCallback(() => {
     setIsDragging(false)
   }, [])
-
-  useEffect(() => {
-    document.addEventListener('mouseup', handleMouseUp)
-    return () => {
-      document.removeEventListener('mouseup', handleMouseUp)
-    }
-  }, [handleMouseUp])
 
   return createPortal(
     <div className='fixed inset-0 p-8 flex items-center justify-center bg-black/80 z-[1000] image-preview-container'
