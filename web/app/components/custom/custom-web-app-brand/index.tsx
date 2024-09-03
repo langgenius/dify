@@ -1,9 +1,7 @@
 import type { ChangeEvent } from 'react'
 import { useState } from 'react'
 import { useTranslation } from 'react-i18next'
-import {
-  RiLoader2Line,
-} from '@remixicon/react'
+import { RiLoader2Line } from '@remixicon/react'
 import s from './style.module.css'
 import LogoSite from '@/app/components/base/logo/logo-site'
 import Switch from '@/app/components/base/switch'
@@ -14,12 +12,11 @@ import { useProviderContext } from '@/context/provider-context'
 import { Plan } from '@/app/components/billing/type'
 import { imageUpload } from '@/app/components/base/image-uploader/utils'
 import { useToastContext } from '@/app/components/base/toast'
-import {
-  updateCurrentWorkspace,
-} from '@/service/common'
+import { updateCurrentWorkspace } from '@/service/common'
 import { useAppContext } from '@/context/app-context'
 
 const ALLOW_FILE_EXTENSIONS = ['svg', 'png']
+const MAX_FILE_SIZE = 5 * 1024 * 1024 // 5MB
 
 const CustomWebAppBrand = () => {
   const { t } = useTranslation()
@@ -41,12 +38,16 @@ const CustomWebAppBrand = () => {
 
   const handleChange = (e: ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0]
+    if (!file) return
 
-    if (!file)
-      return
-
-    if (file.size > 5 * 1024 * 1024) {
+    if (file.size > MAX_FILE_SIZE) {
       notify({ type: 'error', message: t('common.imageUploader.uploadFromComputerLimit', { size: 5 }) })
+      return
+    }
+
+    const fileExtension = file.name.split('.').pop()?.toLowerCase()
+    if (!fileExtension || !ALLOW_FILE_EXTENSIONS.includes(fileExtension)) {
+      notify({ type: 'error', message: t('common.imageUploader.invalidFileType', { types: ALLOW_FILE_EXTENSIONS.join(', ') }) })
       return
     }
 
@@ -59,45 +60,63 @@ const CustomWebAppBrand = () => {
         setUploadProgress(100)
         setFileId(res.id)
       },
-      onErrorCallback: () => {
+      onErrorCallback: (error) => {
         notify({ type: 'error', message: t('common.imageUploader.uploadFromComputerUploadError') })
         setUploadProgress(-1)
+        console.error('Upload error:', error)
       },
     }, false, '/workspaces/custom-config/webapp-logo/upload')
   }
 
   const handleApply = async () => {
-    await updateCurrentWorkspace({
-      url: '/workspaces/custom-config',
-      body: {
-        remove_webapp_brand: webappBrandRemoved,
-        replace_webapp_logo: fileId,
-      },
-    })
-    mutateCurrentWorkspace()
-    setFileId('')
-    setImgKey(Date.now())
+    try {
+      await updateCurrentWorkspace({
+        url: '/workspaces/custom-config',
+        body: {
+          remove_webapp_brand: webappBrandRemoved,
+          replace_webapp_logo: fileId,
+        },
+      })
+      mutateCurrentWorkspace()
+      setFileId('')
+      setImgKey(Date.now())
+      notify({ type: 'success', message: t('custom.webapp.logoUpdateSuccess') })
+    } catch (error) {
+      console.error('Apply error:', error)
+      notify({ type: 'error', message: t('custom.webapp.logoUpdateError') })
+    }
   }
 
   const handleRestore = async () => {
-    await updateCurrentWorkspace({
-      url: '/workspaces/custom-config',
-      body: {
-        remove_webapp_brand: false,
-        replace_webapp_logo: '',
-      },
-    })
-    mutateCurrentWorkspace()
+    try {
+      await updateCurrentWorkspace({
+        url: '/workspaces/custom-config',
+        body: {
+          remove_webapp_brand: false,
+          replace_webapp_logo: '',
+        },
+      })
+      mutateCurrentWorkspace()
+      notify({ type: 'success', message: t('custom.webapp.logoRestoreSuccess') })
+    } catch (error) {
+      console.error('Restore error:', error)
+      notify({ type: 'error', message: t('custom.webapp.logoRestoreError') })
+    }
   }
 
   const handleSwitch = async (checked: boolean) => {
-    await updateCurrentWorkspace({
-      url: '/workspaces/custom-config',
-      body: {
-        remove_webapp_brand: checked,
-      },
-    })
-    mutateCurrentWorkspace()
+    try {
+      await updateCurrentWorkspace({
+        url: '/workspaces/custom-config',
+        body: {
+          remove_webapp_brand: checked,
+        },
+      })
+      mutateCurrentWorkspace()
+    } catch (error) {
+      console.error('Switch error:', error)
+      notify({ type: 'error', message: t('custom.webapp.brandToggleError') })
+    }
   }
 
   const handleCancel = () => {
@@ -143,7 +162,7 @@ const CustomWebAppBrand = () => {
       </div>
       <div className={`
         flex items-center justify-between px-4 py-3 rounded-xl border-[0.5px] border-gray-200 bg-gray-50
-        ${webappBrandRemoved && 'opacity-30'}
+        ${webappBrandRemoved ? 'opacity-30' : ''}
       `}>
         <div>
           <div className='leading-5 text-sm font-medium text-gray-900'>{t('custom.webapp.changeLogo')}</div>
@@ -153,17 +172,11 @@ const CustomWebAppBrand = () => {
           {
             !uploading && (
               <Button
-                className={`
-                  relative mr-2
-                `}
+                className='relative mr-2'
                 disabled={uploadDisabled}
               >
                 <ImagePlus className='mr-2 w-4 h-4' />
-                {
-                  (webappLogo || fileId)
-                    ? t('custom.change')
-                    : t('custom.upload')
-                }
+                {(webappLogo || fileId) ? t('custom.change') : t('custom.upload')}
                 <input
                   className={`
                     absolute block inset-0 opacity-0 text-[0] w-full
