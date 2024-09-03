@@ -1,0 +1,72 @@
+identity:
+  name: list_file
+  author: Ice Yao
+  label:
+    en_US: List alist file or directory
+    zh_Hans: 获取AList文件或目录
+description:
+  human:
+    en_US: List alist file or directory
+    zh_Hans: 获取AList所有文件或目录并分页返回
+  llm: A tool to get all file or directory of AList
+parameters:
+  - name: username
+    type: string
+    required: true
+    label:
+      en_US: username
+      zh_Hans: AList用户名
+    human_description:
+      en_US: The username of AList
+      zh_Hans: AList用户名
+    llm_description: AList用户名，用于获取AList token
+    form: llm
+  - name: password
+    type: string
+    required: true
+    label:
+      en_US: password
+      zh_Hans: AList用户密码
+    human_description:
+      en_US: The user password of AList
+      zh_Hans: AList用户密码
+    llm_description: AList用户密码，用于获取AList token
+    form: llm
+  - name: path
+    type: string
+    required: false
+    label:
+      en_US: path
+      zh_Hans: AList目录路径
+    human_description:
+      en_US: The directory of AList
+      zh_Hans: AList目录路径
+    llm_description: AList目录路径，用于获取文件列表
+    form: llm
+  - name: page
+    type: number
+    required: false
+    min: 1
+    default: 1
+    label:
+      en_US: page
+      zh_Hans: 页数
+    human_description:
+      en_US: Paging number, the default value is 1.
+      zh_Hans: 页数, 默认值为第1页。
+    llm_description: 页数, 表示获取第几页的的数据，默认值为1。
+    form: llm
+  - name: page_size
+    type: number
+    required: false
+    min: 1
+    max: 500
+    default: 500
+    label:
+      en_US: page_size
+      zh_Hans: 分页大小
+    human_description:
+      en_US: Paging size, the default and maximum value is 500.
+      zh_Hans: 分页大小, 默认值和最大值为 500。
+    llm_description: 分页大小, 表示一次请求最多返回多少条数据，默认值和最大值为500。
+    form: llm
