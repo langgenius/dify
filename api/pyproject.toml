@@ -6,8 +6,6 @@ requires = ["poetry-core"]
 build-backend = "poetry.core.masonry.api"
 
 [tool.ruff]
-exclude = [
-]
 line-length = 120
 
 [tool.ruff.lint]
