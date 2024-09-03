@@ -372,11 +372,16 @@ export const useChat = (
             handleUpdateChatList(newChatList)
           }
           if (config?.suggested_questions_after_answer?.enabled && !hasStopResponded.current && onGetSuggestedQuestions) {
-            const { data }: any = await onGetSuggestedQuestions(
-              responseItem.id,
-              newAbortController => suggestedQuestionsAbortControllerRef.current = newAbortController,
-            )
-            setSuggestQuestions(data)
+            try {
+              const { data }: any = await onGetSuggestedQuestions(
+                responseItem.id,
+                newAbortController => suggestedQuestionsAbortControllerRef.current = newAbortController,
+              )
+              setSuggestQuestions(data)
+            }
+            catch (e) {
+              setSuggestQuestions([])
+            }
           }
         },
         onFile(file) {

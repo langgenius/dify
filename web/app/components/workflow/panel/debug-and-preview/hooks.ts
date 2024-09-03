@@ -248,11 +248,16 @@ export const useChat = (
           }
 
           if (config?.suggested_questions_after_answer?.enabled && !hasStopResponded.current && onGetSuggestedQuestions) {
-            const { data }: any = await onGetSuggestedQuestions(
-              responseItem.id,
-              newAbortController => suggestedQuestionsAbortControllerRef.current = newAbortController,
-            )
-            setSuggestQuestions(data)
+            try {
+              const { data }: any = await onGetSuggestedQuestions(
+                responseItem.id,
+                newAbortController => suggestedQuestionsAbortControllerRef.current = newAbortController,
+              )
+              setSuggestQuestions(data)
+            }
+            catch (error) {
+              setSuggestQuestions([])
+            }
           }
         },
         onMessageEnd: (messageEnd) => {
