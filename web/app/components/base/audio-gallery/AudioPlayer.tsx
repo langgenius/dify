@@ -68,7 +68,7 @@ const AudioPlayer: React.FC<AudioPlayerProps> = ({ src }) => {
     const channelData = audioBuffer.getChannelData(0)
 
     // Calculate the number of samples we want to take from the channel data.
-    const samples = Math.min(90, channelData.length)
+    const samples = Math.min(65, channelData.length)
 
     // Calculate the size of each sample block.
     const blockSize = Math.floor(channelData.length / samples)
@@ -167,8 +167,7 @@ const AudioPlayer: React.FC<AudioPlayerProps> = ({ src }) => {
 
     const barWidth = width / data.length
     const playedWidth = (currentTime / duration) * width
-
-    ctx.lineWidth = 1
+    const cornerRadius = 2
 
     // Draw waveform bars
     data.forEach((value, index) => {
@@ -181,16 +180,22 @@ const AudioPlayer: React.FC<AudioPlayerProps> = ({ src }) => {
       else
         color = 'rgba(21,90,239,.20)'
 
-      ctx.strokeStyle = color
-      const x = index * barWidth
       const barHeight = value * height
+      const rectX = index * barWidth
+      const rectY = (height - barHeight) / 2
+      const rectWidth = barWidth * 0.5
+      const rectHeight = barHeight
 
-      ctx.beginPath()
-      ctx.moveTo(x, height / 2)
-      ctx.lineTo(x, (height - barHeight) / 2)
-      ctx.moveTo(x, height / 2)
-      ctx.lineTo(x, (height + barHeight) / 2)
-      ctx.stroke()
+      ctx.lineWidth = 1
+      ctx.fillStyle = color
+      if (ctx.roundRect) {
+        ctx.beginPath()
+        ctx.roundRect(rectX, rectY, rectWidth, rectHeight, cornerRadius)
+        ctx.fill()
+      }
+      else {
+        ctx.fillRect(rectX, rectY, rectWidth, rectHeight)
+      }
     })
   }, [currentTime, duration, hoverTime, waveformData])
 
@@ -243,7 +248,7 @@ const AudioPlayer: React.FC<AudioPlayerProps> = ({ src }) => {
             onMouseMove={handleMouseMove}
             onMouseDown={handleCanvasInteraction}
           />
-          <div className={styles.currentTime} style={{ left: `${(currentTime / duration) * 88}%`, bottom: '28px' }}>
+          <div className={styles.currentTime} style={{ left: `${(currentTime / duration) * 88}%`, bottom: '29px' }}>
             {formatTime(currentTime)}
           </div>
           <div className={styles.timeDisplay}>

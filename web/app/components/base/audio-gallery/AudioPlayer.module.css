@@ -7,7 +7,7 @@
   padding: 10px 15px;
   width: 100%;
   max-width: 420px;
-  max-height: 36px;
+  max-height: 40px;
   backdrop-filter: blur(5px);
   border: 1px solid rgba(16, 24, 40, 0.08);
   box-shadow: 0 1px 2px rgba(9, 9, 11, 0.05);
@@ -37,23 +37,23 @@
 }
 
 .progressBarContainer {
-  position: relative;
-  height: 25px;
-  cursor: pointer;
+  height: 30px;
 }
 
 .waveform {
+  cursor: pointer;
   position: absolute;
   top: 0;
   left: 5px;
-  width: 90%;
-  height: 100%;
+  width: 91%;
+  height: 92%;
 }
 
 .progressBar {
   position: absolute;
   top: 0;
-  left: 0;opacity: 0.5;
+  left: 0;
+  opacity: 0.5;
   border-radius: 2px;
   flex: none;
   order: 55;
