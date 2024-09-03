@@ -1,7 +1,7 @@
 import json
 import logging
 from copy import deepcopy
-from typing import Any, Union
+from typing import Any, Optional, Union
 
 from core.file.file_obj import FileTransferMethod, FileVar
 from core.tools.entities.tool_entities import ToolInvokeMessage, ToolParameter, ToolProviderType
@@ -18,6 +18,7 @@ class WorkflowTool(Tool):
     version: str
     workflow_entities: dict[str, Any]
     workflow_call_depth: int
+    thread_pool_id: Optional[str] = None
 
     label: str
 
@@ -57,6 +58,7 @@ class WorkflowTool(Tool):
             invoke_from=self.runtime.invoke_from,
             stream=False,
             call_depth=self.workflow_call_depth + 1,
+            workflow_thread_pool_id=self.thread_pool_id
         )
 
         data = result.get('data', {})

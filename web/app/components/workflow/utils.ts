@@ -682,9 +682,7 @@ export const getParallelInfo = (nodes: Node[], edges: Edge[], parentNodeId?: str
         const outgoerConnectedEdges = getConnectedEdges([outgoer], edges).filter(edge => edge.source === outgoer.id)
         const sourceEdgesGroup = groupBy(outgoerConnectedEdges, 'sourceHandle')
 
-        Object.keys(sourceEdgesGroup).sort((a, b) => {
-          return sourceEdgesGroup[b].length - sourceEdgesGroup[a].length
-        }).forEach((sourceHandle) => {
+        Object.keys(sourceEdgesGroup).forEach((sourceHandle) => {
           nextHandles.push({ node: outgoer, handle: sourceHandle })
         })
         if (!outgoerConnectedEdges.length)

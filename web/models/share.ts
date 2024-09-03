@@ -25,6 +25,7 @@ export type SiteInfo = {
   privacy_policy?: string
   custom_disclaimer?: string
   show_workflow_steps?: boolean
+  use_icon_as_answer_icon?: boolean
 }
 
 export type AppMeta = {

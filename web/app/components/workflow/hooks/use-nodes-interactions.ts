@@ -12,12 +12,10 @@ import type {
 } from 'reactflow'
 import {
   getConnectedEdges,
-  getIncomers,
   getOutgoers,
   useReactFlow,
   useStoreApi,
 } from 'reactflow'
-import { uniq } from 'lodash-es'
 import type { ToolDefaultValue } from '../block-selector/types'
 import type {
   Edge,
@@ -212,19 +210,22 @@ export const useNodesInteractions = () => {
       })
     })
     setEdges(newEdges)
-    const incomesNodes = getIncomers(node, nodes, edges)
-    if (incomesNodes.length) {
-      const incomesNodesOutgoersId = uniq(incomesNodes.map(incomeNode => getOutgoers(incomeNode, nodes, edges)).flat().map(outgoer => outgoer.id))
+    const connectedEdges = getConnectedEdges([node], edges).filter(edge => edge.target === node.id)
 
-      if (incomesNodesOutgoersId.length > 1) {
-        const newNodes = produce(nodes, (draft) => {
-          draft.forEach((n) => {
-            if (incomesNodesOutgoersId.includes(n.id))
-              n.data._inParallelHovering = true
-          })
+    const targetNodes: Node[] = []
+    for (let i = 0; i < connectedEdges.length; i++) {
+      const sourceConnectedEdges = getConnectedEdges([{ id: connectedEdges[i].source } as Node], edges).filter(edge => edge.source === connectedEdges[i].source && edge.sourceHandle === connectedEdges[i].sourceHandle)
+      targetNodes.push(...sourceConnectedEdges.map(edge => nodes.find(n => n.id === edge.target)!))
+    }
+
+    if (targetNodes.length > 1) {
+      const newNodes = produce(nodes, (draft) => {
+        draft.forEach((n) => {
+          if (targetNodes.some(targetNode => n.id === targetNode.id))
+            n.data._inParallelHovering = true
         })
-        setNodes(newNodes)
-      }
+      })
+      setNodes(newNodes)
     }
   }, [store, workflowStore, getNodesReadOnly])
 
