@@ -255,7 +255,7 @@ export const useWorkflowRun = () => {
             setWorkflowRunningData(produce(workflowRunningData!, (draft) => {
               const tracing = draft.tracing!
               const iterations = tracing[tracing.length - 1]
-              const currIteration = [iterations.details![iterations.details!.length - 1]]
+              const currIteration = iterations.details![iterations.details!.length - 1]
               currIteration.push({
                 ...data,
                 status: NodeRunningStatus.Running,

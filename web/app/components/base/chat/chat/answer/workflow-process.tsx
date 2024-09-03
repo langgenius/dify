@@ -31,6 +31,7 @@ const WorkflowProcessItem = ({
   grayBg,
   expand = false,
   hideInfo = false,
+  hideProcessDetail = false,
 }: WorkflowProcessProps) => {
   const { t } = useTranslation()
   const [collapse, setCollapse] = useState(!expand)
@@ -109,6 +110,8 @@ const WorkflowProcessItem = ({
               <TracingPanel
                 list={data.tracing}
                 onShowIterationDetail={showIterationDetail}
+                hideNodeInfo={hideInfo}
+                hideNodeProcessDetail={hideProcessDetail}
               />
             }
           </div>

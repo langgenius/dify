@@ -21,6 +21,8 @@ type TracingPanelProps = {
   list: NodeTracing[]
   onShowIterationDetail?: (detail: NodeTracing[][]) => void
   className?: string
+  hideNodeInfo?: boolean
+  hideNodeProcessDetail?: boolean
 }
 
 type TracingNodeProps = {
@@ -30,6 +32,8 @@ type TracingNodeProps = {
   children: TracingNodeProps[]
   parallelTitle?: string
   branchTitle?: string
+  hideNodeInfo?: boolean
+  hideNodeProcessDetail?: boolean
 }
 
 function buildLogTree(nodes: NodeTracing[]): TracingNodeProps[] {
@@ -62,8 +66,8 @@ function buildLogTree(nodes: NodeTracing[]): TracingNodeProps[] {
 
   // Count parallel children (for figuring out if we need to use letters)
   for (const node of nodes) {
-    const parent_parallel_id = node.execution_metadata?.parent_parallel_id ?? null
-    const parallel_id = node.execution_metadata?.parallel_id ?? null
+    const parent_parallel_id = node.parent_parallel_id ?? node.execution_metadata?.parent_parallel_id ?? null
+    const parallel_id = node.parallel_id ?? node.execution_metadata?.parallel_id ?? null
 
     if (parallel_id) {
       const parentKey = parent_parallel_id || 'root'
@@ -75,15 +79,10 @@ function buildLogTree(nodes: NodeTracing[]): TracingNodeProps[] {
   }
 
   for (const node of nodes) {
-    let parallel_id = node.execution_metadata?.parallel_id ?? null
-    const parent_parallel_id = node.execution_metadata?.parent_parallel_id ?? null
-    let parallel_start_node_id = node.execution_metadata?.parallel_start_node_id ?? null
-    const parent_parallel_start_node_id = node.execution_metadata?.parent_parallel_start_node_id ?? null
-
-    if (node.node_type === BlockEnum.Iteration) {
-      parallel_id = node.parallel_id ?? null
-      parallel_start_node_id = node.parallel_start_node_id ?? null
-    }
+    const parallel_id = node.parallel_id ?? node.execution_metadata?.parallel_id ?? null
+    const parent_parallel_id = node.parent_parallel_id ?? node.execution_metadata?.parent_parallel_id ?? null
+    const parallel_start_node_id = node.parallel_start_node_id ?? node.execution_metadata?.parallel_start_node_id ?? null
+    const parent_parallel_start_node_id = node.parent_parallel_start_node_id ?? node.execution_metadata?.parent_parallel_start_node_id ?? null
 
     if (!parallel_id || node.node_type === BlockEnum.End) {
       rootNodes.push({
@@ -106,7 +105,7 @@ function buildLogTree(nodes: NodeTracing[]): TracingNodeProps[] {
 
         if (parent_parallel_id && parallelStacks[parent_parallel_id]) {
           const sameBranchIndex = parallelStacks[parent_parallel_id].children.findLastIndex(c =>
-            c.data?.execution_metadata.parallel_start_node_id === parent_parallel_start_node_id,
+            c.data?.execution_metadata?.parallel_start_node_id === parent_parallel_start_node_id || c.data?.parallel_start_node_id === parent_parallel_start_node_id,
           )
           parallelStacks[parent_parallel_id].children.splice(sameBranchIndex + 1, 0, newParallelGroup)
           newParallelGroup.parallelTitle = getParallelTitle(parent_parallel_id)
@@ -128,7 +127,7 @@ function buildLogTree(nodes: NodeTracing[]): TracingNodeProps[] {
       }
       else {
         let sameBranchIndex = parallelStacks[parallel_id].children.findLastIndex(c =>
-          c.data?.execution_metadata.parallel_start_node_id === parallel_start_node_id,
+          c.data?.execution_metadata?.parallel_start_node_id === parallel_start_node_id || c.data?.parallel_start_node_id === parallel_start_node_id,
         )
         if (parallelStacks[parallel_id].children[sameBranchIndex + 1]?.isParallel)
           sameBranchIndex++
@@ -147,7 +146,13 @@ function buildLogTree(nodes: NodeTracing[]): TracingNodeProps[] {
   return rootNodes
 }
 
-const TracingPanel: FC<TracingPanelProps> = ({ list, onShowIterationDetail, className }) => {
+const TracingPanel: FC<TracingPanelProps> = ({
+  list,
+  onShowIterationDetail,
+  className,
+  hideNodeInfo = false,
+  hideNodeProcessDetail = false,
+}) => {
   const treeNodes = buildLogTree(list)
   const [collapsedNodes, setCollapsedNodes] = useState<Set<string>>(new Set())
   const [hoveredParallel, setHoveredParallel] = useState<string | null>(null)
@@ -235,6 +240,8 @@ const TracingPanel: FC<TracingPanelProps> = ({ list, onShowIterationDetail, clas
             nodeInfo={node.data!}
             onShowIterationDetail={onShowIterationDetail}
             justShowIterationNavArrow={true}
+            hideInfo={hideNodeInfo}
+            hideProcessDetail={hideNodeProcessDetail}
           />
         </div>
       )

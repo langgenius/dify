@@ -74,7 +74,7 @@ const NodePanel: FC<Props> = ({
     onShowIterationDetail?.(nodeInfo.details || [])
   }
   return (
-    <div className={cn('px-2 py-1', className, hideInfo && '!p-0')}>
+    <div className={cn('px-2 py-1', className)}>
       <div className='group transition-all bg-background-default border border-components-panel-border rounded-[10px] shadows-shadow-xs hover:shadow-md'>
         <div
           className={cn(
@@ -127,7 +127,7 @@ const NodePanel: FC<Props> = ({
                   onClick={handleOnShowIterationDetail}
                 >
                   <Iteration className='w-4 h-4 text-components-button-tertiary-text flex-shrink-0' />
-                  <div className='flex-1 text-left system-sm-medium text-components-button-tertiary-text'>{t('workflow.nodes.iteration.iteration', { count: nodeInfo.metadata?.iterator_length || nodeInfo.details?.length })}</div>
+                  <div className='flex-1 text-left system-sm-medium text-components-button-tertiary-text'>{t('workflow.nodes.iteration.iteration', { count: nodeInfo.metadata?.iterator_index || nodeInfo.details?.length })}</div>
                   {justShowIterationNavArrow
                     ? (
                       <RiArrowRightSLine className='w-4 h-4 text-components-button-tertiary-text flex-shrink-0' />
@@ -142,7 +142,7 @@ const NodePanel: FC<Props> = ({
                 <Split className='mt-2' />
               </div>
             )}
-            <div className={cn('px-[10px] py-1', hideInfo && '!px-2 !py-0.5')}>
+            <div className={cn('px-[10px]', hideInfo && '!px-2 !py-0.5')}>
               {nodeInfo.status === 'stopped' && (
                 <div className='px-3 py-[10px] bg-[#fffaeb] rounded-lg border-[0.5px] border-[rbga(0,0,0,0.05)] text-xs leading-[18px] text-[#dc6803] shadow-xs'>{t('workflow.tracing.stopBy', { user: nodeInfo.created_by ? nodeInfo.created_by.name : 'N/A' })}</div>
               )}
