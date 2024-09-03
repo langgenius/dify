@@ -3,7 +3,7 @@ import React, { useEffect, useReducer } from 'react'
 import { useTranslation } from 'react-i18next'
 import Link from 'next/link'
 import useSWR from 'swr'
-import { useRouter } from 'next/navigation'
+import { useRouter, useSearchParams } from 'next/navigation'
 // import { useContext } from 'use-context-selector'
 import Button from '@/app/components/base/button'
 import Tooltip from '@/app/components/base/tooltip'
@@ -46,11 +46,12 @@ const reducer = (state: IState, action: any) => {
 const OneMoreStep = () => {
   const { t } = useTranslation()
   const router = useRouter()
+  const searchParams = useSearchParams()
   // const { locale } = useContext(I18n)
 
   const [state, dispatch] = useReducer(reducer, {
     formState: 'initial',
-    invitation_code: '',
+    invitation_code: searchParams.get('invitation_code') || '',
     interface_language: 'en-US',
     timezone: 'Asia/Shanghai',
   })

@@ -1,34 +1,17 @@
-'use client'
-import React from 'react'
-import { useSearchParams } from 'next/navigation'
-
+import SSOAuthButton from './components/sso-auth'
 import NormalForm from './normalForm'
-import OneMoreStep from './oneMoreStep'
-import cn from '@/utils/classnames'
-
-const Forms = () => {
-  const searchParams = useSearchParams()
-  const step = searchParams.get('step')
-
-  const getForm = () => {
-    switch (step) {
-      case 'next':
-        return <OneMoreStep />
-      default:
-        return <NormalForm />
-    }
+import { API_PREFIX } from '@/config'
+// !WARNING this file is not used by others
+export default function RenderFormBySystemFeatures() {
+  async function getFeatures() {
+    'use server'
+    const ret = await fetch(`${API_PREFIX}/system-features`).then((ret) => {
+      return ret.json()
+    })
+    return ret
   }
-  return <div className={
-    cn(
-      'flex flex-col items-center w-full grow justify-center',
-      'px-6',
-      'md:px-[108px]',
-    )
-  }>
-    <div className='flex flex-col md:w-[400px]'>
-      {getForm()}
-    </div>
-  </div>
+  const systemFeatures = await getFeatures()
+  if (systemFeatures.isSsoEnabled)
+    return <SSOAuthButton />
+  return <NormalForm />
 }
-
-export default Forms
