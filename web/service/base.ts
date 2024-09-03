@@ -113,6 +113,7 @@ function unicodeToChar(text: string) {
 }
 
 function requiredWebSSOLogin() {
+  console.log(globalThis.location.pathname)
   globalThis.location.href = `/webapp-signin?redirect_url=${globalThis.location.pathname}`
 }
 

@@ -17,8 +17,8 @@ export default function MailAndPasswordAuth({ isInvite }: MailAndPasswordAuthPro
   const router = useRouter()
   const searchParams = useSearchParams()
   const [showPassword, setShowPassword] = useState(false)
-  const emailFromLink = searchParams.get('email') as string
-  const [email, setEmail] = useState(isInvite ? emailFromLink : '')
+  const emailFromLink = decodeURIComponent(searchParams.get('email') || '')
+  const [email, setEmail] = useState(emailFromLink)
   const [password, setPassword] = useState('')
 
   const [isLoading, setIsLoading] = useState(false)
