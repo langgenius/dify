@@ -20,6 +20,7 @@ import type { NotionPage } from '@/models/common'
 import type { CreateDocumentReq } from '@/models/datasets'
 import { DataSourceType } from '@/models/datasets'
 import RetryButton from '@/app/components/base/retry-button'
+import cn from '@/utils/classnames'
 // Custom page count is not currently supported.
 const limit = 15
 
@@ -211,10 +212,14 @@ const Documents: FC<IDocumentsProps> = ({ datasetId }) => {
             <RetryButton datasetId={datasetId} />
             {embeddingAvailable && (
               <Button variant='primary' onClick={routeToDocCreate} className='shrink-0'>
-                <PlusIcon className='h-4 w-4 mr-2 stroke-current' />
-                {isDataSourceNotion && t('datasetDocuments.list.addPages')}
-                {isDataSourceWeb && t('datasetDocuments.list.addUrl')}
-                {isDataSourceFile && t('datasetDocuments.list.addFile')}
+                <PlusIcon className={cn('h-4 w-4 stroke-current', dataset?.data_source_type && 'mr-2')} />
+                {dataset?.data_source_type && (
+                  <>
+                    {isDataSourceNotion && t('datasetDocuments.list.addPages')}
+                    {isDataSourceWeb && t('datasetDocuments.list.addUrl')}
+                    {isDataSourceFile && t('datasetDocuments.list.addFile')}
+                  </>
+                )}
               </Button>
             )}
           </div>
