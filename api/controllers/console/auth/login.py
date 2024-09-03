@@ -12,7 +12,9 @@ from controllers.console.auth.error import (
     EmailCodeError,
     InvalidEmailError,
     InvalidTokenError,
+    PasswordMismatchError,
 )
+from controllers.console.error import NotAllowedCreateWorkspace, NotAllowedRegister
 from controllers.console.setup import setup_required
 from libs.helper import email, get_remote_ip
 from libs.password import valid_password
@@ -34,11 +36,13 @@ class LoginApi(Resource):
 
         try:
             account = AccountService.authenticate(args["email"], args["password"])
-        except services.errors.account.AccountLoginError as e:
-            return {"code": "unauthorized", "message": str(e)}, 401
-        except services.errors.account.AccountNotFound as e:
+        except services.errors.account.AccountLoginError:
+            raise NotAllowedRegister()
+        except services.errors.account.AccountPasswordError:
+            raise PasswordMismatchError()
+        except services.errors.account.AccountNotFound:
             if not dify_config.ALLOW_REGISTER:
-                return {"code": "unauthorized", "message": str(e)}, 401
+                raise NotAllowedCreateWorkspace()
 
             token = AccountService.send_reset_password_email(email=args["email"])
             return redirect(f"{dify_config.CONSOLE_WEB_URL}/reset-password?token={token}")
@@ -78,7 +82,7 @@ class ResetPasswordSendEmailApi(Resource):
             if dify_config.ALLOW_REGISTER:
                 token = AccountService.send_reset_password_email(email=args["email"])
             else:
-                raise InvalidEmailError()
+                raise NotAllowedRegister()
         else:
             token = AccountService.send_reset_password_email(account=account)
 
@@ -94,7 +98,10 @@ class EmailCodeLoginSendEmailApi(Resource):
 
         account = AccountService.get_user_through_email(args["email"])
         if account is None:
-            token = AccountService.send_email_code_login_email(email=args["email"])
+            if dify_config.ALLOW_REGISTER:
+                token = AccountService.send_email_code_login_email(email=args["email"])
+            else:
+                raise NotAllowedRegister()
         else:
             token = AccountService.send_email_code_login_email(account=account)
 
