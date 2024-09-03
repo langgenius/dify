@@ -119,7 +119,11 @@ const translation = {
     tokenPS: 'توکن/ثانیه',
     totalMessages: {
       title: 'کل پیام‌ها',
-      explanation: 'تعداد تعاملات روزانه با AI؛ مهندسی/اشکال‌زدایی دستورات مستثنی هستند.',
+      explanation: 'تعداد تعاملات روزانه با هوش مصنوعی.',
+    },
+    totalConversations: {
+      title: 'کل مکالمات',
+      explanation: 'تعداد مکالمات روزانه با هوش مصنوعی؛ مهندسی/اشکال‌زدایی پرامپت مستثنی است.',
     },
     activeUsers: {
       title: 'کاربران فعال',

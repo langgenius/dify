@@ -132,8 +132,11 @@ const translation = {
     tokenPS: 'Token/s',
     totalMessages: {
       title: 'Totale Messaggi',
-      explanation:
-        'Conteggio delle interazioni giornaliere con l\'AI; ingegneria dei prompt/debug esclusi.',
+      explanation: 'Conteggio delle interazioni giornaliere con l\'IA.',
+    },
+    totalConversations: {
+      title: 'Conversazioni totali',
+      explanation: 'Conteggio delle conversazioni giornaliere con l\'IA; ingegneria/debug dei prompt esclusi.',
     },
     activeUsers: {
       title: 'Utenti Attivi',

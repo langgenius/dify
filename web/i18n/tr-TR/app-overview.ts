@@ -119,7 +119,11 @@ const translation = {
     tokenPS: 'Token/s',
     totalMessages: {
       title: 'Toplam Mesajlar',
-      explanation: 'Günlük AI etkileşim sayısı; prompt mühendisliği/hata ayıklama hariç.',
+      explanation: 'Günlük AI etkileşimi sayısı.',
+    },
+    totalConversations: {
+      title: 'Toplam Konuşmalar',
+      explanation: 'Günlük AI konuşmaları sayısı; prompt mühendisliği/hata ayıklama hariç.',
     },
     activeUsers: {
       title: 'Aktif Kullanıcılar',

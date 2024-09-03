@@ -119,7 +119,11 @@ const translation = {
     tokenPS: 'Token/s',
     totalMessages: {
       title: 'Gesamtnachrichten',
-      explanation: 'Tägliche AI-Interaktionszählung; Prompt-Engineering/Debugging ausgenommen.',
+      explanation: 'Tägliche Anzahl der KI-Interaktionen.',
+    },
+    totalConversations: {
+      title: 'Gesamte Konversationen',
+      explanation: 'Tägliche Anzahl der KI-Konversationen; Prompt-Engineering/Debugging ausgeschlossen.',
     },
     activeUsers: {
       title: 'Aktive Benutzer',

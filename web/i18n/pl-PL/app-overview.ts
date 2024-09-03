@@ -130,8 +130,11 @@ const translation = {
     tokenPS: 'Tokeny/s',
     totalMessages: {
       title: 'Łączna liczba wiadomości',
-      explanation:
-        'Dzienna liczba interakcji z AI; inżynieria i debugowanie monitów wykluczone.',
+      explanation: 'Liczba dziennych interakcji z AI.',
+    },
+    totalConversations: {
+      title: 'Całkowita liczba rozmów',
+      explanation: 'Liczba dziennych rozmów z AI; inżynieria/debugowanie promptów wykluczone.',
     },
     activeUsers: {
       title: 'Aktywni użytkownicy',

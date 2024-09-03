@@ -116,7 +116,11 @@ const translation = {
     tokenPS: '토큰/초',
     totalMessages: {
       title: '총 메시지 수',
-      explanation: '일일 AI 상호작용 수; 엔지니어링/디버깅 목적의 프롬프트는 제외됩니다.',
+      explanation: '일일 AI 상호작용 수.',
+    },
+    totalConversations: {
+      title: '총 대화 수',
+      explanation: '일일 AI 대화 수; 프롬프트 엔지니어링/디버깅 제외.',
     },
     activeUsers: {
       title: '활성 사용자 수',
