@@ -14,8 +14,9 @@ export default function CheckCode() {
   const { t } = useTranslation()
   const router = useRouter()
   const searchParams = useSearchParams()
-  const email = searchParams.get('email') as string
-  const token = searchParams.get('token') as string
+  const email = decodeURIComponent(searchParams.get('email') as string)
+  const token = decodeURIComponent(searchParams.get('token') as string)
+  const invite_token = decodeURIComponent(searchParams.get('invite_token') as string)
   const [code, setVerifyCode] = useState('')
   const [loading, setIsLoading] = useState(false)
 
@@ -38,7 +39,7 @@ export default function CheckCode() {
       setIsLoading(true)
       const ret = await emailLoginWithCode({ email, code, token })
       localStorage.setItem('console_token', ret.data)
-      router.replace('/apps')
+      router.replace(invite_token ? `/signin/invite-settings?${searchParams.toString()}` : '/apps')
     }
     catch (error) { console.error(error) }
     finally {
@@ -49,7 +50,9 @@ export default function CheckCode() {
   const resendCode = async () => {
     try {
       const ret = await sendEMailLoginCode(email)
-      router.replace(`/signin/check-code?token=${ret.data}&email=${encodeURIComponent(email)}`)
+      const params = new URLSearchParams(searchParams)
+      params.set('token', encodeURIComponent(ret.data))
+      router.replace(`/signin/check-code?${params.toString()}`)
     }
     catch (error) { console.error(error) }
   }

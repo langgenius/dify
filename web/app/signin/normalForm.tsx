@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from 'react'
+import React, { useCallback, useEffect, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import Link from 'next/link'
 import { useRouter, useSearchParams } from 'next/navigation'
@@ -9,7 +9,7 @@ import SocialAuth from './components/social-auth'
 import SSOAuth from './components/sso-auth'
 import cn from '@/utils/classnames'
 import { IS_CE_EDITION } from '@/config'
-import { getSystemFeatures } from '@/service/common'
+import { getSystemFeatures, invitationCheck } from '@/service/common'
 import { defaultSystemFeatures } from '@/types/feature'
 import Toast from '@/app/components/base/toast'
 
@@ -17,39 +17,51 @@ const NormalForm = () => {
   const { t } = useTranslation()
   const router = useRouter()
   const searchParams = useSearchParams()
-  const consoleToken = searchParams.get('console_token')
-  const message = searchParams.get('message')
-  const token = searchParams.get('token')
-  const email = searchParams.get('email') || ''
-  const spaceName = searchParams.get('space') || ''
+  const consoleToken = decodeURIComponent(searchParams.get('console_token') || '')
+  const message = decodeURIComponent(searchParams.get('message') || '')
+  const invite_token = decodeURIComponent(searchParams.get('invite_token') || '')
   const [isLoading, setIsLoading] = useState(true)
   const [systemFeatures, setSystemFeatures] = useState(defaultSystemFeatures)
   const [authType, updateAuthType] = useState('password')
   const [showORLine, setShowORLine] = useState(false)
+  const [workspaceName, setWorkSpaceName] = useState('')
 
-  const isInviteLink = Boolean(token && token !== 'null')
+  const isInviteLink = Boolean(invite_token && invite_token !== 'null')
 
+  const init = useCallback(async () => {
+    try {
+      if (consoleToken) {
+        localStorage.setItem('console_token', consoleToken)
+        router.replace('/apps')
+        return
+      }
+
+      if (message) {
+        Toast.notify({
+          type: 'error',
+          message,
+        })
+      }
+      const features = await getSystemFeatures()
+      setSystemFeatures({ ...defaultSystemFeatures, ...features })
+      setShowORLine((features.enable_social_oauth_login || features.sso_enforced_for_signin) && (features.enable_email_code_login || features.enable_email_password_login))
+      if (isInviteLink) {
+        const checkRes = await invitationCheck({
+          url: '/activate/check',
+          params: {
+            token: invite_token,
+          },
+        })
+        setWorkSpaceName(checkRes?.data?.workspace_name || '')
+      }
+    }
+    catch (error) { console.error(error) }
+    finally { setIsLoading(false) }
+  }, [consoleToken, message, router, invite_token, isInviteLink])
   useEffect(() => {
-    if (consoleToken) {
-      localStorage.setItem('console_token', consoleToken)
-      router.replace('/apps')
-      return
-    }
-
-    if (message) {
-      Toast.notify({
-        type: 'error',
-        message,
-      })
-    }
-    getSystemFeatures().then((res) => {
-      setSystemFeatures({ ...defaultSystemFeatures, ...res })
-      setShowORLine((res.enable_social_oauth_login || res.sso_enforced_for_signin) && (res.enable_email_code_login || res.enable_email_password_login))
-    }).finally(() => {
-      setIsLoading(false)
-    })
-  }, [consoleToken, message, router])
-  if (isLoading) {
+    init()
+  }, [init])
+  if (isLoading || consoleToken) {
     return <div className={
       cn(
         'flex flex-col items-center w-full grow justify-center',
@@ -64,10 +76,10 @@ const NormalForm = () => {
   return (
     <>
       <div className="w-full mx-auto mt-8">
-        {token
+        {isInviteLink
           ? <div className="w-full mx-auto">
-            <h2 className="text-2xl font-bold text-gray-900">{t('login.join')}{spaceName}</h2>
-            <p className='mt-1 text-sm text-gray-600'>{t('login.joinTipStart')}{spaceName}{t('login.joinTipEnd')}</p>
+            <h2 className="text-2xl font-bold text-gray-900">{t('login.join')}{workspaceName}</h2>
+            <p className='mt-1 text-sm text-gray-600'>{t('login.joinTipStart')}{workspaceName}{t('login.joinTipEnd')}</p>
           </div>
           : <div className="w-full mx-auto">
             <h2 className="text-2xl font-bold text-gray-900">{t('login.pageTitle')}</h2>

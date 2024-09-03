@@ -3,7 +3,7 @@ import Link from 'next/link'
 import { RiArrowLeftLine, RiLockPasswordLine } from '@remixicon/react'
 import { useTranslation } from 'react-i18next'
 import { useState } from 'react'
-import { useRouter } from 'next/navigation'
+import { useRouter, useSearchParams } from 'next/navigation'
 import { emailRegex } from '@/config'
 import Button from '@/app/components/base/button'
 import Input from '@/app/components/base/input'
@@ -12,6 +12,7 @@ import { sendResetPasswordCode } from '@/service/common'
 
 export default function CheckCode() {
   const { t } = useTranslation()
+  const searchParams = useSearchParams()
   const router = useRouter()
   const [email, setEmail] = useState('')
   const [loading, setIsLoading] = useState(false)
@@ -34,7 +35,10 @@ export default function CheckCode() {
       const res = await sendResetPasswordCode(email)
       if (res.result === 'success') {
         localStorage.setItem('leftTime', '59000')
-        router.push(`/reset-password/check-code?token=${encodeURIComponent(res.data)}&email=${encodeURIComponent(email)}`)
+        const params = new URLSearchParams(searchParams)
+        params.set('token', encodeURIComponent(res.data))
+        params.set('email', encodeURIComponent(email))
+        router.push(`/reset-password/check-code?${params.toString()}`)
       }
     }
     catch (error) {

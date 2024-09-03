@@ -15,8 +15,8 @@ export default function MailAndCodeAuth({ isInvite }: MailAndCodeAuthProps) {
   const { t } = useTranslation()
   const router = useRouter()
   const searchParams = useSearchParams()
-  const emailFromLink = searchParams.get('email') as string
-  const [email, setEmail] = useState(isInvite ? emailFromLink : '')
+  const emailFromLink = decodeURIComponent(searchParams.get('email') || '')
+  const [email, setEmail] = useState(emailFromLink)
   const [loading, setIsLoading] = useState(false)
 
   const handleGetEMailVerificationCode = async () => {
@@ -37,7 +37,10 @@ export default function MailAndCodeAuth({ isInvite }: MailAndCodeAuthProps) {
       const ret = await sendEMailLoginCode(email)
       if (ret.result === 'success') {
         localStorage.setItem('leftTime', '59000')
-        router.push(`/signin/check-code?token=${encodeURIComponent(ret.data)}&email=${encodeURIComponent(email)}`)
+        const params = new URLSearchParams(searchParams)
+        params.set('email', encodeURIComponent(email))
+        params.set('token', encodeURIComponent(ret.data))
+        router.push(`/signin/check-code?${params.toString()}`)
       }
     }
     catch (error) {

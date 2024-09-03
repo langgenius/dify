@@ -89,6 +89,7 @@ const translation = {
   resetPassword: '重置密码',
   resetPasswordDesc: '请输入您的电子邮件地址以重置密码。我们将向您发送一封电子邮件。',
   backToLogin: '返回登陆',
+  setYourAccount: '设置您的账户',
 }
 
 export default translation

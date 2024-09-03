@@ -13,7 +13,7 @@ const validPassword = /^(?=.*[a-zA-Z])(?=.*\d).{8,}$/
 const ChangePasswordForm = () => {
   const { t } = useTranslation()
   const searchParams = useSearchParams()
-  const token = searchParams.get('token')
+  const token = decodeURIComponent(searchParams.get('token') as string)
 
   const [password, setPassword] = useState('')
   const [confirmPassword, setConfirmPassword] = useState('')
@@ -62,6 +62,12 @@ const ChangePasswordForm = () => {
       console.error(error)
     }
   }, [password, token, valid])
+
+  const getSignInUrl = () => {
+    if (searchParams.has('invite_token'))
+      return `/signin/invite-settings?${searchParams.toString()}`
+    return '/signin'
+  }
 
   return (
     <div className={
@@ -142,7 +148,7 @@ const ChangePasswordForm = () => {
           </div>
           <div className="w-full mx-auto mt-6">
             <Button variant='primary' className='w-full !text-sm'>
-              <a href="/signin">{t('login.passwordChanged')}</a>
+              <a href={getSignInUrl()}>{t('login.passwordChanged')}</a>
             </Button>
           </div>
         </div>
