@@ -123,7 +123,11 @@ const translation = {
     },
     activeUsers: {
       title: '活躍使用者數',
-      explanation: '與 AI 有效互動，即有一問一答以上的唯一使用者數。提示詞編排和除錯的會話不計入。',
+      explanation: '每日AI互動次數。',
+    },
+    totalConversations: {
+      title: '總對話數',
+      explanation: '每日AI對話次數；不包括提示工程/調試。',
     },
     tokenUsage: {
       title: '費用消耗',

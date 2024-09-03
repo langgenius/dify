@@ -119,7 +119,11 @@ const translation = {
     tokenPS: 'トークン/秒',
     totalMessages: {
       title: 'トータルメッセージ数',
-      explanation: '日次AIインタラクション数；工学的/デバッグ目的のプロンプトは除外されます。',
+      explanation: '日次AIインタラクション数。',
+    },
+    totalConversations: {
+      title: '総会話数',
+      explanation: '日次AI会話数；プロンプトエンジニアリング/デバッグは除外。',
     },
     activeUsers: {
       title: 'アクティブユーザー数',

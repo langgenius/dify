@@ -119,7 +119,11 @@ const translation = {
     tokenPS: 'Token/giây',
     totalMessages: {
       title: 'Tổng số tin nhắn',
-      explanation: 'Số lần tương tác AI hàng ngày; không tính việc tạo lại/lặp lại câu hỏi.',
+      explanation: 'Số lượng tương tác AI hàng ngày.',
+    },
+    totalConversations: {
+      title: 'Tổng số cuộc hội thoại',
+      explanation: 'Số lượng cuộc hội thoại AI hàng ngày; không bao gồm kỹ thuật/gỡ lỗi prompt.',
     },
     activeUsers: {
       title: 'Người dùng hoạt động',
