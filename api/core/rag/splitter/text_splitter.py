@@ -30,15 +30,14 @@ def _split_text_with_regex(
         if keep_separator:
             # The parentheses in the pattern keep the delimiters in the result.
             _splits = re.split(f"({re.escape(separator)})", text)
-            splits = [_splits[i] + _splits[i + 1] for i in range(1, len(_splits), 2)]
-            if len(_splits) % 2 == 0:
+            splits = [_splits[i - 1] + _splits[i] for i in range(1, len(_splits), 2)]
+            if len(_splits) % 2 != 0:
                 splits += _splits[-1:]
-            splits = [_splits[0]] + splits
         else:
             splits = re.split(separator, text)
     else:
         splits = list(text)
-    return [s for s in splits if s != ""]
+    return [s for s in splits if (s != "" and s != '\n')]
 
 
 class TextSplitter(BaseDocumentTransformer, ABC):
