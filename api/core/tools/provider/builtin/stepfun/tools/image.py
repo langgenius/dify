@@ -17,7 +17,7 @@ class StepfunTool(BuiltinTool):
         """
             invoke tools
         """
-        base_url = self.runtime.credentials.get('stepfun_base_url', None)
+        base_url = self.runtime.credentials.get('stepfun_base_url', 'https://api.stepfun.com')
         if not base_url:
             base_url = None
         else:
