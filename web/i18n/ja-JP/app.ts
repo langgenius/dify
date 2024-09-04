@@ -127,12 +127,12 @@ const translation = {
       removeConfirmTitle: '{{key}}の設定を削除しますか？',
       removeConfirmContent: '現在の設定は使用中です。これを削除すると、トレース機能が無効になります。',
     },
-    view: '眺める',
+    view: '見る',
   },
   answerIcon: {
-    title: 'WebApp アイコンを使用して置き換える 🤖',
-    description: '共有アプリケーションで Web App アイコン🤖を置き換えるかどうか',
-    descriptionInExplore: 'ExploreでWebAppアイコン🤖を置き換えるかどうか',
+    title: 'Webアプリアイコンを使用して🤖を置き換える',
+    description: '共有アプリケーションの中で Webアプリアイコンを使用して🤖を置き換えるかどうか',
+    descriptionInExplore: 'ExploreでWebアプリアイコンを使用して🤖を置き換えるかどうか',
   },
 }
 
