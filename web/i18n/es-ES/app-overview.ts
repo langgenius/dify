@@ -119,7 +119,11 @@ const translation = {
     tokenPS: 'Token/s',
     totalMessages: {
       title: 'Mensajes totales',
-      explanation: 'Recuento diario de interacciones de IA; excluye la ingeniería/depuración de prompts.',
+      explanation: 'Recuento diario de interacciones con IA.',
+    },
+    totalConversations: {
+      title: 'Conversaciones totales',
+      explanation: 'Recuento diario de conversaciones con IA; ingeniería/depuración de prompts excluida.',
     },
     activeUsers: {
       title: 'Usuarios activos',
