@@ -243,7 +243,10 @@ class CharacterTextSplitter(TextSplitter):
         # First we naively split the large input into a bunch of smaller ones.
         splits = _split_text_with_regex(text, self._separator, self._keep_separator)
         _separator = "" if self._keep_separator else self._separator
-        return self._merge_splits(splits, _separator)
+        _good_splits_lengths = []  # cache the lengths of the splits
+        for split in splits:
+            _good_splits_lengths.append(self._length_function(split))
+        return self._merge_splits(splits, _separator, _good_splits_lengths)
 
 
 class LineType(TypedDict):
