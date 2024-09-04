@@ -1,14 +1,9 @@
-from collections.abc import Generator
-from enum import Enum
-from json import dumps, loads
-from typing import Any, Optional, Union
+import json
+from typing import Any, Optional, Union, Iterator
 
 from requests import post
 
-from core.model_runtime.entities.message_entities import (
-    AssistantPromptMessage,
-    PromptMessageTool,
-)
+from core.model_runtime.entities.message_entities import PromptMessageTool
 from core.model_runtime.model_providers.baichuan.llm.baichuan_turbo_errors import (
     BadRequestError,
     InsufficientAccountBalance,
@@ -17,33 +12,6 @@ from core.model_runtime.model_providers.baichuan.llm.baichuan_turbo_errors impor
     InvalidAuthenticationError,
     RateLimitReachedError,
 )
-
-
-class BaichuanMessage:
-    class Role(Enum):
-        USER = "user"
-        ASSISTANT = "assistant"
-        SYSTEM = "system"
-        TOOL = "tool"
-
-    role: str = Role.USER.value
-    content: str
-    usage: dict[str, int] = None
-    tool_calls : list[AssistantPromptMessage.ToolCall] = []
-    tool_call_id: str = ""
-    stop_reason: str = ""
-
-    def to_dict(self) -> dict[str, Any]:
-        return {
-            "role": self.role,
-            "content": self.content,
-        }
-
-    def __init__(self, content: str, role: str = "user", tool_call_id: str = "") -> None:
-        self.content = content
-        self.role = role
-        if tool_call_id:
-            self.tool_call_id = tool_call_id
 
 
 class BaichuanModel:
@@ -68,41 +36,6 @@ class BaichuanModel:
             "Authorization": "Bearer " + self.api_key,
         }
 
-    def _handle_chat_stream_generate_response(self, response) -> Generator:
-        for line in response.iter_lines():
-            if not line:
-                continue
-            line = line.decode("utf-8")
-            # remove the first `data: ` prefix
-            if line.startswith("data:"):
-                line = line[5:].strip()
-            try:
-                data = loads(line)
-            except Exception as e:
-                if line.strip() == "[DONE]":
-                    return
-            choices = data.get("choices", [])
-            # save stop reason temporarily
-            stop_reason = ""
-            for choice in choices:
-                if choice.get("finish_reason"):
-                    stop_reason = choice["finish_reason"]
-
-                if len(choice["delta"]["content"]) == 0:
-                    continue
-                yield BaichuanMessage(**choice["delta"])
-
-            # if there is usage, the response is the last one, yield it and return
-            if "usage" in data:
-                message = BaichuanMessage(content="", role="assistant")
-                message.usage = {
-                    "prompt_tokens": data["usage"]["prompt_tokens"],
-                    "completion_tokens": data["usage"]["completion_tokens"],
-                    "total_tokens": data["usage"]["total_tokens"],
-                }
-                message.stop_reason = stop_reason
-                yield message
-
     def _build_parameters(
         self,
         model: str,
@@ -112,12 +45,14 @@ class BaichuanModel:
         tools: Optional[list[PromptMessageTool]] = None,
     ) -> dict[str, Any]:
         if model in self._model_mapping.keys():
-            # the LargeLanguageModel._code_block_mode_wrapper() method will remove the response_format of parameters. we need to rename it to res_format to get its value
+            # the LargeLanguageModel._code_block_mode_wrapper() method will remove the response_format of parameters.
+            # we need to rename it to res_format to get its value
             if parameters.get("res_format") == "json_object":
                 parameters["response_format"] = {"type": "json_object"}
 
             if tools or parameters.get("with_search_enhance") is True:
                 parameters["tools"] = []
+
             # with_search_enhance is deprecated, use web_search instead
             if parameters.get("with_search_enhance") is True:
                 parameters["tools"].append(
@@ -157,7 +92,7 @@ class BaichuanModel:
         parameters: dict[str, Any],
         timeout: int,
         tools: Optional[list[PromptMessageTool]] = None,
-    ) -> Union[Generator, dict]:
+    ) -> Union[Iterator, dict]:
 
         if model in self._model_mapping.keys():
             api_base = "https://api.baichuan-ai.com/v1/chat/completions"
@@ -170,7 +105,7 @@ class BaichuanModel:
             response = post(
                 url=api_base,
                 headers=self.request_headers,
-                data=dumps(data),
+                data=json.dumps(data),
                 timeout=timeout,
                 stream=stream,
             )
@@ -206,6 +141,6 @@ class BaichuanModel:
                 raise InternalServerError(f"Unknown error: {err} with message: {msg}")
 
         if stream:
-            return self._handle_chat_stream_generate_response(response)
+            return response.iter_lines()
         else:
             return response.json()

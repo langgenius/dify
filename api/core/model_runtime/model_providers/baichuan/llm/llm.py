@@ -1,5 +1,5 @@
-from collections.abc import Generator
-from typing import cast
+import json
+from typing import Generator, Iterator, cast
 
 from core.model_runtime.entities.llm_entities import (
     LLMResult,
@@ -23,16 +23,9 @@ from core.model_runtime.errors.invoke import (
     InvokeServerUnavailableError,
 )
 from core.model_runtime.errors.validate import CredentialsValidateFailedError
-from core.model_runtime.model_providers.__base.large_language_model import (
-    LargeLanguageModel,
-)
-from core.model_runtime.model_providers.baichuan.llm.baichuan_tokenizer import (
-    BaichuanTokenizer,
-)
-from core.model_runtime.model_providers.baichuan.llm.baichuan_turbo import (
-    BaichuanMessage,
-    BaichuanModel,
-)
+from core.model_runtime.model_providers.__base.large_language_model import LargeLanguageModel
+from core.model_runtime.model_providers.baichuan.llm.baichuan_tokenizer import BaichuanTokenizer
+from core.model_runtime.model_providers.baichuan.llm.baichuan_turbo import BaichuanModel
 from core.model_runtime.model_providers.baichuan.llm.baichuan_turbo_errors import (
     BadRequestError,
     InsufficientAccountBalance,
@@ -62,9 +55,7 @@ class BaichuanLarguageModel(LargeLanguageModel):
             prompt_messages=prompt_messages,
             model_parameters=model_parameters,
             tools=tools,
-            stop=stop,
             stream=stream,
-            user=user,
         )
 
     def get_num_tokens(
@@ -160,9 +151,7 @@ class BaichuanLarguageModel(LargeLanguageModel):
             prompt_messages: list[PromptMessage],
             model_parameters: dict,
             tools: list[PromptMessageTool] | None = None,
-            stop: list[str] | None = None,
             stream: bool = True,
-            user: str | None = None,
     ) -> LLMResult | Generator:
 
         instance = BaichuanModel(api_key=credentials["api_key"])
@@ -196,9 +185,7 @@ class BaichuanLarguageModel(LargeLanguageModel):
     ) -> LLMResult:
         choices = response.get("choices", [])
         assistant_message = AssistantPromptMessage(content='', tool_calls=[])
-        stop_reason = None
         if choices and choices[0]["finish_reason"] == "tool_calls":
-            stop_reason = "tool_calls"
             for choice in choices:
                 for tool_call in choice["message"]["tool_calls"]:
                     tool = AssistantPromptMessage.ToolCall(
@@ -214,8 +201,6 @@ class BaichuanLarguageModel(LargeLanguageModel):
             for choice in choices:
                 assistant_message.content += choice["message"]["content"]
                 assistant_message.role = choice["message"]["role"]
-                if choice["finish_reason"]:
-                    stop_reason = choice["finish_reason"]
 
         usage = response.get("usage")
         if usage:
@@ -227,7 +212,6 @@ class BaichuanLarguageModel(LargeLanguageModel):
             prompt_tokens = self._num_tokens_from_messages(prompt_messages)
             completion_tokens = self._num_tokens_from_messages([assistant_message])
 
-        # convert baichuan message to llm result
         usage = self._calc_response_usage(
             model=model,
             credentials=credentials,
@@ -247,42 +231,57 @@ class BaichuanLarguageModel(LargeLanguageModel):
             model: str,
             prompt_messages: list[PromptMessage],
             credentials: dict,
-            response: Generator[BaichuanMessage, None, None],
+            response: Iterator,
     ) -> Generator:
-        for message in response:
-            if message.usage:
+        for line in response:
+            if not line:
+                continue
+            line = line.decode("utf-8")
+            # remove the first `data: ` prefix
+            if line.startswith("data:"):
+                line = line[5:].strip()
+            try:
+                data = json.loads(line)
+            except Exception as e:
+                if line.strip() == "[DONE]":
+                    return
+            choices = data.get("choices", [])
+
+            stop_reason = ""
+            for choice in choices:
+                if choice.get("finish_reason"):
+                    stop_reason = choice["finish_reason"]
+
+                if len(choice["delta"]["content"]) == 0:
+                    continue
+                yield LLMResultChunk(
+                    model=model,
+                    prompt_messages=prompt_messages,
+                    delta=LLMResultChunkDelta(
+                        index=0,
+                        message=AssistantPromptMessage(
+                            content=choice["delta"]["content"], tool_calls=[]
+                        ),
+                        finish_reason=stop_reason,
+                    ),
+                )
+
+            # if there is usage, the response is the last one, yield it and return
+            if "usage" in data:
                 usage = self._calc_response_usage(
                     model=model,
                     credentials=credentials,
-                    prompt_tokens=message.usage["prompt_tokens"],
-                    completion_tokens=message.usage["completion_tokens"],
+                    prompt_tokens=data["usage"]["prompt_tokens"],
+                    completion_tokens=data["usage"]["completion_tokens"],
                 )
                 yield LLMResultChunk(
                     model=model,
                     prompt_messages=prompt_messages,
                     delta=LLMResultChunkDelta(
                         index=0,
-                        message=AssistantPromptMessage(
-                            content=message.content, tool_calls=[]
-                        ),
+                        message=AssistantPromptMessage(content="", tool_calls=[]),
                         usage=usage,
-                        finish_reason=(
-                            message.stop_reason if message.stop_reason else None
-                        ),
-                    ),
-                )
-            else:
-                yield LLMResultChunk(
-                    model=model,
-                    prompt_messages=prompt_messages,
-                    delta=LLMResultChunkDelta(
-                        index=0,
-                        message=AssistantPromptMessage(
-                            content=message.content, tool_calls=[]
-                        ),
-                        finish_reason=(
-                            message.stop_reason if message.stop_reason else None
-                        ),
+                        finish_reason=stop_reason,
                     ),
                 )
 
