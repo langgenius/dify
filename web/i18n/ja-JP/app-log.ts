@@ -83,6 +83,8 @@ const translation = {
   promptLog: 'プロンプトログ',
   agentLog: 'エージェントログ',
   viewLog: 'ログを表示',
+  exportLog: 'ログをエクスポート',
+  exportFailed: 'ログのエクスポートに失敗しました',
   agentLogDetail: {
     agentMode: 'エージェントモード',
     toolUsed: '使用したツール',

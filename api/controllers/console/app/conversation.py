@@ -1,5 +1,6 @@
 from datetime import datetime, timezone
 
+import pandas as pd
 import pytz
 from flask_login import current_user
 from flask_restful import Resource, marshal_with, reqparse
@@ -287,11 +288,127 @@ class ChatConversationDetailApi(Resource):
 
         return {"result": "success"}, 204
 
+class ChatConversationExportApi(Resource):
+
+    @setup_required
+    @login_required
+    @account_initialization_required
+    @get_app_model(mode=[AppMode.CHAT, AppMode.AGENT_CHAT, AppMode.ADVANCED_CHAT])
+    def get(self, app_model):
+        account = current_user
+        parser = reqparse.RequestParser()
+        parser.add_argument(
+            "start",
+            type=datetime_string("%Y-%m-%d %H:%M"),
+            required=False,
+            location="args",
+        )
+        parser.add_argument(
+            "end",
+            type=datetime_string("%Y-%m-%d %H:%M"),
+            required=False,
+            location="args",
+        )
+        args = parser.parse_args()
+
+        sql_query = """
+            SELECT
+                m.id as message_id,
+                m.from_end_user_id,
+                m.from_account_id,
+                m.app_id,
+                m.conversation_id,
+                m.query,
+                m.answer,
+                m.message_tokens,
+                m.answer_tokens,
+                m.total_price,
+                m.currency,
+                m.created_at,
+                m.message,
+                m.message_metadata,
+                MAX(CASE WHEN mf.from_source = 'user' THEN mf.rating ELSE NULL END) as user_rating,
+                MAX(CASE WHEN mf.from_source = 'admin' THEN mf.rating ELSE NULL END) as admin_rating
+            FROM
+                messages m
+            LEFT JOIN
+                message_feedbacks mf ON m.id = mf.message_id
+            WHERE
+                m.app_id = :app_id
+        """
+
+        arg_dict = {"tz": account.timezone, "app_id": app_model.id}
+
+        additional_where_clauses = []
+
+        timezone = pytz.timezone(account.timezone)
+        utc_timezone = pytz.utc
+
+        if args["start"]:
+            start_datetime = datetime.strptime(args["start"], "%Y-%m-%d %H:%M")
+            start_datetime = start_datetime.replace(second=0)
+            start_datetime_timezone = timezone.localize(start_datetime)
+            start_datetime_utc = start_datetime_timezone.astimezone(utc_timezone)
+            additional_where_clauses.append("m.created_at >= :start")
+            arg_dict["start"] = start_datetime_utc
+
+        if args["end"]:
+            end_datetime = datetime.strptime(args["end"], "%Y-%m-%d %H:%M")
+            end_datetime = end_datetime.replace(second=0)
+            end_datetime_timezone = timezone.localize(end_datetime)
+            end_datetime_utc = end_datetime_timezone.astimezone(utc_timezone)
+            additional_where_clauses.append("m.created_at < :end")
+            arg_dict["end"] = end_datetime_utc
+
+        if additional_where_clauses:
+            sql_query += " AND " + " AND ".join(additional_where_clauses)
+
+        sql_query += """
+            GROUP BY
+                m.id, m.from_end_user_id, m.app_id, m.conversation_id, m.query, m.answer, m.message_tokens, m.answer_tokens,
+                m.total_price, m.currency, m.created_at, m.message_metadata
+            ORDER BY m.created_at ASC
+        """
+
+        response_data = []
+
+        with db.engine.begin() as conn:
+            rs = conn.execute(db.text(sql_query), arg_dict)
+            for row in rs:
+                response_data.append(
+                    {
+                        "end_user_id": row.from_end_user_id,
+                        "account_id": row.from_account_id,
+                        "app_id": row.app_id,
+                        "conversation_id": row.conversation_id,
+                        "query": row.query,
+                        "answer": row.answer,
+                        "message_tokens": row.message_tokens,
+                        "answer_tokens": row.answer_tokens,
+                        "total_price": (
+                            float(row.total_price)
+                            if row.total_price is not None
+                            else None
+                        ),
+                        "currency": row.currency,
+                        "created_at": (
+                            str(row.created_at) if row.created_at is not None else None
+                        ),
+                        "message_metadata": row.message_metadata,
+                        "user_rating": row.user_rating,
+                        "admin_rating": row.admin_rating,
+                    }
+                )
+
+        csv_str = _generate_csv(response_data)
+
+        return {"data": csv_str}
 
 api.add_resource(CompletionConversationApi, "/apps/<uuid:app_id>/completion-conversations")
 api.add_resource(CompletionConversationDetailApi, "/apps/<uuid:app_id>/completion-conversations/<uuid:conversation_id>")
 api.add_resource(ChatConversationApi, "/apps/<uuid:app_id>/chat-conversations")
 api.add_resource(ChatConversationDetailApi, "/apps/<uuid:app_id>/chat-conversations/<uuid:conversation_id>")
+api.add_resource(ChatConversationExportApi, "/apps/<uuid:app_id>/chat-conversations/export")
 
 
 def _get_conversation(app_model, conversation_id):
@@ -310,3 +427,11 @@ def _get_conversation(app_model, conversation_id):
         db.session.commit()
 
     return conversation
+
+def _generate_csv(data):
+    df = pd.DataFrame(data)
+    csv_buffer = io.StringIO()
+    df.to_csv(path_or_buf=csv_buffer, index=False)
+    csv_string = csv_buffer.getvalue()
+    csv_buffer.close()
+    return csv_string

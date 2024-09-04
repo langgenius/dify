@@ -83,6 +83,8 @@ const translation = {
   promptLog: 'Prompt Log',
   agentLog: 'Agent Log',
   viewLog: 'View Log',
+  exportLog: 'Export Log',
+  exportFailed: 'Log export failed',
   agentLogDetail: {
     agentMode: 'Agent Mode',
     toolUsed: 'Tool Used',

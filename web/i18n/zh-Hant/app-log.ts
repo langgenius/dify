@@ -83,6 +83,8 @@ const translation = {
   promptLog: 'Prompt 日誌',
   agentLog: 'Agent 日誌',
   viewLog: '檢視日誌',
+  exportLog: '匯出日誌',
+  exportFailed: '日誌匯出失敗',
   agentLogDetail: {
     agentMode: 'Agent 模式',
     toolUsed: '使用工具',

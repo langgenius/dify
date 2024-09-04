@@ -1,6 +1,6 @@
 'use client'
 import type { FC } from 'react'
-import React from 'react'
+import React, { useContext } from 'react'
 import { useTranslation } from 'react-i18next'
 import {
   MagnifyingGlassIcon,
@@ -11,7 +11,9 @@ import quarterOfYear from 'dayjs/plugin/quarterOfYear'
 import type { QueryParam } from './index'
 import { SimpleSelect } from '@/app/components/base/select'
 import Sort from '@/app/components/base/sort'
-import { fetchAnnotationsCount } from '@/service/log'
+import { exportAppLog, fetchAnnotationsCount } from '@/service/log'
+import { ToastContext } from '../../base/toast'
+import Button from '../../base/button'
 dayjs.extend(quarterOfYear)
 
 const today = dayjs()
@@ -38,6 +40,33 @@ type IFilterProps = {
 const Filter: FC<IFilterProps> = ({ isChatMode, appId, queryParams, setQueryParams }: IFilterProps) => {
   const { data } = useSWR({ url: `/apps/${appId}/annotations/count` }, fetchAnnotationsCount)
   const { t } = useTranslation()
+  const { notify } = useContext(ToastContext)
+
+  const exportLog = async () => {
+    const params = {
+      ...(queryParams.period !== 'all'
+        ? {
+          start: dayjs().subtract(queryParams.period as number, 'day').startOf('day').format('YYYY-MM-DD HH:mm'),
+          end: dayjs().endOf('day').format('YYYY-MM-DD HH:mm'),
+        }
+        : {}),
+    }
+    try {
+      const { data } = await exportAppLog({
+        appID: appId,
+        params,
+      })
+      const a = document.createElement('a')
+      const file = new Blob([data], { type: 'application/csv' })
+      a.href = URL.createObjectURL(file)
+      a.download = `conversation_log_${params.start}_${params.end}.csv`
+      a.click()
+    }
+    catch (e) {
+      notify({ type: 'error', message: t('appLog.exportFailed') })
+    }
+  }
+
   if (!data)
     return null
   return (
@@ -92,6 +121,9 @@ const Filter: FC<IFilterProps> = ({ isChatMode, appId, queryParams, setQueryPara
               setQueryParams({ ...queryParams, sort_by: value as string })
             }}
           />
+          <Button className='flex space-x-2' onClick={exportLog}>
+            <span>{t('appLog.exportLog')}</span>
+          </Button>
         </>
       )}
     </div>
