@@ -238,13 +238,13 @@ const AudioPlayer: React.FC<AudioPlayerProps> = ({ src }) => {
       <button className={styles.playButton} onClick={togglePlay} disabled={!isAudioAvailable}>
         {isPlaying
           ? (
-            <svg viewBox="0 0 24 24" width="15" height="15">
-              <rect x="6" y="4" width="3" height="15" />
-              <rect x="14" y="4" width="3" height="15" />
+            <svg viewBox="0 0 24 24" width="16" height="16">
+              <rect x="6" y="4" width="3" height="16" />
+              <rect x="14" y="4" width="3" height="16" />
             </svg>
           )
           : (
-            <svg viewBox="0 0 24 24" width="15" height="15">
+            <svg viewBox="0 0 24 24" width="16" height="16">
               <path d="M8 5v14l11-7z" fill="currentColor" />
             </svg>
           )}

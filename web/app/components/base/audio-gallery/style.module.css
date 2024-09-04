@@ -1,5 +1,3 @@
 .audioGallery {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 20px;
+  @apply flex flex-wrap gap-5;
 }

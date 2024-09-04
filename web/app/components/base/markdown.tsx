@@ -6,7 +6,6 @@ import RemarkBreaks from 'remark-breaks'
 import RehypeKatex from 'rehype-katex'
 import RehypeRaw from 'rehype-raw'
 import RemarkGfm from 'remark-gfm'
-import DOMPurify from 'dompurify'
 import SyntaxHighlighter from 'react-syntax-highlighter'
 import { atelierHeathLight } from 'react-syntax-highlighter/dist/esm/styles/hljs'
 import type { RefObject } from 'react'
@@ -217,36 +216,10 @@ const Link = ({ node, ...props }: any) => {
     const { onSend } = useChatContext()
     const hidden_text = decodeURIComponent(node.properties.href.toString().split('abbr:')[1])
 
-    return <abbr onClick={() => onSend?.(hidden_text)} title={node.children[0]?.value} className="cursor-pointer">{node.children[0]?.value}</abbr>
+    return <abbr className="underline decoration-dashed !decoration-primary-700 cursor-pointer" onClick={() => onSend?.(hidden_text)} title={node.children[0]?.value}>{node.children[0]?.value}</abbr>
   }
   else {
-    return <a {...props} target="_blank" className="cursor-pointer">{node.children[0] ? node.children[0]?.value : 'Download'}</a>
-  }
-}
-
-const Iframe = ({ src, width, height, title, className }: any) => {
-  if (!src || typeof src !== 'string' || !src.startsWith('https://')) {
-    return null
-  }
-  else {
-    try {
-      const sanitizedSrc = DOMPurify.sanitize(src, { ALLOWED_TAGS: [], ALLOWED_ATTR: [] })
-      return (
-        <iframe
-          src={sanitizedSrc}
-          width={width ?? 500}
-          height={height ?? 750}
-          title={title}
-          allow="fullscreen"
-          className={`max-w-full align-middle border-none rounded-lg shadow-md hover:shadow-lg transition-shadow duration-300 ease-in-out mt-2 mb-2 ${className ?? className}`}
-          sandbox="allow-forms allow-pointer-lock allow-scripts allow-same-origin allow-top-navigation allow-modals"
-        />
-      )
-    }
-    catch (error) {
-      console.error('Error sanitizing iframe src:', error)
-      return null
-    }
+    return <a {...props} target="_blank" className="underline decoration-dashed !decoration-primary-700 cursor-pointer">{node.children[0] ? node.children[0]?.value : 'Download'}</a>
   }
 }
 
@@ -275,7 +248,6 @@ export function Markdown(props: { content: string; className?: string }) {
         ]}
         components={{
           code: CodeBlock,
-          iframe: Iframe,
           img: Img,
           video: VideoBlock,
           audio: AudioBlock,

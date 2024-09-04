@@ -61,7 +61,7 @@
   border: none;
   color: white;
   cursor: pointer;
-  padding: 5px;
+  padding: 4px;
   margin-right: 10px;
   display: flex;
   align-items: center;
@@ -76,13 +76,13 @@
 .time {
   color: white;
   font-size: 14px;
-  margin-left: 10px;
+  margin-left: 8px;
 }
 
 .volumeControl {
   display: flex;
   align-items: center;
-  margin-right: 15px;
+  margin-right: 16px;
 }
 
 .volumeSlider {
@@ -91,7 +91,7 @@
   background: rgba(255, 255, 255, 0.3);
   border-radius: 2px;
   cursor: pointer;
-  margin-left: 10px;
+  margin-left: 12px;
   position: relative;
 }
 
@@ -166,14 +166,14 @@
 }
 
 .controls.smallSize .progressBarContainer {
-  margin-bottom: 5px;
+  margin-bottom: 4px;
 }
 
 .controls.smallSize .playPauseButton,
 .controls.smallSize .muteButton,
 .controls.smallSize .fullscreenButton {
-  padding: 3px;
-  margin-right: 5px;
+  padding: 2px;
+  margin-right: 4px;
 }
 
 .controls.smallSize .playPauseButton svg,

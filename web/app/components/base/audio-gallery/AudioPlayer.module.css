@@ -4,18 +4,20 @@
   align-items: center;
   background-color: #ffffff;
   border-radius: 10px;
-  padding: 10px 15px;
+  padding: 8px;
   width: 100%;
   max-width: 420px;
   max-height: 40px;
   backdrop-filter: blur(5px);
   border: 1px solid rgba(16, 24, 40, 0.08);
   box-shadow: 0 1px 2px rgba(9, 9, 11, 0.05);
+  gap: 8px;
 }
 
 .playButton {
-  width: 25px;
-  height: 25px;
+  display: inline-flex;
+  width: 16px;
+  height: 16px;
   border-radius: 50%;
   background-color: #296DFF;
   color: white;
@@ -37,16 +39,14 @@
 }
 
 .progressBarContainer {
-  height: 30px;
+  height: 32px;
 }
 
 .waveform {
+  display: inline-flex;
   cursor: pointer;
-  position: absolute;
-  top: 0;
-  left: 5px;
-  width: 91%;
-  height: 92%;
+  height: 100%;
+  width: 100%;
 }
 
 .progressBar {
@@ -72,7 +72,7 @@
   flex: none;
   order: 0;
   flex-grow: 0;
-  right: -15px; /* Adjust this value as needed */
+  right: -16px; /* Adjust this value as needed */
   height: 100%;
   width: 50px; /* Adjust this value as needed */
   display: flex;
@@ -94,7 +94,7 @@
   padding: 2px 4px;
   border-radius: 10px;
   position: absolute;
-  right: 5px;
+  right: 8px;
 }
 
 .playButton svg path,
