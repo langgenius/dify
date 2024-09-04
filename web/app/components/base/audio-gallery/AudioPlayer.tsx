@@ -1,4 +1,5 @@
 import React, { useCallback, useEffect, useRef, useState } from 'react'
+import { t } from 'i18next'
 import styles from './AudioPlayer.module.css'
 import Toast from '@/app/components/base/toast'
 
@@ -74,6 +75,7 @@ const AudioPlayer: React.FC<AudioPlayerProps> = ({ src }) => {
         type: 'error',
         message: 'Web Audio API is not supported in this browser',
       })
+      return
     }
 
     const audioContext = new (window.AudioContext || (window as any).webkitAudioContext)()
@@ -83,10 +85,7 @@ const AudioPlayer: React.FC<AudioPlayerProps> = ({ src }) => {
       const response = await fetch(audioSrc, { mode: 'cors' })
       if (!response.ok) {
         setIsAudioAvailable(false)
-        Toast.notify({
-          type: 'error',
-          message: `HTTP error! status: ${response.status}`,
-        })
+        return
       }
 
       const arrayBuffer = await response.arrayBuffer()
@@ -305,6 +304,7 @@ const AudioPlayer: React.FC<AudioPlayerProps> = ({ src }) => {
             <span className={styles.duration}>{formatTime(duration)}</span>
           </div>
         </div>
+        <div className={styles.source_unavailable} hidden={isAudioAvailable}>{t('common.operation.audioSourceUnavailable')}</div>
       </div>
     </div>
   )
