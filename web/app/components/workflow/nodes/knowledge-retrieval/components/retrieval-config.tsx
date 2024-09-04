@@ -70,7 +70,7 @@ const RetrievalConfig: FC<Props> = ({
     }
     onMultipleRetrievalConfigChange({
       top_k: configs.top_k,
-      score_threshold: configs.score_threshold_enabled ? (configs.score_threshold || DATASET_DEFAULT.score_threshold) : null,
+      score_threshold: configs.score_threshold_enabled ? (configs.score_threshold ?? DATASET_DEFAULT.score_threshold) : null,
       reranking_model: payload.retrieval_mode === RETRIEVE_TYPE.oneWay
         ? undefined
         : (!configs.reranking_model?.reranking_provider_name

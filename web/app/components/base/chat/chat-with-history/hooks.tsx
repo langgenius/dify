@@ -65,6 +65,7 @@ export const useChatWithHistory = (installedAppInfo?: InstalledApp) => {
           prompt_public: false,
           copyright: '',
           show_workflow_steps: true,
+          use_icon_as_answer_icon: app.use_icon_as_answer_icon,
         },
         plan: 'basic',
       } as AppData

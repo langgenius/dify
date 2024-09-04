@@ -79,6 +79,7 @@ const AppCard = ({ app, onRefresh }: AppCardProps) => {
     icon,
     icon_background,
     description,
+    use_icon_as_answer_icon,
   }) => {
     try {
       await updateAppInfo({
@@ -88,6 +89,7 @@ const AppCard = ({ app, onRefresh }: AppCardProps) => {
         icon,
         icon_background,
         description,
+        use_icon_as_answer_icon,
       })
       setShowEditModal(false)
       notify({
@@ -255,7 +257,7 @@ const AppCard = ({ app, onRefresh }: AppCardProps) => {
           e.preventDefault()
           getRedirection(isCurrentWorkspaceEditor, app, push)
         }}
-        className='group flex col-span-1 bg-white border-2 border-solid border-transparent rounded-xl shadow-sm min-h-[160px] flex flex-col transition-all duration-200 ease-in-out cursor-pointer hover:shadow-lg'
+        className='relative group col-span-1 bg-white border-2 border-solid border-transparent rounded-xl shadow-sm flex flex-col transition-all duration-200 ease-in-out cursor-pointer hover:shadow-lg'
       >
         <div className='flex pt-[14px] px-[14px] pb-3 h-[66px] items-center gap-3 grow-0 shrink-0'>
           <div className='relative shrink-0'>
@@ -297,17 +299,16 @@ const AppCard = ({ app, onRefresh }: AppCardProps) => {
             </div>
           </div>
         </div>
-        <div
-          className={cn(
-            'grow mb-2 px-[14px] max-h-[72px] text-xs leading-normal text-gray-500 group-hover:line-clamp-2 group-hover:max-h-[36px]',
-            tags.length ? 'line-clamp-2' : 'line-clamp-4',
-          )}
-          title={app.description}
-        >
-          {app.description}
+        <div className='title-wrapper h-[90px] px-[14px] text-xs leading-normal text-gray-500'>
+          <div
+            className={cn(tags.length ? 'line-clamp-2' : 'line-clamp-4', 'group-hover:line-clamp-2')}
+            title={app.description}
+          >
+            {app.description}
+          </div>
         </div>
         <div className={cn(
-          'items-center shrink-0 mt-1 pt-1 pl-[14px] pr-[6px] pb-[6px] h-[42px]',
+          'absolute bottom-1 left-0 right-0 items-center shrink-0 pt-1 pl-[14px] pr-[6px] pb-[6px] h-[42px]',
           tags.length ? 'flex' : '!hidden group-hover:!flex',
         )}>
           {isCurrentWorkspaceEditor && (
@@ -371,6 +372,8 @@ const AppCard = ({ app, onRefresh }: AppCardProps) => {
           appIconBackground={app.icon_background}
           appIconUrl={app.icon_url}
           appDescription={app.description}
+          appMode={app.mode}
+          appUseIconAsAnswerIcon={app.use_icon_as_answer_icon}
           show={showEditModal}
           onConfirm={onEdit}
           onHide={() => setShowEditModal(false)}
