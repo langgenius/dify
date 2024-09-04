@@ -137,7 +137,7 @@ const translation = {
     workspace: 'वर्कस्पेस',
     createWorkspace: 'वर्कस्पेस बनाएं',
     helpCenter: 'सहायता',
-    roadmapAndFeedback: 'प्रतिक्रिया',
+    communityFeedback: 'प्रतिक्रिया',
     community: 'समुदाय',
     about: 'के बारे में',
     logout: 'लॉग आउट',

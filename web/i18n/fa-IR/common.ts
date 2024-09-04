@@ -132,7 +132,7 @@ const translation = {
     workspace: 'فضای کاری',
     createWorkspace: 'ایجاد فضای کاری',
     helpCenter: 'راهنما',
-    roadmapAndFeedback: 'بازخورد',
+    communityFeedback: 'بازخورد',
     community: 'انجمن',
     about: 'درباره',
     logout: 'خروج',

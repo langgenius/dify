@@ -132,7 +132,7 @@ const translation = {
     workspace: 'ワークスペース',
     createWorkspace: 'ワークスペースを作成',
     helpCenter: 'ヘルプ',
-    roadmapAndFeedback: 'フィードバック',
+    communityFeedback: 'フィードバック',
     community: 'コミュニティ',
     about: 'Difyについて',
     logout: 'ログアウト',

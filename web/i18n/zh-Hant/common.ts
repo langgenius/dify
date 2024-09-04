@@ -128,7 +128,7 @@ const translation = {
     workspace: '工作空間',
     createWorkspace: '建立工作空間',
     helpCenter: '幫助文件',
-    roadmapAndFeedback: '使用者反饋',
+    communityFeedback: '使用者反饋',
     community: '社群',
     about: '關於',
     logout: '登出',
