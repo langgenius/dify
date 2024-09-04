@@ -1,6 +1,6 @@
 import type { FC } from 'react'
 import { createPortal } from 'react-dom'
-import { XClose } from '@/app/components/base/icons/src/vender/line/general'
+import { RiCloseLine } from '@remixicon/react'
 
 type VideoPreviewProps = {
   url: string
@@ -27,7 +27,7 @@ const VideoPreview: FC<VideoPreviewProps> = ({
         className='absolute top-6 right-6 flex items-center justify-center w-8 h-8 bg-white/[0.08] rounded-lg backdrop-blur-[2px] cursor-pointer'
         onClick={onCancel}
       >
-        <XClose className='w-4 h-4 text-white'/>
+        <RiCloseLine className='w-4 h-4 text-gray-500'/>
       </div>
     </div>
     ,
