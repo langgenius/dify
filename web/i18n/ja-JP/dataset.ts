@@ -37,7 +37,7 @@ const translation = {
       recommend: 'おすすめ',
     },
     invertedIndex: {
-      title: '逆インデックス',
+      title: '転置インデックス',
       description: '効率的な検索に使用される構造です。各用語が含まれるドキュメントまたはWebページを指すように、用語ごとに整理されています。',
     },
     change: '変更',
