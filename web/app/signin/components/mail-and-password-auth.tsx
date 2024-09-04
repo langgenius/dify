@@ -49,10 +49,18 @@ export default function MailAndPasswordAuth({ isInvite }: MailAndPasswordAuthPro
         router.replace('/apps')
       }
       else {
-        Toast.notify({
-          type: 'error',
-          message: res.data,
-        })
+        if (res.message === 'account_not_found') {
+          const params = new URLSearchParams()
+          params.append('email', encodeURIComponent(email))
+          params.append('token', encodeURIComponent(res.data))
+          router.push(`/reset-password/check-code?${params.toString()}`)
+        }
+        else {
+          Toast.notify({
+            type: 'error',
+            message: res.data,
+          })
+        }
       }
     }
     finally {
