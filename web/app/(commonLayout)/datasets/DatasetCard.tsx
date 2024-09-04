@@ -12,6 +12,9 @@ import { checkIsUsedInApp, deleteDataset } from '@/service/datasets'
 import type { DataSet } from '@/models/datasets'
 import Tooltip from '@/app/components/base/tooltip'
 import { Folder } from '@/app/components/base/icons/src/vender/solid/files'
+import { Lock01 } from '@/app/components/base/icons/src/vender/solid/security'
+import { Users01 } from '@/app/components/base/icons/src/vender/solid/users'
+import { Globe01 } from '@/app/components/base/icons/src/vender/line/mapsAndTravel'
 import type { HtmlContentProps } from '@/app/components/base/popover'
 import CustomPopover from '@/app/components/base/popover'
 import Divider from '@/app/components/base/divider'
@@ -117,10 +120,21 @@ const DatasetCard = ({
       >
         <div className='flex pt-[14px] px-[14px] pb-3 h-[66px] items-center gap-3 grow-0 shrink-0'>
           <div className={cn(
-            'shrink-0 flex items-center justify-center p-2.5 bg-[#F5F8FF] rounded-md border-[0.5px] border-[#E0EAFF]',
+            'relative shrink-0 flex items-center justify-center p-2.5 bg-[#F5F8FF] rounded-md border-[0.5px] border-[#E0EAFF]',
             !dataset.embedding_available && 'opacity-50 hover:opacity-100',
           )}>
             <Folder className='w-5 h-5 text-[#444CE7]' />
+            <span className='absolute bottom-[-3px] right-[-3px] w-4 h-4 p-0.5 bg-white rounded border-[0.5px] border-[rgba(0,0,0,0.02)] shadow-sm'>
+              {dataset.permission === 'only_me' && (
+                <Lock01 className='w-3 h-3 text-[#444CE7]' />
+              )}
+              {dataset.permission === 'partial_members' && (
+                <Users01 className='w-3 h-3 text-[#444CE7]' />
+              )}
+              {dataset.permission === 'all_team_members' && (
+                <Globe01 className='w-3 h-3 text-[#444CE7]' />
+              )}
+            </span>
           </div>
           <div className='grow w-0 py-[1px]'>
             <div className='flex items-center text-sm leading-5 font-semibold text-gray-800'>
