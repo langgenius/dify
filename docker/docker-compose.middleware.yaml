@@ -19,6 +19,11 @@ services:
       - ./volumes/db/data:/var/lib/postgresql/data
     ports:
       - "${EXPOSE_POSTGRES_PORT:-5432}:5432"
+    healthcheck:
+      test: [ "CMD", "pg_isready" ]
+      interval: 1s
+      timeout: 3s
+      retries: 30
 
   # The redis cache.
   redis:
@@ -31,6 +36,8 @@ services:
     command: redis-server --requirepass difyai123456
     ports:
       - "${EXPOSE_REDIS_PORT:-6379}:6379"
+    healthcheck:
+      test: [ "CMD", "redis-cli", "ping" ]
 
   # The DifySandbox
   sandbox:
