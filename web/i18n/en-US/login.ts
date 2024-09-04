@@ -81,7 +81,7 @@ const translation = {
     verificationCode: 'Verification code',
     verificationCodePlaceholder: 'Enter 6-digit code',
     verify: 'Verify',
-    didNotReceiveCode: 'Didn\'t receive the code?',
+    didNotReceiveCode: 'Didn\'t receive the code? ',
     resend: 'Resend',
     useAnotherMethod: 'Use another method',
     emptyCode: 'Code is required',
