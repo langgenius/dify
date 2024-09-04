@@ -118,6 +118,7 @@ const Apps = ({
   const [isShowCreateModal, setIsShowCreateModal] = React.useState(false)
   const onCreate: CreateAppModalProps['onConfirm'] = async ({
     name,
+    icon_type,
     icon,
     icon_background,
     description,
@@ -129,6 +130,7 @@ const Apps = ({
       const app = await importApp({
         data: export_data,
         name,
+        icon_type,
         icon,
         icon_background,
         description,
@@ -215,8 +217,10 @@ const Apps = ({
       </div>
       {isShowCreateModal && (
         <CreateAppModal
+          appIconType={currApp?.app.icon_type || 'emoji'}
           appIcon={currApp?.app.icon || ''}
           appIconBackground={currApp?.app.icon_background || ''}
+          appIconUrl={currApp?.app.icon_url}
           appName={currApp?.app.name || ''}
           appDescription={currApp?.app.description || ''}
           show={isShowCreateModal}

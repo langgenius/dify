@@ -116,7 +116,11 @@ const translation = {
     tokenPS: 'Token/s',
     totalMessages: {
       title: 'Mesaje totale',
-      explanation: 'Număr de interacțiuni AI zilnice; exclud proiectarea și depanarea promptelor.',
+      explanation: 'Numărul de interacțiuni zilnice cu IA.',
+    },
+    totalConversations: {
+      title: 'Total Conversații',
+      explanation: 'Numărul de conversații zilnice cu IA; ingineria/depanarea prompturilor exclusă.',
     },
     activeUsers: {
       title: 'Utilizatori activi',

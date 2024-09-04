@@ -63,7 +63,7 @@ class QuestionClassifierNode(LLMNode):
         )
 
         # handle invoke result
-        result_text, usage = self._invoke_llm(
+        result_text, usage, finish_reason = self._invoke_llm(
             node_data_model=node_data.model,
             model_instance=model_instance,
             prompt_messages=prompt_messages,
@@ -89,11 +89,11 @@ class QuestionClassifierNode(LLMNode):
             process_data = {
                 'model_mode': model_config.mode,
                 'prompts': PromptMessageUtil.prompt_messages_to_prompt_for_saving(
-                    model_mode=model_config.mode, prompt_messages=prompt_messages
+                    model_mode=model_config.mode,
+                    prompt_messages=prompt_messages
                 ),
                 'usage': jsonable_encoder(usage),
-                'model_provider': model_config.provider,
-                'model_name': model_config.model,
+                'finish_reason': finish_reason
             }
             outputs = {
                 'class_name': category_name

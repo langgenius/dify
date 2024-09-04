@@ -67,9 +67,11 @@ const translation = {
   editAppTitle: 'Modifier les informations de l\'application',
   editDone: 'Informations sur l\'application mises à jour',
   editFailed: 'Échec de la mise à jour des informations de l\'application',
-  emoji: {
+  iconPicker: {
     ok: 'OK',
     cancel: 'Annuler',
+    emoji: 'Emoji',
+    image: 'Image',
   },
   switch: 'Passer à l\'orchestration de flux de travail',
   switchTipStart: 'Une nouvelle copie de l\'application sera créée pour vous, et la nouvelle copie passera à l\'orchestration de flux de travail. La nouvelle copie ne permettra pas le ',

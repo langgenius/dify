@@ -72,9 +72,11 @@ const translation = {
   editAppTitle: 'アプリ情報を編集する',
   editDone: 'アプリ情報が更新されました',
   editFailed: 'アプリ情報の更新に失敗しました',
-  emoji: {
+  iconPicker: {
     ok: 'OK',
     cancel: 'キャンセル',
+    emoji: '絵文字',
+    image: '画像',
   },
   switch: 'ワークフロー オーケストレートに切り替える',
   switchTipStart: '新しいアプリのコピーが作成され、新しいコピーがワークフロー オーケストレートに切り替わります。新しいコピーは ',

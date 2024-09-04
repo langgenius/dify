@@ -48,7 +48,7 @@ def encrypt(text, public_key):
 def get_decrypt_decoding(tenant_id):
     filepath = "privkeys/{tenant_id}".format(tenant_id=tenant_id) + "/private.pem"
 
-    cache_key = 'tenant_privkey:{hash}'.format(hash=hashlib.sha3_256(filepath.encode()).hexdigest())
+    cache_key = "tenant_privkey:{hash}".format(hash=hashlib.sha3_256(filepath.encode()).hexdigest())
     private_key = redis_client.get(cache_key)
     if not private_key:
         try:
@@ -66,12 +66,12 @@ def get_decrypt_decoding(tenant_id):
 
 def decrypt_token_with_decoding(encrypted_text, rsa_key, cipher_rsa):
     if encrypted_text.startswith(prefix_hybrid):
-        encrypted_text = encrypted_text[len(prefix_hybrid):]
+        encrypted_text = encrypted_text[len(prefix_hybrid) :]
 
-        enc_aes_key = encrypted_text[:rsa_key.size_in_bytes()]
-        nonce = encrypted_text[rsa_key.size_in_bytes():rsa_key.size_in_bytes() + 16]
-        tag = encrypted_text[rsa_key.size_in_bytes() + 16:rsa_key.size_in_bytes() + 32]
-        ciphertext = encrypted_text[rsa_key.size_in_bytes() + 32:]
+        enc_aes_key = encrypted_text[: rsa_key.size_in_bytes()]
+        nonce = encrypted_text[rsa_key.size_in_bytes() : rsa_key.size_in_bytes() + 16]
+        tag = encrypted_text[rsa_key.size_in_bytes() + 16 : rsa_key.size_in_bytes() + 32]
+        ciphertext = encrypted_text[rsa_key.size_in_bytes() + 32 :]
 
         aes_key = cipher_rsa.decrypt(enc_aes_key)
 

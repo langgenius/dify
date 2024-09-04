@@ -16,7 +16,7 @@ Use `docker-compose --profile certbot up` to use this features.
    CERTBOT_DOMAIN=your_domain.com
    CERTBOT_EMAIL=example@your_domain.com
    ```
-   excecute command:
+   execute command:
    ```shell
    sudo docker network prune
    sudo docker-compose --profile certbot up --force-recreate -d
@@ -30,7 +30,7 @@ Use `docker-compose --profile certbot up` to use this features.
    ```properties
    NGINX_HTTPS_ENABLED=true
    ```
-   excecute command:
+   execute command:
    ```shell
    sudo docker-compose --profile certbot up -d --no-deps --force-recreate nginx
    ```

@@ -4,8 +4,9 @@ const translation = {
   dateTimeFormat: 'MM/DD/YYYY hh:mm A',
   table: {
     header: {
-      time: 'Час',
-      endUser: 'Кінцевий Користувач',
+      updatedTime: 'Час оновлення',
+      time: 'Час створення',
+      endUser: 'Кінцевий Користувач або Обліковий Запис',
       input: 'Введення',
       output: 'Виведення',
       summary: 'Заголовок',
@@ -16,7 +17,7 @@ const translation = {
       status: 'СТАТУС',
       runtime: 'ЧАС ВИКОНАННЯ',
       tokens: 'ТОКЕНИ',
-      user: 'КІНЦЕВИЙ КОРИСТУВАЧ',
+      user: 'КІНЦЕВИЙ КОРИСТУВАЧ АБО ОБЛІКОВИЙ ЗАПИС',
       version: 'ВЕРСІЯ',
     },
     pagination: {
@@ -69,6 +70,9 @@ const translation = {
       annotated: 'Покращення з Анотацією ({{count}} елементів)',
       not_annotated: 'Без Анотації',
     },
+    sortBy: 'Сортувати за:',
+    descending: 'спадаючий',
+    ascending: 'зростаючий',
   },
   workflowTitle: 'Журнали Робочого Процесу',
   workflowSubtitle: 'Журнал зареєстрував роботу Автоматизації.',

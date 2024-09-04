@@ -117,6 +117,7 @@ export type CompletionConversationGeneralDetail = {
   from_account_id: string
   read_at: Date
   created_at: number
+  updated_at: number
   annotation: Annotation
   user_feedback_stats: {
     like: number

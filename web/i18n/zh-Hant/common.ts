@@ -60,6 +60,10 @@ const translation = {
       ukUA: '烏克蘭語',
       viVN: '越南語',
       plPL: '波蘭語',
+      roRO: '羅馬尼亞語',
+      hiIN: '印地語',
+      trTR: '土耳其語',
+      faIR: '波斯語',
     },
   },
   unit: {
@@ -124,7 +128,8 @@ const translation = {
     workspace: '工作空間',
     createWorkspace: '建立工作空間',
     helpCenter: '幫助文件',
-    roadmapAndFeedback: '使用者反饋',
+    communityFeedback: '使用者反饋',
+    roadmap: '路線圖',
     community: '社群',
     about: '關於',
     logout: '登出',
@@ -376,7 +381,7 @@ const translation = {
   apiBasedExtension: {
     title: 'API 擴充套件提供了一個集中式的 API 管理，在此統一新增 API 配置後，方便在 Dify 上的各類應用中直接使用。',
     link: '瞭解如何開發您自己的 API 擴充套件。',
-    linkUrl: 'https://docs.dify.ai/v/zh-hans/advanced/api_based_extension',
+    linkUrl: 'https://docs.dify.ai/v/zh-hans/guides/extension/api-based-extension',
     add: '新增 API 擴充套件',
     selector: {
       title: 'API 擴充套件',
