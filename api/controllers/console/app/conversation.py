@@ -173,11 +173,9 @@ class ChatConversationApi(Resource):
 
         if args["keyword"]:
             keyword_filter = "%{}%".format(args["keyword"])
-            query = (
-                query.join(
-                    Message,
-                    Message.conversation_id == Conversation.id,
-                )
+            message_subquery = (
+                db.select(Message.conversation_id)
+                .join(Conversation, Conversation.id == Message.conversation_id)
                 .join(subquery, subquery.c.conversation_id == Conversation.id)
                 .filter(
                     or_(
@@ -186,9 +184,12 @@ class ChatConversationApi(Resource):
                         Conversation.name.ilike(keyword_filter),
                         Conversation.introduction.ilike(keyword_filter),
                         subquery.c.from_end_user_session_id.ilike(keyword_filter),
-                    ),
+                    )
                 )
+                .distinct()
+                .subquery()
             )
+            query = query.join(message_subquery, message_subquery.c.conversation_id == Conversation.id)
 
         account = current_user
         timezone = pytz.timezone(account.timezone)
