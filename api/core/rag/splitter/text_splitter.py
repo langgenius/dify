@@ -12,7 +12,7 @@ from typing import (
     Optional,
     TypedDict,
     TypeVar,
-    Union, List,
+    Union,
 )
 
 from core.rag.models.document import BaseDocumentTransformer, Document
@@ -109,7 +109,7 @@ class TextSplitter(BaseDocumentTransformer, ABC):
         else:
             return text
 
-    def _merge_splits(self, splits: Iterable[str], separator: str, lengths: List[int]) -> list[str]:
+    def _merge_splits(self, splits: Iterable[str], separator: str, lengths: list[int]) -> list[str]:
         # We now want to combine these smaller pieces into medium size
         # chunks to send to the LLM.
         separator_len = self._length_function(separator)
