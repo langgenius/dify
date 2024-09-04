@@ -30,19 +30,19 @@ const translation = {
   overview: {
     title: '概要',
     appInfo: {
-      explanation: '使いやすいAI WebApp',
+      explanation: '使いやすいAI Webアプリ',
       accessibleAddress: '公開URL',
       preview: 'プレビュー',
       regenerate: '再生成',
       regenerateNotice: '公開URLを再生成しますか？',
-      preUseReminder: '続行する前にWebAppを有効にしてください。',
+      preUseReminder: '続行する前にWebアプリを有効にしてください。',
       settings: {
         entry: '設定',
-        title: 'WebApp設定',
-        webName: 'WebApp名',
-        webDesc: 'WebAppの説明',
+        title: 'Webアプリの設定',
+        webName: 'Webアプリの名前',
+        webDesc: 'Webアプリの説明',
         webDescTip: 'このテキストはクライアント側に表示され、アプリケーションの使用方法の基本的なガイダンスを提供します。',
-        webDescPlaceholder: 'WebAppの説明を入力してください',
+        webDescPlaceholder: 'Webアプリの説明を入力してください',
         language: '言語',
         workflow: {
           title: 'ワークフローステップ',
@@ -67,10 +67,10 @@ const translation = {
           customDisclaimerTip: 'アプリケーションの使用に関する免責事項を提供します。',
         },
         sso: {
-          title: 'WebアプリSSO',
-          tooltip: '管理者に問い合わせて、WebApp SSO を有効にします',
+          title: 'WebアプリのSSO',
+          tooltip: '管理者に問い合わせて、WebアプリのSSOを有効にします',
           label: 'SSO認証',
-          description: 'すべてのユーザーは、WebAppを使用する前にSSOでログインする必要があります',
+          description: 'すべてのユーザーは、Webアプリを使用する前にSSOでログインする必要があります',
         },
       },
       embedded: {
@@ -91,8 +91,8 @@ const translation = {
       customize: {
         way: '方法',
         entry: 'カスタマイズ',
-        title: 'AI WebAppのカスタマイズ',
-        explanation: 'シナリオとスタイルのニーズに合わせてWeb Appのフロントエンドをカスタマイズできます。',
+        title: 'AI Webアプリのカスタマイズ',
+        explanation: 'シナリオとスタイルのニーズに合わせてWebアプリのフロントエンドをカスタマイズできます。',
         way1: {
           name: 'クライアントコードをフォークして修正し、Vercelにデプロイします（推奨）',
           step1: 'クライアントコードをフォークして修正します',
