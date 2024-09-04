@@ -37,7 +37,7 @@ class SegmentApi(DatasetApiResource):
         if not document:
             raise NotFound("Document not found.")
         if document.indexing_status != "completed":
-            raise NotFound("Document is already completed.")
+            raise NotFound("Document is not completed.")
         if not document.enabled:
             raise NotFound("Document is disabled.")
         # check embedding model setting
