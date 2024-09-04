@@ -209,7 +209,7 @@ const translation = {
     you: '（你）',
     builderTip: '可以构建和编辑自己的应用程序',
     setBuilder: 'Set as builder （设置为构建器）',
-    builder: '建筑工人',
+    builder: '构建器',
   },
   integrations: {
     connected: '登录方式',
