@@ -63,6 +63,13 @@ const NodePanel: FC<Props> = ({
       return `${parseFloat((tokens / 1000000).toFixed(3))}M`
   }
 
+  const getCount = (iteration_curr_length: number | undefined, iteration_length: number) => {
+    if ((iteration_curr_length && iteration_curr_length < iteration_length) || !iteration_length)
+      return iteration_curr_length
+
+    return iteration_length
+  }
+
   useEffect(() => {
     setCollapseState(!nodeInfo.expand)
   }, [nodeInfo.expand, setCollapseState])
@@ -127,7 +134,7 @@ const NodePanel: FC<Props> = ({
                   onClick={handleOnShowIterationDetail}
                 >
                   <Iteration className='w-4 h-4 text-components-button-tertiary-text flex-shrink-0' />
-                  <div className='flex-1 text-left system-sm-medium text-components-button-tertiary-text'>{t('workflow.nodes.iteration.iteration', { count: nodeInfo.metadata?.iterator_index || nodeInfo.details?.length })}</div>
+                  <div className='flex-1 text-left system-sm-medium text-components-button-tertiary-text'>{t('workflow.nodes.iteration.iteration', { count: getCount(nodeInfo.details?.length, nodeInfo.metadata?.iterator_length) })}</div>
                   {justShowIterationNavArrow
                     ? (
                       <RiArrowRightSLine className='w-4 h-4 text-components-button-tertiary-text flex-shrink-0' />

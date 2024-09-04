@@ -371,11 +371,28 @@ export const useChat = (
           if (isInIteration) {
             const tracing = responseItem.workflowProcess!.tracing!
             const iterations = tracing[tracing.length - 1]
-            const currIteration = iterations.details![iterations.details!.length - 1]
-            currIteration[currIteration.length - 1] = {
-              ...data,
-              status: NodeRunningStatus.Succeeded,
-            } as any
+            if (iterations && iterations.details) {
+              const iterationIndex = data.execution_metadata?.iteration_index || 0
+              if (!iterations.details[iterationIndex])
+                iterations.details[iterationIndex] = []
+              const currIteration = iterations.details[iterationIndex]
+              const nodeIndex = currIteration.findIndex(node =>
+                node.node_id === data.node_id,
+              )
+              if (data.status === NodeRunningStatus.Succeeded) {
+                if (nodeIndex !== -1) {
+                  currIteration[nodeIndex] = {
+                    ...currIteration[nodeIndex],
+                    ...data,
+                  } as any
+                }
+                else {
+                  currIteration.push({
+                    ...data,
+                  } as any)
+                }
+              }
+            }
             handleUpdateChatList(produce(chatListRef.current, (draft) => {
               const currentIndex = draft.length - 1
               draft[currentIndex] = responseItem
