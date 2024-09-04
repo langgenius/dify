@@ -385,7 +385,15 @@ export const useNodesInteractions = () => {
       handleSyncWorkflowDraft()
       saveStateToHistory(WorkflowHistoryEvent.NodeConnect)
     }
-  }, [getNodesReadOnly, store, handleSyncWorkflowDraft, saveStateToHistory, checkNestedParallelLimit])
+    else {
+      const {
+        setConnectingNodePayload,
+        setEnteringNodePayload,
+      } = workflowStore.getState()
+      setConnectingNodePayload(undefined)
+      setEnteringNodePayload(undefined)
+    }
+  }, [getNodesReadOnly, store, workflowStore, handleSyncWorkflowDraft, saveStateToHistory, checkNestedParallelLimit])
 
   const handleNodeConnectStart = useCallback<OnConnectStart>((_, { nodeId, handleType, handleId }) => {
     if (getNodesReadOnly())
