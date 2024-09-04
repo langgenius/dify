@@ -15,11 +15,16 @@ const AudioPlayer: React.FC<AudioPlayerProps> = ({ src }) => {
   const canvasRef = useRef<HTMLCanvasElement>(null)
   const [hasStartedPlaying, setHasStartedPlaying] = useState(false)
   const [hoverTime, setHoverTime] = useState(0)
+  const [isAudioAvailable, setIsAudioAvailable] = useState(true)
 
   useEffect(() => {
     const audio = audioRef.current
     if (!audio)
       return
+
+    const handleError = () => {
+      setIsAudioAvailable(false)
+    }
 
     const setAudioData = () => {
       setDuration(audio.duration)
@@ -42,6 +47,7 @@ const AudioPlayer: React.FC<AudioPlayerProps> = ({ src }) => {
     audio.addEventListener('timeupdate', setAudioTime)
     audio.addEventListener('progress', handleProgress)
     audio.addEventListener('ended', handleEnded)
+    audio.addEventListener('error', handleError)
 
     // Preload audio metadata
     audio.load()
@@ -55,44 +61,47 @@ const AudioPlayer: React.FC<AudioPlayerProps> = ({ src }) => {
       audio.removeEventListener('timeupdate', setAudioTime)
       audio.removeEventListener('progress', handleProgress)
       audio.removeEventListener('ended', handleEnded)
+      audio.removeEventListener('error', handleError)
       clearTimeout(timer)
     }
   }, [src])
 
   const generateWaveformData = async (audioSrc: string) => {
-    const audioContext = new (window.AudioContext || (window as any).webkitAudioContext)()
-    const response = await fetch(audioSrc)
-    const arrayBuffer = await response.arrayBuffer()
-    const audioBuffer = await audioContext.decodeAudioData(arrayBuffer)
+    try {
+      const audioContext = new (window.AudioContext || (window as any).webkitAudioContext)()
+      const response = await fetch(audioSrc)
+      const arrayBuffer = await response.arrayBuffer()
+      const audioBuffer = await audioContext.decodeAudioData(arrayBuffer)
 
-    const channelData = audioBuffer.getChannelData(0)
+      const channelData = audioBuffer.getChannelData(0)
 
-    // Calculate the number of samples we want to take from the channel data.
-    const samples = Math.min(65, channelData.length)
+      // Calculate the number of samples we want to take from the channel data.
+      const samples = Math.min(65, channelData.length)
 
-    // Calculate the size of each sample block.
-    const blockSize = Math.floor(channelData.length / samples)
+      // Calculate the size of each sample block.
+      const blockSize = Math.floor(channelData.length / samples)
 
-    // Create an array to hold the waveform data.
-    const waveformData: number[] = []
+      // Create an array to hold the waveform data.
+      const waveformData: number[] = []
 
-    for (let i = 0; i < samples; i++) {
-      const blockStart = blockSize * i
-      let sum = 0
+      for (let i = 0; i < samples; i++) {
+        const blockStart = blockSize * i
+        let sum = 0
 
-      for (let j = blockStart; j < blockStart + blockSize; j++)
-        sum += Math.abs(channelData[j])
+        for (let j = blockStart; j < blockStart + blockSize; j++)
+          sum += Math.abs(channelData[j])
 
-      // Multiply the average by a constant factor to increase its size.
-      waveformData.push((sum / blockSize) * 4) // Increase this factor as needed
+        // Multiply the average by a constant factor to increase its size.
+        waveformData.push((sum / blockSize) * 4) // Increase this factor as needed
+      }
+      setWaveformData(waveformData)
     }
-
-    setWaveformData(waveformData)
+    catch (error) { setIsAudioAvailable(false) }
   }
 
   const togglePlay = useCallback(() => {
     const audio = audioRef.current
-    if (audio) {
+    if (audio && isAudioAvailable) {
       if (isPlaying) {
         setHasStartedPlaying(false)
         audio.pause()
@@ -106,8 +115,9 @@ const AudioPlayer: React.FC<AudioPlayerProps> = ({ src }) => {
     }
     else {
       console.log('Audio element not found')
+      setIsAudioAvailable(false)
     }
-  }, [isPlaying])
+  }, [isAudioAvailable, isPlaying])
 
   const handleCanvasInteraction = useCallback((e: React.MouseEvent | React.TouchEvent) => {
     e.preventDefault()
@@ -225,7 +235,7 @@ const AudioPlayer: React.FC<AudioPlayerProps> = ({ src }) => {
   return (
     <div className={styles.audioPlayer}>
       <audio ref={audioRef} src={src} preload="auto" />
-      <button className={styles.playButton} onClick={togglePlay}>
+      <button className={styles.playButton} onClick={togglePlay} disabled={!isAudioAvailable}>
         {isPlaying
           ? (
             <svg viewBox="0 0 24 24" width="15" height="15">
@@ -240,7 +250,7 @@ const AudioPlayer: React.FC<AudioPlayerProps> = ({ src }) => {
           )}
       </button>
       <div className={styles.audioControls}>
-        <div className={styles.progressBarContainer}>
+        <div className={styles.progressBarContainer} hidden={!isAudioAvailable}>
           <canvas
             ref={canvasRef}
             className={styles.waveform}
@@ -248,10 +258,10 @@ const AudioPlayer: React.FC<AudioPlayerProps> = ({ src }) => {
             onMouseMove={handleMouseMove}
             onMouseDown={handleCanvasInteraction}
           />
-          <div className={styles.currentTime} style={{ left: `${(currentTime / duration) * 88}%`, bottom: '29px' }}>
+          <div className={styles.currentTime} style={{ left: `${(currentTime / duration) * 88}%`, bottom: '29px' }} hidden={!isAudioAvailable}>
             {formatTime(currentTime)}
           </div>
-          <div className={styles.timeDisplay}>
+          <div className={styles.timeDisplay} hidden={!isAudioAvailable}>
             <span className={styles.duration}>{formatTime(duration)}</span>
           </div>
         </div>
