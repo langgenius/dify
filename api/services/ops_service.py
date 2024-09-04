@@ -63,7 +63,10 @@ class OpsService:
             return {"error": "Invalid Credentials"}
 
         # get project key
-        project_key = OpsTraceManager.get_trace_config_project_key(tracing_config, tracing_provider)
+        if tracing_provider == "langfuse":
+            project_key = OpsTraceManager.get_trace_config_project_key(tracing_config, tracing_provider)
+        else:
+            project_key = None
 
         # check if trace config already exists
         trace_config_data: TraceAppConfig = (
