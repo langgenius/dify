@@ -288,8 +288,8 @@ class ChatConversationDetailApi(Resource):
 
         return {"result": "success"}, 204
 
-class ChatConversationExportApi(Resource):
 
+class ChatConversationExportApi(Resource):
     @setup_required
     @login_required
     @account_initialization_required
@@ -385,15 +385,9 @@ class ChatConversationExportApi(Resource):
                         "answer": row.answer,
                         "message_tokens": row.message_tokens,
                         "answer_tokens": row.answer_tokens,
-                        "total_price": (
-                            float(row.total_price)
-                            if row.total_price is not None
-                            else None
-                        ),
+                        "total_price": (float(row.total_price) if row.total_price is not None else None),
                         "currency": row.currency,
-                        "created_at": (
-                            str(row.created_at) if row.created_at is not None else None
-                        ),
+                        "created_at": (str(row.created_at) if row.created_at is not None else None),
                         "message_metadata": row.message_metadata,
                         "user_rating": row.user_rating,
                         "admin_rating": row.admin_rating,
@@ -403,6 +397,7 @@ class ChatConversationExportApi(Resource):
         csv_str = _generate_csv(response_data)
 
         return {"data": csv_str}
+
 
 api.add_resource(CompletionConversationApi, "/apps/<uuid:app_id>/completion-conversations")
 api.add_resource(CompletionConversationDetailApi, "/apps/<uuid:app_id>/completion-conversations/<uuid:conversation_id>")
@@ -427,6 +422,7 @@ def _get_conversation(app_model, conversation_id):
         db.session.commit()
 
     return conversation
+
 
 def _generate_csv(data):
     df = pd.DataFrame(data)
