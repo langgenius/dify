@@ -40,7 +40,6 @@ const ChatItem: FC<ChatItemProps> = ({
     modelConfig,
     appId,
     inputs,
-    visionConfig,
     collectionList,
   } = useDebugConfigurationContext()
   const { textGenerationModelList } = useProviderContext()
@@ -99,7 +98,7 @@ const ChatItem: FC<ChatItemProps> = ({
       model_config: configData,
     }
 
-    if (visionConfig.enabled && files?.length && supportVision)
+    if ((config.file_upload as any).enabled && files?.length && supportVision)
       data.files = files
 
     handleSend(
@@ -110,7 +109,7 @@ const ChatItem: FC<ChatItemProps> = ({
         onGetSuggestedQuestions: (responseItemId, getAbortController) => fetchSuggestedQuestions(appId, responseItemId, getAbortController),
       },
     )
-  }, [appId, config, handleSend, inputs, modelAndParameter, textGenerationModelList, visionConfig.enabled])
+  }, [appId, config, handleSend, inputs, modelAndParameter, textGenerationModelList])
 
   const { eventEmitter } = useEventEmitterContextContext()
   eventEmitter?.useSubscription((v: any) => {

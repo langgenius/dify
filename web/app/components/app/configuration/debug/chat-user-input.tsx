@@ -49,6 +49,7 @@ const ChatUserInput = ({
   return (
     <div className={cn('bg-components-panel-on-panel-item-bg rounded-xl border-[0.5px] border-components-panel-border-subtle shadow-xs z-[1]')}>
       <div className='px-4 pt-3 pb-4'>
+        {/* ##TODO## file_upload */}
         {promptVariables.map(({ key, name, type, options, max_length, required }, index) => (
           <div
             key={key}

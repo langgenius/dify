@@ -3,7 +3,7 @@ import type { FC } from 'react'
 import useSWR from 'swr'
 import { useTranslation } from 'react-i18next'
 import React, { useCallback, useEffect, useRef, useState } from 'react'
-import { setAutoFreeze } from 'immer'
+import produce, { setAutoFreeze } from 'immer'
 import { useBoolean } from 'ahooks'
 import {
   RiAddLine,
@@ -34,7 +34,7 @@ import Button from '@/app/components/base/button'
 import { RefreshCcw01 } from '@/app/components/base/icons/src/vender/line/arrows'
 import TooltipPlus from '@/app/components/base/tooltip'
 import ActionButton, { ActionButtonState } from '@/app/components/base/action-button'
-import type { ModelConfig as BackendModelConfig, VisionFile } from '@/types/app'
+import type { ModelConfig as BackendModelConfig, VisionFile, VisionSettings } from '@/types/app'
 import { promptVariablesToUserInputsForm } from '@/utils/model-config'
 import TextGeneration from '@/app/components/app/text-generate/item'
 import { IS_CE_EDITION } from '@/config'
@@ -48,7 +48,7 @@ import { useProviderContext } from '@/context/provider-context'
 import AgentLogModal from '@/app/components/base/agent-log-modal'
 import PromptLogModal from '@/app/components/base/prompt-log-modal'
 import { useStore as useAppStore } from '@/app/components/app/store'
-import { useFeatures } from '@/app/components/base/features/hooks'
+import { useFeatures, useFeaturesStore } from '@/app/components/base/features/hooks'
 
 type IDebug = {
   isAPIKeySet: boolean
@@ -84,8 +84,6 @@ const Debug: FC<IDebug> = ({
     speechToTextConfig,
     textToSpeechConfig,
     citationConfig,
-    // moderationConfig,
-    // moreLikeThisConfig,
     formattingChanged,
     setFormattingChanged,
     dataSets,
@@ -93,8 +91,6 @@ const Debug: FC<IDebug> = ({
     completionParams,
     hasSetContextVar,
     datasetConfigs,
-    visionConfig,
-    setVisionConfig,
   } = useContext(ConfigContext)
   const { eventEmitter } = useEventEmitterContextContext()
   const { data: text2speechDefaultModel } = useDefaultModel(ModelTypeEnum.textEmbedding)
@@ -203,6 +199,7 @@ const Debug: FC<IDebug> = ({
   const [completionRes, setCompletionRes] = useState('')
   const [messageId, setMessageId] = useState<string | null>(null)
   const features = useFeatures(s => s.features)
+  const featuresStore = useFeaturesStore()
 
   const sendTextCompletion = async () => {
     if (isResponding) {
@@ -252,10 +249,7 @@ const Debug: FC<IDebug> = ({
       more_like_this: features.moreLikeThis as any,
       sensitive_word_avoidance: features.moderation as any,
       text_to_speech: features.text2speech as any,
-      // ##TODO## file_upload
-      file_upload: {
-        image: visionConfig,
-      },
+      file_upload: features.file as any,
       opening_statement: introduction,
       suggested_questions_after_answer: suggestedQuestionsAfterAnswerConfig,
       speech_to_text: speechToTextConfig,
@@ -272,7 +266,7 @@ const Debug: FC<IDebug> = ({
       model_config: postModelConfig,
     }
 
-    if (visionConfig.enabled && completionFiles && completionFiles?.length > 0) {
+    if ((features.file as any).enabled && completionFiles && completionFiles?.length > 0) {
       data.files = completionFiles.map((item) => {
         if (item.transfer_method === TransferMethod.local_file) {
           return {
@@ -348,7 +342,7 @@ const Debug: FC<IDebug> = ({
     )
   }
 
-  const handleVisionConfigInMultipleModel = () => {
+  const handleVisionConfigInMultipleModel = useCallback(() => {
     if (debugWithMultipleModel && mode) {
       const supportedVision = multipleModelConfigs.some((modelConfig) => {
         const currentProvider = textGenerationModelList.find(modelItem => modelItem.provider === modelConfig.provider)
@@ -356,25 +350,24 @@ const Debug: FC<IDebug> = ({
 
         return currentModel?.features?.includes(ModelFeatureEnum.vision)
       })
+      const {
+        features,
+        setFeatures,
+      } = featuresStore!.getState()
 
-      if (supportedVision) {
-        setVisionConfig({
-          ...visionConfig,
-          enabled: true,
-        }, true)
-      }
-      else {
-        setVisionConfig({
-          ...visionConfig,
-          enabled: false,
-        }, true)
-      }
+      const newFeatures = produce(features, (draft) => {
+        draft.file = {
+          ...draft.file,
+          enabled: supportedVision,
+        }
+      })
+      setFeatures(newFeatures)
     }
-  }
+  }, [debugWithMultipleModel, featuresStore, mode, multipleModelConfigs, textGenerationModelList])
 
   useEffect(() => {
     handleVisionConfigInMultipleModel()
-  }, [multipleModelConfigs, mode])
+  }, [multipleModelConfigs, mode, handleVisionConfigInMultipleModel])
 
   const { currentLogItem, setCurrentLogItem, showPromptLogModal, setShowPromptLogModal, showAgentLogModal, setShowAgentLogModal } = useAppStore(useShallow(state => ({
     currentLogItem: state.currentLogItem,
@@ -455,7 +448,7 @@ const Debug: FC<IDebug> = ({
             onSend={handleSendTextCompletion}
             inputs={inputs}
             visionConfig={{
-              ...visionConfig,
+              ...features.file! as VisionSettings,
               image_file_size_limit: fileUploadConfigResponse?.image_file_size_limit,
             }}
             onVisionFilesChange={setCompletionFiles}

@@ -39,9 +39,9 @@ const DebugWithSingleModel = forwardRef<DebugWithSingleModelRefType, DebugWithSi
     modelConfig,
     appId,
     inputs,
-    visionConfig,
     collectionList,
     completionParams,
+    isShowVisionConfig,
   } = useDebugConfigurationContext()
   const { textGenerationModelList } = useProviderContext()
   const features = useFeatures(s => s.features)
@@ -105,7 +105,7 @@ const DebugWithSingleModel = forwardRef<DebugWithSingleModelRefType, DebugWithSi
       model_config: configData,
     }
 
-    if (visionConfig.enabled && files?.length && supportVision)
+    if ((config.file_upload as any)?.enabled && files?.length && supportVision)
       data.files = files
 
     handleSend(
@@ -116,7 +116,7 @@ const DebugWithSingleModel = forwardRef<DebugWithSingleModelRefType, DebugWithSi
         onGetSuggestedQuestions: (responseItemId, getAbortController) => fetchSuggestedQuestions(appId, responseItemId, getAbortController),
       },
     )
-  }, [appId, checkCanSend, completionParams, config, handleSend, inputs, modelConfig, textGenerationModelList, visionConfig.enabled])
+  }, [appId, checkCanSend, completionParams, config, handleSend, inputs, modelConfig, textGenerationModelList])
 
   const allToolIcons = useMemo(() => {
     const icons: Record<string, any> = {}
@@ -142,6 +142,7 @@ const DebugWithSingleModel = forwardRef<DebugWithSingleModelRefType, DebugWithSi
       chatContainerClassName='px-3 pt-6'
       chatFooterClassName='px-3 pt-10 pb-0'
       showFeatureBar
+      showFileUpload={isShowVisionConfig}
       onFeatureBarClick={setShowAppConfigureFeaturesModal}
       suggestedQuestions={suggestedQuestions}
       onSend={doSend}

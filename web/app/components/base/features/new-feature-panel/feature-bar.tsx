@@ -10,12 +10,14 @@ import cn from '@/utils/classnames'
 
 type Props = {
   isChatMode?: boolean
+  showFileUpload?: boolean
   disabled?: boolean
   onFeatureBarClick?: (state: boolean) => void
 }
 
 const FeatureBar = ({
   isChatMode = true,
+  showFileUpload = true,
   disabled,
   onFeatureBarClick,
 }: Props) => {
@@ -28,9 +30,10 @@ const FeatureBar = ({
     const data = {
       ...features,
       citation: { enabled: isChatMode ? features.citation?.enabled : false },
+      file: showFileUpload ? features.file! : { enabled: false },
     }
     return !Object.values(data).some(f => f.enabled)
-  }, [features, isChatMode])
+  }, [features, isChatMode, showFileUpload])
 
   return (
     <div className='-translate-y-2 m-1 mt-0 px-2.5 py-2 pt-4 bg-util-colors-indigo-indigo-50 rounded-b-[10px] border-l border-b border-r border-components-panel-border-subtle'>
@@ -91,7 +94,7 @@ const FeatureBar = ({
                 </Tooltip>
               </VoiceSettings>
             )}
-            {!!features.file?.enabled && (
+            {showFileUpload && !!features.file?.enabled && (
               <Tooltip
                 popupContent={t('appDebug.feature.fileUpload.title')}
               >

@@ -598,7 +598,6 @@ const Configuration: FC = () => {
           completionParams: model.completion_params,
         }
 
-        // ##TODO## new vision config
         if (modelConfig.file_upload)
           handleSetVisionConfig(modelConfig.file_upload.image, true)
 
@@ -693,10 +692,7 @@ const Configuration: FC = () => {
       sensitive_word_avoidance: features?.moderation as any,
       speech_to_text: features?.speech2text as any,
       text_to_speech: features?.text2speech as any,
-      // ##TODO## file_upload
-      file_upload: {
-        image: visionConfig,
-      },
+      file_upload: features?.file as any,
       suggested_questions_after_answer: features?.suggested as any,
       retriever_resource: features?.citation as any,
       agent_mode: {
@@ -983,6 +979,7 @@ const Configuration: FC = () => {
             <NewFeaturePanel
               show
               inWorkflow={false}
+              showFileUpload={isShowVisionConfig}
               isChatMode={mode !== 'completion'}
               disabled={false}
               onChange={handleFeaturesChange}

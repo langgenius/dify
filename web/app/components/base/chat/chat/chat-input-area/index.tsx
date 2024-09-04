@@ -24,6 +24,7 @@ import type { FileUpload } from '@/app/components/base/features/types'
 
 type ChatInputAreaProps = {
   showFeatureBar?: boolean
+  showFileUpload?: boolean
   featureBarDisabled?: boolean
   onFeatureBarClick?: (state: boolean) => void
   visionConfig?: FileUpload
@@ -33,6 +34,7 @@ type ChatInputAreaProps = {
 }
 const ChatInputArea = ({
   showFeatureBar,
+  showFileUpload,
   featureBarDisabled,
   onFeatureBarClick,
   visionConfig,
@@ -155,7 +157,7 @@ const ChatInputArea = ({
             )
           }
         </div>
-        {showFeatureBar && <FeatureBar disabled={featureBarDisabled} onFeatureBarClick={onFeatureBarClick} />}
+        {showFeatureBar && <FeatureBar showFileUpload={showFileUpload} disabled={featureBarDisabled} onFeatureBarClick={onFeatureBarClick} />}
       </>
     </FileContextProvider>
   )

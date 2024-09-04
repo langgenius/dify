@@ -62,6 +62,7 @@ export type ChatProps = {
   hideLogModal?: boolean
   themeBuilder?: ThemeBuilder
   showFeatureBar?: boolean
+  showFileUpload?: boolean
   onFeatureBarClick?: (state: boolean) => void
 }
 
@@ -92,6 +93,7 @@ const Chat: FC<ChatProps> = ({
   hideLogModal,
   themeBuilder,
   showFeatureBar,
+  showFileUpload,
   onFeatureBarClick,
 }) => {
   const { t } = useTranslation()
@@ -267,6 +269,7 @@ const Chat: FC<ChatProps> = ({
               !noChatInput && (
                 <ChatInputArea
                   showFeatureBar={showFeatureBar}
+                  showFileUpload={showFileUpload}
                   featureBarDisabled={isResponding}
                   onFeatureBarClick={onFeatureBarClick}
                   visionConfig={config?.file_upload}

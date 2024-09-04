@@ -21,9 +21,10 @@ import { useStore as useAppStore } from '@/app/components/app/store'
 const DebugWithMultipleModel = () => {
   const {
     mode,
-    visionConfig,
+    isShowVisionConfig,
   } = useDebugConfigurationContext()
   const speech2text = useFeatures(s => s.features.speech2text)
+  const file = useFeatures(s => s.features.file)
   const {
     multipleModelConfigs,
     checkCanSend,
@@ -129,10 +130,11 @@ const DebugWithMultipleModel = () => {
         <div className='shrink-0 pb-0 px-6'>
           <ChatInputArea
             showFeatureBar
+            showFileUpload={isShowVisionConfig}
             onFeatureBarClick={setShowAppConfigureFeaturesModal}
             onSend={handleSend}
             speechToTextConfig={speech2text as any}
-            visionConfig={visionConfig}
+            visionConfig={file}
           />
         </div>
       )}

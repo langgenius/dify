@@ -24,6 +24,7 @@ type Props = {
   onChange?: OnFeaturesChange
   onClose: () => void
   inWorkflow?: boolean
+  showFileUpload?: boolean
   promptVariables?: PromptVariable[]
   onAutoAddPromptVariable?: (variable: PromptVariable[]) => void
 }
@@ -35,6 +36,7 @@ const NewFeaturePanel = ({
   onChange,
   onClose,
   inWorkflow = true,
+  showFileUpload = true,
   promptVariables,
   onAutoAddPromptVariable,
 }: Props) => {
@@ -77,7 +79,7 @@ const NewFeaturePanel = ({
           {text2speechDefaultModel && (
             <TextToSpeech disabled={disabled} onChange={onChange} />
           )}
-          <FileUpload disabled={disabled} onChange={onChange} />
+          {showFileUpload && <FileUpload disabled={disabled} onChange={onChange} />}
           {isChatMode && (
             <FollowUp disabled={disabled} onChange={onChange} />
           )}

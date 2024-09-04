@@ -36,7 +36,6 @@ const TextGenerationItem: FC<TextGenerationItemProps> = ({
     completionPromptConfig,
     dataSets,
     datasetConfigs,
-    visionConfig,
   } = useDebugConfigurationContext()
   const { textGenerationModelList } = useProviderContext()
   const features = useFeatures(s => s.features)
@@ -58,10 +57,8 @@ const TextGenerationItem: FC<TextGenerationItemProps> = ({
     more_like_this: features.moreLikeThis as any,
     sensitive_word_avoidance: features.moderation as any,
     text_to_speech: features.text2speech as any,
+    file_upload: features.file as any,
     opening_statement: introduction,
-    file_upload: {
-      image: visionConfig,
-    },
     speech_to_text: speechToTextConfig,
     suggested_questions_after_answer: suggestedQuestionsAfterAnswerConfig,
     retriever_resource: citationConfig,
@@ -103,7 +100,7 @@ const TextGenerationItem: FC<TextGenerationItemProps> = ({
       model_config: configData,
     }
 
-    if (visionConfig.enabled && files && files?.length > 0) {
+    if ((config.file_upload as any).enabled && files && files?.length > 0) {
       data.files = files.map((item) => {
         if (item.transfer_method === TransferMethod.local_file) {
           return {
