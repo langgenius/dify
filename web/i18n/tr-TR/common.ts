@@ -133,6 +133,7 @@ const translation = {
     createWorkspace: 'Çalışma Alanı Oluştur',
     helpCenter: 'Yardım',
     communityFeedback: 'Geri Bildirim',
+    roadmap: 'Yol haritası',
     community: 'Topluluk',
     about: 'Hakkında',
     logout: 'Çıkış Yap',
