@@ -1,4 +1,4 @@
-import { BlockEnum } from '../../types'
+import { BlockEnum, VarType } from '../../types'
 import type { NodeDefault } from '../../types'
 import { comparisonOperatorNotRequireValue } from '../if-else/utils'
 import { type ListFilterNodeType, OrderBy } from './types'
@@ -31,14 +31,17 @@ const nodeDefault: NodeDefault<ListFilterNodeType> = {
   },
   checkValid(payload: ListFilterNodeType, t: any) {
     let errorMessages = ''
-    const { variable, filter_by } = payload
+    const { variable, var_type, filter_by } = payload
 
     if (!errorMessages && !variable?.length)
       errorMessages = t(`${i18nPrefix}.fieldRequired`, { field: t('workflow.nodes.listFilter.inputVar') })
 
     // Check filter condition
     if (!errorMessages) {
-      if (!filter_by[0]?.comparison_operator)
+      if (var_type === VarType.arrayFile && !filter_by[0]?.key)
+        errorMessages = t(`${i18nPrefix}.fieldRequired`, { field: t('workflow.nodes.listFilter.filterConditionKey') })
+
+      if (!errorMessages && !filter_by[0]?.comparison_operator)
         errorMessages = t(`${i18nPrefix}.fieldRequired`, { field: t('workflow.nodes.listFilter.filterConditionComparisonOperator') })
 
       if (!errorMessages && !comparisonOperatorNotRequireValue(filter_by[0]?.comparison_operator) && !filter_by[0]?.value)

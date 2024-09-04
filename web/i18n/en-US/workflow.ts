@@ -562,6 +562,7 @@ const translation = {
     listFilter: {
       inputVar: 'Input Variable',
       filterCondition: 'Filter Condition',
+      filterConditionKey: 'Filter Condition Key',
       filterConditionComparisonOperator: 'Filter Condition Comparison Operator',
       filterConditionComparisonValue: 'Filter Condition value',
       selectVariableKeyPlaceholder: 'Select sub variable key',
