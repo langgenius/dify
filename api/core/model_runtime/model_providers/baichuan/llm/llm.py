@@ -85,7 +85,7 @@ class BaichuanLarguageModel(LargeLanguageModel):
             num_tokens += tokens_per_message
             for key, value in message.items():
                 if isinstance(value, list):
-                    text = ''
+                    text = ""
                     for item in value:
                         if isinstance(item, dict) and item["type"] == "text":
                             text += item["text"]
