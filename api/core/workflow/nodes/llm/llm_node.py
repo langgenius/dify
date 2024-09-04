@@ -109,7 +109,9 @@ class LLMNode(BaseNode):
                 'prompts': PromptMessageUtil.prompt_messages_to_prompt_for_saving(
                     model_mode=model_config.mode,
                     prompt_messages=prompt_messages
-                )
+                ),
+                'model_provider': model_config.provider,
+                'model_name': model_config.model,      
             }
 
             # handle invoke result
