@@ -630,6 +630,7 @@ export const getParallelInfo = (nodes: Node[], edges: Edge[], parentNodeId?: str
 
   const parallelList = [] as ParallelInfoItem[]
   const nextNodeHandles = [{ node: startNode, handle: 'source' }]
+  let hasAbnormalEdges = false
 
   const traverse = (firstNodeHandle: NodeHandle) => {
     const nodeEdgesSet = {} as Record<string, Set<string>>
@@ -682,6 +683,10 @@ export const getParallelInfo = (nodes: Node[], edges: Edge[], parentNodeId?: str
       outgoers.forEach((outgoer) => {
         const outgoerConnectedEdges = getConnectedEdges([outgoer], edges).filter(edge => edge.source === outgoer.id)
         const sourceEdgesGroup = groupBy(outgoerConnectedEdges, 'sourceHandle')
+        const incomers = getIncomers(outgoer, nodes, edges)
+
+        if (outgoers.length > 1 && incomers.length > 1)
+          hasAbnormalEdges = true
 
         Object.keys(sourceEdgesGroup).forEach((sourceHandle) => {
           nextHandles.push({ node: outgoer, handle: sourceHandle })
@@ -747,5 +752,8 @@ export const getParallelInfo = (nodes: Node[], edges: Edge[], parentNodeId?: str
     traverse(nodeHandle)
   }
 
-  return parallelList
+  return {
+    parallelList,
+    hasAbnormalEdges,
+  }
 }

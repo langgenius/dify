@@ -29,7 +29,9 @@ import {
   useStore,
   useWorkflowStore,
 } from '../store'
-import { getParallelInfo } from '../utils'
+import {
+  getParallelInfo,
+} from '../utils'
 import {
   PARALLEL_DEPTH_LIMIT,
   PARALLEL_LIMIT,
@@ -299,7 +301,13 @@ export const useWorkflow = () => {
   }, [store, workflowStore, t])
 
   const checkNestedParallelLimit = useCallback((nodes: Node[], edges: Edge[], parentNodeId?: string) => {
-    const parallelList = getParallelInfo(nodes, edges, parentNodeId)
+    const {
+      parallelList,
+      hasAbnormalEdges,
+    } = getParallelInfo(nodes, edges, parentNodeId)
+
+    if (hasAbnormalEdges)
+      return false
 
     for (let i = 0; i < parallelList.length; i++) {
       const parallel = parallelList[i]
@@ -327,6 +335,9 @@ export const useWorkflow = () => {
       return false
 
     if (sourceNode.type === CUSTOM_NOTE_NODE || targetNode.type === CUSTOM_NOTE_NODE)
+      return false
+
+    if (sourceNode.parentId !== targetNode.parentId)
       return false
 
     if (sourceNode && targetNode) {
