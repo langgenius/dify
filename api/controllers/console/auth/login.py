@@ -45,8 +45,10 @@ class LoginApi(Resource):
                 raise NotAllowedCreateWorkspace()
 
             token = AccountService.send_reset_password_email(email=args["email"])
-            return redirect(f"{dify_config.CONSOLE_WEB_URL}/reset-password?token={token}&email={args['email']}")
-
+            return redirect(
+                location=f"{dify_config.CONSOLE_WEB_URL}/reset-password/check-code?token={token}&email={args['email']}",
+                code=307
+            )
         # SELF_HOSTED only have one workspace
         tenants = TenantService.get_join_tenants(account)
         if len(tenants) == 0:
