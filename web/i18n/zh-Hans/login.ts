@@ -69,7 +69,7 @@ const translation = {
   activated: '现在登录',
   adminInitPassword: '管理员初始化密码',
   validate: '验证',
-  sso: '继续使用 SSO',
+  sso: '使用 SSO 继续',
 }
 
 export default translation
