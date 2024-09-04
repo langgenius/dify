@@ -141,7 +141,6 @@ export const useWorkflowRun = () => {
       tracing: [],
       resultText: '',
     })
-    let iterationLength = 0
 
     let ttsUrl = ''
     let ttsIsPublic = false
@@ -250,13 +249,13 @@ export const useWorkflowRun = () => {
             transform,
           } = store.getState()
           const nodes = getNodes()
-          const nodeParentId = nodes.find(node => node.id === data.node_id)!.parentId
-          if (nodeParentId) {
+          const node = nodes.find(node => node.id === data.node_id)
+          if (node?.parentId) {
             setWorkflowRunningData(produce(workflowRunningData!, (draft) => {
               const tracing = draft.tracing!
-              const iterations = tracing[tracing.length - 1]
-              const currIteration = iterations.details![iterations.details!.length - 1]
-              currIteration.push({
+              const iterations = tracing.find(trace => trace.node_id === node?.parentId)
+              const currIteration = iterations?.details![node.data.iteration_index] || iterations?.details![iterations.details!.length - 1]
+              currIteration?.push({
                 ...data,
                 status: NodeRunningStatus.Running,
               } as any)
@@ -316,7 +315,7 @@ export const useWorkflowRun = () => {
           if (nodeParentId) {
             setWorkflowRunningData(produce(workflowRunningData!, (draft) => {
               const tracing = draft.tracing!
-              const iterations = tracing[tracing.length - 1] // the iteration node
+              const iterations = tracing.find(trace => trace.node_id === nodeParentId) // the iteration node
 
               if (iterations && iterations.details) {
                 const iterationIndex = data.execution_metadata?.iteration_index || 0
@@ -325,7 +324,7 @@ export const useWorkflowRun = () => {
 
                 const currIteration = iterations.details[iterationIndex]
                 const nodeIndex = currIteration.findIndex(node =>
-                  node.node_id === data.node_id,
+                  node.node_id === data.node_id && node.execution_metadata?.parallel_id === data.execution_metadata?.parallel_id,
                 )
                 if (data.status === NodeRunningStatus.Succeeded) {
                   if (nodeIndex !== -1) {
@@ -391,7 +390,6 @@ export const useWorkflowRun = () => {
               details: [],
             } as any)
           }))
-          iterationLength = data.metadata.iterator_length
 
           const {
             setViewport,
@@ -437,13 +435,13 @@ export const useWorkflowRun = () => {
           } = store.getState()
 
           setWorkflowRunningData(produce(workflowRunningData!, (draft) => {
-            const iteration = draft.tracing![draft.tracing!.length - 1]
-            if (iteration.details!.length >= iterationLength)
-              return
-
-            iteration.details!.push([])
+            const iteration = draft.tracing!.find(trace => trace.node_id === data.node_id)
+            if (iteration) {
+              if (iteration.details!.length >= iteration.metadata.iterator_length!)
+                return
+            }
+            iteration?.details!.push([])
           }))
-
           const nodes = getNodes()
           const newNodes = produce(nodes, (draft) => {
             const currentNode = draft.find(node => node.id === data.node_id)!
@@ -469,11 +467,13 @@ export const useWorkflowRun = () => {
           const nodes = getNodes()
           setWorkflowRunningData(produce(workflowRunningData!, (draft) => {
             const tracing = draft.tracing!
-            tracing[tracing.length - 1] = {
-              ...tracing[tracing.length - 1],
-              ...data,
-              status: NodeRunningStatus.Succeeded,
-            } as any
+            const currIterationNode = tracing.find(trace => trace.node_id === data.node_id)
+            if (currIterationNode) {
+              Object.assign(currIterationNode, {
+                ...data,
+                status: NodeRunningStatus.Succeeded,
+              })
+            }
           }))
 
           const newNodes = produce(nodes, (draft) => {
