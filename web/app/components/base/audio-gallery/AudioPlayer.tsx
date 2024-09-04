@@ -1,5 +1,6 @@
 import React, { useCallback, useEffect, useRef, useState } from 'react'
 import styles from './AudioPlayer.module.css'
+import Toast from '@/app/components/base/toast'
 
 type AudioPlayerProps = {
   src: string
@@ -67,36 +68,69 @@ const AudioPlayer: React.FC<AudioPlayerProps> = ({ src }) => {
   }, [src])
 
   const generateWaveformData = async (audioSrc: string) => {
+    if (!window.AudioContext && !(window as any).webkitAudioContext) {
+      setIsAudioAvailable(false)
+      Toast.notify({
+        type: 'error',
+        message: 'Web Audio API is not supported in this browser',
+      })
+    }
+
+    const audioContext = new (window.AudioContext || (window as any).webkitAudioContext)()
+    const samples = 70
+
     try {
-      const audioContext = new (window.AudioContext || (window as any).webkitAudioContext)()
-      const response = await fetch(audioSrc)
+      const response = await fetch(audioSrc, { mode: 'cors' })
+      if (!response.ok) {
+        setIsAudioAvailable(false)
+        Toast.notify({
+          type: 'error',
+          message: `HTTP error! status: ${response.status}`,
+        })
+      }
+
       const arrayBuffer = await response.arrayBuffer()
       const audioBuffer = await audioContext.decodeAudioData(arrayBuffer)
-
       const channelData = audioBuffer.getChannelData(0)
-
-      // Calculate the number of samples we want to take from the channel data.
-      const samples = Math.min(65, channelData.length)
-
-      // Calculate the size of each sample block.
       const blockSize = Math.floor(channelData.length / samples)
-
-      // Create an array to hold the waveform data.
       const waveformData: number[] = []
 
       for (let i = 0; i < samples; i++) {
-        const blockStart = blockSize * i
         let sum = 0
+        for (let j = 0; j < blockSize; j++)
+          sum += Math.abs(channelData[i * blockSize + j])
 
-        for (let j = blockStart; j < blockStart + blockSize; j++)
-          sum += Math.abs(channelData[j])
-
-        // Multiply the average by a constant factor to increase its size.
-        waveformData.push((sum / blockSize) * 4) // Increase this factor as needed
+        // Apply nonlinear scaling to enhance small amplitudes
+        waveformData.push((sum / blockSize) * 5)
       }
-      setWaveformData(waveformData)
+
+      // Normalized waveform data
+      const maxAmplitude = Math.max(...waveformData)
+      const normalizedWaveform = waveformData.map(amp => amp / maxAmplitude)
+
+      setWaveformData(normalizedWaveform)
+      setIsAudioAvailable(true)
     }
-    catch (error) { setIsAudioAvailable(false) }
+    catch (error) {
+      const waveform: number[] = []
+      let prevValue = Math.random()
+
+      for (let i = 0; i < samples; i++) {
+        const targetValue = Math.random()
+        const interpolatedValue = prevValue + (targetValue - prevValue) * 0.3
+        waveform.push(interpolatedValue)
+        prevValue = interpolatedValue
+      }
+
+      const maxAmplitude = Math.max(...waveform)
+      const randomWaveform = waveform.map(amp => amp / maxAmplitude)
+
+      setWaveformData(randomWaveform)
+      setIsAudioAvailable(true)
+    }
+    finally {
+      await audioContext.close()
+    }
   }
 
   const togglePlay = useCallback(() => {
@@ -114,7 +148,10 @@ const AudioPlayer: React.FC<AudioPlayerProps> = ({ src }) => {
       setIsPlaying(!isPlaying)
     }
     else {
-      console.log('Audio element not found')
+      Toast.notify({
+        type: 'error',
+        message: 'Audio element not found',
+      })
       setIsAudioAvailable(false)
     }
   }, [isAudioAvailable, isPlaying])
@@ -145,7 +182,10 @@ const AudioPlayer: React.FC<AudioPlayerProps> = ({ src }) => {
       if (!isPlaying) {
         setIsPlaying(true)
         audio.play().catch((error) => {
-          console.error('Error playing audio:', error)
+          Toast.notify({
+            type: 'error',
+            message: `Error playing audio: ${error}`,
+          })
           setIsPlaying(false)
         })
       }
