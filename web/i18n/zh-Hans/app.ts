@@ -76,6 +76,11 @@ const translation = {
     emoji: '表情符号',
     image: '图片',
   },
+  answerIcon: {
+    title: '使用 WebApp 图标替换 🤖',
+    description: '是否使用 WebApp 图标替换分享的应用界面中的 🤖',
+    descriptionInExplore: '是否使用 WebApp 图标替换 Explore 界面中的 🤖',
+  },
   switch: '迁移为工作流编排',
   switchTipStart: '将为您创建一个使用工作流编排的新应用。新应用将',
   switchTip: '不能够',

@@ -128,7 +128,7 @@ const translation = {
     workspace: 'Không gian làm việc',
     createWorkspace: 'Tạo Không gian làm việc',
     helpCenter: 'Trung tâm trợ giúp',
-    roadmapAndFeedback: 'Phản hồi',
+    communityFeedback: 'Phản hồi',
     community: 'Cộng đồng',
     about: 'Về chúng tôi',
     logout: 'Đăng xuất',
