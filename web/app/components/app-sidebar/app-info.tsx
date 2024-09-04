@@ -63,6 +63,7 @@ const AppInfo = ({ expand }: IAppInfoProps) => {
     icon,
     icon_background,
     description,
+    use_icon_as_answer_icon,
   }) => {
     if (!appDetail)
       return
@@ -74,6 +75,7 @@ const AppInfo = ({ expand }: IAppInfoProps) => {
         icon,
         icon_background,
         description,
+        use_icon_as_answer_icon,
       })
       setShowEditModal(false)
       notify({
@@ -423,6 +425,8 @@ const AppInfo = ({ expand }: IAppInfoProps) => {
             appIconBackground={appDetail.icon_background}
             appIconUrl={appDetail.icon_url}
             appDescription={appDetail.description}
+            appMode={appDetail.mode}
+            appUseIconAsAnswerIcon={appDetail.use_icon_as_answer_icon}
             show={showEditModal}
             onConfirm={onEdit}
             onHide={() => setShowEditModal(false)}

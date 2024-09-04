@@ -1,0 +1,44 @@
+model: glm-4-plus
+label:
+  en_US: glm-4-plus
+model_type: llm
+features:
+  - multi-tool-call
+  - agent-thought
+  - stream-tool-call
+model_properties:
+  mode: chat
+parameter_rules:
+  - name: temperature
+    use_template: temperature
+    default: 0.95
+    min: 0.0
+    max: 1.0
+    help:
+      zh_Hans: 采样温度，控制输出的随机性，必须为正数取值范围是：(0.0,1.0]，不能等于 0,默认值为 0.95 值越大，会使输出更随机，更具创造性；值越小，输出会更加稳定或确定建议您根据应用场景调整 top_p 或 temperature 参数，但不要同时调整两个参数。
+      en_US: Sampling temperature, controls the randomness of the output, must be a positive number. The value range is (0.0,1.0], which cannot be equal to 0. The default value is 0.95. The larger the value, the more random and creative the output will be; the smaller the value, The output will be more stable or certain. It is recommended that you adjust the top_p or temperature parameters according to the application scenario, but do not adjust both parameters at the same time.
+  - name: top_p
+    use_template: top_p
+    default: 0.7
+    help:
+      zh_Hans: 用温度取样的另一种方法，称为核取样取值范围是：(0.0, 1.0) 开区间，不能等于 0 或 1，默认值为 0.7 模型考虑具有 top_p 概率质量tokens的结果例如：0.1 意味着模型解码器只考虑从前 10% 的概率的候选集中取 tokens 建议您根据应用场景调整 top_p 或 temperature 参数，但不要同时调整两个参数。
+      en_US: Another method of temperature sampling is called kernel sampling. The value range is (0.0, 1.0) open interval, which cannot be equal to 0 or 1. The default value is 0.7. The model considers the results with top_p probability mass tokens. For example 0.1 means The model decoder only considers tokens from the candidate set with the top 10% probability. It is recommended that you adjust the top_p or temperature parameters according to the application scenario, but do not adjust both parameters at the same time.
+  - name: incremental
+    label:
+      zh_Hans: 增量返回
+      en_US: Incremental
+    type: boolean
+    help:
+      zh_Hans: SSE接口调用时，用于控制每次返回内容方式是增量还是全量，不提供此参数时默认为增量返回，true 为增量返回，false 为全量返回。
+      en_US: When the SSE interface is called, it is used to control whether the content is returned incrementally or in full. If this parameter is not provided, the default is incremental return. true means incremental return, false means full return.
+    required: false
+  - name: max_tokens
+    use_template: max_tokens
+    default: 1024
+    min: 1
+    max: 8192
+pricing:
+  input: '0.05'
+  output: '0.05'
+  unit: '0.001'
+  currency: RMB

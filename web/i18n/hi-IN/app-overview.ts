@@ -130,8 +130,11 @@ const translation = {
     tokenPS: 'टोकन/से.',
     totalMessages: {
       title: 'कुल संदेश',
-      explanation:
-        'दैनिक एआई इंटरैक्शन की गिनती; प्रॉम्प्ट इंजीनियरिंग/डीबगिंग को शामिल नहीं किया गया।',
+      explanation: 'दैनिक AI इंटरैक्शन की गिनती।',
+    },
+    totalConversations: {
+      title: 'कुल वार्तालाप',
+      explanation: 'दैनिक AI वार्तालाप की गिनती; प्रॉम्प्ट इंजीनियरिंग/डीबगिंग शामिल नहीं।',
     },
     activeUsers: {
       title: 'सक्रिय उपयोगकर्ता',
