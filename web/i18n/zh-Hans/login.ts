@@ -82,13 +82,13 @@ const translation = {
     verify: '验证',
     didNotReceiveCode: '没有收到验证码？',
     resend: '重新发送',
-    useAnotherMethod: '使用其他方式登陆',
+    useAnotherMethod: '使用其他方式登录',
     emptyCode: '验证码不能为空',
     invalidCode: '验证码无效',
   },
   resetPassword: '重置密码',
   resetPasswordDesc: '请输入您的电子邮件地址以重置密码。我们将向您发送一封电子邮件。',
-  backToLogin: '返回登陆',
+  backToLogin: '返回登录',
   setYourAccount: '设置您的账户',
 }
 

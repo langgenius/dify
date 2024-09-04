@@ -3,7 +3,7 @@ import { useCallback, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { useSearchParams } from 'next/navigation'
 import cn from 'classnames'
-import { CheckCircleIcon } from '@heroicons/react/24/solid'
+import { RiCheckboxCircleFill } from '@remixicon/react'
 import Button from '@/app/components/base/button'
 import { changePasswordWithToken } from '@/service/common'
 import Toast from '@/app/components/base/toast'
@@ -13,7 +13,7 @@ const validPassword = /^(?=.*[a-zA-Z])(?=.*\d).{8,}$/
 const ChangePasswordForm = () => {
   const { t } = useTranslation()
   const searchParams = useSearchParams()
-  const token = decodeURIComponent(searchParams.get('token') as string)
+  const token = decodeURIComponent(searchParams.get('token') || '')
 
   const [password, setPassword] = useState('')
   const [confirmPassword, setConfirmPassword] = useState('')
@@ -43,8 +43,6 @@ const ChangePasswordForm = () => {
   }, [password, confirmPassword, showErrorMessage, t])
 
   const handleChangePassword = useCallback(async () => {
-    const token = searchParams.get('token') || ''
-
     if (!valid())
       return
     try {
@@ -61,7 +59,7 @@ const ChangePasswordForm = () => {
     catch (error) {
       console.error(error)
     }
-  }, [password, token, valid])
+  }, [password, token, valid, confirmPassword])
 
   const getSignInUrl = () => {
     if (searchParams.has('invite_token'))
@@ -140,7 +138,7 @@ const ChangePasswordForm = () => {
         <div className="flex flex-col md:w-[400px]">
           <div className="w-full mx-auto">
             <div className="mb-3 flex justify-center items-center w-20 h-20 p-5 rounded-[20px] border border-gray-100 shadow-lg text-[40px] font-bold">
-              <CheckCircleIcon className='w-10 h-10 text-[#039855]' />
+              <RiCheckboxCircleFill className='w-10 h-10 text-[#039855]' />
             </div>
             <h2 className="text-[32px] font-bold text-gray-900">
               {t('login.passwordChangedTip')}
