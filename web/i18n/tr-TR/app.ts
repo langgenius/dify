@@ -122,6 +122,12 @@ const translation = {
       removeConfirmTitle: '{{key}} yapılandırmasını kaldır?',
       removeConfirmContent: 'Mevcut yapılandırma kullanımda, kaldırılması İzleme özelliğini kapatacaktır.',
     },
+    view: 'Görünüm',
+  },
+  answerIcon: {
+    descriptionInExplore: 'Keşfet\'te değiştirilecek 🤖 WebApp simgesinin kullanılıp kullanılmayacağı',
+    title: 'Değiştirmek 🤖 için WebApp simgesini kullanın',
+    description: 'Paylaşılan uygulamada değiştirmek 🤖 için WebApp simgesinin kullanılıp kullanılmayacağı',
   },
 }
 

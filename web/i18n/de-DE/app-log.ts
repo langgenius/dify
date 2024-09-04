@@ -13,6 +13,12 @@ const translation = {
       messageCount: 'Nachrichtenzahl',
       userRate: 'Benutzerbewertung',
       adminRate: 'Op. Bewertung',
+      user: 'Endbenutzer oder Konto',
+      status: 'STATUS',
+      runtime: 'LAUFZEIT',
+      version: 'VERSION',
+      tokens: 'TOKEN',
+      startTime: 'STARTZEIT',
     },
     pagination: {
       previous: 'Vorherige',

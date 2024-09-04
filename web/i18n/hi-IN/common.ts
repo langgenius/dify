@@ -173,6 +173,9 @@ const translation = {
     langGeniusAccountTip: 'आपका Dify खाता और संबंधित उपयोगकर्ता डेटा।',
     editName: 'नाम संपादित करें',
     showAppLength: '{{length}} ऐप्स दिखाएं',
+    deleteConfirmTip: 'पुष्टि करने के लिए, कृपया अपने पंजीकृत ईमेल से निम्नलिखित भेजें',
+    delete: 'खाता हटाएं',
+    deleteTip: 'अपना खाता हटाने से आपका सारा डेटा स्थायी रूप से मिट जाएगा और इसे पुनर्प्राप्त नहीं किया जा सकता है।',
   },
   members: {
     team: 'टीम',
@@ -214,6 +217,8 @@ const translation = {
     disinvite: 'आमंत्रण रद्द करें',
     deleteMember: 'सदस्य को हटाएं',
     you: '(आप)',
+    datasetOperator: 'ज्ञान व्यवस्थापक',
+    datasetOperatorTip: 'केवल नॉलेज बेस प्रबंधित कर सकते हैं',
   },
   integrations: {
     connected: 'कनेक्टेड',

@@ -122,7 +122,17 @@ const translation = {
       removeConfirmTitle: 'Xóa cấu hình {{key}}?',
       removeConfirmContent: 'Cấu hình hiện tại đang được sử dụng, việc xóa nó sẽ tắt tính năng Theo dõi.',
     },
+    view: 'Cảnh',
   },
+  answerIcon: {
+    description: 'Có nên sử dụng biểu tượng WebApp để thay thế 🤖 trong ứng dụng được chia sẻ hay không',
+    descriptionInExplore: 'Có nên sử dụng biểu tượng WebApp để thay thế 🤖 trong Khám phá hay không',
+    title: 'Sử dụng biểu tượng WebApp để thay thế 🤖',
+  },
+  importFromDSLFile: 'Từ tệp DSL',
+  importFromDSL: 'Nhập từ DSL',
+  importFromDSLUrlPlaceholder: 'Dán liên kết DSL vào đây',
+  importFromDSLUrl: 'Từ URL',
 }
 
 export default translation

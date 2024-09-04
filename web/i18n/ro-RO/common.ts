@@ -63,6 +63,7 @@ const translation = {
       hiIN: 'Hindi',
       trTR: 'Turcă',
       faIR: 'Persană',
+      plPL: 'Poloneză',
     },
   },
   unit: {
@@ -200,6 +201,11 @@ const translation = {
     disinvite: 'Anulează invitația',
     deleteMember: 'Șterge membru',
     you: '(Dvs.)',
+    datasetOperatorTip: 'Numai poate gestiona baza de cunoștințe',
+    builder: 'Constructor',
+    datasetOperator: 'Administrator de cunoștințe',
+    setBuilder: 'Setare ca constructor',
+    builderTip: 'Poate construi și edita propriile aplicații',
   },
   integrations: {
     connected: 'Conectat',
@@ -346,6 +352,22 @@ const translation = {
     quotaTip: 'Jetoane gratuite disponibile rămase',
     loadPresets: 'Încarcă presetări',
     parameters: 'PARAMETRI',
+    loadBalancingHeadline: 'Echilibrare',
+    loadBalancingInfo: 'În mod implicit, echilibrarea încărcării utilizează strategia Round-robin. Dacă se declanșează limitarea ratei, se va aplica o perioadă de reactivare de 1 minut.',
+    loadBalancing: 'Echilibrare',
+    apiKeyRateLimit: 'Limita de viteză a fost atinsă, disponibilă după {{secunde}}s',
+    providerManaged: 'Gestionat de furnizor',
+    providerManagedDescription: 'Utilizați setul unic de acreditări furnizat de furnizorul de modele.',
+    defaultConfig: 'Configurație implicită',
+    addConfig: 'Adăugați configurație',
+    apiKey: 'CHEIE API',
+    modelHasBeenDeprecated: 'Acest model a fost depreciat',
+    loadBalancingDescription: 'Reduceți presiunea cu mai multe seturi de acreditări.',
+    apiKeyStatusNormal: 'Starea APIKey este normală',
+    loadBalancingLeastKeyWarning: 'Pentru a activa echilibrarea încărcării trebuie activate cel puțin 2 chei.',
+    editConfig: 'Editați configurația',
+    configLoadBalancing: 'Echilibrarea încărcării de configurare',
+    upgradeForLoadBalancing: 'Actualizați-vă planul pentru a activa Load Balancing.',
   },
   dataSource: {
     add: 'Adăugați o sursă de date',
@@ -369,6 +391,15 @@ const translation = {
         preview: 'PREVIZUALIZARE',
       },
     },
+    website: {
+      inactive: 'Inactiv',
+      description: 'Importați conținut de pe site-uri web folosind crawlerul web.',
+      active: 'Activ',
+      with: 'Cu',
+      title: 'Site-ul web',
+      configuredCrawlers: 'Crawlere configurate',
+    },
+    configure: 'Configura',
   },
   plugin: {
     serpapi: {
@@ -536,6 +567,10 @@ const translation = {
     deleteTip: 'Eticheta este utilizată, ștergeți-o?',
     created: 'Etichetă creată cu succes',
     failed: 'Crearea etichetei a eșuat',
+  },
+  errorMsg: {
+    fieldRequired: '{{câmp}} este obligatoriu',
+    urlError: 'URL-ul ar trebui să înceapă cu http:// sau https://',
   },
 }
 
