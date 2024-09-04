@@ -141,8 +141,6 @@ export const useWorkflowRun = () => {
       tracing: [],
       resultText: '',
     })
-
-    let isInIteration = false
     let iterationLength = 0
 
     let ttsUrl = ''
@@ -251,7 +249,9 @@ export const useWorkflowRun = () => {
             setEdges,
             transform,
           } = store.getState()
-          if (isInIteration) {
+          const nodes = getNodes()
+          const nodeParentId = nodes.find(node => node.id === data.node_id)!.parentId
+          if (nodeParentId) {
             setWorkflowRunningData(produce(workflowRunningData!, (draft) => {
               const tracing = draft.tracing!
               const iterations = tracing[tracing.length - 1]
@@ -263,7 +263,6 @@ export const useWorkflowRun = () => {
             }))
           }
           else {
-            const nodes = getNodes()
             setWorkflowRunningData(produce(workflowRunningData!, (draft) => {
               draft.tracing!.push({
                 ...data,
@@ -312,8 +311,9 @@ export const useWorkflowRun = () => {
             getNodes,
             setNodes,
           } = store.getState()
-
-          if (isInIteration) {
+          const nodes = getNodes()
+          const nodeParentId = nodes.find(node => node.id === data.node_id)!.parentId
+          if (nodeParentId) {
             setWorkflowRunningData(produce(workflowRunningData!, (draft) => {
               const tracing = draft.tracing!
               const iterations = tracing[tracing.length - 1] // the iteration node
@@ -344,7 +344,6 @@ export const useWorkflowRun = () => {
             }))
           }
           else {
-            const nodes = getNodes()
             setWorkflowRunningData(produce(workflowRunningData!, (draft) => {
               const currentIndex = draft.tracing!.findIndex((trace) => {
                 if (!trace.execution_metadata?.parallel_id)
@@ -392,7 +391,6 @@ export const useWorkflowRun = () => {
               details: [],
             } as any)
           }))
-          isInIteration = true
           iterationLength = data.metadata.iterator_length
 
           const {
@@ -477,7 +475,6 @@ export const useWorkflowRun = () => {
               status: NodeRunningStatus.Succeeded,
             } as any
           }))
-          isInIteration = false
 
           const newNodes = produce(nodes, (draft) => {
             const currentNode = draft.find(node => node.id === data.node_id)!
