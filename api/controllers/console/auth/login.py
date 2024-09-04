@@ -1,7 +1,7 @@
 from typing import cast
 
 import flask_login
-from flask import redirect, request
+from flask import request
 from flask_restful import Resource, reqparse
 
 import services
