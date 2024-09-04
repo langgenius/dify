@@ -48,21 +48,20 @@ export default function MailAndPasswordAuth({ isInvite }: MailAndPasswordAuthPro
         localStorage.setItem('console_token', res.data)
         router.replace('/apps')
       }
+      else if (res.message === 'account_not_found') {
+        const params = new URLSearchParams()
+        params.append('email', encodeURIComponent(email))
+        params.append('token', encodeURIComponent(res.data))
+        router.replace(`/reset-password/check-code?${params.toString()}`)
+      }
       else {
-        if (res.message === 'account_not_found') {
-          const params = new URLSearchParams()
-          params.append('email', encodeURIComponent(email))
-          params.append('token', encodeURIComponent(res.data))
-          router.push(`/reset-password/check-code?${params.toString()}`)
-        }
-        else {
-          Toast.notify({
-            type: 'error',
-            message: res.data,
-          })
-        }
+        Toast.notify({
+          type: 'error',
+          message: res.data,
+        })
       }
     }
+
     finally {
       setIsLoading(false)
     }
