@@ -186,7 +186,7 @@ const translation = {
     'transform': 'Transformar',
     'utilities': 'Utilidades',
     'noResult': 'No se encontraron coincidencias',
-    searchTool: 'Herramienta de búsqueda',
+    'searchTool': 'Herramienta de búsqueda',
   },
   blocks: {
     'start': 'Inicio',

@@ -186,7 +186,7 @@ const translation = {
     'transform': 'Dönüştür',
     'utilities': 'Yardımcı Araçlar',
     'noResult': 'Eşleşen bulunamadı',
-    searchTool: 'Arama aracı',
+    'searchTool': 'Arama aracı',
   },
   blocks: {
     'start': 'Başlat',

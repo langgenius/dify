@@ -185,8 +185,8 @@ const translation = {
     'logic': 'Logic',
     'transform': 'Chuyển đổi',
     'utilities': 'Tiện ích',
-    'noResult': 'Không tìm thấy kết quả phù hợp',
-    searchTool: 'Công cụ tìm kiếm',
+    'noResult': 'Không tìm thấy kế；t quả phù hợp',
+    'searchTool': 'Công cụ tìm kiếm',
   },
   blocks: {
     'start': 'Bắt đầu',

@@ -186,7 +186,7 @@ const translation = {
     'transform': 'Трансформація',
     'utilities': 'Утиліти',
     'noResult': 'Нічого не знайдено',
-    searchTool: 'Інструмент пошуку',
+    'searchTool': 'Інструмент пошуку',
   },
   blocks: {
     'start': 'Початок',

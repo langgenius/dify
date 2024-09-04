@@ -186,7 +186,7 @@ const translation = {
     'transform': 'Transformare',
     'utilities': 'Utilități',
     'noResult': 'Niciun rezultat găsit',
-    searchTool: 'Instrument de căutare',
+    'searchTool': 'Instrument de căutare',
   },
   blocks: {
     'start': 'Începe',

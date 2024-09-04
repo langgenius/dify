@@ -186,7 +186,7 @@ const translation = {
     'transform': 'Transformieren',
     'utilities': 'Dienstprogramme',
     'noResult': 'Kein Ergebnis gefunden',
-    searchTool: 'Suchwerkzeug',
+    'searchTool': 'Suchwerkzeug',
   },
   blocks: {
     'start': 'Start',

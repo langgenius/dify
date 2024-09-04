@@ -186,7 +186,7 @@ const translation = {
     'transform': '轉換',
     'utilities': '工具',
     'noResult': '未找到匹配項',
-    searchTool: '搜索工具',
+    'searchTool': '搜索工具',
   },
   blocks: {
     'start': '開始',

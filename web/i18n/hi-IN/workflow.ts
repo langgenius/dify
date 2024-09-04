@@ -189,7 +189,7 @@ const translation = {
     'transform': 'परिवर्तन',
     'utilities': 'उपयोगिताएं',
     'noResult': 'कोई मिलान नहीं मिला',
-    searchTool: 'खोज उपकरण',
+    'searchTool': 'खोज उपकरण',
   },
   blocks: {
     'start': 'प्रारंभ',

@@ -186,7 +186,7 @@ const translation = {
     'transform': '변환',
     'utilities': '유틸리티',
     'noResult': '일치하는 결과 없음',
-    searchTool: '검색 도구',
+    'searchTool': '검색 도구',
   },
   blocks: {
     'start': '시작',
