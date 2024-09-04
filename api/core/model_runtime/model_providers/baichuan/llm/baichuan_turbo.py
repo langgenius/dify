@@ -1,5 +1,6 @@
 import json
-from typing import Any, Optional, Union, Iterator
+from collections.abc import Iterator
+from typing import Any, Optional, Union
 
 from requests import post
 

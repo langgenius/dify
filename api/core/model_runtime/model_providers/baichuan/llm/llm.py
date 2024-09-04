@@ -1,5 +1,6 @@
 import json
-from typing import Generator, Iterator, cast
+from collections.abc import Generator, Iterator
+from typing import cast
 
 from core.model_runtime.entities.llm_entities import (
     LLMResult,
