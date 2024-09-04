@@ -273,23 +273,23 @@ const AudioPlayer: React.FC<AudioPlayerProps> = ({ src }) => {
 
   return (
     <div className={styles.audioPlayer}>
-      <audio ref={audioRef} src={src} preload="auto" />
+      <audio ref={audioRef} src={src} preload="auto"/>
       <button className={styles.playButton} onClick={togglePlay} disabled={!isAudioAvailable}>
         {isPlaying
           ? (
             <svg viewBox="0 0 24 24" width="16" height="16">
-              <rect x="6" y="4" width="3" height="16" />
-              <rect x="14" y="4" width="3" height="16" />
+              <rect x="6" y="4" width="3" height="16"/>
+              <rect x="14" y="4" width="3" height="16"/>
             </svg>
           )
           : (
             <svg viewBox="0 0 24 24" width="16" height="16">
-              <path d="M8 5v14l11-7z" fill="currentColor" />
+              <path d="M8 5v14l11-7z" fill="currentColor"/>
             </svg>
           )}
       </button>
-      <div className={styles.audioControls}>
-        <div className={styles.progressBarContainer} hidden={!isAudioAvailable}>
+      <div className={isAudioAvailable ? styles.audioControls : styles.audioControls_disabled} hidden={!isAudioAvailable}>
+        <div className={styles.progressBarContainer}>
           <canvas
             ref={canvasRef}
             className={styles.waveform}
@@ -297,15 +297,15 @@ const AudioPlayer: React.FC<AudioPlayerProps> = ({ src }) => {
             onMouseMove={handleMouseMove}
             onMouseDown={handleCanvasInteraction}
           />
-          <div className={styles.currentTime} style={{ left: `${(currentTime / duration) * 88}%`, bottom: '29px' }} hidden={!isAudioAvailable}>
+          <div className={styles.currentTime} style={{ left: `${(currentTime / duration) * 88}%`, bottom: '29px' }}>
             {formatTime(currentTime)}
           </div>
-          <div className={styles.timeDisplay} hidden={!isAudioAvailable}>
+          <div className={styles.timeDisplay}>
             <span className={styles.duration}>{formatTime(duration)}</span>
           </div>
         </div>
-        <div className={styles.source_unavailable} hidden={isAudioAvailable}>{t('common.operation.audioSourceUnavailable')}</div>
       </div>
+      <div className={styles.source_unavailable} hidden={isAudioAvailable}>{t('common.operation.audioSourceUnavailable')}</div>
     </div>
   )
 }

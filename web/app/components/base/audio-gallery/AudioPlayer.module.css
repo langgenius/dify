@@ -5,7 +5,7 @@
   background-color: #ffffff;
   border-radius: 10px;
   padding: 8px;
-  min-width: 260px;
+  min-width: 240px;
   max-width: 420px;
   max-height: 40px;
   backdrop-filter: blur(5px);
@@ -30,6 +30,10 @@
 
 .playButton:hover {
   background-color: #3367d6;
+}
+
+.playButton:disabled {
+  background-color: #bdbdbf;
 }
 
 .audioControls {
