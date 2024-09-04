@@ -113,7 +113,7 @@ class LLMNode(BaseNode):
             }
 
             # handle invoke result
-            result_text, usage = self._invoke_llm(
+            result_text, usage, finish_reason = self._invoke_llm(
                 node_data_model=node_data.model,
                 model_instance=model_instance,
                 prompt_messages=prompt_messages,
@@ -129,7 +129,8 @@ class LLMNode(BaseNode):
 
         outputs = {
             'text': result_text,
-            'usage': jsonable_encoder(usage)
+            'usage': jsonable_encoder(usage),
+            'finish_reason': finish_reason
         }
 
         return NodeRunResult(
@@ -167,14 +168,14 @@ class LLMNode(BaseNode):
         )
 
         # handle invoke result
-        text, usage = self._handle_invoke_result(
+        text, usage, finish_reason = self._handle_invoke_result(
             invoke_result=invoke_result
         )
 
         # deduct quota
         self.deduct_llm_quota(tenant_id=self.tenant_id, model_instance=model_instance, usage=usage)
 
-        return text, usage
+        return text, usage, finish_reason
 
     def _handle_invoke_result(self, invoke_result: Generator) -> tuple[str, LLMUsage]:
         """
@@ -186,6 +187,7 @@ class LLMNode(BaseNode):
         prompt_messages = []
         full_text = ''
         usage = None
+        finish_reason = None
         for result in invoke_result:
             text = result.delta.message.content
             full_text += text
@@ -201,10 +203,13 @@ class LLMNode(BaseNode):
             if not usage and result.delta.usage:
                 usage = result.delta.usage
 
+            if not finish_reason and result.delta.finish_reason:
+                finish_reason = result.delta.finish_reason
+
         if not usage:
             usage = LLMUsage.empty_usage()
 
-        return full_text, usage
+        return full_text, usage, finish_reason
 
     def _transform_chat_messages(self,
         messages: list[LLMNodeChatModelMessage] | LLMNodeCompletionModelPromptTemplate

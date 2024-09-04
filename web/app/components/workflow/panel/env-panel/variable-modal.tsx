@@ -1,14 +1,15 @@
 import React, { useEffect } from 'react'
 import { useTranslation } from 'react-i18next'
 import { v4 as uuid4 } from 'uuid'
-import { RiCloseLine, RiQuestionLine } from '@remixicon/react'
+import { RiCloseLine } from '@remixicon/react'
 import { useContext } from 'use-context-selector'
 import Button from '@/app/components/base/button'
-import TooltipPlus from '@/app/components/base/tooltip-plus'
+import Tooltip from '@/app/components/base/tooltip'
 import { ToastContext } from '@/app/components/base/toast'
 import { useStore } from '@/app/components/workflow/store'
 import type { EnvironmentVariable } from '@/app/components/workflow/types'
 import cn from '@/utils/classnames'
+import { checkKeys } from '@/utils/var'
 
 export type ModalPropsType = {
   env?: EnvironmentVariable
@@ -28,19 +29,21 @@ const VariableModal = ({
   const [name, setName] = React.useState('')
   const [value, setValue] = React.useState<any>()
 
-  const handleNameChange = (v: string) => {
-    if (!v)
-      return setName('')
-    if (!/^[a-zA-Z0-9_]+$/.test(v))
-      return notify({ type: 'error', message: 'name is can only contain letters, numbers and underscores' })
-    if (/^[0-9]/.test(v))
-      return notify({ type: 'error', message: 'name can not start with a number' })
-    setName(v)
+  const checkVariableName = (value: string) => {
+    const { isValid, errorMessageKey } = checkKeys([value], false)
+    if (!isValid) {
+      notify({
+        type: 'error',
+        message: t(`appDebug.varKeyError.${errorMessageKey}`, { key: t('workflow.env.modal.name') }),
+      })
+      return false
+    }
+    return true
   }
 
   const handleSave = () => {
-    if (!name)
-      return notify({ type: 'error', message: 'name can not be empty' })
+    if (!checkVariableName(name))
+      return
     if (!value)
       return notify({ type: 'error', message: 'value can not be empty' })
     if (!env && envList.some(env => env.name === name))
@@ -99,13 +102,14 @@ const VariableModal = ({
               type === 'secret' && 'text-text-primary font-medium border-[1.5px] shadow-xs bg-components-option-card-option-selected-bg border-components-option-card-option-selected-border hover:border-components-option-card-option-selected-border',
             )} onClick={() => setType('secret')}>
               <span>Secret</span>
-              <TooltipPlus popupContent={
-                <div className='w-[240px]'>
-                  {t('workflow.env.modal.secretTip')}
-                </div>
-              }>
-                <RiQuestionLine className='ml-0.5 w-[14px] h-[14px] text-text-quaternary' />
-              </TooltipPlus>
+              <Tooltip
+                popupContent={
+                  <div className='w-[240px]'>
+                    {t('workflow.env.modal.secretTip')}
+                  </div>
+                }
+                triggerClassName='ml-0.5 w-3.5 h-3.5'
+              />
             </div>
           </div>
         </div>
@@ -118,7 +122,8 @@ const VariableModal = ({
               className='block px-3 w-full h-8 bg-components-input-bg-normal system-sm-regular radius-md border border-transparent appearance-none outline-none caret-primary-600 hover:border-components-input-border-hover hover:bg-components-input-bg-hover focus:bg-components-input-bg-active focus:border-components-input-border-active focus:shadow-xs placeholder:system-sm-regular placeholder:text-components-input-text-placeholder'
               placeholder={t('workflow.env.modal.namePlaceholder') || ''}
               value={name}
-              onChange={e => handleNameChange(e.target.value)}
+              onChange={e => setName(e.target.value || '')}
+              onBlur={e => checkVariableName(e.target.value)}
               type='text'
             />
           </div>

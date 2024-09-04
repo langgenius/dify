@@ -189,6 +189,7 @@ export type InitialDocumentDetail = {
   completed_segments?: number
   total_segments?: number
   doc_form: 'text_model' | 'qa_model'
+  doc_language: string
 }
 
 export type SimpleDocumentDetail = InitialDocumentDetail & {

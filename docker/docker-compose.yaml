@@ -66,6 +66,7 @@ x-shared-env: &shared-api-worker-env
   ALIYUN_OSS_ENDPOINT: ${ALIYUN_OSS_ENDPOINT:-}
   ALIYUN_OSS_REGION: ${ALIYUN_OSS_REGION:-}
   ALIYUN_OSS_AUTH_VERSION: ${ALIYUN_OSS_AUTH_VERSION:-v4}
+  ALIYUN_OSS_PATHS: ${ALIYUN_OSS_PATH:-}
   TENCENT_COS_BUCKET_NAME: ${TENCENT_COS_BUCKET_NAME:-}
   TENCENT_COS_SECRET_KEY: ${TENCENT_COS_SECRET_KEY:-}
   TENCENT_COS_SECRET_ID: ${TENCENT_COS_SECRET_ID:-}
@@ -178,6 +179,7 @@ x-shared-env: &shared-api-worker-env
   CODE_MAX_NUMBER: ${CODE_MAX_NUMBER:-9223372036854775807}
   CODE_MIN_NUMBER: ${CODE_MIN_NUMBER:--9223372036854775808}
   CODE_MAX_DEPTH: ${CODE_MAX_DEPTH:-5}
+  CODE_MAX_PRECISION: ${CODE_MAX_PRECISION:-20}
   CODE_MAX_STRING_LENGTH: ${CODE_MAX_STRING_LENGTH:-80000}
   TEMPLATE_TRANSFORM_MAX_LENGTH: ${TEMPLATE_TRANSFORM_MAX_LENGTH:-80000}
   CODE_MAX_STRING_ARRAY_LENGTH: ${CODE_MAX_STRING_ARRAY_LENGTH:-30}
@@ -189,7 +191,7 @@ x-shared-env: &shared-api-worker-env
 services:
   # API service
   api:
-    image: langgenius/dify-api:0.7.1
+    image: langgenius/dify-api:0.7.3
     restart: always
     environment:
       # Use the shared environment variables.
@@ -209,7 +211,7 @@ services:
   # worker service
   # The Celery worker for processing the queue.
   worker:
-    image: langgenius/dify-api:0.7.1
+    image: langgenius/dify-api:0.7.3
     restart: always
     environment:
       # Use the shared environment variables.
@@ -228,7 +230,7 @@ services:
 
   # Frontend web application.
   web:
-    image: langgenius/dify-web:0.7.1
+    image: langgenius/dify-web:0.7.3
     restart: always
     environment:
       CONSOLE_API_URL: ${CONSOLE_API_URL:-}
@@ -293,7 +295,7 @@ services:
 
   # ssrf_proxy server
   # for more information, please refer to
-  # https://docs.dify.ai/learn-more/faq/self-host-faq#id-18.-why-is-ssrf_proxy-needed
+  # https://docs.dify.ai/learn-more/faq/install-faq#id-18.-why-is-ssrf_proxy-needed
   ssrf_proxy:
     image: ubuntu/squid:latest
     restart: always
