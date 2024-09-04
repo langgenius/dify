@@ -101,7 +101,6 @@ const CacheCtrlBtn: FC<Props> = ({
             ? (
               <Tooltip
                 popupContent={t('appDebug.feature.annotation.add')}
-                needsDelay
               >
                 <div
                   className='p-1 rounded-md hover:bg-[#EEF4FF] hover:text-[#444CE7] cursor-pointer'
@@ -115,7 +114,6 @@ const CacheCtrlBtn: FC<Props> = ({
         }
         <Tooltip
           popupContent={t('appDebug.feature.annotation.edit')}
-          needsDelay
         >
           <div
             className='p-1 cursor-pointer rounded-md hover:bg-black/5'
