@@ -424,7 +424,7 @@ class ToolManager:
                     decrypt_credentials=False
                 )
 
-                result_providers[provider.identity.name] = user_provider
+                # result_providers[provider.identity.name] = user_provider
 
         # get db api providers
 
