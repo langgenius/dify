@@ -48,6 +48,8 @@ const translation = {
           title: 'ワークフローステップ',
           show: '表示',
           hide: '非表示',
+          subTitle: 'ワークフローの詳細',
+          showDesc: 'Webアプリでワークフローの詳細を表示または非表示にする',
         },
         chatColorTheme: 'チャットボットのカラーテーマ',
         chatColorThemeDesc: 'チャットボットのカラーテーマを設定します',
@@ -63,6 +65,12 @@ const translation = {
           customDisclaimer: 'カスタム免責事項',
           customDisclaimerPlaceholder: '免責事項を入力してください',
           customDisclaimerTip: 'アプリケーションの使用に関する免責事項を提供します。',
+        },
+        sso: {
+          title: 'WebアプリSSO',
+          tooltip: '管理者に問い合わせて、WebApp SSO を有効にします',
+          label: 'SSO認証',
+          description: 'すべてのユーザーは、WebAppを使用する前にSSOでログインする必要があります',
         },
       },
       embedded: {

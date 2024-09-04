@@ -74,6 +74,10 @@ const translation = {
     pathParams: 'Parâmetros de Caminho',
     query: 'Consulta',
   },
+  play: 'Brincar',
+  loading: 'Carregamento',
+  pause: 'Pausa',
+  playing: 'Jogar',
 }
 
 export default translation

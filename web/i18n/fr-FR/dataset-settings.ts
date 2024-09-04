@@ -27,6 +27,8 @@ const translation = {
       longDescription: 'À propos de la méthode de récupération, vous pouvez la modifier à tout moment dans les paramètres de Connaissance.',
     },
     save: 'Enregistrer',
+    me: '(Vous)',
+    permissionsInvitedMembers: 'Membres partiels de l’équipe',
   },
 }
 

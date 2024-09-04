@@ -54,6 +54,11 @@ const translation = {
       customIntegration: 'Custom integration and support',
       ragAPIRequest: 'RAG API Requests',
       agentModel: 'Agent Model',
+      workflow: 'Fluxo de trabalho',
+      llmLoadingBalancing: 'Balanceamento de carga LLM',
+      bulkUpload: 'Carregar documentos em massa',
+      llmLoadingBalancingTooltip: 'Adicione várias chaves de API aos modelos, ignorando efetivamente os limites de taxa da API.',
+      agentMode: 'Modo Agente',
     },
     comingSoon: 'Coming soon',
     member: 'Member',
@@ -68,6 +73,11 @@ const translation = {
     },
     ragAPIRequestTooltip: 'Refers to the number of API calls invoking only the knowledge base processing capabilities of Dify.',
     receiptInfo: 'Somente proprietários e administradores de equipe podem se inscrever e visualizar informações de cobrança',
+    customTools: 'Ferramentas personalizadas',
+    documentsUploadQuota: 'Cota de upload de documentos',
+    annotationQuota: 'Cota de anotação',
+    contractSales: 'Entre em contato com a equipe de vendas',
+    unavailable: 'Indisponível',
   },
   plans: {
     sandbox: {
