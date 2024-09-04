@@ -135,7 +135,7 @@ const translation = {
     previewSwitchTipStart: '当前分段预览是文本模式，切换到 Q&A 模式将会',
     previewSwitchTipEnd: '消耗额外的 token',
     characters: '字符',
-    indexSettedTip: '要更改索引方法，请转到',
+    indexSettedTip: '要更改索引方法和 embedding 模型，请转到',
     retrivalSettedTip: '要更改检索方法，请转到',
     datasetSettingLink: '知识库设置。',
   },
