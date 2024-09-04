@@ -4,7 +4,8 @@ import { useStoreApi } from 'reactflow'
 import type { ValueSelector, Var } from '../../types'
 import { VarType } from '../../types'
 import { getOperators } from '../if-else/utils'
-import type { Condition, Limit, ListFilterNodeType, OrderBy } from './types'
+import { OrderBy } from './types'
+import type { Condition, Limit, ListFilterNodeType } from './types'
 import useNodeCrud from '@/app/components/workflow/nodes/_base/hooks/use-node-crud'
 import {
   useIsChatMode,
@@ -80,10 +81,12 @@ const useConfig = (id: string, payload: ListFilterNodeType) => {
       draft.var_type = varType
       draft.item_var_type = itemVarType
       draft.filter_by = [{
-        key: isFileArray ? 'name' : '',
+        key: (isFileArray && !draft.filter_by[0].key) ? 'name' : '',
         comparison_operator: getOperators(itemVarType, isFileArray ? { key: 'name' } : undefined)[0],
         value: '',
       }]
+      if (isFileArray && draft.order_by.enabled && !draft.order_by.key)
+        draft.order_by.key = 'name'
     })
     setInputs(newInputs)
   }, [getType, inputs, setInputs])
@@ -110,9 +113,14 @@ const useConfig = (id: string, payload: ListFilterNodeType) => {
   const handleOrderByEnabledChange = useCallback((enabled: boolean) => {
     const newInputs = produce(inputs, (draft) => {
       draft.order_by.enabled = enabled
+      if (enabled) {
+        draft.order_by.value = OrderBy.ASC
+        if (hasSubVariable && !draft.order_by.key)
+          draft.order_by.key = 'name'
+      }
     })
     setInputs(newInputs)
-  }, [inputs, setInputs])
+  }, [hasSubVariable, inputs, setInputs])
 
   const handleOrderByKeyChange = useCallback((key: string) => {
     const newInputs = produce(inputs, (draft) => {

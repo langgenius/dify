@@ -562,6 +562,8 @@ const translation = {
     listFilter: {
       inputVar: 'Input Variable',
       filterCondition: 'Filter Condition',
+      filterConditionComparisonOperator: 'Filter Condition Comparison Operator',
+      filterConditionComparisonValue: 'Filter Condition value',
       selectVariableKeyPlaceholder: 'Select sub variable key',
       limit: 'Limit',
       orderBy: 'Order by',

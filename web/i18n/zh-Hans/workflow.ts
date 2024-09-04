@@ -562,6 +562,8 @@ const translation = {
     listFilter: {
       inputVar: '输入变量',
       filterCondition: '过滤条件',
+      filterConditionComparisonOperator: '过滤条件比较操作符',
+      filterConditionComparisonValue: '过滤条件比较值',
       selectVariableKeyPlaceholder: '选择子变量的 Key',
       limit: '限制',
       orderBy: '排序',
