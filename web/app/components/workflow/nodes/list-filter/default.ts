@@ -7,6 +7,7 @@ const i18nPrefix = 'workflow.errorMsg'
 const nodeDefault: NodeDefault<ListFilterNodeType> = {
   defaultValue: {
     variable: [],
+    filter_by: [],
     order_by: {
       enabled: false,
       key: '',

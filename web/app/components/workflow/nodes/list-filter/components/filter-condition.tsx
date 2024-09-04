@@ -22,7 +22,7 @@ type Props = {
 }
 
 const FilterCondition: FC<Props> = ({
-  condition,
+  condition = { key: '', comparison_operator: ComparisonOperator.equal, value: '' },
   varType,
   onChange,
   hasSubVariable,
