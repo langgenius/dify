@@ -129,6 +129,7 @@ const translation = {
     createWorkspace: 'Tạo Không gian làm việc',
     helpCenter: 'Trung tâm trợ giúp',
     communityFeedback: 'Phản hồi',
+    roadmap: 'Lộ trình',
     community: 'Cộng đồng',
     about: 'Về chúng tôi',
     logout: 'Đăng xuất',
