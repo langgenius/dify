@@ -416,6 +416,7 @@ const translation = {
       enterValue: '値を入力',
       addCondition: '条件を追加',
       conditionNotSetup: '条件が設定されていません',
+      selectVariable: '変数を選択...',
     },
     variableAssigner: {
       title: '変数を代入する',

@@ -32,7 +32,6 @@ const translation = {
       create: '執行一次',
       batch: '批次執行',
       saved: '已儲存',
-
     },
     savedNoData: {
       title: '您還沒有儲存結果！',

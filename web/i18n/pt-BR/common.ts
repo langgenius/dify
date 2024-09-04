@@ -201,6 +201,11 @@ const translation = {
     disinvite: 'Cancelar o convite',
     deleteMember: 'Excluir Membro',
     you: '(Você)',
+    datasetOperatorTip: 'Só pode gerenciar a base de dados de conhecimento',
+    builder: 'Construtor',
+    setBuilder: 'Definir como construtor',
+    builderTip: 'Pode criar e editar seus próprios aplicativos',
+    datasetOperator: 'Administrador de conhecimento',
   },
   integrations: {
     connected: 'Conectado',
@@ -347,6 +352,22 @@ const translation = {
     quotaTip: 'Tokens gratuitos disponíveis restantes',
     loadPresets: 'Carregar Predefinições',
     parameters: 'PARÂMETROS',
+    loadBalancingDescription: 'Reduza a pressão com vários conjuntos de credenciais.',
+    configLoadBalancing: 'Balanceamento de carga de configuração',
+    upgradeForLoadBalancing: 'Atualize seu plano para habilitar o balanceamento de carga.',
+    providerManaged: 'Gerenciado pelo provedor',
+    apiKeyStatusNormal: 'O status do APIKey é normal',
+    loadBalancing: 'Balanceamento de carga',
+    addConfig: 'Adicionar configuração',
+    providerManagedDescription: 'Use o único conjunto de credenciais fornecido pelo provedor de modelo.',
+    apiKey: 'CHAVE DE API',
+    loadBalancingLeastKeyWarning: 'Para habilitar o balanceamento de carga, pelo menos 2 chaves devem estar habilitadas.',
+    editConfig: 'Editar configuração',
+    defaultConfig: 'Configuração padrão',
+    modelHasBeenDeprecated: 'Este modelo foi preterido',
+    loadBalancingInfo: 'Por padrão, o balanceamento de carga usa a estratégia Round-robin. Se a limitação de taxa for acionada, um período de espera de 1 minuto será aplicado.',
+    apiKeyRateLimit: 'O limite de taxa foi atingido, disponível após {{seconds}}s',
+    loadBalancingHeadline: 'Balanceamento de carga',
   },
   dataSource: {
     add: 'Adicionar uma fonte de dados',
@@ -370,6 +391,15 @@ const translation = {
         preview: 'PRÉ-VISUALIZAÇÃO',
       },
     },
+    website: {
+      inactive: 'Inativo',
+      active: 'Ativo',
+      title: 'Local na rede Internet',
+      with: 'Com',
+      configuredCrawlers: 'Rastreadores configurados',
+      description: 'Importe conteúdo de sites usando o rastreador da Web.',
+    },
+    configure: 'Configurar',
   },
   plugin: {
     serpapi: {
@@ -537,6 +567,10 @@ const translation = {
     deleteTip: 'A tag está sendo usada, excluí-la?',
     created: 'Tag criada com sucesso',
     failed: 'Falha na criação da tag',
+  },
+  errorMsg: {
+    fieldRequired: '{{field}} é obrigatório',
+    urlError: 'URL deve começar com http:// ou https://',
   },
 }
 

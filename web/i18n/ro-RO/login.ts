@@ -54,6 +54,7 @@ const translation = {
     nameEmpty: 'Numele este obligatoriu',
     passwordEmpty: 'Parola este obligatorie',
     passwordInvalid: 'Parola trebuie să conțină litere și cifre, iar lungimea trebuie să fie mai mare de 8 caractere',
+    passwordLengthInValid: 'Parola trebuie să aibă cel puțin 8 caractere',
   },
   license: {
     tip: 'Înainte de a începe Dify Community Edition, citește',

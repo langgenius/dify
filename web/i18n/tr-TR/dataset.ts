@@ -53,6 +53,7 @@ const translation = {
     semantic_search: 'VEKTÖR',
     full_text_search: 'TAM METİN',
     hybrid_search: 'HİBRİT',
+    invertedIndex: 'TERS',
   },
   mixtureHighQualityAndEconomicTip: 'Yüksek kaliteli ve ekonomik bilgi tabanlarının karışımı için Yeniden Sıralama modeli gereklidir.',
   inconsistentEmbeddingModelTip: 'Seçilen bilgi tabanlarının Yerleştirme modelleri tutarsızsa Yeniden Sıralama modeli gereklidir.',

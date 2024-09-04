@@ -73,6 +73,13 @@ const translation = {
       'कार्यप्रवाह अपडेट के बाद टूल पुनः कॉन्फ़िगरेशन आवश्यक है।',
     viewDetailInTracingPanel: 'विवरण देखें',
     syncingData: 'डेटा सिंक हो रहा है, बस कुछ सेकंड।',
+    overwriteAndImport: 'अधिलेखित और आयात',
+    importSuccess: 'सफलता आयात करें',
+    chooseDSL: 'डीएसएल (वाईएमएल) फ़ाइल चुनें',
+    importDSL: 'DSL आयात करें',
+    backupCurrentDraft: 'बैकअप वर्तमान ड्राफ्ट',
+    importFailure: 'आयात विफलता',
+    importDSLTip: 'वर्तमान ड्राफ्ट ओवरराइट हो जाएगा। आयात करने से पहले वर्कफ़्लो को बैकअप के रूप में निर्यात करें.',
   },
   env: {
     envPanelTitle: 'पर्यावरण चर',
@@ -182,6 +189,7 @@ const translation = {
     'transform': 'परिवर्तन',
     'utilities': 'उपयोगिताएं',
     'noResult': 'कोई मिलान नहीं मिला',
+    'searchTool': 'खोज उपकरण',
   },
   blocks: {
     'start': 'प्रारंभ',
@@ -423,6 +431,7 @@ const translation = {
       enterValue: 'मान दर्ज करें',
       addCondition: 'शर्त जोड़ें',
       conditionNotSetup: 'शर्त सेटअप नहीं है',
+      selectVariable: 'चर का चयन करें...',
     },
     variableAssigner: {
       title: 'वेरिएबल्स असाइन करें',

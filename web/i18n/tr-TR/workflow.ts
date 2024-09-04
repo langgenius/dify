@@ -186,6 +186,7 @@ const translation = {
     'transform': 'Dönüştür',
     'utilities': 'Yardımcı Araçlar',
     'noResult': 'Eşleşen bulunamadı',
+    'searchTool': 'Arama aracı',
   },
   blocks: {
     'start': 'Başlat',
@@ -365,6 +366,7 @@ const translation = {
         'custom': 'Özel',
         'api-key-title': 'API Anahtarı',
         'header': 'Başlık',
+        'auth-type': 'Kimlik Doğrulama Türü',
       },
       insertVarPlaceholder: 'değişkeni eklemek için \'/\' yazın',
       timeout: {
@@ -417,7 +419,6 @@ const translation = {
       conditionNotSetup: 'Koşul AYARLANMADI',
       selectVariable: 'Değişken seçin...',
     },
-
     variableAssigner: {
       title: 'Değişken ata',
       outputType: 'Çıktı Türü',

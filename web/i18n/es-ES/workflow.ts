@@ -186,6 +186,7 @@ const translation = {
     'transform': 'Transformar',
     'utilities': 'Utilidades',
     'noResult': 'No se encontraron coincidencias',
+    'searchTool': 'Herramienta de búsqueda',
   },
   blocks: {
     'start': 'Inicio',
@@ -415,6 +416,7 @@ const translation = {
       enterValue: 'Ingresa un valor',
       addCondition: 'Agregar condición',
       conditionNotSetup: 'Condición NO configurada',
+      selectVariable: 'Seleccionar variable...',
     },
     variableAssigner: {
       title: 'Asignar variables',
@@ -532,6 +534,9 @@ const translation = {
     tracing: {
       stopBy: 'Detenido por {{user}}',
     },
+  },
+  tracing: {
+    stopBy: 'Pásate por {{usuario}}',
   },
 }
 

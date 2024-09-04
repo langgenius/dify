@@ -191,6 +191,7 @@ const translation = {
     'transform': 'Trasforma',
     'utilities': 'Utility',
     'noResult': 'Nessuna corrispondenza trovata',
+    'searchTool': 'Strumento di ricerca',
   },
   blocks: {
     'start': 'Inizio',

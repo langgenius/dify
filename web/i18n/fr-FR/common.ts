@@ -201,6 +201,11 @@ const translation = {
     disinvite: 'Annuler l\'invitation',
     deleteMember: 'Supprimer Membre',
     you: '(Vous)',
+    builder: 'Constructeur',
+    datasetOperatorTip: 'Seul peut gérer la base de connaissances',
+    datasetOperator: 'Administrateur des connaissances',
+    setBuilder: 'Définir en tant que constructeur',
+    builderTip: 'Peut créer et modifier ses propres applications',
   },
   integrations: {
     connected: 'Connecté',
@@ -347,6 +352,22 @@ const translation = {
     quotaTip: 'Tokens gratuits restants disponibles',
     loadPresets: 'Charger les Présents',
     parameters: 'PARAMÈTRES',
+    modelHasBeenDeprecated: 'Ce modèle est obsolète',
+    providerManagedDescription: 'Utilisez l’ensemble unique d’informations d’identification fourni par le fournisseur de modèle.',
+    loadBalancingHeadline: 'Équilibrage',
+    loadBalancing: 'Équilibrage',
+    loadBalancingLeastKeyWarning: 'Pour activer l’équilibrage de charge, au moins 2 clés doivent être activées.',
+    apiKey: 'API-KEY',
+    apiKeyStatusNormal: 'L’état de l’APIKey est normal',
+    configLoadBalancing: 'Équilibrage de charge de configuration',
+    loadBalancingInfo: 'Par défaut, l’équilibrage de charge utilise la stratégie Round-robin. Si la limitation de vitesse est déclenchée, une période de recharge de 1 minute sera appliquée.',
+    editConfig: 'Modifier la configuration',
+    addConfig: 'Ajouter une configuration',
+    apiKeyRateLimit: 'La limite de débit a été atteinte, disponible après {{secondes}}s',
+    defaultConfig: 'Configuration par défaut',
+    loadBalancingDescription: 'Réduisez la pression grâce à plusieurs ensembles d’informations d’identification.',
+    providerManaged: 'Géré par le fournisseur',
+    upgradeForLoadBalancing: 'Mettez à niveau votre plan pour activer l’équilibrage de charge.',
   },
   dataSource: {
     add: 'Ajouter une source de données',
@@ -370,6 +391,15 @@ const translation = {
         preview: 'APERÇU',
       },
     },
+    website: {
+      configuredCrawlers: 'Robots d’exploration configurés',
+      with: 'Avec',
+      inactive: 'Inactif',
+      active: 'Actif',
+      title: 'Site internet',
+      description: 'Importez du contenu à partir de sites Web à l’aide du robot d’indexation.',
+    },
+    configure: 'Configurer',
   },
   plugin: {
     serpapi: {
@@ -537,6 +567,10 @@ const translation = {
     deleteTip: 'Le tag est utilisé, le supprimer ?',
     created: 'Tag créé avec succès',
     failed: 'La création de la balise a échoué',
+  },
+  errorMsg: {
+    fieldRequired: '{{field}} est obligatoire',
+    urlError: 'L’URL doit commencer par http:// ou https://',
   },
 }
 

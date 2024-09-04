@@ -53,6 +53,7 @@ const translation = {
     nameEmpty: 'O nome é obrigatório',
     passwordEmpty: 'A senha é obrigatória',
     passwordInvalid: 'A senha deve conter letras e números e ter um comprimento maior que 8',
+    passwordLengthInValid: 'A senha deve ter pelo menos 8 caracteres',
   },
   license: {
     tip: 'Antes de começar a usar a Edição Comunitária do Dify, leia a',
@@ -66,6 +67,9 @@ const translation = {
   activatedTipStart: 'Você se juntou à equipe',
   activatedTipEnd: '',
   activated: 'Entrar agora',
+  adminInitPassword: 'Senha de inicialização do administrador',
+  validate: 'Validar',
+  sso: 'Continuar com SSO',
 }
 
 export default translation

@@ -201,6 +201,11 @@ const translation = {
     disinvite: 'Hủy lời mời',
     deleteMember: 'Xóa thành viên',
     you: '(Bạn)',
+    datasetOperatorTip: 'Chỉ có thể quản lý cơ sở kiến thức',
+    builderTip: 'Có thể xây dựng và chỉnh sửa ứng dụng của riêng mình',
+    builder: 'Chủ thầu',
+    datasetOperator: 'Quản trị viên kiến thức',
+    setBuilder: 'Đặt làm trình tạo',
   },
   integrations: {
     connected: 'Đã kết nối',
@@ -347,6 +352,22 @@ const translation = {
     quotaTip: 'Số lượng mã thông báo miễn phí còn lại',
     loadPresets: 'Tải Cài đặt trước',
     parameters: 'THAM SỐ',
+    loadBalancingHeadline: 'Cân bằng tải',
+    loadBalancing: 'Cân bằng tải',
+    configLoadBalancing: 'Cấu hình cân bằng tải',
+    defaultConfig: 'Cấu hình mặc định',
+    modelHasBeenDeprecated: 'Mô hình này đã bị phản đối',
+    providerManagedDescription: 'Sử dụng bộ thông tin đăng nhập duy nhất do nhà cung cấp mô hình cung cấp.',
+    apiKeyStatusNormal: 'Trạng thái APIKey bình thường',
+    editConfig: 'Chỉnh sửa cấu hình',
+    loadBalancingInfo: 'Theo mặc định, cân bằng tải sử dụng chiến lược Vòng tròn. Nếu giới hạn tốc độ được kích hoạt, thời gian hồi chiêu 1 phút sẽ được áp dụng.',
+    addConfig: 'Thêm cấu hình',
+    loadBalancingDescription: 'Giảm áp lực với nhiều bộ thông tin xác thực.',
+    apiKey: 'KHÓA API',
+    providerManaged: 'Nhà cung cấp được quản lý',
+    apiKeyRateLimit: 'Đã đạt đến giới hạn tốc độ, có sẵn sau {{giây}} giây',
+    upgradeForLoadBalancing: 'Nâng cấp gói của bạn để bật Cân bằng tải.',
+    loadBalancingLeastKeyWarning: 'Để bật cân bằng tải, ít nhất 2 phím phải được bật.',
   },
   dataSource: {
     add: 'Thêm nguồn dữ liệu',
@@ -370,6 +391,15 @@ const translation = {
         preview: 'Xem trước',
       },
     },
+    website: {
+      title: 'Trang mạng',
+      inactive: 'Không hoạt động',
+      with: 'Với',
+      active: 'Hoạt động',
+      configuredCrawlers: 'Trình thu thập thông tin đã định cấu hình',
+      description: 'Nhập nội dung từ các trang web bằng trình thu thập dữ liệu web.',
+    },
+    configure: 'Cấu hình',
   },
   plugin: {
     serpapi: {
@@ -537,6 +567,10 @@ const translation = {
     deleteTip: 'Thẻ đang được sử dụng, xóa nó đi?',
     created: 'Thẻ được tạo thành công',
     failed: 'Tạo thẻ không thành công',
+  },
+  errorMsg: {
+    fieldRequired: '{{trường}} là bắt buộc',
+    urlError: 'URL phải bắt đầu bằng http:// hoặc https://',
   },
 }
 

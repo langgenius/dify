@@ -209,6 +209,11 @@ const translation = {
     disinvite: 'Anuluj zaproszenie',
     deleteMember: 'Usuń członka',
     you: '(Ty)',
+    datasetOperatorTip: 'Może zarządzać tylko bazą wiedzy',
+    setBuilder: 'Ustaw jako budowniczego',
+    builder: 'Budowniczy',
+    builderTip: 'Może tworzyć i edytować własne aplikacje',
+    datasetOperator: 'Wiedza Admin',
   },
   integrations: {
     connected: 'Połączony',
@@ -360,6 +365,22 @@ const translation = {
     quotaTip: 'Pozostałe dostępne darmowe tokeny',
     loadPresets: 'Załaduj ustawienia wstępne',
     parameters: 'PARAMETRY',
+    apiKey: 'KLUCZ-API',
+    loadBalancing: 'Równoważenie obciążenia',
+    defaultConfig: 'Domyślna konfiguracja',
+    providerManagedDescription: 'Użyj pojedynczego zestawu poświadczeń dostarczonych przez dostawcę modelu.',
+    loadBalancingHeadline: 'Równoważenie obciążenia',
+    modelHasBeenDeprecated: 'Ten model jest przestarzały',
+    loadBalancingDescription: 'Zmniejsz presję dzięki wielu zestawom poświadczeń.',
+    providerManaged: 'Zarządzany przez dostawcę',
+    upgradeForLoadBalancing: 'Uaktualnij swój plan, aby włączyć równoważenie obciążenia.',
+    apiKeyStatusNormal: 'Stan APIKey jest normalny',
+    loadBalancingLeastKeyWarning: 'Aby włączyć równoważenie obciążenia, muszą być włączone co najmniej 2 klucze.',
+    loadBalancingInfo: 'Domyślnie równoważenie obciążenia używa strategii działania okrężnego. Jeśli zostanie uruchomione ograniczenie szybkości, zostanie zastosowany 1-minutowy okres odnowienia.',
+    configLoadBalancing: 'Równoważenie obciążenia konfiguracji',
+    editConfig: 'Edytuj konfigurację',
+    addConfig: 'Dodaj konfigurację',
+    apiKeyRateLimit: 'Osiągnięto limit szybkości, dostępny po {{sekund}}s',
   },
   dataSource: {
     add: 'Dodaj źródło danych',
@@ -383,6 +404,15 @@ const translation = {
         preview: 'PODGLĄD',
       },
     },
+    website: {
+      active: 'Aktywny',
+      with: 'Z',
+      title: 'Strona internetowa',
+      description: 'Importuj zawartość ze stron internetowych za pomocą robota indeksującego.',
+      configuredCrawlers: 'Skonfigurowane roboty indeksujące',
+      inactive: 'Nieaktywny',
+    },
+    configure: 'Konfigurować',
   },
   plugin: {
     serpapi: {
@@ -555,6 +585,10 @@ const translation = {
     deleteTip: 'Ten tag jest używany, czy chcesz go usunąć?',
     created: 'Tag został pomyślnie utworzony',
     failed: 'Nie udało się utworzyć tagu',
+  },
+  errorMsg: {
+    fieldRequired: '{{field}} jest wymagane',
+    urlError: 'Adres URL powinien zaczynać się od http:// lub https://',
   },
 }
 

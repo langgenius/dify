@@ -77,6 +77,7 @@ const translation = {
     pathParams: 'Pfadparameter',
     query: 'Anfrage',
   },
+  loading: 'Laden',
 }
 
 export default translation

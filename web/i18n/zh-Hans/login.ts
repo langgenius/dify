@@ -53,6 +53,7 @@ const translation = {
     nameEmpty: '用户名不能为空',
     passwordEmpty: '密码不能为空',
     passwordInvalid: '密码必须包含字母和数字，且长度不小于8位',
+    passwordLengthInValid: '密码必须至少为 8 个字符',
   },
   license: {
     tip: '启动 Dify 社区版之前, 请阅读 GitHub 上的',
@@ -68,6 +69,7 @@ const translation = {
   activated: '现在登录',
   adminInitPassword: '管理员初始化密码',
   validate: '验证',
+  sso: '使用 SSO 继续',
 }
 
 export default translation

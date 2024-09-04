@@ -186,6 +186,7 @@ const translation = {
     'transform': 'Transformer',
     'utilities': 'Utilitaires',
     'noResult': 'Aucun résultat trouvé',
+    'searchTool': 'Outil de recherche',
   },
   blocks: {
     'start': 'Début',
@@ -415,6 +416,7 @@ const translation = {
       enterValue: 'Entrez la valeur',
       addCondition: 'Ajouter une condition',
       conditionNotSetup: 'Condition NON configurée',
+      selectVariable: 'Sélectionner une variable...',
     },
     variableAssigner: {
       title: 'Attribuer des variables',

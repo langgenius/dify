@@ -53,6 +53,7 @@ const translation = {
     nameEmpty: 'Le nom est requis',
     passwordEmpty: 'Un mot de passe est requis',
     passwordInvalid: 'Le mot de passe doit contenir des lettres et des chiffres, et la longueur doit être supérieure à 8.',
+    passwordLengthInValid: 'Le mot de passe doit comporter au moins 8 caractères.',
   },
   license: {
     tip: 'Avant de commencer Dify Community Edition, lisez le GitHub',
@@ -68,6 +69,7 @@ const translation = {
   activated: 'Connectez-vous maintenant',
   adminInitPassword: 'Mot de passe d\'initialisation de l\'administrateur',
   validate: 'Valider',
+  sso: 'Poursuivre avec l’authentification unique',
 }
 
 export default translation

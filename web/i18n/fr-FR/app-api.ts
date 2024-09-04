@@ -77,6 +77,7 @@ const translation = {
     pathParams: 'Params de chemin',
     query: 'Requête',
   },
+  loading: 'Chargement',
 }
 
 export default translation

@@ -201,6 +201,11 @@ const translation = {
     disinvite: '取消邀請',
     deleteMember: '刪除成員',
     you: '（你）',
+    setBuilder: 'Set as builder （設置為建構器）',
+    datasetOperator: '知識管理員',
+    builder: '建築工人',
+    builderTip: '可以構建和編輯自己的應用程式',
+    datasetOperatorTip: '只能管理知識庫',
   },
   integrations: {
     connected: '登入方式',
@@ -347,6 +352,22 @@ const translation = {
     quotaTip: '剩餘免費額度',
     loadPresets: '載入預設',
     parameters: '引數',
+    loadBalancingHeadline: '負載均衡',
+    apiKeyStatusNormal: 'APIKey 狀態正常',
+    defaultConfig: '默認配置',
+    configLoadBalancing: '配置負載均衡',
+    loadBalancingDescription: '使用多組憑證減輕壓力。',
+    addConfig: '添加配置',
+    upgradeForLoadBalancing: '升級您的計劃以啟用Load Balancing。',
+    apiKey: 'API 金鑰',
+    loadBalancing: '負載均衡',
+    providerManagedDescription: '使用模型提供程式提供的單組憑證。',
+    modelHasBeenDeprecated: '此模型已棄用',
+    apiKeyRateLimit: '已達到速率限制，在 {{seconds}} 秒後可用',
+    providerManaged: '提供者管理',
+    editConfig: '編輯配置',
+    loadBalancingInfo: '默認情況下，負載均衡使用 Round-robin 策略。如果觸發了速率限制，將應用 1 分鐘的冷卻時間。',
+    loadBalancingLeastKeyWarning: '要啟用負載均衡，必須至少啟用 2 個金鑰。',
   },
   dataSource: {
     add: '新增資料來源',
@@ -370,6 +391,15 @@ const translation = {
         preview: '預覽',
       },
     },
+    website: {
+      active: '積極',
+      title: '網站',
+      with: '跟',
+      inactive: '無效',
+      configuredCrawlers: '配置的爬網程式',
+      description: '使用 Web 爬蟲從網站導入內容。',
+    },
+    configure: '配置',
   },
   plugin: {
     serpapi: {
@@ -537,6 +567,10 @@ const translation = {
     deleteTip: '標籤正在使用中，是否刪除？',
     created: '標籤建立成功',
     failed: '標籤建立失敗',
+  },
+  errorMsg: {
+    fieldRequired: '{{field}} 為必填項',
+    urlError: 'URL應以 http:// 或 https:// 開頭',
   },
 }
 

@@ -207,6 +207,9 @@ const translation = {
     disinvite: '取消邀请',
     deleteMember: '删除成员',
     you: '（你）',
+    builderTip: '可以构建和编辑自己的应用程序',
+    setBuilder: 'Set as builder （设置为构建器）',
+    builder: '构建器',
   },
   integrations: {
     connected: '登录方式',
@@ -368,6 +371,7 @@ const translation = {
     loadBalancingLeastKeyWarning: '至少启用 2 个 Key 以使用负载均衡',
     loadBalancingInfo: '默认情况下，负载平衡使用 Round-robin 策略。如果触发速率限制，将应用 1 分钟的冷却时间',
     upgradeForLoadBalancing: '升级以解锁负载均衡功能',
+    apiKey: 'API 密钥',
   },
   dataSource: {
     add: '添加数据源',
