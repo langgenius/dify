@@ -124,7 +124,7 @@ const translation = {
     workspace: '작업 공간',
     createWorkspace: '작업 공간 만들기',
     helpCenter: '도움말 센터',
-    roadmapAndFeedback: '로드맵 및 피드백',
+    communityFeedback: '로드맵 및 피드백',
     community: '커뮤니티',
     about: 'Dify 소개',
     logout: '로그아웃',

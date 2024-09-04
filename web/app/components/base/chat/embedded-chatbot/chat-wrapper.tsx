@@ -16,6 +16,7 @@ import {
   stopChatMessageResponding,
 } from '@/service/share'
 import LogoAvatar from '@/app/components/base/logo/logo-embeded-chat-avatar'
+import AnswerIcon from '@/app/components/base/answer-icon'
 
 const ChatWrapper = () => {
   const {
@@ -137,6 +138,17 @@ const ChatWrapper = () => {
     return null
   }, [currentConversationId, inputsForms, isMobile])
 
+  const answerIcon = isDify()
+    ? <LogoAvatar className='relative shrink-0' />
+    : (appData?.site && appData.site.use_icon_as_answer_icon)
+      ? <AnswerIcon
+        iconType={appData.site.icon_type}
+        icon={appData.site.icon}
+        background={appData.site.icon_background}
+        imageUrl={appData.site.icon_url}
+      />
+      : null
+
   return (
     <Chat
       appData={appData}
@@ -153,7 +165,7 @@ const ChatWrapper = () => {
       allToolIcons={appMeta?.tool_icons || {}}
       onFeedback={handleFeedback}
       suggestedQuestions={suggestedQuestions}
-      answerIcon={isDify() ? <LogoAvatar className='relative shrink-0' /> : null}
+      answerIcon={answerIcon}
       hideProcessDetail
       themeBuilder={themeBuilder}
     />

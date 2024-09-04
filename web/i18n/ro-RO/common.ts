@@ -127,7 +127,7 @@ const translation = {
     workspace: 'Spațiu de lucru',
     createWorkspace: 'Creează Spațiu de lucru',
     helpCenter: 'Ajutor',
-    roadmapAndFeedback: 'Feedback',
+    communityFeedback: 'Feedback',
     community: 'Comunitate',
     about: 'Despre',
     logout: 'Deconectare',
