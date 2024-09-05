@@ -32,9 +32,9 @@ class OpsService:
             "project_key" not in decrypt_tracing_config or not decrypt_tracing_config.get("project_key")
         ):
             project_key = OpsTraceManager.get_trace_config_project_key(decrypt_tracing_config, tracing_provider)
-            new_decrypt_tracing_config.update({
-                "project_url": "{host}/project/{key}".format(host=decrypt_tracing_config.get("host"), key=project_key)
-            })
+            new_decrypt_tracing_config.update(
+                {"project_url": "{host}/project/{key}".format(host=decrypt_tracing_config.get("host"), key=project_key)}
+            )
 
         if tracing_provider == "langsmith" and (
             "project_url" not in decrypt_tracing_config or not decrypt_tracing_config.get("project_url")
@@ -73,7 +73,7 @@ class OpsService:
         # get project url
         if tracing_provider == "langfuse":
             project_key = OpsTraceManager.get_trace_config_project_key(tracing_config, tracing_provider)
-            project_url = '{host}/project/{key}'.format(host=tracing_config.get("host"), key=project_key)
+            project_url = "{host}/project/{key}".format(host=tracing_config.get("host"), key=project_key)
         elif tracing_provider == "langsmith":
             project_url = OpsTraceManager.get_trace_config_project_url(tracing_config, tracing_provider)
         else:
