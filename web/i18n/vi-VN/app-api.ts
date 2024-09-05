@@ -77,6 +77,7 @@ const translation = {
     pathParams: 'Tham số đường dẫn',
     query: 'Truy vấn',
   },
+  loading: 'Tải',
 }
 
 export default translation

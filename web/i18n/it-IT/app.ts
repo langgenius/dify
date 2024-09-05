@@ -134,7 +134,17 @@ const translation = {
       removeConfirmContent:
         'La configurazione attuale è in uso, rimuovendola disattiverà la funzione di Tracciamento.',
     },
+    view: 'Vista',
   },
+  answerIcon: {
+    description: 'Se utilizzare l\'icona WebApp per la sostituzione 🤖 nell\'applicazione condivisa',
+    title: 'Usa l\'icona WebApp per sostituire 🤖',
+    descriptionInExplore: 'Se utilizzare l\'icona WebApp per sostituirla 🤖 in Esplora',
+  },
+  importFromDSLUrl: 'Dall\'URL',
+  importFromDSLFile: 'Da file DSL',
+  importFromDSL: 'Importazione da DSL',
+  importFromDSLUrlPlaceholder: 'Incolla qui il link DSL',
 }
 
 export default translation

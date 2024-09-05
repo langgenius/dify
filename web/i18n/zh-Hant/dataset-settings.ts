@@ -27,6 +27,8 @@ const translation = {
       longDescription: '關於檢索方法，您可以隨時在知識庫設定中更改此設定。',
     },
     save: '儲存',
+    permissionsInvitedMembers: '部分團隊成員',
+    me: '（您）',
   },
 }
 
