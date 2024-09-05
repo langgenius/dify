@@ -38,18 +38,25 @@
 
 .audioControls {
   flex-grow: 1;
-  position: relative;
+  
 }
 
 .progressBarContainer {
   height: 32px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
 }
 
 .waveform {
-  display: inline-flex;
+  position: relative;
+  display: flex;
   cursor: pointer;
-  height: 100%;
+  height: 24px;
   width: 100%;
+  flex-grow: 1;
+  align-items: center;
+  justify-content: center;
 }
 
 .progressBar {
@@ -67,19 +74,16 @@
 }
 
 .timeDisplay {
-  position: absolute;
+  /* position: absolute; */
   color: #296DFF;
   opacity: 0.8;
   border-radius: 2px;
-  top: 0;
-  flex: none;
   order: 0;
-  flex-grow: 0;
-  right: -16px; /* Adjust this value as needed */
   height: 100%;
-  width: 50px; /* Adjust this value as needed */
-  display: flex;
-  align-items: center; /* Add this line to vertically center the duration */
+  width: 50px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
 }
 
 .currentTime {
@@ -96,8 +100,6 @@
   background-color: rgba(255, 255, 255, 0.8);
   padding: 2px 4px;
   border-radius: 10px;
-  position: absolute;
-  right: 8px;
 }
 
 .source_unavailable {
