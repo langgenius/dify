@@ -48,13 +48,8 @@ const ProviderPanel: FC<Props> = ({
     e.preventDefault()
     e.stopPropagation()
 
-    if (config?.endpoint && config.endpoint.includes('langchain'))
-      window.open(`${config?.host}/project/${config?.project_key}`, '_blank', 'noopener,noreferrer')
-
-    if (config?.host && config.host.includes('langfuse')) {
-      window.open(`https://smith.langchain.com/o/${config?.project_key}/projects`,
-        '_blank', 'noopener,noreferrer')
-    }
+    const url = `${config?.host}/project/${config?.project_key}`
+    window.open(url, '_blank', 'noopener,noreferrer')
   }, [])
 
   const handleChosen = useCallback((e: React.MouseEvent) => {
