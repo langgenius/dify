@@ -174,6 +174,11 @@ class XinferenceText2SpeechModel(TTSModel):
                     return voices[language]
                 elif 'all' in voices:
                     return voices['all']
+                else:
+                    all_voices = []
+                    for lang, lang_voices in voices.items():
+                        all_voices.extend(lang_voices)
+                    return all_voices
 
         return self.model_voices['__default']['all']
 
