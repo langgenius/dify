@@ -59,6 +59,7 @@ const translation = {
     passwordEmpty: 'Hasło jest wymagane',
     passwordInvalid:
       'Hasło musi zawierać litery i cyfry, a jego długość musi być większa niż 8',
+    passwordLengthInValid: 'Hasło musi składać się z co najmniej 8 znaków',
   },
   license: {
     tip: 'Przed rozpoczęciem wersji społecznościowej Dify, przeczytaj GitHub',

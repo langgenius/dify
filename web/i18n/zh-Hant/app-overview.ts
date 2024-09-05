@@ -48,6 +48,8 @@ const translation = {
           title: '工作流程步驟',
           show: '展示',
           hide: '隱藏',
+          subTitle: '工作流詳細資訊',
+          showDesc: '在 WebApp 中顯示或隱藏工作流詳細資訊',
         },
         chatColorTheme: '聊天顏色主題',
         chatColorThemeDesc: '設定聊天機器人的顏色主題',
@@ -63,6 +65,12 @@ const translation = {
           customDisclaimer: '自定義免責聲明',
           customDisclaimerPlaceholder: '請輸入免責聲明',
           customDisclaimerTip: '客製化的免責聲明文字將在客戶端顯示，提供有關應用程式的額外資訊。',
+        },
+        sso: {
+          description: '所有使用者在使用 WebApp 之前都需要使用 SSO 登錄',
+          title: 'WebApp SSO',
+          tooltip: '聯繫管理員以啟用 WebApp SSO',
+          label: 'SSO 身份驗證',
         },
       },
       embedded: {
