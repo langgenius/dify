@@ -6,7 +6,7 @@ type Props = {
 }
 
 const VideoGallery: React.FC<Props> = ({ srcs }) => {
-  return (<><br/>{srcs.map((src, index) => (<><br/><VideoPlayer key={`audio_${index}`} src={src}/></>))}</>)
+  return (<><br/>{srcs.map((src, index) => (<><br/><VideoPlayer key={`video_${index}`} src={src}/></>))}</>)
 }
 
 export default React.memo(VideoGallery)

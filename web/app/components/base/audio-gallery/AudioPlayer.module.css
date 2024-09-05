@@ -76,7 +76,6 @@
 .timeDisplay {
   /* position: absolute; */
   color: #296DFF;
-  opacity: 0.8;
   border-radius: 2px;
   order: 0;
   height: 100%;
@@ -86,7 +85,7 @@
   justify-content: center;
 }
 
-.currentTime {
+/* .currentTime {
     position: absolute;
     bottom: calc(100% + 5px);
     transform: translateX(-50%);
@@ -94,7 +93,7 @@
     padding: 2px 4px;
     border-radius:10px;
     box-shadow: 0 1px 5px rgba(0, 0, 0, 0.08);
-}
+} */
 
 .duration {
   background-color: rgba(255, 255, 255, 0.8);
