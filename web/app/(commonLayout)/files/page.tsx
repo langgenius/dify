@@ -6,22 +6,23 @@ import React, { useEffect, useState } from 'react'
 import { useAppContext } from '@/context/app-context'
 import Main from '@/app/components/datasets/documents'
 import { fetchDatasets } from '@/service/datasets'
-import type { DataSet } from '@/models/datasets'
 
 const Layout: FC = () => {
   const { t } = useTranslation()
   const router = useRouter()
   const { isCurrentWorkspaceDatasetOperator } = useAppContext()
-  const [datasetId, setDatasetId] = useState<string>('28cc0f54-5762-464d-92c6-d85c9b413a38')
+  const [datasetId, setDatasetId] = useState<string>('')
 
   useEffect(() => {
     (async () => {
-      const { data: dataSetsdataWithDetail } = await fetchDatasets({ url: '/datasets', params: { page: 1 } })
-      if (dataSetsdataWithDetail && dataSetsdataWithDetail.length) {
-        setDatasetId(dataSetsdataWithDetail?.[0]?.id)
+      if (!datasetId) {
+        const { data: datasets } = await fetchDatasets({ url: '/datasets', params: { page: 1 } })
+        if (datasets && datasets.length) {
+          setDatasetId(datasets?.[0]?.id)
+        }
       }
     })()
-  // eslint-disable-next-line react-hooks/exhaustive-deps
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [])
 
   useEffect(() => {
