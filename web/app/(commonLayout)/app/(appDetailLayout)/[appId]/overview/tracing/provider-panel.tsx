@@ -48,12 +48,10 @@ const ProviderPanel: FC<Props> = ({
     e.preventDefault()
     e.stopPropagation()
 
-    if (config?.endpoint && config.endpoint.includes('langchain'))
-      window.open(`${config?.host}/project/${config?.project_key}`, '_blank', 'noopener,noreferrer')
-
-    if (config?.host && config.host.includes('langfuse'))
-      window.open(config?.project_url, '_blank', 'noopener,noreferrer')
-  }, [])
+    const url = config?.project_url
+    if (url)
+      window.open(url, '_blank', 'noopener,noreferrer')
+  }, [config?.project_url])
 
   const handleChosen = useCallback((e: React.MouseEvent) => {
     e.stopPropagation()
