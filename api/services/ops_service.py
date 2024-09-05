@@ -29,13 +29,13 @@ class OpsService:
         new_decrypt_tracing_config = OpsTraceManager.obfuscated_decrypt_token(tracing_provider, decrypt_tracing_config)
 
         if tracing_provider == "langfuse" and (
-                "project_key" not in decrypt_tracing_config or not decrypt_tracing_config.get("project_key")
+            "project_key" not in decrypt_tracing_config or not decrypt_tracing_config.get("project_key")
         ):
             project_key = OpsTraceManager.get_trace_config_project_key(decrypt_tracing_config, tracing_provider)
             new_decrypt_tracing_config.update({"project_key": project_key})
 
         if tracing_provider == "langsmith" and (
-                "project_url" not in decrypt_tracing_config or not decrypt_tracing_config.get("project_url")
+            "project_url" not in decrypt_tracing_config or not decrypt_tracing_config.get("project_url")
         ):
             project_url = OpsTraceManager.get_trace_config_project_url(decrypt_tracing_config, tracing_provider)
             new_decrypt_tracing_config.update({"project_url": project_url})
