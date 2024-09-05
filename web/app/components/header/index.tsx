@@ -11,6 +11,7 @@ import DatasetNav from './dataset-nav'
 import EnvNav from './env-nav'
 import ExploreNav from './explore-nav'
 import ToolsNav from './tools-nav'
+import FilesNav from './files-nav'
 // import GithubStar from './github-star'
 import { WorkspaceProvider } from '@/context/workspace-context'
 import { useAppContext } from '@/context/app-context'
@@ -75,6 +76,7 @@ const Header = () => {
           {!isCurrentWorkspaceDatasetOperator && <ExploreNav className={navClassName} />}
           {!isCurrentWorkspaceDatasetOperator && <AppNav />}
           {(isCurrentWorkspaceEditor || isCurrentWorkspaceDatasetOperator) && <DatasetNav />}
+          {!isCurrentWorkspaceDatasetOperator && <FilesNav className={navClassName} />}
           {!isCurrentWorkspaceDatasetOperator && <ToolsNav className={navClassName} />}
         </div>
       )}
@@ -94,6 +96,7 @@ const Header = () => {
           {!isCurrentWorkspaceDatasetOperator && <ExploreNav className={navClassName} />}
           {!isCurrentWorkspaceDatasetOperator && <AppNav />}
           {(isCurrentWorkspaceEditor || isCurrentWorkspaceDatasetOperator) && <DatasetNav />}
+          {!isCurrentWorkspaceDatasetOperator && <FilesNav className={navClassName} />}
           {!isCurrentWorkspaceDatasetOperator && <ToolsNav className={navClassName} />}
         </div>
       )}

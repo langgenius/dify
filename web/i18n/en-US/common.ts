@@ -125,6 +125,7 @@ const translation = {
     newApp: 'New App',
     newDataset: 'Create Knowledge',
     tools: 'Tools',
+    files: 'Files',
   },
   userProfile: {
     settings: 'Settings',
