@@ -66,6 +66,7 @@ x-shared-env: &shared-api-worker-env
   ALIYUN_OSS_ENDPOINT: ${ALIYUN_OSS_ENDPOINT:-}
   ALIYUN_OSS_REGION: ${ALIYUN_OSS_REGION:-}
   ALIYUN_OSS_AUTH_VERSION: ${ALIYUN_OSS_AUTH_VERSION:-v4}
+  ALIYUN_OSS_PATHS: ${ALIYUN_OSS_PATH:-}
   TENCENT_COS_BUCKET_NAME: ${TENCENT_COS_BUCKET_NAME:-}
   TENCENT_COS_SECRET_KEY: ${TENCENT_COS_SECRET_KEY:-}
   TENCENT_COS_SECRET_ID: ${TENCENT_COS_SECRET_ID:-}
@@ -190,7 +191,7 @@ x-shared-env: &shared-api-worker-env
 services:
   # API service
   api:
-    image: langgenius/dify-api:0.7.2
+    image: langgenius/dify-api:0.7.3
     restart: always
     environment:
       # Use the shared environment variables.
@@ -210,7 +211,7 @@ services:
   # worker service
   # The Celery worker for processing the queue.
   worker:
-    image: langgenius/dify-api:0.7.2
+    image: langgenius/dify-api:0.7.3
     restart: always
     environment:
       # Use the shared environment variables.
@@ -229,7 +230,7 @@ services:
 
   # Frontend web application.
   web:
-    image: langgenius/dify-web:0.7.2
+    image: langgenius/dify-web:0.7.3
     restart: always
     environment:
       CONSOLE_API_URL: ${CONSOLE_API_URL:-}
@@ -294,7 +295,7 @@ services:
 
   # ssrf_proxy server
   # for more information, please refer to
-  # https://docs.dify.ai/learn-more/faq/self-host-faq#id-18.-why-is-ssrf_proxy-needed
+  # https://docs.dify.ai/learn-more/faq/install-faq#id-18.-why-is-ssrf_proxy-needed
   ssrf_proxy:
     image: ubuntu/squid:latest
     restart: always

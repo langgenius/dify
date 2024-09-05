@@ -136,7 +136,9 @@ class DatasetService:
         return datasets.items, datasets.total
 
     @staticmethod
-    def create_empty_dataset(tenant_id: str, name: str, indexing_technique: Optional[str], account: Account):
+    def create_empty_dataset(
+        tenant_id: str, name: str, indexing_technique: Optional[str], account: Account, permission: Optional[str] = None
+    ):
         # check if dataset name already exists
         if Dataset.query.filter_by(name=name, tenant_id=tenant_id).first():
             raise DatasetNameDuplicateError(f"Dataset with name {name} already exists.")
@@ -153,6 +155,7 @@ class DatasetService:
         dataset.tenant_id = tenant_id
         dataset.embedding_model_provider = embedding_model.provider if embedding_model else None
         dataset.embedding_model = embedding_model.model if embedding_model else None
+        dataset.permission = permission if permission else DatasetPermissionEnum.ONLY_ME
         db.session.add(dataset)
         db.session.commit()
         return dataset
@@ -1051,7 +1054,6 @@ class DocumentService:
 
             DocumentService.check_documents_upload_quota(count, features)
 
-        embedding_model = None
         dataset_collection_binding_id = None
         retrieval_model = None
         if document_data["indexing_technique"] == "high_quality":
@@ -1079,10 +1081,10 @@ class DocumentService:
             tenant_id=tenant_id,
             name="",
             data_source_type=document_data["data_source"]["type"],
-            indexing_technique=document_data["indexing_technique"],
+            indexing_technique=document_data.get("indexing_technique", "high_quality"),
             created_by=account.id,
-            embedding_model=embedding_model.model if embedding_model else None,
-            embedding_model_provider=embedding_model.provider if embedding_model else None,
+            embedding_model=document_data.get("embedding_model"),
+            embedding_model_provider=document_data.get("embedding_model_provider"),
             collection_binding_id=dataset_collection_binding_id,
             retrieval_model=retrieval_model,
         )

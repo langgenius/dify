@@ -89,7 +89,9 @@ const translation = {
     iterations: 'Số lần lặp',
     iteration: 'Lần lặp',
     finalProcessing: 'Xử lý cuối cùng',
+    agentMode: 'Chế độ đại lý',
   },
+  agentLog: 'Nhật ký đại lý',
 }
 
 export default translation

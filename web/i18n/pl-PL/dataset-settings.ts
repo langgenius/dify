@@ -32,6 +32,8 @@ const translation = {
         ' dotyczące metody doboru, możesz to zmienić w dowolnym momencie w ustawieniach wiedzy.',
     },
     save: 'Zapisz',
+    permissionsInvitedMembers: 'Częściowi członkowie zespołu',
+    me: '(Ty)',
   },
 }
 

@@ -1,5 +1,6 @@
 - google
 - bing
+- perplexity
 - duckduckgo
 - searchapi
 - serper
@@ -10,6 +11,7 @@
 - wikipedia
 - nominatim
 - yahoo
+- alphavantage
 - arxiv
 - pubmed
 - stablediffusion

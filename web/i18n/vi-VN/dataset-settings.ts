@@ -27,6 +27,8 @@ const translation = {
       longDescription: ' về phương pháp truy xuất. Bạn có thể thay đổi điều này bất kỳ lúc nào trong cài đặt Kiến thức.',
     },
     save: 'Lưu',
+    permissionsInvitedMembers: 'Thành viên một phần trong nhóm',
+    me: '(Bạn)',
   },
 }
 

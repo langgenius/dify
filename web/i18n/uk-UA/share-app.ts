@@ -27,7 +27,6 @@ const translation = {
     tryToSolve: 'Спробувати вирішити',
     temporarySystemIssue: 'Вибачте, тимчасова системна проблема.',
   },
-
   generation: {
     tabs: {
       create: 'Запустити один раз',
@@ -65,7 +64,6 @@ const translation = {
       moreThanMaxLengthLine: 'Рядок {{rowIndex}}: значення {{varName}} не може містити більше {{maxLength}} символів',
       atLeastOne: 'Будь ласка, введіть принаймні один рядок у завантажений файл.',
     },
-
   },
 }
 

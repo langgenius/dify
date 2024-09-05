@@ -52,6 +52,8 @@ const translation = {
           title: 'Fasi del Workflow',
           show: 'Mostra',
           hide: 'Nascondi',
+          subTitle: 'Dettagli del flusso di lavoro',
+          showDesc: 'Mostrare o nascondere i dettagli del flusso di lavoro in WebApp',
         },
         chatColorTheme: 'Tema colore chat',
         chatColorThemeDesc: 'Imposta il tema colore del chatbot',
@@ -71,6 +73,12 @@ const translation = {
             'Inserisci il testo del disclaimer personalizzato',
           customDisclaimerTip:
             'Il testo del disclaimer personalizzato verrà visualizzato sul lato client, fornendo informazioni aggiuntive sull\'applicazione',
+        },
+        sso: {
+          label: 'Autenticazione SSO',
+          title: 'WebApp SSO',
+          description: 'Tutti gli utenti devono effettuare l\'accesso con SSO prima di utilizzare WebApp',
+          tooltip: 'Contattare l\'amministratore per abilitare l\'SSO di WebApp',
         },
       },
       embedded: {
@@ -132,8 +140,11 @@ const translation = {
     tokenPS: 'Token/s',
     totalMessages: {
       title: 'Totale Messaggi',
-      explanation:
-        'Conteggio delle interazioni giornaliere con l\'AI; ingegneria dei prompt/debug esclusi.',
+      explanation: 'Conteggio delle interazioni giornaliere con l\'IA.',
+    },
+    totalConversations: {
+      title: 'Conversazioni totali',
+      explanation: 'Conteggio delle conversazioni giornaliere con l\'IA; ingegneria/debug dei prompt esclusi.',
     },
     activeUsers: {
       title: 'Utenti Attivi',
