@@ -75,7 +75,14 @@ const AudioPlayer: React.FC<AudioPlayerProps> = ({ src }) => {
         type: 'error',
         message: 'Web Audio API is not supported in this browser',
       })
-      return
+      return null
+    }
+
+    const url = new URL(src)
+    const isHttp = url.protocol === 'http:' || url.protocol === 'https:'
+    if (!isHttp) {
+      setIsAudioAvailable(false)
+      return null
     }
 
     const audioContext = new (window.AudioContext || (window as any).webkitAudioContext)()
@@ -83,9 +90,9 @@ const AudioPlayer: React.FC<AudioPlayerProps> = ({ src }) => {
 
     try {
       const response = await fetch(audioSrc, { mode: 'cors' })
-      if (!response.ok) {
+      if (!response || !response.ok) {
         setIsAudioAvailable(false)
-        return
+        return null
       }
 
       const arrayBuffer = await response.arrayBuffer()
