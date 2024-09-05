@@ -24,11 +24,6 @@ server {
       include proxy.conf;
     }
 
-    location /files-upload {
-      proxy_pass http://api:5001;
-      include proxy.conf;
-    }
-
     location /stock {
       proxy_pass http://api:5001;
       include proxy.conf;
