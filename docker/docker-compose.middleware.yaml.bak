@@ -1,16 +1,4 @@
 services:
-
-  # Frontend web application.
-  web:
-    image: langgenius/dify-web:0.7.2
-    restart: always
-    environment:
-      CONSOLE_API_URL: ${CONSOLE_API_URL:-}
-      APP_API_URL: ${APP_API_URL:-}
-      SENTRY_DSN: ${WEB_SENTRY_DSN:-}
-    ports:
-      - "3000:3000"
-      
   # The postgres database.
   db:
     image: postgres:15-alpine
@@ -21,22 +9,10 @@ services:
       POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-difyai123456}
       POSTGRES_DB: ${POSTGRES_DB:-dify}
       PGDATA: ${PGDATA:-/var/lib/postgresql/data/pgdata}
-    command: >
-      postgres -c 'max_connections=${POSTGRES_MAX_CONNECTIONS:-100}'
-               -c 'shared_buffers=${POSTGRES_SHARED_BUFFERS:-128MB}'
-               -c 'work_mem=${POSTGRES_WORK_MEM:-4MB}'
-               -c 'maintenance_work_mem=${POSTGRES_MAINTENANCE_WORK_MEM:-64MB}'
-               -c 'effective_cache_size=${POSTGRES_EFFECTIVE_CACHE_SIZE:-4096MB}'
     volumes:
       - ./volumes/db/data:/var/lib/postgresql/data
     ports:
       - "${EXPOSE_POSTGRES_PORT:-5432}:5432"
-
-    healthcheck:
-      test: [ "CMD", "pg_isready" ]
-      interval: 1s
-      timeout: 3s
-      retries: 30
 
   # The redis cache.
   redis:
@@ -49,12 +25,10 @@ services:
     command: redis-server --requirepass difyai123456
     ports:
       - "${EXPOSE_REDIS_PORT:-6379}:6379"
-    healthcheck:
-      test: [ "CMD", "redis-cli", "ping" ]
 
   # The DifySandbox
   sandbox:
-    image: langgenius/dify-sandbox:0.2.6
+    image: langgenius/dify-sandbox:0.2.1
     restart: always
     environment:
       # The DifySandbox configurations
@@ -71,7 +45,6 @@ services:
       - ./volumes/sandbox/dependencies:/dependencies
     networks:
       - ssrf_proxy_network
-    #user: 501:20
 
   # ssrf_proxy server
   # for more information, please refer to
@@ -123,7 +96,6 @@ services:
       AUTHORIZATION_ADMINLIST_USERS: ${WEAVIATE_AUTHORIZATION_ADMINLIST_USERS:-hello@dify.ai}
     ports:
       - "${EXPOSE_WEAVIATE_PORT:-8080}:8080"
-    user: 501:20
 
 networks:
   # create a network between sandbox, api and ssrf_proxy, and can not access outside.
