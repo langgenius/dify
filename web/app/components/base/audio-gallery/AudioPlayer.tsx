@@ -297,7 +297,7 @@ const AudioPlayer: React.FC<AudioPlayerProps> = ({ src }) => {
             onMouseMove={handleMouseMove}
             onMouseDown={handleCanvasInteraction}
           />
-          <div className={styles.currentTime} style={{ left: `${(currentTime / duration) * 88}%`, bottom: '29px' }}>
+          <div className={styles.currentTime} style={{ left: `${(currentTime / duration) * 81}%`, bottom: '29px' }}>
             {formatTime(currentTime)}
           </div>
           <div className={styles.timeDisplay}>
