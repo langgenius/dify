@@ -30,6 +30,7 @@ export function rotateSize(width: number, height: number, rotation: number) {
  */
 export default async function getCroppedImg(
   imageSrc: string,
+  imageType: string,
   pixelCrop: { x: number; y: number; width: number; height: number },
   rotation = 0,
   flip = { horizontal: false, vertical: false },
@@ -93,6 +94,6 @@ export default async function getCroppedImg(
         resolve(file)
       else
         reject(new Error('Could not create a blob'))
-    }, 'image/jpeg')
+    }, imageType)
   })
 }

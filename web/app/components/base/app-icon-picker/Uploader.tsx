@@ -12,7 +12,7 @@ import { ALLOW_FILE_EXTENSIONS } from '@/types/app'
 
 type UploaderProps = {
   className?: string
-  onImageCropped?: (tempUrl: string, croppedAreaPixels: Area, fileName: string) => void
+  onImageCropped?: (tempUrl: string, type: string, croppedAreaPixels: Area, fileName: string) => void
 }
 
 const Uploader: FC<UploaderProps> = ({
@@ -33,7 +33,7 @@ const Uploader: FC<UploaderProps> = ({
   const onCropComplete = async (_: Area, croppedAreaPixels: Area) => {
     if (!inputImage)
       return
-    onImageCropped?.(inputImage.url, croppedAreaPixels, inputImage.file.name)
+    onImageCropped?.(inputImage.url, inputImage.file.type, croppedAreaPixels, inputImage.file.name)
   }
 
   const handleLocalFileInput = (e: ChangeEvent<HTMLInputElement>) => {
