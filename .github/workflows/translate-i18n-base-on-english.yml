@@ -15,12 +15,14 @@ jobs:
     steps:
       - uses: actions/checkout@v4
         with:
-          fetch-depth: 0
+          fetch-depth: 2 # last 2 commits
 
       - name: Check for file changes in i18n/en-US
         id: check_files
         run: |
-          changed_files=$(git diff --name-only ${{ github.event.pull_request.base.sha }} ${{ github.event.pull_request.head.sha }} -- 'i18n/en-US/*.ts')
+          recent_commit_sha=$(git rev-parse HEAD)
+          second_recent_commit_sha=$(git rev-parse HEAD~1)
+          changed_files=$(git diff --name-only $recent_commit_sha $second_recent_commit_sha -- 'i18n/en-US/*.ts')
           echo "Changed files: $changed_files"
           if [ -n "$changed_files" ]; then
             echo "FILES_CHANGED=true" >> $GITHUB_ENV
