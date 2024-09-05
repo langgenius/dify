@@ -17,10 +17,10 @@ const FilesNav = ({
 }: FilesNavProps) => {
   const { t } = useTranslation()
   const selectedSegment = useSelectedLayoutSegment()
-  const actived = selectedSegment === 'files-upload'
+  const actived = selectedSegment === 'upload'
 
   return (
-    <Link href="/files-upload" className={classNames(
+    <Link href="/upload" className={classNames(
       className, 'group',
       actived && 'bg-white shadow-md',
       actived ? 'text-primary-600' : 'text-gray-500 hover:bg-gray-200',
