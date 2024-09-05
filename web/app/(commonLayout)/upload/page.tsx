@@ -4,7 +4,7 @@ import { useRouter } from 'next/navigation'
 import { useTranslation } from 'react-i18next'
 import React, { useEffect, useState } from 'react'
 import { useAppContext } from '@/context/app-context'
-import Main from '@/app/components/datasets/documents'
+import Main from '@/app/components/datasets/upload'
 import { fetchDatasets } from '@/service/datasets'
 
 const Layout: FC = () => {

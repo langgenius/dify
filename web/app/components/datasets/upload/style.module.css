@@ -1,0 +1,121 @@
+.documentTable tbody td {
+  padding: 5px 10px 5px 12px;
+  box-sizing: border-box;
+  max-width: 200px;
+}
+.documentTable thead td {
+  padding: 0px 10px 0px 12px;
+  box-sizing: border-box;
+  max-width: 200px;
+}
+.title {
+  @apply text-xl font-medium text-gray-900;
+}
+.desc {
+  @apply text-sm font-normal text-gray-500;
+}
+.actionIconWrapperList {
+  @apply h-6 w-6 rounded-md border-none p-1 hover:bg-gray-100 !important;
+}
+.actionIconWrapperDetail {
+  @apply h-8 w-8 p-2 hover:bg-gray-50 border border-gray-200 hover:border-gray-300 hover:shadow-[0_1px_2px_rgba(16,24,40,0.05)] !important;
+}
+.actionItem {
+  @apply h-9 py-2 px-3 mx-1 flex items-center gap-2 hover:bg-gray-100 rounded-lg cursor-pointer;
+}
+.deleteActionItem {
+  @apply hover:bg-red-50 !important;
+}
+.actionName {
+  @apply text-gray-700 text-sm;
+}
+.addFileBtn {
+  @apply mt-4 w-fit !text-[13px] text-primary-600 font-medium bg-white border-[0.5px];
+}
+.plusIcon {
+  @apply w-4 h-4 mr-2 stroke-current stroke-[1.5px];
+}
+.emptyWrapper {
+  @apply flex items-center justify-center h-full;
+}
+.emptyElement {
+  @apply bg-gray-50 w-[560px] h-fit box-border px-5 py-4 rounded-2xl;
+}
+.emptyTitle {
+  @apply text-gray-700 font-semibold;
+}
+.emptyTip {
+  @apply mt-2 text-gray-500 text-sm font-normal;
+}
+.emptySymbolIconWrapper {
+  @apply w-[44px] h-[44px] border border-solid border-gray-100 rounded-lg flex items-center justify-center mb-2;
+}
+.commonIcon {
+  @apply w-4 h-4 inline-block align-middle;
+  background-repeat: no-repeat;
+  background-position: center center;
+  background-size: contain;
+}
+.actionIcon {
+  @apply bg-gray-500;
+  mask-image: url(~@/assets/action.svg);
+}
+.pdfIcon {
+  background-image: url(~@/assets/pdf.svg);
+}
+.jsonIcon {
+  background-image: url(~@/assets/json.svg);
+}
+.htmlIcon {
+  background-image: url(~@/assets/html.svg);
+}
+.txtIcon {
+  background-image: url(~@/assets/txt.svg);
+}
+.markdownIcon {
+  background-image: url(~@/assets/md.svg);
+}
+.mdIcon {
+  background-image: url(~@/assets/md.svg);
+}
+.xlsIcon {
+  background-image: url(~@/assets/xlsx.svg);
+}
+.xlsxIcon {
+  background-image: url(~@/assets/xlsx.svg);
+}
+.csvIcon {
+  background-image: url(~@/assets/csv.svg);
+}
+.docIcon {
+  background-image: url(~@/assets/doc.svg);
+}
+.docxIcon {
+  background-image: url(~@/assets/docx.svg);
+}
+.statusItemDetail {
+  @apply h-8 font-medium border border-gray-200 inline-flex items-center rounded-lg pl-3 pr-4 mr-2;
+}
+.tdValue {
+  @apply text-sm overflow-hidden text-ellipsis whitespace-nowrap;
+}
+.delModal {
+  background: linear-gradient(
+      180deg,
+      rgba(217, 45, 32, 0.05) 0%,
+      rgba(217, 45, 32, 0) 24.02%
+    ),
+    #f9fafb;
+  box-shadow: 0px 20px 24px -4px rgba(16, 24, 40, 0.08),
+    0px 8px 8px -4px rgba(16, 24, 40, 0.03);
+  @apply rounded-2xl p-8;
+}
+.warningWrapper {
+  box-shadow: 0px 20px 24px -4px rgba(16, 24, 40, 0.08),
+    0px 8px 8px -4px rgba(16, 24, 40, 0.03);
+  background: rgba(255, 255, 255, 0.9);
+  @apply h-12 w-12 border-[0.5px] border-gray-100 rounded-xl mb-3 flex items-center justify-center;
+}
+.warningIcon {
+  @apply w-[22px] h-[22px] fill-current text-red-600;
+}
