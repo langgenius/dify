@@ -49,7 +49,7 @@ const StepsNavBar = ({
             key={item}
             className={cn(s.stepItem, s[`step${item}`], step === item && s.active, step > item && s.done, isMobile && 'px-0')}
           >
-            <div className={cn(s.stepNum)}>{item}</div>
+            <div className={cn(s.stepNum)}>{step > item ? '' : item}</div>
             <div className={cn(s.stepName)}>{isMobile ? '' : t(STEP_T_MAP[item])}</div>
           </div>
         ))}

@@ -186,6 +186,7 @@ const translation = {
     'transform': 'تبدیل',
     'utilities': 'ابزارهای کاربردی',
     'noResult': 'نتیجه‌ای پیدا نشد',
+    'searchTool': 'ابزار جستجو',
   },
   blocks: {
     'start': 'شروع',

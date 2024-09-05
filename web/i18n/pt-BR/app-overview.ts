@@ -48,6 +48,8 @@ const translation = {
           title: 'Etapas do fluxo de trabalho',
           show: 'Mostrar',
           hide: 'Ocultar',
+          subTitle: 'Detalhes do fluxo de trabalho',
+          showDesc: 'Mostrar ou ocultar detalhes do fluxo de trabalho no WebApp',
         },
         chatColorTheme: 'Tema de cor do chatbot',
         chatColorThemeDesc: 'Defina o tema de cor do chatbot',
@@ -63,6 +65,12 @@ const translation = {
           customDisclaimer: 'Aviso Legal Personalizado',
           customDisclaimerPlaceholder: 'Insira o texto do aviso legal',
           customDisclaimerTip: 'O texto do aviso legal personalizado será exibido no lado do cliente, fornecendo informações adicionais sobre o aplicativo',
+        },
+        sso: {
+          tooltip: 'Entre em contato com o administrador para habilitar o SSO do WebApp',
+          label: 'Autenticação SSO',
+          title: 'WebApp SSO',
+          description: 'Todos os usuários devem fazer login com SSO antes de usar o WebApp',
         },
       },
       embedded: {

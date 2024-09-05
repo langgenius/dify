@@ -402,6 +402,7 @@ class LLMNode(BaseNode):
         if ('metadata' in context_dict and '_source' in context_dict['metadata']
                 and context_dict['metadata']['_source'] == 'knowledge'):
             metadata = context_dict.get('metadata', {})
+
             source = {
                 'position': metadata.get('position'),
                 'dataset_id': metadata.get('dataset_id'),
@@ -417,6 +418,7 @@ class LLMNode(BaseNode):
                 'segment_position': metadata.get('segment_position'),
                 'index_node_hash': metadata.get('segment_index_node_hash'),
                 'content': context_dict.get('content'),
+                'page': metadata.get('page'),
             }
 
             return source
