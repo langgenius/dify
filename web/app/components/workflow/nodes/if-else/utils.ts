@@ -30,6 +30,7 @@ export const getOperators = (type?: VarType) => {
         ComparisonOperator.isNot,
         ComparisonOperator.empty,
         ComparisonOperator.notEmpty,
+        ComparisonOperator.regexMatch,
       ]
     case VarType.number:
       return [

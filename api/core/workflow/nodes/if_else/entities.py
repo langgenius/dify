@@ -12,7 +12,7 @@ class Condition(BaseModel):
     variable_selector: list[str]
     comparison_operator: Literal[
         # for string or array
-        "contains", "not contains", "start with", "end with", "is", "is not", "empty", "not empty",
+        "contains", "not contains", "start with", "end with", "is", "is not", "empty", "not empty", "regex match",
             # for number
         "=", "≠", ">", "<", "≥", "≤", "null", "not null"
     ]
