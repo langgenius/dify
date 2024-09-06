@@ -127,18 +127,11 @@ const ParameterItem: FC<ParameterItemProps> = ({
       && !isNullOrUndefined(parameterRule.min)
       && !isNullOrUndefined(parameterRule.max)
 
-    if (parameterRule.type === 'int' || parameterRule.type === 'float') {
-      let step = 100
-      if (parameterRule.max) {
-        if (parameterRule.max < 10)
-          step = 0.1
-        else if (parameterRule.max < 100)
-          step = 1
-        else if (parameterRule.max < 1000)
-          step = 10
-        else if (parameterRule.max < 10000)
-          step = 100
-      }
+    if (parameterRule.type === 'int') {
+      let step = 1;
+    } else if (parameterRule.type === 'float') {
+      let step = 0.1;
+    }
 
       return (
         <>
