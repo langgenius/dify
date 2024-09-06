@@ -88,7 +88,6 @@ const DebugAndPreview = () => {
                   <RiEqualizer2Line className='w-4 h-4' />
                 </ActionButton>
               </Tooltip>
-              {expanded && <div className='absolute z-10 bottom-[-17px] right-[5px] w-3 h-3 bg-components-panel-on-panel-item-bg border-l-[0.5px] border-t-[0.5px] border-components-panel-border-subtle rotate-45'/>}
             </div>
           )}
           <div className='mx-3 w-[1px] h-3.5 bg-gray-200'></div>
