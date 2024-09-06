@@ -144,9 +144,9 @@ const ChatWrapper = () => {
       config={appConfig}
       chatList={chatList}
       isResponding={isResponding}
-      chatContainerInnerClassName={`mx-auto pt-6 w-full max-w-full ${isMobile && 'px-4'}`}
+      chatContainerInnerClassName={`mx-auto pt-6 w-full max-w-full ${isMobile ? 'px-4' : 'pl-10 pr-10'}`}
       chatFooterClassName='pb-4'
-      chatFooterInnerClassName={`mx-auto w-full max-w-full ${isMobile && 'px-4'}`}
+      chatFooterInnerClassName={`mx-auto w-full max-w-full ${isMobile ? 'px-4' : 'pl-10 pr-10'}`}
       onSend={doSend}
       onStopResponding={handleStop}
       chatNode={chatNode}

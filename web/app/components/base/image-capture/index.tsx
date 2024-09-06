@@ -58,12 +58,11 @@ export const useImageCapture = (title: string, isMobile: boolean) => {
           clonedElement.style.cssText = `
             ${originalStyles}
             top: 0;
-            width: calc(100% + 40px);
-            height: ${element.offsetHeight + 64}px;
+            width: 100%;
+            height: ${element.offsetHeight + 100}px;
             background-color: white;
             overflow: hidden;
           `
-          contentContainer.style.setProperty('padding-left', '0px')
           return () => {
             // No need to restore styles as we're using a wrapper
           }
