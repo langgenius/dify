@@ -37,6 +37,7 @@ const translation = {
     params: '参数设置',
     duplicate: '复制',
     rename: '重命名',
+    audioSourceUnavailable: '音源不可用',
   },
   errorMsg: {
     fieldRequired: '{{field}} 为必填项',
