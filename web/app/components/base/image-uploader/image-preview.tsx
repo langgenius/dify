@@ -211,38 +211,38 @@ const ImagePreview: FC<ImagePreviewProps> = ({
           onClick={imageCopy}>
           {isCopied
             ? <RiFileCopyLine className='w-4 h-4 text-green-500'/>
-            : <RiFileCopyLine className='w-4 h-4 text-white'/>}
+            : <RiFileCopyLine className='w-4 h-4 text-gray-500'/>}
         </div>
       </Tooltip>
       <Tooltip popupContent={t('common.operation.zoomOut')}>
         <div className='absolute top-6 right-40 flex items-center justify-center w-8 h-8 rounded-lg cursor-pointer'
           onClick={zoomOut}>
-          <RiZoomOutLine className='w-4 h-4 text-white'/>
+          <RiZoomOutLine className='w-4 h-4 text-gray-500'/>
         </div>
       </Tooltip>
       <Tooltip popupContent={t('common.operation.zoomIn')}>
         <div className='absolute top-6 right-32 flex items-center justify-center w-8 h-8 rounded-lg cursor-pointer'
           onClick={zoomIn}>
-          <RiZoomInLine className='w-4 h-4 text-white'/>
+          <RiZoomInLine className='w-4 h-4 text-gray-500'/>
         </div>
       </Tooltip>
       <Tooltip popupContent={t('common.operation.download')}>
         <div className='absolute top-6 right-24 flex items-center justify-center w-8 h-8 rounded-lg cursor-pointer'
           onClick={downloadImage}>
-          <RiDownloadCloud2Line className='w-4 h-4 text-white'/>
+          <RiDownloadCloud2Line className='w-4 h-4 text-gray-500'/>
         </div>
       </Tooltip>
       <Tooltip popupContent={t('common.operation.openInNewTab')}>
         <div className='absolute top-6 right-16 flex items-center justify-center w-8 h-8 rounded-lg cursor-pointer'
           onClick={openInNewTab}>
-          <RiAddBoxLine className='w-4 h-4 text-white'/>
+          <RiAddBoxLine className='w-4 h-4 text-gray-500'/>
         </div>
       </Tooltip>
       <Tooltip popupContent={t('common.operation.close')}>
         <div
           className='absolute top-6 right-6 flex items-center justify-center w-8 h-8 bg-white/8 rounded-lg backdrop-blur-[2px] cursor-pointer'
           onClick={onCancel}>
-          <RiCloseLine className='w-4 h-4 text-white'/>
+          <RiCloseLine className='w-4 h-4 text-gray-500'/>
         </div>
       </Tooltip>
     </div>,

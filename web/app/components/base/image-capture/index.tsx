@@ -13,29 +13,62 @@ export const useImageCapture = (title: string, isMobile: boolean) => {
       // Wait for font to load before capturing image
       await document.fonts.ready
 
-      // Applied style repairs for html2canvas compatibility
-      const originalStyles = applyStyleFixes(element)
-
-      // Add wrapper div
-      const wrapper = addWrapperDiv(element, title, isMobile)
-
-      // Wait for dynamic content to load (example: Wait 1 second)
-      await new Promise(resolve => setTimeout(resolve, 1000))
-
-      const canvas = await html2canvas(wrapper, {
+      const canvas = await html2canvas(element, {
         useCORS: true,
         allowTaint: true,
         scale: 2,
         logging: false,
-        windowWidth: wrapper.scrollWidth,
-        windowHeight: wrapper.scrollHeight,
+        onclone: (cloneDocument, clonedElement) => {
+          // Store original content and styles
+          const originalContent = clonedElement.innerHTML
+          const originalStyles = applyStyleFixes(clonedElement)
+
+          // Clear the cloned element
+          clonedElement.innerHTML = ''
+
+          // Create and add title bar
+          const titleBar = cloneDocument.createElement('div')
+          titleBar.innerHTML = isMobile
+            ? `<div class='sticky top-0 flex items-start justify-center px-8 h-8 bg-white/80 font-medium text-gray-900 border-b-[0.5px] border-b-gray-100 backdrop-blur-md z-10'>${title}</div>`
+            : `<div class='sticky top-0 flex items-start justify-center px-8 h-10 bg-white/80 font-medium text-gray-900 border-b-[0.5px] border-b-gray-100 backdrop-blur-md z-10'>${title}</div>`
+          // wrapper.appendChild(titleBar)
+          clonedElement.appendChild(titleBar)
+
+          // Create a container for the original content
+          const contentContainer = cloneDocument.createElement('div')
+          contentContainer.style.cssText = `
+            position: absolute;
+            width: ${element.offsetWidth}px;
+            height: calc(100% - 64px);
+            overflow: hidden;
+          `
+          contentContainer.innerHTML = originalContent
+
+          // Copy computed styles from original element to contentContainer
+          const computedStyle = window.getComputedStyle(element)
+          for (let i = 0; i < computedStyle.length; i++) {
+            const property = computedStyle[i]
+            contentContainer.style.setProperty(property, computedStyle.getPropertyValue(property))
+          }
+
+          // Set the wrapper as the content of clonedElement
+          clonedElement.appendChild(contentContainer)
+
+          // Adjust the cloned element's style
+          clonedElement.style.cssText = `
+            ${originalStyles}
+            top: 0;
+            width: calc(100% + 40px);
+            height: ${element.offsetHeight + 64}px;
+            background-color: white;
+            overflow: hidden;
+          `
+          contentContainer.style.setProperty('padding-left', '0px')
+          return () => {
+            // No need to restore styles as we're using a wrapper
+          }
+        },
       })
-
-      // Remove wrapper div
-      removeWrapperDiv(element, wrapper)
-
-      // Restore original style
-      restoreStyles(element, originalStyles)
 
       // Apply rounded corners
       const roundedCanvas = applyRoundedCorners(canvas, 20)
@@ -51,54 +84,6 @@ export const useImageCapture = (title: string, isMobile: boolean) => {
   }, [isMobile, title])
 
   return { capturedImage, captureImage }
-}
-
-function addWrapperDiv(element: HTMLElement, title: string, isMobile: boolean): HTMLElement {
-  const wrapper = document.createElement('div')
-  wrapper.style.cssText = `
-    position: absolute;
-    top: 0;
-    left: 0;
-    width: ${element.offsetWidth}px;
-    height: ${element.offsetHeight + 64}px;
-    background-color: white;
-    overflow: hidden;
-  `
-  const titleBar = document.createElement('div')
-  if (isMobile) {
-    titleBar.innerHTML = `
-      <div class='sticky top-0 flex items-center justify-center px-8 bg-white/80 text-base font-medium text-gray-900 border-b-[0.5px] border-b-gray-100 backdrop-blur-md z-10 h-12'>
-        ${title}
-      </div>
-    `
-  }
-  else {
-    titleBar.innerHTML = `
-      <div class='sticky top-0 flex items-center justify-center px-8 h-16 bg-white/80 text-base font-medium text-gray-900 border-b-[0.5px] border-b-gray-100 backdrop-blur-md z-10'>
-        ${title}
-      </div>
-    `
-  }
-  wrapper.appendChild(titleBar)
-
-  const contentContainer = document.createElement('div')
-  contentContainer.style.cssText = `
-    position: absolute;
-    top: 64px;
-    left: 0;
-    width: 100%;
-    height: calc(100% - 64px);
-    overflow: auto;
-  `
-
-  // Clone the original element to preserve its content and style
-  const clonedElement = element.cloneNode(true) as HTMLElement
-  contentContainer.appendChild(clonedElement)
-  wrapper.appendChild(contentContainer)
-
-  element.parentNode?.insertBefore(wrapper, element)
-  element.style.display = 'none'
-  return wrapper
 }
 
 function applyRoundedCorners(sourceCanvas: HTMLCanvasElement, radius: number): HTMLCanvasElement {
@@ -134,11 +119,6 @@ function applyRoundedCorners(sourceCanvas: HTMLCanvasElement, radius: number): H
   return canvas
 }
 
-function removeWrapperDiv(originalElement: HTMLElement, wrapper: HTMLElement) {
-  wrapper.parentNode?.removeChild(wrapper)
-  originalElement.style.display = ''
-}
-
 function applyStyleFixes(element: HTMLElement): Map<HTMLElement, string> {
   const originalStyles = new Map<HTMLElement, string>()
 
@@ -156,18 +136,4 @@ function applyStyleFixes(element: HTMLElement): Map<HTMLElement, string> {
 
   applyFix(element)
   return originalStyles
-}
-
-function restoreStyles(element: HTMLElement, originalStyles: Map<HTMLElement, string>) {
-  const restoreStyle = (el: HTMLElement) => {
-    if (originalStyles.has(el))
-      el.style.cssText = originalStyles.get(el) || ''
-
-    Array.from(el.children).forEach((child) => {
-      if (child instanceof HTMLElement)
-        restoreStyle(child)
-    })
-  }
-
-  restoreStyle(element)
 }
