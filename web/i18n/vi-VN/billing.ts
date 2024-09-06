@@ -60,6 +60,8 @@ const translation = {
       bulkUpload: 'Tải lên tài liệu hàng loạt',
       agentMode: 'Chế độ Đại lý',
       workflow: 'Quy trình làm việc',
+      llmLoadingBalancing: 'Cân bằng tải LLM',
+      llmLoadingBalancingTooltip: 'Thêm nhiều khóa API vào mô hình, vượt qua giới hạn tốc độ API một cách hiệu quả.',
     },
     comingSoon: 'Sắp ra mắt',
     member: 'Thành viên',
@@ -74,6 +76,7 @@ const translation = {
     },
     ragAPIRequestTooltip: 'Đề cập đến số lượng cuộc gọi API triệu hồi chỉ khả năng xử lý cơ sở kiến thức của Dify.',
     receiptInfo: 'Chỉ chủ nhóm và quản trị viên nhóm có thể đăng ký và xem thông tin thanh toán',
+    annotationQuota: 'Hạn ngạch chú thích',
   },
   plans: {
     sandbox: {

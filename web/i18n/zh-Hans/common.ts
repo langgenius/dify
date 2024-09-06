@@ -46,6 +46,7 @@ const translation = {
     imageDownloaded: '图片已下载',
     shareSuccess: '分享成功',
     shareFailed: '分享失败',
+    audioSourceUnavailable: '音源不可用',
   },
   errorMsg: {
     fieldRequired: '{{field}} 为必填项',

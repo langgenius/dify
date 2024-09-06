@@ -1054,7 +1054,6 @@ class DocumentService:
 
             DocumentService.check_documents_upload_quota(count, features)
 
-        embedding_model = None
         dataset_collection_binding_id = None
         retrieval_model = None
         if document_data["indexing_technique"] == "high_quality":
@@ -1082,10 +1081,10 @@ class DocumentService:
             tenant_id=tenant_id,
             name="",
             data_source_type=document_data["data_source"]["type"],
-            indexing_technique=document_data["indexing_technique"],
+            indexing_technique=document_data.get("indexing_technique", "high_quality"),
             created_by=account.id,
-            embedding_model=embedding_model.model if embedding_model else None,
-            embedding_model_provider=embedding_model.provider if embedding_model else None,
+            embedding_model=document_data.get("embedding_model"),
+            embedding_model_provider=document_data.get("embedding_model_provider"),
             collection_binding_id=dataset_collection_binding_id,
             retrieval_model=retrieval_model,
         )

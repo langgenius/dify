@@ -122,7 +122,17 @@ const translation = {
       removeConfirmTitle: '¿Eliminar la configuración de {{key}}?',
       removeConfirmContent: 'La configuración actual está en uso, eliminarla desactivará la función de rastreo.',
     },
+    view: 'Vista',
   },
+  answerIcon: {
+    title: 'Usar el icono de la aplicación web para reemplazar 🤖',
+    descriptionInExplore: 'Si se debe usar el icono de la aplicación web para reemplazarlo 🤖 en Explore',
+    description: 'Si se va a usar el icono de la aplicación web para reemplazarlo 🤖 en la aplicación compartida',
+  },
+  importFromDSLUrl: 'URL de origen',
+  importFromDSLUrlPlaceholder: 'Pegar enlace DSL aquí',
+  importFromDSL: 'Importar desde DSL',
+  importFromDSLFile: 'Desde el archivo DSL',
 }
 
 export default translation
