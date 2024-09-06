@@ -1,9 +1,9 @@
+import boto3
 import json
 import logging
 from typing import Any, Union
-
-import boto3
 from pydantic import BaseModel, Field
+from botocore.exceptions import BotoCoreError
 
 from core.tools.entities.tool_entities import ToolInvokeMessage
 from core.tools.tool.builtin_tool import BuiltinTool
@@ -16,7 +16,7 @@ class GuardrailParameters(BaseModel):
     guardrail_version: str = Field(..., description="The version of the guardrail")
     source: str = Field(..., description="The source of the content")
     text: str = Field(..., description="The text to apply the guardrail to")
-    aws_region: str = Field(default="us-east-1", description="AWS region for the Bedrock client")
+    aws_region: str = Field(..., description="AWS region for the Bedrock client")
 
 class ApplyGuardrailTool(BuiltinTool):
     def _invoke(self,
@@ -40,6 +40,8 @@ class ApplyGuardrailTool(BuiltinTool):
                 source=params.source,
                 content=[{"text": {"text": params.text}}]
             )
+            
+            logger.info(f"Raw response from AWS: {json.dumps(response, indent=2)}")
 
             # Check for empty response
             if not response:
@@ -69,7 +71,7 @@ class ApplyGuardrailTool(BuiltinTool):
 
             return self.create_text_message(text=result)
 
-        except boto3.exceptions.BotoCoreError as e:
+        except BotoCoreError as e:
             error_message = f'AWS service error: {str(e)}'
             logger.error(error_message, exc_info=True)
             return self.create_text_message(text=error_message)

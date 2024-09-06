@@ -1,0 +1,53 @@
+identity:
+  name: lambda_yaml_to_json
+  author: AWS
+  label:
+    en_US: LambdaYamlToJson
+    zh_Hans: LambdaYamlToJson
+    pt_BR: LambdaYamlToJson
+  icon: icon.svg
+description:
+  human:
+    en_US: A tool to convert yaml to json using AWS Lambda.
+    zh_Hans: 将 YAML 转为 JSON 的工具（通过AWS Lambda）。
+    pt_BR: A tool to convert yaml to json using AWS Lambda.
+  llm: A tool to convert yaml to json.
+parameters:
+  - name: yaml_content
+    type: string
+    required: true
+    label:
+      en_US: YAML content to convert for
+      zh_Hans: YAML 内容
+      pt_BR: YAML content to convert for
+    human_description:
+      en_US: YAML content to convert for
+      zh_Hans: YAML 内容
+      pt_BR: YAML content to convert for
+    llm_description: YAML content to convert for
+    form: llm
+  - name: aws_region
+    type: string
+    required: false
+    label:
+      en_US: region of lambda
+      zh_Hans: Lambda 所在的region
+      pt_BR: region of lambda
+    human_description:
+      en_US: region of lambda
+      zh_Hans: Lambda 所在的region
+      pt_BR: region of lambda
+    llm_description: region of lambda
+    form: form
+  - name: lambda_name
+    type: string
+    required: false
+    label:
+      en_US: name of lambda
+      zh_Hans: Lambda 名称
+      pt_BR: name of lambda
+    human_description:
+      en_US: name of lambda
+      zh_Hans: Lambda 名称
+      pt_BR: name of lambda
+    form: form
