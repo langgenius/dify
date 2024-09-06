@@ -128,16 +128,14 @@ services:
       # The Qdrant server gRPC mode PORT.
       QDRANT_GRPC_PORT: 6334
       # Milvus configuration Only available when VECTOR_STORE is `milvus`.
-      # The milvus host.
-      MILVUS_HOST: 127.0.0.1
-      # The milvus host.
-      MILVUS_PORT: 19530
+      # The milvus uri.
+      MILVUS_URI: http://127.0.0.1:19530
+      # The milvus token.
+      MILVUS_TOKEN: ''
       # The milvus username.
       MILVUS_USER: root
       # The milvus password.
       MILVUS_PASSWORD: Milvus
-      # The milvus tls switch.
-      MILVUS_SECURE: 'false'
       # relyt configurations
       RELYT_HOST: db
       RELYT_PORT: 5432
@@ -308,16 +306,14 @@ services:
       # The Qdrant server gRPC mode PORT.
       QDRANT_GRPC_PORT: 6334
       # Milvus configuration Only available when VECTOR_STORE is `milvus`.
-      # The milvus host.
-      MILVUS_HOST: 127.0.0.1
-      # The milvus host.
-      MILVUS_PORT: 19530
+      # The milvus uri.
+      MILVUS_URI: http://127.0.0.1:19530
+      # The milvus token.
+      MILVUS_PORT: ''
       # The milvus username.
       MILVUS_USER: root
       # The milvus password.
       MILVUS_PASSWORD: Milvus
-      # The milvus tls switch.
-      MILVUS_SECURE: 'false'
       # Mail configuration, support: resend
       MAIL_TYPE: ''
       # default send from email address, if not specified
