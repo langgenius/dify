@@ -1,4 +1,4 @@
-import { useState } from 'react'
+import { Fragment, useState } from 'react'
 import type { FC } from 'react'
 import { ValidatingTip } from '../../key-validator/ValidateStatus'
 import type {
@@ -67,6 +67,15 @@ const Form: FC<FormProps> = ({
     onChange({ ...value, [key]: val, ...shouldClearVariable })
   }
 
+  // convert tooltip '\n' to <br />
+  const renderTooltipContent = (content: string) => {
+    return content.split('\n').map((line, index, array) => (
+      <Fragment key={index}>
+        {line}
+        {index < array.length - 1 && <br />}
+      </Fragment>
+    ))
+  }
   const renderField = (formSchema: CredentialFormSchema) => {
     const tooltip = formSchema.tooltip
     const tooltipContent = (tooltip && (
@@ -74,7 +83,7 @@ const Form: FC<FormProps> = ({
         <Tooltip
           popupContent={
             <div className='w-[200px]'>
-              {tooltip[language] || tooltip.en_US}
+              {renderTooltipContent(tooltip[language] || tooltip.en_US)}
             </div>}
           triggerClassName='w-4 h-4'
         />
