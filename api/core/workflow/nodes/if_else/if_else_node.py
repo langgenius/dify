@@ -296,12 +296,7 @@ class IfElseNode(BaseNode):
         """
         if actual_value is None:
             return False
-
-        pattern = re.compile(expected_value)
-        regex_result = pattern.findall(actual_value)
-        if len(regex_result) > 0:
-            return True
-        return False
+        return re.search(expected_value, actual_value) is not None
 
     def _assert_not_empty(self, actual_value: Optional[str]) -> bool:
         """
