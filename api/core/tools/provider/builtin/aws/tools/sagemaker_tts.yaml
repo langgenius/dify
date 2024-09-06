@@ -112,14 +112,14 @@ parameters:
     type: string
     required: false
     label:
-      en_US: text of clone voice 
+      en_US: text of clone voice
       zh_Hans: 克隆音频对应文本
-      pt_BR: text of clone voice 
+      pt_BR: text of clone voice
     human_description:
-      en_US: text of clone voice 
+      en_US: text of clone voice
       zh_Hans: 克隆音频对应文本
-      pt_BR: text of clone voice 
-    llm_description: text of clone voice 
+      pt_BR: text of clone voice
+    llm_description: text of clone voice
     form: llm
   - name: voice_instruct_prompt
     type: string
