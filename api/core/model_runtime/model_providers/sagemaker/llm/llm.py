@@ -1,14 +1,13 @@
-import re
 import json
 import logging
+import re
 from collections.abc import Generator, Iterator
-from typing import Any, Optional, Union, Dict, List, cast
-from sagemaker import Predictor
-from sagemaker import serializers, deserializers
-from sagemaker.session import Session
-# from openai.types.chat import ChatCompletion, ChatCompletionChunk
+from typing import Any, Optional, Union, cast
 
+# from openai.types.chat import ChatCompletion, ChatCompletionChunk
 import boto3
+from sagemaker import Predictor, serializers
+from sagemaker.session import Session
 
 from core.model_runtime.entities.llm_entities import LLMMode, LLMResult, LLMResultChunk, LLMResultChunkDelta
 from core.model_runtime.entities.message_entities import (
@@ -22,17 +21,8 @@ from core.model_runtime.entities.message_entities import (
     ToolPromptMessage,
     UserPromptMessage,
 )
-from core.model_runtime.errors.invoke import (
-    InvokeAuthorizationError,
-    InvokeBadRequestError,
-    InvokeConnectionError,
-    InvokeError,
-    InvokeRateLimitError,
-    InvokeServerUnavailableError,
-)
 from core.model_runtime.entities.model_entities import (
     AIModelEntity,
-    DefaultParameterName,
     FetchFrom,
     I18nObject,
     ModelFeature,
@@ -41,12 +31,20 @@ from core.model_runtime.entities.model_entities import (
     ParameterRule,
     ParameterType,
 )
+from core.model_runtime.errors.invoke import (
+    InvokeAuthorizationError,
+    InvokeBadRequestError,
+    InvokeConnectionError,
+    InvokeError,
+    InvokeRateLimitError,
+    InvokeServerUnavailableError,
+)
 from core.model_runtime.errors.validate import CredentialsValidateFailedError
 from core.model_runtime.model_providers.__base.large_language_model import LargeLanguageModel
 
 logger = logging.getLogger(__name__)
 
-def inference(predictor, messages:List[Dict[str,Any]], params:Dict[str,Any], stop:list, stream=False):
+def inference(predictor, messages:list[dict[str,Any]], params:dict[str,Any], stop:list, stream=False):
     """
     根据给定的模型名称和端点名称，对消息进行推理。
     
@@ -235,7 +233,7 @@ class SageMakerLargeLanguageModel(LargeLanguageModel):
             )
 
 
-        messages:List[Dict[str,Any]] = [ {"role": p.role.value, "content": p.content} for p in prompt_messages ]
+        messages:list[dict[str,Any]] = [ {"role": p.role.value, "content": p.content} for p in prompt_messages ]
         response = inference(predictor=self.predictor, messages=messages, params=model_parameters, stop=stop, stream=stream)
 
         if stream:

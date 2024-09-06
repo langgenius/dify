@@ -1,8 +1,9 @@
-import boto3
 import json
 import logging
+from typing import Any, Union
 
-from typing import Any, Optional, Union, List
+import boto3
+
 from core.tools.entities.tool_entities import ToolInvokeMessage
 from core.tools.tool.builtin_tool import BuiltinTool
 
@@ -45,7 +46,7 @@ class LambdaYamlToJsonTool(BuiltinTool):
         """
         try:
             if not self.lambda_client:
-                aws_region = tool_parameters.get('aws_region', None) # todo: move aws_region out, and update client region 
+                aws_region = tool_parameters.get('aws_region') # todo: move aws_region out, and update client region 
                 if aws_region:
                     self.lambda_client = boto3.client("lambda", region_name=aws_region)
                 else:

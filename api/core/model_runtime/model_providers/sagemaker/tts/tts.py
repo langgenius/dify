@@ -1,11 +1,11 @@
-import boto3 
-import logging
-import json
-import copy
 import concurrent.futures
-from typing import IO, Optional, Any
+import copy
+import json
+import logging
 from enum import Enum
+from typing import Any, Optional
 
+import boto3
 import requests
 
 from core.model_runtime.entities.common_entities import I18nObject
@@ -18,7 +18,6 @@ from core.model_runtime.errors.invoke import (
     InvokeRateLimitError,
     InvokeServerUnavailableError,
 )
-from core.model_runtime.errors.validate import CredentialsValidateFailedError
 from core.model_runtime.model_providers.__base.tts_model import TTSModel
 
 logger = logging.getLogger(__name__)

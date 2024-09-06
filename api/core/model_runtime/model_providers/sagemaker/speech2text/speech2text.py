@@ -1,8 +1,8 @@
-import boto3
-import logging
 import json
+import logging
+from typing import IO, Any, Optional
 
-from typing import IO, Optional, Any
+import boto3
 
 from core.model_runtime.entities.common_entities import I18nObject
 from core.model_runtime.entities.model_entities import AIModelEntity, FetchFrom, ModelType
@@ -14,7 +14,6 @@ from core.model_runtime.errors.invoke import (
     InvokeRateLimitError,
     InvokeServerUnavailableError,
 )
-from core.model_runtime.errors.validate import CredentialsValidateFailedError
 from core.model_runtime.model_providers.__base.speech2text_model import Speech2TextModel
 from core.model_runtime.model_providers.sagemaker.sagemaker import generate_presigned_url
 
