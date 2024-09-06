@@ -126,13 +126,8 @@ const ParameterItem: FC<ParameterItemProps> = ({
     const numberInputWithSlide = (parameterRule.type === 'int' || parameterRule.type === 'float')
       && !isNullOrUndefined(parameterRule.min)
       && !isNullOrUndefined(parameterRule.max)
-    
-    let step;
-    if (parameterRule.type === 'int') {
-      let step = 1;
-    } else if (parameterRule.type === 'float') {
-      let step = 0.1;
-    }
+
+    const step = parameterRule.type === 'int' ? 1 : 0.1;
 
       return (
         <>
