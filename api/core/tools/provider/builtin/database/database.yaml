@@ -1,0 +1,11 @@
+identity:
+  author: Dify
+  name: database
+  label:
+    en_US: Database
+  description:
+    en_US: Activating humanity's potential through generative AI
+    zh_Hans: 通过生成式 AI 激活人类的潜力
+  icon: icon.svg
+  tags:
+    - image
