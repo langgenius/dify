@@ -1,6 +1,6 @@
-model: spark-1.5
+model: Spark Pro
 label:
-  en_US: Spark V1.5
+  en_US: Spark Pro
 model_type: llm
 model_properties:
   mode: chat
@@ -13,12 +13,12 @@ parameter_rules:
       en_US: Kernel sampling threshold. Used to determine the randomness of the results. The higher the value, the stronger the randomness, that is, the higher the possibility of getting different answers to the same question.
   - name: max_tokens
     use_template: max_tokens
-    default: 512
+    default: 2048
     min: 1
-    max: 4096
+    max: 8192
     help:
       zh_Hans: 模型回答的tokens的最大长度。
-      en_US: 模型回答的tokens的最大长度。
+      en_US: Maximum length of tokens for the model response.
   - name: top_k
     label:
       zh_Hans: 取样数量

@@ -19,27 +19,25 @@ class SparkLLMClient:
         endpoint = 'chat'
         if api_domain:
             domain = api_domain
-            if model == 'spark-v3':
-                endpoint = 'multimodal'
 
         model_api_configs = {
-            'spark-1.5': {
+            'Spark Lite': {
                 'version': 'v1.1',
                 'chat_domain': 'general'
             },
-            'spark-2': {
-                'version': 'v2.1',
-                'chat_domain': 'generalv2'
-            },
-            'spark-3': {
+            'Spark Pro': {
                 'version': 'v3.1',
                 'chat_domain': 'generalv3'
             },
-            'spark-3.5': {
+            'Spark Pro-128K': {
+                'version': 'pro-128k',
+                'chat_domain': 'pro-128k'
+            },
+            'Spark Max': {
                 'version': 'v3.5',
                 'chat_domain': 'generalv3.5'
             },
-            'spark-4': {
+            'Spark4.0 Ultra': {
                 'version': 'v4.0',
                 'chat_domain': '4.0Ultra'
             }
@@ -48,7 +46,12 @@ class SparkLLMClient:
         api_version = model_api_configs[model]['version']
 
         self.chat_domain = model_api_configs[model]['chat_domain']
-        self.api_base = f"wss://{domain}/{api_version}/{endpoint}"
+
+        if model == 'Spark Pro-128K':
+            self.api_base = f"wss://{domain}/{endpoint}/{api_version}"
+        else:
+            self.api_base = f"wss://{domain}/{api_version}/{endpoint}"
+
         self.app_id = app_id
         self.ws_url = self.create_url(
             urlparse(self.api_base).netloc,
