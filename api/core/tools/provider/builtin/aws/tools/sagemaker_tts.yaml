@@ -68,9 +68,6 @@ parameters:
         label:
           en_US: instruct voice
           zh_Hans: 指令音色
-    human_description:
-      en_US: tts infer type.
-      zh_Hans: tts的推理类型
     form: form
   - name: voice
     type: select
@@ -97,9 +94,6 @@ parameters:
         label:
           en_US: zh-TW female
           zh_Hans: 粤语女
-    human_description:
-      en_US: preset voice
-      zh_Hans: 预置音色
     form: form
   - name: mock_voice_audio
     type: string
