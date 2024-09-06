@@ -545,7 +545,7 @@ services:
       - "minio"
     ports:
       - "19530:19530"
-      - "9091:9091"    
+      - "9091:9091"
     networks:
       - milvus
 
