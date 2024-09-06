@@ -192,10 +192,14 @@ const Chat: FC<ChatProps> = ({
       <div className='relative h-full'>
         <div
           ref={chatContainerRef}
-          className={classNames('relative h-full overflow-y-auto', chatContainerClassName)}
+          className={classNames('relative h-full overflow-y-auto overflow-x-hidden', chatContainerClassName)}
         >
           {chatNode}
-          <div id="dify-chat-screenshot" ref={chatContainerInnerRef} className={`${chatContainerInnerClassName}`}>
+          <div
+            id="dify-chat-screenshot"
+            ref={chatContainerInnerRef}
+            className={`w-full ${chatContainerInnerClassName}`}
+          >
             {
               chatList.map((item, index) => {
                 if (item.isAnswer) {

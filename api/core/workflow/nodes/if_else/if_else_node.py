@@ -1,3 +1,4 @@
+import re
 from collections.abc import Sequence
 from typing import Optional, cast
 
@@ -136,6 +137,8 @@ class IfElseNode(BaseNode):
             return self._assert_null(actual_value)
         elif comparison_operator == "not null":
             return self._assert_not_null(actual_value)
+        elif comparison_operator == "regex match":
+            return self._assert_regex_match(actual_value, expected_value)
         else:
             raise ValueError(f"Invalid comparison operator: {comparison_operator}")
 
@@ -284,6 +287,16 @@ class IfElseNode(BaseNode):
         if not actual_value:
             return True
         return False
+
+    def _assert_regex_match(self, actual_value: Optional[str], expected_value: str) -> bool:
+        """
+        Assert empty
+        :param actual_value: actual value
+        :return:
+        """
+        if actual_value is None:
+            return False
+        return re.search(expected_value, actual_value) is not None
 
     def _assert_not_empty(self, actual_value: Optional[str]) -> bool:
         """

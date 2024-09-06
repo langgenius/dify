@@ -412,6 +412,7 @@ const translation = {
         'not empty': '不为空',
         'null': '空',
         'not null': '不为空',
+        'regex match': '正则匹配',
       },
       enterValue: '输入值',
       addCondition: '添加条件',
