@@ -7,6 +7,7 @@ identity:
 description:
   human:
     en_US: This tool is used to execute SQL in an existing database.
+    zh_Hans: 该工具用于在已有数据库中执行SQL。
   llm: This tool is used to execute SQL in an existing database.
 parameters:
   - name: sql_string
