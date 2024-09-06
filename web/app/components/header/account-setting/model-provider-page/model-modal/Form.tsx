@@ -1,6 +1,5 @@
 import { Fragment, useState } from 'react'
 import type { FC } from 'react'
-import { RiQuestionLine } from '@remixicon/react'
 import { ValidatingTip } from '../../key-validator/ValidateStatus'
 import type {
   CredentialFormSchema,
@@ -81,15 +80,13 @@ const Form: FC<FormProps> = ({
   const renderField = (formSchema: CredentialFormSchema) => {
     const tooltip = formSchema.tooltip
     const tooltipContent = (tooltip && (
-      <span className='ml-1 pt-1.5'>
+      <span className='ml-1 pt-1 absolute'>
         <Tooltip popupContent={
           // w-[100px] caused problem
           <div className=''>
             {renderTooltipContent(tooltip[language] || tooltip.en_US)}
           </div>
-        } >
-          <RiQuestionLine className='w-3 h-3  text-gray-500' />
-        </Tooltip>
+        } />
       </span>))
     if (formSchema.type === FormTypeEnum.textInput || formSchema.type === FormTypeEnum.secretInput || formSchema.type === FormTypeEnum.textNumber) {
       const {
