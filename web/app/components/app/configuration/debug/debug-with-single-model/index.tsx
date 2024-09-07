@@ -66,7 +66,7 @@ const DebugWithSingleModel = forwardRef<DebugWithSingleModelRefType, DebugWithSi
   )
   useFormattingChangedSubscription(chatList)
 
-  const doSend: OnSend = useCallback((message, files, is_regenerate = false, last_answer) => {
+  const doSend: OnSend = useCallback((message, files, last_answer) => {
     if (checkCanSend && !checkCanSend())
       return
     const currentProvider = textGenerationModelList.find(item => item.provider === modelConfig.provider)
@@ -87,7 +87,6 @@ const DebugWithSingleModel = forwardRef<DebugWithSingleModelRefType, DebugWithSi
       query: message,
       inputs,
       model_config: configData,
-      is_regenerate,
       parent_message_id: last_answer?.id || chatListRef.current.at(-1)?.id || null,
     }
 
@@ -117,7 +116,7 @@ const DebugWithSingleModel = forwardRef<DebugWithSingleModelRefType, DebugWithSi
       return
 
     handleUpdateChatList(prevMessages)
-    doSend(question.content, question.message_files, true, (!lastAnswer || lastAnswer.isOpeningStatement) ? undefined : lastAnswer)
+    doSend(question.content, question.message_files, (!lastAnswer || lastAnswer.isOpeningStatement) ? undefined : lastAnswer)
   }, [chatList, handleUpdateChatList, doSend])
 
   const allToolIcons = useMemo(() => {
