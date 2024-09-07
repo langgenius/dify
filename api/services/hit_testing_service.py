@@ -1,9 +1,10 @@
 import logging
 import time
 
+from api.core.rag.retrieval.retrieval_methods import RetrievalMethod
+
 from core.rag.datasource.retrieval_service import RetrievalService
 from core.rag.models.document import Document
-from api.core.rag.retrieval.retrieval_methods import RetrievalMethod
 from extensions.ext_database import db
 from models.account import Account
 from models.dataset import Dataset, DatasetQuery, DocumentSegment

@@ -3,6 +3,7 @@ import threading
 from collections import Counter
 from typing import Optional, cast
 
+from api.core.rag.retrieval.retrieval_methods import RetrievalMethod
 from flask import Flask, current_app
 
 from core.app.app_config.entities import DatasetEntity, DatasetRetrieveConfigEntity
@@ -21,7 +22,6 @@ from core.rag.data_post_processor.data_post_processor import DataPostProcessor
 from core.rag.datasource.keyword.jieba.jieba_keyword_table_handler import JiebaKeywordTableHandler
 from core.rag.datasource.retrieval_service import RetrievalService
 from core.rag.models.document import Document
-from api.core.rag.retrieval.retrieval_methods import RetrievalMethod
 from core.rag.retrieval.router.multi_dataset_function_call_router import FunctionCallMultiDatasetRouter
 from core.rag.retrieval.router.multi_dataset_react_route import ReactMultiDatasetRouter
 from core.tools.tool.dataset_retriever.dataset_multi_retriever_tool import DatasetMultiRetrieverTool
