@@ -47,7 +47,7 @@ class SparkLLMClient:
 
         self.chat_domain = model_api_configs[model]['chat_domain']
 
-        if model == 'Spark Pro-128K':
+        if model == 'Spark-Pro-128K':
             self.api_base = f"wss://{domain}/{endpoint}/{api_version}"
         else:
             self.api_base = f"wss://{domain}/{api_version}/{endpoint}"
