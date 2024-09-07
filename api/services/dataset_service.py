@@ -6,7 +6,6 @@ import time
 import uuid
 from typing import Optional
 
-from core.rag.retrieval.retrieval_methods import RetrievalMethod
 from flask_login import current_user
 from sqlalchemy import func
 
@@ -16,6 +15,7 @@ from core.model_manager import ModelManager
 from core.model_runtime.entities.model_entities import ModelType
 from core.rag.datasource.keyword.keyword_factory import Keyword
 from core.rag.models.document import Document as RAGDocument
+from core.rag.retrieval.retrieval_methods import RetrievalMethod
 from events.dataset_event import dataset_was_deleted
 from events.document_event import document_was_deleted
 from extensions.ext_database import db
