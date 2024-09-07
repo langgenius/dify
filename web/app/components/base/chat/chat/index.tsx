@@ -192,12 +192,12 @@ const Chat: FC<ChatProps> = ({
       <div className='relative h-full'>
         <div
           ref={chatContainerRef}
-          className={classNames('relative h-full overflow-y-auto', chatContainerClassName)}
+          className={classNames('relative h-full overflow-y-auto overflow-x-hidden', chatContainerClassName)}
         >
           {chatNode}
           <div
             ref={chatContainerInnerRef}
-            className={`${chatContainerInnerClassName}`}
+            className={`w-full ${chatContainerInnerClassName}`}
           >
             {
               chatList.map((item, index) => {

@@ -103,9 +103,9 @@ const ChatRecord = () => {
               } as any}
               chatList={chatMessageList}
               chatContainerClassName='px-4'
-              chatContainerInnerClassName='pt-6'
+              chatContainerInnerClassName='pt-6 w-full max-w-full mx-auto'
               chatFooterClassName='px-4 rounded-b-2xl'
-              chatFooterInnerClassName='pb-4'
+              chatFooterInnerClassName='pb-4 w-full max-w-full mx-auto'
               chatNode={<UserInput />}
               noChatInput
               allToolIcons={{}}
