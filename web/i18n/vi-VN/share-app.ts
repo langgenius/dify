@@ -10,7 +10,7 @@ const translation = {
     unpinnedTitle: 'Trò chuyện',
     newChatDefaultName: 'Cuộc trò chuyện mới',
     resetChat: 'Đặt lại cuộc trò chuyện',
-    powerBy: 'Được cung cấp bởi',
+    poweredBy: 'Được cung cấp bởi',
     prompt: 'Lời nhắc',
     privatePromptConfigTitle: 'Cài đặt cuộc trò chuyện',
     publicPromptConfigTitle: 'Lời nhắc ban đầu',

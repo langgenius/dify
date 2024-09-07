@@ -198,7 +198,7 @@ const translation = {
     setAdmin: 'Đặt làm quản trị viên',
     setMember: 'Đặt thành viên bình thường',
     setEditor: 'Đặt làm biên tập viên',
-    disinvite: 'Hủy lời mời',
+    disInvite: 'Hủy lời mời',
     deleteMember: 'Xóa thành viên',
     you: '(Bạn)',
     datasetOperatorTip: 'Chỉ có thể quản lý cơ sở kiến thức',

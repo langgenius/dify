@@ -109,7 +109,7 @@ const translation = {
     QATitle: 'Soru ve Yanıt formatında parçalama',
     QATip: 'Bu seçeneği etkinleştirmek daha fazla token tüketecektir',
     QALanguage: 'Kullanarak parçalara ayır',
-    emstimateCost: 'Tahmin',
+    estimateCost: 'Tahmin',
     estimateSegment: 'Tahmini parçalar',
     segmentCount: 'parçalar',
     calculating: 'Hesaplanıyor...',

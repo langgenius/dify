@@ -10,7 +10,7 @@ const translation = {
     unpinnedTitle: '채팅',
     newChatDefaultName: '새 대화',
     resetChat: '대화 재설정',
-    powerBy: 'Powered by',
+    poweredBy: 'Powered by',
     prompt: '프롬프트',
     privatePromptConfigTitle: '채팅 설정',
     publicPromptConfigTitle: '초기 프롬프트',

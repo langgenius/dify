@@ -10,7 +10,7 @@ const translation = {
     unpinnedTitle: 'Conversații',
     newChatDefaultName: 'Conversație nouă',
     resetChat: 'Resetează conversația',
-    powerBy: 'Furnizat de',
+    poweredBy: 'Furnizat de',
     prompt: 'Sugestie',
     privatePromptConfigTitle: 'Setări conversație',
     publicPromptConfigTitle: 'Sugestie inițială',

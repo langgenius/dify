@@ -10,7 +10,7 @@ const translation = {
     unpinnedTitle: 'Chat',
     newChatDefaultName: 'Nuova conversazione',
     resetChat: 'Reimposta conversazione',
-    powerBy: 'Powered by',
+    poweredBy: 'Powered by',
     prompt: 'Prompt',
     privatePromptConfigTitle: 'Impostazioni conversazione',
     publicPromptConfigTitle: 'Prompt iniziale',

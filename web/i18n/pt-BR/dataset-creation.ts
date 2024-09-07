@@ -104,7 +104,7 @@ const translation = {
     QATitle: 'Fragmentação no formato de Perguntas e Respostas',
     QATip: 'Habilitar esta opção consumirá mais tokens',
     QALanguage: 'Fragmentar usando',
-    emstimateCost: 'Estimativa',
+    estimateCost: 'Estimativa',
     estimateSegment: 'Fragmentos estimados',
     segmentCount: 'fragmentos',
     calculating: 'Calculando...',

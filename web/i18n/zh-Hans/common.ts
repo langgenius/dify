@@ -205,7 +205,7 @@ const translation = {
     setAdmin: '设为管理员',
     setMember: '设为普通成员',
     setEditor: '设为编辑',
-    disinvite: '取消邀请',
+    disInvite: '取消邀请',
     deleteMember: '删除成员',
     you: '（你）',
     builderTip: '可以构建和编辑自己的应用程序',

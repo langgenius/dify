@@ -104,7 +104,7 @@ const translation = {
     QATitle: 'Segmentarea în format Întrebare și Răspuns',
     QATip: 'Activarea acestei opțiuni va consuma mai multe jetoane',
     QALanguage: 'Segmentează folosind',
-    emstimateCost: 'Estimare',
+    estimateCost: 'Estimare',
     estimateSegment: 'Segmente estimate',
     segmentCount: 'segmente',
     calculating: 'Se calculează...',

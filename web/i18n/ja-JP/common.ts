@@ -207,7 +207,7 @@ const translation = {
     setMember: '通常のメンバーに設定',
     setBuilder: 'ビルダーに設定',
     setEditor: 'エディターに設定',
-    disinvite: '招待をキャンセル',
+    disInvite: '招待をキャンセル',
     deleteMember: 'メンバーを削除',
     you: '(あなた様)',
   },

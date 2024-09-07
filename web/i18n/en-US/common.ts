@@ -208,7 +208,7 @@ const translation = {
     setMember: 'Set to ordinary member',
     setBuilder: 'Set as builder',
     setEditor: 'Set as editor',
-    disinvite: 'Cancel the invitation',
+    disInvite: 'Cancel the invitation',
     deleteMember: 'Delete Member',
     you: '(You)',
   },
@@ -392,7 +392,7 @@ const translation = {
       selector: {
         pageSelected: 'Pages Selected',
         searchPages: 'Search pages...',
-        noSearchResult: 'No search resluts',
+        noSearchResult: 'No search results',
         addPages: 'Add pages',
         preview: 'PREVIEW',
       },

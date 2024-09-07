@@ -109,7 +109,7 @@ const translation = {
     QATitle: 'Segmenting in Question & Answer format',
     QATip: 'Enable this option will consume more tokens',
     QALanguage: 'Segment using',
-    emstimateCost: 'Estimation',
+    estimateCost: 'Estimation',
     estimateSegment: 'Estimated chunks',
     segmentCount: 'chunks',
     calculating: 'Calculating...',

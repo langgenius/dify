@@ -207,7 +207,7 @@ const translation = {
     setMember: 'Normal üye olarak ayarla',
     setBuilder: 'Oluşturucu olarak ayarla',
     setEditor: 'Editör olarak ayarla',
-    disinvite: 'Davetiyeyi iptal et',
+    disInvite: 'Davetiyeyi iptal et',
     deleteMember: 'Üyeyi Sil',
     you: '(Siz)',
   },

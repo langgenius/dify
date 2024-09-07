@@ -109,7 +109,7 @@ const translation = {
     QATitle: '質問と回答形式でセグメント化',
     QATip: 'このオプションを有効にすると、追加のトークンが消費されます',
     QALanguage: '使用言語',
-    emstimateCost: '見積もり',
+    estimateCost: '見積もり',
     estimateSegment: '推定チャンク数',
     segmentCount: 'チャンク',
     calculating: '計算中...',

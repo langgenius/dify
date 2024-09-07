@@ -198,7 +198,7 @@ const translation = {
     setAdmin: '設為管理員',
     setMember: '設為普通成員',
     setEditor: '設為編輯',
-    disinvite: '取消邀請',
+    disInvite: '取消邀請',
     deleteMember: '刪除成員',
     you: '（你）',
     setBuilder: 'Set as builder （設置為建構器）',

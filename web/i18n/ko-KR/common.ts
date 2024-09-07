@@ -194,7 +194,7 @@ const translation = {
     setAdmin: '관리자 설정',
     setMember: '일반 멤버 설정',
     setEditor: '편집자 설정',
-    disinvite: '초대 취소',
+    disInvite: '초대 취소',
     deleteMember: '멤버 삭제',
     you: '(나)',
     datasetOperator: '지식 관리자',

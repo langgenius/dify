@@ -10,7 +10,7 @@ const translation = {
     unpinnedTitle: 'چت‌ها',
     newChatDefaultName: 'مکالمه جدید',
     resetChat: 'بازنشانی مکالمه',
-    powerBy: 'قدرت‌گرفته از',
+    poweredBy: 'قدرت‌گرفته از',
     prompt: 'پیشنهاد',
     privatePromptConfigTitle: 'تنظیمات مکالمه',
     publicPromptConfigTitle: 'پیشنهاد اولیه',

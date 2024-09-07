@@ -207,7 +207,7 @@ const translation = {
     setMember: 'Назначить обычным участником',
     setBuilder: 'Назначить разработчиком',
     setEditor: 'Назначить редактором',
-    disinvite: 'Отменить приглашение',
+    disInvite: 'Отменить приглашение',
     deleteMember: 'Удалить участника',
     you: '(Вы)',
   },

@@ -104,7 +104,7 @@ const translation = {
     QATitle: 'Phân đoạn theo định dạng Câu hỏi & Trả lời',
     QATip: 'Bật tùy chọn này sẽ tiêu tốn thêm token',
     QALanguage: 'Phân đoạn bằng',
-    emstimateCost: 'Ước tính',
+    estimateCost: 'Ước tính',
     estimateSegment: 'Số đoạn ước tính',
     segmentCount: 'đoạn',
     calculating: 'Đang tính toán...',

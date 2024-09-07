@@ -218,7 +218,7 @@ const translation = {
     setMember: 'Imposta come membro ordinario',
     setBuilder: 'Imposta come builder',
     setEditor: 'Imposta come editor',
-    disinvite: 'Annulla l\'invito',
+    disInvite: 'Annulla l\'invito',
     deleteMember: 'Elimina Membro',
     you: '(Tu)',
   },

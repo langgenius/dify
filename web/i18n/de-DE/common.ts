@@ -198,7 +198,7 @@ const translation = {
     setAdmin: 'Als Administrator einstellen',
     setMember: 'Als normales Mitglied einstellen',
     setEditor: 'Als Editor einstellen',
-    disinvite: 'Einladung widerrufen',
+    disInvite: 'Einladung widerrufen',
     deleteMember: 'Mitglied löschen',
     you: '(Du)',
     setBuilder: 'Als Builder festlegen',

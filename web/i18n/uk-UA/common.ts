@@ -198,7 +198,7 @@ const translation = {
     setAdmin: 'Призначити адміністратором',
     setMember: 'Встановити як звичайного члена',
     setEditor: 'Встановити як Редактор',
-    disinvite: 'Скасувати запрошення',
+    disInvite: 'Скасувати запрошення',
     deleteMember: 'Видалити учасника',
     you: '(Ви)',
     builder: 'Будівник',

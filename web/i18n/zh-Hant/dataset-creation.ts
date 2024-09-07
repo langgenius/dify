@@ -104,7 +104,7 @@ const translation = {
     QATitle: '採用 Q&A 分段模式',
     QATip: '開啟後將會消耗額外的 token',
     QALanguage: '分段使用',
-    emstimateCost: '執行嵌入預估消耗',
+    estimateCost: '執行嵌入預估消耗',
     estimateSegment: '預估分段數',
     segmentCount: '段',
     calculating: '計算中...',

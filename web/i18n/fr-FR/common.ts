@@ -198,7 +198,7 @@ const translation = {
     setAdmin: 'Définir comme administrateur',
     setMember: 'Définir en tant que membre ordinaire',
     setEditor: 'Définir en tant qu\'éditeur',
-    disinvite: 'Annuler l\'invitation',
+    disInvite: 'Annuler l\'invitation',
     deleteMember: 'Supprimer Membre',
     you: '(Vous)',
     builder: 'Constructeur',

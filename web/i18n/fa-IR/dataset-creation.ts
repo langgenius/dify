@@ -109,7 +109,7 @@ const translation = {
     QATitle: 'بخشبندی در قالب پرسش و پاسخ',
     QATip: 'فعال کردن این گزینه توکنهای بیشتری مصرف خواهد کرد',
     QALanguage: 'بخشبندی با استفاده از',
-    emstimateCost: 'برآورد',
+    estimateCost: 'برآورد',
     estimateSegment: 'بخشهای برآورد شده',
     segmentCount: 'بخشها',
     calculating: 'در حال محاسبه...',

@@ -207,7 +207,7 @@ const translation = {
     setMember: 'تنظیم به عنوان عضو عادی',
     setBuilder: 'تنظیم به عنوان سازنده',
     setEditor: 'تنظیم به عنوان ویرایشگر',
-    disinvite: 'لغو دعوت',
+    disInvite: 'لغو دعوت',
     deleteMember: 'حذف عضو',
     you: '(شما)',
   },

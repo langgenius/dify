@@ -198,7 +198,7 @@ const translation = {
     setAdmin: 'Setează ca administrator',
     setMember: 'Setează ca membru obișnuit',
     setEditor: 'Setează ca editor',
-    disinvite: 'Anulează invitația',
+    disInvite: 'Anulează invitația',
     deleteMember: 'Șterge membru',
     you: '(Dvs.)',
     datasetOperatorTip: 'Numai poate gestiona baza de cunoștințe',

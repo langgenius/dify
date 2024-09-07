@@ -109,7 +109,7 @@ const translation = {
     QATitle: 'Сегментация в формате вопрос-ответ',
     QATip: 'Включение этой опции приведет к потреблению большего количества токенов',
     QALanguage: 'Сегментировать с помощью',
-    emstimateCost: 'Оценка',
+    estimateCost: 'Оценка',
     estimateSegment: 'Оценочное количество фрагментов',
     segmentCount: 'фрагментов',
     calculating: 'Вычисление...',

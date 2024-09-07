@@ -11,7 +11,7 @@ const translation = {
     unpinnedTitle: 'चैट',
     newChatDefaultName: 'नया संवाद',
     resetChat: 'संवाद रीसेट करें',
-    powerBy: 'संचालित है',
+    poweredBy: 'संचालित है',
     prompt: 'प्रॉम्प्ट',
     privatePromptConfigTitle: 'संवाद सेटिंग्स',
     publicPromptConfigTitle: 'प्रारंभिक प्रॉम्प्ट',

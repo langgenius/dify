@@ -10,7 +10,7 @@ const translation = {
     unpinnedTitle: 'Чаты',
     newChatDefaultName: 'Новый разговор',
     resetChat: 'Сбросить разговор',
-    powerBy: 'Работает на',
+    poweredBy: 'Работает на',
     prompt: 'Подсказка',
     privatePromptConfigTitle: 'Настройки разговора',
     publicPromptConfigTitle: 'Начальная подсказка',

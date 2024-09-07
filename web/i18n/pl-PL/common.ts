@@ -206,7 +206,7 @@ const translation = {
     setAdmin: 'Ustaw jako administratora',
     setMember: 'Ustaw jako zwykłego członka',
     setEditor: 'Ustaw jako edytora',
-    disinvite: 'Anuluj zaproszenie',
+    disInvite: 'Anuluj zaproszenie',
     deleteMember: 'Usuń członka',
     you: '(Ty)',
     datasetOperatorTip: 'Może zarządzać tylko bazą wiedzy',

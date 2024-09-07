@@ -121,7 +121,7 @@ const translation = {
     QATitle: 'प्रश्न और उत्तर प्रारूप में खंड करना',
     QATip: 'इस विकल्प को सक्षम करने से अधिक टोकन खर्च होंगे',
     QALanguage: 'का उपयोग करके खंड करना',
-    emstimateCost: 'अनुमानित लागत',
+    estimateCost: 'अनुमानित लागत',
     estimateSegment: 'अनुमानित खंड',
     segmentCount: 'खंड',
     calculating: 'गणना कर रहा है...',

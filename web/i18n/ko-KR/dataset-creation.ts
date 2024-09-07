@@ -104,7 +104,7 @@ const translation = {
     QATitle: '질문과 답변 형식으로 세그먼트화',
     QATip: '이 옵션을 활성화하면 추가 토큰이 소비됩니다',
     QALanguage: '사용 언어',
-    emstimateCost: '예상 비용',
+    estimateCost: '예상 비용',
     estimateSegment: '예상 청크 수',
     segmentCount: '청크',
     calculating: '계산 중...',

@@ -104,7 +104,7 @@ const translation = {
     QATitle: 'Segmentation en format Question & Réponse',
     QATip: 'Activer cette option consommera plus de jetons',
     QALanguage: 'Segmenter en utilisant',
-    emstimateCost: 'Estimation',
+    estimateCost: 'Estimation',
     estimateSegment: 'Morceaux estimés',
     segmentCount: 'morceaux',
     calculating: 'En calcul...',

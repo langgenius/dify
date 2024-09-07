@@ -112,7 +112,7 @@ const translation = {
     QATitle: 'Segmentacja w formacie pytania i odpowiedzi',
     QATip: 'Włączenie tej opcji spowoduje zużycie większej liczby tokenów',
     QALanguage: 'Segmentacja przy użyciu',
-    emstimateCost: 'Oszacowanie',
+    estimateCost: 'Oszacowanie',
     estimateSegment: 'Oszacowane bloki',
     segmentCount: 'bloki',
     calculating: 'Obliczanie...',

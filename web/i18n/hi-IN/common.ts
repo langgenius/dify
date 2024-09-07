@@ -214,7 +214,7 @@ const translation = {
     setMember: 'सामान्य सदस्य के रूप में सेट करें',
     setBuilder: 'निर्माता के रूप में सेट करें',
     setEditor: 'संपादक के रूप में सेट करें',
-    disinvite: 'आमंत्रण रद्द करें',
+    disInvite: 'आमंत्रण रद्द करें',
     deleteMember: 'सदस्य को हटाएं',
     you: '(आप)',
     datasetOperator: 'ज्ञान व्यवस्थापक',

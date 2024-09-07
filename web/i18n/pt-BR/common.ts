@@ -198,7 +198,7 @@ const translation = {
     setAdmin: 'Definir como administrador',
     setMember: 'Definir como membro comum',
     setEditor: 'Definir como editor',
-    disinvite: 'Cancelar o convite',
+    disInvite: 'Cancelar o convite',
     deleteMember: 'Excluir Membro',
     you: '(Você)',
     datasetOperatorTip: 'Só pode gerenciar a base de dados de conhecimento',

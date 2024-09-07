@@ -10,7 +10,7 @@ const translation = {
     unpinnedTitle: 'Sohbetler',
     newChatDefaultName: 'Yeni konuşma',
     resetChat: 'Konuşmayı sıfırla',
-    powerBy: 'Tarafından desteklenmektedir',
+    poweredBy: 'Tarafından desteklenmektedir',
     prompt: 'Prompt',
     privatePromptConfigTitle: 'Konuşma ayarları',
     publicPromptConfigTitle: 'Başlangıç Promptu',

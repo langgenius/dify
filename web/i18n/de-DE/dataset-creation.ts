@@ -104,7 +104,7 @@ const translation = {
     QATitle: 'Segmentierung im Frage-und-Antwort-Format',
     QATip: 'Diese Option zu aktivieren, wird mehr Tokens verbrauchen',
     QALanguage: 'Segmentierung verwenden',
-    emstimateCost: 'Schätzung',
+    estimateCost: 'Schätzung',
     estimateSegment: 'Geschätzte Chunks',
     segmentCount: 'Chunks',
     calculating: 'Berechnung...',
