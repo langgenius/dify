@@ -1,4 +1,4 @@
-model: Spark-Pro-128K
+model: spark-pro-128k
 label:
   en_US: Spark Pro-128K
 model_type: llm

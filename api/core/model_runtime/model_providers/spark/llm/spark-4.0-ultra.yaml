@@ -1,4 +1,4 @@
-model: Spark-4.0Ultra
+model: spark-4.0-ultra
 label:
   en_US: Spark 4.0Ultra
 model_type: llm

@@ -1,4 +1,4 @@
-model: Spark-Max
+model: spark-max
 label:
   en_US: Spark Max
 model_type: llm

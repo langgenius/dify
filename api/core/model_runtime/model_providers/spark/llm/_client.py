@@ -21,23 +21,23 @@ class SparkLLMClient:
             domain = api_domain
 
         model_api_configs = {
-            'Spark-Lite': {
+            'spark-lite': {
                 'version': 'v1.1',
                 'chat_domain': 'general'
             },
-            'Spark-Pro': {
+            'spark-pro': {
                 'version': 'v3.1',
                 'chat_domain': 'generalv3'
             },
-            'Spark-Pro-128K': {
+            'spark-pro-128k': {
                 'version': 'pro-128k',
                 'chat_domain': 'pro-128k'
             },
-            'Spark-Max': {
+            'spark-max': {
                 'version': 'v3.5',
                 'chat_domain': 'generalv3.5'
             },
-            'Spark-4.0Ultra': {
+            'spark-4.0-ultra': {
                 'version': 'v4.0',
                 'chat_domain': '4.0Ultra'
             }
@@ -47,7 +47,7 @@ class SparkLLMClient:
 
         self.chat_domain = model_api_configs[model]['chat_domain']
 
-        if model == 'Spark-Pro-128K':
+        if model == 'spark-pro-128k':
             self.api_base = f"wss://{domain}/{endpoint}/{api_version}"
         else:
             self.api_base = f"wss://{domain}/{api_version}/{endpoint}"

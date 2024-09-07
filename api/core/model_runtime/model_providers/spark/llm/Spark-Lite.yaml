@@ -1,4 +1,4 @@
-model: Spark-Lite
+model: spark-lite
 label:
   en_US: Spark Lite
 model_type: llm
