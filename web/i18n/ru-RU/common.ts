@@ -199,7 +199,7 @@ const translation = {
     invitationSent: 'Приглашение отправлено',
     invitationSentTip: 'Приглашение отправлено, и они могут войти в Dify, чтобы получить доступ к данным вашей команды.',
     invitationLink: 'Ссылка для приглашения',
-    failedinvitationEmails: 'Следующие пользователи не были успешно приглашены',
+    failedInvitationEmails: 'Следующие пользователи не были успешно приглашены',
     ok: 'ОК',
     removeFromTeam: 'Удалить из команды',
     removeFromTeamTip: 'Удалить доступ к команде',

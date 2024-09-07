@@ -199,7 +199,7 @@ const translation = {
     invitationSent: '招待が送信されました',
     invitationSentTip: '招待が送信され、彼らはDifyにサインインしてあなた様のチームデータにアクセスできます。',
     invitationLink: '招待リンク',
-    failedinvitationEmails: '以下のユーザーは正常に招待されませんでした',
+    failedInvitationEmails: '以下のユーザーは正常に招待されませんでした',
     ok: 'OK',
     removeFromTeam: 'チームから削除',
     removeFromTeamTip: 'チームへのアクセスが削除されます',

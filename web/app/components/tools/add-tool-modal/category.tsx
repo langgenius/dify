@@ -17,7 +17,7 @@ type Props = {
 
 const Icon = ({ svgString, active }: { svgString: string; active: boolean }) => {
   const svgRef = useRef<SVGSVGElement | null>(null)
-  const SVGParsor = (svg: string) => {
+  const SVGParser = (svg: string) => {
     if (!svg)
       return null
     const parser = new DOMParser()
@@ -25,7 +25,7 @@ const Icon = ({ svgString, active }: { svgString: string; active: boolean }) => 
     return doc.documentElement
   }
   useMount(() => {
-    const svgElement = SVGParsor(svgString)
+    const svgElement = SVGParser(svgString)
     if (svgRef.current && svgElement)
       svgRef.current.appendChild(svgElement)
   })

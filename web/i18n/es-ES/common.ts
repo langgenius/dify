@@ -199,7 +199,7 @@ const translation = {
     invitationSent: 'Invitación enviada',
     invitationSentTip: 'Invitación enviada, y pueden iniciar sesión en Dify para acceder a tus datos del equipo.',
     invitationLink: 'Enlace de invitación',
-    failedinvitationEmails: 'Los siguientes usuarios no fueron invitados exitosamente',
+    failedInvitationEmails: 'Los siguientes usuarios no fueron invitados exitosamente',
     ok: 'OK',
     removeFromTeam: 'Eliminar del equipo',
     removeFromTeamTip: 'Se eliminará el acceso al equipo',

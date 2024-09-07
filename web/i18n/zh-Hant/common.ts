@@ -191,7 +191,7 @@ const translation = {
     invitationSent: '邀請已傳送',
     invitationSentTip: '邀請已傳送，對方登入 Dify 後即可訪問你的團隊資料。',
     invitationLink: '邀請連結',
-    failedinvitationEmails: '邀請以下郵箱失敗',
+    failedInvitationEmails: '邀請以下郵箱失敗',
     ok: '好的',
     removeFromTeam: '移除團隊',
     removeFromTeamTip: '將取消團隊訪問',

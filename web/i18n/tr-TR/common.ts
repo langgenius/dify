@@ -199,7 +199,7 @@ const translation = {
     invitationSent: 'Davet gönderildi',
     invitationSentTip: 'Davet gönderildi, Dify\'ye giriş yaparak takım verilerinize erişebilirler.',
     invitationLink: 'Davet Linki',
-    failedinvitationEmails: 'Aşağıdaki kullanıcılar başarıyla davet edilmedi',
+    failedInvitationEmails: 'Aşağıdaki kullanıcılar başarıyla davet edilmedi',
     ok: 'Tamam',
     removeFromTeam: 'Takımdan Kaldır',
     removeFromTeamTip: 'Takım erişimi kaldırılacak',

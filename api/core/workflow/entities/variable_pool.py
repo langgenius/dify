@@ -31,7 +31,7 @@ class VariablePool:
         #     'files': []
         # }
 
-        # Varaible dictionary is a dictionary for looking up variables by their selector.
+        # Variable dictionary is a dictionary for looking up variables by their selector.
         # The first element of the selector is the node id, it's the first-level key in the dictionary.
         # Other elements of the selector are the keys in the second-level dictionary. To get the key, we hash the
         # elements of the selector except the first one.

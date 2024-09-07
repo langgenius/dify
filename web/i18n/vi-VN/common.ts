@@ -191,7 +191,7 @@ const translation = {
     invitationSent: 'Lời mời đã được gửi',
     invitationSentTip: 'Lời mời đã được gửi, và họ có thể đăng nhập vào Dify để truy cập vào dữ liệu nhóm của bạn.',
     invitationLink: 'Liên kết Lời mời',
-    failedinvitationEmails: 'Dưới đây là danh sách email không gửi được lời mời',
+    failedInvitationEmails: 'Dưới đây là danh sách email không gửi được lời mời',
     ok: 'OK',
     removeFromTeam: 'Xóa khỏi nhóm',
     removeFromTeamTip: 'Sẽ xóa quyền truy cập nhóm',

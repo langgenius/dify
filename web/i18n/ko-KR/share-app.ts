@@ -2,7 +2,7 @@ const translation = {
   common: {
     welcome: '',
     appUnavailable: '앱을 사용할 수 없습니다',
-    appUnkonwError: '앱을 사용할 수 없습니다',
+    appUnknownError: '앱을 사용할 수 없습니다',
   },
   chat: {
     newChat: '새 채팅',

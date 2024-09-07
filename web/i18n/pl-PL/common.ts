@@ -199,7 +199,7 @@ const translation = {
     invitationSentTip:
       'Zaproszenie zostało wysłane, a oni mogą zalogować się do Dify, aby uzyskać dostęp do danych Twojego zespołu.',
     invitationLink: 'Link zaproszenia',
-    failedinvitationEmails: 'Poniższe osoby nie zostały pomyślnie zaproszone',
+    failedInvitationEmails: 'Poniższe osoby nie zostały pomyślnie zaproszone',
     ok: 'OK',
     removeFromTeam: 'Usuń z zespołu',
     removeFromTeamTip: 'Usunie dostęp do zespołu',

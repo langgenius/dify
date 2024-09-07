@@ -2,7 +2,7 @@ const translation = {
   common: {
     welcome: '',
     appUnavailable: 'Aplicația nu este disponibilă',
-    appUnkonwError: 'Aplicația nu este disponibilă',
+    appUnknownError: 'Aplicația nu este disponibilă',
   },
   chat: {
     newChat: 'Chat nou',

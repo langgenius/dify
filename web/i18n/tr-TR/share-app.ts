@@ -2,7 +2,7 @@ const translation = {
   common: {
     welcome: '',
     appUnavailable: 'Uygulama kullanılamıyor',
-    appUnkonwError: 'Uygulama kullanılamıyor',
+    appUnknownError: 'Uygulama kullanılamıyor',
   },
   chat: {
     newChat: 'Yeni sohbet',

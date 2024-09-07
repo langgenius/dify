@@ -2,7 +2,7 @@ const translation = {
   common: {
     welcome: '',
     appUnavailable: 'Ứng dụng không khả dụng',
-    appUnkonwError: 'Ứng dụng gặp lỗi không xác định',
+    appUnknownError: 'Ứng dụng gặp lỗi không xác định',
   },
   chat: {
     newChat: 'Cuộc trò chuyện mới',

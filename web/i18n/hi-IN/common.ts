@@ -205,7 +205,7 @@ const translation = {
     invitationSentTip:
       'आमंत्रण भेजा गया, और वे साइन इन करके आपकी टीम डेटा तक पहुंच सकते हैं।',
     invitationLink: 'आमंत्रण लिंक',
-    failedinvitationEmails:
+    failedInvitationEmails:
       'नीचे दिए गए उपयोगकर्ताओं को सफलतापूर्वक आमंत्रित नहीं किया गया',
     ok: 'ठीक है',
     removeFromTeam: 'टीम से हटाएं',
