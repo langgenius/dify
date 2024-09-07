@@ -1,6 +1,6 @@
-model: spark-3.5
+model: Spark-Pro-128K
 label:
-  en_US: Spark V3.5
+  en_US: Spark Pro-128K
 model_type: llm
 model_properties:
   mode: chat
@@ -15,7 +15,7 @@ parameter_rules:
     use_template: max_tokens
     default: 4096
     min: 1
-    max: 8192
+    max: 4096
     help:
       zh_Hans: 模型回答的tokens的最大长度。
       en_US: Maximum length of tokens for the model response.

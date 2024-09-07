@@ -1,6 +1,6 @@
-model: Spark Pro
+model: Spark-Max
 label:
-  en_US: Spark Pro
+  en_US: Spark Max
 model_type: llm
 model_properties:
   mode: chat
