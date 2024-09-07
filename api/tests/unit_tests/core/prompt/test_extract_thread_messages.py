@@ -8,9 +8,10 @@ class TestMessage:
     def __init__(self, id, parent_message_id):
         self.id = id
         self.parent_message_id = parent_message_id
-    
+
     def __getitem__(self, item):
         return getattr(self, item)
+
 
 def test_extract_thread_messages_single_message():
     messages = [TestMessage(str(uuid4()), UUID_NIL)]
@@ -74,6 +75,7 @@ def test_extract_thread_messages_legacy_messages():
     result = extract_thread_messages(messages)
     assert len(result) == 3
     assert [msg["id"] for msg in result] == [id3, id2, id1]
+
 
 def test_extract_thread_messages_mixed_with_legacy_messages():
     id1, id2, id3, id4, id5 = str(uuid4()), str(uuid4()), str(uuid4()), str(uuid4()), str(uuid4())
