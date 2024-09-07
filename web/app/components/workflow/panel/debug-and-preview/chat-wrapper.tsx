@@ -75,14 +75,13 @@ const ChatWrapper = forwardRef<ChatWrapperRefType, ChatWrapperProps>(({ showConv
     taskId => stopChatMessageResponding(appDetail!.id, taskId),
   )
 
-  const doSend = useCallback<OnSend>((query, files, is_regenerate = false, last_answer) => {
+  const doSend = useCallback<OnSend>((query, files, last_answer) => {
     handleSend(
       {
         query,
         files,
         inputs: workflowStore.getState().inputs,
         conversation_id: conversationId,
-        is_regenerate,
         parent_message_id: last_answer?.id || chatListRef.current.at(-1)?.id || null,
       },
       {
@@ -104,7 +103,7 @@ const ChatWrapper = forwardRef<ChatWrapperRefType, ChatWrapperProps>(({ showConv
       return
 
     handleUpdateChatList(prevMessages)
-    doSend(question.content, question.message_files, true, (!lastAnswer || lastAnswer.isOpeningStatement) ? undefined : lastAnswer)
+    doSend(question.content, question.message_files, (!lastAnswer || lastAnswer.isOpeningStatement) ? undefined : lastAnswer)
   }, [chatList, handleUpdateChatList, doSend])
 
   useImperativeHandle(ref, () => {

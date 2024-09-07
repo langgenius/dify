@@ -38,7 +38,6 @@ class TokenBufferMemory:
             Message.answer,
             Message.created_at,
             Message.workflow_run_id,
-            Message.is_regenerated,
             Message.parent_message_id,
         ).filter(
             Message.conversation_id == self.conversation.id,

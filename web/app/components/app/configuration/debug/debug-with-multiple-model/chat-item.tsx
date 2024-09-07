@@ -81,7 +81,6 @@ const ChatItem: FC<ChatItemProps> = ({
       query: message,
       inputs,
       model_config: configData,
-      is_regenerate: false,
       parent_message_id: chatListRef.current.at(-1)?.id || null,
     }
 

@@ -1,4 +1,5 @@
 import { addFileInfos, sortAgentSorts } from '../../tools/utils'
+import { UUID_NIL } from './constants'
 import type { ChatItem } from './types'
 
 async function decodeBase64AndDecompress(base64String: string) {
@@ -39,27 +40,27 @@ function appendQAToChatList(chatList: ChatItem[], item: any) {
 
 /**
  * Computes the latest thread messages from all messages of the conversation.
+ * Same logic as backend codebase `api/core/prompt/utils/extract_thread_messages.py`
  *
  * @param fetchedMessages - The history chat list data from the backend, sorted by created_at in descending order. This includes all flattened history messages of the conversation.
  * @returns An array of ChatItems representing the latest thread.
  */
 function getPrevChatList(fetchedMessages: any[]) {
   const ret: ChatItem[] = []
-
   let nextMessageId = null
+
   for (const item of fetchedMessages) {
-    if (item.is_regenerated && !item.parent_message_id) {
+    if (!item.parent_message_id) {
       appendQAToChatList(ret, item)
       break
     }
 
     if (!nextMessageId) {
       appendQAToChatList(ret, item)
-      if (item.parent_message_id)
-        nextMessageId = item.parent_message_id
+      nextMessageId = item.parent_message_id
     }
     else {
-      if (item.id === nextMessageId) {
+      if (item.id === nextMessageId || nextMessageId === UUID_NIL) {
         appendQAToChatList(ret, item)
         nextMessageId = item.parent_message_id
       }
