@@ -1,0 +1,34 @@
+model: spark-4
+deprecated: true
+label:
+  en_US: Spark V4.0
+model_type: llm
+model_properties:
+  mode: chat
+parameter_rules:
+  - name: temperature
+    use_template: temperature
+    default: 0.5
+    help:
+      zh_Hans: 核采样阈值。用于决定结果随机性，取值越高随机性越强即相同的问题得到的不同答案的可能性越高。
+      en_US: Kernel sampling threshold. Used to determine the randomness of the results. The higher the value, the stronger the randomness, that is, the higher the possibility of getting different answers to the same question.
+  - name: max_tokens
+    use_template: max_tokens
+    default: 4096
+    min: 1
+    max: 8192
+    help:
+      zh_Hans: 模型回答的tokens的最大长度。
+      en_US: 模型回答的tokens的最大长度。
+  - name: top_k
+    label:
+      zh_Hans: 取样数量
+      en_US: Top k
+    type: int
+    default: 4
+    min: 1
+    max: 6
+    help:
+      zh_Hans: 从 k 个候选中随机选择一个（非等概率）。
+      en_US: Randomly select one from k candidates (non-equal probability).
+    required: false
