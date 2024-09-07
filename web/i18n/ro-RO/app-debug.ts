@@ -265,7 +265,7 @@ const translation = {
     historyNoBeEmpty: 'Istoricul conversației trebuie setat în prompt',
     queryNoBeEmpty: 'Interogația trebuie setată în prompt',
   },
-  variableConig: {
+  variableConfig: {
     'addModalTitle': 'Adăugați câmp de intrare',
     'editModalTitle': 'Editați câmpul de intrare',
     'description': 'Setare pentru variabila {{varName}}',

@@ -36,7 +36,7 @@ const translation = {
     searchVar: '변수 검색',
     variableNamePlaceholder: '변수 이름',
     setVarValuePlaceholder: '변수 값 설정',
-    needConnecttip: '이 단계는 아무것도 연결되어 있지 않습니다',
+    needConnectTip: '이 단계는 아무것도 연결되어 있지 않습니다',
     maxTreeDepth: '분기당 최대 {{depth}} 노드 제한',
     needEndNode: '종료 블록을 추가해야 합니다',
     needAnswerNode: '답변 블록을 추가해야 합니다',

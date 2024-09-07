@@ -11,8 +11,8 @@ import { IS_CE_EDITION } from '@/config'
 import type { InvitationResult } from '@/models/common'
 import Tooltip from '@/app/components/base/tooltip'
 
-export type SuccessInvationResult = Extract<InvitationResult, { status: 'success' }>
-export type FailedInvationResult = Extract<InvitationResult, { status: 'failed' }>
+export type SuccessInvitationResult = Extract<InvitationResult, { status: 'success' }>
+export type FailedInvitationResult = Extract<InvitationResult, { status: 'failed' }>
 
 type IInvitedModalProps = {
   invitationResults: InvitationResult[]
@@ -24,8 +24,8 @@ const InvitedModal = ({
 }: IInvitedModalProps) => {
   const { t } = useTranslation()
 
-  const successInvationResults = useMemo<SuccessInvationResult[]>(() => invitationResults?.filter(item => item.status === 'success') as SuccessInvationResult[], [invitationResults])
-  const failedInvationResults = useMemo<FailedInvationResult[]>(() => invitationResults?.filter(item => item.status !== 'success') as FailedInvationResult[], [invitationResults])
+  const successInvitationResults = useMemo<SuccessInvitationResult[]>(() => invitationResults?.filter(item => item.status === 'success') as SuccessInvitationResult[], [invitationResults])
+  const failedInvitationResults = useMemo<FailedInvitationResult[]>(() => invitationResults?.filter(item => item.status !== 'success') as FailedInvitationResult[], [invitationResults])
 
   return (
     <div className={s.wrap}>
@@ -49,20 +49,20 @@ const InvitedModal = ({
             <div className='mb-5 text-sm text-gray-500'>{t('common.members.invitationSentTip')}</div>
             <div className='flex flex-col gap-2 mb-9'>
               {
-                !!successInvationResults.length
+                !!successInvitationResults.length
                 && <>
                   <div className='py-2 text-sm font-Medium text-gray-900'>{t('common.members.invitationLink')}</div>
-                  {successInvationResults.map(item =>
+                  {successInvitationResults.map(item =>
                     <InvitationLink key={item.email} value={item} />)}
                 </>
               }
               {
-                !!failedInvationResults.length
+                !!failedInvitationResults.length
                 && <>
-                  <div className='py-2 text-sm font-Medium text-gray-900'>{t('common.members.failedinvitationEmails')}</div>
+                  <div className='py-2 text-sm font-Medium text-gray-900'>{t('common.members.failedInvitationEmails')}</div>
                   <div className='flex flex-wrap justify-between gap-y-1'>
                     {
-                      failedInvationResults.map(item =>
+                      failedInvitationResults.map(item =>
                         <div key={item.email} className='flex justify-center border border-red-300 rounded-md px-1 bg-orange-50'>
                           <Tooltip
                             popupContent={item.message}

@@ -36,7 +36,7 @@ const translation = {
     searchVar: 'Tìm kiếm biến',
     variableNamePlaceholder: 'Tên biến',
     setVarValuePlaceholder: 'Đặt giá trị biến',
-    needConnecttip: 'Bước này không được kết nối với bất kỳ điều gì',
+    needConnectTip: 'Bước này không được kết nối với bất kỳ điều gì',
     maxTreeDepth: 'Giới hạn tối đa {{depth}} nút trên mỗi nhánh',
     needEndNode: 'Phải thêm khối Kết thúc',
     needAnswerNode: 'Phải thêm khối Trả lời',

@@ -31,7 +31,7 @@ const translation = {
   pp: '隱私政策',
   tosDesc: '使用即代表你並同意我們的',
   goToInit: '如果您還沒有初始化賬戶，請前往初始化頁面',
-  donthave: '還沒有邀請碼？',
+  dontHave: '還沒有邀請碼？',
   invalidInvitationCode: '無效的邀請碼',
   accountAlreadyInited: '賬戶已經初始化',
   forgotPassword: '忘記密碼？',
