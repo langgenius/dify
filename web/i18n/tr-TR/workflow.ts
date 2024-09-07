@@ -36,7 +36,7 @@ const translation = {
     searchVar: 'Değişkeni ara',
     variableNamePlaceholder: 'Değişken adı',
     setVarValuePlaceholder: 'Değişkeni ayarla',
-    needConnecttip: 'Bu adım hiçbir şeye bağlı değil',
+    needConnectTip: 'Bu adım hiçbir şeye bağlı değil',
     maxTreeDepth: 'Her dal için maksimum {{depth}} düğüm limiti',
     needEndNode: 'Son blok eklenmelidir',
     needAnswerNode: 'Yanıt bloğu eklenmelidir',
