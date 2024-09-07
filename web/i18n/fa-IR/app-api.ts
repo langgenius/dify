@@ -10,7 +10,7 @@ const translation = {
   pause: 'مکث',
   playing: 'در حال پخش',
   loading: 'در حال بارگذاری',
-  merMaind: {
+  merMaid: {
     rerender: 'بازسازی مجدد',
   },
   never: 'هرگز',

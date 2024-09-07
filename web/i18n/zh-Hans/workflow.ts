@@ -36,7 +36,7 @@ const translation = {
     variableNamePlaceholder: '变量名',
     searchVar: '搜索变量',
     setVarValuePlaceholder: '设置变量值',
-    needConnecttip: '此节点尚未连接到其他节点',
+    needConnectTip: '此节点尚未连接到其他节点',
     maxTreeDepth: '每个分支最大限制 {{depth}} 个节点',
     needEndNode: '必须添加结束节点',
     needAnswerNode: '必须添加直接回复节点',

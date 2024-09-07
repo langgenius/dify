@@ -6,7 +6,7 @@ const translation = {
   ok: 'Em Serviço',
   copy: 'Copiar',
   copied: 'Copiado',
-  merMaind: {
+  merMaid: {
     rerender: 'Refazer Rerender',
   },
   never: 'Nunca',

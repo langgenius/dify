@@ -36,7 +36,7 @@ const translation = {
     searchVar: 'جستجوی متغیر',
     variableNamePlaceholder: 'نام متغیر',
     setVarValuePlaceholder: 'تنظیم متغیر',
-    needConnecttip: 'این مرحله به هیچ چیزی متصل نیست',
+    needConnectTip: 'این مرحله به هیچ چیزی متصل نیست',
     maxTreeDepth: 'حداکثر عمق {{depth}} نود در هر شاخه',
     needEndNode: 'بلوک پایان باید اضافه شود',
     needAnswerNode: 'بلوک پاسخ باید اضافه شود',

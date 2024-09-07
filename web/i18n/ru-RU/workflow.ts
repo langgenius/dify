@@ -36,7 +36,7 @@ const translation = {
     searchVar: 'Поиск переменной',
     variableNamePlaceholder: 'Имя переменной',
     setVarValuePlaceholder: 'Установить значение переменной',
-    needConnecttip: 'Этот шаг ни к чему не подключен',
+    needConnectTip: 'Этот шаг ни к чему не подключен',
     maxTreeDepth: 'Максимальный предел {{depth}} узлов на ветку',
     needEndNode: 'Необходимо добавить блок "Конец"',
     needAnswerNode: 'Необходимо добавить блок "Ответ"',

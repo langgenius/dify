@@ -36,7 +36,7 @@ const translation = {
     searchVar: 'Caută variabilă',
     variableNamePlaceholder: 'Nume variabilă',
     setVarValuePlaceholder: 'Setează valoarea variabilei',
-    needConnecttip: 'Acest pas nu este conectat la nimic',
+    needConnectTip: 'Acest pas nu este conectat la nimic',
     maxTreeDepth: 'Limită maximă de {{depth}} noduri pe ramură',
     needEndNode: 'Trebuie adăugat blocul de sfârșit',
     needAnswerNode: 'Trebuie adăugat blocul de răspuns',

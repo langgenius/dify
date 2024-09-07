@@ -289,7 +289,7 @@ const translation = {
     historyNoBeEmpty: 'Historia konwersacji musi być ustawiona w monicie',
     queryNoBeEmpty: 'Zapytanie musi być ustawione w monicie',
   },
-  variableConig: {
+  variableConfig: {
     'addModalTitle': 'Dodaj Pole Wejściowe',
     'editModalTitle': 'Edytuj Pole Wejściowe',
     'description': 'Ustawienia dla zmiennej {{varName}}',

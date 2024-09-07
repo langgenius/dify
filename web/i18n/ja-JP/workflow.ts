@@ -36,7 +36,7 @@ const translation = {
     searchVar: '変数を検索',
     variableNamePlaceholder: '変数名',
     setVarValuePlaceholder: '変数を設定',
-    needConnecttip: 'このステップは何にも接続されていません',
+    needConnectTip: 'このステップは何にも接続されていません',
     maxTreeDepth: 'ブランチごとの最大制限は{{depth}}ノードです',
     needEndNode: '終了ブロックを追加する必要があります',
     needAnswerNode: '回答ブロックを追加する必要があります',

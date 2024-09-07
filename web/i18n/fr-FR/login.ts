@@ -31,7 +31,7 @@ const translation = {
   pp: 'Politique de Confidentialité',
   tosDesc: 'En vous inscrivant, vous acceptez nos',
   goToInit: 'Si vous n\'avez pas initialisé le compte, veuillez vous rendre sur la page d\'initialisation',
-  donthave: 'Vous n\'avez pas ?',
+  dontHave: 'Vous n\'avez pas ?',
   invalidInvitationCode: 'Code d\'invitation invalide',
   accountAlreadyInited: 'Compte déjà initialisé',
   forgotPassword: 'Mot de passe oublié?',

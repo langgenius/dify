@@ -209,7 +209,7 @@ const translation = {
     invitationSentTip:
       'Invito inviato, e possono accedere a Dify per accedere ai dati del tuo team.',
     invitationLink: 'Link di Invito',
-    failedinvitationEmails:
+    failedInvitationEmails:
       'Gli utenti seguenti non sono stati invitati con successo',
     ok: 'OK',
     removeFromTeam: 'Rimuovi dal team',
@@ -218,7 +218,7 @@ const translation = {
     setMember: 'Imposta come membro ordinario',
     setBuilder: 'Imposta come builder',
     setEditor: 'Imposta come editor',
-    disinvite: 'Annulla l\'invito',
+    disInvite: 'Annulla l\'invito',
     deleteMember: 'Elimina Membro',
     you: '(Tu)',
   },
