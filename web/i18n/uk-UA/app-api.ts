@@ -9,7 +9,7 @@ const translation = {
   play: 'Відтворити',
   pause: 'Пауза',
   playing: 'Відтворення',
-  merMaind: {
+  merMaid: {
     rerender: 'Повторити рендер',
   },
   never: 'Ніколи',

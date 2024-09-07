@@ -97,7 +97,7 @@ const OneMoreStep = () => {
                 }
                 needsDelay
               >
-                <span className='cursor-pointer text-primary-600'>{t('login.donthave')}</span>
+                <span className='cursor-pointer text-primary-600'>{t('login.dontHave')}</span>
               </Tooltip>
             </label>
             <div className="mt-1">
