@@ -1,5 +1,5 @@
 
-from api.core.rag.retrieval.retrieval_methods import RetrievalMethod
+from core.rag.retrieval.retrieval_methods import RetrievalMethod
 from pydantic import BaseModel, Field
 
 from core.rag.datasource.retrieval_service import RetrievalService

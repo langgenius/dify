@@ -1,6 +1,6 @@
 import threading
 
-from api.core.rag.retrieval.retrieval_methods import RetrievalMethod
+from core.rag.retrieval.retrieval_methods import RetrievalMethod
 from flask import Flask, current_app
 from pydantic import BaseModel, Field
 

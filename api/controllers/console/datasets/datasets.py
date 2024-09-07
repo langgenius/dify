@@ -1,5 +1,5 @@
 import flask_restful
-from api.core.rag.retrieval.retrieval_methods import RetrievalMethod
+from core.rag.retrieval.retrieval_methods import RetrievalMethod
 from flask import request
 from flask_login import current_user
 from flask_restful import Resource, marshal, marshal_with, reqparse

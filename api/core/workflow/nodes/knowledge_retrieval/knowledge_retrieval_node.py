@@ -1,6 +1,6 @@
 from typing import Any, cast
 
-from api.core.rag.retrieval.retrieval_methods import RetrievalMethod
+from core.rag.retrieval.retrieval_methods import RetrievalMethod
 from sqlalchemy import func
 
 from core.app.app_config.entities import DatasetRetrieveConfigEntity

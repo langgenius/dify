@@ -3,7 +3,7 @@ import threading
 from collections import Counter
 from typing import Optional, cast
 
-from api.core.rag.retrieval.retrieval_methods import RetrievalMethod
+from core.rag.retrieval.retrieval_methods import RetrievalMethod
 from flask import Flask, current_app
 
 from core.app.app_config.entities import DatasetEntity, DatasetRetrieveConfigEntity

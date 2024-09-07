@@ -6,7 +6,7 @@ import time
 import uuid
 from typing import Optional
 
-from api.core.rag.retrieval.retrieval_methods import RetrievalMethod
+from core.rag.retrieval.retrieval_methods import RetrievalMethod
 from flask_login import current_user
 from sqlalchemy import func
 
