@@ -32,7 +32,7 @@ parameter_rules:
       en_US: Randomly select one from k candidates (non-equal probability).
     required: false
   - name: show_ref_label
-      label:
+    label:
       zh_Hans: 联网检索
       en_US: web search
     type: boolean
