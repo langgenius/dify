@@ -308,7 +308,7 @@ const OpeningStatement: FC<OpeningStatementProps> = ({
         {isShowConfirmAddVar && (
           <ConfirmAddVar
             varNameArr={notIncludeKeys}
-            onConfrim={autoAddVar}
+            onConfirm={autoAddVar}
             onCancel={cancelAutoAddVar}
             onHide={hideConfirmAddVar}
           />

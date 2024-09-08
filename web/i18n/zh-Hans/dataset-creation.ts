@@ -50,7 +50,7 @@ const translation = {
       input: '知识库名称',
       placeholder: '请输入知识库名称',
       nameNotEmpty: '名称不能为空',
-      nameLengthInvaild: '名称长度不能超过 40 个字符',
+      nameLengthInvalid: '名称长度不能超过 40 个字符',
       cancelButton: '取消',
       confirmButton: '创建',
       failed: '创建失败',

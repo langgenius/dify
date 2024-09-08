@@ -45,7 +45,7 @@ const translation = {
       input: 'Назва Знань',
       placeholder: 'Введіть, будь ласка',
       nameNotEmpty: 'Ім’я не може бути порожнім',
-      nameLengthInvaild: 'Ім’я має бути від 1 до 40 символів',
+      nameLengthInvalid: 'Ім’я має бути від 1 до 40 символів',
       cancelButton: 'Скасувати',
       confirmButton: 'Створити',
       failed: 'Створення не вдалося',

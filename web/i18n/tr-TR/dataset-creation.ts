@@ -50,7 +50,7 @@ const translation = {
       input: 'Bilgi adı',
       placeholder: 'Lütfen girin',
       nameNotEmpty: 'Ad boş olamaz',
-      nameLengthInvaild: 'Ad 1 ile 40 karakter arasında olmalıdır',
+      nameLengthInvalid: 'Ad 1 ile 40 karakter arasında olmalıdır',
       cancelButton: 'İptal',
       confirmButton: 'Oluştur',
       failed: 'Oluşturma başarısız',

@@ -109,15 +109,15 @@ const Documents: FC<IDocumentsProps> = ({ datasetId }) => {
     let percent = 0
     const documentsData = documentsRes?.data?.map((documentItem) => {
       const { indexing_status, completed_segments, total_segments } = documentItem
-      const isEmbeddinged = indexing_status === 'completed' || indexing_status === 'paused' || indexing_status === 'error'
+      const isEmbedded = indexing_status === 'completed' || indexing_status === 'paused' || indexing_status === 'error'
 
-      if (isEmbeddinged)
+      if (isEmbedded)
         completedNum++
 
       const completedCount = completed_segments || 0
       const totalCount = total_segments || 0
       if (totalCount === 0 && completedCount === 0) {
-        percent = isEmbeddinged ? 100 : 0
+        percent = isEmbedded ? 100 : 0
       }
       else {
         const per = Math.round(completedCount * 100 / totalCount)

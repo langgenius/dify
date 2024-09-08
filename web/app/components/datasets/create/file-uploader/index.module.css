@@ -104,7 +104,7 @@
 
 .fileIcon {
   @apply shrink-0 w-6 h-6 mr-2 bg-center bg-no-repeat;
-  background-image: url(../assets/unknow.svg);
+  background-image: url(../assets/unknown.svg);
   background-size: 24px;
 }
 

@@ -45,7 +45,7 @@ const translation = {
       input: 'Nome do Conhecimento',
       placeholder: 'Por favor, insira',
       nameNotEmpty: 'O nome não pode estar vazio',
-      nameLengthInvaild: 'O nome deve ter entre 1 e 40 caracteres',
+      nameLengthInvalid: 'O nome deve ter entre 1 e 40 caracteres',
       cancelButton: 'Cancelar',
       confirmButton: 'Criar',
       failed: 'Falha na criação',

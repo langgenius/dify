@@ -45,7 +45,7 @@ const translation = {
       input: '지식 이름',
       placeholder: '입력하세요',
       nameNotEmpty: '이름은 비워둘 수 없습니다',
-      nameLengthInvaild: '이름은 1~40자여야 합니다',
+      nameLengthInvalid: '이름은 1~40자여야 합니다',
       cancelButton: '취소',
       confirmButton: '생성',
       failed: '생성에 실패했습니다',

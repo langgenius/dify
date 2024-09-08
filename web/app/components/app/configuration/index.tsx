@@ -14,7 +14,7 @@ import Loading from '../../base/loading'
 import AppPublisher from '../app-publisher'
 import AgentSettingButton from './config/agent-setting-button'
 import useAdvancedPromptConfig from './hooks/use-advanced-prompt-config'
-import EditHistoryModal from './config-prompt/conversation-histroy/edit-modal'
+import EditHistoryModal from './config-prompt/conversation-history/edit-modal'
 import {
   useDebugWithSingleOrMultipleModel,
   useFormattingChangedDispatcher,

@@ -45,7 +45,7 @@ const translation = {
       input: 'Numele Cunoștinței',
       placeholder: 'Vă rugăm să introduceți',
       nameNotEmpty: 'Numele nu poate fi gol',
-      nameLengthInvaild: 'Numele trebuie să fie între 1 și 40 de caractere',
+      nameLengthInvalid: 'Numele trebuie să fie între 1 și 40 de caractere',
       cancelButton: 'Anulează',
       confirmButton: 'Creează',
       failed: 'Crearea a eșuat',

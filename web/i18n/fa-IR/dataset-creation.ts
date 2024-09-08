@@ -50,7 +50,7 @@ const translation = {
       input: 'نام دانش',
       placeholder: 'لطفاً وارد کنید',
       nameNotEmpty: 'نام نمیتواند خالی باشد',
-      nameLengthInvaild: 'نام باید بین 1 تا 40 کاراکتر باشد',
+      nameLengthInvalid: 'نام باید بین 1 تا 40 کاراکتر باشد',
       cancelButton: 'لغو',
       confirmButton: 'ایجاد',
       failed: 'ایجاد ناموفق بود',

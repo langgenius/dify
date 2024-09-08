@@ -45,7 +45,7 @@ const translation = {
       input: 'Tên Kiến thức',
       placeholder: 'Vui lòng nhập',
       nameNotEmpty: 'Tên không thể để trống',
-      nameLengthInvaild: 'Tên phải từ 1 đến 40 ký tự',
+      nameLengthInvalid: 'Tên phải từ 1 đến 40 ký tự',
       cancelButton: 'Hủy',
       confirmButton: 'Tạo',
       failed: 'Tạo thất bại',
