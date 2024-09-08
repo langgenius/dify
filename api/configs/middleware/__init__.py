@@ -1,7 +1,7 @@
 from typing import Any, Optional
 from urllib.parse import quote_plus
 
-from pydantic import Field, NonNegativeInt, PositiveInt, computed_field
+from pydantic import Field, NonNegativeInt, PositiveFloat, PositiveInt, computed_field
 from pydantic_settings import BaseSettings
 
 from configs.middleware.cache.redis_config import RedisConfig
@@ -156,6 +156,21 @@ class CeleryConfig(DatabaseConfig):
     CELERY_BROKER_URL: Optional[str] = Field(
         description="CELERY_BROKER_URL",
         default=None,
+    )
+
+    CELERY_USE_SENTINEL: Optional[bool] = Field(
+        description="Whether to use Redis Sentinel mode",
+        default=False,
+    )
+
+    CELERY_SENTINEL_MASTER_NAME: Optional[str] = Field(
+        description="Redis Sentinel master name",
+        default=None,
+    )
+
+    CELERY_SENTINEL_SOCKET_TIMEOUT: Optional[PositiveFloat] = Field(
+        description="Redis Sentinel socket timeout",
+        default=0.1,
     )
 
     @computed_field
