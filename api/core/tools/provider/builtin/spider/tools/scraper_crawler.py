@@ -42,6 +42,6 @@ class ScrapeTool(BuiltinTool):
                     result += "URL: " + i.get('url', '') + "\n"
                     result += "CONTENT: " + i.get('content', '') + "\n\n"
         except Exception as e:
-            return self.create_text_message("An error occured", str(e))
+            return self.create_text_message("An error occurred", str(e))
 
         return self.create_text_message(result)

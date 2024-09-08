@@ -17,7 +17,7 @@ class DallE3Tool(BuiltinTool):
         """
             invoke tools
         """
-        openai_organization = self.runtime.credentials.get('openai_organizaion_id', None)
+        openai_organization = self.runtime.credentials.get('openai_organization_id', None)
         if not openai_organization:
             openai_organization = None
         openai_base_url = self.runtime.credentials.get('openai_base_url', None)

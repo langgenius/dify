@@ -2,7 +2,7 @@ const translation = {
   common: {
     welcome: '',
     appUnavailable: 'Приложение недоступно',
-    appUnkonwError: 'Приложение недоступно',
+    appUnknownError: 'Приложение недоступно',
   },
   chat: {
     newChat: 'Новый чат',
@@ -10,7 +10,7 @@ const translation = {
     unpinnedTitle: 'Чаты',
     newChatDefaultName: 'Новый разговор',
     resetChat: 'Сбросить разговор',
-    powerBy: 'Работает на',
+    poweredBy: 'Работает на',
     prompt: 'Подсказка',
     privatePromptConfigTitle: 'Настройки разговора',
     publicPromptConfigTitle: 'Начальная подсказка',

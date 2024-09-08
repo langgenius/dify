@@ -36,7 +36,7 @@ const translation = {
     searchVar: 'वेरिएबल खोजें',
     variableNamePlaceholder: 'वेरिएबल नाम',
     setVarValuePlaceholder: 'वेरिएबल सेट करें',
-    needConnecttip: 'यह चरण किसी से जुड़ा नहीं है',
+    needConnectTip: 'यह चरण किसी से जुड़ा नहीं है',
     maxTreeDepth: 'प्रति शाखा अधिकतम {{depth}} नोड्स की सीमा',
     needEndNode: 'अंत ब्लॉक जोड़ा जाना चाहिए',
     needAnswerNode: 'उत्तर ब्लॉक जोड़ा जाना चाहिए',
