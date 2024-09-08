@@ -203,3 +203,96 @@ def test_execute_llm_with_jinja2(setup_code_executor_mock, setup_openai_mock):
     assert result.status == WorkflowNodeExecutionStatus.SUCCEEDED
     assert "sunny" in json.dumps(result.process_data)
     assert "what's the weather today?" in json.dumps(result.process_data)
+
+@pytest.mark.parametrize("setup_code_executor_mock", [["none"]], indirect=True)
+@pytest.mark.parametrize("setup_openai_mock", [["chat"]], indirect=True)
+def test_execute_llm_with_jinja2_issue_7744(setup_code_executor_mock, setup_openai_mock):
+    """
+    Test execute LLM node with jinja2
+    """
+    node = LLMNode(
+        tenant_id="1",
+        app_id="1",
+        workflow_id="1",
+        user_id="1",
+        invoke_from=InvokeFrom.WEB_APP,
+        user_from=UserFrom.ACCOUNT,
+        config={
+            "id": "llm",
+            "data": {
+                "title": "123",
+                "type": "llm",
+                "model": {"provider": "openai", "name": "gpt-3.5-turbo", "mode": "chat", "completion_params": {}},
+                "prompt_config": {
+                    "jinja2_variables": [
+                        {"variable": "segments", "value_selector": ["abc", "segments"]}
+                    ]
+                },
+                "prompt_template": [
+                    {
+                        "role": "system",
+                        "text": "{% for segment in segments %}\n{{ segment }}\n{% endfor %}",
+                        "jinja2_text": "{% for segment in segments %}\n{{ segment.content }}\n{% endfor %}\n",
+                        "edition_type": "jinja2"
+                    }
+                ],
+                "memory": None,
+                "context": {"enabled": False},
+                "vision": {"enabled": False},
+            },
+        },
+    )
+
+    # construct variable pool
+    pool = VariablePool(
+        system_variables={
+            SystemVariableKey.QUERY: "",
+            SystemVariableKey.FILES: [],
+            SystemVariableKey.CONVERSATION_ID: "abababa",
+            SystemVariableKey.USER_ID: "aaa",
+        },
+        user_inputs={},
+        environment_variables=[],
+    )
+    pool.add(["abc", "segments"], [{'id': '1', 'content': 'abc'}, {'id': '2', 'content': 'def'}])
+
+    credentials = {"openai_api_key": os.environ.get("OPENAI_API_KEY")}
+
+    provider_instance = ModelProviderFactory().get_provider_instance("openai")
+    model_type_instance = provider_instance.get_model_instance(ModelType.LLM)
+    provider_model_bundle = ProviderModelBundle(
+        configuration=ProviderConfiguration(
+            tenant_id="1",
+            provider=provider_instance.get_provider_schema(),
+            preferred_provider_type=ProviderType.CUSTOM,
+            using_provider_type=ProviderType.CUSTOM,
+            system_configuration=SystemConfiguration(enabled=False),
+            custom_configuration=CustomConfiguration(provider=CustomProviderConfiguration(credentials=credentials)),
+            model_settings=[],
+        ),
+        provider_instance=provider_instance,
+        model_type_instance=model_type_instance,
+    )
+
+    model_instance = ModelInstance(provider_model_bundle=provider_model_bundle, model="gpt-3.5-turbo")
+
+    model_config = ModelConfigWithCredentialsEntity(
+        model="gpt-3.5-turbo",
+        provider="openai",
+        mode="chat",
+        credentials=credentials,
+        parameters={},
+        model_schema=model_type_instance.get_model_schema("gpt-3.5-turbo"),
+        provider_model_bundle=provider_model_bundle,
+    )
+
+    # Mock db.session.close()
+    db.session.close = MagicMock()
+
+    node._fetch_model_config = MagicMock(return_value=(model_instance, model_config))
+
+    # execute node
+    result = node.run(pool)
+
+    assert result.status == WorkflowNodeExecutionStatus.SUCCEEDED
+    assert "def" in json.dumps(result.process_data)
