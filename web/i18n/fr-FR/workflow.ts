@@ -36,7 +36,7 @@ const translation = {
     searchVar: 'Rechercher une variable',
     variableNamePlaceholder: 'Nom de la variable',
     setVarValuePlaceholder: 'Définir la valeur de la variable',
-    needConnecttip: 'Cette étape n\'est connectée à rien',
+    needConnectTip: 'Cette étape n\'est connectée à rien',
     maxTreeDepth: 'Limite maximale de {{depth}} nœuds par branche',
     needEndNode: 'Le bloc de fin doit être ajouté',
     needAnswerNode: 'Le bloc de réponse doit être ajouté',

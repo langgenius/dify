@@ -31,7 +31,7 @@ const translation = {
   pp: 'Chính sách bảo mật',
   tosDesc: 'Bằng cách đăng ký, bạn đồng ý với',
   goToInit: 'Nếu bạn chưa khởi tạo tài khoản, vui lòng chuyển đến trang khởi tạo',
-  donthave: 'Chưa có tài khoản?',
+  dontHave: 'Chưa có tài khoản?',
   invalidInvitationCode: 'Mã mời không hợp lệ',
   accountAlreadyInited: 'Tài khoản đã được khởi tạo',
   forgotPassword: 'Quên mật khẩu?',

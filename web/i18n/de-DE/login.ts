@@ -31,7 +31,7 @@ const translation = {
   pp: 'Datenschutzbestimmungen',
   tosDesc: 'Mit der Anmeldung stimmst du unseren',
   goToInit: 'Wenn du das Konto noch nicht initialisiert hast, gehe bitte zur Initialisierungsseite',
-  donthave: 'Hast du nicht?',
+  dontHave: 'Hast du nicht?',
   invalidInvitationCode: 'Ungültiger Einladungscode',
   accountAlreadyInited: 'Konto bereits initialisiert',
   forgotPassword: 'Passwort vergessen?',
