@@ -79,7 +79,7 @@ def is_filtered(
         name_func: Callable[[Any], str],
 ) -> bool:
     """
-    Chcek if the object should be filtered out.
+    Check if the object should be filtered out.
     Overall logic: exclude > include > pin
     :param include_set: the set of names to be included
     :param exclude_set: the set of names to be excluded

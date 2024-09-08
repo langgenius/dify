@@ -4,7 +4,7 @@ import type { AnnotationReply, MessageEnd, MessageReplace, ThoughtItem } from '@
 import type { VisionFile } from '@/types/app'
 import type {
   IterationFinishedResponse,
-  IterationNextedResponse,
+  IterationNextResponse,
   IterationStartedResponse,
   NodeFinishedResponse,
   NodeStartedResponse,
@@ -57,7 +57,7 @@ export type IOnWorkflowFinished = (workflowFinished: WorkflowFinishedResponse) =
 export type IOnNodeStarted = (nodeStarted: NodeStartedResponse) => void
 export type IOnNodeFinished = (nodeFinished: NodeFinishedResponse) => void
 export type IOnIterationStarted = (workflowStarted: IterationStartedResponse) => void
-export type IOnIterationNexted = (workflowStarted: IterationNextedResponse) => void
+export type IOnIterationNext = (workflowStarted: IterationNextResponse) => void
 export type IOnIterationFinished = (workflowFinished: IterationFinishedResponse) => void
 export type IOnTextChunk = (textChunk: TextChunkResponse) => void
 export type IOnTTSChunk = (messageId: string, audioStr: string, audioType?: string) => void
@@ -84,7 +84,7 @@ export type IOtherOptions = {
   onNodeStarted?: IOnNodeStarted
   onNodeFinished?: IOnNodeFinished
   onIterationStart?: IOnIterationStarted
-  onIterationNext?: IOnIterationNexted
+  onIterationNext?: IOnIterationNext
   onIterationFinish?: IOnIterationFinished
   onTextChunk?: IOnTextChunk
   onTTSChunk?: IOnTTSChunk
@@ -137,7 +137,7 @@ const handleStream = (
   onNodeStarted?: IOnNodeStarted,
   onNodeFinished?: IOnNodeFinished,
   onIterationStart?: IOnIterationStarted,
-  onIterationNext?: IOnIterationNexted,
+  onIterationNext?: IOnIterationNext,
   onIterationFinish?: IOnIterationFinished,
   onTextChunk?: IOnTextChunk,
   onTTSChunk?: IOnTTSChunk,
@@ -187,7 +187,7 @@ const handleStream = (
               return
             }
             if (bufferObj.event === 'message' || bufferObj.event === 'agent_message') {
-              // can not use format here. Because message is splited.
+              // can not use format here. Because message is splitted.
               onData(unicodeToChar(bufferObj.answer), isFirstMessage, {
                 conversationId: bufferObj.conversation_id,
                 taskId: bufferObj.task_id,
@@ -223,7 +223,7 @@ const handleStream = (
               onIterationStart?.(bufferObj as IterationStartedResponse)
             }
             else if (bufferObj.event === 'iteration_next') {
-              onIterationNext?.(bufferObj as IterationNextedResponse)
+              onIterationNext?.(bufferObj as IterationNextResponse)
             }
             else if (bufferObj.event === 'iteration_completed') {
               onIterationFinish?.(bufferObj as IterationFinishedResponse)

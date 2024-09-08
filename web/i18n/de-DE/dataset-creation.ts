@@ -45,7 +45,7 @@ const translation = {
       input: 'Wissensname',
       placeholder: 'Bitte eingeben',
       nameNotEmpty: 'Name darf nicht leer sein',
-      nameLengthInvaild: 'Name muss zwischen 1 bis 40 Zeichen lang sein',
+      nameLengthInvalid: 'Name muss zwischen 1 bis 40 Zeichen lang sein',
       cancelButton: 'Abbrechen',
       confirmButton: 'Erstellen',
       failed: 'Erstellung fehlgeschlagen',

@@ -46,7 +46,7 @@ const translation = {
       input: 'Nazwa Wiedzy',
       placeholder: 'Proszę wpisz',
       nameNotEmpty: 'Nazwa nie może być pusta',
-      nameLengthInvaild: 'Nazwa musi zawierać od 1 do 40 znaków',
+      nameLengthInvalid: 'Nazwa musi zawierać od 1 do 40 znaków',
       cancelButton: 'Anuluj',
       confirmButton: 'Utwórz',
       failed: 'Utworzenie nie powiodło się',

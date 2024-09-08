@@ -91,7 +91,7 @@ const Form: FC<FormProps> = ({
       if (show_on.length && !show_on.every(showOnItem => value[showOnItem.variable] === showOnItem.value))
         return null
 
-      const disabed = readonly || (isEditMode && (variable === '__model_type' || variable === '__model_name'))
+      const disabled = readonly || (isEditMode && (variable === '__model_type' || variable === '__model_name'))
       return (
         <div key={variable} className={cn(itemClassName, 'py-3')}>
           <div className={cn(fieldLabelClassName, 'flex items-center py-2 text-sm text-gray-900')}>
@@ -104,12 +104,12 @@ const Form: FC<FormProps> = ({
             {tooltipContent}
           </div>
           <Input
-            className={cn(inputClassName, `${disabed && 'cursor-not-allowed opacity-60'}`)}
+            className={cn(inputClassName, `${disabled && 'cursor-not-allowed opacity-60'}`)}
             value={(isShowDefaultValue && ((value[variable] as string) === '' || value[variable] === undefined || value[variable] === null)) ? formSchema.default : value[variable]}
             onChange={val => handleFormChange(variable, val)}
             validated={validatedSuccess}
             placeholder={placeholder?.[language] || placeholder?.en_US}
-            disabled={disabed}
+            disabled={disabled}
             type={formSchema.type === FormTypeEnum.textNumber ? 'number' : 'text'}
             {...(formSchema.type === FormTypeEnum.textNumber ? { min: (formSchema as CredentialFormSchemaNumberInput).min, max: (formSchema as CredentialFormSchemaNumberInput).max } : {})}
           />
@@ -131,7 +131,7 @@ const Form: FC<FormProps> = ({
       if (show_on.length && !show_on.every(showOnItem => value[showOnItem.variable] === showOnItem.value))
         return null
 
-      const disabed = isEditMode && (variable === '__model_type' || variable === '__model_name')
+      const disabled = isEditMode && (variable === '__model_type' || variable === '__model_name')
 
       return (
         <div key={variable} className={cn(itemClassName, 'py-3')}>
@@ -156,7 +156,7 @@ const Form: FC<FormProps> = ({
                   className={`
                     flex items-center px-3 py-2 rounded-lg border border-gray-100 bg-gray-25 cursor-pointer
                     ${value[variable] === option.value && 'bg-white border-[1.5px] border-primary-400 shadow-sm'}
-                    ${disabed && '!cursor-not-allowed opacity-60'}
+                    ${disabled && '!cursor-not-allowed opacity-60'}
                   `}
                   onClick={() => handleFormChange(variable, option.value)}
                   key={`${variable}-${option.value}`}

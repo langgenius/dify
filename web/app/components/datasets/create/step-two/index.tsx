@@ -306,7 +306,7 @@ const StepTwo = ({
   const {
     modelList: rerankModelList,
     defaultModel: rerankDefaultModel,
-    currentModel: isRerankDefaultModelVaild,
+    currentModel: isRerankDefaultModelValid,
   } = useModelListAndDefaultModelAndCurrentProviderAndModel(ModelTypeEnum.rerank)
   const { data: embeddingModelList } = useModelList(ModelTypeEnum.textEmbedding)
   const { data: defaultEmbeddingModel } = useDefaultModel(ModelTypeEnum.textEmbedding)
@@ -344,7 +344,7 @@ const StepTwo = ({
       if (
         !isReRankModelSelected({
           rerankDefaultModel,
-          isRerankDefaultModelVaild: !!isRerankDefaultModelVaild,
+          isRerankDefaultModelValid: !!isRerankDefaultModelValid,
           rerankModelList,
           // eslint-disable-next-line @typescript-eslint/no-use-before-define
           retrievalConfig,

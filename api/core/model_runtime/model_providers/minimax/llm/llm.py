@@ -86,7 +86,7 @@ class MinimaxLargeLanguageModel(LargeLanguageModel):
             Calculate num tokens for minimax model
 
             not like ChatGLM, Minimax has a special prompt structure, we could not find a proper way
-            to caculate the num tokens, so we use str() to convert the prompt to string
+            to calculate the num tokens, so we use str() to convert the prompt to string
 
             Minimax does not provide their own tokenizer of adab5.5 and abab5 model
             therefore, we use gpt2 tokenizer instead

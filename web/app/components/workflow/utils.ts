@@ -34,18 +34,18 @@ const WHITE = 'WHITE'
 const GRAY = 'GRAY'
 const BLACK = 'BLACK'
 
-const isCyclicUtil = (nodeId: string, color: Record<string, string>, adjaList: Record<string, string[]>, stack: string[]) => {
+const isCyclicUtil = (nodeId: string, color: Record<string, string>, adjList: Record<string, string[]>, stack: string[]) => {
   color[nodeId] = GRAY
   stack.push(nodeId)
 
-  for (let i = 0; i < adjaList[nodeId].length; ++i) {
-    const childId = adjaList[nodeId][i]
+  for (let i = 0; i < adjList[nodeId].length; ++i) {
+    const childId = adjList[nodeId][i]
 
     if (color[childId] === GRAY) {
       stack.push(childId)
       return true
     }
-    if (color[childId] === WHITE && isCyclicUtil(childId, color, adjaList, stack))
+    if (color[childId] === WHITE && isCyclicUtil(childId, color, adjList, stack))
       return true
   }
   color[nodeId] = BLACK
@@ -55,21 +55,21 @@ const isCyclicUtil = (nodeId: string, color: Record<string, string>, adjaList: R
 }
 
 const getCycleEdges = (nodes: Node[], edges: Edge[]) => {
-  const adjaList: Record<string, string[]> = {}
+  const adjList: Record<string, string[]> = {}
   const color: Record<string, string> = {}
   const stack: string[] = []
 
   for (const node of nodes) {
     color[node.id] = WHITE
-    adjaList[node.id] = []
+    adjList[node.id] = []
   }
 
   for (const edge of edges)
-    adjaList[edge.source]?.push(edge.target)
+    adjList[edge.source]?.push(edge.target)
 
   for (let i = 0; i < nodes.length; i++) {
     if (color[nodes[i].id] === WHITE)
-      isCyclicUtil(nodes[i].id, color, adjaList, stack)
+      isCyclicUtil(nodes[i].id, color, adjList, stack)
   }
 
   const cycleEdges = []

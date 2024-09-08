@@ -34,7 +34,7 @@ class BaseIndexProcessor(ABC):
         raise NotImplementedError
 
     @abstractmethod
-    def retrieve(self, retrival_method: str, query: str, dataset: Dataset, top_k: int,
+    def retrieve(self, retrieval_method: str, query: str, dataset: Dataset, top_k: int,
                  score_threshold: float, reranking_model: dict) -> list[Document]:
         raise NotImplementedError
 

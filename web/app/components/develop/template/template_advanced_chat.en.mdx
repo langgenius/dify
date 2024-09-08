@@ -3,7 +3,7 @@ import { Row, Col, Properties, Property, Heading, SubProperty, Paragraph } from 
 
 # Advanced Chat App API
 
-Chat applications support session persistence, allowing previous chat history to be used as context for responses. This can be applicable for chatbots, customer service AI, etc.
+Chat applications support session persistence, allowing previous chat history to be used as context for responses. This can be applicable for chatbot, customer service AI, etc.
 
 <div>
   ### Base URL
@@ -60,7 +60,7 @@ Chat applications support session persistence, allowing previous chat history to
           Should be uniquely defined by the developer within the application.
       </Property>
       <Property name='conversation_id' type='string' key='conversation_id'>
-      Converation ID, to continue the conversation based on previous chat records, it is necessary to pass the previous message's conversation_id.
+      Conversation ID, to continue the conversation based on previous chat records, it is necessary to pass the previous message's conversation_id.
       </Property>
       <Property name='files' type='array[object]' key='files'>
           File list, suitable for inputting files (images) combined with text understanding and answering questions, available only when the model supports Vision capability.
@@ -239,7 +239,7 @@ Chat applications support session persistence, allowing previous chat history to
         "message_id": "9da23599-e713-473b-982c-4328d4f5c78a",
         "conversation_id": "45701982-8118-4bc5-8e9b-64562b4555f2",
         "mode": "chat",
-        "answer": "iPhone 13 Pro Max specs are listed heere:...",
+        "answer": "iPhone 13 Pro Max specs are listed here:...",
         "metadata": {
             "usage": {
                 "prompt_tokens": 1033,
@@ -732,7 +732,7 @@ Chat applications support session persistence, allowing previous chat history to
     <CodeGroup title="Request" tag="DELETE" label="/conversations/:conversation_id" targetCode={`curl -X DELETE '${props.appDetail.api_base_url}/conversations/:conversation_id' \\\n--header 'Authorization: Bearer {api_key}' \\\n--header 'Content-Type: application/json' \\\n--data-raw '{ \n "user": "abc-123"\n}'`}>
 
     ```bash {{ title: 'cURL' }}
-        curl -X DELETE '${props.appDetail.api_base_url}/conversations/{convsation_id}' \
+        curl -X DELETE '${props.appDetail.api_base_url}/conversations/{conversation_id}' \
         --header 'Content-Type: application/json' \
         --header 'Accept: application/json' \
         --header 'Authorization: Bearer {api_key}' \

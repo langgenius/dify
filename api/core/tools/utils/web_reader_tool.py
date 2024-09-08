@@ -189,8 +189,8 @@ def extract_text_blocks_as_plain_text(paragraph_html):
 
 
 def plain_text_leaf_node(element):
-    # Extract all text, stripped of any child HTML elements and normalise it
-    plain_text = normalise_text(element.get_text())
+    # Extract all text, stripped of any child HTML elements and normalize it
+    plain_text = normalize_text(element.get_text())
     if plain_text != "" and element.name == "li":
         plain_text = "* {}, ".format(plain_text)
     if plain_text == "":
@@ -231,8 +231,8 @@ def plain_element(element, content_digests, node_indexes):
         # For leaf node elements, extract the text content, discarding any HTML tags
         # 1. Get element contents as text
         plain_text = element.get_text()
-        # 2. Normalise the extracted text string to a canonical representation
-        plain_text = normalise_text(plain_text)
+        # 2. Normalize the extracted text string to a canonical representation
+        plain_text = normalize_text(plain_text)
         # 3. Update element content to be plain text
         element.string = plain_text
     elif is_text(element):
@@ -243,7 +243,7 @@ def plain_element(element, content_digests, node_indexes):
             element = type(element)("")
         else:
             plain_text = element.string
-            plain_text = normalise_text(plain_text)
+            plain_text = normalize_text(plain_text)
             element = type(element)(plain_text)
     else:
         # If not a leaf node or leaf type call recursively on child nodes, replacing
@@ -267,12 +267,12 @@ def add_node_indexes(element, node_index="0"):
     return element
 
 
-def normalise_text(text):
-    """Normalise unicode and whitespace."""
-    # Normalise unicode first to try and standardise whitespace characters as much as possible before normalising them
+def normalize_text(text):
+    """Normalize unicode and whitespace."""
+    # Normalize unicode first to try and standardize whitespace characters as much as possible before normalizing them
     text = strip_control_characters(text)
-    text = normalise_unicode(text)
-    text = normalise_whitespace(text)
+    text = normalize_unicode(text)
+    text = normalize_whitespace(text)
     return text
 
 
@@ -291,14 +291,14 @@ def strip_control_characters(text):
     return "".join(["" if (unicodedata.category(char) in control_chars) and (char not in retained_chars) else char for char in text])
 
 
-def normalise_unicode(text):
-    """Normalise unicode such that things that are visually equivalent map to the same unicode string where possible."""
+def normalize_unicode(text):
+    """Normalize unicode such that things that are visually equivalent map to the same unicode string where possible."""
     normal_form = "NFKC"
     text = unicodedata.normalize(normal_form, text)
     return text
 
 
-def normalise_whitespace(text):
+def normalize_whitespace(text):
     """Replace runs of whitespace characters with a single space as this is what happens when HTML text is displayed."""
     text = regex.sub(r"\s+", " ", text)
     # Remove leading and trailing whitespace

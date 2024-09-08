@@ -45,7 +45,7 @@ const translation = {
       input: '知識庫名稱',
       placeholder: '請輸入知識庫名稱',
       nameNotEmpty: '名稱不能為空',
-      nameLengthInvaild: '名稱長度不能超過 40 個字元',
+      nameLengthInvalid: '名稱長度不能超過 40 個字元',
       cancelButton: '取消',
       confirmButton: '建立',
       failed: '建立失敗',

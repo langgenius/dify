@@ -135,16 +135,16 @@ class HttpClient:
             **kwargs,
         )
 
-    def _object_to_formfata(self, key: str, value: Data | Mapping[object, object]) -> list[tuple[str, str]]:
+    def _object_to_formdata(self, key: str, value: Data | Mapping[object, object]) -> list[tuple[str, str]]:
         items = []
 
         if isinstance(value, Mapping):
             for k, v in value.items():
-                items.extend(self._object_to_formfata(f"{key}[{k}]", v))
+                items.extend(self._object_to_formdata(f"{key}[{k}]", v))
             return items
         if isinstance(value, list | tuple):
             for v in value:
-                items.extend(self._object_to_formfata(key + "[]", v))
+                items.extend(self._object_to_formdata(key + "[]", v))
             return items
 
         def _primitive_value_to_str(val) -> str:
@@ -165,7 +165,7 @@ class HttpClient:
 
     def _make_multipartform(self, data: Mapping[object, object]) -> dict[str, object]:
 
-        items = flatten([self._object_to_formfata(k, v) for k, v in data.items()])
+        items = flatten([self._object_to_formdata(k, v) for k, v in data.items()])
 
         serialized: dict[str, object] = {}
         for key, value in items:

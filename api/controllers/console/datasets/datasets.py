@@ -18,7 +18,7 @@ from core.model_runtime.entities.model_entities import ModelType
 from core.provider_manager import ProviderManager
 from core.rag.datasource.vdb.vector_type import VectorType
 from core.rag.extractor.entity.extract_setting import ExtractSetting
-from core.rag.retrieval.retrival_methods import RetrievalMethod
+from core.rag.retrieval.retrieval_methods import RetrievalMethod
 from extensions.ext_database import db
 from fields.app_fields import related_app_list
 from fields.dataset_fields import dataset_detail_fields, dataset_query_detail_fields

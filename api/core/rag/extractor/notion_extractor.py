@@ -275,10 +275,10 @@ class NotionExtractor(BaseExtractor):
             data = res.json()
             # get table headers text
             table_header_cell_texts = []
-            tabel_header_cells = data["results"][0]['table_row']['cells']
-            for tabel_header_cell in tabel_header_cells:
-                if tabel_header_cell:
-                    for table_header_cell_text in tabel_header_cell:
+            table_header_cells = data["results"][0]['table_row']['cells']
+            for table_header_cell in table_header_cells:
+                if table_header_cell:
+                    for table_header_cell_text in table_header_cell:
                         text = table_header_cell_text["text"]["content"]
                         table_header_cell_texts.append(text)
                 else:

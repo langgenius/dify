@@ -172,12 +172,12 @@ const ExternalDataToolModal: FC<ExternalDataToolModalProps> = ({
       }
     }
 
-    const formatedData = formatData(localeData)
+    const formattedData = formatData(localeData)
 
-    if (onValidateBeforeSave && !onValidateBeforeSave(formatedData))
+    if (onValidateBeforeSave && !onValidateBeforeSave(formattedData))
       return
 
-    onSave(formatData(formatedData))
+    onSave(formatData(formattedData))
   }
 
   const action = data.type ? t('common.operation.edit') : t('common.operation.add')

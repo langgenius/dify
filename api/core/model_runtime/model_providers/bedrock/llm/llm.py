@@ -793,11 +793,11 @@ class BedrockLargeLanguageModel(LargeLanguageModel):
     def _invoke_error_mapping(self) -> dict[type[InvokeError], list[type[Exception]]]:
         """
         Map model invoke error to unified error
-        The key is the ermd = genai.GenerativeModel(model)ror type thrown to the caller
-        The value is the md = genai.GenerativeModel(model)error type thrown by the model,
+        The key is the ermd = genai.GenerativeModel(model) error type thrown to the caller
+        The value is the md = genai.GenerativeModel(model) error type thrown by the model,
         which needs to be converted into a unified error type for the caller.
 
-        :return: Invoke emd = genai.GenerativeModel(model)rror mapping
+        :return: Invoke emd = genai.GenerativeModel(model) error mapping
         """
         return {
             InvokeConnectionError: [],

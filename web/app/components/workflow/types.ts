@@ -69,7 +69,7 @@ export type CommonEdgeType = {
   _hovering?: boolean
   _connectedNodeIsHovering?: boolean
   _connectedNodeIsSelected?: boolean
-  _runned?: boolean
+  _run?: boolean
   _isBundled?: boolean
   isInIteration?: boolean
   iteration_id?: string
@@ -86,7 +86,7 @@ export type NodePanelProps<T> = {
 }
 export type Edge = ReactFlowEdge<CommonEdgeType>
 
-export type WorkflowDataUpdator = {
+export type WorkflowDataUpdater = {
   nodes: Node[]
   edges: Edge[]
   viewport: Viewport

@@ -16,7 +16,7 @@ type ExperienceGroupProps = {
   isShowMoreLike: boolean
 }
 
-const ExperienceEnchanceGroup: FC<ExperienceGroupProps> = ({
+const ExperienceEnhanceGroup: FC<ExperienceGroupProps> = ({
   isShowTextToSpeech,
   isShowMoreLike,
 }) => {
@@ -40,4 +40,4 @@ const ExperienceEnchanceGroup: FC<ExperienceGroupProps> = ({
     </div>
   )
 }
-export default React.memo(ExperienceEnchanceGroup)
+export default React.memo(ExperienceEnhanceGroup)

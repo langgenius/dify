@@ -22,13 +22,13 @@ type PageSelectorProps = {
 type NotionPageTreeItem = {
   children: Set<string>
   descendants: Set<string>
-  deepth: number
+  depth: number
   ancestors: string[]
 } & DataSourceNotionPage
 type NotionPageTreeMap = Record<string, NotionPageTreeItem>
 type NotionPageItem = {
   expand: boolean
-  deepth: number
+  depth: number
 } & DataSourceNotionPage
 
 const recursivePushInParentDescendants = (
@@ -51,7 +51,7 @@ const recursivePushInParentDescendants = (
         ...pagesMap[parentId],
         children,
         descendants,
-        deepth: 0,
+        depth: 0,
         ancestors: [],
       }
     }
@@ -60,7 +60,7 @@ const recursivePushInParentDescendants = (
       listTreeMap[parentId].descendants.add(pageId)
       listTreeMap[parentId].descendants.add(leafItem.page_id)
     }
-    leafItem.deepth++
+    leafItem.depth++
     leafItem.ancestors.unshift(listTreeMap[parentId].page_name)
 
     if (listTreeMap[parentId].parent_id !== 'root')
@@ -95,7 +95,7 @@ const ItemComponent = ({ index, style, data }: ListChildComponentProps<{
       return (
         <div
           className={cn(s.arrow, current.expand && s['arrow-expand'], 'shrink-0 mr-1 w-5 h-5 hover:bg-gray-200 rounded-md')}
-          style={{ marginLeft: current.deepth * 8 }}
+          style={{ marginLeft: current.depth * 8 }}
           onClick={() => handleToggle(index)}
         />
       )
@@ -106,7 +106,7 @@ const ItemComponent = ({ index, style, data }: ListChildComponentProps<{
       )
     }
     return (
-      <div className='shrink-0 mr-1 w-5 h-5' style={{ marginLeft: current.deepth * 8 }} />
+      <div className='shrink-0 mr-1 w-5 h-5' style={{ marginLeft: current.depth * 8 }} />
     )
   }
 
@@ -185,7 +185,7 @@ const PageSelector = ({
       return {
         ...item,
         expand: false,
-        deepth: 0,
+        depth: 0,
       }
     }))
   }
@@ -195,7 +195,7 @@ const PageSelector = ({
     return {
       ...item,
       expand: false,
-      deepth: 0,
+      depth: 0,
     }
   })
   const currentDataList = searchValue ? searchDataList : dataList
@@ -205,7 +205,7 @@ const PageSelector = ({
     return list.reduce((prev: NotionPageTreeMap, next: DataSourceNotionPage) => {
       const pageId = next.page_id
       if (!prev[pageId])
-        prev[pageId] = { ...next, children: new Set(), descendants: new Set(), deepth: 0, ancestors: [] }
+        prev[pageId] = { ...next, children: new Set(), descendants: new Set(), depth: 0, ancestors: [] }
 
       recursivePushInParentDescendants(pagesMap, prev, prev[pageId], prev[pageId])
       return prev
@@ -233,7 +233,7 @@ const PageSelector = ({
         ...childrenIds.map(item => ({
           ...pagesMap[item],
           expand: false,
-          deepth: listMapWithChildrenAndDescendants[item].deepth,
+          depth: listMapWithChildrenAndDescendants[item].depth,
         })),
         ...dataList.slice(index + 1)]
     }

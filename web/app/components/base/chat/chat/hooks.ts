@@ -26,7 +26,7 @@ import { AudioPlayerManager } from '@/app/components/base/audio-btn/audio.player
 
 type GetAbortController = (abortController: AbortController) => void
 type SendCallback = {
-  onGetConvesationMessages?: (conversationId: string, getAbortController: GetAbortController) => Promise<any>
+  onGetConversationMessages?: (conversationId: string, getAbortController: GetAbortController) => Promise<any>
   onGetSuggestedQuestions?: (responseItemId: string, getAbortController: GetAbortController) => Promise<any>
   onConversationComplete?: (conversationId: string) => void
   isPublicAPI?: boolean
@@ -198,7 +198,7 @@ export const useChat = (
     url: string,
     data: any,
     {
-      onGetConvesationMessages,
+      onGetConversationMessages,
       onGetSuggestedQuestions,
       onConversationComplete,
       isPublicAPI,
@@ -324,8 +324,8 @@ export const useChat = (
           if (onConversationComplete)
             onConversationComplete(conversationId.current)
 
-          if (conversationId.current && !hasStopResponded.current && onGetConvesationMessages) {
-            const { data }: any = await onGetConvesationMessages(
+          if (conversationId.current && !hasStopResponded.current && onGetConversationMessages) {
+            const { data }: any = await onGetConversationMessages(
               conversationId.current,
               newAbortController => conversationMessagesAbortControllerRef.current = newAbortController,
             )

@@ -13,7 +13,7 @@ logger = logging.getLogger(__name__)
 
 class TTSModel(AIModel):
     """
-    Model class for ttstext model.
+    Model class for TTS model.
     """
     model_type: ModelType = ModelType.TTS
 

@@ -37,7 +37,7 @@ from core.model_runtime.model_providers.baichuan.llm.baichuan_turbo_errors impor
 )
 
 
-class BaichuanLarguageModel(LargeLanguageModel):
+class BaichuanLanguageModel(LargeLanguageModel):
 
     def _invoke(
             self,

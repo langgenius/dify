@@ -50,7 +50,7 @@ const translation = {
       input: 'ナレッジ名',
       placeholder: '入力してください',
       nameNotEmpty: '名前は空にできません',
-      nameLengthInvaild: '名前は1〜40文字である必要があります',
+      nameLengthInvalid: '名前は1〜40文字である必要があります',
       cancelButton: 'キャンセル',
       confirmButton: '作成',
       failed: '作成に失敗しました',

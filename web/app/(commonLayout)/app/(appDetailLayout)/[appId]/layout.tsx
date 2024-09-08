@@ -108,7 +108,7 @@ const AppDetailLayout: FC<IAppDetailLayoutProps> = (props) => {
   useEffect(() => {
     setAppDetail()
     fetchAppDetail({ url: '/apps', id: appId }).then((res) => {
-      // redirections
+      // redirection
       if ((res.mode === 'workflow' || res.mode === 'advanced-chat') && (pathname).endsWith('configuration')) {
         router.replace(`/app/${appId}/workflow`)
       }

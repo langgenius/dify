@@ -50,7 +50,7 @@ const translation = {
       input: 'Название базы знаний',
       placeholder: 'Пожалуйста, введите',
       nameNotEmpty: 'Название не может быть пустым',
-      nameLengthInvaild: 'Название должно быть от 1 до 40 символов',
+      nameLengthInvalid: 'Название должно быть от 1 до 40 символов',
       cancelButton: 'Отмена',
       confirmButton: 'Создать',
       failed: 'Ошибка создания',

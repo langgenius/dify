@@ -51,7 +51,7 @@ const translation = {
       input: 'ज्ञान का नाम',
       placeholder: 'कृपया दर्ज करें',
       nameNotEmpty: 'नाम खाली नहीं हो सकता',
-      nameLengthInvaild: 'नाम 1 से 40 वर्णों के बीच होना चाहिए',
+      nameLengthInvalid: 'नाम 1 से 40 वर्णों के बीच होना चाहिए',
       cancelButton: 'रद्द करें',
       confirmButton: 'बनाएं',
       failed: 'बनाना विफल रहा',

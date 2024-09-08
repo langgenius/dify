@@ -89,7 +89,7 @@ const ChatItem: FC<ChatItemProps> = ({
       `apps/${appId}/chat-messages`,
       data,
       {
-        onGetConvesationMessages: (conversationId, getAbortController) => fetchConversationMessages(appId, conversationId, getAbortController),
+        onGetConversationMessages: (conversationId, getAbortController) => fetchConversationMessages(appId, conversationId, getAbortController),
         onGetSuggestedQuestions: (responseItemId, getAbortController) => fetchSuggestedQuestions(appId, responseItemId, getAbortController),
       },
     )
