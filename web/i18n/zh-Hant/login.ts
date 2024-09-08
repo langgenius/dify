@@ -31,7 +31,7 @@ const translation = {
   pp: '隱私政策',
   tosDesc: '使用即代表你並同意我們的',
   goToInit: '如果您還沒有初始化賬戶，請前往初始化頁面',
-  donthave: '還沒有邀請碼？',
+  dontHave: '還沒有邀請碼？',
   invalidInvitationCode: '無效的邀請碼',
   accountAlreadyInited: '賬戶已經初始化',
   forgotPassword: '忘記密碼？',
@@ -53,6 +53,7 @@ const translation = {
     nameEmpty: '使用者名稱不能為空',
     passwordEmpty: '密碼不能為空',
     passwordInvalid: '密碼必須包含字母和數字，且長度不小於8位',
+    passwordLengthInValid: '密碼必須至少為8個字元',
   },
   license: {
     tip: '啟動 Dify 社群版之前, 請閱讀 GitHub 上的',
@@ -68,6 +69,7 @@ const translation = {
   activated: '現在登入',
   adminInitPassword: '管理員初始化密碼',
   validate: '驗證',
+  sso: '繼續使用 SSO',
 }
 
 export default translation

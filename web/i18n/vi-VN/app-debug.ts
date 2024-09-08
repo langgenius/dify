@@ -259,7 +259,7 @@ const translation = {
     historyNoBeEmpty: 'Lịch sử cuộc trò chuyện phải được thiết lập trong lời nhắc',
     queryNoBeEmpty: 'Truy vấn phải được thiết lập trong lời nhắc',
   },
-  variableConig: {
+  variableConfig: {
     'addModalTitle': 'Thêm trường nhập',
     'editModalTitle': 'Chỉnh sửa trường nhập',
     'description': 'Cài đặt cho biến {{varName}}',

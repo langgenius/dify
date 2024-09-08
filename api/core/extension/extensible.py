@@ -65,7 +65,7 @@ class Extensible:
                     if os.path.exists(builtin_file_path):
                         with open(builtin_file_path, encoding='utf-8') as f:
                             position = int(f.read().strip())
-                position_map[extension_name] = position
+                    position_map[extension_name] = position
 
                 if (extension_name + '.py') not in file_names:
                     logging.warning(f"Missing {extension_name}.py file in {subdir_path}, Skip.")

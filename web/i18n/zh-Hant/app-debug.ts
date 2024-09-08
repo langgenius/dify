@@ -244,7 +244,7 @@ const translation = {
     historyNoBeEmpty: '提示詞中必須設定對話歷史',
     queryNoBeEmpty: '提示詞中必須設定查詢內容',
   },
-  variableConig: {
+  variableConfig: {
     'addModalTitle': '新增變數',
     'editModalTitle': '編輯變數',
     'description': '設定變數 {{varName}}',

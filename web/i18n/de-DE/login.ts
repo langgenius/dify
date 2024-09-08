@@ -31,7 +31,7 @@ const translation = {
   pp: 'Datenschutzbestimmungen',
   tosDesc: 'Mit der Anmeldung stimmst du unseren',
   goToInit: 'Wenn du das Konto noch nicht initialisiert hast, gehe bitte zur Initialisierungsseite',
-  donthave: 'Hast du nicht?',
+  dontHave: 'Hast du nicht?',
   invalidInvitationCode: 'Ungültiger Einladungscode',
   accountAlreadyInited: 'Konto bereits initialisiert',
   forgotPassword: 'Passwort vergessen?',
@@ -53,6 +53,7 @@ const translation = {
     nameEmpty: 'Name wird benötigt',
     passwordEmpty: 'Passwort wird benötigt',
     passwordInvalid: 'Das Passwort muss Buchstaben und Zahlen enthalten und länger als 8 Zeichen sein',
+    passwordLengthInValid: 'Das Passwort muss mindestens 8 Zeichen lang sein',
   },
   license: {
     tip: 'Bevor du mit Dify Community Edition beginnst, lies die',
@@ -68,6 +69,7 @@ const translation = {
   activated: 'Jetzt anmelden',
   adminInitPassword: 'Admin-Initialpasswort',
   validate: 'Validieren',
+  sso: 'Mit SSO fortfahren',
 }
 
 export default translation

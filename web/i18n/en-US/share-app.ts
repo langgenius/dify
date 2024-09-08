@@ -2,7 +2,7 @@ const translation = {
   common: {
     welcome: '',
     appUnavailable: 'App is unavailable',
-    appUnkonwError: 'App is unavailable',
+    appUnknownError: 'App is unavailable',
   },
   chat: {
     newChat: 'New chat',
@@ -10,7 +10,7 @@ const translation = {
     unpinnedTitle: 'Chats',
     newChatDefaultName: 'New conversation',
     resetChat: 'Reset conversation',
-    powerBy: 'Powered by',
+    poweredBy: 'Powered by',
     prompt: 'Prompt',
     privatePromptConfigTitle: 'Conversation settings',
     publicPromptConfigTitle: 'Initial Prompt',

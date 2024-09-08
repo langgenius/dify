@@ -248,7 +248,7 @@ const translation = {
     historyNoBeEmpty: 'L\'historique de la conversation doit être défini dans le prompt',
     queryNoBeEmpty: 'La requête doit être définie dans le prompt',
   },
-  variableConig: {
+  variableConfig: {
     'addModalTitle': 'Add Input Field',
     'editModalTitle': 'Edit Input Field',
     'description': 'Setting for variable {{varName}}',

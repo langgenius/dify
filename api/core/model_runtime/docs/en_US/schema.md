@@ -52,7 +52,7 @@
     - `mode` (string)  voice model.（available for model type `tts`）
     - `name` (string)  voice model display name.（available for model type `tts`）
     - `language` (string)  the voice model supports languages.（available for model type `tts`）
-  - `word_limit` (int)  Single conversion word limit, paragraphwise by default（available for model type `tts`）
+  - `word_limit` (int)  Single conversion word limit, paragraph-wise by default（available for model type `tts`）
   - `audio_type` (string)  Support audio file extension format, e.g.：mp3,wav（available for model type `tts`）
   - `max_workers` (int)  Number of concurrent workers supporting text and audio conversion（available for model type`tts`）
   - `max_characters_per_chunk` (int) Maximum characters per chunk (available for model type `moderation`)
@@ -150,7 +150,7 @@
 
 - `input` (float) Input price, i.e., Prompt price
 - `output` (float) Output price, i.e., returned content price
-- `unit` (float) Pricing unit, e.g., if the price is meausred in 1M tokens, the corresponding token amount for the unit price is `0.000001`.
+- `unit` (float) Pricing unit, e.g., if the price is measured in 1M tokens, the corresponding token amount for the unit price is `0.000001`.
 - `currency` (string) Currency unit
 
 ### ProviderCredentialSchema

@@ -86,6 +86,7 @@ class App(db.Model):
     created_at = db.Column(db.DateTime, nullable=False, server_default=db.text('CURRENT_TIMESTAMP(0)'))
     updated_by = db.Column(StringUUID, nullable=True)
     updated_at = db.Column(db.DateTime, nullable=False, server_default=db.text('CURRENT_TIMESTAMP(0)'))
+    use_icon_as_answer_icon = db.Column(db.Boolean, nullable=False, server_default=db.text("false"))
 
     @property
     def desc_or_prompt(self):
@@ -1114,6 +1115,7 @@ class Site(db.Model):
     copyright = db.Column(db.String(255))
     privacy_policy = db.Column(db.String(255))
     show_workflow_steps = db.Column(db.Boolean, nullable=False, server_default=db.text('true'))
+    use_icon_as_answer_icon = db.Column(db.Boolean, nullable=False, server_default=db.text("false"))
     custom_disclaimer = db.Column(db.String(255), nullable=True)
     customize_domain = db.Column(db.String(255))
     customize_token_strategy = db.Column(db.String(255), nullable=False)

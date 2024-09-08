@@ -8,5 +8,5 @@ class UnstructuredNonAsciiCharsCleaner(BaseCleaner):
         """clean document content."""
         from unstructured.cleaners.core import clean_non_ascii_chars
 
-        # Returns "This text containsnon-ascii characters!"
+        # Returns "This text contains non-ascii characters!"
         return clean_non_ascii_chars(content)

@@ -36,7 +36,7 @@ const translation = {
     variableNamePlaceholder: '变量名',
     searchVar: '搜索变量',
     setVarValuePlaceholder: '设置变量值',
-    needConnecttip: '此节点尚未连接到其他节点',
+    needConnectTip: '此节点尚未连接到其他节点',
     maxTreeDepth: '每个分支最大限制 {{depth}} 个节点',
     needEndNode: '必须添加结束节点',
     needAnswerNode: '必须添加直接回复节点',
@@ -80,7 +80,7 @@ const translation = {
   },
   env: {
     envPanelTitle: '环境变量',
-    envDescription: '环境变量是一种存储敏感信息的方法，如 API 密钥、数据库密码等。它们被存储在工作流程中，而不是代码中，以便在不同环墋中共享。',
+    envDescription: '环境变量是一种存储敏感信息的方法，如 API 密钥、数据库密码等。它们被存储在工作流程中，而不是代码中，以便在不同环境中共享。',
     envPanelButton: '添加环境变量',
     modal: {
       title: '添加环境变量',
@@ -412,6 +412,7 @@ const translation = {
         'not empty': '不为空',
         'null': '空',
         'not null': '不为空',
+        'regex match': '正则匹配',
       },
       enterValue: '输入值',
       addCondition: '添加条件',

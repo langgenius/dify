@@ -34,6 +34,7 @@ def parse_app_site_args():
     )
     parser.add_argument("prompt_public", type=bool, required=False, location="json")
     parser.add_argument("show_workflow_steps", type=bool, required=False, location="json")
+    parser.add_argument("use_icon_as_answer_icon", type=bool, required=False, location="json")
     return parser.parse_args()
 
 
@@ -68,6 +69,7 @@ class AppSite(Resource):
             "customize_token_strategy",
             "prompt_public",
             "show_workflow_steps",
+            "use_icon_as_answer_icon",
         ]:
             value = args.get(attr_name)
             if value is not None:

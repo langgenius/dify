@@ -160,7 +160,8 @@ const translation = {
     workspace: 'वर्कस्पेस',
     createWorkspace: 'वर्कस्पेस बनाएं',
     helpCenter: 'सहायता',
-    roadmapAndFeedback: 'प्रतिक्रिया',
+    communityFeedback: 'प्रतिक्रिया',
+    roadmap: 'रोडमैप',
     community: 'समुदाय',
     about: 'के बारे में',
     logout: 'लॉग आउट',
@@ -195,6 +196,9 @@ const translation = {
     langGeniusAccountTip: 'आपका Dify खाता और संबंधित उपयोगकर्ता डेटा।',
     editName: 'नाम संपादित करें',
     showAppLength: '{{length}} ऐप्स दिखाएं',
+    deleteConfirmTip: 'पुष्टि करने के लिए, कृपया अपने पंजीकृत ईमेल से निम्नलिखित भेजें',
+    delete: 'खाता हटाएं',
+    deleteTip: 'अपना खाता हटाने से आपका सारा डेटा स्थायी रूप से मिट जाएगा और इसे पुनर्प्राप्त नहीं किया जा सकता है।',
   },
   members: {
     team: 'टीम',
@@ -224,7 +228,7 @@ const translation = {
     invitationSentTip:
       'आमंत्रण भेजा गया, और वे साइन इन करके आपकी टीम डेटा तक पहुंच सकते हैं।',
     invitationLink: 'आमंत्रण लिंक',
-    failedinvitationEmails:
+    failedInvitationEmails:
       'नीचे दिए गए उपयोगकर्ताओं को सफलतापूर्वक आमंत्रित नहीं किया गया',
     ok: 'ठीक है',
     removeFromTeam: 'टीम से हटाएं',
@@ -233,9 +237,11 @@ const translation = {
     setMember: 'सामान्य सदस्य के रूप में सेट करें',
     setBuilder: 'निर्माता के रूप में सेट करें',
     setEditor: 'संपादक के रूप में सेट करें',
-    disinvite: 'आमंत्रण रद्द करें',
+    disInvite: 'आमंत्रण रद्द करें',
     deleteMember: 'सदस्य को हटाएं',
     you: '(आप)',
+    datasetOperator: 'ज्ञान व्यवस्थापक',
+    datasetOperatorTip: 'केवल नॉलेज बेस प्रबंधित कर सकते हैं',
   },
   integrations: {
     connected: 'कनेक्टेड',

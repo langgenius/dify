@@ -265,7 +265,7 @@ const translation = {
     historyNoBeEmpty: 'O histórico da conversa deve ser definido na solicitação',
     queryNoBeEmpty: 'A consulta deve ser definida na solicitação',
   },
-  variableConig: {
+  variableConfig: {
     'addModalTitle': 'Adicionar Campo de Entrada',
     'editModalTitle': 'Editar Campo de Entrada',
     'description': 'Configuração para a variável {{varName}}',

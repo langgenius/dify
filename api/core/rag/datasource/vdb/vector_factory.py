@@ -30,7 +30,7 @@ class AbstractVectorFactory(ABC):
 class Vector:
     def __init__(self, dataset: Dataset, attributes: list = None):
         if attributes is None:
-            attributes = ['doc_id', 'dataset_id', 'document_id', 'doc_hash']
+            attributes = ['doc_id', 'dataset_id', 'document_id', 'doc_hash', 'page']
         self._dataset = dataset
         self._embeddings = self._get_embeddings()
         self._attributes = attributes
@@ -107,6 +107,7 @@ class Vector:
     def add_texts(self, documents: list[Document], **kwargs):
         if kwargs.get('duplicate_check', False):
             documents = self._filter_duplicate_texts(documents)
+
         embeddings = self._embeddings.embed_documents([document.page_content for document in documents])
         self._vector_processor.create(
             texts=documents,
