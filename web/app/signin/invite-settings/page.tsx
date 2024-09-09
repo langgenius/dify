@@ -14,6 +14,7 @@ import { LanguagesSupported, languages } from '@/i18n/language'
 import I18n from '@/context/i18n'
 import { activateMember, invitationCheck } from '@/service/common'
 import Loading from '@/app/components/base/loading'
+import Toast from '@/app/components/base/toast'
 
 export default function InviteSettingsPage() {
   const { t } = useTranslation()
@@ -37,6 +38,10 @@ export default function InviteSettingsPage() {
 
   const handleActivate = useCallback(async () => {
     try {
+      if (!name) {
+        Toast.notify({ type: 'error', message: t('login.enterYourName') })
+        return
+      }
       const res = await activateMember({
         url: '/activate',
         body: {

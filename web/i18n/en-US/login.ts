@@ -91,6 +91,7 @@ const translation = {
   resetPasswordDesc: 'Type the email you used to sign up on Dify and we will send you a password reset email.',
   backToLogin: 'Back to login',
   setYourAccount: 'Set Your Account',
+  enterYourName: 'Please enter your username',
 }
 
 export default translation
