@@ -4,7 +4,6 @@ import { useTranslation } from 'react-i18next'
 import Link from 'next/link'
 import useSWR from 'swr'
 import { useRouter, useSearchParams } from 'next/navigation'
-// import { useContext } from 'use-context-selector'
 import Button from '@/app/components/base/button'
 import Tooltip from '@/app/components/base/tooltip'
 import { SimpleSelect } from '@/app/components/base/select'
@@ -12,7 +11,6 @@ import { timezones } from '@/utils/timezone'
 import { LanguagesSupported, languages } from '@/i18n/language'
 import { oneMoreStep } from '@/service/common'
 import Toast from '@/app/components/base/toast'
-// import I18n from '@/context/i18n'
 
 type IState = {
   formState: 'processing' | 'error' | 'success' | 'initial'
@@ -47,7 +45,6 @@ const OneMoreStep = () => {
   const { t } = useTranslation()
   const router = useRouter()
   const searchParams = useSearchParams()
-  // const { locale } = useContext(I18n)
 
   const [state, dispatch] = useReducer(reducer, {
     formState: 'initial',

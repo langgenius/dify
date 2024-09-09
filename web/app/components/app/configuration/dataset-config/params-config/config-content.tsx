@@ -52,7 +52,7 @@ const ConfigContent: FC<Props> = ({
       onChange({
         ...datasetConfigs,
         retrieval_model: RETRIEVE_TYPE.multiWay,
-      })
+      }, isInWorkflow)
     }
   }, [type])
 

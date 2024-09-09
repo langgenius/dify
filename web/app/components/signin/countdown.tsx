@@ -3,7 +3,7 @@ import { useCountDown } from 'ahooks'
 import { useEffect, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 
-const COUNT_DOWN_TIME_MS = 59000
+export const COUNT_DOWN_TIME_MS = 59000
 const COUNT_DOWN_KEY = 'leftTime'
 
 type CountdownProps = {
