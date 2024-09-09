@@ -1,8 +1,8 @@
 # standard import
 import base64
+import io
 import json
 import logging
-import mimetypes
 from collections.abc import Generator
 from typing import Optional, Union, cast
 
@@ -17,6 +17,7 @@ from botocore.exceptions import (
     ServiceNotInRegionError,
     UnknownServiceError,
 )
+from PIL.Image import Image
 
 # local import
 from core.model_runtime.entities.llm_entities import LLMResult, LLMResultChunk, LLMResultChunkDelta
@@ -381,9 +382,8 @@ class BedrockLargeLanguageModel(LargeLanguageModel):
                             try:
                                 url = message_content.data
                                 image_content = requests.get(url).content
-                                if '?' in url:
-                                    url = url.split('?')[0]
-                                mime_type, _ = mimetypes.guess_type(url)
+                                with Image.open(io.BytesIO(image_content)) as img:
+                                    mime_type = f"image/{img.format.lower()}"
                                 base64_data = base64.b64encode(image_content).decode('utf-8')
                             except Exception as ex:
                                 raise ValueError(f"Failed to fetch image data from url {message_content.data}, {ex}")
@@ -793,11 +793,11 @@ class BedrockLargeLanguageModel(LargeLanguageModel):
     def _invoke_error_mapping(self) -> dict[type[InvokeError], list[type[Exception]]]:
         """
         Map model invoke error to unified error
-        The key is the ermd = genai.GenerativeModel(model)ror type thrown to the caller
-        The value is the md = genai.GenerativeModel(model)error type thrown by the model,
+        The key is the ermd = genai.GenerativeModel(model) error type thrown to the caller
+        The value is the md = genai.GenerativeModel(model) error type thrown by the model,
         which needs to be converted into a unified error type for the caller.
 
-        :return: Invoke emd = genai.GenerativeModel(model)rror mapping
+        :return: Invoke emd = genai.GenerativeModel(model) error mapping
         """
         return {
             InvokeConnectionError: [],

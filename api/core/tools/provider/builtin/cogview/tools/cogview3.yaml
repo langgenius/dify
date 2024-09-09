@@ -25,7 +25,7 @@ parameters:
       pt_BR: Prompt
     human_description:
       en_US: Image prompt, you can check the official documentation of CogView 3
-      zh_Hans: 图像提示词，您可以查看CogView 3 的官方文档
+      zh_Hans: 图像提示词，您可以查看 CogView 3 的官方文档
       pt_BR: Image prompt, you can check the official documentation of CogView 3
     llm_description: Image prompt of CogView 3, you should describe the image you want to generate as a list of words as possible as detailed
     form: llm

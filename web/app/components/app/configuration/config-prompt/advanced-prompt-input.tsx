@@ -9,7 +9,6 @@ import produce from 'immer'
 import {
   RiDeleteBinLine,
   RiErrorWarningFill,
-  RiQuestionLine,
 } from '@remixicon/react'
 import s from './style.module.css'
 import MessageTypeSelector from './message-type-selector'
@@ -174,12 +173,12 @@ const AdvancedPromptInput: FC<Props> = ({
                     <div className='text-sm font-semibold uppercase text-indigo-800'>{t('appDebug.pageTitle.line1')}
                     </div>
                     <Tooltip
-                      htmlContent={<div className='w-[180px]'>
-                        {t('appDebug.promptTip')}
-                      </div>}
-                      selector='config-prompt-tooltip'>
-                      <RiQuestionLine className='w-[14px] h-[14px] text-indigo-400' />
-                    </Tooltip>
+                      popupContent={
+                        <div className='w-[180px]'>
+                          {t('appDebug.promptTip')}
+                        </div>
+                      }
+                    />
                   </div>)}
               <div className={cn(s.optionWrap, 'items-center space-x-1')}>
                 {canDelete && (
@@ -263,7 +262,7 @@ const AdvancedPromptInput: FC<Props> = ({
       {isShowConfirmAddVar && (
         <ConfirmAddVar
           varNameArr={newPromptVariables.map(v => v.name)}
-          onConfrim={handleAutoAdd(true)}
+          onConfirm={handleAutoAdd(true)}
           onCancel={handleAutoAdd(false)}
           onHide={hideConfirmAddVar}
         />

@@ -7,14 +7,12 @@ import { ArrowDownIcon, TrashIcon } from '@heroicons/react/24/outline'
 import { pick } from 'lodash-es'
 import {
   RiMoreFill,
-  RiQuestionLine,
 } from '@remixicon/react'
 import { useContext } from 'use-context-selector'
 import { useRouter } from 'next/navigation'
 import { useTranslation } from 'react-i18next'
 import dayjs from 'dayjs'
 import { Edit03 } from '../../base/icons/src/vender/solid/general'
-import TooltipPlus from '../../base/tooltip-plus'
 import { Globe01 } from '../../base/icons/src/vender/line/mapsAndTravel'
 import s from './style.module.css'
 import RenameModal from './rename-modal'
@@ -94,13 +92,11 @@ export const StatusItem: FC<{
     {
       errorMessage && (
         <Tooltip
-          selector='dataset-document-detail-item-status'
-          htmlContent={
+          popupContent={
             <div className='max-w-[260px] break-all'>{errorMessage}</div>
           }
-        >
-          <RiQuestionLine className='ml-1 w-[14px] h-[14px] text-gray-700' />
-        </Tooltip>
+          triggerClassName='ml-1 w-4 h-4'
+        />
       )
     }
   </div>
@@ -201,7 +197,11 @@ export const OperationAction: FC<{
     {isListScene && embeddingAvailable && (
       <>
         {archived
-          ? <Tooltip selector={`list-switch-${id}`} content={t('datasetDocuments.list.action.enableWarning') as string} className='!font-semibold'>
+          ? <Tooltip
+            popupContent={t('datasetDocuments.list.action.enableWarning')}
+            popupClassName='!font-semibold'
+            needsDelay
+          >
             <div>
               <Switch defaultValue={false} onChange={() => { }} disabled={true} size='md' />
             </div>
@@ -221,9 +221,9 @@ export const OperationAction: FC<{
                   {!archived && enabled ? t('datasetDocuments.list.index.enable') : t('datasetDocuments.list.index.disable')}
                 </span>
                 <Tooltip
-                  selector={`detail-switch-${id}`}
-                  content={t('datasetDocuments.list.action.enableWarning') as string}
-                  className='!font-semibold'
+                  popupContent={t('datasetDocuments.list.action.enableWarning')}
+                  popupClassName='!font-semibold'
+                  needsDelay
                   disabled={!archived}
                 >
                   <div>
@@ -405,7 +405,7 @@ const DocumentList: FC<IDocumentListProps> = ({ embeddingAvailable, documents = 
         <tbody className="text-gray-700">
           {localDocs.map((doc) => {
             const isFile = doc.data_source_type === DataSourceType.FILE
-            const fileType = isFile ? doc.data_source_detail_dict?.upload_file.extension : ''
+            const fileType = isFile ? doc.data_source_detail_dict?.upload_file?.extension : ''
             return <tr
               key={doc.id}
               className={'border-b border-gray-200 h-8 hover:bg-gray-50 cursor-pointer'}
@@ -426,7 +426,9 @@ const DocumentList: FC<IDocumentListProps> = ({ embeddingAvailable, documents = 
                     }
                   </span>
                   <div className='group-hover:flex hidden'>
-                    <TooltipPlus popupContent={t('datasetDocuments.list.table.rename')}>
+                    <Tooltip
+                      popupContent={t('datasetDocuments.list.table.rename')}
+                    >
                       <div
                         className='p-1 rounded-md cursor-pointer hover:bg-black/5'
                         onClick={(e) => {
@@ -436,7 +438,7 @@ const DocumentList: FC<IDocumentListProps> = ({ embeddingAvailable, documents = 
                       >
                         <Edit03 className='w-4 h-4 text-gray-500' />
                       </div>
-                    </TooltipPlus>
+                    </Tooltip>
                   </div>
                 </div>
 

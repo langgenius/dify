@@ -27,6 +27,8 @@ const translation = {
       longDescription: ' 검색 방법에 대한 자세한 내용은 언제든지 지식 설정에서 변경할 수 있습니다.',
     },
     save: '저장',
+    permissionsInvitedMembers: '부분 팀 구성원',
+    me: '(당신)',
   },
 }
 

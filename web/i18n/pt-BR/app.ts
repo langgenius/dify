@@ -67,9 +67,11 @@ const translation = {
   editAppTitle: 'Editar Informações do Aplicativo',
   editDone: 'Informações do aplicativo atualizadas',
   editFailed: 'Falha ao atualizar informações do aplicativo',
-  emoji: {
+  iconPicker: {
     ok: 'OK',
     cancel: 'Cancelar',
+    emoji: 'Emoji',
+    image: 'Imagem',
   },
   switch: 'Mudar para Orquestração de Fluxo de Trabalho',
   switchTipStart: 'Será criada uma nova cópia do aplicativo para você e a nova cópia mudará para Orquestração de Fluxo de Trabalho. A nova cópia não permitirá a ',
@@ -120,7 +122,17 @@ const translation = {
       removeConfirmTitle: 'Remover configuração de {{key}}?',
       removeConfirmContent: 'A configuração atual está em uso, removê-la desligará o recurso de Rastreamento.',
     },
+    view: 'Vista',
   },
+  answerIcon: {
+    descriptionInExplore: 'Se o ícone do WebApp deve ser usado para substituir 🤖 no Explore',
+    description: 'Se o ícone WebApp deve ser usado para substituir 🤖 no aplicativo compartilhado',
+    title: 'Use o ícone do WebApp para substituir 🤖',
+  },
+  importFromDSLUrlPlaceholder: 'Cole o link DSL aqui',
+  importFromDSLUrl: 'Do URL',
+  importFromDSLFile: 'Do arquivo DSL',
+  importFromDSL: 'Importar de DSL',
 }
 
 export default translation

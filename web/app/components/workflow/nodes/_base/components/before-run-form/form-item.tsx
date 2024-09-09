@@ -18,6 +18,8 @@ import { useFeatures } from '@/app/components/base/features/hooks'
 import { VarBlockIcon } from '@/app/components/workflow/block-icon'
 import { Line3 } from '@/app/components/base/icons/src/public/common'
 import { Variable02 } from '@/app/components/base/icons/src/vender/solid/development'
+import { BubbleX } from '@/app/components/base/icons/src/vender/line/others'
+import cn from '@/utils/classnames'
 
 type Props = {
   payload: InputVar
@@ -56,22 +58,24 @@ const FormItem: FC<Props> = ({
   }, [value, onChange])
   const nodeKey = (() => {
     if (typeof payload.label === 'object') {
-      const { nodeType, nodeName, variable } = payload.label
+      const { nodeType, nodeName, variable, isChatVar } = payload.label
       return (
         <div className='h-full flex items-center'>
-          <div className='flex items-center'>
-            <div className='p-[1px]'>
-              <VarBlockIcon type={nodeType || BlockEnum.Start} />
+          {!isChatVar && (
+            <div className='flex items-center'>
+              <div className='p-[1px]'>
+                <VarBlockIcon type={nodeType || BlockEnum.Start} />
+              </div>
+              <div className='mx-0.5 text-xs font-medium text-gray-700 max-w-[150px] truncate' title={nodeName}>
+                {nodeName}
+              </div>
+              <Line3 className='mr-0.5'></Line3>
             </div>
-            <div className='mx-0.5 text-xs font-medium text-gray-700 max-w-[150px] truncate' title={nodeName}>
-              {nodeName}
-            </div>
-            <Line3 className='mr-0.5'></Line3>
-          </div>
-
+          )}
           <div className='flex items-center text-primary-600'>
-            <Variable02 className='w-3.5 h-3.5' />
-            <div className='ml-0.5 text-xs font-medium max-w-[150px] truncate' title={variable} >
+            {!isChatVar && <Variable02 className='w-3.5 h-3.5' />}
+            {isChatVar && <BubbleX className='w-3.5 h-3.5 text-util-colors-teal-teal-700' />}
+            <div className={cn('ml-0.5 text-xs font-medium max-w-[150px] truncate', isChatVar && 'text-text-secondary')} title={variable} >
               {variable}
             </div>
           </div>
@@ -86,7 +90,12 @@ const FormItem: FC<Props> = ({
   const isIterator = type === InputVarType.iterator
   return (
     <div className={`${className}`}>
-      {!isArrayLikeType && <div className='h-8 leading-8 text-[13px] font-medium text-gray-700 truncate'>{typeof payload.label === 'object' ? nodeKey : payload.label}</div>}
+      {!isArrayLikeType && (
+        <div className='h-6 mb-1 flex items-center gap-1 text-text-secondary system-sm-semibold'>
+          <div className='truncate'>{typeof payload.label === 'object' ? nodeKey : payload.label}</div>
+          {!payload.required && <span className='text-text-tertiary system-xs-regular'>{t('workflow.panel.optional')}</span>}
+        </div>
+      )}
       <div className='grow'>
         {
           type === InputVarType.textInput && (
@@ -95,7 +104,7 @@ const FormItem: FC<Props> = ({
               type="text"
               value={value || ''}
               onChange={e => onChange(e.target.value)}
-              placeholder={t('appDebug.variableConig.inputPlaceholder')!}
+              placeholder={t('appDebug.variableConfig.inputPlaceholder')!}
               autoFocus={autoFocus}
             />
           )
@@ -108,7 +117,7 @@ const FormItem: FC<Props> = ({
               type="number"
               value={value || ''}
               onChange={e => onChange(e.target.value)}
-              placeholder={t('appDebug.variableConig.inputPlaceholder')!}
+              placeholder={t('appDebug.variableConfig.inputPlaceholder')!}
               autoFocus={autoFocus}
             />
           )
@@ -120,7 +129,7 @@ const FormItem: FC<Props> = ({
               className="w-full px-3 py-1 text-sm leading-[18px] text-gray-900 border-0 rounded-lg grow h-[120px] bg-gray-50 focus:outline-none focus:ring-1 focus:ring-inset focus:ring-gray-200"
               value={value || ''}
               onChange={e => onChange(e.target.value)}
-              placeholder={t('appDebug.variableConig.inputPlaceholder')!}
+              placeholder={t('appDebug.variableConfig.inputPlaceholder')!}
               autoFocus={autoFocus}
             />
           )
@@ -198,7 +207,7 @@ const FormItem: FC<Props> = ({
                   key={index}
                   isInNode
                   value={item}
-                  title={<span>{t('appDebug.variableConig.content')} {index + 1} </span>}
+                  title={<span>{t('appDebug.variableConfig.content')} {index + 1} </span>}
                   onChange={handleArrayItemChange(index)}
                   headerRight={
                     (value as any).length > 1

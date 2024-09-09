@@ -13,6 +13,7 @@ import {
   getUrl,
   stopChatMessageResponding,
 } from '@/service/share'
+import AnswerIcon from '@/app/components/base/answer-icon'
 
 const ChatWrapper = () => {
   const {
@@ -128,21 +129,31 @@ const ChatWrapper = () => {
     isMobile,
   ])
 
+  const answerIcon = (appData?.site && appData.site.use_icon_as_answer_icon)
+    ? <AnswerIcon
+      iconType={appData.site.icon_type}
+      icon={appData.site.icon}
+      background={appData.site.icon_background}
+      imageUrl={appData.site.icon_url}
+    />
+    : null
+
   return (
     <Chat
       appData={appData}
       config={appConfig}
       chatList={chatList}
       isResponding={isResponding}
-      chatContainerInnerClassName={`mx-auto pt-6 w-full max-w-[720px] ${isMobile && 'px-4'}`}
+      chatContainerInnerClassName={`mx-auto pt-6 w-full max-w-full ${isMobile && 'px-4'}`}
       chatFooterClassName='pb-4'
-      chatFooterInnerClassName={`mx-auto w-full max-w-[720px] ${isMobile && 'px-4'}`}
+      chatFooterInnerClassName={`mx-auto w-full max-w-full ${isMobile && 'px-4'}`}
       onSend={doSend}
       onStopResponding={handleStop}
       chatNode={chatNode}
       allToolIcons={appMeta?.tool_icons || {}}
       onFeedback={handleFeedback}
       suggestedQuestions={suggestedQuestions}
+      answerIcon={answerIcon}
       hideProcessDetail
       themeBuilder={themeBuilder}
     />

@@ -36,7 +36,7 @@ const translation = {
     searchVar: 'Buscar variable',
     variableNamePlaceholder: 'Nombre de la variable',
     setVarValuePlaceholder: 'Establecer variable',
-    needConnecttip: 'Este paso no está conectado a nada',
+    needConnectTip: 'Este paso no está conectado a nada',
     maxTreeDepth: 'Límite máximo de {{depth}} nodos por rama',
     needEndNode: 'Debe agregarse el bloque de Fin',
     needAnswerNode: 'Debe agregarse el bloque de Respuesta',
@@ -99,6 +99,33 @@ const translation = {
       export: 'Exportar DSL con valores secretos',
     },
   },
+  chatVariable: {
+    panelTitle: 'Variables de Conversación',
+    panelDescription: 'Las Variables de Conversación se utilizan para almacenar información interactiva que el LLM necesita recordar, incluyendo el historial de conversación, archivos subidos y preferencias del usuario. Son de lectura y escritura.',
+    docLink: 'Visite nuestra documentación para más información.',
+    button: 'Añadir Variable',
+    modal: {
+      title: 'Añadir Variable de Conversación',
+      editTitle: 'Editar Variable de Conversación',
+      name: 'Nombre',
+      namePlaceholder: 'Nombre de la variable',
+      type: 'Tipo',
+      value: 'Valor Predeterminado',
+      valuePlaceholder: 'Valor predeterminado, dejar en blanco para no establecer',
+      description: 'Descripción',
+      descriptionPlaceholder: 'Describa la variable',
+      editInJSON: 'Editar en JSON',
+      oneByOne: 'Añadir uno por uno',
+      editInForm: 'Editar en Formulario',
+      arrayValue: 'Valor',
+      addArrayValue: 'Añadir Valor',
+      objectKey: 'Clave',
+      objectType: 'Tipo',
+      objectValue: 'Valor Predeterminado',
+    },
+    storedContent: 'Contenido almacenado',
+    updatedAt: 'Actualizado el ',
+  },
   changeHistory: {
     title: 'Historial de cambios',
     placeholder: 'Aún no has realizado cambios',
@@ -159,6 +186,7 @@ const translation = {
     'transform': 'Transformar',
     'utilities': 'Utilidades',
     'noResult': 'No se encontraron coincidencias',
+    'searchTool': 'Herramienta de búsqueda',
   },
   blocks: {
     'start': 'Inicio',
@@ -173,6 +201,7 @@ const translation = {
     'http-request': 'Solicitud HTTP',
     'variable-assigner': 'Asignador de variables',
     'variable-aggregator': 'Agregador de variables',
+    'assigner': 'Asignador de Variables',
     'iteration-start': 'Inicio de iteración',
     'iteration': 'Iteración',
     'parameter-extractor': 'Extractor de parámetros',
@@ -189,6 +218,7 @@ const translation = {
     'template-transform': 'Convierte datos en una cadena utilizando la sintaxis de plantillas Jinja',
     'http-request': 'Permite enviar solicitudes al servidor a través del protocolo HTTP',
     'variable-assigner': 'Agrega variables de múltiples ramas en una sola variable para configurar de manera unificada los nodos descendentes.',
+    'assigner': 'El nodo de asignación de variables se utiliza para asignar valores a variables escribibles (como variables de conversación).',
     'variable-aggregator': 'Agrega variables de múltiples ramas en una sola variable para configurar de manera unificada los nodos descendentes.',
     'iteration': 'Realiza múltiples pasos en un objeto de lista hasta que se generen todos los resultados.',
     'parameter-extractor': 'Utiliza LLM para extraer parámetros estructurados del lenguaje natural para invocaciones de herramientas o solicitudes HTTP.',
@@ -215,6 +245,7 @@ const translation = {
     checklistResolved: 'Se resolvieron todos los problemas',
     organizeBlocks: 'Organizar bloques',
     change: 'Cambiar',
+    optional: '(opcional)',
   },
   nodes: {
     common: {
@@ -385,6 +416,7 @@ const translation = {
       enterValue: 'Ingresa un valor',
       addCondition: 'Agregar condición',
       conditionNotSetup: 'Condición NO configurada',
+      selectVariable: 'Seleccionar variable...',
     },
     variableAssigner: {
       title: 'Asignar variables',
@@ -404,6 +436,17 @@ const translation = {
         varDescribe: 'Salida de {{groupName}}',
       },
       setAssignVariable: 'Establecer variable asignada',
+    },
+    assigner: {
+      'assignedVariable': 'Variable Asignada',
+      'writeMode': 'Modo de Escritura',
+      'writeModeTip': 'Cuando la VARIABLE ASIGNADA es un array, el modo de anexar agrega al final.',
+      'over-write': 'Sobrescribir',
+      'append': 'Anexar',
+      'plus': 'Más',
+      'clear': 'Limpiar',
+      'setVariable': 'Establecer Variable',
+      'variable': 'Variable',
     },
     tool: {
       toAuthorize: 'Para autorizar',
@@ -491,6 +534,9 @@ const translation = {
     tracing: {
       stopBy: 'Detenido por {{user}}',
     },
+  },
+  tracing: {
+    stopBy: 'Pásate por {{usuario}}',
   },
 }
 

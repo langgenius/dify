@@ -81,7 +81,8 @@ class XinferenceText2SpeechModel(TTSModel):
 
             extra_param = XinferenceHelper.get_xinference_extra_parameter(
                 server_url=credentials['server_url'],
-                model_uid=credentials['model_uid']
+                model_uid=credentials['model_uid'],
+                api_key=credentials.get('api_key'),
             )
 
             if 'text-to-audio' not in extra_param.model_ability:
@@ -173,6 +174,11 @@ class XinferenceText2SpeechModel(TTSModel):
                     return voices[language]
                 elif 'all' in voices:
                     return voices['all']
+                else:
+                    all_voices = []
+                    for lang, lang_voices in voices.items():
+                        all_voices.extend(lang_voices)
+                    return all_voices
 
         return self.model_voices['__default']['all']
 
@@ -203,7 +209,11 @@ class XinferenceText2SpeechModel(TTSModel):
             credentials['server_url'] = credentials['server_url'][:-1]
 
         try:
-            handle = RESTfulAudioModelHandle(credentials['model_uid'], credentials['server_url'], auth_headers={})
+            api_key = credentials.get('api_key')
+            auth_headers = {'Authorization': f'Bearer {api_key}'} if api_key else {}
+            handle = RESTfulAudioModelHandle(
+                credentials['model_uid'], credentials['server_url'], auth_headers=auth_headers
+            )
 
             model_support_voice = [x.get("value") for x in
                                    self.get_tts_model_voices(model=model, credentials=credentials)]

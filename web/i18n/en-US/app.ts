@@ -71,9 +71,16 @@ const translation = {
   editAppTitle: 'Edit App Info',
   editDone: 'App info updated',
   editFailed: 'Failed to update app info',
-  emoji: {
+  iconPicker: {
     ok: 'OK',
     cancel: 'Cancel',
+    emoji: 'Emoji',
+    image: 'Image',
+  },
+  answerIcon: {
+    title: 'Use WebApp icon to replace 🤖',
+    description: 'Whether to use the WebApp icon to replace 🤖 in the shared application',
+    descriptionInExplore: 'Whether to use the WebApp icon to replace 🤖 in Explore',
   },
   switch: 'Switch to Workflow Orchestrate',
   switchTipStart: 'A new app copy will be created for you, and the new copy will switch to Workflow Orchestrate. The new copy will ',
@@ -81,7 +88,7 @@ const translation = {
   switchTipEnd: ' switching back to Basic Orchestrate.',
   switchLabel: 'The app copy to be created',
   removeOriginal: 'Delete the original app',
-  switchStart: 'Start swtich',
+  switchStart: 'Start switch',
   typeSelector: {
     all: 'ALL Types',
     chatbot: 'Chatbot',
@@ -93,6 +100,7 @@ const translation = {
     title: 'Tracing app performance',
     description: 'Configuring a Third-Party LLMOps provider and tracing app performance.',
     config: 'Config',
+    view: 'View',
     collapse: 'Collapse',
     expand: 'Expand',
     tracing: 'Tracing',

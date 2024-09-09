@@ -34,7 +34,7 @@ class BaseIndexProcessor(ABC):
         raise NotImplementedError
 
     @abstractmethod
-    def retrieve(self, retrival_method: str, query: str, dataset: Dataset, top_k: int,
+    def retrieve(self, retrieval_method: str, query: str, dataset: Dataset, top_k: int,
                  score_threshold: float, reranking_model: dict) -> list[Document]:
         raise NotImplementedError
 
@@ -57,7 +57,7 @@ class BaseIndexProcessor(ABC):
 
             character_splitter = FixedRecursiveCharacterTextSplitter.from_encoder(
                 chunk_size=segmentation["max_tokens"],
-                chunk_overlap=segmentation.get('chunk_overlap', 0),
+                chunk_overlap=segmentation.get('chunk_overlap', 0) or 0,
                 fixed_separator=separator,
                 separators=["\n\n", "。", ". ", " ", ""],
                 embedding_model_instance=embedding_model_instance

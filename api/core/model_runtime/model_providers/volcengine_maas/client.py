@@ -1,6 +1,25 @@
 import re
-from collections.abc import Callable, Generator
-from typing import cast
+from collections.abc import Generator
+from typing import Optional, cast
+
+from volcenginesdkarkruntime import Ark
+from volcenginesdkarkruntime.types.chat import (
+    ChatCompletion,
+    ChatCompletionAssistantMessageParam,
+    ChatCompletionChunk,
+    ChatCompletionContentPartImageParam,
+    ChatCompletionContentPartTextParam,
+    ChatCompletionMessageParam,
+    ChatCompletionMessageToolCallParam,
+    ChatCompletionSystemMessageParam,
+    ChatCompletionToolMessageParam,
+    ChatCompletionToolParam,
+    ChatCompletionUserMessageParam,
+)
+from volcenginesdkarkruntime.types.chat.chat_completion_content_part_image_param import ImageURL
+from volcenginesdkarkruntime.types.chat.chat_completion_message_tool_call_param import Function
+from volcenginesdkarkruntime.types.create_embedding_response import CreateEmbeddingResponse
+from volcenginesdkarkruntime.types.shared_params import FunctionDefinition
 
 from core.model_runtime.entities.message_entities import (
     AssistantPromptMessage,
@@ -12,123 +31,195 @@ from core.model_runtime.entities.message_entities import (
     ToolPromptMessage,
     UserPromptMessage,
 )
-from core.model_runtime.model_providers.volcengine_maas.errors import wrap_error
-from core.model_runtime.model_providers.volcengine_maas.volc_sdk import ChatRole, MaasException, MaasService
+
+DEFAULT_V2_ENDPOINT = "maas-api.ml-platform-cn-beijing.volces.com"
+DEFAULT_V3_ENDPOINT = "https://ark.cn-beijing.volces.com/api/v3"
 
 
-class MaaSClient(MaasService):
-    def __init__(self, host: str, region: str):
+class ArkClientV3:
+    endpoint_id: Optional[str] = None
+    ark: Optional[Ark] = None
+
+    def __init__(self, *args, **kwargs):
+        self.ark = Ark(*args, **kwargs)
         self.endpoint_id = None
-        super().__init__(host, region)
-
-    def set_endpoint_id(self, endpoint_id: str):
-        self.endpoint_id = endpoint_id
-
-    @classmethod
-    def from_credential(cls, credentials: dict) -> 'MaaSClient':
-        host = credentials['api_endpoint_host']
-        region = credentials['volc_region']
-        ak = credentials['volc_access_key_id']
-        sk = credentials['volc_secret_access_key']
-        endpoint_id = credentials['endpoint_id']
-
-        client = cls(host, region)
-        client.set_endpoint_id(endpoint_id)
-        client.set_ak(ak)
-        client.set_sk(sk)
-        return client
-
-    def chat(self, params: dict, messages: list[PromptMessage], stream=False, **extra_model_kwargs) -> Generator | dict:
-        req = {
-            'parameters': params,
-            'messages': [self.convert_prompt_message_to_maas_message(prompt) for prompt in messages],
-            **extra_model_kwargs,
-        }
-        if not stream:
-            return super().chat(
-                self.endpoint_id,
-                req,
-            )
-        return super().stream_chat(
-            self.endpoint_id,
-            req,
-        )
-
-    def embeddings(self, texts: list[str]) -> dict:
-        req = {
-            'input': texts
-        }
-        return super().embeddings(self.endpoint_id, req)
 
     @staticmethod
-    def convert_prompt_message_to_maas_message(message: PromptMessage) -> dict:
+    def is_legacy(credentials: dict) -> bool:
+        # match default v2 endpoint
+        if ArkClientV3.is_compatible_with_legacy(credentials):
+            return False
+        # match default v3 endpoint
+        if credentials.get("api_endpoint_host") == DEFAULT_V3_ENDPOINT:
+            return False
+        # only v3 support api_key
+        if credentials.get("auth_method") == "api_key":
+            return False
+        # these cases are considered as sdk v2
+        # - modified default v2 endpoint
+        # - modified default v3 endpoint and auth without api_key
+        return True
+
+    @staticmethod
+    def is_compatible_with_legacy(credentials: dict) -> bool:
+        endpoint = credentials.get("api_endpoint_host")
+        return endpoint == DEFAULT_V2_ENDPOINT
+
+    @classmethod
+    def from_credentials(cls, credentials):
+        """Initialize the client using the credentials provided."""
+        args = {
+            "base_url": credentials['api_endpoint_host'],
+            "region": credentials['volc_region'],
+        }
+        if credentials.get("auth_method") == "api_key":
+            args = {
+                **args,
+                "api_key": credentials['volc_api_key'],
+            }
+        else:
+            args = {
+                **args,
+                "ak": credentials['volc_access_key_id'],
+                "sk": credentials['volc_secret_access_key'],
+            }
+
+        if cls.is_compatible_with_legacy(credentials):
+            args = {
+                **args,
+                "base_url": DEFAULT_V3_ENDPOINT
+            }
+
+        client = ArkClientV3(
+            **args
+        )
+        client.endpoint_id = credentials['endpoint_id']
+        return client
+
+    @staticmethod
+    def convert_prompt_message(message: PromptMessage) -> ChatCompletionMessageParam:
+        """Converts a PromptMessage to a ChatCompletionMessageParam"""
         if isinstance(message, UserPromptMessage):
             message = cast(UserPromptMessage, message)
             if isinstance(message.content, str):
-                message_dict = {"role": ChatRole.USER,
-                                "content": message.content}
+                content = message.content
             else:
                 content = []
                 for message_content in message.content:
                     if message_content.type == PromptMessageContentType.TEXT:
-                        raise ValueError(
-                            'Content object type only support image_url')
+                        content.append(ChatCompletionContentPartTextParam(
+                            text=message_content.text,
+                            type='text',
+                        ))
                     elif message_content.type == PromptMessageContentType.IMAGE:
                         message_content = cast(
                             ImagePromptMessageContent, message_content)
                         image_data = re.sub(
                             r'^data:image\/[a-zA-Z]+;base64,', '', message_content.data)
-                        content.append({
-                            'type': 'image_url',
-                            'image_url': {
-                                'url': '',
-                                'image_bytes': image_data,
-                                'detail': message_content.detail,
-                            }
-                        })
-
-                message_dict = {'role': ChatRole.USER, 'content': content}
+                        content.append(ChatCompletionContentPartImageParam(
+                            image_url=ImageURL(
+                                url=image_data,
+                                detail=message_content.detail.value,
+                            ),
+                            type='image_url',
+                        ))
+            message_dict = ChatCompletionUserMessageParam(
+                role='user',
+                content=content
+            )
         elif isinstance(message, AssistantPromptMessage):
             message = cast(AssistantPromptMessage, message)
-            message_dict = {'role': ChatRole.ASSISTANT,
-                            'content': message.content}
-            if message.tool_calls:
-                message_dict['tool_calls'] = [
-                    {
-                        'name': call.function.name,
-                        'arguments': call.function.arguments
-                    } for call in message.tool_calls
+            message_dict = ChatCompletionAssistantMessageParam(
+                content=message.content,
+                role='assistant',
+                tool_calls=None if not message.tool_calls else [
+                    ChatCompletionMessageToolCallParam(
+                        id=call.id,
+                        function=Function(
+                            name=call.function.name,
+                            arguments=call.function.arguments
+                        ),
+                        type='function'
+                    ) for call in message.tool_calls
                 ]
+            )
         elif isinstance(message, SystemPromptMessage):
             message = cast(SystemPromptMessage, message)
-            message_dict = {'role': ChatRole.SYSTEM,
-                            'content': message.content}
+            message_dict = ChatCompletionSystemMessageParam(
+                content=message.content,
+                role='system'
+            )
         elif isinstance(message, ToolPromptMessage):
             message = cast(ToolPromptMessage, message)
-            message_dict = {'role': ChatRole.FUNCTION,
-                            'content': message.content,
-                            'name': message.tool_call_id}
+            message_dict = ChatCompletionToolMessageParam(
+                content=message.content,
+                role='tool',
+                tool_call_id=message.tool_call_id
+            )
         else:
             raise ValueError(f"Got unknown PromptMessage type {message}")
 
         return message_dict
 
     @staticmethod
-    def wrap_exception(fn: Callable[[], dict | Generator]) -> dict | Generator:
-        try:
-            resp = fn()
-        except MaasException as e:
-            raise wrap_error(e)
+    def _convert_tool_prompt(message: PromptMessageTool) -> ChatCompletionToolParam:
+        return ChatCompletionToolParam(
+            type='function',
+            function=FunctionDefinition(
+                name=message.name,
+                description=message.description,
+                parameters=message.parameters,
+            )
+        )
 
-        return resp
+    def chat(self, messages: list[PromptMessage],
+             tools: Optional[list[PromptMessageTool]] = None,
+             stop: Optional[list[str]] = None,
+             frequency_penalty: Optional[float] = None,
+             max_tokens: Optional[int] = None,
+             presence_penalty: Optional[float] = None,
+             top_p: Optional[float] = None,
+             temperature: Optional[float] = None,
+             ) -> ChatCompletion:
+        """Block chat"""
+        return self.ark.chat.completions.create(
+            model=self.endpoint_id,
+            messages=[self.convert_prompt_message(message) for message in messages],
+            tools=[self._convert_tool_prompt(tool) for tool in tools] if tools else None,
+            stop=stop,
+            frequency_penalty=frequency_penalty,
+            max_tokens=max_tokens,
+            presence_penalty=presence_penalty,
+            top_p=top_p,
+            temperature=temperature,
+        )
 
-    @staticmethod
-    def transform_tool_prompt_to_maas_config(tool: PromptMessageTool):
-        return {
-            "type": "function",
-            "function": {
-                "name": tool.name,
-                "description": tool.description,
-                "parameters": tool.parameters,
-            }
-        }
+    def stream_chat(self, messages: list[PromptMessage],
+                    tools: Optional[list[PromptMessageTool]] = None,
+                    stop: Optional[list[str]] = None,
+                    frequency_penalty: Optional[float] = None,
+                    max_tokens: Optional[int] = None,
+                    presence_penalty: Optional[float] = None,
+                    top_p: Optional[float] = None,
+                    temperature: Optional[float] = None,
+                    ) -> Generator[ChatCompletionChunk]:
+        """Stream chat"""
+        chunks = self.ark.chat.completions.create(
+            stream=True,
+            model=self.endpoint_id,
+            messages=[self.convert_prompt_message(message) for message in messages],
+            tools=[self._convert_tool_prompt(tool) for tool in tools] if tools else None,
+            stop=stop,
+            frequency_penalty=frequency_penalty,
+            max_tokens=max_tokens,
+            presence_penalty=presence_penalty,
+            top_p=top_p,
+            temperature=temperature,
+        )
+        for chunk in chunks:
+            if not chunk.choices:
+                continue
+            yield chunk
+
+    def embeddings(self, texts: list[str]) -> CreateEmbeddingResponse:
+        return self.ark.embeddings.create(model=self.endpoint_id, input=texts)

@@ -4,8 +4,9 @@ const translation = {
   dateTimeFormat: 'MM/DD/YYYY hh:mm A',
   table: {
     header: {
-      time: 'Thời gian',
-      endUser: 'Người dùng cuối',
+      updatedTime: 'Thời gian cập nhật',
+      time: 'Thời gian tạo',
+      endUser: 'Người dùng cuối hoặc tài khoản',
       input: 'Đầu vào',
       output: 'Đầu ra',
       summary: 'Tóm tắt',
@@ -16,7 +17,7 @@ const translation = {
       status: 'TRẠNG THÁI',
       runtime: 'THỜI GIAN CHẠY',
       tokens: 'TOKEN',
-      user: 'NGƯỜI DÙNG CUỐI',
+      user: 'NGƯỜI DÙNG CUỐI HOẶC TÀI KHOẢN',
       version: 'PHIÊN BẢN',
     },
     pagination: {
@@ -69,6 +70,9 @@ const translation = {
       annotated: 'Đã chú thích ({{count}} mục)',
       not_annotated: 'Chưa chú thích',
     },
+    sortBy: 'Sắp xếp theo:',
+    descending: 'giảm dần',
+    ascending: 'tăng dần',
   },
   workflowTitle: 'Nhật ký quy trình làm việc',
   workflowSubtitle: 'Nhật ký ghi lại hoạt động của Tự động hóa.',
@@ -85,7 +89,9 @@ const translation = {
     iterations: 'Số lần lặp',
     iteration: 'Lần lặp',
     finalProcessing: 'Xử lý cuối cùng',
+    agentMode: 'Chế độ đại lý',
   },
+  agentLog: 'Nhật ký đại lý',
 }
 
 export default translation

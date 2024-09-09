@@ -35,7 +35,7 @@ import { DataSourceType } from '@/models/datasets'
 import useBreakpoints, { MediaType } from '@/hooks/use-breakpoints'
 import { LanguagesSupported } from '@/i18n/language'
 import { useStore } from '@/app/components/app/store'
-import { AiText, ChatBot, CuteRobote } from '@/app/components/base/icons/src/vender/solid/communication'
+import { AiText, ChatBot, CuteRobot } from '@/app/components/base/icons/src/vender/solid/communication'
 import { Route } from '@/app/components/base/icons/src/vender/solid/mapsAndTravel'
 import { getLocaleOnClient } from '@/i18n'
 import { useAppContext } from '@/context/app-context'
@@ -60,14 +60,14 @@ const LikedItem = ({
   return (
     <Link className={classNames(s.itemWrapper, 'px-2', isMobile && 'justify-center')} href={`/app/${detail?.id}/overview`}>
       <div className={classNames(s.iconWrapper, 'mr-0')}>
-        <AppIcon size='tiny' icon={detail?.icon} background={detail?.icon_background} />
+        <AppIcon size='tiny' iconType={detail.icon_type} icon={detail.icon} background={detail.icon_background} imageUrl={detail.icon_url} />
         {type === 'app' && (
           <span className='absolute bottom-[-2px] right-[-2px] w-3.5 h-3.5 p-0.5 bg-white rounded border-[0.5px] border-[rgba(0,0,0,0.02)] shadow-sm'>
             {detail.mode === 'advanced-chat' && (
               <ChatBot className='w-2.5 h-2.5 text-[#1570EF]' />
             )}
             {detail.mode === 'agent-chat' && (
-              <CuteRobote className='w-2.5 h-2.5 text-indigo-600' />
+              <CuteRobot className='w-2.5 h-2.5 text-indigo-600' />
             )}
             {detail.mode === 'chat' && (
               <ChatBot className='w-2.5 h-2.5 text-[#1570EF]' />

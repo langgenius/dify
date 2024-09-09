@@ -4,6 +4,7 @@ import React, { useCallback } from 'react'
 import type { VariantProps } from 'class-variance-authority'
 import { cva } from 'class-variance-authority'
 import cn from '@/utils/classnames'
+import Tooltip from '@/app/components/base/tooltip'
 
 const variants = cva([], {
   variants: {
@@ -26,6 +27,7 @@ type Props = {
   selected: boolean
   disabled?: boolean
   align?: 'left' | 'center' | 'right'
+  tooltip?: string
 } & VariantProps<typeof variants>
 
 const OptionCard: FC<Props> = ({
@@ -35,6 +37,7 @@ const OptionCard: FC<Props> = ({
   selected,
   disabled,
   align = 'center',
+  tooltip,
 }) => {
   const handleSelect = useCallback(() => {
     if (selected || disabled)
@@ -45,7 +48,7 @@ const OptionCard: FC<Props> = ({
   return (
     <div
       className={cn(
-        'flex items-center px-2 h-8 rounded-md system-sm-regular bg-components-option-card-option-bg border border-components-option-card-option-bg text-text-secondary cursor-default',
+        'flex items-center px-2 h-8 rounded-md system-sm-regular bg-components-option-card-option-bg border border-components-option-card-option-border text-text-secondary cursor-default',
         (!selected && !disabled) && 'hover:bg-components-option-card-option-bg-hover hover:border-components-option-card-option-border-hover hover:shadow-xs cursor-pointer',
         selected && 'bg-components-option-card-option-selected-bg border-[1.5px] border-components-option-card-option-selected-border system-sm-medium shadow-xs',
         disabled && 'text-text-disabled',
@@ -54,7 +57,16 @@ const OptionCard: FC<Props> = ({
       )}
       onClick={handleSelect}
     >
-      {title}
+      <span>{title}</span>
+      {tooltip
+        && <Tooltip
+          popupContent={
+            <div className='w-[240px]'>
+              {tooltip}
+            </div>
+          }
+        />
+      }
     </div>
   )
 }

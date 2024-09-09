@@ -1,4 +1,5 @@
 import base64
+import enum
 import hashlib
 import hmac
 import json
@@ -13,13 +14,19 @@ from sqlalchemy import func
 from sqlalchemy.dialects.postgresql import JSONB
 
 from configs import dify_config
-from core.rag.retrieval.retrival_methods import RetrievalMethod
+from core.rag.retrieval.retrieval_methods import RetrievalMethod
 from extensions.ext_database import db
 from extensions.ext_storage import storage
-from models import StringUUID
-from models.account import Account
-from models.model import App, Tag, TagBinding, UploadFile
 
+from .account import Account
+from .model import App, Tag, TagBinding, UploadFile
+from .types import StringUUID
+
+
+class DatasetPermissionEnum(str, enum.Enum):
+    ONLY_ME = 'only_me'
+    ALL_TEAM = 'all_team_members'
+    PARTIAL_TEAM = 'partial_members'
 
 class Dataset(db.Model):
     __tablename__ = 'datasets'

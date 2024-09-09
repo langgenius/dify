@@ -3,9 +3,6 @@ import type { FC } from 'react'
 import React from 'react'
 import { useContext } from 'use-context-selector'
 import { useTranslation } from 'react-i18next'
-import {
-  RiQuestionLine,
-} from '@remixicon/react'
 import RadioGroup from './radio-group'
 import ConfigContext from '@/context/debug-configuration'
 import { Resolution, TransferMethod } from '@/types/app'
@@ -37,13 +34,15 @@ const ParamConfigContent: FC = () => {
           <div>
             <div className='mb-2 flex items-center  space-x-1'>
               <div className='leading-[18px] text-[13px] font-semibold text-gray-800'>{t('appDebug.vision.visionSettings.resolution')}</div>
-              <Tooltip htmlContent={<div className='w-[180px]' >
-                {t('appDebug.vision.visionSettings.resolutionTooltip').split('\n').map(item => (
-                  <div key={item}>{item}</div>
-                ))}
-              </div>} selector='config-resolution-tooltip'>
-                <RiQuestionLine className='w-[14px] h-[14px] text-gray-400' />
-              </Tooltip>
+              <Tooltip
+                popupContent={
+                  <div className='w-[180px]' >
+                    {t('appDebug.vision.visionSettings.resolutionTooltip').split('\n').map(item => (
+                      <div key={item}>{item}</div>
+                    ))}
+                  </div>
+                }
+              />
             </div>
             <RadioGroup
               className='space-x-3'

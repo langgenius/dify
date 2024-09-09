@@ -4,7 +4,7 @@ from core.tools.errors import ToolProviderCredentialValidationError
 from core.tools.provider.builtin_tool_provider import BuiltinToolProviderController
 
 
-class GihubProvider(BuiltinToolProviderController):
+class GithubProvider(BuiltinToolProviderController):
     def _validate_credentials(self, credentials: dict) -> None:
         try:
             if 'access_tokens' not in credentials or not credentials.get('access_tokens'):

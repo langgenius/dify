@@ -290,18 +290,18 @@ const translation = {
     typeSelect: 'Seçim',
   },
   varKeyError: {
-    canNoBeEmpty: 'Değişken anahtarı boş olamaz',
-    tooLong: 'Değişken anahtarı: {{key}} çok uzun. 30 karakterden uzun olamaz',
-    notValid: 'Değişken anahtarı: {{key}} geçersizdir. Sadece harfler, rakamlar ve altçizgiler içerebilir',
-    notStartWithNumber: 'Değişken anahtarı: {{key}} bir rakamla başlamamalıdır',
-    keyAlreadyExists: 'Değişken anahtarı: {{key}} zaten mevcut',
+    canNoBeEmpty: '{{key}} gereklidir',
+    tooLong: '{{key}} çok uzun. 30 karakterden uzun olamaz',
+    notValid: '{{key}} geçersizdir. Sadece harfler, rakamlar ve altçizgiler içerebilir',
+    notStartWithNumber: '{{key}} bir rakamla başlamamalıdır',
+    keyAlreadyExists: '{{key}} zaten mevcut',
   },
   otherError: {
     promptNoBeEmpty: 'Prompt boş olamaz',
     historyNoBeEmpty: 'Konuşma geçmişi prompt\'ta ayarlanmalıdır',
     queryNoBeEmpty: 'Sorgu prompt\'ta ayarlanmalıdır',
   },
-  variableConig: {
+  variableConfig: {
     addModalTitle: 'Giriş Alanı Ekle',
     editModalTitle: 'Giriş Alanı Düzenle',
     description: 'Değişken ayarı {{varName}}',
