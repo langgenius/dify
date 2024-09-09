@@ -416,13 +416,33 @@ class Graph(BaseModel):
                         parallel.end_to_node_id = outside_parallel_target_node_ids.pop()
 
         for graph_edge in target_node_edges:
+            current_parallel = None
+            if parallel:
+                current_parallel = parallel
+            elif parent_parallel:
+                if not parent_parallel.end_to_node_id or (parent_parallel.end_to_node_id and graph_edge.target_node_id != parent_parallel.end_to_node_id):
+                    current_parallel = parent_parallel
+                else:
+                    # fetch parent parallel's parent parallel
+                    parent_parallel_parent_parallel_id = parent_parallel.parent_parallel_id
+                    if parent_parallel_parent_parallel_id:
+                        parent_parallel_parent_parallel = parallel_mapping.get(parent_parallel_parent_parallel_id)
+                        if (
+                            parent_parallel_parent_parallel 
+                            and (
+                                not parent_parallel_parent_parallel.end_to_node_id
+                                 or (parent_parallel_parent_parallel.end_to_node_id and graph_edge.target_node_id != parent_parallel_parent_parallel.end_to_node_id)
+                            )
+                        ):
+                            current_parallel = parent_parallel_parent_parallel
+
             cls._recursively_add_parallels(
                 edge_mapping=edge_mapping,
                 reverse_edge_mapping=reverse_edge_mapping,
                 start_node_id=graph_edge.target_node_id,
                 parallel_mapping=parallel_mapping,
                 node_parallel_mapping=node_parallel_mapping,
-                parent_parallel=parallel if parallel else parent_parallel
+                parent_parallel=current_parallel
             )
 
     @classmethod
