@@ -13,12 +13,11 @@ type SocialAuthProps = {
 export default function SocialAuth(props: SocialAuthProps) {
   const { t } = useTranslation()
   const searchParams = useSearchParams()
-  const invite_token = decodeURIComponent(searchParams.get('invite_token') || '')
 
   const getOAuthLink = (href: string) => {
     const url = getPurifyHref(`${apiPrefix}${href}`)
-    if (invite_token)
-      return `${url}?invite_token=${invite_token}`
+    if (searchParams.has('invite_token'))
+      return `${url}?${searchParams.toString()}`
 
     return url
   }

@@ -156,8 +156,8 @@ export const updatePluginProviderAIKey: Fetcher<UpdateOpenAIKeyResponse, { url: 
   return post<UpdateOpenAIKeyResponse>(url, { body })
 }
 
-export const invitationCheck: Fetcher<CommonResponse & { is_valid: boolean; data: { workspace_name: string;email: string;workspace_id: string } }, { url: string; params: { workspace_id?: string; email?: string; token: string } }> = ({ url, params }) => {
-  return get<CommonResponse & { is_valid: boolean; data: { workspace_name: string;email: string;workspace_id: string } }>(url, { params })
+export const invitationCheck: Fetcher<CommonResponse & { is_valid: boolean; data: { workspace_name: string; email: string; workspace_id: string } }, { url: string; params: { workspace_id?: string; email?: string; token: string } }> = ({ url, params }) => {
+  return get<CommonResponse & { is_valid: boolean; data: { workspace_name: string; email: string; workspace_id: string } }>(url, { params })
 }
 
 export const activateMember: Fetcher<CommonResponse & { data: string }, { url: string; body: any }> = ({ url, body }) => {
