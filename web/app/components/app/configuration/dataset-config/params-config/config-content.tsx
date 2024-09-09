@@ -1,6 +1,6 @@
 'use client'
 
-import { memo, useMemo } from 'react'
+import { memo, useEffect, useMemo } from 'react'
 import type { FC } from 'react'
 import { useTranslation } from 'react-i18next'
 import WeightedScore from './weighted-score'
@@ -46,6 +46,15 @@ const ConfigContent: FC<Props> = ({
   const { t } = useTranslation()
   const selectedDatasetsMode = useSelectedDatasetsMode(selectedDatasets)
   const type = datasetConfigs.retrieval_model
+
+  useEffect(() => {
+    if (type === RETRIEVE_TYPE.oneWay) {
+      onChange({
+        ...datasetConfigs,
+        retrieval_model: RETRIEVE_TYPE.multiWay,
+      })
+    }
+  }, [type])
 
   const {
     modelList: rerankModelList,
@@ -151,6 +160,12 @@ const ConfigContent: FC<Props> = ({
       </div>
       {type === RETRIEVE_TYPE.multiWay && (
         <>
+          <div className='flex items-center my-2 py-1 h-6'>
+            <div className='shrink-0 mr-2 system-xs-semibold-uppercase text-text-secondary'>
+              {t('dataset.rerankSettings')}
+            </div>
+            <div className='grow h-[1px] bg-gradient-to-l from-white to-[rgba(16,24,40,0.08)]'></div>
+          </div>
           {
             selectedDatasetsMode.inconsistentEmbeddingModel
             && (
