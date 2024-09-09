@@ -64,7 +64,7 @@ class InputModeration:
 
         if moderation_result.action == ModerationAction.DIRECT_OUTPUT:
             raise ModerationException(moderation_result.preset_response)
-        elif moderation_result.action == ModerationAction.OVERRIDED:
+        elif moderation_result.action == ModerationAction.OVERRIDDEN:
             inputs = moderation_result.inputs
             query = moderation_result.query
 
