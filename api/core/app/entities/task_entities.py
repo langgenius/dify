@@ -223,6 +223,7 @@ class NodeStartStreamResponse(StreamResponse):
         parallel_start_node_id: Optional[str] = None
         parent_parallel_id: Optional[str] = None
         parent_parallel_start_node_id: Optional[str] = None
+        iteration_id: Optional[str] = None
 
     event: StreamEvent = StreamEvent.NODE_STARTED
     workflow_run_id: str
@@ -247,6 +248,7 @@ class NodeStartStreamResponse(StreamResponse):
                 "parallel_start_node_id": self.data.parallel_start_node_id,
                 "parent_parallel_id": self.data.parent_parallel_id,
                 "parent_parallel_start_node_id": self.data.parent_parallel_start_node_id,
+                "iteration_id": self.data.iteration_id,
             }
         }
 
@@ -280,6 +282,7 @@ class NodeFinishStreamResponse(StreamResponse):
         parallel_start_node_id: Optional[str] = None
         parent_parallel_id: Optional[str] = None
         parent_parallel_start_node_id: Optional[str] = None
+        iteration_id: Optional[str] = None
 
     event: StreamEvent = StreamEvent.NODE_FINISHED
     workflow_run_id: str
@@ -311,6 +314,7 @@ class NodeFinishStreamResponse(StreamResponse):
                 "parallel_start_node_id": self.data.parallel_start_node_id,
                 "parent_parallel_id": self.data.parent_parallel_id,
                 "parent_parallel_start_node_id": self.data.parent_parallel_start_node_id,
+                "iteration_id": self.data.iteration_id,
             }
         }
     

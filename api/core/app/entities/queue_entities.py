@@ -152,6 +152,8 @@ class QueueTextChunkEvent(AppQueueEvent):
     text: str
     from_variable_selector: Optional[list[str]] = None
     """from variable selector"""
+    in_iteration_id: Optional[str] = None
+    """iteration id if node is in iteration"""
 
 
 class QueueAgentMessageEvent(AppQueueEvent):
@@ -176,6 +178,8 @@ class QueueRetrieverResourcesEvent(AppQueueEvent):
     """
     event: QueueEvent = QueueEvent.RETRIEVER_RESOURCES
     retriever_resources: list[dict]
+    in_iteration_id: Optional[str] = None
+    """iteration id if node is in iteration"""
 
 
 class QueueAnnotationReplyEvent(AppQueueEvent):
@@ -245,6 +249,8 @@ class QueueNodeStartedEvent(AppQueueEvent):
     """parent parallel id if node is in parallel"""
     parent_parallel_start_node_id: Optional[str] = None
     """parent parallel start node id if node is in parallel"""
+    in_iteration_id: Optional[str] = None
+    """iteration id if node is in iteration"""
     start_at: datetime
 
 
@@ -266,6 +272,8 @@ class QueueNodeSucceededEvent(AppQueueEvent):
     """parent parallel id if node is in parallel"""
     parent_parallel_start_node_id: Optional[str] = None
     """parent parallel start node id if node is in parallel"""
+    in_iteration_id: Optional[str] = None
+    """iteration id if node is in iteration"""
     start_at: datetime
 
     inputs: Optional[dict[str, Any]] = None
@@ -294,6 +302,8 @@ class QueueNodeFailedEvent(AppQueueEvent):
     """parent parallel id if node is in parallel"""
     parent_parallel_start_node_id: Optional[str] = None
     """parent parallel start node id if node is in parallel"""
+    in_iteration_id: Optional[str] = None
+    """iteration id if node is in iteration"""
     start_at: datetime
 
     inputs: Optional[dict[str, Any]] = None

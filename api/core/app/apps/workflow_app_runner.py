@@ -203,7 +203,8 @@ class WorkflowBasedAppRunner(AppRunner):
                     parent_parallel_start_node_id=event.parent_parallel_start_node_id,
                     start_at=event.route_node_state.start_at,
                     node_run_index=event.route_node_state.index,
-                    predecessor_node_id=event.predecessor_node_id
+                    predecessor_node_id=event.predecessor_node_id,
+                    in_iteration_id=event.in_iteration_id
                 )
             )
         elif isinstance(event, NodeRunSucceededEvent):
@@ -226,6 +227,7 @@ class WorkflowBasedAppRunner(AppRunner):
                     if event.route_node_state.node_run_result else {},
                     execution_metadata=event.route_node_state.node_run_result.metadata
                     if event.route_node_state.node_run_result else {},
+                    in_iteration_id=event.in_iteration_id
                 )
             )
         elif isinstance(event, NodeRunFailedEvent):
@@ -249,20 +251,23 @@ class WorkflowBasedAppRunner(AppRunner):
                     error=event.route_node_state.node_run_result.error
                     if event.route_node_state.node_run_result
                        and event.route_node_state.node_run_result.error
-                    else "Unknown error"
+                    else "Unknown error",
+                    in_iteration_id=event.in_iteration_id
                 )
             )
         elif isinstance(event, NodeRunStreamChunkEvent):
             self._publish_event(
                 QueueTextChunkEvent(
                     text=event.chunk_content,
-                    from_variable_selector=event.from_variable_selector
+                    from_variable_selector=event.from_variable_selector,
+                    in_iteration_id=event.in_iteration_id
                 )
             )
         elif isinstance(event, NodeRunRetrieverResourceEvent):
             self._publish_event(
                 QueueRetrieverResourcesEvent(
-                    retriever_resources=event.retriever_resources
+                    retriever_resources=event.retriever_resources,
+                    in_iteration_id=event.in_iteration_id
                 )
             )
         elif isinstance(event, ParallelBranchRunStartedEvent):
