@@ -32,7 +32,7 @@ const translation = {
   pp: 'سیاست حفظ حریم خصوصی',
   tosDesc: 'با ثبت نام، شما با شرایط ما موافقت می‌کنید',
   goToInit: 'اگر حساب را اولیه نکرده‌اید، لطفاً به صفحه اولیه‌سازی بروید',
-  donthave: 'ندارید؟',
+  dontHave: 'ندارید؟',
   invalidInvitationCode: 'کد دعوت نامعتبر است',
   accountAlreadyInited: 'حساب قبلاً اولیه شده است',
   forgotPassword: 'رمز عبور خود را فراموش کرده‌اید؟',

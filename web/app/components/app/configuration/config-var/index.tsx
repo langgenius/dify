@@ -88,7 +88,6 @@ const ConfigVar: FC<IConfigVarProps> = ({ promptVariables, readonly, onPromptVar
     } as InputVar
   })()
   const updatePromptVariableItem = (payload: InputVar) => {
-    console.log(payload)
     const newPromptVariables = produce(promptVariables, (draft) => {
       const { variable, label, type, ...rest } = payload
       draft[currIndex] = {

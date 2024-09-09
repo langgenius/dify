@@ -227,6 +227,8 @@ export type DocumentReq = {
 export type CreateDocumentReq = DocumentReq & {
   data_source: DataSource
   retrieval_model: RetrievalConfig
+  embedding_model: string
+  embedding_model_provider: string
 }
 
 export type IndexingEstimateParams = DocumentReq & Partial<DataSource> & {
@@ -437,7 +439,7 @@ export type RelatedAppResponse = {
   total: number
 }
 
-export type SegmentUpdator = {
+export type SegmentUpdater = {
   content: string
   answer?: string
   keywords?: string[]

@@ -37,7 +37,7 @@ const translation = {
       recommend: 'おすすめ',
     },
     invertedIndex: {
-      title: '逆インデックス',
+      title: '転置インデックス',
       description: '効率的な検索に使用される構造です。各用語が含まれるドキュメントまたはWebページを指すように、用語ごとに整理されています。',
     },
     change: '変更',
@@ -53,6 +53,7 @@ const translation = {
     semantic_search: 'ベクトル検索',
     full_text_search: 'フルテキスト検索',
     hybrid_search: 'ハイブリッド検索',
+    invertedIndex: '逆さま',
   },
   mixtureHighQualityAndEconomicTip: '高品質なナレッジベースと経済的なナレッジベースを混在させるには、Rerankモデルを構成する必要がある。',
   inconsistentEmbeddingModelTip: '選択されたナレッジベースが一貫性のない埋め込みモデルで構成されている場合、Rerankモデルの構成が必要です。',

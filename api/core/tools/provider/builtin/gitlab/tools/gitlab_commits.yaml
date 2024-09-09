@@ -6,7 +6,7 @@ identity:
     zh_Hans: GitLab 提交内容查询
 description:
   human:
-    en_US: A tool for query GitLab commits, Input should be a exists username or projec.
+    en_US: A tool for query GitLab commits, Input should be a exists username or project.
     zh_Hans: 一个用于查询 GitLab 代码提交内容的工具，输入的内容应该是一个已存在的用户名或者项目名。
   llm: A tool for query GitLab commits, Input should be a exists username or project.
 parameters:

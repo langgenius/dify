@@ -2,7 +2,7 @@ const translation = {
   common: {
     welcome: '',
     appUnavailable: 'اپ در دسترس نیست',
-    appUnkonwError: 'اپ در دسترس نیست',
+    appUnknownError: 'اپ در دسترس نیست',
   },
   chat: {
     newChat: 'چت جدید',
@@ -10,7 +10,7 @@ const translation = {
     unpinnedTitle: 'چت‌ها',
     newChatDefaultName: 'مکالمه جدید',
     resetChat: 'بازنشانی مکالمه',
-    powerBy: 'قدرت‌گرفته از',
+    poweredBy: 'قدرت‌گرفته از',
     prompt: 'پیشنهاد',
     privatePromptConfigTitle: 'تنظیمات مکالمه',
     publicPromptConfigTitle: 'پیشنهاد اولیه',

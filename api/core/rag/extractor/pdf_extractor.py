@@ -2,7 +2,7 @@
 from collections.abc import Iterator
 from typing import Optional
 
-from core.rag.extractor.blod.blod import Blob
+from core.rag.extractor.blob.blob import Blob
 from core.rag.extractor.extractor_base import BaseExtractor
 from core.rag.models.document import Document
 from extensions.ext_storage import storage
