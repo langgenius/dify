@@ -15,7 +15,10 @@ export default function Countdown({ onResend }: CountdownProps) {
   const [leftTime, setLeftTime] = useState(Number(localStorage.getItem(COUNT_DOWN_KEY) || COUNT_DOWN_TIME_MS))
   const [time] = useCountDown({
     leftTime,
-    onEnd: () => { localStorage.removeItem(COUNT_DOWN_KEY) },
+    onEnd: () => {
+      setLeftTime(0)
+      localStorage.removeItem(COUNT_DOWN_KEY)
+    },
   })
 
   const resend = async function () {
