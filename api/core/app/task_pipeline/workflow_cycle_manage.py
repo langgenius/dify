@@ -394,6 +394,7 @@ class WorkflowCycleManage:
                 parallel_start_node_id=event.parallel_start_node_id,
                 parent_parallel_id=event.parent_parallel_id,
                 parent_parallel_start_node_id=event.parent_parallel_start_node_id,
+                iteration_id=event.in_iteration_id,
             ),
         )
 
@@ -448,6 +449,7 @@ class WorkflowCycleManage:
                 parallel_start_node_id=event.parallel_start_node_id,
                 parent_parallel_id=event.parent_parallel_id,
                 parent_parallel_start_node_id=event.parent_parallel_start_node_id,
+                iteration_id=event.in_iteration_id,
             ),
         )
     
