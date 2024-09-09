@@ -42,7 +42,7 @@ class LoginApi(Resource):
             raise PasswordMismatchError()
         except services.errors.account.AccountNotFound:
             if not dify_config.ALLOW_REGISTER:
-                raise NotAllowedCreateWorkspace()
+                raise NotAllowedRegister()
 
             token = AccountService.send_reset_password_email(email=args["email"])
             return {"result": "fail", "data": token, "message": "account_not_found"}
