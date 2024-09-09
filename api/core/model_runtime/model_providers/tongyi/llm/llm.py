@@ -17,7 +17,6 @@ from dashscope.common.error import (
     UnsupportedModel,
 )
 
-from core.model_runtime.callbacks.base_callback import Callback
 from core.model_runtime.entities.llm_entities import LLMResult, LLMResultChunk, LLMResultChunkDelta
 from core.model_runtime.entities.message_entities import (
     AssistantPromptMessage,
