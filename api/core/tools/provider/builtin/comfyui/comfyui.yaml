@@ -1,0 +1,26 @@
+identity:
+  author: Dify
+  name: comfyui
+  label:
+    en_US: ComfyUI
+    zh_Hans: ComfyUI
+    pt_BR: ComfyUI
+  description:
+    en_US: ComfyUI is a tool for generating images which can be deployed locally.
+    zh_Hans: ComfyUI 是一个可以在本地部署的图片生成的工具。
+    pt_BR: ComfyUI is a tool for generating images which can be deployed locally.
+  icon: icon.png
+  tags:
+    - image
+credentials_for_provider:
+  base_url:
+    type: secret-input
+    required: true
+    label:
+      en_US: Base URL
+      zh_Hans: ComfyUI服务器的Base URL
+      pt_BR: Base URL
+    placeholder:
+      en_US: Please input your ComfyUI server's Base URL
+      zh_Hans: 请输入你的 ComfyUI 服务器的 Base URL
+      pt_BR: Please input your ComfyUI server's Base URL
