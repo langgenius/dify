@@ -412,6 +412,7 @@ const translation = {
         'not empty': 'không trống',
         'null': 'là null',
         'not null': 'không là null',
+        'regex match': 'Trận đấu Regex',
       },
       enterValue: 'Nhập giá trị',
       addCondition: 'Thêm điều kiện',

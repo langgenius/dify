@@ -70,6 +70,7 @@ const translation = {
   nTo1RetrievalLegacy: 'N-대-1 검색은 9월부터 공식적으로 더 이상 사용되지 않습니다. 더 나은 결과를 얻으려면 최신 다중 경로 검색을 사용하는 것이 좋습니다.',
   nTo1RetrievalLegacyLink: '자세히 알아보기',
   nTo1RetrievalLegacyLinkText: 'N-대-1 검색은 9월에 공식적으로 더 이상 사용되지 않습니다.',
+  defaultRetrievalTip: '다중 경로 검색이 기본적으로 사용됩니다. 지식은 여러 기술 자료에서 검색된 다음 순위가 다시 매겨집니다.',
 }
 
 export default translation

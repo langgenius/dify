@@ -431,6 +431,7 @@ const translation = {
         'not empty': 'non è vuoto',
         'null': 'è nullo',
         'not null': 'non è nullo',
+        'regex match': 'Corrispondenza regex',
       },
       enterValue: 'Inserisci valore',
       addCondition: 'Aggiungi Condizione',

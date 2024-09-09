@@ -37,6 +37,7 @@ const translation = {
     params: 'Paramètres',
     duplicate: 'Dupliquer',
     rename: 'Renommer',
+    audioSourceUnavailable: 'AudioSource n’est pas disponible',
   },
   placeholder: {
     input: 'Veuillez entrer',

@@ -412,6 +412,7 @@ const translation = {
         'not empty': 'не пусто',
         'null': 'null',
         'not null': 'не null',
+        'regex match': 'Совпадение с регулярным выражением',
       },
       enterValue: 'Введите значение',
       addCondition: 'Добавить условие',

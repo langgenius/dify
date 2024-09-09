@@ -412,6 +412,7 @@ const translation = {
         'not empty': '비어 있지 않음',
         'null': 'null임',
         'not null': 'null이 아님',
+        'regex match': '정규식 일치',
       },
       enterValue: '값 입력',
       addCondition: '조건 추가',

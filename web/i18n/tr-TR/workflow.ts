@@ -413,6 +413,7 @@ const translation = {
         'not empty': 'boş değil',
         'null': 'null',
         'not null': 'null değil',
+        'regex match': 'normal ifade maçı',
       },
       enterValue: 'Değer girin',
       addCondition: 'Koşul Ekle',

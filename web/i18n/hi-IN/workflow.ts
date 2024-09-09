@@ -427,6 +427,7 @@ const translation = {
         'not empty': 'खाली नहीं है',
         'null': 'शून्य है',
         'not null': 'शून्य नहीं है',
+        'regex match': 'रेगेक्स मैच',
       },
       enterValue: 'मान दर्ज करें',
       addCondition: 'शर्त जोड़ें',

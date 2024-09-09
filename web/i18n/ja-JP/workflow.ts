@@ -412,6 +412,7 @@ const translation = {
         'not empty': '空でない',
         'null': 'null',
         'not null': 'nullでない',
+        'regex match': '正規表現マッチ',
       },
       enterValue: '値を入力',
       addCondition: '条件を追加',
