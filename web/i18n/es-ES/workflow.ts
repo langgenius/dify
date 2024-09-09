@@ -412,6 +412,7 @@ const translation = {
         'not empty': 'no está vacío',
         'null': 'es nulo',
         'not null': 'no es nulo',
+        'regex match': 'Coincidencia de expresiones regulares',
       },
       enterValue: 'Ingresa un valor',
       addCondition: 'Agregar condición',

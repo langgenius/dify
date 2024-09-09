@@ -71,6 +71,7 @@ const translation = {
   nTo1RetrievalLegacy: 'Truy xuất N-đến-1 sẽ chính thức bị loại bỏ từ tháng 9. Khuyến nghị sử dụng truy xuất đa đường dẫn mới nhất để có kết quả tốt hơn.',
   nTo1RetrievalLegacyLink: 'Tìm hiểu thêm',
   nTo1RetrievalLegacyLinkText: 'Truy xuất N-đến-1 sẽ chính thức bị loại bỏ vào tháng 9.',
+  defaultRetrievalTip: 'Truy xuất nhiều đường dẫn được sử dụng theo mặc định. Kiến thức được lấy từ nhiều cơ sở kiến thức và sau đó được xếp hạng lại.',
 }
 
 export default translation

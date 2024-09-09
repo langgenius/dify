@@ -37,6 +37,7 @@ const translation = {
     params: 'Parametri',
     duplicate: 'Duplică',
     rename: 'Redenumește',
+    audioSourceUnavailable: 'Sursa audio nu este disponibilă',
   },
   placeholder: {
     input: 'Vă rugăm să introduceți',

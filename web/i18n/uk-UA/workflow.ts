@@ -412,6 +412,7 @@ const translation = {
         'not empty': 'не порожній',
         'null': 'є null',
         'not null': 'не є null',
+        'regex match': 'Регулярний вираз збігу',
       },
       enterValue: 'Введіть значення',
       addCondition: 'Додати умову',

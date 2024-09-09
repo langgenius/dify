@@ -412,6 +412,7 @@ const translation = {
         'not empty': 'ist nicht leer',
         'null': 'ist null',
         'not null': 'ist nicht null',
+        'regex match': 'Regex-Übereinstimmung',
       },
       enterValue: 'Wert eingeben',
       addCondition: 'Bedingung hinzufügen',

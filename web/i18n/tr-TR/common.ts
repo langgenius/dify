@@ -37,6 +37,7 @@ const translation = {
     params: 'Parametreler',
     duplicate: 'Çoğalt',
     rename: 'Yeniden Adlandır',
+    audioSourceUnavailable: 'AudioSource kullanılamıyor',
   },
   errorMsg: {
     fieldRequired: '{{field}} gereklidir',

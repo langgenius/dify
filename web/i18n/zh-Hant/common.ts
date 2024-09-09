@@ -37,6 +37,7 @@ const translation = {
     params: '引數設定',
     duplicate: '複製',
     rename: '重新命名',
+    audioSourceUnavailable: 'AudioSource 不可用',
   },
   placeholder: {
     input: '請輸入',

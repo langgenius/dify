@@ -37,6 +37,7 @@ const translation = {
     params: 'پارامترها',
     duplicate: 'تکرار',
     rename: 'تغییر نام',
+    audioSourceUnavailable: 'منبع صوتی در دسترس نیست',
   },
   errorMsg: {
     fieldRequired: '{{field}} الزامی است',
