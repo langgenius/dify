@@ -1,14 +1,12 @@
 import type { FC } from 'react'
-import { useRef } from 'react'
 import { t } from 'i18next'
 import { createPortal } from 'react-dom'
 import { RiCloseLine, RiExternalLinkLine } from '@remixicon/react'
 import Tooltip from '@/app/components/base/tooltip'
-import { randomString } from '@/utils'
 
 type ImagePreviewProps = {
   url: string
-  title: string
+  title?: string
   onCancel: () => void
 }
 const ImagePreview: FC<ImagePreviewProps> = ({
@@ -16,8 +14,6 @@ const ImagePreview: FC<ImagePreviewProps> = ({
   title,
   onCancel,
 }) => {
-  const selector = useRef(`copy-tooltip-${randomString(4)}`)
-
   const openInNewTab = () => {
     // Open in a new window, considering the case when the page is inside an iframe
     if (url.startsWith('http')) {
@@ -48,9 +44,7 @@ const ImagePreview: FC<ImagePreviewProps> = ({
         <RiCloseLine className='w-4 h-4 text-white' />
       </div>
       <Tooltip
-        selector={selector.current}
-        content={(t('common.operation.openInNewTab') ?? 'Open in new tab')}
-        className='z-10'
+        popupContent={t('common.operation.openInNewTab')}
       >
         <div
           className='absolute top-6 right-16 flex items-center justify-center w-8 h-8 rounded-lg cursor-pointer'

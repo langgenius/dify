@@ -5,7 +5,6 @@ import {
   RiCloseLine,
   RiLoader2Line,
 } from '@remixicon/react'
-import videoThumbImg from './video-thumb.png'
 import cn from '@/utils/classnames'
 import { RefreshCcw01 } from '@/app/components/base/icons/src/vender/line/arrows'
 import { AlertTriangle } from '@/app/components/base/icons/src/vender/solid/alertsAndFeedback'
@@ -13,6 +12,7 @@ import Tooltip from '@/app/components/base/tooltip'
 import type { ImageFile } from '@/types/app'
 import { TransferMethod } from '@/types/app'
 import ImagePreview from '@/app/components/base/image-uploader/image-preview'
+import VideoPreview from '@/app/components/base/image-uploader/video-preview'
 import { isVideoLink } from '@/app/components/base/image-uploader/utils'
 
 type ImageListProps = {
@@ -34,6 +34,7 @@ const ImageList: FC<ImageListProps> = ({
 }) => {
   const { t } = useTranslation()
   const [imagePreviewUrl, setImagePreviewUrl] = useState('')
+  const [videoPreviewUrl, setVideoPreviewUrl] = useState('')
 
   const handleImageLinkLoadSuccess = (item: ImageFile) => {
     if (
@@ -46,6 +47,10 @@ const ImageList: FC<ImageListProps> = ({
   const handleImageLinkLoadError = (item: ImageFile) => {
     if (item.type === TransferMethod.remote_url && onImageLinkLoadError)
       onImageLinkLoadError(item._id)
+  }
+
+  const getItemUrl = (item: ImageFile) => {
+    return item.type === TransferMethod.remote_url ? item.url : item.base64Url
   }
 
   return (
@@ -75,7 +80,7 @@ const ImageList: FC<ImageListProps> = ({
               )}
             </>
           )}
-          {item.type === TransferMethod.remote_url && item.progress !== 100 && (
+          {item.type === TransferMethod.remote_url && item.progress !== 100 && !isVideoLink(item.url) && (
             <div
               className={`
                   absolute inset-0 flex items-center justify-center rounded-lg z-[1] border
@@ -97,30 +102,29 @@ const ImageList: FC<ImageListProps> = ({
               )}
             </div>
           )}
-          <img
-            className="w-16 h-16 rounded-lg object-cover cursor-pointer border-[0.5px] border-black/5"
-            alt={item.file?.name}
-            onLoad={() => handleImageLinkLoadSuccess(item)}
-            onError={() => handleImageLinkLoadError(item)}
-            src={
-              isVideoLink(item.url)
-                ? videoThumbImg.src
-                : item.type === TransferMethod.remote_url
-                  ? item.url
-                  : item.base64Url
-            }
-            onClick={
-              isVideoLink(item.url)
-                ? undefined
-                : () =>
+          {
+            (isVideoLink(item.url) || item.file?.type?.includes('video'))
+              ? <video
+                className="w-16 h-16 rounded-lg object-cover cursor-pointer border-[0.5px] border-black/5"
+                src={getItemUrl(item)}
+                disablePictureInPicture
+                onLoadedMetadata={e => e.currentTarget.addEventListener('click', () => {
+                  setVideoPreviewUrl(getItemUrl(item) as string)
+                })}
+              />
+              // eslint-disable-next-line @next/next/no-img-element
+              : <img
+                className="w-16 h-16 rounded-lg object-cover cursor-pointer border-[0.5px] border-black/5"
+                alt={item.file?.name}
+                onLoad={() => handleImageLinkLoadSuccess(item)}
+                onError={() => handleImageLinkLoadError(item)}
+                src={getItemUrl(item)}
+                onClick={() =>
                   item.progress === 100
-                  && setImagePreviewUrl(
-                    (item.type === TransferMethod.remote_url
-                      ? item.url
-                      : item.base64Url) as string,
-                  )
-            }
-          />
+                  && setImagePreviewUrl(getItemUrl(item) as string)
+                }
+              />
+          }
           {!readonly && (
             <button
               type="button"
@@ -140,6 +144,12 @@ const ImageList: FC<ImageListProps> = ({
         <ImagePreview
           url={imagePreviewUrl}
           onCancel={() => setImagePreviewUrl('')}
+        />
+      )}
+      {videoPreviewUrl && (
+        <VideoPreview
+          url={videoPreviewUrl}
+          onCancel={() => setVideoPreviewUrl('')}
         />
       )}
     </div>

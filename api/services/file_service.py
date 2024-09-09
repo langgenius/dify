@@ -20,6 +20,9 @@ from services.errors.file import FileTooLargeError, UnsupportedFileTypeError
 IMAGE_EXTENSIONS = ["jpg", "jpeg", "png", "webp", "gif", "svg"]
 IMAGE_EXTENSIONS.extend([ext.upper() for ext in IMAGE_EXTENSIONS])
 
+VIDEO_EXTENSIONS = ["mp4", "avi", "mkv", "mov", "flv", "wmv"]
+VIDEO_EXTENSIONS.extend([ext.upper() for ext in VIDEO_EXTENSIONS])
+
 ALLOWED_EXTENSIONS = ["txt", "markdown", "md", "pdf", "html", "htm", "xlsx", "xls", "docx", "csv"]
 UNSTRUCTURED_ALLOWED_EXTENSIONS = [
     "txt",
@@ -51,11 +54,8 @@ class FileService:
         if len(filename) > 200:
             filename = filename.split(".")[0][:200] + "." + extension
         etl_type = dify_config.ETL_TYPE
-        allowed_extensions = (
-            UNSTRUCTURED_ALLOWED_EXTENSIONS + IMAGE_EXTENSIONS
-            if etl_type == "Unstructured"
-            else ALLOWED_EXTENSIONS + IMAGE_EXTENSIONS
-        )
+        etl_extensions = UNSTRUCTURED_ALLOWED_EXTENSIONS if etl_type == "Unstructured" else ALLOWED_EXTENSIONS
+        allowed_extensions = etl_extensions + IMAGE_EXTENSIONS + VIDEO_EXTENSIONS
         if extension.lower() not in allowed_extensions:
             raise UnsupportedFileTypeError()
         elif only_image and extension.lower() not in IMAGE_EXTENSIONS:

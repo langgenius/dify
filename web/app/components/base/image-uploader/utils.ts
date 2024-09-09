@@ -36,5 +36,5 @@ export const imageUpload: ImageUpload = ({
 }
 
 export const isVideoLink = (url: string): boolean => {
-  return /\.(mp4|mov|avi|mkv|flv|wmv)$/i.test(url)
+  return /^(http:\/\/.*\.(mp4|mov|avi|mkv|flv|wmv)$|data:video\/(mp4|mov|avi|mkv|flv|wmv))/i.test(url)
 }

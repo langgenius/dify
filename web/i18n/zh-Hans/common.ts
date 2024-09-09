@@ -38,6 +38,7 @@ const translation = {
     duplicate: '复制',
     rename: '重命名',
     audioSourceUnavailable: '音源不可用',
+    openInNewTab: '在新标签页打开',
   },
   errorMsg: {
     fieldRequired: '{{field}} 为必填项',

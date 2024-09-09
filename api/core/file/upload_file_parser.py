@@ -12,6 +12,9 @@ from extensions.ext_storage import storage
 IMAGE_EXTENSIONS = ['jpg', 'jpeg', 'png', 'webp', 'gif', 'svg']
 IMAGE_EXTENSIONS.extend([ext.upper() for ext in IMAGE_EXTENSIONS])
 
+VIDEO_EXTENSIONS = ["mp4", "avi", "mkv", "mov", "flv", "wmv"]
+VIDEO_EXTENSIONS.extend([ext.upper() for ext in VIDEO_EXTENSIONS])
+
 
 class UploadFileParser:
     @classmethod
@@ -19,7 +22,7 @@ class UploadFileParser:
         if not upload_file:
             return None
 
-        if upload_file.extension not in IMAGE_EXTENSIONS:
+        if upload_file.extension not in (IMAGE_EXTENSIONS + VIDEO_EXTENSIONS):
             return None
 
         if dify_config.MULTIMODAL_SEND_IMAGE_FORMAT == 'url' or force_url:
@@ -40,7 +43,7 @@ class UploadFileParser:
         """
         get signed url from upload file
 
-        :param upload_file: UploadFile object
+        :param upload_file_id: UploadFile object
         :return:
         """
         base_url = dify_config.FILES_URL

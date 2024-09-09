@@ -12,6 +12,8 @@ import { QuestionTriangle } from '@/app/components/base/icons/src/vender/solid/g
 import { User } from '@/app/components/base/icons/src/public/avatar'
 import { Markdown } from '@/app/components/base/markdown'
 import ImageGallery from '@/app/components/base/image-gallery'
+import VideoGallery from '@/app/components/base/video-gallery'
+import { isVideoLink } from '@/app/components/base/image-uploader/utils'
 
 type QuestionProps = {
   item: ChatItem
@@ -28,7 +30,8 @@ const Question: FC<QuestionProps> = ({
     message_files,
   } = item
 
-  const imgSrcs = message_files?.length ? message_files.map(item => item.url) : []
+  const fileSrcs = message_files?.length ? message_files.map(item => item.url) : []
+  const isFirstFileVideo = message_files?.length ? isVideoLink(message_files[0].url) : false
   return (
     <div className='flex justify-end mb-2 last:mb-0 pl-10'>
       <div className='group relative mr-4'>
@@ -41,8 +44,10 @@ const Question: FC<QuestionProps> = ({
           style={theme?.chatBubbleColorStyle ? CssTransform(theme.chatBubbleColorStyle) : {}}
         >
           {
-            !!imgSrcs.length && (
-              <ImageGallery srcs={imgSrcs} />
+            !!fileSrcs.length && (
+              isFirstFileVideo
+                ? <VideoGallery srcs={fileSrcs} />
+                : <ImageGallery srcs={fileSrcs} />
             )
           }
           <Markdown content={content} />

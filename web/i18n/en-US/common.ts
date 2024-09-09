@@ -38,6 +38,7 @@ const translation = {
     duplicate: 'Duplicate',
     rename: 'Rename',
     audioSourceUnavailable: 'AudioSource is unavailable',
+    openInNewTab: 'Open in new tab',
   },
   errorMsg: {
     fieldRequired: '{{field}} is required',

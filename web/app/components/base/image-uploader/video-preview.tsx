@@ -4,7 +4,7 @@ import { RiCloseLine } from '@remixicon/react'
 
 type VideoPreviewProps = {
   url: string
-  title: string
+  title?: string
   onCancel: () => void
 }
 const VideoPreview: FC<VideoPreviewProps> = ({

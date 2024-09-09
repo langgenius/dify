@@ -9,7 +9,7 @@ from core.file.file_obj import FileBelongsTo, FileExtraConfig, FileTransferMetho
 from extensions.ext_database import db
 from models.account import Account
 from models.model import EndUser, MessageFile, UploadFile
-from services.file_service import IMAGE_EXTENSIONS
+from services.file_service import IMAGE_EXTENSIONS, VIDEO_EXTENSIONS
 
 
 class MessageFileParser:
@@ -87,7 +87,7 @@ class MessageFileParser:
                             UploadFile.tenant_id == self.tenant_id,
                             UploadFile.created_by == user.id,
                             UploadFile.created_by_role == ('account' if isinstance(user, Account) else 'end_user'),
-                            UploadFile.extension.in_(IMAGE_EXTENSIONS)
+                            UploadFile.extension.in_(IMAGE_EXTENSIONS + VIDEO_EXTENSIONS)
                         ).first())
 
                         # check upload file is belong to tenant and user
