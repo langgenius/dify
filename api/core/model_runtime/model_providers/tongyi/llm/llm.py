@@ -64,7 +64,7 @@ class TongyiLargeLanguageModel(LargeLanguageModel):
         :param user: unique user id
         :return: full response or stream response chunk generator result
         """
-        # invoke model
+        # invoke model without code wrapper
         return self._generate(model, credentials, prompt_messages, model_parameters, tools, stop, stream, user)
     def get_num_tokens(self, model: str, credentials: dict, prompt_messages: list[PromptMessage],
                        tools: Optional[list[PromptMessageTool]] = None) -> int:
