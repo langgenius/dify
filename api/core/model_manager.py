@@ -1,6 +1,6 @@
 import logging
 import os
-from collections.abc import Callable, Generator
+from collections.abc import Callable, Generator, Sequence
 from typing import IO, Optional, Union, cast
 
 from core.entities.provider_configuration import ProviderConfiguration, ProviderModelBundle
@@ -41,7 +41,7 @@ class ModelInstance:
             configuration=provider_model_bundle.configuration,
             model_type=provider_model_bundle.model_type_instance.model_type,
             model=model,
-            credentials=self.credentials
+            credentials=self.credentials,
         )
 
     @staticmethod
@@ -54,10 +54,7 @@ class ModelInstance:
         """
         configuration = provider_model_bundle.configuration
         model_type = provider_model_bundle.model_type_instance.model_type
-        credentials = configuration.get_current_credentials(
-            model_type=model_type,
-            model=model
-        )
+        credentials = configuration.get_current_credentials(model_type=model_type, model=model)
 
         if credentials is None:
             raise ProviderTokenNotInitError(f"Model {model} credentials is not initialized.")
@@ -65,10 +62,9 @@ class ModelInstance:
         return credentials
 
     @staticmethod
-    def _get_load_balancing_manager(configuration: ProviderConfiguration,
-                                    model_type: ModelType,
-                                    model: str,
-                                    credentials: dict) -> Optional["LBModelManager"]:
+    def _get_load_balancing_manager(
+        configuration: ProviderConfiguration, model_type: ModelType, model: str, credentials: dict
+    ) -> Optional["LBModelManager"]:
         """
         Get load balancing model credentials
         :param configuration: provider configuration
@@ -81,8 +77,7 @@ class ModelInstance:
             current_model_setting = None
             # check if model is disabled by admin
             for model_setting in configuration.model_settings:
-                if (model_setting.model_type == model_type
-                        and model_setting.model == model):
+                if model_setting.model_type == model_type and model_setting.model == model:
                     current_model_setting = model_setting
                     break
 
@@ -95,17 +90,23 @@ class ModelInstance:
                     model_type=model_type,
                     model=model,
                     load_balancing_configs=current_model_setting.load_balancing_configs,
-                    managed_credentials=credentials if configuration.custom_configuration.provider else None
+                    managed_credentials=credentials if configuration.custom_configuration.provider else None,
                 )
 
                 return lb_model_manager
 
         return None
 
-    def invoke_llm(self, prompt_messages: list[PromptMessage], model_parameters: Optional[dict] = None,
-                   tools: Optional[list[PromptMessageTool]] = None, stop: Optional[list[str]] = None,
-                   stream: bool = True, user: Optional[str] = None, callbacks: Optional[list[Callback]] = None) \
-            -> Union[LLMResult, Generator]:
+    def invoke_llm(
+        self,
+        prompt_messages: list[PromptMessage],
+        model_parameters: Optional[dict] = None,
+        tools: Sequence[PromptMessageTool] | None = None,
+        stop: Optional[list[str]] = None,
+        stream: bool = True,
+        user: Optional[str] = None,
+        callbacks: Optional[list[Callback]] = None,
+    ) -> Union[LLMResult, Generator]:
         """
         Invoke large language model
 
@@ -132,11 +133,12 @@ class ModelInstance:
             stop=stop,
             stream=stream,
             user=user,
-            callbacks=callbacks
+            callbacks=callbacks,
         )
 
-    def get_llm_num_tokens(self, prompt_messages: list[PromptMessage],
-                           tools: Optional[list[PromptMessageTool]] = None) -> int:
+    def get_llm_num_tokens(
+        self, prompt_messages: list[PromptMessage], tools: Optional[list[PromptMessageTool]] = None
+    ) -> int:
         """
         Get number of tokens for llm
 
@@ -153,11 +155,10 @@ class ModelInstance:
             model=self.model,
             credentials=self.credentials,
             prompt_messages=prompt_messages,
-            tools=tools
+            tools=tools,
         )
 
-    def invoke_text_embedding(self, texts: list[str], user: Optional[str] = None) \
-            -> TextEmbeddingResult:
+    def invoke_text_embedding(self, texts: list[str], user: Optional[str] = None) -> TextEmbeddingResult:
         """
         Invoke large language model
 
@@ -174,7 +175,7 @@ class ModelInstance:
             model=self.model,
             credentials=self.credentials,
             texts=texts,
-            user=user
+            user=user,
         )
 
     def get_text_embedding_num_tokens(self, texts: list[str]) -> int:
@@ -192,13 +193,17 @@ class ModelInstance:
             function=self.model_type_instance.get_num_tokens,
             model=self.model,
             credentials=self.credentials,
-            texts=texts
+            texts=texts,
         )
 
-    def invoke_rerank(self, query: str, docs: list[str], score_threshold: Optional[float] = None,
-                      top_n: Optional[int] = None,
-                      user: Optional[str] = None) \
-            -> RerankResult:
+    def invoke_rerank(
+        self,
+        query: str,
+        docs: list[str],
+        score_threshold: Optional[float] = None,
+        top_n: Optional[int] = None,
+        user: Optional[str] = None,
+    ) -> RerankResult:
         """
         Invoke rerank model
 
@@ -221,11 +226,10 @@ class ModelInstance:
             docs=docs,
             score_threshold=score_threshold,
             top_n=top_n,
-            user=user
+            user=user,
         )
 
-    def invoke_moderation(self, text: str, user: Optional[str] = None) \
-            -> bool:
+    def invoke_moderation(self, text: str, user: Optional[str] = None) -> bool:
         """
         Invoke moderation model
 
@@ -242,11 +246,10 @@ class ModelInstance:
             model=self.model,
             credentials=self.credentials,
             text=text,
-            user=user
+            user=user,
         )
 
-    def invoke_speech2text(self, file: IO[bytes], user: Optional[str] = None) \
-            -> str:
+    def invoke_speech2text(self, file: IO[bytes], user: Optional[str] = None) -> str:
         """
         Invoke large language model
 
@@ -263,11 +266,10 @@ class ModelInstance:
             model=self.model,
             credentials=self.credentials,
             file=file,
-            user=user
+            user=user,
         )
 
-    def invoke_tts(self, content_text: str, tenant_id: str, voice: str, user: Optional[str] = None) \
-            -> str:
+    def invoke_tts(self, content_text: str, tenant_id: str, voice: str, user: Optional[str] = None) -> str:
         """
         Invoke large language tts model
 
@@ -288,7 +290,7 @@ class ModelInstance:
             content_text=content_text,
             user=user,
             tenant_id=tenant_id,
-            voice=voice
+            voice=voice,
         )
 
     def _round_robin_invoke(self, function: Callable, *args, **kwargs):
@@ -312,8 +314,8 @@ class ModelInstance:
                     raise last_exception
 
             try:
-                if 'credentials' in kwargs:
-                    del kwargs['credentials']
+                if "credentials" in kwargs:
+                    del kwargs["credentials"]
                 return function(*args, **kwargs, credentials=lb_config.credentials)
             except InvokeRateLimitError as e:
                 # expire in 60 seconds
@@ -340,9 +342,7 @@ class ModelInstance:
 
         self.model_type_instance = cast(TTSModel, self.model_type_instance)
         return self.model_type_instance.get_tts_model_voices(
-            model=self.model,
-            credentials=self.credentials,
-            language=language
+            model=self.model, credentials=self.credentials, language=language
         )
 
 
@@ -363,9 +363,7 @@ class ModelManager:
             return self.get_default_model_instance(tenant_id, model_type)
 
         provider_model_bundle = self._provider_manager.get_provider_model_bundle(
-            tenant_id=tenant_id,
-            provider=provider,
-            model_type=model_type
+            tenant_id=tenant_id, provider=provider, model_type=model_type
         )
 
         return ModelInstance(provider_model_bundle, model)
@@ -386,10 +384,7 @@ class ModelManager:
         :param model_type: model type
         :return:
         """
-        default_model_entity = self._provider_manager.get_default_model(
-            tenant_id=tenant_id,
-            model_type=model_type
-        )
+        default_model_entity = self._provider_manager.get_default_model(tenant_id=tenant_id, model_type=model_type)
 
         if not default_model_entity:
             raise ProviderTokenNotInitError(f"Default model not found for {model_type}")
@@ -398,17 +393,20 @@ class ModelManager:
             tenant_id=tenant_id,
             provider=default_model_entity.provider.provider,
             model_type=model_type,
-            model=default_model_entity.model
+            model=default_model_entity.model,
         )
 
 
 class LBModelManager:
-    def __init__(self, tenant_id: str,
-                 provider: str,
-                 model_type: ModelType,
-                 model: str,
-                 load_balancing_configs: list[ModelLoadBalancingConfiguration],
-                 managed_credentials: Optional[dict] = None) -> None:
+    def __init__(
+        self,
+        tenant_id: str,
+        provider: str,
+        model_type: ModelType,
+        model: str,
+        load_balancing_configs: list[ModelLoadBalancingConfiguration],
+        managed_credentials: Optional[dict] = None,
+    ) -> None:
         """
         Load balancing model manager
         :param tenant_id: tenant_id
@@ -439,10 +437,7 @@ class LBModelManager:
         :return:
         """
         cache_key = "model_lb_index:{}:{}:{}:{}".format(
-            self._tenant_id,
-            self._provider,
-            self._model_type.value,
-            self._model
+            self._tenant_id, self._provider, self._model_type.value, self._model
         )
 
         cooldown_load_balancing_configs = []
@@ -473,10 +468,12 @@ class LBModelManager:
 
                 continue
 
-            if bool(os.environ.get("DEBUG", 'False').lower() == 'true'):
-                logger.info(f"Model LB\nid: {config.id}\nname:{config.name}\n"
-                            f"tenant_id: {self._tenant_id}\nprovider: {self._provider}\n"
-                            f"model_type: {self._model_type.value}\nmodel: {self._model}")
+            if bool(os.environ.get("DEBUG", "False").lower() == "true"):
+                logger.info(
+                    f"Model LB\nid: {config.id}\nname:{config.name}\n"
+                    f"tenant_id: {self._tenant_id}\nprovider: {self._provider}\n"
+                    f"model_type: {self._model_type.value}\nmodel: {self._model}"
+                )
 
             return config
 
@@ -490,14 +487,10 @@ class LBModelManager:
         :return:
         """
         cooldown_cache_key = "model_lb_index:cooldown:{}:{}:{}:{}:{}".format(
-            self._tenant_id,
-            self._provider,
-            self._model_type.value,
-            self._model,
-            config.id
+            self._tenant_id, self._provider, self._model_type.value, self._model, config.id
         )
 
-        redis_client.setex(cooldown_cache_key, expire, 'true')
+        redis_client.setex(cooldown_cache_key, expire, "true")
 
     def in_cooldown(self, config: ModelLoadBalancingConfiguration) -> bool:
         """
@@ -506,11 +499,7 @@ class LBModelManager:
         :return:
         """
         cooldown_cache_key = "model_lb_index:cooldown:{}:{}:{}:{}:{}".format(
-            self._tenant_id,
-            self._provider,
-            self._model_type.value,
-            self._model,
-            config.id
+            self._tenant_id, self._provider, self._model_type.value, self._model, config.id
         )
 
         res = redis_client.exists(cooldown_cache_key)
@@ -518,11 +507,9 @@ class LBModelManager:
         return res
 
     @staticmethod
-    def get_config_in_cooldown_and_ttl(tenant_id: str,
-                                       provider: str,
-                                       model_type: ModelType,
-                                       model: str,
-                                       config_id: str) -> tuple[bool, int]:
+    def get_config_in_cooldown_and_ttl(
+        tenant_id: str, provider: str, model_type: ModelType, model: str, config_id: str
+    ) -> tuple[bool, int]:
         """
         Get model load balancing config is in cooldown and ttl
         :param tenant_id: workspace id
@@ -533,11 +520,7 @@ class LBModelManager:
         :return:
         """
         cooldown_cache_key = "model_lb_index:cooldown:{}:{}:{}:{}:{}".format(
-            tenant_id,
-            provider,
-            model_type.value,
-            model,
-            config_id
+            tenant_id, provider, model_type.value, model, config_id
         )
 
         ttl = redis_client.ttl(cooldown_cache_key)
