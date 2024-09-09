@@ -2,10 +2,10 @@ import json
 import os
 import random
 import uuid
-import websocket
 from copy import deepcopy
 from typing import Any, Union
 
+import websocket
 from httpx import get, post
 from yarl import URL
 
