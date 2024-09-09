@@ -1,7 +1,6 @@
-model: spark-4
-deprecated: true
+model: spark-lite
 label:
-  en_US: Spark V4.0
+  en_US: Spark Lite
 model_type: llm
 model_properties:
   mode: chat
@@ -16,10 +15,10 @@ parameter_rules:
     use_template: max_tokens
     default: 4096
     min: 1
-    max: 8192
+    max: 4096
     help:
       zh_Hans: 模型回答的tokens的最大长度。
-      en_US: 模型回答的tokens的最大长度。
+      en_US: Maximum length of tokens for the model response.
   - name: top_k
     label:
       zh_Hans: 取样数量
