@@ -1,13 +1,18 @@
+import logging
 from collections.abc import Callable
 from datetime import datetime, timezone, date, timedelta
 from enum import Enum
 from functools import wraps
 from typing import Optional
 
+import pandas as pd
+import requests
+from bs4 import BeautifulSoup
 from flask import current_app, request
 from flask_login import user_logged_in
 from flask_restful import Resource
 from pydantic import BaseModel
+from vnstock3 import Vnstock
 from werkzeug.exceptions import Forbidden, Unauthorized
 
 from extensions.ext_database import db
@@ -16,13 +21,8 @@ from models.account import Account, Tenant, TenantAccountJoin, TenantStatus
 from models.model import ApiToken, App, EndUser
 from services.feature_service import FeatureService
 
-import pandas as pd
-import requests
-from vnstock3 import Vnstock
-from bs4 import BeautifulSoup
-import logging
-
 logger = logging.getLogger(__name__)
+
 
 class WhereisUserArg(Enum):
     """
@@ -80,6 +80,7 @@ def validate_app_token(view: Optional[Callable] = None, *, fetch_user_arg: Optio
                 kwargs['end_user'] = create_or_update_end_user_for_user_id(app_model, user_id)
 
             return view_func(*args, **kwargs)
+
         return decorated_view
 
     if view is None:
@@ -88,8 +89,7 @@ def validate_app_token(view: Optional[Callable] = None, *, fetch_user_arg: Optio
         return decorator(view)
 
 
-def cloud_edition_billing_resource_check(resource: str,
-                                         api_token_type: str,
+def cloud_edition_billing_resource_check(resource: str, api_token_type: str,
                                          error_msg: str = "You have reached the limit of your subscription."):
     def interceptor(view):
         def decorated(*args, **kwargs):
@@ -114,12 +114,13 @@ def cloud_edition_billing_resource_check(resource: str,
                     return view(*args, **kwargs)
 
             return view(*args, **kwargs)
+
         return decorated
+
     return interceptor
 
 
-def cloud_edition_billing_knowledge_limit_check(resource: str,
-                                                api_token_type: str,
+def cloud_edition_billing_knowledge_limit_check(resource: str, api_token_type: str,
                                                 error_msg: str = "To unlock this feature and elevate your Dify experience, please upgrade to a paid plan."):
     def interceptor(view):
         @wraps(view)
@@ -139,17 +140,16 @@ def cloud_edition_billing_knowledge_limit_check(resource: str,
 
     return interceptor
 
+
 def validate_dataset_token(view=None):
     def decorator(view):
         @wraps(view)
         def decorated(*args, **kwargs):
             api_token = validate_and_get_api_token('dataset')
-            tenant_account_join = db.session.query(Tenant, TenantAccountJoin) \
-                .filter(Tenant.id == api_token.tenant_id) \
-                .filter(TenantAccountJoin.tenant_id == Tenant.id) \
-                .filter(TenantAccountJoin.role.in_(['owner'])) \
-                .filter(Tenant.status == TenantStatus.NORMAL) \
-                .one_or_none() # TODO: only owner information is required, so only one is returned.
+            tenant_account_join = db.session.query(Tenant, TenantAccountJoin).filter(
+                Tenant.id == api_token.tenant_id).filter(TenantAccountJoin.tenant_id == Tenant.id).filter(
+                TenantAccountJoin.role.in_(['owner'])).filter(
+                Tenant.status == TenantStatus.NORMAL).one_or_none()  # TODO: only owner information is required, so only one is returned.
             if tenant_account_join:
                 tenant, ta = tenant_account_join
                 account = Account.query.filter_by(id=ta.account_id).first()
@@ -163,6 +163,7 @@ def validate_dataset_token(view=None):
             else:
                 raise Unauthorized("Tenant does not exist.")
             return view(api_token.tenant_id, *args, **kwargs)
+
         return decorated
 
     if view:
@@ -187,10 +188,7 @@ def validate_and_get_api_token(scope=None):
     if auth_scheme != 'bearer':
         raise Unauthorized("Authorization scheme must be 'Bearer'")
 
-    api_token = db.session.query(ApiToken).filter(
-        ApiToken.token == auth_token,
-        ApiToken.type == scope,
-    ).first()
+    api_token = db.session.query(ApiToken).filter(ApiToken.token == auth_token, ApiToken.type == scope, ).first()
 
     if not api_token:
         raise Unauthorized("Access token is invalid")
@@ -208,22 +206,13 @@ def create_or_update_end_user_for_user_id(app_model: App, user_id: Optional[str]
     if not user_id:
         user_id = 'DEFAULT-USER'
 
-    end_user = db.session.query(EndUser) \
-        .filter(
-        EndUser.tenant_id == app_model.tenant_id,
-        EndUser.app_id == app_model.id,
-        EndUser.session_id == user_id,
-        EndUser.type == 'service_api'
-    ).first()
+    end_user = db.session.query(EndUser).filter(EndUser.tenant_id == app_model.tenant_id,
+                                                EndUser.app_id == app_model.id, EndUser.session_id == user_id,
+                                                EndUser.type == 'service_api').first()
 
     if end_user is None:
-        end_user = EndUser(
-            tenant_id=app_model.tenant_id,
-            app_id=app_model.id,
-            type='service_api',
-            is_anonymous=True if user_id == 'DEFAULT-USER' else False,
-            session_id=user_id
-        )
+        end_user = EndUser(tenant_id=app_model.tenant_id, app_id=app_model.id, type='service_api',
+            is_anonymous=True if user_id == 'DEFAULT-USER' else False, session_id=user_id)
         db.session.add(end_user)
         db.session.commit()
 
@@ -234,16 +223,15 @@ class DatasetApiResource(Resource):
     method_decorators = [validate_dataset_token]
 
 
-
-
 # get stock history of the company
 def get_stock_price(ticker, history=200):
     today = date.today()
     start_date = today - timedelta(days=history)
     stock = Vnstock().stock(symbol=ticker.strip(), source='TCBS')
-    data = stock.quote.history(start=start_date.strftime('%Y-%m-%d'),end=today.strftime('%Y-%m-%d'))
+    data = stock.quote.history(start=start_date.strftime('%Y-%m-%d'), end=today.strftime('%Y-%m-%d'))
     # logger.info(f"wraps get_stock_price {data}")
     return data
+
 
 # Function to safely get data and handle exceptions
 def safe_get_data(func, *args, **kwargs):
@@ -252,6 +240,7 @@ def safe_get_data(func, *args, **kwargs):
     except Exception as e:
         print(f"Error getting data: {e}")
         return pd.DataFrame()
+
 
 # Function to get financial data
 def get_financial_data(ticker):
@@ -262,21 +251,25 @@ def get_financial_data(ticker):
     # Create a dictionary to store all dataframes
     company_data = {
         'Balance Sheet Yearly': safe_get_data(stock_finance.finance.balance_sheet, period='year', lang='en'),
-        'Balance Sheet Quarterly': safe_get_data(stock_finance.finance.balance_sheet, period='quarter', lang='en').head(nquarter),
+        'Balance Sheet Quarterly': safe_get_data(stock_finance.finance.balance_sheet, period='quarter', lang='en').head(
+            nquarter),
         'Income Statement Yearly': safe_get_data(stock_finance.finance.income_statement, period='year', lang='en'),
-        'Income Statement Quarterly': safe_get_data(stock_finance.finance.income_statement, period='quarter', lang='en').head(nquarter),
+        'Income Statement Quarterly': safe_get_data(stock_finance.finance.income_statement, period='quarter',
+                                                    lang='en').head(nquarter),
         'Cash Flow Yearly': safe_get_data(stock_finance.finance.cash_flow, period='year', lang='en'),
-        'Cash Flow Quarterly': safe_get_data(stock_finance.finance.cash_flow, period='quarter', lang='en').head(nquarter),
-        'Financial Ratios Yearly': safe_get_data(stock_finance.finance.ratio, period='year', lang='en'),
-        'Financial Ratios Quarterly': safe_get_data(stock_finance.finance.ratio, period='quarter', lang='en').head(nquarter),
-    }
+        'Cash Flow Quarterly': safe_get_data(stock_finance.finance.cash_flow, period='quarter', lang='en').head(
+            nquarter), 'Financial Ratios Yearly': safe_get_data(stock_finance.finance.ratio, period='year', lang='en'),
+        'Financial Ratios Quarterly': safe_get_data(stock_finance.finance.ratio, period='quarter', lang='en').head(
+            nquarter), }
     # logger.info(f"wraps get_financial_data {company_data}")
     return company_data
+
 
 def get_financial_statements(ticker):
     stock = Vnstock().stock(symbol=ticker.upper(), source='VCI')
     data = stock.finance.balance_sheet(period='year', lang='en')
     return data
+
 
 def get_recent_stock_news(ticker):
     # get company name from ticker
@@ -284,11 +277,12 @@ def get_recent_stock_news(ticker):
     articles = fetch_news(ticker)
     content = []
     for article in articles:
-        content.append({'summary': article['summary'], 'content':[]})
-        #content.append({'summary': article['summary'], 'content':fetch_article_content(article['link'])})
+        content.append({'summary': article['summary'],
+                        'content': []})  # content.append({'summary': article['summary'], 'content':fetch_article_content(article['link'])})
     return content
 
-#search for news and scrape 5 recent news
+
+# search for news and scrape 5 recent news
 def fetch_news(query):
     base_url = "https://cafef.vn/tim-kiem.chn"
     # Configure the request parameters
@@ -308,10 +302,12 @@ def fetch_news(query):
         title_element = item.find('h3', class_='titlehidden').find('a')
         title = title_element.text.strip()
         link = 'https://cafef.vn' + title_element['href']
-        summary = item.find('p', class_='sapo').text.strip() if item.find('p', class_='sapo') else 'No summary available'
+        summary = item.find('p', class_='sapo').text.strip() if item.find('p',
+                                                                          class_='sapo') else 'No summary available'
         # Append news info to the list
         articles.append({'link': link, 'summary': summary})
     return articles[:5]
+
 
 # fetch article content from link
 def fetch_article_content(url):
@@ -328,3 +324,32 @@ def fetch_article_content(url):
     paragraphs = content_div.find_all('p')
     main_content = "\n".join(p.text.strip() for p in paragraphs)
     return main_content
+
+
+def search_data(search_query, api_key, search_engine_id, num_results):
+    url = 'https://www.googleapis.com/customsearch/v1'
+    logger.info(f"Query:{search_query}")
+    params = {'key': api_key, 'cx': search_engine_id, 'q': search_query, 'num': num_results}
+
+    response = requests.get(url, params=params)
+
+    if response.status_code == 200:
+        results = response.json()
+        return results.get('items', [])
+    else:
+        print(f"Error: {response.status_code}")
+        return []
+
+
+def get_first_page_content(data_input):
+    if type(data_input) is list:
+        url = data_input.get('items', [])[0]['link']
+        response = requests.get(url)
+    else:
+        raise
+    soup = BeautifulSoup(response.content, 'html.parser')
+
+    text_content = soup.get_text()
+
+    data_searched = text_content.strip().replace('\n', '')
+    return data_searched
