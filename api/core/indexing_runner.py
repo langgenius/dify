@@ -16,9 +16,7 @@ from configs import dify_config
 from core.errors.error import ProviderTokenNotInitError
 from core.llm_generator.llm_generator import LLMGenerator
 from core.model_manager import ModelInstance, ModelManager
-from core.model_runtime.entities.model_entities import ModelType, PriceType
-from core.model_runtime.model_providers.__base.large_language_model import LargeLanguageModel
-from core.model_runtime.model_providers.__base.text_embedding_model import TextEmbeddingModel
+from core.model_runtime.entities.model_entities import ModelType
 from core.rag.datasource.keyword.keyword_factory import Keyword
 from core.rag.docstore.dataset_docstore import DatasetDocumentStore
 from core.rag.extractor.entity.extract_setting import ExtractSetting
@@ -255,11 +253,8 @@ class IndexingRunner:
                     tenant_id=tenant_id,
                     model_type=ModelType.TEXT_EMBEDDING,
                 )
-        tokens = 0
         preview_texts = []
         total_segments = 0
-        total_price = 0
-        currency = 'USD'
         index_type = doc_form
         index_processor = IndexProcessorFactory(index_type).init_index_processor()
         all_text_docs = []
@@ -286,54 +281,22 @@ class IndexingRunner:
             for document in documents:
                 if len(preview_texts) < 5:
                     preview_texts.append(document.page_content)
-                if indexing_technique == 'high_quality' or embedding_model_instance:
-                    tokens += embedding_model_instance.get_text_embedding_num_tokens(
-                        texts=[self.filter_string(document.page_content)]
-                    )
 
         if doc_form and doc_form == 'qa_model':
-            model_instance = self.model_manager.get_default_model_instance(
-                tenant_id=tenant_id,
-                model_type=ModelType.LLM
-            )
-
-            model_type_instance = model_instance.model_type_instance
-            model_type_instance = cast(LargeLanguageModel, model_type_instance)
 
             if len(preview_texts) > 0:
                 # qa model document
                 response = LLMGenerator.generate_qa_document(current_user.current_tenant_id, preview_texts[0],
                                                              doc_language)
                 document_qa_list = self.format_split_text(response)
-                price_info = model_type_instance.get_price(
-                    model=model_instance.model,
-                    credentials=model_instance.credentials,
-                    price_type=PriceType.INPUT,
-                    tokens=total_segments * 2000,
-                )
+
                 return {
                     "total_segments": total_segments * 20,
-                    "tokens": total_segments * 2000,
-                    "total_price": '{:f}'.format(price_info.total_amount),
-                    "currency": price_info.currency,
                     "qa_preview": document_qa_list,
                     "preview": preview_texts
                 }
-        if embedding_model_instance:
-            embedding_model_type_instance = cast(TextEmbeddingModel, embedding_model_instance.model_type_instance)
-            embedding_price_info = embedding_model_type_instance.get_price(
-                model=embedding_model_instance.model,
-                credentials=embedding_model_instance.credentials,
-                price_type=PriceType.INPUT,
-                tokens=tokens
-            )
-            total_price = '{:f}'.format(embedding_price_info.total_amount)
-            currency = embedding_price_info.currency
         return {
             "total_segments": total_segments,
-            "tokens": tokens,
-            "total_price": total_price,
-            "currency": currency,
             "preview": preview_texts
         }
 
@@ -411,7 +374,8 @@ class IndexingRunner:
 
         return text_docs
 
-    def filter_string(self, text):
+    @staticmethod
+    def filter_string(text):
         text = re.sub(r'<\|', '<', text)
         text = re.sub(r'\|>', '>', text)
         text = re.sub(r'[\x00-\x08\x0B\x0C\x0E-\x1F\x7F\xEF\xBF\xBE]', '', text)
@@ -419,7 +383,8 @@ class IndexingRunner:
         text = re.sub('\uFFFE', '', text)
         return text
 
-    def _get_splitter(self, processing_rule: DatasetProcessRule,
+    @staticmethod
+    def _get_splitter(processing_rule: DatasetProcessRule,
                       embedding_model_instance: Optional[ModelInstance]) -> TextSplitter:
         """
         Get the NodeParser object according to the processing rule.
@@ -611,7 +576,8 @@ class IndexingRunner:
 
         return all_documents
 
-    def _document_clean(self, text: str, processing_rule: DatasetProcessRule) -> str:
+    @staticmethod
+    def _document_clean(text: str, processing_rule: DatasetProcessRule) -> str:
         """
         Clean the document text according to the processing rules.
         """
@@ -640,7 +606,8 @@ class IndexingRunner:
 
         return text
 
-    def format_split_text(self, text):
+    @staticmethod
+    def format_split_text(text):
         regex = r"Q\d+:\s*(.*?)\s*A\d+:\s*([\s\S]*?)(?=Q\d+:|$)"
         matches = re.findall(regex, text, re.UNICODE)
 
@@ -700,10 +667,12 @@ class IndexingRunner:
                 DatasetDocument.tokens: tokens,
                 DatasetDocument.completed_at: datetime.datetime.now(datetime.timezone.utc).replace(tzinfo=None),
                 DatasetDocument.indexing_latency: indexing_end_at - indexing_start_at,
+                DatasetDocument.error: None,
             }
         )
 
-    def _process_keyword_index(self, flask_app, dataset_id, document_id, documents):
+    @staticmethod
+    def _process_keyword_index(flask_app, dataset_id, document_id, documents):
         with flask_app.app_context():
             dataset = Dataset.query.filter_by(id=dataset_id).first()
             if not dataset:
@@ -714,6 +683,7 @@ class IndexingRunner:
                 document_ids = [document.metadata['doc_id'] for document in documents]
                 db.session.query(DocumentSegment).filter(
                     DocumentSegment.document_id == document_id,
+                    DocumentSegment.dataset_id == dataset_id,
                     DocumentSegment.index_node_id.in_(document_ids),
                     DocumentSegment.status == "indexing"
                 ).update({
@@ -745,6 +715,7 @@ class IndexingRunner:
             document_ids = [document.metadata['doc_id'] for document in chunk_documents]
             db.session.query(DocumentSegment).filter(
                 DocumentSegment.document_id == dataset_document.id,
+                DocumentSegment.dataset_id == dataset.id,
                 DocumentSegment.index_node_id.in_(document_ids),
                 DocumentSegment.status == "indexing"
             ).update({
@@ -757,13 +728,15 @@ class IndexingRunner:
 
             return tokens
 
-    def _check_document_paused_status(self, document_id: str):
+    @staticmethod
+    def _check_document_paused_status(document_id: str):
         indexing_cache_key = 'document_{}_is_paused'.format(document_id)
         result = redis_client.get(indexing_cache_key)
         if result:
             raise DocumentIsPausedException()
 
-    def _update_document_index_status(self, document_id: str, after_indexing_status: str,
+    @staticmethod
+    def _update_document_index_status(document_id: str, after_indexing_status: str,
                                       extra_update_params: Optional[dict] = None) -> None:
         """
         Update the document indexing status.
@@ -785,14 +758,16 @@ class IndexingRunner:
         DatasetDocument.query.filter_by(id=document_id).update(update_params)
         db.session.commit()
 
-    def _update_segments_by_document(self, dataset_document_id: str, update_params: dict) -> None:
+    @staticmethod
+    def _update_segments_by_document(dataset_document_id: str, update_params: dict) -> None:
         """
         Update the document segment by document id.
         """
         DocumentSegment.query.filter_by(document_id=dataset_document_id).update(update_params)
         db.session.commit()
 
-    def batch_add_segments(self, segments: list[DocumentSegment], dataset: Dataset):
+    @staticmethod
+    def batch_add_segments(segments: list[DocumentSegment], dataset: Dataset):
         """
         Batch add segments index processing
         """

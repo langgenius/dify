@@ -9,19 +9,17 @@ from tests.unit_tests.core.rag.extractor.test_notion_extractor import _mock_resp
 
 def test_firecrawl_web_extractor_crawl_mode(mocker):
     url = "https://firecrawl.dev"
-    api_key = os.getenv('FIRECRAWL_API_KEY') or 'fc-'
-    base_url = 'https://api.firecrawl.dev'
-    firecrawl_app = FirecrawlApp(api_key=api_key,
-                                 base_url=base_url)
+    api_key = os.getenv("FIRECRAWL_API_KEY") or "fc-"
+    base_url = "https://api.firecrawl.dev"
+    firecrawl_app = FirecrawlApp(api_key=api_key, base_url=base_url)
     params = {
-        'crawlerOptions': {
+        "crawlerOptions": {
             "includes": [],
             "excludes": [],
             "generateImgAltText": True,
             "maxDepth": 1,
             "limit": 1,
-            'returnOnlyUrls': False,
-
+            "returnOnlyUrls": False,
         }
     }
     mocked_firecrawl = {

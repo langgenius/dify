@@ -45,6 +45,32 @@ const translation = {
   },
   docsFailedNotice: 'документи не вдалося проіндексувати',
   retry: 'Повторити спробу',
+  indexingTechnique: {
+    high_quality: 'ВЯ',
+    economy: 'ЕКО',
+  },
+  indexingMethod: {
+    semantic_search: 'ВЕКТОР',
+    full_text_search: 'ПОВНИЙ ТЕКСТ',
+    hybrid_search: 'ГІБРИД',
+    invertedIndex: 'ІНВЕРТОВАНИЙ',
+  },
+  mixtureHighQualityAndEconomicTip: 'Модель перерангування потрібна для суміші високоякісних та економічних баз знань.',
+  inconsistentEmbeddingModelTip: 'Модель перерангування потрібна, якщо моделі вбудовування вибраних баз знань є несумісними.',
+  retrievalSettings: 'Налаштування пошуку',
+  rerankSettings: 'Налаштування перерангування',
+  weightedScore: {
+    title: 'Зважена оцінка',
+    description: 'Регулюючи призначені ваги, ця стратегія перерангування визначає, чи надавати пріоритет семантичному чи ключовому відповідності.',
+    semanticFirst: 'Спочатку семантичний',
+    keywordFirst: 'Спочатку ключове слово',
+    customized: 'Налаштований',
+    semantic: 'Семантичний',
+    keyword: 'Ключове слово',
+  },
+  nTo1RetrievalLegacy: 'N-до-1 пошук буде офіційно застарілим з вересня. Рекомендується використовувати найновіший багатошляховий пошук для отримання кращих результатів.',
+  nTo1RetrievalLegacyLink: 'Дізнатися більше',
+  nTo1RetrievalLegacyLinkText: 'N-до-1 пошук буде офіційно застарілим у вересні.',
 }
 
 export default translation

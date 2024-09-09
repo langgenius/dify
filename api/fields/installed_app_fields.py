@@ -10,6 +10,7 @@ app_fields = {
     "icon": fields.String,
     "icon_background": fields.String,
     "icon_url": AppIconUrlField,
+    "use_icon_as_answer_icon": fields.Boolean,
 }
 
 installed_app_fields = {

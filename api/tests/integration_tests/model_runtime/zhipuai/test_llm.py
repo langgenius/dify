@@ -18,41 +18,22 @@ def test_validate_credentials():
     model = ZhipuAILargeLanguageModel()
 
     with pytest.raises(CredentialsValidateFailedError):
-        model.validate_credentials(
-            model='chatglm_turbo',
-            credentials={
-                'api_key': 'invalid_key'
-            }
-        )
+        model.validate_credentials(model="chatglm_turbo", credentials={"api_key": "invalid_key"})
 
-    model.validate_credentials(
-        model='chatglm_turbo',
-        credentials={
-            'api_key': os.environ.get('ZHIPUAI_API_KEY')
-        }
-    )
+    model.validate_credentials(model="chatglm_turbo", credentials={"api_key": os.environ.get("ZHIPUAI_API_KEY")})
 
 
 def test_invoke_model():
     model = ZhipuAILargeLanguageModel()
 
     response = model.invoke(
-        model='chatglm_turbo',
-        credentials={
-            'api_key': os.environ.get('ZHIPUAI_API_KEY')
-        },
-        prompt_messages=[
-            UserPromptMessage(
-                content='Who are you?'
-            )
-        ],
-        model_parameters={
-            'temperature': 0.9,
-            'top_p': 0.7
-        },
-        stop=['How'],
+        model="chatglm_turbo",
+        credentials={"api_key": os.environ.get("ZHIPUAI_API_KEY")},
+        prompt_messages=[UserPromptMessage(content="Who are you?")],
+        model_parameters={"temperature": 0.9, "top_p": 0.7},
+        stop=["How"],
         stream=False,
-        user="abc-123"
+        user="abc-123",
     )
 
     assert isinstance(response, LLMResult)
@@ -63,21 +44,12 @@ def test_invoke_stream_model():
     model = ZhipuAILargeLanguageModel()
 
     response = model.invoke(
-        model='chatglm_turbo',
-        credentials={
-            'api_key': os.environ.get('ZHIPUAI_API_KEY')
-        },
-        prompt_messages=[
-            UserPromptMessage(
-                content='Hello World!'
-            )
-        ],
-        model_parameters={
-            'temperature': 0.9,
-            'top_p': 0.7
-        },
+        model="chatglm_turbo",
+        credentials={"api_key": os.environ.get("ZHIPUAI_API_KEY")},
+        prompt_messages=[UserPromptMessage(content="Hello World!")],
+        model_parameters={"temperature": 0.9, "top_p": 0.7},
         stream=True,
-        user="abc-123"
+        user="abc-123",
     )
 
     assert isinstance(response, Generator)
@@ -93,63 +65,45 @@ def test_get_num_tokens():
     model = ZhipuAILargeLanguageModel()
 
     num_tokens = model.get_num_tokens(
-        model='chatglm_turbo',
-        credentials={
-            'api_key': os.environ.get('ZHIPUAI_API_KEY')
-        },
+        model="chatglm_turbo",
+        credentials={"api_key": os.environ.get("ZHIPUAI_API_KEY")},
         prompt_messages=[
             SystemPromptMessage(
-                content='You are a helpful AI assistant.',
+                content="You are a helpful AI assistant.",
             ),
-            UserPromptMessage(
-                content='Hello World!'
-            )
-        ]
+            UserPromptMessage(content="Hello World!"),
+        ],
     )
 
     assert num_tokens == 14
+
 
 def test_get_tools_num_tokens():
     model = ZhipuAILargeLanguageModel()
 
     num_tokens = model.get_num_tokens(
-        model='tools',
-        credentials={
-            'api_key': os.environ.get('ZHIPUAI_API_KEY')
-        },
+        model="tools",
+        credentials={"api_key": os.environ.get("ZHIPUAI_API_KEY")},
         tools=[
             PromptMessageTool(
-                name='get_current_weather',
-                description='Get the current weather in a given location',
+                name="get_current_weather",
+                description="Get the current weather in a given location",
                 parameters={
                     "type": "object",
                     "properties": {
-                        "location": {
-                        "type": "string",
-                            "description": "The city and state e.g. San Francisco, CA"
-                        },
-                        "unit": {
-                            "type": "string",
-                            "enum": [
-                                "c",
-                                "f"
-                            ]
-                        }
+                        "location": {"type": "string", "description": "The city and state e.g. San Francisco, CA"},
+                        "unit": {"type": "string", "enum": ["c", "f"]},
                     },
-                    "required": [
-                        "location"
-                    ]
-                }
+                    "required": ["location"],
+                },
             )
         ],
         prompt_messages=[
             SystemPromptMessage(
-                content='You are a helpful AI assistant.',
+                content="You are a helpful AI assistant.",
             ),
-            UserPromptMessage(
-                content='Hello World!'
-            )
-        ]
+            UserPromptMessage(content="Hello World!"),
+        ],
     )
 
     assert num_tokens == 88

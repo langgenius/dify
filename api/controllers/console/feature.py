@@ -10,7 +10,6 @@ from .wraps import account_initialization_required, cloud_utm_record
 
 
 class FeatureApi(Resource):
-
     @setup_required
     @login_required
     @account_initialization_required
@@ -24,5 +23,5 @@ class SystemFeatureApi(Resource):
         return FeatureService.get_system_features().model_dump()
 
 
-api.add_resource(FeatureApi, '/features')
-api.add_resource(SystemFeatureApi, '/system-features')
+api.add_resource(FeatureApi, "/features")
+api.add_resource(SystemFeatureApi, "/system-features")

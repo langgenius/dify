@@ -4,7 +4,7 @@ import os
 import threading
 import uuid
 from collections.abc import Generator
-from typing import Union
+from typing import Literal, Union, overload
 
 from flask import Flask, current_app
 from pydantic import ValidationError
@@ -29,7 +29,7 @@ from core.file.message_file_parser import MessageFileParser
 from core.model_runtime.errors.invoke import InvokeAuthorizationError, InvokeError
 from core.ops.ops_trace_manager import TraceQueueManager
 from core.workflow.entities.variable_pool import VariablePool
-from core.workflow.enums import SystemVariable
+from core.workflow.enums import SystemVariableKey
 from extensions.ext_database import db
 from models.account import Account
 from models.model import App, Conversation, EndUser, Message
@@ -39,6 +39,26 @@ logger = logging.getLogger(__name__)
 
 
 class AdvancedChatAppGenerator(MessageBasedAppGenerator):
+    @overload
+    def generate(
+        self, app_model: App,
+        workflow: Workflow,
+        user: Union[Account, EndUser],
+        args: dict,
+        invoke_from: InvokeFrom,
+        stream: Literal[True] = True,
+    ) -> Generator[str, None, None]: ...
+
+    @overload
+    def generate(
+        self, app_model: App,
+        workflow: Workflow,
+        user: Union[Account, EndUser],
+        args: dict,
+        invoke_from: InvokeFrom,
+        stream: Literal[False] = False,
+    ) -> dict: ...
+
     def generate(
         self, app_model: App,
         workflow: Workflow,
@@ -46,7 +66,7 @@ class AdvancedChatAppGenerator(MessageBasedAppGenerator):
         args: dict,
         invoke_from: InvokeFrom,
         stream: bool = True,
-    ) -> Union[dict, Generator[dict, None, None]]:
+    ):
         """
         Generate App response.
 
@@ -73,8 +93,9 @@ class AdvancedChatAppGenerator(MessageBasedAppGenerator):
 
         # get conversation
         conversation = None
-        if args.get('conversation_id'):
-            conversation = self._get_conversation_by_user(app_model, args.get('conversation_id'), user)
+        conversation_id = args.get('conversation_id')
+        if conversation_id:
+            conversation = self._get_conversation_by_user(app_model=app_model, conversation_id=conversation_id, user=user)
 
         # parse files
         files = args['files'] if args.get('files') else []
@@ -133,8 +154,7 @@ class AdvancedChatAppGenerator(MessageBasedAppGenerator):
                                   node_id: str,
                                   user: Account,
                                   args: dict,
-                                  stream: bool = True) \
-            -> Union[dict, Generator[dict, None, None]]:
+                                  stream: bool = True):
         """
         Generate App response.
 
@@ -157,8 +177,9 @@ class AdvancedChatAppGenerator(MessageBasedAppGenerator):
 
         # get conversation
         conversation = None
-        if args.get('conversation_id'):
-            conversation = self._get_conversation_by_user(app_model, args.get('conversation_id'), user)
+        conversation_id = args.get('conversation_id')
+        if conversation_id:
+            conversation = self._get_conversation_by_user(app_model=app_model, conversation_id=conversation_id, user=user)
 
         # convert to app config
         app_config = AdvancedChatAppConfigManager.get_app_config(
@@ -200,8 +221,7 @@ class AdvancedChatAppGenerator(MessageBasedAppGenerator):
                  invoke_from: InvokeFrom,
                  application_generate_entity: AdvancedChatAppGenerateEntity,
                  conversation: Conversation | None = None,
-                 stream: bool = True) \
-            -> Union[dict, Generator[dict, None, None]]:
+                 stream: bool = True):
         is_first_conversation = False
         if not conversation:
             is_first_conversation = True
@@ -270,11 +290,11 @@ class AdvancedChatAppGenerator(MessageBasedAppGenerator):
 
         # Create a variable pool.
         system_inputs = {
-            SystemVariable.QUERY: query,
-            SystemVariable.FILES: files,
-            SystemVariable.CONVERSATION_ID: conversation_id,
-            SystemVariable.USER_ID: user_id,
-            SystemVariable.DIALOGUE_COUNT: conversation_dialogue_count,
+            SystemVariableKey.QUERY: query,
+            SystemVariableKey.FILES: files,
+            SystemVariableKey.CONVERSATION_ID: conversation_id,
+            SystemVariableKey.USER_ID: user_id,
+            SystemVariableKey.DIALOGUE_COUNT: conversation_dialogue_count,
         }
         variable_pool = VariablePool(
             system_variables=system_inputs,
@@ -362,7 +382,7 @@ class AdvancedChatAppGenerator(MessageBasedAppGenerator):
                 logger.exception("Validation Error when generating")
                 queue_manager.publish_error(e, PublishFrom.APPLICATION_MANAGER)
             except (ValueError, InvokeError) as e:
-                if os.environ.get("DEBUG") and os.environ.get("DEBUG").lower() == 'true':
+                if os.environ.get("DEBUG", "false").lower() == 'true':
                     logger.exception("Error when generating")
                 queue_manager.publish_error(e, PublishFrom.APPLICATION_MANAGER)
             except Exception as e:

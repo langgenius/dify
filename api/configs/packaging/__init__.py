@@ -8,11 +8,11 @@ class PackagingInfo(BaseSettings):
     """
 
     CURRENT_VERSION: str = Field(
-        description='Dify version',
-        default='0.7.1',
+        description="Dify version",
+        default="0.7.3",
     )
 
     COMMIT_SHA: str = Field(
         description="SHA-1 checksum of the git commit used to build the app",
-        default='',
+        default="",
     )

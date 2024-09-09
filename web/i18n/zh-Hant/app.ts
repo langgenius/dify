@@ -90,6 +90,7 @@ const translation = {
     title: '追蹤應用程式效能',
     description: '配置第三方LLMOps提供商並追蹤應用程式效能。',
     config: '配置',
+    view: '查看',
     collapse: '收起',
     expand: '展開',
     tracing: '追蹤',
@@ -122,6 +123,15 @@ const translation = {
       removeConfirmContent: '當前配置正在使用中，移除它將關閉追蹤功能。',
     },
   },
+  answerIcon: {
+    descriptionInExplore: '是否使用 WebApp 圖示在 Explore 中取代 🤖',
+    title: '使用 WebApp 圖示取代 🤖',
+    description: '是否在共享應用程式中使用 WebApp 圖示進行取代 🤖',
+  },
+  importFromDSLUrl: '寄件者 URL',
+  importFromDSL: '從 DSL 導入',
+  importFromDSLFile: '從 DSL 檔',
+  importFromDSLUrlPlaceholder: '在此處粘貼 DSL 連結',
 }
 
 export default translation

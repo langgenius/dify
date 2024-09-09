@@ -60,6 +60,10 @@ const translation = {
       ukUA: 'Ukrainisch',
       viVN: 'Vietnamesisch',
       plPL: 'Polnisch',
+      roRO: 'Rumänisch',
+      hiIN: 'Hindi',
+      trTR: 'Türkisch',
+      faIR: 'Persisch',
     },
   },
   unit: {
@@ -124,7 +128,8 @@ const translation = {
     workspace: 'Arbeitsbereich',
     createWorkspace: 'Arbeitsbereich erstellen',
     helpCenter: 'Hilfe',
-    roadmapAndFeedback: 'Feedback',
+    communityFeedback: 'Rückmeldung',
+    roadmap: 'Fahrplan',
     community: 'Gemeinschaft',
     about: 'Über',
     logout: 'Abmelden',
@@ -196,6 +201,11 @@ const translation = {
     disinvite: 'Einladung widerrufen',
     deleteMember: 'Mitglied löschen',
     you: '(Du)',
+    setBuilder: 'Als Builder festlegen',
+    datasetOperator: 'Wissensadministrator',
+    datasetOperatorTip: 'Kann die Wissensdatenbank nur verwalten',
+    builder: 'Bauherr',
+    builderTip: 'Kann eigene Apps erstellen und bearbeiten',
   },
   integrations: {
     connected: 'Verbunden',
@@ -342,6 +352,22 @@ const translation = {
     quotaTip: 'Verbleibende verfügbare kostenlose Token',
     loadPresets: 'Voreinstellungen laden',
     parameters: 'PARAMETER',
+    loadBalancingHeadline: 'Lastenausgleich',
+    apiKey: 'API-SCHLÜSSEL',
+    editConfig: 'Konfiguration bearbeiten',
+    loadBalancing: 'Lastenausgleich',
+    addConfig: 'Konfiguration hinzufügen',
+    configLoadBalancing: 'Lastenausgleich für die Konfiguration',
+    providerManagedDescription: 'Verwenden Sie den einzelnen Satz von Anmeldeinformationen, der vom Modellanbieter bereitgestellt wird.',
+    loadBalancingDescription: 'Reduzieren Sie den Druck mit mehreren Sätzen von Anmeldeinformationen.',
+    modelHasBeenDeprecated: 'Dieses Modell ist veraltet',
+    loadBalancingLeastKeyWarning: 'Um den Lastausgleich zu aktivieren, müssen mindestens 2 Schlüssel aktiviert sein.',
+    providerManaged: 'Vom Anbieter verwaltet',
+    apiKeyStatusNormal: 'APIKey-Status ist normal',
+    upgradeForLoadBalancing: 'Aktualisieren Sie Ihren Plan, um den Lastenausgleich zu aktivieren.',
+    defaultConfig: 'Standardkonfiguration',
+    apiKeyRateLimit: 'Ratenlimit wurde erreicht, verfügbar nach {{seconds}}s',
+    loadBalancingInfo: 'Standardmäßig wird für den Lastenausgleich die Round-Robin-Strategie verwendet. Wenn die Ratenbegrenzung ausgelöst wird, wird eine Abklingzeit von 1 Minute angewendet.',
   },
   dataSource: {
     add: 'Eine Datenquelle hinzufügen',
@@ -365,6 +391,15 @@ const translation = {
         preview: 'VORSCHAU',
       },
     },
+    website: {
+      inactive: 'Inaktiv',
+      description: 'Importieren Sie Inhalte von Websites mit dem Webcrawler.',
+      title: 'Website',
+      configuredCrawlers: 'Konfigurierte Crawler',
+      active: 'Aktiv',
+      with: 'Mit',
+    },
+    configure: 'Konfigurieren',
   },
   plugin: {
     serpapi: {
@@ -413,6 +448,7 @@ const translation = {
     promptEng: 'Orchestrieren',
     apiAccess: 'API-Zugriff',
     logAndAnn: 'Protokolle & Ank.',
+    logs: 'Baumstämme',
   },
   environment: {
     testing: 'TESTEN',
@@ -494,6 +530,10 @@ const translation = {
         add: 'Neue Variable',
         addTool: 'Neues Werkzeug',
       },
+      outputToolDisabledItem: {
+        desc: 'Variablen einfügen',
+        title: 'Variablen',
+      },
     },
     query: {
       item: {
@@ -527,6 +567,10 @@ const translation = {
     deleteTip: 'Das Tag wird verwendet, löschen?',
     created: 'Tag erfolgreich erstellt',
     failed: 'Tag-Erstellung fehlgeschlagen',
+  },
+  errorMsg: {
+    fieldRequired: '{{field}} ist erforderlich',
+    urlError: 'Die URL sollte mit http:// oder https:// beginnen',
   },
 }
 

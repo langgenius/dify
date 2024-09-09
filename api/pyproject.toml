@@ -6,8 +6,6 @@ requires = ["poetry-core"]
 build-backend = "poetry.core.masonry.api"
 
 [tool.ruff]
-exclude = [
-]
 line-length = 120
 
 [tool.ruff.lint]
@@ -71,13 +69,8 @@ ignore = [
 [tool.ruff.format]
 exclude = [
     "core/**/*.py",
-    "controllers/**/*.py",
     "models/**/*.py",
     "migrations/**/*",
-    "services/**/*.py",
-    "tasks/**/*.py",
-    "tests/**/*.py",
-    "configs/**/*.py",
 ]
 
 [tool.pytest_env]
@@ -153,7 +146,7 @@ langfuse = "^2.36.1"
 langsmith = "^0.1.77"
 mailchimp-transactional = "~1.0.50"
 markdown = "~3.5.1"
-novita-client = "^0.5.6"
+novita-client = "^0.5.7"
 numpy = "~1.26.4"
 openai = "~1.29.0"
 openpyxl = "~3.1.5"
@@ -162,7 +155,7 @@ pandas = { version = "~2.2.2", extras = ["performance", "excel"] }
 psycopg2-binary = "~2.9.6"
 pycryptodome = "3.19.1"
 pydantic = "~2.8.2"
-pydantic-settings = "~2.3.4"
+pydantic-settings = "~2.4.0"
 pydantic_extra_types = "~2.9.0"
 pyjwt = "~2.8.0"
 pypdfium2 = "~4.17.0"
@@ -193,6 +186,9 @@ zhipuai = "1.0.7"
 # Related transparent dependencies with pinned verion
 # required by main implementations
 ############################################################
+azure-ai-ml = "^1.19.0"
+azure-ai-inference = "^1.0.0b3"
+volcengine-python-sdk = {extras = ["ark"], version = "^1.0.98"}
 [tool.poetry.group.indriect.dependencies]
 kaleido = "0.2.1"
 rank-bm25 = "~0.2.2"
@@ -216,7 +212,7 @@ twilio = "~9.0.4"
 vanna = { version = "0.5.5", extras = ["postgres", "mysql", "clickhouse", "duckdb"] }
 wikipedia = "1.4.0"
 yfinance = "~0.2.40"
-
+nltk = "3.8.1"
 ############################################################
 # VDB dependencies required by vector store clients
 ############################################################
@@ -245,7 +241,7 @@ optional = true
 
 [tool.poetry.group.dev.dependencies]
 coverage = "~7.2.4"
-pytest = "~8.1.1"
+pytest = "~8.3.2"
 pytest-benchmark = "~4.0.0"
 pytest-env = "~1.1.3"
 pytest-mock = "~3.14.0"

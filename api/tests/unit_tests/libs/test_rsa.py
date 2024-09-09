@@ -15,7 +15,7 @@ def test_gmpy2_pkcs10aep_cipher() -> None:
     private_rsa_key = RSA.import_key(private_key)
     private_cipher_rsa = gmpy2_pkcs10aep_cipher.new(private_rsa_key)
 
-    raw_text = 'raw_text'
+    raw_text = "raw_text"
     raw_text_bytes = raw_text.encode()
 
     # RSA encryption by public key and decryption by private key

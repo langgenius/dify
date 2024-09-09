@@ -24,6 +24,7 @@ import { LeftIndent02 } from '@/app/components/base/icons/src/vender/line/editor
 import { FileText } from '@/app/components/base/icons/src/vender/line/files'
 import WorkflowToolConfigureButton from '@/app/components/tools/workflow-tool/configure-button'
 import type { InputVar } from '@/app/components/workflow/types'
+import { appDefaultIconBackground } from '@/config'
 
 export type AppPublisherProps = {
   disabled?: boolean
@@ -62,6 +63,7 @@ const AppPublisher = ({
   const [published, setPublished] = useState(false)
   const [open, setOpen] = useState(false)
   const appDetail = useAppStore(state => state.appDetail)
+  const [publishedTime, setPublishedTime] = useState<number | undefined>(publishedAt)
   const { app_base_url: appBaseURL = '', access_token: accessToken = '' } = appDetail?.site ?? {}
   const appMode = (appDetail?.mode !== 'completion' && appDetail?.mode !== 'workflow') ? 'chat' : appDetail.mode
   const appURL = `${appBaseURL}/${appMode}/${accessToken}`
@@ -75,6 +77,7 @@ const AppPublisher = ({
     try {
       await onPublish?.(modelAndParameter)
       setPublished(true)
+      setPublishedTime(Date.now())
     }
     catch (e) {
       setPublished(false)
@@ -130,13 +133,13 @@ const AppPublisher = ({
         <div className='w-[336px] bg-white rounded-2xl border-[0.5px] border-gray-200 shadow-xl'>
           <div className='p-4 pt-3'>
             <div className='flex items-center h-6 text-xs font-medium text-gray-500 uppercase'>
-              {publishedAt ? t('workflow.common.latestPublished') : t('workflow.common.currentDraftUnpublished')}
+              {publishedTime ? t('workflow.common.latestPublished') : t('workflow.common.currentDraftUnpublished')}
             </div>
-            {publishedAt
+            {publishedTime
               ? (
                 <div className='flex justify-between items-center h-[18px]'>
                   <div className='flex items-center mt-[3px] mb-[3px] leading-[18px] text-[13px] font-medium text-gray-700'>
-                    {t('workflow.common.publishedAt')} {formatTimeFromNow(publishedAt)}
+                    {t('workflow.common.publishedAt')} {formatTimeFromNow(publishedTime)}
                   </div>
                   <Button
                     className={`
@@ -174,18 +177,18 @@ const AppPublisher = ({
                   {
                     published
                       ? t('workflow.common.published')
-                      : publishedAt ? t('workflow.common.update') : t('workflow.common.publish')
+                      : publishedTime ? t('workflow.common.update') : t('workflow.common.publish')
                   }
                 </Button>
               )
             }
           </div>
           <div className='p-4 pt-3 border-t-[0.5px] border-t-black/5'>
-            <SuggestedAction disabled={!publishedAt} link={appURL} icon={<PlayCircle />}>{t('workflow.common.runApp')}</SuggestedAction>
+            <SuggestedAction disabled={!publishedTime} link={appURL} icon={<PlayCircle />}>{t('workflow.common.runApp')}</SuggestedAction>
             {appDetail?.mode === 'workflow'
               ? (
                 <SuggestedAction
-                  disabled={!publishedAt}
+                  disabled={!publishedTime}
                   link={`${appURL}${appURL.includes('?') ? '&' : '?'}mode=batch`}
                   icon={<LeftIndent02 className='w-4 h-4' />}
                 >
@@ -198,22 +201,22 @@ const AppPublisher = ({
                     setEmbeddingModalOpen(true)
                     handleTrigger()
                   }}
-                  disabled={!publishedAt}
+                  disabled={!publishedTime}
                   icon={<CodeBrowser className='w-4 h-4' />}
                 >
                   {t('workflow.common.embedIntoSite')}
                 </SuggestedAction>
               )}
-            <SuggestedAction disabled={!publishedAt} link='./develop' icon={<FileText className='w-4 h-4' />}>{t('workflow.common.accessAPIReference')}</SuggestedAction>
+            <SuggestedAction disabled={!publishedTime} link='./develop' icon={<FileText className='w-4 h-4' />}>{t('workflow.common.accessAPIReference')}</SuggestedAction>
             {appDetail?.mode === 'workflow' && (
               <WorkflowToolConfigureButton
-                disabled={!publishedAt}
+                disabled={!publishedTime}
                 published={!!toolPublished}
                 detailNeedUpdate={!!toolPublished && published}
                 workflowAppId={appDetail?.id}
                 icon={{
-                  content: appDetail?.icon,
-                  background: appDetail?.icon_background,
+                  content: (appDetail.icon_type === 'image' ? '🤖' : appDetail?.icon) || '🤖',
+                  background: (appDetail.icon_type === 'image' ? appDefaultIconBackground : appDetail?.icon_background) || appDefaultIconBackground,
                 }}
                 name={appDetail?.name}
                 description={appDetail?.description}

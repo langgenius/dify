@@ -64,6 +64,10 @@ const translation = {
       ukUA: '乌克兰语',
       viVN: '越南语',
       plPL: '波兰语',
+      roRO: '罗马尼亚语',
+      hiIN: '印地语',
+      trTR: '土耳其语',
+      faIR: '波斯语',
     },
   },
   unit: {
@@ -128,7 +132,8 @@ const translation = {
     workspace: '工作空间',
     createWorkspace: '创建工作空间',
     helpCenter: '帮助文档',
-    roadmapAndFeedback: '用户反馈',
+    communityFeedback: '用户反馈',
+    roadmap: '路线图',
     community: '社区',
     about: '关于',
     logout: '登出',
@@ -202,6 +207,9 @@ const translation = {
     disinvite: '取消邀请',
     deleteMember: '删除成员',
     you: '（你）',
+    builderTip: '可以构建和编辑自己的应用程序',
+    setBuilder: 'Set as builder （设置为构建器）',
+    builder: '构建器',
   },
   integrations: {
     connected: '登录方式',
@@ -363,6 +371,7 @@ const translation = {
     loadBalancingLeastKeyWarning: '至少启用 2 个 Key 以使用负载均衡',
     loadBalancingInfo: '默认情况下，负载平衡使用 Round-robin 策略。如果触发速率限制，将应用 1 分钟的冷却时间',
     upgradeForLoadBalancing: '升级以解锁负载均衡功能',
+    apiKey: 'API 密钥',
   },
   dataSource: {
     add: '添加数据源',
@@ -406,7 +415,7 @@ const translation = {
   apiBasedExtension: {
     title: 'API 扩展提供了一个集中式的 API 管理，在此统一添加 API 配置后，方便在 Dify 上的各类应用中直接使用。',
     link: '了解如何开发您自己的 API 扩展。',
-    linkUrl: 'https://docs.dify.ai/v/zh-hans/advanced/api_based_extension',
+    linkUrl: 'https://docs.dify.ai/v/zh-hans/guides/extension/api-based-extension',
     add: '新增 API 扩展',
     selector: {
       title: 'API 扩展',

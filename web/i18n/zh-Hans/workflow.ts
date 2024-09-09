@@ -80,7 +80,7 @@ const translation = {
   },
   env: {
     envPanelTitle: '环境变量',
-    envDescription: '环境变量是一种存储敏感信息的方法，如 API 密钥、数据库密码等。它们被存储在工作流程中，而不是代码中，以便在不同环墋中共享。',
+    envDescription: '环境变量是一种存储敏感信息的方法，如 API 密钥、数据库密码等。它们被存储在工作流程中，而不是代码中，以便在不同环境中共享。',
     envPanelButton: '添加环境变量',
     modal: {
       title: '添加环境变量',
@@ -440,7 +440,7 @@ const translation = {
     assigner: {
       'assignedVariable': '赋值的变量',
       'writeMode': '写入模式',
-      'writeModeTip': '赋值的变量为数组时，可添加变量至数组末尾。',
+      'writeModeTip': '使用追加模式时，赋值的变量必须是数组类型。',
       'over-write': '覆盖',
       'append': '追加',
       'plus': '加',

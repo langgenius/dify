@@ -189,6 +189,7 @@ export type InitialDocumentDetail = {
   completed_segments?: number
   total_segments?: number
   doc_form: 'text_model' | 'qa_model'
+  doc_language: string
 }
 
 export type SimpleDocumentDetail = InitialDocumentDetail & {
@@ -226,6 +227,8 @@ export type DocumentReq = {
 export type CreateDocumentReq = DocumentReq & {
   data_source: DataSource
   retrieval_model: RetrievalConfig
+  embedding_model: string
+  embedding_model_provider: string
 }
 
 export type IndexingEstimateParams = DocumentReq & Partial<DataSource> & {

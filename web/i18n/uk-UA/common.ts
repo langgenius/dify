@@ -60,6 +60,10 @@ const translation = {
       ukUA: 'Українська',
       viVN: 'В\'є тнамська',
       plPL: 'Польська',
+      roRO: 'Румунська',
+      hiIN: 'Хінді',
+      trTR: 'Турецька',
+      faIR: 'Перська',
     },
   },
   unit: {
@@ -124,7 +128,8 @@ const translation = {
     workspace: 'Робочий простір',
     createWorkspace: 'Створити робочий простір',
     helpCenter: 'Довідковий центр',
-    roadmapAndFeedback: 'відгуки',
+    communityFeedback: 'відгуки',
+    roadmap: 'Дорожня карта',
     community: 'Спільнота',
     about: 'Про нас',
     logout: 'Вийти',
@@ -196,6 +201,11 @@ const translation = {
     disinvite: 'Скасувати запрошення',
     deleteMember: 'Видалити учасника',
     you: '(Ви)',
+    builder: 'Будівник',
+    datasetOperatorTip: 'Тільки може управляти базою знань',
+    datasetOperator: 'Адміністратор знань',
+    setBuilder: 'Встановити як будівельник',
+    builderTip: 'Може створювати та редагувати власні програми',
   },
   integrations: {
     connected: 'Підключено',
@@ -340,8 +350,25 @@ const translation = {
     deprecated: 'Застарілий',
     confirmDelete: 'підтвердити видалення?',
     quotaTip: 'Залишилося доступних безкоштовних токенів',
-    loadPresets: 'Завантажити', // If need adjustment, provide more context on 'Load Presets' function
+    // If need adjustment, provide more context on 'Load Presets' function
+    loadPresets: 'Завантажити',
     parameters: 'ПАРАМЕТРИ',
+    apiKeyStatusNormal: 'Статус APIKey нормальний',
+    loadBalancing: 'Балансування навантаження',
+    editConfig: 'Редагувати конфігурацію',
+    loadBalancingHeadline: 'Балансування навантаження',
+    apiKey: 'API-КЛЮЧ',
+    defaultConfig: 'Конфігурація за замовчуванням',
+    providerManaged: 'Під управлінням провайдера',
+    loadBalancingDescription: 'Зменшіть тиск за допомогою кількох наборів облікових даних.',
+    modelHasBeenDeprecated: 'Ця модель вважається застарілою',
+    addConfig: 'Додати конфігурацію',
+    configLoadBalancing: 'Балансування навантаження конфігурації',
+    upgradeForLoadBalancing: 'Оновіть свій план, щоб увімкнути балансування навантаження.',
+    apiKeyRateLimit: 'Було досягнуто ліміту швидкості, доступного після {{seconds}}',
+    providerManagedDescription: 'Використовуйте єдиний набір облікових даних, наданий постачальником моделі.',
+    loadBalancingLeastKeyWarning: 'Щоб увімкнути балансування навантаження, має бути ввімкнено щонайменше 2 клавіші.',
+    loadBalancingInfo: 'За замовчуванням для балансування навантаження використовується стратегія кругової системи. Якщо спрацьовує обмеження швидкості, буде застосовано період перезарядки тривалістю 1 хвилина.',
   },
   dataSource: {
     add: 'Додати джерело даних',
@@ -365,6 +392,15 @@ const translation = {
         preview: 'ПЕРЕДПЕРЕГЛЯД',
       },
     },
+    website: {
+      with: 'З',
+      active: 'Активний',
+      inactive: 'Неактивні',
+      configuredCrawlers: 'Налаштовані обхідні роботи',
+      title: 'Веб-сторінка',
+      description: 'Імпортуйте вміст із веб-сайтів за допомогою веб-сканера.',
+    },
+    configure: 'Настроїти',
   },
   plugin: {
     serpapi: {
@@ -532,6 +568,10 @@ const translation = {
     deleteTip: 'Тег використовується, видалити його?',
     created: 'Тег створено успішно',
     failed: 'Не вдалося створити тег',
+  },
+  errorMsg: {
+    fieldRequired: '{{field}} є обов\'язковим',
+    urlError: 'URL-адреса повинна починатися з http:// або https://',
   },
 }
 

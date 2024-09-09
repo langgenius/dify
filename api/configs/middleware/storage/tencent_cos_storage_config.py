@@ -10,26 +10,26 @@ class TencentCloudCOSStorageConfig(BaseSettings):
     """
 
     TENCENT_COS_BUCKET_NAME: Optional[str] = Field(
-        description='Tencent Cloud COS bucket name',
+        description="Tencent Cloud COS bucket name",
         default=None,
     )
 
     TENCENT_COS_REGION: Optional[str] = Field(
-        description='Tencent Cloud COS region',
+        description="Tencent Cloud COS region",
         default=None,
     )
 
     TENCENT_COS_SECRET_ID: Optional[str] = Field(
-        description='Tencent Cloud COS secret id',
+        description="Tencent Cloud COS secret id",
         default=None,
     )
 
     TENCENT_COS_SECRET_KEY: Optional[str] = Field(
-        description='Tencent Cloud COS secret key',
+        description="Tencent Cloud COS secret key",
         default=None,
     )
 
     TENCENT_COS_SCHEME: Optional[str] = Field(
-        description='Tencent Cloud COS scheme',
+        description="Tencent Cloud COS scheme",
         default=None,
     )
