@@ -688,6 +688,11 @@ class RegisterService:
         return token
 
     @classmethod
+    def is_valid_invite_token(cls, token: str) -> bool:
+        data = redis_client.get(cls._get_invitation_token_key(token))
+        return data is not None
+
+    @classmethod
     def revoke_token(cls, workspace_id: str, email: str, token: str):
         if workspace_id and email:
             email_hash = sha256(email.encode()).hexdigest()

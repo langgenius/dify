@@ -76,12 +76,13 @@ class OAuthCallback(Resource):
             logging.exception(f"An error occurred during the OAuth process with {provider}: {e.response.text}")
             return {"error": "OAuth process failed"}, 400
 
-        if invite_token:
+        if invite_token and RegisterService.is_valid_invite_token(invite_token):
             invitation = RegisterService._get_invitation_by_token(token=invite_token)
             if invitation:
                 invitation_email = invitation.get("email", None)
                 if invitation_email != user_info.email:
                     return redirect(f"{dify_config.CONSOLE_WEB_URL}/signin?message=InvalidToken")
+                
             return redirect(f"{dify_config.CONSOLE_WEB_URL}/signin/invite-settings?invite_token={invite_token}")
 
         try:
