@@ -3,7 +3,7 @@ import time
 
 from core.rag.datasource.retrieval_service import RetrievalService
 from core.rag.models.document import Document
-from core.rag.retrieval.retrival_methods import RetrievalMethod
+from core.rag.retrieval.retrieval_methods import RetrievalMethod
 from extensions.ext_database import db
 from models.account import Account
 from models.dataset import Dataset, DatasetQuery, DocumentSegment
@@ -36,7 +36,7 @@ class HitTestingService:
             retrieval_model = dataset.retrieval_model if dataset.retrieval_model else default_retrieval_model
 
         all_documents = RetrievalService.retrieve(
-            retrival_method=retrieval_model.get("search_method", "semantic_search"),
+            retrieval_method=retrieval_model.get("search_method", "semantic_search"),
             dataset_id=dataset.id,
             query=cls.escape_query_for_search(query),
             top_k=retrieval_model.get("top_k", 2),

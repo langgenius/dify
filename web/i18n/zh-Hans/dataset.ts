@@ -55,6 +55,7 @@ const translation = {
     hybrid_search: '混合检索',
     invertedIndex: '倒排索引',
   },
+  defaultRetrievalTip: '默认情况下使用多路召回。从多个知识库中检索知识，然后重新排序。',
   mixtureHighQualityAndEconomicTip: '混合使用高质量和经济型知识库需要配置 Rerank 模型。',
   inconsistentEmbeddingModelTip: '当所选知识库配置的 Embedding 模型不一致时，需要配置 Rerank 模型。',
   retrievalSettings: '召回设置',

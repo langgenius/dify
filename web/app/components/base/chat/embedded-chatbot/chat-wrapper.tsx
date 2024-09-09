@@ -14,7 +14,7 @@ import {
   getUrl,
   stopChatMessageResponding,
 } from '@/service/share'
-import LogoAvatar from '@/app/components/base/logo/logo-embeded-chat-avatar'
+import LogoAvatar from '@/app/components/base/logo/logo-embedded-chat-avatar'
 import AnswerIcon from '@/app/components/base/answer-icon'
 
 const ChatWrapper = () => {

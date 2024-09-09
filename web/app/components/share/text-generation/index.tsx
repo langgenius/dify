@@ -163,8 +163,8 @@ const TextGeneration: FC<IMainProps> = ({
   }
   const allSuccessTaskList = allTaskList.filter(task => task.status === TaskStatus.completed)
   const allFailedTaskList = allTaskList.filter(task => task.status === TaskStatus.failed)
-  const allTaskFinished = allTaskList.every(task => task.status === TaskStatus.completed)
-  const allTaskRuned = allTaskList.every(task => [TaskStatus.completed, TaskStatus.failed].includes(task.status))
+  const allTasksFinished = allTaskList.every(task => task.status === TaskStatus.completed)
+  const allTasksRun = allTaskList.every(task => [TaskStatus.completed, TaskStatus.failed].includes(task.status))
   const [batchCompletionRes, doSetBatchCompletionRes] = useState<Record<string, string>>({})
   const batchCompletionResRef = useRef<Record<string, string>>({})
   const setBatchCompletionRes = (res: Record<string, string>) => {
@@ -286,7 +286,7 @@ const TextGeneration: FC<IMainProps> = ({
   const handleRunBatch = (data: string[][]) => {
     if (!checkBatchInputs(data))
       return
-    if (!allTaskFinished) {
+    if (!allTasksFinished) {
       notify({ type: 'info', message: t('appDebug.errorMessage.waitForBatchResponse') })
       return
     }
@@ -318,17 +318,17 @@ const TextGeneration: FC<IMainProps> = ({
     showResSidebar()
   }
   const handleCompleted = (completionRes: string, taskId?: number, isSuccess?: boolean) => {
-    const allTasklistLatest = getLatestTaskList()
+    const allTaskListLatest = getLatestTaskList()
     const batchCompletionResLatest = getBatchCompletionRes()
-    const pendingTaskList = allTasklistLatest.filter(task => task.status === TaskStatus.pending)
-    const hadRunedTaskNum = 1 + allTasklistLatest.filter(task => [TaskStatus.completed, TaskStatus.failed].includes(task.status)).length
-    const needToAddNextGroupTask = (getCurrGroupNum() !== hadRunedTaskNum) && pendingTaskList.length > 0 && (hadRunedTaskNum % GROUP_SIZE === 0 || (allTasklistLatest.length - hadRunedTaskNum < GROUP_SIZE))
+    const pendingTaskList = allTaskListLatest.filter(task => task.status === TaskStatus.pending)
+    const runTasksCount = 1 + allTaskListLatest.filter(task => [TaskStatus.completed, TaskStatus.failed].includes(task.status)).length
+    const needToAddNextGroupTask = (getCurrGroupNum() !== runTasksCount) && pendingTaskList.length > 0 && (runTasksCount % GROUP_SIZE === 0 || (allTaskListLatest.length - runTasksCount < GROUP_SIZE))
     // avoid add many task at the same time
     if (needToAddNextGroupTask)
-      setCurrGroupNum(hadRunedTaskNum)
+      setCurrGroupNum(runTasksCount)
 
     const nextPendingTaskIds = needToAddNextGroupTask ? pendingTaskList.slice(0, GROUP_SIZE).map(item => item.id) : []
-    const newAllTaskList = allTasklistLatest.map((item) => {
+    const newAllTaskList = allTaskListLatest.map((item) => {
       if (item.id === taskId) {
         return {
           ...item,
@@ -393,7 +393,7 @@ const TextGeneration: FC<IMainProps> = ({
       })
       const prompt_variables = userInputsFormToPromptVariables(user_input_form)
       setPromptConfig({
-        prompt_template: '', // placeholder for feture
+        prompt_template: '', // placeholder for future
         prompt_variables,
       } as PromptConfig)
       setMoreLikeThisConfig(more_like_this)
@@ -587,7 +587,7 @@ const TextGeneration: FC<IMainProps> = ({
                   isRight: true,
                   extra: savedMessages.length > 0
                     ? (
-                      <div className='ml-1 flext items-center h-5 px-1.5 rounded-md border border-gray-200 text-gray-500 text-xs font-medium'>
+                      <div className='ml-1 flex items-center h-5 px-1.5 rounded-md border border-gray-200 text-gray-500 text-xs font-medium'>
                         {savedMessages.length}
                       </div>
                     )
@@ -614,7 +614,7 @@ const TextGeneration: FC<IMainProps> = ({
               <RunBatch
                 vars={promptConfig.prompt_variables}
                 onSend={handleRunBatch}
-                isAllFinished={allTaskRuned}
+                isAllFinished={allTasksRun}
               />
             </div>
 

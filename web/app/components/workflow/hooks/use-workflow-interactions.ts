@@ -10,7 +10,7 @@ import {
   CUSTOM_NODE, DSL_EXPORT_CHECK,
   WORKFLOW_DATA_UPDATE,
 } from '../constants'
-import type { Node, WorkflowDataUpdator } from '../types'
+import type { Node, WorkflowDataUpdater } from '../types'
 import { ControlMode } from '../types'
 import {
   getLayoutByDagre,
@@ -208,7 +208,7 @@ export const useWorkflowUpdate = () => {
   const workflowStore = useWorkflowStore()
   const { eventEmitter } = useEventEmitterContextContext()
 
-  const handleUpdateWorkflowCanvas = useCallback((payload: WorkflowDataUpdator) => {
+  const handleUpdateWorkflowCanvas = useCallback((payload: WorkflowDataUpdater) => {
     const {
       nodes,
       edges,
@@ -236,7 +236,7 @@ export const useWorkflowUpdate = () => {
     } = workflowStore.getState()
     setIsSyncingWorkflowDraft(true)
     fetchWorkflowDraft(`/apps/${appId}/workflows/draft`).then((response) => {
-      handleUpdateWorkflowCanvas(response.graph as WorkflowDataUpdator)
+      handleUpdateWorkflowCanvas(response.graph as WorkflowDataUpdater)
       setSyncWorkflowDraftHash(response.hash)
       setEnvSecrets((response.environment_variables || []).filter(env => env.value_type === 'secret').reduce((acc, env) => {
         acc[env.id] = env.value

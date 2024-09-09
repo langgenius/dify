@@ -23,7 +23,7 @@ parameter_rules:
     use_template: max_tokens
     default: 1024
     min: 1
-    max: 8000
+    max: 8192
   - name: safe_prompt
     default: false
     type: boolean

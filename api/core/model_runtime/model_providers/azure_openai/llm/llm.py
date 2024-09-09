@@ -284,7 +284,7 @@ class AzureOpenAILargeLanguageModel(_CommonAzureOpenAI, LargeLanguageModel):
                 try:
                     schema = json.loads(json_schema)
                 except:
-                    raise ValueError(f"not currect json_schema format: {json_schema}")
+                    raise ValueError(f"not correct json_schema format: {json_schema}")
                 model_parameters.pop("json_schema")
                 model_parameters["response_format"] = {"type": "json_schema", "json_schema": schema}
             else:

@@ -67,7 +67,7 @@ class SegmentApi(DatasetApiResource):
             segments = SegmentService.multi_create_segment(args["segments"], document, dataset)
             return {"data": marshal(segments, segment_fields), "doc_form": document.doc_form}, 200
         else:
-            return {"error": "Segemtns is required"}, 400
+            return {"error": "Segments is required"}, 400
 
     def get(self, tenant_id, dataset_id, document_id):
         """Create single segment."""

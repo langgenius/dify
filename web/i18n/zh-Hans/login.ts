@@ -31,7 +31,7 @@ const translation = {
   pp: '隐私政策',
   tosDesc: '使用即代表你并同意我们的',
   goToInit: '如果您还没有初始化账户，请前往初始化页面',
-  donthave: '还没有邀请码？',
+  dontHave: '还没有邀请码？',
   invalidInvitationCode: '无效的邀请码',
   accountAlreadyInited: '账户已经初始化',
   forgotPassword: '忘记密码？',

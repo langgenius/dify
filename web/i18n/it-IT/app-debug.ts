@@ -293,7 +293,7 @@ const translation = {
       'La cronologia delle conversazioni deve essere impostata nel prompt',
     queryNoBeEmpty: 'La query deve essere impostata nel prompt',
   },
-  variableConig: {
+  variableConfig: {
     'addModalTitle': 'Aggiungi Campo Input',
     'editModalTitle': 'Modifica Campo Input',
     'description': 'Impostazione per la variabile {{varName}}',
