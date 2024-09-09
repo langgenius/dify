@@ -20,7 +20,7 @@ parameter_rules:
     use_template: max_tokens
     default: 1024
     min: 1
-    max: 128000
+    max: 16384
   - name: response_format
     label:
       zh_Hans: 回复格式
@@ -33,6 +33,42 @@ parameter_rules:
     options:
       - text
       - json_object
+  - name: n
+    label:
+      zh_Hans: 生成n个结果
+      en_US: Generate n results
+    type: int
+    default: 1
+    min: 1
+    max: 5
+    help:
+      zh_Hans: 默认为 1，不得大于 5。特别的，当 temperature 非常小靠近 0 的时候，我们只能返回 1 个结果，如果这个时候 n 已经设置并且 > 1，我们的服务会返回不合法的输入参数(invalid_request_error)
+      en_US: By default, it is 1 and cannot be greater than 5. Specifically, when the temperature is very close to 0, we can only return 1 result. If n is set and greater than 1 at this time, our service will return an invalid input parameter (invalid_request_error).
+    required: false
+  - name: presence_penalty
+    label:
+      zh_Hans: 存在惩罚
+      en_US: Existence penalty
+    type: float
+    default: 0
+    min: -2.0
+    max: 2.0
+    help:
+      zh_Hans: 存在惩罚，介于-2.0到2.0之间的数字。正值会根据新生成的词汇是否出现在文本中来进行惩罚，增加模型讨论新话题的可能性。
+      en_US: There is a penalty, a number between -2.0 and 2.0. A positive value penalizes new words based on whether they appear in the text, increasing the likelihood that the model will discuss new topics.
+    required: false
+  - name: presence_penalty
+    label:
+      zh_Hans: 频率惩罚
+      en_US: Frequency penalty
+    type: float
+    default: 0
+    min: -2.0
+    max: 2.0
+    help:
+      zh_Hans: 频率惩罚，介于-2.0到2.0之间的数字。正值会根据新生成的词汇在文本中现有的频率来进行惩罚，减少模型一字不差重复同样话语的可能性。
+      en_US: Frequency penalty: A number between -2.0 and 2.0. A positive value will penalize new tokens based on their existing frequency in the text, reducing the likelihood of the model repeating the same phrases word for word.
+    required: false
 pricing:
   input: '0.06'
   output: '0.06'
