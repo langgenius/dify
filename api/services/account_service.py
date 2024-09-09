@@ -37,6 +37,7 @@ from services.errors.account import (
     RoleAlreadyAssignedError,
     TenantNotFound,
 )
+from services.errors.workspace import WorkSpaceNotAllowedCreateError
 from tasks.mail_email_code_login import send_email_code_login_mail_task
 from tasks.mail_invite_member_task import send_invite_member_mail_task
 from tasks.mail_reset_password_task import send_reset_password_mail_task
@@ -604,7 +605,6 @@ class RegisterService:
         provider: Optional[str] = None,
         language: Optional[str] = None,
         status: Optional[AccountStatus] = None,
-        is_invite_member: Optional[bool] = False,
     ) -> Account:
         db.session.begin_nested()
         """Register account"""
@@ -618,13 +618,13 @@ class RegisterService:
             if open_id is not None or provider is not None:
                 AccountService.link_account_integrate(provider, open_id, account)
 
-            should_create_workspace = not is_invite_member or (is_invite_member and dify_config.ALLOW_CREATE_WORKSPACE)
+            if not dify_config.ALLOW_CREATE_WORKSPACE:
+                raise WorkSpaceNotAllowedCreateError()
 
-            if should_create_workspace:
-                tenant = TenantService.create_tenant(f"{account.name}'s Workspace")
-                TenantService.create_tenant_member(tenant, account, role="owner")
-                account.current_tenant = tenant
-                tenant_was_created.send(tenant)
+            tenant = TenantService.create_tenant(f"{account.name}'s Workspace")
+            TenantService.create_tenant_member(tenant, account, role="owner")
+            account.current_tenant = tenant
+            tenant_was_created.send(tenant)
 
             db.session.commit()
         except Exception as e:
@@ -645,9 +645,7 @@ class RegisterService:
             TenantService.check_member_permission(tenant, inviter, None, "add")
             name = email.split("@")[0]
 
-            account = cls.register(
-                email=email, name=name, language=language, status=AccountStatus.PENDING, is_invite_member=True
-            )
+            account = cls.register(email=email, name=name, language=language, status=AccountStatus.PENDING)
             # Create new tenant member for invited tenant
             TenantService.create_tenant_member(tenant, account, role)
             TenantService.switch_tenant(account, tenant.id)
