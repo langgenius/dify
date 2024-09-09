@@ -82,7 +82,7 @@ class OAuthCallback(Resource):
                 invitation_email = invitation.get("email", None)
                 if invitation_email != user_info.email:
                     return redirect(f"{dify_config.CONSOLE_WEB_URL}/signin?message=InvalidToken")
-                
+
             return redirect(f"{dify_config.CONSOLE_WEB_URL}/signin/invite-settings?invite_token={invite_token}")
 
         try:
