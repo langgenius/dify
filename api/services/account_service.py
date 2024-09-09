@@ -620,16 +620,14 @@ class RegisterService:
 
             if open_id is not None or provider is not None:
                 AccountService.link_account_integrate(provider, open_id, account)
-            if dify_config.EDITION != "SELF_HOSTED":
-                should_create_workspace = not is_invite_member or (
-                    is_invite_member and dify_config.ALLOW_CREATE_WORKSPACE
-                )
 
-                if should_create_workspace:
-                    tenant = TenantService.create_tenant(f"{account.name}'s Workspace")
-                    TenantService.create_tenant_member(tenant, account, role="owner")
-                    account.current_tenant = tenant
-                    tenant_was_created.send(tenant)
+            should_create_workspace = not is_invite_member or (is_invite_member and dify_config.ALLOW_CREATE_WORKSPACE)
+
+            if should_create_workspace:
+                tenant = TenantService.create_tenant(f"{account.name}'s Workspace")
+                TenantService.create_tenant_member(tenant, account, role="owner")
+                account.current_tenant = tenant
+                tenant_was_created.send(tenant)
 
             db.session.commit()
         except Exception as e:
@@ -691,6 +689,11 @@ class RegisterService:
         expiryHours = dify_config.INVITE_EXPIRY_HOURS
         redis_client.setex(cls._get_invitation_token_key(token), expiryHours * 60 * 60, json.dumps(invitation_data))
         return token
+
+    @classmethod
+    def is_valid_invite_token(cls, token: str) -> bool:
+        data = redis_client.get(cls._get_invitation_token_key(token))
+        return data is not None
 
     @classmethod
     def revoke_token(cls, workspace_id: str, email: str, token: str):
