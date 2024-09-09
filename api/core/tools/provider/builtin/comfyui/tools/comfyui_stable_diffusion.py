@@ -2,16 +2,17 @@ import json
 import os
 import random
 import uuid
+import websocket
 from copy import deepcopy
 from typing import Any, Union
 
-import websocket
+from httpx import get, post
+from yarl import URL
+
 from core.tools.entities.common_entities import I18nObject
 from core.tools.entities.tool_entities import ToolInvokeMessage, ToolParameter, ToolParameterOption
 from core.tools.errors import ToolProviderCredentialValidationError
 from core.tools.tool.builtin_tool import BuiltinTool
-from httpx import get, post
-from yarl import URL
 
 SD_TXT2IMG_OPTIONS = {}
 LORA_NODE = {
@@ -257,7 +258,7 @@ class ComfyuiStableDiffusionTool(BuiltinTool):
         """
         if not SD_TXT2IMG_OPTIONS:
             current_dir = os.path.dirname(os.path.realpath(__file__))
-            with open(os.path.join(current_dir, 'txt2img.json'), 'r') as file:
+            with open(os.path.join(current_dir, 'txt2img.json')) as file:
                 SD_TXT2IMG_OPTIONS.update(json.load(file))
 
         draw_options = deepcopy(SD_TXT2IMG_OPTIONS)
@@ -298,7 +299,7 @@ class ComfyuiStableDiffusionTool(BuiltinTool):
             result = self.queue_prompt_image(base_url, client_id, prompt=draw_options)
 
             # get first image
-            image = bytes()
+            image = b""
             for node in result:
                 for img in result[node]:
                     if img:
