@@ -17,7 +17,7 @@ export default function SocialAuth(props: SocialAuthProps) {
 
   const getOAuthLink = (href: string) => {
     const url = getPurifyHref(`${apiPrefix}${href}`)
-    if (invite_token)
+    if (invite_token && invite_token !== '')
       return `${url}?invite_token=${invite_token}`
 
     return url
