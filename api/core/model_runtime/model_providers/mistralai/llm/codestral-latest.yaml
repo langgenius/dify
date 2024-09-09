@@ -1,7 +1,7 @@
-model: open-mistral-7b
+model: codestral-latest
 label:
-  zh_Hans: open-mistral-7b
-  en_US: open-mistral-7b
+  zh_Hans: codestral-latest
+  en_US: codestral-latest
 model_type: llm
 features:
   - agent-thought
@@ -44,8 +44,3 @@ parameter_rules:
     default: 0
     min: 0
     max: 2147483647
-pricing:
-  input: '0.00025'
-  output: '0.00025'
-  unit: '0.001'
-  currency: USD

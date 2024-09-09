@@ -1,13 +1,13 @@
-model: open-mistral-7b
+model: open-mistral-nemo
 label:
-  zh_Hans: open-mistral-7b
-  en_US: open-mistral-7b
+  zh_Hans: open-mistral-nemo
+  en_US: open-mistral-nemo
 model_type: llm
 features:
   - agent-thought
 model_properties:
   mode: chat
-  context_size: 32000
+  context_size: 128000
 parameter_rules:
   - name: temperature
     use_template: temperature
@@ -23,7 +23,7 @@ parameter_rules:
     use_template: max_tokens
     default: 1024
     min: 1
-    max: 32000
+    max: 128000
   - name: safe_prompt
     default: false
     type: boolean
@@ -44,8 +44,3 @@ parameter_rules:
     default: 0
     min: 0
     max: 2147483647
-pricing:
-  input: '0.00025'
-  output: '0.00025'
-  unit: '0.001'
-  currency: USD
