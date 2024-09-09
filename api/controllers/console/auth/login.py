@@ -14,7 +14,7 @@ from controllers.console.auth.error import (
     InvalidTokenError,
     PasswordMismatchError,
 )
-from controllers.console.error import NotAllowedCreateWorkspace, NotAllowedRegister
+from controllers.console.error import NotAllowedRegister
 from controllers.console.setup import setup_required
 from libs.helper import email, get_remote_ip
 from libs.password import valid_password
