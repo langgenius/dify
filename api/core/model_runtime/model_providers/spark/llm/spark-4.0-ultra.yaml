@@ -1,6 +1,6 @@
 model: spark-4.0-ultra
 label:
-  en_US: Spark 4.0Ultra
+  en_US: Spark 4.0 Ultra
 model_type: llm
 model_properties:
   mode: chat
