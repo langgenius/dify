@@ -6,6 +6,7 @@ import Button from '@/app/components/base/button'
 import { emailRegex } from '@/config'
 import Toast from '@/app/components/base/toast'
 import { sendEMailLoginCode } from '@/service/common'
+import { COUNT_DOWN_TIME_MS } from '@/app/components/signin/countdown'
 
 type MailAndCodeAuthProps = {
   isInvite: boolean
@@ -36,7 +37,7 @@ export default function MailAndCodeAuth({ isInvite }: MailAndCodeAuthProps) {
       setIsLoading(true)
       const ret = await sendEMailLoginCode(email)
       if (ret.result === 'success') {
-        localStorage.setItem('leftTime', '59000')
+        localStorage.setItem('leftTime', `${COUNT_DOWN_TIME_MS}`)
         const params = new URLSearchParams(searchParams)
         params.set('email', encodeURIComponent(email))
         params.set('token', encodeURIComponent(ret.data))
