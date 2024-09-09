@@ -51,4 +51,4 @@ class NotAllowedCreateWorkspace(BaseHTTPException):
 class NotAllowedRegister(BaseHTTPException):
     error_code = "unauthorized"
     description = "Account not found."
-    code = 404
+    code = 400

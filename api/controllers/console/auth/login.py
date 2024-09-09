@@ -14,7 +14,7 @@ from controllers.console.auth.error import (
     InvalidTokenError,
     PasswordMismatchError,
 )
-from controllers.console.error import NotAllowedCreateWorkspace, NotAllowedRegister
+from controllers.console.error import NotAllowedRegister
 from controllers.console.setup import setup_required
 from libs.helper import email, get_remote_ip
 from libs.password import valid_password
@@ -42,7 +42,7 @@ class LoginApi(Resource):
             raise PasswordMismatchError()
         except services.errors.account.AccountNotFound:
             if not dify_config.ALLOW_REGISTER:
-                raise NotAllowedCreateWorkspace()
+                raise NotAllowedRegister()
 
             token = AccountService.send_reset_password_email(email=args["email"])
             return {"result": "fail", "data": token, "message": "account_not_found"}
