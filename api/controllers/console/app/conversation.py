@@ -201,7 +201,11 @@ class ChatConversationApi(Resource):
             start_datetime_timezone = timezone.localize(start_datetime)
             start_datetime_utc = start_datetime_timezone.astimezone(utc_timezone)
 
-            query = query.where(Conversation.created_at >= start_datetime_utc)
+            match args["sort_by"]:
+                case "updated_at" | "-updated_at":
+                    query = query.where(Conversation.updated_at >= start_datetime_utc)
+                case "created_at" | "-created_at" | _:
+                    query = query.where(Conversation.created_at >= start_datetime_utc)
 
         if args["end"]:
             end_datetime = datetime.strptime(args["end"], "%Y-%m-%d %H:%M")
@@ -210,7 +214,11 @@ class ChatConversationApi(Resource):
             end_datetime_timezone = timezone.localize(end_datetime)
             end_datetime_utc = end_datetime_timezone.astimezone(utc_timezone)
 
-            query = query.where(Conversation.created_at < end_datetime_utc)
+            match args["sort_by"]:
+                case "updated_at" | "-updated_at":
+                    query = query.where(Conversation.updated_at <= end_datetime_utc)
+                case "created_at" | "-created_at" | _:
+                    query = query.where(Conversation.created_at <= end_datetime_utc)
 
         if args["annotation_status"] == "annotated":
             query = query.options(joinedload(Conversation.message_annotations)).join(

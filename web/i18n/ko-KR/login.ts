@@ -31,7 +31,7 @@ const translation = {
   pp: '개인정보 처리 방침',
   tosDesc: '가입함으로써 다음 내용에 동의하게 됩니다.',
   goToInit: '계정이 초기화되지 않았다면 초기화 페이지로 이동하세요.',
-  donthave: '계정이 없으신가요?',
+  dontHave: '계정이 없으신가요?',
   invalidInvitationCode: '유효하지 않은 초대 코드입니다.',
   accountAlreadyInited: '계정은 이미 초기화되었습니다.',
   forgotPassword: '비밀번호를 잊으셨나요?',
@@ -53,6 +53,7 @@ const translation = {
     nameEmpty: '사용자 이름을 입력하세요.',
     passwordEmpty: '비밀번호를 입력하세요.',
     passwordInvalid: '비밀번호는 문자와 숫자를 포함하고 8자 이상이어야 합니다.',
+    passwordLengthInValid: '비밀번호는 8자 이상이어야 합니다.',
   },
   license: {
     tip: 'Dify Community Edition을 시작하기 전에 GitHub의',
@@ -68,6 +69,7 @@ const translation = {
   activated: '지금 로그인하세요',
   adminInitPassword: '관리자 초기화 비밀번호',
   validate: '확인',
+  sso: 'SSO로 계속하기',
 }
 
 export default translation

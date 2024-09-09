@@ -22,7 +22,7 @@ import { copyApp, deleteApp, exportAppConfig, updateAppInfo } from '@/service/ap
 import DuplicateAppModal from '@/app/components/app/duplicate-modal'
 import type { DuplicateAppModalProps } from '@/app/components/app/duplicate-modal'
 import CreateAppModal from '@/app/components/explore/create-app-modal'
-import { AiText, ChatBot, CuteRobote } from '@/app/components/base/icons/src/vender/solid/communication'
+import { AiText, ChatBot, CuteRobot } from '@/app/components/base/icons/src/vender/solid/communication'
 import { Route } from '@/app/components/base/icons/src/vender/solid/mapsAndTravel'
 import type { CreateAppModalProps } from '@/app/components/explore/create-app-modal'
 import { NEED_REFRESH_APP_LIST_KEY } from '@/config'
@@ -63,6 +63,7 @@ const AppInfo = ({ expand }: IAppInfoProps) => {
     icon,
     icon_background,
     description,
+    use_icon_as_answer_icon,
   }) => {
     if (!appDetail)
       return
@@ -74,6 +75,7 @@ const AppInfo = ({ expand }: IAppInfoProps) => {
         icon,
         icon_background,
         description,
+        use_icon_as_answer_icon,
       })
       setShowEditModal(false)
       notify({
@@ -212,7 +214,7 @@ const AppInfo = ({ expand }: IAppInfoProps) => {
                   <ChatBot className={cn('w-3 h-3 text-[#1570EF]', !expand && '!w-2.5 !h-2.5')} />
                 )}
                 {appDetail.mode === 'agent-chat' && (
-                  <CuteRobote className={cn('w-3 h-3 text-indigo-600', !expand && '!w-2.5 !h-2.5')} />
+                  <CuteRobot className={cn('w-3 h-3 text-indigo-600', !expand && '!w-2.5 !h-2.5')} />
                 )}
                 {appDetail.mode === 'chat' && (
                   <ChatBot className={cn('w-3 h-3 text-[#1570EF]', !expand && '!w-2.5 !h-2.5')} />
@@ -278,7 +280,7 @@ const AppInfo = ({ expand }: IAppInfoProps) => {
                     <ChatBot className='w-3 h-3 text-[#1570EF]' />
                   )}
                   {appDetail.mode === 'agent-chat' && (
-                    <CuteRobote className='w-3 h-3 text-indigo-600' />
+                    <CuteRobot className='w-3 h-3 text-indigo-600' />
                   )}
                   {appDetail.mode === 'chat' && (
                     <ChatBot className='w-3 h-3 text-[#1570EF]' />
@@ -321,7 +323,7 @@ const AppInfo = ({ expand }: IAppInfoProps) => {
                 </div>
               </div>
             </div>
-            {/* desscription */}
+            {/* description */}
             {appDetail.description && (
               <div className='px-4 py-2 text-gray-500 text-xs leading-[18px]'>{appDetail.description}</div>
             )}
@@ -423,6 +425,8 @@ const AppInfo = ({ expand }: IAppInfoProps) => {
             appIconBackground={appDetail.icon_background}
             appIconUrl={appDetail.icon_url}
             appDescription={appDetail.description}
+            appMode={appDetail.mode}
+            appUseIconAsAnswerIcon={appDetail.use_icon_as_answer_icon}
             show={showEditModal}
             onConfirm={onEdit}
             onHide={() => setShowEditModal(false)}

@@ -13,6 +13,8 @@ const translation = {
         status: 'STARE',
         action: 'ACȚIUNE',
       },
+      name: 'Nume',
+      rename: 'Redenumire',
     },
     action: {
       uploadFile: 'Încarcă un fișier nou',
@@ -74,6 +76,7 @@ const translation = {
       error: 'Eroare la import',
       ok: 'OK',
     },
+    addUrl: 'Adăugați adresa URL',
   },
   metadata: {
     title: 'Metadate',

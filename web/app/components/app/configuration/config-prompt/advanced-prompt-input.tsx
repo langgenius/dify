@@ -262,7 +262,7 @@ const AdvancedPromptInput: FC<Props> = ({
       {isShowConfirmAddVar && (
         <ConfirmAddVar
           varNameArr={newPromptVariables.map(v => v.name)}
-          onConfrim={handleAutoAdd(true)}
+          onConfirm={handleAutoAdd(true)}
           onCancel={handleAutoAdd(false)}
           onHide={hideConfirmAddVar}
         />

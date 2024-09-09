@@ -158,7 +158,7 @@ export type IterationStartedResponse = {
   }
 }
 
-export type IterationNextedResponse = {
+export type IterationNextResponse = {
   task_id: string
   workflow_run_id: string
   event: string

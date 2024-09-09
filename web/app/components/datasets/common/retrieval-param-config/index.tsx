@@ -191,7 +191,7 @@ const RetrievalParamConfig: FC<Props> = ({
                     <div className='truncate'>{option.label}</div>
                     <Tooltip
                       popupContent={<div className='w-[200px]'>{option.tips}</div>}
-                      triggerClassName='ml-0.5 w-3.5 h-4.5'
+                      triggerClassName='ml-0.5 w-3.5 h-3.5'
                     />
                   </div>
                 ))

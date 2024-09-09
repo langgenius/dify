@@ -35,20 +35,20 @@ def sha256base64(data):
     return digest
 
 
-def parse_url(requset_url):
-    stidx = requset_url.index("://")
-    host = requset_url[stidx + 3 :]
-    schema = requset_url[: stidx + 3]
+def parse_url(request_url):
+    stidx = request_url.index("://")
+    host = request_url[stidx + 3 :]
+    schema = request_url[: stidx + 3]
     edidx = host.index("/")
     if edidx <= 0:
-        raise AssembleHeaderException("invalid request url:" + requset_url)
+        raise AssembleHeaderException("invalid request url:" + request_url)
     path = host[edidx:]
     host = host[:edidx]
     u = Url(host, path, schema)
     return u
 
-def assemble_ws_auth_url(requset_url, method="GET", api_key="", api_secret=""):
-    u = parse_url(requset_url)
+def assemble_ws_auth_url(request_url, method="GET", api_key="", api_secret=""):
+    u = parse_url(request_url)
     host = u.host
     path = u.path
     now = datetime.now()
@@ -69,7 +69,7 @@ def assemble_ws_auth_url(requset_url, method="GET", api_key="", api_secret=""):
     )
     values = {"host": host, "date": date, "authorization": authorization}
 
-    return requset_url + "?" + urlencode(values)
+    return request_url + "?" + urlencode(values)
 
 
 def get_body(appid, text):
