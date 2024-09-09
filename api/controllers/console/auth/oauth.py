@@ -9,12 +9,12 @@ from werkzeug.exceptions import Unauthorized
 
 from configs import dify_config
 from constants.languages import languages
-from controllers.console.error import NotAllowedRegister
 from extensions.ext_database import db
 from libs.helper import get_remote_ip
 from libs.oauth import GitHubOAuth, GoogleOAuth, OAuthUserInfo
 from models.account import Account, AccountStatus
 from services.account_service import AccountService, RegisterService, TenantService
+from services.errors.account import AccountNotFound
 
 from .. import api
 
@@ -88,7 +88,7 @@ class OAuthCallback(Resource):
 
         try:
             account = _generate_account(provider, user_info)
-        except Unauthorized:
+        except AccountNotFound:
             return redirect(f"{dify_config.CONSOLE_WEB_URL}/signin?message=AccountNotFound")
 
         # Check account status
@@ -125,7 +125,7 @@ def _generate_account(provider: str, user_info: OAuthUserInfo):
 
     if not account:
         if not dify_config.ALLOW_REGISTER:
-            raise NotAllowedRegister()
+            raise AccountNotFound()
         account_name = user_info.name if user_info.name else "Dify"
         account = RegisterService.register(
             email=user_info.email, name=account_name, password=None, open_id=user_info.id, provider=provider
