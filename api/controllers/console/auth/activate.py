@@ -27,10 +27,10 @@ class ActivateCheckApi(Resource):
         invitation = RegisterService.get_invitation_if_token_valid(workspaceId, reg_email, token)
         if invitation:
             data = invitation.get("data", {})
-            tenant: Tenant = invitation.get("tenant")
-            workspace_name = tenant.name if tenant else "Unknown Workspace"
-            workspace_id = tenant.id if tenant else "Unknown Workspace ID"
-            invitee_email = data.get("email", "Unknown Email")
+            tenant: Tenant = invitation.get("tenant", None)
+            workspace_name = tenant.name if tenant else None
+            workspace_id = tenant.id if tenant else None
+            invitee_email = data.get("email") if data else None
             return {
                 "is_valid": invitation is not None,
                 "data": {"workspace_name": workspace_name, "workspace_id": workspace_id, "email": invitee_email},
