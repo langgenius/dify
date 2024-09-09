@@ -22,7 +22,7 @@ logger = logging.getLogger(__name__)
 
 class SageMakerRerankModel(RerankModel):
     """
-    Model class for Cohere rerank model.
+    Model class for SageMaker rerank model.
     """
     sagemaker_client: Any = None
 
