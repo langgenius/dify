@@ -354,7 +354,7 @@ const translation = {
       custom: {
         name: 'Other file types',
         description: 'Specify other file types.',
-        createPlaceholder: 'File extension, e.g .doc',
+        createPlaceholder: '+ File extension, e.g .doc',
       },
     },
     'maxNumberOfUploads': 'Max number of uploads',

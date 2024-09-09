@@ -350,7 +350,7 @@ const translation = {
       custom: {
         name: '其他文件类型',
         description: '指定其他文件类型',
-        createPlaceholder: '文件扩展名，例如 .doc',
+        createPlaceholder: '+ 文件扩展名，例如 .doc',
       },
     },
     'content': '内容',
