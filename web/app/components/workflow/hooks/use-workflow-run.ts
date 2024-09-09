@@ -24,6 +24,10 @@ import {
 } from '@/service/workflow'
 import { useFeaturesStore } from '@/app/components/base/features/hooks'
 import { AudioPlayerManager } from '@/app/components/base/audio-btn/audio.player.manager'
+import type {
+  NodeFinishedResponse,
+  NodeStartedResponse,
+} from '@/types/workflow'
 
 export const useWorkflowRun = () => {
   const store = useStoreApi()
@@ -87,7 +91,10 @@ export const useWorkflowRun = () => {
 
   const handleRun = useCallback(async (
     params: any,
-    callback?: IOtherOptions,
+    callback?: Omit<IOtherOptions, 'onNodeStarted' | 'onNodeFinished'> & {
+      onNodeStarted?: (nodeStarted: NodeStartedResponse, parentId?: string) => void
+      onNodeFinished?: (nodeFinished: NodeFinishedResponse, parentId?: string) => void
+    },
   ) => {
     const {
       getNodes,
@@ -298,7 +305,7 @@ export const useWorkflowRun = () => {
             setEdges(newEdges)
           }
           if (onNodeStarted)
-            onNodeStarted(params)
+            onNodeStarted(params, node?.parentId)
         },
         onNodeFinished: (params) => {
           const { data } = params
@@ -367,7 +374,7 @@ export const useWorkflowRun = () => {
           }
 
           if (onNodeFinished)
-            onNodeFinished(params)
+            onNodeFinished(params, nodeParentId)
         },
         onIterationStart: (params) => {
           const { data } = params

@@ -181,6 +181,7 @@ export const useChat = (
     }
 
     let isInIteration = false
+    const iterationInfoMap = {} as Record<string, boolean>
 
     handleResponding(true)
 
@@ -319,9 +320,9 @@ export const useChat = (
           }))
           isInIteration = true
         },
-        onIterationNext: () => {
+        onIterationNext: ({ data }) => {
           const tracing = responseItem.workflowProcess!.tracing!
-          const iterations = tracing[tracing.length - 1]
+          const iterations = tracing.find(item => item.node_id === data.node_id)!
           iterations.details!.push([])
 
           handleUpdateChatList(produce(chatListRef.current, (draft) => {
@@ -331,9 +332,9 @@ export const useChat = (
         },
         onIterationFinish: ({ data }) => {
           const tracing = responseItem.workflowProcess!.tracing!
-          const iterations = tracing[tracing.length - 1]
-          tracing[tracing.length - 1] = {
-            ...iterations,
+          const iterationsIndex = tracing.findIndex(item => item.node_id === data.node_id)!
+          tracing[iterationsIndex] = {
+            ...tracing[iterationsIndex],
             ...data,
             status: NodeRunningStatus.Succeeded,
           } as any
@@ -344,85 +345,44 @@ export const useChat = (
 
           isInIteration = false
         },
-        onNodeStarted: ({ data }) => {
-          if (isInIteration) {
-            const tracing = responseItem.workflowProcess!.tracing!
-            const iterations = tracing[tracing.length - 1]
-            const currIteration = iterations.details![iterations.details!.length - 1]
-            currIteration.push({
-              ...data,
-              status: NodeRunningStatus.Running,
-            } as any)
-            handleUpdateChatList(produce(chatListRef.current, (draft) => {
-              const currentIndex = draft.length - 1
-              draft[currentIndex] = responseItem
-            }))
-          }
-          else {
-            responseItem.workflowProcess!.tracing!.push({
-              ...data,
-              status: NodeRunningStatus.Running,
-            } as any)
-            handleUpdateChatList(produce(chatListRef.current, (draft) => {
-              const currentIndex = draft.findIndex(item => item.id === responseItem.id)
-              draft[currentIndex] = {
-                ...draft[currentIndex],
-                ...responseItem,
-              }
-            }))
-          }
-        },
-        onNodeFinished: ({ data }) => {
-          if (isInIteration) {
-            const tracing = responseItem.workflowProcess!.tracing!
-            const iterations = tracing[tracing.length - 1]
-            if (iterations && iterations.details) {
-              const iterationIndex = data.execution_metadata?.iteration_index || 0
-              if (!iterations.details[iterationIndex])
-                iterations.details[iterationIndex] = []
-              const currIteration = iterations.details[iterationIndex]
-              const nodeIndex = currIteration.findIndex(node =>
-                node.node_id === data.node_id,
-              )
-              if (data.status === NodeRunningStatus.Succeeded) {
-                if (nodeIndex !== -1) {
-                  currIteration[nodeIndex] = {
-                    ...currIteration[nodeIndex],
-                    ...data,
-                  } as any
-                }
-                else {
-                  currIteration.push({
-                    ...data,
-                  } as any)
-                }
-              }
+        onNodeStarted: ({ data }, parentId) => {
+          if (parentId)
+            return
+
+          responseItem.workflowProcess!.tracing!.push({
+            ...data,
+            status: NodeRunningStatus.Running,
+          } as any)
+          handleUpdateChatList(produce(chatListRef.current, (draft) => {
+            const currentIndex = draft.findIndex(item => item.id === responseItem.id)
+            draft[currentIndex] = {
+              ...draft[currentIndex],
+              ...responseItem,
             }
-            handleUpdateChatList(produce(chatListRef.current, (draft) => {
-              const currentIndex = draft.length - 1
-              draft[currentIndex] = responseItem
-            }))
-          }
-          else {
-            const currentIndex = responseItem.workflowProcess!.tracing!.findIndex((item) => {
-              if (!item.execution_metadata?.parallel_id)
-                return item.node_id === data.node_id
-              return item.node_id === data.node_id && item.execution_metadata?.parallel_id === data.execution_metadata?.parallel_id
-            })
-            responseItem.workflowProcess!.tracing[currentIndex] = {
-              ...(responseItem.workflowProcess!.tracing[currentIndex].extras
-                ? { extras: responseItem.workflowProcess!.tracing[currentIndex].extras }
-                : {}),
-              ...data,
-            } as any
-            handleUpdateChatList(produce(chatListRef.current, (draft) => {
-              const currentIndex = draft.findIndex(item => item.id === responseItem.id)
-              draft[currentIndex] = {
-                ...draft[currentIndex],
-                ...responseItem,
-              }
-            }))
-          }
+          }))
+        },
+        onNodeFinished: ({ data }, parentId) => {
+          if (parentId)
+            return
+
+          const currentIndex = responseItem.workflowProcess!.tracing!.findIndex((item) => {
+            if (!item.execution_metadata?.parallel_id)
+              return item.node_id === data.node_id
+            return item.node_id === data.node_id && item.execution_metadata?.parallel_id === data.execution_metadata?.parallel_id
+          })
+          responseItem.workflowProcess!.tracing[currentIndex] = {
+            ...(responseItem.workflowProcess!.tracing[currentIndex]?.extras
+              ? { extras: responseItem.workflowProcess!.tracing[currentIndex].extras }
+              : {}),
+            ...data,
+          } as any
+          handleUpdateChatList(produce(chatListRef.current, (draft) => {
+            const currentIndex = draft.findIndex(item => item.id === responseItem.id)
+            draft[currentIndex] = {
+              ...draft[currentIndex],
+              ...responseItem,
+            }
+          }))
         },
       },
     )
