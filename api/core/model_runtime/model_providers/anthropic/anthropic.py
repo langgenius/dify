@@ -19,9 +19,9 @@ class AnthropicProvider(ModelProvider):
         try:
             model_instance = self.get_model_instance(ModelType.LLM)
 
-            # Use `claude-instant-1` model for validate,
+            # Use `claude-3-opus-20240229` model for validate,
             model_instance.validate_credentials(
-                model='claude-instant-1.2',
+                model='claude-3-opus-20240229',
                 credentials=credentials
             )
         except CredentialsValidateFailedError as ex:
