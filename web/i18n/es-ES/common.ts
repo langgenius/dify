@@ -37,6 +37,7 @@ const translation = {
     params: 'Parámetros',
     duplicate: 'Duplicar',
     rename: 'Renombrar',
+    audioSourceUnavailable: 'AudioSource no está disponible',
   },
   errorMsg: {
     fieldRequired: '{{field}} es requerido',

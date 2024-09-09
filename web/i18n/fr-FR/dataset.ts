@@ -71,6 +71,7 @@ const translation = {
   nTo1RetrievalLegacy: 'La récupération N-à-1 sera officiellement obsolète à partir de septembre. Il est recommandé d\'utiliser la dernière récupération multi-chemins pour obtenir de meilleurs résultats.',
   nTo1RetrievalLegacyLink: 'En savoir plus',
   nTo1RetrievalLegacyLinkText: 'La récupération N-à-1 sera officiellement obsolète en septembre.',
+  defaultRetrievalTip: 'La récupération à chemins multiples est utilisée par défaut. Les connaissances sont extraites de plusieurs bases de connaissances, puis reclassées.',
 }
 
 export default translation
