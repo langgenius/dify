@@ -8194,13 +8194,13 @@ test = ["accelerate (>=0.24.1,<=0.27.0)", "apache-airflow (==2.9.3)", "apache-ai
 
 [[package]]
 name = "sagemaker-core"
-version = "1.0.2"
+version = "1.0.3"
 description = "An python package for sagemaker core functionalities"
 optional = false
 python-versions = ">=3.8"
 files = [
-    {file = "sagemaker_core-1.0.2-py3-none-any.whl", hash = "sha256:ce8d38a4a32efa83e4bc037a8befc7e29f87cd3eaf99acc4472b607f75a0f45a"},
-    {file = "sagemaker_core-1.0.2.tar.gz", hash = "sha256:8fb942aac5e7ed928dab512ffe6facf8c6bdd4595df63c59c0bd0795ea434f8d"},
+    {file = "sagemaker_core-1.0.3-py3-none-any.whl", hash = "sha256:1fb6f1e6a6360498193cef6f678d39f8252a62d59cbce652de68cc1cfb14f3cf"},
+    {file = "sagemaker_core-1.0.3.tar.gz", hash = "sha256:ca0bd400e4d475be88c22b2eb704cd43be34530a7826c1fa9bf24d0ed995308c"},
 ]
 
 [package.dependencies]
@@ -10371,4 +10371,4 @@ cffi = ["cffi (>=1.11)"]
 [metadata]
 lock-version = "2.0"
 python-versions = ">=3.10,<3.13"
-content-hash = "18ae90856c25659452367f92804e72d2a085eef153da7ebd3ce9dc0cc9bee714"
+content-hash = "51016c1219154e1686617b20fdd0ca446fcd8848de414d74cf8eb41588a9bee3"
