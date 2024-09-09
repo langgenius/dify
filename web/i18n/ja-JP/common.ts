@@ -37,6 +37,7 @@ const translation = {
     params: 'パラメータ',
     duplicate: '重複',
     rename: '名前の変更',
+    audioSourceUnavailable: 'AudioSource が利用できません',
   },
   errorMsg: {
     fieldRequired: '{{field}}は必要です',

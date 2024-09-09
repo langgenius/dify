@@ -89,7 +89,8 @@ class OllamaEmbeddingModel(TextEmbeddingModel):
             endpoint_url,
             headers=headers,
             data=json.dumps(payload),
-            timeout=(10, 300)
+            timeout=(10, 300),
+            options={"use_mmap": "true"}
         )
 
         response.raise_for_status()  # Raise an exception for HTTP errors

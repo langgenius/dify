@@ -1,4 +1,5 @@
 model: spark-4
+deprecated: true
 label:
   en_US: Spark V4.0
 model_type: llm

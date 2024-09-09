@@ -412,6 +412,7 @@ const translation = {
         'not empty': 'nu este gol',
         'null': 'este null',
         'not null': 'nu este null',
+        'regex match': 'potrivire regex',
       },
       enterValue: 'Introduceți valoarea',
       addCondition: 'Adăugați condiție',
