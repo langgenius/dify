@@ -68,9 +68,9 @@ const FileUploadSetting: FC<Props> = ({
   const handleCustomFileTypesChange = useCallback((customFileTypes: string[]) => {
     const newPayload = produce(payload, (draft) => {
       draft.allowed_file_extensions = customFileTypes.map((v) => {
-        if (v.startsWith('.'))
-          return v
-        return `.${v}`
+        if (v.startsWith('.')) // Not start with dot
+          return v.slice(1)
+        return v
       })
     })
     onChange(newPayload)
@@ -104,7 +104,7 @@ const FileUploadSetting: FC<Props> = ({
               type={SupportUploadFileTypes.custom}
               selected={allowed_file_types.includes(SupportUploadFileTypes.custom)}
               onToggle={handleSupportFileTypeChange}
-              customFileTypes={allowed_file_extensions}
+              customFileTypes={allowed_file_extensions?.map(item => `.${item}`)}
               onCustomFileTypesChange={handleCustomFileTypesChange}
             />
           </div>
