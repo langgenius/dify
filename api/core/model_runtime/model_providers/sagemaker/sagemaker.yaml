@@ -21,6 +21,8 @@ supported_model_types:
   - llm
   - text-embedding
   - rerank
+  - speech2text
+  - tts
 configurate_methods:
   - customizable-model
 model_credential_schema:
@@ -45,14 +47,10 @@ model_credential_schema:
         zh_Hans: 选择对话类型
         en_US: Select completion mode
       options:
-        - value: completion
-          label:
-            en_US: Completion
-            zh_Hans: 补全
         - value: chat
           label:
             en_US: Chat
-            zh_Hans: 对话
+            zh_Hans: Chat
     - variable: sagemaker_endpoint
       label:
         en_US: sagemaker endpoint
@@ -61,6 +59,76 @@ model_credential_schema:
       placeholder:
         zh_Hans: 请输出你的Sagemaker推理端点
         en_US: Enter your Sagemaker Inference endpoint
+    - variable: audio_s3_cache_bucket
+      show_on:
+        - variable: __model_type
+          value: speech2text
+      label:
+        zh_Hans: 音频缓存桶(s3 bucket)
+        en_US: audio cache bucket(s3 bucket)
+      type: text-input
+      required: true
+      placeholder:
+        zh_Hans: sagemaker-us-east-1-******207838
+        en_US: sagemaker-us-east-1-*******7838
+    - variable: audio_model_type
+      show_on:
+        - variable: __model_type
+          value: tts
+      label:
+        en_US: Audio model type
+      type: select
+      required: true
+      placeholder:
+        zh_Hans: 语音模型类型
+        en_US: Audio model type
+      options:
+        - value: PresetVoice
+          label:
+            en_US: preset voice
+            zh_Hans: 内置音色
+        - value: CloneVoice
+          label:
+            en_US: clone voice
+            zh_Hans: 克隆音色
+        - value: CloneVoice_CrossLingual
+          label:
+            en_US: crosslingual clone voice
+            zh_Hans: 跨语种克隆音色
+        - value: InstructVoice
+          label:
+            en_US: Instruct voice
+            zh_Hans: 文字指令音色
+    - variable: prompt_audio
+      show_on:
+        - variable: __model_type
+          value: tts
+      label:
+        en_US: Mock Audio Source
+      type: text-input
+      required: false
+      placeholder:
+        zh_Hans: 被模仿的音色音频
+        en_US: source audio to be mocked
+    - variable: prompt_text
+      show_on:
+        - variable: __model_type
+          value: tts
+      label:
+        en_US: Prompt Audio Text
+      type: text-input
+      required: false
+      placeholder:
+        zh_Hans: 模仿音色的对应文本
+        en_US: text for the mocked source audio
+    - variable: instruct_text
+      show_on:
+        - variable: __model_type
+          value: tts
+      label:
+        en_US: instruct text for speaker
+      type: text-input
+      required: false
     - variable: aws_access_key_id
       required: false
       label:

@@ -32,7 +32,7 @@ const EmptyDatasetCreationModal = ({
       return
     }
     if (inputValue.length > 40) {
-      notify({ type: 'error', message: t('datasetCreation.stepOne.modal.nameLengthInvaild') })
+      notify({ type: 'error', message: t('datasetCreation.stepOne.modal.nameLengthInvalid') })
       return
     }
     try {

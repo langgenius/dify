@@ -243,7 +243,7 @@ class OCILargeLanguageModel(LargeLanguageModel):
         request_args["compartmentId"] = compartment_id
         request_args["servingMode"]["modelId"] = model
 
-        chathistory = []
+        chat_history = []
         system_prompts = []
         #if "meta.llama" in model:
         #    request_args["chatRequest"]["apiFormat"] = "GENERIC"
@@ -273,16 +273,16 @@ class OCILargeLanguageModel(LargeLanguageModel):
                 if isinstance(message.content, str):
                     text = message.content
                 if isinstance(message, UserPromptMessage):
-                    chathistory.append({"role": "USER", "message": text})
+                    chat_history.append({"role": "USER", "message": text})
                 else:
-                    chathistory.append({"role": "CHATBOT", "message": text})
+                    chat_history.append({"role": "CHATBOT", "message": text})
                 if isinstance(message, SystemPromptMessage):
                     if isinstance(message.content, str):
                         system_prompts.append(message.content)
             args = {"apiFormat": "COHERE",
                     "preambleOverride": ' '.join(system_prompts),
                     "message": prompt_messages[-1].content,
-                    "chatHistory": chathistory, }
+                    "chatHistory": chat_history, }
             request_args["chatRequest"].update(args)
         elif model.startswith("meta"):
             #print("run meta " * 10)

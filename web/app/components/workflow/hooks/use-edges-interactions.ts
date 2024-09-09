@@ -155,7 +155,7 @@ export const useEdgesInteractions = () => {
 
     const newEdges = produce(edges, (draft) => {
       draft.forEach((edge) => {
-        edge.data._runned = false
+        edge.data._run = false
       })
     })
     setEdges(newEdges)
