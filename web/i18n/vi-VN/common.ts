@@ -37,6 +37,7 @@ const translation = {
     params: 'Tham số',
     duplicate: 'Nhân bản',
     rename: 'Đổi tên',
+    audioSourceUnavailable: 'AudioSource không khả dụng',
   },
   placeholder: {
     input: 'Vui lòng nhập',

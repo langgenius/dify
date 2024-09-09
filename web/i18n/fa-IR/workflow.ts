@@ -412,6 +412,7 @@ const translation = {
         'not empty': 'خالی نیست',
         'null': 'خالی',
         'not null': 'خالی نیست',
+        'regex match': 'مسابقه regex',
       },
       enterValue: 'مقدار را وارد کنید',
       addCondition: 'افزودن شرط',

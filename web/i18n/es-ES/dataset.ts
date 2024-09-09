@@ -71,6 +71,7 @@ const translation = {
   nTo1RetrievalLegacy: 'La recuperación N-a-1 será oficialmente obsoleta a partir de septiembre. Se recomienda utilizar la última recuperación de múltiples rutas para obtener mejores resultados.',
   nTo1RetrievalLegacyLink: 'Más información',
   nTo1RetrievalLegacyLinkText: 'La recuperación N-a-1 será oficialmente obsoleta en septiembre.',
+  defaultRetrievalTip: 'De forma predeterminada, se utiliza la recuperación de varias rutas. El conocimiento se recupera de múltiples bases de conocimiento y luego se vuelve a clasificar.',
 }
 
 export default translation
