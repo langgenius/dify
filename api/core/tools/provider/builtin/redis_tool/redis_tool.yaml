@@ -1,0 +1,59 @@
+identity:
+  author: G81192
+  name: redis_tool
+  label:
+    en_US: redis tool
+    zh_Hans: Redis工具
+    pt_BR: REDIS TOOL
+  description:
+    en_US: Tools for Redis
+    zh_Hans: 提供REDIS的工具
+    pt_BR: Tools for Redis
+  icon: icon.svg
+  tags:
+    - utilities
+credentials_for_provider:
+  host:
+    type: text-input
+    required: true
+    label:
+      en_US: host
+      zh_Hans: host
+      pt_BR: Host
+    placeholder:
+      en_US: Please input your Redis Host
+      zh_Hans: 请输入你的 redis Host
+      pt_BR: Please input your Redis Host
+  port:
+    type: text-input
+    required: true
+    label:
+      en_US: port
+      zh_Hans: port
+      pt_BR: Port
+    placeholder:
+      en_US: Please input your Redis Port
+      zh_Hans: 请输入你的 redis Port
+      pt_BR: Please input your Redis Port
+  database:
+    type: text-input
+    required: true
+    label:
+      en_US: database
+      zh_Hans: database
+      pt_BR: Database
+    placeholder:
+      en_US: Please input your Redis Database
+      zh_Hans: 请输入你的 redis Database
+      pt_BR: Please input your Redis Database
+  password:
+    type: secret-input
+    required: true
+    label:
+      en_US: password
+      zh_Hans: password
+      pt_BR: Password
+    placeholder:
+      en_US: Please input your Redis Password
+      zh_Hans: 请输入你的 Redis Password
+      pt_BR: Please input your Redis Password

@@ -1,0 +1,27 @@
+identity:
+  name: get_string
+  author: G81192
+  label:
+    en_US: get string
+    zh_Hans: 查询字符串值
+    pt_BR: get string
+description:
+  human:
+    en_US: A tool for redis get string
+    zh_Hans: redis查询字符串值
+    pt_BR: A tool for redis get string
+  llm: A tool for redis get string
+parameters:
+  - name: key
+    type: string
+    required: true
+    label:
+      en_US: key
+      zh_Hans: key
+      pt_BR: key
+    human_description:
+      en_US: key
+      zh_Hans: key
+      pt_BR: key
+    llm_description: key
+    form: llm

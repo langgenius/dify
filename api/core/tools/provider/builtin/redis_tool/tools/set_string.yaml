@@ -1,0 +1,53 @@
+identity:
+  name: set_string
+  author: G81192
+  label:
+    en_US: set string
+    zh_Hans: 设置字符串值
+    pt_BR: set string
+description:
+  human:
+    en_US: A tool for redis set string
+    zh_Hans: redis设置字符串值
+    pt_BR: A tool for redis set string
+  llm: A tool for redis set string
+parameters:
+  - name: key
+    type: string
+    required: true
+    label:
+      en_US: key
+      zh_Hans: key
+      pt_BR: key
+    human_description:
+      en_US: key
+      zh_Hans: key
+      pt_BR: key
+    llm_description: key
+    form: llm
+  - name: value
+    type: string
+    required: true
+    label:
+      en_US: value
+      zh_Hans: value
+      pt_BR: value
+    human_description:
+      en_US: value
+      zh_Hans: value
+      pt_BR: value
+    llm_description: value
+    form: llm
+  - name: expire
+    type: number
+    required: true
+    label:
+      en_US: expire(s)
+      zh_Hans: 过期时间(秒)
+      pt_BR: expire(s)
+    human_description:
+      en_US: expire(s)
+      zh_Hans: 过期时间(秒)
+      pt_BR: expire(s)
+    llm_description: expire(s)
+    form: llm
