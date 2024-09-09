@@ -72,11 +72,17 @@ const FileFromLinkOrLocal = ({
           {
             showFromLocal && (
               <Button
-                className='w-full'
+                className='relative w-full'
                 variant='secondary-accent'
               >
                 <RiUploadCloud2Line className='mr-1 w-4 h-4' />
                 {t('common.fileUploader.uploadFromComputer')}
+                <input
+                  className='absolute block inset-0 opacity-0 text-[0] w-full disabled:cursor-not-allowed cursor-pointer'
+                  onClick={e => ((e.target as HTMLInputElement).value = '')}
+                  type='file'
+                  onChange={() => {}}
+                />
               </Button>
             )
           }
