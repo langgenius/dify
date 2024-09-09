@@ -617,10 +617,8 @@ class RegisterService:
 
             if open_id is not None or provider is not None:
                 AccountService.link_account_integrate(provider, open_id, account)
-            
-            should_create_workspace = not is_invite_member or (
-                is_invite_member and dify_config.ALLOW_CREATE_WORKSPACE
-            )
+
+            should_create_workspace = not is_invite_member or (is_invite_member and dify_config.ALLOW_CREATE_WORKSPACE)
 
             if should_create_workspace:
                 tenant = TenantService.create_tenant(f"{account.name}'s Workspace")
