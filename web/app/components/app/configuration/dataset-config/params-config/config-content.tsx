@@ -1,20 +1,12 @@
 'use client'
 
-import { memo, useMemo } from 'react'
+import { memo, useEffect, useMemo } from 'react'
 import type { FC } from 'react'
 import { useTranslation } from 'react-i18next'
-import {
-  RiAlertFill,
-} from '@remixicon/react'
 import WeightedScore from './weighted-score'
 import TopKItem from '@/app/components/base/param-item/top-k-item'
 import ScoreThresholdItem from '@/app/components/base/param-item/score-threshold-item'
-import RadioCard from '@/app/components/base/radio-card/simple'
 import { RETRIEVE_TYPE } from '@/types/app'
-import {
-  MultiPathRetrieval,
-  NTo1Retrieval,
-} from '@/app/components/base/icons/src/public/common'
 import type {
   DatasetConfigs,
 } from '@/models/debug'
@@ -31,7 +23,6 @@ import { RerankingModeEnum } from '@/models/datasets'
 import cn from '@/utils/classnames'
 import { useSelectedDatasetsMode } from '@/app/components/workflow/nodes/knowledge-retrieval/hooks'
 import Switch from '@/app/components/base/switch'
-import { useGetLanguage } from '@/context/i18n'
 
 type Props = {
   datasetConfigs: DatasetConfigs
@@ -43,11 +34,6 @@ type Props = {
   selectedDatasets?: DataSet[]
 }
 
-const LEGACY_LINK_MAP = {
-  en_US: 'https://docs.dify.ai/guides/knowledge-base/integrate-knowledge-within-application',
-  zh_Hans: 'https://docs.dify.ai/v/zh-hans/guides/knowledge-base/integrate_knowledge_within_application',
-} as Record<string, string>
-
 const ConfigContent: FC<Props> = ({
   datasetConfigs,
   onChange,
@@ -58,15 +44,18 @@ const ConfigContent: FC<Props> = ({
   selectedDatasets = [],
 }) => {
   const { t } = useTranslation()
-  const language = useGetLanguage()
   const selectedDatasetsMode = useSelectedDatasetsMode(selectedDatasets)
   const type = datasetConfigs.retrieval_model
-  const setType = (value: RETRIEVE_TYPE) => {
-    onChange({
-      ...datasetConfigs,
-      retrieval_model: value,
-    }, true)
-  }
+
+  useEffect(() => {
+    if (type === RETRIEVE_TYPE.oneWay) {
+      onChange({
+        ...datasetConfigs,
+        retrieval_model: RETRIEVE_TYPE.multiWay,
+      }, isInWorkflow)
+    }
+  }, [type])
+
   const {
     modelList: rerankModelList,
     defaultModel: rerankDefaultModel,
@@ -166,63 +155,21 @@ const ConfigContent: FC<Props> = ({
   return (
     <div>
       <div className='system-xl-semibold text-text-primary'>{t('dataset.retrievalSettings')}</div>
-      <div className='mt-2 space-y-3'>
-        <RadioCard
-          icon={<NTo1Retrieval className='shrink-0 mr-3 w-9 h-9 rounded-lg' />}
-          title={(
-            <div className='flex items-center'>
-              {t('appDebug.datasetConfig.retrieveOneWay.title')}
-              <Tooltip
-                popupContent={(
-                  <div className='w-[320px]'>
-                    {t('dataset.nTo1RetrievalLegacy')}
-                  </div>
-                )}
-              >
-                <div className='ml-1 flex items-center px-[5px] h-[18px] rounded-[5px] border border-text-accent-secondary system-2xs-medium-uppercase text-text-accent-secondary'>legacy</div>
-              </Tooltip>
-            </div>
-          )}
-          description={t('appDebug.datasetConfig.retrieveOneWay.description')}
-          isChosen={type === RETRIEVE_TYPE.oneWay}
-          onChosen={() => { setType(RETRIEVE_TYPE.oneWay) }}
-          extra={(
-            <div className='flex pl-3 pr-1 py-3 border-t border-divider-subtle bg-state-warning-hover rounded-b-xl'>
-              <RiAlertFill className='shrink-0 mr-1.5 w-4 h-4 text-text-warning-secondary' />
-              <div className='system-xs-medium text-text-primary'>
-                {t('dataset.nTo1RetrievalLegacyLinkText')}
-                <a
-                  className='text-text-accent'
-                  href={LEGACY_LINK_MAP[language]}
-                  target='_blank'
-                  rel='noopener noreferrer'
-                >
-                  {t('dataset.nTo1RetrievalLegacyLink')}
-                </a>
-              </div>
-            </div>
-          )}
-        />
-        <RadioCard
-          icon={<MultiPathRetrieval className='shrink-0 mr-3 w-9 h-9 rounded-lg' />}
-          title={t('appDebug.datasetConfig.retrieveMultiWay.title')}
-          description={t('appDebug.datasetConfig.retrieveMultiWay.description')}
-          isChosen={type === RETRIEVE_TYPE.multiWay}
-          onChosen={() => { setType(RETRIEVE_TYPE.multiWay) }}
-        />
+      <div className='system-xs-regular text-text-tertiary'>
+        {t('dataset.defaultRetrievalTip')}
       </div>
       {type === RETRIEVE_TYPE.multiWay && (
         <>
-          <div className='mb-2 mt-4 h-[1px] bg-divider-subtle'></div>
-          <div
-            className='flex items-center mb-2 h-6 system-md-semibold text-text-secondary'
-          >
-            {t('dataset.rerankSettings')}
+          <div className='flex items-center my-2 py-1 h-6'>
+            <div className='shrink-0 mr-2 system-xs-semibold-uppercase text-text-secondary'>
+              {t('dataset.rerankSettings')}
+            </div>
+            <div className='grow h-[1px] bg-gradient-to-l from-white to-[rgba(16,24,40,0.08)]'></div>
           </div>
           {
             selectedDatasetsMode.inconsistentEmbeddingModel
             && (
-              <div className='mt-4 system-xs-regular text-text-warning'>
+              <div className='mt-4 system-xs-medium text-text-warning'>
                 {t('dataset.inconsistentEmbeddingModelTip')}
               </div>
             )
@@ -230,7 +177,7 @@ const ConfigContent: FC<Props> = ({
           {
             selectedDatasetsMode.mixtureHighQualityAndEconomic
             && (
-              <div className='mt-4 system-xs-regular text-text-warning'>
+              <div className='mt-4 system-xs-medium text-text-warning'>
                 {t('dataset.mixtureHighQualityAndEconomicTip')}
               </div>
             )

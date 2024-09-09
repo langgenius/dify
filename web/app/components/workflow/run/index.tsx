@@ -134,12 +134,12 @@ const RunPanel: FC<RunProps> = ({ hideResult, activeTab = 'RESULT', runID, getRe
       getData(appDetail.id, runID)
   }, [appDetail, runID])
 
-  const [height, setHieght] = useState(0)
+  const [height, setHeight] = useState(0)
   const ref = useRef<HTMLDivElement>(null)
 
   const adjustResultHeight = () => {
     if (ref.current)
-      setHieght(ref.current?.clientHeight - 16 - 16 - 2 - 1)
+      setHeight(ref.current?.clientHeight - 16 - 16 - 2 - 1)
   }
 
   useEffect(() => {
@@ -197,7 +197,7 @@ const RunPanel: FC<RunProps> = ({ hideResult, activeTab = 'RESULT', runID, getRe
           onClick={() => switchTab('TRACING')}
         >{t('runLog.tracing')}</div>
       </div>
-      {/* panel detal */}
+      {/* panel detail */}
       <div ref={ref} className={cn('grow bg-white h-0 overflow-y-auto rounded-b-2xl', currentTab !== 'DETAIL' && '!bg-gray-50')}>
         {loading && (
           <div className='flex h-full items-center justify-center bg-white'>

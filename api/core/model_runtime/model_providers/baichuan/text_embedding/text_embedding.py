@@ -60,7 +60,7 @@ class BaichuanTextEmbeddingModel(TextEmbeddingModel):
         token_usage = 0
 
         for chunk in chunks:
-            # embeding chunk
+            # embedding chunk
             chunk_embeddings, chunk_usage = self.embedding(
                 model=model,
                 api_key=api_key,

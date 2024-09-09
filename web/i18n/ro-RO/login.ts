@@ -32,7 +32,7 @@ const translation = {
   pp: 'Politica de confidențialitate',
   tosDesc: 'Prin înregistrarea, ești de acord cu',
   goToInit: 'Dacă nu ai inițializat încă contul, te rugăm să mergi la pagina de inițializare',
-  donthave: 'Nu ai?',
+  dontHave: 'Nu ai?',
   invalidInvitationCode: 'Cod de invitație invalid',
   accountAlreadyInited: 'Contul este deja inițializat',
   forgotPassword: 'Ați uitat parola?',
