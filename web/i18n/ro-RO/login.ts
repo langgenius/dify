@@ -32,7 +32,7 @@ const translation = {
   pp: 'Politica de confidențialitate',
   tosDesc: 'Prin înregistrarea, ești de acord cu',
   goToInit: 'Dacă nu ai inițializat încă contul, te rugăm să mergi la pagina de inițializare',
-  donthave: 'Nu ai?',
+  dontHave: 'Nu ai?',
   invalidInvitationCode: 'Cod de invitație invalid',
   accountAlreadyInited: 'Contul este deja inițializat',
   forgotPassword: 'Ați uitat parola?',
@@ -54,6 +54,7 @@ const translation = {
     nameEmpty: 'Numele este obligatoriu',
     passwordEmpty: 'Parola este obligatorie',
     passwordInvalid: 'Parola trebuie să conțină litere și cifre, iar lungimea trebuie să fie mai mare de 8 caractere',
+    passwordLengthInValid: 'Parola trebuie să aibă cel puțin 8 caractere',
   },
   license: {
     tip: 'Înainte de a începe Dify Community Edition, citește',

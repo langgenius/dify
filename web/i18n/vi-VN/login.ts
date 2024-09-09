@@ -31,7 +31,7 @@ const translation = {
   pp: 'Chính sách bảo mật',
   tosDesc: 'Bằng cách đăng ký, bạn đồng ý với',
   goToInit: 'Nếu bạn chưa khởi tạo tài khoản, vui lòng chuyển đến trang khởi tạo',
-  donthave: 'Chưa có tài khoản?',
+  dontHave: 'Chưa có tài khoản?',
   invalidInvitationCode: 'Mã mời không hợp lệ',
   accountAlreadyInited: 'Tài khoản đã được khởi tạo',
   forgotPassword: 'Quên mật khẩu?',
@@ -53,6 +53,7 @@ const translation = {
     nameEmpty: 'Vui lòng nhập tên',
     passwordEmpty: 'Vui lòng nhập mật khẩu',
     passwordInvalid: 'Mật khẩu phải chứa cả chữ và số, và có độ dài ít nhất 8 ký tự',
+    passwordLengthInValid: 'Mật khẩu phải có ít nhất 8 ký tự',
   },
   license: {
     tip: 'Trước khi bắt đầu sử dụng Phiên bản Cộng đồng của Dify, vui lòng đọc',
@@ -68,6 +69,7 @@ const translation = {
   activated: 'Đăng nhập ngay',
   adminInitPassword: 'Mật khẩu khởi tạo quản trị viên',
   validate: 'Xác thực',
+  sso: 'Tiếp tục với SSO',
 }
 
 export default translation

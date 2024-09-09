@@ -173,18 +173,21 @@ class ChatConversationApi(Resource):
 
         if args["keyword"]:
             keyword_filter = "%{}%".format(args["keyword"])
-            message_subquery = (
-                db.session.query(Message.conversation_id)
-                .filter(or_(Message.query.ilike(keyword_filter), Message.answer.ilike(keyword_filter)))
-                .subquery()
-            )
-            query = query.join(subquery, subquery.c.conversation_id == Conversation.id).filter(
-                or_(
-                    Conversation.id.in_(message_subquery),
-                    Conversation.name.ilike(keyword_filter),
-                    Conversation.introduction.ilike(keyword_filter),
-                    subquery.c.from_end_user_session_id.ilike(keyword_filter),
-                ),
+            query = (
+                query.join(
+                    Message,
+                    Message.conversation_id == Conversation.id,
+                )
+                .join(subquery, subquery.c.conversation_id == Conversation.id)
+                .filter(
+                    or_(
+                        Message.query.ilike(keyword_filter),
+                        Message.answer.ilike(keyword_filter),
+                        Conversation.name.ilike(keyword_filter),
+                        Conversation.introduction.ilike(keyword_filter),
+                        subquery.c.from_end_user_session_id.ilike(keyword_filter),
+                    ),
+                )
             )
 
         account = current_user
@@ -198,7 +201,11 @@ class ChatConversationApi(Resource):
             start_datetime_timezone = timezone.localize(start_datetime)
             start_datetime_utc = start_datetime_timezone.astimezone(utc_timezone)
 
-            query = query.where(Conversation.created_at >= start_datetime_utc)
+            match args["sort_by"]:
+                case "updated_at" | "-updated_at":
+                    query = query.where(Conversation.updated_at >= start_datetime_utc)
+                case "created_at" | "-created_at" | _:
+                    query = query.where(Conversation.created_at >= start_datetime_utc)
 
         if args["end"]:
             end_datetime = datetime.strptime(args["end"], "%Y-%m-%d %H:%M")
@@ -207,7 +214,11 @@ class ChatConversationApi(Resource):
             end_datetime_timezone = timezone.localize(end_datetime)
             end_datetime_utc = end_datetime_timezone.astimezone(utc_timezone)
 
-            query = query.where(Conversation.created_at < end_datetime_utc)
+            match args["sort_by"]:
+                case "updated_at" | "-updated_at":
+                    query = query.where(Conversation.updated_at <= end_datetime_utc)
+                case "created_at" | "-created_at" | _:
+                    query = query.where(Conversation.created_at <= end_datetime_utc)
 
         if args["annotation_status"] == "annotated":
             query = query.options(joinedload(Conversation.message_annotations)).join(

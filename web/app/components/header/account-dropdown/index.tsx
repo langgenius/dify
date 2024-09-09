@@ -22,11 +22,11 @@ import { LanguagesSupported } from '@/i18n/language'
 import { useProviderContext } from '@/context/provider-context'
 import { Plan } from '@/app/components/billing/type'
 
-export type IAppSelecotr = {
+export type IAppSelector = {
   isMobile: boolean
 }
 
-export default function AppSelector({ isMobile }: IAppSelecotr) {
+export default function AppSelector({ isMobile }: IAppSelector) {
   const itemClassName = `
     flex items-center w-full h-9 px-3 text-gray-700 text-[14px]
     rounded-lg font-normal hover:bg-gray-50 cursor-pointer
@@ -125,7 +125,7 @@ export default function AppSelector({ isMobile }: IAppSelecotr) {
                         className={classNames(itemClassName, 'group justify-between')}
                         href='https://github.com/langgenius/dify/discussions/categories/feedbacks'
                         target='_blank' rel='noopener noreferrer'>
-                        <div>{t('common.userProfile.roadmapAndFeedback')}</div>
+                        <div>{t('common.userProfile.communityFeedback')}</div>
                         <ArrowUpRight className='hidden w-[14px] h-[14px] text-gray-500 group-hover:flex' />
                       </Link>
                     </Menu.Item>
@@ -146,6 +146,15 @@ export default function AppSelector({ isMobile }: IAppSelecotr) {
                         }
                         target='_blank' rel='noopener noreferrer'>
                         <div>{t('common.userProfile.helpCenter')}</div>
+                        <ArrowUpRight className='hidden w-[14px] h-[14px] text-gray-500 group-hover:flex' />
+                      </Link>
+                    </Menu.Item>
+                    <Menu.Item>
+                      <Link
+                        className={classNames(itemClassName, 'group justify-between')}
+                        href='https://roadmap.dify.ai'
+                        target='_blank' rel='noopener noreferrer'>
+                        <div>{t('common.userProfile.roadmap')}</div>
                         <ArrowUpRight className='hidden w-[14px] h-[14px] text-gray-500 group-hover:flex' />
                       </Link>
                     </Menu.Item>

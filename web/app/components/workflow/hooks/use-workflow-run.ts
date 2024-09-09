@@ -186,7 +186,7 @@ export const useWorkflowRun = () => {
             draft.forEach((edge) => {
               edge.data = {
                 ...edge.data,
-                _runned: false,
+                _run: false,
               }
             })
           })
@@ -292,7 +292,7 @@ export const useWorkflowRun = () => {
               const edge = draft.find(edge => edge.target === data.node_id && edge.source === prevNodeId)
 
               if (edge)
-                edge.data = { ...edge.data, _runned: true } as any
+                edge.data = { ...edge.data, _run: true } as any
             })
             setEdges(newEdges)
           }
@@ -398,7 +398,7 @@ export const useWorkflowRun = () => {
             const edge = draft.find(edge => edge.target === data.node_id && edge.source === prevNodeId)
 
             if (edge)
-              edge.data = { ...edge.data, _runned: true } as any
+              edge.data = { ...edge.data, _run: true } as any
           })
           setEdges(newEdges)
 

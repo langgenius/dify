@@ -15,7 +15,7 @@
 				"type": "element",
 				"name": "g",
 				"attributes": {
-					"id": "cute-robote"
+					"id": "cute-robot"
 				},
 				"children": [
 					{
@@ -34,5 +34,5 @@
 			}
 		]
 	},
-	"name": "CuteRobote"
+	"name": "CuteRobot"
 }

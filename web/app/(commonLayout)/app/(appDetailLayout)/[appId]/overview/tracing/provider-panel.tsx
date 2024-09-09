@@ -48,9 +48,10 @@ const ProviderPanel: FC<Props> = ({
     e.preventDefault()
     e.stopPropagation()
 
-    const url = `${config?.host}/project/${config?.project_key}`
-    window.open(url, '_blank', 'noopener,noreferrer')
-  }, [])
+    const url = config?.project_url
+    if (url)
+      window.open(url, '_blank', 'noopener,noreferrer')
+  }, [config?.project_url])
 
   const handleChosen = useCallback((e: React.MouseEvent) => {
     e.stopPropagation()
