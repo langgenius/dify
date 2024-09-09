@@ -45,23 +45,20 @@ from core.model_runtime.model_providers.__base.large_language_model import Large
 logger = logging.getLogger(__name__)
 
 def inference(predictor, messages:list[dict[str,Any]], params:dict[str,Any], stop:list, stream=False):
-    """
-    根据给定的模型名称和端点名称，对消息进行推理。
-    
-    参数:
-    predictor (str): 模型推理器。
-    tokenizer (str): 模型的tokenizer。
-    messages (List[Dict[str,Any]]): 需要进行推理的消息列表。
+    """    
+    params:
+    predictor : Sagemaker Predictor 
+    messages (List[Dict[str,Any]]): message list。
                 messages = [
-                {"role": "system", "content":"请始终用中文回答"},
-                {"role": "user", "content": "你是谁？你是干嘛的"},
+                {"role": "system", "content":"please answer in Chinese"},
+                {"role": "user", "content": "who are you? what are you doing?"},
             ]
-    params (Dict[str,Any]): 传递给预测器的额外参数。
-    stream (bool): 指定是否使用流式推理，默认为False。
+    params (Dict[str,Any]): model parameters for LLM。
+    stream (bool): False by default。
     
-    返回:
-    如果stream为False，返回推理的结果列表。
-    如果stream为True，返回处理流式推理输出的函数。
+    response:
+    result of inference if stream is False
+    Iterator of Chunks if stream is True
     """
     payload = {
         "model" : params.get('model_name'),
@@ -100,16 +97,6 @@ class SageMakerLargeLanguageModel(LargeLanguageModel):
         if len(resp_str) == 0:
             raise InvokeServerUnavailableError("Empty response")
 
-        # assistant_message = resp.choices[0].message
-
-        # convert tool call to assistant message tool call
-        # tool_calls = assistant_message.tool_calls
-        # assistant_prompt_message_tool_calls = self._extract_response_tool_calls(tool_calls if tool_calls else [])
-        # function_call = assistant_message.function_call
-        # if function_call:
-        #     assistant_prompt_message_tool_calls += [self._extract_response_function_call(function_call)]
-
-        # transform assistant message to prompt message
         assistant_prompt_message = AssistantPromptMessage(
             content=resp_str,
             tool_calls=[]
@@ -450,7 +437,7 @@ class SageMakerLargeLanguageModel(LargeLanguageModel):
             )
         ]
 
-        completion_type = LLMMode.value_of(credentials["mode"])
+        completion_type = LLMMode.value_of(credentials["mode"]).value
 
         features = []
 
