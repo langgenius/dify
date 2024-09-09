@@ -123,6 +123,8 @@ def _generate_account(provider: str, user_info: OAuthUserInfo):
     account = _get_account_by_openid_or_email(provider, user_info)
 
     if not account:
+        if not dify_config.ALLOW_REGISTER:
+            raise Unauthorized("Account not found")
         account_name = user_info.name if user_info.name else "Dify"
         account = RegisterService.register(
             email=user_info.email, name=account_name, password=None, open_id=user_info.id, provider=provider
