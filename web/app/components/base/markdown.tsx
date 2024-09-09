@@ -4,7 +4,6 @@ import 'katex/dist/katex.min.css'
 import RemarkMath from 'remark-math'
 import RemarkBreaks from 'remark-breaks'
 import RehypeKatex from 'rehype-katex'
-import RehypeRaw from 'rehype-raw'
 import RemarkGfm from 'remark-gfm'
 import SyntaxHighlighter from 'react-syntax-highlighter'
 import { atelierHeathLight } from 'react-syntax-highlighter/dist/esm/styles/hljs'
@@ -231,7 +230,6 @@ export function Markdown(props: { content: string; className?: string }) {
         remarkPlugins={[[RemarkGfm, RemarkMath, { singleDollarTextMath: false }], RemarkBreaks]}
         rehypePlugins={[
           RehypeKatex,
-          RehypeRaw as any,
           // The Rehype plug-in is used to remove the ref attribute of an element
           () => {
             return (tree) => {
