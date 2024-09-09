@@ -1,6 +1,6 @@
 import os
 from collections.abc import Iterable
-from typing import Any, Literal, Union
+from typing import Any, Literal, Union, cast
 
 import anthropic
 import pytest
@@ -11,16 +11,18 @@ from anthropic.types import (
     ContentBlock,
     ContentBlockDeltaEvent,
     Message,
-    MessageDeltaEvent,
     MessageDeltaUsage,
     MessageParam,
-    MessageStartEvent,
-    MessageStopEvent,
     MessageStreamEvent,
+    RawMessageDeltaEvent,
+    RawMessageStartEvent,
+    RawMessageStopEvent,
+    RawMessageStreamEvent,
+    TextBlock,
     TextDelta,
     Usage,
 )
-from anthropic.types.message_delta_event import Delta
+from anthropic.types.raw_message_delta_event import Delta as RawMessageDelta
 
 MOCK = os.getenv("MOCK_SWITCH", "false") == "true"
 
@@ -32,17 +34,34 @@ class MockAnthropicClass:
             id="msg-123",
             type="message",
             role="assistant",
-            content=[ContentBlock(text="hello, I'm a chatbot from anthropic", type="text")],
+            content=[TextBlock(text="hello, I'm a chatbot from anthropic", type="text")],
             model=model,
             stop_reason="stop_sequence",
             usage=Usage(input_tokens=1, output_tokens=1),
         )
 
     @staticmethod
-    def mocked_anthropic_chat_create_stream(model: str) -> Stream[MessageStreamEvent]:
+    def mocked_anthropic_chat_create_stream(model: str) -> Stream[RawMessageStreamEvent]:
+        return cast(Stream[RawMessageStreamEvent], MockAnthropicClass._mocked_anthropic_chat_create_stream(model))
+
+    def mocked_anthropic(
+        self,
+        *,
+        max_tokens: int,
+        messages: Iterable[MessageParam],
+        model: str,
+        stream: bool,
+        **kwargs: Any,
+    ) -> Union[Message, Stream[MessageStreamEvent]]:
+        if stream:
+            return MockAnthropicClass.mocked_anthropic_chat_create_stream(model=model)
+        return MockAnthropicClass.mocked_anthropic_chat_create_sync(model=model)
+
+    @staticmethod
+    def _mocked_anthropic_chat_create_stream(model: str):
         full_response_text = "hello, I'm a chatbot from anthropic"
 
-        yield MessageStartEvent(
+        yield RawMessageStartEvent(
             type="message_start",
             message=Message(
                 id="msg-123",
@@ -63,28 +82,13 @@ class MockAnthropicClass:
 
             index += 1
 
-        yield MessageDeltaEvent(
-            type="message_delta", delta=Delta(stop_reason="stop_sequence"), usage=MessageDeltaUsage(output_tokens=1)
+        yield RawMessageDeltaEvent(
+            type="message_delta",
+            delta=RawMessageDelta(stop_reason="stop_sequence"),
+            usage=MessageDeltaUsage(output_tokens=1),
         )
 
-        yield MessageStopEvent(type="message_stop")
-
-    def mocked_anthropic(
-        self: Messages,
-        *,
-        max_tokens: int,
-        messages: Iterable[MessageParam],
-        model: str,
-        stream: Literal[True],
-        **kwargs: Any,
-    ) -> Union[Message, Stream[MessageStreamEvent]]:
-        if len(self._client.api_key) < 18:
-            raise anthropic.AuthenticationError("Invalid API key")
-
-        if stream:
-            return MockAnthropicClass.mocked_anthropic_chat_create_stream(model=model)
-        else:
-            return MockAnthropicClass.mocked_anthropic_chat_create_sync(model=model)
+        yield RawMessageStopEvent(type="message_stop")
 
 
 @pytest.fixture

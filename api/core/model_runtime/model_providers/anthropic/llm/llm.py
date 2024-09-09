@@ -1,26 +1,30 @@
 import base64
 import io
 import json
-from collections.abc import Generator
+from collections.abc import Generator, Sequence
 from typing import Optional, Union, cast
 
 import anthropic
 import requests
 from anthropic import Anthropic, Stream
 from anthropic.types import (
-    ContentBlockDeltaEvent,
+    InputJSONDelta,
     Message,
-    MessageDeltaEvent,
-    MessageStartEvent,
-    MessageStopEvent,
-    MessageStreamEvent,
+    RawContentBlockDeltaEvent,
+    RawContentBlockStartEvent,
+    RawContentBlockStopEvent,
+    RawMessageDeltaEvent,
+    RawMessageStartEvent,
+    RawMessageStopEvent,
+    RawMessageStreamEvent,
+    TextBlock,
+    TextDelta,
+    ToolUseBlock,
     completion_create_params,
 )
-from anthropic.types.beta.tools import ToolsBetaMessage
 from httpx import Timeout
 from PIL import Image
 
-from core.model_runtime.callbacks.base_callback import Callback
 from core.model_runtime.entities.llm_entities import LLMResult, LLMResultChunk, LLMResultChunkDelta
 from core.model_runtime.entities.message_entities import (
     AssistantPromptMessage,
@@ -55,11 +59,17 @@ if you are not sure about the structure.
 
 
 class AnthropicLargeLanguageModel(LargeLanguageModel):
-    def _invoke(self, model: str, credentials: dict,
-                prompt_messages: list[PromptMessage], model_parameters: dict,
-                tools: Optional[list[PromptMessageTool]] = None, stop: Optional[list[str]] = None,
-                stream: bool = True, user: Optional[str] = None) \
-            -> Union[LLMResult, Generator]:
+    def _invoke(
+        self,
+        model: str,
+        credentials: dict,
+        prompt_messages: list[PromptMessage],
+        model_parameters: dict,
+        tools: Optional[list[PromptMessageTool]] = None,
+        stop: Optional[list[str]] = None,
+        stream: bool = True,
+        user: Optional[str] = None,
+    ) -> Union[LLMResult, Generator]:
         """
         Invoke large language model
 
@@ -74,12 +84,28 @@ class AnthropicLargeLanguageModel(LargeLanguageModel):
         :return: full response or stream response chunk generator result
         """
         # invoke model
-        return self._chat_generate(model, credentials, prompt_messages, model_parameters, tools, stop, stream, user)
+        return self._chat_generate(
+            model=model,
+            credentials=credentials,
+            prompt_messages=prompt_messages,
+            model_parameters=model_parameters,
+            tools=tools,
+            stop=stop,
+            stream=stream,
+            user=user,
+        )
 
-    def _chat_generate(self, model: str, credentials: dict,
-                       prompt_messages: list[PromptMessage], model_parameters: dict, 
-                       tools: Optional[list[PromptMessageTool]] = None, stop: Optional[list[str]] = None,
-                       stream: bool = True, user: Optional[str] = None) -> Union[LLMResult, Generator]:
+    def _chat_generate(
+        self,
+        model: str,
+        credentials: dict,
+        prompt_messages: list[PromptMessage],
+        model_parameters: dict,
+        tools: Sequence[PromptMessageTool] | None = None,
+        stop: Optional[list[str]] = None,
+        stream: bool = True,
+        user: Optional[str] = None,
+    ) -> Union[LLMResult, Generator]:
         """
         Invoke llm chat model
 
@@ -96,66 +122,72 @@ class AnthropicLargeLanguageModel(LargeLanguageModel):
         credentials_kwargs = self._to_credential_kwargs(credentials)
 
         # transform model parameters from completion api of anthropic to chat api
-        if 'max_tokens_to_sample' in model_parameters:
-            model_parameters['max_tokens'] = model_parameters.pop('max_tokens_to_sample')
+        if "max_tokens_to_sample" in model_parameters:
+            model_parameters["max_tokens"] = model_parameters.pop("max_tokens_to_sample")
 
         # init model client
         client = Anthropic(**credentials_kwargs)
 
         extra_model_kwargs = {}
         if stop:
-            extra_model_kwargs['stop_sequences'] = stop
+            extra_model_kwargs["stop_sequences"] = stop
 
         if user:
-            extra_model_kwargs['metadata'] = completion_create_params.Metadata(user_id=user)
+            extra_model_kwargs["metadata"] = completion_create_params.Metadata(user_id=user)
 
         system, prompt_message_dicts = self._convert_prompt_messages(prompt_messages)
 
         if system:
-            extra_model_kwargs['system'] = system
+            extra_model_kwargs["system"] = system
 
         # Add the new header for claude-3-5-sonnet-20240620 model
         extra_headers = {}
         if model == "claude-3-5-sonnet-20240620":
-            if model_parameters.get('max_tokens') > 4096:
+            if model_parameters["max_tokens"] > 4096:
                 extra_headers["anthropic-beta"] = "max-tokens-3-5-sonnet-2024-07-15"
 
-        if tools:
-            extra_model_kwargs['tools'] = [
-                self._transform_tool_prompt(tool) for tool in tools
-            ]
-            response = client.beta.tools.messages.create(
-                model=model,
-                messages=prompt_message_dicts,
-                stream=stream,
-                extra_headers=extra_headers,
-                **model_parameters,
-                **extra_model_kwargs
-            )
-        else:
-            # chat model
-            response = client.messages.create(
-                model=model,
-                messages=prompt_message_dicts,
-                stream=stream,
-                extra_headers=extra_headers,
-                **model_parameters,
-                **extra_model_kwargs
-            )
+        if tools is not None:
+            extra_model_kwargs["tools"] = [self._transform_tool_prompt(tool) for tool in tools]
+        response = client.messages.create(
+            model=model,
+            messages=prompt_message_dicts,
+            stream=stream,
+            extra_headers=extra_headers,
+            **model_parameters,
+            **extra_model_kwargs,
+        )
 
         if stream:
-            return self._handle_chat_generate_stream_response(model, credentials, response, prompt_messages)
+            response = cast(Stream, response)
+            return self._handle_chat_generate_stream_response(
+                model=model,
+                credentials=credentials,
+                stream=response,
+                prompt_messages=prompt_messages,
+            )
+        response = cast(Message, response)
+        return self._handle_chat_generate_response(
+            model=model,
+            credentials=credentials,
+            response=response,
+            prompt_messages=prompt_messages,
+        )
 
-        return self._handle_chat_generate_response(model, credentials, response, prompt_messages)
-    
-    def _code_block_mode_wrapper(self, model: str, credentials: dict, prompt_messages: list[PromptMessage],
-                                 model_parameters: dict, tools: Optional[list[PromptMessageTool]] = None,
-                                 stop: Optional[list[str]] = None, stream: bool = True, user: Optional[str] = None,
-                                 callbacks: list[Callback] = None) -> Union[LLMResult, Generator]:
+    def _code_block_mode_wrapper(
+        self,
+        model: str,
+        credentials: dict,
+        prompt_messages: list[PromptMessage],
+        model_parameters: dict,
+        tools: Optional[list[PromptMessageTool]] = None,
+        stop: Optional[list[str]] = None,
+        stream: bool = True,
+        user: Optional[str] = None,
+    ) -> Union[LLMResult, Generator]:
         """
         Code block mode wrapper for invoking large language model
         """
-        if model_parameters.get('response_format'):
+        if model_parameters.get("response_format"):
             stop = stop or []
             # chat model
             self._transform_chat_json_prompts(
@@ -167,52 +199,66 @@ class AnthropicLargeLanguageModel(LargeLanguageModel):
                 stop=stop,
                 stream=stream,
                 user=user,
-                response_format=model_parameters['response_format']
+                response_format=model_parameters["response_format"],
             )
-            model_parameters.pop('response_format')
+            model_parameters.pop("response_format")
 
         return self._invoke(model, credentials, prompt_messages, model_parameters, tools, stop, stream, user)
 
     def _transform_tool_prompt(self, tool: PromptMessageTool) -> dict:
-        return {
-            'name': tool.name,
-            'description': tool.description,
-            'input_schema': tool.parameters
-        }
+        return {"name": tool.name, "description": tool.description, "input_schema": tool.parameters}
 
-    def _transform_chat_json_prompts(self, model: str, credentials: dict,
-                                     prompt_messages: list[PromptMessage], model_parameters: dict,
-                                     tools: list[PromptMessageTool] | None = None, stop: list[str] | None = None,
-                                     stream: bool = True, user: str | None = None, response_format: str = 'JSON') \
-            -> None:
+    def _transform_chat_json_prompts(
+        self,
+        model: str,
+        credentials: dict,
+        prompt_messages: list[PromptMessage],
+        model_parameters: dict,
+        tools: list[PromptMessageTool] | None = None,
+        stop: list[str] | None = None,
+        stream: bool = True,
+        user: str | None = None,
+        response_format: str = "JSON",
+    ) -> None:
         """
         Transform json prompts
         """
-        if "```\n" not in stop:
+        if stop and "```\n" not in stop:
             stop.append("```\n")
-        if "\n```" not in stop:
+        if stop and "\n```" not in stop:
             stop.append("\n```")
 
         # check if there is a system message
         if len(prompt_messages) > 0 and isinstance(prompt_messages[0], SystemPromptMessage):
             # override the system message
+            prompt_content = prompt_messages[0].content
+            if not isinstance(prompt_content, str):
+                prompt_content = "".join([item.data for item in prompt_content])
             prompt_messages[0] = SystemPromptMessage(
-                content=ANTHROPIC_BLOCK_MODE_PROMPT
-                .replace("{{instructions}}", prompt_messages[0].content)
-                .replace("{{block}}", response_format)
+                content=ANTHROPIC_BLOCK_MODE_PROMPT.replace("{{instructions}}", prompt_content).replace(
+                    "{{block}}", response_format
+                )
             )
             prompt_messages.append(AssistantPromptMessage(content=f"\n```{response_format}"))
         else:
             # insert the system message
-            prompt_messages.insert(0, SystemPromptMessage(
-                content=ANTHROPIC_BLOCK_MODE_PROMPT
-                .replace("{{instructions}}", f"Please output a valid {response_format} object.")
-                .replace("{{block}}", response_format)
-            ))
+            prompt_messages.insert(
+                0,
+                SystemPromptMessage(
+                    content=ANTHROPIC_BLOCK_MODE_PROMPT.replace(
+                        "{{instructions}}", f"Please output a valid {response_format} object."
+                    ).replace("{{block}}", response_format)
+                ),
+            )
             prompt_messages.append(AssistantPromptMessage(content=f"\n```{response_format}"))
 
-    def get_num_tokens(self, model: str, credentials: dict, prompt_messages: list[PromptMessage],
-                       tools: Optional[list[PromptMessageTool]] = None) -> int:
+    def get_num_tokens(
+        self,
+        model: str,
+        credentials: dict,
+        prompt_messages: list[PromptMessage],
+        tools: Optional[list[PromptMessageTool]] = None,
+    ) -> int:
         """
         Get number of tokens for given prompt messages
 
@@ -228,9 +274,9 @@ class AnthropicLargeLanguageModel(LargeLanguageModel):
         tokens = client.count_tokens(prompt)
 
         tool_call_inner_prompts_tokens_map = {
-            'claude-3-opus-20240229': 395,
-            'claude-3-haiku-20240307': 264,
-            'claude-3-sonnet-20240229': 159
+            "claude-3-opus-20240229": 395,
+            "claude-3-haiku-20240307": 264,
+            "claude-3-sonnet-20240229": 159,
         }
 
         if model in tool_call_inner_prompts_tokens_map and tools:
@@ -257,13 +303,14 @@ class AnthropicLargeLanguageModel(LargeLanguageModel):
                     "temperature": 0,
                     "max_tokens": 20,
                 },
-                stream=False
+                stream=False,
             )
         except Exception as ex:
             raise CredentialsValidateFailedError(str(ex))
 
-    def _handle_chat_generate_response(self, model: str, credentials: dict, response: Union[Message, ToolsBetaMessage],
-                                       prompt_messages: list[PromptMessage]) -> LLMResult:
+    def _handle_chat_generate_response(
+        self, model: str, credentials: dict, response: Message, prompt_messages: list[PromptMessage]
+    ):
         """
         Handle llm chat response
 
@@ -274,22 +321,18 @@ class AnthropicLargeLanguageModel(LargeLanguageModel):
         :return: llm response
         """
         # transform assistant message to prompt message
-        assistant_prompt_message = AssistantPromptMessage(
-            content='',
-            tool_calls=[]
-        )
+        assistant_prompt_message = AssistantPromptMessage(content="", tool_calls=[])
 
         for content in response.content:
-            if content.type == 'text':
+            if content.type == "text" and isinstance(assistant_prompt_message.content, str):
                 assistant_prompt_message.content += content.text
-            elif content.type == 'tool_use':
+            elif content.type == "tool_use":
                 tool_call = AssistantPromptMessage.ToolCall(
                     id=content.id,
-                    type='function',
+                    type="function",
                     function=AssistantPromptMessage.ToolCall.ToolCallFunction(
-                        name=content.name,
-                        arguments=json.dumps(content.input)
-                    )
+                        name=content.name, arguments=json.dumps(content.input)
+                    ),
                 )
                 assistant_prompt_message.tool_calls.append(tool_call)
 
@@ -307,18 +350,15 @@ class AnthropicLargeLanguageModel(LargeLanguageModel):
         usage = self._calc_response_usage(model, credentials, prompt_tokens, completion_tokens)
 
         # transform response
-        response = LLMResult(
-            model=response.model,
-            prompt_messages=prompt_messages,
-            message=assistant_prompt_message,
-            usage=usage
+        result = LLMResult(
+            model=response.model, prompt_messages=prompt_messages, message=assistant_prompt_message, usage=usage
         )
 
-        return response
+        return result
 
-    def _handle_chat_generate_stream_response(self, model: str, credentials: dict,
-                                              response: Stream[MessageStreamEvent],
-                                              prompt_messages: list[PromptMessage]) -> Generator:
+    def _handle_chat_generate_stream_response(
+        self, model: str, credentials: dict, stream: Stream[RawMessageStreamEvent], prompt_messages: list[PromptMessage]
+    ) -> Generator:
         """
         Handle llm chat stream response
 
@@ -327,81 +367,77 @@ class AnthropicLargeLanguageModel(LargeLanguageModel):
         :param prompt_messages: prompt messages
         :return: llm response chunk generator
         """
-        full_assistant_content = ''
-        return_model = None
+        full_text = ""
         input_tokens = 0
         output_tokens = 0
-        finish_reason = None
+        finish_reason = ""
         index = 0
 
         tool_calls: list[AssistantPromptMessage.ToolCall] = []
 
-        for chunk in response:
-            if isinstance(chunk, MessageStartEvent):
-                if hasattr(chunk, 'content_block'):
-                    content_block = chunk.content_block
-                    if isinstance(content_block, dict):
-                        if content_block.get('type') == 'tool_use':
-                            tool_call = AssistantPromptMessage.ToolCall(
-                                id=content_block.get('id'),
-                                type='function',
-                                function=AssistantPromptMessage.ToolCall.ToolCallFunction(
-                                    name=content_block.get('name'),
-                                    arguments=''
-                                )
-                            )
-                            tool_calls.append(tool_call)
-                elif hasattr(chunk, 'delta'):
-                    delta = chunk.delta
-                    if isinstance(delta, dict) and len(tool_calls) > 0:
-                        if delta.get('type') == 'input_json_delta':
-                            tool_calls[-1].function.arguments += delta.get('partial_json', '')
-                elif chunk.message:
-                    return_model = chunk.message.model
-                    input_tokens = chunk.message.usage.input_tokens
-            elif isinstance(chunk, MessageDeltaEvent):
-                output_tokens = chunk.usage.output_tokens
-                finish_reason = chunk.delta.stop_reason
-            elif isinstance(chunk, MessageStopEvent):
+        for event in stream:
+            if isinstance(event, RawMessageStartEvent):
+                return_model = event.message.model
+                input_tokens += event.message.usage.input_tokens
+                output_tokens += event.message.usage.output_tokens
+            elif isinstance(event, RawContentBlockStartEvent):
+                content_block = event.content_block
+                if isinstance(content_block, TextBlock):
+                    pass
+                elif isinstance(content_block, ToolUseBlock):
+                    tool_calls.append(
+                        AssistantPromptMessage.ToolCall(
+                            id=content_block.id,
+                            type="function",
+                            function=AssistantPromptMessage.ToolCall.ToolCallFunction(
+                                name=content_block.name,
+                                arguments="",
+                            ),
+                        )
+                    )
+            elif isinstance(event, RawContentBlockDeltaEvent):
+                delta = event.delta
+                index = event.index
+                if isinstance(delta, TextDelta):
+                    full_text += delta.text
+                    yield LLMResultChunk(
+                        model=model,
+                        prompt_messages=prompt_messages,
+                        delta=LLMResultChunkDelta(
+                            index=index,
+                            message=AssistantPromptMessage(content=delta.text),
+                        ),
+                    )
+                elif isinstance(delta, InputJSONDelta):
+                    tool_calls[-1].function.arguments += delta.partial_json
+            elif isinstance(event, RawContentBlockStopEvent):
+                pass
+            elif isinstance(event, RawMessageDeltaEvent):
+                output_tokens += event.usage.output_tokens
+                finish_reason = event.delta.stop_reason
+            elif isinstance(event, RawMessageStopEvent):
                 # transform usage
-                usage = self._calc_response_usage(model, credentials, input_tokens, output_tokens)
+                usage = self._calc_response_usage(
+                    model=model,
+                    credentials=credentials,
+                    prompt_tokens=input_tokens,
+                    completion_tokens=output_tokens,
+                )
 
                 # transform empty tool call arguments to {}
                 for tool_call in tool_calls:
                     if not tool_call.function.arguments:
-                        tool_call.function.arguments = '{}'
+                        tool_call.function.arguments = "{}"
 
                 yield LLMResultChunk(
-                    model=return_model,
+                    model=model,
                     prompt_messages=prompt_messages,
                     delta=LLMResultChunkDelta(
                         index=index + 1,
-                        message=AssistantPromptMessage(
-                            content='',
-                            tool_calls=tool_calls
-                        ),
+                        message=AssistantPromptMessage(tool_calls=tool_calls),
                         finish_reason=finish_reason,
-                        usage=usage
-                    )
-                )
-            elif isinstance(chunk, ContentBlockDeltaEvent):
-                chunk_text = chunk.delta.text if chunk.delta.text else ''
-                full_assistant_content += chunk_text
-
-                # transform assistant message to prompt message
-                assistant_prompt_message = AssistantPromptMessage(
-                    content=chunk_text
-                )
-
-                index = chunk.index
-
-                yield LLMResultChunk(
-                    model=return_model,
-                    prompt_messages=prompt_messages,
-                    delta=LLMResultChunkDelta(
-                        index=chunk.index,
-                        message=assistant_prompt_message,
-                    )
+                        usage=usage,
+                    ),
                 )
 
     def _to_credential_kwargs(self, credentials: dict) -> dict:
@@ -412,18 +448,18 @@ class AnthropicLargeLanguageModel(LargeLanguageModel):
         :return:
         """
         credentials_kwargs = {
-            "api_key": credentials['anthropic_api_key'],
+            "api_key": credentials["anthropic_api_key"],
             "timeout": Timeout(315.0, read=300.0, write=10.0, connect=5.0),
             "max_retries": 1,
         }
 
-        if credentials.get('anthropic_api_url'):
-            credentials['anthropic_api_url'] = credentials['anthropic_api_url'].rstrip('/')
-            credentials_kwargs['base_url'] = credentials['anthropic_api_url']
+        if credentials.get("anthropic_api_url"):
+            credentials["anthropic_api_url"] = credentials["anthropic_api_url"].rstrip("/")
+            credentials_kwargs["base_url"] = credentials["anthropic_api_url"]
 
         return credentials_kwargs
 
-    def _convert_prompt_messages(self, prompt_messages: list[PromptMessage]) -> tuple[str, list[dict]]:
+    def _convert_prompt_messages(self, prompt_messages: list[PromptMessage]):
         """
         Convert prompt messages to dict list and system
         """
@@ -431,6 +467,8 @@ class AnthropicLargeLanguageModel(LargeLanguageModel):
         first_loop = True
         for message in prompt_messages:
             if isinstance(message, SystemPromptMessage):
+                if not isinstance(message.content, str):
+                    message.content = "".join([item.data for item in message.content])
                 message.content = message.content.strip()
                 if first_loop:
                     system = message.content
@@ -452,10 +490,7 @@ class AnthropicLargeLanguageModel(LargeLanguageModel):
                         for message_content in message.content:
                             if message_content.type == PromptMessageContentType.TEXT:
                                 message_content = cast(TextPromptMessageContent, message_content)
-                                sub_message_dict = {
-                                    "type": "text",
-                                    "text": message_content.data
-                                }
+                                sub_message_dict = {"type": "text", "text": message_content.data}
                                 sub_messages.append(sub_message_dict)
                             elif message_content.type == PromptMessageContentType.IMAGE:
                                 message_content = cast(ImagePromptMessageContent, message_content)
@@ -464,26 +499,27 @@ class AnthropicLargeLanguageModel(LargeLanguageModel):
                                     try:
                                         image_content = requests.get(message_content.data).content
                                         with Image.open(io.BytesIO(image_content)) as img:
+                                            assert img.format is not None
                                             mime_type = f"image/{img.format.lower()}"
-                                        base64_data = base64.b64encode(image_content).decode('utf-8')
+                                        base64_data = base64.b64encode(image_content).decode("utf-8")
                                     except Exception as ex:
-                                        raise ValueError(f"Failed to fetch image data from url {message_content.data}, {ex}")
+                                        raise ValueError(
+                                            f"Failed to fetch image data from url {message_content.data}, {ex}"
+                                        )
                                 else:
                                     data_split = message_content.data.split(";base64,")
                                     mime_type = data_split[0].replace("data:", "")
                                     base64_data = data_split[1]
 
                                 if mime_type not in ["image/jpeg", "image/png", "image/gif", "image/webp"]:
-                                    raise ValueError(f"Unsupported image type {mime_type}, "
-                                                    f"only support image/jpeg, image/png, image/gif, and image/webp")
+                                    raise ValueError(
+                                        f"Unsupported image type {mime_type}, "
+                                        f"only support image/jpeg, image/png, image/gif, and image/webp"
+                                    )
 
                                 sub_message_dict = {
                                     "type": "image",
-                                    "source": {
-                                        "type": "base64",
-                                        "media_type": mime_type,
-                                        "data": base64_data
-                                    }
+                                    "source": {"type": "base64", "media_type": mime_type, "data": base64_data},
                                 }
                                 sub_messages.append(sub_message_dict)
                         prompt_message_dicts.append({"role": "user", "content": sub_messages})
@@ -492,34 +528,28 @@ class AnthropicLargeLanguageModel(LargeLanguageModel):
                     content = []
                     if message.tool_calls:
                         for tool_call in message.tool_calls:
-                            content.append({
-                                "type": "tool_use",
-                                "id": tool_call.id,
-                                "name": tool_call.function.name,
-                                "input": json.loads(tool_call.function.arguments)
-                            })
+                            content.append(
+                                {
+                                    "type": "tool_use",
+                                    "id": tool_call.id,
+                                    "name": tool_call.function.name,
+                                    "input": json.loads(tool_call.function.arguments),
+                                }
+                            )
                     if message.content:
-                        content.append({
-                            "type": "text",
-                            "text": message.content
-                        })
-                    
+                        content.append({"type": "text", "text": message.content})
+
                     if prompt_message_dicts[-1]["role"] == "assistant":
                         prompt_message_dicts[-1]["content"].extend(content)
                     else:
-                        prompt_message_dicts.append({
-                            "role": "assistant",
-                            "content": content
-                        })
+                        prompt_message_dicts.append({"role": "assistant", "content": content})
                 elif isinstance(message, ToolPromptMessage):
                     message = cast(ToolPromptMessage, message)
                     message_dict = {
                         "role": "user",
-                        "content": [{
-                            "type": "tool_result",
-                            "tool_use_id": message.tool_call_id,
-                            "content": message.content
-                        }]
+                        "content": [
+                            {"type": "tool_result", "tool_use_id": message.tool_call_id, "content": message.content}
+                        ],
                     }
                     prompt_message_dicts.append(message_dict)
                 else:
@@ -527,7 +557,7 @@ class AnthropicLargeLanguageModel(LargeLanguageModel):
 
         return system, prompt_message_dicts
 
-    def _convert_one_message_to_text(self, message: PromptMessage) -> str:
+    def _convert_one_message_to_text(self, message: PromptMessage):
         """
         Convert a single message to a string.
 
@@ -561,6 +591,8 @@ class AnthropicLargeLanguageModel(LargeLanguageModel):
                         message_text += f"{ai_prompt} [IMAGE]"
         elif isinstance(message, SystemPromptMessage):
             message_text = content
+            if not isinstance(message_text, str):
+                message_text = "".join([item.data for item in message_text])
         elif isinstance(message, ToolPromptMessage):
             message_text = f"{human_prompt} {message.content}"
         else:
@@ -576,16 +608,13 @@ class AnthropicLargeLanguageModel(LargeLanguageModel):
         :return: Combined string with necessary human_prompt and ai_prompt tags.
         """
         if not messages:
-            return ''
+            return ""
 
         messages = messages.copy()  # don't mutate the original list
         if not isinstance(messages[-1], AssistantPromptMessage):
             messages.append(AssistantPromptMessage(content=""))
 
-        text = "".join(
-            self._convert_one_message_to_text(message)
-            for message in messages
-        )
+        text = "".join(self._convert_one_message_to_text(message) for message in messages)
 
         # trim off the trailing ' ' that might come from the "Assistant: "
         return text.rstrip()
@@ -601,24 +630,14 @@ class AnthropicLargeLanguageModel(LargeLanguageModel):
         :return: Invoke error mapping
         """
         return {
-            InvokeConnectionError: [
-                anthropic.APIConnectionError,
-                anthropic.APITimeoutError
-            ],
-            InvokeServerUnavailableError: [
-                anthropic.InternalServerError
-            ],
-            InvokeRateLimitError: [
-                anthropic.RateLimitError
-            ],
-            InvokeAuthorizationError: [
-                anthropic.AuthenticationError,
-                anthropic.PermissionDeniedError
-            ],
+            InvokeConnectionError: [anthropic.APIConnectionError, anthropic.APITimeoutError],
+            InvokeServerUnavailableError: [anthropic.InternalServerError],
+            InvokeRateLimitError: [anthropic.RateLimitError],
+            InvokeAuthorizationError: [anthropic.AuthenticationError, anthropic.PermissionDeniedError],
             InvokeBadRequestError: [
                 anthropic.BadRequestError,
                 anthropic.NotFoundError,
                 anthropic.UnprocessableEntityError,
-                anthropic.APIError
-            ]
+                anthropic.APIError,
+            ],
         }

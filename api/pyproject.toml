@@ -107,7 +107,7 @@ package-mode = false
 ############################################################
 
 [tool.poetry.dependencies]
-anthropic = "~0.23.1"
+anthropic = "^0.34.2"
 authlib = "1.3.1"
 azure-identity = "1.16.1"
 azure-storage-blob = "12.13.0"

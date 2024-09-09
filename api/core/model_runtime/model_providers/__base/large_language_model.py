@@ -3,7 +3,7 @@ import os
 import re
 import time
 from abc import abstractmethod
-from collections.abc import Generator, Mapping
+from collections.abc import Generator, Mapping, Sequence
 from typing import Optional, Union
 
 from pydantic import ConfigDict
@@ -96,10 +96,19 @@ class LargeLanguageModel(AIModel):
                     stop=stop,
                     stream=stream,
                     user=user,
-                    callbacks=callbacks
+                    callbacks=callbacks,
                 )
             else:
-                result = self._invoke(model, credentials, prompt_messages, model_parameters, tools, stop, stream, user)
+                result = self._invoke(
+                    model=model,
+                    credentials=credentials,
+                    prompt_messages=prompt_messages,
+                    model_parameters=model_parameters,
+                    tools=tools,
+                    stop=stop,
+                    stream=stream,
+                    user=user,
+                )
         except Exception as e:
             self._trigger_invoke_error_callbacks(
                 model=model,
@@ -453,7 +462,7 @@ if you are not sure about the structure.
     @abstractmethod
     def _invoke(self, model: str, credentials: dict,
                 prompt_messages: list[PromptMessage], model_parameters: dict,
-                tools: Optional[list[PromptMessageTool]] = None, stop: Optional[list[str]] = None,
+                tools: Optional[Sequence[PromptMessageTool]] = None, stop: Optional[list[str]] = None,
                 stream: bool = True, user: Optional[str] = None) \
             -> Union[LLMResult, Generator]:
         """

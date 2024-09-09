@@ -1,6 +1,6 @@
 import json
 import logging
-from collections.abc import Generator
+from collections.abc import Generator, Sequence
 from copy import deepcopy
 from typing import Any, Union
 
@@ -12,6 +12,7 @@ from core.model_runtime.entities.message_entities import (
     AssistantPromptMessage,
     PromptMessage,
     PromptMessageContentType,
+    PromptMessageTool,
     SystemPromptMessage,
     TextPromptMessageContent,
     ToolPromptMessage,
@@ -26,7 +27,7 @@ logger = logging.getLogger(__name__)
 
 class FunctionCallAgentRunner(BaseAgentRunner):
 
-    def run(self, 
+    def run(self,
             message: Message, query: str, **kwargs: Any
     ) -> Generator[LLMResultChunk, None, None]:
         """
@@ -52,7 +53,7 @@ class FunctionCallAgentRunner(BaseAgentRunner):
 
         # get tracing instance
         trace_manager = app_generate_entity.trace_manager
-        
+
         def increase_usage(final_llm_usage_dict: dict[str, LLMUsage], usage: LLMUsage):
             if not final_llm_usage_dict['usage']:
                 final_llm_usage_dict['usage'] = usage
@@ -70,8 +71,9 @@ class FunctionCallAgentRunner(BaseAgentRunner):
             function_call_state = False
 
             if iteration_step == max_iteration_steps:
-                # the last iteration, remove all tools
-                prompt_messages_tools = []
+                # Remove tools in the last round.
+                # FIXME: Claude need tools when messages contains "tool_use" and "tool_result".
+                prompt_messages_tools: Sequence[PromptMessageTool] = []
 
             message_file_ids = []
             agent_thought = self.create_agent_thought(
@@ -176,7 +178,7 @@ class FunctionCallAgentRunner(BaseAgentRunner):
                 self.queue_manager.publish(QueueAgentThoughtEvent(
                     agent_thought_id=agent_thought.id
                 ), PublishFrom.APPLICATION_MANAGER)
-                
+
                 yield LLMResultChunk(
                     model=model_instance.model,
                     prompt_messages=result.prompt_messages,
@@ -205,12 +207,12 @@ class FunctionCallAgentRunner(BaseAgentRunner):
                 ]
             else:
                 assistant_message.content = response
-            
+
             self._current_thoughts.append(assistant_message)
 
             # save thought
             self.save_agent_thought(
-                agent_thought=agent_thought, 
+                agent_thought=agent_thought,
                 tool_name=tool_call_names,
                 tool_input=tool_call_inputs,
                 thought=response,
@@ -223,7 +225,7 @@ class FunctionCallAgentRunner(BaseAgentRunner):
             self.queue_manager.publish(QueueAgentThoughtEvent(
                 agent_thought_id=agent_thought.id
             ), PublishFrom.APPLICATION_MANAGER)
-            
+
             final_answer += response + '\n'
 
             # call tools
@@ -260,14 +262,14 @@ class FunctionCallAgentRunner(BaseAgentRunner):
                         ), PublishFrom.APPLICATION_MANAGER)
                         # add message file ids
                         message_file_ids.append(message_file_id)
-                    
+
                     tool_response = {
                         "tool_call_id": tool_call_id,
                         "tool_call_name": tool_call_name,
                         "tool_response": tool_invoke_response,
                         "meta": tool_invoke_meta.to_dict()
                     }
-                
+
                 tool_responses.append(tool_response)
                 if tool_response['tool_response'] is not None:
                     self._current_thoughts.append(
@@ -276,21 +278,21 @@ class FunctionCallAgentRunner(BaseAgentRunner):
                             tool_call_id=tool_call_id,
                             name=tool_call_name,
                         )
-                    ) 
+                    )
 
             if len(tool_responses) > 0:
                 # save agent thought
                 self.save_agent_thought(
-                    agent_thought=agent_thought, 
+                    agent_thought=agent_thought,
                     tool_name=None,
                     tool_input=None,
-                    thought=None, 
+                    thought=None,
                     tool_invoke_meta={
-                        tool_response['tool_call_name']: tool_response['meta'] 
+                        tool_response['tool_call_name']: tool_response['meta']
                         for tool_response in tool_responses
                     },
                     observation={
-                        tool_response['tool_call_name']: tool_response['tool_response'] 
+                        tool_response['tool_call_name']: tool_response['tool_response']
                         for tool_response in tool_responses
                     },
                     answer=None,
@@ -302,11 +304,11 @@ class FunctionCallAgentRunner(BaseAgentRunner):
 
             # update prompt tool
             for prompt_tool in prompt_messages_tools:
-                self.update_prompt_message_tool(tool_instances[prompt_tool.name], prompt_tool)
+                self.update_prompt_message_tool(tool=tool_instances[prompt_tool.name], prompt_tool=prompt_tool)
 
             iteration_step += 1
 
-        self.update_db_variables(self.variables_pool, self.db_variables_pool)
+        self.update_db_variables(tool_variables=self.variables_pool, db_variables=self.db_variables_pool)
         # publish end event
         self.queue_manager.publish(QueueMessageEndEvent(llm_result=LLMResult(
             model=model_instance.model,
@@ -325,7 +327,7 @@ class FunctionCallAgentRunner(BaseAgentRunner):
         if llm_result_chunk.delta.message.tool_calls:
             return True
         return False
-    
+
     def check_blocking_tool_calls(self, llm_result: LLMResult) -> bool:
         """
         Check if there is any blocking tool call in llm result
@@ -354,7 +356,7 @@ class FunctionCallAgentRunner(BaseAgentRunner):
             ))
 
         return tool_calls
-    
+
     def extract_blocking_tool_calls(self, llm_result: LLMResult) -> Union[None, list[tuple[str, str, dict[str, Any]]]]:
         """
         Extract blocking tool calls from llm result
@@ -384,7 +386,7 @@ class FunctionCallAgentRunner(BaseAgentRunner):
             return [
                 SystemPromptMessage(content=prompt_template),
             ]
-        
+
         if prompt_messages and not isinstance(prompt_messages[0], SystemPromptMessage) and prompt_template:
             prompt_messages.insert(0, SystemPromptMessage(content=prompt_template))
 
@@ -404,7 +406,7 @@ class FunctionCallAgentRunner(BaseAgentRunner):
             prompt_messages.append(UserPromptMessage(content=query))
 
         return prompt_messages
-    
+
     def _clear_user_prompt_image_messages(self, prompt_messages: list[PromptMessage]) -> list[PromptMessage]:
         """
         As for now, gpt supports both fc and vision at the first iteration.
@@ -416,10 +418,10 @@ class FunctionCallAgentRunner(BaseAgentRunner):
             if isinstance(prompt_message, UserPromptMessage):
                 if isinstance(prompt_message.content, list):
                     prompt_message.content = '\n'.join([
-                        content.data if content.type == PromptMessageContentType.TEXT else 
+                        content.data if content.type == PromptMessageContentType.TEXT else
                         '[image]' if content.type == PromptMessageContentType.IMAGE else
-                        '[file]' 
-                        for content in prompt_message.content 
+                        '[file]'
+                        for content in prompt_message.content
                     ])
 
         return prompt_messages

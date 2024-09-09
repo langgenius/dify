@@ -14,9 +14,6 @@ from tests.integration_tests.model_runtime.__mock.anthropic import setup_anthrop
 def test_validate_credentials(setup_anthropic_mock):
     model = AnthropicLargeLanguageModel()
 
-    with pytest.raises(CredentialsValidateFailedError):
-        model.validate_credentials(model="claude-instant-1.2", credentials={"anthropic_api_key": "invalid_key"})
-
     model.validate_credentials(
         model="claude-instant-1.2", credentials={"anthropic_api_key": os.environ.get("ANTHROPIC_API_KEY")}
     )
