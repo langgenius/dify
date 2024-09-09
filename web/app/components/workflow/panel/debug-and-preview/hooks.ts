@@ -345,8 +345,8 @@ export const useChat = (
 
           isInIteration = false
         },
-        onNodeStarted: ({ data }, parentId) => {
-          if (parentId)
+        onNodeStarted: ({ data }) => {
+          if (data.iteration_id)
             return
 
           responseItem.workflowProcess!.tracing!.push({
@@ -361,8 +361,8 @@ export const useChat = (
             }
           }))
         },
-        onNodeFinished: ({ data }, parentId) => {
-          if (parentId)
+        onNodeFinished: ({ data }) => {
+          if (data.iteration_id)
             return
 
           const currentIndex = responseItem.workflowProcess!.tracing!.findIndex((item) => {

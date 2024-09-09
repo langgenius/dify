@@ -118,6 +118,7 @@ export type NodeStartedResponse = {
   data: {
     id: string
     node_id: string
+    iteration_id?: string
     node_type: string
     index: number
     predecessor_node_id?: string
@@ -134,6 +135,7 @@ export type NodeFinishedResponse = {
   data: {
     id: string
     node_id: string
+    iteration_id?: string
     node_type: string
     index: number
     predecessor_node_id?: string
@@ -150,6 +152,7 @@ export type NodeFinishedResponse = {
       parallel_id?: string
       parallel_start_node_id?: string
       iteration_index?: number
+      iteration_id?: string
     }
     created_at: number
   }
