@@ -4,7 +4,7 @@ import { useNodes } from 'reactflow'
 import { useTranslation } from 'react-i18next'
 import NodeVariableItem from '../variable-assigner/components/node-variable-item'
 import { type ListFilterNodeType } from './types'
-import { isENV, isSystemVar } from '@/app/components/workflow/nodes/_base/components/variable/utils'
+import { isConversationVar, isENV, isSystemVar } from '@/app/components/workflow/nodes/_base/components/variable/utils'
 import { BlockEnum, type Node, type NodeProps } from '@/app/components/workflow/types'
 
 const i18nPrefix = 'workflow.nodes.listFilter'
@@ -22,6 +22,7 @@ const NodeComponent: FC<NodeProps<ListFilterNodeType>> = ({
 
   const isSystem = isSystemVar(variable)
   const isEnv = isENV(variable)
+  const isChatVar = isConversationVar(variable)
   const node = isSystem ? nodes.find(node => node.data.type === BlockEnum.Start) : nodes.find(node => node.id === variable[0])
   const varName = isSystem ? `sys.${variable[variable.length - 1]}` : variable.slice(1).join('.')
   return (
@@ -30,6 +31,7 @@ const NodeComponent: FC<NodeProps<ListFilterNodeType>> = ({
       <NodeVariableItem
         node={node as Node}
         isEnv={isEnv}
+        isChatVar={isChatVar}
         varName={varName}
         className='bg-workflow-block-parma-bg'
       />
