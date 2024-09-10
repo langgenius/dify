@@ -83,7 +83,7 @@ const translation = {
         desc: '添加',
       },
       drag: {
-        title: '拉',
+        title: '拖动',
         desc: '連接',
       },
       limit: '並行度僅限於 {{num}} 個分支。',
