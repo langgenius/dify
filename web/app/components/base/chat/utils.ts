@@ -72,22 +72,23 @@ function getPrevChatList(fetchedMessages: any[]) {
 
 function buildChatItemTree(allMessages: IChatItem[]): ChatItemInTree[] {
   const map: Record<string, ChatItemInTree> = {}
-  let rootNodes: ChatItemInTree[] = []
+  const rootNodes: ChatItemInTree[] = []
   const childrenCount: Record<string, number> = {}
 
-  const legacyQuestions: ChatItemInTree[] = []
-
+  let lastAppendedLegacyAnswer: ChatItemInTree | null = null
   for (let i = 0; i < allMessages.length; i += 2) {
     const question = allMessages[i]!
     const answer = allMessages[i + 1]!
 
+    const parentMessageId = question.parentMessageId ?? ''
+    const isLegacy = parentMessageId === UUID_NIL
+
     // Process question
-    const parentId = question.parentMessageId ?? ''
-    childrenCount[parentId] = (childrenCount[parentId] || 0) + 1
+    childrenCount[parentMessageId] = (childrenCount[parentMessageId] || 0) + 1
     const questionNode: ChatItemInTree = {
       ...question,
       children: [],
-      siblingIndex: childrenCount[parentId] - 1,
+      siblingIndex: isLegacy ? 0 : childrenCount[parentMessageId] - 1,
     }
     map[question.id] = questionNode
 
@@ -103,22 +104,21 @@ function buildChatItemTree(allMessages: IChatItem[]): ChatItemInTree[] {
     // Connect question and answer
     questionNode.children!.push(answerNode)
 
-    // Connect to parent or add to root
-    if (!parentId)
-      rootNodes.push(questionNode)
-    else if (parentId !== UUID_NIL)
-      map[parentId]?.children!.push(questionNode)
-    else
-      legacyQuestions.unshift(questionNode)
-  }
+    // Append to parent or add to root
+    if (isLegacy) {
+      if (!lastAppendedLegacyAnswer)
+        rootNodes.push(questionNode)
+      else
+        lastAppendedLegacyAnswer.children!.push(questionNode)
 
-  // legacy message compat
-  for (const legacyQuestion of legacyQuestions) {
-    const answer = legacyQuestion.children![0]!
-    const questionNode = map[legacyQuestion.id]
-    const answerNode = map[answer.id]
-    answerNode.children?.unshift(...rootNodes)
-    rootNodes = [questionNode]
+      lastAppendedLegacyAnswer = answerNode
+    }
+    else {
+      if (!parentMessageId)
+        rootNodes.push(questionNode)
+      else
+        map[parentMessageId]?.children!.push(questionNode)
+    }
   }
 
   return rootNodes
