@@ -1058,8 +1058,7 @@ class DocumentService:
         retrieval_model = None
         if document_data["indexing_technique"] == "high_quality":
             dataset_collection_binding = DatasetCollectionBindingService.get_dataset_collection_binding(
-                document_data['embedding_model_provider'],
-                document_data['embedding_model']
+                document_data["embedding_model_provider"], document_data["embedding_model"]
             )
             dataset_collection_binding_id = dataset_collection_binding.id
             if document_data.get("retrieval_model"):
