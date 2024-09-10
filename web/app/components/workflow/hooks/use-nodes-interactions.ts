@@ -16,6 +16,7 @@ import {
   useReactFlow,
   useStoreApi,
 } from 'reactflow'
+import { unionBy } from 'lodash-es'
 import type { ToolDefaultValue } from '../block-selector/types'
 import type {
   Edge,
@@ -217,11 +218,11 @@ export const useNodesInteractions = () => {
       const sourceConnectedEdges = getConnectedEdges([{ id: connectedEdges[i].source } as Node], edges).filter(edge => edge.source === connectedEdges[i].source && edge.sourceHandle === connectedEdges[i].sourceHandle)
       targetNodes.push(...sourceConnectedEdges.map(edge => nodes.find(n => n.id === edge.target)!))
     }
-
-    if (targetNodes.length > 1) {
+    const uniqTargetNodes = unionBy(targetNodes, 'id')
+    if (uniqTargetNodes.length > 1) {
       const newNodes = produce(nodes, (draft) => {
         draft.forEach((n) => {
-          if (targetNodes.some(targetNode => n.id === targetNode.id))
+          if (uniqTargetNodes.some(targetNode => n.id === targetNode.id))
             n.data._inParallelHovering = true
         })
       })
