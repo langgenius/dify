@@ -334,8 +334,10 @@ class TenantService:
         return tenant
 
     @staticmethod
-    def create_owner_tenant_if_not_exist(account: Account):
+    def create_owner_tenant_if_not_exist(account: Account, name: Optional[str] = None):
         """Create owner tenant if not exist"""
+        if not dify_config.ALLOW_CREATE_WORKSPACE:
+            raise WorkSpaceNotAllowedCreateError()
         available_ta = (
             TenantAccountJoin.query.filter_by(account_id=account.id).order_by(TenantAccountJoin.id.asc()).first()
         )

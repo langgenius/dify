@@ -1,7 +1,7 @@
 from typing import cast
 
 import flask_login
-from flask import request
+from flask import redirect, request
 from flask_restful import Resource, reqparse
 
 import services
@@ -16,10 +16,12 @@ from controllers.console.auth.error import (
 )
 from controllers.console.error import NotAllowedRegister
 from controllers.console.setup import setup_required
+from events.tenant_event import tenant_was_created
 from libs.helper import email, get_remote_ip
 from libs.password import valid_password
 from models.account import Account
 from services.account_service import AccountService, TenantService
+from services.errors.workspace import WorkSpaceNotAllowedCreateError
 
 
 class LoginApi(Resource):
@@ -130,11 +132,27 @@ class EmailCodeLoginApi(Resource):
 
         AccountService.revoke_email_code_login_token(args["token"])
         account = AccountService.get_user_through_email(user_email)
-        if account is None:
-            account = AccountService.create_account_and_tenant(
-                email=user_email, name=user_email, interface_language=languages[0]
-            )
+        tenant = TenantService.get_join_tenants(account)
+        if not tenant:
+            if not dify_config.ALLOW_CREATE_WORKSPACE:
+                return redirect(
+                    f"{dify_config.CONSOLE_WEB_URL}/signin?message=Workspace not found, please contact system admin to invite you to join in a workspace."
+                )
+            else:
+                tenant = TenantService.create_tenant(f"{account.name}'s Workspace")
+                TenantService.create_tenant_member(tenant, account, role="owner")
+                account.current_tenant = tenant
+                tenant_was_created.send(tenant)
 
+        if account is None:
+            try:
+                account = AccountService.create_account_and_tenant(
+                    email=user_email, name=user_email, interface_language=languages[0]
+                )
+            except WorkSpaceNotAllowedCreateError:
+                return redirect(
+                    f"{dify_config.CONSOLE_WEB_URL}/signin?message=Workspace not found, please contact system admin to invite you to join in a workspace."
+                )
         token = AccountService.login(account, ip_address=get_remote_ip(request))
 
         return {"result": "success", "data": token}
