@@ -179,3 +179,5 @@ api/.vscode
 
 .idea/
 .vscode
+
+demo*
