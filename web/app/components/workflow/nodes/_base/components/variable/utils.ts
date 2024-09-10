@@ -52,18 +52,18 @@ const inputVarTypeToVarType = (type: InputVarType): VarType => {
   } as any)[type] || VarType.string
 }
 
-const findExceptVarInObject = (obj: any, filterVar: (payload: Var, selector: ValueSelector) => boolean, value_selector: ValueSelector): Var => {
+const findExceptVarInObject = (obj: any, filterVar: (payload: Var, selector: ValueSelector) => boolean, value_selector: ValueSelector, isFile?: boolean): Var => {
   const { children } = obj
   const res: Var = {
     variable: obj.variable,
-    type: VarType.object,
+    type: isFile ? VarType.file : VarType.object,
     children: children.filter((item: Var) => {
       const { children } = item
       const currSelector = [...value_selector, item.variable]
       if (!children)
         return filterVar(item, currSelector)
 
-      const obj = findExceptVarInObject(item, filterVar, currSelector)
+      const obj = findExceptVarInObject(item, filterVar, currSelector, false) // File doesn't contains file children
       return obj.children && obj.children?.length > 0
     }),
   }
@@ -302,7 +302,6 @@ const formatItem = (
   }
 
   const selector = [id]
-
   res.vars = res.vars.filter((v) => {
     const isCurrentMatched = filterVar(v, (() => {
       const variableArr = v.variable.split('.')
@@ -330,7 +329,7 @@ const formatItem = (
     if (!children)
       return false
 
-    const obj = findExceptVarInObject(isFile ? { ...v, children } : v, filterVar, selector)
+    const obj = findExceptVarInObject(isFile ? { ...v, children } : v, filterVar, selector, isFile)
     return obj?.children && obj?.children.length > 0
   }).map((v) => {
     const isFile = v.type === VarType.file
@@ -352,7 +351,7 @@ const formatItem = (
     if (!children)
       return v
 
-    return findExceptVarInObject(isFile ? { ...v, children } : v, filterVar, selector)
+    return findExceptVarInObject(isFile ? { ...v, children } : v, filterVar, selector, isFile)
   })
 
   return res
