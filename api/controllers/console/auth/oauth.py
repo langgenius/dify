@@ -9,6 +9,7 @@ from werkzeug.exceptions import Unauthorized
 
 from configs import dify_config
 from constants.languages import languages
+from events.tenant_event import tenant_was_created
 from extensions.ext_database import db
 from libs.helper import get_remote_ip
 from libs.oauth import GitHubOAuth, GoogleOAuth, OAuthUserInfo
@@ -133,7 +134,13 @@ def _generate_account(provider: str, user_info: OAuthUserInfo):
     if account:
         tenant = TenantService.get_join_tenants(account)
         if not tenant:
-            raise WorkSpaceNotFound()
+            if not dify_config.ALLOW_CREATE_WORKSPACE:
+                raise WorkSpaceNotAllowedCreateError()
+            else:
+                tenant = TenantService.create_tenant(f"{account.name}'s Workspace")
+                TenantService.create_tenant_member(tenant, account, role="owner")
+                account.current_tenant = tenant
+                tenant_was_created.send(tenant)
 
     if not account:
         if not dify_config.ALLOW_REGISTER:
