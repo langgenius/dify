@@ -1,9 +1,11 @@
+import type { ChangeEvent } from 'react'
 import {
   memo,
   useState,
 } from 'react'
 import { useTranslation } from 'react-i18next'
 import { RiUploadCloud2Line } from '@remixicon/react'
+import { useFile } from '../hooks'
 import {
   PortalToFollowElem,
   PortalToFollowElemContent,
@@ -26,6 +28,16 @@ const FileFromLinkOrLocal = ({
   const { t } = useTranslation()
   const [open, setOpen] = useState(false)
   const [url, setUrl] = useState('')
+  const { handleLocalFileUpload } = useFile()
+
+  const handleChange = (e: ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0]
+
+    if (!file)
+      return
+
+    handleLocalFileUpload(file)
+  }
 
   return (
     <PortalToFollowElem
@@ -81,7 +93,7 @@ const FileFromLinkOrLocal = ({
                   className='absolute block inset-0 opacity-0 text-[0] w-full disabled:cursor-not-allowed cursor-pointer'
                   onClick={e => ((e.target as HTMLInputElement).value = '')}
                   type='file'
-                  onChange={() => {}}
+                  onChange={handleChange}
                 />
               </Button>
             )

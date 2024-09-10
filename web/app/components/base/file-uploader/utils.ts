@@ -34,3 +34,9 @@ export const fileUpload: FileUpload = ({
       onErrorCallback()
     })
 }
+
+export const isFileType = (type: string) => {
+  return (file: File) => {
+    return file.type === type
+  }
+}

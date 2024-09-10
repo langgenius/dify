@@ -6,7 +6,7 @@ import {
 import produce from 'immer'
 import { v4 as uuid4 } from 'uuid'
 import { useTranslation } from 'react-i18next'
-import type { TFile } from './types'
+import type { FileEntity } from './types'
 import { useFileStore } from './store'
 import { fileUpload } from './utils'
 import { useToastContext } from '@/app/components/base/toast'
@@ -15,15 +15,12 @@ type UseFileParams = {
   isPublicAPI?: boolean
   url?: string
 }
-export const useFile = ({
-  isPublicAPI,
-  url,
-}: UseFileParams) => {
+export const useFile = () => {
   const { t } = useTranslation()
   const { notify } = useToastContext()
   const fileStore = useFileStore()
 
-  const handleAddOrUpdateFiles = useCallback((newFile: TFile) => {
+  const handleAddOrUpdateFiles = useCallback((newFile: FileEntity) => {
     const {
       files,
       setFiles,
@@ -71,29 +68,37 @@ export const useFile = ({
     setFiles([])
   }, [fileStore])
 
-  const handleLocalFileUpload = useCallback((file: File) => {
+  const handleLocalFileUpload = useCallback((
+    file: File,
+    {
+      isPublicAPI,
+      url,
+    }: UseFileParams = { isPublicAPI: false },
+  ) => {
     const reader = new FileReader()
+    const isImage = file.type.startsWith('image')
     reader.addEventListener(
       'load',
       () => {
-        const imageFile = {
+        const uploadingFile = {
           _id: uuid4(),
           file,
           _url: reader.result as string,
           _progress: 0,
+          _base64Url: isImage ? reader.result as string : '',
         }
-        handleAddOrUpdateFiles(imageFile)
+        handleAddOrUpdateFiles(uploadingFile)
         fileUpload({
-          file: imageFile.file,
+          file: uploadingFile.file,
           onProgressCallback: (progress) => {
-            handleAddOrUpdateFiles({ ...imageFile, _progress: progress })
+            handleAddOrUpdateFiles({ ...uploadingFile, _progress: progress })
           },
           onSuccessCallback: (res) => {
-            handleAddOrUpdateFiles({ ...imageFile, _fileId: res.id, _progress: 100 })
+            handleAddOrUpdateFiles({ ...uploadingFile, _fileId: res.id, _progress: 100 })
           },
           onErrorCallback: () => {
             notify({ type: 'error', message: t('common.imageUploader.uploadFromComputerUploadError') })
-            handleAddOrUpdateFiles({ ...imageFile, _progress: -1 })
+            handleAddOrUpdateFiles({ ...uploadingFile, _progress: -1 })
           },
         }, isPublicAPI, url)
       },
@@ -107,7 +112,7 @@ export const useFile = ({
       false,
     )
     reader.readAsDataURL(file)
-  }, [notify, t, handleAddOrUpdateFiles, isPublicAPI, url])
+  }, [notify, t, handleAddOrUpdateFiles])
 
   const handleClipboardPasteFile = useCallback((e: ClipboardEvent<HTMLTextAreaElement>) => {
     const file = e.clipboardData?.files[0]

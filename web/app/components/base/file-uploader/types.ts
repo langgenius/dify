@@ -1,3 +1,5 @@
+import type { TransferMethod } from '@/types/app'
+
 export enum FileTypeEnum {
   IMAGE = 'IMAGE',
   VIDEO = 'VIDEO',
@@ -13,10 +15,12 @@ export enum FileTypeEnum {
   OTHER = 'OTHER',
 }
 
-export type TFile = {
+export type FileEntity = {
   file: File
   _id: string
   _fileId?: string
   _progress?: number
   _url?: string
+  _base64Url?: string
+  _method?: TransferMethod
 }

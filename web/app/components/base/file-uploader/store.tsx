@@ -7,11 +7,11 @@ import {
   useStore as useZustandStore,
 } from 'zustand'
 import { createStore } from 'zustand/vanilla'
-import type { TFile } from './types'
+import type { FileEntity } from './types'
 
 type Shape = {
-  files: TFile[]
-  setFiles: (files: TFile[]) => void
+  files: FileEntity[]
+  setFiles: (files: FileEntity[]) => void
 }
 
 export const createFileStore = () => {
