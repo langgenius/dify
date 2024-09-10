@@ -255,6 +255,8 @@ class DatasetDocumentListApi(Resource):
             "doc_language", type=str, default="English", required=False, nullable=False, location="json"
         )
         parser.add_argument("retrieval_model", type=dict, required=False, nullable=False, location="json")
+        parser.add_argument("embedding_model", type=str, required=False, nullable=False, location="json")
+        parser.add_argument("embedding_model_provider", type=str, required=False, nullable=False, location="json")
         args = parser.parse_args()
 
         if not dataset.indexing_technique and not args["indexing_technique"]:
