@@ -33,19 +33,19 @@ logger = logging.getLogger(__name__)
 
 class WorkflowEntry:
     def __init__(
-            self,
-            tenant_id: str,
-            app_id: str,
-            workflow_id: str,
-            workflow_type: WorkflowType,
-            graph_config: Mapping[str, Any],
-            graph: Graph,
-            user_id: str,
-            user_from: UserFrom,
-            invoke_from: InvokeFrom,
-            call_depth: int,
-            variable_pool: VariablePool,
-            thread_pool_id: Optional[str] = None
+        self,
+        tenant_id: str,
+        app_id: str,
+        workflow_id: str,
+        workflow_type: WorkflowType,
+        graph_config: Mapping[str, Any],
+        graph: Graph,
+        user_id: str,
+        user_from: UserFrom,
+        invoke_from: InvokeFrom,
+        call_depth: int,
+        variable_pool: VariablePool,
+        thread_pool_id: Optional[str] = None,
     ) -> None:
         """
         Init workflow entry
@@ -65,7 +65,7 @@ class WorkflowEntry:
         # check call depth
         workflow_call_max_depth = dify_config.WORKFLOW_CALL_MAX_DEPTH
         if call_depth > workflow_call_max_depth:
-            raise ValueError('Max workflow call depth {} reached.'.format(workflow_call_max_depth))
+            raise ValueError("Max workflow call depth {} reached.".format(workflow_call_max_depth))
 
         # init workflow run state
         self.graph_engine = GraphEngine(
@@ -82,13 +82,13 @@ class WorkflowEntry:
             variable_pool=variable_pool,
             max_execution_steps=dify_config.WORKFLOW_MAX_EXECUTION_STEPS,
             max_execution_time=dify_config.WORKFLOW_MAX_EXECUTION_TIME,
-            thread_pool_id=thread_pool_id
+            thread_pool_id=thread_pool_id,
         )
 
     def run(
-            self,
-            *,
-            callbacks: Sequence[WorkflowCallback],
+        self,
+        *,
+        callbacks: Sequence[WorkflowCallback],
     ) -> Generator[GraphEngineEvent, None, None]:
         """
         :param callbacks: workflow callbacks
@@ -101,9 +101,7 @@ class WorkflowEntry:
             for event in generator:
                 if callbacks:
                     for callback in callbacks:
-                        callback.on_event(
-                            event=event
-                        )
+                        callback.on_event(event=event)
                 yield event
         except GenerateTaskStoppedException:
             pass
@@ -111,20 +109,12 @@ class WorkflowEntry:
             logger.exception("Unknown Error when workflow entry running")
             if callbacks:
                 for callback in callbacks:
-                    callback.on_event(
-                        event=GraphRunFailedEvent(
-                            error=str(e)
-                        )
-                    )
+                    callback.on_event(event=GraphRunFailedEvent(error=str(e)))
             return
 
     @classmethod
     def single_step_run(
-        cls, 
-        workflow: Workflow,
-        node_id: str,
-        user_id: str,
-        user_inputs: dict
+        cls, workflow: Workflow, node_id: str, user_id: str, user_inputs: dict
     ) -> tuple[BaseNode, Generator[RunEvent | InNodeEvent, None, None]]:
         """
         Single step run workflow node
@@ -137,30 +127,30 @@ class WorkflowEntry:
         # fetch node info from workflow graph
         graph = workflow.graph_dict
         if not graph:
-            raise ValueError('workflow graph not found')
+            raise ValueError("workflow graph not found")
 
-        nodes = graph.get('nodes')
+        nodes = graph.get("nodes")
         if not nodes:
-            raise ValueError('nodes not found in workflow graph')
+            raise ValueError("nodes not found in workflow graph")
 
         # fetch node config from node id
         node_config = None
         for node in nodes:
-            if node.get('id') == node_id:
+            if node.get("id") == node_id:
                 node_config = node
                 break
 
         if not node_config:
-            raise ValueError('node id not found in workflow graph')
+            raise ValueError("node id not found in workflow graph")
 
         # Get node class
-        node_type = NodeType.value_of(node_config.get('data', {}).get('type'))
+        node_type = NodeType.value_of(node_config.get("data", {}).get("type"))
         node_cls = node_classes.get(node_type)
         node_cls = cast(type[BaseNode], node_cls)
 
         if not node_cls:
-            raise ValueError(f'Node class not found for node type {node_type}')
-        
+            raise ValueError(f"Node class not found for node type {node_type}")
+
         # init variable pool
         variable_pool = VariablePool(
             system_variables={},
@@ -169,9 +159,7 @@ class WorkflowEntry:
         )
 
         # init graph
-        graph = Graph.init(
-            graph_config=workflow.graph_dict
-        )
+        graph = Graph.init(graph_config=workflow.graph_dict)
 
         # init workflow run state
         node_instance: BaseNode = node_cls(
@@ -186,21 +174,17 @@ class WorkflowEntry:
                 user_id=user_id,
                 user_from=UserFrom.ACCOUNT,
                 invoke_from=InvokeFrom.DEBUGGER,
-                call_depth=0
+                call_depth=0,
             ),
             graph=graph,
-            graph_runtime_state=GraphRuntimeState(
-                variable_pool=variable_pool,
-                start_at=time.perf_counter()
-            )
+            graph_runtime_state=GraphRuntimeState(variable_pool=variable_pool, start_at=time.perf_counter()),
         )
 
         try:
             # variable selector to variable mapping
             try:
                 variable_mapping = node_cls.extract_variable_selector_to_variable_mapping(
-                    graph_config=workflow.graph_dict, 
-                    config=node_config
+                    graph_config=workflow.graph_dict, config=node_config
                 )
             except NotImplementedError:
                 variable_mapping = {}
@@ -211,7 +195,7 @@ class WorkflowEntry:
                 variable_pool=variable_pool,
                 tenant_id=workflow.tenant_id,
                 node_type=node_type,
-                node_data=node_instance.node_data
+                node_data=node_instance.node_data,
             )
 
             # run node
@@ -219,10 +203,7 @@ class WorkflowEntry:
 
             return node_instance, generator
         except Exception as e:
-            raise WorkflowNodeRunFailedError(
-                node_instance=node_instance,
-                error=str(e)
-            )
+            raise WorkflowNodeRunFailedError(node_instance=node_instance, error=str(e))
 
     @classmethod
     def handle_special_values(cls, value: Optional[Mapping[str, Any]]) -> Optional[dict]:
@@ -259,21 +240,20 @@ class WorkflowEntry:
         variable_pool: VariablePool,
         tenant_id: str,
         node_type: NodeType,
-        node_data: BaseNodeData
+        node_data: BaseNodeData,
     ) -> None:
         for node_variable, variable_selector in variable_mapping.items():
             # fetch node id and variable key from node_variable
-            node_variable_list = node_variable.split('.')
+            node_variable_list = node_variable.split(".")
             if len(node_variable_list) < 1:
-                raise ValueError(f'Invalid node variable {node_variable}')
-            
-            node_variable_key = '.'.join(node_variable_list[1:])
+                raise ValueError(f"Invalid node variable {node_variable}")
 
-            if (
-                node_variable_key not in user_inputs
-                and node_variable not in user_inputs
-            ) and not variable_pool.get(variable_selector):
-                raise ValueError(f'Variable key {node_variable} not found in user inputs.')
+            node_variable_key = ".".join(node_variable_list[1:])
+
+            if (node_variable_key not in user_inputs and node_variable not in user_inputs) and not variable_pool.get(
+                variable_selector
+            ):
+                raise ValueError(f"Variable key {node_variable} not found in user inputs.")
 
             # fetch variable node id from variable selector
             variable_node_id = variable_selector[0]
@@ -294,16 +274,17 @@ class WorkflowEntry:
                     detail = node_data.vision.configs.detail if node_data.vision.configs else None
 
                     for item in input_value:
-                        if isinstance(item, dict) and 'type' in item and item['type'] == 'image':
-                            transfer_method = FileTransferMethod.value_of(item.get('transfer_method'))
+                        if isinstance(item, dict) and "type" in item and item["type"] == "image":
+                            transfer_method = FileTransferMethod.value_of(item.get("transfer_method"))
                             file = FileVar(
                                 tenant_id=tenant_id,
                                 type=FileType.IMAGE,
                                 transfer_method=transfer_method,
-                                url=item.get('url') if transfer_method == FileTransferMethod.REMOTE_URL else None,
-                                related_id=item.get(
-                                    'upload_file_id') if transfer_method == FileTransferMethod.LOCAL_FILE else None,
-                                extra_config=FileExtraConfig(image_config={'detail': detail} if detail else None),
+                                url=item.get("url") if transfer_method == FileTransferMethod.REMOTE_URL else None,
+                                related_id=item.get("upload_file_id")
+                                if transfer_method == FileTransferMethod.LOCAL_FILE
+                                else None,
+                                extra_config=FileExtraConfig(image_config={"detail": detail} if detail else None),
                             )
                             new_value.append(file)
 

@@ -22,9 +22,9 @@ class GetBoardByIdTool(BuiltinTool):
         Returns:
             ToolInvokeMessage: The result of the tool invocation.
         """
-        api_key = self.runtime.credentials.get('trello_api_key')
-        token = self.runtime.credentials.get('trello_api_token')
-        board_id = tool_parameters.get('boardId')
+        api_key = self.runtime.credentials.get("trello_api_key")
+        token = self.runtime.credentials.get("trello_api_token")
+        board_id = tool_parameters.get("boardId")
 
         if not (api_key and token and board_id):
             return self.create_text_message("Missing required parameters: API key, token, or board ID.")
@@ -63,4 +63,3 @@ class GetBoardByIdTool(BuiltinTool):
             f"Background Color: {board['prefs']['backgroundColor']}"
         )
         return details
-

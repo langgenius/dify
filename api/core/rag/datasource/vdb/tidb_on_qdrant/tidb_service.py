@@ -6,15 +6,10 @@ from requests.auth import HTTPDigestAuth
 
 
 class TidbService:
-
     @staticmethod
-    def create_tidb_serverless_cluster(project_id: str,
-                                       api_url: str,
-                                       iam_url: str,
-                                       public_key: str,
-                                       private_key: str,
-                                       display_name: str,
-                                       region: str):
+    def create_tidb_serverless_cluster(
+        project_id: str, api_url: str, iam_url: str, public_key: str, private_key: str, display_name: str, region: str
+    ):
         """
         Creates a new TiDB Serverless cluster.
         :param project_id: The project ID of the TiDB Cloud project (required).
@@ -46,8 +41,7 @@ class TidbService:
             "spendingLimit": spending_limit,
         }
 
-        response = requests.post(f"{api_url}/clusters", json=cluster_data,
-                                 auth=HTTPDigestAuth(public_key, private_key))
+        response = requests.post(f"{api_url}/clusters", json=cluster_data, auth=HTTPDigestAuth(public_key, private_key))
 
         if response.status_code == 200:
             response_data = response.json()
@@ -59,13 +53,14 @@ class TidbService:
                 if cluster_response["state"] == "ACTIVE":
                     user_prefix = cluster_response["userPrefix"]
                     password = str(uuid.uuid4()).replace("-", "")[:16]
-                    TidbService.change_tidb_serverless_root_password(iam_url, public_key, private_key,
-                                                                     cluster_id, f'{user_prefix}.root', password)
+                    TidbService.change_tidb_serverless_root_password(
+                        iam_url, public_key, private_key, cluster_id, f"{user_prefix}.root", password
+                    )
                     return {
                         "cluster_id": cluster_id,
                         "cluster_name": display_name,
-                        "account": f'{user_prefix}.root',
-                        "password": password
+                        "account": f"{user_prefix}.root",
+                        "password": password,
                     }
                 time.sleep(3)  # wait 3 seconds before retrying
                 retry_count += 1
@@ -84,8 +79,7 @@ class TidbService:
         :return: The response from the API.
         """
 
-        response = requests.delete(f"{api_url}/clusters/{cluster_id}",
-                                   auth=HTTPDigestAuth(public_key, private_key))
+        response = requests.delete(f"{api_url}/clusters/{cluster_id}", auth=HTTPDigestAuth(public_key, private_key))
 
         if response.status_code == 200:
             return response.json()
@@ -104,8 +98,7 @@ class TidbService:
         :return: The response from the API.
         """
 
-        response = requests.get(f"{api_url}/clusters/{cluster_id}",
-                                auth=HTTPDigestAuth(public_key, private_key))
+        response = requests.get(f"{api_url}/clusters/{cluster_id}", auth=HTTPDigestAuth(public_key, private_key))
 
         if response.status_code == 200:
             return response.json()
@@ -113,8 +106,9 @@ class TidbService:
             response.raise_for_status()
 
     @staticmethod
-    def change_tidb_serverless_root_password(api_url: str, public_key: str, private_key: str, cluster_id: str,
-                                             account: str, new_password: str):
+    def change_tidb_serverless_root_password(
+        api_url: str, public_key: str, private_key: str, cluster_id: str, account: str, new_password: str
+    ):
         """
         Changes the root password of a specific TiDB Serverless cluster.
 
@@ -127,14 +121,13 @@ class TidbService:
         :return: The response from the API.
         """
 
-        body = {
-            "password": new_password,
-            "builtinRole": "role_admin",
-            "customRoles": []
-        }
+        body = {"password": new_password, "builtinRole": "role_admin", "customRoles": []}
 
-        response = requests.patch(f"{api_url}/clusters/{cluster_id}/sqlUsers/{account}", json=body,
-                                  auth=HTTPDigestAuth(public_key, private_key))
+        response = requests.patch(
+            f"{api_url}/clusters/{cluster_id}/sqlUsers/{account}",
+            json=body,
+            auth=HTTPDigestAuth(public_key, private_key),
+        )
 
         if response.status_code == 200:
             return response.json()

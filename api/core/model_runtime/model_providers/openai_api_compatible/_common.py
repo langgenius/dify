@@ -1,4 +1,3 @@
-
 import requests
 
 from core.model_runtime.errors.invoke import (
@@ -35,10 +34,10 @@ class _CommonOAI_API_Compat:
             ],
             InvokeServerUnavailableError: [
                 requests.exceptions.ConnectionError,  # Engine Overloaded
-                requests.exceptions.HTTPError  # Server Error
+                requests.exceptions.HTTPError,  # Server Error
             ],
             InvokeConnectionError: [
                 requests.exceptions.ConnectTimeout,  # Timeout
-                requests.exceptions.ReadTimeout  # Timeout
-            ]
+                requests.exceptions.ReadTimeout,  # Timeout
+            ],
         }

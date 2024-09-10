@@ -14,6 +14,7 @@ class QueueEvent(str, Enum):
     """
     QueueEvent enum
     """
+
     LLM_CHUNK = "llm_chunk"
     TEXT_CHUNK = "text_chunk"
     AGENT_MESSAGE = "agent_message"
@@ -45,6 +46,7 @@ class AppQueueEvent(BaseModel):
     """
     QueueEvent abstract entity
     """
+
     event: QueueEvent
 
 
@@ -53,13 +55,16 @@ class QueueLLMChunkEvent(AppQueueEvent):
     QueueLLMChunkEvent entity
     Only for basic mode apps
     """
+
     event: QueueEvent = QueueEvent.LLM_CHUNK
     chunk: LLMResultChunk
+
 
 class QueueIterationStartEvent(AppQueueEvent):
     """
     QueueIterationStartEvent entity
     """
+
     event: QueueEvent = QueueEvent.ITERATION_START
     node_execution_id: str
     node_id: str
@@ -80,10 +85,12 @@ class QueueIterationStartEvent(AppQueueEvent):
     predecessor_node_id: Optional[str] = None
     metadata: Optional[dict[str, Any]] = None
 
+
 class QueueIterationNextEvent(AppQueueEvent):
     """
     QueueIterationNextEvent entity
     """
+
     event: QueueEvent = QueueEvent.ITERATION_NEXT
 
     index: int
@@ -101,9 +108,9 @@ class QueueIterationNextEvent(AppQueueEvent):
     """parent parallel start node id if node is in parallel"""
 
     node_run_index: int
-    output: Optional[Any] = None # output for the current iteration
+    output: Optional[Any] = None  # output for the current iteration
 
-    @field_validator('output', mode='before')
+    @field_validator("output", mode="before")
     @classmethod
     def set_output(cls, v):
         """
@@ -113,12 +120,14 @@ class QueueIterationNextEvent(AppQueueEvent):
             return None
         if isinstance(v, int | float | str | bool | dict | list):
             return v
-        raise ValueError('output must be a valid type')
+        raise ValueError("output must be a valid type")
+
 
 class QueueIterationCompletedEvent(AppQueueEvent):
     """
     QueueIterationCompletedEvent entity
     """
+
     event: QueueEvent = QueueEvent.ITERATION_COMPLETED
 
     node_execution_id: str
@@ -134,7 +143,7 @@ class QueueIterationCompletedEvent(AppQueueEvent):
     parent_parallel_start_node_id: Optional[str] = None
     """parent parallel start node id if node is in parallel"""
     start_at: datetime
-    
+
     node_run_index: int
     inputs: Optional[dict[str, Any]] = None
     outputs: Optional[dict[str, Any]] = None
@@ -148,6 +157,7 @@ class QueueTextChunkEvent(AppQueueEvent):
     """
     QueueTextChunkEvent entity
     """
+
     event: QueueEvent = QueueEvent.TEXT_CHUNK
     text: str
     from_variable_selector: Optional[list[str]] = None
@@ -160,14 +170,16 @@ class QueueAgentMessageEvent(AppQueueEvent):
     """
     QueueMessageEvent entity
     """
+
     event: QueueEvent = QueueEvent.AGENT_MESSAGE
     chunk: LLMResultChunk
 
-    
+
 class QueueMessageReplaceEvent(AppQueueEvent):
     """
     QueueMessageReplaceEvent entity
     """
+
     event: QueueEvent = QueueEvent.MESSAGE_REPLACE
     text: str
 
@@ -176,6 +188,7 @@ class QueueRetrieverResourcesEvent(AppQueueEvent):
     """
     QueueRetrieverResourcesEvent entity
     """
+
     event: QueueEvent = QueueEvent.RETRIEVER_RESOURCES
     retriever_resources: list[dict]
     in_iteration_id: Optional[str] = None
@@ -186,6 +199,7 @@ class QueueAnnotationReplyEvent(AppQueueEvent):
     """
     QueueAnnotationReplyEvent entity
     """
+
     event: QueueEvent = QueueEvent.ANNOTATION_REPLY
     message_annotation_id: str
 
@@ -194,6 +208,7 @@ class QueueMessageEndEvent(AppQueueEvent):
     """
     QueueMessageEndEvent entity
     """
+
     event: QueueEvent = QueueEvent.MESSAGE_END
     llm_result: Optional[LLMResult] = None
 
@@ -202,6 +217,7 @@ class QueueAdvancedChatMessageEndEvent(AppQueueEvent):
     """
     QueueAdvancedChatMessageEndEvent entity
     """
+
     event: QueueEvent = QueueEvent.ADVANCED_CHAT_MESSAGE_END
 
 
@@ -209,6 +225,7 @@ class QueueWorkflowStartedEvent(AppQueueEvent):
     """
     QueueWorkflowStartedEvent entity
     """
+
     event: QueueEvent = QueueEvent.WORKFLOW_STARTED
     graph_runtime_state: GraphRuntimeState
 
@@ -217,6 +234,7 @@ class QueueWorkflowSucceededEvent(AppQueueEvent):
     """
     QueueWorkflowSucceededEvent entity
     """
+
     event: QueueEvent = QueueEvent.WORKFLOW_SUCCEEDED
     outputs: Optional[dict[str, Any]] = None
 
@@ -225,6 +243,7 @@ class QueueWorkflowFailedEvent(AppQueueEvent):
     """
     QueueWorkflowFailedEvent entity
     """
+
     event: QueueEvent = QueueEvent.WORKFLOW_FAILED
     error: str
 
@@ -233,6 +252,7 @@ class QueueNodeStartedEvent(AppQueueEvent):
     """
     QueueNodeStartedEvent entity
     """
+
     event: QueueEvent = QueueEvent.NODE_STARTED
 
     node_execution_id: str
@@ -258,6 +278,7 @@ class QueueNodeSucceededEvent(AppQueueEvent):
     """
     QueueNodeSucceededEvent entity
     """
+
     event: QueueEvent = QueueEvent.NODE_SUCCEEDED
 
     node_execution_id: str
@@ -288,6 +309,7 @@ class QueueNodeFailedEvent(AppQueueEvent):
     """
     QueueNodeFailedEvent entity
     """
+
     event: QueueEvent = QueueEvent.NODE_FAILED
 
     node_execution_id: str
@@ -317,6 +339,7 @@ class QueueAgentThoughtEvent(AppQueueEvent):
     """
     QueueAgentThoughtEvent entity
     """
+
     event: QueueEvent = QueueEvent.AGENT_THOUGHT
     agent_thought_id: str
 
@@ -325,6 +348,7 @@ class QueueMessageFileEvent(AppQueueEvent):
     """
     QueueAgentThoughtEvent entity
     """
+
     event: QueueEvent = QueueEvent.MESSAGE_FILE
     message_file_id: str
 
@@ -333,6 +357,7 @@ class QueueErrorEvent(AppQueueEvent):
     """
     QueueErrorEvent entity
     """
+
     event: QueueEvent = QueueEvent.ERROR
     error: Any = None
 
@@ -341,6 +366,7 @@ class QueuePingEvent(AppQueueEvent):
     """
     QueuePingEvent entity
     """
+
     event: QueueEvent = QueueEvent.PING
 
 
@@ -348,10 +374,12 @@ class QueueStopEvent(AppQueueEvent):
     """
     QueueStopEvent entity
     """
+
     class StopBy(Enum):
         """
         Stop by enum
         """
+
         USER_MANUAL = "user-manual"
         ANNOTATION_REPLY = "annotation-reply"
         OUTPUT_MODERATION = "output-moderation"
@@ -365,19 +393,20 @@ class QueueStopEvent(AppQueueEvent):
         To stop reason
         """
         reason_mapping = {
-            QueueStopEvent.StopBy.USER_MANUAL: 'Stopped by user.',
-            QueueStopEvent.StopBy.ANNOTATION_REPLY: 'Stopped by annotation reply.',
-            QueueStopEvent.StopBy.OUTPUT_MODERATION: 'Stopped by output moderation.',
-            QueueStopEvent.StopBy.INPUT_MODERATION: 'Stopped by input moderation.'
+            QueueStopEvent.StopBy.USER_MANUAL: "Stopped by user.",
+            QueueStopEvent.StopBy.ANNOTATION_REPLY: "Stopped by annotation reply.",
+            QueueStopEvent.StopBy.OUTPUT_MODERATION: "Stopped by output moderation.",
+            QueueStopEvent.StopBy.INPUT_MODERATION: "Stopped by input moderation.",
         }
 
-        return reason_mapping.get(self.stopped_by, 'Stopped by unknown reason.')
+        return reason_mapping.get(self.stopped_by, "Stopped by unknown reason.")
 
 
 class QueueMessage(BaseModel):
     """
     QueueMessage abstract entity
     """
+
     task_id: str
     app_mode: str
     event: AppQueueEvent
@@ -387,6 +416,7 @@ class MessageQueueMessage(QueueMessage):
     """
     MessageQueueMessage entity
     """
+
     message_id: str
     conversation_id: str
 
@@ -395,6 +425,7 @@ class WorkflowQueueMessage(QueueMessage):
     """
     WorkflowQueueMessage entity
     """
+
     pass
 
 
@@ -402,6 +433,7 @@ class QueueParallelBranchRunStartedEvent(AppQueueEvent):
     """
     QueueParallelBranchRunStartedEvent entity
     """
+
     event: QueueEvent = QueueEvent.PARALLEL_BRANCH_RUN_STARTED
 
     parallel_id: str
@@ -418,6 +450,7 @@ class QueueParallelBranchRunSucceededEvent(AppQueueEvent):
     """
     QueueParallelBranchRunSucceededEvent entity
     """
+
     event: QueueEvent = QueueEvent.PARALLEL_BRANCH_RUN_SUCCEEDED
 
     parallel_id: str
@@ -434,6 +467,7 @@ class QueueParallelBranchRunFailedEvent(AppQueueEvent):
     """
     QueueParallelBranchRunFailedEvent entity
     """
+
     event: QueueEvent = QueueEvent.PARALLEL_BRANCH_RUN_FAILED
 
     parallel_id: str
