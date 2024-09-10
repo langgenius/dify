@@ -163,9 +163,6 @@ class KnowledgeRetrievalNode(BaseNode):
             for item in all_documents:
                 if item.metadata.get("score"):
                     document_score_list[item.metadata["doc_id"]] = item.metadata["score"]
-                # both 'page' and 'score' are metadata fields
-                if item.metadata.get("page"):
-                    page_number_list[item.metadata["doc_id"]] = item.metadata["page"]
 
             index_node_ids = [document.metadata["doc_id"] for document in all_documents]
             segments = DocumentSegment.query.filter(
@@ -200,7 +197,6 @@ class KnowledgeRetrievalNode(BaseNode):
                                 "document_id": document.id,
                                 "document_name": document.name,
                                 "document_data_source_type": document.data_source_type,
-                                "page": page_number_list.get(segment.index_node_id, None),
                                 "segment_id": segment.id,
                                 "retriever_from": "workflow",
                                 "score": document_score_list.get(segment.index_node_id, None),
