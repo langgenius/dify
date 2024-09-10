@@ -90,6 +90,7 @@ class MessageStreamResponse(StreamResponse):
     event: StreamEvent = StreamEvent.MESSAGE
     id: str
     answer: str
+    from_variable_selector: Optional[list[str]] = None
 
 
 class MessageAudioStreamResponse(StreamResponse):
@@ -479,6 +480,7 @@ class TextChunkStreamResponse(StreamResponse):
         """
 
         text: str
+        from_variable_selector: Optional[list[str]] = None
 
     event: StreamEvent = StreamEvent.TEXT_CHUNK
     data: Data
