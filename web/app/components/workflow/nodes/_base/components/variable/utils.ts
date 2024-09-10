@@ -421,7 +421,7 @@ const getIterationItemType = ({
       arrayType = curr?.type
     }
     else {
-      if (curr?.type === VarType.object)
+      if (curr?.type === VarType.object || curr?.type === VarType.file)
         curr = curr.children
     }
   })
@@ -516,7 +516,7 @@ export const getVarType = ({
         type = curr?.type
       }
       else {
-        if (curr?.type === VarType.object)
+        if (curr?.type === VarType.object || curr?.type === VarType.file)
           curr = curr.children
       }
     })

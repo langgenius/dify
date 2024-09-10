@@ -123,7 +123,7 @@ const useOneStepRun = <T>({
         res = curr
       }
       else {
-        if (curr?.type === VarType.object)
+        if (curr?.type === VarType.object || curr?.type === VarType.file)
           curr = curr.children
       }
     })
