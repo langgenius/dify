@@ -80,8 +80,10 @@ function buildChatItemTree(allMessages: IChatItem[]): ChatItemInTree[] {
     const question = allMessages[i]!
     const answer = allMessages[i + 1]!
 
-    const parentMessageId = question.parentMessageId ?? ''
-    const isLegacy = parentMessageId === UUID_NIL
+    const isLegacy = question.parentMessageId === UUID_NIL
+    const parentMessageId = isLegacy
+      ? (lastAppendedLegacyAnswer?.id || '')
+      : (question.parentMessageId || '')
 
     // Process question
     childrenCount[parentMessageId] = (childrenCount[parentMessageId] || 0) + 1
