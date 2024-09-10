@@ -32,7 +32,7 @@ const Slider: React.FC<ISliderProps> = ({
     max={max || 100}
     step={step || 1}
     className={cn('relative slider', className)}
-    thumbClassName={cn('absolute top-[-9px] w-2 h-5 border-[0.5px] border-components-silder-knob-border rounded-[3px] bg-components-silder-knob shadow-sm  focus:outline-none', !disabled && 'cursor-pointer', thumbClassName)}
+    thumbClassName={cn('absolute top-[-9px] w-2 h-5 border-[0.5px] border-components-slider-knob-border rounded-[3px] bg-components-slider-knob shadow-sm  focus:outline-none', !disabled && 'cursor-pointer', thumbClassName)}
     trackClassName={cn('h-0.5 rounded-full slider-track', trackClassName)}
     onChange={onChange}
   />

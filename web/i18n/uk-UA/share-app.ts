@@ -2,7 +2,7 @@ const translation = {
   common: {
     welcome: '',
     appUnavailable: 'Додаток недоступний',
-    appUnkonwError: 'Додаток недоступний',
+    appUnknownError: 'Додаток недоступний',
   },
   chat: {
     newChat: 'Новий чат',
@@ -10,7 +10,7 @@ const translation = {
     unpinnedTitle: 'Чати',
     newChatDefaultName: 'Нова розмова',
     resetChat: 'Очистити розмову',
-    powerBy: 'Забезпечується',
+    poweredBy: 'Забезпечується',
     prompt: 'Підказка',
     privatePromptConfigTitle: 'Налаштування розмови',
     publicPromptConfigTitle: 'Початкова підказка',
@@ -27,7 +27,6 @@ const translation = {
     tryToSolve: 'Спробувати вирішити',
     temporarySystemIssue: 'Вибачте, тимчасова системна проблема.',
   },
-
   generation: {
     tabs: {
       create: 'Запустити один раз',
@@ -65,7 +64,6 @@ const translation = {
       moreThanMaxLengthLine: 'Рядок {{rowIndex}}: значення {{varName}} не може містити більше {{maxLength}} символів',
       atLeastOne: 'Будь ласка, введіть принаймні один рядок у завантажений файл.',
     },
-
   },
 }
 

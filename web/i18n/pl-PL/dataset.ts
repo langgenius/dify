@@ -77,6 +77,7 @@ const translation = {
   nTo1RetrievalLegacy: 'Wyszukiwanie N-do-1 zostanie oficjalnie wycofane od września. Zaleca się korzystanie z najnowszego wyszukiwania wielościeżkowego, aby uzyskać lepsze wyniki.',
   nTo1RetrievalLegacyLink: 'Dowiedz się więcej',
   nTo1RetrievalLegacyLinkText: 'Wyszukiwanie N-do-1 zostanie oficjalnie wycofane we wrześniu.',
+  defaultRetrievalTip: 'Pobieranie wielu ścieżek jest używane domyślnie. Wiedza jest pobierana z wielu baz wiedzy, a następnie ponownie klasyfikowana.',
 }
 
 export default translation

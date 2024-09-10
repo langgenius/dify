@@ -35,7 +35,7 @@ function useFeature({
   moderation: boolean
   setModeration: (moderation: boolean) => void
 }) {
-  const [tempshowOpeningStatement, setTempShowOpeningStatement] = React.useState(!!introduction)
+  const [tempShowOpeningStatement, setTempShowOpeningStatement] = React.useState(!!introduction)
   useEffect(() => {
     // wait to api data back
     if (introduction)
@@ -48,7 +48,7 @@ function useFeature({
   // }, [moreLikeThis])
 
   const featureConfig = {
-    openingStatement: tempshowOpeningStatement,
+    openingStatement: tempShowOpeningStatement,
     moreLikeThis,
     suggestedQuestionsAfterAnswer,
     speechToText,

@@ -439,7 +439,7 @@ export type RelatedAppResponse = {
   total: number
 }
 
-export type SegmentUpdator = {
+export type SegmentUpdater = {
   content: string
   answer?: string
   keywords?: string[]

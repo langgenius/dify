@@ -32,7 +32,15 @@ class OpsService:
             "project_key" not in decrypt_tracing_config or not decrypt_tracing_config.get("project_key")
         ):
             project_key = OpsTraceManager.get_trace_config_project_key(decrypt_tracing_config, tracing_provider)
-            new_decrypt_tracing_config.update({"project_key": project_key})
+            new_decrypt_tracing_config.update(
+                {"project_url": "{host}/project/{key}".format(host=decrypt_tracing_config.get("host"), key=project_key)}
+            )
+
+        if tracing_provider == "langsmith" and (
+            "project_url" not in decrypt_tracing_config or not decrypt_tracing_config.get("project_url")
+        ):
+            project_url = OpsTraceManager.get_trace_config_project_url(decrypt_tracing_config, tracing_provider)
+            new_decrypt_tracing_config.update({"project_url": project_url})
 
         trace_config_data.tracing_config = new_decrypt_tracing_config
         return trace_config_data.to_dict()
@@ -62,8 +70,14 @@ class OpsService:
         if not OpsTraceManager.check_trace_config_is_effective(tracing_config, tracing_provider):
             return {"error": "Invalid Credentials"}
 
-        # get project key
-        project_key = OpsTraceManager.get_trace_config_project_key(tracing_config, tracing_provider)
+        # get project url
+        if tracing_provider == "langfuse":
+            project_key = OpsTraceManager.get_trace_config_project_key(tracing_config, tracing_provider)
+            project_url = "{host}/project/{key}".format(host=tracing_config.get("host"), key=project_key)
+        elif tracing_provider == "langsmith":
+            project_url = OpsTraceManager.get_trace_config_project_url(tracing_config, tracing_provider)
+        else:
+            project_url = None
 
         # check if trace config already exists
         trace_config_data: TraceAppConfig = (
@@ -78,8 +92,8 @@ class OpsService:
         # get tenant id
         tenant_id = db.session.query(App).filter(App.id == app_id).first().tenant_id
         tracing_config = OpsTraceManager.encrypt_tracing_config(tenant_id, tracing_provider, tracing_config)
-        if tracing_provider == "langfuse" and project_key:
-            tracing_config["project_key"] = project_key
+        if project_url:
+            tracing_config["project_url"] = project_url
         trace_config_data = TraceAppConfig(
             app_id=app_id,
             tracing_provider=tracing_provider,
