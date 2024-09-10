@@ -219,7 +219,7 @@ const Result: FC<IResultProps> = ({
             }))
           },
           onIterationNext: () => {
-            setWorkflowProccessData(produce(getWorkflowProccessData()!, (draft) => {
+            setWorkflowProcessData(produce(getWorkflowProcessData()!, (draft) => {
               draft.expand = true
               const iterations = draft.tracing.find(item => item.node_id === data.node_id
                 && (item.execution_metadata?.parallel_id === data.execution_metadata?.parallel_id || item.parallel_id === data.execution_metadata?.parallel_id))!
