@@ -1,9 +1,9 @@
-from collections.abc import Mapping
 from enum import Enum
 from typing import Any, Optional
 
 from pydantic import BaseModel
 
+from core.model_runtime.entities.llm_entities import LLMUsage
 from models import WorkflowNodeExecutionStatus
 
 
@@ -28,6 +28,7 @@ class NodeType(Enum):
     VARIABLE_ASSIGNER = 'variable-assigner'
     LOOP = 'loop'
     ITERATION = 'iteration'
+    ITERATION_START = 'iteration-start'  # fake start node for iteration
     PARAMETER_EXTRACTOR = 'parameter-extractor'
     CONVERSATION_VARIABLE_ASSIGNER = 'assigner'
 
@@ -56,6 +57,10 @@ class NodeRunMetadataKey(Enum):
     TOOL_INFO = 'tool_info'
     ITERATION_ID = 'iteration_id'
     ITERATION_INDEX = 'iteration_index'
+    PARALLEL_ID = 'parallel_id'
+    PARALLEL_START_NODE_ID = 'parallel_start_node_id'
+    PARENT_PARALLEL_ID = 'parent_parallel_id'
+    PARENT_PARALLEL_START_NODE_ID = 'parent_parallel_start_node_id'
 
 
 class NodeRunResult(BaseModel):
@@ -65,11 +70,32 @@ class NodeRunResult(BaseModel):
 
     status: WorkflowNodeExecutionStatus = WorkflowNodeExecutionStatus.RUNNING
 
-    inputs: Optional[Mapping[str, Any]] = None  # node inputs
-    process_data: Optional[dict] = None  # process data
-    outputs: Optional[Mapping[str, Any]] = None  # node outputs
+    inputs: Optional[dict[str, Any]] = None  # node inputs
+    process_data: Optional[dict[str, Any]] = None  # process data
+    outputs: Optional[dict[str, Any]] = None  # node outputs
     metadata: Optional[dict[NodeRunMetadataKey, Any]] = None  # node metadata
+    llm_usage: Optional[LLMUsage] = None  # llm usage
 
     edge_source_handle: Optional[str] = None  # source handle id of node with multiple branches
 
     error: Optional[str] = None  # error message if status is failed
+
+
+class UserFrom(Enum):
+    """
+    User from
+    """
+    ACCOUNT = "account"
+    END_USER = "end-user"
+
+    @classmethod
+    def value_of(cls, value: str) -> "UserFrom":
+        """
+        Value of
+        :param value: value
+        :return:
+        """
+        for item in cls:
+            if item.value == value:
+                return item
+        raise ValueError(f"Invalid value: {value}")

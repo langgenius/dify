@@ -4,12 +4,10 @@ import os
 import threading
 import uuid
 from collections.abc import Generator
-from typing import Literal, Union, overload
+from typing import Any, Literal, Optional, Union, overload
 
 from flask import Flask, current_app
 from pydantic import ValidationError
-from sqlalchemy import select
-from sqlalchemy.orm import Session
 
 import contexts
 from core.app.app_config.features.file_upload.manager import FileUploadConfigManager
@@ -20,20 +18,15 @@ from core.app.apps.advanced_chat.generate_task_pipeline import AdvancedChatAppGe
 from core.app.apps.base_app_queue_manager import AppQueueManager, GenerateTaskStoppedException, PublishFrom
 from core.app.apps.message_based_app_generator import MessageBasedAppGenerator
 from core.app.apps.message_based_app_queue_manager import MessageBasedAppQueueManager
-from core.app.entities.app_invoke_entities import (
-    AdvancedChatAppGenerateEntity,
-    InvokeFrom,
-)
+from core.app.entities.app_invoke_entities import AdvancedChatAppGenerateEntity, InvokeFrom
 from core.app.entities.task_entities import ChatbotAppBlockingResponse, ChatbotAppStreamResponse
 from core.file.message_file_parser import MessageFileParser
 from core.model_runtime.errors.invoke import InvokeAuthorizationError, InvokeError
 from core.ops.ops_trace_manager import TraceQueueManager
-from core.workflow.entities.variable_pool import VariablePool
-from core.workflow.enums import SystemVariableKey
 from extensions.ext_database import db
 from models.account import Account
 from models.model import App, Conversation, EndUser, Message
-from models.workflow import ConversationVariable, Workflow
+from models.workflow import Workflow
 
 logger = logging.getLogger(__name__)
 
@@ -60,13 +53,14 @@ class AdvancedChatAppGenerator(MessageBasedAppGenerator):
     ) -> dict: ...
 
     def generate(
-        self, app_model: App,
-        workflow: Workflow,
-        user: Union[Account, EndUser],
-        args: dict,
-        invoke_from: InvokeFrom,
-        stream: bool = True,
-    ):
+            self,
+            app_model: App,
+            workflow: Workflow,
+            user: Union[Account, EndUser],
+            args: dict,
+            invoke_from: InvokeFrom,
+            stream: bool = True,
+    )  -> dict[str, Any] | Generator[str, Any, None]:
         """
         Generate App response.
 
@@ -154,7 +148,8 @@ class AdvancedChatAppGenerator(MessageBasedAppGenerator):
                                   node_id: str,
                                   user: Account,
                                   args: dict,
-                                  stream: bool = True):
+                                  stream: bool = True) \
+            -> dict[str, Any] | Generator[str, Any, None]:
         """
         Generate App response.
 
@@ -171,16 +166,6 @@ class AdvancedChatAppGenerator(MessageBasedAppGenerator):
         if args.get('inputs') is None:
             raise ValueError('inputs is required')
 
-        extras = {
-            "auto_generate_conversation_name": False
-        }
-
-        # get conversation
-        conversation = None
-        conversation_id = args.get('conversation_id')
-        if conversation_id:
-            conversation = self._get_conversation_by_user(app_model=app_model, conversation_id=conversation_id, user=user)
-
         # convert to app config
         app_config = AdvancedChatAppConfigManager.get_app_config(
             app_model=app_model,
@@ -191,14 +176,16 @@ class AdvancedChatAppGenerator(MessageBasedAppGenerator):
         application_generate_entity = AdvancedChatAppGenerateEntity(
             task_id=str(uuid.uuid4()),
             app_config=app_config,
-            conversation_id=conversation.id if conversation else None,
+            conversation_id=None,
             inputs={},
             query='',
             files=[],
             user_id=user.id,
             stream=stream,
             invoke_from=InvokeFrom.DEBUGGER,
-            extras=extras,
+            extras={
+                "auto_generate_conversation_name": False
+            },
             single_iteration_run=AdvancedChatAppGenerateEntity.SingleIterationRunEntity(
                 node_id=node_id,
                 inputs=args['inputs']
@@ -211,17 +198,28 @@ class AdvancedChatAppGenerator(MessageBasedAppGenerator):
             user=user,
             invoke_from=InvokeFrom.DEBUGGER,
             application_generate_entity=application_generate_entity,
-            conversation=conversation,
+            conversation=None,
             stream=stream
         )
 
     def _generate(self, *,
-                 workflow: Workflow,
-                 user: Union[Account, EndUser],
-                 invoke_from: InvokeFrom,
-                 application_generate_entity: AdvancedChatAppGenerateEntity,
-                 conversation: Conversation | None = None,
-                 stream: bool = True):
+                  workflow: Workflow,
+                  user: Union[Account, EndUser],
+                  invoke_from: InvokeFrom,
+                  application_generate_entity: AdvancedChatAppGenerateEntity,
+                  conversation: Optional[Conversation] = None,
+                  stream: bool = True) \
+            -> dict[str, Any] | Generator[str, Any, None]:
+        """
+        Generate App response.
+
+        :param workflow: Workflow
+        :param user: account or end user
+        :param invoke_from: invoke from source
+        :param application_generate_entity: application generate entity
+        :param conversation: conversation
+        :param stream: is stream
+        """
         is_first_conversation = False
         if not conversation:
             is_first_conversation = True
@@ -236,7 +234,7 @@ class AdvancedChatAppGenerator(MessageBasedAppGenerator):
             # update conversation features
             conversation.override_model_configs = workflow.features
             db.session.commit()
-            # db.session.refresh(conversation)
+            db.session.refresh(conversation)
 
         # init queue manager
         queue_manager = MessageBasedAppQueueManager(
@@ -248,67 +246,12 @@ class AdvancedChatAppGenerator(MessageBasedAppGenerator):
             message_id=message.id
         )
 
-        # Init conversation variables
-        stmt = select(ConversationVariable).where(
-            ConversationVariable.app_id == conversation.app_id, ConversationVariable.conversation_id == conversation.id
-        )
-        with Session(db.engine) as session:
-            conversation_variables = session.scalars(stmt).all()
-            if not conversation_variables:
-                # Create conversation variables if they don't exist.
-                conversation_variables = [
-                    ConversationVariable.from_variable(
-                        app_id=conversation.app_id, conversation_id=conversation.id, variable=variable
-                    )
-                    for variable in workflow.conversation_variables
-                ]
-                session.add_all(conversation_variables)
-            # Convert database entities to variables.
-            conversation_variables = [item.to_variable() for item in conversation_variables]
-
-            session.commit()
-
-            # Increment dialogue count.
-            conversation.dialogue_count += 1
-
-            conversation_id = conversation.id
-            conversation_dialogue_count = conversation.dialogue_count
-            db.session.commit()
-            db.session.refresh(conversation)
-
-        inputs = application_generate_entity.inputs
-        query = application_generate_entity.query
-        files = application_generate_entity.files
-
-        user_id = None
-        if application_generate_entity.invoke_from in [InvokeFrom.WEB_APP, InvokeFrom.SERVICE_API]:
-            end_user = db.session.query(EndUser).filter(EndUser.id == application_generate_entity.user_id).first()
-            if end_user:
-                user_id = end_user.session_id
-        else:
-            user_id = application_generate_entity.user_id
-
-        # Create a variable pool.
-        system_inputs = {
-            SystemVariableKey.QUERY: query,
-            SystemVariableKey.FILES: files,
-            SystemVariableKey.CONVERSATION_ID: conversation_id,
-            SystemVariableKey.USER_ID: user_id,
-            SystemVariableKey.DIALOGUE_COUNT: conversation_dialogue_count,
-        }
-        variable_pool = VariablePool(
-            system_variables=system_inputs,
-            user_inputs=inputs,
-            environment_variables=workflow.environment_variables,
-            conversation_variables=conversation_variables,
-        )
-        contexts.workflow_variable_pool.set(variable_pool)
-
         # new thread
         worker_thread = threading.Thread(target=self._generate_worker, kwargs={
-            'flask_app': current_app._get_current_object(),
+            'flask_app': current_app._get_current_object(), # type: ignore
             'application_generate_entity': application_generate_entity,
             'queue_manager': queue_manager,
+            'conversation_id': conversation.id,
             'message_id': message.id,
             'context': contextvars.copy_context(),
         })
@@ -334,6 +277,7 @@ class AdvancedChatAppGenerator(MessageBasedAppGenerator):
     def _generate_worker(self, flask_app: Flask,
                          application_generate_entity: AdvancedChatAppGenerateEntity,
                          queue_manager: AppQueueManager,
+                         conversation_id: str,
                          message_id: str,
                          context: contextvars.Context) -> None:
         """
@@ -349,28 +293,19 @@ class AdvancedChatAppGenerator(MessageBasedAppGenerator):
             var.set(val)
         with flask_app.app_context():
             try:
-                runner = AdvancedChatAppRunner()
-                if application_generate_entity.single_iteration_run:
-                    single_iteration_run = application_generate_entity.single_iteration_run
-                    runner.single_iteration_run(
-                        app_id=application_generate_entity.app_config.app_id,
-                        workflow_id=application_generate_entity.app_config.workflow_id,
-                        queue_manager=queue_manager,
-                        inputs=single_iteration_run.inputs,
-                        node_id=single_iteration_run.node_id,
-                        user_id=application_generate_entity.user_id
-                    )
-                else:
-                    # get message
-                    message = self._get_message(message_id)
+                # get conversation and message
+                conversation = self._get_conversation(conversation_id)
+                message = self._get_message(message_id)
 
-                    # chatbot app
-                    runner = AdvancedChatAppRunner()
-                    runner.run(
-                        application_generate_entity=application_generate_entity,
-                        queue_manager=queue_manager,
-                        message=message
-                    )
+                # chatbot app
+                runner = AdvancedChatAppRunner(
+                    application_generate_entity=application_generate_entity,
+                    queue_manager=queue_manager,
+                    conversation=conversation,
+                    message=message
+                )
+
+                runner.run()
             except GenerateTaskStoppedException:
                 pass
             except InvokeAuthorizationError:

@@ -1,3 +1,5 @@
+import logging
+from collections.abc import Mapping, Sequence
 from typing import Any, cast
 
 from sqlalchemy import func
@@ -12,14 +14,14 @@ from core.model_runtime.entities.model_entities import ModelFeature, ModelType
 from core.model_runtime.model_providers.__base.large_language_model import LargeLanguageModel
 from core.rag.retrieval.dataset_retrieval import DatasetRetrieval
 from core.rag.retrieval.retrieval_methods import RetrievalMethod
-from core.workflow.entities.base_node_data_entities import BaseNodeData
 from core.workflow.entities.node_entities import NodeRunResult, NodeType
-from core.workflow.entities.variable_pool import VariablePool
 from core.workflow.nodes.base_node import BaseNode
 from core.workflow.nodes.knowledge_retrieval.entities import KnowledgeRetrievalNodeData
 from extensions.ext_database import db
 from models.dataset import Dataset, Document, DocumentSegment
 from models.workflow import WorkflowNodeExecutionStatus
+
+logger = logging.getLogger(__name__)
 
 default_retrieval_model = {
     'search_method': RetrievalMethod.SEMANTIC_SEARCH.value,
@@ -37,11 +39,11 @@ class KnowledgeRetrievalNode(BaseNode):
     _node_data_cls = KnowledgeRetrievalNodeData
     node_type = NodeType.KNOWLEDGE_RETRIEVAL
 
-    def _run(self, variable_pool: VariablePool) -> NodeRunResult:
-        node_data: KnowledgeRetrievalNodeData = cast(self._node_data_cls, self.node_data)
+    def _run(self) -> NodeRunResult:
+        node_data = cast(KnowledgeRetrievalNodeData, self.node_data)
 
         # extract variables
-        variable = variable_pool.get_any(node_data.query_variable_selector)
+        variable = self.graph_runtime_state.variable_pool.get_any(node_data.query_variable_selector)
         query = variable
         variables = {
             'query': query
@@ -68,7 +70,7 @@ class KnowledgeRetrievalNode(BaseNode):
             )
 
         except Exception as e:
-
+            logger.exception("Error when running knowledge retrieval node")
             return NodeRunResult(
                 status=WorkflowNodeExecutionStatus.FAILED,
                 inputs=variables,
@@ -235,11 +237,21 @@ class KnowledgeRetrievalNode(BaseNode):
         return context_list
 
     @classmethod
-    def _extract_variable_selector_to_variable_mapping(cls, node_data: BaseNodeData) -> dict[str, list[str]]:
-        node_data = node_data
-        node_data = cast(cls._node_data_cls, node_data)
+    def _extract_variable_selector_to_variable_mapping(
+        cls,
+        graph_config: Mapping[str, Any],
+        node_id: str,
+        node_data: KnowledgeRetrievalNodeData
+    ) -> Mapping[str, Sequence[str]]:
+        """
+        Extract variable selector to variable mapping
+        :param graph_config: graph config
+        :param node_id: node id
+        :param node_data: node data
+        :return:
+        """
         variable_mapping = {}
-        variable_mapping['query'] = node_data.query_variable_selector
+        variable_mapping[node_id + '.query'] = node_data.query_variable_selector
         return variable_mapping
 
     def _fetch_model_config(self, node_data: KnowledgeRetrievalNodeData) -> tuple[

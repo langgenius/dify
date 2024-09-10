@@ -21,13 +21,13 @@ type AddProps = {
   nodeId: string
   nodeData: CommonNodeType
   sourceHandle: string
-  branchName?: string
+  isParallel?: boolean
 }
 const Add = ({
   nodeId,
   nodeData,
   sourceHandle,
-  branchName,
+  isParallel,
 }: AddProps) => {
   const { t } = useTranslation()
   const { handleNodeAdd } = useNodesInteractions()
@@ -57,23 +57,19 @@ const Add = ({
           ${nodesReadOnly && '!cursor-not-allowed'}
         `}
       >
-        {
-          branchName && (
-            <div
-              className='absolute left-1 right-1 -top-[7.5px] flex items-center h-3 text-[10px] text-text-placeholder font-semibold'
-              title={branchName.toLocaleUpperCase()}
-            >
-              <div className='inline-block px-0.5 rounded-[5px] bg-background-default truncate'>{branchName.toLocaleUpperCase()}</div>
-            </div>
-          )
-        }
         <div className='flex items-center justify-center mr-1.5 w-5 h-5 rounded-[5px] bg-background-default-dimm'>
           <RiAddLine className='w-3 h-3' />
         </div>
-        {t('workflow.panel.selectNextStep')}
+        <div className='flex items-center uppercase'>
+          {
+            isParallel
+              ? t('workflow.common.addParallelNode')
+              : t('workflow.panel.selectNextStep')
+          }
+        </div>
       </div>
     )
-  }, [branchName, t, nodesReadOnly])
+  }, [t, nodesReadOnly, isParallel])
 
   return (
     <BlockSelector

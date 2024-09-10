@@ -316,6 +316,7 @@ const vars = {
   'workflow-block-border': 'var(--color-workflow-block-border)',
   'workflow-block-parma-bg': 'var(--color-workflow-block-parma-bg)',
   'workflow-block-bg': 'var(--color-workflow-block-bg)',
+  'workflow-block-border-highlight': 'var(--color-workflow-block-border-highlight)',
 
   'workflow-canvas-workflow-dot-color': 'var(--color-workflow-canvas-workflow-dot-color)',
   'workflow-canvas-workflow-bg': 'var(--color-workflow-canvas-workflow-bg)',
