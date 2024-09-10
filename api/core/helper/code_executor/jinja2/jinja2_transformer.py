@@ -11,9 +11,7 @@ class Jinja2TemplateTransformer(TemplateTransformer):
         :param response: response
         :return:
         """
-        return {
-            'result': cls.extract_result_str_from_response(response)
-        }
+        return {"result": cls.extract_result_str_from_response(response)}
 
     @classmethod
     def get_runner_script(cls) -> str:

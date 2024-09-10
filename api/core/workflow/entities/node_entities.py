@@ -12,28 +12,28 @@ class NodeType(Enum):
     Node Types.
     """
 
-    START = 'start'
-    END = 'end'
-    ANSWER = 'answer'
-    LLM = 'llm'
-    KNOWLEDGE_RETRIEVAL = 'knowledge-retrieval'
-    IF_ELSE = 'if-else'
-    CODE = 'code'
-    TEMPLATE_TRANSFORM = 'template-transform'
-    QUESTION_CLASSIFIER = 'question-classifier'
-    HTTP_REQUEST = 'http-request'
-    TOOL = 'tool'
-    VARIABLE_AGGREGATOR = 'variable-aggregator'
+    START = "start"
+    END = "end"
+    ANSWER = "answer"
+    LLM = "llm"
+    KNOWLEDGE_RETRIEVAL = "knowledge-retrieval"
+    IF_ELSE = "if-else"
+    CODE = "code"
+    TEMPLATE_TRANSFORM = "template-transform"
+    QUESTION_CLASSIFIER = "question-classifier"
+    HTTP_REQUEST = "http-request"
+    TOOL = "tool"
+    VARIABLE_AGGREGATOR = "variable-aggregator"
     # TODO: merge this into VARIABLE_AGGREGATOR
-    VARIABLE_ASSIGNER = 'variable-assigner'
-    LOOP = 'loop'
-    ITERATION = 'iteration'
-    ITERATION_START = 'iteration-start'  # fake start node for iteration
-    PARAMETER_EXTRACTOR = 'parameter-extractor'
-    CONVERSATION_VARIABLE_ASSIGNER = 'assigner'
+    VARIABLE_ASSIGNER = "variable-assigner"
+    LOOP = "loop"
+    ITERATION = "iteration"
+    ITERATION_START = "iteration-start"  # fake start node for iteration
+    PARAMETER_EXTRACTOR = "parameter-extractor"
+    CONVERSATION_VARIABLE_ASSIGNER = "assigner"
 
     @classmethod
-    def value_of(cls, value: str) -> 'NodeType':
+    def value_of(cls, value: str) -> "NodeType":
         """
         Get value of given node type.
 
@@ -43,7 +43,7 @@ class NodeType(Enum):
         for node_type in cls:
             if node_type.value == value:
                 return node_type
-        raise ValueError(f'invalid node type value {value}')
+        raise ValueError(f"invalid node type value {value}")
 
 
 class NodeRunMetadataKey(Enum):
@@ -51,16 +51,16 @@ class NodeRunMetadataKey(Enum):
     Node Run Metadata Key.
     """
 
-    TOTAL_TOKENS = 'total_tokens'
-    TOTAL_PRICE = 'total_price'
-    CURRENCY = 'currency'
-    TOOL_INFO = 'tool_info'
-    ITERATION_ID = 'iteration_id'
-    ITERATION_INDEX = 'iteration_index'
-    PARALLEL_ID = 'parallel_id'
-    PARALLEL_START_NODE_ID = 'parallel_start_node_id'
-    PARENT_PARALLEL_ID = 'parent_parallel_id'
-    PARENT_PARALLEL_START_NODE_ID = 'parent_parallel_start_node_id'
+    TOTAL_TOKENS = "total_tokens"
+    TOTAL_PRICE = "total_price"
+    CURRENCY = "currency"
+    TOOL_INFO = "tool_info"
+    ITERATION_ID = "iteration_id"
+    ITERATION_INDEX = "iteration_index"
+    PARALLEL_ID = "parallel_id"
+    PARALLEL_START_NODE_ID = "parallel_start_node_id"
+    PARENT_PARALLEL_ID = "parent_parallel_id"
+    PARENT_PARALLEL_START_NODE_ID = "parent_parallel_start_node_id"
 
 
 class NodeRunResult(BaseModel):
@@ -85,6 +85,7 @@ class UserFrom(Enum):
     """
     User from
     """
+
     ACCOUNT = "account"
     END_USER = "end-user"
 

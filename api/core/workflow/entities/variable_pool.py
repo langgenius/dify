@@ -23,23 +23,19 @@ class VariablePool(BaseModel):
     # Other elements of the selector are the keys in the second-level dictionary. To get the key, we hash the
     # elements of the selector except the first one.
     variable_dictionary: dict[str, dict[int, Segment]] = Field(
-        description='Variables mapping',
-        default=defaultdict(dict)
+        description="Variables mapping", default=defaultdict(dict)
     )
 
     # TODO: This user inputs is not used for pool.
     user_inputs: Mapping[str, Any] = Field(
-        description='User inputs',
+        description="User inputs",
     )
 
     system_variables: Mapping[SystemVariableKey, Any] = Field(
-        description='System variables',
+        description="System variables",
     )
 
-    environment_variables: Sequence[Variable] = Field(
-        description="Environment variables.",
-        default_factory=list
-    )
+    environment_variables: Sequence[Variable] = Field(description="Environment variables.", default_factory=list)
 
     conversation_variables: Sequence[Variable] | None = None
 

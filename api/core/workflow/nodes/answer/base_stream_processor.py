@@ -7,16 +7,13 @@ from core.workflow.graph_engine.entities.graph import Graph
 
 
 class StreamProcessor(ABC):
-
     def __init__(self, graph: Graph, variable_pool: VariablePool) -> None:
         self.graph = graph
         self.variable_pool = variable_pool
         self.rest_node_ids = graph.node_ids.copy()
 
     @abstractmethod
-    def process(self,
-                generator: Generator[GraphEngineEvent, None, None]
-                ) -> Generator[GraphEngineEvent, None, None]:
+    def process(self, generator: Generator[GraphEngineEvent, None, None]) -> Generator[GraphEngineEvent, None, None]:
         raise NotImplementedError
 
     def _remove_unreachable_nodes(self, event: NodeRunSucceededEvent) -> None:
@@ -35,9 +32,11 @@ class StreamProcessor(ABC):
             reachable_node_ids = []
             unreachable_first_node_ids = []
             for edge in self.graph.edge_mapping[finished_node_id]:
-                if (edge.run_condition
-                        and edge.run_condition.branch_identify
-                        and run_result.edge_source_handle == edge.run_condition.branch_identify):
+                if (
+                    edge.run_condition
+                    and edge.run_condition.branch_identify
+                    and run_result.edge_source_handle == edge.run_condition.branch_identify
+                ):
                     reachable_node_ids.extend(self._fetch_node_ids_in_reachable_branch(edge.target_node_id))
                     continue
                 else:

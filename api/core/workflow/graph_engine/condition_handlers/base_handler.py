@@ -8,19 +8,13 @@ from core.workflow.graph_engine.entities.runtime_route_state import RouteNodeSta
 
 
 class RunConditionHandler(ABC):
-    def __init__(self,
-                 init_params: GraphInitParams,
-                 graph: Graph,
-                 condition: RunCondition):
+    def __init__(self, init_params: GraphInitParams, graph: Graph, condition: RunCondition):
         self.init_params = init_params
         self.graph = graph
         self.condition = condition
 
     @abstractmethod
-    def check(self,
-              graph_runtime_state: GraphRuntimeState,
-              previous_route_node_state: RouteNodeState
-        ) -> bool:
+    def check(self, graph_runtime_state: GraphRuntimeState, previous_route_node_state: RouteNodeState) -> bool:
         """
         Check if the condition can be executed
 

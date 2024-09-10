@@ -8,9 +8,7 @@ class SiliconflowSpeech2TextModel(OAICompatSpeech2TextModel):
     Model class for Siliconflow Speech to text model.
     """
 
-    def _invoke(
-            self, model: str, credentials: dict, file: IO[bytes], user: Optional[str] = None
-    ) -> str:
+    def _invoke(self, model: str, credentials: dict, file: IO[bytes], user: Optional[str] = None) -> str:
         """
         Invoke speech2text model
 

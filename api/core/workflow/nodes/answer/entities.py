@@ -9,6 +9,7 @@ class AnswerNodeData(BaseNodeData):
     """
     Answer Node Data.
     """
+
     answer: str = Field(..., description="answer template string")
 
 
@@ -28,6 +29,7 @@ class VarGenerateRouteChunk(GenerateRouteChunk):
     """
     Var Generate Route Chunk.
     """
+
     type: GenerateRouteChunk.ChunkType = GenerateRouteChunk.ChunkType.VAR
     """generate route chunk type"""
     value_selector: list[str] = Field(..., description="value selector")
@@ -37,6 +39,7 @@ class TextGenerateRouteChunk(GenerateRouteChunk):
     """
     Text Generate Route Chunk.
     """
+
     type: GenerateRouteChunk.ChunkType = GenerateRouteChunk.ChunkType.TEXT
     """generate route chunk type"""
     text: str = Field(..., description="text")
@@ -52,11 +55,10 @@ class AnswerStreamGenerateRoute(BaseModel):
     """
     AnswerStreamGenerateRoute entity
     """
+
     answer_dependencies: dict[str, list[str]] = Field(
-        ...,
-        description="answer dependencies (answer node id -> dependent answer node ids)"
+        ..., description="answer dependencies (answer node id -> dependent answer node ids)"
     )
     answer_generate_route: dict[str, list[GenerateRouteChunk]] = Field(
-        ...,
-        description="answer generate route (answer node id -> generate route chunks)"
+        ..., description="answer generate route (answer node id -> generate route chunks)"
     )

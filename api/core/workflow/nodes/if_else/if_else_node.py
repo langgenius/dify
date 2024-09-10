@@ -20,13 +20,9 @@ class IfElseNode(BaseNode):
         node_data = self.node_data
         node_data = cast(IfElseNodeData, node_data)
 
-        node_inputs: dict[str, list] = {
-            "conditions": []
-        }
+        node_inputs: dict[str, list] = {"conditions": []}
 
-        process_datas: dict[str, list] = {
-            "condition_results": []
-        }
+        process_datas: dict[str, list] = {"condition_results": []}
 
         input_conditions = []
         final_result = False
@@ -37,8 +33,7 @@ class IfElseNode(BaseNode):
             if node_data.cases:
                 for case in node_data.cases:
                     input_conditions, group_result = condition_processor.process_conditions(
-                        variable_pool=self.graph_runtime_state.variable_pool,
-                        conditions=case.conditions
+                        variable_pool=self.graph_runtime_state.variable_pool, conditions=case.conditions
                     )
 
                     # Apply the logical operator for the current case
@@ -60,8 +55,7 @@ class IfElseNode(BaseNode):
             else:
                 # Fallback to old structure if cases are not defined
                 input_conditions, group_result = condition_processor.process_conditions(
-                    variable_pool=self.graph_runtime_state.variable_pool,
-                    conditions=node_data.conditions
+                    variable_pool=self.graph_runtime_state.variable_pool, conditions=node_data.conditions
                 )
 
                 final_result = all(group_result) if node_data.logical_operator == "and" else any(group_result)
@@ -69,21 +63,14 @@ class IfElseNode(BaseNode):
                 selected_case_id = "true" if final_result else "false"
 
                 process_datas["condition_results"].append(
-                    {
-                        "group": "default",
-                        "results": group_result,
-                        "final_result": final_result
-                    }
+                    {"group": "default", "results": group_result, "final_result": final_result}
                 )
 
             node_inputs["conditions"] = input_conditions
 
         except Exception as e:
             return NodeRunResult(
-                status=WorkflowNodeExecutionStatus.FAILED,
-                inputs=node_inputs,
-                process_data=process_datas,
-                error=str(e)
+                status=WorkflowNodeExecutionStatus.FAILED, inputs=node_inputs, process_data=process_datas, error=str(e)
             )
 
         outputs = {"result": final_result, "selected_case_id": selected_case_id}
@@ -93,17 +80,14 @@ class IfElseNode(BaseNode):
             inputs=node_inputs,
             process_data=process_datas,
             edge_source_handle=selected_case_id if selected_case_id else "false",  # Use case ID or 'default'
-            outputs=outputs
+            outputs=outputs,
         )
 
         return data
 
     @classmethod
     def _extract_variable_selector_to_variable_mapping(
-        cls, 
-        graph_config: Mapping[str, Any], 
-        node_id: str,
-        node_data: IfElseNodeData
+        cls, graph_config: Mapping[str, Any], node_id: str, node_data: IfElseNodeData
     ) -> Mapping[str, Sequence[str]]:
         """
         Extract variable selector to variable mapping
