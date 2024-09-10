@@ -33,6 +33,8 @@ class SearXNGSearchTool(BuiltinTool):
                 "q": tool_parameters.get("query"),
                 "format": "json",
                 "categories": tool_parameters.get("search_type", "general"),
+                "engines": tool_parameters.get("engines", "bing"),
+                "time_range": tool_parameters.get("time_range", "None"),
             },
         )
 

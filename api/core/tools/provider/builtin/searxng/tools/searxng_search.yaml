@@ -67,3 +67,85 @@ parameters:
           en_US: Social Media
           zh_Hans: 社交媒体
     form: form
+  - name: engines
+    type: select
+    required: true
+    label:
+      en_US: search engines
+      zh_Hans: 搜索引擎
+    default: bing
+    options:
+      - value: bing
+        label:
+          en_US: bing
+          zh_Hans: bing搜索引擎
+      - value: seznam
+        label:
+          en_US: seznam
+          zh_Hans: seznam搜索引擎
+      - value: naver
+        label:
+          en_US: naver
+          zh_Hans: naver搜索引擎
+      - value: crowdview
+        label:
+          en_US: crowdview
+          zh_Hans: crowdview搜索引擎
+      - value: encyclosearch
+        label:
+          en_US: encyclosearch
+          zh_Hans: encyclosearch搜索引擎
+      - value: mwmbl
+        label:
+          en_US: mwmbl
+          zh_Hans: mwmbl搜索引擎
+      - value: searchmysite
+        label:
+          en_US: searchmysite
+          zh_Hans: searchmysite搜索引擎
+      - value: stract
+        label:
+          en_US: stract
+          zh_Hans: stract搜索引擎
+      - value: bpb
+        label:
+          en_US: bpb
+          zh_Hans: bpb搜索引擎
+      - value: wikimini
+        label:
+          en_US: wikimini
+          zh_Hans: wikimini搜索引擎
+      - value: bing,seznam,naver
+        label:
+          en_US: web（bing,seznam,naver）
+          zh_Hans: web搜索引擎（bing,seznam,naver）
+      - value: bing,seznam,naver,crowdview,encyclosearch,mwmbl,searchmysite,stract,bpb,wikimini
+        label:
+          en_US: all
+          zh_Hans: 应用所有搜索引擎
+    form: form
+  - name: time_range
+    type: select
+    required: false
+    label:
+      en_US: search time range
+      zh_Hans: 搜索间隔时间
+    default: ""
+    options:
+      - value: year
+        label:
+          en_US: year
+          zh_Hans: 年
+      - value: month
+        label:
+          en_US: month
+          zh_Hans: 月
+      - value: day
+        label:
+          en_US: day
+          zh_Hans: 日
+      - value: None
+        label:
+          en_US: Unlimited time
+          zh_Hans: 不限时
+    form: form
