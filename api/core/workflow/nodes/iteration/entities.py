@@ -1,6 +1,6 @@
 from typing import Any, Optional
 
-from core.workflow.entities.base_node_data_entities import BaseIterationNodeData, BaseIterationState
+from core.workflow.entities.base_node_data_entities import BaseIterationNodeData, BaseIterationState, BaseNodeData
 
 
 class IterationNodeData(BaseIterationNodeData):
@@ -10,6 +10,13 @@ class IterationNodeData(BaseIterationNodeData):
     parent_loop_id: Optional[str] = None # redundant field, not used currently
     iterator_selector: list[str] # variable selector
     output_selector: list[str] # output selector
+
+
+class IterationStartNodeData(BaseNodeData):
+    """
+    Iteration Start Node Data.
+    """
+    pass
 
 class IterationState(BaseIterationState):
     """

@@ -17,7 +17,7 @@ def inner_api_only(view):
             abort(404)
 
         # get header 'X-Inner-Api-Key'
-        inner_api_key = request.headers.get('X-Inner-Api-Key')
+        inner_api_key = request.headers.get("X-Inner-Api-Key")
         if not inner_api_key or inner_api_key != dify_config.INNER_API_KEY:
             abort(401)
 
@@ -33,29 +33,29 @@ def inner_api_user_auth(view):
             return view(*args, **kwargs)
 
         # get header 'X-Inner-Api-Key'
-        authorization = request.headers.get('Authorization')
+        authorization = request.headers.get("Authorization")
         if not authorization:
             return view(*args, **kwargs)
 
-        parts = authorization.split(':')
+        parts = authorization.split(":")
         if len(parts) != 2:
             return view(*args, **kwargs)
 
         user_id, token = parts
-        if ' ' in user_id:
-            user_id = user_id.split(' ')[1]
+        if " " in user_id:
+            user_id = user_id.split(" ")[1]
 
-        inner_api_key = request.headers.get('X-Inner-Api-Key')
+        inner_api_key = request.headers.get("X-Inner-Api-Key")
 
-        data_to_sign = f'DIFY {user_id}'
+        data_to_sign = f"DIFY {user_id}"
 
-        signature = hmac_new(inner_api_key.encode('utf-8'), data_to_sign.encode('utf-8'), sha1)
-        signature = b64encode(signature.digest()).decode('utf-8')
+        signature = hmac_new(inner_api_key.encode("utf-8"), data_to_sign.encode("utf-8"), sha1)
+        signature = b64encode(signature.digest()).decode("utf-8")
 
         if signature != token:
             return view(*args, **kwargs)
 
-        kwargs['user'] = db.session.query(EndUser).filter(EndUser.id == user_id).first()
+        kwargs["user"] = db.session.query(EndUser).filter(EndUser.id == user_id).first()
 
         return view(*args, **kwargs)
 

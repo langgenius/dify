@@ -5,6 +5,7 @@ from typing import Optional
 
 from sqlalchemy.exc import IntegrityError
 
+from configs import dify_config
 from core.entities.model_entities import DefaultModelEntity, DefaultModelProviderEntity
 from core.entities.provider_configuration import ProviderConfiguration, ProviderConfigurations, ProviderModelBundle
 from core.entities.provider_entities import (
@@ -18,12 +19,9 @@ from core.entities.provider_entities import (
 )
 from core.helper import encrypter
 from core.helper.model_provider_cache import ProviderCredentialsCache, ProviderCredentialsCacheType
+from core.helper.position_helper import is_filtered
 from core.model_runtime.entities.model_entities import ModelType
-from core.model_runtime.entities.provider_entities import (
-    CredentialFormSchema,
-    FormType,
-    ProviderEntity,
-)
+from core.model_runtime.entities.provider_entities import CredentialFormSchema, FormType, ProviderEntity
 from core.model_runtime.model_providers import model_provider_factory
 from extensions import ext_hosting_provider
 from extensions.ext_database import db
@@ -45,6 +43,7 @@ class ProviderManager:
     """
     ProviderManager is a class that manages the model providers includes Hosting and Customize Model Providers.
     """
+
     def __init__(self) -> None:
         self.decoding_rsa_key = None
         self.decoding_cipher_rsa = None
@@ -117,6 +116,16 @@ class ProviderManager:
 
         # Construct ProviderConfiguration objects for each provider
         for provider_entity in provider_entities:
+
+            # handle include, exclude
+            if is_filtered(
+                    include_set=dify_config.POSITION_PROVIDER_INCLUDES_SET,
+                    exclude_set=dify_config.POSITION_PROVIDER_EXCLUDES_SET,
+                    data=provider_entity,
+                    name_func=lambda x: x.provider,
+            ):
+                continue
+
             provider_name = provider_entity.provider
             provider_records = provider_name_to_provider_records_dict.get(provider_entity.provider, [])
             provider_model_records = provider_name_to_provider_model_records_dict.get(provider_entity.provider, [])
@@ -271,6 +280,24 @@ class ProviderManager:
             )
         )
 
+    def get_first_provider_first_model(self, tenant_id: str, model_type: ModelType) -> tuple[str, str]:
+        """
+        Get names of first model and its provider
+
+        :param tenant_id: workspace id
+        :param model_type: model type
+        :return: provider name, model name
+        """
+        provider_configurations = self.get_configurations(tenant_id)
+
+        # get available models from provider_configurations
+        all_models = provider_configurations.get_models(
+            model_type=model_type,
+            only_active=False
+        )
+
+        return all_models[0].provider.provider, all_models[0].model
+
     def update_default_model_record(self, tenant_id: str, model_type: ModelType, provider: str, model: str) \
             -> TenantDefaultModel:
         """
@@ -323,7 +350,8 @@ class ProviderManager:
 
         return default_model
 
-    def _get_all_providers(self, tenant_id: str) -> dict[str, list[Provider]]:
+    @staticmethod
+    def _get_all_providers(tenant_id: str) -> dict[str, list[Provider]]:
         """
         Get all provider records of the workspace.
 
@@ -342,7 +370,8 @@ class ProviderManager:
 
         return provider_name_to_provider_records_dict
 
-    def _get_all_provider_models(self, tenant_id: str) -> dict[str, list[ProviderModel]]:
+    @staticmethod
+    def _get_all_provider_models(tenant_id: str) -> dict[str, list[ProviderModel]]:
         """
         Get all provider model records of the workspace.
 
@@ -362,7 +391,8 @@ class ProviderManager:
 
         return provider_name_to_provider_model_records_dict
 
-    def _get_all_preferred_model_providers(self, tenant_id: str) -> dict[str, TenantPreferredModelProvider]:
+    @staticmethod
+    def _get_all_preferred_model_providers(tenant_id: str) -> dict[str, TenantPreferredModelProvider]:
         """
         Get All preferred provider types of the workspace.
 
@@ -381,7 +411,8 @@ class ProviderManager:
 
         return provider_name_to_preferred_provider_type_records_dict
 
-    def _get_all_provider_model_settings(self, tenant_id: str) -> dict[str, list[ProviderModelSetting]]:
+    @staticmethod
+    def _get_all_provider_model_settings(tenant_id: str) -> dict[str, list[ProviderModelSetting]]:
         """
         Get All provider model settings of the workspace.
 
@@ -400,7 +431,8 @@ class ProviderManager:
 
         return provider_name_to_provider_model_settings_dict
 
-    def _get_all_provider_load_balancing_configs(self, tenant_id: str) -> dict[str, list[LoadBalancingModelConfig]]:
+    @staticmethod
+    def _get_all_provider_load_balancing_configs(tenant_id: str) -> dict[str, list[LoadBalancingModelConfig]]:
         """
         Get All provider load balancing configs of the workspace.
 
@@ -431,7 +463,8 @@ class ProviderManager:
 
         return provider_name_to_provider_load_balancing_model_configs_dict
 
-    def _init_trial_provider_records(self, tenant_id: str,
+    @staticmethod
+    def _init_trial_provider_records(tenant_id: str,
                                      provider_name_to_provider_records_dict: dict[str, list]) -> dict[str, list]:
         """
         Initialize trial provider records if not exists.
@@ -764,7 +797,8 @@ class ProviderManager:
             credentials=current_using_credentials
         )
 
-    def _choice_current_using_quota_type(self, quota_configurations: list[QuotaConfiguration]) -> ProviderQuotaType:
+    @staticmethod
+    def _choice_current_using_quota_type(quota_configurations: list[QuotaConfiguration]) -> ProviderQuotaType:
         """
         Choice current using quota type.
         paid quotas > provider free quotas > hosting trial quotas
@@ -791,7 +825,8 @@ class ProviderManager:
 
         raise ValueError('No quota type available')
 
-    def _extract_secret_variables(self, credential_form_schemas: list[CredentialFormSchema]) -> list[str]:
+    @staticmethod
+    def _extract_secret_variables(credential_form_schemas: list[CredentialFormSchema]) -> list[str]:
         """
         Extract secret input form variables.
 

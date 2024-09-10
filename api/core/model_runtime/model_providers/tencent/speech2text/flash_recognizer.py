@@ -67,7 +67,7 @@ class FlashRecognitionRequest:
 
 class FlashRecognizer:
     """
-    reponse:
+    response:
     request_id        string
     status            Integer    
     message           String    
@@ -132,9 +132,9 @@ class FlashRecognizer:
         signstr = self._format_sign_string(query)
         signature = self._sign(signstr, secret_key)
         header["Authorization"] = signature
-        requrl = "https://"
-        requrl += signstr[4::]
-        return requrl
+        req_url = "https://"
+        req_url += signstr[4::]
+        return req_url
 
     def _create_query_arr(self, req):
         return {

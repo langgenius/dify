@@ -55,6 +55,8 @@ import Header from './header'
 import CustomNode from './nodes'
 import CustomNoteNode from './note-node'
 import { CUSTOM_NOTE_NODE } from './note-node/constants'
+import CustomIterationStartNode from './nodes/iteration-start'
+import { CUSTOM_ITERATION_START_NODE } from './nodes/iteration-start/constants'
 import Operator from './operator'
 import CustomEdge from './custom-edge'
 import CustomConnectionLine from './custom-connection-line'
@@ -67,6 +69,7 @@ import NodeContextmenu from './node-contextmenu'
 import SyncingDataModal from './syncing-data-modal'
 import UpdateDSLModal from './update-dsl-modal'
 import DSLExportConfirmModal from './dsl-export-confirm-modal'
+import LimitTips from './limit-tips'
 import {
   useStore,
   useWorkflowStore,
@@ -92,6 +95,7 @@ import Confirm from '@/app/components/base/confirm'
 const nodeTypes = {
   [CUSTOM_NODE]: CustomNode,
   [CUSTOM_NOTE_NODE]: CustomNoteNode,
+  [CUSTOM_ITERATION_START_NODE]: CustomIterationStartNode,
 }
 const edgeTypes = {
   [CUSTOM_NODE]: CustomEdge,
@@ -317,6 +321,7 @@ const Workflow: FC<WorkflowProps> = memo(({
           />
         )
       }
+      <LimitTips />
       <ReactFlow
         nodeTypes={nodeTypes}
         edgeTypes={edgeTypes}

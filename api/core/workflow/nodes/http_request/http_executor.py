@@ -18,11 +18,6 @@ from core.workflow.nodes.http_request.entities import (
 )
 from core.workflow.utils.variable_template_parser import VariableTemplateParser
 
-MAX_BINARY_SIZE = dify_config.HTTP_REQUEST_NODE_MAX_BINARY_SIZE
-READABLE_MAX_BINARY_SIZE = dify_config.HTTP_REQUEST_NODE_READABLE_MAX_BINARY_SIZE
-MAX_TEXT_SIZE = dify_config.HTTP_REQUEST_NODE_MAX_TEXT_SIZE
-READABLE_MAX_TEXT_SIZE = dify_config.HTTP_REQUEST_NODE_READABLE_MAX_TEXT_SIZE
-
 
 class HttpExecutorResponse:
     headers: dict[str, str]
@@ -237,16 +232,14 @@ class HttpExecutor:
         else:
             raise ValueError(f'Invalid response type {type(response)}')
 
-        if executor_response.is_file:
-            if executor_response.size > MAX_BINARY_SIZE:
-                raise ValueError(
-                    f'File size is too large, max size is {READABLE_MAX_BINARY_SIZE}, but current size is {executor_response.readable_size}.'
-                )
-        else:
-            if executor_response.size > MAX_TEXT_SIZE:
-                raise ValueError(
-                    f'Text size is too large, max size is {READABLE_MAX_TEXT_SIZE}, but current size is {executor_response.readable_size}.'
-                )
+        threshold_size = dify_config.HTTP_REQUEST_NODE_MAX_BINARY_SIZE if executor_response.is_file \
+            else dify_config.HTTP_REQUEST_NODE_MAX_TEXT_SIZE
+        if executor_response.size > threshold_size:
+            raise ValueError(
+                f'{"File" if executor_response.is_file else "Text"} size is too large,'
+                f' max size is {threshold_size / 1024 / 1024:.2f} MB,'
+                f' but current size is {executor_response.readable_size}.'
+            )
 
         return executor_response
 

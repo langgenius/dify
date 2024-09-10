@@ -10,21 +10,21 @@ class AzureBlobStorageConfig(BaseSettings):
     """
 
     AZURE_BLOB_ACCOUNT_NAME: Optional[str] = Field(
-        description='Azure Blob account name',
+        description="Azure Blob account name",
         default=None,
     )
 
     AZURE_BLOB_ACCOUNT_KEY: Optional[str] = Field(
-        description='Azure Blob account key',
+        description="Azure Blob account key",
         default=None,
     )
 
     AZURE_BLOB_CONTAINER_NAME: Optional[str] = Field(
-        description='Azure Blob container name',
+        description="Azure Blob container name",
         default=None,
     )
 
     AZURE_BLOB_ACCOUNT_URL: Optional[str] = Field(
-        description='Azure Blob account URL',
+        description="Azure Blob account URL",
         default=None,
     )

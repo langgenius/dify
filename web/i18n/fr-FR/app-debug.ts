@@ -237,18 +237,18 @@ const translation = {
     typeSelect: 'Sélectionner',
   },
   varKeyError: {
-    canNoBeEmpty: 'La clé variable ne peut pas être vide',
-    tooLong: 'Variable key: {{key}} too length. Can not be longer then 30 characters',
-    notValid: 'Variable key: {{key}} is invalid. Can only contain letters, numbers, and underscores',
-    notStartWithNumber: 'Variable key: {{key}} can not start with a number',
-    keyAlreadyExists: 'Variable key: :{{key}} already exists',
+    canNoBeEmpty: '{{key}} est obligatoire',
+    tooLong: '{{key}} too length. Can not be longer then 30 characters',
+    notValid: '{{key}} is invalid. Can only contain letters, numbers, and underscores',
+    notStartWithNumber: '{{key}} can not start with a number',
+    keyAlreadyExists: '{{key}} already exists',
   },
   otherError: {
     promptNoBeEmpty: 'Le prompt ne peut pas être vide',
     historyNoBeEmpty: 'L\'historique de la conversation doit être défini dans le prompt',
     queryNoBeEmpty: 'La requête doit être définie dans le prompt',
   },
-  variableConig: {
+  variableConfig: {
     'addModalTitle': 'Add Input Field',
     'editModalTitle': 'Edit Input Field',
     'description': 'Setting for variable {{varName}}',

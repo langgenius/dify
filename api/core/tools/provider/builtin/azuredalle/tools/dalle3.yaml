@@ -25,7 +25,7 @@ parameters:
       pt_BR: Prompt
     human_description:
       en_US: Image prompt, you can check the official documentation of DallE 3
-      zh_Hans: 图像提示词，您可以查看DallE 3 的官方文档
+      zh_Hans: 图像提示词，您可以查看 DallE 3 的官方文档
       pt_BR: Imagem prompt, você pode verificar a documentação oficial do DallE 3
     llm_description: Image prompt of DallE 3, you should describe the image you want to generate as a list of words as possible as detailed
     form: llm

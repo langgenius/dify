@@ -1,4 +1,5 @@
-from typing import Optional, Union, cast
+from collections.abc import Mapping, Sequence
+from typing import Any, Optional, Union, cast
 
 from configs import dify_config
 from core.helper.code_executor.code_executor import CodeExecutionException, CodeExecutor, CodeLanguage
@@ -6,24 +7,14 @@ from core.helper.code_executor.code_node_provider import CodeNodeProvider
 from core.helper.code_executor.javascript.javascript_code_provider import JavascriptCodeProvider
 from core.helper.code_executor.python3.python3_code_provider import Python3CodeProvider
 from core.workflow.entities.node_entities import NodeRunResult, NodeType
-from core.workflow.entities.variable_pool import VariablePool
 from core.workflow.nodes.base_node import BaseNode
 from core.workflow.nodes.code.entities import CodeNodeData
 from models.workflow import WorkflowNodeExecutionStatus
 
-MAX_NUMBER = dify_config.CODE_MAX_NUMBER
-MIN_NUMBER = dify_config.CODE_MIN_NUMBER
-MAX_PRECISION = 20
-MAX_DEPTH = 5
-MAX_STRING_LENGTH = dify_config.CODE_MAX_STRING_LENGTH
-MAX_STRING_ARRAY_LENGTH = dify_config.CODE_MAX_STRING_ARRAY_LENGTH
-MAX_OBJECT_ARRAY_LENGTH = dify_config.CODE_MAX_OBJECT_ARRAY_LENGTH
-MAX_NUMBER_ARRAY_LENGTH = dify_config.CODE_MAX_NUMBER_ARRAY_LENGTH
-
 
 class CodeNode(BaseNode):
     _node_data_cls = CodeNodeData
-    node_type = NodeType.CODE
+    _node_type = NodeType.CODE
 
     @classmethod
     def get_default_config(cls, filters: Optional[dict] = None) -> dict:
@@ -42,14 +33,13 @@ class CodeNode(BaseNode):
 
         return code_provider.get_default_config()
 
-    def _run(self, variable_pool: VariablePool) -> NodeRunResult:
+    def _run(self) -> NodeRunResult:
         """
         Run code
-        :param variable_pool: variable pool
         :return:
         """
         node_data = self.node_data
-        node_data: CodeNodeData = cast(self._node_data_cls, node_data)
+        node_data = cast(CodeNodeData, node_data)
 
         # Get code language
         code_language = node_data.code_language
@@ -59,7 +49,7 @@ class CodeNode(BaseNode):
         variables = {}
         for variable_selector in node_data.variables:
             variable = variable_selector.variable
-            value = variable_pool.get_any(variable_selector.value_selector)
+            value = self.graph_runtime_state.variable_pool.get_any(variable_selector.value_selector)
 
             variables[variable] = value
         # Run code
@@ -68,7 +58,6 @@ class CodeNode(BaseNode):
                 language=code_language,
                 code=code,
                 inputs=variables,
-                dependencies=node_data.dependencies
             )
 
             # Transform result
@@ -99,8 +88,9 @@ class CodeNode(BaseNode):
             else:
                 raise ValueError(f"Output variable `{variable}` must be a string")
         
-        if len(value) > MAX_STRING_LENGTH:
-            raise ValueError(f'The length of output variable `{variable}` must be less than {MAX_STRING_LENGTH} characters')
+        if len(value) > dify_config.CODE_MAX_STRING_LENGTH:
+            raise ValueError(f'The length of output variable `{variable}` must be'
+                             f' less than {dify_config.CODE_MAX_STRING_LENGTH} characters')
 
         return value.replace('\x00', '')
 
@@ -117,13 +107,15 @@ class CodeNode(BaseNode):
             else:
                 raise ValueError(f"Output variable `{variable}` must be a number")
 
-        if value > MAX_NUMBER or value < MIN_NUMBER:
-            raise ValueError(f'Output variable `{variable}` is out of range, it must be between {MIN_NUMBER} and {MAX_NUMBER}.')
+        if value > dify_config.CODE_MAX_NUMBER or value < dify_config.CODE_MIN_NUMBER:
+            raise ValueError(f'Output variable `{variable}` is out of range,'
+                             f' it must be between {dify_config.CODE_MIN_NUMBER} and {dify_config.CODE_MAX_NUMBER}.')
 
         if isinstance(value, float):
             # raise error if precision is too high
-            if len(str(value).split('.')[1]) > MAX_PRECISION:
-                raise ValueError(f'Output variable `{variable}` has too high precision, it must be less than {MAX_PRECISION} digits.')
+            if len(str(value).split('.')[1]) > dify_config.CODE_MAX_PRECISION:
+                raise ValueError(f'Output variable `{variable}` has too high precision,'
+                                 f' it must be less than {dify_config.CODE_MAX_PRECISION} digits.')
 
         return value
 
@@ -136,8 +128,8 @@ class CodeNode(BaseNode):
         :param output_schema: output schema
         :return:
         """
-        if depth > MAX_DEPTH:
-            raise ValueError("Depth limit reached, object too deep.")
+        if depth > dify_config.CODE_MAX_DEPTH:
+            raise ValueError(f"Depth limit ${dify_config.CODE_MAX_DEPTH} reached, object too deep.")
 
         transformed_result = {}
         if output_schema is None:
@@ -237,9 +229,10 @@ class CodeNode(BaseNode):
                             f'Output {prefix}{dot}{output_name} is not an array, got {type(result.get(output_name))} instead.'
                         )
                 else:
-                    if len(result[output_name]) > MAX_NUMBER_ARRAY_LENGTH:
+                    if len(result[output_name]) > dify_config.CODE_MAX_NUMBER_ARRAY_LENGTH:
                         raise ValueError(
-                            f'The length of output variable `{prefix}{dot}{output_name}` must be less than {MAX_NUMBER_ARRAY_LENGTH} elements.'
+                            f'The length of output variable `{prefix}{dot}{output_name}` must be'
+                            f' less than {dify_config.CODE_MAX_NUMBER_ARRAY_LENGTH} elements.'
                         )
 
                     transformed_result[output_name] = [
@@ -259,9 +252,10 @@ class CodeNode(BaseNode):
                             f'Output {prefix}{dot}{output_name} is not an array, got {type(result.get(output_name))} instead.'
                         )
                 else:
-                    if len(result[output_name]) > MAX_STRING_ARRAY_LENGTH:
+                    if len(result[output_name]) > dify_config.CODE_MAX_STRING_ARRAY_LENGTH:
                         raise ValueError(
-                            f'The length of output variable `{prefix}{dot}{output_name}` must be less than {MAX_STRING_ARRAY_LENGTH} elements.'
+                            f'The length of output variable `{prefix}{dot}{output_name}` must be'
+                            f' less than {dify_config.CODE_MAX_STRING_ARRAY_LENGTH} elements.'
                         )
 
                     transformed_result[output_name] = [
@@ -281,9 +275,10 @@ class CodeNode(BaseNode):
                             f'Output {prefix}{dot}{output_name} is not an array, got {type(result.get(output_name))} instead.'
                         )
                 else:
-                    if len(result[output_name]) > MAX_OBJECT_ARRAY_LENGTH:
+                    if len(result[output_name]) > dify_config.CODE_MAX_OBJECT_ARRAY_LENGTH:
                         raise ValueError(
-                            f'The length of output variable `{prefix}{dot}{output_name}` must be less than {MAX_OBJECT_ARRAY_LENGTH} elements.'
+                            f'The length of output variable `{prefix}{dot}{output_name}` must be'
+                            f' less than {dify_config.CODE_MAX_OBJECT_ARRAY_LENGTH} elements.'
                         )
                     
                     for i, value in enumerate(result[output_name]):
@@ -316,13 +311,19 @@ class CodeNode(BaseNode):
         return transformed_result
 
     @classmethod
-    def _extract_variable_selector_to_variable_mapping(cls, node_data: CodeNodeData) -> dict[str, list[str]]:
+    def _extract_variable_selector_to_variable_mapping(
+        cls,
+        graph_config: Mapping[str, Any],
+        node_id: str,
+        node_data: CodeNodeData
+    ) -> Mapping[str, Sequence[str]]:
         """
         Extract variable selector to variable mapping
+        :param graph_config: graph config
+        :param node_id: node id
         :param node_data: node data
         :return:
         """
-
         return {
-            variable_selector.variable: variable_selector.value_selector for variable_selector in node_data.variables
+            node_id + '.' + variable_selector.variable: variable_selector.value_selector for variable_selector in node_data.variables
         }

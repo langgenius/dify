@@ -10,14 +10,6 @@ def test_validate_provider_credentials():
     provider = JinaProvider()
 
     with pytest.raises(CredentialsValidateFailedError):
-        provider.validate_provider_credentials(
-            credentials={
-                'api_key': 'hahahaha'
-            }
-        )
+        provider.validate_provider_credentials(credentials={"api_key": "hahahaha"})
 
-    provider.validate_provider_credentials(
-        credentials={
-            'api_key': os.environ.get('JINA_API_KEY')
-        }
-    )
+    provider.validate_provider_credentials(credentials={"api_key": os.environ.get("JINA_API_KEY")})

@@ -17,6 +17,8 @@ def handle(sender, **kwargs):
         default_language=account.interface_language,
         customize_token_strategy="not_allow",
         code=Site.generate_code(16),
+        created_by=app.created_by,
+        updated_by=app.updated_by,
     )
 
     db.session.add(site)

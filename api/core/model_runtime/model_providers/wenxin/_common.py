@@ -79,11 +79,13 @@ class BaiduAccessToken:
             # if access token not in cache, request it
             token = BaiduAccessToken(api_key)
             baidu_access_tokens[api_key] = token
-            # release it to enhance performance
-            # btw, _get_access_token will raise exception if failed, release lock here to avoid deadlock
-            baidu_access_tokens_lock.release()
-            # try to get access token
-            token_str = BaiduAccessToken._get_access_token(api_key, secret_key)
+            try:
+                # try to get access token
+                token_str = BaiduAccessToken._get_access_token(api_key, secret_key)
+            finally:
+                # release it to enhance performance
+                # btw, _get_access_token will raise exception if failed, release lock here to avoid deadlock
+                baidu_access_tokens_lock.release()
             token.access_token = token_str
             token.expires = now + timedelta(days=3)
             return token
@@ -118,6 +120,9 @@ class _CommonWenxin:
         'ernie-4.0-turbo-8k-preview': 'https://aip.baidubce.com/rpc/2.0/ai_custom/v1/wenxinworkshop/chat/ernie-4.0-turbo-8k-preview',
         'yi_34b_chat': 'https://aip.baidubce.com/rpc/2.0/ai_custom/v1/wenxinworkshop/chat/yi_34b_chat',
         'embedding-v1': 'https://aip.baidubce.com/rpc/2.0/ai_custom/v1/wenxinworkshop/embeddings/embedding-v1',
+        'bge-large-en': 'https://aip.baidubce.com/rpc/2.0/ai_custom/v1/wenxinworkshop/embeddings/bge_large_en',
+        'bge-large-zh': 'https://aip.baidubce.com/rpc/2.0/ai_custom/v1/wenxinworkshop/embeddings/bge_large_zh',
+        'tao-8k': 'https://aip.baidubce.com/rpc/2.0/ai_custom/v1/wenxinworkshop/embeddings/tao_8k',
     }
 
     function_calling_supports = [

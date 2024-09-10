@@ -28,6 +28,19 @@ class S3Storage(BaseStorage):
                 region_name=app_config.get("S3_REGION"),
                 config=Config(s3={"addressing_style": app_config.get("S3_ADDRESS_STYLE")}),
             )
+        # create bucket
+        try:
+            self.client.head_bucket(Bucket=self.bucket_name)
+        except ClientError as e:
+            # if bucket not exists, create it
+            if e.response["Error"]["Code"] == "404":
+                self.client.create_bucket(Bucket=self.bucket_name)
+            # if bucket is not accessible, pass, maybe the bucket is existing but not accessible
+            elif e.response["Error"]["Code"] == "403":
+                pass
+            else:
+                # other error, raise exception
+                raise
 
     def save(self, filename, data):
         self.client.put_object(Bucket=self.bucket_name, Key=filename, Body=data)

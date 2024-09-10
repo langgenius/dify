@@ -42,18 +42,19 @@ const ConfigModal: FC<IConfigModalProps> = ({
   const { type, label, variable, options, max_length } = tempPayload
 
   const isStringInput = type === InputVarType.textInput || type === InputVarType.paragraph
+  const checkVariableName = useCallback((value: string) => {
+    const { isValid, errorMessageKey } = checkKeys([value], false)
+    if (!isValid) {
+      Toast.notify({
+        type: 'error',
+        message: t(`appDebug.varKeyError.${errorMessageKey}`, { key: t('appDebug.variableConfig.varName') }),
+      })
+      return false
+    }
+    return true
+  }, [t])
   const handlePayloadChange = useCallback((key: string) => {
     return (value: any) => {
-      if (key === 'variable') {
-        const { isValid, errorKey, errorMessageKey } = checkKeys([value], true)
-        if (!isValid) {
-          Toast.notify({
-            type: 'error',
-            message: t(`appDebug.varKeyError.${errorMessageKey}`, { key: errorKey }),
-          })
-          return
-        }
-      }
       setTempPayload((prev) => {
         const newPayload = {
           ...prev,
@@ -63,19 +64,20 @@ const ConfigModal: FC<IConfigModalProps> = ({
         return newPayload
       })
     }
-  }, [t])
+  }, [])
 
   const handleVarKeyBlur = useCallback((e: any) => {
-    if (tempPayload.label)
+    const varName = e.target.value
+    if (!checkVariableName(varName) || tempPayload.label)
       return
 
     setTempPayload((prev) => {
       return {
         ...prev,
-        label: e.target.value,
+        label: varName,
       }
     })
-  }, [tempPayload])
+  }, [checkVariableName, tempPayload.label])
 
   const handleConfirm = () => {
     const moreInfo = tempPayload.variable === payload?.variable
@@ -84,10 +86,11 @@ const ConfigModal: FC<IConfigModalProps> = ({
         type: ChangeType.changeVarName,
         payload: { beforeKey: payload?.variable || '', afterKey: tempPayload.variable },
       }
-    if (!tempPayload.variable) {
-      Toast.notify({ type: 'error', message: t('appDebug.variableConig.errorMsg.varNameRequired') })
+
+    const isVariableNameValid = checkVariableName(tempPayload.variable)
+    if (!isVariableNameValid)
       return
-    }
+
     // TODO: check if key already exists. should the consider the edit case
     // if (varKeys.map(key => key?.trim()).includes(tempPayload.variable.trim())) {
     //   Toast.notify({
@@ -98,7 +101,7 @@ const ConfigModal: FC<IConfigModalProps> = ({
     // }
 
     if (!tempPayload.label) {
-      Toast.notify({ type: 'error', message: t('appDebug.variableConig.errorMsg.labelNameRequired') })
+      Toast.notify({ type: 'error', message: t('appDebug.variableConfig.errorMsg.labelNameRequired') })
       return
     }
     if (isStringInput || type === InputVarType.number) {
@@ -106,7 +109,7 @@ const ConfigModal: FC<IConfigModalProps> = ({
     }
     else {
       if (options?.length === 0) {
-        Toast.notify({ type: 'error', message: t('appDebug.variableConig.errorMsg.atLeastOneOption') })
+        Toast.notify({ type: 'error', message: t('appDebug.variableConfig.errorMsg.atLeastOneOption') })
         return
       }
       const obj: Record<string, boolean> = {}
@@ -119,7 +122,7 @@ const ConfigModal: FC<IConfigModalProps> = ({
         obj[o] = true
       })
       if (hasRepeatedItem) {
-        Toast.notify({ type: 'error', message: t('appDebug.variableConig.errorMsg.optionRepeat') })
+        Toast.notify({ type: 'error', message: t('appDebug.variableConfig.errorMsg.optionRepeat') })
         return
       }
       onConfirm(tempPayload, moreInfo)
@@ -128,14 +131,14 @@ const ConfigModal: FC<IConfigModalProps> = ({
 
   return (
     <Modal
-      title={t(`appDebug.variableConig.${isCreate ? 'addModalTitle' : 'editModalTitle'}`)}
+      title={t(`appDebug.variableConfig.${isCreate ? 'addModalTitle' : 'editModalTitle'}`)}
       isShow={isShow}
       onClose={onClose}
     >
       <div className='mb-8'>
         <div className='space-y-2'>
 
-          <Field title={t('appDebug.variableConig.fieldType')}>
+          <Field title={t('appDebug.variableConfig.fieldType')}>
             <div className='flex space-x-2'>
               <SelectTypeItem type={InputVarType.textInput} selected={type === InputVarType.textInput} onClick={() => handlePayloadChange('type')(InputVarType.textInput)} />
               <SelectTypeItem type={InputVarType.paragraph} selected={type === InputVarType.paragraph} onClick={() => handlePayloadChange('type')(InputVarType.paragraph)} />
@@ -144,39 +147,39 @@ const ConfigModal: FC<IConfigModalProps> = ({
             </div>
           </Field>
 
-          <Field title={t('appDebug.variableConig.varName')}>
+          <Field title={t('appDebug.variableConfig.varName')}>
             <input
               type='text'
               className={inputClassName}
               value={variable}
               onChange={e => handlePayloadChange('variable')(e.target.value)}
               onBlur={handleVarKeyBlur}
-              placeholder={t('appDebug.variableConig.inputPlaceholder')!}
+              placeholder={t('appDebug.variableConfig.inputPlaceholder')!}
             />
           </Field>
-          <Field title={t('appDebug.variableConig.labelName')}>
+          <Field title={t('appDebug.variableConfig.labelName')}>
             <input
               type='text'
               className={inputClassName}
               value={label as string}
               onChange={e => handlePayloadChange('label')(e.target.value)}
-              placeholder={t('appDebug.variableConig.inputPlaceholder')!}
+              placeholder={t('appDebug.variableConfig.inputPlaceholder')!}
             />
           </Field>
 
           {isStringInput && (
-            <Field title={t('appDebug.variableConig.maxLength')}>
+            <Field title={t('appDebug.variableConfig.maxLength')}>
               <ConfigString maxLength={type === InputVarType.textInput ? TEXT_MAX_LENGTH : Infinity} modelId={modelConfig.model_id} value={max_length} onChange={handlePayloadChange('max_length')} />
             </Field>
 
           )}
           {type === InputVarType.select && (
-            <Field title={t('appDebug.variableConig.options')}>
+            <Field title={t('appDebug.variableConfig.options')}>
               <ConfigSelect options={options || []} onChange={handlePayloadChange('options')} />
             </Field>
           )}
 
-          <Field title={t('appDebug.variableConig.required')}>
+          <Field title={t('appDebug.variableConfig.required')}>
             <Switch defaultValue={tempPayload.required} onChange={handlePayloadChange('required')} />
           </Field>
         </div>

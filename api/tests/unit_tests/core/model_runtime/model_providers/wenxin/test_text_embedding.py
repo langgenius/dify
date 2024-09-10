@@ -21,18 +21,18 @@ def test_max_chunks():
     def _create_text_embedding(api_key: str, secret_key: str) -> TextEmbedding:
         return _MockTextEmbedding()
 
-    model = 'embedding-v1'
+    model = "embedding-v1"
     credentials = {
-        'api_key': 'xxxx',
-        'secret_key': 'yyyy',
+        "api_key": "xxxx",
+        "secret_key": "yyyy",
     }
     embedding_model = WenxinTextEmbeddingModel()
     context_size = embedding_model._get_context_size(model, credentials)
     max_chunks = embedding_model._get_max_chunks(model, credentials)
     embedding_model._create_text_embedding = _create_text_embedding
 
-    texts = ['0123456789' for i in range(0, max_chunks * 2)]
-    result: TextEmbeddingResult = embedding_model.invoke(model, credentials, texts, 'test')
+    texts = ["0123456789" for i in range(0, max_chunks * 2)]
+    result: TextEmbeddingResult = embedding_model.invoke(model, credentials, texts, "test")
     assert len(result.embeddings) == max_chunks * 2
 
 
@@ -41,16 +41,16 @@ def test_context_size():
         return GPT2Tokenizer.get_num_tokens(text)
 
     def mock_text(token_size: int) -> str:
-        _text = "".join(['0' for i in range(token_size)])
+        _text = "".join(["0" for i in range(token_size)])
         num_tokens = get_num_tokens_by_gpt2(_text)
         ratio = int(np.floor(len(_text) / num_tokens))
         m_text = "".join([_text for i in range(ratio)])
         return m_text
 
-    model = 'embedding-v1'
+    model = "embedding-v1"
     credentials = {
-        'api_key': 'xxxx',
-        'secret_key': 'yyyy',
+        "api_key": "xxxx",
+        "secret_key": "yyyy",
     }
     embedding_model = WenxinTextEmbeddingModel()
     context_size = embedding_model._get_context_size(model, credentials)
@@ -71,5 +71,5 @@ def test_context_size():
     assert get_num_tokens_by_gpt2(text) == context_size * 2
 
     texts = [text]
-    result: TextEmbeddingResult = embedding_model.invoke(model, credentials, texts, 'test')
+    result: TextEmbeddingResult = embedding_model.invoke(model, credentials, texts, "test")
     assert result.usage.tokens == context_size

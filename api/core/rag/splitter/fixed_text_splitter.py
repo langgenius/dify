@@ -93,17 +93,21 @@ class FixedRecursiveCharacterTextSplitter(EnhanceRecursiveCharacterTextSplitter)
             splits = list(text)
         # Now go merging things, recursively splitting longer texts.
         _good_splits = []
+        _good_splits_lengths = []  # cache the lengths of the splits
         for s in splits:
-            if self._length_function(s) < self._chunk_size:
+            s_len = self._length_function(s)
+            if s_len < self._chunk_size:
                 _good_splits.append(s)
+                _good_splits_lengths.append(s_len)
             else:
                 if _good_splits:
-                    merged_text = self._merge_splits(_good_splits, separator)
+                    merged_text = self._merge_splits(_good_splits, separator, _good_splits_lengths)
                     final_chunks.extend(merged_text)
                     _good_splits = []
+                    _good_splits_lengths = []
                 other_info = self.recursive_split_text(s)
                 final_chunks.extend(other_info)
         if _good_splits:
-            merged_text = self._merge_splits(_good_splits, separator)
+            merged_text = self._merge_splits(_good_splits, separator, _good_splits_lengths)
             final_chunks.extend(merged_text)
         return final_chunks

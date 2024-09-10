@@ -1,6 +1,7 @@
 import json
 import uuid
-from typing import Optional, cast
+from collections.abc import Mapping, Sequence
+from typing import Any, Optional, cast
 
 from core.app.entities.app_invoke_entities import ModelConfigWithCredentialsEntity
 from core.memory.token_buffer_memory import TokenBufferMemory
@@ -66,12 +67,12 @@ class ParameterExtractorNode(LLMNode):
             }
         }
 
-    def _run(self, variable_pool: VariablePool) -> NodeRunResult:
+    def _run(self) -> NodeRunResult:
         """
         Run the node.
         """
         node_data = cast(ParameterExtractorNodeData, self.node_data)
-        variable = variable_pool.get_any(node_data.query)
+        variable = self.graph_runtime_state.variable_pool.get_any(node_data.query)
         if not variable:
             raise ValueError("Input variable content not found or is empty")
         query = variable
@@ -92,17 +93,20 @@ class ParameterExtractorNode(LLMNode):
             raise ValueError("Model schema not found")
 
         # fetch memory
-        memory = self._fetch_memory(node_data.memory, variable_pool, model_instance)
+        memory = self._fetch_memory(node_data.memory, self.graph_runtime_state.variable_pool, model_instance)
 
         if set(model_schema.features or []) & {ModelFeature.TOOL_CALL, ModelFeature.MULTI_TOOL_CALL} \
             and node_data.reasoning_mode == 'function_call':
             # use function call 
             prompt_messages, prompt_message_tools = self._generate_function_call_prompt(
-                node_data, query, variable_pool, model_config, memory
+                node_data, query, self.graph_runtime_state.variable_pool, model_config, memory
             )
         else:
             # use prompt engineering
-            prompt_messages = self._generate_prompt_engineering_prompt(node_data, query, variable_pool, model_config,
+            prompt_messages = self._generate_prompt_engineering_prompt(node_data,
+                                                                       query,
+                                                                       self.graph_runtime_state.variable_pool,
+                                                                       model_config,
                                                                        memory)
             prompt_message_tools = []
 
@@ -172,7 +176,8 @@ class ParameterExtractorNode(LLMNode):
                 NodeRunMetadataKey.TOTAL_TOKENS: usage.total_tokens,
                 NodeRunMetadataKey.TOTAL_PRICE: usage.total_price,
                 NodeRunMetadataKey.CURRENCY: usage.currency
-            }
+            },
+            llm_usage=usage
         )
 
     def _invoke_llm(self, node_data_model: ModelConfig,
@@ -697,15 +702,19 @@ class ParameterExtractorNode(LLMNode):
         return self._model_instance, self._model_config
 
     @classmethod
-    def _extract_variable_selector_to_variable_mapping(cls, node_data: ParameterExtractorNodeData) -> dict[
-        str, list[str]]:
+    def _extract_variable_selector_to_variable_mapping(
+        cls, 
+        graph_config: Mapping[str, Any], 
+        node_id: str,
+        node_data: ParameterExtractorNodeData
+    ) -> Mapping[str, Sequence[str]]:
         """
         Extract variable selector to variable mapping
+        :param graph_config: graph config
+        :param node_id: node id
         :param node_data: node data
         :return:
         """
-        node_data = node_data
-
         variable_mapping = {
             'query': node_data.query
         }
@@ -714,5 +723,9 @@ class ParameterExtractorNode(LLMNode):
             variable_template_parser = VariableTemplateParser(template=node_data.instruction)
             for selector in variable_template_parser.extract_variable_selectors():
                 variable_mapping[selector.variable] = selector.value_selector
+
+        variable_mapping = {
+            node_id + '.' + key: value for key, value in variable_mapping.items()
+        }
 
         return variable_mapping

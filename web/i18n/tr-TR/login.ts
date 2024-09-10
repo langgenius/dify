@@ -32,7 +32,7 @@ const translation = {
   pp: 'Gizlilik Politikası',
   tosDesc: 'Kaydolarak, Hizmet Şartlarımızı kabul etmiş olursunuz',
   goToInit: 'Hesabı başlatmadıysanız, lütfen başlatma sayfasına gidin',
-  donthave: 'Sahip değil misiniz?',
+  dontHave: 'Sahip değil misiniz?',
   invalidInvitationCode: 'Geçersiz davet kodu',
   accountAlreadyInited: 'Hesap zaten başlatılmış',
   forgotPassword: 'Şifrenizi mi unuttunuz?',

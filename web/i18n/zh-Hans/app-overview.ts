@@ -45,14 +45,22 @@ const translation = {
         webDescPlaceholder: '请输入 WebApp 的描述',
         language: '语言',
         workflow: {
-          title: '工作流详情',
+          title: '工作流',
+          subTitle: '工作流详情',
           show: '显示',
           hide: '隐藏',
+          showDesc: '在 WebApp 中展示或者隐藏工作流详情',
         },
         chatColorTheme: '聊天颜色主题',
         chatColorThemeDesc: '设置聊天机器人的颜色主题',
         chatColorThemeInverted: '反转',
         invalidHexMessage: '无效的十六进制值',
+        sso: {
+          label: '单点登录认证',
+          title: 'WebApp SSO 认证',
+          description: '启用后，所有用户都需要先进行 SSO 认证才能访问',
+          tooltip: '联系管理员以开启 WebApp SSO 认证',
+        },
         more: {
           entry: '展示更多设置',
           copyright: '版权',
@@ -119,7 +127,11 @@ const translation = {
     tokenPS: 'Token/秒',
     totalMessages: {
       title: '全部消息数',
-      explanation: '反映 AI 每天的互动总次数，每回答用户一个问题算一条 Message。提示词编排和调试的消息不计入。',
+      explanation: '反映 AI 每天的互动总次数，每回答用户一个问题算一条 Message。',
+    },
+    totalConversations: {
+      title: '全部会话数',
+      explanation: '反映 AI 每天的会话总次数，提示词编排和调试的消息不计入。',
     },
     activeUsers: {
       title: '活跃用户数',

@@ -5,10 +5,10 @@ class MockTEIClass:
     @staticmethod
     def get_tei_extra_parameter(server_url: str, model_name: str) -> TeiModelExtraParameter:
         # During mock, we don't have a real server to query, so we just return a dummy value
-        if 'rerank' in model_name:
-            model_type = 'reranker'
+        if "rerank" in model_name:
+            model_type = "reranker"
         else:
-            model_type = 'embedding'
+            model_type = "embedding"
 
         return TeiModelExtraParameter(model_type=model_type, max_input_length=512, max_client_batch_size=1)
 
@@ -17,16 +17,16 @@ class MockTEIClass:
         # Use space as token separator, and split the text into tokens
         tokenized_texts = []
         for text in texts:
-            tokens = text.split(' ')
+            tokens = text.split(" ")
             current_index = 0
             tokenized_text = []
             for idx, token in enumerate(tokens):
                 s_token = {
-                    'id': idx,
-                    'text': token,
-                    'special': False,
-                    'start': current_index,
-                    'stop': current_index + len(token),
+                    "id": idx,
+                    "text": token,
+                    "special": False,
+                    "start": current_index,
+                    "stop": current_index + len(token),
                 }
                 current_index += len(token) + 1
                 tokenized_text.append(s_token)
@@ -55,18 +55,18 @@ class MockTEIClass:
             embedding = [0.1] * 768
             embeddings.append(
                 {
-                    'object': 'embedding',
-                    'embedding': embedding,
-                    'index': idx,
+                    "object": "embedding",
+                    "embedding": embedding,
+                    "index": idx,
                 }
             )
         return {
-            'object': 'list',
-            'data': embeddings,
-            'model': 'MODEL_NAME',
-            'usage': {
-                'prompt_tokens': sum(len(text.split(' ')) for text in texts),
-                'total_tokens': sum(len(text.split(' ')) for text in texts),
+            "object": "list",
+            "data": embeddings,
+            "model": "MODEL_NAME",
+            "usage": {
+                "prompt_tokens": sum(len(text.split(" ")) for text in texts),
+                "total_tokens": sum(len(text.split(" ")) for text in texts),
             },
         }
 
@@ -83,9 +83,9 @@ class MockTEIClass:
         for idx, text in enumerate(texts):
             reranked_docs.append(
                 {
-                    'index': idx,
-                    'text': text,
-                    'score': 0.9,
+                    "index": idx,
+                    "text": text,
+                    "score": 0.9,
                 }
             )
             # For mock, only return the first document

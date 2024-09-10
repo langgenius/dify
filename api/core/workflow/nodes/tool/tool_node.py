@@ -2,7 +2,7 @@ from collections.abc import Mapping, Sequence
 from os import path
 from typing import Any, cast
 
-from core.app.segments import ArrayAnyVariable, parser
+from core.app.segments import ArrayAnySegment, ArrayAnyVariable, parser
 from core.callback_handler.workflow_tool_callback_handler import DifyWorkflowCallbackHandler
 from core.file.file_obj import FileTransferMethod, FileType, FileVar
 from core.tools.entities.tool_entities import ToolInvokeMessage, ToolParameter
@@ -11,7 +11,7 @@ from core.tools.tool_manager import ToolManager
 from core.tools.utils.message_transformer import ToolFileMessageTransformer
 from core.workflow.entities.node_entities import NodeRunMetadataKey, NodeRunResult, NodeType
 from core.workflow.entities.variable_pool import VariablePool
-from core.workflow.enums import SystemVariable
+from core.workflow.enums import SystemVariableKey
 from core.workflow.nodes.base_node import BaseNode
 from core.workflow.nodes.tool.entities import ToolNodeData
 from core.workflow.utils.variable_template_parser import VariableTemplateParser
@@ -26,7 +26,7 @@ class ToolNode(BaseNode):
     _node_data_cls = ToolNodeData
     _node_type = NodeType.TOOL
 
-    def _run(self, variable_pool: VariablePool) -> NodeRunResult:
+    def _run(self) -> NodeRunResult:
         """
         Run the tool node
         """
@@ -56,8 +56,8 @@ class ToolNode(BaseNode):
 
         # get parameters
         tool_parameters = tool_runtime.get_runtime_parameters() or []
-        parameters = self._generate_parameters(tool_parameters=tool_parameters, variable_pool=variable_pool, node_data=node_data)
-        parameters_for_log = self._generate_parameters(tool_parameters=tool_parameters, variable_pool=variable_pool, node_data=node_data, for_log=True)
+        parameters = self._generate_parameters(tool_parameters=tool_parameters, variable_pool=self.graph_runtime_state.variable_pool, node_data=node_data)
+        parameters_for_log = self._generate_parameters(tool_parameters=tool_parameters, variable_pool=self.graph_runtime_state.variable_pool, node_data=node_data, for_log=True)
 
         try:
             messages = ToolEngine.workflow_invoke(
@@ -66,6 +66,7 @@ class ToolNode(BaseNode):
                 user_id=self.user_id,
                 workflow_tool_callback=DifyWorkflowCallbackHandler(),
                 workflow_call_depth=self.workflow_call_depth,
+                thread_pool_id=self.thread_pool_id,
             )
         except Exception as e:
             return NodeRunResult(
@@ -153,11 +154,12 @@ class ToolNode(BaseNode):
         return result
 
     def _fetch_files(self, variable_pool: VariablePool) -> list[FileVar]:
-        variable = variable_pool.get(['sys', SystemVariable.FILES.value])
-        assert isinstance(variable, ArrayAnyVariable)
+        variable = variable_pool.get(['sys', SystemVariableKey.FILES.value])
+        assert isinstance(variable, ArrayAnyVariable | ArrayAnySegment)
         return list(variable.value) if variable else []
 
-    def _convert_tool_messages(self, messages: list[ToolInvokeMessage]):
+    def _convert_tool_messages(self, messages: list[ToolInvokeMessage])\
+            -> tuple[str, list[FileVar], list[dict]]:
         """
         Convert ToolInvokeMessages into tuple[plain_text, files]
         """
@@ -233,9 +235,16 @@ class ToolNode(BaseNode):
         return [message.message for message in tool_response if message.type == ToolInvokeMessage.MessageType.JSON]
 
     @classmethod
-    def _extract_variable_selector_to_variable_mapping(cls, node_data: ToolNodeData) -> dict[str, list[str]]:
+    def _extract_variable_selector_to_variable_mapping(
+        cls, 
+        graph_config: Mapping[str, Any], 
+        node_id: str,
+        node_data: ToolNodeData
+    ) -> Mapping[str, Sequence[str]]:
         """
         Extract variable selector to variable mapping
+        :param graph_config: graph config
+        :param node_id: node id
         :param node_data: node data
         :return:
         """
@@ -250,5 +259,9 @@ class ToolNode(BaseNode):
                 result[parameter_name] = input.value
             elif input.type == 'constant':
                 pass
+
+        result = {
+            node_id + '.' + key: value for key, value in result.items()
+        }
 
         return result

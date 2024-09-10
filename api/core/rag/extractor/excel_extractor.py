@@ -38,7 +38,10 @@ class ExcelExtractor(BaseExtractor):
             for sheet_name in wb.sheetnames:
                 sheet = wb[sheet_name]
                 data = sheet.values
-                cols = next(data)
+                try:
+                    cols = next(data)
+                except StopIteration:
+                    continue
                 df = pd.DataFrame(data, columns=cols)
 
                 df.dropna(how='all', inplace=True)

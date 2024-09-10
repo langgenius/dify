@@ -248,18 +248,18 @@ const translation = {
     typeSelect: 'Lựa chọn',
   },
   varKeyError: {
-    canNoBeEmpty: 'Khóa biến không thể trống',
-    tooLong: 'Khóa biến: {{key}} quá dài. Không thể dài hơn 30 ký tự',
-    notValid: 'Khóa biến: {{key}} không hợp lệ. Chỉ có thể chứa chữ cái, số, và dấu gạch dưới',
-    notStartWithNumber: 'Khóa biến: {{key}} không thể bắt đầu bằng số',
-    keyAlreadyExists: 'Khóa biến: {{key}} đã tồn tại',
+    canNoBeEmpty: '{{key}} là bắt buộc',
+    tooLong: '{{key}} quá dài. Không thể dài hơn 30 ký tự',
+    notValid: '{{key}} không hợp lệ. Chỉ có thể chứa chữ cái, số, và dấu gạch dưới',
+    notStartWithNumber: '{{key}} không thể bắt đầu bằng số',
+    keyAlreadyExists: '{{key}} đã tồn tại',
   },
   otherError: {
     promptNoBeEmpty: 'Lời nhắc không thể trống',
     historyNoBeEmpty: 'Lịch sử cuộc trò chuyện phải được thiết lập trong lời nhắc',
     queryNoBeEmpty: 'Truy vấn phải được thiết lập trong lời nhắc',
   },
-  variableConig: {
+  variableConfig: {
     'addModalTitle': 'Thêm trường nhập',
     'editModalTitle': 'Chỉnh sửa trường nhập',
     'description': 'Cài đặt cho biến {{varName}}',

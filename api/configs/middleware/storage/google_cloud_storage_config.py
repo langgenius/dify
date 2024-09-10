@@ -10,11 +10,11 @@ class GoogleCloudStorageConfig(BaseSettings):
     """
 
     GOOGLE_STORAGE_BUCKET_NAME: Optional[str] = Field(
-        description='Google Cloud storage bucket name',
+        description="Google Cloud storage bucket name",
         default=None,
     )
 
     GOOGLE_STORAGE_SERVICE_ACCOUNT_JSON_BASE64: Optional[str] = Field(
-        description='Google Cloud storage service account json base64',
+        description="Google Cloud storage service account json base64",
         default=None,
     )

@@ -43,3 +43,8 @@ class ModelCurrentlyNotSupportError(Exception):
     Custom exception raised when the model not support
     """
     description = "Model Currently Not Support"
+
+
+class InvokeRateLimitError(Exception):
+    """Raised when the Invoke returns rate limit error."""
+    description = "Rate Limit Error"

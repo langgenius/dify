@@ -34,13 +34,13 @@ class OutputModeration(BaseModel):
     final_output: Optional[str] = None
     model_config = ConfigDict(arbitrary_types_allowed=True)
 
-    def should_direct_output(self):
+    def should_direct_output(self) -> bool:
         return self.final_output is not None
 
-    def get_final_output(self):
-        return self.final_output
+    def get_final_output(self) -> str:
+        return self.final_output or ""
 
-    def append_new_token(self, token: str):
+    def append_new_token(self, token: str) -> None:
         self.buffer += token
 
         if not self.thread:

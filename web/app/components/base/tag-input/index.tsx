@@ -46,16 +46,16 @@ const TagInput: FC<TagInputProps> = ({
       if (isSpecialMode)
         e.preventDefault()
 
-      const valueTrimed = value.trim()
-      if (!valueTrimed || (items.find(item => item === valueTrimed)))
+      const valueTrimmed = value.trim()
+      if (!valueTrimmed || (items.find(item => item === valueTrimmed)))
         return
 
-      if (valueTrimed.length > 20) {
+      if (valueTrimmed.length > 20) {
         notify({ type: 'error', message: t('datasetDocuments.segment.keywordError') })
         return
       }
 
-      onChange([...items, valueTrimed])
+      onChange([...items, valueTrimmed])
       setTimeout(() => {
         setValue('')
       })

@@ -21,9 +21,10 @@ class WhereisUserArg(Enum):
     """
     Enum for whereis_user_arg.
     """
-    QUERY = 'query'
-    JSON = 'json'
-    FORM = 'form'
+
+    QUERY = "query"
+    JSON = "json"
+    FORM = "form"
 
 
 class FetchUserArg(BaseModel):
@@ -35,13 +36,13 @@ def validate_app_token(view: Optional[Callable] = None, *, fetch_user_arg: Optio
     def decorator(view_func):
         @wraps(view_func)
         def decorated_view(*args, **kwargs):
-            api_token = validate_and_get_api_token('app')
+            api_token = validate_and_get_api_token("app")
 
             app_model = db.session.query(App).filter(App.id == api_token.app_id).first()
             if not app_model:
                 raise Forbidden("The app no longer exists.")
 
-            if app_model.status != 'normal':
+            if app_model.status != "normal":
                 raise Forbidden("The app's status is abnormal.")
 
             if not app_model.enable_api:
@@ -51,15 +52,15 @@ def validate_app_token(view: Optional[Callable] = None, *, fetch_user_arg: Optio
             if tenant.status == TenantStatus.ARCHIVE:
                 raise Forbidden("The workspace's status is archived.")
 
-            kwargs['app_model'] = app_model
+            kwargs["app_model"] = app_model
 
             if fetch_user_arg:
                 if fetch_user_arg.fetch_from == WhereisUserArg.QUERY:
-                    user_id = request.args.get('user')
+                    user_id = request.args.get("user")
                 elif fetch_user_arg.fetch_from == WhereisUserArg.JSON:
-                    user_id = request.get_json().get('user')
+                    user_id = request.get_json().get("user")
                 elif fetch_user_arg.fetch_from == WhereisUserArg.FORM:
-                    user_id = request.form.get('user')
+                    user_id = request.form.get("user")
                 else:
                     # use default-user
                     user_id = None
@@ -70,9 +71,10 @@ def validate_app_token(view: Optional[Callable] = None, *, fetch_user_arg: Optio
                 if user_id:
                     user_id = str(user_id)
 
-                kwargs['end_user'] = create_or_update_end_user_for_user_id(app_model, user_id)
+                kwargs["end_user"] = create_or_update_end_user_for_user_id(app_model, user_id)
 
             return view_func(*args, **kwargs)
+
         return decorated_view
 
     if view is None:
@@ -81,9 +83,7 @@ def validate_app_token(view: Optional[Callable] = None, *, fetch_user_arg: Optio
         return decorator(view)
 
 
-def cloud_edition_billing_resource_check(resource: str,
-                                         api_token_type: str,
-                                         error_msg: str = "You have reached the limit of your subscription."):
+def cloud_edition_billing_resource_check(resource: str, api_token_type: str):
     def interceptor(view):
         def decorated(*args, **kwargs):
             api_token = validate_and_get_api_token(api_token_type)
@@ -95,34 +95,36 @@ def cloud_edition_billing_resource_check(resource: str,
                 vector_space = features.vector_space
                 documents_upload_quota = features.documents_upload_quota
 
-                if resource == 'members' and 0 < members.limit <= members.size:
-                    raise Forbidden(error_msg)
-                elif resource == 'apps' and 0 < apps.limit <= apps.size:
-                    raise Forbidden(error_msg)
-                elif resource == 'vector_space' and 0 < vector_space.limit <= vector_space.size:
-                    raise Forbidden(error_msg)
-                elif resource == 'documents' and 0 < documents_upload_quota.limit <= documents_upload_quota.size:
-                    raise Forbidden(error_msg)
+                if resource == "members" and 0 < members.limit <= members.size:
+                    raise Forbidden("The number of members has reached the limit of your subscription.")
+                elif resource == "apps" and 0 < apps.limit <= apps.size:
+                    raise Forbidden("The number of apps has reached the limit of your subscription.")
+                elif resource == "vector_space" and 0 < vector_space.limit <= vector_space.size:
+                    raise Forbidden("The capacity of the vector space has reached the limit of your subscription.")
+                elif resource == "documents" and 0 < documents_upload_quota.limit <= documents_upload_quota.size:
+                    raise Forbidden("The number of documents has reached the limit of your subscription.")
                 else:
                     return view(*args, **kwargs)
 
             return view(*args, **kwargs)
+
         return decorated
+
     return interceptor
 
 
-def cloud_edition_billing_knowledge_limit_check(resource: str,
-                                                api_token_type: str,
-                                                error_msg: str = "To unlock this feature and elevate your Dify experience, please upgrade to a paid plan."):
+def cloud_edition_billing_knowledge_limit_check(resource: str, api_token_type: str):
     def interceptor(view):
         @wraps(view)
         def decorated(*args, **kwargs):
             api_token = validate_and_get_api_token(api_token_type)
             features = FeatureService.get_features(api_token.tenant_id)
             if features.billing.enabled:
-                if resource == 'add_segment':
-                    if features.billing.subscription.plan == 'sandbox':
-                        raise Forbidden(error_msg)
+                if resource == "add_segment":
+                    if features.billing.subscription.plan == "sandbox":
+                        raise Forbidden(
+                            "To unlock this feature and elevate your Dify experience, please upgrade to a paid plan."
+                        )
                 else:
                     return view(*args, **kwargs)
 
@@ -132,17 +134,20 @@ def cloud_edition_billing_knowledge_limit_check(resource: str,
 
     return interceptor
 
+
 def validate_dataset_token(view=None):
     def decorator(view):
         @wraps(view)
         def decorated(*args, **kwargs):
-            api_token = validate_and_get_api_token('dataset')
-            tenant_account_join = db.session.query(Tenant, TenantAccountJoin) \
-                .filter(Tenant.id == api_token.tenant_id) \
-                .filter(TenantAccountJoin.tenant_id == Tenant.id) \
-                .filter(TenantAccountJoin.role.in_(['owner'])) \
-                .filter(Tenant.status == TenantStatus.NORMAL) \
-                .one_or_none() # TODO: only owner information is required, so only one is returned.
+            api_token = validate_and_get_api_token("dataset")
+            tenant_account_join = (
+                db.session.query(Tenant, TenantAccountJoin)
+                .filter(Tenant.id == api_token.tenant_id)
+                .filter(TenantAccountJoin.tenant_id == Tenant.id)
+                .filter(TenantAccountJoin.role.in_(["owner"]))
+                .filter(Tenant.status == TenantStatus.NORMAL)
+                .one_or_none()
+            )  # TODO: only owner information is required, so only one is returned.
             if tenant_account_join:
                 tenant, ta = tenant_account_join
                 account = Account.query.filter_by(id=ta.account_id).first()
@@ -156,6 +161,7 @@ def validate_dataset_token(view=None):
             else:
                 raise Unauthorized("Tenant does not exist.")
             return view(api_token.tenant_id, *args, **kwargs)
+
         return decorated
 
     if view:
@@ -170,20 +176,24 @@ def validate_and_get_api_token(scope=None):
     """
     Validate and get API token.
     """
-    auth_header = request.headers.get('Authorization')
-    if auth_header is None or ' ' not in auth_header:
+    auth_header = request.headers.get("Authorization")
+    if auth_header is None or " " not in auth_header:
         raise Unauthorized("Authorization header must be provided and start with 'Bearer'")
 
     auth_scheme, auth_token = auth_header.split(None, 1)
     auth_scheme = auth_scheme.lower()
 
-    if auth_scheme != 'bearer':
+    if auth_scheme != "bearer":
         raise Unauthorized("Authorization scheme must be 'Bearer'")
 
-    api_token = db.session.query(ApiToken).filter(
-        ApiToken.token == auth_token,
-        ApiToken.type == scope,
-    ).first()
+    api_token = (
+        db.session.query(ApiToken)
+        .filter(
+            ApiToken.token == auth_token,
+            ApiToken.type == scope,
+        )
+        .first()
+    )
 
     if not api_token:
         raise Unauthorized("Access token is invalid")
@@ -199,23 +209,26 @@ def create_or_update_end_user_for_user_id(app_model: App, user_id: Optional[str]
     Create or update session terminal based on user ID.
     """
     if not user_id:
-        user_id = 'DEFAULT-USER'
+        user_id = "DEFAULT-USER"
 
-    end_user = db.session.query(EndUser) \
+    end_user = (
+        db.session.query(EndUser)
         .filter(
-        EndUser.tenant_id == app_model.tenant_id,
-        EndUser.app_id == app_model.id,
-        EndUser.session_id == user_id,
-        EndUser.type == 'service_api'
-    ).first()
+            EndUser.tenant_id == app_model.tenant_id,
+            EndUser.app_id == app_model.id,
+            EndUser.session_id == user_id,
+            EndUser.type == "service_api",
+        )
+        .first()
+    )
 
     if end_user is None:
         end_user = EndUser(
             tenant_id=app_model.tenant_id,
             app_id=app_model.id,
-            type='service_api',
-            is_anonymous=True if user_id == 'DEFAULT-USER' else False,
-            session_id=user_id
+            type="service_api",
+            is_anonymous=True if user_id == "DEFAULT-USER" else False,
+            session_id=user_id,
         )
         db.session.add(end_user)
         db.session.commit()

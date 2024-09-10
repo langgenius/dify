@@ -68,7 +68,7 @@
       "name": "Русский (Россия)",
       "prompt_name": "Russian",
       "example": " Привет, Dify!",
-      "supported": false
+      "supported": true
     },
     {
       "value": "it-IT",
