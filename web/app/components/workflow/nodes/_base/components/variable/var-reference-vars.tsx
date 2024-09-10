@@ -97,28 +97,28 @@ const Item: FC<ItemProps> = ({
           ref={itemRef}
           className={cn(
             isObj ? ' pr-1' : 'pr-[18px]',
-            isHovering && (isObj ? 'bg-primary-50' : 'bg-gray-50'),
+            isHovering && (isObj ? 'bg-primary-50' : 'bg-state-base-hover'),
             'relative w-full flex items-center h-6 pl-3  rounded-md cursor-pointer')
           }
           onClick={handleChosen}
         >
           <div className='flex items-center w-0 grow'>
-            {!isEnv && !isChatVar && <Variable02 className='shrink-0 w-3.5 h-3.5 text-primary-500' />}
+            {!isEnv && !isChatVar && <Variable02 className='shrink-0 w-3.5 h-3.5 text-text-accent' />}
             {isEnv && <Env className='shrink-0 w-3.5 h-3.5 text-util-colors-violet-violet-600' />}
             {isChatVar && <BubbleX className='w-3.5 h-3.5 text-util-colors-teal-teal-700' />}
             {!isEnv && !isChatVar && (
-              <div title={itemData.variable} className='ml-1 w-0 grow truncate text-[13px] font-normal text-gray-900'>{itemData.variable}</div>
+              <div title={itemData.variable} className='ml-1 w-0 grow truncate text-text-secondary system-sm-medium'>{itemData.variable}</div>
             )}
             {isEnv && (
-              <div title={itemData.variable} className='ml-1 w-0 grow truncate text-[13px] font-normal text-gray-900'>{itemData.variable.replace('env.', '')}</div>
+              <div title={itemData.variable} className='ml-1 w-0 grow truncate text-text-secondary system-sm-medium'>{itemData.variable.replace('env.', '')}</div>
             )}
             {isChatVar && (
-              <div title={itemData.des} className='ml-1 w-0 grow truncate text-[13px] font-normal text-gray-900'>{itemData.variable.replace('conversation.', '')}</div>
+              <div title={itemData.des} className='ml-1 w-0 grow truncate text-text-secondary system-sm-medium'>{itemData.variable.replace('conversation.', '')}</div>
             )}
           </div>
-          <div className='ml-1 shrink-0 text-xs font-normal text-gray-500 capitalize'>{itemData.type}</div>
+          <div className='ml-1 shrink-0 text-xs font-normal text-text-tertiary capitalize'>{itemData.type}</div>
           {isObj && (
-            <ChevronRight className='ml-0.5 w-3 h-3 text-gray-500' />
+            <ChevronRight className={cn('ml-0.5 w-3 h-3 text-text-quaternary', isHovering && 'text-text-tertiary')} />
           )}
         </div>
       </PortalToFollowElemTrigger>
@@ -285,7 +285,7 @@ const VarReferenceVars: FC<Props> = ({
             filteredVars.map((item, i) => (
               <div key={i}>
                 <div
-                  className='leading-[22px] px-3 text-xs font-medium text-gray-500 uppercase truncate'
+                  className='leading-[22px] px-3 text-text-tertiary system-xs-medium-uppercase truncate'
                   title={item.title}
                 >{item.title}</div>
                 {item.vars.map((v, j) => (
