@@ -773,6 +773,7 @@ networks:
   opensearch-net:
     driver: bridge
     internal: true
+
 volumes:
   oradata:
   dify_es01_data:
