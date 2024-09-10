@@ -118,6 +118,7 @@ export type NodeStartedResponse = {
   data: {
     id: string
     node_id: string
+    iteration_id?: string
     node_type: string
     index: number
     predecessor_node_id?: string
@@ -134,6 +135,7 @@ export type NodeFinishedResponse = {
   data: {
     id: string
     node_id: string
+    iteration_id?: string
     node_type: string
     index: number
     predecessor_node_id?: string
@@ -150,6 +152,7 @@ export type NodeFinishedResponse = {
       parallel_id?: string
       parallel_start_node_id?: string
       iteration_index?: number
+      iteration_id?: string
     }
     created_at: number
   }
@@ -172,7 +175,7 @@ export type IterationStartedResponse = {
   }
 }
 
-export type IterationNextedResponse = {
+export type IterationNextResponse = {
   task_id: string
   workflow_run_id: string
   event: string
@@ -183,6 +186,9 @@ export type IterationNextedResponse = {
     output: any
     extras?: any
     created_at: number
+    execution_metadata: {
+      parallel_id?: string
+    }
   }
 }
 
@@ -198,6 +204,9 @@ export type IterationFinishedResponse = {
     status: string
     created_at: number
     error: string
+    execution_metadata: {
+      parallel_id?: string
+    }
   }
 }
 

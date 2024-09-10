@@ -1,6 +1,6 @@
 from typing import Optional
 
-from pydantic import Field, PositiveInt
+from pydantic import Field
 from pydantic_settings import BaseSettings
 
 
@@ -9,14 +9,14 @@ class MilvusConfig(BaseSettings):
     Milvus configs
     """
 
-    MILVUS_HOST: Optional[str] = Field(
-        description="Milvus host",
-        default=None,
+    MILVUS_URI: Optional[str] = Field(
+        description="Milvus uri",
+        default="http://127.0.0.1:19530",
     )
 
-    MILVUS_PORT: PositiveInt = Field(
-        description="Milvus RestFul API port",
-        default=9091,
+    MILVUS_TOKEN: Optional[str] = Field(
+        description="Milvus token",
+        default=None,
     )
 
     MILVUS_USER: Optional[str] = Field(
@@ -27,11 +27,6 @@ class MilvusConfig(BaseSettings):
     MILVUS_PASSWORD: Optional[str] = Field(
         description="Milvus password",
         default=None,
-    )
-
-    MILVUS_SECURE: bool = Field(
-        description="whether to use SSL connection for Milvus",
-        default=False,
     )
 
     MILVUS_DATABASE: str = Field(

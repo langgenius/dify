@@ -37,7 +37,7 @@ class SegmentApi(DatasetApiResource):
         if not document:
             raise NotFound("Document not found.")
         if document.indexing_status != "completed":
-            raise NotFound("Document is already completed.")
+            raise NotFound("Document is not completed.")
         if not document.enabled:
             raise NotFound("Document is disabled.")
         # check embedding model setting
@@ -67,7 +67,7 @@ class SegmentApi(DatasetApiResource):
             segments = SegmentService.multi_create_segment(args["segments"], document, dataset)
             return {"data": marshal(segments, segment_fields), "doc_form": document.doc_form}, 200
         else:
-            return {"error": "Segemtns is required"}, 400
+            return {"error": "Segments is required"}, 400
 
     def get(self, tenant_id, dataset_id, document_id):
         """Create single segment."""

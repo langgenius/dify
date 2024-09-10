@@ -2,7 +2,7 @@ const translation = {
   common: {
     welcome: '',
     appUnavailable: '應用不可用',
-    appUnkonwError: '應用不可用',
+    appUnknownError: '應用不可用',
   },
   chat: {
     newChat: '新對話',
@@ -10,7 +10,7 @@ const translation = {
     unpinnedTitle: '對話列表',
     newChatDefaultName: '新的對話',
     resetChat: '重置對話',
-    powerBy: 'Powered by',
+    poweredBy: 'Powered by',
     prompt: '提示詞',
     privatePromptConfigTitle: '對話設定',
     publicPromptConfigTitle: '對話前提示詞',
@@ -32,7 +32,6 @@ const translation = {
       create: '執行一次',
       batch: '批次執行',
       saved: '已儲存',
-
     },
     savedNoData: {
       title: '您還沒有儲存結果！',

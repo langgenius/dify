@@ -23,8 +23,8 @@ const CustomizedPagination: FC<Props> = ({ current, onChange, total, limit = 10 
       middlePagesSiblingCount={1}
       setCurrentPage={onChange}
       totalPages={totalPages}
-      truncableClassName="w-8 px-0.5 text-center"
-      truncableText="..."
+      truncatableClassName="w-8 px-0.5 text-center"
+      truncatableText="..."
     >
       <Pagination.PrevButton
         disabled={current === 0}

@@ -13,7 +13,7 @@ from core.model_manager import ModelInstance, ModelManager
 from core.model_runtime.entities.model_entities import ModelFeature, ModelType
 from core.model_runtime.model_providers.__base.large_language_model import LargeLanguageModel
 from core.rag.retrieval.dataset_retrieval import DatasetRetrieval
-from core.rag.retrieval.retrival_methods import RetrievalMethod
+from core.rag.retrieval.retrieval_methods import RetrievalMethod
 from core.workflow.entities.node_entities import NodeRunResult, NodeType
 from core.workflow.nodes.base_node import BaseNode
 from core.workflow.nodes.knowledge_retrieval.entities import KnowledgeRetrievalNodeData
@@ -175,9 +175,13 @@ class KnowledgeRetrievalNode(BaseNode):
         context_list = []
         if all_documents:
             document_score_list = {}
+            page_number_list = {}
             for item in all_documents:
                 if item.metadata.get('score'):
                     document_score_list[item.metadata['doc_id']] = item.metadata['score']
+                # both 'page' and 'score' are metadata fields
+                if item.metadata.get('page'):
+                    page_number_list[item.metadata['doc_id']] = item.metadata['page']
 
             index_node_ids = [document.metadata['doc_id'] for document in all_documents]
             segments = DocumentSegment.query.filter(
@@ -201,9 +205,9 @@ class KnowledgeRetrievalNode(BaseNode):
                                                      Document.enabled == True,
                                                      Document.archived == False,
                                                      ).first()
+
                     resource_number = 1
                     if dataset and document:
-
                         source = {
                             'metadata': {
                                 '_source': 'knowledge',
@@ -213,6 +217,7 @@ class KnowledgeRetrievalNode(BaseNode):
                                 'document_id': document.id,
                                 'document_name': document.name,
                                 'document_data_source_type': document.data_source_type,
+                                'page': page_number_list.get(segment.index_node_id, None),
                                 'segment_id': segment.id,
                                 'retriever_from': 'workflow',
                                 'score': document_score_list.get(segment.index_node_id, None),
@@ -233,8 +238,8 @@ class KnowledgeRetrievalNode(BaseNode):
 
     @classmethod
     def _extract_variable_selector_to_variable_mapping(
-        cls, 
-        graph_config: Mapping[str, Any], 
+        cls,
+        graph_config: Mapping[str, Any],
         node_id: str,
         node_data: KnowledgeRetrievalNodeData
     ) -> Mapping[str, Sequence[str]]:

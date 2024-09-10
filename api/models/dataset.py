@@ -14,7 +14,7 @@ from sqlalchemy import func
 from sqlalchemy.dialects.postgresql import JSONB
 
 from configs import dify_config
-from core.rag.retrieval.retrival_methods import RetrievalMethod
+from core.rag.retrieval.retrieval_methods import RetrievalMethod
 from extensions.ext_database import db
 from extensions.ext_storage import storage
 

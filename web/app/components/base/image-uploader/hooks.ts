@@ -199,7 +199,7 @@ export const useClipboardUploader = ({ visionConfig, onUpload, files }: useClipb
   const handleClipboardPaste = useCallback((e: ClipboardEvent<HTMLTextAreaElement>) => {
     // reserve native text copy behavior
     const file = e.clipboardData?.files[0]
-    // when copyed file, prevent default action
+    // when copied file, prevent default action
     if (file) {
       e.preventDefault()
       handleLocalFileUpload(file)

@@ -180,9 +180,6 @@ export const useChat = (
       isAnswer: true,
     }
 
-    let isInIteration = false
-    const iterationInfoMap = {} as Record<string, boolean>
-
     handleResponding(true)
 
     const bodyParams = {
@@ -318,11 +315,11 @@ export const useChat = (
               ...responseItem,
             }
           }))
-          isInIteration = true
         },
         onIterationNext: ({ data }) => {
           const tracing = responseItem.workflowProcess!.tracing!
-          const iterations = tracing.find(item => item.node_id === data.node_id)!
+          const iterations = tracing.find(item => item.node_id === data.node_id
+            && (item.execution_metadata?.parallel_id === data.execution_metadata?.parallel_id || item.parallel_id === data.execution_metadata?.parallel_id))!
           iterations.details!.push([])
 
           handleUpdateChatList(produce(chatListRef.current, (draft) => {
@@ -332,7 +329,8 @@ export const useChat = (
         },
         onIterationFinish: ({ data }) => {
           const tracing = responseItem.workflowProcess!.tracing!
-          const iterationsIndex = tracing.findIndex(item => item.node_id === data.node_id)!
+          const iterationsIndex = tracing.findIndex(item => item.node_id === data.node_id
+            && (item.execution_metadata?.parallel_id === data.execution_metadata?.parallel_id || item.parallel_id === data.execution_metadata?.parallel_id))!
           tracing[iterationsIndex] = {
             ...tracing[iterationsIndex],
             ...data,
@@ -342,11 +340,9 @@ export const useChat = (
             const currentIndex = draft.length - 1
             draft[currentIndex] = responseItem
           }))
-
-          isInIteration = false
         },
-        onNodeStarted: ({ data }, parentId) => {
-          if (parentId)
+        onNodeStarted: ({ data }) => {
+          if (data.iteration_id)
             return
 
           responseItem.workflowProcess!.tracing!.push({
@@ -361,14 +357,14 @@ export const useChat = (
             }
           }))
         },
-        onNodeFinished: ({ data }, parentId) => {
-          if (parentId)
+        onNodeFinished: ({ data }) => {
+          if (data.iteration_id)
             return
 
           const currentIndex = responseItem.workflowProcess!.tracing!.findIndex((item) => {
             if (!item.execution_metadata?.parallel_id)
               return item.node_id === data.node_id
-            return item.node_id === data.node_id && item.execution_metadata?.parallel_id === data.execution_metadata?.parallel_id
+            return item.node_id === data.node_id && (item.execution_metadata?.parallel_id === data.execution_metadata?.parallel_id || item.parallel_id === data.execution_metadata?.parallel_id)
           })
           responseItem.workflowProcess!.tracing[currentIndex] = {
             ...(responseItem.workflowProcess!.tracing[currentIndex]?.extras

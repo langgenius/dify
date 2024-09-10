@@ -55,7 +55,7 @@ class CodeExecutionSandboxConfig(BaseSettings):
     """
 
     CODE_EXECUTION_ENDPOINT: HttpUrl = Field(
-        description="endpoint URL of code execution servcie",
+        description="endpoint URL of code execution service",
         default="http://sandbox:8194",
     )
 
@@ -424,7 +424,7 @@ class MailConfig(BaseSettings):
     """
 
     MAIL_TYPE: Optional[str] = Field(
-        description="Mail provider type name, default to None, availabile values are `smtp` and `resend`.",
+        description="Mail provider type name, default to None, available values are `smtp` and `resend`.",
         default=None,
     )
 

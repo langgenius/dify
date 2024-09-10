@@ -21,7 +21,7 @@ import Modal from '@/app/components/base/modal'
 import Button from '@/app/components/base/button'
 import AppIcon from '@/app/components/base/app-icon'
 import AppsFull from '@/app/components/billing/apps-full-in-dialog'
-import { AiText, ChatBot, CuteRobote } from '@/app/components/base/icons/src/vender/solid/communication'
+import { AiText, ChatBot, CuteRobot } from '@/app/components/base/icons/src/vender/solid/communication'
 import { Route } from '@/app/components/base/icons/src/vender/solid/mapsAndTravel'
 import Tooltip from '@/app/components/base/tooltip'
 import { NEED_REFRESH_APP_LIST_KEY } from '@/config'
@@ -158,7 +158,7 @@ const CreateAppModal = ({ show, onSuccess, onClose }: CreateAppDialogProps) => {
                 setShowChatBotType(false)
               }}
             >
-              <CuteRobote className='w-6 h-6 text-indigo-600' />
+              <CuteRobot className='w-6 h-6 text-indigo-600' />
               <div className='h-5 text-[13px] font-medium leading-[18px]'>{t('app.types.agent')}</div>
             </div>
           </Tooltip>

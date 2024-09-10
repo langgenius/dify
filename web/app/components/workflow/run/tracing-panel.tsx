@@ -27,6 +27,7 @@ type TracingPanelProps = {
 
 type TracingNodeProps = {
   id: string
+  uniqueId: string
   isParallel: boolean
   data: NodeTracing | null
   children: TracingNodeProps[]
@@ -41,6 +42,11 @@ function buildLogTree(nodes: NodeTracing[]): TracingNodeProps[] {
   const parallelStacks: { [key: string]: TracingNodeProps } = {}
   const levelCounts: { [key: string]: number } = {}
   const parallelChildCounts: { [key: string]: Set<string> } = {}
+  let uniqueIdCounter = 0
+  const getUniqueId = () => {
+    uniqueIdCounter++
+    return `unique-${uniqueIdCounter}`
+  }
 
   const getParallelTitle = (parentId: string | null): string => {
     const levelKey = parentId || 'root'
@@ -87,6 +93,7 @@ function buildLogTree(nodes: NodeTracing[]): TracingNodeProps[] {
     if (!parallel_id || node.node_type === BlockEnum.End) {
       rootNodes.push({
         id: node.id,
+        uniqueId: getUniqueId(),
         isParallel: false,
         data: node,
         children: [],
@@ -96,6 +103,7 @@ function buildLogTree(nodes: NodeTracing[]): TracingNodeProps[] {
       if (!parallelStacks[parallel_id]) {
         const newParallelGroup: TracingNodeProps = {
           id: parallel_id,
+          uniqueId: getUniqueId(),
           isParallel: true,
           data: null,
           children: [],
@@ -119,6 +127,7 @@ function buildLogTree(nodes: NodeTracing[]): TracingNodeProps[] {
       if (branchTitle) {
         parallelStacks[parallel_id].children.push({
           id: node.id,
+          uniqueId: getUniqueId(),
           isParallel: false,
           data: node,
           children: [],
@@ -134,6 +143,7 @@ function buildLogTree(nodes: NodeTracing[]): TracingNodeProps[] {
 
         parallelStacks[parallel_id].children.splice(sameBranchIndex + 1, 0, {
           id: node.id,
+          uniqueId: getUniqueId(),
           isParallel: false,
           data: node,
           children: [],
@@ -195,7 +205,7 @@ const TracingPanel: FC<TracingPanelProps> = ({
       const isHovered = hoveredParallel === node.id
       return (
         <div
-          key={node.id}
+          key={node.uniqueId}
           className="ml-4 mb-2 relative"
           data-parallel-id={node.id}
           onMouseEnter={() => handleParallelMouseEnter(node.id)}
@@ -232,7 +242,7 @@ const TracingPanel: FC<TracingPanelProps> = ({
     else {
       const isHovered = hoveredParallel === node.id
       return (
-        <div key={node.id}>
+        <div key={node.uniqueId}>
           <div className={cn('pl-4 -mb-1.5 system-2xs-medium-uppercase', isHovered ? 'text-text-tertiary' : 'text-text-quaternary')}>
             {node.branchTitle}
           </div>

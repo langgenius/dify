@@ -79,11 +79,13 @@ class BaiduAccessToken:
             # if access token not in cache, request it
             token = BaiduAccessToken(api_key)
             baidu_access_tokens[api_key] = token
-            # release it to enhance performance
-            # btw, _get_access_token will raise exception if failed, release lock here to avoid deadlock
-            baidu_access_tokens_lock.release()
-            # try to get access token
-            token_str = BaiduAccessToken._get_access_token(api_key, secret_key)
+            try:
+                # try to get access token
+                token_str = BaiduAccessToken._get_access_token(api_key, secret_key)
+            finally:
+                # release it to enhance performance
+                # btw, _get_access_token will raise exception if failed, release lock here to avoid deadlock
+                baidu_access_tokens_lock.release()
             token.access_token = token_str
             token.expires = now + timedelta(days=3)
             return token

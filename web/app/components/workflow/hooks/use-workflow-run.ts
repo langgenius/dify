@@ -24,10 +24,6 @@ import {
 } from '@/service/workflow'
 import { useFeaturesStore } from '@/app/components/base/features/hooks'
 import { AudioPlayerManager } from '@/app/components/base/audio-btn/audio.player.manager'
-import type {
-  NodeFinishedResponse,
-  NodeStartedResponse,
-} from '@/types/workflow'
 
 export const useWorkflowRun = () => {
   const store = useStoreApi()
@@ -91,10 +87,7 @@ export const useWorkflowRun = () => {
 
   const handleRun = useCallback(async (
     params: any,
-    callback?: Omit<IOtherOptions, 'onNodeStarted' | 'onNodeFinished'> & {
-      onNodeStarted?: (nodeStarted: NodeStartedResponse, parentId?: string) => void
-      onNodeFinished?: (nodeFinished: NodeFinishedResponse, parentId?: string) => void
-    },
+    callback?: IOtherOptions,
   ) => {
     const {
       getNodes,
@@ -305,7 +298,7 @@ export const useWorkflowRun = () => {
             setEdges(newEdges)
           }
           if (onNodeStarted)
-            onNodeStarted(params, node?.parentId)
+            onNodeStarted(params)
         },
         onNodeFinished: (params) => {
           const { data } = params
@@ -331,7 +324,8 @@ export const useWorkflowRun = () => {
 
                 const currIteration = iterations.details[iterationIndex]
                 const nodeIndex = currIteration.findIndex(node =>
-                  node.node_id === data.node_id && node.execution_metadata?.parallel_id === data.execution_metadata?.parallel_id,
+                  node.node_id === data.node_id && (
+                    node.execution_metadata?.parallel_id === data.execution_metadata?.parallel_id || node.parallel_id === data.execution_metadata?.parallel_id),
                 )
                 if (data.status === NodeRunningStatus.Succeeded) {
                   if (nodeIndex !== -1) {
@@ -374,7 +368,7 @@ export const useWorkflowRun = () => {
           }
 
           if (onNodeFinished)
-            onNodeFinished(params, nodeParentId)
+            onNodeFinished(params)
         },
         onIterationStart: (params) => {
           const { data } = params

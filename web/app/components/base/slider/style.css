@@ -3,9 +3,9 @@
 }
 
 .slider-track {
-    background-color: var(--color-components-silder-range);
+    background-color: var(--color-components-slider-range);
 }
 
 .slider-track-1 {
-    background-color: var(--color-components-silder-track);
+    background-color: var(--color-components-slider-track);
 }
