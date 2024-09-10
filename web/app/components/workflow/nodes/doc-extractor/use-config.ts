@@ -21,7 +21,7 @@ const useConfig = (id: string, payload: DocExtractorNodeType) => {
   }, [inputs, setInputs])
 
   const filterVar = useCallback((varPayload: Var) => {
-    return varPayload.type !== VarType.file
+    return varPayload.type === VarType.file
   }, [])
 
   return {
