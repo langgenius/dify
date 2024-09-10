@@ -1,7 +1,6 @@
-from collections.abc import Generator, Iterable, Mapping, Sequence
+from collections.abc import Generator, Mapping, Sequence
 from os import path
 from typing import Any, cast
-from urllib import response
 
 from core.app.segments import ArrayAnySegment, ArrayAnyVariable, parser
 from core.callback_handler.workflow_tool_callback_handler import DifyWorkflowCallbackHandler
@@ -98,19 +97,6 @@ class ToolNode(BaseNode):
         # convert tool messages
         yield from self._transform_message(message_stream, tool_info, parameters_for_log)
 
-        # return NodeRunResult(
-        #     status=WorkflowNodeExecutionStatus.SUCCEEDED,
-        #     outputs={
-        #         'text': plain_text,
-        #         'files': files,
-        #         'json': json
-        #     },
-        #     metadata={
-        #         NodeRunMetadataKey.TOOL_INFO: tool_info
-        #     },
-        #     inputs=parameters_for_log
-        # )
-
     def _generate_parameters(
         self,
         *,
@@ -183,6 +169,8 @@ class ToolNode(BaseNode):
         files: list[FileVar] = []
         text = ""
         json: list[dict] = []
+        
+        variables: dict[str, Any] = {}
 
         for message in message_stream:
             if message.type == ToolInvokeMessage.MessageType.IMAGE_LINK or \
@@ -241,6 +229,23 @@ class ToolNode(BaseNode):
                     chunk_content=stream_text,
                     from_variable_selector=[self.node_id, 'text']
                 )
+            elif message.type == ToolInvokeMessage.MessageType.VARIABLE:
+                assert isinstance(message.message, ToolInvokeMessage.VariableMessage)
+                variable_name = message.message.variable_name
+                variable_value = message.message.variable_value
+                if message.message.stream:
+                    if not isinstance(variable_value, str):
+                        raise ValueError("When 'stream' is True, 'variable_value' must be a string.")
+                    if variable_name not in variables:
+                        variables[variable_name] = ""
+                    variables[variable_name] += variable_value
+
+                    yield RunStreamChunkEvent(
+                        chunk_content=variable_value,
+                        from_variable_selector=[self.node_id, variable_name]
+                    )
+                else:
+                    variables[variable_name] = variable_value
 
         yield RunCompletedEvent(
             run_result=NodeRunResult(
@@ -248,7 +253,8 @@ class ToolNode(BaseNode):
                 outputs={
                     'text': text,
                     'files': files,
-                    'json': json
+                    'json': json,
+                    **variables
                 },
                 metadata={
                     NodeRunMetadataKey.TOOL_INFO: tool_info
