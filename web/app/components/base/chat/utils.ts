@@ -71,51 +71,55 @@ function getPrevChatList(fetchedMessages: any[]) {
 }
 
 function buildChatItemTree(allMessages: IChatItem[]): ChatItemInTree[] {
-  const map = new Map<string, ChatItemInTree>()
+  const map: Record<string, ChatItemInTree> = {}
   let rootNodes: ChatItemInTree[] = []
   const childrenCount: Record<string, number> = {}
 
-  allMessages.forEach((item) => {
-    map.set(item.id, {
-      ...item,
-      children: [],
-      siblingCount: 0,
-      siblingIndex: 0,
-    })
-  })
+  const legacyQuestions: ChatItemInTree[] = []
 
   for (let i = 0; i < allMessages.length; i += 2) {
-    const questionItem = allMessages[i + 1]!
-    const answerItem = allMessages[i]!
+    const question = allMessages[i]!
+    const answer = allMessages[i + 1]!
 
-    const parentMessageId = questionItem.parentMessageId
+    // Process question
+    const parentId = question.parentMessageId ?? ''
+    childrenCount[parentId] = (childrenCount[parentId] || 0) + 1
+    const questionNode: ChatItemInTree = {
+      ...question,
+      children: [],
+      siblingIndex: childrenCount[parentId] - 1,
+    }
+    map[question.id] = questionNode
 
-    const questionItemInTree = map.get(questionItem.id)!
-    const answerItemInTree = map.get(answerItem.id)!
+    // Process answer
+    childrenCount[question.id] = 1
+    const answerNode: ChatItemInTree = {
+      ...answer,
+      children: [],
+      siblingIndex: 0,
+    }
+    map[answer.id] = answerNode
 
-    questionItemInTree.children!.unshift(answerItemInTree)
-    questionItemInTree.siblingCount = (questionItemInTree.siblingCount || 0) + 1
-    answerItemInTree.siblingCount = (answerItemInTree.siblingCount || 0) + 1
+    // Connect question and answer
+    questionNode.children!.push(answerNode)
 
-    if (!parentMessageId)
-      rootNodes.unshift(questionItemInTree)
-    else if (parentMessageId && parentMessageId !== UUID_NIL)
-      map.get(parentMessageId)?.children!.unshift(questionItemInTree)
+    // Connect to parent or add to root
+    if (!parentId)
+      rootNodes.push(questionNode)
+    else if (parentId !== UUID_NIL)
+      map[parentId]?.children!.push(questionNode)
+    else
+      legacyQuestions.unshift(questionNode)
   }
 
   // legacy message compat
-  allMessages.forEach((item) => {
-    // if a question message's `parentMessageId` is UUID_NIL,
-    // then this message pair is legacy, and should be root node for the tree
-    if (!item.isAnswer && item.parentMessageId === UUID_NIL) {
-      const curr = map.get(item.id)
-      if (curr) {
-        const correspondingAnswer = curr.children![0]
-        correspondingAnswer.children?.unshift(...rootNodes)
-        rootNodes = [curr]
-      }
-    }
-  })
+  for (const legacyQuestion of legacyQuestions) {
+    const answer = legacyQuestion.children![0]!
+    const questionNode = map[legacyQuestion.id]
+    const answerNode = map[answer.id]
+    answerNode.children?.unshift(...rootNodes)
+    rootNodes = [questionNode]
+  }
 
   return rootNodes
 }
