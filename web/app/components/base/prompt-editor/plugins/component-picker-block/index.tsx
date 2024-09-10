@@ -133,11 +133,10 @@ const ComponentPicker = ({
             // See https://github.com/facebook/lexical/blob/ac97dfa9e14a73ea2d6934ff566282d7f758e8bb/packages/lexical-react/src/shared/LexicalMenu.ts#L493
             <div className='w-0 h-0'>
               <div
-                className='p-1 w-[260px] bg-white rounded-lg border-[0.5px] border-gray-200 shadow-lg overflow-y-auto overflow-x-hidden'
+                className='p-1 w-[260px] bg-white rounded-lg border-[0.5px] border-gray-200 shadow-lg'
                 style={{
                   ...floatingStyles,
                   visibility: isPositioned ? 'visible' : 'hidden',
-                  maxHeight: 'calc(1 / 3 * 100vh)',
                 }}
                 ref={refs.setFloating}
               >
@@ -178,6 +177,7 @@ const ComponentPicker = ({
                           onChange={(variables: string[]) => {
                             handleSelectWorkflowVariable(variables)
                           }}
+                          maxHeightClass='max-h-[34vh]'
                         />
                       </div>
                     </>

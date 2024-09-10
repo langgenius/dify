@@ -219,6 +219,7 @@ type Props = {
   vars: NodeOutPutVar[]
   onChange: (value: ValueSelector, item: Var) => void
   itemWidth?: number
+  maxHeightClass?: string
 }
 const VarReferenceVars: FC<Props> = ({
   hideSearch,
@@ -226,6 +227,7 @@ const VarReferenceVars: FC<Props> = ({
   vars,
   onChange,
   itemWidth,
+  maxHeightClass,
 }) => {
   const { t } = useTranslation()
   const [searchText, setSearchText] = useState('')
@@ -279,7 +281,7 @@ const VarReferenceVars: FC<Props> = ({
       }
 
       {filteredVars.length > 0
-        ? <div className='max-h-[85vh] overflow-y-auto'>
+        ? <div className={cn('max-h-[85vh] overflow-y-auto', maxHeightClass)}>
 
           {
             filteredVars.map((item, i) => (
