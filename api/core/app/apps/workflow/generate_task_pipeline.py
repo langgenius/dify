@@ -1,16 +1,22 @@
+import contextvars
 import logging
+import threading
 import time
 from collections.abc import Generator
 from typing import Any, Optional, Union
 
+from flask import Flask, current_app
+
 from constants.tts_auto_play_timeout import TTS_AUTO_PLAY_TIMEOUT, TTS_AUTO_PLAY_YIELD_CPU_TIME
 from core.app.apps.advanced_chat.app_generator_tts_publisher import AppGeneratorTTSPublisher, AudioTrunk
-from core.app.apps.base_app_queue_manager import AppQueueManager
+from core.app.apps.base_app_queue_manager import AppQueueManager, PublishFrom
+from core.app.apps.workflow.app_queue_manager import WorkflowAppQueueManager
 from core.app.entities.app_invoke_entities import (
     InvokeFrom,
     WorkflowAppGenerateEntity,
 )
 from core.app.entities.queue_entities import (
+    ForwardQueueMessage,
     QueueErrorEvent,
     QueueIterationCompletedEvent,
     QueueIterationNextEvent,
@@ -26,6 +32,7 @@ from core.app.entities.queue_entities import (
     QueueWorkflowStartedEvent,
     QueueWorkflowSucceededEvent,
 )
+from core.app.entities.queue_task_bridge import queue_task_map
 from core.app.entities.task_entities import (
     ErrorStreamResponse,
     MessageAudioEndStreamResponse,
@@ -186,14 +193,8 @@ class WorkflowAppGenerateTaskPipeline(BasedGenerateTaskPipeline, WorkflowCycleMa
         if features_dict.get('text_to_speech') and features_dict['text_to_speech'].get('enabled') and features_dict[
                 'text_to_speech'].get('autoPlay') == 'enabled':
             publisher = AppGeneratorTTSPublisher(tenant_id, features_dict['text_to_speech'].get('voice'))
-        for response in self._process_stream_response(publisher=publisher, trace_manager=trace_manager):
-            while True:
-                audio_response = self._listenAudioMsg(publisher, task_id=task_id)
-                if audio_response:
-                    yield audio_response
-                else:
-                    break
-            yield response
+
+        yield from self._async_process_stream_response(publisher)
 
         start_listener_time = time.time()
         while (time.time() - start_listener_time) < TTS_AUTO_PLAY_TIMEOUT:
@@ -215,6 +216,65 @@ class WorkflowAppGenerateTaskPipeline(BasedGenerateTaskPipeline, WorkflowCycleMa
                 break
         yield MessageAudioEndStreamResponse(audio='', task_id=task_id)
 
+    def _consumer_worker(self, queue_manager: AppQueueManager) -> Generator[StreamResponse, None, None]:
+        for message in queue_manager.listen():
+            event = message.event
+            logger.info(
+                f"Hobo _consumer_worker {self._workflow.app_id} {self._workflow.id} {event} -- {message} -- {self._task_state}")
+            if isinstance(event, ForwardQueueMessage):
+                yield event.response
+
+
+    def _generate_worker(self, flask_app: Flask,
+                         queue_manager: AppQueueManager,
+                         context: contextvars.Context, publisher) -> None:
+        """
+        Generate worker in a new thread.
+        :param flask_app: Flask app
+        :param queue_manager: queue manager
+        :return:
+        """
+        for var, val in context.items():
+            var.set(val)
+        with flask_app.app_context():
+            response_generator = self._sync_process_stream_response(
+                publisher,
+            )
+            for generator in response_generator:
+                if generator is None:
+                    continue
+                message = ForwardQueueMessage(event=queue_task_map[generator.event], response=generator)
+                queue_manager.publish(message, PublishFrom.TASK_PIPELINE)
+
+    def _async_process_stream_response(self, publisher):
+        # init queue manager
+        queue_manager = WorkflowAppQueueManager(
+            task_id=self._application_generate_entity.task_id,
+            user_id=self._application_generate_entity.user_id,
+            invoke_from=self._application_generate_entity.invoke_from,
+            app_mode=self._application_generate_entity.app_config.app_mode.value,
+        )
+
+        worker_thread = threading.Thread(target=self._generate_worker, kwargs={
+            'flask_app': current_app._get_current_object(),
+            'queue_manager': queue_manager,
+            'context': contextvars.copy_context(),
+            'publisher': publisher
+        })
+
+        worker_thread.start()
+
+        yield from self._consumer_worker(queue_manager)
+
+    def _sync_process_stream_response(self, publisher):
+        for response in self._process_stream_response(publisher=publisher, trace_manager=self._application_generate_entity.trace_manager):
+            while True:
+                audio_response = self._listenAudioMsg(publisher, task_id=self._application_generate_entity.task_id)
+                if audio_response:
+                    yield audio_response
+                else:
+                    break
+            yield response
 
     def _process_stream_response(
         self,

@@ -3,6 +3,7 @@ from core.app.entities.app_invoke_entities import InvokeFrom
 from core.app.entities.queue_entities import (
     AppQueueEvent,
     QueueErrorEvent,
+    QueueEvent,
     QueueMessageEndEvent,
     QueueStopEvent,
     QueueWorkflowFailedEvent,
@@ -40,6 +41,9 @@ class WorkflowAppQueueManager(AppQueueManager):
                              | QueueMessageEndEvent
                              | QueueWorkflowSucceededEvent
                              | QueueWorkflowFailedEvent):
+            self.stop_listen()
+        elif event.event in (QueueEvent.STOP, QueueEvent.ERROR, QueueEvent.MESSAGE_END,
+                            QueueEvent.WORKFLOW_SUCCEEDED, QueueEvent.WORKFLOW_FAILED):
             self.stop_listen()
 
         if pub_from == PublishFrom.APPLICATION_MANAGER and self._is_stopped():
