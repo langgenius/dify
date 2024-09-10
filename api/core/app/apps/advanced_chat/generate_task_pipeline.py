@@ -451,7 +451,9 @@ class AdvancedChatAppGenerateTaskPipeline(BasedGenerateTaskPipeline, WorkflowCyc
                     tts_publisher.publish(message=queue_message)
 
                 self._task_state.answer += delta_text
-                yield self._message_to_stream_response(delta_text, self._message.id)
+                yield self._message_to_stream_response(
+                    answer=delta_text, message_id=self._message.id, from_variable_selector=event.from_variable_selector
+                )
             elif isinstance(event, QueueMessageReplaceEvent):
                 # published by moderation
                 yield self._message_replace_to_stream_response(answer=event.text)

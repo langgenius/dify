@@ -153,14 +153,21 @@ class MessageCycleManage:
 
         return None
 
-    def _message_to_stream_response(self, answer: str, message_id: str) -> MessageStreamResponse:
+    def _message_to_stream_response(
+        self, answer: str, message_id: str, from_variable_selector: Optional[list[str]] = None
+    ) -> MessageStreamResponse:
         """
         Message to stream response.
         :param answer: answer
         :param message_id: message id
         :return:
         """
-        return MessageStreamResponse(task_id=self._application_generate_entity.task_id, id=message_id, answer=answer)
+        return MessageStreamResponse(
+            task_id=self._application_generate_entity.task_id,
+            id=message_id,
+            answer=answer,
+            from_variable_selector=from_variable_selector,
+        )
 
     def _message_replace_to_stream_response(self, answer: str) -> MessageReplaceStreamResponse:
         """
