@@ -18,7 +18,6 @@ logger = logging.getLogger(__name__)
 
 
 class AnswerStreamProcessor(StreamProcessor):
-
     def __init__(self, graph: Graph, variable_pool: VariablePool) -> None:
         super().__init__(graph, variable_pool)
         self.generate_routes = graph.answer_stream_generate_routes
@@ -27,9 +26,7 @@ class AnswerStreamProcessor(StreamProcessor):
             self.route_position[answer_node_id] = 0
         self.current_stream_chunk_generating_node_ids: dict[str, list[str]] = {}
 
-    def process(self,
-                generator: Generator[GraphEngineEvent, None, None]
-                ) -> Generator[GraphEngineEvent, None, None]:
+    def process(self, generator: Generator[GraphEngineEvent, None, None]) -> Generator[GraphEngineEvent, None, None]:
         for event in generator:
             if isinstance(event, NodeRunStartedEvent):
                 if event.route_node_state.node_id == self.graph.root_node_id and not self.rest_node_ids:
@@ -47,9 +44,9 @@ class AnswerStreamProcessor(StreamProcessor):
                     ]
                 else:
                     stream_out_answer_node_ids = self._get_stream_out_answer_node_ids(event)
-                    self.current_stream_chunk_generating_node_ids[
-                        event.route_node_state.node_id
-                    ] = stream_out_answer_node_ids
+                    self.current_stream_chunk_generating_node_ids[event.route_node_state.node_id] = (
+                        stream_out_answer_node_ids
+                    )
 
                 for _ in stream_out_answer_node_ids:
                     yield event
@@ -77,9 +74,9 @@ class AnswerStreamProcessor(StreamProcessor):
         self.rest_node_ids = self.graph.node_ids.copy()
         self.current_stream_chunk_generating_node_ids = {}
 
-    def _generate_stream_outputs_when_node_finished(self,
-                                                    event: NodeRunSucceededEvent
-                                                    ) -> Generator[GraphEngineEvent, None, None]:
+    def _generate_stream_outputs_when_node_finished(
+        self, event: NodeRunSucceededEvent
+    ) -> Generator[GraphEngineEvent, None, None]:
         """
         Generate stream outputs.
         :param event: node run succeeded event
@@ -87,10 +84,13 @@ class AnswerStreamProcessor(StreamProcessor):
         """
         for answer_node_id, position in self.route_position.items():
             # all depends on answer node id not in rest node ids
-            if (event.route_node_state.node_id != answer_node_id
-                    and (answer_node_id not in self.rest_node_ids
-                         or not all(dep_id not in self.rest_node_ids
-                                    for dep_id in self.generate_routes.answer_dependencies[answer_node_id]))):
+            if event.route_node_state.node_id != answer_node_id and (
+                answer_node_id not in self.rest_node_ids
+                or not all(
+                    dep_id not in self.rest_node_ids
+                    for dep_id in self.generate_routes.answer_dependencies[answer_node_id]
+                )
+            ):
                 continue
 
             route_position = self.route_position[answer_node_id]
@@ -115,9 +115,7 @@ class AnswerStreamProcessor(StreamProcessor):
                     if not value_selector:
                         break
 
-                    value = self.variable_pool.get(
-                        value_selector
-                    )
+                    value = self.variable_pool.get(value_selector)
 
                     if value is None:
                         break
@@ -158,8 +156,9 @@ class AnswerStreamProcessor(StreamProcessor):
                 continue
 
             # all depends on answer node id not in rest node ids
-            if all(dep_id not in self.rest_node_ids
-                   for dep_id in self.generate_routes.answer_dependencies[answer_node_id]):
+            if all(
+                dep_id not in self.rest_node_ids for dep_id in self.generate_routes.answer_dependencies[answer_node_id]
+            ):
                 if route_position >= len(self.generate_routes.answer_generate_route[answer_node_id]):
                     continue
 
@@ -213,7 +212,7 @@ class AnswerStreamProcessor(StreamProcessor):
             return None
 
         if isinstance(value, dict):
-            if '__variant' in value and value['__variant'] == FileVar.__name__:
+            if "__variant" in value and value["__variant"] == FileVar.__name__:
                 return value
         elif isinstance(value, FileVar):
             return value.to_dict()

@@ -7,8 +7,7 @@ from core.rag.index_processor.processor.qa_index_processor import QAIndexProcess
 
 
 class IndexProcessorFactory:
-    """IndexProcessorInit.
-    """
+    """IndexProcessorInit."""
 
     def __init__(self, index_type: str):
         self._index_type = index_type
@@ -22,7 +21,6 @@ class IndexProcessorFactory:
         if self._index_type == IndexType.PARAGRAPH_INDEX.value:
             return ParagraphIndexProcessor()
         elif self._index_type == IndexType.QA_INDEX.value:
-
             return QAIndexProcessor()
         else:
             raise ValueError(f"Index type {self._index_type} is not supported.")

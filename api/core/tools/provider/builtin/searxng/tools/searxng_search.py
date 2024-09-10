@@ -23,18 +23,21 @@ class SearXNGSearchTool(BuiltinTool):
             ToolInvokeMessage | list[ToolInvokeMessage]: The result of the tool invocation.
         """
 
-        host = self.runtime.credentials.get('searxng_base_url')
+        host = self.runtime.credentials.get("searxng_base_url")
         if not host:
-            raise Exception('SearXNG api is required')
+            raise Exception("SearXNG api is required")
 
-        response = requests.get(host, params={
-            "q": tool_parameters.get('query'),
-            "format": "json",
-            "categories": tool_parameters.get('search_type', 'general')
-        })
+        response = requests.get(
+            host,
+            params={
+                "q": tool_parameters.get("query"),
+                "format": "json",
+                "categories": tool_parameters.get("search_type", "general"),
+            },
+        )
 
         if response.status_code != 200:
-            raise Exception(f'Error {response.status_code}: {response.text}')
+            raise Exception(f"Error {response.status_code}: {response.text}")
 
         res = response.json().get("results", [])
         if not res:

@@ -32,7 +32,7 @@ TEXT:
 
 def page_result(text: str, cursor: int, max_length: int) -> str:
     """Page through `text` and return a substring of `max_length` characters starting from `cursor`."""
-    return text[cursor: cursor + max_length]
+    return text[cursor : cursor + max_length]
 
 
 def get_url(url: str, user_agent: str = None) -> str:
@@ -49,15 +49,15 @@ def get_url(url: str, user_agent: str = None) -> str:
 
     if response.status_code == 200:
         # check content-type
-        content_type = response.headers.get('Content-Type')
+        content_type = response.headers.get("Content-Type")
         if content_type:
-            main_content_type = response.headers.get('Content-Type').split(';')[0].strip()
+            main_content_type = response.headers.get("Content-Type").split(";")[0].strip()
         else:
-            content_disposition = response.headers.get('Content-Disposition', '')
+            content_disposition = response.headers.get("Content-Disposition", "")
             filename_match = re.search(r'filename="([^"]+)"', content_disposition)
             if filename_match:
                 filename = unquote(filename_match.group(1))
-                extension = re.search(r'\.(\w+)$', filename)
+                extension = re.search(r"\.(\w+)$", filename)
                 if extension:
                     main_content_type = mimetypes.guess_type(filename)[0]
 
@@ -78,7 +78,7 @@ def get_url(url: str, user_agent: str = None) -> str:
 
     # Detect encoding using chardet
     detected_encoding = chardet.detect(response.content)
-    encoding = detected_encoding['encoding']
+    encoding = detected_encoding["encoding"]
     if encoding:
         try:
             content = response.content.decode(encoding)
@@ -89,29 +89,29 @@ def get_url(url: str, user_agent: str = None) -> str:
 
     a = extract_using_readabilipy(content)
 
-    if not a['plain_text'] or not a['plain_text'].strip():
-        return ''
+    if not a["plain_text"] or not a["plain_text"].strip():
+        return ""
 
     res = FULL_TEMPLATE.format(
-        title=a['title'],
-        authors=a['byline'],
-        publish_date=a['date'],
+        title=a["title"],
+        authors=a["byline"],
+        publish_date=a["date"],
         top_image="",
-        text=a['plain_text'] if a['plain_text'] else "",
+        text=a["plain_text"] if a["plain_text"] else "",
     )
 
     return res
 
 
 def extract_using_readabilipy(html):
-    with tempfile.NamedTemporaryFile(delete=False, mode='w+') as f_html:
+    with tempfile.NamedTemporaryFile(delete=False, mode="w+") as f_html:
         f_html.write(html)
         f_html.close()
     html_path = f_html.name
 
     # Call Mozilla's Readability.js Readability.parse() function via node, writing output to a temporary file
     article_json_path = html_path + ".json"
-    jsdir = os.path.join(find_module_path('readabilipy'), 'javascript')
+    jsdir = os.path.join(find_module_path("readabilipy"), "javascript")
     with chdir(jsdir):
         subprocess.check_call(["node", "ExtractArticle.js", "-i", html_path, "-o", article_json_path])
 
@@ -129,7 +129,7 @@ def extract_using_readabilipy(html):
         "date": None,
         "content": None,
         "plain_content": None,
-        "plain_text": None
+        "plain_text": None,
     }
     # Populate article fields from readability fields where present
     if input_json:
@@ -145,7 +145,7 @@ def extract_using_readabilipy(html):
             article_json["plain_text"] = extract_text_blocks_as_plain_text(article_json["plain_content"])
         if input_json.get("textContent"):
             article_json["plain_text"] = input_json["textContent"]
-            article_json["plain_text"] = re.sub(r'\n\s*\n', '\n', article_json["plain_text"])
+            article_json["plain_text"] = re.sub(r"\n\s*\n", "\n", article_json["plain_text"])
 
     return article_json
 
@@ -157,6 +157,7 @@ def find_module_path(module_name):
             return potential_path
 
     return None
+
 
 @contextmanager
 def chdir(path):
@@ -172,12 +173,14 @@ def chdir(path):
 
 def extract_text_blocks_as_plain_text(paragraph_html):
     # Load article as DOM
-    soup = BeautifulSoup(paragraph_html, 'html.parser')
+    soup = BeautifulSoup(paragraph_html, "html.parser")
     # Select all lists
-    list_elements = soup.find_all(['ul', 'ol'])
+    list_elements = soup.find_all(["ul", "ol"])
     # Prefix text in all list items with "* " and make lists paragraphs
     for list_element in list_elements:
-        plain_items = "".join(list(filter(None, [plain_text_leaf_node(li)["text"] for li in list_element.find_all('li')])))
+        plain_items = "".join(
+            list(filter(None, [plain_text_leaf_node(li)["text"] for li in list_element.find_all("li")]))
+        )
         list_element.string = plain_items
         list_element.name = "p"
     # Select all text blocks
@@ -204,7 +207,7 @@ def plain_text_leaf_node(element):
 
 def plain_content(readability_content, content_digests, node_indexes):
     # Load article as DOM
-    soup = BeautifulSoup(readability_content, 'html.parser')
+    soup = BeautifulSoup(readability_content, "html.parser")
     # Make all elements plain
     elements = plain_elements(soup.contents, content_digests, node_indexes)
     if node_indexes:
@@ -217,8 +220,7 @@ def plain_content(readability_content, content_digests, node_indexes):
 
 def plain_elements(elements, content_digests, node_indexes):
     # Get plain content versions of all elements
-    elements = [plain_element(element, content_digests, node_indexes)
-                for element in elements]
+    elements = [plain_element(element, content_digests, node_indexes) for element in elements]
     if content_digests:
         # Add content digest attribute to nodes
         elements = [add_content_digest(element) for element in elements]
@@ -258,11 +260,9 @@ def add_node_indexes(element, node_index="0"):
     # Add index to current element
     element["data-node-index"] = node_index
     # Add index to child elements
-    for local_idx, child in enumerate(
-            [c for c in element.contents if not is_text(c)], start=1):
+    for local_idx, child in enumerate([c for c in element.contents if not is_text(c)], start=1):
         # Can't add attributes to leaf string types
-        child_index = "{stem}.{local}".format(
-            stem=node_index, local=local_idx)
+        child_index = "{stem}.{local}".format(stem=node_index, local=local_idx)
         add_node_indexes(child, node_index=child_index)
     return element
 
@@ -284,11 +284,16 @@ def strip_control_characters(text):
     #   [Cn]: Other, Not Assigned
     #   [Co]: Other, Private Use
     #   [Cs]: Other, Surrogate
-    control_chars = {'Cc', 'Cf', 'Cn', 'Co', 'Cs'}
-    retained_chars = ['\t', '\n', '\r', '\f']
+    control_chars = {"Cc", "Cf", "Cn", "Co", "Cs"}
+    retained_chars = ["\t", "\n", "\r", "\f"]
 
     # Remove non-printing control characters
-    return "".join(["" if (unicodedata.category(char) in control_chars) and (char not in retained_chars) else char for char in text])
+    return "".join(
+        [
+            "" if (unicodedata.category(char) in control_chars) and (char not in retained_chars) else char
+            for char in text
+        ]
+    )
 
 
 def normalize_unicode(text):
@@ -305,8 +310,9 @@ def normalize_whitespace(text):
     text = text.strip()
     return text
 
+
 def is_leaf(element):
-    return (element.name in ['p', 'li'])
+    return element.name in ["p", "li"]
 
 
 def is_text(element):
@@ -330,7 +336,7 @@ def content_digest(element):
         if trimmed_string == "":
             digest = ""
         else:
-            digest = hashlib.sha256(trimmed_string.encode('utf-8')).hexdigest()
+            digest = hashlib.sha256(trimmed_string.encode("utf-8")).hexdigest()
     else:
         contents = element.contents
         num_contents = len(contents)
@@ -343,9 +349,8 @@ def content_digest(element):
         else:
             # Build content digest from the "non-empty" digests of child nodes
             digest = hashlib.sha256()
-            child_digests = list(
-                filter(lambda x: x != "", [content_digest(content) for content in contents]))
+            child_digests = list(filter(lambda x: x != "", [content_digest(content) for content in contents]))
             for child in child_digests:
-                digest.update(child.encode('utf-8'))
+                digest.update(child.encode("utf-8"))
             digest = digest.hexdigest()
     return digest

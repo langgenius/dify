@@ -29,14 +29,12 @@ class AnswerNode(BaseNode):
         # generate routes
         generate_routes = AnswerStreamGeneratorRouter.extract_generate_route_from_node_data(node_data)
 
-        answer = ''
+        answer = ""
         for part in generate_routes:
             if part.type == GenerateRouteChunk.ChunkType.VAR:
                 part = cast(VarGenerateRouteChunk, part)
                 value_selector = part.value_selector
-                value = self.graph_runtime_state.variable_pool.get(
-                    value_selector
-                )
+                value = self.graph_runtime_state.variable_pool.get(value_selector)
 
                 if value:
                     answer += value.markdown
@@ -44,19 +42,11 @@ class AnswerNode(BaseNode):
                 part = cast(TextGenerateRouteChunk, part)
                 answer += part.text
 
-        return NodeRunResult(
-            status=WorkflowNodeExecutionStatus.SUCCEEDED,
-            outputs={
-                "answer": answer
-            }
-        )
+        return NodeRunResult(status=WorkflowNodeExecutionStatus.SUCCEEDED, outputs={"answer": answer})
 
     @classmethod
     def _extract_variable_selector_to_variable_mapping(
-        cls, 
-        graph_config: Mapping[str, Any], 
-        node_id: str,
-        node_data: AnswerNodeData
+        cls, graph_config: Mapping[str, Any], node_id: str, node_data: AnswerNodeData
     ) -> Mapping[str, Sequence[str]]:
         """
         Extract variable selector to variable mapping
@@ -73,6 +63,6 @@ class AnswerNode(BaseNode):
 
         variable_mapping = {}
         for variable_selector in variable_selectors:
-            variable_mapping[node_id + '.' + variable_selector.variable] = variable_selector.value_selector
+            variable_mapping[node_id + "." + variable_selector.variable] = variable_selector.value_selector
 
         return variable_mapping

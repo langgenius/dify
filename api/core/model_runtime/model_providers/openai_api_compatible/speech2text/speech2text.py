@@ -14,9 +14,7 @@ class OAICompatSpeech2TextModel(_CommonOAI_API_Compat, Speech2TextModel):
     Model class for OpenAI Compatible Speech to text model.
     """
 
-    def _invoke(
-            self, model: str, credentials: dict, file: IO[bytes], user: Optional[str] = None
-    ) -> str:
+    def _invoke(self, model: str, credentials: dict, file: IO[bytes], user: Optional[str] = None) -> str:
         """
         Invoke speech2text model
 

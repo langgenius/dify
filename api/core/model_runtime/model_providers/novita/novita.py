@@ -20,12 +20,9 @@ class NovitaProvider(ModelProvider):
 
             # Use `meta-llama/llama-3-8b-instruct` model for validate,
             # no matter what model you pass in, text completion model or chat model
-            model_instance.validate_credentials(
-                model='meta-llama/llama-3-8b-instruct',
-                credentials=credentials
-            )
+            model_instance.validate_credentials(model="meta-llama/llama-3-8b-instruct", credentials=credentials)
         except CredentialsValidateFailedError as ex:
             raise ex
         except Exception as ex:
-            logger.exception(f'{self.get_provider_schema().provider} credentials validate failed')
+            logger.exception(f"{self.get_provider_schema().provider} credentials validate failed")
             raise ex

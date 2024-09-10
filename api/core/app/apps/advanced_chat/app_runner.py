@@ -38,11 +38,11 @@ class AdvancedChatAppRunner(WorkflowBasedAppRunner):
     """
 
     def __init__(
-            self,
-            application_generate_entity: AdvancedChatAppGenerateEntity,
-            queue_manager: AppQueueManager,
-            conversation: Conversation,
-            message: Message
+        self,
+        application_generate_entity: AdvancedChatAppGenerateEntity,
+        queue_manager: AppQueueManager,
+        conversation: Conversation,
+        message: Message,
     ) -> None:
         """
         :param application_generate_entity: application generate entity
@@ -66,11 +66,11 @@ class AdvancedChatAppRunner(WorkflowBasedAppRunner):
 
         app_record = db.session.query(App).filter(App.id == app_config.app_id).first()
         if not app_record:
-            raise ValueError('App not found')
+            raise ValueError("App not found")
 
         workflow = self.get_workflow(app_model=app_record, workflow_id=app_config.workflow_id)
         if not workflow:
-            raise ValueError('Workflow not initialized')
+            raise ValueError("Workflow not initialized")
 
         user_id = None
         if self.application_generate_entity.invoke_from in [InvokeFrom.WEB_APP, InvokeFrom.SERVICE_API]:
@@ -81,7 +81,7 @@ class AdvancedChatAppRunner(WorkflowBasedAppRunner):
             user_id = self.application_generate_entity.user_id
 
         workflow_callbacks: list[WorkflowCallback] = []
-        if bool(os.environ.get("DEBUG", 'False').lower() == 'true'):
+        if bool(os.environ.get("DEBUG", "False").lower() == "true"):
             workflow_callbacks.append(WorkflowLoggingCallback())
 
         if self.application_generate_entity.single_iteration_run:
@@ -89,7 +89,7 @@ class AdvancedChatAppRunner(WorkflowBasedAppRunner):
             graph, variable_pool = self._get_graph_and_variable_pool_of_single_iteration(
                 workflow=workflow,
                 node_id=self.application_generate_entity.single_iteration_run.node_id,
-                user_inputs=self.application_generate_entity.single_iteration_run.inputs
+                user_inputs=self.application_generate_entity.single_iteration_run.inputs,
             )
         else:
             inputs = self.application_generate_entity.inputs
@@ -98,26 +98,27 @@ class AdvancedChatAppRunner(WorkflowBasedAppRunner):
 
             # moderation
             if self.handle_input_moderation(
-                    app_record=app_record,
-                    app_generate_entity=self.application_generate_entity,
-                    inputs=inputs,
-                    query=query,
-                    message_id=self.message.id
+                app_record=app_record,
+                app_generate_entity=self.application_generate_entity,
+                inputs=inputs,
+                query=query,
+                message_id=self.message.id,
             ):
                 return
 
             # annotation reply
             if self.handle_annotation_reply(
-                    app_record=app_record,
-                    message=self.message,
-                    query=query,
-                    app_generate_entity=self.application_generate_entity
+                app_record=app_record,
+                message=self.message,
+                query=query,
+                app_generate_entity=self.application_generate_entity,
             ):
                 return
 
             # Init conversation variables
             stmt = select(ConversationVariable).where(
-                ConversationVariable.app_id == self.conversation.app_id, ConversationVariable.conversation_id == self.conversation.id
+                ConversationVariable.app_id == self.conversation.app_id,
+                ConversationVariable.conversation_id == self.conversation.id,
             )
             with Session(db.engine) as session:
                 conversation_variables = session.scalars(stmt).all()
@@ -190,12 +191,12 @@ class AdvancedChatAppRunner(WorkflowBasedAppRunner):
             self._handle_event(workflow_entry, event)
 
     def handle_input_moderation(
-            self,
-            app_record: App,
-            app_generate_entity: AdvancedChatAppGenerateEntity,
-            inputs: Mapping[str, Any],
-            query: str,
-            message_id: str
+        self,
+        app_record: App,
+        app_generate_entity: AdvancedChatAppGenerateEntity,
+        inputs: Mapping[str, Any],
+        query: str,
+        message_id: str,
     ) -> bool:
         """
         Handle input moderation
@@ -217,18 +218,14 @@ class AdvancedChatAppRunner(WorkflowBasedAppRunner):
                 message_id=message_id,
             )
         except ModerationException as e:
-            self._complete_with_stream_output(
-                text=str(e),
-                stopped_by=QueueStopEvent.StopBy.INPUT_MODERATION
-            )
+            self._complete_with_stream_output(text=str(e), stopped_by=QueueStopEvent.StopBy.INPUT_MODERATION)
             return True
 
         return False
 
-    def handle_annotation_reply(self, app_record: App,
-                                message: Message,
-                                query: str,
-                                app_generate_entity: AdvancedChatAppGenerateEntity) -> bool:
+    def handle_annotation_reply(
+        self, app_record: App, message: Message, query: str, app_generate_entity: AdvancedChatAppGenerateEntity
+    ) -> bool:
         """
         Handle annotation reply
         :param app_record: app record
@@ -246,32 +243,21 @@ class AdvancedChatAppRunner(WorkflowBasedAppRunner):
         )
 
         if annotation_reply:
-            self._publish_event(
-                QueueAnnotationReplyEvent(message_annotation_id=annotation_reply.id)
-            )
+            self._publish_event(QueueAnnotationReplyEvent(message_annotation_id=annotation_reply.id))
 
             self._complete_with_stream_output(
-                text=annotation_reply.content,
-                stopped_by=QueueStopEvent.StopBy.ANNOTATION_REPLY
+                text=annotation_reply.content, stopped_by=QueueStopEvent.StopBy.ANNOTATION_REPLY
             )
             return True
 
         return False
 
-    def _complete_with_stream_output(self,
-                                     text: str,
-                                     stopped_by: QueueStopEvent.StopBy) -> None:
+    def _complete_with_stream_output(self, text: str, stopped_by: QueueStopEvent.StopBy) -> None:
         """
         Direct output
         :param text: text
         :return:
         """
-        self._publish_event(
-            QueueTextChunkEvent(
-                text=text
-            )
-        )
+        self._publish_event(QueueTextChunkEvent(text=text))
 
-        self._publish_event(
-            QueueStopEvent(stopped_by=stopped_by)
-        )
+        self._publish_event(QueueStopEvent(stopped_by=stopped_by))

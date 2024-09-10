@@ -8,29 +8,24 @@ from core.tools.tool.builtin_tool import BuiltinTool
 
 
 class WolframAlphaTool(BuiltinTool):
-    _base_url = 'https://api.wolframalpha.com/v2/query'
+    _base_url = "https://api.wolframalpha.com/v2/query"
 
-    def _invoke(self, 
-                user_id: str, 
-               tool_parameters: dict[str, Any], 
-        ) -> Union[ToolInvokeMessage, list[ToolInvokeMessage]]:
+    def _invoke(
+        self,
+        user_id: str,
+        tool_parameters: dict[str, Any],
+    ) -> Union[ToolInvokeMessage, list[ToolInvokeMessage]]:
         """
-            invoke tools
+        invoke tools
         """
-        query = tool_parameters.get('query', '')
+        query = tool_parameters.get("query", "")
         if not query:
-            return self.create_text_message('Please input query')
-        appid = self.runtime.credentials.get('appid', '')
+            return self.create_text_message("Please input query")
+        appid = self.runtime.credentials.get("appid", "")
         if not appid:
-            raise ToolProviderCredentialValidationError('Please input appid')
-        
-        params = {
-            'appid': appid,
-            'input': query,
-            'includepodid': 'Result',
-            'format': 'plaintext',
-            'output': 'json'
-        }
+            raise ToolProviderCredentialValidationError("Please input appid")
+
+        params = {"appid": appid, "input": query, "includepodid": "Result", "format": "plaintext", "output": "json"}
 
         finished = False
         result = None
@@ -45,34 +40,33 @@ class WolframAlphaTool(BuiltinTool):
                 response_data = response.json()
             except Exception as e:
                 raise ToolInvokeError(str(e))
-            
-            if 'success' not in response_data['queryresult'] or response_data['queryresult']['success'] != True:
-                query_result = response_data.get('queryresult', {})
-                if query_result.get('error'):
-                    if 'msg' in query_result['error']:
-                        if query_result['error']['msg'] == 'Invalid appid':
-                            raise ToolProviderCredentialValidationError('Invalid appid')
-                raise ToolInvokeError('Failed to invoke tool')
-                    
-            if 'didyoumeans' in response_data['queryresult']:
-                # get the most likely interpretation
-                query = ''
-                max_score = 0
-                for didyoumean in response_data['queryresult']['didyoumeans']:
-                    if float(didyoumean['score']) > max_score:
-                        query = didyoumean['val']
-                        max_score = float(didyoumean['score'])
 
-                params['input'] = query
+            if "success" not in response_data["queryresult"] or response_data["queryresult"]["success"] != True:
+                query_result = response_data.get("queryresult", {})
+                if query_result.get("error"):
+                    if "msg" in query_result["error"]:
+                        if query_result["error"]["msg"] == "Invalid appid":
+                            raise ToolProviderCredentialValidationError("Invalid appid")
+                raise ToolInvokeError("Failed to invoke tool")
+
+            if "didyoumeans" in response_data["queryresult"]:
+                # get the most likely interpretation
+                query = ""
+                max_score = 0
+                for didyoumean in response_data["queryresult"]["didyoumeans"]:
+                    if float(didyoumean["score"]) > max_score:
+                        query = didyoumean["val"]
+                        max_score = float(didyoumean["score"])
+
+                params["input"] = query
             else:
                 finished = True
-                if 'souces' in response_data['queryresult']:
-                    return self.create_link_message(response_data['queryresult']['sources']['url'])
-                elif 'pods' in response_data['queryresult']:
-                    result = response_data['queryresult']['pods'][0]['subpods'][0]['plaintext']
+                if "souces" in response_data["queryresult"]:
+                    return self.create_link_message(response_data["queryresult"]["sources"]["url"])
+                elif "pods" in response_data["queryresult"]:
+                    result = response_data["queryresult"]["pods"][0]["subpods"][0]["plaintext"]
 
         if not finished or not result:
-            return self.create_text_message('No result found')
+            return self.create_text_message("No result found")
 
         return self.create_text_message(result)
-    
