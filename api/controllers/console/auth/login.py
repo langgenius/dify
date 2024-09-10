@@ -14,7 +14,7 @@ from controllers.console.auth.error import (
     InvalidTokenError,
     PasswordMismatchError,
 )
-from controllers.console.error import NotAllowedRegister
+from controllers.console.error import NotAllowedCreateWorkspace, NotAllowedRegister
 from controllers.console.setup import setup_required
 from events.tenant_event import tenant_was_created
 from libs.helper import email, get_remote_ip
@@ -135,9 +135,7 @@ class EmailCodeLoginApi(Resource):
         tenant = TenantService.get_join_tenants(account)
         if not tenant:
             if not dify_config.ALLOW_CREATE_WORKSPACE:
-                return redirect(
-                    f"{dify_config.CONSOLE_WEB_URL}/signin?message=Workspace not found, please contact system admin to invite you to join in a workspace."
-                )
+                return NotAllowedCreateWorkspace()
             else:
                 tenant = TenantService.create_tenant(f"{account.name}'s Workspace")
                 TenantService.create_tenant_member(tenant, account, role="owner")

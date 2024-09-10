@@ -2,7 +2,7 @@ import base64
 import logging
 import secrets
 
-from flask import redirect, request
+from flask import request
 from flask_restful import Resource, reqparse
 
 from configs import dify_config
@@ -15,7 +15,7 @@ from controllers.console.auth.error import (
     PasswordMismatchError,
     PasswordResetRateLimitExceededError,
 )
-from controllers.console.error import NotAllowedRegister
+from controllers.console.error import NotAllowedCreateWorkspace, NotAllowedRegister
 from controllers.console.setup import setup_required
 from events.tenant_event import tenant_was_created
 from extensions.ext_database import db
@@ -111,9 +111,7 @@ class ForgotPasswordResetApi(Resource):
             tenant = TenantService.get_join_tenants(account)
             if not tenant:
                 if not dify_config.ALLOW_CREATE_WORKSPACE:
-                    return redirect(
-                        f"{dify_config.CONSOLE_WEB_URL}/signin?message=Workspace not found, please contact system admin to invite you to join in a workspace."
-                    )
+                    return NotAllowedCreateWorkspace()
                 else:
                     tenant = TenantService.create_tenant(f"{account.name}'s Workspace")
                     TenantService.create_tenant_member(tenant, account, role="owner")
