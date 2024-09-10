@@ -15,14 +15,16 @@ class BaseNode(ABC):
     _node_data_cls: type[BaseNodeData]
     _node_type: NodeType
 
-    def __init__(self,
-                 id: str,
-                 config: Mapping[str, Any],
-                 graph_init_params: GraphInitParams,
-                 graph: Graph,
-                 graph_runtime_state: GraphRuntimeState,
-                 previous_node_id: Optional[str] = None,
-                 thread_pool_id: Optional[str] = None) -> None:
+    def __init__(
+        self,
+        id: str,
+        config: Mapping[str, Any],
+        graph_init_params: GraphInitParams,
+        graph: Graph,
+        graph_runtime_state: GraphRuntimeState,
+        previous_node_id: Optional[str] = None,
+        thread_pool_id: Optional[str] = None,
+    ) -> None:
         self.id = id
         self.tenant_id = graph_init_params.tenant_id
         self.app_id = graph_init_params.app_id
@@ -46,8 +48,7 @@ class BaseNode(ABC):
         self.node_data = self._node_data_cls(**config.get("data", {}))
 
     @abstractmethod
-    def _run(self) \
-            -> NodeRunResult | Generator[RunEvent | InNodeEvent, None, None]:
+    def _run(self) -> NodeRunResult | Generator[RunEvent | InNodeEvent, None, None]:
         """
         Run node
         :return:
@@ -62,14 +63,14 @@ class BaseNode(ABC):
         result = self._run()
 
         if isinstance(result, NodeRunResult):
-            yield RunCompletedEvent(
-                run_result=result
-            )
+            yield RunCompletedEvent(run_result=result)
         else:
             yield from result
 
     @classmethod
-    def extract_variable_selector_to_variable_mapping(cls, graph_config: Mapping[str, Any], config: dict) -> Mapping[str, Sequence[str]]:
+    def extract_variable_selector_to_variable_mapping(
+        cls, graph_config: Mapping[str, Any], config: dict
+    ) -> Mapping[str, Sequence[str]]:
         """
         Extract variable selector to variable mapping
         :param graph_config: graph config
@@ -82,17 +83,12 @@ class BaseNode(ABC):
 
         node_data = cls._node_data_cls(**config.get("data", {}))
         return cls._extract_variable_selector_to_variable_mapping(
-            graph_config=graph_config,
-            node_id=node_id,
-            node_data=node_data
+            graph_config=graph_config, node_id=node_id, node_data=node_data
         )
 
     @classmethod
     def _extract_variable_selector_to_variable_mapping(
-        cls, 
-        graph_config: Mapping[str, Any], 
-        node_id: str,
-        node_data: BaseNodeData
+        cls, graph_config: Mapping[str, Any], node_id: str, node_data: BaseNodeData
     ) -> Mapping[str, Sequence[str]]:
         """
         Extract variable selector to variable mapping

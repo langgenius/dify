@@ -49,12 +49,14 @@ class SerplyApi:
         for result in results:
             try:
                 string.append(
-                    "\n".join([
-                        f"Title: {result['title']}",
-                        f"Link: {result['link']}",
-                        f"Description: {result['description'].strip()}",
-                        "---",
-                    ])
+                    "\n".join(
+                        [
+                            f"Title: {result['title']}",
+                            f"Link: {result['link']}",
+                            f"Description: {result['description'].strip()}",
+                            "---",
+                        ]
+                    )
                 )
             except KeyError:
                 continue

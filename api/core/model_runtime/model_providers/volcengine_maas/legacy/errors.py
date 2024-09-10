@@ -102,43 +102,43 @@ class ServiceNotOpen(MaasException):
 
 
 AuthErrors = {
-    'SignatureDoesNotMatch': SignatureDoesNotMatch,
-    'MissingAuthenticationHeader': MissingAuthenticationHeader,
-    'AuthenticationHeaderIsInvalid': AuthenticationHeaderIsInvalid,
-    'AuthenticationExpire': AuthenticationExpire,
-    'UnauthorizedUserForEndpoint': UnauthorizedUserForEndpoint,
+    "SignatureDoesNotMatch": SignatureDoesNotMatch,
+    "MissingAuthenticationHeader": MissingAuthenticationHeader,
+    "AuthenticationHeaderIsInvalid": AuthenticationHeaderIsInvalid,
+    "AuthenticationExpire": AuthenticationExpire,
+    "UnauthorizedUserForEndpoint": UnauthorizedUserForEndpoint,
 }
 
 BadRequestErrors = {
-    'MissingParameter': MissingParameter,
-    'InvalidParameter': InvalidParameter,
-    'EndpointIsInvalid': EndpointIsInvalid,
-    'EndpointIsNotEnable': EndpointIsNotEnable,
-    'ModelNotSupportStreamMode': ModelNotSupportStreamMode,
-    'ReqTextExistRisk': ReqTextExistRisk,
-    'RespTextExistRisk': RespTextExistRisk,
-    'InvalidEndpointWithNoURL': InvalidEndpointWithNoURL,
-    'ServiceNotOpen': ServiceNotOpen,
+    "MissingParameter": MissingParameter,
+    "InvalidParameter": InvalidParameter,
+    "EndpointIsInvalid": EndpointIsInvalid,
+    "EndpointIsNotEnable": EndpointIsNotEnable,
+    "ModelNotSupportStreamMode": ModelNotSupportStreamMode,
+    "ReqTextExistRisk": ReqTextExistRisk,
+    "RespTextExistRisk": RespTextExistRisk,
+    "InvalidEndpointWithNoURL": InvalidEndpointWithNoURL,
+    "ServiceNotOpen": ServiceNotOpen,
 }
 
 RateLimitErrors = {
-    'EndpointRateLimitExceeded': EndpointRateLimitExceeded,
-    'EndpointAccountRpmRateLimitExceeded': EndpointAccountRpmRateLimitExceeded,
-    'EndpointAccountTpmRateLimitExceeded': EndpointAccountTpmRateLimitExceeded,
+    "EndpointRateLimitExceeded": EndpointRateLimitExceeded,
+    "EndpointAccountRpmRateLimitExceeded": EndpointAccountRpmRateLimitExceeded,
+    "EndpointAccountTpmRateLimitExceeded": EndpointAccountTpmRateLimitExceeded,
 }
 
 ServerUnavailableErrors = {
-    'InternalServiceError': InternalServiceError,
-    'EndpointIsPending': EndpointIsPending,
-    'ServiceResourceWaitQueueFull': ServiceResourceWaitQueueFull,
+    "InternalServiceError": InternalServiceError,
+    "EndpointIsPending": EndpointIsPending,
+    "ServiceResourceWaitQueueFull": ServiceResourceWaitQueueFull,
 }
 
 ConnectionErrors = {
-    'ClientSDKRequestError': ClientSDKRequestError,
-    'RequestTimeout': RequestTimeout,
-    'ServiceConnectionTimeout': ServiceConnectionTimeout,
-    'ServiceConnectionRefused': ServiceConnectionRefused,
-    'ServiceConnectionClosed': ServiceConnectionClosed,
+    "ClientSDKRequestError": ClientSDKRequestError,
+    "RequestTimeout": RequestTimeout,
+    "ServiceConnectionTimeout": ServiceConnectionTimeout,
+    "ServiceConnectionRefused": ServiceConnectionRefused,
+    "ServiceConnectionClosed": ServiceConnectionClosed,
 }
 
 ErrorCodeMap = {

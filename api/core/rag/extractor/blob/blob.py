@@ -4,6 +4,7 @@ The goal is to facilitate decoupling of content loading from content parsing cod
 
 In addition, content loading code should provide a lazy loading interface by default.
 """
+
 from __future__ import annotations
 
 import contextlib

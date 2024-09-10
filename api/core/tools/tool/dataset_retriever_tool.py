@@ -20,13 +20,14 @@ class DatasetRetrieverTool(Tool):
     retrieval_tool: DatasetRetrieverBaseTool
 
     @staticmethod
-    def get_dataset_tools(tenant_id: str,
-                          dataset_ids: list[str],
-                          retrieve_config: DatasetRetrieveConfigEntity,
-                          return_resource: bool,
-                          invoke_from: InvokeFrom,
-                          hit_callback: DatasetIndexToolCallbackHandler
-                          ) -> list['DatasetRetrieverTool']:
+    def get_dataset_tools(
+        tenant_id: str,
+        dataset_ids: list[str],
+        retrieve_config: DatasetRetrieveConfigEntity,
+        return_resource: bool,
+        invoke_from: InvokeFrom,
+        hit_callback: DatasetIndexToolCallbackHandler,
+    ) -> list["DatasetRetrieverTool"]:
         """
         get dataset tool
         """
@@ -48,7 +49,7 @@ class DatasetRetrieverTool(Tool):
             retrieve_config=retrieve_config,
             return_resource=return_resource,
             invoke_from=invoke_from,
-            hit_callback=hit_callback
+            hit_callback=hit_callback,
         )
         # restore retrieve strategy
         retrieve_config.retrieve_strategy = original_retriever_mode
@@ -58,13 +59,13 @@ class DatasetRetrieverTool(Tool):
         for retrieval_tool in retrieval_tools:
             tool = DatasetRetrieverTool(
                 retrieval_tool=retrieval_tool,
-                identity=ToolIdentity(provider='', author='', name=retrieval_tool.name, label=I18nObject(en_US='', zh_Hans='')),
+                identity=ToolIdentity(
+                    provider="", author="", name=retrieval_tool.name, label=I18nObject(en_US="", zh_Hans="")
+                ),
                 parameters=[],
                 is_team_authorization=True,
-                description=ToolDescription(
-                    human=I18nObject(en_US='', zh_Hans=''),
-                    llm=retrieval_tool.description),
-                runtime=DatasetRetrieverTool.Runtime()
+                description=ToolDescription(human=I18nObject(en_US="", zh_Hans=""), llm=retrieval_tool.description),
+                runtime=DatasetRetrieverTool.Runtime(),
             )
 
             tools.append(tool)
@@ -73,16 +74,18 @@ class DatasetRetrieverTool(Tool):
 
     def get_runtime_parameters(self) -> list[ToolParameter]:
         return [
-            ToolParameter(name='query',
-                          label=I18nObject(en_US='', zh_Hans=''),
-                          human_description=I18nObject(en_US='', zh_Hans=''),
-                          type=ToolParameter.ToolParameterType.STRING,
-                          form=ToolParameter.ToolParameterForm.LLM,
-                          llm_description='Query for the dataset to be used to retrieve the dataset.',
-                          required=True,
-                          default=''),
+            ToolParameter(
+                name="query",
+                label=I18nObject(en_US="", zh_Hans=""),
+                human_description=I18nObject(en_US="", zh_Hans=""),
+                type=ToolParameter.ToolParameterType.STRING,
+                form=ToolParameter.ToolParameterForm.LLM,
+                llm_description="Query for the dataset to be used to retrieve the dataset.",
+                required=True,
+                default="",
+            ),
         ]
-    
+
     def tool_provider_type(self) -> ToolProviderType:
         return ToolProviderType.DATASET_RETRIEVAL
 
@@ -90,9 +93,9 @@ class DatasetRetrieverTool(Tool):
         """
         invoke dataset retriever tool
         """
-        query = tool_parameters.get('query')
+        query = tool_parameters.get("query")
         if not query:
-            return self.create_text_message(text='please input query')
+            return self.create_text_message(text="please input query")
 
         # invoke dataset retriever tool
         result = self.retrieval_tool._run(query=query)

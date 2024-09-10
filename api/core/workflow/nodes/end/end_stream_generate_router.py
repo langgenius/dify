@@ -3,13 +3,13 @@ from core.workflow.nodes.end.entities import EndNodeData, EndStreamParam
 
 
 class EndStreamGeneratorRouter:
-
     @classmethod
-    def init(cls,
-             node_id_config_mapping: dict[str, dict],
-             reverse_edge_mapping: dict[str, list["GraphEdge"]],  # type: ignore[name-defined]
-             node_parallel_mapping: dict[str, str]
-             ) -> EndStreamParam:
+    def init(
+        cls,
+        node_id_config_mapping: dict[str, dict],
+        reverse_edge_mapping: dict[str, list["GraphEdge"]],  # type: ignore[name-defined]
+        node_parallel_mapping: dict[str, str],
+    ) -> EndStreamParam:
         """
         Get stream generate routes.
         :return:
@@ -17,7 +17,7 @@ class EndStreamGeneratorRouter:
         # parse stream output node value selector of end nodes
         end_stream_variable_selectors_mapping: dict[str, list[list[str]]] = {}
         for end_node_id, node_config in node_id_config_mapping.items():
-            if not node_config.get('data', {}).get('type') == NodeType.END.value:
+            if not node_config.get("data", {}).get("type") == NodeType.END.value:
                 continue
 
             # skip end node in parallel
@@ -33,18 +33,18 @@ class EndStreamGeneratorRouter:
         end_dependencies = cls._fetch_ends_dependencies(
             end_node_ids=end_node_ids,
             reverse_edge_mapping=reverse_edge_mapping,
-            node_id_config_mapping=node_id_config_mapping
+            node_id_config_mapping=node_id_config_mapping,
         )
 
         return EndStreamParam(
             end_stream_variable_selector_mapping=end_stream_variable_selectors_mapping,
-            end_dependencies=end_dependencies
+            end_dependencies=end_dependencies,
         )
 
     @classmethod
-    def extract_stream_variable_selector_from_node_data(cls,
-                                                        node_id_config_mapping: dict[str, dict],
-                                                        node_data: EndNodeData) -> list[list[str]]:
+    def extract_stream_variable_selector_from_node_data(
+        cls, node_id_config_mapping: dict[str, dict], node_data: EndNodeData
+    ) -> list[list[str]]:
         """
         Extract stream variable selector from node data
         :param node_id_config_mapping: node id config mapping
@@ -59,21 +59,22 @@ class EndStreamGeneratorRouter:
                 continue
 
             node_id = variable_selector.value_selector[0]
-            if node_id != 'sys' and node_id in node_id_config_mapping:
+            if node_id != "sys" and node_id in node_id_config_mapping:
                 node = node_id_config_mapping[node_id]
-                node_type = node.get('data', {}).get('type')
+                node_type = node.get("data", {}).get("type")
                 if (
                     variable_selector.value_selector not in value_selectors
-                    and node_type == NodeType.LLM.value 
-                    and variable_selector.value_selector[1] == 'text'
+                    and node_type == NodeType.LLM.value
+                    and variable_selector.value_selector[1] == "text"
                 ):
                     value_selectors.append(variable_selector.value_selector)
 
         return value_selectors
 
     @classmethod
-    def _extract_stream_variable_selector(cls, node_id_config_mapping: dict[str, dict], config: dict) \
-            -> list[list[str]]:
+    def _extract_stream_variable_selector(
+        cls, node_id_config_mapping: dict[str, dict], config: dict
+    ) -> list[list[str]]:
         """
         Extract stream variable selector from node config
         :param node_id_config_mapping: node id config mapping
@@ -84,11 +85,12 @@ class EndStreamGeneratorRouter:
         return cls.extract_stream_variable_selector_from_node_data(node_id_config_mapping, node_data)
 
     @classmethod
-    def _fetch_ends_dependencies(cls,
-                                 end_node_ids: list[str],
-                                 reverse_edge_mapping: dict[str, list["GraphEdge"]],  # type: ignore[name-defined]
-                                 node_id_config_mapping: dict[str, dict]
-                                 ) -> dict[str, list[str]]:
+    def _fetch_ends_dependencies(
+        cls,
+        end_node_ids: list[str],
+        reverse_edge_mapping: dict[str, list["GraphEdge"]],  # type: ignore[name-defined]
+        node_id_config_mapping: dict[str, dict],
+    ) -> dict[str, list[str]]:
         """
         Fetch end dependencies
         :param end_node_ids: end node ids
@@ -106,20 +108,21 @@ class EndStreamGeneratorRouter:
                 end_node_id=end_node_id,
                 node_id_config_mapping=node_id_config_mapping,
                 reverse_edge_mapping=reverse_edge_mapping,
-                end_dependencies=end_dependencies
+                end_dependencies=end_dependencies,
             )
 
         return end_dependencies
 
     @classmethod
-    def _recursive_fetch_end_dependencies(cls,
-                                          current_node_id: str,
-                                          end_node_id: str,
-                                          node_id_config_mapping: dict[str, dict],
-                                          reverse_edge_mapping: dict[str, list["GraphEdge"]],
-                                          # type: ignore[name-defined]
-                                          end_dependencies: dict[str, list[str]]
-                                          ) -> None:
+    def _recursive_fetch_end_dependencies(
+        cls,
+        current_node_id: str,
+        end_node_id: str,
+        node_id_config_mapping: dict[str, dict],
+        reverse_edge_mapping: dict[str, list["GraphEdge"]],
+        # type: ignore[name-defined]
+        end_dependencies: dict[str, list[str]],
+    ) -> None:
         """
         Recursive fetch end dependencies
         :param current_node_id: current node id
@@ -132,10 +135,10 @@ class EndStreamGeneratorRouter:
         reverse_edges = reverse_edge_mapping.get(current_node_id, [])
         for edge in reverse_edges:
             source_node_id = edge.source_node_id
-            source_node_type = node_id_config_mapping[source_node_id].get('data', {}).get('type')
+            source_node_type = node_id_config_mapping[source_node_id].get("data", {}).get("type")
             if source_node_type in (
-                    NodeType.IF_ELSE.value,
-                    NodeType.QUESTION_CLASSIFIER,
+                NodeType.IF_ELSE.value,
+                NodeType.QUESTION_CLASSIFIER,
             ):
                 end_dependencies[end_node_id].append(source_node_id)
             else:
@@ -144,5 +147,5 @@ class EndStreamGeneratorRouter:
                     end_node_id=end_node_id,
                     node_id_config_mapping=node_id_config_mapping,
                     reverse_edge_mapping=reverse_edge_mapping,
-                    end_dependencies=end_dependencies
+                    end_dependencies=end_dependencies,
                 )

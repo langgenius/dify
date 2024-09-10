@@ -32,8 +32,8 @@ class LocalAISpeech2text(Speech2TextModel):
         :param user: unique user id
         :return: text for given audio file
         """
-        
-        url = str(URL(credentials['server_url']) / "v1/audio/transcriptions")
+
+        url = str(URL(credentials["server_url"]) / "v1/audio/transcriptions")
         data = {"model": model}
         files = {"file": file}
 
@@ -42,7 +42,7 @@ class LocalAISpeech2text(Speech2TextModel):
         prepared_request = session.prepare_request(request)
         response = session.send(prepared_request)
 
-        if 'error' in response.json():
+        if "error" in response.json():
             raise InvokeServerUnavailableError("Empty response")
 
         return response.json()["text"]
@@ -58,7 +58,7 @@ class LocalAISpeech2text(Speech2TextModel):
         try:
             audio_file_path = self._get_demo_file_path()
 
-            with open(audio_file_path, 'rb') as audio_file:
+            with open(audio_file_path, "rb") as audio_file:
                 self._invoke(model, credentials, audio_file)
         except Exception as ex:
             raise CredentialsValidateFailedError(str(ex))
@@ -66,36 +66,24 @@ class LocalAISpeech2text(Speech2TextModel):
     @property
     def _invoke_error_mapping(self) -> dict[type[InvokeError], list[type[Exception]]]:
         return {
-            InvokeConnectionError: [
-                InvokeConnectionError
-            ],
-            InvokeServerUnavailableError: [
-                InvokeServerUnavailableError
-            ],
-            InvokeRateLimitError: [
-                InvokeRateLimitError
-            ],
-            InvokeAuthorizationError: [
-                InvokeAuthorizationError
-            ],
-            InvokeBadRequestError: [
-                InvokeBadRequestError
-            ],
+            InvokeConnectionError: [InvokeConnectionError],
+            InvokeServerUnavailableError: [InvokeServerUnavailableError],
+            InvokeRateLimitError: [InvokeRateLimitError],
+            InvokeAuthorizationError: [InvokeAuthorizationError],
+            InvokeBadRequestError: [InvokeBadRequestError],
         }
 
     def get_customizable_model_schema(self, model: str, credentials: dict) -> AIModelEntity | None:
         """
-            used to define customizable model schema
+        used to define customizable model schema
         """
         entity = AIModelEntity(
             model=model,
-            label=I18nObject(
-                en_US=model
-            ),
+            label=I18nObject(en_US=model),
             fetch_from=FetchFrom.CUSTOMIZABLE_MODEL,
             model_type=ModelType.SPEECH2TEXT,
             model_properties={},
-            parameter_rules=[]
+            parameter_rules=[],
         )
 
         return entity

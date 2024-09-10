@@ -10,7 +10,7 @@ from core.workflow.graph_engine.entities.runtime_route_state import RuntimeRoute
 class GraphRuntimeState(BaseModel):
     variable_pool: VariablePool = Field(..., description="variable pool")
     """variable pool"""
-    
+
     start_at: float = Field(..., description="start time")
     """start time"""
     total_tokens: int = 0
