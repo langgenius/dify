@@ -13,11 +13,8 @@ class SearchAPIProvider(BuiltinToolProviderController):
                     "credentials": credentials,
                 }
             ).invoke(
-                user_id='',
-                tool_parameters={
-                    "query": "SearchApi dify",
-                    "result_type": "link"
-                },
+                user_id="",
+                tool_parameters={"query": "SearchApi dify", "result_type": "link"},
             )
         except Exception as e:
             raise ToolProviderCredentialValidationError(str(e))

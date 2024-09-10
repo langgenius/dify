@@ -22,17 +22,17 @@ class UpdateCardByIdTool(BuiltinTool):
         Returns:
             ToolInvokeMessage: The result of the tool invocation.
         """
-        api_key = self.runtime.credentials.get('trello_api_key')
-        token = self.runtime.credentials.get('trello_api_token')
-        card_id = tool_parameters.get('id')
+        api_key = self.runtime.credentials.get("trello_api_key")
+        token = self.runtime.credentials.get("trello_api_token")
+        card_id = tool_parameters.get("id")
 
         if not (api_key and token and card_id):
             return self.create_text_message("Missing required parameters: API key, token, or card ID.")
 
         # Constructing the URL and the payload for the PUT request
         url = f"https://api.trello.com/1/cards/{card_id}"
-        params = {k: v for k, v in tool_parameters.items() if v is not None and k != 'id'}
-        params.update({'key': api_key, 'token': token})
+        params = {k: v for k, v in tool_parameters.items() if v is not None and k != "id"}
+        params.update({"key": api_key, "token": token})
 
         try:
             response = requests.put(url, params=params)

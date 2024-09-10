@@ -47,26 +47,25 @@ def parse_url(request_url):
     u = Url(host, path, schema)
     return u
 
+
 def assemble_ws_auth_url(request_url, method="GET", api_key="", api_secret=""):
     u = parse_url(request_url)
     host = u.host
     path = u.path
     now = datetime.now()
     date = format_date_time(mktime(now.timetuple()))
-    signature_origin = "host: {}\ndate: {}\n{} {} HTTP/1.1".format(
-        host, date, method, path
-    )
+    signature_origin = "host: {}\ndate: {}\n{} {} HTTP/1.1".format(host, date, method, path)
     signature_sha = hmac.new(
         api_secret.encode("utf-8"),
         signature_origin.encode("utf-8"),
         digestmod=hashlib.sha256,
     ).digest()
     signature_sha = base64.b64encode(signature_sha).decode(encoding="utf-8")
-    authorization_origin = f'api_key="{api_key}", algorithm="hmac-sha256", headers="host date request-line", signature="{signature_sha}"'
-
-    authorization = base64.b64encode(authorization_origin.encode("utf-8")).decode(
-        encoding="utf-8"
+    authorization_origin = (
+        f'api_key="{api_key}", algorithm="hmac-sha256", headers="host date request-line", signature="{signature_sha}"'
     )
+
+    authorization = base64.b64encode(authorization_origin.encode("utf-8")).decode(encoding="utf-8")
     values = {"host": host, "date": date, "authorization": authorization}
 
     return request_url + "?" + urlencode(values)
@@ -75,9 +74,7 @@ def assemble_ws_auth_url(request_url, method="GET", api_key="", api_secret=""):
 def get_body(appid, text):
     body = {
         "header": {"app_id": appid, "uid": "123456789"},
-        "parameter": {
-            "chat": {"domain": "general", "temperature": 0.5, "max_tokens": 4096}
-        },
+        "parameter": {"chat": {"domain": "general", "temperature": 0.5, "max_tokens": 4096}},
         "payload": {"message": {"text": [{"role": "user", "content": text}]}},
     }
     return body
@@ -85,13 +82,9 @@ def get_body(appid, text):
 
 def spark_response(text, appid, apikey, apisecret):
     host = "http://spark-api.cn-huabei-1.xf-yun.com/v2.1/tti"
-    url = assemble_ws_auth_url(
-        host, method="POST", api_key=apikey, api_secret=apisecret
-    )
+    url = assemble_ws_auth_url(host, method="POST", api_key=apikey, api_secret=apisecret)
     content = get_body(appid, text)
-    response = requests.post(
-        url, json=content, headers={"content-type": "application/json"}
-    ).text
+    response = requests.post(url, json=content, headers={"content-type": "application/json"}).text
     return response
 
 
@@ -105,19 +98,11 @@ class SparkImgGeneratorTool(BuiltinTool):
         invoke tools
         """
 
-        if "APPID" not in self.runtime.credentials or not self.runtime.credentials.get(
-            "APPID"
-        ):
+        if "APPID" not in self.runtime.credentials or not self.runtime.credentials.get("APPID"):
             return self.create_text_message("APPID  is required.")
-        if (
-            "APISecret" not in self.runtime.credentials
-            or not self.runtime.credentials.get("APISecret")
-        ):
+        if "APISecret" not in self.runtime.credentials or not self.runtime.credentials.get("APISecret"):
             return self.create_text_message("APISecret  is required.")
-        if (
-            "APIKey" not in self.runtime.credentials
-            or not self.runtime.credentials.get("APIKey")
-        ):
+        if "APIKey" not in self.runtime.credentials or not self.runtime.credentials.get("APIKey"):
             return self.create_text_message("APIKey  is required.")
 
         prompt = tool_parameters.get("prompt", "")

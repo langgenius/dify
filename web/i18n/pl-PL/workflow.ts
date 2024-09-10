@@ -77,6 +77,22 @@ const translation = {
     chooseDSL: 'Wybierz plik DSL(yml)',
     backupCurrentDraft: 'Utwórz kopię zapasową bieżącej wersji roboczej',
     importFailure: 'Niepowodzenie importu',
+    parallelTip: {
+      click: {
+        title: 'Klikać',
+        desc: ', aby dodać',
+      },
+      drag: {
+        title: 'Przeciągnąć',
+        desc: 'aby się połączyć',
+      },
+      limit: 'Równoległość jest ograniczona do gałęzi {{num}}.',
+      depthLimit: 'Limit warstw zagnieżdżania równoległego dla warstw {{num}}',
+    },
+    parallelRun: 'Bieg równoległy',
+    jumpToNode: 'Przejdź do tego węzła',
+    disconnect: 'Odłączyć',
+    addParallelNode: 'Dodaj węzeł równoległy',
   },
   env: {
     envPanelTitle: 'Zmienne Środowiskowe',
@@ -412,6 +428,7 @@ const translation = {
         'not empty': 'nie jest pusty',
         'null': 'jest null',
         'not null': 'nie jest null',
+        'regex match': 'Dopasowanie wyrażenia regularnego',
       },
       enterValue: 'Wpisz wartość',
       addCondition: 'Dodaj warunek',

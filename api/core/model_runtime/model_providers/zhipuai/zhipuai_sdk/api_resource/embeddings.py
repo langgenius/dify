@@ -18,16 +18,16 @@ class Embeddings(BaseAPI):
         super().__init__(client)
 
     def create(
-            self,
-            *,
-            input: Union[str, list[str], list[int], list[list[int]]],
-            model: Union[str],
-            encoding_format: str | NotGiven = NOT_GIVEN,
-            user: str | NotGiven = NOT_GIVEN,
-            sensitive_word_check: Optional[object] | NotGiven = NOT_GIVEN,
-            extra_headers: Headers | None = None,
-            disable_strict_validation: Optional[bool] | None = None,
-            timeout: float | httpx.Timeout | None | NotGiven = NOT_GIVEN,
+        self,
+        *,
+        input: Union[str, list[str], list[int], list[list[int]]],
+        model: Union[str],
+        encoding_format: str | NotGiven = NOT_GIVEN,
+        user: str | NotGiven = NOT_GIVEN,
+        sensitive_word_check: Optional[object] | NotGiven = NOT_GIVEN,
+        extra_headers: Headers | None = None,
+        disable_strict_validation: Optional[bool] | None = None,
+        timeout: float | httpx.Timeout | None | NotGiven = NOT_GIVEN,
     ) -> EmbeddingsResponded:
         _cast_type = EmbeddingsResponded
         if disable_strict_validation:
@@ -41,9 +41,7 @@ class Embeddings(BaseAPI):
                 "user": user,
                 "sensitive_word_check": sensitive_word_check,
             },
-            options=make_user_request_input(
-                extra_headers=extra_headers, timeout=timeout
-            ),
+            options=make_user_request_input(extra_headers=extra_headers, timeout=timeout),
             cast_type=_cast_type,
             enable_stream=False,
         )
