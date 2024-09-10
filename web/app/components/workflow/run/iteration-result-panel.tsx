@@ -86,7 +86,7 @@ const IterationResultPanel: FC<Props> = ({
             )}>
               <TracingPanel
                 list={iteration}
-                className={'bg-background-section-burn'}
+                className='bg-background-section-burn'
               />
             </div>
           </div>

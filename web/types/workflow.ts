@@ -186,6 +186,9 @@ export type IterationNextedResponse = {
     output: any
     extras?: any
     created_at: number
+    execution_metadata: {
+      parallel_id?: string
+    }
   }
 }
 
@@ -201,6 +204,9 @@ export type IterationFinishedResponse = {
     status: string
     created_at: number
     error: string
+    execution_metadata: {
+      parallel_id?: string
+    }
   }
 }
 

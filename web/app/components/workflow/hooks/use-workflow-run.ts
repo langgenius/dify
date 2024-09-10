@@ -324,7 +324,8 @@ export const useWorkflowRun = () => {
 
                 const currIteration = iterations.details[iterationIndex]
                 const nodeIndex = currIteration.findIndex(node =>
-                  node.node_id === data.node_id && node.execution_metadata?.parallel_id === data.execution_metadata?.parallel_id,
+                  node.node_id === data.node_id && (
+                    node.execution_metadata?.parallel_id === data.execution_metadata?.parallel_id || node.parallel_id === data.execution_metadata?.parallel_id),
                 )
                 if (data.status === NodeRunningStatus.Succeeded) {
                   if (nodeIndex !== -1) {
