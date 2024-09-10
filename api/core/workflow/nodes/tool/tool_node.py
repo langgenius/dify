@@ -1,6 +1,6 @@
 from collections.abc import Generator, Iterable, Sequence
 from os import path
-from typing import Any, cast
+from typing import Any, Mapping, cast
 
 from core.app.segments import ArrayAnySegment, ArrayAnyVariable, parser
 from core.callback_handler.workflow_tool_callback_handler import DifyWorkflowCallbackHandler
@@ -26,7 +26,7 @@ class ToolNode(BaseNode):
     _node_data_cls = ToolNodeData
     _node_type = NodeType.TOOL
 
-    def _run(self, variable_pool: VariablePool) -> NodeRunResult:
+    def _run(self) -> NodeRunResult:
         """
         Run the tool node
         """
@@ -56,8 +56,8 @@ class ToolNode(BaseNode):
 
         # get parameters
         tool_parameters = tool_runtime.get_runtime_parameters() or []
-        parameters = self._generate_parameters(tool_parameters=tool_parameters, variable_pool=variable_pool, node_data=node_data)
-        parameters_for_log = self._generate_parameters(tool_parameters=tool_parameters, variable_pool=variable_pool, node_data=node_data, for_log=True)
+        parameters = self._generate_parameters(tool_parameters=tool_parameters, variable_pool=self.graph_runtime_state.variable_pool, node_data=node_data)
+        parameters_for_log = self._generate_parameters(tool_parameters=tool_parameters, variable_pool=self.graph_runtime_state.variable_pool, node_data=node_data, for_log=True)
 
         try:
             messages = ToolEngine.workflow_invoke(
@@ -66,6 +66,7 @@ class ToolNode(BaseNode):
                 user_id=self.user_id,
                 workflow_tool_callback=DifyWorkflowCallbackHandler(),
                 workflow_call_depth=self.workflow_call_depth,
+                thread_pool_id=self.thread_pool_id,
             )
         except Exception as e:
             return NodeRunResult(
@@ -242,9 +243,16 @@ class ToolNode(BaseNode):
         return result
 
     @classmethod
-    def _extract_variable_selector_to_variable_mapping(cls, node_data: ToolNodeData) -> dict[str, list[str]]:
+    def _extract_variable_selector_to_variable_mapping(
+        cls, 
+        graph_config: Mapping[str, Any], 
+        node_id: str,
+        node_data: ToolNodeData
+    ) -> Mapping[str, Sequence[str]]:
         """
         Extract variable selector to variable mapping
+        :param graph_config: graph config
+        :param node_id: node id
         :param node_data: node data
         :return:
         """
@@ -260,5 +268,9 @@ class ToolNode(BaseNode):
                 result[parameter_name] = input.value
             elif input.type == 'constant':
                 pass
+
+        result = {
+            node_id + '.' + key: value for key, value in result.items()
+        }
 
         return result

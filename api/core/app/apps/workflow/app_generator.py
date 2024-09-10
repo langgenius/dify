@@ -4,7 +4,7 @@ import os
 import threading
 import uuid
 from collections.abc import Generator
-from typing import Literal, Union, overload
+from typing import Any, Literal, Optional, Union, overload
 
 from flask import Flask, current_app
 from pydantic import ValidationError
@@ -41,6 +41,7 @@ class WorkflowAppGenerator(BaseAppGenerator):
         invoke_from: InvokeFrom,
         stream: Literal[True] = True,
         call_depth: int = 0,
+        workflow_thread_pool_id: Optional[str] = None
     ) -> Generator[dict | str, None, None]: ...
 
     @overload
@@ -52,6 +53,7 @@ class WorkflowAppGenerator(BaseAppGenerator):
         invoke_from: InvokeFrom,
         stream: Literal[False] = False,
         call_depth: int = 0,
+        workflow_thread_pool_id: Optional[str] = None
     ) -> dict: ...
 
     @overload
@@ -66,13 +68,15 @@ class WorkflowAppGenerator(BaseAppGenerator):
     ) -> dict | Generator[dict | str, None, None]: ...
 
     def generate(
-        self, app_model: App,
+        self,
+        app_model: App,
         workflow: Workflow,
         user: Union[Account, EndUser],
         args: dict,
         invoke_from: InvokeFrom,
         stream: bool = True,
         call_depth: int = 0,
+        workflow_thread_pool_id: Optional[str] = None
     ):
         """
         Generate App response.
@@ -84,6 +88,7 @@ class WorkflowAppGenerator(BaseAppGenerator):
         :param invoke_from: invoke from source
         :param stream: is stream
         :param call_depth: call depth
+        :param workflow_thread_pool_id: workflow thread pool id
         """
         inputs = args['inputs']
 
@@ -131,15 +136,18 @@ class WorkflowAppGenerator(BaseAppGenerator):
             application_generate_entity=application_generate_entity,
             invoke_from=invoke_from,
             stream=stream,
+            workflow_thread_pool_id=workflow_thread_pool_id
         )
 
     def _generate(
-        self, app_model: App,
+        self, *,
+        app_model: App,
         workflow: Workflow,
         user: Union[Account, EndUser],
         application_generate_entity: WorkflowAppGenerateEntity,
         invoke_from: InvokeFrom,
         stream: bool = True,
+        workflow_thread_pool_id: Optional[str] = None
     ) -> Union[dict, Generator[str | dict, None, None]]:
         """
         Generate App response.
@@ -150,6 +158,7 @@ class WorkflowAppGenerator(BaseAppGenerator):
         :param application_generate_entity: application generate entity
         :param invoke_from: invoke from source
         :param stream: is stream
+        :param workflow_thread_pool_id: workflow thread pool id
         """
         # init queue manager
         queue_manager = WorkflowAppQueueManager(
@@ -161,10 +170,11 @@ class WorkflowAppGenerator(BaseAppGenerator):
 
         # new thread
         worker_thread = threading.Thread(target=self._generate_worker, kwargs={
-            'flask_app': current_app._get_current_object(),
+            'flask_app': current_app._get_current_object(), # type: ignore
             'application_generate_entity': application_generate_entity,
             'queue_manager': queue_manager,
-            'context': contextvars.copy_context()
+            'context': contextvars.copy_context(),
+            'workflow_thread_pool_id': workflow_thread_pool_id
         })
 
         worker_thread.start()
@@ -188,7 +198,7 @@ class WorkflowAppGenerator(BaseAppGenerator):
                                   node_id: str,
                                   user: Account | EndUser,
                                   args: dict,
-                                  stream: bool = True):
+                                  stream: bool = True) -> dict[str, Any] | Generator[str | dict, Any, None]:
         """
         Generate App response.
 
@@ -205,10 +215,6 @@ class WorkflowAppGenerator(BaseAppGenerator):
         if args.get('inputs') is None:
             raise ValueError('inputs is required')
 
-        extras = {
-            "auto_generate_conversation_name": False
-        }
-
         # convert to app config
         app_config = WorkflowAppConfigManager.get_app_config(
             app_model=app_model,
@@ -224,7 +230,9 @@ class WorkflowAppGenerator(BaseAppGenerator):
             user_id=user.id,
             stream=stream,
             invoke_from=InvokeFrom.DEBUGGER,
-            extras=extras,
+            extras={
+                "auto_generate_conversation_name": False
+            },
             single_iteration_run=WorkflowAppGenerateEntity.SingleIterationRunEntity(
                 node_id=node_id,
                 inputs=args['inputs']
@@ -244,12 +252,14 @@ class WorkflowAppGenerator(BaseAppGenerator):
     def _generate_worker(self, flask_app: Flask,
                          application_generate_entity: WorkflowAppGenerateEntity,
                          queue_manager: AppQueueManager,
-                         context: contextvars.Context) -> None:
+                         context: contextvars.Context,
+                         workflow_thread_pool_id: Optional[str] = None) -> None:
         """
         Generate worker in a new thread.
         :param flask_app: Flask app
         :param application_generate_entity: application generate entity
         :param queue_manager: queue manager
+        :param workflow_thread_pool_id: workflow thread pool id
         :return:
         """
         for var, val in context.items():
@@ -257,22 +267,13 @@ class WorkflowAppGenerator(BaseAppGenerator):
         with flask_app.app_context():
             try:
                 # workflow app
-                runner = WorkflowAppRunner()
-                if application_generate_entity.single_iteration_run:
-                    single_iteration_run = application_generate_entity.single_iteration_run
-                    runner.single_iteration_run(
-                        app_id=application_generate_entity.app_config.app_id,
-                        workflow_id=application_generate_entity.app_config.workflow_id,
-                        queue_manager=queue_manager,
-                        inputs=single_iteration_run.inputs,
-                        node_id=single_iteration_run.node_id,
-                        user_id=application_generate_entity.user_id
-                    )
-                else:
-                    runner.run(
-                        application_generate_entity=application_generate_entity,
-                        queue_manager=queue_manager
-                    )
+                runner = WorkflowAppRunner(
+                    application_generate_entity=application_generate_entity,
+                    queue_manager=queue_manager,
+                    workflow_thread_pool_id=workflow_thread_pool_id
+                )
+
+                runner.run()
             except GenerateTaskStoppedException:
                 pass
             except InvokeAuthorizationError:
@@ -284,14 +285,14 @@ class WorkflowAppGenerator(BaseAppGenerator):
                 logger.exception("Validation Error when generating")
                 queue_manager.publish_error(e, PublishFrom.APPLICATION_MANAGER)
             except (ValueError, InvokeError) as e:
-                if os.environ.get("DEBUG") and os.environ.get("DEBUG").lower() == 'true':
+                if os.environ.get("DEBUG") and os.environ.get("DEBUG", "false").lower() == 'true':
                     logger.exception("Error when generating")
                 queue_manager.publish_error(e, PublishFrom.APPLICATION_MANAGER)
             except Exception as e:
                 logger.exception("Unknown Error when generating")
                 queue_manager.publish_error(e, PublishFrom.APPLICATION_MANAGER)
             finally:
-                db.session.remove()
+                db.session.close()
 
     def _handle_response(self, application_generate_entity: WorkflowAppGenerateEntity,
                          workflow: Workflow,

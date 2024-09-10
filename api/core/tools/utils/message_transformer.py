@@ -9,6 +9,7 @@ from core.tools.tool_file_manager import ToolFileManager
 
 logger = logging.getLogger(__name__)
 
+
 class ToolFileMessageTransformer:
     @classmethod
     def transform_tool_invoke_messages(cls, messages: Generator[ToolInvokeMessage, None, None],

@@ -26,6 +26,7 @@ export enum BlockEnum {
   Tool = 'tool',
   ParameterExtractor = 'parameter-extractor',
   Iteration = 'iteration',
+  IterationStart = 'iteration-start',
   Assigner = 'assigner', // is now named as VariableAssigner
 }
 
@@ -54,7 +55,7 @@ export type CommonNodeType<T = {}> = {
   _holdAddVariablePopup?: boolean
   _iterationLength?: number
   _iterationIndex?: number
-  isIterationStart?: boolean
+  _inParallelHovering?: boolean
   isInIteration?: boolean
   iteration_id?: string
   selected?: boolean
