@@ -12,6 +12,7 @@ from core.app.apps.workflow.app_generator import WorkflowAppGenerator
 from core.app.entities.app_invoke_entities import InvokeFrom
 from core.app.features.rate_limiting import RateLimit
 from models.model import Account, App, AppMode, EndUser
+from models.workflow import Workflow
 from services.errors.llm import InvokeRateLimitError
 from services.workflow_service import WorkflowService
 
@@ -103,9 +104,7 @@ class AppGenerateService:
         return max_active_requests
 
     @classmethod
-    def generate_single_iteration(
-        cls, app_model: App, user: Union[Account, EndUser], node_id: str, args: Any, streaming: bool = True
-    ):
+    def generate_single_iteration(cls, app_model: App, user: Account, node_id: str, args: Any, streaming: bool = True):
         if app_model.mode == AppMode.ADVANCED_CHAT.value:
             workflow = cls._get_workflow(app_model, InvokeFrom.DEBUGGER)
             return AdvancedChatAppGenerator().single_iteration_generate(
@@ -142,7 +141,7 @@ class AppGenerateService:
         )
 
     @classmethod
-    def _get_workflow(cls, app_model: App, invoke_from: InvokeFrom) -> Any:
+    def _get_workflow(cls, app_model: App, invoke_from: InvokeFrom) -> Workflow:
         """
         Get workflow
         :param app_model: app model

@@ -11,7 +11,7 @@ import { CodeBracketIcon } from '@heroicons/react/20/solid'
 import { useShallow } from 'zustand/react/shallow'
 import AgentSettingButton from '@/app/components/app/configuration/config/agent-setting-button'
 import useAdvancedPromptConfig from '@/app/components/app/configuration/hooks/use-advanced-prompt-config'
-import EditHistoryModal from '@/app/components/app/configuration/config-prompt/conversation-histroy/edit-modal'
+import EditHistoryModal from '@/app/components/app/configuration/config-prompt/conversation-history/edit-modal'
 import {
   useDebugWithSingleOrMultipleModel,
   useFormattingChangedDispatcher,

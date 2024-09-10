@@ -1,0 +1,34 @@
+identity:
+  author: Doug Lea
+  name: feishu_document
+  label:
+    en_US: Lark Cloud Document
+    zh_Hans: 飞书云文档
+  description:
+    en_US: Lark Cloud Document
+    zh_Hans: 飞书云文档
+  icon: icon.svg
+  tags:
+    - social
+    - productivity
+credentials_for_provider:
+  app_id:
+    type: text-input
+    required: true
+    label:
+      en_US: APP ID
+    placeholder:
+      en_US: Please input your feishu app id
+      zh_Hans: 请输入你的飞书 app id
+    help:
+      en_US: Get your app_id and app_secret from Feishu
+      zh_Hans: 从飞书获取您的 app_id 和 app_secret
+    url: https://open.feishu.cn
+  app_secret:
+    type: secret-input
+    required: true
+    label:
+      en_US: APP Secret
+    placeholder:
+      en_US: Please input your app secret
+      zh_Hans: 请输入你的飞书 app secret

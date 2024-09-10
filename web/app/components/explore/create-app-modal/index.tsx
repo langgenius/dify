@@ -7,6 +7,7 @@ import Modal from '@/app/components/base/modal'
 import Button from '@/app/components/base/button'
 import Input from '@/app/components/base/input'
 import Textarea from '@/app/components/base/textarea'
+import Switch from '@/app/components/base/switch'
 import Toast from '@/app/components/base/toast'
 import AppIcon from '@/app/components/base/app-icon'
 import { useProviderContext } from '@/context/provider-context'
@@ -22,12 +23,15 @@ export type CreateAppModalProps = {
   appIcon: string
   appIconBackground?: string | null
   appIconUrl?: string | null
+  appMode?: string
+  appUseIconAsAnswerIcon?: boolean
   onConfirm: (info: {
     name: string
     icon_type: AppIconType
     icon: string
     icon_background?: string
     description: string
+    use_icon_as_answer_icon?: boolean
   }) => Promise<void>
   onHide: () => void
 }
@@ -41,6 +45,8 @@ const CreateAppModal = ({
   appIconUrl,
   appName,
   appDescription,
+  appMode,
+  appUseIconAsAnswerIcon,
   onConfirm,
   onHide,
 }: CreateAppModalProps) => {
@@ -54,6 +60,7 @@ const CreateAppModal = ({
   )
   const [showAppIconPicker, setShowAppIconPicker] = useState(false)
   const [description, setDescription] = useState(appDescription || '')
+  const [useIconAsAnswerIcon, setUseIconAsAnswerIcon] = useState(appUseIconAsAnswerIcon || false)
 
   const { plan, enableBilling } = useProviderContext()
   const isAppsFull = (enableBilling && plan.usage.buildApps >= plan.total.buildApps)
@@ -69,6 +76,7 @@ const CreateAppModal = ({
       icon: appIcon.type === 'emoji' ? appIcon.icon : appIcon.fileId,
       icon_background: appIcon.type === 'emoji' ? appIcon.background! : undefined,
       description,
+      use_icon_as_answer_icon: useIconAsAnswerIcon,
     })
     onHide()
   }
@@ -121,6 +129,19 @@ const CreateAppModal = ({
               onChange={e => setDescription(e.target.value)}
             />
           </div>
+          {/* answer icon */}
+          {isEditModal && (appMode === 'chat' || appMode === 'advanced-chat' || appMode === 'agent-chat') && (
+            <div className='pt-2'>
+              <div className='flex justify-between items-center'>
+                <div className='py-2 text-sm font-medium leading-[20px] text-gray-900'>{t('app.answerIcon.title')}</div>
+                <Switch
+                  defaultValue={useIconAsAnswerIcon}
+                  onChange={v => setUseIconAsAnswerIcon(v)}
+                />
+              </div>
+              <p className='body-xs-regular text-gray-500'>{t('app.answerIcon.descriptionInExplore')}</p>
+            </div>
+          )}
           {!isEditModal && isAppsFull && <AppsFull loc='app-explore-create' />}
         </div>
         <div className='flex flex-row-reverse'>

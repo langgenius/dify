@@ -147,13 +147,13 @@ html[data-theme="dark"] {
 
   --color-components-main-nav-nav-user-border: #FFFFFF0D;
 
-  --color-components-silder-knob: #F4F4F5;
-  --color-components-silder-knob-hover: #FEFEFE;
-  --color-components-silder-knob-disabled: #FFFFFF33;
-  --color-components-silder-range: #296DFF;
-  --color-components-silder-track: #FFFFFF33;
-  --color-components-silder-knob-border-hover: #1018284D;
-  --color-components-silder-knob-border: #10182833;
+  --color-components-slider-knob: #F4F4F5;
+  --color-components-slider-knob-hover: #FEFEFE;
+  --color-components-slider-knob-disabled: #FFFFFF33;
+  --color-components-slider-range: #296DFF;
+  --color-components-slider-track: #FFFFFF33;
+  --color-components-slider-knob-border-hover: #1018284D;
+  --color-components-slider-knob-border: #10182833;
 
   --color-components-segmented-control-item-active-bg: #FFFFFF14;
   --color-components-segmented-control-item-active-border: #C8CEDA14;
@@ -268,7 +268,7 @@ html[data-theme="dark"] {
 
   --color-background-body: #1D1D20;
   --color-background-default-subtle: #222225;
-  --color-background-neurtral-subtle: #1D1D20;
+  --color-background-neutral-subtle: #1D1D20;
   --color-background-sidenav-bg: #27272AEB;
   --color-background-default: #222225;
   --color-background-soft: #18181B40;
@@ -316,6 +316,7 @@ html[data-theme="dark"] {
   --color-workflow-block-border: #FFFFFF14;
   --color-workflow-block-parma-bg: #FFFFFF0D;
   --color-workflow-block-bg: #27272B;
+  --color-workflow-block-border-highlight: #C8CEDA33;
 
   --color-workflow-canvas-workflow-dot-color: #8585AD26;
   --color-workflow-canvas-workflow-bg: #1D1D20;
@@ -324,8 +325,8 @@ html[data-theme="dark"] {
   --color-workflow-link-line-normal: #676F83;
   --color-workflow-link-line-handle: #296DFF;
 
-  --color-workflow-minmap-bg: #27272B;
-  --color-workflow-minmap-block: #C8CEDA14;
+  --color-workflow-minimap-bg: #27272B;
+  --color-workflow-minimap-block: #C8CEDA14;
 
   --color-workflow-display-success-bg: #17B26A33;
   --color-workflow-display-success-border-1: #17B26AE5;
@@ -371,8 +372,8 @@ html[data-theme="dark"] {
   --color-divider-deep: #C8CEDA33;
   --color-divider-burn: #18181BF2;
   --color-divider-intense: #C8CEDA66;
-  --color-divider-soild: #3A3A40;
-  --color-divider-soild-alt: #747481;
+  --color-divider-solid: #3A3A40;
+  --color-divider-solid-alt: #747481;
 
   --color-state-base-hover: #C8CEDA14;
   --color-state-base-active: #C8CEDA33;
@@ -383,24 +384,24 @@ html[data-theme="dark"] {
   --color-state-accent-hover: #155AEF24;
   --color-state-accent-active: #155AEF24;
   --color-state-accent-hover-alt: #155AEF40;
-  --color-state-accent-soild: #5289FF;
+  --color-state-accent-solid: #5289FF;
   --color-state-accent-active-alt: #155AEF33;
 
   --color-state-destructive-hover: #F0443824;
   --color-state-destructive-hover-alt: #F0443840;
   --color-state-destructive-active: #F044384D;
-  --color-state-destructive-soild: #F97066;
+  --color-state-destructive-solid: #F97066;
   --color-state-destructive-border: #F97066;
 
   --color-state-success-hover: #17B26A24;
   --color-state-success-hover-alt: #17B26A40;
   --color-state-success-active: #17B26A4D;
-  --color-state-success-soild: #47CD89;
+  --color-state-success-solid: #47CD89;
 
   --color-state-warning-hover: #F7900924;
   --color-state-warning-hover-alt: #F7900940;
   --color-state-warning-active: #F790094D;
-  --color-state-warning-soild: #F79009;
+  --color-state-warning-solid: #F79009;
 
   --color-effects-highlight: #C8CEDA14;
   --color-effects-highlight-lightmode-off: #C8CEDA14;

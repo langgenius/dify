@@ -1,4 +1,5 @@
-from typing import Optional, Union, cast
+from collections.abc import Mapping, Sequence
+from typing import Any, Optional, Union, cast
 
 from configs import dify_config
 from core.helper.code_executor.code_executor import CodeExecutionException, CodeExecutor, CodeLanguage
@@ -6,7 +7,6 @@ from core.helper.code_executor.code_node_provider import CodeNodeProvider
 from core.helper.code_executor.javascript.javascript_code_provider import JavascriptCodeProvider
 from core.helper.code_executor.python3.python3_code_provider import Python3CodeProvider
 from core.workflow.entities.node_entities import NodeRunResult, NodeType
-from core.workflow.entities.variable_pool import VariablePool
 from core.workflow.nodes.base_node import BaseNode
 from core.workflow.nodes.code.entities import CodeNodeData
 from models.workflow import WorkflowNodeExecutionStatus
@@ -33,13 +33,13 @@ class CodeNode(BaseNode):
 
         return code_provider.get_default_config()
 
-    def _run(self, variable_pool: VariablePool) -> NodeRunResult:
+    def _run(self) -> NodeRunResult:
         """
         Run code
-        :param variable_pool: variable pool
         :return:
         """
-        node_data = cast(CodeNodeData, self.node_data)
+        node_data = self.node_data
+        node_data = cast(CodeNodeData, node_data)
 
         # Get code language
         code_language = node_data.code_language
@@ -49,7 +49,7 @@ class CodeNode(BaseNode):
         variables = {}
         for variable_selector in node_data.variables:
             variable = variable_selector.variable
-            value = variable_pool.get_any(variable_selector.value_selector)
+            value = self.graph_runtime_state.variable_pool.get_any(variable_selector.value_selector)
 
             variables[variable] = value
         # Run code
@@ -311,13 +311,19 @@ class CodeNode(BaseNode):
         return transformed_result
 
     @classmethod
-    def _extract_variable_selector_to_variable_mapping(cls, node_data: CodeNodeData) -> dict[str, list[str]]:
+    def _extract_variable_selector_to_variable_mapping(
+        cls,
+        graph_config: Mapping[str, Any],
+        node_id: str,
+        node_data: CodeNodeData
+    ) -> Mapping[str, Sequence[str]]:
         """
         Extract variable selector to variable mapping
+        :param graph_config: graph config
+        :param node_id: node id
         :param node_data: node data
         :return:
         """
-
         return {
-            variable_selector.variable: variable_selector.value_selector for variable_selector in node_data.variables
+            node_id + '.' + variable_selector.variable: variable_selector.value_selector for variable_selector in node_data.variables
         }

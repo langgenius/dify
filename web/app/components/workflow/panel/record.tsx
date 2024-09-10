@@ -1,5 +1,5 @@
 import { memo, useCallback } from 'react'
-import type { WorkflowDataUpdator } from '../types'
+import type { WorkflowDataUpdater } from '../types'
 import Run from '../run'
 import { useStore } from '../store'
 import { useWorkflowUpdate } from '../hooks'
@@ -9,7 +9,7 @@ const Record = () => {
   const { handleUpdateWorkflowCanvas } = useWorkflowUpdate()
 
   const handleResultCallback = useCallback((res: any) => {
-    const graph: WorkflowDataUpdator = res.graph
+    const graph: WorkflowDataUpdater = res.graph
     handleUpdateWorkflowCanvas({
       nodes: graph.nodes,
       edges: graph.edges,

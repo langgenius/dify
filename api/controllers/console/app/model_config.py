@@ -32,6 +32,8 @@ class ModelConfigResource(Resource):
 
         new_app_model_config = AppModelConfig(
             app_id=app_model.id,
+            created_by=current_user.id,
+            updated_by=current_user.id,
         )
         new_app_model_config = new_app_model_config.from_model_config_dict(model_configuration)
 

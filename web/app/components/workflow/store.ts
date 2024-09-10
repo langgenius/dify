@@ -164,6 +164,8 @@ type Shape = {
   setControlPromptEditorRerenderKey: (controlPromptEditorRerenderKey: number) => void
   showImportDSLModal: boolean
   setShowImportDSLModal: (showImportDSLModal: boolean) => void
+  showTips: string
+  setShowTips: (showTips: string) => void
 }
 
 export const createWorkflowStore = () => {
@@ -277,6 +279,8 @@ export const createWorkflowStore = () => {
     setControlPromptEditorRerenderKey: controlPromptEditorRerenderKey => set(() => ({ controlPromptEditorRerenderKey })),
     showImportDSLModal: false,
     setShowImportDSLModal: showImportDSLModal => set(() => ({ showImportDSLModal })),
+    showTips: '',
+    setShowTips: showTips => set(() => ({ showTips })),
   }))
 }
 

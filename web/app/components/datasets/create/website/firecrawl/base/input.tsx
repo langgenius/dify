@@ -9,7 +9,7 @@ type Props = {
   isNumber?: boolean
 }
 
-const MIN_VALUE = 1
+const MIN_VALUE = 0
 
 const Input: FC<Props> = ({
   value,

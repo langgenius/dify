@@ -38,3 +38,8 @@ class AliyunOSSStorageConfig(BaseSettings):
         description="Aliyun OSS authentication version",
         default=None,
     )
+
+    ALIYUN_OSS_PATH: Optional[str] = Field(
+        description="Aliyun OSS path",
+        default=None,
+    )

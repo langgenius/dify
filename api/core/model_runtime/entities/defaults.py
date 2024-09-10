@@ -33,6 +33,22 @@ PARAMETER_RULE_TEMPLATE: dict[DefaultParameterName, dict] = {
         'max': 1.0,
         'precision': 2,
     },
+    DefaultParameterName.TOP_K: {
+        'label': {
+            'en_US': 'Top K',
+            'zh_Hans': 'Top K',
+        },
+        'type': 'int',
+        'help': {
+            'en_US': 'Limits the number of tokens to consider for each step by keeping only the k most likely tokens.',
+            'zh_Hans': '通过只保留每一步中最可能的 k 个标记来限制要考虑的标记数量。',
+        },
+        'required': False,
+        'default': 50,
+        'min': 1,
+        'max': 100,
+        'precision': 0,
+    },
     DefaultParameterName.PRESENCE_PENALTY: {
         'label': {
             'en_US': 'Presence Penalty',

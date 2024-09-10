@@ -52,7 +52,7 @@ const ConfigModal: FC<IConfigModalProps> = ({
     if (!isValid) {
       Toast.notify({
         type: 'error',
-        message: t(`appDebug.varKeyError.${errorMessageKey}`, { key: t('appDebug.variableConig.varName') }),
+        message: t(`appDebug.varKeyError.${errorMessageKey}`, { key: t('appDebug.variableConfig.varName') }),
       })
       return false
     }
@@ -125,7 +125,7 @@ const ConfigModal: FC<IConfigModalProps> = ({
     // }
 
     if (!tempPayload.label) {
-      Toast.notify({ type: 'error', message: t('appDebug.variableConig.errorMsg.labelNameRequired') })
+      Toast.notify({ type: 'error', message: t('appDebug.variableConfig.errorMsg.labelNameRequired') })
       return
     }
     if (isStringInput || type === InputVarType.number) {
@@ -133,7 +133,7 @@ const ConfigModal: FC<IConfigModalProps> = ({
     }
     else if (type === InputVarType.select) {
       if (options?.length === 0) {
-        Toast.notify({ type: 'error', message: t('appDebug.variableConig.errorMsg.atLeastOneOption') })
+        Toast.notify({ type: 'error', message: t('appDebug.variableConfig.errorMsg.atLeastOneOption') })
         return
       }
       const obj: Record<string, boolean> = {}
@@ -146,7 +146,7 @@ const ConfigModal: FC<IConfigModalProps> = ({
         obj[o] = true
       })
       if (hasRepeatedItem) {
-        Toast.notify({ type: 'error', message: t('appDebug.variableConig.errorMsg.optionRepeat') })
+        Toast.notify({ type: 'error', message: t('appDebug.variableConfig.errorMsg.optionRepeat') })
         return
       }
       onConfirm(tempPayload, moreInfo)
@@ -171,7 +171,7 @@ const ConfigModal: FC<IConfigModalProps> = ({
 
   return (
     <Modal
-      title={t(`appDebug.variableConig.${isCreate ? 'addModalTitle' : 'editModalTitle'}`)}
+      title={t(`appDebug.variableConfig.${isCreate ? 'addModalTitle' : 'editModalTitle'}`)}
       isShow={isShow}
       onClose={onClose}
     >
@@ -196,25 +196,25 @@ const ConfigModal: FC<IConfigModalProps> = ({
               value={variable}
               onChange={e => handlePayloadChange('variable')(e.target.value)}
               onBlur={handleVarKeyBlur}
-              placeholder={t('appDebug.variableConig.inputPlaceholder')!}
+              placeholder={t('appDebug.variableConfig.inputPlaceholder')!}
             />
           </Field>
           <Field title={t('appDebug.variableConig.labelName')}>
             <Input
               value={label as string}
               onChange={e => handlePayloadChange('label')(e.target.value)}
-              placeholder={t('appDebug.variableConig.inputPlaceholder')!}
+              placeholder={t('appDebug.variableConfig.inputPlaceholder')!}
             />
           </Field>
 
           {isStringInput && (
-            <Field title={t('appDebug.variableConig.maxLength')}>
+            <Field title={t('appDebug.variableConfig.maxLength')}>
               <ConfigString maxLength={type === InputVarType.textInput ? TEXT_MAX_LENGTH : Infinity} modelId={modelConfig.model_id} value={max_length} onChange={handlePayloadChange('max_length')} />
             </Field>
 
           )}
           {type === InputVarType.select && (
-            <Field title={t('appDebug.variableConig.options')}>
+            <Field title={t('appDebug.variableConfig.options')}>
               <ConfigSelect options={options || []} onChange={handlePayloadChange('options')} />
             </Field>
           )}

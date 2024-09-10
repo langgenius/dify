@@ -21,7 +21,7 @@ from core.rag.data_post_processor.data_post_processor import DataPostProcessor
 from core.rag.datasource.keyword.jieba.jieba_keyword_table_handler import JiebaKeywordTableHandler
 from core.rag.datasource.retrieval_service import RetrievalService
 from core.rag.models.document import Document
-from core.rag.retrieval.retrival_methods import RetrievalMethod
+from core.rag.retrieval.retrieval_methods import RetrievalMethod
 from core.rag.retrieval.router.multi_dataset_function_call_router import FunctionCallMultiDatasetRouter
 from core.rag.retrieval.router.multi_dataset_react_route import ReactMultiDatasetRouter
 from core.tools.tool.dataset_retriever.dataset_multi_retriever_tool import DatasetMultiRetrieverTool
@@ -261,9 +261,9 @@ class DatasetRetrieval:
                 top_k = retrieval_model_config['top_k']
                 # get retrieval method
                 if dataset.indexing_technique == "economy":
-                    retrival_method = 'keyword_search'
+                    retrieval_method = 'keyword_search'
                 else:
-                    retrival_method = retrieval_model_config['search_method']
+                    retrieval_method = retrieval_model_config['search_method']
                 # get reranking model
                 reranking_model = retrieval_model_config['reranking_model'] \
                     if retrieval_model_config['reranking_enable'] else None
@@ -275,7 +275,7 @@ class DatasetRetrieval:
 
                 with measure_time() as timer:
                     results = RetrievalService.retrieve(
-                        retrival_method=retrival_method, dataset_id=dataset.id,
+                        retrieval_method=retrieval_method, dataset_id=dataset.id,
                         query=query,
                         top_k=top_k, score_threshold=score_threshold,
                         reranking_model=reranking_model,
@@ -285,7 +285,7 @@ class DatasetRetrieval:
                 self._on_query(query, [dataset_id], app_id, user_from, user_id)
 
                 if results:
-                    self._on_retrival_end(results, message_id, timer)
+                    self._on_retrieval_end(results, message_id, timer)
 
                 return results
         return []
@@ -347,14 +347,14 @@ class DatasetRetrieval:
         self._on_query(query, dataset_ids, app_id, user_from, user_id)
 
         if all_documents:
-            self._on_retrival_end(all_documents, message_id, timer)
+            self._on_retrieval_end(all_documents, message_id, timer)
 
         return all_documents
 
-    def _on_retrival_end(
+    def _on_retrieval_end(
         self, documents: list[Document], message_id: Optional[str] = None, timer: Optional[dict] = None
     ) -> None:
-        """Handle retrival end."""
+        """Handle retrieval end."""
         for document in documents:
             query = db.session.query(DocumentSegment).filter(
                 DocumentSegment.index_node_id == document.metadata['doc_id']
@@ -419,7 +419,7 @@ class DatasetRetrieval:
 
             if dataset.indexing_technique == "economy":
                 # use keyword table query
-                documents = RetrievalService.retrieve(retrival_method='keyword_search',
+                documents = RetrievalService.retrieve(retrieval_method='keyword_search',
                                                       dataset_id=dataset.id,
                                                       query=query,
                                                       top_k=top_k
@@ -429,7 +429,7 @@ class DatasetRetrieval:
             else:
                 if top_k > 0:
                     # retrieval source
-                    documents = RetrievalService.retrieve(retrival_method=retrieval_model['search_method'],
+                    documents = RetrievalService.retrieve(retrieval_method=retrieval_model['search_method'],
                                                           dataset_id=dataset.id,
                                                           query=query,
                                                           top_k=top_k,

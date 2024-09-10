@@ -1,6 +1,6 @@
 'use client'
 import type { FC } from 'react'
-import React from 'react'
+import React, { useMemo } from 'react'
 import { useTranslation } from 'react-i18next'
 import { useRouter } from 'next/navigation'
 import cn from '@/utils/classnames'
@@ -23,10 +23,14 @@ const LogAnnotation: FC<Props> = ({
   const router = useRouter()
   const appDetail = useAppStore(state => state.appDetail)
 
-  const options = [
-    { value: PageType.log, text: t('appLog.title') },
-    { value: PageType.annotation, text: t('appAnnotation.title') },
-  ]
+  const options = useMemo(() => {
+    if (appDetail?.mode === 'completion')
+      return [{ value: PageType.log, text: t('appLog.title') }]
+    return [
+      { value: PageType.log, text: t('appLog.title') },
+      { value: PageType.annotation, text: t('appAnnotation.title') },
+    ]
+  }, [appDetail])
 
   if (!appDetail) {
     return (

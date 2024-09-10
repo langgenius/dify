@@ -38,7 +38,7 @@ configs: dict[str, ModelConfig] = {
     ),
     'Doubao-lite-128k': ModelConfig(
         properties=ModelProperties(context_size=131072, max_tokens=4096, mode=LLMMode.CHAT),
-        features=[ModelFeature.TOOL_CALL]
+        features=[]
     ),
     'Skylark2-pro-4k': ModelConfig(
         properties=ModelProperties(context_size=4096, max_tokens=4096, mode=LLMMode.CHAT),
@@ -54,23 +54,23 @@ configs: dict[str, ModelConfig] = {
     ),
     'Moonshot-v1-8k': ModelConfig(
         properties=ModelProperties(context_size=8192, max_tokens=4096, mode=LLMMode.CHAT),
-        features=[]
+        features=[ModelFeature.TOOL_CALL]
     ),
     'Moonshot-v1-32k': ModelConfig(
         properties=ModelProperties(context_size=32768, max_tokens=16384, mode=LLMMode.CHAT),
-        features=[]
+        features=[ModelFeature.TOOL_CALL]
     ),
     'Moonshot-v1-128k': ModelConfig(
         properties=ModelProperties(context_size=131072, max_tokens=65536, mode=LLMMode.CHAT),
-        features=[]
+        features=[ModelFeature.TOOL_CALL]
     ),
     'GLM3-130B': ModelConfig(
         properties=ModelProperties(context_size=8192, max_tokens=4096, mode=LLMMode.CHAT),
-        features=[]
+        features=[ModelFeature.TOOL_CALL]
     ),
     'GLM3-130B-Fin': ModelConfig(
         properties=ModelProperties(context_size=8192, max_tokens=4096, mode=LLMMode.CHAT),
-        features=[]
+        features=[ModelFeature.TOOL_CALL]
     ),
     'Mistral-7B': ModelConfig(
         properties=ModelProperties(context_size=8192, max_tokens=2048, mode=LLMMode.CHAT),

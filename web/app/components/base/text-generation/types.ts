@@ -15,7 +15,7 @@ export type UserInputForm = {
 }
 
 export type UserInputFormTextInput = {
-  'text-inpput': UserInputForm & {
+  'text-input': UserInputForm & {
     max_length: number
   }
 }

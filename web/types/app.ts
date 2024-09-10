@@ -298,6 +298,7 @@ export type SiteConfig = {
   icon_url: string | null
 
   show_workflow_steps: boolean
+  use_icon_as_answer_icon: boolean
 }
 
 export type AppIconType = 'image' | 'emoji'
@@ -324,6 +325,8 @@ export type App = {
   icon_background: string | null
   /** Icon URL, only available when icon_type is 'image' */
   icon_url: string | null
+  /** Whether to use app icon as answer icon */
+  use_icon_as_answer_icon: boolean
 
   /** Mode */
   mode: AppMode

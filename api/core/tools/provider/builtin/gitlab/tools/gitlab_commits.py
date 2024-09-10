@@ -60,7 +60,7 @@ class GitlabCommitsTool(BuiltinTool):
                 project_name = project['name']
                 print(f"Project: {project_name}")
 
-                # Get all of proejct commits
+                # Get all of project commits
                 commits_url = f"{domain}/api/v4/projects/{project_id}/repository/commits"
                 params = {
                     'since': start_time,
@@ -83,7 +83,7 @@ class GitlabCommitsTool(BuiltinTool):
                     diffs = diff_response.json()
                     
                     for diff in diffs:
-                        # Caculate code lines of changed
+                        # Calculate code lines of changed
                         added_lines = diff['diff'].count('\n+')
                         removed_lines = diff['diff'].count('\n-')
                         total_changes = added_lines + removed_lines
