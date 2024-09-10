@@ -11,6 +11,7 @@ from extensions.storage.local_storage import LocalStorage
 from extensions.storage.oci_storage import OCIStorage
 from extensions.storage.s3_storage import S3Storage
 from extensions.storage.tencent_storage import TencentStorage
+from extensions.storage.volcengine_storage import VolcengineStorage
 
 
 class Storage:
@@ -33,6 +34,8 @@ class Storage:
             self.storage_runner = OCIStorage(app=app)
         elif storage_type == "huawei-obs":
             self.storage_runner = HuaweiStorage(app=app)
+        elif storage_type == "volcengine-tos":
+            self.storage_runner = VolcengineStorage(app=app)
         else:
             self.storage_runner = LocalStorage(app=app)
 

@@ -12,6 +12,7 @@ from configs.middleware.storage.google_cloud_storage_config import GoogleCloudSt
 from configs.middleware.storage.huawei_obs_storage_config import HuaweiCloudOBSStorageConfig
 from configs.middleware.storage.oci_storage_config import OCIStorageConfig
 from configs.middleware.storage.tencent_cos_storage_config import TencentCloudCOSStorageConfig
+from configs.middleware.storage.volcengine_tos_storage_config import VolcengineTOSStorageConfig
 from configs.middleware.vdb.analyticdb_config import AnalyticdbConfig
 from configs.middleware.vdb.chroma_config import ChromaConfig
 from configs.middleware.vdb.elasticsearch_config import ElasticsearchConfig
@@ -201,6 +202,7 @@ class MiddlewareConfig(
     GoogleCloudStorageConfig,
     TencentCloudCOSStorageConfig,
     HuaweiCloudOBSStorageConfig,
+    VolcengineTOSStorageConfig,
     S3StorageConfig,
     OCIStorageConfig,
     # configs of vdb and vdb providers
