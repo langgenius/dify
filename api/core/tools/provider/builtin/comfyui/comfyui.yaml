@@ -14,7 +14,7 @@ identity:
     - image
 credentials_for_provider:
   base_url:
-    type: secret-input
+    type: text-input
     required: true
     label:
       en_US: Base URL

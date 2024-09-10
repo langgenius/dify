@@ -31,7 +31,7 @@
   },
   "4": {
     "inputs": {
-      "ckpt_name": "3D角色PLUS+IP设计_v1.0.safetensors"
+      "ckpt_name": "3dAnimationDiffusion_v10.safetensors"
     },
     "class_type": "CheckpointLoaderSimple",
     "_meta": {
