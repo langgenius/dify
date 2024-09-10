@@ -15,7 +15,7 @@ from libs.oauth import GitHubOAuth, GoogleOAuth, OAuthUserInfo
 from models.account import Account, AccountStatus
 from services.account_service import AccountService, RegisterService, TenantService
 from services.errors.account import AccountNotFound
-from services.errors.workspace import WorkSpaceNotAllowedCreateError
+from services.errors.workspace import WorkSpaceNotAllowedCreateError, WorkSpaceNotFound
 
 from .. import api
 
@@ -91,6 +91,8 @@ class OAuthCallback(Resource):
             account = _generate_account(provider, user_info)
         except AccountNotFound:
             return redirect(f"{dify_config.CONSOLE_WEB_URL}/signin?message=AccountNotFound")
+        except WorkSpaceNotFound:
+            return redirect(f"{dify_config.CONSOLE_WEB_URL}/signin?message=WorkspaceNotFound")
         except WorkSpaceNotAllowedCreateError:
             return redirect(
                 f"{dify_config.CONSOLE_WEB_URL}/signin?message=Workspace not found, please contact system admin to invite you to join in a workspace."
@@ -127,6 +129,11 @@ def _get_account_by_openid_or_email(provider: str, user_info: OAuthUserInfo) -> 
 def _generate_account(provider: str, user_info: OAuthUserInfo):
     # Get account by openid or email.
     account = _get_account_by_openid_or_email(provider, user_info)
+
+    if account:
+        tenant = TenantService.get_join_tenants(account)
+        if not tenant:
+            raise WorkSpaceNotFound()
 
     if not account:
         if not dify_config.ALLOW_REGISTER:
