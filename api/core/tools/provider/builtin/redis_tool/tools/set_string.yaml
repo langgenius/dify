@@ -38,16 +38,17 @@ parameters:
       pt_BR: value
     llm_description: value
     form: llm
-  - name: expire
+  - name: expiration
     type: number
     required: true
+    default: 180
     label:
-      en_US: expire(s)
+      en_US: expire time in second
       zh_Hans: 过期时间(秒)
-      pt_BR: expire(s)
+      pt_BR: expire time in second
     human_description:
-      en_US: expire(s)
+      en_US: expire time in second
       zh_Hans: 过期时间(秒)
-      pt_BR: expire(s)
-    llm_description: expire(s)
-    form: llm
+      pt_BR: expire time in second
+    llm_description: expire time in second
+    form: form

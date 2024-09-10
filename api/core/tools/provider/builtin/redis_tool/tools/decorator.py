@@ -23,7 +23,8 @@ def redis_client_decorator(func):
             port=port,
             db=db,
             password=password,
-            decode_responses=True
+            decode_responses=True,
+            socket_timeout=10
         )
         try:
             result = func(redis_client, *args, **kwargs)

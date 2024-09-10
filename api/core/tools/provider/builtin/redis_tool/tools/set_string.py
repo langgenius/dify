@@ -23,13 +23,13 @@ class SetStringTool(BuiltinTool):
         if not value:
             return self.create_text_message('Invalid parameter value')
 
-        expire = tool_parameters.get('expire', '')
+        expiration = tool_parameters.get('expiration', '')
         if not value:
-            return self.create_text_message('Invalid parameter expire')
+            return self.create_text_message('Invalid parameter expiration')
 
         value = self.run(key=key,
                          value=value,
-                         expire=int(expire),
+                         expire=int(expiration),
                          host=self.runtime.credentials.get('host'),
                          port=self.runtime.credentials.get('port'),
                          db=self.runtime.credentials.get('database'),
