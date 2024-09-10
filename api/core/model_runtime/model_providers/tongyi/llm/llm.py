@@ -398,19 +398,19 @@ class TongyiLargeLanguageModel(LargeLanguageModel):
                         elif message_content.type == PromptMessageContentType.IMAGE:
                             message_content = cast(ImagePromptMessageContent, message_content)
 
-                            image_url = message_content.data
+                            file_url = message_content.data
                             if message_content.data.startswith("data:"):
                                 # convert image base64 data to file in /tmp
-                                image_url = self._save_base64_image_to_file(message_content.data)
+                                file_url = self._save_base64_image_to_file(message_content.data)
 
-                            is_video_url = re.search(r'\.(mp4|webm|ogg|mov|avi|mkv|flv|wmv)$', image_url, re.IGNORECASE)
+                            is_video_url = re.search(r'\.(mp4|webm|ogg|mov|avi|mkv|flv|wmv)$', file_url, re.IGNORECASE)
                             if is_video_url:
                                 sub_message_dict = {
-                                    "video": image_url
+                                    "video": file_url
                                 }
                             else:
                                 sub_message_dict = {
-                                    "image": image_url
+                                    "image": file_url
                                 }
                             sub_messages.append(sub_message_dict)
 

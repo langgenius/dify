@@ -385,7 +385,8 @@ export enum TtsAutoPlay {
   disabled = 'disabled',
 }
 
-export const ALLOW_FILE_EXTENSIONS = ['png', 'jpg', 'jpeg', 'webp', 'gif', 'svg', 'mp4', 'avi', 'mkv', 'mov', 'flv', 'wmv']
+export const ALLOW_IMAGE_EXTENSIONS = ['png', 'jpg', 'jpeg', 'webp', 'gif', 'svg']
+export const ALLOW_VIDEO_EXTENSIONS = ['mp4', 'avi', 'mkv', 'mov', 'flv', 'wmv']
 
 export type VisionSettings = {
   enabled: boolean
@@ -393,6 +394,7 @@ export type VisionSettings = {
   detail: Resolution
   transfer_methods: TransferMethod[]
   image_file_size_limit?: number | string
+  is_support_video?: boolean
 }
 
 export type ImageFile = {

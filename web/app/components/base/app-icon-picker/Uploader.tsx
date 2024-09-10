@@ -8,7 +8,7 @@ import classNames from 'classnames'
 
 import { ImagePlus } from '../icons/src/vender/line/images'
 import { useDraggableUploader } from './hooks'
-import { ALLOW_FILE_EXTENSIONS } from '@/types/app'
+import { ALLOW_IMAGE_EXTENSIONS } from '@/types/app'
 
 type UploaderProps = {
   className?: string
@@ -73,7 +73,7 @@ const Uploader: FC<UploaderProps> = ({
                 <input
                   ref={inputRef} type="file" className="hidden"
                   onClick={e => ((e.target as HTMLInputElement).value = '')}
-                  accept={ALLOW_FILE_EXTENSIONS.map(ext => `.${ext}`).join(',')}
+                  accept={ALLOW_IMAGE_EXTENSIONS.map(ext => `.${ext}`).join(',')}
                   onChange={handleLocalFileInput}
                 />
               </div>

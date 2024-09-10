@@ -2,7 +2,7 @@ import type { ChangeEvent, FC } from 'react'
 import { useState } from 'react'
 import { useLocalFileUploader } from './hooks'
 import type { ImageFile } from '@/types/app'
-import { ALLOW_FILE_EXTENSIONS } from '@/types/app'
+import { ALLOW_IMAGE_EXTENSIONS } from '@/types/app'
 
 type UploaderProps = {
   children: (hovering: boolean) => JSX.Element
@@ -47,7 +47,7 @@ const Uploader: FC<UploaderProps> = ({
         className='absolute block inset-0 opacity-0 text-[0] w-full disabled:cursor-not-allowed cursor-pointer'
         onClick={e => ((e.target as HTMLInputElement).value = '')}
         type='file'
-        accept={ALLOW_FILE_EXTENSIONS.map(ext => `.${ext}`).join(',')}
+        accept={ALLOW_IMAGE_EXTENSIONS.map(ext => `.${ext}`).join(',')}
         onChange={handleChange}
         disabled={disabled}
       />

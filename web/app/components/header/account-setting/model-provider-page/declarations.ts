@@ -51,6 +51,7 @@ export enum ModelFeatureEnum {
   multiToolCall = 'multi-tool-call',
   agentThought = 'agent-thought',
   vision = 'vision',
+  video = 'vision-video',
 }
 
 export enum ModelFeatureTextEnum {

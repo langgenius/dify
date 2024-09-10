@@ -8,11 +8,13 @@ import { TransferMethod } from '@/types/app'
 type ImageLinkInputProps = {
   onUpload: (imageFile: ImageFile) => void
   disabled?: boolean
+  isSupportVideo?: boolean
 }
 const regex = /^(https?|ftp):\/\//
 const ImageLinkInput: FC<ImageLinkInputProps> = ({
   onUpload,
   disabled,
+  isSupportVideo,
 }) => {
   const { t } = useTranslation()
   const [imageLink, setImageLink] = useState('')
@@ -39,7 +41,7 @@ const ImageLinkInput: FC<ImageLinkInputProps> = ({
         className='grow mr-0.5 px-1 h-[18px] text-[13px] outline-none appearance-none'
         value={imageLink}
         onChange={e => setImageLink(e.target.value)}
-        placeholder={t('common.imageUploader.pasteImageLinkInputPlaceholder') || ''}
+        placeholder={ (isSupportVideo ? t('common.imageUploader.pasteImageVideoInputPlaceholder') : t('common.imageUploader.pasteImageLinkInputPlaceholder')) || ''}
       />
       <Button
         variant='primary'

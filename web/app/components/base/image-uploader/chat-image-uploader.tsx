@@ -4,7 +4,7 @@ import { useTranslation } from 'react-i18next'
 import Uploader from './uploader'
 import ImageLinkInput from './image-link-input'
 import cn from '@/utils/classnames'
-import { ImagePlus } from '@/app/components/base/icons/src/vender/line/images'
+import { ImagePlus, ImageVideoPlus } from '@/app/components/base/icons/src/vender/line/images'
 import { TransferMethod } from '@/types/app'
 import {
   PortalToFollowElem,
@@ -45,12 +45,14 @@ type UploaderButtonProps = {
   onUpload: (imageFile: ImageFile) => void
   disabled?: boolean
   limit?: number
+  isSupportVideo?: boolean
 }
 const UploaderButton: FC<UploaderButtonProps> = ({
   methods,
   onUpload,
   disabled,
   limit,
+  isSupportVideo,
 }) => {
   const { t } = useTranslation()
   const [open, setOpen] = useState(false)
@@ -84,12 +86,15 @@ const UploaderButton: FC<UploaderButtonProps> = ({
           disabled={disabled}
           className="relative flex items-center justify-center w-8 h-8 enabled:hover:bg-gray-100 rounded-lg disabled:cursor-not-allowed"
         >
-          <ImagePlus className="w-4 h-4 text-gray-500" />
+          { isSupportVideo
+            ? <ImageVideoPlus className="w-4 h-4 text-gray-500" />
+            : <ImagePlus className="w-4 h-4 text-gray-500" />
+          }
         </button>
       </PortalToFollowElemTrigger>
       <PortalToFollowElemContent className="z-50">
         <div className="p-2 w-[260px] bg-white rounded-lg border-[0.5px] border-gray-200 shadow-lg">
-          <ImageLinkInput onUpload={handleUpload} disabled={disabled} />
+          <ImageLinkInput onUpload={handleUpload} disabled={disabled} isSupportVideo={isSupportVideo} />
           {hasUploadFromLocal && (
             <>
               <div className="flex items-center mt-2 px-2 text-xs font-medium text-gray-400">
@@ -152,6 +157,7 @@ const ChatImageUploader: FC<ChatImageUploaderProps> = ({
       onUpload={onUpload}
       disabled={disabled}
       limit={+settings.image_file_size_limit!}
+      isSupportVideo={settings.is_support_video}
     />
   )
 }

@@ -343,6 +343,7 @@ const Configuration: FC = () => {
     number_limits: 2,
     detail: Resolution.low,
     transfer_methods: [TransferMethod.local_file],
+    is_support_video: false,
   })
 
   const handleSetVisionConfig = (config: VisionSettings, notNoticeFormattingChanged?: boolean) => {
@@ -351,6 +352,7 @@ const Configuration: FC = () => {
       number_limits: config.number_limits || 2,
       detail: config.detail || Resolution.low,
       transfer_methods: config.transfer_methods || [TransferMethod.local_file],
+      is_support_video: config.is_support_video || false,
     })
     if (!notNoticeFormattingChanged)
       formattingChangedDispatcher()
@@ -412,10 +414,12 @@ const Configuration: FC = () => {
 
     setModelConfig(newModelConfig)
     const supportVision = features && features.includes(ModelFeatureEnum.vision)
+    const supportVideo = features && features.includes(ModelFeatureEnum.video)
 
     handleSetVisionConfig({
       ...visionConfig,
       enabled: supportVision,
+      is_support_video: supportVideo,
     }, true)
     setCompletionParams({})
   }

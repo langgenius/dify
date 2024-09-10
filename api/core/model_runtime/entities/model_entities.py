@@ -82,6 +82,7 @@ class ModelFeature(Enum):
     MULTI_TOOL_CALL = "multi-tool-call"
     AGENT_THOUGHT = "agent-thought"
     VISION = "vision"
+    VISION_VIDEO = "vision-video"
     STREAM_TOOL_CALL = "stream-tool-call"
 
 

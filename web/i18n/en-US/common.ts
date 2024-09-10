@@ -556,6 +556,7 @@ const translation = {
     uploadFromComputerLimit: 'Upload images cannot exceed {{size}} MB',
     pasteImageLink: 'Paste image link',
     pasteImageLinkInputPlaceholder: 'Paste image link here',
+    pasteImageVideoInputPlaceholder: 'Paste image or video link here',
     pasteImageLinkInvalid: 'Invalid image link',
     imageUpload: 'Image Upload',
   },
