@@ -111,7 +111,7 @@ class ForgotPasswordResetApi(Resource):
             tenant = TenantService.get_join_tenants(account)
             if not tenant:
                 if not dify_config.ALLOW_CREATE_WORKSPACE:
-                    return NotAllowedCreateWorkspace()
+                    raise NotAllowedCreateWorkspace()
                 else:
                     tenant = TenantService.create_tenant(f"{account.name}'s Workspace")
                     TenantService.create_tenant_member(tenant, account, role="owner")
