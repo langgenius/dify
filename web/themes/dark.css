@@ -316,6 +316,7 @@ html[data-theme="dark"] {
   --color-workflow-block-border: #FFFFFF14;
   --color-workflow-block-parma-bg: #FFFFFF0D;
   --color-workflow-block-bg: #27272B;
+  --color-workflow-block-border-highlight: #C8CEDA33;
 
   --color-workflow-canvas-workflow-dot-color: #8585AD26;
   --color-workflow-canvas-workflow-bg: #1D1D20;

@@ -1,10 +1,12 @@
 import json
 import logging
-from typing import Optional, Union, cast
+from collections.abc import Mapping, Sequence
+from typing import Any, Optional, Union, cast
 
 from core.app.entities.app_invoke_entities import ModelConfigWithCredentialsEntity
 from core.memory.token_buffer_memory import TokenBufferMemory
 from core.model_manager import ModelInstance
+from core.model_runtime.entities.llm_entities import LLMUsage
 from core.model_runtime.entities.message_entities import PromptMessage, PromptMessageRole
 from core.model_runtime.entities.model_entities import ModelPropertyKey
 from core.model_runtime.utils.encoders import jsonable_encoder
@@ -13,10 +15,9 @@ from core.prompt.entities.advanced_prompt_entities import ChatModelMessage, Comp
 from core.prompt.simple_prompt_transform import ModelMode
 from core.prompt.utils.prompt_message_util import PromptMessageUtil
 from core.prompt.utils.prompt_template_parser import PromptTemplateParser
-from core.workflow.entities.base_node_data_entities import BaseNodeData
 from core.workflow.entities.node_entities import NodeRunMetadataKey, NodeRunResult, NodeType
 from core.workflow.entities.variable_pool import VariablePool
-from core.workflow.nodes.llm.llm_node import LLMNode
+from core.workflow.nodes.llm.llm_node import LLMNode, ModelInvokeCompleted
 from core.workflow.nodes.question_classifier.entities import QuestionClassifierNodeData
 from core.workflow.nodes.question_classifier.template_prompts import (
     QUESTION_CLASSIFIER_ASSISTANT_PROMPT_1,
@@ -36,9 +37,10 @@ class QuestionClassifierNode(LLMNode):
     _node_data_cls = QuestionClassifierNodeData
     node_type = NodeType.QUESTION_CLASSIFIER
 
-    def _run(self, variable_pool: VariablePool) -> NodeRunResult:
+    def _run(self) -> NodeRunResult:
         node_data: QuestionClassifierNodeData = cast(self._node_data_cls, self.node_data)
         node_data = cast(QuestionClassifierNodeData, node_data)
+        variable_pool = self.graph_runtime_state.variable_pool
 
         # extract variables
         variable = variable_pool.get(node_data.query_variable_selector)
@@ -63,12 +65,23 @@ class QuestionClassifierNode(LLMNode):
         )
 
         # handle invoke result
-        result_text, usage, finish_reason = self._invoke_llm(
+        generator = self._invoke_llm(
             node_data_model=node_data.model,
             model_instance=model_instance,
             prompt_messages=prompt_messages,
             stop=stop
         )
+
+        result_text = ''
+        usage = LLMUsage.empty_usage()
+        finish_reason = None
+        for event in generator:
+            if isinstance(event, ModelInvokeCompleted):
+                result_text = event.text
+                usage = event.usage
+                finish_reason = event.finish_reason
+                break
+
         category_name = node_data.classes[0].name
         category_id = node_data.classes[0].id
         try:
@@ -109,7 +122,8 @@ class QuestionClassifierNode(LLMNode):
                     NodeRunMetadataKey.TOTAL_TOKENS: usage.total_tokens,
                     NodeRunMetadataKey.TOTAL_PRICE: usage.total_price,
                     NodeRunMetadataKey.CURRENCY: usage.currency
-                }
+                },
+                llm_usage=usage
             )
 
         except ValueError as e:
@@ -121,13 +135,24 @@ class QuestionClassifierNode(LLMNode):
                     NodeRunMetadataKey.TOTAL_TOKENS: usage.total_tokens,
                     NodeRunMetadataKey.TOTAL_PRICE: usage.total_price,
                     NodeRunMetadataKey.CURRENCY: usage.currency
-                }
+                },
+                llm_usage=usage
             )
 
     @classmethod
-    def _extract_variable_selector_to_variable_mapping(cls, node_data: BaseNodeData) -> dict[str, list[str]]:
-        node_data = node_data
-        node_data = cast(cls._node_data_cls, node_data)
+    def _extract_variable_selector_to_variable_mapping(
+        cls, 
+        graph_config: Mapping[str, Any], 
+        node_id: str,
+        node_data: QuestionClassifierNodeData
+    ) -> Mapping[str, Sequence[str]]:
+        """
+        Extract variable selector to variable mapping
+        :param graph_config: graph config
+        :param node_id: node id
+        :param node_data: node data
+        :return:
+        """
         variable_mapping = {'query': node_data.query_variable_selector}
         variable_selectors = []
         if node_data.instruction:
@@ -135,6 +160,11 @@ class QuestionClassifierNode(LLMNode):
             variable_selectors.extend(variable_template_parser.extract_variable_selectors())
         for variable_selector in variable_selectors:
             variable_mapping[variable_selector.variable] = variable_selector.value_selector
+
+        variable_mapping = {
+            node_id + '.' + key: value for key, value in variable_mapping.items()
+        }
+        
         return variable_mapping
 
     @classmethod
