@@ -77,6 +77,22 @@ const translation = {
     overwriteAndImport: 'Üzerine Yaz ve İçe Aktar',
     importFailure: 'İçe Aktarma Başarısız',
     importSuccess: 'İçe Aktarma Başarılı',
+    parallelTip: {
+      click: {
+        desc: 'Eklemek için',
+        title: 'Tık',
+      },
+      drag: {
+        title: 'Sürükleme',
+        desc: 'Bağlanmak için',
+      },
+      depthLimit: '{{num}} katmanlarının paralel iç içe geçme katmanı sınırı',
+      limit: 'Paralellik {{num}} dallarıyla sınırlıdır.',
+    },
+    jumpToNode: 'Bu düğüme atla',
+    addParallelNode: 'Paralel Düğüm Ekle',
+    disconnect: 'Ayırmak',
+    parallelRun: 'Paralel Koşu',
   },
   env: {
     envPanelTitle: 'Çevre Değişkenleri',
