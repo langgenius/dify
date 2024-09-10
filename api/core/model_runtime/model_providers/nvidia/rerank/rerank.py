@@ -52,7 +52,6 @@ class NvidiaRerankModel(RerankModel):
             payload = {
                 "model": model,
                 "query": {"text": query},
-                "top_n": 1,
                 "passages": [{"text": doc} for doc in docs],
             }
             session = requests.Session()
