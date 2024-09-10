@@ -41,6 +41,7 @@ import { useAppContext } from '@/context/app-context'
 import useTimestamp from '@/hooks/use-timestamp'
 import Tooltip from '@/app/components/base/tooltip'
 import { CopyIcon } from '@/app/components/base/copy-icon'
+import { buildChatItemTree, getThreadMessages } from '@/app/components/base/chat/utils'
 
 dayjs.extend(utc)
 dayjs.extend(timezone)
@@ -90,6 +91,7 @@ const getFormattedChatList = (messages: ChatMessage[], conversationId: string, t
       content: item.inputs.query || item.inputs.default_input || item.query, // text generation: item.inputs.query; chat: item.query
       isAnswer: false,
       message_files: item.message_files?.filter((file: any) => file.belongs_to === 'user') || [],
+      parentMessageId: item.parent_message_id || undefined,
     })
     newChatList.push({
       id: item.id,
@@ -144,6 +146,7 @@ const getFormattedChatList = (messages: ChatMessage[], conversationId: string, t
 
         return undefined
       })(),
+      parentMessageId: `question-${item.id}`,
     })
   })
   return newChatList
@@ -170,48 +173,62 @@ function DetailPanel<T extends ChatConversationFullDetailResponse | CompletionCo
     currentLogModalActiveTab: state.currentLogModalActiveTab,
   })))
   const { t } = useTranslation()
-  const [items, setItems] = React.useState<IChatItem[]>([])
+
   const [hasMore, setHasMore] = useState(true)
   const [varValues, setVarValues] = useState<Record<string, string>>({})
-  const fetchData = async () => {
+
+  const [allChatItems, setAllChatItems] = useState<IChatItem[]>([])
+  const [threadChatItems, setThreadChatItems] = useState<IChatItem[]>([])
+
+  const fetchData = useCallback(async () => {
     try {
       if (!hasMore)
         return
+
       const params: ChatMessagesRequest = {
         conversation_id: detail.id,
         limit: 10,
       }
-      if (items?.[0]?.id)
-        params.first_id = items?.[0]?.id.replace('question-', '')
-
+      if (allChatItems.at(-1)?.id)
+        params.first_id = allChatItems.at(-1)?.id.replace('question-', '')
       const messageRes = await fetchChatMessages({
         url: `/apps/${appDetail?.id}/chat-messages`,
         params,
       })
       if (messageRes.data.length > 0) {
-        const varValues = messageRes.data[0].inputs
+        const varValues = messageRes.data.at(-1)!.inputs
         setVarValues(varValues)
       }
-      const newItems = [...getFormattedChatList(messageRes.data, detail.id, timezone!, t('appLog.dateTimeFormat') as string), ...items]
+      setHasMore(messageRes.has_more)
+
+      const newAllChatItems = [
+        ...getFormattedChatList(messageRes.data, detail.id, timezone!, t('appLog.dateTimeFormat') as string),
+        ...allChatItems,
+      ]
+      console.log(newAllChatItems)
+      setAllChatItems(newAllChatItems)
+
+      let tree = buildChatItemTree(newAllChatItems)
       if (messageRes.has_more === false && detail?.model_config?.configs?.introduction) {
-        newItems.unshift({
+        tree = [{
           id: 'introduction',
           isAnswer: true,
           isOpeningStatement: true,
           content: detail?.model_config?.configs?.introduction ?? 'hello',
           feedbackDisabled: true,
-        })
+          children: tree,
+        }]
       }
-      setItems(newItems)
-      setHasMore(messageRes.has_more)
+
+      setThreadChatItems(getThreadMessages(tree, newAllChatItems.at(-1)?.id))
     }
     catch (err) {
       console.error(err)
     }
-  }
+  }, [allChatItems, detail.id, hasMore, timezone, t, appDetail, detail?.model_config?.configs?.introduction])
 
   const handleAnnotationEdited = useCallback((query: string, answer: string, index: number) => {
-    setItems(items.map((item, i) => {
+    setAllChatItems(allChatItems.map((item, i) => {
       if (i === index - 1) {
         return {
           ...item,
@@ -232,9 +249,9 @@ function DetailPanel<T extends ChatConversationFullDetailResponse | CompletionCo
       }
       return item
     }))
-  }, [items])
+  }, [allChatItems])
   const handleAnnotationAdded = useCallback((annotationId: string, authorName: string, query: string, answer: string, index: number) => {
-    setItems(items.map((item, i) => {
+    setAllChatItems(allChatItems.map((item, i) => {
       if (i === index - 1) {
         return {
           ...item,
@@ -262,9 +279,9 @@ function DetailPanel<T extends ChatConversationFullDetailResponse | CompletionCo
       }
       return item
     }))
-  }, [items])
+  }, [allChatItems])
   const handleAnnotationRemoved = useCallback((index: number) => {
-    setItems(items.map((item, i) => {
+    setAllChatItems(allChatItems.map((item, i) => {
       if (i === index) {
         return {
           ...item,
@@ -274,12 +291,12 @@ function DetailPanel<T extends ChatConversationFullDetailResponse | CompletionCo
       }
       return item
     }))
-  }, [items])
+  }, [allChatItems])
 
   useEffect(() => {
     if (appDetail?.id && detail.id && appDetail?.mode !== 'completion')
       fetchData()
-  }, [appDetail?.id, detail.id, appDetail?.mode])
+  }, [appDetail?.id, detail.id, appDetail?.mode, fetchData])
 
   const isChatMode = appDetail?.mode !== 'completion'
   const isAdvanced = appDetail?.mode === 'advanced-chat'
@@ -435,7 +452,7 @@ function DetailPanel<T extends ChatConversationFullDetailResponse | CompletionCo
             siteInfo={null}
           />
         </div>
-        : items.length < 8
+        : threadChatItems.length < 8
           ? <div className="pt-4 mb-4">
             <Chat
               config={{
@@ -449,7 +466,7 @@ function DetailPanel<T extends ChatConversationFullDetailResponse | CompletionCo
                 },
                 supportFeedback: true,
               } as any}
-              chatList={items}
+              chatList={threadChatItems}
               onAnnotationAdded={handleAnnotationAdded}
               onAnnotationEdited={handleAnnotationEdited}
               onAnnotationRemoved={handleAnnotationRemoved}
@@ -472,7 +489,7 @@ function DetailPanel<T extends ChatConversationFullDetailResponse | CompletionCo
             {/* Put the scroll bar always on the bottom */}
             <InfiniteScroll
               scrollableTarget="scrollableDiv"
-              dataLength={items.length}
+              dataLength={allChatItems.length}
               next={fetchData}
               hasMore={hasMore}
               loader={<div className='text-center text-gray-400 text-xs'>{t('appLog.detail.loading')}...</div>}
@@ -503,7 +520,7 @@ function DetailPanel<T extends ChatConversationFullDetailResponse | CompletionCo
                   },
                   supportFeedback: true,
                 } as any}
-                chatList={items}
+                chatList={threadChatItems}
                 onAnnotationAdded={handleAnnotationAdded}
                 onAnnotationEdited={handleAnnotationEdited}
                 onAnnotationRemoved={handleAnnotationRemoved}

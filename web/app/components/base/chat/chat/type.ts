@@ -95,6 +95,9 @@ export type IChatItem = {
   // for agent log
   conversationId?: string
   input?: any
+  parentMessageId?: string | null
+  siblingCount?: number
+  siblingIndex?: number
 }
 
 export type Metadata = {

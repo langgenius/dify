@@ -1,6 +1,7 @@
 import { addFileInfos, sortAgentSorts } from '../../tools/utils'
 import { UUID_NIL } from './constants'
-import type { ChatItem } from './types'
+import type { IChatItem } from './chat/type'
+import type { ChatItem, ChatItemInTree } from './types'
 
 async function decodeBase64AndDecompress(base64String: string) {
   const binaryString = atob(base64String)
@@ -69,7 +70,97 @@ function getPrevChatList(fetchedMessages: any[]) {
   return ret.reverse()
 }
 
+function buildChatItemTree(allMessages: IChatItem[]): ChatItemInTree[] {
+  const map = new Map<string, ChatItemInTree>()
+  let rootNodes: ChatItemInTree[] = []
+  const childrenCount: Record<string, number> = {}
+
+  allMessages.forEach((item) => {
+    map.set(item.id, {
+      ...item,
+      children: [],
+      siblingCount: 0,
+      siblingIndex: 0,
+    })
+  })
+
+  for (let i = 0; i < allMessages.length; i += 2) {
+    const questionItem = allMessages[i + 1]!
+    const answerItem = allMessages[i]!
+
+    const parentMessageId = questionItem.parentMessageId
+
+    const questionItemInTree = map.get(questionItem.id)!
+    const answerItemInTree = map.get(answerItem.id)!
+
+    questionItemInTree.children!.unshift(answerItemInTree)
+    questionItemInTree.siblingCount = (questionItemInTree.siblingCount || 0) + 1
+    answerItemInTree.siblingCount = (answerItemInTree.siblingCount || 0) + 1
+
+    if (!parentMessageId)
+      rootNodes.unshift(questionItemInTree)
+    else if (parentMessageId && parentMessageId !== UUID_NIL)
+      map.get(parentMessageId)?.children!.unshift(questionItemInTree)
+  }
+
+  // legacy message compat
+  allMessages.forEach((item) => {
+    // if a question message's `parentMessageId` is UUID_NIL,
+    // then this message pair is legacy, and should be root node for the tree
+    if (!item.isAnswer && item.parentMessageId === UUID_NIL) {
+      const curr = map.get(item.id)
+      if (curr) {
+        const correspondingAnswer = curr.children![0]
+        correspondingAnswer.children?.unshift(...rootNodes)
+        rootNodes = [curr]
+      }
+    }
+  })
+
+  return rootNodes
+}
+
+function getThreadMessages(tree: ChatItemInTree[], targetMessageId?: string): ChatItemInTree[] {
+  let ret: ChatItemInTree[] = []
+  let targetNode: ChatItemInTree | undefined
+
+  // find path to the target message
+  const stack = tree.map(rootNode => ({
+    node: rootNode,
+    path: [rootNode],
+  }))
+  while (stack.length > 0) {
+    const { node, path } = stack.pop()!
+    if (node.id === targetMessageId) {
+      targetNode = node
+      ret = path
+      break
+    }
+    if (node.children) {
+      stack.push(...node.children.map(child => ({
+        node: child,
+        path: [...path, child],
+      })))
+    }
+  }
+
+  // append all descendant messages to the path
+  if (targetNode) {
+    const stack = [targetNode]
+    while (stack.length > 0) {
+      const node = stack.pop()!
+      if (node !== targetNode)
+        ret.push(node)
+      if (node.children?.length)
+        stack.push(node.children.at(-1)!)
+    }
+  }
+  return ret
+}
+
 export {
   getProcessedInputsFromUrlParams,
   getPrevChatList,
+  buildChatItemTree,
+  getThreadMessages,
 }

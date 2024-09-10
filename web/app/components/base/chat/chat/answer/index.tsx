@@ -23,6 +23,7 @@ import { EditTitle } from '@/app/components/app/annotation/edit-annotation-modal
 import type { Emoji } from '@/app/components/tools/types'
 import type { AppData } from '@/models/share'
 import AnswerIcon from '@/app/components/base/answer-icon'
+import { ChevronRight } from '@/app/components/base/icons/src/vender/line/arrows'
 
 type AnswerProps = {
   item: ChatItem
@@ -192,6 +193,15 @@ const Answer: FC<AnswerProps> = ({
                 <Citation data={citation} showHitInfo={config?.supportCitationHitInfo} />
               )
             }
+            <div className="pt-3.5 flex justify-center items-center text-sm">
+              <button className="">
+                <ChevronRight className="w-[14px] h-[14px] rotate-180 text-gray-500" />
+              </button>
+              <span className="px-2 text-xs text-gray-700">2 / 2</span>
+              <button className="opacity-65">
+                <ChevronRight className="w-[14px] h-[14px] text-gray-500" />
+              </button>
+            </div>
           </div>
         </div>
         <More more={more} />
