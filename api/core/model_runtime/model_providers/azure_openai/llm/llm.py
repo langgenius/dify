@@ -416,8 +416,6 @@ class AzureOpenAILargeLanguageModel(_CommonAzureOpenAI, LargeLanguageModel):
                 )
             )
 
-            index += 0
-
         # calculate num tokens
         prompt_tokens = self._num_tokens_from_messages(credentials, prompt_messages, tools)
 
