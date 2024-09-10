@@ -35,7 +35,7 @@ import { DataSourceType } from '@/models/datasets'
 import useBreakpoints, { MediaType } from '@/hooks/use-breakpoints'
 import { LanguagesSupported } from '@/i18n/language'
 import { useStore } from '@/app/components/app/store'
-import { AiText, ChatBot, CuteRobote } from '@/app/components/base/icons/src/vender/solid/communication'
+import { AiText, ChatBot, CuteRobot } from '@/app/components/base/icons/src/vender/solid/communication'
 import { Route } from '@/app/components/base/icons/src/vender/solid/mapsAndTravel'
 import { getLocaleOnClient } from '@/i18n'
 import { useAppContext } from '@/context/app-context'
@@ -67,7 +67,7 @@ const LikedItem = ({
               <ChatBot className='w-2.5 h-2.5 text-[#1570EF]' />
             )}
             {detail.mode === 'agent-chat' && (
-              <CuteRobote className='w-2.5 h-2.5 text-indigo-600' />
+              <CuteRobot className='w-2.5 h-2.5 text-indigo-600' />
             )}
             {detail.mode === 'chat' && (
               <ChatBot className='w-2.5 h-2.5 text-[#1570EF]' />

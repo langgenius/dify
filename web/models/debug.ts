@@ -215,7 +215,7 @@ export type LogSessionListResponse = {
     query: string // user's query question
     message: string // prompt send to LLM
     answer: string
-    creat_at: string
+    created_at: string
   }[]
   total: number
   page: number
@@ -224,7 +224,7 @@ export type LogSessionListResponse = {
 // log session detail and debug
 export type LogSessionDetailResponse = {
   id: string
-  cnversation_id: string
+  conversation_id: string
   model_provider: string
   query: string
   inputs: Record<string, string | number | object>[]

@@ -6,10 +6,12 @@ from flask import Flask
 from extensions.storage.aliyun_storage import AliyunStorage
 from extensions.storage.azure_storage import AzureStorage
 from extensions.storage.google_storage import GoogleStorage
+from extensions.storage.huawei_storage import HuaweiStorage
 from extensions.storage.local_storage import LocalStorage
 from extensions.storage.oci_storage import OCIStorage
 from extensions.storage.s3_storage import S3Storage
 from extensions.storage.tencent_storage import TencentStorage
+from extensions.storage.volcengine_storage import VolcengineStorage
 
 
 class Storage:
@@ -30,6 +32,10 @@ class Storage:
             self.storage_runner = TencentStorage(app=app)
         elif storage_type == "oci-storage":
             self.storage_runner = OCIStorage(app=app)
+        elif storage_type == "huawei-obs":
+            self.storage_runner = HuaweiStorage(app=app)
+        elif storage_type == "volcengine-tos":
+            self.storage_runner = VolcengineStorage(app=app)
         else:
             self.storage_runner = LocalStorage(app=app)
 

@@ -32,7 +32,7 @@ import {
 } from '@/app/components/base/icons/src/vender/line/time'
 import { AlertTriangle } from '@/app/components/base/icons/src/vender/line/alertsAndFeedback'
 import {
-  fetcChatRunHistory,
+  fetchChatRunHistory,
   fetchWorkflowRunHistory,
 } from '@/service/workflow'
 import Loading from '@/app/components/base/loading'
@@ -67,7 +67,7 @@ const ViewHistory = ({
   const historyWorkflowData = useStore(s => s.historyWorkflowData)
   const { handleBackupDraft } = useWorkflowRun()
   const { data: runList, isLoading: runListLoading } = useSWR((appDetail && !isChatMode && open) ? `/apps/${appDetail.id}/workflow-runs` : null, fetchWorkflowRunHistory)
-  const { data: chatList, isLoading: chatListLoading } = useSWR((appDetail && isChatMode && open) ? `/apps/${appDetail.id}/advanced-chat/workflow-runs` : null, fetcChatRunHistory)
+  const { data: chatList, isLoading: chatListLoading } = useSWR((appDetail && isChatMode && open) ? `/apps/${appDetail.id}/advanced-chat/workflow-runs` : null, fetchChatRunHistory)
 
   const data = isChatMode ? chatList : runList
   const isLoading = isChatMode ? chatListLoading : runListLoading

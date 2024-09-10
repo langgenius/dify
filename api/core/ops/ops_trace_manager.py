@@ -264,6 +264,19 @@ class OpsTraceManager:
         tracing_config = config_type(**tracing_config)
         return trace_instance(tracing_config).get_project_key()
 
+    @staticmethod
+    def get_trace_config_project_url(tracing_config: dict, tracing_provider: str):
+        """
+        get trace config is project key
+        :param tracing_config: tracing config
+        :param tracing_provider: tracing provider
+        :return:
+        """
+        config_type, trace_instance = provider_config_map[tracing_provider]['config_class'], \
+            provider_config_map[tracing_provider]['trace_instance']
+        tracing_config = config_type(**tracing_config)
+        return trace_instance(tracing_config).get_project_url()
+
 
 class TraceTask:
     def __init__(

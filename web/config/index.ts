@@ -103,16 +103,16 @@ export const DEFAULT_PARAGRAPH_VALUE_MAX_LEN = 1000
 export const zhRegex = /^[\u4E00-\u9FA5]$/m
 export const emojiRegex = /^[\uD800-\uDBFF][\uDC00-\uDFFF]$/m
 export const emailRegex = /^[\w.!#$%&'*+\-/=?^{|}~]+@([\w-]+\.)+[\w-]{2,}$/m
-const MAX_ZN_VAR_NAME_LENGHT = 8
-const MAX_EN_VAR_VALUE_LENGHT = 30
+const MAX_ZN_VAR_NAME_LENGTH = 8
+const MAX_EN_VAR_VALUE_LENGTH = 30
 export const getMaxVarNameLength = (value: string) => {
   if (zhRegex.test(value))
-    return MAX_ZN_VAR_NAME_LENGHT
+    return MAX_ZN_VAR_NAME_LENGTH
 
-  return MAX_EN_VAR_VALUE_LENGHT
+  return MAX_EN_VAR_VALUE_LENGTH
 }
 
-export const MAX_VAR_KEY_LENGHT = 30
+export const MAX_VAR_KEY_LENGTH = 30
 
 export const MAX_PROMPT_MESSAGE_LENGTH = 10
 

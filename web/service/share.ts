@@ -1,9 +1,9 @@
-import type { IOnCompleted, IOnData, IOnError, IOnFile, IOnIterationFinished, IOnIterationNexted, IOnIterationStarted, IOnMessageEnd, IOnMessageReplace, IOnNodeFinished, IOnNodeStarted, IOnTTSChunk, IOnTTSEnd, IOnTextChunk, IOnTextReplace, IOnThought, IOnWorkflowFinished, IOnWorkflowStarted } from './base'
+import type { IOnCompleted, IOnData, IOnError, IOnFile, IOnIterationFinished, IOnIterationNext, IOnIterationStarted, IOnMessageEnd, IOnMessageReplace, IOnNodeFinished, IOnNodeStarted, IOnTTSChunk, IOnTTSEnd, IOnTextChunk, IOnTextReplace, IOnThought, IOnWorkflowFinished, IOnWorkflowStarted } from './base'
 import {
   del as consoleDel, get as consoleGet, patch as consolePatch, post as consolePost,
   delPublic as del, getPublic as get, patchPublic as patch, postPublic as post, ssePost,
 } from './base'
-import type { Feedbacktype } from '@/app/components/base/chat/chat/type'
+import type { FeedbackType } from '@/app/components/base/chat/chat/type'
 import type {
   AppConversationData,
   AppData,
@@ -86,7 +86,7 @@ export const sendWorkflowMessage = async (
     onNodeFinished: IOnNodeFinished
     onWorkflowFinished: IOnWorkflowFinished
     onIterationStart: IOnIterationStarted
-    onIterationNext: IOnIterationNexted
+    onIterationNext: IOnIterationNext
     onIterationFinish: IOnIterationFinished
     onTextChunk: IOnTextChunk
     onTextReplace: IOnTextReplace
@@ -180,7 +180,7 @@ export const fetchAppMeta = async (isInstalledApp: boolean, installedAppId = '')
   return (getAction('get', isInstalledApp))(getUrl('meta', isInstalledApp, installedAppId)) as Promise<AppMeta>
 }
 
-export const updateFeedback = async ({ url, body }: { url: string; body: Feedbacktype }, isInstalledApp: boolean, installedAppId = '') => {
+export const updateFeedback = async ({ url, body }: { url: string; body: FeedbackType }, isInstalledApp: boolean, installedAppId = '') => {
   return (getAction('post', isInstalledApp))(getUrl(url, isInstalledApp, installedAppId), { body })
 }
 

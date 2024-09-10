@@ -27,6 +27,8 @@ const translation = {
       longDescription: ' despre metoda de recuperare, o puteți schimba în orice moment în setările cunoștințelor.',
     },
     save: 'Salvare',
+    permissionsInvitedMembers: 'Membri parțiali ai echipei',
+    me: '(Tu)',
   },
 }
 

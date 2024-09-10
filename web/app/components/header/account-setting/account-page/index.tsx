@@ -90,7 +90,7 @@ export default function AccountPage() {
     setPassword('')
     setConfirmPassword('')
   }
-  const handleSavePassowrd = async () => {
+  const handleSavePassword = async () => {
     if (!valid())
       return
     try {
@@ -235,7 +235,7 @@ export default function AccountPage() {
             <Button
               disabled={editing}
               variant='primary'
-              onClick={handleSavePassowrd}
+              onClick={handleSavePassword}
             >
               {userProfile.is_password_set ? t('common.operation.reset') : t('common.operation.save')}
             </Button>

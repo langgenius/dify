@@ -29,7 +29,7 @@ class OpenweatherTool(BuiltinTool):
             # request URL
             url = "https://api.openweathermap.org/data/2.5/weather"
 
-            # request parmas
+            # request params
             params = {
                 "q": city,
                 "appid": self.runtime.credentials.get("api_key"),
