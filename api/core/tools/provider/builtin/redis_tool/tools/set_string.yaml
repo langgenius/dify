@@ -20,11 +20,10 @@ parameters:
       zh_Hans: key
       pt_BR: key
     human_description:
-      en_US: key
-      zh_Hans: key
-      pt_BR: key
-    llm_description: key
-    form: llm
+      en_US: The key of a Redis string set
+      zh_Hans: redis存储string类型的key
+      pt_BR: The key of a Redis string set
+    form: form
   - name: value
     type: string
     required: true
@@ -33,10 +32,10 @@ parameters:
       zh_Hans: value
       pt_BR: value
     human_description:
-      en_US: value
-      zh_Hans: value
-      pt_BR: value
-    llm_description: value
+      en_US: The value of a Redis string set
+      zh_Hans: redis存储string类型的value
+      pt_BR: The value of a Redis string set
+    llm_description: The value of a Redis string set
     form: llm
   - name: expiration
     type: number

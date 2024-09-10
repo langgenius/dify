@@ -20,8 +20,8 @@ parameters:
       zh_Hans: key
       pt_BR: key
     human_description:
-      en_US: key
-      zh_Hans: key
-      pt_BR: key
-    llm_description: key
+      en_US: The key of a Redis string get
+      zh_Hans: redis查询string类型数据的key
+      pt_BR: The key of a Redis string get
+    llm_description: The key of a Redis string get
     form: llm
