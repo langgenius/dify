@@ -30,29 +30,25 @@ class WorkflowToolProviderController(ToolProviderController):
     provider_id: str
 
     @classmethod
-    def from_db(cls, db_provider: WorkflowToolProvider) -> 'WorkflowToolProviderController':
+    def from_db(cls, db_provider: WorkflowToolProvider) -> "WorkflowToolProviderController":
         app = db_provider.app
 
         if not app:
-            raise ValueError('app not found')
+            raise ValueError("app not found")
 
-        controller = WorkflowToolProviderController(**{
-            'identity': {
-                'author': db_provider.user.name if db_provider.user_id and db_provider.user else '',
-                'name': db_provider.label,
-                'label': {
-                    'en_US': db_provider.label,
-                    'zh_Hans': db_provider.label
+        controller = WorkflowToolProviderController(
+            **{
+                "identity": {
+                    "author": db_provider.user.name if db_provider.user_id and db_provider.user else "",
+                    "name": db_provider.label,
+                    "label": {"en_US": db_provider.label, "zh_Hans": db_provider.label},
+                    "description": {"en_US": db_provider.description, "zh_Hans": db_provider.description},
+                    "icon": db_provider.icon,
                 },
-                'description': {
-                    'en_US': db_provider.description,
-                    'zh_Hans': db_provider.description
-                },
-                'icon': db_provider.icon,
-            },
-            'credentials_schema': {},
-            'provider_id': db_provider.id or '',
-        })
+                "credentials_schema": {},
+                "provider_id": db_provider.id or "",
+            }
+        )
 
         # init tools
 
@@ -66,25 +62,23 @@ class WorkflowToolProviderController(ToolProviderController):
 
     def _get_db_provider_tool(self, db_provider: WorkflowToolProvider, app: App) -> WorkflowTool:
         """
-            get db provider tool
-            :param db_provider: the db provider
-            :param app: the app
-            :return: the tool
+        get db provider tool
+        :param db_provider: the db provider
+        :param app: the app
+        :return: the tool
         """
-        workflow: Workflow = db.session.query(Workflow).filter(
-            Workflow.app_id == db_provider.app_id,
-            Workflow.version == db_provider.version
-        ).first()
+        workflow: Workflow = (
+            db.session.query(Workflow)
+            .filter(Workflow.app_id == db_provider.app_id, Workflow.version == db_provider.version)
+            .first()
+        )
         if not workflow:
-            raise ValueError('workflow not found')
+            raise ValueError("workflow not found")
 
         # fetch start node
         graph: dict = workflow.graph_dict
         features_dict: dict = workflow.features_dict
-        features = WorkflowAppConfigManager.convert_features(
-            config_dict=features_dict,
-            app_mode=AppMode.WORKFLOW
-        )
+        features = WorkflowAppConfigManager.convert_features(config_dict=features_dict, app_mode=AppMode.WORKFLOW)
 
         parameters = db_provider.parameter_configurations
         variables = WorkflowToolConfigurationUtils.get_workflow_graph_variables(graph)
@@ -101,51 +95,34 @@ class WorkflowToolProviderController(ToolProviderController):
                 parameter_type = None
                 options = None
                 if variable.type not in VARIABLE_TO_PARAMETER_TYPE_MAPPING:
-                    raise ValueError(f'unsupported variable type {variable.type}')
+                    raise ValueError(f"unsupported variable type {variable.type}")
                 parameter_type = VARIABLE_TO_PARAMETER_TYPE_MAPPING[variable.type]
 
                 if variable.type == VariableEntityType.SELECT and variable.options:
                     options = [
-                        ToolParameterOption(
-                            value=option,
-                            label=I18nObject(
-                                en_US=option,
-                                zh_Hans=option
-                            )
-                        ) for option in variable.options
+                        ToolParameterOption(value=option, label=I18nObject(en_US=option, zh_Hans=option))
+                        for option in variable.options
                     ]
 
                 workflow_tool_parameters.append(
                     ToolParameter(
                         name=parameter.name,
-                        label=I18nObject(
-                            en_US=variable.label,
-                            zh_Hans=variable.label
-                        ),
-                        human_description=I18nObject(
-                            en_US=parameter.description,
-                            zh_Hans=parameter.description
-                        ),
+                        label=I18nObject(en_US=variable.label, zh_Hans=variable.label),
+                        human_description=I18nObject(en_US=parameter.description, zh_Hans=parameter.description),
                         type=parameter_type,
                         form=parameter.form,
                         llm_description=parameter.description,
                         required=variable.required,
                         options=options,
-                        default=variable.default
+                        default=variable.default,
                     )
                 )
             elif features.file_upload:
                 workflow_tool_parameters.append(
                     ToolParameter(
                         name=parameter.name,
-                        label=I18nObject(
-                            en_US=parameter.name,
-                            zh_Hans=parameter.name
-                        ),
-                        human_description=I18nObject(
-                            en_US=parameter.description,
-                            zh_Hans=parameter.description
-                        ),
+                        label=I18nObject(en_US=parameter.name, zh_Hans=parameter.name),
+                        human_description=I18nObject(en_US=parameter.description, zh_Hans=parameter.description),
                         type=ToolParameter.ToolParameterType.FILE,
                         llm_description=parameter.description,
                         required=False,
@@ -153,53 +130,51 @@ class WorkflowToolProviderController(ToolProviderController):
                     )
                 )
             else:
-                raise ValueError('variable not found')
+                raise ValueError("variable not found")
 
         return WorkflowTool(
             identity=ToolIdentity(
-                author=user.name if user else '',
+                author=user.name if user else "",
                 name=db_provider.name,
-                label=I18nObject(
-                    en_US=db_provider.label,
-                    zh_Hans=db_provider.label
-                ),
+                label=I18nObject(en_US=db_provider.label, zh_Hans=db_provider.label),
                 provider=self.provider_id,
                 icon=db_provider.icon,
             ),
             description=ToolDescription(
-                human=I18nObject(
-                    en_US=db_provider.description,
-                    zh_Hans=db_provider.description
-                ),
+                human=I18nObject(en_US=db_provider.description, zh_Hans=db_provider.description),
                 llm=db_provider.description,
             ),
             parameters=workflow_tool_parameters,
             is_team_authorization=True,
             workflow_app_id=app.id,
             workflow_entities={
-                'app': app,
-                'workflow': workflow,
+                "app": app,
+                "workflow": workflow,
             },
             version=db_provider.version,
             workflow_call_depth=0,
-            label=db_provider.label
+            label=db_provider.label,
         )
 
     def get_tools(self, user_id: str, tenant_id: str) -> list[WorkflowTool]:
         """
-            fetch tools from database
+        fetch tools from database
 
-            :param user_id: the user id
-            :param tenant_id: the tenant id
-            :return: the tools
+        :param user_id: the user id
+        :param tenant_id: the tenant id
+        :return: the tools
         """
         if self.tools is not None:
             return self.tools
 
-        db_providers: WorkflowToolProvider = db.session.query(WorkflowToolProvider).filter(
-            WorkflowToolProvider.tenant_id == tenant_id,
-            WorkflowToolProvider.app_id == self.provider_id,
-        ).first()
+        db_providers: WorkflowToolProvider = (
+            db.session.query(WorkflowToolProvider)
+            .filter(
+                WorkflowToolProvider.tenant_id == tenant_id,
+                WorkflowToolProvider.app_id == self.provider_id,
+            )
+            .first()
+        )
 
         if not db_providers:
             return []
@@ -210,10 +185,10 @@ class WorkflowToolProviderController(ToolProviderController):
 
     def get_tool(self, tool_name: str) -> Optional[WorkflowTool]:
         """
-            get tool by name
+        get tool by name
 
-            :param tool_name: the name of the tool
-            :return: the tool
+        :param tool_name: the name of the tool
+        :return: the tool
         """
         if self.tools is None:
             return None

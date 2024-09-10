@@ -55,9 +55,7 @@ class BaseDocumentTransformer(ABC):
     """
 
     @abstractmethod
-    def transform_documents(
-        self, documents: Sequence[Document], **kwargs: Any
-    ) -> Sequence[Document]:
+    def transform_documents(self, documents: Sequence[Document], **kwargs: Any) -> Sequence[Document]:
         """Transform a list of documents.
 
         Args:
@@ -68,9 +66,7 @@ class BaseDocumentTransformer(ABC):
         """
 
     @abstractmethod
-    async def atransform_documents(
-        self, documents: Sequence[Document], **kwargs: Any
-    ) -> Sequence[Document]:
+    async def atransform_documents(self, documents: Sequence[Document], **kwargs: Any) -> Sequence[Document]:
         """Asynchronously transform a list of documents.
 
         Args:

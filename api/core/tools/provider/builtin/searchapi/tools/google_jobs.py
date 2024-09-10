@@ -7,6 +7,7 @@ from core.tools.tool.builtin_tool import BuiltinTool
 
 SEARCH_API_URL = "https://www.searchapi.io/api/v1/search"
 
+
 class SearchAPI:
     """
     SearchAPI tool provider.
@@ -50,7 +51,16 @@ class SearchAPI:
         if type == "text":
             if "jobs" in res.keys() and "title" in res["jobs"][0].keys():
                 for item in res["jobs"]:
-                    toret += "title: " + item["title"] + "\n" + "company_name: " + item["company_name"] + "content: " + item["description"] + "\n"
+                    toret += (
+                        "title: "
+                        + item["title"]
+                        + "\n"
+                        + "company_name: "
+                        + item["company_name"]
+                        + "content: "
+                        + item["description"]
+                        + "\n"
+                    )
             if toret == "":
                 toret = "No good search result found"
 
@@ -62,16 +72,18 @@ class SearchAPI:
                 toret = "No good search result found"
         return toret
 
+
 class GoogleJobsTool(BuiltinTool):
-    def _invoke(self,
-                user_id: str,
-                tool_parameters: dict[str, Any],
-        ) -> Union[ToolInvokeMessage, list[ToolInvokeMessage]]:
+    def _invoke(
+        self,
+        user_id: str,
+        tool_parameters: dict[str, Any],
+    ) -> Union[ToolInvokeMessage, list[ToolInvokeMessage]]:
         """
         Invoke the SearchApi tool.
         """
-        query = tool_parameters['query']
-        result_type = tool_parameters['result_type']
+        query = tool_parameters["query"]
+        result_type = tool_parameters["result_type"]
         is_remote = tool_parameters.get("is_remote")
         google_domain = tool_parameters.get("google_domain", "google.com")
         gl = tool_parameters.get("gl", "us")
@@ -80,9 +92,11 @@ class GoogleJobsTool(BuiltinTool):
 
         ltype = 1 if is_remote else None
 
-        api_key = self.runtime.credentials['searchapi_api_key']
-        result = SearchAPI(api_key).run(query, result_type=result_type, google_domain=google_domain, gl=gl, hl=hl, location=location, ltype=ltype)
+        api_key = self.runtime.credentials["searchapi_api_key"]
+        result = SearchAPI(api_key).run(
+            query, result_type=result_type, google_domain=google_domain, gl=gl, hl=hl, location=location, ltype=ltype
+        )
 
-        if result_type == 'text':
+        if result_type == "text":
             return self.create_text_message(text=result)
         return self.create_link_message(link=result)

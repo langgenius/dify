@@ -20,19 +20,19 @@ def get_message_data(message_id):
 
 @contextmanager
 def measure_time():
-    timing_info = {'start': datetime.now(), 'end': None}
+    timing_info = {"start": datetime.now(), "end": None}
     try:
         yield timing_info
     finally:
-        timing_info['end'] = datetime.now()
+        timing_info["end"] = datetime.now()
 
 
 def replace_text_with_content(data):
     if isinstance(data, dict):
         new_data = {}
         for key, value in data.items():
-            if key == 'text':
-                new_data['content'] = value
+            if key == "text":
+                new_data["content"] = value
             else:
                 new_data[key] = replace_text_with_content(value)
         return new_data

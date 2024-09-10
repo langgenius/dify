@@ -12,17 +12,27 @@ from core.rag.rerank.weight_rerank import WeightRerankRunner
 
 
 class DataPostProcessor:
-    """Interface for data post-processing document.
-    """
+    """Interface for data post-processing document."""
 
-    def __init__(self, tenant_id: str, reranking_mode: str,
-                 reranking_model: Optional[dict] = None, weights: Optional[dict] = None,
-                 reorder_enabled: bool = False):
+    def __init__(
+        self,
+        tenant_id: str,
+        reranking_mode: str,
+        reranking_model: Optional[dict] = None,
+        weights: Optional[dict] = None,
+        reorder_enabled: bool = False,
+    ):
         self.rerank_runner = self._get_rerank_runner(reranking_mode, tenant_id, reranking_model, weights)
         self.reorder_runner = self._get_reorder_runner(reorder_enabled)
 
-    def invoke(self, query: str, documents: list[Document], score_threshold: Optional[float] = None,
-               top_n: Optional[int] = None, user: Optional[str] = None) -> list[Document]:
+    def invoke(
+        self,
+        query: str,
+        documents: list[Document],
+        score_threshold: Optional[float] = None,
+        top_n: Optional[int] = None,
+        user: Optional[str] = None,
+    ) -> list[Document]:
         if self.rerank_runner:
             documents = self.rerank_runner.run(query, documents, score_threshold, top_n, user)
 
@@ -31,21 +41,26 @@ class DataPostProcessor:
 
         return documents
 
-    def _get_rerank_runner(self, reranking_mode: str, tenant_id: str, reranking_model: Optional[dict] = None,
-                           weights: Optional[dict] = None) -> Optional[RerankModelRunner | WeightRerankRunner]:
+    def _get_rerank_runner(
+        self,
+        reranking_mode: str,
+        tenant_id: str,
+        reranking_model: Optional[dict] = None,
+        weights: Optional[dict] = None,
+    ) -> Optional[RerankModelRunner | WeightRerankRunner]:
         if reranking_mode == RerankMode.WEIGHTED_SCORE.value and weights:
             return WeightRerankRunner(
                 tenant_id,
                 Weights(
                     vector_setting=VectorSetting(
-                        vector_weight=weights['vector_setting']['vector_weight'],
-                        embedding_provider_name=weights['vector_setting']['embedding_provider_name'],
-                        embedding_model_name=weights['vector_setting']['embedding_model_name'],
+                        vector_weight=weights["vector_setting"]["vector_weight"],
+                        embedding_provider_name=weights["vector_setting"]["embedding_provider_name"],
+                        embedding_model_name=weights["vector_setting"]["embedding_model_name"],
                     ),
                     keyword_setting=KeywordSetting(
-                        keyword_weight=weights['keyword_setting']['keyword_weight'],
-                    )
-                )
+                        keyword_weight=weights["keyword_setting"]["keyword_weight"],
+                    ),
+                ),
             )
         elif reranking_mode == RerankMode.RERANKING_MODEL.value:
             if reranking_model:
@@ -53,9 +68,9 @@ class DataPostProcessor:
                     model_manager = ModelManager()
                     rerank_model_instance = model_manager.get_model_instance(
                         tenant_id=tenant_id,
-                        provider=reranking_model['reranking_provider_name'],
+                        provider=reranking_model["reranking_provider_name"],
                         model_type=ModelType.RERANK,
-                        model=reranking_model['reranking_model_name']
+                        model=reranking_model["reranking_model_name"],
                     )
                 except InvokeAuthorizationError:
                     return None
@@ -67,5 +82,3 @@ class DataPostProcessor:
         if reorder_enabled:
             return ReorderRunner()
         return None
-
-

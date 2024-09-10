@@ -1,4 +1,3 @@
-
 from collections.abc import Mapping
 
 import openai
@@ -20,13 +19,13 @@ class _CommonUpstage:
         Transform credentials to kwargs for model instance
 
         :param credentials:
-        :return: 
+        :return:
         """
         credentials_kwargs = {
-            "api_key": credentials['upstage_api_key'],
+            "api_key": credentials["upstage_api_key"],
             "base_url": "https://api.upstage.ai/v1/solar",
             "timeout": Timeout(315.0, read=300.0, write=20.0, connect=10.0),
-            "max_retries": 1
+            "max_retries": 1,
         }
 
         return credentials_kwargs
@@ -53,5 +52,3 @@ class _CommonUpstage:
                 openai.APIError,
             ],
         }
-        
-

@@ -7,39 +7,18 @@ CHAT_APP_COMPLETION_PROMPT_CONFIG = {
         "prompt": {
             "text": "{{#pre_prompt#}}\nHere is the chat histories between human and assistant, inside <histories></histories> XML tags.\n\n<histories>\n{{#histories#}}\n</histories>\n\n\nHuman: {{#query#}}\n\nAssistant: "
         },
-        "conversation_histories_role": {
-            "user_prefix": "Human",
-            "assistant_prefix": "Assistant"
-        }
+        "conversation_histories_role": {"user_prefix": "Human", "assistant_prefix": "Assistant"},
     },
-    "stop": ["Human:"]
+    "stop": ["Human:"],
 }
 
-CHAT_APP_CHAT_PROMPT_CONFIG = { 
-    "chat_prompt_config": {
-        "prompt": [{
-            "role": "system",
-            "text": "{{#pre_prompt#}}"
-        }]
-    }
-}
+CHAT_APP_CHAT_PROMPT_CONFIG = {"chat_prompt_config": {"prompt": [{"role": "system", "text": "{{#pre_prompt#}}"}]}}
 
-COMPLETION_APP_CHAT_PROMPT_CONFIG = {
-    "chat_prompt_config": {
-        "prompt": [{
-            "role": "user",
-            "text": "{{#pre_prompt#}}"
-        }]
-    }
-}
+COMPLETION_APP_CHAT_PROMPT_CONFIG = {"chat_prompt_config": {"prompt": [{"role": "user", "text": "{{#pre_prompt#}}"}]}}
 
 COMPLETION_APP_COMPLETION_PROMPT_CONFIG = {
-    "completion_prompt_config": {
-        "prompt": {
-            "text": "{{#pre_prompt#}}"
-        }
-    },
-    "stop": ["Human:"]
+    "completion_prompt_config": {"prompt": {"text": "{{#pre_prompt#}}"}},
+    "stop": ["Human:"],
 }
 
 BAICHUAN_CHAT_APP_COMPLETION_PROMPT_CONFIG = {
@@ -47,37 +26,20 @@ BAICHUAN_CHAT_APP_COMPLETION_PROMPT_CONFIG = {
         "prompt": {
             "text": "{{#pre_prompt#}}\n\n用户和助手的历史对话内容如下：\n```\n{{#histories#}}\n```\n\n\n\n用户：{{#query#}}"
         },
-        "conversation_histories_role": {
-            "user_prefix": "用户",
-            "assistant_prefix": "助手"
-        }
+        "conversation_histories_role": {"user_prefix": "用户", "assistant_prefix": "助手"},
     },
-    "stop": ["用户:"]
+    "stop": ["用户:"],
 }
 
-BAICHUAN_CHAT_APP_CHAT_PROMPT_CONFIG = { 
-    "chat_prompt_config": {
-        "prompt": [{
-            "role": "system",
-            "text": "{{#pre_prompt#}}"
-        }]
-    }
+BAICHUAN_CHAT_APP_CHAT_PROMPT_CONFIG = {
+    "chat_prompt_config": {"prompt": [{"role": "system", "text": "{{#pre_prompt#}}"}]}
 }
 
 BAICHUAN_COMPLETION_APP_CHAT_PROMPT_CONFIG = {
-    "chat_prompt_config": {
-        "prompt": [{
-            "role": "user",
-            "text": "{{#pre_prompt#}}"
-        }]
-    }
+    "chat_prompt_config": {"prompt": [{"role": "user", "text": "{{#pre_prompt#}}"}]}
 }
 
 BAICHUAN_COMPLETION_APP_COMPLETION_PROMPT_CONFIG = {
-    "completion_prompt_config": {
-        "prompt": {
-            "text": "{{#pre_prompt#}}"
-        }
-    },
-    "stop": ["用户:"]
+    "completion_prompt_config": {"prompt": {"text": "{{#pre_prompt#}}"}},
+    "stop": ["用户:"],
 }

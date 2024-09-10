@@ -22,9 +22,9 @@ class GetBoardActionsTool(BuiltinTool):
         Returns:
             ToolInvokeMessage: The result of the tool invocation.
         """
-        api_key = self.runtime.credentials.get('trello_api_key')
-        token = self.runtime.credentials.get('trello_api_token')
-        board_id = tool_parameters.get('boardId')
+        api_key = self.runtime.credentials.get("trello_api_key")
+        token = self.runtime.credentials.get("trello_api_token")
+        board_id = tool_parameters.get("boardId")
 
         if not (api_key and token and board_id):
             return self.create_text_message("Missing required parameters: API key, token, or board ID.")
@@ -38,6 +38,7 @@ class GetBoardActionsTool(BuiltinTool):
         except requests.exceptions.RequestException as e:
             return self.create_text_message("Failed to retrieve board actions")
 
-        actions_summary = "\n".join([f"{action['type']}: {action.get('data', {}).get('text', 'No details available')}" for action in actions])
+        actions_summary = "\n".join(
+            [f"{action['type']}: {action.get('data', {}).get('text', 'No details available')}" for action in actions]
+        )
         return self.create_text_message(text=f"Actions for Board ID {board_id}:\n{actions_summary}")
-
