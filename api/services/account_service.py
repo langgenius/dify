@@ -631,6 +631,9 @@ class RegisterService:
             tenant_was_created.send(tenant)
 
             db.session.commit()
+        except WorkSpaceNotAllowedCreateError:
+            db.session.rollback()
+            raise
         except Exception as e:
             db.session.rollback()
             logging.error(f"Register failed: {e}")
