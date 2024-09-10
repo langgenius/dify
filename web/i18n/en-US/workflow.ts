@@ -428,7 +428,6 @@ const translation = {
         'not empty': 'is not empty',
         'null': 'is null',
         'not null': 'is not null',
-        'regex match': 'regex match',
       },
       enterValue: 'Enter value',
       addCondition: 'Add Condition',
