@@ -622,6 +622,7 @@ class RegisterService:
                 AccountService.link_account_integrate(provider, open_id, account)
 
             if not dify_config.ALLOW_CREATE_WORKSPACE:
+                logging.error("Register failed: Not allowed to create workspace.")
                 raise WorkSpaceNotAllowedCreateError()
 
             tenant = TenantService.create_tenant(f"{account.name}'s Workspace")
