@@ -22,11 +22,18 @@ class NvidiaRerankModel(RerankModel):
     """
 
     def _sigmoid(self, logit: float) -> float:
-        return 1/(1+exp(-logit))
+        return 1 / (1 + exp(-logit))
 
-    def _invoke(self, model: str, credentials: dict,
-                query: str, docs: list[str], score_threshold: Optional[float] = None, top_n: Optional[int] = None,
-                user: Optional[str] = None) -> RerankResult:
+    def _invoke(
+        self,
+        model: str,
+        credentials: dict,
+        query: str,
+        docs: list[str],
+        score_threshold: Optional[float] = None,
+        top_n: Optional[int] = None,
+        user: Optional[str] = None,
+    ) -> RerankResult:
         """
         Invoke rerank model
 
@@ -60,9 +67,9 @@ class NvidiaRerankModel(RerankModel):
             results = response.json()
 
             rerank_documents = []
-            for result in results['rankings']:
-                index = result['index']
-                logit = result['logit']
+            for result in results["rankings"]:
+                index = result["index"]
+                logit = result["logit"]
                 rerank_document = RerankDocument(
                     index=index,
                     text=docs[index],
@@ -110,5 +117,5 @@ class NvidiaRerankModel(RerankModel):
             InvokeServerUnavailableError: [requests.HTTPError],
             InvokeRateLimitError: [],
             InvokeAuthorizationError: [requests.HTTPError],
-            InvokeBadRequestError: [requests.RequestException]
+            InvokeBadRequestError: [requests.RequestException],
         }

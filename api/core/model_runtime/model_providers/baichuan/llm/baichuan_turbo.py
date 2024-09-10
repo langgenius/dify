@@ -94,7 +94,6 @@ class BaichuanModel:
         timeout: int,
         tools: Optional[list[PromptMessageTool]] = None,
     ) -> Union[Iterator, dict]:
-
         if model in self._model_mapping.keys():
             api_base = "https://api.baichuan-ai.com/v1/chat/completions"
         else:
@@ -120,9 +119,7 @@ class BaichuanModel:
                 err = resp["error"]["type"]
                 msg = resp["error"]["message"]
             except Exception as e:
-                raise InternalServerError(
-                    f"Failed to convert response to json: {e} with text: {response.text}"
-                )
+                raise InternalServerError(f"Failed to convert response to json: {e} with text: {response.text}")
 
             if err == "invalid_api_key":
                 raise InvalidAPIKeyError(msg)

@@ -12,6 +12,7 @@ class TaskState(BaseModel):
     """
     TaskState entity
     """
+
     metadata: dict = {}
 
 
@@ -19,6 +20,7 @@ class EasyUITaskState(TaskState):
     """
     EasyUITaskState entity
     """
+
     llm_result: LLMResult
 
 
@@ -26,6 +28,7 @@ class WorkflowTaskState(TaskState):
     """
     WorkflowTaskState entity
     """
+
     answer: str = ""
 
 
@@ -33,6 +36,7 @@ class StreamEvent(Enum):
     """
     Stream event
     """
+
     PING = "ping"
     ERROR = "error"
     MESSAGE = "message"
@@ -60,6 +64,7 @@ class StreamResponse(BaseModel):
     """
     StreamResponse entity
     """
+
     event: StreamEvent
     task_id: str
 
@@ -71,6 +76,7 @@ class ErrorStreamResponse(StreamResponse):
     """
     ErrorStreamResponse entity
     """
+
     event: StreamEvent = StreamEvent.ERROR
     err: Exception
     model_config = ConfigDict(arbitrary_types_allowed=True)
@@ -80,6 +86,7 @@ class MessageStreamResponse(StreamResponse):
     """
     MessageStreamResponse entity
     """
+
     event: StreamEvent = StreamEvent.MESSAGE
     id: str
     answer: str
@@ -89,6 +96,7 @@ class MessageAudioStreamResponse(StreamResponse):
     """
     MessageStreamResponse entity
     """
+
     event: StreamEvent = StreamEvent.TTS_MESSAGE
     audio: str
 
@@ -97,6 +105,7 @@ class MessageAudioEndStreamResponse(StreamResponse):
     """
     MessageStreamResponse entity
     """
+
     event: StreamEvent = StreamEvent.TTS_MESSAGE_END
     audio: str
 
@@ -105,6 +114,7 @@ class MessageEndStreamResponse(StreamResponse):
     """
     MessageEndStreamResponse entity
     """
+
     event: StreamEvent = StreamEvent.MESSAGE_END
     id: str
     metadata: dict = {}
@@ -114,6 +124,7 @@ class MessageFileStreamResponse(StreamResponse):
     """
     MessageFileStreamResponse entity
     """
+
     event: StreamEvent = StreamEvent.MESSAGE_FILE
     id: str
     type: str
@@ -125,6 +136,7 @@ class MessageReplaceStreamResponse(StreamResponse):
     """
     MessageReplaceStreamResponse entity
     """
+
     event: StreamEvent = StreamEvent.MESSAGE_REPLACE
     answer: str
 
@@ -133,6 +145,7 @@ class AgentThoughtStreamResponse(StreamResponse):
     """
     AgentThoughtStreamResponse entity
     """
+
     event: StreamEvent = StreamEvent.AGENT_THOUGHT
     id: str
     position: int
@@ -148,6 +161,7 @@ class AgentMessageStreamResponse(StreamResponse):
     """
     AgentMessageStreamResponse entity
     """
+
     event: StreamEvent = StreamEvent.AGENT_MESSAGE
     id: str
     answer: str
@@ -162,6 +176,7 @@ class WorkflowStartStreamResponse(StreamResponse):
         """
         Data entity
         """
+
         id: str
         workflow_id: str
         sequence_number: int
@@ -182,6 +197,7 @@ class WorkflowFinishStreamResponse(StreamResponse):
         """
         Data entity
         """
+
         id: str
         workflow_id: str
         sequence_number: int
@@ -210,6 +226,7 @@ class NodeStartStreamResponse(StreamResponse):
         """
         Data entity
         """
+
         id: str
         node_id: str
         node_type: str
@@ -249,7 +266,7 @@ class NodeStartStreamResponse(StreamResponse):
                 "parent_parallel_id": self.data.parent_parallel_id,
                 "parent_parallel_start_node_id": self.data.parent_parallel_start_node_id,
                 "iteration_id": self.data.iteration_id,
-            }
+            },
         }
 
 
@@ -262,6 +279,7 @@ class NodeFinishStreamResponse(StreamResponse):
         """
         Data entity
         """
+
         id: str
         node_id: str
         node_type: str
@@ -315,9 +333,9 @@ class NodeFinishStreamResponse(StreamResponse):
                 "parent_parallel_id": self.data.parent_parallel_id,
                 "parent_parallel_start_node_id": self.data.parent_parallel_start_node_id,
                 "iteration_id": self.data.iteration_id,
-            }
+            },
         }
-    
+
 
 class ParallelBranchStartStreamResponse(StreamResponse):
     """
@@ -328,6 +346,7 @@ class ParallelBranchStartStreamResponse(StreamResponse):
         """
         Data entity
         """
+
         parallel_id: str
         parallel_branch_id: str
         parent_parallel_id: Optional[str] = None
@@ -349,6 +368,7 @@ class ParallelBranchFinishedStreamResponse(StreamResponse):
         """
         Data entity
         """
+
         parallel_id: str
         parallel_branch_id: str
         parent_parallel_id: Optional[str] = None
@@ -372,6 +392,7 @@ class IterationNodeStartStreamResponse(StreamResponse):
         """
         Data entity
         """
+
         id: str
         node_id: str
         node_type: str
@@ -397,6 +418,7 @@ class IterationNodeNextStreamResponse(StreamResponse):
         """
         Data entity
         """
+
         id: str
         node_id: str
         node_type: str
@@ -422,6 +444,7 @@ class IterationNodeCompletedStreamResponse(StreamResponse):
         """
         Data entity
         """
+
         id: str
         node_id: str
         node_type: str
@@ -454,6 +477,7 @@ class TextChunkStreamResponse(StreamResponse):
         """
         Data entity
         """
+
         text: str
 
     event: StreamEvent = StreamEvent.TEXT_CHUNK
@@ -469,6 +493,7 @@ class TextReplaceStreamResponse(StreamResponse):
         """
         Data entity
         """
+
         text: str
 
     event: StreamEvent = StreamEvent.TEXT_REPLACE
@@ -479,6 +504,7 @@ class PingStreamResponse(StreamResponse):
     """
     PingStreamResponse entity
     """
+
     event: StreamEvent = StreamEvent.PING
 
 
@@ -486,6 +512,7 @@ class AppStreamResponse(BaseModel):
     """
     AppStreamResponse entity
     """
+
     stream_response: StreamResponse
 
 
@@ -493,6 +520,7 @@ class ChatbotAppStreamResponse(AppStreamResponse):
     """
     ChatbotAppStreamResponse entity
     """
+
     conversation_id: str
     message_id: str
     created_at: int
@@ -502,6 +530,7 @@ class CompletionAppStreamResponse(AppStreamResponse):
     """
     CompletionAppStreamResponse entity
     """
+
     message_id: str
     created_at: int
 
@@ -510,6 +539,7 @@ class WorkflowAppStreamResponse(AppStreamResponse):
     """
     WorkflowAppStreamResponse entity
     """
+
     workflow_run_id: Optional[str] = None
 
 
@@ -517,6 +547,7 @@ class AppBlockingResponse(BaseModel):
     """
     AppBlockingResponse entity
     """
+
     task_id: str
 
     def to_dict(self) -> dict:
@@ -532,6 +563,7 @@ class ChatbotAppBlockingResponse(AppBlockingResponse):
         """
         Data entity
         """
+
         id: str
         mode: str
         conversation_id: str
@@ -552,6 +584,7 @@ class CompletionAppBlockingResponse(AppBlockingResponse):
         """
         Data entity
         """
+
         id: str
         mode: str
         message_id: str
@@ -571,6 +604,7 @@ class WorkflowAppBlockingResponse(AppBlockingResponse):
         """
         Data entity
         """
+
         id: str
         workflow_id: str
         status: str

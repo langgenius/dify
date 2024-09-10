@@ -28,10 +28,10 @@ class WorkflowAppRunner(WorkflowBasedAppRunner):
     """
 
     def __init__(
-            self,
-            application_generate_entity: WorkflowAppGenerateEntity,
-            queue_manager: AppQueueManager,
-            workflow_thread_pool_id: Optional[str] = None
+        self,
+        application_generate_entity: WorkflowAppGenerateEntity,
+        queue_manager: AppQueueManager,
+        workflow_thread_pool_id: Optional[str] = None,
     ) -> None:
         """
         :param application_generate_entity: application generate entity
@@ -62,16 +62,16 @@ class WorkflowAppRunner(WorkflowBasedAppRunner):
 
         app_record = db.session.query(App).filter(App.id == app_config.app_id).first()
         if not app_record:
-            raise ValueError('App not found')
+            raise ValueError("App not found")
 
         workflow = self.get_workflow(app_model=app_record, workflow_id=app_config.workflow_id)
         if not workflow:
-            raise ValueError('Workflow not initialized')
+            raise ValueError("Workflow not initialized")
 
         db.session.close()
 
         workflow_callbacks: list[WorkflowCallback] = []
-        if bool(os.environ.get('DEBUG', 'False').lower() == 'true'):
+        if bool(os.environ.get("DEBUG", "False").lower() == "true"):
             workflow_callbacks.append(WorkflowLoggingCallback())
 
         # if only single iteration run is requested
@@ -80,10 +80,9 @@ class WorkflowAppRunner(WorkflowBasedAppRunner):
             graph, variable_pool = self._get_graph_and_variable_pool_of_single_iteration(
                 workflow=workflow,
                 node_id=self.application_generate_entity.single_iteration_run.node_id,
-                user_inputs=self.application_generate_entity.single_iteration_run.inputs
+                user_inputs=self.application_generate_entity.single_iteration_run.inputs,
             )
         else:
-
             inputs = self.application_generate_entity.inputs
             files = self.application_generate_entity.files
 
@@ -120,12 +119,10 @@ class WorkflowAppRunner(WorkflowBasedAppRunner):
             invoke_from=self.application_generate_entity.invoke_from,
             call_depth=self.application_generate_entity.call_depth,
             variable_pool=variable_pool,
-            thread_pool_id=self.workflow_thread_pool_id
+            thread_pool_id=self.workflow_thread_pool_id,
         )
 
-        generator = workflow_entry.run(
-            callbacks=workflow_callbacks
-        )
+        generator = workflow_entry.run(callbacks=workflow_callbacks)
 
         for event in generator:
             self._handle_event(workflow_entry, event)

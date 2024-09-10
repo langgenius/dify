@@ -34,38 +34,25 @@ class Graph(BaseModel):
     root_node_id: str = Field(..., description="root node id of the graph")
     node_ids: list[str] = Field(default_factory=list, description="graph node ids")
     node_id_config_mapping: dict[str, dict] = Field(
-        default_factory=list,
-        description="node configs mapping (node id: node config)"
+        default_factory=list, description="node configs mapping (node id: node config)"
     )
     edge_mapping: dict[str, list[GraphEdge]] = Field(
-        default_factory=dict,
-        description="graph edge mapping (source node id: edges)"
+        default_factory=dict, description="graph edge mapping (source node id: edges)"
     )
     reverse_edge_mapping: dict[str, list[GraphEdge]] = Field(
-        default_factory=dict,
-        description="reverse graph edge mapping (target node id: edges)"
+        default_factory=dict, description="reverse graph edge mapping (target node id: edges)"
     )
     parallel_mapping: dict[str, GraphParallel] = Field(
-        default_factory=dict,
-        description="graph parallel mapping (parallel id: parallel)"
+        default_factory=dict, description="graph parallel mapping (parallel id: parallel)"
     )
     node_parallel_mapping: dict[str, str] = Field(
-        default_factory=dict,
-        description="graph node parallel mapping (node id: parallel id)"
+        default_factory=dict, description="graph node parallel mapping (node id: parallel id)"
     )
-    answer_stream_generate_routes: AnswerStreamGenerateRoute = Field(
-        ...,
-        description="answer stream generate routes"
-    )
-    end_stream_param: EndStreamParam = Field(
-        ...,
-        description="end stream param"
-    )
+    answer_stream_generate_routes: AnswerStreamGenerateRoute = Field(..., description="answer stream generate routes")
+    end_stream_param: EndStreamParam = Field(..., description="end stream param")
 
     @classmethod
-    def init(cls,
-             graph_config: Mapping[str, Any],
-             root_node_id: Optional[str] = None) -> "Graph":
+    def init(cls, graph_config: Mapping[str, Any], root_node_id: Optional[str] = None) -> "Graph":
         """
         Init graph
 
@@ -74,7 +61,7 @@ class Graph(BaseModel):
         :return: graph
         """
         # edge configs
-        edge_configs = graph_config.get('edges')
+        edge_configs = graph_config.get("edges")
         if edge_configs is None:
             edge_configs = []
 
@@ -85,14 +72,14 @@ class Graph(BaseModel):
         reverse_edge_mapping: dict[str, list[GraphEdge]] = {}
         target_edge_ids = set()
         for edge_config in edge_configs:
-            source_node_id = edge_config.get('source')
+            source_node_id = edge_config.get("source")
             if not source_node_id:
                 continue
 
             if source_node_id not in edge_mapping:
                 edge_mapping[source_node_id] = []
 
-            target_node_id = edge_config.get('target')
+            target_node_id = edge_config.get("target")
             if not target_node_id:
                 continue
 
@@ -107,23 +94,18 @@ class Graph(BaseModel):
 
             # parse run condition
             run_condition = None
-            if edge_config.get('sourceHandle') and edge_config.get('sourceHandle') != 'source':
-                run_condition = RunCondition(
-                    type='branch_identify',
-                    branch_identify=edge_config.get('sourceHandle')
-                )
+            if edge_config.get("sourceHandle") and edge_config.get("sourceHandle") != "source":
+                run_condition = RunCondition(type="branch_identify", branch_identify=edge_config.get("sourceHandle"))
 
             graph_edge = GraphEdge(
-                source_node_id=source_node_id,
-                target_node_id=target_node_id,
-                run_condition=run_condition
+                source_node_id=source_node_id, target_node_id=target_node_id, run_condition=run_condition
             )
 
             edge_mapping[source_node_id].append(graph_edge)
             reverse_edge_mapping[target_node_id].append(graph_edge)
 
         # node configs
-        node_configs = graph_config.get('nodes')
+        node_configs = graph_config.get("nodes")
         if not node_configs:
             raise ValueError("Graph must have at least one node")
 
@@ -133,7 +115,7 @@ class Graph(BaseModel):
         root_node_configs = []
         all_node_id_config_mapping: dict[str, dict] = {}
         for node_config in node_configs:
-            node_id = node_config.get('id')
+            node_id = node_config.get("id")
             if not node_id:
                 continue
 
@@ -142,30 +124,29 @@ class Graph(BaseModel):
 
             all_node_id_config_mapping[node_id] = node_config
 
-        root_node_ids = [node_config.get('id') for node_config in root_node_configs]
+        root_node_ids = [node_config.get("id") for node_config in root_node_configs]
 
         # fetch root node
         if not root_node_id:
             # if no root node id, use the START type node as root node
-            root_node_id = next((node_config.get("id") for node_config in root_node_configs
-                                 if node_config.get('data', {}).get('type', '') == NodeType.START.value), None)
+            root_node_id = next(
+                (
+                    node_config.get("id")
+                    for node_config in root_node_configs
+                    if node_config.get("data", {}).get("type", "") == NodeType.START.value
+                ),
+                None,
+            )
 
         if not root_node_id or root_node_id not in root_node_ids:
             raise ValueError(f"Root node id {root_node_id} not found in the graph")
-        
+
         # Check whether it is connected to the previous node
-        cls._check_connected_to_previous_node(
-            route=[root_node_id],
-            edge_mapping=edge_mapping
-        )
+        cls._check_connected_to_previous_node(route=[root_node_id], edge_mapping=edge_mapping)
 
         # fetch all node ids from root node
         node_ids = [root_node_id]
-        cls._recursively_add_node_ids(
-            node_ids=node_ids,
-            edge_mapping=edge_mapping,
-            node_id=root_node_id
-        )
+        cls._recursively_add_node_ids(node_ids=node_ids, edge_mapping=edge_mapping, node_id=root_node_id)
 
         node_id_config_mapping = {node_id: all_node_id_config_mapping[node_id] for node_id in node_ids}
 
@@ -177,29 +158,26 @@ class Graph(BaseModel):
             reverse_edge_mapping=reverse_edge_mapping,
             start_node_id=root_node_id,
             parallel_mapping=parallel_mapping,
-            node_parallel_mapping=node_parallel_mapping
+            node_parallel_mapping=node_parallel_mapping,
         )
 
         # Check if it exceeds N layers of parallel
         for parallel in parallel_mapping.values():
             if parallel.parent_parallel_id:
                 cls._check_exceed_parallel_limit(
-                    parallel_mapping=parallel_mapping,
-                    level_limit=3,
-                    parent_parallel_id=parallel.parent_parallel_id
+                    parallel_mapping=parallel_mapping, level_limit=3, parent_parallel_id=parallel.parent_parallel_id
                 )
 
         # init answer stream generate routes
         answer_stream_generate_routes = AnswerStreamGeneratorRouter.init(
-            node_id_config_mapping=node_id_config_mapping,
-            reverse_edge_mapping=reverse_edge_mapping
+            node_id_config_mapping=node_id_config_mapping, reverse_edge_mapping=reverse_edge_mapping
         )
 
         # init end stream param
         end_stream_param = EndStreamGeneratorRouter.init(
             node_id_config_mapping=node_id_config_mapping,
             reverse_edge_mapping=reverse_edge_mapping,
-            node_parallel_mapping=node_parallel_mapping
+            node_parallel_mapping=node_parallel_mapping,
         )
 
         # init graph
@@ -212,14 +190,14 @@ class Graph(BaseModel):
             parallel_mapping=parallel_mapping,
             node_parallel_mapping=node_parallel_mapping,
             answer_stream_generate_routes=answer_stream_generate_routes,
-            end_stream_param=end_stream_param
+            end_stream_param=end_stream_param,
         )
 
         return graph
 
-    def add_extra_edge(self, source_node_id: str,
-                       target_node_id: str,
-                       run_condition: Optional[RunCondition] = None) -> None:
+    def add_extra_edge(
+        self, source_node_id: str, target_node_id: str, run_condition: Optional[RunCondition] = None
+    ) -> None:
         """
         Add extra edge to the graph
 
@@ -237,9 +215,7 @@ class Graph(BaseModel):
             return
 
         graph_edge = GraphEdge(
-            source_node_id=source_node_id,
-            target_node_id=target_node_id,
-            run_condition=run_condition
+            source_node_id=source_node_id, target_node_id=target_node_id, run_condition=run_condition
         )
 
         self.edge_mapping[source_node_id].append(graph_edge)
@@ -254,17 +230,18 @@ class Graph(BaseModel):
         for node_id in self.node_ids:
             if node_id not in self.edge_mapping:
                 leaf_node_ids.append(node_id)
-            elif (len(self.edge_mapping[node_id]) == 1
-                  and self.edge_mapping[node_id][0].target_node_id == self.root_node_id):
+            elif (
+                len(self.edge_mapping[node_id]) == 1
+                and self.edge_mapping[node_id][0].target_node_id == self.root_node_id
+            ):
                 leaf_node_ids.append(node_id)
 
         return leaf_node_ids
 
     @classmethod
-    def _recursively_add_node_ids(cls,
-                                  node_ids: list[str],
-                                  edge_mapping: dict[str, list[GraphEdge]],
-                                  node_id: str) -> None:
+    def _recursively_add_node_ids(
+        cls, node_ids: list[str], edge_mapping: dict[str, list[GraphEdge]], node_id: str
+    ) -> None:
         """
         Recursively add node ids
 
@@ -278,17 +255,11 @@ class Graph(BaseModel):
 
             node_ids.append(graph_edge.target_node_id)
             cls._recursively_add_node_ids(
-                node_ids=node_ids,
-                edge_mapping=edge_mapping,
-                node_id=graph_edge.target_node_id
+                node_ids=node_ids, edge_mapping=edge_mapping, node_id=graph_edge.target_node_id
             )
 
     @classmethod
-    def _check_connected_to_previous_node(
-        cls, 
-        route: list[str],
-        edge_mapping: dict[str, list[GraphEdge]]
-    ) -> None:
+    def _check_connected_to_previous_node(cls, route: list[str], edge_mapping: dict[str, list[GraphEdge]]) -> None:
         """
         Check whether it is connected to the previous node
         """
@@ -299,7 +270,9 @@ class Graph(BaseModel):
                 continue
 
             if graph_edge.target_node_id in route:
-                raise ValueError(f"Node {graph_edge.source_node_id} is connected to the previous node, please check the graph.")
+                raise ValueError(
+                    f"Node {graph_edge.source_node_id} is connected to the previous node, please check the graph."
+                )
 
             new_route = route[:]
             new_route.append(graph_edge.target_node_id)
@@ -316,7 +289,7 @@ class Graph(BaseModel):
         start_node_id: str,
         parallel_mapping: dict[str, GraphParallel],
         node_parallel_mapping: dict[str, str],
-        parent_parallel: Optional[GraphParallel] = None
+        parent_parallel: Optional[GraphParallel] = None,
     ) -> None:
         """
         Recursively add parallel ids
@@ -355,14 +328,14 @@ class Graph(BaseModel):
                 parallel = GraphParallel(
                     start_from_node_id=start_node_id,
                     parent_parallel_id=parent_parallel.id if parent_parallel else None,
-                    parent_parallel_start_node_id=parent_parallel.start_from_node_id if parent_parallel else None
+                    parent_parallel_start_node_id=parent_parallel.start_from_node_id if parent_parallel else None,
                 )
                 parallel_mapping[parallel.id] = parallel
 
                 in_branch_node_ids = cls._fetch_all_node_ids_in_parallels(
                     edge_mapping=edge_mapping,
                     reverse_edge_mapping=reverse_edge_mapping,
-                    parallel_branch_node_ids=parallel_branch_node_ids
+                    parallel_branch_node_ids=parallel_branch_node_ids,
                 )
 
                 # collect all branches node ids
@@ -403,14 +376,25 @@ class Graph(BaseModel):
                             continue
 
                     if (
-                        (node_parallel_mapping.get(target_node_id) and node_parallel_mapping.get(target_node_id) == parent_parallel_id)
-                        or (parent_parallel and parent_parallel.end_to_node_id and target_node_id == parent_parallel.end_to_node_id)
+                        (
+                            node_parallel_mapping.get(target_node_id)
+                            and node_parallel_mapping.get(target_node_id) == parent_parallel_id
+                        )
+                        or (
+                            parent_parallel
+                            and parent_parallel.end_to_node_id
+                            and target_node_id == parent_parallel.end_to_node_id
+                        )
                         or (not node_parallel_mapping.get(target_node_id) and not parent_parallel)
                     ):
                         outside_parallel_target_node_ids.add(target_node_id)
 
                 if len(outside_parallel_target_node_ids) == 1:
-                    if parent_parallel and parent_parallel.end_to_node_id and parallel.end_to_node_id == parent_parallel.end_to_node_id:
+                    if (
+                        parent_parallel
+                        and parent_parallel.end_to_node_id
+                        and parallel.end_to_node_id == parent_parallel.end_to_node_id
+                    ):
                         parallel.end_to_node_id = None
                     else:
                         parallel.end_to_node_id = outside_parallel_target_node_ids.pop()
@@ -420,18 +404,20 @@ class Graph(BaseModel):
             if parallel:
                 current_parallel = parallel
             elif parent_parallel:
-                if not parent_parallel.end_to_node_id or (parent_parallel.end_to_node_id and graph_edge.target_node_id != parent_parallel.end_to_node_id):
+                if not parent_parallel.end_to_node_id or (
+                    parent_parallel.end_to_node_id and graph_edge.target_node_id != parent_parallel.end_to_node_id
+                ):
                     current_parallel = parent_parallel
                 else:
                     # fetch parent parallel's parent parallel
                     parent_parallel_parent_parallel_id = parent_parallel.parent_parallel_id
                     if parent_parallel_parent_parallel_id:
                         parent_parallel_parent_parallel = parallel_mapping.get(parent_parallel_parent_parallel_id)
-                        if (
-                            parent_parallel_parent_parallel 
-                            and (
-                                not parent_parallel_parent_parallel.end_to_node_id
-                                 or (parent_parallel_parent_parallel.end_to_node_id and graph_edge.target_node_id != parent_parallel_parent_parallel.end_to_node_id)
+                        if parent_parallel_parent_parallel and (
+                            not parent_parallel_parent_parallel.end_to_node_id
+                            or (
+                                parent_parallel_parent_parallel.end_to_node_id
+                                and graph_edge.target_node_id != parent_parallel_parent_parallel.end_to_node_id
                             )
                         ):
                             current_parallel = parent_parallel_parent_parallel
@@ -442,7 +428,7 @@ class Graph(BaseModel):
                 start_node_id=graph_edge.target_node_id,
                 parallel_mapping=parallel_mapping,
                 node_parallel_mapping=node_parallel_mapping,
-                parent_parallel=current_parallel
+                parent_parallel=current_parallel,
             )
 
     @classmethod
@@ -451,7 +437,7 @@ class Graph(BaseModel):
         parallel_mapping: dict[str, GraphParallel],
         level_limit: int,
         parent_parallel_id: str,
-        current_level: int = 1
+        current_level: int = 1,
     ) -> None:
         """
         Check if it exceeds N layers of parallel
@@ -459,25 +445,27 @@ class Graph(BaseModel):
         parent_parallel = parallel_mapping.get(parent_parallel_id)
         if not parent_parallel:
             return
-        
+
         current_level += 1
         if current_level > level_limit:
             raise ValueError(f"Exceeds {level_limit} layers of parallel")
-        
+
         if parent_parallel.parent_parallel_id:
             cls._check_exceed_parallel_limit(
                 parallel_mapping=parallel_mapping,
                 level_limit=level_limit,
                 parent_parallel_id=parent_parallel.parent_parallel_id,
-                current_level=current_level
+                current_level=current_level,
             )
 
     @classmethod
-    def _recursively_add_parallel_node_ids(cls,
-                                           branch_node_ids: list[str],
-                                           edge_mapping: dict[str, list[GraphEdge]],
-                                           merge_node_id: str,
-                                           start_node_id: str) -> None:
+    def _recursively_add_parallel_node_ids(
+        cls,
+        branch_node_ids: list[str],
+        edge_mapping: dict[str, list[GraphEdge]],
+        merge_node_id: str,
+        start_node_id: str,
+    ) -> None:
         """
         Recursively add node ids
 
@@ -487,21 +475,22 @@ class Graph(BaseModel):
         :param start_node_id: start node id
         """
         for graph_edge in edge_mapping.get(start_node_id, []):
-            if (graph_edge.target_node_id != merge_node_id
-                    and graph_edge.target_node_id not in branch_node_ids):
+            if graph_edge.target_node_id != merge_node_id and graph_edge.target_node_id not in branch_node_ids:
                 branch_node_ids.append(graph_edge.target_node_id)
                 cls._recursively_add_parallel_node_ids(
                     branch_node_ids=branch_node_ids,
                     edge_mapping=edge_mapping,
                     merge_node_id=merge_node_id,
-                    start_node_id=graph_edge.target_node_id
+                    start_node_id=graph_edge.target_node_id,
                 )
 
     @classmethod
-    def _fetch_all_node_ids_in_parallels(cls,
-                                         edge_mapping: dict[str, list[GraphEdge]],
-                                         reverse_edge_mapping: dict[str, list[GraphEdge]],
-                                         parallel_branch_node_ids: list[str]) -> dict[str, list[str]]:
+    def _fetch_all_node_ids_in_parallels(
+        cls,
+        edge_mapping: dict[str, list[GraphEdge]],
+        reverse_edge_mapping: dict[str, list[GraphEdge]],
+        parallel_branch_node_ids: list[str],
+    ) -> dict[str, list[str]]:
         """
         Fetch all node ids in parallels
         """
@@ -513,7 +502,7 @@ class Graph(BaseModel):
             cls._recursively_fetch_routes(
                 edge_mapping=edge_mapping,
                 start_node_id=parallel_branch_node_id,
-                routes_node_ids=routes_node_ids[parallel_branch_node_id]
+                routes_node_ids=routes_node_ids[parallel_branch_node_id],
             )
 
         # fetch leaf node ids from routes node ids
@@ -529,13 +518,13 @@ class Graph(BaseModel):
 
                 for branch_node_id2, inner_route2 in routes_node_ids.items():
                     if (
-                        branch_node_id != branch_node_id2 
+                        branch_node_id != branch_node_id2
                         and node_id in inner_route2
                         and len(reverse_edge_mapping.get(node_id, [])) > 1
                         and cls._is_node_in_routes(
                             reverse_edge_mapping=reverse_edge_mapping,
                             start_node_id=node_id,
-                            routes_node_ids=routes_node_ids
+                            routes_node_ids=routes_node_ids,
                         )
                     ):
                         if node_id not in merge_branch_node_ids:
@@ -551,23 +540,18 @@ class Graph(BaseModel):
         for node_id, branch_node_ids in merge_branch_node_ids.items():
             for node_id2, branch_node_ids2 in merge_branch_node_ids.items():
                 if node_id != node_id2 and set(branch_node_ids) == set(branch_node_ids2):
-                    if (node_id, node_id2) not in duplicate_end_node_ids and (node_id2, node_id) not in duplicate_end_node_ids:
+                    if (node_id, node_id2) not in duplicate_end_node_ids and (
+                        node_id2,
+                        node_id,
+                    ) not in duplicate_end_node_ids:
                         duplicate_end_node_ids[(node_id, node_id2)] = branch_node_ids
-                
+
         for (node_id, node_id2), branch_node_ids in duplicate_end_node_ids.items():
             # check which node is after
-            if cls._is_node2_after_node1(
-                node1_id=node_id,
-                node2_id=node_id2,
-                edge_mapping=edge_mapping
-            ):
+            if cls._is_node2_after_node1(node1_id=node_id, node2_id=node_id2, edge_mapping=edge_mapping):
                 if node_id in merge_branch_node_ids:
                     del merge_branch_node_ids[node_id2]
-            elif cls._is_node2_after_node1(
-                node1_id=node_id2,
-                node2_id=node_id,
-                edge_mapping=edge_mapping
-            ):
+            elif cls._is_node2_after_node1(node1_id=node_id2, node2_id=node_id, edge_mapping=edge_mapping):
                 if node_id2 in merge_branch_node_ids:
                     del merge_branch_node_ids[node_id]
 
@@ -599,16 +583,15 @@ class Graph(BaseModel):
                     branch_node_ids=in_branch_node_ids[branch_node_id],
                     edge_mapping=edge_mapping,
                     merge_node_id=merge_node_id,
-                    start_node_id=branch_node_id
+                    start_node_id=branch_node_id,
                 )
 
         return in_branch_node_ids
 
     @classmethod
-    def _recursively_fetch_routes(cls,
-                                  edge_mapping: dict[str, list[GraphEdge]],
-                                  start_node_id: str,
-                                  routes_node_ids: list[str]) -> None:
+    def _recursively_fetch_routes(
+        cls, edge_mapping: dict[str, list[GraphEdge]], start_node_id: str, routes_node_ids: list[str]
+    ) -> None:
         """
         Recursively fetch route
         """
@@ -621,28 +604,25 @@ class Graph(BaseModel):
                 routes_node_ids.append(graph_edge.target_node_id)
 
                 cls._recursively_fetch_routes(
-                    edge_mapping=edge_mapping,
-                    start_node_id=graph_edge.target_node_id,
-                    routes_node_ids=routes_node_ids
+                    edge_mapping=edge_mapping, start_node_id=graph_edge.target_node_id, routes_node_ids=routes_node_ids
                 )
 
     @classmethod
-    def _is_node_in_routes(cls,
-                           reverse_edge_mapping: dict[str, list[GraphEdge]],
-                           start_node_id: str,
-                           routes_node_ids: dict[str, list[str]]) -> bool:
+    def _is_node_in_routes(
+        cls, reverse_edge_mapping: dict[str, list[GraphEdge]], start_node_id: str, routes_node_ids: dict[str, list[str]]
+    ) -> bool:
         """
         Recursively check if the node is in the routes
         """
         if start_node_id not in reverse_edge_mapping:
             return False
-        
+
         all_routes_node_ids = set()
         parallel_start_node_ids: dict[str, list[str]] = {}
         for branch_node_id, node_ids in routes_node_ids.items():
             for node_id in node_ids:
                 all_routes_node_ids.add(node_id)
-            
+
             if branch_node_id in reverse_edge_mapping:
                 for graph_edge in reverse_edge_mapping[branch_node_id]:
                     if graph_edge.source_node_id not in parallel_start_node_ids:
@@ -655,38 +635,34 @@ class Graph(BaseModel):
             if set(branch_node_ids) == set(routes_node_ids.keys()):
                 parallel_start_node_id = p_start_node_id
                 return True
-            
+
         if not parallel_start_node_id:
             raise Exception("Parallel start node id not found")
-        
+
         for graph_edge in reverse_edge_mapping[start_node_id]:
-            if graph_edge.source_node_id not in all_routes_node_ids or graph_edge.source_node_id != parallel_start_node_id:
+            if (
+                graph_edge.source_node_id not in all_routes_node_ids
+                or graph_edge.source_node_id != parallel_start_node_id
+            ):
                 return False
-            
+
         return True
 
     @classmethod
-    def _is_node2_after_node1(
-        cls, 
-        node1_id: str, 
-        node2_id: str,
-        edge_mapping: dict[str, list[GraphEdge]]
-    ) -> bool:
+    def _is_node2_after_node1(cls, node1_id: str, node2_id: str, edge_mapping: dict[str, list[GraphEdge]]) -> bool:
         """
         is node2 after node1
         """
         if node1_id not in edge_mapping:
             return False
-        
+
         for graph_edge in edge_mapping[node1_id]:
             if graph_edge.target_node_id == node2_id:
                 return True
-            
+
             if cls._is_node2_after_node1(
-                node1_id=graph_edge.target_node_id,
-                node2_id=node2_id,
-                edge_mapping=edge_mapping
+                node1_id=graph_edge.target_node_id, node2_id=node2_id, edge_mapping=edge_mapping
             ):
                 return True
-            
+
         return False
