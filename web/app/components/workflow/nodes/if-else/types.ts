@@ -28,7 +28,6 @@ export enum ComparisonOperator {
   lessThanOrEqual = '≤',
   isNull = 'is null',
   isNotNull = 'is not null',
-  regexMatch = 'regex match',
 }
 
 export type Condition = {
