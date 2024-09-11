@@ -385,7 +385,7 @@ export enum TtsAutoPlay {
   disabled = 'disabled',
 }
 
-export const ALLOW_IMAGE_EXTENSIONS = ['png', 'jpg', 'jpeg', 'webp', 'gif', 'svg']
+export const ALLOW_IMAGE_EXTENSIONS = ['png', 'jpg', 'jpeg', 'webp', 'gif']
 export const ALLOW_VIDEO_EXTENSIONS = ['mp4', 'avi', 'mkv', 'mov', 'flv', 'wmv']
 
 export type VisionSettings = {

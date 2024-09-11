@@ -18,14 +18,16 @@ type UploadOnlyFromLocalProps = {
   onUpload: (imageFile: ImageFile) => void
   disabled?: boolean
   limit?: number
+  isSupportVideo?: boolean
 }
 const UploadOnlyFromLocal: FC<UploadOnlyFromLocalProps> = ({
   onUpload,
   disabled,
   limit,
+  isSupportVideo,
 }) => {
   return (
-    <Uploader onUpload={onUpload} disabled={disabled} limit={limit}>
+    <Uploader onUpload={onUpload} disabled={disabled} limit={limit} isSupportVideo={isSupportVideo}>
       {hovering => (
         <div
           className={`
@@ -33,7 +35,10 @@ const UploadOnlyFromLocal: FC<UploadOnlyFromLocalProps> = ({
             ${hovering && 'bg-gray-100'}
           `}
         >
-          <ImagePlus className="w-4 h-4 text-gray-500" />
+          { isSupportVideo
+            ? <ImageVideoPlus className="w-4 h-4 text-gray-500" />
+            : <ImagePlus className="w-4 h-4 text-gray-500" />
+          }
         </div>
       )}
     </Uploader>
@@ -106,6 +111,7 @@ const UploaderButton: FC<UploaderButtonProps> = ({
                 onUpload={handleUpload}
                 limit={limit}
                 closePopover={closePopover}
+                isSupportVideo={isSupportVideo}
               >
                 {hovering => (
                   <div
@@ -147,6 +153,7 @@ const ChatImageUploader: FC<ChatImageUploaderProps> = ({
         onUpload={onUpload}
         disabled={disabled}
         limit={+settings.image_file_size_limit!}
+        isSupportVideo={settings.is_support_video}
       />
     )
   }

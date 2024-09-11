@@ -4,7 +4,7 @@ import { useParams } from 'next/navigation'
 import { useTranslation } from 'react-i18next'
 import { imageUpload } from './utils'
 import { useToastContext } from '@/app/components/base/toast'
-import { ALLOW_IMAGE_EXTENSIONS, TransferMethod } from '@/types/app'
+import { ALLOW_IMAGE_EXTENSIONS, ALLOW_VIDEO_EXTENSIONS, TransferMethod } from '@/types/app'
 import type { ImageFile, VisionSettings } from '@/types/app'
 
 export const useImageFiles = () => {
@@ -115,12 +115,16 @@ type useLocalUploaderProps = {
   disabled?: boolean
   limit?: number
   onUpload: (imageFile: ImageFile) => void
+  isSupportVideo?: boolean
 }
 
-export const useLocalFileUploader = ({ limit, disabled = false, onUpload }: useLocalUploaderProps) => {
+export const useLocalFileUploader = ({ limit, disabled = false, onUpload, isSupportVideo }: useLocalUploaderProps) => {
   const { notify } = useToastContext()
   const params = useParams()
   const { t } = useTranslation()
+  const allow_extensions = isSupportVideo
+    ? [...ALLOW_VIDEO_EXTENSIONS, ...ALLOW_IMAGE_EXTENSIONS]
+    : ALLOW_IMAGE_EXTENSIONS
 
   const handleLocalFileUpload = useCallback((file: File) => {
     if (disabled) {
@@ -128,7 +132,7 @@ export const useLocalFileUploader = ({ limit, disabled = false, onUpload }: useL
       return
     }
 
-    if (!ALLOW_IMAGE_EXTENSIONS.includes(file.type.split('/')[1]))
+    if (!allow_extensions.includes(file.type.split('/')[1]))
       return
 
     if (limit && file.size > limit * 1024 * 1024) {
@@ -194,7 +198,8 @@ export const useClipboardUploader = ({ visionConfig, onUpload, files }: useClipb
     || files.length >= visionConfig.number_limits!,
   [allowLocalUpload, files.length, visionConfig])
   const limit = useMemo(() => visionConfig ? +visionConfig.image_file_size_limit! : 0, [visionConfig])
-  const { handleLocalFileUpload } = useLocalFileUploader({ limit, onUpload, disabled })
+  const isSupportVideo = useMemo(() => visionConfig?.is_support_video, [visionConfig])
+  const { handleLocalFileUpload } = useLocalFileUploader({ limit, onUpload, disabled, isSupportVideo })
 
   const handleClipboardPaste = useCallback((e: ClipboardEvent<HTMLTextAreaElement>) => {
     // reserve native text copy behavior
@@ -226,7 +231,8 @@ export const useDraggableUploader = <T extends HTMLElement>({ visionConfig, onUp
     || files.length >= visionConfig.number_limits!,
   [allowLocalUpload, files.length, visionConfig])
   const limit = useMemo(() => visionConfig ? +visionConfig.image_file_size_limit! : 0, [visionConfig])
-  const { handleLocalFileUpload } = useLocalFileUploader({ disabled, onUpload, limit })
+  const isSupportVideo = useMemo(() => visionConfig?.is_support_video, [visionConfig])
+  const { handleLocalFileUpload } = useLocalFileUploader({ disabled, onUpload, limit, isSupportVideo })
   const [isDragActive, setIsDragActive] = useState(false)
 
   const handleDragEnter = useCallback((e: React.DragEvent<T>) => {
