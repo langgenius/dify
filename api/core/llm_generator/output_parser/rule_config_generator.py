@@ -1,6 +1,6 @@
 from typing import Any
 
-from core.llm_generator.output_parser.errors import OutputParserException
+from core.llm_generator.output_parser.errors import OutputParserError
 from core.llm_generator.prompts import (
     RULE_CONFIG_PARAMETER_GENERATE_TEMPLATE,
     RULE_CONFIG_PROMPT_GENERATE_TEMPLATE,
@@ -29,4 +29,4 @@ class RuleConfigGeneratorOutputParser:
                 raise ValueError("Expected 'opening_statement' to be a str.")
             return parsed
         except Exception as e:
-            raise OutputParserException(f"Parsing text\n{text}\n of rule config generator raised following error:\n{e}")
+            raise OutputParserError(f"Parsing text\n{text}\n of rule config generator raised following error:\n{e}")

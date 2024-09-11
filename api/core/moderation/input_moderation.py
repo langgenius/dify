@@ -2,7 +2,7 @@ import logging
 from typing import Optional
 
 from core.app.app_config.entities import AppConfig
-from core.moderation.base import ModerationAction, ModerationException
+from core.moderation.base import ModerationAction, ModerationError
 from core.moderation.factory import ModerationFactory
 from core.ops.entities.trace_entity import TraceTaskName
 from core.ops.ops_trace_manager import TraceQueueManager, TraceTask
@@ -61,7 +61,7 @@ class InputModeration:
             return False, inputs, query
 
         if moderation_result.action == ModerationAction.DIRECT_OUTPUT:
-            raise ModerationException(moderation_result.preset_response)
+            raise ModerationError(moderation_result.preset_response)
         elif moderation_result.action == ModerationAction.OVERRIDDEN:
             inputs = moderation_result.inputs
             query = moderation_result.query

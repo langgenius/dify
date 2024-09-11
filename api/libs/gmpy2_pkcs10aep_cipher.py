@@ -31,7 +31,7 @@ from Crypto.Util.py3compat import _copy_bytes, bord
 from Crypto.Util.strxor import strxor
 
 
-class PKCS1OAEP_Cipher:
+class PKCS1OAepCipher:
     """Cipher object for PKCS#1 v1.5 OAEP.
     Do not create directly: use :func:`new` instead."""
 
@@ -237,4 +237,4 @@ def new(key, hashAlgo=None, mgfunc=None, label=b"", randfunc=None):
 
     if randfunc is None:
         randfunc = Random.get_random_bytes
-    return PKCS1OAEP_Cipher(key, hashAlgo, mgfunc, label, randfunc)
+    return PKCS1OAepCipher(key, hashAlgo, mgfunc, label, randfunc)

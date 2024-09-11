@@ -5,7 +5,7 @@ import click
 from celery import shared_task
 from werkzeug.exceptions import NotFound
 
-from core.indexing_runner import DocumentIsPausedException, IndexingRunner
+from core.indexing_runner import DocumentIsPausedError, IndexingRunner
 from extensions.ext_database import db
 from models.dataset import Document
 
@@ -39,7 +39,7 @@ def recover_document_indexing_task(dataset_id: str, document_id: str):
         logging.info(
             click.style("Processed document: {} latency: {}".format(document.id, end_at - start_at), fg="green")
         )
-    except DocumentIsPausedException as ex:
+    except DocumentIsPausedError as ex:
         logging.info(click.style(str(ex), fg="yellow"))
     except Exception:
         pass
