@@ -10,6 +10,7 @@ import Indicator from '../indicator'
 import AccountAbout from '../account-about'
 import { mailToSupport } from '../utils/util'
 import WorkplaceSelector from './workplace-selector'
+import Button from '@/app/components/base/button'
 import classNames from '@/utils/classnames'
 import I18n from '@/context/i18n'
 import Avatar from '@/app/components/base/avatar'
@@ -21,6 +22,7 @@ import { useModalContext } from '@/context/modal-context'
 import { LanguagesSupported } from '@/i18n/language'
 import { useProviderContext } from '@/context/provider-context'
 import { Plan } from '@/app/components/billing/type'
+import { ToastContext } from '@/app/components/base/toast'
 
 export type IAppSelector = {
   isMobile: boolean
@@ -40,6 +42,8 @@ export default function AppSelector({ isMobile }: IAppSelector) {
   const { setShowAccountSettingModal } = useModalContext()
   const { plan } = useProviderContext()
   const canEmailSupport = plan.type === Plan.professional || plan.type === Plan.team || plan.type === Plan.enterprise
+  const { notify } = useContext(ToastContext)
+  const { currentWorkspace } = useAppContext()
 
   const handleLogout = async () => {
     await logout({
@@ -51,6 +55,11 @@ export default function AppSelector({ isMobile }: IAppSelector) {
       localStorage.removeItem('console_token')
 
     router.push('/signin')
+  }
+
+  const handleCopyWorkspaceInfo = async () => {
+    await navigator.clipboard.writeText(`${currentWorkspace?.name || ''}(${currentWorkspace?.id || ''})`)
+    notify({ type: 'success', message: t('common.actionMsg.copySuccessfully') })
   }
 
   return (
@@ -102,7 +111,15 @@ export default function AppSelector({ isMobile }: IAppSelector) {
                     </div>
                   </Menu.Item>
                   <div className='px-1 py-1'>
-                    <div className='mt-2 px-3 text-xs font-medium text-gray-500'>{t('common.userProfile.workspace')}</div>
+                    <div className='flex'>
+                      <div className='mt-2 px-3 text-xs font-medium text-gray-500'>{t('common.userProfile.workspace')}</div>
+                      <Button
+                        className="rounded ml-2 mt-1 px-2 text-xs font-medium hover:bg-gray-200 bg-slate-100 text-gray-500"
+                        size='small'
+                        onClick={handleCopyWorkspaceInfo}
+                      >{t('common.operation.copy')}
+                      </Button>
+                    </div>
                     <WorkplaceSelector />
                   </div>
                   <div className="px-1 py-1">
