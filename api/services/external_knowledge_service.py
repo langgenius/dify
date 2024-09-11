@@ -25,6 +25,7 @@ from models.dataset import (
 from models.model import UploadFile
 from services.dataset_service import DocumentService
 from services.entities.external_knowledge_entities.external_knowledge_entities import Authorization, ApiTemplateSetting
+from services.errors.dataset import DatasetNameDuplicateError
 from tasks.external_document_indexing_task import external_document_indexing_task
 
 
@@ -55,7 +56,6 @@ class ExternalDatasetService:
             raise ValueError('endpoint is required')
         if 'api_key' not in api_settings and not api_settings['api_key']:
             raise ValueError('api_key is required')
-
 
     @staticmethod
     def create_api_template(tenant_id: str, user_id: str, args: dict) -> ExternalApiTemplates:
@@ -221,7 +221,7 @@ class ExternalDatasetService:
         if headers:
             headers = deepcopy(headers)
         else:
-            headers= {}
+            headers = {}
         if authorization.type == 'api-key':
             if authorization.config is None:
                 raise ValueError('authorization config is required')
@@ -244,3 +244,41 @@ class ExternalDatasetService:
     @staticmethod
     def get_api_template_settings(settings: dict) -> ApiTemplateSetting:
         return ApiTemplateSetting.parse_obj(settings)
+
+    @staticmethod
+    def create_external_dataset(tenant_id, user_id, args):
+        # check if dataset name already exists
+        if Dataset.query.filter_by(name=args.get('name'), tenant_id=tenant_id).first():
+            raise DatasetNameDuplicateError(f"Dataset with name {args.get('name')} already exists.")
+        api_template = ExternalApiTemplates.query.filter_by(
+            id=args.get('api_template_id'),
+            tenant_id=tenant_id
+        ).first()
+        if api_template is None:
+            raise ValueError('api template not found')
+
+        dataset = Dataset(
+            tenant_id=tenant_id,
+            name=args.get('name'),
+            description=args.get('description', ''),
+            provider='external',
+            created_by=user_id,
+        )
+
+        db.session.add(dataset)
+        db.session.flush()
+
+        external_knowledge_binding = ExternalKnowledgeBindings(
+            tenant_id=tenant_id,
+            dataset_id=dataset.id,
+            external_api_template_id=args.get('api_template_id'),
+            external_knowledge_id=args.get('external_knowledge_id'),
+            created_by=user_id,
+        )
+        db.session.add(external_knowledge_binding)
+
+        db.session.commit()
+
+        return dataset
+
+

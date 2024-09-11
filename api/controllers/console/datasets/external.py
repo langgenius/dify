@@ -73,10 +73,10 @@ class ExternalApiTemplateListApi(Resource):
     def post(self):
         parser = reqparse.RequestParser()
         parser.add_argument('name', nullable=False, required=True,
-                            help='type is required. Name must be between 1 to 100 characters.',
+                            help='Name is required. Name must be between 1 to 100 characters.',
                             type=_validate_name)
         parser.add_argument('description', nullable=False, required=True,
-                            help='description is required. Description must be between 1 to 400 characters.',
+                            help='Description is required. Description must be between 1 to 400 characters.',
                             type=_validate_description_length)
         parser.add_argument('settings', type=list, location='json',
                             nullable=False,
@@ -213,6 +213,42 @@ class ExternalDatasetInitApi(Resource):
         }
 
         return response
+
+
+class ExternalDatasetCreateApi(Resource):
+
+    @setup_required
+    @login_required
+    @account_initialization_required
+    def post(self):
+        # The role of the current user in the ta table must be admin, owner, or editor
+        if not current_user.is_editor:
+            raise Forbidden()
+
+        parser = reqparse.RequestParser()
+        parser.add_argument('api_template_id', type=str, required=True, nullable=False, location='json')
+        parser.add_argument('external_knowledge_id', type=str, required=True, nullable=False, location='json')
+        parser.add_argument('name', nullable=False, required=True,
+                            help='name is required. Name must be between 1 to 100 characters.',
+                            type=_validate_name)
+        parser.add_argument('description', type=str, required=True, nullable=True, location='json')
+
+        args = parser.parse_args()
+
+        # The role of the current user in the ta table must be admin, owner, or editor, or dataset_operator
+        if not current_user.is_dataset_editor:
+            raise Forbidden()
+
+        try:
+            dataset = ExternalDatasetService.create_external_dataset(
+                tenant_id=current_user.current_tenant_id,
+                user_id=current_user.id,
+                args=args,
+            )
+        except services.errors.dataset.DatasetNameDuplicateError:
+            raise DatasetNameDuplicateError()
+
+        return marshal(dataset, dataset_detail_fields), 201
 
 
 api.add_resource(ExternalApiTemplateListApi, '/datasets/external-api-template')
