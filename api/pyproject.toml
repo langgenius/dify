@@ -67,6 +67,9 @@ ignore = [
     "F401", # unused-import
     "F811", # redefined-while-unused
 ]
+"configs/*" = [
+    "N802", # invalid-function-name
+]
 
 [tool.ruff.format]
 exclude = [
