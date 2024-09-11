@@ -283,15 +283,12 @@ export const useWorkflow = () => {
     return isUsed
   }, [isVarUsedInNodes])
 
-  const checkParallelLimit = useCallback((nodeId: string) => {
+  const checkParallelLimit = useCallback((nodeId: string, nodeHandle = 'source') => {
     const {
-      getNodes,
       edges,
     } = store.getState()
-    const nodes = getNodes()
-    const currentNode = nodes.find(node => node.id === nodeId)!
-    const sourceNodeOutgoers = getOutgoers(currentNode, nodes, edges)
-    if (sourceNodeOutgoers.length > PARALLEL_LIMIT - 1) {
+    const connectedEdges = edges.filter(edge => edge.source === nodeId && edge.sourceHandle === nodeHandle)
+    if (connectedEdges.length > PARALLEL_LIMIT - 1) {
       const { setShowTips } = workflowStore.getState()
       setShowTips(t('workflow.common.parallelTip.limit', { num: PARALLEL_LIMIT }))
       return false
@@ -322,7 +319,7 @@ export const useWorkflow = () => {
     return true
   }, [t, workflowStore])
 
-  const isValidConnection = useCallback(({ source, target }: Connection) => {
+  const isValidConnection = useCallback(({ source, sourceHandle, target }: Connection) => {
     const {
       edges,
       getNodes,
@@ -331,7 +328,7 @@ export const useWorkflow = () => {
     const sourceNode: Node = nodes.find(node => node.id === source)!
     const targetNode: Node = nodes.find(node => node.id === target)!
 
-    if (!checkParallelLimit(source!))
+    if (!checkParallelLimit(source!, sourceHandle || 'source'))
       return false
 
     if (sourceNode.type === CUSTOM_NOTE_NODE || targetNode.type === CUSTOM_NOTE_NODE)
