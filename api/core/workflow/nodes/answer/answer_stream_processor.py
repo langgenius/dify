@@ -108,6 +108,7 @@ class AnswerStreamProcessor(StreamProcessor):
                         route_node_state=event.route_node_state,
                         parallel_id=event.parallel_id,
                         parallel_start_node_id=event.parallel_start_node_id,
+                        from_variable_selector=[answer_node_id, "answer"],
                     )
                 else:
                     route_chunk = cast(VarGenerateRouteChunk, route_chunk)

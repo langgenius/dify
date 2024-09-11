@@ -376,7 +376,9 @@ class WorkflowAppGenerateTaskPipeline(BasedGenerateTaskPipeline, WorkflowCycleMa
                     tts_publisher.publish(message=queue_message)
 
                 self._task_state.answer += delta_text
-                yield self._text_chunk_to_stream_response(delta_text)
+                yield self._text_chunk_to_stream_response(
+                    delta_text, from_variable_selector=event.from_variable_selector
+                )
             else:
                 continue
 
@@ -412,14 +414,17 @@ class WorkflowAppGenerateTaskPipeline(BasedGenerateTaskPipeline, WorkflowCycleMa
         db.session.commit()
         db.session.close()
 
-    def _text_chunk_to_stream_response(self, text: str) -> TextChunkStreamResponse:
+    def _text_chunk_to_stream_response(
+        self, text: str, from_variable_selector: Optional[list[str]] = None
+    ) -> TextChunkStreamResponse:
         """
         Handle completed event.
         :param text: text
         :return:
         """
         response = TextChunkStreamResponse(
-            task_id=self._application_generate_entity.task_id, data=TextChunkStreamResponse.Data(text=text)
+            task_id=self._application_generate_entity.task_id,
+            data=TextChunkStreamResponse.Data(text=text, from_variable_selector=from_variable_selector),
         )
 
         return response
