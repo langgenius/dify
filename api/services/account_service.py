@@ -614,8 +614,8 @@ class RegisterService:
             "email": account.email,
             "workspace_id": tenant.id,
         }
-        expiryHours = dify_config.INVITE_EXPIRY_HOURS
-        redis_client.setex(cls._get_invitation_token_key(token), expiryHours * 60 * 60, json.dumps(invitation_data))
+        expiry_hours = dify_config.INVITE_EXPIRY_HOURS
+        redis_client.setex(cls._get_invitation_token_key(token), expiry_hours * 60 * 60, json.dumps(invitation_data))
         return token
 
     @classmethod

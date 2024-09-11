@@ -71,6 +71,9 @@ ignore = [
 "configs/*" = [
     "N802", # invalid-function-name
 ]
+"libs/gmpy2_pkcs10aep_cipher.py" = [
+    "N806",
+]
 
 [tool.ruff.format]
 exclude = [
