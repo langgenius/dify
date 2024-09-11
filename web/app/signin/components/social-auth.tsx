@@ -26,7 +26,7 @@ export default function SocialAuth(props: SocialAuthProps) {
       <a href={getOAuthLink('/oauth/login/github')}>
         <Button
           disabled={props.disabled}
-          className='w-full hover:!bg-gray-50'
+          className='w-full'
         >
           <>
             <span className={
@@ -35,7 +35,7 @@ export default function SocialAuth(props: SocialAuthProps) {
                 'w-5 h-5 mr-2',
               )
             } />
-            <span className="truncate text-gray-800">{t('login.withGitHub')}</span>
+            <span className="truncate">{t('login.withGitHub')}</span>
           </>
         </Button>
       </a>
@@ -44,7 +44,7 @@ export default function SocialAuth(props: SocialAuthProps) {
       <a href={getOAuthLink('/oauth/login/google')}>
         <Button
           disabled={props.disabled}
-          className='w-full hover:!bg-gray-50'
+          className='w-full'
         >
           <>
             <span className={
@@ -53,7 +53,7 @@ export default function SocialAuth(props: SocialAuthProps) {
                 'w-5 h-5 mr-2',
               )
             } />
-            <span className="truncate text-gray-800">{t('login.withGoogle')}</span>
+            <span className="truncate">{t('login.withGoogle')}</span>
           </>
         </Button>
       </a>
