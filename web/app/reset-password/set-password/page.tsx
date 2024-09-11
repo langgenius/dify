@@ -7,6 +7,7 @@ import { RiCheckboxCircleFill } from '@remixicon/react'
 import Button from '@/app/components/base/button'
 import { changePasswordWithToken } from '@/service/common'
 import Toast from '@/app/components/base/toast'
+import Input from '@/app/components/base/input'
 
 const validPassword = /^(?=.*[a-zA-Z])(?=.*\d).{8,}$/
 
@@ -93,38 +94,34 @@ const ChangePasswordForm = () => {
                 <label htmlFor="password" className="my-2 flex items-center justify-between text-sm font-medium text-gray-900">
                   {t('common.account.newPassword')}
                 </label>
-                <div className="mt-1 relative rounded-md shadow-sm">
-                  <input
-                    id="password"
-                    type='password'
-                    value={password}
-                    onChange={e => setPassword(e.target.value)}
-                    placeholder={t('login.passwordPlaceholder') || ''}
-                    className={'appearance-none block w-full rounded-lg pl-[14px] px-3 py-2 border border-gray-200 hover:border-gray-300 hover:shadow-sm focus:outline-none focus:ring-primary-500 focus:border-primary-500 placeholder-gray-400 caret-primary-600 sm:text-sm pr-10'}
-                  />
-                </div>
-                <div className='mt-1 text-xs text-gray-500'>{t('login.error.passwordInvalid')}</div>
+                <Input
+                  id="password"
+                  type='password'
+                  value={password}
+                  onChange={e => setPassword(e.target.value)}
+                  placeholder={t('login.passwordPlaceholder') || ''}
+                  className='mt-1'
+                />
+                <div className='mt-1 text-xs text-text-secondary'>{t('login.error.passwordInvalid')}</div>
               </div>
               {/* Confirm Password */}
               <div className='mb-5'>
                 <label htmlFor="confirmPassword" className="my-2 flex items-center justify-between text-sm font-medium text-gray-900">
                   {t('common.account.confirmPassword')}
                 </label>
-                <div className="mt-1 relative rounded-md shadow-sm">
-                  <input
-                    id="confirmPassword"
-                    type='password'
-                    value={confirmPassword}
-                    onChange={e => setConfirmPassword(e.target.value)}
-                    placeholder={t('login.confirmPasswordPlaceholder') || ''}
-                    className={'appearance-none block w-full rounded-lg pl-[14px] px-3 py-2 border border-gray-200 hover:border-gray-300 hover:shadow-sm focus:outline-none focus:ring-primary-500 focus:border-primary-500 placeholder-gray-400 caret-primary-600 sm:text-sm pr-10'}
-                  />
-                </div>
+                <Input
+                  id="confirmPassword"
+                  type='password'
+                  value={confirmPassword}
+                  onChange={e => setConfirmPassword(e.target.value)}
+                  placeholder={t('login.confirmPasswordPlaceholder') || ''}
+                  className='mt-1'
+                />
               </div>
               <div>
                 <Button
                   variant='primary'
-                  className='w-full !text-sm'
+                  className='w-full'
                   onClick={handleChangePassword}
                 >
                   {t('common.operation.reset')}

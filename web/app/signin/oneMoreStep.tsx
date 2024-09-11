@@ -4,6 +4,7 @@ import { useTranslation } from 'react-i18next'
 import Link from 'next/link'
 import useSWR from 'swr'
 import { useRouter, useSearchParams } from 'next/navigation'
+import Input from '../components/base/input'
 import Button from '@/app/components/base/button'
 import Tooltip from '@/app/components/base/tooltip'
 import { SimpleSelect } from '@/app/components/base/select'
@@ -99,12 +100,11 @@ const OneMoreStep = () => {
               </Tooltip>
             </label>
             <div className="mt-1">
-              <input
+              <Input
                 id="invitation_code"
                 value={state.invitation_code}
                 type="text"
                 placeholder={t('login.invitationCodePlaceholder') || ''}
-                className={'appearance-none block w-full rounded-lg pl-[14px] px-3 py-2 border border-gray-200 hover:border-gray-300 hover:shadow-sm focus:outline-none focus:ring-primary-500 focus:border-primary-500 placeholder-gray-400 caret-primary-600 sm:text-sm'}
                 onChange={(e) => {
                   dispatch({ type: 'invitation_code', value: e.target.value.trim() })
                 }}

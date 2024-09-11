@@ -64,7 +64,7 @@ export default function CheckCode() {
       <div className='mb-2'>
         <label htmlFor="email" className='my-2 block text-sm font-medium text-text-secondary'>{t('login.email')}</label>
         <div className='mt-1'>
-          <Input id='email' type="email" disabled={loading} value={email} placeholder={t('login.emailPlaceholder') as string} onChange={e => setEmail(e.target.value)} className="px-3 h-9" />
+          <Input id='email' type="email" disabled={loading} value={email} placeholder={t('login.emailPlaceholder') as string} onChange={e => setEmail(e.target.value)} />
         </div>
         <div className='mt-3'>
           <Button loading={loading} disabled={loading} variant='primary' className='w-full' onClick={handleGetEMailVerificationCode}>{t('login.continueWithCode')}</Button>

@@ -81,7 +81,6 @@ export default function MailAndPasswordAuth({ isInvite }: MailAndPasswordAuthPro
           type="email"
           autoComplete="email"
           placeholder={t('login.emailPlaceholder') || ''}
-          className='px-3 h-9'
         />
       </div>
     </div>
@@ -105,7 +104,6 @@ export default function MailAndPasswordAuth({ isInvite }: MailAndPasswordAuthPro
           type={showPassword ? 'text' : 'password'}
           autoComplete="current-password"
           placeholder={t('login.passwordPlaceholder') || ''}
-          className='px-3 h-9'
         />
         <div className="absolute inset-y-0 right-0 flex items-center pr-3">
           <button
