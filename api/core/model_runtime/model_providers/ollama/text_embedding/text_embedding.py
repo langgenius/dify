@@ -80,11 +80,14 @@ class OllamaEmbeddingModel(TextEmbeddingModel):
         payload = {
             "input": inputs,
             "model": model,
+            "options": {
+                "use_mmap": True
+            }
         }
 
         # Make the request to the OpenAI API
         response = requests.post(
-            endpoint_url, headers=headers, data=json.dumps(payload), timeout=(10, 300), options={"use_mmap": "true"}
+            endpoint_url, headers=headers, data=json.dumps(payload), timeout=(10, 300)
         )
 
         response.raise_for_status()  # Raise an exception for HTTP errors
