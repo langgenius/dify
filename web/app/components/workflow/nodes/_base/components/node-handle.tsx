@@ -132,9 +132,9 @@ export const NodeSourceHandle = memo(({
   }, [])
   const handleHandleClick = useCallback((e: MouseEvent) => {
     e.stopPropagation()
-    if (checkParallelLimit(id))
+    if (checkParallelLimit(id, handleId))
       setOpen(v => !v)
-  }, [checkParallelLimit, id])
+  }, [checkParallelLimit, id, handleId])
   const handleSelect = useCallback((type: BlockEnum, toolDefaultValue?: ToolDefaultValue) => {
     handleNodeAdd(
       {

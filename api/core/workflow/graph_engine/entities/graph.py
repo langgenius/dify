@@ -86,10 +86,6 @@ class Graph(BaseModel):
             if target_node_id not in reverse_edge_mapping:
                 reverse_edge_mapping[target_node_id] = []
 
-            # is target node id in source node id edge mapping
-            if any(graph_edge.target_node_id == target_node_id for graph_edge in edge_mapping[source_node_id]):
-                continue
-
             target_edge_ids.add(target_node_id)
 
             # parse run condition
