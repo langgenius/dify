@@ -74,7 +74,7 @@ class Signer:
     def sign(request, credentials):
         if request.path == "":
             request.path = "/"
-        if request.method != "GET" and not ("Content-Type" in request.headers):
+        if request.method != "GET" and "Content-Type" not in request.headers:
             request.headers["Content-Type"] = "application/x-www-form-urlencoded; charset=utf-8"
 
         format_date = Signer.get_current_format_date()
