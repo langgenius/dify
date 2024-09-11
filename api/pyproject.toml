@@ -16,7 +16,7 @@ select = [
     "E", # pycodestyle E rules
     "F", # pyflakes rules
     "I", # isort rules
-    "N", # pep8-naming rules
+    "N", # pep8-naming
     "UP", # pyupgrade rules
     "RUF019", # unnecessary-key-check
     "RUF100", # unused-noqa
@@ -27,8 +27,6 @@ select = [
     "SIM910", # dict-get-with-none-default
     "W191", # tab-indentation
     "W605", # invalid-escape-sequence
-    "F601", # multi-value-repeated-key-literal
-    "F602", # multi-value-repeated-key-variable
 ]
 ignore = [
     "E501", # line-too-long
