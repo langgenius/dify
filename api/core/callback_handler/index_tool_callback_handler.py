@@ -67,7 +67,7 @@ class DatasetIndexToolCallbackHandler:
                     data_source_type=item.get("data_source_type"),
                     segment_id=item.get("segment_id"),
                     score=item.get("score") if "score" in item else None,
-                    hit_count=item.get("hit_count") if "hit_count" else None,
+                    hit_count=item.get("hit_count") if "hit_count" in item else None,
                     word_count=item.get("word_count") if "word_count" in item else None,
                     segment_position=item.get("segment_position") if "segment_position" in item else None,
                     index_node_hash=item.get("index_node_hash") if "index_node_hash" in item else None,
