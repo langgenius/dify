@@ -20,12 +20,9 @@ class AnthropicProvider(ModelProvider):
             model_instance = self.get_model_instance(ModelType.LLM)
 
             # Use `claude-3-opus-20240229` model for validate,
-            model_instance.validate_credentials(
-                model='claude-3-opus-20240229',
-                credentials=credentials
-            )
+            model_instance.validate_credentials(model="claude-3-opus-20240229", credentials=credentials)
         except CredentialsValidateFailedError as ex:
             raise ex
         except Exception as ex:
-            logger.exception(f'{self.get_provider_schema().provider} credentials validate failed')
+            logger.exception(f"{self.get_provider_schema().provider} credentials validate failed")
             raise ex

@@ -2,9 +2,9 @@ class RetrievalResourceConfigManager:
     @classmethod
     def convert(cls, config: dict) -> bool:
         show_retrieve_source = False
-        retriever_resource_dict = config.get('retriever_resource')
+        retriever_resource_dict = config.get("retriever_resource")
         if retriever_resource_dict:
-            if retriever_resource_dict.get('enabled'):
+            if retriever_resource_dict.get("enabled"):
                 show_retrieve_source = True
 
         return show_retrieve_source
@@ -17,9 +17,7 @@ class RetrievalResourceConfigManager:
         :param config: app model config args
         """
         if not config.get("retriever_resource"):
-            config["retriever_resource"] = {
-                "enabled": False
-            }
+            config["retriever_resource"] = {"enabled": False}
 
         if not isinstance(config["retriever_resource"], dict):
             raise ValueError("retriever_resource must be of dict type")

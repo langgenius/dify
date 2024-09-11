@@ -1,5 +1,3 @@
-
-
 QUESTION_CLASSIFIER_SYSTEM_PROMPT = """
     ### Job Description',
     You are a text classification engine that analyzes text data and assigns categories based on user input or automatically determined categories.

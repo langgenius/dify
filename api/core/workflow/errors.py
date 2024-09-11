@@ -1,10 +1,8 @@
-from core.workflow.entities.node_entities import NodeType
+from core.workflow.nodes.base_node import BaseNode
 
 
 class WorkflowNodeRunFailedError(Exception):
-    def __init__(self, node_id: str, node_type: NodeType, node_title: str, error: str):
-        self.node_id = node_id
-        self.node_type = node_type
-        self.node_title = node_title
+    def __init__(self, node_instance: BaseNode, error: str):
+        self.node_instance = node_instance
         self.error = error
-        super().__init__(f"Node {node_title} run failed: {error}")
+        super().__init__(f"Node {node_instance.node_data.title} run failed: {error}")

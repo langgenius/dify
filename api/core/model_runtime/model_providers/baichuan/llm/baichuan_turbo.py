@@ -7,7 +7,7 @@ from requests import post
 from core.model_runtime.entities.message_entities import PromptMessageTool
 from core.model_runtime.model_providers.baichuan.llm.baichuan_turbo_errors import (
     BadRequestError,
-    InsufficientAccountBalance,
+    InsufficientAccountBalanceError,
     InternalServerError,
     InvalidAPIKeyError,
     InvalidAuthenticationError,
@@ -94,7 +94,6 @@ class BaichuanModel:
         timeout: int,
         tools: Optional[list[PromptMessageTool]] = None,
     ) -> Union[Iterator, dict]:
-
         if model in self._model_mapping.keys():
             api_base = "https://api.baichuan-ai.com/v1/chat/completions"
         else:
@@ -120,14 +119,12 @@ class BaichuanModel:
                 err = resp["error"]["type"]
                 msg = resp["error"]["message"]
             except Exception as e:
-                raise InternalServerError(
-                    f"Failed to convert response to json: {e} with text: {response.text}"
-                )
+                raise InternalServerError(f"Failed to convert response to json: {e} with text: {response.text}")
 
             if err == "invalid_api_key":
                 raise InvalidAPIKeyError(msg)
             elif err == "insufficient_quota":
-                raise InsufficientAccountBalance(msg)
+                raise InsufficientAccountBalanceError(msg)
             elif err == "invalid_authentication":
                 raise InvalidAuthenticationError(msg)
             elif err == "invalid_request_error":

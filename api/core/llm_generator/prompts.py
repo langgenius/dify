@@ -66,19 +66,19 @@ SUGGESTED_QUESTIONS_AFTER_ANSWER_INSTRUCTION_PROMPT = (
     "and keeping each question under 20 characters.\n"
     "MAKE SURE your output is the SAME language as the Assistant's latest response(if the main response is written in Chinese, then the language of your output must be using Chinese.)!\n"
     "The output must be an array in JSON format following the specified schema:\n"
-    "[\"question1\",\"question2\",\"question3\"]\n"
+    '["question1","question2","question3"]\n'
 )
 
 GENERATOR_QA_PROMPT = (
-    '<Task> The user will send a long text. Generate a Question and Answer pairs only using the knowledge in the long text. Please think step by step.'
-    'Step 1: Understand and summarize the main content of this text.\n'
-    'Step 2: What key information or concepts are mentioned in this text?\n'
-    'Step 3: Decompose or combine multiple pieces of information and concepts.\n'
-    'Step 4: Generate questions and answers based on these key information and concepts.\n'
-    '<Constraints> The questions should be clear and detailed, and the answers should be detailed and complete. '
-    'You must answer in {language}, in a style that is clear and detailed in {language}. No language other than {language} should be used. \n'
-    '<Format> Use the following format: Q1:\nA1:\nQ2:\nA2:...\n'
-    '<QA Pairs>'
+    "<Task> The user will send a long text. Generate a Question and Answer pairs only using the knowledge in the long text. Please think step by step."
+    "Step 1: Understand and summarize the main content of this text.\n"
+    "Step 2: What key information or concepts are mentioned in this text?\n"
+    "Step 3: Decompose or combine multiple pieces of information and concepts.\n"
+    "Step 4: Generate questions and answers based on these key information and concepts.\n"
+    "<Constraints> The questions should be clear and detailed, and the answers should be detailed and complete. "
+    "You must answer in {language}, in a style that is clear and detailed in {language}. No language other than {language} should be used. \n"
+    "<Format> Use the following format: Q1:\nA1:\nQ2:\nA2:...\n"
+    "<QA Pairs>"
 )
 
 WORKFLOW_RULE_CONFIG_PROMPT_GENERATE_TEMPLATE = """
