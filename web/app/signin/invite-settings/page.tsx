@@ -98,7 +98,6 @@ export default function InviteSettingsPage() {
             value={name}
             onChange={e => setName(e.target.value)}
             placeholder={t('login.namePlaceholder') || ''}
-            className={'appearance-none block w-full rounded-lg pl-[14px] px-3 py-2 border border-gray-200 hover:border-gray-300 hover:shadow-sm focus:outline-none focus:ring-primary-500 focus:border-primary-500 placeholder-gray-400 caret-primary-600 sm:text-sm pr-10'}
           />
         </div>
       </div>
