@@ -146,7 +146,7 @@ const ComponentPicker = ({
                       {
                         // Divider
                         index !== 0 && options.at(index - 1)?.group !== option.group && (
-                          <div className='h-px bg-gray-100 my-1 w-screen -translate-x-1'></div>
+                          <div className='h-px bg-gray-100 my-1 w-full -translate-x-1'></div>
                         )
                       }
                       {option.renderMenuOption({
@@ -167,7 +167,7 @@ const ComponentPicker = ({
                     <>
                       {
                         (!!options.length) && (
-                          <div className='h-px bg-gray-100 my-1 w-screen -translate-x-1'></div>
+                          <div className='h-px bg-gray-100 my-1 w-full -translate-x-1'></div>
                         )
                       }
                       <div className='p-1'>
