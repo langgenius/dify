@@ -1,8 +1,14 @@
+export enum SSOProtocol {
+  SAML = 'saml',
+  OIDC = 'oidc',
+  OAuth2 = 'oauth2',
+}
+
 export type SystemFeatures = {
   sso_enforced_for_signin: boolean
-  sso_enforced_for_signin_protocol: string
+  sso_enforced_for_signin_protocol: SSOProtocol | ''
   sso_enforced_for_web: boolean
-  sso_enforced_for_web_protocol: string
+  sso_enforced_for_web_protocol: SSOProtocol | ''
   enable_web_sso_switch_component: boolean
   enable_email_code_login: boolean
   enable_email_password_login: boolean
