@@ -2,8 +2,8 @@
 
 ## Short description
 
-Docker-compose certbot configurations with Backward compatibility (without certbot container).  
-Use `docker-compose --profile certbot up` to use this features.
+docker compose certbot configurations with Backward compatibility (without certbot container).  
+Use `docker compose --profile certbot up` to use this features.
 
 ## The simplest way for launching new servers with SSL certificates
 
@@ -18,21 +18,21 @@ Use `docker-compose --profile certbot up` to use this features.
    ```
    execute command:
    ```shell
-   sudo docker network prune
-   sudo docker-compose --profile certbot up --force-recreate -d
+   docker network prune
+   docker compose --profile certbot up --force-recreate -d
    ```
    then after the containers launched:
    ```shell
-   sudo docker-compose exec -it certbot /bin/sh /update-cert.sh
+   docker compose exec -it certbot /bin/sh /update-cert.sh
    ```
-2. Edit `.env` file and `sudo docker-compose --profile certbot up` again.  
+2. Edit `.env` file and `docker compose --profile certbot up` again.  
    set `.env` value additionally
    ```properties
    NGINX_HTTPS_ENABLED=true
    ```
    execute command:
    ```shell
-   sudo docker-compose --profile certbot up -d --no-deps --force-recreate nginx
+   docker compose --profile certbot up -d --no-deps --force-recreate nginx
    ```
    Then you can access your serve with HTTPS.  
    [https://your_domain.com](https://your_domain.com)
@@ -42,8 +42,8 @@ Use `docker-compose --profile certbot up` to use this features.
 For SSL certificates renewal, execute commands below:
 
 ```shell
-sudo docker-compose exec -it certbot /bin/sh /update-cert.sh
-sudo docker-compose exec nginx nginx -s reload
+docker compose exec -it certbot /bin/sh /update-cert.sh
+docker compose exec nginx nginx -s reload
 ```
 
 ## Options for certbot
@@ -57,14 +57,14 @@ CERTBOT_OPTIONS=--dry-run
 To apply changes to `CERTBOT_OPTIONS`, regenerate the certbot container before updating the certificates.
 
 ```shell
-sudo docker-compose --profile certbot up -d --no-deps --force-recreate certbot
-sudo docker-compose exec -it certbot /bin/sh /update-cert.sh
+docker compose --profile certbot up -d --no-deps --force-recreate certbot
+docker compose exec -it certbot /bin/sh /update-cert.sh
 ```
 
 Then, reload the nginx container if necessary.
 
 ```shell
-sudo docker-compose exec nginx nginx -s reload
+docker compose exec nginx nginx -s reload
 ```
 
 ## For legacy servers
@@ -72,5 +72,5 @@ sudo docker-compose exec nginx nginx -s reload
 To use cert files dir `nginx/ssl` as before, simply launch containers WITHOUT `--profile certbot` option.
 
 ```shell
-sudo docker-compose up -d
+docker compose up -d
 ```

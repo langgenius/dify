@@ -29,12 +29,8 @@ class SparkProvider(BuiltinToolProviderController):
                     #  0 success，
                     pass
                 else:
-                    raise ToolProviderCredentialValidationError(
-                        "image generate error, code:{}".format(code)
-                    )
+                    raise ToolProviderCredentialValidationError("image generate error, code:{}".format(code))
             except Exception as e:
-                raise ToolProviderCredentialValidationError(
-                    "APPID APISecret APIKey is invalid. {}".format(e)
-                )
+                raise ToolProviderCredentialValidationError("APPID APISecret APIKey is invalid. {}".format(e))
         except Exception as e:
             raise ToolProviderCredentialValidationError(str(e))

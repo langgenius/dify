@@ -32,7 +32,7 @@ const translation = {
   pp: 'Privacy Policy',
   tosDesc: 'By signing up, you agree to our',
   goToInit: 'If you have not initialized the account, please go to the initialization page',
-  donthave: 'Don\'t have?',
+  dontHave: 'Don\'t have?',
   invalidInvitationCode: 'Invalid invitation code',
   accountAlreadyInited: 'Account already initialized',
   forgotPassword: 'Forgot your password?',

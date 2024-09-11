@@ -26,6 +26,7 @@ class UnstructuredEmailExtractor(BaseExtractor):
 
     def extract(self) -> list[Document]:
         from unstructured.partition.email import partition_email
+
         elements = partition_email(filename=self._file_path)
 
         # noinspection PyBroadException
@@ -34,15 +35,16 @@ class UnstructuredEmailExtractor(BaseExtractor):
                 element_text = element.text.strip()
 
                 padding_needed = 4 - len(element_text) % 4
-                element_text += '=' * padding_needed
+                element_text += "=" * padding_needed
 
                 element_decode = base64.b64decode(element_text)
-                soup = BeautifulSoup(element_decode.decode('utf-8'), 'html.parser')
+                soup = BeautifulSoup(element_decode.decode("utf-8"), "html.parser")
                 element.text = soup.get_text()
         except Exception:
             pass
 
         from unstructured.chunking.title import chunk_by_title
+
         chunks = chunk_by_title(elements, max_characters=2000, combine_text_under_n_chars=2000)
         documents = []
         for chunk in chunks:

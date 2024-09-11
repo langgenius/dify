@@ -48,6 +48,8 @@ const translation = {
           title: 'Các bước quy trình',
           show: 'Hiển thị',
           hide: 'Ẩn',
+          showDesc: 'Hiển thị hoặc ẩn chi tiết dòng công việc trong WebApp',
+          subTitle: 'Chi tiết quy trình làm việc',
         },
         chatColorTheme: 'Giao diện màu trò chuyện',
         chatColorThemeDesc: 'Thiết lập giao diện màu của chatbot',
@@ -63,6 +65,12 @@ const translation = {
           customDisclaimer: 'Tuyên bố từ chối trách nhiệm tùy chỉnh',
           customDisclaimerPlaceholder: 'Nhập liên kết tuyên bố từ chối trách nhiệm',
           customDisclaimerTip: 'Liên kết này sẽ hiển thị ở phía người dùng, cung cấp thông tin về trách nhiệm của ứng dụng',
+        },
+        sso: {
+          title: 'SSO ứng dụng web',
+          description: 'Tất cả người dùng được yêu cầu đăng nhập bằng SSO trước khi sử dụng WebApp',
+          tooltip: 'Liên hệ với quản trị viên để bật SSO WebApp',
+          label: 'Xác thực SSO',
         },
       },
       embedded: {

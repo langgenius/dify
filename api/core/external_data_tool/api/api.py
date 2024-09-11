@@ -30,10 +30,11 @@ class ApiExternalDataTool(ExternalDataTool):
             raise ValueError("api_based_extension_id is required")
 
         # get api_based_extension
-        api_based_extension = db.session.query(APIBasedExtension).filter(
-            APIBasedExtension.tenant_id == tenant_id,
-            APIBasedExtension.id == api_based_extension_id
-        ).first()
+        api_based_extension = (
+            db.session.query(APIBasedExtension)
+            .filter(APIBasedExtension.tenant_id == tenant_id, APIBasedExtension.id == api_based_extension_id)
+            .first()
+        )
 
         if not api_based_extension:
             raise ValueError("api_based_extension_id is invalid")
@@ -50,47 +51,42 @@ class ApiExternalDataTool(ExternalDataTool):
         api_based_extension_id = self.config.get("api_based_extension_id")
 
         # get api_based_extension
-        api_based_extension = db.session.query(APIBasedExtension).filter(
-            APIBasedExtension.tenant_id == self.tenant_id,
-            APIBasedExtension.id == api_based_extension_id
-        ).first()
+        api_based_extension = (
+            db.session.query(APIBasedExtension)
+            .filter(APIBasedExtension.tenant_id == self.tenant_id, APIBasedExtension.id == api_based_extension_id)
+            .first()
+        )
 
         if not api_based_extension:
-            raise ValueError("[External data tool] API query failed, variable: {}, "
-                             "error: api_based_extension_id is invalid"
-                             .format(self.variable))
+            raise ValueError(
+                "[External data tool] API query failed, variable: {}, "
+                "error: api_based_extension_id is invalid".format(self.variable)
+            )
 
         # decrypt api_key
-        api_key = encrypter.decrypt_token(
-            tenant_id=self.tenant_id,
-            token=api_based_extension.api_key
-        )
+        api_key = encrypter.decrypt_token(tenant_id=self.tenant_id, token=api_based_extension.api_key)
 
         try:
             # request api
-            requestor = APIBasedExtensionRequestor(
-                api_endpoint=api_based_extension.api_endpoint,
-                api_key=api_key
-            )
+            requestor = APIBasedExtensionRequestor(api_endpoint=api_based_extension.api_endpoint, api_key=api_key)
         except Exception as e:
-            raise ValueError("[External data tool] API query failed, variable: {}, error: {}".format(
-                self.variable,
-                e
-            ))
+            raise ValueError("[External data tool] API query failed, variable: {}, error: {}".format(self.variable, e))
 
-        response_json = requestor.request(point=APIBasedExtensionPoint.APP_EXTERNAL_DATA_TOOL_QUERY, params={
-            'app_id': self.app_id,
-            'tool_variable': self.variable,
-            'inputs': inputs,
-            'query': query
-        })
+        response_json = requestor.request(
+            point=APIBasedExtensionPoint.APP_EXTERNAL_DATA_TOOL_QUERY,
+            params={"app_id": self.app_id, "tool_variable": self.variable, "inputs": inputs, "query": query},
+        )
 
-        if 'result' not in response_json:
-            raise ValueError("[External data tool] API query failed, variable: {}, error: result not found in response"
-                             .format(self.variable))
+        if "result" not in response_json:
+            raise ValueError(
+                "[External data tool] API query failed, variable: {}, error: result not found in response".format(
+                    self.variable
+                )
+            )
 
-        if not isinstance(response_json['result'], str):
-            raise ValueError("[External data tool] API query failed, variable: {}, error: result is not string"
-                             .format(self.variable))
+        if not isinstance(response_json["result"], str):
+            raise ValueError(
+                "[External data tool] API query failed, variable: {}, error: result is not string".format(self.variable)
+            )
 
-        return response_json['result']
+        return response_json["result"]

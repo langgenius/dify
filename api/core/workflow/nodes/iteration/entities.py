@@ -1,20 +1,31 @@
 from typing import Any, Optional
 
-from core.workflow.entities.base_node_data_entities import BaseIterationNodeData, BaseIterationState
+from core.workflow.entities.base_node_data_entities import BaseIterationNodeData, BaseIterationState, BaseNodeData
 
 
 class IterationNodeData(BaseIterationNodeData):
     """
     Iteration Node Data.
     """
-    parent_loop_id: Optional[str] = None # redundant field, not used currently
-    iterator_selector: list[str] # variable selector
-    output_selector: list[str] # output selector
+
+    parent_loop_id: Optional[str] = None  # redundant field, not used currently
+    iterator_selector: list[str]  # variable selector
+    output_selector: list[str]  # output selector
+
+
+class IterationStartNodeData(BaseNodeData):
+    """
+    Iteration Start Node Data.
+    """
+
+    pass
+
 
 class IterationState(BaseIterationState):
     """
     Iteration State.
     """
+
     outputs: list[Any] = None
     current_output: Optional[Any] = None
 
@@ -22,6 +33,7 @@ class IterationState(BaseIterationState):
         """
         Data.
         """
+
         iterator_length: int
 
     def get_last_output(self) -> Optional[Any]:
@@ -31,7 +43,7 @@ class IterationState(BaseIterationState):
         if self.outputs:
             return self.outputs[-1]
         return None
-    
+
     def get_current_output(self) -> Optional[Any]:
         """
         Get current output.

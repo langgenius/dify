@@ -147,13 +147,13 @@ const vars = {
 
   'components-main-nav-nav-user-border': 'var(--color-components-main-nav-nav-user-border)',
 
-  'components-silder-knob': 'var(--color-components-silder-knob)',
-  'components-silder-knob-hover': 'var(--color-components-silder-knob-hover)',
-  'components-silder-knob-disabled': 'var(--color-components-silder-knob-disabled)',
-  'components-silder-range': 'var(--color-components-silder-range)',
-  'components-silder-track': 'var(--color-components-silder-track)',
-  'components-silder-knob-border-hover': 'var(--color-components-silder-knob-border-hover)',
-  'components-silder-knob-border': 'var(--color-components-silder-knob-border)',
+  'components-slider-knob': 'var(--color-components-slider-knob)',
+  'components-slider-knob-hover': 'var(--color-components-slider-knob-hover)',
+  'components-slider-knob-disabled': 'var(--color-components-slider-knob-disabled)',
+  'components-slider-range': 'var(--color-components-slider-range)',
+  'components-slider-track': 'var(--color-components-slider-track)',
+  'components-slider-knob-border-hover': 'var(--color-components-slider-knob-border-hover)',
+  'components-slider-knob-border': 'var(--color-components-slider-knob-border)',
 
   'components-segmented-control-item-active-bg': 'var(--color-components-segmented-control-item-active-bg)',
   'components-segmented-control-item-active-border': 'var(--color-components-segmented-control-item-active-border)',
@@ -268,7 +268,7 @@ const vars = {
 
   'background-body': 'var(--color-background-body)',
   'background-default-subtle': 'var(--color-background-default-subtle)',
-  'background-neurtral-subtle': 'var(--color-background-neurtral-subtle)',
+  'background-neutral-subtle': 'var(--color-background-neutral-subtle)',
   'background-sidenav-bg': 'var(--color-background-sidenav-bg)',
   'background-default': 'var(--color-background-default)',
   'background-soft': 'var(--color-background-soft)',
@@ -316,6 +316,7 @@ const vars = {
   'workflow-block-border': 'var(--color-workflow-block-border)',
   'workflow-block-parma-bg': 'var(--color-workflow-block-parma-bg)',
   'workflow-block-bg': 'var(--color-workflow-block-bg)',
+  'workflow-block-border-highlight': 'var(--color-workflow-block-border-highlight)',
 
   'workflow-canvas-workflow-dot-color': 'var(--color-workflow-canvas-workflow-dot-color)',
   'workflow-canvas-workflow-bg': 'var(--color-workflow-canvas-workflow-bg)',
@@ -324,8 +325,8 @@ const vars = {
   'workflow-link-line-normal': 'var(--color-workflow-link-line-normal)',
   'workflow-link-line-handle': 'var(--color-workflow-link-line-handle)',
 
-  'workflow-minmap-bg': 'var(--color-workflow-minmap-bg)',
-  'workflow-minmap-block': 'var(--color-workflow-minmap-block)',
+  'workflow-minimap-bg': 'var(--color-workflow-minimap-bg)',
+  'workflow-minimap-block': 'var(--color-workflow-minimap-block)',
 
   'workflow-display-success-bg': 'var(--color-workflow-display-success-bg)',
   'workflow-display-success-border-1': 'var(--color-workflow-display-success-border-1)',
@@ -371,8 +372,8 @@ const vars = {
   'divider-deep': 'var(--color-divider-deep)',
   'divider-burn': 'var(--color-divider-burn)',
   'divider-intense': 'var(--color-divider-intense)',
-  'divider-soild': 'var(--color-divider-soild)',
-  'divider-soild-alt': 'var(--color-divider-soild-alt)',
+  'divider-solid': 'var(--color-divider-solid)',
+  'divider-solid-alt': 'var(--color-divider-solid-alt)',
 
   'state-base-hover': 'var(--color-state-base-hover)',
   'state-base-active': 'var(--color-state-base-active)',
@@ -383,24 +384,24 @@ const vars = {
   'state-accent-hover': 'var(--color-state-accent-hover)',
   'state-accent-active': 'var(--color-state-accent-active)',
   'state-accent-hover-alt': 'var(--color-state-accent-hover-alt)',
-  'state-accent-soild': 'var(--color-state-accent-soild)',
+  'state-accent-solid': 'var(--color-state-accent-solid)',
   'state-accent-active-alt': 'var(--color-state-accent-active-alt)',
 
   'state-destructive-hover': 'var(--color-state-destructive-hover)',
   'state-destructive-hover-alt': 'var(--color-state-destructive-hover-alt)',
   'state-destructive-active': 'var(--color-state-destructive-active)',
-  'state-destructive-soild': 'var(--color-state-destructive-soild)',
+  'state-destructive-solid': 'var(--color-state-destructive-solid)',
   'state-destructive-border': 'var(--color-state-destructive-border)',
 
   'state-success-hover': 'var(--color-state-success-hover)',
   'state-success-hover-alt': 'var(--color-state-success-hover-alt)',
   'state-success-active': 'var(--color-state-success-active)',
-  'state-success-soild': 'var(--color-state-success-soild)',
+  'state-success-solid': 'var(--color-state-success-solid)',
 
   'state-warning-hover': 'var(--color-state-warning-hover)',
   'state-warning-hover-alt': 'var(--color-state-warning-hover-alt)',
   'state-warning-active': 'var(--color-state-warning-active)',
-  'state-warning-soild': 'var(--color-state-warning-soild)',
+  'state-warning-solid': 'var(--color-state-warning-solid)',
 
   'effects-highlight': 'var(--color-effects-highlight)',
   'effects-highlight-lightmode-off': 'var(--color-effects-highlight-lightmode-off)',

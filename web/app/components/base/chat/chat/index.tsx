@@ -62,6 +62,7 @@ export type ChatProps = {
   hideProcessDetail?: boolean
   hideLogModal?: boolean
   themeBuilder?: ThemeBuilder
+  noSpacing?: boolean
 }
 
 const Chat: FC<ChatProps> = ({
@@ -92,6 +93,7 @@ const Chat: FC<ChatProps> = ({
   hideProcessDetail,
   hideLogModal,
   themeBuilder,
+  noSpacing,
 }) => {
   const { t } = useTranslation()
   const { currentLogItem, setCurrentLogItem, showPromptLogModal, setShowPromptLogModal, showAgentLogModal, setShowAgentLogModal } = useAppStore(useShallow(state => ({
@@ -109,7 +111,7 @@ const Chat: FC<ChatProps> = ({
   const chatFooterInnerRef = useRef<HTMLDivElement>(null)
   const userScrolledRef = useRef(false)
 
-  const handleScrolltoBottom = useCallback(() => {
+  const handleScrollToBottom = useCallback(() => {
     if (chatContainerRef.current && !userScrolledRef.current)
       chatContainerRef.current.scrollTop = chatContainerRef.current.scrollHeight
   }, [])
@@ -126,14 +128,14 @@ const Chat: FC<ChatProps> = ({
   }, [])
 
   useEffect(() => {
-    handleScrolltoBottom()
+    handleScrollToBottom()
     handleWindowResize()
-  }, [handleScrolltoBottom, handleWindowResize])
+  }, [handleScrollToBottom, handleWindowResize])
 
   useEffect(() => {
     if (chatContainerRef.current) {
       requestAnimationFrame(() => {
-        handleScrolltoBottom()
+        handleScrollToBottom()
         handleWindowResize()
       })
     }
@@ -151,7 +153,7 @@ const Chat: FC<ChatProps> = ({
           const { blockSize } = entry.borderBoxSize[0]
 
           chatContainerRef.current!.style.paddingBottom = `${blockSize}px`
-          handleScrolltoBottom()
+          handleScrollToBottom()
         }
       })
 
@@ -161,7 +163,7 @@ const Chat: FC<ChatProps> = ({
         resizeObserver.disconnect()
       }
     }
-  }, [handleScrolltoBottom])
+  }, [handleScrollToBottom])
 
   useEffect(() => {
     const chatContainer = chatContainerRef.current
@@ -196,12 +198,12 @@ const Chat: FC<ChatProps> = ({
       <div className='relative h-full'>
         <div
           ref={chatContainerRef}
-          className={classNames('relative h-full overflow-y-auto', chatContainerClassName)}
+          className={classNames('relative h-full overflow-y-auto overflow-x-hidden', chatContainerClassName)}
         >
           {chatNode}
           <div
             ref={chatContainerInnerRef}
-            className={`${chatContainerInnerClassName}`}
+            className={classNames('w-full', !noSpacing && 'px-8', chatContainerInnerClassName)}
           >
             {
               chatList.map((item, index) => {
@@ -273,6 +275,7 @@ const Chat: FC<ChatProps> = ({
                   speechToTextConfig={config?.speech_to_text}
                   onSend={onSend}
                   theme={themeBuilder?.theme}
+                  noSpacing={noSpacing}
                 />
               )
             }

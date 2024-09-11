@@ -22,7 +22,7 @@ const AppUnavailable: FC<IAppUnavailableProps> = ({
         style={{
           borderRight: '1px solid rgba(0,0,0,.3)',
         }}>{code}</h1>
-      <div className='text-sm'>{unknownReason || (isUnknownReason ? t('share.common.appUnkonwError') : t('share.common.appUnavailable'))}</div>
+      <div className='text-sm'>{unknownReason || (isUnknownReason ? t('share.common.appUnknownError') : t('share.common.appUnavailable'))}</div>
     </div>
   )
 }

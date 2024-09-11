@@ -1,0 +1,188 @@
+.videoPlayer {
+  position: relative;
+  width: 100%;
+  max-width: 800px;
+  margin: 0 auto;
+  border-radius: 8px;
+  overflow: hidden;
+}
+
+.video {
+  width: 100%;
+  display: block;
+}
+
+.controls {
+  position: absolute;
+  bottom: 0;
+  left: 0;
+  right: 0;
+  width: 100%;
+  height: 100%;
+  display: flex;
+  flex-direction: column;
+  justify-content: flex-end;
+  transition: opacity 0.3s ease;
+}
+
+.controls.hidden {
+  opacity: 0;
+}
+
+.controls.visible {
+  opacity: 1;
+}
+
+.overlay {
+  background: linear-gradient(to top, rgba(0, 0, 0, 0.7) 0%, transparent 100%);
+  padding: 20px;
+  display: flex;
+  flex-direction: column;
+}
+
+.progressBarContainer {
+  width: 100%;
+  margin-bottom: 10px;
+}
+
+.controlsContent {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+
+.leftControls, .rightControls {
+  display: flex;
+  align-items: center;
+}
+
+.playPauseButton, .muteButton, .fullscreenButton {
+  background: none;
+  border: none;
+  color: white;
+  cursor: pointer;
+  padding: 4px;
+  margin-right: 10px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.playPauseButton:hover, .muteButton:hover, .fullscreenButton:hover {
+  background-color: rgba(255, 255, 255, 0.1);
+  border-radius: 50%;
+}
+
+.time {
+  color: white;
+  font-size: 14px;
+  margin-left: 8px;
+}
+
+.volumeControl {
+  display: flex;
+  align-items: center;
+  margin-right: 16px;
+}
+
+.volumeSlider {
+  width: 60px;
+  height: 4px;
+  background: rgba(255, 255, 255, 0.3);
+  border-radius: 2px;
+  cursor: pointer;
+  margin-left: 12px;
+  position: relative;
+}
+
+.volumeLevel {
+  position: absolute;
+  top: 0;
+  left: 0;
+  height: 100%;
+  background: #ffffff;
+  border-radius: 2px;
+}
+
+.progressBar {
+  position: relative;
+  width: 100%;
+  height: 4px;
+  background: rgba(255, 255, 255, 0.3);
+  cursor: pointer;
+  border-radius: 2px;
+  overflow: visible;
+  transition: height 0.2s ease;
+}
+
+.progressBar:hover {
+  height: 6px;
+}
+
+.progress {
+  height: 100%;
+  background: #ffffff;
+  transition: width 0.1s ease-in-out;
+}
+
+.hoverTimeIndicator {
+  position: absolute;
+  bottom: 100%;
+  transform: translateX(-50%);
+  background-color: rgba(0, 0, 0, 0.7);
+  color: white;
+  padding: 4px 8px;
+  border-radius: 4px;
+  font-size: 12px;
+  pointer-events: none;
+  white-space: nowrap;
+  margin-bottom: 8px;
+}
+
+.hoverTimeIndicator::after {
+  content: '';
+  position: absolute;
+  top: 100%;
+  left: 50%;
+  margin-left: -4px;
+  border-width: 4px;
+  border-style: solid;
+  border-color: rgba(0, 0, 0, 0.7) transparent transparent transparent;
+}
+
+.controls.smallSize .controlsContent {
+  justify-content: space-between;
+}
+
+.controls.smallSize .leftControls,
+.controls.smallSize .rightControls {
+  flex: 0 0 auto;
+  display: flex;
+  align-items: center;
+}
+
+.controls.smallSize .rightControls {
+  justify-content: flex-end;
+}
+
+.controls.smallSize .progressBarContainer {
+  margin-bottom: 4px;
+}
+
+.controls.smallSize .playPauseButton,
+.controls.smallSize .muteButton,
+.controls.smallSize .fullscreenButton {
+  padding: 2px;
+  margin-right: 4px;
+}
+
+.controls.smallSize .playPauseButton svg,
+.controls.smallSize .muteButton svg,
+.controls.smallSize .fullscreenButton svg {
+  width: 16px;
+  height: 16px;
+}
+
+.controls.smallSize .muteButton {
+  order: -1;
+}

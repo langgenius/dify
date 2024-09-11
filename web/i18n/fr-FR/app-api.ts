@@ -9,7 +9,7 @@ const translation = {
   play: 'Jouer',
   pause: 'Pause',
   playing: 'Jouant',
-  merMaind: {
+  merMaid: {
     rerender: 'Refaire Rerendu',
   },
   never: 'Jamais',
@@ -77,6 +77,7 @@ const translation = {
     pathParams: 'Params de chemin',
     query: 'Requête',
   },
+  loading: 'Chargement',
 }
 
 export default translation

@@ -71,6 +71,7 @@ const translation = {
   nTo1RetrievalLegacy: 'N對1檢索將從9月起正式棄用。建議使用最新的多路徑檢索以獲得更好的結果。',
   nTo1RetrievalLegacyLink: '了解更多',
   nTo1RetrievalLegacyLinkText: 'N對1檢索將於9月正式棄用。',
+  defaultRetrievalTip: '默認情況下，使用多路徑檢索。從多個知識庫中檢索知識，然後重新排名。',
 }
 
 export default translation

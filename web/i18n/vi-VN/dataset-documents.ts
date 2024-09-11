@@ -13,6 +13,8 @@ const translation = {
         status: 'TRẠNG THÁI',
         action: 'THAO TÁC',
       },
+      rename: 'Rename',
+      name: 'Tên',
     },
     action: {
       uploadFile: 'Tải lên tệp mới',
@@ -74,6 +76,7 @@ const translation = {
       error: 'Lỗi nhập',
       ok: 'OK',
     },
+    addUrl: 'Thêm URL',
   },
   metadata: {
     title: 'Siêu dữ liệu',
