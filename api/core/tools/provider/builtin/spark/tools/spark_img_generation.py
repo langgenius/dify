@@ -115,7 +115,7 @@ class SparkImgGeneratorTool(BuiltinTool):
                 self.create_blob_message(
                     blob=b64decode(image["base64_image"]),
                     meta={"mime_type": "image/png"},
-                    save_as=self.VARIABLE_KEY.IMAGE.value,
+                    save_as=self.VariableKey.IMAGE.value,
                 )
             )
         return result

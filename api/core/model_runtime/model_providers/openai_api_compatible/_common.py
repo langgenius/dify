@@ -10,7 +10,7 @@ from core.model_runtime.errors.invoke import (
 )
 
 
-class _CommonOAI_API_Compat:
+class _CommonOaiApiCompat:
     @property
     def _invoke_error_mapping(self) -> dict[type[InvokeError], list[type[Exception]]]:
         """
