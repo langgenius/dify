@@ -15,6 +15,7 @@ select = [
     "C4", # flake8-comprehensions
     "F", # pyflakes rules
     "I", # isort rules
+    "N", # pep8-naming
     "UP", # pyupgrade rules
     "B035", # static-key-dict-comprehension
     "E101", # mixed-spaces-and-tabs
