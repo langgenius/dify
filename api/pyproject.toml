@@ -15,15 +15,9 @@ select = [
     "C4", # flake8-comprehensions
     "F", # pyflakes rules
     "I", # isort rules
-    "N", # pep8-naming
+    "N", # pep8-naming rules
     "UP", # pyupgrade rules
-    "E101", # mixed-spaces-and-tabs
-    "E111", # indentation-with-invalid-multiple
-    "E112", # no-indented-block
-    "E113", # unexpected-indentation
-    "E115", # no-indented-block-comment
-    "E116", # unexpected-indentation-comment
-    "E117", # over-indented
+    "E", # pycodestyle E rules
     "RUF019", # unnecessary-key-check
     "RUF100", # unused-noqa
     "RUF101", # redirected-noqa
@@ -37,6 +31,13 @@ select = [
     "F602", # multi-value-repeated-key-variable
 ]
 ignore = [
+    "E501", # line-too-long
+    "E402", # module-import-not-at-top-of-file
+    "E711", # none-comparison
+    "E712", # true-false-comparison
+    "E721", # type-comparison
+    "E722", # bare-except
+    "E731", # lambda-assignment
     "F403", # undefined-local-with-import-star
     "F405", # undefined-local-with-import-star-usage
     "F821", # undefined-name
