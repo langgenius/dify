@@ -51,6 +51,7 @@ ignore = [
 #    "B901", # return-in-generator
     "B904", # raise-without-from-inside-except
     "B905", # zip-without-explicit-strict
+    "N815", # mixed-case-variable-in-class-scope
 ]
 
 [tool.ruff.lint.per-file-ignores]
