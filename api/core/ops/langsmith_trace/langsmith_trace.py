@@ -159,8 +159,8 @@ class LangSmithDataTrace(BaseTraceInstance):
                 run_type = LangSmithRunType.llm
                 metadata.update(
                     {
-                        'ls_provider': process_data.get('model_provider', ''),
-                        'ls_model_name': process_data.get('model_name', ''),
+                        "ls_provider": process_data.get("model_provider", ""),
+                        "ls_model_name": process_data.get("model_name", ""),
                     }
                 )
             elif node_type == "knowledge-retrieval":
@@ -385,12 +385,10 @@ class LangSmithDataTrace(BaseTraceInstance):
                 start_time=datetime.now(),
             )
 
-            project_url = self.langsmith_client.get_run_url(run=run_data,
-                                                        project_id=self.project_id,
-                                                        project_name=self.project_name)
-            return project_url.split('/r/')[0]
+            project_url = self.langsmith_client.get_run_url(
+                run=run_data, project_id=self.project_id, project_name=self.project_name
+            )
+            return project_url.split("/r/")[0]
         except Exception as e:
             logger.debug(f"LangSmith get run url failed: {str(e)}")
             raise ValueError(f"LangSmith get run url failed: {str(e)}")
-
-

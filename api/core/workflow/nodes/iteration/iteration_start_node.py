@@ -11,6 +11,7 @@ class IterationStartNode(BaseNode):
     """
     Iteration Start Node.
     """
+
     _node_data_cls = IterationStartNodeData
     _node_type = NodeType.ITERATION_START
 
@@ -18,16 +19,11 @@ class IterationStartNode(BaseNode):
         """
         Run the node.
         """
-        return NodeRunResult(
-            status=WorkflowNodeExecutionStatus.SUCCEEDED
-        )
-    
+        return NodeRunResult(status=WorkflowNodeExecutionStatus.SUCCEEDED)
+
     @classmethod
     def _extract_variable_selector_to_variable_mapping(
-        cls, 
-        graph_config: Mapping[str, Any], 
-        node_id: str,
-        node_data: IterationNodeData
+        cls, graph_config: Mapping[str, Any], node_id: str, node_data: IterationNodeData
     ) -> Mapping[str, Sequence[str]]:
         """
         Extract variable selector to variable mapping

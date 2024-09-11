@@ -22,9 +22,9 @@ class DeleteBoardTool(BuiltinTool):
         Returns:
             ToolInvokeMessage: The result of the tool invocation.
         """
-        api_key = self.runtime.credentials.get('trello_api_key')
-        token = self.runtime.credentials.get('trello_api_token')
-        board_id = tool_parameters.get('boardId')
+        api_key = self.runtime.credentials.get("trello_api_key")
+        token = self.runtime.credentials.get("trello_api_token")
+        board_id = tool_parameters.get("boardId")
 
         if not (api_key and token and board_id):
             return self.create_text_message("Missing required parameters: API key, token, or board ID.")
@@ -38,4 +38,3 @@ class DeleteBoardTool(BuiltinTool):
             return self.create_text_message("Failed to delete board")
 
         return self.create_text_message(text=f"Board with ID {board_id} deleted successfully.")
-

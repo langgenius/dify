@@ -18,8 +18,9 @@ class TongyiText2SpeechModel(_CommonTongyi, TTSModel):
     Model class for Tongyi Speech to text model.
     """
 
-    def _invoke(self, model: str, tenant_id: str, credentials: dict, content_text: str, voice: str,
-                user: Optional[str] = None) -> any:
+    def _invoke(
+        self, model: str, tenant_id: str, credentials: dict, content_text: str, voice: str, user: Optional[str] = None
+    ) -> any:
         """
         _invoke text2speech model
 
@@ -31,14 +32,12 @@ class TongyiText2SpeechModel(_CommonTongyi, TTSModel):
         :param user: unique user id
         :return: text translated to audio file
         """
-        if not voice or voice not in [d['value'] for d in
-                                      self.get_tts_model_voices(model=model, credentials=credentials)]:
+        if not voice or voice not in [
+            d["value"] for d in self.get_tts_model_voices(model=model, credentials=credentials)
+        ]:
             voice = self._get_model_default_voice(model, credentials)
 
-        return self._tts_invoke_streaming(model=model,
-                                          credentials=credentials,
-                                          content_text=content_text,
-                                          voice=voice)
+        return self._tts_invoke_streaming(model=model, credentials=credentials, content_text=content_text, voice=voice)
 
     def validate_credentials(self, model: str, credentials: dict, user: Optional[str] = None) -> None:
         """
@@ -53,14 +52,13 @@ class TongyiText2SpeechModel(_CommonTongyi, TTSModel):
             self._tts_invoke_streaming(
                 model=model,
                 credentials=credentials,
-                content_text='Hello Dify!',
+                content_text="Hello Dify!",
                 voice=self._get_model_default_voice(model, credentials),
             )
         except Exception as ex:
             raise CredentialsValidateFailedError(str(ex))
 
-    def _tts_invoke_streaming(self, model: str, credentials: dict, content_text: str,
-                              voice: str) -> any:
+    def _tts_invoke_streaming(self, model: str, credentials: dict, content_text: str, voice: str) -> any:
         """
         _tts_invoke_streaming text2speech model
 
@@ -82,15 +80,21 @@ class TongyiText2SpeechModel(_CommonTongyi, TTSModel):
                 else:
                     sentences = list(self._split_text_into_sentences(org_text=content, max_length=wl))
                 for sentence in sentences:
-                    SpeechSynthesizer.call(model=v, sample_rate=16000,
-                                           api_key=api_key,
-                                           text=sentence.strip(),
-                                           callback=cb,
-                                           format=at, word_timestamp_enabled=True,
-                                           phoneme_timestamp_enabled=True)
+                    SpeechSynthesizer.call(
+                        model=v,
+                        sample_rate=16000,
+                        api_key=api_key,
+                        text=sentence.strip(),
+                        callback=cb,
+                        format=at,
+                        word_timestamp_enabled=True,
+                        phoneme_timestamp_enabled=True,
+                    )
 
-            threading.Thread(target=invoke_remote, args=(
-                content_text, voice, credentials.get('dashscope_api_key'), callback, audio_type, word_limit)).start()
+            threading.Thread(
+                target=invoke_remote,
+                args=(content_text, voice, credentials.get("dashscope_api_key"), callback, audio_type, word_limit),
+            ).start()
 
             while True:
                 audio = audio_queue.get()
@@ -112,16 +116,18 @@ class TongyiText2SpeechModel(_CommonTongyi, TTSModel):
         :param audio_type: audio file type
         :return: text translated to audio file
         """
-        response = dashscope.audio.tts.SpeechSynthesizer.call(model=voice, sample_rate=48000,
-                                                              api_key=credentials.get('dashscope_api_key'),
-                                                              text=sentence.strip(),
-                                                              format=audio_type)
+        response = dashscope.audio.tts.SpeechSynthesizer.call(
+            model=voice,
+            sample_rate=48000,
+            api_key=credentials.get("dashscope_api_key"),
+            text=sentence.strip(),
+            format=audio_type,
+        )
         if isinstance(response.get_audio_data(), bytes):
             return response.get_audio_data()
 
 
 class Callback(ResultCallback):
-
     def __init__(self, queue: Queue):
         self._queue = queue
 

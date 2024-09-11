@@ -25,7 +25,7 @@ class ProviderCredentialsCache:
         cached_provider_credentials = redis_client.get(self.cache_key)
         if cached_provider_credentials:
             try:
-                cached_provider_credentials = cached_provider_credentials.decode('utf-8')
+                cached_provider_credentials = cached_provider_credentials.decode("utf-8")
                 cached_provider_credentials = json.loads(cached_provider_credentials)
             except JSONDecodeError:
                 return None

@@ -15,7 +15,6 @@ logger = logging.getLogger(__name__)
 
 
 class EndStreamProcessor(StreamProcessor):
-
     def __init__(self, graph: Graph, variable_pool: VariablePool) -> None:
         super().__init__(graph, variable_pool)
         self.end_stream_param = graph.end_stream_param
@@ -26,9 +25,7 @@ class EndStreamProcessor(StreamProcessor):
         self.has_outputed = False
         self.outputed_node_ids = set()
 
-    def process(self,
-                generator: Generator[GraphEngineEvent, None, None]
-                ) -> Generator[GraphEngineEvent, None, None]:
+    def process(self, generator: Generator[GraphEngineEvent, None, None]) -> Generator[GraphEngineEvent, None, None]:
         for event in generator:
             if isinstance(event, NodeRunStartedEvent):
                 if event.route_node_state.node_id == self.graph.root_node_id and not self.rest_node_ids:
@@ -38,7 +35,7 @@ class EndStreamProcessor(StreamProcessor):
             elif isinstance(event, NodeRunStreamChunkEvent):
                 if event.in_iteration_id:
                     if self.has_outputed and event.node_id not in self.outputed_node_ids:
-                        event.chunk_content = '\n' + event.chunk_content
+                        event.chunk_content = "\n" + event.chunk_content
 
                     self.outputed_node_ids.add(event.node_id)
                     self.has_outputed = True
@@ -51,13 +48,13 @@ class EndStreamProcessor(StreamProcessor):
                     ]
                 else:
                     stream_out_end_node_ids = self._get_stream_out_end_node_ids(event)
-                    self.current_stream_chunk_generating_node_ids[
-                        event.route_node_state.node_id
-                    ] = stream_out_end_node_ids
+                    self.current_stream_chunk_generating_node_ids[event.route_node_state.node_id] = (
+                        stream_out_end_node_ids
+                    )
 
                 if stream_out_end_node_ids:
                     if self.has_outputed and event.node_id not in self.outputed_node_ids:
-                        event.chunk_content = '\n' + event.chunk_content
+                        event.chunk_content = "\n" + event.chunk_content
 
                     self.outputed_node_ids.add(event.node_id)
                     self.has_outputed = True
@@ -86,9 +83,9 @@ class EndStreamProcessor(StreamProcessor):
         self.rest_node_ids = self.graph.node_ids.copy()
         self.current_stream_chunk_generating_node_ids = {}
 
-    def _generate_stream_outputs_when_node_finished(self,
-                                                    event: NodeRunSucceededEvent
-                                                    ) -> Generator[GraphEngineEvent, None, None]:
+    def _generate_stream_outputs_when_node_finished(
+        self, event: NodeRunSucceededEvent
+    ) -> Generator[GraphEngineEvent, None, None]:
         """
         Generate stream outputs.
         :param event: node run succeeded event
@@ -96,10 +93,12 @@ class EndStreamProcessor(StreamProcessor):
         """
         for end_node_id, position in self.route_position.items():
             # all depends on end node id not in rest node ids
-            if (event.route_node_state.node_id != end_node_id
-                    and (end_node_id not in self.rest_node_ids
-                         or not all(dep_id not in self.rest_node_ids
-                                    for dep_id in self.end_stream_param.end_dependencies[end_node_id]))):
+            if event.route_node_state.node_id != end_node_id and (
+                end_node_id not in self.rest_node_ids
+                or not all(
+                    dep_id not in self.rest_node_ids for dep_id in self.end_stream_param.end_dependencies[end_node_id]
+                )
+            ):
                 continue
 
             route_position = self.route_position[end_node_id]
@@ -116,9 +115,7 @@ class EndStreamProcessor(StreamProcessor):
                 if not value_selector:
                     continue
 
-                value = self.variable_pool.get(
-                    value_selector
-                )
+                value = self.variable_pool.get(value_selector)
 
                 if value is None:
                     break
@@ -128,7 +125,7 @@ class EndStreamProcessor(StreamProcessor):
                 if text:
                     current_node_id = value_selector[0]
                     if self.has_outputed and current_node_id not in self.outputed_node_ids:
-                        text = '\n' + text
+                        text = "\n" + text
 
                     self.outputed_node_ids.add(current_node_id)
                     self.has_outputed = True
@@ -165,8 +162,7 @@ class EndStreamProcessor(StreamProcessor):
                 continue
 
             # all depends on end node id not in rest node ids
-            if all(dep_id not in self.rest_node_ids
-                   for dep_id in self.end_stream_param.end_dependencies[end_node_id]):
+            if all(dep_id not in self.rest_node_ids for dep_id in self.end_stream_param.end_dependencies[end_node_id]):
                 if route_position >= len(self.end_stream_param.end_stream_variable_selector_mapping[end_node_id]):
                     continue
 
@@ -178,7 +174,7 @@ class EndStreamProcessor(StreamProcessor):
                         break
 
                     position += 1
-                    
+
                 if not value_selector:
                     continue
 

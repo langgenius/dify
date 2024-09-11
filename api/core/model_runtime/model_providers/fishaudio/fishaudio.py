@@ -1,4 +1,4 @@
-﻿import logging
+import logging
 
 from core.model_runtime.entities.model_entities import ModelType
 from core.model_runtime.errors.validate import CredentialsValidateFailedError
@@ -18,11 +18,9 @@ class FishAudioProvider(ModelProvider):
         """
         try:
             model_instance = self.get_model_instance(ModelType.TTS)
-            model_instance.validate_credentials(
-                credentials=credentials
-            )
+            model_instance.validate_credentials(credentials=credentials)
         except CredentialsValidateFailedError as ex:
             raise ex
         except Exception as ex:
-            logger.exception(f'{self.get_provider_schema().provider} credentials validate failed')
+            logger.exception(f"{self.get_provider_schema().provider} credentials validate failed")
             raise ex
