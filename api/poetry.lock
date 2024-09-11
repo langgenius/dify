@@ -2059,18 +2059,19 @@ tests = ["pytest", "pytest-cov", "pytest-xdist"]
 
 [[package]]
 name = "dashscope"
-version = "1.17.1"
+version = "1.20.9"
 description = "dashscope client sdk library"
 optional = false
 python-versions = ">=3.8.0"
 files = [
-    {file = "dashscope-1.17.1-py3-none-any.whl", hash = "sha256:1e07e7ff4544684797f86ede646766b5ab8f5bd6eb43d2d01f0f757a2941efe1"},
+    {file = "dashscope-1.20.9-py3-none-any.whl", hash = "sha256:1511364a8d3a956b4bb1a632f47ef3888142408f3be4651f33ee8eac24713b39"},
 ]
 
 [package.dependencies]
 aiohttp = "*"
 requests = "*"
 tiktoken = {version = "*", optional = true, markers = "extra == \"tokenizer\""}
+websocket-client = "*"
 
 [package.extras]
 tokenizer = ["tiktoken"]
@@ -10388,4 +10389,4 @@ cffi = ["cffi (>=1.11)"]
 [metadata]
 lock-version = "2.0"
 python-versions = ">=3.10,<3.13"
-content-hash = "2dbff415c3c9ca95c8dcfb59fc088ce2c0d00037c44f386a34c87c98e1d8b942"
+content-hash = "07f945e10a367f9bfe6a9e96996932d8ee059dbaedb749478f7030ad427ff9e4"
