@@ -13,11 +13,11 @@ preview = true
 select = [
     "B", # flake8-bugbear rules
     "C4", # flake8-comprehensions
+    "E", # pycodestyle E rules
     "F", # pyflakes rules
     "I", # isort rules
     "N", # pep8-naming rules
     "UP", # pyupgrade rules
-    "E", # pycodestyle E rules
     "RUF019", # unnecessary-key-check
     "RUF100", # unused-noqa
     "RUF101", # redirected-noqa
