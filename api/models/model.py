@@ -24,7 +24,7 @@ class DifySetup(db.Model):
     __table_args__ = (db.PrimaryKeyConstraint("version", name="dify_setup_pkey"),)
 
     version = db.Column(db.String(255), nullable=False)
-    setup_at = db.Column(db.DateTime, nullable=False, server_default=db.text("CURRENT_TIMESTAMP(0)"))
+    setup_at = db.Column(db.DateTime, nullable=False, server_default=func.current_timestamp())
 
 
 class AppMode(Enum):
@@ -58,31 +58,31 @@ class App(db.Model):
     __tablename__ = "apps"
     __table_args__ = (db.PrimaryKeyConstraint("id", name="app_pkey"), db.Index("app_tenant_id_idx", "tenant_id"))
 
-    id = db.Column(StringUUID, server_default=db.text("uuid_generate_v4()"))
+    id = db.Column(StringUUID, default=lambda: uuid.uuid4())
     tenant_id = db.Column(StringUUID, nullable=False)
     name = db.Column(db.String(255), nullable=False)
-    description = db.Column(db.Text, nullable=False, server_default=db.text("''::character varying"))
+    description = db.Column(db.Text, nullable=False, default="")
     mode = db.Column(db.String(255), nullable=False)
     icon_type = db.Column(db.String(255), nullable=True)
     icon = db.Column(db.String(255))
     icon_background = db.Column(db.String(255))
     app_model_config_id = db.Column(StringUUID, nullable=True)
     workflow_id = db.Column(StringUUID, nullable=True)
-    status = db.Column(db.String(255), nullable=False, server_default=db.text("'normal'::character varying"))
+    status = db.Column(db.String(255), nullable=False, default="normal")
     enable_site = db.Column(db.Boolean, nullable=False)
     enable_api = db.Column(db.Boolean, nullable=False)
     api_rpm = db.Column(db.Integer, nullable=False, server_default=db.text("0"))
     api_rph = db.Column(db.Integer, nullable=False, server_default=db.text("0"))
-    is_demo = db.Column(db.Boolean, nullable=False, server_default=db.text("false"))
-    is_public = db.Column(db.Boolean, nullable=False, server_default=db.text("false"))
-    is_universal = db.Column(db.Boolean, nullable=False, server_default=db.text("false"))
+    is_demo = db.Column(db.Boolean, nullable=False, default=False)
+    is_public = db.Column(db.Boolean, nullable=False, default=False)
+    is_universal = db.Column(db.Boolean, nullable=False, default=False)
     tracing = db.Column(db.Text, nullable=True)
     max_active_requests = db.Column(db.Integer, nullable=True)
     created_by = db.Column(StringUUID, nullable=True)
-    created_at = db.Column(db.DateTime, nullable=False, server_default=db.text("CURRENT_TIMESTAMP(0)"))
+    created_at = db.Column(db.DateTime, nullable=False, server_default=func.current_timestamp())
     updated_by = db.Column(StringUUID, nullable=True)
-    updated_at = db.Column(db.DateTime, nullable=False, server_default=db.text("CURRENT_TIMESTAMP(0)"))
-    use_icon_as_answer_icon = db.Column(db.Boolean, nullable=False, server_default=db.text("false"))
+    updated_at = db.Column(db.DateTime, nullable=False, server_default=func.current_timestamp())
+    use_icon_as_answer_icon = db.Column(db.Boolean, nullable=False, default=False)
 
     @property
     def desc_or_prompt(self):
@@ -214,15 +214,15 @@ class AppModelConfig(db.Model):
     __tablename__ = "app_model_configs"
     __table_args__ = (db.PrimaryKeyConstraint("id", name="app_model_config_pkey"), db.Index("app_app_id_idx", "app_id"))
 
-    id = db.Column(StringUUID, server_default=db.text("uuid_generate_v4()"))
+    id = db.Column(StringUUID, default=lambda: uuid.uuid4())
     app_id = db.Column(StringUUID, nullable=False)
     provider = db.Column(db.String(255), nullable=True)
     model_id = db.Column(db.String(255), nullable=True)
     configs = db.Column(db.JSON, nullable=True)
     created_by = db.Column(StringUUID, nullable=True)
-    created_at = db.Column(db.DateTime, nullable=False, server_default=db.text("CURRENT_TIMESTAMP(0)"))
+    created_at = db.Column(db.DateTime, nullable=False, server_default=func.current_timestamp())
     updated_by = db.Column(StringUUID, nullable=True)
-    updated_at = db.Column(db.DateTime, nullable=False, server_default=db.text("CURRENT_TIMESTAMP(0)"))
+    updated_at = db.Column(db.DateTime, nullable=False, server_default=func.current_timestamp())
     opening_statement = db.Column(db.Text)
     suggested_questions = db.Column(db.Text)
     suggested_questions_after_answer = db.Column(db.Text)
@@ -236,7 +236,7 @@ class AppModelConfig(db.Model):
     agent_mode = db.Column(db.Text)
     sensitive_word_avoidance = db.Column(db.Text)
     retriever_resource = db.Column(db.Text)
-    prompt_type = db.Column(db.String(255), nullable=False, server_default=db.text("'simple'::character varying"))
+    prompt_type = db.Column(db.String(255), nullable=False, default="simple")
     chat_prompt_config = db.Column(db.Text)
     completion_prompt_config = db.Column(db.Text)
     dataset_configs = db.Column(db.Text)
@@ -465,7 +465,7 @@ class RecommendedApp(db.Model):
         db.Index("recommended_app_is_listed_idx", "is_listed", "language"),
     )
 
-    id = db.Column(StringUUID, primary_key=True, server_default=db.text("uuid_generate_v4()"))
+    id = db.Column(StringUUID, primary_key=True, default=lambda: uuid.uuid4())
     app_id = db.Column(StringUUID, nullable=False)
     description = db.Column(db.JSON, nullable=False)
     copyright = db.Column(db.String(255), nullable=False)
@@ -475,9 +475,9 @@ class RecommendedApp(db.Model):
     position = db.Column(db.Integer, nullable=False, default=0)
     is_listed = db.Column(db.Boolean, nullable=False, default=True)
     install_count = db.Column(db.Integer, nullable=False, default=0)
-    language = db.Column(db.String(255), nullable=False, server_default=db.text("'en-US'::character varying"))
-    created_at = db.Column(db.DateTime, nullable=False, server_default=db.text("CURRENT_TIMESTAMP(0)"))
-    updated_at = db.Column(db.DateTime, nullable=False, server_default=db.text("CURRENT_TIMESTAMP(0)"))
+    language = db.Column(db.String(255), nullable=False, default="en-US")
+    created_at = db.Column(db.DateTime, nullable=False, server_default=func.current_timestamp())
+    updated_at = db.Column(db.DateTime, nullable=False, server_default=func.current_timestamp())
 
     @property
     def app(self):
@@ -494,14 +494,14 @@ class InstalledApp(db.Model):
         db.UniqueConstraint("tenant_id", "app_id", name="unique_tenant_app"),
     )
 
-    id = db.Column(StringUUID, server_default=db.text("uuid_generate_v4()"))
+    id = db.Column(StringUUID, default=lambda: uuid.uuid4())
     tenant_id = db.Column(StringUUID, nullable=False)
     app_id = db.Column(StringUUID, nullable=False)
     app_owner_tenant_id = db.Column(StringUUID, nullable=False)
     position = db.Column(db.Integer, nullable=False, default=0)
-    is_pinned = db.Column(db.Boolean, nullable=False, server_default=db.text("false"))
+    is_pinned = db.Column(db.Boolean, nullable=False, default=False)
     last_used_at = db.Column(db.DateTime, nullable=True)
-    created_at = db.Column(db.DateTime, nullable=False, server_default=db.text("CURRENT_TIMESTAMP(0)"))
+    created_at = db.Column(db.DateTime, nullable=False, server_default=func.current_timestamp())
 
     @property
     def app(self):
@@ -521,7 +521,7 @@ class Conversation(db.Model):
         db.Index("conversation_app_from_user_idx", "app_id", "from_source", "from_end_user_id"),
     )
 
-    id = db.Column(StringUUID, server_default=db.text("uuid_generate_v4()"))
+    id = db.Column(StringUUID, default=lambda: uuid.uuid4())
     app_id = db.Column(StringUUID, nullable=False)
     app_model_config_id = db.Column(StringUUID, nullable=True)
     model_provider = db.Column(db.String(255), nullable=True)
@@ -542,15 +542,15 @@ class Conversation(db.Model):
     read_at = db.Column(db.DateTime)
     read_account_id = db.Column(StringUUID)
     dialogue_count: Mapped[int] = mapped_column(default=0)
-    created_at = db.Column(db.DateTime, nullable=False, server_default=db.text("CURRENT_TIMESTAMP(0)"))
-    updated_at = db.Column(db.DateTime, nullable=False, server_default=db.text("CURRENT_TIMESTAMP(0)"))
+    created_at = db.Column(db.DateTime, nullable=False, server_default=func.current_timestamp())
+    updated_at = db.Column(db.DateTime, nullable=False, server_default=func.current_timestamp())
 
     messages = db.relationship("Message", backref="conversation", lazy="select", passive_deletes="all")
     message_annotations = db.relationship(
         "MessageAnnotation", backref="conversation", lazy="select", passive_deletes="all"
     )
 
-    is_deleted = db.Column(db.Boolean, nullable=False, server_default=db.text("false"))
+    is_deleted = db.Column(db.Boolean, nullable=False, default=False)
 
     @property
     def model_config(self):
@@ -694,7 +694,7 @@ class Message(db.Model):
         db.Index("message_workflow_run_id_idx", "conversation_id", "workflow_run_id"),
     )
 
-    id = db.Column(StringUUID, server_default=db.text("uuid_generate_v4()"))
+    id = db.Column(StringUUID, default=lambda: uuid.uuid4())
     app_id = db.Column(StringUUID, nullable=False)
     model_provider = db.Column(db.String(255), nullable=True)
     model_id = db.Column(db.String(255), nullable=True)
@@ -713,16 +713,16 @@ class Message(db.Model):
     provider_response_latency = db.Column(db.Float, nullable=False, server_default=db.text("0"))
     total_price = db.Column(db.Numeric(10, 7))
     currency = db.Column(db.String(255), nullable=False)
-    status = db.Column(db.String(255), nullable=False, server_default=db.text("'normal'::character varying"))
+    status = db.Column(db.String(255), nullable=False, default="normal")
     error = db.Column(db.Text)
     message_metadata = db.Column(db.Text)
     invoke_from = db.Column(db.String(255), nullable=True)
     from_source = db.Column(db.String(255), nullable=False)
     from_end_user_id = db.Column(StringUUID)
     from_account_id = db.Column(StringUUID)
-    created_at = db.Column(db.DateTime, nullable=False, server_default=db.text("CURRENT_TIMESTAMP(0)"))
-    updated_at = db.Column(db.DateTime, nullable=False, server_default=db.text("CURRENT_TIMESTAMP(0)"))
-    agent_based = db.Column(db.Boolean, nullable=False, server_default=db.text("false"))
+    created_at = db.Column(db.DateTime, nullable=False, server_default=func.current_timestamp())
+    updated_at = db.Column(db.DateTime, nullable=False, server_default=func.current_timestamp())
+    agent_based = db.Column(db.Boolean, nullable=False, default=False)
     workflow_run_id = db.Column(StringUUID)
 
     @property
@@ -976,7 +976,7 @@ class MessageFeedback(db.Model):
         db.Index("message_feedback_conversation_idx", "conversation_id", "from_source", "rating"),
     )
 
-    id = db.Column(StringUUID, server_default=db.text("uuid_generate_v4()"))
+    id = db.Column(StringUUID, default=lambda: uuid.uuid4())
     app_id = db.Column(StringUUID, nullable=False)
     conversation_id = db.Column(StringUUID, nullable=False)
     message_id = db.Column(StringUUID, nullable=False)
@@ -985,8 +985,8 @@ class MessageFeedback(db.Model):
     from_source = db.Column(db.String(255), nullable=False)
     from_end_user_id = db.Column(StringUUID)
     from_account_id = db.Column(StringUUID)
-    created_at = db.Column(db.DateTime, nullable=False, server_default=db.text("CURRENT_TIMESTAMP(0)"))
-    updated_at = db.Column(db.DateTime, nullable=False, server_default=db.text("CURRENT_TIMESTAMP(0)"))
+    created_at = db.Column(db.DateTime, nullable=False, server_default=func.current_timestamp())
+    updated_at = db.Column(db.DateTime, nullable=False, server_default=func.current_timestamp())
 
     @property
     def from_account(self):
@@ -1002,7 +1002,7 @@ class MessageFile(db.Model):
         db.Index("message_file_created_by_idx", "created_by"),
     )
 
-    id = db.Column(StringUUID, server_default=db.text("uuid_generate_v4()"))
+    id = db.Column(StringUUID, default=lambda: uuid.uuid4())
     message_id = db.Column(StringUUID, nullable=False)
     type = db.Column(db.String(255), nullable=False)
     transfer_method = db.Column(db.String(255), nullable=False)
@@ -1011,7 +1011,7 @@ class MessageFile(db.Model):
     upload_file_id = db.Column(StringUUID, nullable=True)
     created_by_role = db.Column(db.String(255), nullable=False)
     created_by = db.Column(StringUUID, nullable=False)
-    created_at = db.Column(db.DateTime, nullable=False, server_default=db.text("CURRENT_TIMESTAMP(0)"))
+    created_at = db.Column(db.DateTime, nullable=False, server_default=func.current_timestamp())
 
 
 class MessageAnnotation(db.Model):
@@ -1023,7 +1023,7 @@ class MessageAnnotation(db.Model):
         db.Index("message_annotation_message_idx", "message_id"),
     )
 
-    id = db.Column(StringUUID, server_default=db.text("uuid_generate_v4()"))
+    id = db.Column(StringUUID, default=lambda: uuid.uuid4())
     app_id = db.Column(StringUUID, nullable=False)
     conversation_id = db.Column(StringUUID, db.ForeignKey("conversations.id"), nullable=True)
     message_id = db.Column(StringUUID, nullable=True)
@@ -1031,8 +1031,8 @@ class MessageAnnotation(db.Model):
     content = db.Column(db.Text, nullable=False)
     hit_count = db.Column(db.Integer, nullable=False, server_default=db.text("0"))
     account_id = db.Column(StringUUID, nullable=False)
-    created_at = db.Column(db.DateTime, nullable=False, server_default=db.text("CURRENT_TIMESTAMP(0)"))
-    updated_at = db.Column(db.DateTime, nullable=False, server_default=db.text("CURRENT_TIMESTAMP(0)"))
+    created_at = db.Column(db.DateTime, nullable=False, server_default=func.current_timestamp())
+    updated_at = db.Column(db.DateTime, nullable=False, server_default=func.current_timestamp())
 
     @property
     def account(self):
@@ -1055,13 +1055,13 @@ class AppAnnotationHitHistory(db.Model):
         db.Index("app_annotation_hit_histories_message_idx", "message_id"),
     )
 
-    id = db.Column(StringUUID, server_default=db.text("uuid_generate_v4()"))
+    id = db.Column(StringUUID, default=lambda: uuid.uuid4())
     app_id = db.Column(StringUUID, nullable=False)
     annotation_id = db.Column(StringUUID, nullable=False)
     source = db.Column(db.Text, nullable=False)
     question = db.Column(db.Text, nullable=False)
     account_id = db.Column(StringUUID, nullable=False)
-    created_at = db.Column(db.DateTime, nullable=False, server_default=db.text("CURRENT_TIMESTAMP(0)"))
+    created_at = db.Column(db.DateTime, nullable=False, server_default=func.current_timestamp())
     score = db.Column(Float, nullable=False, server_default=db.text("0"))
     message_id = db.Column(StringUUID, nullable=False)
     annotation_question = db.Column(db.Text, nullable=False)
@@ -1090,14 +1090,14 @@ class AppAnnotationSetting(db.Model):
         db.Index("app_annotation_settings_app_idx", "app_id"),
     )
 
-    id = db.Column(StringUUID, server_default=db.text("uuid_generate_v4()"))
+    id = db.Column(StringUUID, default=lambda: uuid.uuid4())
     app_id = db.Column(StringUUID, nullable=False)
     score_threshold = db.Column(Float, nullable=False, server_default=db.text("0"))
     collection_binding_id = db.Column(StringUUID, nullable=False)
     created_user_id = db.Column(StringUUID, nullable=False)
-    created_at = db.Column(db.DateTime, nullable=False, server_default=db.text("CURRENT_TIMESTAMP(0)"))
+    created_at = db.Column(db.DateTime, nullable=False, server_default=func.current_timestamp())
     updated_user_id = db.Column(StringUUID, nullable=False)
-    updated_at = db.Column(db.DateTime, nullable=False, server_default=db.text("CURRENT_TIMESTAMP(0)"))
+    updated_at = db.Column(db.DateTime, nullable=False, server_default=func.current_timestamp())
 
     @property
     def created_account(self):
@@ -1138,14 +1138,14 @@ class OperationLog(db.Model):
         db.Index("operation_log_account_action_idx", "tenant_id", "account_id", "action"),
     )
 
-    id = db.Column(StringUUID, server_default=db.text("uuid_generate_v4()"))
+    id = db.Column(StringUUID, default=lambda: uuid.uuid4())
     tenant_id = db.Column(StringUUID, nullable=False)
     account_id = db.Column(StringUUID, nullable=False)
     action = db.Column(db.String(255), nullable=False)
     content = db.Column(db.JSON)
-    created_at = db.Column(db.DateTime, nullable=False, server_default=db.text("CURRENT_TIMESTAMP(0)"))
+    created_at = db.Column(db.DateTime, nullable=False, server_default=func.current_timestamp())
     created_ip = db.Column(db.String(255), nullable=False)
-    updated_at = db.Column(db.DateTime, nullable=False, server_default=db.text("CURRENT_TIMESTAMP(0)"))
+    updated_at = db.Column(db.DateTime, nullable=False, server_default=func.current_timestamp())
 
 
 class EndUser(UserMixin, db.Model):
@@ -1156,16 +1156,16 @@ class EndUser(UserMixin, db.Model):
         db.Index("end_user_tenant_session_id_idx", "tenant_id", "session_id", "type"),
     )
 
-    id = db.Column(StringUUID, server_default=db.text("uuid_generate_v4()"))
+    id = db.Column(StringUUID, default=lambda: uuid.uuid4())
     tenant_id = db.Column(StringUUID, nullable=False)
     app_id = db.Column(StringUUID, nullable=True)
     type = db.Column(db.String(255), nullable=False)
     external_user_id = db.Column(db.String(255), nullable=True)
     name = db.Column(db.String(255))
-    is_anonymous = db.Column(db.Boolean, nullable=False, server_default=db.text("true"))
+    is_anonymous = db.Column(db.Boolean, nullable=False, default=True)
     session_id = db.Column(db.String(255), nullable=False)
-    created_at = db.Column(db.DateTime, nullable=False, server_default=db.text("CURRENT_TIMESTAMP(0)"))
-    updated_at = db.Column(db.DateTime, nullable=False, server_default=db.text("CURRENT_TIMESTAMP(0)"))
+    created_at = db.Column(db.DateTime, nullable=False, server_default=func.current_timestamp())
+    updated_at = db.Column(db.DateTime, nullable=False, server_default=func.current_timestamp())
 
 
 class Site(db.Model):
@@ -1176,7 +1176,7 @@ class Site(db.Model):
         db.Index("site_code_idx", "code", "status"),
     )
 
-    id = db.Column(StringUUID, server_default=db.text("uuid_generate_v4()"))
+    id = db.Column(StringUUID, default=lambda: uuid.uuid4())
     app_id = db.Column(StringUUID, nullable=False)
     title = db.Column(db.String(255), nullable=False)
     icon_type = db.Column(db.String(255), nullable=True)
@@ -1185,20 +1185,20 @@ class Site(db.Model):
     description = db.Column(db.Text)
     default_language = db.Column(db.String(255), nullable=False)
     chat_color_theme = db.Column(db.String(255))
-    chat_color_theme_inverted = db.Column(db.Boolean, nullable=False, server_default=db.text("false"))
+    chat_color_theme_inverted = db.Column(db.Boolean, nullable=False, default=False)
     copyright = db.Column(db.String(255))
     privacy_policy = db.Column(db.String(255))
-    show_workflow_steps = db.Column(db.Boolean, nullable=False, server_default=db.text("true"))
-    use_icon_as_answer_icon = db.Column(db.Boolean, nullable=False, server_default=db.text("false"))
+    show_workflow_steps = db.Column(db.Boolean, nullable=False, default=True)
+    use_icon_as_answer_icon = db.Column(db.Boolean, nullable=False, default=False)
     custom_disclaimer = db.Column(db.String(255), nullable=True)
     customize_domain = db.Column(db.String(255))
     customize_token_strategy = db.Column(db.String(255), nullable=False)
-    prompt_public = db.Column(db.Boolean, nullable=False, server_default=db.text("false"))
-    status = db.Column(db.String(255), nullable=False, server_default=db.text("'normal'::character varying"))
+    prompt_public = db.Column(db.Boolean, nullable=False, default=False)
+    status = db.Column(db.String(255), nullable=False, default="normal")
     created_by = db.Column(StringUUID, nullable=True)
-    created_at = db.Column(db.DateTime, nullable=False, server_default=db.text("CURRENT_TIMESTAMP(0)"))
+    created_at = db.Column(db.DateTime, nullable=False, server_default=func.current_timestamp())
     updated_by = db.Column(StringUUID, nullable=True)
-    updated_at = db.Column(db.DateTime, nullable=False, server_default=db.text("CURRENT_TIMESTAMP(0)"))
+    updated_at = db.Column(db.DateTime, nullable=False, server_default=func.current_timestamp())
     code = db.Column(db.String(255))
 
     @staticmethod
@@ -1224,13 +1224,13 @@ class ApiToken(db.Model):
         db.Index("api_token_tenant_idx", "tenant_id", "type"),
     )
 
-    id = db.Column(StringUUID, server_default=db.text("uuid_generate_v4()"))
+    id = db.Column(StringUUID, default=lambda: uuid.uuid4())
     app_id = db.Column(StringUUID, nullable=True)
     tenant_id = db.Column(StringUUID, nullable=True)
     type = db.Column(db.String(16), nullable=False)
     token = db.Column(db.String(255), nullable=False)
     last_used_at = db.Column(db.DateTime, nullable=True)
-    created_at = db.Column(db.DateTime, nullable=False, server_default=db.text("CURRENT_TIMESTAMP(0)"))
+    created_at = db.Column(db.DateTime, nullable=False, server_default=func.current_timestamp())
 
     @staticmethod
     def generate_api_key(prefix, n):
@@ -1249,7 +1249,7 @@ class UploadFile(db.Model):
         db.Index("upload_file_tenant_idx", "tenant_id"),
     )
 
-    id = db.Column(StringUUID, server_default=db.text("uuid_generate_v4()"))
+    id = db.Column(StringUUID, default=lambda: uuid.uuid4())
     tenant_id = db.Column(StringUUID, nullable=False)
     storage_type = db.Column(db.String(255), nullable=False)
     key = db.Column(db.String(255), nullable=False)
@@ -1257,10 +1257,10 @@ class UploadFile(db.Model):
     size = db.Column(db.Integer, nullable=False)
     extension = db.Column(db.String(255), nullable=False)
     mime_type = db.Column(db.String(255), nullable=True)
-    created_by_role = db.Column(db.String(255), nullable=False, server_default=db.text("'account'::character varying"))
+    created_by_role = db.Column(db.String(255), nullable=False, default="account")
     created_by = db.Column(StringUUID, nullable=False)
-    created_at = db.Column(db.DateTime, nullable=False, server_default=db.text("CURRENT_TIMESTAMP(0)"))
-    used = db.Column(db.Boolean, nullable=False, server_default=db.text("false"))
+    created_at = db.Column(db.DateTime, nullable=False, server_default=func.current_timestamp())
+    used = db.Column(db.Boolean, nullable=False, default=False)
     used_by = db.Column(StringUUID, nullable=True)
     used_at = db.Column(db.DateTime, nullable=True)
     hash = db.Column(db.String(255), nullable=True)
@@ -1273,14 +1273,14 @@ class ApiRequest(db.Model):
         db.Index("api_request_token_idx", "tenant_id", "api_token_id"),
     )
 
-    id = db.Column(StringUUID, nullable=False, server_default=db.text("uuid_generate_v4()"))
+    id = db.Column(StringUUID, nullable=False, default=lambda: uuid.uuid4())
     tenant_id = db.Column(StringUUID, nullable=False)
     api_token_id = db.Column(StringUUID, nullable=False)
     path = db.Column(db.String(255), nullable=False)
     request = db.Column(db.Text, nullable=True)
     response = db.Column(db.Text, nullable=True)
     ip = db.Column(db.String(255), nullable=False)
-    created_at = db.Column(db.DateTime, nullable=False, server_default=db.text("CURRENT_TIMESTAMP(0)"))
+    created_at = db.Column(db.DateTime, nullable=False, server_default=func.current_timestamp())
 
 
 class MessageChain(db.Model):
@@ -1290,12 +1290,12 @@ class MessageChain(db.Model):
         db.Index("message_chain_message_id_idx", "message_id"),
     )
 
-    id = db.Column(StringUUID, nullable=False, server_default=db.text("uuid_generate_v4()"))
+    id = db.Column(StringUUID, nullable=False, default=lambda: uuid.uuid4())
     message_id = db.Column(StringUUID, nullable=False)
     type = db.Column(db.String(255), nullable=False)
     input = db.Column(db.Text, nullable=True)
     output = db.Column(db.Text, nullable=True)
-    created_at = db.Column(db.DateTime, nullable=False, server_default=db.func.current_timestamp())
+    created_at = db.Column(db.DateTime, nullable=False, server_default=func.current_timestamp())
 
 
 class MessageAgentThought(db.Model):
@@ -1306,14 +1306,14 @@ class MessageAgentThought(db.Model):
         db.Index("message_agent_thought_message_chain_id_idx", "message_chain_id"),
     )
 
-    id = db.Column(StringUUID, nullable=False, server_default=db.text("uuid_generate_v4()"))
+    id = db.Column(StringUUID, nullable=False, default=lambda: uuid.uuid4())
     message_id = db.Column(StringUUID, nullable=False)
     message_chain_id = db.Column(StringUUID, nullable=True)
     position = db.Column(db.Integer, nullable=False)
     thought = db.Column(db.Text, nullable=True)
     tool = db.Column(db.Text, nullable=True)
-    tool_labels_str = db.Column(db.Text, nullable=False, server_default=db.text("'{}'::text"))
-    tool_meta_str = db.Column(db.Text, nullable=False, server_default=db.text("'{}'::text"))
+    tool_labels_str = db.Column(db.Text, nullable=False, server_default=db.text("{}"))
+    tool_meta_str = db.Column(db.Text, nullable=False, server_default=db.text("{}"))
     tool_input = db.Column(db.Text, nullable=True)
     observation = db.Column(db.Text, nullable=True)
     # plugin_id = db.Column(StringUUID, nullable=True)  ## for future design
@@ -1333,7 +1333,7 @@ class MessageAgentThought(db.Model):
     latency = db.Column(db.Float, nullable=True)
     created_by_role = db.Column(db.String, nullable=False)
     created_by = db.Column(StringUUID, nullable=False)
-    created_at = db.Column(db.DateTime, nullable=False, server_default=db.func.current_timestamp())
+    created_at = db.Column(db.DateTime, nullable=False, server_default=func.current_timestamp())
 
     @property
     def files(self) -> list:
@@ -1417,7 +1417,7 @@ class DatasetRetrieverResource(db.Model):
         db.Index("dataset_retriever_resource_message_id_idx", "message_id"),
     )
 
-    id = db.Column(StringUUID, nullable=False, server_default=db.text("uuid_generate_v4()"))
+    id = db.Column(StringUUID, nullable=False, default=lambda: uuid.uuid4())
     message_id = db.Column(StringUUID, nullable=False)
     position = db.Column(db.Integer, nullable=False)
     dataset_id = db.Column(StringUUID, nullable=False)
@@ -1434,7 +1434,7 @@ class DatasetRetrieverResource(db.Model):
     index_node_hash = db.Column(db.Text, nullable=True)
     retriever_from = db.Column(db.Text, nullable=False)
     created_by = db.Column(StringUUID, nullable=False)
-    created_at = db.Column(db.DateTime, nullable=False, server_default=db.func.current_timestamp())
+    created_at = db.Column(db.DateTime, nullable=False, server_default=func.current_timestamp())
 
 
 class Tag(db.Model):
@@ -1447,12 +1447,12 @@ class Tag(db.Model):
 
     TAG_TYPE_LIST = ["knowledge", "app"]
 
-    id = db.Column(StringUUID, server_default=db.text("uuid_generate_v4()"))
+    id = db.Column(StringUUID, default=lambda: uuid.uuid4())
     tenant_id = db.Column(StringUUID, nullable=True)
     type = db.Column(db.String(16), nullable=False)
     name = db.Column(db.String(255), nullable=False)
     created_by = db.Column(StringUUID, nullable=False)
-    created_at = db.Column(db.DateTime, nullable=False, server_default=db.text("CURRENT_TIMESTAMP(0)"))
+    created_at = db.Column(db.DateTime, nullable=False, server_default=func.current_timestamp())
 
 
 class TagBinding(db.Model):
@@ -1463,12 +1463,12 @@ class TagBinding(db.Model):
         db.Index("tag_bind_tag_id_idx", "tag_id"),
     )
 
-    id = db.Column(StringUUID, server_default=db.text("uuid_generate_v4()"))
+    id = db.Column(StringUUID, default=lambda: uuid.uuid4())
     tenant_id = db.Column(StringUUID, nullable=True)
     tag_id = db.Column(StringUUID, nullable=True)
     target_id = db.Column(StringUUID, nullable=True)
     created_by = db.Column(StringUUID, nullable=False)
-    created_at = db.Column(db.DateTime, nullable=False, server_default=db.text("CURRENT_TIMESTAMP(0)"))
+    created_at = db.Column(db.DateTime, nullable=False, server_default=func.current_timestamp())
 
 
 class TraceAppConfig(db.Model):
@@ -1478,13 +1478,13 @@ class TraceAppConfig(db.Model):
         db.Index("trace_app_config_app_id_idx", "app_id"),
     )
 
-    id = db.Column(StringUUID, server_default=db.text("uuid_generate_v4()"))
+    id = db.Column(StringUUID, default=lambda: uuid.uuid4())
     app_id = db.Column(StringUUID, nullable=False)
     tracing_provider = db.Column(db.String(255), nullable=True)
     tracing_config = db.Column(db.JSON, nullable=True)
     created_at = db.Column(db.DateTime, nullable=False, server_default=func.now())
     updated_at = db.Column(db.DateTime, nullable=False, server_default=func.now(), onupdate=func.now())
-    is_active = db.Column(db.Boolean, nullable=False, server_default=db.text("true"))
+    is_active = db.Column(db.Boolean, nullable=False, default=True)
 
     @property
     def tracing_config_dict(self):

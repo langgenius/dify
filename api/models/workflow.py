@@ -1,4 +1,5 @@
 import json
+import uuid
 from collections.abc import Mapping, Sequence
 from datetime import datetime
 from enum import Enum
@@ -114,7 +115,7 @@ class Workflow(db.Model):
         db.Index("workflow_version_idx", "tenant_id", "app_id", "version"),
     )
 
-    id: Mapped[str] = db.Column(StringUUID, server_default=db.text("uuid_generate_v4()"))
+    id: Mapped[str] = db.Column(StringUUID, default=lambda: uuid.uuid4())
     tenant_id: Mapped[str] = db.Column(StringUUID, nullable=False)
     app_id: Mapped[str] = db.Column(StringUUID, nullable=False)
     type: Mapped[str] = db.Column(db.String(255), nullable=False)
@@ -123,7 +124,7 @@ class Workflow(db.Model):
     features: Mapped[str] = db.Column(db.Text)
     created_by: Mapped[str] = db.Column(StringUUID, nullable=False)
     created_at: Mapped[datetime] = db.Column(
-        db.DateTime, nullable=False, server_default=db.text("CURRENT_TIMESTAMP(0)")
+        db.DateTime, nullable=False, server_default=func.current_timestamp()
     )
     updated_by: Mapped[str] = db.Column(StringUUID)
     updated_at: Mapped[datetime] = db.Column(db.DateTime)
@@ -390,7 +391,7 @@ class WorkflowRun(db.Model):
         db.Index("workflow_run_tenant_app_sequence_idx", "tenant_id", "app_id", "sequence_number"),
     )
 
-    id = db.Column(StringUUID, server_default=db.text("uuid_generate_v4()"))
+    id = db.Column(StringUUID, default=lambda: uuid.uuid4())
     tenant_id = db.Column(StringUUID, nullable=False)
     app_id = db.Column(StringUUID, nullable=False)
     sequence_number = db.Column(db.Integer, nullable=False)
@@ -408,7 +409,7 @@ class WorkflowRun(db.Model):
     total_steps = db.Column(db.Integer, server_default=db.text("0"))
     created_by_role = db.Column(db.String(255), nullable=False)
     created_by = db.Column(StringUUID, nullable=False)
-    created_at = db.Column(db.DateTime, nullable=False, server_default=db.text("CURRENT_TIMESTAMP(0)"))
+    created_at = db.Column(db.DateTime, nullable=False, server_default=func.current_timestamp())
     finished_at = db.Column(db.DateTime)
 
     @property
@@ -614,7 +615,7 @@ class WorkflowNodeExecution(db.Model):
         ),
     )
 
-    id = db.Column(StringUUID, server_default=db.text("uuid_generate_v4()"))
+    id = db.Column(StringUUID, default=lambda: uuid.uuid4())
     tenant_id = db.Column(StringUUID, nullable=False)
     app_id = db.Column(StringUUID, nullable=False)
     workflow_id = db.Column(StringUUID, nullable=False)
@@ -633,7 +634,7 @@ class WorkflowNodeExecution(db.Model):
     error = db.Column(db.Text)
     elapsed_time = db.Column(db.Float, nullable=False, server_default=db.text("0"))
     execution_metadata = db.Column(db.Text)
-    created_at = db.Column(db.DateTime, nullable=False, server_default=db.text("CURRENT_TIMESTAMP(0)"))
+    created_at = db.Column(db.DateTime, nullable=False, server_default=func.current_timestamp())
     created_by_role = db.Column(db.String(255), nullable=False)
     created_by = db.Column(StringUUID, nullable=False)
     finished_at = db.Column(db.DateTime)
@@ -743,7 +744,7 @@ class WorkflowAppLog(db.Model):
         db.Index("workflow_app_log_app_idx", "tenant_id", "app_id"),
     )
 
-    id = db.Column(StringUUID, server_default=db.text("uuid_generate_v4()"))
+    id = db.Column(StringUUID, default=lambda: uuid.uuid4())
     tenant_id = db.Column(StringUUID, nullable=False)
     app_id = db.Column(StringUUID, nullable=False)
     workflow_id = db.Column(StringUUID, nullable=False)
@@ -751,7 +752,7 @@ class WorkflowAppLog(db.Model):
     created_from = db.Column(db.String(255), nullable=False)
     created_by_role = db.Column(db.String(255), nullable=False)
     created_by = db.Column(StringUUID, nullable=False)
-    created_at = db.Column(db.DateTime, nullable=False, server_default=db.text("CURRENT_TIMESTAMP(0)"))
+    created_at = db.Column(db.DateTime, nullable=False, server_default=func.current_timestamp())
 
     @property
     def workflow_run(self):
@@ -777,7 +778,7 @@ class ConversationVariable(db.Model):
     conversation_id: Mapped[str] = db.Column(StringUUID, nullable=False, primary_key=True)
     app_id: Mapped[str] = db.Column(StringUUID, nullable=False, index=True)
     data = db.Column(db.Text, nullable=False)
-    created_at = db.Column(db.DateTime, nullable=False, index=True, server_default=db.text("CURRENT_TIMESTAMP(0)"))
+    created_at = db.Column(db.DateTime, nullable=False, index=True, server_default=func.current_timestamp())
     updated_at = db.Column(
         db.DateTime, nullable=False, server_default=func.current_timestamp(), onupdate=func.current_timestamp()
     )
