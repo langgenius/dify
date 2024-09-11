@@ -15,7 +15,7 @@ from core.tools.entities.tool_entities import ToolInvokeMessage
 from core.tools.tool.builtin_tool import BuiltinTool
 
 
-class AssembleHeaderException(Exception):
+class AssembleHeaderError(Exception):
     def __init__(self, msg):
         self.message = msg
 
@@ -41,7 +41,7 @@ def parse_url(request_url):
     schema = request_url[: stidx + 3]
     edidx = host.index("/")
     if edidx <= 0:
-        raise AssembleHeaderException("invalid request url:" + request_url)
+        raise AssembleHeaderError("invalid request url:" + request_url)
     path = host[edidx:]
     host = host[:edidx]
     u = Url(host, path, schema)

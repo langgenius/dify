@@ -1,2 +1,2 @@
-class OutputParserException(Exception):
+class OutputParserExceptionError(Exception):
     pass

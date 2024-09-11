@@ -8,7 +8,7 @@ from typing import Any, Optional
 
 from flask import Flask, current_app
 
-from core.app.apps.base_app_queue_manager import GenerateTaskStoppedException
+from core.app.apps.base_app_queue_manager import GenerateTaskStoppedError
 from core.app.entities.app_invoke_entities import InvokeFrom
 from core.workflow.entities.node_entities import (
     NodeRunMetadataKey,
@@ -669,7 +669,7 @@ class GraphEngine:
                             parent_parallel_id=parent_parallel_id,
                             parent_parallel_start_node_id=parent_parallel_start_node_id,
                         )
-        except GenerateTaskStoppedException:
+        except GenerateTaskStoppedError:
             # trigger node run failed event
             route_node_state.status = RouteNodeState.Status.FAILED
             route_node_state.failed_reason = "Workflow stopped."

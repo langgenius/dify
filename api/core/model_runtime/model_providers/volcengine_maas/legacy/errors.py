@@ -1,144 +1,144 @@
-from core.model_runtime.model_providers.volcengine_maas.legacy.volc_sdk import MaasException
+from core.model_runtime.model_providers.volcengine_maas.legacy.volc_sdk import MaasExceptionError
 
 
-class ClientSDKRequestError(MaasException):
+class ClientSDKRequestError(MaasExceptionError):
     pass
 
 
-class SignatureDoesNotMatch(MaasException):
+class SignatureDoesNotMatchError(MaasExceptionError):
     pass
 
 
-class RequestTimeout(MaasException):
+class RequestTimeoutError(MaasExceptionError):
     pass
 
 
-class ServiceConnectionTimeout(MaasException):
+class ServiceConnectionTimeoutError(MaasExceptionError):
     pass
 
 
-class MissingAuthenticationHeader(MaasException):
+class MissingAuthenticationHeaderError(MaasExceptionError):
     pass
 
 
-class AuthenticationHeaderIsInvalid(MaasException):
+class AuthenticationHeaderIsInvalidError(MaasExceptionError):
     pass
 
 
-class InternalServiceError(MaasException):
+class InternalServiceError(MaasExceptionError):
     pass
 
 
-class MissingParameter(MaasException):
+class MissingParameterError(MaasExceptionError):
     pass
 
 
-class InvalidParameter(MaasException):
+class InvalidParameterError(MaasExceptionError):
     pass
 
 
-class AuthenticationExpire(MaasException):
+class AuthenticationExpireError(MaasExceptionError):
     pass
 
 
-class EndpointIsInvalid(MaasException):
+class EndpointIsInvalidError(MaasExceptionError):
     pass
 
 
-class EndpointIsNotEnable(MaasException):
+class EndpointIsNotEnableError(MaasExceptionError):
     pass
 
 
-class ModelNotSupportStreamMode(MaasException):
+class ModelNotSupportStreamModeError(MaasExceptionError):
     pass
 
 
-class ReqTextExistRisk(MaasException):
+class ReqTextExistRiskError(MaasExceptionError):
     pass
 
 
-class RespTextExistRisk(MaasException):
+class RespTextExistRiskError(MaasExceptionError):
     pass
 
 
-class EndpointRateLimitExceeded(MaasException):
+class EndpointRateLimitExceededError(MaasExceptionError):
     pass
 
 
-class ServiceConnectionRefused(MaasException):
+class ServiceConnectionRefusedError(MaasExceptionError):
     pass
 
 
-class ServiceConnectionClosed(MaasException):
+class ServiceConnectionClosedError(MaasExceptionError):
     pass
 
 
-class UnauthorizedUserForEndpoint(MaasException):
+class UnauthorizedUserForEndpointError(MaasExceptionError):
     pass
 
 
-class InvalidEndpointWithNoURL(MaasException):
+class InvalidEndpointWithNoURLError(MaasExceptionError):
     pass
 
 
-class EndpointAccountRpmRateLimitExceeded(MaasException):
+class EndpointAccountRpmRateLimitExceededError(MaasExceptionError):
     pass
 
 
-class EndpointAccountTpmRateLimitExceeded(MaasException):
+class EndpointAccountTpmRateLimitExceededError(MaasExceptionError):
     pass
 
 
-class ServiceResourceWaitQueueFull(MaasException):
+class ServiceResourceWaitQueueFullError(MaasExceptionError):
     pass
 
 
-class EndpointIsPending(MaasException):
+class EndpointIsPendingError(MaasExceptionError):
     pass
 
 
-class ServiceNotOpen(MaasException):
+class ServiceNotOpenError(MaasExceptionError):
     pass
 
 
 AuthErrors = {
-    "SignatureDoesNotMatch": SignatureDoesNotMatch,
-    "MissingAuthenticationHeader": MissingAuthenticationHeader,
-    "AuthenticationHeaderIsInvalid": AuthenticationHeaderIsInvalid,
-    "AuthenticationExpire": AuthenticationExpire,
-    "UnauthorizedUserForEndpoint": UnauthorizedUserForEndpoint,
+    "SignatureDoesNotMatch": SignatureDoesNotMatchError,
+    "MissingAuthenticationHeader": MissingAuthenticationHeaderError,
+    "AuthenticationHeaderIsInvalid": AuthenticationHeaderIsInvalidError,
+    "AuthenticationExpire": AuthenticationExpireError,
+    "UnauthorizedUserForEndpoint": UnauthorizedUserForEndpointError,
 }
 
 BadRequestErrors = {
-    "MissingParameter": MissingParameter,
-    "InvalidParameter": InvalidParameter,
-    "EndpointIsInvalid": EndpointIsInvalid,
-    "EndpointIsNotEnable": EndpointIsNotEnable,
-    "ModelNotSupportStreamMode": ModelNotSupportStreamMode,
-    "ReqTextExistRisk": ReqTextExistRisk,
-    "RespTextExistRisk": RespTextExistRisk,
-    "InvalidEndpointWithNoURL": InvalidEndpointWithNoURL,
-    "ServiceNotOpen": ServiceNotOpen,
+    "MissingParameter": MissingParameterError,
+    "InvalidParameter": InvalidParameterError,
+    "EndpointIsInvalid": EndpointIsInvalidError,
+    "EndpointIsNotEnable": EndpointIsNotEnableError,
+    "ModelNotSupportStreamMode": ModelNotSupportStreamModeError,
+    "ReqTextExistRisk": ReqTextExistRiskError,
+    "RespTextExistRisk": RespTextExistRiskError,
+    "InvalidEndpointWithNoURL": InvalidEndpointWithNoURLError,
+    "ServiceNotOpen": ServiceNotOpenError,
 }
 
 RateLimitErrors = {
-    "EndpointRateLimitExceeded": EndpointRateLimitExceeded,
-    "EndpointAccountRpmRateLimitExceeded": EndpointAccountRpmRateLimitExceeded,
-    "EndpointAccountTpmRateLimitExceeded": EndpointAccountTpmRateLimitExceeded,
+    "EndpointRateLimitExceeded": EndpointRateLimitExceededError,
+    "EndpointAccountRpmRateLimitExceeded": EndpointAccountRpmRateLimitExceededError,
+    "EndpointAccountTpmRateLimitExceeded": EndpointAccountTpmRateLimitExceededError,
 }
 
 ServerUnavailableErrors = {
     "InternalServiceError": InternalServiceError,
-    "EndpointIsPending": EndpointIsPending,
-    "ServiceResourceWaitQueueFull": ServiceResourceWaitQueueFull,
+    "EndpointIsPending": EndpointIsPendingError,
+    "ServiceResourceWaitQueueFull": ServiceResourceWaitQueueFullError,
 }
 
 ConnectionErrors = {
     "ClientSDKRequestError": ClientSDKRequestError,
-    "RequestTimeout": RequestTimeout,
-    "ServiceConnectionTimeout": ServiceConnectionTimeout,
-    "ServiceConnectionRefused": ServiceConnectionRefused,
-    "ServiceConnectionClosed": ServiceConnectionClosed,
+    "RequestTimeout": RequestTimeoutError,
+    "ServiceConnectionTimeout": ServiceConnectionTimeoutError,
+    "ServiceConnectionRefused": ServiceConnectionRefusedError,
+    "ServiceConnectionClosed": ServiceConnectionClosedError,
 }
 
 ErrorCodeMap = {
@@ -150,7 +150,7 @@ ErrorCodeMap = {
 }
 
 
-def wrap_error(e: MaasException) -> Exception:
+def wrap_error(e: MaasExceptionError) -> Exception:
     if ErrorCodeMap.get(e.code):
         return ErrorCodeMap.get(e.code)(e.code_n, e.code, e.message, e.req_id)
     return e

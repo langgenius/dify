@@ -111,5 +111,5 @@ class Moderation(Extensible, ABC):
                 raise ValueError("outputs_config.preset_response must be less than 100 characters")
 
 
-class ModerationException(Exception):
+class ModerationError(Exception):
     pass

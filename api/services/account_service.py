@@ -32,7 +32,7 @@ from services.errors.account import (
     NoPermissionError,
     RateLimitExceededError,
     RoleAlreadyAssignedError,
-    TenantNotFound,
+    TenantNotFoundError,
 )
 from tasks.mail_invite_member_task import send_invite_member_mail_task
 from tasks.mail_reset_password_task import send_reset_password_mail_task
@@ -311,13 +311,13 @@ class TenantService:
         """Get tenant by account and add the role"""
         tenant = account.current_tenant
         if not tenant:
-            raise TenantNotFound("Tenant not found.")
+            raise TenantNotFoundError("Tenant not found.")
 
         ta = TenantAccountJoin.query.filter_by(tenant_id=tenant.id, account_id=account.id).first()
         if ta:
             tenant.role = ta.role
         else:
-            raise TenantNotFound("Tenant not found for the account.")
+            raise TenantNotFoundError("Tenant not found for the account.")
         return tenant
 
     @staticmethod
