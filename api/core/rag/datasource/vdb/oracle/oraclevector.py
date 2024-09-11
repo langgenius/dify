@@ -195,7 +195,8 @@ class OracleVector(BaseVector):
         top_k = kwargs.get("top_k", 5)
         with self._get_cursor() as cur:
             cur.execute(
-                f"SELECT meta, text, vector_distance(embedding,:1) AS distance FROM {self.table_name} ORDER BY distance fetch first {top_k} rows only",
+                f"SELECT meta, text, vector_distance(embedding,:1) AS distance FROM {self.table_name}"
+                f" ORDER BY distance fetch first {top_k} rows only",
                 [numpy.array(query_vector)],
             )
             docs = []
@@ -254,7 +255,8 @@ class OracleVector(BaseVector):
                         entities.append(token)
             with self._get_cursor() as cur:
                 cur.execute(
-                    f"select meta, text, embedding FROM {self.table_name} WHERE CONTAINS(text, :1, 1) > 0 order by score(1) desc fetch first {top_k} rows only",
+                    f"select meta, text, embedding FROM {self.table_name}"
+                    f" WHERE CONTAINS(text, :1, 1) > 0 order by score(1) desc fetch first {top_k} rows only",
                     [" ACCUM ".join(entities)],
                 )
                 docs = []

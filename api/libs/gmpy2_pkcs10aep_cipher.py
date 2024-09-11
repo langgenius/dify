@@ -204,7 +204,8 @@ class PKCS1OAepCipher:
 
 
 def new(key, hashAlgo=None, mgfunc=None, label=b"", randfunc=None):
-    """Return a cipher object :class:`PKCS1OAEP_Cipher` that can be used to perform PKCS#1 OAEP encryption or decryption.
+    """Return a cipher object :class:`PKCS1OAEP_Cipher`
+     that can be used to perform PKCS#1 OAEP encryption or decryption.
 
     :param key:
       The key object to use to encrypt or decrypt the message.

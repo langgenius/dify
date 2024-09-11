@@ -38,7 +38,8 @@ def page_result(text: str, cursor: int, max_length: int) -> str:
 def get_url(url: str, user_agent: str = None) -> str:
     """Fetch URL and return the contents as a string."""
     headers = {
-        "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/91.0.4472.124 Safari/537.36"
+        "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko)"
+        " Chrome/91.0.4472.124 Safari/537.36"
     }
     if user_agent:
         headers["User-Agent"] = user_agent

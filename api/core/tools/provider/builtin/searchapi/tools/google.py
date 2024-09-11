@@ -64,7 +64,10 @@ class SearchAPI:
         elif type == "link":
             if "answer_box" in res and "organic_result" in res["answer_box"]:
                 if "title" in res["answer_box"]["organic_result"]:
-                    toret = f"[{res['answer_box']['organic_result']['title']}]({res['answer_box']['organic_result']['link']})\n"
+                    toret = (
+                        f"[{res['answer_box']['organic_result']['title']}]"
+                        f"({res['answer_box']['organic_result']['link']})\n"
+                    )
             elif "organic_results" in res and "link" in res["organic_results"][0]:
                 toret = ""
                 for item in res["organic_results"]:

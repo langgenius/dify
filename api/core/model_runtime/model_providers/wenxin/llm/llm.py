@@ -28,7 +28,7 @@ if you are not sure about the structure.
 </instructions>
 
 You should also complete the text started with ``` but not tell ``` directly.
-"""
+"""  # noqa: E501
 
 
 class ErnieBotLargeLanguageModel(LargeLanguageModel):

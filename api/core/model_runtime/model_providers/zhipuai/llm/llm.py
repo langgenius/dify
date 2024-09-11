@@ -31,7 +31,7 @@ And you should always end the block with a "```" to indicate the end of the JSON
 {{instructions}}
 </instructions>
 
-```JSON"""
+```JSON"""  # noqa: E501
 
 
 class ZhipuAILargeLanguageModel(_CommonZhipuaiAI, LargeLanguageModel):

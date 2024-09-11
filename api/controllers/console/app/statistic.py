@@ -30,7 +30,8 @@ class DailyMessageStatistic(Resource):
         args = parser.parse_args()
 
         sql_query = """
-        SELECT date(DATE_TRUNC('day', created_at AT TIME ZONE 'UTC' AT TIME ZONE :tz )) AS date, count(*) AS message_count
+        SELECT date(DATE_TRUNC('day', created_at AT TIME ZONE 'UTC' AT TIME ZONE :tz )) AS date,
+         count(*) AS message_count
             FROM messages where app_id = :app_id 
         """
         arg_dict = {"tz": account.timezone, "app_id": app_model.id}
@@ -84,7 +85,8 @@ class DailyConversationStatistic(Resource):
         args = parser.parse_args()
 
         sql_query = """
-        SELECT date(DATE_TRUNC('day', created_at AT TIME ZONE 'UTC' AT TIME ZONE :tz )) AS date, count(distinct messages.conversation_id) AS conversation_count
+        SELECT date(DATE_TRUNC('day', created_at AT TIME ZONE 'UTC' AT TIME ZONE :tz )) AS date,
+         count(distinct messages.conversation_id) AS conversation_count
             FROM messages where app_id = :app_id 
         """
         arg_dict = {"tz": account.timezone, "app_id": app_model.id}
@@ -138,7 +140,8 @@ class DailyTerminalsStatistic(Resource):
         args = parser.parse_args()
 
         sql_query = """
-                SELECT date(DATE_TRUNC('day', created_at AT TIME ZONE 'UTC' AT TIME ZONE :tz )) AS date, count(distinct messages.from_end_user_id) AS terminal_count
+                SELECT date(DATE_TRUNC('day', created_at AT TIME ZONE 'UTC' AT TIME ZONE :tz )) AS date,
+                 count(distinct messages.from_end_user_id) AS terminal_count
                     FROM messages where app_id = :app_id 
                 """
         arg_dict = {"tz": account.timezone, "app_id": app_model.id}

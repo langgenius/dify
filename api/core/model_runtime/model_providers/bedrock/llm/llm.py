@@ -52,7 +52,7 @@ if you are not sure about the structure.
 <instructions>
 {{instructions}}
 </instructions>
-"""
+"""  # noqa: E501
 
 
 class BedrockLargeLanguageModel(LargeLanguageModel):
@@ -541,7 +541,9 @@ class BedrockLargeLanguageModel(LargeLanguageModel):
                 "max_tokens": 32,
             }
         elif "ai21" in model:
-            # ValidationException: Malformed input request: #/temperature: expected type: Number, found: Null#/maxTokens: expected type: Integer, found: Null#/topP: expected type: Number, found: Null, please reformat your input and try again.
+            # ValidationException: Malformed input request: #/temperature: expected type: Number,
+            # found: Null#/maxTokens: expected type: Integer, found: Null#/topP: expected type: Number, found: Null,
+            # please reformat your input and try again.
             required_params = {
                 "temperature": 0.7,
                 "topP": 0.9,

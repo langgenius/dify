@@ -188,7 +188,8 @@ class MessageFileParser:
     def _check_image_remote_url(self, url):
         try:
             headers = {
-                "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/91.0.4472.124 Safari/537.36"
+                "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko)"
+                " Chrome/91.0.4472.124 Safari/537.36"
             }
 
             def is_s3_presigned_url(url):

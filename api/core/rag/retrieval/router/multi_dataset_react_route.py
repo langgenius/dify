@@ -14,7 +14,7 @@ from core.workflow.nodes.llm.llm_node import LLMNode
 PREFIX = """Respond to the human as helpfully and accurately as possible. You have access to the following tools:"""
 
 SUFFIX = """Begin! Reminder to ALWAYS respond with a valid json blob of a single action. Use tools if necessary. Respond directly if appropriate. Format is Action:```$JSON_BLOB```then Observation:.
-Thought:"""
+Thought:"""  # noqa: E501
 
 FORMAT_INSTRUCTIONS = """Use a json blob to specify a tool by providing an action key (tool name) and an action_input key (tool input).
 The nouns in the format of "Thought", "Action", "Action Input", "Final Answer" must be expressed in English.
@@ -46,7 +46,7 @@ Action:
   "action": "Final Answer",
   "action_input": "Final response to human"
 }}
-```"""
+```"""  # noqa: E501
 
 
 class ReactMultiDatasetRouter:
@@ -204,7 +204,8 @@ class ReactMultiDatasetRouter:
         tool_strings = []
         for tool in tools:
             tool_strings.append(
-                f"{tool.name}: {tool.description}, args: {{'query': {{'title': 'Query', 'description': 'Query for the dataset to be used to retrieve the dataset.', 'type': 'string'}}}}"
+                f"{tool.name}: {tool.description}, args: {{'query': {{'title': 'Query',"
+                f" 'description': 'Query for the dataset to be used to retrieve the dataset.', 'type': 'string'}}}}"
             )
         formatted_tools = "\n".join(tool_strings)
         unique_tool_names = {tool.name for tool in tools}
@@ -236,7 +237,7 @@ class ReactMultiDatasetRouter:
         suffix = """Begin! Reminder to ALWAYS respond with a valid json blob of a single action. Use tools if necessary. Respond directly if appropriate. Format is Action:```$JSON_BLOB```then Observation:.
 Question: {input}
 Thought: {agent_scratchpad}
-"""
+"""  # noqa: E501
 
         tool_strings = "\n".join([f"{tool.name}: {tool.description}" for tool in tools])
         tool_names = ", ".join([tool.name for tool in tools])

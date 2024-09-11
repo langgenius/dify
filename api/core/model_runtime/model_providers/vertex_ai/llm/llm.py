@@ -114,7 +114,8 @@ class VertexAiLargeLanguageModel(LargeLanguageModel):
             credentials.refresh(request)
             token = credentials.token
 
-        # Vertex AI Anthropic Claude3 Opus model available in us-east5 region, Sonnet and Haiku available in us-central1 region
+        # Vertex AI Anthropic Claude3 Opus model available in us-east5 region, Sonnet and Haiku available
+        # in us-central1 region
         if "opus" in model or "claude-3-5-sonnet" in model:
             location = "us-east5"
         else:
@@ -123,7 +124,8 @@ class VertexAiLargeLanguageModel(LargeLanguageModel):
         # use access token to authenticate
         if token:
             client = AnthropicVertex(region=location, project_id=project_id, access_token=token)
-        # When access token is empty, try to use the Google Cloud VM's built-in service account or the GOOGLE_APPLICATION_CREDENTIALS environment variable
+        # When access token is empty, try to use the Google Cloud VM's built-in service account
+        # or the GOOGLE_APPLICATION_CREDENTIALS environment variable
         else:
             client = AnthropicVertex(
                 region=location,

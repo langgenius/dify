@@ -91,7 +91,8 @@ class WorkflowDailyTerminalsStatistic(Resource):
         args = parser.parse_args()
 
         sql_query = """
-                SELECT date(DATE_TRUNC('day', created_at AT TIME ZONE 'UTC' AT TIME ZONE :tz )) AS date, count(distinct workflow_runs.created_by) AS terminal_count
+                SELECT date(DATE_TRUNC('day', created_at AT TIME ZONE 'UTC' AT TIME ZONE :tz )) AS date,
+                 count(distinct workflow_runs.created_by) AS terminal_count
                     FROM workflow_runs 
                     WHERE app_id = :app_id 
                         AND triggered_from = :triggered_from
