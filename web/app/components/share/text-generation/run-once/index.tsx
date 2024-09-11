@@ -114,7 +114,7 @@ const RunOnce: FC<IRunOnceProps> = ({
               </div>
             )
           }
-          <FileUploaderInAttachmentWrapper />
+          <FileUploaderInAttachmentWrapper onChange={() => {}} />
           {promptConfig.prompt_variables.length > 0 && (
             <div className='mt-4 h-[1px] bg-gray-100'></div>
           )}

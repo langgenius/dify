@@ -4,9 +4,9 @@ import {
   useRef,
 } from 'react'
 import {
+  create,
   useStore as useZustandStore,
 } from 'zustand'
-import { createStore } from 'zustand/vanilla'
 import type { FileEntity } from './types'
 
 type Shape = {
@@ -14,10 +14,15 @@ type Shape = {
   setFiles: (files: FileEntity[]) => void
 }
 
-export const createFileStore = () => {
-  return createStore<Shape>(set => ({
+export const createFileStore = ({
+  onChange,
+}: Pick<FileProviderProps, 'onChange'>) => {
+  return create<Shape>(set => ({
     files: [],
-    setFiles: files => set({ files }),
+    setFiles: (files) => {
+      set({ files })
+      onChange(files)
+    },
   }))
 }
 
@@ -38,12 +43,18 @@ export const useFileStore = () => {
 
 type FileProviderProps = {
   children: React.ReactNode
+  onChange: (files: FileEntity[]) => void
+  isPublicAPI?: boolean
+  url?: string
 }
-export const FileContextProvider = ({ children }: FileProviderProps) => {
+export const FileContextProvider = ({
+  children,
+  onChange,
+}: FileProviderProps) => {
   const storeRef = useRef<FileStore>()
 
   if (!storeRef.current)
-    storeRef.current = createFileStore()
+    storeRef.current = createFileStore({ onChange })
 
   return (
     <FileContext.Provider value={storeRef.current}>

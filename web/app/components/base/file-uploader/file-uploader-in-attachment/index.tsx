@@ -11,6 +11,8 @@ import {
   FileContextProvider,
   useStore,
 } from '../store'
+import type { FileEntity } from '../types'
+import FileInput from '../file-input'
 import FileInAttachmentItem from './file-in-attachment-item'
 import Button from '@/app/components/base/button'
 import cn from '@/utils/classnames'
@@ -41,10 +43,15 @@ const FileUploaderInAttachment = () => {
       <Button
         key={option.value}
         variant='tertiary'
-        className={cn('basis-1/2', open && 'bg-components-button-tertiary-bg-hover')}
+        className={cn('basis-1/2 relative', open && 'bg-components-button-tertiary-bg-hover')}
       >
         {option.icon}
         <span className='ml-1'>{option.label}</span>
+        {
+          option.value === 'local' && (
+            <FileInput />
+          )
+        }
       </Button>
     )
   }, [])
@@ -75,7 +82,8 @@ const FileUploaderInAttachment = () => {
         {
           files.map(file => (
             <FileInAttachmentItem
-              key={file._id}
+              key={file.id}
+              file={file}
             />
           ))
         }
@@ -84,9 +92,14 @@ const FileUploaderInAttachment = () => {
   )
 }
 
-const FileUploaderInAttachmentWrapper = () => {
+type FileUploaderInAttachmentWrapperProps = {
+  onChange: (files: FileEntity[]) => void
+}
+const FileUploaderInAttachmentWrapper = ({
+  onChange,
+}: FileUploaderInAttachmentWrapperProps) => {
   return (
-    <FileContextProvider>
+    <FileContextProvider onChange={onChange}>
       <FileUploaderInAttachment />
     </FileContextProvider>
   )

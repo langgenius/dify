@@ -21,23 +21,23 @@ const FileListFlexOperation = forwardRef<HTMLDivElement>((_, ref) => {
       {
         files.map(file => (
           <div
-            key={file._id}
+            key={file.id}
             className='relative'
           >
             <Button
               className='absolute -right-1.5 -top-1.5 p-0 w-5 h-5 rounded-full z-10'
-              onClick={() => handleRemoveFile(file._id)}
+              onClick={() => handleRemoveFile(file.id)}
             >
               <RiCloseLine className='w-4 h-4 text-components-button-secondary-text' />
             </Button>
             {
-              file._progress !== 100 && (
+              file.progress !== 100 && (
                 <div
                   className='absolute inset-0 border-[2px] border-effects-image-frame shadow-md bg-black'
                 >
                   <ProgressCircle
                     className='absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2'
-                    percentage={file._progress}
+                    percentage={file.progress}
                     size={16}
                     circleStrokeColor='stroke-components-progress-white-border'
                     circleFillColor='fill-transparent'

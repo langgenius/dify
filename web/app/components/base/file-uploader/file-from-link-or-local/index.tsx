@@ -1,10 +1,10 @@
-import type { ChangeEvent } from 'react'
 import {
   memo,
   useState,
 } from 'react'
 import { useTranslation } from 'react-i18next'
 import { RiUploadCloud2Line } from '@remixicon/react'
+import FileInput from '../file-input'
 import { useFile } from '../hooks'
 import {
   PortalToFollowElem,
@@ -15,29 +15,18 @@ import Button from '@/app/components/base/button'
 
 type FileFromLinkOrLocalProps = {
   showFromLink?: boolean
-  onLink?: (url: string) => void
   showFromLocal?: boolean
   trigger: (open: boolean) => React.ReactNode
 }
 const FileFromLinkOrLocal = ({
   showFromLink = true,
-  onLink,
   showFromLocal = true,
   trigger,
 }: FileFromLinkOrLocalProps) => {
   const { t } = useTranslation()
   const [open, setOpen] = useState(false)
   const [url, setUrl] = useState('')
-  const { handleLocalFileUpload } = useFile()
-
-  const handleChange = (e: ChangeEvent<HTMLInputElement>) => {
-    const file = e.target.files?.[0]
-
-    if (!file)
-      return
-
-    handleLocalFileUpload(file)
-  }
+  const { handleLoadFileFromLink } = useFile()
 
   return (
     <PortalToFollowElem
@@ -49,7 +38,7 @@ const FileFromLinkOrLocal = ({
       <PortalToFollowElemTrigger onClick={() => setOpen(v => !v)} asChild>
         {trigger(open)}
       </PortalToFollowElemTrigger>
-      <PortalToFollowElemContent>
+      <PortalToFollowElemContent className='z-10'>
         <div className='p-3 w-[280px] bg-components-panel-bg-blur border-[0.5px] border-components-panel-border rounded-xl shadow-lg'>
           {
             showFromLink && (
@@ -65,7 +54,7 @@ const FileFromLinkOrLocal = ({
                   size='small'
                   variant='primary'
                   disabled={!url}
-                  onClick={() => onLink?.(url)}
+                  onClick={() => handleLoadFileFromLink()}
                 >
                   {t('common.operation.ok')}
                 </Button>
@@ -89,12 +78,7 @@ const FileFromLinkOrLocal = ({
               >
                 <RiUploadCloud2Line className='mr-1 w-4 h-4' />
                 {t('common.fileUploader.uploadFromComputer')}
-                <input
-                  className='absolute block inset-0 opacity-0 text-[0] w-full disabled:cursor-not-allowed cursor-pointer'
-                  onClick={e => ((e.target as HTMLInputElement).value = '')}
-                  type='file'
-                  onChange={handleChange}
-                />
+                <FileInput />
               </Button>
             )
           }

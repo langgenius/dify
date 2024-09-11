@@ -1,6 +1,4 @@
-import type { TransferMethod } from '@/types/app'
-
-export enum FileTypeEnum {
+export enum FileAppearanceTypeEnum {
   IMAGE = 'IMAGE',
   VIDEO = 'VIDEO',
   AUDIO = 'AUDIO',
@@ -15,12 +13,13 @@ export enum FileTypeEnum {
   OTHER = 'OTHER',
 }
 
+export type FileAppearanceType = keyof typeof FileAppearanceTypeEnum
+
 export type FileEntity = {
-  file: File
-  _id: string
-  _fileId?: string
-  _progress?: number
-  _url?: string
-  _base64Url?: string
-  _method?: TransferMethod
+  id: string
+  file?: File
+  fileId?: string
+  progress: number
+  url?: string
+  base64Url?: string
 }

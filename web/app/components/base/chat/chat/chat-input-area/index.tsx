@@ -40,7 +40,7 @@ const ChatInputArea = ({
   visionConfig,
   speechToTextConfig = { enabled: true },
   onSend,
-  theme,
+  // theme,
 }: ChatInputAreaProps) => {
   const { t } = useTranslation()
   const { notify } = useToastContext()
@@ -103,7 +103,7 @@ const ChatInputArea = ({
   )
 
   return (
-    <FileContextProvider>
+    <FileContextProvider onChange={() => {}}>
       <>
         <div
           className={cn(

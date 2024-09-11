@@ -13,61 +13,62 @@ import {
   RiFileWordFill,
   RiMarkdownFill,
 } from '@remixicon/react'
-import { FileTypeEnum } from './types'
+import { FileAppearanceTypeEnum } from './types'
+import type { FileAppearanceType } from './types'
 import cn from '@/utils/classnames'
 
 const FILE_TYPE_ICON_MAP = {
-  [FileTypeEnum.PDF]: {
+  [FileAppearanceTypeEnum.PDF]: {
     component: RiFilePdf2Fill,
     color: 'text-[#EA3434]',
   },
-  [FileTypeEnum.IMAGE]: {
+  [FileAppearanceTypeEnum.IMAGE]: {
     component: RiFileImageFill,
     color: 'text-[#00B2EA]',
   },
-  [FileTypeEnum.VIDEO]: {
+  [FileAppearanceTypeEnum.VIDEO]: {
     component: RiFileVideoFill,
     color: 'text-[#844FDA]',
   },
-  [FileTypeEnum.AUDIO]: {
+  [FileAppearanceTypeEnum.AUDIO]: {
     component: RiFileMusicFill,
     color: 'text-[#FF3093]',
   },
-  [FileTypeEnum.DOCUMENT]: {
+  [FileAppearanceTypeEnum.DOCUMENT]: {
     component: RiFileTextFill,
     color: 'text-[#6F8BB5]',
   },
-  [FileTypeEnum.CODE]: {
+  [FileAppearanceTypeEnum.CODE]: {
     component: RiFileCodeFill,
     color: 'text-[#BCC0D1]',
   },
-  [FileTypeEnum.MARKDOWN]: {
+  [FileAppearanceTypeEnum.MARKDOWN]: {
     component: RiMarkdownFill,
     color: 'text-[#309BEC]',
   },
-  [FileTypeEnum.OTHER]: {
+  [FileAppearanceTypeEnum.OTHER]: {
     component: RiFile3Fill,
     color: 'text-[#BCC0D1]',
   },
-  [FileTypeEnum.EXCEL]: {
+  [FileAppearanceTypeEnum.EXCEL]: {
     component: RiFileExcelFill,
     color: 'text-[#01AC49]',
   },
-  [FileTypeEnum.WORD]: {
+  [FileAppearanceTypeEnum.WORD]: {
     component: RiFileWordFill,
     color: 'text-[#2684FF]',
   },
-  [FileTypeEnum.PPT]: {
+  [FileAppearanceTypeEnum.PPT]: {
     component: RiFilePpt2Fill,
     color: 'text-[#FF650F]',
   },
-  [FileTypeEnum.GIF]: {
+  [FileAppearanceTypeEnum.GIF]: {
     component: RiFileGifFill,
     color: 'text-[#00B2EA]',
   },
 }
 type FileTypeIconProps = {
-  type: keyof typeof FileTypeEnum
+  type: FileAppearanceType
   size?: 'sm' | 'lg'
   className?: string
 }

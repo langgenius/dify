@@ -1,3 +1,4 @@
+import { FileAppearanceTypeEnum } from './types'
 import { upload } from '@/service/base'
 
 type FileUploadParams = {
@@ -35,8 +36,39 @@ export const fileUpload: FileUpload = ({
     })
 }
 
-export const isFileType = (type: string) => {
-  return (file: File) => {
-    return file.type === type
-  }
+export const getFileAppearanceType = (file?: File) => {
+  if (!file)
+    return FileAppearanceTypeEnum.OTHER
+  const mimeType = file.type
+
+  if (mimeType.includes('image'))
+    return FileAppearanceTypeEnum.IMAGE
+
+  if (mimeType.includes('video'))
+    return FileAppearanceTypeEnum.VIDEO
+
+  if (mimeType.includes('audio'))
+    return FileAppearanceTypeEnum.AUDIO
+
+  if (mimeType.includes('pdf'))
+    return FileAppearanceTypeEnum.PDF
+
+  return FileAppearanceTypeEnum.OTHER
+}
+
+export const isImage = (file?: File) => {
+  return file?.type.startsWith('image')
+}
+
+export const getFileExtension = (file?: File) => {
+  if (!file)
+    return ''
+
+  const fileNamePair = file.name.split('.')
+  const fileNamePairLength = fileNamePair.length
+
+  if (fileNamePairLength > 1)
+    return fileNamePair[fileNamePairLength - 1]
+
+  return ''
 }
