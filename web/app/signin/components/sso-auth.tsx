@@ -7,9 +7,10 @@ import { Lock01 } from '@/app/components/base/icons/src/vender/solid/security'
 import Toast from '@/app/components/base/toast'
 import { getUserOAuth2SSOUrl, getUserOIDCSSOUrl, getUserSAMLSSOUrl } from '@/service/sso'
 import Button from '@/app/components/base/button'
+import { SSOProtocol } from '@/types/feature'
 
 type SSOAuthProps = {
-  protocol: string
+  protocol: SSOProtocol | ''
 }
 
 const SSOAuth: FC<SSOAuthProps> = ({
@@ -24,14 +25,14 @@ const SSOAuth: FC<SSOAuthProps> = ({
 
   const handleSSOLogin = () => {
     setIsLoading(true)
-    if (protocol === 'saml') {
+    if (protocol === SSOProtocol.SAML) {
       getUserSAMLSSOUrl(invite_token).then((res) => {
         router.push(res.url)
       }).finally(() => {
         setIsLoading(false)
       })
     }
-    else if (protocol === 'oidc') {
+    else if (protocol === SSOProtocol.OIDC) {
       getUserOIDCSSOUrl(invite_token).then((res) => {
         document.cookie = `user-oidc-state=${res.state}`
         router.push(res.url)
@@ -39,7 +40,7 @@ const SSOAuth: FC<SSOAuthProps> = ({
         setIsLoading(false)
       })
     }
-    else if (protocol === 'oauth2') {
+    else if (protocol === SSOProtocol.OAuth2) {
       getUserOAuth2SSOUrl(invite_token).then((res) => {
         document.cookie = `user-oauth2-state=${res.state}`
         router.push(res.url)
@@ -64,7 +65,7 @@ const SSOAuth: FC<SSOAuthProps> = ({
       className="w-full"
     >
       <Lock01 className='mr-2 w-5 h-5 text-text-accent-light-mode-only' />
-      <span>{t('login.withSSO')}</span>
+      <span className="truncate">{t('login.withSSO')}</span>
     </Button>
   )
 }
