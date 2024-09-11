@@ -85,7 +85,7 @@ class OllamaEmbeddingModel(TextEmbeddingModel):
             }
         }
 
-        # Make the request to the OpenAI API
+        # Make the request to the Ollama API
         response = requests.post(
             endpoint_url, headers=headers, data=json.dumps(payload), timeout=(10, 300)
         )
