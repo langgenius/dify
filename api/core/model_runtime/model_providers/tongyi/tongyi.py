@@ -20,12 +20,9 @@ class TongyiProvider(ModelProvider):
             model_instance = self.get_model_instance(ModelType.LLM)
 
             # Use `qwen-turbo` model for validate,
-            model_instance.validate_credentials(
-                model='qwen-turbo',
-                credentials=credentials
-            )
+            model_instance.validate_credentials(model="qwen-turbo", credentials=credentials)
         except CredentialsValidateFailedError as ex:
             raise ex
         except Exception as ex:
-            logger.exception(f'{self.get_provider_schema().provider} credentials validate failed')
+            logger.exception(f"{self.get_provider_schema().provider} credentials validate failed")
             raise ex

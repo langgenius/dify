@@ -24,7 +24,7 @@ class PGVectorConfig(BaseModel):
     password: str
     database: str
 
-    @model_validator(mode='before')
+    @model_validator(mode="before")
     def validate_config(cls, values: dict) -> dict:
         if not values["host"]:
             raise ValueError("config PGVECTOR_HOST is required")
@@ -201,8 +201,7 @@ class PGVectorFactory(AbstractVectorFactory):
         else:
             dataset_id = dataset.id
             collection_name = Dataset.gen_collection_name_by_id(dataset_id)
-            dataset.index_struct = json.dumps(
-                self.gen_index_struct_dict(VectorType.PGVECTOR, collection_name))
+            dataset.index_struct = json.dumps(self.gen_index_struct_dict(VectorType.PGVECTOR, collection_name))
 
         return PGVector(
             collection_name=collection_name,

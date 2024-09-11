@@ -6,7 +6,7 @@ import requests
 
 from .auth import Signer
 
-VERSION = 'v1.0.137'
+VERSION = "v1.0.137"
 
 
 class Service:
@@ -40,8 +40,9 @@ class Service:
         Signer.sign(r, self.service_info.credentials)
 
         url = r.build(doseq)
-        resp = self.session.get(url, headers=r.headers,
-                                timeout=(self.service_info.connection_timeout, self.service_info.socket_timeout))
+        resp = self.session.get(
+            url, headers=r.headers, timeout=(self.service_info.connection_timeout, self.service_info.socket_timeout)
+        )
         if resp.status_code == 200:
             return resp.text
         else:
@@ -52,15 +53,19 @@ class Service:
             raise Exception("no such api")
         api_info = self.api_info[api]
         r = self.prepare_request(api_info, params)
-        r.headers['Content-Type'] = 'application/x-www-form-urlencoded'
+        r.headers["Content-Type"] = "application/x-www-form-urlencoded"
         r.form = self.merge(api_info.form, form)
         r.body = urlencode(r.form, True)
         Signer.sign(r, self.service_info.credentials)
 
         url = r.build()
 
-        resp = self.session.post(url, headers=r.headers, data=r.form,
-                                 timeout=(self.service_info.connection_timeout, self.service_info.socket_timeout))
+        resp = self.session.post(
+            url,
+            headers=r.headers,
+            data=r.form,
+            timeout=(self.service_info.connection_timeout, self.service_info.socket_timeout),
+        )
         if resp.status_code == 200:
             return resp.text
         else:
@@ -71,21 +76,25 @@ class Service:
             raise Exception("no such api")
         api_info = self.api_info[api]
         r = self.prepare_request(api_info, params)
-        r.headers['Content-Type'] = 'application/json'
+        r.headers["Content-Type"] = "application/json"
         r.body = body
 
         Signer.sign(r, self.service_info.credentials)
 
         url = r.build()
-        resp = self.session.post(url, headers=r.headers, data=r.body,
-                                 timeout=(self.service_info.connection_timeout, self.service_info.socket_timeout))
+        resp = self.session.post(
+            url,
+            headers=r.headers,
+            data=r.body,
+            timeout=(self.service_info.connection_timeout, self.service_info.socket_timeout),
+        )
         if resp.status_code == 200:
             return json.dumps(resp.json())
         else:
             raise Exception(resp.text.encode("utf-8"))
 
     def put(self, url, file_path, headers):
-        with open(file_path, 'rb') as f:
+        with open(file_path, "rb") as f:
             resp = self.session.put(url, headers=headers, data=f)
             if resp.status_code == 200:
                 return True, resp.text.encode("utf-8")
@@ -105,7 +114,7 @@ class Service:
                 params[key] = str(params[key])
             elif type(params[key]) == list:
                 if not doseq:
-                    params[key] = ','.join(params[key])
+                    params[key] = ",".join(params[key])
 
         connection_timeout = self.service_info.connection_timeout
         socket_timeout = self.service_info.socket_timeout
@@ -117,8 +126,8 @@ class Service:
         r.set_socket_timeout(socket_timeout)
 
         headers = self.merge(api_info.header, self.service_info.header)
-        headers['Host'] = self.service_info.host
-        headers['User-Agent'] = 'volc-sdk-python/' + VERSION
+        headers["Host"] = self.service_info.host
+        headers["User-Agent"] = "volc-sdk-python/" + VERSION
         r.set_headers(headers)
 
         query = self.merge(api_info.query, params)
@@ -143,13 +152,13 @@ class Service:
 
 class Request:
     def __init__(self):
-        self.schema = ''
-        self.method = ''
-        self.host = ''
-        self.path = ''
+        self.schema = ""
+        self.method = ""
+        self.host = ""
+        self.path = ""
         self.headers = OrderedDict()
         self.query = OrderedDict()
-        self.body = ''
+        self.body = ""
         self.form = {}
         self.connection_timeout = 0
         self.socket_timeout = 0
@@ -182,11 +191,11 @@ class Request:
         self.socket_timeout = socket_timeout
 
     def build(self, doseq=0):
-        return self.schema + '://' + self.host + self.path + '?' + urlencode(self.query, doseq)
+        return self.schema + "://" + self.host + self.path + "?" + urlencode(self.query, doseq)
 
 
 class ServiceInfo:
-    def __init__(self, host, header, credentials, connection_timeout, socket_timeout, scheme='http'):
+    def __init__(self, host, header, credentials, connection_timeout, socket_timeout, scheme="http"):
         self.host = host
         self.header = header
         self.credentials = credentials
@@ -204,4 +213,4 @@ class ApiInfo:
         self.header = header
 
     def __str__(self):
-        return 'method: ' + self.method + ', path: ' + self.path
+        return "method: " + self.method + ", path: " + self.path

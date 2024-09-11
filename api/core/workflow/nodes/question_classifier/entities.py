@@ -8,8 +8,9 @@ from core.workflow.entities.base_node_data_entities import BaseNodeData
 
 class ModelConfig(BaseModel):
     """
-     Model Config.
+    Model Config.
     """
+
     provider: str
     name: str
     mode: str
@@ -20,6 +21,7 @@ class ClassConfig(BaseModel):
     """
     Class Config.
     """
+
     id: str
     name: str
 
@@ -28,8 +30,9 @@ class QuestionClassifierNodeData(BaseNodeData):
     """
     Knowledge retrieval Node Data.
     """
+
     query_variable_selector: list[str]
-    type: str = 'question-classifier'
+    type: str = "question-classifier"
     model: ModelConfig
     classes: list[ClassConfig]
     instruction: Optional[str] = None

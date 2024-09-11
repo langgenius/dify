@@ -13,13 +13,14 @@ logger = logging.getLogger(__name__)
 
 class InputModeration:
     def check(
-        self, app_id: str,
+        self,
+        app_id: str,
         tenant_id: str,
         app_config: AppConfig,
         inputs: dict,
         query: str,
         message_id: str,
-        trace_manager: Optional[TraceQueueManager] = None
+        trace_manager: Optional[TraceQueueManager] = None,
     ) -> tuple[bool, dict, str]:
         """
         Process sensitive_word_avoidance.
@@ -39,10 +40,7 @@ class InputModeration:
         moderation_type = sensitive_word_avoidance_config.type
 
         moderation_factory = ModerationFactory(
-            name=moderation_type,
-            app_id=app_id,
-            tenant_id=tenant_id,
-            config=sensitive_word_avoidance_config.config
+            name=moderation_type, app_id=app_id, tenant_id=tenant_id, config=sensitive_word_avoidance_config.config
         )
 
         with measure_time() as timer:
@@ -55,7 +53,7 @@ class InputModeration:
                     message_id=message_id,
                     moderation_result=moderation_result,
                     inputs=inputs,
-                    timer=timer
+                    timer=timer,
                 )
             )
 
@@ -64,7 +62,7 @@ class InputModeration:
 
         if moderation_result.action == ModerationAction.DIRECT_OUTPUT:
             raise ModerationException(moderation_result.preset_response)
-        elif moderation_result.action == ModerationAction.OVERRIDED:
+        elif moderation_result.action == ModerationAction.OVERRIDDEN:
             inputs = moderation_result.inputs
             query = moderation_result.query
 

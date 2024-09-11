@@ -22,10 +22,10 @@ class GetFilteredBoardCardsTool(BuiltinTool):
         Returns:
             ToolInvokeMessage: The result of the tool invocation.
         """
-        api_key = self.runtime.credentials.get('trello_api_key')
-        token = self.runtime.credentials.get('trello_api_token')
-        board_id = tool_parameters.get('boardId')
-        filter = tool_parameters.get('filter')
+        api_key = self.runtime.credentials.get("trello_api_key")
+        token = self.runtime.credentials.get("trello_api_token")
+        board_id = tool_parameters.get("boardId")
+        filter = tool_parameters.get("filter")
 
         if not (api_key and token and board_id and filter):
             return self.create_text_message("Missing required parameters: API key, token, board ID, or filter.")
@@ -40,5 +40,6 @@ class GetFilteredBoardCardsTool(BuiltinTool):
             return self.create_text_message("Failed to retrieve filtered cards")
 
         card_details = "\n".join([f"{card['name']} (ID: {card['id']})" for card in filtered_cards])
-        return self.create_text_message(text=f"Filtered Cards for Board ID {board_id} with Filter '{filter}':\n{card_details}")
-
+        return self.create_text_message(
+            text=f"Filtered Cards for Board ID {board_id} with Filter '{filter}':\n{card_details}"
+        )

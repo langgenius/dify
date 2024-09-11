@@ -83,7 +83,6 @@ class WikipediaQueryRun:
 
 
 class WikiPediaSearchTool(BuiltinTool):
-
     def _invoke(
         self,
         user_id: str,
