@@ -17,7 +17,6 @@ select = [
     "I", # isort rules
     "N", # pep8-naming
     "UP", # pyupgrade rules
-    "B035", # static-key-dict-comprehension
     "E101", # mixed-spaces-and-tabs
     "E111", # indentation-with-invalid-multiple
     "E112", # no-indented-block
