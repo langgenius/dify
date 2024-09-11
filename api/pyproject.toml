@@ -72,7 +72,8 @@ ignore = [
     "N802", # invalid-function-name
 ]
 "libs/gmpy2_pkcs10aep_cipher.py" = [
-    "N806",
+    "N803", # invalid-argument-name
+    "N806", # non-lowercase-variable-in-function
 ]
 
 [tool.ruff.format]
