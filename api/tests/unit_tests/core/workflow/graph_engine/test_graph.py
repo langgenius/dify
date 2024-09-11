@@ -247,9 +247,9 @@ def test_parallels_graph():
     for i in range(3):
         start_edges = graph.edge_mapping.get("start")
         assert start_edges is not None
-        assert start_edges[i].target_node_id == f"llm{i+1}"
+        assert start_edges[i].target_node_id == f"llm{i + 1}"
 
-        llm_edges = graph.edge_mapping.get(f"llm{i+1}")
+        llm_edges = graph.edge_mapping.get(f"llm{i + 1}")
         assert llm_edges is not None
         assert llm_edges[0].target_node_id == "answer"
 
