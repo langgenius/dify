@@ -40,13 +40,7 @@ class GitlabFilesTool(BuiltinTool):
         return [self.create_json_message(item) for item in result]
 
     def fetch_files(
-        self,
-        site_url: str,
-        access_token: str,
-        identifier: str,
-        branch: str,
-        path: str,
-        is_repository: bool
+        self, site_url: str, access_token: str, identifier: str, branch: str, path: str, is_repository: bool
     ) -> list[dict[str, Any]]:
         domain = site_url
         headers = {"PRIVATE-TOKEN": access_token}
@@ -55,7 +49,7 @@ class GitlabFilesTool(BuiltinTool):
         try:
             if is_repository:
                 # URL encode the repository path
-                encoded_identifier = urllib.parse.quote(identifier, safe='')
+                encoded_identifier = urllib.parse.quote(identifier, safe="")
                 tree_url = f"{domain}/api/v4/projects/{encoded_identifier}/repository/tree?path={path}&ref={branch}"
             else:
                 # Get project ID from project name
@@ -71,13 +65,17 @@ class GitlabFilesTool(BuiltinTool):
             for item in items:
                 item_path = item["path"]
                 if item["type"] == "tree":  # It's a directory
-                    results.extend(self.fetch_files(site_url, access_token, identifier, branch, item_path, is_repository))
+                    results.extend(
+                        self.fetch_files(site_url, access_token, identifier, branch, item_path, is_repository)
+                    )
                 else:  # It's a file
                     if is_repository:
                         file_url = f"{domain}/api/v4/projects/{encoded_identifier}/repository/files/{item_path}/raw?ref={branch}"
                     else:
-                        file_url = f"{domain}/api/v4/projects/{project_id}/repository/files/{item_path}/raw?ref={branch}"
-                    
+                        file_url = (
+                            f"{domain}/api/v4/projects/{project_id}/repository/files/{item_path}/raw?ref={branch}"
+                        )
+
                     file_response = requests.get(file_url, headers=headers)
                     file_response.raise_for_status()
                     file_content = file_response.text

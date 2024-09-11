@@ -38,9 +38,13 @@ class GitlabCommitsTool(BuiltinTool):
 
         # Get commit content
         if repository:
-            result = self.fetch_commits(site_url, access_token, repository, employee, start_time, end_time, change_type, is_repository=True)
+            result = self.fetch_commits(
+                site_url, access_token, repository, employee, start_time, end_time, change_type, is_repository=True
+            )
         else:
-            result = self.fetch_commits(site_url, access_token, project, employee, start_time, end_time, change_type, is_repository=False)
+            result = self.fetch_commits(
+                site_url, access_token, project, employee, start_time, end_time, change_type, is_repository=False
+            )
 
         return [self.create_json_message(item) for item in result]
 
@@ -53,7 +57,7 @@ class GitlabCommitsTool(BuiltinTool):
         start_time: str,
         end_time: str,
         change_type: str,
-        is_repository: bool
+        is_repository: bool,
     ) -> list[dict[str, Any]]:
         domain = site_url
         headers = {"PRIVATE-TOKEN": access_token}
@@ -62,7 +66,7 @@ class GitlabCommitsTool(BuiltinTool):
         try:
             if is_repository:
                 # URL encode the repository path
-                encoded_identifier = urllib.parse.quote(identifier, safe='')
+                encoded_identifier = urllib.parse.quote(identifier, safe="")
                 commits_url = f"{domain}/api/v4/projects/{encoded_identifier}/repository/commits"
             else:
                 # Get all projects
@@ -116,9 +120,7 @@ class GitlabCommitsTool(BuiltinTool):
                                     if line.startswith("+") and not line.startswith("+++")
                                 ]
                             )
-                            results.append(
-                                {"commit_sha": commit_sha, "author_name": author_name, "diff": final_code}
-                            )
+                            results.append({"commit_sha": commit_sha, "author_name": author_name, "diff": final_code})
                     else:
                         if total_changes > 1:
                             final_code = "".join(
