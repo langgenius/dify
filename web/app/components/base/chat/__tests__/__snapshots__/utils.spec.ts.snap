@@ -1,6 +1,299 @@
 // Jest Snapshot v1, https://goo.gl/fbAQLP
 
-exports[`buildChatItemTree should be compatible with legacy chat items 1`] = `
+exports[`build chat item tree and get thread messages get thread messages with legacy chat items: threadMessages2 1`] = `
+[
+  {
+    "children": [
+      {
+        "children": [
+          {
+            "children": [
+              {
+                "children": [
+                  {
+                    "children": [
+                      {
+                        "children": [
+                          {
+                            "children": [
+                              {
+                                "children": [],
+                                "id": "4",
+                                "isAnswer": true,
+                                "parentMessageId": "question-4",
+                                "siblingIndex": 0,
+                              },
+                            ],
+                            "id": "question-4",
+                            "isAnswer": false,
+                            "parentMessageId": "00000000-0000-0000-0000-000000000000",
+                            "siblingIndex": 0,
+                          },
+                        ],
+                        "id": "3",
+                        "isAnswer": true,
+                        "parentMessageId": "question-3",
+                        "siblingIndex": 0,
+                      },
+                    ],
+                    "id": "question-3",
+                    "isAnswer": false,
+                    "parentMessageId": "00000000-0000-0000-0000-000000000000",
+                    "siblingIndex": 0,
+                  },
+                ],
+                "id": "2",
+                "isAnswer": true,
+                "parentMessageId": "question-2",
+                "siblingIndex": 0,
+              },
+            ],
+            "id": "question-2",
+            "isAnswer": false,
+            "parentMessageId": "00000000-0000-0000-0000-000000000000",
+            "siblingIndex": 0,
+          },
+        ],
+        "id": "1",
+        "isAnswer": true,
+        "parentMessageId": "question-1",
+        "siblingIndex": 0,
+      },
+    ],
+    "id": "question-1",
+    "isAnswer": false,
+    "parentMessageId": "00000000-0000-0000-0000-000000000000",
+    "siblingCount": 1,
+    "siblingIndex": 0,
+  },
+  {
+    "children": [
+      {
+        "children": [
+          {
+            "children": [
+              {
+                "children": [
+                  {
+                    "children": [
+                      {
+                        "children": [
+                          {
+                            "children": [],
+                            "id": "4",
+                            "isAnswer": true,
+                            "parentMessageId": "question-4",
+                            "siblingIndex": 0,
+                          },
+                        ],
+                        "id": "question-4",
+                        "isAnswer": false,
+                        "parentMessageId": "00000000-0000-0000-0000-000000000000",
+                        "siblingIndex": 0,
+                      },
+                    ],
+                    "id": "3",
+                    "isAnswer": true,
+                    "parentMessageId": "question-3",
+                    "siblingIndex": 0,
+                  },
+                ],
+                "id": "question-3",
+                "isAnswer": false,
+                "parentMessageId": "00000000-0000-0000-0000-000000000000",
+                "siblingIndex": 0,
+              },
+            ],
+            "id": "2",
+            "isAnswer": true,
+            "parentMessageId": "question-2",
+            "siblingIndex": 0,
+          },
+        ],
+        "id": "question-2",
+        "isAnswer": false,
+        "parentMessageId": "00000000-0000-0000-0000-000000000000",
+        "siblingIndex": 0,
+      },
+    ],
+    "id": "1",
+    "isAnswer": true,
+    "parentMessageId": "question-1",
+    "siblingCount": 1,
+    "siblingIndex": 0,
+  },
+  {
+    "children": [
+      {
+        "children": [
+          {
+            "children": [
+              {
+                "children": [
+                  {
+                    "children": [
+                      {
+                        "children": [],
+                        "id": "4",
+                        "isAnswer": true,
+                        "parentMessageId": "question-4",
+                        "siblingIndex": 0,
+                      },
+                    ],
+                    "id": "question-4",
+                    "isAnswer": false,
+                    "parentMessageId": "00000000-0000-0000-0000-000000000000",
+                    "siblingIndex": 0,
+                  },
+                ],
+                "id": "3",
+                "isAnswer": true,
+                "parentMessageId": "question-3",
+                "siblingIndex": 0,
+              },
+            ],
+            "id": "question-3",
+            "isAnswer": false,
+            "parentMessageId": "00000000-0000-0000-0000-000000000000",
+            "siblingIndex": 0,
+          },
+        ],
+        "id": "2",
+        "isAnswer": true,
+        "parentMessageId": "question-2",
+        "siblingIndex": 0,
+      },
+    ],
+    "id": "question-2",
+    "isAnswer": false,
+    "parentMessageId": "00000000-0000-0000-0000-000000000000",
+    "siblingCount": 1,
+    "siblingIndex": 0,
+  },
+  {
+    "children": [
+      {
+        "children": [
+          {
+            "children": [
+              {
+                "children": [
+                  {
+                    "children": [],
+                    "id": "4",
+                    "isAnswer": true,
+                    "parentMessageId": "question-4",
+                    "siblingIndex": 0,
+                  },
+                ],
+                "id": "question-4",
+                "isAnswer": false,
+                "parentMessageId": "00000000-0000-0000-0000-000000000000",
+                "siblingIndex": 0,
+              },
+            ],
+            "id": "3",
+            "isAnswer": true,
+            "parentMessageId": "question-3",
+            "siblingIndex": 0,
+          },
+        ],
+        "id": "question-3",
+        "isAnswer": false,
+        "parentMessageId": "00000000-0000-0000-0000-000000000000",
+        "siblingIndex": 0,
+      },
+    ],
+    "id": "2",
+    "isAnswer": true,
+    "parentMessageId": "question-2",
+    "siblingCount": 1,
+    "siblingIndex": 0,
+  },
+  {
+    "children": [
+      {
+        "children": [
+          {
+            "children": [
+              {
+                "children": [],
+                "id": "4",
+                "isAnswer": true,
+                "parentMessageId": "question-4",
+                "siblingIndex": 0,
+              },
+            ],
+            "id": "question-4",
+            "isAnswer": false,
+            "parentMessageId": "00000000-0000-0000-0000-000000000000",
+            "siblingIndex": 0,
+          },
+        ],
+        "id": "3",
+        "isAnswer": true,
+        "parentMessageId": "question-3",
+        "siblingIndex": 0,
+      },
+    ],
+    "id": "question-3",
+    "isAnswer": false,
+    "parentMessageId": "00000000-0000-0000-0000-000000000000",
+    "siblingCount": 1,
+    "siblingIndex": 0,
+  },
+  {
+    "children": [
+      {
+        "children": [
+          {
+            "children": [],
+            "id": "4",
+            "isAnswer": true,
+            "parentMessageId": "question-4",
+            "siblingIndex": 0,
+          },
+        ],
+        "id": "question-4",
+        "isAnswer": false,
+        "parentMessageId": "00000000-0000-0000-0000-000000000000",
+        "siblingIndex": 0,
+      },
+    ],
+    "id": "3",
+    "isAnswer": true,
+    "parentMessageId": "question-3",
+    "siblingCount": 1,
+    "siblingIndex": 0,
+  },
+  {
+    "children": [
+      {
+        "children": [],
+        "id": "4",
+        "isAnswer": true,
+        "parentMessageId": "question-4",
+        "siblingIndex": 0,
+      },
+    ],
+    "id": "question-4",
+    "isAnswer": false,
+    "parentMessageId": "00000000-0000-0000-0000-000000000000",
+    "siblingCount": 1,
+    "siblingIndex": 0,
+  },
+  {
+    "children": [],
+    "id": "4",
+    "isAnswer": true,
+    "parentMessageId": "question-4",
+    "siblingCount": 1,
+    "siblingIndex": 0,
+  },
+]
+`;
+
+exports[`build chat item tree and get thread messages get thread messages with legacy chat items: tree2 1`] = `
 [
   {
     "children": [
@@ -68,7 +361,7 @@ exports[`buildChatItemTree should be compatible with legacy chat items 1`] = `
 ]
 `;
 
-exports[`buildChatItemTree should build a tree from a list of chat items 1`] = `
+exports[`build chat item tree and get thread messages get thread messages with mixed chat items: threadMessages3_1 1`] = `
 [
   {
     "children": [
@@ -102,7 +395,7 @@ exports[`buildChatItemTree should build a tree from a list of chat items 1`] = `
             ],
             "id": "question-2",
             "isAnswer": false,
-            "parentMessageId": "1",
+            "parentMessageId": "00000000-0000-0000-0000-000000000000",
             "siblingIndex": 0,
           },
           {
@@ -129,13 +422,296 @@ exports[`buildChatItemTree should build a tree from a list of chat items 1`] = `
     ],
     "id": "question-1",
     "isAnswer": false,
-    "parentMessageId": null,
+    "parentMessageId": "00000000-0000-0000-0000-000000000000",
+    "siblingCount": 1,
+    "siblingIndex": 0,
+  },
+  {
+    "children": [
+      {
+        "children": [
+          {
+            "children": [
+              {
+                "children": [
+                  {
+                    "children": [],
+                    "id": "3",
+                    "isAnswer": true,
+                    "parentMessageId": "question-3",
+                    "siblingIndex": 0,
+                  },
+                ],
+                "id": "question-3",
+                "isAnswer": false,
+                "parentMessageId": "2",
+                "siblingIndex": 0,
+              },
+            ],
+            "id": "2",
+            "isAnswer": true,
+            "parentMessageId": "question-2",
+            "siblingIndex": 0,
+          },
+        ],
+        "id": "question-2",
+        "isAnswer": false,
+        "parentMessageId": "00000000-0000-0000-0000-000000000000",
+        "siblingIndex": 0,
+      },
+      {
+        "children": [
+          {
+            "children": [],
+            "id": "4",
+            "isAnswer": true,
+            "parentMessageId": "question-4",
+            "siblingIndex": 0,
+          },
+        ],
+        "id": "question-4",
+        "isAnswer": false,
+        "parentMessageId": "1",
+        "siblingIndex": 1,
+      },
+    ],
+    "id": "1",
+    "isAnswer": true,
+    "parentMessageId": "question-1",
+    "siblingCount": 1,
+    "siblingIndex": 0,
+  },
+  {
+    "children": [
+      {
+        "children": [],
+        "id": "4",
+        "isAnswer": true,
+        "parentMessageId": "question-4",
+        "siblingIndex": 0,
+      },
+    ],
+    "id": "question-4",
+    "isAnswer": false,
+    "parentMessageId": "1",
+    "siblingCount": 2,
+    "siblingIndex": 1,
+  },
+  {
+    "children": [],
+    "id": "4",
+    "isAnswer": true,
+    "parentMessageId": "question-4",
+    "siblingCount": 1,
     "siblingIndex": 0,
   },
 ]
 `;
 
-exports[`buildChatItemTree should build a tree from a list of mixed chat items 1`] = `
+exports[`build chat item tree and get thread messages get thread messages with mixed chat items: threadMessages3_2 1`] = `
+[
+  {
+    "children": [
+      {
+        "children": [
+          {
+            "children": [
+              {
+                "children": [
+                  {
+                    "children": [
+                      {
+                        "children": [],
+                        "id": "3",
+                        "isAnswer": true,
+                        "parentMessageId": "question-3",
+                        "siblingIndex": 0,
+                      },
+                    ],
+                    "id": "question-3",
+                    "isAnswer": false,
+                    "parentMessageId": "2",
+                    "siblingIndex": 0,
+                  },
+                ],
+                "id": "2",
+                "isAnswer": true,
+                "parentMessageId": "question-2",
+                "siblingIndex": 0,
+              },
+            ],
+            "id": "question-2",
+            "isAnswer": false,
+            "parentMessageId": "00000000-0000-0000-0000-000000000000",
+            "siblingIndex": 0,
+          },
+          {
+            "children": [
+              {
+                "children": [],
+                "id": "4",
+                "isAnswer": true,
+                "parentMessageId": "question-4",
+                "siblingIndex": 0,
+              },
+            ],
+            "id": "question-4",
+            "isAnswer": false,
+            "parentMessageId": "1",
+            "siblingIndex": 1,
+          },
+        ],
+        "id": "1",
+        "isAnswer": true,
+        "parentMessageId": "question-1",
+        "siblingIndex": 0,
+      },
+    ],
+    "id": "question-1",
+    "isAnswer": false,
+    "parentMessageId": "00000000-0000-0000-0000-000000000000",
+    "siblingCount": 1,
+    "siblingIndex": 0,
+  },
+  {
+    "children": [
+      {
+        "children": [
+          {
+            "children": [
+              {
+                "children": [
+                  {
+                    "children": [],
+                    "id": "3",
+                    "isAnswer": true,
+                    "parentMessageId": "question-3",
+                    "siblingIndex": 0,
+                  },
+                ],
+                "id": "question-3",
+                "isAnswer": false,
+                "parentMessageId": "2",
+                "siblingIndex": 0,
+              },
+            ],
+            "id": "2",
+            "isAnswer": true,
+            "parentMessageId": "question-2",
+            "siblingIndex": 0,
+          },
+        ],
+        "id": "question-2",
+        "isAnswer": false,
+        "parentMessageId": "00000000-0000-0000-0000-000000000000",
+        "siblingIndex": 0,
+      },
+      {
+        "children": [
+          {
+            "children": [],
+            "id": "4",
+            "isAnswer": true,
+            "parentMessageId": "question-4",
+            "siblingIndex": 0,
+          },
+        ],
+        "id": "question-4",
+        "isAnswer": false,
+        "parentMessageId": "1",
+        "siblingIndex": 1,
+      },
+    ],
+    "id": "1",
+    "isAnswer": true,
+    "parentMessageId": "question-1",
+    "siblingCount": 1,
+    "siblingIndex": 0,
+  },
+  {
+    "children": [
+      {
+        "children": [
+          {
+            "children": [
+              {
+                "children": [],
+                "id": "3",
+                "isAnswer": true,
+                "parentMessageId": "question-3",
+                "siblingIndex": 0,
+              },
+            ],
+            "id": "question-3",
+            "isAnswer": false,
+            "parentMessageId": "2",
+            "siblingIndex": 0,
+          },
+        ],
+        "id": "2",
+        "isAnswer": true,
+        "parentMessageId": "question-2",
+        "siblingIndex": 0,
+      },
+    ],
+    "id": "question-2",
+    "isAnswer": false,
+    "parentMessageId": "00000000-0000-0000-0000-000000000000",
+    "siblingCount": 2,
+    "siblingIndex": 0,
+  },
+  {
+    "children": [
+      {
+        "children": [
+          {
+            "children": [],
+            "id": "3",
+            "isAnswer": true,
+            "parentMessageId": "question-3",
+            "siblingIndex": 0,
+          },
+        ],
+        "id": "question-3",
+        "isAnswer": false,
+        "parentMessageId": "2",
+        "siblingIndex": 0,
+      },
+    ],
+    "id": "2",
+    "isAnswer": true,
+    "parentMessageId": "question-2",
+    "siblingCount": 1,
+    "siblingIndex": 0,
+  },
+  {
+    "children": [
+      {
+        "children": [],
+        "id": "3",
+        "isAnswer": true,
+        "parentMessageId": "question-3",
+        "siblingIndex": 0,
+      },
+    ],
+    "id": "question-3",
+    "isAnswer": false,
+    "parentMessageId": "2",
+    "siblingCount": 1,
+    "siblingIndex": 0,
+  },
+  {
+    "children": [],
+    "id": "3",
+    "isAnswer": true,
+    "parentMessageId": "question-3",
+    "siblingCount": 1,
+    "siblingIndex": 0,
+  },
+]
+`;
+
+exports[`build chat item tree and get thread messages get thread messages with mixed chat items: tree3 1`] = `
 [
   {
     "children": [
@@ -202,7 +778,7 @@ exports[`buildChatItemTree should build a tree from a list of mixed chat items 1
 ]
 `;
 
-exports[`buildChatItemTree should build a tree from a list of multi root nodes chat items 1`] = `
+exports[`build chat item tree and get thread messages get thread messages with multi root nodes chat items with legacy chat items: threadMessages5 1`] = `
 [
   {
     "children": [
@@ -224,7 +800,7 @@ exports[`buildChatItemTree should build a tree from a list of multi root nodes c
                     ],
                     "id": "question-3",
                     "isAnswer": false,
-                    "parentMessageId": "2",
+                    "parentMessageId": "00000000-0000-0000-0000-000000000000",
                     "siblingIndex": 0,
                   },
                 ],
@@ -236,7 +812,7 @@ exports[`buildChatItemTree should build a tree from a list of multi root nodes c
             ],
             "id": "question-2",
             "isAnswer": false,
-            "parentMessageId": "1",
+            "parentMessageId": "00000000-0000-0000-0000-000000000000",
             "siblingIndex": 0,
           },
           {
@@ -263,28 +839,93 @@ exports[`buildChatItemTree should build a tree from a list of multi root nodes c
     ],
     "id": "question-1",
     "isAnswer": false,
-    "parentMessageId": null,
+    "parentMessageId": "00000000-0000-0000-0000-000000000000",
+    "siblingCount": 2,
+    "siblingIndex": 0,
+  },
+  {
+    "children": [
+      {
+        "children": [
+          {
+            "children": [
+              {
+                "children": [
+                  {
+                    "children": [],
+                    "id": "3",
+                    "isAnswer": true,
+                    "parentMessageId": "question-3",
+                    "siblingIndex": 0,
+                  },
+                ],
+                "id": "question-3",
+                "isAnswer": false,
+                "parentMessageId": "00000000-0000-0000-0000-000000000000",
+                "siblingIndex": 0,
+              },
+            ],
+            "id": "2",
+            "isAnswer": true,
+            "parentMessageId": "question-2",
+            "siblingIndex": 0,
+          },
+        ],
+        "id": "question-2",
+        "isAnswer": false,
+        "parentMessageId": "00000000-0000-0000-0000-000000000000",
+        "siblingIndex": 0,
+      },
+      {
+        "children": [
+          {
+            "children": [],
+            "id": "4",
+            "isAnswer": true,
+            "parentMessageId": "question-4",
+            "siblingIndex": 0,
+          },
+        ],
+        "id": "question-4",
+        "isAnswer": false,
+        "parentMessageId": "1",
+        "siblingIndex": 1,
+      },
+    ],
+    "id": "1",
+    "isAnswer": true,
+    "parentMessageId": "question-1",
+    "siblingCount": 1,
     "siblingIndex": 0,
   },
   {
     "children": [
       {
         "children": [],
-        "id": "5",
+        "id": "4",
         "isAnswer": true,
-        "parentMessageId": "question-5",
+        "parentMessageId": "question-4",
         "siblingIndex": 0,
       },
     ],
-    "id": "question-5",
+    "id": "question-4",
     "isAnswer": false,
-    "parentMessageId": null,
+    "parentMessageId": "1",
+    "siblingCount": 2,
     "siblingIndex": 1,
+  },
+  {
+    "children": [],
+    "id": "4",
+    "isAnswer": true,
+    "parentMessageId": "question-4",
+    "siblingCount": 1,
+    "siblingIndex": 0,
   },
 ]
 `;
 
-exports[`buildChatItemTree should build a tree from a list of multi root nodes chat items with legacy chat items 1`] = `
+exports[`build chat item tree and get thread messages get thread messages with multi root nodes chat items with legacy chat items: tree5 1`] = `
 [
   {
     "children": [
@@ -362,6 +1003,652 @@ exports[`buildChatItemTree should build a tree from a list of multi root nodes c
     "isAnswer": false,
     "parentMessageId": null,
     "siblingIndex": 1,
+  },
+]
+`;
+
+exports[`build chat item tree and get thread messages get thread messages with multi root nodes chat items: threadMessages4 1`] = `
+[
+  {
+    "children": [
+      {
+        "children": [
+          {
+            "children": [
+              {
+                "children": [
+                  {
+                    "children": [
+                      {
+                        "children": [],
+                        "id": "3",
+                        "isAnswer": true,
+                        "parentMessageId": "question-3",
+                        "siblingIndex": 0,
+                      },
+                    ],
+                    "id": "question-3",
+                    "isAnswer": false,
+                    "parentMessageId": "2",
+                    "siblingIndex": 0,
+                  },
+                ],
+                "id": "2",
+                "isAnswer": true,
+                "parentMessageId": "question-2",
+                "siblingIndex": 0,
+              },
+            ],
+            "id": "question-2",
+            "isAnswer": false,
+            "parentMessageId": "1",
+            "siblingIndex": 0,
+          },
+          {
+            "children": [
+              {
+                "children": [],
+                "id": "4",
+                "isAnswer": true,
+                "parentMessageId": "question-4",
+                "siblingIndex": 0,
+              },
+            ],
+            "id": "question-4",
+            "isAnswer": false,
+            "parentMessageId": "1",
+            "siblingIndex": 1,
+          },
+        ],
+        "id": "1",
+        "isAnswer": true,
+        "parentMessageId": "question-1",
+        "siblingIndex": 0,
+      },
+    ],
+    "id": "question-1",
+    "isAnswer": false,
+    "parentMessageId": null,
+    "siblingCount": 2,
+    "siblingIndex": 0,
+  },
+  {
+    "children": [
+      {
+        "children": [
+          {
+            "children": [
+              {
+                "children": [
+                  {
+                    "children": [],
+                    "id": "3",
+                    "isAnswer": true,
+                    "parentMessageId": "question-3",
+                    "siblingIndex": 0,
+                  },
+                ],
+                "id": "question-3",
+                "isAnswer": false,
+                "parentMessageId": "2",
+                "siblingIndex": 0,
+              },
+            ],
+            "id": "2",
+            "isAnswer": true,
+            "parentMessageId": "question-2",
+            "siblingIndex": 0,
+          },
+        ],
+        "id": "question-2",
+        "isAnswer": false,
+        "parentMessageId": "1",
+        "siblingIndex": 0,
+      },
+      {
+        "children": [
+          {
+            "children": [],
+            "id": "4",
+            "isAnswer": true,
+            "parentMessageId": "question-4",
+            "siblingIndex": 0,
+          },
+        ],
+        "id": "question-4",
+        "isAnswer": false,
+        "parentMessageId": "1",
+        "siblingIndex": 1,
+      },
+    ],
+    "id": "1",
+    "isAnswer": true,
+    "parentMessageId": "question-1",
+    "siblingCount": 1,
+    "siblingIndex": 0,
+  },
+  {
+    "children": [
+      {
+        "children": [],
+        "id": "4",
+        "isAnswer": true,
+        "parentMessageId": "question-4",
+        "siblingIndex": 0,
+      },
+    ],
+    "id": "question-4",
+    "isAnswer": false,
+    "parentMessageId": "1",
+    "siblingCount": 2,
+    "siblingIndex": 1,
+  },
+  {
+    "children": [],
+    "id": "4",
+    "isAnswer": true,
+    "parentMessageId": "question-4",
+    "siblingCount": 1,
+    "siblingIndex": 0,
+  },
+]
+`;
+
+exports[`build chat item tree and get thread messages get thread messages with multi root nodes chat items: tree4 1`] = `
+[
+  {
+    "children": [
+      {
+        "children": [
+          {
+            "children": [
+              {
+                "children": [
+                  {
+                    "children": [
+                      {
+                        "children": [],
+                        "id": "3",
+                        "isAnswer": true,
+                        "parentMessageId": "question-3",
+                        "siblingIndex": 0,
+                      },
+                    ],
+                    "id": "question-3",
+                    "isAnswer": false,
+                    "parentMessageId": "2",
+                    "siblingIndex": 0,
+                  },
+                ],
+                "id": "2",
+                "isAnswer": true,
+                "parentMessageId": "question-2",
+                "siblingIndex": 0,
+              },
+            ],
+            "id": "question-2",
+            "isAnswer": false,
+            "parentMessageId": "1",
+            "siblingIndex": 0,
+          },
+          {
+            "children": [
+              {
+                "children": [],
+                "id": "4",
+                "isAnswer": true,
+                "parentMessageId": "question-4",
+                "siblingIndex": 0,
+              },
+            ],
+            "id": "question-4",
+            "isAnswer": false,
+            "parentMessageId": "1",
+            "siblingIndex": 1,
+          },
+        ],
+        "id": "1",
+        "isAnswer": true,
+        "parentMessageId": "question-1",
+        "siblingIndex": 0,
+      },
+    ],
+    "id": "question-1",
+    "isAnswer": false,
+    "parentMessageId": null,
+    "siblingIndex": 0,
+  },
+  {
+    "children": [
+      {
+        "children": [],
+        "id": "5",
+        "isAnswer": true,
+        "parentMessageId": "question-5",
+        "siblingIndex": 0,
+      },
+    ],
+    "id": "question-5",
+    "isAnswer": false,
+    "parentMessageId": null,
+    "siblingIndex": 1,
+  },
+]
+`;
+
+exports[`build chat item tree and get thread messages get thread messages: threadMessages1_1 1`] = `
+[
+  {
+    "children": [
+      {
+        "children": [
+          {
+            "children": [
+              {
+                "children": [
+                  {
+                    "children": [
+                      {
+                        "children": [],
+                        "id": "3",
+                        "isAnswer": true,
+                        "parentMessageId": "question-3",
+                        "siblingIndex": 0,
+                      },
+                    ],
+                    "id": "question-3",
+                    "isAnswer": false,
+                    "parentMessageId": "2",
+                    "siblingIndex": 0,
+                  },
+                ],
+                "id": "2",
+                "isAnswer": true,
+                "parentMessageId": "question-2",
+                "siblingIndex": 0,
+              },
+            ],
+            "id": "question-2",
+            "isAnswer": false,
+            "parentMessageId": "1",
+            "siblingIndex": 0,
+          },
+          {
+            "children": [
+              {
+                "children": [],
+                "id": "4",
+                "isAnswer": true,
+                "parentMessageId": "question-4",
+                "siblingIndex": 0,
+              },
+            ],
+            "id": "question-4",
+            "isAnswer": false,
+            "parentMessageId": "1",
+            "siblingIndex": 1,
+          },
+        ],
+        "id": "1",
+        "isAnswer": true,
+        "parentMessageId": "question-1",
+        "siblingIndex": 0,
+      },
+    ],
+    "id": "question-1",
+    "isAnswer": false,
+    "parentMessageId": null,
+    "siblingCount": 1,
+    "siblingIndex": 0,
+  },
+  {
+    "children": [
+      {
+        "children": [
+          {
+            "children": [
+              {
+                "children": [
+                  {
+                    "children": [],
+                    "id": "3",
+                    "isAnswer": true,
+                    "parentMessageId": "question-3",
+                    "siblingIndex": 0,
+                  },
+                ],
+                "id": "question-3",
+                "isAnswer": false,
+                "parentMessageId": "2",
+                "siblingIndex": 0,
+              },
+            ],
+            "id": "2",
+            "isAnswer": true,
+            "parentMessageId": "question-2",
+            "siblingIndex": 0,
+          },
+        ],
+        "id": "question-2",
+        "isAnswer": false,
+        "parentMessageId": "1",
+        "siblingIndex": 0,
+      },
+      {
+        "children": [
+          {
+            "children": [],
+            "id": "4",
+            "isAnswer": true,
+            "parentMessageId": "question-4",
+            "siblingIndex": 0,
+          },
+        ],
+        "id": "question-4",
+        "isAnswer": false,
+        "parentMessageId": "1",
+        "siblingIndex": 1,
+      },
+    ],
+    "id": "1",
+    "isAnswer": true,
+    "parentMessageId": "question-1",
+    "siblingCount": 1,
+    "siblingIndex": 0,
+  },
+  {
+    "children": [
+      {
+        "children": [],
+        "id": "4",
+        "isAnswer": true,
+        "parentMessageId": "question-4",
+        "siblingIndex": 0,
+      },
+    ],
+    "id": "question-4",
+    "isAnswer": false,
+    "parentMessageId": "1",
+    "siblingCount": 2,
+    "siblingIndex": 1,
+  },
+  {
+    "children": [],
+    "id": "4",
+    "isAnswer": true,
+    "parentMessageId": "question-4",
+    "siblingCount": 1,
+    "siblingIndex": 0,
+  },
+]
+`;
+
+exports[`build chat item tree and get thread messages get thread messages: threadMessages1_2 1`] = `
+[
+  {
+    "children": [
+      {
+        "children": [
+          {
+            "children": [
+              {
+                "children": [
+                  {
+                    "children": [
+                      {
+                        "children": [],
+                        "id": "3",
+                        "isAnswer": true,
+                        "parentMessageId": "question-3",
+                        "siblingIndex": 0,
+                      },
+                    ],
+                    "id": "question-3",
+                    "isAnswer": false,
+                    "parentMessageId": "2",
+                    "siblingIndex": 0,
+                  },
+                ],
+                "id": "2",
+                "isAnswer": true,
+                "parentMessageId": "question-2",
+                "siblingIndex": 0,
+              },
+            ],
+            "id": "question-2",
+            "isAnswer": false,
+            "parentMessageId": "1",
+            "siblingIndex": 0,
+          },
+          {
+            "children": [
+              {
+                "children": [],
+                "id": "4",
+                "isAnswer": true,
+                "parentMessageId": "question-4",
+                "siblingIndex": 0,
+              },
+            ],
+            "id": "question-4",
+            "isAnswer": false,
+            "parentMessageId": "1",
+            "siblingIndex": 1,
+          },
+        ],
+        "id": "1",
+        "isAnswer": true,
+        "parentMessageId": "question-1",
+        "siblingIndex": 0,
+      },
+    ],
+    "id": "question-1",
+    "isAnswer": false,
+    "parentMessageId": null,
+    "siblingCount": 1,
+    "siblingIndex": 0,
+  },
+  {
+    "children": [
+      {
+        "children": [
+          {
+            "children": [
+              {
+                "children": [
+                  {
+                    "children": [],
+                    "id": "3",
+                    "isAnswer": true,
+                    "parentMessageId": "question-3",
+                    "siblingIndex": 0,
+                  },
+                ],
+                "id": "question-3",
+                "isAnswer": false,
+                "parentMessageId": "2",
+                "siblingIndex": 0,
+              },
+            ],
+            "id": "2",
+            "isAnswer": true,
+            "parentMessageId": "question-2",
+            "siblingIndex": 0,
+          },
+        ],
+        "id": "question-2",
+        "isAnswer": false,
+        "parentMessageId": "1",
+        "siblingIndex": 0,
+      },
+      {
+        "children": [
+          {
+            "children": [],
+            "id": "4",
+            "isAnswer": true,
+            "parentMessageId": "question-4",
+            "siblingIndex": 0,
+          },
+        ],
+        "id": "question-4",
+        "isAnswer": false,
+        "parentMessageId": "1",
+        "siblingIndex": 1,
+      },
+    ],
+    "id": "1",
+    "isAnswer": true,
+    "parentMessageId": "question-1",
+    "siblingCount": 1,
+    "siblingIndex": 0,
+  },
+  {
+    "children": [
+      {
+        "children": [
+          {
+            "children": [
+              {
+                "children": [],
+                "id": "3",
+                "isAnswer": true,
+                "parentMessageId": "question-3",
+                "siblingIndex": 0,
+              },
+            ],
+            "id": "question-3",
+            "isAnswer": false,
+            "parentMessageId": "2",
+            "siblingIndex": 0,
+          },
+        ],
+        "id": "2",
+        "isAnswer": true,
+        "parentMessageId": "question-2",
+        "siblingIndex": 0,
+      },
+    ],
+    "id": "question-2",
+    "isAnswer": false,
+    "parentMessageId": "1",
+    "siblingCount": 2,
+    "siblingIndex": 0,
+  },
+  {
+    "children": [
+      {
+        "children": [
+          {
+            "children": [],
+            "id": "3",
+            "isAnswer": true,
+            "parentMessageId": "question-3",
+            "siblingIndex": 0,
+          },
+        ],
+        "id": "question-3",
+        "isAnswer": false,
+        "parentMessageId": "2",
+        "siblingIndex": 0,
+      },
+    ],
+    "id": "2",
+    "isAnswer": true,
+    "parentMessageId": "question-2",
+    "siblingCount": 1,
+    "siblingIndex": 0,
+  },
+  {
+    "children": [
+      {
+        "children": [],
+        "id": "3",
+        "isAnswer": true,
+        "parentMessageId": "question-3",
+        "siblingIndex": 0,
+      },
+    ],
+    "id": "question-3",
+    "isAnswer": false,
+    "parentMessageId": "2",
+    "siblingCount": 1,
+    "siblingIndex": 0,
+  },
+  {
+    "children": [],
+    "id": "3",
+    "isAnswer": true,
+    "parentMessageId": "question-3",
+    "siblingCount": 1,
+    "siblingIndex": 0,
+  },
+]
+`;
+
+exports[`build chat item tree and get thread messages get thread messages: tree1 1`] = `
+[
+  {
+    "children": [
+      {
+        "children": [
+          {
+            "children": [
+              {
+                "children": [
+                  {
+                    "children": [
+                      {
+                        "children": [],
+                        "id": "3",
+                        "isAnswer": true,
+                        "parentMessageId": "question-3",
+                        "siblingIndex": 0,
+                      },
+                    ],
+                    "id": "question-3",
+                    "isAnswer": false,
+                    "parentMessageId": "2",
+                    "siblingIndex": 0,
+                  },
+                ],
+                "id": "2",
+                "isAnswer": true,
+                "parentMessageId": "question-2",
+                "siblingIndex": 0,
+              },
+            ],
+            "id": "question-2",
+            "isAnswer": false,
+            "parentMessageId": "1",
+            "siblingIndex": 0,
+          },
+          {
+            "children": [
+              {
+                "children": [],
+                "id": "4",
+                "isAnswer": true,
+                "parentMessageId": "question-4",
+                "siblingIndex": 0,
+              },
+            ],
+            "id": "question-4",
+            "isAnswer": false,
+            "parentMessageId": "1",
+            "siblingIndex": 1,
+          },
+        ],
+        "id": "1",
+        "isAnswer": true,
+        "parentMessageId": "question-1",
+        "siblingIndex": 0,
+      },
+    ],
+    "id": "question-1",
+    "isAnswer": false,
+    "parentMessageId": null,
+    "siblingIndex": 0,
   },
 ]
 `;

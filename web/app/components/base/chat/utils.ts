@@ -137,16 +137,21 @@ function getThreadMessages(tree: ChatItemInTree[], targetMessageId?: string): Ch
   }))
   while (stack.length > 0) {
     const { node, path } = stack.pop()!
-    if (node.id === targetMessageId) {
+    if (
+      node.id === targetMessageId
+      || (!targetMessageId && !node.children?.length && !stack.length) // if targetMessageId is not provided, we use the last message in the tree as the target
+    ) {
       targetNode = node
-      ret = path
+      ret = path.map((n, i) => ({ ...n, siblingCount: i === 0 ? tree.length : path[i - 1].children!.length }))
       break
     }
     if (node.children) {
-      stack.push(...node.children.map(child => ({
-        node: child,
-        path: [...path, child],
-      })))
+      for (let i = node.children.length - 1; i >= 0; i--) {
+        stack.push({
+          node: node.children[i],
+          path: [...path, node.children[i]],
+        })
+      }
     }
   }
 
@@ -157,10 +162,13 @@ function getThreadMessages(tree: ChatItemInTree[], targetMessageId?: string): Ch
       const node = stack.pop()!
       if (node !== targetNode)
         ret.push(node)
-      if (node.children?.length)
-        stack.push(node.children.at(-1)!)
+      if (node.children?.length) {
+        const lastDescendant = node.children.at(-1)!
+        stack.push({ ...lastDescendant, siblingCount: node.children.length })
+      }
     }
   }
+
   return ret
 }
 

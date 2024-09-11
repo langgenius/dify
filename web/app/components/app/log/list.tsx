@@ -205,7 +205,6 @@ function DetailPanel<T extends ChatConversationFullDetailResponse | CompletionCo
         ...getFormattedChatList(messageRes.data, detail.id, timezone!, t('appLog.dateTimeFormat') as string),
         ...allChatItems,
       ]
-      console.log(newAllChatItems)
       setAllChatItems(newAllChatItems)
 
       let tree = buildChatItemTree(newAllChatItems)
