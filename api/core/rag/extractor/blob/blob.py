@@ -45,7 +45,6 @@ class Blob(BaseModel):
         """The source location of the blob as string if known otherwise none."""
         return str(self.path) if self.path else None
 
-    @classmethod
     @model_validator(mode="before")
     @classmethod
     def check_blob_is_valid(cls, values: Mapping[str, Any]) -> Mapping[str, Any]:
