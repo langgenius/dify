@@ -76,7 +76,7 @@ class Moderation(Extensible, ABC):
         raise NotImplementedError
 
     @classmethod
-    def _validate_inputs_and_outputs_config(self, config: dict, is_preset_response_required: bool) -> None:
+    def _validate_inputs_and_outputs_config(cls, config: dict, is_preset_response_required: bool) -> None:
         # inputs_config
         inputs_config = config.get("inputs_config")
         if not isinstance(inputs_config, dict):
