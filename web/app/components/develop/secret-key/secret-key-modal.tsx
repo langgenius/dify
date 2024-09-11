@@ -41,7 +41,7 @@ const SecretKeyModal = ({
 }: ISecretKeyModalProps) => {
   const { t } = useTranslation()
   const { formatTime } = useTimestamp()
-  const { currentWorkspace, isCurrentWorkspaceManager } = useAppContext()
+  const { currentWorkspace, isCurrentWorkspaceManager, isCurrentWorkspaceEditor } = useAppContext()
   const [showConfirmDelete, setShowConfirmDelete] = useState(false)
   const [isVisible, setVisible] = useState(false)
   const [newKey, setNewKey] = useState<CreateApiKeyResponse | undefined>(undefined)
@@ -142,7 +142,7 @@ const SecretKeyModal = ({
         )
       }
       <div className='flex'>
-        <Button className={`flex flex-shrink-0 mt-4 ${s.autoWidth}`} onClick={onCreate} disabled={ !currentWorkspace || !isCurrentWorkspaceManager}>
+        <Button className={`flex flex-shrink-0 mt-4 ${s.autoWidth}`} onClick={onCreate} disabled={!currentWorkspace || !isCurrentWorkspaceEditor}>
           <PlusIcon className='flex flex-shrink-0 w-4 h-4' />
           <div className='text-xs font-medium text-gray-800'>{t('appApi.apiKeyModal.createNewSecretKey')}</div>
         </Button>
