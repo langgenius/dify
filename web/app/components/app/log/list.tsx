@@ -16,6 +16,7 @@ import timezone from 'dayjs/plugin/timezone'
 import { createContext, useContext } from 'use-context-selector'
 import { useShallow } from 'zustand/react/shallow'
 import { useTranslation } from 'react-i18next'
+import type { ChatItemInTree } from '../../base/chat/types'
 import s from './style.module.css'
 import VarPanel from './var-panel'
 import cn from '@/utils/classnames'
@@ -178,6 +179,7 @@ function DetailPanel<T extends ChatConversationFullDetailResponse | CompletionCo
   const [varValues, setVarValues] = useState<Record<string, string>>({})
 
   const [allChatItems, setAllChatItems] = useState<IChatItem[]>([])
+  const [chatItemTree, setChatItemTree] = useState<ChatItemInTree[]>([])
   const [threadChatItems, setThreadChatItems] = useState<IChatItem[]>([])
 
   const fetchData = useCallback(async () => {
@@ -218,6 +220,7 @@ function DetailPanel<T extends ChatConversationFullDetailResponse | CompletionCo
           children: tree,
         }]
       }
+      setChatItemTree(tree)
 
       setThreadChatItems(getThreadMessages(tree, newAllChatItems.at(-1)?.id))
     }
@@ -225,6 +228,10 @@ function DetailPanel<T extends ChatConversationFullDetailResponse | CompletionCo
       console.error(err)
     }
   }, [allChatItems, detail.id, hasMore, timezone, t, appDetail, detail?.model_config?.configs?.introduction])
+
+  const switchSibling = useCallback((siblingMessageId: string) => {
+    setThreadChatItems(getThreadMessages(chatItemTree, siblingMessageId))
+  }, [chatItemTree])
 
   const handleAnnotationEdited = useCallback((query: string, answer: string, index: number) => {
     setAllChatItems(allChatItems.map((item, i) => {
@@ -474,6 +481,7 @@ function DetailPanel<T extends ChatConversationFullDetailResponse | CompletionCo
               showPromptLog
               hideProcessDetail
               chatContainerInnerClassName='px-6'
+              switchSibling={switchSibling}
             />
           </div>
           : <div
@@ -528,6 +536,7 @@ function DetailPanel<T extends ChatConversationFullDetailResponse | CompletionCo
                 showPromptLog
                 hideProcessDetail
                 chatContainerInnerClassName='px-6'
+                switchSibling={switchSibling}
               />
             </InfiniteScroll>
           </div>

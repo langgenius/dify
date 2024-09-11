@@ -90,7 +90,6 @@ function buildChatItemTree(allMessages: IChatItem[]): ChatItemInTree[] {
     const questionNode: ChatItemInTree = {
       ...question,
       children: [],
-      siblingIndex: isLegacy ? 0 : childrenCount[parentMessageId] - 1,
     }
     map[question.id] = questionNode
 
@@ -99,7 +98,7 @@ function buildChatItemTree(allMessages: IChatItem[]): ChatItemInTree[] {
     const answerNode: ChatItemInTree = {
       ...answer,
       children: [],
-      siblingIndex: 0,
+      siblingIndex: isLegacy ? 0 : childrenCount[parentMessageId] - 1,
     }
     map[answer.id] = answerNode
 
@@ -142,7 +141,19 @@ function getThreadMessages(tree: ChatItemInTree[], targetMessageId?: string): Ch
       || (!targetMessageId && !node.children?.length && !stack.length) // if targetMessageId is not provided, we use the last message in the tree as the target
     ) {
       targetNode = node
-      ret = path.map((n, i) => ({ ...n, siblingCount: i === 0 ? tree.length : path[i - 1].children!.length }))
+      ret = path.map((item, index) => {
+        if (!item.isAnswer)
+          return item
+
+        const parentAnswer = path[index - 2]
+        const siblingCount = !parentAnswer ? tree.length : parentAnswer.children!.length
+        const prevSibling = !parentAnswer ? tree[index - 1]?.id : parentAnswer.children![item.siblingIndex! - 1]?.children?.[0].id
+        const nextSibling = !parentAnswer ? tree[index + 1]?.id : parentAnswer.children![item.siblingIndex! + 1]?.children?.[0].id
+        if (item.id === '9b221880-044f-43be-bd5a-39b340bf84a1')
+          console.log({ parentAnswer, siblingIndex: item.siblingIndex, siblingCount, prevSibling, nextSibling })
+
+        return { ...item, siblingCount, prevSibling, nextSibling }
+      })
       break
     }
     if (node.children) {

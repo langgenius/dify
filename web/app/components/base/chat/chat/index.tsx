@@ -62,6 +62,7 @@ export type ChatProps = {
   hideProcessDetail?: boolean
   hideLogModal?: boolean
   themeBuilder?: ThemeBuilder
+  switchSibling?: (siblingMessageId: string) => void
 }
 
 const Chat: FC<ChatProps> = ({
@@ -92,6 +93,7 @@ const Chat: FC<ChatProps> = ({
   hideProcessDetail,
   hideLogModal,
   themeBuilder,
+  switchSibling,
 }) => {
   const { t } = useTranslation()
   const { currentLogItem, setCurrentLogItem, showPromptLogModal, setShowPromptLogModal, showAgentLogModal, setShowAgentLogModal } = useAppStore(useShallow(state => ({
@@ -222,6 +224,7 @@ const Chat: FC<ChatProps> = ({
                       chatAnswerContainerInner={chatAnswerContainerInner}
                       hideProcessDetail={hideProcessDetail}
                       noChatInput={noChatInput}
+                      switchSibling={switchSibling}
                     />
                   )
                 }

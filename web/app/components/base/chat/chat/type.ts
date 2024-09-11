@@ -98,6 +98,8 @@ export type IChatItem = {
   parentMessageId?: string | null
   siblingCount?: number
   siblingIndex?: number
+  prevSibling?: string
+  nextSibling?: string
 }
 
 export type Metadata = {
