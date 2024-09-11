@@ -8,8 +8,8 @@ from core.extension.extensible import Extensible, ExtensionModule
 
 
 class ModerationAction(Enum):
-    DIRECT_OUTPUT = 'direct_output'
-    OVERRIDED = 'overrided'
+    DIRECT_OUTPUT = "direct_output"
+    OVERRIDDEN = "overridden"
 
 
 class ModerationInputsResult(BaseModel):
@@ -31,6 +31,7 @@ class Moderation(Extensible, ABC):
     """
     The base class of moderation.
     """
+
     module: ExtensionModule = ExtensionModule.MODERATION
 
     def __init__(self, app_id: str, tenant_id: str, config: Optional[dict] = None) -> None:

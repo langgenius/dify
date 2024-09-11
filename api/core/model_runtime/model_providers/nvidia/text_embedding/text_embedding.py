@@ -22,12 +22,13 @@ class NvidiaTextEmbeddingModel(TextEmbeddingModel):
     """
     Model class for Nvidia text embedding model.
     """
-    api_base: str = 'https://ai.api.nvidia.com/v1/retrieval/nvidia/embeddings'
-    models: list[str] = ['NV-Embed-QA']
 
-    def _invoke(self, model: str, credentials: dict,
-                texts: list[str], user: Optional[str] = None) \
-            -> TextEmbeddingResult:
+    api_base: str = "https://ai.api.nvidia.com/v1/retrieval/nvidia/embeddings"
+    models: list[str] = ["NV-Embed-QA"]
+
+    def _invoke(
+        self, model: str, credentials: dict, texts: list[str], user: Optional[str] = None
+    ) -> TextEmbeddingResult:
         """
         Invoke text embedding model
 
@@ -37,32 +38,25 @@ class NvidiaTextEmbeddingModel(TextEmbeddingModel):
         :param user: unique user id
         :return: embeddings result
         """
-        api_key = credentials['api_key']
+        api_key = credentials["api_key"]
         if model not in self.models:
-            raise InvokeBadRequestError('Invalid model name')
+            raise InvokeBadRequestError("Invalid model name")
         if not api_key:
-            raise CredentialsValidateFailedError('api_key is required')
+            raise CredentialsValidateFailedError("api_key is required")
         url = self.api_base
-        headers = {
-            'Authorization': 'Bearer ' + api_key,
-            'Content-Type': 'application/json'
-        }
+        headers = {"Authorization": "Bearer " + api_key, "Content-Type": "application/json"}
 
-        data = {
-            'model': model,
-            'input': texts[0], 
-            'input_type': 'query'
-        }
+        data = {"model": model, "input": texts[0], "input_type": "query"}
 
         try:
             response = post(url, headers=headers, data=dumps(data))
         except Exception as e:
             raise InvokeConnectionError(str(e))
-        
+
         if response.status_code != 200:
             try:
                 resp = response.json()
-                msg = resp['detail']
+                msg = resp["detail"]
                 if response.status_code == 401:
                     raise InvokeAuthorizationError(msg)
                 elif response.status_code == 429:
@@ -72,23 +66,21 @@ class NvidiaTextEmbeddingModel(TextEmbeddingModel):
                 else:
                     raise InvokeError(msg)
             except JSONDecodeError as e:
-                raise InvokeServerUnavailableError(f"Failed to convert response to json: {e} with text: {response.text}")
+                raise InvokeServerUnavailableError(
+                    f"Failed to convert response to json: {e} with text: {response.text}"
+                )
 
         try:
             resp = response.json()
-            embeddings = resp['data']
-            usage = resp['usage']
+            embeddings = resp["data"]
+            usage = resp["usage"]
         except Exception as e:
             raise InvokeServerUnavailableError(f"Failed to convert response to json: {e} with text: {response.text}")
 
-        usage = self._calc_response_usage(model=model, credentials=credentials, tokens=usage['total_tokens'])
+        usage = self._calc_response_usage(model=model, credentials=credentials, tokens=usage["total_tokens"])
 
         result = TextEmbeddingResult(
-            model=model,
-            embeddings=[[
-                float(data) for data in x['embedding']
-            ] for x in embeddings],
-            usage=usage
+            model=model, embeddings=[[float(data) for data in x["embedding"]] for x in embeddings], usage=usage
         )
 
         return result
@@ -117,30 +109,20 @@ class NvidiaTextEmbeddingModel(TextEmbeddingModel):
         :return:
         """
         try:
-            self._invoke(model=model, credentials=credentials, texts=['ping'])
+            self._invoke(model=model, credentials=credentials, texts=["ping"])
         except InvokeAuthorizationError:
-            raise CredentialsValidateFailedError('Invalid api key')
+            raise CredentialsValidateFailedError("Invalid api key")
 
     @property
     def _invoke_error_mapping(self) -> dict[type[InvokeError], list[type[Exception]]]:
         return {
-            InvokeConnectionError: [
-                InvokeConnectionError
-            ],
-            InvokeServerUnavailableError: [
-                InvokeServerUnavailableError
-            ],
-            InvokeRateLimitError: [
-                InvokeRateLimitError
-            ],
-            InvokeAuthorizationError: [
-                InvokeAuthorizationError
-            ],
-            InvokeBadRequestError: [
-                KeyError
-            ]
+            InvokeConnectionError: [InvokeConnectionError],
+            InvokeServerUnavailableError: [InvokeServerUnavailableError],
+            InvokeRateLimitError: [InvokeRateLimitError],
+            InvokeAuthorizationError: [InvokeAuthorizationError],
+            InvokeBadRequestError: [KeyError],
         }
-    
+
     def _calc_response_usage(self, model: str, credentials: dict, tokens: int) -> EmbeddingUsage:
         """
         Calculate response usage
@@ -152,10 +134,7 @@ class NvidiaTextEmbeddingModel(TextEmbeddingModel):
         """
         # get input price info
         input_price_info = self.get_price(
-            model=model,
-            credentials=credentials,
-            price_type=PriceType.INPUT,
-            tokens=tokens
+            model=model, credentials=credentials, price_type=PriceType.INPUT, tokens=tokens
         )
 
         # transform usage
@@ -166,7 +145,7 @@ class NvidiaTextEmbeddingModel(TextEmbeddingModel):
             price_unit=input_price_info.unit,
             total_price=input_price_info.total_amount,
             currency=input_price_info.currency,
-            latency=time.perf_counter() - self.started_at
+            latency=time.perf_counter() - self.started_at,
         )
 
         return usage

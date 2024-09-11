@@ -12,6 +12,7 @@ class ConfigurateMethod(Enum):
     """
     Enum class for configurate method of provider model.
     """
+
     PREDEFINED_MODEL = "predefined-model"
     CUSTOMIZABLE_MODEL = "customizable-model"
 
@@ -20,6 +21,7 @@ class FormType(Enum):
     """
     Enum class for form type.
     """
+
     TEXT_INPUT = "text-input"
     SECRET_INPUT = "secret-input"
     SELECT = "select"
@@ -31,6 +33,7 @@ class FormShowOnObject(BaseModel):
     """
     Model class for form show on.
     """
+
     variable: str
     value: str
 
@@ -39,6 +42,7 @@ class FormOption(BaseModel):
     """
     Model class for form option.
     """
+
     label: I18nObject
     value: str
     show_on: list[FormShowOnObject] = []
@@ -46,15 +50,14 @@ class FormOption(BaseModel):
     def __init__(self, **data):
         super().__init__(**data)
         if not self.label:
-            self.label = I18nObject(
-                en_US=self.value
-            )
+            self.label = I18nObject(en_US=self.value)
 
 
 class CredentialFormSchema(BaseModel):
     """
     Model class for credential form schema.
     """
+
     variable: str
     label: I18nObject
     type: FormType
@@ -70,6 +73,7 @@ class ProviderCredentialSchema(BaseModel):
     """
     Model class for provider credential schema.
     """
+
     credential_form_schemas: list[CredentialFormSchema]
 
 
@@ -82,6 +86,7 @@ class ModelCredentialSchema(BaseModel):
     """
     Model class for model credential schema.
     """
+
     model: FieldModelSchema
     credential_form_schemas: list[CredentialFormSchema]
 
@@ -90,6 +95,7 @@ class SimpleProviderEntity(BaseModel):
     """
     Simple model class for provider.
     """
+
     provider: str
     label: I18nObject
     icon_small: Optional[I18nObject] = None
@@ -102,6 +108,7 @@ class ProviderHelpEntity(BaseModel):
     """
     Model class for provider help.
     """
+
     title: I18nObject
     url: I18nObject
 
@@ -110,6 +117,7 @@ class ProviderEntity(BaseModel):
     """
     Model class for provider.
     """
+
     provider: str
     label: I18nObject
     description: Optional[I18nObject] = None
@@ -138,7 +146,7 @@ class ProviderEntity(BaseModel):
             icon_small=self.icon_small,
             icon_large=self.icon_large,
             supported_model_types=self.supported_model_types,
-            models=self.models
+            models=self.models,
         )
 
 
@@ -146,5 +154,6 @@ class ProviderConfig(BaseModel):
     """
     Model class for provider config.
     """
+
     provider: str
     credentials: dict

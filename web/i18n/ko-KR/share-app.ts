@@ -2,7 +2,7 @@ const translation = {
   common: {
     welcome: '',
     appUnavailable: '앱을 사용할 수 없습니다',
-    appUnkonwError: '앱을 사용할 수 없습니다',
+    appUnknownError: '앱을 사용할 수 없습니다',
   },
   chat: {
     newChat: '새 채팅',
@@ -10,7 +10,7 @@ const translation = {
     unpinnedTitle: '채팅',
     newChatDefaultName: '새 대화',
     resetChat: '대화 재설정',
-    powerBy: 'Powered by',
+    poweredBy: 'Powered by',
     prompt: '프롬프트',
     privatePromptConfigTitle: '채팅 설정',
     publicPromptConfigTitle: '초기 프롬프트',

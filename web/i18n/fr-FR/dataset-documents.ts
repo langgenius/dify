@@ -13,6 +13,8 @@ const translation = {
         status: 'STATUT',
         action: 'ACTION',
       },
+      rename: 'Renommer',
+      name: 'Nom',
     },
     action: {
       uploadFile: 'Télécharger un nouveau fichier',
@@ -74,6 +76,7 @@ const translation = {
       error: 'Erreur d\'Importation',
       ok: 'D\'accord',
     },
+    addUrl: 'Ajouter une URL',
   },
   metadata: {
     title: 'Métadonnées',

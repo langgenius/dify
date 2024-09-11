@@ -14,12 +14,7 @@ class UnstructuredPPTExtractor(BaseExtractor):
         file_path: Path to the file to load.
     """
 
-    def __init__(
-            self,
-            file_path: str,
-            api_url: str,
-            api_key: str
-    ):
+    def __init__(self, file_path: str, api_url: str, api_key: str):
         """Initialize with file path."""
         self._file_path = file_path
         self._api_url = api_url

@@ -122,7 +122,17 @@ const translation = {
       removeConfirmTitle: 'Eliminați configurația {{key}}?',
       removeConfirmContent: 'Configurația curentă este în uz, eliminarea acesteia va dezactiva funcția de Urmărire.',
     },
+    view: 'Vedere',
   },
+  answerIcon: {
+    descriptionInExplore: 'Dacă să utilizați pictograma WebApp pentru a înlocui 🤖 în Explore',
+    description: 'Dacă se utilizează pictograma WebApp pentru a înlocui 🤖 în aplicația partajată',
+    title: 'Utilizați pictograma WebApp pentru a înlocui 🤖',
+  },
+  importFromDSL: 'Import din DSL',
+  importFromDSLUrl: 'De la URL',
+  importFromDSLUrlPlaceholder: 'Lipiți linkul DSL aici',
+  importFromDSLFile: 'Din fișierul DSL',
 }
 
 export default translation

@@ -10,13 +10,13 @@ class TextToSpeechConfigManager:
         :param config: model config args
         """
         text_to_speech = None
-        text_to_speech_dict = config.get('text_to_speech')
+        text_to_speech_dict = config.get("text_to_speech")
         if text_to_speech_dict:
-            if text_to_speech_dict.get('enabled'):
+            if text_to_speech_dict.get("enabled"):
                 text_to_speech = TextToSpeechEntity(
-                    enabled=text_to_speech_dict.get('enabled'),
-                    voice=text_to_speech_dict.get('voice'),
-                    language=text_to_speech_dict.get('language'),
+                    enabled=text_to_speech_dict.get("enabled"),
+                    voice=text_to_speech_dict.get("voice"),
+                    language=text_to_speech_dict.get("language"),
                 )
 
         return text_to_speech
@@ -29,11 +29,7 @@ class TextToSpeechConfigManager:
         :param config: app model config args
         """
         if not config.get("text_to_speech"):
-            config["text_to_speech"] = {
-                "enabled": False,
-                "voice": "",
-                "language": ""
-            }
+            config["text_to_speech"] = {"enabled": False, "voice": "", "language": ""}
 
         if not isinstance(config["text_to_speech"], dict):
             raise ValueError("text_to_speech must be of dict type")

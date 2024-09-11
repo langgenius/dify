@@ -32,17 +32,14 @@ class TwilioAPIWrapper(BaseModel):
         must be empty.
     """
 
-    @field_validator('client', mode='before')
+    @field_validator("client", mode="before")
     @classmethod
     def set_validator(cls, values: dict) -> dict:
         """Validate that api key and python package exists in environment."""
         try:
             from twilio.rest import Client
         except ImportError:
-            raise ImportError(
-                "Could not import twilio python package. "
-                "Please install it with `pip install twilio`."
-            )
+            raise ImportError("Could not import twilio python package. " "Please install it with `pip install twilio`.")
         account_sid = values.get("account_sid")
         auth_token = values.get("auth_token")
         values["from_number"] = values.get("from_number")
@@ -91,9 +88,7 @@ class SendMessageTool(BuiltinTool):
         if to_number.startswith("whatsapp:"):
             from_number = f"whatsapp: {from_number}"
 
-        twilio = TwilioAPIWrapper(
-            account_sid=account_sid, auth_token=auth_token, from_number=from_number
-        )
+        twilio = TwilioAPIWrapper(account_sid=account_sid, auth_token=auth_token, from_number=from_number)
 
         # Sending the message through Twilio
         result = twilio.run(message, to_number)

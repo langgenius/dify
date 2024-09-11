@@ -38,6 +38,7 @@ class UnstructuredMarkdownExtractor(BaseExtractor):
 
         elements = partition_md(filename=self._file_path)
         from unstructured.chunking.title import chunk_by_title
+
         chunks = chunk_by_title(elements, max_characters=2000, combine_text_under_n_chars=2000)
         documents = []
         for chunk in chunks:

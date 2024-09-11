@@ -8,14 +8,15 @@ def obfuscated_token(token: str):
     if not token:
         return token
     if len(token) <= 8:
-        return '*' * 20
-    return token[:6] + '*' * 12 + token[-2:]
+        return "*" * 20
+    return token[:6] + "*" * 12 + token[-2:]
 
 
 def encrypt_token(tenant_id: str, token: str):
     from models.account import Tenant
+
     if not (tenant := db.session.query(Tenant).filter(Tenant.id == tenant_id).first()):
-        raise ValueError(f'Tenant with id {tenant_id} not found')
+        raise ValueError(f"Tenant with id {tenant_id} not found")
     encrypted_token = rsa.encrypt(token, tenant.encrypt_public_key)
     return base64.b64encode(encrypted_token).decode()
 

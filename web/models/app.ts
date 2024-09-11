@@ -4,7 +4,7 @@ import type { App, AppSSO, AppTemplate, SiteConfig } from '@/types/app'
 /* export type App = {
   id: string
   name: string
-  decription: string
+  description: string
   mode: AppMode
   enable_site: boolean
   enable_api: boolean
@@ -103,15 +103,15 @@ export type AppTokenCostsResponse = {
 
 export type UpdateAppModelConfigResponse = { result: string }
 
-export type ApikeyItemResponse = {
+export type ApiKeyItemResponse = {
   id: string
   token: string
   last_used_at: string
   created_at: string
 }
 
-export type ApikeysListResponse = {
-  data: ApikeyItemResponse[]
+export type ApiKeysListResponse = {
+  data: ApiKeyItemResponse[]
 }
 
 export type CreateApiKeyResponse = {
