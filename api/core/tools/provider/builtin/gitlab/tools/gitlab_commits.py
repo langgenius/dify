@@ -1,7 +1,7 @@
 import json
+import urllib.parse
 from datetime import datetime, timedelta
 from typing import Any, Union
-import urllib.parse
 
 import requests
 
