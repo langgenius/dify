@@ -15,6 +15,7 @@ class Segment(BaseModel):
     value: Any
 
     @field_validator("value_type")
+    @classmethod
     def validate_value_type(cls, value):
         """
         This validator checks if the provided value is equal to the default value of the 'value_type' field.

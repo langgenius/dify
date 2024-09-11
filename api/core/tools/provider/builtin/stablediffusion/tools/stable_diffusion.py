@@ -260,7 +260,7 @@ class StableDiffusionTool(BuiltinTool):
             image = response.json()["images"][0]
 
             return self.create_blob_message(
-                blob=b64decode(image), meta={"mime_type": "image/png"}, save_as=self.VARIABLE_KEY.IMAGE.value
+                blob=b64decode(image), meta={"mime_type": "image/png"}, save_as=self.VariableKey.IMAGE.value
             )
 
         except Exception as e:
@@ -294,7 +294,7 @@ class StableDiffusionTool(BuiltinTool):
             image = response.json()["images"][0]
 
             return self.create_blob_message(
-                blob=b64decode(image), meta={"mime_type": "image/png"}, save_as=self.VARIABLE_KEY.IMAGE.value
+                blob=b64decode(image), meta={"mime_type": "image/png"}, save_as=self.VariableKey.IMAGE.value
             )
 
         except Exception as e:
