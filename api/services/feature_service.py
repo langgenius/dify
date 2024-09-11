@@ -45,6 +45,8 @@ class SystemFeatureModel(BaseModel):
     enable_email_code_login: bool = dify_config.ENABLE_EMAIL_CODE_LOGIN
     enable_email_password_login: bool = dify_config.ENABLE_EMAIL_PASSWORD_LOGIN
     enable_social_oauth_login: bool = dify_config.ENABLE_SOCIAL_OAUTH_LOGIN
+    is_allow_register: bool = dify_config.ALLOW_REGISTER
+    is_allow_create_workspace: bool = dify_config.ALLOW_CREATE_WORKSPACE
 
 
 class FeatureService:
