@@ -418,6 +418,7 @@ class TongyiLargeLanguageModel(LargeLanguageModel):
                                 file_url = self._save_base64_image_to_file(message_content.data)
 
                             is_video_url = re.search(r"\.(mp4|webm|ogg|mov|avi|mkv|flv|wmv)$", file_url, re.IGNORECASE)
+
                             if is_video_url:
                                 sub_message_dict = {"video": file_url}
                             else:
