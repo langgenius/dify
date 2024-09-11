@@ -64,6 +64,7 @@ export type ChatProps = {
   showFeatureBar?: boolean
   showFileUpload?: boolean
   onFeatureBarClick?: (state: boolean) => void
+  noSpacing?: boolean
 }
 
 const Chat: FC<ChatProps> = ({
@@ -95,6 +96,7 @@ const Chat: FC<ChatProps> = ({
   showFeatureBar,
   showFileUpload,
   onFeatureBarClick,
+  noSpacing,
 }) => {
   const { t } = useTranslation()
   const { currentLogItem, setCurrentLogItem, showPromptLogModal, setShowPromptLogModal, showAgentLogModal, setShowAgentLogModal } = useAppStore(useShallow(state => ({
@@ -202,7 +204,7 @@ const Chat: FC<ChatProps> = ({
           {chatNode}
           <div
             ref={chatContainerInnerRef}
-            className={`w-full ${chatContainerInnerClassName}`}
+            className={classNames('w-full', !noSpacing && 'px-8', chatContainerInnerClassName)}
           >
             {
               chatList.map((item, index) => {
@@ -276,6 +278,7 @@ const Chat: FC<ChatProps> = ({
                   speechToTextConfig={config?.speech_to_text}
                   onSend={onSend}
                   theme={themeBuilder?.theme}
+                  // noSpacing={noSpacing}
                 />
               )
             }

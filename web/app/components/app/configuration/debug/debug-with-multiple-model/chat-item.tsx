@@ -145,6 +145,7 @@ const ChatItem: FC<ChatItemProps> = ({
       questionIcon={<Avatar name={userProfile.name} size={40} />}
       allToolIcons={allToolIcons}
       hideLogModal
+      noSpacing
     />
   )
 }

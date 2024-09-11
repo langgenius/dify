@@ -1,4 +1,3 @@
-
 from collections.abc import Mapping, Sequence
 from typing import Any
 
@@ -22,20 +21,13 @@ class StartNode(BaseNode):
         system_inputs = self.graph_runtime_state.variable_pool.system_variables
 
         for var in system_inputs:
-            node_inputs[SYSTEM_VARIABLE_NODE_ID + '.' + var] = system_inputs[var]
+            node_inputs[SYSTEM_VARIABLE_NODE_ID + "." + var] = system_inputs[var]
 
-        return NodeRunResult(
-            status=WorkflowNodeExecutionStatus.SUCCEEDED,
-            inputs=node_inputs,
-            outputs=node_inputs
-        )
+        return NodeRunResult(status=WorkflowNodeExecutionStatus.SUCCEEDED, inputs=node_inputs, outputs=node_inputs)
 
     @classmethod
     def _extract_variable_selector_to_variable_mapping(
-        cls,
-        graph_config: Mapping[str, Any],
-        node_id: str,
-        node_data: StartNodeData
+        cls, graph_config: Mapping[str, Any], node_id: str, node_data: StartNodeData
     ) -> Mapping[str, Sequence[str]]:
         """
         Extract variable selector to variable mapping

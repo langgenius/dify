@@ -48,8 +48,9 @@ logger = logging.getLogger(__name__)
 
 
 class GraphEngineThreadPool(ThreadPoolExecutor):
-    def __init__(self, max_workers=None, thread_name_prefix='',
-                 initializer=None, initargs=(), max_submit_count=100) -> None:
+    def __init__(
+        self, max_workers=None, thread_name_prefix="", initializer=None, initargs=(), max_submit_count=100
+    ) -> None:
         super().__init__(max_workers, thread_name_prefix, initializer, initargs)
         self.max_submit_count = max_submit_count
         self.submit_count = 0
@@ -57,9 +58,9 @@ class GraphEngineThreadPool(ThreadPoolExecutor):
     def submit(self, fn, *args, **kwargs):
         self.submit_count += 1
         self.check_is_full()
-        
+
         return super().submit(fn, *args, **kwargs)
-    
+
     def check_is_full(self) -> None:
         print(f"submit_count: {self.submit_count}, max_submit_count: {self.max_submit_count}")
         if self.submit_count > self.max_submit_count:
@@ -70,21 +71,21 @@ class GraphEngine:
     workflow_thread_pool_mapping: dict[str, GraphEngineThreadPool] = {}
 
     def __init__(
-            self,
-            tenant_id: str,
-            app_id: str,
-            workflow_type: WorkflowType,
-            workflow_id: str,
-            user_id: str,
-            user_from: UserFrom,
-            invoke_from: InvokeFrom,
-            call_depth: int,
-            graph: Graph,
-            graph_config: Mapping[str, Any],
-            variable_pool: VariablePool,
-            max_execution_steps: int,
-            max_execution_time: int,
-            thread_pool_id: Optional[str] = None
+        self,
+        tenant_id: str,
+        app_id: str,
+        workflow_type: WorkflowType,
+        workflow_id: str,
+        user_id: str,
+        user_from: UserFrom,
+        invoke_from: InvokeFrom,
+        call_depth: int,
+        graph: Graph,
+        graph_config: Mapping[str, Any],
+        variable_pool: VariablePool,
+        max_execution_steps: int,
+        max_execution_time: int,
+        thread_pool_id: Optional[str] = None,
     ) -> None:
         thread_pool_max_submit_count = 100
         thread_pool_max_workers = 10
@@ -93,12 +94,14 @@ class GraphEngine:
         if thread_pool_id:
             if not thread_pool_id in GraphEngine.workflow_thread_pool_mapping:
                 raise ValueError(f"Max submit count {thread_pool_max_submit_count} of workflow thread pool reached.")
-            
+
             self.thread_pool_id = thread_pool_id
             self.thread_pool = GraphEngine.workflow_thread_pool_mapping[thread_pool_id]
             self.is_main_thread_pool = False
         else:
-            self.thread_pool = GraphEngineThreadPool(max_workers=thread_pool_max_workers, max_submit_count=thread_pool_max_submit_count)
+            self.thread_pool = GraphEngineThreadPool(
+                max_workers=thread_pool_max_workers, max_submit_count=thread_pool_max_submit_count
+            )
             self.thread_pool_id = str(uuid.uuid4())
             self.is_main_thread_pool = True
             GraphEngine.workflow_thread_pool_mapping[self.thread_pool_id] = self.thread_pool
@@ -113,13 +116,10 @@ class GraphEngine:
             user_id=user_id,
             user_from=user_from,
             invoke_from=invoke_from,
-            call_depth=call_depth
+            call_depth=call_depth,
         )
 
-        self.graph_runtime_state = GraphRuntimeState(
-            variable_pool=variable_pool,
-            start_at=time.perf_counter()
-        )
+        self.graph_runtime_state = GraphRuntimeState(variable_pool=variable_pool, start_at=time.perf_counter())
 
         self.max_execution_steps = max_execution_steps
         self.max_execution_time = max_execution_time
@@ -136,37 +136,40 @@ class GraphEngine:
                 stream_processor_cls = EndStreamProcessor
 
             stream_processor = stream_processor_cls(
-                graph=self.graph,
-                variable_pool=self.graph_runtime_state.variable_pool
+                graph=self.graph, variable_pool=self.graph_runtime_state.variable_pool
             )
 
             # run graph
-            generator = stream_processor.process(
-                self._run(start_node_id=self.graph.root_node_id)
-            )
+            generator = stream_processor.process(self._run(start_node_id=self.graph.root_node_id))
 
             for item in generator:
                 try:
                     yield item
                     if isinstance(item, NodeRunFailedEvent):
-                        yield GraphRunFailedEvent(error=item.route_node_state.failed_reason or 'Unknown error.')
+                        yield GraphRunFailedEvent(error=item.route_node_state.failed_reason or "Unknown error.")
                         return
                     elif isinstance(item, NodeRunSucceededEvent):
                         if item.node_type == NodeType.END:
-                            self.graph_runtime_state.outputs = (item.route_node_state.node_run_result.outputs
-                                             if item.route_node_state.node_run_result
-                                                and item.route_node_state.node_run_result.outputs
-                                             else {})
+                            self.graph_runtime_state.outputs = (
+                                item.route_node_state.node_run_result.outputs
+                                if item.route_node_state.node_run_result
+                                and item.route_node_state.node_run_result.outputs
+                                else {}
+                            )
                         elif item.node_type == NodeType.ANSWER:
                             if "answer" not in self.graph_runtime_state.outputs:
                                 self.graph_runtime_state.outputs["answer"] = ""
 
-                            self.graph_runtime_state.outputs["answer"] += "\n" + (item.route_node_state.node_run_result.outputs.get("answer", "")
-                                                               if item.route_node_state.node_run_result
-                                                                  and item.route_node_state.node_run_result.outputs
-                                                               else "")
-                        
-                            self.graph_runtime_state.outputs["answer"] = self.graph_runtime_state.outputs["answer"].strip()
+                            self.graph_runtime_state.outputs["answer"] += "\n" + (
+                                item.route_node_state.node_run_result.outputs.get("answer", "")
+                                if item.route_node_state.node_run_result
+                                and item.route_node_state.node_run_result.outputs
+                                else ""
+                            )
+
+                            self.graph_runtime_state.outputs["answer"] = self.graph_runtime_state.outputs[
+                                "answer"
+                            ].strip()
                 except Exception as e:
                     logger.exception(f"Graph run failed: {str(e)}")
                     yield GraphRunFailedEvent(error=str(e))
@@ -186,12 +189,12 @@ class GraphEngine:
                 del GraphEngine.workflow_thread_pool_mapping[self.thread_pool_id]
 
     def _run(
-            self, 
-            start_node_id: str, 
-            in_parallel_id: Optional[str] = None,
-            parent_parallel_id: Optional[str] = None,
-            parent_parallel_start_node_id: Optional[str] = None
-        ) -> Generator[GraphEngineEvent, None, None]:
+        self,
+        start_node_id: str,
+        in_parallel_id: Optional[str] = None,
+        parent_parallel_id: Optional[str] = None,
+        parent_parallel_start_node_id: Optional[str] = None,
+    ) -> Generator[GraphEngineEvent, None, None]:
         parallel_start_node_id = None
         if in_parallel_id:
             parallel_start_node_id = start_node_id
@@ -201,31 +204,28 @@ class GraphEngine:
         while True:
             # max steps reached
             if self.graph_runtime_state.node_run_steps > self.max_execution_steps:
-                raise GraphRunFailedError('Max steps {} reached.'.format(self.max_execution_steps))
+                raise GraphRunFailedError("Max steps {} reached.".format(self.max_execution_steps))
 
             # or max execution time reached
             if self._is_timed_out(
-                    start_at=self.graph_runtime_state.start_at,
-                    max_execution_time=self.max_execution_time
+                start_at=self.graph_runtime_state.start_at, max_execution_time=self.max_execution_time
             ):
-                raise GraphRunFailedError('Max execution time {}s reached.'.format(self.max_execution_time))
+                raise GraphRunFailedError("Max execution time {}s reached.".format(self.max_execution_time))
 
             # init route node state
-            route_node_state = self.graph_runtime_state.node_run_state.create_node_state(
-                node_id=next_node_id
-            )
+            route_node_state = self.graph_runtime_state.node_run_state.create_node_state(node_id=next_node_id)
 
             # get node config
             node_id = route_node_state.node_id
             node_config = self.graph.node_id_config_mapping.get(node_id)
             if not node_config:
-                raise GraphRunFailedError(f'Node {node_id} config not found.')
+                raise GraphRunFailedError(f"Node {node_id} config not found.")
 
             # convert to specific node
-            node_type = NodeType.value_of(node_config.get('data', {}).get('type'))
+            node_type = NodeType.value_of(node_config.get("data", {}).get("type"))
             node_cls = node_classes.get(node_type)
             if not node_cls:
-                raise GraphRunFailedError(f'Node {node_id} type {node_type} not found.')
+                raise GraphRunFailedError(f"Node {node_id} type {node_type} not found.")
 
             previous_node_id = previous_route_node_state.node_id if previous_route_node_state else None
 
@@ -237,7 +237,7 @@ class GraphEngine:
                 graph=self.graph,
                 graph_runtime_state=self.graph_runtime_state,
                 previous_node_id=previous_node_id,
-                thread_pool_id=self.thread_pool_id
+                thread_pool_id=self.thread_pool_id,
             )
 
             try:
@@ -248,7 +248,7 @@ class GraphEngine:
                     parallel_id=in_parallel_id,
                     parallel_start_node_id=parallel_start_node_id,
                     parent_parallel_id=parent_parallel_id,
-                    parent_parallel_start_node_id=parent_parallel_start_node_id
+                    parent_parallel_start_node_id=parent_parallel_start_node_id,
                 )
 
                 for item in generator:
@@ -263,8 +263,7 @@ class GraphEngine:
                 # append route
                 if previous_route_node_state:
                     self.graph_runtime_state.node_run_state.add_route(
-                        source_node_state_id=previous_route_node_state.id,
-                        target_node_state_id=route_node_state.id
+                        source_node_state_id=previous_route_node_state.id, target_node_state_id=route_node_state.id
                     )
             except Exception as e:
                 route_node_state.status = RouteNodeState.Status.FAILED
@@ -279,13 +278,15 @@ class GraphEngine:
                     parallel_id=in_parallel_id,
                     parallel_start_node_id=parallel_start_node_id,
                     parent_parallel_id=parent_parallel_id,
-                    parent_parallel_start_node_id=parent_parallel_start_node_id
+                    parent_parallel_start_node_id=parent_parallel_start_node_id,
                 )
                 raise e
 
             # It may not be necessary, but it is necessary. :)
-            if (self.graph.node_id_config_mapping[next_node_id]
-                    .get("data", {}).get("type", "").lower() == NodeType.END.value):
+            if (
+                self.graph.node_id_config_mapping[next_node_id].get("data", {}).get("type", "").lower()
+                == NodeType.END.value
+            ):
                 break
 
             previous_route_node_state = route_node_state
@@ -305,7 +306,7 @@ class GraphEngine:
                         run_condition=edge.run_condition,
                     ).check(
                         graph_runtime_state=self.graph_runtime_state,
-                        previous_route_node_state=previous_route_node_state
+                        previous_route_node_state=previous_route_node_state,
                     )
 
                     if not result:
@@ -343,14 +344,14 @@ class GraphEngine:
 
                         if not result:
                             continue
-                        
+
                         if len(sub_edge_mappings) == 1:
                             final_node_id = edge.target_node_id
                         else:
                             parallel_generator = self._run_parallel_branches(
                                 edge_mappings=sub_edge_mappings,
                                 in_parallel_id=in_parallel_id,
-                                parallel_start_node_id=parallel_start_node_id
+                                parallel_start_node_id=parallel_start_node_id,
                             )
 
                             for item in parallel_generator:
@@ -369,7 +370,7 @@ class GraphEngine:
                     parallel_generator = self._run_parallel_branches(
                         edge_mappings=edge_mappings,
                         in_parallel_id=in_parallel_id,
-                        parallel_start_node_id=parallel_start_node_id
+                        parallel_start_node_id=parallel_start_node_id,
                     )
 
                     for item in parallel_generator:
@@ -383,14 +384,14 @@ class GraphEngine:
 
                     next_node_id = final_node_id
 
-            if in_parallel_id and self.graph.node_parallel_mapping.get(next_node_id, '') != in_parallel_id:
+            if in_parallel_id and self.graph.node_parallel_mapping.get(next_node_id, "") != in_parallel_id:
                 break
 
     def _run_parallel_branches(
-            self,
-            edge_mappings: list[GraphEdge],
-            in_parallel_id: Optional[str] = None,
-            parallel_start_node_id: Optional[str] = None,
+        self,
+        edge_mappings: list[GraphEdge],
+        in_parallel_id: Optional[str] = None,
+        parallel_start_node_id: Optional[str] = None,
     ) -> Generator[GraphEngineEvent | str, None, None]:
         # if nodes has no run conditions, parallel run all nodes
         parallel_id = self.graph.node_parallel_mapping.get(edge_mappings[0].target_node_id)
@@ -398,14 +399,18 @@ class GraphEngine:
             node_id = edge_mappings[0].target_node_id
             node_config = self.graph.node_id_config_mapping.get(node_id)
             if not node_config:
-                raise GraphRunFailedError(f'Node {node_id} related parallel not found or incorrectly connected to multiple parallel branches.')
+                raise GraphRunFailedError(
+                    f"Node {node_id} related parallel not found or incorrectly connected to multiple parallel branches."
+                )
 
-            node_title = node_config.get('data', {}).get('title')
-            raise GraphRunFailedError(f'Node {node_title} related parallel not found or incorrectly connected to multiple parallel branches.')
+            node_title = node_config.get("data", {}).get("title")
+            raise GraphRunFailedError(
+                f"Node {node_title} related parallel not found or incorrectly connected to multiple parallel branches."
+            )
 
         parallel = self.graph.parallel_mapping.get(parallel_id)
         if not parallel:
-            raise GraphRunFailedError(f'Parallel {parallel_id} not found.')
+            raise GraphRunFailedError(f"Parallel {parallel_id} not found.")
 
         # run parallel nodes, run in new thread and use queue to get results
         q: queue.Queue = queue.Queue()
@@ -417,19 +422,22 @@ class GraphEngine:
         for edge in edge_mappings:
             if (
                 edge.target_node_id not in self.graph.node_parallel_mapping
-                or self.graph.node_parallel_mapping.get(edge.target_node_id, '') != parallel_id
+                or self.graph.node_parallel_mapping.get(edge.target_node_id, "") != parallel_id
             ):
                 continue
 
             futures.append(
-                self.thread_pool.submit(self._run_parallel_node, **{
-                    'flask_app': current_app._get_current_object(),  # type: ignore[attr-defined]
-                    'q': q,
-                    'parallel_id': parallel_id,
-                    'parallel_start_node_id': edge.target_node_id,
-                    'parent_parallel_id': in_parallel_id,
-                    'parent_parallel_start_node_id': parallel_start_node_id,
-                })
+                self.thread_pool.submit(
+                    self._run_parallel_node,
+                    **{
+                        "flask_app": current_app._get_current_object(),  # type: ignore[attr-defined]
+                        "q": q,
+                        "parallel_id": parallel_id,
+                        "parallel_start_node_id": edge.target_node_id,
+                        "parent_parallel_id": in_parallel_id,
+                        "parent_parallel_start_node_id": parallel_start_node_id,
+                    },
+                )
             )
 
         succeeded_count = 0
@@ -451,7 +459,7 @@ class GraphEngine:
                         raise GraphRunFailedError(event.error)
             except queue.Empty:
                 continue
-        
+
         # wait all threads
         wait(futures)
 
@@ -461,72 +469,80 @@ class GraphEngine:
             yield final_node_id
 
     def _run_parallel_node(
-            self,
-            flask_app: Flask,
-            q: queue.Queue,
-            parallel_id: str,
-            parallel_start_node_id: str,
-            parent_parallel_id: Optional[str] = None,
-            parent_parallel_start_node_id: Optional[str] = None,
+        self,
+        flask_app: Flask,
+        q: queue.Queue,
+        parallel_id: str,
+        parallel_start_node_id: str,
+        parent_parallel_id: Optional[str] = None,
+        parent_parallel_start_node_id: Optional[str] = None,
     ) -> None:
         """
         Run parallel nodes
         """
         with flask_app.app_context():
             try:
-                q.put(ParallelBranchRunStartedEvent(
-                    parallel_id=parallel_id,
-                    parallel_start_node_id=parallel_start_node_id,
-                    parent_parallel_id=parent_parallel_id,
-                    parent_parallel_start_node_id=parent_parallel_start_node_id
-                ))
+                q.put(
+                    ParallelBranchRunStartedEvent(
+                        parallel_id=parallel_id,
+                        parallel_start_node_id=parallel_start_node_id,
+                        parent_parallel_id=parent_parallel_id,
+                        parent_parallel_start_node_id=parent_parallel_start_node_id,
+                    )
+                )
 
                 # run node
                 generator = self._run(
                     start_node_id=parallel_start_node_id,
                     in_parallel_id=parallel_id,
                     parent_parallel_id=parent_parallel_id,
-                    parent_parallel_start_node_id=parent_parallel_start_node_id
+                    parent_parallel_start_node_id=parent_parallel_start_node_id,
                 )
 
                 for item in generator:
                     q.put(item)
 
                 # trigger graph run success event
-                q.put(ParallelBranchRunSucceededEvent(
-                    parallel_id=parallel_id,
-                    parallel_start_node_id=parallel_start_node_id,
-                    parent_parallel_id=parent_parallel_id,
-                    parent_parallel_start_node_id=parent_parallel_start_node_id
-                ))
+                q.put(
+                    ParallelBranchRunSucceededEvent(
+                        parallel_id=parallel_id,
+                        parallel_start_node_id=parallel_start_node_id,
+                        parent_parallel_id=parent_parallel_id,
+                        parent_parallel_start_node_id=parent_parallel_start_node_id,
+                    )
+                )
             except GraphRunFailedError as e:
-                q.put(ParallelBranchRunFailedEvent(
-                    parallel_id=parallel_id,
-                    parallel_start_node_id=parallel_start_node_id,
-                    parent_parallel_id=parent_parallel_id,
-                    parent_parallel_start_node_id=parent_parallel_start_node_id,
-                    error=e.error
-                ))
+                q.put(
+                    ParallelBranchRunFailedEvent(
+                        parallel_id=parallel_id,
+                        parallel_start_node_id=parallel_start_node_id,
+                        parent_parallel_id=parent_parallel_id,
+                        parent_parallel_start_node_id=parent_parallel_start_node_id,
+                        error=e.error,
+                    )
+                )
             except Exception as e:
                 logger.exception("Unknown Error when generating in parallel")
-                q.put(ParallelBranchRunFailedEvent(
-                    parallel_id=parallel_id,
-                    parallel_start_node_id=parallel_start_node_id,
-                    parent_parallel_id=parent_parallel_id,
-                    parent_parallel_start_node_id=parent_parallel_start_node_id,
-                    error=str(e)
-                ))
+                q.put(
+                    ParallelBranchRunFailedEvent(
+                        parallel_id=parallel_id,
+                        parallel_start_node_id=parallel_start_node_id,
+                        parent_parallel_id=parent_parallel_id,
+                        parent_parallel_start_node_id=parent_parallel_start_node_id,
+                        error=str(e),
+                    )
+                )
             finally:
                 db.session.remove()
 
     def _run_node(
-            self,
-            node_instance: BaseNode,
-            route_node_state: RouteNodeState,
-            parallel_id: Optional[str] = None,
-            parallel_start_node_id: Optional[str] = None,
-            parent_parallel_id: Optional[str] = None,
-            parent_parallel_start_node_id: Optional[str] = None,
+        self,
+        node_instance: BaseNode,
+        route_node_state: RouteNodeState,
+        parallel_id: Optional[str] = None,
+        parallel_start_node_id: Optional[str] = None,
+        parent_parallel_id: Optional[str] = None,
+        parent_parallel_start_node_id: Optional[str] = None,
     ) -> Generator[GraphEngineEvent, None, None]:
         """
         Run node
@@ -542,7 +558,7 @@ class GraphEngine:
             parallel_id=parallel_id,
             parallel_start_node_id=parallel_start_node_id,
             parent_parallel_id=parent_parallel_id,
-            parent_parallel_start_node_id=parent_parallel_start_node_id
+            parent_parallel_start_node_id=parent_parallel_start_node_id,
         )
 
         db.session.close()
@@ -567,7 +583,7 @@ class GraphEngine:
 
                         if run_result.status == WorkflowNodeExecutionStatus.FAILED:
                             yield NodeRunFailedEvent(
-                                error=route_node_state.failed_reason or 'Unknown error.',
+                                error=route_node_state.failed_reason or "Unknown error.",
                                 id=node_instance.id,
                                 node_id=node_instance.node_id,
                                 node_type=node_instance.node_type,
@@ -576,7 +592,7 @@ class GraphEngine:
                                 parallel_id=parallel_id,
                                 parallel_start_node_id=parallel_start_node_id,
                                 parent_parallel_id=parent_parallel_id,
-                                parent_parallel_start_node_id=parent_parallel_start_node_id
+                                parent_parallel_start_node_id=parent_parallel_start_node_id,
                             )
                         elif run_result.status == WorkflowNodeExecutionStatus.SUCCEEDED:
                             if run_result.metadata and run_result.metadata.get(NodeRunMetadataKey.TOTAL_TOKENS):
@@ -596,7 +612,7 @@ class GraphEngine:
                                     self._append_variables_recursively(
                                         node_id=node_instance.node_id,
                                         variable_key_list=[variable_key],
-                                        variable_value=variable_value
+                                        variable_value=variable_value,
                                     )
 
                             # add parallel info to run result metadata
@@ -608,7 +624,9 @@ class GraphEngine:
                                 run_result.metadata[NodeRunMetadataKey.PARALLEL_START_NODE_ID] = parallel_start_node_id
                                 if parent_parallel_id and parent_parallel_start_node_id:
                                     run_result.metadata[NodeRunMetadataKey.PARENT_PARALLEL_ID] = parent_parallel_id
-                                    run_result.metadata[NodeRunMetadataKey.PARENT_PARALLEL_START_NODE_ID] = parent_parallel_start_node_id
+                                    run_result.metadata[NodeRunMetadataKey.PARENT_PARALLEL_START_NODE_ID] = (
+                                        parent_parallel_start_node_id
+                                    )
 
                             yield NodeRunSucceededEvent(
                                 id=node_instance.id,
@@ -619,7 +637,7 @@ class GraphEngine:
                                 parallel_id=parallel_id,
                                 parallel_start_node_id=parallel_start_node_id,
                                 parent_parallel_id=parent_parallel_id,
-                                parent_parallel_start_node_id=parent_parallel_start_node_id
+                                parent_parallel_start_node_id=parent_parallel_start_node_id,
                             )
 
                         break
@@ -635,7 +653,7 @@ class GraphEngine:
                             parallel_id=parallel_id,
                             parallel_start_node_id=parallel_start_node_id,
                             parent_parallel_id=parent_parallel_id,
-                            parent_parallel_start_node_id=parent_parallel_start_node_id
+                            parent_parallel_start_node_id=parent_parallel_start_node_id,
                         )
                     elif isinstance(item, RunRetrieverResourceEvent):
                         yield NodeRunRetrieverResourceEvent(
@@ -649,7 +667,7 @@ class GraphEngine:
                             parallel_id=parallel_id,
                             parallel_start_node_id=parallel_start_node_id,
                             parent_parallel_id=parent_parallel_id,
-                            parent_parallel_start_node_id=parent_parallel_start_node_id
+                            parent_parallel_start_node_id=parent_parallel_start_node_id,
                         )
         except GenerateTaskStoppedException:
             # trigger node run failed event
@@ -665,7 +683,7 @@ class GraphEngine:
                 parallel_id=parallel_id,
                 parallel_start_node_id=parallel_start_node_id,
                 parent_parallel_id=parent_parallel_id,
-                parent_parallel_start_node_id=parent_parallel_start_node_id
+                parent_parallel_start_node_id=parent_parallel_start_node_id,
             )
             return
         except Exception as e:
@@ -674,10 +692,7 @@ class GraphEngine:
         finally:
             db.session.close()
 
-    def _append_variables_recursively(self,
-                                      node_id: str,
-                                      variable_key_list: list[str],
-                                      variable_value: VariableValue):
+    def _append_variables_recursively(self, node_id: str, variable_key_list: list[str], variable_value: VariableValue):
         """
         Append variables recursively
         :param node_id: node id
@@ -685,10 +700,7 @@ class GraphEngine:
         :param variable_value: variable value
         :return:
         """
-        self.graph_runtime_state.variable_pool.add(
-            [node_id] + variable_key_list,
-            variable_value
-        )
+        self.graph_runtime_state.variable_pool.add([node_id] + variable_key_list, variable_value)
 
         # if variable_value is a dict, then recursively append variables
         if isinstance(variable_value, dict):
@@ -696,9 +708,7 @@ class GraphEngine:
                 # construct new key list
                 new_key_list = variable_key_list + [key]
                 self._append_variables_recursively(
-                    node_id=node_id,
-                    variable_key_list=new_key_list,
-                    variable_value=value
+                    node_id=node_id, variable_key_list=new_key_list, variable_value=value
                 )
 
     def _is_timed_out(self, start_at: float, max_execution_time: int) -> bool:

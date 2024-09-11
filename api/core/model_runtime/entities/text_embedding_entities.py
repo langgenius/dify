@@ -9,6 +9,7 @@ class EmbeddingUsage(ModelUsage):
     """
     Model class for embedding usage.
     """
+
     tokens: int
     total_tokens: int
     unit_price: Decimal
@@ -22,7 +23,7 @@ class TextEmbeddingResult(BaseModel):
     """
     Model class for text embedding result.
     """
+
     model: str
     embeddings: list[list[float]]
     usage: EmbeddingUsage
-

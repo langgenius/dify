@@ -119,6 +119,7 @@ const ChatWrapper = forwardRef<ChatWrapperRefType, ChatWrapperProps>(({ showConv
             }
           </>
         )}
+        noSpacing
         suggestedQuestions={suggestedQuestions}
         showPromptLog
         chatAnswerContainerInner='!pr-2'
