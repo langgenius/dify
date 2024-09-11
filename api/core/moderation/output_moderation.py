@@ -29,18 +29,18 @@ class OutputModeration(BaseModel):
 
     thread: Optional[threading.Thread] = None
     thread_running: bool = True
-    buffer: str = ''
+    buffer: str = ""
     is_final_chunk: bool = False
     final_output: Optional[str] = None
     model_config = ConfigDict(arbitrary_types_allowed=True)
 
-    def should_direct_output(self):
+    def should_direct_output(self) -> bool:
         return self.final_output is not None
 
-    def get_final_output(self):
-        return self.final_output
+    def get_final_output(self) -> str:
+        return self.final_output or ""
 
-    def append_new_token(self, token: str):
+    def append_new_token(self, token: str) -> None:
         self.buffer += token
 
         if not self.thread:
@@ -50,11 +50,7 @@ class OutputModeration(BaseModel):
         self.buffer = completion
         self.is_final_chunk = True
 
-        result = self.moderation(
-            tenant_id=self.tenant_id,
-            app_id=self.app_id,
-            moderation_buffer=completion
-        )
+        result = self.moderation(tenant_id=self.tenant_id, app_id=self.app_id, moderation_buffer=completion)
 
         if not result or not result.flagged:
             return completion
@@ -65,21 +61,19 @@ class OutputModeration(BaseModel):
             final_output = result.text
 
         if public_event:
-            self.queue_manager.publish(
-                QueueMessageReplaceEvent(
-                    text=final_output
-                ),
-                PublishFrom.TASK_PIPELINE
-            )
+            self.queue_manager.publish(QueueMessageReplaceEvent(text=final_output), PublishFrom.TASK_PIPELINE)
 
         return final_output
 
     def start_thread(self) -> threading.Thread:
         buffer_size = dify_config.MODERATION_BUFFER_SIZE
-        thread = threading.Thread(target=self.worker, kwargs={
-            'flask_app': current_app._get_current_object(),
-            'buffer_size': buffer_size if buffer_size > 0 else dify_config.MODERATION_BUFFER_SIZE
-        })
+        thread = threading.Thread(
+            target=self.worker,
+            kwargs={
+                "flask_app": current_app._get_current_object(),
+                "buffer_size": buffer_size if buffer_size > 0 else dify_config.MODERATION_BUFFER_SIZE,
+            },
+        )
 
         thread.start()
 
@@ -104,9 +98,7 @@ class OutputModeration(BaseModel):
                 current_length = buffer_length
 
                 result = self.moderation(
-                    tenant_id=self.tenant_id,
-                    app_id=self.app_id,
-                    moderation_buffer=moderation_buffer
+                    tenant_id=self.tenant_id, app_id=self.app_id, moderation_buffer=moderation_buffer
                 )
 
                 if not result or not result.flagged:
@@ -116,16 +108,11 @@ class OutputModeration(BaseModel):
                     final_output = result.preset_response
                     self.final_output = final_output
                 else:
-                    final_output = result.text + self.buffer[len(moderation_buffer):]
+                    final_output = result.text + self.buffer[len(moderation_buffer) :]
 
                 # trigger replace event
                 if self.thread_running:
-                    self.queue_manager.publish(
-                        QueueMessageReplaceEvent(
-                            text=final_output
-                        ),
-                        PublishFrom.TASK_PIPELINE
-                    )
+                    self.queue_manager.publish(QueueMessageReplaceEvent(text=final_output), PublishFrom.TASK_PIPELINE)
 
                 if result.action == ModerationAction.DIRECT_OUTPUT:
                     break
@@ -133,10 +120,7 @@ class OutputModeration(BaseModel):
     def moderation(self, tenant_id: str, app_id: str, moderation_buffer: str) -> Optional[ModerationOutputsResult]:
         try:
             moderation_factory = ModerationFactory(
-                name=self.rule.type,
-                app_id=app_id,
-                tenant_id=tenant_id,
-                config=self.rule.config
+                name=self.rule.type, app_id=app_id, tenant_id=tenant_id, config=self.rule.config
             )
 
             result: ModerationOutputsResult = moderation_factory.moderation_for_outputs(moderation_buffer)

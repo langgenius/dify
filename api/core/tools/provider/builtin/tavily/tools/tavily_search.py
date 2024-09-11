@@ -36,15 +36,23 @@ class TavilySearch:
 
         """
         params["api_key"] = self.api_key
-        if 'exclude_domains' in params and isinstance(params['exclude_domains'], str) and params['exclude_domains'] != 'None':
-            params['exclude_domains'] = params['exclude_domains'].split()
+        if (
+            "exclude_domains" in params
+            and isinstance(params["exclude_domains"], str)
+            and params["exclude_domains"] != "None"
+        ):
+            params["exclude_domains"] = params["exclude_domains"].split()
         else:
-            params['exclude_domains'] = []
-        if 'include_domains' in params and isinstance(params['include_domains'], str) and params['include_domains'] != 'None':
-            params['include_domains'] = params['include_domains'].split()
+            params["exclude_domains"] = []
+        if (
+            "include_domains" in params
+            and isinstance(params["include_domains"], str)
+            and params["include_domains"] != "None"
+        ):
+            params["include_domains"] = params["include_domains"].split()
         else:
-            params['include_domains'] = []
-        
+            params["include_domains"] = []
+
         response = requests.post(f"{TAVILY_API_URL}/search", json=params)
         response.raise_for_status()
         return response.json()
@@ -91,9 +99,7 @@ class TavilySearchTool(BuiltinTool):
     A tool for searching Tavily using a given query.
     """
 
-    def _invoke(
-        self, user_id: str, tool_parameters: dict[str, Any]
-    ) -> ToolInvokeMessage | list[ToolInvokeMessage]:
+    def _invoke(self, user_id: str, tool_parameters: dict[str, Any]) -> ToolInvokeMessage | list[ToolInvokeMessage]:
         """
         Invokes the Tavily search tool with the given user ID and tool parameters.
 

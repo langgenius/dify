@@ -22,9 +22,9 @@ class DeleteCardByIdTool(BuiltinTool):
         Returns:
             ToolInvokeMessage: The result of the tool invocation.
         """
-        api_key = self.runtime.credentials.get('trello_api_key')
-        token = self.runtime.credentials.get('trello_api_token')
-        card_id = tool_parameters.get('id')
+        api_key = self.runtime.credentials.get("trello_api_key")
+        token = self.runtime.credentials.get("trello_api_token")
+        card_id = tool_parameters.get("id")
 
         if not (api_key and token and card_id):
             return self.create_text_message("Missing required parameters: API key, token, or card ID.")
@@ -38,4 +38,3 @@ class DeleteCardByIdTool(BuiltinTool):
             return self.create_text_message("Failed to delete card")
 
         return self.create_text_message(text=f"Card with ID {card_id} has been successfully deleted.")
-

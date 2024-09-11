@@ -13,10 +13,12 @@ class CotCompletionAgentRunner(CotAgentRunner):
         prompt_entity = self.app_config.agent.prompt
         first_prompt = prompt_entity.first_prompt
 
-        system_prompt = first_prompt.replace("{{instruction}}", self._instruction) \
-            .replace("{{tools}}", json.dumps(jsonable_encoder(self._prompt_messages_tools))) \
-            .replace("{{tool_names}}", ', '.join([tool.name for tool in self._prompt_messages_tools]))
-        
+        system_prompt = (
+            first_prompt.replace("{{instruction}}", self._instruction)
+            .replace("{{tools}}", json.dumps(jsonable_encoder(self._prompt_messages_tools)))
+            .replace("{{tool_names}}", ", ".join([tool.name for tool in self._prompt_messages_tools]))
+        )
+
         return system_prompt
 
     def _organize_historic_prompt(self, current_session_messages: list[PromptMessage] = None) -> str:
@@ -46,7 +48,7 @@ class CotCompletionAgentRunner(CotAgentRunner):
 
         # organize current assistant messages
         agent_scratchpad = self._agent_scratchpad
-        assistant_prompt = ''
+        assistant_prompt = ""
         for unit in agent_scratchpad:
             if unit.is_final():
                 assistant_prompt += f"Final Answer: {unit.agent_response}"
@@ -61,9 +63,10 @@ class CotCompletionAgentRunner(CotAgentRunner):
         query_prompt = f"Question: {self._query}"
 
         # join all messages
-        prompt = system_prompt \
-            .replace("{{historic_messages}}", historic_prompt) \
-            .replace("{{agent_scratchpad}}", assistant_prompt) \
+        prompt = (
+            system_prompt.replace("{{historic_messages}}", historic_prompt)
+            .replace("{{agent_scratchpad}}", assistant_prompt)
             .replace("{{query}}", query_prompt)
+        )
 
         return [UserPromptMessage(content=prompt)]

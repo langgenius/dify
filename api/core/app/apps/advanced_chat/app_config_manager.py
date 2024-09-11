@@ -1,4 +1,3 @@
-
 from core.app.app_config.base_app_config_manager import BaseAppConfigManager
 from core.app.app_config.common.sensitive_word_avoidance.manager import SensitiveWordAvoidanceConfigManager
 from core.app.app_config.entities import WorkflowUIBasedAppConfig
@@ -19,13 +18,13 @@ class AdvancedChatAppConfig(WorkflowUIBasedAppConfig):
     """
     Advanced Chatbot App Config Entity.
     """
+
     pass
 
 
 class AdvancedChatAppConfigManager(BaseAppConfigManager):
     @classmethod
-    def get_app_config(cls, app_model: App,
-                       workflow: Workflow) -> AdvancedChatAppConfig:
+    def get_app_config(cls, app_model: App, workflow: Workflow) -> AdvancedChatAppConfig:
         features_dict = workflow.features_dict
 
         app_mode = AppMode.value_of(app_model.mode)
@@ -34,13 +33,9 @@ class AdvancedChatAppConfigManager(BaseAppConfigManager):
             app_id=app_model.id,
             app_mode=app_mode,
             workflow_id=workflow.id,
-            sensitive_word_avoidance=SensitiveWordAvoidanceConfigManager.convert(
-                config=features_dict
-            ),
-            variables=WorkflowVariablesConfigManager.convert(
-                workflow=workflow
-            ),
-            additional_features=cls.convert_features(features_dict, app_mode)
+            sensitive_word_avoidance=SensitiveWordAvoidanceConfigManager.convert(config=features_dict),
+            variables=WorkflowVariablesConfigManager.convert(workflow=workflow),
+            additional_features=cls.convert_features(features_dict, app_mode),
         )
 
         return app_config
@@ -58,8 +53,7 @@ class AdvancedChatAppConfigManager(BaseAppConfigManager):
 
         # file upload validation
         config, current_related_config_keys = FileUploadConfigManager.validate_and_set_defaults(
-            config=config,
-            is_vision=False
+            config=config, is_vision=False
         )
         related_config_keys.extend(current_related_config_keys)
 
@@ -69,7 +63,8 @@ class AdvancedChatAppConfigManager(BaseAppConfigManager):
 
         # suggested_questions_after_answer
         config, current_related_config_keys = SuggestedQuestionsAfterAnswerConfigManager.validate_and_set_defaults(
-            config)
+            config
+        )
         related_config_keys.extend(current_related_config_keys)
 
         # speech_to_text
@@ -86,9 +81,7 @@ class AdvancedChatAppConfigManager(BaseAppConfigManager):
 
         # moderation validation
         config, current_related_config_keys = SensitiveWordAvoidanceConfigManager.validate_and_set_defaults(
-            tenant_id=tenant_id,
-            config=config,
-            only_structure_validate=only_structure_validate
+            tenant_id=tenant_id, config=config, only_structure_validate=only_structure_validate
         )
         related_config_keys.extend(current_related_config_keys)
 
@@ -98,4 +91,3 @@ class AdvancedChatAppConfigManager(BaseAppConfigManager):
         filtered_config = {key: config.get(key) for key in related_config_keys}
 
         return filtered_config
-

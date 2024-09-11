@@ -77,6 +77,22 @@ const translation = {
     importDSLTip: 'Der aktuelle Entwurf wird überschrieben. Exportieren Sie den Workflow vor dem Import als Backup.',
     overwriteAndImport: 'Überschreiben und Importieren',
     backupCurrentDraft: 'Aktuellen Entwurf sichern',
+    parallelTip: {
+      click: {
+        title: 'Klicken',
+        desc: 'hinzuzufügen',
+      },
+      drag: {
+        title: 'Ziehen',
+        desc: 'um eine Verbindung herzustellen',
+      },
+      limit: 'Die Parallelität ist auf {{num}} Zweige beschränkt.',
+      depthLimit: 'Begrenzung der parallelen Verschachtelungsschicht von {{num}} Schichten',
+    },
+    parallelRun: 'Paralleler Lauf',
+    disconnect: 'Trennen',
+    jumpToNode: 'Zu diesem Knoten springen',
+    addParallelNode: 'Parallelen Knoten hinzufügen',
   },
   env: {
     envPanelTitle: 'Umgebungsvariablen',
@@ -412,6 +428,7 @@ const translation = {
         'not empty': 'ist nicht leer',
         'null': 'ist null',
         'not null': 'ist nicht null',
+        'regex match': 'Regex-Übereinstimmung',
       },
       enterValue: 'Wert eingeben',
       addCondition: 'Bedingung hinzufügen',

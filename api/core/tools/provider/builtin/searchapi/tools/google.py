@@ -7,6 +7,7 @@ from core.tools.tool.builtin_tool import BuiltinTool
 
 SEARCH_API_URL = "https://www.searchapi.io/api/v1/search"
 
+
 class SearchAPI:
     """
     SearchAPI tool provider.
@@ -80,25 +81,29 @@ class SearchAPI:
                 toret = "No good search result found"
         return toret
 
+
 class GoogleTool(BuiltinTool):
-    def _invoke(self,
-                user_id: str,
-                tool_parameters: dict[str, Any],
-        ) -> Union[ToolInvokeMessage, list[ToolInvokeMessage]]:
+    def _invoke(
+        self,
+        user_id: str,
+        tool_parameters: dict[str, Any],
+    ) -> Union[ToolInvokeMessage, list[ToolInvokeMessage]]:
         """
         Invoke the SearchApi tool.
         """
-        query = tool_parameters['query']
-        result_type = tool_parameters['result_type']
+        query = tool_parameters["query"]
+        result_type = tool_parameters["result_type"]
         num = tool_parameters.get("num", 10)
         google_domain = tool_parameters.get("google_domain", "google.com")
         gl = tool_parameters.get("gl", "us")
         hl = tool_parameters.get("hl", "en")
         location = tool_parameters.get("location")
 
-        api_key = self.runtime.credentials['searchapi_api_key']
-        result = SearchAPI(api_key).run(query, result_type=result_type, num=num, google_domain=google_domain, gl=gl, hl=hl, location=location)
+        api_key = self.runtime.credentials["searchapi_api_key"]
+        result = SearchAPI(api_key).run(
+            query, result_type=result_type, num=num, google_domain=google_domain, gl=gl, hl=hl, location=location
+        )
 
-        if result_type == 'text':
+        if result_type == "text":
             return self.create_text_message(text=result)
         return self.create_link_message(link=result)

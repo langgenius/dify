@@ -8,27 +8,24 @@ from core.tools.tool.builtin_tool import BuiltinTool
 
 
 class GetTenantAccessTokenTool(BuiltinTool):
-    def _invoke(self, user_id: str, tool_parameters: dict[str, Any]
-                ) -> Union[ToolInvokeMessage, list[ToolInvokeMessage]]:
-
+    def _invoke(
+        self, user_id: str, tool_parameters: dict[str, Any]
+    ) -> Union[ToolInvokeMessage, list[ToolInvokeMessage]]:
         url = "https://open.feishu.cn/open-apis/auth/v3/tenant_access_token/internal"
 
-        app_id = tool_parameters.get('app_id', '')
+        app_id = tool_parameters.get("app_id", "")
         if not app_id:
-            return self.create_text_message('Invalid parameter app_id')
+            return self.create_text_message("Invalid parameter app_id")
 
-        app_secret = tool_parameters.get('app_secret', '')
+        app_secret = tool_parameters.get("app_secret", "")
         if not app_secret:
-            return self.create_text_message('Invalid parameter app_secret')
+            return self.create_text_message("Invalid parameter app_secret")
 
         headers = {
-            'Content-Type': 'application/json',
+            "Content-Type": "application/json",
         }
         params = {}
-        payload = {
-            "app_id": app_id,
-            "app_secret": app_secret
-        }
+        payload = {"app_id": app_id, "app_secret": app_secret}
 
         """
         {
@@ -45,6 +42,7 @@ class GetTenantAccessTokenTool(BuiltinTool):
                 return self.create_text_message(text=json.dumps(res_json))
             else:
                 return self.create_text_message(
-                    f"Failed to get tenant access token, status code: {res.status_code}, response: {res.text}")
+                    f"Failed to get tenant access token, status code: {res.status_code}, response: {res.text}"
+                )
         except Exception as e:
             return self.create_text_message("Failed to get tenant access token. {}".format(e))

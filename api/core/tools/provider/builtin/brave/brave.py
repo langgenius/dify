@@ -13,11 +13,10 @@ class BraveProvider(BuiltinToolProviderController):
                     "credentials": credentials,
                 }
             ).invoke(
-                user_id='',
+                user_id="",
                 tool_parameters={
                     "query": "Sachin Tendulkar",
                 },
             )
         except Exception as e:
             raise ToolProviderCredentialValidationError(str(e))
-        

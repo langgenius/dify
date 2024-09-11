@@ -13,7 +13,7 @@ from services.tag_service import TagService
 
 
 def _validate_name(name):
-    if not name or len(name) < 1 or len(name) > 40:
+    if not name or len(name) < 1 or len(name) > 50:
         raise ValueError("Name must be between 1 to 50 characters.")
     return name
 

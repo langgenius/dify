@@ -7,16 +7,18 @@ class ToolParameterConverter:
     @staticmethod
     def get_parameter_type(parameter_type: str | ToolParameter.ToolParameterType) -> str:
         match parameter_type:
-            case ToolParameter.ToolParameterType.STRING \
-                 | ToolParameter.ToolParameterType.SECRET_INPUT \
-                 | ToolParameter.ToolParameterType.SELECT:
-                return 'string'
+            case (
+                ToolParameter.ToolParameterType.STRING
+                | ToolParameter.ToolParameterType.SECRET_INPUT
+                | ToolParameter.ToolParameterType.SELECT
+            ):
+                return "string"
 
             case ToolParameter.ToolParameterType.BOOLEAN:
-                return 'boolean'
+                return "boolean"
 
             case ToolParameter.ToolParameterType.NUMBER:
-                return 'number'
+                return "number"
 
             case _:
                 raise ValueError(f"Unsupported parameter type {parameter_type}")
@@ -26,11 +28,13 @@ class ToolParameterConverter:
         # convert tool parameter config to correct type
         try:
             match parameter_type:
-                case ToolParameter.ToolParameterType.STRING \
-                     | ToolParameter.ToolParameterType.SECRET_INPUT \
-                     | ToolParameter.ToolParameterType.SELECT:
+                case (
+                    ToolParameter.ToolParameterType.STRING
+                    | ToolParameter.ToolParameterType.SECRET_INPUT
+                    | ToolParameter.ToolParameterType.SELECT
+                ):
                     if value is None:
-                        return ''
+                        return ""
                     else:
                         return value if isinstance(value, str) else str(value)
 
@@ -41,9 +45,9 @@ class ToolParameterConverter:
                         # Allowed YAML boolean value strings: https://yaml.org/type/bool.html
                         # and also '0' for False and '1' for True
                         match value.lower():
-                            case 'true' | 'yes' | 'y' | '1':
+                            case "true" | "yes" | "y" | "1":
                                 return True
-                            case 'false' | 'no' | 'n' | '0':
+                            case "false" | "no" | "n" | "0":
                                 return False
                             case _:
                                 return bool(value)
@@ -53,8 +57,8 @@ class ToolParameterConverter:
                 case ToolParameter.ToolParameterType.NUMBER:
                     if isinstance(value, int) | isinstance(value, float):
                         return value
-                    elif isinstance(value, str) and value != '':
-                        if '.' in value:
+                    elif isinstance(value, str) and value != "":
+                        if "." in value:
                             return float(value)
                         else:
                             return int(value)
