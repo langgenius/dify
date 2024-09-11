@@ -35,7 +35,7 @@ from core.model_runtime.model_providers.volcengine_maas.legacy.errors import (
     AuthErrors,
     BadRequestErrors,
     ConnectionErrors,
-    MaasExceptionError,
+    MaasError,
     RateLimitErrors,
     ServerUnavailableErrors,
 )
@@ -85,7 +85,7 @@ class VolcengineMaaSLargeLanguageModel(LargeLanguageModel):
                 },
                 [UserPromptMessage(content="ping\nAnswer: ")],
             )
-        except MaasExceptionError as e:
+        except MaasError as e:
             raise CredentialsValidateFailedError(e.message)
 
     @staticmethod

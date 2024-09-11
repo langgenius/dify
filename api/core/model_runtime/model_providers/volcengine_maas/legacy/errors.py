@@ -1,103 +1,103 @@
-from core.model_runtime.model_providers.volcengine_maas.legacy.volc_sdk import MaasExceptionError
+from core.model_runtime.model_providers.volcengine_maas.legacy.volc_sdk import MaasError
 
 
-class ClientSDKRequestError(MaasExceptionError):
+class ClientSDKRequestError(MaasError):
     pass
 
 
-class SignatureDoesNotMatchError(MaasExceptionError):
+class SignatureDoesNotMatchError(MaasError):
     pass
 
 
-class RequestTimeoutError(MaasExceptionError):
+class RequestTimeoutError(MaasError):
     pass
 
 
-class ServiceConnectionTimeoutError(MaasExceptionError):
+class ServiceConnectionTimeoutError(MaasError):
     pass
 
 
-class MissingAuthenticationHeaderError(MaasExceptionError):
+class MissingAuthenticationHeaderError(MaasError):
     pass
 
 
-class AuthenticationHeaderIsInvalidError(MaasExceptionError):
+class AuthenticationHeaderIsInvalidError(MaasError):
     pass
 
 
-class InternalServiceError(MaasExceptionError):
+class InternalServiceError(MaasError):
     pass
 
 
-class MissingParameterError(MaasExceptionError):
+class MissingParameterError(MaasError):
     pass
 
 
-class InvalidParameterError(MaasExceptionError):
+class InvalidParameterError(MaasError):
     pass
 
 
-class AuthenticationExpireError(MaasExceptionError):
+class AuthenticationExpireError(MaasError):
     pass
 
 
-class EndpointIsInvalidError(MaasExceptionError):
+class EndpointIsInvalidError(MaasError):
     pass
 
 
-class EndpointIsNotEnableError(MaasExceptionError):
+class EndpointIsNotEnableError(MaasError):
     pass
 
 
-class ModelNotSupportStreamModeError(MaasExceptionError):
+class ModelNotSupportStreamModeError(MaasError):
     pass
 
 
-class ReqTextExistRiskError(MaasExceptionError):
+class ReqTextExistRiskError(MaasError):
     pass
 
 
-class RespTextExistRiskError(MaasExceptionError):
+class RespTextExistRiskError(MaasError):
     pass
 
 
-class EndpointRateLimitExceededError(MaasExceptionError):
+class EndpointRateLimitExceededError(MaasError):
     pass
 
 
-class ServiceConnectionRefusedError(MaasExceptionError):
+class ServiceConnectionRefusedError(MaasError):
     pass
 
 
-class ServiceConnectionClosedError(MaasExceptionError):
+class ServiceConnectionClosedError(MaasError):
     pass
 
 
-class UnauthorizedUserForEndpointError(MaasExceptionError):
+class UnauthorizedUserForEndpointError(MaasError):
     pass
 
 
-class InvalidEndpointWithNoURLError(MaasExceptionError):
+class InvalidEndpointWithNoURLError(MaasError):
     pass
 
 
-class EndpointAccountRpmRateLimitExceededError(MaasExceptionError):
+class EndpointAccountRpmRateLimitExceededError(MaasError):
     pass
 
 
-class EndpointAccountTpmRateLimitExceededError(MaasExceptionError):
+class EndpointAccountTpmRateLimitExceededError(MaasError):
     pass
 
 
-class ServiceResourceWaitQueueFullError(MaasExceptionError):
+class ServiceResourceWaitQueueFullError(MaasError):
     pass
 
 
-class EndpointIsPendingError(MaasExceptionError):
+class EndpointIsPendingError(MaasError):
     pass
 
 
-class ServiceNotOpenError(MaasExceptionError):
+class ServiceNotOpenError(MaasError):
     pass
 
 
@@ -150,7 +150,7 @@ ErrorCodeMap = {
 }
 
 
-def wrap_error(e: MaasExceptionError) -> Exception:
+def wrap_error(e: MaasError) -> Exception:
     if ErrorCodeMap.get(e.code):
         return ErrorCodeMap.get(e.code)(e.code_n, e.code, e.message, e.req_id)
     return e

@@ -1,4 +1,4 @@
 from .common import ChatRole
-from .maas import MaasExceptionError, MaasService
+from .maas import MaasError, MaasService
 
-__all__ = ["MaasService", "ChatRole", "MaasExceptionError"]
+__all__ = ["MaasService", "ChatRole", "MaasError"]
