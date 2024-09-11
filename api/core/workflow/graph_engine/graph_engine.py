@@ -90,9 +90,9 @@ class GraphEngine:
         thread_pool_max_submit_count = 100
         thread_pool_max_workers = 10
 
-        ## init thread pool
+        # init thread pool
         if thread_pool_id:
-            if not thread_pool_id in GraphEngine.workflow_thread_pool_mapping:
+            if thread_pool_id not in GraphEngine.workflow_thread_pool_mapping:
                 raise ValueError(f"Max submit count {thread_pool_max_submit_count} of workflow thread pool reached.")
 
             self.thread_pool_id = thread_pool_id
