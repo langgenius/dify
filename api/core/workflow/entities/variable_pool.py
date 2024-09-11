@@ -39,6 +39,7 @@ class VariablePool(BaseModel):
 
     conversation_variables: Sequence[Variable] | None = None
 
+    @classmethod
     @model_validator(mode="after")
     def val_model_after(self):
         """

@@ -10,6 +10,7 @@ MOCK = os.getenv("MOCK_SWITCH", "false") == "true"
 
 
 class MockedHttp:
+    @staticmethod
     def httpx_request(
         method: Literal["GET", "POST", "PUT", "DELETE", "PATCH", "HEAD"], url: str, **kwargs
     ) -> httpx.Response:

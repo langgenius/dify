@@ -26,6 +26,7 @@ class LangfuseConfig(BaseTracingConfig):
     host: str = "https://api.langfuse.com"
 
     @field_validator("host")
+    @classmethod
     def set_value(cls, v, info: ValidationInfo):
         if v is None or v == "":
             v = "https://api.langfuse.com"
@@ -45,6 +46,7 @@ class LangSmithConfig(BaseTracingConfig):
     endpoint: str = "https://api.smith.langchain.com"
 
     @field_validator("endpoint")
+    @classmethod
     def set_value(cls, v, info: ValidationInfo):
         if v is None or v == "":
             v = "https://api.smith.langchain.com"
