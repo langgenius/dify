@@ -28,12 +28,12 @@ x-shared-env: &shared-api-worker-env
   CELERY_MIN_WORKERS: ${CELERY_MIN_WORKERS:-}
   API_TOOL_DEFAULT_CONNECT_TIMEOUT: ${API_TOOL_DEFAULT_CONNECT_TIMEOUT:-10}
   API_TOOL_DEFAULT_READ_TIMEOUT: ${API_TOOL_DEFAULT_READ_TIMEOUT:-60}
-  DB_USERNAME: ${DB_USERNAME:-postgres}
+  DB_USERNAME: ${DB_USERNAME:-root}
   DB_PASSWORD: ${DB_PASSWORD:-difyai123456}
-  DB_HOST: ${DB_HOST:-db}
-  DB_PORT: ${DB_PORT:-5432}
+  DB_HOST: ${DB_HOST:-mysql-db}
+  DB_PORT: ${DB_PORT:-3306}
   DB_DATABASE: ${DB_DATABASE:-dify}
-  SQLALCHEMY_DATABASE_URI_SCHEME: ${SQLALCHEMY_DATABASE_URI_SCHEME:-postgresql}
+  SQLALCHEMY_DATABASE_URI_SCHEME: ${SQLALCHEMY_DATABASE_URI_SCHEME:-mysql+pymysql}
   SQLALCHEMY_POOL_SIZE: ${SQLALCHEMY_POOL_SIZE:-30}
   SQLALCHEMY_POOL_RECYCLE: ${SQLALCHEMY_POOL_RECYCLE:-3600}
   SQLALCHEMY_ECHO: ${SQLALCHEMY_ECHO:-false}
@@ -76,7 +76,7 @@ x-shared-env: &shared-api-worker-env
   ALIYUN_OSS_ENDPOINT: ${ALIYUN_OSS_ENDPOINT:-}
   ALIYUN_OSS_REGION: ${ALIYUN_OSS_REGION:-}
   ALIYUN_OSS_AUTH_VERSION: ${ALIYUN_OSS_AUTH_VERSION:-v4}
-  ALIYUN_OSS_PATH: ${ALIYUN_OSS_PATH:-}
+  ALIYUN_OSS_PATHS: ${ALIYUN_OSS_PATH:-}
   TENCENT_COS_BUCKET_NAME: ${TENCENT_COS_BUCKET_NAME:-}
   TENCENT_COS_SECRET_KEY: ${TENCENT_COS_SECRET_KEY:-}
   TENCENT_COS_SECRET_ID: ${TENCENT_COS_SECRET_ID:-}
@@ -209,7 +209,7 @@ x-shared-env: &shared-api-worker-env
 services:
   # API service
   api:
-    image: langgenius/dify-api:0.8.2
+    image: langgenius/dify-api:0.8.0
     restart: always
     environment:
       # Use the shared environment variables.
@@ -217,7 +217,7 @@ services:
       # Startup mode, 'api' starts the API server.
       MODE: api
     depends_on:
-      - db
+      - mysql-db
       - redis
     volumes:
       # Mount the storage directory to the container, for storing user files.
@@ -229,7 +229,7 @@ services:
   # worker service
   # The Celery worker for processing the queue.
   worker:
-    image: langgenius/dify-api:0.8.2
+    image: langgenius/dify-api:0.8.0
     restart: always
     environment:
       # Use the shared environment variables.
@@ -237,7 +237,7 @@ services:
       # Startup mode, 'worker' starts the Celery worker for processing the queue.
       MODE: worker
     depends_on:
-      - db
+      - mysql-db
       - redis
     volumes:
       # Mount the storage directory to the container, for storing user files.
@@ -248,34 +248,26 @@ services:
 
   # Frontend web application.
   web:
-    image: langgenius/dify-web:0.8.2
+    image: langgenius/dify-web:0.8.0
     restart: always
     environment:
       CONSOLE_API_URL: ${CONSOLE_API_URL:-}
       APP_API_URL: ${APP_API_URL:-}
       SENTRY_DSN: ${WEB_SENTRY_DSN:-}
       NEXT_TELEMETRY_DISABLED: ${NEXT_TELEMETRY_DISABLED:-0}
-      TEXT_GENERATION_TIMEOUT_MS: ${TEXT_GENERATION_TIMEOUT_MS:-60000}
 
-  # The postgres database.
-  db:
-    image: postgres:15-alpine
+  # MySQL database.
+  mysql-db:
+    image: mysql:8.0.39-bookworm
     restart: always
     environment:
-      PGUSER: ${PGUSER:-postgres}
-      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-difyai123456}
-      POSTGRES_DB: ${POSTGRES_DB:-dify}
-      PGDATA: ${PGDATA:-/var/lib/postgresql/data/pgdata}
-    command: >
-      postgres -c 'max_connections=${POSTGRES_MAX_CONNECTIONS:-100}'
-               -c 'shared_buffers=${POSTGRES_SHARED_BUFFERS:-128MB}'
-               -c 'work_mem=${POSTGRES_WORK_MEM:-4MB}'
-               -c 'maintenance_work_mem=${POSTGRES_MAINTENANCE_WORK_MEM:-64MB}'
-               -c 'effective_cache_size=${POSTGRES_EFFECTIVE_CACHE_SIZE:-4096MB}'
+      MYSQL_ROOT_PASSWORD: ${MYSQL_ROOT_PASSWORD:-difyai123456}
+      MYSQL_DATABASE: ${MYSQL_DATABASE:-dify}
     volumes:
-      - ./volumes/db/data:/var/lib/postgresql/data
+      - ./volumes/mysql/data:/var/lib/mysql
+    command: --character-set-server=${MYSQL_CHARSET:-utf8mb4} --collation-server=${MYSQL_COLLATION:-utf8mb4_unicode_ci}
     healthcheck:
-      test: [ "CMD", "pg_isready" ]
+      test: ["CMD", "mysqladmin", "ping", "-h", "localhost"]
       interval: 1s
       timeout: 3s
       retries: 30
@@ -294,7 +286,7 @@ services:
 
   # The DifySandbox
   sandbox:
-    image: langgenius/dify-sandbox:0.2.9
+    image: langgenius/dify-sandbox:0.2.7
     restart: always
     environment:
       # The DifySandbox configurations
