@@ -4,6 +4,7 @@ import { RiArrowLeftLine, RiLockPasswordLine } from '@remixicon/react'
 import { useTranslation } from 'react-i18next'
 import { useState } from 'react'
 import { useRouter, useSearchParams } from 'next/navigation'
+import { COUNT_DOWN_KEY, COUNT_DOWN_TIME_MS } from '../components/signin/countdown'
 import { emailRegex } from '@/config'
 import Button from '@/app/components/base/button'
 import Input from '@/app/components/base/input'
@@ -34,7 +35,7 @@ export default function CheckCode() {
       setIsLoading(true)
       const res = await sendResetPasswordCode(email)
       if (res.result === 'success') {
-        localStorage.setItem('leftTime', '59000')
+        localStorage.setItem(COUNT_DOWN_KEY, `${COUNT_DOWN_TIME_MS}`)
         const params = new URLSearchParams(searchParams)
         params.set('token', encodeURIComponent(res.data))
         params.set('email', encodeURIComponent(email))

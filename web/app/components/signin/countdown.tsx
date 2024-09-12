@@ -4,7 +4,7 @@ import { useEffect, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 
 export const COUNT_DOWN_TIME_MS = 59000
-const COUNT_DOWN_KEY = 'leftTime'
+export const COUNT_DOWN_KEY = 'leftTime'
 
 type CountdownProps = {
   onResend?: () => void
