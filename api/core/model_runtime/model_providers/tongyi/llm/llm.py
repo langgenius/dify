@@ -350,9 +350,7 @@ class TongyiLargeLanguageModel(LargeLanguageModel):
                         break
         elif isinstance(message, AssistantPromptMessage):
             message_text = f"{ai_prompt} {content}"
-        elif isinstance(message, SystemPromptMessage):
-            message_text = content
-        elif isinstance(message, ToolPromptMessage):
+        elif isinstance(message, SystemPromptMessage | ToolPromptMessage):
             message_text = content
         else:
             raise ValueError(f"Got unknown type {message}")

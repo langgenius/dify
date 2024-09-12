@@ -209,9 +209,10 @@ class ZhipuAILargeLanguageModel(_CommonZhipuaiAI, LargeLanguageModel):
                 ):
                     new_prompt_messages[-1].content += "\n\n" + copy_prompt_message.content
                 else:
-                    if copy_prompt_message.role == PromptMessageRole.USER:
-                        new_prompt_messages.append(copy_prompt_message)
-                    elif copy_prompt_message.role == PromptMessageRole.TOOL:
+                    if (
+                        copy_prompt_message.role == PromptMessageRole.USER
+                        or copy_prompt_message.role == PromptMessageRole.TOOL
+                    ):
                         new_prompt_messages.append(copy_prompt_message)
                     elif copy_prompt_message.role == PromptMessageRole.SYSTEM:
                         new_prompt_message = SystemPromptMessage(content=copy_prompt_message.content)
@@ -461,9 +462,7 @@ class ZhipuAILargeLanguageModel(_CommonZhipuaiAI, LargeLanguageModel):
             message_text = f"{human_prompt} {content}"
         elif isinstance(message, AssistantPromptMessage):
             message_text = f"{ai_prompt} {content}"
-        elif isinstance(message, SystemPromptMessage):
-            message_text = content
-        elif isinstance(message, ToolPromptMessage):
+        elif isinstance(message, SystemPromptMessage | ToolPromptMessage):
             message_text = content
         else:
             raise ValueError(f"Got unknown type {message}")

@@ -19,9 +19,7 @@ class ToolFileMessageTransformer:
         result = []
 
         for message in messages:
-            if message.type == ToolInvokeMessage.MessageType.TEXT:
-                result.append(message)
-            elif message.type == ToolInvokeMessage.MessageType.LINK:
+            if message.type == ToolInvokeMessage.MessageType.TEXT or message.type == ToolInvokeMessage.MessageType.LINK:
                 result.append(message)
             elif message.type == ToolInvokeMessage.MessageType.IMAGE:
                 # try to download image

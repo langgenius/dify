@@ -25,6 +25,8 @@ select = [
     "SIM101",
     "SIM109",
     "SIM110",
+    "SIM112",
+    "SIM114",
     "SIM116", # if-else-block-instead-of-dict-lookup
     "SIM401", # if-else-block-instead-of-dict-get
     "SIM910", # dict-get-with-none-default
@@ -58,6 +60,7 @@ ignore = [
     "SIM105",
     "SIM107",
     "SIM108",
+    "SIM113",
 ]
 
 [tool.ruff.lint.per-file-ignores]
