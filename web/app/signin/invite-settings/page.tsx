@@ -67,8 +67,8 @@ export default function InviteSettingsPage() {
   if (!checkRes.is_valid) {
     return <div className="flex flex-col md:w-[400px]">
       <div className="w-full mx-auto">
-        <div className="mb-3 flex justify-center items-center w-20 h-20 p-5 rounded-[20px] border border-gray-100 shadow-lg text-[40px] font-bold">🤷‍♂️</div>
-        <h2 className="text-[32px] font-bold text-gray-900">{t('login.invalid')}</h2>
+        <div className="mb-3 flex justify-center items-center w-[56px] h-[56px] p-5 rounded-2xl border border-components-panel-border-subtle shadow-lg text-3xl font-bold">🤷‍♂️</div>
+        <h2 className="text-3xl font-bold text-text-primary">{t('login.invalid')}</h2>
       </div>
       <div className="w-full mx-auto mt-6">
         <Button variant='primary' className='w-full !text-sm'>
@@ -79,16 +79,16 @@ export default function InviteSettingsPage() {
   }
 
   return <div className='flex flex-col gap-3'>
-    <div className='bg-background-default-dodge text-text-accent-light-mode-only border-[0.5px] shadow inline-flex  w-14 h-14 justify-center items-center rounded-2xl text-2xl'>
-      <RiAccountCircleLine />
+    <div className='bg-background-default-dodge text-text-accent-light-mode-only border border-components-panel-border-subtle shadow-lg inline-flex w-14 h-14 justify-center items-center rounded-2xl'>
+      <RiAccountCircleLine className='w-8 h-8 text-2xl' />
     </div>
     <div className='pt-3 pb-4'>
-      <h2 className='text-4xl font-semibold'>{t('login.setYourAccount')}</h2>
+      <h2 className='text-2xl font-semibold'>{t('login.setYourAccount')}</h2>
     </div>
     <form action=''>
 
       <div className='mb-5'>
-        <label htmlFor="name" className="my-2 flex items-center justify-between text-sm font-medium text-gray-900">
+        <label htmlFor="name" className="my-2 flex items-center justify-between text-sm font-medium text-text-secondary">
           {t('login.name')}
         </label>
         <div className="mt-1 relative rounded-md shadow-sm">
@@ -102,7 +102,7 @@ export default function InviteSettingsPage() {
         </div>
       </div>
       <div className='mb-5'>
-        <label htmlFor="name" className="my-2 flex items-center justify-between text-sm font-medium text-gray-900">
+        <label htmlFor="name" className="my-2 flex items-center justify-between text-sm font-medium text-text-secondary">
           {t('login.interfaceLanguage')}
         </label>
         <div className="relative mt-1 rounded-md shadow-sm">
@@ -117,7 +117,7 @@ export default function InviteSettingsPage() {
       </div>
       {/* timezone */}
       <div className='mb-5'>
-        <label htmlFor="timezone" className="block text-sm font-medium text-gray-700">
+        <label htmlFor="timezone" className="block text-sm font-medium text-text-secondary">
           {t('login.timezone')}
         </label>
         <div className="relative mt-1 rounded-md shadow-sm">
@@ -136,15 +136,15 @@ export default function InviteSettingsPage() {
           className='w-full !text-sm'
           onClick={handleActivate}
         >
-          {`${t('login.join')} ${checkRes?.data.workspace_name}`}
+          {`${t('login.join')} ${checkRes?.data?.workspace_name}`}
         </Button>
       </div>
     </form>
-    <div className="block w-hull mt-2 text-xs text-gray-600">
+    <div className="block w-hull mt-2 text-xs text-text-secondary">
       {t('login.license.tip')}
       &nbsp;
       <Link
-        className='text-primary-600'
+        className='text-text-accent-secondary'
         target='_blank' rel='noopener noreferrer'
         href={`https://docs.dify.ai/${language !== LanguagesSupported[1] ? 'user-agreement' : `v/${locale.toLowerCase()}/policies`}/open-source`}
       >{t('login.license.link')}</Link>

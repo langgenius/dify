@@ -30,7 +30,7 @@ export default async function SignInLayout({ children }: any) {
             {children}
           </div>
         </div>
-        <div className='px-8 py-6 text-sm font-normal text-gray-500'>
+        <div className='px-8 py-6 text-sm font-normal text-text-tertiary'>
           © {new Date().getFullYear()} LangGenius, Inc. All rights reserved.
         </div>
       </div>
