@@ -78,12 +78,12 @@ const NormalForm = () => {
       <div className="w-full mx-auto mt-8">
         {isInviteLink
           ? <div className="w-full mx-auto">
-            <h2 className="text-2xl font-bold text-gray-900">{t('login.join')}{workspaceName}</h2>
-            <p className='mt-1 text-sm text-gray-600'>{t('login.joinTipStart')}{workspaceName}{t('login.joinTipEnd')}</p>
+            <h2 className="text-2xl font-bold text-text-primary">{t('login.join')}{workspaceName}</h2>
+            <p className='mt-1 text-sm text-text-tertiary'>{t('login.joinTipStart')}{workspaceName}{t('login.joinTipEnd')}</p>
           </div>
           : <div className="w-full mx-auto">
-            <h2 className="text-2xl font-bold text-gray-900">{t('login.pageTitle')}</h2>
-            <p className='mt-1 text-sm text-gray-600'>{t('login.welcome')}</p>
+            <h2 className="text-2xl font-bold text-text-primary">{t('login.pageTitle')}</h2>
+            <p className='mt-1 text-sm text-text-tertiary'>{t('login.welcome')}</p>
           </div>}
         <div className="bg-white ">
           <div className="flex flex-col gap-3 mt-6">
@@ -95,10 +95,10 @@ const NormalForm = () => {
 
           {showORLine && <div className="relative mt-6">
             <div className="absolute inset-0 flex items-center" aria-hidden="true">
-              <div className="w-full border-t border-gray-300" />
+              <div className='bg-gradient-to-r from-white/[0.01] via-[#101828]/8 to-white/[0.01] h-px w-full'></div>
             </div>
             <div className="relative flex justify-center text-sm">
-              <span className="px-2 text-gray-300 bg-white">{t('login.or')}</span>
+              <span className="px-2 text-text-tertiary bg-white">{t('login.or')}</span>
             </div>
           </div>}
           {
@@ -117,27 +117,27 @@ const NormalForm = () => {
               </>}
             </>
           }
-          <div className="w-hull text-center block mt-2 text-xs text-gray-600">
+          <div className="w-hull text-center block mt-2 text-xs text-text-tertiary">
             {t('login.tosDesc')}
             &nbsp;
             <Link
-              className='text-primary-600'
+              className='text-text-secondary'
               target='_blank' rel='noopener noreferrer'
               href='https://dify.ai/terms'
             >{t('login.tos')}</Link>
             &nbsp;&&nbsp;
             <Link
-              className='text-primary-600'
+              className='text-text-secondary'
               target='_blank' rel='noopener noreferrer'
               href='https://dify.ai/privacy'
             >{t('login.pp')}</Link>
           </div>
 
-          {IS_CE_EDITION && <div className="w-hull text-center block mt-2 text-xs text-gray-600">
+          {IS_CE_EDITION && <div className="w-hull text-center block mt-2 text-xs text-text-tertiary">
             {t('login.goToInit')}
             &nbsp;
             <Link
-              className='text-primary-600'
+              className='text-text-secondary'
               href='/install'
             >{t('login.setAdminAccount')}</Link>
           </div>}

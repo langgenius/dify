@@ -76,27 +76,27 @@ const OneMoreStep = () => {
   return (
     <>
       <div className="w-full mx-auto">
-        <h2 className="text-[32px] font-bold text-gray-900">{t('login.oneMoreStep')}</h2>
-        <p className='mt-1 text-sm text-gray-600 '>{t('login.createSample')}</p>
+        <h2 className="text-2xl font-bold text-text-secondary">{t('login.oneMoreStep')}</h2>
+        <p className='mt-1 text-sm text-text-tertiary'>{t('login.createSample')}</p>
       </div>
 
       <div className="w-full mx-auto mt-6">
         <div className="bg-white">
           <div className="mb-5">
-            <label className="my-2 flex items-center justify-between text-sm font-medium text-gray-900">
+            <label className="my-2 flex items-center justify-between text-sm font-medium text-text-secondary">
               {t('login.invitationCode')}
               <Tooltip
                 popupContent={
                   <div className='w-[256px] text-xs font-medium'>
                     <div className='font-medium'>{t('login.sendUsMail')}</div>
-                    <div className='text-xs font-medium cursor-pointer text-primary-600'>
+                    <div className='text-xs font-medium cursor-pointer text-text-accent-secondary'>
                       <a href="mailto:request-invitation@langgenius.ai">request-invitation@langgenius.ai</a>
                     </div>
                   </div>
                 }
                 needsDelay
               >
-                <span className='cursor-pointer text-primary-600'>{t('login.dontHave')}</span>
+                <span className='cursor-pointer text-text-accent-secondary'>{t('login.dontHave')}</span>
               </Tooltip>
             </label>
             <div className="mt-1">
@@ -112,7 +112,7 @@ const OneMoreStep = () => {
             </div>
           </div>
           <div className='mb-5'>
-            <label htmlFor="name" className="my-2 flex items-center justify-between text-sm font-medium text-gray-900">
+            <label htmlFor="name" className="my-2 flex items-center justify-between text-sm font-medium text-text-secondary">
               {t('login.interfaceLanguage')}
             </label>
             <div className="relative mt-1 rounded-md shadow-sm">
@@ -126,7 +126,7 @@ const OneMoreStep = () => {
             </div>
           </div>
           <div className='mb-4'>
-            <label htmlFor="timezone" className="block text-sm font-medium text-gray-700">
+            <label htmlFor="timezone" className="block text-sm font-medium text-text-tertiary">
               {t('login.timezone')}
             </label>
             <div className="relative mt-1 rounded-md shadow-sm">
@@ -151,11 +151,11 @@ const OneMoreStep = () => {
               {t('login.go')}
             </Button>
           </div>
-          <div className="block w-hull mt-2 text-xs text-gray-600">
+          <div className="block w-hull mt-2 text-xs text-text-tertiary">
             {t('login.license.tip')}
             &nbsp;
             <Link
-              className='text-primary-600'
+              className='text-text-accent-secondary'
               target='_blank' rel='noopener noreferrer'
               href={'https://docs.dify.ai/user-agreement/open-source'}
             >{t('login.license.link')}</Link>

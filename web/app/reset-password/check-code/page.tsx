@@ -58,11 +58,11 @@ export default function CheckCode() {
   }
 
   return <div className='flex flex-col gap-3'>
-    <div className='bg-background-default-dodge text-text-accent-light-mode-only border-[0.5px] shadow inline-flex  w-14 h-14 justify-center items-center rounded-2xl text-2xl'>
-      <RiMailSendFill />
+    <div className='bg-background-default-dodge text-text-accent-light-mode-only border border-components-panel-border-subtle shadow-lg inline-flex w-14 h-14 justify-center items-center rounded-2xl'>
+      <RiMailSendFill className='w-8 h-8 text-2xl' />
     </div>
     <div className='pt-3 pb-4'>
-      <h2 className='text-4xl font-semibold'>{t('login.checkCode.checkYourEmail')}</h2>
+      <h2 className='text-2xl font-semibold'>{t('login.checkCode.checkYourEmail')}</h2>
       <p className='text-text-secondary text-sm mt-2 leading-5'>
         <span dangerouslySetInnerHTML={{ __html: t('login.checkCode.tips', { email }) as string }}></span>
         <br />

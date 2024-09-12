@@ -91,10 +91,10 @@ const ChangePasswordForm = () => {
       {!showSuccess && (
         <div className='flex flex-col md:w-[400px]'>
           <div className="w-full mx-auto">
-            <h2 className="text-[32px] font-bold text-gray-900">
+            <h2 className="text-2xl font-bold text-text-secondary">
               {t('login.resetPassword')}
             </h2>
-            <p className='mt-1 text-sm text-gray-600'>
+            <p className='mt-1 text-sm text-text-tertiary'>
               {t('login.changePasswordTip')}
             </p>
           </div>
@@ -103,7 +103,7 @@ const ChangePasswordForm = () => {
             <div className="bg-white">
               {/* Password */}
               <div className='mb-5'>
-                <label htmlFor="password" className="my-2 flex items-center justify-between text-sm font-medium text-gray-900">
+                <label htmlFor="password" className="my-2 flex items-center justify-between text-sm font-medium text-text-secondary">
                   {t('common.account.newPassword')}
                 </label>
                 <Input
@@ -118,7 +118,7 @@ const ChangePasswordForm = () => {
               </div>
               {/* Confirm Password */}
               <div className='mb-5'>
-                <label htmlFor="confirmPassword" className="my-2 flex items-center justify-between text-sm font-medium text-gray-900">
+                <label htmlFor="confirmPassword" className="my-2 flex items-center justify-between text-sm font-medium text-text-secondary">
                   {t('common.account.confirmPassword')}
                 </label>
                 <Input
@@ -146,10 +146,10 @@ const ChangePasswordForm = () => {
       {showSuccess && (
         <div className="flex flex-col md:w-[400px]">
           <div className="w-full mx-auto">
-            <div className="mb-3 flex justify-center items-center w-20 h-20 p-5 rounded-[20px] border border-components-panel-border-subtle shadow-lg text-[40px] font-bold">
-              <RiCheckboxCircleFill className='w-10 h-10 text-text-success' />
+            <div className="mb-3 flex justify-center items-center w-14 h-14 rounded-2xl border border-components-panel-border-subtle shadow-lg font-bold">
+              <RiCheckboxCircleFill className='w-8 h-8 text-text-success' />
             </div>
-            <h2 className="text-4xl font-bold text-text-primary">
+            <h2 className="text-2xl font-bold text-text-primary">
               {t('login.passwordChangedTip')}
             </h2>
           </div>

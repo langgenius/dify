@@ -62,7 +62,7 @@ export default function CheckCode() {
       <RiMailSendFill />
     </div>
     <div className='pt-3 pb-4'>
-      <h2 className='text-4xl font-semibold'>{t('login.checkCode.checkYourEmail')}</h2>
+      <h2 className='text-2xl font-semibold'>{t('login.checkCode.checkYourEmail')}</h2>
       <p className='text-text-secondary text-sm mt-2 leading-5'>
         <span dangerouslySetInnerHTML={{ __html: t('login.checkCode.tips', { email }) as string }}></span>
         <br />
