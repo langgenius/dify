@@ -45,7 +45,7 @@ class BaichuanModel:
         parameters: dict[str, Any],
         tools: Optional[list[PromptMessageTool]] = None,
     ) -> dict[str, Any]:
-        if model in self._model_mapping.keys():
+        if model in self._model_mapping:
             # the LargeLanguageModel._code_block_mode_wrapper() method will remove the response_format of parameters.
             # we need to rename it to res_format to get its value
             if parameters.get("res_format") == "json_object":
@@ -94,7 +94,7 @@ class BaichuanModel:
         timeout: int,
         tools: Optional[list[PromptMessageTool]] = None,
     ) -> Union[Iterator, dict]:
-        if model in self._model_mapping.keys():
+        if model in self._model_mapping:
             api_base = "https://api.baichuan-ai.com/v1/chat/completions"
         else:
             raise BadRequestError(f"Unknown model: {model}")

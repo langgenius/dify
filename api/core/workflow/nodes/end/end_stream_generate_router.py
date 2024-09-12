@@ -17,7 +17,7 @@ class EndStreamGeneratorRouter:
         # parse stream output node value selector of end nodes
         end_stream_variable_selectors_mapping: dict[str, list[list[str]]] = {}
         for end_node_id, node_config in node_id_config_mapping.items():
-            if not node_config.get("data", {}).get("type") == NodeType.END.value:
+            if node_config.get("data", {}).get("type") != NodeType.END.value:
                 continue
 
             # skip end node in parallel

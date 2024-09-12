@@ -17,14 +17,12 @@ select = [
     "F", # pyflakes rules
     "I", # isort rules
     "N", # pep8-naming
-    "UP", # pyupgrade rules
     "RUF019", # unnecessary-key-check
     "RUF100", # unused-noqa
     "RUF101", # redirected-noqa
     "S506", # unsafe-yaml-load
-    "SIM116", # if-else-block-instead-of-dict-lookup
-    "SIM401", # if-else-block-instead-of-dict-get
-    "SIM910", # dict-get-with-none-default
+    "SIM", # flake8-simplify rules
+    "UP", # pyupgrade rules
     "W191", # tab-indentation
     "W605", # invalid-escape-sequence
 ]
@@ -50,6 +48,15 @@ ignore = [
     "B905", # zip-without-explicit-strict
     "N806", # non-lowercase-variable-in-function
     "N815", # mixed-case-variable-in-class-scope
+    "SIM102", # collapsible-if
+    "SIM103", # needless-bool
+    "SIM105", # suppressible-exception
+    "SIM107", # return-in-try-except-finally
+    "SIM108", # if-else-block-instead-of-if-exp
+    "SIM113", # eumerate-for-loop
+    "SIM117", # multiple-with-statements
+    "SIM210", # if-expr-with-true-false
+    "SIM300", # yoda-conditions
 ]
 
 [tool.ruff.lint.per-file-ignores]
