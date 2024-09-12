@@ -61,6 +61,8 @@ class BedrockLargeLanguageModel(LargeLanguageModel):
     CONVERSE_API_ENABLED_MODEL_INFO = [
         {"prefix": "anthropic.claude-v2", "support_system_prompts": True, "support_tool_use": False},
         {"prefix": "anthropic.claude-v1", "support_system_prompts": True, "support_tool_use": False},
+        {"prefix": "us.anthropic.claude-3", "support_system_prompts": True, "support_tool_use": True},
+        {"prefix": "eu.anthropic.claude-3", "support_system_prompts": True, "support_tool_use": True},
         {"prefix": "anthropic.claude-3", "support_system_prompts": True, "support_tool_use": True},
         {"prefix": "meta.llama", "support_system_prompts": True, "support_tool_use": False},
         {"prefix": "mistral.mistral-7b-instruct", "support_system_prompts": False, "support_tool_use": False},
