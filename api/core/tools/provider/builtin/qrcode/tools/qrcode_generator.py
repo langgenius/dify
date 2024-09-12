@@ -39,7 +39,7 @@ class QRCodeGeneratorTool(BuiltinTool):
 
         # get error_correction
         error_correction = tool_parameters.get("error_correction", "")
-        if error_correction not in self.error_correction_levels.keys():
+        if error_correction not in self.error_correction_levels:
             return self.create_text_message("Invalid parameter error_correction")
 
         try:
