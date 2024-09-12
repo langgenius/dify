@@ -414,10 +414,10 @@ class ZhipuAILargeLanguageModel(_CommonZhipuaiAI, LargeLanguageModel):
 
             # transform assistant message to prompt message
             assistant_prompt_message = AssistantPromptMessage(
-                content=delta.delta.content if delta.delta.content else "", tool_calls=assistant_tool_calls
+                content=delta.delta.content or "", tool_calls=assistant_tool_calls
             )
 
-            full_assistant_content += delta.delta.content if delta.delta.content else ""
+            full_assistant_content += delta.delta.content or ""
 
             if delta.finish_reason is not None and chunk.usage is not None:
                 completion_tokens = chunk.usage.completion_tokens

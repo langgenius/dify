@@ -215,7 +215,7 @@ class XinferenceText2SpeechModel(TTSModel):
                     for i in range(len(sentences))
                 ]
 
-                for index, future in enumerate(futures):
+                for future in futures:
                     response = future.result()
                     for i in range(0, len(response), 1024):
                         yield response[i : i + 1024]

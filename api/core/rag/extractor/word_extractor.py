@@ -153,7 +153,7 @@ class WordExtractor(BaseExtractor):
             if col_index >= total_cols:
                 break
             cell_content = self._parse_cell(cell, image_map).strip()
-            cell_colspan = cell.grid_span if cell.grid_span else 1
+            cell_colspan = cell.grid_span or 1
             for i in range(cell_colspan):
                 if col_index + i < total_cols:
                     row_cells[col_index + i] = cell_content if i == 0 else ""

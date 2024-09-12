@@ -113,7 +113,7 @@ class ListWorksheetRecordsTool(BuiltinTool):
                         result_text = f"Found {result['total']} rows in worksheet \"{worksheet_name}\"."
                         if result["total"] > 0:
                             result_text += (
-                                f" The following are {result['total'] if result['total'] < limit else limit}"
+                                f" The following are {min(limit, result['total'])}"
                                 f" pieces of data presented in a table format:\n\n{table_header}"
                             )
                             for row in rows:

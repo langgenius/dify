@@ -68,8 +68,7 @@ class ExtractProcessor:
                         suffix = "." + re.search(r"\.(\w+)$", filename).group(1)
 
             file_path = f"{temp_dir}/{next(tempfile._get_candidate_names())}{suffix}"
-            with open(file_path, "wb") as file:
-                file.write(response.content)
+            Path(file_path).write_bytes(response.content)
             extract_setting = ExtractSetting(datasource_type="upload_file", document_model="text_model")
             if return_text:
                 delimiter = "\n"
@@ -111,7 +110,7 @@ class ExtractProcessor:
                         )
                     elif file_extension in [".htm", ".html"]:
                         extractor = HtmlExtractor(file_path)
-                    elif file_extension in [".docx"]:
+                    elif file_extension == ".docx":
                         extractor = WordExtractor(file_path, upload_file.tenant_id, upload_file.created_by)
                     elif file_extension == ".csv":
                         extractor = CSVExtractor(file_path, autodetect_encoding=True)
@@ -143,7 +142,7 @@ class ExtractProcessor:
                         extractor = MarkdownExtractor(file_path, autodetect_encoding=True)
                     elif file_extension in [".htm", ".html"]:
                         extractor = HtmlExtractor(file_path)
-                    elif file_extension in [".docx"]:
+                    elif file_extension == ".docx":
                         extractor = WordExtractor(file_path, upload_file.tenant_id, upload_file.created_by)
                     elif file_extension == ".csv":
                         extractor = CSVExtractor(file_path, autodetect_encoding=True)

@@ -179,9 +179,9 @@ class OAIAPICompatLargeLanguageModel(_CommonOaiApiCompat, LargeLanguageModel):
         features = []
 
         function_calling_type = credentials.get("function_calling_type", "no_call")
-        if function_calling_type in ["function_call"]:
+        if function_calling_type == "function_call":
             features.append(ModelFeature.TOOL_CALL)
-        elif function_calling_type in ["tool_call"]:
+        elif function_calling_type == "tool_call":
             features.append(ModelFeature.MULTI_TOOL_CALL)
 
         stream_function_calling = credentials.get("stream_function_calling", "supported")

@@ -65,7 +65,7 @@ class OllamaEmbeddingModel(TextEmbeddingModel):
         inputs = []
         used_tokens = 0
 
-        for i, text in enumerate(texts):
+        for text in texts:
             # Here token count is only an approximation based on the GPT2 tokenizer
             num_tokens = self._get_num_tokens_by_gpt2(text)
 

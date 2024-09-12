@@ -220,7 +220,7 @@ class SparkLargeLanguageModel(LargeLanguageModel):
                 delta = content
 
             assistant_prompt_message = AssistantPromptMessage(
-                content=delta if delta else "",
+                content=delta or "",
             )
 
             prompt_tokens = self.get_num_tokens(model, credentials, prompt_messages)

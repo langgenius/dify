@@ -39,7 +39,7 @@ class TokenBufferMemory:
         )
 
         if message_limit and message_limit > 0:
-            message_limit = message_limit if message_limit <= 500 else 500
+            message_limit = min(message_limit, 500)
         else:
             message_limit = 500
 

@@ -37,7 +37,7 @@ class SearchAPI:
         return {
             "engine": "youtube_transcripts",
             "video_id": video_id,
-            "lang": language if language else "en",
+            "lang": language or "en",
             **{key: value for key, value in kwargs.items() if value not in [None, ""]},
         }
 

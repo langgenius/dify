@@ -231,10 +231,10 @@ class VertexAiLargeLanguageModel(LargeLanguageModel):
                         ),
                     )
                 elif isinstance(chunk, ContentBlockDeltaEvent):
-                    chunk_text = chunk.delta.text if chunk.delta.text else ""
+                    chunk_text = chunk.delta.text or ""
                     full_assistant_content += chunk_text
                     assistant_prompt_message = AssistantPromptMessage(
-                        content=chunk_text if chunk_text else "",
+                        content=chunk_text or "",
                     )
                     index = chunk.index
                     yield LLMResultChunk(
