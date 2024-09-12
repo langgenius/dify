@@ -56,14 +56,7 @@ class KeywordsModeration(Moderation):
         )
 
     def _is_violated(self, inputs: dict, keywords_list: list) -> bool:
-        for value in inputs.values():
-            if self._check_keywords_in_value(keywords_list, value):
-                return True
+        return any(self._check_keywords_in_value(keywords_list, value) for value in inputs.values())
 
-        return False
-
-    def _check_keywords_in_value(self, keywords_list, value):
-        for keyword in keywords_list:
-            if keyword.lower() in value.lower():
-                return True
-        return False
+    def _check_keywords_in_value(self, keywords_list, value) -> bool:
+        return any(keyword.lower() in value.lower() for keyword in keywords_list)

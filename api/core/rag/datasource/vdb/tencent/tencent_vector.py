@@ -63,10 +63,7 @@ class TencentVector(BaseVector):
 
     def _has_collection(self) -> bool:
         collections = self._db.list_collections()
-        for collection in collections:
-            if collection.collection_name == self._collection_name:
-                return True
-        return False
+        return any(collection.collection_name == self._collection_name for collection in collections)
 
     def _create_collection(self, dimension: int) -> None:
         lock_name = "vector_indexing_lock_{}".format(self._collection_name)
