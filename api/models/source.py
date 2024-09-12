@@ -1,6 +1,8 @@
 import json
 import uuid
 
+from configs import dify_config
+
 from sqlalchemy import func
 from sqlalchemy.dialects.postgresql import JSONB
 
@@ -14,7 +16,6 @@ class DataSourceOauthBinding(db.Model):
     __table_args__ = (
         db.PrimaryKeyConstraint("id", name="source_binding_pkey"),
         db.Index("source_binding_tenant_id_idx", "tenant_id"),
-        db.Index("source_info_idx", "source_info", postgresql_using="gin"),
     )
 
     id = db.Column(StringUUID, default=lambda: uuid.uuid4())
@@ -55,3 +56,9 @@ class DataSourceApiKeyAuthBinding(db.Model):
             "updated_at": self.updated_at.timestamp(),
             "disabled": self.disabled,
         }
+
+if dify_config.SQLALCHEMY_DATABASE_URI_SCHEME == "postgresql":
+    DataSourceOauthBinding.__table_args__ += (
+        db.Index("source_info_idx", "source_info", postgresql_using="gin"),
+    )
+    

@@ -192,7 +192,7 @@ class WorkflowToolProvider(db.Model):
     # description of the provider
     description = db.Column(db.Text, nullable=False)
     # parameter configuration
-    parameter_configuration = db.Column(db.Text, nullable=False, server_default="[]")
+    parameter_configuration = db.Column(db.Text, nullable=False, default="[]")
     # privacy policy
     privacy_policy = db.Column(db.String(255), nullable=True, server_default="")
 

@@ -12,7 +12,6 @@ import uuid
 from json import JSONDecodeError
 
 from sqlalchemy import func
-from sqlalchemy.dialects.postgresql import JSONB
 
 from configs import dify_config
 from core.rag.retrieval.retrieval_methods import RetrievalMethod
@@ -35,7 +34,6 @@ class Dataset(db.Model):
     __table_args__ = (
         db.PrimaryKeyConstraint("id", name="dataset_pkey"),
         db.Index("dataset_tenant_idx", "tenant_id"),
-        db.Index("retrieval_model_idx", "retrieval_model", postgresql_using="gin"),
     )
 
     INDEXING_TECHNIQUE_LIST = ["high_quality", "economy", None]
@@ -688,3 +686,9 @@ class DatasetPermission(db.Model):
     tenant_id = db.Column(StringUUID, nullable=False)
     has_permission = db.Column(db.Boolean, nullable=False, default=True)
     created_at = db.Column(db.DateTime, nullable=False, server_default=func.current_timestamp())
+
+if dify_config.SQLALCHEMY_DATABASE_URI_SCHEME == "postgresql":
+    Dataset.__table_args__ += (
+        db.Index("retrieval_model_idx", "retrieval_model", postgresql_using="gin"),
+    )
+    

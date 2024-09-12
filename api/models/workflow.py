@@ -129,10 +129,10 @@ class Workflow(db.Model):
     updated_by: Mapped[str] = db.Column(StringUUID)
     updated_at: Mapped[datetime] = db.Column(db.DateTime)
     _environment_variables: Mapped[str] = db.Column(
-        "environment_variables", db.Text, nullable=False, server_default="{}"
+        "environment_variables", db.Text, nullable=False, default="{}"
     )
     _conversation_variables: Mapped[str] = db.Column(
-        "conversation_variables", db.Text, nullable=False, server_default="{}"
+        "conversation_variables", db.Text, nullable=False, default="{}"
     )
 
     def __init__(

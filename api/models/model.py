@@ -1312,8 +1312,8 @@ class MessageAgentThought(db.Model):
     position = db.Column(db.Integer, nullable=False)
     thought = db.Column(db.Text, nullable=True)
     tool = db.Column(db.Text, nullable=True)
-    tool_labels_str = db.Column(db.Text, nullable=False, server_default=db.text("{}"))
-    tool_meta_str = db.Column(db.Text, nullable=False, server_default=db.text("{}"))
+    tool_labels_str = db.Column(db.Text, nullable=False, default="{}")
+    tool_meta_str = db.Column(db.Text, nullable=False, default="{}")
     tool_input = db.Column(db.Text, nullable=True)
     observation = db.Column(db.Text, nullable=True)
     # plugin_id = db.Column(StringUUID, nullable=True)  ## for future design
