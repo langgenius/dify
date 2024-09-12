@@ -65,7 +65,10 @@ class Provider(db.Model):
     updated_at = db.Column(db.DateTime, nullable=False, server_default=db.text("CURRENT_TIMESTAMP(0)"))
 
     def __repr__(self):
-        return f"<Provider(id={self.id}, tenant_id={self.tenant_id}, provider_name='{self.provider_name}', provider_type='{self.provider_type}')>"
+        return (
+            f"<Provider(id={self.id}, tenant_id={self.tenant_id}, provider_name='{self.provider_name}',"
+            f" provider_type='{self.provider_type}')>"
+        )
 
     @property
     def token_is_set(self):

@@ -70,7 +70,10 @@ class GitlabFilesTool(BuiltinTool):
                     )
                 else:  # It's a file
                     if is_repository:
-                        file_url = f"{domain}/api/v4/projects/{encoded_identifier}/repository/files/{item_path}/raw?ref={branch}"
+                        file_url = (
+                            f"{domain}/api/v4/projects/{encoded_identifier}/repository/files"
+                            f"/{item_path}/raw?ref={branch}"
+                        )
                     else:
                         file_url = (
                             f"{domain}/api/v4/projects/{project_id}/repository/files/{item_path}/raw?ref={branch}"

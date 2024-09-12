@@ -27,7 +27,6 @@ select = [
     "W605", # invalid-escape-sequence
 ]
 ignore = [
-    "E501", # line-too-long
     "E402", # module-import-not-at-top-of-file
     "E711", # none-comparison
     "E712", # true-false-comparison
@@ -68,15 +67,18 @@ ignore = [
     "F401", # unused-import
     "F811", # redefined-while-unused
 ]
-"tests/*" = [
-    "F401", # unused-import
-    "F811", # redefined-while-unused
-]
 "configs/*" = [
     "N802", # invalid-function-name
 ]
 "libs/gmpy2_pkcs10aep_cipher.py" = [
     "N803", # invalid-argument-name
+]
+"migrations/versions/*" = [
+    "E501", # line-too-long
+]
+"tests/*" = [
+    "F401", # unused-import
+    "F811", # redefined-while-unused
 ]
 
 [tool.ruff.format]
@@ -270,4 +272,4 @@ optional = true
 
 [tool.poetry.group.lint.dependencies]
 dotenv-linter = "~0.5.0"
-ruff = "~0.6.1"
+ruff = "~0.6.4"

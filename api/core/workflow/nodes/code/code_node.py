@@ -179,7 +179,8 @@ class CodeNode(BaseNode):
                                     )
                         else:
                             raise ValueError(
-                                f"Output {prefix}.{output_name} is not a valid array. make sure all elements are of the same type."
+                                f"Output {prefix}.{output_name} is not a valid array."
+                                f" make sure all elements are of the same type."
                             )
                 elif isinstance(output_value, type(None)):
                     pass
@@ -201,7 +202,8 @@ class CodeNode(BaseNode):
                         transformed_result[output_name] = None
                     else:
                         raise ValueError(
-                            f"Output {prefix}{dot}{output_name} is not an object, got {type(result.get(output_name))} instead."
+                            f"Output {prefix}{dot}{output_name} is not an object,"
+                            f" got {type(result.get(output_name))} instead."
                         )
                 else:
                     transformed_result[output_name] = self._transform_result(
@@ -228,7 +230,8 @@ class CodeNode(BaseNode):
                         transformed_result[output_name] = None
                     else:
                         raise ValueError(
-                            f"Output {prefix}{dot}{output_name} is not an array, got {type(result.get(output_name))} instead."
+                            f"Output {prefix}{dot}{output_name} is not an array,"
+                            f" got {type(result.get(output_name))} instead."
                         )
                 else:
                     if len(result[output_name]) > dify_config.CODE_MAX_NUMBER_ARRAY_LENGTH:
@@ -248,7 +251,8 @@ class CodeNode(BaseNode):
                         transformed_result[output_name] = None
                     else:
                         raise ValueError(
-                            f"Output {prefix}{dot}{output_name} is not an array, got {type(result.get(output_name))} instead."
+                            f"Output {prefix}{dot}{output_name} is not an array,"
+                            f" got {type(result.get(output_name))} instead."
                         )
                 else:
                     if len(result[output_name]) > dify_config.CODE_MAX_STRING_ARRAY_LENGTH:
@@ -268,7 +272,8 @@ class CodeNode(BaseNode):
                         transformed_result[output_name] = None
                     else:
                         raise ValueError(
-                            f"Output {prefix}{dot}{output_name} is not an array, got {type(result.get(output_name))} instead."
+                            f"Output {prefix}{dot}{output_name} is not an array,"
+                            f" got {type(result.get(output_name))} instead."
                         )
                 else:
                     if len(result[output_name]) > dify_config.CODE_MAX_OBJECT_ARRAY_LENGTH:
@@ -283,7 +288,8 @@ class CodeNode(BaseNode):
                                 pass
                             else:
                                 raise ValueError(
-                                    f"Output {prefix}{dot}{output_name}[{i}] is not an object, got {type(value)} instead at index {i}."
+                                    f"Output {prefix}{dot}{output_name}[{i}] is not an object,"
+                                    f" got {type(value)} instead at index {i}."
                                 )
 
                     transformed_result[output_name] = [

@@ -43,7 +43,7 @@ class ToolFileMessageTransformer:
                     result.append(
                         ToolInvokeMessage(
                             type=ToolInvokeMessage.MessageType.TEXT,
-                            message=f"Failed to download image: {message.message}, you can try to download it yourself.",
+                            message=f"Failed to download image: {message.message}, please try to download it manually.",
                             meta=message.meta.copy() if message.meta is not None else {},
                             save_as=message.save_as,
                         )
