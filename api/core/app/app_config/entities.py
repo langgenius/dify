@@ -92,7 +92,7 @@ class VariableEntityType(str, Enum):
     SELECT = "select"
     PARAGRAPH = "paragraph"
     NUMBER = "number"
-    EXTERNAL_DATA_TOOL = "external-data-tool"
+    EXTERNAL_DATA_TOOL = "external_data_tool"
 
 
 class VariableEntity(BaseModel):
