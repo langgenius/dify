@@ -39,7 +39,6 @@ ignore = [
     "F821", # undefined-name
     "F841", # unused-variable
     "FURB113", # repeated-append
-    "FURB148", # unnecessary-enumerate
     "UP007", # non-pep604-annotation
     "UP032", # f-string
     "B005", # strip-with-multi-characters
