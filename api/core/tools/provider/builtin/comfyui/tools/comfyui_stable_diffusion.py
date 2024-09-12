@@ -361,7 +361,8 @@ class ComfyuiStableDiffusionTool(BuiltinTool):
                                           human_description=I18nObject(
                                               en_US='Lora of Stable Diffusion, '
                                                     'you can check the official documentation of Stable Diffusion',
-                                              zh_Hans='Stable Diffusion 的 Lora 模型，您可以查看 Stable Diffusion 的官方文档',
+                                              zh_Hans='Stable Diffusion 的 Lora 模型，'
+                                                      '您可以查看 Stable Diffusion 的官方文档',
                                           ),
                                           type=ToolParameter.ToolParameterType.SELECT,
                                           form=ToolParameter.ToolParameterForm.FORM,
@@ -403,7 +404,8 @@ class ComfyuiStableDiffusionTool(BuiltinTool):
                                       human_description=I18nObject(
                                           en_US='Scheduler of Stable Diffusion, '
                                                 'you can check the official documentation of Stable Diffusion',
-                                          zh_Hans='Stable Diffusion 的Scheduler，您可以查看 Stable Diffusion 的官方文档',
+                                          zh_Hans='Stable Diffusion 的Scheduler，'
+                                                  '您可以查看 Stable Diffusion 的官方文档',
                                       ),
                                       type=ToolParameter.ToolParameterType.SELECT,
                                       form=ToolParameter.ToolParameterForm.FORM,
