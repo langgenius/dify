@@ -20,6 +20,7 @@ from botocore.exceptions import (
 from PIL.Image import Image
 
 # local import
+from core.model_runtime.callbacks.base_callback import Callback
 from core.model_runtime.entities.llm_entities import LLMResult, LLMResultChunk, LLMResultChunkDelta
 from core.model_runtime.entities.message_entities import (
     AssistantPromptMessage,
@@ -44,6 +45,14 @@ from core.model_runtime.errors.validate import CredentialsValidateFailedError
 from core.model_runtime.model_providers.__base.large_language_model import LargeLanguageModel
 
 logger = logging.getLogger(__name__)
+ANTHROPIC_BLOCK_MODE_PROMPT = """You should always follow the instructions and output a valid {{block}} object.
+The structure of the {{block}} object you can found in the instructions, use {"answer": "$your_answer"} as the default structure
+if you are not sure about the structure.
+
+<instructions>
+{{instructions}}
+</instructions>
+"""
 
 
 class BedrockLargeLanguageModel(LargeLanguageModel):
@@ -69,6 +78,40 @@ class BedrockLargeLanguageModel(LargeLanguageModel):
                 return model
         logger.info(f"current model id: {model_id} did not support by Converse API")
         return None
+
+    def _code_block_mode_wrapper(
+        self,
+        model: str,
+        credentials: dict,
+        prompt_messages: list[PromptMessage],
+        model_parameters: dict,
+        tools: Optional[list[PromptMessageTool]] = None,
+        stop: Optional[list[str]] = None,
+        stream: bool = True,
+        user: Optional[str] = None,
+        callbacks: list[Callback] = None,
+    ) -> Union[LLMResult, Generator]:
+        """
+        Code block mode wrapper for invoking large language model
+        """
+        if model_parameters.get("response_format"):
+            stop = stop or []
+            if "```\n" not in stop:
+                stop.append("```\n")
+            if "\n```" not in stop:
+                stop.append("\n```")
+            response_format = model_parameters.pop("response_format")
+            format_prompt = SystemPromptMessage(
+                content=ANTHROPIC_BLOCK_MODE_PROMPT.replace("{{instructions}}", prompt_messages[0].content).replace(
+                    "{{block}}", response_format
+                )
+            )
+            if len(prompt_messages) > 0 and isinstance(prompt_messages[0], SystemPromptMessage):
+                prompt_messages[0] = format_prompt
+            else:
+                prompt_messages.insert(0, format_prompt)
+            prompt_messages.append(AssistantPromptMessage(content=f"\n```{response_format}"))
+        return self._invoke(model, credentials, prompt_messages, model_parameters, tools, stop, stream, user)
 
     def _invoke(
         self,

@@ -16,7 +16,7 @@ from core.helper.code_executor.template_transformer import TemplateTransformer
 logger = logging.getLogger(__name__)
 
 
-class CodeExecutionException(Exception):
+class CodeExecutionError(Exception):
     pass
 
 
@@ -86,15 +86,15 @@ class CodeExecutor:
                 ),
             )
             if response.status_code == 503:
-                raise CodeExecutionException("Code execution service is unavailable")
+                raise CodeExecutionError("Code execution service is unavailable")
             elif response.status_code != 200:
                 raise Exception(
                     f"Failed to execute code, got status code {response.status_code}, please check if the sandbox service is running"
                 )
-        except CodeExecutionException as e:
+        except CodeExecutionError as e:
             raise e
         except Exception as e:
-            raise CodeExecutionException(
+            raise CodeExecutionError(
                 "Failed to execute code, which is likely a network issue,"
                 " please check if the sandbox service is running."
                 f" ( Error: {str(e)} )"
@@ -103,15 +103,15 @@ class CodeExecutor:
         try:
             response = response.json()
         except:
-            raise CodeExecutionException("Failed to parse response")
+            raise CodeExecutionError("Failed to parse response")
 
         if (code := response.get("code")) != 0:
-            raise CodeExecutionException(f"Got error code: {code}. Got error msg: {response.get('message')}")
+            raise CodeExecutionError(f"Got error code: {code}. Got error msg: {response.get('message')}")
 
         response = CodeExecutionResponse(**response)
 
         if response.data.error:
-            raise CodeExecutionException(response.data.error)
+            raise CodeExecutionError(response.data.error)
 
         return response.data.stdout or ""
 
@@ -126,13 +126,13 @@ class CodeExecutor:
         """
         template_transformer = cls.code_template_transformers.get(language)
         if not template_transformer:
-            raise CodeExecutionException(f"Unsupported language {language}")
+            raise CodeExecutionError(f"Unsupported language {language}")
 
         runner, preload = template_transformer.transform_caller(code, inputs)
 
         try:
             response = cls.execute_code(language, preload, runner)
-        except CodeExecutionException as e:
+        except CodeExecutionError as e:
             raise e
 
         return template_transformer.transform_response(response)

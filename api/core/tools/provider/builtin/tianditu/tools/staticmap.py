@@ -45,5 +45,5 @@ class PoiSearchTool(BuiltinTool):
         ).content
 
         return self.create_blob_message(
-            blob=result, meta={"mime_type": "image/png"}, save_as=self.VARIABLE_KEY.IMAGE.value
+            blob=result, meta={"mime_type": "image/png"}, save_as=self.VariableKey.IMAGE.value
         )

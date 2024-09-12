@@ -11,7 +11,7 @@ from core.app.entities.queue_entities import QueueAnnotationReplyEvent
 from core.callback_handler.index_tool_callback_handler import DatasetIndexToolCallbackHandler
 from core.memory.token_buffer_memory import TokenBufferMemory
 from core.model_manager import ModelInstance
-from core.moderation.base import ModerationException
+from core.moderation.base import ModerationError
 from core.rag.retrieval.dataset_retrieval import DatasetRetrieval
 from extensions.ext_database import db
 from models.model import App, Conversation, Message
@@ -98,7 +98,7 @@ class ChatAppRunner(AppRunner):
                 query=query,
                 message_id=message.id,
             )
-        except ModerationException as e:
+        except ModerationError as e:
             self.direct_output(
                 queue_manager=queue_manager,
                 app_generate_entity=application_generate_entity,

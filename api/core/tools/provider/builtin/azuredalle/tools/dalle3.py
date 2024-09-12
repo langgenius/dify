@@ -69,7 +69,7 @@ class DallE3Tool(BuiltinTool):
                 self.create_blob_message(
                     blob=b64decode(image.b64_json),
                     meta={"mime_type": "image/png"},
-                    save_as=self.VARIABLE_KEY.IMAGE.value,
+                    save_as=self.VariableKey.IMAGE.value,
                 )
             )
         result.append(self.create_text_message(f"\nGenerate image source to Seed ID: {seed_id}"))

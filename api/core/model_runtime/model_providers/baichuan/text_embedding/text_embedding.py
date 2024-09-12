@@ -19,7 +19,7 @@ from core.model_runtime.model_providers.__base.text_embedding_model import TextE
 from core.model_runtime.model_providers.baichuan.llm.baichuan_tokenizer import BaichuanTokenizer
 from core.model_runtime.model_providers.baichuan.llm.baichuan_turbo_errors import (
     BadRequestError,
-    InsufficientAccountBalance,
+    InsufficientAccountBalanceError,
     InternalServerError,
     InvalidAPIKeyError,
     InvalidAuthenticationError,
@@ -109,7 +109,7 @@ class BaichuanTextEmbeddingModel(TextEmbeddingModel):
             if err == "invalid_api_key":
                 raise InvalidAPIKeyError(msg)
             elif err == "insufficient_quota":
-                raise InsufficientAccountBalance(msg)
+                raise InsufficientAccountBalanceError(msg)
             elif err == "invalid_authentication":
                 raise InvalidAuthenticationError(msg)
             elif err and "rate" in err:
@@ -166,7 +166,7 @@ class BaichuanTextEmbeddingModel(TextEmbeddingModel):
             InvokeRateLimitError: [RateLimitReachedError],
             InvokeAuthorizationError: [
                 InvalidAuthenticationError,
-                InsufficientAccountBalance,
+                InsufficientAccountBalanceError,
                 InvalidAPIKeyError,
             ],
             InvokeBadRequestError: [BadRequestError, KeyError],

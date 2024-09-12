@@ -1,7 +1,7 @@
 from services.errors.base import BaseServiceError
 
 
-class AccountNotFound(BaseServiceError):
+class AccountNotFoundError(BaseServiceError):
     pass
 
 
@@ -29,7 +29,7 @@ class LinkAccountIntegrateError(BaseServiceError):
     pass
 
 
-class TenantNotFound(BaseServiceError):
+class TenantNotFoundError(BaseServiceError):
     pass
 
 

@@ -63,7 +63,7 @@ class MaasService(Service):
                         raise
 
                     if res.error is not None and res.error.code_n != 0:
-                        raise MaasException(
+                        raise MaasError(
                             res.error.code_n,
                             res.error.code,
                             res.error.message,
@@ -72,7 +72,7 @@ class MaasService(Service):
                     yield res
 
             return iter_fn()
-        except MaasException:
+        except MaasError:
             raise
         except Exception as e:
             raise new_client_sdk_request_error(str(e))
@@ -94,7 +94,7 @@ class MaasService(Service):
                 resp["req_id"] = req_id
             return resp
 
-        except MaasException as e:
+        except MaasError as e:
             raise e
         except Exception as e:
             raise new_client_sdk_request_error(str(e), req_id)
@@ -109,7 +109,7 @@ class MaasService(Service):
         if not self._apikey and not credentials_exist:
             raise new_client_sdk_request_error("no valid credential", req_id)
 
-        if not (api in self.api_info):
+        if api not in self.api_info:
             raise new_client_sdk_request_error("no such api", req_id)
 
     def _call(self, endpoint_id, api, req_id, params, body, apikey=None, stream=False):
@@ -147,14 +147,14 @@ class MaasService(Service):
                 raise new_client_sdk_request_error(raw, req_id)
 
             if resp.error:
-                raise MaasException(resp.error.code_n, resp.error.code, resp.error.message, req_id)
+                raise MaasError(resp.error.code_n, resp.error.code, resp.error.message, req_id)
             else:
                 raise new_client_sdk_request_error(resp, req_id)
 
         return res
 
 
-class MaasException(Exception):
+class MaasError(Exception):
     def __init__(self, code_n, code, message, req_id):
         self.code_n = code_n
         self.code = code
@@ -172,7 +172,7 @@ class MaasException(Exception):
 
 
 def new_client_sdk_request_error(raw, req_id=""):
-    return MaasException(1709701, "ClientSDKRequestError", "MaaS SDK request error: {}".format(raw), req_id)
+    return MaasError(1709701, "ClientSDKRequestError", "MaaS SDK request error: {}".format(raw), req_id)
 
 
 class BinaryResponseContent:
@@ -192,7 +192,7 @@ class BinaryResponseContent:
 
         if len(error_bytes) > 0:
             resp = json_to_object(str(error_bytes, encoding="utf-8"), req_id=self.request_id)
-            raise MaasException(resp.error.code_n, resp.error.code, resp.error.message, self.request_id)
+            raise MaasError(resp.error.code_n, resp.error.code, resp.error.message, self.request_id)
 
     def iter_bytes(self) -> Iterator[bytes]:
         yield from self.response

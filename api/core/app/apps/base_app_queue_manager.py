@@ -171,5 +171,5 @@ class AppQueueManager:
                 )
 
 
-class GenerateTaskStoppedException(Exception):
+class GenerateTaskStoppedError(Exception):
     pass

@@ -35,7 +35,7 @@ from services.errors.account import (
     NoPermissionError,
     RateLimitExceededError,
     RoleAlreadyAssignedError,
-    TenantNotFound,
+    TenantNotFoundError,
 )
 from services.errors.workspace import WorkSpaceNotAllowedCreateError
 from tasks.mail_email_code_login import send_email_code_login_mail_task
@@ -382,13 +382,13 @@ class TenantService:
         """Get tenant by account and add the role"""
         tenant = account.current_tenant
         if not tenant:
-            raise TenantNotFound("Tenant not found.")
+            raise TenantNotFoundError("Tenant not found.")
 
         ta = TenantAccountJoin.query.filter_by(tenant_id=tenant.id, account_id=account.id).first()
         if ta:
             tenant.role = ta.role
         else:
-            raise TenantNotFound("Tenant not found for the account.")
+            raise TenantNotFoundError("Tenant not found for the account.")
         return tenant
 
     @staticmethod
@@ -690,8 +690,8 @@ class RegisterService:
             "email": account.email,
             "workspace_id": tenant.id,
         }
-        expiryHours = dify_config.INVITE_EXPIRY_HOURS
-        redis_client.setex(cls._get_invitation_token_key(token), expiryHours * 60 * 60, json.dumps(invitation_data))
+        expiry_hours = dify_config.INVITE_EXPIRY_HOURS
+        redis_client.setex(cls._get_invitation_token_key(token), expiry_hours * 60 * 60, json.dumps(invitation_data))
         return token
 
     @classmethod
