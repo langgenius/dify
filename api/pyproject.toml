@@ -23,6 +23,7 @@ select = [
     "RUF101", # redirected-noqa
     "S506", # unsafe-yaml-load
     "SIM", # flake8-simplify rules
+    "PT",
     "UP", # pyupgrade rules
     "W191", # tab-indentation
     "W605", # invalid-escape-sequence
@@ -59,6 +60,8 @@ ignore = [
     "SIM117", # multiple-with-statements
     "SIM210", # if-expr-with-true-false
     "SIM300", # yoda-conditions
+    "PT011",
+    "PT017",
 ]
 
 [tool.ruff.lint.per-file-ignores]
