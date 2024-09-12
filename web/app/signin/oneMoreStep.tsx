@@ -76,14 +76,14 @@ const OneMoreStep = () => {
   return (
     <>
       <div className="w-full mx-auto">
-        <h2 className="text-2xl font-bold text-text-secondary">{t('login.oneMoreStep')}</h2>
-        <p className='mt-1 text-sm text-text-tertiary'>{t('login.createSample')}</p>
+        <h2 className="title-4xl-semi-bold text-text-secondary">{t('login.oneMoreStep')}</h2>
+        <p className='mt-1 body-md-regular text-text-tertiary'>{t('login.createSample')}</p>
       </div>
 
       <div className="w-full mx-auto mt-6">
         <div className="bg-white">
           <div className="mb-5">
-            <label className="my-2 flex items-center justify-between text-sm font-medium text-text-secondary">
+            <label className="my-2 flex items-center justify-between system-md-semibold text-text-secondary">
               {t('login.invitationCode')}
               <Tooltip
                 popupContent={
@@ -112,10 +112,10 @@ const OneMoreStep = () => {
             </div>
           </div>
           <div className='mb-5'>
-            <label htmlFor="name" className="my-2 flex items-center justify-between text-sm font-medium text-text-secondary">
+            <label htmlFor="name" className="my-2 system-md-semibold text-text-secondary">
               {t('login.interfaceLanguage')}
             </label>
-            <div className="relative mt-1 rounded-md shadow-sm">
+            <div className="mt-1">
               <SimpleSelect
                 defaultValue={LanguagesSupported[0]}
                 items={languages.filter(item => item.supported)}
@@ -126,10 +126,10 @@ const OneMoreStep = () => {
             </div>
           </div>
           <div className='mb-4'>
-            <label htmlFor="timezone" className="block text-sm font-medium text-text-tertiary">
+            <label htmlFor="timezone" className="system-md-semibold text-text-tertiary">
               {t('login.timezone')}
             </label>
-            <div className="relative mt-1 rounded-md shadow-sm">
+            <div className="mt-1">
               <SimpleSelect
                 defaultValue={state.timezone}
                 items={timezones}
@@ -151,11 +151,11 @@ const OneMoreStep = () => {
               {t('login.go')}
             </Button>
           </div>
-          <div className="block w-hull mt-2 text-xs text-text-tertiary">
+          <div className="block w-hull mt-2 system-xs-regular text-text-tertiary">
             {t('login.license.tip')}
             &nbsp;
             <Link
-              className='text-text-accent-secondary'
+              className='system-xs-medium text-text-accent-secondary'
               target='_blank' rel='noopener noreferrer'
               href={'https://docs.dify.ai/user-agreement/open-source'}
             >{t('login.license.link')}</Link>

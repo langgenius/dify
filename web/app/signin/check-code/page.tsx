@@ -58,12 +58,12 @@ export default function CheckCode() {
   }
 
   return <div className='flex flex-col gap-3'>
-    <div className='bg-background-default-dodge text-text-accent-light-mode-only border-[0.5px] shadow inline-flex  w-14 h-14 justify-center items-center rounded-2xl text-2xl'>
-      <RiMailSendFill />
+    <div className='bg-background-default-dodge border border-components-panel-border-subtle shadow-lg inline-flex w-14 h-14 justify-center items-center rounded-2xl'>
+      <RiMailSendFill className='w-6 h-6 text-2xl text-text-accent-light-mode-only' />
     </div>
-    <div className='pt-3 pb-4'>
-      <h2 className='text-2xl font-semibold'>{t('login.checkCode.checkYourEmail')}</h2>
-      <p className='text-text-secondary text-sm mt-2 leading-5'>
+    <div className='pt-2 pb-4'>
+      <h2 className='title-4xl-semi-bold text-text-primary'>{t('login.checkCode.checkYourEmail')}</h2>
+      <p className='body-md-regular mt-2 text-text-secondary'>
         <span dangerouslySetInnerHTML={{ __html: t('login.checkCode.tips', { email }) as string }}></span>
         <br />
         {t('login.checkCode.validTime')}
@@ -71,19 +71,19 @@ export default function CheckCode() {
     </div>
 
     <form action="">
-      <label htmlFor="code" className='text-text-secondary text-sm font-semibold mb-1'>{t('login.checkCode.verificationCode')}</label>
+      <label htmlFor="code" className='system-md-semibold mb-1 text-text-secondary'>{t('login.checkCode.verificationCode')}</label>
       <Input value={code} onChange={e => setVerifyCode(e.target.value)} max-length={6} className='mt-1' placeholder={t('login.checkCode.verificationCodePlaceholder') as string} />
       <Button loading={loading} disabled={loading} className='my-3 w-full' variant='primary' onClick={verify}>{t('login.checkCode.verify')}</Button>
       <Countdown onResend={resendCode} />
     </form>
     <div className='py-2'>
-      <div className='bg-gradient-to-r from-white/[0.01] via-[#101828]/8 to-white/[0.01] h-px'></div>
+      <div className='bg-gradient-to-r from-background-gradient-mask-transparent via-divider-regular to-background-gradient-mask-transparent h-px'></div>
     </div>
-    <Link href='/signin' className='flex items-center justify-center text-xs h-9 text-text-tertiary'>
+    <Link href='/signin' className='flex items-center justify-center h-9 text-text-tertiary'>
       <div className='inline-block p-1 rounded-full bg-background-default-dimm'>
         <RiArrowLeftLine size={12} />
       </div>
-      <span className='ml-2'>{t('login.checkCode.useAnotherMethod')}</span>
+      <span className='ml-2 system-xs-regular'>{t('login.checkCode.useAnotherMethod')}</span>
     </Link>
   </div>
 }

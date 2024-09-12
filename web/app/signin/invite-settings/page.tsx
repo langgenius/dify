@@ -64,11 +64,11 @@ export default function InviteSettingsPage() {
 
   if (!checkRes)
     return <Loading />
-  if (!checkRes.is_valid) {
+  if (checkRes.is_valid) {
     return <div className="flex flex-col md:w-[400px]">
       <div className="w-full mx-auto">
-        <div className="mb-3 flex justify-center items-center w-[56px] h-[56px] p-5 rounded-2xl border border-components-panel-border-subtle shadow-lg text-3xl font-bold">🤷‍♂️</div>
-        <h2 className="text-3xl font-bold text-text-primary">{t('login.invalid')}</h2>
+        <div className="mb-3 flex justify-center items-center w-14 h-14 rounded-2xl border border-components-panel-border-subtle shadow-lg text-2xl font-bold">🤷‍♂️</div>
+        <h2 className="title-4xl-semi-bold">{t('login.invalid')}</h2>
       </div>
       <div className="w-full mx-auto mt-6">
         <Button variant='primary' className='w-full !text-sm'>
@@ -79,19 +79,19 @@ export default function InviteSettingsPage() {
   }
 
   return <div className='flex flex-col gap-3'>
-    <div className='bg-background-default-dodge text-text-accent-light-mode-only border border-components-panel-border-subtle shadow-lg inline-flex w-14 h-14 justify-center items-center rounded-2xl'>
-      <RiAccountCircleLine className='w-8 h-8 text-2xl' />
+    <div className='bg-background-default-dodge border border-components-panel-border-subtle shadow-lg inline-flex w-14 h-14 justify-center items-center rounded-2xl'>
+      <RiAccountCircleLine className='w-6 h-6 text-2xl text-text-accent-light-mode-only' />
     </div>
-    <div className='pt-3 pb-4'>
-      <h2 className='text-2xl font-semibold'>{t('login.setYourAccount')}</h2>
+    <div className='pt-2 pb-4'>
+      <h2 className='title-4xl-semi-bold'>{t('login.setYourAccount')}</h2>
     </div>
     <form action=''>
 
       <div className='mb-5'>
-        <label htmlFor="name" className="my-2 flex items-center justify-between text-sm font-medium text-text-secondary">
+        <label htmlFor="name" className="my-2 system-md-semibold">
           {t('login.name')}
         </label>
-        <div className="mt-1 relative rounded-md shadow-sm">
+        <div className="mt-1">
           <Input
             id="name"
             type="text"
@@ -102,10 +102,10 @@ export default function InviteSettingsPage() {
         </div>
       </div>
       <div className='mb-5'>
-        <label htmlFor="name" className="my-2 flex items-center justify-between text-sm font-medium text-text-secondary">
+        <label htmlFor="name" className="my-2 system-md-semibold">
           {t('login.interfaceLanguage')}
         </label>
-        <div className="relative mt-1 rounded-md shadow-sm">
+        <div className="mt-1">
           <SimpleSelect
             defaultValue={LanguagesSupported[0]}
             items={languages.filter(item => item.supported)}
@@ -117,10 +117,10 @@ export default function InviteSettingsPage() {
       </div>
       {/* timezone */}
       <div className='mb-5'>
-        <label htmlFor="timezone" className="block text-sm font-medium text-text-secondary">
+        <label htmlFor="timezone" className="system-md-semibold">
           {t('login.timezone')}
         </label>
-        <div className="relative mt-1 rounded-md shadow-sm">
+        <div className="mt-1">
           <SimpleSelect
             defaultValue={timezone}
             items={timezones}
@@ -133,18 +133,18 @@ export default function InviteSettingsPage() {
       <div>
         <Button
           variant='primary'
-          className='w-full !text-sm'
+          className='w-full'
           onClick={handleActivate}
         >
           {`${t('login.join')} ${checkRes?.data?.workspace_name}`}
         </Button>
       </div>
     </form>
-    <div className="block w-hull mt-2 text-xs text-text-secondary">
+    <div className="block w-hull mt-2 system-xs-regular">
       {t('login.license.tip')}
       &nbsp;
       <Link
-        className='text-text-accent-secondary'
+        className='system-xs-medium text-text-accent-secondary'
         target='_blank' rel='noopener noreferrer'
         href={`https://docs.dify.ai/${language !== LanguagesSupported[1] ? 'user-agreement' : `v/${locale.toLowerCase()}/policies`}/open-source`}
       >{t('login.license.link')}</Link>

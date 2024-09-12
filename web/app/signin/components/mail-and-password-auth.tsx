@@ -69,7 +69,7 @@ export default function MailAndPasswordAuth({ isInvite }: MailAndPasswordAuthPro
 
   return <form onSubmit={() => { }}>
     <div className='mb-3'>
-      <label htmlFor="email" className="my-2 block text-sm font-medium text-text-secondary">
+      <label htmlFor="email" className="my-2 system-md-semibold text-text-secondary">
         {t('login.email')}
       </label>
       <div className="mt-1">
@@ -86,9 +86,9 @@ export default function MailAndPasswordAuth({ isInvite }: MailAndPasswordAuthPro
     </div>
 
     <div className='mb-3'>
-      <label htmlFor="password" className="my-2 flex items-center justify-between text-sm">
-        <span className='font-medium text-text-secondary'>{t('login.password')}</span>
-        <Link href={`/reset-password?${searchParams.toString()}`} className='text-components-button-secondary-accent-text text-xs'>
+      <label htmlFor="password" className="my-2 flex items-center justify-between">
+        <span className='system-md-semibold text-text-secondary'>{t('login.password')}</span>
+        <Link href={`/reset-password?${searchParams.toString()}`} className='system-xs-regular text-components-button-secondary-accent-text'>
           {t('login.forget')}
         </Link>
       </label>
