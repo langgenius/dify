@@ -1,4 +1,4 @@
-import type { TransferMethod, TtsAutoPlay } from '@/types/app'
+import type { Resolution, TransferMethod, TtsAutoPlay } from '@/types/app'
 
 export type EnabledOrDisabled = {
   enabled?: boolean
@@ -30,13 +30,13 @@ export type SensitiveWordAvoidance = EnabledOrDisabled & {
 
 export type FileUpload = {
   image?: EnabledOrDisabled & {
-    detail?: 'high' | 'low'
+    detail?: Resolution
     number_limits?: number
     transfer_methods?: TransferMethod[]
   }
   allowed_file_types?: string[]
   allowed_file_extensions?: string[]
-  allowed_file_upload_methods?: string[]
+  allowed_file_upload_methods?: TransferMethod[]
   number_limits?: number
 } & EnabledOrDisabled
 

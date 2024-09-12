@@ -979,7 +979,7 @@ const Configuration: FC = () => {
             <NewFeaturePanel
               show
               inWorkflow={false}
-              showFileUpload={isShowVisionConfig}
+              showFileUpload={false}
               isChatMode={mode !== 'completion'}
               disabled={false}
               onChange={handleFeaturesChange}

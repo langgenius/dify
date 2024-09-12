@@ -155,7 +155,6 @@ const PromptValuePanel: FC<IPromptValuePanelProps> = ({
                 </div>
               </div>
             ))}
-            {/* ##TODO## file_upload */}
             {visionConfig?.enabled && (
               <div className="mt-3 xl:flex justify-between">
                 <div className="mr-1 py-2 shrink-0 w-[120px] text-sm text-gray-900">{t('common.imageUploader.imageUpload')}</div>
@@ -204,6 +203,7 @@ const PromptValuePanel: FC<IPromptValuePanelProps> = ({
       </div>
       <div className='mx-3'>
         <FeatureBar
+          showFileUpload={false}
           isChatMode={appType !== AppType.completion}
           onFeatureBarClick={setShowAppConfigureFeaturesModal} />
       </div>

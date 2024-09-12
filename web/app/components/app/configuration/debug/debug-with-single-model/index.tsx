@@ -41,7 +41,7 @@ const DebugWithSingleModel = forwardRef<DebugWithSingleModelRefType, DebugWithSi
     inputs,
     collectionList,
     completionParams,
-    isShowVisionConfig,
+    // isShowVisionConfig,
   } = useDebugConfigurationContext()
   const { textGenerationModelList } = useProviderContext()
   const features = useFeatures(s => s.features)
@@ -142,7 +142,7 @@ const DebugWithSingleModel = forwardRef<DebugWithSingleModelRefType, DebugWithSi
       chatContainerClassName='px-3 pt-6'
       chatFooterClassName='px-3 pt-10 pb-0'
       showFeatureBar
-      showFileUpload={isShowVisionConfig}
+      showFileUpload={false}
       onFeatureBarClick={setShowAppConfigureFeaturesModal}
       suggestedQuestions={suggestedQuestions}
       onSend={doSend}
