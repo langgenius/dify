@@ -51,7 +51,7 @@ model_credential_schema:
         zh_Hans: API 版本
         en_US: API Version
       type: select
-      required: true    
+      required: true 
       options:
         - label:
             en_US: 2024-08-01-preview
