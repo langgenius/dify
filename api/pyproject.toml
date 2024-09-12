@@ -23,7 +23,7 @@ select = [
     "RUF101", # redirected-noqa
     "S506", # unsafe-yaml-load
     "SIM", # flake8-simplify rules
-    "PT",
+    "PT", # flake8-pytest-style rules
     "UP", # pyupgrade rules
     "W191", # tab-indentation
     "W605", # invalid-escape-sequence
