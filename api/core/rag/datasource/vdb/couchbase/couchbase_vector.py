@@ -240,16 +240,20 @@ class CouchbaseVector(BaseVector):
             WHERE META().id IN $doc_ids;
             """
         try:
-            self._cluster.query(query, named_parameters={'doc_ids': ids})
+            result = self._cluster.query(query, named_parameters={'doc_ids': ids})
+            # force evaluation of the query to ensure deletion occurs
+            list(result)
         except Exception as e:
-            print(e)
+            logger.error(e)
 
     def delete_by_document_id(self, document_id: str):
         query = f"""
                 DELETE FROM `{self._client_config.bucket_name}`.{self._client_config.scope_name}.{self._collection_name}
                 WHERE META().id = $doc_id;
                 """
-        self._cluster.query(query,named_parameters={'doc_id':document_id})
+        result = self._cluster.query(query,named_parameters={'doc_id':document_id})
+        # force evaluation of the query to ensure deletion occurs
+        list(result)
 
     # def get_ids_by_metadata_field(self, key: str, value: str):
     #     query = f"""
@@ -265,7 +269,9 @@ class CouchbaseVector(BaseVector):
             DELETE FROM `{self._client_config.bucket_name}`.{self._client_config.scope_name}.{self._collection_name}
             WHERE metadata.{key} = $value;
             """
-        self._cluster.query(query, named_parameters={'value':value})
+        result = self._cluster.query(query, named_parameters={'value':value})
+        # force evaluation of the query to ensure deletion occurs
+        list(result)
         
     def search_by_vector(
             self,
