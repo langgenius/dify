@@ -22,6 +22,7 @@ select = [
     "RUF100", # unused-noqa
     "RUF101", # redirected-noqa
     "S506", # unsafe-yaml-load
+    "SIM101",
     "SIM116", # if-else-block-instead-of-dict-lookup
     "SIM401", # if-else-block-instead-of-dict-get
     "SIM910", # dict-get-with-none-default
