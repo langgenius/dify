@@ -112,6 +112,10 @@ class OAuthCallback(Resource):
             TenantService.create_owner_tenant_if_not_exist(account)
         except Unauthorized:
             return redirect(f"{dify_config.CONSOLE_WEB_URL}/signin?message=WorkspaceNotFound")
+        except WorkSpaceNotAllowedCreateError:
+            return redirect(
+                f"{dify_config.CONSOLE_WEB_URL}/signin?message=Workspace not found, please contact system admin to invite you to join in a workspace."
+            )
 
         token = AccountService.login(account, ip_address=get_remote_ip(request))
 
