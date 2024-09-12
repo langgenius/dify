@@ -1,3 +1,4 @@
+import math
 from uuid import uuid4
 
 import pytest
@@ -29,7 +30,7 @@ def test_integer_variable():
 
 
 def test_float_variable():
-    test_data = {"value_type": "number", "name": "test_float", "value": 3.14}
+    test_data = {"value_type": "number", "name": "test_float", "value": math.pi}
     result = factory.build_variable_from_mapping(test_data)
     assert isinstance(result, FloatVariable)
 

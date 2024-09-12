@@ -268,7 +268,7 @@ class Graph(BaseModel):
                     f"Node {graph_edge.source_node_id} is connected to the previous node, please check the graph."
                 )
 
-            new_route = route[:]
+            new_route = route.copy()
             new_route.append(graph_edge.target_node_id)
             cls._check_connected_to_previous_node(
                 route=new_route,
@@ -679,8 +679,7 @@ class Graph(BaseModel):
         all_routes_node_ids = set()
         parallel_start_node_ids: dict[str, list[str]] = {}
         for branch_node_id, node_ids in routes_node_ids.items():
-            for node_id in node_ids:
-                all_routes_node_ids.add(node_id)
+            all_routes_node_ids.update(node_ids)
 
             if branch_node_id in reverse_edge_mapping:
                 for graph_edge in reverse_edge_mapping[branch_node_id]:

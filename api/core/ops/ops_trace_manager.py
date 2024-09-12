@@ -695,8 +695,7 @@ class TraceQueueManager:
             self.start_timer()
 
     def add_trace_task(self, trace_task: TraceTask):
-        global trace_manager_timer
-        global trace_manager_queue
+        global trace_manager_timer, trace_manager_queue
         try:
             if self.trace_instance:
                 trace_task.app_id = self.app_id
