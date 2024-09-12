@@ -132,15 +132,16 @@ class EmailCodeLoginApi(Resource):
 
         AccountService.revoke_email_code_login_token(args["token"])
         account = AccountService.get_user_through_email(user_email)
-        tenant = TenantService.get_join_tenants(account)
-        if not tenant:
-            if not dify_config.ALLOW_CREATE_WORKSPACE:
-                raise NotAllowedCreateWorkspace()
-            else:
-                tenant = TenantService.create_tenant(f"{account.name}'s Workspace")
-                TenantService.create_tenant_member(tenant, account, role="owner")
-                account.current_tenant = tenant
-                tenant_was_created.send(tenant)
+        if account:
+            tenant = TenantService.get_join_tenants(account)
+            if not tenant:
+                if not dify_config.ALLOW_CREATE_WORKSPACE:
+                    raise NotAllowedCreateWorkspace()
+                else:
+                    tenant = TenantService.create_tenant(f"{account.name}'s Workspace")
+                    TenantService.create_tenant_member(tenant, account, role="owner")
+                    account.current_tenant = tenant
+                    tenant_was_created.send(tenant)
 
         if account is None:
             try:
