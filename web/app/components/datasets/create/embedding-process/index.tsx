@@ -13,8 +13,7 @@ import cn from '@/utils/classnames'
 import { FieldInfo } from '@/app/components/datasets/documents/detail/metadata'
 import Button from '@/app/components/base/button'
 import type { FullDocumentDetail, IndexingStatusResponse, ProcessRuleResponse } from '@/models/datasets'
-import { formatNumber } from '@/utils/format'
-import { fetchIndexingStatusBatch as doFetchIndexingStatus, fetchIndexingEstimateBatch, fetchProcessRule } from '@/service/datasets'
+import { fetchIndexingStatusBatch as doFetchIndexingStatus, fetchProcessRule } from '@/service/datasets'
 import { DataSourceType } from '@/models/datasets'
 import NotionIcon from '@/app/components/base/notion-icon'
 import PriorityLabel from '@/app/components/billing/priority-label'
@@ -142,14 +141,6 @@ const EmbeddingProcess: FC<Props> = ({ datasetId, batchId, documents = [], index
   }, apiParams => fetchProcessRule(omit(apiParams, 'action')), {
     revalidateOnFocus: false,
   })
-  // get cost
-  const { data: indexingEstimateDetail } = useSWR({
-    action: 'fetchIndexingEstimateBatch',
-    datasetId,
-    batchId,
-  }, apiParams => fetchIndexingEstimateBatch(omit(apiParams, 'action')), {
-    revalidateOnFocus: false,
-  })
 
   const router = useRouter()
   const navToDocumentList = () => {
@@ -190,27 +181,10 @@ const EmbeddingProcess: FC<Props> = ({ datasetId, batchId, documents = [], index
 
   return (
     <>
-      <div className='h-5 flex justify-between items-center mb-5'>
+      <div className='h-5 flex items-center mb-5'>
         <div className={s.embeddingStatus}>
           {isEmbedding && t('datasetDocuments.embedding.processing')}
           {isEmbeddingCompleted && t('datasetDocuments.embedding.completed')}
-        </div>
-        <div className={s.cost}>
-          {indexingType === 'high_quality' && (
-            <div className='flex items-center'>
-              <div className={cn(s.commonIcon, s.highIcon)} />
-              {t('datasetDocuments.embedding.highQuality')} · {t('datasetDocuments.embedding.estimate')}
-              <span className={s.tokens}>{formatNumber(indexingEstimateDetail?.tokens || 0)}</span>tokens
-              (<span className={s.price}>${formatNumber(indexingEstimateDetail?.total_price || 0)}</span>)
-            </div>
-          )}
-          {indexingType === 'economy' && (
-            <div className='flex items-center'>
-              <div className={cn(s.commonIcon, s.economyIcon)} />
-              {t('datasetDocuments.embedding.economy')} · {t('datasetDocuments.embedding.estimate')}
-              <span className={s.tokens}>0</span>tokens
-            </div>
-          )}
         </div>
       </div>
       {

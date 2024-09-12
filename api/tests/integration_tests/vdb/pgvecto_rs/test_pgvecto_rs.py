@@ -31,5 +31,5 @@ class PGVectoRSVectorTest(AbstractVectorTest):
         assert len(ids) == 1
 
 
-def test_pgvecot_rs(setup_mock_redis):
+def test_pgvecto_rs(setup_mock_redis):
     PGVectoRSVectorTest().run_all_tests()

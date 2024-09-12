@@ -8,46 +8,49 @@ from core.tools.tool.builtin_tool import BuiltinTool
 
 
 class JSONParseTool(BuiltinTool):
-    def _invoke(self,
-                user_id: str,
-                tool_parameters: dict[str, Any],
-                ) -> Union[ToolInvokeMessage, list[ToolInvokeMessage]]:
+    def _invoke(
+        self,
+        user_id: str,
+        tool_parameters: dict[str, Any],
+    ) -> Union[ToolInvokeMessage, list[ToolInvokeMessage]]:
         """
-            invoke tools
+        invoke tools
         """
         # get content
-        content = tool_parameters.get('content', '')
+        content = tool_parameters.get("content", "")
         if not content:
-            return self.create_text_message('Invalid parameter content')
+            return self.create_text_message("Invalid parameter content")
 
         # get query
-        query = tool_parameters.get('query', '')
+        query = tool_parameters.get("query", "")
         if not query:
-            return self.create_text_message('Invalid parameter query')
+            return self.create_text_message("Invalid parameter query")
 
         # get new value
-        new_value = tool_parameters.get('new_value', '')
+        new_value = tool_parameters.get("new_value", "")
         if not new_value:
-            return self.create_text_message('Invalid parameter new_value')
+            return self.create_text_message("Invalid parameter new_value")
 
         # get insert position
-        index = tool_parameters.get('index')
+        index = tool_parameters.get("index")
 
         # get create path
-        create_path = tool_parameters.get('create_path', False)
+        create_path = tool_parameters.get("create_path", False)
 
         # get value decode.
         # if true, it will be decoded to an dict
-        value_decode = tool_parameters.get('value_decode', False)
+        value_decode = tool_parameters.get("value_decode", False)
 
-        ensure_ascii = tool_parameters.get('ensure_ascii', True)
+        ensure_ascii = tool_parameters.get("ensure_ascii", True)
         try:
             result = self._insert(content, query, new_value, ensure_ascii, value_decode, index, create_path)
             return self.create_text_message(str(result))
         except Exception:
-            return self.create_text_message('Failed to insert JSON content')
+            return self.create_text_message("Failed to insert JSON content")
 
-    def _insert(self, origin_json, query, new_value, ensure_ascii: bool, value_decode: bool, index=None, create_path=False):
+    def _insert(
+        self, origin_json, query, new_value, ensure_ascii: bool, value_decode: bool, index=None, create_path=False
+    ):
         try:
             input_data = json.loads(origin_json)
             expr = parse(query)
@@ -61,13 +64,13 @@ class JSONParseTool(BuiltinTool):
 
             if not matches and create_path:
                 # create new path
-                path_parts = query.strip('$').strip('.').split('.')
+                path_parts = query.strip("$").strip(".").split(".")
                 current = input_data
                 for i, part in enumerate(path_parts):
-                    if '[' in part and ']' in part:
+                    if "[" in part and "]" in part:
                         # process array index
-                        array_name, index = part.split('[')
-                        index = int(index.rstrip(']'))
+                        array_name, index = part.split("[")
+                        index = int(index.rstrip("]"))
                         if array_name not in current:
                             current[array_name] = []
                         while len(current[array_name]) <= index:

@@ -83,9 +83,7 @@ def validate_app_token(view: Optional[Callable] = None, *, fetch_user_arg: Optio
         return decorator(view)
 
 
-def cloud_edition_billing_resource_check(
-    resource: str, api_token_type: str, error_msg: str = "You have reached the limit of your subscription."
-):
+def cloud_edition_billing_resource_check(resource: str, api_token_type: str):
     def interceptor(view):
         def decorated(*args, **kwargs):
             api_token = validate_and_get_api_token(api_token_type)
@@ -98,13 +96,13 @@ def cloud_edition_billing_resource_check(
                 documents_upload_quota = features.documents_upload_quota
 
                 if resource == "members" and 0 < members.limit <= members.size:
-                    raise Forbidden(error_msg)
+                    raise Forbidden("The number of members has reached the limit of your subscription.")
                 elif resource == "apps" and 0 < apps.limit <= apps.size:
-                    raise Forbidden(error_msg)
+                    raise Forbidden("The number of apps has reached the limit of your subscription.")
                 elif resource == "vector_space" and 0 < vector_space.limit <= vector_space.size:
-                    raise Forbidden(error_msg)
+                    raise Forbidden("The capacity of the vector space has reached the limit of your subscription.")
                 elif resource == "documents" and 0 < documents_upload_quota.limit <= documents_upload_quota.size:
-                    raise Forbidden(error_msg)
+                    raise Forbidden("The number of documents has reached the limit of your subscription.")
                 else:
                     return view(*args, **kwargs)
 
@@ -115,11 +113,7 @@ def cloud_edition_billing_resource_check(
     return interceptor
 
 
-def cloud_edition_billing_knowledge_limit_check(
-    resource: str,
-    api_token_type: str,
-    error_msg: str = "To unlock this feature and elevate your Dify experience, please upgrade to a paid plan.",
-):
+def cloud_edition_billing_knowledge_limit_check(resource: str, api_token_type: str):
     def interceptor(view):
         @wraps(view)
         def decorated(*args, **kwargs):
@@ -128,7 +122,9 @@ def cloud_edition_billing_knowledge_limit_check(
             if features.billing.enabled:
                 if resource == "add_segment":
                     if features.billing.subscription.plan == "sandbox":
-                        raise Forbidden(error_msg)
+                        raise Forbidden(
+                            "To unlock this feature and elevate your Dify experience, please upgrade to a paid plan."
+                        )
                 else:
                     return view(*args, **kwargs)
 

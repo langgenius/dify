@@ -118,7 +118,17 @@ const translation = {
       removeConfirmTitle: '{{key}} 구성을 제거하시겠습니까?',
       removeConfirmContent: '현재 구성이 사용 중입니다. 제거하면 추적 기능이 꺼집니다.',
     },
+    view: '보기',
   },
+  answerIcon: {
+    description: 'WebApp 아이콘을 사용하여 공유 응용 프로그램에서 바꿀🤖지 여부',
+    title: 'WebApp 아이콘을 사용하여 🤖',
+    descriptionInExplore: 'Explore에서 WebApp 아이콘을 사용하여 바꿀🤖지 여부',
+  },
+  importFromDSL: 'DSL에서 가져오기',
+  importFromDSLFile: 'DSL 파일에서',
+  importFromDSLUrl: 'URL에서',
+  importFromDSLUrlPlaceholder: '여기에 DSL 링크 붙여 넣기',
 }
 
 export default translation

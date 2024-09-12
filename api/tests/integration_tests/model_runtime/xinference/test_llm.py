@@ -109,7 +109,7 @@ def test_invoke_stream_chat_model(setup_openai_mock, setup_xinference_mock):
 
 
 """
-    Funtion calling of xinference does not support stream mode currently
+    Function calling of xinference does not support stream mode currently
 """
 # def test_invoke_stream_chat_model_with_functions():
 #     model = XinferenceAILargeLanguageModel()

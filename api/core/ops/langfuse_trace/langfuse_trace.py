@@ -204,6 +204,7 @@ class LangFuseDataTrace(BaseTraceInstance):
                 node_generation_data = LangfuseGeneration(
                     name="llm",
                     trace_id=trace_id,
+                    model=process_data.get("model_name"),
                     parent_observation_id=node_execution_id,
                     start_time=created_at,
                     end_time=finished_at,

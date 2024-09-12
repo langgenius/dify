@@ -38,7 +38,7 @@ const Field: FC<Props> = ({
             popupContent={
               <div className='w-[200px]'>{tooltip}</div>
             }
-            popupClassName='relative top-[3px] w-3 h-3 ml-1'
+            triggerClassName='ml-0.5 w-4 h-4'
           />
         )}
       </div>

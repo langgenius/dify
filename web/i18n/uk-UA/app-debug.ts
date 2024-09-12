@@ -259,7 +259,7 @@ const translation = {
     historyNoBeEmpty: 'Історію розмови необхідно встановити у підказці', // Conversation history must be set in the prompt
     queryNoBeEmpty: 'Запит має бути встановлений у підказці', // Query must be set in the prompt
   },
-  variableConig: {
+  variableConfig: {
     'addModalTitle': 'Додати Поле Введення',
     'editModalTitle': 'Редагувати Поле Введення',
     'description': 'Налаштування для змінної {{varName}}',

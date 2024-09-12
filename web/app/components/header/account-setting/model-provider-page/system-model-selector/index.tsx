@@ -148,7 +148,7 @@ const SystemModel: FC<SystemModelSelectorProps> = ({
                     {t('common.modelProvider.systemReasoningModel.tip')}
                   </div>
                 }
-                triggerClassName='ml-0.5'
+                triggerClassName='ml-0.5 w-4 h-4 shrink-0'
               />
             </div>
             <div>
@@ -168,8 +168,7 @@ const SystemModel: FC<SystemModelSelectorProps> = ({
                     {t('common.modelProvider.embeddingModel.tip')}
                   </div>
                 }
-                needsDelay={false}
-                triggerClassName='ml-0.5'
+                triggerClassName='ml-0.5 w-4 h-4 shrink-0'
               />
             </div>
             <div>
@@ -189,8 +188,7 @@ const SystemModel: FC<SystemModelSelectorProps> = ({
                     {t('common.modelProvider.rerankModel.tip')}
                   </div>
                 }
-                needsDelay={false}
-                triggerClassName='ml-0.5'
+                triggerClassName='ml-0.5 w-4 h-4 shrink-0'
               />
             </div>
             <div>
@@ -210,8 +208,7 @@ const SystemModel: FC<SystemModelSelectorProps> = ({
                     {t('common.modelProvider.speechToTextModel.tip')}
                   </div>
                 }
-                needsDelay={false}
-                triggerClassName='ml-0.5'
+                triggerClassName='ml-0.5 w-4 h-4 shrink-0'
               />
             </div>
             <div>
@@ -231,7 +228,7 @@ const SystemModel: FC<SystemModelSelectorProps> = ({
                     {t('common.modelProvider.ttsModel.tip')}
                   </div>
                 }
-                triggerClassName='ml-0.5'
+                triggerClassName='ml-0.5 w-4 h-4 shrink-0'
               />
             </div>
             <div>

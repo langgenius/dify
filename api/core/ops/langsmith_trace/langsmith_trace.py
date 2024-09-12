@@ -1,9 +1,11 @@
 import json
 import logging
 import os
+import uuid
 from datetime import datetime, timedelta
 
 from langsmith import Client
+from langsmith.schemas import RunBase
 
 from core.ops.base_trace_instance import BaseTraceInstance
 from core.ops.entities.config_entity import LangSmithConfig
@@ -139,8 +141,7 @@ class LangSmithDataTrace(BaseTraceInstance):
                 json.loads(node_execution.execution_metadata) if node_execution.execution_metadata else {}
             )
             node_total_tokens = execution_metadata.get("total_tokens", 0)
-
-            metadata = json.loads(node_execution.execution_metadata) if node_execution.execution_metadata else {}
+            metadata = execution_metadata.copy()
             metadata.update(
                 {
                     "workflow_run_id": trace_info.workflow_run_id,
@@ -156,6 +157,12 @@ class LangSmithDataTrace(BaseTraceInstance):
             process_data = json.loads(node_execution.process_data) if node_execution.process_data else {}
             if process_data and process_data.get("model_mode") == "chat":
                 run_type = LangSmithRunType.llm
+                metadata.update(
+                    {
+                        "ls_provider": process_data.get("model_provider", ""),
+                        "ls_model_name": process_data.get("model_name", ""),
+                    }
+                )
             elif node_type == "knowledge-retrieval":
                 run_type = LangSmithRunType.retriever
             else:
@@ -366,3 +373,22 @@ class LangSmithDataTrace(BaseTraceInstance):
         except Exception as e:
             logger.debug(f"LangSmith API check failed: {str(e)}")
             raise ValueError(f"LangSmith API check failed: {str(e)}")
+
+    def get_project_url(self):
+        try:
+            run_data = RunBase(
+                id=uuid.uuid4(),
+                name="tool",
+                inputs={"input": "test"},
+                outputs={"output": "test"},
+                run_type=LangSmithRunType.tool,
+                start_time=datetime.now(),
+            )
+
+            project_url = self.langsmith_client.get_run_url(
+                run=run_data, project_id=self.project_id, project_name=self.project_name
+            )
+            return project_url.split("/r/")[0]
+        except Exception as e:
+            logger.debug(f"LangSmith get run url failed: {str(e)}")
+            raise ValueError(f"LangSmith get run url failed: {str(e)}")

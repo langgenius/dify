@@ -1,4 +1,5 @@
 """Functionality for splitting text."""
+
 from __future__ import annotations
 
 from typing import Any, Optional
@@ -18,31 +19,29 @@ from core.rag.splitter.text_splitter import (
 
 class EnhanceRecursiveCharacterTextSplitter(RecursiveCharacterTextSplitter):
     """
-        This class is used to implement from_gpt2_encoder, to prevent using of tiktoken
+    This class is used to implement from_gpt2_encoder, to prevent using of tiktoken
     """
 
     @classmethod
     def from_encoder(
-            cls: type[TS],
-            embedding_model_instance: Optional[ModelInstance],
-            allowed_special: Union[Literal[all], Set[str]] = set(),
-            disallowed_special: Union[Literal[all], Collection[str]] = "all",
-            **kwargs: Any,
+        cls: type[TS],
+        embedding_model_instance: Optional[ModelInstance],
+        allowed_special: Union[Literal[all], Set[str]] = set(),
+        disallowed_special: Union[Literal[all], Collection[str]] = "all",
+        **kwargs: Any,
     ):
         def _token_encoder(text: str) -> int:
             if not text:
                 return 0
 
             if embedding_model_instance:
-                return embedding_model_instance.get_text_embedding_num_tokens(
-                    texts=[text]
-                )
+                return embedding_model_instance.get_text_embedding_num_tokens(texts=[text])
             else:
                 return GPT2Tokenizer.get_num_tokens(text)
 
         if issubclass(cls, TokenTextSplitter):
             extra_kwargs = {
-                "model_name": embedding_model_instance.model if embedding_model_instance else 'gpt2',
+                "model_name": embedding_model_instance.model if embedding_model_instance else "gpt2",
                 "allowed_special": allowed_special,
                 "disallowed_special": disallowed_special,
             }
@@ -93,17 +92,21 @@ class FixedRecursiveCharacterTextSplitter(EnhanceRecursiveCharacterTextSplitter)
             splits = list(text)
         # Now go merging things, recursively splitting longer texts.
         _good_splits = []
+        _good_splits_lengths = []  # cache the lengths of the splits
         for s in splits:
-            if self._length_function(s) < self._chunk_size:
+            s_len = self._length_function(s)
+            if s_len < self._chunk_size:
                 _good_splits.append(s)
+                _good_splits_lengths.append(s_len)
             else:
                 if _good_splits:
-                    merged_text = self._merge_splits(_good_splits, separator)
+                    merged_text = self._merge_splits(_good_splits, separator, _good_splits_lengths)
                     final_chunks.extend(merged_text)
                     _good_splits = []
+                    _good_splits_lengths = []
                 other_info = self.recursive_split_text(s)
                 final_chunks.extend(other_info)
         if _good_splits:
-            merged_text = self._merge_splits(_good_splits, separator)
+            merged_text = self._merge_splits(_good_splits, separator, _good_splits_lengths)
             final_chunks.extend(merged_text)
         return final_chunks

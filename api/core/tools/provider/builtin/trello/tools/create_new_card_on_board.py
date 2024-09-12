@@ -22,15 +22,15 @@ class CreateNewCardOnBoardTool(BuiltinTool):
         Returns:
             ToolInvokeMessage: The result of the tool invocation.
         """
-        api_key = self.runtime.credentials.get('trello_api_key')
-        token = self.runtime.credentials.get('trello_api_token')
+        api_key = self.runtime.credentials.get("trello_api_key")
+        token = self.runtime.credentials.get("trello_api_token")
 
         # Ensure required parameters are present
-        if 'name' not in tool_parameters or 'idList' not in tool_parameters:
+        if "name" not in tool_parameters or "idList" not in tool_parameters:
             return self.create_text_message("Missing required parameters: name or idList.")
 
         url = "https://api.trello.com/1/cards"
-        params = {**tool_parameters, 'key': api_key, 'token': token}
+        params = {**tool_parameters, "key": api_key, "token": token}
 
         try:
             response = requests.post(url, params=params)
@@ -39,5 +39,6 @@ class CreateNewCardOnBoardTool(BuiltinTool):
         except requests.exceptions.RequestException as e:
             return self.create_text_message("Failed to create card")
 
-        return self.create_text_message(text=f"New card '{new_card['name']}' created successfully with ID {new_card['id']}.")
-
+        return self.create_text_message(
+            text=f"New card '{new_card['name']}' created successfully with ID {new_card['id']}."
+        )

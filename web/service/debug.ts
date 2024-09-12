@@ -96,7 +96,7 @@ export const fetchPromptTemplate = ({
   })
 }
 
-export const fetchTextGenerationMessge = ({
+export const fetchTextGenerationMessage = ({
   appId,
   messageId,
 }: { appId: string; messageId: string }) => {

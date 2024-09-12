@@ -104,7 +104,7 @@ const FormItem: FC<Props> = ({
               type="text"
               value={value || ''}
               onChange={e => onChange(e.target.value)}
-              placeholder={t('appDebug.variableConig.inputPlaceholder')!}
+              placeholder={t('appDebug.variableConfig.inputPlaceholder')!}
               autoFocus={autoFocus}
             />
           )
@@ -117,7 +117,7 @@ const FormItem: FC<Props> = ({
               type="number"
               value={value || ''}
               onChange={e => onChange(e.target.value)}
-              placeholder={t('appDebug.variableConig.inputPlaceholder')!}
+              placeholder={t('appDebug.variableConfig.inputPlaceholder')!}
               autoFocus={autoFocus}
             />
           )
@@ -129,7 +129,7 @@ const FormItem: FC<Props> = ({
               className="w-full px-3 py-1 text-sm leading-[18px] text-gray-900 border-0 rounded-lg grow h-[120px] bg-gray-50 focus:outline-none focus:ring-1 focus:ring-inset focus:ring-gray-200"
               value={value || ''}
               onChange={e => onChange(e.target.value)}
-              placeholder={t('appDebug.variableConig.inputPlaceholder')!}
+              placeholder={t('appDebug.variableConfig.inputPlaceholder')!}
               autoFocus={autoFocus}
             />
           )
@@ -207,7 +207,7 @@ const FormItem: FC<Props> = ({
                   key={index}
                   isInNode
                   value={item}
-                  title={<span>{t('appDebug.variableConig.content')} {index + 1} </span>}
+                  title={<span>{t('appDebug.variableConfig.content')} {index + 1} </span>}
                   onChange={handleArrayItemChange(index)}
                   headerRight={
                     (value as any).length > 1
