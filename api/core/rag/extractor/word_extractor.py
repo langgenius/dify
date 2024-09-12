@@ -7,7 +7,7 @@ import os
 import re
 import tempfile
 import uuid
-import xml.etree.ElementTree as ET
+import xml.etree.ElementTree as ET  # noqa: N817
 from urllib.parse import urlparse
 
 import requests
