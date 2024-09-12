@@ -47,7 +47,6 @@ class ActivateApi(Resource):
         parser.add_argument("email", type=email, required=False, nullable=True, location="json")
         parser.add_argument("token", type=str, required=True, nullable=False, location="json")
         parser.add_argument("name", type=StrLen(30), required=True, nullable=False, location="json")
-        parser.add_argument("password", type=valid_password, required=True, nullable=False, location="json")
         parser.add_argument(
             "interface_language", type=supported_language, required=True, nullable=False, location="json"
         )
