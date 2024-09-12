@@ -16,6 +16,7 @@ from core.workflow.graph_engine.entities.event import (
     IterationRunNextEvent,
     IterationRunStartedEvent,
     IterationRunSucceededEvent,
+    NodeRunStreamChunkEvent,
     NodeRunSucceededEvent,
 )
 from core.workflow.graph_engine.entities.graph import Graph
@@ -154,7 +155,11 @@ class IterationNode(BaseNode):
                 if isinstance(event, (BaseNodeEvent | BaseParallelBranchEvent)) and not event.in_iteration_id:
                     event.in_iteration_id = self.node_id
 
-                if isinstance(event, BaseNodeEvent) and event.node_type == NodeType.ITERATION_START:
+                if (
+                    isinstance(event, BaseNodeEvent)
+                    and event.node_type == NodeType.ITERATION_START
+                    and not isinstance(event, NodeRunStreamChunkEvent)
+                ):
                     continue
 
                 if isinstance(event, NodeRunSucceededEvent):
