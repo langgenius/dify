@@ -78,12 +78,12 @@ const NormalForm = () => {
       <div className="w-full mx-auto mt-8">
         {isInviteLink
           ? <div className="w-full mx-auto">
-            <h2 className="text-2xl font-bold text-text-primary">{t('login.join')}{workspaceName}</h2>
-            <p className='mt-1 text-sm text-text-tertiary'>{t('login.joinTipStart')}{workspaceName}{t('login.joinTipEnd')}</p>
+            <h2 className="title-4xl-semi-bold text-text-primary">{t('login.join')}{workspaceName}</h2>
+            <p className='mt-2 body-md-regular text-text-tertiary'>{t('login.joinTipStart')}{workspaceName}{t('login.joinTipEnd')}</p>
           </div>
           : <div className="w-full mx-auto">
-            <h2 className="text-2xl font-bold text-text-primary">{t('login.pageTitle')}</h2>
-            <p className='mt-1 text-sm text-text-tertiary'>{t('login.welcome')}</p>
+            <h2 className="title-4xl-semi-bold text-text-primary">{t('login.pageTitle')}</h2>
+            <p className='mt-2 body-md-regular text-text-tertiary'>{t('login.welcome')}</p>
           </div>}
         <div className="bg-white ">
           <div className="flex flex-col gap-3 mt-6">
@@ -95,10 +95,10 @@ const NormalForm = () => {
 
           {showORLine && <div className="relative mt-6">
             <div className="absolute inset-0 flex items-center" aria-hidden="true">
-              <div className='bg-gradient-to-r from-white/[0.01] via-[#101828]/8 to-white/[0.01] h-px w-full'></div>
+              <div className='bg-gradient-to-r from-background-gradient-mask-transparent via-divider-regular to-background-gradient-mask-transparent h-px w-full'></div>
             </div>
-            <div className="relative flex justify-center text-sm">
-              <span className="px-2 text-text-tertiary bg-white">{t('login.or')}</span>
+            <div className="relative flex justify-center">
+              <span className="px-2 text-text-tertiary system-xs-medium-uppercase bg-white">{t('login.or')}</span>
             </div>
           </div>}
           {
@@ -106,38 +106,38 @@ const NormalForm = () => {
               {systemFeatures.enable_email_code_login && authType === 'code' && <>
                 <MailAndCodeAuth isInvite={isInviteLink} />
                 {systemFeatures.enable_email_password_login && <div className='cursor-pointer py-1 text-center' onClick={() => { updateAuthType('password') }}>
-                  <span className='text-xs text-components-button-secondary-accent-text'>{t('login.usePassword')}</span>
+                  <span className='system-xs-medium text-components-button-secondary-accent-text'>{t('login.usePassword')}</span>
                 </div>}
               </>}
               {systemFeatures.enable_email_password_login && authType === 'password' && <>
                 <MailAndPasswordAuth isInvite={isInviteLink} />
                 {systemFeatures.enable_email_code_login && <div className='cursor-pointer py-1 text-center' onClick={() => { updateAuthType('code') }}>
-                  <span className='text-xs text-components-button-secondary-accent-text'>{t('login.useVerificationCode')}</span>
+                  <span className='system-xs-medium text-components-button-secondary-accent-text'>{t('login.useVerificationCode')}</span>
                 </div>}
               </>}
             </>
           }
-          <div className="w-hull text-center block mt-2 text-xs text-text-tertiary">
+          <div className="w-hull text-center block mt-2 system-xs-regular text-text-tertiary">
             {t('login.tosDesc')}
             &nbsp;
             <Link
-              className='text-text-secondary'
+              className='system-xs-medium text-text-secondary'
               target='_blank' rel='noopener noreferrer'
               href='https://dify.ai/terms'
             >{t('login.tos')}</Link>
             &nbsp;&&nbsp;
             <Link
-              className='text-text-secondary'
+              className='system-xs-medium text-text-secondary'
               target='_blank' rel='noopener noreferrer'
               href='https://dify.ai/privacy'
             >{t('login.pp')}</Link>
           </div>
 
-          {IS_CE_EDITION && <div className="w-hull text-center block mt-2 text-xs text-text-tertiary">
+          {IS_CE_EDITION && <div className="w-hull text-center block mt-2 system-xs-regular text-text-tertiary">
             {t('login.goToInit')}
             &nbsp;
             <Link
-              className='text-text-secondary'
+              className='system-xs-medium text-text-secondary'
               href='/install'
             >{t('login.setAdminAccount')}</Link>
           </div>}
