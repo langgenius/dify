@@ -42,7 +42,7 @@ class LoginApi(Resource):
             raise NotAllowedRegister()
         except services.errors.account.AccountPasswordError:
             raise PasswordMismatchError()
-        except services.errors.account.AccountNotFound:
+        except services.errors.account.AccountNotFoundError:
             if not dify_config.ALLOW_REGISTER:
                 raise NotAllowedRegister()
 

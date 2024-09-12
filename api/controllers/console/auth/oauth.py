@@ -15,7 +15,7 @@ from libs.helper import get_remote_ip
 from libs.oauth import GitHubOAuth, GoogleOAuth, OAuthUserInfo
 from models.account import Account, AccountStatus
 from services.account_service import AccountService, RegisterService, TenantService
-from services.errors.account import AccountNotFound
+from services.errors.account import AccountNotFoundError
 from services.errors.workspace import WorkSpaceNotAllowedCreateError, WorkSpaceNotFoundError
 
 from .. import api
@@ -90,7 +90,7 @@ class OAuthCallback(Resource):
 
         try:
             account = _generate_account(provider, user_info)
-        except AccountNotFound:
+        except AccountNotFoundError:
             return redirect(f"{dify_config.CONSOLE_WEB_URL}/signin?message=AccountNotFound")
         except WorkSpaceNotFoundError:
             return redirect(f"{dify_config.CONSOLE_WEB_URL}/signin?message=WorkspaceNotFound")
@@ -148,7 +148,7 @@ def _generate_account(provider: str, user_info: OAuthUserInfo):
 
     if not account:
         if not dify_config.ALLOW_REGISTER:
-            raise AccountNotFound()
+            raise AccountNotFoundError()
         account_name = user_info.name if user_info.name else "Dify"
         account = RegisterService.register(
             email=user_info.email, name=account_name, password=None, open_id=user_info.id, provider=provider
