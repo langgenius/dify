@@ -272,11 +272,7 @@ class XinferenceAILargeLanguageModel(LargeLanguageModel):
         """
         text = ""
         for item in message:
-            if isinstance(item, UserPromptMessage):
-                text += item.content
-            elif isinstance(item, SystemPromptMessage):
-                text += item.content
-            elif isinstance(item, AssistantPromptMessage):
+            if isinstance(item, UserPromptMessage | SystemPromptMessage | AssistantPromptMessage):
                 text += item.content
             else:
                 raise NotImplementedError(f"PromptMessage type {type(item)} is not supported")

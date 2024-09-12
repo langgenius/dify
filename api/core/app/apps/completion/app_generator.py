@@ -10,7 +10,7 @@ from pydantic import ValidationError
 
 from core.app.app_config.easy_ui_based_app.model_config.converter import ModelConfigConverter
 from core.app.app_config.features.file_upload.manager import FileUploadConfigManager
-from core.app.apps.base_app_queue_manager import AppQueueManager, GenerateTaskStoppedException, PublishFrom
+from core.app.apps.base_app_queue_manager import AppQueueManager, GenerateTaskStoppedError, PublishFrom
 from core.app.apps.completion.app_config_manager import CompletionAppConfigManager
 from core.app.apps.completion.app_runner import CompletionAppRunner
 from core.app.apps.completion.generate_response_converter import CompletionAppGenerateResponseConverter
@@ -185,7 +185,7 @@ class CompletionAppGenerator(MessageBasedAppGenerator):
                     queue_manager=queue_manager,
                     message=message,
                 )
-            except GenerateTaskStoppedException:
+            except GenerateTaskStoppedError:
                 pass
             except InvokeAuthorizationError:
                 queue_manager.publish_error(

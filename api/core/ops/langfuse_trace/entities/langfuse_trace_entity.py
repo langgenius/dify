@@ -101,6 +101,7 @@ class LangfuseTrace(BaseModel):
     )
 
     @field_validator("input", "output")
+    @classmethod
     def ensure_dict(cls, v, info: ValidationInfo):
         field_name = info.field_name
         return validate_input_output(v, field_name)
@@ -171,6 +172,7 @@ class LangfuseSpan(BaseModel):
     )
 
     @field_validator("input", "output")
+    @classmethod
     def ensure_dict(cls, v, info: ValidationInfo):
         field_name = info.field_name
         return validate_input_output(v, field_name)
@@ -196,6 +198,7 @@ class GenerationUsage(BaseModel):
     totalCost: Optional[float] = None
 
     @field_validator("input", "output")
+    @classmethod
     def ensure_dict(cls, v, info: ValidationInfo):
         field_name = info.field_name
         return validate_input_output(v, field_name)
@@ -273,6 +276,7 @@ class LangfuseGeneration(BaseModel):
     model_config = ConfigDict(protected_namespaces=())
 
     @field_validator("input", "output")
+    @classmethod
     def ensure_dict(cls, v, info: ValidationInfo):
         field_name = info.field_name
         return validate_input_output(v, field_name)

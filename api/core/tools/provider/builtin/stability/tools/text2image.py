@@ -35,7 +35,7 @@ class StableDiffusionTool(BuiltinTool, BaseStabilityAuthorization):
         if model in ["sd3", "sd3-turbo"]:
             payload["model"] = tool_parameters.get("model")
 
-        if not model == "sd3-turbo":
+        if model != "sd3-turbo":
             payload["negative_prompt"] = tool_parameters.get("negative_prompt", "")
 
         response = post(
@@ -52,5 +52,5 @@ class StableDiffusionTool(BuiltinTool, BaseStabilityAuthorization):
             raise Exception(response.text)
 
         return self.create_blob_message(
-            blob=response.content, meta={"mime_type": "image/png"}, save_as=self.VARIABLE_KEY.IMAGE.value
+            blob=response.content, meta={"mime_type": "image/png"}, save_as=self.VariableKey.IMAGE.value
         )

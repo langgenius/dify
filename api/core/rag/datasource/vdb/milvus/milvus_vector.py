@@ -28,6 +28,7 @@ class MilvusConfig(BaseModel):
     database: str = "default"
 
     @model_validator(mode="before")
+    @classmethod
     def validate_config(cls, values: dict) -> dict:
         if not values.get("uri"):
             raise ValueError("config MILVUS_URI is required")

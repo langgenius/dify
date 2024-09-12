@@ -32,6 +32,7 @@ class PgvectoRSConfig(BaseModel):
     database: str
 
     @model_validator(mode="before")
+    @classmethod
     def validate_config(cls, values: dict) -> dict:
         if not values["host"]:
             raise ValueError("config PGVECTO_RS_HOST is required")

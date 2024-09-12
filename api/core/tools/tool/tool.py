@@ -63,7 +63,7 @@ class Tool(BaseModel, ABC):
     def __init__(self, **data: Any):
         super().__init__(**data)
 
-    class VARIABLE_KEY(Enum):
+    class VariableKey(Enum):
         IMAGE = "image"
 
     def fork_tool_runtime(self, runtime: dict[str, Any]) -> "Tool":
@@ -142,7 +142,7 @@ class Tool(BaseModel, ABC):
         if not self.variables:
             return None
 
-        return self.get_variable(self.VARIABLE_KEY.IMAGE)
+        return self.get_variable(self.VariableKey.IMAGE)
 
     def get_variable_file(self, name: Union[str, Enum]) -> Optional[bytes]:
         """
@@ -189,7 +189,7 @@ class Tool(BaseModel, ABC):
         result = []
 
         for variable in self.variables.pool:
-            if variable.name.startswith(self.VARIABLE_KEY.IMAGE.value):
+            if variable.name.startswith(self.VariableKey.IMAGE.value):
                 result.append(variable)
 
         return result

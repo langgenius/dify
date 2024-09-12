@@ -115,7 +115,7 @@ class VertexAiLargeLanguageModel(LargeLanguageModel):
             token = credentials.token
 
         # Vertex AI Anthropic Claude3 Opus model available in us-east5 region, Sonnet and Haiku available in us-central1 region
-        if "opus" or "claude-3-5-sonnet" in model:
+        if "opus" in model or "claude-3-5-sonnet" in model:
             location = "us-east5"
         else:
             location = "us-central1"
@@ -633,9 +633,7 @@ class VertexAiLargeLanguageModel(LargeLanguageModel):
             message_text = f"{human_prompt} {content}"
         elif isinstance(message, AssistantPromptMessage):
             message_text = f"{ai_prompt} {content}"
-        elif isinstance(message, SystemPromptMessage):
-            message_text = f"{human_prompt} {content}"
-        elif isinstance(message, ToolPromptMessage):
+        elif isinstance(message, SystemPromptMessage | ToolPromptMessage):
             message_text = f"{human_prompt} {content}"
         else:
             raise ValueError(f"Got unknown type {message}")

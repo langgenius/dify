@@ -2,7 +2,7 @@ from collections.abc import Mapping, Sequence
 from typing import Any, Optional, Union, cast
 
 from configs import dify_config
-from core.helper.code_executor.code_executor import CodeExecutionException, CodeExecutor, CodeLanguage
+from core.helper.code_executor.code_executor import CodeExecutionError, CodeExecutor, CodeLanguage
 from core.helper.code_executor.code_node_provider import CodeNodeProvider
 from core.helper.code_executor.javascript.javascript_code_provider import JavascriptCodeProvider
 from core.helper.code_executor.python3.python3_code_provider import Python3CodeProvider
@@ -61,7 +61,7 @@ class CodeNode(BaseNode):
 
             # Transform result
             result = self._transform_result(result, node_data.outputs)
-        except (CodeExecutionException, ValueError) as e:
+        except (CodeExecutionError, ValueError) as e:
             return NodeRunResult(status=WorkflowNodeExecutionStatus.FAILED, inputs=variables, error=str(e))
 
         return NodeRunResult(status=WorkflowNodeExecutionStatus.SUCCEEDED, inputs=variables, outputs=result)

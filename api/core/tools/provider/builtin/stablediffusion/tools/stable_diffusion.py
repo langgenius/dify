@@ -206,10 +206,9 @@ class StableDiffusionTool(BuiltinTool):
 
         # Convert image to RGB and save as PNG
         try:
-            with Image.open(io.BytesIO(image_binary)) as image:
-                with io.BytesIO() as buffer:
-                    image.convert("RGB").save(buffer, format="PNG")
-                    image_binary = buffer.getvalue()
+            with Image.open(io.BytesIO(image_binary)) as image, io.BytesIO() as buffer:
+                image.convert("RGB").save(buffer, format="PNG")
+                image_binary = buffer.getvalue()
         except Exception as e:
             return self.create_text_message(f"Failed to process the image: {str(e)}")
 
@@ -260,7 +259,7 @@ class StableDiffusionTool(BuiltinTool):
             image = response.json()["images"][0]
 
             return self.create_blob_message(
-                blob=b64decode(image), meta={"mime_type": "image/png"}, save_as=self.VARIABLE_KEY.IMAGE.value
+                blob=b64decode(image), meta={"mime_type": "image/png"}, save_as=self.VariableKey.IMAGE.value
             )
 
         except Exception as e:
@@ -294,7 +293,7 @@ class StableDiffusionTool(BuiltinTool):
             image = response.json()["images"][0]
 
             return self.create_blob_message(
-                blob=b64decode(image), meta={"mime_type": "image/png"}, save_as=self.VARIABLE_KEY.IMAGE.value
+                blob=b64decode(image), meta={"mime_type": "image/png"}, save_as=self.VariableKey.IMAGE.value
             )
 
         except Exception as e:

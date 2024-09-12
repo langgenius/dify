@@ -19,7 +19,7 @@ from core.app.entities.queue_entities import (
     QueueStopEvent,
     QueueTextChunkEvent,
 )
-from core.moderation.base import ModerationException
+from core.moderation.base import ModerationError
 from core.workflow.callbacks.base_workflow_callback import WorkflowCallback
 from core.workflow.entities.node_entities import UserFrom
 from core.workflow.entities.variable_pool import VariablePool
@@ -217,7 +217,7 @@ class AdvancedChatAppRunner(WorkflowBasedAppRunner):
                 query=query,
                 message_id=message_id,
             )
-        except ModerationException as e:
+        except ModerationError as e:
             self._complete_with_stream_output(text=str(e), stopped_by=QueueStopEvent.StopBy.INPUT_MODERATION)
             return True
 

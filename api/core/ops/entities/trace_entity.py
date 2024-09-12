@@ -15,6 +15,7 @@ class BaseTraceInfo(BaseModel):
     metadata: dict[str, Any]
 
     @field_validator("inputs", "outputs")
+    @classmethod
     def ensure_type(cls, v):
         if v is None:
             return None

@@ -57,7 +57,7 @@ class BaseApiKeyListResource(Resource):
     def post(self, resource_id):
         resource_id = str(resource_id)
         _get_resource(resource_id, current_user.current_tenant_id, self.resource_model)
-        if not current_user.is_admin_or_owner:
+        if not current_user.is_editor:
             raise Forbidden()
 
         current_key_count = (

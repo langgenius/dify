@@ -78,8 +78,8 @@ class IndexingRunner:
                     dataset_document=dataset_document,
                     documents=documents,
                 )
-            except DocumentIsPausedException:
-                raise DocumentIsPausedException("Document paused, document id: {}".format(dataset_document.id))
+            except DocumentIsPausedError:
+                raise DocumentIsPausedError("Document paused, document id: {}".format(dataset_document.id))
             except ProviderTokenNotInitError as e:
                 dataset_document.indexing_status = "error"
                 dataset_document.error = str(e.description)
@@ -134,8 +134,8 @@ class IndexingRunner:
             self._load(
                 index_processor=index_processor, dataset=dataset, dataset_document=dataset_document, documents=documents
             )
-        except DocumentIsPausedException:
-            raise DocumentIsPausedException("Document paused, document id: {}".format(dataset_document.id))
+        except DocumentIsPausedError:
+            raise DocumentIsPausedError("Document paused, document id: {}".format(dataset_document.id))
         except ProviderTokenNotInitError as e:
             dataset_document.indexing_status = "error"
             dataset_document.error = str(e.description)
@@ -192,8 +192,8 @@ class IndexingRunner:
             self._load(
                 index_processor=index_processor, dataset=dataset, dataset_document=dataset_document, documents=documents
             )
-        except DocumentIsPausedException:
-            raise DocumentIsPausedException("Document paused, document id: {}".format(dataset_document.id))
+        except DocumentIsPausedError:
+            raise DocumentIsPausedError("Document paused, document id: {}".format(dataset_document.id))
         except ProviderTokenNotInitError as e:
             dataset_document.indexing_status = "error"
             dataset_document.error = str(e.description)
@@ -756,7 +756,7 @@ class IndexingRunner:
         indexing_cache_key = "document_{}_is_paused".format(document_id)
         result = redis_client.get(indexing_cache_key)
         if result:
-            raise DocumentIsPausedException()
+            raise DocumentIsPausedError()
 
     @staticmethod
     def _update_document_index_status(
@@ -767,10 +767,10 @@ class IndexingRunner:
         """
         count = DatasetDocument.query.filter_by(id=document_id, is_paused=True).count()
         if count > 0:
-            raise DocumentIsPausedException()
+            raise DocumentIsPausedError()
         document = DatasetDocument.query.filter_by(id=document_id).first()
         if not document:
-            raise DocumentIsDeletedPausedException()
+            raise DocumentIsDeletedPausedError()
 
         update_params = {DatasetDocument.indexing_status: after_indexing_status}
 
@@ -875,9 +875,9 @@ class IndexingRunner:
         pass
 
 
-class DocumentIsPausedException(Exception):
+class DocumentIsPausedError(Exception):
     pass
 
 
-class DocumentIsDeletedPausedException(Exception):
+class DocumentIsDeletedPausedError(Exception):
     pass

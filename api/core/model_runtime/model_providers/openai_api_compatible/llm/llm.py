@@ -35,13 +35,13 @@ from core.model_runtime.entities.model_entities import (
 from core.model_runtime.errors.invoke import InvokeError
 from core.model_runtime.errors.validate import CredentialsValidateFailedError
 from core.model_runtime.model_providers.__base.large_language_model import LargeLanguageModel
-from core.model_runtime.model_providers.openai_api_compatible._common import _CommonOAI_API_Compat
+from core.model_runtime.model_providers.openai_api_compatible._common import _CommonOaiApiCompat
 from core.model_runtime.utils import helper
 
 logger = logging.getLogger(__name__)
 
 
-class OAIAPICompatLargeLanguageModel(_CommonOAI_API_Compat, LargeLanguageModel):
+class OAIAPICompatLargeLanguageModel(_CommonOaiApiCompat, LargeLanguageModel):
     """
     Model class for OpenAI large language model.
     """

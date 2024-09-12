@@ -48,7 +48,8 @@ class WordExtractor(BaseExtractor):
                 raise ValueError(f"Check the url of your file; returned status code {r.status_code}")
 
             self.web_path = self.file_path
-            self.temp_file = tempfile.NamedTemporaryFile()
+            # TODO: use a better way to handle the file
+            self.temp_file = tempfile.NamedTemporaryFile()  # noqa: SIM115
             self.temp_file.write(r.content)
             self.file_path = self.temp_file.name
         elif not os.path.isfile(self.file_path):

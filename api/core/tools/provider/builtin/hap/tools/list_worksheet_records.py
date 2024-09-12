@@ -142,7 +142,7 @@ class ListWorksheetRecordsTool(BuiltinTool):
         for control in controls:
             control_type_id = self.get_real_type_id(control)
             if (control_type_id in self._get_ignore_types()) or (
-                allow_fields and not control["controlId"] in allow_fields
+                allow_fields and control["controlId"] not in allow_fields
             ):
                 continue
             else:
@@ -201,9 +201,7 @@ class ListWorksheetRecordsTool(BuiltinTool):
             elif value.startswith('[{"organizeId"'):
                 value = json.loads(value)
                 value = "、".join([item["organizeName"] for item in value])
-            elif value.startswith('[{"file_id"'):
-                value = ""
-            elif value == "[]":
+            elif value.startswith('[{"file_id"') or value == "[]":
                 value = ""
         elif hasattr(value, "accountId"):
             value = value["fullname"]

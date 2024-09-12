@@ -59,7 +59,7 @@ class DallE2Tool(BuiltinTool):
                 self.create_blob_message(
                     blob=b64decode(image.b64_json),
                     meta={"mime_type": "image/png"},
-                    save_as=self.VARIABLE_KEY.IMAGE.value,
+                    save_as=self.VariableKey.IMAGE.value,
                 )
             )
 

@@ -39,14 +39,14 @@ class QRCodeGeneratorTool(BuiltinTool):
 
         # get error_correction
         error_correction = tool_parameters.get("error_correction", "")
-        if error_correction not in self.error_correction_levels.keys():
+        if error_correction not in self.error_correction_levels:
             return self.create_text_message("Invalid parameter error_correction")
 
         try:
             image = self._generate_qrcode(content, border, error_correction)
             image_bytes = self._image_to_byte_array(image)
             return self.create_blob_message(
-                blob=image_bytes, meta={"mime_type": "image/png"}, save_as=self.VARIABLE_KEY.IMAGE.value
+                blob=image_bytes, meta={"mime_type": "image/png"}, save_as=self.VariableKey.IMAGE.value
             )
         except Exception:
             logging.exception(f"Failed to generate QR code for content: {content}")
