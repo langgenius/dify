@@ -8,7 +8,6 @@ from controllers.console import api
 from controllers.console.error import AlreadyActivateError
 from extensions.ext_database import db
 from libs.helper import StrLen, email, get_remote_ip, timezone
-from libs.password import valid_password
 from models.account import AccountStatus, Tenant
 from services.account_service import AccountService, RegisterService
 
