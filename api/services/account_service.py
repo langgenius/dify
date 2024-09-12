@@ -23,7 +23,7 @@ from models.model import DifySetup
 from services.errors.account import (
     AccountAlreadyInTenantError,
     AccountLoginError,
-    AccountNotFound,
+    AccountNotFoundError,
     AccountNotLinkTenantError,
     AccountPasswordError,
     AccountRegisterError,
@@ -95,7 +95,7 @@ class AccountService:
 
         account = Account.query.filter_by(email=email).first()
         if not account:
-            raise AccountNotFound()
+            raise AccountNotFoundError()
 
         if account.status == AccountStatus.BANNED.value or account.status == AccountStatus.CLOSED.value:
             raise AccountLoginError("Account is banned or closed.")
