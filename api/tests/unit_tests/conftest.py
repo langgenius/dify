@@ -13,7 +13,7 @@ CACHED_APP = Flask(__name__)
 CACHED_APP.config.update({"TESTING": True})
 
 
-@pytest.fixture()
+@pytest.fixture
 def app() -> Flask:
     return CACHED_APP
 

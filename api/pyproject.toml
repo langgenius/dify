@@ -18,6 +18,7 @@ select = [
     "FURB", # refurb rules
     "I", # isort rules
     "N", # pep8-naming
+    "PT", # flake8-pytest-style rules
     "RUF019", # unnecessary-key-check
     "RUF100", # unused-noqa
     "RUF101", # redirected-noqa
@@ -50,6 +51,7 @@ ignore = [
     "B905", # zip-without-explicit-strict
     "N806", # non-lowercase-variable-in-function
     "N815", # mixed-case-variable-in-class-scope
+    "PT011", # pytest-raises-too-broad
     "SIM102", # collapsible-if
     "SIM103", # needless-bool
     "SIM105", # suppressible-exception
