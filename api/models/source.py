@@ -1,11 +1,9 @@
 import json
 import uuid
 
-from configs import dify_config
-
 from sqlalchemy import func
-from sqlalchemy.dialects.postgresql import JSONB
 
+from configs import dify_config
 from extensions.ext_database import db
 
 from .types import StringUUID
@@ -57,8 +55,6 @@ class DataSourceApiKeyAuthBinding(db.Model):
             "disabled": self.disabled,
         }
 
+
 if dify_config.SQLALCHEMY_DATABASE_URI_SCHEME == "postgresql":
-    DataSourceOauthBinding.__table_args__ += (
-        db.Index("source_info_idx", "source_info", postgresql_using="gin"),
-    )
-    
+    DataSourceOauthBinding.__table_args__ += (db.Index("source_info_idx", "source_info", postgresql_using="gin"),)

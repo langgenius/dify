@@ -3,8 +3,8 @@ import json
 import uuid
 
 from flask_login import UserMixin
-
 from sqlalchemy import func
+
 from extensions.ext_database import db
 
 from .types import StringUUID

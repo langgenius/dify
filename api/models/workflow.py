@@ -123,17 +123,11 @@ class Workflow(db.Model):
     graph: Mapped[str] = db.Column(db.Text)
     features: Mapped[str] = db.Column(db.Text)
     created_by: Mapped[str] = db.Column(StringUUID, nullable=False)
-    created_at: Mapped[datetime] = db.Column(
-        db.DateTime, nullable=False, server_default=func.current_timestamp()
-    )
+    created_at: Mapped[datetime] = db.Column(db.DateTime, nullable=False, server_default=func.current_timestamp())
     updated_by: Mapped[str] = db.Column(StringUUID)
     updated_at: Mapped[datetime] = db.Column(db.DateTime)
-    _environment_variables: Mapped[str] = db.Column(
-        "environment_variables", db.Text, nullable=False, default="{}"
-    )
-    _conversation_variables: Mapped[str] = db.Column(
-        "conversation_variables", db.Text, nullable=False, default="{}"
-    )
+    _environment_variables: Mapped[str] = db.Column("environment_variables", db.Text, nullable=False, default="{}")
+    _conversation_variables: Mapped[str] = db.Column("conversation_variables", db.Text, nullable=False, default="{}")
 
     def __init__(
         self,
