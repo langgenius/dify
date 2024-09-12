@@ -32,5 +32,5 @@ class FluxTool(BuiltinTool):
         res = response.json()
         result = [self.create_json_message(res)]
         for image in res.get("images", []):
-            result.append(self.create_image_message(image=image.get("url"), save_as=self.VARIABLE_KEY.IMAGE.value))
+            result.append(self.create_image_message(image=image.get("url"), save_as=self.VariableKey.IMAGE.value))
         return result

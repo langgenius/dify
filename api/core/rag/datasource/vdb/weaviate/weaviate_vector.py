@@ -23,6 +23,7 @@ class WeaviateConfig(BaseModel):
     batch_size: int = 100
 
     @model_validator(mode="before")
+    @classmethod
     def validate_config(cls, values: dict) -> dict:
         if not values["endpoint"]:
             raise ValueError("config WEAVIATE_ENDPOINT is required")

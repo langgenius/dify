@@ -142,7 +142,7 @@ class ListWorksheetRecordsTool(BuiltinTool):
         for control in controls:
             control_type_id = self.get_real_type_id(control)
             if (control_type_id in self._get_ignore_types()) or (
-                allow_fields and not control["controlId"] in allow_fields
+                allow_fields and control["controlId"] not in allow_fields
             ):
                 continue
             else:

@@ -159,7 +159,7 @@ const ChatInput: FC<ChatInputProps> = ({
           {
             visionConfig?.enabled && (
               <>
-                <div className='absolute bottom-2 left-2 flex items-center'>
+                <div className={cn('absolute bottom-2 flex items-center', noSpacing ? 'left-2' : 'left-10')}>
                   <ChatImageUploader
                     settings={visionConfig}
                     onUpload={onUpload}

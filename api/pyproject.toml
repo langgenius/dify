@@ -13,17 +13,11 @@ preview = true
 select = [
     "B", # flake8-bugbear rules
     "C4", # flake8-comprehensions
+    "E", # pycodestyle E rules
     "F", # pyflakes rules
     "I", # isort rules
+    "N", # pep8-naming
     "UP", # pyupgrade rules
-    "B035", # static-key-dict-comprehension
-    "E101", # mixed-spaces-and-tabs
-    "E111", # indentation-with-invalid-multiple
-    "E112", # no-indented-block
-    "E113", # unexpected-indentation
-    "E115", # no-indented-block-comment
-    "E116", # unexpected-indentation-comment
-    "E117", # over-indented
     "RUF019", # unnecessary-key-check
     "RUF100", # unused-noqa
     "RUF101", # redirected-noqa
@@ -33,10 +27,15 @@ select = [
     "SIM910", # dict-get-with-none-default
     "W191", # tab-indentation
     "W605", # invalid-escape-sequence
-    "F601", # multi-value-repeated-key-literal
-    "F602", # multi-value-repeated-key-variable
 ]
 ignore = [
+    "E501", # line-too-long
+    "E402", # module-import-not-at-top-of-file
+    "E711", # none-comparison
+    "E712", # true-false-comparison
+    "E721", # type-comparison
+    "E722", # bare-except
+    "E731", # lambda-assignment
     "F403", # undefined-local-with-import-star
     "F405", # undefined-local-with-import-star-usage
     "F821", # undefined-name
@@ -47,9 +46,10 @@ ignore = [
     "B006", # mutable-argument-default
     "B007", # unused-loop-control-variable
     "B026", # star-arg-unpacking-after-keyword-arg
-#    "B901", # return-in-generator
     "B904", # raise-without-from-inside-except
     "B905", # zip-without-explicit-strict
+    "N806", # non-lowercase-variable-in-function
+    "N815", # mixed-case-variable-in-class-scope
 ]
 
 [tool.ruff.lint.per-file-ignores]
@@ -64,6 +64,12 @@ ignore = [
 "tests/*" = [
     "F401", # unused-import
     "F811", # redefined-while-unused
+]
+"configs/*" = [
+    "N802", # invalid-function-name
+]
+"libs/gmpy2_pkcs10aep_cipher.py" = [
+    "N803", # invalid-argument-name
 ]
 
 [tool.ruff.format]

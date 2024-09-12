@@ -13,7 +13,7 @@ from xinference_client.types import Embedding
 
 
 class MockTcvectordbClass:
-    def VectorDBClient(
+    def mock_vector_db_client(
         self,
         url=None,
         username="",
@@ -110,7 +110,7 @@ MOCK = os.getenv("MOCK_SWITCH", "false").lower() == "true"
 @pytest.fixture
 def setup_tcvectordb_mock(request, monkeypatch: MonkeyPatch):
     if MOCK:
-        monkeypatch.setattr(VectorDBClient, "__init__", MockTcvectordbClass.VectorDBClient)
+        monkeypatch.setattr(VectorDBClient, "__init__", MockTcvectordbClass.mock_vector_db_client)
         monkeypatch.setattr(VectorDBClient, "list_databases", MockTcvectordbClass.list_databases)
         monkeypatch.setattr(Database, "collection", MockTcvectordbClass.describe_collection)
         monkeypatch.setattr(Database, "list_collections", MockTcvectordbClass.list_collections)

@@ -310,7 +310,7 @@ class Graph(BaseModel):
                     parallel_branch_node_ids["default"].append(graph_edge.target_node_id)
                 else:
                     condition_hash = graph_edge.run_condition.hash
-                    if not condition_hash in condition_edge_mappings:
+                    if condition_hash not in condition_edge_mappings:
                         condition_edge_mappings[condition_hash] = []
 
                     condition_edge_mappings[condition_hash].append(graph_edge)

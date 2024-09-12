@@ -28,7 +28,7 @@ from core.model_runtime.model_providers.volcengine_maas.legacy.errors import (
     AuthErrors,
     BadRequestErrors,
     ConnectionErrors,
-    MaasException,
+    MaasError,
     RateLimitErrors,
     ServerUnavailableErrors,
 )
@@ -111,7 +111,7 @@ class VolcengineMaaSTextEmbeddingModel(TextEmbeddingModel):
     def _validate_credentials_v2(self, model: str, credentials: dict) -> None:
         try:
             self._invoke(model=model, credentials=credentials, texts=["ping"])
-        except MaasException as e:
+        except MaasError as e:
             raise CredentialsValidateFailedError(e.message)
 
     def _validate_credentials_v3(self, model: str, credentials: dict) -> None:

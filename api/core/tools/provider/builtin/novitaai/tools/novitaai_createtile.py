@@ -34,7 +34,7 @@ class NovitaAiCreateTileTool(BuiltinTool):
             self.create_blob_message(
                 blob=b64decode(client_result.image_file),
                 meta={"mime_type": f"image/{client_result.image_type}"},
-                save_as=self.VARIABLE_KEY.IMAGE.value,
+                save_as=self.VariableKey.IMAGE.value,
             )
         )
 

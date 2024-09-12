@@ -11,7 +11,7 @@ from controllers.console.app.wraps import get_app_model
 from controllers.console.setup import setup_required
 from controllers.console.wraps import account_initialization_required
 from extensions.ext_database import db
-from libs.helper import datetime_string
+from libs.helper import DatetimeString
 from libs.login import login_required
 from models.model import AppMode
 
@@ -25,8 +25,8 @@ class DailyMessageStatistic(Resource):
         account = current_user
 
         parser = reqparse.RequestParser()
-        parser.add_argument("start", type=datetime_string("%Y-%m-%d %H:%M"), location="args")
-        parser.add_argument("end", type=datetime_string("%Y-%m-%d %H:%M"), location="args")
+        parser.add_argument("start", type=DatetimeString("%Y-%m-%d %H:%M"), location="args")
+        parser.add_argument("end", type=DatetimeString("%Y-%m-%d %H:%M"), location="args")
         args = parser.parse_args()
 
         sql_query = """
@@ -79,8 +79,8 @@ class DailyConversationStatistic(Resource):
         account = current_user
 
         parser = reqparse.RequestParser()
-        parser.add_argument("start", type=datetime_string("%Y-%m-%d %H:%M"), location="args")
-        parser.add_argument("end", type=datetime_string("%Y-%m-%d %H:%M"), location="args")
+        parser.add_argument("start", type=DatetimeString("%Y-%m-%d %H:%M"), location="args")
+        parser.add_argument("end", type=DatetimeString("%Y-%m-%d %H:%M"), location="args")
         args = parser.parse_args()
 
         sql_query = """
@@ -133,8 +133,8 @@ class DailyTerminalsStatistic(Resource):
         account = current_user
 
         parser = reqparse.RequestParser()
-        parser.add_argument("start", type=datetime_string("%Y-%m-%d %H:%M"), location="args")
-        parser.add_argument("end", type=datetime_string("%Y-%m-%d %H:%M"), location="args")
+        parser.add_argument("start", type=DatetimeString("%Y-%m-%d %H:%M"), location="args")
+        parser.add_argument("end", type=DatetimeString("%Y-%m-%d %H:%M"), location="args")
         args = parser.parse_args()
 
         sql_query = """
@@ -187,8 +187,8 @@ class DailyTokenCostStatistic(Resource):
         account = current_user
 
         parser = reqparse.RequestParser()
-        parser.add_argument("start", type=datetime_string("%Y-%m-%d %H:%M"), location="args")
-        parser.add_argument("end", type=datetime_string("%Y-%m-%d %H:%M"), location="args")
+        parser.add_argument("start", type=DatetimeString("%Y-%m-%d %H:%M"), location="args")
+        parser.add_argument("end", type=DatetimeString("%Y-%m-%d %H:%M"), location="args")
         args = parser.parse_args()
 
         sql_query = """
@@ -245,8 +245,8 @@ class AverageSessionInteractionStatistic(Resource):
         account = current_user
 
         parser = reqparse.RequestParser()
-        parser.add_argument("start", type=datetime_string("%Y-%m-%d %H:%M"), location="args")
-        parser.add_argument("end", type=datetime_string("%Y-%m-%d %H:%M"), location="args")
+        parser.add_argument("start", type=DatetimeString("%Y-%m-%d %H:%M"), location="args")
+        parser.add_argument("end", type=DatetimeString("%Y-%m-%d %H:%M"), location="args")
         args = parser.parse_args()
 
         sql_query = """SELECT date(DATE_TRUNC('day', c.created_at AT TIME ZONE 'UTC' AT TIME ZONE :tz )) AS date, 
@@ -307,8 +307,8 @@ class UserSatisfactionRateStatistic(Resource):
         account = current_user
 
         parser = reqparse.RequestParser()
-        parser.add_argument("start", type=datetime_string("%Y-%m-%d %H:%M"), location="args")
-        parser.add_argument("end", type=datetime_string("%Y-%m-%d %H:%M"), location="args")
+        parser.add_argument("start", type=DatetimeString("%Y-%m-%d %H:%M"), location="args")
+        parser.add_argument("end", type=DatetimeString("%Y-%m-%d %H:%M"), location="args")
         args = parser.parse_args()
 
         sql_query = """
@@ -369,8 +369,8 @@ class AverageResponseTimeStatistic(Resource):
         account = current_user
 
         parser = reqparse.RequestParser()
-        parser.add_argument("start", type=datetime_string("%Y-%m-%d %H:%M"), location="args")
-        parser.add_argument("end", type=datetime_string("%Y-%m-%d %H:%M"), location="args")
+        parser.add_argument("start", type=DatetimeString("%Y-%m-%d %H:%M"), location="args")
+        parser.add_argument("end", type=DatetimeString("%Y-%m-%d %H:%M"), location="args")
         args = parser.parse_args()
 
         sql_query = """
@@ -425,8 +425,8 @@ class TokensPerSecondStatistic(Resource):
         account = current_user
 
         parser = reqparse.RequestParser()
-        parser.add_argument("start", type=datetime_string("%Y-%m-%d %H:%M"), location="args")
-        parser.add_argument("end", type=datetime_string("%Y-%m-%d %H:%M"), location="args")
+        parser.add_argument("start", type=DatetimeString("%Y-%m-%d %H:%M"), location="args")
+        parser.add_argument("end", type=DatetimeString("%Y-%m-%d %H:%M"), location="args")
         args = parser.parse_args()
 
         sql_query = """SELECT date(DATE_TRUNC('day', created_at AT TIME ZONE 'UTC' AT TIME ZONE :tz )) AS date, 
