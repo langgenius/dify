@@ -51,6 +51,7 @@ ignore = [
     "B905", # zip-without-explicit-strict
     "N806", # non-lowercase-variable-in-function
     "N815", # mixed-case-variable-in-class-scope
+    "SIM102",
 ]
 
 [tool.ruff.lint.per-file-ignores]
