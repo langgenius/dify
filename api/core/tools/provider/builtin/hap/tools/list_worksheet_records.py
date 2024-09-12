@@ -201,9 +201,7 @@ class ListWorksheetRecordsTool(BuiltinTool):
             elif value.startswith('[{"organizeId"'):
                 value = json.loads(value)
                 value = "、".join([item["organizeName"] for item in value])
-            elif value.startswith('[{"file_id"'):
-                value = ""
-            elif value == "[]":
+            elif value.startswith('[{"file_id"') or value == "[]":
                 value = ""
         elif hasattr(value, "accountId"):
             value = value["fullname"]

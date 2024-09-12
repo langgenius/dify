@@ -44,11 +44,11 @@ class SearchAPI:
     @staticmethod
     def _process_response(res: dict) -> str:
         """Process response from SearchAPI."""
-        if "error" in res.keys():
+        if "error" in res:
             raise ValueError(f"Got error from SearchApi: {res['error']}")
 
         toret = ""
-        if "transcripts" in res.keys() and "text" in res["transcripts"][0].keys():
+        if "transcripts" in res and "text" in res["transcripts"][0]:
             for item in res["transcripts"]:
                 toret += item["text"] + " "
         if toret == "":

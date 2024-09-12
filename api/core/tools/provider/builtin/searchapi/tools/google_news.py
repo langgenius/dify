@@ -44,25 +44,25 @@ class SearchAPI:
     @staticmethod
     def _process_response(res: dict, type: str) -> str:
         """Process response from SearchAPI."""
-        if "error" in res.keys():
+        if "error" in res:
             raise ValueError(f"Got error from SearchApi: {res['error']}")
 
         toret = ""
         if type == "text":
-            if "organic_results" in res.keys() and "snippet" in res["organic_results"][0].keys():
+            if "organic_results" in res and "snippet" in res["organic_results"][0]:
                 for item in res["organic_results"]:
                     toret += "content: " + item["snippet"] + "\n" + "link: " + item["link"] + "\n"
-            if "top_stories" in res.keys() and "title" in res["top_stories"][0].keys():
+            if "top_stories" in res and "title" in res["top_stories"][0]:
                 for item in res["top_stories"]:
                     toret += "title: " + item["title"] + "\n" + "link: " + item["link"] + "\n"
             if toret == "":
                 toret = "No good search result found"
 
         elif type == "link":
-            if "organic_results" in res.keys() and "title" in res["organic_results"][0].keys():
+            if "organic_results" in res and "title" in res["organic_results"][0]:
                 for item in res["organic_results"]:
                     toret += f"[{item['title']}]({item['link']})\n"
-            elif "top_stories" in res.keys() and "title" in res["top_stories"][0].keys():
+            elif "top_stories" in res and "title" in res["top_stories"][0]:
                 for item in res["top_stories"]:
                     toret += f"[{item['title']}]({item['link']})\n"
             else:

@@ -224,9 +224,7 @@ class Graph(BaseModel):
         """
         leaf_node_ids = []
         for node_id in self.node_ids:
-            if node_id not in self.edge_mapping:
-                leaf_node_ids.append(node_id)
-            elif (
+            if node_id not in self.edge_mapping or (
                 len(self.edge_mapping[node_id]) == 1
                 and self.edge_mapping[node_id][0].target_node_id == self.root_node_id
             ):
