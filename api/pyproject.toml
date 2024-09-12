@@ -31,6 +31,8 @@ select = [
     "SIM116",
     "SIM118",
     "SIM201",
+    "SIM202",
+    "SIM208",
     "SIM116", # if-else-block-instead-of-dict-lookup
     "SIM401", # if-else-block-instead-of-dict-get
     "SIM910", # dict-get-with-none-default
