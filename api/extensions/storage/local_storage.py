@@ -27,8 +27,7 @@ class LocalStorage(BaseStorage):
         folder = os.path.dirname(filename)
         os.makedirs(folder, exist_ok=True)
 
-        with open(os.path.join(os.getcwd(), filename), "wb") as f:
-            f.write(data)
+        Path(os.path.join(os.getcwd(), filename)).write_bytes(data)
 
     def load_once(self, filename: str) -> bytes:
         if not self.folder or self.folder.endswith("/"):

@@ -68,8 +68,7 @@ class ExtractProcessor:
                         suffix = "." + re.search(r"\.(\w+)$", filename).group(1)
 
             file_path = f"{temp_dir}/{next(tempfile._get_candidate_names())}{suffix}"
-            with open(file_path, "wb") as file:
-                file.write(response.content)
+            Path(file_path).write_bytes(response.content)
             extract_setting = ExtractSetting(datasource_type="upload_file", document_model="text_model")
             if return_text:
                 delimiter = "\n"
