@@ -1,5 +1,3 @@
-import math
-
 import pytest
 from pydantic import ValidationError
 
@@ -23,9 +21,9 @@ def test_frozen_variables():
     with pytest.raises(ValidationError):
         int_var.value = 100
 
-    float_var = FloatVariable(name="float", value=math.pi)
+    float_var = FloatVariable(name="float", value=3.14)
     with pytest.raises(ValidationError):
-        float_var.value = math.e
+        float_var.value = 2.718
 
     secret_var = SecretVariable(name="secret", value="secret_value")
     with pytest.raises(ValidationError):
@@ -43,7 +41,7 @@ def test_variable_value_type_immutable():
     with pytest.raises(ValidationError):
         IntegerVariable(value_type=SegmentType.ARRAY_ANY, name=var.name, value=var.value)
 
-    var = FloatVariable(name="float", value=math.pi)
+    var = FloatVariable(name="float", value=3.14)
     with pytest.raises(ValidationError):
         FloatVariable(value_type=SegmentType.ARRAY_ANY, name=var.name, value=var.value)
 
@@ -80,7 +78,7 @@ def test_variable_to_object():
     assert var.to_object() == "text"
     var = IntegerVariable(name="integer", value=42)
     assert var.to_object() == 42
-    var = FloatVariable(name="float", value=math.pi)
-    assert var.to_object() == math.pi
+    var = FloatVariable(name="float", value=3.14)
+    assert var.to_object() == 3.14
     var = SecretVariable(name="secret", value="secret_value")
     assert var.to_object() == "secret_value"

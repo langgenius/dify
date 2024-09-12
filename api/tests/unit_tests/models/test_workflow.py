@@ -28,7 +28,7 @@ def test_environment_variables():
     variable1 = StringVariable.model_validate({"name": "var1", "value": "value1", "id": str(uuid4())})
     variable2 = IntegerVariable.model_validate({"name": "var2", "value": 123, "id": str(uuid4())})
     variable3 = SecretVariable.model_validate({"name": "var3", "value": "secret", "id": str(uuid4())})
-    variable4 = FloatVariable.model_validate({"name": "var4", "value": math.pi, "id": str(uuid4())})
+    variable4 = FloatVariable.model_validate({"name": "var4", "value": 3.14, "id": str(uuid4())})
 
     with (
         mock.patch("core.helper.encrypter.encrypt_token", return_value="encrypted_token"),
@@ -62,7 +62,7 @@ def test_update_environment_variables():
     variable1 = StringVariable.model_validate({"name": "var1", "value": "value1", "id": str(uuid4())})
     variable2 = IntegerVariable.model_validate({"name": "var2", "value": 123, "id": str(uuid4())})
     variable3 = SecretVariable.model_validate({"name": "var3", "value": "secret", "id": str(uuid4())})
-    variable4 = FloatVariable.model_validate({"name": "var4", "value": math.pi, "id": str(uuid4())})
+    variable4 = FloatVariable.model_validate({"name": "var4", "value": 3.14, "id": str(uuid4())})
 
     with (
         mock.patch("core.helper.encrypter.encrypt_token", return_value="encrypted_token"),
