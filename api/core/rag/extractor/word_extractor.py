@@ -7,8 +7,8 @@ import os
 import re
 import tempfile
 import uuid
-import xml.etree.ElementTree as ET
 from urllib.parse import urlparse
+from xml.etree import ElementTree
 
 import requests
 from docx import Document as DocxDocument
@@ -218,7 +218,7 @@ class WordExtractor(BaseExtractor):
                     hyperlinks_url = None
                 if "HYPERLINK" in run.element.xml:
                     try:
-                        xml = ET.XML(run.element.xml)
+                        xml = ElementTree.XML(run.element.xml)
                         x_child = [c for c in xml.iter() if c is not None]
                         for x in x_child:
                             if x_child is None:
