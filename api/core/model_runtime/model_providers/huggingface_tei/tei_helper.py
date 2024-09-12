@@ -54,7 +54,8 @@ class TeiHelper:
 
         url = str(URL(server_url) / "info")
 
-        # this method is surrounded by a lock, and default requests may hang forever, so we just set a Adapter with max_retries=3
+        # this method is surrounded by a lock, and default requests may hang forever,
+        # so we just set a Adapter with max_retries=3
         session = Session()
         session.mount("http://", HTTPAdapter(max_retries=3))
         session.mount("https://", HTTPAdapter(max_retries=3))

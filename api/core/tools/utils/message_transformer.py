@@ -19,9 +19,7 @@ class ToolFileMessageTransformer:
         result = []
 
         for message in messages:
-            if message.type == ToolInvokeMessage.MessageType.TEXT:
-                result.append(message)
-            elif message.type == ToolInvokeMessage.MessageType.LINK:
+            if message.type == ToolInvokeMessage.MessageType.TEXT or message.type == ToolInvokeMessage.MessageType.LINK:
                 result.append(message)
             elif message.type == ToolInvokeMessage.MessageType.IMAGE:
                 # try to download image
@@ -45,7 +43,7 @@ class ToolFileMessageTransformer:
                     result.append(
                         ToolInvokeMessage(
                             type=ToolInvokeMessage.MessageType.TEXT,
-                            message=f"Failed to download image: {message.message}, you can try to download it yourself.",
+                            message=f"Failed to download image: {message.message}, please try to download it manually.",
                             meta=message.meta.copy() if message.meta is not None else {},
                             save_as=message.save_as,
                         )

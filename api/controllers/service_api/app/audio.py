@@ -84,14 +84,10 @@ class TextApi(Resource):
                 and app_model.workflow.features_dict
             ):
                 text_to_speech = app_model.workflow.features_dict.get("text_to_speech")
-                voice = args.get("voice") if args.get("voice") else text_to_speech.get("voice")
+                voice = args.get("voice") or text_to_speech.get("voice")
             else:
                 try:
-                    voice = (
-                        args.get("voice")
-                        if args.get("voice")
-                        else app_model.app_model_config.text_to_speech_dict.get("voice")
-                    )
+                    voice = args.get("voice") or app_model.app_model_config.text_to_speech_dict.get("voice")
                 except Exception:
                     voice = None
             response = AudioService.transcript_tts(

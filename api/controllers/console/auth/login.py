@@ -150,7 +150,8 @@ class EmailCodeLoginApi(Resource):
                 )
             except WorkSpaceNotAllowedCreateError:
                 return redirect(
-                    f"{dify_config.CONSOLE_WEB_URL}/signin?message=Workspace not found, please contact system admin to invite you to join in a workspace."
+                    f"{dify_config.CONSOLE_WEB_URL}/signin"
+                    "?message=Workspace not found, please contact system admin to invite you to join in a workspace."
                 )
         token = AccountService.login(account, ip_address=get_remote_ip(request))
 

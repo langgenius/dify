@@ -48,6 +48,7 @@ class WordExtractor(BaseExtractor):
                 raise ValueError(f"Check the url of your file; returned status code {r.status_code}")
 
             self.web_path = self.file_path
+            # TODO: use a better way to handle the file
             self.temp_file = tempfile.NamedTemporaryFile()
             self.temp_file.write(r.content)
             self.file_path = self.temp_file.name
@@ -152,7 +153,7 @@ class WordExtractor(BaseExtractor):
             if col_index >= total_cols:
                 break
             cell_content = self._parse_cell(cell, image_map).strip()
-            cell_colspan = cell.grid_span if cell.grid_span else 1
+            cell_colspan = cell.grid_span or 1
             for i in range(cell_colspan):
                 if col_index + i < total_cols:
                     row_cells[col_index + i] = cell_content if i == 0 else ""

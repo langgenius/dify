@@ -72,7 +72,9 @@ class AIModel(ABC):
             if isinstance(error, tuple(model_errors)):
                 if invoke_error == InvokeAuthorizationError:
                     return invoke_error(
-                        description=f"[{provider_name}] Incorrect model credentials provided, please check and try again. "
+                        description=(
+                            f"[{provider_name}] Incorrect model credentials provided, please check and try again."
+                        )
                     )
 
                 return invoke_error(description=f"[{provider_name}] {invoke_error.description}, {str(error)}")

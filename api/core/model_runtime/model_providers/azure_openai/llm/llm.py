@@ -225,7 +225,7 @@ class AzureOpenAILargeLanguageModel(_CommonAzureOpenAI, LargeLanguageModel):
                 continue
 
             # transform assistant message to prompt message
-            text = delta.text if delta.text else ""
+            text = delta.text or ""
             assistant_prompt_message = AssistantPromptMessage(content=text)
 
             full_text += text
@@ -400,15 +400,13 @@ class AzureOpenAILargeLanguageModel(_CommonAzureOpenAI, LargeLanguageModel):
                 continue
 
             # transform assistant message to prompt message
-            assistant_prompt_message = AssistantPromptMessage(
-                content=delta.delta.content if delta.delta.content else "", tool_calls=tool_calls
-            )
+            assistant_prompt_message = AssistantPromptMessage(content=delta.delta.content or "", tool_calls=tool_calls)
 
-            full_assistant_content += delta.delta.content if delta.delta.content else ""
+            full_assistant_content += delta.delta.content or ""
 
             real_model = chunk.model
             system_fingerprint = chunk.system_fingerprint
-            completion += delta.delta.content if delta.delta.content else ""
+            completion += delta.delta.content or ""
 
             yield LLMResultChunk(
                 model=real_model,

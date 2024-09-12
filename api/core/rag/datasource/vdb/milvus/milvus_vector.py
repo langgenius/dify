@@ -141,7 +141,7 @@ class MilvusVector(BaseVector):
         for result in results[0]:
             metadata = result["entity"].get(Field.METADATA_KEY.value)
             metadata["score"] = result["distance"]
-            score_threshold = kwargs.get("score_threshold") if kwargs.get("score_threshold") else 0.0
+            score_threshold = kwargs.get("score_threshold", 0.0)
             if result["distance"] > score_threshold:
                 doc = Document(page_content=result["entity"].get(Field.CONTENT_KEY.value), metadata=metadata)
                 docs.append(doc)

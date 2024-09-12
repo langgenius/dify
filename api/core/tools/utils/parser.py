@@ -315,7 +315,8 @@ class ApiBasedToolSchemaParser:
                 yaml_error = e
         if loaded_content is None:
             raise ToolApiSchemaError(
-                f"Invalid api schema, schema is neither json nor yaml. json error: {str(json_error)}, yaml error: {str(yaml_error)}"
+                f"Invalid api schema, schema is neither json nor yaml. json error: {str(json_error)},"
+                f" yaml error: {str(yaml_error)}"
             )
 
         swagger_error = None
@@ -355,5 +356,6 @@ class ApiBasedToolSchemaParser:
             openapi_plugin_error = e
 
         raise ToolApiSchemaError(
-            f"Invalid api schema, openapi error: {str(openapi_error)}, swagger error: {str(swagger_error)}, openapi plugin error: {str(openapi_plugin_error)}"
+            f"Invalid api schema, openapi error: {str(openapi_error)}, swagger error: {str(swagger_error)},"
+            f" openapi plugin error: {str(openapi_plugin_error)}"
         )

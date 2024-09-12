@@ -1,5 +1,6 @@
 # coding : utf-8
 import datetime
+from itertools import starmap
 
 import pytz
 
@@ -48,7 +49,7 @@ class SignResult:
         self.authorization = ""
 
     def __str__(self):
-        return "\n".join(["{}:{}".format(*item) for item in self.__dict__.items()])
+        return "\n".join(list(starmap("{}:{}".format, self.__dict__.items())))
 
 
 class Credentials:

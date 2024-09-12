@@ -20,7 +20,7 @@ class ToolEntity(BaseModel):
         if not isinstance(value, dict):
             raise ValueError("tool_configurations must be a dictionary")
 
-        for key in values.data.get("tool_configurations", {}).keys():
+        for key in values.data.get("tool_configurations", {}):
             value = values.data.get("tool_configurations", {}).get(key)
             if not isinstance(value, str | int | float | bool):
                 raise ValueError(f"{key} must be a string")

@@ -15,6 +15,7 @@ class BaichuanTokenizer:
 
     @classmethod
     def _get_num_tokens(cls, text: str) -> int:
-        # tokens = number of Chinese characters + number of English words * 1.3 (for estimation only, subject to actual return)
+        # tokens = number of Chinese characters + number of English words * 1.3
+        # (for estimation only, subject to actual return)
         # https://platform.baichuan-ai.com/docs/text-Embedding
         return int(cls.count_chinese_characters(text) + cls.count_english_vocabularies(text) * 1.3)

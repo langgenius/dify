@@ -256,7 +256,7 @@ class DatasetRetrieval:
             # get retrieval model config
             dataset = db.session.query(Dataset).filter(Dataset.id == dataset_id).first()
             if dataset:
-                retrieval_model_config = dataset.retrieval_model if dataset.retrieval_model else default_retrieval_model
+                retrieval_model_config = dataset.retrieval_model or default_retrieval_model
 
                 # get top k
                 top_k = retrieval_model_config["top_k"]
@@ -410,7 +410,7 @@ class DatasetRetrieval:
                 return []
 
             # get retrieval model , if the model is not setting , using default
-            retrieval_model = dataset.retrieval_model if dataset.retrieval_model else default_retrieval_model
+            retrieval_model = dataset.retrieval_model or default_retrieval_model
 
             if dataset.indexing_technique == "economy":
                 # use keyword table query
@@ -433,9 +433,7 @@ class DatasetRetrieval:
                         reranking_model=retrieval_model.get("reranking_model", None)
                         if retrieval_model["reranking_enable"]
                         else None,
-                        reranking_mode=retrieval_model.get("reranking_mode")
-                        if retrieval_model.get("reranking_mode")
-                        else "reranking_model",
+                        reranking_mode=retrieval_model.get("reranking_mode") or "reranking_model",
                         weights=retrieval_model.get("weights", None),
                     )
 
@@ -486,7 +484,7 @@ class DatasetRetrieval:
             }
 
             for dataset in available_datasets:
-                retrieval_model_config = dataset.retrieval_model if dataset.retrieval_model else default_retrieval_model
+                retrieval_model_config = dataset.retrieval_model or default_retrieval_model
 
                 # get top k
                 top_k = retrieval_model_config["top_k"]
@@ -581,8 +579,8 @@ class DatasetRetrieval:
             intersection = set(vec1.keys()) & set(vec2.keys())
             numerator = sum(vec1[x] * vec2[x] for x in intersection)
 
-            sum1 = sum(vec1[x] ** 2 for x in vec1.keys())
-            sum2 = sum(vec2[x] ** 2 for x in vec2.keys())
+            sum1 = sum(vec1[x] ** 2 for x in vec1)
+            sum2 = sum(vec2[x] ** 2 for x in vec2)
             denominator = math.sqrt(sum1) * math.sqrt(sum2)
 
             if not denominator:

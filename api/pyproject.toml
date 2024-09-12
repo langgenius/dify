@@ -15,21 +15,19 @@ select = [
     "C4", # flake8-comprehensions
     "E", # pycodestyle E rules
     "F", # pyflakes rules
+    "FURB", # refurb rules
     "I", # isort rules
     "N", # pep8-naming
-    "UP", # pyupgrade rules
     "RUF019", # unnecessary-key-check
     "RUF100", # unused-noqa
     "RUF101", # redirected-noqa
     "S506", # unsafe-yaml-load
-    "SIM116", # if-else-block-instead-of-dict-lookup
-    "SIM401", # if-else-block-instead-of-dict-get
-    "SIM910", # dict-get-with-none-default
+    "SIM", # flake8-simplify rules
+    "UP", # pyupgrade rules
     "W191", # tab-indentation
     "W605", # invalid-escape-sequence
 ]
 ignore = [
-    "E501", # line-too-long
     "E402", # module-import-not-at-top-of-file
     "E711", # none-comparison
     "E712", # true-false-comparison
@@ -40,6 +38,8 @@ ignore = [
     "F405", # undefined-local-with-import-star-usage
     "F821", # undefined-name
     "F841", # unused-variable
+    "FURB113", # repeated-append
+    "FURB152", # math-constant
     "UP007", # non-pep604-annotation
     "UP032", # f-string
     "B005", # strip-with-multi-characters
@@ -50,6 +50,15 @@ ignore = [
     "B905", # zip-without-explicit-strict
     "N806", # non-lowercase-variable-in-function
     "N815", # mixed-case-variable-in-class-scope
+    "SIM102", # collapsible-if
+    "SIM103", # needless-bool
+    "SIM105", # suppressible-exception
+    "SIM107", # return-in-try-except-finally
+    "SIM108", # if-else-block-instead-of-if-exp
+    "SIM113", # eumerate-for-loop
+    "SIM117", # multiple-with-statements
+    "SIM210", # if-expr-with-true-false
+    "SIM300", # yoda-conditions
 ]
 
 [tool.ruff.lint.per-file-ignores]
@@ -61,15 +70,18 @@ ignore = [
     "F401", # unused-import
     "F811", # redefined-while-unused
 ]
-"tests/*" = [
-    "F401", # unused-import
-    "F811", # redefined-while-unused
-]
 "configs/*" = [
     "N802", # invalid-function-name
 ]
 "libs/gmpy2_pkcs10aep_cipher.py" = [
     "N803", # invalid-argument-name
+]
+"migrations/versions/*" = [
+    "E501", # line-too-long
+]
+"tests/*" = [
+    "F401", # unused-import
+    "F811", # redefined-while-unused
 ]
 
 [tool.ruff.format]
@@ -263,4 +275,4 @@ optional = true
 
 [tool.poetry.group.lint.dependencies]
 dotenv-linter = "~0.5.0"
-ruff = "~0.6.1"
+ruff = "~0.6.4"

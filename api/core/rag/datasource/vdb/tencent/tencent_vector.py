@@ -63,10 +63,7 @@ class TencentVector(BaseVector):
 
     def _has_collection(self) -> bool:
         collections = self._db.list_collections()
-        for collection in collections:
-            if collection.collection_name == self._collection_name:
-                return True
-        return False
+        return any(collection.collection_name == self._collection_name for collection in collections)
 
     def _create_collection(self, dimension: int) -> None:
         lock_name = "vector_indexing_lock_{}".format(self._collection_name)
@@ -156,7 +153,7 @@ class TencentVector(BaseVector):
             limit=kwargs.get("top_k", 4),
             timeout=self._client_config.timeout,
         )
-        score_threshold = kwargs.get("score_threshold", 0.0) if kwargs.get("score_threshold", 0.0) else 0.0
+        score_threshold = kwargs.get("score_threshold", 0.0)
         return self._get_search_res(res, score_threshold)
 
     def search_by_full_text(self, query: str, **kwargs: Any) -> list[Document]:

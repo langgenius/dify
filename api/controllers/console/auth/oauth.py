@@ -96,7 +96,8 @@ class OAuthCallback(Resource):
             return redirect(f"{dify_config.CONSOLE_WEB_URL}/signin?message=WorkspaceNotFound")
         except WorkSpaceNotAllowedCreateError:
             return redirect(
-                f"{dify_config.CONSOLE_WEB_URL}/signin?message=Workspace not found, please contact system admin to invite you to join in a workspace."
+                f"{dify_config.CONSOLE_WEB_URL}/signin"
+                "?message=Workspace not found, please contact system admin to invite you to join in a workspace."
             )
 
         # Check account status
@@ -114,7 +115,8 @@ class OAuthCallback(Resource):
             return redirect(f"{dify_config.CONSOLE_WEB_URL}/signin?message=WorkspaceNotFound")
         except WorkSpaceNotAllowedCreateError:
             return redirect(
-                f"{dify_config.CONSOLE_WEB_URL}/signin?message=Workspace not found, please contact system admin to invite you to join in a workspace."
+                f"{dify_config.CONSOLE_WEB_URL}/signin"
+                "?message=Workspace not found, please contact system admin to invite you to join in a workspace."
             )
 
         token = AccountService.login(account, ip_address=get_remote_ip(request))
@@ -149,7 +151,7 @@ def _generate_account(provider: str, user_info: OAuthUserInfo):
     if not account:
         if not dify_config.ALLOW_REGISTER:
             raise AccountNotFoundError()
-        account_name = user_info.name if user_info.name else "Dify"
+        account_name = user_info.name or "Dify"
         account = RegisterService.register(
             email=user_info.email, name=account_name, password=None, open_id=user_info.id, provider=provider
         )

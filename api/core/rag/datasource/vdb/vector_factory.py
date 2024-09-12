@@ -153,7 +153,7 @@ class Vector:
         return CacheEmbedding(embedding_model)
 
     def _filter_duplicate_texts(self, texts: list[Document]) -> list[Document]:
-        for text in texts[:]:
+        for text in texts.copy():
             doc_id = text.metadata["doc_id"]
             exists_duplicate_node = self.text_exists(doc_id)
             if exists_duplicate_node:

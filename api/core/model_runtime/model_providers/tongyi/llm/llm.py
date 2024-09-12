@@ -4,6 +4,7 @@ import tempfile
 import uuid
 from collections.abc import Generator
 from http import HTTPStatus
+from pathlib import Path
 from typing import Optional, Union, cast
 
 from dashscope import Generation, MultiModalConversation, get_tokenizer
@@ -350,9 +351,7 @@ class TongyiLargeLanguageModel(LargeLanguageModel):
                         break
         elif isinstance(message, AssistantPromptMessage):
             message_text = f"{ai_prompt} {content}"
-        elif isinstance(message, SystemPromptMessage):
-            message_text = content
-        elif isinstance(message, ToolPromptMessage):
+        elif isinstance(message, SystemPromptMessage | ToolPromptMessage):
             message_text = content
         else:
             raise ValueError(f"Got unknown type {message}")
@@ -456,8 +455,7 @@ class TongyiLargeLanguageModel(LargeLanguageModel):
 
         file_path = os.path.join(temp_dir, f"{uuid.uuid4()}.{mime_type.split('/')[1]}")
 
-        with open(file_path, "wb") as image_file:
-            image_file.write(base64.b64decode(encoded_string))
+        Path(file_path).write_bytes(base64.b64decode(encoded_string))
 
         return f"file://{file_path}"
 

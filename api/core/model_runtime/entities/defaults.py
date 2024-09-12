@@ -8,8 +8,11 @@ PARAMETER_RULE_TEMPLATE: dict[DefaultParameterName, dict] = {
         },
         "type": "float",
         "help": {
-            "en_US": "Controls randomness. Lower temperature results in less random completions. As the temperature approaches zero, the model will become deterministic and repetitive. Higher temperature results in more random completions.",
-            "zh_Hans": "温度控制随机性。较低的温度会导致较少的随机完成。随着温度接近零，模型将变得确定性和重复性。较高的温度会导致更多的随机完成。",
+            "en_US": "Controls randomness. Lower temperature results in less random completions."
+            " As the temperature approaches zero, the model will become deterministic and repetitive."
+            " Higher temperature results in more random completions.",
+            "zh_Hans": "温度控制随机性。较低的温度会导致较少的随机完成。随着温度接近零，模型将变得确定性和重复性。"
+            "较高的温度会导致更多的随机完成。",
         },
         "required": False,
         "default": 0.0,
@@ -24,7 +27,8 @@ PARAMETER_RULE_TEMPLATE: dict[DefaultParameterName, dict] = {
         },
         "type": "float",
         "help": {
-            "en_US": "Controls diversity via nucleus sampling: 0.5 means half of all likelihood-weighted options are considered.",
+            "en_US": "Controls diversity via nucleus sampling: 0.5 means half of all likelihood-weighted options"
+            " are considered.",
             "zh_Hans": "通过核心采样控制多样性：0.5表示考虑了一半的所有可能性加权选项。",
         },
         "required": False,
@@ -88,7 +92,8 @@ PARAMETER_RULE_TEMPLATE: dict[DefaultParameterName, dict] = {
         },
         "type": "int",
         "help": {
-            "en_US": "Specifies the upper limit on the length of generated results. If the generated results are truncated, you can increase this parameter.",
+            "en_US": "Specifies the upper limit on the length of generated results."
+            " If the generated results are truncated, you can increase this parameter.",
             "zh_Hans": "指定生成结果长度的上限。如果生成结果截断，可以调大该参数。",
         },
         "required": False,
@@ -104,7 +109,8 @@ PARAMETER_RULE_TEMPLATE: dict[DefaultParameterName, dict] = {
         },
         "type": "string",
         "help": {
-            "en_US": "Set a response format, ensure the output from llm is a valid code block as possible, such as JSON, XML, etc.",
+            "en_US": "Set a response format, ensure the output from llm is a valid code block as possible,"
+            " such as JSON, XML, etc.",
             "zh_Hans": "设置一个返回格式，确保llm的输出尽可能是有效的代码块，如JSON、XML等",
         },
         "required": False,

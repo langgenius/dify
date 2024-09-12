@@ -130,7 +130,8 @@ class XinferenceAILargeLanguageModel(LargeLanguageModel):
                     credentials["completion_type"] = "completion"
                 else:
                     raise ValueError(
-                        f"xinference model ability {extra_param.model_ability} is not supported, check if you have the right model type"
+                        f"xinference model ability {extra_param.model_ability} is not supported,"
+                        f" check if you have the right model type"
                     )
 
             if extra_param.support_function_call:
@@ -272,11 +273,7 @@ class XinferenceAILargeLanguageModel(LargeLanguageModel):
         """
         text = ""
         for item in message:
-            if isinstance(item, UserPromptMessage):
-                text += item.content
-            elif isinstance(item, SystemPromptMessage):
-                text += item.content
-            elif isinstance(item, AssistantPromptMessage):
+            if isinstance(item, UserPromptMessage | SystemPromptMessage | AssistantPromptMessage):
                 text += item.content
             else:
                 raise NotImplementedError(f"PromptMessage type {type(item)} is not supported")
@@ -362,7 +359,8 @@ class XinferenceAILargeLanguageModel(LargeLanguageModel):
                 help=I18nObject(
                     en_US="Number between -2.0 and 2.0. Positive values penalize new tokens based on whether they "
                     "appear in the text so far, increasing the model's likelihood to talk about new topics.",
-                    zh_Hans="介于 -2.0 和 2.0 之间的数字。正值会根据新词是否已出现在文本中对其进行惩罚，从而增加模型谈论新话题的可能性。",
+                    zh_Hans="介于 -2.0 和 2.0 之间的数字。正值会根据新词是否已出现在文本中对其进行惩罚，"
+                    "从而增加模型谈论新话题的可能性。",
                 ),
                 default=0.0,
                 min=-2.0,
@@ -382,7 +380,8 @@ class XinferenceAILargeLanguageModel(LargeLanguageModel):
                     en_US="Number between -2.0 and 2.0. Positive values penalize new tokens based on their "
                     "existing frequency in the text so far, decreasing the model's likelihood to repeat the "
                     "same line verbatim.",
-                    zh_Hans="介于 -2.0 和 2.0 之间的数字。正值会根据新词在文本中的现有频率对其进行惩罚，从而降低模型逐字重复相同内容的可能性。",
+                    zh_Hans="介于 -2.0 和 2.0 之间的数字。正值会根据新词在文本中的现有频率对其进行惩罚，"
+                    "从而降低模型逐字重复相同内容的可能性。",
                 ),
                 default=0.0,
                 min=-2.0,
@@ -590,7 +589,7 @@ class XinferenceAILargeLanguageModel(LargeLanguageModel):
 
         # convert tool call to assistant message tool call
         tool_calls = assistant_message.tool_calls
-        assistant_prompt_message_tool_calls = self._extract_response_tool_calls(tool_calls if tool_calls else [])
+        assistant_prompt_message_tool_calls = self._extract_response_tool_calls(tool_calls or [])
         function_call = assistant_message.function_call
         if function_call:
             assistant_prompt_message_tool_calls += [self._extract_response_function_call(function_call)]
@@ -653,7 +652,7 @@ class XinferenceAILargeLanguageModel(LargeLanguageModel):
 
             # transform assistant message to prompt message
             assistant_prompt_message = AssistantPromptMessage(
-                content=delta.delta.content if delta.delta.content else "", tool_calls=assistant_message_tool_calls
+                content=delta.delta.content or "", tool_calls=assistant_message_tool_calls
             )
 
             if delta.finish_reason is not None:
@@ -750,7 +749,7 @@ class XinferenceAILargeLanguageModel(LargeLanguageModel):
             delta = chunk.choices[0]
 
             # transform assistant message to prompt message
-            assistant_prompt_message = AssistantPromptMessage(content=delta.text if delta.text else "", tool_calls=[])
+            assistant_prompt_message = AssistantPromptMessage(content=delta.text or "", tool_calls=[])
 
             if delta.finish_reason is not None:
                 # temp_assistant_prompt_message is used to calculate usage
