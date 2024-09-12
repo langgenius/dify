@@ -21,7 +21,7 @@ class DataSourceOauthBinding(db.Model):
     tenant_id = db.Column(StringUUID, nullable=False)
     access_token = db.Column(db.String(255), nullable=False)
     provider = db.Column(db.String(255), nullable=False)
-    source_info = db.Column(JSONB, nullable=False)
+    source_info = db.Column(db.JSON, nullable=False)
     created_at = db.Column(db.DateTime, nullable=False, server_default=func.current_timestamp())
     updated_at = db.Column(db.DateTime, nullable=False, server_default=func.current_timestamp())
     disabled = db.Column(db.Boolean, nullable=True, default=False)

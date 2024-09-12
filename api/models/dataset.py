@@ -56,7 +56,7 @@ class Dataset(db.Model):
     embedding_model = db.Column(db.String(255), nullable=True)
     embedding_model_provider = db.Column(db.String(255), nullable=True)
     collection_binding_id = db.Column(StringUUID, nullable=True)
-    retrieval_model = db.Column(JSONB, nullable=True)
+    retrieval_model = db.Column(db.JSON, nullable=True)
 
     @property
     def dataset_keyword_table(self):
@@ -584,7 +584,7 @@ class DatasetQuery(db.Model):
     content = db.Column(db.Text, nullable=False)
     source = db.Column(db.String(255), nullable=False)
     source_app_id = db.Column(StringUUID, nullable=True)
-    created_by_role = db.Column(db.String, nullable=False)
+    created_by_role = db.Column(db.String(255), nullable=False)
     created_by = db.Column(StringUUID, nullable=False)
     created_at = db.Column(db.DateTime, nullable=False, server_default=func.current_timestamp())
 

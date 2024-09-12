@@ -1329,9 +1329,9 @@ class MessageAgentThought(db.Model):
     answer_price_unit = db.Column(db.Numeric(10, 7), nullable=False, server_default=db.text("0.001"))
     tokens = db.Column(db.Integer, nullable=True)
     total_price = db.Column(db.Numeric, nullable=True)
-    currency = db.Column(db.String, nullable=True)
+    currency = db.Column(db.String(255), nullable=True)
     latency = db.Column(db.Float, nullable=True)
-    created_by_role = db.Column(db.String, nullable=False)
+    created_by_role = db.Column(db.String(255), nullable=False)
     created_by = db.Column(StringUUID, nullable=False)
     created_at = db.Column(db.DateTime, nullable=False, server_default=func.current_timestamp())
 

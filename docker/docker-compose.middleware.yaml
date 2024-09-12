@@ -25,6 +25,24 @@ services:
       timeout: 3s
       retries: 30
 
+  mysql-db:
+    image: mysql:8.0.39-bookworm
+    restart: always
+    env_file:
+      - ./middleware.env
+    environment:
+      MYSQL_ROOT_PASSWORD: ${MYSQL_ROOT_PASSWORD:-difyai123456}
+      MYSQL_DATABASE: ${MYSQL_DATABASE:-dify}
+    volumes:
+      - ./volumes/mysql/data:/var/lib/mysql
+    ports:
+      - "${EXPOSE_MYSQL_PORT:-3306}:3306"
+    healthcheck:
+      test: ["CMD", "mysqladmin", "ping", "-h", "localhost"]
+      interval: 1s
+      timeout: 3s
+      retries: 30
+
   # The redis cache.
   redis:
     image: redis:6-alpine

@@ -139,6 +139,8 @@ class DatabaseConfig:
     @computed_field
     @property
     def SQLALCHEMY_ENGINE_OPTIONS(self) -> dict[str, Any]:
+        if self.SQLALCHEMY_DATABASE_URI_SCHEME != "postgresql":
+            return {}
         return {
             "pool_size": self.SQLALCHEMY_POOL_SIZE,
             "max_overflow": self.SQLALCHEMY_MAX_OVERFLOW,
