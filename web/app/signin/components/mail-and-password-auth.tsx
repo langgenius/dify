@@ -106,13 +106,13 @@ export default function MailAndPasswordAuth({ isInvite }: MailAndPasswordAuthPro
           placeholder={t('login.passwordPlaceholder') || ''}
         />
         <div className="absolute inset-y-0 right-0 flex items-center pr-3">
-          <button
+          <Button
             type="button"
+            variant='ghost'
             onClick={() => setShowPassword(!showPassword)}
-            className="text-gray-400 hover:text-gray-500 focus:outline-none focus:text-gray-500"
           >
             {showPassword ? '👀' : '😝'}
-          </button>
+          </Button>
         </div>
       </div>
     </div>
