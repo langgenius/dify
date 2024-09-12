@@ -9,28 +9,26 @@ class CouchbaseConfig(BaseModel):
     """
 
     COUCHBASE_CONNECTION_STRING: Optional[str] = Field(
-        description='COUCHBASE connection string',
+        description="COUCHBASE connection string",
         default=None,
     )
 
     COUCHBASE_USER: Optional[str] = Field(
-        description='COUCHBASE user',
+        description="COUCHBASE user",
         default=None,
     )
 
     COUCHBASE_PASSWORD: Optional[str] = Field(
-        description='COUCHBASE password',
+        description="COUCHBASE password",
         default=None,
     )
 
     COUCHBASE_BUCKET_NAME: Optional[str] = Field(
-        description='COUCHBASE bucket name',
+        description="COUCHBASE bucket name",
         default=None,
-
     )
 
     COUCHBASE_SCOPE_NAME: Optional[str] = Field(
-        description='COUCHBASE scope name',
+        description="COUCHBASE scope name",
         default=None,
-
     )

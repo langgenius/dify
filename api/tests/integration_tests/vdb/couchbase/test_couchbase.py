@@ -16,13 +16,14 @@ class CouchbaseTest(AbstractVectorTest):
         self.vector = CouchbaseVector(
             collection_name=self.collection_name,
             config=CouchbaseConfig(
-                connection_string = '127.0.0.1',
-                user = 'Administrator',
-                password = 'password',
-                bucket_name = 'Embeddings',
-                scope_name = '_default',
+                connection_string="127.0.0.1",
+                user="Administrator",
+                password="password",
+                bucket_name="Embeddings",
+                scope_name="_default",
             ),
         )
+
 
 def test_couchbase(setup_mock_redis):
     CouchbaseTest().run_all_tests()
