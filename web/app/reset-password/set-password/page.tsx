@@ -1,9 +1,10 @@
 'use client'
 import { useCallback, useState } from 'react'
 import { useTranslation } from 'react-i18next'
-import { useSearchParams } from 'next/navigation'
+import { useRouter, useSearchParams } from 'next/navigation'
 import cn from 'classnames'
 import { RiCheckboxCircleFill } from '@remixicon/react'
+import { useCountDown } from 'ahooks'
 import Button from '@/app/components/base/button'
 import { changePasswordWithToken } from '@/service/common'
 import Toast from '@/app/components/base/toast'
@@ -13,6 +14,7 @@ const validPassword = /^(?=.*[a-zA-Z])(?=.*\d).{8,}$/
 
 const ChangePasswordForm = () => {
   const { t } = useTranslation()
+  const router = useRouter()
   const searchParams = useSearchParams()
   const token = decodeURIComponent(searchParams.get('token') || '')
 
@@ -26,6 +28,21 @@ const ChangePasswordForm = () => {
       message,
     })
   }, [])
+
+  const getSignInUrl = () => {
+    if (searchParams.has('invite_token'))
+      return `/signin/invite-settings?${searchParams.toString()}`
+    return '/signin'
+  }
+
+  const AUTO_REDIRECT_TIME = 5000
+  const [leftTime, setLeftTime] = useState<number | undefined>(undefined)
+  const [countdown] = useCountDown({
+    leftTime,
+    onEnd: () => {
+      router.replace(getSignInUrl())
+    },
+  })
 
   const valid = useCallback(() => {
     if (!password.trim()) {
@@ -56,17 +73,12 @@ const ChangePasswordForm = () => {
         },
       })
       setShowSuccess(true)
+      setLeftTime(AUTO_REDIRECT_TIME)
     }
     catch (error) {
       console.error(error)
     }
   }, [password, token, valid, confirmPassword])
-
-  const getSignInUrl = () => {
-    if (searchParams.has('invite_token'))
-      return `/signin/invite-settings?${searchParams.toString()}`
-    return '/signin'
-  }
 
   return (
     <div className={
@@ -134,17 +146,18 @@ const ChangePasswordForm = () => {
       {showSuccess && (
         <div className="flex flex-col md:w-[400px]">
           <div className="w-full mx-auto">
-            <div className="mb-3 flex justify-center items-center w-20 h-20 p-5 rounded-[20px] border border-gray-100 shadow-lg text-[40px] font-bold">
-              <RiCheckboxCircleFill className='w-10 h-10 text-[#039855]' />
+            <div className="mb-3 flex justify-center items-center w-20 h-20 p-5 rounded-[20px] border border-components-panel-border-subtle shadow-lg text-[40px] font-bold">
+              <RiCheckboxCircleFill className='w-10 h-10 text-text-success' />
             </div>
-            <h2 className="text-[32px] font-bold text-gray-900">
+            <h2 className="text-4xl font-bold text-text-primary">
               {t('login.passwordChangedTip')}
             </h2>
           </div>
           <div className="w-full mx-auto mt-6">
-            <Button variant='primary' className='w-full !text-sm'>
-              <a href={getSignInUrl()}>{t('login.passwordChanged')}</a>
-            </Button>
+            <Button variant='primary' className='w-full !text-sm' onClick={() => {
+              setLeftTime(undefined)
+              router.replace(getSignInUrl())
+            }}>{t('login.passwordChanged')} ({Math.round(countdown / 1000)}) </Button>
           </div>
         </div>
       )}
