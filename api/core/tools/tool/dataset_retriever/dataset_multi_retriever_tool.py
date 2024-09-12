@@ -160,7 +160,7 @@ class DatasetMultiRetrieverTool(DatasetRetrieverBaseTool):
                 hit_callback.on_query(query, dataset.id)
 
             # get retrieval model , if the model is not setting , using default
-            retrieval_model = dataset.retrieval_model if dataset.retrieval_model else default_retrieval_model
+            retrieval_model = dataset.retrieval_model or default_retrieval_model
 
             if dataset.indexing_technique == "economy":
                 # use keyword table query

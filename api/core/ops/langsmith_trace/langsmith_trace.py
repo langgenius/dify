@@ -82,7 +82,7 @@ class LangSmithDataTrace(BaseTraceInstance):
         langsmith_run = LangSmithRunModel(
             file_list=trace_info.file_list,
             total_tokens=trace_info.total_tokens,
-            id=trace_info.workflow_app_log_id if trace_info.workflow_app_log_id else trace_info.workflow_run_id,
+            id=trace_info.workflow_app_log_id or trace_info.workflow_run_id,
             name=TraceTaskName.WORKFLOW_TRACE.value,
             inputs=trace_info.workflow_run_inputs,
             run_type=LangSmithRunType.tool,
@@ -94,7 +94,7 @@ class LangSmithDataTrace(BaseTraceInstance):
             },
             error=trace_info.error,
             tags=["workflow"],
-            parent_run_id=trace_info.message_id if trace_info.message_id else None,
+            parent_run_id=trace_info.message_id or None,
         )
 
         self.add_run(langsmith_run)
@@ -133,7 +133,7 @@ class LangSmithDataTrace(BaseTraceInstance):
             else:
                 inputs = json.loads(node_execution.inputs) if node_execution.inputs else {}
             outputs = json.loads(node_execution.outputs) if node_execution.outputs else {}
-            created_at = node_execution.created_at if node_execution.created_at else datetime.now()
+            created_at = node_execution.created_at or datetime.now()
             elapsed_time = node_execution.elapsed_time
             finished_at = created_at + timedelta(seconds=elapsed_time)
 
@@ -180,9 +180,7 @@ class LangSmithDataTrace(BaseTraceInstance):
                 extra={
                     "metadata": metadata,
                 },
-                parent_run_id=trace_info.workflow_app_log_id
-                if trace_info.workflow_app_log_id
-                else trace_info.workflow_run_id,
+                parent_run_id=trace_info.workflow_app_log_id or trace_info.workflow_run_id,
                 tags=["node_execution"],
             )
 

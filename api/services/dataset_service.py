@@ -155,7 +155,7 @@ class DatasetService:
         dataset.tenant_id = tenant_id
         dataset.embedding_model_provider = embedding_model.provider if embedding_model else None
         dataset.embedding_model = embedding_model.model if embedding_model else None
-        dataset.permission = permission if permission else DatasetPermissionEnum.ONLY_ME
+        dataset.permission = permission or DatasetPermissionEnum.ONLY_ME
         db.session.add(dataset)
         db.session.commit()
         return dataset

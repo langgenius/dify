@@ -284,7 +284,7 @@ class VolcengineMaaSLargeLanguageModel(LargeLanguageModel):
                 model=model,
                 prompt_messages=prompt_messages,
                 message=AssistantPromptMessage(
-                    content=message.content if message.content else "",
+                    content=message.content or "",
                     tool_calls=tool_calls,
                 ),
                 usage=self._calc_response_usage(

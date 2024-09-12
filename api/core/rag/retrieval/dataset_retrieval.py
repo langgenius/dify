@@ -256,7 +256,7 @@ class DatasetRetrieval:
             # get retrieval model config
             dataset = db.session.query(Dataset).filter(Dataset.id == dataset_id).first()
             if dataset:
-                retrieval_model_config = dataset.retrieval_model if dataset.retrieval_model else default_retrieval_model
+                retrieval_model_config = dataset.retrieval_model or default_retrieval_model
 
                 # get top k
                 top_k = retrieval_model_config["top_k"]
@@ -410,7 +410,7 @@ class DatasetRetrieval:
                 return []
 
             # get retrieval model , if the model is not setting , using default
-            retrieval_model = dataset.retrieval_model if dataset.retrieval_model else default_retrieval_model
+            retrieval_model = dataset.retrieval_model or default_retrieval_model
 
             if dataset.indexing_technique == "economy":
                 # use keyword table query
@@ -486,7 +486,7 @@ class DatasetRetrieval:
             }
 
             for dataset in available_datasets:
-                retrieval_model_config = dataset.retrieval_model if dataset.retrieval_model else default_retrieval_model
+                retrieval_model_config = dataset.retrieval_model or default_retrieval_model
 
                 # get top k
                 top_k = retrieval_model_config["top_k"]

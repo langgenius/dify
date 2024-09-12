@@ -33,7 +33,7 @@ class HitTestingService:
 
         # get retrieval model , if the model is not setting , using default
         if not retrieval_model:
-            retrieval_model = dataset.retrieval_model if dataset.retrieval_model else default_retrieval_model
+            retrieval_model = dataset.retrieval_model or default_retrieval_model
 
         all_documents = RetrievalService.retrieve(
             retrieval_method=retrieval_model.get("search_method", "semantic_search"),

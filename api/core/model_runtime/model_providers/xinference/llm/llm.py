@@ -589,7 +589,7 @@ class XinferenceAILargeLanguageModel(LargeLanguageModel):
 
         # convert tool call to assistant message tool call
         tool_calls = assistant_message.tool_calls
-        assistant_prompt_message_tool_calls = self._extract_response_tool_calls(tool_calls if tool_calls else [])
+        assistant_prompt_message_tool_calls = self._extract_response_tool_calls(tool_calls or [])
         function_call = assistant_message.function_call
         if function_call:
             assistant_prompt_message_tool_calls += [self._extract_response_function_call(function_call)]
@@ -652,7 +652,7 @@ class XinferenceAILargeLanguageModel(LargeLanguageModel):
 
             # transform assistant message to prompt message
             assistant_prompt_message = AssistantPromptMessage(
-                content=delta.delta.content if delta.delta.content else "", tool_calls=assistant_message_tool_calls
+                content=delta.delta.content or "", tool_calls=assistant_message_tool_calls
             )
 
             if delta.finish_reason is not None:
@@ -749,7 +749,7 @@ class XinferenceAILargeLanguageModel(LargeLanguageModel):
             delta = chunk.choices[0]
 
             # transform assistant message to prompt message
-            assistant_prompt_message = AssistantPromptMessage(content=delta.text if delta.text else "", tool_calls=[])
+            assistant_prompt_message = AssistantPromptMessage(content=delta.text or "", tool_calls=[])
 
             if delta.finish_reason is not None:
                 # temp_assistant_prompt_message is used to calculate usage

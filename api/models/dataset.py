@@ -144,7 +144,7 @@ class Dataset(db.Model):
             "top_k": 2,
             "score_threshold_enabled": False,
         }
-        return self.retrieval_model if self.retrieval_model else default_retrieval_model
+        return self.retrieval_model or default_retrieval_model
 
     @property
     def tags(self):
@@ -160,7 +160,7 @@ class Dataset(db.Model):
             .all()
         )
 
-        return tags if tags else []
+        return tags or []
 
     @staticmethod
     def gen_collection_name_by_id(dataset_id: str) -> str:

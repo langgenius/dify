@@ -65,17 +65,11 @@ class InsertExploreAppListApi(Resource):
             privacy_policy = args["privacy_policy"] if args["privacy_policy"] else ""
             custom_disclaimer = args["custom_disclaimer"] if args["custom_disclaimer"] else ""
         else:
-            desc = site.description if site.description else args["desc"] if args["desc"] else ""
-            copy_right = site.copyright if site.copyright else args["copyright"] if args["copyright"] else ""
-            privacy_policy = (
-                site.privacy_policy if site.privacy_policy else args["privacy_policy"] if args["privacy_policy"] else ""
-            )
-            custom_disclaimer = (
-                site.custom_disclaimer
-                if site.custom_disclaimer
-                else args["custom_disclaimer"]
-                if args["custom_disclaimer"]
-                else ""
+            desc = site.description or (args["desc"] if args["desc"] else "")
+            copy_right = site.copyright or (args["copyright"] if args["copyright"] else "")
+            privacy_policy = site.privacy_policy or (args["privacy_policy"] if args["privacy_policy"] else "")
+            custom_disclaimer = site.custom_disclaimer or (
+                args["custom_disclaimer"] if args["custom_disclaimer"] else ""
             )
 
         recommended_app = RecommendedApp.query.filter(RecommendedApp.app_id == args["app_id"]).first()
