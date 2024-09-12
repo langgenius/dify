@@ -472,7 +472,7 @@ class TongyiLargeLanguageModel(LargeLanguageModel):
             for p_key, p_val in properties.items():
                 desc = p_val["description"]
                 if "enum" in p_val:
-                    desc += f"; Only accepts one of the following predefined options: " f"[{', '.join(p_val['enum'])}]"
+                    desc += f"; Only accepts one of the following predefined options: [{', '.join(p_val['enum'])}]"
 
                 properties_definitions[p_key] = {
                     "description": desc,

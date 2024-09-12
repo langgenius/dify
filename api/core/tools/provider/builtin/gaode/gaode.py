@@ -14,7 +14,7 @@ class GaodeProvider(BuiltinToolProviderController):
 
             try:
                 response = requests.get(
-                    url="https://restapi.amap.com/v3/geocode/geo?address={address}&key={apikey}" "".format(
+                    url="https://restapi.amap.com/v3/geocode/geo?address={address}&key={apikey}".format(
                         address=urllib.parse.quote("广东省广州市天河区广州塔"), apikey=credentials.get("api_key")
                     )
                 )
