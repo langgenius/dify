@@ -331,7 +331,7 @@ class BedrockLargeLanguageModel(LargeLanguageModel):
                 elif "contentBlockDelta" in chunk:
                     delta = chunk["contentBlockDelta"]["delta"]
                     if "text" in delta:
-                        chunk_text = delta["text"] if delta["text"] else ""
+                        chunk_text = delta["text"] or ""
                         full_assistant_content += chunk_text
                         assistant_prompt_message = AssistantPromptMessage(
                             content=chunk_text or "",

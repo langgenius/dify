@@ -681,11 +681,7 @@ class DocumentService:
                         "score_threshold_enabled": False,
                     }
 
-                    dataset.retrieval_model = (
-                        document_data.get("retrieval_model")
-                        if document_data.get("retrieval_model")
-                        else default_retrieval_model
-                    )
+                    dataset.retrieval_model = document_data.get("retrieval_model") or default_retrieval_model
 
         documents = []
         batch = time.strftime("%Y%m%d%H%M%S") + str(random.randint(100000, 999999))

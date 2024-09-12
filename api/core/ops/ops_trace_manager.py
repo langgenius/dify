@@ -358,7 +358,7 @@ class TraceTask:
 
         total_tokens = workflow_run.total_tokens
 
-        file_list = workflow_run_inputs.get("sys.file") if workflow_run_inputs.get("sys.file") else []
+        file_list = workflow_run_inputs.get("sys.file") or []
         query = workflow_run_inputs.get("query") or workflow_run_inputs.get("sys.query") or ""
 
         # get workflow_app_log_id

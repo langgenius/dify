@@ -38,7 +38,6 @@ ignore = [
     "F405", # undefined-local-with-import-star-usage
     "F821", # undefined-name
     "F841", # unused-variable
-    "FURB110", # if-exp-instead-of-or-operator
     "FURB113", # repeated-append
     "FURB148", # unnecessary-enumerate
     "UP007", # non-pep604-annotation

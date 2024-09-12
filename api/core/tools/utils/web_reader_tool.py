@@ -99,7 +99,7 @@ def get_url(url: str, user_agent: str = None) -> str:
         authors=a["byline"],
         publish_date=a["date"],
         top_image="",
-        text=a["plain_text"] if a["plain_text"] else "",
+        text=a["plain_text"] or "",
     )
 
     return res
