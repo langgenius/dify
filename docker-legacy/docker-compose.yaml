@@ -1,3 +1,4 @@
+name: dify
 version: '3'
 services:
   # API service
