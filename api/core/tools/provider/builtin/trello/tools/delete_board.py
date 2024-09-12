@@ -17,7 +17,8 @@ class DeleteBoardTool(BuiltinTool):
 
         Args:
             user_id (str): The ID of the user invoking the tool.
-            tool_parameters (dict[str, Union[str, int, bool]]): The parameters for the tool invocation, including the board ID.
+            tool_parameters (dict[str, Union[str, int, bool]]): The parameters for the tool invocation,
+             including the board ID.
 
         Returns:
             ToolInvokeMessage: The result of the tool invocation.

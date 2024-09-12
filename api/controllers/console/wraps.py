@@ -64,7 +64,8 @@ def cloud_edition_billing_resource_check(resource: str):
                 elif resource == "vector_space" and 0 < vector_space.limit <= vector_space.size:
                     abort(403, "The capacity of the vector space has reached the limit of your subscription.")
                 elif resource == "documents" and 0 < documents_upload_quota.limit <= documents_upload_quota.size:
-                    # The api of file upload is used in the multiple places, so we need to check the source of the request from datasets
+                    # The api of file upload is used in the multiple places,
+                    # so we need to check the source of the request from datasets
                     source = request.args.get("source")
                     if source == "datasets":
                         abort(403, "The number of documents has reached the limit of your subscription.")

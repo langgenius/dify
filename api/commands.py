@@ -411,7 +411,8 @@ def migrate_knowledge_vector_database():
                     try:
                         click.echo(
                             click.style(
-                                f"Start to created vector index with {len(documents)} documents of {segments_count} segments for dataset {dataset.id}.",
+                                f"Start to created vector index with {len(documents)} documents of {segments_count}"
+                                f" segments for dataset {dataset.id}.",
                                 fg="green",
                             )
                         )

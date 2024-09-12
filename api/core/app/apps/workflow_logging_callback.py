@@ -84,10 +84,12 @@ class WorkflowLoggingCallback(WorkflowCallback):
         if route_node_state.node_run_result:
             node_run_result = route_node_state.node_run_result
             self.print_text(
-                f"Inputs: {jsonable_encoder(node_run_result.inputs) if node_run_result.inputs else ''}", color="green"
+                f"Inputs: " f"{jsonable_encoder(node_run_result.inputs) if node_run_result.inputs else ''}",
+                color="green",
             )
             self.print_text(
-                f"Process Data: {jsonable_encoder(node_run_result.process_data) if node_run_result.process_data else ''}",
+                f"Process Data: "
+                f"{jsonable_encoder(node_run_result.process_data) if node_run_result.process_data else ''}",
                 color="green",
             )
             self.print_text(
@@ -114,14 +116,17 @@ class WorkflowLoggingCallback(WorkflowCallback):
             node_run_result = route_node_state.node_run_result
             self.print_text(f"Error: {node_run_result.error}", color="red")
             self.print_text(
-                f"Inputs: {jsonable_encoder(node_run_result.inputs) if node_run_result.inputs else ''}", color="red"
-            )
-            self.print_text(
-                f"Process Data: {jsonable_encoder(node_run_result.process_data) if node_run_result.process_data else ''}",
+                f"Inputs: " f"" f"{jsonable_encoder(node_run_result.inputs) if node_run_result.inputs else ''}",
                 color="red",
             )
             self.print_text(
-                f"Outputs: {jsonable_encoder(node_run_result.outputs) if node_run_result.outputs else ''}", color="red"
+                f"Process Data: "
+                f"{jsonable_encoder(node_run_result.process_data) if node_run_result.process_data else ''}",
+                color="red",
+            )
+            self.print_text(
+                f"Outputs: " f"{jsonable_encoder(node_run_result.outputs) if node_run_result.outputs else ''}",
+                color="red",
             )
 
     def on_node_text_chunk(self, event: NodeRunStreamChunkEvent) -> None:

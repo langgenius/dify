@@ -37,7 +37,7 @@ if you are not sure about the structure.
 <instructions>
 {{instructions}}
 </instructions>
-"""
+"""  # noqa: E501
 
 
 class OpenAILargeLanguageModel(_CommonOpenAI, LargeLanguageModel):

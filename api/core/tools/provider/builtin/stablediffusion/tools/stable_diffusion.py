@@ -310,7 +310,8 @@ class StableDiffusionTool(BuiltinTool):
                 ),
                 type=ToolParameter.ToolParameterType.STRING,
                 form=ToolParameter.ToolParameterForm.LLM,
-                llm_description="Image prompt of Stable Diffusion, you should describe the image you want to generate as a list of words as possible as detailed, the prompt must be written in English.",
+                llm_description="Image prompt of Stable Diffusion, you should describe the image you want to generate"
+                " as a list of words as possible as detailed, the prompt must be written in English.",
                 required=True,
             ),
         ]
@@ -320,12 +321,14 @@ class StableDiffusionTool(BuiltinTool):
                     name="image_id",
                     label=I18nObject(en_US="image_id", zh_Hans="image_id"),
                     human_description=I18nObject(
-                        en_US="Image id of the image you want to generate based on, if you want to generate image based on the default image, you can leave this field empty.",
+                        en_US="Image id of the image you want to generate based on, if you want to generate image based"
+                        " on the default image, you can leave this field empty.",
                         zh_Hans="您想要生成的图像的图像 ID，如果您想要基于默认图像生成图像，则可以将此字段留空。",
                     ),
                     type=ToolParameter.ToolParameterType.STRING,
                     form=ToolParameter.ToolParameterForm.LLM,
-                    llm_description="Image id of the original image, you can leave this field empty if you want to generate a new image.",
+                    llm_description="Image id of the original image, you can leave this field empty if you want to"
+                    " generate a new image.",
                     required=True,
                     options=[
                         ToolParameterOption(value=i.name, label=I18nObject(en_US=i.name, zh_Hans=i.name))
@@ -343,12 +346,14 @@ class StableDiffusionTool(BuiltinTool):
                             name="model",
                             label=I18nObject(en_US="Model", zh_Hans="Model"),
                             human_description=I18nObject(
-                                en_US="Model of Stable Diffusion, you can check the official documentation of Stable Diffusion",
+                                en_US="Model of Stable Diffusion, you can check the official documentation"
+                                " of Stable Diffusion",
                                 zh_Hans="Stable Diffusion 的模型，您可以查看 Stable Diffusion 的官方文档",
                             ),
                             type=ToolParameter.ToolParameterType.SELECT,
                             form=ToolParameter.ToolParameterForm.FORM,
-                            llm_description="Model of Stable Diffusion, you can check the official documentation of Stable Diffusion",
+                            llm_description="Model of Stable Diffusion, you can check the official documentation"
+                            " of Stable Diffusion",
                             required=True,
                             default=models[0],
                             options=[
@@ -367,12 +372,14 @@ class StableDiffusionTool(BuiltinTool):
                         name="sampler_name",
                         label=I18nObject(en_US="Sampling method", zh_Hans="Sampling method"),
                         human_description=I18nObject(
-                            en_US="Sampling method of Stable Diffusion, you can check the official documentation of Stable Diffusion",
+                            en_US="Sampling method of Stable Diffusion, you can check the official documentation"
+                            " of Stable Diffusion",
                             zh_Hans="Stable Diffusion 的Sampling method，您可以查看 Stable Diffusion 的官方文档",
                         ),
                         type=ToolParameter.ToolParameterType.SELECT,
                         form=ToolParameter.ToolParameterForm.FORM,
-                        llm_description="Sampling method of Stable Diffusion, you can check the official documentation of Stable Diffusion",
+                        llm_description="Sampling method of Stable Diffusion, you can check the official documentation"
+                        " of Stable Diffusion",
                         required=True,
                         default=sample_methods[0],
                         options=[
