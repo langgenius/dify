@@ -23,11 +23,11 @@ from core.errors.error import (
 )
 from core.model_runtime.errors.invoke import InvokeError
 from extensions.ext_database import db
+from fields.workflow_app_log_fields import workflow_app_log_pagination_fields
 from libs import helper
 from models.model import App, AppMode, EndUser
 from models.workflow import WorkflowRun
 from services.app_generate_service import AppGenerateService
-from fields.workflow_app_log_fields import workflow_app_log_pagination_fields
 from services.workflow_app_service import WorkflowAppService
 
 logger = logging.getLogger(__name__)
@@ -115,6 +115,7 @@ class WorkflowTaskStopApi(Resource):
 
         return {"result": "success"}
 
+
 class WorkflowAppLogApi(Resource):
     @validate_app_token
     @marshal_with(workflow_app_log_pagination_fields)
@@ -136,6 +137,7 @@ class WorkflowAppLogApi(Resource):
         )
 
         return workflow_app_log_pagination
+
 
 api.add_resource(WorkflowRunApi, "/workflows/run")
 api.add_resource(WorkflowRunDetailApi, "/workflows/run/<string:workflow_id>")
