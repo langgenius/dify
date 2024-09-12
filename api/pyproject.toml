@@ -18,12 +18,12 @@ select = [
     "FURB", # refurb rules
     "I", # isort rules
     "N", # pep8-naming
+    "PT", # flake8-pytest-style rules
     "RUF019", # unnecessary-key-check
     "RUF100", # unused-noqa
     "RUF101", # redirected-noqa
     "S506", # unsafe-yaml-load
     "SIM", # flake8-simplify rules
-    "PT", # flake8-pytest-style rules
     "UP", # pyupgrade rules
     "W191", # tab-indentation
     "W605", # invalid-escape-sequence
