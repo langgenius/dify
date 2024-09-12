@@ -12,7 +12,7 @@ import mimetypes
 from abc import ABC, abstractmethod
 from collections.abc import Generator, Iterable, Mapping
 from io import BufferedReader, BytesIO
-from pathlib import PurePath
+from pathlib import Path, PurePath
 from typing import Any, Optional, Union
 
 from pydantic import BaseModel, ConfigDict, model_validator
@@ -56,8 +56,7 @@ class Blob(BaseModel):
     def as_string(self) -> str:
         """Read data as a string."""
         if self.data is None and self.path:
-            with open(str(self.path), encoding=self.encoding) as f:
-                return f.read()
+            return Path(str(self.path)).read_text(encoding=self.encoding)
         elif isinstance(self.data, bytes):
             return self.data.decode(self.encoding)
         elif isinstance(self.data, str):
@@ -72,8 +71,7 @@ class Blob(BaseModel):
         elif isinstance(self.data, str):
             return self.data.encode(self.encoding)
         elif self.data is None and self.path:
-            with open(str(self.path), "rb") as f:
-                return f.read()
+            return Path(str(self.path)).read_bytes()
         else:
             raise ValueError(f"Unable to get bytes for blob {self}")
 

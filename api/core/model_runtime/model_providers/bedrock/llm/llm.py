@@ -331,10 +331,10 @@ class BedrockLargeLanguageModel(LargeLanguageModel):
                 elif "contentBlockDelta" in chunk:
                     delta = chunk["contentBlockDelta"]["delta"]
                     if "text" in delta:
-                        chunk_text = delta["text"] if delta["text"] else ""
+                        chunk_text = delta["text"] or ""
                         full_assistant_content += chunk_text
                         assistant_prompt_message = AssistantPromptMessage(
-                            content=chunk_text if chunk_text else "",
+                            content=chunk_text or "",
                         )
                         index = chunk["contentBlockDelta"]["contentBlockIndex"]
                         yield LLMResultChunk(
@@ -751,7 +751,7 @@ class BedrockLargeLanguageModel(LargeLanguageModel):
         elif model_prefix == "cohere":
             output = response_body.get("generations")[0].get("text")
             prompt_tokens = self.get_num_tokens(model, credentials, prompt_messages)
-            completion_tokens = self.get_num_tokens(model, credentials, output if output else "")
+            completion_tokens = self.get_num_tokens(model, credentials, output or "")
 
         else:
             raise ValueError(f"Got unknown model prefix {model_prefix} when handling block response")
@@ -828,7 +828,7 @@ class BedrockLargeLanguageModel(LargeLanguageModel):
 
             # transform assistant message to prompt message
             assistant_prompt_message = AssistantPromptMessage(
-                content=content_delta if content_delta else "",
+                content=content_delta or "",
             )
             index += 1
 

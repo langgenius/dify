@@ -106,7 +106,7 @@ class OpenLLMGenerate:
             timeout = 120
 
         data = {
-            "stop": stop if stop else [],
+            "stop": stop or [],
             "prompt": "\n".join([message.content for message in prompt_messages]),
             "llm_config": default_llm_config,
         }

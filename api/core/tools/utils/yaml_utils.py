@@ -21,7 +21,7 @@ def load_yaml_file(file_path: str, ignore_error: bool = True, default_value: Any
         with open(file_path, encoding="utf-8") as yaml_file:
             try:
                 yaml_content = yaml.safe_load(yaml_file)
-                return yaml_content if yaml_content else default_value
+                return yaml_content or default_value
             except Exception as e:
                 raise YAMLError(f"Failed to load YAML file {file_path}: {e}")
     except Exception as e:

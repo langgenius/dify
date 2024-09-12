@@ -174,9 +174,7 @@ class VolcengineMaaSLargeLanguageModel(LargeLanguageModel):
                     prompt_messages=prompt_messages,
                     delta=LLMResultChunkDelta(
                         index=index,
-                        message=AssistantPromptMessage(
-                            content=message["content"] if message["content"] else "", tool_calls=[]
-                        ),
+                        message=AssistantPromptMessage(content=message["content"] or "", tool_calls=[]),
                         usage=usage,
                         finish_reason=choice.get("finish_reason"),
                     ),
@@ -208,7 +206,7 @@ class VolcengineMaaSLargeLanguageModel(LargeLanguageModel):
                 model=model,
                 prompt_messages=prompt_messages,
                 message=AssistantPromptMessage(
-                    content=message["content"] if message["content"] else "",
+                    content=message["content"] or "",
                     tool_calls=tool_calls,
                 ),
                 usage=self._calc_response_usage(
@@ -284,7 +282,7 @@ class VolcengineMaaSLargeLanguageModel(LargeLanguageModel):
                 model=model,
                 prompt_messages=prompt_messages,
                 message=AssistantPromptMessage(
-                    content=message.content if message.content else "",
+                    content=message.content or "",
                     tool_calls=tool_calls,
                 ),
                 usage=self._calc_response_usage(

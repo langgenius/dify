@@ -1,6 +1,7 @@
 import base64
 import hashlib
 import hmac
+import operator
 import time
 
 import requests
@@ -127,7 +128,7 @@ class FlashRecognizer:
         return s
 
     def _build_req_with_signature(self, secret_key, params, header):
-        query = sorted(params.items(), key=lambda d: d[0])
+        query = sorted(params.items(), key=operator.itemgetter(0))
         signstr = self._format_sign_string(query)
         signature = self._sign(signstr, secret_key)
         header["Authorization"] = signature

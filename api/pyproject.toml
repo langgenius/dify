@@ -15,6 +15,7 @@ select = [
     "C4", # flake8-comprehensions
     "E", # pycodestyle E rules
     "F", # pyflakes rules
+    "FURB", # refurb rules
     "I", # isort rules
     "N", # pep8-naming
     "RUF019", # unnecessary-key-check
@@ -37,6 +38,8 @@ ignore = [
     "F405", # undefined-local-with-import-star-usage
     "F821", # undefined-name
     "F841", # unused-variable
+    "FURB113", # repeated-append
+    "FURB152", # math-constant
     "UP007", # non-pep604-annotation
     "UP032", # f-string
     "B005", # strip-with-multi-characters

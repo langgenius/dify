@@ -74,7 +74,7 @@ class CodeNode(BaseNode):
         :return:
         """
         if not isinstance(value, str):
-            if isinstance(value, type(None)):
+            if value is None:
                 return None
             else:
                 raise ValueError(f"Output variable `{variable}` must be a string")
@@ -95,7 +95,7 @@ class CodeNode(BaseNode):
         :return:
         """
         if not isinstance(value, int | float):
-            if isinstance(value, type(None)):
+            if value is None:
                 return None
             else:
                 raise ValueError(f"Output variable `{variable}` must be a number")
@@ -182,7 +182,7 @@ class CodeNode(BaseNode):
                                 f"Output {prefix}.{output_name} is not a valid array."
                                 f" make sure all elements are of the same type."
                             )
-                elif isinstance(output_value, type(None)):
+                elif output_value is None:
                     pass
                 else:
                     raise ValueError(f"Output {prefix}.{output_name} is not a valid type.")
@@ -284,7 +284,7 @@ class CodeNode(BaseNode):
 
                     for i, value in enumerate(result[output_name]):
                         if not isinstance(value, dict):
-                            if isinstance(value, type(None)):
+                            if value is None:
                                 pass
                             else:
                                 raise ValueError(
