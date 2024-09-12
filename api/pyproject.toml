@@ -38,7 +38,6 @@ ignore = [
     "F405", # undefined-local-with-import-star-usage
     "F821", # undefined-name
     "F841", # unused-variable
-    "FURB101", # read-whole-file
     "FURB103", # write-whole-file
     "FURB110", # if-exp-instead-of-or-operator
     "FURB113", # repeated-append

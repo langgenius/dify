@@ -1,6 +1,7 @@
 import os
 import shutil
 from collections.abc import Generator
+from pathlib import Path
 
 from flask import Flask
 
@@ -38,9 +39,7 @@ class LocalStorage(BaseStorage):
         if not os.path.exists(filename):
             raise FileNotFoundError("File not found")
 
-        with open(filename, "rb") as f:
-            data = f.read()
-
+        data = Path(filename).read_bytes()
         return data
 
     def load_stream(self, filename: str) -> Generator:

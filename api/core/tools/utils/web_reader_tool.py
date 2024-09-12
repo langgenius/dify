@@ -8,6 +8,7 @@ import subprocess
 import tempfile
 import unicodedata
 from contextlib import contextmanager
+from pathlib import Path
 from urllib.parse import unquote
 
 import chardet
@@ -117,8 +118,7 @@ def extract_using_readabilipy(html):
         subprocess.check_call(["node", "ExtractArticle.js", "-i", html_path, "-o", article_json_path])
 
     # Read output of call to Readability.parse() from JSON file and return as Python dictionary
-    with open(article_json_path, encoding="utf-8") as json_file:
-        input_json = json.loads(json_file.read())
+    input_json = json.loads(Path(article_json_path).read_text(encoding="utf-8"))
 
     # Deleting files after processing
     os.unlink(article_json_path)

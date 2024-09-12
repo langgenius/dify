@@ -1,6 +1,7 @@
 """Abstract interface for document loader implementations."""
 
 import re
+from pathlib import Path
 from typing import Optional, cast
 
 from core.rag.extractor.extractor_base import BaseExtractor
@@ -102,15 +103,13 @@ class MarkdownExtractor(BaseExtractor):
         """Parse file into tuples."""
         content = ""
         try:
-            with open(filepath, encoding=self._encoding) as f:
-                content = f.read()
+            content = Path(filepath).read_text(encoding=self._encoding)
         except UnicodeDecodeError as e:
             if self._autodetect_encoding:
                 detected_encodings = detect_file_encodings(filepath)
                 for encoding in detected_encodings:
                     try:
-                        with open(filepath, encoding=encoding.encoding) as f:
-                            content = f.read()
+                        content = Path(filepath).read_text(encoding=encoding.encoding)
                         break
                     except UnicodeDecodeError:
                         continue
