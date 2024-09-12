@@ -61,7 +61,6 @@ ignore = [
     "SIM210", # if-expr-with-true-false
     "SIM300", # yoda-conditions
     "PT011",
-    "PT017",
 ]
 
 [tool.ruff.lint.per-file-ignores]
