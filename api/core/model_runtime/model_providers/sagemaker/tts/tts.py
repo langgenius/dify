@@ -260,7 +260,7 @@ class SageMakerText2SpeechModel(TTSModel):
                     for payload in payloads
                 ]
 
-                for index, future in enumerate(futures):
+                for future in futures:
                     resp = future.result()
                     audio_bytes = requests.get(resp.get("s3_presign_url")).content
                     for i in range(0, len(audio_bytes), 1024):

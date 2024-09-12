@@ -139,11 +139,12 @@ class PGVector(BaseVector):
 
         with self._get_cursor() as cur:
             cur.execute(
-                f"SELECT meta, text, embedding <=> %s AS distance FROM {self.table_name} ORDER BY distance LIMIT {top_k}",
+                f"SELECT meta, text, embedding <=> %s AS distance FROM {self.table_name}"
+                f" ORDER BY distance LIMIT {top_k}",
                 (json.dumps(query_vector),),
             )
             docs = []
-            score_threshold = kwargs.get("score_threshold") if kwargs.get("score_threshold") else 0.0
+            score_threshold = kwargs.get("score_threshold", 0.0)
             for record in cur:
                 metadata, text, distance = record
                 score = 1 - distance

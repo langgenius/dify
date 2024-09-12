@@ -131,7 +131,8 @@ class HunyuanLargeLanguageModel(LargeLanguageModel):
                         {
                             "Role": message.role.value,
                             # fix set content = "" while tool_call request
-                            # fix [hunyuan] None, [TencentCloudSDKException] code:InvalidParameter message:Messages Content and Contents not allowed empty at the same time.
+                            # fix [hunyuan] None, [TencentCloudSDKException] code:InvalidParameter
+                            # message:Messages Content and Contents not allowed empty at the same time.
                             "Content": " ",  # message.content if (message.content is not None) else "",
                             "ToolCalls": dict_tool_calls,
                         }

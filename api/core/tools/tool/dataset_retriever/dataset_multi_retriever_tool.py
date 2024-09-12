@@ -160,7 +160,7 @@ class DatasetMultiRetrieverTool(DatasetRetrieverBaseTool):
                 hit_callback.on_query(query, dataset.id)
 
             # get retrieval model , if the model is not setting , using default
-            retrieval_model = dataset.retrieval_model if dataset.retrieval_model else default_retrieval_model
+            retrieval_model = dataset.retrieval_model or default_retrieval_model
 
             if dataset.indexing_technique == "economy":
                 # use keyword table query
@@ -183,9 +183,7 @@ class DatasetMultiRetrieverTool(DatasetRetrieverBaseTool):
                         reranking_model=retrieval_model.get("reranking_model", None)
                         if retrieval_model["reranking_enable"]
                         else None,
-                        reranking_mode=retrieval_model.get("reranking_mode")
-                        if retrieval_model.get("reranking_mode")
-                        else "reranking_model",
+                        reranking_mode=retrieval_model.get("reranking_mode") or "reranking_model",
                         weights=retrieval_model.get("weights", None),
                     )
 

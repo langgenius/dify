@@ -155,7 +155,7 @@ class DatasetService:
         dataset.tenant_id = tenant_id
         dataset.embedding_model_provider = embedding_model.provider if embedding_model else None
         dataset.embedding_model = embedding_model.model if embedding_model else None
-        dataset.permission = permission if permission else DatasetPermissionEnum.ONLY_ME
+        dataset.permission = permission or DatasetPermissionEnum.ONLY_ME
         db.session.add(dataset)
         db.session.commit()
         return dataset
@@ -681,11 +681,7 @@ class DocumentService:
                         "score_threshold_enabled": False,
                     }
 
-                    dataset.retrieval_model = (
-                        document_data.get("retrieval_model")
-                        if document_data.get("retrieval_model")
-                        else default_retrieval_model
-                    )
+                    dataset.retrieval_model = document_data.get("retrieval_model") or default_retrieval_model
 
         documents = []
         batch = time.strftime("%Y%m%d%H%M%S") + str(random.randint(100000, 999999))

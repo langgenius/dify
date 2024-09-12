@@ -86,8 +86,8 @@ class ElasticSearchVector(BaseVector):
                 id=uuids[i],
                 document={
                     Field.CONTENT_KEY.value: documents[i].page_content,
-                    Field.VECTOR.value: embeddings[i] if embeddings[i] else None,
-                    Field.METADATA_KEY.value: documents[i].metadata if documents[i].metadata else {},
+                    Field.VECTOR.value: embeddings[i] or None,
+                    Field.METADATA_KEY.value: documents[i].metadata or {},
                 },
             )
         self._client.indices.refresh(index=self._collection_name)
@@ -131,7 +131,7 @@ class ElasticSearchVector(BaseVector):
 
         docs = []
         for doc, score in docs_and_scores:
-            score_threshold = kwargs.get("score_threshold", 0.0) if kwargs.get("score_threshold", 0.0) else 0.0
+            score_threshold = kwargs.get("score_threshold", 0.0)
             if score > score_threshold:
                 doc.metadata["score"] = score
             docs.append(doc)

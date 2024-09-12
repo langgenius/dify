@@ -93,7 +93,8 @@ class NVIDIALargeLanguageModel(OAIAPICompatLargeLanguageModel):
 
     def _validate_credentials(self, model: str, credentials: dict) -> None:
         """
-        Validate model credentials using requests to ensure compatibility with all providers following OpenAI's API standard.
+        Validate model credentials using requests to ensure compatibility with all providers following
+        OpenAI's API standard.
 
         :param model: model name
         :param credentials: model credentials

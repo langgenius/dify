@@ -16,6 +16,15 @@ from core.model_runtime.entities.model_entities import (
 
 AZURE_OPENAI_API_VERSION = "2024-02-15-preview"
 
+AZURE_DEFAULT_PARAM_SEED_HELP = I18nObject(
+    zh_Hans="如果指定，模型将尽最大努力进行确定性采样，使得重复的具有相同种子和参数的请求应该返回相同的结果。不能保证确定性，"
+    "您应该参考 system_fingerprint 响应参数来监视变化。",
+    en_US="If specified, model will make a best effort to sample deterministically,"
+    " such that repeated requests with the same seed and parameters should return the same result."
+    " Determinism is not guaranteed, and you should refer to the system_fingerprint response parameter"
+    " to monitor changes in the backend.",
+)
+
 
 def _get_max_tokens(default: int, min_val: int, max_val: int) -> ParameterRule:
     rule = ParameterRule(
@@ -229,10 +238,7 @@ LLM_BASE_MODELS = [
                     name="seed",
                     label=I18nObject(zh_Hans="种子", en_US="Seed"),
                     type="int",
-                    help=I18nObject(
-                        zh_Hans="如果指定，模型将尽最大努力进行确定性采样，使得重复的具有相同种子和参数的请求应该返回相同的结果。不能保证确定性，您应该参考 system_fingerprint 响应参数来监视变化。",
-                        en_US="If specified, model will make a best effort to sample deterministically, such that repeated requests with the same seed and parameters should return the same result. Determinism is not guaranteed, and you should refer to the system_fingerprint response parameter to monitor changes in the backend.",
-                    ),
+                    help=AZURE_DEFAULT_PARAM_SEED_HELP,
                     required=False,
                     precision=2,
                     min=0,
@@ -297,10 +303,7 @@ LLM_BASE_MODELS = [
                     name="seed",
                     label=I18nObject(zh_Hans="种子", en_US="Seed"),
                     type="int",
-                    help=I18nObject(
-                        zh_Hans="如果指定，模型将尽最大努力进行确定性采样，使得重复的具有相同种子和参数的请求应该返回相同的结果。不能保证确定性，您应该参考 system_fingerprint 响应参数来监视变化。",
-                        en_US="If specified, model will make a best effort to sample deterministically, such that repeated requests with the same seed and parameters should return the same result. Determinism is not guaranteed, and you should refer to the system_fingerprint response parameter to monitor changes in the backend.",
-                    ),
+                    help=AZURE_DEFAULT_PARAM_SEED_HELP,
                     required=False,
                     precision=2,
                     min=0,
@@ -365,10 +368,7 @@ LLM_BASE_MODELS = [
                     name="seed",
                     label=I18nObject(zh_Hans="种子", en_US="Seed"),
                     type="int",
-                    help=I18nObject(
-                        zh_Hans="如果指定，模型将尽最大努力进行确定性采样，使得重复的具有相同种子和参数的请求应该返回相同的结果。不能保证确定性，您应该参考 system_fingerprint 响应参数来监视变化。",
-                        en_US="If specified, model will make a best effort to sample deterministically, such that repeated requests with the same seed and parameters should return the same result. Determinism is not guaranteed, and you should refer to the system_fingerprint response parameter to monitor changes in the backend.",
-                    ),
+                    help=AZURE_DEFAULT_PARAM_SEED_HELP,
                     required=False,
                     precision=2,
                     min=0,
@@ -433,10 +433,7 @@ LLM_BASE_MODELS = [
                     name="seed",
                     label=I18nObject(zh_Hans="种子", en_US="Seed"),
                     type="int",
-                    help=I18nObject(
-                        zh_Hans="如果指定，模型将尽最大努力进行确定性采样，使得重复的具有相同种子和参数的请求应该返回相同的结果。不能保证确定性，您应该参考 system_fingerprint 响应参数来监视变化。",
-                        en_US="If specified, model will make a best effort to sample deterministically, such that repeated requests with the same seed and parameters should return the same result. Determinism is not guaranteed, and you should refer to the system_fingerprint response parameter to monitor changes in the backend.",
-                    ),
+                    help=AZURE_DEFAULT_PARAM_SEED_HELP,
                     required=False,
                     precision=2,
                     min=0,
@@ -502,10 +499,7 @@ LLM_BASE_MODELS = [
                     name="seed",
                     label=I18nObject(zh_Hans="种子", en_US="Seed"),
                     type="int",
-                    help=I18nObject(
-                        zh_Hans="如果指定，模型将尽最大努力进行确定性采样，使得重复的具有相同种子和参数的请求应该返回相同的结果。不能保证确定性，您应该参考 system_fingerprint 响应参数来监视变化。",
-                        en_US="If specified, model will make a best effort to sample deterministically, such that repeated requests with the same seed and parameters should return the same result. Determinism is not guaranteed, and you should refer to the system_fingerprint response parameter to monitor changes in the backend.",
-                    ),
+                    help=AZURE_DEFAULT_PARAM_SEED_HELP,
                     required=False,
                     precision=2,
                     min=0,
@@ -571,10 +565,7 @@ LLM_BASE_MODELS = [
                     name="seed",
                     label=I18nObject(zh_Hans="种子", en_US="Seed"),
                     type="int",
-                    help=I18nObject(
-                        zh_Hans="如果指定，模型将尽最大努力进行确定性采样，使得重复的具有相同种子和参数的请求应该返回相同的结果。不能保证确定性，您应该参考 system_fingerprint 响应参数来监视变化。",
-                        en_US="If specified, model will make a best effort to sample deterministically, such that repeated requests with the same seed and parameters should return the same result. Determinism is not guaranteed, and you should refer to the system_fingerprint response parameter to monitor changes in the backend.",
-                    ),
+                    help=AZURE_DEFAULT_PARAM_SEED_HELP,
                     required=False,
                     precision=2,
                     min=0,
@@ -650,10 +641,7 @@ LLM_BASE_MODELS = [
                     name="seed",
                     label=I18nObject(zh_Hans="种子", en_US="Seed"),
                     type="int",
-                    help=I18nObject(
-                        zh_Hans="如果指定，模型将尽最大努力进行确定性采样，使得重复的具有相同种子和参数的请求应该返回相同的结果。不能保证确定性，您应该参考 system_fingerprint 响应参数来监视变化。",
-                        en_US="If specified, model will make a best effort to sample deterministically, such that repeated requests with the same seed and parameters should return the same result. Determinism is not guaranteed, and you should refer to the system_fingerprint response parameter to monitor changes in the backend.",
-                    ),
+                    help=AZURE_DEFAULT_PARAM_SEED_HELP,
                     required=False,
                     precision=2,
                     min=0,
@@ -719,10 +707,7 @@ LLM_BASE_MODELS = [
                     name="seed",
                     label=I18nObject(zh_Hans="种子", en_US="Seed"),
                     type="int",
-                    help=I18nObject(
-                        zh_Hans="如果指定，模型将尽最大努力进行确定性采样，使得重复的具有相同种子和参数的请求应该返回相同的结果。不能保证确定性，您应该参考 system_fingerprint 响应参数来监视变化。",
-                        en_US="If specified, model will make a best effort to sample deterministically, such that repeated requests with the same seed and parameters should return the same result. Determinism is not guaranteed, and you should refer to the system_fingerprint response parameter to monitor changes in the backend.",
-                    ),
+                    help=AZURE_DEFAULT_PARAM_SEED_HELP,
                     required=False,
                     precision=2,
                     min=0,
@@ -788,10 +773,7 @@ LLM_BASE_MODELS = [
                     name="seed",
                     label=I18nObject(zh_Hans="种子", en_US="Seed"),
                     type="int",
-                    help=I18nObject(
-                        zh_Hans="如果指定，模型将尽最大努力进行确定性采样，使得重复的具有相同种子和参数的请求应该返回相同的结果。不能保证确定性，您应该参考 system_fingerprint 响应参数来监视变化。",
-                        en_US="If specified, model will make a best effort to sample deterministically, such that repeated requests with the same seed and parameters should return the same result. Determinism is not guaranteed, and you should refer to the system_fingerprint response parameter to monitor changes in the backend.",
-                    ),
+                    help=AZURE_DEFAULT_PARAM_SEED_HELP,
                     required=False,
                     precision=2,
                     min=0,
@@ -867,10 +849,7 @@ LLM_BASE_MODELS = [
                     name="seed",
                     label=I18nObject(zh_Hans="种子", en_US="Seed"),
                     type="int",
-                    help=I18nObject(
-                        zh_Hans="如果指定，模型将尽最大努力进行确定性采样，使得重复的具有相同种子和参数的请求应该返回相同的结果。不能保证确定性，您应该参考 system_fingerprint 响应参数来监视变化。",
-                        en_US="If specified, model will make a best effort to sample deterministically, such that repeated requests with the same seed and parameters should return the same result. Determinism is not guaranteed, and you should refer to the system_fingerprint response parameter to monitor changes in the backend.",
-                    ),
+                    help=AZURE_DEFAULT_PARAM_SEED_HELP,
                     required=False,
                     precision=2,
                     min=0,
@@ -936,10 +915,7 @@ LLM_BASE_MODELS = [
                     name="seed",
                     label=I18nObject(zh_Hans="种子", en_US="Seed"),
                     type="int",
-                    help=I18nObject(
-                        zh_Hans="如果指定，模型将尽最大努力进行确定性采样，使得重复的具有相同种子和参数的请求应该返回相同的结果。不能保证确定性，您应该参考 system_fingerprint 响应参数来监视变化。",
-                        en_US="If specified, model will make a best effort to sample deterministically, such that repeated requests with the same seed and parameters should return the same result. Determinism is not guaranteed, and you should refer to the system_fingerprint response parameter to monitor changes in the backend.",
-                    ),
+                    help=AZURE_DEFAULT_PARAM_SEED_HELP,
                     required=False,
                     precision=2,
                     min=0,
@@ -1000,10 +976,7 @@ LLM_BASE_MODELS = [
                     name="seed",
                     label=I18nObject(zh_Hans="种子", en_US="Seed"),
                     type="int",
-                    help=I18nObject(
-                        zh_Hans="如果指定，模型将尽最大努力进行确定性采样，使得重复的具有相同种子和参数的请求应该返回相同的结果。不能保证确定性，您应该参考 system_fingerprint 响应参数来监视变化。",
-                        en_US="If specified, model will make a best effort to sample deterministically, such that repeated requests with the same seed and parameters should return the same result. Determinism is not guaranteed, and you should refer to the system_fingerprint response parameter to monitor changes in the backend.",
-                    ),
+                    help=AZURE_DEFAULT_PARAM_SEED_HELP,
                     required=False,
                     precision=2,
                     min=0,

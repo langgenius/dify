@@ -339,7 +339,7 @@ class QdrantVector(BaseVector):
         for result in results:
             metadata = result.payload.get(Field.METADATA_KEY.value) or {}
             # duplicate check score threshold
-            score_threshold = kwargs.get("score_threshold", 0.0) if kwargs.get("score_threshold", 0.0) else 0.0
+            score_threshold = kwargs.get("score_threshold", 0.0)
             if result.score > score_threshold:
                 metadata["score"] = result.score
                 doc = Document(

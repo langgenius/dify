@@ -37,7 +37,7 @@ if you are not sure about the structure.
 <instructions>
 {{instructions}}
 </instructions>
-"""
+"""  # noqa: E501
 
 
 class OpenAILargeLanguageModel(_CommonOpenAI, LargeLanguageModel):
@@ -508,7 +508,7 @@ class OpenAILargeLanguageModel(_CommonOpenAI, LargeLanguageModel):
                 continue
 
             # transform assistant message to prompt message
-            text = delta.text if delta.text else ""
+            text = delta.text or ""
             assistant_prompt_message = AssistantPromptMessage(content=text)
 
             full_text += text
@@ -760,11 +760,9 @@ class OpenAILargeLanguageModel(_CommonOpenAI, LargeLanguageModel):
                 final_tool_calls.extend(tool_calls)
 
             # transform assistant message to prompt message
-            assistant_prompt_message = AssistantPromptMessage(
-                content=delta.delta.content if delta.delta.content else "", tool_calls=tool_calls
-            )
+            assistant_prompt_message = AssistantPromptMessage(content=delta.delta.content or "", tool_calls=tool_calls)
 
-            full_assistant_content += delta.delta.content if delta.delta.content else ""
+            full_assistant_content += delta.delta.content or ""
 
             if has_finish_reason:
                 final_chunk = LLMResultChunk(
