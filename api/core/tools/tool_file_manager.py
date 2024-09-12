@@ -27,24 +27,24 @@ class ToolFileManager:
         sign file to get a temporary url
         """
         base_url = dify_config.FILES_URL
-        file_preview_url = f'{base_url}/files/tools/{tool_file_id}{extension}'
+        file_preview_url = f"{base_url}/files/tools/{tool_file_id}{extension}"
 
         timestamp = str(int(time.time()))
         nonce = os.urandom(16).hex()
-        data_to_sign = f'file-preview|{tool_file_id}|{timestamp}|{nonce}'
-        secret_key = dify_config.SECRET_KEY.encode() if dify_config.SECRET_KEY else b''
+        data_to_sign = f"file-preview|{tool_file_id}|{timestamp}|{nonce}"
+        secret_key = dify_config.SECRET_KEY.encode() if dify_config.SECRET_KEY else b""
         sign = hmac.new(secret_key, data_to_sign.encode(), hashlib.sha256).digest()
         encoded_sign = base64.urlsafe_b64encode(sign).decode()
 
-        return f'{file_preview_url}?timestamp={timestamp}&nonce={nonce}&sign={encoded_sign}'
+        return f"{file_preview_url}?timestamp={timestamp}&nonce={nonce}&sign={encoded_sign}"
 
     @staticmethod
     def verify_file(file_id: str, timestamp: str, nonce: str, sign: str) -> bool:
         """
         verify signature
         """
-        data_to_sign = f'file-preview|{file_id}|{timestamp}|{nonce}'
-        secret_key = dify_config.SECRET_KEY.encode() if dify_config.SECRET_KEY else b''
+        data_to_sign = f"file-preview|{file_id}|{timestamp}|{nonce}"
+        secret_key = dify_config.SECRET_KEY.encode() if dify_config.SECRET_KEY else b""
         recalculated_sign = hmac.new(secret_key, data_to_sign.encode(), hashlib.sha256).digest()
         recalculated_encoded_sign = base64.urlsafe_b64encode(recalculated_sign).decode()
 
@@ -62,9 +62,9 @@ class ToolFileManager:
         """
         create file
         """
-        extension = guess_extension(mimetype) or '.bin'
+        extension = guess_extension(mimetype) or ".bin"
         unique_name = uuid4().hex
-        filename = f'tools/{tenant_id}/{unique_name}{extension}'
+        filename = f"tools/{tenant_id}/{unique_name}{extension}"
         storage.save(filename, file_binary)
 
         tool_file = ToolFile(
@@ -90,10 +90,10 @@ class ToolFileManager:
         response = get(file_url)
         response.raise_for_status()
         blob = response.content
-        mimetype = guess_type(file_url)[0] or 'octet/stream'
-        extension = guess_extension(mimetype) or '.bin'
+        mimetype = guess_type(file_url)[0] or "octet/stream"
+        extension = guess_extension(mimetype) or ".bin"
         unique_name = uuid4().hex
-        filename = f'tools/{tenant_id}/{unique_name}{extension}'
+        filename = f"tools/{tenant_id}/{unique_name}{extension}"
         storage.save(filename, blob)
 
         tool_file = ToolFile(
@@ -166,12 +166,11 @@ class ToolFileManager:
         # Check if message_file is not None
         if message_file is not None:
             # get tool file id
-            tool_file_id = message_file.url.split('/')[-1]
+            tool_file_id = message_file.url.split("/")[-1]
             # trim extension
-            tool_file_id = tool_file_id.split('.')[0]
+            tool_file_id = tool_file_id.split(".")[0]
         else:
             tool_file_id = None
-
 
         tool_file: ToolFile = (
             db.session.query(ToolFile)
@@ -216,4 +215,4 @@ class ToolFileManager:
 # init tool_file_parser
 from core.file.tool_file_parser import tool_file_manager
 
-tool_file_manager['manager'] = ToolFileManager
+tool_file_manager["manager"] = ToolFileManager

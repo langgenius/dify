@@ -5,7 +5,7 @@ import time
 import click
 from werkzeug.exceptions import NotFound
 
-from core.indexing_runner import DocumentIsPausedException, IndexingRunner
+from core.indexing_runner import DocumentIsPausedError, IndexingRunner
 from events.event_handlers.document_index_event import document_index_created
 from extensions.ext_database import db
 from models.dataset import Document
@@ -43,7 +43,7 @@ def handle(sender, **kwargs):
         indexing_runner.run(documents)
         end_at = time.perf_counter()
         logging.info(click.style("Processed dataset: {} latency: {}".format(dataset_id, end_at - start_at), fg="green"))
-    except DocumentIsPausedException as ex:
+    except DocumentIsPausedError as ex:
         logging.info(click.style(str(ex), fg="yellow"))
     except Exception:
         pass

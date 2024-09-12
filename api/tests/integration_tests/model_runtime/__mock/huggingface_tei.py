@@ -70,6 +70,7 @@ class MockTEIClass:
             },
         }
 
+    @staticmethod
     def invoke_rerank(server_url: str, query: str, texts: list[str]) -> list[dict]:
         #         Example response:
         # [

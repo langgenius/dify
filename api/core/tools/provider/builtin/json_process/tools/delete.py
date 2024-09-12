@@ -8,34 +8,35 @@ from core.tools.tool.builtin_tool import BuiltinTool
 
 
 class JSONDeleteTool(BuiltinTool):
-    def _invoke(self,
-                user_id: str,
-                tool_parameters: dict[str, Any],
-                ) -> Union[ToolInvokeMessage, list[ToolInvokeMessage]]:
+    def _invoke(
+        self,
+        user_id: str,
+        tool_parameters: dict[str, Any],
+    ) -> Union[ToolInvokeMessage, list[ToolInvokeMessage]]:
         """
         Invoke the JSON delete tool
         """
         # Get content
-        content = tool_parameters.get('content', '')
+        content = tool_parameters.get("content", "")
         if not content:
-            return self.create_text_message('Invalid parameter content')
+            return self.create_text_message("Invalid parameter content")
 
         # Get query
-        query = tool_parameters.get('query', '')
+        query = tool_parameters.get("query", "")
         if not query:
-            return self.create_text_message('Invalid parameter query')
+            return self.create_text_message("Invalid parameter query")
 
-        ensure_ascii = tool_parameters.get('ensure_ascii', True)
+        ensure_ascii = tool_parameters.get("ensure_ascii", True)
         try:
             result = self._delete(content, query, ensure_ascii)
             return self.create_text_message(str(result))
         except Exception as e:
-            return self.create_text_message(f'Failed to delete JSON content: {str(e)}')
+            return self.create_text_message(f"Failed to delete JSON content: {str(e)}")
 
     def _delete(self, origin_json: str, query: str, ensure_ascii: bool) -> str:
         try:
             input_data = json.loads(origin_json)
-            expr = parse('$.' + query.lstrip('$.'))  # Ensure query path starts with $
+            expr = parse("$." + query.lstrip("$."))  # Ensure query path starts with $
 
             matches = expr.find(input_data)
 

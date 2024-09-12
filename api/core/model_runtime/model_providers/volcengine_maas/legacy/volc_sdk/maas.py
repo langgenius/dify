@@ -9,9 +9,7 @@ from .common import SSEDecoder, dict_to_object, gen_req_id, json_to_object
 
 class MaasService(Service):
     def __init__(self, host, region, connection_timeout=60, socket_timeout=60):
-        service_info = self.get_service_info(
-            host, region, connection_timeout, socket_timeout
-        )
+        service_info = self.get_service_info(host, region, connection_timeout, socket_timeout)
         self._apikey = None
         api_info = self.get_api_info()
         super().__init__(service_info, api_info)
@@ -35,9 +33,7 @@ class MaasService(Service):
     def get_api_info():
         api_info = {
             "chat": ApiInfo("POST", "/api/v2/endpoint/{endpoint_id}/chat", {}, {}, {}),
-            "embeddings": ApiInfo(
-                "POST", "/api/v2/endpoint/{endpoint_id}/embeddings", {}, {}, {}
-            ),
+            "embeddings": ApiInfo("POST", "/api/v2/endpoint/{endpoint_id}/embeddings", {}, {}, {}),
         }
         return api_info
 
@@ -52,9 +48,7 @@ class MaasService(Service):
 
         try:
             req["stream"] = True
-            res = self._call(
-                endpoint_id, "chat", req_id, {}, json.dumps(req).encode("utf-8"), apikey, stream=True
-            )
+            res = self._call(endpoint_id, "chat", req_id, {}, json.dumps(req).encode("utf-8"), apikey, stream=True)
 
             decoder = SSEDecoder(res)
 
@@ -64,13 +58,12 @@ class MaasService(Service):
                         return
 
                     try:
-                        res = json_to_object(
-                            str(data, encoding="utf-8"), req_id=req_id)
+                        res = json_to_object(str(data, encoding="utf-8"), req_id=req_id)
                     except Exception:
                         raise
 
                     if res.error is not None and res.error.code_n != 0:
-                        raise MaasException(
+                        raise MaasError(
                             res.error.code_n,
                             res.error.code,
                             res.error.message,
@@ -79,7 +72,7 @@ class MaasService(Service):
                     yield res
 
             return iter_fn()
-        except MaasException:
+        except MaasError:
             raise
         except Exception as e:
             raise new_client_sdk_request_error(str(e))
@@ -95,23 +88,22 @@ class MaasService(Service):
         apikey = self._apikey
 
         try:
-            res = self._call(endpoint_id, api, req_id, params,
-                             json.dumps(req).encode("utf-8"), apikey)
+            res = self._call(endpoint_id, api, req_id, params, json.dumps(req).encode("utf-8"), apikey)
             resp = dict_to_object(res.json())
             if resp and isinstance(resp, dict):
                 resp["req_id"] = req_id
             return resp
 
-        except MaasException as e:
+        except MaasError as e:
             raise e
         except Exception as e:
             raise new_client_sdk_request_error(str(e), req_id)
 
     def _validate(self, api, req_id):
         credentials_exist = (
-            self.service_info.credentials is not None and
-            self.service_info.credentials.sk is not None and
-            self.service_info.credentials.ak is not None
+            self.service_info.credentials is not None
+            and self.service_info.credentials.sk is not None
+            and self.service_info.credentials.ak is not None
         )
 
         if not self._apikey and not credentials_exist:
@@ -150,22 +142,19 @@ class MaasService(Service):
             raw = res.text.encode()
             res.close()
             try:
-                resp = json_to_object(
-                    str(raw, encoding="utf-8"), req_id=req_id)
+                resp = json_to_object(str(raw, encoding="utf-8"), req_id=req_id)
             except Exception:
                 raise new_client_sdk_request_error(raw, req_id)
 
             if resp.error:
-                raise MaasException(
-                    resp.error.code_n, resp.error.code, resp.error.message, req_id
-                )
+                raise MaasError(resp.error.code_n, resp.error.code, resp.error.message, req_id)
             else:
                 raise new_client_sdk_request_error(resp, req_id)
 
         return res
 
 
-class MaasException(Exception):
+class MaasError(Exception):
     def __init__(self, code_n, code, message, req_id):
         self.code_n = code_n
         self.code = code
@@ -173,15 +162,17 @@ class MaasException(Exception):
         self.req_id = req_id
 
     def __str__(self):
-        return ("Detailed exception information is listed below.\n" +
-                "req_id: {}\n" +
-                "code_n: {}\n" +
-                "code: {}\n" +
-                "message: {}").format(self.req_id, self.code_n, self.code, self.message)
+        return (
+            "Detailed exception information is listed below.\n"
+            + "req_id: {}\n"
+            + "code_n: {}\n"
+            + "code: {}\n"
+            + "message: {}"
+        ).format(self.req_id, self.code_n, self.code, self.message)
 
 
 def new_client_sdk_request_error(raw, req_id=""):
-    return MaasException(1709701, "ClientSDKRequestError", "MaaS SDK request error: {}".format(raw), req_id)
+    return MaasError(1709701, "ClientSDKRequestError", "MaaS SDK request error: {}".format(raw), req_id)
 
 
 class BinaryResponseContent:
@@ -189,25 +180,19 @@ class BinaryResponseContent:
         self.response = response
         self.request_id = request_id
 
-    def stream_to_file(
-            self,
-            file: str
-    ) -> None:
+    def stream_to_file(self, file: str) -> None:
         is_first = True
-        error_bytes = b''
+        error_bytes = b""
         with open(file, mode="wb") as f:
             for data in self.response:
-                if len(error_bytes) > 0 or (is_first and "\"error\":" in str(data)):
+                if len(error_bytes) > 0 or (is_first and '"error":' in str(data)):
                     error_bytes += data
                 else:
                     f.write(data)
 
         if len(error_bytes) > 0:
-            resp = json_to_object(
-                str(error_bytes, encoding="utf-8"), req_id=self.request_id)
-            raise MaasException(
-                resp.error.code_n, resp.error.code, resp.error.message, self.request_id
-            )
+            resp = json_to_object(str(error_bytes, encoding="utf-8"), req_id=self.request_id)
+            raise MaasError(resp.error.code_n, resp.error.code, resp.error.message, self.request_id)
 
     def iter_bytes(self) -> Iterator[bytes]:
         yield from self.response

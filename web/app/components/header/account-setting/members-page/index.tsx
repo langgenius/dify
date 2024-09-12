@@ -15,7 +15,7 @@ import I18n from '@/context/i18n'
 import { useAppContext } from '@/context/app-context'
 import Avatar from '@/app/components/base/avatar'
 import type { InvitationResult } from '@/models/common'
-import LogoEmbededChatHeader from '@/app/components/base/logo/logo-embeded-chat-header'
+import LogoEmbeddedChatHeader from '@/app/components/base/logo/logo-embedded-chat-header'
 import { useProviderContext } from '@/context/provider-context'
 import { Plan } from '@/app/components/billing/type'
 import UpgradeBtn from '@/app/components/billing/upgrade-btn'
@@ -49,7 +49,7 @@ const MembersPage = () => {
     <>
       <div className='flex flex-col'>
         <div className='flex items-center mb-4 p-3 bg-gray-50 rounded-2xl'>
-          <LogoEmbededChatHeader className='!w-10 !h-10' />
+          <LogoEmbeddedChatHeader className='!w-10 !h-10' />
           <div className='grow mx-2'>
             <div className='text-sm font-medium text-gray-900'>{currentWorkspace?.name}</div>
             {enableBilling && (

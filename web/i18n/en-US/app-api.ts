@@ -11,7 +11,7 @@ const translation = {
   pause: 'Pause',
   playing: 'Playing',
   loading: 'Loading',
-  merMaind: {
+  merMaid: {
     rerender: 'Redo Rerender',
   },
   never: 'Never',

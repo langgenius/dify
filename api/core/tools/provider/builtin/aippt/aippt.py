@@ -6,6 +6,6 @@ from core.tools.provider.builtin_tool_provider import BuiltinToolProviderControl
 class AIPPTProvider(BuiltinToolProviderController):
     def _validate_credentials(self, credentials: dict) -> None:
         try:
-            AIPPTGenerateTool._get_api_token(credentials, user_id='__dify_system__')
+            AIPPTGenerateTool._get_api_token(credentials, user_id="__dify_system__")
         except Exception as e:
             raise ToolProviderCredentialValidationError(str(e))

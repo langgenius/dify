@@ -26,7 +26,7 @@ export const fetchWorkflowRunHistory: Fetcher<WorkflowRunHistoryResponse, string
   return get<WorkflowRunHistoryResponse>(url)
 }
 
-export const fetcChatRunHistory: Fetcher<ChatRunHistoryResponse, string> = (url) => {
+export const fetchChatRunHistory: Fetcher<ChatRunHistoryResponse, string> = (url) => {
   return get<ChatRunHistoryResponse>(url)
 }
 
