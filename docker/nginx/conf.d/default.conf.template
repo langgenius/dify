@@ -40,3 +40,7 @@ server {
     }
 
     # placeholder for acme challenge location
+    ${ACME_CHALLENGE_LOCATION}
+    # placeholder for https config defined in https.conf.template
+    ${HTTPS_CONFIG}
+}
