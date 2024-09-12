@@ -70,8 +70,8 @@ export const useShortcuts = (): void => {
   })
 
   useKeyPress(`${getKeyboardKeyCodeBySystem('ctrl')}.c`, (e) => {
-    const { showDebugAndPreviewPanel } = workflowStore.getState()
-    if (shouldHandleShortcut(e) && !showDebugAndPreviewPanel) {
+    const { showDebugAndPreviewPanel, showInputsPanel } = workflowStore.getState()
+    if (shouldHandleShortcut(e) && !showDebugAndPreviewPanel && !showInputsPanel) {
       e.preventDefault()
       handleNodesCopy()
     }
