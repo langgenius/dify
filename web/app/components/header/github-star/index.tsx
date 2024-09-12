@@ -34,8 +34,7 @@ const GithubStar = () => {
     return null
 
   return (
-    <a
-    </a>
+    <a></a>
   )
 }
 
