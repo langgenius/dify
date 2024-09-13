@@ -2,7 +2,7 @@ import type { FC } from 'react'
 import {
   memo,
 } from 'react'
-import type { ChatItem } from './../types'
+import type { ChatItem } from '../../types'
 import cn from '@/utils/classnames'
 import CopyBtn from '@/app/components/base/copy-btn'
 import ResendBtn from '@/app/components/base/resend-btn'

@@ -5,9 +5,9 @@ import type {
 import {
   memo,
 } from 'react'
-import type { ChatItem } from '../types'
-import type { Theme } from '../embedded-chatbot/theme/theme-context'
-import { CssTransform } from '../embedded-chatbot/theme/utils'
+import type { ChatItem } from '../../types'
+import type { Theme } from '../../embedded-chatbot/theme/theme-context'
+import { CssTransform } from '../../embedded-chatbot/theme/utils'
 import Operation from './operation'
 import { QuestionTriangle } from '@/app/components/base/icons/src/vender/solid/general'
 import { User } from '@/app/components/base/icons/src/public/avatar'
