@@ -283,4 +283,4 @@ optional = true
 
 [tool.poetry.group.lint.dependencies]
 dotenv-linter = "~0.5.0"
-ruff = "~0.6.4"
+ruff = "~0.6.5"
