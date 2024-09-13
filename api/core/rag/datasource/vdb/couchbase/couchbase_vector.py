@@ -5,7 +5,7 @@ import uuid
 from datetime import timedelta
 from typing import Any
 
-import couchbase.search as search
+from couchbase import search
 from couchbase.auth import PasswordAuthenticator
 from couchbase.cluster import Cluster
 from couchbase.management.search import SearchIndex
