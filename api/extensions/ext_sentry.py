@@ -1,5 +1,6 @@
 import openai
 import sentry_sdk
+from langfuse import parse_error
 from sentry_sdk.integrations.celery import CeleryIntegration
 from sentry_sdk.integrations.flask import FlaskIntegration
 from werkzeug.exceptions import HTTPException
@@ -10,7 +11,7 @@ def init_app(app):
         sentry_sdk.init(
             dsn=app.config.get("SENTRY_DSN"),
             integrations=[FlaskIntegration(), CeleryIntegration()],
-            ignore_errors=[HTTPException, ValueError, openai.APIStatusError],
+            ignore_errors=[HTTPException, ValueError, openai.APIStatusError, parse_error.defaultErrorResponse],
             traces_sample_rate=app.config.get("SENTRY_TRACES_SAMPLE_RATE", 1.0),
             profiles_sample_rate=app.config.get("SENTRY_PROFILES_SAMPLE_RATE", 1.0),
             environment=app.config.get("DEPLOY_ENV"),
