@@ -144,7 +144,7 @@ class PGVector(BaseVector):
                 (json.dumps(query_vector),),
             )
             docs = []
-            score_threshold = kwargs.get("score_threshold", 0.0)
+            score_threshold = float(kwargs.get("score_threshold") or 0.0)
             for record in cur:
                 metadata, text, distance = record
                 score = 1 - distance

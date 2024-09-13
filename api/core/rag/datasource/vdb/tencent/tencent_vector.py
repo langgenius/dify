@@ -153,7 +153,7 @@ class TencentVector(BaseVector):
             limit=kwargs.get("top_k", 4),
             timeout=self._client_config.timeout,
         )
-        score_threshold = kwargs.get("score_threshold", 0.0)
+        score_threshold = float(kwargs.get("score_threshold") or 0.0)
         return self._get_search_res(res, score_threshold)
 
     def search_by_full_text(self, query: str, **kwargs: Any) -> list[Document]:
