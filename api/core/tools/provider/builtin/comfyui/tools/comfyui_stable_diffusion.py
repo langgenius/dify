@@ -454,7 +454,8 @@ class ComfyuiStableDiffusionTool(BuiltinTool):
                         human_description=I18nObject(
                             en_US="Model Type of Stable Diffusion or Flux, "
                             "you can check the official documentation of Stable Diffusion or Flux",
-                            zh_Hans="Stable Diffusion 或 FLUX 的模型类型，您可以查看 Stable Diffusion 或 Flux 的官方文档",
+                            zh_Hans="Stable Diffusion 或 FLUX 的模型类型，"
+                            "您可以查看 Stable Diffusion 或 Flux 的官方文档",
                         ),
                         type=ToolParameter.ToolParameterType.SELECT,
                         form=ToolParameter.ToolParameterForm.FORM,
@@ -464,7 +465,7 @@ class ComfyuiStableDiffusionTool(BuiltinTool):
                         default=ModelType.SD15.name,
                         options=[
                             ToolParameterOption(value=i, label=I18nObject(en_US=i, zh_Hans=i))
-                            for i in ModelType.__members__.keys()
+                            for i in ModelType.__members__
                         ],
                     )
                 )
