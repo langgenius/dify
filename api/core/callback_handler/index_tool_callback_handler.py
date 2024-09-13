@@ -29,7 +29,7 @@ class DatasetIndexToolCallbackHandler:
             source="app",
             source_app_id=self._app_id,
             created_by_role=(
-                "account" if self._invoke_from in [InvokeFrom.EXPLORE, InvokeFrom.DEBUGGER] else "end_user"
+                "account" if self._invoke_from in {InvokeFrom.EXPLORE, InvokeFrom.DEBUGGER} else "end_user"
             ),
             created_by=self._user_id,
         )

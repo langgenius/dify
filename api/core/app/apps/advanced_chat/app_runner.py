@@ -73,7 +73,7 @@ class AdvancedChatAppRunner(WorkflowBasedAppRunner):
             raise ValueError("Workflow not initialized")
 
         user_id = None
-        if self.application_generate_entity.invoke_from in [InvokeFrom.WEB_APP, InvokeFrom.SERVICE_API]:
+        if self.application_generate_entity.invoke_from in {InvokeFrom.WEB_APP, InvokeFrom.SERVICE_API}:
             end_user = db.session.query(EndUser).filter(EndUser.id == self.application_generate_entity.user_id).first()
             if end_user:
                 user_id = end_user.session_id
@@ -175,7 +175,7 @@ class AdvancedChatAppRunner(WorkflowBasedAppRunner):
             user_id=self.application_generate_entity.user_id,
             user_from=(
                 UserFrom.ACCOUNT
-                if self.application_generate_entity.invoke_from in [InvokeFrom.EXPLORE, InvokeFrom.DEBUGGER]
+                if self.application_generate_entity.invoke_from in {InvokeFrom.EXPLORE, InvokeFrom.DEBUGGER}
                 else UserFrom.END_USER
             ),
             invoke_from=self.application_generate_entity.invoke_from,

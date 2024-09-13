@@ -140,9 +140,9 @@ def reset_encrypt_key_pair():
 @click.command("vdb-migrate", help="migrate vector db.")
 @click.option("--scope", default="all", prompt=False, help="The scope of vector database to migrate, Default is All.")
 def vdb_migrate(scope: str):
-    if scope in ["knowledge", "all"]:
+    if scope in {"knowledge", "all"}:
         migrate_knowledge_vector_database()
-    if scope in ["annotation", "all"]:
+    if scope in {"annotation", "all"}:
         migrate_annotation_vector_database()
 
 

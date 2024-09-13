@@ -168,7 +168,7 @@ class AIPPTGenerateTool(BuiltinTool):
                             pass
                     elif event == "close":
                         break
-                    elif event == "error" or event == "filter":
+                    elif event in {"error", "filter"}:
                         raise Exception(f"Failed to generate outline: {data}")
 
         return outline
@@ -213,7 +213,7 @@ class AIPPTGenerateTool(BuiltinTool):
                                 pass
                         elif event == "close":
                             break
-                        elif event == "error" or event == "filter":
+                        elif event in {"error", "filter"}:
                             raise Exception(f"Failed to generate content: {data}")
 
             return content

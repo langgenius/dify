@@ -454,7 +454,7 @@ class BedrockLargeLanguageModel(LargeLanguageModel):
                             base64_data = data_split[1]
                             image_content = base64.b64decode(base64_data)
 
-                        if mime_type not in ["image/jpeg", "image/png", "image/gif", "image/webp"]:
+                        if mime_type not in {"image/jpeg", "image/png", "image/gif", "image/webp"}:
                             raise ValueError(
                                 f"Unsupported image type {mime_type}, "
                                 f"only support image/jpeg, image/png, image/gif, and image/webp"
@@ -886,16 +886,16 @@ class BedrockLargeLanguageModel(LargeLanguageModel):
 
         if error_code == "AccessDeniedException":
             return InvokeAuthorizationError(error_msg)
-        elif error_code in ["ResourceNotFoundException", "ValidationException"]:
+        elif error_code in {"ResourceNotFoundException", "ValidationException"}:
             return InvokeBadRequestError(error_msg)
-        elif error_code in ["ThrottlingException", "ServiceQuotaExceededException"]:
+        elif error_code in {"ThrottlingException", "ServiceQuotaExceededException"}:
             return InvokeRateLimitError(error_msg)
-        elif error_code in [
+        elif error_code in {
             "ModelTimeoutException",
             "ModelErrorException",
             "InternalServerException",
             "ModelNotReadyException",
-        ]:
+        }:
             return InvokeServerUnavailableError(error_msg)
         elif error_code == "ModelStreamErrorException":
             return InvokeConnectionError(error_msg)

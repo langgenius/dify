@@ -54,14 +54,14 @@ class FileUploadConfigManager:
 
             if is_vision:
                 detail = config["file_upload"]["image"]["detail"]
-                if detail not in ["high", "low"]:
+                if detail not in {"high", "low"}:
                     raise ValueError("detail must be in ['high', 'low']")
 
             transfer_methods = config["file_upload"]["image"]["transfer_methods"]
             if not isinstance(transfer_methods, list):
                 raise ValueError("transfer_methods must be of list type")
             for method in transfer_methods:
-                if method not in ["remote_url", "local_file"]:
+                if method not in {"remote_url", "local_file"}:
                     raise ValueError("transfer_methods must be in ['remote_url', 'local_file']")
 
         return config, ["file_upload"]
