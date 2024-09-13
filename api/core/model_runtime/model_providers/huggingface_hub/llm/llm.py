@@ -96,7 +96,7 @@ class HuggingfaceHubLargeLanguageModel(_CommonHuggingfaceHub, LargeLanguageModel
 
             if credentials["task_type"] not in ("text2text-generation", "text-generation"):
                 raise CredentialsValidateFailedError(
-                    "Huggingface Hub Task Type must be one of text2text-generation, " "text-generation."
+                    "Huggingface Hub Task Type must be one of text2text-generation, text-generation."
                 )
 
             client = InferenceClient(token=credentials["huggingfacehub_api_token"])
@@ -282,7 +282,7 @@ class HuggingfaceHubLargeLanguageModel(_CommonHuggingfaceHub, LargeLanguageModel
 
             valid_tasks = ("text2text-generation", "text-generation")
             if model_info.pipeline_tag not in valid_tasks:
-                raise ValueError(f"Model {model_name} is not a valid task, " f"must be one of {valid_tasks}.")
+                raise ValueError(f"Model {model_name} is not a valid task, must be one of {valid_tasks}.")
         except Exception as e:
             raise CredentialsValidateFailedError(f"{str(e)}")
 

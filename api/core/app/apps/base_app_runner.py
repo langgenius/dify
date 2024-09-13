@@ -379,7 +379,7 @@ class AppRunner:
                 queue_manager=queue_manager,
                 app_generate_entity=application_generate_entity,
                 prompt_messages=prompt_messages,
-                text="I apologize for any confusion, " "but I'm an AI assistant to be helpful, harmless, and honest.",
+                text="I apologize for any confusion, but I'm an AI assistant to be helpful, harmless, and honest.",
                 stream=application_generate_entity.stream,
             )
 
