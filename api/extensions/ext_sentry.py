@@ -7,11 +7,11 @@ from werkzeug.exceptions import HTTPException
 
 
 def before_send(event, hint):
-    if 'exc_info' in hint:
-        exc_type, exc_value, tb = hint['exc_info']
+    if "exc_info" in hint:
+        exc_type, exc_value, tb = hint["exc_info"]
         if parse_error.defaultErrorResponse in str(exc_value):
             return None
-        
+
     return event
 
 
