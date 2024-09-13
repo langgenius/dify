@@ -16,9 +16,9 @@ export enum FileAppearanceTypeEnum {
 export type FileAppearanceType = keyof typeof FileAppearanceTypeEnum
 
 export type FileEntity = {
-  id: string
-  file?: File
-  fileId?: string
+  fileId: string
+  file: File
+  fileStorageId?: string
   progress: number
   url?: string
   base64Url?: string

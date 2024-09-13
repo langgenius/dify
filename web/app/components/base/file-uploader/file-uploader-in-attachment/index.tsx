@@ -13,7 +13,8 @@ import {
 } from '../store'
 import type { FileEntity } from '../types'
 import FileInput from '../file-input'
-import FileInAttachmentItem from './file-in-attachment-item'
+import { useFile } from '../hooks'
+import FileItem from './file-item'
 import Button from '@/app/components/base/button'
 import cn from '@/utils/classnames'
 
@@ -25,6 +26,10 @@ type Option = {
 const FileUploaderInAttachment = () => {
   const { t } = useTranslation()
   const files = useStore(s => s.files)
+  const {
+    handleRemoveFile,
+    handleReUploadFile,
+  } = useFile()
   const options = [
     {
       value: 'local',
@@ -81,9 +86,16 @@ const FileUploaderInAttachment = () => {
       <div className='mt-1 space-y-1'>
         {
           files.map(file => (
-            <FileInAttachmentItem
-              key={file.id}
-              file={file}
+            <FileItem
+              key={file.fileId}
+              fileId={file.fileId}
+              file={file.file}
+              progress={file.progress}
+              imageUrl={file.base64Url}
+              showDeleteAction
+              showDownloadAction={false}
+              onRemove={() => handleRemoveFile(file.fileId)}
+              onReUpload={() => handleReUploadFile(file.fileId)}
             />
           ))
         }

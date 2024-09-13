@@ -25,7 +25,7 @@ export const useFile = () => {
     } = fileStore.getState()
 
     const newFiles = produce(files, (draft) => {
-      const index = draft.findIndex(file => file.id === newFile.id)
+      const index = draft.findIndex(file => file.fileId === newFile.fileId)
 
       if (index > -1)
         draft[index] = newFile
@@ -41,7 +41,7 @@ export const useFile = () => {
       setFiles,
     } = fileStore.getState()
 
-    const newFiles = files.filter(file => file.id !== fileId)
+    const newFiles = files.filter(file => file.fileId !== fileId)
     setFiles(newFiles)
   }, [fileStore])
 
@@ -50,7 +50,7 @@ export const useFile = () => {
       files,
       setFiles,
     } = fileStore.getState()
-    const index = files.findIndex(file => file.id === fileId)
+    const index = files.findIndex(file => file.fileId === fileId)
 
     if (index > -1) {
       const uploadingFile = files[index]
@@ -94,7 +94,7 @@ export const useFile = () => {
       'load',
       () => {
         const uploadingFile = {
-          id: uuid4(),
+          fileId: uuid4(),
           file,
           url: '',
           progress: 0,
@@ -107,7 +107,7 @@ export const useFile = () => {
             handleAddOrUpdateFiles({ ...uploadingFile, progress })
           },
           onSuccessCallback: (res) => {
-            handleAddOrUpdateFiles({ ...uploadingFile, fileId: res.id, progress: 100 })
+            handleAddOrUpdateFiles({ ...uploadingFile, fileStorageId: res.id, progress: 100 })
           },
           onErrorCallback: () => {
             notify({ type: 'error', message: t('common.imageUploader.uploadFromComputerUploadError') })

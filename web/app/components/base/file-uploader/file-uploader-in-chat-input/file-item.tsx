@@ -2,12 +2,10 @@ import {
   RiCloseLine,
   RiDownloadLine,
 } from '@remixicon/react'
-import type { FileEntity } from '../types'
 import {
   getFileAppearanceType,
   getFileExtension,
 } from '../utils'
-import { useFile } from '../hooks'
 import FileTypeIcon from '../file-type-icon'
 import cn from '@/utils/classnames'
 import { formatFileSize } from '@/utils/format'
@@ -17,17 +15,25 @@ import ActionButton from '@/app/components/base/action-button'
 import Button from '@/app/components/base/button'
 
 type FileItemProps = {
-  file: FileEntity
-  showDownload?: boolean
-  className?: string
+  fileId: string
+  file: File
+  progress?: number
+  showDeleteAction?: boolean
+  showDownloadAction?: boolean
+  onRemove?: (fileId: string) => void
+  onReUpload?: (fileId: string) => void
 }
 const FileItem = ({
+  fileId,
   file,
-  showDownload,
+  progress = 0,
+  showDeleteAction,
+  showDownloadAction = true,
+  onRemove,
+  onReUpload,
 }: FileItemProps) => {
-  const { handleRemoveFile } = useFile()
-  const ext = getFileExtension(file.file)
-  const uploadError = file.progress === -1
+  const ext = getFileExtension(file)
+  const uploadError = progress === -1
 
   return (
     <div
@@ -38,20 +44,24 @@ const FileItem = ({
         uploadError && 'hover:border-[0.5px] hover:border-state-destructive-border bg-state-destructive-hover-alt',
       )}
     >
-      <Button
-        className='hidden group-hover:flex absolute -right-1.5 -top-1.5 p-0 w-5 h-5 rounded-full z-10'
-        onClick={() => handleRemoveFile(file.id)}
-      >
-        <RiCloseLine className='w-4 h-4 text-components-button-secondary-text' />
-      </Button>
+      {
+        showDeleteAction && (
+          <Button
+            className='hidden group-hover:flex absolute -right-1.5 -top-1.5 p-0 w-5 h-5 rounded-full z-10'
+            onClick={() => onRemove?.(fileId)}
+          >
+            <RiCloseLine className='w-4 h-4 text-components-button-secondary-text' />
+          </Button>
+        )
+      }
       <div className='mb-1 h-8 line-clamp-2 system-xs-medium text-text-tertiary'>
-        {file.file?.name}
+        {file.name}
       </div>
       <div className='flex items-center justify-between'>
         <div className='flex items-center system-2xs-medium-uppercase text-text-tertiary'>
           <FileTypeIcon
             size='sm'
-            type={getFileAppearanceType(file.file)}
+            type={getFileAppearanceType(file)}
             className='mr-1'
           />
           {
@@ -62,10 +72,10 @@ const FileItem = ({
               </>
             )
           }
-          {formatFileSize(file.file?.size || 0)}
+          {formatFileSize(file.size || 0)}
         </div>
         {
-          showDownload && (
+          showDownloadAction && (
             <ActionButton
               size='xs'
             >
@@ -74,17 +84,18 @@ const FileItem = ({
           )
         }
         {
-          file.progress > 0 && file.progress < 100 && (
+          progress > 0 && progress < 100 && (
             <ProgressCircle
-              percentage={file.progress}
+              percentage={progress}
               size={12}
             />
           )
         }
         {
-          file.progress === -1 && (
+          uploadError && (
             <ReplayLine
               className='w-4 h-4 text-text-tertiary'
+              onClick={() => onReUpload?.(fileId)}
             />
           )
         }
