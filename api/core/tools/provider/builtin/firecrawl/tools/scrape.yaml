@@ -21,7 +21,7 @@ parameters:
       zh_Hans: 要抓取并提取数据的网站URL。
     llm_description: The URL of the website that needs to be crawled. This is a required parameter.
     form: llm
-############## Page Options #######################
+############## Payload #######################
   - name: formats
     type: string
     label:
