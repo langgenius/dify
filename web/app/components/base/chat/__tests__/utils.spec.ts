@@ -248,11 +248,11 @@ describe('build chat item tree and get thread messages', () => {
 
   it ('should get thread messages from tree6, using the last message as target', () => {
     const threadMessages6_1 = getThreadMessages(tree6)
-    expect(threadMessages6_1).toHaveLength(6)
+    expect(threadMessages6_1).toMatchSnapshot()
   })
 
   it ('should get thread messages from tree6, using specified message as target', () => {
     const threadMessages6_2 = getThreadMessages(tree6, 'ff4c2b43-48a5-47ad-9dc5-08b34ddba61b')
-    expect(threadMessages6_2).toHaveLength(6)
+    expect(threadMessages6_2).toMatchSnapshot()
   })
 })
