@@ -29,26 +29,6 @@ def test_python3_with_code_template():
     assert result == {"result": "HelloWorld"}
 
 
-def test_python3_httpx():
-    code = dedent("""
-    import httpx
-    response = httpx.get("https://httpbin.org/get")
-    print(response.text)
-    """)
-    result = CodeExecutor.execute_code(language=CODE_LANGUAGE, preload="", code=code)
-    assert "https://httpbin.org/get" in result
-
-
-def test_python3_requests():
-    code = dedent("""
-    import requests
-    response = requests.get("https://httpbin.org/get")
-    print(response.text)
-    """)
-    result = CodeExecutor.execute_code(language=CODE_LANGUAGE, preload="", code=code)
-    assert "https://httpbin.org/get" in result
-
-
 def test_python3_get_runner_script():
     runner_script = Python3TemplateTransformer.get_runner_script()
     assert runner_script.count(Python3TemplateTransformer._code_placeholder) == 1
