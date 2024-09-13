@@ -15,7 +15,7 @@ import type { Theme } from '../../embedded-chatbot/theme/theme-context'
 import { useTextAreaHeight } from './hooks'
 import Operation from './operation'
 import cn from '@/utils/classnames'
-import { FileListFlexOperation } from '@/app/components/base/file-uploader'
+import { FileListInChatInput } from '@/app/components/base/file-uploader'
 import { FileContextProvider } from '@/app/components/base/file-uploader/store'
 import VoiceInput from '@/app/components/base/voice-input'
 import { useToastContext } from '@/app/components/base/toast'
@@ -111,7 +111,7 @@ const ChatInputArea = ({
           )}
         >
           <div className='relative px-[9px] max-h-[158px] overflow-x-hidden overflow-y-auto'>
-            <FileListFlexOperation />
+            <FileListInChatInput />
             <div
               ref={wrapperRef}
               className='flex items-center justify-between'

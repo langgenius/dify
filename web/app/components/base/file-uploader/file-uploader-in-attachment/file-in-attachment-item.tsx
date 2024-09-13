@@ -1,8 +1,5 @@
 import { memo } from 'react'
-import {
-  RiDeleteBinLine,
-  RiEditCircleFill,
-} from '@remixicon/react'
+import { RiDeleteBinLine } from '@remixicon/react'
 import FileTypeIcon from '../file-type-icon'
 import type { FileEntity } from '../types'
 import { useFile } from '../hooks'
@@ -16,6 +13,7 @@ import ActionButton from '@/app/components/base/action-button'
 import ProgressCircle from '@/app/components/base/progress-bar/progress-circle'
 import { formatFileSize } from '@/utils/format'
 import cn from '@/utils/classnames'
+import { ReplayLine } from '@/app/components/base/icons/src/vender/other'
 
 type FileInAttachmentItemProps = {
   file: FileEntity
@@ -80,8 +78,11 @@ const FileInAttachmentItem = ({
         }
         {
           file.progress === -1 && (
-            <ActionButton onClick={() => handleReUploadFile(file.id)}>
-              <RiEditCircleFill className='mr-1 w-4 h-4 text-text-tertiary' />
+            <ActionButton
+              className='mr-1'
+              onClick={() => handleReUploadFile(file.id)}
+            >
+              <ReplayLine className='w-4 h-4 text-text-tertiary' />
             </ActionButton>
           )
         }
