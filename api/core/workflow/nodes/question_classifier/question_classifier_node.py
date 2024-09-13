@@ -250,7 +250,7 @@ class QuestionClassifierNode(LLMNode):
         for class_ in classes:
             category = {"category_id": class_.id, "category_name": class_.name}
             categories.append(category)
-        instruction = node_data.instruction if node_data.instruction else ""
+        instruction = node_data.instruction or ""
         input_text = query
         memory_str = ""
         if memory:

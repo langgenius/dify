@@ -179,7 +179,7 @@ class OpenLLMLargeLanguageModel(LargeLanguageModel):
                         index=0,
                         message=AssistantPromptMessage(content=message.content, tool_calls=[]),
                         usage=usage,
-                        finish_reason=message.stop_reason if message.stop_reason else None,
+                        finish_reason=message.stop_reason or None,
                     ),
                 )
             else:
@@ -189,7 +189,7 @@ class OpenLLMLargeLanguageModel(LargeLanguageModel):
                     delta=LLMResultChunkDelta(
                         index=0,
                         message=AssistantPromptMessage(content=message.content, tool_calls=[]),
-                        finish_reason=message.stop_reason if message.stop_reason else None,
+                        finish_reason=message.stop_reason or None,
                     ),
                 )
 

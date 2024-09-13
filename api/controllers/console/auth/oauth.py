@@ -147,9 +147,8 @@ def _generate_account(provider: str, user_info: OAuthUserInfo):
                 tenant_was_created.send(tenant)
 
     if not account:
-        if not dify_config.ALLOW_REGISTER:
-            raise AccountNotFoundError()
-        account_name = user_info.name if user_info.name else "Dify"
+        # Create account
+        account_name = user_info.name or "Dify"
         account = RegisterService.register(
             email=user_info.email, name=account_name, password=None, open_id=user_info.id, provider=provider
         )

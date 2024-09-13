@@ -51,7 +51,7 @@ class MockTEIClass:
         #     }
         # }
         embeddings = []
-        for idx, text in enumerate(texts):
+        for idx in range(len(texts)):
             embedding = [0.1] * 768
             embeddings.append(
                 {

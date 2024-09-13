@@ -34,7 +34,7 @@ class TestOpenSearchVector:
         self.vector._client = MagicMock()
 
     @pytest.mark.parametrize(
-        "search_response, expected_length, expected_doc_id",
+        ("search_response", "expected_length", "expected_doc_id"),
         [
             (
                 {

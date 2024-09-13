@@ -121,7 +121,7 @@ class HuggingfaceHubTextEmbeddingModel(_CommonHuggingfaceHub, TextEmbeddingModel
 
             valid_tasks = "feature-extraction"
             if model_info.pipeline_tag not in valid_tasks:
-                raise ValueError(f"Model {model_name} is not a valid task, " f"must be one of {valid_tasks}.")
+                raise ValueError(f"Model {model_name} is not a valid task, must be one of {valid_tasks}.")
         except Exception as e:
             raise CredentialsValidateFailedError(f"{str(e)}")
 

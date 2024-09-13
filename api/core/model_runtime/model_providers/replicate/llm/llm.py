@@ -86,7 +86,7 @@ class ReplicateLargeLanguageModel(_CommonReplicate, LargeLanguageModel):
 
         if model.count("/") != 1:
             raise CredentialsValidateFailedError(
-                "Replicate Model Name must be provided, " "format: {user_name}/{model_name}"
+                "Replicate Model Name must be provided, format: {user_name}/{model_name}"
             )
 
         try:
@@ -214,7 +214,7 @@ class ReplicateLargeLanguageModel(_CommonReplicate, LargeLanguageModel):
 
             index += 1
 
-            assistant_prompt_message = AssistantPromptMessage(content=output if output else "")
+            assistant_prompt_message = AssistantPromptMessage(content=output or "")
 
             if index < prediction_output_length:
                 yield LLMResultChunk(

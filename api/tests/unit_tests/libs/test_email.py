@@ -1,3 +1,5 @@
+import pytest
+
 from libs.helper import email
 
 
@@ -9,17 +11,11 @@ def test_email_with_valid_email():
 
 
 def test_email_with_invalid_email():
-    try:
+    with pytest.raises(ValueError, match="invalid_email is not a valid email."):
         email("invalid_email")
-    except ValueError as e:
-        assert str(e) == "invalid_email is not a valid email."
 
-    try:
+    with pytest.raises(ValueError, match="@example.com is not a valid email."):
         email("@example.com")
-    except ValueError as e:
-        assert str(e) == "@example.com is not a valid email."
 
-    try:
+    with pytest.raises(ValueError, match="()@example.com is not a valid email."):
         email("()@example.com")
-    except ValueError as e:
-        assert str(e) == "()@example.com is not a valid email."

@@ -3,6 +3,7 @@ import importlib.util
 import json
 import logging
 import os
+from pathlib import Path
 from typing import Any, Optional
 
 from pydantic import BaseModel
@@ -63,8 +64,7 @@ class Extensible:
 
                     builtin_file_path = os.path.join(subdir_path, "__builtin__")
                     if os.path.exists(builtin_file_path):
-                        with open(builtin_file_path, encoding="utf-8") as f:
-                            position = int(f.read().strip())
+                        position = int(Path(builtin_file_path).read_text(encoding="utf-8").strip())
                     position_map[extension_name] = position
 
                 if (extension_name + ".py") not in file_names:

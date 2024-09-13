@@ -23,7 +23,7 @@ Steps:
 To illustrate, if the task involves extracting a user's name and their request, your function call might look like this: Ensure your output follows a similar structure to examples.
 ### Final Output
 Produce well-formatted function calls in json without XML tags, as shown in the example.
-"""
+"""  # noqa: E501
 
 FUNCTION_CALLING_EXTRACTOR_USER_TEMPLATE = f"""extract structured information from context inside <context></context> XML tags by calling the function {FUNCTION_CALLING_EXTRACTOR_NAME} with the correct parameters with structure inside <structure></structure> XML tags.
 <context>
@@ -33,7 +33,7 @@ FUNCTION_CALLING_EXTRACTOR_USER_TEMPLATE = f"""extract structured information fr
 <structure>
 \x7bstructure\x7d
 </structure>
-"""
+"""  # noqa: E501
 
 FUNCTION_CALLING_EXTRACTOR_EXAMPLE = [
     {
@@ -55,7 +55,8 @@ FUNCTION_CALLING_EXTRACTOR_EXAMPLE = [
             },
         },
         "assistant": {
-            "text": "I need always call the function with the correct parameters. in this case, I need to call the function with the location parameter.",
+            "text": "I need always call the function with the correct parameters."
+            " in this case, I need to call the function with the location parameter.",
             "function_call": {"name": FUNCTION_CALLING_EXTRACTOR_NAME, "parameters": {"location": "San Francisco"}},
         },
     },
@@ -72,7 +73,8 @@ FUNCTION_CALLING_EXTRACTOR_EXAMPLE = [
             },
         },
         "assistant": {
-            "text": "I need always call the function with the correct parameters. in this case, I need to call the function with the food parameter.",
+            "text": "I need always call the function with the correct parameters."
+            " in this case, I need to call the function with the food parameter.",
             "function_call": {"name": FUNCTION_CALLING_EXTRACTOR_NAME, "parameters": {"food": "apple pie"}},
         },
     },
@@ -117,7 +119,7 @@ Inside <text></text> XML tags, there is a text that I should extract parameters 
 ### Answer
 I should always output a valid JSON object. Output nothing other than the JSON object. 
 ```JSON
-"""
+"""  # noqa: E501
 
 CHAT_GENERATE_JSON_PROMPT = """You should always follow the instructions and output a valid JSON object.
 The structure of the JSON object you can found in the instructions.

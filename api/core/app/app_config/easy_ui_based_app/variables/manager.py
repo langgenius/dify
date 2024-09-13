@@ -115,7 +115,7 @@ class BasicVariablesConfigManager:
 
             pattern = re.compile(r"^(?!\d)[\u4e00-\u9fa5A-Za-z0-9_\U0001F300-\U0001F64F\U0001F680-\U0001F6FF]{1,100}$")
             if pattern.match(form_item["variable"]) is None:
-                raise ValueError("variable in user_input_form must be a string, " "and cannot start with a number")
+                raise ValueError("variable in user_input_form must be a string, and cannot start with a number")
 
             variables.append(form_item["variable"])
 

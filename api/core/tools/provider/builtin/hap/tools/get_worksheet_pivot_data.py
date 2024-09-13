@@ -130,7 +130,7 @@ class GetWorksheetPivotDataTool(BuiltinTool):
         # ]
         rows = []
         for row in data["data"]:
-            row_data = row["rows"] if row["rows"] else {}
+            row_data = row["rows"] or {}
             row_data.update(row["columns"])
             row_data.update(row["values"])
             rows.append(row_data)

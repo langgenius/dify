@@ -79,7 +79,7 @@ class IfElseNode(BaseNode):
             status=WorkflowNodeExecutionStatus.SUCCEEDED,
             inputs=node_inputs,
             process_data=process_datas,
-            edge_source_handle=selected_case_id if selected_case_id else "false",  # Use case ID or 'default'
+            edge_source_handle=selected_case_id or "false",  # Use case ID or 'default'
             outputs=outputs,
         )
 

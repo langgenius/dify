@@ -85,7 +85,7 @@ class WenxinTextEmbeddingModel(TextEmbeddingModel):
         api_key = credentials["api_key"]
         secret_key = credentials["secret_key"]
         embedding: TextEmbedding = self._create_text_embedding(api_key, secret_key)
-        user = user if user else "ErnieBotDefault"
+        user = user or "ErnieBotDefault"
 
         context_size = self._get_context_size(model, credentials)
         max_chunks = self._get_max_chunks(model, credentials)

@@ -76,7 +76,8 @@ class XinferenceHelper:
 
         url = str(URL(server_url) / "v1" / "models" / model_uid)
 
-        # this method is surrounded by a lock, and default requests may hang forever, so we just set a Adapter with max_retries=3
+        # this method is surrounded by a lock, and default requests may hang forever,
+        # so we just set a Adapter with max_retries=3
         session = Session()
         session.mount("http://", HTTPAdapter(max_retries=3))
         session.mount("https://", HTTPAdapter(max_retries=3))
@@ -88,7 +89,8 @@ class XinferenceHelper:
             raise RuntimeError(f"get xinference model extra parameter failed, url: {url}, error: {e}")
         if response.status_code != 200:
             raise RuntimeError(
-                f"get xinference model extra parameter failed, status code: {response.status_code}, response: {response.text}"
+                f"get xinference model extra parameter failed, status code: {response.status_code},"
+                f" response: {response.text}"
             )
 
         response_json = response.json()

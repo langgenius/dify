@@ -30,6 +30,8 @@ def _merge_map(map1: Mapping, map2: Mapping) -> Mapping:
     return {key: val for key, val in merged.items() if val is not None}
 
 
+from itertools import starmap
+
 from httpx._config import DEFAULT_TIMEOUT_CONFIG as HTTPX_DEFAULT_TIMEOUT
 
 ZHIPUAI_DEFAULT_TIMEOUT = httpx.Timeout(timeout=300.0, connect=8.0)
@@ -159,7 +161,7 @@ class HttpClient:
         return [(key, str_data)]
 
     def _make_multipartform(self, data: Mapping[object, object]) -> dict[str, object]:
-        items = flatten([self._object_to_formdata(k, v) for k, v in data.items()])
+        items = flatten(list(starmap(self._object_to_formdata, data.items())))
 
         serialized: dict[str, object] = {}
         for key, value in items:

@@ -114,7 +114,8 @@ class GetWorksheetFieldsTool(BuiltinTool):
             }
             fields.append(field)
             fields_list.append(
-                f"|{field['id']}|{field['name']}|{field['type']}|{field['typeId']}|{field['description']}|{field['options'] if field['options'] else ''}|"
+                f"|{field['id']}|{field['name']}|{field['type']}|{field['typeId']}|{field['description']}"
+                f"|{field['options'] or ''}|"
             )
 
         fields.append(
