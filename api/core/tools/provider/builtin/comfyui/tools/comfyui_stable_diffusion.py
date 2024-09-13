@@ -3,6 +3,7 @@ import os
 import random
 import uuid
 from copy import deepcopy
+from enum import Enum
 from typing import Any, Union
 
 import websocket
@@ -34,6 +35,26 @@ LORA_NODE = {
         "title": "Load LoRA"
     }
 }
+FluxGuidanceNode = {
+    "inputs": {
+      "guidance": 3.5,
+      "conditioning": [
+        "6",
+        0
+      ]
+    },
+    "class_type": "FluxGuidance",
+    "_meta": {
+      "title": "FluxGuidance"
+    }
+  }
+
+
+class ModelType(Enum):
+    SD15 = 1
+    SDXL = 2
+    SD3 = 3
+    FLUX = 4
 
 
 class ComfyuiStableDiffusionTool(BuiltinTool):
@@ -78,6 +99,9 @@ class ComfyuiStableDiffusionTool(BuiltinTool):
         # get cfg
         cfg = tool_parameters.get('cfg', 7.0)
 
+        # get model type
+        model_type = tool_parameters.get('model_type', ModelType.SD15.name)
+
         # get lora
         # supports up to 3 loras
         lora_list = []
@@ -96,6 +120,7 @@ class ComfyuiStableDiffusionTool(BuiltinTool):
 
         return self.text2img(base_url=base_url,
                              model=model,
+                             model_type=model_type,
                              prompt=prompt,
                              negative_prompt=negative_prompt,
                              width=width,
@@ -251,7 +276,7 @@ class ComfyuiStableDiffusionTool(BuiltinTool):
 
         return output_images
 
-    def text2img(self, base_url: str, model: str, prompt: str, negative_prompt: str, width: int, height: int,
+    def text2img(self, base_url: str, model: str, model_type: str, prompt: str, negative_prompt: str, width: int, height: int,
                  steps: int, sampler_name: str, scheduler: str, cfg: float, lora_list: list, lora_strength_list: list) \
             -> Union[ToolInvokeMessage, list[ToolInvokeMessage]]:
         """
@@ -274,6 +299,9 @@ class ComfyuiStableDiffusionTool(BuiltinTool):
         draw_options['5']['inputs']['height'] = height
         draw_options['6']['inputs']['text'] = prompt
         draw_options['7']['inputs']['text'] = negative_prompt
+        # if the model is SD3 or FLUX series, the Latent class should be corresponding to SD3 Latent
+        if model_type in (ModelType.SD3.name, ModelType.FLUX.name):
+            draw_options['5']['class_type'] = 'EmptySD3LatentImage'
 
         if lora_list:
             # last Lora node link to KSampler node
@@ -294,6 +322,13 @@ class ComfyuiStableDiffusionTool(BuiltinTool):
                 lora_node['inputs']['model'][0] = next_node_id
                 lora_node['inputs']['clip'][0] = next_node_id
                 draw_options[str(i)] = lora_node
+
+        # FLUX need to add FluxGuidance Node
+        if model_type == ModelType.FLUX.name:
+            last_node_id = str(10 + len(lora_list))
+            draw_options[last_node_id] = deepcopy(FluxGuidanceNode)
+            draw_options[last_node_id]['inputs']['conditioning'][0] = '6'
+            draw_options['3']['inputs']['positive'][0] = last_node_id
 
         try:
             client_id = str(uuid.uuid4())
@@ -418,6 +453,25 @@ class ComfyuiStableDiffusionTool(BuiltinTool):
                                           label=I18nObject(en_US=i, zh_Hans=i)
                                       ) for i in schedulers])
                     )
+                parameters.append(
+                    ToolParameter(name='model_type',
+                                  label=I18nObject(en_US='Model Type', zh_Hans='Model Type'),
+                                  human_description=I18nObject(
+                                      en_US='Model Type of Stable Diffusion or Flux, '
+                                            'you can check the official documentation of Stable Diffusion and Flux',
+                                      zh_Hans='Stable Diffusion 的模型，您可以查看 Stable Diffusion 和 Flux 的官方文档',
+                                  ),
+                                  type=ToolParameter.ToolParameterType.SELECT,
+                                  form=ToolParameter.ToolParameterForm.FORM,
+                                  llm_description='Model Type of Stable Diffusion or Flux, '
+                                                  'you can check the official documentation of Stable Diffusion and Flux',
+                                  required=True,
+                                  default=ModelType.SD15.name,
+                                  options=[ToolParameterOption(
+                                          value=i,
+                                          label=I18nObject(en_US=i, zh_Hans=i)
+                                      ) for i in ModelType.__members__.keys()])
+                )
             except:
                 pass
 

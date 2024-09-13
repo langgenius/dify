@@ -1,15 +1,15 @@
 identity:
-  name: stable_diffusion
-  author: Dify
+  name: txt2img workflow
+  author: Qun
   label:
-    en_US: Stable Diffusion ComfyUI
-    zh_Hans: Stable Diffusion ComfyUI
-    pt_BR: Stable Diffusion ComfyUI
+    en_US: Txt2Img Workflow
+    zh_Hans: Txt2Img Workflow
+    pt_BR: Txt2Img Workflow
 description:
   human:
-    en_US: A tool for generating images which can be deployed locally, you can use ComfyUI to deploy it.
-    zh_Hans: 一个可以在本地部署的图片生成的工具，您可以使用 ComfyUI 来部署它。
-    pt_BR: A tool for generating images which can be deployed locally, you can use ComfyUI to deploy it.
+    en_US: a pre-defined comfyui workflow that can use one model and up to 3 loras to generate images. Support SD1.5, SDXL, SD3 and FLUX which contain text encoders/clip, but does not support models that requires a triple clip loader.
+    zh_Hans: 一个预定义的 ComfyUI 工作流，可以使用一个模型和最多3个loras来生成图像。支持包含文本编码器/clip的SD1.5、SDXL、SD3和FLUX，但不支持需要clip加载器的模型。
+    pt_BR: a pre-defined comfyui workflow that can use one model and up to 3 loras to generate images. Support SD1.5, SDXL, SD3 and FLUX which contain text encoders/clip, but does not support models that requires a triple clip loader.
   llm: draw the image you want based on your prompt.
 parameters:
   - name: prompt
@@ -20,9 +20,9 @@ parameters:
       zh_Hans: 提示词
       pt_BR: Prompt
     human_description:
-      en_US: Image prompt, you can check the official documentation of Stable Diffusion
-      zh_Hans: 图像提示词，您可以查看 Stable Diffusion 的官方文档
-      pt_BR: Image prompt, you can check the official documentation of Stable Diffusion
+      en_US: Image prompt, you can check the official documentation of Stable Diffusion or FLUX
+      zh_Hans: 图像提示词，您可以查看 Stable Diffusion 或者 FLUX 的官方文档
+      pt_BR: Image prompt, you can check the official documentation of Stable Diffusion or FLUX
     llm_description: Image prompt of Stable Diffusion, you should describe the image you want to generate as a list of words as possible as detailed, the prompt must be written in English.
     form: llm
   - name: model
@@ -36,6 +36,18 @@ parameters:
       en_US: Model Name
       zh_Hans: 模型名称
       pt_BR: Model Name
+    form: form
+  - name: model_type
+    type: string
+    required: true
+    label:
+      en_US: Model Type
+      zh_Hans: 模型类型
+      pt_BR: Model Type
+    human_description:
+      en_US: Model Type
+      zh_Hans: 模型类型
+      pt_BR: Model Type
     form: form
   - name: lora_1
     type: string
