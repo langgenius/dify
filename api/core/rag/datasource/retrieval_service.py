@@ -28,7 +28,7 @@ class RetrievalService:
         dataset_id: str,
         query: str,
         top_k: int,
-        score_threshold: Optional[float] = 0.0,
+        score_threshold: Optional[float] = .0,
         reranking_model: Optional[dict] = None,
         reranking_mode: Optional[str] = "reranking_model",
         weights: Optional[dict] = None,
