@@ -46,14 +46,14 @@ const FileTypeItem: FC<Props> = ({
           <div>
             <div className='flex items-center p-3 pb-2 border-b border-divider-subtle'>
               <span className='shrink-0 w-4 h-4 bg-[#00B2EA]'></span>
-              <div className='mx-2 grow text-text-primary system-sm-medium'>{t(`appDebug.variableConig.file.${type}.name`)}</div>
+              <div className='mx-2 grow text-text-primary system-sm-medium'>{t(`appDebug.variableConfig.file.${type}.name`)}</div>
               <Checkbox className='shrink-0' checked={selected} />
             </div>
             <div className='p-3' onClick={e => e.stopPropagation()}>
               <TagInput
                 items={customFileTypes}
                 onChange={onCustomFileTypesChange}
-                placeholder={t('appDebug.variableConig.file.custom.createPlaceholder')!}
+                placeholder={t('appDebug.variableConfig.file.custom.createPlaceholder')!}
               />
             </div>
           </div>
@@ -63,8 +63,8 @@ const FileTypeItem: FC<Props> = ({
             {/* TODO: Wait File type icon */}
             <span className='shrink-0 w-4 h-4 bg-[#00B2EA]'></span>
             <div className='mx-2 grow'>
-              <div className='text-text-primary system-sm-medium'>{t(`appDebug.variableConig.file.${type}.name`)}</div>
-              <div className='mt-1 text-text-tertiary system-2xs-regular-uppercase'>{type !== SupportUploadFileTypes.custom ? FILE_EXTS[type].join(', ') : t('appDebug.variableConig.file.custom.description')}</div>
+              <div className='text-text-primary system-sm-medium'>{t(`appDebug.variableConfig.file.${type}.name`)}</div>
+              <div className='mt-1 text-text-tertiary system-2xs-regular-uppercase'>{type !== SupportUploadFileTypes.custom ? FILE_EXTS[type].join(', ') : t('appDebug.variableConfig.file.custom.description')}</div>
             </div>
             <Checkbox className='shrink-0' checked={selected} />
           </div>

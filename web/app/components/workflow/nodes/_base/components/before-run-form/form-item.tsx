@@ -15,6 +15,7 @@ import Select from '@/app/components/base/select'
 import Input from '@/app/components/base/input'
 import Textarea from '@/app/components/base/textarea'
 import TextGenerationImageUploader from '@/app/components/base/image-uploader/text-generation-image-uploader'
+import { FileUploaderInAttachmentWrapper } from '@/app/components/base/file-uploader'
 import { Resolution } from '@/types/app'
 import { useFeatures } from '@/app/components/base/features/hooks'
 import { VarBlockIcon } from '@/app/components/workflow/block-icon'
@@ -156,7 +157,10 @@ const FormItem: FC<Props> = ({
           )
         }
 
-        {/* #TODO# file type new form  */}
+        {/* #TODO# file upload  */}
+        {(type === InputVarType.singleFile || type === InputVarType.multiFiles) && (
+          <FileUploaderInAttachmentWrapper onChange={() => {}} />
+        )}
         {
           type === InputVarType.files && (
             <TextGenerationImageUploader

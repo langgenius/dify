@@ -87,7 +87,7 @@ const FileUploadSetting: FC<Props> = ({
     <div>
       {!inFeaturePanel && (
         <Field
-          title={t('appDebug.variableConig.file.supportFileTypes')}
+          title={t('appDebug.variableConfig.file.supportFileTypes')}
         >
           <div className='space-y-1'>
             {
@@ -135,10 +135,10 @@ const FileUploadSetting: FC<Props> = ({
       {isMultiple && (
         <Field
           className='mt-4'
-          title={t('appDebug.variableConig.maxNumberOfUploads')!}
+          title={t('appDebug.variableConfig.maxNumberOfUploads')!}
         >
           <div>
-            <div className='mb-1.5 text-text-tertiary body-xs-regular'>{t('appDebug.variableConig.maxNumberTip')}</div>
+            <div className='mb-1.5 text-text-tertiary body-xs-regular'>{t('appDebug.variableConfig.maxNumberTip')}</div>
             <InputNumberWithSlider
               value={max_length}
               min={1}
@@ -150,7 +150,7 @@ const FileUploadSetting: FC<Props> = ({
       )}
       {inFeaturePanel && (
         <Field
-          title={t('appDebug.variableConig.file.supportFileTypes')}
+          title={t('appDebug.variableConfig.file.supportFileTypes')}
           className='mt-4'
         >
           <div className='space-y-1'>

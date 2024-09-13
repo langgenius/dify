@@ -42,8 +42,8 @@ const ChatWrapper = forwardRef<ChatWrapperRefType, ChatWrapperProps>(({ showConv
   const features = useFeatures(s => s.features)
   const config = useMemo(() => {
     return {
-      opening_statement: features.opening?.opening_statement || '',
-      suggested_questions: features.opening?.suggested_questions || [],
+      opening_statement: features.opening?.enabled ? (features.opening?.opening_statement || '') : '',
+      suggested_questions: features.opening?.enabled ? (features.opening?.suggested_questions || []) : [],
       suggested_questions_after_answer: features.suggested,
       text_to_speech: features.text2speech,
       speech_to_text: features.speech2text,
@@ -51,7 +51,7 @@ const ChatWrapper = forwardRef<ChatWrapperRefType, ChatWrapperProps>(({ showConv
       sensitive_word_avoidance: features.moderation,
       file_upload: features.file,
     }
-  }, [features])
+  }, [features.opening, features.suggested, features.text2speech, features.speech2text, features.citation, features.moderation, features.file])
   const setShowFeaturesPanel = useStore(s => s.setShowFeaturesPanel)
 
   const {
@@ -104,7 +104,8 @@ const ChatWrapper = forwardRef<ChatWrapperRefType, ChatWrapperProps>(({ showConv
         chatContainerClassName='px-3'
         chatContainerInnerClassName='pt-6 w-full max-w-full mx-auto'
         chatFooterClassName='px-4 rounded-bl-2xl'
-        chatFooterInnerClassName='pb-2'
+        chatFooterInnerClassName='pb-0'
+        showFileUpload
         showFeatureBar
         onFeatureBarClick={setShowFeaturesPanel}
         onSend={doSend}

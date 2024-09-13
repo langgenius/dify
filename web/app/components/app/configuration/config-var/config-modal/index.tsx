@@ -153,12 +153,12 @@ const ConfigModal: FC<IConfigModalProps> = ({
     }
     else if ([InputVarType.singleFile, InputVarType.multiFiles].includes(type)) {
       if (tempPayload.allowed_file_types?.length === 0) {
-        const errorMessages = t('workflow.errorMsg.fieldRequired', { field: t('appDebug.variableConig.file.supportFileTypes') })
+        const errorMessages = t('workflow.errorMsg.fieldRequired', { field: t('appDebug.variableConfig.file.supportFileTypes') })
         Toast.notify({ type: 'error', message: errorMessages })
         return
       }
       if (tempPayload.allowed_file_types?.includes(SupportUploadFileTypes.custom) && !tempPayload.allowed_file_extensions?.length) {
-        const errorMessages = t('workflow.errorMsg.fieldRequired', { field: t('appDebug.variableConig.file.custom.name') })
+        const errorMessages = t('workflow.errorMsg.fieldRequired', { field: t('appDebug.variableConfig.file.custom.name') })
         Toast.notify({ type: 'error', message: errorMessages })
         return
       }
@@ -178,7 +178,7 @@ const ConfigModal: FC<IConfigModalProps> = ({
       <div className='mb-8'>
         <div className='space-y-2'>
 
-          <Field title={t('appDebug.variableConig.fieldType')}>
+          <Field title={t('appDebug.variableConfig.fieldType')}>
             <div className='grid grid-cols-3 gap-2'>
               <SelectTypeItem type={InputVarType.textInput} selected={type === InputVarType.textInput} onClick={handleTypeChange(InputVarType.textInput)} />
               <SelectTypeItem type={InputVarType.paragraph} selected={type === InputVarType.paragraph} onClick={handleTypeChange(InputVarType.paragraph)} />
@@ -191,7 +191,7 @@ const ConfigModal: FC<IConfigModalProps> = ({
             </div>
           </Field>
 
-          <Field title={t('appDebug.variableConig.varName')}>
+          <Field title={t('appDebug.variableConfig.varName')}>
             <Input
               value={variable}
               onChange={e => handlePayloadChange('variable')(e.target.value)}
@@ -199,7 +199,7 @@ const ConfigModal: FC<IConfigModalProps> = ({
               placeholder={t('appDebug.variableConfig.inputPlaceholder')!}
             />
           </Field>
-          <Field title={t('appDebug.variableConig.labelName')}>
+          <Field title={t('appDebug.variableConfig.labelName')}>
             <Input
               value={label as string}
               onChange={e => handlePayloadChange('label')(e.target.value)}
@@ -229,7 +229,7 @@ const ConfigModal: FC<IConfigModalProps> = ({
 
           <div className='!mt-5 flex items-center h-6 space-x-2'>
             <Checkbox checked={tempPayload.required} onCheck={() => handlePayloadChange('required')(!tempPayload.required)} />
-            <span className='text-text-secondary system-sm-semibold'>{t('appDebug.variableConig.required')}</span>
+            <span className='text-text-secondary system-sm-semibold'>{t('appDebug.variableConfig.required')}</span>
           </div>
         </div>
       </div>

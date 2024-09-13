@@ -38,7 +38,7 @@ const Operation = forwardRef<HTMLDivElement, OperationProps>(({
         ref={ref}
       >
         <div className='flex items-center space-x-1'>
-          <FileUploaderInChatInput />
+          {visionConfig?.enabled && <FileUploaderInChatInput />}
           {
             speechToTextConfig?.enabled && (
               <ActionButton
