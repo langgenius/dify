@@ -616,13 +616,13 @@ files = [
 
 [[package]]
 name = "azure-core"
-version = "1.30.2"
+version = "1.31.0"
 description = "Microsoft Azure Core Library for Python"
 optional = false
 python-versions = ">=3.8"
 files = [
-    {file = "azure-core-1.30.2.tar.gz", hash = "sha256:a14dc210efcd608821aa472d9fb8e8d035d29b68993819147bc290a8ac224472"},
-    {file = "azure_core-1.30.2-py3-none-any.whl", hash = "sha256:cf019c1ca832e96274ae85abd3d9f752397194d9fea3b41487290562ac8abe4a"},
+    {file = "azure_core-1.31.0-py3-none-any.whl", hash = "sha256:22954de3777e0250029360ef31d80448ef1be13b80a459bff80ba7073379e2cd"},
+    {file = "azure_core-1.31.0.tar.gz", hash = "sha256:656a0dd61e1869b1506b7c6a3b31d62f15984b1a573d6326f6aa2f3e4123284b"},
 ]
 
 [package.dependencies]
@@ -828,13 +828,13 @@ crt = ["botocore[crt] (>=1.21.0,<2.0a0)"]
 
 [[package]]
 name = "botocore"
-version = "1.35.17"
+version = "1.35.18"
 description = "Low-level, data-driven core of boto 3."
 optional = false
 python-versions = ">=3.8"
 files = [
-    {file = "botocore-1.35.17-py3-none-any.whl", hash = "sha256:a93f773ca93139529b5d36730b382dbee63ab4c7f26129aa5c84835255ca999d"},
-    {file = "botocore-1.35.17.tar.gz", hash = "sha256:0d35d03ea647b5d464c7f77bdab6fb23ae5d49752b13cf97ab84444518c7b1bd"},
+    {file = "botocore-1.35.18-py3-none-any.whl", hash = "sha256:1027083aeb1fe74057273410fd768e018e22f85adfbd717b5a69f578f7812b80"},
+    {file = "botocore-1.35.18.tar.gz", hash = "sha256:e59da8b91ab06683d2725b6cbbb0383b30c68a241c3c63363f4c5bff59b3c0c0"},
 ]
 
 [package.dependencies]
@@ -4418,13 +4418,13 @@ openai = ["openai (>=0.27.8)"]
 
 [[package]]
 name = "langsmith"
-version = "0.1.118"
+version = "0.1.120"
 description = "Client library to connect to the LangSmith LLM Tracing and Evaluation Platform."
 optional = false
 python-versions = "<4.0,>=3.8.1"
 files = [
-    {file = "langsmith-0.1.118-py3-none-any.whl", hash = "sha256:f017127b3efb037da5e46ff4f8583e8192e7955191737240c327f3eadc144d7c"},
-    {file = "langsmith-0.1.118.tar.gz", hash = "sha256:ff1ca06c92c6081250244ebbce5d0bb347b9d898d2e9b60a13b11f0f0720f09f"},
+    {file = "langsmith-0.1.120-py3-none-any.whl", hash = "sha256:54d2785e301646c0988e0a69ebe4d976488c87b41928b358cb153b6ddd8db62b"},
+    {file = "langsmith-0.1.120.tar.gz", hash = "sha256:25499ca187b41bd89d784b272b97a8d76f60e0e21bdf20336e8a2aa6a9b23ac9"},
 ]
 
 [package.dependencies]
@@ -6248,13 +6248,13 @@ type = ["mypy (>=1.11.2)"]
 
 [[package]]
 name = "plotly"
-version = "5.24.0"
+version = "5.24.1"
 description = "An open-source, interactive data visualization library for Python"
 optional = false
 python-versions = ">=3.8"
 files = [
-    {file = "plotly-5.24.0-py3-none-any.whl", hash = "sha256:0e54efe52c8cef899f7daa41be9ed97dfb6be622613a2a8f56a86a0634b2b67e"},
-    {file = "plotly-5.24.0.tar.gz", hash = "sha256:eae9f4f54448682442c92c1e97148e3ad0c52f0cf86306e1b76daba24add554a"},
+    {file = "plotly-5.24.1-py3-none-any.whl", hash = "sha256:f67073a1e637eb0dc3e46324d9d51e2fe76e9727c892dde64ddf1e1b51f29089"},
+    {file = "plotly-5.24.1.tar.gz", hash = "sha256:dbc8ac8339d248a4bcc36e08a5659bacfe1b079390b8953533f4eb22169b4bae"},
 ]
 
 [package.dependencies]
@@ -8778,13 +8778,13 @@ test = ["pytest", "tornado (>=4.5)", "typeguard"]
 
 [[package]]
 name = "tencentcloud-sdk-python-common"
-version = "3.0.1230"
+version = "3.0.1231"
 description = "Tencent Cloud Common SDK for Python"
 optional = false
 python-versions = "*"
 files = [
-    {file = "tencentcloud-sdk-python-common-3.0.1230.tar.gz", hash = "sha256:1e0f3bab80026fcb0083820869239b3f8cf30beb8e00e12c213bdecc75eb7577"},
-    {file = "tencentcloud_sdk_python_common-3.0.1230-py2.py3-none-any.whl", hash = "sha256:03616c79685c154c689536a9c823d52b855cf49eada70679826a92aff5afd596"},
+    {file = "tencentcloud-sdk-python-common-3.0.1231.tar.gz", hash = "sha256:22aa281ca2eac511e1615b2953da7c4a0bec87cf93a05a7a15dbb61b23a215ee"},
+    {file = "tencentcloud_sdk_python_common-3.0.1231-py2.py3-none-any.whl", hash = "sha256:bd0f7c4df4b156ec35c8731afa1f498043c7e1cd5d2feb595ee441fdb45a061e"},
 ]
 
 [package.dependencies]
@@ -8792,17 +8792,17 @@ requests = ">=2.16.0"
 
 [[package]]
 name = "tencentcloud-sdk-python-hunyuan"
-version = "3.0.1230"
+version = "3.0.1231"
 description = "Tencent Cloud Hunyuan SDK for Python"
 optional = false
 python-versions = "*"
 files = [
-    {file = "tencentcloud-sdk-python-hunyuan-3.0.1230.tar.gz", hash = "sha256:900d15cb9dc2217b1282d985898ec7ecf97859351c86c6f7efc74685f08a5f85"},
-    {file = "tencentcloud_sdk_python_hunyuan-3.0.1230-py2.py3-none-any.whl", hash = "sha256:604dab0d4d66ea942f23d7980c76b5f0f6af3d68a8374e619331a4dd2910991e"},
+    {file = "tencentcloud-sdk-python-hunyuan-3.0.1231.tar.gz", hash = "sha256:6da12f418f14305b3a6b7bb29b6d95bf4038a6b66b81c0e03b8dafc4f6df99ca"},
+    {file = "tencentcloud_sdk_python_hunyuan-3.0.1231-py2.py3-none-any.whl", hash = "sha256:21ba28f69c34c15e20900be3f2c06376fcaf7e58265f939833c55631f2348792"},
 ]
 
 [package.dependencies]
-tencentcloud-sdk-python-common = "3.0.1230"
+tencentcloud-sdk-python-common = "3.0.1231"
 
 [[package]]
 name = "threadpoolctl"
@@ -9454,13 +9454,13 @@ files = [
 
 [[package]]
 name = "urllib3"
-version = "2.2.2"
+version = "2.2.3"
 description = "HTTP library with thread-safe connection pooling, file post, and more."
 optional = false
 python-versions = ">=3.8"
 files = [
-    {file = "urllib3-2.2.2-py3-none-any.whl", hash = "sha256:a448b2f64d686155468037e1ace9f2d2199776e17f0a46610480d311f73e3472"},
-    {file = "urllib3-2.2.2.tar.gz", hash = "sha256:dd505485549a7a552833da5e6063639d0d177c04f23bc3864e41e5dc5f612168"},
+    {file = "urllib3-2.2.3-py3-none-any.whl", hash = "sha256:ca899ca043dcb1bafa3e262d73aa25c465bfb49e0bd9dd5d59f1d0acba2f8fac"},
+    {file = "urllib3-2.2.3.tar.gz", hash = "sha256:e7d814a81dad81e6caf2ec9fdedb284ecc9c73076b62654547cc64ccdcae26e9"},
 ]
 
 [package.extras]
@@ -9614,12 +9614,12 @@ files = [
 
 [[package]]
 name = "volcengine-python-sdk"
-version = "1.0.100"
+version = "1.0.101"
 description = "Volcengine SDK for Python"
 optional = false
 python-versions = "*"
 files = [
-    {file = "volcengine-python-sdk-1.0.100.tar.gz", hash = "sha256:cdc194fe3ce51adda6892d2ca1c43edba3300699321dc6c69119c59fc3b28932"},
+    {file = "volcengine-python-sdk-1.0.101.tar.gz", hash = "sha256:1b76e71a6dcf3d5be1b2c058e7d281359e6cca2cc920ffe2567d3115beea1d02"},
 ]
 
 [package.dependencies]
@@ -10416,4 +10416,4 @@ cffi = ["cffi (>=1.11)"]
 [metadata]
 lock-version = "2.0"
 python-versions = ">=3.10,<3.13"
-content-hash = "726af69ca5a577808dfe76dbce098de77ce358bf64862a4d27309cb1900cea0c"
+content-hash = "4f03c9626d051fca5d47aa1929688708ce37667e4474d2557a965bc3e7ec1327"
