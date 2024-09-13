@@ -19,7 +19,8 @@ default_retrieval_model = {
 
 class HitTestingService:
     @classmethod
-    def retrieve(cls, dataset: Dataset, query: str, account: Account, retrieval_model: dict, limit: int = 10) -> dict:
+    def retrieve(cls, dataset: Dataset, query: str, account: Account,
+                 retrieval_model: dict, external_retrieval_model: dict, limit: int = 10) -> dict:
         if dataset.available_document_count == 0 or dataset.available_segment_count == 0:
             return {
                 "query": {
@@ -50,6 +51,8 @@ class HitTestingService:
             if retrieval_model.get("reranking_mode")
             else "reranking_model",
             weights=retrieval_model.get("weights", None),
+            provider=dataset.provider,
+            external_retrieval_model=external_retrieval_model,
         )
 
         end = time.perf_counter()

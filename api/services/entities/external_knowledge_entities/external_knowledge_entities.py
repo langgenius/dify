@@ -23,7 +23,6 @@ class ApiTemplateSetting(BaseModel):
     method: str
     url: str
     request_method: str
-    authorization: Authorization
+    api_token: str
     headers: Optional[dict] = None
     params: Optional[dict] = None
-    callback_setting: Optional[ProcessStatusSetting] = None
