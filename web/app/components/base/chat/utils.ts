@@ -130,7 +130,7 @@ function getThreadMessages(tree: ChatItemInTree[], targetMessageId?: string): Ch
   let targetNode: ChatItemInTree | undefined
 
   // find path to the target message
-  const stack = tree.map(rootNode => ({
+  const stack = tree.reverse().map(rootNode => ({
     node: rootNode,
     path: [rootNode],
   }))
@@ -147,10 +147,8 @@ function getThreadMessages(tree: ChatItemInTree[], targetMessageId?: string): Ch
 
         const parentAnswer = path[index - 2]
         const siblingCount = !parentAnswer ? tree.length : parentAnswer.children!.length
-        const prevSibling = !parentAnswer ? tree[index - 1]?.id : parentAnswer.children![item.siblingIndex! - 1]?.children?.[0].id
-        const nextSibling = !parentAnswer ? tree[index + 1]?.id : parentAnswer.children![item.siblingIndex! + 1]?.children?.[0].id
-        if (item.id === '9b221880-044f-43be-bd5a-39b340bf84a1')
-          console.log({ parentAnswer, siblingIndex: item.siblingIndex, siblingCount, prevSibling, nextSibling })
+        const prevSibling = !parentAnswer ? tree[item.siblingIndex! - 1]?.children?.[0]?.id : parentAnswer.children![item.siblingIndex! - 1]?.children?.[0].id
+        const nextSibling = !parentAnswer ? tree[item.siblingIndex! + 1]?.children?.[0]?.id : parentAnswer.children![item.siblingIndex! + 1]?.children?.[0].id
 
         return { ...item, siblingCount, prevSibling, nextSibling }
       })
@@ -174,8 +172,18 @@ function getThreadMessages(tree: ChatItemInTree[], targetMessageId?: string): Ch
       if (node !== targetNode)
         ret.push(node)
       if (node.children?.length) {
-        const lastDescendant = node.children.at(-1)!
-        stack.push({ ...lastDescendant, siblingCount: node.children.length })
+        const lastChild = node.children.at(-1)!
+
+        if (!lastChild.isAnswer) {
+          stack.push(lastChild)
+          continue
+        }
+
+        const parentAnswer = ret.at(-2)
+        const siblingCount = parentAnswer?.children?.length
+        const prevSibling = parentAnswer?.children?.at(-2)?.children?.[0]?.id
+
+        stack.push({ ...lastChild, siblingCount, prevSibling })
       }
     }
   }

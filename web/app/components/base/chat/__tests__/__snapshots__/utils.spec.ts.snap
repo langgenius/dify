@@ -1,1580 +1,477 @@
 // Jest Snapshot v1, https://goo.gl/fbAQLP
 
-exports[`build chat item tree and get thread messages get thread messages with legacy chat items: threadMessages2 1`] = `
+exports[`build chat item tree and get thread messages should work with real world messages 1`] = `
 [
   {
     "children": [
       {
+        "agent_thoughts": [
+          {
+            "chain_id": null,
+            "created_at": 1726105791,
+            "files": [],
+            "id": "f9d7ff7c-3a3b-4d9a-a289-657817f4caff",
+            "message_id": "ff4c2b43-48a5-47ad-9dc5-08b34ddba61b",
+            "observation": "",
+            "position": 1,
+            "thought": "Sure, I'll play! My number is 57. Your turn!",
+            "tool": "",
+            "tool_input": "",
+            "tool_labels": {},
+          },
+        ],
         "children": [
           {
             "children": [
               {
+                "agent_thoughts": [
+                  {
+                    "chain_id": null,
+                    "created_at": 1726105795,
+                    "files": [],
+                    "id": "f61a3fce-37ac-4f9d-9935-95f97e598dfe",
+                    "message_id": "73bbad14-d915-499d-87bf-0df14d40779d",
+                    "observation": "",
+                    "position": 1,
+                    "thought": "I choose 83. What's your next number?",
+                    "tool": "",
+                    "tool_input": "",
+                    "tool_labels": {},
+                  },
+                ],
                 "children": [
                   {
                     "children": [
                       {
-                        "children": [
+                        "agent_thoughts": [
                           {
-                            "children": [
-                              {
-                                "children": [],
-                                "id": "4",
-                                "isAnswer": true,
-                                "parentMessageId": "question-4",
-                                "siblingIndex": 0,
-                              },
-                            ],
-                            "id": "question-4",
-                            "isAnswer": false,
-                            "parentMessageId": "00000000-0000-0000-0000-000000000000",
+                            "chain_id": null,
+                            "created_at": 1726105799,
+                            "files": [],
+                            "id": "9730d587-9268-4683-9dd9-91a1cab9510b",
+                            "message_id": "4c5d0841-1206-463e-95d8-71f812877658",
+                            "observation": "",
+                            "position": 1,
+                            "thought": "I'll go with 112. Your turn!",
+                            "tool": "",
+                            "tool_input": "",
+                            "tool_labels": {},
                           },
                         ],
-                        "id": "3",
+                        "children": [],
+                        "content": "I'll go with 112. Your turn!",
+                        "conversationId": "dd6c9cfd-2656-48ec-bd51-2139c1790d80",
+                        "feedbackDisabled": false,
+                        "id": "4c5d0841-1206-463e-95d8-71f812877658",
+                        "input": {
+                          "inputs": {},
+                          "query": "99",
+                        },
                         "isAnswer": true,
-                        "parentMessageId": "question-3",
-                        "siblingIndex": 0,
-                      },
-                    ],
-                    "id": "question-3",
-                    "isAnswer": false,
-                    "parentMessageId": "00000000-0000-0000-0000-000000000000",
-                  },
-                ],
-                "id": "2",
-                "isAnswer": true,
-                "parentMessageId": "question-2",
-                "siblingIndex": 0,
-              },
-            ],
-            "id": "question-2",
-            "isAnswer": false,
-            "parentMessageId": "00000000-0000-0000-0000-000000000000",
-          },
-        ],
-        "id": "1",
-        "isAnswer": true,
-        "parentMessageId": "question-1",
-        "siblingIndex": 0,
-      },
-    ],
-    "id": "question-1",
-    "isAnswer": false,
-    "parentMessageId": "00000000-0000-0000-0000-000000000000",
-  },
-  {
-    "children": [
-      {
-        "children": [
-          {
-            "children": [
-              {
-                "children": [
-                  {
-                    "children": [
-                      {
-                        "children": [
+                        "log": [
                           {
-                            "children": [],
-                            "id": "4",
-                            "isAnswer": true,
-                            "parentMessageId": "question-4",
-                            "siblingIndex": 0,
+                            "files": [],
+                            "role": "user",
+                            "text": "Let's play a game, I say a number , and you response me with another bigger, yet randomly number. I'll start first, 38",
+                          },
+                          {
+                            "files": [],
+                            "role": "assistant",
+                            "text": "Sure, I'll play! My number is 57. Your turn!",
+                          },
+                          {
+                            "files": [],
+                            "role": "user",
+                            "text": "58",
+                          },
+                          {
+                            "files": [],
+                            "role": "assistant",
+                            "text": "I choose 83. What's your next number?",
+                          },
+                          {
+                            "files": [],
+                            "role": "user",
+                            "text": "99",
+                          },
+                          {
+                            "files": [],
+                            "role": "assistant",
+                            "text": "I'll go with 112. Your turn!",
                           },
                         ],
-                        "id": "question-4",
-                        "isAnswer": false,
-                        "parentMessageId": "00000000-0000-0000-0000-000000000000",
-                      },
-                    ],
-                    "id": "3",
-                    "isAnswer": true,
-                    "parentMessageId": "question-3",
-                    "siblingIndex": 0,
-                  },
-                ],
-                "id": "question-3",
-                "isAnswer": false,
-                "parentMessageId": "00000000-0000-0000-0000-000000000000",
-              },
-            ],
-            "id": "2",
-            "isAnswer": true,
-            "parentMessageId": "question-2",
-            "siblingIndex": 0,
-          },
-        ],
-        "id": "question-2",
-        "isAnswer": false,
-        "parentMessageId": "00000000-0000-0000-0000-000000000000",
-      },
-    ],
-    "id": "1",
-    "isAnswer": true,
-    "nextSibling": undefined,
-    "parentMessageId": "question-1",
-    "prevSibling": "question-1",
-    "siblingCount": 1,
-    "siblingIndex": 0,
-  },
-  {
-    "children": [
-      {
-        "children": [
-          {
-            "children": [
-              {
-                "children": [
-                  {
-                    "children": [
-                      {
-                        "children": [],
-                        "id": "4",
-                        "isAnswer": true,
-                        "parentMessageId": "question-4",
+                        "message_files": [],
+                        "more": {
+                          "latency": "1.49",
+                          "time": "09/11/2024 09:50 PM",
+                          "tokens": 86,
+                        },
+                        "parentMessageId": "question-4c5d0841-1206-463e-95d8-71f812877658",
                         "siblingIndex": 0,
+                        "workflow_run_id": null,
                       },
                     ],
-                    "id": "question-4",
+                    "content": "99",
+                    "id": "question-4c5d0841-1206-463e-95d8-71f812877658",
                     "isAnswer": false,
-                    "parentMessageId": "00000000-0000-0000-0000-000000000000",
+                    "message_files": [],
+                    "parentMessageId": "73bbad14-d915-499d-87bf-0df14d40779d",
                   },
                 ],
-                "id": "3",
+                "content": "I choose 83. What's your next number?",
+                "conversationId": "dd6c9cfd-2656-48ec-bd51-2139c1790d80",
+                "feedbackDisabled": false,
+                "id": "73bbad14-d915-499d-87bf-0df14d40779d",
+                "input": {
+                  "inputs": {},
+                  "query": "58",
+                },
                 "isAnswer": true,
-                "parentMessageId": "question-3",
-                "siblingIndex": 0,
-              },
-            ],
-            "id": "question-3",
-            "isAnswer": false,
-            "parentMessageId": "00000000-0000-0000-0000-000000000000",
-          },
-        ],
-        "id": "2",
-        "isAnswer": true,
-        "parentMessageId": "question-2",
-        "siblingIndex": 0,
-      },
-    ],
-    "id": "question-2",
-    "isAnswer": false,
-    "parentMessageId": "00000000-0000-0000-0000-000000000000",
-  },
-  {
-    "children": [
-      {
-        "children": [
-          {
-            "children": [
-              {
-                "children": [
+                "log": [
                   {
-                    "children": [],
-                    "id": "4",
-                    "isAnswer": true,
-                    "parentMessageId": "question-4",
-                    "siblingIndex": 0,
+                    "files": [],
+                    "role": "user",
+                    "text": "Let's play a game, I say a number , and you response me with another bigger, yet randomly number. I'll start first, 38",
+                  },
+                  {
+                    "files": [],
+                    "role": "assistant",
+                    "text": "Sure, I'll play! My number is 57. Your turn!",
+                  },
+                  {
+                    "files": [],
+                    "role": "user",
+                    "text": "58",
+                  },
+                  {
+                    "files": [],
+                    "role": "assistant",
+                    "text": "I choose 83. What's your next number?",
                   },
                 ],
-                "id": "question-4",
-                "isAnswer": false,
-                "parentMessageId": "00000000-0000-0000-0000-000000000000",
-              },
-            ],
-            "id": "3",
-            "isAnswer": true,
-            "parentMessageId": "question-3",
-            "siblingIndex": 0,
-          },
-        ],
-        "id": "question-3",
-        "isAnswer": false,
-        "parentMessageId": "00000000-0000-0000-0000-000000000000",
-      },
-    ],
-    "id": "2",
-    "isAnswer": true,
-    "nextSibling": undefined,
-    "parentMessageId": "question-2",
-    "prevSibling": undefined,
-    "siblingCount": 1,
-    "siblingIndex": 0,
-  },
-  {
-    "children": [
-      {
-        "children": [
-          {
-            "children": [
-              {
-                "children": [],
-                "id": "4",
-                "isAnswer": true,
-                "parentMessageId": "question-4",
+                "message_files": [],
+                "more": {
+                  "latency": "1.33",
+                  "time": "09/11/2024 09:49 PM",
+                  "tokens": 68,
+                },
+                "parentMessageId": "question-73bbad14-d915-499d-87bf-0df14d40779d",
                 "siblingIndex": 0,
+                "workflow_run_id": null,
               },
             ],
-            "id": "question-4",
+            "content": "58",
+            "id": "question-73bbad14-d915-499d-87bf-0df14d40779d",
             "isAnswer": false,
-            "parentMessageId": "00000000-0000-0000-0000-000000000000",
+            "message_files": [],
+            "parentMessageId": "ff4c2b43-48a5-47ad-9dc5-08b34ddba61b",
           },
         ],
-        "id": "3",
+        "content": "Sure, I'll play! My number is 57. Your turn!",
+        "conversationId": "dd6c9cfd-2656-48ec-bd51-2139c1790d80",
+        "feedbackDisabled": false,
+        "id": "ff4c2b43-48a5-47ad-9dc5-08b34ddba61b",
+        "input": {
+          "inputs": {},
+          "query": "Let's play a game, I say a number , and you response me with another bigger, yet randomly number. I'll start first, 38",
+        },
         "isAnswer": true,
-        "parentMessageId": "question-3",
-        "siblingIndex": 0,
-      },
-    ],
-    "id": "question-3",
-    "isAnswer": false,
-    "parentMessageId": "00000000-0000-0000-0000-000000000000",
-  },
-  {
-    "children": [
-      {
-        "children": [
+        "log": [
           {
-            "children": [],
-            "id": "4",
-            "isAnswer": true,
-            "parentMessageId": "question-4",
-            "siblingIndex": 0,
+            "files": [],
+            "role": "user",
+            "text": "Let's play a game, I say a number , and you response me with another bigger, yet randomly number. I'll start first, 38",
+          },
+          {
+            "files": [],
+            "role": "assistant",
+            "text": "Sure, I'll play! My number is 57. Your turn!",
           },
         ],
-        "id": "question-4",
-        "isAnswer": false,
-        "parentMessageId": "00000000-0000-0000-0000-000000000000",
-      },
-    ],
-    "id": "3",
-    "isAnswer": true,
-    "nextSibling": undefined,
-    "parentMessageId": "question-3",
-    "prevSibling": undefined,
-    "siblingCount": 1,
-    "siblingIndex": 0,
-  },
-  {
-    "children": [
-      {
-        "children": [],
-        "id": "4",
-        "isAnswer": true,
-        "parentMessageId": "question-4",
+        "message_files": [],
+        "more": {
+          "latency": "1.56",
+          "time": "09/11/2024 09:49 PM",
+          "tokens": 49,
+        },
+        "parentMessageId": "question-ff4c2b43-48a5-47ad-9dc5-08b34ddba61b",
         "siblingIndex": 0,
+        "workflow_run_id": null,
       },
     ],
-    "id": "question-4",
+    "content": "Let's play a game, I say a number , and you response me with another bigger, yet random-looking number. I'll start first, 38",
+    "id": "question-ff4c2b43-48a5-47ad-9dc5-08b34ddba61b",
     "isAnswer": false,
-    "parentMessageId": "00000000-0000-0000-0000-000000000000",
+    "message_files": [],
   },
-  {
-    "children": [],
-    "id": "4",
-    "isAnswer": true,
-    "nextSibling": undefined,
-    "parentMessageId": "question-4",
-    "prevSibling": undefined,
-    "siblingCount": 1,
-    "siblingIndex": 0,
-  },
-]
-`;
-
-exports[`build chat item tree and get thread messages get thread messages with legacy chat items: tree2 1`] = `
-[
   {
     "children": [
       {
+        "agent_thoughts": [
+          {
+            "chain_id": null,
+            "created_at": 1726105809,
+            "files": [],
+            "id": "1019cd79-d141-4f9f-880a-fc1441cfd802",
+            "message_id": "cd5affb0-7bc2-4a6f-be7e-25e74595c9dd",
+            "observation": "",
+            "position": 1,
+            "thought": "Sure! My number is 54. Your turn!",
+            "tool": "",
+            "tool_input": "",
+            "tool_labels": {},
+          },
+        ],
         "children": [
           {
             "children": [
               {
+                "agent_thoughts": [
+                  {
+                    "chain_id": null,
+                    "created_at": 1726105822,
+                    "files": [],
+                    "id": "0773bec7-b992-4a53-92b2-20ebaeae8798",
+                    "message_id": "324bce32-c98c-435d-a66b-bac974ebb5ed",
+                    "observation": "",
+                    "position": 1,
+                    "thought": "My number is 4729. Your turn!",
+                    "tool": "",
+                    "tool_input": "",
+                    "tool_labels": {},
+                  },
+                ],
+                "children": [],
+                "content": "My number is 4729. Your turn!",
+                "conversationId": "dd6c9cfd-2656-48ec-bd51-2139c1790d80",
+                "feedbackDisabled": false,
+                "id": "324bce32-c98c-435d-a66b-bac974ebb5ed",
+                "input": {
+                  "inputs": {},
+                  "query": "3306",
+                },
+                "isAnswer": true,
+                "log": [
+                  {
+                    "files": [],
+                    "role": "user",
+                    "text": "Let's play a game, I say a number , and you response me with another bigger, yet randomly number. I'll start first, 38",
+                  },
+                  {
+                    "files": [],
+                    "role": "assistant",
+                    "text": "Sure! My number is 54. Your turn!",
+                  },
+                  {
+                    "files": [],
+                    "role": "user",
+                    "text": "3306",
+                  },
+                  {
+                    "files": [],
+                    "role": "assistant",
+                    "text": "My number is 4729. Your turn!",
+                  },
+                ],
+                "message_files": [],
+                "more": {
+                  "latency": "1.30",
+                  "time": "09/11/2024 09:50 PM",
+                  "tokens": 66,
+                },
+                "parentMessageId": "question-324bce32-c98c-435d-a66b-bac974ebb5ed",
+                "siblingIndex": 0,
+                "workflow_run_id": null,
+              },
+            ],
+            "content": "3306",
+            "id": "question-324bce32-c98c-435d-a66b-bac974ebb5ed",
+            "isAnswer": false,
+            "message_files": [],
+            "parentMessageId": "cd5affb0-7bc2-4a6f-be7e-25e74595c9dd",
+          },
+          {
+            "children": [
+              {
+                "agent_thoughts": [
+                  {
+                    "chain_id": null,
+                    "created_at": 1726107812,
+                    "files": [],
+                    "id": "5ca650f3-982c-4399-8b95-9ea241c76707",
+                    "message_id": "684b5396-4e91-4043-88e9-aabe48b21acc",
+                    "observation": "",
+                    "position": 1,
+                    "thought": "My number is 4821. Your turn!",
+                    "tool": "",
+                    "tool_input": "",
+                    "tool_labels": {},
+                  },
+                ],
                 "children": [
                   {
                     "children": [
                       {
-                        "children": [
+                        "agent_thoughts": [
                           {
-                            "children": [
-                              {
-                                "children": [],
-                                "id": "4",
-                                "isAnswer": true,
-                                "parentMessageId": "question-4",
-                                "siblingIndex": 0,
-                              },
-                            ],
-                            "id": "question-4",
-                            "isAnswer": false,
-                            "parentMessageId": "00000000-0000-0000-0000-000000000000",
+                            "chain_id": null,
+                            "created_at": 1726111024,
+                            "files": [],
+                            "id": "095cacab-afad-4387-a41d-1662578b8b13",
+                            "message_id": "19904a7b-7494-4ed8-b72c-1d18668cea8c",
+                            "observation": "",
+                            "position": 1,
+                            "thought": "My number is 1456. Your turn!",
+                            "tool": "",
+                            "tool_input": "",
+                            "tool_labels": {},
                           },
                         ],
-                        "id": "3",
-                        "isAnswer": true,
-                        "parentMessageId": "question-3",
-                        "siblingIndex": 0,
-                      },
-                    ],
-                    "id": "question-3",
-                    "isAnswer": false,
-                    "parentMessageId": "00000000-0000-0000-0000-000000000000",
-                  },
-                ],
-                "id": "2",
-                "isAnswer": true,
-                "parentMessageId": "question-2",
-                "siblingIndex": 0,
-              },
-            ],
-            "id": "question-2",
-            "isAnswer": false,
-            "parentMessageId": "00000000-0000-0000-0000-000000000000",
-          },
-        ],
-        "id": "1",
-        "isAnswer": true,
-        "parentMessageId": "question-1",
-        "siblingIndex": 0,
-      },
-    ],
-    "id": "question-1",
-    "isAnswer": false,
-    "parentMessageId": "00000000-0000-0000-0000-000000000000",
-  },
-]
-`;
-
-exports[`build chat item tree and get thread messages get thread messages with mixed chat items: threadMessages3_1 1`] = `
-[
-  {
-    "children": [
-      {
-        "children": [
-          {
-            "children": [
-              {
-                "children": [
-                  {
-                    "children": [
-                      {
                         "children": [],
-                        "id": "3",
+                        "content": "My number is 1456. Your turn!",
+                        "conversationId": "dd6c9cfd-2656-48ec-bd51-2139c1790d80",
+                        "feedbackDisabled": false,
+                        "id": "19904a7b-7494-4ed8-b72c-1d18668cea8c",
+                        "input": {
+                          "inputs": {},
+                          "query": "1003",
+                        },
                         "isAnswer": true,
-                        "parentMessageId": "question-3",
+                        "log": [
+                          {
+                            "files": [],
+                            "role": "user",
+                            "text": "Let's play a game, I say a number , and you response me with another bigger, yet randomly number. I'll start first, 38",
+                          },
+                          {
+                            "files": [],
+                            "role": "assistant",
+                            "text": "Sure! My number is 54. Your turn!",
+                          },
+                          {
+                            "files": [],
+                            "role": "user",
+                            "text": "3306",
+                          },
+                          {
+                            "files": [],
+                            "role": "assistant",
+                            "text": "My number is 4821. Your turn!",
+                          },
+                          {
+                            "files": [],
+                            "role": "user",
+                            "text": "1003",
+                          },
+                          {
+                            "files": [],
+                            "role": "assistant",
+                            "text": "My number is 1456. Your turn!",
+                          },
+                        ],
+                        "message_files": [],
+                        "more": {
+                          "latency": "1.38",
+                          "time": "09/11/2024 11:17 PM",
+                          "tokens": 86,
+                        },
+                        "parentMessageId": "question-19904a7b-7494-4ed8-b72c-1d18668cea8c",
                         "siblingIndex": 0,
+                        "workflow_run_id": null,
                       },
                     ],
-                    "id": "question-3",
+                    "content": "1003",
+                    "id": "question-19904a7b-7494-4ed8-b72c-1d18668cea8c",
                     "isAnswer": false,
-                    "parentMessageId": "2",
+                    "message_files": [],
+                    "parentMessageId": "684b5396-4e91-4043-88e9-aabe48b21acc",
                   },
                 ],
-                "id": "2",
+                "content": "My number is 4821. Your turn!",
+                "conversationId": "dd6c9cfd-2656-48ec-bd51-2139c1790d80",
+                "feedbackDisabled": false,
+                "id": "684b5396-4e91-4043-88e9-aabe48b21acc",
+                "input": {
+                  "inputs": {},
+                  "query": "3306",
+                },
                 "isAnswer": true,
-                "parentMessageId": "question-2",
-                "siblingIndex": 0,
-              },
-            ],
-            "id": "question-2",
-            "isAnswer": false,
-            "parentMessageId": "00000000-0000-0000-0000-000000000000",
-          },
-          {
-            "children": [
-              {
-                "children": [],
-                "id": "4",
-                "isAnswer": true,
-                "parentMessageId": "question-4",
-                "siblingIndex": 1,
-              },
-            ],
-            "id": "question-4",
-            "isAnswer": false,
-            "parentMessageId": "1",
-          },
-        ],
-        "id": "1",
-        "isAnswer": true,
-        "parentMessageId": "question-1",
-        "siblingIndex": 0,
-      },
-    ],
-    "id": "question-1",
-    "isAnswer": false,
-    "parentMessageId": "00000000-0000-0000-0000-000000000000",
-  },
-  {
-    "children": [
-      {
-        "children": [
-          {
-            "children": [
-              {
-                "children": [
+                "log": [
                   {
-                    "children": [],
-                    "id": "3",
-                    "isAnswer": true,
-                    "parentMessageId": "question-3",
-                    "siblingIndex": 0,
+                    "files": [],
+                    "role": "user",
+                    "text": "Let's play a game, I say a number , and you response me with another bigger, yet randomly number. I'll start first, 38",
+                  },
+                  {
+                    "files": [],
+                    "role": "assistant",
+                    "text": "Sure! My number is 54. Your turn!",
+                  },
+                  {
+                    "files": [],
+                    "role": "user",
+                    "text": "3306",
+                  },
+                  {
+                    "files": [],
+                    "role": "assistant",
+                    "text": "My number is 4821. Your turn!",
                   },
                 ],
-                "id": "question-3",
-                "isAnswer": false,
-                "parentMessageId": "2",
+                "message_files": [],
+                "more": {
+                  "latency": "1.48",
+                  "time": "09/11/2024 10:23 PM",
+                  "tokens": 66,
+                },
+                "parentMessageId": "question-684b5396-4e91-4043-88e9-aabe48b21acc",
+                "siblingIndex": 1,
+                "workflow_run_id": null,
               },
             ],
-            "id": "2",
-            "isAnswer": true,
-            "parentMessageId": "question-2",
-            "siblingIndex": 0,
+            "content": "3306",
+            "id": "question-684b5396-4e91-4043-88e9-aabe48b21acc",
+            "isAnswer": false,
+            "message_files": [],
+            "parentMessageId": "cd5affb0-7bc2-4a6f-be7e-25e74595c9dd",
           },
         ],
-        "id": "question-2",
-        "isAnswer": false,
-        "parentMessageId": "00000000-0000-0000-0000-000000000000",
-      },
-      {
-        "children": [
-          {
-            "children": [],
-            "id": "4",
-            "isAnswer": true,
-            "parentMessageId": "question-4",
-            "siblingIndex": 1,
-          },
-        ],
-        "id": "question-4",
-        "isAnswer": false,
-        "parentMessageId": "1",
-      },
-    ],
-    "id": "1",
-    "isAnswer": true,
-    "nextSibling": undefined,
-    "parentMessageId": "question-1",
-    "prevSibling": "question-1",
-    "siblingCount": 1,
-    "siblingIndex": 0,
-  },
-  {
-    "children": [
-      {
-        "children": [],
-        "id": "4",
+        "content": "Sure! My number is 54. Your turn!",
+        "conversationId": "dd6c9cfd-2656-48ec-bd51-2139c1790d80",
+        "feedbackDisabled": false,
+        "id": "cd5affb0-7bc2-4a6f-be7e-25e74595c9dd",
+        "input": {
+          "inputs": {},
+          "query": "Let's play a game, I say a number , and you response me with another bigger, yet randomly number. I'll start first, 38",
+        },
         "isAnswer": true,
-        "parentMessageId": "question-4",
+        "log": [
+          {
+            "files": [],
+            "role": "user",
+            "text": "Let's play a game, I say a number , and you response me with another bigger, yet randomly number. I'll start first, 38",
+          },
+          {
+            "files": [],
+            "role": "assistant",
+            "text": "Sure! My number is 54. Your turn!",
+          },
+        ],
+        "message_files": [],
+        "more": {
+          "latency": "1.52",
+          "time": "09/11/2024 09:50 PM",
+          "tokens": 46,
+        },
+        "parentMessageId": "question-cd5affb0-7bc2-4a6f-be7e-25e74595c9dd",
         "siblingIndex": 1,
+        "workflow_run_id": null,
       },
     ],
-    "id": "question-4",
+    "content": "Let's play a game, I say a number , and you response me with another bigger, yet randomly number. I'll start first, 38",
+    "id": "question-cd5affb0-7bc2-4a6f-be7e-25e74595c9dd",
     "isAnswer": false,
-    "parentMessageId": "1",
-  },
-  {
-    "children": [],
-    "id": "4",
-    "isAnswer": true,
-    "nextSibling": undefined,
-    "parentMessageId": "question-4",
-    "prevSibling": "2",
-    "siblingCount": 2,
-    "siblingIndex": 1,
-  },
-]
-`;
-
-exports[`build chat item tree and get thread messages get thread messages with mixed chat items: threadMessages3_2 1`] = `
-[
-  {
-    "children": [
-      {
-        "children": [
-          {
-            "children": [
-              {
-                "children": [
-                  {
-                    "children": [
-                      {
-                        "children": [],
-                        "id": "3",
-                        "isAnswer": true,
-                        "parentMessageId": "question-3",
-                        "siblingIndex": 0,
-                      },
-                    ],
-                    "id": "question-3",
-                    "isAnswer": false,
-                    "parentMessageId": "2",
-                  },
-                ],
-                "id": "2",
-                "isAnswer": true,
-                "parentMessageId": "question-2",
-                "siblingIndex": 0,
-              },
-            ],
-            "id": "question-2",
-            "isAnswer": false,
-            "parentMessageId": "00000000-0000-0000-0000-000000000000",
-          },
-          {
-            "children": [
-              {
-                "children": [],
-                "id": "4",
-                "isAnswer": true,
-                "parentMessageId": "question-4",
-                "siblingIndex": 1,
-              },
-            ],
-            "id": "question-4",
-            "isAnswer": false,
-            "parentMessageId": "1",
-          },
-        ],
-        "id": "1",
-        "isAnswer": true,
-        "parentMessageId": "question-1",
-        "siblingIndex": 0,
-      },
-    ],
-    "id": "question-1",
-    "isAnswer": false,
-    "parentMessageId": "00000000-0000-0000-0000-000000000000",
-  },
-  {
-    "children": [
-      {
-        "children": [
-          {
-            "children": [
-              {
-                "children": [
-                  {
-                    "children": [],
-                    "id": "3",
-                    "isAnswer": true,
-                    "parentMessageId": "question-3",
-                    "siblingIndex": 0,
-                  },
-                ],
-                "id": "question-3",
-                "isAnswer": false,
-                "parentMessageId": "2",
-              },
-            ],
-            "id": "2",
-            "isAnswer": true,
-            "parentMessageId": "question-2",
-            "siblingIndex": 0,
-          },
-        ],
-        "id": "question-2",
-        "isAnswer": false,
-        "parentMessageId": "00000000-0000-0000-0000-000000000000",
-      },
-      {
-        "children": [
-          {
-            "children": [],
-            "id": "4",
-            "isAnswer": true,
-            "parentMessageId": "question-4",
-            "siblingIndex": 1,
-          },
-        ],
-        "id": "question-4",
-        "isAnswer": false,
-        "parentMessageId": "1",
-      },
-    ],
-    "id": "1",
-    "isAnswer": true,
-    "nextSibling": undefined,
-    "parentMessageId": "question-1",
-    "prevSibling": "question-1",
-    "siblingCount": 1,
-    "siblingIndex": 0,
-  },
-  {
-    "children": [
-      {
-        "children": [
-          {
-            "children": [
-              {
-                "children": [],
-                "id": "3",
-                "isAnswer": true,
-                "parentMessageId": "question-3",
-                "siblingIndex": 0,
-              },
-            ],
-            "id": "question-3",
-            "isAnswer": false,
-            "parentMessageId": "2",
-          },
-        ],
-        "id": "2",
-        "isAnswer": true,
-        "parentMessageId": "question-2",
-        "siblingIndex": 0,
-      },
-    ],
-    "id": "question-2",
-    "isAnswer": false,
-    "parentMessageId": "00000000-0000-0000-0000-000000000000",
-  },
-  {
-    "children": [
-      {
-        "children": [
-          {
-            "children": [],
-            "id": "3",
-            "isAnswer": true,
-            "parentMessageId": "question-3",
-            "siblingIndex": 0,
-          },
-        ],
-        "id": "question-3",
-        "isAnswer": false,
-        "parentMessageId": "2",
-      },
-    ],
-    "id": "2",
-    "isAnswer": true,
-    "nextSibling": "4",
-    "parentMessageId": "question-2",
-    "prevSibling": undefined,
-    "siblingCount": 2,
-    "siblingIndex": 0,
-  },
-  {
-    "children": [
-      {
-        "children": [],
-        "id": "3",
-        "isAnswer": true,
-        "parentMessageId": "question-3",
-        "siblingIndex": 0,
-      },
-    ],
-    "id": "question-3",
-    "isAnswer": false,
-    "parentMessageId": "2",
-  },
-  {
-    "children": [],
-    "id": "3",
-    "isAnswer": true,
-    "nextSibling": undefined,
-    "parentMessageId": "question-3",
-    "prevSibling": undefined,
-    "siblingCount": 1,
-    "siblingIndex": 0,
-  },
-]
-`;
-
-exports[`build chat item tree and get thread messages get thread messages with mixed chat items: tree3 1`] = `
-[
-  {
-    "children": [
-      {
-        "children": [
-          {
-            "children": [
-              {
-                "children": [
-                  {
-                    "children": [
-                      {
-                        "children": [],
-                        "id": "3",
-                        "isAnswer": true,
-                        "parentMessageId": "question-3",
-                        "siblingIndex": 0,
-                      },
-                    ],
-                    "id": "question-3",
-                    "isAnswer": false,
-                    "parentMessageId": "2",
-                  },
-                ],
-                "id": "2",
-                "isAnswer": true,
-                "parentMessageId": "question-2",
-                "siblingIndex": 0,
-              },
-            ],
-            "id": "question-2",
-            "isAnswer": false,
-            "parentMessageId": "00000000-0000-0000-0000-000000000000",
-          },
-          {
-            "children": [
-              {
-                "children": [],
-                "id": "4",
-                "isAnswer": true,
-                "parentMessageId": "question-4",
-                "siblingIndex": 1,
-              },
-            ],
-            "id": "question-4",
-            "isAnswer": false,
-            "parentMessageId": "1",
-          },
-        ],
-        "id": "1",
-        "isAnswer": true,
-        "parentMessageId": "question-1",
-        "siblingIndex": 0,
-      },
-    ],
-    "id": "question-1",
-    "isAnswer": false,
-    "parentMessageId": "00000000-0000-0000-0000-000000000000",
-  },
-]
-`;
-
-exports[`build chat item tree and get thread messages get thread messages with multi root nodes chat items with legacy chat items: threadMessages5 1`] = `
-[
-  {
-    "children": [
-      {
-        "children": [
-          {
-            "children": [
-              {
-                "children": [
-                  {
-                    "children": [
-                      {
-                        "children": [],
-                        "id": "3",
-                        "isAnswer": true,
-                        "parentMessageId": "question-3",
-                        "siblingIndex": 0,
-                      },
-                    ],
-                    "id": "question-3",
-                    "isAnswer": false,
-                    "parentMessageId": "00000000-0000-0000-0000-000000000000",
-                  },
-                ],
-                "id": "2",
-                "isAnswer": true,
-                "parentMessageId": "question-2",
-                "siblingIndex": 0,
-              },
-            ],
-            "id": "question-2",
-            "isAnswer": false,
-            "parentMessageId": "00000000-0000-0000-0000-000000000000",
-          },
-          {
-            "children": [
-              {
-                "children": [],
-                "id": "4",
-                "isAnswer": true,
-                "parentMessageId": "question-4",
-                "siblingIndex": 1,
-              },
-            ],
-            "id": "question-4",
-            "isAnswer": false,
-            "parentMessageId": "1",
-          },
-        ],
-        "id": "1",
-        "isAnswer": true,
-        "parentMessageId": "question-1",
-        "siblingIndex": 0,
-      },
-    ],
-    "id": "question-1",
-    "isAnswer": false,
-    "parentMessageId": "00000000-0000-0000-0000-000000000000",
-  },
-  {
-    "children": [
-      {
-        "children": [
-          {
-            "children": [
-              {
-                "children": [
-                  {
-                    "children": [],
-                    "id": "3",
-                    "isAnswer": true,
-                    "parentMessageId": "question-3",
-                    "siblingIndex": 0,
-                  },
-                ],
-                "id": "question-3",
-                "isAnswer": false,
-                "parentMessageId": "00000000-0000-0000-0000-000000000000",
-              },
-            ],
-            "id": "2",
-            "isAnswer": true,
-            "parentMessageId": "question-2",
-            "siblingIndex": 0,
-          },
-        ],
-        "id": "question-2",
-        "isAnswer": false,
-        "parentMessageId": "00000000-0000-0000-0000-000000000000",
-      },
-      {
-        "children": [
-          {
-            "children": [],
-            "id": "4",
-            "isAnswer": true,
-            "parentMessageId": "question-4",
-            "siblingIndex": 1,
-          },
-        ],
-        "id": "question-4",
-        "isAnswer": false,
-        "parentMessageId": "1",
-      },
-    ],
-    "id": "1",
-    "isAnswer": true,
-    "nextSibling": undefined,
-    "parentMessageId": "question-1",
-    "prevSibling": "question-1",
-    "siblingCount": 2,
-    "siblingIndex": 0,
-  },
-  {
-    "children": [
-      {
-        "children": [],
-        "id": "4",
-        "isAnswer": true,
-        "parentMessageId": "question-4",
-        "siblingIndex": 1,
-      },
-    ],
-    "id": "question-4",
-    "isAnswer": false,
-    "parentMessageId": "1",
-  },
-  {
-    "children": [],
-    "id": "4",
-    "isAnswer": true,
-    "nextSibling": undefined,
-    "parentMessageId": "question-4",
-    "prevSibling": "2",
-    "siblingCount": 2,
-    "siblingIndex": 1,
-  },
-]
-`;
-
-exports[`build chat item tree and get thread messages get thread messages with multi root nodes chat items with legacy chat items: tree5 1`] = `
-[
-  {
-    "children": [
-      {
-        "children": [
-          {
-            "children": [
-              {
-                "children": [
-                  {
-                    "children": [
-                      {
-                        "children": [],
-                        "id": "3",
-                        "isAnswer": true,
-                        "parentMessageId": "question-3",
-                        "siblingIndex": 0,
-                      },
-                    ],
-                    "id": "question-3",
-                    "isAnswer": false,
-                    "parentMessageId": "00000000-0000-0000-0000-000000000000",
-                  },
-                ],
-                "id": "2",
-                "isAnswer": true,
-                "parentMessageId": "question-2",
-                "siblingIndex": 0,
-              },
-            ],
-            "id": "question-2",
-            "isAnswer": false,
-            "parentMessageId": "00000000-0000-0000-0000-000000000000",
-          },
-          {
-            "children": [
-              {
-                "children": [],
-                "id": "4",
-                "isAnswer": true,
-                "parentMessageId": "question-4",
-                "siblingIndex": 1,
-              },
-            ],
-            "id": "question-4",
-            "isAnswer": false,
-            "parentMessageId": "1",
-          },
-        ],
-        "id": "1",
-        "isAnswer": true,
-        "parentMessageId": "question-1",
-        "siblingIndex": 0,
-      },
-    ],
-    "id": "question-1",
-    "isAnswer": false,
-    "parentMessageId": "00000000-0000-0000-0000-000000000000",
-  },
-  {
-    "children": [
-      {
-        "children": [],
-        "id": "5",
-        "isAnswer": true,
-        "parentMessageId": "question-5",
-        "siblingIndex": 1,
-      },
-    ],
-    "id": "question-5",
-    "isAnswer": false,
-    "parentMessageId": null,
-  },
-]
-`;
-
-exports[`build chat item tree and get thread messages get thread messages with multi root nodes chat items: threadMessages4 1`] = `
-[
-  {
-    "children": [
-      {
-        "children": [
-          {
-            "children": [
-              {
-                "children": [
-                  {
-                    "children": [
-                      {
-                        "children": [],
-                        "id": "3",
-                        "isAnswer": true,
-                        "parentMessageId": "question-3",
-                        "siblingIndex": 0,
-                      },
-                    ],
-                    "id": "question-3",
-                    "isAnswer": false,
-                    "parentMessageId": "2",
-                  },
-                ],
-                "id": "2",
-                "isAnswer": true,
-                "parentMessageId": "question-2",
-                "siblingIndex": 0,
-              },
-            ],
-            "id": "question-2",
-            "isAnswer": false,
-            "parentMessageId": "1",
-          },
-          {
-            "children": [
-              {
-                "children": [],
-                "id": "4",
-                "isAnswer": true,
-                "parentMessageId": "question-4",
-                "siblingIndex": 1,
-              },
-            ],
-            "id": "question-4",
-            "isAnswer": false,
-            "parentMessageId": "1",
-          },
-        ],
-        "id": "1",
-        "isAnswer": true,
-        "parentMessageId": "question-1",
-        "siblingIndex": 0,
-      },
-    ],
-    "id": "question-1",
-    "isAnswer": false,
-    "parentMessageId": null,
-  },
-  {
-    "children": [
-      {
-        "children": [
-          {
-            "children": [
-              {
-                "children": [
-                  {
-                    "children": [],
-                    "id": "3",
-                    "isAnswer": true,
-                    "parentMessageId": "question-3",
-                    "siblingIndex": 0,
-                  },
-                ],
-                "id": "question-3",
-                "isAnswer": false,
-                "parentMessageId": "2",
-              },
-            ],
-            "id": "2",
-            "isAnswer": true,
-            "parentMessageId": "question-2",
-            "siblingIndex": 0,
-          },
-        ],
-        "id": "question-2",
-        "isAnswer": false,
-        "parentMessageId": "1",
-      },
-      {
-        "children": [
-          {
-            "children": [],
-            "id": "4",
-            "isAnswer": true,
-            "parentMessageId": "question-4",
-            "siblingIndex": 1,
-          },
-        ],
-        "id": "question-4",
-        "isAnswer": false,
-        "parentMessageId": "1",
-      },
-    ],
-    "id": "1",
-    "isAnswer": true,
-    "nextSibling": undefined,
-    "parentMessageId": "question-1",
-    "prevSibling": "question-1",
-    "siblingCount": 2,
-    "siblingIndex": 0,
-  },
-  {
-    "children": [
-      {
-        "children": [],
-        "id": "4",
-        "isAnswer": true,
-        "parentMessageId": "question-4",
-        "siblingIndex": 1,
-      },
-    ],
-    "id": "question-4",
-    "isAnswer": false,
-    "parentMessageId": "1",
-  },
-  {
-    "children": [],
-    "id": "4",
-    "isAnswer": true,
-    "nextSibling": undefined,
-    "parentMessageId": "question-4",
-    "prevSibling": "2",
-    "siblingCount": 2,
-    "siblingIndex": 1,
-  },
-]
-`;
-
-exports[`build chat item tree and get thread messages get thread messages with multi root nodes chat items: tree4 1`] = `
-[
-  {
-    "children": [
-      {
-        "children": [
-          {
-            "children": [
-              {
-                "children": [
-                  {
-                    "children": [
-                      {
-                        "children": [],
-                        "id": "3",
-                        "isAnswer": true,
-                        "parentMessageId": "question-3",
-                        "siblingIndex": 0,
-                      },
-                    ],
-                    "id": "question-3",
-                    "isAnswer": false,
-                    "parentMessageId": "2",
-                  },
-                ],
-                "id": "2",
-                "isAnswer": true,
-                "parentMessageId": "question-2",
-                "siblingIndex": 0,
-              },
-            ],
-            "id": "question-2",
-            "isAnswer": false,
-            "parentMessageId": "1",
-          },
-          {
-            "children": [
-              {
-                "children": [],
-                "id": "4",
-                "isAnswer": true,
-                "parentMessageId": "question-4",
-                "siblingIndex": 1,
-              },
-            ],
-            "id": "question-4",
-            "isAnswer": false,
-            "parentMessageId": "1",
-          },
-        ],
-        "id": "1",
-        "isAnswer": true,
-        "parentMessageId": "question-1",
-        "siblingIndex": 0,
-      },
-    ],
-    "id": "question-1",
-    "isAnswer": false,
-    "parentMessageId": null,
-  },
-  {
-    "children": [
-      {
-        "children": [],
-        "id": "5",
-        "isAnswer": true,
-        "parentMessageId": "question-5",
-        "siblingIndex": 1,
-      },
-    ],
-    "id": "question-5",
-    "isAnswer": false,
-    "parentMessageId": null,
-  },
-]
-`;
-
-exports[`build chat item tree and get thread messages get thread messages: threadMessages1_1 1`] = `
-[
-  {
-    "children": [
-      {
-        "children": [
-          {
-            "children": [
-              {
-                "children": [
-                  {
-                    "children": [
-                      {
-                        "children": [],
-                        "id": "3",
-                        "isAnswer": true,
-                        "parentMessageId": "question-3",
-                        "siblingIndex": 0,
-                      },
-                    ],
-                    "id": "question-3",
-                    "isAnswer": false,
-                    "parentMessageId": "2",
-                  },
-                ],
-                "id": "2",
-                "isAnswer": true,
-                "parentMessageId": "question-2",
-                "siblingIndex": 0,
-              },
-            ],
-            "id": "question-2",
-            "isAnswer": false,
-            "parentMessageId": "1",
-          },
-          {
-            "children": [
-              {
-                "children": [],
-                "id": "4",
-                "isAnswer": true,
-                "parentMessageId": "question-4",
-                "siblingIndex": 1,
-              },
-            ],
-            "id": "question-4",
-            "isAnswer": false,
-            "parentMessageId": "1",
-          },
-        ],
-        "id": "1",
-        "isAnswer": true,
-        "parentMessageId": "question-1",
-        "siblingIndex": 0,
-      },
-    ],
-    "id": "question-1",
-    "isAnswer": false,
-    "parentMessageId": null,
-  },
-  {
-    "children": [
-      {
-        "children": [
-          {
-            "children": [
-              {
-                "children": [
-                  {
-                    "children": [],
-                    "id": "3",
-                    "isAnswer": true,
-                    "parentMessageId": "question-3",
-                    "siblingIndex": 0,
-                  },
-                ],
-                "id": "question-3",
-                "isAnswer": false,
-                "parentMessageId": "2",
-              },
-            ],
-            "id": "2",
-            "isAnswer": true,
-            "parentMessageId": "question-2",
-            "siblingIndex": 0,
-          },
-        ],
-        "id": "question-2",
-        "isAnswer": false,
-        "parentMessageId": "1",
-      },
-      {
-        "children": [
-          {
-            "children": [],
-            "id": "4",
-            "isAnswer": true,
-            "parentMessageId": "question-4",
-            "siblingIndex": 1,
-          },
-        ],
-        "id": "question-4",
-        "isAnswer": false,
-        "parentMessageId": "1",
-      },
-    ],
-    "id": "1",
-    "isAnswer": true,
-    "nextSibling": undefined,
-    "parentMessageId": "question-1",
-    "prevSibling": "question-1",
-    "siblingCount": 1,
-    "siblingIndex": 0,
-  },
-  {
-    "children": [
-      {
-        "children": [],
-        "id": "4",
-        "isAnswer": true,
-        "parentMessageId": "question-4",
-        "siblingIndex": 1,
-      },
-    ],
-    "id": "question-4",
-    "isAnswer": false,
-    "parentMessageId": "1",
-  },
-  {
-    "children": [],
-    "id": "4",
-    "isAnswer": true,
-    "nextSibling": undefined,
-    "parentMessageId": "question-4",
-    "prevSibling": "2",
-    "siblingCount": 2,
-    "siblingIndex": 1,
-  },
-]
-`;
-
-exports[`build chat item tree and get thread messages get thread messages: threadMessages1_2 1`] = `
-[
-  {
-    "children": [
-      {
-        "children": [
-          {
-            "children": [
-              {
-                "children": [
-                  {
-                    "children": [
-                      {
-                        "children": [],
-                        "id": "3",
-                        "isAnswer": true,
-                        "parentMessageId": "question-3",
-                        "siblingIndex": 0,
-                      },
-                    ],
-                    "id": "question-3",
-                    "isAnswer": false,
-                    "parentMessageId": "2",
-                  },
-                ],
-                "id": "2",
-                "isAnswer": true,
-                "parentMessageId": "question-2",
-                "siblingIndex": 0,
-              },
-            ],
-            "id": "question-2",
-            "isAnswer": false,
-            "parentMessageId": "1",
-          },
-          {
-            "children": [
-              {
-                "children": [],
-                "id": "4",
-                "isAnswer": true,
-                "parentMessageId": "question-4",
-                "siblingIndex": 1,
-              },
-            ],
-            "id": "question-4",
-            "isAnswer": false,
-            "parentMessageId": "1",
-          },
-        ],
-        "id": "1",
-        "isAnswer": true,
-        "parentMessageId": "question-1",
-        "siblingIndex": 0,
-      },
-    ],
-    "id": "question-1",
-    "isAnswer": false,
-    "parentMessageId": null,
-  },
-  {
-    "children": [
-      {
-        "children": [
-          {
-            "children": [
-              {
-                "children": [
-                  {
-                    "children": [],
-                    "id": "3",
-                    "isAnswer": true,
-                    "parentMessageId": "question-3",
-                    "siblingIndex": 0,
-                  },
-                ],
-                "id": "question-3",
-                "isAnswer": false,
-                "parentMessageId": "2",
-              },
-            ],
-            "id": "2",
-            "isAnswer": true,
-            "parentMessageId": "question-2",
-            "siblingIndex": 0,
-          },
-        ],
-        "id": "question-2",
-        "isAnswer": false,
-        "parentMessageId": "1",
-      },
-      {
-        "children": [
-          {
-            "children": [],
-            "id": "4",
-            "isAnswer": true,
-            "parentMessageId": "question-4",
-            "siblingIndex": 1,
-          },
-        ],
-        "id": "question-4",
-        "isAnswer": false,
-        "parentMessageId": "1",
-      },
-    ],
-    "id": "1",
-    "isAnswer": true,
-    "nextSibling": undefined,
-    "parentMessageId": "question-1",
-    "prevSibling": "question-1",
-    "siblingCount": 1,
-    "siblingIndex": 0,
-  },
-  {
-    "children": [
-      {
-        "children": [
-          {
-            "children": [
-              {
-                "children": [],
-                "id": "3",
-                "isAnswer": true,
-                "parentMessageId": "question-3",
-                "siblingIndex": 0,
-              },
-            ],
-            "id": "question-3",
-            "isAnswer": false,
-            "parentMessageId": "2",
-          },
-        ],
-        "id": "2",
-        "isAnswer": true,
-        "parentMessageId": "question-2",
-        "siblingIndex": 0,
-      },
-    ],
-    "id": "question-2",
-    "isAnswer": false,
-    "parentMessageId": "1",
-  },
-  {
-    "children": [
-      {
-        "children": [
-          {
-            "children": [],
-            "id": "3",
-            "isAnswer": true,
-            "parentMessageId": "question-3",
-            "siblingIndex": 0,
-          },
-        ],
-        "id": "question-3",
-        "isAnswer": false,
-        "parentMessageId": "2",
-      },
-    ],
-    "id": "2",
-    "isAnswer": true,
-    "nextSibling": "4",
-    "parentMessageId": "question-2",
-    "prevSibling": undefined,
-    "siblingCount": 2,
-    "siblingIndex": 0,
-  },
-  {
-    "children": [
-      {
-        "children": [],
-        "id": "3",
-        "isAnswer": true,
-        "parentMessageId": "question-3",
-        "siblingIndex": 0,
-      },
-    ],
-    "id": "question-3",
-    "isAnswer": false,
-    "parentMessageId": "2",
-  },
-  {
-    "children": [],
-    "id": "3",
-    "isAnswer": true,
-    "nextSibling": undefined,
-    "parentMessageId": "question-3",
-    "prevSibling": undefined,
-    "siblingCount": 1,
-    "siblingIndex": 0,
-  },
-]
-`;
-
-exports[`build chat item tree and get thread messages get thread messages: tree1 1`] = `
-[
-  {
-    "children": [
-      {
-        "children": [
-          {
-            "children": [
-              {
-                "children": [
-                  {
-                    "children": [
-                      {
-                        "children": [],
-                        "id": "3",
-                        "isAnswer": true,
-                        "parentMessageId": "question-3",
-                        "siblingIndex": 0,
-                      },
-                    ],
-                    "id": "question-3",
-                    "isAnswer": false,
-                    "parentMessageId": "2",
-                  },
-                ],
-                "id": "2",
-                "isAnswer": true,
-                "parentMessageId": "question-2",
-                "siblingIndex": 0,
-              },
-            ],
-            "id": "question-2",
-            "isAnswer": false,
-            "parentMessageId": "1",
-          },
-          {
-            "children": [
-              {
-                "children": [],
-                "id": "4",
-                "isAnswer": true,
-                "parentMessageId": "question-4",
-                "siblingIndex": 1,
-              },
-            ],
-            "id": "question-4",
-            "isAnswer": false,
-            "parentMessageId": "1",
-          },
-        ],
-        "id": "1",
-        "isAnswer": true,
-        "parentMessageId": "question-1",
-        "siblingIndex": 0,
-      },
-    ],
-    "id": "question-1",
-    "isAnswer": false,
-    "parentMessageId": null,
+    "message_files": [],
   },
 ]
 `;
