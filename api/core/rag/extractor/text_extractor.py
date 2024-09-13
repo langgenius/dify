@@ -1,5 +1,5 @@
 """Abstract interface for document loader implementations."""
-
+from functools import partial
 from pathlib import Path
 from typing import Optional
 
@@ -26,13 +26,13 @@ class TextExtractor(BaseExtractor):
         """Load from file path."""
         text = ""
         try:
-            text = Path(self._file_path).read_text(encoding=self._encoding)
+            text+=next(self.quick_read(Path(self._file_path),encoding=self._encoding))
         except UnicodeDecodeError as e:
             if self._autodetect_encoding:
                 detected_encodings = detect_file_encodings(self._file_path)
                 for encoding in detected_encodings:
                     try:
-                        text = Path(self._file_path).read_text(encoding=encoding.encoding)
+                        text += next(self.quick_read(Path(self._file_path), encoding=encoding.encoding))
                         break
                     except UnicodeDecodeError:
                         continue
@@ -43,3 +43,9 @@ class TextExtractor(BaseExtractor):
 
         metadata = {"source": self._file_path}
         return [Document(page_content=text, metadata=metadata)]
+
+    def quick_read(self,file_path,encoding,block_size=1024 * 8):
+        with open(file_path,'rb') as file:
+            for chunk in iter(partial(file.read, block_size), ''):
+                yield chunk.decode(encoding=encoding)
+
