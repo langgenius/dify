@@ -37,9 +37,8 @@ class FirecrawlApp:
         for i in range(retries):
             try:
                 response = requests.request(method, url, json=data, headers=headers)
-                response.raise_for_status()
                 return response.json()
-            except requests.exceptions.RequestException as e:
+            except requests.exceptions.RequestException:
                 if i < retries - 1:
                     time.sleep(backoff_factor * (2**i))
                 else:
@@ -47,7 +46,7 @@ class FirecrawlApp:
         return None
 
     def scrape_url(self, url: str, **kwargs):
-        endpoint = f"{self.base_url}/v0/scrape"
+        endpoint = f"{self.base_url}/v1/scrape"
         data = {"url": url, **kwargs}
         logger.debug(f"Sent request to {endpoint=} body={data}")
         response = self._request("POST", endpoint, data)
@@ -116,6 +115,6 @@ def get_json_params(tool_parameters: dict[str, Any], key):
             # support both single quotes and double quotes
             param = param.replace("'", '"')
             param = json.loads(param)
-        except:
+        except Exception:
             raise ValueError(f"Invalid {key} format.")
         return param
