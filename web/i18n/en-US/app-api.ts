@@ -6,6 +6,7 @@ const translation = {
   ok: 'In Service',
   copy: 'Copy',
   copied: 'Copied',
+  resend: 'Resend',
   play: 'Play',
   pause: 'Pause',
   playing: 'Playing',

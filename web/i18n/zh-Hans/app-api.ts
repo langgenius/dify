@@ -6,6 +6,7 @@ const translation = {
   ok: '运行中',
   copy: '复制',
   copied: '已复制',
+  resend: '重新发送',
   play: '播放',
   pause: '暂停',
   playing: '播放中',

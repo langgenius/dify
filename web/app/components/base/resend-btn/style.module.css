@@ -1,0 +1,11 @@
+.resendIcon {
+    background-image: url(~@/app/components/develop/secret-key/assets/resend.svg);
+    background-position: center;
+    background-repeat: no-repeat;
+}
+
+.resendIcon:hover {
+    background-image: url(~@/app/components/develop/secret-key/assets/resend-hover.svg);
+    background-position: center;
+    background-repeat: no-repeat;
+}

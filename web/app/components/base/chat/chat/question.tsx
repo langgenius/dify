@@ -8,6 +8,7 @@ import {
 import type { ChatItem } from '../types'
 import type { Theme } from '../embedded-chatbot/theme/theme-context'
 import { CssTransform } from '../embedded-chatbot/theme/utils'
+import Operation from './operation'
 import { QuestionTriangle } from '@/app/components/base/icons/src/vender/solid/general'
 import { User } from '@/app/components/base/icons/src/public/avatar'
 import { Markdown } from '@/app/components/base/markdown'
@@ -40,6 +41,7 @@ const Question: FC<QuestionProps> = ({
           className='px-4 py-3 bg-[#D1E9FF]/50 rounded-b-2xl rounded-tl-2xl text-sm text-gray-900'
           style={theme?.chatBubbleColorStyle ? CssTransform(theme.chatBubbleColorStyle) : {}}
         >
+          <Operation item={item}/>
           {
             !!imgSrcs.length && (
               <ImageGallery srcs={imgSrcs} />
