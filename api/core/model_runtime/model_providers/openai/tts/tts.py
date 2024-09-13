@@ -88,7 +88,7 @@ class OpenAIText2SpeechModel(_CommonOpenAI, TTSModel):
                     )
                     for i in range(len(sentences))
                 ]
-                for index, future in enumerate(futures):
+                for future in futures:
                     yield from future.result().__enter__().iter_bytes(1024)
 
             else:

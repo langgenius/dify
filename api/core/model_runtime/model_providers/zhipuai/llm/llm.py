@@ -31,7 +31,7 @@ And you should always end the block with a "```" to indicate the end of the JSON
 {{instructions}}
 </instructions>
 
-```JSON"""
+```JSON"""  # noqa: E501
 
 
 class ZhipuAILargeLanguageModel(_CommonZhipuaiAI, LargeLanguageModel):
@@ -209,9 +209,10 @@ class ZhipuAILargeLanguageModel(_CommonZhipuaiAI, LargeLanguageModel):
                 ):
                     new_prompt_messages[-1].content += "\n\n" + copy_prompt_message.content
                 else:
-                    if copy_prompt_message.role == PromptMessageRole.USER:
-                        new_prompt_messages.append(copy_prompt_message)
-                    elif copy_prompt_message.role == PromptMessageRole.TOOL:
+                    if (
+                        copy_prompt_message.role == PromptMessageRole.USER
+                        or copy_prompt_message.role == PromptMessageRole.TOOL
+                    ):
                         new_prompt_messages.append(copy_prompt_message)
                     elif copy_prompt_message.role == PromptMessageRole.SYSTEM:
                         new_prompt_message = SystemPromptMessage(content=copy_prompt_message.content)
@@ -413,10 +414,10 @@ class ZhipuAILargeLanguageModel(_CommonZhipuaiAI, LargeLanguageModel):
 
             # transform assistant message to prompt message
             assistant_prompt_message = AssistantPromptMessage(
-                content=delta.delta.content if delta.delta.content else "", tool_calls=assistant_tool_calls
+                content=delta.delta.content or "", tool_calls=assistant_tool_calls
             )
 
-            full_assistant_content += delta.delta.content if delta.delta.content else ""
+            full_assistant_content += delta.delta.content or ""
 
             if delta.finish_reason is not None and chunk.usage is not None:
                 completion_tokens = chunk.usage.completion_tokens
@@ -461,9 +462,7 @@ class ZhipuAILargeLanguageModel(_CommonZhipuaiAI, LargeLanguageModel):
             message_text = f"{human_prompt} {content}"
         elif isinstance(message, AssistantPromptMessage):
             message_text = f"{ai_prompt} {content}"
-        elif isinstance(message, SystemPromptMessage):
-            message_text = content
-        elif isinstance(message, ToolPromptMessage):
+        elif isinstance(message, SystemPromptMessage | ToolPromptMessage):
             message_text = content
         else:
             raise ValueError(f"Got unknown type {message}")

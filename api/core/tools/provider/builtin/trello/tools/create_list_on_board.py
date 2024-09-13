@@ -17,7 +17,8 @@ class CreateListOnBoardTool(BuiltinTool):
 
         Args:
             user_id (str): The ID of the user invoking the tool.
-            tool_parameters (dict[str, Union[str, int, bool]]): The parameters for the tool invocation, including the board ID and list name.
+            tool_parameters (dict[str, Union[str, int, bool]]): The parameters for the tool invocation,
+             including the board ID and list name.
 
         Returns:
             ToolInvokeMessage: The result of the tool invocation.

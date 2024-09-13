@@ -187,7 +187,7 @@ if you are not sure about the structure.
 <instructions>
 {{instructions}}
 </instructions>
-"""
+"""  # noqa: E501
 
         code_block = model_parameters.get("response_format", "")
         if not code_block:
@@ -449,7 +449,7 @@ if you are not sure about the structure.
                 model=real_model,
                 prompt_messages=prompt_messages,
                 message=prompt_message,
-                usage=usage if usage else LLMUsage.empty_usage(),
+                usage=usage or LLMUsage.empty_usage(),
                 system_fingerprint=system_fingerprint,
             ),
             credentials=credentials,
@@ -830,7 +830,8 @@ if you are not sure about the structure.
                     else:
                         if parameter_value != round(parameter_value, parameter_rule.precision):
                             raise ValueError(
-                                f"Model Parameter {parameter_name} should be round to {parameter_rule.precision} decimal places."
+                                f"Model Parameter {parameter_name} should be round to {parameter_rule.precision}"
+                                f" decimal places."
                             )
 
                 # validate parameter value range

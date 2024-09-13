@@ -80,7 +80,8 @@ def _validate_web_sso_token(decoded, system_features, app_code):
             if not source or source != "sso":
                 raise WebSSOAuthRequiredError()
 
-    # Check if SSO is not enforced for web, and if the token source is SSO, raise an error and redirect to normal passport login
+    # Check if SSO is not enforced for web, and if the token source is SSO,
+    # raise an error and redirect to normal passport login
     if not system_features.sso_enforced_for_web or not app_web_sso_enabled:
         source = decoded.get("token_source")
         if source and source == "sso":

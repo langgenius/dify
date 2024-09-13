@@ -214,7 +214,7 @@ class ReplicateLargeLanguageModel(_CommonReplicate, LargeLanguageModel):
 
             index += 1
 
-            assistant_prompt_message = AssistantPromptMessage(content=output if output else "")
+            assistant_prompt_message = AssistantPromptMessage(content=output or "")
 
             if index < prediction_output_length:
                 yield LLMResultChunk(

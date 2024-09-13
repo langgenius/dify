@@ -120,8 +120,8 @@ class WeightRerankRunner:
             intersection = set(vec1.keys()) & set(vec2.keys())
             numerator = sum(vec1[x] * vec2[x] for x in intersection)
 
-            sum1 = sum(vec1[x] ** 2 for x in vec1.keys())
-            sum2 = sum(vec2[x] ** 2 for x in vec2.keys())
+            sum1 = sum(vec1[x] ** 2 for x in vec1)
+            sum2 = sum(vec2[x] ** 2 for x in vec2)
             denominator = math.sqrt(sum1) * math.sqrt(sum2)
 
             if not denominator:

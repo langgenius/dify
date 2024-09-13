@@ -44,12 +44,12 @@ class SearchAPI:
     @staticmethod
     def _process_response(res: dict, type: str) -> str:
         """Process response from SearchAPI."""
-        if "error" in res.keys():
+        if "error" in res:
             raise ValueError(f"Got error from SearchApi: {res['error']}")
 
         toret = ""
         if type == "text":
-            if "jobs" in res.keys() and "title" in res["jobs"][0].keys():
+            if "jobs" in res and "title" in res["jobs"][0]:
                 for item in res["jobs"]:
                     toret += (
                         "title: "
@@ -65,7 +65,7 @@ class SearchAPI:
                 toret = "No good search result found"
 
         elif type == "link":
-            if "jobs" in res.keys() and "apply_link" in res["jobs"][0].keys():
+            if "jobs" in res and "apply_link" in res["jobs"][0]:
                 for item in res["jobs"]:
                     toret += f"[{item['title']} - {item['company_name']}]({item['apply_link']})\n"
             else:

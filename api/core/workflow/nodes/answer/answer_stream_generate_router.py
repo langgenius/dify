@@ -24,7 +24,7 @@ class AnswerStreamGeneratorRouter:
         # parse stream output node value selectors of answer nodes
         answer_generate_route: dict[str, list[GenerateRouteChunk]] = {}
         for answer_node_id, node_config in node_id_config_mapping.items():
-            if not node_config.get("data", {}).get("type") == NodeType.ANSWER.value:
+            if node_config.get("data", {}).get("type") != NodeType.ANSWER.value:
                 continue
 
             # get generate route for stream output

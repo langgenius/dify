@@ -46,7 +46,8 @@ class AIPPTGenerateTool(BuiltinTool):
             tool_parameters (dict[str, Any]): The parameters for the tool
 
         Returns:
-            ToolInvokeMessage | list[ToolInvokeMessage]: The result of the tool invocation, which can be a single message or a list of messages.
+            ToolInvokeMessage | list[ToolInvokeMessage]: The result of the tool invocation,
+             which can be a single message or a list of messages.
         """
         title = tool_parameters.get("title", "")
         if not title:

@@ -72,7 +72,8 @@ class SendMessageTool(BuiltinTool):
         tool_parameters (Dict[str, Any]): The parameters required for sending the message.
 
     Returns:
-        Union[ToolInvokeMessage, List[ToolInvokeMessage]]: The result of invoking the tool, which includes the status of the message sending operation.
+        Union[ToolInvokeMessage, List[ToolInvokeMessage]]: The result of invoking the tool,
+         which includes the status of the message sending operation.
     """
 
     def _invoke(

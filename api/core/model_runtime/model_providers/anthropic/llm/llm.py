@@ -51,7 +51,7 @@ if you are not sure about the structure.
 <instructions>
 {{instructions}}
 </instructions>
-"""
+"""  # noqa: E501
 
 
 class AnthropicLargeLanguageModel(LargeLanguageModel):
@@ -409,7 +409,7 @@ class AnthropicLargeLanguageModel(LargeLanguageModel):
                     ),
                 )
             elif isinstance(chunk, ContentBlockDeltaEvent):
-                chunk_text = chunk.delta.text if chunk.delta.text else ""
+                chunk_text = chunk.delta.text or ""
                 full_assistant_content += chunk_text
 
                 # transform assistant message to prompt message

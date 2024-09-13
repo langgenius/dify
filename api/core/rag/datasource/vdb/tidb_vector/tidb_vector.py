@@ -124,20 +124,19 @@ class TiDBVector(BaseVector):
         texts = [d.page_content for d in documents]
 
         chunks_table_data = []
-        with self._engine.connect() as conn:
-            with conn.begin():
-                for id, text, meta, embedding in zip(ids, texts, metas, embeddings):
-                    chunks_table_data.append({"id": id, "vector": embedding, "text": text, "meta": meta})
+        with self._engine.connect() as conn, conn.begin():
+            for id, text, meta, embedding in zip(ids, texts, metas, embeddings):
+                chunks_table_data.append({"id": id, "vector": embedding, "text": text, "meta": meta})
 
-                    # Execute the batch insert when the batch size is reached
-                    if len(chunks_table_data) == 500:
-                        conn.execute(insert(table).values(chunks_table_data))
-                        # Clear the chunks_table_data list for the next batch
-                        chunks_table_data.clear()
-
-                # Insert any remaining records that didn't make up a full batch
-                if chunks_table_data:
+                # Execute the batch insert when the batch size is reached
+                if len(chunks_table_data) == 500:
                     conn.execute(insert(table).values(chunks_table_data))
+                    # Clear the chunks_table_data list for the next batch
+                    chunks_table_data.clear()
+
+            # Insert any remaining records that didn't make up a full batch
+            if chunks_table_data:
+                conn.execute(insert(table).values(chunks_table_data))
         return ids
 
     def text_exists(self, id: str) -> bool:
@@ -160,11 +159,10 @@ class TiDBVector(BaseVector):
             raise ValueError("No ids provided to delete.")
         table = self._table(self._dimension)
         try:
-            with self._engine.connect() as conn:
-                with conn.begin():
-                    delete_condition = table.c.id.in_(ids)
-                    conn.execute(table.delete().where(delete_condition))
-                    return True
+            with self._engine.connect() as conn, conn.begin():
+                delete_condition = table.c.id.in_(ids)
+                conn.execute(table.delete().where(delete_condition))
+                return True
         except Exception as e:
             print("Delete operation failed:", str(e))
             return False
@@ -187,7 +185,7 @@ class TiDBVector(BaseVector):
 
     def search_by_vector(self, query_vector: list[float], **kwargs: Any) -> list[Document]:
         top_k = kwargs.get("top_k", 5)
-        score_threshold = kwargs.get("score_threshold") if kwargs.get("score_threshold") else 0.0
+        score_threshold = kwargs.get("score_threshold", 0.0)
         filter = kwargs.get("filter")
         distance = 1 - score_threshold
 
