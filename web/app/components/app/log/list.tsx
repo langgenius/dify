@@ -496,7 +496,7 @@ function DetailPanel<T extends ChatConversationFullDetailResponse | CompletionCo
             {/* Put the scroll bar always on the bottom */}
             <InfiniteScroll
               scrollableTarget="scrollableDiv"
-              dataLength={allChatItems.length}
+              dataLength={threadChatItems.length}
               next={fetchData}
               hasMore={hasMore}
               loader={<div className='text-center text-gray-400 text-xs'>{t('appLog.detail.loading')}...</div>}
