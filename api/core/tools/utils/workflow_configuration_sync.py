@@ -12,27 +12,25 @@ class WorkflowToolConfigurationUtils:
         """
         for configuration in configurations:
             if not WorkflowToolParameterConfiguration(**configuration):
-                raise ValueError('invalid parameter configuration')
+                raise ValueError("invalid parameter configuration")
 
     @classmethod
     def get_workflow_graph_variables(cls, graph: Mapping) -> list[VariableEntity]:
         """
         get workflow graph variables
         """
-        nodes = graph.get('nodes', [])
-        start_node = next(filter(lambda x: x.get('data', {}).get('type') == 'start', nodes), None)
+        nodes = graph.get("nodes", [])
+        start_node = next(filter(lambda x: x.get("data", {}).get("type") == "start", nodes), None)
 
         if not start_node:
             return []
 
-        return [
-            VariableEntity(**variable) for variable in start_node.get('data', {}).get('variables', [])
-        ]
-    
+        return [VariableEntity(**variable) for variable in start_node.get("data", {}).get("variables", [])]
+
     @classmethod
-    def check_is_synced(cls, 
-                        variables: list[VariableEntity], 
-                        tool_configurations: list[WorkflowToolParameterConfiguration]) -> None:
+    def check_is_synced(
+        cls, variables: list[VariableEntity], tool_configurations: list[WorkflowToolParameterConfiguration]
+    ) -> None:
         """
         check is synced
 
@@ -41,8 +39,8 @@ class WorkflowToolConfigurationUtils:
         variable_names = [variable.variable for variable in variables]
 
         if len(tool_configurations) != len(variables):
-            raise ValueError('parameter configuration mismatch, please republish the tool to update')
-        
+            raise ValueError("parameter configuration mismatch, please republish the tool to update")
+
         for parameter in tool_configurations:
             if parameter.name not in variable_names:
                 raise ValueError('parameter configuration mismatch, please republish the tool to update')

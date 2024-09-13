@@ -46,12 +46,12 @@ class WorkflowAppGenerateResponseConverter(AppGenerateResponseConverter):
             sub_stream_response = chunk.stream_response
 
             if isinstance(sub_stream_response, PingStreamResponse):
-                yield 'ping'
+                yield "ping"
                 continue
 
             response_chunk = {
-                'event': sub_stream_response.event.value,
-                'workflow_run_id': chunk.workflow_run_id,
+                "event": sub_stream_response.event.value,
+                "workflow_run_id": chunk.workflow_run_id,
             }
 
             if isinstance(sub_stream_response, ErrorStreamResponse):
@@ -74,12 +74,12 @@ class WorkflowAppGenerateResponseConverter(AppGenerateResponseConverter):
             sub_stream_response = chunk.stream_response
 
             if isinstance(sub_stream_response, PingStreamResponse):
-                yield 'ping'
+                yield "ping"
                 continue
 
             response_chunk = {
-                'event': sub_stream_response.event.value,
-                'workflow_run_id': chunk.workflow_run_id,
+                "event": sub_stream_response.event.value,
+                "workflow_run_id": chunk.workflow_run_id,
             }
 
             if isinstance(sub_stream_response, ErrorStreamResponse):

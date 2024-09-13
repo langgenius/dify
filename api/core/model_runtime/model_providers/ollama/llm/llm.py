@@ -121,9 +121,7 @@ class OllamaLargeLanguageModel(LargeLanguageModel):
                 text = ""
                 for message_content in first_prompt_message.content:
                     if message_content.type == PromptMessageContentType.TEXT:
-                        message_content = cast(
-                            TextPromptMessageContent, message_content
-                        )
+                        message_content = cast(TextPromptMessageContent, message_content)
                         text = message_content.data
                         break
             return self._get_num_tokens_by_gpt2(text)
@@ -145,13 +143,9 @@ class OllamaLargeLanguageModel(LargeLanguageModel):
                 stream=False,
             )
         except InvokeError as ex:
-            raise CredentialsValidateFailedError(
-                f"An error occurred during credentials validation: {ex.description}"
-            )
+            raise CredentialsValidateFailedError(f"An error occurred during credentials validation: {ex.description}")
         except Exception as ex:
-            raise CredentialsValidateFailedError(
-                f"An error occurred during credentials validation: {str(ex)}"
-            )
+            raise CredentialsValidateFailedError(f"An error occurred during credentials validation: {str(ex)}")
 
     def _generate(
         self,
@@ -201,9 +195,7 @@ class OllamaLargeLanguageModel(LargeLanguageModel):
 
         if completion_type is LLMMode.CHAT:
             endpoint_url = urljoin(endpoint_url, "api/chat")
-            data["messages"] = [
-                self._convert_prompt_message_to_dict(m) for m in prompt_messages
-            ]
+            data["messages"] = [self._convert_prompt_message_to_dict(m) for m in prompt_messages]
         else:
             endpoint_url = urljoin(endpoint_url, "api/generate")
             first_prompt_message = prompt_messages[0]
@@ -216,14 +208,10 @@ class OllamaLargeLanguageModel(LargeLanguageModel):
                     images = []
                     for message_content in first_prompt_message.content:
                         if message_content.type == PromptMessageContentType.TEXT:
-                            message_content = cast(
-                                TextPromptMessageContent, message_content
-                            )
+                            message_content = cast(TextPromptMessageContent, message_content)
                             text = message_content.data
                         elif message_content.type == PromptMessageContentType.IMAGE:
-                            message_content = cast(
-                                ImagePromptMessageContent, message_content
-                            )
+                            message_content = cast(ImagePromptMessageContent, message_content)
                             image_data = re.sub(
                                 r"^data:image\/[a-zA-Z]+;base64,",
                                 "",
@@ -235,24 +223,16 @@ class OllamaLargeLanguageModel(LargeLanguageModel):
                     data["images"] = images
 
         # send a post request to validate the credentials
-        response = requests.post(
-            endpoint_url, headers=headers, json=data, timeout=(10, 300), stream=stream
-        )
+        response = requests.post(endpoint_url, headers=headers, json=data, timeout=(10, 300), stream=stream)
 
         response.encoding = "utf-8"
         if response.status_code != 200:
-            raise InvokeError(
-                f"API request failed with status code {response.status_code}: {response.text}"
-            )
+            raise InvokeError(f"API request failed with status code {response.status_code}: {response.text}")
 
         if stream:
-            return self._handle_generate_stream_response(
-                model, credentials, completion_type, response, prompt_messages
-            )
+            return self._handle_generate_stream_response(model, credentials, completion_type, response, prompt_messages)
 
-        return self._handle_generate_response(
-            model, credentials, completion_type, response, prompt_messages
-        )
+        return self._handle_generate_response(model, credentials, completion_type, response, prompt_messages)
 
     def _handle_generate_response(
         self,
@@ -292,9 +272,7 @@ class OllamaLargeLanguageModel(LargeLanguageModel):
             completion_tokens = self._get_num_tokens_by_gpt2(assistant_message.content)
 
         # transform usage
-        usage = self._calc_response_usage(
-            model, credentials, prompt_tokens, completion_tokens
-        )
+        usage = self._calc_response_usage(model, credentials, prompt_tokens, completion_tokens)
 
         # transform response
         result = LLMResult(
@@ -335,9 +313,7 @@ class OllamaLargeLanguageModel(LargeLanguageModel):
             completion_tokens = self._get_num_tokens_by_gpt2(full_text)
 
             # transform usage
-            usage = self._calc_response_usage(
-                model, credentials, prompt_tokens, completion_tokens
-            )
+            usage = self._calc_response_usage(model, credentials, prompt_tokens, completion_tokens)
 
             return LLMResultChunk(
                 model=model,
@@ -394,15 +370,11 @@ class OllamaLargeLanguageModel(LargeLanguageModel):
                     completion_tokens = chunk_json["eval_count"]
                 else:
                     # calculate num tokens
-                    prompt_tokens = self._get_num_tokens_by_gpt2(
-                        prompt_messages[0].content
-                    )
+                    prompt_tokens = self._get_num_tokens_by_gpt2(prompt_messages[0].content)
                     completion_tokens = self._get_num_tokens_by_gpt2(full_text)
 
                 # transform usage
-                usage = self._calc_response_usage(
-                    model, credentials, prompt_tokens, completion_tokens
-                )
+                usage = self._calc_response_usage(model, credentials, prompt_tokens, completion_tokens)
 
                 yield LLMResultChunk(
                     model=chunk_json["model"],
@@ -439,17 +411,11 @@ class OllamaLargeLanguageModel(LargeLanguageModel):
                 images = []
                 for message_content in message.content:
                     if message_content.type == PromptMessageContentType.TEXT:
-                        message_content = cast(
-                            TextPromptMessageContent, message_content
-                        )
+                        message_content = cast(TextPromptMessageContent, message_content)
                         text = message_content.data
                     elif message_content.type == PromptMessageContentType.IMAGE:
-                        message_content = cast(
-                            ImagePromptMessageContent, message_content
-                        )
-                        image_data = re.sub(
-                            r"^data:image\/[a-zA-Z]+;base64,", "", message_content.data
-                        )
+                        message_content = cast(ImagePromptMessageContent, message_content)
+                        image_data = re.sub(r"^data:image\/[a-zA-Z]+;base64,", "", message_content.data)
                         images.append(image_data)
 
                 message_dict = {"role": "user", "content": text, "images": images}
@@ -479,9 +445,7 @@ class OllamaLargeLanguageModel(LargeLanguageModel):
 
         return num_tokens
 
-    def get_customizable_model_schema(
-        self, model: str, credentials: dict
-    ) -> AIModelEntity:
+    def get_customizable_model_schema(self, model: str, credentials: dict) -> AIModelEntity:
         """
         Get customizable model schema.
 
@@ -502,9 +466,7 @@ class OllamaLargeLanguageModel(LargeLanguageModel):
             fetch_from=FetchFrom.CUSTOMIZABLE_MODEL,
             model_properties={
                 ModelPropertyKey.MODE: credentials.get("mode"),
-                ModelPropertyKey.CONTEXT_SIZE: int(
-                    credentials.get("context_size", 4096)
-                ),
+                ModelPropertyKey.CONTEXT_SIZE: int(credentials.get("context_size", 4096)),
             },
             parameter_rules=[
                 ParameterRule(
@@ -568,9 +530,7 @@ class OllamaLargeLanguageModel(LargeLanguageModel):
                         en_US="Maximum number of tokens to predict when generating text. "
                         "(Default: 128, -1 = infinite generation, -2 = fill context)"
                     ),
-                    default=(
-                        512 if int(credentials.get("max_tokens", 4096)) >= 768 else 128
-                    ),
+                    default=(512 if int(credentials.get("max_tokens", 4096)) >= 768 else 128),
                     min=-2,
                     max=int(credentials.get("max_tokens", 4096)),
                 ),
@@ -612,22 +572,23 @@ class OllamaLargeLanguageModel(LargeLanguageModel):
                     label=I18nObject(en_US="Size of context window"),
                     type=ParameterType.INT,
                     help=I18nObject(
-                        en_US="Sets the size of the context window used to generate the next token. "
-                        "(Default: 2048)"
+                        en_US="Sets the size of the context window used to generate the next token. (Default: 2048)"
                     ),
                     default=2048,
                     min=1,
                 ),
                 ParameterRule(
-                    name='num_gpu',
+                    name="num_gpu",
                     label=I18nObject(en_US="GPU Layers"),
                     type=ParameterType.INT,
-                    help=I18nObject(en_US="The number of layers to offload to the GPU(s). "
-                                          "On macOS it defaults to 1 to enable metal support, 0 to disable."
-                                          "As long as a model fits into one gpu it stays in one. "
-                                          "It does not set the number of GPU(s). "),
+                    help=I18nObject(
+                        en_US="The number of layers to offload to the GPU(s). "
+                        "On macOS it defaults to 1 to enable metal support, 0 to disable."
+                        "As long as a model fits into one gpu it stays in one. "
+                        "It does not set the number of GPU(s). "
+                    ),
                     min=-1,
-                    default=1
+                    default=1,
                 ),
                 ParameterRule(
                     name="num_thread",
@@ -678,9 +639,10 @@ class OllamaLargeLanguageModel(LargeLanguageModel):
                     type=ParameterType.STRING,
                     help=I18nObject(
                         en_US="Sets how long the model is kept in memory after generating a response. "
-                        "This must be a duration string with a unit (e.g., '10m' for 10 minutes or '24h' for 24 hours). "
-                        "A negative number keeps the model loaded indefinitely, and '0' unloads the model immediately after generating a response. "
-                        "Valid time units are 's','m','h'. (Default: 5m)"
+                        "This must be a duration string with a unit (e.g., '10m' for 10 minutes or '24h' for 24 hours)."
+                        " A negative number keeps the model loaded indefinitely, and '0' unloads the model"
+                        " immediately after generating a response."
+                        " Valid time units are 's','m','h'. (Default: 5m)"
                     ),
                 ),
                 ParameterRule(
@@ -688,8 +650,7 @@ class OllamaLargeLanguageModel(LargeLanguageModel):
                     label=I18nObject(en_US="Format"),
                     type=ParameterType.STRING,
                     help=I18nObject(
-                        en_US="the format to return a response in."
-                        " Currently the only accepted value is json."
+                        en_US="the format to return a response in. Currently the only accepted value is json."
                     ),
                     options=["json"],
                 ),

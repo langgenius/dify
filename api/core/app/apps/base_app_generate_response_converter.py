@@ -13,11 +13,10 @@ class AppGenerateResponseConverter(ABC):
     _blocking_response_type: type[AppBlockingResponse]
 
     @classmethod
-    def convert(cls, response: Union[
-        AppBlockingResponse,
-        Generator[AppStreamResponse, Any, None]
-    ], invoke_from: InvokeFrom) -> dict[str, Any] | Generator[str, Any, None]:
-        if invoke_from in [InvokeFrom.DEBUGGER, InvokeFrom.SERVICE_API]:
+    def convert(
+        cls, response: Union[AppBlockingResponse, Generator[AppStreamResponse, Any, None]], invoke_from: InvokeFrom
+    ) -> dict[str, Any] | Generator[str | dict[str, Any], Any, None]:
+        if invoke_from in {InvokeFrom.DEBUGGER, InvokeFrom.SERVICE_API}:
             if isinstance(response, AppBlockingResponse):
                 return cls.convert_blocking_full_response(response)
             else:
@@ -52,8 +51,9 @@ class AppGenerateResponseConverter(ABC):
 
     @classmethod
     @abstractmethod
-    def convert_stream_simple_response(cls, stream_response: Generator[AppStreamResponse, None, None]) \
-            -> Generator[str, None, None]:
+    def convert_stream_simple_response(
+        cls, stream_response: Generator[AppStreamResponse, None, None]
+    ) -> Generator[str, None, None]:
         raise NotImplementedError
 
     @classmethod
@@ -64,24 +64,26 @@ class AppGenerateResponseConverter(ABC):
         :return:
         """
         # show_retrieve_source
-        if 'retriever_resources' in metadata:
-            metadata['retriever_resources'] = []
-            for resource in metadata['retriever_resources']:
-                metadata['retriever_resources'].append({
-                    'segment_id': resource['segment_id'],
-                    'position': resource['position'],
-                    'document_name': resource['document_name'],
-                    'score': resource['score'],
-                    'content': resource['content'],
-                })
+        if "retriever_resources" in metadata:
+            metadata["retriever_resources"] = []
+            for resource in metadata["retriever_resources"]:
+                metadata["retriever_resources"].append(
+                    {
+                        "segment_id": resource["segment_id"],
+                        "position": resource["position"],
+                        "document_name": resource["document_name"],
+                        "score": resource["score"],
+                        "content": resource["content"],
+                    }
+                )
 
         # show annotation reply
-        if 'annotation_reply' in metadata:
-            del metadata['annotation_reply']
+        if "annotation_reply" in metadata:
+            del metadata["annotation_reply"]
 
         # show usage
-        if 'usage' in metadata:
-            del metadata['usage']
+        if "usage" in metadata:
+            del metadata["usage"]
 
         return metadata
 
@@ -93,16 +95,16 @@ class AppGenerateResponseConverter(ABC):
         :return:
         """
         error_responses = {
-            ValueError: {'code': 'invalid_param', 'status': 400},
-            ProviderTokenNotInitError: {'code': 'provider_not_initialize', 'status': 400},
+            ValueError: {"code": "invalid_param", "status": 400},
+            ProviderTokenNotInitError: {"code": "provider_not_initialize", "status": 400},
             QuotaExceededError: {
-                'code': 'provider_quota_exceeded',
-                'message': "Your quota for Dify Hosted Model Provider has been exhausted. "
-                           "Please go to Settings -> Model Provider to complete your own provider credentials.",
-                'status': 400
+                "code": "provider_quota_exceeded",
+                "message": "Your quota for Dify Hosted Model Provider has been exhausted. "
+                "Please go to Settings -> Model Provider to complete your own provider credentials.",
+                "status": 400,
             },
-            ModelCurrentlyNotSupportError: {'code': 'model_currently_not_support', 'status': 400},
-            InvokeError: {'code': 'completion_request_error', 'status': 400}
+            ModelCurrentlyNotSupportError: {"code": "model_currently_not_support", "status": 400},
+            InvokeError: {"code": "completion_request_error", "status": 400},
         }
 
         # Determine the response based on the type of exception
@@ -112,13 +114,13 @@ class AppGenerateResponseConverter(ABC):
                 data = v
 
         if data:
-            data.setdefault('message', getattr(e, 'description', str(e)))
+            data.setdefault("message", getattr(e, "description", str(e)))
         else:
             logging.error(e)
             data = {
-                'code': 'internal_server_error',
-                'message': 'Internal Server Error, please contact support.',
-                'status': 500
+                "code": "internal_server_error",
+                "message": "Internal Server Error, please contact support.",
+                "status": 500,
             }
 
         return data

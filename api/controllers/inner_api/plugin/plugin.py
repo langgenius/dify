@@ -38,6 +38,7 @@ class PluginInvokeLLMApi(Resource):
 
         return compact_generate_response(generator())
 
+
 class PluginInvokeTextEmbeddingApi(Resource):
     @setup_required
     @plugin_inner_api_only
@@ -113,6 +114,7 @@ class PluginInvokeNodeApi(Resource):
     def post(self, user_id: str, tenant_model: Tenant, payload: RequestInvokeNode):
         pass
 
+
 class PluginInvokeAppApi(Resource):
     @setup_required
     @plugin_inner_api_only
@@ -134,6 +136,7 @@ class PluginInvokeAppApi(Resource):
             PluginAppBackwardsInvocation.convert_to_event_stream(response)
         )
 
+
 class PluginInvokeEncryptApi(Resource):
     @setup_required
     @plugin_inner_api_only
@@ -144,6 +147,7 @@ class PluginInvokeEncryptApi(Resource):
         encrypt or decrypt data
         """
         return PluginEncrypter.invoke_encrypt(tenant_model, payload)
+
 
 api.add_resource(PluginInvokeLLMApi, '/invoke/llm')
 api.add_resource(PluginInvokeTextEmbeddingApi, '/invoke/text-embedding')

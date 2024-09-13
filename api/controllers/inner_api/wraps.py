@@ -63,6 +63,7 @@ def enterprise_inner_api_user_auth(view):
 
     return decorated
 
+
 def plugin_inner_api_only(view):
     @wraps(view)
     def decorated(*args, **kwargs):

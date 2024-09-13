@@ -10,18 +10,19 @@ from models.provider import ProviderQuotaType
 
 
 class QuotaUnit(Enum):
-    TIMES = 'times'
-    TOKENS = 'tokens'
-    CREDITS = 'credits'
+    TIMES = "times"
+    TOKENS = "tokens"
+    CREDITS = "credits"
 
 
 class SystemConfigurationStatus(Enum):
     """
     Enum class for system configuration status.
     """
-    ACTIVE = 'active'
-    QUOTA_EXCEEDED = 'quota-exceeded'
-    UNSUPPORTED = 'unsupported'
+
+    ACTIVE = "active"
+    QUOTA_EXCEEDED = "quota-exceeded"
+    UNSUPPORTED = "unsupported"
 
 
 class RestrictModel(BaseModel):
@@ -37,6 +38,7 @@ class QuotaConfiguration(BaseModel):
     """
     Model class for provider quota configuration.
     """
+
     quota_type: ProviderQuotaType
     quota_unit: QuotaUnit
     quota_limit: int
@@ -49,6 +51,7 @@ class SystemConfiguration(BaseModel):
     """
     Model class for provider system configuration.
     """
+
     enabled: bool
     current_quota_type: Optional[ProviderQuotaType] = None
     quota_configurations: list[QuotaConfiguration] = []
@@ -59,6 +62,7 @@ class CustomProviderConfiguration(BaseModel):
     """
     Model class for provider custom configuration.
     """
+
     credentials: dict
 
 
@@ -66,6 +70,7 @@ class CustomModelConfiguration(BaseModel):
     """
     Model class for provider custom model configuration.
     """
+
     model: str
     model_type: ModelType
     credentials: dict
@@ -78,6 +83,7 @@ class CustomConfiguration(BaseModel):
     """
     Model class for provider custom configuration.
     """
+
     provider: Optional[CustomProviderConfiguration] = None
     models: list[CustomModelConfiguration] = []
 
@@ -86,6 +92,7 @@ class ModelLoadBalancingConfiguration(BaseModel):
     """
     Class for model load balancing configuration.
     """
+
     id: str
     name: str
     credentials: dict
@@ -95,6 +102,7 @@ class ModelSettings(BaseModel):
     """
     Model class for model settings.
     """
+
     model: str
     model_type: ModelType
     enabled: bool = True
@@ -102,6 +110,7 @@ class ModelSettings(BaseModel):
 
     # pydantic configs
     model_config = ConfigDict(protected_namespaces=())
+
 
 class BasicProviderConfig(BaseModel):
     """
@@ -130,6 +139,7 @@ class BasicProviderConfig(BaseModel):
 
     type: Type = Field(..., description="The type of the credentials")
     name: str = Field(..., description="The name of the credentials")
+
 
 class ProviderConfig(BasicProviderConfig):
     """

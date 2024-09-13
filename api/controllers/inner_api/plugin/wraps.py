@@ -48,6 +48,7 @@ def get_tenant(view: Optional[Callable] = None):
     else:
         return decorator(view)
 
+
 def plugin_data(view: Optional[Callable] = None, *, payload_type: type[BaseModel]):
     def decorator(view_func):
         def decorated_view(*args, **kwargs):

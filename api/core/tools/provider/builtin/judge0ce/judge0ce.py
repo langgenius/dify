@@ -13,7 +13,7 @@ class Judge0CEProvider(BuiltinToolProviderController):
                     "credentials": credentials,
                 }
             ).invoke(
-                user_id='',
+                user_id="",
                 tool_parameters={
                     "source_code": "print('hello world')",
                     "language_id": 71,
@@ -21,4 +21,3 @@ class Judge0CEProvider(BuiltinToolProviderController):
             )
         except Exception as e:
             raise ToolProviderCredentialValidationError(str(e))
-        

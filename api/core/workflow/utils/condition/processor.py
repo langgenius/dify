@@ -15,9 +15,7 @@ class ConditionProcessor:
         index = 0
         for condition in conditions:
             index += 1
-            actual_value = variable_pool.get_any(
-                condition.variable_selector
-            )
+            actual_value = variable_pool.get_any(condition.variable_selector)
 
             expected_value = None
             if condition.value is not None:
@@ -25,9 +23,7 @@ class ConditionProcessor:
                 variable_selectors = variable_template_parser.extract_variable_selectors()
                 if variable_selectors:
                     for variable_selector in variable_selectors:
-                        value = variable_pool.get_any(
-                            variable_selector.value_selector
-                        )
+                        value = variable_pool.get_any(variable_selector.value_selector)
                         expected_value = variable_template_parser.format({variable_selector.variable: value})
 
                     if expected_value is None:
@@ -40,7 +36,7 @@ class ConditionProcessor:
                 {
                     "actual_value": actual_value,
                     "expected_value": expected_value,
-                    "comparison_operator": comparison_operator
+                    "comparison_operator": comparison_operator,
                 }
             )
 
@@ -50,10 +46,10 @@ class ConditionProcessor:
         return input_conditions, group_result
 
     def evaluate_condition(
-            self,
-            actual_value: Optional[str | int | float | dict[Any, Any] | list[Any] | FileVar | None],
-            comparison_operator: str,
-            expected_value: Optional[str] = None
+        self,
+        actual_value: Optional[str | int | float | dict[Any, Any] | list[Any] | FileVar | None],
+        comparison_operator: str,
+        expected_value: Optional[str] = None,
     ) -> bool:
         """
         Evaluate condition
@@ -109,7 +105,7 @@ class ConditionProcessor:
             return False
 
         if not isinstance(actual_value, str | list):
-            raise ValueError('Invalid actual value type: string or array')
+            raise ValueError("Invalid actual value type: string or array")
 
         if expected_value not in actual_value:
             return False
@@ -126,7 +122,7 @@ class ConditionProcessor:
             return True
 
         if not isinstance(actual_value, str | list):
-            raise ValueError('Invalid actual value type: string or array')
+            raise ValueError("Invalid actual value type: string or array")
 
         if expected_value in actual_value:
             return False
@@ -143,7 +139,7 @@ class ConditionProcessor:
             return False
 
         if not isinstance(actual_value, str):
-            raise ValueError('Invalid actual value type: string')
+            raise ValueError("Invalid actual value type: string")
 
         if not actual_value.startswith(expected_value):
             return False
@@ -160,7 +156,7 @@ class ConditionProcessor:
             return False
 
         if not isinstance(actual_value, str):
-            raise ValueError('Invalid actual value type: string')
+            raise ValueError("Invalid actual value type: string")
 
         if not actual_value.endswith(expected_value):
             return False
@@ -177,7 +173,7 @@ class ConditionProcessor:
             return False
 
         if not isinstance(actual_value, str):
-            raise ValueError('Invalid actual value type: string')
+            raise ValueError("Invalid actual value type: string")
 
         if actual_value != expected_value:
             return False
@@ -194,7 +190,7 @@ class ConditionProcessor:
             return False
 
         if not isinstance(actual_value, str):
-            raise ValueError('Invalid actual value type: string')
+            raise ValueError("Invalid actual value type: string")
 
         if actual_value == expected_value:
             return False
@@ -231,7 +227,7 @@ class ConditionProcessor:
             return False
 
         if not isinstance(actual_value, int | float):
-            raise ValueError('Invalid actual value type: number')
+            raise ValueError("Invalid actual value type: number")
 
         if isinstance(actual_value, int):
             expected_value = int(expected_value)
@@ -253,7 +249,7 @@ class ConditionProcessor:
             return False
 
         if not isinstance(actual_value, int | float):
-            raise ValueError('Invalid actual value type: number')
+            raise ValueError("Invalid actual value type: number")
 
         if isinstance(actual_value, int):
             expected_value = int(expected_value)
@@ -275,7 +271,7 @@ class ConditionProcessor:
             return False
 
         if not isinstance(actual_value, int | float):
-            raise ValueError('Invalid actual value type: number')
+            raise ValueError("Invalid actual value type: number")
 
         if isinstance(actual_value, int):
             expected_value = int(expected_value)
@@ -297,7 +293,7 @@ class ConditionProcessor:
             return False
 
         if not isinstance(actual_value, int | float):
-            raise ValueError('Invalid actual value type: number')
+            raise ValueError("Invalid actual value type: number")
 
         if isinstance(actual_value, int):
             expected_value = int(expected_value)
@@ -308,8 +304,9 @@ class ConditionProcessor:
             return False
         return True
 
-    def _assert_greater_than_or_equal(self, actual_value: Optional[int | float],
-                                      expected_value: str | int | float) -> bool:
+    def _assert_greater_than_or_equal(
+        self, actual_value: Optional[int | float], expected_value: str | int | float
+    ) -> bool:
         """
         Assert greater than or equal
         :param actual_value: actual value
@@ -320,7 +317,7 @@ class ConditionProcessor:
             return False
 
         if not isinstance(actual_value, int | float):
-            raise ValueError('Invalid actual value type: number')
+            raise ValueError("Invalid actual value type: number")
 
         if isinstance(actual_value, int):
             expected_value = int(expected_value)
@@ -331,8 +328,9 @@ class ConditionProcessor:
             return False
         return True
 
-    def _assert_less_than_or_equal(self, actual_value: Optional[int | float],
-                                   expected_value: str | int | float) -> bool:
+    def _assert_less_than_or_equal(
+        self, actual_value: Optional[int | float], expected_value: str | int | float
+    ) -> bool:
         """
         Assert less than or equal
         :param actual_value: actual value
@@ -343,7 +341,7 @@ class ConditionProcessor:
             return False
 
         if not isinstance(actual_value, int | float):
-            raise ValueError('Invalid actual value type: number')
+            raise ValueError("Invalid actual value type: number")
 
         if isinstance(actual_value, int):
             expected_value = int(expected_value)

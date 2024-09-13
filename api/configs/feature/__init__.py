@@ -110,6 +110,7 @@ class CodeExecutionSandboxConfig(BaseSettings):
         default=1000,
     )
 
+
 class PluginConfig(BaseSettings):
     """
     Plugin configs
@@ -123,6 +124,7 @@ class PluginConfig(BaseSettings):
         description='Plugin inner API key',
         default='dify-inner-api-key',
     )
+
 
 class EndpointConfig(BaseSettings):
     """
@@ -142,12 +144,12 @@ class EndpointConfig(BaseSettings):
     )
 
     SERVICE_API_URL: str = Field(
-        description="Service API Url prefix." "used to display Service API Base Url to the front-end.",
+        description="Service API Url prefix. used to display Service API Base Url to the front-end.",
         default="",
     )
 
     APP_WEB_URL: str = Field(
-        description="WebApp Url prefix." "used to display WebAPP API Base Url to the front-end.",
+        description="WebApp Url prefix. used to display WebAPP API Base Url to the front-end.",
         default="",
     )
 
@@ -285,7 +287,7 @@ class LoggingConfig(BaseSettings):
     """
 
     LOG_LEVEL: str = Field(
-        description="Log output level, default to INFO." "It is recommended to set it to ERROR for production.",
+        description="Log output level, default to INFO. It is recommended to set it to ERROR for production.",
         default="INFO",
     )
 

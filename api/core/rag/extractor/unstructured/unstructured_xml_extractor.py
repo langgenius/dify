@@ -14,11 +14,7 @@ class UnstructuredXmlExtractor(BaseExtractor):
         file_path: Path to the file to load.
     """
 
-    def __init__(
-        self,
-        file_path: str,
-        api_url: str
-    ):
+    def __init__(self, file_path: str, api_url: str):
         """Initialize with file path."""
         self._file_path = file_path
         self._api_url = api_url
@@ -28,6 +24,7 @@ class UnstructuredXmlExtractor(BaseExtractor):
 
         elements = partition_xml(filename=self._file_path, xml_keep_tags=True)
         from unstructured.chunking.title import chunk_by_title
+
         chunks = chunk_by_title(elements, max_characters=2000, combine_text_under_n_chars=2000)
         documents = []
         for chunk in chunks:

@@ -265,7 +265,7 @@ class WorkflowToolManageService:
             .first()
         )
         return cls._get_workflow_tool(db_tool)
-    
+
     @classmethod
     def _get_workflow_tool(cls, db_tool: WorkflowToolProvider | None):
         """
@@ -276,11 +276,13 @@ class WorkflowToolManageService:
         if db_tool is None:
             raise ValueError("Tool not found")
 
-        workflow_app: App | None = db.session.query(App).filter(App.id == db_tool.app_id, App.tenant_id == db_tool.tenant_id).first()
+        workflow_app: App | None = (
+            db.session.query(App).filter(App.id == db_tool.app_id, App.tenant_id == db_tool.tenant_id).first()
+        )
 
         if workflow_app is None:
             raise ValueError(f"App {db_tool.app_id} not found")
-        
+
         workflow = workflow_app.workflow
         if not workflow:
             raise ValueError("Workflow not found")
@@ -324,7 +326,6 @@ class WorkflowToolManageService:
 
         return [
             ToolTransformService.tool_to_user_tool(
-                tool=tool.get_tools(db_tool.tenant_id)[0], 
-                labels=ToolLabelManager.get_tool_labels(tool)
+                tool=tool.get_tools(db_tool.tenant_id)[0], labels=ToolLabelManager.get_tool_labels(tool)
             )
         ]

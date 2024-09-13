@@ -12,23 +12,24 @@ logger = logging.getLogger(__name__)
 
 class ToolFileMessageTransformer:
     @classmethod
-    def transform_tool_invoke_messages(cls, messages: Generator[ToolInvokeMessage, None, None],
-                                       user_id: str,
-                                       tenant_id: str,
-                                       conversation_id: Optional[str] = None) -> Generator[ToolInvokeMessage, None, None]:
+    def transform_tool_invoke_messages(
+        cls,
+        messages: Generator[ToolInvokeMessage, None, None],
+        user_id: str,
+        tenant_id: str,
+        conversation_id: Optional[str] = None,
+    ) -> Generator[ToolInvokeMessage, None, None]:
         """
         Transform tool message and handle file download
         """
         for message in messages:
-            if message.type == ToolInvokeMessage.MessageType.TEXT:
-                yield message
-            elif message.type == ToolInvokeMessage.MessageType.LINK:
+            if message.type in {ToolInvokeMessage.MessageType.TEXT, ToolInvokeMessage.MessageType.LINK}:
                 yield message
             elif message.type == ToolInvokeMessage.MessageType.IMAGE:
                 # try to download image
                 try:
                     if not conversation_id:
-                        raise 
+                        raise
 
                     assert isinstance(message.message, ToolInvokeMessage.TextMessage)
 
@@ -61,24 +62,25 @@ class ToolFileMessageTransformer:
                 # get mime type and save blob to storage
                 assert message.meta
 
-                mimetype = message.meta.get('mime_type', 'octet/stream')
+                mimetype = message.meta.get("mime_type", "octet/stream")
                 # if message is str, encode it to bytes
 
                 if not isinstance(message.message, ToolInvokeMessage.BlobMessage):
                     raise ValueError("unexpected message type")
 
                 file = ToolFileManager.create_file_by_raw(
-                    user_id=user_id, tenant_id=tenant_id,
+                    user_id=user_id,
+                    tenant_id=tenant_id,
                     conversation_id=conversation_id,
                     file_binary=message.message.blob,
-                    mimetype=mimetype
+                    mimetype=mimetype,
                 )
 
                 extension = guess_extension(file.mimetype) or ".bin"
                 url = cls.get_tool_file_url(file.id, extension)
 
                 # check if file is image
-                if 'image' in mimetype:
+                if "image" in mimetype:
                     yield ToolInvokeMessage(
                         type=ToolInvokeMessage.MessageType.IMAGE_LINK,
                         message=ToolInvokeMessage.TextMessage(text=url),
@@ -95,10 +97,11 @@ class ToolFileMessageTransformer:
             elif message.type == ToolInvokeMessage.MessageType.FILE_VAR:
                 assert message.meta
 
-                file_var: FileVar | None = message.meta.get('file_var')
+                file_var: FileVar | None = message.meta.get("file_var")
                 if file_var:
                     if file_var.transfer_method == FileTransferMethod.TOOL_FILE:
-                        assert file_var.related_id and file_var.extension
+                        assert file_var.related_id
+                        assert file_var.extension
 
                         url = cls.get_tool_file_url(file_var.related_id, file_var.extension)
                         if file_var.type == FileType.IMAGE:

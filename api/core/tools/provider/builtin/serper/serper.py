@@ -13,11 +13,8 @@ class SerperProvider(BuiltinToolProviderController):
                     "credentials": credentials,
                 }
             ).invoke(
-                user_id='',
-                tool_parameters={
-                    "query": "test",
-                    "result_type": "link"
-                },
+                user_id="",
+                tool_parameters={"query": "test", "result_type": "link"},
             )
         except Exception as e:
             raise ToolProviderCredentialValidationError(str(e))

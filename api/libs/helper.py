@@ -73,7 +73,6 @@ def alphanumeric(value: str):
     raise ValueError(f"{value} is not a valid alphanumeric value")
 
 
-
 def timestamp_value(timestamp):
     try:
         int_timestamp = int(timestamp)
@@ -85,7 +84,7 @@ def timestamp_value(timestamp):
         raise ValueError(error)
 
 
-class str_len:
+class StrLen:
     """Restrict input to an integer in a range (inclusive)"""
 
     def __init__(self, max_length, argument="argument"):
@@ -103,7 +102,7 @@ class str_len:
         return value
 
 
-class float_range:
+class FloatRange:
     """Restrict input to an float in a range (inclusive)"""
 
     def __init__(self, low, high, argument="argument"):
@@ -122,7 +121,7 @@ class float_range:
         return value
 
 
-class datetime_string:
+class DatetimeString:
     def __init__(self, format, argument="argument"):
         self.format = format
         self.argument = argument
@@ -146,7 +145,6 @@ def _get_float(value):
         raise ValueError("{} is not a valid float".format(value))
 
 
-
 def timezone(timezone_string):
     if timezone_string and timezone_string in available_timezones():
         return timezone_string
@@ -157,7 +155,7 @@ def timezone(timezone_string):
 
 def generate_string(n):
     letters_digits = string.ascii_letters + string.digits
-    result = ''
+    result = ""
     for i in range(n):
         result += random.choice(letters_digits)
 
@@ -224,7 +222,7 @@ class TokenManager:
         key = cls._get_token_key(token, token_type)
         token_data_json = redis_client.get(key)
         if token_data_json is None:
-            logging.warning(f'{token_type} token {token} not found with key {key}')
+            logging.warning(f"{token_type} token {token} not found with key {key}")
             return None
         token_data = json.loads(token_data_json)
         return token_data
@@ -252,7 +250,7 @@ class RateLimiter:
         self.time_window = time_window
 
     def _get_key(self, email: str) -> str:
-        return f'{self.prefix}:{email}'
+        return f"{self.prefix}:{email}"
 
     def is_rate_limited(self, email: str) -> bool:
         key = self._get_key(email)

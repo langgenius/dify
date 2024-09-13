@@ -24,7 +24,8 @@ class PGVectorConfig(BaseModel):
     password: str
     database: str
 
-    @model_validator(mode='before')
+    @model_validator(mode="before")
+    @classmethod
     def validate_config(cls, values: dict) -> dict:
         if not values["host"]:
             raise ValueError("config PGVECTOR_HOST is required")
@@ -138,11 +139,12 @@ class PGVector(BaseVector):
 
         with self._get_cursor() as cur:
             cur.execute(
-                f"SELECT meta, text, embedding <=> %s AS distance FROM {self.table_name} ORDER BY distance LIMIT {top_k}",
+                f"SELECT meta, text, embedding <=> %s AS distance FROM {self.table_name}"
+                f" ORDER BY distance LIMIT {top_k}",
                 (json.dumps(query_vector),),
             )
             docs = []
-            score_threshold = kwargs.get("score_threshold") if kwargs.get("score_threshold") else 0.0
+            score_threshold = float(kwargs.get("score_threshold") or 0.0)
             for record in cur:
                 metadata, text, distance = record
                 score = 1 - distance
@@ -201,8 +203,7 @@ class PGVectorFactory(AbstractVectorFactory):
         else:
             dataset_id = dataset.id
             collection_name = Dataset.gen_collection_name_by_id(dataset_id)
-            dataset.index_struct = json.dumps(
-                self.gen_index_struct_dict(VectorType.PGVECTOR, collection_name))
+            dataset.index_struct = json.dumps(self.gen_index_struct_dict(VectorType.PGVECTOR, collection_name))
 
         return PGVector(
             collection_name=collection_name,

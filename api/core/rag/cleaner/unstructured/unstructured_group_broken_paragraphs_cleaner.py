@@ -1,9 +1,9 @@
 """Abstract interface for document clean implementations."""
+
 from core.rag.cleaner.cleaner_base import BaseCleaner
 
 
 class UnstructuredGroupBrokenParagraphsCleaner(BaseCleaner):
-
     def clean(self, content) -> str:
         """clean document content."""
         import re

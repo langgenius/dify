@@ -10,6 +10,7 @@ class ToolProviderCredentialsCacheType(Enum):
     PROVIDER = "tool_provider"
     ENDPOINT = "endpoint"
 
+
 class ToolProviderCredentialsCache:
     def __init__(self, tenant_id: str, identity_id: str, cache_type: ToolProviderCredentialsCacheType):
         self.cache_key = f"{cache_type.value}_credentials:tenant_id:{tenant_id}:id:{identity_id}"
@@ -23,7 +24,7 @@ class ToolProviderCredentialsCache:
         cached_provider_credentials = redis_client.get(self.cache_key)
         if cached_provider_credentials:
             try:
-                cached_provider_credentials = cached_provider_credentials.decode('utf-8')
+                cached_provider_credentials = cached_provider_credentials.decode("utf-8")
                 cached_provider_credentials = json.loads(cached_provider_credentials)
             except JSONDecodeError:
                 return None

@@ -17,14 +17,15 @@ from models.model import App, AppMode, EndUser
 class PluginAppBackwardsInvocation(BaseBackwardsInvocation):
     @classmethod
     def invoke_app(
-        cls, app_id: str, 
-        user_id: str, 
+        cls,
+        app_id: str,
+        user_id: str,
         tenant_id: str,
         conversation_id: Optional[str],
         query: Optional[str],
         stream: bool,
         inputs: Mapping,
-        files: list[dict], 
+        files: list[dict],
     ) -> Generator[dict | str, None, None] | dict:
         """
         invoke app
@@ -37,28 +38,28 @@ class PluginAppBackwardsInvocation(BaseBackwardsInvocation):
 
         conversation_id = conversation_id or ""
 
-        if app.mode in [AppMode.ADVANCED_CHAT.value, AppMode.AGENT_CHAT.value, AppMode.CHAT.value]:
+        if app.mode in {AppMode.ADVANCED_CHAT.value, AppMode.AGENT_CHAT.value, AppMode.CHAT.value}:
             if not query:
                 raise ValueError("missing query")
-            
+
             return cls.invoke_chat_app(app, user, conversation_id, query, stream, inputs, files)
-        elif app.mode in [AppMode.WORKFLOW.value]:
+        elif app.mode == AppMode.WORKFLOW.value:
             return cls.invoke_workflow_app(app, user, stream, inputs, files)
-        elif app.mode in [AppMode.COMPLETION]:
+        elif app.mode == AppMode.COMPLETION:
             return cls.invoke_completion_app(app, user, stream, inputs, files)
 
         raise ValueError("unexpected app type")
 
     @classmethod
     def invoke_chat_app(
-        cls, 
+        cls,
         app: App,
-        user: Account | EndUser, 
+        user: Account | EndUser,
         conversation_id: str,
         query: str,
         stream: bool,
         inputs: Mapping,
-        files: list[dict], 
+        files: list[dict],
     ) -> Generator[dict | str, None, None] | dict:
         """
         invoke chat app
@@ -67,11 +68,11 @@ class PluginAppBackwardsInvocation(BaseBackwardsInvocation):
             workflow = app.workflow
             if not workflow:
                 raise ValueError("unexpected app type")
-            
+
             return AdvancedChatAppGenerator().generate(
-                app_model=app, 
-                workflow=workflow, 
-                user=user, 
+                app_model=app,
+                workflow=workflow,
+                user=user,
                 args={
                     "inputs": inputs,
                     "query": query,
@@ -79,12 +80,12 @@ class PluginAppBackwardsInvocation(BaseBackwardsInvocation):
                     "conversation_id": conversation_id,
                 },
                 invoke_from=InvokeFrom.SERVICE_API,
-                stream=stream
+                stream=stream,
             )
         elif app.mode == AppMode.AGENT_CHAT.value:
             return AgentChatAppGenerator().generate(
-                app_model=app, 
-                user=user, 
+                app_model=app,
+                user=user,
                 args={
                     "inputs": inputs,
                     "query": query,
@@ -92,12 +93,12 @@ class PluginAppBackwardsInvocation(BaseBackwardsInvocation):
                     "conversation_id": conversation_id,
                 },
                 invoke_from=InvokeFrom.SERVICE_API,
-                stream=stream
+                stream=stream,
             )
         elif app.mode == AppMode.CHAT.value:
             return ChatAppGenerator().generate(
-                app_model=app, 
-                user=user, 
+                app_model=app,
+                user=user,
                 args={
                     "inputs": inputs,
                     "query": query,
@@ -105,19 +106,19 @@ class PluginAppBackwardsInvocation(BaseBackwardsInvocation):
                     "conversation_id": conversation_id,
                 },
                 invoke_from=InvokeFrom.SERVICE_API,
-                stream=stream
+                stream=stream,
             )
         else:
             raise ValueError("unexpected app type")
 
     @classmethod
     def invoke_workflow_app(
-        cls, 
+        cls,
         app: App,
-        user: EndUser | Account, 
+        user: EndUser | Account,
         stream: bool,
         inputs: Mapping,
-        files: list[dict], 
+        files: list[dict],
     ):
         """
         invoke workflow app
@@ -127,13 +128,10 @@ class PluginAppBackwardsInvocation(BaseBackwardsInvocation):
             raise ValueError("")
 
         return WorkflowAppGenerator().generate(
-            app_model=app, 
-            workflow=workflow, 
-            user=user, 
-            args={
-                'inputs': inputs,
-                'files': files
-            }, 
+            app_model=app,
+            workflow=workflow,
+            user=user,
+            args={"inputs": inputs, "files": files},
             invoke_from=InvokeFrom.SERVICE_API,
             stream=stream,
             call_depth=1,
@@ -141,23 +139,20 @@ class PluginAppBackwardsInvocation(BaseBackwardsInvocation):
 
     @classmethod
     def invoke_completion_app(
-        cls, 
+        cls,
         app: App,
-        user: EndUser | Account, 
+        user: EndUser | Account,
         stream: bool,
         inputs: Mapping,
-        files: list[dict], 
+        files: list[dict],
     ):
         """
         invoke completion app
         """
         return CompletionAppGenerator().generate(
-            app_model=app, 
-            user=user, 
-            args={
-                'inputs': inputs,
-                'files': files
-            }, 
+            app_model=app,
+            user=user,
+            args={"inputs": inputs, "files": files},
             invoke_from=InvokeFrom.SERVICE_API,
             stream=stream,
         )
@@ -173,24 +168,21 @@ class PluginAppBackwardsInvocation(BaseBackwardsInvocation):
             user = db.session.query(Account).filter(Account.id == user_id).first()
 
         if not user:
-            raise ValueError('user not found')
+            raise ValueError("user not found")
 
         return user
-    
+
     @classmethod
     def _get_app(cls, app_id: str, tenant_id: str) -> App:
         """
         get app
         """
         try:
-            app = db.session.query(App). \
-                filter(App.id == app_id). \
-                filter(App.tenant_id == tenant_id). \
-                first()
+            app = db.session.query(App).filter(App.id == app_id).filter(App.tenant_id == tenant_id).first()
         except Exception:
             raise ValueError("app not found")
-        
+
         if not app:
             raise ValueError("app not found")
-        
+
         return app

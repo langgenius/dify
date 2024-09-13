@@ -32,7 +32,7 @@ class ToolTransformService:
 
         if provider_type == ToolProviderType.BUILT_IN.value:
             return url_prefix + "builtin/" + provider_name + "/icon"
-        elif provider_type in [ToolProviderType.API.value, ToolProviderType.WORKFLOW.value]:
+        elif provider_type in {ToolProviderType.API.value, ToolProviderType.WORKFLOW.value}:
             try:
                 if isinstance(icon, str):
                     return json.loads(icon)
