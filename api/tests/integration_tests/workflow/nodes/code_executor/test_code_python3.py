@@ -1,4 +1,3 @@
-import json
 from textwrap import dedent
 
 from core.helper.code_executor.code_executor import CodeExecutor, CodeLanguage
@@ -28,6 +27,26 @@ def test_python3_with_code_template():
         language=CODE_LANGUAGE, code=Python3CodeProvider.get_default_code(), inputs={"arg1": "Hello", "arg2": "World"}
     )
     assert result == {"result": "HelloWorld"}
+
+
+def test_python3_httpx():
+    code = dedent("""
+    import httpx
+    response = httpx.get("https://httpbin.org/get")
+    print(response.text)
+    """)
+    result = CodeExecutor.execute_code(language=CODE_LANGUAGE, preload="", code=code)
+    assert "https://httpbin.org/get" in result
+
+
+def test_python3_requests():
+    code = dedent("""
+    import requests
+    response = requests.get("https://httpbin.org/get")
+    print(response.text)
+    """)
+    result = CodeExecutor.execute_code(language=CODE_LANGUAGE, preload="", code=code)
+    assert "https://httpbin.org/get" in result
 
 
 def test_python3_get_runner_script():
