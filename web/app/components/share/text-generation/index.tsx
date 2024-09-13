@@ -87,7 +87,6 @@ const TextGeneration: FC<IMainProps> = ({
       params.delete('mode')
       router.replace(`${pathname}?${params.toString()}`)
     }
-    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [])
 
   // Notice this situation isCallBatchAPI but not in batch tab
