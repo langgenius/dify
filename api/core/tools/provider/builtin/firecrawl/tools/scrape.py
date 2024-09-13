@@ -1,4 +1,4 @@
-from typing import Any, List
+from typing import Any
 
 from core.tools.entities.tool_entities import ToolInvokeMessage
 from core.tools.provider.builtin.firecrawl.firecrawl_appx import FirecrawlApp, get_array_params, get_json_params
@@ -6,7 +6,7 @@ from core.tools.tool.builtin_tool import BuiltinTool
 
 
 class ScrapeTool(BuiltinTool):
-    def _invoke(self, user_id: str, tool_parameters: dict[str, Any]) -> List[ToolInvokeMessage]:
+    def _invoke(self, user_id: str, tool_parameters: dict[str, Any]) -> list[ToolInvokeMessage]:
         """
         the api doc:
         https://docs.firecrawl.dev/api-reference/endpoint/scrape
