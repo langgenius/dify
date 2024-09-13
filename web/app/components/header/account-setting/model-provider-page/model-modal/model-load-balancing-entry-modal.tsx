@@ -206,6 +206,7 @@ const ModelLoadBalancingEntryModal: FC<ModelModalProps> = ({
   const handleSave = async () => {
     try {
       setLoading(true)
+
       const res = await validateLoadBalancingCredentials(
         providerFormSchemaPredefined,
         provider.provider,
