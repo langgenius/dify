@@ -148,11 +148,11 @@ class AnswerStreamGeneratorRouter:
         for edge in reverse_edges:
             source_node_id = edge.source_node_id
             source_node_type = node_id_config_mapping[source_node_id].get("data", {}).get("type")
-            if source_node_type in (
+            if source_node_type in {
                 NodeType.ANSWER.value,
                 NodeType.IF_ELSE.value,
                 NodeType.QUESTION_CLASSIFIER.value,
-            ):
+            }:
                 answer_dependencies[answer_node_id].append(source_node_id)
             else:
                 cls._recursive_fetch_answer_dependencies(

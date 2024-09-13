@@ -32,7 +32,7 @@ class StableDiffusionTool(BuiltinTool, BaseStabilityAuthorization):
 
         model = tool_parameters.get("model", "core")
 
-        if model in ["sd3", "sd3-turbo"]:
+        if model in {"sd3", "sd3-turbo"}:
             payload["model"] = tool_parameters.get("model")
 
         if model != "sd3-turbo":

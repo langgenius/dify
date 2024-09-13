@@ -114,7 +114,7 @@ class MinimaxTextEmbeddingModel(TextEmbeddingModel):
             raise CredentialsValidateFailedError("Invalid api key")
 
     def _handle_error(self, code: int, msg: str):
-        if code == 1000 or code == 1001:
+        if code in {1000, 1001}:
             raise InternalServerError(msg)
         elif code == 1002:
             raise RateLimitReachedError(msg)

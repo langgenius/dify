@@ -77,7 +77,7 @@ class HuggingfaceHubLargeLanguageModel(_CommonHuggingfaceHub, LargeLanguageModel
             if "huggingfacehub_api_type" not in credentials:
                 raise CredentialsValidateFailedError("Huggingface Hub Endpoint Type must be provided.")
 
-            if credentials["huggingfacehub_api_type"] not in ("inference_endpoints", "hosted_inference_api"):
+            if credentials["huggingfacehub_api_type"] not in {"inference_endpoints", "hosted_inference_api"}:
                 raise CredentialsValidateFailedError("Huggingface Hub Endpoint Type is invalid.")
 
             if "huggingfacehub_api_token" not in credentials:
@@ -94,7 +94,7 @@ class HuggingfaceHubLargeLanguageModel(_CommonHuggingfaceHub, LargeLanguageModel
                     credentials["huggingfacehub_api_token"], model
                 )
 
-            if credentials["task_type"] not in ("text2text-generation", "text-generation"):
+            if credentials["task_type"] not in {"text2text-generation", "text-generation"}:
                 raise CredentialsValidateFailedError(
                     "Huggingface Hub Task Type must be one of text2text-generation, text-generation."
                 )

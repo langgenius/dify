@@ -544,7 +544,7 @@ class DocumentService:
 
     @staticmethod
     def pause_document(document):
-        if document.indexing_status not in ["waiting", "parsing", "cleaning", "splitting", "indexing"]:
+        if document.indexing_status not in {"waiting", "parsing", "cleaning", "splitting", "indexing"}:
             raise DocumentIndexingError()
         # update document to be paused
         document.is_paused = True
