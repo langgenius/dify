@@ -19,7 +19,7 @@ from core.tools.utils.yaml_utils import load_yaml_file
 
 class BuiltinToolProviderController(ToolProviderController):
     def __init__(self, **data: Any) -> None:
-        if self.provider_type == ToolProviderType.API or self.provider_type == ToolProviderType.APP:
+        if self.provider_type in {ToolProviderType.API, ToolProviderType.APP}:
             super().__init__(**data)
             return
 

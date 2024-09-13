@@ -133,9 +133,9 @@ class GetWorksheetFieldsTool(BuiltinTool):
 
     def _extract_options(self, control: dict) -> list:
         options = []
-        if control["type"] in [9, 10, 11]:
+        if control["type"] in {9, 10, 11}:
             options.extend([{"key": opt["key"], "value": opt["value"]} for opt in control.get("options", [])])
-        elif control["type"] in [28, 36]:
+        elif control["type"] in {28, 36}:
             itemnames = control["advancedSetting"].get("itemnames")
             if itemnames and itemnames.startswith("[{"):
                 try:

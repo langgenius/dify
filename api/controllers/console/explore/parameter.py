@@ -43,7 +43,7 @@ class AppParameterApi(InstalledAppResource):
         """Retrieve app parameters."""
         app_model = installed_app.app
 
-        if app_model.mode in [AppMode.ADVANCED_CHAT.value, AppMode.WORKFLOW.value]:
+        if app_model.mode in {AppMode.ADVANCED_CHAT.value, AppMode.WORKFLOW.value}:
             workflow = app_model.workflow
             if workflow is None:
                 raise AppUnavailableError()
