@@ -32,6 +32,7 @@ const ImagePreview: FC<ImagePreviewProps> = ({
   const imgRef = useRef<HTMLImageElement>(null)
   const dragStartRef = useRef({ x: 0, y: 0 })
   const [isCopied, setIsCopied] = useState(false)
+  const containerRef = useRef<HTMLDivElement>(null)
 
   const openInNewTab = () => {
     // Open in a new window, considering the case when the page is inside an iframe
@@ -187,6 +188,24 @@ const ImagePreview: FC<ImagePreviewProps> = ({
     }
   }, [handleMouseUp])
 
+  useEffect(() => {
+    const handleKeyDown = (event: KeyboardEvent) => {
+      if (event.key === 'Escape')
+        onCancel()
+    }
+
+    window.addEventListener('keydown', handleKeyDown)
+
+    // Set focus to the container element
+    if (containerRef.current)
+      containerRef.current.focus()
+
+    // Cleanup function
+    return () => {
+      window.removeEventListener('keydown', handleKeyDown)
+    }
+  }, [onCancel])
+
   return createPortal(
     <div className='fixed inset-0 p-8 flex items-center justify-center bg-black/80 z-[1000] image-preview-container'
       onClick={e => e.stopPropagation()}
@@ -194,7 +213,8 @@ const ImagePreview: FC<ImagePreviewProps> = ({
       onMouseDown={handleMouseDown}
       onMouseMove={handleMouseMove}
       onMouseUp={handleMouseUp}
-      style={{ cursor: scale > 1 ? 'move' : 'default' }}>
+      style={{ cursor: scale > 1 ? 'move' : 'default' }}
+      tabIndex={-1}>
       {/* eslint-disable-next-line @next/next/no-img-element */}
       <img
         ref={imgRef}
