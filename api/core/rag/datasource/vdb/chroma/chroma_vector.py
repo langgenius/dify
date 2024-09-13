@@ -92,7 +92,7 @@ class ChromaVector(BaseVector):
     def search_by_vector(self, query_vector: list[float], **kwargs: Any) -> list[Document]:
         collection = self._client.get_or_create_collection(self._collection_name)
         results: QueryResult = collection.query(query_embeddings=query_vector, n_results=kwargs.get("top_k", 4))
-        score_threshold = kwargs.get("score_threshold", 0.0)
+        score_threshold = float(kwargs.get("score_threshold") or 0.0)
 
         ids: list[str] = results["ids"][0]
         documents: list[str] = results["documents"][0]

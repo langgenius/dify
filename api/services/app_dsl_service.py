@@ -238,7 +238,7 @@ class AppDslService:
         :param use_icon_as_answer_icon: use app icon as answer icon
         """
         if not workflow_data:
-            raise ValueError("Missing workflow in data argument " "when app mode is advanced-chat or workflow")
+            raise ValueError("Missing workflow in data argument when app mode is advanced-chat or workflow")
 
         app = cls._create_app(
             tenant_id=tenant_id,
@@ -283,7 +283,7 @@ class AppDslService:
         :param account: Account instance
         """
         if not workflow_data:
-            raise ValueError("Missing workflow in data argument " "when app mode is advanced-chat or workflow")
+            raise ValueError("Missing workflow in data argument when app mode is advanced-chat or workflow")
 
         # fetch draft workflow by app_model
         workflow_service = WorkflowService()
@@ -337,7 +337,7 @@ class AppDslService:
         :param icon_background: app icon background
         """
         if not model_config_data:
-            raise ValueError("Missing model_config in data argument " "when app mode is chat, agent-chat or completion")
+            raise ValueError("Missing model_config in data argument when app mode is chat, agent-chat or completion")
 
         app = cls._create_app(
             tenant_id=tenant_id,

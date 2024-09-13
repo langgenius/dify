@@ -239,7 +239,7 @@ class AnalyticdbVector(BaseVector):
     def search_by_vector(self, query_vector: list[float], **kwargs: Any) -> list[Document]:
         from alibabacloud_gpdb20160503 import models as gpdb_20160503_models
 
-        score_threshold = kwargs.get("score_threshold", 0.0)
+        score_threshold = kwargs.get("score_threshold") or 0.0
         request = gpdb_20160503_models.QueryCollectionDataRequest(
             dbinstance_id=self.config.instance_id,
             region_id=self.config.region_id,
@@ -267,7 +267,7 @@ class AnalyticdbVector(BaseVector):
     def search_by_full_text(self, query: str, **kwargs: Any) -> list[Document]:
         from alibabacloud_gpdb20160503 import models as gpdb_20160503_models
 
-        score_threshold = kwargs.get("score_threshold", 0.0)
+        score_threshold = float(kwargs.get("score_threshold") or 0.0)
         request = gpdb_20160503_models.QueryCollectionDataRequest(
             dbinstance_id=self.config.instance_id,
             region_id=self.config.region_id,

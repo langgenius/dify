@@ -230,7 +230,7 @@ class RelytVector(BaseVector):
         # Organize results.
         docs = []
         for document, score in results:
-            score_threshold = kwargs.get("score_threshold", 0.0)
+            score_threshold = float(kwargs.get("score_threshold") or 0.0)
             if 1 - score > score_threshold:
                 docs.append(document)
         return docs
@@ -245,7 +245,7 @@ class RelytVector(BaseVector):
         try:
             from sqlalchemy.engine import Row
         except ImportError:
-            raise ImportError("Could not import Row from sqlalchemy.engine. " "Please 'pip install sqlalchemy>=1.4'.")
+            raise ImportError("Could not import Row from sqlalchemy.engine. Please 'pip install sqlalchemy>=1.4'.")
 
         filter_condition = ""
         if filter is not None:

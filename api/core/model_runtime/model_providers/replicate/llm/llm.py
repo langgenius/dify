@@ -86,7 +86,7 @@ class ReplicateLargeLanguageModel(_CommonReplicate, LargeLanguageModel):
 
         if model.count("/") != 1:
             raise CredentialsValidateFailedError(
-                "Replicate Model Name must be provided, " "format: {user_name}/{model_name}"
+                "Replicate Model Name must be provided, format: {user_name}/{model_name}"
             )
 
         try:
