@@ -27,7 +27,7 @@ class GetWorksheetFieldsTool(BuiltinTool):
         elif not host.startswith(("http://", "https://")):
             return self.create_text_message("Invalid parameter Host Address")
         else:
-            host = f"{host[:-1] if host.endswith('/') else host}/api"
+            host = f"{host.removesuffix('/')}/api"
 
         url = f"{host}/v2/open/worksheet/getWorksheetInfo"
         headers = {"Content-Type": "application/json"}
