@@ -103,7 +103,7 @@ class XinferenceHelper:
             model_handle_type = "embedding"
         elif response_json.get("model_type") == "audio":
             model_handle_type = "audio"
-            if model_family and model_family in ["ChatTTS", "CosyVoice", "FishAudio"]:
+            if model_family and model_family in {"ChatTTS", "CosyVoice", "FishAudio"}:
                 model_ability.append("text-to-audio")
             else:
                 model_ability.append("audio-to-text")

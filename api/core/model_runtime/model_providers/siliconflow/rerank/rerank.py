@@ -30,8 +30,7 @@ class SiliconflowRerankModel(RerankModel):
             return RerankResult(model=model, docs=[])
 
         base_url = credentials.get("base_url", "https://api.siliconflow.cn/v1")
-        if base_url.endswith("/"):
-            base_url = base_url[:-1]
+        base_url = base_url.removesuffix("/")
         try:
             response = httpx.post(
                 base_url + "/rerank",

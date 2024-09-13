@@ -372,7 +372,7 @@ class EasyUIBasedGenerateTaskPipeline(BasedGenerateTaskPipeline, MessageCycleMan
             self._message,
             application_generate_entity=self._application_generate_entity,
             conversation=self._conversation,
-            is_first_message=self._application_generate_entity.app_config.app_mode in [AppMode.AGENT_CHAT, AppMode.CHAT]
+            is_first_message=self._application_generate_entity.app_config.app_mode in {AppMode.AGENT_CHAT, AppMode.CHAT}
             and self._application_generate_entity.conversation_id is None,
             extras=self._application_generate_entity.extras,
         )

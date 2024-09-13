@@ -354,7 +354,7 @@ class DocumentIndexingEstimateApi(DocumentResource):
         document_id = str(document_id)
         document = self.get_document(dataset_id, document_id)
 
-        if document.indexing_status in ["completed", "error"]:
+        if document.indexing_status in {"completed", "error"}:
             raise DocumentAlreadyFinishedError()
 
         data_process_rule = document.dataset_process_rule
@@ -421,7 +421,7 @@ class DocumentBatchIndexingEstimateApi(DocumentResource):
         info_list = []
         extract_settings = []
         for document in documents:
-            if document.indexing_status in ["completed", "error"]:
+            if document.indexing_status in {"completed", "error"}:
                 raise DocumentAlreadyFinishedError()
             data_source_info = document.data_source_info_dict
             # format document files info
@@ -665,7 +665,7 @@ class DocumentProcessingApi(DocumentResource):
             db.session.commit()
 
         elif action == "resume":
-            if document.indexing_status not in ["paused", "error"]:
+            if document.indexing_status not in {"paused", "error"}:
                 raise InvalidActionError("Document not in paused or error state.")
 
             document.paused_by = None

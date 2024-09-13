@@ -68,7 +68,7 @@ class AppToolProviderEntity(ToolProviderController):
                 label = input_form[form_type]["label"]
                 variable_name = input_form[form_type]["variable_name"]
                 options = input_form[form_type].get("options", [])
-                if form_type == "paragraph" or form_type == "text-input":
+                if form_type in {"paragraph", "text-input"}:
                     tool["parameters"].append(
                         ToolParameter(
                             name=variable_name,

@@ -69,7 +69,7 @@ class ErnieBotLargeLanguageModel(LargeLanguageModel):
         """
         Code block mode wrapper for invoking large language model
         """
-        if "response_format" in model_parameters and model_parameters["response_format"] in ["JSON", "XML"]:
+        if "response_format" in model_parameters and model_parameters["response_format"] in {"JSON", "XML"}:
             response_format = model_parameters["response_format"]
             stop = stop or []
             self._transform_json_prompts(
