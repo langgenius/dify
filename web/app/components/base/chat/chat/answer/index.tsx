@@ -9,6 +9,7 @@ import type {
   ChatItem,
 } from '../../types'
 import { useChatContext } from '../context'
+import { useChatWithHistoryContext } from '../../chat-with-history/context'
 import Operation from './operation'
 import AgentContent from './agent-content'
 import BasicContent from './basic-content'
@@ -59,136 +60,131 @@ const Answer: FC<AnswerProps> = ({
     annotation,
     workflowProcess,
   } = item
+  const { isMobile } = useChatWithHistoryContext()
   const hasAgentThoughts = !!agent_thoughts?.length
 
   const [containerWidth] = useState(0)
   const [contentWidth, setContentWidth] = useState(0)
   const containerRef = useRef<HTMLDivElement>(null)
   const contentRef = useRef<HTMLDivElement>(null)
-
-  const {
-    config: chatContextConfig,
-  } = useChatContext()
-
+  const { config: chatContextConfig } = useChatContext()
   const voiceRef = useRef(chatContextConfig?.text_to_speech?.voice)
+
   const getContentWidth = () => {
     if (contentRef.current)
-      setContentWidth(contentRef.current?.clientWidth)
+      setContentWidth(contentRef.current.clientWidth)
   }
 
   useEffect(() => {
     voiceRef.current = chatContextConfig?.text_to_speech?.voice
-  }
-  , [chatContextConfig?.text_to_speech?.voice])
+  }, [chatContextConfig?.text_to_speech?.voice])
 
   useEffect(() => {
     if (!responding)
       getContentWidth()
   }, [responding])
 
+  const renderContent = () => {
+    if (responding && !content && !hasAgentThoughts)
+      return <LoadingAnim type="text" />
+
+    if (content && !hasAgentThoughts)
+      return <BasicContent item={item} />
+
+    if (hasAgentThoughts) {
+      return (
+        <AgentContent
+          item={item}
+          responding={responding}
+          allToolIcons={allToolIcons}
+        />
+      )
+    }
+    return null
+  }
+
+  const renderAnnotation = () => {
+    if (annotation?.id && annotation.authorName) {
+      return (
+        <EditTitle
+          className="mt-1"
+          title={t('appAnnotation.editBy', { author: annotation.authorName })}
+        />
+      )
+    }
+    return null
+  }
+
+  const renderOperation = () => {
+    if (!responding) {
+      return (
+        <Operation
+          hasWorkflowProcess={!!workflowProcess}
+          maxSize={containerWidth - contentWidth - 4}
+          contentWidth={contentWidth}
+          item={item}
+          question={question}
+          index={index}
+          showPromptLog={showPromptLog}
+        />
+      )
+    }
+    return null
+  }
+
+  const renderWorkflowProcess = () => {
+    if (workflowProcess && !hideProcessDetail) {
+      return (
+        <WorkflowProcess
+          data={workflowProcess}
+          item={item}
+          hideInfo
+          hideProcessDetail={hideProcessDetail}
+        />
+      )
+    }
+    if (workflowProcess && hideProcessDetail && appData?.site.show_workflow_steps) {
+      return (
+        <WorkflowProcess
+          data={workflowProcess}
+          item={item}
+          hideInfo
+          hideProcessDetail={hideProcessDetail}
+        />
+      )
+    }
+    return null
+  }
+
   return (
-    <div className='flex mb-2 last:mb-0'>
+    <div className={isMobile ? 'flex flex-col items-start mb-2 last:mb-0' : 'flex mb-2 last:mb-0'}>
       <div className='shrink-0 relative w-10 h-10'>
-        {
-          answerIcon || <AnswerIcon />
-        }
-        {
-          responding && (
-            <div className='absolute -top-[3px] -left-[3px] pl-[6px] flex items-center w-4 h-4 bg-white rounded-full shadow-xs border-[0.5px] border-gray-50'>
-              <LoadingAnim type='avatar' />
-            </div>
-          )
-        }
+        {answerIcon || <AnswerIcon />}
+        {responding && (
+          <div className='absolute -top-[3px] -left-[3px] pl-[6px] flex items-center w-4 h-4 bg-white rounded-full shadow-xs border-[0.5px] border-gray-50'>
+            <LoadingAnim type='avatar' />
+          </div>
+        )}
       </div>
-      <div className='chat-answer-container group grow w-0 ml-4' ref={containerRef}>
-        <div className={`group relative pr-10 ${chatAnswerContainerInner}`}>
-          <AnswerTriangle className='absolute -left-2 top-0 w-2 h-3 text-gray-100' />
-          <div
-            ref={contentRef}
-            className={`
-              relative inline-block px-4 py-3 max-w-full bg-gray-100 rounded-b-2xl rounded-tr-2xl text-sm text-gray-900
-              ${workflowProcess && 'w-full'}
-            `}
-          >
+      <div className={`chat-answer-container group grow ${isMobile ? 'max-w-full mt-4' : 'w-0 ml-4'}`} ref={containerRef}>
+        <div className={`group relative ${chatAnswerContainerInner}`}>
+          <AnswerTriangle className={isMobile ? 'absolute left-0 -top-2 w-2 h-3 text-gray-100 rotate-180' : 'absolute -left-2 top-0 w-2 h-3 text-gray-100'} />
+          <div ref={contentRef} className={`relative inline-block px-4 py-3 max-w-full bg-gray-100 rounded-b-2xl rounded-tr-2xl text-sm text-gray-900 ${workflowProcess && 'w-full'}`}>
             {annotation?.id && (
-              <div
-                className='absolute -top-3.5 -right-3.5 box-border flex items-center justify-center h-7 w-7 p-0.5 rounded-lg bg-white cursor-pointer text-[#444CE7] shadow-md group-hover:hidden'
-              >
+              <div className='absolute -top-3.5 -right-3.5 box-border flex items-center justify-center h-7 w-7 p-0.5 rounded-lg bg-white cursor-pointer text-[#444CE7] shadow-md group-hover:hidden'>
                 <div className='p-1 rounded-lg bg-[#EEF4FF] '>
                   <MessageFast className='w-4 h-4' />
                 </div>
               </div>
             )}
-            {
-              !responding && (
-                <Operation
-                  hasWorkflowProcess={!!workflowProcess}
-                  maxSize={containerWidth - contentWidth - 4}
-                  contentWidth={contentWidth}
-                  item={item}
-                  question={question}
-                  index={index}
-                  showPromptLog={showPromptLog}
-                />
-              )
-            }
-            {/** Render the normal steps */}
-            {
-              workflowProcess && !hideProcessDetail && (
-                <WorkflowProcess
-                  data={workflowProcess}
-                  item={item}
-                  hideInfo
-                  hideProcessDetail={hideProcessDetail}
-                />
-              )
-            }
-            {/** Hide workflow steps by it's settings in siteInfo */}
-            {
-              workflowProcess && hideProcessDetail && appData && appData.site.show_workflow_steps && (
-                <WorkflowProcess
-                  data={workflowProcess}
-                  item={item}
-                  hideInfo
-                  hideProcessDetail={hideProcessDetail}
-                />
-              )
-            }
-            {
-              responding && !content && !hasAgentThoughts && (
-                <div className='flex items-center justify-center w-6 h-5'>
-                  <LoadingAnim type='text' />
-                </div>
-              )
-            }
-            {
-              content && !hasAgentThoughts && (
-                <BasicContent item={item} />
-              )
-            }
-            {
-              hasAgentThoughts && (
-                <AgentContent
-                  item={item}
-                  responding={responding}
-                  allToolIcons={allToolIcons}
-                />
-              )
-            }
-            {
-              annotation?.id && annotation.authorName && (
-                <EditTitle
-                  className='mt-1'
-                  title={t('appAnnotation.editBy', { author: annotation.authorName })}
-                />
-              )
-            }
+            {renderOperation()}
+            {renderWorkflowProcess()}
+            {renderContent()}
+            {renderAnnotation()}
             <SuggestedQuestions item={item} />
-            {
-              !!citation?.length && !responding && (
-                <Citation data={citation} showHitInfo={config?.supportCitationHitInfo} />
-              )
-            }
+            {!!citation?.length && !responding && (
+              <Citation data={citation} showHitInfo={config?.supportCitationHitInfo} />
+            )}
           </div>
         </div>
         <More more={more} />
