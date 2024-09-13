@@ -8,6 +8,7 @@ import {
 } from '@remixicon/react'
 import produce from 'immer'
 import { useStoreApi } from 'reactflow'
+import useAvailableVarList from '../../hooks/use-available-var-list'
 import VarReferencePopup from './var-reference-popup'
 import { getNodeInfoById, isConversationVar, isENV, isSystemVar } from './utils'
 import ConstantField from './constant-field'
@@ -26,7 +27,6 @@ import {
 } from '@/app/components/base/portal-to-follow-elem'
 import {
   useIsChatMode,
-  useWorkflow,
   useWorkflowVariables,
 } from '@/app/components/workflow/hooks'
 import { VarType as VarKindType } from '@/app/components/workflow/nodes/tool/types'
@@ -67,7 +67,7 @@ const VarReferencePicker: FC<Props> = ({
   onlyLeafNodeVar,
   filterVar = () => true,
   availableNodes: passedInAvailableNodes,
-  availableVars,
+  availableVars: passedInAvailableVars,
   isAddBtnTrigger,
   schema,
   valueTypePlaceHolder,
@@ -79,11 +79,12 @@ const VarReferencePicker: FC<Props> = ({
   } = store.getState()
   const isChatMode = useIsChatMode()
 
-  const { getTreeLeafNodes, getBeforeNodesInSameBranch } = useWorkflow()
-  const { getCurrentVariableType, getNodeAvailableVars } = useWorkflowVariables()
-  const availableNodes = useMemo(() => {
-    return passedInAvailableNodes || (onlyLeafNodeVar ? getTreeLeafNodes(nodeId) : getBeforeNodesInSameBranch(nodeId))
-  }, [getBeforeNodesInSameBranch, getTreeLeafNodes, nodeId, onlyLeafNodeVar, passedInAvailableNodes])
+  const { getCurrentVariableType } = useWorkflowVariables()
+  const { availableNodes, availableVars } = useAvailableVarList(nodeId, {
+    onlyLeafNodeVar,
+    passedInAvailableNodes,
+    filterVar,
+  })
   const startNode = availableNodes.find((node: any) => {
     return node.data.type === BlockEnum.Start
   })
@@ -102,19 +103,8 @@ const VarReferencePicker: FC<Props> = ({
 
   const [varKindType, setVarKindType] = useState<VarKindType>(defaultVarKindType)
   const isConstant = isSupportConstantValue && varKindType === VarKindType.constant
-  const outputVars = useMemo(() => {
-    if (availableVars)
-      return availableVars
 
-    const vars = getNodeAvailableVars({
-      parentNode: iterationNode,
-      beforeNodes: availableNodes,
-      isChatMode,
-      filterVar,
-    })
-
-    return vars
-  }, [iterationNode, availableNodes, isChatMode, filterVar, availableVars, getNodeAvailableVars])
+  const outputVars = useMemo(() => (passedInAvailableVars || availableVars), [passedInAvailableVars, availableVars])
 
   const [open, setOpen] = useState(false)
   useEffect(() => {

@@ -572,7 +572,7 @@ class OllamaLargeLanguageModel(LargeLanguageModel):
                     label=I18nObject(en_US="Size of context window"),
                     type=ParameterType.INT,
                     help=I18nObject(
-                        en_US="Sets the size of the context window used to generate the next token. " "(Default: 2048)"
+                        en_US="Sets the size of the context window used to generate the next token. (Default: 2048)"
                     ),
                     default=2048,
                     min=1,
@@ -650,7 +650,7 @@ class OllamaLargeLanguageModel(LargeLanguageModel):
                     label=I18nObject(en_US="Format"),
                     type=ParameterType.STRING,
                     help=I18nObject(
-                        en_US="the format to return a response in." " Currently the only accepted value is json."
+                        en_US="the format to return a response in. Currently the only accepted value is json."
                     ),
                     options=["json"],
                 ),

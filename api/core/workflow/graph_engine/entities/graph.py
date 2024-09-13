@@ -405,21 +405,22 @@ class Graph(BaseModel):
 
             if condition_edge_mappings:
                 for condition_hash, graph_edges in condition_edge_mappings.items():
-                    current_parallel = cls._get_current_parallel(
-                        parallel_mapping=parallel_mapping,
-                        graph_edge=graph_edge,
-                        parallel=condition_parallels.get(condition_hash),
-                        parent_parallel=parent_parallel,
-                    )
+                    for graph_edge in graph_edges:
+                        current_parallel: GraphParallel | None = cls._get_current_parallel(
+                            parallel_mapping=parallel_mapping,
+                            graph_edge=graph_edge,
+                            parallel=condition_parallels.get(condition_hash),
+                            parent_parallel=parent_parallel,
+                        )
 
-                    cls._recursively_add_parallels(
-                        edge_mapping=edge_mapping,
-                        reverse_edge_mapping=reverse_edge_mapping,
-                        start_node_id=graph_edge.target_node_id,
-                        parallel_mapping=parallel_mapping,
-                        node_parallel_mapping=node_parallel_mapping,
-                        parent_parallel=current_parallel,
-                    )
+                        cls._recursively_add_parallels(
+                            edge_mapping=edge_mapping,
+                            reverse_edge_mapping=reverse_edge_mapping,
+                            start_node_id=graph_edge.target_node_id,
+                            parallel_mapping=parallel_mapping,
+                            node_parallel_mapping=node_parallel_mapping,
+                            parent_parallel=current_parallel,
+                        )
             else:
                 for graph_edge in target_node_edges:
                     current_parallel = cls._get_current_parallel(
