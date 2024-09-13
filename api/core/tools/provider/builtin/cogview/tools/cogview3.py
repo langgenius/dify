@@ -26,7 +26,7 @@ class CogView3Tool(BuiltinTool):
             "horizontal_1344": "1344x768",
             "horizontal_1152": "1152x864",
             "widescreen_1440": "1440x720",
-            "tallscreen_720": "720x1440"
+            "tallscreen_720": "720x1440",
         }
         # prompt
         prompt = tool_parameters.get("prompt", "")
@@ -36,7 +36,7 @@ class CogView3Tool(BuiltinTool):
         size_key = tool_parameters.get("size", "square")
         # cogview-3-plus get size
         if size_key != "cogview_3":
-            size = size_mapping[size_key] 
+            size = size_mapping[size_key]
         # get n
         n = tool_parameters.get("n", 1)
         # get quality
@@ -50,7 +50,7 @@ class CogView3Tool(BuiltinTool):
         # set extra body
         seed_id = tool_parameters.get("seed_id", self._generate_random_id(8))
         extra_body = {"seed": seed_id}
-        # cogview-3-plus        
+        # cogview-3-plus
         if size_key != "cogview_3":
             response = client.images.generations(
                 prompt=prompt,
@@ -60,7 +60,7 @@ class CogView3Tool(BuiltinTool):
                 extra_body=extra_body,
                 style=style,
                 quality=quality,
-                response_format="b64_json"
+                response_format="b64_json",
             )
         # cogview-3
         else:
@@ -71,7 +71,7 @@ class CogView3Tool(BuiltinTool):
                 extra_body=extra_body,
                 style=style,
                 quality=quality,
-                response_format="b64_json"
+                response_format="b64_json",
             )
         print(response.data)
         result = []
