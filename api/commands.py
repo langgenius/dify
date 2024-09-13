@@ -131,7 +131,7 @@ def reset_encrypt_key_pair():
 
         click.echo(
             click.style(
-                "Congratulations! the asymmetric key pair of workspace {} has been reset.".format(tenant.id),
+                "Congratulations! The asymmetric key pair of workspace {} has been reset.".format(tenant.id),
                 fg="green",
             )
         )
