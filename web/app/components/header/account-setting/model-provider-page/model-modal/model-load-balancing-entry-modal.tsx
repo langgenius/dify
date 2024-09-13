@@ -206,7 +206,6 @@ const ModelLoadBalancingEntryModal: FC<ModelModalProps> = ({
   const handleSave = async () => {
     try {
       setLoading(true)
-
       const res = await validateLoadBalancingCredentials(
         providerFormSchemaPredefined,
         provider.provider,
@@ -214,6 +213,7 @@ const ModelLoadBalancingEntryModal: FC<ModelModalProps> = ({
           ...value,
           ...getSecretValues(value),
         },
+        entry?.id,
       )
       if (res.status === ValidatedStatus.Success) {
         // notify({ type: 'success', message: t('common.actionMsg.modifiedSuccessfully') })
