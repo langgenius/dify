@@ -10,7 +10,7 @@ const translation = {
   pause: 'Duraklat',
   playing: 'Oynatılıyor',
   loading: 'Yükleniyor',
-  merMaind: {
+  merMaid: {
     rerender: 'Yeniden İşleme',
   },
   never: 'Asla',

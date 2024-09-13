@@ -17,8 +17,9 @@ class FeishuRequest:
         redis_client.setex(feishu_tenant_access_token, res.get("expire"), res.get("tenant_access_token"))
         return res.get("tenant_access_token")
 
-    def _send_request(self, url: str, method: str = "post", require_token: bool = True, payload: dict = None,
-                      params: dict = None):
+    def _send_request(
+        self, url: str, method: str = "post", require_token: bool = True, payload: dict = None, params: dict = None
+    ):
         headers = {
             "Content-Type": "application/json",
             "user-agent": "Dify",
@@ -42,10 +43,7 @@ class FeishuRequest:
         }
         """
         url = "https://lark-plugin-api.solutionsuite.cn/lark-plugin/access_token/get_tenant_access_token"
-        payload = {
-            "app_id": app_id,
-            "app_secret": app_secret
-        }
+        payload = {"app_id": app_id, "app_secret": app_secret}
         res = self._send_request(url, require_token=False, payload=payload)
         return res
 
@@ -76,11 +74,7 @@ class FeishuRequest:
 
     def write_document(self, document_id: str, content: str, position: str = "start") -> dict:
         url = "https://lark-plugin-api.solutionsuite.cn/lark-plugin/document/write_document"
-        payload = {
-            "document_id": document_id,
-            "content": content,
-            "position": position
-        }
+        payload = {"document_id": document_id, "content": content, "position": position}
         res = self._send_request(url, payload=payload)
         return res.get("data")
 
@@ -95,7 +89,7 @@ class FeishuRequest:
                 "content": "云文档\n多人实时协同，插入一切元素。不仅是在线文档，更是强大的创作和互动工具\n云文档：专为协作而生\n"
             }
         }
-        """
+        """  # noqa: E501
         params = {
             "document_id": document_id,
         }

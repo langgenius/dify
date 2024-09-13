@@ -4,7 +4,6 @@ import 'katex/dist/katex.min.css'
 import RemarkMath from 'remark-math'
 import RemarkBreaks from 'remark-breaks'
 import RehypeKatex from 'rehype-katex'
-import RehypeRaw from 'rehype-raw'
 import RemarkGfm from 'remark-gfm'
 import { SVG } from '@svgdotjs/svg.js'
 import SyntaxHighlighter from 'react-syntax-highlighter'
@@ -246,11 +245,11 @@ const Paragraph = (paragraph: any) => {
     return (
       <>
         <ImageGallery srcs={[children_node[0].properties.src]} />
-        <div>{paragraph.children.slice(1)}</div>
+        <p>{paragraph.children.slice(1)}</p>
       </>
     )
   }
-  return <div>{paragraph.children}</div>
+  return <p>{paragraph.children}</p>
 }
 
 const Img = ({ src }: any) => {
@@ -278,7 +277,6 @@ export function Markdown(props: { content: string; className?: string }) {
         remarkPlugins={[[RemarkGfm, RemarkMath, { singleDollarTextMath: false }], RemarkBreaks]}
         rehypePlugins={[
           RehypeKatex,
-          RehypeRaw as any,
           // The Rehype plug-in is used to remove the ref attribute of an element
           () => {
             return (tree) => {

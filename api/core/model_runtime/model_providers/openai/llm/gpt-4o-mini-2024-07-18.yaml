@@ -28,7 +28,7 @@ parameter_rules:
   - name: response_format
     label:
       zh_Hans: 回复格式
-      en_US: response_format
+      en_US: Response Format
     type: string
     help:
       zh_Hans: 指定模型必须输出的格式

@@ -51,7 +51,7 @@ const SettingsModal: FC<SettingsModalProps> = ({
   const {
     modelList: rerankModelList,
     defaultModel: rerankDefaultModel,
-    currentModel: isRerankDefaultModelVaild,
+    currentModel: isRerankDefaultModelValid,
   } = useModelListAndDefaultModelAndCurrentProviderAndModel(ModelTypeEnum.rerank)
   const { t } = useTranslation()
   const { notify } = useToastContext()
@@ -83,7 +83,7 @@ const SettingsModal: FC<SettingsModalProps> = ({
     if (
       !isReRankModelSelected({
         rerankDefaultModel,
-        isRerankDefaultModelVaild: !!isRerankDefaultModelVaild,
+        isRerankDefaultModelValid: !!isRerankDefaultModelValid,
         rerankModelList,
         retrievalConfig,
         indexMethod,

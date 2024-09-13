@@ -3,7 +3,7 @@ import time
 
 from core.rag.datasource.retrieval_service import RetrievalService
 from core.rag.models.document import Document
-from core.rag.retrieval.retrival_methods import RetrievalMethod
+from core.rag.retrieval.retrieval_methods import RetrievalMethod
 from extensions.ext_database import db
 from models.account import Account
 from models.dataset import Dataset, DatasetQuery, DocumentSegment
@@ -33,22 +33,20 @@ class HitTestingService:
 
         # get retrieval model , if the model is not setting , using default
         if not retrieval_model:
-            retrieval_model = dataset.retrieval_model if dataset.retrieval_model else default_retrieval_model
+            retrieval_model = dataset.retrieval_model or default_retrieval_model
 
         all_documents = RetrievalService.retrieve(
-            retrival_method=retrieval_model.get("search_method", "semantic_search"),
+            retrieval_method=retrieval_model.get("search_method", "semantic_search"),
             dataset_id=dataset.id,
             query=cls.escape_query_for_search(query),
             top_k=retrieval_model.get("top_k", 2),
             score_threshold=retrieval_model.get("score_threshold", 0.0)
             if retrieval_model["score_threshold_enabled"]
-            else None,
+            else 0.0,
             reranking_model=retrieval_model.get("reranking_model", None)
             if retrieval_model["reranking_enable"]
             else None,
-            reranking_mode=retrieval_model.get("reranking_mode")
-            if retrieval_model.get("reranking_mode")
-            else "reranking_model",
+            reranking_mode=retrieval_model.get("reranking_mode") or "reranking_model",
             weights=retrieval_model.get("weights", None),
         )
 

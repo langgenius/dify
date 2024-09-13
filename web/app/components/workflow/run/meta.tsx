@@ -16,7 +16,7 @@ type Props = {
 const MetaData: FC<Props> = ({
   status,
   executor,
-  startTime = 0,
+  startTime,
   time,
   tokens,
   steps = 1,
@@ -64,7 +64,7 @@ const MetaData: FC<Props> = ({
               <div className='my-[5px] w-[72px] h-2 rounded-sm bg-[rgba(0,0,0,0.05)]'/>
             )}
             {status !== 'running' && (
-              <span>{formatTime(startTime, t('appLog.dateTimeFormat') as string)}</span>
+              <span>{startTime ? formatTime(startTime, t('appLog.dateTimeFormat') as string) : '-'}</span>
             )}
           </div>
         </div>
@@ -75,7 +75,7 @@ const MetaData: FC<Props> = ({
               <div className='my-[5px] w-[72px] h-2 rounded-sm bg-[rgba(0,0,0,0.05)]'/>
             )}
             {status !== 'running' && (
-              <span>{`${time?.toFixed(3)}s`}</span>
+              <span>{time ? `${time.toFixed(3)}s` : '-'}</span>
             )}
           </div>
         </div>

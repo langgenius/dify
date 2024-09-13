@@ -17,8 +17,7 @@ class _CommonZhipuaiAI:
         :return:
         """
         credentials_kwargs = {
-            "api_key": credentials['api_key'] if 'api_key' in credentials else 
-                        credentials.get("zhipuai_api_key"),
+            "api_key": credentials["api_key"] if "api_key" in credentials else credentials.get("zhipuai_api_key"),
         }
 
         return credentials_kwargs
@@ -38,5 +37,5 @@ class _CommonZhipuaiAI:
             InvokeServerUnavailableError: [],
             InvokeRateLimitError: [],
             InvokeAuthorizationError: [],
-            InvokeBadRequestError: []
+            InvokeBadRequestError: [],
         }

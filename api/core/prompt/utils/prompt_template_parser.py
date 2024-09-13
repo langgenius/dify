@@ -38,8 +38,8 @@ class PromptTemplateParser:
             return value
 
         prompt = re.sub(self.regex, replacer, self.template)
-        return re.sub(r'<\|.*?\|>', '', prompt)
+        return re.sub(r"<\|.*?\|>", "", prompt)
 
     @classmethod
     def remove_template_variables(cls, text: str, with_variable_tmpl: bool = False):
-        return re.sub(WITH_VARIABLE_TMPL_REGEX if with_variable_tmpl else REGEX, r'{\1}', text)
+        return re.sub(WITH_VARIABLE_TMPL_REGEX if with_variable_tmpl else REGEX, r"{\1}", text)

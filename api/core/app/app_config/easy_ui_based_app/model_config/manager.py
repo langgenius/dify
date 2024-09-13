@@ -13,23 +13,23 @@ class ModelConfigManager:
         :param config: model config args
         """
         # model config
-        model_config = config.get('model')
+        model_config = config.get("model")
 
         if not model_config:
             raise ValueError("model is required")
 
-        completion_params = model_config.get('completion_params')
+        completion_params = model_config.get("completion_params")
         stop = []
-        if 'stop' in completion_params:
-            stop = completion_params['stop']
-            del completion_params['stop']
+        if "stop" in completion_params:
+            stop = completion_params["stop"]
+            del completion_params["stop"]
 
         # get model mode
-        model_mode = model_config.get('mode')
+        model_mode = model_config.get("mode")
 
         return ModelConfigEntity(
-            provider=config['model']['provider'],
-            model=config['model']['name'],
+            provider=config["model"]["provider"],
+            model=config["model"]["name"],
             mode=model_mode,
             parameters=completion_params,
             stop=stop,
@@ -43,7 +43,7 @@ class ModelConfigManager:
         :param tenant_id: tenant id
         :param config: app model config args
         """
-        if 'model' not in config:
+        if "model" not in config:
             raise ValueError("model is required")
 
         if not isinstance(config["model"], dict):
@@ -52,17 +52,16 @@ class ModelConfigManager:
         # model.provider
         provider_entities = model_provider_factory.get_providers()
         model_provider_names = [provider.provider for provider in provider_entities]
-        if 'provider' not in config["model"] or config["model"]["provider"] not in model_provider_names:
+        if "provider" not in config["model"] or config["model"]["provider"] not in model_provider_names:
             raise ValueError(f"model.provider is required and must be in {str(model_provider_names)}")
 
         # model.name
-        if 'name' not in config["model"]:
+        if "name" not in config["model"]:
             raise ValueError("model.name is required")
 
         provider_manager = ProviderManager()
         models = provider_manager.get_configurations(tenant_id).get_models(
-            provider=config["model"]["provider"],
-            model_type=ModelType.LLM
+            provider=config["model"]["provider"], model_type=ModelType.LLM
         )
 
         if not models:
@@ -80,12 +79,12 @@ class ModelConfigManager:
 
         # model.mode
         if model_mode:
-            config['model']["mode"] = model_mode
+            config["model"]["mode"] = model_mode
         else:
-            config['model']["mode"] = "completion"
+            config["model"]["mode"] = "completion"
 
         # model.completion_params
-        if 'completion_params' not in config["model"]:
+        if "completion_params" not in config["model"]:
             raise ValueError("model.completion_params is required")
 
         config["model"]["completion_params"] = cls.validate_model_completion_params(
@@ -101,7 +100,7 @@ class ModelConfigManager:
             raise ValueError("model.completion_params must be of object type")
 
         # stop
-        if 'stop' not in cp:
+        if "stop" not in cp:
             cp["stop"] = []
         elif not isinstance(cp["stop"], list):
             raise ValueError("stop in model.completion_params must be of list type")

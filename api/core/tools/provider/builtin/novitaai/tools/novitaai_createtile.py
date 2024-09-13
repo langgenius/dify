@@ -12,17 +12,18 @@ from core.tools.tool.builtin_tool import BuiltinTool
 
 
 class NovitaAiCreateTileTool(BuiltinTool):
-    def _invoke(self,
-                user_id: str,
-                tool_parameters: dict[str, Any],
-                ) -> Union[ToolInvokeMessage, list[ToolInvokeMessage]]:
+    def _invoke(
+        self,
+        user_id: str,
+        tool_parameters: dict[str, Any],
+    ) -> Union[ToolInvokeMessage, list[ToolInvokeMessage]]:
         """
-            invoke tools
+        invoke tools
         """
-        if 'api_key' not in self.runtime.credentials or not self.runtime.credentials.get('api_key'):
+        if "api_key" not in self.runtime.credentials or not self.runtime.credentials.get("api_key"):
             raise ToolProviderCredentialValidationError("Novita AI API Key is required.")
 
-        api_key = self.runtime.credentials.get('api_key')
+        api_key = self.runtime.credentials.get("api_key")
 
         client = NovitaClient(api_key=api_key)
         param = self._process_parameters(tool_parameters)
@@ -30,21 +31,23 @@ class NovitaAiCreateTileTool(BuiltinTool):
 
         results = []
         results.append(
-            self.create_blob_message(blob=b64decode(client_result.image_file),
-                                     meta={'mime_type': f'image/{client_result.image_type}'},
-                                     save_as=self.VARIABLE_KEY.IMAGE.value)
+            self.create_blob_message(
+                blob=b64decode(client_result.image_file),
+                meta={"mime_type": f"image/{client_result.image_type}"},
+                save_as=self.VariableKey.IMAGE.value,
+            )
         )
 
         return results
 
     def _process_parameters(self, parameters: dict[str, Any]) -> dict[str, Any]:
         """
-            process parameters
+        process parameters
         """
         res_parameters = deepcopy(parameters)
 
         # delete none and empty
-        keys_to_delete = [k for k, v in res_parameters.items() if v is None or v == '']
+        keys_to_delete = [k for k, v in res_parameters.items() if v is None or v == ""]
         for k in keys_to_delete:
             del res_parameters[k]
 

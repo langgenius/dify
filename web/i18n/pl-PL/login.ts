@@ -36,7 +36,7 @@ const translation = {
   pp: 'Polityka prywatności',
   tosDesc: 'Założeniem konta zgadzasz się z naszymi',
   goToInit: 'Jeśli nie zainicjowałeś konta, przejdź do strony inicjalizacji',
-  donthave: 'Nie masz?',
+  dontHave: 'Nie masz?',
   invalidInvitationCode: 'Niewłaściwy kod zaproszenia',
   accountAlreadyInited: 'Konto już zainicjowane',
   forgotPassword: 'Zapomniałeś hasła?',
