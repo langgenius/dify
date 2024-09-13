@@ -15,4 +15,3 @@ class ComfyUIProvider(BuiltinToolProviderController):
             ).validate_models()
         except Exception as e:
             raise ToolProviderCredentialValidationError(str(e))
-    
