@@ -131,7 +131,7 @@ class ElasticSearchVector(BaseVector):
 
         docs = []
         for doc, score in docs_and_scores:
-            score_threshold = kwargs.get("score_threshold", 0.0)
+            score_threshold = float(kwargs.get("score_threshold") or 0.0)
             if score > score_threshold:
                 doc.metadata["score"] = score
             docs.append(doc)
