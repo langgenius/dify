@@ -7,7 +7,7 @@ from typing_extensions import Self
 import pydantic
 from pydantic.fields import FieldInfo
 
-from zhipuai.core._base_type import StrBytesIntFloat
+from ._base_type import StrBytesIntFloat
 
 _T = TypeVar("_T")
 _ModelT = TypeVar("_ModelT", bound=pydantic.BaseModel)

@@ -5,7 +5,7 @@ from collections import abc as _c_abc
 from typing_extensions import Required, Annotated, get_args, get_origin
 
 from .._base_type import InheritsGeneric
-from zhipuai.core._base_compat import is_union as _is_union
+from .._base_compat import is_union as _is_union
 
 
 def is_annotated_type(typ: type) -> bool:
