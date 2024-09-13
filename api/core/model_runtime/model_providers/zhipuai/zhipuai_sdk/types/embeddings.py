@@ -1,22 +1,20 @@
 from __future__ import annotations
 
-from typing import Optional
+from typing import Optional, List
 
-from pydantic import BaseModel
-
+from ..core import BaseModel
 from .chat.chat_completion import CompletionUsage
-
 __all__ = ["Embedding", "EmbeddingsResponded"]
 
 
 class Embedding(BaseModel):
     object: str
     index: Optional[int] = None
-    embedding: list[float]
+    embedding: List[float]
 
 
 class EmbeddingsResponded(BaseModel):
     object: str
-    data: list[Embedding]
+    data: List[Embedding]
     model: str
     usage: CompletionUsage

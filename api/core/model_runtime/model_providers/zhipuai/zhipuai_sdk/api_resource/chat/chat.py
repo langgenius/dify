@@ -1,17 +1,18 @@
 from typing import TYPE_CHECKING
-
-from ...core._base_api import BaseAPI
-from .async_completions import AsyncCompletions
 from .completions import Completions
+from .async_completions import AsyncCompletions
+from ...core import BaseAPI, cached_property
 
 if TYPE_CHECKING:
     from ..._client import ZhipuAI
 
 
 class Chat(BaseAPI):
-    completions: Completions
 
-    def __init__(self, client: "ZhipuAI") -> None:
-        super().__init__(client)
-        self.completions = Completions(client)
-        self.asyncCompletions = AsyncCompletions(client)
+    @cached_property
+    def completions(self) -> Completions:
+        return Completions(self._client)
+
+    @cached_property
+    def asyncCompletions(self) -> AsyncCompletions:
+        return AsyncCompletions(self._client)

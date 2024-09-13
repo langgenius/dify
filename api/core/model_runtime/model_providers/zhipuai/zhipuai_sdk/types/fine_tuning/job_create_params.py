@@ -1,8 +1,8 @@
 from __future__ import annotations
 
-from typing import Literal, Union
+from typing import Union
 
-from typing_extensions import TypedDict
+from typing_extensions import Literal, TypedDict
 
 __all__ = ["Hyperparameters"]
 

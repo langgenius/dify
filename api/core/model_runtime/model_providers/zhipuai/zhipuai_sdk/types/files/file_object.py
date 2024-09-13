@@ -1,11 +1,12 @@
-from typing import Optional
+from typing import Optional, List
 
-from pydantic import BaseModel
+from ...core import BaseModel
 
-__all__ = ["FileObject"]
+__all__ = ["FileObject", "ListOfFileObject"]
 
 
 class FileObject(BaseModel):
+
     id: Optional[str] = None
     bytes: Optional[int] = None
     created_at: Optional[int] = None
@@ -17,6 +18,7 @@ class FileObject(BaseModel):
 
 
 class ListOfFileObject(BaseModel):
+
     object: Optional[str] = None
-    data: list[FileObject]
+    data: List[FileObject]
     has_more: Optional[bool] = None

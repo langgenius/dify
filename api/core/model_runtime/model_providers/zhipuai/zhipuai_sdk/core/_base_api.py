@@ -1,5 +1,4 @@
 from __future__ import annotations
-
 from typing import TYPE_CHECKING
 
 if TYPE_CHECKING:
@@ -16,3 +15,4 @@ class BaseAPI:
         self._post = client.post
         self._put = client.put
         self._patch = client.patch
+        self._get_api_list = client.get_api_list

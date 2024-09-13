@@ -1,14 +1,16 @@
 from .__version__ import __version__
 from ._client import ZhipuAI
-from .core._errors import (
-    APIAuthenticationError,
-    APIInternalError,
-    APIReachLimitError,
+
+from .core import (
+    ZhipuAIError,
+    APIStatusError,
     APIRequestFailedError,
+    APIAuthenticationError,
+    APIReachLimitError,
+    APIInternalError,
+    APIServerFlowExceedError,
     APIResponseError,
     APIResponseValidationError,
-    APIServerFlowExceedError,
-    APIStatusError,
+    APIConnectionError,
     APITimeoutError,
-    ZhipuAIError,
 )

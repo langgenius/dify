@@ -1,8 +1,8 @@
-from typing import Optional, Union
+from typing import List, Union, Optional, Dict, Any
 
-from pydantic import BaseModel
+from ...core import BaseModel
 
-__all__ = ["FineTuningJob", "Error", "Hyperparameters", "ListOfFineTuningJob"]
+__all__ = ["FineTuningJob", "Error", "Hyperparameters", "ListOfFineTuningJob" ]
 
 
 class Error(BaseModel):
@@ -34,7 +34,7 @@ class FineTuningJob(BaseModel):
 
     object: Optional[str] = None
 
-    result_files: list[str]
+    result_files: List[str]
 
     status: str
 
@@ -47,5 +47,5 @@ class FineTuningJob(BaseModel):
 
 class ListOfFineTuningJob(BaseModel):
     object: Optional[str] = None
-    data: list[FineTuningJob]
+    data: List[FineTuningJob]
     has_more: Optional[bool] = None

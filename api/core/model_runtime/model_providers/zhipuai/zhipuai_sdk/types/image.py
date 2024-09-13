@@ -1,8 +1,8 @@
 from __future__ import annotations
 
-from typing import Optional
+from typing import Optional, List
 
-from pydantic import BaseModel
+from ..core import BaseModel
 
 __all__ = ["GeneratedImage", "ImagesResponded"]
 
@@ -15,4 +15,4 @@ class GeneratedImage(BaseModel):
 
 class ImagesResponded(BaseModel):
     created: int
-    data: list[GeneratedImage]
+    data: List[GeneratedImage]
