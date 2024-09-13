@@ -53,7 +53,7 @@ def test__get_completion_model_prompt_messages():
             "#context#": context,
             "#histories#": "\n".join(
                 [
-                    f"{'Human' if prompt.role.value == 'user' else 'Assistant'}: " f"{prompt.content}"
+                    f"{'Human' if prompt.role.value == 'user' else 'Assistant'}: {prompt.content}"
                     for prompt in history_prompt_messages
                 ]
             ),

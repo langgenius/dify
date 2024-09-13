@@ -28,12 +28,12 @@ from .variables import (
 
 
 def build_variable_from_mapping(mapping: Mapping[str, Any], /) -> Variable:
-    if (value_type := mapping.get('value_type')) is None:
-        raise VariableError('missing value type')
-    if not mapping.get('name'):
-        raise VariableError('missing name')
-    if (value := mapping.get('value')) is None:
-        raise VariableError('missing value')
+    if (value_type := mapping.get("value_type")) is None:
+        raise VariableError("missing value type")
+    if not mapping.get("name"):
+        raise VariableError("missing name")
+    if (value := mapping.get("value")) is None:
+        raise VariableError("missing value")
     match value_type:
         case SegmentType.STRING:
             result = StringVariable.model_validate(mapping)
@@ -44,7 +44,7 @@ def build_variable_from_mapping(mapping: Mapping[str, Any], /) -> Variable:
         case SegmentType.NUMBER if isinstance(value, float):
             result = FloatVariable.model_validate(mapping)
         case SegmentType.NUMBER if not isinstance(value, float | int):
-            raise VariableError(f'invalid number value {value}')
+            raise VariableError(f"invalid number value {value}")
         case SegmentType.OBJECT if isinstance(value, dict):
             result = ObjectVariable.model_validate(mapping)
         case SegmentType.ARRAY_STRING if isinstance(value, list):
@@ -54,9 +54,9 @@ def build_variable_from_mapping(mapping: Mapping[str, Any], /) -> Variable:
         case SegmentType.ARRAY_OBJECT if isinstance(value, list):
             result = ArrayObjectVariable.model_validate(mapping)
         case _:
-            raise VariableError(f'not supported value type {value_type}')
+            raise VariableError(f"not supported value type {value_type}")
     if result.size > dify_config.MAX_VARIABLE_SIZE:
-        raise VariableError(f'variable size {result.size} exceeds limit {dify_config.MAX_VARIABLE_SIZE}')
+        raise VariableError(f"variable size {result.size} exceeds limit {dify_config.MAX_VARIABLE_SIZE}")
     return result
 
 
@@ -73,4 +73,4 @@ def build_segment(value: Any, /) -> Segment:
         return ObjectSegment(value=value)
     if isinstance(value, list):
         return ArrayAnySegment(value=value)
-    raise ValueError(f'not supported value {value}')
+    raise ValueError(f"not supported value {value}")

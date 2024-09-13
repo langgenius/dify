@@ -21,5 +21,6 @@ class NodeJsTemplateTransformer(TemplateTransformer):
             var output_json = JSON.stringify(output_obj)
             var result = `<<RESULT>>${{output_json}}<<RESULT>>`
             console.log(result)
-            """)
+            """
+        )
         return runner_script

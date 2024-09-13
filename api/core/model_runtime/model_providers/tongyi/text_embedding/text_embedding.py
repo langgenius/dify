@@ -46,7 +46,6 @@ class TongyiTextEmbeddingModel(_CommonTongyi, TextEmbeddingModel):
         used_tokens = 0
 
         for i, text in enumerate(texts):
-
             # Here token count is only an approximation based on the GPT2 tokenizer
             num_tokens = self._get_num_tokens_by_gpt2(text)
 
@@ -71,12 +70,8 @@ class TongyiTextEmbeddingModel(_CommonTongyi, TextEmbeddingModel):
             batched_embeddings += embeddings_batch
 
         # calc usage
-        usage = self._calc_response_usage(
-            model=model, credentials=credentials, tokens=used_tokens
-        )
-        return TextEmbeddingResult(
-            embeddings=batched_embeddings, usage=usage, model=model
-        )
+        usage = self._calc_response_usage(model=model, credentials=credentials, tokens=used_tokens)
+        return TextEmbeddingResult(embeddings=batched_embeddings, usage=usage, model=model)
 
     def get_num_tokens(self, model: str, credentials: dict, texts: list[str]) -> int:
         """
@@ -108,16 +103,12 @@ class TongyiTextEmbeddingModel(_CommonTongyi, TextEmbeddingModel):
             credentials_kwargs = self._to_credential_kwargs(credentials)
 
             # call embedding model
-            self.embed_documents(
-                credentials_kwargs=credentials_kwargs, model=model, texts=["ping"]
-            )
+            self.embed_documents(credentials_kwargs=credentials_kwargs, model=model, texts=["ping"])
         except Exception as ex:
             raise CredentialsValidateFailedError(str(ex))
 
     @staticmethod
-    def embed_documents(
-        credentials_kwargs: dict, model: str, texts: list[str]
-    ) -> tuple[list[list[float]], int]:
+    def embed_documents(credentials_kwargs: dict, model: str, texts: list[str]) -> tuple[list[list[float]], int]:
         """Call out to Tongyi's embedding endpoint.
 
         Args:
@@ -137,15 +128,23 @@ class TongyiTextEmbeddingModel(_CommonTongyi, TextEmbeddingModel):
                 input=text,
                 text_type="document",
             )
-            data = response.output["embeddings"][0]
-            embeddings.append(data["embedding"])
-            embedding_used_tokens += response.usage["total_tokens"]
+            if response.output and "embeddings" in response.output and response.output["embeddings"]:
+                data = response.output["embeddings"][0]
+                if "embedding" in data:
+                    embeddings.append(data["embedding"])
+                else:
+                    raise ValueError("Embedding data is missing in the response.")
+            else:
+                raise ValueError("Response output is missing or does not contain embeddings.")
+
+            if response.usage and "total_tokens" in response.usage:
+                embedding_used_tokens += response.usage["total_tokens"]
+            else:
+                raise ValueError("Response usage is missing or does not contain total tokens.")
 
         return [list(map(float, e)) for e in embeddings], embedding_used_tokens
 
-    def _calc_response_usage(
-        self, model: str, credentials: dict, tokens: int
-    ) -> EmbeddingUsage:
+    def _calc_response_usage(self, model: str, credentials: dict, tokens: int) -> EmbeddingUsage:
         """
         Calculate response usage
 

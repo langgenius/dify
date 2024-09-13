@@ -56,9 +56,7 @@ class FileService:
             if etl_type == "Unstructured"
             else ALLOWED_EXTENSIONS + IMAGE_EXTENSIONS
         )
-        if extension.lower() not in allowed_extensions:
-            raise UnsupportedFileTypeError()
-        elif only_image and extension.lower() not in IMAGE_EXTENSIONS:
+        if extension.lower() not in allowed_extensions or only_image and extension.lower() not in IMAGE_EXTENSIONS:
             raise UnsupportedFileTypeError()
 
         # read file content

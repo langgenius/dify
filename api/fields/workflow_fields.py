@@ -53,3 +53,11 @@ workflow_fields = {
     "environment_variables": fields.List(EnvironmentVariableField()),
     "conversation_variables": fields.List(fields.Nested(conversation_variable_fields)),
 }
+
+workflow_partial_fields = {
+    "id": fields.String,
+    "created_by": fields.String,
+    "created_at": TimestampField,
+    "updated_by": fields.String,
+    "updated_at": TimestampField,
+}

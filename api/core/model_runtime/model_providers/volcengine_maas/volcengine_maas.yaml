@@ -30,8 +30,28 @@ model_credential_schema:
       en_US: Enter your Model Name
       zh_Hans: 输入模型名称
   credential_form_schemas:
+    - variable: auth_method
+      required: true
+      label:
+        en_US: Authentication Method
+        zh_Hans: 鉴权方式
+      type: select
+      default: aksk
+      options:
+        - label:
+            en_US: API Key
+          value: api_key
+        - label:
+            en_US: Access Key / Secret Access Key
+          value: aksk
+      placeholder:
+        en_US: Enter your Authentication Method
+        zh_Hans: 选择鉴权方式
     - variable: volc_access_key_id
       required: true
+      show_on:
+        - variable: auth_method
+          value: aksk
       label:
         en_US: Access Key
         zh_Hans: Access Key
@@ -41,6 +61,9 @@ model_credential_schema:
         zh_Hans: 输入您的 Access Key
     - variable: volc_secret_access_key
       required: true
+      show_on:
+        - variable: auth_method
+          value: aksk
       label:
         en_US: Secret Access Key
         zh_Hans: Secret Access Key
@@ -48,6 +71,17 @@ model_credential_schema:
       placeholder:
         en_US: Enter your Secret Access Key
         zh_Hans: 输入您的 Secret Access Key
+    - variable: volc_api_key
+      required: true
+      show_on:
+        - variable: auth_method
+          value: api_key
+      label:
+        en_US: API Key
+      type: secret-input
+      placeholder:
+        en_US: Enter your API Key
+        zh_Hans: 输入您的 API Key
     - variable: volc_region
       required: true
       label:
@@ -64,7 +98,7 @@ model_credential_schema:
         en_US: API Endpoint Host
         zh_Hans: API Endpoint Host
       type: text-input
-      default: maas-api.ml-platform-cn-beijing.volces.com
+      default: https://ark.cn-beijing.volces.com/api/v3
       placeholder:
         en_US: Enter your API Endpoint Host
         zh_Hans: 输入 API Endpoint Host

@@ -48,6 +48,8 @@ const translation = {
           title: 'Workflow-Schritte',
           show: 'Anzeigen',
           hide: 'Verbergen',
+          subTitle: 'Details zum Arbeitsablauf',
+          showDesc: 'Ein- oder Ausblenden von Workflow-Details in der WebApp',
         },
         chatColorTheme: 'Chat-Farbschema',
         chatColorThemeDesc: 'Legen Sie das Farbschema des Chatbots fest',
@@ -63,6 +65,12 @@ const translation = {
           customDisclaimer: 'Benutzerdefinierte Haftungsausschluss',
           customDisclaimerPlaceholder: 'Geben Sie den benutzerdefinierten Haftungsausschluss-Text ein',
           customDisclaimerTip: 'Der ben userdefinierte Haftungsausschluss-Text wird auf der Clientseite angezeigt und bietet zusätzliche Informationen über die Anwendung',
+        },
+        sso: {
+          title: 'WebApp-SSO',
+          description: 'Alle Benutzer müssen sich mit SSO anmelden, bevor sie WebApp verwenden können',
+          label: 'SSO-Authentifizierung',
+          tooltip: 'Wenden Sie sich an den Administrator, um WebApp-SSO zu aktivieren',
         },
       },
       embedded: {
@@ -119,7 +127,11 @@ const translation = {
     tokenPS: 'Token/s',
     totalMessages: {
       title: 'Gesamtnachrichten',
-      explanation: 'Tägliche AI-Interaktionszählung; Prompt-Engineering/Debugging ausgenommen.',
+      explanation: 'Tägliche Anzahl der KI-Interaktionen.',
+    },
+    totalConversations: {
+      title: 'Gesamte Konversationen',
+      explanation: 'Tägliche Anzahl der KI-Konversationen; Prompt-Engineering/Debugging ausgeschlossen.',
     },
     activeUsers: {
       title: 'Aktive Benutzer',
@@ -145,6 +157,10 @@ const translation = {
     tps: {
       title: 'Token-Ausgabegeschwindigkeit',
       explanation: 'Misst die Leistung des LLM. Zählt die Token-Ausgabegeschwindigkeit des LLM vom Beginn der Anfrage bis zum Abschluss der Ausgabe.',
+    },
+    avgUserInteractions: {
+      explanation: 'Spiegelt die tägliche Nutzungshäufigkeit der Benutzer wider. Diese Metrik spiegelt die Bindung der Benutzer wider.',
+      title: 'Durchschnittliche Benutzerinteraktionen',
     },
   },
 }

@@ -36,7 +36,7 @@ const translation = {
   tosDesc: 'साइन अप करके, आप हमारी सहमति देते हैं',
   goToInit:
     'यदि आपने खाता प्रारंभ नहीं किया है, तो कृपया प्रारंभिक पृष्ठ पर जाएं',
-  donthave: 'नहीं है?',
+  dontHave: 'नहीं है?',
   invalidInvitationCode: 'अवैध निमंत्रण कोड',
   accountAlreadyInited: 'खाता पहले से प्रारंभ किया गया है',
   forgotPassword: 'क्या आपने अपना पासवर्ड भूल गए हैं?',

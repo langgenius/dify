@@ -71,7 +71,7 @@ const StatusPanel: FC<ResultProps> = ({
               <div className='w-16 h-2 rounded-sm bg-[rgba(0,0,0,0.05)]' />
             )}
             {status !== 'running' && (
-              <span>{`${time?.toFixed(3)}s`}</span>
+              <span>{time ? `${time?.toFixed(3)}s` : '-'}</span>
             )}
           </div>
         </div>

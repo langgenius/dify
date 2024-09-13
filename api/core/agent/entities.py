@@ -8,6 +8,7 @@ class AgentToolEntity(BaseModel):
     """
     Agent Tool Entity.
     """
+
     provider_type: Literal["builtin", "api", "workflow"]
     provider_id: str
     tool_name: str
@@ -18,6 +19,7 @@ class AgentPromptEntity(BaseModel):
     """
     Agent Prompt Entity.
     """
+
     first_prompt: str
     next_iteration: str
 
@@ -31,6 +33,7 @@ class AgentScratchpadUnit(BaseModel):
         """
         Action Entity.
         """
+
         action_name: str
         action_input: Union[dict, str]
 
@@ -39,8 +42,8 @@ class AgentScratchpadUnit(BaseModel):
             Convert to dictionary.
             """
             return {
-                'action': self.action_name,
-                'action_input': self.action_input,
+                "action": self.action_name,
+                "action_input": self.action_input,
             }
 
     agent_response: Optional[str] = None
@@ -54,9 +57,9 @@ class AgentScratchpadUnit(BaseModel):
         Check if the scratchpad unit is final.
         """
         return self.action is None or (
-            'final' in self.action.action_name.lower() and 
-            'answer' in self.action.action_name.lower()
+            "final" in self.action.action_name.lower() and "answer" in self.action.action_name.lower()
         )
+
 
 class AgentEntity(BaseModel):
     """
@@ -67,8 +70,9 @@ class AgentEntity(BaseModel):
         """
         Agent Strategy.
         """
-        CHAIN_OF_THOUGHT = 'chain-of-thought'
-        FUNCTION_CALLING = 'function-calling'
+
+        CHAIN_OF_THOUGHT = "chain-of-thought"
+        FUNCTION_CALLING = "function-calling"
 
     provider: str
     model: str

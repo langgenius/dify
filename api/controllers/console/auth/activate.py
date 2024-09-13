@@ -8,7 +8,7 @@ from constants.languages import supported_language
 from controllers.console import api
 from controllers.console.error import AlreadyActivateError
 from extensions.ext_database import db
-from libs.helper import email, str_len, timezone
+from libs.helper import StrLen, email, timezone
 from libs.password import hash_password, valid_password
 from models.account import AccountStatus
 from services.account_service import RegisterService
@@ -37,7 +37,7 @@ class ActivateApi(Resource):
         parser.add_argument("workspace_id", type=str, required=False, nullable=True, location="json")
         parser.add_argument("email", type=email, required=False, nullable=True, location="json")
         parser.add_argument("token", type=str, required=True, nullable=False, location="json")
-        parser.add_argument("name", type=str_len(30), required=True, nullable=False, location="json")
+        parser.add_argument("name", type=StrLen(30), required=True, nullable=False, location="json")
         parser.add_argument("password", type=valid_password, required=True, nullable=False, location="json")
         parser.add_argument(
             "interface_language", type=supported_language, required=True, nullable=False, location="json"

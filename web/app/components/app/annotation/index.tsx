@@ -232,8 +232,8 @@ const Annotation: FC<Props> = ({
             middlePagesSiblingCount={1}
             setCurrentPage={setCurrPage}
             totalPages={Math.ceil(total / APP_PAGE_LIMIT)}
-            truncableClassName="w-8 px-0.5 text-center"
-            truncableText="..."
+            truncatableClassName="w-8 px-0.5 text-center"
+            truncatableText="..."
           >
             <Pagination.PrevButton
               disabled={currPage === 0}
@@ -280,7 +280,7 @@ const Annotation: FC<Props> = ({
             onSave={async (embeddingModel, score) => {
               if (
                 embeddingModel.embedding_model_name !== annotationConfig?.embedding_model?.embedding_model_name
-                && embeddingModel.embedding_provider_name !== annotationConfig?.embedding_model?.embedding_provider_name
+                || embeddingModel.embedding_provider_name !== annotationConfig?.embedding_model?.embedding_provider_name
               ) {
                 const { job_id: jobId }: any = await updateAnnotationStatus(appDetail.id, AnnotationEnableStatus.enable, embeddingModel, score)
                 await ensureJobCompleted(jobId, AnnotationEnableStatus.enable)

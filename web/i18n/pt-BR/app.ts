@@ -122,7 +122,17 @@ const translation = {
       removeConfirmTitle: 'Remover configuração de {{key}}?',
       removeConfirmContent: 'A configuração atual está em uso, removê-la desligará o recurso de Rastreamento.',
     },
+    view: 'Vista',
   },
+  answerIcon: {
+    descriptionInExplore: 'Se o ícone do WebApp deve ser usado para substituir 🤖 no Explore',
+    description: 'Se o ícone WebApp deve ser usado para substituir 🤖 no aplicativo compartilhado',
+    title: 'Use o ícone do WebApp para substituir 🤖',
+  },
+  importFromDSLUrlPlaceholder: 'Cole o link DSL aqui',
+  importFromDSLUrl: 'Do URL',
+  importFromDSLFile: 'Do arquivo DSL',
+  importFromDSL: 'Importar de DSL',
 }
 
 export default translation

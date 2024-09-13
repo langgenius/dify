@@ -1,6 +1,6 @@
-from typing import Optional
+from typing import Annotated, Optional
 
-from pydantic import AliasChoices, Field, NegativeInt, NonNegativeInt, PositiveInt, computed_field
+from pydantic import AliasChoices, Field, HttpUrl, NegativeInt, NonNegativeInt, PositiveInt, computed_field
 from pydantic_settings import BaseSettings
 
 from configs.feature.hosted_service import HostedServiceConfig
@@ -45,14 +45,29 @@ class CodeExecutionSandboxConfig(BaseSettings):
     Code Execution Sandbox configs
     """
 
-    CODE_EXECUTION_ENDPOINT: str = Field(
-        description="endpoint URL of code execution servcie",
+    CODE_EXECUTION_ENDPOINT: HttpUrl = Field(
+        description="endpoint URL of code execution service",
         default="http://sandbox:8194",
     )
 
     CODE_EXECUTION_API_KEY: str = Field(
         description="API key for code execution service",
         default="dify-sandbox",
+    )
+
+    CODE_EXECUTION_CONNECT_TIMEOUT: Optional[float] = Field(
+        description="connect timeout in seconds for code execution request",
+        default=10.0,
+    )
+
+    CODE_EXECUTION_READ_TIMEOUT: Optional[float] = Field(
+        description="read timeout in seconds for code execution request",
+        default=60.0,
+    )
+
+    CODE_EXECUTION_WRITE_TIMEOUT: Optional[float] = Field(
+        description="write timeout in seconds for code execution request",
+        default=10.0,
     )
 
     CODE_MAX_NUMBER: PositiveInt = Field(
@@ -114,12 +129,12 @@ class EndpointConfig(BaseSettings):
     )
 
     SERVICE_API_URL: str = Field(
-        description="Service API Url prefix." "used to display Service API Base Url to the front-end.",
+        description="Service API Url prefix. used to display Service API Base Url to the front-end.",
         default="",
     )
 
     APP_WEB_URL: str = Field(
-        description="WebApp Url prefix." "used to display WebAPP API Base Url to the front-end.",
+        description="WebApp Url prefix. used to display WebAPP API Base Url to the front-end.",
         default="",
     )
 
@@ -202,20 +217,17 @@ class HttpConfig(BaseSettings):
     def WEB_API_CORS_ALLOW_ORIGINS(self) -> list[str]:
         return self.inner_WEB_API_CORS_ALLOW_ORIGINS.split(",")
 
-    HTTP_REQUEST_MAX_CONNECT_TIMEOUT: NonNegativeInt = Field(
-        description="",
-        default=300,
-    )
+    HTTP_REQUEST_MAX_CONNECT_TIMEOUT: Annotated[
+        PositiveInt, Field(ge=10, description="connect timeout in seconds for HTTP request")
+    ] = 10
 
-    HTTP_REQUEST_MAX_READ_TIMEOUT: NonNegativeInt = Field(
-        description="",
-        default=600,
-    )
+    HTTP_REQUEST_MAX_READ_TIMEOUT: Annotated[
+        PositiveInt, Field(ge=60, description="read timeout in seconds for HTTP request")
+    ] = 60
 
-    HTTP_REQUEST_MAX_WRITE_TIMEOUT: NonNegativeInt = Field(
-        description="",
-        default=600,
-    )
+    HTTP_REQUEST_MAX_WRITE_TIMEOUT: Annotated[
+        PositiveInt, Field(ge=10, description="read timeout in seconds for HTTP request")
+    ] = 20
 
     HTTP_REQUEST_NODE_MAX_BINARY_SIZE: PositiveInt = Field(
         description="",
@@ -260,7 +272,7 @@ class LoggingConfig(BaseSettings):
     """
 
     LOG_LEVEL: str = Field(
-        description="Log output level, default to INFO." "It is recommended to set it to ERROR for production.",
+        description="Log output level, default to INFO. It is recommended to set it to ERROR for production.",
         default="INFO",
     )
 
@@ -403,7 +415,7 @@ class MailConfig(BaseSettings):
     """
 
     MAIL_TYPE: Optional[str] = Field(
-        description="Mail provider type name, default to None, availabile values are `smtp` and `resend`.",
+        description="Mail provider type name, default to None, available values are `smtp` and `resend`.",
         default=None,
     )
 

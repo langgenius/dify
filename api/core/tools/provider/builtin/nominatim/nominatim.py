@@ -8,16 +8,20 @@ from core.tools.provider.builtin_tool_provider import BuiltinToolProviderControl
 class NominatimProvider(BuiltinToolProviderController):
     def _validate_credentials(self, credentials: dict[str, Any]) -> None:
         try:
-            result = NominatimSearchTool().fork_tool_runtime(
-                runtime={
-                    "credentials": credentials,
-                }
-            ).invoke(
-                user_id='',
-                tool_parameters={
-                    'query': 'London',
-                    'limit': 1,
-                },
+            result = (
+                NominatimSearchTool()
+                .fork_tool_runtime(
+                    runtime={
+                        "credentials": credentials,
+                    }
+                )
+                .invoke(
+                    user_id="",
+                    tool_parameters={
+                        "query": "London",
+                        "limit": 1,
+                    },
+                )
             )
         except Exception as e:
             raise ToolProviderCredentialValidationError(str(e))

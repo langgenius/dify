@@ -58,6 +58,9 @@ const translation = {
       ragAPIRequest: 'RAG API 요청',
       agentMode: '에이전트 모드',
       workflow: '워크플로우',
+      llmLoadingBalancing: 'LLM 로드 밸런싱',
+      bulkUpload: '문서 대량 업로드',
+      llmLoadingBalancingTooltip: '모델에 여러 API 키를 추가하여 API 속도 제한을 효과적으로 우회할 수 있습니다.',
     },
     comingSoon: '곧 출시 예정',
     member: '멤버',
@@ -72,6 +75,8 @@ const translation = {
     },
     ragAPIRequestTooltip: 'Dify의 지식베이스 처리 기능을 호출하는 API 호출 수를 나타냅니다.',
     receiptInfo: '팀 소유자 및 팀 관리자만 구독 및 청구 정보를 볼 수 있습니다',
+    annotationQuota: 'Annotation Quota(주석 할당량)',
+    documentsUploadQuota: '문서 업로드 할당량',
   },
   plans: {
     sandbox: {

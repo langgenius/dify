@@ -10,7 +10,7 @@ const translation = {
   pause: '暂停',
   playing: '播放中',
   loading: '加载中',
-  merMaind: {
+  merMaid: {
     rerender: '重新渲染',
   },
   never: '从未',
