@@ -39,7 +39,7 @@ class TwilioAPIWrapper(BaseModel):
         try:
             from twilio.rest import Client
         except ImportError:
-            raise ImportError("Could not import twilio python package. " "Please install it with `pip install twilio`.")
+            raise ImportError("Could not import twilio python package. Please install it with `pip install twilio`.")
         account_sid = values.get("account_sid")
         auth_token = values.get("auth_token")
         values["from_number"] = values.get("from_number")

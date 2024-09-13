@@ -84,7 +84,7 @@ class WorkflowLoggingCallback(WorkflowCallback):
         if route_node_state.node_run_result:
             node_run_result = route_node_state.node_run_result
             self.print_text(
-                f"Inputs: " f"{jsonable_encoder(node_run_result.inputs) if node_run_result.inputs else ''}",
+                f"Inputs: {jsonable_encoder(node_run_result.inputs) if node_run_result.inputs else ''}",
                 color="green",
             )
             self.print_text(
@@ -116,7 +116,7 @@ class WorkflowLoggingCallback(WorkflowCallback):
             node_run_result = route_node_state.node_run_result
             self.print_text(f"Error: {node_run_result.error}", color="red")
             self.print_text(
-                f"Inputs: " f"" f"{jsonable_encoder(node_run_result.inputs) if node_run_result.inputs else ''}",
+                f"Inputs: {jsonable_encoder(node_run_result.inputs) if node_run_result.inputs else ''}",
                 color="red",
             )
             self.print_text(
@@ -125,7 +125,7 @@ class WorkflowLoggingCallback(WorkflowCallback):
                 color="red",
             )
             self.print_text(
-                f"Outputs: " f"{jsonable_encoder(node_run_result.outputs) if node_run_result.outputs else ''}",
+                f"Outputs: {jsonable_encoder(node_run_result.outputs) if node_run_result.outputs else ''}",
                 color="red",
             )
 

@@ -245,7 +245,7 @@ class RelytVector(BaseVector):
         try:
             from sqlalchemy.engine import Row
         except ImportError:
-            raise ImportError("Could not import Row from sqlalchemy.engine. " "Please 'pip install sqlalchemy>=1.4'.")
+            raise ImportError("Could not import Row from sqlalchemy.engine. Please 'pip install sqlalchemy>=1.4'.")
 
         filter_condition = ""
         if filter is not None:

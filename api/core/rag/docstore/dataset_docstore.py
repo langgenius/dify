@@ -88,7 +88,7 @@ class DatasetDocumentStore:
             # NOTE: doc could already exist in the store, but we overwrite it
             if not allow_update and segment_document:
                 raise ValueError(
-                    f"doc_id {doc.metadata['doc_id']} already exists. " "Set allow_update to True to overwrite."
+                    f"doc_id {doc.metadata['doc_id']} already exists. Set allow_update to True to overwrite."
                 )
 
             # calc embedding use tokens
