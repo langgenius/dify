@@ -120,6 +120,15 @@ class ToolInvokeMessage(BaseModel):
                     raise ValueError("When 'stream' is True, 'variable_value' must be a string.")
 
             return value
+        
+        @field_validator("variable_name", mode="before")
+        def transform_variable_name(cls, value) -> str:
+            """
+            The variable name must be a string.
+            """
+            if value in ["json", "text", "files"]:
+                raise ValueError(f"The variable name '{value}' is reserved.")
+            return value
 
     class MessageType(Enum):
         TEXT = "text"
