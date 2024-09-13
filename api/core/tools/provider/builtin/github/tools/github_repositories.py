@@ -39,7 +39,7 @@ class GithubRepositoriesTool(BuiltinTool):
             response = s.request(
                 method="GET",
                 headers=headers,
-                url=f"{api_domain}/search/repositories?" f"q={quote(query)}&sort=stars&per_page={top_n}&order=desc",
+                url=f"{api_domain}/search/repositories?q={quote(query)}&sort=stars&per_page={top_n}&order=desc",
             )
             response_data = response.json()
             if response.status_code == 200 and isinstance(response_data.get("items"), list):
