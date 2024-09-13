@@ -54,13 +54,13 @@ class FirecrawlApp:
             raise HTTPError("Failed to scrape URL after multiple retries")
         return response
 
-    def search(self, query: str, **kwargs):
-        endpoint = f"{self.base_url}/v0/search"
-        data = {"query": query, **kwargs}
+    def map(self, url: str, **kwargs):
+        endpoint = f"{self.base_url}/v1/map"
+        data = {"url": url, **kwargs}
         logger.debug(f"Sent request to {endpoint=} body={data}")
         response = self._request("POST", endpoint, data)
         if response is None:
-            raise HTTPError("Failed to perform search after multiple retries")
+            raise HTTPError("Failed to perform map after multiple retries")
         return response
 
     def crawl_url(
