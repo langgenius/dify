@@ -1,8 +1,9 @@
 import json
 
-from sqlalchemy import Index, JSON, CHAR, TypeDecorator
-from sqlalchemy.dialects.postgresql import UUID, JSONB
-from sqlalchemy.dialects.mysql import JSON as MysqlJSON
+from sqlalchemy import CHAR, Index, TypeDecorator
+from sqlalchemy import JSON as SAJSON
+from sqlalchemy.dialects.mysql import JSON as MYSQLJSON
+from sqlalchemy.dialects.postgresql import JSONB, UUID
 
 
 class StringUUID(TypeDecorator):
@@ -35,7 +36,7 @@ class AdjustedJSON(TypeDecorator):
     It is treated as JSONB in PostgreSQL and JSON in MySQL.
     """
 
-    impl = JSON
+    impl = SAJSON
     cache_ok = True
 
     def process_bind_param(self, value, dialect):
@@ -47,7 +48,7 @@ class AdjustedJSON(TypeDecorator):
         if dialect.name == "postgresql":
             return dialect.type_descriptor(JSONB)
         elif dialect.name == "mysql":
-            return dialect.type_descriptor(MysqlJSON)
+            return dialect.type_descriptor(MYSQLJSON)
         else:
             raise NotImplementedError(f"Unsupported dialect: {dialect.name}")
 
@@ -59,10 +60,11 @@ class AdjustedJSON(TypeDecorator):
 
 class PostgresJSONIndex(Index):
     """
-    JSON index for PostgreSQL. 
+    JSON index for PostgreSQL.
     This should be ignored in MySQL, because MySQL does not support indexing JSON column directly.
     Reference: https://dev.mysql.com/doc/refman/8.0/en/create-table-secondary-indexes.html#json-column-indirect-index
-    
+
     It's required to modify the index creation statement for this index in the migration script.
     """
+
     pass

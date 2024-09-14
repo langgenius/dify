@@ -1,8 +1,8 @@
-"""init mysql
+"""init new
 
-Revision ID: 900cfe93eb71
+Revision ID: 675b5321501b
 Revises:
-Create Date: 2024-09-12 03:52:09.627138
+Create Date: 2024-09-14 03:52:50.610899
 
 """
 
@@ -12,7 +12,7 @@ from alembic import op
 import models
 
 # revision identifiers, used by Alembic.
-revision = "900cfe93eb71"
+revision = "675b5321501b"
 down_revision = None
 branch_labels = None
 depends_on = None
@@ -27,8 +27,18 @@ def upgrade():
         sa.Column("provider", sa.String(length=16), nullable=False),
         sa.Column("open_id", sa.String(length=255), nullable=False),
         sa.Column("encrypted_token", sa.String(length=255), nullable=False),
-        sa.Column("created_at", sa.DateTime(), server_default=sa.text("CURRENT_TIMESTAMP"), nullable=False),
-        sa.Column("updated_at", sa.DateTime(), server_default=sa.text("CURRENT_TIMESTAMP"), nullable=False),
+        sa.Column(
+            "created_at",
+            sa.DateTime(),
+            server_default=sa.text("CURRENT_TIMESTAMP"),
+            nullable=False,
+        ),
+        sa.Column(
+            "updated_at",
+            sa.DateTime(),
+            server_default=sa.text("CURRENT_TIMESTAMP"),
+            nullable=False,
+        ),
         sa.PrimaryKeyConstraint("id", name="account_integrate_pkey"),
         sa.UniqueConstraint("account_id", "provider", name="unique_account_provider"),
         sa.UniqueConstraint("provider", "open_id", name="unique_provider_open_id"),
@@ -46,11 +56,26 @@ def upgrade():
         sa.Column("timezone", sa.String(length=255), nullable=True),
         sa.Column("last_login_at", sa.DateTime(), nullable=True),
         sa.Column("last_login_ip", sa.String(length=255), nullable=True),
-        sa.Column("last_active_at", sa.DateTime(), server_default=sa.text("CURRENT_TIMESTAMP"), nullable=False),
+        sa.Column(
+            "last_active_at",
+            sa.DateTime(),
+            server_default=sa.text("CURRENT_TIMESTAMP"),
+            nullable=False,
+        ),
         sa.Column("status", sa.String(length=16), nullable=False),
         sa.Column("initialized_at", sa.DateTime(), nullable=True),
-        sa.Column("created_at", sa.DateTime(), server_default=sa.text("CURRENT_TIMESTAMP"), nullable=False),
-        sa.Column("updated_at", sa.DateTime(), server_default=sa.text("CURRENT_TIMESTAMP"), nullable=False),
+        sa.Column(
+            "created_at",
+            sa.DateTime(),
+            server_default=sa.text("CURRENT_TIMESTAMP"),
+            nullable=False,
+        ),
+        sa.Column(
+            "updated_at",
+            sa.DateTime(),
+            server_default=sa.text("CURRENT_TIMESTAMP"),
+            nullable=False,
+        ),
         sa.PrimaryKeyConstraint("id", name="account_pkey"),
     )
     with op.batch_alter_table("accounts", schema=None) as batch_op:
@@ -63,7 +88,12 @@ def upgrade():
         sa.Column("name", sa.String(length=255), nullable=False),
         sa.Column("api_endpoint", sa.String(length=255), nullable=False),
         sa.Column("api_key", sa.Text(), nullable=False),
-        sa.Column("created_at", sa.DateTime(), server_default=sa.text("CURRENT_TIMESTAMP"), nullable=False),
+        sa.Column(
+            "created_at",
+            sa.DateTime(),
+            server_default=sa.text("CURRENT_TIMESTAMP"),
+            nullable=False,
+        ),
         sa.PrimaryKeyConstraint("id", name="api_based_extension_pkey"),
     )
     with op.batch_alter_table("api_based_extensions", schema=None) as batch_op:
@@ -78,7 +108,12 @@ def upgrade():
         sa.Column("request", sa.Text(), nullable=True),
         sa.Column("response", sa.Text(), nullable=True),
         sa.Column("ip", sa.String(length=255), nullable=False),
-        sa.Column("created_at", sa.DateTime(), server_default=sa.text("CURRENT_TIMESTAMP"), nullable=False),
+        sa.Column(
+            "created_at",
+            sa.DateTime(),
+            server_default=sa.text("CURRENT_TIMESTAMP"),
+            nullable=False,
+        ),
         sa.PrimaryKeyConstraint("id", name="api_request_pkey"),
     )
     with op.batch_alter_table("api_requests", schema=None) as batch_op:
@@ -92,7 +127,12 @@ def upgrade():
         sa.Column("type", sa.String(length=16), nullable=False),
         sa.Column("token", sa.String(length=255), nullable=False),
         sa.Column("last_used_at", sa.DateTime(), nullable=True),
-        sa.Column("created_at", sa.DateTime(), server_default=sa.text("CURRENT_TIMESTAMP"), nullable=False),
+        sa.Column(
+            "created_at",
+            sa.DateTime(),
+            server_default=sa.text("CURRENT_TIMESTAMP"),
+            nullable=False,
+        ),
         sa.PrimaryKeyConstraint("id", name="api_token_pkey"),
     )
     with op.batch_alter_table("api_tokens", schema=None) as batch_op:
@@ -108,7 +148,12 @@ def upgrade():
         sa.Column("source", sa.Text(), nullable=False),
         sa.Column("question", sa.Text(), nullable=False),
         sa.Column("account_id", models.types.StringUUID(), nullable=False),
-        sa.Column("created_at", sa.DateTime(), server_default=sa.text("CURRENT_TIMESTAMP"), nullable=False),
+        sa.Column(
+            "created_at",
+            sa.DateTime(),
+            server_default=sa.text("CURRENT_TIMESTAMP"),
+            nullable=False,
+        ),
         sa.Column("score", sa.Float(), server_default=sa.text("0"), nullable=False),
         sa.Column("message_id", models.types.StringUUID(), nullable=False),
         sa.Column("annotation_question", sa.Text(), nullable=False),
@@ -117,7 +162,11 @@ def upgrade():
     )
     with op.batch_alter_table("app_annotation_hit_histories", schema=None) as batch_op:
         batch_op.create_index("app_annotation_hit_histories_account_idx", ["account_id"], unique=False)
-        batch_op.create_index("app_annotation_hit_histories_annotation_idx", ["annotation_id"], unique=False)
+        batch_op.create_index(
+            "app_annotation_hit_histories_annotation_idx",
+            ["annotation_id"],
+            unique=False,
+        )
         batch_op.create_index("app_annotation_hit_histories_app_idx", ["app_id"], unique=False)
         batch_op.create_index("app_annotation_hit_histories_message_idx", ["message_id"], unique=False)
 
@@ -128,9 +177,19 @@ def upgrade():
         sa.Column("score_threshold", sa.Float(), server_default=sa.text("0"), nullable=False),
         sa.Column("collection_binding_id", models.types.StringUUID(), nullable=False),
         sa.Column("created_user_id", models.types.StringUUID(), nullable=False),
-        sa.Column("created_at", sa.DateTime(), server_default=sa.text("CURRENT_TIMESTAMP"), nullable=False),
+        sa.Column(
+            "created_at",
+            sa.DateTime(),
+            server_default=sa.text("CURRENT_TIMESTAMP"),
+            nullable=False,
+        ),
         sa.Column("updated_user_id", models.types.StringUUID(), nullable=False),
-        sa.Column("updated_at", sa.DateTime(), server_default=sa.text("CURRENT_TIMESTAMP"), nullable=False),
+        sa.Column(
+            "updated_at",
+            sa.DateTime(),
+            server_default=sa.text("CURRENT_TIMESTAMP"),
+            nullable=False,
+        ),
         sa.PrimaryKeyConstraint("id", name="app_annotation_settings_pkey"),
     )
     with op.batch_alter_table("app_annotation_settings", schema=None) as batch_op:
@@ -141,7 +200,12 @@ def upgrade():
         sa.Column("id", models.types.StringUUID(), nullable=False),
         sa.Column("app_id", models.types.StringUUID(), nullable=False),
         sa.Column("dataset_id", models.types.StringUUID(), nullable=False),
-        sa.Column("created_at", sa.DateTime(), server_default=sa.text("CURRENT_TIMESTAMP"), nullable=False),
+        sa.Column(
+            "created_at",
+            sa.DateTime(),
+            server_default=sa.text("CURRENT_TIMESTAMP"),
+            nullable=False,
+        ),
         sa.PrimaryKeyConstraint("id", name="app_dataset_join_pkey"),
     )
     with op.batch_alter_table("app_dataset_joins", schema=None) as batch_op:
@@ -155,9 +219,19 @@ def upgrade():
         sa.Column("model_id", sa.String(length=255), nullable=True),
         sa.Column("configs", sa.JSON(), nullable=True),
         sa.Column("created_by", models.types.StringUUID(), nullable=True),
-        sa.Column("created_at", sa.DateTime(), server_default=sa.text("CURRENT_TIMESTAMP"), nullable=False),
+        sa.Column(
+            "created_at",
+            sa.DateTime(),
+            server_default=sa.text("CURRENT_TIMESTAMP"),
+            nullable=False,
+        ),
         sa.Column("updated_by", models.types.StringUUID(), nullable=True),
-        sa.Column("updated_at", sa.DateTime(), server_default=sa.text("CURRENT_TIMESTAMP"), nullable=False),
+        sa.Column(
+            "updated_at",
+            sa.DateTime(),
+            server_default=sa.text("CURRENT_TIMESTAMP"),
+            nullable=False,
+        ),
         sa.Column("opening_statement", sa.Text(), nullable=True),
         sa.Column("suggested_questions", sa.Text(), nullable=True),
         sa.Column("suggested_questions_after_answer", sa.Text(), nullable=True),
@@ -205,9 +279,19 @@ def upgrade():
         sa.Column("tracing", sa.Text(), nullable=True),
         sa.Column("max_active_requests", sa.Integer(), nullable=True),
         sa.Column("created_by", models.types.StringUUID(), nullable=True),
-        sa.Column("created_at", sa.DateTime(), server_default=sa.text("CURRENT_TIMESTAMP"), nullable=False),
+        sa.Column(
+            "created_at",
+            sa.DateTime(),
+            server_default=sa.text("CURRENT_TIMESTAMP"),
+            nullable=False,
+        ),
         sa.Column("updated_by", models.types.StringUUID(), nullable=True),
-        sa.Column("updated_at", sa.DateTime(), server_default=sa.text("CURRENT_TIMESTAMP"), nullable=False),
+        sa.Column(
+            "updated_at",
+            sa.DateTime(),
+            server_default=sa.text("CURRENT_TIMESTAMP"),
+            nullable=False,
+        ),
         sa.Column("use_icon_as_answer_icon", sa.Boolean(), nullable=False),
         sa.PrimaryKeyConstraint("id", name="app_pkey"),
     )
@@ -254,7 +338,12 @@ def upgrade():
         sa.Column("inputs", sa.JSON(), nullable=True),
         sa.Column("introduction", sa.Text(), nullable=True),
         sa.Column("system_instruction", sa.Text(), nullable=True),
-        sa.Column("system_instruction_tokens", sa.Integer(), server_default=sa.text("0"), nullable=False),
+        sa.Column(
+            "system_instruction_tokens",
+            sa.Integer(),
+            server_default=sa.text("0"),
+            nullable=False,
+        ),
         sa.Column("status", sa.String(length=255), nullable=False),
         sa.Column("invoke_from", sa.String(length=255), nullable=True),
         sa.Column("from_source", sa.String(length=255), nullable=False),
@@ -263,14 +352,26 @@ def upgrade():
         sa.Column("read_at", sa.DateTime(), nullable=True),
         sa.Column("read_account_id", models.types.StringUUID(), nullable=True),
         sa.Column("dialogue_count", sa.Integer(), nullable=False),
-        sa.Column("created_at", sa.DateTime(), server_default=sa.text("CURRENT_TIMESTAMP"), nullable=False),
-        sa.Column("updated_at", sa.DateTime(), server_default=sa.text("CURRENT_TIMESTAMP"), nullable=False),
+        sa.Column(
+            "created_at",
+            sa.DateTime(),
+            server_default=sa.text("CURRENT_TIMESTAMP"),
+            nullable=False,
+        ),
+        sa.Column(
+            "updated_at",
+            sa.DateTime(),
+            server_default=sa.text("CURRENT_TIMESTAMP"),
+            nullable=False,
+        ),
         sa.Column("is_deleted", sa.Boolean(), nullable=False),
         sa.PrimaryKeyConstraint("id", name="conversation_pkey"),
     )
     with op.batch_alter_table("conversations", schema=None) as batch_op:
         batch_op.create_index(
-            "conversation_app_from_user_idx", ["app_id", "from_source", "from_end_user_id"], unique=False
+            "conversation_app_from_user_idx",
+            ["app_id", "from_source", "from_end_user_id"],
+            unique=False,
         )
 
     op.create_table(
@@ -280,14 +381,28 @@ def upgrade():
         sa.Column("category", sa.String(length=255), nullable=False),
         sa.Column("provider", sa.String(length=255), nullable=False),
         sa.Column("credentials", sa.Text(), nullable=True),
-        sa.Column("created_at", sa.DateTime(), server_default=sa.text("CURRENT_TIMESTAMP"), nullable=False),
-        sa.Column("updated_at", sa.DateTime(), server_default=sa.text("CURRENT_TIMESTAMP"), nullable=False),
+        sa.Column(
+            "created_at",
+            sa.DateTime(),
+            server_default=sa.text("CURRENT_TIMESTAMP"),
+            nullable=False,
+        ),
+        sa.Column(
+            "updated_at",
+            sa.DateTime(),
+            server_default=sa.text("CURRENT_TIMESTAMP"),
+            nullable=False,
+        ),
         sa.Column("disabled", sa.Boolean(), nullable=True),
         sa.PrimaryKeyConstraint("id", name="data_source_api_key_auth_binding_pkey"),
     )
     with op.batch_alter_table("data_source_api_key_auth_bindings", schema=None) as batch_op:
         batch_op.create_index("data_source_api_key_auth_binding_provider_idx", ["provider"], unique=False)
-        batch_op.create_index("data_source_api_key_auth_binding_tenant_id_idx", ["tenant_id"], unique=False)
+        batch_op.create_index(
+            "data_source_api_key_auth_binding_tenant_id_idx",
+            ["tenant_id"],
+            unique=False,
+        )
 
     op.create_table(
         "data_source_oauth_bindings",
@@ -295,14 +410,26 @@ def upgrade():
         sa.Column("tenant_id", models.types.StringUUID(), nullable=False),
         sa.Column("access_token", sa.String(length=255), nullable=False),
         sa.Column("provider", sa.String(length=255), nullable=False),
-        sa.Column("source_info", sa.JSON(), nullable=False),
-        sa.Column("created_at", sa.DateTime(), server_default=sa.text("CURRENT_TIMESTAMP"), nullable=False),
-        sa.Column("updated_at", sa.DateTime(), server_default=sa.text("CURRENT_TIMESTAMP"), nullable=False),
+        sa.Column("source_info", models.types.AdjustedJSON(), nullable=False),
+        sa.Column(
+            "created_at",
+            sa.DateTime(),
+            server_default=sa.text("CURRENT_TIMESTAMP"),
+            nullable=False,
+        ),
+        sa.Column(
+            "updated_at",
+            sa.DateTime(),
+            server_default=sa.text("CURRENT_TIMESTAMP"),
+            nullable=False,
+        ),
         sa.Column("disabled", sa.Boolean(), nullable=True),
         sa.PrimaryKeyConstraint("id", name="source_binding_pkey"),
     )
     with op.batch_alter_table("data_source_oauth_bindings", schema=None) as batch_op:
         batch_op.create_index("source_binding_tenant_id_idx", ["tenant_id"], unique=False)
+        if batch_op.get_bind().dialect.name == "postgresql":
+            batch_op.create_index("source_info_idx", ["source_info"], unique=False, postgresql_using="gin")
 
     op.create_table(
         "dataset_collection_bindings",
@@ -311,7 +438,12 @@ def upgrade():
         sa.Column("model_name", sa.String(length=255), nullable=False),
         sa.Column("type", sa.String(length=40), nullable=False),
         sa.Column("collection_name", sa.String(length=64), nullable=False),
-        sa.Column("created_at", sa.DateTime(), server_default=sa.text("CURRENT_TIMESTAMP"), nullable=False),
+        sa.Column(
+            "created_at",
+            sa.DateTime(),
+            server_default=sa.text("CURRENT_TIMESTAMP"),
+            nullable=False,
+        ),
         sa.PrimaryKeyConstraint("id", name="dataset_collection_bindings_pkey"),
     )
     with op.batch_alter_table("dataset_collection_bindings", schema=None) as batch_op:
@@ -336,7 +468,12 @@ def upgrade():
         sa.Column("account_id", models.types.StringUUID(), nullable=False),
         sa.Column("tenant_id", models.types.StringUUID(), nullable=False),
         sa.Column("has_permission", sa.Boolean(), nullable=False),
-        sa.Column("created_at", sa.DateTime(), server_default=sa.text("CURRENT_TIMESTAMP"), nullable=False),
+        sa.Column(
+            "created_at",
+            sa.DateTime(),
+            server_default=sa.text("CURRENT_TIMESTAMP"),
+            nullable=False,
+        ),
         sa.PrimaryKeyConstraint("id", name="dataset_permission_pkey"),
     )
     with op.batch_alter_table("dataset_permissions", schema=None) as batch_op:
@@ -351,7 +488,12 @@ def upgrade():
         sa.Column("mode", sa.String(length=255), nullable=False),
         sa.Column("rules", sa.Text(), nullable=True),
         sa.Column("created_by", models.types.StringUUID(), nullable=False),
-        sa.Column("created_at", sa.DateTime(), server_default=sa.text("CURRENT_TIMESTAMP"), nullable=False),
+        sa.Column(
+            "created_at",
+            sa.DateTime(),
+            server_default=sa.text("CURRENT_TIMESTAMP"),
+            nullable=False,
+        ),
         sa.PrimaryKeyConstraint("id", name="dataset_process_rule_pkey"),
     )
     with op.batch_alter_table("dataset_process_rules", schema=None) as batch_op:
@@ -366,7 +508,12 @@ def upgrade():
         sa.Column("source_app_id", models.types.StringUUID(), nullable=True),
         sa.Column("created_by_role", sa.String(length=255), nullable=False),
         sa.Column("created_by", models.types.StringUUID(), nullable=False),
-        sa.Column("created_at", sa.DateTime(), server_default=sa.text("CURRENT_TIMESTAMP"), nullable=False),
+        sa.Column(
+            "created_at",
+            sa.DateTime(),
+            server_default=sa.text("CURRENT_TIMESTAMP"),
+            nullable=False,
+        ),
         sa.PrimaryKeyConstraint("id", name="dataset_query_pkey"),
     )
     with op.batch_alter_table("dataset_queries", schema=None) as batch_op:
@@ -391,7 +538,12 @@ def upgrade():
         sa.Column("index_node_hash", sa.Text(), nullable=True),
         sa.Column("retriever_from", sa.Text(), nullable=False),
         sa.Column("created_by", models.types.StringUUID(), nullable=False),
-        sa.Column("created_at", sa.DateTime(), server_default=sa.text("CURRENT_TIMESTAMP"), nullable=False),
+        sa.Column(
+            "created_at",
+            sa.DateTime(),
+            server_default=sa.text("CURRENT_TIMESTAMP"),
+            nullable=False,
+        ),
         sa.PrimaryKeyConstraint("id", name="dataset_retriever_resource_pkey"),
     )
     with op.batch_alter_table("dataset_retriever_resources", schema=None) as batch_op:
@@ -409,22 +561,44 @@ def upgrade():
         sa.Column("indexing_technique", sa.String(length=255), nullable=True),
         sa.Column("index_struct", sa.Text(), nullable=True),
         sa.Column("created_by", models.types.StringUUID(), nullable=False),
-        sa.Column("created_at", sa.DateTime(), server_default=sa.text("CURRENT_TIMESTAMP"), nullable=False),
+        sa.Column(
+            "created_at",
+            sa.DateTime(),
+            server_default=sa.text("CURRENT_TIMESTAMP"),
+            nullable=False,
+        ),
         sa.Column("updated_by", models.types.StringUUID(), nullable=True),
-        sa.Column("updated_at", sa.DateTime(), server_default=sa.text("CURRENT_TIMESTAMP"), nullable=False),
+        sa.Column(
+            "updated_at",
+            sa.DateTime(),
+            server_default=sa.text("CURRENT_TIMESTAMP"),
+            nullable=False,
+        ),
         sa.Column("embedding_model", sa.String(length=255), nullable=True),
         sa.Column("embedding_model_provider", sa.String(length=255), nullable=True),
         sa.Column("collection_binding_id", models.types.StringUUID(), nullable=True),
-        sa.Column("retrieval_model", sa.JSON(), nullable=True),
+        sa.Column("retrieval_model", models.types.AdjustedJSON(), nullable=True),
         sa.PrimaryKeyConstraint("id", name="dataset_pkey"),
     )
     with op.batch_alter_table("datasets", schema=None) as batch_op:
         batch_op.create_index("dataset_tenant_idx", ["tenant_id"], unique=False)
+        if batch_op.get_bind().dialect.name == "postgresql":
+            batch_op.create_index(
+                "retrieval_model_idx",
+                ["retrieval_model"],
+                unique=False,
+                postgresql_using="gin",
+            )
 
     op.create_table(
         "dify_setups",
         sa.Column("version", sa.String(length=255), nullable=False),
-        sa.Column("setup_at", sa.DateTime(), server_default=sa.text("CURRENT_TIMESTAMP"), nullable=False),
+        sa.Column(
+            "setup_at",
+            sa.DateTime(),
+            server_default=sa.text("CURRENT_TIMESTAMP"),
+            nullable=False,
+        ),
         sa.PrimaryKeyConstraint("version", name="dify_setup_pkey"),
     )
     op.create_table(
@@ -447,9 +621,19 @@ def upgrade():
         sa.Column("disabled_by", models.types.StringUUID(), nullable=True),
         sa.Column("status", sa.String(length=255), nullable=False),
         sa.Column("created_by", models.types.StringUUID(), nullable=False),
-        sa.Column("created_at", sa.DateTime(), server_default=sa.text("CURRENT_TIMESTAMP"), nullable=False),
+        sa.Column(
+            "created_at",
+            sa.DateTime(),
+            server_default=sa.text("CURRENT_TIMESTAMP"),
+            nullable=False,
+        ),
         sa.Column("updated_by", models.types.StringUUID(), nullable=True),
-        sa.Column("updated_at", sa.DateTime(), server_default=sa.text("CURRENT_TIMESTAMP"), nullable=False),
+        sa.Column(
+            "updated_at",
+            sa.DateTime(),
+            server_default=sa.text("CURRENT_TIMESTAMP"),
+            nullable=False,
+        ),
         sa.Column("indexing_at", sa.DateTime(), nullable=True),
         sa.Column("completed_at", sa.DateTime(), nullable=True),
         sa.Column("error", sa.Text(), nullable=True),
@@ -458,10 +642,22 @@ def upgrade():
     )
     with op.batch_alter_table("document_segments", schema=None) as batch_op:
         batch_op.create_index("document_segment_dataset_id_idx", ["dataset_id"], unique=False)
-        batch_op.create_index("document_segment_dataset_node_idx", ["dataset_id", "index_node_id"], unique=False)
+        batch_op.create_index(
+            "document_segment_dataset_node_idx",
+            ["dataset_id", "index_node_id"],
+            unique=False,
+        )
         batch_op.create_index("document_segment_document_id_idx", ["document_id"], unique=False)
-        batch_op.create_index("document_segment_tenant_dataset_idx", ["dataset_id", "tenant_id"], unique=False)
-        batch_op.create_index("document_segment_tenant_document_idx", ["document_id", "tenant_id"], unique=False)
+        batch_op.create_index(
+            "document_segment_tenant_dataset_idx",
+            ["dataset_id", "tenant_id"],
+            unique=False,
+        )
+        batch_op.create_index(
+            "document_segment_tenant_document_idx",
+            ["document_id", "tenant_id"],
+            unique=False,
+        )
         batch_op.create_index("document_segment_tenant_idx", ["tenant_id"], unique=False)
 
     op.create_table(
@@ -478,7 +674,12 @@ def upgrade():
         sa.Column("created_from", sa.String(length=255), nullable=False),
         sa.Column("created_by", models.types.StringUUID(), nullable=False),
         sa.Column("created_api_request_id", models.types.StringUUID(), nullable=True),
-        sa.Column("created_at", sa.DateTime(), server_default=sa.text("CURRENT_TIMESTAMP"), nullable=False),
+        sa.Column(
+            "created_at",
+            sa.DateTime(),
+            server_default=sa.text("CURRENT_TIMESTAMP"),
+            nullable=False,
+        ),
         sa.Column("processing_started_at", sa.DateTime(), nullable=True),
         sa.Column("file_id", sa.Text(), nullable=True),
         sa.Column("word_count", sa.Integer(), nullable=True),
@@ -501,7 +702,12 @@ def upgrade():
         sa.Column("archived_reason", sa.String(length=255), nullable=True),
         sa.Column("archived_by", models.types.StringUUID(), nullable=True),
         sa.Column("archived_at", sa.DateTime(), nullable=True),
-        sa.Column("updated_at", sa.DateTime(), server_default=sa.text("CURRENT_TIMESTAMP"), nullable=False),
+        sa.Column(
+            "updated_at",
+            sa.DateTime(),
+            server_default=sa.text("CURRENT_TIMESTAMP"),
+            nullable=False,
+        ),
         sa.Column("doc_type", sa.String(length=40), nullable=True),
         sa.Column("doc_metadata", sa.JSON(), nullable=True),
         sa.Column("doc_form", sa.String(length=255), nullable=False),
@@ -519,7 +725,12 @@ def upgrade():
         sa.Column("model_name", sa.String(length=255), nullable=False),
         sa.Column("hash", sa.String(length=64), nullable=False),
         sa.Column("embedding", sa.LargeBinary(), nullable=False),
-        sa.Column("created_at", sa.DateTime(), server_default=sa.text("CURRENT_TIMESTAMP"), nullable=False),
+        sa.Column(
+            "created_at",
+            sa.DateTime(),
+            server_default=sa.text("CURRENT_TIMESTAMP"),
+            nullable=False,
+        ),
         sa.Column("provider_name", sa.String(length=255), nullable=False),
         sa.PrimaryKeyConstraint("id", name="embedding_pkey"),
         sa.UniqueConstraint("model_name", "hash", "provider_name", name="embedding_hash_idx"),
@@ -537,13 +748,27 @@ def upgrade():
         sa.Column("name", sa.String(length=255), nullable=True),
         sa.Column("is_anonymous", sa.Boolean(), nullable=False),
         sa.Column("session_id", sa.String(length=255), nullable=False),
-        sa.Column("created_at", sa.DateTime(), server_default=sa.text("CURRENT_TIMESTAMP"), nullable=False),
-        sa.Column("updated_at", sa.DateTime(), server_default=sa.text("CURRENT_TIMESTAMP"), nullable=False),
+        sa.Column(
+            "created_at",
+            sa.DateTime(),
+            server_default=sa.text("CURRENT_TIMESTAMP"),
+            nullable=False,
+        ),
+        sa.Column(
+            "updated_at",
+            sa.DateTime(),
+            server_default=sa.text("CURRENT_TIMESTAMP"),
+            nullable=False,
+        ),
         sa.PrimaryKeyConstraint("id", name="end_user_pkey"),
     )
     with op.batch_alter_table("end_users", schema=None) as batch_op:
         batch_op.create_index("end_user_session_id_idx", ["session_id", "type"], unique=False)
-        batch_op.create_index("end_user_tenant_session_id_idx", ["tenant_id", "session_id", "type"], unique=False)
+        batch_op.create_index(
+            "end_user_tenant_session_id_idx",
+            ["tenant_id", "session_id", "type"],
+            unique=False,
+        )
 
     op.create_table(
         "installed_apps",
@@ -554,7 +779,12 @@ def upgrade():
         sa.Column("position", sa.Integer(), nullable=False),
         sa.Column("is_pinned", sa.Boolean(), nullable=False),
         sa.Column("last_used_at", sa.DateTime(), nullable=True),
-        sa.Column("created_at", sa.DateTime(), server_default=sa.text("CURRENT_TIMESTAMP"), nullable=False),
+        sa.Column(
+            "created_at",
+            sa.DateTime(),
+            server_default=sa.text("CURRENT_TIMESTAMP"),
+            nullable=False,
+        ),
         sa.PrimaryKeyConstraint("id", name="installed_app_pkey"),
         sa.UniqueConstraint("tenant_id", "app_id", name="unique_tenant_app"),
     )
@@ -572,7 +802,12 @@ def upgrade():
         sa.Column("used_by_tenant_id", models.types.StringUUID(), nullable=True),
         sa.Column("used_by_account_id", models.types.StringUUID(), nullable=True),
         sa.Column("deprecated_at", sa.DateTime(), nullable=True),
-        sa.Column("created_at", sa.DateTime(), server_default=sa.text("CURRENT_TIMESTAMP"), nullable=False),
+        sa.Column(
+            "created_at",
+            sa.DateTime(),
+            server_default=sa.text("CURRENT_TIMESTAMP"),
+            nullable=False,
+        ),
         sa.PrimaryKeyConstraint("id", name="invitation_code_pkey"),
     )
     with op.batch_alter_table("invitation_codes", schema=None) as batch_op:
@@ -589,8 +824,18 @@ def upgrade():
         sa.Column("name", sa.String(length=255), nullable=False),
         sa.Column("encrypted_config", sa.Text(), nullable=True),
         sa.Column("enabled", sa.Boolean(), nullable=False),
-        sa.Column("created_at", sa.DateTime(), server_default=sa.text("CURRENT_TIMESTAMP"), nullable=False),
-        sa.Column("updated_at", sa.DateTime(), server_default=sa.text("CURRENT_TIMESTAMP"), nullable=False),
+        sa.Column(
+            "created_at",
+            sa.DateTime(),
+            server_default=sa.text("CURRENT_TIMESTAMP"),
+            nullable=False,
+        ),
+        sa.Column(
+            "updated_at",
+            sa.DateTime(),
+            server_default=sa.text("CURRENT_TIMESTAMP"),
+            nullable=False,
+        ),
         sa.PrimaryKeyConstraint("id", name="load_balancing_model_config_pkey"),
     )
     with op.batch_alter_table("load_balancing_model_configs", schema=None) as batch_op:
@@ -617,14 +862,20 @@ def upgrade():
         sa.Column("message_token", sa.Integer(), nullable=True),
         sa.Column("message_unit_price", sa.Numeric(), nullable=True),
         sa.Column(
-            "message_price_unit", sa.Numeric(precision=10, scale=7), server_default=sa.text("0.001"), nullable=False
+            "message_price_unit",
+            sa.Numeric(precision=10, scale=7),
+            server_default=sa.text("0.001"),
+            nullable=False,
         ),
         sa.Column("message_files", sa.Text(), nullable=True),
         sa.Column("answer", sa.Text(), nullable=True),
         sa.Column("answer_token", sa.Integer(), nullable=True),
         sa.Column("answer_unit_price", sa.Numeric(), nullable=True),
         sa.Column(
-            "answer_price_unit", sa.Numeric(precision=10, scale=7), server_default=sa.text("0.001"), nullable=False
+            "answer_price_unit",
+            sa.Numeric(precision=10, scale=7),
+            server_default=sa.text("0.001"),
+            nullable=False,
         ),
         sa.Column("tokens", sa.Integer(), nullable=True),
         sa.Column("total_price", sa.Numeric(), nullable=True),
@@ -632,11 +883,20 @@ def upgrade():
         sa.Column("latency", sa.Float(), nullable=True),
         sa.Column("created_by_role", sa.String(length=255), nullable=False),
         sa.Column("created_by", models.types.StringUUID(), nullable=False),
-        sa.Column("created_at", sa.DateTime(), server_default=sa.text("CURRENT_TIMESTAMP"), nullable=False),
+        sa.Column(
+            "created_at",
+            sa.DateTime(),
+            server_default=sa.text("CURRENT_TIMESTAMP"),
+            nullable=False,
+        ),
         sa.PrimaryKeyConstraint("id", name="message_agent_thought_pkey"),
     )
     with op.batch_alter_table("message_agent_thoughts", schema=None) as batch_op:
-        batch_op.create_index("message_agent_thought_message_chain_id_idx", ["message_chain_id"], unique=False)
+        batch_op.create_index(
+            "message_agent_thought_message_chain_id_idx",
+            ["message_chain_id"],
+            unique=False,
+        )
         batch_op.create_index("message_agent_thought_message_id_idx", ["message_id"], unique=False)
 
     op.create_table(
@@ -646,7 +906,12 @@ def upgrade():
         sa.Column("type", sa.String(length=255), nullable=False),
         sa.Column("input", sa.Text(), nullable=True),
         sa.Column("output", sa.Text(), nullable=True),
-        sa.Column("created_at", sa.DateTime(), server_default=sa.text("CURRENT_TIMESTAMP"), nullable=False),
+        sa.Column(
+            "created_at",
+            sa.DateTime(),
+            server_default=sa.text("CURRENT_TIMESTAMP"),
+            nullable=False,
+        ),
         sa.PrimaryKeyConstraint("id", name="message_chain_pkey"),
     )
     with op.batch_alter_table("message_chains", schema=None) as batch_op:
@@ -663,14 +928,26 @@ def upgrade():
         sa.Column("from_source", sa.String(length=255), nullable=False),
         sa.Column("from_end_user_id", models.types.StringUUID(), nullable=True),
         sa.Column("from_account_id", models.types.StringUUID(), nullable=True),
-        sa.Column("created_at", sa.DateTime(), server_default=sa.text("CURRENT_TIMESTAMP"), nullable=False),
-        sa.Column("updated_at", sa.DateTime(), server_default=sa.text("CURRENT_TIMESTAMP"), nullable=False),
+        sa.Column(
+            "created_at",
+            sa.DateTime(),
+            server_default=sa.text("CURRENT_TIMESTAMP"),
+            nullable=False,
+        ),
+        sa.Column(
+            "updated_at",
+            sa.DateTime(),
+            server_default=sa.text("CURRENT_TIMESTAMP"),
+            nullable=False,
+        ),
         sa.PrimaryKeyConstraint("id", name="message_feedback_pkey"),
     )
     with op.batch_alter_table("message_feedbacks", schema=None) as batch_op:
         batch_op.create_index("message_feedback_app_idx", ["app_id"], unique=False)
         batch_op.create_index(
-            "message_feedback_conversation_idx", ["conversation_id", "from_source", "rating"], unique=False
+            "message_feedback_conversation_idx",
+            ["conversation_id", "from_source", "rating"],
+            unique=False,
         )
         batch_op.create_index("message_feedback_message_idx", ["message_id", "from_source"], unique=False)
 
@@ -685,7 +962,12 @@ def upgrade():
         sa.Column("upload_file_id", models.types.StringUUID(), nullable=True),
         sa.Column("created_by_role", sa.String(length=255), nullable=False),
         sa.Column("created_by", models.types.StringUUID(), nullable=False),
-        sa.Column("created_at", sa.DateTime(), server_default=sa.text("CURRENT_TIMESTAMP"), nullable=False),
+        sa.Column(
+            "created_at",
+            sa.DateTime(),
+            server_default=sa.text("CURRENT_TIMESTAMP"),
+            nullable=False,
+        ),
         sa.PrimaryKeyConstraint("id", name="message_file_pkey"),
     )
     with op.batch_alter_table("message_files", schema=None) as batch_op:
@@ -699,13 +981,27 @@ def upgrade():
         sa.Column("account_id", models.types.StringUUID(), nullable=False),
         sa.Column("action", sa.String(length=255), nullable=False),
         sa.Column("content", sa.JSON(), nullable=True),
-        sa.Column("created_at", sa.DateTime(), server_default=sa.text("CURRENT_TIMESTAMP"), nullable=False),
+        sa.Column(
+            "created_at",
+            sa.DateTime(),
+            server_default=sa.text("CURRENT_TIMESTAMP"),
+            nullable=False,
+        ),
         sa.Column("created_ip", sa.String(length=255), nullable=False),
-        sa.Column("updated_at", sa.DateTime(), server_default=sa.text("CURRENT_TIMESTAMP"), nullable=False),
+        sa.Column(
+            "updated_at",
+            sa.DateTime(),
+            server_default=sa.text("CURRENT_TIMESTAMP"),
+            nullable=False,
+        ),
         sa.PrimaryKeyConstraint("id", name="operation_log_pkey"),
     )
     with op.batch_alter_table("operation_logs", schema=None) as batch_op:
-        batch_op.create_index("operation_log_account_action_idx", ["tenant_id", "account_id", "action"], unique=False)
+        batch_op.create_index(
+            "operation_log_account_action_idx",
+            ["tenant_id", "account_id", "action"],
+            unique=False,
+        )
 
     op.create_table(
         "pinned_conversations",
@@ -714,7 +1010,12 @@ def upgrade():
         sa.Column("conversation_id", models.types.StringUUID(), nullable=False),
         sa.Column("created_by_role", sa.String(length=255), nullable=False),
         sa.Column("created_by", models.types.StringUUID(), nullable=False),
-        sa.Column("created_at", sa.DateTime(), server_default=sa.text("CURRENT_TIMESTAMP"), nullable=False),
+        sa.Column(
+            "created_at",
+            sa.DateTime(),
+            server_default=sa.text("CURRENT_TIMESTAMP"),
+            nullable=False,
+        ),
         sa.PrimaryKeyConstraint("id", name="pinned_conversation_pkey"),
     )
     with op.batch_alter_table("pinned_conversations", schema=None) as batch_op:
@@ -733,8 +1034,18 @@ def upgrade():
         sa.Column("model_type", sa.String(length=40), nullable=False),
         sa.Column("enabled", sa.Boolean(), nullable=False),
         sa.Column("load_balancing_enabled", sa.Boolean(), nullable=False),
-        sa.Column("created_at", sa.DateTime(), server_default=sa.text("CURRENT_TIMESTAMP"), nullable=False),
-        sa.Column("updated_at", sa.DateTime(), server_default=sa.text("CURRENT_TIMESTAMP"), nullable=False),
+        sa.Column(
+            "created_at",
+            sa.DateTime(),
+            server_default=sa.text("CURRENT_TIMESTAMP"),
+            nullable=False,
+        ),
+        sa.Column(
+            "updated_at",
+            sa.DateTime(),
+            server_default=sa.text("CURRENT_TIMESTAMP"),
+            nullable=False,
+        ),
         sa.PrimaryKeyConstraint("id", name="provider_model_setting_pkey"),
     )
     with op.batch_alter_table("provider_model_settings", schema=None) as batch_op:
@@ -753,15 +1064,33 @@ def upgrade():
         sa.Column("model_type", sa.String(length=40), nullable=False),
         sa.Column("encrypted_config", sa.Text(), nullable=True),
         sa.Column("is_valid", sa.Boolean(), nullable=False),
-        sa.Column("created_at", sa.DateTime(), server_default=sa.text("CURRENT_TIMESTAMP"), nullable=False),
-        sa.Column("updated_at", sa.DateTime(), server_default=sa.text("CURRENT_TIMESTAMP"), nullable=False),
+        sa.Column(
+            "created_at",
+            sa.DateTime(),
+            server_default=sa.text("CURRENT_TIMESTAMP"),
+            nullable=False,
+        ),
+        sa.Column(
+            "updated_at",
+            sa.DateTime(),
+            server_default=sa.text("CURRENT_TIMESTAMP"),
+            nullable=False,
+        ),
         sa.PrimaryKeyConstraint("id", name="provider_model_pkey"),
         sa.UniqueConstraint(
-            "tenant_id", "provider_name", "model_name", "model_type", name="unique_provider_model_name"
+            "tenant_id",
+            "provider_name",
+            "model_name",
+            "model_type",
+            name="unique_provider_model_name",
         ),
     )
     with op.batch_alter_table("provider_models", schema=None) as batch_op:
-        batch_op.create_index("provider_model_tenant_id_provider_idx", ["tenant_id", "provider_name"], unique=False)
+        batch_op.create_index(
+            "provider_model_tenant_id_provider_idx",
+            ["tenant_id", "provider_name"],
+            unique=False,
+        )
 
     op.create_table(
         "provider_orders",
@@ -779,12 +1108,26 @@ def upgrade():
         sa.Column("paid_at", sa.DateTime(), nullable=True),
         sa.Column("pay_failed_at", sa.DateTime(), nullable=True),
         sa.Column("refunded_at", sa.DateTime(), nullable=True),
-        sa.Column("created_at", sa.DateTime(), server_default=sa.text("CURRENT_TIMESTAMP"), nullable=False),
-        sa.Column("updated_at", sa.DateTime(), server_default=sa.text("CURRENT_TIMESTAMP"), nullable=False),
+        sa.Column(
+            "created_at",
+            sa.DateTime(),
+            server_default=sa.text("CURRENT_TIMESTAMP"),
+            nullable=False,
+        ),
+        sa.Column(
+            "updated_at",
+            sa.DateTime(),
+            server_default=sa.text("CURRENT_TIMESTAMP"),
+            nullable=False,
+        ),
         sa.PrimaryKeyConstraint("id", name="provider_order_pkey"),
     )
     with op.batch_alter_table("provider_orders", schema=None) as batch_op:
-        batch_op.create_index("provider_order_tenant_provider_idx", ["tenant_id", "provider_name"], unique=False)
+        batch_op.create_index(
+            "provider_order_tenant_provider_idx",
+            ["tenant_id", "provider_name"],
+            unique=False,
+        )
 
     op.create_table(
         "providers",
@@ -798,15 +1141,33 @@ def upgrade():
         sa.Column("quota_type", sa.String(length=40), nullable=True),
         sa.Column("quota_limit", sa.BigInteger(), nullable=True),
         sa.Column("quota_used", sa.BigInteger(), nullable=True),
-        sa.Column("created_at", sa.DateTime(), server_default=sa.text("CURRENT_TIMESTAMP"), nullable=False),
-        sa.Column("updated_at", sa.DateTime(), server_default=sa.text("CURRENT_TIMESTAMP"), nullable=False),
+        sa.Column(
+            "created_at",
+            sa.DateTime(),
+            server_default=sa.text("CURRENT_TIMESTAMP"),
+            nullable=False,
+        ),
+        sa.Column(
+            "updated_at",
+            sa.DateTime(),
+            server_default=sa.text("CURRENT_TIMESTAMP"),
+            nullable=False,
+        ),
         sa.PrimaryKeyConstraint("id", name="provider_pkey"),
         sa.UniqueConstraint(
-            "tenant_id", "provider_name", "provider_type", "quota_type", name="unique_provider_name_type_quota"
+            "tenant_id",
+            "provider_name",
+            "provider_type",
+            "quota_type",
+            name="unique_provider_name_type_quota",
         ),
     )
     with op.batch_alter_table("providers", schema=None) as batch_op:
-        batch_op.create_index("provider_tenant_id_provider_idx", ["tenant_id", "provider_name"], unique=False)
+        batch_op.create_index(
+            "provider_tenant_id_provider_idx",
+            ["tenant_id", "provider_name"],
+            unique=False,
+        )
 
     op.create_table(
         "recommended_apps",
@@ -821,8 +1182,18 @@ def upgrade():
         sa.Column("is_listed", sa.Boolean(), nullable=False),
         sa.Column("install_count", sa.Integer(), nullable=False),
         sa.Column("language", sa.String(length=255), nullable=False),
-        sa.Column("created_at", sa.DateTime(), server_default=sa.text("CURRENT_TIMESTAMP"), nullable=False),
-        sa.Column("updated_at", sa.DateTime(), server_default=sa.text("CURRENT_TIMESTAMP"), nullable=False),
+        sa.Column(
+            "created_at",
+            sa.DateTime(),
+            server_default=sa.text("CURRENT_TIMESTAMP"),
+            nullable=False,
+        ),
+        sa.Column(
+            "updated_at",
+            sa.DateTime(),
+            server_default=sa.text("CURRENT_TIMESTAMP"),
+            nullable=False,
+        ),
         sa.PrimaryKeyConstraint("id", name="recommended_app_pkey"),
     )
     with op.batch_alter_table("recommended_apps", schema=None) as batch_op:
@@ -836,12 +1207,19 @@ def upgrade():
         sa.Column("message_id", models.types.StringUUID(), nullable=False),
         sa.Column("created_by_role", sa.String(length=255), nullable=False),
         sa.Column("created_by", models.types.StringUUID(), nullable=False),
-        sa.Column("created_at", sa.DateTime(), server_default=sa.text("CURRENT_TIMESTAMP"), nullable=False),
+        sa.Column(
+            "created_at",
+            sa.DateTime(),
+            server_default=sa.text("CURRENT_TIMESTAMP"),
+            nullable=False,
+        ),
         sa.PrimaryKeyConstraint("id", name="saved_message_pkey"),
     )
     with op.batch_alter_table("saved_messages", schema=None) as batch_op:
         batch_op.create_index(
-            "saved_message_message_idx", ["app_id", "message_id", "created_by_role", "created_by"], unique=False
+            "saved_message_message_idx",
+            ["app_id", "message_id", "created_by_role", "created_by"],
+            unique=False,
         )
 
     op.create_table(
@@ -866,9 +1244,19 @@ def upgrade():
         sa.Column("prompt_public", sa.Boolean(), nullable=False),
         sa.Column("status", sa.String(length=255), nullable=False),
         sa.Column("created_by", models.types.StringUUID(), nullable=True),
-        sa.Column("created_at", sa.DateTime(), server_default=sa.text("CURRENT_TIMESTAMP"), nullable=False),
+        sa.Column(
+            "created_at",
+            sa.DateTime(),
+            server_default=sa.text("CURRENT_TIMESTAMP"),
+            nullable=False,
+        ),
         sa.Column("updated_by", models.types.StringUUID(), nullable=True),
-        sa.Column("updated_at", sa.DateTime(), server_default=sa.text("CURRENT_TIMESTAMP"), nullable=False),
+        sa.Column(
+            "updated_at",
+            sa.DateTime(),
+            server_default=sa.text("CURRENT_TIMESTAMP"),
+            nullable=False,
+        ),
         sa.Column("code", sa.String(length=255), nullable=True),
         sa.PrimaryKeyConstraint("id", name="site_pkey"),
     )
@@ -883,7 +1271,12 @@ def upgrade():
         sa.Column("tag_id", models.types.StringUUID(), nullable=True),
         sa.Column("target_id", models.types.StringUUID(), nullable=True),
         sa.Column("created_by", models.types.StringUUID(), nullable=False),
-        sa.Column("created_at", sa.DateTime(), server_default=sa.text("CURRENT_TIMESTAMP"), nullable=False),
+        sa.Column(
+            "created_at",
+            sa.DateTime(),
+            server_default=sa.text("CURRENT_TIMESTAMP"),
+            nullable=False,
+        ),
         sa.PrimaryKeyConstraint("id", name="tag_binding_pkey"),
     )
     with op.batch_alter_table("tag_bindings", schema=None) as batch_op:
@@ -897,7 +1290,12 @@ def upgrade():
         sa.Column("type", sa.String(length=16), nullable=False),
         sa.Column("name", sa.String(length=255), nullable=False),
         sa.Column("created_by", models.types.StringUUID(), nullable=False),
-        sa.Column("created_at", sa.DateTime(), server_default=sa.text("CURRENT_TIMESTAMP"), nullable=False),
+        sa.Column(
+            "created_at",
+            sa.DateTime(),
+            server_default=sa.text("CURRENT_TIMESTAMP"),
+            nullable=False,
+        ),
         sa.PrimaryKeyConstraint("id", name="tag_pkey"),
     )
     with op.batch_alter_table("tags", schema=None) as batch_op:
@@ -912,8 +1310,18 @@ def upgrade():
         sa.Column("current", sa.Boolean(), nullable=False),
         sa.Column("role", sa.String(length=16), nullable=False),
         sa.Column("invited_by", models.types.StringUUID(), nullable=True),
-        sa.Column("created_at", sa.DateTime(), server_default=sa.text("CURRENT_TIMESTAMP"), nullable=False),
-        sa.Column("updated_at", sa.DateTime(), server_default=sa.text("CURRENT_TIMESTAMP"), nullable=False),
+        sa.Column(
+            "created_at",
+            sa.DateTime(),
+            server_default=sa.text("CURRENT_TIMESTAMP"),
+            nullable=False,
+        ),
+        sa.Column(
+            "updated_at",
+            sa.DateTime(),
+            server_default=sa.text("CURRENT_TIMESTAMP"),
+            nullable=False,
+        ),
         sa.PrimaryKeyConstraint("id", name="tenant_account_join_pkey"),
         sa.UniqueConstraint("tenant_id", "account_id", name="unique_tenant_account_join"),
     )
@@ -928,8 +1336,18 @@ def upgrade():
         sa.Column("provider_name", sa.String(length=255), nullable=False),
         sa.Column("model_name", sa.String(length=255), nullable=False),
         sa.Column("model_type", sa.String(length=40), nullable=False),
-        sa.Column("created_at", sa.DateTime(), server_default=sa.text("CURRENT_TIMESTAMP"), nullable=False),
-        sa.Column("updated_at", sa.DateTime(), server_default=sa.text("CURRENT_TIMESTAMP"), nullable=False),
+        sa.Column(
+            "created_at",
+            sa.DateTime(),
+            server_default=sa.text("CURRENT_TIMESTAMP"),
+            nullable=False,
+        ),
+        sa.Column(
+            "updated_at",
+            sa.DateTime(),
+            server_default=sa.text("CURRENT_TIMESTAMP"),
+            nullable=False,
+        ),
         sa.PrimaryKeyConstraint("id", name="tenant_default_model_pkey"),
     )
     with op.batch_alter_table("tenant_default_models", schema=None) as batch_op:
@@ -945,13 +1363,25 @@ def upgrade():
         sa.Column("tenant_id", models.types.StringUUID(), nullable=False),
         sa.Column("provider_name", sa.String(length=255), nullable=False),
         sa.Column("preferred_provider_type", sa.String(length=40), nullable=False),
-        sa.Column("created_at", sa.DateTime(), server_default=sa.text("CURRENT_TIMESTAMP"), nullable=False),
-        sa.Column("updated_at", sa.DateTime(), server_default=sa.text("CURRENT_TIMESTAMP"), nullable=False),
+        sa.Column(
+            "created_at",
+            sa.DateTime(),
+            server_default=sa.text("CURRENT_TIMESTAMP"),
+            nullable=False,
+        ),
+        sa.Column(
+            "updated_at",
+            sa.DateTime(),
+            server_default=sa.text("CURRENT_TIMESTAMP"),
+            nullable=False,
+        ),
         sa.PrimaryKeyConstraint("id", name="tenant_preferred_model_provider_pkey"),
     )
     with op.batch_alter_table("tenant_preferred_model_providers", schema=None) as batch_op:
         batch_op.create_index(
-            "tenant_preferred_model_provider_tenant_provider_idx", ["tenant_id", "provider_name"], unique=False
+            "tenant_preferred_model_provider_tenant_provider_idx",
+            ["tenant_id", "provider_name"],
+            unique=False,
         )
 
     op.create_table(
@@ -962,8 +1392,18 @@ def upgrade():
         sa.Column("plan", sa.String(length=255), nullable=False),
         sa.Column("status", sa.String(length=255), nullable=False),
         sa.Column("custom_config", sa.Text(), nullable=True),
-        sa.Column("created_at", sa.DateTime(), server_default=sa.text("CURRENT_TIMESTAMP"), nullable=False),
-        sa.Column("updated_at", sa.DateTime(), server_default=sa.text("CURRENT_TIMESTAMP"), nullable=False),
+        sa.Column(
+            "created_at",
+            sa.DateTime(),
+            server_default=sa.text("CURRENT_TIMESTAMP"),
+            nullable=False,
+        ),
+        sa.Column(
+            "updated_at",
+            sa.DateTime(),
+            server_default=sa.text("CURRENT_TIMESTAMP"),
+            nullable=False,
+        ),
         sa.PrimaryKeyConstraint("id", name="tenant_pkey"),
     )
     op.create_table(
@@ -980,8 +1420,18 @@ def upgrade():
         sa.Column("credentials_str", sa.Text(), nullable=False),
         sa.Column("privacy_policy", sa.String(length=255), nullable=True),
         sa.Column("custom_disclaimer", sa.String(length=255), nullable=True),
-        sa.Column("created_at", sa.DateTime(), server_default=sa.text("CURRENT_TIMESTAMP"), nullable=False),
-        sa.Column("updated_at", sa.DateTime(), server_default=sa.text("CURRENT_TIMESTAMP"), nullable=False),
+        sa.Column(
+            "created_at",
+            sa.DateTime(),
+            server_default=sa.text("CURRENT_TIMESTAMP"),
+            nullable=False,
+        ),
+        sa.Column(
+            "updated_at",
+            sa.DateTime(),
+            server_default=sa.text("CURRENT_TIMESTAMP"),
+            nullable=False,
+        ),
         sa.PrimaryKeyConstraint("id", name="tool_api_provider_pkey"),
         sa.UniqueConstraint("name", "tenant_id", name="unique_api_tool_provider"),
     )
@@ -992,8 +1442,18 @@ def upgrade():
         sa.Column("user_id", models.types.StringUUID(), nullable=False),
         sa.Column("provider", sa.String(length=40), nullable=False),
         sa.Column("encrypted_credentials", sa.Text(), nullable=True),
-        sa.Column("created_at", sa.DateTime(), server_default=sa.text("CURRENT_TIMESTAMP"), nullable=False),
-        sa.Column("updated_at", sa.DateTime(), server_default=sa.text("CURRENT_TIMESTAMP"), nullable=False),
+        sa.Column(
+            "created_at",
+            sa.DateTime(),
+            server_default=sa.text("CURRENT_TIMESTAMP"),
+            nullable=False,
+        ),
+        sa.Column(
+            "updated_at",
+            sa.DateTime(),
+            server_default=sa.text("CURRENT_TIMESTAMP"),
+            nullable=False,
+        ),
         sa.PrimaryKeyConstraint("id", name="tool_builtin_provider_pkey"),
         sa.UniqueConstraint("tenant_id", "provider", name="unique_builtin_tool_provider"),
     )
@@ -1004,8 +1464,18 @@ def upgrade():
         sa.Column("tenant_id", models.types.StringUUID(), nullable=False),
         sa.Column("conversation_id", models.types.StringUUID(), nullable=False),
         sa.Column("variables_str", sa.Text(), nullable=False),
-        sa.Column("created_at", sa.DateTime(), server_default=sa.text("CURRENT_TIMESTAMP"), nullable=False),
-        sa.Column("updated_at", sa.DateTime(), server_default=sa.text("CURRENT_TIMESTAMP"), nullable=False),
+        sa.Column(
+            "created_at",
+            sa.DateTime(),
+            server_default=sa.text("CURRENT_TIMESTAMP"),
+            nullable=False,
+        ),
+        sa.Column(
+            "updated_at",
+            sa.DateTime(),
+            server_default=sa.text("CURRENT_TIMESTAMP"),
+            nullable=False,
+        ),
         sa.PrimaryKeyConstraint("id", name="tool_conversation_variables_pkey"),
     )
     with op.batch_alter_table("tool_conversation_variables", schema=None) as batch_op:
@@ -1050,13 +1520,31 @@ def upgrade():
         sa.Column("answer_tokens", sa.Integer(), server_default=sa.text("0"), nullable=False),
         sa.Column("answer_unit_price", sa.Numeric(precision=10, scale=4), nullable=False),
         sa.Column(
-            "answer_price_unit", sa.Numeric(precision=10, scale=7), server_default=sa.text("0.001"), nullable=False
+            "answer_price_unit",
+            sa.Numeric(precision=10, scale=7),
+            server_default=sa.text("0.001"),
+            nullable=False,
         ),
-        sa.Column("provider_response_latency", sa.Float(), server_default=sa.text("0"), nullable=False),
+        sa.Column(
+            "provider_response_latency",
+            sa.Float(),
+            server_default=sa.text("0"),
+            nullable=False,
+        ),
         sa.Column("total_price", sa.Numeric(precision=10, scale=7), nullable=True),
         sa.Column("currency", sa.String(length=255), nullable=False),
-        sa.Column("created_at", sa.DateTime(), server_default=sa.text("CURRENT_TIMESTAMP"), nullable=False),
-        sa.Column("updated_at", sa.DateTime(), server_default=sa.text("CURRENT_TIMESTAMP"), nullable=False),
+        sa.Column(
+            "created_at",
+            sa.DateTime(),
+            server_default=sa.text("CURRENT_TIMESTAMP"),
+            nullable=False,
+        ),
+        sa.Column(
+            "updated_at",
+            sa.DateTime(),
+            server_default=sa.text("CURRENT_TIMESTAMP"),
+            nullable=False,
+        ),
         sa.PrimaryKeyConstraint("id", name="tool_model_invoke_pkey"),
     )
     op.create_table(
@@ -1066,8 +1554,18 @@ def upgrade():
         sa.Column("tool_name", sa.String(length=40), nullable=False),
         sa.Column("encrypted_credentials", sa.Text(), nullable=True),
         sa.Column("is_enabled", sa.Boolean(), nullable=False),
-        sa.Column("created_at", sa.DateTime(), server_default=sa.text("CURRENT_TIMESTAMP"), nullable=False),
-        sa.Column("updated_at", sa.DateTime(), server_default=sa.text("CURRENT_TIMESTAMP"), nullable=False),
+        sa.Column(
+            "created_at",
+            sa.DateTime(),
+            server_default=sa.text("CURRENT_TIMESTAMP"),
+            nullable=False,
+        ),
+        sa.Column(
+            "updated_at",
+            sa.DateTime(),
+            server_default=sa.text("CURRENT_TIMESTAMP"),
+            nullable=False,
+        ),
         sa.PrimaryKeyConstraint("id", name="tool_provider_pkey"),
         sa.UniqueConstraint("tenant_id", "tool_name", name="unique_tool_provider_tool_name"),
     )
@@ -1084,8 +1582,18 @@ def upgrade():
         sa.Column("description", sa.Text(), nullable=False),
         sa.Column("parameter_configuration", sa.Text(), nullable=False),
         sa.Column("privacy_policy", sa.String(length=255), server_default="", nullable=True),
-        sa.Column("created_at", sa.DateTime(), server_default=sa.text("CURRENT_TIMESTAMP"), nullable=False),
-        sa.Column("updated_at", sa.DateTime(), server_default=sa.text("CURRENT_TIMESTAMP"), nullable=False),
+        sa.Column(
+            "created_at",
+            sa.DateTime(),
+            server_default=sa.text("CURRENT_TIMESTAMP"),
+            nullable=False,
+        ),
+        sa.Column(
+            "updated_at",
+            sa.DateTime(),
+            server_default=sa.text("CURRENT_TIMESTAMP"),
+            nullable=False,
+        ),
         sa.PrimaryKeyConstraint("id", name="tool_workflow_provider_pkey"),
         sa.UniqueConstraint("name", "tenant_id", name="unique_workflow_tool_provider"),
         sa.UniqueConstraint("tenant_id", "app_id", name="unique_workflow_tool_provider_app_id"),
@@ -1116,7 +1624,12 @@ def upgrade():
         sa.Column("mime_type", sa.String(length=255), nullable=True),
         sa.Column("created_by_role", sa.String(length=255), nullable=False),
         sa.Column("created_by", models.types.StringUUID(), nullable=False),
-        sa.Column("created_at", sa.DateTime(), server_default=sa.text("CURRENT_TIMESTAMP"), nullable=False),
+        sa.Column(
+            "created_at",
+            sa.DateTime(),
+            server_default=sa.text("CURRENT_TIMESTAMP"),
+            nullable=False,
+        ),
         sa.Column("used", sa.Boolean(), nullable=False),
         sa.Column("used_by", models.types.StringUUID(), nullable=True),
         sa.Column("used_at", sa.DateTime(), nullable=True),
@@ -1136,7 +1649,12 @@ def upgrade():
         sa.Column("created_from", sa.String(length=255), nullable=False),
         sa.Column("created_by_role", sa.String(length=255), nullable=False),
         sa.Column("created_by", models.types.StringUUID(), nullable=False),
-        sa.Column("created_at", sa.DateTime(), server_default=sa.text("CURRENT_TIMESTAMP"), nullable=False),
+        sa.Column(
+            "created_at",
+            sa.DateTime(),
+            server_default=sa.text("CURRENT_TIMESTAMP"),
+            nullable=False,
+        ),
         sa.PrimaryKeyConstraint("id", name="workflow_app_log_pkey"),
     )
     with op.batch_alter_table("workflow_app_logs", schema=None) as batch_op:
@@ -1148,14 +1666,30 @@ def upgrade():
         sa.Column("conversation_id", models.types.StringUUID(), nullable=False),
         sa.Column("app_id", models.types.StringUUID(), nullable=False),
         sa.Column("data", sa.Text(), nullable=False),
-        sa.Column("created_at", sa.DateTime(), server_default=sa.text("CURRENT_TIMESTAMP"), nullable=False),
-        sa.Column("updated_at", sa.DateTime(), server_default=sa.text("CURRENT_TIMESTAMP"), nullable=False),
+        sa.Column(
+            "created_at",
+            sa.DateTime(),
+            server_default=sa.text("CURRENT_TIMESTAMP"),
+            nullable=False,
+        ),
+        sa.Column(
+            "updated_at",
+            sa.DateTime(),
+            server_default=sa.text("CURRENT_TIMESTAMP"),
+            nullable=False,
+        ),
         sa.PrimaryKeyConstraint("id", "conversation_id", name=op.f("workflow_conversation_variables_pkey")),
     )
     with op.batch_alter_table("workflow_conversation_variables", schema=None) as batch_op:
-        batch_op.create_index(batch_op.f("workflow_conversation_variables_app_id_idx"), ["app_id"], unique=False)
         batch_op.create_index(
-            batch_op.f("workflow_conversation_variables_created_at_idx"), ["created_at"], unique=False
+            batch_op.f("workflow_conversation_variables_app_id_idx"),
+            ["app_id"],
+            unique=False,
+        )
+        batch_op.create_index(
+            batch_op.f("workflow_conversation_variables_created_at_idx"),
+            ["created_at"],
+            unique=False,
         )
 
     op.create_table(
@@ -1179,7 +1713,12 @@ def upgrade():
         sa.Column("error", sa.Text(), nullable=True),
         sa.Column("elapsed_time", sa.Float(), server_default=sa.text("0"), nullable=False),
         sa.Column("execution_metadata", sa.Text(), nullable=True),
-        sa.Column("created_at", sa.DateTime(), server_default=sa.text("CURRENT_TIMESTAMP"), nullable=False),
+        sa.Column(
+            "created_at",
+            sa.DateTime(),
+            server_default=sa.text("CURRENT_TIMESTAMP"),
+            nullable=False,
+        ),
         sa.Column("created_by_role", sa.String(length=255), nullable=False),
         sa.Column("created_by", models.types.StringUUID(), nullable=False),
         sa.Column("finished_at", sa.DateTime(), nullable=True),
@@ -1188,7 +1727,13 @@ def upgrade():
     with op.batch_alter_table("workflow_node_executions", schema=None) as batch_op:
         batch_op.create_index(
             "workflow_node_execution_id_idx",
-            ["tenant_id", "app_id", "workflow_id", "triggered_from", "node_execution_id"],
+            [
+                "tenant_id",
+                "app_id",
+                "workflow_id",
+                "triggered_from",
+                "node_execution_id",
+            ],
             unique=False,
         )
         batch_op.create_index(
@@ -1222,15 +1767,26 @@ def upgrade():
         sa.Column("total_steps", sa.Integer(), server_default=sa.text("0"), nullable=True),
         sa.Column("created_by_role", sa.String(length=255), nullable=False),
         sa.Column("created_by", models.types.StringUUID(), nullable=False),
-        sa.Column("created_at", sa.DateTime(), server_default=sa.text("CURRENT_TIMESTAMP"), nullable=False),
+        sa.Column(
+            "created_at",
+            sa.DateTime(),
+            server_default=sa.text("CURRENT_TIMESTAMP"),
+            nullable=False,
+        ),
         sa.Column("finished_at", sa.DateTime(), nullable=True),
         sa.PrimaryKeyConstraint("id", name="workflow_run_pkey"),
     )
     with op.batch_alter_table("workflow_runs", schema=None) as batch_op:
         batch_op.create_index(
-            "workflow_run_tenant_app_sequence_idx", ["tenant_id", "app_id", "sequence_number"], unique=False
+            "workflow_run_tenant_app_sequence_idx",
+            ["tenant_id", "app_id", "sequence_number"],
+            unique=False,
         )
-        batch_op.create_index("workflow_run_triggerd_from_idx", ["tenant_id", "app_id", "triggered_from"], unique=False)
+        batch_op.create_index(
+            "workflow_run_triggerd_from_idx",
+            ["tenant_id", "app_id", "triggered_from"],
+            unique=False,
+        )
 
     op.create_table(
         "workflows",
@@ -1242,7 +1798,12 @@ def upgrade():
         sa.Column("graph", sa.Text(), nullable=True),
         sa.Column("features", sa.Text(), nullable=True),
         sa.Column("created_by", models.types.StringUUID(), nullable=False),
-        sa.Column("created_at", sa.DateTime(), server_default=sa.text("CURRENT_TIMESTAMP"), nullable=False),
+        sa.Column(
+            "created_at",
+            sa.DateTime(),
+            server_default=sa.text("CURRENT_TIMESTAMP"),
+            nullable=False,
+        ),
         sa.Column("updated_by", models.types.StringUUID(), nullable=True),
         sa.Column("updated_at", sa.DateTime(), nullable=True),
         sa.Column("environment_variables", sa.Text(), nullable=False),
@@ -1262,10 +1823,22 @@ def upgrade():
         sa.Column("content", sa.Text(), nullable=False),
         sa.Column("hit_count", sa.Integer(), server_default=sa.text("0"), nullable=False),
         sa.Column("account_id", models.types.StringUUID(), nullable=False),
-        sa.Column("created_at", sa.DateTime(), server_default=sa.text("CURRENT_TIMESTAMP"), nullable=False),
-        sa.Column("updated_at", sa.DateTime(), server_default=sa.text("CURRENT_TIMESTAMP"), nullable=False),
+        sa.Column(
+            "created_at",
+            sa.DateTime(),
+            server_default=sa.text("CURRENT_TIMESTAMP"),
+            nullable=False,
+        ),
+        sa.Column(
+            "updated_at",
+            sa.DateTime(),
+            server_default=sa.text("CURRENT_TIMESTAMP"),
+            nullable=False,
+        ),
         sa.ForeignKeyConstraint(
-            ["conversation_id"], ["conversations.id"], name=op.f("message_annotations_conversation_id_fkey")
+            ["conversation_id"],
+            ["conversations.id"],
+            name=op.f("message_annotations_conversation_id_fkey"),
         ),
         sa.PrimaryKeyConstraint("id", name="message_annotation_pkey"),
     )
@@ -1288,15 +1861,26 @@ def upgrade():
         sa.Column("message_tokens", sa.Integer(), server_default=sa.text("0"), nullable=False),
         sa.Column("message_unit_price", sa.Numeric(precision=10, scale=4), nullable=False),
         sa.Column(
-            "message_price_unit", sa.Numeric(precision=10, scale=7), server_default=sa.text("0.001"), nullable=False
+            "message_price_unit",
+            sa.Numeric(precision=10, scale=7),
+            server_default=sa.text("0.001"),
+            nullable=False,
         ),
         sa.Column("answer", sa.Text(), nullable=False),
         sa.Column("answer_tokens", sa.Integer(), server_default=sa.text("0"), nullable=False),
         sa.Column("answer_unit_price", sa.Numeric(precision=10, scale=4), nullable=False),
         sa.Column(
-            "answer_price_unit", sa.Numeric(precision=10, scale=7), server_default=sa.text("0.001"), nullable=False
+            "answer_price_unit",
+            sa.Numeric(precision=10, scale=7),
+            server_default=sa.text("0.001"),
+            nullable=False,
         ),
-        sa.Column("provider_response_latency", sa.Float(), server_default=sa.text("0"), nullable=False),
+        sa.Column(
+            "provider_response_latency",
+            sa.Float(),
+            server_default=sa.text("0"),
+            nullable=False,
+        ),
         sa.Column("total_price", sa.Numeric(precision=10, scale=7), nullable=True),
         sa.Column("currency", sa.String(length=255), nullable=False),
         sa.Column("status", sa.String(length=255), nullable=False),
@@ -1306,19 +1890,45 @@ def upgrade():
         sa.Column("from_source", sa.String(length=255), nullable=False),
         sa.Column("from_end_user_id", models.types.StringUUID(), nullable=True),
         sa.Column("from_account_id", models.types.StringUUID(), nullable=True),
-        sa.Column("created_at", sa.DateTime(), server_default=sa.text("CURRENT_TIMESTAMP"), nullable=False),
-        sa.Column("updated_at", sa.DateTime(), server_default=sa.text("CURRENT_TIMESTAMP"), nullable=False),
+        sa.Column(
+            "created_at",
+            sa.DateTime(),
+            server_default=sa.text("CURRENT_TIMESTAMP"),
+            nullable=False,
+        ),
+        sa.Column(
+            "updated_at",
+            sa.DateTime(),
+            server_default=sa.text("CURRENT_TIMESTAMP"),
+            nullable=False,
+        ),
         sa.Column("agent_based", sa.Boolean(), nullable=False),
         sa.Column("workflow_run_id", models.types.StringUUID(), nullable=True),
-        sa.ForeignKeyConstraint(["conversation_id"], ["conversations.id"], name=op.f("messages_conversation_id_fkey")),
+        sa.ForeignKeyConstraint(
+            ["conversation_id"],
+            ["conversations.id"],
+            name=op.f("messages_conversation_id_fkey"),
+        ),
         sa.PrimaryKeyConstraint("id", name="message_pkey"),
     )
     with op.batch_alter_table("messages", schema=None) as batch_op:
-        batch_op.create_index("message_account_idx", ["app_id", "from_source", "from_account_id"], unique=False)
+        batch_op.create_index(
+            "message_account_idx",
+            ["app_id", "from_source", "from_account_id"],
+            unique=False,
+        )
         batch_op.create_index("message_app_id_idx", ["app_id", "created_at"], unique=False)
         batch_op.create_index("message_conversation_id_idx", ["conversation_id"], unique=False)
-        batch_op.create_index("message_end_user_idx", ["app_id", "from_source", "from_end_user_id"], unique=False)
-        batch_op.create_index("message_workflow_run_id_idx", ["conversation_id", "workflow_run_id"], unique=False)
+        batch_op.create_index(
+            "message_end_user_idx",
+            ["app_id", "from_source", "from_end_user_id"],
+            unique=False,
+        )
+        batch_op.create_index(
+            "message_workflow_run_id_idx",
+            ["conversation_id", "workflow_run_id"],
+            unique=False,
+        )
 
     op.create_table(
         "tool_published_apps",
@@ -1331,8 +1941,18 @@ def upgrade():
         sa.Column("query_name", sa.String(length=40), nullable=False),
         sa.Column("tool_name", sa.String(length=40), nullable=False),
         sa.Column("author", sa.String(length=40), nullable=False),
-        sa.Column("created_at", sa.DateTime(), server_default=sa.text("CURRENT_TIMESTAMP"), nullable=False),
-        sa.Column("updated_at", sa.DateTime(), server_default=sa.text("CURRENT_TIMESTAMP"), nullable=False),
+        sa.Column(
+            "created_at",
+            sa.DateTime(),
+            server_default=sa.text("CURRENT_TIMESTAMP"),
+            nullable=False,
+        ),
+        sa.Column(
+            "updated_at",
+            sa.DateTime(),
+            server_default=sa.text("CURRENT_TIMESTAMP"),
+            nullable=False,
+        ),
         sa.ForeignKeyConstraint(["app_id"], ["apps.id"], name=op.f("tool_published_apps_app_id_fkey")),
         sa.PrimaryKeyConstraint("id", name="published_app_tool_pkey"),
         sa.UniqueConstraint("app_id", "user_id", name="unique_published_app_tool"),
@@ -1526,6 +2146,8 @@ def downgrade():
     op.drop_table("document_segments")
     op.drop_table("dify_setups")
     with op.batch_alter_table("datasets", schema=None) as batch_op:
+        if batch_op.get_bind().dialect.name == "postgresql":
+            batch_op.drop_index("retrieval_model_idx", postgresql_using="gin")
         batch_op.drop_index("dataset_tenant_idx")
 
     op.drop_table("datasets")
@@ -1556,6 +2178,8 @@ def downgrade():
 
     op.drop_table("dataset_collection_bindings")
     with op.batch_alter_table("data_source_oauth_bindings", schema=None) as batch_op:
+        if batch_op.get_bind().dialect.name == "postgresql":
+            batch_op.drop_index("source_info_idx", postgresql_using="gin")
         batch_op.drop_index("source_binding_tenant_id_idx")
 
     op.drop_table("data_source_oauth_bindings")

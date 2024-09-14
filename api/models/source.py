@@ -3,10 +3,9 @@ import uuid
 
 from sqlalchemy import func
 
-from configs import dify_config
 from extensions.ext_database import db
 
-from .types import StringUUID, AdjustedJSON, PostgresJSONIndex
+from .types import AdjustedJSON, PostgresJSONIndex, StringUUID
 
 
 class DataSourceOauthBinding(db.Model):
