@@ -224,6 +224,13 @@ services:
     networks:
       - ssrf_proxy_network
       - default
+      - dokploy-network
+    labels:
+      - "traefik.enable=true"
+      - "traefik.http.routers.dify-api.rule=Host(`dify-api.etsenake.com`)"
+      - "traefik.http.routers.dify-api.entrypoints=websecure"
+      - "traefik.http.routers.dify-api.tls.certResolver=letsencrypt"
+      - "traefik.http.services.dify-api.loadbalancer.server.port=3000"
 
   # worker service
   # The Celery worker for processing the queue.
@@ -244,6 +251,7 @@ services:
     networks:
       - ssrf_proxy_network
       - default
+      - dokploy-network
 
   # Frontend web application.
   web:
@@ -255,7 +263,14 @@ services:
       SENTRY_DSN: ${WEB_SENTRY_DSN:-}
       NEXT_TELEMETRY_DISABLED: ${NEXT_TELEMETRY_DISABLED:-0}
       TEXT_GENERATION_TIMEOUT_MS: ${TEXT_GENERATION_TIMEOUT_MS:-60000}
-
+    networks: 
+      - dokploy-network
+    labels:
+      - "traefik.enable=true"
+      - "traefik.http.routers.dify-web.rule=Host(`dify.etsenake.com`)"
+      - "traefik.http.routers.dify-web.entrypoints=websecure"
+      - "traefik.http.routers.dify-web.tls.certResolver=letsencrypt"
+      - "traefik.http.services.dify-web.loadbalancer.server.port=3000"
   # The postgres database.
   db:
     image: postgres:15-alpine
@@ -694,6 +709,8 @@ networks:
     internal: true
   milvus:
     driver: bridge
+  dokploy-network:
+    external: true
   opensearch-net:
     driver: bridge
     internal: true
