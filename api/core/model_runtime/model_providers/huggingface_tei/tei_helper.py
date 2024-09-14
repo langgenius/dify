@@ -75,7 +75,7 @@ class TeiHelper:
         if len(model_type.keys()) < 1:
             raise RuntimeError("model_type is empty")
         model_type = list(model_type.keys())[0]
-        if model_type not in ["embedding", "reranker"]:
+        if model_type not in {"embedding", "reranker"}:
             raise RuntimeError(f"invalid model_type: {model_type}")
 
         max_input_length = response_json.get("max_input_length", 512)

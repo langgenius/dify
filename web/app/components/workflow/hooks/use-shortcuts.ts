@@ -70,15 +70,16 @@ export const useShortcuts = (): void => {
   })
 
   useKeyPress(`${getKeyboardKeyCodeBySystem('ctrl')}.c`, (e) => {
-    const { showDebugAndPreviewPanel, showInputsPanel } = workflowStore.getState()
-    if (shouldHandleShortcut(e) && !showDebugAndPreviewPanel && !showInputsPanel) {
+    const { showDebugAndPreviewPanel } = workflowStore.getState()
+    if (shouldHandleShortcut(e) && !showDebugAndPreviewPanel) {
       e.preventDefault()
       handleNodesCopy()
     }
   }, { exactMatch: true, useCapture: true })
 
   useKeyPress(`${getKeyboardKeyCodeBySystem('ctrl')}.v`, (e) => {
-    if (shouldHandleShortcut(e)) {
+    const { showDebugAndPreviewPanel } = workflowStore.getState()
+    if (shouldHandleShortcut(e) && !showDebugAndPreviewPanel) {
       e.preventDefault()
       handleNodesPaste()
     }
@@ -99,7 +100,8 @@ export const useShortcuts = (): void => {
   }, { exactMatch: true, useCapture: true })
 
   useKeyPress(`${getKeyboardKeyCodeBySystem('ctrl')}.z`, (e) => {
-    if (shouldHandleShortcut(e)) {
+    const { showDebugAndPreviewPanel } = workflowStore.getState()
+    if (shouldHandleShortcut(e) && !showDebugAndPreviewPanel) {
       e.preventDefault()
       workflowHistoryShortcutsEnabled && handleHistoryBack()
     }

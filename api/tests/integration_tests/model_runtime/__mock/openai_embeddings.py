@@ -22,7 +22,7 @@ class MockEmbeddingsClass:
         if isinstance(input, str):
             input = [input]
 
-        if not re.match(r"^(https?):\/\/[^\s\/$.?#].[^\s]*$", self._client.base_url.__str__()):
+        if not re.match(r"^(https?):\/\/[^\s\/$.?#].[^\s]*$", str(self._client.base_url)):
             raise InvokeAuthorizationError("Invalid base url")
 
         if len(self._client.api_key) < 18:

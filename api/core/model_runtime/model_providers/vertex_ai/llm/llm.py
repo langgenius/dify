@@ -5,7 +5,6 @@ import logging
 from collections.abc import Generator
 from typing import Optional, Union, cast
 
-import google.api_core.exceptions as exceptions
 import google.auth.transport.requests
 import vertexai.generative_models as glm
 from anthropic import AnthropicVertex, Stream
@@ -17,6 +16,7 @@ from anthropic.types import (
     MessageStopEvent,
     MessageStreamEvent,
 )
+from google.api_core import exceptions
 from google.cloud import aiplatform
 from google.oauth2 import service_account
 from PIL import Image
@@ -346,7 +346,7 @@ class VertexAiLargeLanguageModel(LargeLanguageModel):
                             mime_type = data_split[0].replace("data:", "")
                             base64_data = data_split[1]
 
-                        if mime_type not in ["image/jpeg", "image/png", "image/gif", "image/webp"]:
+                        if mime_type not in {"image/jpeg", "image/png", "image/gif", "image/webp"}:
                             raise ValueError(
                                 f"Unsupported image type {mime_type}, "
                                 f"only support image/jpeg, image/png, image/gif, and image/webp"

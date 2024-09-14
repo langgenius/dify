@@ -42,12 +42,12 @@ class BasicVariablesConfigManager:
                         variable=variable["variable"], type=variable["type"], config=variable["config"]
                     )
                 )
-            elif variable_type in [
+            elif variable_type in {
                 VariableEntityType.TEXT_INPUT,
                 VariableEntityType.PARAGRAPH,
                 VariableEntityType.NUMBER,
                 VariableEntityType.SELECT,
-            ]:
+            }:
                 variable = variables[variable_type]
                 variable_entities.append(
                     VariableEntity(
@@ -97,7 +97,7 @@ class BasicVariablesConfigManager:
         variables = []
         for item in config["user_input_form"]:
             key = list(item.keys())[0]
-            if key not in ["text-input", "select", "paragraph", "number", "external_data_tool"]:
+            if key not in {"text-input", "select", "paragraph", "number", "external_data_tool"}:
                 raise ValueError("Keys in user_input_form list can only be 'text-input', 'paragraph'  or 'select'")
 
             form_item = item[key]
@@ -115,7 +115,7 @@ class BasicVariablesConfigManager:
 
             pattern = re.compile(r"^(?!\d)[\u4e00-\u9fa5A-Za-z0-9_\U0001F300-\U0001F64F\U0001F680-\U0001F6FF]{1,100}$")
             if pattern.match(form_item["variable"]) is None:
-                raise ValueError("variable in user_input_form must be a string, " "and cannot start with a number")
+                raise ValueError("variable in user_input_form must be a string, and cannot start with a number")
 
             variables.append(form_item["variable"])
 

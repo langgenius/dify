@@ -101,7 +101,7 @@ class OAuthCallback(Resource):
             )
 
         # Check account status
-        if account.status == AccountStatus.BANNED.value or account.status == AccountStatus.CLOSED.value:
+        if account.status in {AccountStatus.BANNED.value, AccountStatus.CLOSED.value}:
             return {"error": "Account is banned or closed."}, 403
 
         if account.status == AccountStatus.PENDING.value:

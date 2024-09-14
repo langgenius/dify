@@ -32,7 +32,7 @@ class AppQueueManager:
         self._user_id = user_id
         self._invoke_from = invoke_from
 
-        user_prefix = "account" if self._invoke_from in [InvokeFrom.EXPLORE, InvokeFrom.DEBUGGER] else "end-user"
+        user_prefix = "account" if self._invoke_from in {InvokeFrom.EXPLORE, InvokeFrom.DEBUGGER} else "end-user"
         redis_client.setex(
             AppQueueManager._generate_task_belong_cache_key(self._task_id), 1800, f"{user_prefix}-{self._user_id}"
         )
@@ -118,7 +118,7 @@ class AppQueueManager:
         if result is None:
             return
 
-        user_prefix = "account" if invoke_from in [InvokeFrom.EXPLORE, InvokeFrom.DEBUGGER] else "end-user"
+        user_prefix = "account" if invoke_from in {InvokeFrom.EXPLORE, InvokeFrom.DEBUGGER} else "end-user"
         if result.decode("utf-8") != f"{user_prefix}-{user_id}":
             return
 

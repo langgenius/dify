@@ -186,16 +186,16 @@ class BedrockTextEmbeddingModel(TextEmbeddingModel):
 
         if error_code == "AccessDeniedException":
             return InvokeAuthorizationError(error_msg)
-        elif error_code in ["ResourceNotFoundException", "ValidationException"]:
+        elif error_code in {"ResourceNotFoundException", "ValidationException"}:
             return InvokeBadRequestError(error_msg)
-        elif error_code in ["ThrottlingException", "ServiceQuotaExceededException"]:
+        elif error_code in {"ThrottlingException", "ServiceQuotaExceededException"}:
             return InvokeRateLimitError(error_msg)
-        elif error_code in [
+        elif error_code in {
             "ModelTimeoutException",
             "ModelErrorException",
             "InternalServerException",
             "ModelNotReadyException",
-        ]:
+        }:
             return InvokeServerUnavailableError(error_msg)
         elif error_code == "ModelStreamErrorException":
             return InvokeConnectionError(error_msg)

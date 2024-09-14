@@ -200,7 +200,7 @@ class AIModel(ABC):
             except Exception as e:
                 model_schema_yaml_file_name = os.path.basename(model_schema_yaml_path).rstrip(".yaml")
                 raise Exception(
-                    f"Invalid model schema for {provider_name}.{model_type}.{model_schema_yaml_file_name}:" f" {str(e)}"
+                    f"Invalid model schema for {provider_name}.{model_type}.{model_schema_yaml_file_name}: {str(e)}"
                 )
 
             # cache model schema

@@ -35,7 +35,7 @@ class MyScaleVector(BaseVector):
         super().__init__(collection_name)
         self._config = config
         self._metric = metric
-        self._vec_order = SortOrder.ASC if metric.upper() in ["COSINE", "L2"] else SortOrder.DESC
+        self._vec_order = SortOrder.ASC if metric.upper() in {"COSINE", "L2"} else SortOrder.DESC
         self._client = get_client(
             host=config.host,
             port=config.port,
@@ -92,7 +92,7 @@ class MyScaleVector(BaseVector):
 
     @staticmethod
     def escape_str(value: Any) -> str:
-        return "".join(" " if c in ("\\", "'") else c for c in str(value))
+        return "".join(" " if c in {"\\", "'"} else c for c in str(value))
 
     def text_exists(self, id: str) -> bool:
         results = self._client.query(f"SELECT id FROM {self._config.database}.{self._collection_name} WHERE id='{id}'")
@@ -122,7 +122,7 @@ class MyScaleVector(BaseVector):
 
     def _search(self, dist: str, order: SortOrder, **kwargs: Any) -> list[Document]:
         top_k = kwargs.get("top_k", 5)
-        score_threshold = kwargs.get("score_threshold", 0.0)
+        score_threshold = float(kwargs.get("score_threshold") or 0.0)
         where_str = (
             f"WHERE dist < {1 - score_threshold}"
             if self._metric.upper() == "COSINE" and order == SortOrder.ASC and score_threshold > 0.0

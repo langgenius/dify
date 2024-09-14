@@ -51,7 +51,7 @@ class ElasticSearchVector(BaseVector):
     def _init_client(self, config: ElasticSearchConfig) -> Elasticsearch:
         try:
             parsed_url = urlparse(config.host)
-            if parsed_url.scheme in ["http", "https"]:
+            if parsed_url.scheme in {"http", "https"}:
                 hosts = f"{config.host}:{config.port}"
             else:
                 hosts = f"http://{config.host}:{config.port}"
@@ -94,7 +94,7 @@ class ElasticSearchVector(BaseVector):
         return uuids
 
     def text_exists(self, id: str) -> bool:
-        return self._client.exists(index=self._collection_name, id=id).__bool__()
+        return bool(self._client.exists(index=self._collection_name, id=id))
 
     def delete_by_ids(self, ids: list[str]) -> None:
         for id in ids:
@@ -131,7 +131,7 @@ class ElasticSearchVector(BaseVector):
 
         docs = []
         for doc, score in docs_and_scores:
-            score_threshold = kwargs.get("score_threshold", 0.0)
+            score_threshold = float(kwargs.get("score_threshold") or 0.0)
             if score > score_threshold:
                 doc.metadata["score"] = score
             docs.append(doc)

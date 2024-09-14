@@ -181,7 +181,7 @@ class DatasetService:
                     "in the Settings -> Model Provider."
                 )
             except ProviderTokenNotInitError as ex:
-                raise ValueError(f"The dataset in unavailable, due to: " f"{ex.description}")
+                raise ValueError(f"The dataset in unavailable, due to: {ex.description}")
 
     @staticmethod
     def check_embedding_model_setting(tenant_id: str, embedding_model_provider: str, embedding_model: str):
@@ -195,10 +195,10 @@ class DatasetService:
             )
         except LLMBadRequestError:
             raise ValueError(
-                "No Embedding Model available. Please configure a valid provider " "in the Settings -> Model Provider."
+                "No Embedding Model available. Please configure a valid provider in the Settings -> Model Provider."
             )
         except ProviderTokenNotInitError as ex:
-            raise ValueError(f"The dataset in unavailable, due to: " f"{ex.description}")
+            raise ValueError(f"The dataset in unavailable, due to: {ex.description}")
 
     @staticmethod
     def update_dataset(dataset_id, data, user):
@@ -544,7 +544,7 @@ class DocumentService:
 
     @staticmethod
     def pause_document(document):
-        if document.indexing_status not in ["waiting", "parsing", "cleaning", "splitting", "indexing"]:
+        if document.indexing_status not in {"waiting", "parsing", "cleaning", "splitting", "indexing"}:
             raise DocumentIndexingError()
         # update document to be paused
         document.is_paused = True
