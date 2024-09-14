@@ -9,7 +9,7 @@ const translation = {
   play: 'Jouer',
   pause: 'Pause',
   playing: 'Jouant',
-  merMaind: {
+  merMaid: {
     rerender: 'Refaire Rerendu',
   },
   never: 'Jamais',

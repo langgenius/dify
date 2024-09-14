@@ -217,12 +217,12 @@ export const useChatWithHistory = (installedAppInfo?: InstalledApp) => {
   }, [newConversation])
 
   const currentConversationItem = useMemo(() => {
-    let coversationItem = conversationList.find(item => item.id === currentConversationId)
+    let conversationItem = conversationList.find(item => item.id === currentConversationId)
 
-    if (!coversationItem && pinnedConversationList.length)
-      coversationItem = pinnedConversationList.find(item => item.id === currentConversationId)
+    if (!conversationItem && pinnedConversationList.length)
+      conversationItem = pinnedConversationList.find(item => item.id === currentConversationId)
 
-    return coversationItem
+    return conversationItem
   }, [conversationList, currentConversationId, pinnedConversationList])
 
   const { notify } = useToastContext()

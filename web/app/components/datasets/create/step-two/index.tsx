@@ -306,7 +306,7 @@ const StepTwo = ({
   const {
     modelList: rerankModelList,
     defaultModel: rerankDefaultModel,
-    currentModel: isRerankDefaultModelVaild,
+    currentModel: isRerankDefaultModelValid,
   } = useModelListAndDefaultModelAndCurrentProviderAndModel(ModelTypeEnum.rerank)
   const { data: embeddingModelList } = useModelList(ModelTypeEnum.textEmbedding)
   const { data: defaultEmbeddingModel } = useDefaultModel(ModelTypeEnum.textEmbedding)
@@ -344,7 +344,7 @@ const StepTwo = ({
       if (
         !isReRankModelSelected({
           rerankDefaultModel,
-          isRerankDefaultModelVaild: !!isRerankDefaultModelVaild,
+          isRerankDefaultModelValid: !!isRerankDefaultModelValid,
           rerankModelList,
           // eslint-disable-next-line @typescript-eslint/no-use-before-define
           retrievalConfig,
@@ -743,7 +743,7 @@ const StepTwo = ({
             </div>
             {hasSetIndexType && indexType === IndexingType.ECONOMICAL && (
               <div className='mt-2 text-xs text-gray-500 font-medium'>
-                {t('datasetCreation.stepTwo.indexSettedTip')}
+                {t('datasetCreation.stepTwo.indexSettingTip')}
                 <Link className='text-[#155EEF]' href={`/datasets/${datasetId}/settings`}>{t('datasetCreation.stepTwo.datasetSettingLink')}</Link>
               </div>
             )}
@@ -790,7 +790,7 @@ const StepTwo = ({
                 />
                 {!!datasetId && (
                   <div className='mt-2 text-xs text-gray-500 font-medium'>
-                    {t('datasetCreation.stepTwo.indexSettedTip')}
+                    {t('datasetCreation.stepTwo.indexSettingTip')}
                     <Link className='text-[#155EEF]' href={`/datasets/${datasetId}/settings`}>{t('datasetCreation.stepTwo.datasetSettingLink')}</Link>
                   </div>
                 )}
@@ -890,7 +890,7 @@ const StepTwo = ({
               </div>
               <div className={s.divider} />
               <div className={s.segmentCount}>
-                <div className='mb-2 text-xs font-medium text-gray-500'>{t('datasetCreation.stepTwo.emstimateSegment')}</div>
+                <div className='mb-2 text-xs font-medium text-gray-500'>{t('datasetCreation.stepTwo.estimateSegment')}</div>
                 <div className='flex items-center text-sm leading-6 font-medium text-gray-800'>
                   {
                     fileIndexingEstimate

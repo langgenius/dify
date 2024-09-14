@@ -28,7 +28,7 @@ from core.model_runtime.model_providers.volcengine_maas.legacy.errors import (
     AuthErrors,
     BadRequestErrors,
     ConnectionErrors,
-    MaasException,
+    MaasError,
     RateLimitErrors,
     ServerUnavailableErrors,
 )
@@ -40,9 +40,9 @@ class VolcengineMaaSTextEmbeddingModel(TextEmbeddingModel):
     Model class for VolcengineMaaS text embedding model.
     """
 
-    def _invoke(self, model: str, credentials: dict,
-                texts: list[str], user: Optional[str] = None) \
-            -> TextEmbeddingResult:
+    def _invoke(
+        self, model: str, credentials: dict, texts: list[str], user: Optional[str] = None
+    ) -> TextEmbeddingResult:
         """
         Invoke text embedding model
 
@@ -57,37 +57,27 @@ class VolcengineMaaSTextEmbeddingModel(TextEmbeddingModel):
 
         return self._generate_v3(model, credentials, texts, user)
 
-    def _generate_v2(self, model: str, credentials: dict,
-                     texts: list[str], user: Optional[str] = None) \
-            -> TextEmbeddingResult:
+    def _generate_v2(
+        self, model: str, credentials: dict, texts: list[str], user: Optional[str] = None
+    ) -> TextEmbeddingResult:
         client = MaaSClient.from_credential(credentials)
         resp = MaaSClient.wrap_exception(lambda: client.embeddings(texts))
 
-        usage = self._calc_response_usage(
-            model=model, credentials=credentials, tokens=resp['usage']['total_tokens'])
+        usage = self._calc_response_usage(model=model, credentials=credentials, tokens=resp["usage"]["total_tokens"])
 
-        result = TextEmbeddingResult(
-            model=model,
-            embeddings=[v['embedding'] for v in resp['data']],
-            usage=usage
-        )
+        result = TextEmbeddingResult(model=model, embeddings=[v["embedding"] for v in resp["data"]], usage=usage)
 
         return result
 
-    def _generate_v3(self, model: str, credentials: dict,
-                     texts: list[str], user: Optional[str] = None) \
-            -> TextEmbeddingResult:
+    def _generate_v3(
+        self, model: str, credentials: dict, texts: list[str], user: Optional[str] = None
+    ) -> TextEmbeddingResult:
         client = ArkClientV3.from_credentials(credentials)
         resp = client.embeddings(texts)
 
-        usage = self._calc_response_usage(
-            model=model, credentials=credentials, tokens=resp.usage.total_tokens)
+        usage = self._calc_response_usage(model=model, credentials=credentials, tokens=resp.usage.total_tokens)
 
-        result = TextEmbeddingResult(
-            model=model,
-            embeddings=[v.embedding for v in resp.data],
-            usage=usage
-        )
+        result = TextEmbeddingResult(model=model, embeddings=[v.embedding for v in resp.data], usage=usage)
 
         return result
 
@@ -120,13 +110,13 @@ class VolcengineMaaSTextEmbeddingModel(TextEmbeddingModel):
 
     def _validate_credentials_v2(self, model: str, credentials: dict) -> None:
         try:
-            self._invoke(model=model, credentials=credentials, texts=['ping'])
-        except MaasException as e:
+            self._invoke(model=model, credentials=credentials, texts=["ping"])
+        except MaasError as e:
             raise CredentialsValidateFailedError(e.message)
 
     def _validate_credentials_v3(self, model: str, credentials: dict) -> None:
         try:
-            self._invoke(model=model, credentials=credentials, texts=['ping'])
+            self._invoke(model=model, credentials=credentials, texts=["ping"])
         except Exception as e:
             raise CredentialsValidateFailedError(e)
 
@@ -150,12 +140,12 @@ class VolcengineMaaSTextEmbeddingModel(TextEmbeddingModel):
 
     def get_customizable_model_schema(self, model: str, credentials: dict) -> AIModelEntity:
         """
-            generate custom model entities from credentials
+        generate custom model entities from credentials
         """
         model_config = get_model_config(credentials)
         model_properties = {
             ModelPropertyKey.CONTEXT_SIZE: model_config.properties.context_size,
-            ModelPropertyKey.MAX_CHUNKS: model_config.properties.max_chunks
+            ModelPropertyKey.MAX_CHUNKS: model_config.properties.max_chunks,
         }
         entity = AIModelEntity(
             model=model,
@@ -165,10 +155,10 @@ class VolcengineMaaSTextEmbeddingModel(TextEmbeddingModel):
             model_properties=model_properties,
             parameter_rules=[],
             pricing=PriceConfig(
-                input=Decimal(credentials.get('input_price', 0)),
-                unit=Decimal(credentials.get('unit', 0)),
-                currency=credentials.get('currency', "USD")
-            )
+                input=Decimal(credentials.get("input_price", 0)),
+                unit=Decimal(credentials.get("unit", 0)),
+                currency=credentials.get("currency", "USD"),
+            ),
         )
 
         return entity
@@ -184,10 +174,7 @@ class VolcengineMaaSTextEmbeddingModel(TextEmbeddingModel):
         """
         # get input price info
         input_price_info = self.get_price(
-            model=model,
-            credentials=credentials,
-            price_type=PriceType.INPUT,
-            tokens=tokens
+            model=model, credentials=credentials, price_type=PriceType.INPUT, tokens=tokens
         )
 
         # transform usage
@@ -198,7 +185,7 @@ class VolcengineMaaSTextEmbeddingModel(TextEmbeddingModel):
             price_unit=input_price_info.unit,
             total_price=input_price_info.total_amount,
             currency=input_price_info.currency,
-            latency=time.perf_counter() - self.started_at
+            latency=time.perf_counter() - self.started_at,
         )
 
         return usage

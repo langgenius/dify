@@ -156,8 +156,8 @@ const ViewAnnotationModal: FC<Props> = ({
             middlePagesSiblingCount={1}
             setCurrentPage={setCurrPage}
             totalPages={Math.ceil(total / APP_PAGE_LIMIT)}
-            truncableClassName="w-8 px-0.5 text-center"
-            truncableText="..."
+            truncatableClassName="w-8 px-0.5 text-center"
+            truncatableText="..."
           >
             <Pagination.PrevButton
               disabled={currPage === 0}

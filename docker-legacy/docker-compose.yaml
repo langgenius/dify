@@ -2,7 +2,7 @@ version: '3'
 services:
   # API service
   api:
-    image: langgenius/dify-api:0.7.3
+    image: langgenius/dify-api:0.8.2
     restart: always
     environment:
       # Startup mode, 'api' starts the API server.
@@ -128,16 +128,14 @@ services:
       # The Qdrant server gRPC mode PORT.
       QDRANT_GRPC_PORT: 6334
       # Milvus configuration Only available when VECTOR_STORE is `milvus`.
-      # The milvus host.
-      MILVUS_HOST: 127.0.0.1
-      # The milvus host.
-      MILVUS_PORT: 19530
+      # The milvus uri.
+      MILVUS_URI: http://127.0.0.1:19530
+      # The milvus token.
+      MILVUS_TOKEN: ''
       # The milvus username.
       MILVUS_USER: root
       # The milvus password.
       MILVUS_PASSWORD: Milvus
-      # The milvus tls switch.
-      MILVUS_SECURE: 'false'
       # relyt configurations
       RELYT_HOST: db
       RELYT_PORT: 5432
@@ -229,7 +227,7 @@ services:
   # worker service
   # The Celery worker for processing the queue.
   worker:
-    image: langgenius/dify-api:0.7.3
+    image: langgenius/dify-api:0.8.2
     restart: always
     environment:
       CONSOLE_WEB_URL: ''
@@ -308,16 +306,14 @@ services:
       # The Qdrant server gRPC mode PORT.
       QDRANT_GRPC_PORT: 6334
       # Milvus configuration Only available when VECTOR_STORE is `milvus`.
-      # The milvus host.
-      MILVUS_HOST: 127.0.0.1
-      # The milvus host.
-      MILVUS_PORT: 19530
+      # The milvus uri.
+      MILVUS_URI: http://127.0.0.1:19530
+      # The milvus token.
+      MILVUS_PORT: ''
       # The milvus username.
       MILVUS_USER: root
       # The milvus password.
       MILVUS_PASSWORD: Milvus
-      # The milvus tls switch.
-      MILVUS_SECURE: 'false'
       # Mail configuration, support: resend
       MAIL_TYPE: ''
       # default send from email address, if not specified
@@ -400,7 +396,7 @@ services:
 
   # Frontend web application.
   web:
-    image: langgenius/dify-web:0.7.3
+    image: langgenius/dify-web:0.8.2
     restart: always
     environment:
       # The base URL of console application api server, refers to the Console base URL of WEB service if console domain is

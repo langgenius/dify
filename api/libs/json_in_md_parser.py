@@ -1,6 +1,6 @@
 import json
 
-from core.llm_generator.output_parser.errors import OutputParserException
+from core.llm_generator.output_parser.errors import OutputParserError
 
 
 def parse_json_markdown(json_string: str) -> dict:
@@ -33,10 +33,10 @@ def parse_and_check_json_markdown(text: str, expected_keys: list[str]) -> dict:
     try:
         json_obj = parse_json_markdown(text)
     except json.JSONDecodeError as e:
-        raise OutputParserException(f"Got invalid JSON object. Error: {e}")
+        raise OutputParserError(f"Got invalid JSON object. Error: {e}")
     for key in expected_keys:
         if key not in json_obj:
-            raise OutputParserException(
-                f"Got invalid return object. Expected key `{key}` " f"to be present, but got {json_obj}"
+            raise OutputParserError(
+                f"Got invalid return object. Expected key `{key}` to be present, but got {json_obj}"
             )
     return json_obj

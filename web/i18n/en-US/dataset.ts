@@ -55,6 +55,7 @@ const translation = {
     hybrid_search: 'HYBRID',
     invertedIndex: 'INVERTED',
   },
+  defaultRetrievalTip: 'Multi-path retrieval is used by default. Knowledge is retrieved from multiple knowledge bases and then re-ranked.',
   mixtureHighQualityAndEconomicTip: 'The Rerank model is required for mixture of high quality and economical knowledge bases.',
   inconsistentEmbeddingModelTip: 'The Rerank model is required if the Embedding models of the selected knowledge bases are inconsistent.',
   retrievalSettings: 'Retrieval Setting',

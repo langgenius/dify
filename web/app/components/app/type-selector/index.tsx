@@ -9,7 +9,7 @@ import {
 } from '@/app/components/base/portal-to-follow-elem'
 import { Check, DotsGrid } from '@/app/components/base/icons/src/vender/line/general'
 import { XCircle } from '@/app/components/base/icons/src/vender/solid/general'
-import { ChatBot, CuteRobote } from '@/app/components/base/icons/src/vender/solid/communication'
+import { ChatBot, CuteRobot } from '@/app/components/base/icons/src/vender/solid/communication'
 import { Route } from '@/app/components/base/icons/src/vender/solid/mapsAndTravel'
 export type AppSelectorProps = {
   value: string
@@ -65,7 +65,7 @@ const AppTypeSelector = ({ value, onChange }: AppSelectorProps) => {
             {value === 'agent' && (
               <>
                 <div className='w-4 h-4 p-[1px]'>
-                  <CuteRobote className='w-3.5 h-3.5 text-indigo-600' />
+                  <CuteRobot className='w-3.5 h-3.5 text-indigo-600' />
                 </div>
                 <div className=''>{t('app.typeSelector.agent')}</div>
                 <div className='w-4 h-4 p-[1px]' onClick={(e) => {
@@ -106,7 +106,7 @@ const AppTypeSelector = ({ value, onChange }: AppSelectorProps) => {
               onChange('agent')
               setOpen(false)
             }}>
-              <CuteRobote className='mr-2 w-4 h-4 text-indigo-600' />
+              <CuteRobot className='mr-2 w-4 h-4 text-indigo-600' />
               <div className='grow text-gray-700 text-[13px] font-medium leading-[18px]'>{t('app.typeSelector.agent')}</div>
               {value === 'agent' && <Check className='w-4 h-4 text-primary-600' />}
             </div>

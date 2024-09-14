@@ -15,7 +15,7 @@ from core.model_manager import ModelManager
 from core.model_runtime.entities.model_entities import ModelType
 from core.rag.datasource.keyword.keyword_factory import Keyword
 from core.rag.models.document import Document as RAGDocument
-from core.rag.retrieval.retrival_methods import RetrievalMethod
+from core.rag.retrieval.retrieval_methods import RetrievalMethod
 from events.dataset_event import dataset_was_deleted
 from events.document_event import document_was_deleted
 from extensions.ext_database import db
@@ -155,7 +155,7 @@ class DatasetService:
         dataset.tenant_id = tenant_id
         dataset.embedding_model_provider = embedding_model.provider if embedding_model else None
         dataset.embedding_model = embedding_model.model if embedding_model else None
-        dataset.permission = permission if permission else DatasetPermissionEnum.ONLY_ME
+        dataset.permission = permission or DatasetPermissionEnum.ONLY_ME
         db.session.add(dataset)
         db.session.commit()
         return dataset
@@ -181,7 +181,7 @@ class DatasetService:
                     "in the Settings -> Model Provider."
                 )
             except ProviderTokenNotInitError as ex:
-                raise ValueError(f"The dataset in unavailable, due to: " f"{ex.description}")
+                raise ValueError(f"The dataset in unavailable, due to: {ex.description}")
 
     @staticmethod
     def check_embedding_model_setting(tenant_id: str, embedding_model_provider: str, embedding_model: str):
@@ -195,10 +195,10 @@ class DatasetService:
             )
         except LLMBadRequestError:
             raise ValueError(
-                "No Embedding Model available. Please configure a valid provider " "in the Settings -> Model Provider."
+                "No Embedding Model available. Please configure a valid provider in the Settings -> Model Provider."
             )
         except ProviderTokenNotInitError as ex:
-            raise ValueError(f"The dataset in unavailable, due to: " f"{ex.description}")
+            raise ValueError(f"The dataset in unavailable, due to: {ex.description}")
 
     @staticmethod
     def update_dataset(dataset_id, data, user):
@@ -544,7 +544,7 @@ class DocumentService:
 
     @staticmethod
     def pause_document(document):
-        if document.indexing_status not in ["waiting", "parsing", "cleaning", "splitting", "indexing"]:
+        if document.indexing_status not in {"waiting", "parsing", "cleaning", "splitting", "indexing"}:
             raise DocumentIndexingError()
         # update document to be paused
         document.is_paused = True
@@ -681,11 +681,7 @@ class DocumentService:
                         "score_threshold_enabled": False,
                     }
 
-                    dataset.retrieval_model = (
-                        document_data.get("retrieval_model")
-                        if document_data.get("retrieval_model")
-                        else default_retrieval_model
-                    )
+                    dataset.retrieval_model = document_data.get("retrieval_model") or default_retrieval_model
 
         documents = []
         batch = time.strftime("%Y%m%d%H%M%S") + str(random.randint(100000, 999999))
@@ -1057,12 +1053,8 @@ class DocumentService:
         dataset_collection_binding_id = None
         retrieval_model = None
         if document_data["indexing_technique"] == "high_quality":
-            model_manager = ModelManager()
-            embedding_model = model_manager.get_default_model_instance(
-                tenant_id=current_user.current_tenant_id, model_type=ModelType.TEXT_EMBEDDING
-            )
             dataset_collection_binding = DatasetCollectionBindingService.get_dataset_collection_binding(
-                embedding_model.provider, embedding_model.model
+                document_data["embedding_model_provider"], document_data["embedding_model"]
             )
             dataset_collection_binding_id = dataset_collection_binding.id
             if document_data.get("retrieval_model"):

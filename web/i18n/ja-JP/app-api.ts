@@ -10,7 +10,7 @@ const translation = {
   pause: '一時停止',
   playing: '再生中',
   loading: '読み込み中',
-  merMaind: {
+  merMaid: {
     rerender: '再レンダリング',
   },
   never: 'なし',

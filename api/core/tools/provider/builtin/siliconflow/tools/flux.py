@@ -5,17 +5,13 @@ import requests
 from core.tools.entities.tool_entities import ToolInvokeMessage
 from core.tools.tool.builtin_tool import BuiltinTool
 
-FLUX_URL = (
-    "https://api.siliconflow.cn/v1/black-forest-labs/FLUX.1-schnell/text-to-image"
-)
+FLUX_URL = "https://api.siliconflow.cn/v1/black-forest-labs/FLUX.1-schnell/text-to-image"
 
 
 class FluxTool(BuiltinTool):
-
     def _invoke(
         self, user_id: str, tool_parameters: dict[str, Any]
     ) -> Union[ToolInvokeMessage, list[ToolInvokeMessage]]:
-
         headers = {
             "accept": "application/json",
             "content-type": "application/json",
@@ -36,9 +32,5 @@ class FluxTool(BuiltinTool):
         res = response.json()
         result = [self.create_json_message(res)]
         for image in res.get("images", []):
-            result.append(
-                self.create_image_message(
-                    image=image.get("url"), save_as=self.VARIABLE_KEY.IMAGE.value
-                )
-            )
+            result.append(self.create_image_message(image=image.get("url"), save_as=self.VariableKey.IMAGE.value))
         return result

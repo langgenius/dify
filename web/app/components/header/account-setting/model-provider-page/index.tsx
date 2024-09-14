@@ -35,9 +35,9 @@ const ModelProviderPage = () => {
   const { modelProviders: providers } = useProviderContext()
   const setShowModelModal = useModalContextSelector(state => state.setShowModelModal)
   const defaultModelNotConfigured = !textGenerationDefaultModel && !embeddingsDefaultModel && !speech2textDefaultModel && !rerankDefaultModel && !ttsDefaultModel
-  const [configedProviders, notConfigedProviders] = useMemo(() => {
-    const configedProviders: ModelProvider[] = []
-    const notConfigedProviders: ModelProvider[] = []
+  const [configuredProviders, notConfiguredProviders] = useMemo(() => {
+    const configuredProviders: ModelProvider[] = []
+    const notConfiguredProviders: ModelProvider[] = []
 
     providers.forEach((provider) => {
       if (
@@ -47,12 +47,12 @@ const ModelProviderPage = () => {
           && provider.system_configuration.quota_configurations.find(item => item.quota_type === provider.system_configuration.current_quota_type)
         )
       )
-        configedProviders.push(provider)
+        configuredProviders.push(provider)
       else
-        notConfigedProviders.push(provider)
+        notConfiguredProviders.push(provider)
     })
 
-    return [configedProviders, notConfigedProviders]
+    return [configuredProviders, notConfiguredProviders]
   }, [providers])
 
   const handleOpenModal = (
@@ -110,10 +110,10 @@ const ModelProviderPage = () => {
         />
       </div>
       {
-        !!configedProviders?.length && (
+        !!configuredProviders?.length && (
           <div className='pb-3'>
             {
-              configedProviders?.map(provider => (
+              configuredProviders?.map(provider => (
                 <ProviderAddedCard
                   key={provider.provider}
                   provider={provider}
@@ -125,7 +125,7 @@ const ModelProviderPage = () => {
         )
       }
       {
-        !!notConfigedProviders?.length && (
+        !!notConfiguredProviders?.length && (
           <>
             <div className='flex items-center mb-2 text-xs font-semibold text-gray-500'>
               + {t('common.modelProvider.addMoreModelProvider')}
@@ -133,7 +133,7 @@ const ModelProviderPage = () => {
             </div>
             <div className='grid grid-cols-3 gap-2'>
               {
-                notConfigedProviders?.map(provider => (
+                notConfiguredProviders?.map(provider => (
                   <ProviderCard
                     key={provider.provider}
                     provider={provider}

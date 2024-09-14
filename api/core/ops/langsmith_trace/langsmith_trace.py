@@ -1,9 +1,11 @@
 import json
 import logging
 import os
+import uuid
 from datetime import datetime, timedelta
 
 from langsmith import Client
+from langsmith.schemas import RunBase
 
 from core.ops.base_trace_instance import BaseTraceInstance
 from core.ops.entities.config_entity import LangSmithConfig
@@ -80,7 +82,7 @@ class LangSmithDataTrace(BaseTraceInstance):
         langsmith_run = LangSmithRunModel(
             file_list=trace_info.file_list,
             total_tokens=trace_info.total_tokens,
-            id=trace_info.workflow_app_log_id if trace_info.workflow_app_log_id else trace_info.workflow_run_id,
+            id=trace_info.workflow_app_log_id or trace_info.workflow_run_id,
             name=TraceTaskName.WORKFLOW_TRACE.value,
             inputs=trace_info.workflow_run_inputs,
             run_type=LangSmithRunType.tool,
@@ -92,7 +94,7 @@ class LangSmithDataTrace(BaseTraceInstance):
             },
             error=trace_info.error,
             tags=["workflow"],
-            parent_run_id=trace_info.message_id if trace_info.message_id else None,
+            parent_run_id=trace_info.message_id or None,
         )
 
         self.add_run(langsmith_run)
@@ -131,7 +133,7 @@ class LangSmithDataTrace(BaseTraceInstance):
             else:
                 inputs = json.loads(node_execution.inputs) if node_execution.inputs else {}
             outputs = json.loads(node_execution.outputs) if node_execution.outputs else {}
-            created_at = node_execution.created_at if node_execution.created_at else datetime.now()
+            created_at = node_execution.created_at or datetime.now()
             elapsed_time = node_execution.elapsed_time
             finished_at = created_at + timedelta(seconds=elapsed_time)
 
@@ -157,8 +159,8 @@ class LangSmithDataTrace(BaseTraceInstance):
                 run_type = LangSmithRunType.llm
                 metadata.update(
                     {
-                        'ls_provider': process_data.get('model_provider', ''),
-                        'ls_model_name': process_data.get('model_name', ''),
+                        "ls_provider": process_data.get("model_provider", ""),
+                        "ls_model_name": process_data.get("model_name", ""),
                     }
                 )
             elif node_type == "knowledge-retrieval":
@@ -178,9 +180,7 @@ class LangSmithDataTrace(BaseTraceInstance):
                 extra={
                     "metadata": metadata,
                 },
-                parent_run_id=trace_info.workflow_app_log_id
-                if trace_info.workflow_app_log_id
-                else trace_info.workflow_run_id,
+                parent_run_id=trace_info.workflow_app_log_id or trace_info.workflow_run_id,
                 tags=["node_execution"],
             )
 
@@ -371,3 +371,22 @@ class LangSmithDataTrace(BaseTraceInstance):
         except Exception as e:
             logger.debug(f"LangSmith API check failed: {str(e)}")
             raise ValueError(f"LangSmith API check failed: {str(e)}")
+
+    def get_project_url(self):
+        try:
+            run_data = RunBase(
+                id=uuid.uuid4(),
+                name="tool",
+                inputs={"input": "test"},
+                outputs={"output": "test"},
+                run_type=LangSmithRunType.tool,
+                start_time=datetime.now(),
+            )
+
+            project_url = self.langsmith_client.get_run_url(
+                run=run_data, project_id=self.project_id, project_name=self.project_name
+            )
+            return project_url.split("/r/")[0]
+        except Exception as e:
+            logger.debug(f"LangSmith get run url failed: {str(e)}")
+            raise ValueError(f"LangSmith get run url failed: {str(e)}")

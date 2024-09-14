@@ -7,7 +7,7 @@ from requests import post
 from core.model_runtime.entities.message_entities import PromptMessageTool
 from core.model_runtime.model_providers.baichuan.llm.baichuan_turbo_errors import (
     BadRequestError,
-    InsufficientAccountBalance,
+    InsufficientAccountBalanceError,
     InternalServerError,
     InvalidAPIKeyError,
     InvalidAuthenticationError,
@@ -45,7 +45,7 @@ class BaichuanModel:
         parameters: dict[str, Any],
         tools: Optional[list[PromptMessageTool]] = None,
     ) -> dict[str, Any]:
-        if model in self._model_mapping.keys():
+        if model in self._model_mapping:
             # the LargeLanguageModel._code_block_mode_wrapper() method will remove the response_format of parameters.
             # we need to rename it to res_format to get its value
             if parameters.get("res_format") == "json_object":
@@ -94,8 +94,7 @@ class BaichuanModel:
         timeout: int,
         tools: Optional[list[PromptMessageTool]] = None,
     ) -> Union[Iterator, dict]:
-
-        if model in self._model_mapping.keys():
+        if model in self._model_mapping:
             api_base = "https://api.baichuan-ai.com/v1/chat/completions"
         else:
             raise BadRequestError(f"Unknown model: {model}")
@@ -120,14 +119,12 @@ class BaichuanModel:
                 err = resp["error"]["type"]
                 msg = resp["error"]["message"]
             except Exception as e:
-                raise InternalServerError(
-                    f"Failed to convert response to json: {e} with text: {response.text}"
-                )
+                raise InternalServerError(f"Failed to convert response to json: {e} with text: {response.text}")
 
             if err == "invalid_api_key":
                 raise InvalidAPIKeyError(msg)
             elif err == "insufficient_quota":
-                raise InsufficientAccountBalance(msg)
+                raise InsufficientAccountBalanceError(msg)
             elif err == "invalid_authentication":
                 raise InvalidAuthenticationError(msg)
             elif err == "invalid_request_error":

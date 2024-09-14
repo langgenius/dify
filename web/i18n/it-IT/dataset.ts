@@ -78,6 +78,7 @@ const translation = {
   nTo1RetrievalLegacy: 'Il recupero N-a-1 sarà ufficialmente deprecato da settembre. Si consiglia di utilizzare il più recente recupero multi-percorso per ottenere risultati migliori.',
   nTo1RetrievalLegacyLink: 'Scopri di più',
   nTo1RetrievalLegacyLinkText: 'Il recupero N-a-1 sarà ufficialmente deprecato a settembre.',
+  defaultRetrievalTip: 'Per impostazione predefinita, il recupero a percorsi multipli viene utilizzato. Le informazioni vengono recuperate da più knowledge base e quindi riclassificate.',
 }
 
 export default translation
