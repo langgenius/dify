@@ -1,9 +1,8 @@
 # standard import
 import base64
-import io
 import json
-import mimetypes
 import logging
+import mimetypes
 from collections.abc import Generator
 from typing import Optional, Union, cast
 
@@ -18,7 +17,6 @@ from botocore.exceptions import (
     ServiceNotInRegionError,
     UnknownServiceError,
 )
-from PIL.Image import Image
 
 # local import
 from core.model_runtime.callbacks.base_callback import Callback
