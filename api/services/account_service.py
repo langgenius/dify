@@ -306,7 +306,7 @@ class AccountService:
         if not account:
             return None
 
-        if account.status in [AccountStatus.BANNED.value, AccountStatus.CLOSED.value]:
+        if account.status in {AccountStatus.BANNED.value, AccountStatus.CLOSED.value}:
             raise Unauthorized("Account is banned or closed.")
 
         return account
