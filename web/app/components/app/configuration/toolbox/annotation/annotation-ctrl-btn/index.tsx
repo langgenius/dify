@@ -73,7 +73,7 @@ const CacheCtrlBtn: FC<Props> = ({
     setShowModal(false)
   }
   return (
-    <div className={cn(className, 'inline-block')}>
+    <div className={cn('inline-block', className)}>
       <div className='inline-flex p-0.5 space-x-0.5 rounded-lg bg-white border border-gray-100 shadow-md text-gray-500 cursor-pointer'>
         {cached
           ? (
