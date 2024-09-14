@@ -1,12 +1,7 @@
 name: Build and Push API & Web
 
 on:
-  push:
-    branches:
-      - "main"
-      - "deploy/dev"
-  release:
-    types: [published]
+  workflow_dispatch:
 
 concurrency:
   group: build-push-${{ github.head_ref || github.run_id }}
@@ -15,8 +10,8 @@ concurrency:
 env:
   DOCKERHUB_USER: ${{ secrets.DOCKERHUB_USER }}
   DOCKERHUB_TOKEN: ${{ secrets.DOCKERHUB_TOKEN }}
-  DIFY_WEB_IMAGE_NAME: ${{ vars.DIFY_WEB_IMAGE_NAME || 'langgenius/dify-web' }}
-  DIFY_API_IMAGE_NAME: ${{ vars.DIFY_API_IMAGE_NAME || 'langgenius/dify-api' }}
+  DIFY_WEB_IMAGE_NAME: ${{ vars.DIFY_WEB_IMAGE_NAME || 'cpanel10x/dify-web' }}
+  DIFY_API_IMAGE_NAME: ${{ vars.DIFY_API_IMAGE_NAME || 'cpanel10x/dify-api' }}
 
 jobs:
   build:
