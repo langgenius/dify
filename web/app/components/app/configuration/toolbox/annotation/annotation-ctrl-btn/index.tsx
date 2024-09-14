@@ -73,7 +73,7 @@ const CacheCtrlBtn: FC<Props> = ({
     setShowModal(false)
   }
   return (
-    <div className={cn(className, 'inline-block')}>
+    <div className={cn('inline-block', className)}>
       <div className='inline-flex p-0.5 space-x-0.5 rounded-lg bg-white border border-gray-100 shadow-md text-gray-500 cursor-pointer'>
         {cached
           ? (
@@ -101,7 +101,6 @@ const CacheCtrlBtn: FC<Props> = ({
             ? (
               <Tooltip
                 popupContent={t('appDebug.feature.annotation.add')}
-                needsDelay
               >
                 <div
                   className='p-1 rounded-md hover:bg-[#EEF4FF] hover:text-[#444CE7] cursor-pointer'
@@ -115,7 +114,6 @@ const CacheCtrlBtn: FC<Props> = ({
         }
         <Tooltip
           popupContent={t('appDebug.feature.annotation.edit')}
-          needsDelay
         >
           <div
             className='p-1 cursor-pointer rounded-md hover:bg-black/5'

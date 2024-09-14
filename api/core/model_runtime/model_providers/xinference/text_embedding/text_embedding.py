@@ -45,8 +45,7 @@ class XinferenceTextEmbeddingModel(TextEmbeddingModel):
         server_url = credentials["server_url"]
         model_uid = credentials["model_uid"]
         api_key = credentials.get("api_key")
-        if server_url.endswith("/"):
-            server_url = server_url[:-1]
+        server_url = server_url.removesuffix("/")
         auth_headers = {"Authorization": f"Bearer {api_key}"} if api_key else {}
 
         try:
@@ -118,8 +117,7 @@ class XinferenceTextEmbeddingModel(TextEmbeddingModel):
 
             if extra_args.max_tokens:
                 credentials["max_tokens"] = extra_args.max_tokens
-            if server_url.endswith("/"):
-                server_url = server_url[:-1]
+            server_url = server_url.removesuffix("/")
 
             client = Client(
                 base_url=server_url,

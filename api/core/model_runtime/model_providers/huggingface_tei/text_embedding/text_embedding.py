@@ -42,8 +42,7 @@ class HuggingfaceTeiTextEmbeddingModel(TextEmbeddingModel):
         """
         server_url = credentials["server_url"]
 
-        if server_url.endswith("/"):
-            server_url = server_url[:-1]
+        server_url = server_url.removesuffix("/")
 
         # get model properties
         context_size = self._get_context_size(model, credentials)
@@ -119,8 +118,7 @@ class HuggingfaceTeiTextEmbeddingModel(TextEmbeddingModel):
         num_tokens = 0
         server_url = credentials["server_url"]
 
-        if server_url.endswith("/"):
-            server_url = server_url[:-1]
+        server_url = server_url.removesuffix("/")
 
         batch_tokens = TeiHelper.invoke_tokenize(server_url, texts)
         num_tokens = sum(len(tokens) for tokens in batch_tokens)

@@ -24,7 +24,7 @@ class ListWorksheetsTool(BuiltinTool):
         elif not (host.startswith("http://") or host.startswith("https://")):
             return self.create_text_message("Invalid parameter Host Address")
         else:
-            host = f"{host[:-1] if host.endswith('/') else host}/api"
+            host = f"{host.removesuffix('/')}/api"
         url = f"{host}/v1/open/app/get"
 
         result_type = tool_parameters.get("result_type", "")

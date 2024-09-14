@@ -210,7 +210,7 @@ def test_run_parallel_in_workflow(mock_close, mock_remove):
             assert not isinstance(item, NodeRunFailedEvent)
             assert not isinstance(item, GraphRunFailedEvent)
 
-            if isinstance(item, BaseNodeEvent) and item.route_node_state.node_id in ["llm2", "llm3", "end1", "end2"]:
+            if isinstance(item, BaseNodeEvent) and item.route_node_state.node_id in {"llm2", "llm3", "end1", "end2"}:
                 assert item.parallel_id is not None
 
         assert len(items) == 18
@@ -315,12 +315,12 @@ def test_run_parallel_in_chatflow(mock_close, mock_remove):
         assert not isinstance(item, NodeRunFailedEvent)
         assert not isinstance(item, GraphRunFailedEvent)
 
-        if isinstance(item, BaseNodeEvent) and item.route_node_state.node_id in [
+        if isinstance(item, BaseNodeEvent) and item.route_node_state.node_id in {
             "answer2",
             "answer3",
             "answer4",
             "answer5",
-        ]:
+        }:
             assert item.parallel_id is not None
 
     assert len(items) == 23
