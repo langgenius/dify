@@ -6,7 +6,6 @@ import RemarkBreaks from 'remark-breaks'
 import RehypeKatex from 'rehype-katex'
 import RemarkGfm from 'remark-gfm'
 import RehypeRaw from 'rehype-raw'
-import { SVG } from '@svgdotjs/svg.js'
 import SyntaxHighlighter from 'react-syntax-highlighter'
 import { atelierHeathLight } from 'react-syntax-highlighter/dist/esm/styles/hljs'
 import type { RefObject } from 'react'
@@ -20,7 +19,7 @@ import ImageGallery from '@/app/components/base/image-gallery'
 import { useChatContext } from '@/app/components/base/chat/chat/context'
 import VideoGallery from '@/app/components/base/video-gallery'
 import AudioGallery from '@/app/components/base/audio-gallery'
-import ImagePreview from '@/app/components/base/image-uploader/image-preview'
+import SVGRenderer from '@/app/components/base/svg-gallery'
 
 // Available language https://github.com/react-syntax-highlighter/react-syntax-highlighter/blob/master/AVAILABLE_LANGUAGES_HLJS.MD
 const capitalizationLanguageNameMap: Record<string, string> = {
@@ -97,80 +96,6 @@ const useLazyLoad = (ref: RefObject<Element>): boolean => {
   }, [ref])
 
   return isIntersecting
-}
-
-const SVGRenderer = ({ content }: { content: string }) => {
-  const svgRef = useRef<HTMLDivElement>(null)
-  const [imagePreview, setImagePreview] = useState('')
-  const [windowSize, setWindowSize] = useState({
-    width: typeof window !== 'undefined' ? window.innerWidth : 0,
-    height: typeof window !== 'undefined' ? window.innerHeight : 0,
-  })
-
-  const svgToDataURL = (svgElement: Element): string => {
-    const svgString = new XMLSerializer().serializeToString(svgElement)
-    return `data:image/svg+xml;base64,${btoa(unescape(encodeURIComponent(svgString)))}`
-  }
-
-  useEffect(() => {
-    const handleResize = () => {
-      setWindowSize({ width: window.innerWidth, height: window.innerHeight })
-    }
-
-    window.addEventListener('resize', handleResize)
-    return () => window.removeEventListener('resize', handleResize)
-  }, [])
-
-  useEffect(() => {
-    if (svgRef.current) {
-      try {
-        svgRef.current.innerHTML = ''
-        const draw = SVG().addTo(svgRef.current).size('100%', '100%')
-
-        const parser = new DOMParser()
-        const svgDoc = parser.parseFromString(content, 'image/svg+xml')
-        const svgElement = svgDoc.documentElement
-
-        if (!(svgElement instanceof SVGElement))
-          throw new Error('Invalid SVG content')
-
-        const originalWidth = parseInt(svgElement.getAttribute('width') || '400', 10)
-        const originalHeight = parseInt(svgElement.getAttribute('height') || '600', 10)
-        const scale = Math.min(windowSize.width / originalWidth, windowSize.height / originalHeight, 1)
-        const scaledWidth = originalWidth * scale
-        const scaledHeight = originalHeight * scale
-        draw.size(scaledWidth, scaledHeight)
-
-        const rootElement = draw.svg(content)
-        rootElement.scale(scale)
-
-        rootElement.click(() => {
-          setImagePreview(svgToDataURL(svgElement as Element))
-        })
-      }
-      catch (error) {
-        console.error('Error rendering SVG:', error)
-        if (svgRef.current)
-          svgRef.current.innerHTML = 'Error rendering SVG. Please check the console for details.'
-      }
-    }
-  }, [content, windowSize])
-
-  return (
-    <>
-      <div ref={svgRef} style={{
-        width: '100%',
-        height: '100%',
-        minHeight: '300px',
-        maxHeight: '80vh',
-        display: 'flex',
-        justifyContent: 'center',
-        alignItems: 'center',
-        cursor: 'pointer',
-      }} />
-      {imagePreview && (<ImagePreview url={imagePreview} title='Preview' onCancel={() => setImagePreview('')} />)}
-    </>
-  )
 }
 
 // **Add code block
