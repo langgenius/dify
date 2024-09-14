@@ -9,6 +9,7 @@ import AccountDropdown from './account-dropdown'
 import AppNav from './app-nav'
 import DatasetNav from './dataset-nav'
 import EnvNav from './env-nav'
+import PluginsNav from './plugins-nav'
 import ExploreNav from './explore-nav'
 import ToolsNav from './tools-nav'
 import GithubStar from './github-star'
@@ -59,6 +60,11 @@ const Header = () => {
           <Link href="/apps" className='flex items-center mr-4'>
             <LogoSite className='object-contain' />
           </Link>
+          {enableBilling && (
+            <div className='select-none'>
+              <HeaderBillingBtn onClick={handlePlanClick} />
+            </div>
+          )}
           <GithubStar />
         </>}
       </div>
@@ -67,6 +73,11 @@ const Header = () => {
           <Link href="/apps" className='flex items-center mr-4'>
             <LogoSite />
           </Link>
+          {enableBilling && (
+            <div className='select-none'>
+              <HeaderBillingBtn onClick={handlePlanClick} />
+            </div>
+          )}
           <GithubStar />
         </div>
       )}
@@ -80,11 +91,9 @@ const Header = () => {
       )}
       <div className='flex items-center flex-shrink-0'>
         <EnvNav />
-        {enableBilling && (
-          <div className='mr-3 select-none'>
-            <HeaderBillingBtn onClick={handlePlanClick} />
-          </div>
-        )}
+        <div className='mr-3'>
+          <PluginsNav />
+        </div>
         <WorkspaceProvider>
           <AccountDropdown isMobile={isMobile} />
         </WorkspaceProvider>
