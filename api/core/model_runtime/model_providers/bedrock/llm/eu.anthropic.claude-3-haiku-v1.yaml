@@ -1,6 +1,6 @@
 model: eu.anthropic.claude-3-haiku-20240307-v1:0
 label:
-  en_US: Claude 3 Haiku(Cross Region Inference)
+  en_US: Claude 3 Haiku(EU.Cross Region Inference)
 model_type: llm
 features:
   - agent-thought
