@@ -65,7 +65,7 @@ class CacheEmbedding(Embeddings):
                         except IntegrityError:
                             db.session.rollback()
                         except Exception as e:
-                            logging.exception("Failed transform embedding: ", e)
+                            logging.exception("Failed transform embedding: %s", e)
                 cache_embeddings = []
                 try:
                     for i, embedding in zip(embedding_queue_indices, embedding_queue_embeddings):
@@ -85,7 +85,7 @@ class CacheEmbedding(Embeddings):
                     db.session.rollback()
             except Exception as ex:
                 db.session.rollback()
-                logger.error("Failed to embed documents: ", ex)
+                logger.error("Failed to embed documents: %s", ex)
                 raise ex
 
         return text_embeddings
@@ -116,10 +116,7 @@ class CacheEmbedding(Embeddings):
             # Transform to string
             encoded_str = encoded_vector.decode("utf-8")
             redis_client.setex(embedding_cache_key, 600, encoded_str)
-
-        except IntegrityError:
-            db.session.rollback()
-        except:
-            logging.exception("Failed to add embedding to redis")
+        except Exception as ex:
+            logging.exception("Failed to add embedding to redis %s", ex)
 
         return embedding_results
