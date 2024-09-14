@@ -20,7 +20,7 @@ from extensions.ext_storage import storage
 
 from .account import Account
 from .model import App, Tag, TagBinding, UploadFile
-from .types import StringUUID
+from .types import StringUUID, AdjustedJSON, PostgresJSONIndex
 
 
 class DatasetPermissionEnum(str, enum.Enum):
@@ -34,6 +34,7 @@ class Dataset(db.Model):
     __table_args__ = (
         db.PrimaryKeyConstraint("id", name="dataset_pkey"),
         db.Index("dataset_tenant_idx", "tenant_id"),
+        PostgresJSONIndex("retrieval_model_idx", "retrieval_model", postgresql_using="gin")
     )
 
     INDEXING_TECHNIQUE_LIST = ["high_quality", "economy", None]
@@ -54,7 +55,7 @@ class Dataset(db.Model):
     embedding_model = db.Column(db.String(255), nullable=True)
     embedding_model_provider = db.Column(db.String(255), nullable=True)
     collection_binding_id = db.Column(StringUUID, nullable=True)
-    retrieval_model = db.Column(db.JSON, nullable=True)
+    retrieval_model = db.Column(AdjustedJSON, nullable=True)
 
     @property
     def dataset_keyword_table(self):
@@ -682,8 +683,3 @@ class DatasetPermission(db.Model):
     tenant_id = db.Column(StringUUID, nullable=False)
     has_permission = db.Column(db.Boolean, nullable=False, default=True)
     created_at = db.Column(db.DateTime, nullable=False, server_default=func.current_timestamp())
-
-
-# MySQL does not support indexing JSON column directly (https://dev.mysql.com/doc/refman/8.0/en/create-table-secondary-indexes.html#json-column-indirect-index)
-if dify_config.SQLALCHEMY_DATABASE_URI_SCHEME == "postgresql":
-    Dataset.__table_args__ += (db.Index("retrieval_model_idx", "retrieval_model", postgresql_using="gin"),)
