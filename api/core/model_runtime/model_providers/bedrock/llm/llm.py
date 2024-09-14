@@ -2,6 +2,7 @@
 import base64
 import io
 import json
+import mimetypes
 import logging
 from collections.abc import Generator
 from typing import Optional, Union, cast
@@ -443,9 +444,10 @@ class BedrockLargeLanguageModel(LargeLanguageModel):
                             try:
                                 url = message_content.data
                                 image_content = requests.get(url).content
-                                with Image.open(io.BytesIO(image_content)) as img:
-                                    mime_type = f"image/{img.format.lower()}"
-                                base64_data = base64.b64encode(image_content).decode("utf-8")
+                                if '?' in url:
+                                    url = url.split('?')[0]
+                                mime_type, _ = mimetypes.guess_type(url)
+                                base64_data = base64.b64encode(image_content).decode('utf-8')
                             except Exception as ex:
                                 raise ValueError(f"Failed to fetch image data from url {message_content.data}, {ex}")
                         else:
