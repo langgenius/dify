@@ -1,22 +1,24 @@
 from __future__ import annotations
 
-
-from typing import TYPE_CHECKING, List, Mapping, cast, Optional, Dict
-from typing_extensions import Literal
-
-from ....core import BaseAPI, maybe_transform
-from ....core import NOT_GIVEN, Body, Headers, NotGiven, FileTypes
+from collections.abc import Mapping
+from typing import TYPE_CHECKING, Literal, Optional, cast
 
 import httpx
 
 from ....core import (
+    NOT_GIVEN,
+    BaseAPI,
+    Body,
+    FileTypes,
+    Headers,
+    NotGiven,
+    deepcopy_minimal,
+    extract_files,
     make_request_options,
+    maybe_transform,
 )
-from ....core import deepcopy_minimal, extract_files
-from ....types.knowledge.document import DocumentData, DocumentObject, document_edit_params, document_list_params
-
 from ....types.files import UploadDetail, file_create_params
-
+from ....types.knowledge.document import DocumentData, DocumentObject, document_edit_params, document_list_params
 from ....types.knowledge.document.document_list_resp import DocumentPage
 
 if TYPE_CHECKING:
@@ -27,15 +29,15 @@ __all__ = ["Document"]
 
 class Document(BaseAPI):
 
-    def __init__(self, client: "ZhipuAI") -> None:
+    def __init__(self, client: ZhipuAI) -> None:
         super().__init__(client)
 
     def create(
             self,
             *,
             file: FileTypes = None,
-            custom_separator: Optional[List[str]] = None,
-            upload_detail: List[UploadDetail] = None,
+            custom_separator: Optional[list[str]] = None,
+            upload_detail: list[UploadDetail] = None,
             purpose: Literal["retrieval"],
             knowledge_id: str = None,
             sentence_size: int = None,
@@ -77,10 +79,10 @@ class Document(BaseAPI):
             document_id: str,
             knowledge_type: str,
             *,
-            custom_separator: Optional[List[str]] = None,
+            custom_separator: Optional[list[str]] = None,
             sentence_size: Optional[int] = None,
             callback_url: Optional[str] = None,
-            callback_header: Optional[Dict[str, str]] = None,
+            callback_header: Optional[dict[str, str]] = None,
             extra_headers: Headers | None = None,
             extra_body: Body | None = None,
             timeout: float | httpx.Timeout | None | NotGiven = NOT_GIVEN,
@@ -164,7 +166,6 @@ class Document(BaseAPI):
             ),
             cast_type=DocumentPage,
         )
-
 
     def delete(
             self,

@@ -1,10 +1,11 @@
 from typing import TYPE_CHECKING
+
+from ...core import BaseAPI, cached_property
 from .jobs import Jobs
 from .models import FineTunedModels
-from ...core import BaseAPI, cached_property
 
 if TYPE_CHECKING:
-    from ..._client import ZhipuAI
+    pass
 
 
 class FineTuning(BaseAPI):

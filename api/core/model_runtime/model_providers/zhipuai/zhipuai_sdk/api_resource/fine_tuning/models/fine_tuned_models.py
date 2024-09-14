@@ -1,18 +1,18 @@
 from __future__ import annotations
 
-from typing import Optional, TYPE_CHECKING
+from typing import TYPE_CHECKING
 
 import httpx
 
-from ....core import BaseAPI
-from ....core import NOT_GIVEN, Headers, NotGiven, Body
 from ....core import (
+    NOT_GIVEN,
+    BaseAPI,
+    Body,
+    Headers,
+    NotGiven,
     make_request_options,
 )
-
-from ....types.fine_tuning.models import (
-    FineTunedModelsStatus
-)
+from ....types.fine_tuning.models import FineTunedModelsStatus
 
 if TYPE_CHECKING:
     from ...._client import ZhipuAI
@@ -22,7 +22,7 @@ __all__ = ["FineTunedModels"]
 
 class FineTunedModels(BaseAPI):
 
-    def __init__(self, client: "ZhipuAI") -> None:
+    def __init__(self, client: ZhipuAI) -> None:
         super().__init__(client)
 
     def delete(

@@ -1,24 +1,25 @@
 from __future__ import annotations
 
-
-from typing import TYPE_CHECKING, List, Mapping, cast
-from typing_extensions import Literal
-
-from ..core import BaseAPI, maybe_transform
-from ..core import NOT_GIVEN, Body, Headers, NotGiven, FileTypes
+from collections.abc import Mapping
+from typing import TYPE_CHECKING, Literal, cast
 
 import httpx
 
 from ..core import (
+    NOT_GIVEN,
+    BaseAPI,
+    Body,
+    FileTypes,
+    Headers,
+    NotGiven,
+    _legacy_binary_response,
+    _legacy_response,
+    deepcopy_minimal,
+    extract_files,
     make_request_options,
+    maybe_transform,
 )
-from ..core import deepcopy_minimal, extract_files
-from ..types.files import FileObject, ListOfFileObject, file_create_params, FileDeleted
-
-from ..types.files import UploadDetail
-
-from ..core import _legacy_binary_response
-from ..core import _legacy_response
+from ..types.files import FileDeleted, FileObject, ListOfFileObject, UploadDetail, file_create_params
 
 if TYPE_CHECKING:
     from .._client import ZhipuAI
@@ -28,14 +29,14 @@ __all__ = ["Files", "FilesWithRawResponse"]
 
 class Files(BaseAPI):
 
-    def __init__(self, client: "ZhipuAI") -> None:
+    def __init__(self, client: ZhipuAI) -> None:
         super().__init__(client)
 
     def create(
             self,
             *,
             file: FileTypes = None,
-            upload_detail: List[UploadDetail] = None,
+            upload_detail: list[UploadDetail] = None,
             purpose: Literal["fine-tune", "retrieval", "batch"],
             knowledge_id: str = None,
             sentence_size: int = None,

@@ -1,9 +1,10 @@
 from __future__ import annotations
 
-import httpx
-from typing import TYPE_CHECKING, Literal, Optional, Dict
+from typing import TYPE_CHECKING, Literal, Optional
 
-from ..core import BaseAPI, NotGiven, NOT_GIVEN, Headers, Body, maybe_transform, make_request_options
+import httpx
+
+from ..core import NOT_GIVEN, BaseAPI, Body, Headers, NotGiven, make_request_options, maybe_transform
 from ..core.pagination import SyncCursorPage
 from ..types import batch_create_params, batch_list_params
 from ..types.batch import Batch
@@ -14,7 +15,7 @@ if TYPE_CHECKING:
 
 class Batches(BaseAPI):
 
-    def __init__(self, client: "ZhipuAI") -> None:
+    def __init__(self, client: ZhipuAI) -> None:
         super().__init__(client)
 
     def create(
@@ -23,7 +24,7 @@ class Batches(BaseAPI):
             completion_window: str | None = None,
             endpoint: Literal["/v1/chat/completions", "/v1/embeddings"],
             input_file_id: str,
-            metadata: Optional[Dict[str, str]] | NotGiven = NOT_GIVEN,
+            metadata: Optional[dict[str, str]] | NotGiven = NOT_GIVEN,
             auto_delete_input_file: bool = True,
             extra_headers: Headers | None = None,
             extra_body: Body | None = None,
@@ -37,7 +38,7 @@ class Batches(BaseAPI):
                     "endpoint": endpoint,
                     "input_file_id": input_file_id,
                     "metadata": metadata,
-                    "auto_delete_input_file":auto_delete_input_file
+                    "auto_delete_input_file": auto_delete_input_file
                 },
                 batch_create_params.BatchCreateParams,
             ),
@@ -46,7 +47,6 @@ class Batches(BaseAPI):
             ),
             cast_type=Batch,
         )
-
 
     def retrieve(
             self,
@@ -147,7 +147,7 @@ class Batches(BaseAPI):
         return self._post(
             f"/batches/{batch_id}/cancel",
             options=make_request_options(
-                extra_headers=extra_headers,extra_body=extra_body, timeout=timeout
+                extra_headers=extra_headers, extra_body=extra_body, timeout=timeout
             ),
             cast_type=Batch,
         )

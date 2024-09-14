@@ -2,6 +2,6 @@
 
 from .assistant import Assistant
 
-__all__= [
+__all__ = [
     "Assistant"
 ]

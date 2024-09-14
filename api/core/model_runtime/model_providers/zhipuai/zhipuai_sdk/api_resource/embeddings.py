@@ -1,12 +1,10 @@
 from __future__ import annotations
 
-from typing import Union, List, Optional, TYPE_CHECKING
+from typing import TYPE_CHECKING, Optional, Union
 
 import httpx
 
-from ..core import BaseAPI, Body
-from ..core import NotGiven, NOT_GIVEN, Headers
-from ..core import make_request_options
+from ..core import NOT_GIVEN, BaseAPI, Body, Headers, NotGiven, make_request_options
 from ..types.embeddings import EmbeddingsResponded
 
 if TYPE_CHECKING:
@@ -14,15 +12,15 @@ if TYPE_CHECKING:
 
 
 class Embeddings(BaseAPI):
-    def __init__(self, client: "ZhipuAI") -> None:
+    def __init__(self, client: ZhipuAI) -> None:
         super().__init__(client)
 
     def create(
             self,
             *,
-            input: Union[str, List[str], List[int], List[List[int]]],
+            input: Union[str, list[str], list[int], list[list[int]]],
             model: Union[str],
-            dimensions: Union[int]| NotGiven = NOT_GIVEN,
+            dimensions: Union[int] | NotGiven = NOT_GIVEN,
             encoding_format: str | NotGiven = NOT_GIVEN,
             user: str | NotGiven = NOT_GIVEN,
             request_id: Optional[str] | NotGiven = NOT_GIVEN,

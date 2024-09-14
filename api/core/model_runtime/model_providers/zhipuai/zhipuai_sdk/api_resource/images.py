@@ -1,12 +1,10 @@
 from __future__ import annotations
 
-from typing import Union, List, Optional, TYPE_CHECKING
+from typing import TYPE_CHECKING, Optional
 
 import httpx
 
-from ..core import BaseAPI
-from ..core import NotGiven, NOT_GIVEN, Headers, Body
-from ..core import make_request_options
+from ..core import NOT_GIVEN, BaseAPI, Body, Headers, NotGiven, make_request_options
 from ..types.image import ImagesResponded
 from ..types.sensitive_word_check import SensitiveWordCheckRequest
 
@@ -15,7 +13,7 @@ if TYPE_CHECKING:
 
 
 class Images(BaseAPI):
-    def __init__(self, client: "ZhipuAI") -> None:
+    def __init__(self, client: ZhipuAI) -> None:
         super().__init__(client)
 
     def generations(

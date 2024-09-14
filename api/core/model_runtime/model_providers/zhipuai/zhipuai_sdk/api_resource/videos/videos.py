@@ -1,21 +1,21 @@
 from __future__ import annotations
 
-
-from typing import TYPE_CHECKING, List, Mapping, cast, Optional, Dict
-from typing_extensions import Literal
-
-from ...types.sensitive_word_check import SensitiveWordCheckRequest
-from ...types.video import video_create_params
-from ...types.video import VideoObject
-from ...core import BaseAPI, maybe_transform
-from ...core import NOT_GIVEN, Body, Headers, NotGiven
+from typing import TYPE_CHECKING, Optional
 
 import httpx
 
 from ...core import (
+    NOT_GIVEN,
+    BaseAPI,
+    Body,
+    Headers,
+    NotGiven,
+    deepcopy_minimal,
     make_request_options,
+    maybe_transform,
 )
-from ...core import deepcopy_minimal, extract_files
+from ...types.sensitive_word_check import SensitiveWordCheckRequest
+from ...types.video import VideoObject, video_create_params
 
 if TYPE_CHECKING:
     from ..._client import ZhipuAI
@@ -25,7 +25,7 @@ __all__ = ["Videos"]
 
 class Videos(BaseAPI):
 
-    def __init__(self, client: "ZhipuAI") -> None:
+    def __init__(self, client: ZhipuAI) -> None:
         super().__init__(client)
 
     def generations(

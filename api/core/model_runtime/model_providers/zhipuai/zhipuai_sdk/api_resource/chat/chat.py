@@ -1,10 +1,11 @@
 from typing import TYPE_CHECKING
-from .completions import Completions
-from .async_completions import AsyncCompletions
+
 from ...core import BaseAPI, cached_property
+from .async_completions import AsyncCompletions
+from .completions import Completions
 
 if TYPE_CHECKING:
-    from ..._client import ZhipuAI
+    pass
 
 
 class Chat(BaseAPI):
@@ -14,5 +15,5 @@ class Chat(BaseAPI):
         return Completions(self._client)
 
     @cached_property
-    def asyncCompletions(self) -> AsyncCompletions:
+    def asyncCompletions(self) -> AsyncCompletions:  # noqa: N802
         return AsyncCompletions(self._client)

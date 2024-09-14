@@ -1,18 +1,22 @@
 from __future__ import annotations
 
-from typing import TYPE_CHECKING, List, Union, Dict, Optional
-from typing_extensions import Literal
-
-from ...core import NOT_GIVEN, Body, Headers, NotGiven, BaseAPI, maybe_transform, StreamResponse, deepcopy_minimal
+import logging
+from typing import TYPE_CHECKING, Literal, Optional, Union
 
 import httpx
 
 from ...core import (
+    NOT_GIVEN,
+    BaseAPI,
+    Body,
+    Headers,
+    NotGiven,
+    StreamResponse,
+    deepcopy_minimal,
     make_request_options,
+    maybe_transform,
 )
-import logging
-
-from ...types.tools import tools_web_search_params, WebSearch, WebSearchChunk
+from ...types.tools import WebSearch, WebSearchChunk, tools_web_search_params
 
 logger = logging.getLogger(__name__)
 
@@ -24,7 +28,7 @@ __all__ = ["Tools"]
 
 class Tools(BaseAPI):
 
-    def __init__(self, client: "ZhipuAI") -> None:
+    def __init__(self, client: ZhipuAI) -> None:
         super().__init__(client)
 
     def web_search(
@@ -33,7 +37,7 @@ class Tools(BaseAPI):
             model: str,
             request_id: Optional[str] | NotGiven = NOT_GIVEN,
             stream: Optional[Literal[False]] | Literal[True] | NotGiven = NOT_GIVEN,
-            messages: Union[str, List[str], List[int], object, None],
+            messages: Union[str, list[str], list[int], object, None],
             scope: Optional[str] | NotGiven = NOT_GIVEN,
             location: Optional[str] | NotGiven = NOT_GIVEN,
             recent_days: Optional[int] | NotGiven = NOT_GIVEN,
@@ -54,7 +58,7 @@ class Tools(BaseAPI):
             })
         return self._post(
             "/tools",
-            body= maybe_transform(body, tools_web_search_params.WebSearchParams),
+            body=maybe_transform(body, tools_web_search_params.WebSearchParams),
             options=make_request_options(
                 extra_headers=extra_headers, extra_body=extra_body, timeout=timeout
             ),

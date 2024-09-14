@@ -1,44 +1,46 @@
 from __future__ import annotations
 
-from typing import TYPE_CHECKING, List, Mapping, cast, Optional, Dict
-from typing_extensions import Literal
-
-from ...types.assistant import AssistantCompletion
-from ...types.assistant.assistant_conversation_resp import ConversationUsageList, ConversationUsageListResp
-from ...types.assistant.assistant_support_resp import AssistantSupportResp
-from ...core import BaseAPI, maybe_transform, StreamResponse
-from ...core import NOT_GIVEN, Body, Headers, NotGiven
+from typing import TYPE_CHECKING, Optional
 
 import httpx
 
 from ...core import (
+    NOT_GIVEN,
+    BaseAPI,
+    Body,
+    Headers,
+    NotGiven,
+    StreamResponse,
+    deepcopy_minimal,
     make_request_options,
+    maybe_transform,
 )
-from ...core import deepcopy_minimal, extract_files
+from ...types.assistant import AssistantCompletion
+from ...types.assistant.assistant_conversation_resp import ConversationUsageListResp
+from ...types.assistant.assistant_support_resp import AssistantSupportResp
 
 if TYPE_CHECKING:
     from ..._client import ZhipuAI
 
-from ...types.assistant import assistant_create_params
-from ...types.assistant import assistant_conversation_params
+from ...types.assistant import assistant_conversation_params, assistant_create_params
 
 __all__ = ["Assistant"]
 
 
 class Assistant(BaseAPI):
 
-    def __init__(self, client: "ZhipuAI") -> None:
+    def __init__(self, client: ZhipuAI) -> None:
         super().__init__(client)
 
     def conversation(
             self,
             assistant_id: str,
             model: str,
-            messages: List[assistant_create_params.ConversationMessage],
+            messages: list[assistant_create_params.ConversationMessage],
             *,
             stream: bool = True,
             conversation_id: Optional[str] = None,
-            attachments: Optional[List[assistant_create_params.AssistantAttachments]] = None,
+            attachments: Optional[list[assistant_create_params.AssistantAttachments]] = None,
             metadata: dict | None = None,
             request_id: str = None,
             user_id: str = None,
@@ -73,7 +75,7 @@ class Assistant(BaseAPI):
     def query_support(
             self,
             *,
-            assistant_id_list: List[str] = None,
+            assistant_id_list: list[str] = None,
             request_id: str = None,
             user_id: str = None,
             extra_headers: Headers | None = None,

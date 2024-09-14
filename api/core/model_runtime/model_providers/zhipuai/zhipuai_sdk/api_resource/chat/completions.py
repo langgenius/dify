@@ -1,15 +1,22 @@
 from __future__ import annotations
 
-from typing import Union, List, Optional, TYPE_CHECKING, Dict
+import logging
+from typing import TYPE_CHECKING, Literal, Optional, Union
 
 import httpx
-import logging
-from typing_extensions import Literal
 
-from ...core import BaseAPI, deepcopy_minimal, maybe_transform, drop_prefix_image_data
-from ...core import NotGiven, NOT_GIVEN, Headers, Query, Body
-from ...core import make_request_options
-from ...core import StreamResponse
+from ...core import (
+    NOT_GIVEN,
+    BaseAPI,
+    Body,
+    Headers,
+    NotGiven,
+    StreamResponse,
+    deepcopy_minimal,
+    drop_prefix_image_data,
+    make_request_options,
+    maybe_transform,
+)
 from ...types.chat.chat_completion import Completion
 from ...types.chat.chat_completion_chunk import ChatCompletionChunk
 from ...types.chat.code_geex import code_geex_params
@@ -22,7 +29,7 @@ if TYPE_CHECKING:
 
 
 class Completions(BaseAPI):
-    def __init__(self, client: "ZhipuAI") -> None:
+    def __init__(self, client: ZhipuAI) -> None:
         super().__init__(client)
 
     def create(
@@ -37,12 +44,12 @@ class Completions(BaseAPI):
             top_p: Optional[float] | NotGiven = NOT_GIVEN,
             max_tokens: int | NotGiven = NOT_GIVEN,
             seed: int | NotGiven = NOT_GIVEN,
-            messages: Union[str, List[str], List[int], object, None],
-            stop: Optional[Union[str, List[str], None]] | NotGiven = NOT_GIVEN,
+            messages: Union[str, list[str], list[int], object, None],
+            stop: Optional[Union[str, list[str], None]] | NotGiven = NOT_GIVEN,
             sensitive_word_check: Optional[SensitiveWordCheckRequest] | NotGiven = NOT_GIVEN,
             tools: Optional[object] | NotGiven = NOT_GIVEN,
             tool_choice: str | NotGiven = NOT_GIVEN,
-            meta: Optional[Dict[str,str]] | NotGiven = NOT_GIVEN,
+            meta: Optional[dict[str, str]] | NotGiven = NOT_GIVEN,
             extra: Optional[code_geex_params.CodeGeexExtra] | NotGiven = NOT_GIVEN,
             extra_headers: Headers | None = None,
             extra_body: Body | None = None,
@@ -54,7 +61,7 @@ class Completions(BaseAPI):
             if temperature <= 0:
                 do_sample = False
                 temperature = 0.01
-                # logger.warning("temperature:取值范围是：(0.0, 1.0) 开区间，do_sample重写为:false（参数top_p temperture不生效）")
+                # logger.warning("temperature:取值范围是：(0.0, 1.0) 开区间，do_sample重写为:false（参数top_p temperture不生效）")  # noqa: E501
             if temperature >= 1:
                 temperature = 0.99
                 # logger.warning("temperature:取值范围是：(0.0, 1.0) 开区间")
@@ -68,7 +75,7 @@ class Completions(BaseAPI):
                 # logger.warning("top_p:取值范围是：(0.0, 1.0) 开区间，不能等于 0 或 1")
 
         logger.debug(f"temperature:{temperature}, top_p:{top_p}")
-        if isinstance(messages, List):
+        if isinstance(messages, list):
             for item in messages:
                 if item.get('content'):
                     item['content'] = drop_prefix_image_data(item['content'])

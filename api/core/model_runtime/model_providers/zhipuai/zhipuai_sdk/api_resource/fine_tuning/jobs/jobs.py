@@ -1,19 +1,22 @@
 from __future__ import annotations
 
-from typing import Optional, TYPE_CHECKING
+from typing import TYPE_CHECKING, Optional
 
 import httpx
 
-from ....core import BaseAPI
-from ....core import NOT_GIVEN, Headers, NotGiven, Body
 from ....core import (
+    NOT_GIVEN,
+    BaseAPI,
+    Body,
+    Headers,
+    NotGiven,
     make_request_options,
 )
 from ....types.fine_tuning import (
     FineTuningJob,
-    job_create_params,
-    ListOfFineTuningJob,
     FineTuningJobEvent,
+    ListOfFineTuningJob,
+    job_create_params,
 )
 
 if TYPE_CHECKING:
@@ -24,7 +27,7 @@ __all__ = ["Jobs"]
 
 class Jobs(BaseAPI):
 
-    def __init__(self, client: "ZhipuAI") -> None:
+    def __init__(self, client: ZhipuAI) -> None:
         super().__init__(client)
 
     def create(
@@ -99,7 +102,7 @@ class Jobs(BaseAPI):
             self,
             fine_tuning_job_id: str,
             *,
-            # Use the following arguments if you need to pass additional parameters to the API that aren't available via kwargs.
+            # Use the following arguments if you need to pass additional parameters to the API that aren't available via kwargs.  # noqa: E501
             # The extra values given here take precedence over values defined on the client or passed to this method.
             extra_headers: Headers | None = None,
             extra_body: Body | None = None,

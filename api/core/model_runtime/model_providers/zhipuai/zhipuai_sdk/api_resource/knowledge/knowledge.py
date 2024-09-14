@@ -1,21 +1,23 @@
 from __future__ import annotations
 
-from typing import TYPE_CHECKING, List, Mapping, cast, Optional
-from typing_extensions import Literal
-
-from ...core import NOT_GIVEN, Body, Headers, NotGiven, FileTypes, BaseAPI, maybe_transform
+from typing import TYPE_CHECKING, Literal, Optional
 
 import httpx
 
 from ...core import (
+    NOT_GIVEN,
+    BaseAPI,
+    Body,
+    Headers,
+    NotGiven,
+    cached_property,
+    deepcopy_minimal,
     make_request_options,
+    maybe_transform,
 )
-from ...core import deepcopy_minimal, cached_property
-from ...types.knowledge import knowledge_create_params, knowledge_list_params
-from ...types.knowledge import KnowledgeInfo, KnowledgeUsed
-from ...core.pagination import SyncCursorPage
-from .document import Document
+from ...types.knowledge import KnowledgeInfo, KnowledgeUsed, knowledge_create_params, knowledge_list_params
 from ...types.knowledge.knowledge_list_resp import KnowledgePage
+from .document import Document
 
 if TYPE_CHECKING:
     from ..._client import ZhipuAI
@@ -25,7 +27,7 @@ __all__ = ["Knowledge"]
 
 class Knowledge(BaseAPI):
 
-    def __init__(self, client: "ZhipuAI") -> None:
+    def __init__(self, client: ZhipuAI) -> None:
         super().__init__(client)
 
     @cached_property
@@ -146,7 +148,7 @@ class Knowledge(BaseAPI):
           timeout: Override the client-level default timeout for this request, in seconds
         """
         if not knowledge_id:
-            raise ValueError(f"Expected a non-empty value for `knowledge_id`")
+            raise ValueError("Expected a non-empty value for `knowledge_id`")
 
         return self._delete(
             f"/knowledge/{knowledge_id}",
@@ -174,7 +176,7 @@ class Knowledge(BaseAPI):
           timeout: Override the client-level default timeout for this request, in seconds
         """
         return self._get(
-            f"/knowledge/capacity",
+            "/knowledge/capacity",
             options=make_request_options(
                 extra_headers=extra_headers, extra_body=extra_body, timeout=timeout
             ),
