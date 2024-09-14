@@ -1,31 +1,32 @@
 from __future__ import annotations
 
-import io
 import base64
+import io
 import pathlib
-from typing import Any, Mapping, TypeVar, cast
+from collections.abc import Mapping
 from datetime import date, datetime
-from typing_extensions import Literal, get_args, override, get_type_hints
+from typing import Any, Literal, TypeVar, cast, get_args, get_type_hints
 
 import anyio
 import pydantic
+from typing_extensions import override
 
-from ._utils import (
-    is_list,
-    is_mapping,
-    is_iterable,
-)
+from .._base_compat import is_typeddict, model_dump
 from .._files import is_base64_file_input
 from ._typing import (
-    is_list_type,
-    is_union_type,
     extract_type_arg,
-    is_iterable_type,
-    is_required_type,
     is_annotated_type,
+    is_iterable_type,
+    is_list_type,
+    is_required_type,
+    is_union_type,
     strip_annotated_type,
 )
-from .._base_compat import model_dump, is_typeddict
+from ._utils import (
+    is_iterable,
+    is_list,
+    is_mapping,
+)
 
 _T = TypeVar("_T")
 
@@ -46,7 +47,7 @@ class PropertyInfo:
         account_holder_name: Annotated[str, PropertyInfo(alias='accountHolderName')]
 
     This means that {'account_holder_name': 'Robert'} will be transformed to {'accountHolderName': 'Robert'} before being sent to the API.
-    """
+    """  # noqa: E501
 
     alias: str | None
     format: PropertyFormat | None
@@ -54,12 +55,12 @@ class PropertyInfo:
     discriminator: str | None
 
     def __init__(
-            self,
-            *,
-            alias: str | None = None,
-            format: PropertyFormat | None = None,
-            format_template: str | None = None,
-            discriminator: str | None = None,
+        self,
+        *,
+        alias: str | None = None,
+        format: PropertyFormat | None = None,
+        format_template: str | None = None,
+        discriminator: str | None = None,
     ) -> None:
         self.alias = alias
         self.format = format
@@ -68,12 +69,12 @@ class PropertyInfo:
 
     @override
     def __repr__(self) -> str:
-        return f"{self.__class__.__name__}(alias='{self.alias}', format={self.format}, format_template='{self.format_template}', discriminator='{self.discriminator}')"
+        return f"{self.__class__.__name__}(alias='{self.alias}', format={self.format}, format_template='{self.format_template}', discriminator='{self.discriminator}')"  # noqa: E501
 
 
 def maybe_transform(
-        data: object,
-        expected_type: object,
+    data: object,
+    expected_type: object,
 ) -> Any | None:
     """Wrapper over `transform()` that allows `None` to be passed.
 
@@ -86,8 +87,8 @@ def maybe_transform(
 
 # Wrapper over _transform_recursive providing fake types
 def transform(
-        data: _T,
-        expected_type: object,
+    data: _T,
+    expected_type: object,
 ) -> _T:
     """Transform dictionaries based off of type information from the given type, for example:
 
@@ -143,10 +144,10 @@ def _maybe_transform_key(key: str, type_: type) -> str:
 
 
 def _transform_recursive(
-        data: object,
-        *,
-        annotation: type,
-        inner_type: type | None = None,
+    data: object,
+    *,
+    annotation: type,
+    inner_type: type | None = None,
 ) -> object:
     """Transform the given data against the expected type.
 
@@ -168,10 +169,10 @@ def _transform_recursive(
         return _transform_typeddict(data, stripped_type)
 
     if (
-            # List[T]
-            (is_list_type(stripped_type) and is_list(data))
-            # Iterable[T]
-            or (is_iterable_type(stripped_type) and is_iterable(data) and not isinstance(data, str))
+        # List[T]
+        (is_list_type(stripped_type) and is_list(data))
+        # Iterable[T]
+        or (is_iterable_type(stripped_type) and is_iterable(data) and not isinstance(data, str))
     ):
         inner_type = extract_type_arg(stripped_type, 0)
         return [_transform_recursive(d, annotation=annotation, inner_type=inner_type) for d in data]
@@ -202,7 +203,7 @@ def _transform_recursive(
 
 
 def _format_data(data: object, format_: PropertyFormat, format_template: str | None) -> object:
-    if isinstance(data, (date, datetime)):
+    if isinstance(data, date | datetime):
         if format_ == "iso8601":
             return data.isoformat()
 
@@ -229,8 +230,8 @@ def _format_data(data: object, format_: PropertyFormat, format_template: str | N
 
 
 def _transform_typeddict(
-        data: Mapping[str, object],
-        expected_type: type,
+    data: Mapping[str, object],
+    expected_type: type,
 ) -> Mapping[str, object]:
     result: dict[str, object] = {}
     annotations = get_type_hints(expected_type, include_extras=True)
@@ -245,8 +246,8 @@ def _transform_typeddict(
 
 
 async def async_maybe_transform(
-        data: object,
-        expected_type: object,
+    data: object,
+    expected_type: object,
 ) -> Any | None:
     """Wrapper over `async_transform()` that allows `None` to be passed.
 
@@ -258,8 +259,8 @@ async def async_maybe_transform(
 
 
 async def async_transform(
-        data: _T,
-        expected_type: object,
+    data: _T,
+    expected_type: object,
 ) -> _T:
     """Transform dictionaries based off of type information from the given type, for example:
 
@@ -281,10 +282,10 @@ async def async_transform(
 
 
 async def _async_transform_recursive(
-        data: object,
-        *,
-        annotation: type,
-        inner_type: type | None = None,
+    data: object,
+    *,
+    annotation: type,
+    inner_type: type | None = None,
 ) -> object:
     """Transform the given data against the expected type.
 
@@ -306,10 +307,10 @@ async def _async_transform_recursive(
         return await _async_transform_typeddict(data, stripped_type)
 
     if (
-            # List[T]
-            (is_list_type(stripped_type) and is_list(data))
-            # Iterable[T]
-            or (is_iterable_type(stripped_type) and is_iterable(data) and not isinstance(data, str))
+        # List[T]
+        (is_list_type(stripped_type) and is_list(data))
+        # Iterable[T]
+        or (is_iterable_type(stripped_type) and is_iterable(data) and not isinstance(data, str))
     ):
         inner_type = extract_type_arg(stripped_type, 0)
         return [await _async_transform_recursive(d, annotation=annotation, inner_type=inner_type) for d in data]
@@ -340,7 +341,7 @@ async def _async_transform_recursive(
 
 
 async def _async_format_data(data: object, format_: PropertyFormat, format_template: str | None) -> object:
-    if isinstance(data, (date, datetime)):
+    if isinstance(data, date | datetime):
         if format_ == "iso8601":
             return data.isoformat()
 
@@ -367,8 +368,8 @@ async def _async_format_data(data: object, format_: PropertyFormat, format_templ
 
 
 async def _async_transform_typeddict(
-        data: Mapping[str, object],
-        expected_type: type,
+    data: Mapping[str, object],
+    expected_type: type,
 ) -> Mapping[str, object]:
     result: dict[str, object] = {}
     annotations = get_type_hints(expected_type, include_extras=True)

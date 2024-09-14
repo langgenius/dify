@@ -1,19 +1,16 @@
 from __future__ import annotations
 
-from typing import Union, Any, cast, TYPE_CHECKING
+from collections.abc import Callable
+from typing import TYPE_CHECKING, Any, ClassVar, Union, cast
 
-from ._constants import RAW_RESPONSE_HEADER
-from ._utils import is_given
-from ._base_compat import ConfigDict, PYDANTIC_V2
 import pydantic.generics
 from httpx import Timeout
-from typing_extensions import (
-    final, Unpack, ClassVar, TypedDict, Required, Callable
+from typing_extensions import Required, TypedDict, Unpack, final
 
-)
-
-from ._base_type import Body, NotGiven, Headers, HttpxRequestFiles, Query, AnyMapping
-from ._utils import remove_notgiven_indict, strip_not_given
+from ._base_compat import PYDANTIC_V2, ConfigDict
+from ._base_type import AnyMapping, Body, Headers, HttpxRequestFiles, NotGiven, Query
+from ._constants import RAW_RESPONSE_HEADER
+from ._utils import is_given, strip_not_given
 
 
 class UserRequestInput(TypedDict, total=False):
@@ -81,9 +78,9 @@ class FinalRequestOptions(pydantic.BaseModel):
     # type ignore required because we're adding explicit types to `**values`
     @classmethod
     def construct(  # type: ignore
-            cls,
-            _fields_set: set[str] | None = None,
-            **values: Unpack[UserRequestInput],
+        cls,
+        _fields_set: set[str] | None = None,
+        **values: Unpack[UserRequestInput],
     ) -> FinalRequestOptions:
         kwargs: dict[str, Any] = {
             # we unconditionally call `strip_not_given` on any value

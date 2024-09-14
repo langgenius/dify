@@ -1,9 +1,10 @@
 # File generated from our OpenAPI spec by Stainless. See CONTRIBUTING.md for details.
 
-from typing import Any, List, Generic, TypeVar, Optional, cast
+from typing import Any, Generic, Optional, TypeVar, cast
+
 from typing_extensions import Protocol, override, runtime_checkable
 
-from ._http_client import BasePage, PageInfo, BaseSyncPage
+from ._http_client import BasePage, BaseSyncPage, PageInfo
 
 __all__ = ["SyncPage", "SyncCursorPage"]
 
@@ -18,11 +19,11 @@ class CursorPageItem(Protocol):
 class SyncPage(BaseSyncPage[_T], BasePage[_T], Generic[_T]):
     """Note: no pagination actually occurs yet, this is for forwards-compatibility."""
 
-    data: List[_T]
+    data: list[_T]
     object: str
 
     @override
-    def _get_page_items(self) -> List[_T]:
+    def _get_page_items(self) -> list[_T]:
         data = self.data
         if not data:
             return []
@@ -38,10 +39,10 @@ class SyncPage(BaseSyncPage[_T], BasePage[_T], Generic[_T]):
 
 
 class SyncCursorPage(BaseSyncPage[_T], BasePage[_T], Generic[_T]):
-    data: List[_T]
+    data: list[_T]
 
     @override
-    def _get_page_items(self) -> List[_T]:
+    def _get_page_items(self) -> list[_T]:
         data = self.data
         if not data:
             return []

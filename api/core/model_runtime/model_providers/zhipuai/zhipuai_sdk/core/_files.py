@@ -3,28 +3,26 @@ from __future__ import annotations
 import io
 import os
 import pathlib
-from typing import Mapping, Sequence, overload
-from typing_extensions import TypeGuard
+from typing import TypeGuard, overload
 
 from ._base_type import (
+    Base64FileInput,
+    FileContent,
     FileTypes,
+    HttpxFileContent,
     HttpxFileTypes,
     HttpxRequestFiles,
     RequestFiles,
-    Base64FileInput, FileContent, HttpxFileContent,
 )
-from ._utils import is_tuple_t, is_mapping_t, is_sequence_t
+from ._utils import is_mapping_t, is_sequence_t, is_tuple_t
 
 
 def is_base64_file_input(obj: object) -> TypeGuard[Base64FileInput]:
-    return isinstance(obj, io.IOBase) or isinstance(obj, os.PathLike)
+    return isinstance(obj, io.IOBase | os.PathLike)
 
 
 def is_file_content(obj: object) -> TypeGuard[FileContent]:
-    return (
-            isinstance(obj, bytes) or isinstance(obj, tuple) or isinstance(obj, io.IOBase) or isinstance(obj,
-                                                                                                         os.PathLike)
-    )
+    return isinstance(obj, bytes | tuple | io.IOBase | os.PathLike)
 
 
 def assert_is_file_content(obj: object, *, key: str | None = None) -> None:
@@ -36,13 +34,11 @@ def assert_is_file_content(obj: object, *, key: str | None = None) -> None:
 
 
 @overload
-def to_httpx_files(files: None) -> None:
-    ...
+def to_httpx_files(files: None) -> None: ...
 
 
 @overload
-def to_httpx_files(files: RequestFiles) -> HttpxRequestFiles:
-    ...
+def to_httpx_files(files: RequestFiles) -> HttpxRequestFiles: ...
 
 
 def to_httpx_files(files: RequestFiles | None) -> HttpxRequestFiles | None:
@@ -70,7 +66,7 @@ def _transform_file(file: FileTypes) -> HttpxFileTypes:
     if is_tuple_t(file):
         return (file[0], _read_file_content(file[1]), *file[2:])
 
-    raise TypeError(f"Expected file types input to be a FileContent type or to be a tuple")
+    raise TypeError("Expected file types input to be a FileContent type or to be a tuple")
 
 
 def _read_file_content(file: FileContent) -> HttpxFileContent:

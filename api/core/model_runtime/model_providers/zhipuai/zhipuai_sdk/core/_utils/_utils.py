@@ -1,27 +1,23 @@
 from __future__ import annotations
 
+import functools
+import inspect
 import os
 import re
-import inspect
-import functools
+from collections.abc import Callable, Iterable, Mapping, Sequence
+from pathlib import Path
 from typing import (
     Any,
-    Tuple,
-    Mapping,
+    TypeGuard,
     TypeVar,
-    Callable,
-    Iterable,
-    Sequence,
+    Union,
     cast,
-    overload, List, Union,
+    overload,
 )
-from pathlib import Path
-from typing_extensions import TypeGuard
 
 import sniffio
 
-from .._base_type import Headers, NotGiven, FileTypes, NotGivenOr, HeadersLike
-from .._base_compat import parse_date as parse_date, parse_datetime as parse_datetime
+from .._base_type import FileTypes, Headers, HeadersLike, NotGiven, NotGivenOr
 
 
 def remove_notgiven_indict(obj):
@@ -31,7 +27,7 @@ def remove_notgiven_indict(obj):
 
 
 _T = TypeVar("_T")
-_TupleT = TypeVar("_TupleT", bound=Tuple[object, ...])
+_TupleT = TypeVar("_TupleT", bound=tuple[object, ...])
 _MappingT = TypeVar("_MappingT", bound=Mapping[str, object])
 _SequenceT = TypeVar("_SequenceT", bound=Sequence[object])
 CallableT = TypeVar("CallableT", bound=Callable[..., Any])
@@ -42,11 +38,11 @@ def flatten(t: Iterable[Iterable[_T]]) -> list[_T]:
 
 
 def extract_files(
-        # TODO: this needs to take Dict but variance issues.....
-        # create protocol type ?
-        query: Mapping[str, object],
-        *,
-        paths: Sequence[Sequence[str]],
+    # TODO: this needs to take Dict but variance issues.....
+    # create protocol type ?
+    query: Mapping[str, object],
+    *,
+    paths: Sequence[Sequence[str]],
 ) -> list[tuple[str, FileTypes]]:
     """Recursively extract files from the given dictionary based on specified paths.
 
@@ -61,11 +57,11 @@ def extract_files(
 
 
 def _extract_items(
-        obj: object,
-        path: Sequence[str],
-        *,
-        index: int,
-        flattened_key: str | None,
+    obj: object,
+    path: Sequence[str],
+    *,
+    index: int,
+    flattened_key: str | None,
 ) -> list[tuple[str, FileTypes]]:
     try:
         key = path[index]
@@ -241,10 +237,10 @@ def required_args(*variants: Sequence[str]) -> Callable[[CallableT], CallableT]:
             name
             for name, param in params.items()
             if param.kind
-               in {
-                   param.POSITIONAL_ONLY,
-                   param.POSITIONAL_OR_KEYWORD,
-               }
+            in {
+                param.POSITIONAL_ONLY,
+                param.POSITIONAL_OR_KEYWORD,
+            }
         ]
 
         @functools.wraps(func)
@@ -258,11 +254,10 @@ def required_args(*variants: Sequence[str]) -> Callable[[CallableT], CallableT]:
                         f"{func.__name__}() takes {len(positional)} argument(s) but {len(args)} were given"
                     ) from None
 
-            for key in kwargs.keys():
-                given_params.add(key)
+            given_params.update(kwargs.keys())
 
             for variant in variants:
-                matches = all((param in given_params for param in variant))
+                matches = all(param in given_params for param in variant)
                 if matches:
                     break
             else:  # no break
@@ -291,18 +286,15 @@ _V = TypeVar("_V")
 
 
 @overload
-def strip_not_given(obj: None) -> None:
-    ...
+def strip_not_given(obj: None) -> None: ...
 
 
 @overload
-def strip_not_given(obj: Mapping[_K, _V | NotGiven]) -> dict[_K, _V]:
-    ...
+def strip_not_given(obj: Mapping[_K, _V | NotGiven]) -> dict[_K, _V]: ...
 
 
 @overload
-def strip_not_given(obj: object) -> object:
-    ...
+def strip_not_given(obj: object) -> object: ...
 
 
 def strip_not_given(obj: object | None) -> object:
@@ -325,7 +317,7 @@ def coerce_float(val: str) -> float:
 
 
 def coerce_boolean(val: str) -> bool:
-    return val == "true" or val == "1" or val == "on"
+    return val in {"true", "1", "on"}
 
 
 def maybe_coerce_integer(val: str | None) -> int | None:
@@ -352,7 +344,7 @@ def removeprefix(string: str, prefix: str) -> str:
     Backport of `str.removeprefix` for Python < 3.9
     """
     if string.startswith(prefix):
-        return string[len(prefix):]
+        return string[len(prefix) :]
     return string
 
 
@@ -398,15 +390,15 @@ def get_async_library() -> str:
         return "false"
 
 
-def drop_prefix_image_data(content: Union[str, List[dict]]) -> Union[str, List[dict]]:
+def drop_prefix_image_data(content: Union[str, list[dict]]) -> Union[str, list[dict]]:
     """
     删除 ;base64, 前缀
     :param image_data:
     :return:
     """
-    if isinstance(content, List):
+    if isinstance(content, list):
         for data in content:
-            if data.get('type') == 'image_url':
+            if data.get("type") == "image_url":
                 image_data = data.get("image_url").get("url")
                 if image_data.startswith("data:image/"):
                     image_data = image_data.split("base64,")[-1]

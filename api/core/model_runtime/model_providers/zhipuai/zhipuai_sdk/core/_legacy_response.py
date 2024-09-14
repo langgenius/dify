@@ -1,29 +1,27 @@
 from __future__ import annotations
 
-import os
-import inspect
-import logging
 import datetime
 import functools
-from collections.abc import Iterator
-from typing import TYPE_CHECKING, Any, Union, Generic, TypeVar, Callable, cast, overload, AsyncIterator
-from typing_extensions import Awaitable, ParamSpec, override, deprecated, get_origin
+import inspect
+import logging
+from collections.abc import Callable
+from typing import TYPE_CHECKING, Any, Generic, TypeVar, Union, cast, get_origin, overload
 
-import anyio
 import httpx
 import pydantic
+from typing_extensions import ParamSpec, override
 
-from ._base_type import NoneType
-from ._utils import is_given, extract_type_arg, is_annotated_type
 from ._base_models import BaseModel, is_basemodel
+from ._base_type import NoneType
 from ._constants import RAW_RESPONSE_HEADER
-from ._sse_client import StreamResponse, is_stream_class_type, extract_stream_chunk_type
 from ._errors import APIResponseValidationError
-from ._legacy_binary_response import HttpxBinaryResponseContent, HttpxTextBinaryResponseContent, HttpxResponseContent
+from ._legacy_binary_response import HttpxResponseContent, HttpxTextBinaryResponseContent
+from ._sse_client import StreamResponse, extract_stream_chunk_type, is_stream_class_type
+from ._utils import extract_type_arg, is_annotated_type, is_given
 
 if TYPE_CHECKING:
-    from ._request_opt import FinalRequestOptions
     from ._http_client import HttpClient
+    from ._request_opt import FinalRequestOptions
 
 P = ParamSpec("P")
 R = TypeVar("R")
@@ -46,7 +44,7 @@ class LegacyAPIResponse(Generic[R]):
     """
 
     _cast_type: type[R]
-    _client: "HttpClient"
+    _client: HttpClient
     _parsed_by_type: dict[type[Any], Any]
     _stream: bool
     _stream_cls: type[StreamResponse[Any]] | None
@@ -55,14 +53,14 @@ class LegacyAPIResponse(Generic[R]):
     http_response: httpx.Response
 
     def __init__(
-            self,
-            *,
-            raw: httpx.Response,
-            cast_type: type[R],
-            client: "HttpClient",
-            stream: bool,
-            stream_cls: type[StreamResponse[Any]] | None,
-            options: FinalRequestOptions,
+        self,
+        *,
+        raw: httpx.Response,
+        cast_type: type[R],
+        client: HttpClient,
+        stream: bool,
+        stream_cls: type[StreamResponse[Any]] | None,
+        options: FinalRequestOptions,
     ) -> None:
         self._cast_type = cast_type
         self._client = client
@@ -77,12 +75,10 @@ class LegacyAPIResponse(Generic[R]):
         return self.http_response.headers.get("x-request-id")  # type: ignore[no-any-return]
 
     @overload
-    def parse(self, *, to: type[_T]) -> _T:
-        ...
+    def parse(self, *, to: type[_T]) -> _T: ...
 
     @overload
-    def parse(self) -> R:
-        ...
+    def parse(self) -> R: ...
 
     def parse(self, *, to: type[_T] | None = None) -> R | _T:
         """Returns the rich python representation of this response's data.
@@ -193,7 +189,7 @@ class LegacyAPIResponse(Generic[R]):
                     to(
                         cast_type=extract_stream_chunk_type(
                             to,
-                            failure_message="Expected custom stream type to be passed with a type argument, e.g. StreamResponse[ChunkType]",
+                            failure_message="Expected custom stream type to be passed with a type argument, e.g. StreamResponse[ChunkType]",  # noqa: E501
                         ),
                         response=self.http_response,
                         client=cast(Any, self._client),
@@ -245,13 +241,10 @@ class LegacyAPIResponse(Generic[R]):
         origin = get_origin(cast_type) or cast_type
 
         if inspect.isclass(origin) and issubclass(origin, HttpxResponseContent):
-
             # in the response, e.g. mime file
             *_, filename = response.headers.get("content-disposition", "").split("filename=")
             # 判断文件类型是jsonl类型的使用HttpxTextBinaryResponseContent
-            if filename and filename.endswith(".jsonl"):
-                return cast(R, HttpxTextBinaryResponseContent(response))
-            elif filename and filename.endswith(".xlsx"):
+            if filename and filename.endswith(".jsonl") or filename and filename.endswith(".xlsx"):
                 return cast(R, HttpxTextBinaryResponseContent(response))
             else:
                 return cast(R, cast_type(response))  # type: ignore
@@ -266,21 +259,21 @@ class LegacyAPIResponse(Generic[R]):
             # the response class ourselves but that is something that should be supported directly in httpx
             # as it would be easy to incorrectly construct the Response object due to the multitude of arguments.
             if cast_type != httpx.Response:
-                raise ValueError(f"Subclasses of httpx.Response cannot be passed to `cast_type`")
+                raise ValueError("Subclasses of httpx.Response cannot be passed to `cast_type`")
             return cast(R, response)
 
         if inspect.isclass(origin) and not issubclass(origin, BaseModel) and issubclass(origin, pydantic.BaseModel):
             raise TypeError("Pydantic models must subclass our base model type, e.g. `from openai import BaseModel`")
 
         if (
-                cast_type is not object
-                and not origin is list
-                and not origin is dict
-                and not origin is Union
-                and not issubclass(origin, BaseModel)
+            cast_type is not object
+            and origin is not list
+            and origin is not dict
+            and origin is not Union
+            and not issubclass(origin, BaseModel)
         ):
             raise RuntimeError(
-                f"Unsupported type, expected {cast_type} to be a subclass of {BaseModel}, {dict}, {list}, {Union}, {NoneType}, {str} or {httpx.Response}."
+                f"Unsupported type, expected {cast_type} to be a subclass of {BaseModel}, {dict}, {list}, {Union}, {NoneType}, {str} or {httpx.Response}."  # noqa: E501
             )
 
         # split is required to handle cases where additional information is included
@@ -302,7 +295,7 @@ class LegacyAPIResponse(Generic[R]):
             if self._client._strict_response_validation:
                 raise APIResponseValidationError(
                     response=response,
-                    message=f"Expected Content-Type response header to be `application/json` but received `{content_type}` instead.",
+                    message=f"Expected Content-Type response header to be `application/json` but received `{content_type}` instead.",  # noqa: E501
                     json_data=response.text,
                 )
 
@@ -327,7 +320,7 @@ class LegacyAPIResponse(Generic[R]):
 class MissingStreamClassError(TypeError):
     def __init__(self) -> None:
         super().__init__(
-            "The `stream` argument was set to `True` but the `stream_cls` argument was not given. See `openai._streaming` for reference",
+            "The `stream` argument was set to `True` but the `stream_cls` argument was not given. See `openai._streaming` for reference",  # noqa: E501
         )
 
 
@@ -346,4 +339,3 @@ def to_raw_response_wrapper(func: Callable[P, R]) -> Callable[P, LegacyAPIRespon
         return cast(LegacyAPIResponse[R], func(*args, **kwargs))
 
     return wrapped
-

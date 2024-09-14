@@ -2,42 +2,53 @@ from __future__ import annotations
 
 import inspect
 import os
-from typing import TYPE_CHECKING, Any, Type, Generic, TypeVar, cast, Dict, Callable
+from collections.abc import Callable
 from datetime import date, datetime
-from typing_extensions import (
-    Literal,
-    ClassVar,
-    Protocol,
-    override,
-    runtime_checkable, TypeGuard, ParamSpec,
-)
+from typing import TYPE_CHECKING, Any, ClassVar, Generic, Literal, TypeGuard, TypeVar, cast
 
 import pydantic
 import pydantic.generics
 from pydantic.fields import FieldInfo
-from pydantic import root_validator
+from typing_extensions import (
+    ParamSpec,
+    Protocol,
+    override,
+    runtime_checkable,
+)
+
+from ._base_compat import (
+    PYDANTIC_V2,
+    ConfigDict,
+    field_get_default,
+    get_args,
+    get_model_config,
+    get_model_fields,
+    get_origin,
+    is_literal_type,
+    is_union,
+    parse_obj,
+)
+from ._base_compat import (
+    GenericModel as BaseGenericModel,
+)
 from ._base_type import (
     IncEx,
     ModelT,
 )
-from ._utils import is_list, is_mapping, parse_date, parse_datetime, is_annotated_type, extract_type_arg, \
-    strip_annotated_type, PropertyInfo, coerce_boolean
-from ._base_compat import (
-    PYDANTIC_V2,
-    ConfigDict,
-    GenericModel as BaseGenericModel,
-    get_args,
-    is_union,
-    parse_obj,
-    get_origin,
-    is_literal_type,
-    get_model_config,
-    get_model_fields,
-    field_get_default,
+from ._utils import (
+    PropertyInfo,
+    coerce_boolean,
+    extract_type_arg,
+    is_annotated_type,
+    is_list,
+    is_mapping,
+    parse_date,
+    parse_datetime,
+    strip_annotated_type,
 )
 
 if TYPE_CHECKING:
-    from pydantic_core.core_schema import ModelField, LiteralSchema, ModelFieldsSchema
+    from pydantic_core.core_schema import LiteralSchema, ModelField, ModelFieldsSchema
 
 __all__ = ["BaseModel", "GenericModel"]
 _BaseModelT = TypeVar("_BaseModelT", bound="BaseModel")
@@ -68,14 +79,14 @@ class BaseModel(pydantic.BaseModel):
             extra: Any = pydantic.Extra.allow  # type: ignore
 
     def to_dict(
-            self,
-            *,
-            mode: Literal["json", "python"] = "python",
-            use_api_names: bool = True,
-            exclude_unset: bool = True,
-            exclude_defaults: bool = False,
-            exclude_none: bool = False,
-            warnings: bool = True,
+        self,
+        *,
+        mode: Literal["json", "python"] = "python",
+        use_api_names: bool = True,
+        exclude_unset: bool = True,
+        exclude_defaults: bool = False,
+        exclude_none: bool = False,
+        warnings: bool = True,
     ) -> dict[str, object]:
         """Recursively generate a dictionary representation of the model, optionally specifying which fields to include or exclude.
 
@@ -95,7 +106,7 @@ class BaseModel(pydantic.BaseModel):
             exclude_defaults: Whether to exclude fields that are set to their default value from the output.
             exclude_none: Whether to exclude fields that have a value of `None` from the output.
             warnings: Whether to log warnings when invalid fields are encountered. This is only supported in Pydantic v2.
-        """
+        """  # noqa: E501
         return self.model_dump(
             mode=mode,
             by_alias=use_api_names,
@@ -106,14 +117,14 @@ class BaseModel(pydantic.BaseModel):
         )
 
     def to_json(
-            self,
-            *,
-            indent: int | None = 2,
-            use_api_names: bool = True,
-            exclude_unset: bool = True,
-            exclude_defaults: bool = False,
-            exclude_none: bool = False,
-            warnings: bool = True,
+        self,
+        *,
+        indent: int | None = 2,
+        use_api_names: bool = True,
+        exclude_unset: bool = True,
+        exclude_defaults: bool = False,
+        exclude_none: bool = False,
+        warnings: bool = True,
     ) -> str:
         """Generates a JSON string representing this model as it would be received from or sent to the API (but with indentation).
 
@@ -130,7 +141,7 @@ class BaseModel(pydantic.BaseModel):
             exclude_defaults: Whether to exclude fields that have the default value.
             exclude_none: Whether to exclude fields that have a value of `None`.
             warnings: Whether to show any warnings that occurred during serialization. This is only supported in Pydantic v2.
-        """
+        """  # noqa: E501
         return self.model_dump_json(
             indent=indent,
             by_alias=use_api_names,
@@ -150,9 +161,9 @@ class BaseModel(pydantic.BaseModel):
     @classmethod
     @override
     def construct(
-            cls: Type[ModelT],
-            _fields_set: set[str] | None = None,
-            **values: object,
+        cls: type[ModelT],
+        _fields_set: set[str] | None = None,
+        **values: object,
     ) -> ModelT:
         m = cls.__new__(cls)
         fields_values: dict[str, object] = {}
@@ -188,19 +199,19 @@ class BaseModel(pydantic.BaseModel):
                     _fields_set.add(key)
                     fields_values[key] = value
 
-        object.__setattr__(m, "__dict__", fields_values)
+        object.__setattr__(m, "__dict__", fields_values)  # noqa: PLC2801
 
         if PYDANTIC_V2:
             # these properties are copied from Pydantic's `model_construct()` method
-            object.__setattr__(m, "__pydantic_private__", None)
-            object.__setattr__(m, "__pydantic_extra__", _extra)
-            object.__setattr__(m, "__pydantic_fields_set__", _fields_set)
+            object.__setattr__(m, "__pydantic_private__", None)  # noqa: PLC2801
+            object.__setattr__(m, "__pydantic_extra__", _extra)  # noqa: PLC2801
+            object.__setattr__(m, "__pydantic_fields_set__", _fields_set)  # noqa: PLC2801
         else:
             # init_private_attributes() does not exist in v2
             m._init_private_attributes()  # type: ignore
 
             # copied from Pydantic v1's `construct()` method
-            object.__setattr__(m, "__fields_set__", _fields_set)
+            object.__setattr__(m, "__fields_set__", _fields_set)  # noqa: PLC2801
 
         return m
 
@@ -218,19 +229,19 @@ class BaseModel(pydantic.BaseModel):
 
         @override
         def model_dump(
-                self,
-                *,
-                mode: Literal["json", "python"] | str = "python",
-                include: IncEx = None,
-                exclude: IncEx = None,
-                by_alias: bool = False,
-                exclude_unset: bool = False,
-                exclude_defaults: bool = False,
-                exclude_none: bool = False,
-                round_trip: bool = False,
-                warnings: bool | Literal["none", "warn", "error"] = True,
-                context: dict[str, Any] | None = None,
-                serialize_as_any: bool = False,
+            self,
+            *,
+            mode: Literal["json", "python"] | str = "python",
+            include: IncEx = None,
+            exclude: IncEx = None,
+            by_alias: bool = False,
+            exclude_unset: bool = False,
+            exclude_defaults: bool = False,
+            exclude_none: bool = False,
+            round_trip: bool = False,
+            warnings: bool | Literal["none", "warn", "error"] = True,
+            context: dict[str, Any] | None = None,
+            serialize_as_any: bool = False,
         ) -> dict[str, Any]:
             """Usage docs: https://docs.pydantic.dev/2.4/concepts/serialization/#modelmodel_dump
 
@@ -273,19 +284,19 @@ class BaseModel(pydantic.BaseModel):
 
         @override
         def model_dump_json(
-                self,
-                *,
-                indent: int | None = None,
-                include: IncEx = None,
-                exclude: IncEx = None,
-                by_alias: bool = False,
-                exclude_unset: bool = False,
-                exclude_defaults: bool = False,
-                exclude_none: bool = False,
-                round_trip: bool = False,
-                warnings: bool | Literal["none", "warn", "error"] = True,
-                context: dict[str, Any] | None = None,
-                serialize_as_any: bool = False,
+            self,
+            *,
+            indent: int | None = None,
+            include: IncEx = None,
+            exclude: IncEx = None,
+            by_alias: bool = False,
+            exclude_unset: bool = False,
+            exclude_defaults: bool = False,
+            exclude_none: bool = False,
+            round_trip: bool = False,
+            warnings: bool | Literal["none", "warn", "error"] = True,
+            context: dict[str, Any] | None = None,
+            serialize_as_any: bool = False,
         ) -> str:
             """Usage docs: https://docs.pydantic.dev/2.4/concepts/serialization/#modelmodel_dump_json
 
@@ -342,11 +353,7 @@ def _construct_field(value: object, field: FieldInfo, key: str) -> object:
 def is_basemodel(type_: type) -> bool:
     """Returns whether or not the given type is either a `BaseModel` or a union of `BaseModel`"""
     if is_union(type_):
-        for variant in get_args(type_):
-            if is_basemodel(variant):
-                return True
-
-        return False
+        return any(is_basemodel(variant) for variant in get_args(type_))
 
     return is_basemodel_type(type_)
 
@@ -357,9 +364,9 @@ def is_basemodel_type(type_: type) -> TypeGuard[type[BaseModel] | type[GenericMo
 
 
 def build(
-        base_model_cls: Callable[P, _BaseModelT],
-        *args: P.args,
-        **kwargs: P.kwargs,
+    base_model_cls: Callable[P, _BaseModelT],
+    *args: P.args,
+    **kwargs: P.kwargs,
 ) -> _BaseModelT:
     """Construct a BaseModel class without validation.
 
@@ -402,7 +409,7 @@ def construct_type(*, value: object, type_: type) -> object:
         meta: tuple[Any, ...] = get_args(type_)[1:]
         type_ = extract_type_arg(type_, 0)
     else:
-        meta = tuple()
+        meta = ()
     # we need to use the origin class for any types that are subscripted generics
     # e.g. Dict[str, object]
     origin = get_origin(type_) or type_
@@ -527,11 +534,11 @@ class DiscriminatorDetails:
     """
 
     def __init__(
-            self,
-            *,
-            mapping: dict[str, type],
-            discriminator_field: str,
-            discriminator_alias: str | None,
+        self,
+        *,
+        mapping: dict[str, type],
+        discriminator_field: str,
+        discriminator_alias: str | None,
     ) -> None:
         self.mapping = mapping
         self.field_name = discriminator_field
@@ -573,8 +580,7 @@ def _build_discriminated_union_meta(*, union: type, meta_annotations: tuple[Any,
                         if isinstance(entry, str):
                             mapping[entry] = variant
             else:
-                field_info = cast("dict[str, FieldInfo]", variant.__fields__).get(
-                    discriminator_field_name)  # pyright: ignore[reportDeprecated, reportUnnecessaryCast]
+                field_info = cast("dict[str, FieldInfo]", variant.__fields__).get(discriminator_field_name)  # pyright: ignore[reportDeprecated, reportUnnecessaryCast]
                 if not field_info:
                     continue
 
@@ -633,9 +639,9 @@ else:
     class GenericModel(BaseGenericModel, BaseModel):
         pass
 
+
 if PYDANTIC_V2:
     from pydantic import TypeAdapter
-
 
     def _validate_non_model_type(*, type_: type[_T], value: object) -> _T:
         return TypeAdapter(type_).validate_python(value)
@@ -644,23 +650,22 @@ elif not TYPE_CHECKING:
 
     class TypeAdapter(Generic[_T]):
         """Used as a placeholder to easily convert runtime types to a Pydantic format
-           to provide validation.
+        to provide validation.
 
-           For example:
-           ```py
-           validated = RootModel[int](__root__="5").__root__
-           # validated: 5
-           ```
-           """
+        For example:
+        ```py
+        validated = RootModel[int](__root__="5").__root__
+        # validated: 5
+        ```
+        """
 
-        def __init__(self, type_: Type[_T]):
+        def __init__(self, type_: type[_T]):
             self.type_ = type_
 
         def validate_python(self, value: Any) -> _T:
             if not isinstance(value, self.type_):
                 raise ValueError(f"Invalid type: {value} is not of type {self.type_}")
             return value
-
 
     def _validate_non_model_type(*, type_: type[_T], value: object) -> _T:
         return TypeAdapter(type_).validate_python(value)

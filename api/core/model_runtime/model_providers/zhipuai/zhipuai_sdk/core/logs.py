@@ -24,25 +24,15 @@ def get_log_file(log_path: str, sub_dir: str):
     return os.path.join(log_dir, "zhipuai.log")
 
 
-def get_config_dict(
-    log_level: str, log_file_path: str, log_backup_count: int, log_max_bytes: int
-) -> dict:
+def get_config_dict(log_level: str, log_file_path: str, log_backup_count: int, log_max_bytes: int) -> dict:
     # for windows, the path should be a raw string.
-    log_file_path = (
-        log_file_path.encode("unicode-escape").decode()
-        if os.name == "nt"
-        else log_file_path
-    )
+    log_file_path = log_file_path.encode("unicode-escape").decode() if os.name == "nt" else log_file_path
     log_level = log_level.upper()
     config_dict = {
         "version": 1,
         "disable_existing_loggers": False,
         "formatters": {
-            "formatter": {
-                "format": (
-                    "%(asctime)s %(name)-12s %(process)d %(levelname)-8s %(message)s"
-                )
-            },
+            "formatter": {"format": ("%(asctime)s %(name)-12s %(process)d %(levelname)-8s %(message)s")},
         },
         "filters": {
             "logger_name_filter": {

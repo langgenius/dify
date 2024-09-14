@@ -1,12 +1,13 @@
 from __future__ import annotations
 
-import httpx
 import os
-from typing import Iterator, AsyncIterator, Any
+from collections.abc import AsyncIterator, Iterator
+from typing import Any
+
+import httpx
 
 
 class HttpxResponseContent:
-
     @property
     def content(self) -> bytes:
         raise NotImplementedError("This method is not implemented for this class.")
@@ -42,16 +43,16 @@ class HttpxResponseContent:
         raise NotImplementedError("This method is not implemented for this class.")
 
     def write_to_file(
-            self,
-            file: str | os.PathLike[str],
+        self,
+        file: str | os.PathLike[str],
     ) -> None:
         raise NotImplementedError("This method is not implemented for this class.")
 
     def stream_to_file(
-            self,
-            file: str | os.PathLike[str],
-            *,
-            chunk_size: int | None = None,
+        self,
+        file: str | os.PathLike[str],
+        *,
+        chunk_size: int | None = None,
     ) -> None:
         raise NotImplementedError("This method is not implemented for this class.")
 
@@ -74,10 +75,10 @@ class HttpxResponseContent:
         raise NotImplementedError("This method is not implemented for this class.")
 
     async def astream_to_file(
-            self,
-            file: str | os.PathLike[str],
-            *,
-            chunk_size: int | None = None,
+        self,
+        file: str | os.PathLike[str],
+        *,
+        chunk_size: int | None = None,
     ) -> None:
         raise NotImplementedError("This method is not implemented for this class.")
 
@@ -113,11 +114,9 @@ class HttpxBinaryResponseContent(HttpxResponseContent):
         raise NotImplementedError("Not implemented for binary response content")
 
     def iter_text(self, chunk_size: int | None = None) -> Iterator[str]:
-
         raise NotImplementedError("Not implemented for binary response content")
 
     def iter_lines(self) -> Iterator[str]:
-
         raise NotImplementedError("Not implemented for binary response content")
 
     async def aiter_text(self, chunk_size: int | None = None) -> AsyncIterator[str]:
@@ -133,8 +132,8 @@ class HttpxBinaryResponseContent(HttpxResponseContent):
         return self.response.iter_raw(chunk_size)
 
     def write_to_file(
-            self,
-            file: str | os.PathLike[str],
+        self,
+        file: str | os.PathLike[str],
     ) -> None:
         """Write the output to the given file.
 
@@ -149,10 +148,10 @@ class HttpxBinaryResponseContent(HttpxResponseContent):
                 f.write(data)
 
     def stream_to_file(
-            self,
-            file: str | os.PathLike[str],
-            *,
-            chunk_size: int | None = None,
+        self,
+        file: str | os.PathLike[str],
+        *,
+        chunk_size: int | None = None,
     ) -> None:
         with open(file, mode="wb") as f:
             for data in self.response.iter_bytes(chunk_size):
@@ -171,10 +170,10 @@ class HttpxBinaryResponseContent(HttpxResponseContent):
         return self.response.aiter_raw(chunk_size)
 
     async def astream_to_file(
-            self,
-            file: str | os.PathLike[str],
-            *,
-            chunk_size: int | None = None,
+        self,
+        file: str | os.PathLike[str],
+        *,
+        chunk_size: int | None = None,
     ) -> None:
         path = anyio.Path(file)
         async with await path.open(mode="wb") as f:

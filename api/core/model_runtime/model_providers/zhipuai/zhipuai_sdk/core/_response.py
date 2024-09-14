@@ -2,22 +2,23 @@ from __future__ import annotations
 
 import datetime
 import inspect
-from typing import TypeVar, Generic, cast, Any, TYPE_CHECKING, Iterator, Union, overload
+import logging
+from collections.abc import Iterator
+from typing import TYPE_CHECKING, Any, Generic, TypeVar, Union, cast, get_origin, overload
 
 import httpx
-import logging
 import pydantic
-from typing_extensions import ParamSpec, get_origin, get_args, override
+from typing_extensions import ParamSpec, override
 
+from ._base_models import BaseModel, is_basemodel
 from ._base_type import NoneType
-from ._sse_client import StreamResponse, is_stream_class_type, extract_stream_chunk_type
-from ._base_models import is_basemodel, BaseModel
-from ._utils import is_annotated_type, extract_type_arg, extract_type_var_from_base, is_given
-from ._errors import ZhipuAIError, APIResponseValidationError
+from ._errors import APIResponseValidationError, ZhipuAIError
+from ._sse_client import StreamResponse, extract_stream_chunk_type, is_stream_class_type
+from ._utils import extract_type_arg, extract_type_var_from_base, is_annotated_type, is_given
 
 if TYPE_CHECKING:
-    from ._request_opt import FinalRequestOptions
     from ._http_client import HttpClient
+    from ._request_opt import FinalRequestOptions
 
 P = ParamSpec("P")
 R = TypeVar("R")
@@ -28,7 +29,7 @@ log: logging.Logger = logging.getLogger(__name__)
 
 class BaseAPIResponse(Generic[R]):
     _cast_type: type[R]
-    _client: "HttpClient"
+    _client: HttpClient
     _parsed_by_type: dict[type[Any], Any]
     _is_sse_stream: bool
     _stream_cls: type[StreamResponse[Any]]
@@ -36,14 +37,14 @@ class BaseAPIResponse(Generic[R]):
     http_response: httpx.Response
 
     def __init__(
-            self,
-            *,
-            raw: httpx.Response,
-            cast_type: type[R],
-            client: "HttpClient",
-            stream: bool,
-            stream_cls: type[StreamResponse[Any]] | None = None,
-            options: FinalRequestOptions,
+        self,
+        *,
+        raw: httpx.Response,
+        cast_type: type[R],
+        client: HttpClient,
+        stream: bool,
+        stream_cls: type[StreamResponse[Any]] | None = None,
+        options: FinalRequestOptions,
     ) -> None:
         self._cast_type = cast_type
         self._client = client
@@ -68,7 +69,7 @@ class BaseAPIResponse(Generic[R]):
                     to(
                         cast_type=extract_stream_chunk_type(
                             to,
-                            failure_message="Expected custom stream type to be passed with a type argument, e.g. StreamResponse[ChunkType]",
+                            failure_message="Expected custom stream type to be passed with a type argument, e.g. StreamResponse[ChunkType]",  # noqa: E501
                         ),
                         response=self.http_response,
                         client=cast(Any, self._client),
@@ -136,21 +137,21 @@ class BaseAPIResponse(Generic[R]):
             # the response class ourselves but that is something that should be supported directly in httpx
             # as it would be easy to incorrectly construct the Response object due to the multitude of arguments.
             if cast_type != httpx.Response:
-                raise ValueError(f"Subclasses of httpx.Response cannot be passed to `cast_type`")
+                raise ValueError("Subclasses of httpx.Response cannot be passed to `cast_type`")
             return cast(R, response)
 
         if inspect.isclass(origin) and not issubclass(origin, BaseModel) and issubclass(origin, pydantic.BaseModel):
             raise TypeError("Pydantic models must subclass our base model type, e.g. `from openai import BaseModel`")
 
         if (
-                cast_type is not object
-                and not origin is list
-                and not origin is dict
-                and not origin is Union
-                and not issubclass(origin, BaseModel)
+            cast_type is not object
+            and origin is not list
+            and origin is not dict
+            and origin is not Union
+            and not issubclass(origin, BaseModel)
         ):
             raise RuntimeError(
-                f"Unsupported type, expected {cast_type} to be a subclass of {BaseModel}, {dict}, {list}, {Union}, {NoneType}, {str} or {httpx.Response}."
+                f"Unsupported type, expected {cast_type} to be a subclass of {BaseModel}, {dict}, {list}, {Union}, {NoneType}, {str} or {httpx.Response}."  # noqa: E501
             )
 
         # split is required to handle cases where additional information is included
@@ -172,7 +173,7 @@ class BaseAPIResponse(Generic[R]):
             if self._client._strict_response_validation:
                 raise APIResponseValidationError(
                     response=response,
-                    message=f"Expected Content-Type response header to be `application/json` but received `{content_type}` instead.",
+                    message=f"Expected Content-Type response header to be `application/json` but received `{content_type}` instead.",  # noqa: E501
                     json_data=response.text,
                 )
 
@@ -232,24 +233,19 @@ class BaseAPIResponse(Generic[R]):
 
     @override
     def __repr__(self) -> str:
-        return (
-            f"<{self.__class__.__name__} [{self.status_code} {self.http_response.reason_phrase}] type={self._cast_type}>"
-        )
+        return f"<{self.__class__.__name__} [{self.status_code} {self.http_response.reason_phrase}] type={self._cast_type}>"  # noqa: E501
 
 
 class APIResponse(BaseAPIResponse[R]):
-
     @property
     def request_id(self) -> str | None:
         return self.http_response.headers.get("x-request-id")  # type: ignore[no-any-return]
 
     @overload
-    def parse(self, *, to: type[_T]) -> _T:
-        ...
+    def parse(self, *, to: type[_T]) -> _T: ...
 
     @overload
-    def parse(self) -> R:
-        ...
+    def parse(self) -> R: ...
 
     def parse(self, *, to: type[_T] | None = None) -> R | _T:
         """Returns the rich python representation of this response's data.
@@ -329,31 +325,28 @@ class APIResponse(BaseAPIResponse[R]):
 
         This automatically handles gzip, deflate and brotli encoded responses.
         """
-        for chunk in self.http_response.iter_bytes(chunk_size):
-            yield chunk
+        yield from self.http_response.iter_bytes(chunk_size)
 
     def iter_text(self, chunk_size: int | None = None) -> Iterator[str]:
         """A str-iterator over the decoded response content
         that handles both gzip, deflate, etc but also detects the content's
         string encoding.
         """
-        for chunk in self.http_response.iter_text(chunk_size):
-            yield chunk
+        yield from self.http_response.iter_text(chunk_size)
 
     def iter_lines(self) -> Iterator[str]:
         """Like `iter_text()` but will only yield chunks for each line"""
-        for chunk in self.http_response.iter_lines():
-            yield chunk
+        yield from self.http_response.iter_lines()
 
 
 class MissingStreamClassError(TypeError):
     def __init__(self) -> None:
         super().__init__(
-            "The `stream` argument was set to `True` but the `stream_cls` argument was not given. See `openai._streaming` for reference",
+            "The `stream` argument was set to `True` but the `stream_cls` argument was not given. See `openai._streaming` for reference",  # noqa: E501
         )
 
 
-class StreamAlreadyConsumed(ZhipuAIError):
+class StreamAlreadyConsumed(ZhipuAIError):  # noqa: N818
     """
     Attempted to read or stream content, but the content has already
     been streamed.

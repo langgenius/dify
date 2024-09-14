@@ -1,11 +1,12 @@
 from __future__ import annotations
 
-from typing import TYPE_CHECKING, Any, Union, Generic, TypeVar, Callable, cast, overload
+from collections.abc import Callable
 from datetime import date, datetime
-from typing_extensions import Self
+from typing import TYPE_CHECKING, Any, Generic, TypeVar, Union, cast, overload
 
 import pydantic
 from pydantic.fields import FieldInfo
+from typing_extensions import Self
 
 from ._base_type import StrBytesIntFloat
 
@@ -22,51 +23,30 @@ PYDANTIC_V2 = pydantic.VERSION.startswith("2.")
 # v1 re-exports
 if TYPE_CHECKING:
 
-    def parse_date(value: date | StrBytesIntFloat) -> date:  # noqa: ARG001
-        ...
+    def parse_date(value: date | StrBytesIntFloat) -> date: ...
 
-    def parse_datetime(value: Union[datetime, StrBytesIntFloat]) -> datetime:  # noqa: ARG001
-        ...
+    def parse_datetime(value: Union[datetime, StrBytesIntFloat]) -> datetime: ...
 
-    def get_args(t: type[Any]) -> tuple[Any, ...]:  # noqa: ARG001
-        ...
+    def get_args(t: type[Any]) -> tuple[Any, ...]: ...
 
-    def is_union(tp: type[Any] | None) -> bool:  # noqa: ARG001
-        ...
+    def is_union(tp: type[Any] | None) -> bool: ...
 
-    def get_origin(t: type[Any]) -> type[Any] | None:  # noqa: ARG001
-        ...
+    def get_origin(t: type[Any]) -> type[Any] | None: ...
 
-    def is_literal_type(type_: type[Any]) -> bool:  # noqa: ARG001
-        ...
+    def is_literal_type(type_: type[Any]) -> bool: ...
 
-    def is_typeddict(type_: type[Any]) -> bool:  # noqa: ARG001
-        ...
+    def is_typeddict(type_: type[Any]) -> bool: ...
 
 else:
     if PYDANTIC_V2:
-        from pydantic.v1.typing import (
-            get_args as get_args,
-            is_union as is_union,
-            get_origin as get_origin,
-            is_typeddict as is_typeddict,
-            is_literal_type as is_literal_type,
-        )
-        from pydantic.v1.datetime_parse import parse_date as parse_date, parse_datetime as parse_datetime
+        pass
     else:
-        from pydantic.typing import (
-            get_args as get_args,
-            is_union as is_union,
-            get_origin as get_origin,
-            is_typeddict as is_typeddict,
-            is_literal_type as is_literal_type,
-        )
-        from pydantic.datetime_parse import parse_date as parse_date, parse_datetime as parse_datetime
+        pass
 
 
 # refactored config
 if TYPE_CHECKING:
-    from pydantic import ConfigDict as ConfigDict
+    from pydantic import ConfigDict
 else:
     if PYDANTIC_V2:
         from pydantic import ConfigDict
@@ -159,22 +139,19 @@ def model_parse(model: type[_ModelT], data: Any) -> _ModelT:
 # generic models
 if TYPE_CHECKING:
 
-    class GenericModel(pydantic.BaseModel):
-        ...
+    class GenericModel(pydantic.BaseModel): ...
 
 else:
     if PYDANTIC_V2:
         # there no longer needs to be a distinction in v2 but
         # we still have to create our own subclass to avoid
         # inconsistent MRO ordering errors
-        class GenericModel(pydantic.BaseModel):
-            ...
+        class GenericModel(pydantic.BaseModel): ...
 
     else:
         import pydantic.generics
 
-        class GenericModel(pydantic.generics.GenericModel, pydantic.BaseModel):
-            ...
+        class GenericModel(pydantic.generics.GenericModel, pydantic.BaseModel): ...
 
 
 # cached properties
@@ -189,34 +166,29 @@ if TYPE_CHECKING:
     # `@property` and we don't want to cause issues just to have
     # more helpful internal types.
 
-    class typed_cached_property(Generic[_T]):
+    class typed_cached_property(Generic[_T]):  # noqa: N801
         func: Callable[[Any], _T]
         attrname: str | None
 
-        def __init__(self, func: Callable[[Any], _T]) -> None:
-            ...
+        def __init__(self, func: Callable[[Any], _T]) -> None: ...
 
         @overload
-        def __get__(self, instance: None, owner: type[Any] | None = None) -> Self:
-            ...
+        def __get__(self, instance: None, owner: type[Any] | None = None) -> Self: ...
 
         @overload
-        def __get__(self, instance: object, owner: type[Any] | None = None) -> _T:
-            ...
+        def __get__(self, instance: object, owner: type[Any] | None = None) -> _T: ...
 
         def __get__(self, instance: object, owner: type[Any] | None = None) -> _T | Self:
             raise NotImplementedError()
 
-        def __set_name__(self, owner: type[Any], name: str) -> None:
-            ...
+        def __set_name__(self, owner: type[Any], name: str) -> None: ...
 
         # __set__ is not defined at runtime, but @cached_property is designed to be settable
-        def __set__(self, instance: object, value: _T) -> None:
-            ...
+        def __set__(self, instance: object, value: _T) -> None: ...
 else:
     try:
-        from functools import cached_property as cached_property
+        from functools import cached_property
     except ImportError:
-        from cached_property import cached_property as cached_property
+        from cached_property import cached_property
 
     typed_cached_property = cached_property

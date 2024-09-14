@@ -1,35 +1,32 @@
 from __future__ import annotations
 
+from collections.abc import Callable, Mapping, Sequence
 from os import PathLike
 from typing import (
     IO,
     TYPE_CHECKING,
     Any,
-    Dict,
-    List,
-    Type,
-    Tuple,
-    Union,
-    Mapping,
-    TypeVar,
-    Callable,
+    Literal,
     Optional,
-    Sequence,
+    TypeAlias,
+    TypeVar,
+    Union,
 )
+
 import pydantic
 from httpx import Response
-from typing_extensions import Literal, Protocol, TypeAlias, TypedDict, override, runtime_checkable
+from typing_extensions import Protocol, TypedDict, override, runtime_checkable
 
 Query = Mapping[str, object]
 Body = object
 AnyMapping = Mapping[str, object]
 PrimitiveData = Union[str, int, float, bool, None]
-Data = Union[PrimitiveData, List[Any], Tuple[Any], "Mapping[str, Any]"]
+Data = Union[PrimitiveData, list[Any], tuple[Any], "Mapping[str, Any]"]
 ModelT = TypeVar("ModelT", bound=pydantic.BaseModel)
 _T = TypeVar("_T")
 
 if TYPE_CHECKING:
-    NoneType: Type[None]
+    NoneType: type[None]
 else:
     NoneType = type(None)
 
@@ -88,27 +85,25 @@ class Omit:
 class ModelBuilderProtocol(Protocol):
     @classmethod
     def build(
-            cls: type[_T],
-            *,
-            response: Response,
-            data: object,
-    ) -> _T:
-        ...
+        cls: type[_T],
+        *,
+        response: Response,
+        data: object,
+    ) -> _T: ...
 
 
 Headers = Mapping[str, Union[str, Omit]]
 
 
 class HeadersLikeProtocol(Protocol):
-    def get(self, __key: str) -> str | None:
-        ...
+    def get(self, __key: str) -> str | None: ...
 
 
 HeadersLike = Union[Headers, HeadersLikeProtocol]
 
 ResponseT = TypeVar(
     "ResponseT",
-    bound="Union[str, None, BaseModel, List[Any], Dict[str, Any], Response, UnknownResponse, ModelBuilderProtocol, BinaryResponseContent]",
+    bound="Union[str, None, BaseModel, list[Any], dict[str, Any], Response, UnknownResponse, ModelBuilderProtocol, BinaryResponseContent]",  # noqa: E501
 )
 
 StrBytesIntFloat = Union[str, bytes, int, float]
@@ -150,26 +145,26 @@ else:
 FileTypes = Union[
     # file (or bytes)
     FileContent,
-        # (filename, file (or bytes))
-    Tuple[Optional[str], FileContent],
-        # (filename, file (or bytes), content_type)
-    Tuple[Optional[str], FileContent, Optional[str]],
-        # (filename, file (or bytes), content_type, headers)
-    Tuple[Optional[str], FileContent, Optional[str], Mapping[str, str]],
+    # (filename, file (or bytes))
+    tuple[Optional[str], FileContent],
+    # (filename, file (or bytes), content_type)
+    tuple[Optional[str], FileContent, Optional[str]],
+    # (filename, file (or bytes), content_type, headers)
+    tuple[Optional[str], FileContent, Optional[str], Mapping[str, str]],
 ]
-RequestFiles = Union[Mapping[str, FileTypes], Sequence[Tuple[str, FileTypes]]]
+RequestFiles = Union[Mapping[str, FileTypes], Sequence[tuple[str, FileTypes]]]
 
 # duplicate of the above but without our custom file support
 HttpxFileContent = Union[bytes, IO[bytes]]
 HttpxFileTypes = Union[
     # file (or bytes)
     HttpxFileContent,
-        # (filename, file (or bytes))
-    Tuple[Optional[str], HttpxFileContent],
-        # (filename, file (or bytes), content_type)
-    Tuple[Optional[str], HttpxFileContent, Optional[str]],
-        # (filename, file (or bytes), content_type, headers)
-    Tuple[Optional[str], HttpxFileContent, Optional[str], Mapping[str, str]],
+    # (filename, file (or bytes))
+    tuple[Optional[str], HttpxFileContent],
+    # (filename, file (or bytes), content_type)
+    tuple[Optional[str], HttpxFileContent, Optional[str]],
+    # (filename, file (or bytes), content_type, headers)
+    tuple[Optional[str], HttpxFileContent, Optional[str], Mapping[str, str]],
 ]
 
-HttpxRequestFiles = Union[Mapping[str, HttpxFileTypes], Sequence[Tuple[str, HttpxFileTypes]]]
+HttpxRequestFiles = Union[Mapping[str, HttpxFileTypes], Sequence[tuple[str, HttpxFileTypes]]]

@@ -1,53 +1,51 @@
-# -*- coding:utf-8 -*-
 from __future__ import annotations
 
 import inspect
-import warnings
-from typing import (
-    Any,
-    Type,
-    Union,
-    cast,
-    Mapping,
-    TypeVar,
-    Dict,
-    overload, Optional, Literal, Generic, Iterator, TYPE_CHECKING
-)
-
-from random import random
+import logging
 import time
+import warnings
+from collections.abc import Iterator, Mapping
+from itertools import starmap
+from random import random
+from typing import TYPE_CHECKING, Any, Generic, Literal, Optional, TypeVar, Union, cast, overload
+
 import httpx
 import pydantic
 from httpx import URL, Timeout
 
 from . import _errors, get_origin
 from ._base_compat import model_copy
+from ._base_models import GenericModel, construct_type, validate_type
 from ._base_type import (
-    NotGiven,
-    ResponseT,
-    Body,
-    Headers,
     NOT_GIVEN,
-    RequestFiles,
-    Query,
-    Data,
-    Omit,
     AnyMapping,
+    Body,
+    Data,
+    Headers,
+    HttpxSendArgs,
     ModelBuilderProtocol,
-    HttpxSendArgs, PostParser,
+    NotGiven,
+    Omit,
+    PostParser,
+    Query,
+    RequestFiles,
+    ResponseT,
 )
-from ._constants import ZHIPUAI_DEFAULT_MAX_RETRIES, ZHIPUAI_DEFAULT_LIMITS, ZHIPUAI_DEFAULT_TIMEOUT, \
-    INITIAL_RETRY_DELAY, MAX_RETRY_DELAY, RAW_RESPONSE_HEADER
-from ._errors import APIResponseValidationError, APIStatusError, APITimeoutError, APIConnectionError
+from ._constants import (
+    INITIAL_RETRY_DELAY,
+    MAX_RETRY_DELAY,
+    RAW_RESPONSE_HEADER,
+    ZHIPUAI_DEFAULT_LIMITS,
+    ZHIPUAI_DEFAULT_MAX_RETRIES,
+    ZHIPUAI_DEFAULT_TIMEOUT,
+)
+from ._errors import APIConnectionError, APIResponseValidationError, APIStatusError, APITimeoutError
 from ._files import to_httpx_files
 from ._legacy_response import LegacyAPIResponse
 from ._request_opt import FinalRequestOptions, UserRequestInput
-from ._response import BaseAPIResponse, APIResponse, extract_response_type
+from ._response import APIResponse, BaseAPIResponse, extract_response_type
 from ._sse_client import StreamResponse
-from ._utils import flatten, is_mapping, is_given
-from ._base_models import construct_type, GenericModel, validate_type
-import logging
-
+from ._utils import flatten, is_given, is_mapping
 
 log: logging.Logger = logging.getLogger(__name__)
 
@@ -74,7 +72,6 @@ headers = {
 }
 
 
-
 class PageInfo:
     """Stores the necessary information to build the request to retrieve the next page.
 
@@ -86,25 +83,23 @@ class PageInfo:
 
     @overload
     def __init__(
-            self,
-            *,
-            url: URL,
-    ) -> None:
-        ...
+        self,
+        *,
+        url: URL,
+    ) -> None: ...
 
     @overload
     def __init__(
-            self,
-            *,
-            params: Query,
-    ) -> None:
-        ...
+        self,
+        *,
+        params: Query,
+    ) -> None: ...
 
     def __init__(
-            self,
-            *,
-            url: URL | NotGiven = NOT_GIVEN,
-            params: Query | NotGiven = NOT_GIVEN,
+        self,
+        *,
+        url: URL | NotGiven = NOT_GIVEN,
+        params: Query | NotGiven = NOT_GIVEN,
     ) -> None:
         self.url = url
         self.params = params
@@ -123,7 +118,7 @@ class BasePage(GenericModel, Generic[_T]):
     """
 
     _options: FinalRequestOptions = pydantic.PrivateAttr()
-    _model: Type[_T] = pydantic.PrivateAttr()
+    _model: type[_T] = pydantic.PrivateAttr()
 
     def has_next_page(self) -> bool:
         items = self._get_page_items()
@@ -131,8 +126,7 @@ class BasePage(GenericModel, Generic[_T]):
             return False
         return self.next_page_info() is not None
 
-    def next_page_info(self) -> Optional[PageInfo]:
-        ...
+    def next_page_info(self) -> Optional[PageInfo]: ...
 
     def _get_page_items(self) -> Iterable[_T]:  # type: ignore[empty-body]
         ...
@@ -163,10 +157,10 @@ class BaseSyncPage(BasePage[_T], Generic[_T]):
     _client: HttpClient = pydantic.PrivateAttr()
 
     def _set_private_attributes(
-            self,
-            client: HttpClient,
-            model: Type[_T],
-            options: FinalRequestOptions,
+        self,
+        client: HttpClient,
+        model: type[_T],
+        options: FinalRequestOptions,
     ) -> None:
         self._model = model
         self._client = client
@@ -182,8 +176,7 @@ class BaseSyncPage(BasePage[_T], Generic[_T]):
     # by pydantic.
     def __iter__(self) -> Iterator[_T]:  # type: ignore
         for page in self.iter_pages():
-            for item in page._get_page_items():
-                yield item
+            yield from page._get_page_items()
 
     def iter_pages(self: SyncPageT) -> Iterator[SyncPageT]:
         page = self
@@ -213,25 +206,25 @@ class HttpClient:
     timeout: Union[float, Timeout, None]
     _limits: httpx.Limits
     _has_custom_http_client: bool
-    _default_stream_cls: Type[StreamResponse[Any]] | None = None
+    _default_stream_cls: type[StreamResponse[Any]] | None = None
 
     _strict_response_validation: bool
 
     def __init__(
-            self,
-            *,
-            version: str,
-            base_url: URL,
-            _strict_response_validation: bool,
-            max_retries: int = ZHIPUAI_DEFAULT_MAX_RETRIES,
-            timeout: Union[float, Timeout, None],
-            limits: httpx.Limits | None = None,
-            custom_httpx_client: httpx.Client | None = None,
-            custom_headers: Mapping[str, str] | None = None,
+        self,
+        *,
+        version: str,
+        base_url: URL,
+        _strict_response_validation: bool,
+        max_retries: int = ZHIPUAI_DEFAULT_MAX_RETRIES,
+        timeout: Union[float, Timeout, None],
+        limits: httpx.Limits | None = None,
+        custom_httpx_client: httpx.Client | None = None,
+        custom_headers: Mapping[str, str] | None = None,
     ) -> None:
         if limits is not None:
             warnings.warn(
-                "The `connection_pool_limits` argument is deprecated. The `http_client` argument should be passed instead",
+                "The `connection_pool_limits` argument is deprecated. The `http_client` argument should be passed instead",  # noqa: E501
                 category=DeprecationWarning,
                 stacklevel=3,
             )
@@ -263,7 +256,6 @@ class HttpClient:
         self._strict_response_validation = _strict_response_validation
 
     def _prepare_url(self, url: str) -> URL:
-
         sub_url = URL(url)
         if sub_url.is_relative_url:
             request_raw_url = self._base_url.raw_path + sub_url.raw_path.lstrip(b"/")
@@ -273,16 +265,15 @@ class HttpClient:
 
     @property
     def _default_headers(self):
-        return \
-            {
-                "Accept": "application/json",
-                "Content-Type": "application/json; charset=UTF-8",
-                "ZhipuAI-SDK-Ver": self._version,
-                "source_type": "zhipu-sdk-python",
-                "x-request-sdk": "zhipu-sdk-python",
-                **self.auth_headers,
-                **self._custom_headers,
-            }
+        return {
+            "Accept": "application/json",
+            "Content-Type": "application/json; charset=UTF-8",
+            "ZhipuAI-SDK-Ver": self._version,
+            "source_type": "zhipu-sdk-python",
+            "x-request-sdk": "zhipu-sdk-python",
+            **self.auth_headers,
+            **self._custom_headers,
+        }
 
     @property
     def custom_auth(self) -> httpx.Auth | None:
@@ -301,17 +292,17 @@ class HttpClient:
         return httpx_headers
 
     def _remaining_retries(
-            self,
-            remaining_retries: Optional[int],
-            options: FinalRequestOptions,
+        self,
+        remaining_retries: Optional[int],
+        options: FinalRequestOptions,
     ) -> int:
         return remaining_retries if remaining_retries is not None else options.get_max_retries(self.max_retries)
 
     def _calculate_retry_timeout(
-            self,
-            remaining_retries: int,
-            options: FinalRequestOptions,
-            response_headers: Optional[httpx.Headers] = None,
+        self,
+        remaining_retries: int,
+        options: FinalRequestOptions,
+        response_headers: Optional[httpx.Headers] = None,
     ) -> float:
         max_retries = options.get_max_retries(self.max_retries)
 
@@ -328,12 +319,9 @@ class HttpClient:
         # Apply some jitter, plus-or-minus half a second.
         jitter = 1 - 0.25 * random()
         timeout = sleep_seconds * jitter
-        return timeout if timeout >= 0 else 0
+        return max(timeout, 0)
 
-    def _build_request(
-            self,
-            options: FinalRequestOptions
-    ) -> httpx.Request:
+    def _build_request(self, options: FinalRequestOptions) -> httpx.Request:
         kwargs: dict[str, Any] = {}
         headers = self._prepare_headers(options)
         url = self._prepare_url(options.url)
@@ -375,7 +363,7 @@ class HttpClient:
             for k, v in value.items():
                 items.extend(self._object_to_formfata(f"{key}[{k}]", v))
             return items
-        if isinstance(value, (list, tuple)):
+        if isinstance(value, list | tuple):
             for v in value:
                 items.extend(self._object_to_formfata(key + "[]", v))
             return items
@@ -397,8 +385,7 @@ class HttpClient:
         return [(key, str_data)]
 
     def _make_multipartform(self, data: Mapping[object, object]) -> dict[str, object]:
-
-        items = flatten([self._object_to_formfata(k, v) for k, v in data.items()])
+        items = flatten(list(starmap(self._object_to_formfata, data.items())))
 
         serialized: dict[str, object] = {}
         for key, value in items:
@@ -407,15 +394,13 @@ class HttpClient:
             serialized[key] = value
         return serialized
 
-
     def _process_response_data(
-            self,
-            *,
-            data: object,
-            cast_type: Type[ResponseT],
-            response: httpx.Response,
+        self,
+        *,
+        data: object,
+        cast_type: type[ResponseT],
+        response: httpx.Response,
     ) -> ResponseT:
-
         if data is None:
             return cast(ResponseT, None)
 
@@ -484,13 +469,13 @@ class HttpClient:
         self.close()
 
     def request(
-            self,
-            cast_type: Type[ResponseT],
-            options: FinalRequestOptions,
-            remaining_retries: Optional[int] = None,
-            *,
-            stream: bool = False,
-            stream_cls: Type[StreamResponse] | None = None,
+        self,
+        cast_type: type[ResponseT],
+        options: FinalRequestOptions,
+        remaining_retries: Optional[int] = None,
+        *,
+        stream: bool = False,
+        stream_cls: type[StreamResponse] | None = None,
     ) -> ResponseT | StreamResponse:
         return self._request(
             cast_type=cast_type,
@@ -501,15 +486,14 @@ class HttpClient:
         )
 
     def _request(
-            self,
-            *,
-            cast_type: Type[ResponseT],
-            options: FinalRequestOptions,
-            remaining_retries: int | None,
-            stream: bool,
-            stream_cls: Type[StreamResponse] | None,
+        self,
+        *,
+        cast_type: type[ResponseT],
+        options: FinalRequestOptions,
+        remaining_retries: int | None,
+        stream: bool,
+        stream_cls: type[StreamResponse] | None,
     ) -> ResponseT | StreamResponse:
-
         retries = self._remaining_retries(remaining_retries, options)
         request = self._build_request(options)
 
@@ -597,14 +581,14 @@ class HttpClient:
         )
 
     def _retry_request(
-            self,
-            options: FinalRequestOptions,
-            cast_type: Type[ResponseT],
-            remaining_retries: int,
-            response_headers: httpx.Headers | None,
-            *,
-            stream: bool,
-            stream_cls: Type[StreamResponse] | None,
+        self,
+        options: FinalRequestOptions,
+        cast_type: type[ResponseT],
+        remaining_retries: int,
+        response_headers: httpx.Headers | None,
+        *,
+        stream: bool,
+        stream_cls: type[StreamResponse] | None,
     ) -> ResponseT | StreamResponse:
         remaining = remaining_retries - 1
         if remaining == 1:
@@ -628,13 +612,13 @@ class HttpClient:
         )
 
     def _process_response(
-            self,
-            *,
-            cast_type: Type[ResponseT],
-            options: FinalRequestOptions,
-            response: httpx.Response,
-            stream: bool,
-            stream_cls: Type[StreamResponse] | None,
+        self,
+        *,
+        cast_type: type[ResponseT],
+        options: FinalRequestOptions,
+        response: httpx.Response,
+        stream: bool,
+        stream_cls: type[StreamResponse] | None,
     ) -> ResponseT:
         # _legacy_response with raw_response_header to paser method
         if response.request.headers.get(RAW_RESPONSE_HEADER) == "true":
@@ -686,10 +670,10 @@ class HttpClient:
         return api_response.parse()
 
     def _request_api_list(
-            self,
-            model: Type[object],
-            page: Type[SyncPageT],
-            options: FinalRequestOptions,
+        self,
+        model: type[object],
+        page: type[SyncPageT],
+        options: FinalRequestOptions,
     ) -> SyncPageT:
         def _parser(resp: SyncPageT) -> SyncPageT:
             resp._set_private_attributes(
@@ -705,102 +689,96 @@ class HttpClient:
 
     @overload
     def get(
-            self,
-            path: str,
-            *,
-            cast_type: Type[ResponseT],
-            options: UserRequestInput = {},
-            stream: Literal[False] = False,
-    ) -> ResponseT:
-        ...
+        self,
+        path: str,
+        *,
+        cast_type: type[ResponseT],
+        options: UserRequestInput = {},
+        stream: Literal[False] = False,
+    ) -> ResponseT: ...
 
     @overload
     def get(
-            self,
-            path: str,
-            *,
-            cast_type: Type[ResponseT],
-            options: UserRequestInput = {},
-            stream: Literal[True],
-            stream_cls: Type[StreamResponse],
-    ) -> StreamResponse:
-        ...
+        self,
+        path: str,
+        *,
+        cast_type: type[ResponseT],
+        options: UserRequestInput = {},
+        stream: Literal[True],
+        stream_cls: type[StreamResponse],
+    ) -> StreamResponse: ...
 
     @overload
     def get(
-            self,
-            path: str,
-            *,
-            cast_type: Type[ResponseT],
-            options: UserRequestInput = {},
-            stream: bool,
-            stream_cls: Type[StreamResponse] | None = None,
-    ) -> ResponseT | StreamResponse:
-        ...
+        self,
+        path: str,
+        *,
+        cast_type: type[ResponseT],
+        options: UserRequestInput = {},
+        stream: bool,
+        stream_cls: type[StreamResponse] | None = None,
+    ) -> ResponseT | StreamResponse: ...
 
     def get(
-            self,
-            path: str,
-            *,
-            cast_type: Type[ResponseT],
-            options: UserRequestInput = {},
-            stream: bool = False,
-            stream_cls: Type[StreamResponse] | None = None,
+        self,
+        path: str,
+        *,
+        cast_type: type[ResponseT],
+        options: UserRequestInput = {},
+        stream: bool = False,
+        stream_cls: type[StreamResponse] | None = None,
     ) -> ResponseT:
         opts = FinalRequestOptions.construct(method="get", url=path, **options)
         return cast(ResponseT, self.request(cast_type, opts, stream=stream, stream_cls=stream_cls))
 
     @overload
     def post(
-            self,
-            path: str,
-            *,
-            cast_type: Type[ResponseT],
-            body: Body | None = None,
-            options: UserRequestInput = {},
-            files: RequestFiles | None = None,
-            stream: Literal[False] = False,
-    ) -> ResponseT:
-        ...
+        self,
+        path: str,
+        *,
+        cast_type: type[ResponseT],
+        body: Body | None = None,
+        options: UserRequestInput = {},
+        files: RequestFiles | None = None,
+        stream: Literal[False] = False,
+    ) -> ResponseT: ...
 
     @overload
     def post(
-            self,
-            path: str,
-            *,
-            cast_type: Type[ResponseT],
-            body: Body | None = None,
-            options: UserRequestInput = {},
-            files: RequestFiles | None = None,
-            stream: Literal[True],
-            stream_cls: Type[StreamResponse],
-    ) -> StreamResponse:
-        ...
+        self,
+        path: str,
+        *,
+        cast_type: type[ResponseT],
+        body: Body | None = None,
+        options: UserRequestInput = {},
+        files: RequestFiles | None = None,
+        stream: Literal[True],
+        stream_cls: type[StreamResponse],
+    ) -> StreamResponse: ...
 
     @overload
     def post(
-            self,
-            path: str,
-            *,
-            cast_type: Type[ResponseT],
-            body: Body | None = None,
-            options: UserRequestInput = {},
-            files: RequestFiles | None = None,
-            stream: bool,
-            stream_cls: Type[StreamResponse] | None = None,
-    ) -> ResponseT | StreamResponse:
-        ...
+        self,
+        path: str,
+        *,
+        cast_type: type[ResponseT],
+        body: Body | None = None,
+        options: UserRequestInput = {},
+        files: RequestFiles | None = None,
+        stream: bool,
+        stream_cls: type[StreamResponse] | None = None,
+    ) -> ResponseT | StreamResponse: ...
 
     def post(
-            self,
-            path: str,
-            *,
-            cast_type: Type[ResponseT],
-            body: Body | None = None,
-            options: UserRequestInput = {},
-            files: RequestFiles | None = None,
-            stream: bool = False,
-            stream_cls: Type[StreamResponse[Any]] | None = None,
+        self,
+        path: str,
+        *,
+        cast_type: type[ResponseT],
+        body: Body | None = None,
+        options: UserRequestInput = {},
+        files: RequestFiles | None = None,
+        stream: bool = False,
+        stream_cls: type[StreamResponse[Any]] | None = None,
     ) -> ResponseT | StreamResponse:
         opts = FinalRequestOptions.construct(
             method="post", url=path, json_data=body, files=to_httpx_files(files), **options
@@ -809,58 +787,62 @@ class HttpClient:
         return cast(ResponseT, self.request(cast_type, opts, stream=stream, stream_cls=stream_cls))
 
     def patch(
-            self,
-            path: str,
-            *,
-            cast_type: Type[ResponseT],
-            body: Body | None = None,
-            options: UserRequestInput = {},
+        self,
+        path: str,
+        *,
+        cast_type: type[ResponseT],
+        body: Body | None = None,
+        options: UserRequestInput = {},
     ) -> ResponseT:
         opts = FinalRequestOptions.construct(method="patch", url=path, json_data=body, **options)
 
         return self.request(
-            cast_type=cast_type, options=opts,
+            cast_type=cast_type,
+            options=opts,
         )
 
     def put(
-            self,
-            path: str,
-            *,
-            cast_type: Type[ResponseT],
-            body: Body | None = None,
-            options: UserRequestInput = {},
-            files: RequestFiles | None = None,
+        self,
+        path: str,
+        *,
+        cast_type: type[ResponseT],
+        body: Body | None = None,
+        options: UserRequestInput = {},
+        files: RequestFiles | None = None,
     ) -> ResponseT | StreamResponse:
-        opts = FinalRequestOptions.construct(method="put", url=path, json_data=body, files=to_httpx_files(files),
-                                             **options)
+        opts = FinalRequestOptions.construct(
+            method="put", url=path, json_data=body, files=to_httpx_files(files), **options
+        )
 
         return self.request(
-            cast_type=cast_type, options=opts,
+            cast_type=cast_type,
+            options=opts,
         )
 
     def delete(
-            self,
-            path: str,
-            *,
-            cast_type: Type[ResponseT],
-            body: Body | None = None,
-            options: UserRequestInput = {},
+        self,
+        path: str,
+        *,
+        cast_type: type[ResponseT],
+        body: Body | None = None,
+        options: UserRequestInput = {},
     ) -> ResponseT | StreamResponse:
         opts = FinalRequestOptions.construct(method="delete", url=path, json_data=body, **options)
 
         return self.request(
-            cast_type=cast_type, options=opts,
+            cast_type=cast_type,
+            options=opts,
         )
 
     def get_api_list(
-            self,
-            path: str,
-            *,
-            model: Type[object],
-            page: Type[SyncPageT],
-            body: Body | None = None,
-            options: UserRequestInput = {},
-            method: str = "get",
+        self,
+        path: str,
+        *,
+        model: type[object],
+        page: type[SyncPageT],
+        body: Body | None = None,
+        options: UserRequestInput = {},
+        method: str = "get",
     ) -> SyncPageT:
         opts = FinalRequestOptions.construct(method=method, url=path, json_data=body, **options)
         return self._request_api_list(model, page, opts)
@@ -884,13 +866,13 @@ class HttpClient:
 
 
 def make_request_options(
-        *,
-        query: Query | None = None,
-        extra_headers: Headers | None = None,
-        extra_query: Query | None = None,
-        extra_body: Body | None = None,
-        timeout: float | httpx.Timeout | None | NotGiven = NOT_GIVEN,
-        post_parser: PostParser | NotGiven = NOT_GIVEN,
+    *,
+    query: Query | None = None,
+    extra_headers: Headers | None = None,
+    extra_query: Query | None = None,
+    extra_body: Body | None = None,
+    timeout: float | httpx.Timeout | None | NotGiven = NOT_GIVEN,
+    post_parser: PostParser | NotGiven = NOT_GIVEN,
 ) -> UserRequestInput:
     """Create a dict of type RequestOptions without keys of NotGiven values."""
     options: UserRequestInput = {}
@@ -917,9 +899,9 @@ def make_request_options(
 
 
 def _merge_mappings(
-        obj1: Mapping[_T_co, Union[_T, Omit]],
-        obj2: Mapping[_T_co, Union[_T, Omit]],
-) -> Dict[_T_co, _T]:
+    obj1: Mapping[_T_co, Union[_T, Omit]],
+    obj2: Mapping[_T_co, Union[_T, Omit]],
+) -> dict[_T_co, _T]:
     """Merge two mappings of the same type, removing any values that are instances of `Omit`.
 
     In cases with duplicate keys the second mapping takes precedence.

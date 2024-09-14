@@ -1,11 +1,13 @@
 from __future__ import annotations
 
-from typing import Any, TypeVar, Iterable, cast
 from collections import abc as _c_abc
-from typing_extensions import Required, Annotated, get_args, get_origin
+from collections.abc import Iterable
+from typing import Annotated, Any, TypeVar, cast, get_args, get_origin
 
-from .._base_type import InheritsGeneric
+from typing_extensions import Required
+
 from .._base_compat import is_union as _is_union
+from .._base_type import InheritsGeneric
 
 
 def is_annotated_type(typ: type) -> bool:
@@ -19,7 +21,7 @@ def is_list_type(typ: type) -> bool:
 def is_iterable_type(typ: type) -> bool:
     """If the given type is `typing.Iterable[T]`"""
     origin = get_origin(typ) or typ
-    return origin == Iterable or origin == _c_abc.Iterable
+    return origin in {Iterable, _c_abc.Iterable}
 
 
 def is_union_type(typ: type) -> bool:
