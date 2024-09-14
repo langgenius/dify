@@ -73,7 +73,6 @@ class CogView3Tool(BuiltinTool):
                 quality=quality,
                 response_format="b64_json",
             )
-        print(response.data)
         result = []
         for image in response.data:
             result.append(self.create_image_message(image=image.url))

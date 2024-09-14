@@ -17,6 +17,8 @@ from typing import (
 
 import sniffio
 
+from .._base_compat import parse_date as parse_date  # noqa: PLC0414
+from .._base_compat import parse_datetime as parse_datetime  # noqa: PLC0414
 from .._base_type import FileTypes, Headers, HeadersLike, NotGiven, NotGivenOr
 
 

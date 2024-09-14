@@ -25,7 +25,8 @@ if TYPE_CHECKING:
 
     def parse_date(value: date | StrBytesIntFloat) -> date: ...
 
-    def parse_datetime(value: Union[datetime, StrBytesIntFloat]) -> datetime: ...
+    def parse_datetime(
+        value: Union[datetime, StrBytesIntFloat]) -> datetime: ...
 
     def get_args(t: type[Any]) -> tuple[Any, ...]: ...
 
@@ -39,9 +40,23 @@ if TYPE_CHECKING:
 
 else:
     if PYDANTIC_V2:
-        pass
+        from pydantic.v1.typing import (  # noqa: I001
+            get_args as get_args,  # noqa: PLC0414
+            is_union as is_union,  # noqa: PLC0414
+            get_origin as get_origin,  # noqa: PLC0414
+            is_typeddict as is_typeddict,  # noqa: PLC0414
+            is_literal_type as is_literal_type,  # noqa: PLC0414
+        )
+        from pydantic.v1.datetime_parse import parse_date as parse_date, parse_datetime as parse_datetime  # noqa: PLC0414
     else:
-        pass
+        from pydantic.typing import (  # noqa: I001
+            get_args as get_args,  # noqa: PLC0414
+            is_union as is_union,  # noqa: PLC0414
+            get_origin as get_origin,  # noqa: PLC0414
+            is_typeddict as is_typeddict,  # noqa: PLC0414
+            is_literal_type as is_literal_type,  # noqa: PLC0414
+        )
+        from pydantic.datetime_parse import parse_date as parse_date, parse_datetime as parse_datetime  # noqa: PLC0414
 
 
 # refactored config
@@ -60,7 +75,8 @@ def parse_obj(model: type[_ModelT], value: object) -> _ModelT:
     if PYDANTIC_V2:
         return model.model_validate(value)
     else:
-        return cast(_ModelT, model.parse_obj(value))  # pyright: ignore[reportDeprecated, reportUnnecessaryCast]
+        # pyright: ignore[reportDeprecated, reportUnnecessaryCast]
+        return cast(_ModelT, model.parse_obj(value))
 
 
 def field_is_required(field: FieldInfo) -> bool:
@@ -139,19 +155,22 @@ def model_parse(model: type[_ModelT], data: Any) -> _ModelT:
 # generic models
 if TYPE_CHECKING:
 
-    class GenericModel(pydantic.BaseModel): ...
+    class GenericModel(pydantic.BaseModel):
+        ...
 
 else:
     if PYDANTIC_V2:
         # there no longer needs to be a distinction in v2 but
         # we still have to create our own subclass to avoid
         # inconsistent MRO ordering errors
-        class GenericModel(pydantic.BaseModel): ...
+        class GenericModel(pydantic.BaseModel):
+            ...
 
     else:
         import pydantic.generics
 
-        class GenericModel(pydantic.generics.GenericModel, pydantic.BaseModel): ...
+        class GenericModel(pydantic.generics.GenericModel, pydantic.BaseModel):
+            ...
 
 
 # cached properties
@@ -173,10 +192,12 @@ if TYPE_CHECKING:
         def __init__(self, func: Callable[[Any], _T]) -> None: ...
 
         @overload
-        def __get__(self, instance: None, owner: type[Any] | None = None) -> Self: ...
+        def __get__(self, instance: None,
+                    owner: type[Any] | None = None) -> Self: ...
 
         @overload
-        def __get__(self, instance: object, owner: type[Any] | None = None) -> _T: ...
+        def __get__(self, instance: object,
+                    owner: type[Any] | None = None) -> _T: ...
 
         def __get__(self, instance: object, owner: type[Any] | None = None) -> _T | Self:
             raise NotImplementedError()
