@@ -12,7 +12,8 @@ export const SVGRenderer = ({ content }: { content: string }) => {
 
   const svgToDataURL = (svgElement: Element): string => {
     const svgString = new XMLSerializer().serializeToString(svgElement)
-    return `data:image/svg+xml;base64,${btoa(unescape(encodeURIComponent(svgString)))}`
+    const base64String = Buffer.from(svgString).toString('base64')
+    return `data:image/svg+xml;base64,${base64String}`
   }
 
   useEffect(() => {
