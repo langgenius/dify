@@ -10,6 +10,7 @@ FLUX_URL = {
     "dev": "https://api.siliconflow.cn/v1/image/generations",
 }
 
+
 class FluxTool(BuiltinTool):
     def _invoke(
         self, user_id: str, tool_parameters: dict[str, Any]
