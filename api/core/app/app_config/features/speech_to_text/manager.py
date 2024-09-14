@@ -7,9 +7,9 @@ class SpeechToTextConfigManager:
         :param config: model config args
         """
         speech_to_text = False
-        speech_to_text_dict = config.get('speech_to_text')
+        speech_to_text_dict = config.get("speech_to_text")
         if speech_to_text_dict:
-            if speech_to_text_dict.get('enabled'):
+            if speech_to_text_dict.get("enabled"):
                 speech_to_text = True
 
         return speech_to_text
@@ -22,9 +22,7 @@ class SpeechToTextConfigManager:
         :param config: app model config args
         """
         if not config.get("speech_to_text"):
-            config["speech_to_text"] = {
-                "enabled": False
-            }
+            config["speech_to_text"] = {"enabled": False}
 
         if not isinstance(config["speech_to_text"], dict):
             raise ValueError("speech_to_text must be of dict type")

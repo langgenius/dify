@@ -81,6 +81,22 @@ const translation = {
     overwriteAndImport: 'Sovrascrivi e Importa',
     importFailure: 'Importazione fallita',
     importSuccess: 'Importazione riuscita',
+    parallelTip: {
+      click: {
+        title: 'Clic',
+        desc: 'per aggiungere',
+      },
+      drag: {
+        title: 'Trascinare',
+        desc: 'per collegare',
+      },
+      depthLimit: 'Limite di livelli di annidamento parallelo di {{num}} livelli',
+      limit: 'Il parallelismo è limitato ai rami {{num}}.',
+    },
+    parallelRun: 'Corsa parallela',
+    disconnect: 'Disconnettere',
+    jumpToNode: 'Vai a questo nodo',
+    addParallelNode: 'Aggiungi nodo parallelo',
   },
   env: {
     envPanelTitle: 'Variabili d\'Ambiente',
@@ -431,6 +447,7 @@ const translation = {
         'not empty': 'non è vuoto',
         'null': 'è nullo',
         'not null': 'non è nullo',
+        'regex match': 'Corrispondenza regex',
       },
       enterValue: 'Inserisci valore',
       addCondition: 'Aggiungi Condizione',

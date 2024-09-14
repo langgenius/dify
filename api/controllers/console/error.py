@@ -18,9 +18,7 @@ class NotSetupError(BaseHTTPException):
 
 class NotInitValidateError(BaseHTTPException):
     error_code = "not_init_validated"
-    description = (
-        "Init validation has not been completed yet. " "Please proceed with the init validation process first."
-    )
+    description = "Init validation has not been completed yet. Please proceed with the init validation process first."
     code = 401
 
 

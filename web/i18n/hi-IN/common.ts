@@ -37,6 +37,7 @@ const translation = {
     params: 'पैरामीटर',
     duplicate: 'डुप्लिकेट',
     rename: 'नाम बदलें',
+    audioSourceUnavailable: 'ऑडियो स्रोत अनुपलब्ध है',
   },
   errorMsg: {
     fieldRequired: '{{field}} आवश्यक है',

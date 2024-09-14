@@ -1,5 +1,6 @@
 import json
 import logging
+from pathlib import Path
 
 from configs import dify_config
 from core.helper.position_helper import is_filtered
@@ -183,8 +184,7 @@ class BuiltinToolManageService:
         get tool provider icon and it's mimetype
         """
         icon_path, mime_type = ToolManager.get_builtin_provider_icon(provider)
-        with open(icon_path, "rb") as f:
-            icon_bytes = f.read()
+        icon_bytes = Path(icon_path).read_bytes()
 
         return icon_bytes, mime_type
 

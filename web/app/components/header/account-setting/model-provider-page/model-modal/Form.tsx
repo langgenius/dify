@@ -70,15 +70,15 @@ const Form: FC<FormProps> = ({
   const renderField = (formSchema: CredentialFormSchema) => {
     const tooltip = formSchema.tooltip
     const tooltipContent = (tooltip && (
-      <span className='ml-1'>
-        <Tooltip
-          popupContent={
-            <div className='w-[200px]'>
-              {tooltip[language] || tooltip.en_US}
-            </div>}
-          triggerClassName='w-4 h-4'
-        />
-      </span>))
+      <Tooltip
+        popupContent={
+          <div className='w-[200px]'>
+            {tooltip[language] || tooltip.en_US}
+          </div>}
+        triggerClassName='ml-1 w-4 h-4'
+        asChild={false}
+      />
+    ))
     if (formSchema.type === FormTypeEnum.textInput || formSchema.type === FormTypeEnum.secretInput || formSchema.type === FormTypeEnum.textNumber) {
       const {
         variable,

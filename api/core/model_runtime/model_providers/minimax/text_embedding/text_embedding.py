@@ -30,11 +30,12 @@ class MinimaxTextEmbeddingModel(TextEmbeddingModel):
     """
     Model class for Minimax text embedding model.
     """
-    api_base: str = 'https://api.minimax.chat/v1/embeddings'
 
-    def _invoke(self, model: str, credentials: dict,
-                texts: list[str], user: Optional[str] = None) \
-            -> TextEmbeddingResult:
+    api_base: str = "https://api.minimax.chat/v1/embeddings"
+
+    def _invoke(
+        self, model: str, credentials: dict, texts: list[str], user: Optional[str] = None
+    ) -> TextEmbeddingResult:
         """
         Invoke text embedding model
 
@@ -44,54 +45,43 @@ class MinimaxTextEmbeddingModel(TextEmbeddingModel):
         :param user: unique user id
         :return: embeddings result
         """
-        api_key = credentials['minimax_api_key']
-        group_id = credentials['minimax_group_id']
-        if model != 'embo-01':
-            raise ValueError('Invalid model name')
+        api_key = credentials["minimax_api_key"]
+        group_id = credentials["minimax_group_id"]
+        if model != "embo-01":
+            raise ValueError("Invalid model name")
         if not api_key:
-            raise CredentialsValidateFailedError('api_key is required')
-        url = f'{self.api_base}?GroupId={group_id}'
-        headers = {
-            'Authorization': 'Bearer ' + api_key,
-            'Content-Type': 'application/json'
-        }
+            raise CredentialsValidateFailedError("api_key is required")
+        url = f"{self.api_base}?GroupId={group_id}"
+        headers = {"Authorization": "Bearer " + api_key, "Content-Type": "application/json"}
 
-        data = {
-            'model': 'embo-01',
-            'texts': texts,
-            'type': 'db'
-        }
+        data = {"model": "embo-01", "texts": texts, "type": "db"}
 
         try:
             response = post(url, headers=headers, data=dumps(data))
         except Exception as e:
             raise InvokeConnectionError(str(e))
-        
+
         if response.status_code != 200:
             raise InvokeServerUnavailableError(response.text)
-        
+
         try:
             resp = response.json()
             # check if there is an error
-            if resp['base_resp']['status_code'] != 0:
-                code = resp['base_resp']['status_code']
-                msg = resp['base_resp']['status_msg']
+            if resp["base_resp"]["status_code"] != 0:
+                code = resp["base_resp"]["status_code"]
+                msg = resp["base_resp"]["status_msg"]
                 self._handle_error(code, msg)
 
-            embeddings = resp['vectors']
-            total_tokens = resp['total_tokens']
+            embeddings = resp["vectors"]
+            total_tokens = resp["total_tokens"]
         except InvalidAuthenticationError:
-            raise InvalidAPIKeyError('Invalid api key')
+            raise InvalidAPIKeyError("Invalid api key")
         except KeyError as e:
             raise InternalServerError(f"Failed to convert response to json: {e} with text: {response.text}")
 
         usage = self._calc_response_usage(model=model, credentials=credentials, tokens=total_tokens)
 
-        result = TextEmbeddingResult(
-            model=model,
-            embeddings=embeddings,
-            usage=usage
-        )
+        result = TextEmbeddingResult(model=model, embeddings=embeddings, usage=usage)
 
         return result
 
@@ -119,12 +109,12 @@ class MinimaxTextEmbeddingModel(TextEmbeddingModel):
         :return:
         """
         try:
-            self._invoke(model=model, credentials=credentials, texts=['ping'])
+            self._invoke(model=model, credentials=credentials, texts=["ping"])
         except InvalidAPIKeyError:
-            raise CredentialsValidateFailedError('Invalid api key')
+            raise CredentialsValidateFailedError("Invalid api key")
 
     def _handle_error(self, code: int, msg: str):
-        if code == 1000 or code == 1001:
+        if code in {1000, 1001}:
             raise InternalServerError(msg)
         elif code == 1002:
             raise RateLimitReachedError(msg)
@@ -148,25 +138,17 @@ class MinimaxTextEmbeddingModel(TextEmbeddingModel):
         :return: Invoke error mapping
         """
         return {
-            InvokeConnectionError: [
-            ],
-            InvokeServerUnavailableError: [
-                InternalServerError
-            ],
-            InvokeRateLimitError: [
-                RateLimitReachedError
-            ],
+            InvokeConnectionError: [],
+            InvokeServerUnavailableError: [InternalServerError],
+            InvokeRateLimitError: [RateLimitReachedError],
             InvokeAuthorizationError: [
                 InvalidAuthenticationError,
                 InsufficientAccountBalanceError,
                 InvalidAPIKeyError,
             ],
-            InvokeBadRequestError: [
-                BadRequestError,
-                KeyError
-            ]
+            InvokeBadRequestError: [BadRequestError, KeyError],
         }
-    
+
     def _calc_response_usage(self, model: str, credentials: dict, tokens: int) -> EmbeddingUsage:
         """
         Calculate response usage
@@ -178,10 +160,7 @@ class MinimaxTextEmbeddingModel(TextEmbeddingModel):
         """
         # get input price info
         input_price_info = self.get_price(
-            model=model,
-            credentials=credentials,
-            price_type=PriceType.INPUT,
-            tokens=tokens
+            model=model, credentials=credentials, price_type=PriceType.INPUT, tokens=tokens
         )
 
         # transform usage
@@ -192,7 +171,7 @@ class MinimaxTextEmbeddingModel(TextEmbeddingModel):
             price_unit=input_price_info.unit,
             total_price=input_price_info.total_amount,
             currency=input_price_info.currency,
-            latency=time.perf_counter() - self.started_at
+            latency=time.perf_counter() - self.started_at,
         )
 
         return usage

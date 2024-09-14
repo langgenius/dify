@@ -49,7 +49,7 @@ class OpenAISpeech2TextModel(_CommonOpenAI, Speech2TextModel):
         try:
             audio_file_path = self._get_demo_file_path()
 
-            with open(audio_file_path, 'rb') as audio_file:
+            with open(audio_file_path, "rb") as audio_file:
                 self._speech2text_invoke(model, credentials, audio_file)
         except Exception as ex:
             raise CredentialsValidateFailedError(str(ex))

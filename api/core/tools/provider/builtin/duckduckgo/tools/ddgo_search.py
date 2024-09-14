@@ -21,10 +21,11 @@ class DuckDuckGoSearchTool(BuiltinTool):
     """
     Tool for performing a search using DuckDuckGo search engine.
     """
+
     def _invoke(self, user_id: str, tool_parameters: dict[str, Any]) -> ToolInvokeMessage | list[ToolInvokeMessage]:
-        query = tool_parameters.get('query')
-        max_results = tool_parameters.get('max_results', 5)
-        require_summary = tool_parameters.get('require_summary', False)
+        query = tool_parameters.get("query")
+        max_results = tool_parameters.get("max_results", 5)
+        require_summary = tool_parameters.get("require_summary", False)
         response = DDGS().text(query, max_results=max_results)
         if require_summary:
             results = "\n".join([res.get("body") for res in response])
@@ -34,7 +35,11 @@ class DuckDuckGoSearchTool(BuiltinTool):
 
     def summary_results(self, user_id: str, content: str, query: str) -> str:
         prompt = SUMMARY_PROMPT.format(query=query, content=content)
-        summary = self.invoke_model(user_id=user_id, prompt_messages=[
-            SystemPromptMessage(content=prompt),
-        ], stop=[])
+        summary = self.invoke_model(
+            user_id=user_id,
+            prompt_messages=[
+                SystemPromptMessage(content=prompt),
+            ],
+            stop=[],
+        )
         return summary.message.content

@@ -77,6 +77,22 @@ const translation = {
     chooseDSL: 'Виберіть файл DSL(yml)',
     backupCurrentDraft: 'Резервна поточна чернетка',
     importDSLTip: 'Поточна чернетка буде перезаписана. Експортуйте робочий процес як резервну копію перед імпортом.',
+    parallelTip: {
+      click: {
+        title: 'Натисніть',
+        desc: 'щоб додати',
+      },
+      drag: {
+        title: 'Перетягувати',
+        desc: 'Щоб підключити',
+      },
+      limit: 'Паралелізм обмежується {{num}} гілками.',
+      depthLimit: 'Обмеження рівня паралельного вкладеності шарів {{num}}',
+    },
+    disconnect: 'Відключити',
+    parallelRun: 'Паралельний біг',
+    jumpToNode: 'Перейти до цього вузла',
+    addParallelNode: 'Додати паралельний вузол',
   },
   env: {
     envPanelTitle: 'Змінні середовища',
@@ -412,6 +428,7 @@ const translation = {
         'not empty': 'не порожній',
         'null': 'є null',
         'not null': 'не є null',
+        'regex match': 'Регулярний вираз збігу',
       },
       enterValue: 'Введіть значення',
       addCondition: 'Додати умову',

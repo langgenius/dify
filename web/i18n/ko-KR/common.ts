@@ -37,6 +37,7 @@ const translation = {
     params: '매개변수',
     duplicate: '중복',
     rename: '이름 바꾸기',
+    audioSourceUnavailable: '오디오 소스를 사용할 수 없습니다.',
   },
   placeholder: {
     input: '입력해주세요',

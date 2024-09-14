@@ -50,7 +50,7 @@ class AzureOpenAISpeech2TextModel(_CommonAzureOpenAI, Speech2TextModel):
         try:
             audio_file_path = self._get_demo_file_path()
 
-            with open(audio_file_path, 'rb') as audio_file:
+            with open(audio_file_path, "rb") as audio_file:
                 self._speech2text_invoke(model, credentials, audio_file)
         except Exception as ex:
             raise CredentialsValidateFailedError(str(ex))
@@ -88,9 +88,8 @@ class AzureOpenAISpeech2TextModel(_CommonAzureOpenAI, Speech2TextModel):
         return response.text
 
     def get_customizable_model_schema(self, model: str, credentials: dict) -> Optional[AIModelEntity]:
-        ai_model_entity = self._get_ai_model_entity(credentials['base_model_name'], model)
+        ai_model_entity = self._get_ai_model_entity(credentials["base_model_name"], model)
         return ai_model_entity.entity
-
 
     @staticmethod
     def _get_ai_model_entity(base_model_name: str, model: str) -> AzureBaseModel:

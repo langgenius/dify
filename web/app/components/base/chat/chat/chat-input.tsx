@@ -32,18 +32,21 @@ import {
   useDraggableUploader,
   useImageFiles,
 } from '@/app/components/base/image-uploader/hooks'
+import cn from '@/utils/classnames'
 
 type ChatInputProps = {
   visionConfig?: VisionConfig
   speechToTextConfig?: EnableType
   onSend?: OnSend
   theme?: Theme | null
+  noSpacing?: boolean
 }
 const ChatInput: FC<ChatInputProps> = ({
   visionConfig,
   speechToTextConfig,
   onSend,
   theme,
+  noSpacing,
 }) => {
   const { appData } = useChatWithHistoryContext()
   const { t } = useTranslation()
@@ -146,7 +149,7 @@ const ChatInput: FC<ChatInputProps> = ({
 
   return (
     <>
-      <div className='relative'>
+      <div className={cn('relative', !noSpacing && 'px-8')}>
         <div
           className={`
             p-[5.5px] max-h-[150px] bg-white border-[1.5px] border-gray-200 rounded-xl overflow-y-auto
@@ -156,7 +159,7 @@ const ChatInput: FC<ChatInputProps> = ({
           {
             visionConfig?.enabled && (
               <>
-                <div className='absolute bottom-2 left-2 flex items-center'>
+                <div className={cn('absolute bottom-2 flex items-center', noSpacing ? 'left-2' : 'left-10')}>
                   <ChatImageUploader
                     settings={visionConfig}
                     onUpload={onUpload}
@@ -193,7 +196,7 @@ const ChatInput: FC<ChatInputProps> = ({
             onDrop={onDrop}
             autoSize
           />
-          <div className='absolute bottom-[7px] right-2 flex items-center h-8'>
+          <div className={cn('absolute bottom-[7px] flex items-center h-8', noSpacing ? 'right-2' : 'right-10')}>
             <div className='flex items-center px-1 h-5 rounded-md bg-gray-100 text-xs font-medium text-gray-500'>
               {query.trim().length}
             </div>

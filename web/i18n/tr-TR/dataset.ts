@@ -71,6 +71,7 @@ const translation = {
   nTo1RetrievalLegacy: 'Geri alım stratejisinin optimizasyonu ve yükseltilmesi nedeniyle, N-to-1 geri alımı Eylül ayında resmi olarak kullanım dışı kalacaktır. O zamana kadar normal şekilde kullanabilirsiniz.',
   nTo1RetrievalLegacyLink: 'Daha fazla bilgi edin',
   nTo1RetrievalLegacyLinkText: 'N-1 geri alma Eylül ayında resmi olarak kullanımdan kaldırılacaktır.',
+  defaultRetrievalTip: 'Varsayılan olarak çok alma kullanılır. Bilgi, birden fazla bilgi tabanından alınır ve ardından yeniden sıralanır.',
 }
 
 export default translation
