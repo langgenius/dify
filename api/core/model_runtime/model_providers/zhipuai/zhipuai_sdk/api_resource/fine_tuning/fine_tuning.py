@@ -9,7 +9,6 @@ if TYPE_CHECKING:
 
 
 class FineTuning(BaseAPI):
-
     @cached_property
     def jobs(self) -> Jobs:
         return Jobs(self._client)
@@ -17,4 +16,3 @@ class FineTuning(BaseAPI):
     @cached_property
     def models(self) -> FineTunedModels:
         return FineTunedModels(self._client)
-

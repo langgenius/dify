@@ -25,8 +25,7 @@ if TYPE_CHECKING:
 
     def parse_date(value: date | StrBytesIntFloat) -> date: ...
 
-    def parse_datetime(
-        value: Union[datetime, StrBytesIntFloat]) -> datetime: ...
+    def parse_datetime(value: Union[datetime, StrBytesIntFloat]) -> datetime: ...
 
     def get_args(t: type[Any]) -> tuple[Any, ...]: ...
 
@@ -155,22 +154,19 @@ def model_parse(model: type[_ModelT], data: Any) -> _ModelT:
 # generic models
 if TYPE_CHECKING:
 
-    class GenericModel(pydantic.BaseModel):
-        ...
+    class GenericModel(pydantic.BaseModel): ...
 
 else:
     if PYDANTIC_V2:
         # there no longer needs to be a distinction in v2 but
         # we still have to create our own subclass to avoid
         # inconsistent MRO ordering errors
-        class GenericModel(pydantic.BaseModel):
-            ...
+        class GenericModel(pydantic.BaseModel): ...
 
     else:
         import pydantic.generics
 
-        class GenericModel(pydantic.generics.GenericModel, pydantic.BaseModel):
-            ...
+        class GenericModel(pydantic.generics.GenericModel, pydantic.BaseModel): ...
 
 
 # cached properties
@@ -192,12 +188,10 @@ if TYPE_CHECKING:
         def __init__(self, func: Callable[[Any], _T]) -> None: ...
 
         @overload
-        def __get__(self, instance: None,
-                    owner: type[Any] | None = None) -> Self: ...
+        def __get__(self, instance: None, owner: type[Any] | None = None) -> Self: ...
 
         @overload
-        def __get__(self, instance: object,
-                    owner: type[Any] | None = None) -> _T: ...
+        def __get__(self, instance: object, owner: type[Any] | None = None) -> _T: ...
 
         def __get__(self, instance: object, owner: type[Any] | None = None) -> _T | Self:
             raise NotImplementedError()

@@ -14,21 +14,20 @@ if TYPE_CHECKING:
 
 
 class Batches(BaseAPI):
-
     def __init__(self, client: ZhipuAI) -> None:
         super().__init__(client)
 
     def create(
-            self,
-            *,
-            completion_window: str | None = None,
-            endpoint: Literal["/v1/chat/completions", "/v1/embeddings"],
-            input_file_id: str,
-            metadata: Optional[dict[str, str]] | NotGiven = NOT_GIVEN,
-            auto_delete_input_file: bool = True,
-            extra_headers: Headers | None = None,
-            extra_body: Body | None = None,
-            timeout: float | httpx.Timeout | None | NotGiven = NOT_GIVEN,
+        self,
+        *,
+        completion_window: str | None = None,
+        endpoint: Literal["/v1/chat/completions", "/v1/embeddings"],
+        input_file_id: str,
+        metadata: Optional[dict[str, str]] | NotGiven = NOT_GIVEN,
+        auto_delete_input_file: bool = True,
+        extra_headers: Headers | None = None,
+        extra_body: Body | None = None,
+        timeout: float | httpx.Timeout | None | NotGiven = NOT_GIVEN,
     ) -> Batch:
         return self._post(
             "/batches",
@@ -38,23 +37,21 @@ class Batches(BaseAPI):
                     "endpoint": endpoint,
                     "input_file_id": input_file_id,
                     "metadata": metadata,
-                    "auto_delete_input_file": auto_delete_input_file
+                    "auto_delete_input_file": auto_delete_input_file,
                 },
                 batch_create_params.BatchCreateParams,
             ),
-            options=make_request_options(
-                extra_headers=extra_headers, extra_body=extra_body, timeout=timeout
-            ),
+            options=make_request_options(extra_headers=extra_headers, extra_body=extra_body, timeout=timeout),
             cast_type=Batch,
         )
 
     def retrieve(
-            self,
-            batch_id: str,
-            *,
-            extra_headers: Headers | None = None,
-            extra_body: Body | None = None,
-            timeout: float | httpx.Timeout | None | NotGiven = NOT_GIVEN,
+        self,
+        batch_id: str,
+        *,
+        extra_headers: Headers | None = None,
+        extra_body: Body | None = None,
+        timeout: float | httpx.Timeout | None | NotGiven = NOT_GIVEN,
     ) -> Batch:
         """
         Retrieves a batch.
@@ -70,20 +67,18 @@ class Batches(BaseAPI):
             raise ValueError(f"Expected a non-empty value for `batch_id` but received {batch_id!r}")
         return self._get(
             f"/batches/{batch_id}",
-            options=make_request_options(
-                extra_headers=extra_headers, extra_body=extra_body, timeout=timeout
-            ),
+            options=make_request_options(extra_headers=extra_headers, extra_body=extra_body, timeout=timeout),
             cast_type=Batch,
         )
 
     def list(
-            self,
-            *,
-            after: str | NotGiven = NOT_GIVEN,
-            limit: int | NotGiven = NOT_GIVEN,
-            extra_headers: Headers | None = None,
-            extra_body: Body | None = None,
-            timeout: float | httpx.Timeout | None | NotGiven = NOT_GIVEN,
+        self,
+        *,
+        after: str | NotGiven = NOT_GIVEN,
+        limit: int | NotGiven = NOT_GIVEN,
+        extra_headers: Headers | None = None,
+        extra_body: Body | None = None,
+        timeout: float | httpx.Timeout | None | NotGiven = NOT_GIVEN,
     ) -> SyncCursorPage[Batch]:
         """List your organization's batches.
 
@@ -123,12 +118,12 @@ class Batches(BaseAPI):
         )
 
     def cancel(
-            self,
-            batch_id: str,
-            *,
-            extra_headers: Headers | None = None,
-            extra_body: Body | None = None,
-            timeout: float | httpx.Timeout | None | NotGiven = NOT_GIVEN,
+        self,
+        batch_id: str,
+        *,
+        extra_headers: Headers | None = None,
+        extra_body: Body | None = None,
+        timeout: float | httpx.Timeout | None | NotGiven = NOT_GIVEN,
     ) -> Batch:
         """
         Cancels an in-progress batch.
@@ -146,9 +141,6 @@ class Batches(BaseAPI):
             raise ValueError(f"Expected a non-empty value for `batch_id` but received {batch_id!r}")
         return self._post(
             f"/batches/{batch_id}/cancel",
-            options=make_request_options(
-                extra_headers=extra_headers, extra_body=extra_body, timeout=timeout
-            ),
+            options=make_request_options(extra_headers=extra_headers, extra_body=extra_body, timeout=timeout),
             cast_type=Batch,
         )
-

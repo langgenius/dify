@@ -26,7 +26,6 @@ __all__ = ["Knowledge"]
 
 
 class Knowledge(BaseAPI):
-
     def __init__(self, client: ZhipuAI) -> None:
         super().__init__(client)
 
@@ -35,18 +34,18 @@ class Knowledge(BaseAPI):
         return Document(self._client)
 
     def create(
-            self,
-            embedding_id: int,
-            name: str,
-            *,
-            customer_identifier: Optional[str] = None,
-            description: Optional[str] = None,
-            background: Optional[Literal['blue', 'red', 'orange', 'purple', 'sky']] = None,
-            icon: Optional[Literal['question', 'book', 'seal', 'wrench', 'tag', 'horn', 'house']] = None,
-            bucket_id: Optional[str] = None,
-            extra_headers: Headers | None = None,
-            extra_body: Body | None = None,
-            timeout: float | httpx.Timeout | None | NotGiven = NOT_GIVEN,
+        self,
+        embedding_id: int,
+        name: str,
+        *,
+        customer_identifier: Optional[str] = None,
+        description: Optional[str] = None,
+        background: Optional[Literal["blue", "red", "orange", "purple", "sky"]] = None,
+        icon: Optional[Literal["question", "book", "seal", "wrench", "tag", "horn", "house"]] = None,
+        bucket_id: Optional[str] = None,
+        extra_headers: Headers | None = None,
+        extra_body: Body | None = None,
+        timeout: float | httpx.Timeout | None | NotGiven = NOT_GIVEN,
     ) -> KnowledgeInfo:
         body = deepcopy_minimal(
             {
@@ -57,30 +56,27 @@ class Knowledge(BaseAPI):
                 "background": background,
                 "icon": icon,
                 "bucket_id": bucket_id,
-
             }
         )
         return self._post(
             "/knowledge",
             body=maybe_transform(body, knowledge_create_params.KnowledgeBaseParams),
-            options=make_request_options(
-                extra_headers=extra_headers, extra_body=extra_body, timeout=timeout
-            ),
+            options=make_request_options(extra_headers=extra_headers, extra_body=extra_body, timeout=timeout),
             cast_type=KnowledgeInfo,
         )
 
     def modify(
-            self,
-            knowledge_id: str,
-            embedding_id: int,
-            *,
-            name: str,
-            description: Optional[str] = None,
-            background: Optional[Literal['blue', 'red', 'orange', 'purple', 'sky']] = None,
-            icon: Optional[Literal['question', 'book', 'seal', 'wrench', 'tag', 'horn', 'house']] = None,
-            extra_headers: Headers | None = None,
-            extra_body: Body | None = None,
-            timeout: float | httpx.Timeout | None | NotGiven = NOT_GIVEN,
+        self,
+        knowledge_id: str,
+        embedding_id: int,
+        *,
+        name: str,
+        description: Optional[str] = None,
+        background: Optional[Literal["blue", "red", "orange", "purple", "sky"]] = None,
+        icon: Optional[Literal["question", "book", "seal", "wrench", "tag", "horn", "house"]] = None,
+        extra_headers: Headers | None = None,
+        extra_body: Body | None = None,
+        timeout: float | httpx.Timeout | None | NotGiven = NOT_GIVEN,
     ) -> httpx.Response:
         body = deepcopy_minimal(
             {
@@ -90,26 +86,23 @@ class Knowledge(BaseAPI):
                 "description": description,
                 "background": background,
                 "icon": icon,
-
             }
         )
         return self._put(
             f"/knowledge/{knowledge_id}",
             body=maybe_transform(body, knowledge_create_params.KnowledgeBaseParams),
-            options=make_request_options(
-                extra_headers=extra_headers, extra_body=extra_body, timeout=timeout
-            ),
+            options=make_request_options(extra_headers=extra_headers, extra_body=extra_body, timeout=timeout),
             cast_type=httpx.Response,
         )
 
     def query(
-            self,
-            *,
-            page: int | NotGiven = 1,
-            size: int | NotGiven = 10,
-            extra_headers: Headers | None = None,
-            extra_body: Body | None = None,
-            timeout: float | httpx.Timeout | None | NotGiven = NOT_GIVEN,
+        self,
+        *,
+        page: int | NotGiven = 1,
+        size: int | NotGiven = 10,
+        extra_headers: Headers | None = None,
+        extra_body: Body | None = None,
+        timeout: float | httpx.Timeout | None | NotGiven = NOT_GIVEN,
     ) -> KnowledgePage:
         return self._get(
             "/knowledge",
@@ -129,12 +122,12 @@ class Knowledge(BaseAPI):
         )
 
     def delete(
-            self,
-            knowledge_id: str,
-            *,
-            extra_headers: Headers | None = None,
-            extra_body: Body | None = None,
-            timeout: float | httpx.Timeout | None | NotGiven = NOT_GIVEN,
+        self,
+        knowledge_id: str,
+        *,
+        extra_headers: Headers | None = None,
+        extra_body: Body | None = None,
+        timeout: float | httpx.Timeout | None | NotGiven = NOT_GIVEN,
     ) -> httpx.Response:
         """
         Delete a file.
@@ -152,18 +145,16 @@ class Knowledge(BaseAPI):
 
         return self._delete(
             f"/knowledge/{knowledge_id}",
-            options=make_request_options(
-                extra_headers=extra_headers, extra_body=extra_body, timeout=timeout
-            ),
+            options=make_request_options(extra_headers=extra_headers, extra_body=extra_body, timeout=timeout),
             cast_type=httpx.Response,
         )
 
     def used(
-            self,
-            *,
-            extra_headers: Headers | None = None,
-            extra_body: Body | None = None,
-            timeout: float | httpx.Timeout | None | NotGiven = NOT_GIVEN,
+        self,
+        *,
+        extra_headers: Headers | None = None,
+        extra_body: Body | None = None,
+        timeout: float | httpx.Timeout | None | NotGiven = NOT_GIVEN,
     ) -> KnowledgeUsed:
         """
         Returns the contents of the specified file.
@@ -177,8 +168,6 @@ class Knowledge(BaseAPI):
         """
         return self._get(
             "/knowledge/capacity",
-            options=make_request_options(
-                extra_headers=extra_headers, extra_body=extra_body, timeout=timeout
-            ),
+            options=make_request_options(extra_headers=extra_headers, extra_body=extra_body, timeout=timeout),
             cast_type=KnowledgeUsed,
         )

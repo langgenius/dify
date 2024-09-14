@@ -3,6 +3,5 @@ from .videos import (
 )
 
 __all__ = [
-    'Videos',
-
+    "Videos",
 ]

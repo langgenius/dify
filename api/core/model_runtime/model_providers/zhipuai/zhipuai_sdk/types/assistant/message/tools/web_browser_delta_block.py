@@ -1,4 +1,3 @@
-
 from typing import Literal
 
 from .....core import BaseModel

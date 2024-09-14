@@ -18,18 +18,17 @@ from .videos import (
 )
 
 __all__ = [
-    'Videos',
-    'AsyncCompletions',
-    'Chat',
-    'Completions',
-    'Images',
-    'Embeddings',
-    'Files',
-    'FilesWithRawResponse',
-    'FineTuning',
-    'Batches',
-    'Knowledge',
-    'Tools',
-    'Assistant',
-
+    "Videos",
+    "AsyncCompletions",
+    "Chat",
+    "Completions",
+    "Images",
+    "Embeddings",
+    "Files",
+    "FilesWithRawResponse",
+    "FineTuning",
+    "Batches",
+    "Knowledge",
+    "Tools",
+    "Assistant",
 ]

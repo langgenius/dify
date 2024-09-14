@@ -28,24 +28,22 @@ __all__ = ["Document"]
 
 
 class Document(BaseAPI):
-
     def __init__(self, client: ZhipuAI) -> None:
         super().__init__(client)
 
     def create(
-            self,
-            *,
-            file: FileTypes = None,
-            custom_separator: Optional[list[str]] = None,
-            upload_detail: list[UploadDetail] = None,
-            purpose: Literal["retrieval"],
-            knowledge_id: str = None,
-            sentence_size: int = None,
-            extra_headers: Headers | None = None,
-            extra_body: Body | None = None,
-            timeout: float | httpx.Timeout | None | NotGiven = NOT_GIVEN,
+        self,
+        *,
+        file: FileTypes = None,
+        custom_separator: Optional[list[str]] = None,
+        upload_detail: list[UploadDetail] = None,
+        purpose: Literal["retrieval"],
+        knowledge_id: str = None,
+        sentence_size: int = None,
+        extra_headers: Headers | None = None,
+        extra_body: Body | None = None,
+        timeout: float | httpx.Timeout | None | NotGiven = NOT_GIVEN,
     ) -> DocumentObject:
-
         if not file and not upload_detail:
             raise ValueError("At least one of `file` and `upload_detail` must be provided.")
         body = deepcopy_minimal(
@@ -68,24 +66,22 @@ class Document(BaseAPI):
             "/files",
             body=maybe_transform(body, file_create_params.FileCreateParams),
             files=files,
-            options=make_request_options(
-                extra_headers=extra_headers, extra_body=extra_body, timeout=timeout
-            ),
+            options=make_request_options(extra_headers=extra_headers, extra_body=extra_body, timeout=timeout),
             cast_type=DocumentObject,
         )
 
     def edit(
-            self,
-            document_id: str,
-            knowledge_type: str,
-            *,
-            custom_separator: Optional[list[str]] = None,
-            sentence_size: Optional[int] = None,
-            callback_url: Optional[str] = None,
-            callback_header: Optional[dict[str, str]] = None,
-            extra_headers: Headers | None = None,
-            extra_body: Body | None = None,
-            timeout: float | httpx.Timeout | None | NotGiven = NOT_GIVEN,
+        self,
+        document_id: str,
+        knowledge_type: str,
+        *,
+        custom_separator: Optional[list[str]] = None,
+        sentence_size: Optional[int] = None,
+        callback_url: Optional[str] = None,
+        callback_header: Optional[dict[str, str]] = None,
+        extra_headers: Headers | None = None,
+        extra_body: Body | None = None,
+        timeout: float | httpx.Timeout | None | NotGiven = NOT_GIVEN,
     ) -> httpx.Response:
         """
 
@@ -129,23 +125,21 @@ class Document(BaseAPI):
         return self._put(
             f"/document/{document_id}",
             body=maybe_transform(body, document_edit_params.DocumentEditParams),
-            options=make_request_options(
-                extra_headers=extra_headers, extra_body=extra_body, timeout=timeout
-            ),
+            options=make_request_options(extra_headers=extra_headers, extra_body=extra_body, timeout=timeout),
             cast_type=httpx.Response,
         )
 
     def list(
-            self,
-            knowledge_id: str,
-            *,
-            purpose: str | NotGiven = NOT_GIVEN,
-            page: str | NotGiven = NOT_GIVEN,
-            limit: str | NotGiven = NOT_GIVEN,
-            order: Literal["desc", "asc"] | NotGiven = NOT_GIVEN,
-            extra_headers: Headers | None = None,
-            extra_body: Body | None = None,
-            timeout: float | httpx.Timeout | None | NotGiven = NOT_GIVEN,
+        self,
+        knowledge_id: str,
+        *,
+        purpose: str | NotGiven = NOT_GIVEN,
+        page: str | NotGiven = NOT_GIVEN,
+        limit: str | NotGiven = NOT_GIVEN,
+        order: Literal["desc", "asc"] | NotGiven = NOT_GIVEN,
+        extra_headers: Headers | None = None,
+        extra_body: Body | None = None,
+        timeout: float | httpx.Timeout | None | NotGiven = NOT_GIVEN,
     ) -> DocumentPage:
         return self._get(
             "/files",
@@ -168,12 +162,12 @@ class Document(BaseAPI):
         )
 
     def delete(
-            self,
-            document_id: str,
-            *,
-            extra_headers: Headers | None = None,
-            extra_body: Body | None = None,
-            timeout: float | httpx.Timeout | None | NotGiven = NOT_GIVEN,
+        self,
+        document_id: str,
+        *,
+        extra_headers: Headers | None = None,
+        extra_body: Body | None = None,
+        timeout: float | httpx.Timeout | None | NotGiven = NOT_GIVEN,
     ) -> httpx.Response:
         """
         Delete a file.
@@ -192,19 +186,17 @@ class Document(BaseAPI):
 
         return self._delete(
             f"/document/{document_id}",
-            options=make_request_options(
-                extra_headers=extra_headers, extra_body=extra_body, timeout=timeout
-            ),
+            options=make_request_options(extra_headers=extra_headers, extra_body=extra_body, timeout=timeout),
             cast_type=httpx.Response,
         )
 
     def retrieve(
-            self,
-            document_id: str,
-            *,
-            extra_headers: Headers | None = None,
-            extra_body: Body | None = None,
-            timeout: float | httpx.Timeout | None | NotGiven = NOT_GIVEN,
+        self,
+        document_id: str,
+        *,
+        extra_headers: Headers | None = None,
+        extra_body: Body | None = None,
+        timeout: float | httpx.Timeout | None | NotGiven = NOT_GIVEN,
     ) -> DocumentData:
         """
 
@@ -220,8 +212,6 @@ class Document(BaseAPI):
 
         return self._get(
             f"/document/{document_id}",
-            options=make_request_options(
-                extra_headers=extra_headers, extra_body=extra_body, timeout=timeout
-            ),
+            options=make_request_options(extra_headers=extra_headers, extra_body=extra_body, timeout=timeout),
             cast_type=DocumentData,
         )

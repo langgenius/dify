@@ -30,31 +30,30 @@ class AsyncCompletions(BaseAPI):
         super().__init__(client)
 
     def create(
-            self,
-            *,
-            model: str,
-            request_id: Optional[str] | NotGiven = NOT_GIVEN,
-            user_id: Optional[str] | NotGiven = NOT_GIVEN,
-            do_sample: Optional[Literal[False]] | Literal[True] | NotGiven = NOT_GIVEN,
-            temperature: Optional[float] | NotGiven = NOT_GIVEN,
-            top_p: Optional[float] | NotGiven = NOT_GIVEN,
-            max_tokens: int | NotGiven = NOT_GIVEN,
-            seed: int | NotGiven = NOT_GIVEN,
-            messages: Union[str, list[str], list[int], list[list[int]], None],
-            stop: Optional[Union[str, list[str], None]] | NotGiven = NOT_GIVEN,
-            sensitive_word_check: Optional[SensitiveWordCheckRequest] | NotGiven = NOT_GIVEN,
-            tools: Optional[object] | NotGiven = NOT_GIVEN,
-            tool_choice: str | NotGiven = NOT_GIVEN,
-            meta: Optional[dict[str, str]] | NotGiven = NOT_GIVEN,
-            extra: Optional[code_geex_params.CodeGeexExtra] | NotGiven = NOT_GIVEN,
-            extra_headers: Headers | None = None,
-            extra_body: Body | None = None,
-            timeout: float | httpx.Timeout | None | NotGiven = NOT_GIVEN,
+        self,
+        *,
+        model: str,
+        request_id: Optional[str] | NotGiven = NOT_GIVEN,
+        user_id: Optional[str] | NotGiven = NOT_GIVEN,
+        do_sample: Optional[Literal[False]] | Literal[True] | NotGiven = NOT_GIVEN,
+        temperature: Optional[float] | NotGiven = NOT_GIVEN,
+        top_p: Optional[float] | NotGiven = NOT_GIVEN,
+        max_tokens: int | NotGiven = NOT_GIVEN,
+        seed: int | NotGiven = NOT_GIVEN,
+        messages: Union[str, list[str], list[int], list[list[int]], None],
+        stop: Optional[Union[str, list[str], None]] | NotGiven = NOT_GIVEN,
+        sensitive_word_check: Optional[SensitiveWordCheckRequest] | NotGiven = NOT_GIVEN,
+        tools: Optional[object] | NotGiven = NOT_GIVEN,
+        tool_choice: str | NotGiven = NOT_GIVEN,
+        meta: Optional[dict[str, str]] | NotGiven = NOT_GIVEN,
+        extra: Optional[code_geex_params.CodeGeexExtra] | NotGiven = NOT_GIVEN,
+        extra_headers: Headers | None = None,
+        extra_body: Body | None = None,
+        timeout: float | httpx.Timeout | None | NotGiven = NOT_GIVEN,
     ) -> AsyncTaskStatus:
         _cast_type = AsyncTaskStatus
         logger.debug(f"temperature:{temperature}, top_p:{top_p}")
         if temperature is not None and temperature != NOT_GIVEN:
-
             if temperature <= 0:
                 do_sample = False
                 temperature = 0.01
@@ -63,7 +62,6 @@ class AsyncCompletions(BaseAPI):
                 temperature = 0.99
                 # logger.warning("temperature:取值范围是：(0.0, 1.0) 开区间")
         if top_p is not None and top_p != NOT_GIVEN:
-
             if top_p >= 1:
                 top_p = 0.99
                 # logger.warning("top_p:取值范围是：(0.0, 1.0) 开区间，不能等于 0 或 1")
@@ -74,8 +72,8 @@ class AsyncCompletions(BaseAPI):
         logger.debug(f"temperature:{temperature}, top_p:{top_p}")
         if isinstance(messages, list):
             for item in messages:
-                if item.get('content'):
-                    item['content'] = drop_prefix_image_data(item['content'])
+                if item.get("content"):
+                    item["content"] = drop_prefix_image_data(item["content"])
 
         body = {
             "model": model,
@@ -96,27 +94,22 @@ class AsyncCompletions(BaseAPI):
         }
         return self._post(
             "/async/chat/completions",
-
             body=body,
-            options=make_request_options(
-                extra_headers=extra_headers, extra_body=extra_body, timeout=timeout
-            ),
+            options=make_request_options(extra_headers=extra_headers, extra_body=extra_body, timeout=timeout),
             cast_type=_cast_type,
             stream=False,
         )
 
     def retrieve_completion_result(
-            self,
-            id: str,
-            extra_headers: Headers | None = None,
-            extra_body: Body | None = None,
-            timeout: float | httpx.Timeout | None | NotGiven = NOT_GIVEN,
+        self,
+        id: str,
+        extra_headers: Headers | None = None,
+        extra_body: Body | None = None,
+        timeout: float | httpx.Timeout | None | NotGiven = NOT_GIVEN,
     ) -> Union[AsyncCompletion, AsyncTaskStatus]:
         _cast_type = Union[AsyncCompletion, AsyncTaskStatus]
         return self._get(
             path=f"/async-result/{id}",
             cast_type=_cast_type,
-            options=make_request_options(
-                extra_headers=extra_headers, extra_body=extra_body, timeout=timeout
-            ),
+            options=make_request_options(extra_headers=extra_headers, extra_body=extra_body, timeout=timeout),
         )

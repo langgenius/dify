@@ -1,3 +1,3 @@
 from .knowledge import Knowledge
 
-__all__ = ['Knowledge']
+__all__ = ["Knowledge"]

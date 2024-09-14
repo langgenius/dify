@@ -9,7 +9,6 @@ if TYPE_CHECKING:
 
 
 class Chat(BaseAPI):
-
     @cached_property
     def completions(self) -> Completions:
         return Completions(self._client)

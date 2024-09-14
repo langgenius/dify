@@ -1,4 +1,3 @@
-
 from ._utils import (  # noqa: I001
     remove_notgiven_indict as remove_notgiven_indict,  # noqa: PLC0414
     flatten as flatten,  # noqa: PLC0414
