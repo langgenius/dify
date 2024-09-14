@@ -131,3 +131,6 @@ class WorkflowClient(DifyClient):
     def stop(self, task_id, user):
         data = {"user": user}
         return self._send_request("POST", f"/workflows/tasks/{task_id}/stop", data)
+
+    def get_result(self, workflow_run_id):
+        return self._send_request("GET", f"/workflows/run/{workflow_run_id}")
