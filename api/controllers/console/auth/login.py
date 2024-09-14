@@ -10,9 +10,9 @@ from constants.languages import languages
 from controllers.console import api
 from controllers.console.auth.error import (
     EmailCodeError,
+    EmailOrPasswordMismatchError,
     InvalidEmailError,
     InvalidTokenError,
-    PasswordMismatchError,
 )
 from controllers.console.error import NotAllowedCreateWorkspace, NotAllowedRegister
 from controllers.console.setup import setup_required
@@ -41,7 +41,7 @@ class LoginApi(Resource):
         except services.errors.account.AccountLoginError:
             raise NotAllowedRegister()
         except services.errors.account.AccountPasswordError:
-            raise PasswordMismatchError()
+            raise EmailOrPasswordMismatchError()
         except services.errors.account.AccountNotFoundError:
             if not dify_config.ALLOW_REGISTER:
                 raise NotAllowedRegister()
@@ -150,7 +150,8 @@ class EmailCodeLoginApi(Resource):
                 )
             except WorkSpaceNotAllowedCreateError:
                 return redirect(
-                    f"{dify_config.CONSOLE_WEB_URL}/signin?message=Workspace not found, please contact system admin to invite you to join in a workspace."
+                    f"{dify_config.CONSOLE_WEB_URL}/signin"
+                    "?message=Workspace not found, please contact system admin to invite you to join in a workspace."
                 )
         token = AccountService.login(account, ip_address=get_remote_ip(request))
 

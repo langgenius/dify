@@ -42,11 +42,11 @@ class SystemFeatureModel(BaseModel):
     sso_enforced_for_web: bool = False
     sso_enforced_for_web_protocol: str = ""
     enable_web_sso_switch_component: bool = False
-    enable_email_code_login: bool = dify_config.ENABLE_EMAIL_CODE_LOGIN
-    enable_email_password_login: bool = dify_config.ENABLE_EMAIL_PASSWORD_LOGIN
-    enable_social_oauth_login: bool = dify_config.ENABLE_SOCIAL_OAUTH_LOGIN
-    is_allow_register: bool = dify_config.ALLOW_REGISTER
-    is_allow_create_workspace: bool = dify_config.ALLOW_CREATE_WORKSPACE
+    enable_email_code_login: bool = False
+    enable_email_password_login: bool = True
+    enable_social_oauth_login: bool = False
+    is_allow_register: bool = True
+    is_allow_create_workspace: bool = True
 
 
 class FeatureService:
@@ -65,11 +65,21 @@ class FeatureService:
     def get_system_features(cls) -> SystemFeatureModel:
         system_features = SystemFeatureModel()
 
+        cls.__fulfill_login_params_from_env(system_features)
+
         if dify_config.ENTERPRISE_ENABLED:
             system_features.enable_web_sso_switch_component = True
             cls._fulfill_params_from_enterprise(system_features)
 
         return system_features
+
+    @classmethod
+    def __fulfill_login_params_from_env(cls, features: FeatureModel):
+        features.enable_email_code_login = dify_config.ENABLE_EMAIL_CODE_LOGIN
+        features.enable_email_password_login = dify_config.ENABLE_EMAIL_PASSWORD_LOGIN
+        features.enable_social_oauth_login = dify_config.ENABLE_SOCIAL_OAUTH_LOGIN
+        features.is_allow_register = dify_config.ALLOW_REGISTER
+        features.is_allow_create_workspace = dify_config.ALLOW_CREATE_WORKSPACE
 
     @classmethod
     def _fulfill_params_from_env(cls, features: FeatureModel):

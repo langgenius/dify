@@ -49,11 +49,11 @@ class DallE3Tool(BuiltinTool):
         n = tool_parameters.get("n", 1)
         # get quality
         quality = tool_parameters.get("quality", "standard")
-        if quality not in ["standard", "hd"]:
+        if quality not in {"standard", "hd"}:
             return self.create_text_message("Invalid quality")
         # get style
         style = tool_parameters.get("style", "vivid")
-        if style not in ["natural", "vivid"]:
+        if style not in {"natural", "vivid"}:
             return self.create_text_message("Invalid style")
 
         # call openapi dalle3

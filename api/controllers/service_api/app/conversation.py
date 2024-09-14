@@ -18,7 +18,7 @@ class ConversationApi(Resource):
     @marshal_with(conversation_infinite_scroll_pagination_fields)
     def get(self, app_model: App, end_user: EndUser):
         app_mode = AppMode.value_of(app_model.mode)
-        if app_mode not in [AppMode.CHAT, AppMode.AGENT_CHAT, AppMode.ADVANCED_CHAT]:
+        if app_mode not in {AppMode.CHAT, AppMode.AGENT_CHAT, AppMode.ADVANCED_CHAT}:
             raise NotChatAppError()
 
         parser = reqparse.RequestParser()
@@ -52,7 +52,7 @@ class ConversationDetailApi(Resource):
     @marshal_with(simple_conversation_fields)
     def delete(self, app_model: App, end_user: EndUser, c_id):
         app_mode = AppMode.value_of(app_model.mode)
-        if app_mode not in [AppMode.CHAT, AppMode.AGENT_CHAT, AppMode.ADVANCED_CHAT]:
+        if app_mode not in {AppMode.CHAT, AppMode.AGENT_CHAT, AppMode.ADVANCED_CHAT}:
             raise NotChatAppError()
 
         conversation_id = str(c_id)
@@ -69,7 +69,7 @@ class ConversationRenameApi(Resource):
     @marshal_with(simple_conversation_fields)
     def post(self, app_model: App, end_user: EndUser, c_id):
         app_mode = AppMode.value_of(app_model.mode)
-        if app_mode not in [AppMode.CHAT, AppMode.AGENT_CHAT, AppMode.ADVANCED_CHAT]:
+        if app_mode not in {AppMode.CHAT, AppMode.AGENT_CHAT, AppMode.ADVANCED_CHAT}:
             raise NotChatAppError()
 
         conversation_id = str(c_id)

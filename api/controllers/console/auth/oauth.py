@@ -84,23 +84,24 @@ class OAuthCallback(Resource):
             if invitation:
                 invitation_email = invitation.get("email", None)
                 if invitation_email != user_info.email:
-                    return redirect(f"{dify_config.CONSOLE_WEB_URL}/signin?message=InvalidToken")
+                    return redirect(f"{dify_config.CONSOLE_WEB_URL}/signin?message=Invalid invitation token.")
 
             return redirect(f"{dify_config.CONSOLE_WEB_URL}/signin/invite-settings?invite_token={invite_token}")
 
         try:
             account = _generate_account(provider, user_info)
         except AccountNotFoundError:
-            return redirect(f"{dify_config.CONSOLE_WEB_URL}/signin?message=AccountNotFound")
+            return redirect(f"{dify_config.CONSOLE_WEB_URL}/signin?message=Account not found.")
         except WorkSpaceNotFoundError:
-            return redirect(f"{dify_config.CONSOLE_WEB_URL}/signin?message=WorkspaceNotFound")
+            return redirect(f"{dify_config.CONSOLE_WEB_URL}/signin?message=Workspace not found.")
         except WorkSpaceNotAllowedCreateError:
             return redirect(
-                f"{dify_config.CONSOLE_WEB_URL}/signin?message=Workspace not found, please contact system admin to invite you to join in a workspace."
+                f"{dify_config.CONSOLE_WEB_URL}/signin"
+                "?message=Workspace not found, please contact system admin to invite you to join in a workspace."
             )
 
         # Check account status
-        if account.status == AccountStatus.BANNED.value or account.status == AccountStatus.CLOSED.value:
+        if account.status in {AccountStatus.BANNED.value, AccountStatus.CLOSED.value}:
             return {"error": "Account is banned or closed."}, 403
 
         if account.status == AccountStatus.PENDING.value:
@@ -111,10 +112,11 @@ class OAuthCallback(Resource):
         try:
             TenantService.create_owner_tenant_if_not_exist(account)
         except Unauthorized:
-            return redirect(f"{dify_config.CONSOLE_WEB_URL}/signin?message=WorkspaceNotFound")
+            return redirect(f"{dify_config.CONSOLE_WEB_URL}/signin?message=Worspace not found.")
         except WorkSpaceNotAllowedCreateError:
             return redirect(
-                f"{dify_config.CONSOLE_WEB_URL}/signin?message=Workspace not found, please contact system admin to invite you to join in a workspace."
+                f"{dify_config.CONSOLE_WEB_URL}/signin"
+                "?message=Workspace not found, please contact system admin to invite you to join in a workspace."
             )
 
         token = AccountService.login(account, ip_address=get_remote_ip(request))
@@ -147,7 +149,8 @@ def _generate_account(provider: str, user_info: OAuthUserInfo):
                 tenant_was_created.send(tenant)
 
     if not account:
-        # Create account
+        if not dify_config.ALLOW_REGISTER:
+            raise AccountNotFoundError()
         account_name = user_info.name or "Dify"
         account = RegisterService.register(
             email=user_info.email, name=account_name, password=None, open_id=user_info.id, provider=provider
