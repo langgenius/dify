@@ -35,3 +35,9 @@ class EmailCodeError(BaseHTTPException):
     error_code = "email_code_error"
     description = "Email code is invalid or expired."
     code = 400
+
+
+class EmailOrPasswordMismatchError(BaseHTTPException):
+    error_code = "email_or_password_mismatch"
+    description = "The email or password is incorrect."
+    code = 400
