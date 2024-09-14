@@ -1,6 +1,6 @@
 'use client'
 import { t } from 'i18next'
-import { MaterialSymbolsRefresh } from '../icons/src/vender/line/general'
+import { Refresh } from '../icons/src/vender/line/general'
 import Tooltip from '@/app/components/base/tooltip'
 
 type Props = {
@@ -21,7 +21,7 @@ const RegenerateBtn = ({ className, onClick }: Props) => {
             boxShadow: '0px 4px 8px -2px rgba(16, 24, 40, 0.1), 0px 2px 4px -2px rgba(16, 24, 40, 0.06)',
           }}
         >
-          <MaterialSymbolsRefresh className="p-[2px] w-6 h-6 text-[#667085] hover:bg-gray-50" />
+          <Refresh className="p-[3.5px] w-6 h-6 text-[#667085] hover:bg-gray-50" />
         </div>
       </Tooltip>
     </div>
