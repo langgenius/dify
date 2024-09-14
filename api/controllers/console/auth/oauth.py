@@ -112,7 +112,7 @@ class OAuthCallback(Resource):
         try:
             TenantService.create_owner_tenant_if_not_exist(account)
         except Unauthorized:
-            return redirect(f"{dify_config.CONSOLE_WEB_URL}/signin?message=Worspace not found.")
+            return redirect(f"{dify_config.CONSOLE_WEB_URL}/signin?message=Workspace not found.")
         except WorkSpaceNotAllowedCreateError:
             return redirect(
                 f"{dify_config.CONSOLE_WEB_URL}/signin"
