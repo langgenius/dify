@@ -153,7 +153,7 @@ class ToolProviderController(BaseModel, ABC):
 
             # check type
             credential_schema = credentials_need_to_validate[credential_name]
-            if credential_schema in {
+            if credential_schema.type in {
                 ToolProviderCredentials.CredentialsType.SECRET_INPUT,
                 ToolProviderCredentials.CredentialsType.TEXT_INPUT,
             }:
