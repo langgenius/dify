@@ -1,8 +1,8 @@
 # standard import
 import base64
-import io
 import json
 import logging
+import mimetypes
 from collections.abc import Generator
 from typing import Optional, Union, cast
 
@@ -17,7 +17,6 @@ from botocore.exceptions import (
     ServiceNotInRegionError,
     UnknownServiceError,
 )
-from PIL.Image import Image
 
 # local import
 from core.model_runtime.callbacks.base_callback import Callback
@@ -443,8 +442,9 @@ class BedrockLargeLanguageModel(LargeLanguageModel):
                             try:
                                 url = message_content.data
                                 image_content = requests.get(url).content
-                                with Image.open(io.BytesIO(image_content)) as img:
-                                    mime_type = f"image/{img.format.lower()}"
+                                if "?" in url:
+                                    url = url.split("?")[0]
+                                mime_type, _ = mimetypes.guess_type(url)
                                 base64_data = base64.b64encode(image_content).decode("utf-8")
                             except Exception as ex:
                                 raise ValueError(f"Failed to fetch image data from url {message_content.data}, {ex}")
