@@ -1,11 +1,9 @@
-from typing import List, Optional, Dict, Any
+from typing import Optional
 
-from .web_search import SearchIntent, SearchResult, SearchRecommend
 from ...core import BaseModel
+from .web_search import SearchIntent, SearchRecommend, SearchResult
 
-__all__ = [
-    "WebSearchChunk"
-]
+__all__ = ["WebSearchChunk"]
 
 
 class ChoiceDeltaToolCall(BaseModel):
@@ -20,7 +18,7 @@ class ChoiceDeltaToolCall(BaseModel):
 
 class ChoiceDelta(BaseModel):
     role: Optional[str] = None
-    tool_calls: Optional[List[ChoiceDeltaToolCall]] = None
+    tool_calls: Optional[list[ChoiceDeltaToolCall]] = None
 
 
 class Choice(BaseModel):
@@ -31,5 +29,5 @@ class Choice(BaseModel):
 
 class WebSearchChunk(BaseModel):
     id: Optional[str] = None
-    choices: List[Choice]
+    choices: list[Choice]
     created: Optional[int] = None

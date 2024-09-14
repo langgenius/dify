@@ -1,6 +1,5 @@
-from typing import List
 
-from typing_extensions import Literal
+from typing import Literal
 
 from .....core import BaseModel
 
@@ -12,7 +11,8 @@ class RetrievalToolOutput(BaseModel):
     Attributes:
     - text (str): The text snippet retrieved from the knowledge base.
     - document (str): The name of the document from which the text snippet was retrieved, returned only in intelligent configuration.
-    """
+    """  # noqa: E501
+
     text: str
     document: str
 
@@ -23,8 +23,9 @@ class RetrievalTool(BaseModel):
 
     Attributes:
     - outputs (List[RetrievalToolOutput]): A list of text snippets and their respective document names retrieved from the knowledge base.
-    """
-    outputs: List[RetrievalToolOutput]
+    """  # noqa: E501
+
+    outputs: list[RetrievalToolOutput]
 
 
 class RetrievalToolBlock(BaseModel):
@@ -35,7 +36,7 @@ class RetrievalToolBlock(BaseModel):
     - retrieval (RetrievalTool): An instance of the RetrievalTool class containing the retrieval outputs.
     - type (Literal["retrieval"]): The type of tool being used, always set to "retrieval".
     """
+
     retrieval: RetrievalTool
     type: Literal["retrieval"]
     """Always `retrieval`."""
-

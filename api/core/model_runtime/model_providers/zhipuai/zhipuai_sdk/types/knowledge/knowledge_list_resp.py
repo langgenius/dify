@@ -1,15 +1,11 @@
 from __future__ import annotations
 
-from typing import Dict, Optional, List
-
-from . import KnowledgeInfo
 from ...core import BaseModel
+from . import KnowledgeInfo
 
-__all__ = [
-    "KnowledgePage"
-]
+__all__ = ["KnowledgePage"]
 
 
 class KnowledgePage(BaseModel):
-    list: List[KnowledgeInfo]
+    list: list[KnowledgeInfo]
     object: str

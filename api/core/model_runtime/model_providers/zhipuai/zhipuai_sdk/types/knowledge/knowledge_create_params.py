@@ -1,7 +1,8 @@
 from __future__ import annotations
 
-from typing import Dict, Optional
-from typing_extensions import Literal, Required, TypedDict
+from typing import Literal, Optional
+
+from typing_extensions import TypedDict
 
 __all__ = ["KnowledgeBaseParams"]
 
@@ -19,10 +20,11 @@ class KnowledgeBaseParams(TypedDict):
         icon (Optional[Literal['question', 'book', 'seal', 'wrench', 'tag', 'horn', 'house']]): 知识库图标
         bucket_id (Optional[str]): 桶ID，限制32位
     """
+
     embedding_id: int
     name: str
     customer_identifier: Optional[str]
     description: Optional[str]
-    background: Optional[Literal['blue', 'red', 'orange', 'purple', 'sky']] = None
-    icon: Optional[Literal['question', 'book', 'seal', 'wrench', 'tag', 'horn', 'house']] = None
+    background: Optional[Literal["blue", "red", "orange", "purple", "sky"]] = None
+    icon: Optional[Literal["question", "book", "seal", "wrench", "tag", "horn", "house"]] = None
     bucket_id: Optional[str]

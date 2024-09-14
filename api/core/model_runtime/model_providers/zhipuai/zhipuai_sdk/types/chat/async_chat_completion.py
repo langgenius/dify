@@ -1,4 +1,4 @@
-from typing import List, Optional
+from typing import Optional
 
 from ...core import BaseModel
 from .chat_completion import CompletionChoice, CompletionUsage
@@ -18,5 +18,5 @@ class AsyncCompletion(BaseModel):
     request_id: Optional[str] = None
     model: Optional[str] = None
     task_status: str
-    choices: List[CompletionChoice]
+    choices: list[CompletionChoice]
     usage: CompletionUsage

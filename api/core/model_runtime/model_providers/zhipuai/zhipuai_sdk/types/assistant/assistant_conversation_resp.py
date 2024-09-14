@@ -1,10 +1,8 @@
-from typing import List, Optional, Dict, Any
 
 from ...core import BaseModel
 
-__all__ = [
-    "ConversationUsageListResp"
-]
+__all__ = ["ConversationUsageListResp"]
+
 
 class Usage(BaseModel):
     prompt_tokens: int  # 用户输入的 tokens 数量
@@ -23,7 +21,7 @@ class ConversationUsage(BaseModel):
 class ConversationUsageList(BaseModel):
     assistant_id: str  # 智能体id
     has_more: bool  # 是否还有更多页
-    conversation_list: List[ConversationUsage]  # 返回的
+    conversation_list: list[ConversationUsage]  # 返回的
 
 
 class ConversationUsageListResp(BaseModel):

@@ -1,6 +1,4 @@
-from typing import List, Union
-
-from typing_extensions import Literal
+from typing import Literal, Union
 
 __all__ = ["FunctionToolBlock"]
 
@@ -13,8 +11,8 @@ class FunctionToolOutput(BaseModel):
 
 class FunctionTool(BaseModel):
     name: str
-    arguments: Union[str,dict]
-    outputs: List[FunctionToolOutput]
+    arguments: Union[str, dict]
+    outputs: list[FunctionToolOutput]
 
 
 class FunctionToolBlock(BaseModel):

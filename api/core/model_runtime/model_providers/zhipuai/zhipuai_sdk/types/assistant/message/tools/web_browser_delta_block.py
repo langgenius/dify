@@ -1,8 +1,8 @@
-from typing import List
 
-from typing_extensions import Literal
+from typing import Literal
 
 from .....core import BaseModel
+
 __all__ = ["WebBrowserToolBlock"]
 
 
@@ -16,6 +16,7 @@ class WebBrowserOutput(BaseModel):
     - content (str): The textual content extracted from the search result.
     - error_msg (str): Any error message encountered during the search or retrieval process.
     """
+
     title: str
     link: str
     content: str
@@ -30,8 +31,9 @@ class WebBrowser(BaseModel):
     - input (str): The input query for the web browser search.
     - outputs (List[WebBrowserOutput]): A list of search results returned by the web browser.
     """
+
     input: str
-    outputs: List[WebBrowserOutput]
+    outputs: list[WebBrowserOutput]
 
 
 class WebBrowserToolBlock(BaseModel):
@@ -42,5 +44,6 @@ class WebBrowserToolBlock(BaseModel):
     - web_browser (WebBrowser): An instance of the WebBrowser class containing the search input and outputs.
     - type (Literal["web_browser"]): The type of tool being used, always set to "web_browser".
     """
+
     web_browser: WebBrowser
     type: Literal["web_browser"]

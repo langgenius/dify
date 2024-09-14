@@ -1,4 +1,4 @@
-from typing import Optional, List, Dict
+from typing import Optional
 
 from ...core import BaseModel
 
@@ -8,6 +8,6 @@ class UploadDetail(BaseModel):
     knowledge_type: int
     file_name: Optional[str] = None
     sentence_size: Optional[int] = None
-    custom_separator: Optional[List[str]] = None
+    custom_separator: Optional[list[str]] = None
     callback_url: Optional[str] = None
-    callback_header: Optional[Dict[str,str]] = None
+    callback_header: Optional[dict[str, str]] = None

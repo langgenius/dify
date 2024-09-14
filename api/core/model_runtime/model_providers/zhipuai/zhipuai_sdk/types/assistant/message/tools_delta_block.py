@@ -1,14 +1,13 @@
-from typing import Optional, List
-from typing_extensions import Literal
+from typing import Literal
 
-from .tools.tools_type import ToolsType
 from ....core import BaseModel
+from .tools.tools_type import ToolsType
 
 __all__ = ["ToolsDeltaBlock"]
 
 
 class ToolsDeltaBlock(BaseModel):
-    tool_calls: List[ToolsType]
+    tool_calls: list[ToolsType]
     """The index of the content part in the message."""
 
     role: str = "tool"

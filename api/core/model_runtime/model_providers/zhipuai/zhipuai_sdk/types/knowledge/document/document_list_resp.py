@@ -1,15 +1,11 @@
 from __future__ import annotations
 
-from typing import Dict, Optional, List
-
-from . import DocumentData
 from ....core import BaseModel
+from . import DocumentData
 
-__all__ = [
-    "DocumentPage"
-]
+__all__ = ["DocumentPage"]
 
 
 class DocumentPage(BaseModel):
-    list: List[DocumentData]
+    list: list[DocumentData]
     object: str

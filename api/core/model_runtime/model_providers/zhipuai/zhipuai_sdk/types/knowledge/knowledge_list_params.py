@@ -1,7 +1,6 @@
 from __future__ import annotations
 
-from typing import Dict, Optional
-from typing_extensions import Literal, Required, TypedDict
+from typing_extensions import TypedDict
 
 __all__ = ["KnowledgeListParams"]
 

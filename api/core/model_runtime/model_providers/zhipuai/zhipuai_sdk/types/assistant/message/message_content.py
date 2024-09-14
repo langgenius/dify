@@ -1,10 +1,8 @@
-
-from typing import Union
-from typing_extensions import Annotated, TypeAlias
+from typing import Annotated, TypeAlias, Union
 
 from ....core._utils import PropertyInfo
-from .tools_delta_block import ToolsDeltaBlock
 from .text_content_block import TextContentBlock
+from .tools_delta_block import ToolsDeltaBlock
 
 __all__ = ["MessageContent"]
 

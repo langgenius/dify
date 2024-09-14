@@ -1,6 +1,5 @@
-from typing import List, Optional
+from typing import Optional
 
-from ..chat.chat_completion import Function
 from ...core import BaseModel
 
 __all__ = [
@@ -56,7 +55,7 @@ class WebSearchMessageToolCall(BaseModel):
 
 class WebSearchMessage(BaseModel):
     role: str
-    tool_calls: Optional[List[WebSearchMessageToolCall]] = None
+    tool_calls: Optional[list[WebSearchMessageToolCall]] = None
 
 
 class WebSearchChoice(BaseModel):
@@ -67,6 +66,6 @@ class WebSearchChoice(BaseModel):
 
 class WebSearch(BaseModel):
     created: Optional[int] = None
-    choices: List[WebSearchChoice]
+    choices: list[WebSearchChoice]
     request_id: Optional[str] = None
     id: Optional[str] = None

@@ -1,5 +1,4 @@
-from typing import Optional, List, Literal, TypedDict, Dict
-
+from typing import Optional, TypedDict
 
 __all__ = ["DocumentEditParams"]
 
@@ -21,9 +20,10 @@ class DocumentEditParams(TypedDict):
         callback_url (Optional[str]): 回调地址
         callback_header (Optional[dict]): 回调时携带的header
     """
+
     id: str
     knowledge_type: int
-    custom_separator: Optional[List[str]]
+    custom_separator: Optional[list[str]]
     sentence_size: Optional[int]
     callback_url: Optional[str]
-    callback_header: Optional[Dict[str, str]]
+    callback_header: Optional[dict[str, str]]

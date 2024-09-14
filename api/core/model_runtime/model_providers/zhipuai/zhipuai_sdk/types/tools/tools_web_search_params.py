@@ -1,8 +1,8 @@
-
 from __future__ import annotations
 
-from typing import Union, Optional, List
-from typing_extensions import Literal, Required, TypedDict
+from typing import Optional, Union
+
+from typing_extensions import TypedDict
 
 __all__ = ["WebSearchParams"]
 
@@ -25,10 +25,11 @@ class WebSearchParams(TypedDict):
 
 
     """
+
     model: str
     request_id: Optional[str]
     stream: Optional[bool]
-    messages: Union[str, List[str], List[int], object, None]
+    messages: Union[str, list[str], list[int], object, None]
     scope: Optional[str] = None
     location: Optional[str] = None
     recent_days: Optional[int] = None

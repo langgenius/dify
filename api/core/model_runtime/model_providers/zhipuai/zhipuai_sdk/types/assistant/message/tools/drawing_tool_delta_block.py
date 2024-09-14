@@ -1,6 +1,5 @@
-from typing import List
 
-from typing_extensions import Literal
+from typing import Literal
 
 from .....core import BaseModel
 
@@ -13,7 +12,7 @@ class DrawingToolOutput(BaseModel):
 
 class DrawingTool(BaseModel):
     input: str
-    outputs: List[DrawingToolOutput]
+    outputs: list[DrawingToolOutput]
 
 
 class DrawingToolBlock(BaseModel):

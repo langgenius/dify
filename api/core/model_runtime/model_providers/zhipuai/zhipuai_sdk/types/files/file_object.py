@@ -1,4 +1,4 @@
-from typing import Optional, List
+from typing import Optional
 
 from ...core import BaseModel
 
@@ -6,7 +6,6 @@ __all__ = ["FileObject", "ListOfFileObject"]
 
 
 class FileObject(BaseModel):
-
     id: Optional[str] = None
     bytes: Optional[int] = None
     created_at: Optional[int] = None
@@ -18,7 +17,6 @@ class FileObject(BaseModel):
 
 
 class ListOfFileObject(BaseModel):
-
     object: Optional[str] = None
-    data: List[FileObject]
+    data: list[FileObject]
     has_more: Optional[bool] = None

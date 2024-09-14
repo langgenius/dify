@@ -1,7 +1,7 @@
-from typing import List, Optional, Dict, Any
+from typing import Any, Optional
 
-from .message import MessageContent
 from ...core import BaseModel
+from .message import MessageContent
 
 __all__ = ["AssistantCompletion", "CompletionUsage"]
 
@@ -18,7 +18,7 @@ class AssistantChoice(BaseModel):
     """
     # 推理结束原因 stop代表推理自然结束或触发停止词。  sensitive 代表模型推理内容被安全审核接口拦截。请注意，针对此类内容，请用户自行判断并决定是否撤回已公开的内容。 
     # network_error 代表模型推理服务异常。
-    """
+    """  # noqa: E501
     metadata: dict  # 元信息，拓展字段
 
 
@@ -35,6 +35,6 @@ class AssistantCompletion(BaseModel):
     created: int  # 请求创建时间，Unix 时间戳
     status: str  # 返回状态，包括：`completed` 表示生成结束`in_progress`表示生成中 `failed` 表示生成异常
     last_error: Optional[ErrorInfo]  # 异常信息
-    choices: List[AssistantChoice]  # 增量返回的信息
-    metadata: Optional[Dict[str, Any]]  # 元信息，拓展字段
+    choices: list[AssistantChoice]  # 增量返回的信息
+    metadata: Optional[dict[str, Any]]  # 元信息，拓展字段
     usage: Optional[CompletionUsage]  # tokens 数量统计

@@ -1,8 +1,7 @@
 # File generated from our OpenAPI spec by Stainless. See CONTRIBUTING.md for details.
 
 import builtins
-from typing import List, Optional
-from typing_extensions import Literal
+from typing import Literal, Optional
 
 from ..core import BaseModel
 from .batch_error import BatchError
@@ -12,7 +11,7 @@ __all__ = ["Batch", "Errors"]
 
 
 class Errors(BaseModel):
-    data: Optional[List[BatchError]] = None
+    data: Optional[list[BatchError]] = None
 
     object: Optional[str] = None
     """这个类型，一直是`list`。"""

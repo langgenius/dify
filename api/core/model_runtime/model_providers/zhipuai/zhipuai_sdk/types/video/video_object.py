@@ -1,4 +1,4 @@
-from typing import Optional, List
+from typing import Optional
 
 from ...core import BaseModel
 
@@ -19,7 +19,7 @@ class VideoObject(BaseModel):
     model: str
     """模型名称"""
 
-    video_result: List[VideoResult]
+    video_result: list[VideoResult]
     """视频生成结果"""
 
     task_status: str

@@ -1,11 +1,7 @@
-from typing import List, Optional, Dict, Any
 
-from .message import MessageContent
 from ...core import BaseModel
 
-__all__ = [
-    "AssistantSupportResp"
-]
+__all__ = ["AssistantSupportResp"]
 
 
 class AssistantSupport(BaseModel):
@@ -16,11 +12,11 @@ class AssistantSupport(BaseModel):
     avatar: str  # 智能体头像
     description: str  # 智能体描述
     status: str  # 智能体状态，目前只有 publish
-    tools: List[str]  # 智能体支持的工具名
-    starter_prompts: List[str]  # 智能体启动推荐的 prompt
+    tools: list[str]  # 智能体支持的工具名
+    starter_prompts: list[str]  # 智能体启动推荐的 prompt
 
 
 class AssistantSupportResp(BaseModel):
     code: int
     msg: str
-    data: List[AssistantSupport]  # 智能体列表
+    data: list[AssistantSupport]  # 智能体列表

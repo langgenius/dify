@@ -1,4 +1,4 @@
-from typing import List, Union, Optional
+from typing import Optional, Union
 
 from ...core import BaseModel
 
@@ -31,5 +31,5 @@ class JobEvent(BaseModel):
 
 class FineTuningJobEvent(BaseModel):
     object: Optional[str] = None
-    data: List[JobEvent]
+    data: list[JobEvent]
     has_more: Optional[bool] = None

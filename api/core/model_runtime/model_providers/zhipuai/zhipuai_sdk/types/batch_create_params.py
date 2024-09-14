@@ -1,7 +1,8 @@
 from __future__ import annotations
 
-from typing import Dict, Optional
-from typing_extensions import Literal, Required, TypedDict
+from typing import Literal, Optional
+
+from typing_extensions import Required, TypedDict
 
 __all__ = ["BatchCreateParams"]
 
@@ -30,7 +31,7 @@ class BatchCreateParams(TypedDict, total=False):
     and must be uploaded with the purpose `batch`.
     """
 
-    metadata: Optional[Dict[str, str]]
+    metadata: Optional[dict[str, str]]
     """Optional custom metadata for the batch."""
 
     auto_delete_input_file: Optional[bool]
