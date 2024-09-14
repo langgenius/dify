@@ -183,7 +183,7 @@ const VarReferencePicker: FC<Props> = ({
   const handleVarReferenceChange = useCallback((value: ValueSelector, varInfo: Var) => {
     // sys var not passed to backend
     const newValue = produce(value, (draft) => {
-      if (draft[1] && draft[1].startsWith('sys')) {
+      if (draft[1] && draft[1].startsWith('sys.')) {
         draft.shift()
         const paths = draft[0].split('.')
         paths.forEach((p, i) => {
