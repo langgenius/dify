@@ -17,33 +17,35 @@ parameters:
       en_US: document_id
       zh_Hans: 飞书文档的唯一标识
     human_description:
-      en_US: Unique ID of Feishu document document_id
-      zh_Hans: 飞书文档的唯一标识 document_id
-    llm_description: 飞书文档的唯一标识 document_id
+      en_US: Unique identifier for a Feishu document. You can also input the document's URL.
+      zh_Hans: 飞书文档的唯一标识，支持输入文档的 URL。
+    llm_description: 飞书文档的唯一标识，支持输入文档的 URL。
     form: llm
 
   - name: content
     type: string
     required: true
     label:
-      en_US: document content
-      zh_Hans: 文档内容
+      en_US: Plain text or Markdown content
+      zh_Hans: 纯文本或 Markdown 内容
     human_description:
-      en_US: Document content, supports markdown syntax, can be empty.
-      zh_Hans: 文档内容，支持 markdown 语法，可以为空。
-    llm_description:
+      en_US: Plain text or Markdown content. Note that embedded tables in the document should not have merged cells.
+      zh_Hans: 纯文本或 Markdown 内容。注意文档的内嵌套表格不允许有单元格合并。
+    llm_description: 纯文本或 Markdown 内容，注意文档的内嵌套表格不允许有单元格合并。
     form: llm
 
   - name: position
-    type: select
-    required: true
-    default: start
+    type: string
+    required: false
     label:
-      en_US: Choose where to add content
-      zh_Hans: 选择添加内容的位置
+      en_US: position
+      zh_Hans: 添加位置
     human_description:
-      en_US: Please fill in start or end to add content at the beginning or end of the document respectively.
-      zh_Hans: 请填入 start 或 end, 分别表示在文档开头(start)或结尾(end)添加内容。
+      en_US: |
+        Enumeration values: start or end. Use 'start' to add content at the beginning of the document, and 'end' to add content at the end. The default value is 'end'.
+      zh_Hans: 枚举值：start 或 end。使用 'start' 在文档开头添加内容，使用 'end' 在文档结尾添加内容，默认值为 'end'。
+    llm_description: |
+      枚举值 start、end，start: 在文档开头添加内容；end: 在文档结尾添加内容，默认值为 end。
     form: llm
     options:
       - value: start
@@ -54,3 +56,4 @@ parameters:
         label:
           en_US: end
           zh_Hans: 在文档结尾添加内容
+    default: start
