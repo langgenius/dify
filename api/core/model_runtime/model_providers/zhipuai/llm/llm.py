@@ -31,7 +31,7 @@ And you should always end the block with a "```" to indicate the end of the JSON
 {{instructions}}
 </instructions>
 
-```JSON"""
+```JSON"""  # noqa: E501
 
 
 class ZhipuAILargeLanguageModel(_CommonZhipuaiAI, LargeLanguageModel):
@@ -186,10 +186,10 @@ class ZhipuAILargeLanguageModel(_CommonZhipuaiAI, LargeLanguageModel):
         new_prompt_messages: list[PromptMessage] = []
         for prompt_message in prompt_messages:
             copy_prompt_message = prompt_message.copy()
-            if copy_prompt_message.role in [PromptMessageRole.USER, PromptMessageRole.SYSTEM, PromptMessageRole.TOOL]:
+            if copy_prompt_message.role in {PromptMessageRole.USER, PromptMessageRole.SYSTEM, PromptMessageRole.TOOL}:
                 if isinstance(copy_prompt_message.content, list):
                     # check if model is 'glm-4v'
-                    if model not in ("glm-4v", "glm-4v-plus"):
+                    if model not in {"glm-4v", "glm-4v-plus"}:
                         # not support list message
                         continue
                     # get image and
@@ -209,9 +209,7 @@ class ZhipuAILargeLanguageModel(_CommonZhipuaiAI, LargeLanguageModel):
                 ):
                     new_prompt_messages[-1].content += "\n\n" + copy_prompt_message.content
                 else:
-                    if copy_prompt_message.role == PromptMessageRole.USER:
-                        new_prompt_messages.append(copy_prompt_message)
-                    elif copy_prompt_message.role == PromptMessageRole.TOOL:
+                    if copy_prompt_message.role in {PromptMessageRole.USER, PromptMessageRole.TOOL}:
                         new_prompt_messages.append(copy_prompt_message)
                     elif copy_prompt_message.role == PromptMessageRole.SYSTEM:
                         new_prompt_message = SystemPromptMessage(content=copy_prompt_message.content)
@@ -225,7 +223,7 @@ class ZhipuAILargeLanguageModel(_CommonZhipuaiAI, LargeLanguageModel):
                 else:
                     new_prompt_messages.append(copy_prompt_message)
 
-        if model == "glm-4v" or model == "glm-4v-plus":
+        if model in {"glm-4v", "glm-4v-plus"}:
             params = self._construct_glm_4v_parameter(model, new_prompt_messages, model_parameters)
         else:
             params = {"model": model, "messages": [], **model_parameters}
@@ -269,11 +267,11 @@ class ZhipuAILargeLanguageModel(_CommonZhipuaiAI, LargeLanguageModel):
                 # chatglm model
                 for prompt_message in new_prompt_messages:
                     # merge system message to user message
-                    if (
-                        prompt_message.role == PromptMessageRole.SYSTEM
-                        or prompt_message.role == PromptMessageRole.TOOL
-                        or prompt_message.role == PromptMessageRole.USER
-                    ):
+                    if prompt_message.role in {
+                        PromptMessageRole.SYSTEM,
+                        PromptMessageRole.TOOL,
+                        PromptMessageRole.USER,
+                    }:
                         if len(params["messages"]) > 0 and params["messages"][-1]["role"] == "user":
                             params["messages"][-1]["content"] += "\n\n" + prompt_message.content
                         else:
@@ -413,10 +411,10 @@ class ZhipuAILargeLanguageModel(_CommonZhipuaiAI, LargeLanguageModel):
 
             # transform assistant message to prompt message
             assistant_prompt_message = AssistantPromptMessage(
-                content=delta.delta.content if delta.delta.content else "", tool_calls=assistant_tool_calls
+                content=delta.delta.content or "", tool_calls=assistant_tool_calls
             )
 
-            full_assistant_content += delta.delta.content if delta.delta.content else ""
+            full_assistant_content += delta.delta.content or ""
 
             if delta.finish_reason is not None and chunk.usage is not None:
                 completion_tokens = chunk.usage.completion_tokens
@@ -461,9 +459,7 @@ class ZhipuAILargeLanguageModel(_CommonZhipuaiAI, LargeLanguageModel):
             message_text = f"{human_prompt} {content}"
         elif isinstance(message, AssistantPromptMessage):
             message_text = f"{ai_prompt} {content}"
-        elif isinstance(message, SystemPromptMessage):
-            message_text = content
-        elif isinstance(message, ToolPromptMessage):
+        elif isinstance(message, SystemPromptMessage | ToolPromptMessage):
             message_text = content
         else:
             raise ValueError(f"Got unknown type {message}")

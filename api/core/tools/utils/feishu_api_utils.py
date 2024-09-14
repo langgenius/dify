@@ -89,7 +89,7 @@ class FeishuRequest:
                 "content": "云文档\n多人实时协同，插入一切元素。不仅是在线文档，更是强大的创作和互动工具\n云文档：专为协作而生\n"
             }
         }
-        """
+        """  # noqa: E501
         params = {
             "document_id": document_id,
         }

@@ -109,7 +109,7 @@ class MaasService(Service):
         if not self._apikey and not credentials_exist:
             raise new_client_sdk_request_error("no valid credential", req_id)
 
-        if not (api in self.api_info):
+        if api not in self.api_info:
             raise new_client_sdk_request_error("no such api", req_id)
 
     def _call(self, endpoint_id, api, req_id, params, body, apikey=None, stream=False):

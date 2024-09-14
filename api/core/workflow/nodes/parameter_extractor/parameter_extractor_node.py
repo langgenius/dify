@@ -467,7 +467,7 @@ class ParameterExtractorNode(LLMNode):
                 #             transformed_result[parameter.name] = bool(result[parameter.name].lower() == 'true')
                 #     elif isinstance(result[parameter.name], int):
                 #         transformed_result[parameter.name] = bool(result[parameter.name])
-                elif parameter.type in ["string", "select"]:
+                elif parameter.type in {"string", "select"}:
                     if isinstance(result[parameter.name], str):
                         transformed_result[parameter.name] = result[parameter.name]
                 elif parameter.type.startswith("array"):
@@ -498,7 +498,7 @@ class ParameterExtractorNode(LLMNode):
                     transformed_result[parameter.name] = 0
                 elif parameter.type == "bool":
                     transformed_result[parameter.name] = False
-                elif parameter.type in ["string", "select"]:
+                elif parameter.type in {"string", "select"}:
                     transformed_result[parameter.name] = ""
                 elif parameter.type.startswith("array"):
                     transformed_result[parameter.name] = []
@@ -516,9 +516,9 @@ class ParameterExtractorNode(LLMNode):
             """
             stack = []
             for i, c in enumerate(text):
-                if c == "{" or c == "[":
+                if c in {"{", "["}:
                     stack.append(c)
-                elif c == "}" or c == "]":
+                elif c in {"}", "]"}:
                     # check if stack is empty
                     if not stack:
                         return text[:i]
@@ -560,7 +560,7 @@ class ParameterExtractorNode(LLMNode):
                 result[parameter.name] = 0
             elif parameter.type == "bool":
                 result[parameter.name] = False
-            elif parameter.type in ["string", "select"]:
+            elif parameter.type in {"string", "select"}:
                 result[parameter.name] = ""
 
         return result

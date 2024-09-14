@@ -146,7 +146,8 @@ class OCITextEmbeddingModel(TextEmbeddingModel):
             config_items = oci_config_content.split("/")
             if len(config_items) != 5:
                 raise CredentialsValidateFailedError(
-                    "oci_config_content should be base64.b64encode('user_ocid/fingerprint/tenancy_ocid/region/compartment_ocid'.encode('utf-8'))"
+                    "oci_config_content should be base64.b64encode("
+                    "'user_ocid/fingerprint/tenancy_ocid/region/compartment_ocid'.encode('utf-8'))"
                 )
             oci_config["user"] = config_items[0]
             oci_config["fingerprint"] = config_items[1]

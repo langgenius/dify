@@ -32,10 +32,10 @@ class StableDiffusionTool(BuiltinTool, BaseStabilityAuthorization):
 
         model = tool_parameters.get("model", "core")
 
-        if model in ["sd3", "sd3-turbo"]:
+        if model in {"sd3", "sd3-turbo"}:
             payload["model"] = tool_parameters.get("model")
 
-        if not model == "sd3-turbo":
+        if model != "sd3-turbo":
             payload["negative_prompt"] = tool_parameters.get("negative_prompt", "")
 
         response = post(

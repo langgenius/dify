@@ -28,7 +28,7 @@ if you are not sure about the structure.
 </instructions>
 
 You should also complete the text started with ``` but not tell ``` directly.
-"""
+"""  # noqa: E501
 
 
 class ErnieBotLargeLanguageModel(LargeLanguageModel):
@@ -69,7 +69,7 @@ class ErnieBotLargeLanguageModel(LargeLanguageModel):
         """
         Code block mode wrapper for invoking large language model
         """
-        if "response_format" in model_parameters and model_parameters["response_format"] in ["JSON", "XML"]:
+        if "response_format" in model_parameters and model_parameters["response_format"] in {"JSON", "XML"}:
             response_format = model_parameters["response_format"]
             stop = stop or []
             self._transform_json_prompts(
@@ -199,7 +199,7 @@ class ErnieBotLargeLanguageModel(LargeLanguageModel):
             secret_key=credentials["secret_key"],
         )
 
-        user = user if user else "ErnieBotDefault"
+        user = user or "ErnieBotDefault"
 
         # convert prompt messages to baichuan messages
         messages = [
@@ -289,7 +289,7 @@ class ErnieBotLargeLanguageModel(LargeLanguageModel):
                         index=0,
                         message=AssistantPromptMessage(content=message.content, tool_calls=[]),
                         usage=usage,
-                        finish_reason=message.stop_reason if message.stop_reason else None,
+                        finish_reason=message.stop_reason or None,
                     ),
                 )
             else:
@@ -299,7 +299,7 @@ class ErnieBotLargeLanguageModel(LargeLanguageModel):
                     delta=LLMResultChunkDelta(
                         index=0,
                         message=AssistantPromptMessage(content=message.content, tool_calls=[]),
-                        finish_reason=message.stop_reason if message.stop_reason else None,
+                        finish_reason=message.stop_reason or None,
                     ),
                 )
 
