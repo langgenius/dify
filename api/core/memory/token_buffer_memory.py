@@ -55,7 +55,8 @@ class TokenBufferMemory:
 
         messages = query.limit(message_limit).all()
 
-        # instead of all messages from the conversation, we only need to extract messages that belong to the thread of last message
+        # instead of all messages from the conversation, we only need to extract messages
+        # that belong to the thread of last message
         thread_messages = extract_thread_messages(messages)
         thread_messages.pop(0)
         messages = list(reversed(thread_messages))
