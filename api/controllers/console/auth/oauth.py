@@ -84,16 +84,16 @@ class OAuthCallback(Resource):
             if invitation:
                 invitation_email = invitation.get("email", None)
                 if invitation_email != user_info.email:
-                    return redirect(f"{dify_config.CONSOLE_WEB_URL}/signin?message=InvalidToken")
+                    return redirect(f"{dify_config.CONSOLE_WEB_URL}/signin?message=Invalid invitation token.")
 
             return redirect(f"{dify_config.CONSOLE_WEB_URL}/signin/invite-settings?invite_token={invite_token}")
 
         try:
             account = _generate_account(provider, user_info)
         except AccountNotFoundError:
-            return redirect(f"{dify_config.CONSOLE_WEB_URL}/signin?message=AccountNotFound")
+            return redirect(f"{dify_config.CONSOLE_WEB_URL}/signin?message=Account not found.")
         except WorkSpaceNotFoundError:
-            return redirect(f"{dify_config.CONSOLE_WEB_URL}/signin?message=WorkspaceNotFound")
+            return redirect(f"{dify_config.CONSOLE_WEB_URL}/signin?message=Workspace not found.")
         except WorkSpaceNotAllowedCreateError:
             return redirect(
                 f"{dify_config.CONSOLE_WEB_URL}/signin"
@@ -112,7 +112,7 @@ class OAuthCallback(Resource):
         try:
             TenantService.create_owner_tenant_if_not_exist(account)
         except Unauthorized:
-            return redirect(f"{dify_config.CONSOLE_WEB_URL}/signin?message=WorkspaceNotFound")
+            return redirect(f"{dify_config.CONSOLE_WEB_URL}/signin?message=Worspace not found.")
         except WorkSpaceNotAllowedCreateError:
             return redirect(
                 f"{dify_config.CONSOLE_WEB_URL}/signin"
