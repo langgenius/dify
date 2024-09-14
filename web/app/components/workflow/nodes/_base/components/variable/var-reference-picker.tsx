@@ -75,7 +75,6 @@ const VarReferencePicker: FC<Props> = ({
   schema,
   valueTypePlaceHolder,
 }) => {
-  console.log('🚀 -> value:', value)
   const { t } = useTranslation()
   const store = useStoreApi()
   const {
