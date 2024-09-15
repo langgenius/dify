@@ -66,7 +66,9 @@ const RunOnce: FC<IRunOnceProps> = ({
                     value={inputs[item.key]}
                     onChange={(e) => { onInputsChange({ ...inputs, [item.key]: e.target.value }) }}
                     onKeyDown={(e) => {
-                      if (e.key === 'Enter') {
+                      // Prevent sending during IME composition (e.g., Japanese input).
+                      // 'keyCode' is deprecated but necessary for handling Safari's inconsistent behavior.
+                      if ((e.key === 'Enter' && !e.nativeEvent.isComposing) || e.keyCode !== 229) {
                         e.preventDefault()
                         onSend()
                       }
