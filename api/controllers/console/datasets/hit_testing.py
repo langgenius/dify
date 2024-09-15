@@ -28,11 +28,9 @@ from services.dataset_service import DatasetService
 from services.hit_testing_service import HitTestingService
 
 
-class HitTestingApi(Resource):
-    @setup_required
-    @login_required
-    @account_initialization_required
-    def post(self, dataset_id):
+class HitTestingMixin:
+
+    def _post(self, dataset_id):
         dataset_id_str = str(dataset_id)
 
         dataset = DatasetService.get_dataset(dataset_id_str)
@@ -81,6 +79,14 @@ class HitTestingApi(Resource):
         except Exception as e:
             logging.exception("Hit testing failed.")
             raise InternalServerError(str(e))
+
+
+class HitTestingApi(Resource, HitTestingMixin):
+    @setup_required
+    @login_required
+    @account_initialization_required
+    def post(self, dataset_id):
+        return self._post(dataset_id)
 
 
 api.add_resource(HitTestingApi, "/datasets/<uuid:dataset_id>/hit-testing")

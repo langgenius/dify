@@ -1051,6 +1051,140 @@ import { Row, Col, Properties, Property, Heading, SubProperty, Paragraph } from 
 
 ---
 
+<Heading
+  url='/datasets/{dataset_id}/hit_testing'
+  method='POST'
+  title='知识库文档召回测试'
+  name='#dataset_hit_testing'
+/>
+<Row>
+  <Col>
+    ### Path
+    <Properties>
+      <Property name='dataset_id' type='string' key='dataset_id'>
+        知识库 ID
+      </Property>
+    </Properties>
+
+    ### Request Body
+    <Properties>
+      <Property name='query' type='string' key='query'>
+        召回关键词
+      </Property>
+      <Property name='retrieval_model' type='object' key='retrieval_model'>
+        召回参数
+        - <code>search_method</code> (text) 检索方法：以下三个关键字之一，必填
+          - <code>keyword_search</code> 关键字检索
+          - <code>semantic_search</code> 语义检索
+          - <code>full_text_search</code> 全文检索
+          - <code>hybrid_search</code> 混合检索
+        - <code>reranking_enable</code> (bool) 是否启用 Reranking，非必填，如果检索模式为semantic_search模式或者hybrid_search则传值
+        - <code>reranking_mode</code> (object) Rerank模型配置，非必填，如果启用了 reranking 则传值
+            - <code>reranking_provider_name</code> (string) Rerank 模型提供商
+            - <code>reranking_model_name</code> (string) Rerank 模型名称
+        - <code>weights</code> (double) 混合检索模式下语意检索的权重设置
+        - <code>top_k</code> (integer) 返回结果数量，非必填
+        - <code>score_threshold_enabled</code> (bool) 是否开启Score阈值
+        - <code>score_threshold</code> (double) Score阈值
+      </Property>
+    </Properties>
+  </Col>
+  <Col sticky>
+    <CodeGroup
+      title="Request"
+      tag="GET"
+      label="/datasets/{dataset_id}/hit_testing"
+      targetCode={`curl --location --request GET '${props.apiBaseUrl}/datasets/{dataset_id}/hit_testing' \\\n--header 'Authorization: Bearer {api_key}'\\\n--header 'Content-Type: application/json'\\\n--data-raw '{
+        "query": "keyword",
+        "retrieval_model": {
+            "search_method": "keyword_search",
+            "reranking_enable": false,
+            "reranking_mode": null,
+            "reranking_model": {
+                "reranking_provider_name": "",
+                "reranking_model_name": ""
+            },
+            "weights": null,
+            "top_k": 2,
+            "score_threshold_enabled": false,
+            "score_threshold": null
+        }
+    }'`}
+    >
+    ```bash {{ title: 'cURL' }}
+    curl --location --request POST '${props.apiBaseUrl}/datasets/{dataset_id}/hit_testing' \
+    --header 'Authorization: Bearer {api_key}' \
+    --header 'Content-Type: application/json' \
+    --data-raw '{
+        "query": "keyword",
+        "retrieval_model": {
+            "search_method": "keyword_search",
+            "reranking_enable": false,
+            "reranking_mode": null,
+            "reranking_model": {
+                "reranking_provider_name": "",
+                "reranking_model_name": ""
+            },
+            "weights": null,
+            "top_k": 2,
+            "score_threshold_enabled": false,
+            "score_threshold": null
+        }
+    }'
+    ```
+    </CodeGroup>
+    <CodeGroup title="Response">
+    ```json {{ title: 'Response' }}
+    {
+        "query": {
+            "content": "keyword"
+        },
+        "records": [
+            {
+                "segment": {
+                    "id": "<uuid>",
+                    "position": 1,
+                    "document_id": "<uuid>",
+                    "content": "",
+                    "answer": null,
+                    "word_count": 255,
+                    "tokens": 0,
+                    "keywords": [
+                        "keyword1",
+                        "keyword2"
+                    ],
+                    "index_node_id": "<uuid>",
+                    "index_node_hash": "<hash>",
+                    "hit_count": 0,
+                    "enabled": true,
+                    "disabled_at": null,
+                    "disabled_by": null,
+                    "status": "completed",
+                    "created_by": "<user_id>",
+                    "created_at": 1726419935,
+                    "indexing_at": 1726419934,
+                    "completed_at": 1726419935,
+                    "error": null,
+                    "stopped_at": null,
+                    "document": {
+                        "id": "<uuid>",
+                        "data_source_type": "upload_file",
+                        "name": "file_name",
+                        "doc_type": null
+                    }
+                },
+                "score": null,
+                "tsne_position": null
+            }
+        ]
+    }
+    ```
+    </CodeGroup>
+  </Col>
+</Row>
+
+---
+
 <Row>
   <Col>
     ### 错误信息

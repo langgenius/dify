@@ -12,6 +12,7 @@ from fields.dataset_fields import dataset_detail_fields
 from libs.login import current_user
 from models.dataset import Dataset, DatasetPermissionEnum
 from services.dataset_service import DatasetService
+from controllers.console.datasets.hit_testing import HitTestingMixin
 
 
 def _validate_name(name):
@@ -128,5 +129,12 @@ class DatasetApi(DatasetApiResource):
             raise DatasetInUseError()
 
 
+class DatasetHitTestingApi(DatasetApiResource, HitTestingMixin):
+
+    def post(self, _, dataset_id):
+        return self._post(dataset_id)
+
+
 api.add_resource(DatasetListApi, "/datasets")
 api.add_resource(DatasetApi, "/datasets/<uuid:dataset_id>")
+api.add_resource(DatasetHitTestingApi, "/datasets/<uuid:dataset_id>/hit_testing")
