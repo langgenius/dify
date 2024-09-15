@@ -1,6 +1,6 @@
 model: eu.anthropic.claude-3-5-sonnet-20240620-v1:0
 label:
-  en_US: Claude 3.5 Sonnet(Cross Region Inference)
+  en_US: Claude 3.5 Sonnet(EU.Cross Region Inference)
 model_type: llm
 features:
   - agent-thought

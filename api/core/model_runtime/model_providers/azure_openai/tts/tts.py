@@ -85,14 +85,14 @@ class AzureOpenAIText2SpeechModel(_CommonAzureOpenAI, TTSModel):
                     for i in range(len(sentences))
                 ]
                 for future in futures:
-                    yield from future.result().__enter__().iter_bytes(1024)
+                    yield from future.result().__enter__().iter_bytes(1024)  # noqa:PLC2801
 
             else:
                 response = client.audio.speech.with_streaming_response.create(
                     model=model, voice=voice, response_format="mp3", input=content_text.strip()
                 )
 
-                yield from response.__enter__().iter_bytes(1024)
+                yield from response.__enter__().iter_bytes(1024)  # noqa:PLC2801
         except Exception as ex:
             raise InvokeBadRequestError(str(ex))
 

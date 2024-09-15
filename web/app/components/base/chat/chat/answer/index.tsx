@@ -8,7 +8,6 @@ import type {
   ChatConfig,
   ChatItem,
 } from '../../types'
-import { useChatContext } from '../context'
 import { useChatWithHistoryContext } from '../../chat-with-history/context'
 import Operation from './operation'
 import AgentContent from './agent-content'
@@ -17,13 +16,13 @@ import SuggestedQuestions from './suggested-questions'
 import More from './more'
 import WorkflowProcess from './workflow-process'
 import { AnswerTriangle } from '@/app/components/base/icons/src/vender/solid/general'
-import { MessageFast } from '@/app/components/base/icons/src/vender/solid/communication'
 import LoadingAnim from '@/app/components/base/chat/chat/loading-anim'
 import Citation from '@/app/components/base/chat/chat/citation'
 import { EditTitle } from '@/app/components/app/annotation/edit-annotation-modal/edit-item'
 import type { Emoji } from '@/app/components/tools/types'
 import type { AppData } from '@/models/share'
 import AnswerIcon from '@/app/components/base/answer-icon'
+import cn from '@/utils/classnames'
 
 type AnswerProps = {
   item: ChatItem
@@ -63,21 +62,23 @@ const Answer: FC<AnswerProps> = ({
   const { isMobile } = useChatWithHistoryContext()
   const hasAgentThoughts = !!agent_thoughts?.length
 
-  const [containerWidth] = useState(0)
+  const [containerWidth, setContainerWidth] = useState(0)
   const [contentWidth, setContentWidth] = useState(0)
   const containerRef = useRef<HTMLDivElement>(null)
   const contentRef = useRef<HTMLDivElement>(null)
-  const { config: chatContextConfig } = useChatContext()
-  const voiceRef = useRef(chatContextConfig?.text_to_speech?.voice)
+
+  const getContainerWidth = () => {
+    if (containerRef.current)
+      setContainerWidth(containerRef.current?.clientWidth + 16)
+  }
+  useEffect(() => {
+    getContainerWidth()
+  }, [])
 
   const getContentWidth = () => {
     if (contentRef.current)
       setContentWidth(contentRef.current.clientWidth)
   }
-
-  useEffect(() => {
-    voiceRef.current = chatContextConfig?.text_to_speech?.voice
-  }, [chatContextConfig?.text_to_speech?.voice])
 
   useEffect(() => {
     if (!responding)
@@ -166,21 +167,77 @@ const Answer: FC<AnswerProps> = ({
           </div>
         )}
       </div>
-      <div className={`chat-answer-container group grow ${isMobile ? 'max-w-full mt-4' : 'w-0 ml-4'}`} ref={containerRef}>
-        <div className={`group relative ${chatAnswerContainerInner}`}>
-          <AnswerTriangle className={isMobile ? 'absolute left-0 -top-2 w-2 h-3 text-gray-100 rotate-180' : 'absolute -left-2 top-0 w-2 h-3 text-gray-100'} />
-          <div ref={contentRef} className={`relative inline-block px-4 py-3 max-w-full bg-gray-100 rounded-b-2xl rounded-tr-2xl text-sm text-gray-900 ${workflowProcess && 'w-full'}`}>
-            {annotation?.id && (
-              <div className='absolute -top-3.5 -right-3.5 box-border flex items-center justify-center h-7 w-7 p-0.5 rounded-lg bg-white cursor-pointer text-[#444CE7] shadow-md group-hover:hidden'>
-                <div className='p-1 rounded-lg bg-[#EEF4FF] '>
-                  <MessageFast className='w-4 h-4' />
+      <div className='chat-answer-container group grow w-0 ml-4' ref={containerRef}>
+        <div className={cn('group relative pr-10', chatAnswerContainerInner)}>
+          <AnswerTriangle className='absolute -left-2 top-0 w-2 h-3 text-gray-100' />
+          <div
+            ref={contentRef}
+            className={cn('relative inline-block px-4 py-3 max-w-full bg-gray-100 rounded-b-2xl rounded-tr-2xl text-sm text-gray-900', workflowProcess && 'w-full')}
+          >
+            {
+              !responding && (
+                <Operation
+                  hasWorkflowProcess={!!workflowProcess}
+                  maxSize={containerWidth - contentWidth - 4}
+                  contentWidth={contentWidth}
+                  item={item}
+                  question={question}
+                  index={index}
+                  showPromptLog={showPromptLog}
+                />
+              )
+            }
+            {/** Render the normal steps */}
+            {
+              workflowProcess && !hideProcessDetail && (
+                <WorkflowProcess
+                  data={workflowProcess}
+                  item={item}
+                  hideInfo
+                  hideProcessDetail={hideProcessDetail}
+                />
+              )
+            }
+            {/** Hide workflow steps by it's settings in siteInfo */}
+            {
+              workflowProcess && hideProcessDetail && appData && appData.site.show_workflow_steps && (
+                <WorkflowProcess
+                  data={workflowProcess}
+                  item={item}
+                  hideInfo
+                  hideProcessDetail={hideProcessDetail}
+                />
+              )
+            }
+            {
+              responding && !content && !hasAgentThoughts && (
+                <div className='flex items-center justify-center w-6 h-5'>
+                  <LoadingAnim type='text' />
                 </div>
-              </div>
-            )}
-            {renderOperation()}
-            {renderWorkflowProcess()}
-            {renderContent()}
-            {renderAnnotation()}
+              )
+            }
+            {
+              content && !hasAgentThoughts && (
+                <BasicContent item={item} />
+              )
+            }
+            {
+              hasAgentThoughts && (
+                <AgentContent
+                  item={item}
+                  responding={responding}
+                  allToolIcons={allToolIcons}
+                />
+              )
+            }
+            {
+              annotation?.id && annotation.authorName && (
+                <EditTitle
+                  className='mt-1'
+                  title={t('appAnnotation.editBy', { author: annotation.authorName })}
+                />
+              )
+            }
             <SuggestedQuestions item={item} />
             {!!citation?.length && !responding && (
               <Citation data={citation} showHitInfo={config?.supportCitationHitInfo} />

@@ -38,7 +38,7 @@ class SearchAPI:
         return {
             "engine": "google",
             "q": query,
-            **{key: value for key, value in kwargs.items() if value not in [None, ""]},
+            **{key: value for key, value in kwargs.items() if value not in {None, ""}},
         }
 
     @staticmethod

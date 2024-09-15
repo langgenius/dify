@@ -313,7 +313,7 @@ def normalize_whitespace(text):
 
 
 def is_leaf(element):
-    return element.name in ["p", "li"]
+    return element.name in {"p", "li"}
 
 
 def is_text(element):
