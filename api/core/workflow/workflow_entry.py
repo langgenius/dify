@@ -6,7 +6,7 @@ from typing import Any, Optional, cast
 
 from configs import dify_config
 from core.app.app_config.entities import FileExtraConfig
-from core.app.apps.base_app_queue_manager import GenerateTaskStoppedException
+from core.app.apps.base_app_queue_manager import GenerateTaskStoppedError
 from core.app.entities.app_invoke_entities import InvokeFrom
 from core.file.file_obj import FileTransferMethod, FileType, FileVar
 from core.workflow.callbacks.base_workflow_callback import WorkflowCallback
@@ -103,7 +103,7 @@ class WorkflowEntry:
                     for callback in callbacks:
                         callback.on_event(event=event)
                 yield event
-        except GenerateTaskStoppedException:
+        except GenerateTaskStoppedError:
             pass
         except Exception as e:
             logger.exception("Unknown Error when workflow entry running")

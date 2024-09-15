@@ -24,7 +24,8 @@ class SearchDevDocsTool(BuiltinTool):
             tool_parameters (dict[str, Any]): The parameters for the tool, including 'doc' and 'topic'.
 
         Returns:
-            ToolInvokeMessage | list[ToolInvokeMessage]: The result of the tool invocation, which can be a single message or a list of messages.
+            ToolInvokeMessage | list[ToolInvokeMessage]: The result of the tool invocation,
+             which can be a single message or a list of messages.
         """
         doc = tool_parameters.get("doc", "")
         topic = tool_parameters.get("topic", "")

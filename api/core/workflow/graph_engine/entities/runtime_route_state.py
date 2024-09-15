@@ -51,7 +51,7 @@ class RouteNodeState(BaseModel):
 
         :param run_result: run result
         """
-        if self.status in [RouteNodeState.Status.SUCCESS, RouteNodeState.Status.FAILED]:
+        if self.status in {RouteNodeState.Status.SUCCESS, RouteNodeState.Status.FAILED}:
             raise Exception(f"Route state {self.id} already finished")
 
         if run_result.status == WorkflowNodeExecutionStatus.SUCCEEDED:

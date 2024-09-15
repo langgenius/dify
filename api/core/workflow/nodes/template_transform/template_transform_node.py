@@ -2,7 +2,7 @@ import os
 from collections.abc import Mapping, Sequence
 from typing import Any, Optional, cast
 
-from core.helper.code_executor.code_executor import CodeExecutionException, CodeExecutor, CodeLanguage
+from core.helper.code_executor.code_executor import CodeExecutionError, CodeExecutor, CodeLanguage
 from core.workflow.entities.node_entities import NodeRunResult, NodeType
 from core.workflow.nodes.base_node import BaseNode
 from core.workflow.nodes.template_transform.entities import TemplateTransformNodeData
@@ -45,7 +45,7 @@ class TemplateTransformNode(BaseNode):
             result = CodeExecutor.execute_workflow_code_template(
                 language=CodeLanguage.JINJA2, code=node_data.template, inputs=variables
             )
-        except CodeExecutionException as e:
+        except CodeExecutionError as e:
             return NodeRunResult(inputs=variables, status=WorkflowNodeExecutionStatus.FAILED, error=str(e))
 
         if len(result["result"]) > MAX_TEMPLATE_TRANSFORM_OUTPUT_LENGTH:

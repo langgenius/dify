@@ -10,7 +10,7 @@ class RateLimitReachedError(Exception):
     pass
 
 
-class InsufficientAccountBalance(Exception):
+class InsufficientAccountBalanceError(Exception):
     pass
 
 

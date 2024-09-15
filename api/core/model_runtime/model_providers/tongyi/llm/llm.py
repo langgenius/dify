@@ -4,6 +4,7 @@ import tempfile
 import uuid
 from collections.abc import Generator
 from http import HTTPStatus
+from pathlib import Path
 from typing import Optional, Union, cast
 
 from dashscope import Generation, MultiModalConversation, get_tokenizer
@@ -88,7 +89,7 @@ class TongyiLargeLanguageModel(LargeLanguageModel):
         :param tools: tools for tool calling
         :return:
         """
-        if model in ["qwen-turbo-chat", "qwen-plus-chat"]:
+        if model in {"qwen-turbo-chat", "qwen-plus-chat"}:
             model = model.replace("-chat", "")
         if model == "farui-plus":
             model = "qwen-farui-plus"
@@ -156,7 +157,7 @@ class TongyiLargeLanguageModel(LargeLanguageModel):
 
         mode = self.get_model_mode(model, credentials)
 
-        if model in ["qwen-turbo-chat", "qwen-plus-chat"]:
+        if model in {"qwen-turbo-chat", "qwen-plus-chat"}:
             model = model.replace("-chat", "")
 
         extra_model_kwargs = {}
@@ -200,7 +201,7 @@ class TongyiLargeLanguageModel(LargeLanguageModel):
         :param prompt_messages: prompt messages
         :return: llm response
         """
-        if response.status_code != 200 and response.status_code != HTTPStatus.OK:
+        if response.status_code not in {200, HTTPStatus.OK}:
             raise ServiceUnavailableError(response.message)
         # transform assistant message to prompt message
         assistant_prompt_message = AssistantPromptMessage(
@@ -239,7 +240,7 @@ class TongyiLargeLanguageModel(LargeLanguageModel):
         full_text = ""
         tool_calls = []
         for index, response in enumerate(responses):
-            if response.status_code != 200 and response.status_code != HTTPStatus.OK:
+            if response.status_code not in {200, HTTPStatus.OK}:
                 raise ServiceUnavailableError(
                     f"Failed to invoke model {model}, status code: {response.status_code}, "
                     f"message: {response.message}"
@@ -350,9 +351,7 @@ class TongyiLargeLanguageModel(LargeLanguageModel):
                         break
         elif isinstance(message, AssistantPromptMessage):
             message_text = f"{ai_prompt} {content}"
-        elif isinstance(message, SystemPromptMessage):
-            message_text = content
-        elif isinstance(message, ToolPromptMessage):
+        elif isinstance(message, SystemPromptMessage | ToolPromptMessage):
             message_text = content
         else:
             raise ValueError(f"Got unknown type {message}")
@@ -456,8 +455,7 @@ class TongyiLargeLanguageModel(LargeLanguageModel):
 
         file_path = os.path.join(temp_dir, f"{uuid.uuid4()}.{mime_type.split('/')[1]}")
 
-        with open(file_path, "wb") as image_file:
-            image_file.write(base64.b64decode(encoded_string))
+        Path(file_path).write_bytes(base64.b64decode(encoded_string))
 
         return f"file://{file_path}"
 
@@ -474,7 +472,7 @@ class TongyiLargeLanguageModel(LargeLanguageModel):
             for p_key, p_val in properties.items():
                 desc = p_val["description"]
                 if "enum" in p_val:
-                    desc += f"; Only accepts one of the following predefined options: " f"[{', '.join(p_val['enum'])}]"
+                    desc += f"; Only accepts one of the following predefined options: [{', '.join(p_val['enum'])}]"
 
                 properties_definitions[p_key] = {
                     "description": desc,

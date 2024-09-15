@@ -50,7 +50,7 @@ class NotionExtractor(BaseExtractor):
                 integration_token = dify_config.NOTION_INTEGRATION_TOKEN
                 if integration_token is None:
                     raise ValueError(
-                        "Must specify `integration_token` or set environment " "variable `NOTION_INTEGRATION_TOKEN`."
+                        "Must specify `integration_token` or set environment variable `NOTION_INTEGRATION_TOKEN`."
                     )
 
                 self._notion_access_token = integration_token
@@ -103,12 +103,12 @@ class NotionExtractor(BaseExtractor):
                     multi_select_list = property_value[type]
                     for multi_select in multi_select_list:
                         value.append(multi_select["name"])
-                elif type == "rich_text" or type == "title":
+                elif type in {"rich_text", "title"}:
                     if len(property_value[type]) > 0:
                         value = property_value[type][0]["plain_text"]
                     else:
                         value = ""
-                elif type == "select" or type == "status":
+                elif type in {"select", "status"}:
                     if property_value[type]:
                         value = property_value[type]["name"]
                     else:

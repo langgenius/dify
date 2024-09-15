@@ -17,7 +17,7 @@ class EndStreamGeneratorRouter:
         # parse stream output node value selector of end nodes
         end_stream_variable_selectors_mapping: dict[str, list[list[str]]] = {}
         for end_node_id, node_config in node_id_config_mapping.items():
-            if not node_config.get("data", {}).get("type") == NodeType.END.value:
+            if node_config.get("data", {}).get("type") != NodeType.END.value:
                 continue
 
             # skip end node in parallel
@@ -136,10 +136,10 @@ class EndStreamGeneratorRouter:
         for edge in reverse_edges:
             source_node_id = edge.source_node_id
             source_node_type = node_id_config_mapping[source_node_id].get("data", {}).get("type")
-            if source_node_type in (
+            if source_node_type in {
                 NodeType.IF_ELSE.value,
                 NodeType.QUESTION_CLASSIFIER,
-            ):
+            }:
                 end_dependencies[end_node_id].append(source_node_id)
             else:
                 cls._recursive_fetch_end_dependencies(

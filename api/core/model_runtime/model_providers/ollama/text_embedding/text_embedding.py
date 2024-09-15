@@ -65,7 +65,7 @@ class OllamaEmbeddingModel(TextEmbeddingModel):
         inputs = []
         used_tokens = 0
 
-        for i, text in enumerate(texts):
+        for text in texts:
             # Here token count is only an approximation based on the GPT2 tokenizer
             num_tokens = self._get_num_tokens_by_gpt2(text)
 
@@ -77,15 +77,10 @@ class OllamaEmbeddingModel(TextEmbeddingModel):
                 inputs.append(text)
 
         # Prepare the payload for the request
-        payload = {
-            "input": inputs,
-            "model": model,
-        }
+        payload = {"input": inputs, "model": model, "options": {"use_mmap": True}}
 
-        # Make the request to the OpenAI API
-        response = requests.post(
-            endpoint_url, headers=headers, data=json.dumps(payload), timeout=(10, 300), options={"use_mmap": "true"}
-        )
+        # Make the request to the Ollama API
+        response = requests.post(endpoint_url, headers=headers, data=json.dumps(payload), timeout=(10, 300))
 
         response.raise_for_status()  # Raise an exception for HTTP errors
         response_data = response.json()

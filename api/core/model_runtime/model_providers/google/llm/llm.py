@@ -6,10 +6,10 @@ from collections.abc import Generator
 from typing import Optional, Union, cast
 
 import google.ai.generativelanguage as glm
-import google.api_core.exceptions as exceptions
 import google.generativeai as genai
-import google.generativeai.client as client
 import requests
+from google.api_core import exceptions
+from google.generativeai import client
 from google.generativeai.types import ContentType, GenerateContentResponse, HarmBlockThreshold, HarmCategory
 from google.generativeai.types.content_types import to_part
 from PIL import Image
@@ -45,7 +45,7 @@ if you are not sure about the structure.
 <instructions>
 {{instructions}}
 </instructions>
-"""
+"""  # noqa: E501
 
 
 class GoogleLargeLanguageModel(LargeLanguageModel):
@@ -337,9 +337,7 @@ class GoogleLargeLanguageModel(LargeLanguageModel):
             message_text = f"{human_prompt} {content}"
         elif isinstance(message, AssistantPromptMessage):
             message_text = f"{ai_prompt} {content}"
-        elif isinstance(message, SystemPromptMessage):
-            message_text = f"{human_prompt} {content}"
-        elif isinstance(message, ToolPromptMessage):
+        elif isinstance(message, SystemPromptMessage | ToolPromptMessage):
             message_text = f"{human_prompt} {content}"
         else:
             raise ValueError(f"Got unknown type {message}")

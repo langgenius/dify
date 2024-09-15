@@ -32,7 +32,7 @@ class VectorizerTool(BuiltinTool):
         if image_id.startswith("__test_"):
             image_binary = b64decode(VECTORIZER_ICON_PNG)
         else:
-            image_binary = self.get_variable_file(self.VARIABLE_KEY.IMAGE)
+            image_binary = self.get_variable_file(self.VariableKey.IMAGE)
             if not image_binary:
                 return self.create_text_message("Image not found, please request user to generate image firstly.")
 

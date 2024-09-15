@@ -572,7 +572,7 @@ class OllamaLargeLanguageModel(LargeLanguageModel):
                     label=I18nObject(en_US="Size of context window"),
                     type=ParameterType.INT,
                     help=I18nObject(
-                        en_US="Sets the size of the context window used to generate the next token. " "(Default: 2048)"
+                        en_US="Sets the size of the context window used to generate the next token. (Default: 2048)"
                     ),
                     default=2048,
                     min=1,
@@ -639,9 +639,10 @@ class OllamaLargeLanguageModel(LargeLanguageModel):
                     type=ParameterType.STRING,
                     help=I18nObject(
                         en_US="Sets how long the model is kept in memory after generating a response. "
-                        "This must be a duration string with a unit (e.g., '10m' for 10 minutes or '24h' for 24 hours). "
-                        "A negative number keeps the model loaded indefinitely, and '0' unloads the model immediately after generating a response. "
-                        "Valid time units are 's','m','h'. (Default: 5m)"
+                        "This must be a duration string with a unit (e.g., '10m' for 10 minutes or '24h' for 24 hours)."
+                        " A negative number keeps the model loaded indefinitely, and '0' unloads the model"
+                        " immediately after generating a response."
+                        " Valid time units are 's','m','h'. (Default: 5m)"
                     ),
                 ),
                 ParameterRule(
@@ -649,7 +650,7 @@ class OllamaLargeLanguageModel(LargeLanguageModel):
                     label=I18nObject(en_US="Format"),
                     type=ParameterType.STRING,
                     help=I18nObject(
-                        en_US="the format to return a response in." " Currently the only accepted value is json."
+                        en_US="the format to return a response in. Currently the only accepted value is json."
                     ),
                     options=["json"],
                 ),

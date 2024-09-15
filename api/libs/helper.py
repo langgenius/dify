@@ -84,7 +84,7 @@ def timestamp_value(timestamp):
         raise ValueError(error)
 
 
-class str_len:
+class StrLen:
     """Restrict input to an integer in a range (inclusive)"""
 
     def __init__(self, max_length, argument="argument"):
@@ -102,7 +102,7 @@ class str_len:
         return value
 
 
-class float_range:
+class FloatRange:
     """Restrict input to an float in a range (inclusive)"""
 
     def __init__(self, low, high, argument="argument"):
@@ -121,7 +121,7 @@ class float_range:
         return value
 
 
-class datetime_string:
+class DatetimeString:
     def __init__(self, format, argument="argument"):
         self.format = format
         self.argument = argument

@@ -302,11 +302,11 @@ class ChatGLMLargeLanguageModel(LargeLanguageModel):
             if delta.delta.function_call:
                 function_calls = [delta.delta.function_call]
 
-            assistant_message_tool_calls = self._extract_response_tool_calls(function_calls if function_calls else [])
+            assistant_message_tool_calls = self._extract_response_tool_calls(function_calls or [])
 
             # transform assistant message to prompt message
             assistant_prompt_message = AssistantPromptMessage(
-                content=delta.delta.content if delta.delta.content else "", tool_calls=assistant_message_tool_calls
+                content=delta.delta.content or "", tool_calls=assistant_message_tool_calls
             )
 
             if delta.finish_reason is not None:

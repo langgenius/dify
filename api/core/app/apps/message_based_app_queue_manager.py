@@ -1,4 +1,4 @@
-from core.app.apps.base_app_queue_manager import AppQueueManager, GenerateTaskStoppedException, PublishFrom
+from core.app.apps.base_app_queue_manager import AppQueueManager, GenerateTaskStoppedError, PublishFrom
 from core.app.entities.app_invoke_entities import InvokeFrom
 from core.app.entities.queue_entities import (
     AppQueueEvent,
@@ -53,4 +53,4 @@ class MessageBasedAppQueueManager(AppQueueManager):
             self.stop_listen()
 
         if pub_from == PublishFrom.APPLICATION_MANAGER and self._is_stopped():
-            raise GenerateTaskStoppedException()
+            raise GenerateTaskStoppedError()

@@ -112,11 +112,11 @@ class SimplePromptTransform(PromptTransform):
         for v in prompt_template_config["special_variable_keys"]:
             # support #context#, #query# and #histories#
             if v == "#context#":
-                variables["#context#"] = context if context else ""
+                variables["#context#"] = context or ""
             elif v == "#query#":
-                variables["#query#"] = query if query else ""
+                variables["#query#"] = query or ""
             elif v == "#histories#":
-                variables["#histories#"] = histories if histories else ""
+                variables["#histories#"] = histories or ""
 
         prompt_template = prompt_template_config["prompt_template"]
         prompt = prompt_template.format(variables)

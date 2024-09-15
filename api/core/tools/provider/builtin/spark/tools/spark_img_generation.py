@@ -15,16 +15,16 @@ from core.tools.entities.tool_entities import ToolInvokeMessage
 from core.tools.tool.builtin_tool import BuiltinTool
 
 
-class AssembleHeaderException(Exception):
+class AssembleHeaderError(Exception):
     def __init__(self, msg):
         self.message = msg
 
 
 class Url:
-    def __init__(this, host, path, schema):
-        this.host = host
-        this.path = path
-        this.schema = schema
+    def __init__(self, host, path, schema):
+        self.host = host
+        self.path = path
+        self.schema = schema
 
 
 # calculate sha256 and encode to base64
@@ -41,7 +41,7 @@ def parse_url(request_url):
     schema = request_url[: stidx + 3]
     edidx = host.index("/")
     if edidx <= 0:
-        raise AssembleHeaderException("invalid request url:" + request_url)
+        raise AssembleHeaderError("invalid request url:" + request_url)
     path = host[edidx:]
     host = host[:edidx]
     u = Url(host, path, schema)
@@ -115,7 +115,7 @@ class SparkImgGeneratorTool(BuiltinTool):
                 self.create_blob_message(
                     blob=b64decode(image["base64_image"]),
                     meta={"mime_type": "image/png"},
-                    save_as=self.VARIABLE_KEY.IMAGE.value,
+                    save_as=self.VariableKey.IMAGE.value,
                 )
             )
         return result

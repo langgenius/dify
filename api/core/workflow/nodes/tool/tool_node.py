@@ -163,10 +163,7 @@ class ToolNode(BaseNode):
         result = []
 
         for response in tool_response:
-            if (
-                response.type == ToolInvokeMessage.MessageType.IMAGE_LINK
-                or response.type == ToolInvokeMessage.MessageType.IMAGE
-            ):
+            if response.type in {ToolInvokeMessage.MessageType.IMAGE_LINK, ToolInvokeMessage.MessageType.IMAGE}:
                 url = response.message
                 ext = path.splitext(url)[1]
                 mimetype = response.meta.get("mime_type", "image/jpeg")

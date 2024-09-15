@@ -24,7 +24,7 @@ class AnswerStreamGeneratorRouter:
         # parse stream output node value selectors of answer nodes
         answer_generate_route: dict[str, list[GenerateRouteChunk]] = {}
         for answer_node_id, node_config in node_id_config_mapping.items():
-            if not node_config.get("data", {}).get("type") == NodeType.ANSWER.value:
+            if node_config.get("data", {}).get("type") != NodeType.ANSWER.value:
                 continue
 
             # get generate route for stream output
@@ -148,11 +148,12 @@ class AnswerStreamGeneratorRouter:
         for edge in reverse_edges:
             source_node_id = edge.source_node_id
             source_node_type = node_id_config_mapping[source_node_id].get("data", {}).get("type")
-            if source_node_type in (
+            if source_node_type in {
                 NodeType.ANSWER.value,
                 NodeType.IF_ELSE.value,
-                NodeType.QUESTION_CLASSIFIER,
-            ):
+                NodeType.QUESTION_CLASSIFIER.value,
+                NodeType.ITERATION.value,
+            }:
                 answer_dependencies[answer_node_id].append(source_node_id)
             else:
                 cls._recursive_fetch_answer_dependencies(

@@ -1,5 +1,6 @@
 import hashlib
 import hmac
+import operator
 from functools import reduce
 from urllib.parse import quote
 
@@ -40,4 +41,4 @@ class Util:
             if len(hv) == 1:
                 hv = "0" + hv
             lst.append(hv)
-        return reduce(lambda x, y: x + y, lst)
+        return reduce(operator.add, lst)

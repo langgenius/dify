@@ -239,7 +239,8 @@ class OCILargeLanguageModel(LargeLanguageModel):
             config_items = oci_config_content.split("/")
             if len(config_items) != 5:
                 raise CredentialsValidateFailedError(
-                    "oci_config_content should be base64.b64encode('user_ocid/fingerprint/tenancy_ocid/region/compartment_ocid'.encode('utf-8'))"
+                    "oci_config_content should be base64.b64encode("
+                    "'user_ocid/fingerprint/tenancy_ocid/region/compartment_ocid'.encode('utf-8'))"
                 )
             oci_config["user"] = config_items[0]
             oci_config["fingerprint"] = config_items[1]
@@ -442,9 +443,7 @@ class OCILargeLanguageModel(LargeLanguageModel):
             message_text = f"{human_prompt} {content}"
         elif isinstance(message, AssistantPromptMessage):
             message_text = f"{ai_prompt} {content}"
-        elif isinstance(message, SystemPromptMessage):
-            message_text = f"{human_prompt} {content}"
-        elif isinstance(message, ToolPromptMessage):
+        elif isinstance(message, SystemPromptMessage | ToolPromptMessage):
             message_text = f"{human_prompt} {content}"
         else:
             raise ValueError(f"Got unknown type {message}")

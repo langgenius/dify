@@ -71,7 +71,7 @@ class BingSearchTool(BuiltinTool):
             text = ""
             if search_results:
                 for i, result in enumerate(search_results):
-                    text += f'{i+1}: {result.get("name", "")} - {result.get("snippet", "")}\n'
+                    text += f'{i + 1}: {result.get("name", "")} - {result.get("snippet", "")}\n'
 
             if computation and "expression" in computation and "value" in computation:
                 text += "\nComputation:\n"

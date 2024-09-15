@@ -15,7 +15,7 @@ from core.model_manager import ModelInstance
 from core.model_runtime.entities.llm_entities import LLMMode, LLMUsage
 from core.model_runtime.entities.model_entities import ModelFeature, ModelPropertyKey
 from core.model_runtime.model_providers.__base.large_language_model import LargeLanguageModel
-from core.moderation.base import ModerationException
+from core.moderation.base import ModerationError
 from core.tools.entities.tool_entities import ToolRuntimeVariablePool
 from extensions.ext_database import db
 from models.model import App, Conversation, Message, MessageAgentThought
@@ -103,7 +103,7 @@ class AgentChatAppRunner(AppRunner):
                 query=query,
                 message_id=message.id,
             )
-        except ModerationException as e:
+        except ModerationError as e:
             self.direct_output(
                 queue_manager=queue_manager,
                 app_generate_entity=application_generate_entity,

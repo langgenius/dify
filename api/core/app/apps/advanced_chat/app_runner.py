@@ -19,7 +19,7 @@ from core.app.entities.queue_entities import (
     QueueStopEvent,
     QueueTextChunkEvent,
 )
-from core.moderation.base import ModerationException
+from core.moderation.base import ModerationError
 from core.workflow.callbacks.base_workflow_callback import WorkflowCallback
 from core.workflow.entities.node_entities import UserFrom
 from core.workflow.entities.variable_pool import VariablePool
@@ -73,7 +73,7 @@ class AdvancedChatAppRunner(WorkflowBasedAppRunner):
             raise ValueError("Workflow not initialized")
 
         user_id = None
-        if self.application_generate_entity.invoke_from in [InvokeFrom.WEB_APP, InvokeFrom.SERVICE_API]:
+        if self.application_generate_entity.invoke_from in {InvokeFrom.WEB_APP, InvokeFrom.SERVICE_API}:
             end_user = db.session.query(EndUser).filter(EndUser.id == self.application_generate_entity.user_id).first()
             if end_user:
                 user_id = end_user.session_id
@@ -175,7 +175,7 @@ class AdvancedChatAppRunner(WorkflowBasedAppRunner):
             user_id=self.application_generate_entity.user_id,
             user_from=(
                 UserFrom.ACCOUNT
-                if self.application_generate_entity.invoke_from in [InvokeFrom.EXPLORE, InvokeFrom.DEBUGGER]
+                if self.application_generate_entity.invoke_from in {InvokeFrom.EXPLORE, InvokeFrom.DEBUGGER}
                 else UserFrom.END_USER
             ),
             invoke_from=self.application_generate_entity.invoke_from,
@@ -217,7 +217,7 @@ class AdvancedChatAppRunner(WorkflowBasedAppRunner):
                 query=query,
                 message_id=message_id,
             )
-        except ModerationException as e:
+        except ModerationError as e:
             self._complete_with_stream_output(text=str(e), stopped_by=QueueStopEvent.StopBy.INPUT_MODERATION)
             return True
 

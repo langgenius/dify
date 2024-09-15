@@ -13,7 +13,7 @@ from core.model_runtime.entities.message_entities import (
     UserPromptMessage,
 )
 from core.model_runtime.model_providers.volcengine_maas.legacy.errors import wrap_error
-from core.model_runtime.model_providers.volcengine_maas.legacy.volc_sdk import ChatRole, MaasException, MaasService
+from core.model_runtime.model_providers.volcengine_maas.legacy.volc_sdk import ChatRole, MaasError, MaasService
 
 
 class MaaSClient(MaasService):
@@ -106,7 +106,7 @@ class MaaSClient(MaasService):
     def wrap_exception(fn: Callable[[], dict | Generator]) -> dict | Generator:
         try:
             resp = fn()
-        except MaasException as e:
+        except MaasError as e:
             raise wrap_error(e)
 
         return resp

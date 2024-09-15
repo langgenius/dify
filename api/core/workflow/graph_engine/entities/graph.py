@@ -86,10 +86,6 @@ class Graph(BaseModel):
             if target_node_id not in reverse_edge_mapping:
                 reverse_edge_mapping[target_node_id] = []
 
-            # is target node id in source node id edge mapping
-            if any(graph_edge.target_node_id == target_node_id for graph_edge in edge_mapping[source_node_id]):
-                continue
-
             target_edge_ids.add(target_node_id)
 
             # parse run condition
@@ -228,9 +224,7 @@ class Graph(BaseModel):
         """
         leaf_node_ids = []
         for node_id in self.node_ids:
-            if node_id not in self.edge_mapping:
-                leaf_node_ids.append(node_id)
-            elif (
+            if node_id not in self.edge_mapping or (
                 len(self.edge_mapping[node_id]) == 1
                 and self.edge_mapping[node_id][0].target_node_id == self.root_node_id
             ):
@@ -274,7 +268,7 @@ class Graph(BaseModel):
                     f"Node {graph_edge.source_node_id} is connected to the previous node, please check the graph."
                 )
 
-            new_route = route[:]
+            new_route = route.copy()
             new_route.append(graph_edge.target_node_id)
             cls._check_connected_to_previous_node(
                 route=new_route,
@@ -304,132 +298,198 @@ class Graph(BaseModel):
         parallel = None
         if len(target_node_edges) > 1:
             # fetch all node ids in current parallels
-            parallel_branch_node_ids = []
+            parallel_branch_node_ids = {}
             condition_edge_mappings = {}
             for graph_edge in target_node_edges:
                 if graph_edge.run_condition is None:
-                    parallel_branch_node_ids.append(graph_edge.target_node_id)
+                    if "default" not in parallel_branch_node_ids:
+                        parallel_branch_node_ids["default"] = []
+
+                    parallel_branch_node_ids["default"].append(graph_edge.target_node_id)
                 else:
                     condition_hash = graph_edge.run_condition.hash
-                    if not condition_hash in condition_edge_mappings:
+                    if condition_hash not in condition_edge_mappings:
                         condition_edge_mappings[condition_hash] = []
 
                     condition_edge_mappings[condition_hash].append(graph_edge)
 
-            for _, graph_edges in condition_edge_mappings.items():
+            for condition_hash, graph_edges in condition_edge_mappings.items():
                 if len(graph_edges) > 1:
+                    if condition_hash not in parallel_branch_node_ids:
+                        parallel_branch_node_ids[condition_hash] = []
+
                     for graph_edge in graph_edges:
-                        parallel_branch_node_ids.append(graph_edge.target_node_id)
+                        parallel_branch_node_ids[condition_hash].append(graph_edge.target_node_id)
 
-            # any target node id in node_parallel_mapping
-            if parallel_branch_node_ids:
-                parent_parallel_id = parent_parallel.id if parent_parallel else None
+            condition_parallels = {}
+            for condition_hash, condition_parallel_branch_node_ids in parallel_branch_node_ids.items():
+                # any target node id in node_parallel_mapping
+                parallel = None
+                if condition_parallel_branch_node_ids:
+                    parent_parallel_id = parent_parallel.id if parent_parallel else None
 
-                parallel = GraphParallel(
-                    start_from_node_id=start_node_id,
-                    parent_parallel_id=parent_parallel.id if parent_parallel else None,
-                    parent_parallel_start_node_id=parent_parallel.start_from_node_id if parent_parallel else None,
-                )
-                parallel_mapping[parallel.id] = parallel
+                    parallel = GraphParallel(
+                        start_from_node_id=start_node_id,
+                        parent_parallel_id=parent_parallel.id if parent_parallel else None,
+                        parent_parallel_start_node_id=parent_parallel.start_from_node_id if parent_parallel else None,
+                    )
+                    parallel_mapping[parallel.id] = parallel
+                    condition_parallels[condition_hash] = parallel
 
-                in_branch_node_ids = cls._fetch_all_node_ids_in_parallels(
-                    edge_mapping=edge_mapping,
-                    reverse_edge_mapping=reverse_edge_mapping,
-                    parallel_branch_node_ids=parallel_branch_node_ids,
-                )
+                    in_branch_node_ids = cls._fetch_all_node_ids_in_parallels(
+                        edge_mapping=edge_mapping,
+                        reverse_edge_mapping=reverse_edge_mapping,
+                        parallel_branch_node_ids=condition_parallel_branch_node_ids,
+                    )
 
-                # collect all branches node ids
-                parallel_node_ids = []
-                for _, node_ids in in_branch_node_ids.items():
-                    for node_id in node_ids:
-                        in_parent_parallel = True
-                        if parent_parallel_id:
-                            in_parent_parallel = False
-                            for parallel_node_id, parallel_id in node_parallel_mapping.items():
-                                if parallel_id == parent_parallel_id and parallel_node_id == node_id:
-                                    in_parent_parallel = True
-                                    break
+                    # collect all branches node ids
+                    parallel_node_ids = []
+                    for _, node_ids in in_branch_node_ids.items():
+                        for node_id in node_ids:
+                            in_parent_parallel = True
+                            if parent_parallel_id:
+                                in_parent_parallel = False
+                                for parallel_node_id, parallel_id in node_parallel_mapping.items():
+                                    if parallel_id == parent_parallel_id and parallel_node_id == node_id:
+                                        in_parent_parallel = True
+                                        break
 
-                        if in_parent_parallel:
-                            parallel_node_ids.append(node_id)
-                            node_parallel_mapping[node_id] = parallel.id
+                            if in_parent_parallel:
+                                parallel_node_ids.append(node_id)
+                                node_parallel_mapping[node_id] = parallel.id
 
-                outside_parallel_target_node_ids = set()
-                for node_id in parallel_node_ids:
-                    if node_id == parallel.start_from_node_id:
-                        continue
-
-                    node_edges = edge_mapping.get(node_id)
-                    if not node_edges:
-                        continue
-
-                    if len(node_edges) > 1:
-                        continue
-
-                    target_node_id = node_edges[0].target_node_id
-                    if target_node_id in parallel_node_ids:
-                        continue
-
-                    if parent_parallel_id:
-                        parent_parallel = parallel_mapping.get(parent_parallel_id)
-                        if not parent_parallel:
+                    outside_parallel_target_node_ids = set()
+                    for node_id in parallel_node_ids:
+                        if node_id == parallel.start_from_node_id:
                             continue
 
-                    if (
-                        (
-                            node_parallel_mapping.get(target_node_id)
-                            and node_parallel_mapping.get(target_node_id) == parent_parallel_id
-                        )
-                        or (
+                        node_edges = edge_mapping.get(node_id)
+                        if not node_edges:
+                            continue
+
+                        if len(node_edges) > 1:
+                            continue
+
+                        target_node_id = node_edges[0].target_node_id
+                        if target_node_id in parallel_node_ids:
+                            continue
+
+                        if parent_parallel_id:
+                            parent_parallel = parallel_mapping.get(parent_parallel_id)
+                            if not parent_parallel:
+                                continue
+
+                        if (
+                            (
+                                node_parallel_mapping.get(target_node_id)
+                                and node_parallel_mapping.get(target_node_id) == parent_parallel_id
+                            )
+                            or (
+                                parent_parallel
+                                and parent_parallel.end_to_node_id
+                                and target_node_id == parent_parallel.end_to_node_id
+                            )
+                            or (not node_parallel_mapping.get(target_node_id) and not parent_parallel)
+                        ):
+                            outside_parallel_target_node_ids.add(target_node_id)
+
+                    if len(outside_parallel_target_node_ids) == 1:
+                        if (
                             parent_parallel
                             and parent_parallel.end_to_node_id
-                            and target_node_id == parent_parallel.end_to_node_id
-                        )
-                        or (not node_parallel_mapping.get(target_node_id) and not parent_parallel)
-                    ):
-                        outside_parallel_target_node_ids.add(target_node_id)
-
-                if len(outside_parallel_target_node_ids) == 1:
-                    if (
-                        parent_parallel
-                        and parent_parallel.end_to_node_id
-                        and parallel.end_to_node_id == parent_parallel.end_to_node_id
-                    ):
-                        parallel.end_to_node_id = None
-                    else:
-                        parallel.end_to_node_id = outside_parallel_target_node_ids.pop()
-
-        for graph_edge in target_node_edges:
-            current_parallel = None
-            if parallel:
-                current_parallel = parallel
-            elif parent_parallel:
-                if not parent_parallel.end_to_node_id or (
-                    parent_parallel.end_to_node_id and graph_edge.target_node_id != parent_parallel.end_to_node_id
-                ):
-                    current_parallel = parent_parallel
-                else:
-                    # fetch parent parallel's parent parallel
-                    parent_parallel_parent_parallel_id = parent_parallel.parent_parallel_id
-                    if parent_parallel_parent_parallel_id:
-                        parent_parallel_parent_parallel = parallel_mapping.get(parent_parallel_parent_parallel_id)
-                        if parent_parallel_parent_parallel and (
-                            not parent_parallel_parent_parallel.end_to_node_id
-                            or (
-                                parent_parallel_parent_parallel.end_to_node_id
-                                and graph_edge.target_node_id != parent_parallel_parent_parallel.end_to_node_id
-                            )
+                            and parallel.end_to_node_id == parent_parallel.end_to_node_id
                         ):
-                            current_parallel = parent_parallel_parent_parallel
+                            parallel.end_to_node_id = None
+                        else:
+                            parallel.end_to_node_id = outside_parallel_target_node_ids.pop()
 
-            cls._recursively_add_parallels(
-                edge_mapping=edge_mapping,
-                reverse_edge_mapping=reverse_edge_mapping,
-                start_node_id=graph_edge.target_node_id,
-                parallel_mapping=parallel_mapping,
-                node_parallel_mapping=node_parallel_mapping,
-                parent_parallel=current_parallel,
-            )
+            if condition_edge_mappings:
+                for condition_hash, graph_edges in condition_edge_mappings.items():
+                    for graph_edge in graph_edges:
+                        current_parallel: GraphParallel | None = cls._get_current_parallel(
+                            parallel_mapping=parallel_mapping,
+                            graph_edge=graph_edge,
+                            parallel=condition_parallels.get(condition_hash),
+                            parent_parallel=parent_parallel,
+                        )
+
+                        cls._recursively_add_parallels(
+                            edge_mapping=edge_mapping,
+                            reverse_edge_mapping=reverse_edge_mapping,
+                            start_node_id=graph_edge.target_node_id,
+                            parallel_mapping=parallel_mapping,
+                            node_parallel_mapping=node_parallel_mapping,
+                            parent_parallel=current_parallel,
+                        )
+            else:
+                for graph_edge in target_node_edges:
+                    current_parallel = cls._get_current_parallel(
+                        parallel_mapping=parallel_mapping,
+                        graph_edge=graph_edge,
+                        parallel=parallel,
+                        parent_parallel=parent_parallel,
+                    )
+
+                    cls._recursively_add_parallels(
+                        edge_mapping=edge_mapping,
+                        reverse_edge_mapping=reverse_edge_mapping,
+                        start_node_id=graph_edge.target_node_id,
+                        parallel_mapping=parallel_mapping,
+                        node_parallel_mapping=node_parallel_mapping,
+                        parent_parallel=current_parallel,
+                    )
+        else:
+            for graph_edge in target_node_edges:
+                current_parallel = cls._get_current_parallel(
+                    parallel_mapping=parallel_mapping,
+                    graph_edge=graph_edge,
+                    parallel=parallel,
+                    parent_parallel=parent_parallel,
+                )
+
+                cls._recursively_add_parallels(
+                    edge_mapping=edge_mapping,
+                    reverse_edge_mapping=reverse_edge_mapping,
+                    start_node_id=graph_edge.target_node_id,
+                    parallel_mapping=parallel_mapping,
+                    node_parallel_mapping=node_parallel_mapping,
+                    parent_parallel=current_parallel,
+                )
+
+    @classmethod
+    def _get_current_parallel(
+        cls,
+        parallel_mapping: dict[str, GraphParallel],
+        graph_edge: GraphEdge,
+        parallel: Optional[GraphParallel] = None,
+        parent_parallel: Optional[GraphParallel] = None,
+    ) -> Optional[GraphParallel]:
+        """
+        Get current parallel
+        """
+        current_parallel = None
+        if parallel:
+            current_parallel = parallel
+        elif parent_parallel:
+            if not parent_parallel.end_to_node_id or (
+                parent_parallel.end_to_node_id and graph_edge.target_node_id != parent_parallel.end_to_node_id
+            ):
+                current_parallel = parent_parallel
+            else:
+                # fetch parent parallel's parent parallel
+                parent_parallel_parent_parallel_id = parent_parallel.parent_parallel_id
+                if parent_parallel_parent_parallel_id:
+                    parent_parallel_parent_parallel = parallel_mapping.get(parent_parallel_parent_parallel_id)
+                    if parent_parallel_parent_parallel and (
+                        not parent_parallel_parent_parallel.end_to_node_id
+                        or (
+                            parent_parallel_parent_parallel.end_to_node_id
+                            and graph_edge.target_node_id != parent_parallel_parent_parallel.end_to_node_id
+                        )
+                    ):
+                        current_parallel = parent_parallel_parent_parallel
+
+        return current_parallel
 
     @classmethod
     def _check_exceed_parallel_limit(
@@ -620,8 +680,7 @@ class Graph(BaseModel):
         all_routes_node_ids = set()
         parallel_start_node_ids: dict[str, list[str]] = {}
         for branch_node_id, node_ids in routes_node_ids.items():
-            for node_id in node_ids:
-                all_routes_node_ids.add(node_id)
+            all_routes_node_ids.update(node_ids)
 
             if branch_node_id in reverse_edge_mapping:
                 for graph_edge in reverse_edge_mapping[branch_node_id]:
@@ -630,23 +689,11 @@ class Graph(BaseModel):
 
                     parallel_start_node_ids[graph_edge.source_node_id].append(branch_node_id)
 
-        parallel_start_node_id = None
-        for p_start_node_id, branch_node_ids in parallel_start_node_ids.items():
+        for _, branch_node_ids in parallel_start_node_ids.items():
             if set(branch_node_ids) == set(routes_node_ids.keys()):
-                parallel_start_node_id = p_start_node_id
                 return True
 
-        if not parallel_start_node_id:
-            raise Exception("Parallel start node id not found")
-
-        for graph_edge in reverse_edge_mapping[start_node_id]:
-            if (
-                graph_edge.source_node_id not in all_routes_node_ids
-                or graph_edge.source_node_id != parallel_start_node_id
-            ):
-                return False
-
-        return True
+        return False
 
     @classmethod
     def _is_node2_after_node1(cls, node1_id: str, node2_id: str, edge_mapping: dict[str, list[GraphEdge]]) -> bool:

@@ -223,7 +223,7 @@ class OpsTraceManager:
         :return:
         """
         # auth check
-        if tracing_provider not in provider_config_map.keys() and tracing_provider is not None:
+        if tracing_provider not in provider_config_map and tracing_provider is not None:
             raise ValueError(f"Invalid tracing provider: {tracing_provider}")
 
         app_config: App = db.session.query(App).filter(App.id == app_id).first()
@@ -354,11 +354,11 @@ class TraceTask:
         workflow_run_inputs = json.loads(workflow_run.inputs) if workflow_run.inputs else {}
         workflow_run_outputs = json.loads(workflow_run.outputs) if workflow_run.outputs else {}
         workflow_run_version = workflow_run.version
-        error = workflow_run.error if workflow_run.error else ""
+        error = workflow_run.error or ""
 
         total_tokens = workflow_run.total_tokens
 
-        file_list = workflow_run_inputs.get("sys.file") if workflow_run_inputs.get("sys.file") else []
+        file_list = workflow_run_inputs.get("sys.file") or []
         query = workflow_run_inputs.get("query") or workflow_run_inputs.get("sys.query") or ""
 
         # get workflow_app_log_id
@@ -452,7 +452,7 @@ class TraceTask:
             message_tokens=message_tokens,
             answer_tokens=message_data.answer_tokens,
             total_tokens=message_tokens + message_data.answer_tokens,
-            error=message_data.error if message_data.error else "",
+            error=message_data.error or "",
             inputs=inputs,
             outputs=message_data.answer,
             file_list=file_list,
@@ -487,7 +487,7 @@ class TraceTask:
             workflow_app_log_id = str(workflow_app_log_data.id) if workflow_app_log_data else None
 
         moderation_trace_info = ModerationTraceInfo(
-            message_id=workflow_app_log_id if workflow_app_log_id else message_id,
+            message_id=workflow_app_log_id or message_id,
             inputs=inputs,
             message_data=message_data.to_dict(),
             flagged=moderation_result.flagged,
@@ -527,7 +527,7 @@ class TraceTask:
             workflow_app_log_id = str(workflow_app_log_data.id) if workflow_app_log_data else None
 
         suggested_question_trace_info = SuggestedQuestionTraceInfo(
-            message_id=workflow_app_log_id if workflow_app_log_id else message_id,
+            message_id=workflow_app_log_id or message_id,
             message_data=message_data.to_dict(),
             inputs=message_data.message,
             outputs=message_data.answer,
@@ -569,7 +569,7 @@ class TraceTask:
 
         dataset_retrieval_trace_info = DatasetRetrievalTraceInfo(
             message_id=message_id,
-            inputs=message_data.query if message_data.query else message_data.inputs,
+            inputs=message_data.query or message_data.inputs,
             documents=[doc.model_dump() for doc in documents],
             start_time=timer.get("start"),
             end_time=timer.get("end"),
@@ -695,8 +695,7 @@ class TraceQueueManager:
             self.start_timer()
 
     def add_trace_task(self, trace_task: TraceTask):
-        global trace_manager_timer
-        global trace_manager_queue
+        global trace_manager_timer, trace_manager_queue
         try:
             if self.trace_instance:
                 trace_task.app_id = self.app_id

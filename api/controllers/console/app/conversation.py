@@ -20,7 +20,7 @@ from fields.conversation_fields import (
     conversation_pagination_fields,
     conversation_with_summary_pagination_fields,
 )
-from libs.helper import datetime_string
+from libs.helper import DatetimeString
 from libs.login import login_required
 from models.model import AppMode, Conversation, EndUser, Message, MessageAnnotation
 
@@ -36,8 +36,8 @@ class CompletionConversationApi(Resource):
             raise Forbidden()
         parser = reqparse.RequestParser()
         parser.add_argument("keyword", type=str, location="args")
-        parser.add_argument("start", type=datetime_string("%Y-%m-%d %H:%M"), location="args")
-        parser.add_argument("end", type=datetime_string("%Y-%m-%d %H:%M"), location="args")
+        parser.add_argument("start", type=DatetimeString("%Y-%m-%d %H:%M"), location="args")
+        parser.add_argument("end", type=DatetimeString("%Y-%m-%d %H:%M"), location="args")
         parser.add_argument(
             "annotation_status", type=str, choices=["annotated", "not_annotated", "all"], default="all", location="args"
         )
@@ -143,8 +143,8 @@ class ChatConversationApi(Resource):
             raise Forbidden()
         parser = reqparse.RequestParser()
         parser.add_argument("keyword", type=str, location="args")
-        parser.add_argument("start", type=datetime_string("%Y-%m-%d %H:%M"), location="args")
-        parser.add_argument("end", type=datetime_string("%Y-%m-%d %H:%M"), location="args")
+        parser.add_argument("start", type=DatetimeString("%Y-%m-%d %H:%M"), location="args")
+        parser.add_argument("end", type=DatetimeString("%Y-%m-%d %H:%M"), location="args")
         parser.add_argument(
             "annotation_status", type=str, choices=["annotated", "not_annotated", "all"], default="all", location="args"
         )

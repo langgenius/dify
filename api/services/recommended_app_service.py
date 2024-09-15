@@ -1,6 +1,7 @@
 import json
 import logging
 from os import path
+from pathlib import Path
 from typing import Optional
 
 import requests
@@ -218,10 +219,9 @@ class RecommendedAppService:
             return cls.builtin_data
 
         root_path = current_app.root_path
-        with open(path.join(root_path, "constants", "recommended_apps.json"), encoding="utf-8") as f:
-            json_data = f.read()
-            data = json.loads(json_data)
-            cls.builtin_data = data
+        cls.builtin_data = json.loads(
+            Path(path.join(root_path, "constants", "recommended_apps.json")).read_text(encoding="utf-8")
+        )
 
         return cls.builtin_data
 

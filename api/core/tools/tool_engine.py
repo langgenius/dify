@@ -189,11 +189,11 @@ class ToolEngine:
                 result += response.message
             elif response.type == ToolInvokeMessage.MessageType.LINK:
                 result += f"result link: {response.message}. please tell user to check it."
-            elif (
-                response.type == ToolInvokeMessage.MessageType.IMAGE_LINK
-                or response.type == ToolInvokeMessage.MessageType.IMAGE
-            ):
-                result += "image has been created and sent to user already, you do not need to create it, just tell the user to check it now."
+            elif response.type in {ToolInvokeMessage.MessageType.IMAGE_LINK, ToolInvokeMessage.MessageType.IMAGE}:
+                result += (
+                    "image has been created and sent to user already, you do not need to create it,"
+                    " just tell the user to check it now."
+                )
             elif response.type == ToolInvokeMessage.MessageType.JSON:
                 result += f"tool response: {json.dumps(response.message, ensure_ascii=False)}."
             else:
@@ -209,10 +209,7 @@ class ToolEngine:
         result = []
 
         for response in tool_response:
-            if (
-                response.type == ToolInvokeMessage.MessageType.IMAGE_LINK
-                or response.type == ToolInvokeMessage.MessageType.IMAGE
-            ):
+            if response.type in {ToolInvokeMessage.MessageType.IMAGE_LINK, ToolInvokeMessage.MessageType.IMAGE}:
                 mimetype = None
                 if response.meta.get("mime_type"):
                     mimetype = response.meta.get("mime_type")
@@ -294,7 +291,7 @@ class ToolEngine:
                 belongs_to="assistant",
                 url=message.url,
                 upload_file_id=None,
-                created_by_role=("account" if invoke_from in [InvokeFrom.EXPLORE, InvokeFrom.DEBUGGER] else "end_user"),
+                created_by_role=("account" if invoke_from in {InvokeFrom.EXPLORE, InvokeFrom.DEBUGGER} else "end_user"),
                 created_by=user_id,
             )
 

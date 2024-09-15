@@ -23,6 +23,7 @@ class WeaviateConfig(BaseModel):
     batch_size: int = 100
 
     @model_validator(mode="before")
+    @classmethod
     def validate_config(cls, values: dict) -> dict:
         if not values["endpoint"]:
             raise ValueError("config WEAVIATE_ENDPOINT is required")
@@ -204,7 +205,7 @@ class WeaviateVector(BaseVector):
 
         docs = []
         for doc, score in docs_and_scores:
-            score_threshold = kwargs.get("score_threshold", 0.0) if kwargs.get("score_threshold", 0.0) else 0.0
+            score_threshold = float(kwargs.get("score_threshold") or 0.0)
             # check score threshold
             if score > score_threshold:
                 doc.metadata["score"] = score

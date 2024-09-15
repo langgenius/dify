@@ -34,6 +34,7 @@ class RelytConfig(BaseModel):
     database: str
 
     @model_validator(mode="before")
+    @classmethod
     def validate_config(cls, values: dict) -> dict:
         if not values["host"]:
             raise ValueError("config RELYT_HOST is required")
@@ -126,27 +127,26 @@ class RelytVector(BaseVector):
         )
 
         chunks_table_data = []
-        with self.client.connect() as conn:
-            with conn.begin():
-                for document, metadata, chunk_id, embedding in zip(texts, metadatas, ids, embeddings):
-                    chunks_table_data.append(
-                        {
-                            "id": chunk_id,
-                            "embedding": embedding,
-                            "document": document,
-                            "metadata": metadata,
-                        }
-                    )
+        with self.client.connect() as conn, conn.begin():
+            for document, metadata, chunk_id, embedding in zip(texts, metadatas, ids, embeddings):
+                chunks_table_data.append(
+                    {
+                        "id": chunk_id,
+                        "embedding": embedding,
+                        "document": document,
+                        "metadata": metadata,
+                    }
+                )
 
-                    # Execute the batch insert when the batch size is reached
-                    if len(chunks_table_data) == 500:
-                        conn.execute(insert(chunks_table).values(chunks_table_data))
-                        # Clear the chunks_table_data list for the next batch
-                        chunks_table_data.clear()
-
-                # Insert any remaining records that didn't make up a full batch
-                if chunks_table_data:
+                # Execute the batch insert when the batch size is reached
+                if len(chunks_table_data) == 500:
                     conn.execute(insert(chunks_table).values(chunks_table_data))
+                    # Clear the chunks_table_data list for the next batch
+                    chunks_table_data.clear()
+
+            # Insert any remaining records that didn't make up a full batch
+            if chunks_table_data:
+                conn.execute(insert(chunks_table).values(chunks_table_data))
 
         return ids
 
@@ -185,11 +185,10 @@ class RelytVector(BaseVector):
         )
 
         try:
-            with self.client.connect() as conn:
-                with conn.begin():
-                    delete_condition = chunks_table.c.id.in_(ids)
-                    conn.execute(chunks_table.delete().where(delete_condition))
-                    return True
+            with self.client.connect() as conn, conn.begin():
+                delete_condition = chunks_table.c.id.in_(ids)
+                conn.execute(chunks_table.delete().where(delete_condition))
+                return True
         except Exception as e:
             print("Delete operation failed:", str(e))
             return False
@@ -231,7 +230,7 @@ class RelytVector(BaseVector):
         # Organize results.
         docs = []
         for document, score in results:
-            score_threshold = kwargs.get("score_threshold") if kwargs.get("score_threshold") else 0.0
+            score_threshold = float(kwargs.get("score_threshold") or 0.0)
             if 1 - score > score_threshold:
                 docs.append(document)
         return docs
@@ -246,7 +245,7 @@ class RelytVector(BaseVector):
         try:
             from sqlalchemy.engine import Row
         except ImportError:
-            raise ImportError("Could not import Row from sqlalchemy.engine. " "Please 'pip install sqlalchemy>=1.4'.")
+            raise ImportError("Could not import Row from sqlalchemy.engine. Please 'pip install sqlalchemy>=1.4'.")
 
         filter_condition = ""
         if filter is not None:

@@ -208,11 +208,9 @@ class ArkClientV3:
             presence_penalty=presence_penalty,
             top_p=top_p,
             temperature=temperature,
+            stream_options={"include_usage": True},
         )
-        for chunk in chunks:
-            if not chunk.choices:
-                continue
-            yield chunk
+        yield from chunks
 
     def embeddings(self, texts: list[str]) -> CreateEmbeddingResponse:
         return self.ark.embeddings.create(model=self.endpoint_id, input=texts)

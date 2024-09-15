@@ -144,7 +144,7 @@ class Dataset(db.Model):
             "top_k": 2,
             "score_threshold_enabled": False,
         }
-        return self.retrieval_model if self.retrieval_model else default_retrieval_model
+        return self.retrieval_model or default_retrieval_model
 
     @property
     def tags(self):
@@ -160,7 +160,7 @@ class Dataset(db.Model):
             .all()
         )
 
-        return tags if tags else []
+        return tags or []
 
     @staticmethod
     def gen_collection_name_by_id(dataset_id: str) -> str:
@@ -284,9 +284,9 @@ class Document(db.Model):
         status = None
         if self.indexing_status == "waiting":
             status = "queuing"
-        elif self.indexing_status not in ["completed", "error", "waiting"] and self.is_paused:
+        elif self.indexing_status not in {"completed", "error", "waiting"} and self.is_paused:
             status = "paused"
-        elif self.indexing_status in ["parsing", "cleaning", "splitting", "indexing"]:
+        elif self.indexing_status in {"parsing", "cleaning", "splitting", "indexing"}:
             status = "indexing"
         elif self.indexing_status == "error":
             status = "error"
@@ -331,7 +331,7 @@ class Document(db.Model):
                             "created_at": file_detail.created_at.timestamp(),
                         }
                     }
-            elif self.data_source_type == "notion_import" or self.data_source_type == "website_crawl":
+            elif self.data_source_type in {"notion_import", "website_crawl"}:
                 return json.loads(self.data_source_info)
         return {}
 
