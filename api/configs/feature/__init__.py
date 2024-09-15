@@ -265,6 +265,7 @@ class InnerAPIConfig(BaseSettings):
         default=None,
     )
 
+
 class APIConfig(BaseSettings):
     """
     API configs
@@ -274,6 +275,7 @@ class APIConfig(BaseSettings):
         description="The maximum number of API keys that can be created",
         default=10,
     )
+
 
 class LoggingConfig(BaseSettings):
     """
