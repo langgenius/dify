@@ -130,7 +130,6 @@ class DatasetApi(DatasetApiResource):
 
 
 class DatasetHitTestingApi(DatasetApiResource, HitTestingMixin):
-
     def post(self, _, dataset_id):
         return self._post(dataset_id)
 

@@ -29,7 +29,6 @@ from services.hit_testing_service import HitTestingService
 
 
 class HitTestingMixin:
-
     def _post(self, dataset_id):
         dataset_id_str = str(dataset_id)
 
