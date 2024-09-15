@@ -405,21 +405,22 @@ class Graph(BaseModel):
 
             if condition_edge_mappings:
                 for condition_hash, graph_edges in condition_edge_mappings.items():
-                    current_parallel = cls._get_current_parallel(
-                        parallel_mapping=parallel_mapping,
-                        graph_edge=graph_edge,
-                        parallel=condition_parallels.get(condition_hash),
-                        parent_parallel=parent_parallel,
-                    )
+                    for graph_edge in graph_edges:
+                        current_parallel: GraphParallel | None = cls._get_current_parallel(
+                            parallel_mapping=parallel_mapping,
+                            graph_edge=graph_edge,
+                            parallel=condition_parallels.get(condition_hash),
+                            parent_parallel=parent_parallel,
+                        )
 
-                    cls._recursively_add_parallels(
-                        edge_mapping=edge_mapping,
-                        reverse_edge_mapping=reverse_edge_mapping,
-                        start_node_id=graph_edge.target_node_id,
-                        parallel_mapping=parallel_mapping,
-                        node_parallel_mapping=node_parallel_mapping,
-                        parent_parallel=current_parallel,
-                    )
+                        cls._recursively_add_parallels(
+                            edge_mapping=edge_mapping,
+                            reverse_edge_mapping=reverse_edge_mapping,
+                            start_node_id=graph_edge.target_node_id,
+                            parallel_mapping=parallel_mapping,
+                            node_parallel_mapping=node_parallel_mapping,
+                            parent_parallel=current_parallel,
+                        )
             else:
                 for graph_edge in target_node_edges:
                     current_parallel = cls._get_current_parallel(
@@ -688,23 +689,11 @@ class Graph(BaseModel):
 
                     parallel_start_node_ids[graph_edge.source_node_id].append(branch_node_id)
 
-        parallel_start_node_id = None
-        for p_start_node_id, branch_node_ids in parallel_start_node_ids.items():
+        for _, branch_node_ids in parallel_start_node_ids.items():
             if set(branch_node_ids) == set(routes_node_ids.keys()):
-                parallel_start_node_id = p_start_node_id
                 return True
 
-        if not parallel_start_node_id:
-            raise Exception("Parallel start node id not found")
-
-        for graph_edge in reverse_edge_mapping[start_node_id]:
-            if (
-                graph_edge.source_node_id not in all_routes_node_ids
-                or graph_edge.source_node_id != parallel_start_node_id
-            ):
-                return False
-
-        return True
+        return False
 
     @classmethod
     def _is_node2_after_node1(cls, node1_id: str, node2_id: str, edge_mapping: dict[str, list[GraphEdge]]) -> bool:

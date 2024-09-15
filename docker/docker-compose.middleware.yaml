@@ -41,7 +41,7 @@ services:
 
   # The DifySandbox
   sandbox:
-    image: langgenius/dify-sandbox:0.2.7
+    image: langgenius/dify-sandbox:0.2.9
     restart: always
     environment:
       # The DifySandbox configurations
@@ -89,6 +89,7 @@ services:
   weaviate:
     image: semitechnologies/weaviate:1.19.0
     profiles:
+      - ""
       - weaviate
     restart: always
     volumes:

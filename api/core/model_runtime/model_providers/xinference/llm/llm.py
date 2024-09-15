@@ -459,8 +459,7 @@ class XinferenceAILargeLanguageModel(LargeLanguageModel):
         if "server_url" not in credentials:
             raise CredentialsValidateFailedError("server_url is required in credentials")
 
-        if credentials["server_url"].endswith("/"):
-            credentials["server_url"] = credentials["server_url"][:-1]
+        credentials["server_url"] = credentials["server_url"].removesuffix("/")
 
         api_key = credentials.get("api_key") or "abc"
 

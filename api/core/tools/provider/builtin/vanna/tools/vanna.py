@@ -38,7 +38,7 @@ class VannaTool(BuiltinTool):
         vn = VannaDefault(model=model, api_key=api_key)
 
         db_type = tool_parameters.get("db_type", "")
-        if db_type in ["Postgres", "MySQL", "Hive", "ClickHouse"]:
+        if db_type in {"Postgres", "MySQL", "Hive", "ClickHouse"}:
             if not db_name:
                 return self.create_text_message("Please input database name")
             if not username:

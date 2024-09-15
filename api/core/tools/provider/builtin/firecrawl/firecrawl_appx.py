@@ -37,9 +37,8 @@ class FirecrawlApp:
         for i in range(retries):
             try:
                 response = requests.request(method, url, json=data, headers=headers)
-                response.raise_for_status()
                 return response.json()
-            except requests.exceptions.RequestException as e:
+            except requests.exceptions.RequestException:
                 if i < retries - 1:
                     time.sleep(backoff_factor * (2**i))
                 else:
@@ -47,7 +46,7 @@ class FirecrawlApp:
         return None
 
     def scrape_url(self, url: str, **kwargs):
-        endpoint = f"{self.base_url}/v0/scrape"
+        endpoint = f"{self.base_url}/v1/scrape"
         data = {"url": url, **kwargs}
         logger.debug(f"Sent request to {endpoint=} body={data}")
         response = self._request("POST", endpoint, data)
@@ -55,39 +54,41 @@ class FirecrawlApp:
             raise HTTPError("Failed to scrape URL after multiple retries")
         return response
 
-    def search(self, query: str, **kwargs):
-        endpoint = f"{self.base_url}/v0/search"
-        data = {"query": query, **kwargs}
+    def map(self, url: str, **kwargs):
+        endpoint = f"{self.base_url}/v1/map"
+        data = {"url": url, **kwargs}
         logger.debug(f"Sent request to {endpoint=} body={data}")
         response = self._request("POST", endpoint, data)
         if response is None:
-            raise HTTPError("Failed to perform search after multiple retries")
+            raise HTTPError("Failed to perform map after multiple retries")
         return response
 
     def crawl_url(
         self, url: str, wait: bool = True, poll_interval: int = 5, idempotency_key: str | None = None, **kwargs
     ):
-        endpoint = f"{self.base_url}/v0/crawl"
+        endpoint = f"{self.base_url}/v1/crawl"
         headers = self._prepare_headers(idempotency_key)
         data = {"url": url, **kwargs}
         logger.debug(f"Sent request to {endpoint=} body={data}")
         response = self._request("POST", endpoint, data, headers)
         if response is None:
             raise HTTPError("Failed to initiate crawl after multiple retries")
-        job_id: str = response["jobId"]
+        elif response.get("success") == False:
+            raise HTTPError(f'Failed to crawl: {response.get("error")}')
+        job_id: str = response["id"]
         if wait:
             return self._monitor_job_status(job_id=job_id, poll_interval=poll_interval)
         return response
 
     def check_crawl_status(self, job_id: str):
-        endpoint = f"{self.base_url}/v0/crawl/status/{job_id}"
+        endpoint = f"{self.base_url}/v1/crawl/{job_id}"
         response = self._request("GET", endpoint)
         if response is None:
             raise HTTPError(f"Failed to check status for job {job_id} after multiple retries")
         return response
 
     def cancel_crawl_job(self, job_id: str):
-        endpoint = f"{self.base_url}/v0/crawl/cancel/{job_id}"
+        endpoint = f"{self.base_url}/v1/crawl/{job_id}"
         response = self._request("DELETE", endpoint)
         if response is None:
             raise HTTPError(f"Failed to cancel job {job_id} after multiple retries")
@@ -116,6 +117,6 @@ def get_json_params(tool_parameters: dict[str, Any], key):
             # support both single quotes and double quotes
             param = param.replace("'", '"')
             param = json.loads(param)
-        except:
+        except Exception:
             raise ValueError(f"Invalid {key} format.")
         return param

@@ -214,6 +214,7 @@ const ModelLoadBalancingEntryModal: FC<ModelModalProps> = ({
           ...value,
           ...getSecretValues(value),
         },
+        entry?.id,
       )
       if (res.status === ValidatedStatus.Success) {
         // notify({ type: 'success', message: t('common.actionMsg.modifiedSuccessfully') })

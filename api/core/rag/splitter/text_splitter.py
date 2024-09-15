@@ -35,7 +35,7 @@ def _split_text_with_regex(text: str, separator: str, keep_separator: bool) -> l
             splits = re.split(separator, text)
     else:
         splits = list(text)
-    return [s for s in splits if (s != "" and s != "\n")]
+    return [s for s in splits if (s not in {"", "\n"})]
 
 
 class TextSplitter(BaseDocumentTransformer, ABC):
