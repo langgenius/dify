@@ -204,7 +204,7 @@ x-shared-env: &shared-api-worker-env
   CODE_MAX_NUMBER_ARRAY_LENGTH: ${CODE_MAX_NUMBER_ARRAY_LENGTH:-1000}
   SSRF_PROXY_HTTP_URL: ${SSRF_PROXY_HTTP_URL:-http://ssrf_proxy:3128}
   SSRF_PROXY_HTTPS_URL: ${SSRF_PROXY_HTTPS_URL:-http://ssrf_proxy:3128}
-
+  MAX_API_KEYS: ${MAX_API_KEYS:-10}
 services:
   # API service
   api:

@@ -265,6 +265,15 @@ class InnerAPIConfig(BaseSettings):
         default=None,
     )
 
+class APIConfig(BaseSettings):
+    """
+    API configs
+    """
+
+    MAX_API_KEYS: PositiveInt = Field(
+        description="The maximum number of API keys that can be created",
+        default=10,
+    )
 
 class LoggingConfig(BaseSettings):
     """
@@ -601,6 +610,7 @@ class PositionConfig(BaseSettings):
 
 class FeatureConfig(
     # place the configs in alphabet order
+    APIConfig,
     AppExecutionConfig,
     BillingConfig,
     CodeExecutionSandboxConfig,

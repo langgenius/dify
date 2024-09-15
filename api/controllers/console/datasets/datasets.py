@@ -465,7 +465,7 @@ class DatasetIndexingStatusApi(Resource):
 
 
 class DatasetApiKeyApi(Resource):
-    max_keys = 10
+    max_keys = dify_config.MAX_API_KEYS
     token_prefix = "dataset-"
     resource_type = "dataset"
 

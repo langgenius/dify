@@ -3,6 +3,7 @@ from flask_login import current_user
 from flask_restful import Resource, fields, marshal_with
 from werkzeug.exceptions import Forbidden
 
+from configs import dify_config
 from extensions.ext_database import db
 from libs.helper import TimestampField
 from libs.login import login_required
@@ -40,7 +41,7 @@ class BaseApiKeyListResource(Resource):
     resource_model = None
     resource_id_field = None
     token_prefix = None
-    max_keys = 10
+    max_keys = dify_config.MAX_API_KEYS
 
     @marshal_with(api_key_list)
     def get(self, resource_id):
