@@ -77,7 +77,7 @@ const Answer: FC<AnswerProps> = ({
 
   const getContentWidth = () => {
     if (contentRef.current)
-      setContentWidth(contentRef.current.clientWidth)
+      setContentWidth(contentRef.current?.clientWidth)
   }
 
   useEffect(() => {
