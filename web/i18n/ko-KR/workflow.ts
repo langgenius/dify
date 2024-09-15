@@ -93,6 +93,8 @@ const translation = {
     disconnect: '분리하다',
     jumpToNode: '이 노드로 이동',
     addParallelNode: '병렬 노드 추가',
+    parallel: '병렬',
+    branch: '브랜치',
   },
   env: {
     envPanelTitle: '환경 변수',

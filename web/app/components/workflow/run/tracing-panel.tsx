@@ -11,6 +11,7 @@ import {
   RiArrowDownSLine,
   RiMenu4Line,
 } from '@remixicon/react'
+import { useTranslation } from 'react-i18next'
 import NodePanel from './node'
 import {
   BlockEnum,
@@ -37,7 +38,7 @@ type TracingNodeProps = {
   hideNodeProcessDetail?: boolean
 }
 
-function buildLogTree(nodes: NodeTracing[]): TracingNodeProps[] {
+function buildLogTree(nodes: NodeTracing[], t: (key: string) => string): TracingNodeProps[] {
   const rootNodes: TracingNodeProps[] = []
   const parallelStacks: { [key: string]: TracingNodeProps } = {}
   const levelCounts: { [key: string]: number } = {}
@@ -58,7 +59,7 @@ function buildLogTree(nodes: NodeTracing[]): TracingNodeProps[] {
     const parentTitle = parentId ? parallelStacks[parentId]?.parallelTitle : ''
     const levelNumber = parentTitle ? parseInt(parentTitle.split('-')[1]) + 1 : 1
     const letter = parallelChildCounts[levelKey]?.size > 1 ? String.fromCharCode(64 + levelCounts[levelKey]) : ''
-    return `PARALLEL-${levelNumber}${letter}`
+    return `${t('workflow.common.parallel')}-${levelNumber}${letter}`
   }
 
   const getBranchTitle = (parentId: string | null, branchNum: number): string => {
@@ -67,7 +68,7 @@ function buildLogTree(nodes: NodeTracing[]): TracingNodeProps[] {
     const levelNumber = parentTitle ? parseInt(parentTitle.split('-')[1]) + 1 : 1
     const letter = parallelChildCounts[levelKey]?.size > 1 ? String.fromCharCode(64 + levelCounts[levelKey]) : ''
     const branchLetter = String.fromCharCode(64 + branchNum)
-    return `BRANCH-${levelNumber}${letter}-${branchLetter}`
+    return `${t('workflow.common.branch')}-${levelNumber}${letter}-${branchLetter}`
   }
 
   // Count parallel children (for figuring out if we need to use letters)
@@ -163,7 +164,8 @@ const TracingPanel: FC<TracingPanelProps> = ({
   hideNodeInfo = false,
   hideNodeProcessDetail = false,
 }) => {
-  const treeNodes = buildLogTree(list)
+  const { t } = useTranslation()
+  const treeNodes = buildLogTree(list, t)
   const [collapsedNodes, setCollapsedNodes] = useState<Set<string>>(new Set())
   const [hoveredParallel, setHoveredParallel] = useState<string | null>(null)
 

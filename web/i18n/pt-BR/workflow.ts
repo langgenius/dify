@@ -93,6 +93,8 @@ const translation = {
     disconnect: 'Desligar',
     jumpToNode: 'Ir para este nó',
     addParallelNode: 'Adicionar nó paralelo',
+    parallel: 'PARALELO',
+    branch: 'RAMIFICAÇÃO',
   },
   env: {
     envPanelTitle: 'Variáveis de Ambiente',
