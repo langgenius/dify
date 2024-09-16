@@ -356,9 +356,7 @@ def migrate_knowledge_vector_database():
                 try:
                     vector.delete()
                     click.echo(
-                        click.style(
-                            f"Deleted vector index {collection_name} for dataset {dataset.id}.", fg="green"
-                        )
+                        click.style(f"Deleted vector index {collection_name} for dataset {dataset.id}.", fg="green")
                     )
                 except Exception as e:
                     click.echo(
@@ -416,9 +414,7 @@ def migrate_knowledge_vector_database():
                             )
                         )
                         vector.create(documents)
-                        click.echo(
-                            click.style(f"Created vector index for dataset {dataset.id}.", fg="green")
-                        )
+                        click.echo(click.style(f"Created vector index for dataset {dataset.id}.", fg="green"))
                     except Exception as e:
                         click.echo(click.style(f"Failed to created vector index for dataset {dataset.id}.", fg="red"))
                         raise e
@@ -539,9 +535,7 @@ def add_qdrant_doc_id_index(field: str):
             except UnexpectedResponse as e:
                 # Collection does not exist, so return
                 if e.status_code == 404:
-                    click.echo(
-                        click.style(f"Collection not found: {binding.collection_name}.", fg="red")
-                    )
+                    click.echo(click.style(f"Collection not found: {binding.collection_name}.", fg="red"))
                     continue
                 # Some other error occurred, so re-raise the exception
                 else:
@@ -593,7 +587,8 @@ def create_tenant(email: str, language: Optional[str] = None, name: Optional[str
 
     click.echo(
         click.style(
-            "Account and tenant created.\nAccount: {}\nPassword: {}".format(email, new_password), fg="green",
+            "Account and tenant created.\nAccount: {}\nPassword: {}".format(email, new_password),
+            fg="green",
         )
     )
 
