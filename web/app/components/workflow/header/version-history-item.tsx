@@ -1,8 +1,8 @@
-import React from 'react';
-import dayjs from 'dayjs';
-import { WorkflowVersion } from '../types';
-import cn from '@/utils/classnames';
-import type { VersionHistory } from '@/types/workflow';
+import React from 'react'
+import dayjs from 'dayjs'
+import { WorkflowVersion } from '../types'
+import cn from '@/utils/classnames'
+import type { VersionHistory } from '@/types/workflow'
 
 type VersionHistoryItemProps = {
   item: VersionHistory
@@ -48,4 +48,4 @@ const VersionHistoryItem: React.FC<VersionHistoryItemProps> = ({ item, selectedV
   )
 }
 
-export default React.memo(VersionHistoryItem);
+export default React.memo(VersionHistoryItem)
