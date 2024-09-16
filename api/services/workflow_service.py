@@ -4,6 +4,8 @@ from collections.abc import Sequence
 from datetime import UTC, datetime
 from typing import Optional, cast
 
+from sqlalchemy import desc
+
 from core.app.apps.advanced_chat.app_config_manager import AdvancedChatAppConfigManager
 from core.app.apps.workflow.app_config_manager import WorkflowAppConfigManager
 from core.model_runtime.utils.encoders import jsonable_encoder
@@ -75,6 +77,38 @@ class WorkflowService:
         )
 
         return workflow
+
+    def get_all_published_workflow(self, app_model: App) -> list[Workflow]:
+        """
+        Get published workflow
+        """
+
+        if not app_model.workflow_id:
+            return None
+
+        # fetch published workflow by workflow_id
+        workflows = (
+            db.session.query(Workflow)
+            .filter(Workflow.app_id == app_model.id)
+            .order_by(desc(Workflow.version))
+            .limit(10)
+            .all()
+        )
+
+        if len(workflows) > 1:
+            workflows[1].version = "current"
+
+        for workflow in workflows:
+            try:
+                # Try to parse the version as a datetime object
+                version_datetime = datetime.strptime(workflow.version, "%Y-%m-%d %H:%M:%S.%f")
+                # If successful, reformat it to the desired format
+                workflow.version = version_datetime.strftime("%Y-%m-%d %H:%M:%S")
+            except ValueError:
+                # If parsing fails, then the version is not a datetime string, so we skip formatting
+                pass
+
+        return workflows
 
     def sync_draft_workflow(
         self,

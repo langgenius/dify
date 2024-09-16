@@ -429,7 +429,19 @@ class ConvertToWorkflowApi(Resource):
 
 class WorkflowConfigApi(Resource):
     """Resource for workflow configuration."""
+    @marshal_with(workflow_fields)
+    def get(self, app_model: App):
+        """
+        Get published workflows
+        """
 
+        if not current_user.is_editor:
+            raise Forbidden()
+
+        workflow_service = WorkflowService()
+        workflows = workflow_service.get_all_published_workflow(app_model=app_model)
+        return workflows
+class PublishedAllWorkflowApi(Resource):
     @setup_required
     @login_required
     @account_initialization_required
@@ -438,6 +450,7 @@ class WorkflowConfigApi(Resource):
         return {
             "parallel_depth_limit": dify_config.WORKFLOW_PARALLEL_DEPTH_LIMIT,
         }
+    
 
 
 api.add_resource(DraftWorkflowApi, "/apps/<uuid:app_id>/workflows/draft")
@@ -454,6 +467,7 @@ api.add_resource(
     WorkflowDraftRunIterationNodeApi, "/apps/<uuid:app_id>/workflows/draft/iteration/nodes/<string:node_id>/run"
 )
 api.add_resource(PublishedWorkflowApi, "/apps/<uuid:app_id>/workflows/publish")
+api.add_resource(PublishedAllWorkflowApi, "/apps/<uuid:app_id>/workflows/publish/all")
 api.add_resource(DefaultBlockConfigsApi, "/apps/<uuid:app_id>/workflows/default-workflow-block-configs")
 api.add_resource(
     DefaultBlockConfigApi, "/apps/<uuid:app_id>/workflows/default-workflow-block-configs/<string:block_type>"

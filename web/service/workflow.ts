@@ -46,6 +46,10 @@ export const fetchPublishedWorkflow: Fetcher<FetchWorkflowDraftResponse, string>
   return get<FetchWorkflowDraftResponse>(url)
 }
 
+export const fetchPublishedAllWorkflow: Fetcher<FetchWorkflowDraftResponse[], string> = (url) => {
+  return get<FetchWorkflowDraftResponse[]>(url)
+}
+
 export const stopWorkflowRun = (url: string) => {
   return post<CommonResponse>(url)
 }

@@ -289,6 +289,11 @@ export enum WorkflowRunningStatus {
   Stopped = 'stopped',
 }
 
+export enum WorkflowVersion {
+  Draft = 'draft',
+  Current = 'current',
+}
+
 export enum NodeRunningStatus {
   NotStart = 'not-start',
   Waiting = 'waiting',
