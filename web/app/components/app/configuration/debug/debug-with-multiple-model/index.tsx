@@ -128,6 +128,7 @@ const DebugWithMultipleModel = () => {
               onSend={handleSend}
               speechToTextConfig={speechToTextConfig}
               visionConfig={visionConfig}
+              noSpacing
             />
           </div>
         )

@@ -46,7 +46,7 @@ class CodeExecutionSandboxConfig(BaseSettings):
     """
 
     CODE_EXECUTION_ENDPOINT: HttpUrl = Field(
-        description="endpoint URL of code execution servcie",
+        description="endpoint URL of code execution service",
         default="http://sandbox:8194",
     )
 
@@ -129,12 +129,12 @@ class EndpointConfig(BaseSettings):
     )
 
     SERVICE_API_URL: str = Field(
-        description="Service API Url prefix." "used to display Service API Base Url to the front-end.",
+        description="Service API Url prefix. used to display Service API Base Url to the front-end.",
         default="",
     )
 
     APP_WEB_URL: str = Field(
-        description="WebApp Url prefix." "used to display WebAPP API Base Url to the front-end.",
+        description="WebApp Url prefix. used to display WebAPP API Base Url to the front-end.",
         default="",
     )
 
@@ -272,7 +272,7 @@ class LoggingConfig(BaseSettings):
     """
 
     LOG_LEVEL: str = Field(
-        description="Log output level, default to INFO." "It is recommended to set it to ERROR for production.",
+        description="Log output level, default to INFO. It is recommended to set it to ERROR for production.",
         default="INFO",
     )
 
@@ -415,7 +415,7 @@ class MailConfig(BaseSettings):
     """
 
     MAIL_TYPE: Optional[str] = Field(
-        description="Mail provider type name, default to None, availabile values are `smtp` and `resend`.",
+        description="Mail provider type name, default to None, available values are `smtp` and `resend`.",
         default=None,
     )
 

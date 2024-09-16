@@ -14,13 +14,14 @@ class Segment(BaseModel):
     value_type: SegmentType
     value: Any
 
-    @field_validator('value_type')
+    @field_validator("value_type")
+    @classmethod
     def validate_value_type(cls, value):
         """
         This validator checks if the provided value is equal to the default value of the 'value_type' field.
         If the value is different, a ValueError is raised.
         """
-        if value != cls.model_fields['value_type'].default:
+        if value != cls.model_fields["value_type"].default:
             raise ValueError("Cannot modify 'value_type'")
         return value
 
@@ -50,15 +51,15 @@ class NoneSegment(Segment):
 
     @property
     def text(self) -> str:
-        return 'null'
+        return "null"
 
     @property
     def log(self) -> str:
-        return 'null'
+        return "null"
 
     @property
     def markdown(self) -> str:
-        return 'null'
+        return "null"
 
 
 class StringSegment(Segment):
@@ -76,24 +77,21 @@ class IntegerSegment(Segment):
     value: int
 
 
-
-
-
 class ObjectSegment(Segment):
     value_type: SegmentType = SegmentType.OBJECT
     value: Mapping[str, Any]
 
     @property
     def text(self) -> str:
-        return json.dumps(self.model_dump()['value'], ensure_ascii=False)
+        return json.dumps(self.model_dump()["value"], ensure_ascii=False)
 
     @property
     def log(self) -> str:
-        return json.dumps(self.model_dump()['value'], ensure_ascii=False, indent=2)
+        return json.dumps(self.model_dump()["value"], ensure_ascii=False, indent=2)
 
     @property
     def markdown(self) -> str:
-        return json.dumps(self.model_dump()['value'], ensure_ascii=False, indent=2)
+        return json.dumps(self.model_dump()["value"], ensure_ascii=False, indent=2)
 
 
 class ArraySegment(Segment):
@@ -101,11 +99,11 @@ class ArraySegment(Segment):
     def markdown(self) -> str:
         items = []
         for item in self.value:
-            if hasattr(item, 'to_markdown'):
+            if hasattr(item, "to_markdown"):
                 items.append(item.to_markdown())
             else:
                 items.append(str(item))
-        return '\n'.join(items)
+        return "\n".join(items)
 
 
 class ArrayAnySegment(ArraySegment):
@@ -126,4 +124,3 @@ class ArrayNumberSegment(ArraySegment):
 class ArrayObjectSegment(ArraySegment):
     value_type: SegmentType = SegmentType.ARRAY_OBJECT
     value: Sequence[Mapping[str, Any]]
-

@@ -227,7 +227,7 @@ const OpeningStatement: FC<IOpeningStatementProps> = ({
             onClick={() => { setTempSuggestedQuestions([...tempSuggestedQuestions, '']) }}
             className='mt-1 flex items-center h-9 px-3 gap-2 rounded-lg cursor-pointer text-gray-400  bg-gray-100 hover:bg-gray-200'>
             <RiAddLine className='w-4 h-4' />
-            <div className='text-gray-500 text-[13px]'>{t('appDebug.variableConig.addOption')}</div>
+            <div className='text-gray-500 text-[13px]'>{t('appDebug.variableConfig.addOption')}</div>
           </div>
         )}
       </div>
@@ -287,7 +287,7 @@ const OpeningStatement: FC<IOpeningStatementProps> = ({
         {isShowConfirmAddVar && (
           <ConfirmAddVar
             varNameArr={notIncludeKeys}
-            onConfrim={autoAddVar}
+            onConfirm={autoAddVar}
             onCancel={cancelAutoAddVar}
             onHide={hideConfirmAddVar}
           />

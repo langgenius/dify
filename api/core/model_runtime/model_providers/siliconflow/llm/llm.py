@@ -7,11 +7,17 @@ from core.model_runtime.model_providers.openai_api_compatible.llm.llm import OAI
 
 
 class SiliconflowLargeLanguageModel(OAIAPICompatLargeLanguageModel):
-    def _invoke(self, model: str, credentials: dict,
-                prompt_messages: list[PromptMessage], model_parameters: dict,
-                tools: Optional[list[PromptMessageTool]] = None, stop: Optional[list[str]] = None,
-                stream: bool = True, user: Optional[str] = None) \
-            -> Union[LLMResult, Generator]:
+    def _invoke(
+        self,
+        model: str,
+        credentials: dict,
+        prompt_messages: list[PromptMessage],
+        model_parameters: dict,
+        tools: Optional[list[PromptMessageTool]] = None,
+        stop: Optional[list[str]] = None,
+        stream: bool = True,
+        user: Optional[str] = None,
+    ) -> Union[LLMResult, Generator]:
         self._add_custom_parameters(credentials)
         return super()._invoke(model, credentials, prompt_messages, model_parameters, tools, stop, stream)
 
@@ -21,5 +27,5 @@ class SiliconflowLargeLanguageModel(OAIAPICompatLargeLanguageModel):
 
     @classmethod
     def _add_custom_parameters(cls, credentials: dict) -> None:
-        credentials['mode'] = 'chat'
-        credentials['endpoint_url'] = 'https://api.siliconflow.cn/v1'
+        credentials["mode"] = "chat"
+        credentials["endpoint_url"] = "https://api.siliconflow.cn/v1"

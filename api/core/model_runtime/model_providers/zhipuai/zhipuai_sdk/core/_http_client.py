@@ -30,6 +30,8 @@ def _merge_map(map1: Mapping, map2: Mapping) -> Mapping:
     return {key: val for key, val in merged.items() if val is not None}
 
 
+from itertools import starmap
+
 from httpx._config import DEFAULT_TIMEOUT_CONFIG as HTTPX_DEFAULT_TIMEOUT
 
 ZHIPUAI_DEFAULT_TIMEOUT = httpx.Timeout(timeout=300.0, connect=8.0)
@@ -48,13 +50,13 @@ class HttpClient:
     _default_stream_cls: type[StreamResponse[Any]] | None = None
 
     def __init__(
-            self,
-            *,
-            version: str,
-            base_url: URL,
-            timeout: Union[float, Timeout, None],
-            custom_httpx_client: httpx.Client | None = None,
-            custom_headers: Mapping[str, str] | None = None,
+        self,
+        *,
+        version: str,
+        base_url: URL,
+        timeout: Union[float, Timeout, None],
+        custom_httpx_client: httpx.Client | None = None,
+        custom_headers: Mapping[str, str] | None = None,
     ) -> None:
         if timeout is None or isinstance(timeout, NotGiven):
             if custom_httpx_client and custom_httpx_client.timeout != HTTPX_DEFAULT_TIMEOUT:
@@ -76,7 +78,6 @@ class HttpClient:
         self._custom_headers = custom_headers or {}
 
     def _prepare_url(self, url: str) -> URL:
-
         sub_url = URL(url)
         if sub_url.is_relative_url:
             request_raw_url = self._base_url.raw_path + sub_url.raw_path.lstrip(b"/")
@@ -86,16 +87,15 @@ class HttpClient:
 
     @property
     def _default_headers(self):
-        return \
-            {
-                "Accept": "application/json",
-                "Content-Type": "application/json; charset=UTF-8",
-                "ZhipuAI-SDK-Ver": self._version,
-                "source_type": "zhipu-sdk-python",
-                "x-request-sdk": "zhipu-sdk-python",
-                **self._auth_headers,
-                **self._custom_headers,
-            }
+        return {
+            "Accept": "application/json",
+            "Content-Type": "application/json; charset=UTF-8",
+            "ZhipuAI-SDK-Ver": self._version,
+            "source_type": "zhipu-sdk-python",
+            "x-request-sdk": "zhipu-sdk-python",
+            **self._auth_headers,
+            **self._custom_headers,
+        }
 
     @property
     def _auth_headers(self):
@@ -109,10 +109,7 @@ class HttpClient:
 
         return httpx_headers
 
-    def _prepare_request(
-            self,
-            request_param: ClientRequestParam
-    ) -> httpx.Request:
+    def _prepare_request(self, request_param: ClientRequestParam) -> httpx.Request:
         kwargs: dict[str, Any] = {}
         json_data = request_param.json_data
         headers = self._prepare_headers(request_param)
@@ -135,16 +132,16 @@ class HttpClient:
             **kwargs,
         )
 
-    def _object_to_formfata(self, key: str, value: Data | Mapping[object, object]) -> list[tuple[str, str]]:
+    def _object_to_formdata(self, key: str, value: Data | Mapping[object, object]) -> list[tuple[str, str]]:
         items = []
 
         if isinstance(value, Mapping):
             for k, v in value.items():
-                items.extend(self._object_to_formfata(f"{key}[{k}]", v))
+                items.extend(self._object_to_formdata(f"{key}[{k}]", v))
             return items
         if isinstance(value, list | tuple):
             for v in value:
-                items.extend(self._object_to_formfata(key + "[]", v))
+                items.extend(self._object_to_formdata(key + "[]", v))
             return items
 
         def _primitive_value_to_str(val) -> str:
@@ -164,8 +161,7 @@ class HttpClient:
         return [(key, str_data)]
 
     def _make_multipartform(self, data: Mapping[object, object]) -> dict[str, object]:
-
-        items = flatten([self._object_to_formfata(k, v) for k, v in data.items()])
+        items = flatten(list(starmap(self._object_to_formdata, data.items())))
 
         serialized: dict[str, object] = {}
         for key, value in items:
@@ -175,30 +171,25 @@ class HttpClient:
         return serialized
 
     def _parse_response(
-            self,
-            *,
-            cast_type: type[ResponseT],
-            response: httpx.Response,
-            enable_stream: bool,
-            request_param: ClientRequestParam,
-            stream_cls: type[StreamResponse[Any]] | None = None,
+        self,
+        *,
+        cast_type: type[ResponseT],
+        response: httpx.Response,
+        enable_stream: bool,
+        request_param: ClientRequestParam,
+        stream_cls: type[StreamResponse[Any]] | None = None,
     ) -> HttpResponse:
-
         http_response = HttpResponse(
-            raw_response=response,
-            cast_type=cast_type,
-            client=self,
-            enable_stream=enable_stream,
-            stream_cls=stream_cls
+            raw_response=response, cast_type=cast_type, client=self, enable_stream=enable_stream, stream_cls=stream_cls
         )
         return http_response.parse()
 
     def _process_response_data(
-            self,
-            *,
-            data: object,
-            cast_type: type[ResponseT],
-            response: httpx.Response,
+        self,
+        *,
+        data: object,
+        cast_type: type[ResponseT],
+        response: httpx.Response,
     ) -> ResponseT:
         if data is None:
             return cast(ResponseT, None)
@@ -225,12 +216,12 @@ class HttpClient:
 
     @retry(stop=stop_after_attempt(ZHIPUAI_DEFAULT_MAX_RETRIES))
     def request(
-            self,
-            *,
-            cast_type: type[ResponseT],
-            params: ClientRequestParam,
-            enable_stream: bool = False,
-            stream_cls: type[StreamResponse[Any]] | None = None,
+        self,
+        *,
+        cast_type: type[ResponseT],
+        params: ClientRequestParam,
+        enable_stream: bool = False,
+        stream_cls: type[StreamResponse[Any]] | None = None,
     ) -> ResponseT | StreamResponse:
         request = self._prepare_request(params)
 
@@ -259,81 +250,79 @@ class HttpClient:
         )
 
     def get(
-            self,
-            path: str,
-            *,
-            cast_type: type[ResponseT],
-            options: UserRequestInput = {},
-            enable_stream: bool = False,
+        self,
+        path: str,
+        *,
+        cast_type: type[ResponseT],
+        options: UserRequestInput = {},
+        enable_stream: bool = False,
     ) -> ResponseT | StreamResponse:
         opts = ClientRequestParam.construct(method="get", url=path, **options)
-        return self.request(
-            cast_type=cast_type, params=opts,
-            enable_stream=enable_stream
-        )
+        return self.request(cast_type=cast_type, params=opts, enable_stream=enable_stream)
 
     def post(
-            self,
-            path: str,
-            *,
-            body: Body | None = None,
-            cast_type: type[ResponseT],
-            options: UserRequestInput = {},
-            files: RequestFiles | None = None,
-            enable_stream: bool = False,
-            stream_cls: type[StreamResponse[Any]] | None = None,
+        self,
+        path: str,
+        *,
+        body: Body | None = None,
+        cast_type: type[ResponseT],
+        options: UserRequestInput = {},
+        files: RequestFiles | None = None,
+        enable_stream: bool = False,
+        stream_cls: type[StreamResponse[Any]] | None = None,
     ) -> ResponseT | StreamResponse:
-        opts = ClientRequestParam.construct(method="post", json_data=body, files=make_httpx_files(files), url=path,
-                                            **options)
-
-        return self.request(
-            cast_type=cast_type, params=opts,
-            enable_stream=enable_stream,
-            stream_cls=stream_cls
+        opts = ClientRequestParam.construct(
+            method="post", json_data=body, files=make_httpx_files(files), url=path, **options
         )
 
+        return self.request(cast_type=cast_type, params=opts, enable_stream=enable_stream, stream_cls=stream_cls)
+
     def patch(
-            self,
-            path: str,
-            *,
-            body: Body | None = None,
-            cast_type: type[ResponseT],
-            options: UserRequestInput = {},
+        self,
+        path: str,
+        *,
+        body: Body | None = None,
+        cast_type: type[ResponseT],
+        options: UserRequestInput = {},
     ) -> ResponseT:
         opts = ClientRequestParam.construct(method="patch", url=path, json_data=body, **options)
 
         return self.request(
-            cast_type=cast_type, params=opts,
+            cast_type=cast_type,
+            params=opts,
         )
 
     def put(
-            self,
-            path: str,
-            *,
-            body: Body | None = None,
-            cast_type: type[ResponseT],
-            options: UserRequestInput = {},
-            files: RequestFiles | None = None,
+        self,
+        path: str,
+        *,
+        body: Body | None = None,
+        cast_type: type[ResponseT],
+        options: UserRequestInput = {},
+        files: RequestFiles | None = None,
     ) -> ResponseT | StreamResponse:
-        opts = ClientRequestParam.construct(method="put", url=path, json_data=body, files=make_httpx_files(files),
-                                            **options)
+        opts = ClientRequestParam.construct(
+            method="put", url=path, json_data=body, files=make_httpx_files(files), **options
+        )
 
         return self.request(
-            cast_type=cast_type, params=opts,
+            cast_type=cast_type,
+            params=opts,
         )
 
     def delete(
-            self,
-            path: str,
-            *,
-            body: Body | None = None,
-            cast_type: type[ResponseT],
-            options: UserRequestInput = {},
+        self,
+        path: str,
+        *,
+        body: Body | None = None,
+        cast_type: type[ResponseT],
+        options: UserRequestInput = {},
     ) -> ResponseT | StreamResponse:
         opts = ClientRequestParam.construct(method="delete", url=path, json_data=body, **options)
 
         return self.request(
-            cast_type=cast_type, params=opts,
+            cast_type=cast_type,
+            params=opts,
         )
 
     def _make_status_error(self, response) -> APIStatusError:
@@ -355,11 +344,11 @@ class HttpClient:
 
 
 def make_user_request_input(
-        max_retries: int | None = None,
-        timeout: float | Timeout | None | NotGiven = NOT_GIVEN,
-        extra_headers: Headers = None,
-        extra_body: Body | None = None,
-        query: Query | None = None,
+    max_retries: int | None = None,
+    timeout: float | Timeout | None | NotGiven = NOT_GIVEN,
+    extra_headers: Headers = None,
+    extra_body: Body | None = None,
+    query: Query | None = None,
 ) -> UserRequestInput:
     options: UserRequestInput = {}
 
@@ -368,7 +357,7 @@ def make_user_request_input(
     if max_retries is not None:
         options["max_retries"] = max_retries
     if not isinstance(timeout, NotGiven):
-        options['timeout'] = timeout
+        options["timeout"] = timeout
     if query is not None:
         options["params"] = query
     if extra_body is not None:

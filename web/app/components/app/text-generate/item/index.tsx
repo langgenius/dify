@@ -16,13 +16,13 @@ import { Markdown } from '@/app/components/base/markdown'
 import Loading from '@/app/components/base/loading'
 import Toast from '@/app/components/base/toast'
 import AudioBtn from '@/app/components/base/audio-btn'
-import type { Feedbacktype } from '@/app/components/base/chat/chat/type'
+import type { FeedbackType } from '@/app/components/base/chat/chat/type'
 import { fetchMoreLikeThis, updateFeedback } from '@/service/share'
 import { File02 } from '@/app/components/base/icons/src/vender/line/files'
 import { Bookmark } from '@/app/components/base/icons/src/vender/line/general'
 import { Stars02 } from '@/app/components/base/icons/src/vender/line/weather'
 import { RefreshCcw01 } from '@/app/components/base/icons/src/vender/line/arrows'
-import { fetchTextGenerationMessge } from '@/service/debug'
+import { fetchTextGenerationMessage } from '@/service/debug'
 import AnnotationCtrlBtn from '@/app/components/app/configuration/toolbox/annotation/annotation-ctrl-btn'
 import EditReplyModal from '@/app/components/app/annotation/edit-annotation-modal'
 import { useStore as useAppStore } from '@/app/components/app/store'
@@ -47,8 +47,8 @@ export type IGenerationItemProps = {
   isInWebApp?: boolean
   moreLikeThis?: boolean
   depth?: number
-  feedback?: Feedbacktype
-  onFeedback?: (feedback: Feedbacktype) => void
+  feedback?: FeedbackType
+  onFeedback?: (feedback: FeedbackType) => void
   onSave?: (messageId: string) => void
   isMobile?: boolean
   isInstalledApp: boolean
@@ -125,7 +125,7 @@ const GenerationItem: FC<IGenerationItemProps> = ({
   const [completionRes, setCompletionRes] = useState('')
   const [childMessageId, setChildMessageId] = useState<string | null>(null)
   const hasChild = !!childMessageId
-  const [childFeedback, setChildFeedback] = useState<Feedbacktype>({
+  const [childFeedback, setChildFeedback] = useState<FeedbackType>({
     rating: null,
   })
   const {
@@ -135,7 +135,7 @@ const GenerationItem: FC<IGenerationItemProps> = ({
   const setCurrentLogItem = useAppStore(s => s.setCurrentLogItem)
   const setShowPromptLogModal = useAppStore(s => s.setShowPromptLogModal)
 
-  const handleFeedback = async (childFeedback: Feedbacktype) => {
+  const handleFeedback = async (childFeedback: FeedbackType) => {
     await updateFeedback({ url: `/messages/${childMessageId}/feedbacks`, body: { rating: childFeedback.rating } }, isInstalledApp, installedAppId)
     setChildFeedback(childFeedback)
   }
@@ -205,7 +205,7 @@ const GenerationItem: FC<IGenerationItemProps> = ({
   }, [isLoading])
 
   const handleOpenLogModal = async () => {
-    const data = await fetchTextGenerationMessge({
+    const data = await fetchTextGenerationMessage({
       appId: params.appId as string,
       messageId: messageId!,
     })

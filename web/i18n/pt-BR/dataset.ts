@@ -70,6 +70,8 @@ const translation = {
   nTo1RetrievalLegacy: 'A recuperação N-para-1 será oficialmente descontinuada a partir de setembro. Recomenda-se usar a recuperação de múltiplos caminhos mais recente para obter melhores resultados.',
   nTo1RetrievalLegacyLink: 'Saiba mais',
   nTo1RetrievalLegacyLinkText: 'A recuperação N-para-1 será oficialmente descontinuada em setembro.',
+  intro6: 'como um plug-in de índice ChatGPT autônomo para publicar',
+  defaultRetrievalTip: 'A recuperação de vários caminhos é usada por padrão. O conhecimento é recuperado de várias bases de dados de conhecimento e, em seguida, reclassificado.',
 }
 
 export default translation

@@ -1,4 +1,4 @@
-import type { FC } from 'react'
+import type { FC, FormEvent } from 'react'
 import React from 'react'
 import { useTranslation } from 'react-i18next'
 import {
@@ -39,11 +39,16 @@ const RunOnce: FC<IRunOnceProps> = ({
     onInputsChange(newInputs)
   }
 
+  const onSubmit = (e: FormEvent<HTMLFormElement>) => {
+    e.preventDefault()
+    onSend()
+  }
+
   return (
     <div className="">
       <section>
         {/* input form */}
-        <form>
+        <form onSubmit={onSubmit}>
           {promptConfig.prompt_variables.map(item => (
             <div className='w-full mt-4' key={item.key}>
               <label className='text-gray-900 text-sm font-medium'>{item.name}</label>
@@ -65,12 +70,6 @@ const RunOnce: FC<IRunOnceProps> = ({
                     placeholder={`${item.name}${!item.required ? `(${t('appDebug.variableTable.optional')})` : ''}`}
                     value={inputs[item.key]}
                     onChange={(e) => { onInputsChange({ ...inputs, [item.key]: e.target.value }) }}
-                    onKeyDown={(e) => {
-                      if (e.key === 'Enter') {
-                        e.preventDefault()
-                        onSend()
-                      }
-                    }}
                     maxLength={item.max_length || DEFAULT_VALUE_MAX_LEN}
                   />
                 )}
@@ -124,8 +123,8 @@ const RunOnce: FC<IRunOnceProps> = ({
                 <span className='text-[13px]'>{t('common.operation.clear')}</span>
               </Button>
               <Button
+                type='submit'
                 variant="primary"
-                onClick={onSend}
                 disabled={false}
               >
                 <PlayIcon className="shrink-0 w-4 h-4 mr-1" aria-hidden="true" />

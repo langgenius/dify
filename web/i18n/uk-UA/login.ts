@@ -31,7 +31,7 @@ const translation = {
   pp: 'Політика конфіденційності',
   tosDesc: 'Реєструючись, ви приймаєте наші',
   goToInit: 'Якщо ви ще не ініціалізували обліковий запис, перейдіть на сторінку ініціалізації',
-  donthave: 'Не маєте?',
+  dontHave: 'Не маєте?',
   invalidInvitationCode: 'Недійсний код запрошення',
   accountAlreadyInited: 'Обліковий запис уже ініціалізовано',
   forgotPassword: 'Забули пароль?',
@@ -53,6 +53,7 @@ const translation = {
     nameEmpty: 'Ім\'я обов\'язкове',
     passwordEmpty: 'Пароль є обов’язковим',
     passwordInvalid: 'Пароль повинен містити літери та цифри, а довжина повинна бути більшою за 8',
+    passwordLengthInValid: 'Пароль повинен бути не менше 8 символів',
   },
   license: {
     tip: 'Перед запуском Dify Community Edition ознайомтеся з ліцензією з відкритим кодом на GitHub',
@@ -68,6 +69,7 @@ const translation = {
   activated: 'Увійти зараз',
   adminInitPassword: 'Пароль ініціалізації адміністратора',
   validate: 'Перевірити',
+  sso: 'Продовжуйте працювати з SSW',
 }
 
 export default translation

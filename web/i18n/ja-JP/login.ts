@@ -32,7 +32,7 @@ const translation = {
   pp: 'プライバシーポリシー',
   tosDesc: 'サインアップすることで、以下に同意するものとします',
   goToInit: 'アカウントを初期化していない場合は、初期化ページに移動してください',
-  donthave: 'お持ちでない場合',
+  dontHave: 'お持ちでない場合',
   invalidInvitationCode: '無効な招待コード',
   accountAlreadyInited: 'アカウントは既に初期化されています',
   forgotPassword: 'パスワードを忘れましたか？',

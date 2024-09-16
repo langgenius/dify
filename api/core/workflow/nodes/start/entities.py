@@ -10,4 +10,5 @@ class StartNodeData(BaseNodeData):
     """
     Start Node Data
     """
+
     variables: Sequence[VariableEntity] = Field(default_factory=list)

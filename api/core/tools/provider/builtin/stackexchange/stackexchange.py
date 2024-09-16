@@ -11,16 +11,15 @@ class StackExchangeProvider(BuiltinToolProviderController):
                     "credentials": credentials,
                 }
             ).invoke(
-                user_id='',
+                user_id="",
                 tool_parameters={
                     "intitle": "Test",
-                    "sort": "relevance",  
+                    "sort": "relevance",
                     "order": "desc",
                     "site": "stackoverflow",
                     "accepted": True,
-                    "pagesize": 1
+                    "pagesize": 1,
                 },
             )
         except Exception as e:
             raise ToolProviderCredentialValidationError(str(e))
-        
