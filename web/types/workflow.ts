@@ -79,7 +79,10 @@ export type FetchWorkflowDraftResponse = {
   tool_published: boolean
   environment_variables?: EnvironmentVariable[]
   conversation_variables?: ConversationVariable[]
+  version: string
 }
+
+export type VersionHistory = FetchWorkflowDraftResponse
 
 export type NodeTracingListResponse = {
   data: NodeTracing[]
