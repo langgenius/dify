@@ -5,17 +5,21 @@ import { useTranslation } from 'react-i18next'
 import {
   RiArrowRightUpLine,
   RiBugLine,
+  RiClipboardLine,
   RiDragDropLine,
   RiEqualizer2Line,
 } from '@remixicon/react'
 import InstallPluginDropdown from './InstallPluginDropdown'
 import { useTabSearchParams } from '@/hooks/use-tab-searchparams'
+import { useModalContext } from '@/context/modal-context'
 import Button from '@/app/components/base/button'
 import TabSlider from '@/app/components/base/tab-slider'
+import ActionButton from '@/app/components/base/action-button'
 import Tooltip from '@/app/components/base/tooltip'
 
 const Container = () => {
   const { t } = useTranslation()
+  const { setShowPluginSettingModal } = useModalContext()
 
   const options = useMemo(() => {
     return [
@@ -56,14 +60,24 @@ const Container = () => {
                     </div>
                   </div>
                   <div className='flex flex-col items-start gap-0.5 self-stretch'>
-                    <div className='flex items-center gap-1 self-stretch'>
-                      <span className='flex w-10 flex-col justify-center items-start text-text-tertiary system-xs-medium'>Port</span>
-                    </div>
+                    {['Port', 'Key'].map((label, index) => (
+                      <div key={label} className='flex items-center gap-1 self-stretch'>
+                        <span className='flex w-10 flex-col justify-center items-start text-text-tertiary system-xs-medium'>{label}</span>
+                        <div className='flex justify-center items-center gap-0.5'>
+                          <span className='system-xs-medium text-text-secondary'>
+                            {index === 0 ? 'cloud.dify,ai:2048' : 'A1B2C3D4E5F6G7H8'}
+                          </span>
+                          <ActionButton>
+                            <RiClipboardLine className='w-3.5 h-3.5 text-text-tertiary' />
+                          </ActionButton>
+                        </div>
+                      </div>
+                    ))}
                   </div>
                 </>
               }
               popupClassName='flex flex-col items-start w-[256px] px-4 py-3.5 gap-1 border border-components-panel-border
-                  rounded-xl bg-components-tooltip-bg shadows-shadow-lg'
+                  rounded-xl bg-components-tooltip-bg shadows-shadow-lg z-50'
               asChild={false}
               position='bottom'
             >
@@ -71,7 +85,12 @@ const Container = () => {
                 <RiBugLine className='w-4 h-4' />
               </Button>
             </Tooltip>
-            <Button className='w-full h-full p-2 text-components-button-secondary-text'>
+            <Button
+              className='w-full h-full p-2 text-components-button-secondary-text group'
+              onClick={() => {
+                setShowPluginSettingModal()
+              }}
+            >
               <RiEqualizer2Line className='w-4 h-4' />
             </Button>
           </div>

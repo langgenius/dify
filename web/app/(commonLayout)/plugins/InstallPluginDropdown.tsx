@@ -6,6 +6,7 @@ import Button from '@/app/components/base/button'
 import { MagicBox } from '@/app/components/base/icons/src/vender/solid/mediaAndDevices'
 import { FileZip } from '@/app/components/base/icons/src/vender/solid/files'
 import { Github } from '@/app/components/base/icons/src/vender/solid/general'
+import cn from '@/utils/classnames'
 
 const InstallPluginDropdown = () => {
   const [isMenuOpen, setIsMenuOpen] = useState(false)
@@ -26,7 +27,7 @@ const InstallPluginDropdown = () => {
   return (
     <div className="relative" ref={menuRef}>
       <Button
-        className='w-full h-full p-2 text-components-button-secondary-text'
+        className={cn('w-full h-full p-2 text-components-button-secondary-text', isMenuOpen && 'bg-state-base-hover')}
         onClick={() => setIsMenuOpen(!isMenuOpen)}
       >
         <RiAddLine className='w-4 h-4' />
