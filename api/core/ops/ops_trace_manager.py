@@ -188,7 +188,7 @@ class OpsTraceManager:
         tracing_provider = app_ops_trace_config.get("tracing_provider")
         
         if tracing_provider is None or tracing_provider not in provider_config_map:
-            return None          
+            return None
 
         # decrypt_token
         decrypt_trace_config = cls.get_decrypted_tracing_config(app_id, tracing_provider)
