@@ -176,17 +176,17 @@ class OpsTraceManager:
             return None
 
         app: App = db.session.query(App).filter(App.id == app_id).first()
-        
+
         if app is None:
             return None
-        
+
         app_ops_trace_config = json.loads(app.tracing) if app.tracing else None
 
         if app_ops_trace_config is None:
             return None
-        
+
         tracing_provider = app_ops_trace_config.get("tracing_provider")
-        
+
         if tracing_provider is None or tracing_provider not in provider_config_map:
             return None
 
