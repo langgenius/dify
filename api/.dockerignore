@@ -10,5 +10,8 @@ logs
 # jetbrains
 .idea
 
+# vscode
+.vscode
+
 # venv
 .venv
