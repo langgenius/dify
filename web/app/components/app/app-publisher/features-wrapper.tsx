@@ -23,7 +23,6 @@ const FeaturesWrappedAppPublisher = (props: Props) => {
   const featuresStore = useFeaturesStore()
   const [restoreConfirmOpen, setRestoreConfirmOpen] = useState(false)
   const handleConfirm = useCallback(() => {
-    console.log('resetAppConfig')
     props.resetAppConfig?.()
     const {
       features,

@@ -423,16 +423,18 @@ const Debug: FC<IDebug> = ({
                     <RefreshCcw01 className='w-4 h-4' />
                   </ActionButton>
                 </TooltipPlus>
-                <div className='relative ml-1 mr-2'>
-                  <TooltipPlus
-                    popupContent={t('workflow.panel.userInputField')}
-                  >
-                    <ActionButton state={expanded ? ActionButtonState.Active : undefined} onClick={() => setExpanded(!expanded)}>
-                      <RiEqualizer2Line className='w-4 h-4' />
-                    </ActionButton>
-                  </TooltipPlus>
-                  {expanded && <div className='absolute z-10 bottom-[-18px] right-[5px] w-3 h-3 bg-components-panel-on-panel-item-bg border-l-[0.5px] border-t-[0.5px] border-components-panel-border-subtle rotate-45' />}
-                </div>
+                {varList.length > 0 && (
+                  <div className='relative ml-1 mr-2'>
+                    <TooltipPlus
+                      popupContent={t('workflow.panel.userInputField')}
+                    >
+                      <ActionButton state={expanded ? ActionButtonState.Active : undefined} onClick={() => setExpanded(!expanded)}>
+                        <RiEqualizer2Line className='w-4 h-4' />
+                      </ActionButton>
+                    </TooltipPlus>
+                    {expanded && <div className='absolute z-10 bottom-[-14px] right-[5px] w-3 h-3 bg-components-panel-on-panel-item-bg border-l-[0.5px] border-t-[0.5px] border-components-panel-border-subtle rotate-45' />}
+                  </div>
+                )}
               </>
             )}
           </div>

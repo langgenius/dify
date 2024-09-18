@@ -49,8 +49,8 @@ const ChatItem: FC<ChatItemProps> = ({
     return {
       ...configTemplate,
       more_like_this: features.moreLikeThis,
-      opening_statement: features.opening?.opening_statement || '',
-      suggested_questions: features.opening?.suggested_questions || [],
+      opening_statement: features.opening?.enabled ? (features.opening?.opening_statement || '') : '',
+      suggested_questions: features.opening?.enabled ? (features.opening?.suggested_questions || []) : [],
       sensitive_word_avoidance: features.moderation,
       speech_to_text: features.speech2text,
       text_to_speech: features.text2speech,

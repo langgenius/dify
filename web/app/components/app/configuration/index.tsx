@@ -687,8 +687,8 @@ const Configuration: FC = () => {
       dataset_query_variable: contextVar || '',
       //  features
       more_like_this: features?.moreLikeThis as any,
-      opening_statement: features?.opening?.opening_statement || '',
-      suggested_questions: features?.opening?.suggested_questions || [],
+      opening_statement: features?.opening?.enabled ? (features.opening?.opening_statement || '') : '',
+      suggested_questions: features?.opening?.enabled ? (features.opening?.suggested_questions || []) : [],
       sensitive_word_avoidance: features?.moderation as any,
       speech_to_text: features?.speech2text as any,
       text_to_speech: features?.text2speech as any,

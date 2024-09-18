@@ -26,9 +26,14 @@ const ParamConfigContent: FC = () => {
     const newFeatures = produce(features, (draft) => {
       draft.file = {
         ...draft.file,
-        image: { detail: data.image?.detail },
         allowed_file_upload_methods: data.allowed_file_upload_methods,
         number_limits: data.number_limits,
+        image: {
+          enabled: data.enabled,
+          detail: data.image?.detail,
+          transfer_methods: data.allowed_file_upload_methods,
+          number_limits: data.number_limits,
+        },
       }
     })
     setFeatures(newFeatures)

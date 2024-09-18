@@ -30,7 +30,12 @@ const ConfigVision: FC = () => {
       draft.file = {
         ...draft.file,
         enabled: data.enabled,
-        image: { detail: data.image?.detail },
+        image: {
+          enabled: data.enabled,
+          detail: data.image?.detail,
+          transfer_methods: data.image?.transfer_methods,
+          number_limits: data.image?.number_limits,
+        },
       }
     })
     setFeatures(newFeatures)
