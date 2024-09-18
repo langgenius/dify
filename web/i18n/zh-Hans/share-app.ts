@@ -2,7 +2,7 @@ const translation = {
   common: {
     welcome: '',
     appUnavailable: '应用不可用',
-    appUnkonwError: '应用不可用',
+    appUnknownError: '应用不可用',
   },
   chat: {
     newChat: '新对话',
@@ -10,7 +10,7 @@ const translation = {
     unpinnedTitle: '对话列表',
     newChatDefaultName: '新的对话',
     resetChat: '重置对话',
-    powerBy: 'Powered by',
+    poweredBy: 'Powered by',
     prompt: '提示词',
     privatePromptConfigTitle: '对话设置',
     publicPromptConfigTitle: '对话前提示词',

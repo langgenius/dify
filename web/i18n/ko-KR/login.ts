@@ -31,7 +31,7 @@ const translation = {
   pp: '개인정보 처리 방침',
   tosDesc: '가입함으로써 다음 내용에 동의하게 됩니다.',
   goToInit: '계정이 초기화되지 않았다면 초기화 페이지로 이동하세요.',
-  donthave: '계정이 없으신가요?',
+  dontHave: '계정이 없으신가요?',
   invalidInvitationCode: '유효하지 않은 초대 코드입니다.',
   accountAlreadyInited: '계정은 이미 초기화되었습니다.',
   forgotPassword: '비밀번호를 잊으셨나요?',

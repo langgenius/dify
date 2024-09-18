@@ -19,7 +19,7 @@ import { useTranslation } from 'react-i18next'
 import s from './style.module.css'
 import VarPanel from './var-panel'
 import cn from '@/utils/classnames'
-import type { FeedbackFunc, Feedbacktype, IChatItem, SubmitAnnotationFunc } from '@/app/components/base/chat/chat/type'
+import type { FeedbackFunc, FeedbackType, IChatItem, SubmitAnnotationFunc } from '@/app/components/base/chat/chat/type'
 import type { Annotation, ChatConversationFullDetailResponse, ChatConversationGeneralDetail, ChatConversationsResponse, ChatMessage, ChatMessagesRequest, CompletionConversationFullDetailResponse, CompletionConversationGeneralDetail, CompletionConversationsResponse, LogAnnotation } from '@/models/log'
 import type { App } from '@/types/app'
 import Loading from '@/app/components/base/loading'
@@ -338,7 +338,7 @@ function DetailPanel<T extends ChatConversationFullDetailResponse | CompletionCo
   return (
     <div ref={ref} className='rounded-xl border-[0.5px] border-gray-200 h-full flex flex-col overflow-auto'>
       {/* Panel Header */}
-      <div className='border-b border-gray-100 py-4 px-6 flex items-center justify-between'>
+      <div className='border-b border-gray-100 py-4 px-6 flex items-center justify-between bg-components-panel-bg'>
         <div>
           <div className='text-gray-500 text-[10px] leading-[14px]'>{isChatMode ? t('appLog.detail.conversationId') : t('appLog.detail.time')}</div>
           {isChatMode && (
@@ -541,7 +541,7 @@ const CompletionConversationDetailComp: FC<{ appId?: string; conversationId?: st
   const { notify } = useContext(ToastContext)
   const { t } = useTranslation()
 
-  const handleFeedback = async (mid: string, { rating }: Feedbacktype): Promise<boolean> => {
+  const handleFeedback = async (mid: string, { rating }: FeedbackType): Promise<boolean> => {
     try {
       await updateLogMessageFeedbacks({ url: `/apps/${appId}/feedbacks`, body: { message_id: mid, rating } })
       conversationDetailMutate()
@@ -586,7 +586,7 @@ const ChatConversationDetailComp: FC<{ appId?: string; conversationId?: string }
   const { notify } = useContext(ToastContext)
   const { t } = useTranslation()
 
-  const handleFeedback = async (mid: string, { rating }: Feedbacktype): Promise<boolean> => {
+  const handleFeedback = async (mid: string, { rating }: FeedbackType): Promise<boolean> => {
     try {
       await updateLogMessageFeedbacks({ url: `/apps/${appId}/feedbacks`, body: { message_id: mid, rating } })
       notify({ type: 'success', message: t('common.actionMsg.modifiedSuccessfully') })
@@ -725,7 +725,7 @@ const ConversationList: FC<IConversationList> = ({ logs, appDetail, onRefresh })
         onClose={onCloseDrawer}
         mask={isMobile}
         footer={null}
-        panelClassname='mt-16 mx-2 sm:mr-2 mb-4 !p-0 !max-w-[640px] rounded-xl'
+        panelClassname='mt-16 mx-2 sm:mr-2 mb-4 !p-0 !max-w-[640px] rounded-xl bg-background-gradient-bg-fill-chat-bg-1'
       >
         <DrawerContext.Provider value={{
           onClose: onCloseDrawer,

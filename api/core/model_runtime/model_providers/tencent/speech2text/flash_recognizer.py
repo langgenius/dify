@@ -1,6 +1,7 @@
 import base64
 import hashlib
 import hmac
+import operator
 import time
 
 import requests
@@ -67,10 +68,10 @@ class FlashRecognitionRequest:
 
 class FlashRecognizer:
     """
-    reponse:
+    response:
     request_id        string
-    status            Integer    
-    message           String    
+    status            Integer
+    message           String
     audio_duration    Integer
     flash_result      Result Array
 
@@ -81,16 +82,16 @@ class FlashRecognizer:
 
     Sentence:
     text              String
-    start_time        Integer    
-    end_time          Integer    
-    speaker_id        Integer    
+    start_time        Integer
+    end_time          Integer
+    speaker_id        Integer
     word_list         Word Array
 
     Word:
-    word              String 
-    start_time        Integer 
-    end_time          Integer 
-    stable_flag：     Integer 
+    word              String
+    start_time        Integer
+    end_time          Integer
+    stable_flag：     Integer
     """
 
     def __init__(self, appid, credential):
@@ -100,13 +101,13 @@ class FlashRecognizer:
     def _format_sign_string(self, param):
         signstr = "POSTasr.cloud.tencent.com/asr/flash/v1/"
         for t in param:
-            if 'appid' in t:
+            if "appid" in t:
                 signstr += str(t[1])
                 break
         signstr += "?"
         for x in param:
             tmp = x
-            if 'appid' in x:
+            if "appid" in x:
                 continue
             for t in tmp:
                 signstr += str(t)
@@ -121,31 +122,38 @@ class FlashRecognizer:
         return header
 
     def _sign(self, signstr, secret_key):
-        hmacstr = hmac.new(secret_key.encode('utf-8'),
-                           signstr.encode('utf-8'), hashlib.sha1).digest()
+        hmacstr = hmac.new(secret_key.encode("utf-8"), signstr.encode("utf-8"), hashlib.sha1).digest()
         s = base64.b64encode(hmacstr)
-        s = s.decode('utf-8')
+        s = s.decode("utf-8")
         return s
 
     def _build_req_with_signature(self, secret_key, params, header):
-        query = sorted(params.items(), key=lambda d: d[0])
+        query = sorted(params.items(), key=operator.itemgetter(0))
         signstr = self._format_sign_string(query)
         signature = self._sign(signstr, secret_key)
         header["Authorization"] = signature
-        requrl = "https://"
-        requrl += signstr[4::]
-        return requrl
+        req_url = "https://"
+        req_url += signstr[4::]
+        return req_url
 
     def _create_query_arr(self, req):
         return {
-            'appid': self.appid, 'secretid': self.credential.secret_id, 'timestamp': str(int(time.time())),
-             'engine_type': req.engine_type, 'voice_format': req.voice_format,
-             'speaker_diarization': req.speaker_diarization, 'hotword_id': req.hotword_id,
-             'customization_id': req.customization_id, 'filter_dirty': req.filter_dirty,
-             'filter_modal': req.filter_modal, 'filter_punc': req.filter_punc,
-             'convert_num_mode': req.convert_num_mode, 'word_info': req.word_info,
-             'first_channel_only': req.first_channel_only, 'reinforce_hotword': req.reinforce_hotword,
-             'sentence_max_length': req.sentence_max_length
+            "appid": self.appid,
+            "secretid": self.credential.secret_id,
+            "timestamp": str(int(time.time())),
+            "engine_type": req.engine_type,
+            "voice_format": req.voice_format,
+            "speaker_diarization": req.speaker_diarization,
+            "hotword_id": req.hotword_id,
+            "customization_id": req.customization_id,
+            "filter_dirty": req.filter_dirty,
+            "filter_modal": req.filter_modal,
+            "filter_punc": req.filter_punc,
+            "convert_num_mode": req.convert_num_mode,
+            "word_info": req.word_info,
+            "first_channel_only": req.first_channel_only,
+            "reinforce_hotword": req.reinforce_hotword,
+            "sentence_max_length": req.sentence_max_length,
         }
 
     def recognize(self, req, data):

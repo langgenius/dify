@@ -20,12 +20,9 @@ class CohereProvider(ModelProvider):
             model_instance = self.get_model_instance(ModelType.RERANK)
 
             # Use `rerank-english-v2.0` model for validate,
-            model_instance.validate_credentials(
-                model='rerank-english-v2.0',
-                credentials=credentials
-            )
+            model_instance.validate_credentials(model="rerank-english-v2.0", credentials=credentials)
         except CredentialsValidateFailedError as ex:
             raise ex
         except Exception as ex:
-            logger.exception(f'{self.get_provider_schema().provider} credentials validate failed')
+            logger.exception(f"{self.get_provider_schema().provider} credentials validate failed")
             raise ex

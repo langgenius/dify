@@ -11,10 +11,10 @@ import {
 } from '@remixicon/react'
 import { useTranslation } from 'react-i18next'
 import type { ChatItem, WorkflowProcess } from '../../types'
+import TracingPanel from '@/app/components/workflow/run/tracing-panel'
 import cn from '@/utils/classnames'
 import { CheckCircle } from '@/app/components/base/icons/src/vender/solid/general'
 import { WorkflowRunningStatus } from '@/app/components/workflow/types'
-import NodePanel from '@/app/components/workflow/run/node'
 import { useStore as useAppStore } from '@/app/components/app/store'
 
 type WorkflowProcessProps = {
@@ -107,16 +107,12 @@ const WorkflowProcessItem = ({
         !collapse && (
           <div className='mt-1.5'>
             {
-              data.tracing.map(node => (
-                <div key={node.id} className='mb-1 last-of-type:mb-0'>
-                  <NodePanel
-                    nodeInfo={node}
-                    hideInfo={hideInfo}
-                    hideProcessDetail={hideProcessDetail}
-                    onShowIterationDetail={showIterationDetail}
-                  />
-                </div>
-              ))
+              <TracingPanel
+                list={data.tracing}
+                onShowIterationDetail={showIterationDetail}
+                hideNodeInfo={hideInfo}
+                hideNodeProcessDetail={hideProcessDetail}
+              />
             }
           </div>
         )

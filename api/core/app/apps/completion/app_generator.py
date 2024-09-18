@@ -10,7 +10,7 @@ from pydantic import ValidationError
 
 from core.app.app_config.easy_ui_based_app.model_config.converter import ModelConfigConverter
 from core.app.app_config.features.file_upload.manager import FileUploadConfigManager
-from core.app.apps.base_app_queue_manager import AppQueueManager, GenerateTaskStoppedException, PublishFrom
+from core.app.apps.base_app_queue_manager import AppQueueManager, GenerateTaskStoppedError, PublishFrom
 from core.app.apps.completion.app_config_manager import CompletionAppConfigManager
 from core.app.apps.completion.app_runner import CompletionAppRunner
 from core.app.apps.completion.generate_response_converter import CompletionAppGenerateResponseConverter
@@ -32,7 +32,8 @@ logger = logging.getLogger(__name__)
 class CompletionAppGenerator(MessageBasedAppGenerator):
     @overload
     def generate(
-        self, app_model: App,
+        self,
+        app_model: App,
         user: Union[Account, EndUser],
         args: dict,
         invoke_from: InvokeFrom,
@@ -41,19 +42,17 @@ class CompletionAppGenerator(MessageBasedAppGenerator):
 
     @overload
     def generate(
-        self, app_model: App,
+        self,
+        app_model: App,
         user: Union[Account, EndUser],
         args: dict,
         invoke_from: InvokeFrom,
         stream: Literal[False] = False,
     ) -> dict: ...
 
-    def generate(self, app_model: App,
-                 user: Union[Account, EndUser],
-                 args: Any,
-                 invoke_from: InvokeFrom,
-                 stream: bool = True) \
-            -> Union[dict, Generator[str, None, None]]:
+    def generate(
+        self, app_model: App, user: Union[Account, EndUser], args: Any, invoke_from: InvokeFrom, stream: bool = True
+    ) -> Union[dict, Generator[str, None, None]]:
         """
         Generate App response.
 
@@ -63,12 +62,12 @@ class CompletionAppGenerator(MessageBasedAppGenerator):
         :param invoke_from: invoke from source
         :param stream: is stream
         """
-        query = args['query']
+        query = args["query"]
         if not isinstance(query, str):
-            raise ValueError('query must be a string')
+            raise ValueError("query must be a string")
 
-        query = query.replace('\x00', '')
-        inputs = args['inputs']
+        query = query.replace("\x00", "")
+        inputs = args["inputs"]
 
         extras = {}
 
@@ -76,41 +75,31 @@ class CompletionAppGenerator(MessageBasedAppGenerator):
         conversation = None
 
         # get app model config
-        app_model_config = self._get_app_model_config(
-            app_model=app_model,
-            conversation=conversation
-        )
+        app_model_config = self._get_app_model_config(app_model=app_model, conversation=conversation)
 
         # validate override model config
         override_model_config_dict = None
-        if args.get('model_config'):
+        if args.get("model_config"):
             if invoke_from != InvokeFrom.DEBUGGER:
-                raise ValueError('Only in App debug mode can override model config')
+                raise ValueError("Only in App debug mode can override model config")
 
             # validate config
             override_model_config_dict = CompletionAppConfigManager.config_validate(
-                tenant_id=app_model.tenant_id,
-                config=args.get('model_config')
+                tenant_id=app_model.tenant_id, config=args.get("model_config")
             )
 
         # parse files
-        files = args['files'] if args.get('files') else []
+        files = args["files"] if args.get("files") else []
         message_file_parser = MessageFileParser(tenant_id=app_model.tenant_id, app_id=app_model.id)
         file_extra_config = FileUploadConfigManager.convert(override_model_config_dict or app_model_config.to_dict())
         if file_extra_config:
-            file_objs = message_file_parser.validate_and_transform_files_arg(
-                files,
-                file_extra_config,
-                user
-            )
+            file_objs = message_file_parser.validate_and_transform_files_arg(files, file_extra_config, user)
         else:
             file_objs = []
 
         # convert to app config
         app_config = CompletionAppConfigManager.get_app_config(
-            app_model=app_model,
-            app_model_config=app_model_config,
-            override_config_dict=override_model_config_dict
+            app_model=app_model, app_model_config=app_model_config, override_config_dict=override_model_config_dict
         )
 
         # get tracing instance
@@ -128,14 +117,11 @@ class CompletionAppGenerator(MessageBasedAppGenerator):
             stream=stream,
             invoke_from=invoke_from,
             extras=extras,
-            trace_manager=trace_manager
+            trace_manager=trace_manager,
         )
 
         # init generate records
-        (
-            conversation,
-            message
-        ) = self._init_generate_records(application_generate_entity)
+        (conversation, message) = self._init_generate_records(application_generate_entity)
 
         # init queue manager
         queue_manager = MessageBasedAppQueueManager(
@@ -144,16 +130,19 @@ class CompletionAppGenerator(MessageBasedAppGenerator):
             invoke_from=application_generate_entity.invoke_from,
             conversation_id=conversation.id,
             app_mode=conversation.mode,
-            message_id=message.id
+            message_id=message.id,
         )
 
         # new thread
-        worker_thread = threading.Thread(target=self._generate_worker, kwargs={
-            'flask_app': current_app._get_current_object(),
-            'application_generate_entity': application_generate_entity,
-            'queue_manager': queue_manager,
-            'message_id': message.id,
-        })
+        worker_thread = threading.Thread(
+            target=self._generate_worker,
+            kwargs={
+                "flask_app": current_app._get_current_object(),
+                "application_generate_entity": application_generate_entity,
+                "queue_manager": queue_manager,
+                "message_id": message.id,
+            },
+        )
 
         worker_thread.start()
 
@@ -167,15 +156,15 @@ class CompletionAppGenerator(MessageBasedAppGenerator):
             stream=stream,
         )
 
-        return CompletionAppGenerateResponseConverter.convert(
-            response=response,
-            invoke_from=invoke_from
-        )
+        return CompletionAppGenerateResponseConverter.convert(response=response, invoke_from=invoke_from)
 
-    def _generate_worker(self, flask_app: Flask,
-                         application_generate_entity: CompletionAppGenerateEntity,
-                         queue_manager: AppQueueManager,
-                         message_id: str) -> None:
+    def _generate_worker(
+        self,
+        flask_app: Flask,
+        application_generate_entity: CompletionAppGenerateEntity,
+        queue_manager: AppQueueManager,
+        message_id: str,
+    ) -> None:
         """
         Generate worker in a new thread.
         :param flask_app: Flask app
@@ -194,20 +183,19 @@ class CompletionAppGenerator(MessageBasedAppGenerator):
                 runner.run(
                     application_generate_entity=application_generate_entity,
                     queue_manager=queue_manager,
-                    message=message
+                    message=message,
                 )
-            except GenerateTaskStoppedException:
+            except GenerateTaskStoppedError:
                 pass
             except InvokeAuthorizationError:
                 queue_manager.publish_error(
-                    InvokeAuthorizationError('Incorrect API key provided'),
-                    PublishFrom.APPLICATION_MANAGER
+                    InvokeAuthorizationError("Incorrect API key provided"), PublishFrom.APPLICATION_MANAGER
                 )
             except ValidationError as e:
                 logger.exception("Validation Error when generating")
                 queue_manager.publish_error(e, PublishFrom.APPLICATION_MANAGER)
             except (ValueError, InvokeError) as e:
-                if os.environ.get("DEBUG") and os.environ.get("DEBUG").lower() == 'true':
+                if os.environ.get("DEBUG") and os.environ.get("DEBUG").lower() == "true":
                     logger.exception("Error when generating")
                 queue_manager.publish_error(e, PublishFrom.APPLICATION_MANAGER)
             except Exception as e:
@@ -216,12 +204,14 @@ class CompletionAppGenerator(MessageBasedAppGenerator):
             finally:
                 db.session.close()
 
-    def generate_more_like_this(self, app_model: App,
-                                message_id: str,
-                                user: Union[Account, EndUser],
-                                invoke_from: InvokeFrom,
-                                stream: bool = True) \
-            -> Union[dict, Generator[str, None, None]]:
+    def generate_more_like_this(
+        self,
+        app_model: App,
+        message_id: str,
+        user: Union[Account, EndUser],
+        invoke_from: InvokeFrom,
+        stream: bool = True,
+    ) -> Union[dict, Generator[str, None, None]]:
         """
         Generate App response.
 
@@ -231,13 +221,17 @@ class CompletionAppGenerator(MessageBasedAppGenerator):
         :param invoke_from: invoke from source
         :param stream: is stream
         """
-        message = db.session.query(Message).filter(
-            Message.id == message_id,
-            Message.app_id == app_model.id,
-            Message.from_source == ('api' if isinstance(user, EndUser) else 'console'),
-            Message.from_end_user_id == (user.id if isinstance(user, EndUser) else None),
-            Message.from_account_id == (user.id if isinstance(user, Account) else None),
-        ).first()
+        message = (
+            db.session.query(Message)
+            .filter(
+                Message.id == message_id,
+                Message.app_id == app_model.id,
+                Message.from_source == ("api" if isinstance(user, EndUser) else "console"),
+                Message.from_end_user_id == (user.id if isinstance(user, EndUser) else None),
+                Message.from_account_id == (user.id if isinstance(user, Account) else None),
+            )
+            .first()
+        )
 
         if not message:
             raise MessageNotExistsError()
@@ -250,29 +244,23 @@ class CompletionAppGenerator(MessageBasedAppGenerator):
 
         app_model_config = message.app_model_config
         override_model_config_dict = app_model_config.to_dict()
-        model_dict = override_model_config_dict['model']
-        completion_params = model_dict.get('completion_params')
-        completion_params['temperature'] = 0.9
-        model_dict['completion_params'] = completion_params
-        override_model_config_dict['model'] = model_dict
+        model_dict = override_model_config_dict["model"]
+        completion_params = model_dict.get("completion_params")
+        completion_params["temperature"] = 0.9
+        model_dict["completion_params"] = completion_params
+        override_model_config_dict["model"] = model_dict
 
         # parse files
         message_file_parser = MessageFileParser(tenant_id=app_model.tenant_id, app_id=app_model.id)
         file_extra_config = FileUploadConfigManager.convert(override_model_config_dict or app_model_config.to_dict())
         if file_extra_config:
-            file_objs = message_file_parser.validate_and_transform_files_arg(
-                message.files,
-                file_extra_config,
-                user
-            )
+            file_objs = message_file_parser.validate_and_transform_files_arg(message.files, file_extra_config, user)
         else:
             file_objs = []
 
         # convert to app config
         app_config = CompletionAppConfigManager.get_app_config(
-            app_model=app_model,
-            app_model_config=app_model_config,
-            override_config_dict=override_model_config_dict
+            app_model=app_model, app_model_config=app_model_config, override_config_dict=override_model_config_dict
         )
 
         # init application generate entity
@@ -286,14 +274,11 @@ class CompletionAppGenerator(MessageBasedAppGenerator):
             user_id=user.id,
             stream=stream,
             invoke_from=invoke_from,
-            extras={}
+            extras={},
         )
 
         # init generate records
-        (
-            conversation,
-            message
-        ) = self._init_generate_records(application_generate_entity)
+        (conversation, message) = self._init_generate_records(application_generate_entity)
 
         # init queue manager
         queue_manager = MessageBasedAppQueueManager(
@@ -302,16 +287,19 @@ class CompletionAppGenerator(MessageBasedAppGenerator):
             invoke_from=application_generate_entity.invoke_from,
             conversation_id=conversation.id,
             app_mode=conversation.mode,
-            message_id=message.id
+            message_id=message.id,
         )
 
         # new thread
-        worker_thread = threading.Thread(target=self._generate_worker, kwargs={
-            'flask_app': current_app._get_current_object(),
-            'application_generate_entity': application_generate_entity,
-            'queue_manager': queue_manager,
-            'message_id': message.id,
-        })
+        worker_thread = threading.Thread(
+            target=self._generate_worker,
+            kwargs={
+                "flask_app": current_app._get_current_object(),
+                "application_generate_entity": application_generate_entity,
+                "queue_manager": queue_manager,
+                "message_id": message.id,
+            },
+        )
 
         worker_thread.start()
 
@@ -325,7 +313,4 @@ class CompletionAppGenerator(MessageBasedAppGenerator):
             stream=stream,
         )
 
-        return CompletionAppGenerateResponseConverter.convert(
-            response=response,
-            invoke_from=invoke_from
-        )
+        return CompletionAppGenerateResponseConverter.convert(response=response, invoke_from=invoke_from)

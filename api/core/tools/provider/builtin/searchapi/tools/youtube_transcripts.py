@@ -7,6 +7,7 @@ from core.tools.tool.builtin_tool import BuiltinTool
 
 SEARCH_API_URL = "https://www.searchapi.io/api/v1/search"
 
+
 class SearchAPI:
     """
     SearchAPI tool provider.
@@ -36,18 +37,18 @@ class SearchAPI:
         return {
             "engine": "youtube_transcripts",
             "video_id": video_id,
-            "lang": language if language else "en",
-            **{key: value for key, value in kwargs.items() if value not in [None, ""]},
+            "lang": language or "en",
+            **{key: value for key, value in kwargs.items() if value not in {None, ""}},
         }
 
     @staticmethod
     def _process_response(res: dict) -> str:
         """Process response from SearchAPI."""
-        if "error" in res.keys():
+        if "error" in res:
             raise ValueError(f"Got error from SearchApi: {res['error']}")
 
         toret = ""
-        if "transcripts" in res.keys() and "text" in res["transcripts"][0].keys():
+        if "transcripts" in res and "text" in res["transcripts"][0]:
             for item in res["transcripts"]:
                 toret += item["text"] + " "
         if toret == "":
@@ -55,18 +56,20 @@ class SearchAPI:
 
         return toret
 
+
 class YoutubeTranscriptsTool(BuiltinTool):
-    def _invoke(self,
-                user_id: str,
-                tool_parameters: dict[str, Any],
-        ) -> Union[ToolInvokeMessage, list[ToolInvokeMessage]]:
+    def _invoke(
+        self,
+        user_id: str,
+        tool_parameters: dict[str, Any],
+    ) -> Union[ToolInvokeMessage, list[ToolInvokeMessage]]:
         """
         Invoke the SearchApi tool.
         """
-        video_id = tool_parameters['video_id']
-        language = tool_parameters.get('language', "en")
+        video_id = tool_parameters["video_id"]
+        language = tool_parameters.get("language", "en")
 
-        api_key = self.runtime.credentials['searchapi_api_key']
+        api_key = self.runtime.credentials["searchapi_api_key"]
         result = SearchAPI(api_key).run(video_id, language=language)
 
         return self.create_text_message(text=result)

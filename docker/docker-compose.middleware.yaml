@@ -41,7 +41,7 @@ services:
 
   # The DifySandbox
   sandbox:
-    image: langgenius/dify-sandbox:0.2.6
+    image: langgenius/dify-sandbox:0.2.9
     restart: always
     environment:
       # The DifySandbox configurations
@@ -56,6 +56,8 @@ services:
       SANDBOX_PORT: ${SANDBOX_PORT:-8194}
     volumes:
       - ./volumes/sandbox/dependencies:/dependencies
+    healthcheck:
+      test: [ "CMD", "curl", "-f", "http://localhost:8194/health" ]
     networks:
       - ssrf_proxy_network
 
@@ -87,6 +89,7 @@ services:
   weaviate:
     image: semitechnologies/weaviate:1.19.0
     profiles:
+      - ""
       - weaviate
     restart: always
     volumes:

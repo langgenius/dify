@@ -29,7 +29,7 @@ from core.model_runtime.model_providers.baichuan.llm.baichuan_tokenizer import B
 from core.model_runtime.model_providers.baichuan.llm.baichuan_turbo import BaichuanModel
 from core.model_runtime.model_providers.baichuan.llm.baichuan_turbo_errors import (
     BadRequestError,
-    InsufficientAccountBalance,
+    InsufficientAccountBalanceError,
     InternalServerError,
     InvalidAPIKeyError,
     InvalidAuthenticationError,
@@ -37,18 +37,17 @@ from core.model_runtime.model_providers.baichuan.llm.baichuan_turbo_errors impor
 )
 
 
-class BaichuanLarguageModel(LargeLanguageModel):
-
+class BaichuanLanguageModel(LargeLanguageModel):
     def _invoke(
-            self,
-            model: str,
-            credentials: dict,
-            prompt_messages: list[PromptMessage],
-            model_parameters: dict,
-            tools: list[PromptMessageTool] | None = None,
-            stop: list[str] | None = None,
-            stream: bool = True,
-            user: str | None = None,
+        self,
+        model: str,
+        credentials: dict,
+        prompt_messages: list[PromptMessage],
+        model_parameters: dict,
+        tools: list[PromptMessageTool] | None = None,
+        stop: list[str] | None = None,
+        stream: bool = True,
+        user: str | None = None,
     ) -> LLMResult | Generator:
         return self._generate(
             model=model,
@@ -60,17 +59,17 @@ class BaichuanLarguageModel(LargeLanguageModel):
         )
 
     def get_num_tokens(
-            self,
-            model: str,
-            credentials: dict,
-            prompt_messages: list[PromptMessage],
-            tools: list[PromptMessageTool] | None = None,
+        self,
+        model: str,
+        credentials: dict,
+        prompt_messages: list[PromptMessage],
+        tools: list[PromptMessageTool] | None = None,
     ) -> int:
         return self._num_tokens_from_messages(prompt_messages)
 
     def _num_tokens_from_messages(
-            self,
-            messages: list[PromptMessage],
+        self,
+        messages: list[PromptMessage],
     ) -> int:
         """Calculate num tokens for baichuan model"""
 
@@ -111,18 +110,13 @@ class BaichuanLarguageModel(LargeLanguageModel):
             message = cast(AssistantPromptMessage, message)
             message_dict = {"role": "assistant", "content": message.content}
             if message.tool_calls:
-                message_dict["tool_calls"] = [tool_call.dict() for tool_call in
-                                              message.tool_calls]
+                message_dict["tool_calls"] = [tool_call.dict() for tool_call in message.tool_calls]
         elif isinstance(message, SystemPromptMessage):
             message = cast(SystemPromptMessage, message)
             message_dict = {"role": "system", "content": message.content}
         elif isinstance(message, ToolPromptMessage):
             message = cast(ToolPromptMessage, message)
-            message_dict = {
-                "role": "tool",
-                "content": message.content,
-                "tool_call_id": message.tool_call_id
-            }
+            message_dict = {"role": "tool", "content": message.content, "tool_call_id": message.tool_call_id}
         else:
             raise ValueError(f"Unknown message type {type(message)}")
 
@@ -146,15 +140,14 @@ class BaichuanLarguageModel(LargeLanguageModel):
             raise CredentialsValidateFailedError(f"Invalid API key: {e}")
 
     def _generate(
-            self,
-            model: str,
-            credentials: dict,
-            prompt_messages: list[PromptMessage],
-            model_parameters: dict,
-            tools: list[PromptMessageTool] | None = None,
-            stream: bool = True,
+        self,
+        model: str,
+        credentials: dict,
+        prompt_messages: list[PromptMessage],
+        model_parameters: dict,
+        tools: list[PromptMessageTool] | None = None,
+        stream: bool = True,
     ) -> LLMResult | Generator:
-
         instance = BaichuanModel(api_key=credentials["api_key"])
         messages = [self._convert_prompt_message_to_dict(m) for m in prompt_messages]
 
@@ -169,23 +162,19 @@ class BaichuanLarguageModel(LargeLanguageModel):
         )
 
         if stream:
-            return self._handle_chat_generate_stream_response(
-                model, prompt_messages, credentials, response
-            )
+            return self._handle_chat_generate_stream_response(model, prompt_messages, credentials, response)
 
-        return self._handle_chat_generate_response(
-            model, prompt_messages, credentials, response
-        )
+        return self._handle_chat_generate_response(model, prompt_messages, credentials, response)
 
     def _handle_chat_generate_response(
-            self,
-            model: str,
-            prompt_messages: list[PromptMessage],
-            credentials: dict,
-            response: dict,
+        self,
+        model: str,
+        prompt_messages: list[PromptMessage],
+        credentials: dict,
+        response: dict,
     ) -> LLMResult:
         choices = response.get("choices", [])
-        assistant_message = AssistantPromptMessage(content='', tool_calls=[])
+        assistant_message = AssistantPromptMessage(content="", tool_calls=[])
         if choices and choices[0]["finish_reason"] == "tool_calls":
             for choice in choices:
                 for tool_call in choice["message"]["tool_calls"]:
@@ -194,7 +183,7 @@ class BaichuanLarguageModel(LargeLanguageModel):
                         type=tool_call.get("type", ""),
                         function=AssistantPromptMessage.ToolCall.ToolCallFunction(
                             name=tool_call.get("function", {}).get("name", ""),
-                            arguments=tool_call.get("function", {}).get("arguments", "")
+                            arguments=tool_call.get("function", {}).get("arguments", ""),
                         ),
                     )
                     assistant_message.tool_calls.append(tool)
@@ -228,11 +217,11 @@ class BaichuanLarguageModel(LargeLanguageModel):
         )
 
     def _handle_chat_generate_stream_response(
-            self,
-            model: str,
-            prompt_messages: list[PromptMessage],
-            credentials: dict,
-            response: Iterator,
+        self,
+        model: str,
+        prompt_messages: list[PromptMessage],
+        credentials: dict,
+        response: Iterator,
     ) -> Generator:
         for line in response:
             if not line:
@@ -260,9 +249,7 @@ class BaichuanLarguageModel(LargeLanguageModel):
                     prompt_messages=prompt_messages,
                     delta=LLMResultChunkDelta(
                         index=0,
-                        message=AssistantPromptMessage(
-                            content=choice["delta"]["content"], tool_calls=[]
-                        ),
+                        message=AssistantPromptMessage(content=choice["delta"]["content"], tool_calls=[]),
                         finish_reason=stop_reason,
                     ),
                 )
@@ -302,7 +289,7 @@ class BaichuanLarguageModel(LargeLanguageModel):
             InvokeRateLimitError: [RateLimitReachedError],
             InvokeAuthorizationError: [
                 InvalidAuthenticationError,
-                InsufficientAccountBalance,
+                InsufficientAccountBalanceError,
                 InvalidAPIKeyError,
             ],
             InvokeBadRequestError: [BadRequestError, KeyError],

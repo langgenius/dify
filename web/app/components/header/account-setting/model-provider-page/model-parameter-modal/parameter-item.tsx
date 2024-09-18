@@ -127,12 +127,10 @@ const ParameterItem: FC<ParameterItemProps> = ({
       && !isNullOrUndefined(parameterRule.min)
       && !isNullOrUndefined(parameterRule.max)
 
-    if (parameterRule.type === 'int' || parameterRule.type === 'float') {
+    if (parameterRule.type === 'int') {
       let step = 100
       if (parameterRule.max) {
-        if (parameterRule.max < 10)
-          step = 0.1
-        else if (parameterRule.max < 100)
+        if (parameterRule.max < 100)
           step = 1
         else if (parameterRule.max < 1000)
           step = 10
@@ -157,6 +155,31 @@ const ParameterItem: FC<ParameterItemProps> = ({
             max={parameterRule.max}
             min={parameterRule.min}
             step={numberInputWithSlide ? step : +`0.${parameterRule.precision || 0}`}
+            onChange={handleNumberInputChange}
+            onBlur={handleNumberInputBlur}
+          />
+        </>
+      )
+    }
+
+    if (parameterRule.type === 'float') {
+      return (
+        <>
+          {numberInputWithSlide && <Slider
+            className='w-[120px]'
+            value={renderValue as number}
+            min={parameterRule.min}
+            max={parameterRule.max}
+            step={0.1}
+            onChange={handleSlideChange}
+          />}
+          <input
+            ref={numberInputRef}
+            className='shrink-0 block ml-4 pl-3 w-16 h-8 appearance-none outline-none rounded-lg bg-gray-100 text-[13px] text-gra-900'
+            type='number'
+            max={parameterRule.max}
+            min={parameterRule.min}
+            step={numberInputWithSlide ? 0.1 : +`0.${parameterRule.precision || 0}`}
             onChange={handleNumberInputChange}
             onBlur={handleNumberInputBlur}
           />

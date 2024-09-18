@@ -28,47 +28,57 @@ class TiDBVectorConfig(BaseModel):
     database: str
     program_name: str
 
-    @model_validator(mode='before')
+    @model_validator(mode="before")
+    @classmethod
     def validate_config(cls, values: dict) -> dict:
-        if not values['host']:
+        if not values["host"]:
             raise ValueError("config TIDB_VECTOR_HOST is required")
-        if not values['port']:
+        if not values["port"]:
             raise ValueError("config TIDB_VECTOR_PORT is required")
-        if not values['user']:
+        if not values["user"]:
             raise ValueError("config TIDB_VECTOR_USER is required")
-        if not values['password']:
+        if not values["password"]:
             raise ValueError("config TIDB_VECTOR_PASSWORD is required")
-        if not values['database']:
+        if not values["database"]:
             raise ValueError("config TIDB_VECTOR_DATABASE is required")
-        if not values['program_name']:
+        if not values["program_name"]:
             raise ValueError("config APPLICATION_NAME is required")
         return values
 
 
 class TiDBVector(BaseVector):
-
     def get_type(self) -> str:
         return VectorType.TIDB_VECTOR
 
     def _table(self, dim: int) -> Table:
         from tidb_vector.sqlalchemy import VectorType
+
         return Table(
             self._collection_name,
             self._orm_base.metadata,
-            Column('id', String(36), primary_key=True, nullable=False),
-            Column("vector", VectorType(dim), nullable=False, comment="" if self._distance_func is None else f"hnsw(distance={self._distance_func})"),
+            Column("id", String(36), primary_key=True, nullable=False),
+            Column(
+                "vector",
+                VectorType(dim),
+                nullable=False,
+                comment="" if self._distance_func is None else f"hnsw(distance={self._distance_func})",
+            ),
             Column("text", TEXT, nullable=False),
             Column("meta", JSON, nullable=False),
             Column("create_time", DateTime, server_default=sqlalchemy.text("CURRENT_TIMESTAMP")),
-            Column("update_time", DateTime, server_default=sqlalchemy.text("CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP")),
-            extend_existing=True
+            Column(
+                "update_time", DateTime, server_default=sqlalchemy.text("CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP")
+            ),
+            extend_existing=True,
         )
 
-    def __init__(self, collection_name: str, config: TiDBVectorConfig, distance_func: str = 'cosine'):
+    def __init__(self, collection_name: str, config: TiDBVectorConfig, distance_func: str = "cosine"):
         super().__init__(collection_name)
         self._client_config = config
-        self._url = (f"mysql+pymysql://{config.user}:{config.password}@{config.host}:{config.port}/{config.database}?"
-                     f"ssl_verify_cert=true&ssl_verify_identity=true&program_name={config.program_name}")
+        self._url = (
+            f"mysql+pymysql://{config.user}:{config.password}@{config.host}:{config.port}/{config.database}?"
+            f"ssl_verify_cert=true&ssl_verify_identity=true&program_name={config.program_name}"
+        )
         self._distance_func = distance_func.lower()
         self._engine = create_engine(self._url)
         self._orm_base = declarative_base()
@@ -83,9 +93,9 @@ class TiDBVector(BaseVector):
 
     def _create_collection(self, dimension: int):
         logger.info("_create_collection, collection_name " + self._collection_name)
-        lock_name = 'vector_indexing_lock_{}'.format(self._collection_name)
+        lock_name = "vector_indexing_lock_{}".format(self._collection_name)
         with redis_client.lock(lock_name, timeout=20):
-            collection_exist_cache_key = 'vector_indexing_{}'.format(self._collection_name)
+            collection_exist_cache_key = "vector_indexing_{}".format(self._collection_name)
             if redis_client.get(collection_exist_cache_key):
                 return
             with Session(self._engine) as session:
@@ -114,31 +124,28 @@ class TiDBVector(BaseVector):
         texts = [d.page_content for d in documents]
 
         chunks_table_data = []
-        with self._engine.connect() as conn:
-            with conn.begin():
-                for id, text, meta, embedding in zip(
-                        ids, texts, metas, embeddings
-                ):
-                    chunks_table_data.append({"id": id, "vector": embedding, "text": text, "meta": meta})
+        with self._engine.connect() as conn, conn.begin():
+            for id, text, meta, embedding in zip(ids, texts, metas, embeddings):
+                chunks_table_data.append({"id": id, "vector": embedding, "text": text, "meta": meta})
 
-                    # Execute the batch insert when the batch size is reached
-                    if len(chunks_table_data) == 500:
-                        conn.execute(insert(table).values(chunks_table_data))
-                        # Clear the chunks_table_data list for the next batch
-                        chunks_table_data.clear()
-
-                # Insert any remaining records that didn't make up a full batch
-                if chunks_table_data:
+                # Execute the batch insert when the batch size is reached
+                if len(chunks_table_data) == 500:
                     conn.execute(insert(table).values(chunks_table_data))
+                    # Clear the chunks_table_data list for the next batch
+                    chunks_table_data.clear()
+
+            # Insert any remaining records that didn't make up a full batch
+            if chunks_table_data:
+                conn.execute(insert(table).values(chunks_table_data))
         return ids
 
     def text_exists(self, id: str) -> bool:
-        result = self.get_ids_by_metadata_field('doc_id', id)
+        result = self.get_ids_by_metadata_field("doc_id", id)
         return bool(result)
 
     def delete_by_ids(self, ids: list[str]) -> None:
         with Session(self._engine) as session:
-            ids_str = ','.join(f"'{doc_id}'" for doc_id in ids)
+            ids_str = ",".join(f"'{doc_id}'" for doc_id in ids)
             select_statement = sql_text(
                 f"""SELECT id FROM {self._collection_name} WHERE meta->>'$.doc_id' in ({ids_str}); """
             )
@@ -152,11 +159,10 @@ class TiDBVector(BaseVector):
             raise ValueError("No ids provided to delete.")
         table = self._table(self._dimension)
         try:
-            with self._engine.connect() as conn:
-                with conn.begin():
-                    delete_condition = table.c.id.in_(ids)
-                    conn.execute(table.delete().where(delete_condition))
-                    return True
+            with self._engine.connect() as conn, conn.begin():
+                delete_condition = table.c.id.in_(ids)
+                conn.execute(table.delete().where(delete_condition))
+                return True
         except Exception as e:
             print("Delete operation failed:", str(e))
             return False
@@ -179,21 +185,23 @@ class TiDBVector(BaseVector):
 
     def search_by_vector(self, query_vector: list[float], **kwargs: Any) -> list[Document]:
         top_k = kwargs.get("top_k", 5)
-        score_threshold = kwargs.get("score_threshold") if kwargs.get("score_threshold") else 0.0
-        filter = kwargs.get('filter')
+        score_threshold = float(kwargs.get("score_threshold") or 0.0)
+        filter = kwargs.get("filter")
         distance = 1 - score_threshold
 
         query_vector_str = ", ".join(format(x) for x in query_vector)
         query_vector_str = "[" + query_vector_str + "]"
-        logger.debug(f"_collection_name: {self._collection_name}, score_threshold: {score_threshold}, distance: {distance}")
+        logger.debug(
+            f"_collection_name: {self._collection_name}, score_threshold: {score_threshold}, distance: {distance}"
+        )
 
         docs = []
-        if self._distance_func == 'l2':
-            tidb_func = 'Vec_l2_distance'
-        elif self._distance_func == 'cosine':
-            tidb_func = 'Vec_Cosine_distance'
+        if self._distance_func == "l2":
+            tidb_func = "Vec_l2_distance"
+        elif self._distance_func == "cosine":
+            tidb_func = "Vec_Cosine_distance"
         else:
-            tidb_func = 'Vec_Cosine_distance'
+            tidb_func = "Vec_Cosine_distance"
 
         with Session(self._engine) as session:
             select_statement = sql_text(
@@ -208,7 +216,7 @@ class TiDBVector(BaseVector):
             results = [(row[0], row[1], row[2]) for row in res]
             for meta, text, distance in results:
                 metadata = json.loads(meta)
-                metadata['score'] = 1 - distance
+                metadata["score"] = 1 - distance
                 docs.append(Document(page_content=text, metadata=metadata))
         return docs
 
@@ -224,15 +232,13 @@ class TiDBVector(BaseVector):
 
 class TiDBVectorFactory(AbstractVectorFactory):
     def init_vector(self, dataset: Dataset, attributes: list, embeddings: Embeddings) -> TiDBVector:
-
         if dataset.index_struct_dict:
-            class_prefix: str = dataset.index_struct_dict['vector_store']['class_prefix']
+            class_prefix: str = dataset.index_struct_dict["vector_store"]["class_prefix"]
             collection_name = class_prefix.lower()
         else:
             dataset_id = dataset.id
             collection_name = Dataset.gen_collection_name_by_id(dataset_id).lower()
-            dataset.index_struct = json.dumps(
-                self.gen_index_struct_dict(VectorType.TIDB_VECTOR, collection_name))
+            dataset.index_struct = json.dumps(self.gen_index_struct_dict(VectorType.TIDB_VECTOR, collection_name))
 
         return TiDBVector(
             collection_name=collection_name,

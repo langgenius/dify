@@ -1,7 +1,7 @@
 from typing import Any, Optional
 from urllib.parse import quote_plus
 
-from pydantic import Field, NonNegativeInt, PositiveInt, computed_field
+from pydantic import Field, NonNegativeInt, PositiveFloat, PositiveInt, computed_field
 from pydantic_settings import BaseSettings
 
 from configs.middleware.cache.redis_config import RedisConfig
@@ -9,8 +9,10 @@ from configs.middleware.storage.aliyun_oss_storage_config import AliyunOSSStorag
 from configs.middleware.storage.amazon_s3_storage_config import S3StorageConfig
 from configs.middleware.storage.azure_blob_storage_config import AzureBlobStorageConfig
 from configs.middleware.storage.google_cloud_storage_config import GoogleCloudStorageConfig
+from configs.middleware.storage.huawei_obs_storage_config import HuaweiCloudOBSStorageConfig
 from configs.middleware.storage.oci_storage_config import OCIStorageConfig
 from configs.middleware.storage.tencent_cos_storage_config import TencentCloudCOSStorageConfig
+from configs.middleware.storage.volcengine_tos_storage_config import VolcengineTOSStorageConfig
 from configs.middleware.vdb.analyticdb_config import AnalyticdbConfig
 from configs.middleware.vdb.chroma_config import ChromaConfig
 from configs.middleware.vdb.elasticsearch_config import ElasticsearchConfig
@@ -157,6 +159,21 @@ class CeleryConfig(DatabaseConfig):
         default=None,
     )
 
+    CELERY_USE_SENTINEL: Optional[bool] = Field(
+        description="Whether to use Redis Sentinel mode",
+        default=False,
+    )
+
+    CELERY_SENTINEL_MASTER_NAME: Optional[str] = Field(
+        description="Redis Sentinel master name",
+        default=None,
+    )
+
+    CELERY_SENTINEL_SOCKET_TIMEOUT: Optional[PositiveFloat] = Field(
+        description="Redis Sentinel socket timeout",
+        default=0.1,
+    )
+
     @computed_field
     @property
     def CELERY_RESULT_BACKEND(self) -> str | None:
@@ -184,6 +201,8 @@ class MiddlewareConfig(
     AzureBlobStorageConfig,
     GoogleCloudStorageConfig,
     TencentCloudCOSStorageConfig,
+    HuaweiCloudOBSStorageConfig,
+    VolcengineTOSStorageConfig,
     S3StorageConfig,
     OCIStorageConfig,
     # configs of vdb and vdb providers

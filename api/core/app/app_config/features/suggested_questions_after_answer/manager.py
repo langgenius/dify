@@ -7,9 +7,9 @@ class SuggestedQuestionsAfterAnswerConfigManager:
         :param config: model config args
         """
         suggested_questions_after_answer = False
-        suggested_questions_after_answer_dict = config.get('suggested_questions_after_answer')
+        suggested_questions_after_answer_dict = config.get("suggested_questions_after_answer")
         if suggested_questions_after_answer_dict:
-            if suggested_questions_after_answer_dict.get('enabled'):
+            if suggested_questions_after_answer_dict.get("enabled"):
                 suggested_questions_after_answer = True
 
         return suggested_questions_after_answer
@@ -22,15 +22,15 @@ class SuggestedQuestionsAfterAnswerConfigManager:
         :param config: app model config args
         """
         if not config.get("suggested_questions_after_answer"):
-            config["suggested_questions_after_answer"] = {
-                "enabled": False
-            }
+            config["suggested_questions_after_answer"] = {"enabled": False}
 
         if not isinstance(config["suggested_questions_after_answer"], dict):
             raise ValueError("suggested_questions_after_answer must be of dict type")
 
-        if "enabled" not in config["suggested_questions_after_answer"] or not \
-        config["suggested_questions_after_answer"]["enabled"]:
+        if (
+            "enabled" not in config["suggested_questions_after_answer"]
+            or not config["suggested_questions_after_answer"]["enabled"]
+        ):
             config["suggested_questions_after_answer"]["enabled"] = False
 
         if not isinstance(config["suggested_questions_after_answer"]["enabled"], bool):

@@ -194,7 +194,7 @@ class WebappLogoWorkspaceApi(Resource):
             raise TooManyFilesError()
 
         extension = file.filename.split(".")[-1]
-        if extension.lower() not in ["svg", "png"]:
+        if extension.lower() not in {"svg", "png"}:
             raise UnsupportedFileTypeError()
 
         try:

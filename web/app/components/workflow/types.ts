@@ -26,6 +26,7 @@ export enum BlockEnum {
   Tool = 'tool',
   ParameterExtractor = 'parameter-extractor',
   Iteration = 'iteration',
+  IterationStart = 'iteration-start',
   Assigner = 'assigner', // is now named as VariableAssigner
 }
 
@@ -54,7 +55,7 @@ export type CommonNodeType<T = {}> = {
   _holdAddVariablePopup?: boolean
   _iterationLength?: number
   _iterationIndex?: number
-  isIterationStart?: boolean
+  _inParallelHovering?: boolean
   isInIteration?: boolean
   iteration_id?: string
   selected?: boolean
@@ -69,7 +70,7 @@ export type CommonEdgeType = {
   _hovering?: boolean
   _connectedNodeIsHovering?: boolean
   _connectedNodeIsSelected?: boolean
-  _runned?: boolean
+  _run?: boolean
   _isBundled?: boolean
   isInIteration?: boolean
   iteration_id?: string
@@ -86,7 +87,7 @@ export type NodePanelProps<T> = {
 }
 export type Edge = ReactFlowEdge<CommonEdgeType>
 
-export type WorkflowDataUpdator = {
+export type WorkflowDataUpdater = {
   nodes: Node[]
   edges: Edge[]
   viewport: Viewport

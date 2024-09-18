@@ -10,7 +10,7 @@ const translation = {
   pause: 'Приостановить',
   playing: 'Запущено',
   loading: 'Загрузка',
-  merMaind: {
+  merMaid: {
     rerender: 'Перезапустить рендеринг',
   },
   never: 'Никогда',

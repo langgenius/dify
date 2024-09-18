@@ -3,12 +3,12 @@ import React, { useCallback, useEffect, useRef, useState } from 'react'
 import { t } from 'i18next'
 import copy from 'copy-to-clipboard'
 import s from './index.module.css'
-import type { SuccessInvationResult } from '.'
+import type { SuccessInvitationResult } from '.'
 import Tooltip from '@/app/components/base/tooltip'
 import { randomString } from '@/utils'
 
 type IInvitationLinkProps = {
-  value: SuccessInvationResult
+  value: SuccessInvitationResult
 }
 
 const InvitationLink = ({
