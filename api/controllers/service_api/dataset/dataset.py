@@ -82,6 +82,26 @@ class DatasetListApi(DatasetApiResource):
             required=False,
             nullable=False,
         )
+        parser.add_argument(
+            "external_api_template_id",
+            type=str,
+            nullable=True,
+            required=False,
+            default="_validate_name",
+        )
+        parser.add_argument(
+            "provider",
+            type=str,
+            nullable=True,
+            required=False,
+            default="vendor",
+        )
+        parser.add_argument(
+            "external_knowledge_id",
+            type=str,
+            nullable=True,
+            required=False,
+        )
         args = parser.parse_args()
 
         try:
@@ -91,6 +111,9 @@ class DatasetListApi(DatasetApiResource):
                 indexing_technique=args["indexing_technique"],
                 account=current_user,
                 permission=args["permission"],
+                provider=args["provider"],
+                external_api_template_id=args["external_api_template_id"],
+                external_knowledge_id=args["external_knowledge_id"],
             )
         except services.errors.dataset.DatasetNameDuplicateError:
             raise DatasetNameDuplicateError()

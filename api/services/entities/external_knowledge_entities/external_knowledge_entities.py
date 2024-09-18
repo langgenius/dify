@@ -1,16 +1,16 @@
-from typing import Literal, Union, Optional
+from typing import Literal, Optional, Union
 
 from pydantic import BaseModel
 
 
 class AuthorizationConfig(BaseModel):
-    type: Literal[None, 'basic', 'bearer', 'custom']
+    type: Literal[None, "basic", "bearer", "custom"]
     api_key: Union[None, str] = None
     header: Union[None, str] = None
 
 
 class Authorization(BaseModel):
-    type: Literal['no-auth', 'api-key']
+    type: Literal["no-auth", "api-key"]
     config: Optional[AuthorizationConfig] = None
 
 

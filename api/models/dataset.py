@@ -37,6 +37,7 @@ class Dataset(db.Model):
     )
 
     INDEXING_TECHNIQUE_LIST = ['high_quality', 'economy', None]
+    PROVIDER_LIST = ['vendor', 'external', None]
 
     id = db.Column(StringUUID, server_default=db.text('uuid_generate_v4()'))
     tenant_id = db.Column(StringUUID, nullable=False)

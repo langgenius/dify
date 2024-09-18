@@ -110,6 +110,26 @@ class DatasetListApi(Resource):
             nullable=True,
             help="Invalid indexing technique.",
         )
+        parser.add_argument(
+            "external_api_template_id",
+            type=str,
+            nullable=True,
+            required=False,
+        )
+        parser.add_argument(
+            "provider",
+            type=str,
+            nullable=True,
+            choices=Dataset.PROVIDER_LIST,
+            required=False,
+            default="vendor",
+        )
+        parser.add_argument(
+            "external_knowledge_id",
+            type=str,
+            nullable=True,
+            required=False,
+        )
         args = parser.parse_args()
 
         # The role of the current user in the ta table must be admin, owner, or editor, or dataset_operator
@@ -123,6 +143,9 @@ class DatasetListApi(Resource):
                 indexing_technique=args["indexing_technique"],
                 account=current_user,
                 permission=DatasetPermissionEnum.ONLY_ME,
+                provider=args["provider"],
+                external_api_template_id=args["external_api_template_id"],
+                external_knowledge_id=args["external_knowledge_id"],
             )
         except services.errors.dataset.DatasetNameDuplicateError:
             raise DatasetNameDuplicateError()

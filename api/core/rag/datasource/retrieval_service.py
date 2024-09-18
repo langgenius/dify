@@ -38,7 +38,7 @@ class RetrievalService:
         if not dataset:
             return []
         if provider == 'external':
-            external_knowledge_binding = ExternalDatasetService.fetch_external_knowledge_retrival(
+            all_documents = ExternalDatasetService.fetch_external_knowledge_retrival(
                 dataset.tenant_id,
                 dataset_id,
                 query,

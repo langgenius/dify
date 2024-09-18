@@ -32,6 +32,7 @@ from models.dataset import (
     DatasetQuery,
     Document,
     DocumentSegment,
+    ExternalKnowledgeBindings,
 )
 from models.model import UploadFile
 from models.source import DataSourceOauthBinding
@@ -39,6 +40,7 @@ from services.errors.account import NoPermissionError
 from services.errors.dataset import DatasetNameDuplicateError
 from services.errors.document import DocumentIndexingError
 from services.errors.file import FileNotExistsError
+from services.external_knowledge_service import ExternalDatasetService
 from services.feature_service import FeatureModel, FeatureService
 from services.tag_service import TagService
 from services.vector_service import VectorService
@@ -137,7 +139,14 @@ class DatasetService:
 
     @staticmethod
     def create_empty_dataset(
-        tenant_id: str, name: str, indexing_technique: Optional[str], account: Account, permission: Optional[str] = None
+        tenant_id: str,
+        name: str,
+        indexing_technique: Optional[str],
+        account: Account,
+        permission: Optional[str] = None,
+        provider: str = "vendor",
+        external_api_template_id: Optional[str] = None,
+        external_knowledge_id: Optional[str] = None,
     ):
         # check if dataset name already exists
         if Dataset.query.filter_by(name=name, tenant_id=tenant_id).first():
@@ -156,7 +165,23 @@ class DatasetService:
         dataset.embedding_model_provider = embedding_model.provider if embedding_model else None
         dataset.embedding_model = embedding_model.model if embedding_model else None
         dataset.permission = permission if permission else DatasetPermissionEnum.ONLY_ME
+        dataset.provider = provider
         db.session.add(dataset)
+        db.session.flush()
+
+        if provider == "external" and external_api_template_id:
+            external_api_template = ExternalDatasetService.get_api_template(external_api_template_id)
+            if not external_api_template:
+                raise ValueError("External API template not found.")
+            external_knowledge_binding = ExternalKnowledgeBindings(
+                tenant_id=tenant_id,
+                dataset_id=dataset.id,
+                external_api_template_id=external_api_template_id,
+                external_knowledge_id=external_knowledge_id,
+                created_by=account.id,
+            )
+            db.session.add(external_knowledge_binding)
+
         db.session.commit()
         return dataset
 
