@@ -11,9 +11,9 @@ background: "#EFF1FE"
 help:
   title:
     en_US: Get your API key from AliCloud
-    zh_Hans: 从阿里云获取 API Key
+    zh_Hans: 从阿里云百炼获取 API Key
   url:
-    en_US: https://dashscope.console.aliyun.com/api-key_management
+    en_US: https://bailian.console.aliyun.com/?apiKey=1#/api-key
 supported_model_types:
   - llm
   - tts
