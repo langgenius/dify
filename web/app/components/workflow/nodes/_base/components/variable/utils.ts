@@ -1087,6 +1087,11 @@ export const getNodeOutputVars = (node: Node, isChatMode: boolean): ValueSelecto
       break
     }
 
+    case BlockEnum.DocExtractor: {
+      res.push([id, 'text'])
+      break
+    }
+
     case BlockEnum.ListFilter: {
       res.push([id, 'result'])
       res.push([id, 'first_record'])
