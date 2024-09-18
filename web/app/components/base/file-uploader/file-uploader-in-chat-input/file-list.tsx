@@ -3,13 +3,19 @@ import { useFile } from '../hooks'
 import { useStore } from '../store'
 import FileImageItem from './file-image-item'
 import FileItem from './file-item'
+import type { FileUpload } from '@/app/components/base/features/types'
 
-const FileList = () => {
+type FileListProps = {
+  fileConfig: FileUpload
+}
+const FileList = ({
+  fileConfig,
+}: FileListProps) => {
   const files = useStore(s => s.files)
   const {
     handleRemoveFile,
     handleReUploadFile,
-  } = useFile()
+  } = useFile(fileConfig)
 
   return (
     <div className='flex flex-wrap gap-2'>

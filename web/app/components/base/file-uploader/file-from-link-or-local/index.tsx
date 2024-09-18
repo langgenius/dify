@@ -6,27 +6,33 @@ import { useTranslation } from 'react-i18next'
 import { RiUploadCloud2Line } from '@remixicon/react'
 import FileInput from '../file-input'
 import { useFile } from '../hooks'
+import { useStore } from '../store'
 import {
   PortalToFollowElem,
   PortalToFollowElemContent,
   PortalToFollowElemTrigger,
 } from '@/app/components/base/portal-to-follow-elem'
 import Button from '@/app/components/base/button'
+import type { FileUpload } from '@/app/components/base/features/types'
 
 type FileFromLinkOrLocalProps = {
   showFromLink?: boolean
   showFromLocal?: boolean
   trigger: (open: boolean) => React.ReactNode
+  fileConfig: FileUpload
 }
 const FileFromLinkOrLocal = ({
   showFromLink = true,
   showFromLocal = true,
   trigger,
+  fileConfig,
 }: FileFromLinkOrLocalProps) => {
   const { t } = useTranslation()
+  const files = useStore(s => s.files)
   const [open, setOpen] = useState(false)
   const [url, setUrl] = useState('')
-  const { handleLoadFileFromLink } = useFile()
+  const { handleLoadFileFromLink } = useFile(fileConfig)
+  const disabled = !!fileConfig.number_limits && files.length >= fileConfig.number_limits
 
   return (
     <PortalToFollowElem
@@ -48,12 +54,13 @@ const FileFromLinkOrLocal = ({
                   placeholder={t('common.fileUploader.pasteFileLinkInputPlaceholder') || ''}
                   value={url}
                   onChange={e => setUrl(e.target.value)}
+                  disabled={disabled}
                 />
                 <Button
                   className='shrink-0'
                   size='small'
                   variant='primary'
-                  disabled={!url}
+                  disabled={!url || disabled}
                   onClick={() => handleLoadFileFromLink()}
                 >
                   {t('common.operation.ok')}
@@ -75,10 +82,11 @@ const FileFromLinkOrLocal = ({
               <Button
                 className='relative w-full'
                 variant='secondary-accent'
+                disabled={disabled}
               >
                 <RiUploadCloud2Line className='mr-1 w-4 h-4' />
                 {t('common.fileUploader.uploadFromComputer')}
-                <FileInput />
+                <FileInput fileConfig={fileConfig} />
               </Button>
             )
           }

@@ -17,19 +17,25 @@ import { useFile } from '../hooks'
 import FileItem from './file-item'
 import Button from '@/app/components/base/button'
 import cn from '@/utils/classnames'
+import type { FileUpload } from '@/app/components/base/features/types'
 
 type Option = {
   value: string
   label: string
   icon: JSX.Element
 }
-const FileUploaderInAttachment = () => {
+type FileUploaderInAttachmentProps = {
+  fileConfig: FileUpload
+}
+const FileUploaderInAttachment = ({
+  fileConfig,
+}: FileUploaderInAttachmentProps) => {
   const { t } = useTranslation()
   const files = useStore(s => s.files)
   const {
     handleRemoveFile,
     handleReUploadFile,
-  } = useFile()
+  } = useFile(fileConfig)
   const options = [
     {
       value: 'local',
@@ -49,17 +55,18 @@ const FileUploaderInAttachment = () => {
         key={option.value}
         variant='tertiary'
         className={cn('basis-1/2 relative', open && 'bg-components-button-tertiary-bg-hover')}
+        disabled={!!(fileConfig.number_limits && files.length >= fileConfig.number_limits)}
       >
         {option.icon}
         <span className='ml-1'>{option.label}</span>
         {
           option.value === 'local' && (
-            <FileInput />
+            <FileInput fileConfig={fileConfig} />
           )
         }
       </Button>
     )
-  }, [])
+  }, [fileConfig, files.length])
   const renderTrigger = useCallback((option: Option) => {
     return (open: boolean) => renderButton(option, open)
   }, [renderButton])
@@ -73,10 +80,11 @@ const FileUploaderInAttachment = () => {
           key={option.value}
           showFromLocal={false}
           trigger={renderTrigger(option)}
+          fileConfig={fileConfig}
         />
       )
     }
-  }, [renderButton, renderTrigger])
+  }, [renderButton, renderTrigger, fileConfig])
 
   return (
     <div>
@@ -106,13 +114,15 @@ const FileUploaderInAttachment = () => {
 
 type FileUploaderInAttachmentWrapperProps = {
   onChange: (files: FileEntity[]) => void
+  fileConfig: FileUpload
 }
 const FileUploaderInAttachmentWrapper = ({
   onChange,
+  fileConfig,
 }: FileUploaderInAttachmentWrapperProps) => {
   return (
     <FileContextProvider onChange={onChange}>
-      <FileUploaderInAttachment />
+      <FileUploaderInAttachment fileConfig={fileConfig} />
     </FileContextProvider>
   )
 }

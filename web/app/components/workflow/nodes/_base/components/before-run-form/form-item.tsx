@@ -159,12 +159,20 @@ const FormItem: FC<Props> = ({
 
         {/* #TODO# file upload  */}
         {(type === InputVarType.singleFile || type === InputVarType.multiFiles) && (
-          <FileUploaderInAttachmentWrapper onChange={files => onChange(files.filter(file => file.progress !== -1).map(fileItem => ({
-            type: fileItem.fileType,
-            transfer_method: fileItem.type,
-            url: fileItem.url,
-            upload_file_id: fileItem.fileId,
-          })))} />
+          <FileUploaderInAttachmentWrapper
+            onChange={files => onChange(files.filter(file => file.progress !== -1).map(fileItem => ({
+              type: fileItem.fileType,
+              transfer_method: fileItem.type,
+              url: fileItem.url,
+              upload_file_id: fileItem.fileId,
+            })))}
+            fileConfig={{
+              allowed_file_types: payload.allowed_file_types,
+              allowed_file_extensions: payload.allowed_file_extensions,
+              allowed_file_upload_methods: payload.allowed_file_upload_methods,
+              number_limits: payload.max_length,
+            }}
+          />
         )}
         {
           type === InputVarType.files && (

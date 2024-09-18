@@ -13,17 +13,18 @@ import {
   fileUpload,
   getFileType,
 } from './utils'
+import { FILE_SIZE_LIMIT } from './constants'
 import { useToastContext } from '@/app/components/base/toast'
 import { TransferMethod } from '@/types/app'
-import { useFeaturesStore } from '@/app/components/base/features/hooks'
 import { SupportUploadFileTypes } from '@/app/components/workflow/types'
+import type { FileUpload } from '@/app/components/base/features/types'
+import { formatFileSize } from '@/utils/format'
 
-export const useFile = () => {
+export const useFile = (fileConfig: FileUpload) => {
   const { t } = useTranslation()
   const { notify } = useToastContext()
   const fileStore = useFileStore()
   const params = useParams()
-  const featuresStore = useFeaturesStore()
 
   const handleAddOrUpdateFiles = useCallback((newFile: FileEntity) => {
     const {
@@ -95,9 +96,13 @@ export const useFile = () => {
   }, [fileStore])
 
   const handleLocalFileUpload = useCallback((file: File) => {
+    if (file.size > FILE_SIZE_LIMIT) {
+      notify({ type: 'error', message: t('common.fileUploader.uploadFromComputerLimit', { size: formatFileSize(FILE_SIZE_LIMIT) }) })
+      return
+    }
     const reader = new FileReader()
     const isImage = file.type.startsWith('image')
-    const allowedFileTypes = featuresStore?.getState().features.file?.allowed_file_types
+    const allowedFileTypes = fileConfig.allowed_file_types
     const isCustomFileType = allowedFileTypes?.includes(SupportUploadFileTypes.custom)
 
     reader.addEventListener(
@@ -122,7 +127,7 @@ export const useFile = () => {
             handleAddOrUpdateFiles({ ...uploadingFile, fileStorageId: res.id, progress: 100 })
           },
           onErrorCallback: () => {
-            notify({ type: 'error', message: t('common.imageUploader.uploadFromComputerUploadError') })
+            notify({ type: 'error', message: t('common.fileUploader.uploadFromComputerUploadError') })
             handleAddOrUpdateFiles({ ...uploadingFile, progress: -1 })
           },
         }, !!params.token)
@@ -132,12 +137,12 @@ export const useFile = () => {
     reader.addEventListener(
       'error',
       () => {
-        notify({ type: 'error', message: t('common.imageUploader.uploadFromComputerReadError') })
+        notify({ type: 'error', message: t('common.fileUploader.uploadFromComputerReadError') })
       },
       false,
     )
     reader.readAsDataURL(file)
-  }, [notify, t, handleAddOrUpdateFiles, params.token])
+  }, [notify, t, handleAddOrUpdateFiles, params.token, fileConfig?.allowed_file_types])
 
   const handleClipboardPasteFile = useCallback((e: ClipboardEvent<HTMLTextAreaElement>) => {
     const file = e.clipboardData?.files[0]

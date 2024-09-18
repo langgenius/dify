@@ -125,7 +125,7 @@ const ChatInputArea = ({
         )}
       >
         <div className='relative px-[9px] max-h-[158px] overflow-x-hidden overflow-y-auto'>
-          <FileListInChatInput />
+          <FileListInChatInput fileConfig={visionConfig!} />
           <div
             ref={wrapperRef}
             className='flex items-center justify-between'

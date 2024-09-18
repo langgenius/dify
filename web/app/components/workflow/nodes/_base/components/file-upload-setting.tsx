@@ -10,6 +10,8 @@ import FileTypeItem from './file-type-item'
 import InputNumberWithSlider from './input-number-with-slider'
 import Field from '@/app/components/app/configuration/config-var/config-modal/field'
 import { TransferMethod } from '@/types/app'
+import { FILE_SIZE_LIMIT } from '@/app/components/base/file-uploader/constants'
+import { formatFileSize } from '@/utils/format'
 
 type Props = {
   payload: UploadFileSetting
@@ -138,7 +140,7 @@ const FileUploadSetting: FC<Props> = ({
           title={t('appDebug.variableConfig.maxNumberOfUploads')!}
         >
           <div>
-            <div className='mb-1.5 text-text-tertiary body-xs-regular'>{t('appDebug.variableConfig.maxNumberTip')}</div>
+            <div className='mb-1.5 text-text-tertiary body-xs-regular'>{t('appDebug.variableConfig.maxNumberTip', { size: formatFileSize(FILE_SIZE_LIMIT) })}</div>
             <InputNumberWithSlider
               value={max_length}
               min={1}

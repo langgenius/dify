@@ -361,7 +361,7 @@ const translation = {
       },
     },
     'maxNumberOfUploads': 'Max number of uploads',
-    'maxNumberTip': 'Max 15MB each',
+    'maxNumberTip': 'Max {{size}} each',
     'errorMsg': {
       labelNameRequired: 'Label name is required',
       varNameCanBeRepeat: 'Variable name can not be repeated',
