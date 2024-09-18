@@ -546,7 +546,8 @@ class OllamaLargeLanguageModel(LargeLanguageModel):
                     help=I18nObject(
                         en_US="Enable Mirostat sampling for controlling perplexity. "
                         "(default: 0, 0 = disabled, 1 = Mirostat, 2 = Mirostat 2.0)",
-                        zh_Hans="启用 Mirostat 采样以控制困惑度。（默认值：0，0 = 禁用，1 = Mirostat，2 = Mirostat 2.0）"
+                        zh_Hans="启用 Mirostat 采样以控制困惑度。"
+                        "（默认值：0，0 = 禁用，1 = Mirostat，2 = Mirostat 2.0）"
                     ),
                     min=0,
                     max=2,
@@ -638,7 +639,7 @@ class OllamaLargeLanguageModel(LargeLanguageModel):
                     precision=1,
                 ),
                 ParameterRule(
-                    name="seed",    
+                    name="seed",
                     label=I18nObject(en_US="Seed", zh_Hans="随机数种子"),
                     type=ParameterType.INT,
                     help=I18nObject(
@@ -660,7 +661,8 @@ class OllamaLargeLanguageModel(LargeLanguageModel):
                         " Valid time units are 's','m','h'. (Default: 5m)",
                         zh_Hans="设置模型在生成响应后在内存中保留的时间。"
                         "这必须是一个带有单位的持续时间字符串（例如，'10m' 表示10分钟，'24h' 表示24小时）。"
-                        "负数表示无限期地保留模型，'0'表示在生成响应后立即卸载模型。有效的时间单位有 's'（秒）、'm'（分钟）、'h'（小时）。（默认值：5m）"
+                        "负数表示无限期地保留模型，'0'表示在生成响应后立即卸载模型。"
+                        "有效的时间单位有 's'（秒）、'm'（分钟）、'h'（小时）。（默认值：5m）"
                     ),
                 ),
                 ParameterRule(
