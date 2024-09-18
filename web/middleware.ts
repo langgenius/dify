@@ -4,16 +4,16 @@ import { NextResponse } from 'next/server'
 export function middleware(request: NextRequest) {
   const nonce = Buffer.from(crypto.randomUUID()).toString('base64')
   // style-src 'self' 'nonce-${nonce}';
-  const csp = process.env.NODE_ENV === 'production' ? `'nonce-${nonce}'` : '\'unsafe-eval\' \'unsafe-inline\''
   const whiteList = 'https://cloud.dify.dev/ https://cloud.dify.ai/ https://analytics.google.com https://googletagmanager.com https://api.github.com'
+  const csp = process.env.NODE_ENV === 'production' ? `'nonce-${nonce}' ${whiteList}` : '\'unsafe-eval\' \'unsafe-inline\''
 
   const cspHeader = `
-    default-src 'self' ${csp} ${whiteList};
-    connect-src 'self' ${csp} ${whiteList};
-    script-src 'self' ${csp} ${whiteList};
-    style-src 'self' ${csp} ${whiteList};
-    worker-src 'self' ${csp} ${whiteList};
-    img-src 'self' blob: data: ${whiteList};
+    default-src 'self' ${csp};
+    connect-src 'self' ${csp};
+    script-src 'self' ${csp};
+    style-src 'self' ${csp};
+    worker-src 'self' ${csp};
+    img-src 'self' blob: data: ${csp};
     font-src 'self';
     object-src 'none';
     base-uri 'self';
