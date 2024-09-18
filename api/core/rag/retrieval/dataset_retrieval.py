@@ -426,7 +426,7 @@ class DatasetRetrieval:
                         retrieval_method=retrieval_model["search_method"],
                         dataset_id=dataset.id,
                         query=query,
-                        top_k=top_k,
+                        top_k=retrieval_model.get("top_k") or 2,
                         score_threshold=retrieval_model.get("score_threshold", 0.0)
                         if retrieval_model["score_threshold_enabled"]
                         else 0.0,

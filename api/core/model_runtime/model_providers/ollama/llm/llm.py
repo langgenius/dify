@@ -472,7 +472,7 @@ class OllamaLargeLanguageModel(LargeLanguageModel):
                 ParameterRule(
                     name=DefaultParameterName.TEMPERATURE.value,
                     use_template=DefaultParameterName.TEMPERATURE.value,
-                    label=I18nObject(en_US="Temperature",zh_Hans="温度"),
+                    label=I18nObject(en_US="Temperature", zh_Hans="温度"),
                     type=ParameterType.FLOAT,
                     help=I18nObject(
                         en_US="The temperature of the model. "
@@ -487,7 +487,7 @@ class OllamaLargeLanguageModel(LargeLanguageModel):
                 ParameterRule(
                     name=DefaultParameterName.TOP_P.value,
                     use_template=DefaultParameterName.TOP_P.value,
-                    label=I18nObject(en_US="Top P",zh_Hans="Top P"),
+                    label=I18nObject(en_US="Top P", zh_Hans="Top P"),
                     type=ParameterType.FLOAT,
                     help=I18nObject(
                         en_US="Works together with top-k. A higher value (e.g., 0.95) will lead to "
@@ -501,7 +501,7 @@ class OllamaLargeLanguageModel(LargeLanguageModel):
                 ),
                 ParameterRule(
                     name="top_k",
-                    label=I18nObject(en_US="Top K",zh_Hans="Top K"),
+                    label=I18nObject(en_US="Top K", zh_Hans="Top K"),
                     type=ParameterType.INT,
                     help=I18nObject(
                         en_US="Reduces the probability of generating nonsense. "
@@ -528,7 +528,7 @@ class OllamaLargeLanguageModel(LargeLanguageModel):
                 ParameterRule(
                     name="num_predict",
                     use_template="max_tokens",
-                    label=I18nObject(en_US="Num Predict",zh_Hans="最大令牌数预测"),
+                    label=I18nObject(en_US="Num Predict", zh_Hans="最大令牌数预测"),
                     type=ParameterType.INT,
                     help=I18nObject(
                         en_US="Maximum number of tokens to predict when generating text. "
@@ -541,7 +541,7 @@ class OllamaLargeLanguageModel(LargeLanguageModel):
                 ),
                 ParameterRule(
                     name="mirostat",
-                    label=I18nObject(en_US="Mirostat sampling",zh_Hans="Mirostat 采样"),
+                    label=I18nObject(en_US="Mirostat sampling", zh_Hans="Mirostat 采样"),
                     type=ParameterType.INT,
                     help=I18nObject(
                         en_US="Enable Mirostat sampling for controlling perplexity. "
@@ -553,7 +553,7 @@ class OllamaLargeLanguageModel(LargeLanguageModel):
                 ),
                 ParameterRule(
                     name="mirostat_eta",
-                    label=I18nObject(en_US="Mirostat Eta",zh_Hans="学习率"),
+                    label=I18nObject(en_US="Mirostat Eta", zh_Hans="学习率"),
                     type=ParameterType.FLOAT,
                     help=I18nObject(
                         en_US="Influences how quickly the algorithm responds to feedback from "
@@ -566,7 +566,7 @@ class OllamaLargeLanguageModel(LargeLanguageModel):
                 ),
                 ParameterRule(
                     name="mirostat_tau",
-                    label=I18nObject(en_US="Mirostat Tau",zh_Hans="文本连贯度"),
+                    label=I18nObject(en_US="Mirostat Tau", zh_Hans="文本连贯度"),
                     type=ParameterType.FLOAT,
                     help=I18nObject(
                         en_US="Controls the balance between coherence and diversity of the output. "
@@ -577,7 +577,7 @@ class OllamaLargeLanguageModel(LargeLanguageModel):
                 ),
                 ParameterRule(
                     name="num_ctx",
-                    label=I18nObject(en_US="Size of context window",zh_Hans="上下文窗口大小"),
+                    label=I18nObject(en_US="Size of context window", zh_Hans="上下文窗口大小"),
                     type=ParameterType.INT,
                     help=I18nObject(
                         en_US="Sets the size of the context window used to generate the next token. (Default: 2048)",
@@ -588,21 +588,22 @@ class OllamaLargeLanguageModel(LargeLanguageModel):
                 ),
                 ParameterRule(
                     name="num_gpu",
-                    label=I18nObject(en_US="GPU Layers",zh_Hans="GPU 层数"),
+                    label=I18nObject(en_US="GPU Layers", zh_Hans="GPU 层数"),
                     type=ParameterType.INT,
                     help=I18nObject(
                         en_US="The number of layers to offload to the GPU(s). "
                         "On macOS it defaults to 1 to enable metal support, 0 to disable."
                         "As long as a model fits into one gpu it stays in one. "
                         "It does not set the number of GPU(s). ",
-                        zh_Hans="加载到 GPU 的层数。在 macOS 上，默认为 1 以启用 Metal 支持，设置为 0 则禁用。只要模型适合一个 GPU，它就保留在其中。它不设置 GPU 的数量。"
+                        zh_Hans="加载到 GPU 的层数。在 macOS 上，默认为 1 以启用 Metal 支持，设置为 0 则禁用。"
+                        "只要模型适合一个 GPU，它就保留在其中。它不设置 GPU 的数量。"
                     ),
                     min=-1,
                     default=1,
                 ),
                 ParameterRule(
                     name="num_thread",
-                    label=I18nObject(en_US="Num Thread",zh_Hans="线程数"),
+                    label=I18nObject(en_US="Num Thread", zh_Hans="线程数"),
                     type=ParameterType.INT,
                     help=I18nObject(
                         en_US="Sets the number of threads to use during computation. "
@@ -615,7 +616,7 @@ class OllamaLargeLanguageModel(LargeLanguageModel):
                 ),
                 ParameterRule(
                     name="repeat_last_n",
-                    label=I18nObject(en_US="Repeat last N",zh_Hans="回溯内容"),
+                    label=I18nObject(en_US="Repeat last N", zh_Hans="回溯内容"),
                     type=ParameterType.INT,
                     help=I18nObject(
                         en_US="Sets how far back for the model to look back to prevent repetition. "
@@ -626,7 +627,7 @@ class OllamaLargeLanguageModel(LargeLanguageModel):
                 ),
                 ParameterRule(
                     name="tfs_z",
-                    label=I18nObject(en_US="TFS Z",zh_Hans="减少标记影响"),
+                    label=I18nObject(en_US="TFS Z", zh_Hans="减少标记影响"),
                     type=ParameterType.FLOAT,
                     help=I18nObject(
                         en_US="Tail free sampling is used to reduce the impact of less probable tokens "
@@ -638,7 +639,7 @@ class OllamaLargeLanguageModel(LargeLanguageModel):
                 ),
                 ParameterRule(
                     name="seed",    
-                    label=I18nObject(en_US="Seed",zh_Hans="随机数种子"),
+                    label=I18nObject(en_US="Seed", zh_Hans="随机数种子"),
                     type=ParameterType.INT,
                     help=I18nObject(
                         en_US="Sets the random number seed to use for generation. Setting this to "
@@ -649,7 +650,7 @@ class OllamaLargeLanguageModel(LargeLanguageModel):
                 ),
                 ParameterRule(
                     name="keep_alive",
-                    label=I18nObject(en_US="Keep Alive",zh_Hans="模型存活时间"),
+                    label=I18nObject(en_US="Keep Alive", zh_Hans="模型存活时间"),
                     type=ParameterType.STRING,
                     help=I18nObject(
                         en_US="Sets how long the model is kept in memory after generating a response. "
@@ -657,12 +658,14 @@ class OllamaLargeLanguageModel(LargeLanguageModel):
                         " A negative number keeps the model loaded indefinitely, and '0' unloads the model"
                         " immediately after generating a response."
                         " Valid time units are 's','m','h'. (Default: 5m)",
-                        zh_Hans="设置模型在生成响应后在内存中保留的时间。这必须是一个带有单位的持续时间字符串（例如，'10m' 表示10分钟，'24h' 表示24小时）。负数表示无限期地保留模型，'0' 在生成响应后立即卸载模型。有效的时间单位有 's'（秒）、'm'（分钟）、'h'（小时）。（默认值：5m）"
+                        zh_Hans="设置模型在生成响应后在内存中保留的时间。"
+                        "这必须是一个带有单位的持续时间字符串（例如，'10m' 表示10分钟，'24h' 表示24小时）。"
+                        "负数表示无限期地保留模型，'0'表示在生成响应后立即卸载模型。有效的时间单位有 's'（秒）、'm'（分钟）、'h'（小时）。（默认值：5m）"
                     ),
                 ),
                 ParameterRule(
                     name="format",
-                    label=I18nObject(en_US="Format",zh_Hans="返回格式"),
+                    label=I18nObject(en_US="Format", zh_Hans="返回格式"),
                     type=ParameterType.STRING,
                     help=I18nObject(
                         en_US="the format to return a response in. Currently the only accepted value is json.",

@@ -89,6 +89,7 @@ services:
   weaviate:
     image: semitechnologies/weaviate:1.19.0
     profiles:
+      - ""
       - weaviate
     restart: always
     volumes:
