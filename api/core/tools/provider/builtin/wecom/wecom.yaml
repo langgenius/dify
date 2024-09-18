@@ -1,5 +1,5 @@
 identity:
-  author: Bowen Liang
+  author: Bowen Liang, Yuzheng Xie
   name: wecom
   label:
     en_US: Wecom
@@ -7,7 +7,7 @@ identity:
     pt_BR: Wecom
   description:
     en_US: Wecom group bot
-    zh_Hans: 企业微信群机器人
+    zh_Hans: 企业微信推送群机器人/应用消息
     pt_BR: Wecom group bot
   icon: icon.png
   tags:
