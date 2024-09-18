@@ -16,11 +16,12 @@ type Shape = {
   setFiles: (files: FileEntity[]) => void
 }
 
-export const createFileStore = () => {
+export const createFileStore = (onChange?: (files: FileEntity[]) => void) => {
   return create<Shape>(set => ({
     files: [],
     setFiles: (files) => {
       set({ files })
+      onChange?.(files)
     },
   }))
 }
@@ -44,14 +45,16 @@ type FileProviderProps = {
   children: React.ReactNode
   isPublicAPI?: boolean
   url?: string
+  onChange?: (files: FileEntity[]) => void
 }
 export const FileContextProvider = ({
   children,
+  onChange,
 }: FileProviderProps) => {
   const storeRef = useRef<FileStore>()
 
   if (!storeRef.current)
-    storeRef.current = createFileStore()
+    storeRef.current = createFileStore(onChange)
 
   return (
     <FileContext.Provider value={storeRef.current}>

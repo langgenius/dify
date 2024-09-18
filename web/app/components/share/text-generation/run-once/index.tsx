@@ -113,7 +113,12 @@ const RunOnce: FC<IRunOnceProps> = ({
               </div>
             )
           }
-          <FileUploaderInAttachmentWrapper onChange={() => {}} />
+          <FileUploaderInAttachmentWrapper onChange={files => onVisionFilesChange(files.filter(file => file.progress !== -1).map(fileItem => ({
+            type: fileItem.fileType,
+            transfer_method: fileItem.type,
+            url: fileItem.url || '',
+            upload_file_id: fileItem.fileId,
+          })))} />
           {promptConfig.prompt_variables.length > 0 && (
             <div className='mt-4 h-[1px] bg-gray-100'></div>
           )}
