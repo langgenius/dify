@@ -26,7 +26,7 @@ export enum BlockEnum {
   Tool = 'tool',
   ParameterExtractor = 'parameter-extractor',
   Iteration = 'iteration',
-  DocExtractor = 'doc-extractor',
+  DocExtractor = 'document-extractor',
   ListFilter = 'list-filter',
   IterationStart = 'iteration-start',
   Assigner = 'assigner', // is now named as VariableAssigner
