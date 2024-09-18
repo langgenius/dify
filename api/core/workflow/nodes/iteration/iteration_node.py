@@ -197,33 +197,6 @@ class IterationNode(BaseNode):
                 # append to iteration output variable list
                 current_iteration_output = variable_pool.get_any(self.node_data.output_selector)
                 outputs.append(current_iteration_output)
-                        yield event
-                    elif isinstance(event, BaseGraphEvent):
-                        if isinstance(event, GraphRunFailedEvent):
-                            # iteration run failed
-                            yield IterationRunFailedEvent(
-                                iteration_id=self.id,
-                                iteration_node_id=self.node_id,
-                                iteration_node_type=self.node_type,
-                                iteration_node_data=self.node_data,
-                                start_at=start_at,
-                                inputs=inputs,
-                                outputs={"output": jsonable_encoder(outputs)},
-                                steps=len(iterator_list_value),
-                                metadata={"total_tokens": graph_engine.graph_runtime_state.total_tokens},
-                                error=event.error,
-                            )
-
-                            yield RunCompletedEvent(
-                                run_result=NodeRunResult(
-                                    status=WorkflowNodeExecutionStatus.FAILED,
-                                    error=event.error,
-                                )
-                            )
-                            return
-                    else:
-                        event = cast(InNodeEvent, event)
-                        yield event
 
                 # append to iteration output variable list
                 current_iteration_output = variable_pool.get_any(self.node_data.output_selector)
@@ -249,19 +222,7 @@ class IterationNode(BaseNode):
 
                 if next_index < len(iterator_list_value):
                     variable_pool.add([self.node_id, "item"], iterator_list_value[next_index])
-                if next_index < len(iterator_list_value):
-                    variable_pool.add([self.node_id, "item"], iterator_list_value[next_index])
 
-                yield IterationRunNextEvent(
-                    iteration_id=self.id,
-                    iteration_node_id=self.node_id,
-                    iteration_node_type=self.node_type,
-                    iteration_node_data=self.node_data,
-                    index=next_index,
-                    pre_iteration_output=jsonable_encoder(current_iteration_output)
-                    if current_iteration_output
-                    else None,
-                )
                 yield IterationRunNextEvent(
                     iteration_id=self.id,
                     iteration_node_id=self.node_id,
