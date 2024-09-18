@@ -154,7 +154,7 @@ class ReplicateLargeLanguageModel(_CommonReplicate, LargeLanguageModel):
         )
 
         for key, value in input_properties:
-            if key not in ["system_prompt", "prompt"] and "stop" not in key:
+            if key not in {"system_prompt", "prompt"} and "stop" not in key:
                 value_type = value.get("type")
 
                 if not value_type:

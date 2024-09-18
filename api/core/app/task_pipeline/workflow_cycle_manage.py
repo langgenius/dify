@@ -383,7 +383,7 @@ class WorkflowCycleManage:
         :param workflow_node_execution: workflow node execution
         :return:
         """
-        if workflow_node_execution.node_type in [NodeType.ITERATION.value, NodeType.LOOP.value]:
+        if workflow_node_execution.node_type in {NodeType.ITERATION.value, NodeType.LOOP.value}:
             return None
 
         response = NodeStartStreamResponse(
@@ -430,7 +430,7 @@ class WorkflowCycleManage:
         :param workflow_node_execution: workflow node execution
         :return:
         """
-        if workflow_node_execution.node_type in [NodeType.ITERATION.value, NodeType.LOOP.value]:
+        if workflow_node_execution.node_type in {NodeType.ITERATION.value, NodeType.LOOP.value}:
             return None
 
         return NodeFinishStreamResponse(

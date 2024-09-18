@@ -29,7 +29,7 @@ class BaseAppConfigManager:
         additional_features.show_retrieve_source = RetrievalResourceConfigManager.convert(config=config_dict)
 
         additional_features.file_upload = FileUploadConfigManager.convert(
-            config=config_dict, is_vision=app_mode in [AppMode.CHAT, AppMode.COMPLETION, AppMode.AGENT_CHAT]
+            config=config_dict, is_vision=app_mode in {AppMode.CHAT, AppMode.COMPLETION, AppMode.AGENT_CHAT}
         )
 
         additional_features.opening_statement, additional_features.suggested_questions = (

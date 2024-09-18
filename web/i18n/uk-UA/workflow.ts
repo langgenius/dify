@@ -93,6 +93,8 @@ const translation = {
     parallelRun: 'Паралельний біг',
     jumpToNode: 'Перейти до цього вузла',
     addParallelNode: 'Додати паралельний вузол',
+    parallel: 'ПАРАЛЕЛЬНИЙ',
+    branch: 'ГІЛКА',
   },
   env: {
     envPanelTitle: 'Змінні середовища',

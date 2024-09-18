@@ -90,7 +90,7 @@ class AppDslService:
 
         # import dsl and create app
         app_mode = AppMode.value_of(app_data.get("mode"))
-        if app_mode in [AppMode.ADVANCED_CHAT, AppMode.WORKFLOW]:
+        if app_mode in {AppMode.ADVANCED_CHAT, AppMode.WORKFLOW}:
             app = cls._import_and_create_new_workflow_based_app(
                 tenant_id=tenant_id,
                 app_mode=app_mode,
@@ -103,7 +103,7 @@ class AppDslService:
                 icon_background=icon_background,
                 use_icon_as_answer_icon=use_icon_as_answer_icon,
             )
-        elif app_mode in [AppMode.CHAT, AppMode.AGENT_CHAT, AppMode.COMPLETION]:
+        elif app_mode in {AppMode.CHAT, AppMode.AGENT_CHAT, AppMode.COMPLETION}:
             app = cls._import_and_create_new_model_config_based_app(
                 tenant_id=tenant_id,
                 app_mode=app_mode,
@@ -143,7 +143,7 @@ class AppDslService:
 
         # import dsl and overwrite app
         app_mode = AppMode.value_of(app_data.get("mode"))
-        if app_mode not in [AppMode.ADVANCED_CHAT, AppMode.WORKFLOW]:
+        if app_mode not in {AppMode.ADVANCED_CHAT, AppMode.WORKFLOW}:
             raise ValueError("Only support import workflow in advanced-chat or workflow app.")
 
         if app_data.get("mode") != app_model.mode:
@@ -177,7 +177,7 @@ class AppDslService:
             },
         }
 
-        if app_mode in [AppMode.ADVANCED_CHAT, AppMode.WORKFLOW]:
+        if app_mode in {AppMode.ADVANCED_CHAT, AppMode.WORKFLOW}:
             cls._append_workflow_export_data(
                 export_data=export_data, app_model=app_model, include_secret=include_secret
             )

@@ -63,7 +63,7 @@ class AnnotationReplyFeature:
                 score = documents[0].metadata["score"]
                 annotation = AppAnnotationService.get_annotation_by_id(annotation_id)
                 if annotation:
-                    if invoke_from in [InvokeFrom.SERVICE_API, InvokeFrom.WEB_APP]:
+                    if invoke_from in {InvokeFrom.SERVICE_API, InvokeFrom.WEB_APP}:
                         from_source = "api"
                     else:
                         from_source = "console"

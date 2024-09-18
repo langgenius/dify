@@ -96,7 +96,6 @@ class Signer:
         signing_key = Signer.get_signing_secret_key_v4(credentials.sk, md.date, md.region, md.service)
         sign = Util.to_hex(Util.hmac_sha256(signing_key, signing_str))
         request.headers["Authorization"] = Signer.build_auth_header_v4(sign, md, credentials)
-        return
 
     @staticmethod
     def hashed_canonical_request_v4(request, meta):
@@ -105,7 +104,7 @@ class Signer:
 
         signed_headers = {}
         for key in request.headers:
-            if key in ["Content-Type", "Content-Md5", "Host"] or key.startswith("X-"):
+            if key in {"Content-Type", "Content-Md5", "Host"} or key.startswith("X-"):
                 signed_headers[key.lower()] = request.headers[key]
 
         if "host" in signed_headers:

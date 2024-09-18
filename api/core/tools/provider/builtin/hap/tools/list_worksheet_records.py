@@ -30,7 +30,7 @@ class ListWorksheetRecordsTool(BuiltinTool):
         elif not (host.startswith("http://") or host.startswith("https://")):
             return self.create_text_message("Invalid parameter Host Address")
         else:
-            host = f"{host[:-1] if host.endswith('/') else host}/api"
+            host = f"{host.removesuffix('/')}/api"
 
         url_fields = f"{host}/v2/open/worksheet/getWorksheetInfo"
         headers = {"Content-Type": "application/json"}
@@ -183,11 +183,11 @@ class ListWorksheetRecordsTool(BuiltinTool):
         type_id = field.get("typeId")
         if type_id == 10:
             value = value if isinstance(value, str) else "、".join(value)
-        elif type_id in [28, 36]:
+        elif type_id in {28, 36}:
             value = field.get("options", {}).get(value, value)
-        elif type_id in [26, 27, 48, 14]:
+        elif type_id in {26, 27, 48, 14}:
             value = self.process_value(value)
-        elif type_id in [35, 29]:
+        elif type_id in {35, 29}:
             value = self.parse_cascade_or_associated(field, value)
         elif type_id == 40:
             value = self.parse_location(value)

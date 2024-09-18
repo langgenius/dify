@@ -125,7 +125,7 @@ class OpenAILargeLanguageModel(_CommonOpenAI, LargeLanguageModel):
         model_mode = self.get_model_mode(base_model, credentials)
 
         # transform response format
-        if "response_format" in model_parameters and model_parameters["response_format"] in ["JSON", "XML"]:
+        if "response_format" in model_parameters and model_parameters["response_format"] in {"JSON", "XML"}:
             stop = stop or []
             if model_mode == LLMMode.CHAT:
                 # chat model
@@ -615,10 +615,12 @@ class OpenAILargeLanguageModel(_CommonOpenAI, LargeLanguageModel):
 
         block_as_stream = False
         if model.startswith("o1"):
-            block_as_stream = True
-            stream = False
-            if "stream_options" in extra_model_kwargs:
-                del extra_model_kwargs["stream_options"]
+            if stream:
+                block_as_stream = True
+                stream = False
+
+                if "stream_options" in extra_model_kwargs:
+                    del extra_model_kwargs["stream_options"]
 
             if "stop" in extra_model_kwargs:
                 del extra_model_kwargs["stop"]
