@@ -1,9 +1,9 @@
 const translation = {
   plugins: {
-    title: 'Plugins',
+    title: '插件',
   },
   discover: {
-    title: 'Explore Marketplace',
+    title: '探索市场',
   },
 }
 

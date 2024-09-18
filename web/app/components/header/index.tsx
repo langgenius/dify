@@ -16,6 +16,7 @@ import GithubStar from './github-star'
 import { WorkspaceProvider } from '@/context/workspace-context'
 import { useAppContext } from '@/context/app-context'
 import LogoSite from '@/app/components/base/logo/logo-site'
+import WorkplaceSelector from '@/app/components/header/account-dropdown/workplace-selector'
 import useBreakpoints, { MediaType } from '@/hooks/use-breakpoints'
 import { useProviderContext } from '@/context/provider-context'
 import { useModalContext } from '@/context/modal-context'
@@ -48,7 +49,7 @@ const Header = () => {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [selectedSegment])
   return (
-    <div className='flex flex-1 items-center justify-between px-4'>
+    <div className='flex flex-1 items-center justify-between pr-3'>
       <div className='flex items-center'>
         {isMobile && <div
           className='flex items-center justify-center h-8 w-8 cursor-pointer'
@@ -56,23 +57,31 @@ const Header = () => {
         >
           <Bars3Icon className="h-4 w-4 text-gray-500" />
         </div>}
-        {!isMobile && <>
-          <Link href="/apps" className='flex items-center mr-4'>
+        {!isMobile
+        && <div className='flex w-64 p-2 pl-3 gap-1.5 items-center shrink-0 self-stretch'>
+          <Link href="/apps" className='flex w-8 h-8 items-center justify-center gap-2 shrink-0'>
             <LogoSite className='object-contain' />
           </Link>
-          {enableBilling && (
-            <div className='select-none'>
-              <HeaderBillingBtn onClick={handlePlanClick} />
-            </div>
-          )}
-          <GithubStar />
-        </>}
+          <div className='font-light text-divider-deep'>/</div>
+          <div className='flex items-center gap-0.5'>
+            <WorkspaceProvider>
+              <WorkplaceSelector />
+            </WorkspaceProvider>
+            {enableBilling && (
+              <div className='select-none'>
+                <HeaderBillingBtn onClick={handlePlanClick} />
+              </div>
+            )}
+          </div>
+        </div>
+        }
       </div>
       {isMobile && (
         <div className='flex'>
           <Link href="/apps" className='flex items-center mr-4'>
             <LogoSite />
           </Link>
+          <div className='font-light text-divider-deep'>/</div>
           {enableBilling && (
             <div className='select-none'>
               <HeaderBillingBtn onClick={handlePlanClick} />
@@ -94,9 +103,7 @@ const Header = () => {
         <div className='mr-3'>
           <PluginsNav />
         </div>
-        <WorkspaceProvider>
-          <AccountDropdown isMobile={isMobile} />
-        </WorkspaceProvider>
+        <AccountDropdown isMobile={isMobile} />
       </div>
       {(isMobile && isShowNavMenu) && (
         <div className='w-full flex flex-col p-2 gap-y-1'>

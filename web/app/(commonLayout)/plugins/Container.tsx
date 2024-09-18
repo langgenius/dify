@@ -35,8 +35,11 @@ const Container = () => {
   const containerRef = useRef<HTMLDivElement>(null)
 
   return (
-    <div ref={containerRef} className='grow relative flex flex-col rounded-t-xl bg-components-panel-bg border-t
-    border-divider-subtle overflow-y-auto'>
+    <div
+      ref={containerRef}
+      className='grow relative flex flex-col rounded-t-xl bg-components-panel-bg border-t
+      border-divider-subtle overflow-y-auto'
+    >
       <div className='flex min-h-[60px] px-12 pt-4 pb-2 items-center self-stretch gap-1'>
         <div className='flex justify-between items-center w-full'>
           <div className='flex-1'>
@@ -96,11 +99,14 @@ const Container = () => {
           </div>
         </div>
       </div>
-      <div className='flex flex-col flex-grow pt-1 pb-3 px-12 justify-center items-start gap-3 self-stretch'>
+      <div className='flex flex-col pt-1 pb-3 px-12 justify-center items-start gap-3 self-stretch'>
         <div className='h-px self-stretch bg-divider-subtle'></div>
         <div className='flex items-center gap-2 self-stretch'>
-          {/* Content for active tab will go here */}
+          {/* Filter goes here */}
         </div>
+      </div>
+      <div className='flex px-12 items-start content-start gap-2 flex-grow self-stretch flex-wrap'>
+        {/* Plugin cards go here */}
       </div>
       <div className='flex items-center justify-center py-4 gap-2 text-text-quaternary'>
         <RiDragDropLine className='w-4 h-4' />

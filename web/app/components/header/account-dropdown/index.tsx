@@ -9,7 +9,6 @@ import { Menu, Transition } from '@headlessui/react'
 import Indicator from '../indicator'
 import AccountAbout from '../account-about'
 import { mailToSupport } from '../utils/util'
-import WorkplaceSelector from './workplace-selector'
 import classNames from '@/utils/classnames'
 import I18n from '@/context/i18n'
 import Avatar from '@/app/components/base/avatar'
@@ -101,10 +100,6 @@ export default function AppSelector({ isMobile }: IAppSelector) {
                       </div>
                     </div>
                   </Menu.Item>
-                  <div className='px-1 py-1'>
-                    <div className='mt-2 px-3 text-xs font-medium text-gray-500'>{t('common.userProfile.workspace')}</div>
-                    <WorkplaceSelector />
-                  </div>
                   <div className="px-1 py-1">
                     <Menu.Item>
                       <div className={itemClassName} onClick={() => setShowAccountSettingModal({ payload: 'account' })}>
