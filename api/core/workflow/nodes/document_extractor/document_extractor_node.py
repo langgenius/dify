@@ -109,14 +109,11 @@ class DocumentExtractorNode(BaseNode):
             pdf_file = io.BytesIO(file_content)
             pdf_document = pypdfium2.PdfDocument(pdf_file, autoclose=True)
             text = ""
-            try:
-                for page in pdf_document:
-                    text_page = page.get_textpage()
-                    text += text_page.get_text_range()
-                    text_page.close()
-                    page.close()
-            finally:
-                pdf_document.close()
+            for page in pdf_document:
+                text_page = page.get_textpage()
+                text += text_page.get_text_range()
+                text_page.close()
+                page.close()
             return text
         except Exception as e:
             raise TextExtractionError(f"Failed to extract text from PDF: {str(e)}") from e

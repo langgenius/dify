@@ -1,5 +1,6 @@
 from core.workflow.nodes.answer.answer_node import AnswerNode
 from core.workflow.nodes.code.code_node import CodeNode
+from core.workflow.nodes.document_extractor import DocumentExtractorNode
 from core.workflow.nodes.end.end_node import EndNode
 from core.workflow.nodes.http_request.http_request_node import HttpRequestNode
 from core.workflow.nodes.if_else.if_else_node import IfElseNode
@@ -34,4 +35,5 @@ node_classes = {
     NodeType.ITERATION_START: IterationStartNode,
     NodeType.PARAMETER_EXTRACTOR: ParameterExtractorNode,
     NodeType.CONVERSATION_VARIABLE_ASSIGNER: VariableAssignerNode,
+    NodeType.DOCUMENT_EXTRACTOR: DocumentExtractorNode,
 }

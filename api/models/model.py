@@ -1,23 +1,41 @@
 import json
 import re
 import uuid
+from collections.abc import Sequence
 from datetime import datetime
 from enum import Enum
 from typing import Optional
 
 from flask import request
 from flask_login import UserMixin
+from pydantic import BaseModel, Field
 from sqlalchemy import Float, func, text
 from sqlalchemy.orm import Mapped, mapped_column
 
 from configs import dify_config
 from core.file import helpers as file_helpers
 from core.file.tool_file_parser import ToolFileParser
+from enums import FileTransferMethod, FileType, ImageDetail
 from extensions.ext_database import db
 from libs.helper import generate_string
 
 from .account import Account, Tenant
 from .types import StringUUID
+
+
+class ImageConfig(BaseModel):
+    number_limits: int = Field(default=0, deprecated=True)
+    transfer_methods: Sequence[FileTransferMethod] = Field(default_factory=list, deprecated=True)
+    detail: ImageDetail | None = None
+
+
+class FileUploadConfig(BaseModel):
+    enabled: bool = Field(default=False)
+    image_config: ImageConfig = Field(default=ImageConfig)
+    allowed_file_types: Sequence[FileType] = Field(default_factory=list)
+    allowed_extensions: Sequence[str] = Field(default_factory=list)
+    allowed_upload_methods: Sequence[FileTransferMethod] = Field(default_factory=list)
+    number_limits: int = Field(default=0, gt=0, le=6)
 
 
 class DifySetup(db.Model):

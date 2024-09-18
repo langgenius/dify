@@ -141,12 +141,11 @@ class HttpExecutor:
     def _init_headers(self):
         headers = self.variable_pool.convert_template(self.node_data.headers).text
         self.headers = _plain_text_to_dict(headers)
-        self.headers = {k.lower(): v for k, v in self.headers.items()}
 
         body = self.node_data.body
         if body is None:
             return
-        if "content-type" not in self.headers and body.type in BODY_TYPE_TO_CONTENT_TYPE:
+        if "content-type" not in (k.lower() for k in self.headers) and body.type in BODY_TYPE_TO_CONTENT_TYPE:
             self.headers["Content-Type"] = BODY_TYPE_TO_CONTENT_TYPE[body.type]
         if body.type == "form-data":
             self.boundary = f"----WebKitFormBoundary{_generate_random_string(16)}"
@@ -292,7 +291,6 @@ class HttpExecutor:
             raw += f"{k}: {v}\n"
         raw += "\n"
 
-        # TODO: Need to update with data, json, files and content.
         if self.files:
             # if files, use multipart/form-data with boundary
             boundary = self.boundary
@@ -302,11 +300,30 @@ class HttpExecutor:
                 raw += f"{v[1]}\n"
                 raw += f"--{boundary}"
             raw += "--"
-        else:
-            if isinstance(self.content, bytes):
-                raw += "[--bytes--file--content--]"
-            elif isinstance(self.content, str):
-                raw += self.content
+        elif self.node_data.body:
+            if self.content:
+                # for binary content
+                if isinstance(self.content, str):
+                    raw += self.content
+                elif isinstance(self.content, bytes):
+                    raw += self.content.decode("utf-8", errors="replace")
+            elif self.data and self.node_data.body.type == "x-www-form-urlencoded":
+                # for x-www-form-urlencoded
+                raw += urlencode(self.data)
+            elif self.data and self.node_data.body.type == "form-data":
+                # for form-data
+                boundary = self.boundary
+                for key, value in self.data.items():
+                    raw += f"--{boundary}\r\n"
+                    raw += f'Content-Disposition: form-data; name="{key}"\r\n\r\n'
+                    raw += f"{value}\r\n"
+                raw += f"--{boundary}--\r\n"
+            elif self.json:
+                # for json
+                raw += json.dumps(self.json)
+            elif self.node_data.body.type == "raw-text":
+                # for raw text
+                raw += self.node_data.body.data[0].value
 
         return raw
 
