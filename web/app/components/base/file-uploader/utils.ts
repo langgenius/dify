@@ -1,5 +1,6 @@
 import { FileAppearanceTypeEnum } from './types'
 import { upload } from '@/service/base'
+import { FILE_EXTS } from '@/app/components/base/prompt-editor/constants'
 
 type FileUploadParams = {
   file: File
@@ -69,6 +70,16 @@ export const getFileExtension = (file?: File) => {
 
   if (fileNamePairLength > 1)
     return fileNamePair[fileNamePairLength - 1]
+
+  return ''
+}
+
+export const getFileType = (file?: File) => {
+  const extension = getFileExtension(file)
+  for (const key in FILE_EXTS) {
+    if ((FILE_EXTS[key]).includes(extension.toUpperCase()))
+      return key
+  }
 
   return ''
 }

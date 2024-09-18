@@ -9,14 +9,21 @@ import { v4 as uuid4 } from 'uuid'
 import { useTranslation } from 'react-i18next'
 import type { FileEntity } from './types'
 import { useFileStore } from './store'
-import { fileUpload } from './utils'
+import {
+  fileUpload,
+  getFileType,
+} from './utils'
 import { useToastContext } from '@/app/components/base/toast'
+import { TransferMethod } from '@/types/app'
+import { useFeaturesStore } from '@/app/components/base/features/hooks'
+import { SupportUploadFileTypes } from '@/app/components/workflow/types'
 
 export const useFile = () => {
   const { t } = useTranslation()
   const { notify } = useToastContext()
   const fileStore = useFileStore()
   const params = useParams()
+  const featuresStore = useFeaturesStore()
 
   const handleAddOrUpdateFiles = useCallback((newFile: FileEntity) => {
     const {
@@ -90,6 +97,9 @@ export const useFile = () => {
   const handleLocalFileUpload = useCallback((file: File) => {
     const reader = new FileReader()
     const isImage = file.type.startsWith('image')
+    const allowedFileTypes = featuresStore?.getState().features.file?.allowed_file_types
+    const isCustomFileType = allowedFileTypes?.includes(SupportUploadFileTypes.custom)
+
     reader.addEventListener(
       'load',
       () => {
@@ -99,6 +109,8 @@ export const useFile = () => {
           url: '',
           progress: 0,
           base64Url: isImage ? reader.result as string : '',
+          fileType: isCustomFileType ? SupportUploadFileTypes.custom : getFileType(file),
+          type: TransferMethod.local_file,
         }
         handleAddOrUpdateFiles(uploadingFile)
         fileUpload({

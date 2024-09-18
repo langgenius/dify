@@ -1,3 +1,5 @@
+import type { TransferMethod } from '@/types/app'
+
 export enum FileAppearanceTypeEnum {
   IMAGE = 'IMAGE',
   VIDEO = 'VIDEO',
@@ -22,4 +24,6 @@ export type FileEntity = {
   progress: number
   url?: string
   base64Url?: string
+  type: TransferMethod
+  fileType: string
 }

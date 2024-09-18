@@ -1,5 +1,4 @@
 import {
-  memo,
   useCallback,
   useRef,
   useState,
@@ -16,11 +15,15 @@ import { useTextAreaHeight } from './hooks'
 import Operation from './operation'
 import cn from '@/utils/classnames'
 import { FileListInChatInput } from '@/app/components/base/file-uploader'
-import { FileContextProvider } from '@/app/components/base/file-uploader/store'
+import {
+  FileContextProvider,
+  useStore,
+} from '@/app/components/base/file-uploader/store'
 import VoiceInput from '@/app/components/base/voice-input'
 import { useToastContext } from '@/app/components/base/toast'
 import FeatureBar from '@/app/components/base/features/new-feature-panel/feature-bar'
 import type { FileUpload } from '@/app/components/base/features/types'
+import { TransferMethod } from '@/types/app'
 
 type ChatInputAreaProps = {
   showFeatureBar?: boolean
@@ -55,15 +58,27 @@ const ChatInputArea = ({
   const [query, setQuery] = useState('')
   const isUseInputMethod = useRef(false)
   const [showVoiceInput, setShowVoiceInput] = useState(false)
+  const files = useStore(s => s.files)
+  const setFiles = useStore(s => s.setFiles)
 
   const handleSend = () => {
     if (onSend) {
+      if (files.find(item => item.type === TransferMethod.local_file && !item.fileStorageId)) {
+        notify({ type: 'info', message: t('appDebug.errorMessage.waitForImgUpload') })
+        return
+      }
       if (!query || !query.trim()) {
         notify({ type: 'info', message: t('appAnnotation.errorMessage.queryRequired') })
         return
       }
-      onSend(query)
+      onSend(query, files.filter(file => file.progress !== -1).map(fileItem => ({
+        type: fileItem.fileType,
+        transfer_method: fileItem.type,
+        url: fileItem.url || '',
+        upload_file_id: fileItem.fileStorageId || '',
+      })))
       setQuery('')
+      setFiles([])
     }
   }
 
@@ -103,64 +118,70 @@ const ChatInputArea = ({
   )
 
   return (
-    <FileContextProvider onChange={() => {}}>
-      <>
-        <div
-          className={cn(
-            'relative py-[9px] bg-components-panel-bg-blur border border-components-chat-input-border rounded-xl shadow-md z-10',
-          )}
-        >
-          <div className='relative px-[9px] max-h-[158px] overflow-x-hidden overflow-y-auto'>
-            <FileListInChatInput />
-            <div
-              ref={wrapperRef}
-              className='flex items-center justify-between'
-            >
-              <div className='flex items-center relative grow w-full'>
-                <div
-                  ref={textValueRef}
-                  className='absolute w-auto h-auto p-1 leading-6 body-lg-regular pointer-events-none whitespace-pre invisible'
-                >
-                  {query}
-                </div>
-                <Textarea
-                  ref={textareaRef}
-                  className='p-1 w-full leading-6 body-lg-regular text-text-tertiary outline-none'
-                  placeholder='Enter message...'
-                  autoSize={{ minRows: 1 }}
-                  onResize={handleTextareaResize}
-                  value={query}
-                  onChange={(e) => {
-                    setQuery(e.target.value)
-                    handleTextareaResize()
-                  }}
-                  onKeyUp={handleKeyUp}
-                  onKeyDown={handleKeyDown}
-                />
+    <>
+      <div
+        className={cn(
+          'relative py-[9px] bg-components-panel-bg-blur border border-components-chat-input-border rounded-xl shadow-md z-10',
+        )}
+      >
+        <div className='relative px-[9px] max-h-[158px] overflow-x-hidden overflow-y-auto'>
+          <FileListInChatInput />
+          <div
+            ref={wrapperRef}
+            className='flex items-center justify-between'
+          >
+            <div className='flex items-center relative grow w-full'>
+              <div
+                ref={textValueRef}
+                className='absolute w-auto h-auto p-1 leading-6 body-lg-regular pointer-events-none whitespace-pre invisible'
+              >
+                {query}
               </div>
-              {
-                !isMultipleLine && operation
-              }
+              <Textarea
+                ref={textareaRef}
+                className='p-1 w-full leading-6 body-lg-regular text-text-tertiary outline-none'
+                placeholder='Enter message...'
+                autoSize={{ minRows: 1 }}
+                onResize={handleTextareaResize}
+                value={query}
+                onChange={(e) => {
+                  setQuery(e.target.value)
+                  handleTextareaResize()
+                }}
+                onKeyUp={handleKeyUp}
+                onKeyDown={handleKeyDown}
+              />
             </div>
             {
-              showVoiceInput && (
-                <VoiceInput
-                  onCancel={() => setShowVoiceInput(false)}
-                  onConverted={text => setQuery(text)}
-                />
-              )
+              !isMultipleLine && operation
             }
           </div>
           {
-            isMultipleLine && (
-              <div className='px-[9px]'>{operation}</div>
+            showVoiceInput && (
+              <VoiceInput
+                onCancel={() => setShowVoiceInput(false)}
+                onConverted={text => setQuery(text)}
+              />
             )
           }
         </div>
-        {showFeatureBar && <FeatureBar showFileUpload={showFileUpload} disabled={featureBarDisabled} onFeatureBarClick={onFeatureBarClick} />}
-      </>
+        {
+          isMultipleLine && (
+            <div className='px-[9px]'>{operation}</div>
+          )
+        }
+      </div>
+      {showFeatureBar && <FeatureBar showFileUpload={showFileUpload} disabled={featureBarDisabled} onFeatureBarClick={onFeatureBarClick} />}
+    </>
+  )
+}
+
+const ChatInputAreaWrapper = (props: ChatInputAreaProps) => {
+  return (
+    <FileContextProvider>
+      <ChatInputArea {...props} />
     </FileContextProvider>
   )
 }
 
-export default memo(ChatInputArea)
+export default ChatInputAreaWrapper

@@ -7,21 +7,20 @@ import {
   create,
   useStore as useZustandStore,
 } from 'zustand'
-import type { FileEntity } from './types'
+import type {
+  FileEntity,
+} from './types'
 
 type Shape = {
   files: FileEntity[]
   setFiles: (files: FileEntity[]) => void
 }
 
-export const createFileStore = ({
-  onChange,
-}: Pick<FileProviderProps, 'onChange'>) => {
+export const createFileStore = () => {
   return create<Shape>(set => ({
     files: [],
     setFiles: (files) => {
       set({ files })
-      onChange(files)
     },
   }))
 }
@@ -43,18 +42,16 @@ export const useFileStore = () => {
 
 type FileProviderProps = {
   children: React.ReactNode
-  onChange: (files: FileEntity[]) => void
   isPublicAPI?: boolean
   url?: string
 }
 export const FileContextProvider = ({
   children,
-  onChange,
 }: FileProviderProps) => {
   const storeRef = useRef<FileStore>()
 
   if (!storeRef.current)
-    storeRef.current = createFileStore({ onChange })
+    storeRef.current = createFileStore()
 
   return (
     <FileContext.Provider value={storeRef.current}>
