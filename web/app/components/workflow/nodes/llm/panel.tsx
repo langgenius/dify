@@ -74,6 +74,8 @@ const Panel: FC<NodePanelProps<LLMNodeType>> = ({
   const singleRunForms = (() => {
     const forms: FormProps[] = []
 
+    console.log(data.vision?.configs)
+
     if (varInputs.length > 0) {
       forms.push(
         {
@@ -102,11 +104,12 @@ const Panel: FC<NodePanelProps<LLMNodeType>> = ({
     }
 
     if (isVisionModel) {
+      const variableName = data.vision.configs?.variable_selector[1]
       forms.push(
         {
           label: t(`${i18nPrefix}.vision`)!,
           inputs: [{
-            label: t(`${i18nPrefix}.files`)!,
+            label: variableName!,
             variable: '#files#',
             type: InputVarType.files,
             required: false,

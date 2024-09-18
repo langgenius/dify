@@ -170,8 +170,9 @@ const FormItem: FC<Props> = ({
           type === InputVarType.files && (
             <TextGenerationImageUploader
               settings={{
-                ...fileSettings?.image,
-                detail: Resolution.high,
+                ...fileSettings,
+                detail: fileSettings?.image?.detail || Resolution.high,
+                transfer_methods: fileSettings?.allowed_file_upload_methods || [],
               } as any}
               onFilesChange={files => onChange(files.filter(file => file.progress !== -1).map(fileItem => ({
                 type: 'image',
