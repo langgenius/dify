@@ -68,7 +68,7 @@ class ExternalApiTemplateListApi(Resource):
         )
         parser.add_argument(
             "settings",
-            type=list,
+            type=dict,
             location="json",
             nullable=False,
             required=True,
@@ -126,7 +126,7 @@ class ExternalApiTemplateApi(Resource):
         )
         parser.add_argument(
             "settings",
-            type=list,
+            type=dict,
             location="json",
             nullable=False,
             required=True,

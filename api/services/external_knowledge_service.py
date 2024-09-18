@@ -289,3 +289,20 @@ class ExternalDatasetService:
             "params": external_retrival_parameters,
         }
         response = ExternalDatasetService.process_external_api(ApiTemplateSetting(**api_template_setting), None)
+
+
+    @staticmethod
+    def test_external_knowledge_retrival(
+        top_k: int, score_threshold: float
+    ):
+        api_template_setting = {
+            "url": f"{settings.get('endpoint')}/dify/external-knowledge/retrival-documents",
+            "request_method": "post",
+            "headers": settings.get("headers"),
+            "params": {
+                "top_k": top_k,
+                "score_threshold": score_threshold,
+            },
+        }
+        response = ExternalDatasetService.process_external_api(ApiTemplateSetting(**api_template_setting), None)
+        return response.json()

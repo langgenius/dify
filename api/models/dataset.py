@@ -719,7 +719,7 @@ class ExternalApiTemplates(db.Model):
             'description': self.description,
             'settings': self.settings_dict,
             'created_by': self.created_by,
-            'created_at': self.created_at,
+            'created_at': self.created_at.isoformat(),
         }
 
     @property
