@@ -6,7 +6,7 @@ const i18nPrefix = 'workflow.errorMsg'
 
 const nodeDefault: NodeDefault<DocExtractorNodeType> = {
   defaultValue: {
-    variable: [],
+    variable_selector: [],
   },
   getAvailablePrevNodes(isChatMode: boolean) {
     const nodes = isChatMode
@@ -20,7 +20,7 @@ const nodeDefault: NodeDefault<DocExtractorNodeType> = {
   },
   checkValid(payload: DocExtractorNodeType, t: any) {
     let errorMessages = ''
-    const { variable } = payload
+    const { variable_selector: variable } = payload
 
     if (!errorMessages && !variable?.length)
       errorMessages = t(`${i18nPrefix}.fieldRequired`, { field: t('workflow.nodes.assigner.assignedVariable') })

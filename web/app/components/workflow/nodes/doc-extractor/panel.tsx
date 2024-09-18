@@ -33,7 +33,7 @@ const Panel: FC<NodePanelProps<DocExtractorNodeType>> = ({
             readonly={readOnly}
             nodeId={id}
             isShowNodeName
-            value={inputs.variable || []}
+            value={inputs.variable_selector || []}
             onChange={handleVarChanges}
             filterVar={filterVar}
           />

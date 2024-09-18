@@ -15,7 +15,7 @@ const NodeComponent: FC<NodeProps<DocExtractorNodeType>> = ({
   const { t } = useTranslation()
 
   const nodes: Node[] = useNodes()
-  const { variable } = data
+  const { variable_selector: variable } = data
 
   if (!variable || variable.length === 0)
     return null

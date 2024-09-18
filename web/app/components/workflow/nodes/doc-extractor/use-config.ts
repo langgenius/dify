@@ -15,7 +15,7 @@ const useConfig = (id: string, payload: DocExtractorNodeType) => {
 
   const handleVarChanges = useCallback((variable: ValueSelector | string) => {
     const newInputs = produce(inputs, (draft) => {
-      draft.variable = variable as ValueSelector
+      draft.variable_selector = variable as ValueSelector
     })
     setInputs(newInputs)
   }, [inputs, setInputs])
