@@ -17,7 +17,7 @@ import ChatInput from '@/app/components/base/chat/chat/chat-input'
 import type { VisionFile } from '@/app/components/base/chat/types'
 import { useDebugConfigurationContext } from '@/context/debug-configuration'
 import { useFeatures } from '@/app/components/base/features/hooks'
-// import { useStore as useAppStore } from '@/app/components/app/store'
+import { useStore as useAppStore } from '@/app/components/app/store'
 import { Resolution, TransferMethod } from '@/types/app'
 
 const DebugWithMultipleModel = () => {
@@ -106,7 +106,7 @@ const DebugWithMultipleModel = () => {
     }
   }, [twoLine, threeLine, fourLine])
 
-  // const setShowAppConfigureFeaturesModal = useAppStore(s => s.setShowAppConfigureFeaturesModal)
+  const setShowAppConfigureFeaturesModal = useAppStore(s => s.setShowAppConfigureFeaturesModal)
 
   return (
     <div className='flex flex-col h-full'>
@@ -140,6 +140,9 @@ const DebugWithMultipleModel = () => {
       {isChatMode && (
         <div className='shrink-0 pb-0 px-6'>
           <ChatInput
+            showFeatureBar
+            showFileUpload={false}
+            onFeatureBarClick={setShowAppConfigureFeaturesModal}
             onSend={handleSend}
             speechToTextConfig={speech2text as any}
             visionConfig={visionConfig}

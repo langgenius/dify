@@ -26,7 +26,7 @@ import ChatInput from './chat-input'
 import ChatInputArea from './chat-input-area'
 import TryToAsk from './try-to-ask'
 import { ChatContextProvider } from './context'
-import classNames from '@/utils/classnames'
+import cn from '@/utils/classnames'
 import type { Emoji } from '@/app/components/tools/types'
 import Button from '@/app/components/base/button'
 import { StopCircle } from '@/app/components/base/icons/src/vender/solid/mediaAndDevices'
@@ -210,12 +210,12 @@ const Chat: FC<ChatProps> = ({
       <div className='relative h-full'>
         <div
           ref={chatContainerRef}
-          className={classNames('relative h-full overflow-y-auto overflow-x-hidden', chatContainerClassName)}
+          className={cn('relative h-full overflow-y-auto overflow-x-hidden', chatContainerClassName)}
         >
           {chatNode}
           <div
             ref={chatContainerInnerRef}
-            className={classNames('w-full', !noSpacing && 'px-8', chatContainerInnerClassName)}
+            className={cn('w-full', !noSpacing && 'px-8', chatContainerInnerClassName)}
           >
             {
               chatList.map((item, index) => {
@@ -258,7 +258,7 @@ const Chat: FC<ChatProps> = ({
         >
           <div
             ref={chatFooterInnerRef}
-            className={`${chatFooterInnerClassName}`}
+            className={cn('relative', chatFooterInnerClassName)}
           >
             {
               !noStopResponding && isResponding && (
@@ -294,6 +294,10 @@ const Chat: FC<ChatProps> = ({
             }
             {!noChatInput && !showFileUpload && (
               <ChatInput
+                showFeatureBar={showFeatureBar}
+                showFileUpload={showFileUpload}
+                featureBarDisabled={isResponding}
+                onFeatureBarClick={onFeatureBarClick}
                 onSend={onSend}
                 speechToTextConfig={config?.speech_to_text}
                 visionConfig={visionConfig}

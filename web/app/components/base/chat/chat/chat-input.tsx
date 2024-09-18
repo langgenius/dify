@@ -32,9 +32,14 @@ import {
   useDraggableUploader,
   useImageFiles,
 } from '@/app/components/base/image-uploader/hooks'
+import FeatureBar from '@/app/components/base/features/new-feature-panel/feature-bar'
 import cn from '@/utils/classnames'
 
 type ChatInputProps = {
+  showFeatureBar?: boolean
+  showFileUpload?: boolean
+  featureBarDisabled?: boolean
+  onFeatureBarClick?: (state: boolean) => void
   visionConfig?: VisionConfig
   speechToTextConfig?: EnableType
   onSend?: OnSend
@@ -42,6 +47,10 @@ type ChatInputProps = {
   noSpacing?: boolean
 }
 const ChatInput: FC<ChatInputProps> = ({
+  showFeatureBar,
+  showFileUpload,
+  featureBarDisabled,
+  onFeatureBarClick,
   visionConfig,
   speechToTextConfig,
   onSend,
@@ -149,12 +158,9 @@ const ChatInput: FC<ChatInputProps> = ({
 
   return (
     <>
-      <div className={cn('relative', !noSpacing && 'px-8')}>
+      <div className={cn('relative', !noSpacing && 'px-8', showFeatureBar && 'z-10')}>
         <div
-          className={`
-            p-[5.5px] max-h-[150px] bg-white border-[1.5px] border-gray-200 rounded-xl overflow-y-auto
-            ${isDragActive && 'border-primary-600'} mb-2
-          `}
+          className={cn('p-[5.5px] max-h-[150px] bg-white border-[1.5px] border-gray-200 rounded-xl overflow-y-auto', isDragActive && 'border-primary-600', !showFeatureBar && 'mb-2')}
         >
           {
             visionConfig?.enabled && (
@@ -180,7 +186,7 @@ const ChatInput: FC<ChatInputProps> = ({
             )
           }
           <Textarea
-            ref={textAreaRef}
+            ref={textAreaRef as any}
             className={`
               block w-full px-2 pr-[118px] py-[7px] leading-5 max-h-none text-sm text-gray-700 outline-none appearance-none resize-none
               ${visionConfig?.enabled && 'pl-12'}
@@ -251,6 +257,7 @@ const ChatInput: FC<ChatInputProps> = ({
       {appData?.site?.custom_disclaimer && <div className='text-xs text-gray-500 mt-1 text-center'>
         {appData.site.custom_disclaimer}
       </div>}
+      {showFeatureBar && <FeatureBar showFileUpload={showFileUpload} disabled={featureBarDisabled} onFeatureBarClick={onFeatureBarClick} />}
     </>
   )
 }
