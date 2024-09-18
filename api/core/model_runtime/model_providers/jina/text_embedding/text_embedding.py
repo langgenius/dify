@@ -44,8 +44,7 @@ class JinaTextEmbeddingModel(TextEmbeddingModel):
             raise CredentialsValidateFailedError("api_key is required")
 
         base_url = credentials.get("base_url", self.api_base)
-        if base_url.endswith("/"):
-            base_url = base_url[:-1]
+        base_url = base_url.removesuffix("/")
 
         url = base_url + "/embeddings"
         headers = {"Authorization": "Bearer " + api_key, "Content-Type": "application/json"}
@@ -56,6 +55,9 @@ class JinaTextEmbeddingModel(TextEmbeddingModel):
             return text
 
         data = {"model": model, "input": [transform_jina_input_text(model, text) for text in texts]}
+
+        if model == "jina-embeddings-v3":
+            data["task_type"] = "retrieval.passage"
 
         try:
             response = post(url, headers=headers, data=dumps(data))

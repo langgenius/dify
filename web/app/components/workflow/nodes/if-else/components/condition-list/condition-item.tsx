@@ -222,6 +222,7 @@ const ConditionItem = ({
                 <VariableTag
                   valueSelector={condition.variable_selector || []}
                   varType={condition.varType}
+                  availableNodes={availableNodes}
                 />
               )}
 

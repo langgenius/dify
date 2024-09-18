@@ -27,7 +27,7 @@ class GaodeRepositoriesTool(BuiltinTool):
             city_response = s.request(
                 method="GET",
                 headers={"Content-Type": "application/json; charset=utf-8"},
-                url="{url}/config/district?keywords={keywords}" "&subdistrict=0&extensions=base&key={apikey}" "".format(
+                url="{url}/config/district?keywords={keywords}&subdistrict=0&extensions=base&key={apikey}".format(
                     url=api_domain, keywords=city, apikey=self.runtime.credentials.get("api_key")
                 ),
             )

@@ -17,7 +17,8 @@ class CreateNewCardOnBoardTool(BuiltinTool):
 
         Args:
             user_id (str): The ID of the user invoking the tool.
-            tool_parameters (dict[str, Union[str, int, bool, None]]): The parameters for the tool invocation, including details for the new card.
+            tool_parameters (dict[str, Union[str, int, bool, None]]): The parameters for the tool invocation,
+             including details for the new card.
 
         Returns:
             ToolInvokeMessage: The result of the tool invocation.

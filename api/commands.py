@@ -104,7 +104,7 @@ def reset_email(email, new_email, email_confirm):
 )
 @click.confirmation_option(
     prompt=click.style(
-        "Are you sure you want to reset encrypt key pair?" " this operation cannot be rolled back!", fg="red"
+        "Are you sure you want to reset encrypt key pair? this operation cannot be rolled back!", fg="red"
     )
 )
 def reset_encrypt_key_pair():
@@ -131,7 +131,7 @@ def reset_encrypt_key_pair():
 
         click.echo(
             click.style(
-                "Congratulations! " "the asymmetric key pair of workspace {} has been reset.".format(tenant.id),
+                "Congratulations! The asymmetric key pair of workspace {} has been reset.".format(tenant.id),
                 fg="green",
             )
         )
@@ -140,9 +140,9 @@ def reset_encrypt_key_pair():
 @click.command("vdb-migrate", help="migrate vector db.")
 @click.option("--scope", default="all", prompt=False, help="The scope of vector database to migrate, Default is All.")
 def vdb_migrate(scope: str):
-    if scope in ["knowledge", "all"]:
+    if scope in {"knowledge", "all"}:
         migrate_knowledge_vector_database()
-    if scope in ["annotation", "all"]:
+    if scope in {"annotation", "all"}:
         migrate_annotation_vector_database()
 
 
@@ -275,8 +275,7 @@ def migrate_knowledge_vector_database():
         for dataset in datasets:
             total_count = total_count + 1
             click.echo(
-                f"Processing the {total_count} dataset {dataset.id}. "
-                + f"{create_count} created, {skipped_count} skipped."
+                f"Processing the {total_count} dataset {dataset.id}. {create_count} created, {skipped_count} skipped."
             )
             try:
                 click.echo("Create dataset vdb index: {}".format(dataset.id))
@@ -411,7 +410,8 @@ def migrate_knowledge_vector_database():
                     try:
                         click.echo(
                             click.style(
-                                f"Start to created vector index with {len(documents)} documents of {segments_count} segments for dataset {dataset.id}.",
+                                f"Start to created vector index with {len(documents)} documents of {segments_count}"
+                                f" segments for dataset {dataset.id}.",
                                 fg="green",
                             )
                         )
@@ -593,7 +593,7 @@ def create_tenant(email: str, language: Optional[str] = None, name: Optional[str
 
     click.echo(
         click.style(
-            "Congratulations! Account and tenant created.\n" "Account: {}\nPassword: {}".format(email, new_password),
+            "Congratulations! Account and tenant created.\nAccount: {}\nPassword: {}".format(email, new_password),
             fg="green",
         )
     )

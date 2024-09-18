@@ -47,7 +47,7 @@ class AccountService:
         if not account:
             return None
 
-        if account.status in [AccountStatus.BANNED.value, AccountStatus.CLOSED.value]:
+        if account.status in {AccountStatus.BANNED.value, AccountStatus.CLOSED.value}:
             raise Unauthorized("Account is banned or closed.")
 
         current_tenant: TenantAccountJoin = TenantAccountJoin.query.filter_by(
@@ -92,7 +92,7 @@ class AccountService:
         if not account:
             raise AccountLoginError("Invalid email or password.")
 
-        if account.status == AccountStatus.BANNED.value or account.status == AccountStatus.CLOSED.value:
+        if account.status in {AccountStatus.BANNED.value, AccountStatus.CLOSED.value}:
             raise AccountLoginError("Account is banned or closed.")
 
         if account.status == AccountStatus.PENDING.value:
@@ -427,7 +427,7 @@ class TenantService:
             "remove": [TenantAccountRole.OWNER],
             "update": [TenantAccountRole.OWNER],
         }
-        if action not in ["add", "remove", "update"]:
+        if action not in {"add", "remove", "update"}:
             raise InvalidActionError("Invalid action.")
 
         if member:
@@ -544,7 +544,7 @@ class RegisterService:
         """Register account"""
         try:
             account = AccountService.create_account(
-                email=email, name=name, interface_language=language if language else languages[0], password=password
+                email=email, name=name, interface_language=language or languages[0], password=password
             )
             account.status = AccountStatus.ACTIVE.value if not status else status.value
             account.initialized_at = datetime.now(timezone.utc).replace(tzinfo=None)

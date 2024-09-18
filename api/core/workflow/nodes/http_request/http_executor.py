@@ -6,8 +6,8 @@ from urllib.parse import urlencode
 
 import httpx
 
-import core.helper.ssrf_proxy as ssrf_proxy
 from configs import dify_config
+from core.helper import ssrf_proxy
 from core.workflow.entities.variable_entities import VariableSelector
 from core.workflow.entities.variable_pool import VariablePool
 from core.workflow.nodes.http_request.entities import (
@@ -176,7 +176,7 @@ class HttpExecutor:
             elif node_data.body.type == "x-www-form-urlencoded" and not content_type_is_set:
                 self.headers["Content-Type"] = "application/x-www-form-urlencoded"
 
-            if node_data.body.type in ["form-data", "x-www-form-urlencoded"]:
+            if node_data.body.type in {"form-data", "x-www-form-urlencoded"}:
                 body = self._to_dict(body_data)
 
                 if node_data.body.type == "form-data":
@@ -187,7 +187,7 @@ class HttpExecutor:
                     self.headers["Content-Type"] = f"multipart/form-data; boundary={self.boundary}"
                 else:
                     self.body = urlencode(body)
-            elif node_data.body.type in ["json", "raw-text"]:
+            elif node_data.body.type in {"json", "raw-text"}:
                 self.body = body_data
             elif node_data.body.type == "none":
                 self.body = ""
@@ -258,7 +258,7 @@ class HttpExecutor:
             "follow_redirects": True,
         }
 
-        if self.method in ("get", "head", "post", "put", "delete", "patch"):
+        if self.method in {"get", "head", "post", "put", "delete", "patch"}:
             response = getattr(ssrf_proxy, self.method)(data=self.body, files=self.files, **kwargs)
         else:
             raise ValueError(f"Invalid http method {self.method}")

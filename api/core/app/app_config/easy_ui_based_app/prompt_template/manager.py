@@ -86,7 +86,7 @@ class PromptTemplateConfigManager:
         if config["prompt_type"] == PromptTemplateEntity.PromptType.ADVANCED.value:
             if not config["chat_prompt_config"] and not config["completion_prompt_config"]:
                 raise ValueError(
-                    "chat_prompt_config or completion_prompt_config is required " "when prompt_type is advanced"
+                    "chat_prompt_config or completion_prompt_config is required when prompt_type is advanced"
                 )
 
             model_mode_vals = [mode.value for mode in ModelMode]

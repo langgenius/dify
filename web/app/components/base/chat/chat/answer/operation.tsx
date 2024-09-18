@@ -149,7 +149,7 @@ const Operation: FC<OperationProps> = ({
           />
         )}
         {
-          !positionRight && annotation?.id && (
+          annotation?.id && (
             <div
               className='relative box-border flex items-center justify-center h-7 w-7 p-0.5 rounded-lg bg-white cursor-pointer text-[#444CE7] shadow-md group-hover:hidden'
             >

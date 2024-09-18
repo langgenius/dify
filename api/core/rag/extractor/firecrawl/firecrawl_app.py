@@ -32,7 +32,7 @@ class FirecrawlApp:
             else:
                 raise Exception(f'Failed to scrape URL. Error: {response["error"]}')
 
-        elif response.status_code in [402, 409, 500]:
+        elif response.status_code in {402, 409, 500}:
             error_message = response.json().get("error", "Unknown error occurred")
             raise Exception(f"Failed to scrape URL. Status code: {response.status_code}. Error: {error_message}")
         else:

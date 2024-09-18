@@ -17,7 +17,8 @@ class UpdateCardByIdTool(BuiltinTool):
 
         Args:
             user_id (str): The ID of the user invoking the tool.
-            tool_parameters (dict[str, Union[str, int, bool, None]]): The parameters for the tool invocation, including the card ID and updates.
+            tool_parameters (dict[str, Union[str, int, bool, None]]): The parameters for the tool invocation,
+             including the card ID and updates.
 
         Returns:
             ToolInvokeMessage: The result of the tool invocation.

@@ -409,3 +409,109 @@ Workflow 应用无会话支持，适合用于翻译/文章写作/总结 AI 等�
     </CodeGroup>
   </Col>
 </Row>
+
+---
+
+<Heading
+  url='/workflows/logs'
+  method='GET'
+  title='获取 workflow 日志'
+  name='#Get-Workflow-Logs'
+/>
+<Row>
+  <Col>
+    倒序返回workflow日志
+
+    ### Query
+
+    <Properties>
+      <Property name='keyword' type='string' key='keyword'>
+        关键字
+      </Property>
+      <Property name='status' type='string' key='status'>
+        执行状态 succeeded/failed/stopped
+      </Property>
+      <Property name='page' type='int' key='page'>
+        当前页码, 默认1.
+      </Property>
+      <Property name='limit' type='int' key='limit'>
+        每页条数, 默认20.
+      </Property>
+    </Properties>
+
+    ### Response
+  - `page` (int) 当前页码
+  - `limit` (int) 每页条数
+  - `total` (int) 总条数
+  - `has_more` (bool) 是否还有更多数据
+  - `data` (array[object]) 当前页码的数据
+    - `id` (string) 标识
+    - `workflow_run` (object) Workflow 执行日志
+      - `id` (string) 标识
+      - `version` (string) 版本
+      - `status` (string) 执行状态, `running` / `succeeded` / `failed` / `stopped`
+      - `error` (string) (可选) 错误
+      - `elapsed_time` (float) 耗时，单位秒
+      - `total_tokens` (int) 消耗的token数量
+      - `total_steps` (int) 执行步骤长度
+      - `created_at` (timestamp) 开始时间
+      - `finished_at` (timestamp) 结束时间
+    - `created_from` (string) 来源
+    - `created_by_role` (string) 角色
+    - `created_by_account` (string) (可选) 帐号
+    - `created_by_end_user` (object) 用户
+      - `id` (string) 标识
+      - `type` (string) 类型
+      - `is_anonymous` (bool) 是否匿名
+      - `session_id` (string) 会话标识
+    - `created_at` (timestamp) 创建时间
+  </Col>
+  <Col sticky>
+
+    <CodeGroup title="Request" tag="GET" label="/workflows/logs" targetCode={`curl -X GET '${props.appDetail.api_base_url}/workflows/logs'\\\n --header 'Authorization: Bearer {api_key}'`}>
+
+    ```bash {{ title: 'cURL' }}
+    curl -X GET '${props.appDetail.api_base_url}/workflows/logs?limit=1'
+    --header 'Authorization: Bearer {api_key}'
+    ```
+
+    </CodeGroup>
+    ### Response Example
+    <CodeGroup title="Response">
+    ```json {{ title: 'Response' }}
+    {
+        "page": 1,
+        "limit": 1,
+        "total": 7,
+        "has_more": true,
+        "data": [
+            {
+                "id": "e41b93f1-7ca2-40fd-b3a8-999aeb499cc0",
+                "workflow_run": {
+                    "id": "c0640fc8-03ef-4481-a96c-8a13b732a36e",
+                    "version": "2024-08-01 12:17:09.771832",
+                    "status": "succeeded",
+                    "error": null,
+                    "elapsed_time": 1.3588523610014818,
+                    "total_tokens": 0,
+                    "total_steps": 3,
+                    "created_at": 1726139643,
+                    "finished_at": 1726139644
+                },
+                "created_from": "service-api",
+                "created_by_role": "end_user",
+                "created_by_account": null,
+                "created_by_end_user": {
+                    "id": "7f7d9117-dd9d-441d-8970-87e5e7e687a3",
+                    "type": "service_api",
+                    "is_anonymous": false,
+                    "session_id": "abc-123"
+                },
+                "created_at": 1726139644
+            }
+        ]
+    }
+    ```
+    </CodeGroup>
+  </Col>
+</Row>
