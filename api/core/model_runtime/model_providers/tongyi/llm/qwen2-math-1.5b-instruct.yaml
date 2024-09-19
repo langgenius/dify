@@ -1,6 +1,6 @@
-model: qwen-math-plus
+model: qwen2-math-1.5b-instruct
 label:
-  en_US: qwen-math-plus
+  en_US: qwen2-math-1.5b-instruct
 model_type: llm
 features:
   - agent-thought
@@ -73,7 +73,7 @@ parameter_rules:
   - name: response_format
     use_template: response_format
 pricing:
-  input: '0.000'
-  output: '0.000'
-  unit: '0.000'
+  input: '0.004'
+  output: '0.012'
+  unit: '0.001'
   currency: RMB
