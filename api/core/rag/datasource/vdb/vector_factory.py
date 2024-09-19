@@ -103,6 +103,9 @@ class Vector:
                 from core.rag.datasource.vdb.analyticdb.analyticdb_vector import AnalyticdbVectorFactory
 
                 return AnalyticdbVectorFactory
+            case VectorType.LINDORM:
+                from core.rag.datasource.vdb.lindorm.lindorm_vector import LindormVectorStoreFactory
+                return LindormVectorStoreFactory
             case _:
                 raise ValueError(f"Vector store {vector_type} is not supported.")
 
