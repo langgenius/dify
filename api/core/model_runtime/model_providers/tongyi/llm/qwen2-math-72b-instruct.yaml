@@ -1,14 +1,12 @@
-model: qwen-max-1201
+model: qwen2-math-72b-instruct
 label:
-  en_US: qwen-max-1201
+  en_US: qwen2-math-72b-instruct
 model_type: llm
 features:
-  - multi-tool-call
   - agent-thought
-  - stream-tool-call
 model_properties:
-  mode: chat
-  context_size: 8192
+  mode: completion
+  context_size: 4096
 parameter_rules:
   - name: temperature
     use_template: temperature
@@ -75,8 +73,7 @@ parameter_rules:
   - name: response_format
     use_template: response_format
 pricing:
-  input: '0.04'
-  output: '0.12'
+  input: '0.004'
+  output: '0.012'
   unit: '0.001'
   currency: RMB
-deprecated: true
