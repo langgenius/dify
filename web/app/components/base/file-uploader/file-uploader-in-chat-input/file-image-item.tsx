@@ -38,7 +38,7 @@ const FileImageItem = ({
       />
       {
         progress > 0 && progress < 100 && (
-          <div className='absolute inset-0 flex items-center justify-center border-[2px] border-effects-image-frame bg-background-overlay-alt'>
+          <div className='absolute inset-0 flex items-center justify-center border-[2px] border-effects-image-frame bg-background-overlay-alt z-10'>
             <ProgressCircle
               percentage={progress}
               size={12}
@@ -51,7 +51,7 @@ const FileImageItem = ({
       }
       {
         progress === -1 && (
-          <div className='absolute inset-0 flex items-center justify-center border-[2px] border-state-destructive-border bg-background-overlay-destructive'>
+          <div className='absolute inset-0 flex items-center justify-center border-[2px] border-state-destructive-border bg-background-overlay-destructive z-10'>
             <ReplayLine
               className='w-5 h-5'
               onClick={() => onReUpload?.(fileId)}

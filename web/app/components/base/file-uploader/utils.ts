@@ -39,22 +39,22 @@ export const fileUpload: FileUpload = ({
 
 export const getFileAppearanceType = (file?: File) => {
   if (!file)
-    return FileAppearanceTypeEnum.OTHER
+    return FileAppearanceTypeEnum.custom
   const mimeType = file.type
 
   if (mimeType.includes('image'))
-    return FileAppearanceTypeEnum.IMAGE
+    return FileAppearanceTypeEnum.image
 
   if (mimeType.includes('video'))
-    return FileAppearanceTypeEnum.VIDEO
+    return FileAppearanceTypeEnum.video
 
   if (mimeType.includes('audio'))
-    return FileAppearanceTypeEnum.AUDIO
+    return FileAppearanceTypeEnum.audio
 
   if (mimeType.includes('pdf'))
-    return FileAppearanceTypeEnum.PDF
+    return FileAppearanceTypeEnum.pdf
 
-  return FileAppearanceTypeEnum.OTHER
+  return FileAppearanceTypeEnum.custom
 }
 
 export const isImage = (file?: File) => {
