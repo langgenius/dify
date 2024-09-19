@@ -1,6 +1,6 @@
-model: qwen-vl-max
+model: qwen-vl-max-0809
 label:
-  en_US: qwen-vl-max
+  en_US: qwen-vl-max-0809
 model_type: llm
 features:
   - vision
