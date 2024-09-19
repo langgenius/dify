@@ -1,13 +1,13 @@
-model: qwen-vl-plus
+model: qwen-vl-max-0809
 label:
-  en_US: qwen-vl-plus
+  en_US: qwen-vl-max-0809
 model_type: llm
 features:
   - vision
   - agent-thought
 model_properties:
   mode: chat
-  context_size: 8192
+  context_size: 32768
 parameter_rules:
   - name: top_p
     use_template: top_p
@@ -41,7 +41,7 @@ parameter_rules:
   - name: response_format
     use_template: response_format
 pricing:
-  input: '0.008'
-  output: '0.008'
+  input: '0.02'
+  output: '0.02'
   unit: '0.001'
   currency: RMB

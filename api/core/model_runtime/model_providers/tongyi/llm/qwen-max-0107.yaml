@@ -1,6 +1,6 @@
-model: qwen-max-1201
+model: qwen-max-0107
 label:
-  en_US: qwen-max-1201
+  en_US: qwen-max-0107
 model_type: llm
 features:
   - multi-tool-call
@@ -79,4 +79,3 @@ pricing:
   output: '0.12'
   unit: '0.001'
   currency: RMB
-deprecated: true
