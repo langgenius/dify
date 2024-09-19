@@ -130,6 +130,9 @@ class Vector:
                 from core.rag.datasource.vdb.tidb_on_qdrant.tidb_on_qdrant_vector import TidbOnQdrantVectorFactory
 
                 return TidbOnQdrantVectorFactory
+            case VectorType.LINDORM:
+                from core.rag.datasource.vdb.lindorm.lindorm_vector import LindormVectorStoreFactory
+                return LindormVectorStoreFactory
             case _:
                 raise ValueError(f"Vector store {vector_type} is not supported.")
 
