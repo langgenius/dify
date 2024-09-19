@@ -123,6 +123,7 @@ FIRECRAWL_API_KEY = "fc-"
 TEI_EMBEDDING_SERVER_URL = "http://a.abc.com:11451"
 TEI_RERANK_SERVER_URL = "http://a.abc.com:11451"
 MIXEDBREAD_API_KEY = "mk-aaaaaaaaaaaaaaaaaaaa"
+VOYAGE_API_KEY = "va-aaaaaaaaaaaaaaaaaaaa"
 
 [tool.poetry]
 name = "dify-api"
