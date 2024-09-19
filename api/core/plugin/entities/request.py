@@ -42,7 +42,8 @@ class RequestInvokeLLM(BaseRequestInvokeModel):
     stream: Optional[bool] = False
 
     @field_validator("prompt_messages", mode="before")
-    def convert_prompt_messages(self, v):
+    @classmethod
+    def convert_prompt_messages(cls, v):
         if not isinstance(v, list):
             raise ValueError("prompt_messages must be a list")
 

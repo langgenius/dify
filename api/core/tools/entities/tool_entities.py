@@ -114,7 +114,8 @@ class ToolInvokeMessage(BaseModel):
         stream: bool = Field(default=False, description="Whether the variable is streamed")
 
         @field_validator("variable_value", mode="before")
-        def transform_variable_value(self, value, values) -> Any:
+        @classmethod
+        def transform_variable_value(cls, value, values) -> Any:
             """
             Only basic types and lists are allowed.
             """
@@ -129,7 +130,8 @@ class ToolInvokeMessage(BaseModel):
             return value
         
         @field_validator("variable_name", mode="before")
-        def transform_variable_name(self, value) -> str:
+        @classmethod
+        def transform_variable_name(cls, value) -> str:
             """
             The variable name must be a string.
             """

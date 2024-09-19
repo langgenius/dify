@@ -245,9 +245,8 @@ class ToolEngine:
                     + "you do not need to create it, just tell the user to check it now."
                 )
             elif response.type == ToolInvokeMessage.MessageType.JSON:
-                result += f"tool response: {
-                    json.dumps(cast(ToolInvokeMessage.JsonMessage, response.message).json_object, ensure_ascii=False)
-                }."
+                text = json.dumps(cast(ToolInvokeMessage.JsonMessage, response.message).json_object, ensure_ascii=False)
+                result += f"tool response: {text}."
             else:
                 result += f"tool response: {response.message}."
 
