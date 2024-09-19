@@ -290,7 +290,7 @@ class ComfyuiStableDiffusionTool(BuiltinTool):
         draw_options["6"]["inputs"]["text"] = prompt
         draw_options["7"]["inputs"]["text"] = negative_prompt
         # if the model is SD3 or FLUX series, the Latent class should be corresponding to SD3 Latent
-        if model_type in (ModelType.SD3.name, ModelType.FLUX.name):
+        if model_type in {ModelType.SD3.name, ModelType.FLUX.name}:
             draw_options["5"]["class_type"] = "EmptySD3LatentImage"
 
         if lora_list:
