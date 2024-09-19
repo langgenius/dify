@@ -74,8 +74,6 @@ const Panel: FC<NodePanelProps<LLMNodeType>> = ({
   const singleRunForms = (() => {
     const forms: FormProps[] = []
 
-    console.log(data.vision?.configs)
-
     if (varInputs.length > 0) {
       forms.push(
         {
