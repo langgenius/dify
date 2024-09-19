@@ -4,9 +4,9 @@ from pydantic import BaseModel, Field
 
 from core.entities.provider_entities import ProviderConfig
 from core.model_runtime.utils.encoders import jsonable_encoder
+from core.tools.__base.tool import ToolParameter
 from core.tools.entities.common_entities import I18nObject
 from core.tools.entities.tool_entities import ToolProviderType
-from core.tools.tool.tool import ToolParameter
 
 
 class UserTool(BaseModel):

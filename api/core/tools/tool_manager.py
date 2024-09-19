@@ -4,7 +4,11 @@ import mimetypes
 from collections.abc import Generator
 from os import listdir, path
 from threading import Lock
-from typing import Any, Union, cast
+from typing import TYPE_CHECKING, Any, Union, cast
+
+if TYPE_CHECKING:
+    from core.workflow.nodes.tool.entities import ToolEntity
+
 
 from configs import dify_config
 from core.agent.entities import AgentToolEntity
@@ -12,20 +16,20 @@ from core.app.entities.app_invoke_entities import InvokeFrom
 from core.helper.module_import_helper import load_single_subclass_from_source
 from core.helper.position_helper import is_filtered
 from core.model_runtime.utils.encoders import jsonable_encoder
+from core.tools.__base.tool import Tool
+from core.tools.builtin_tool.provider import BuiltinToolProviderController
+from core.tools.builtin_tool.providers._positions import BuiltinToolProviderSort
+from core.tools.builtin_tool.tool import BuiltinTool
+from core.tools.custom_tool.provider import ApiToolProviderController
+from core.tools.custom_tool.tool import ApiTool
 from core.tools.entities.api_entities import UserToolProvider, UserToolProviderTypeLiteral
 from core.tools.entities.common_entities import I18nObject
 from core.tools.entities.tool_entities import ApiProviderAuthType, ToolInvokeFrom, ToolParameter, ToolProviderType
 from core.tools.errors import ToolProviderNotFoundError
-from core.tools.provider.api_tool_provider import ApiToolProviderController
-from core.tools.provider.builtin._positions import BuiltinToolProviderSort
-from core.tools.provider.builtin_tool_provider import BuiltinToolProviderController
-from core.tools.tool.api_tool import ApiTool
-from core.tools.tool.builtin_tool import BuiltinTool
-from core.tools.tool.tool import Tool
-from core.tools.tool.workflow_tool import WorkflowTool
 from core.tools.tool_label_manager import ToolLabelManager
 from core.tools.utils.configuration import ProviderConfigEncrypter, ToolParameterConfigurationManager
 from core.tools.utils.tool_parameter_converter import ToolParameterConverter
+from core.tools.workflow_as_tool.tool import WorkflowTool
 from extensions.ext_database import db
 from models.tools import ApiToolProvider, BuiltinToolProvider, WorkflowToolProvider
 from services.tools.tools_transform_service import ToolTransformService
@@ -328,8 +332,8 @@ class ToolManager:
 
         absolute_path = path.join(
             path.dirname(path.realpath(__file__)),
-            "provider",
-            "builtin",
+            "builtin_tool",
+            "providers",
             provider,
             "_assets",
             provider_controller.identity.icon,
@@ -363,22 +367,22 @@ class ToolManager:
         """
         list all the builtin providers
         """
-        for provider_path in listdir(path.join(path.dirname(path.realpath(__file__)), "provider", "builtin")):
+        for provider_path in listdir(path.join(path.dirname(path.realpath(__file__)), "builtin_tool", "providers")):
             if provider_path.startswith("__"):
                 continue
 
-            if path.isdir(path.join(path.dirname(path.realpath(__file__)), "provider", "builtin", provider_path)):
+            if path.isdir(path.join(path.dirname(path.realpath(__file__)), "builtin_tool", "providers", provider_path)):
                 if provider_path.startswith("__"):
                     continue
 
                 # init provider
                 try:
                     provider_class = load_single_subclass_from_source(
-                        module_name=f"core.tools.provider.builtin.{provider_path}.{provider_path}",
+                        module_name=f"core.tools.builtin_tool.providers.{provider_path}.{provider_path}",
                         script_path=path.join(
                             path.dirname(path.realpath(__file__)),
-                            "provider",
-                            "builtin",
+                            "builtin_tool",
+                            "providers",
                             provider_path,
                             f"{provider_path}.py",
                         ),
@@ -391,7 +395,7 @@ class ToolManager:
                     yield provider
 
                 except Exception as e:
-                    logger.error(f"load builtin provider {provider} error: {e}")
+                    logger.error(f"load builtin provider error: {e}")
                     continue
         # set builtin providers loaded
         cls._builtin_providers_loaded = True

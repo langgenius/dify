@@ -32,13 +32,13 @@ from core.model_runtime.entities.message_entities import (
 from core.model_runtime.entities.model_entities import ModelFeature
 from core.model_runtime.model_providers.__base.large_language_model import LargeLanguageModel
 from core.model_runtime.utils.encoders import jsonable_encoder
+from core.tools.__base.tool import Tool
 from core.tools.entities.tool_entities import (
     ToolParameter,
     ToolRuntimeVariablePool,
 )
-from core.tools.tool.dataset_retriever_tool import DatasetRetrieverTool
-from core.tools.tool.tool import Tool
 from core.tools.tool_manager import ToolManager
+from core.tools.utils.dataset_retriever_tool import DatasetRetrieverTool
 from core.tools.utils.tool_parameter_converter import ToolParameterConverter
 from extensions.ext_database import db
 from models.model import Conversation, Message, MessageAgentThought

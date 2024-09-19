@@ -3,6 +3,9 @@ import logging
 from typing import Optional, Union
 
 from configs import dify_config
+from core.tools.__base.tool import Tool
+from core.tools.builtin_tool.provider import BuiltinToolProviderController
+from core.tools.custom_tool.provider import ApiToolProviderController
 from core.tools.entities.api_entities import UserTool, UserToolProvider
 from core.tools.entities.common_entities import I18nObject
 from core.tools.entities.tool_bundle import ApiToolBundle
@@ -11,12 +14,9 @@ from core.tools.entities.tool_entities import (
     ToolParameter,
     ToolProviderType,
 )
-from core.tools.provider.api_tool_provider import ApiToolProviderController
-from core.tools.provider.builtin_tool_provider import BuiltinToolProviderController
-from core.tools.provider.workflow_tool_provider import WorkflowToolProviderController
-from core.tools.tool.tool import Tool
-from core.tools.tool.workflow_tool import WorkflowTool
 from core.tools.utils.configuration import ProviderConfigEncrypter
+from core.tools.workflow_as_tool.provider import WorkflowToolProviderController
+from core.tools.workflow_as_tool.tool import WorkflowTool
 from models.tools import ApiToolProvider, BuiltinToolProvider, WorkflowToolProvider
 
 logger = logging.getLogger(__name__)

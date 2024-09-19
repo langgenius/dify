@@ -8,11 +8,11 @@ from core.entities.provider_entities import BasicProviderConfig
 from core.helper import encrypter
 from core.helper.tool_parameter_cache import ToolParameterCache, ToolParameterCacheType
 from core.helper.tool_provider_cache import ToolProviderCredentialsCache, ToolProviderCredentialsCacheType
+from core.tools.__base.tool import Tool
 from core.tools.entities.tool_entities import (
     ToolParameter,
     ToolProviderType,
 )
-from core.tools.tool.tool import Tool
 
 
 class ProviderConfigEncrypter(BaseModel):
@@ -27,7 +27,7 @@ class ProviderConfigEncrypter(BaseModel):
         """
         return deepcopy(data)
 
-    def encrypt(self, data: dict[str, str]) -> Mapping[str, str]:
+    def encrypt(self, data: dict[str, str]) -> dict[str, str]:
         """
         encrypt tool credentials with tenant id
 
@@ -45,7 +45,7 @@ class ProviderConfigEncrypter(BaseModel):
 
         return data
 
-    def mask_tool_credentials(self, data: dict[str, Any]) -> Mapping[str, Any]:
+    def mask_tool_credentials(self, data: dict[str, Any]) -> dict[str, Any]:
         """
         mask tool credentials
 
@@ -68,7 +68,7 @@ class ProviderConfigEncrypter(BaseModel):
 
         return data
 
-    def decrypt(self, data: dict[str, str]) -> Mapping[str, str]:
+    def decrypt(self, data: dict[str, str]) -> dict[str, str]:
         """
         decrypt tool credentials with tenant id
 

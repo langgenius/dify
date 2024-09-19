@@ -5,9 +5,9 @@ from sqlalchemy import or_
 
 from core.model_runtime.utils.encoders import jsonable_encoder
 from core.tools.entities.api_entities import UserTool, UserToolProvider
-from core.tools.provider.workflow_tool_provider import WorkflowToolProviderController
 from core.tools.tool_label_manager import ToolLabelManager
 from core.tools.utils.workflow_configuration_sync import WorkflowToolConfigurationUtils
+from core.tools.workflow_as_tool.provider import WorkflowToolProviderController
 from extensions.ext_database import db
 from models.model import App
 from models.tools import WorkflowToolProvider

@@ -1,5 +1,5 @@
-from core.tools.tool.api_tool import ApiTool
-from core.tools.tool.tool import Tool
+from core.tools.__base.tool import Tool
+from core.tools.custom_tool.tool import ApiTool
 from tests.integration_tests.tools.__mock.http import setup_http_mock
 
 tool_bundle = {

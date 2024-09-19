@@ -13,6 +13,7 @@ from core.callback_handler.plugin_tool_callback_handler import DifyPluginCallbac
 from core.callback_handler.workflow_tool_callback_handler import DifyWorkflowCallbackHandler
 from core.file.file_obj import FileTransferMethod
 from core.ops.ops_trace_manager import TraceQueueManager
+from core.tools.__base.tool import Tool
 from core.tools.entities.tool_entities import ToolInvokeMessage, ToolInvokeMessageBinary, ToolInvokeMeta, ToolParameter
 from core.tools.errors import (
     ToolEngineInvokeError,
@@ -23,9 +24,8 @@ from core.tools.errors import (
     ToolProviderCredentialValidationError,
     ToolProviderNotFoundError,
 )
-from core.tools.tool.tool import Tool
-from core.tools.tool.workflow_tool import WorkflowTool
 from core.tools.utils.message_transformer import ToolFileMessageTransformer
+from core.tools.workflow_as_tool.tool import WorkflowTool
 from extensions.ext_database import db
 from models.model import Message, MessageFile
 

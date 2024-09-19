@@ -5,10 +5,10 @@ from pathlib import Path
 from configs import dify_config
 from core.helper.position_helper import is_filtered
 from core.model_runtime.utils.encoders import jsonable_encoder
+from core.tools.__base.tool_provider import ToolProviderController
+from core.tools.builtin_tool.providers._positions import BuiltinToolProviderSort
 from core.tools.entities.api_entities import UserTool, UserToolProvider
 from core.tools.errors import ToolNotFoundError, ToolProviderCredentialValidationError, ToolProviderNotFoundError
-from core.tools.provider.builtin._positions import BuiltinToolProviderSort
-from core.tools.provider.tool_provider import ToolProviderController
 from core.tools.tool_label_manager import ToolLabelManager
 from core.tools.tool_manager import ToolManager
 from core.tools.utils.configuration import ProviderConfigEncrypter

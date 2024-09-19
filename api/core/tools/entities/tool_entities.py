@@ -32,6 +32,7 @@ class ToolProviderType(str, Enum):
     Enum class for tool provider
     """
 
+    PLUGIN = "plugin"
     BUILT_IN = "builtin"
     WORKFLOW = "workflow"
     API = "api"

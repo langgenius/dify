@@ -17,8 +17,8 @@ from core.model_runtime.entities.message_entities import (
 )
 from core.ops.ops_trace_manager import TraceQueueManager
 from core.prompt.agent_history_prompt_transform import AgentHistoryPromptTransform
+from core.tools.__base.tool import Tool
 from core.tools.entities.tool_entities import ToolInvokeMeta
-from core.tools.tool.tool import Tool
 from core.tools.tool_engine import ToolEngine
 from models.model import Message
 
