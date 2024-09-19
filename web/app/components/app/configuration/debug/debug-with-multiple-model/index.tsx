@@ -12,19 +12,14 @@ import {
 } from './context'
 import type { DebugWithMultipleModelContextType } from './context'
 import { useEventEmitterContextContext } from '@/context/event-emitter'
-import ChatInput from '@/app/components/base/chat/chat/chat-input'
-// import ChatInputArea from '@/app/components/base/chat/chat/chat-input-area'
+import ChatInputArea from '@/app/components/base/chat/chat/chat-input-area'
 import type { VisionFile } from '@/app/components/base/chat/types'
 import { useDebugConfigurationContext } from '@/context/debug-configuration'
 import { useFeatures } from '@/app/components/base/features/hooks'
 import { useStore as useAppStore } from '@/app/components/app/store'
-import { Resolution, TransferMethod } from '@/types/app'
 
 const DebugWithMultipleModel = () => {
-  const {
-    mode,
-    // isShowVisionConfig,
-  } = useDebugConfigurationContext()
+  const { mode } = useDebugConfigurationContext()
   const speech2text = useFeatures(s => s.features.speech2text)
   const file = useFeatures(s => s.features.file)
   const {
@@ -33,15 +28,6 @@ const DebugWithMultipleModel = () => {
   } = useDebugWithMultipleModelContext()
   const { eventEmitter } = useEventEmitterContextContext()
   const isChatMode = mode === 'chat' || mode === 'agent-chat'
-
-  const visionConfig = useMemo(() => {
-    return {
-      enabled: file?.enabled || false,
-      detail: file?.image?.detail || Resolution.high,
-      number_limits: file?.number_limits || 3,
-      transfer_methods: file?.allowed_file_upload_methods || [TransferMethod.local_file, TransferMethod.remote_url],
-    }
-  }, [file])
 
   const handleSend = useCallback((message: string, files?: VisionFile[]) => {
     if (checkCanSend && !checkCanSend())
@@ -139,22 +125,14 @@ const DebugWithMultipleModel = () => {
       </div>
       {isChatMode && (
         <div className='shrink-0 pb-0 px-6'>
-          <ChatInput
-            showFeatureBar
-            showFileUpload={false}
-            onFeatureBarClick={setShowAppConfigureFeaturesModal}
-            onSend={handleSend}
-            speechToTextConfig={speech2text as any}
-            visionConfig={visionConfig}
-          />
-          {/* <ChatInputArea
+          <ChatInputArea
             showFeatureBar
             showFileUpload={false}
             onFeatureBarClick={setShowAppConfigureFeaturesModal}
             onSend={handleSend}
             speechToTextConfig={speech2text as any}
             visionConfig={file}
-          /> */}
+          />
         </div>
       )}
     </div>

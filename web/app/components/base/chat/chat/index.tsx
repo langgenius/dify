@@ -6,7 +6,6 @@ import {
   memo,
   useCallback,
   useEffect,
-  useMemo,
   useRef,
   useState,
 } from 'react'
@@ -22,7 +21,6 @@ import type {
 import type { ThemeBuilder } from '../embedded-chatbot/theme/theme-context'
 import Question from './question'
 import Answer from './answer'
-import ChatInput from './chat-input'
 import ChatInputArea from './chat-input-area'
 import TryToAsk from './try-to-ask'
 import { ChatContextProvider } from './context'
@@ -34,7 +32,6 @@ import AgentLogModal from '@/app/components/base/agent-log-modal'
 import PromptLogModal from '@/app/components/base/prompt-log-modal'
 import { useStore as useAppStore } from '@/app/components/app/store'
 import type { AppData } from '@/models/share'
-import { Resolution, TransferMethod } from '@/types/app'
 
 export type ChatProps = {
   appData?: AppData
@@ -184,15 +181,6 @@ const Chat: FC<ChatProps> = ({
 
   const hasTryToAsk = config?.suggested_questions_after_answer?.enabled && !!suggestedQuestions?.length && onSend
 
-  const visionConfig = useMemo(() => {
-    return {
-      enabled: (config?.file_upload as any)?.enabled || false,
-      detail: (config?.file_upload as any)?.image?.detail || Resolution.high,
-      number_limits: (config?.file_upload as any)?.number_limits || 3,
-      transfer_methods: (config?.file_upload as any)?.allowed_file_upload_methods || [TransferMethod.local_file, TransferMethod.remote_url],
-    }
-  }, [config?.file_upload])
-
   return (
     <ChatContextProvider
       config={config}
@@ -279,7 +267,7 @@ const Chat: FC<ChatProps> = ({
               )
             }
             {
-              !noChatInput && showFileUpload && (
+              !noChatInput && (
                 <ChatInputArea
                   showFeatureBar={showFeatureBar}
                   showFileUpload={showFileUpload}
@@ -292,18 +280,6 @@ const Chat: FC<ChatProps> = ({
                 />
               )
             }
-            {!noChatInput && !showFileUpload && (
-              <ChatInput
-                showFeatureBar={showFeatureBar}
-                showFileUpload={showFileUpload}
-                featureBarDisabled={isResponding}
-                onFeatureBarClick={onFeatureBarClick}
-                onSend={onSend}
-                speechToTextConfig={config?.speech_to_text}
-                visionConfig={visionConfig}
-                noSpacing={noSpacing}
-              />
-            )}
           </div>
         </div>
         {showPromptLogModal && !hideLogModal && (
