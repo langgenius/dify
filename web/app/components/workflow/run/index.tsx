@@ -192,7 +192,7 @@ const RunPanel: FC<RunProps> = ({ hideResult, activeTab = 'RESULT', runID, getRe
         >{t('runLog.tracing')}</div>
       </div>
       {/* panel detail */}
-      <div ref={ref} className={cn('grow bg-white h-0 overflow-y-auto rounded-b-2xl', currentTab !== 'DETAIL' && '!bg-gray-50')}>
+      <div ref={ref} className={cn('grow bg-components-panel-bg h-0 overflow-y-auto rounded-b-2xl', currentTab !== 'DETAIL' && '!bg-background-section-burn')}>
         {loading && (
           <div className='flex h-full items-center justify-center bg-components-panel-bg'>
             <Loading />
@@ -220,6 +220,7 @@ const RunPanel: FC<RunProps> = ({ hideResult, activeTab = 'RESULT', runID, getRe
         )}
         {!loading && currentTab === 'TRACING' && (
           <TracingPanel
+            className='bg-background-section-burn'
             list={list}
             onShowIterationDetail={handleShowIterationDetail}
           />

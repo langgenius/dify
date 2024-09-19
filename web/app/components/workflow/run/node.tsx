@@ -85,7 +85,7 @@ const NodePanel: FC<Props> = ({
   }
   return (
     <div className={cn('px-2 py-1', className)}>
-      <div className='group transition-all bg-background-default border border-components-panel-border rounded-[10px] shadows-shadow-xs hover:shadow-md'>
+      <div className='group transition-all bg-background-default border border-components-panel-border rounded-[10px] shadow-xs hover:shadow-md'>
         <div
           className={cn(
             'flex items-center pl-1 pr-3 cursor-pointer',
