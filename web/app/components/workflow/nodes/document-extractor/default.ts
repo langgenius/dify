@@ -7,6 +7,7 @@ const i18nPrefix = 'workflow.errorMsg'
 const nodeDefault: NodeDefault<DocExtractorNodeType> = {
   defaultValue: {
     variable_selector: [],
+    is_array_file: false,
   },
   getAvailablePrevNodes(isChatMode: boolean) {
     const nodes = isChatMode

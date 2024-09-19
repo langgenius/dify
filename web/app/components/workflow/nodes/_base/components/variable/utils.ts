@@ -15,6 +15,7 @@ import type { ParameterExtractorNodeType } from '../../../parameter-extractor/ty
 import type { IterationNodeType } from '../../../iteration/types'
 import type { ListFilterNodeType } from '../../../list-filter/types'
 import { OUTPUT_FILE_SUB_VARIABLES } from '../../../if-else/default'
+import type { DocExtractorNodeType } from '../../../document-extractor/types'
 import { BlockEnum, InputVarType, VarType } from '@/app/components/workflow/types'
 import type { StartNodeType } from '@/app/components/workflow/nodes/start/types'
 import type { ConversationVariable, EnvironmentVariable, Node, NodeOutPutVar, ValueSelector, Var } from '@/app/components/workflow/types'
@@ -252,7 +253,7 @@ const formatItem = (
       res.vars = [
         {
           variable: 'text',
-          type: VarType.string,
+          type: (data as DocExtractorNodeType).is_array_file ? VarType.arrayString : VarType.string,
         },
       ]
       break
