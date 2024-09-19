@@ -269,8 +269,10 @@ const Result: FC<IResultProps> = ({
             }))
           },
           onWorkflowFinished: ({ data }) => {
-            if (isTimeout)
+            if (isTimeout) {
+              notify({ type: 'warning', message: t('appDebug.warningMessage.timeoutExceeded') })
               return
+            }
             if (data.error) {
               notify({ type: 'error', message: data.error })
               setWorkflowProcessData(produce(getWorkflowProcessData()!, (draft) => {
@@ -326,8 +328,10 @@ const Result: FC<IResultProps> = ({
           setCompletionRes(res.join(''))
         },
         onCompleted: () => {
-          if (isTimeout)
+          if (isTimeout) {
+            notify({ type: 'warning', message: t('appDebug.warningMessage.timeoutExceeded') })
             return
+          }
           setRespondingFalse()
           setMessageId(tempMessageId)
           onCompleted(getCompletionRes(), taskId, true)
@@ -338,8 +342,10 @@ const Result: FC<IResultProps> = ({
           setCompletionRes(res.join(''))
         },
         onError() {
-          if (isTimeout)
+          if (isTimeout) {
+            notify({ type: 'warning', message: t('appDebug.warningMessage.timeoutExceeded') })
             return
+          }
           setRespondingFalse()
           onCompleted(getCompletionRes(), taskId, false)
           isEnd = true

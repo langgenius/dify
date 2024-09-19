@@ -1,6 +1,6 @@
 model: us.anthropic.claude-3-opus-20240229-v1:0
 label:
-  en_US: Claude 3 Opus(Cross Region Inference)
+  en_US: Claude 3 Opus(US.Cross Region Inference)
 model_type: llm
 features:
   - agent-thought

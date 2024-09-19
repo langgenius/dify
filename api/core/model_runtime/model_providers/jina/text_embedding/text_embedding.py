@@ -56,6 +56,9 @@ class JinaTextEmbeddingModel(TextEmbeddingModel):
 
         data = {"model": model, "input": [transform_jina_input_text(model, text) for text in texts]}
 
+        if model == "jina-embeddings-v3":
+            data["task"] = "text-matching"
+
         try:
             response = post(url, headers=headers, data=dumps(data))
         except Exception as e:

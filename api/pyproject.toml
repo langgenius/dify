@@ -209,7 +209,7 @@ zhipuai = "1.0.7"
 # Before adding new dependency, consider place it in alphabet order (a-z) and suitable group.
 
 ############################################################
-# Related transparent dependencies with pinned verion
+# Related transparent dependencies with pinned version
 # required by main implementations
 ############################################################
 azure-ai-ml = "^1.19.0"

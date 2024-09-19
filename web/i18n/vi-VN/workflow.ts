@@ -93,6 +93,8 @@ const translation = {
     disconnect: 'Ngắt kết nối',
     jumpToNode: 'Chuyển đến nút này',
     addParallelNode: 'Thêm nút song song',
+    parallel: 'SONG SONG',
+    branch: 'NHÁNH',
   },
   env: {
     envPanelTitle: 'Biến Môi Trường',
