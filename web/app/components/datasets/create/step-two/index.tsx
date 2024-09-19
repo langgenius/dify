@@ -13,6 +13,8 @@ import { groupBy } from 'lodash-es'
 import PreviewItem, { PreviewType } from './preview-item'
 import LanguageSelect from './language-select'
 import s from './index.module.css'
+import unescape from './unescape'
+import escape from './escape'
 import cn from '@/utils/classnames'
 import type { CrawlOptions, CrawlResultItem, CreateDocumentReq, CustomFile, FileIndexingEstimateResponse, FullDocumentDetail, IndexingEstimateParams, NotionInfo, PreProcessingRule, ProcessRule, Rules, createDocumentResponse } from '@/models/datasets'
 import {
@@ -114,9 +116,9 @@ const StepTwo = ({
   const [segmentationType, setSegmentationType] = useState<SegmentType>(SegmentType.AUTO)
   const [segmentIdentifier, doSetSegmentIdentifier] = useState(DEFAULT_SEGMENT_IDENTIFIER)
   const setSegmentIdentifier = useCallback((value: string) => {
-    doSetSegmentIdentifier(value.replace(/\\/g, '\\\\') || DEFAULT_SEGMENT_IDENTIFIER)
+    doSetSegmentIdentifier(value ? escape(value) : DEFAULT_SEGMENT_IDENTIFIER)
   }, [])
-  const [max, setMax] = useState(5000) // default chunk length
+  const [max, setMax] = useState(4000) // default chunk length
   const [overlap, setOverlap] = useState(50)
   const [rules, setRules] = useState<PreProcessingRule[]>([])
   const [defaultConfig, setDefaultConfig] = useState<Rules>()
@@ -222,7 +224,7 @@ const StepTwo = ({
       const ruleObj = {
         pre_processing_rules: rules,
         segmentation: {
-          separator: segmentIdentifier.replace(/\\\\/, '\\'),
+          separator: unescape(segmentIdentifier),
           max_tokens: max,
           chunk_overlap: overlap,
         },
