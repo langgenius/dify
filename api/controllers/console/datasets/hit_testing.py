@@ -47,7 +47,7 @@ class HitTestingApi(Resource):
         parser = reqparse.RequestParser()
         parser.add_argument("query", type=str, location="json")
         parser.add_argument("retrieval_model", type=dict, required=False, location="json")
-        parser.add_argument("external_retrival_model", type=dict, required=False, location="json")
+        parser.add_argument("external_retrieval_model", type=dict, required=False, location="json")
         args = parser.parse_args()
 
         HitTestingService.hit_testing_args_check(args)
@@ -58,7 +58,7 @@ class HitTestingApi(Resource):
                 query=args["query"],
                 account=current_user,
                 retrieval_model=args["retrieval_model"],
-                external_retrieval_model=args["external_retrival_model"],
+                external_retrieval_model=args["external_retrieval_model"],
                 limit=10,
             )
 

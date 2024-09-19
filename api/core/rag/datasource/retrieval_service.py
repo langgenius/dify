@@ -23,94 +23,110 @@ default_retrieval_model = {
 
 class RetrievalService:
     @classmethod
-    def retrieve(cls, retrival_method: str, dataset_id: str, query: str,
-                 top_k: int, score_threshold: Optional[float] = .0,
-                 reranking_model: Optional[dict] = None, reranking_mode: Optional[str] = 'reranking_model',
-                 weights: Optional[dict] = None, provider: Optional[str] = None,
-                 external_retrieval_model: Optional[dict] = None):
+    def retrieve(cls,
+                 retrieval_method: str,
+                 dataset_id: str,
+                 query: str,
+                 top_k: int,
+                 score_threshold: Optional[float] = .0,
+                 reranking_model: Optional[dict] = None,
+                 reranking_mode: Optional[str] = 'reranking_model',
+                 weights: Optional[dict] = None
+                 ):
         dataset = db.session.query(Dataset).filter(
             Dataset.id == dataset_id
         ).first()
         if not dataset:
             return []
-        if provider == 'external':
-            all_documents = ExternalDatasetService.fetch_external_knowledge_retrival(
-                dataset.tenant_id,
-                dataset_id,
-                query,
-                external_retrieval_model
+
+        if not dataset or dataset.available_document_count == 0 or dataset.available_segment_count == 0:
+            return []
+        all_documents = []
+        threads = []
+        exceptions = []
+        # retrieval_model source with keyword
+        if retrieval_method == 'keyword_search':
+            keyword_thread = threading.Thread(target=RetrievalService.keyword_search, kwargs={
+                'flask_app': current_app._get_current_object(),
+                'dataset_id': dataset_id,
+                'query': query,
+                'top_k': top_k,
+                'all_documents': all_documents,
+                'exceptions': exceptions,
+            })
+            threads.append(keyword_thread)
+            keyword_thread.start()
+        # retrieval_model source with semantic
+        if RetrievalMethod.is_support_semantic_search(retrieval_method):
+            embedding_thread = threading.Thread(target=RetrievalService.embedding_search, kwargs={
+                'flask_app': current_app._get_current_object(),
+                'dataset_id': dataset_id,
+                'query': query,
+                'top_k': top_k,
+                'score_threshold': score_threshold,
+                'reranking_model': reranking_model,
+                'all_documents': all_documents,
+                'retrieval_method': retrieval_method,
+                'exceptions': exceptions,
+            })
+            threads.append(embedding_thread)
+            embedding_thread.start()
+
+        # retrieval source with full text
+        if RetrievalMethod.is_support_fulltext_search(retrieval_method):
+            full_text_index_thread = threading.Thread(target=RetrievalService.full_text_index_search, kwargs={
+                'flask_app': current_app._get_current_object(),
+                'dataset_id': dataset_id,
+                'query': query,
+                'retrieval_method': retrieval_method,
+                'score_threshold': score_threshold,
+                'top_k': top_k,
+                'reranking_model': reranking_model,
+                'all_documents': all_documents,
+                'exceptions': exceptions,
+            })
+            threads.append(full_text_index_thread)
+            full_text_index_thread.start()
+
+        for thread in threads:
+            thread.join()
+
+        if exceptions:
+            exception_message = ';\n'.join(exceptions)
+            raise Exception(exception_message)
+
+        if retrieval_method == RetrievalMethod.HYBRID_SEARCH.value:
+            data_post_processor = DataPostProcessor(str(dataset.tenant_id), reranking_mode,
+                                                    reranking_model, weights, False)
+            all_documents = data_post_processor.invoke(
+                query=query,
+                documents=all_documents,
+                score_threshold=score_threshold,
+                top_n=top_k
             )
-        else:
-            if not dataset or dataset.available_document_count == 0 or dataset.available_segment_count == 0:
-                return []
-            all_documents = []
-            threads = []
-            exceptions = []
-            # retrieval_model source with keyword
-            if retrival_method == 'keyword_search':
-                keyword_thread = threading.Thread(target=RetrievalService.keyword_search, kwargs={
-                    'flask_app': current_app._get_current_object(),
-                    'dataset_id': dataset_id,
-                    'query': query,
-                    'top_k': top_k,
-                    'all_documents': all_documents,
-                    'exceptions': exceptions,
-                })
-                threads.append(keyword_thread)
-                keyword_thread.start()
-            # retrieval_model source with semantic
-            if RetrievalMethod.is_support_semantic_search(retrival_method):
-                embedding_thread = threading.Thread(target=RetrievalService.embedding_search, kwargs={
-                    'flask_app': current_app._get_current_object(),
-                    'dataset_id': dataset_id,
-                    'query': query,
-                    'top_k': top_k,
-                    'score_threshold': score_threshold,
-                    'reranking_model': reranking_model,
-                    'all_documents': all_documents,
-                    'retrival_method': retrival_method,
-                    'exceptions': exceptions,
-                })
-                threads.append(embedding_thread)
-                embedding_thread.start()
+        return all_documents
 
-            # retrieval source with full text
-            if RetrievalMethod.is_support_fulltext_search(retrival_method):
-                full_text_index_thread = threading.Thread(target=RetrievalService.full_text_index_search, kwargs={
-                    'flask_app': current_app._get_current_object(),
-                    'dataset_id': dataset_id,
-                    'query': query,
-                    'retrival_method': retrival_method,
-                    'score_threshold': score_threshold,
-                    'top_k': top_k,
-                    'reranking_model': reranking_model,
-                    'all_documents': all_documents,
-                    'exceptions': exceptions,
-                })
-                threads.append(full_text_index_thread)
-                full_text_index_thread.start()
-
-            for thread in threads:
-                thread.join()
-
-            if exceptions:
-                exception_message = ';\n'.join(exceptions)
-                raise Exception(exception_message)
-
-            if retrival_method == RetrievalMethod.HYBRID_SEARCH.value:
-                data_post_processor = DataPostProcessor(str(dataset.tenant_id), reranking_mode,
-                                                        reranking_model, weights, False)
-                all_documents = data_post_processor.invoke(
-                    query=query,
-                    documents=all_documents,
-                    score_threshold=score_threshold,
-                    top_n=top_k
-                )
-            return all_documents
+    @classmethod
+    def external_retrieve(cls,
+                          dataset_id: str,
+                          query: str,
+                          external_retrieval_model: Optional[dict] = None):
+        dataset = db.session.query(Dataset).filter(
+            Dataset.id == dataset_id
+        ).first()
+        if not dataset:
+            return []
+        all_documents = ExternalDatasetService.fetch_external_knowledge_retrieval(
+            dataset.tenant_id,
+            dataset_id,
+            query,
+            external_retrieval_model
+        )
+        return all_documents
 
     @classmethod
     def keyword_search(
-        cls, flask_app: Flask, dataset_id: str, query: str, top_k: int, all_documents: list, exceptions: list
+            cls, flask_app: Flask, dataset_id: str, query: str, top_k: int, all_documents: list, exceptions: list
     ):
         with flask_app.app_context():
             try:
@@ -125,16 +141,16 @@ class RetrievalService:
 
     @classmethod
     def embedding_search(
-        cls,
-        flask_app: Flask,
-        dataset_id: str,
-        query: str,
-        top_k: int,
-        score_threshold: Optional[float],
-        reranking_model: Optional[dict],
-        all_documents: list,
-        retrieval_method: str,
-        exceptions: list,
+            cls,
+            flask_app: Flask,
+            dataset_id: str,
+            query: str,
+            top_k: int,
+            score_threshold: Optional[float],
+            reranking_model: Optional[dict],
+            all_documents: list,
+            retrieval_method: str,
+            exceptions: list,
     ):
         with flask_app.app_context():
             try:
@@ -152,10 +168,10 @@ class RetrievalService:
 
                 if documents:
                     if (
-                        reranking_model
-                        and reranking_model.get("reranking_model_name")
-                        and reranking_model.get("reranking_provider_name")
-                        and retrieval_method == RetrievalMethod.SEMANTIC_SEARCH.value
+                            reranking_model
+                            and reranking_model.get("reranking_model_name")
+                            and reranking_model.get("reranking_provider_name")
+                            and retrieval_method == RetrievalMethod.SEMANTIC_SEARCH.value
                     ):
                         data_post_processor = DataPostProcessor(
                             str(dataset.tenant_id), RerankMode.RERANKING_MODEL.value, reranking_model, None, False
@@ -172,16 +188,16 @@ class RetrievalService:
 
     @classmethod
     def full_text_index_search(
-        cls,
-        flask_app: Flask,
-        dataset_id: str,
-        query: str,
-        top_k: int,
-        score_threshold: Optional[float],
-        reranking_model: Optional[dict],
-        all_documents: list,
-        retrieval_method: str,
-        exceptions: list,
+            cls,
+            flask_app: Flask,
+            dataset_id: str,
+            query: str,
+            top_k: int,
+            score_threshold: Optional[float],
+            reranking_model: Optional[dict],
+            all_documents: list,
+            retrieval_method: str,
+            exceptions: list,
     ):
         with flask_app.app_context():
             try:
@@ -194,10 +210,10 @@ class RetrievalService:
                 documents = vector_processor.search_by_full_text(cls.escape_query_for_search(query), top_k=top_k)
                 if documents:
                     if (
-                        reranking_model
-                        and reranking_model.get("reranking_model_name")
-                        and reranking_model.get("reranking_provider_name")
-                        and retrieval_method == RetrievalMethod.FULL_TEXT_SEARCH.value
+                            reranking_model
+                            and reranking_model.get("reranking_model_name")
+                            and reranking_model.get("reranking_provider_name")
+                            and retrieval_method == RetrievalMethod.FULL_TEXT_SEARCH.value
                     ):
                         data_post_processor = DataPostProcessor(
                             str(dataset.tenant_id), RerankMode.RERANKING_MODEL.value, reranking_model, None, False

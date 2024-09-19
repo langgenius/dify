@@ -20,9 +20,7 @@ class ProcessStatusSetting(BaseModel):
 
 
 class ApiTemplateSetting(BaseModel):
-    method: str
     url: str
     request_method: str
-    api_token: str
     headers: Optional[dict] = None
     params: Optional[dict] = None

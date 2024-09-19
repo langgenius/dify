@@ -15,10 +15,13 @@ from models.dataset import (
     ExternalApiTemplates,
     ExternalKnowledgeBindings,
 )
+from core.rag.models.document import Document as RetrievalDocument
 from models.model import UploadFile
 from services.entities.external_knowledge_entities.external_knowledge_entities import ApiTemplateSetting, Authorization
 from services.errors.dataset import DatasetNameDuplicateError
 # from tasks.external_document_indexing_task import external_document_indexing_task
+import requests
+import boto3
 
 
 class ExternalDatasetService:
@@ -173,7 +176,7 @@ class ExternalDatasetService:
                     db.session.flush()
                     document_ids.append(document.id)
         db.session.commit()
-        #external_document_indexing_task.delay(dataset.id, api_template_id, data_source, process_parameter)
+        # external_document_indexing_task.delay(dataset.id, api_template_id, data_source, process_parameter)
 
         return dataset
 
@@ -189,7 +192,7 @@ class ExternalDatasetService:
             "follow_redirects": True,
         }
 
-        response = getattr(ssrf_proxy, settings.request_method)(data=settings.params, files=files, **kwargs)
+        response = getattr(ssrf_proxy, settings.request_method)(data=json.dumps(settings.params), files=files, **kwargs)
 
         return response
 
@@ -260,9 +263,9 @@ class ExternalDatasetService:
         return dataset
 
     @staticmethod
-    def fetch_external_knowledge_retrival(
-        tenant_id: str, dataset_id: str, query: str, external_retrival_parameters: dict
-    ):
+    def fetch_external_knowledge_retrieval(
+            tenant_id: str, dataset_id: str, query: str, external_retrieval_parameters: dict
+    ) -> list:
         external_knowledge_binding = ExternalKnowledgeBindings.query.filter_by(
             dataset_id=dataset_id, tenant_id=tenant_id
         ).first()
@@ -276,33 +279,58 @@ class ExternalDatasetService:
             raise ValueError("external api template not found")
 
         settings = json.loads(external_api_template.settings)
-        headers = {}
-        if settings.get("api_token"):
-            headers["Authorization"] = f"Bearer {settings.get('api_token')}"
+        headers = {
+            "Content-Type": "application/json"
+        }
+        if settings.get("api_key"):
+            headers["Authorization"] = f"Bearer {settings.get('api_key')}"
 
-        external_retrival_parameters["query"] = query
+        external_retrieval_parameters["query"] = query
+        external_retrieval_parameters["external_knowledge_id"] = external_knowledge_binding.external_knowledge_id
 
         api_template_setting = {
-            "url": f"{settings.get('endpoint')}/dify/external-knowledge/retrival-documents",
+            "url": f"{settings.get('endpoint')}/dify/external-knowledge/retrieval-documents",
             "request_method": "post",
-            "headers": settings.get("headers"),
-            "params": external_retrival_parameters,
+            "headers": headers,
+            "params": external_retrieval_parameters,
         }
         response = ExternalDatasetService.process_external_api(ApiTemplateSetting(**api_template_setting), None)
-
+        if response.status_code == 200:
+            return response.json()
+        return []
 
     @staticmethod
-    def test_external_knowledge_retrival(
-        top_k: int, score_threshold: float
+    def test_external_knowledge_retrieval(
+            top_k: int, score_threshold: float, query: str, external_knowledge_id: str
     ):
-        api_template_setting = {
-            "url": f"{settings.get('endpoint')}/dify/external-knowledge/retrival-documents",
-            "request_method": "post",
-            "headers": settings.get("headers"),
-            "params": {
-                "top_k": top_k,
-                "score_threshold": score_threshold,
+        client = boto3.client(
+            "bedrock-agent-runtime",
+            aws_secret_access_key='',
+            aws_access_key_id='',
+            region_name='',
+        )
+        response = client.retrieve(
+            knowledgeBaseId=external_knowledge_id,
+            retrievalConfiguration={
+                'vectorSearchConfiguration': {
+                    'numberOfResults': top_k,
+                    'overrideSearchType': 'HYBRID'
+                }
             },
-        }
-        response = ExternalDatasetService.process_external_api(ApiTemplateSetting(**api_template_setting), None)
-        return response.json()
+            retrievalQuery={
+                'text': query
+            }
+        )
+        results = []
+        if response.get("ResponseMetadata") and response.get("ResponseMetadata").get("HTTPStatusCode") == 200:
+            if response.get("retrievalResults"):
+                retrieval_results = response.get("retrievalResults")
+                for retrieval_result in retrieval_results:
+                    result = {
+                        "metadata": retrieval_result.get("metadata"),
+                        "score": retrieval_result.get("score"),
+                        "title": retrieval_result.get("metadata").get("x-amz-bedrock-kb-source-uri"),
+                        "content": retrieval_result.get("content").get("text"),
+                    }
+                    results.append(result)
+        return results

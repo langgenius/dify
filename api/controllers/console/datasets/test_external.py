@@ -31,19 +31,24 @@ class TestExternalApi(Resource):
             required=True,
             type=float,
         )
-        args = parser.parse_args()
-        result = ExternalDatasetService.test_external_knowledge_retrival(
-            args["top_k"], args["score_threshold"]
+        parser.add_argument(
+            "query",
+            nullable=False,
+            required=True,
+            type=str,
         )
-        response = {
-            "data": [item.to_dict() for item in api_templates],
-            "has_more": len(api_templates) == limit,
-            "limit": limit,
-            "total": total,
-            "page": page,
-        }
-        return response, 200
+        parser.add_argument(
+            "external_knowledge_id",
+            nullable=False,
+            required=True,
+            type=str,
+        )
+        args = parser.parse_args()
+        result = ExternalDatasetService.test_external_knowledge_retrieval(
+            args["top_k"], args["score_threshold"], args["query"], args["external_knowledge_id"]
+        )
+        return result, 200
 
 
 
-api.add_resource(TestExternalApi, "/dify/external-knowledge/retrival-documents")
+api.add_resource(TestExternalApi, "/dify/external-knowledge/retrieval-documents")

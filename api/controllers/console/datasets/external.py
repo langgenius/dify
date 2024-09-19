@@ -1,7 +1,7 @@
 from flask import request
 from flask_login import current_user
 from flask_restful import Resource, marshal, reqparse
-from werkzeug.exceptions import Forbidden, NotFound
+from werkzeug.exceptions import Forbidden, NotFound, InternalServerError
 
 import services
 from controllers.console import api
@@ -11,7 +11,9 @@ from controllers.console.setup import setup_required
 from controllers.console.wraps import account_initialization_required
 from fields.dataset_fields import dataset_detail_fields
 from libs.login import login_required
+from services.dataset_service import DatasetService
 from services.external_knowledge_service import ExternalDatasetService
+from services.hit_testing_service import HitTestingService
 
 
 def _validate_name(name):
@@ -249,6 +251,42 @@ class ExternalDatasetCreateApi(Resource):
         return marshal(dataset, dataset_detail_fields), 201
 
 
+class ExternalKnowledgeHitTestingApi(Resource):
+    @setup_required
+    @login_required
+    @account_initialization_required
+    def post(self, dataset_id):
+        dataset_id_str = str(dataset_id)
+        dataset = DatasetService.get_dataset(dataset_id_str)
+        if dataset is None:
+            raise NotFound("Dataset not found.")
+
+        try:
+            DatasetService.check_dataset_permission(dataset, current_user)
+        except services.errors.account.NoPermissionError as e:
+            raise Forbidden(str(e))
+
+        parser = reqparse.RequestParser()
+        parser.add_argument("query", type=str, location="json")
+        parser.add_argument("external_retrieval_model", type=dict, required=False, location="json")
+        args = parser.parse_args()
+
+        HitTestingService.hit_testing_args_check(args)
+
+        try:
+            response = HitTestingService.external_retrieve(
+                dataset=dataset,
+                query=args["query"],
+                account=current_user,
+                external_retrieval_model=args["external_retrieval_model"],
+            )
+
+            return response
+        except Exception as e:
+            raise InternalServerError(str(e))
+
+
+api.add_resource(ExternalKnowledgeHitTestingApi, "/datasets/<uuid:dataset_id>/external-hit-testing")
 api.add_resource(ExternalApiTemplateListApi, "/datasets/external-api-template")
 api.add_resource(ExternalApiTemplateApi, "/datasets/external-api-template/<uuid:api_template_id>")
 api.add_resource(ExternalApiUseCheckApi, "/datasets/external-api-template/<uuid:api_template_id>/use-check")

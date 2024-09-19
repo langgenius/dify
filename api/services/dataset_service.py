@@ -58,8 +58,8 @@ from tasks.sync_website_document_indexing_task import sync_website_document_inde
 
 class DatasetService:
     @staticmethod
-    def get_datasets(page, per_page, provider="vendor", tenant_id=None, user=None, search=None, tag_ids=None):
-        query = Dataset.query.filter(Dataset.provider == provider, Dataset.tenant_id == tenant_id).order_by(
+    def get_datasets(page, per_page, tenant_id=None, user=None, search=None, tag_ids=None):
+        query = Dataset.query.filter(Dataset.tenant_id == tenant_id).order_by(
             Dataset.created_at.desc()
         )
 
