@@ -1,6 +1,7 @@
 import type { TypeWithI18N } from '@/app/components/header/account-setting/model-provider-page/declarations'
 import type { Annotation, MessageRating } from '@/models/log'
 import type { VisionFile } from '@/types/app'
+import type { FileEntity } from '@/app/components/base/file-uploader/types'
 
 export type MessageMore = {
   time: string
@@ -90,7 +91,7 @@ export type IChatItem = {
   suggestedQuestions?: string[]
   log?: { role: string; text: string; files?: VisionFile[] }[]
   agent_thoughts?: ThoughtItem[]
-  message_files?: VisionFile[]
+  message_files?: FileEntity[]
   workflow_run_id?: string
   // for agent log
   conversationId?: string

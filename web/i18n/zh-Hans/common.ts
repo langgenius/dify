@@ -558,6 +558,14 @@ const translation = {
     pasteImageLinkInvalid: '图片链接无效',
     imageUpload: '图片上传',
   },
+  fileUploader: {
+    uploadFromComputer: '从本地上传',
+    pasteFileLink: '粘贴文件链接',
+    pasteFileLinkInputPlaceholder: '输入文件链接',
+    uploadFromComputerReadError: '文件读取失败，请重新选择。',
+    uploadFromComputerUploadError: '文件上传失败，请重新上传。',
+    uploadFromComputerLimit: '上传文件不能超过 {{size}}',
+  },
   tag: {
     placeholder: '全部标签',
     addNew: '创建新标签',

@@ -558,6 +558,14 @@ const translation = {
     pasteImageLinkInvalid: 'Invalid image link',
     imageUpload: 'Image Upload',
   },
+  fileUploader: {
+    uploadFromComputer: 'Local upload',
+    pasteFileLink: 'Paste file link',
+    pasteFileLinkInputPlaceholder: 'Enter URL...',
+    uploadFromComputerReadError: 'File reading failed, please try again.',
+    uploadFromComputerUploadError: 'File upload failed, please upload again.',
+    uploadFromComputerLimit: 'Upload File cannot exceed {{size}}',
+  },
   tag: {
     placeholder: 'All Tags',
     addNew: 'Add new tag',

@@ -8,9 +8,11 @@ import Select from '@/app/components/base/select'
 import type { SiteInfo } from '@/models/share'
 import type { PromptConfig } from '@/models/debug'
 import Button from '@/app/components/base/button'
+import Textarea from '@/app/components/base/textarea'
 import { DEFAULT_VALUE_MAX_LEN } from '@/config'
 import TextGenerationImageUploader from '@/app/components/base/image-uploader/text-generation-image-uploader'
 import type { VisionFile, VisionSettings } from '@/types/app'
+import { FileUploaderInAttachmentWrapper } from '@/app/components/base/file-uploader'
 
 export type IRunOnceProps = {
   siteInfo: SiteInfo
@@ -74,8 +76,8 @@ const RunOnce: FC<IRunOnceProps> = ({
                   />
                 )}
                 {item.type === 'paragraph' && (
-                  <textarea
-                    className="block w-full h-[104px] p-2 text-gray-900 border border-gray-300 rounded-lg bg-gray-50 sm:text-xs focus:ring-blue-500 focus:border-blue-500 "
+                  <Textarea
+                    className='h-[104px] sm:text-xs'
                     placeholder={`${item.name}${!item.required ? `(${t('appDebug.variableTable.optional')})` : ''}`}
                     value={inputs[item.key]}
                     onChange={(e) => { onInputsChange({ ...inputs, [item.key]: e.target.value }) }}
@@ -111,6 +113,12 @@ const RunOnce: FC<IRunOnceProps> = ({
               </div>
             )
           }
+          <FileUploaderInAttachmentWrapper onChange={files => onVisionFilesChange(files.filter(file => file.progress !== -1).map(fileItem => ({
+            type: fileItem.fileType,
+            transfer_method: fileItem.type,
+            url: fileItem.url || '',
+            upload_file_id: fileItem.fileId,
+          })))} />
           {promptConfig.prompt_variables.length > 0 && (
             <div className='mt-4 h-[1px] bg-gray-100'></div>
           )}

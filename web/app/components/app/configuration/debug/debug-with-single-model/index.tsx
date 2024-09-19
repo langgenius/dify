@@ -12,7 +12,7 @@ import {
 import Chat from '@/app/components/base/chat/chat'
 import { useChat } from '@/app/components/base/chat/chat/hooks'
 import { useDebugConfigurationContext } from '@/context/debug-configuration'
-import type { OnSend } from '@/app/components/base/chat/types'
+import type { ChatConfig, OnSend } from '@/app/components/base/chat/types'
 import { useProviderContext } from '@/context/provider-context'
 import {
   fetchConversationMessages,
@@ -22,6 +22,8 @@ import {
 import Avatar from '@/app/components/base/avatar'
 import { useAppContext } from '@/context/app-context'
 import { ModelFeatureEnum } from '@/app/components/header/account-setting/model-provider-page/declarations'
+import { useStore as useAppStore } from '@/app/components/app/store'
+import { useFeatures } from '@/app/components/base/features/hooks'
 
 type DebugWithSingleModelProps = {
   checkCanSend?: () => boolean
@@ -37,12 +39,28 @@ const DebugWithSingleModel = forwardRef<DebugWithSingleModelRefType, DebugWithSi
     modelConfig,
     appId,
     inputs,
-    visionConfig,
     collectionList,
     completionParams,
+    // isShowVisionConfig,
   } = useDebugConfigurationContext()
   const { textGenerationModelList } = useProviderContext()
-  const config = useConfigFromDebugContext()
+  const features = useFeatures(s => s.features)
+  const configTemplate = useConfigFromDebugContext()
+  const config = useMemo(() => {
+    return {
+      ...configTemplate,
+      more_like_this: features.moreLikeThis,
+      opening_statement: features.opening?.enabled ? (features.opening?.opening_statement || '') : '',
+      suggested_questions: features.opening?.enabled ? (features.opening?.suggested_questions || []) : [],
+      sensitive_word_avoidance: features.moderation,
+      speech_to_text: features.speech2text,
+      text_to_speech: features.text2speech,
+      file_upload: features.file,
+      suggested_questions_after_answer: features.suggested,
+      retriever_resource: features.citation,
+      annotation_reply: features.annotationReply,
+    } as ChatConfig
+  }, [configTemplate, features])
   const {
     chatList,
     isResponding,
@@ -87,7 +105,7 @@ const DebugWithSingleModel = forwardRef<DebugWithSingleModelRefType, DebugWithSi
       model_config: configData,
     }
 
-    if (visionConfig.enabled && files?.length && supportVision)
+    if ((config.file_upload as any)?.enabled && files?.length && supportVision)
       data.files = files
 
     handleSend(
@@ -98,7 +116,7 @@ const DebugWithSingleModel = forwardRef<DebugWithSingleModelRefType, DebugWithSi
         onGetSuggestedQuestions: (responseItemId, getAbortController) => fetchSuggestedQuestions(appId, responseItemId, getAbortController),
       },
     )
-  }, [appId, checkCanSend, completionParams, config, handleSend, inputs, modelConfig, textGenerationModelList, visionConfig.enabled])
+  }, [appId, checkCanSend, completionParams, config, handleSend, inputs, modelConfig, textGenerationModelList])
 
   const allToolIcons = useMemo(() => {
     const icons: Record<string, any> = {}
@@ -114,13 +132,18 @@ const DebugWithSingleModel = forwardRef<DebugWithSingleModelRefType, DebugWithSi
     }
   }, [handleRestart])
 
+  const setShowAppConfigureFeaturesModal = useAppStore(s => s.setShowAppConfigureFeaturesModal)
+
   return (
     <Chat
       config={config}
       chatList={chatList}
       isResponding={isResponding}
-      chatContainerClassName='p-6'
-      chatFooterClassName='px-6 pt-10 pb-4'
+      chatContainerClassName='px-3 pt-6'
+      chatFooterClassName='px-3 pt-10 pb-0'
+      showFeatureBar
+      showFileUpload={false}
+      onFeatureBarClick={setShowAppConfigureFeaturesModal}
       suggestedQuestions={suggestedQuestions}
       onSend={doSend}
       onStopResponding={handleStop}

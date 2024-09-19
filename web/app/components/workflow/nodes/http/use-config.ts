@@ -1,12 +1,13 @@
-import { useCallback, useEffect } from 'react'
+import { useCallback, useEffect, useState } from 'react'
 import produce from 'immer'
 import { useBoolean } from 'ahooks'
 import useVarList from '../_base/hooks/use-var-list'
 import { VarType } from '../../types'
 import type { Var } from '../../types'
 import { useStore } from '../../store'
-import type { Authorization, Body, HttpNodeType, Method, Timeout } from './types'
+import { type Authorization, type Body, BodyType, type HttpNodeType, type Method, type Timeout } from './types'
 import useKeyValueList from './hooks/use-key-value-list'
+import { transformToBodyPayload } from './utils'
 import useNodeCrud from '@/app/components/workflow/nodes/_base/hooks/use-node-crud'
 import useOneStepRun from '@/app/components/workflow/nodes/_base/hooks/use-one-step-run'
 import {
@@ -25,13 +26,21 @@ const useConfig = (id: string, payload: HttpNodeType) => {
     setInputs,
   })
 
+  const [isDataReady, setIsDataReady] = useState(false)
+
   useEffect(() => {
     const isReady = defaultConfig && Object.keys(defaultConfig).length > 0
     if (isReady) {
-      setInputs({
+      const newInputs = {
         ...defaultConfig,
         ...inputs,
-      })
+      }
+      const bodyData = newInputs.body.data
+      if (typeof bodyData === 'string')
+        newInputs.body.data = transformToBodyPayload(bodyData, [BodyType.formData, BodyType.xWwwFormUrlencoded].includes(newInputs.body.type))
+
+      setInputs(newInputs)
+      setIsDataReady(true)
     }
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [defaultConfig])
@@ -127,7 +136,7 @@ const useConfig = (id: string, payload: HttpNodeType) => {
     inputs.url,
     inputs.headers,
     inputs.params,
-    inputs.body.data,
+    typeof inputs.body.data === 'string' ? inputs.body.data : inputs.body.data.map(item => item.value).join(''),
   ])
 
   const inputVarValues = (() => {
@@ -145,6 +154,7 @@ const useConfig = (id: string, payload: HttpNodeType) => {
 
   return {
     readOnly,
+    isDataReady,
     inputs,
     handleVarListChange,
     handleAddVariable,

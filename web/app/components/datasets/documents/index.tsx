@@ -4,9 +4,9 @@ import React, { useMemo, useState } from 'react'
 import useSWR from 'swr'
 import { useTranslation } from 'react-i18next'
 import { useRouter } from 'next/navigation'
+import { useDebounce, useDebounceFn } from 'ahooks'
 import { groupBy, omit } from 'lodash-es'
 import { PlusIcon } from '@heroicons/react/24/solid'
-import { useDebounce } from 'ahooks'
 import List from './list'
 import s from './style.module.css'
 import Loading from '@/app/components/base/loading'
@@ -77,6 +77,7 @@ export const fetcher = (url: string) => get(url, {}, {})
 
 const Documents: FC<IDocumentsProps> = ({ datasetId }) => {
   const { t } = useTranslation()
+  const [inputValue, setInputValue] = useState<string>('') // the input value
   const [searchValue, setSearchValue] = useState<string>('')
   const [currPage, setCurrPage] = React.useState<number>(0)
   const router = useRouter()
@@ -195,6 +196,15 @@ const Documents: FC<IDocumentsProps> = ({ datasetId }) => {
 
   const documentsList = isDataSourceNotion ? documentsWithProgress?.data : documentsRes?.data
 
+  const { run: handleSearch } = useDebounceFn(() => {
+    setSearchValue(inputValue)
+  }, { wait: 500 })
+
+  const handleInputChange = (value: string) => {
+    setInputValue(value)
+    handleSearch()
+  }
+
   return (
     <div className='flex flex-col h-full overflow-y-auto'>
       <div className='flex flex-col justify-center gap-1 px-6 pt-4'>
@@ -205,10 +215,11 @@ const Documents: FC<IDocumentsProps> = ({ datasetId }) => {
         <div className='flex items-center justify-between flex-wrap'>
           <Input
             showLeftIcon
+            showClearIcon
             wrapperClassName='!w-[200px]'
-            className='!h-8 !text-[13px]'
-            onChange={e => setSearchValue(e.target.value)}
-            value={searchValue}
+            value={inputValue}
+            onChange={e => handleInputChange(e.target.value)}
+            onClear={() => handleInputChange('')}
           />
           <div className='flex gap-2 justify-center items-center !h-8'>
             <RetryButton datasetId={datasetId} />

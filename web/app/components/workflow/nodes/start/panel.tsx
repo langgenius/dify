@@ -130,6 +130,7 @@ const Panel: FC<NodePanelProps<StartNodeType>> = ({
       {isShowAddVarModal && (
         <ConfigVarModal
           isCreate
+          supportFile
           isShow={isShowAddVarModal}
           onClose={hideAddVarModal}
           onConfirm={handleAddVarConfirm}

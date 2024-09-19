@@ -21,10 +21,10 @@ import type {
 import type { ThemeBuilder } from '../embedded-chatbot/theme/theme-context'
 import Question from './question'
 import Answer from './answer'
-import ChatInput from './chat-input'
+import ChatInputArea from './chat-input-area'
 import TryToAsk from './try-to-ask'
 import { ChatContextProvider } from './context'
-import classNames from '@/utils/classnames'
+import cn from '@/utils/classnames'
 import type { Emoji } from '@/app/components/tools/types'
 import Button from '@/app/components/base/button'
 import { StopCircle } from '@/app/components/base/icons/src/vender/solid/mediaAndDevices'
@@ -60,6 +60,9 @@ export type ChatProps = {
   hideProcessDetail?: boolean
   hideLogModal?: boolean
   themeBuilder?: ThemeBuilder
+  showFeatureBar?: boolean
+  showFileUpload?: boolean
+  onFeatureBarClick?: (state: boolean) => void
   noSpacing?: boolean
 }
 
@@ -80,7 +83,6 @@ const Chat: FC<ChatProps> = ({
   showPromptLog,
   questionIcon,
   answerIcon,
-  allToolIcons,
   onAnnotationAdded,
   onAnnotationEdited,
   onAnnotationRemoved,
@@ -90,6 +92,9 @@ const Chat: FC<ChatProps> = ({
   hideProcessDetail,
   hideLogModal,
   themeBuilder,
+  showFeatureBar,
+  showFileUpload,
+  onFeatureBarClick,
   noSpacing,
 }) => {
   const { t } = useTranslation()
@@ -184,7 +189,6 @@ const Chat: FC<ChatProps> = ({
       showPromptLog={showPromptLog}
       questionIcon={questionIcon}
       answerIcon={answerIcon}
-      allToolIcons={allToolIcons}
       onSend={onSend}
       onAnnotationAdded={onAnnotationAdded}
       onAnnotationEdited={onAnnotationEdited}
@@ -194,12 +198,12 @@ const Chat: FC<ChatProps> = ({
       <div className='relative h-full'>
         <div
           ref={chatContainerRef}
-          className={classNames('relative h-full overflow-y-auto overflow-x-hidden', chatContainerClassName)}
+          className={cn('relative h-full overflow-y-auto overflow-x-hidden', chatContainerClassName)}
         >
           {chatNode}
           <div
             ref={chatContainerInnerRef}
-            className={classNames('w-full', !noSpacing && 'px-8', chatContainerInnerClassName)}
+            className={cn('w-full', !noSpacing && 'px-8', chatContainerInnerClassName)}
           >
             {
               chatList.map((item, index) => {
@@ -215,7 +219,6 @@ const Chat: FC<ChatProps> = ({
                       config={config}
                       answerIcon={answerIcon}
                       responding={isLast && isResponding}
-                      allToolIcons={allToolIcons}
                       showPromptLog={showPromptLog}
                       chatAnswerContainerInner={chatAnswerContainerInner}
                       hideProcessDetail={hideProcessDetail}
@@ -243,7 +246,7 @@ const Chat: FC<ChatProps> = ({
         >
           <div
             ref={chatFooterInnerRef}
-            className={`${chatFooterInnerClassName}`}
+            className={cn('relative', chatFooterInnerClassName)}
           >
             {
               !noStopResponding && isResponding && (
@@ -265,12 +268,15 @@ const Chat: FC<ChatProps> = ({
             }
             {
               !noChatInput && (
-                <ChatInput
-                  visionConfig={config?.file_upload?.image}
+                <ChatInputArea
+                  showFeatureBar={showFeatureBar}
+                  showFileUpload={showFileUpload}
+                  featureBarDisabled={isResponding}
+                  onFeatureBarClick={onFeatureBarClick}
+                  visionConfig={config?.file_upload}
                   speechToTextConfig={config?.speech_to_text}
                   onSend={onSend}
                   theme={themeBuilder?.theme}
-                  noSpacing={noSpacing}
                 />
               )
             }

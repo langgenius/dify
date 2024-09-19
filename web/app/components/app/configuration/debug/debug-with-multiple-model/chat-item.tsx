@@ -16,7 +16,7 @@ import {
 import Chat from '@/app/components/base/chat/chat'
 import { useChat } from '@/app/components/base/chat/chat/hooks'
 import { useDebugConfigurationContext } from '@/context/debug-configuration'
-import type { OnSend } from '@/app/components/base/chat/types'
+import type { ChatConfig, OnSend } from '@/app/components/base/chat/types'
 import { useEventEmitterContextContext } from '@/context/event-emitter'
 import { useProviderContext } from '@/context/provider-context'
 import {
@@ -27,6 +27,7 @@ import {
 import Avatar from '@/app/components/base/avatar'
 import { useAppContext } from '@/context/app-context'
 import { ModelFeatureEnum } from '@/app/components/header/account-setting/model-provider-page/declarations'
+import { useFeatures } from '@/app/components/base/features/hooks'
 
 type ChatItemProps = {
   modelAndParameter: ModelAndParameter
@@ -39,11 +40,26 @@ const ChatItem: FC<ChatItemProps> = ({
     modelConfig,
     appId,
     inputs,
-    visionConfig,
     collectionList,
   } = useDebugConfigurationContext()
   const { textGenerationModelList } = useProviderContext()
-  const config = useConfigFromDebugContext()
+  const features = useFeatures(s => s.features)
+  const configTemplate = useConfigFromDebugContext()
+  const config = useMemo(() => {
+    return {
+      ...configTemplate,
+      more_like_this: features.moreLikeThis,
+      opening_statement: features.opening?.enabled ? (features.opening?.opening_statement || '') : '',
+      suggested_questions: features.opening?.enabled ? (features.opening?.suggested_questions || []) : [],
+      sensitive_word_avoidance: features.moderation,
+      speech_to_text: features.speech2text,
+      text_to_speech: features.text2speech,
+      file_upload: features.file,
+      suggested_questions_after_answer: features.suggested,
+      retriever_resource: features.citation,
+      annotation_reply: features.annotationReply,
+    } as ChatConfig
+  }, [configTemplate, features])
   const {
     chatList,
     isResponding,
@@ -82,7 +98,7 @@ const ChatItem: FC<ChatItemProps> = ({
       model_config: configData,
     }
 
-    if (visionConfig.enabled && files?.length && supportVision)
+    if ((config.file_upload as any).enabled && files?.length && supportVision)
       data.files = files
 
     handleSend(
@@ -93,7 +109,7 @@ const ChatItem: FC<ChatItemProps> = ({
         onGetSuggestedQuestions: (responseItemId, getAbortController) => fetchSuggestedQuestions(appId, responseItemId, getAbortController),
       },
     )
-  }, [appId, config, handleSend, inputs, modelAndParameter, textGenerationModelList, visionConfig.enabled])
+  }, [appId, config, handleSend, inputs, modelAndParameter, textGenerationModelList])
 
   const { eventEmitter } = useEventEmitterContextContext()
   eventEmitter?.useSubscription((v: any) => {

@@ -4,6 +4,7 @@ import { useTranslation } from 'react-i18next'
 import { ImageIndentLeft } from '@/app/components/base/icons/src/vender/line/editor'
 import { Markdown } from '@/app/components/base/markdown'
 import LoadingAnim from '@/app/components/base/chat/chat/loading-anim'
+import StatusContainer from '@/app/components/workflow/run/status-container'
 
 type ResultTextProps = {
   isRunning?: boolean
@@ -20,7 +21,7 @@ const ResultText: FC<ResultTextProps> = ({
 }) => {
   const { t } = useTranslation()
   return (
-    <div className='bg-gray-50 py-2'>
+    <div className='bg-background-section-burn py-2'>
       {isRunning && !outputs && (
         <div className='pt-4 pl-[26px]'>
           <LoadingAnim type='text' />
@@ -28,9 +29,9 @@ const ResultText: FC<ResultTextProps> = ({
       )}
       {!isRunning && error && (
         <div className='px-4'>
-          <div className='px-3 py-[10px] rounded-lg !bg-[#fef3f2] border-[0.5px] border-[rbga(0,0,0,0.05)] shadow-xs'>
-            <div className='text-xs leading-[18px] text-[#d92d20]'>{error}</div>
-          </div>
+          <StatusContainer status='failed'>
+            {error}
+          </StatusContainer>
         </div>
       )}
       {!isRunning && !outputs && !error && (

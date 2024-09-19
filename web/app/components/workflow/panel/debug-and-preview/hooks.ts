@@ -15,8 +15,9 @@ import type {
 } from '@/app/components/base/chat/types'
 import { useToastContext } from '@/app/components/base/toast'
 import { TransferMethod } from '@/types/app'
-import type { VisionFile } from '@/types/app'
-import { replaceStringWithValues } from '@/app/components/app/configuration/prompt-value-panel'
+import { replaceStringWithValues } from '@/app/components/app/configuration/prompt-value-panel/utils'
+import { getProcessedFiles } from '@/app/components/base/file-uploader/utils'
+import type { FileEntity } from '@/app/components/base/file-uploader/types'
 
 type GetAbortController = (abortController: AbortController) => void
 type SendCallback = {
@@ -143,7 +144,11 @@ export const useChat = (
   }, [handleUpdateChatList])
 
   const handleSend = useCallback((
-    params: any,
+    params: {
+      query: string
+      files?: FileEntity[]
+      [key: string]: any
+    },
     {
       onGetSuggestedQuestions,
     }: SendCallback,
@@ -182,12 +187,14 @@ export const useChat = (
 
     handleResponding(true)
 
+    const { files, ...restParams } = params
     const bodyParams = {
       conversation_id: conversationId.current,
-      ...params,
+      files: getProcessedFiles(files || []),
+      ...restParams,
     }
     if (bodyParams?.files?.length) {
-      bodyParams.files = bodyParams.files.map((item: VisionFile) => {
+      bodyParams.files = bodyParams.files.map((item) => {
         if (item.transfer_method === TransferMethod.local_file) {
           return {
             ...item,

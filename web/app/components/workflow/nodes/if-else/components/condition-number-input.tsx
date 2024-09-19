@@ -35,6 +35,7 @@ type ConditionNumberInputProps = {
   value: string
   onValueChange: (v: string) => void
   variables: NodeOutPutVar[]
+  isShort?: boolean
 }
 const ConditionNumberInput = ({
   numberVarType = NumberVarType.constant,
@@ -42,6 +43,7 @@ const ConditionNumberInput = ({
   value,
   onValueChange,
   variables,
+  isShort,
 }: ConditionNumberInputProps) => {
   const { t } = useTranslation()
   const [numberVarTypeVisible, setNumberVarTypeVisible] = useState(false)
@@ -111,20 +113,21 @@ const ConditionNumberInput = ({
                     <VariableTag
                       valueSelector={variableTransformer(value) as string[]}
                       varType={VarType.number}
+                      isShort={isShort}
                     />
                   )
                 }
                 {
                   !value && (
                     <div className='flex items-center p-1 h-6 text-components-input-text-placeholder text-[13px]'>
-                      <Variable02 className='mr-1 w-4 h-4' />
-                      {t('workflow.nodes.ifElse.selectVariable')}
+                      <Variable02 className='shrink-0 mr-1 w-4 h-4' />
+                      <div className='w-0 grow truncate'>{t('workflow.nodes.ifElse.selectVariable')}</div>
                     </div>
                   )
                 }
               </PortalToFollowElemTrigger>
               <PortalToFollowElemContent className='z-[1000]'>
-                <div className='w-[296px] bg-components-panel-bg-blur rounded-lg border-[0.5px] border-components-panel-border shadow-lg'>
+                <div className={cn('w-[296px] pt-1 bg-components-panel-bg-blur rounded-lg border-[0.5px] border-components-panel-border shadow-lg', isShort && 'w-[200px]')}>
                   <VarReferenceVars
                     vars={variables}
                     onChange={handleSelectVariable}

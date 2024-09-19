@@ -8,11 +8,12 @@ import { useSWRConfig } from 'swr'
 import { unstable_serialize } from 'swr/infinite'
 import PermissionSelector from '../permission-selector'
 import IndexMethodRadio from '../index-method-radio'
-import cn from '@/utils/classnames'
 import RetrievalMethodConfig from '@/app/components/datasets/common/retrieval-method-config'
 import EconomicalRetrievalMethodConfig from '@/app/components/datasets/common/economical-retrieval-method-config'
 import { ToastContext } from '@/app/components/base/toast'
 import Button from '@/app/components/base/button'
+import Input from '@/app/components/base/input'
+import Textarea from '@/app/components/base/textarea'
 import { updateDatasetSetting } from '@/service/datasets'
 import type { DataSetListResponse } from '@/models/datasets'
 import DatasetDetailContext from '@/context/dataset-detail'
@@ -34,9 +35,6 @@ const rowClass = `
 `
 const labelClass = `
   flex items-center w-[168px] h-9
-`
-const inputClass = `
-  w-full max-w-[480px] px-3 bg-gray-100 text-sm text-gray-800 rounded-lg outline-none appearance-none
 `
 
 const getKey = (pageIndex: number, previousPageData: DataSetListResponse) => {
@@ -164,9 +162,9 @@ const Form = () => {
           <div>{t('datasetSettings.form.name')}</div>
         </div>
         <div className='w-full max-w-[480px]'>
-          <input
+          <Input
             disabled={!currentDataset?.embedding_available}
-            className={cn(inputClass, !currentDataset?.embedding_available && 'opacity-60', 'h-9')}
+            className='h-9'
             value={name}
             onChange={e => setName(e.target.value)}
           />
@@ -177,9 +175,9 @@ const Form = () => {
           <div>{t('datasetSettings.form.desc')}</div>
         </div>
         <div className='w-full max-w-[480px]'>
-          <textarea
+          <Textarea
             disabled={!currentDataset?.embedding_available}
-            className={cn(`${inputClass} block mb-2 h-[120px] py-2 resize-none`, !currentDataset?.embedding_available && 'opacity-60')}
+            className='mb-2 h-[120px] resize-none'
             placeholder={t('datasetSettings.form.descPlaceholder') || ''}
             value={description}
             onChange={e => setDescription(e.target.value)}

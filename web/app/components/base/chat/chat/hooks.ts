@@ -13,16 +13,17 @@ import type {
   ChatItem,
   Inputs,
   PromptVariable,
-  VisionFile,
 } from '../types'
 import { TransferMethod } from '@/types/app'
 import { useToastContext } from '@/app/components/base/toast'
 import { ssePost } from '@/service/base'
-import { replaceStringWithValues } from '@/app/components/app/configuration/prompt-value-panel'
+import { replaceStringWithValues } from '@/app/components/app/configuration/prompt-value-panel/utils'
 import type { Annotation } from '@/models/log'
 import { WorkflowRunningStatus } from '@/app/components/workflow/types'
 import useTimestamp from '@/hooks/use-timestamp'
 import { AudioPlayerManager } from '@/app/components/base/audio-btn/audio.player.manager'
+import type { FileEntity } from '@/app/components/base/file-uploader/types'
+import { getProcessedFiles } from '@/app/components/base/file-uploader/utils'
 
 type GetAbortController = (abortController: AbortController) => void
 type SendCallback = {
@@ -196,7 +197,11 @@ export const useChat = (
 
   const handleSend = useCallback(async (
     url: string,
-    data: any,
+    data: {
+      query: string
+      files?: FileEntity[]
+      [key: string]: any
+    },
     {
       onGetConversationMessages,
       onGetSuggestedQuestions,
@@ -244,13 +249,16 @@ export const useChat = (
     handleResponding(true)
     hasStopResponded.current = false
 
+    const { query, files, ...restData } = data
     const bodyParams = {
       response_mode: 'streaming',
       conversation_id: conversationId.current,
-      ...data,
+      files: getProcessedFiles(files || []),
+      query,
+      ...restData,
     }
     if (bodyParams?.files?.length) {
-      bodyParams.files = bodyParams.files.map((item: VisionFile) => {
+      bodyParams.files = bodyParams.files.map((item) => {
         if (item.transfer_method === TransferMethod.local_file) {
           return {
             ...item,
