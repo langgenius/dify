@@ -51,7 +51,7 @@ if you are not sure about the structure.
 <instructions>
 {{instructions}}
 </instructions>
-"""
+"""  # noqa: E501
 
 
 class AnthropicLargeLanguageModel(LargeLanguageModel):
@@ -409,7 +409,7 @@ class AnthropicLargeLanguageModel(LargeLanguageModel):
                     ),
                 )
             elif isinstance(chunk, ContentBlockDeltaEvent):
-                chunk_text = chunk.delta.text if chunk.delta.text else ""
+                chunk_text = chunk.delta.text or ""
                 full_assistant_content += chunk_text
 
                 # transform assistant message to prompt message
@@ -494,7 +494,7 @@ class AnthropicLargeLanguageModel(LargeLanguageModel):
                                     mime_type = data_split[0].replace("data:", "")
                                     base64_data = data_split[1]
 
-                                if mime_type not in ["image/jpeg", "image/png", "image/gif", "image/webp"]:
+                                if mime_type not in {"image/jpeg", "image/png", "image/gif", "image/webp"}:
                                     raise ValueError(
                                         f"Unsupported image type {mime_type}, "
                                         f"only support image/jpeg, image/png, image/gif, and image/webp"

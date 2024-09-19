@@ -76,9 +76,9 @@ class FeishuRequest:
         url = "https://lark-plugin-api.solutionsuite.cn/lark-plugin/document/write_document"
         payload = {"document_id": document_id, "content": content, "position": position}
         res = self._send_request(url, payload=payload)
-        return res.get("data")
+        return res
 
-    def get_document_raw_content(self, document_id: str) -> dict:
+    def get_document_content(self, document_id: str, mode: str, lang: int = 0) -> dict:
         """
         API url: https://open.larkoffice.com/document/server-docs/docs/docs/docx-v1/document/raw_content
         Example Response:
@@ -89,19 +89,21 @@ class FeishuRequest:
                 "content": "云文档\n多人实时协同，插入一切元素。不仅是在线文档，更是强大的创作和互动工具\n云文档：专为协作而生\n"
             }
         }
-        """
+        """  # noqa: E501
         params = {
             "document_id": document_id,
+            "mode": mode,
+            "lang": lang,
         }
-        url = "https://lark-plugin-api.solutionsuite.cn/lark-plugin/document/get_document_raw_content"
+        url = "https://lark-plugin-api.solutionsuite.cn/lark-plugin/document/get_document_content"
         res = self._send_request(url, method="get", params=params)
         return res.get("data").get("content")
 
-    def list_document_block(self, document_id: str, page_token: str, page_size: int = 500) -> dict:
+    def list_document_blocks(self, document_id: str, page_token: str, page_size: int = 500) -> dict:
         """
         API url: https://open.larkoffice.com/document/server-docs/docs/docs/docx-v1/document/list
         """
-        url = "https://lark-plugin-api.solutionsuite.cn/lark-plugin/document/list_document_block"
+        url = "https://lark-plugin-api.solutionsuite.cn/lark-plugin/document/list_document_blocks"
         params = {
             "document_id": document_id,
             "page_size": page_size,

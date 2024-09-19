@@ -621,7 +621,7 @@ class CohereLargeLanguageModel(LargeLanguageModel):
 
                 desc = p_val["description"]
                 if "enum" in p_val:
-                    desc += f"; Only accepts one of the following predefined options: " f"[{', '.join(p_val['enum'])}]"
+                    desc += f"; Only accepts one of the following predefined options: [{', '.join(p_val['enum'])}]"
 
                 parameter_definitions[p_key] = ToolParameterDefinitionsValue(
                     description=desc, type=p_val["type"], required=required

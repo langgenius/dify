@@ -29,6 +29,7 @@ class OpenSearchConfig(BaseModel):
     secure: bool = False
 
     @model_validator(mode="before")
+    @classmethod
     def validate_config(cls, values: dict) -> dict:
         if not values.get("host"):
             raise ValueError("config OPENSEARCH_HOST is required")
@@ -169,7 +170,7 @@ class OpenSearchVector(BaseVector):
                 metadata = {}
 
             metadata["score"] = hit["_score"]
-            score_threshold = kwargs.get("score_threshold") if kwargs.get("score_threshold") else 0.0
+            score_threshold = float(kwargs.get("score_threshold") or 0.0)
             if hit["_score"] > score_threshold:
                 doc = Document(page_content=hit["_source"].get(Field.CONTENT_KEY.value), metadata=metadata)
                 docs.append(doc)

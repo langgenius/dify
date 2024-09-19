@@ -8,7 +8,7 @@ from typing import Any, Optional
 
 from flask import Flask, current_app
 
-from core.app.apps.base_app_queue_manager import GenerateTaskStoppedException
+from core.app.apps.base_app_queue_manager import GenerateTaskStoppedError
 from core.app.entities.app_invoke_entities import InvokeFrom
 from core.workflow.entities.node_entities import (
     NodeRunMetadataKey,
@@ -61,6 +61,9 @@ class GraphEngineThreadPool(ThreadPoolExecutor):
 
         return super().submit(fn, *args, **kwargs)
 
+    def task_done_callback(self, future):
+        self.submit_count -= 1
+
     def check_is_full(self) -> None:
         print(f"submit_count: {self.submit_count}, max_submit_count: {self.max_submit_count}")
         if self.submit_count > self.max_submit_count:
@@ -90,9 +93,9 @@ class GraphEngine:
         thread_pool_max_submit_count = 100
         thread_pool_max_workers = 10
 
-        ## init thread pool
+        # init thread pool
         if thread_pool_id:
-            if not thread_pool_id in GraphEngine.workflow_thread_pool_mapping:
+            if thread_pool_id not in GraphEngine.workflow_thread_pool_mapping:
                 raise ValueError(f"Max submit count {thread_pool_max_submit_count} of workflow thread pool reached.")
 
             self.thread_pool_id = thread_pool_id
@@ -426,19 +429,21 @@ class GraphEngine:
             ):
                 continue
 
-            futures.append(
-                self.thread_pool.submit(
-                    self._run_parallel_node,
-                    **{
-                        "flask_app": current_app._get_current_object(),  # type: ignore[attr-defined]
-                        "q": q,
-                        "parallel_id": parallel_id,
-                        "parallel_start_node_id": edge.target_node_id,
-                        "parent_parallel_id": in_parallel_id,
-                        "parent_parallel_start_node_id": parallel_start_node_id,
-                    },
-                )
+            future = self.thread_pool.submit(
+                self._run_parallel_node,
+                **{
+                    "flask_app": current_app._get_current_object(),  # type: ignore[attr-defined]
+                    "q": q,
+                    "parallel_id": parallel_id,
+                    "parallel_start_node_id": edge.target_node_id,
+                    "parent_parallel_id": in_parallel_id,
+                    "parent_parallel_start_node_id": parallel_start_node_id,
+                },
             )
+
+            future.add_done_callback(self.thread_pool.task_done_callback)
+
+            futures.append(future)
 
         succeeded_count = 0
         while True:
@@ -669,7 +674,7 @@ class GraphEngine:
                             parent_parallel_id=parent_parallel_id,
                             parent_parallel_start_node_id=parent_parallel_start_node_id,
                         )
-        except GenerateTaskStoppedException:
+        except GenerateTaskStoppedError:
             # trigger node run failed event
             route_node_state.status = RouteNodeState.Status.FAILED
             route_node_state.failed_reason = "Workflow stopped."

@@ -256,7 +256,7 @@ class CotAgentRunner(BaseAgentRunner, ABC):
                     model=model_instance.model,
                     prompt_messages=prompt_messages,
                     message=AssistantPromptMessage(content=final_answer),
-                    usage=llm_usage["usage"] if llm_usage["usage"] else LLMUsage.empty_usage(),
+                    usage=llm_usage["usage"] or LLMUsage.empty_usage(),
                     system_fingerprint="",
                 )
             ),

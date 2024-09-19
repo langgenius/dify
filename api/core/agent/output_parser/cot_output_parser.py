@@ -90,7 +90,7 @@ class CotAgentOutputParser:
 
                 if not in_code_block and not in_json:
                     if delta.lower() == action_str[action_idx] and action_idx == 0:
-                        if last_character not in ["\n", " ", ""]:
+                        if last_character not in {"\n", " ", ""}:
                             index += steps
                             yield delta
                             continue
@@ -117,7 +117,7 @@ class CotAgentOutputParser:
                             action_idx = 0
 
                     if delta.lower() == thought_str[thought_idx] and thought_idx == 0:
-                        if last_character not in ["\n", " ", ""]:
+                        if last_character not in {"\n", " ", ""}:
                             index += steps
                             yield delta
                             continue

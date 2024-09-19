@@ -167,7 +167,7 @@ class DatasetConfigManager:
             config["agent_mode"]["strategy"] = PlanningStrategy.ROUTER.value
 
         has_datasets = False
-        if config["agent_mode"]["strategy"] in [PlanningStrategy.ROUTER.value, PlanningStrategy.REACT_ROUTER.value]:
+        if config["agent_mode"]["strategy"] in {PlanningStrategy.ROUTER.value, PlanningStrategy.REACT_ROUTER.value}:
             for tool in config["agent_mode"]["tools"]:
                 key = list(tool.keys())[0]
                 if key == "dataset":

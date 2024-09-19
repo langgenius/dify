@@ -49,11 +49,11 @@ class DallE3Tool(BuiltinTool):
         n = tool_parameters.get("n", 1)
         # get quality
         quality = tool_parameters.get("quality", "standard")
-        if quality not in ["standard", "hd"]:
+        if quality not in {"standard", "hd"}:
             return self.create_text_message("Invalid quality")
         # get style
         style = tool_parameters.get("style", "vivid")
-        if style not in ["natural", "vivid"]:
+        if style not in {"natural", "vivid"}:
             return self.create_text_message("Invalid style")
 
         # call openapi dalle3
@@ -66,7 +66,7 @@ class DallE3Tool(BuiltinTool):
         for image in response.data:
             mime_type, blob_image = DallE3Tool._decode_image(image.b64_json)
             blob_message = self.create_blob_message(
-                blob=blob_image, meta={"mime_type": mime_type}, save_as=self.VARIABLE_KEY.IMAGE.value
+                blob=blob_image, meta={"mime_type": mime_type}, save_as=self.VariableKey.IMAGE.value
             )
             result.append(blob_message)
         return result

@@ -35,7 +35,7 @@ def _split_text_with_regex(text: str, separator: str, keep_separator: bool) -> l
             splits = re.split(separator, text)
     else:
         splits = list(text)
-    return [s for s in splits if (s != "" and s != "\n")]
+    return [s for s in splits if (s not in {"", "\n"})]
 
 
 class TextSplitter(BaseDocumentTransformer, ABC):
@@ -60,7 +60,7 @@ class TextSplitter(BaseDocumentTransformer, ABC):
         """
         if chunk_overlap > chunk_size:
             raise ValueError(
-                f"Got a larger chunk overlap ({chunk_overlap}) than chunk size " f"({chunk_size}), should be smaller."
+                f"Got a larger chunk overlap ({chunk_overlap}) than chunk size ({chunk_size}), should be smaller."
             )
         self._chunk_size = chunk_size
         self._chunk_overlap = chunk_overlap
@@ -117,7 +117,7 @@ class TextSplitter(BaseDocumentTransformer, ABC):
             if total + _len + (separator_len if len(current_doc) > 0 else 0) > self._chunk_size:
                 if total > self._chunk_size:
                     logger.warning(
-                        f"Created a chunk of size {total}, " f"which is longer than the specified {self._chunk_size}"
+                        f"Created a chunk of size {total}, which is longer than the specified {self._chunk_size}"
                     )
                 if len(current_doc) > 0:
                     doc = self._join_docs(current_doc, separator)
@@ -153,7 +153,7 @@ class TextSplitter(BaseDocumentTransformer, ABC):
 
         except ImportError:
             raise ValueError(
-                "Could not import transformers python package. " "Please install it with `pip install transformers`."
+                "Could not import transformers python package. Please install it with `pip install transformers`."
             )
         return cls(length_function=_huggingface_tokenizer_length, **kwargs)
 

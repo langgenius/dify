@@ -246,7 +246,8 @@ class Workflow(db.Model):
         if any(var for var in value if not var.id):
             raise ValueError("environment variable require a unique id")
 
-        # Compare inputs and origin variables, if the value is HIDDEN_VALUE, use the origin variable value (only update `name`).
+        # Compare inputs and origin variables,
+        # if the value is HIDDEN_VALUE, use the origin variable value (only update `name`).
         origin_variables_dictionary = {var.id: var for var in self.environment_variables}
         for i, variable in enumerate(value):
             if variable.id in origin_variables_dictionary and variable.value == HIDDEN_VALUE:

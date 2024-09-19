@@ -32,6 +32,7 @@ class PgvectoRSConfig(BaseModel):
     database: str
 
     @model_validator(mode="before")
+    @classmethod
     def validate_config(cls, values: dict) -> dict:
         if not values["host"]:
             raise ValueError("config PGVECTO_RS_HOST is required")
@@ -197,7 +198,7 @@ class PGVectoRS(BaseVector):
             metadata = record.meta
             score = 1 - dis
             metadata["score"] = score
-            score_threshold = kwargs.get("score_threshold") if kwargs.get("score_threshold") else 0.0
+            score_threshold = float(kwargs.get("score_threshold") or 0.0)
             if score > score_threshold:
                 doc = Document(page_content=record.text, metadata=metadata)
                 docs.append(doc)

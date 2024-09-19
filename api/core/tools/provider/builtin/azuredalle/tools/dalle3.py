@@ -39,11 +39,11 @@ class DallE3Tool(BuiltinTool):
         n = tool_parameters.get("n", 1)
         # get quality
         quality = tool_parameters.get("quality", "standard")
-        if quality not in ["standard", "hd"]:
+        if quality not in {"standard", "hd"}:
             return self.create_text_message("Invalid quality")
         # get style
         style = tool_parameters.get("style", "vivid")
-        if style not in ["natural", "vivid"]:
+        if style not in {"natural", "vivid"}:
             return self.create_text_message("Invalid style")
         # set extra body
         seed_id = tool_parameters.get("seed_id", self._generate_random_id(8))
@@ -69,7 +69,7 @@ class DallE3Tool(BuiltinTool):
                 self.create_blob_message(
                     blob=b64decode(image.b64_json),
                     meta={"mime_type": "image/png"},
-                    save_as=self.VARIABLE_KEY.IMAGE.value,
+                    save_as=self.VariableKey.IMAGE.value,
                 )
             )
         result.append(self.create_text_message(f"\nGenerate image source to Seed ID: {seed_id}"))

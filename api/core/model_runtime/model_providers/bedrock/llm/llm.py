@@ -1,8 +1,8 @@
 # standard import
 import base64
-import io
 import json
 import logging
+import mimetypes
 from collections.abc import Generator
 from typing import Optional, Union, cast
 
@@ -17,9 +17,9 @@ from botocore.exceptions import (
     ServiceNotInRegionError,
     UnknownServiceError,
 )
-from PIL.Image import Image
 
 # local import
+from core.model_runtime.callbacks.base_callback import Callback
 from core.model_runtime.entities.llm_entities import LLMResult, LLMResultChunk, LLMResultChunkDelta
 from core.model_runtime.entities.message_entities import (
     AssistantPromptMessage,
@@ -44,6 +44,14 @@ from core.model_runtime.errors.validate import CredentialsValidateFailedError
 from core.model_runtime.model_providers.__base.large_language_model import LargeLanguageModel
 
 logger = logging.getLogger(__name__)
+ANTHROPIC_BLOCK_MODE_PROMPT = """You should always follow the instructions and output a valid {{block}} object.
+The structure of the {{block}} object you can found in the instructions, use {"answer": "$your_answer"} as the default structure
+if you are not sure about the structure.
+
+<instructions>
+{{instructions}}
+</instructions>
+"""  # noqa: E501
 
 
 class BedrockLargeLanguageModel(LargeLanguageModel):
@@ -52,6 +60,8 @@ class BedrockLargeLanguageModel(LargeLanguageModel):
     CONVERSE_API_ENABLED_MODEL_INFO = [
         {"prefix": "anthropic.claude-v2", "support_system_prompts": True, "support_tool_use": False},
         {"prefix": "anthropic.claude-v1", "support_system_prompts": True, "support_tool_use": False},
+        {"prefix": "us.anthropic.claude-3", "support_system_prompts": True, "support_tool_use": True},
+        {"prefix": "eu.anthropic.claude-3", "support_system_prompts": True, "support_tool_use": True},
         {"prefix": "anthropic.claude-3", "support_system_prompts": True, "support_tool_use": True},
         {"prefix": "meta.llama", "support_system_prompts": True, "support_tool_use": False},
         {"prefix": "mistral.mistral-7b-instruct", "support_system_prompts": False, "support_tool_use": False},
@@ -69,6 +79,40 @@ class BedrockLargeLanguageModel(LargeLanguageModel):
                 return model
         logger.info(f"current model id: {model_id} did not support by Converse API")
         return None
+
+    def _code_block_mode_wrapper(
+        self,
+        model: str,
+        credentials: dict,
+        prompt_messages: list[PromptMessage],
+        model_parameters: dict,
+        tools: Optional[list[PromptMessageTool]] = None,
+        stop: Optional[list[str]] = None,
+        stream: bool = True,
+        user: Optional[str] = None,
+        callbacks: list[Callback] = None,
+    ) -> Union[LLMResult, Generator]:
+        """
+        Code block mode wrapper for invoking large language model
+        """
+        if model_parameters.get("response_format"):
+            stop = stop or []
+            if "```\n" not in stop:
+                stop.append("```\n")
+            if "\n```" not in stop:
+                stop.append("\n```")
+            response_format = model_parameters.pop("response_format")
+            format_prompt = SystemPromptMessage(
+                content=ANTHROPIC_BLOCK_MODE_PROMPT.replace("{{instructions}}", prompt_messages[0].content).replace(
+                    "{{block}}", response_format
+                )
+            )
+            if len(prompt_messages) > 0 and isinstance(prompt_messages[0], SystemPromptMessage):
+                prompt_messages[0] = format_prompt
+            else:
+                prompt_messages.insert(0, format_prompt)
+            prompt_messages.append(AssistantPromptMessage(content=f"\n```{response_format}"))
+        return self._invoke(model, credentials, prompt_messages, model_parameters, tools, stop, stream, user)
 
     def _invoke(
         self,
@@ -288,10 +332,10 @@ class BedrockLargeLanguageModel(LargeLanguageModel):
                 elif "contentBlockDelta" in chunk:
                     delta = chunk["contentBlockDelta"]["delta"]
                     if "text" in delta:
-                        chunk_text = delta["text"] if delta["text"] else ""
+                        chunk_text = delta["text"] or ""
                         full_assistant_content += chunk_text
                         assistant_prompt_message = AssistantPromptMessage(
-                            content=chunk_text if chunk_text else "",
+                            content=chunk_text or "",
                         )
                         index = chunk["contentBlockDelta"]["contentBlockIndex"]
                         yield LLMResultChunk(
@@ -398,8 +442,9 @@ class BedrockLargeLanguageModel(LargeLanguageModel):
                             try:
                                 url = message_content.data
                                 image_content = requests.get(url).content
-                                with Image.open(io.BytesIO(image_content)) as img:
-                                    mime_type = f"image/{img.format.lower()}"
+                                if "?" in url:
+                                    url = url.split("?")[0]
+                                mime_type, _ = mimetypes.guess_type(url)
                                 base64_data = base64.b64encode(image_content).decode("utf-8")
                             except Exception as ex:
                                 raise ValueError(f"Failed to fetch image data from url {message_content.data}, {ex}")
@@ -409,7 +454,7 @@ class BedrockLargeLanguageModel(LargeLanguageModel):
                             base64_data = data_split[1]
                             image_content = base64.b64decode(base64_data)
 
-                        if mime_type not in ["image/jpeg", "image/png", "image/gif", "image/webp"]:
+                        if mime_type not in {"image/jpeg", "image/png", "image/gif", "image/webp"}:
                             raise ValueError(
                                 f"Unsupported image type {mime_type}, "
                                 f"only support image/jpeg, image/png, image/gif, and image/webp"
@@ -498,7 +543,9 @@ class BedrockLargeLanguageModel(LargeLanguageModel):
                 "max_tokens": 32,
             }
         elif "ai21" in model:
-            # ValidationException: Malformed input request: #/temperature: expected type: Number, found: Null#/maxTokens: expected type: Integer, found: Null#/topP: expected type: Number, found: Null, please reformat your input and try again.
+            # ValidationException: Malformed input request: #/temperature: expected type: Number,
+            # found: Null#/maxTokens: expected type: Integer, found: Null#/topP: expected type: Number, found: Null,
+            # please reformat your input and try again.
             required_params = {
                 "temperature": 0.7,
                 "topP": 0.9,
@@ -706,7 +753,7 @@ class BedrockLargeLanguageModel(LargeLanguageModel):
         elif model_prefix == "cohere":
             output = response_body.get("generations")[0].get("text")
             prompt_tokens = self.get_num_tokens(model, credentials, prompt_messages)
-            completion_tokens = self.get_num_tokens(model, credentials, output if output else "")
+            completion_tokens = self.get_num_tokens(model, credentials, output or "")
 
         else:
             raise ValueError(f"Got unknown model prefix {model_prefix} when handling block response")
@@ -783,7 +830,7 @@ class BedrockLargeLanguageModel(LargeLanguageModel):
 
             # transform assistant message to prompt message
             assistant_prompt_message = AssistantPromptMessage(
-                content=content_delta if content_delta else "",
+                content=content_delta or "",
             )
             index += 1
 
@@ -839,16 +886,16 @@ class BedrockLargeLanguageModel(LargeLanguageModel):
 
         if error_code == "AccessDeniedException":
             return InvokeAuthorizationError(error_msg)
-        elif error_code in ["ResourceNotFoundException", "ValidationException"]:
+        elif error_code in {"ResourceNotFoundException", "ValidationException"}:
             return InvokeBadRequestError(error_msg)
-        elif error_code in ["ThrottlingException", "ServiceQuotaExceededException"]:
+        elif error_code in {"ThrottlingException", "ServiceQuotaExceededException"}:
             return InvokeRateLimitError(error_msg)
-        elif error_code in [
+        elif error_code in {
             "ModelTimeoutException",
             "ModelErrorException",
             "InternalServerException",
             "ModelNotReadyException",
-        ]:
+        }:
             return InvokeServerUnavailableError(error_msg)
         elif error_code == "ModelStreamErrorException":
             return InvokeConnectionError(error_msg)

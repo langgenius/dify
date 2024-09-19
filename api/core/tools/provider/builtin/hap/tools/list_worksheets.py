@@ -24,7 +24,7 @@ class ListWorksheetsTool(BuiltinTool):
         elif not (host.startswith("http://") or host.startswith("https://")):
             return self.create_text_message("Invalid parameter Host Address")
         else:
-            host = f"{host[:-1] if host.endswith('/') else host}/api"
+            host = f"{host.removesuffix('/')}/api"
         url = f"{host}/v1/open/app/get"
 
         result_type = tool_parameters.get("result_type", "")
@@ -67,7 +67,7 @@ class ListWorksheetsTool(BuiltinTool):
         items = []
         tables = ""
         for item in section.get("items", []):
-            if item.get("type") == 0 and (not "notes" in item or item.get("notes") != "NO"):
+            if item.get("type") == 0 and ("notes" not in item or item.get("notes") != "NO"):
                 if type == "json":
                     filtered_item = {"id": item["id"], "name": item["name"], "notes": item.get("notes", "")}
                     items.append(filtered_item)

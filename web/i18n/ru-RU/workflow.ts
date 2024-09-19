@@ -93,6 +93,8 @@ const translation = {
     disconnect: 'Разъединять',
     jumpToNode: 'Перейти к этому узлу',
     addParallelNode: 'Добавить параллельный узел',
+    parallel: 'ПАРАЛЛЕЛЬНЫЙ',
+    branch: 'ВЕТКА',
   },
   env: {
     envPanelTitle: 'Переменные среды',

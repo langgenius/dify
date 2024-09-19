@@ -73,8 +73,7 @@ class XinferenceText2SpeechModel(TTSModel):
             if "/" in credentials["model_uid"] or "?" in credentials["model_uid"] or "#" in credentials["model_uid"]:
                 raise CredentialsValidateFailedError("model_uid should not contain /, ?, or #")
 
-            if credentials["server_url"].endswith("/"):
-                credentials["server_url"] = credentials["server_url"][:-1]
+            credentials["server_url"] = credentials["server_url"].removesuffix("/")
 
             extra_param = XinferenceHelper.get_xinference_extra_parameter(
                 server_url=credentials["server_url"],
@@ -189,8 +188,7 @@ class XinferenceText2SpeechModel(TTSModel):
         :param voice: model timbre
         :return: text translated to audio file
         """
-        if credentials["server_url"].endswith("/"):
-            credentials["server_url"] = credentials["server_url"][:-1]
+        credentials["server_url"] = credentials["server_url"].removesuffix("/")
 
         try:
             api_key = credentials.get("api_key")
@@ -215,7 +213,7 @@ class XinferenceText2SpeechModel(TTSModel):
                     for i in range(len(sentences))
                 ]
 
-                for index, future in enumerate(futures):
+                for future in futures:
                     response = future.result()
                     for i in range(0, len(response), 1024):
                         yield response[i : i + 1024]

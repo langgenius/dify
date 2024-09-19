@@ -6,10 +6,10 @@ import requests
 from core.model_runtime.errors.invoke import InvokeBadRequestError
 from core.model_runtime.errors.validate import CredentialsValidateFailedError
 from core.model_runtime.model_providers.__base.speech2text_model import Speech2TextModel
-from core.model_runtime.model_providers.openai_api_compatible._common import _CommonOAI_API_Compat
+from core.model_runtime.model_providers.openai_api_compatible._common import _CommonOaiApiCompat
 
 
-class OAICompatSpeech2TextModel(_CommonOAI_API_Compat, Speech2TextModel):
+class OAICompatSpeech2TextModel(_CommonOaiApiCompat, Speech2TextModel):
     """
     Model class for OpenAI Compatible Speech to text model.
     """

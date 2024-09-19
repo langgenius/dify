@@ -27,6 +27,7 @@ class ElasticSearchConfig(BaseModel):
     password: str
 
     @model_validator(mode="before")
+    @classmethod
     def validate_config(cls, values: dict) -> dict:
         if not values["host"]:
             raise ValueError("config HOST is required")
@@ -50,7 +51,7 @@ class ElasticSearchVector(BaseVector):
     def _init_client(self, config: ElasticSearchConfig) -> Elasticsearch:
         try:
             parsed_url = urlparse(config.host)
-            if parsed_url.scheme in ["http", "https"]:
+            if parsed_url.scheme in {"http", "https"}:
                 hosts = f"{config.host}:{config.port}"
             else:
                 hosts = f"http://{config.host}:{config.port}"
@@ -85,15 +86,15 @@ class ElasticSearchVector(BaseVector):
                 id=uuids[i],
                 document={
                     Field.CONTENT_KEY.value: documents[i].page_content,
-                    Field.VECTOR.value: embeddings[i] if embeddings[i] else None,
-                    Field.METADATA_KEY.value: documents[i].metadata if documents[i].metadata else {},
+                    Field.VECTOR.value: embeddings[i] or None,
+                    Field.METADATA_KEY.value: documents[i].metadata or {},
                 },
             )
         self._client.indices.refresh(index=self._collection_name)
         return uuids
 
     def text_exists(self, id: str) -> bool:
-        return self._client.exists(index=self._collection_name, id=id).__bool__()
+        return bool(self._client.exists(index=self._collection_name, id=id))
 
     def delete_by_ids(self, ids: list[str]) -> None:
         for id in ids:
@@ -130,7 +131,7 @@ class ElasticSearchVector(BaseVector):
 
         docs = []
         for doc, score in docs_and_scores:
-            score_threshold = kwargs.get("score_threshold", 0.0) if kwargs.get("score_threshold", 0.0) else 0.0
+            score_threshold = float(kwargs.get("score_threshold") or 0.0)
             if score > score_threshold:
                 doc.metadata["score"] = score
             docs.append(doc)

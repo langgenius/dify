@@ -40,7 +40,7 @@ class NovitaAiTxt2ImgTool(BuiltinTool, NovitaAiToolBase):
                 self.create_blob_message(
                     blob=b64decode(image_encoded),
                     meta={"mime_type": f"image/{image.image_type}"},
-                    save_as=self.VARIABLE_KEY.IMAGE.value,
+                    save_as=self.VariableKey.IMAGE.value,
                 )
             )
 

@@ -164,7 +164,7 @@ def initialize_extensions(app):
 @login_manager.request_loader
 def load_user_from_request(request_from_flask_login):
     """Load user based on the request."""
-    if request.blueprint not in ["console", "inner_api"]:
+    if request.blueprint not in {"console", "inner_api"}:
         return None
     # Check if the user_id contains a dot, indicating the old format
     auth_header = request.headers.get("Authorization", "")
