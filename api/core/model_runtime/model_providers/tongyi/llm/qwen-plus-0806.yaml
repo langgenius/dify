@@ -1,6 +1,6 @@
-model: qwen-plus
+model: qwen-plus-0806
 label:
-  en_US: qwen-plus
+  en_US: qwen-plus-0806
 model_type: llm
 features:
   - agent-thought
