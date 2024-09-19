@@ -18,6 +18,7 @@ import FileItem from './file-item'
 import Button from '@/app/components/base/button'
 import cn from '@/utils/classnames'
 import type { FileUpload } from '@/app/components/base/features/types'
+import { TransferMethod } from '@/types/app'
 
 type Option = {
   value: string
@@ -38,12 +39,12 @@ const FileUploaderInAttachment = ({
   } = useFile(fileConfig)
   const options = [
     {
-      value: 'local',
+      value: TransferMethod.local_file,
       label: t('common.fileUploader.uploadFromComputer'),
       icon: <RiUploadCloud2Line className='w-4 h-4' />,
     },
     {
-      value: 'link',
+      value: TransferMethod.remote_url,
       label: t('common.fileUploader.pasteFileLink'),
       icon: <RiLink className='w-4 h-4' />,
     },
@@ -54,13 +55,13 @@ const FileUploaderInAttachment = ({
       <Button
         key={option.value}
         variant='tertiary'
-        className={cn('basis-1/2 relative', open && 'bg-components-button-tertiary-bg-hover')}
+        className={cn('grow relative', open && 'bg-components-button-tertiary-bg-hover')}
         disabled={!!(fileConfig.number_limits && files.length >= fileConfig.number_limits)}
       >
         {option.icon}
         <span className='ml-1'>{option.label}</span>
         {
-          option.value === 'local' && (
+          option.value === TransferMethod.local_file && (
             <FileInput fileConfig={fileConfig} />
           )
         }
@@ -71,10 +72,10 @@ const FileUploaderInAttachment = ({
     return (open: boolean) => renderButton(option, open)
   }, [renderButton])
   const renderOption = useCallback((option: Option) => {
-    if (option.value === 'local')
+    if (option.value === TransferMethod.local_file && fileConfig?.allowed_file_upload_methods?.includes(TransferMethod.local_file))
       return renderButton(option)
 
-    if (option.value === 'link') {
+    if (option.value === TransferMethod.remote_url && fileConfig?.allowed_file_upload_methods?.includes(TransferMethod.remote_url)) {
       return (
         <FileFromLinkOrLocal
           key={option.value}
