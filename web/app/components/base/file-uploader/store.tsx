@@ -43,8 +43,6 @@ export const useFileStore = () => {
 
 type FileProviderProps = {
   children: React.ReactNode
-  isPublicAPI?: boolean
-  url?: string
   onChange?: (files: FileEntity[]) => void
 }
 export const FileContextProvider = ({

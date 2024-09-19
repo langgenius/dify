@@ -26,7 +26,19 @@ export const useFile = (fileConfig: FileUpload) => {
   const fileStore = useFileStore()
   const params = useParams()
 
-  const handleAddOrUpdateFiles = useCallback((newFile: FileEntity) => {
+  const handleAddFile = useCallback((newFile: FileEntity) => {
+    const {
+      files,
+      setFiles,
+    } = fileStore.getState()
+
+    const newFiles = produce(files, (draft) => {
+      draft.push(newFile)
+    })
+    setFiles(newFiles)
+  }, [fileStore])
+
+  const handleUpdateFile = useCallback((newFile: FileEntity) => {
     const {
       files,
       setFiles,
@@ -37,8 +49,6 @@ export const useFile = (fileConfig: FileUpload) => {
 
       if (index > -1)
         draft[index] = newFile
-      else
-        draft.push(newFile)
     })
     setFiles(newFiles)
   }, [fileStore])
@@ -69,18 +79,18 @@ export const useFile = (fileConfig: FileUpload) => {
       fileUpload({
         file: uploadingFile.file!,
         onProgressCallback: (progress) => {
-          handleAddOrUpdateFiles({ ...uploadingFile, progress })
+          handleUpdateFile({ ...uploadingFile, progress })
         },
         onSuccessCallback: (res) => {
-          handleAddOrUpdateFiles({ ...uploadingFile, fileId: res.id, progress: 100 })
+          handleUpdateFile({ ...uploadingFile, fileId: res.id, progress: 100 })
         },
         onErrorCallback: () => {
           notify({ type: 'error', message: t('common.imageUploader.uploadFromComputerUploadError') })
-          handleAddOrUpdateFiles({ ...uploadingFile, progress: -1 })
+          handleUpdateFile({ ...uploadingFile, progress: -1 })
         },
       }, !!params.token)
     }
-  }, [fileStore, notify, t, handleAddOrUpdateFiles, params])
+  }, [fileStore, notify, t, handleUpdateFile, params])
 
   const handleLoadFileFromLink = useCallback(() => {}, [])
 
@@ -117,18 +127,18 @@ export const useFile = (fileConfig: FileUpload) => {
           fileType: isCustomFileType ? SupportUploadFileTypes.custom : getFileType(file),
           type: TransferMethod.local_file,
         }
-        handleAddOrUpdateFiles(uploadingFile)
+        handleAddFile(uploadingFile)
         fileUpload({
           file: uploadingFile.file,
           onProgressCallback: (progress) => {
-            handleAddOrUpdateFiles({ ...uploadingFile, progress })
+            handleUpdateFile({ ...uploadingFile, progress })
           },
           onSuccessCallback: (res) => {
-            handleAddOrUpdateFiles({ ...uploadingFile, fileStorageId: res.id, progress: 100 })
+            handleUpdateFile({ ...uploadingFile, fileStorageId: res.id, progress: 100 })
           },
           onErrorCallback: () => {
             notify({ type: 'error', message: t('common.fileUploader.uploadFromComputerUploadError') })
-            handleAddOrUpdateFiles({ ...uploadingFile, progress: -1 })
+            handleUpdateFile({ ...uploadingFile, progress: -1 })
           },
         }, !!params.token)
       },
@@ -142,7 +152,7 @@ export const useFile = (fileConfig: FileUpload) => {
       false,
     )
     reader.readAsDataURL(file)
-  }, [notify, t, handleAddOrUpdateFiles, params.token, fileConfig?.allowed_file_types])
+  }, [notify, t, handleAddFile, handleUpdateFile, params.token, fileConfig?.allowed_file_types])
 
   const handleClipboardPasteFile = useCallback((e: ClipboardEvent<HTMLTextAreaElement>) => {
     const file = e.clipboardData?.files[0]
@@ -182,7 +192,8 @@ export const useFile = (fileConfig: FileUpload) => {
   }, [handleLocalFileUpload])
 
   return {
-    handleAddOrUpdateFiles,
+    handleAddFile,
+    handleUpdateFile,
     handleRemoveFile,
     handleReUploadFile,
     handleLoadFileFromLink,
