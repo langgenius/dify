@@ -1,9 +1,13 @@
+import urllib.parse
+
 from flask import Response, request
-from flask_restful import Resource
+from flask_restful import Resource, marshal_with
 from werkzeug.exceptions import NotFound
 
 import services
 from controllers.files import api
+from core.helper import ssrf_proxy
+from fields.file_fields import remote_file_info_fields
 from libs.exception import BaseHTTPException
 from services.account_service import TenantService
 from services.file_service import FileService
@@ -48,8 +52,23 @@ class WorkspaceWebappLogoApi(Resource):
         return Response(generator, mimetype=mimetype)
 
 
+class RemoteFileInfoApi(Resource):
+    @marshal_with(remote_file_info_fields)
+    def get(self, url):
+        decoded_url = urllib.parse.unquote(url)
+        try:
+            response = ssrf_proxy.head(decoded_url)
+            return {
+                "file_type": response.headers.get("Content-Type", "application/octet-stream"),
+                "file_length": int(response.headers.get("Content-Length", 0)),
+            }
+        except Exception as e:
+            return {"error": str(e)}, 400
+
+
 api.add_resource(ImagePreviewApi, "/files/<uuid:file_id>/image-preview")
 api.add_resource(WorkspaceWebappLogoApi, "/files/workspaces/<uuid:workspace_id>/webapp-logo")
+api.add_resource(RemoteFileInfoApi, "/remote-files/<path:url>")
 
 
 class UnsupportedFileTypeError(BaseHTTPException):

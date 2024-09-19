@@ -5,7 +5,7 @@ from enum import Enum
 from typing import Any, Optional, Union
 
 from sqlalchemy import func
-from sqlalchemy.orm import Mapped
+from sqlalchemy.orm import Mapped, mapped_column
 
 import contexts
 from constants import HIDDEN_VALUE
@@ -115,23 +115,23 @@ class Workflow(db.Model):
         db.Index("workflow_version_idx", "tenant_id", "app_id", "version"),
     )
 
-    id: Mapped[str] = db.Column(StringUUID, server_default=db.text("uuid_generate_v4()"))
-    tenant_id: Mapped[str] = db.Column(StringUUID, nullable=False)
-    app_id: Mapped[str] = db.Column(StringUUID, nullable=False)
-    type: Mapped[str] = db.Column(db.String(255), nullable=False)
-    version: Mapped[str] = db.Column(db.String(255), nullable=False)
-    graph: Mapped[str] = db.Column(db.Text)
-    features: Mapped[str] = db.Column(db.Text)
-    created_by: Mapped[str] = db.Column(StringUUID, nullable=False)
-    created_at: Mapped[datetime] = db.Column(
+    id: Mapped[str] = mapped_column(StringUUID, server_default=db.text("uuid_generate_v4()"))
+    tenant_id: Mapped[str] = mapped_column(StringUUID, nullable=False)
+    app_id: Mapped[str] = mapped_column(StringUUID, nullable=False)
+    type: Mapped[str] = mapped_column(db.String(255), nullable=False)
+    version: Mapped[str] = mapped_column(db.String(255), nullable=False)
+    graph: Mapped[str] = mapped_column(db.Text)
+    _features: Mapped[str] = mapped_column("features")
+    created_by: Mapped[str] = mapped_column(StringUUID, nullable=False)
+    created_at: Mapped[datetime] = mapped_column(
         db.DateTime, nullable=False, server_default=db.text("CURRENT_TIMESTAMP(0)")
     )
-    updated_by: Mapped[str] = db.Column(StringUUID)
-    updated_at: Mapped[datetime] = db.Column(db.DateTime)
-    _environment_variables: Mapped[str] = db.Column(
+    updated_by: Mapped[str] = mapped_column(StringUUID)
+    updated_at: Mapped[datetime] = mapped_column(db.DateTime)
+    _environment_variables: Mapped[str] = mapped_column(
         "environment_variables", db.Text, nullable=False, server_default="{}"
     )
-    _conversation_variables: Mapped[str] = db.Column(
+    _conversation_variables: Mapped[str] = mapped_column(
         "conversation_variables", db.Text, nullable=False, server_default="{}"
     )
 
@@ -169,6 +169,34 @@ class Workflow(db.Model):
     @property
     def graph_dict(self) -> Mapping[str, Any]:
         return json.loads(self.graph) if self.graph else {}
+
+    @property
+    def features(self) -> str:
+        """
+        Convert old features structure to new features structure.
+        """
+        if not self._features:
+            return self._features
+
+        features = json.loads(self._features)
+        if features.get("file_upload", {}).get("image", {}).get("enabled", False):
+            image_enabled = True
+            image_number_limits = int(features["file_upload"]["image"].get("number_limits", 1))
+            image_transfer_methods = features["file_upload"]["image"].get(
+                "transfer_methods", ["remote_url", "local_file"]
+            )
+            features["file_upload"]["enabled"] = image_enabled
+            features["file_upload"]["number_limits"] = image_number_limits
+            features["file_upload"]["allowed_upload_methods"] = image_transfer_methods
+            features["file_upload"]["allowed_file_types"] = ["image"]
+            features["file_upload"]["allowed_extensions"] = []
+            del features["file_upload"]["image"]
+            self._features = json.dumps(features)
+        return self._features
+
+    @features.setter
+    def features(self, value: str) -> None:
+        self._features = value
 
     @property
     def features_dict(self) -> Mapping[str, Any]:
@@ -241,6 +269,10 @@ class Workflow(db.Model):
 
     @environment_variables.setter
     def environment_variables(self, value: Sequence[Variable]):
+        if not value:
+            self._environment_variables = "{}"
+            return
+
         tenant_id = contexts.tenant_id.get()
 
         value = list(value)

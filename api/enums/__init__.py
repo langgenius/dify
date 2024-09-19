@@ -41,11 +41,6 @@ class FileType(str, Enum):
         raise ValueError(f"No matching enum found for value '{value}'")
 
 
-class ImageDetail(str, Enum):
-    HIGH = "high"
-    LOW = "low"
-
-
 class FileTransferMethod(str, Enum):
     REMOTE_URL = "remote_url"
     LOCAL_FILE = "local_file"
@@ -65,6 +60,5 @@ __all__ = [
     "UserFrom",
     "WorkflowRunTriggeredFrom",
     "FileType",
-    "ImageDetail",
     "FileTransferMethod",
 ]
