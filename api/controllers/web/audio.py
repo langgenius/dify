@@ -78,7 +78,7 @@ class TextApi(WebApiResource):
             message_id = args.get("message_id", None)
             text = args.get("text", None)
             if (
-                app_model.mode in [AppMode.ADVANCED_CHAT.value, AppMode.WORKFLOW.value]
+                app_model.mode in {AppMode.ADVANCED_CHAT.value, AppMode.WORKFLOW.value}
                 and app_model.workflow
                 and app_model.workflow.features_dict
             ):

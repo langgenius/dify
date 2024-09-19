@@ -5,6 +5,8 @@ from sentry_sdk.integrations.celery import CeleryIntegration
 from sentry_sdk.integrations.flask import FlaskIntegration
 from werkzeug.exceptions import HTTPException
 
+from core.model_runtime.errors.invoke import InvokeRateLimitError
+
 
 def before_send(event, hint):
     if "exc_info" in hint:
@@ -20,7 +22,13 @@ def init_app(app):
         sentry_sdk.init(
             dsn=app.config.get("SENTRY_DSN"),
             integrations=[FlaskIntegration(), CeleryIntegration()],
-            ignore_errors=[HTTPException, ValueError, openai.APIStatusError, parse_error.defaultErrorResponse],
+            ignore_errors=[
+                HTTPException,
+                ValueError,
+                openai.APIStatusError,
+                InvokeRateLimitError,
+                parse_error.defaultErrorResponse,
+            ],
             traces_sample_rate=app.config.get("SENTRY_TRACES_SAMPLE_RATE", 1.0),
             profiles_sample_rate=app.config.get("SENTRY_PROFILES_SAMPLE_RATE", 1.0),
             environment=app.config.get("DEPLOY_ENV"),

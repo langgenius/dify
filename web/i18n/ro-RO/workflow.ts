@@ -93,6 +93,8 @@ const translation = {
     disconnect: 'Deconecta',
     jumpToNode: 'Sari la acest nod',
     addParallelNode: 'Adăugare nod paralel',
+    parallel: 'PARALEL',
+    branch: 'RAMURĂ',
   },
   env: {
     envPanelTitle: 'Variabile de Mediu',

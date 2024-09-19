@@ -98,17 +98,17 @@ class ExtractProcessor:
                 unstructured_api_url = dify_config.UNSTRUCTURED_API_URL
                 unstructured_api_key = dify_config.UNSTRUCTURED_API_KEY
                 if etl_type == "Unstructured":
-                    if file_extension == ".xlsx" or file_extension == ".xls":
+                    if file_extension in {".xlsx", ".xls"}:
                         extractor = ExcelExtractor(file_path)
                     elif file_extension == ".pdf":
                         extractor = PdfExtractor(file_path)
-                    elif file_extension in [".md", ".markdown"]:
+                    elif file_extension in {".md", ".markdown"}:
                         extractor = (
                             UnstructuredMarkdownExtractor(file_path, unstructured_api_url)
                             if is_automatic
                             else MarkdownExtractor(file_path, autodetect_encoding=True)
                         )
-                    elif file_extension in [".htm", ".html"]:
+                    elif file_extension in {".htm", ".html"}:
                         extractor = HtmlExtractor(file_path)
                     elif file_extension == ".docx":
                         extractor = WordExtractor(file_path, upload_file.tenant_id, upload_file.created_by)
@@ -134,13 +134,13 @@ class ExtractProcessor:
                             else TextExtractor(file_path, autodetect_encoding=True)
                         )
                 else:
-                    if file_extension == ".xlsx" or file_extension == ".xls":
+                    if file_extension in {".xlsx", ".xls"}:
                         extractor = ExcelExtractor(file_path)
                     elif file_extension == ".pdf":
                         extractor = PdfExtractor(file_path)
-                    elif file_extension in [".md", ".markdown"]:
+                    elif file_extension in {".md", ".markdown"}:
                         extractor = MarkdownExtractor(file_path, autodetect_encoding=True)
-                    elif file_extension in [".htm", ".html"]:
+                    elif file_extension in {".htm", ".html"}:
                         extractor = HtmlExtractor(file_path)
                     elif file_extension == ".docx":
                         extractor = WordExtractor(file_path, upload_file.tenant_id, upload_file.created_by)

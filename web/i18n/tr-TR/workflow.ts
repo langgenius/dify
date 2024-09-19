@@ -93,6 +93,8 @@ const translation = {
     addParallelNode: 'Paralel Düğüm Ekle',
     disconnect: 'Ayırmak',
     parallelRun: 'Paralel Koşu',
+    parallel: 'PARALEL',
+    branch: 'DAL',
   },
   env: {
     envPanelTitle: 'Çevre Değişkenleri',
