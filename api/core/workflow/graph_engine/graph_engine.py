@@ -60,7 +60,7 @@ class GraphEngineThreadPool(ThreadPoolExecutor):
         self.check_is_full()
 
         return super().submit(fn, *args, **kwargs)
-    
+
     def task_done_callback(self, future):
         self.submit_count -= 1
 
