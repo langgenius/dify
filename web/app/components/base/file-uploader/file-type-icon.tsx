@@ -18,62 +18,63 @@ import type { FileAppearanceType } from './types'
 import cn from '@/utils/classnames'
 
 const FILE_TYPE_ICON_MAP = {
-  [FileAppearanceTypeEnum.PDF]: {
+  [FileAppearanceTypeEnum.pdf]: {
     component: RiFilePdf2Fill,
     color: 'text-[#EA3434]',
   },
-  [FileAppearanceTypeEnum.IMAGE]: {
+  [FileAppearanceTypeEnum.image]: {
     component: RiFileImageFill,
     color: 'text-[#00B2EA]',
   },
-  [FileAppearanceTypeEnum.VIDEO]: {
+  [FileAppearanceTypeEnum.video]: {
     component: RiFileVideoFill,
     color: 'text-[#844FDA]',
   },
-  [FileAppearanceTypeEnum.AUDIO]: {
+  [FileAppearanceTypeEnum.audio]: {
     component: RiFileMusicFill,
     color: 'text-[#FF3093]',
   },
-  [FileAppearanceTypeEnum.DOCUMENT]: {
+  [FileAppearanceTypeEnum.document]: {
     component: RiFileTextFill,
     color: 'text-[#6F8BB5]',
   },
-  [FileAppearanceTypeEnum.CODE]: {
+  [FileAppearanceTypeEnum.code]: {
     component: RiFileCodeFill,
     color: 'text-[#BCC0D1]',
   },
-  [FileAppearanceTypeEnum.MARKDOWN]: {
+  [FileAppearanceTypeEnum.markdown]: {
     component: RiMarkdownFill,
     color: 'text-[#309BEC]',
   },
-  [FileAppearanceTypeEnum.OTHER]: {
+  [FileAppearanceTypeEnum.custom]: {
     component: RiFile3Fill,
     color: 'text-[#BCC0D1]',
   },
-  [FileAppearanceTypeEnum.EXCEL]: {
+  [FileAppearanceTypeEnum.excel]: {
     component: RiFileExcelFill,
     color: 'text-[#01AC49]',
   },
-  [FileAppearanceTypeEnum.WORD]: {
+  [FileAppearanceTypeEnum.word]: {
     component: RiFileWordFill,
     color: 'text-[#2684FF]',
   },
-  [FileAppearanceTypeEnum.PPT]: {
+  [FileAppearanceTypeEnum.ppt]: {
     component: RiFilePpt2Fill,
     color: 'text-[#FF650F]',
   },
-  [FileAppearanceTypeEnum.GIF]: {
+  [FileAppearanceTypeEnum.gif]: {
     component: RiFileGifFill,
     color: 'text-[#00B2EA]',
   },
 }
 type FileTypeIconProps = {
   type: FileAppearanceType
-  size?: 'sm' | 'lg'
+  size?: 'sm' | 'lg' | 'md'
   className?: string
 }
 const SizeMap = {
   sm: 'w-4 h-4',
+  md: 'w-5 h-5',
   lg: 'w-6 h-6',
 }
 const FileTypeIcon = ({

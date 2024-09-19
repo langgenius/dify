@@ -7,6 +7,7 @@ import cn from '@/utils/classnames'
 import { FILE_EXTS } from '@/app/components/base/prompt-editor/constants'
 import TagInput from '@/app/components/base/tag-input'
 import Checkbox from '@/app/components/base/checkbox'
+import { FileTypeIcon } from '@/app/components/base/file-uploader'
 
 type Props = {
   type: SupportUploadFileTypes.image | SupportUploadFileTypes.document | SupportUploadFileTypes.audio | SupportUploadFileTypes.video | SupportUploadFileTypes.custom
@@ -45,7 +46,7 @@ const FileTypeItem: FC<Props> = ({
         ? (
           <div>
             <div className='flex items-center p-3 pb-2 border-b border-divider-subtle'>
-              <span className='shrink-0 w-4 h-4 bg-[#00B2EA]'></span>
+              <FileTypeIcon className='shrink-0' type={type} size='md' />
               <div className='mx-2 grow text-text-primary system-sm-medium'>{t(`appDebug.variableConfig.file.${type}.name`)}</div>
               <Checkbox className='shrink-0' checked={selected} />
             </div>
@@ -60,8 +61,7 @@ const FileTypeItem: FC<Props> = ({
         )
         : (
           <div className='flex items-center'>
-            {/* TODO: Wait File type icon */}
-            <span className='shrink-0 w-4 h-4 bg-[#00B2EA]'></span>
+            <FileTypeIcon className='shrink-0' type={type} size='md' />
             <div className='mx-2 grow'>
               <div className='text-text-primary system-sm-medium'>{t(`appDebug.variableConfig.file.${type}.name`)}</div>
               <div className='mt-1 text-text-tertiary system-2xs-regular-uppercase'>{type !== SupportUploadFileTypes.custom ? FILE_EXTS[type].join(', ') : t('appDebug.variableConfig.file.custom.description')}</div>

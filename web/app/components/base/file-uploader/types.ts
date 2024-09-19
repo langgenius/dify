@@ -1,18 +1,18 @@
 import type { TransferMethod } from '@/types/app'
 
 export enum FileAppearanceTypeEnum {
-  IMAGE = 'IMAGE',
-  VIDEO = 'VIDEO',
-  AUDIO = 'AUDIO',
-  DOCUMENT = 'DOCUMENT',
-  CODE = 'CODE',
-  PDF = 'PDF',
-  MARKDOWN = 'MARKDOWN',
-  EXCEL = 'EXCEL',
-  WORD = 'WORD',
-  PPT = 'PPT',
-  GIF = 'GIF',
-  OTHER = 'OTHER',
+  image = 'image',
+  video = 'video',
+  audio = 'audio',
+  document = 'document',
+  code = 'code',
+  pdf = 'pdf',
+  markdown = 'markdown',
+  excel = 'excel',
+  word = 'word',
+  ppt = 'ppt',
+  gif = 'gif',
+  custom = 'custom',
 }
 
 export type FileAppearanceType = keyof typeof FileAppearanceTypeEnum
