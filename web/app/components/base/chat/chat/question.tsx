@@ -10,7 +10,7 @@ import type { Theme } from '../embedded-chatbot/theme/theme-context'
 import { CssTransform } from '../embedded-chatbot/theme/utils'
 import { User } from '@/app/components/base/icons/src/public/avatar'
 import { Markdown } from '@/app/components/base/markdown'
-import ImageGallery from '@/app/components/base/image-gallery'
+import { FileList } from '@/app/components/base/file-uploader'
 
 type QuestionProps = {
   item: ChatItem
@@ -27,7 +27,6 @@ const Question: FC<QuestionProps> = ({
     message_files,
   } = item
 
-  const imgSrcs = message_files?.length ? message_files.map(item => item.url) : []
   return (
     <div className='flex justify-end mb-2 last:mb-0 pl-10'>
       <div className='group relative mr-4'>
@@ -36,8 +35,12 @@ const Question: FC<QuestionProps> = ({
           style={theme?.chatBubbleColorStyle ? CssTransform(theme.chatBubbleColorStyle) : {}}
         >
           {
-            !!imgSrcs.length && (
-              <ImageGallery srcs={imgSrcs} />
+            !!message_files?.length && (
+              <FileList
+                files={message_files}
+                showDeleteAction={false}
+                showDownloadAction={false}
+              />
             )
           }
           <Markdown content={content} />

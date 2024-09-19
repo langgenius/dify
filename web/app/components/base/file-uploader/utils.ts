@@ -1,4 +1,5 @@
 import { FileAppearanceTypeEnum } from './types'
+import type { FileEntity } from './types'
 import { upload } from '@/service/base'
 import { FILE_EXTS } from '@/app/components/base/prompt-editor/constants'
 
@@ -82,4 +83,13 @@ export const getFileType = (file?: File) => {
   }
 
   return ''
+}
+
+export const getProcessedFiles = (files: FileEntity[]) => {
+  return files.filter(file => file.progress !== -1).map(fileItem => ({
+    type: fileItem.fileType,
+    transfer_method: fileItem.type,
+    url: fileItem.url || '',
+    upload_file_id: fileItem.fileStorageId || '',
+  }))
 }

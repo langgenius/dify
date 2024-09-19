@@ -1,11 +1,11 @@
 import type {
   ModelConfig,
-  VisionFile,
   VisionSettings,
 } from '@/types/app'
 import type { IChatItem } from '@/app/components/base/chat/chat/type'
 import type { NodeTracing } from '@/types/workflow'
 import type { WorkflowRunningStatus } from '@/app/components/workflow/types'
+import type { FileEntity } from '@/app/components/base/file-uploader/types'
 
 export type { VisionFile } from '@/types/app'
 export { TransferMethod } from '@/types/app'
@@ -63,7 +63,7 @@ export type ChatItem = IChatItem & {
   conversationId?: string
 }
 
-export type OnSend = (message: string, files?: VisionFile[]) => void
+export type OnSend = (message: string, files?: FileEntity[]) => void
 
 export type Callback = {
   onSuccess: () => void

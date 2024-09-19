@@ -1,22 +1,25 @@
 import { isImage } from '../utils'
 import { useFile } from '../hooks'
 import { useStore } from '../store'
+import type { FileEntity } from '../types'
 import FileImageItem from './file-image-item'
 import FileItem from './file-item'
 import type { FileUpload } from '@/app/components/base/features/types'
 
 type FileListProps = {
-  fileConfig: FileUpload
+  files: FileEntity[]
+  onRemove?: (fileId: string) => void
+  onReUpload?: (fileId: string) => void
+  showDeleteAction?: boolean
+  showDownloadAction?: boolean
 }
-const FileList = ({
-  fileConfig,
+export const FileList = ({
+  files,
+  onReUpload,
+  onRemove,
+  showDeleteAction = true,
+  showDownloadAction = false,
 }: FileListProps) => {
-  const files = useStore(s => s.files)
-  const {
-    handleRemoveFile,
-    handleReUploadFile,
-  } = useFile(fileConfig)
-
   return (
     <div className='flex flex-wrap gap-2'>
       {
@@ -28,9 +31,9 @@ const FileList = ({
                 fileId={file.fileId}
                 imageUrl={file.base64Url}
                 progress={file.progress}
-                showDeleteAction
-                onRemove={handleRemoveFile}
-                onReUpload={handleReUploadFile}
+                showDeleteAction={showDeleteAction}
+                onRemove={onRemove}
+                onReUpload={onReUpload}
               />
             )
           }
@@ -41,10 +44,10 @@ const FileList = ({
               fileId={file.fileId}
               file={file.file}
               progress={file.progress}
-              showDeleteAction
-              showDownloadAction={false}
-              onRemove={handleRemoveFile}
-              onReUpload={handleReUploadFile}
+              showDeleteAction={showDeleteAction}
+              showDownloadAction={showDownloadAction}
+              onRemove={onRemove}
+              onReUpload={onReUpload}
             />
           )
         })
@@ -53,4 +56,23 @@ const FileList = ({
   )
 }
 
-export default FileList
+type FileListInChatInputProps = {
+  fileConfig: FileUpload
+}
+export const FileListInChatInput = ({
+  fileConfig,
+}: FileListInChatInputProps) => {
+  const files = useStore(s => s.files)
+  const {
+    handleRemoveFile,
+    handleReUploadFile,
+  } = useFile(fileConfig)
+
+  return (
+    <FileList
+      files={files}
+      onReUpload={handleReUploadFile}
+      onRemove={handleRemoveFile}
+    />
+  )
+}

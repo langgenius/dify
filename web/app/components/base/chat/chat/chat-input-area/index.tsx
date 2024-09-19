@@ -71,12 +71,7 @@ const ChatInputArea = ({
         notify({ type: 'info', message: t('appAnnotation.errorMessage.queryRequired') })
         return
       }
-      onSend(query, files.filter(file => file.progress !== -1).map(fileItem => ({
-        type: fileItem.fileType,
-        transfer_method: fileItem.type,
-        url: fileItem.url || '',
-        upload_file_id: fileItem.fileStorageId || '',
-      })))
+      onSend(query, files)
       setQuery('')
       setFiles([])
     }
