@@ -33,6 +33,8 @@ class FileExtraConfig(BaseModel):
 
 
 class File(BaseModel):
+    model_identity: str = "__dify__file__"
+
     id: Optional[str] = None  # message file id
     tenant_id: str
     type: FileType

@@ -1,10 +1,10 @@
 import json
 import re
 import uuid
-from collections.abc import Sequence
+from collections.abc import Mapping, Sequence
 from datetime import datetime
 from enum import Enum
-from typing import Optional
+from typing import Any, Optional
 
 from flask import request
 from flask_login import UserMixin
@@ -13,6 +13,7 @@ from sqlalchemy import Float, func, text
 from sqlalchemy.orm import Mapped, mapped_column
 
 from configs import dify_config
+from core.file import File
 from core.file import helpers as file_helpers
 from core.file.tool_file_parser import ToolFileParser
 from enums import FileTransferMethod, FileType
@@ -542,7 +543,7 @@ class Conversation(db.Model):
     mode = db.Column(db.String(255), nullable=False)
     name = db.Column(db.String(255), nullable=False)
     summary = db.Column(db.Text)
-    inputs = db.Column(db.JSON)
+    _inputs: Mapped[dict] = mapped_column("inputs", db.JSON)
     introduction = db.Column(db.Text)
     system_instruction = db.Column(db.Text)
     system_instruction_tokens = db.Column(db.Integer, nullable=False, server_default=db.text("0"))
@@ -563,6 +564,28 @@ class Conversation(db.Model):
     )
 
     is_deleted = db.Column(db.Boolean, nullable=False, server_default=db.text("false"))
+
+    @property
+    def inputs(self):
+        inputs = self._inputs.copy()
+        for key, value in inputs.items():
+            if isinstance(value, dict) and value.get("model_identity") == File.model_identity:
+                inputs[key] = File.model_validate(value)
+            elif isinstance(value, list) and all(
+                isinstance(item, dict) and item.get("model_identity") == File.model_identity for item in value
+            ):
+                inputs[key] = [File.model_validate(item) for item in value]
+        return inputs
+
+    @inputs.setter
+    def inputs(self, value: Mapping[str, Any]):
+        inputs = dict(value)
+        for k, v in inputs.items():
+            if isinstance(v, File):
+                inputs[k] = v.model_dump()
+            elif isinstance(v, list) and all(isinstance(item, File) for item in v):
+                inputs[k] = [item.model_dump() for item in v]
+        self._inputs = inputs
 
     @property
     def model_config(self):
@@ -712,7 +735,7 @@ class Message(db.Model):
     model_id = db.Column(db.String(255), nullable=True)
     override_model_configs = db.Column(db.Text)
     conversation_id = db.Column(StringUUID, db.ForeignKey("conversations.id"), nullable=False)
-    inputs = db.Column(db.JSON)
+    _inputs: Mapped[dict] = mapped_column("inputs", db.JSON)
     query: Mapped[str] = db.Column(db.Text, nullable=False)
     message = db.Column(db.JSON, nullable=False)
     message_tokens = db.Column(db.Integer, nullable=False, server_default=db.text("0"))
@@ -736,6 +759,28 @@ class Message(db.Model):
     updated_at = db.Column(db.DateTime, nullable=False, server_default=db.text("CURRENT_TIMESTAMP(0)"))
     agent_based = db.Column(db.Boolean, nullable=False, server_default=db.text("false"))
     workflow_run_id = db.Column(StringUUID)
+
+    @property
+    def inputs(self):
+        inputs = self._inputs.copy()
+        for key, value in inputs.items():
+            if isinstance(value, dict) and value.get("model_identity") == File.model_identity:
+                inputs[key] = File.model_validate(value)
+            elif isinstance(value, list) and all(
+                isinstance(item, dict) and item.get("model_identity") == File.model_identity for item in value
+            ):
+                inputs[key] = [File.model_validate(item) for item in value]
+        return inputs
+
+    @inputs.setter
+    def inputs(self, value: Mapping[str, Any]):
+        inputs = dict(value)
+        for k, v in inputs.items():
+            if isinstance(v, File):
+                inputs[k] = v.model_dump()
+            elif isinstance(v, list) and all(isinstance(item, File) for item in v):
+                inputs[k] = [item.model_dump() for item in v]
+        self._inputs = inputs
 
     @property
     def re_sign_file_url_answer(self) -> str:
