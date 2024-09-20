@@ -11,7 +11,9 @@ import type { FileEntity } from './types'
 import { useFileStore } from './store'
 import {
   fileUpload,
+  getFileNameFromUrl,
   getSupportFileType,
+  isAllowedFileExtension,
 } from './utils'
 import { FILE_SIZE_LIMIT } from './constants'
 import { useToastContext } from '@/app/components/base/toast'
@@ -19,6 +21,7 @@ import { TransferMethod } from '@/types/app'
 import { SupportUploadFileTypes } from '@/app/components/workflow/types'
 import type { FileUpload } from '@/app/components/base/features/types'
 import { formatFileSize } from '@/utils/format'
+import { fetchRemoteFileInfo } from '@/service/common'
 
 export const useFile = (fileConfig: FileUpload) => {
   const { t } = useTranslation()
@@ -85,7 +88,7 @@ export const useFile = (fileConfig: FileUpload) => {
           handleUpdateFile({ ...uploadingFile, uploadedId: res.id, progress: 100 })
         },
         onErrorCallback: () => {
-          notify({ type: 'error', message: t('common.imageUploader.uploadFromComputerUploadError') })
+          notify({ type: 'error', message: t('common.fileUploader.uploadFromComputerUploadError') })
           handleUpdateFile({ ...uploadingFile, progress: -1 })
         },
       }, !!params.token)
@@ -93,19 +96,39 @@ export const useFile = (fileConfig: FileUpload) => {
   }, [fileStore, notify, t, handleUpdateFile, params])
 
   const handleLoadFileFromLink = useCallback((url: string) => {
+    const allowedFileTypes = fileConfig.allowed_file_types
+    const fileName = getFileNameFromUrl(url)
+
+    if (!isAllowedFileExtension(fileName, fileConfig.allowed_file_types || [], fileConfig.allowed_file_extensions || [])) {
+      notify({ type: 'error', message: t('common.fileUploader.fileExtensionNotSupport') })
+      return
+    }
+
     const uploadingFile = {
       id: uuid4(),
-      name: 'remote file (todo)',
+      name: fileName,
       type: '',
       size: 0,
       progress: 0,
       transferMethod: TransferMethod.remote_url,
-      supportFileType: '',
+      supportFileType: getSupportFileType(fileName, allowedFileTypes?.includes(SupportUploadFileTypes.custom)),
       url,
-      base64Url: '',
     }
     handleAddFile(uploadingFile)
-  }, [handleAddFile])
+
+    fetchRemoteFileInfo(url).then((res) => {
+      const newFile = {
+        ...uploadingFile,
+        type: res.file_type,
+        size: res.file_length,
+        progress: 100,
+      }
+      handleUpdateFile(newFile)
+    }).catch(() => {
+      notify({ type: 'error', message: t('common.fileUploader.pasteFileLinkInvalid') })
+      handleRemoveFile(uploadingFile.id)
+    })
+  }, [handleAddFile, handleUpdateFile, notify, t, handleRemoveFile, fileConfig?.allowed_file_types, fileConfig?.allowed_file_extensions])
 
   const handleLoadFileFromLinkSuccess = useCallback(() => { }, [])
 
@@ -119,6 +142,10 @@ export const useFile = (fileConfig: FileUpload) => {
   }, [fileStore])
 
   const handleLocalFileUpload = useCallback((file: File) => {
+    if (!isAllowedFileExtension(file.name, fileConfig.allowed_file_types || [], fileConfig.allowed_file_extensions || [])) {
+      notify({ type: 'error', message: t('common.fileUploader.fileExtensionNotSupport') })
+      return
+    }
     if (file.size > FILE_SIZE_LIMIT) {
       notify({ type: 'error', message: t('common.fileUploader.uploadFromComputerLimit', { size: formatFileSize(FILE_SIZE_LIMIT) }) })
       return
@@ -166,7 +193,7 @@ export const useFile = (fileConfig: FileUpload) => {
       false,
     )
     reader.readAsDataURL(file)
-  }, [notify, t, handleAddFile, handleUpdateFile, params.token, fileConfig?.allowed_file_types])
+  }, [notify, t, handleAddFile, handleUpdateFile, params.token, fileConfig?.allowed_file_types, fileConfig?.allowed_file_extensions])
 
   const handleClipboardPasteFile = useCallback((e: ClipboardEvent<HTMLTextAreaElement>) => {
     const file = e.clipboardData?.files[0]

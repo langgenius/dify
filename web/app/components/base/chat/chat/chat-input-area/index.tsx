@@ -15,6 +15,7 @@ import { useTextAreaHeight } from './hooks'
 import Operation from './operation'
 import cn from '@/utils/classnames'
 import { FileListInChatInput } from '@/app/components/base/file-uploader'
+import { useFile } from '@/app/components/base/file-uploader/hooks'
 import {
   FileContextProvider,
   useStore,
@@ -60,6 +61,14 @@ const ChatInputArea = ({
   const [showVoiceInput, setShowVoiceInput] = useState(false)
   const files = useStore(s => s.files)
   const setFiles = useStore(s => s.setFiles)
+  const {
+    handleDragFileEnter,
+    handleDragFileLeave,
+    handleDragFileOver,
+    handleDropFile,
+    handleClipboardPasteFile,
+    isDragActive,
+  } = useFile(visionConfig!)
 
   const handleSend = () => {
     if (onSend) {
@@ -105,7 +114,7 @@ const ChatInputArea = ({
   const operation = (
     <Operation
       ref={holdSpaceRef}
-      visionConfig={visionConfig}
+      fileConfig={visionConfig}
       speechToTextConfig={speechToTextConfig}
       onShowVoiceInput={handleShowVoiceInput}
       onSend={handleSend}
@@ -117,6 +126,7 @@ const ChatInputArea = ({
       <div
         className={cn(
           'relative py-[9px] bg-components-panel-bg-blur border border-components-chat-input-border rounded-xl shadow-md z-10',
+          isDragActive && 'border border-dashed border-components-option-card-option-selected-border',
         )}
       >
         <div className='relative px-[9px] max-h-[158px] overflow-x-hidden overflow-y-auto'>
@@ -134,8 +144,10 @@ const ChatInputArea = ({
               </div>
               <Textarea
                 ref={textareaRef}
-                className='p-1 w-full leading-6 body-lg-regular text-text-tertiary outline-none'
-                placeholder='Enter message...'
+                className={cn(
+                  'p-1 w-full leading-6 body-lg-regular text-text-tertiary outline-none',
+                )}
+                placeholder={t('common.chat.inputPlaceholder') || ''}
                 autoSize={{ minRows: 1 }}
                 onResize={handleTextareaResize}
                 value={query}
@@ -145,6 +157,11 @@ const ChatInputArea = ({
                 }}
                 onKeyUp={handleKeyUp}
                 onKeyDown={handleKeyDown}
+                onPaste={handleClipboardPasteFile}
+                onDragEnter={handleDragFileEnter}
+                onDragLeave={handleDragFileLeave}
+                onDragOver={handleDragFileOver}
+                onDrop={handleDropFile}
               />
             </div>
             {

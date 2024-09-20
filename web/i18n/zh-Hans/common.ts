@@ -500,6 +500,7 @@ const translation = {
       vectorHash: '向量哈希：',
       hitScore: '召回得分：',
     },
+    inputPlaceholder: '和机器人聊天',
   },
   promptEditor: {
     placeholder: '在这里写你的提示词，输入\'{\' 插入变量、输入\'/\' 插入提示内容块',
@@ -565,6 +566,8 @@ const translation = {
     uploadFromComputerReadError: '文件读取失败，请重新选择。',
     uploadFromComputerUploadError: '文件上传失败，请重新上传。',
     uploadFromComputerLimit: '上传文件不能超过 {{size}}',
+    pasteFileLinkInvalid: '文件链接无效',
+    fileExtensionNotSupport: '文件类型不支持',
   },
   tag: {
     placeholder: '全部标签',

@@ -92,3 +92,19 @@ export const getProcessedFiles = (files: FileEntity[]) => {
     upload_file_id: fileItem.uploadedId || '',
   }))
 }
+
+export const getFileNameFromUrl = (url: string) => {
+  const urlParts = url.split('/')
+  return urlParts[urlParts.length - 1] || ''
+}
+
+export const getSupportFileExtensionList = (allowFileTypes: string[], allowFileExtensions: string[]) => {
+  if (allowFileTypes.includes(SupportUploadFileTypes.custom))
+    return allowFileExtensions
+
+  return allowFileTypes.map(type => FILE_EXTS[type]).flat()
+}
+
+export const isAllowedFileExtension = (fileName: string, allowFileTypes: string[], allowFileExtensions: string[]) => {
+  return getSupportFileExtensionList(allowFileTypes, allowFileExtensions).includes(getFileExtension(fileName).toUpperCase())
+}
