@@ -37,7 +37,7 @@ from core.model_runtime.entities.model_entities import (
     ParameterType,
     I18nObject,
     FetchFrom,
-    ModelType
+    ModelType,
 )
 from core.model_runtime.errors.invoke import (
     InvokeAuthorizationError,
