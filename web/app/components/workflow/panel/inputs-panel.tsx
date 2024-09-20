@@ -56,13 +56,17 @@ const InputsPanel = ({ onRun }: Props) => {
   }, [fileSettings?.image?.enabled, startVariables])
 
   const handleValueChange = (variable: string, v: any) => {
+    const {
+      inputs,
+      setInputs,
+    } = workflowStore.getState()
     if (variable === '__image') {
       workflowStore.setState({
         files: v,
       })
     }
     else {
-      workflowStore.getState().setInputs({
+      setInputs({
         ...inputs,
         [variable]: v,
       })
