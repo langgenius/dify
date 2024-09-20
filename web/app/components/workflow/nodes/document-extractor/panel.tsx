@@ -36,6 +36,7 @@ const Panel: FC<NodePanelProps<DocExtractorNodeType>> = ({
             value={inputs.variable_selector || []}
             onChange={handleVarChanges}
             filterVar={filterVar}
+            typePlaceHolder='File | Array[File]'
           />
         </Field>
       </div>
