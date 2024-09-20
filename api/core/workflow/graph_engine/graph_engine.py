@@ -61,6 +61,9 @@ class GraphEngineThreadPool(ThreadPoolExecutor):
 
         return super().submit(fn, *args, **kwargs)
 
+    def task_done_callback(self, future):
+        self.submit_count -= 1
+
     def check_is_full(self) -> None:
         print(f"submit_count: {self.submit_count}, max_submit_count: {self.max_submit_count}")
         if self.submit_count > self.max_submit_count:
@@ -177,16 +180,20 @@ class GraphEngine:
 
             # trigger graph run success event
             yield GraphRunSucceededEvent(outputs=self.graph_runtime_state.outputs)
+            self._release_thread()
         except GraphRunFailedError as e:
             yield GraphRunFailedEvent(error=e.error)
+            self._release_thread()
             return
         except Exception as e:
             logger.exception("Unknown Error when graph running")
             yield GraphRunFailedEvent(error=str(e))
+            self._release_thread()
             raise e
-        finally:
-            if self.is_main_thread_pool and self.thread_pool_id in GraphEngine.workflow_thread_pool_mapping:
-                del GraphEngine.workflow_thread_pool_mapping[self.thread_pool_id]
+
+    def _release_thread(self):
+        if self.is_main_thread_pool and self.thread_pool_id in GraphEngine.workflow_thread_pool_mapping:
+            del GraphEngine.workflow_thread_pool_mapping[self.thread_pool_id]
 
     def _run(
         self,
@@ -426,19 +433,21 @@ class GraphEngine:
             ):
                 continue
 
-            futures.append(
-                self.thread_pool.submit(
-                    self._run_parallel_node,
-                    **{
-                        "flask_app": current_app._get_current_object(),  # type: ignore[attr-defined]
-                        "q": q,
-                        "parallel_id": parallel_id,
-                        "parallel_start_node_id": edge.target_node_id,
-                        "parent_parallel_id": in_parallel_id,
-                        "parent_parallel_start_node_id": parallel_start_node_id,
-                    },
-                )
+            future = self.thread_pool.submit(
+                self._run_parallel_node,
+                **{
+                    "flask_app": current_app._get_current_object(),  # type: ignore[attr-defined]
+                    "q": q,
+                    "parallel_id": parallel_id,
+                    "parallel_start_node_id": edge.target_node_id,
+                    "parent_parallel_id": in_parallel_id,
+                    "parent_parallel_start_node_id": parallel_start_node_id,
+                },
             )
+
+            future.add_done_callback(self.thread_pool.task_done_callback)
+
+            futures.append(future)
 
         succeeded_count = 0
         while True:

@@ -18,6 +18,10 @@ yarn install --frozen-lockfile
 
 Then, configure the environment variables. Create a file named `.env.local` in the current directory and copy the contents from `.env.example`. Modify the values of these environment variables according to your requirements:
 
+```bash
+cp .env.example .env.local
+```
+
 ```
 # For production release, change this to PRODUCTION
 NEXT_PUBLIC_DEPLOY_ENV=DEVELOPMENT
@@ -78,7 +82,7 @@ If your IDE is VSCode, rename `web/.vscode/settings.example.json` to `web/.vscod
 
 We start to use [Jest](https://jestjs.io/) and [React Testing Library](https://testing-library.com/docs/react-testing-library/intro/) for Unit Testing.
 
-You can create a test file with a suffix of `.spec` beside the file that to be tested. For example, if you want to test a file named `util.ts`. The test file name should be `util.spec.ts`. 
+You can create a test file with a suffix of `.spec` beside the file that to be tested. For example, if you want to test a file named `util.ts`. The test file name should be `util.spec.ts`.
 
 Run test:
 
