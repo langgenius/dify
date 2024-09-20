@@ -40,6 +40,7 @@ from core.app.entities.task_entities import (
     MessageAudioStreamResponse,
     MessageEndStreamResponse,
     StreamResponse,
+    WorkflowFinishStreamResponse,
     WorkflowTaskState,
 )
 from core.app.task_pipeline.based_generate_task_pipeline import BasedGenerateTaskPipeline
@@ -146,6 +147,23 @@ class AdvancedChatAppGenerateTaskPipeline(BasedGenerateTaskPipeline, WorkflowCyc
                 extras = {}
                 if stream_response.metadata:
                     extras["metadata"] = stream_response.metadata
+
+                return ChatbotAppBlockingResponse(
+                    task_id=stream_response.task_id,
+                    data=ChatbotAppBlockingResponse.Data(
+                        id=self._message.id,
+                        mode=self._conversation.mode,
+                        conversation_id=self._conversation.id,
+                        message_id=self._message.id,
+                        answer=self._task_state.answer,
+                        created_at=int(self._message.created_at.timestamp()),
+                        **extras,
+                    ),
+                )
+            elif isinstance(stream_response, WorkflowFinishStreamResponse):
+                extras = {}
+                if self._task_state.metadata:
+                    extras["metadata"] = self._task_state.metadata
 
                 return ChatbotAppBlockingResponse(
                     task_id=stream_response.task_id,
