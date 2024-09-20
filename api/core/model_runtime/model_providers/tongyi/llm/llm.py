@@ -31,13 +31,13 @@ from core.model_runtime.entities.message_entities import (
     UserPromptMessage,
 )
 from core.model_runtime.entities.model_entities import (
-    ModelFeature,
     AIModelEntity,
+    FetchFrom,
+    I18nObject,
+    ModelFeature,
+    ModelType,
     ParameterRule,
     ParameterType,
-    I18nObject,
-    FetchFrom,
-    ModelType,
 )
 from core.model_runtime.errors.invoke import (
     InvokeAuthorizationError,
