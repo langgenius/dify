@@ -1,6 +1,6 @@
-model: qwen-math-0919
+model: qwen-math-turbo-0919
 label:
-  en_US: qwen-math-0919
+  en_US: qwen-math-turbo-0919
 model_type: llm
 features:
   - agent-thought

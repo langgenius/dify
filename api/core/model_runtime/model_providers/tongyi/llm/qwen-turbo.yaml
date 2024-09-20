@@ -3,7 +3,9 @@ label:
   en_US: qwen-turbo
 model_type: llm
 features:
+  - multi-tool-call
   - agent-thought
+  - stream-tool-call
 model_properties:
   mode: chat
   context_size: 8000
