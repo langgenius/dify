@@ -61,7 +61,10 @@ const FileFromLinkOrLocal = ({
                   size='small'
                   variant='primary'
                   disabled={!url || disabled}
-                  onClick={() => handleLoadFileFromLink(url)}
+                  onClick={() => {
+                    handleLoadFileFromLink(url)
+                    setUrl('')
+                  }}
                 >
                   {t('common.operation.ok')}
                 </Button>

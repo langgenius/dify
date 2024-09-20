@@ -58,6 +58,7 @@ type Props = {
   valueTypePlaceHolder?: string
   isInTable?: boolean
   onRemove?: () => void
+  typePlaceHolder?: string
 }
 
 const VarReferencePicker: FC<Props> = ({
@@ -79,6 +80,7 @@ const VarReferencePicker: FC<Props> = ({
   valueTypePlaceHolder,
   isInTable,
   onRemove,
+  typePlaceHolder,
 }) => {
   const { t } = useTranslation()
   const store = useStoreApi()
@@ -360,6 +362,14 @@ const VarReferencePicker: FC<Props> = ({
               <RemoveButton
                 className='group-hover/picker-trigger-wrap:block hidden absolute right-1 top-0.5'
                 onClick={() => onRemove?.()}
+              />
+            )}
+
+            {!hasValue && typePlaceHolder && (
+              <Badge
+                className='absolute right-2 top-1.5'
+                text={typePlaceHolder}
+                uppercase={false}
               />
             )}
           </>

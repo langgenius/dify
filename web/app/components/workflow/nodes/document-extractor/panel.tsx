@@ -36,6 +36,7 @@ const Panel: FC<NodePanelProps<DocExtractorNodeType>> = ({
             value={inputs.variable_selector || []}
             onChange={handleVarChanges}
             filterVar={filterVar}
+            typePlaceHolder='File | Array[File]'
           />
         </Field>
       </div>
@@ -43,7 +44,7 @@ const Panel: FC<NodePanelProps<DocExtractorNodeType>> = ({
         <OutputVars>
           <VarItem
             name='text'
-            type='string'
+            type={inputs.is_array_file ? 'array[string]' : 'string'}
             description={t(`${i18nPrefix}.outputVars.text`)}
           />
         </OutputVars>

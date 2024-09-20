@@ -223,6 +223,7 @@ const ConditionItem = ({
                   valueSelector={condition.variable_selector || []}
                   varType={condition.varType}
                   availableNodes={availableNodes}
+                  isShort
                 />
               )}
 

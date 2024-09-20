@@ -78,17 +78,12 @@ const VariableTag = ({
           {variableName}
         </div>
         {
-          varType && (
+          !isShort && varType && (
             <div className='shrink-0 ml-0.5 text-text-tertiary'>{capitalize(varType)}</div>
           )
         }
         {!isValid && <RiErrorWarningFill className='ml-0.5 w-3 h-3 text-[#D92D20]' />}
       </div>
-      {
-        !isShort && varType && (
-          <div className='shrink-0 ml-0.5 text-text-tertiary'>{capitalize(varType)}</div>
-        )
-      }
     </Tooltip>
   )
 }

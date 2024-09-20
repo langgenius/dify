@@ -500,6 +500,7 @@ const translation = {
       vectorHash: 'Vector hash:',
       hitScore: 'Retrieval Score:',
     },
+    inputPlaceholder: 'Talk to Bot',
   },
   promptEditor: {
     placeholder: 'Write your prompt word here, enter \'{\' to insert a variable, enter \'/\' to insert a prompt content block',
@@ -565,6 +566,8 @@ const translation = {
     uploadFromComputerReadError: 'File reading failed, please try again.',
     uploadFromComputerUploadError: 'File upload failed, please upload again.',
     uploadFromComputerLimit: 'Upload File cannot exceed {{size}}',
+    pasteFileLinkInvalid: 'Invalid file link',
+    fileExtensionNotSupport: 'File extension not supported',
   },
   tag: {
     placeholder: 'All Tags',

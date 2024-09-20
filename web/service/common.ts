@@ -320,6 +320,7 @@ export const sendResetPasswordCode = (email: string) =>
 
 export const verifyResetPasswordCode = (body: { email: string;code: string;token: string }) =>
   post<CommonResponse & { is_valid: boolean }>('/forgot-password/validity', { body })
-export const fetchRemoteFileInfo: Fetcher<{ file_type: string; file_length: number }, string> = (url) => {
-  return get<{ file_type: string; file_length: number }>(url)
+
+export const fetchRemoteFileInfo = (url: string) => {
+  return get<{ file_type: string; file_length: number }>(`/remote-files/${url}`)
 }
