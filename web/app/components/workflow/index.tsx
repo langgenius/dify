@@ -414,8 +414,8 @@ const WorkflowWrap = memo(() => {
       enabled: !!(features.file_upload?.enabled || features.file_upload?.image?.enabled),
       allowed_file_types: features.file_upload?.allowed_file_types || [SupportUploadFileTypes.image],
       allowed_file_extensions: features.file_upload?.allowed_file_extensions || FILE_EXTS[SupportUploadFileTypes.image].map(ext => `.${ext}`),
-      allowed_file_upload_methods: features.file_upload?.allowed_file_upload_methods || features.file_upload?.image.transfer_methods || ['local_file', 'remote_url'],
-      number_limits: features.file_upload?.number_limits || features.file_upload?.image.number_limits || 3,
+      allowed_file_upload_methods: features.file_upload?.allowed_file_upload_methods || features.file_upload?.image?.transfer_methods || ['local_file', 'remote_url'],
+      number_limits: features.file_upload?.number_limits || features.file_upload?.image?.number_limits || 3,
     },
     opening: {
       enabled: !!features.opening_statement,
