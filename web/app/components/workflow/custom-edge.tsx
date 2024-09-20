@@ -79,7 +79,7 @@ const CustomEdge = ({
         id={id}
         path={edgePath}
         style={{
-          stroke: (selected || data?._connectedNodeIsHovering || data?._runned) ? '#2970FF' : '#D0D5DD',
+          stroke: (selected || data?._connectedNodeIsHovering || data?._run) ? '#2970FF' : '#D0D5DD',
           strokeWidth: 2,
         }}
       />

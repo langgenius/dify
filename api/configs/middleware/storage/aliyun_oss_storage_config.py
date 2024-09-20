@@ -10,31 +10,36 @@ class AliyunOSSStorageConfig(BaseSettings):
     """
 
     ALIYUN_OSS_BUCKET_NAME: Optional[str] = Field(
-        description='Aliyun OSS bucket name',
+        description="Aliyun OSS bucket name",
         default=None,
     )
 
     ALIYUN_OSS_ACCESS_KEY: Optional[str] = Field(
-        description='Aliyun OSS access key',
+        description="Aliyun OSS access key",
         default=None,
     )
 
     ALIYUN_OSS_SECRET_KEY: Optional[str] = Field(
-        description='Aliyun OSS secret key',
+        description="Aliyun OSS secret key",
         default=None,
     )
 
     ALIYUN_OSS_ENDPOINT: Optional[str] = Field(
-        description='Aliyun OSS endpoint URL',
+        description="Aliyun OSS endpoint URL",
         default=None,
     )
 
     ALIYUN_OSS_REGION: Optional[str] = Field(
-        description='Aliyun OSS region',
+        description="Aliyun OSS region",
         default=None,
     )
 
     ALIYUN_OSS_AUTH_VERSION: Optional[str] = Field(
-        description='Aliyun OSS authentication version',
+        description="Aliyun OSS authentication version",
+        default=None,
+    )
+
+    ALIYUN_OSS_PATH: Optional[str] = Field(
+        description="Aliyun OSS path",
         default=None,
     )

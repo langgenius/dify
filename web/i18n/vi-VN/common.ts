@@ -37,6 +37,7 @@ const translation = {
     params: 'Tham số',
     duplicate: 'Nhân bản',
     rename: 'Đổi tên',
+    audioSourceUnavailable: 'AudioSource không khả dụng',
   },
   placeholder: {
     input: 'Vui lòng nhập',
@@ -45,6 +46,7 @@ const translation = {
   voice: {
     language: {
       zhHans: 'Tiếng Trung',
+      zhHant: 'Tiếng Trung phồn thể',
       enUS: 'Tiếng Anh',
       deDE: 'Tiếng Đức',
       frFR: 'Tiếng Pháp',
@@ -59,6 +61,10 @@ const translation = {
       ukUA: 'Tiếng Ukraina',
       viVN: 'Tiếng Việt',
       plPL: 'Tiếng Ba Lan',
+      roRO: 'Tiếng Rumani',
+      hiIN: 'Tiếng Hindi',
+      trTR: 'Tiếng Thổ Nhĩ Kỳ',
+      faIR: 'Tiếng Ba Tư',
     },
   },
   unit: {
@@ -76,9 +82,9 @@ const translation = {
   },
   model: {
     params: {
-      temperature: 'Nhiệt độ',
+      temperature: 'Độ sáng tạo',
       temperatureTip:
-        'Kiểm soát độ ngẫu nhiên: Giảm nhiệt độ dẫn đến ít kết quả ngẫu nhiên hơn. Khi nhiệt độ gần bằng 0, mô hình sẽ trở nên xác định và lặp lại.',
+        'Kiểm soát độ ngẫu nhiên: Giảm độ sáng tạo dẫn đến ít kết quả ngẫu nhiên hơn. Khi độ sáng tạo gần bằng 0, mô hình sẽ trở nên xác định và lặp lại.',
       top_p: 'Top P',
       top_pTip:
         'Kiểm soát đa dạng thông qua lấy mẫu nhân nhóm: 0.5 có nghĩa là nửa số tùy chọn có khả năng cao được xem xét.',
@@ -123,7 +129,8 @@ const translation = {
     workspace: 'Không gian làm việc',
     createWorkspace: 'Tạo Không gian làm việc',
     helpCenter: 'Trung tâm trợ giúp',
-    roadmapAndFeedback: 'Phản hồi',
+    communityFeedback: 'Phản hồi',
+    roadmap: 'Lộ trình',
     community: 'Cộng đồng',
     about: 'Về chúng tôi',
     logout: 'Đăng xuất',
@@ -185,16 +192,21 @@ const translation = {
     invitationSent: 'Lời mời đã được gửi',
     invitationSentTip: 'Lời mời đã được gửi, và họ có thể đăng nhập vào Dify để truy cập vào dữ liệu nhóm của bạn.',
     invitationLink: 'Liên kết Lời mời',
-    failedinvitationEmails: 'Dưới đây là danh sách email không gửi được lời mời',
+    failedInvitationEmails: 'Dưới đây là danh sách email không gửi được lời mời',
     ok: 'OK',
     removeFromTeam: 'Xóa khỏi nhóm',
     removeFromTeamTip: 'Sẽ xóa quyền truy cập nhóm',
     setAdmin: 'Đặt làm quản trị viên',
     setMember: 'Đặt thành viên bình thường',
     setEditor: 'Đặt làm biên tập viên',
-    disinvite: 'Hủy lời mời',
+    disInvite: 'Hủy lời mời',
     deleteMember: 'Xóa thành viên',
     you: '(Bạn)',
+    datasetOperatorTip: 'Chỉ có thể quản lý cơ sở kiến thức',
+    builderTip: 'Có thể xây dựng và chỉnh sửa ứng dụng của riêng mình',
+    builder: 'Chủ thầu',
+    datasetOperator: 'Quản trị viên kiến thức',
+    setBuilder: 'Đặt làm trình tạo',
   },
   integrations: {
     connected: 'Đã kết nối',
@@ -341,6 +353,22 @@ const translation = {
     quotaTip: 'Số lượng mã thông báo miễn phí còn lại',
     loadPresets: 'Tải Cài đặt trước',
     parameters: 'THAM SỐ',
+    loadBalancingHeadline: 'Cân bằng tải',
+    loadBalancing: 'Cân bằng tải',
+    configLoadBalancing: 'Cấu hình cân bằng tải',
+    defaultConfig: 'Cấu hình mặc định',
+    modelHasBeenDeprecated: 'Mô hình này đã bị phản đối',
+    providerManagedDescription: 'Sử dụng bộ thông tin đăng nhập duy nhất do nhà cung cấp mô hình cung cấp.',
+    apiKeyStatusNormal: 'Trạng thái APIKey bình thường',
+    editConfig: 'Chỉnh sửa cấu hình',
+    loadBalancingInfo: 'Theo mặc định, cân bằng tải sử dụng chiến lược Vòng tròn. Nếu giới hạn tốc độ được kích hoạt, thời gian hồi chiêu 1 phút sẽ được áp dụng.',
+    addConfig: 'Thêm cấu hình',
+    loadBalancingDescription: 'Giảm áp lực với nhiều bộ thông tin xác thực.',
+    apiKey: 'KHÓA API',
+    providerManaged: 'Nhà cung cấp được quản lý',
+    apiKeyRateLimit: 'Đã đạt đến giới hạn tốc độ, có sẵn sau {{giây}} giây',
+    upgradeForLoadBalancing: 'Nâng cấp gói của bạn để bật Cân bằng tải.',
+    loadBalancingLeastKeyWarning: 'Để bật cân bằng tải, ít nhất 2 phím phải được bật.',
   },
   dataSource: {
     add: 'Thêm nguồn dữ liệu',
@@ -364,6 +392,15 @@ const translation = {
         preview: 'Xem trước',
       },
     },
+    website: {
+      title: 'Trang mạng',
+      inactive: 'Không hoạt động',
+      with: 'Với',
+      active: 'Hoạt động',
+      configuredCrawlers: 'Trình thu thập thông tin đã định cấu hình',
+      description: 'Nhập nội dung từ các trang web bằng trình thu thập dữ liệu web.',
+    },
+    configure: 'Cấu hình',
   },
   plugin: {
     serpapi: {
@@ -531,6 +568,10 @@ const translation = {
     deleteTip: 'Thẻ đang được sử dụng, xóa nó đi?',
     created: 'Thẻ được tạo thành công',
     failed: 'Tạo thẻ không thành công',
+  },
+  errorMsg: {
+    fieldRequired: '{{trường}} là bắt buộc',
+    urlError: 'URL phải bắt đầu bằng http:// hoặc https://',
   },
 }
 

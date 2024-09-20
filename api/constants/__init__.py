@@ -1,1 +1,1 @@
-HIDDEN_VALUE = '[__HIDDEN__]'
+HIDDEN_VALUE = "[__HIDDEN__]"

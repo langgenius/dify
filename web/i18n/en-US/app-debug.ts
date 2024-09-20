@@ -268,6 +268,9 @@ const translation = {
     notSelectModel: 'Please choose a model',
     waitForImgUpload: 'Please wait for the image to upload',
   },
+  warningMessage: {
+    timeoutExceeded: 'Results are not displayed due to timeout. Please refer to the logs to gather complete results.',
+  },
   chatSubTitle: 'Instructions',
   completionSubTitle: 'Prefix Prompt',
   promptTip:
@@ -290,18 +293,18 @@ const translation = {
     typeSelect: 'Select',
   },
   varKeyError: {
-    canNoBeEmpty: 'Variable key can not be empty',
-    tooLong: 'Variable key: {{key}} too length. Can not be longer then 30 characters',
-    notValid: 'Variable key: {{key}} is invalid. Can only contain letters, numbers, and underscores',
-    notStartWithNumber: 'Variable key: {{key}} can not start with a number',
-    keyAlreadyExists: 'Variable key: :{{key}} already exists',
+    canNoBeEmpty: '{{key}} is required',
+    tooLong: '{{key}} is too length. Can not be longer then 30 characters',
+    notValid: '{{key}} is invalid. Can only contain letters, numbers, and underscores',
+    notStartWithNumber: '{{key}} can not start with a number',
+    keyAlreadyExists: '{{key}} already exists',
   },
   otherError: {
     promptNoBeEmpty: 'Prompt can not be empty',
     historyNoBeEmpty: 'Conversation history must be set in the prompt',
     queryNoBeEmpty: 'Query must be set in the prompt',
   },
-  variableConig: {
+  variableConfig: {
     'addModalTitle': 'Add Input Field',
     'editModalTitle': 'Edit Input Field',
     'description': 'Setting for variable {{varName}}',
@@ -323,7 +326,6 @@ const translation = {
     'content': 'Content',
     'required': 'Required',
     'errorMsg': {
-      varNameRequired: 'Variable name is required',
       labelNameRequired: 'Label name is required',
       varNameCanBeRepeat: 'Variable name can not be repeated',
       atLeastOneOption: 'At least one option is required',

@@ -1,6 +1,7 @@
 import type { Viewport } from 'reactflow'
 import type {
   BlockEnum,
+  ConversationVariable,
   Edge,
   EnvironmentVariable,
   Node,
@@ -23,10 +24,16 @@ export type NodeTracing = {
     total_tokens: number
     total_price: number
     currency: string
-    steps_boundary: number[]
+    iteration_id?: string
+    iteration_index?: number
+    parallel_id?: string
+    parallel_start_node_id?: string
+    parent_parallel_id?: string
+    parent_parallel_start_node_id?: string
   }
   metadata: {
     iterator_length: number
+    iterator_index: number
   }
   created_at: number
   created_by: {
@@ -38,6 +45,10 @@ export type NodeTracing = {
   extras?: any
   expand?: boolean // for UI
   details?: NodeTracing[][] // iteration detail
+  parallel_id?: string
+  parallel_start_node_id?: string
+  parent_parallel_id?: string
+  parent_parallel_start_node_id?: string
 }
 
 export type FetchWorkflowDraftResponse = {
@@ -58,6 +69,7 @@ export type FetchWorkflowDraftResponse = {
   updated_at: number
   tool_published: boolean
   environment_variables?: EnvironmentVariable[]
+  conversation_variables?: ConversationVariable[]
 }
 
 export type NodeTracingListResponse = {
@@ -106,6 +118,7 @@ export type NodeStartedResponse = {
   data: {
     id: string
     node_id: string
+    iteration_id?: string
     node_type: string
     index: number
     predecessor_node_id?: string
@@ -122,6 +135,7 @@ export type NodeFinishedResponse = {
   data: {
     id: string
     node_id: string
+    iteration_id?: string
     node_type: string
     index: number
     predecessor_node_id?: string
@@ -135,6 +149,10 @@ export type NodeFinishedResponse = {
       total_tokens: number
       total_price: number
       currency: string
+      parallel_id?: string
+      parallel_start_node_id?: string
+      iteration_index?: number
+      iteration_id?: string
     }
     created_at: number
   }
@@ -149,13 +167,15 @@ export type IterationStartedResponse = {
     node_id: string
     metadata: {
       iterator_length: number
+      iteration_id: string
+      iteration_index: number
     }
     created_at: number
     extras?: any
   }
 }
 
-export type IterationNextedResponse = {
+export type IterationNextResponse = {
   task_id: string
   workflow_run_id: string
   event: string
@@ -166,6 +186,9 @@ export type IterationNextedResponse = {
     output: any
     extras?: any
     created_at: number
+    execution_metadata: {
+      parallel_id?: string
+    }
   }
 }
 
@@ -178,6 +201,39 @@ export type IterationFinishedResponse = {
     node_id: string
     outputs: any
     extras?: any
+    status: string
+    created_at: number
+    error: string
+    execution_metadata: {
+      parallel_id?: string
+    }
+  }
+}
+
+export type ParallelBranchStartedResponse = {
+  task_id: string
+  workflow_run_id: string
+  event: string
+  data: {
+    parallel_id: string
+    parallel_start_node_id: string
+    parent_parallel_id: string
+    parent_parallel_start_node_id: string
+    iteration_id?: string
+    created_at: number
+  }
+}
+
+export type ParallelBranchFinishedResponse = {
+  task_id: string
+  workflow_run_id: string
+  event: string
+  data: {
+    parallel_id: string
+    parallel_start_node_id: string
+    parent_parallel_id: string
+    parent_parallel_start_node_id: string
+    iteration_id?: string
     status: string
     created_at: number
     error: string
@@ -240,3 +296,11 @@ export type NodesDefaultConfigsResponse = {
   type: string
   config: any
 }[]
+
+export type ConversationVariableResponse = {
+  data: (ConversationVariable & { updated_at: number; created_at: number })[]
+  has_more: boolean
+  limit: number
+  total: number
+  page: number
+}

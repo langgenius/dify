@@ -13,14 +13,15 @@ class TextEmbeddingModel(AIModel):
     """
     Model class for text embedding model.
     """
+
     model_type: ModelType = ModelType.TEXT_EMBEDDING
 
     # pydantic configs
     model_config = ConfigDict(protected_namespaces=())
 
-    def invoke(self, model: str, credentials: dict,
-               texts: list[str], user: Optional[str] = None) \
-            -> TextEmbeddingResult:
+    def invoke(
+        self, model: str, credentials: dict, texts: list[str], user: Optional[str] = None
+    ) -> TextEmbeddingResult:
         """
         Invoke large language model
 
@@ -38,9 +39,9 @@ class TextEmbeddingModel(AIModel):
             raise self._transform_invoke_error(e)
 
     @abstractmethod
-    def _invoke(self, model: str, credentials: dict,
-                texts: list[str], user: Optional[str] = None) \
-            -> TextEmbeddingResult:
+    def _invoke(
+        self, model: str, credentials: dict, texts: list[str], user: Optional[str] = None
+    ) -> TextEmbeddingResult:
         """
         Invoke large language model
 

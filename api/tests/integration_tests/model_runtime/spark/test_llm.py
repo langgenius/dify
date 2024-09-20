@@ -13,20 +13,15 @@ def test_validate_credentials():
     model = SparkLargeLanguageModel()
 
     with pytest.raises(CredentialsValidateFailedError):
-        model.validate_credentials(
-            model='spark-1.5',
-            credentials={
-                'app_id': 'invalid_key'
-            }
-        )
+        model.validate_credentials(model="spark-1.5", credentials={"app_id": "invalid_key"})
 
     model.validate_credentials(
-        model='spark-1.5',
+        model="spark-1.5",
         credentials={
-            'app_id': os.environ.get('SPARK_APP_ID'),
-            'api_secret': os.environ.get('SPARK_API_SECRET'),
-            'api_key': os.environ.get('SPARK_API_KEY')
-        }
+            "app_id": os.environ.get("SPARK_APP_ID"),
+            "api_secret": os.environ.get("SPARK_API_SECRET"),
+            "api_key": os.environ.get("SPARK_API_KEY"),
+        },
     )
 
 
@@ -34,24 +29,17 @@ def test_invoke_model():
     model = SparkLargeLanguageModel()
 
     response = model.invoke(
-        model='spark-1.5',
+        model="spark-1.5",
         credentials={
-            'app_id': os.environ.get('SPARK_APP_ID'),
-            'api_secret': os.environ.get('SPARK_API_SECRET'),
-            'api_key': os.environ.get('SPARK_API_KEY')
+            "app_id": os.environ.get("SPARK_APP_ID"),
+            "api_secret": os.environ.get("SPARK_API_SECRET"),
+            "api_key": os.environ.get("SPARK_API_KEY"),
         },
-        prompt_messages=[
-            UserPromptMessage(
-                content='Who are you?'
-            )
-        ],
-        model_parameters={
-            'temperature': 0.5,
-            'max_tokens': 10
-        },
-        stop=['How'],
+        prompt_messages=[UserPromptMessage(content="Who are you?")],
+        model_parameters={"temperature": 0.5, "max_tokens": 10},
+        stop=["How"],
         stream=False,
-        user="abc-123"
+        user="abc-123",
     )
 
     assert isinstance(response, LLMResult)
@@ -62,23 +50,16 @@ def test_invoke_stream_model():
     model = SparkLargeLanguageModel()
 
     response = model.invoke(
-        model='spark-1.5',
+        model="spark-1.5",
         credentials={
-            'app_id': os.environ.get('SPARK_APP_ID'),
-            'api_secret': os.environ.get('SPARK_API_SECRET'),
-            'api_key': os.environ.get('SPARK_API_KEY')
+            "app_id": os.environ.get("SPARK_APP_ID"),
+            "api_secret": os.environ.get("SPARK_API_SECRET"),
+            "api_key": os.environ.get("SPARK_API_KEY"),
         },
-        prompt_messages=[
-            UserPromptMessage(
-                content='Hello World!'
-            )
-        ],
-        model_parameters={
-            'temperature': 0.5,
-            'max_tokens': 100
-        },
+        prompt_messages=[UserPromptMessage(content="Hello World!")],
+        model_parameters={"temperature": 0.5, "max_tokens": 100},
         stream=True,
-        user="abc-123"
+        user="abc-123",
     )
 
     assert isinstance(response, Generator)
@@ -94,20 +75,18 @@ def test_get_num_tokens():
     model = SparkLargeLanguageModel()
 
     num_tokens = model.get_num_tokens(
-        model='spark-1.5',
+        model="spark-1.5",
         credentials={
-            'app_id': os.environ.get('SPARK_APP_ID'),
-            'api_secret': os.environ.get('SPARK_API_SECRET'),
-            'api_key': os.environ.get('SPARK_API_KEY')
+            "app_id": os.environ.get("SPARK_APP_ID"),
+            "api_secret": os.environ.get("SPARK_API_SECRET"),
+            "api_key": os.environ.get("SPARK_API_KEY"),
         },
         prompt_messages=[
             SystemPromptMessage(
-                content='You are a helpful AI assistant.',
+                content="You are a helpful AI assistant.",
             ),
-            UserPromptMessage(
-                content='Hello World!'
-            )
-        ]
+            UserPromptMessage(content="Hello World!"),
+        ],
     )
 
     assert num_tokens == 14

@@ -2,8 +2,8 @@
 import React, { useEffect, useRef, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import QRCode from 'qrcode.react'
-import Tooltip from '../tooltip'
 import QrcodeStyle from './style.module.css'
+import Tooltip from '@/app/components/base/tooltip'
 
 type Props = {
   content: string
@@ -51,8 +51,7 @@ const ShareQRCode = ({ content, selectorId, className }: Props) => {
 
   return (
     <Tooltip
-      selector={`common-qrcode-show-${selectorId}`}
-      content={t(`${prefixEmbedded}`) || ''}
+      popupContent={t(`${prefixEmbedded}`) || ''}
     >
       <div
         className={`w-8 h-8 cursor-pointer rounded-lg ${className ?? ''}`}

@@ -25,7 +25,7 @@ parameters:
       pt_BR: Prompt
     human_description:
       en_US: Image prompt, you can check the official documentation of step-1x
-      zh_Hans: 图像提示词，您可以查看step-1x 的官方文档
+      zh_Hans: 图像提示词，您可以查看 step-1x 的官方文档
       pt_BR: Image prompt, you can check the official documentation of step-1x
     llm_description: Image prompt of step-1x you should describe the image you want to generate as a list of words as possible as detailed
     form: llm

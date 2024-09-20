@@ -8,7 +8,6 @@ import { useContext } from 'use-context-selector'
 import produce from 'immer'
 import {
   RiDeleteBinLine,
-  RiQuestionLine,
 } from '@remixicon/react'
 import Panel from '../base/feature-panel'
 import EditModal from './config-modal'
@@ -89,7 +88,6 @@ const ConfigVar: FC<IConfigVarProps> = ({ promptVariables, readonly, onPromptVar
     } as InputVar
   })()
   const updatePromptVariableItem = (payload: InputVar) => {
-    console.log(payload)
     const newPromptVariables = produce(promptVariables, (draft) => {
       const { variable, label, type, ...rest } = payload
       draft[currIndex] = {
@@ -282,11 +280,13 @@ const ConfigVar: FC<IConfigVarProps> = ({ promptVariables, readonly, onPromptVar
         <div className='flex items-center'>
           <div className='mr-1'>{t('appDebug.variableTitle')}</div>
           {!readonly && (
-            <Tooltip htmlContent={<div className='w-[180px]'>
-              {t('appDebug.variableTip')}
-            </div>} selector='config-var-tooltip'>
-              <RiQuestionLine className='w-[14px] h-[14px] text-gray-400' />
-            </Tooltip>
+            <Tooltip
+              popupContent={
+                <div className='w-[180px]'>
+                  {t('appDebug.variableTip')}
+                </div>
+              }
+            />
           )}
         </div>
       }

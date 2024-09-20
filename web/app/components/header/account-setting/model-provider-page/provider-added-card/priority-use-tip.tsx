@@ -7,8 +7,7 @@ const PriorityUseTip = () => {
 
   return (
     <Tooltip
-      selector='provider-quota-credential-priority-using'
-      content={t('common.modelProvider.priorityUsing') || ''}
+      popupContent={t('common.modelProvider.priorityUsing') || ''}
     >
       <div className='absolute -right-[5px] -top-[5px] bg-indigo-50 rounded-[5px] border-[0.5px] border-indigo-100 cursor-pointer'>
         <ChevronDownDouble className='rotate-180 w-3 h-3 text-indigo-600' />

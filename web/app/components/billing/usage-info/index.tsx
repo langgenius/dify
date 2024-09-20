@@ -2,7 +2,6 @@
 import type { FC } from 'react'
 import React from 'react'
 import { useTranslation } from 'react-i18next'
-import { InfoCircle } from '../../base/icons/src/vender/line/general'
 import ProgressBar from '../progress-bar'
 import { NUM_INFINITE } from '../config'
 import Tooltip from '@/app/components/base/tooltip'
@@ -48,11 +47,13 @@ const UsageInfo: FC<Props> = ({
           <Icon className='w-4 h-4 text-gray-700' />
           <div className='mx-1 leading-5 text-sm font-medium text-gray-700'>{name}</div>
           {tooltip && (
-            <Tooltip htmlContent={<div className='w-[180px]'>
-              {tooltip}
-            </div>} selector='config-var-tooltip'>
-              <InfoCircle className='w-[14px] h-[14px] text-gray-400' />
-            </Tooltip>
+            <Tooltip
+              popupContent={
+                <div className='w-[180px]'>
+                  {tooltip}
+                </div>
+              }
+            />
           )}
         </div>
         <div className='flex items-center leading-[18px] text-[13px] font-normal'>

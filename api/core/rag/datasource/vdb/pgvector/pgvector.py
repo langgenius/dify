@@ -24,7 +24,8 @@ class PGVectorConfig(BaseModel):
     password: str
     database: str
 
-    @model_validator(mode='before')
+    @model_validator(mode="before")
+    @classmethod
     def validate_config(cls, values: dict) -> dict:
         if not values["host"]:
             raise ValueError("config PGVECTOR_HOST is required")
@@ -138,11 +139,12 @@ class PGVector(BaseVector):
 
         with self._get_cursor() as cur:
             cur.execute(
-                f"SELECT meta, text, embedding <=> %s AS distance FROM {self.table_name} ORDER BY distance LIMIT {top_k}",
+                f"SELECT meta, text, embedding <=> %s AS distance FROM {self.table_name}"
+                f" ORDER BY distance LIMIT {top_k}",
                 (json.dumps(query_vector),),
             )
             docs = []
-            score_threshold = kwargs.get("score_threshold") if kwargs.get("score_threshold") else 0.0
+            score_threshold = float(kwargs.get("score_threshold") or 0.0)
             for record in cur:
                 metadata, text, distance = record
                 score = 1 - distance
@@ -152,8 +154,27 @@ class PGVector(BaseVector):
         return docs
 
     def search_by_full_text(self, query: str, **kwargs: Any) -> list[Document]:
-        # do not support bm25 search
-        return []
+        top_k = kwargs.get("top_k", 5)
+
+        with self._get_cursor() as cur:
+            cur.execute(
+                f"""SELECT meta, text, ts_rank(to_tsvector(coalesce(text, '')), to_tsquery(%s)) AS score
+                FROM {self.table_name}
+                WHERE to_tsvector(text) @@ plainto_tsquery(%s)
+                ORDER BY score DESC
+                LIMIT {top_k}""",
+                # f"'{query}'" is required in order to account for whitespace in query
+                (f"'{query}'", f"'{query}'"),
+            )
+
+            docs = []
+
+            for record in cur:
+                metadata, text, score = record
+                metadata["score"] = score
+                docs.append(Document(page_content=text, metadata=metadata))
+
+        return docs
 
     def delete(self) -> None:
         with self._get_cursor() as cur:
@@ -182,8 +203,7 @@ class PGVectorFactory(AbstractVectorFactory):
         else:
             dataset_id = dataset.id
             collection_name = Dataset.gen_collection_name_by_id(dataset_id)
-            dataset.index_struct = json.dumps(
-                self.gen_index_struct_dict(VectorType.PGVECTOR, collection_name))
+            dataset.index_struct = json.dumps(self.gen_index_struct_dict(VectorType.PGVECTOR, collection_name))
 
         return PGVector(
             collection_name=collection_name,

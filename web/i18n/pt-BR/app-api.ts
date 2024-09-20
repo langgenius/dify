@@ -6,7 +6,7 @@ const translation = {
   ok: 'Em Serviço',
   copy: 'Copiar',
   copied: 'Copiado',
-  merMaind: {
+  merMaid: {
     rerender: 'Refazer Rerender',
   },
   never: 'Nunca',
@@ -74,6 +74,10 @@ const translation = {
     pathParams: 'Parâmetros de Caminho',
     query: 'Consulta',
   },
+  play: 'Brincar',
+  loading: 'Carregamento',
+  pause: 'Pausa',
+  playing: 'Jogar',
 }
 
 export default translation

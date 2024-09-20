@@ -10,14 +10,12 @@ def test_validate_provider_credentials():
     provider = SparkProvider()
 
     with pytest.raises(CredentialsValidateFailedError):
-        provider.validate_provider_credentials(
-            credentials={}
-        )
+        provider.validate_provider_credentials(credentials={})
 
     provider.validate_provider_credentials(
         credentials={
-            'app_id': os.environ.get('SPARK_APP_ID'),
-            'api_secret': os.environ.get('SPARK_API_SECRET'),
-            'api_key': os.environ.get('SPARK_API_KEY')
+            "app_id": os.environ.get("SPARK_APP_ID"),
+            "api_secret": os.environ.get("SPARK_API_SECRET"),
+            "api_key": os.environ.get("SPARK_API_KEY"),
         }
     )

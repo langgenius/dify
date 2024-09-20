@@ -41,7 +41,7 @@ const SecretKeyModal = ({
 }: ISecretKeyModalProps) => {
   const { t } = useTranslation()
   const { formatTime } = useTimestamp()
-  const { currentWorkspace, isCurrentWorkspaceManager } = useAppContext()
+  const { currentWorkspace, isCurrentWorkspaceManager, isCurrentWorkspaceEditor } = useAppContext()
   const [showConfirmDelete, setShowConfirmDelete] = useState(false)
   const [isVisible, setVisible] = useState(false)
   const [newKey, setNewKey] = useState<CreateApiKeyResponse | undefined>(undefined)
@@ -115,12 +115,11 @@ const SecretKeyModal = ({
                 <div className='flex items-center text-sm font-normal text-gray-700 border-b border-solid h-9' key={api.id}>
                   <div className='flex-shrink-0 w-64 px-3 font-mono truncate'>{generateToken(api.token)}</div>
                   <div className='flex-shrink-0 px-3 truncate w-[200px]'>{formatTime(Number(api.created_at), t('appLog.dateTimeFormat') as string)}</div>
-                  <div className='flex-shrink-0 px-3 truncate w-[200px]'>{api.last_used_at ? formatTime(Number(api.created_at), t('appLog.dateTimeFormat') as string) : t('appApi.never')}</div>
+                  <div className='flex-shrink-0 px-3 truncate w-[200px]'>{api.last_used_at ? formatTime(Number(api.last_used_at), t('appLog.dateTimeFormat') as string) : t('appApi.never')}</div>
                   <div className='flex flex-grow px-3'>
                     <Tooltip
-                      selector={`key-${api.token}`}
-                      content={copyValue === api.token ? `${t('appApi.copied')}` : `${t('appApi.copy')}`}
-                      className='z-10'
+                      popupContent={copyValue === api.token ? `${t('appApi.copied')}` : `${t('appApi.copy')}`}
+                      popupClassName='mr-1'
                     >
                       <div className={`flex items-center justify-center flex-shrink-0 w-6 h-6 mr-1 rounded-lg cursor-pointer hover:bg-gray-100 ${s.copyIcon} ${copyValue === api.token ? s.copied : ''}`} onClick={() => {
                         // setIsCopied(true)
@@ -143,7 +142,7 @@ const SecretKeyModal = ({
         )
       }
       <div className='flex'>
-        <Button className={`flex flex-shrink-0 mt-4 ${s.autoWidth}`} onClick={onCreate} disabled={ !currentWorkspace || !isCurrentWorkspaceManager}>
+        <Button className={`flex flex-shrink-0 mt-4 ${s.autoWidth}`} onClick={onCreate} disabled={!currentWorkspace || !isCurrentWorkspaceEditor}>
           <PlusIcon className='flex flex-shrink-0 w-4 h-4' />
           <div className='text-xs font-medium text-gray-800'>{t('appApi.apiKeyModal.createNewSecretKey')}</div>
         </Button>

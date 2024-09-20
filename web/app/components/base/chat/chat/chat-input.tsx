@@ -17,7 +17,7 @@ import { TransferMethod } from '../types'
 import { useChatWithHistoryContext } from '../chat-with-history/context'
 import type { Theme } from '../embedded-chatbot/theme/theme-context'
 import { CssTransform } from '../embedded-chatbot/theme/utils'
-import TooltipPlus from '@/app/components/base/tooltip-plus'
+import Tooltip from '@/app/components/base/tooltip'
 import { ToastContext } from '@/app/components/base/toast'
 import useBreakpoints, { MediaType } from '@/hooks/use-breakpoints'
 import VoiceInput from '@/app/components/base/voice-input'
@@ -32,23 +32,27 @@ import {
   useDraggableUploader,
   useImageFiles,
 } from '@/app/components/base/image-uploader/hooks'
+import cn from '@/utils/classnames'
 
 type ChatInputProps = {
   visionConfig?: VisionConfig
   speechToTextConfig?: EnableType
   onSend?: OnSend
   theme?: Theme | null
+  noSpacing?: boolean
 }
 const ChatInput: FC<ChatInputProps> = ({
   visionConfig,
   speechToTextConfig,
   onSend,
   theme,
+  noSpacing,
 }) => {
   const { appData } = useChatWithHistoryContext()
   const { t } = useTranslation()
   const { notify } = useContext(ToastContext)
   const [voiceInputShow, setVoiceInputShow] = useState(false)
+  const textAreaRef = useRef<HTMLTextAreaElement>(null)
   const {
     files,
     onUpload,
@@ -89,7 +93,7 @@ const ChatInput: FC<ChatInputProps> = ({
   }
 
   const handleKeyUp = (e: React.KeyboardEvent<HTMLTextAreaElement>) => {
-    if (e.code === 'Enter') {
+    if (e.key === 'Enter') {
       e.preventDefault()
       // prevent send message when using input method enter
       if (!e.shiftKey && !isUseInputMethod.current)
@@ -99,7 +103,7 @@ const ChatInput: FC<ChatInputProps> = ({
 
   const handleKeyDown = (e: React.KeyboardEvent<HTMLTextAreaElement>) => {
     isUseInputMethod.current = e.nativeEvent.isComposing
-    if (e.code === 'Enter' && !e.shiftKey) {
+    if (e.key === 'Enter' && !e.shiftKey) {
       setQuery(query.replace(/\n$/, ''))
       e.preventDefault()
     }
@@ -145,7 +149,7 @@ const ChatInput: FC<ChatInputProps> = ({
 
   return (
     <>
-      <div className='relative'>
+      <div className={cn('relative', !noSpacing && 'px-8')}>
         <div
           className={`
             p-[5.5px] max-h-[150px] bg-white border-[1.5px] border-gray-200 rounded-xl overflow-y-auto
@@ -155,7 +159,7 @@ const ChatInput: FC<ChatInputProps> = ({
           {
             visionConfig?.enabled && (
               <>
-                <div className='absolute bottom-2 left-2 flex items-center'>
+                <div className={cn('absolute bottom-2 flex items-center', noSpacing ? 'left-2' : 'left-10')}>
                   <ChatImageUploader
                     settings={visionConfig}
                     onUpload={onUpload}
@@ -176,6 +180,7 @@ const ChatInput: FC<ChatInputProps> = ({
             )
           }
           <Textarea
+            ref={textAreaRef}
             className={`
               block w-full px-2 pr-[118px] py-[7px] leading-5 max-h-none text-sm text-gray-700 outline-none appearance-none resize-none
               ${visionConfig?.enabled && 'pl-12'}
@@ -191,7 +196,7 @@ const ChatInput: FC<ChatInputProps> = ({
             onDrop={onDrop}
             autoSize
           />
-          <div className='absolute bottom-[7px] right-2 flex items-center h-8'>
+          <div className={cn('absolute bottom-[7px] flex items-center h-8', noSpacing ? 'right-2' : 'right-10')}>
             <div className='flex items-center px-1 h-5 rounded-md bg-gray-100 text-xs font-medium text-gray-500'>
               {query.trim().length}
             </div>
@@ -218,7 +223,7 @@ const ChatInput: FC<ChatInputProps> = ({
             {isMobile
               ? sendBtn
               : (
-                <TooltipPlus
+                <Tooltip
                   popupContent={
                     <div>
                       <div>{t('common.operation.send')} Enter</div>
@@ -227,14 +232,17 @@ const ChatInput: FC<ChatInputProps> = ({
                   }
                 >
                   {sendBtn}
-                </TooltipPlus>
+                </Tooltip>
               )}
           </div>
           {
             voiceInputShow && (
               <VoiceInput
                 onCancel={() => setVoiceInputShow(false)}
-                onConverted={text => setQuery(text)}
+                onConverted={(text) => {
+                  setQuery(text)
+                  textAreaRef.current?.focus()
+                }}
               />
             )
           }

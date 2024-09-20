@@ -4,8 +4,9 @@ const translation = {
   dateTimeFormat: 'GG/AA/YYYY ss:dd ÖÖ/ÖS',
   table: {
     header: {
-      time: 'Zaman',
-      endUser: 'Son Kullanıcı',
+      updatedTime: 'Güncellenme zamanı',
+      time: 'Oluşturulma zamanı',
+      endUser: 'Son Kullanıcı veya Hesap',
       input: 'Girdi',
       output: 'Çıktı',
       summary: 'Başlık',
@@ -16,7 +17,7 @@ const translation = {
       status: 'DURUM',
       runtime: 'ÇALIŞMA SÜRESİ',
       tokens: 'TOKENLAR',
-      user: 'SON KULLANICI',
+      user: 'SON KULLANICI VEYA HESAP',
       version: 'VERSİYON',
     },
     pagination: {
@@ -69,6 +70,9 @@ const translation = {
       annotated: 'Açıklamalı İyileştirmeler ({{count}} öğe)',
       not_annotated: 'Açıklanmamış',
     },
+    sortBy: 'Sıralama ölçütü:',
+    descending: 'azalan',
+    ascending: 'artan',
   },
   workflowTitle: 'Workflow Günlükleri',
   workflowSubtitle: 'Günlük, Automate\'in çalışmasını kaydetmiştir.',

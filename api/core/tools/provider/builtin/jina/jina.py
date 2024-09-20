@@ -10,27 +10,29 @@ from core.tools.provider.builtin_tool_provider import BuiltinToolProviderControl
 class GoogleProvider(BuiltinToolProviderController):
     def _validate_credentials(self, credentials: dict[str, Any]) -> None:
         try:
-            if credentials['api_key'] is None:
-                credentials['api_key'] = ''
+            if credentials["api_key"] is None:
+                credentials["api_key"] = ""
             else:
-                result = JinaReaderTool().fork_tool_runtime(
-                    runtime={
-                        "credentials": credentials,
-                    }
-                ).invoke(
-                    user_id='',
-                    tool_parameters={
-                        "url": "https://example.com",
-                    },
-                )[0]
+                result = (
+                    JinaReaderTool()
+                    .fork_tool_runtime(
+                        runtime={
+                            "credentials": credentials,
+                        }
+                    )
+                    .invoke(
+                        user_id="",
+                        tool_parameters={
+                            "url": "https://example.com",
+                        },
+                    )[0]
+                )
 
                 message = json.loads(result.message)
-                if message['code'] != 200:
-                    raise ToolProviderCredentialValidationError(message['message'])
+                if message["code"] != 200:
+                    raise ToolProviderCredentialValidationError(message["message"])
         except Exception as e:
             raise ToolProviderCredentialValidationError(str(e))
-        
+
     def _get_tool_labels(self) -> list[ToolLabelEnum]:
-        return [
-            ToolLabelEnum.SEARCH, ToolLabelEnum.PRODUCTIVITY
-        ]
+        return [ToolLabelEnum.SEARCH, ToolLabelEnum.PRODUCTIVITY]

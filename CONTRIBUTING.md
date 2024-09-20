@@ -8,7 +8,7 @@ In terms of licensing, please take a minute to read our short [License and Contr
 
 ## Before you jump in
 
-[Find](https://github.com/langgenius/dify/issues?q=is:issue+is:closed) an existing issue, or [open](https://github.com/langgenius/dify/issues/new/choose) a new one. We categorize issues into 2 types:
+[Find](https://github.com/langgenius/dify/issues?q=is:issue+is:open) an existing issue, or [open](https://github.com/langgenius/dify/issues/new/choose) a new one. We categorize issues into 2 types:
 
 ### Feature requests:
 

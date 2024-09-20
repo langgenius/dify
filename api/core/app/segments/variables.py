@@ -4,11 +4,9 @@ from core.helper import encrypter
 
 from .segments import (
     ArrayAnySegment,
-    ArrayFileSegment,
     ArrayNumberSegment,
     ArrayObjectSegment,
     ArrayStringSegment,
-    FileSegment,
     FloatSegment,
     IntegerSegment,
     NoneSegment,
@@ -25,11 +23,11 @@ class Variable(Segment):
     """
 
     id: str = Field(
-        default='',
+        default="",
         description="Unique identity for variable. It's only used by environment variables now.",
     )
     name: str
-    description: str = Field(default='', description='Description of the variable.')
+    description: str = Field(default="", description="Description of the variable.")
 
 
 class StringVariable(StringSegment, Variable):
@@ -41,10 +39,6 @@ class FloatVariable(FloatSegment, Variable):
 
 
 class IntegerVariable(IntegerSegment, Variable):
-    pass
-
-
-class FileVariable(FileSegment, Variable):
     pass
 
 
@@ -65,10 +59,6 @@ class ArrayNumberVariable(ArrayNumberSegment, Variable):
 
 
 class ArrayObjectVariable(ArrayObjectSegment, Variable):
-    pass
-
-
-class ArrayFileVariable(ArrayFileSegment, Variable):
     pass
 
 

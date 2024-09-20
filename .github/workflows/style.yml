@@ -20,7 +20,7 @@ jobs:
 
       - name: Check changed files
         id: changed-files
-        uses: tj-actions/changed-files@v44
+        uses: tj-actions/changed-files@v45
         with:
           files: api/**
 
@@ -45,6 +45,10 @@ jobs:
         if: steps.changed-files.outputs.any_changed == 'true'
         run: poetry run -C api dotenv-linter ./api/.env.example ./web/.env.example
 
+      - name: Ruff formatter check
+        if: steps.changed-files.outputs.any_changed == 'true'
+        run: poetry run -C api ruff format --check ./api
+
       - name: Lint hints
         if: failure()
         run: echo "Please run 'dev/reformat' to fix the fixable linting errors."
@@ -62,7 +66,7 @@ jobs:
 
       - name: Check changed files
         id: changed-files
-        uses: tj-actions/changed-files@v44
+        uses: tj-actions/changed-files@v45
         with:
           files: web/**
 
@@ -93,7 +97,7 @@ jobs:
 
       - name: Check changed files
         id: changed-files
-        uses: tj-actions/changed-files@v44
+        uses: tj-actions/changed-files@v45
         with:
           files: |
             **.sh
@@ -103,7 +107,7 @@ jobs:
             dev/**
 
       - name: Super-linter
-        uses: super-linter/super-linter/slim@v6
+        uses: super-linter/super-linter/slim@v7
         if: steps.changed-files.outputs.any_changed == 'true'
         env:
           BASH_SEVERITY: warning

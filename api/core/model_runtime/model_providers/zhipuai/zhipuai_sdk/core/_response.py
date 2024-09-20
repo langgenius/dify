@@ -26,13 +26,13 @@ class HttpResponse(Generic[R]):
     http_response: httpx.Response
 
     def __init__(
-            self,
-            *,
-            raw_response: httpx.Response,
-            cast_type: type[R],
-            client: HttpClient,
-            enable_stream: bool = False,
-            stream_cls: type[StreamResponse[Any]] | None = None,
+        self,
+        *,
+        raw_response: httpx.Response,
+        cast_type: type[R],
+        client: HttpClient,
+        enable_stream: bool = False,
+        stream_cls: type[StreamResponse[Any]] | None = None,
     ) -> None:
         self._cast_type = cast_type
         self._client = client
@@ -52,8 +52,8 @@ class HttpResponse(Generic[R]):
                 self._stream_cls(
                     cast_type=cast(type, get_args(self._stream_cls)[0]),
                     response=self.http_response,
-                    client=self._client
-                )
+                    client=self._client,
+                ),
             )
             return self._parsed
         cast_type = self._cast_type

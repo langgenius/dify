@@ -55,14 +55,16 @@ class SerplyApi:
                     link = article["link"]
                 authors = [author["name"] for author in article["author"]["authors"]]
                 string.append(
-                    "\n".join([
-                        f"Title: {article['title']}",
-                        f"Link: {link}",
-                        f"Description: {article['description']}",
-                        f"Cite: {article['cite']}",
-                        f"Authors: {', '.join(authors)}",
-                        "---",
-                    ])
+                    "\n".join(
+                        [
+                            f"Title: {article['title']}",
+                            f"Link: {link}",
+                            f"Description: {article['description']}",
+                            f"Cite: {article['cite']}",
+                            f"Authors: {', '.join(authors)}",
+                            "---",
+                        ]
+                    )
                 )
             except KeyError:
                 continue

@@ -1,10 +1,9 @@
 import json
+import sys
 from collections.abc import Mapping, Sequence
 from typing import Any
 
 from pydantic import BaseModel, ConfigDict, field_validator
-
-from core.file.file_obj import FileVar
 
 from .types import SegmentType
 
@@ -15,13 +14,14 @@ class Segment(BaseModel):
     value_type: SegmentType
     value: Any
 
-    @field_validator('value_type')
+    @field_validator("value_type")
+    @classmethod
     def validate_value_type(cls, value):
         """
         This validator checks if the provided value is equal to the default value of the 'value_type' field.
         If the value is different, a ValueError is raised.
         """
-        if value != cls.model_fields['value_type'].default:
+        if value != cls.model_fields["value_type"].default:
             raise ValueError("Cannot modify 'value_type'")
         return value
 
@@ -37,6 +37,10 @@ class Segment(BaseModel):
     def markdown(self) -> str:
         return str(self.value)
 
+    @property
+    def size(self) -> int:
+        return sys.getsizeof(self.value)
+
     def to_object(self) -> Any:
         return self.value
 
@@ -47,15 +51,15 @@ class NoneSegment(Segment):
 
     @property
     def text(self) -> str:
-        return 'null'
+        return "null"
 
     @property
     def log(self) -> str:
-        return 'null'
+        return "null"
 
     @property
     def markdown(self) -> str:
-        return 'null'
+        return "null"
 
 
 class StringSegment(Segment):
@@ -73,62 +77,50 @@ class IntegerSegment(Segment):
     value: int
 
 
-class FileSegment(Segment):
-    value_type: SegmentType = SegmentType.FILE
-    # TODO: embed FileVar in this model.
-    value: FileVar
-
-    @property
-    def markdown(self) -> str:
-        return self.value.to_markdown()
-
-
 class ObjectSegment(Segment):
     value_type: SegmentType = SegmentType.OBJECT
     value: Mapping[str, Any]
 
     @property
     def text(self) -> str:
-        return json.dumps(self.model_dump()['value'], ensure_ascii=False)
+        return json.dumps(self.model_dump()["value"], ensure_ascii=False)
 
     @property
     def log(self) -> str:
-        return json.dumps(self.model_dump()['value'], ensure_ascii=False, indent=2)
+        return json.dumps(self.model_dump()["value"], ensure_ascii=False, indent=2)
 
     @property
     def markdown(self) -> str:
-        return json.dumps(self.model_dump()['value'], ensure_ascii=False, indent=2)
+        return json.dumps(self.model_dump()["value"], ensure_ascii=False, indent=2)
 
 
 class ArraySegment(Segment):
     @property
     def markdown(self) -> str:
-        return '\n'.join(['- ' + item.markdown for item in self.value])
-
-    def to_object(self):
-        return [v.to_object() for v in self.value]
+        items = []
+        for item in self.value:
+            if hasattr(item, "to_markdown"):
+                items.append(item.to_markdown())
+            else:
+                items.append(str(item))
+        return "\n".join(items)
 
 
 class ArrayAnySegment(ArraySegment):
     value_type: SegmentType = SegmentType.ARRAY_ANY
-    value: Sequence[Segment]
+    value: Sequence[Any]
 
 
 class ArrayStringSegment(ArraySegment):
     value_type: SegmentType = SegmentType.ARRAY_STRING
-    value: Sequence[StringSegment]
+    value: Sequence[str]
 
 
 class ArrayNumberSegment(ArraySegment):
     value_type: SegmentType = SegmentType.ARRAY_NUMBER
-    value: Sequence[FloatSegment | IntegerSegment]
+    value: Sequence[float | int]
 
 
 class ArrayObjectSegment(ArraySegment):
     value_type: SegmentType = SegmentType.ARRAY_OBJECT
-    value: Sequence[ObjectSegment]
-
-
-class ArrayFileSegment(ArraySegment):
-    value_type: SegmentType = SegmentType.ARRAY_FILE
-    value: Sequence[FileSegment]
+    value: Sequence[Mapping[str, Any]]

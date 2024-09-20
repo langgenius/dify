@@ -13,12 +13,8 @@ class VectorizerProvider(BuiltinToolProviderController):
                     "credentials": credentials,
                 }
             ).invoke(
-                user_id='',
-                tool_parameters={
-                    "mode": "test",
-                    "image_id": "__test_123"
-                },
+                user_id="",
+                tool_parameters={"mode": "test", "image_id": "__test_123"},
             )
         except Exception as e:
             raise ToolProviderCredentialValidationError(str(e))
-        

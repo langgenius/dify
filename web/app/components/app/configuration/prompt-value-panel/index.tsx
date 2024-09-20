@@ -16,7 +16,7 @@ import { AppType, ModelModeType } from '@/types/app'
 import Select from '@/app/components/base/select'
 import { DEFAULT_VALUE_MAX_LEN } from '@/config'
 import Button from '@/app/components/base/button'
-import Tooltip from '@/app/components/base/tooltip-plus'
+import Tooltip from '@/app/components/base/tooltip'
 import TextGenerationImageUploader from '@/app/components/base/image-uploader/text-generation-image-uploader'
 import type { VisionFile, VisionSettings } from '@/types/app'
 
@@ -207,6 +207,7 @@ const PromptValuePanel: FC<IPromptValuePanelProps> = ({
               {canNotRun
                 ? (<Tooltip
                   popupContent={t('appDebug.otherError.promptNoBeEmpty')}
+                  needsDelay
                 >
                   {renderRunButton()}
                 </Tooltip>)
