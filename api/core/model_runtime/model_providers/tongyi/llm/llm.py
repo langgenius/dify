@@ -549,7 +549,6 @@ class TongyiLargeLanguageModel(LargeLanguageModel):
                 type=ParameterType.FLOAT,
                 use_template="top_p",
                 label=I18nObject(zh_Hans="Top P", en_US="Top P"),
-
             ),
             ParameterRule(
                 name="top_k",
