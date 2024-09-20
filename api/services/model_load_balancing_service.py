@@ -346,11 +346,6 @@ class ModelLoadBalancingService:
 
                 load_balancing_config = current_load_balancing_configs_dict[config_id]
 
-                # check duplicate name
-                for current_load_balancing_config in current_load_balancing_configs:
-                    if current_load_balancing_config.id != config_id and current_load_balancing_config.name == name:
-                        raise ValueError("Load balancing config name {} already exists".format(name))
-
                 if credentials:
                     if not isinstance(credentials, dict):
                         raise ValueError("Invalid load balancing config credentials")
