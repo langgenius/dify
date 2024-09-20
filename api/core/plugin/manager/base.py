@@ -10,7 +10,7 @@ from configs import dify_config
 from core.plugin.entities.plugin_daemon import PluginDaemonBasicResponse
 
 plugin_daemon_inner_api_baseurl = dify_config.PLUGIN_API_URL
-plugin_daemon_inner_api_key = dify_config.INNER_API_KEY_FOR_PLUGIN
+plugin_daemon_inner_api_key = dify_config.PLUGIN_API_KEY
 
 T = TypeVar("T", bound=(BaseModel | dict))
 
@@ -69,9 +69,9 @@ class BasePluginManager:
         response = self._request(method, path, headers, data)
         rep = PluginDaemonBasicResponse[type](**response.json())
         if rep.code != 0:
-            raise Exception(f"got error from plugin daemon: {rep.message}, code: {rep.code}")
+            raise ValueError(f"got error from plugin daemon: {rep.message}, code: {rep.code}")
         if rep.data is None:
-            raise Exception("got empty data from plugin daemon")
+            raise ValueError("got empty data from plugin daemon")
         
         return rep.data
     

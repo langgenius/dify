@@ -12,6 +12,6 @@ class PluginDebuggingManager(BasePluginManager):
         class Response(BaseModel):
             key: str
 
-        response = self._request_with_plugin_daemon_response("POST", f"/plugin/{tenant_id}/debugging/key", Response)
+        response = self._request_with_plugin_daemon_response("POST", f"plugin/{tenant_id}/debugging/key", Response)
 
         return response.key
