@@ -19,7 +19,11 @@ const UserInput = () => {
   const variables = startNode?.data.variables || []
 
   const handleValueChange = (variable: string, v: string) => {
-    workflowStore.getState().setInputs({
+    const {
+      inputs,
+      setInputs,
+    } = workflowStore.getState()
+    setInputs({
       ...inputs,
       [variable]: v,
     })
