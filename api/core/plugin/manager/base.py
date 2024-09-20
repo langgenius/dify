@@ -12,12 +12,17 @@ from core.plugin.entities.plugin_daemon import PluginDaemonBasicResponse
 plugin_daemon_inner_api_baseurl = dify_config.PLUGIN_API_URL
 plugin_daemon_inner_api_key = dify_config.PLUGIN_API_KEY
 
-T = TypeVar("T", bound=(BaseModel | dict))
+T = TypeVar("T", bound=(BaseModel | dict | bool))
 
 
 class BasePluginManager:
     def _request(
-        self, method: str, path: str, headers: dict | None = None, data: bytes | None = None, stream: bool = False
+        self,
+        method: str,
+        path: str,
+        headers: dict | None = None,
+        data: bytes | dict | None = None,
+        stream: bool = False,
     ) -> requests.Response:
         """
         Make a request to the plugin daemon inner API.
@@ -29,7 +34,7 @@ class BasePluginManager:
         return response
 
     def _stream_request(
-        self, method: str, path: str, headers: dict | None = None, data: bytes | None = None
+        self, method: str, path: str, headers: dict | None = None, data: bytes | dict | None = None
     ) -> Generator[bytes, None, None]:
         """
         Make a stream request to the plugin daemon inner API
@@ -43,7 +48,7 @@ class BasePluginManager:
         path: str,
         type: type[T],
         headers: dict | None = None,
-        data: bytes | None = None,
+        data: bytes | dict | None = None,
     ) -> Generator[T, None, None]:
         """
         Make a stream request to the plugin daemon inner API and yield the response as a model.
@@ -61,7 +66,7 @@ class BasePluginManager:
         return type(**response.json())
 
     def _request_with_plugin_daemon_response(
-        self, method: str, path: str, type: type[T], headers: dict | None = None, data: bytes | None = None
+        self, method: str, path: str, type: type[T], headers: dict | None = None, data: bytes | dict | None = None
     ) -> T:
         """
         Make a request to the plugin daemon inner API and return the response as a model.
@@ -72,11 +77,11 @@ class BasePluginManager:
             raise ValueError(f"got error from plugin daemon: {rep.message}, code: {rep.code}")
         if rep.data is None:
             raise ValueError("got empty data from plugin daemon")
-        
+
         return rep.data
-    
+
     def _request_with_plugin_daemon_response_stream(
-        self, method: str, path: str, type: type[T], headers: dict | None = None, data: bytes | None = None
+        self, method: str, path: str, type: type[T], headers: dict | None = None, data: bytes | dict | None = None
     ) -> Generator[T, None, None]:
         """
         Make a stream request to the plugin daemon inner API and yield the response as a model.
@@ -85,7 +90,7 @@ class BasePluginManager:
             line_data = json.loads(line)
             rep = PluginDaemonBasicResponse[type](**line_data)
             if rep.code != 0:
-                raise Exception(f"got error from plugin daemon: {rep.message}, code: {rep.code}")
+                raise ValueError(f"got error from plugin daemon: {rep.message}, code: {rep.code}")
             if rep.data is None:
-                raise Exception("got empty data from plugin daemon")
+                raise ValueError("got empty data from plugin daemon")
             yield rep.data
