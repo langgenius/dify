@@ -165,7 +165,7 @@ class ApiBasedToolSchemaParser:
         elif "schema" in parameter and "type" in parameter["schema"]:
             typ = parameter["schema"]["type"]
 
-        if typ == "integer" or typ == "number":
+        if typ in {"integer", "number"}:
             return ToolParameter.ToolParameterType.NUMBER
         elif typ == "boolean":
             return ToolParameter.ToolParameterType.BOOLEAN

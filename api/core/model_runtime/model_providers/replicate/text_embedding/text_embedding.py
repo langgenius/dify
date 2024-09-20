@@ -86,7 +86,7 @@ class ReplicateEmbeddingModel(_CommonReplicate, TextEmbeddingModel):
         )
 
         for input_property in input_properties:
-            if input_property[0] in ("text", "texts", "inputs"):
+            if input_property[0] in {"text", "texts", "inputs"}:
                 text_input_key = input_property[0]
                 return text_input_key
 
@@ -96,7 +96,7 @@ class ReplicateEmbeddingModel(_CommonReplicate, TextEmbeddingModel):
     def _generate_embeddings_by_text_input_key(
         client: ReplicateClient, replicate_model_version: str, text_input_key: str, texts: list[str]
     ) -> list[list[float]]:
-        if text_input_key in ("text", "inputs"):
+        if text_input_key in {"text", "inputs"}:
             embeddings = []
             for text in texts:
                 result = client.run(replicate_model_version, input={text_input_key: text})

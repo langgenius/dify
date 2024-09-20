@@ -33,7 +33,7 @@ class ParameterConfig(BaseModel):
     def validate_name(cls, value) -> str:
         if not value:
             raise ValueError("Parameter name is required")
-        if value in ["__reason", "__is_success"]:
+        if value in {"__reason", "__is_success"}:
             raise ValueError("Invalid parameter name, __reason and __is_success are reserved")
         return value
 
@@ -66,7 +66,7 @@ class ParameterExtractorNodeData(BaseNodeData):
         for parameter in self.parameters:
             parameter_schema = {"description": parameter.description}
 
-            if parameter.type in ["string", "select"]:
+            if parameter.type in {"string", "select"}:
                 parameter_schema["type"] = "string"
             elif parameter.type.startswith("array"):
                 parameter_schema["type"] = "array"

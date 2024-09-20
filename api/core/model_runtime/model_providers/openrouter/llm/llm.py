@@ -12,7 +12,6 @@ class OpenRouterLargeLanguageModel(OAIAPICompatLargeLanguageModel):
         credentials["endpoint_url"] = "https://openrouter.ai/api/v1"
         credentials["mode"] = self.get_model_mode(model).value
         credentials["function_calling_type"] = "tool_call"
-        return
 
     def _invoke(
         self,

@@ -27,17 +27,17 @@ class ModelType(Enum):
 
         :return: model type
         """
-        if origin_model_type == "text-generation" or origin_model_type == cls.LLM.value:
+        if origin_model_type in {"text-generation", cls.LLM.value}:
             return cls.LLM
-        elif origin_model_type == "embeddings" or origin_model_type == cls.TEXT_EMBEDDING.value:
+        elif origin_model_type in {"embeddings", cls.TEXT_EMBEDDING.value}:
             return cls.TEXT_EMBEDDING
-        elif origin_model_type == "reranking" or origin_model_type == cls.RERANK.value:
+        elif origin_model_type in {"reranking", cls.RERANK.value}:
             return cls.RERANK
-        elif origin_model_type == "speech2text" or origin_model_type == cls.SPEECH2TEXT.value:
+        elif origin_model_type in {"speech2text", cls.SPEECH2TEXT.value}:
             return cls.SPEECH2TEXT
-        elif origin_model_type == "tts" or origin_model_type == cls.TTS.value:
+        elif origin_model_type in {"tts", cls.TTS.value}:
             return cls.TTS
-        elif origin_model_type == "text2img" or origin_model_type == cls.TEXT2IMG.value:
+        elif origin_model_type in {"text2img", cls.TEXT2IMG.value}:
             return cls.TEXT2IMG
         elif origin_model_type == cls.MODERATION.value:
             return cls.MODERATION

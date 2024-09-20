@@ -292,7 +292,7 @@ class IndexingRunner:
         self, index_processor: BaseIndexProcessor, dataset_document: DatasetDocument, process_rule: dict
     ) -> list[Document]:
         # load file
-        if dataset_document.data_source_type not in ["upload_file", "notion_import", "website_crawl"]:
+        if dataset_document.data_source_type not in {"upload_file", "notion_import", "website_crawl"}:
             return []
 
         data_source_info = dataset_document.data_source_info_dict

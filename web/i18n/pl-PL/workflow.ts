@@ -93,6 +93,8 @@ const translation = {
     jumpToNode: 'Przejdź do tego węzła',
     disconnect: 'Odłączyć',
     addParallelNode: 'Dodaj węzeł równoległy',
+    parallel: 'RÓWNOLEGŁY',
+    branch: 'GAŁĄŹ',
   },
   env: {
     envPanelTitle: 'Zmienne Środowiskowe',

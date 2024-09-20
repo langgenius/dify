@@ -38,7 +38,7 @@ class SearchAPI:
             "engine": "youtube_transcripts",
             "video_id": video_id,
             "lang": language or "en",
-            **{key: value for key, value in kwargs.items() if value not in [None, ""]},
+            **{key: value for key, value in kwargs.items() if value not in {None, ""}},
         }
 
     @staticmethod

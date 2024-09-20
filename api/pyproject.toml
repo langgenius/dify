@@ -6,6 +6,9 @@ requires = ["poetry-core"]
 build-backend = "poetry.core.masonry.api"
 
 [tool.ruff]
+exclude=[
+    "migrations/*",
+]
 line-length = 120
 
 [tool.ruff.lint]
@@ -19,6 +22,13 @@ select = [
     "I", # isort rules
     "N", # pep8-naming
     "PT", # flake8-pytest-style rules
+    "PLC0208", # iteration-over-set
+    "PLC2801", # unnecessary-dunder-call
+    "PLC0414", # useless-import-alias
+    "PLR0402", # manual-from-import
+    "PLR1711", # useless-return
+    "PLR1714", # repeated-equality-comparison
+    "PLR6201", # literal-membership
     "RUF019", # unnecessary-key-check
     "RUF100", # unused-noqa
     "RUF101", # redirected-noqa
@@ -78,9 +88,6 @@ ignore = [
 "libs/gmpy2_pkcs10aep_cipher.py" = [
     "N803", # invalid-argument-name
 ]
-"migrations/versions/*" = [
-    "E501", # line-too-long
-]
 "tests/*" = [
     "F401", # unused-import
     "F811", # redefined-while-unused
@@ -88,7 +95,6 @@ ignore = [
 
 [tool.ruff.format]
 exclude = [
-    "migrations/**/*",
 ]
 
 [tool.pytest_env]
@@ -203,7 +209,7 @@ zhipuai = "1.0.7"
 # Before adding new dependency, consider place it in alphabet order (a-z) and suitable group.
 
 ############################################################
-# Related transparent dependencies with pinned verion
+# Related transparent dependencies with pinned version
 # required by main implementations
 ############################################################
 azure-ai-ml = "^1.19.0"
@@ -277,4 +283,4 @@ optional = true
 
 [tool.poetry.group.lint.dependencies]
 dotenv-linter = "~0.5.0"
-ruff = "~0.6.4"
+ruff = "~0.6.5"

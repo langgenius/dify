@@ -1,0 +1,39 @@
+model: hunyuan-vision
+label:
+  zh_Hans: hunyuan-vision
+  en_US: hunyuan-vision
+model_type: llm
+features:
+  - agent-thought
+  - tool-call
+  - multi-tool-call
+  - stream-tool-call
+  - vision
+model_properties:
+  mode: chat
+  context_size: 8000
+parameter_rules:
+  - name: temperature
+    use_template: temperature
+  - name: top_p
+    use_template: top_p
+  - name: max_tokens
+    use_template: max_tokens
+    default: 1024
+    min: 1
+    max: 8000
+  - name: enable_enhance
+    label:
+      zh_Hans: 功能增强
+      en_US: Enable Enhancement
+    type: boolean
+    help:
+      zh_Hans: 功能增强（如搜索）开关，关闭时将直接由主模型生成回复内容，可以降低响应时延（对于流式输出时的首字时延尤为明显）。但在少数场景里，回复效果可能会下降。
+      en_US: Allow the model to perform external search to enhance the generation results.
+    required: false
+    default: true
+pricing:
+  input: '0.018'
+  output: '0.018'
+  unit: '0.001'
+  currency: RMB

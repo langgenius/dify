@@ -11,9 +11,9 @@ model_properties:
 parameter_rules:
   - name: max_tokens
     use_template: max_tokens
-    default: 65563
+    default: 65536
     min: 1
-    max: 65563
+    max: 65536
   - name: response_format
     label:
       zh_Hans: 回复格式
