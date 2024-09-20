@@ -2,6 +2,7 @@ import { FileAppearanceTypeEnum } from './types'
 import type { FileEntity } from './types'
 import { upload } from '@/service/base'
 import { FILE_EXTS } from '@/app/components/base/prompt-editor/constants'
+import { SupportUploadFileTypes } from '@/app/components/workflow/types'
 
 type FileUploadParams = {
   file: File
@@ -38,35 +39,30 @@ export const fileUpload: FileUpload = ({
     })
 }
 
-export const getFileAppearanceType = (file?: File) => {
-  if (!file)
+export const getFileAppearanceType = (fileType: string) => {
+  if (!fileType)
     return FileAppearanceTypeEnum.custom
-  const mimeType = file.type
 
-  if (mimeType.includes('image'))
+  if (fileType.includes('image'))
     return FileAppearanceTypeEnum.image
 
-  if (mimeType.includes('video'))
+  if (fileType.includes('video'))
     return FileAppearanceTypeEnum.video
 
-  if (mimeType.includes('audio'))
+  if (fileType.includes('audio'))
     return FileAppearanceTypeEnum.audio
 
-  if (mimeType.includes('pdf'))
+  if (fileType.includes('pdf'))
     return FileAppearanceTypeEnum.pdf
 
   return FileAppearanceTypeEnum.custom
 }
 
-export const isImage = (file?: File) => {
-  return file?.type.startsWith('image')
-}
-
-export const getFileExtension = (file?: File) => {
-  if (!file)
+export const getFileExtension = (fileName: string) => {
+  if (!fileName)
     return ''
 
-  const fileNamePair = file.name.split('.')
+  const fileNamePair = fileName.split('.')
   const fileNamePairLength = fileNamePair.length
 
   if (fileNamePairLength > 1)
@@ -75,8 +71,11 @@ export const getFileExtension = (file?: File) => {
   return ''
 }
 
-export const getFileType = (file?: File) => {
-  const extension = getFileExtension(file)
+export const getSupportFileType = (fileName: string, isCustom?: boolean) => {
+  if (isCustom)
+    return SupportUploadFileTypes.custom
+
+  const extension = getFileExtension(fileName)
   for (const key in FILE_EXTS) {
     if ((FILE_EXTS[key]).includes(extension.toUpperCase()))
       return key
@@ -87,9 +86,9 @@ export const getFileType = (file?: File) => {
 
 export const getProcessedFiles = (files: FileEntity[]) => {
   return files.filter(file => file.progress !== -1).map(fileItem => ({
-    type: fileItem.fileType,
-    transfer_method: fileItem.type,
+    type: fileItem.supportFileType,
+    transfer_method: fileItem.transferMethod,
     url: fileItem.url || '',
-    upload_file_id: fileItem.fileStorageId || '',
+    upload_file_id: fileItem.uploadedId || '',
   }))
 }

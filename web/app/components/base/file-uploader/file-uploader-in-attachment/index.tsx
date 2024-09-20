@@ -96,15 +96,12 @@ const FileUploaderInAttachment = ({
         {
           files.map(file => (
             <FileItem
-              key={file.fileId}
-              fileId={file.fileId}
-              file={file.file}
-              progress={file.progress}
-              imageUrl={file.base64Url}
+              key={file.id}
+              file={file}
               showDeleteAction
               showDownloadAction={false}
-              onRemove={() => handleRemoveFile(file.fileId)}
-              onReUpload={() => handleReUploadFile(file.fileId)}
+              onRemove={() => handleRemoveFile(file.id)}
+              onReUpload={() => handleReUploadFile(file.id)}
             />
           ))
         }

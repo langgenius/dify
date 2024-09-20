@@ -308,3 +308,7 @@ export const verifyForgotPasswordToken: Fetcher<CommonResponse & { is_valid: boo
 
 export const changePasswordWithToken: Fetcher<CommonResponse, { url: string; body: { token: string; new_password: string; password_confirm: string } }> = ({ url, body }) =>
   post<CommonResponse>(url, { body })
+
+export const fetchRemoteFileInfo: Fetcher<{ file_type: string; file_length: number }, string> = (url) => {
+  return get<{ file_type: string; file_length: number }>(url)
+}

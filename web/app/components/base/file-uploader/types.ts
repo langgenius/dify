@@ -18,12 +18,15 @@ export enum FileAppearanceTypeEnum {
 export type FileAppearanceType = keyof typeof FileAppearanceTypeEnum
 
 export type FileEntity = {
-  fileId: string
-  file: File
-  fileStorageId?: string
+  id: string
+  name: string
+  size: number
+  type: string
   progress: number
-  url?: string
+  transferMethod: TransferMethod
+  supportFileType: string
+  originalFile?: File
+  uploadedId?: string
   base64Url?: string
-  type: TransferMethod
-  fileType: string
+  url?: string
 }
