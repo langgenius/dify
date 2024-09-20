@@ -148,7 +148,7 @@ import { Row, Col, Properties, Property, Heading, SubProperty, Paragraph } from 
         - original_document_id Source document ID (optional)
           - Used to re-upload the document or modify the document cleaning and segmentation configuration. The missing information is copied from the source document
           - The source document cannot be an archived document
-          - When original_document_id is passed in, the update operation is performed on behalf of the document. process_rule is a fillable item. If not filled in, the segmentation method of the source document will be used by defaul
+          - When original_document_id is passed in, the update operation is performed on behalf of the document. process_rule is a fillable item. If not filled in, the segmentation method of the source document will be used by default
           - When original_document_id is not passed in, the new operation is performed on behalf of the document, and process_rule is required
 
         - indexing_technique Index mode
@@ -236,6 +236,12 @@ import { Row, Col, Properties, Property, Heading, SubProperty, Paragraph } from 
       <Property name='name' type='string' key='name'>
         Knowledge name
       </Property>
+      <Property name='permission' type='string' key='permission'>
+        Permission
+          - <code>only_me</code> Only me
+          - <code>all_team_members</code> All team members
+          - <code>partial_members</code> Partial members
+      </Property>
     </Properties>
   </Col>
   <Col sticky>
@@ -243,14 +249,15 @@ import { Row, Col, Properties, Property, Heading, SubProperty, Paragraph } from 
       title="Request" 
       tag="POST" 
       label="/datasets"
-      targetCode={`curl --location --request POST '${props.apiBaseUrl}/datasets' \\\n--header 'Authorization: Bearer {api_key}' \\\n--header 'Content-Type: application/json' \\\n--data-raw '{"name": "name"}'`}
+      targetCode={`curl --location --request POST '${props.apiBaseUrl}/datasets' \\\n--header 'Authorization: Bearer {api_key}' \\\n--header 'Content-Type: application/json' \\\n--data-raw '{"name": "name", "permission": "only_me"}'`}
     >
     ```bash {{ title: 'cURL' }}
     curl --location --request POST '${apiBaseUrl}/v1/datasets' \
     --header 'Authorization: Bearer {api_key}' \
     --header 'Content-Type: application/json' \
     --data-raw '{
-      "name": "name"
+      "name": "name",
+      "permission": "only_me"
     }'
     ```
     </CodeGroup>
@@ -922,6 +929,9 @@ import { Row, Col, Properties, Property, Heading, SubProperty, Paragraph } from 
       <Property name='dataset_id' type='string' key='dataset_id'>
         Knowledge ID
       </Property>
+      <Property name='document_id' type='string' key='document_id'>
+        Document ID
+      </Property>
       <Property name='segment_id' type='string' key='segment_id'>
         Document Segment ID
       </Property>
@@ -965,6 +975,9 @@ import { Row, Col, Properties, Property, Heading, SubProperty, Paragraph } from 
       <Property name='dataset_id' type='string' key='dataset_id'>
         Knowledge ID
       </Property>
+      <Property name='document_id' type='string' key='document_id'>
+        Document ID
+      </Property>
       <Property name='segment_id' type='string' key='segment_id'>
         Document Segment ID
       </Property>
@@ -972,7 +985,7 @@ import { Row, Col, Properties, Property, Heading, SubProperty, Paragraph } from 
 
     ### Request Body
     <Properties>
-      <Property name='segment' type='object list' key='segment'>
+      <Property name='segment' type='object' key='segment'>
         - <code>content</code> (text) text content/question content，required
         - <code>answer</code> (text) Answer content, not required, passed if the Knowledge is in qa mode
         - <code>keywords</code> (list) keyword, not required

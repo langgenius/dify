@@ -14,6 +14,7 @@ import {
   RiErrorWarningLine,
   RiLoader2Line,
 } from '@remixicon/react'
+import { useTranslation } from 'react-i18next'
 import type { NodeProps } from '../../types'
 import {
   BlockEnum,
@@ -43,6 +44,7 @@ const BaseNode: FC<BaseNodeProps> = ({
   data,
   children,
 }) => {
+  const { t } = useTranslation()
   const nodeRef = useRef<HTMLDivElement>(null)
   const { nodesReadOnly } = useNodesReadOnly()
   const { handleNodeIterationChildSizeChange } = useNodeIterationInteractions()
@@ -80,6 +82,7 @@ const BaseNode: FC<BaseNodeProps> = ({
       className={cn(
         'flex border-[2px] rounded-2xl',
         showSelectedBorder ? 'border-components-option-card-option-selected-border' : 'border-transparent',
+        !showSelectedBorder && data._inParallelHovering && 'border-workflow-block-border-highlight',
       )}
       ref={nodeRef}
       style={{
@@ -100,6 +103,13 @@ const BaseNode: FC<BaseNodeProps> = ({
           data._isBundled && '!shadow-lg',
         )}
       >
+        {
+          data._inParallelHovering && (
+            <div className='absolute left-2 -top-2.5 top system-2xs-medium-uppercase text-text-tertiary z-10'>
+              {t('workflow.common.parallelRun')}
+            </div>
+          )
+        }
         {
           data._showAddVariablePopup && (
             <AddVariablePopupWithPosition

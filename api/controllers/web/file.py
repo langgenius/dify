@@ -10,14 +10,13 @@ from services.file_service import FileService
 
 
 class FileApi(WebApiResource):
-
     @marshal_with(file_fields)
     def post(self, app_model, end_user):
         # get file from request
-        file = request.files['file']
+        file = request.files["file"]
 
         # check file
-        if 'file' not in request.files:
+        if "file" not in request.files:
             raise NoFileUploadedError()
 
         if len(request.files) > 1:
@@ -32,4 +31,4 @@ class FileApi(WebApiResource):
         return upload_file, 201
 
 
-api.add_resource(FileApi, '/files/upload')
+api.add_resource(FileApi, "/files/upload")

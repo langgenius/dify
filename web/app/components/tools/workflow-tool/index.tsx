@@ -2,9 +2,6 @@
 import type { FC } from 'react'
 import React, { useState } from 'react'
 import { useTranslation } from 'react-i18next'
-import {
-  RiQuestionLine,
-} from '@remixicon/react'
 import produce from 'immer'
 import type { Emoji, WorkflowToolProviderParameter, WorkflowToolProviderRequest } from '../types'
 import cn from '@/utils/classnames'
@@ -133,7 +130,7 @@ const WorkflowToolAsModal: FC<Props> = ({
               <div>
                 <div className='py-2 leading-5 text-sm font-medium text-gray-900'>{t('tools.createTool.name')} <span className='ml-1 text-red-500'>*</span></div>
                 <div className='flex items-center justify-between gap-3'>
-                  <AppIcon size='large' onClick={() => { setShowEmojiPicker(true) }} className='cursor-pointer' icon={emoji.content} background={emoji.background} />
+                  <AppIcon size='large' onClick={() => { setShowEmojiPicker(true) }} className='cursor-pointer' iconType='emoji' icon={emoji.content} background={emoji.background} />
                   <input
                     type='text'
                     className='grow h-10 px-3 text-sm font-normal bg-gray-100 rounded-lg border border-transparent outline-none appearance-none caret-primary-600 placeholder:text-gray-400 hover:bg-gray-50 hover:border hover:border-gray-300 focus:bg-gray-50 focus:border focus:border-gray-300 focus:shadow-xs'
@@ -148,15 +145,12 @@ const WorkflowToolAsModal: FC<Props> = ({
                 <div className='flex items-center py-2 leading-5 text-sm font-medium text-gray-900'>
                   {t('tools.createTool.nameForToolCall')} <span className='ml-1 text-red-500'>*</span>
                   <Tooltip
-                    htmlContent={
+                    popupContent={
                       <div className='w-[180px]'>
                         {t('tools.createTool.nameForToolCallPlaceHolder')}
                       </div>
                     }
-                    selector='workflow-tool-modal-tooltip'
-                  >
-                    <RiQuestionLine className='ml-2 w-[14px] h-[14px] text-gray-400' />
-                  </Tooltip>
+                  />
                 </div>
                 <input
                   type='text'

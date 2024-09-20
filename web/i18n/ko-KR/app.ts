@@ -63,9 +63,11 @@ const translation = {
   editAppTitle: '앱 정보 편집하기',
   editDone: '앱 정보가 업데이트되었습니다',
   editFailed: '앱 정보 업데이트 실패',
-  emoji: {
+  iconPicker: {
     ok: '확인',
     cancel: '취소',
+    emoji: '이모지',
+    image: '이미지',
   },
   switch: '워크플로우 오케스트레이션으로 전환하기',
   switchTipStart: '새로운 앱의 복사본이 생성되어 새로운 복사본이 워크플로우 오케스트레이션으로 전환됩니다. 새로운 복사본은 ',
@@ -116,7 +118,17 @@ const translation = {
       removeConfirmTitle: '{{key}} 구성을 제거하시겠습니까?',
       removeConfirmContent: '현재 구성이 사용 중입니다. 제거하면 추적 기능이 꺼집니다.',
     },
+    view: '보기',
   },
+  answerIcon: {
+    description: 'WebApp 아이콘을 사용하여 공유 응용 프로그램에서 바꿀🤖지 여부',
+    title: 'WebApp 아이콘을 사용하여 🤖',
+    descriptionInExplore: 'Explore에서 WebApp 아이콘을 사용하여 바꿀🤖지 여부',
+  },
+  importFromDSL: 'DSL에서 가져오기',
+  importFromDSLFile: 'DSL 파일에서',
+  importFromDSLUrl: 'URL에서',
+  importFromDSLUrlPlaceholder: '여기에 DSL 링크 붙여 넣기',
 }
 
 export default translation

@@ -11,15 +11,14 @@ class SageMakerProvider(BuiltinToolProviderController):
                     "credentials": credentials,
                 }
             ).invoke(
-                user_id='',
+                user_id="",
                 tool_parameters={
-                    "sagemaker_endpoint" : "",
+                    "sagemaker_endpoint": "",
                     "query": "misaka mikoto",
-                    "candidate_texts" : "hello$$$hello world",
-                    "topk" : 5,
-                    "aws_region" : ""
+                    "candidate_texts": "hello$$$hello world",
+                    "topk": 5,
+                    "aws_region": "",
                 },
             )
         except Exception as e:
             raise ToolProviderCredentialValidationError(str(e))
-        

@@ -1,6 +1,7 @@
 import { useCallback } from 'react'
 import produce from 'immer'
 import { v4 as uuid4 } from 'uuid'
+import { useUpdateNodeInternals } from 'reactflow'
 import type {
   Var,
 } from '../../types'
@@ -26,6 +27,7 @@ import {
 import useAvailableVarList from '@/app/components/workflow/nodes/_base/hooks/use-available-var-list'
 
 const useConfig = (id: string, payload: IfElseNodeType) => {
+  const updateNodeInternals = useUpdateNodeInternals()
   const { nodesReadOnly: readOnly } = useNodesReadOnly()
   const { handleEdgeDeleteByDeleteBranch } = useEdgesInteractions()
   const { inputs, setInputs } = useNodeCrud<IfElseNodeType>(id, payload)
@@ -108,6 +110,7 @@ const useConfig = (id: string, payload: IfElseNodeType) => {
       ])
     })
     setInputs(newInputs)
+    updateNodeInternals(id)
   }, [inputs, setInputs])
 
   const handleAddCondition = useCallback<HandleAddCondition>((caseId, valueSelector, varItem) => {

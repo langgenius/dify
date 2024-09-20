@@ -22,9 +22,16 @@ class JinaRerankModel(RerankModel):
     Model class for Jina rerank model.
     """
 
-    def _invoke(self, model: str, credentials: dict,
-                query: str, docs: list[str], score_threshold: Optional[float] = None, top_n: Optional[int] = None,
-                user: Optional[str] = None) -> RerankResult:
+    def _invoke(
+        self,
+        model: str,
+        credentials: dict,
+        query: str,
+        docs: list[str],
+        score_threshold: Optional[float] = None,
+        top_n: Optional[int] = None,
+        user: Optional[str] = None,
+    ) -> RerankResult:
         """
         Invoke rerank model
 
@@ -40,37 +47,31 @@ class JinaRerankModel(RerankModel):
         if len(docs) == 0:
             return RerankResult(model=model, docs=[])
 
-        base_url = credentials.get('base_url', 'https://api.jina.ai/v1')
-        if base_url.endswith('/'):
-            base_url = base_url[:-1]
+        base_url = credentials.get("base_url", "https://api.jina.ai/v1")
+        base_url = base_url.removesuffix("/")
 
         try:
             response = httpx.post(
-                base_url + '/rerank',
-                json={
-                    "model": model,
-                    "query": query,
-                    "documents": docs,
-                    "top_n": top_n
-                },
-                headers={"Authorization": f"Bearer {credentials.get('api_key')}"}  
+                base_url + "/rerank",
+                json={"model": model, "query": query, "documents": docs, "top_n": top_n},
+                headers={"Authorization": f"Bearer {credentials.get('api_key')}"},
             )
-            response.raise_for_status() 
+            response.raise_for_status()
             results = response.json()
 
             rerank_documents = []
-            for result in results['results']:  
+            for result in results["results"]:
                 rerank_document = RerankDocument(
-                    index=result['index'],
-                    text=result['document']['text'],
-                    score=result['relevance_score'],
+                    index=result["index"],
+                    text=result["document"]["text"],
+                    score=result["relevance_score"],
                 )
-                if score_threshold is None or result['relevance_score'] >= score_threshold:
+                if score_threshold is None or result["relevance_score"] >= score_threshold:
                     rerank_documents.append(rerank_document)
 
             return RerankResult(model=model, docs=rerank_documents)
         except httpx.HTTPStatusError as e:
-            raise InvokeServerUnavailableError(str(e))  
+            raise InvokeServerUnavailableError(str(e))
 
     def validate_credentials(self, model: str, credentials: dict) -> None:
         """
@@ -81,7 +82,6 @@ class JinaRerankModel(RerankModel):
         :return:
         """
         try:
-            
             self._invoke(
                 model=model,
                 credentials=credentials,
@@ -92,7 +92,7 @@ class JinaRerankModel(RerankModel):
                     "The Commonwealth of the Northern Mariana Islands is a group of islands in the Pacific Ocean that "
                     "are a political division controlled by the United States. Its capital is Saipan.",
                 ],
-                score_threshold=0.8
+                score_threshold=0.8,
             )
         except Exception as ex:
             raise CredentialsValidateFailedError(str(ex))
@@ -105,23 +105,21 @@ class JinaRerankModel(RerankModel):
         return {
             InvokeConnectionError: [httpx.ConnectError],
             InvokeServerUnavailableError: [httpx.RemoteProtocolError],
-            InvokeRateLimitError: [], 
-            InvokeAuthorizationError: [httpx.HTTPStatusError],  
-            InvokeBadRequestError: [httpx.RequestError]
+            InvokeRateLimitError: [],
+            InvokeAuthorizationError: [httpx.HTTPStatusError],
+            InvokeBadRequestError: [httpx.RequestError],
         }
 
     def get_customizable_model_schema(self, model: str, credentials: dict) -> AIModelEntity:
         """
-            generate custom model entities from credentials
+        generate custom model entities from credentials
         """
         entity = AIModelEntity(
             model=model,
             label=I18nObject(en_US=model),
             model_type=ModelType.RERANK,
             fetch_from=FetchFrom.CUSTOMIZABLE_MODEL,
-            model_properties={
-                ModelPropertyKey.CONTEXT_SIZE: int(credentials.get('context_size'))
-            }
+            model_properties={ModelPropertyKey.CONTEXT_SIZE: int(credentials.get("context_size"))},
         )
 
         return entity

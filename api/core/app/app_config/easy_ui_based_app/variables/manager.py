@@ -1,6 +1,6 @@
 import re
 
-from core.app.app_config.entities import ExternalDataVariableEntity, VariableEntity
+from core.app.app_config.entities import ExternalDataVariableEntity, VariableEntity, VariableEntityType
 from core.external_data_tool.factory import ExternalDataToolFactory
 
 
@@ -13,67 +13,56 @@ class BasicVariablesConfigManager:
         :param config: model config args
         """
         external_data_variables = []
-        variables = []
+        variable_entities = []
 
         # old external_data_tools
-        external_data_tools = config.get('external_data_tools', [])
+        external_data_tools = config.get("external_data_tools", [])
         for external_data_tool in external_data_tools:
-            if 'enabled' not in external_data_tool or not external_data_tool['enabled']:
+            if "enabled" not in external_data_tool or not external_data_tool["enabled"]:
                 continue
 
             external_data_variables.append(
                 ExternalDataVariableEntity(
-                    variable=external_data_tool['variable'],
-                    type=external_data_tool['type'],
-                    config=external_data_tool['config']
+                    variable=external_data_tool["variable"],
+                    type=external_data_tool["type"],
+                    config=external_data_tool["config"],
                 )
             )
 
         # variables and external_data_tools
-        for variable in config.get('user_input_form', []):
-            typ = list(variable.keys())[0]
-            if typ == 'external_data_tool':
-                val = variable[typ]
-                if 'config' not in val:
+        for variables in config.get("user_input_form", []):
+            variable_type = list(variables.keys())[0]
+            if variable_type == VariableEntityType.EXTERNAL_DATA_TOOL:
+                variable = variables[variable_type]
+                if "config" not in variable:
                     continue
 
                 external_data_variables.append(
                     ExternalDataVariableEntity(
-                        variable=val['variable'],
-                        type=val['type'],
-                        config=val['config']
+                        variable=variable["variable"], type=variable["type"], config=variable["config"]
                     )
                 )
-            elif typ in [
-                VariableEntity.Type.TEXT_INPUT.value,
-                VariableEntity.Type.PARAGRAPH.value,
-                VariableEntity.Type.NUMBER.value,
-            ]:
-                variables.append(
+            elif variable_type in {
+                VariableEntityType.TEXT_INPUT,
+                VariableEntityType.PARAGRAPH,
+                VariableEntityType.NUMBER,
+                VariableEntityType.SELECT,
+            }:
+                variable = variables[variable_type]
+                variable_entities.append(
                     VariableEntity(
-                        type=VariableEntity.Type.value_of(typ),
-                        variable=variable[typ].get('variable'),
-                        description=variable[typ].get('description'),
-                        label=variable[typ].get('label'),
-                        required=variable[typ].get('required', False),
-                        max_length=variable[typ].get('max_length'),
-                        default=variable[typ].get('default'),
-                    )
-                )
-            elif typ == VariableEntity.Type.SELECT.value:
-                variables.append(
-                    VariableEntity(
-                        type=VariableEntity.Type.SELECT,
-                        variable=variable[typ].get('variable'),
-                        description=variable[typ].get('description'),
-                        label=variable[typ].get('label'),
-                        required=variable[typ].get('required', False),
-                        options=variable[typ].get('options'),
-                        default=variable[typ].get('default'),
+                        type=variable_type,
+                        variable=variable.get("variable"),
+                        description=variable.get("description"),
+                        label=variable.get("label"),
+                        required=variable.get("required", False),
+                        max_length=variable.get("max_length"),
+                        options=variable.get("options"),
+                        default=variable.get("default"),
                     )
                 )
 
-        return variables, external_data_variables
+        return variable_entities, external_data_variables
 
     @classmethod
     def validate_and_set_defaults(cls, tenant_id: str, config: dict) -> tuple[dict, list[str]]:
@@ -108,17 +97,17 @@ class BasicVariablesConfigManager:
         variables = []
         for item in config["user_input_form"]:
             key = list(item.keys())[0]
-            if key not in ["text-input", "select", "paragraph", "number", "external_data_tool"]:
+            if key not in {"text-input", "select", "paragraph", "number", "external_data_tool"}:
                 raise ValueError("Keys in user_input_form list can only be 'text-input', 'paragraph'  or 'select'")
 
             form_item = item[key]
-            if 'label' not in form_item:
+            if "label" not in form_item:
                 raise ValueError("label is required in user_input_form")
 
             if not isinstance(form_item["label"], str):
                 raise ValueError("label in user_input_form must be of string type")
 
-            if 'variable' not in form_item:
+            if "variable" not in form_item:
                 raise ValueError("variable is required in user_input_form")
 
             if not isinstance(form_item["variable"], str):
@@ -126,26 +115,24 @@ class BasicVariablesConfigManager:
 
             pattern = re.compile(r"^(?!\d)[\u4e00-\u9fa5A-Za-z0-9_\U0001F300-\U0001F64F\U0001F680-\U0001F6FF]{1,100}$")
             if pattern.match(form_item["variable"]) is None:
-                raise ValueError("variable in user_input_form must be a string, "
-                                 "and cannot start with a number")
+                raise ValueError("variable in user_input_form must be a string, and cannot start with a number")
 
             variables.append(form_item["variable"])
 
-            if 'required' not in form_item or not form_item["required"]:
+            if "required" not in form_item or not form_item["required"]:
                 form_item["required"] = False
 
             if not isinstance(form_item["required"], bool):
                 raise ValueError("required in user_input_form must be of boolean type")
 
             if key == "select":
-                if 'options' not in form_item or not form_item["options"]:
+                if "options" not in form_item or not form_item["options"]:
                     form_item["options"] = []
 
                 if not isinstance(form_item["options"], list):
                     raise ValueError("options in user_input_form must be a list of strings")
 
-                if "default" in form_item and form_item['default'] \
-                        and form_item["default"] not in form_item["options"]:
+                if "default" in form_item and form_item["default"] and form_item["default"] not in form_item["options"]:
                     raise ValueError("default value in user_input_form must be in the options list")
 
         return config, ["user_input_form"]
@@ -177,10 +164,6 @@ class BasicVariablesConfigManager:
             typ = tool["type"]
             config = tool["config"]
 
-            ExternalDataToolFactory.validate_config(
-                name=typ,
-                tenant_id=tenant_id,
-                config=config
-            )
+            ExternalDataToolFactory.validate_config(name=typ, tenant_id=tenant_id, config=config)
 
         return config, ["external_data_tools"]

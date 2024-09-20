@@ -67,9 +67,11 @@ const translation = {
   editAppTitle: 'Uygulama Bilgilerini Düzenle',
   editDone: 'Uygulama bilgileri güncellendi',
   editFailed: 'Uygulama bilgileri güncellenemedi',
-  emoji: {
+  iconPicker: {
     ok: 'Tamam',
     cancel: 'İptal',
+    emoji: 'Emoji',
+    image: 'Görsel',
   },
   switch: 'Workflow Orkestrasyonuna Geç',
   switchTipStart: 'Sizin için yeni bir uygulama kopyası oluşturulacak ve yeni kopya Workflow Orkestrasyonuna geçecektir. Yeni kopya ',
@@ -120,6 +122,12 @@ const translation = {
       removeConfirmTitle: '{{key}} yapılandırmasını kaldır?',
       removeConfirmContent: 'Mevcut yapılandırma kullanımda, kaldırılması İzleme özelliğini kapatacaktır.',
     },
+    view: 'Görünüm',
+  },
+  answerIcon: {
+    descriptionInExplore: 'Keşfet\'te değiştirilecek 🤖 WebApp simgesinin kullanılıp kullanılmayacağı',
+    title: 'Değiştirmek 🤖 için WebApp simgesini kullanın',
+    description: 'Paylaşılan uygulamada değiştirmek 🤖 için WebApp simgesinin kullanılıp kullanılmayacağı',
   },
 }
 

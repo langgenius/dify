@@ -32,10 +32,13 @@ class BasedGenerateTaskPipeline:
     _task_state: TaskState
     _application_generate_entity: AppGenerateEntity
 
-    def __init__(self, application_generate_entity: AppGenerateEntity,
-                 queue_manager: AppQueueManager,
-                 user: Union[Account, EndUser],
-                 stream: bool) -> None:
+    def __init__(
+        self,
+        application_generate_entity: AppGenerateEntity,
+        queue_manager: AppQueueManager,
+        user: Union[Account, EndUser],
+        stream: bool,
+    ) -> None:
         """
         Initialize GenerateTaskPipeline.
         :param application_generate_entity: application generate entity
@@ -61,35 +64,39 @@ class BasedGenerateTaskPipeline:
         e = event.error
 
         if isinstance(e, InvokeAuthorizationError):
-            err = InvokeAuthorizationError('Incorrect API key provided')
-        elif isinstance(e, InvokeError) or isinstance(e, ValueError):
+            err = InvokeAuthorizationError("Incorrect API key provided")
+        elif isinstance(e, InvokeError | ValueError):
             err = e
         else:
-            err = Exception(e.description if getattr(e, 'description', None) is not None else str(e))
+            err = Exception(e.description if getattr(e, "description", None) is not None else str(e))
 
         if message:
-            message = db.session.query(Message).filter(Message.id == message.id).first()
-            err_desc = self._error_to_desc(err)
-            message.status = 'error'
-            message.error = err_desc
+            refetch_message = db.session.query(Message).filter(Message.id == message.id).first()
 
-            db.session.commit()
+            if refetch_message:
+                err_desc = self._error_to_desc(err)
+                refetch_message.status = "error"
+                refetch_message.error = err_desc
+
+                db.session.commit()
 
         return err
 
-    def _error_to_desc(cls, e: Exception) -> str:
+    def _error_to_desc(self, e: Exception) -> str:
         """
         Error to desc.
         :param e: exception
         :return:
         """
         if isinstance(e, QuotaExceededError):
-            return ("Your quota for Dify Hosted Model Provider has been exhausted. "
-                    "Please go to Settings -> Model Provider to complete your own provider credentials.")
+            return (
+                "Your quota for Dify Hosted Model Provider has been exhausted. "
+                "Please go to Settings -> Model Provider to complete your own provider credentials."
+            )
 
-        message = getattr(e, 'description', str(e))
+        message = getattr(e, "description", str(e))
         if not message:
-            message = 'Internal Server Error, please contact support.'
+            message = "Internal Server Error, please contact support."
 
         return message
 
@@ -99,10 +106,7 @@ class BasedGenerateTaskPipeline:
         :param e: exception
         :return:
         """
-        return ErrorStreamResponse(
-            task_id=self._application_generate_entity.task_id,
-            err=e
-        )
+        return ErrorStreamResponse(task_id=self._application_generate_entity.task_id, err=e)
 
     def _ping_stream_response(self) -> PingStreamResponse:
         """
@@ -123,11 +127,8 @@ class BasedGenerateTaskPipeline:
             return OutputModeration(
                 tenant_id=app_config.tenant_id,
                 app_id=app_config.app_id,
-                rule=ModerationRule(
-                    type=sensitive_word_avoidance.type,
-                    config=sensitive_word_avoidance.config
-                ),
-                queue_manager=self._queue_manager
+                rule=ModerationRule(type=sensitive_word_avoidance.type, config=sensitive_word_avoidance.config),
+                queue_manager=self._queue_manager,
             )
 
     def _handle_output_moderation_when_task_finished(self, completion: str) -> Optional[str]:
@@ -141,8 +142,7 @@ class BasedGenerateTaskPipeline:
             self._output_moderation_handler.stop_thread()
 
             completion = self._output_moderation_handler.moderation_completion(
-                completion=completion,
-                public_event=False
+                completion=completion, public_event=False
             )
 
             self._output_moderation_handler = None

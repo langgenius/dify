@@ -63,31 +63,22 @@ const RunPanel: FC<RunProps> = ({ hideResult, activeTab = 'RESULT', runID, getRe
   const formatNodeList = useCallback((list: NodeTracing[]) => {
     const allItems = list.reverse()
     const result: NodeTracing[] = []
-    let iterationIndexInfos: {
-      start: number
-      end: number
-    }[] = []
     allItems.forEach((item) => {
-      const { node_type, index, execution_metadata } = item
+      const { node_type, execution_metadata } = item
       if (node_type !== BlockEnum.Iteration) {
-        let isInIteration = false
-        let isIterationFirstNode = false
-        iterationIndexInfos.forEach(({ start, end }) => {
-          if (index >= start && index < end) {
-            if (index === start)
-              isIterationFirstNode = true
+        const isInIteration = !!execution_metadata?.iteration_id
 
-            isInIteration = true
-          }
-        })
         if (isInIteration) {
-          const iterationDetails = result[result.length - 1].details!
-          if (isIterationFirstNode)
-            iterationDetails!.push([item])
+          const iterationNode = result.find(node => node.node_id === execution_metadata?.iteration_id)
+          const iterationDetails = iterationNode?.details
+          const currentIterationIndex = execution_metadata?.iteration_index ?? 0
 
-          else
-            iterationDetails[iterationDetails.length - 1].push(item)
-
+          if (Array.isArray(iterationDetails)) {
+            if (iterationDetails.length === 0 || !iterationDetails[currentIterationIndex])
+              iterationDetails[currentIterationIndex] = [item]
+            else
+              iterationDetails[currentIterationIndex].push(item)
+          }
           return
         }
         // not in iteration
@@ -95,27 +86,6 @@ const RunPanel: FC<RunProps> = ({ hideResult, activeTab = 'RESULT', runID, getRe
 
         return
       }
-
-      const { steps_boundary } = execution_metadata
-      iterationIndexInfos = []
-      steps_boundary.forEach((boundary, index) => {
-        if (index === 0) {
-          iterationIndexInfos.push({
-            start: boundary,
-            end: 0,
-          })
-        }
-        else if (index === steps_boundary.length - 1) {
-          iterationIndexInfos[iterationIndexInfos.length - 1].end = boundary
-        }
-        else {
-          iterationIndexInfos[iterationIndexInfos.length - 1].end = boundary
-          iterationIndexInfos.push({
-            start: boundary,
-            end: 0,
-          })
-        }
-      })
       result.push({
         ...item,
         details: [],
@@ -159,12 +129,12 @@ const RunPanel: FC<RunProps> = ({ hideResult, activeTab = 'RESULT', runID, getRe
       getData(appDetail.id, runID)
   }, [appDetail, runID])
 
-  const [height, setHieght] = useState(0)
+  const [height, setHeight] = useState(0)
   const ref = useRef<HTMLDivElement>(null)
 
   const adjustResultHeight = () => {
     if (ref.current)
-      setHieght(ref.current?.clientHeight - 16 - 16 - 2 - 1)
+      setHeight(ref.current?.clientHeight - 16 - 16 - 2 - 1)
   }
 
   useEffect(() => {
@@ -222,7 +192,7 @@ const RunPanel: FC<RunProps> = ({ hideResult, activeTab = 'RESULT', runID, getRe
           onClick={() => switchTab('TRACING')}
         >{t('runLog.tracing')}</div>
       </div>
-      {/* panel detal */}
+      {/* panel detail */}
       <div ref={ref} className={cn('grow bg-white h-0 overflow-y-auto rounded-b-2xl', currentTab !== 'DETAIL' && '!bg-gray-50')}>
         {loading && (
           <div className='flex h-full items-center justify-center bg-white'>

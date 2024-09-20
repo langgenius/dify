@@ -142,7 +142,7 @@ import { Row, Col, Properties, Property, Heading, SubProperty, Paragraph } from 
       </Property>
     </Properties>
 
-    ### Request Bodys
+    ### Request Body
     <Properties>
       <Property name='data' type='multipart/form-data json string' key='data'>
         - original_document_id 源文档 ID （选填）
@@ -236,6 +236,12 @@ import { Row, Col, Properties, Property, Heading, SubProperty, Paragraph } from 
       <Property name='name' type='string' key='name'>
         知识库名称
       </Property>
+      <Property name='permission' type='string' key='permission'>
+        权限
+          - <code>only_me</code> 仅自己
+          - <code>all_team_members</code> 所有团队成员
+          - <code>partial_members</code> 部分团队成员
+      </Property>
     </Properties>
   </Col>
   <Col sticky>
@@ -243,14 +249,15 @@ import { Row, Col, Properties, Property, Heading, SubProperty, Paragraph } from 
       title="Request" 
       tag="POST" 
       label="/datasets"
-      targetCode={`curl --location --request POST '${props.apiBaseUrl}/datasets' \\\n--header 'Authorization: Bearer {api_key}' \\\n--header 'Content-Type: application/json' \\\n--data-raw '{"name": "name"}'`}
+      targetCode={`curl --location --request POST '${props.apiBaseUrl}/datasets' \\\n--header 'Authorization: Bearer {api_key}' \\\n--header 'Content-Type: application/json' \\\n--data-raw '{"name": "name", "permission": "only_me"}'`}
     >
     ```bash {{ title: 'cURL' }}
     curl --location --request POST '${props.apiBaseUrl}/datasets' \
     --header 'Authorization: Bearer {api_key}' \
     --header 'Content-Type: application/json' \
     --data-raw '{
-      "name": "name"
+      "name": "name",
+      "permission": "only_me"
     }'
     ```
     </CodeGroup>
@@ -922,6 +929,9 @@ import { Row, Col, Properties, Property, Heading, SubProperty, Paragraph } from 
       <Property name='dataset_id' type='string' key='dataset_id'>
         知识库 ID
       </Property>
+      <Property name='document_id' type='string' key='document_id'>
+        文档 ID
+      </Property>
       <Property name='segment_id' type='string' key='segment_id'>
         文档分段ID
       </Property>
@@ -965,6 +975,9 @@ import { Row, Col, Properties, Property, Heading, SubProperty, Paragraph } from 
       <Property name='dataset_id' type='string' key='dataset_id'>
         知识库 ID
       </Property>
+      <Property name='document_id' type='string' key='document_id'>
+        文档 ID
+      </Property>
       <Property name='segment_id' type='string' key='segment_id'>
         文档分段ID
       </Property>
@@ -972,7 +985,7 @@ import { Row, Col, Properties, Property, Heading, SubProperty, Paragraph } from 
 
     ### Request Body
     <Properties>
-      <Property name='segment' type='object list' key='segment'>
+      <Property name='segment' type='object' key='segment'>
         - <code>content</code> (text) 文本内容/问题内容，必填
         - <code>answer</code> (text) 答案内容，非必填，如果知识库的模式为qa模式则传值
         - <code>keywords</code> (list) 关键字，非必填

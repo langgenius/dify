@@ -10,6 +10,7 @@ type Item = {
   label: string
 }
 type Props = {
+  className?: string
   trigger?: JSX.Element
   DropDownIcon?: any
   noLeft?: boolean
@@ -27,6 +28,7 @@ type Props = {
 }
 
 const TypeSelector: FC<Props> = ({
+  className,
   trigger,
   DropDownIcon = ChevronSelectorVertical,
   noLeft,
@@ -50,11 +52,12 @@ const TypeSelector: FC<Props> = ({
     setHide()
   }, ref)
   return (
-    <div className={cn(!trigger && !noLeft && 'left-[-8px]', 'relative')} ref={ref}>
+    <div className={cn(!trigger && !noLeft && 'left-[-8px]', 'relative select-none', className)} ref={ref}>
       {trigger
         ? (
           <div
             onClick={toggleShow}
+            className={cn(!readonly && 'cursor-pointer')}
           >
             {trigger}
           </div>
@@ -63,13 +66,13 @@ const TypeSelector: FC<Props> = ({
           <div
             onClick={toggleShow}
             className={cn(showOption && 'bg-black/5', 'flex items-center h-5 pl-1 pr-0.5 rounded-md text-xs font-semibold text-gray-700 cursor-pointer hover:bg-black/5')}>
-            <div className={cn(triggerClassName, 'text-xs font-semibold', uppercase && 'uppercase', noValue && 'text-gray-400')}>{!noValue ? item?.label : placeholder}</div>
+            <div className={cn('text-sm font-semibold', uppercase && 'uppercase', noValue && 'text-gray-400', triggerClassName)}>{!noValue ? item?.label : placeholder}</div>
             {!readonly && <DropDownIcon className='w-3 h-3 ' />}
           </div>
         )}
 
       {(showOption && !readonly) && (
-        <div className={cn(popupClassName, 'absolute z-10 top-[24px] w-[120px]  p-1 border border-gray-200 shadow-lg rounded-lg bg-white')}>
+        <div className={cn('absolute z-10 top-[24px] w-[120px]  p-1 border border-gray-200 shadow-lg rounded-lg bg-white select-none', popupClassName)}>
           {list.map(item => (
             <div
               key={item.value}

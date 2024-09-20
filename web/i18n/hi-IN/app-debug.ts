@@ -276,21 +276,21 @@ const translation = {
     typeSelect: 'चुनें',
   },
   varKeyError: {
-    canNoBeEmpty: 'वेरिएबल कुंजी खाली नहीं हो सकती',
+    canNoBeEmpty: '{{key}} आवश्यक है',
     tooLong:
-      'वेरिएबल कुंजी: {{key}} बहुत लंबी है। 30 वर्णों से अधिक नहीं हो सकती',
+      '{{key}} बहुत लंबी है। 30 वर्णों से अधिक नहीं हो सकती',
     notValid:
-      'वेरिएबल कुंजी: {{key}} अवैध है। केवल अक्षर, संख्याएं, और अंडरस्कोर शामिल हो सकते हैं',
+      '{{key}} अवैध है। केवल अक्षर, संख्याएं, और अंडरस्कोर शामिल हो सकते हैं',
     notStartWithNumber:
-      'वेरिएबल कुंजी: {{key}} एक संख्या से प्रारंभ नहीं हो सकती',
-    keyAlreadyExists: 'वेरिएबल कुंजी: {{key}} पहले से मौजूद है',
+      '{{key}} एक संख्या से प्रारंभ नहीं हो सकती',
+    keyAlreadyExists: '{{key}} पहले से मौजूद है',
   },
   otherError: {
     promptNoBeEmpty: 'प्रॉम्प्ट खाली नहीं हो सकता',
     historyNoBeEmpty: 'संवाद इतिहास प्रॉम्प्ट में सेट होना चाहिए',
     queryNoBeEmpty: 'प्रश्न प्रॉम्प्ट में सेट होना चाहिए',
   },
-  variableConig: {
+  variableConfig: {
     'addModalTitle': 'इनपुट फ़ील्ड जोड़ें',
     'editModalTitle': 'इनपुट फ़ील्ड संपादित करें',
     'description': 'वेरिएबल {{varName}} के लिए सेटिंग',

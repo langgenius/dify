@@ -21,11 +21,11 @@ import {
 } from './index'
 import cn from '@/utils/classnames'
 import { Variable02 } from '@/app/components/base/icons/src/vender/solid/development'
-import { Env } from '@/app/components/base/icons/src/vender/line/others'
+import { BubbleX, Env } from '@/app/components/base/icons/src/vender/line/others'
 import { VarBlockIcon } from '@/app/components/workflow/block-icon'
 import { Line3 } from '@/app/components/base/icons/src/public/common'
-import { isENV, isSystemVar } from '@/app/components/workflow/nodes/_base/components/variable/utils'
-import TooltipPlus from '@/app/components/base/tooltip-plus'
+import { isConversationVar, isENV, isSystemVar } from '@/app/components/workflow/nodes/_base/components/variable/utils'
+import Tooltip from '@/app/components/base/tooltip'
 
 type WorkflowVariableBlockComponentProps = {
   nodeKey: string
@@ -52,6 +52,7 @@ const WorkflowVariableBlockComponent = ({
   const [localWorkflowNodesMap, setLocalWorkflowNodesMap] = useState<WorkflowNodesMap>(workflowNodesMap)
   const node = localWorkflowNodesMap![variables[0]]
   const isEnv = isENV(variables)
+  const isChatVar = isConversationVar(variables)
 
   useEffect(() => {
     if (!editor.hasNodes([WorkflowVariableBlockNode]))
@@ -75,11 +76,11 @@ const WorkflowVariableBlockComponent = ({
       className={cn(
         'mx-0.5 relative group/wrap flex items-center h-[18px] pl-0.5 pr-[3px] rounded-[5px] border select-none',
         isSelected ? ' border-[#84ADFF] bg-[#F5F8FF]' : ' border-black/5 bg-white',
-        !node && !isEnv && '!border-[#F04438] !bg-[#FEF3F2]',
+        !node && !isEnv && !isChatVar && '!border-[#F04438] !bg-[#FEF3F2]',
       )}
       ref={ref}
     >
-      {!isEnv && (
+      {!isEnv && !isChatVar && (
         <div className='flex items-center'>
           {
             node?.type && (
@@ -97,11 +98,12 @@ const WorkflowVariableBlockComponent = ({
         </div>
       )}
       <div className='flex items-center text-primary-600'>
-        {!isEnv && <Variable02 className='shrink-0 w-3.5 h-3.5' />}
+        {!isEnv && !isChatVar && <Variable02 className='shrink-0 w-3.5 h-3.5' />}
         {isEnv && <Env className='shrink-0 w-3.5 h-3.5 text-util-colors-violet-violet-600' />}
-        <div className={cn('shrink-0 ml-0.5 text-xs font-medium truncate', isEnv && 'text-gray-900')} title={varName}>{varName}</div>
+        {isChatVar && <BubbleX className='w-3.5 h-3.5 text-util-colors-teal-teal-700' />}
+        <div className={cn('shrink-0 ml-0.5 text-xs font-medium truncate', (isEnv || isChatVar) && 'text-gray-900')} title={varName}>{varName}</div>
         {
-          !node && !isEnv && (
+          !node && !isEnv && !isChatVar && (
             <RiErrorWarningFill className='ml-0.5 w-3 h-3 text-[#D92D20]' />
           )
         }
@@ -109,11 +111,11 @@ const WorkflowVariableBlockComponent = ({
     </div>
   )
 
-  if (!node && !isEnv) {
+  if (!node && !isEnv && !isChatVar) {
     return (
-      <TooltipPlus popupContent={t('workflow.errorMsg.invalidVariable')}>
+      <Tooltip popupContent={t('workflow.errorMsg.invalidVariable')}>
         {Item}
-      </TooltipPlus>
+      </Tooltip>
     )
   }
 

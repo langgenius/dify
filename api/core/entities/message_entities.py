@@ -5,7 +5,7 @@ from pydantic import BaseModel
 
 
 class PromptMessageFileType(enum.Enum):
-    IMAGE = 'image'
+    IMAGE = "image"
 
     @staticmethod
     def value_of(value):
@@ -22,8 +22,8 @@ class PromptMessageFile(BaseModel):
 
 class ImagePromptMessageFile(PromptMessageFile):
     class DETAIL(enum.Enum):
-        LOW = 'low'
-        HIGH = 'high'
+        LOW = "low"
+        HIGH = "high"
 
     type: PromptMessageFileType = PromptMessageFileType.IMAGE
     detail: DETAIL = DETAIL.LOW

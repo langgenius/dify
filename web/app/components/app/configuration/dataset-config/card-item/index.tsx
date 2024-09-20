@@ -39,10 +39,9 @@ const CardItem: FC<ICardItemProps> = ({
             <div className={cn('text-[13px] leading-[18px] font-medium text-gray-800 overflow-hidden text-ellipsis whitespace-nowrap', !config.embedding_available && 'opacity-50')}>{config.name}</div>
             {!config.embedding_available && (
               <Tooltip
-                selector={`unavailable-tag-${config.id}`}
-                htmlContent={t('dataset.unavailableTip')}
+                popupContent={t('dataset.unavailableTip')}
               >
-                <span className='shrink-0 inline-flex whitespace-nowrap px-1 border boder-gray-200 rounded-md text-gray-500 text-xs font-normal leading-[18px]'>{t('dataset.unavailable')}</span>
+                <span className='shrink-0 inline-flex whitespace-nowrap px-1 border border-gray-200 rounded-md text-gray-500 text-xs font-normal leading-[18px]'>{t('dataset.unavailable')}</span>
               </Tooltip>
             )}
           </div>

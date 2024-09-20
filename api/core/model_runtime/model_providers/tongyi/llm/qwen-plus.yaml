@@ -6,7 +6,7 @@ features:
   - agent-thought
 model_properties:
   mode: completion
-  context_size: 32768
+  context_size: 131072
 parameter_rules:
   - name: temperature
     use_template: temperature

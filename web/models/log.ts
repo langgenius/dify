@@ -6,7 +6,7 @@ import type {
 } from '@/app/components/workflow/types'
 import type { Metadata } from '@/app/components/base/chat/chat/type'
 
-// Log type contains key:string conversation_id:string created_at:string quesiton:string answer:string
+// Log type contains key:string conversation_id:string created_at:string question:string answer:string
 export type Conversation = {
   id: string
   key: string
@@ -117,6 +117,7 @@ export type CompletionConversationGeneralDetail = {
   from_account_id: string
   read_at: Date
   created_at: number
+  updated_at: number
   annotation: Annotation
   user_feedback_stats: {
     like: number

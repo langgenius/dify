@@ -1,4 +1,3 @@
-
 from flask_restful import fields, marshal_with
 from werkzeug.exceptions import Forbidden
 
@@ -6,6 +5,7 @@ from configs import dify_config
 from controllers.web import api
 from controllers.web.wraps import WebApiResource
 from extensions.ext_database import db
+from libs.helper import AppIconUrlField
 from models.account import TenantStatus
 from models.model import Site
 from services.feature_service import FeatureService
@@ -15,39 +15,42 @@ class AppSiteApi(WebApiResource):
     """Resource for app sites."""
 
     model_config_fields = {
-        'opening_statement': fields.String,
-        'suggested_questions': fields.Raw(attribute='suggested_questions_list'),
-        'suggested_questions_after_answer': fields.Raw(attribute='suggested_questions_after_answer_dict'),
-        'more_like_this': fields.Raw(attribute='more_like_this_dict'),
-        'model': fields.Raw(attribute='model_dict'),
-        'user_input_form': fields.Raw(attribute='user_input_form_list'),
-        'pre_prompt': fields.String,
+        "opening_statement": fields.String,
+        "suggested_questions": fields.Raw(attribute="suggested_questions_list"),
+        "suggested_questions_after_answer": fields.Raw(attribute="suggested_questions_after_answer_dict"),
+        "more_like_this": fields.Raw(attribute="more_like_this_dict"),
+        "model": fields.Raw(attribute="model_dict"),
+        "user_input_form": fields.Raw(attribute="user_input_form_list"),
+        "pre_prompt": fields.String,
     }
 
     site_fields = {
-        'title': fields.String,
-        'chat_color_theme': fields.String,
-        'chat_color_theme_inverted': fields.Boolean,
-        'icon': fields.String,
-        'icon_background': fields.String,
-        'description': fields.String,
-        'copyright': fields.String,
-        'privacy_policy': fields.String,
-        'custom_disclaimer': fields.String,
-        'default_language': fields.String,
-        'prompt_public': fields.Boolean,
-        'show_workflow_steps': fields.Boolean,
+        "title": fields.String,
+        "chat_color_theme": fields.String,
+        "chat_color_theme_inverted": fields.Boolean,
+        "icon_type": fields.String,
+        "icon": fields.String,
+        "icon_background": fields.String,
+        "icon_url": AppIconUrlField,
+        "description": fields.String,
+        "copyright": fields.String,
+        "privacy_policy": fields.String,
+        "custom_disclaimer": fields.String,
+        "default_language": fields.String,
+        "prompt_public": fields.Boolean,
+        "show_workflow_steps": fields.Boolean,
+        "use_icon_as_answer_icon": fields.Boolean,
     }
 
     app_fields = {
-        'app_id': fields.String,
-        'end_user_id': fields.String,
-        'enable_site': fields.Boolean,
-        'site': fields.Nested(site_fields),
-        'model_config': fields.Nested(model_config_fields, allow_null=True),
-        'plan': fields.String,
-        'can_replace_logo': fields.Boolean,
-        'custom_config': fields.Raw(attribute='custom_config'),
+        "app_id": fields.String,
+        "end_user_id": fields.String,
+        "enable_site": fields.Boolean,
+        "site": fields.Nested(site_fields),
+        "model_config": fields.Nested(model_config_fields, allow_null=True),
+        "plan": fields.String,
+        "can_replace_logo": fields.Boolean,
+        "custom_config": fields.Raw(attribute="custom_config"),
     }
 
     @marshal_with(app_fields)
@@ -67,7 +70,7 @@ class AppSiteApi(WebApiResource):
         return AppSiteInfo(app_model.tenant, app_model, site, end_user.id, can_replace_logo)
 
 
-api.add_resource(AppSiteApi, '/site')
+api.add_resource(AppSiteApi, "/site")
 
 
 class AppSiteInfo:
@@ -85,9 +88,13 @@ class AppSiteInfo:
 
         if can_replace_logo:
             base_url = dify_config.FILES_URL
-            remove_webapp_brand = tenant.custom_config_dict.get('remove_webapp_brand', False)
-            replace_webapp_logo = f'{base_url}/files/workspaces/{tenant.id}/webapp-logo' if tenant.custom_config_dict.get('replace_webapp_logo') else None
+            remove_webapp_brand = tenant.custom_config_dict.get("remove_webapp_brand", False)
+            replace_webapp_logo = (
+                f"{base_url}/files/workspaces/{tenant.id}/webapp-logo"
+                if tenant.custom_config_dict.get("replace_webapp_logo")
+                else None
+            )
             self.custom_config = {
-                'remove_webapp_brand': remove_webapp_brand,
-                'replace_webapp_logo': replace_webapp_logo,
+                "remove_webapp_brand": remove_webapp_brand,
+                "replace_webapp_logo": replace_webapp_logo,
             }

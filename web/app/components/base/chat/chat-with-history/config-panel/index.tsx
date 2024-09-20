@@ -43,9 +43,12 @@ const ConfigPanel = () => {
               <>
                 <div className='flex items-center h-8 text-2xl font-semibold text-gray-800'>
                   <AppIcon
+                    iconType={appData?.site.icon_type}
                     icon={appData?.site.icon}
                     background='transparent'
+                    imageUrl={appData?.site.icon_url}
                     size='small'
+                    className="mr-2"
                   />
                   {appData?.site.title}
                 </div>
@@ -149,7 +152,7 @@ const ConfigPanel = () => {
                 : (
                   <div className={`flex items-center justify-end ${isMobile && 'w-full'}`}>
                     <div className='flex items-center pr-3 space-x-3'>
-                      <span className='uppercase'>{t('share.chat.powerBy')}</span>
+                      <span className='uppercase'>{t('share.chat.poweredBy')}</span>
                       {
                         customConfig?.replace_webapp_logo
                           ? <img src={customConfig?.replace_webapp_logo} alt='logo' className='block w-auto h-5' />

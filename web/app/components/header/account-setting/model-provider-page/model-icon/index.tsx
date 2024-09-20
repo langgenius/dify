@@ -19,7 +19,7 @@ const ModelIcon: FC<ModelIconProps> = ({
 }) => {
   const language = useLanguage()
 
-  if (provider?.provider === 'openai' && modelName?.startsWith('gpt-4'))
+  if (provider?.provider === 'openai' && (modelName?.startsWith('gpt-4') || modelName?.includes('4o')))
     return <OpenaiViolet className={`w-4 h-4 ${className}`}/>
 
   if (provider?.icon_small) {

@@ -67,9 +67,11 @@ const translation = {
   editAppTitle: 'Editează Info Aplicație',
   editDone: 'Informațiile despre aplicație au fost actualizate',
   editFailed: 'Actualizarea informațiilor despre aplicație a eșuat',
-  emoji: {
+  iconPicker: {
     ok: 'OK',
     cancel: 'Anulează',
+    emoji: 'Emoji',
+    image: 'Imagine',
   },
   switch: 'Comută la Orchestrare Flux de Lucru',
   switchTipStart: 'O nouă copie a aplicației va fi creată pentru tine, iar noua copie va comuta la Orchestrare Flux de Lucru. Noua copie ',
@@ -120,7 +122,17 @@ const translation = {
       removeConfirmTitle: 'Eliminați configurația {{key}}?',
       removeConfirmContent: 'Configurația curentă este în uz, eliminarea acesteia va dezactiva funcția de Urmărire.',
     },
+    view: 'Vedere',
   },
+  answerIcon: {
+    descriptionInExplore: 'Dacă să utilizați pictograma WebApp pentru a înlocui 🤖 în Explore',
+    description: 'Dacă se utilizează pictograma WebApp pentru a înlocui 🤖 în aplicația partajată',
+    title: 'Utilizați pictograma WebApp pentru a înlocui 🤖',
+  },
+  importFromDSL: 'Import din DSL',
+  importFromDSLUrl: 'De la URL',
+  importFromDSLUrlPlaceholder: 'Lipiți linkul DSL aici',
+  importFromDSLFile: 'Din fișierul DSL',
 }
 
 export default translation
