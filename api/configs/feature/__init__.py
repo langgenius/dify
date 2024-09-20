@@ -115,7 +115,7 @@ class PluginConfig(BaseSettings):
     """
     Plugin configs
     """
-    PLUGIN_API_URL: str = Field(
+    PLUGIN_API_URL: HttpUrl = Field(
         description='Plugin API URL',
         default='http://plugin:5002',
     )
