@@ -523,7 +523,11 @@ class TongyiLargeLanguageModel(LargeLanguageModel):
 
     def get_customizable_model_schema(self, model: str, credentials: dict) -> AIModelEntity | None:
         """
-        用于定义自定义模型的 schema
+        Architecture for defining customizable models
+
+        :param model: model name
+        :param credentials: model credentials
+        :return: AIModelEntity or None
         """
         rules = [
             ParameterRule(
@@ -540,7 +544,7 @@ class TongyiLargeLanguageModel(LargeLanguageModel):
                 name="top_p",
                 type=ParameterType.FLOAT,
                 use_template="top_p",
-                label=I18nObject(zh_Hans="Top P", en_US="Top P"),
+                label=I18nObject(en_US="Top P"),
                 help=I18nObject(
                     zh_Hans="生成过程中核采样方法概率阈值，例如，取值为0.8时，仅保留概率加起来大于等于0.8的最可能token的最小集合作为候选集。取值范围为（0,1.0)，取值越大，生成的随机性越高；取值越低，生成的确定性越高。", 
                     en_US="The probability threshold of the kernel sampling method during the generation process. For example, when the value is 0.8, only the smallest set of the most likely tokens with a sum of probabilities greater than or equal to 0.8 is retained as the candidate set. The value range is (0,1.0). The larger the value, the higher the randomness generated; the lower the value, the higher the certainty generated."
@@ -551,7 +555,7 @@ class TongyiLargeLanguageModel(LargeLanguageModel):
                 type=ParameterType.INT,
                 min=0,
                 max=99,
-                label=I18nObject(zh_Hans="top_k", en_US="top_k"),
+                label=I18nObject(en_US="Top k"),
                 help=I18nObject(
                     zh_Hans="生成时，采样候选集的大小。例如，取值为50时，仅将单次生成中得分最高的50个token组成随机采样的候选集。取值越大，生成的随机性越高；取值越小，生成的确定性越高。",
                     en_US="The size of the sample candidate set when generated. For example, when the value is 50, only the 50 highest-scoring tokens in a single generation form a randomly sampled candidate set. The larger the value, the higher the randomness generated; the smaller the value, the higher the certainty generated."
