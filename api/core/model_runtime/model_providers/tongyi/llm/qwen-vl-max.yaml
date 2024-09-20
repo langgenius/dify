@@ -7,7 +7,7 @@ features:
   - agent-thought
 model_properties:
   mode: chat
-  context_size: 32768
+  context_size: 32000
 parameter_rules:
   - name: top_p
     use_template: top_p
@@ -28,6 +28,16 @@ parameter_rules:
     help:
       zh_Hans: 生成时，采样候选集的大小。例如，取值为50时，仅将单次生成中得分最高的50个token组成随机采样的候选集。取值越大，生成的随机性越高；取值越小，生成的确定性越高。
       en_US: The size of the sample candidate set when generated. For example, when the value is 50, only the 50 highest-scoring tokens in a single generation form a randomly sampled candidate set. The larger the value, the higher the randomness generated; the smaller the value, the higher the certainty generated.
+  - name: max_tokens
+    required: false
+    use_template: max_tokens
+    type: int
+    default: 2000
+    min: 1
+    max: 2000
+    help:
+      zh_Hans: 用于指定模型在生成内容时token的最大数量，它定义了生成的上限，但不保证每次都会生成到这个数量。
+      en_US: It is used to specify the maximum number of tokens when the model generates content. It defines the upper limit of generation, but does not guarantee that this number will be generated every time.
   - name: seed
     required: false
     type: int
