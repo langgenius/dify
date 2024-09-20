@@ -59,12 +59,11 @@ class ProviderConfigEncrypter(BaseModel):
             if field.type == BasicProviderConfig.Type.SECRET_INPUT:
                 if field_name in data:
                     if len(data[field_name]) > 6:
-                        data[field_name] = \
-                            data[field_name][:2] + \
-                            '*' * (len(data[field_name]) - 4) + \
-                            data[field_name][-2:]
+                        data[field_name] = (
+                            data[field_name][:2] + "*" * (len(data[field_name]) - 4) + data[field_name][-2:]
+                        )
                     else:
-                        data[field_name] = '*' * len(data[field_name])
+                        data[field_name] = "*" * len(data[field_name])
 
         return data
 
@@ -75,9 +74,9 @@ class ProviderConfigEncrypter(BaseModel):
         return a deep copy of credentials with decrypted values
         """
         cache = ToolProviderCredentialsCache(
-            tenant_id=self.tenant_id, 
-            identity_id=f'{self.provider_type}.{self.provider_identity}',
-            cache_type=ToolProviderCredentialsCacheType.PROVIDER
+            tenant_id=self.tenant_id,
+            identity_id=f"{self.provider_type}.{self.provider_identity}",
+            cache_type=ToolProviderCredentialsCacheType.PROVIDER,
         )
         cached_credentials = cache.get()
         if cached_credentials:
@@ -98,14 +97,14 @@ class ProviderConfigEncrypter(BaseModel):
 
     def delete_tool_credentials_cache(self):
         cache = ToolProviderCredentialsCache(
-            tenant_id=self.tenant_id, 
-            identity_id=f'{self.provider_type}.{self.provider_identity}',
-            cache_type=ToolProviderCredentialsCacheType.PROVIDER
+            tenant_id=self.tenant_id,
+            identity_id=f"{self.provider_type}.{self.provider_identity}",
+            cache_type=ToolProviderCredentialsCacheType.PROVIDER,
         )
         cache.delete()
 
 
-class ToolParameterConfigurationManager(BaseModel):
+class ToolParameterConfigurationManager:
     """
     Tool parameter configuration manager
     """
@@ -115,6 +114,15 @@ class ToolParameterConfigurationManager(BaseModel):
     provider_name: str
     provider_type: ToolProviderType
     identity_id: str
+
+    def __init__(
+        self, tenant_id: str, tool_runtime: Tool, provider_name: str, provider_type: ToolProviderType, identity_id: str
+    ) -> None:
+        self.tenant_id = tenant_id
+        self.tool_runtime = tool_runtime
+        self.provider_name = provider_name
+        self.provider_type = provider_type
+        self.identity_id = identity_id
 
     def _deep_copy(self, parameters: dict[str, Any]) -> dict[str, Any]:
         """
@@ -127,7 +135,7 @@ class ToolParameterConfigurationManager(BaseModel):
         merge parameters
         """
         # get tool parameters
-        tool_parameters = self.tool_runtime.parameters or []
+        tool_parameters = self.tool_runtime.entity.parameters or []
         # get tool runtime parameters
         runtime_parameters = self.tool_runtime.get_runtime_parameters() or []
         # override parameters
@@ -203,8 +211,8 @@ class ToolParameterConfigurationManager(BaseModel):
         """
         cache = ToolParameterCache(
             tenant_id=self.tenant_id,
-            provider=f'{self.provider_type.value}.{self.provider_name}',
-            tool_name=self.tool_runtime.identity.name,
+            provider=f"{self.provider_type.value}.{self.provider_name}",
+            tool_name=self.tool_runtime.entity.identity.name,
             cache_type=ToolParameterCacheType.PARAMETER,
             identity_id=self.identity_id,
         )
@@ -236,8 +244,8 @@ class ToolParameterConfigurationManager(BaseModel):
     def delete_tool_parameters_cache(self):
         cache = ToolParameterCache(
             tenant_id=self.tenant_id,
-            provider=f'{self.provider_type.value}.{self.provider_name}',
-            tool_name=self.tool_runtime.identity.name,
+            provider=f"{self.provider_type.value}.{self.provider_name}",
+            tool_name=self.tool_runtime.entity.identity.name,
             cache_type=ToolParameterCacheType.PARAMETER,
             identity_id=self.identity_id,
         )

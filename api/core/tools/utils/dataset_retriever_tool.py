@@ -6,9 +6,11 @@ from core.app.entities.app_invoke_entities import InvokeFrom
 from core.callback_handler.index_tool_callback_handler import DatasetIndexToolCallbackHandler
 from core.rag.retrieval.dataset_retrieval import DatasetRetrieval
 from core.tools.__base.tool import Tool
+from core.tools.__base.tool_runtime import ToolRuntime
 from core.tools.entities.common_entities import I18nObject
 from core.tools.entities.tool_entities import (
     ToolDescription,
+    ToolEntity,
     ToolIdentity,
     ToolInvokeMessage,
     ToolParameter,
@@ -20,11 +22,15 @@ from core.tools.utils.dataset_retriever.dataset_retriever_base_tool import Datas
 class DatasetRetrieverTool(Tool):
     retrieval_tool: DatasetRetrieverBaseTool
 
+    def __init__(self, entity: ToolEntity, runtime: ToolRuntime, retrieval_tool: DatasetRetrieverBaseTool) -> None:
+        super().__init__(entity, runtime)
+        self.retrieval_tool = retrieval_tool
+
     @staticmethod
     def get_dataset_tools(
         tenant_id: str,
         dataset_ids: list[str],
-        retrieve_config: DatasetRetrieveConfigEntity,
+        retrieve_config: DatasetRetrieveConfigEntity | None,
         return_resource: bool,
         invoke_from: InvokeFrom,
         hit_callback: DatasetIndexToolCallbackHandler,
@@ -54,7 +60,7 @@ class DatasetRetrieverTool(Tool):
         )
         if retrieval_tools is None or len(retrieval_tools) == 0:
             return []
-        
+
         # restore retrieve strategy
         retrieve_config.retrieve_strategy = original_retriever_mode
 
@@ -63,13 +69,14 @@ class DatasetRetrieverTool(Tool):
         for retrieval_tool in retrieval_tools:
             tool = DatasetRetrieverTool(
                 retrieval_tool=retrieval_tool,
-                identity=ToolIdentity(
-                    provider="", author="", name=retrieval_tool.name, label=I18nObject(en_US="", zh_Hans="")
+                entity=ToolEntity(
+                    identity=ToolIdentity(
+                        provider="", author="", name=retrieval_tool.name, label=I18nObject(en_US="", zh_Hans="")
+                    ),
+                    parameters=[],
+                    description=ToolDescription(human=I18nObject(en_US="", zh_Hans=""), llm=retrieval_tool.description),
                 ),
-                parameters=[],
-                is_team_authorization=True,
-                description=ToolDescription(human=I18nObject(en_US="", zh_Hans=""), llm=retrieval_tool.description),
-                runtime=DatasetRetrieverTool.Runtime(),
+                runtime=ToolRuntime(tenant_id=tenant_id),
             )
 
             tools.append(tool)
@@ -99,7 +106,7 @@ class DatasetRetrieverTool(Tool):
         """
         query = tool_parameters.get("query")
         if not query:
-            yield self.create_text_message(text='please input query')
+            yield self.create_text_message(text="please input query")
         else:
             # invoke dataset retriever tool
             result = self.retrieval_tool._run(query=query)

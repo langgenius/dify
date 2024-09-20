@@ -2,7 +2,6 @@ import json
 import logging
 import uuid
 from collections.abc import Mapping, Sequence
-from datetime import datetime, timezone
 from typing import Optional, Union, cast
 
 from core.agent.entities import AgentEntity, AgentToolEntity
@@ -23,6 +22,7 @@ from core.model_runtime.entities.llm_entities import LLMUsage
 from core.model_runtime.entities.message_entities import (
     AssistantPromptMessage,
     PromptMessage,
+    PromptMessageContent,
     PromptMessageTool,
     SystemPromptMessage,
     TextPromptMessageContent,
@@ -31,18 +31,15 @@ from core.model_runtime.entities.message_entities import (
 )
 from core.model_runtime.entities.model_entities import ModelFeature
 from core.model_runtime.model_providers.__base.large_language_model import LargeLanguageModel
-from core.model_runtime.utils.encoders import jsonable_encoder
 from core.tools.__base.tool import Tool
 from core.tools.entities.tool_entities import (
     ToolParameter,
-    ToolRuntimeVariablePool,
 )
 from core.tools.tool_manager import ToolManager
 from core.tools.utils.dataset_retriever_tool import DatasetRetrieverTool
 from core.tools.utils.tool_parameter_converter import ToolParameterConverter
 from extensions.ext_database import db
 from models.model import Conversation, Message, MessageAgentThought
-from models.tools import ToolConversationVariables
 
 logger = logging.getLogger(__name__)
 
@@ -59,11 +56,9 @@ class BaseAgentRunner(AppRunner):
         queue_manager: AppQueueManager,
         message: Message,
         user_id: str,
+        model_instance: ModelInstance,
         memory: Optional[TokenBufferMemory] = None,
         prompt_messages: Optional[list[PromptMessage]] = None,
-        variables_pool: Optional[ToolRuntimeVariablePool] = None,
-        db_variables: Optional[ToolConversationVariables] = None,
-        model_instance: ModelInstance = None,
     ) -> None:
         """
         Agent runner
@@ -93,8 +88,6 @@ class BaseAgentRunner(AppRunner):
         self.user_id = user_id
         self.memory = memory
         self.history_prompt_messages = self.organize_agent_history(prompt_messages=prompt_messages or [])
-        self.variables_pool = variables_pool
-        self.db_variables_pool = db_variables
         self.model_instance = model_instance
 
         # init callback
@@ -162,11 +155,10 @@ class BaseAgentRunner(AppRunner):
             agent_tool=tool,
             invoke_from=self.application_generate_entity.invoke_from,
         )
-        tool_entity.load_variables(self.variables_pool)
-
+        assert tool_entity.entity.description
         message_tool = PromptMessageTool(
             name=tool.tool_name,
-            description=tool_entity.description.llm,
+            description=tool_entity.entity.description.llm,
             parameters={
                 "type": "object",
                 "properties": {},
@@ -201,9 +193,11 @@ class BaseAgentRunner(AppRunner):
         """
         convert dataset retriever tool to prompt message tool
         """
+        assert tool.entity.description
+
         prompt_tool = PromptMessageTool(
-            name=tool.identity.name,
-            description=tool.description.llm,
+            name=tool.entity.identity.name,
+            description=tool.entity.description.llm,
             parameters={
                 "type": "object",
                 "properties": {},
@@ -232,7 +226,7 @@ class BaseAgentRunner(AppRunner):
         tool_instances = {}
         prompt_messages_tools = []
 
-        for tool in self.app_config.agent.tools if self.app_config.agent else []:
+        for tool in self.app_config.agent.tools or [] if self.app_config.agent else []:
             try:
                 prompt_tool, tool_entity = self._convert_tool_to_prompt_message_tool(tool)
             except Exception:
@@ -249,7 +243,7 @@ class BaseAgentRunner(AppRunner):
             # save prompt tool
             prompt_messages_tools.append(prompt_tool)
             # save tool entity
-            tool_instances[dataset_tool.identity.name] = dataset_tool
+            tool_instances[dataset_tool.entity.identity.name] = dataset_tool
 
         return tool_instances, prompt_messages_tools
 
@@ -328,25 +322,29 @@ class BaseAgentRunner(AppRunner):
     def save_agent_thought(
         self,
         agent_thought: MessageAgentThought,
-        tool_name: str,
-        tool_input: Union[str, dict],
-        thought: str,
-        observation: Union[str, dict],
-        tool_invoke_meta: Union[str, dict],
-        answer: str,
+        tool_name: str | None,
+        tool_input: Union[str, dict, None],
+        thought: str | None,
+        observation: Union[str, dict, None],
+        tool_invoke_meta: Union[str, dict, None],
+        answer: str | None,
         messages_ids: list[str],
-        llm_usage: LLMUsage = None,
-    ) -> MessageAgentThought:
+        llm_usage: LLMUsage | None = None,
+    ):
         """
         Save agent thought
         """
-        agent_thought = db.session.query(MessageAgentThought).filter(MessageAgentThought.id == agent_thought.id).first()
+        updated_agent_thought = (
+            db.session.query(MessageAgentThought).filter(MessageAgentThought.id == agent_thought.id).first()
+        )
+        if not updated_agent_thought:
+            raise ValueError("agent thought not found")
 
         if thought is not None:
-            agent_thought.thought = thought
+            updated_agent_thought.thought = thought
 
         if tool_name is not None:
-            agent_thought.tool = tool_name
+            updated_agent_thought.tool = tool_name
 
         if tool_input is not None:
             if isinstance(tool_input, dict):
@@ -355,7 +353,7 @@ class BaseAgentRunner(AppRunner):
                 except Exception as e:
                     tool_input = json.dumps(tool_input)
 
-            agent_thought.tool_input = tool_input
+            updated_agent_thought.tool_input = tool_input
 
         if observation is not None:
             if isinstance(observation, dict):
@@ -364,27 +362,27 @@ class BaseAgentRunner(AppRunner):
                 except Exception as e:
                     observation = json.dumps(observation)
 
-            agent_thought.observation = observation
+            updated_agent_thought.observation = observation
 
         if answer is not None:
-            agent_thought.answer = answer
+            updated_agent_thought.answer = answer
 
         if messages_ids is not None and len(messages_ids) > 0:
-            agent_thought.message_files = json.dumps(messages_ids)
+            updated_agent_thought.message_files = json.dumps(messages_ids)
 
         if llm_usage:
-            agent_thought.message_token = llm_usage.prompt_tokens
-            agent_thought.message_price_unit = llm_usage.prompt_price_unit
-            agent_thought.message_unit_price = llm_usage.prompt_unit_price
-            agent_thought.answer_token = llm_usage.completion_tokens
-            agent_thought.answer_price_unit = llm_usage.completion_price_unit
-            agent_thought.answer_unit_price = llm_usage.completion_unit_price
-            agent_thought.tokens = llm_usage.total_tokens
-            agent_thought.total_price = llm_usage.total_price
+            updated_agent_thought.message_token = llm_usage.prompt_tokens
+            updated_agent_thought.message_price_unit = llm_usage.prompt_price_unit
+            updated_agent_thought.message_unit_price = llm_usage.prompt_unit_price
+            updated_agent_thought.answer_token = llm_usage.completion_tokens
+            updated_agent_thought.answer_price_unit = llm_usage.completion_price_unit
+            updated_agent_thought.answer_unit_price = llm_usage.completion_unit_price
+            updated_agent_thought.tokens = llm_usage.total_tokens
+            updated_agent_thought.total_price = llm_usage.total_price
 
         # check if tool labels is not empty
-        labels = agent_thought.tool_labels or {}
-        tools = agent_thought.tool.split(";") if agent_thought.tool else []
+        labels = updated_agent_thought.tool_labels or {}
+        tools = updated_agent_thought.tool.split(";") if updated_agent_thought.tool else []
         for tool in tools:
             if not tool:
                 continue
@@ -395,7 +393,7 @@ class BaseAgentRunner(AppRunner):
                 else:
                     labels[tool] = {"en_US": tool, "zh_Hans": tool}
 
-        agent_thought.tool_labels_str = json.dumps(labels)
+        updated_agent_thought.tool_labels_str = json.dumps(labels)
 
         if tool_invoke_meta is not None:
             if isinstance(tool_invoke_meta, dict):
@@ -404,25 +402,8 @@ class BaseAgentRunner(AppRunner):
                 except Exception as e:
                     tool_invoke_meta = json.dumps(tool_invoke_meta)
 
-            agent_thought.tool_meta_str = tool_invoke_meta
+            updated_agent_thought.tool_meta_str = tool_invoke_meta
 
-        db.session.commit()
-        db.session.close()
-
-    def update_db_variables(self, tool_variables: ToolRuntimeVariablePool, db_variables: ToolConversationVariables):
-        """
-        convert tool variables to db variables
-        """
-        db_variables = (
-            db.session.query(ToolConversationVariables)
-            .filter(
-                ToolConversationVariables.conversation_id == self.message.conversation_id,
-            )
-            .first()
-        )
-
-        db_variables.updated_at = datetime.now(timezone.utc).replace(tzinfo=None)
-        db_variables.variables_str = json.dumps(jsonable_encoder(tool_variables.pool))
         db.session.commit()
         db.session.close()
 
@@ -515,6 +496,7 @@ class BaseAgentRunner(AppRunner):
 
         files = message.message_files
         if files:
+            assert message.app_model_config
             file_extra_config = FileUploadConfigManager.convert(message.app_model_config.to_dict())
 
             if file_extra_config:
@@ -525,7 +507,7 @@ class BaseAgentRunner(AppRunner):
             if not file_objs:
                 return UserPromptMessage(content=message.query)
             else:
-                prompt_message_contents = [TextPromptMessageContent(data=message.query)]
+                prompt_message_contents: list[PromptMessageContent] = [TextPromptMessageContent(data=message.query)]
                 for file_obj in file_objs:
                     prompt_message_contents.append(file_obj.prompt_message_content)
 

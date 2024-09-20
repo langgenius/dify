@@ -1,12 +1,12 @@
 import json
 import logging
 from collections.abc import Generator
-from copy import deepcopy
 from typing import Any, Optional, Union
 
 from core.file.file_obj import FileTransferMethod, FileVar
 from core.tools.__base.tool import Tool
-from core.tools.entities.tool_entities import ToolInvokeMessage, ToolParameter, ToolProviderType
+from core.tools.__base.tool_runtime import ToolRuntime
+from core.tools.entities.tool_entities import ToolEntity, ToolInvokeMessage, ToolParameter, ToolProviderType
 from extensions.ext_database import db
 from models.account import Account
 from models.model import App, EndUser
@@ -27,6 +27,26 @@ class WorkflowTool(Tool):
     """
     Workflow tool.
     """
+
+    def __init__(
+        self,
+        workflow_app_id: str,
+        version: str,
+        workflow_entities: dict[str, Any],
+        workflow_call_depth: int,
+        entity: ToolEntity,
+        runtime: ToolRuntime,
+        label: str = "Workflow",
+        thread_pool_id: Optional[str] = None,
+    ):
+        self.workflow_app_id = workflow_app_id
+        self.version = version
+        self.workflow_entities = workflow_entities
+        self.workflow_call_depth = workflow_call_depth
+        self.thread_pool_id = thread_pool_id
+        self.label = label
+
+        super().__init__(entity=entity, runtime=runtime)
 
     def tool_provider_type(self) -> ToolProviderType:
         """
@@ -94,7 +114,7 @@ class WorkflowTool(Tool):
 
         return user
 
-    def fork_tool_runtime(self, runtime: dict[str, Any]) -> "WorkflowTool":
+    def fork_tool_runtime(self, runtime: ToolRuntime) -> "WorkflowTool":
         """
         fork a new tool with meta data
 
@@ -102,10 +122,8 @@ class WorkflowTool(Tool):
         :return: the new tool
         """
         return self.__class__(
-            identity=deepcopy(self.identity),
-            parameters=deepcopy(self.parameters),
-            description=deepcopy(self.description),
-            runtime=Tool.Runtime(**runtime),
+            entity=self.entity.model_copy(),
+            runtime=runtime,
             workflow_app_id=self.workflow_app_id,
             workflow_entities=self.workflow_entities,
             workflow_call_depth=self.workflow_call_depth,

@@ -1,10 +1,11 @@
 import base64
 from enum import Enum
-from typing import Any, Optional, Union, cast
+from typing import Any, Optional, Union
 
-from pydantic import BaseModel, Field, field_serializer, field_validator
+from pydantic import BaseModel, ConfigDict, Field, ValidationInfo, field_serializer, field_validator
 
 from core.entities.parameter_entities import AppSelectorScope, CommonParameterType, ModelConfigScope
+from core.entities.provider_entities import ProviderConfig
 from core.tools.entities.common_entities import I18nObject
 
 
@@ -122,14 +123,14 @@ class ToolInvokeMessage(BaseModel):
             """
             if not isinstance(value, dict | list | str | int | float | bool):
                 raise ValueError("Only basic types and lists are allowed.")
-            
+
             # if stream is true, the value must be a string
-            if values.get('stream'):
+            if values.get("stream"):
                 if not isinstance(value, str):
                     raise ValueError("When 'stream' is True, 'variable_value' must be a string.")
 
             return value
-        
+
         @field_validator("variable_name", mode="before")
         @classmethod
         def transform_variable_name(cls, value) -> str:
@@ -158,22 +159,20 @@ class ToolInvokeMessage(BaseModel):
     meta: dict[str, Any] | None = None
     save_as: str = ""
 
-    @field_validator('message', mode='before')
+    @field_validator("message", mode="before")
     @classmethod
     def decode_blob_message(cls, v):
-        if isinstance(v, dict) and 'blob' in v:
+        if isinstance(v, dict) and "blob" in v:
             try:
-                v['blob'] = base64.b64decode(v['blob'])
+                v["blob"] = base64.b64decode(v["blob"])
             except Exception:
                 pass
         return v
 
-    @field_serializer('message')
+    @field_serializer("message")
     def serialize_message(self, v):
         if isinstance(v, self.BlobMessage):
-            return {
-                'blob': base64.b64encode(v.blob).decode('utf-8')
-            }
+            return {"blob": base64.b64encode(v.blob).decode("utf-8")}
         return v
 
 
@@ -252,9 +251,9 @@ class ToolParameter(BaseModel):
             option_objs = []
         return cls(
             name=name,
-            label=I18nObject(en_US='', zh_Hans=''),
+            label=I18nObject(en_US="", zh_Hans=""),
             placeholder=None,
-            human_description=I18nObject(en_US='', zh_Hans=''),
+            human_description=I18nObject(en_US="", zh_Hans=""),
             type=type,
             form=cls.ToolParameterForm.LLM,
             llm_description=llm_description,
@@ -275,6 +274,11 @@ class ToolProviderIdentity(BaseModel):
     )
 
 
+class ToolProviderEntity(BaseModel):
+    identity: ToolProviderIdentity
+    credentials_schema: dict[str, ProviderConfig] = Field(default_factory=dict)
+
+
 class ToolDescription(BaseModel):
     human: I18nObject = Field(..., description="The description presented to the user")
     llm: str = Field(..., description="The description presented to the LLM")
@@ -286,131 +290,6 @@ class ToolIdentity(BaseModel):
     label: I18nObject = Field(..., description="The label of the tool")
     provider: str = Field(..., description="The provider of the tool")
     icon: Optional[str] = None
-
-
-class ToolRuntimeVariableType(Enum):
-    TEXT = "text"
-    IMAGE = "image"
-
-
-class ToolRuntimeVariable(BaseModel):
-    type: ToolRuntimeVariableType = Field(..., description="The type of the variable")
-    name: str = Field(..., description="The name of the variable")
-    position: int = Field(..., description="The position of the variable")
-    tool_name: str = Field(..., description="The name of the tool")
-
-
-class ToolRuntimeTextVariable(ToolRuntimeVariable):
-    value: str = Field(..., description="The value of the variable")
-
-
-class ToolRuntimeImageVariable(ToolRuntimeVariable):
-    value: str = Field(..., description="The path of the image")
-
-
-class ToolRuntimeVariablePool(BaseModel):
-    conversation_id: str = Field(..., description="The conversation id")
-    user_id: str = Field(..., description="The user id")
-    tenant_id: str = Field(..., description="The tenant id of assistant")
-
-    pool: list[ToolRuntimeVariable] = Field(..., description="The pool of variables")
-
-    def __init__(self, **data: Any):
-        pool = data.get("pool", [])
-        # convert pool into correct type
-        for index, variable in enumerate(pool):
-            if variable["type"] == ToolRuntimeVariableType.TEXT.value:
-                pool[index] = ToolRuntimeTextVariable(**variable)
-            elif variable["type"] == ToolRuntimeVariableType.IMAGE.value:
-                pool[index] = ToolRuntimeImageVariable(**variable)
-        super().__init__(**data)
-
-    def dict(self) -> dict:
-        return {
-            "conversation_id": self.conversation_id,
-            "user_id": self.user_id,
-            "tenant_id": self.tenant_id,
-            "pool": [variable.model_dump() for variable in self.pool],
-        }
-
-    def set_text(self, tool_name: str, name: str, value: str) -> None:
-        """
-        set a text variable
-        """
-        for variable in self.pool:
-            if variable.name == name:
-                if variable.type == ToolRuntimeVariableType.TEXT:
-                    variable = cast(ToolRuntimeTextVariable, variable)
-                    variable.value = value
-                    return
-
-        variable = ToolRuntimeTextVariable(
-            type=ToolRuntimeVariableType.TEXT,
-            name=name,
-            position=len(self.pool),
-            tool_name=tool_name,
-            value=value,
-        )
-
-        self.pool.append(variable)
-
-    def set_file(self, tool_name: str, value: str, name: Optional[str] = None) -> None:
-        """
-        set an image variable
-
-        :param tool_name: the name of the tool
-        :param value: the id of the file
-        """
-        # check how many image variables are there
-        image_variable_count = 0
-        for variable in self.pool:
-            if variable.type == ToolRuntimeVariableType.IMAGE:
-                image_variable_count += 1
-
-        if name is None:
-            name = f"file_{image_variable_count}"
-
-        for variable in self.pool:
-            if variable.name == name:
-                if variable.type == ToolRuntimeVariableType.IMAGE:
-                    variable = cast(ToolRuntimeImageVariable, variable)
-                    variable.value = value
-                    return
-
-        variable = ToolRuntimeImageVariable(
-            type=ToolRuntimeVariableType.IMAGE,
-            name=name,
-            position=len(self.pool),
-            tool_name=tool_name,
-            value=value,
-        )
-
-        self.pool.append(variable)
-
-
-class ModelToolPropertyKey(Enum):
-    IMAGE_PARAMETER_NAME = "image_parameter_name"
-
-
-class ModelToolConfiguration(BaseModel):
-    """
-    Model tool configuration
-    """
-
-    type: str = Field(..., description="The type of the model tool")
-    model: str = Field(..., description="The model")
-    label: I18nObject = Field(..., description="The label of the model tool")
-    properties: dict[ModelToolPropertyKey, Any] = Field(..., description="The properties of the model tool")
-
-
-class ModelToolProviderConfiguration(BaseModel):
-    """
-    Model tool provider configuration
-    """
-
-    provider: str = Field(..., description="The provider of the model tool")
-    models: list[ModelToolConfiguration] = Field(..., description="The models of the model tool")
-    label: I18nObject = Field(..., description="The label of the model tool")
 
 
 class WorkflowToolParameterConfiguration(BaseModel):
@@ -471,3 +350,17 @@ class ToolInvokeFrom(Enum):
 
     WORKFLOW = "workflow"
     AGENT = "agent"
+
+
+class ToolEntity(BaseModel):
+    identity: ToolIdentity
+    parameters: list[ToolParameter] = Field(default_factory=list)
+    description: Optional[ToolDescription] = None
+
+    # pydantic configs
+    model_config = ConfigDict(protected_namespaces=())
+
+    @field_validator("parameters", mode="before")
+    @classmethod
+    def set_parameters(cls, v, validation_info: ValidationInfo) -> list[ToolParameter]:
+        return v or []

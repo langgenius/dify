@@ -16,10 +16,8 @@ from core.model_runtime.entities.llm_entities import LLMMode, LLMUsage
 from core.model_runtime.entities.model_entities import ModelFeature, ModelPropertyKey
 from core.model_runtime.model_providers.__base.large_language_model import LargeLanguageModel
 from core.moderation.base import ModerationError
-from core.tools.entities.tool_entities import ToolRuntimeVariablePool
 from extensions.ext_database import db
 from models.model import App, Conversation, Message, MessageAgentThought
-from models.tools import ToolConversationVariables
 
 logger = logging.getLogger(__name__)
 
@@ -174,14 +172,6 @@ class AgentChatAppRunner(AppRunner):
 
         agent_entity = app_config.agent
 
-        # load tool variables
-        tool_conversation_variables = self._load_tool_variables(
-            conversation_id=conversation.id, user_id=application_generate_entity.user_id, tenant_id=app_config.tenant_id
-        )
-
-        # convert db variables to tool variables
-        tool_variables = self._convert_db_variables_to_tool_variables(tool_conversation_variables)
-
         # init model instance
         model_instance = ModelInstance(
             provider_model_bundle=application_generate_entity.model_conf.provider_model_bundle,
@@ -234,8 +224,6 @@ class AgentChatAppRunner(AppRunner):
             user_id=application_generate_entity.user_id,
             memory=memory,
             prompt_messages=prompt_message,
-            variables_pool=tool_variables,
-            db_variables=tool_conversation_variables,
             model_instance=model_instance,
         )
 
@@ -251,50 +239,6 @@ class AgentChatAppRunner(AppRunner):
             queue_manager=queue_manager,
             stream=application_generate_entity.stream,
             agent=True,
-        )
-
-    def _load_tool_variables(self, conversation_id: str, user_id: str, tenant_id: str) -> ToolConversationVariables:
-        """
-        load tool variables from database
-        """
-        tool_variables: ToolConversationVariables = (
-            db.session.query(ToolConversationVariables)
-            .filter(
-                ToolConversationVariables.conversation_id == conversation_id,
-                ToolConversationVariables.tenant_id == tenant_id,
-            )
-            .first()
-        )
-
-        if tool_variables:
-            # save tool variables to session, so that we can update it later
-            db.session.add(tool_variables)
-        else:
-            # create new tool variables
-            tool_variables = ToolConversationVariables(
-                conversation_id=conversation_id,
-                user_id=user_id,
-                tenant_id=tenant_id,
-                variables_str="[]",
-            )
-            db.session.add(tool_variables)
-            db.session.commit()
-
-        return tool_variables
-
-    def _convert_db_variables_to_tool_variables(
-        self, db_variables: ToolConversationVariables
-    ) -> ToolRuntimeVariablePool:
-        """
-        convert db variables to tool variables
-        """
-        return ToolRuntimeVariablePool(
-            **{
-                "conversation_id": db_variables.conversation_id,
-                "user_id": db_variables.user_id,
-                "tenant_id": db_variables.tenant_id,
-                "pool": db_variables.variables,
-            }
         )
 
     def _get_usage_of_all_agent_thoughts(

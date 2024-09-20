@@ -32,7 +32,7 @@ class BuiltinToolManageService:
             tenant_id=tenant_id,
             config=provider_controller.get_credentials_schema(),
             provider_type=provider_controller.provider_type.value,
-            provider_identity=provider_controller.identity.name,
+            provider_identity=provider_controller.entity.identity.name,
         )
         # check if user has added the provider
         builtin_provider: BuiltinToolProvider | None = (
@@ -71,7 +71,7 @@ class BuiltinToolManageService:
         :return: the list of tool providers
         """
         provider = ToolManager.get_builtin_provider(provider_name)
-        return jsonable_encoder([v for _, v in (provider.credentials_schema or {}).items()])
+        return jsonable_encoder([v for _, v in (provider.entity.credentials_schema or {}).items()])
 
     @staticmethod
     def update_builtin_tool_provider(user_id: str, tenant_id: str, provider_name: str, credentials: dict):
@@ -97,7 +97,7 @@ class BuiltinToolManageService:
                 tenant_id=tenant_id,
                 config=provider_controller.get_credentials_schema(),
                 provider_type=provider_controller.provider_type.value,
-                provider_identity=provider_controller.identity.name,
+                provider_identity=provider_controller.entity.identity.name,
             )
 
             # get original credentials if exists
@@ -159,7 +159,7 @@ class BuiltinToolManageService:
             tenant_id=tenant_id,
             config=provider_controller.get_credentials_schema(),
             provider_type=provider_controller.provider_type.value,
-            provider_identity=provider_controller.identity.name,
+            provider_identity=provider_controller.entity.identity.name,
         )
         credentials = tool_configuration.decrypt(provider_obj.credentials)
         credentials = tool_configuration.mask_tool_credentials(credentials)
@@ -191,7 +191,7 @@ class BuiltinToolManageService:
             tenant_id=tenant_id,
             config=provider_controller.get_credentials_schema(),
             provider_type=provider_controller.provider_type.value,
-            provider_identity=provider_controller.identity.name,
+            provider_identity=provider_controller.entity.identity.name,
         )
         tool_configuration.delete_tool_credentials_cache()
 
@@ -241,7 +241,7 @@ class BuiltinToolManageService:
                 # convert provider controller to user provider
                 user_builtin_provider = ToolTransformService.builtin_provider_to_user_provider(
                     provider_controller=provider_controller,
-                    db_provider=find_provider(provider_controller.identity.name),
+                    db_provider=find_provider(provider_controller.entity.identity.name),
                     decrypt_credentials=True,
                 )
 

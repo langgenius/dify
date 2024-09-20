@@ -32,9 +32,9 @@ class BuiltinTool(Tool):
         # invoke model
         return ModelInvocationUtils.invoke(
             user_id=user_id,
-            tenant_id=self.runtime.tenant_id or "",
+            tenant_id=self.runtime.tenant_id,
             tool_type="builtin",
-            tool_name=self.identity.name,
+            tool_name=self.entity.identity.name,
             prompt_messages=prompt_messages,
         )
 
@@ -79,6 +79,7 @@ class BuiltinTool(Tool):
                 stop=[],
             )
 
+            assert isinstance(summary.message.content, str)
             return summary.message.content
 
         lines = content.split("\n")

@@ -6,6 +6,8 @@ from os import listdir, path
 from threading import Lock
 from typing import TYPE_CHECKING, Any, Union, cast
 
+from core.tools.__base.tool_runtime import ToolRuntime
+
 if TYPE_CHECKING:
     from core.workflow.nodes.tool.entities import ToolEntity
 
@@ -105,12 +107,12 @@ class ToolManager:
                 return cast(
                     BuiltinTool,
                     builtin_tool.fork_tool_runtime(
-                        runtime={
-                            "tenant_id": tenant_id,
-                            "credentials": {},
-                            "invoke_from": invoke_from,
-                            "tool_invoke_from": tool_invoke_from,
-                        }
+                        runtime=ToolRuntime(
+                            tenant_id=tenant_id,
+                            credentials={},
+                            invoke_from=invoke_from,
+                            tool_invoke_from=tool_invoke_from,
+                        )
                     ),
                 )
 
@@ -134,7 +136,7 @@ class ToolManager:
                 tenant_id=tenant_id,
                 config=controller.get_credentials_schema(),
                 provider_type=controller.provider_type.value,
-                provider_identity=controller.identity.name,
+                provider_identity=controller.entity.identity.name,
             )
 
             decrypted_credentials = tool_configuration.decrypt(credentials)
@@ -142,13 +144,13 @@ class ToolManager:
             return cast(
                 BuiltinTool,
                 builtin_tool.fork_tool_runtime(
-                    runtime={
-                        "tenant_id": tenant_id,
-                        "credentials": decrypted_credentials,
-                        "runtime_parameters": {},
-                        "invoke_from": invoke_from,
-                        "tool_invoke_from": tool_invoke_from,
-                    }
+                    runtime=ToolRuntime(
+                        tenant_id=tenant_id,
+                        credentials=decrypted_credentials,
+                        runtime_parameters={},
+                        invoke_from=invoke_from,
+                        tool_invoke_from=tool_invoke_from,
+                    )
                 ),
             )
 
@@ -163,19 +165,19 @@ class ToolManager:
                 tenant_id=tenant_id,
                 config=api_provider.get_credentials_schema(),
                 provider_type=api_provider.provider_type.value,
-                provider_identity=api_provider.identity.name,
+                provider_identity=api_provider.entity.identity.name,
             )
             decrypted_credentials = tool_configuration.decrypt(credentials)
 
             return cast(
                 ApiTool,
                 api_provider.get_tool(tool_name).fork_tool_runtime(
-                    runtime={
-                        "tenant_id": tenant_id,
-                        "credentials": decrypted_credentials,
-                        "invoke_from": invoke_from,
-                        "tool_invoke_from": tool_invoke_from,
-                    }
+                    runtime=ToolRuntime(
+                        tenant_id=tenant_id,
+                        credentials=decrypted_credentials,
+                        invoke_from=invoke_from,
+                        tool_invoke_from=tool_invoke_from,
+                    )
                 ),
             )
         elif provider_type == ToolProviderType.WORKFLOW:
@@ -193,12 +195,12 @@ class ToolManager:
             return cast(
                 WorkflowTool,
                 controller.get_tools(tenant_id=workflow_provider.tenant_id)[0].fork_tool_runtime(
-                    runtime={
-                        "tenant_id": tenant_id,
-                        "credentials": {},
-                        "invoke_from": invoke_from,
-                        "tool_invoke_from": tool_invoke_from,
-                    }
+                    runtime=ToolRuntime(
+                        tenant_id=tenant_id,
+                        credentials={},
+                        invoke_from=invoke_from,
+                        tool_invoke_from=tool_invoke_from,
+                    )
                 ),
             )
         elif provider_type == ToolProviderType.APP:
@@ -336,7 +338,7 @@ class ToolManager:
             "providers",
             provider,
             "_assets",
-            provider_controller.identity.icon,
+            provider_controller.entity.identity.icon,
         )
         # check if the icon exists
         if not path.exists(absolute_path):
@@ -389,9 +391,9 @@ class ToolManager:
                         parent_type=BuiltinToolProviderController,
                     )
                     provider: BuiltinToolProviderController = provider_class()
-                    cls._builtin_providers[provider.identity.name] = provider
+                    cls._builtin_providers[provider.entity.identity.name] = provider
                     for tool in provider.get_tools():
-                        cls._builtin_tools_labels[tool.identity.name] = tool.identity.label
+                        cls._builtin_tools_labels[tool.entity.identity.name] = tool.entity.identity.label
                     yield provider
 
                 except Exception as e:
@@ -466,11 +468,11 @@ class ToolManager:
 
                 user_provider = ToolTransformService.builtin_provider_to_user_provider(
                     provider_controller=provider,
-                    db_provider=find_db_builtin_provider(provider.identity.name),
+                    db_provider=find_db_builtin_provider(provider.entity.identity.name),
                     decrypt_credentials=False,
                 )
 
-                result_providers[provider.identity.name] = user_provider
+                result_providers[provider.entity.identity.name] = user_provider
 
         # get db api providers
 
@@ -589,7 +591,7 @@ class ToolManager:
             tenant_id=tenant_id,
             config=controller.get_credentials_schema(),
             provider_type=controller.provider_type.value,
-            provider_identity=controller.identity.name,
+            provider_identity=controller.entity.identity.name,
         )
 
         decrypted_credentials = tool_configuration.decrypt(credentials)

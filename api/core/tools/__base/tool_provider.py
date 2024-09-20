@@ -1,23 +1,22 @@
 from abc import ABC, abstractmethod
 from typing import Any
 
-from pydantic import BaseModel, ConfigDict, Field
-
 from core.entities.provider_entities import ProviderConfig
 from core.tools.__base.tool import Tool
 from core.tools.entities.tool_entities import (
-    ToolProviderIdentity,
+    ToolProviderEntity,
     ToolProviderType,
 )
 from core.tools.errors import ToolProviderCredentialValidationError
 
 
-class ToolProviderController(BaseModel, ABC):
-    identity: ToolProviderIdentity
-    tools: list[Tool] = Field(default_factory=list)
-    credentials_schema: dict[str, ProviderConfig] = Field(default_factory=dict)
+class ToolProviderController(ABC):
+    entity: ToolProviderEntity
+    tools: list[Tool]
 
-    model_config = ConfigDict(validate_assignment=True)
+    def __init__(self, entity: ToolProviderEntity) -> None:
+        self.entity = entity
+        self.tools = []
 
     def get_credentials_schema(self) -> dict[str, ProviderConfig]:
         """
@@ -25,7 +24,7 @@ class ToolProviderController(BaseModel, ABC):
 
         :return: the credentials schema
         """
-        return self.credentials_schema.copy()
+        return self.entity.credentials_schema.copy()
 
     @abstractmethod
     def get_tool(self, tool_name: str) -> Tool:
@@ -51,7 +50,7 @@ class ToolProviderController(BaseModel, ABC):
 
         :param credentials: the credentials of the tool
         """
-        credentials_schema = self.credentials_schema
+        credentials_schema = self.entity.credentials_schema
         if credentials_schema is None:
             return
 
@@ -62,7 +61,7 @@ class ToolProviderController(BaseModel, ABC):
         for credential_name in credentials:
             if credential_name not in credentials_need_to_validate:
                 raise ToolProviderCredentialValidationError(
-                    f"credential {credential_name} not found in provider {self.identity.name}"
+                    f"credential {credential_name} not found in provider {self.entity.identity.name}"
                 )
 
             # check type

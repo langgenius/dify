@@ -6,9 +6,11 @@ from pydantic import Field
 from core.app.app_config.entities import VariableEntity, VariableEntityType
 from core.app.apps.workflow.app_config_manager import WorkflowAppConfigManager
 from core.tools.__base.tool_provider import ToolProviderController
+from core.tools.__base.tool_runtime import ToolRuntime
 from core.tools.entities.common_entities import I18nObject
 from core.tools.entities.tool_entities import (
     ToolDescription,
+    ToolEntity,
     ToolIdentity,
     ToolParameter,
     ToolParameterOption,
@@ -63,7 +65,7 @@ class WorkflowToolProviderController(ToolProviderController):
     @property
     def provider_type(self) -> ToolProviderType:
         return ToolProviderType.WORKFLOW
-
+    
     def _get_db_provider_tool(self, db_provider: WorkflowToolProvider, app: App) -> WorkflowTool:
         """
         get db provider tool
@@ -140,19 +142,23 @@ class WorkflowToolProviderController(ToolProviderController):
                 raise ValueError("variable not found")
 
         return WorkflowTool(
-            identity=ToolIdentity(
-                author=user.name if user else "",
-                name=db_provider.name,
-                label=I18nObject(en_US=db_provider.label, zh_Hans=db_provider.label),
-                provider=self.provider_id,
-                icon=db_provider.icon,
+            entity=ToolEntity(
+                identity=ToolIdentity(
+                    author=user.name if user else "",
+                    name=db_provider.name,
+                    label=I18nObject(en_US=db_provider.label, zh_Hans=db_provider.label),
+                    provider=self.provider_id,
+                    icon=db_provider.icon,
+                ),
+                description=ToolDescription(
+                    human=I18nObject(en_US=db_provider.description, zh_Hans=db_provider.description),
+                    llm=db_provider.description,
+                ),
+                parameters=workflow_tool_parameters,
             ),
-            description=ToolDescription(
-                human=I18nObject(en_US=db_provider.description, zh_Hans=db_provider.description),
-                llm=db_provider.description,
+            runtime=ToolRuntime(
+                tenant_id=db_provider.tenant_id,
             ),
-            parameters=workflow_tool_parameters,
-            is_team_authorization=True,
             workflow_app_id=app.id,
             workflow_entities={
                 "app": app,
@@ -201,7 +207,7 @@ class WorkflowToolProviderController(ToolProviderController):
             return None
 
         for tool in self.tools:
-            if tool.identity.name == tool_name:
+            if tool.entity.identity.name == tool_name:
                 return tool
 
         return None

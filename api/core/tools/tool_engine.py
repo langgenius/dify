@@ -65,7 +65,7 @@ class ToolEngine:
         # invoke the tool
         try:
             # hit the callback handler
-            agent_tool_callback.on_tool_start(tool_name=tool.identity.name, tool_inputs=tool_parameters)
+            agent_tool_callback.on_tool_start(tool_name=tool.entity.identity.name, tool_inputs=tool_parameters)
 
             messages = ToolEngine._invoke(tool, tool_parameters, user_id)
             invocation_meta_dict: dict[str, ToolInvokeMeta] = {}
@@ -99,7 +99,7 @@ class ToolEngine:
 
             # hit the callback handler
             agent_tool_callback.on_tool_end(
-                tool_name=tool.identity.name,
+                tool_name=tool.entity.identity.name,
                 tool_inputs=tool_parameters,
                 tool_outputs=plain_text,
                 message_id=message.id,
@@ -112,7 +112,7 @@ class ToolEngine:
             error_response = "Please check your tool provider credentials"
             agent_tool_callback.on_tool_error(e)
         except (ToolNotFoundError, ToolNotSupportedError, ToolProviderNotFoundError) as e:
-            error_response = f"there is not a tool named {tool.identity.name}"
+            error_response = f"there is not a tool named {tool.entity.identity.name}"
             agent_tool_callback.on_tool_error(e)
         except ToolParameterValidationError as e:
             error_response = f"tool parameters validation error: {e}, please check your tool parameters"
@@ -145,7 +145,7 @@ class ToolEngine:
         """
         try:
             # hit the callback handler
-            workflow_tool_callback.on_tool_start(tool_name=tool.identity.name, tool_inputs=tool_parameters)
+            workflow_tool_callback.on_tool_start(tool_name=tool.entity.identity.name, tool_inputs=tool_parameters)
 
             if isinstance(tool, WorkflowTool):
                 tool.workflow_call_depth = workflow_call_depth + 1
@@ -158,7 +158,7 @@ class ToolEngine:
 
             # hit the callback handler
             workflow_tool_callback.on_tool_end(
-                tool_name=tool.identity.name,
+                tool_name=tool.entity.identity.name,
                 tool_inputs=tool_parameters,
                 tool_outputs=response,
             )
@@ -177,13 +177,13 @@ class ToolEngine:
         """
         try:
             # hit the callback handler
-            callback.on_tool_start(tool_name=tool.identity.name, tool_inputs=tool_parameters)
+            callback.on_tool_start(tool_name=tool.entity.identity.name, tool_inputs=tool_parameters)
 
             response = tool.invoke(user_id, tool_parameters)
 
             # hit the callback handler
             callback.on_tool_end(
-                tool_name=tool.identity.name,
+                tool_name=tool.entity.identity.name,
                 tool_inputs=tool_parameters,
                 tool_outputs=response,
             )
@@ -208,11 +208,11 @@ class ToolEngine:
             time_cost=0.0,
             error=None,
             tool_config={
-                "tool_name": tool.identity.name,
-                "tool_provider": tool.identity.provider,
+                "tool_name": tool.entity.identity.name,
+                "tool_provider": tool.entity.identity.provider,
                 "tool_provider_type": tool.tool_provider_type().value,
                 "tool_parameters": deepcopy(tool.runtime.runtime_parameters),
-                "tool_icon": tool.identity.icon,
+                "tool_icon": tool.entity.identity.icon,
             },
         )
         try:

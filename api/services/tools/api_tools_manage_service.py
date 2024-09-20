@@ -5,6 +5,7 @@ from httpx import get
 
 from core.entities.provider_entities import ProviderConfig
 from core.model_runtime.utils.encoders import jsonable_encoder
+from core.tools.__base.tool_runtime import ToolRuntime
 from core.tools.custom_tool.provider import ApiToolProviderController
 from core.tools.entities.api_entities import UserTool, UserToolProvider
 from core.tools.entities.common_entities import I18nObject
@@ -160,7 +161,7 @@ class ApiToolManageService:
             tenant_id=tenant_id,
             config=provider_controller.get_credentials_schema(),
             provider_type=provider_controller.provider_type.value,
-            provider_identity=provider_controller.identity.name
+            provider_identity=provider_controller.entity.identity.name
         )
 
         encrypted_credentials = tool_configuration.encrypt(credentials)
@@ -222,6 +223,7 @@ class ApiToolManageService:
         return [
             ToolTransformService.tool_to_user_tool(
                 tool_bundle,
+                tenant_id=tenant_id,
                 labels=labels,
             )
             for tool_bundle in provider.tools
@@ -291,7 +293,7 @@ class ApiToolManageService:
             tenant_id=tenant_id,
             config=provider_controller.get_credentials_schema(),
             provider_type=provider_controller.provider_type.value,
-            provider_identity=provider_controller.identity.name
+            provider_identity=provider_controller.entity.identity.name
         )
 
         original_credentials = tool_configuration.decrypt(provider.credentials)
@@ -410,7 +412,7 @@ class ApiToolManageService:
                 tenant_id=tenant_id,
                 config=provider_controller.get_credentials_schema(),
                 provider_type=provider_controller.provider_type.value,
-                provider_identity=provider_controller.identity.name
+                provider_identity=provider_controller.entity.identity.name
             )
             decrypted_credentials = tool_configuration.decrypt(credentials)
             # check if the credential has changed, save the original credential
@@ -424,10 +426,10 @@ class ApiToolManageService:
             # get tool
             tool = provider_controller.get_tool(tool_name)
             tool = tool.fork_tool_runtime(
-                runtime={
-                    "credentials": credentials,
-                    "tenant_id": tenant_id,
-                }
+                runtime=ToolRuntime(
+                    credentials=credentials,
+                    tenant_id=tenant_id,
+                )
             )
             result = tool.validate_credentials(credentials, parameters)
         except Exception as e:

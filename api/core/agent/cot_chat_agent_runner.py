@@ -4,6 +4,7 @@ from core.agent.cot_agent_runner import CotAgentRunner
 from core.model_runtime.entities.message_entities import (
     AssistantPromptMessage,
     PromptMessage,
+    PromptMessageContent,
     SystemPromptMessage,
     TextPromptMessageContent,
     UserPromptMessage,
@@ -16,6 +17,9 @@ class CotChatAgentRunner(CotAgentRunner):
         """
         Organize system prompt
         """
+        assert self.app_config.agent
+        assert self.app_config.agent.prompt
+
         prompt_entity = self.app_config.agent.prompt
         first_prompt = prompt_entity.first_prompt
 
@@ -27,12 +31,12 @@ class CotChatAgentRunner(CotAgentRunner):
 
         return SystemPromptMessage(content=system_prompt)
 
-    def _organize_user_query(self, query, prompt_messages: list[PromptMessage] = None) -> list[PromptMessage]:
+    def _organize_user_query(self, query, prompt_messages: list[PromptMessage]) -> list[PromptMessage]:
         """
         Organize user query
         """
         if self.files:
-            prompt_message_contents = [TextPromptMessageContent(data=query)]
+            prompt_message_contents: list[PromptMessageContent] = [TextPromptMessageContent(data=query)]
             for file_obj in self.files:
                 prompt_message_contents.append(file_obj.prompt_message_content)
 
@@ -57,8 +61,10 @@ class CotChatAgentRunner(CotAgentRunner):
             assistant_message = AssistantPromptMessage(content="")
             for unit in agent_scratchpad:
                 if unit.is_final():
+                    assert isinstance(assistant_message.content, str)
                     assistant_message.content += f"Final Answer: {unit.agent_response}"
                 else:
+                    assert isinstance(assistant_message.content, str)
                     assistant_message.content += f"Thought: {unit.thought}\n\n"
                     if unit.action_str:
                         assistant_message.content += f"Action: {unit.action_str}\n\n"

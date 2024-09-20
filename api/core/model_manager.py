@@ -1,7 +1,7 @@
 import logging
 import os
 from collections.abc import Callable, Generator, Sequence
-from typing import IO, Optional, Union, cast
+from typing import IO, Literal, Optional, Union, cast, overload
 
 from core.entities.provider_configuration import ProviderConfiguration, ProviderModelBundle
 from core.entities.provider_entities import ModelLoadBalancingConfiguration
@@ -96,6 +96,42 @@ class ModelInstance:
                 return lb_model_manager
 
         return None
+
+    @overload
+    def invoke_llm(
+        self,
+        prompt_messages: list[PromptMessage],
+        model_parameters: Optional[dict] = None,
+        tools: Sequence[PromptMessageTool] | None = None,
+        stop: Optional[list[str]] = None,
+        stream: Literal[True] = True,
+        user: Optional[str] = None,
+        callbacks: Optional[list[Callback]] = None,
+    ) -> Generator: ...
+
+    @overload
+    def invoke_llm(
+        self,
+        prompt_messages: list[PromptMessage],
+        model_parameters: Optional[dict] = None,
+        tools: Sequence[PromptMessageTool] | None = None,
+        stop: Optional[list[str]] = None,
+        stream: Literal[False] = False,
+        user: Optional[str] = None,
+        callbacks: Optional[list[Callback]] = None,
+    ) -> LLMResult: ...
+
+    @overload
+    def invoke_llm(
+        self,
+        prompt_messages: list[PromptMessage],
+        model_parameters: Optional[dict] = None,
+        tools: Sequence[PromptMessageTool] | None = None,
+        stop: Optional[list[str]] = None,
+        stream: bool = True,
+        user: Optional[str] = None,
+        callbacks: Optional[list[Callback]] = None,
+    ) -> Union[LLMResult, Generator]: ...
 
     def invoke_llm(
         self,

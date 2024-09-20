@@ -4,6 +4,7 @@ from typing import Optional, Union
 
 from configs import dify_config
 from core.tools.__base.tool import Tool
+from core.tools.__base.tool_runtime import ToolRuntime
 from core.tools.builtin_tool.provider import BuiltinToolProviderController
 from core.tools.custom_tool.provider import ApiToolProviderController
 from core.tools.entities.api_entities import UserTool, UserToolProvider
@@ -69,19 +70,19 @@ class ToolTransformService:
         convert provider controller to user provider
         """
         result = UserToolProvider(
-            id=provider_controller.identity.name,
-            author=provider_controller.identity.author,
-            name=provider_controller.identity.name,
+            id=provider_controller.entity.identity.name,
+            author=provider_controller.entity.identity.author,
+            name=provider_controller.entity.identity.name,
             description=I18nObject(
-                en_US=provider_controller.identity.description.en_US,
-                zh_Hans=provider_controller.identity.description.zh_Hans,
-                pt_BR=provider_controller.identity.description.pt_BR,
+                en_US=provider_controller.entity.identity.description.en_US,
+                zh_Hans=provider_controller.entity.identity.description.zh_Hans,
+                pt_BR=provider_controller.entity.identity.description.pt_BR,
             ),
-            icon=provider_controller.identity.icon,
+            icon=provider_controller.entity.identity.icon,
             label=I18nObject(
-                en_US=provider_controller.identity.label.en_US,
-                zh_Hans=provider_controller.identity.label.zh_Hans,
-                pt_BR=provider_controller.identity.label.pt_BR,
+                en_US=provider_controller.entity.identity.label.en_US,
+                zh_Hans=provider_controller.entity.identity.label.zh_Hans,
+                pt_BR=provider_controller.entity.identity.label.pt_BR,
             ),
             type=ToolProviderType.BUILT_IN,
             masked_credentials={},
@@ -111,7 +112,7 @@ class ToolTransformService:
                     tenant_id=db_provider.tenant_id,
                     config=provider_controller.get_credentials_schema(),
                     provider_type=provider_controller.provider_type.value,
-                    provider_identity=provider_controller.identity.name
+                    provider_identity=provider_controller.entity.identity.name,
                 )
                 # decrypt the credentials and mask the credentials
                 decrypted_credentials = tool_configuration.decrypt(data=credentials)
@@ -155,16 +156,16 @@ class ToolTransformService:
         """
         return UserToolProvider(
             id=provider_controller.provider_id,
-            author=provider_controller.identity.author,
-            name=provider_controller.identity.name,
+            author=provider_controller.entity.identity.author,
+            name=provider_controller.entity.identity.name,
             description=I18nObject(
-                en_US=provider_controller.identity.description.en_US,
-                zh_Hans=provider_controller.identity.description.zh_Hans,
+                en_US=provider_controller.entity.identity.description.en_US,
+                zh_Hans=provider_controller.entity.identity.description.zh_Hans,
             ),
-            icon=provider_controller.identity.icon,
+            icon=provider_controller.entity.identity.icon,
             label=I18nObject(
-                en_US=provider_controller.identity.label.en_US,
-                zh_Hans=provider_controller.identity.label.zh_Hans,
+                en_US=provider_controller.entity.identity.label.en_US,
+                zh_Hans=provider_controller.entity.identity.label.zh_Hans,
             ),
             type=ToolProviderType.WORKFLOW,
             masked_credentials={},
@@ -189,7 +190,7 @@ class ToolTransformService:
             user = db_provider.user
             if not user:
                 raise ValueError("user not found")
-            
+
             username = user.name
         except Exception as e:
             logger.error(f"failed to get user name for api provider {db_provider.id}: {str(e)}")
@@ -222,7 +223,7 @@ class ToolTransformService:
                 tenant_id=db_provider.tenant_id,
                 config=provider_controller.get_credentials_schema(),
                 provider_type=provider_controller.provider_type.value,
-                provider_identity=provider_controller.identity.name
+                provider_identity=provider_controller.entity.identity.name,
             )
 
             # decrypt the credentials and mask the credentials
@@ -236,8 +237,8 @@ class ToolTransformService:
     @staticmethod
     def tool_to_user_tool(
         tool: Union[ApiToolBundle, WorkflowTool, Tool],
+        tenant_id: str,
         credentials: dict | None = None,
-        tenant_id: str | None = None,
         labels: list[str] | None = None,
     ) -> UserTool:
         """
@@ -246,14 +247,14 @@ class ToolTransformService:
         if isinstance(tool, Tool):
             # fork tool runtime
             tool = tool.fork_tool_runtime(
-                runtime={
-                    "credentials": credentials,
-                    "tenant_id": tenant_id,
-                }
+                runtime=ToolRuntime(
+                    credentials=credentials,
+                    tenant_id=tenant_id,
+                )
             )
 
             # get tool parameters
-            parameters = tool.parameters or []
+            parameters = tool.entity.parameters or []
             # get tool runtime parameters
             runtime_parameters = tool.get_runtime_parameters() or []
             # override parameters
@@ -270,10 +271,10 @@ class ToolTransformService:
                     current_parameters.append(runtime_parameter)
 
             return UserTool(
-                author=tool.identity.author,
-                name=tool.identity.name,
-                label=tool.identity.label,
-                description=tool.description.human if tool.description else I18nObject(en_US=''),
+                author=tool.entity.identity.author,
+                name=tool.entity.identity.name,
+                label=tool.entity.identity.label,
+                description=tool.entity.description.human if tool.entity.description else I18nObject(en_US=""),
                 parameters=current_parameters,
                 labels=labels or [],
             )

@@ -1304,7 +1304,7 @@ class MessageChain(db.Model):
     created_at = db.Column(db.DateTime, nullable=False, server_default=db.func.current_timestamp())
 
 
-class MessageAgentThought(db.Model):
+class MessageAgentThought(Base):
     __tablename__ = "message_agent_thoughts"
     __table_args__ = (
         db.PrimaryKeyConstraint("id", name="message_agent_thought_pkey"),
