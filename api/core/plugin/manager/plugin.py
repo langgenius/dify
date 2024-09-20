@@ -31,10 +31,10 @@ class PluginInstallationManager(BasePluginManager):
         """
         identifier = quote(identifier)
         # exception will be raised if the request failed
-        self._request_with_plugin_daemon_response(
+        return self._request_with_plugin_daemon_response(
             "POST",
             f"/plugin/{tenant_id}/install/identifier",
-            dict,
+            bool,
             headers={
                 "Content-Type": "application/json",
             },
@@ -43,4 +43,10 @@ class PluginInstallationManager(BasePluginManager):
             },
         )
 
-        return True
+    def uninstall(self, tenant_id: str, identifier: str) -> bool:
+        """
+        Uninstall a plugin.
+        """
+        return self._request_with_plugin_daemon_response(
+            "DELETE", f"/plugin/{tenant_id}/uninstall?plugin_unique_identifier={identifier}", bool
+        )
