@@ -11,7 +11,7 @@ import type { FileEntity } from './types'
 import { useFileStore } from './store'
 import {
   fileUpload,
-  getFileType,
+  getSupportFileType,
 } from './utils'
 import { FILE_SIZE_LIMIT } from './constants'
 import { useToastContext } from '@/app/components/base/toast'
@@ -45,7 +45,7 @@ export const useFile = (fileConfig: FileUpload) => {
     } = fileStore.getState()
 
     const newFiles = produce(files, (draft) => {
-      const index = draft.findIndex(file => file.fileId === newFile.fileId)
+      const index = draft.findIndex(file => file.id === newFile.id)
 
       if (index > -1)
         draft[index] = newFile
@@ -59,7 +59,7 @@ export const useFile = (fileConfig: FileUpload) => {
       setFiles,
     } = fileStore.getState()
 
-    const newFiles = files.filter(file => file.fileId !== fileId)
+    const newFiles = files.filter(file => file.id !== fileId)
     setFiles(newFiles)
   }, [fileStore])
 
@@ -68,7 +68,7 @@ export const useFile = (fileConfig: FileUpload) => {
       files,
       setFiles,
     } = fileStore.getState()
-    const index = files.findIndex(file => file.fileId === fileId)
+    const index = files.findIndex(file => file.id === fileId)
 
     if (index > -1) {
       const uploadingFile = files[index]
@@ -77,12 +77,12 @@ export const useFile = (fileConfig: FileUpload) => {
       })
       setFiles(newFiles)
       fileUpload({
-        file: uploadingFile.file!,
+        file: uploadingFile.originalFile!,
         onProgressCallback: (progress) => {
           handleUpdateFile({ ...uploadingFile, progress })
         },
         onSuccessCallback: (res) => {
-          handleUpdateFile({ ...uploadingFile, fileId: res.id, progress: 100 })
+          handleUpdateFile({ ...uploadingFile, uploadedId: res.id, progress: 100 })
         },
         onErrorCallback: () => {
           notify({ type: 'error', message: t('common.imageUploader.uploadFromComputerUploadError') })
@@ -92,7 +92,20 @@ export const useFile = (fileConfig: FileUpload) => {
     }
   }, [fileStore, notify, t, handleUpdateFile, params])
 
-  const handleLoadFileFromLink = useCallback(() => {}, [])
+  const handleLoadFileFromLink = useCallback((url: string) => {
+    const uploadingFile = {
+      id: uuid4(),
+      name: 'remote file (todo)',
+      type: '',
+      size: 0,
+      progress: 0,
+      transferMethod: TransferMethod.remote_url,
+      supportFileType: '',
+      url,
+      base64Url: '',
+    }
+    handleAddFile(uploadingFile)
+  }, [handleAddFile])
 
   const handleLoadFileFromLinkSuccess = useCallback(() => { }, [])
 
@@ -113,28 +126,29 @@ export const useFile = (fileConfig: FileUpload) => {
     const reader = new FileReader()
     const isImage = file.type.startsWith('image')
     const allowedFileTypes = fileConfig.allowed_file_types
-    const isCustomFileType = allowedFileTypes?.includes(SupportUploadFileTypes.custom)
 
     reader.addEventListener(
       'load',
       () => {
         const uploadingFile = {
-          fileId: uuid4(),
-          file,
-          url: '',
+          id: uuid4(),
+          name: file.name,
+          type: file.type,
+          size: file.size,
           progress: 0,
+          transferMethod: TransferMethod.local_file,
+          supportFileType: getSupportFileType(file.name, allowedFileTypes?.includes(SupportUploadFileTypes.custom)),
+          originalFile: file,
           base64Url: isImage ? reader.result as string : '',
-          fileType: isCustomFileType ? SupportUploadFileTypes.custom : getFileType(file),
-          type: TransferMethod.local_file,
         }
         handleAddFile(uploadingFile)
         fileUpload({
-          file: uploadingFile.file,
+          file: uploadingFile.originalFile,
           onProgressCallback: (progress) => {
             handleUpdateFile({ ...uploadingFile, progress })
           },
           onSuccessCallback: (res) => {
-            handleUpdateFile({ ...uploadingFile, fileStorageId: res.id, progress: 100 })
+            handleUpdateFile({ ...uploadingFile, uploadedId: res.id, progress: 100 })
           },
           onErrorCallback: () => {
             notify({ type: 'error', message: t('common.fileUploader.uploadFromComputerUploadError') })

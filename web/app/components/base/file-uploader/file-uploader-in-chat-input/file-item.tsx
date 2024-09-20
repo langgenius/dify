@@ -7,6 +7,7 @@ import {
   getFileExtension,
 } from '../utils'
 import FileTypeIcon from '../file-type-icon'
+import type { FileEntity } from '../types'
 import cn from '@/utils/classnames'
 import { formatFileSize } from '@/utils/format'
 import ProgressCircle from '@/app/components/base/progress-bar/progress-circle'
@@ -15,24 +16,21 @@ import ActionButton from '@/app/components/base/action-button'
 import Button from '@/app/components/base/button'
 
 type FileItemProps = {
-  fileId: string
-  file: File
-  progress?: number
+  file: FileEntity
   showDeleteAction?: boolean
   showDownloadAction?: boolean
   onRemove?: (fileId: string) => void
   onReUpload?: (fileId: string) => void
 }
 const FileItem = ({
-  fileId,
   file,
-  progress = 0,
   showDeleteAction,
   showDownloadAction = true,
   onRemove,
   onReUpload,
 }: FileItemProps) => {
-  const ext = getFileExtension(file)
+  const { id, name, progress } = file
+  const ext = getFileExtension(name)
   const uploadError = progress === -1
 
   return (
@@ -48,20 +46,20 @@ const FileItem = ({
         showDeleteAction && (
           <Button
             className='hidden group-hover:flex absolute -right-1.5 -top-1.5 p-0 w-5 h-5 rounded-full z-10'
-            onClick={() => onRemove?.(fileId)}
+            onClick={() => onRemove?.(id)}
           >
             <RiCloseLine className='w-4 h-4 text-components-button-secondary-text' />
           </Button>
         )
       }
       <div className='mb-1 h-8 line-clamp-2 system-xs-medium text-text-tertiary'>
-        {file.name}
+        {name}
       </div>
       <div className='flex items-center justify-between'>
         <div className='flex items-center system-2xs-medium-uppercase text-text-tertiary'>
           <FileTypeIcon
             size='sm'
-            type={getFileAppearanceType(file)}
+            type={getFileAppearanceType(name)}
             className='mr-1'
           />
           {
@@ -95,7 +93,7 @@ const FileItem = ({
           uploadError && (
             <ReplayLine
               className='w-4 h-4 text-text-tertiary'
-              onClick={() => onReUpload?.(fileId)}
+              onClick={() => onReUpload?.(id)}
             />
           )
         }

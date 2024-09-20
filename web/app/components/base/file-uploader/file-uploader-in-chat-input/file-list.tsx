@@ -1,10 +1,10 @@
-import { isImage } from '../utils'
 import { useFile } from '../hooks'
 import { useStore } from '../store'
 import type { FileEntity } from '../types'
 import FileImageItem from './file-image-item'
 import FileItem from './file-item'
 import type { FileUpload } from '@/app/components/base/features/types'
+import { SupportUploadFileTypes } from '@/app/components/workflow/types'
 
 type FileListProps = {
   files: FileEntity[]
@@ -24,13 +24,11 @@ export const FileList = ({
     <div className='flex flex-wrap gap-2'>
       {
         files.map((file) => {
-          if (isImage(file.file)) {
+          if (file.supportFileType === SupportUploadFileTypes.image) {
             return (
               <FileImageItem
-                key={file.fileId}
-                fileId={file.fileId}
-                imageUrl={file.base64Url}
-                progress={file.progress}
+                key={file.id}
+                file={file}
                 showDeleteAction={showDeleteAction}
                 onRemove={onRemove}
                 onReUpload={onReUpload}
@@ -40,10 +38,8 @@ export const FileList = ({
 
           return (
             <FileItem
-              key={file.fileId}
-              fileId={file.fileId}
-              file={file.file}
-              progress={file.progress}
+              key={file.id}
+              file={file}
               showDeleteAction={showDeleteAction}
               showDownloadAction={showDownloadAction}
               onRemove={onRemove}

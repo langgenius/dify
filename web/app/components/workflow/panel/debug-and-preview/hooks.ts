@@ -189,7 +189,6 @@ export const useChat = (
 
     const { files, ...restParams } = params
     const bodyParams = {
-      conversation_id: conversationId.current,
       files: getProcessedFiles(files || []),
       ...restParams,
     }
@@ -208,7 +207,7 @@ export const useChat = (
     let hasSetResponseId = false
 
     handleRun(
-      params,
+      bodyParams,
       {
         onData: (message: string, isFirstMessage: boolean, { conversationId: newConversationId, messageId, taskId }: any) => {
           responseItem.content = responseItem.content + message

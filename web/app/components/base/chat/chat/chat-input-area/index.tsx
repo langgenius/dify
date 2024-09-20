@@ -63,7 +63,7 @@ const ChatInputArea = ({
 
   const handleSend = () => {
     if (onSend) {
-      if (files.find(item => item.type === TransferMethod.local_file && !item.fileStorageId)) {
+      if (files.find(item => item.transferMethod === TransferMethod.local_file && !item.uploadedId)) {
         notify({ type: 'info', message: t('appDebug.errorMessage.waitForImgUpload') })
         return
       }

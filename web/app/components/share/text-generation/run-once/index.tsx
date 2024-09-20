@@ -13,6 +13,7 @@ import { DEFAULT_VALUE_MAX_LEN } from '@/config'
 import TextGenerationImageUploader from '@/app/components/base/image-uploader/text-generation-image-uploader'
 import type { VisionFile, VisionSettings } from '@/types/app'
 import { FileUploaderInAttachmentWrapper } from '@/app/components/base/file-uploader'
+import { getProcessedFiles } from '@/app/components/base/file-uploader/utils'
 
 export type IRunOnceProps = {
   siteInfo: SiteInfo
@@ -113,12 +114,9 @@ const RunOnce: FC<IRunOnceProps> = ({
               </div>
             )
           }
-          <FileUploaderInAttachmentWrapper onChange={files => onVisionFilesChange(files.filter(file => file.progress !== -1).map(fileItem => ({
-            type: fileItem.fileType,
-            transfer_method: fileItem.type,
-            url: fileItem.url || '',
-            upload_file_id: fileItem.fileId,
-          })))} />
+          <FileUploaderInAttachmentWrapper
+            onChange={files => onVisionFilesChange(getProcessedFiles(files))}
+          />
           {promptConfig.prompt_variables.length > 0 && (
             <div className='mt-4 h-[1px] bg-gray-100'></div>
           )}

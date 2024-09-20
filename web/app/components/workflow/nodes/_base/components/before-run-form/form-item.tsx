@@ -23,6 +23,7 @@ import { Line3 } from '@/app/components/base/icons/src/public/common'
 import { Variable02 } from '@/app/components/base/icons/src/vender/solid/development'
 import { BubbleX } from '@/app/components/base/icons/src/vender/line/others'
 import cn from '@/utils/classnames'
+import { getProcessedFiles } from '@/app/components/base/file-uploader/utils'
 
 type Props = {
   payload: InputVar
@@ -158,12 +159,7 @@ const FormItem: FC<Props> = ({
         }
         {(type === InputVarType.singleFile || type === InputVarType.multiFiles) && (
           <FileUploaderInAttachmentWrapper
-            onChange={files => onChange(files.filter(file => file.progress !== -1).map(fileItem => ({
-              type: fileItem.fileType,
-              transfer_method: fileItem.type,
-              url: fileItem.url,
-              upload_file_id: fileItem.fileId,
-            })))}
+            onChange={files => onChange(getProcessedFiles(files))}
             fileConfig={{
               allowed_file_types: payload.allowed_file_types,
               allowed_file_extensions: payload.allowed_file_extensions,
