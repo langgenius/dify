@@ -55,6 +55,8 @@ const Filter: FC<IFilterProps> = ({ isChatMode, appId, queryParams, setQueryPara
           className='!w-[300px]'
           onSelect={
             (item) => {
+              if (!item.value)
+                return
               setQueryParams({ ...queryParams, annotation_status: item.value as string })
             }
           }

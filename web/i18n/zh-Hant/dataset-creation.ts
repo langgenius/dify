@@ -73,6 +73,14 @@ const translation = {
       unknownError: '未知錯誤',
       fireCrawlNotConfigured: '未配置 Firecrawl',
       maxDepthTooltip: '相對於輸入的 URL 的最大爬網深度。深度 0 只是抓取輸入的 url 的頁面，深度 1 抓取 url 以及 enteredURL + 1 / 之後的所有內容，依此類推。',
+      jinaReaderNotConfigured: '未配置 Jina Reader',
+      jinaReaderNotConfiguredDescription: '通過輸入您的免費 API 金鑰進行訪問來設置 Jina Reader。',
+      chooseProvider: '選擇供應商',
+      jinaReaderDoc: '了解有關 Jina Reader 的更多資訊',
+      jinaReaderTitle: '將整個網站轉換為 Markdown',
+      useSitemap: '使用網站地圖',
+      jinaReaderDocLink: 'https://jina.ai/reader',
+      useSitemapTooltip: '按照網站地圖對網站進行爬網。否則，Jina Reader 將根據頁面相關性反覆運算抓取，從而生成更少但品質更高的頁面。',
     },
   },
   stepTwo: {
@@ -156,6 +164,11 @@ const translation = {
     configFirecrawl: '配置 🔥Firecrawl',
     apiKeyPlaceholder: '來自 firecrawl.dev 的 API 金鑰',
     getApiKeyLinkText: '從 firecrawl.dev 獲取 API 金鑰',
+  },
+  jinaReader: {
+    configJinaReader: '配置 Jina Reader',
+    getApiKeyLinkText: '在 jina.ai 獲取您的免費 API 金鑰',
+    apiKeyPlaceholder: '來自 jina.ai 的 API 金鑰',
   },
 }
 

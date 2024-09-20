@@ -29,6 +29,9 @@ const translation = {
     save: '儲存',
     permissionsInvitedMembers: '部分團隊成員',
     me: '（您）',
+    externalKnowledgeID: '外部知識ID',
+    externalKnowledgeAPI: '外部知識 API',
+    retrievalSettings: '檢索設置',
   },
 }
 

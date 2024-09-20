@@ -23,6 +23,8 @@ const translation = {
   },
   noRecentTip: 'Здесь нет результатов недавних запросов',
   viewChart: 'Посмотреть ВЕКТОРНУЮ ДИАГРАММУ',
+  viewDetail: 'Подробнее',
+  settingTitle: 'Настройка извлечения',
 }
 
 export default translation
