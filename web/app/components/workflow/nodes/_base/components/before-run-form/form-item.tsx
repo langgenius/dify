@@ -157,7 +157,21 @@ const FormItem: FC<Props> = ({
             />
           )
         }
-        {(type === InputVarType.singleFile || type === InputVarType.multiFiles) && (
+        {(type === InputVarType.singleFile) && (
+          <FileUploaderInAttachmentWrapper
+            onChange={(files) => {
+              if (files.length)
+                onChange(getProcessedFiles(files)[0])
+            }}
+            fileConfig={{
+              allowed_file_types: payload.allowed_file_types,
+              allowed_file_extensions: payload.allowed_file_extensions,
+              allowed_file_upload_methods: payload.allowed_file_upload_methods,
+              number_limits: 1,
+            }}
+          />
+        )}
+        {(type === InputVarType.multiFiles) && (
           <FileUploaderInAttachmentWrapper
             onChange={files => onChange(getProcessedFiles(files))}
             fileConfig={{
