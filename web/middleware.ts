@@ -4,7 +4,7 @@ import { NextResponse } from 'next/server'
 export function middleware(request: NextRequest) {
   const nonce = Buffer.from(crypto.randomUUID()).toString('base64')
   // style-src 'self' 'nonce-${nonce}';
-  const whiteList = 'https://cloud.dify.dev/ https://cloud.dify.ai/ https://analytics.google.com https://googletagmanager.com https://api.github.com'
+  const whiteList = 'https://cloud.dify.dev/ https://cloud.dify.ai/ https://analytics.google.com https://googletagmanager.com https://api.github.com *.sentry.io'
   const csp = process.env.NODE_ENV === 'production' ? `'nonce-${nonce}'` : '\'unsafe-eval\' \'unsafe-inline\''
 
   const cspHeader = `
