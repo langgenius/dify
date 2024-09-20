@@ -180,16 +180,20 @@ class GraphEngine:
 
             # trigger graph run success event
             yield GraphRunSucceededEvent(outputs=self.graph_runtime_state.outputs)
+            self._release_thread()
         except GraphRunFailedError as e:
             yield GraphRunFailedEvent(error=e.error)
+            self._release_thread()
             return
         except Exception as e:
             logger.exception("Unknown Error when graph running")
             yield GraphRunFailedEvent(error=str(e))
+            self._release_thread()
             raise e
-        finally:
-            if self.is_main_thread_pool and self.thread_pool_id in GraphEngine.workflow_thread_pool_mapping:
-                del GraphEngine.workflow_thread_pool_mapping[self.thread_pool_id]
+
+    def _release_thread(self):
+        if self.is_main_thread_pool and self.thread_pool_id in GraphEngine.workflow_thread_pool_mapping:
+            del GraphEngine.workflow_thread_pool_mapping[self.thread_pool_id]
 
     def _run(
         self,
