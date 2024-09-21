@@ -133,6 +133,7 @@ const translation = {
     datasetSettingLink: '지식 설정',
     webpageUnit: '페이지',
     websiteSource: '웹 사이트 전처리',
+    separatorTip: '구분 기호는 텍스트를 구분하는 데 사용되는 문자입니다. \\n\\n 및 \\n은 단락과 줄을 구분하는 데 일반적으로 사용되는 구분 기호입니다. 쉼표(\\n\\n,\\n)와 함께 사용하면 최대 청크 길이를 초과할 경우 단락이 줄로 분할됩니다. 직접 정의한 특수 구분 기호(예: ***)를 사용할 수도 있습니다.',
   },
   stepThree: {
     creationTitle: '🎉 지식이 생성되었습니다',

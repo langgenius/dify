@@ -133,6 +133,7 @@ const translation = {
     datasetSettingLink: 'setările Cunoștinței.',
     webpageUnit: 'Pagini',
     websiteSource: 'Site-ul web de preprocesare',
+    separatorTip: 'Un delimitator este caracterul folosit pentru a separa textul. \\n\\n și \\n sunt delimitatori utilizați în mod obișnuit pentru separarea paragrafelor și liniilor. Combinate cu virgule (\\n\\n,\\n), paragrafele vor fi segmentate pe linii atunci când depășesc lungimea maximă a bucății. De asemenea, puteți utiliza delimitatori speciali definiți de dumneavoastră (de exemplu, ***).',
   },
   stepThree: {
     creationTitle: '🎉 Cunoștință creată',
