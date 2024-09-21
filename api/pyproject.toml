@@ -162,7 +162,7 @@ google-auth = "2.29.0"
 google-auth-httplib2 = "0.2.0"
 google-cloud-aiplatform = "1.49.0"
 google-cloud-storage = "2.16.0"
-google-generativeai = "0.5.0"
+google-generativeai = "0.8.1"
 googleapis-common-protos = "1.63.0"
 gunicorn = "~22.0.0"
 httpx = { version = "~0.27.0", extras = ["socks"] }
