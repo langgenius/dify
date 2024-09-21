@@ -19,7 +19,6 @@ from openai.types.chat.chat_completion_message import FunctionCall
 from openai.types.completion import Completion
 from xinference_client.client.restful.restful_client import (
     Client,
-    RESTfulChatglmCppChatModelHandle,
     RESTfulChatModelHandle,
     RESTfulGenerateModelHandle,
 )
