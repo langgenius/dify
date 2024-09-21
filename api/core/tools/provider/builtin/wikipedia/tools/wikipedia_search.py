@@ -27,7 +27,7 @@ class WikipediaAPIWrapper:
         self.doc_content_chars_max = doc_content_chars_max
 
     def run(self, query: str, lang: str = "") -> str:
-        if lang in wikipedia.languages().keys():
+        if lang in wikipedia.languages():
             self.lang = lang
 
         wikipedia.set_lang(self.lang)
@@ -83,7 +83,6 @@ class WikipediaQueryRun:
 
 
 class WikiPediaSearchTool(BuiltinTool):
-
     def _invoke(
         self,
         user_id: str,

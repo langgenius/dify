@@ -1,6 +1,6 @@
 {
   "name": "dify-web",
-  "version": "0.8.0",
+  "version": "0.8.3",
   "private": true,
   "engines": {
     "node": ">=18.17.0"
@@ -37,6 +37,7 @@
     "@remixicon/react": "^4.2.0",
     "@sentry/react": "^7.54.0",
     "@sentry/utils": "^7.54.0",
+    "@svgdotjs/svg.js": "^3.2.4",
     "@tailwindcss/line-clamp": "^0.4.4",
     "@tailwindcss/typography": "^0.5.9",
     "ahooks": "^3.7.5",

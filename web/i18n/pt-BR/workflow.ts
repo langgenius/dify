@@ -77,6 +77,24 @@ const translation = {
     importDSLTip: 'O rascunho atual será substituído. Exporte o fluxo de trabalho como backup antes de importar.',
     backupCurrentDraft: 'Fazer backup do rascunho atual',
     importDSL: 'Importar DSL',
+    parallelTip: {
+      click: {
+        title: 'Clique',
+        desc: 'para adicionar',
+      },
+      drag: {
+        title: 'Arrastar',
+        desc: 'para conectar',
+      },
+      limit: 'O paralelismo é limitado a {{num}} ramificações.',
+      depthLimit: 'Limite de camada de aninhamento paralelo de {{num}} camadas',
+    },
+    parallelRun: 'Execução paralela',
+    disconnect: 'Desligar',
+    jumpToNode: 'Ir para este nó',
+    addParallelNode: 'Adicionar nó paralelo',
+    parallel: 'PARALELO',
+    branch: 'RAMIFICAÇÃO',
   },
   env: {
     envPanelTitle: 'Variáveis de Ambiente',

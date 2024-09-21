@@ -24,9 +24,10 @@ class LocalAITextEmbeddingModel(TextEmbeddingModel):
     """
     Model class for Jina text embedding model.
     """
-    def _invoke(self, model: str, credentials: dict,
-                texts: list[str], user: Optional[str] = None) \
-            -> TextEmbeddingResult:
+
+    def _invoke(
+        self, model: str, credentials: dict, texts: list[str], user: Optional[str] = None
+    ) -> TextEmbeddingResult:
         """
         Invoke text embedding model
 
@@ -37,39 +38,33 @@ class LocalAITextEmbeddingModel(TextEmbeddingModel):
         :return: embeddings result
         """
         if len(texts) != 1:
-            raise InvokeBadRequestError('Only one text is supported')
+            raise InvokeBadRequestError("Only one text is supported")
 
-        server_url = credentials['server_url']
+        server_url = credentials["server_url"]
         model_name = model
         if not server_url:
-            raise CredentialsValidateFailedError('server_url is required')
+            raise CredentialsValidateFailedError("server_url is required")
         if not model_name:
-            raise CredentialsValidateFailedError('model_name is required')
-        
-        url = server_url
-        headers = {
-            'Authorization': 'Bearer 123',
-            'Content-Type': 'application/json'
-        }
+            raise CredentialsValidateFailedError("model_name is required")
 
-        data = {
-            'model': model_name,
-            'input': texts[0]
-        }
+        url = server_url
+        headers = {"Authorization": "Bearer 123", "Content-Type": "application/json"}
+
+        data = {"model": model_name, "input": texts[0]}
 
         try:
-            response = post(str(URL(url) / 'embeddings'), headers=headers, data=dumps(data), timeout=10)
+            response = post(str(URL(url) / "embeddings"), headers=headers, data=dumps(data), timeout=10)
         except Exception as e:
             raise InvokeConnectionError(str(e))
-        
+
         if response.status_code != 200:
             try:
                 resp = response.json()
-                code = resp['error']['code']
-                msg = resp['error']['message']
+                code = resp["error"]["code"]
+                msg = resp["error"]["message"]
                 if code == 500:
                     raise InvokeServerUnavailableError(msg)
-                
+
                 if response.status_code == 401:
                     raise InvokeAuthorizationError(msg)
                 elif response.status_code == 429:
@@ -79,23 +74,21 @@ class LocalAITextEmbeddingModel(TextEmbeddingModel):
                 else:
                     raise InvokeError(msg)
             except JSONDecodeError as e:
-                raise InvokeServerUnavailableError(f"Failed to convert response to json: {e} with text: {response.text}")
+                raise InvokeServerUnavailableError(
+                    f"Failed to convert response to json: {e} with text: {response.text}"
+                )
 
         try:
             resp = response.json()
-            embeddings = resp['data']
-            usage = resp['usage']
+            embeddings = resp["data"]
+            usage = resp["usage"]
         except Exception as e:
             raise InvokeServerUnavailableError(f"Failed to convert response to json: {e} with text: {response.text}")
 
-        usage = self._calc_response_usage(model=model, credentials=credentials, tokens=usage['total_tokens'])
+        usage = self._calc_response_usage(model=model, credentials=credentials, tokens=usage["total_tokens"])
 
         result = TextEmbeddingResult(
-            model=model,
-            embeddings=[[
-                float(data) for data in x['embedding']
-            ] for x in embeddings],
-            usage=usage
+            model=model, embeddings=[[float(data) for data in x["embedding"]] for x in embeddings], usage=usage
         )
 
         return result
@@ -114,7 +107,7 @@ class LocalAITextEmbeddingModel(TextEmbeddingModel):
             # use GPT2Tokenizer to get num tokens
             num_tokens += self._get_num_tokens_by_gpt2(text)
         return num_tokens
-    
+
     def _get_customizable_model_schema(self, model: str, credentials: dict) -> AIModelEntity | None:
         """
         Get customizable model schema
@@ -130,10 +123,10 @@ class LocalAITextEmbeddingModel(TextEmbeddingModel):
             features=[],
             fetch_from=FetchFrom.CUSTOMIZABLE_MODEL,
             model_properties={
-                ModelPropertyKey.CONTEXT_SIZE: int(credentials.get('context_size', '512')),
+                ModelPropertyKey.CONTEXT_SIZE: int(credentials.get("context_size", "512")),
                 ModelPropertyKey.MAX_CHUNKS: 1,
             },
-            parameter_rules=[]
+            parameter_rules=[],
         )
 
     def validate_credentials(self, model: str, credentials: dict) -> None:
@@ -145,32 +138,22 @@ class LocalAITextEmbeddingModel(TextEmbeddingModel):
         :return:
         """
         try:
-            self._invoke(model=model, credentials=credentials, texts=['ping'])
+            self._invoke(model=model, credentials=credentials, texts=["ping"])
         except InvokeAuthorizationError:
-            raise CredentialsValidateFailedError('Invalid credentials')
+            raise CredentialsValidateFailedError("Invalid credentials")
         except InvokeConnectionError as e:
-            raise CredentialsValidateFailedError(f'Invalid credentials: {e}')
+            raise CredentialsValidateFailedError(f"Invalid credentials: {e}")
 
     @property
     def _invoke_error_mapping(self) -> dict[type[InvokeError], list[type[Exception]]]:
         return {
-            InvokeConnectionError: [
-                InvokeConnectionError
-            ],
-            InvokeServerUnavailableError: [
-                InvokeServerUnavailableError
-            ],
-            InvokeRateLimitError: [
-                InvokeRateLimitError
-            ],
-            InvokeAuthorizationError: [
-                InvokeAuthorizationError
-            ],
-            InvokeBadRequestError: [
-                KeyError
-            ]
+            InvokeConnectionError: [InvokeConnectionError],
+            InvokeServerUnavailableError: [InvokeServerUnavailableError],
+            InvokeRateLimitError: [InvokeRateLimitError],
+            InvokeAuthorizationError: [InvokeAuthorizationError],
+            InvokeBadRequestError: [KeyError],
         }
-    
+
     def _calc_response_usage(self, model: str, credentials: dict, tokens: int) -> EmbeddingUsage:
         """
         Calculate response usage
@@ -182,10 +165,7 @@ class LocalAITextEmbeddingModel(TextEmbeddingModel):
         """
         # get input price info
         input_price_info = self.get_price(
-            model=model,
-            credentials=credentials,
-            price_type=PriceType.INPUT,
-            tokens=tokens
+            model=model, credentials=credentials, price_type=PriceType.INPUT, tokens=tokens
         )
 
         # transform usage
@@ -196,7 +176,7 @@ class LocalAITextEmbeddingModel(TextEmbeddingModel):
             price_unit=input_price_info.unit,
             total_price=input_price_info.total_amount,
             currency=input_price_info.currency,
-            latency=time.perf_counter() - self.started_at
+            latency=time.perf_counter() - self.started_at,
         )
 
         return usage

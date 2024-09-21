@@ -24,11 +24,12 @@ class JinaTextEmbeddingModel(TextEmbeddingModel):
     """
     Model class for Jina text embedding model.
     """
-    api_base: str = 'https://api.jina.ai/v1'
 
-    def _invoke(self, model: str, credentials: dict,
-                texts: list[str], user: Optional[str] = None) \
-            -> TextEmbeddingResult:
+    api_base: str = "https://api.jina.ai/v1"
+
+    def _invoke(
+        self, model: str, credentials: dict, texts: list[str], user: Optional[str] = None
+    ) -> TextEmbeddingResult:
         """
         Invoke text embedding model
 
@@ -38,29 +39,25 @@ class JinaTextEmbeddingModel(TextEmbeddingModel):
         :param user: unique user id
         :return: embeddings result
         """
-        api_key = credentials['api_key']
+        api_key = credentials["api_key"]
         if not api_key:
-            raise CredentialsValidateFailedError('api_key is required')
+            raise CredentialsValidateFailedError("api_key is required")
 
-        base_url = credentials.get('base_url', self.api_base)
-        if base_url.endswith('/'):
-            base_url = base_url[:-1]
+        base_url = credentials.get("base_url", self.api_base)
+        base_url = base_url.removesuffix("/")
 
-        url = base_url + '/embeddings'
-        headers = {
-            'Authorization': 'Bearer ' + api_key,
-            'Content-Type': 'application/json'
-        }
+        url = base_url + "/embeddings"
+        headers = {"Authorization": "Bearer " + api_key, "Content-Type": "application/json"}
 
         def transform_jina_input_text(model, text):
-            if model == 'jina-clip-v1':
+            if model == "jina-clip-v1":
                 return {"text": text}
             return text
 
-        data = {
-            'model': model,
-            'input': [transform_jina_input_text(model, text) for text in texts]
-        }
+        data = {"model": model, "input": [transform_jina_input_text(model, text) for text in texts]}
+
+        if model == "jina-embeddings-v3":
+            data["task"] = "text-matching"
 
         try:
             response = post(url, headers=headers, data=dumps(data))
@@ -70,7 +67,7 @@ class JinaTextEmbeddingModel(TextEmbeddingModel):
         if response.status_code != 200:
             try:
                 resp = response.json()
-                msg = resp['detail']
+                msg = resp["detail"]
                 if response.status_code == 401:
                     raise InvokeAuthorizationError(msg)
                 elif response.status_code == 429:
@@ -81,25 +78,20 @@ class JinaTextEmbeddingModel(TextEmbeddingModel):
                     raise InvokeBadRequestError(msg)
             except JSONDecodeError as e:
                 raise InvokeServerUnavailableError(
-                    f"Failed to convert response to json: {e} with text: {response.text}")
+                    f"Failed to convert response to json: {e} with text: {response.text}"
+                )
 
         try:
             resp = response.json()
-            embeddings = resp['data']
-            usage = resp['usage']
+            embeddings = resp["data"]
+            usage = resp["usage"]
         except Exception as e:
-            raise InvokeServerUnavailableError(
-                f"Failed to convert response to json: {e} with text: {response.text}")
+            raise InvokeServerUnavailableError(f"Failed to convert response to json: {e} with text: {response.text}")
 
-        usage = self._calc_response_usage(
-            model=model, credentials=credentials, tokens=usage['total_tokens'])
+        usage = self._calc_response_usage(model=model, credentials=credentials, tokens=usage["total_tokens"])
 
         result = TextEmbeddingResult(
-            model=model,
-            embeddings=[[
-                float(data) for data in x['embedding']
-            ] for x in embeddings],
-            usage=usage
+            model=model, embeddings=[[float(data) for data in x["embedding"]] for x in embeddings], usage=usage
         )
 
         return result
@@ -128,30 +120,18 @@ class JinaTextEmbeddingModel(TextEmbeddingModel):
         :return:
         """
         try:
-            self._invoke(model=model, credentials=credentials, texts=['ping'])
+            self._invoke(model=model, credentials=credentials, texts=["ping"])
         except Exception as e:
-            raise CredentialsValidateFailedError(
-                f'Credentials validation failed: {e}')
+            raise CredentialsValidateFailedError(f"Credentials validation failed: {e}")
 
     @property
     def _invoke_error_mapping(self) -> dict[type[InvokeError], list[type[Exception]]]:
         return {
-            InvokeConnectionError: [
-                InvokeConnectionError
-            ],
-            InvokeServerUnavailableError: [
-                InvokeServerUnavailableError
-            ],
-            InvokeRateLimitError: [
-                InvokeRateLimitError
-            ],
-            InvokeAuthorizationError: [
-                InvokeAuthorizationError
-            ],
-            InvokeBadRequestError: [
-                KeyError,
-                InvokeBadRequestError
-            ]
+            InvokeConnectionError: [InvokeConnectionError],
+            InvokeServerUnavailableError: [InvokeServerUnavailableError],
+            InvokeRateLimitError: [InvokeRateLimitError],
+            InvokeAuthorizationError: [InvokeAuthorizationError],
+            InvokeBadRequestError: [KeyError, InvokeBadRequestError],
         }
 
     def _calc_response_usage(self, model: str, credentials: dict, tokens: int) -> EmbeddingUsage:
@@ -165,10 +145,7 @@ class JinaTextEmbeddingModel(TextEmbeddingModel):
         """
         # get input price info
         input_price_info = self.get_price(
-            model=model,
-            credentials=credentials,
-            price_type=PriceType.INPUT,
-            tokens=tokens
+            model=model, credentials=credentials, price_type=PriceType.INPUT, tokens=tokens
         )
 
         # transform usage
@@ -179,24 +156,21 @@ class JinaTextEmbeddingModel(TextEmbeddingModel):
             price_unit=input_price_info.unit,
             total_price=input_price_info.total_amount,
             currency=input_price_info.currency,
-            latency=time.perf_counter() - self.started_at
+            latency=time.perf_counter() - self.started_at,
         )
 
         return usage
 
     def get_customizable_model_schema(self, model: str, credentials: dict) -> AIModelEntity:
         """
-            generate custom model entities from credentials
+        generate custom model entities from credentials
         """
         entity = AIModelEntity(
             model=model,
             label=I18nObject(en_US=model),
             model_type=ModelType.TEXT_EMBEDDING,
             fetch_from=FetchFrom.CUSTOMIZABLE_MODEL,
-            model_properties={
-                ModelPropertyKey.CONTEXT_SIZE: int(
-                    credentials.get('context_size'))
-            }
+            model_properties={ModelPropertyKey.CONTEXT_SIZE: int(credentials.get("context_size"))},
         )
 
         return entity

@@ -57,7 +57,7 @@ class TagService:
             .all()
         )
 
-        return tags if tags else []
+        return tags or []
 
     @staticmethod
     def save_tags(args: dict) -> Tag:

@@ -51,5 +51,32 @@ if $web_modified; then
     echo "Running ESLint on web module"
     cd ./web || exit 1
     npx lint-staged
+
+    echo "Running unit tests check"
+    modified_files=$(git diff --cached --name-only -- utils | grep -v '\.spec\.ts$' || true)
+
+    if [ -n "$modified_files" ]; then
+        for file in $modified_files; do
+            test_file="${file%.*}.spec.ts"
+            echo "Checking for test file: $test_file"
+
+            # check if the test file exists
+            if [ -f "../$test_file" ]; then
+                echo "Detected changes in $file, running corresponding unit tests..."
+                npm run test "../$test_file"
+
+                if [ $? -ne 0 ]; then
+                    echo "Unit tests failed. Please fix the errors before committing."
+                    exit 1
+                fi
+                echo "Unit tests for $file passed."
+            else
+                echo "Warning: $file does not have a corresponding test file."
+            fi
+
+        done
+        echo "All unit tests for modified web/utils files have passed."
+    fi
+
     cd ../
 fi

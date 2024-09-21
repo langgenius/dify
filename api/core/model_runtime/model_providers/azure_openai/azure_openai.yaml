@@ -54,6 +54,12 @@ model_credential_schema:
       required: true
       options:
         - label:
+            en_US: 2024-08-01-preview
+          value: 2024-08-01-preview
+        - label:
+            en_US: 2024-07-01-preview
+          value: 2024-07-01-preview
+        - label:
             en_US: 2024-05-01-preview
           value: 2024-05-01-preview
         - label:

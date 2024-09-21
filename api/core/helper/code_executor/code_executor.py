@@ -20,8 +20,10 @@ from core.helper.code_executor.template_transformer import TemplateTransformer
 
 logger = logging.getLogger(__name__)
 
-class CodeExecutionException(Exception):
+
+class CodeExecutionError(Exception):
     pass
+
 
 class CodeExecutionResponse(BaseModel):
     class Data(BaseModel):
@@ -34,9 +36,9 @@ class CodeExecutionResponse(BaseModel):
 
 
 class CodeLanguage(str, Enum):
-    PYTHON3 = 'python3'
-    JINJA2 = 'jinja2'
-    JAVASCRIPT = 'javascript'
+    PYTHON3 = "python3"
+    JINJA2 = "jinja2"
+    JAVASCRIPT = "javascript"
 
 
 class CodeExecutor:
@@ -50,20 +52,15 @@ class CodeExecutor:
     }
 
     code_language_to_running_language = {
-        CodeLanguage.JAVASCRIPT: 'nodejs',
+        CodeLanguage.JAVASCRIPT: "nodejs",
         CodeLanguage.JINJA2: CodeLanguage.PYTHON3,
         CodeLanguage.PYTHON3: CodeLanguage.PYTHON3,
     }
 
-    supported_dependencies_languages: set[CodeLanguage] = {
-        CodeLanguage.PYTHON3
-    }
+    supported_dependencies_languages: set[CodeLanguage] = {CodeLanguage.PYTHON3}
 
     @classmethod
-    def execute_code(cls, 
-                     language: CodeLanguage, 
-                     preload: str, 
-                     code: str) -> str:
+    def execute_code(cls, language: CodeLanguage, preload: str, code: str) -> str:
         """
         Execute code
         :param language: code language
@@ -110,13 +107,13 @@ class CodeExecutor:
         """
         template_transformer = cls.code_template_transformers.get(language)
         if not template_transformer:
-            raise CodeExecutionException(f'Unsupported language {language}')
+            raise CodeExecutionError(f"Unsupported language {language}")
 
         runner, preload = template_transformer.transform_caller(code, inputs)
 
         try:
             response = cls.execute_code(language, preload, runner)
-        except CodeExecutionException as e:
+        except CodeExecutionError as e:
             raise e
 
         return template_transformer.transform_response(response)

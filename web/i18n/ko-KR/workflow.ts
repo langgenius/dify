@@ -77,6 +77,24 @@ const translation = {
     importSuccess: '가져오기 성공',
     syncingData: '단 몇 초 만에 데이터를 동기화할 수 있습니다.',
     importDSLTip: '현재 초안을 덮어씁니다. 가져오기 전에 워크플로를 백업으로 내보냅니다.',
+    parallelTip: {
+      click: {
+        title: '클릭',
+        desc: '추가',
+      },
+      drag: {
+        title: '드래그',
+        desc: '연결 방법',
+      },
+      depthLimit: '평행 중첩 레이어 {{num}}개 레이어의 제한',
+      limit: '병렬 처리는 {{num}}개의 분기로 제한됩니다.',
+    },
+    parallelRun: '병렬 실행',
+    disconnect: '분리하다',
+    jumpToNode: '이 노드로 이동',
+    addParallelNode: '병렬 노드 추가',
+    parallel: '병렬',
+    branch: '브랜치',
   },
   env: {
     envPanelTitle: '환경 변수',

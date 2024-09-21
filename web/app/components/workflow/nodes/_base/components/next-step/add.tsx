@@ -1,6 +1,7 @@
 import {
   memo,
   useCallback,
+  useState,
 } from 'react'
 import { useTranslation } from 'react-i18next'
 import {
@@ -10,6 +11,7 @@ import {
   useAvailableBlocks,
   useNodesInteractions,
   useNodesReadOnly,
+  useWorkflow,
 } from '@/app/components/workflow/hooks'
 import BlockSelector from '@/app/components/workflow/block-selector'
 import type {
@@ -30,9 +32,11 @@ const Add = ({
   isParallel,
 }: AddProps) => {
   const { t } = useTranslation()
+  const [open, setOpen] = useState(false)
   const { handleNodeAdd } = useNodesInteractions()
   const { nodesReadOnly } = useNodesReadOnly()
   const { availableNextBlocks } = useAvailableBlocks(nodeData.type, nodeData.isInIteration)
+  const { checkParallelLimit } = useWorkflow()
 
   const handleSelect = useCallback<OnSelectBlock>((type, toolDefaultValue) => {
     handleNodeAdd(
@@ -46,6 +50,13 @@ const Add = ({
       },
     )
   }, [nodeId, sourceHandle, handleNodeAdd])
+
+  const handleOpenChange = useCallback((newOpen: boolean) => {
+    if (newOpen && !checkParallelLimit(nodeId, sourceHandle))
+      return
+
+    setOpen(newOpen)
+  }, [checkParallelLimit, nodeId, sourceHandle])
 
   const renderTrigger = useCallback((open: boolean) => {
     return (
@@ -73,6 +84,8 @@ const Add = ({
 
   return (
     <BlockSelector
+      open={open}
+      onOpenChange={handleOpenChange}
       disabled={nodesReadOnly}
       onSelect={handleSelect}
       placement='top'

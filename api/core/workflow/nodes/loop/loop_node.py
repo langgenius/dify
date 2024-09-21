@@ -10,6 +10,7 @@ class LoopNode(BaseNode):
     """
     Loop Node.
     """
+
     _node_data_cls = LoopNodeData
     _node_type = NodeType.LOOP
 
@@ -21,14 +22,16 @@ class LoopNode(BaseNode):
         """
         Get conditions.
         """
-        node_id = node_config.get('id')
+        node_id = node_config.get("id")
         if not node_id:
             return []
 
         # TODO waiting for implementation
-        return [Condition(
-            variable_selector=[node_id, 'index'],
-            comparison_operator="≤",
-            value_type="value_selector",
-            value_selector=[]
-        )]
+        return [
+            Condition(
+                variable_selector=[node_id, "index"],
+                comparison_operator="≤",
+                value_type="value_selector",
+                value_selector=[],
+            )
+        ]

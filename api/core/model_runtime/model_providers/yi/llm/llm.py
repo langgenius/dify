@@ -14,11 +14,17 @@ from core.model_runtime.model_providers.openai.llm.llm import OpenAILargeLanguag
 
 
 class YiLargeLanguageModel(OpenAILargeLanguageModel):
-    def _invoke(self, model: str, credentials: dict,
-                prompt_messages: list[PromptMessage], model_parameters: dict,
-                tools: Optional[list[PromptMessageTool]] = None, stop: Optional[list[str]] = None,
-                stream: bool = True, user: Optional[str] = None) \
-            -> Union[LLMResult, Generator]:
+    def _invoke(
+        self,
+        model: str,
+        credentials: dict,
+        prompt_messages: list[PromptMessage],
+        model_parameters: dict,
+        tools: Optional[list[PromptMessageTool]] = None,
+        stop: Optional[list[str]] = None,
+        stream: bool = True,
+        user: Optional[str] = None,
+    ) -> Union[LLMResult, Generator]:
         self._add_custom_parameters(credentials)
 
         # yi-vl-plus not support system prompt yet.
@@ -27,7 +33,9 @@ class YiLargeLanguageModel(OpenAILargeLanguageModel):
             for message in prompt_messages:
                 if not isinstance(message, SystemPromptMessage):
                     prompt_message_except_system.append(message)
-            return super()._invoke(model, credentials, prompt_message_except_system, model_parameters, tools, stop, stream)
+            return super()._invoke(
+                model, credentials, prompt_message_except_system, model_parameters, tools, stop, stream
+            )
 
         return super()._invoke(model, credentials, prompt_messages, model_parameters, tools, stop, stream)
 
@@ -36,8 +44,7 @@ class YiLargeLanguageModel(OpenAILargeLanguageModel):
         super().validate_credentials(model, credentials)
 
     # refactored from openai model runtime, use cl100k_base for calculate token number
-    def _num_tokens_from_string(self, model: str, text: str,
-                                tools: Optional[list[PromptMessageTool]] = None) -> int:
+    def _num_tokens_from_string(self, model: str, text: str, tools: Optional[list[PromptMessageTool]] = None) -> int:
         """
         Calculate num tokens for text completion model with tiktoken package.
 
@@ -55,8 +62,9 @@ class YiLargeLanguageModel(OpenAILargeLanguageModel):
         return num_tokens
 
     # refactored from openai model runtime, use cl100k_base for calculate token number
-    def _num_tokens_from_messages(self, model: str, messages: list[PromptMessage],
-                                  tools: Optional[list[PromptMessageTool]] = None) -> int:
+    def _num_tokens_from_messages(
+        self, model: str, messages: list[PromptMessage], tools: Optional[list[PromptMessageTool]] = None
+    ) -> int:
         """Calculate num tokens for gpt-3.5-turbo and gpt-4 with tiktoken package.
 
         Official documentation: https://github.com/openai/openai-cookbook/blob/
@@ -76,10 +84,10 @@ class YiLargeLanguageModel(OpenAILargeLanguageModel):
                 #  which need to download the image and then get the resolution for calculation,
                 #  and will increase the request delay
                 if isinstance(value, list):
-                    text = ''
+                    text = ""
                     for item in value:
-                        if isinstance(item, dict) and item['type'] == 'text':
-                            text += item['text']
+                        if isinstance(item, dict) and item["type"] == "text":
+                            text += item["text"]
 
                     value = text
 
@@ -110,10 +118,10 @@ class YiLargeLanguageModel(OpenAILargeLanguageModel):
 
     @staticmethod
     def _add_custom_parameters(credentials: dict) -> None:
-        credentials['mode'] = 'chat'
-        credentials['openai_api_key']=credentials['api_key']
-        if 'endpoint_url' not in credentials or credentials['endpoint_url'] == "":
-            credentials['openai_api_base']='https://api.lingyiwanwu.com'
+        credentials["mode"] = "chat"
+        credentials["openai_api_key"] = credentials["api_key"]
+        if "endpoint_url" not in credentials or credentials["endpoint_url"] == "":
+            credentials["openai_api_base"] = "https://api.lingyiwanwu.com"
         else:
-            parsed_url = urlparse(credentials['endpoint_url'])
-            credentials['openai_api_base']=f"{parsed_url.scheme}://{parsed_url.netloc}"
+            parsed_url = urlparse(credentials["endpoint_url"])
+            credentials["openai_api_base"] = f"{parsed_url.scheme}://{parsed_url.netloc}"

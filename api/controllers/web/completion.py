@@ -87,7 +87,7 @@ class CompletionStopApi(WebApiResource):
 class ChatApi(WebApiResource):
     def post(self, app_model, end_user):
         app_mode = AppMode.value_of(app_model.mode)
-        if app_mode not in [AppMode.CHAT, AppMode.AGENT_CHAT, AppMode.ADVANCED_CHAT]:
+        if app_mode not in {AppMode.CHAT, AppMode.AGENT_CHAT, AppMode.ADVANCED_CHAT}:
             raise NotChatAppError()
 
         parser = reqparse.RequestParser()
@@ -136,7 +136,7 @@ class ChatApi(WebApiResource):
 class ChatStopApi(WebApiResource):
     def post(self, app_model, end_user, task_id):
         app_mode = AppMode.value_of(app_model.mode)
-        if app_mode not in [AppMode.CHAT, AppMode.AGENT_CHAT, AppMode.ADVANCED_CHAT]:
+        if app_mode not in {AppMode.CHAT, AppMode.AGENT_CHAT, AppMode.ADVANCED_CHAT}:
             raise NotChatAppError()
 
         AppQueueManager.set_stop_flag(task_id, InvokeFrom.WEB_APP, end_user.id)

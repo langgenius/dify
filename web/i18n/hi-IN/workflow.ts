@@ -80,6 +80,24 @@ const translation = {
     backupCurrentDraft: 'बैकअप वर्तमान ड्राफ्ट',
     importFailure: 'आयात विफलता',
     importDSLTip: 'वर्तमान ड्राफ्ट ओवरराइट हो जाएगा। आयात करने से पहले वर्कफ़्लो को बैकअप के रूप में निर्यात करें.',
+    parallelTip: {
+      click: {
+        title: 'क्लिक करना',
+        desc: 'जोड़ने के लिए',
+      },
+      drag: {
+        title: 'खींचना',
+        desc: 'कनेक्ट करने के लिए',
+      },
+      limit: 'समांतरता {{num}} शाखाओं तक सीमित है।',
+      depthLimit: '{{num}} परतों की समानांतर नेस्टिंग परत सीमा',
+    },
+    disconnect: 'अलग करना',
+    parallelRun: 'समानांतर रन',
+    jumpToNode: 'इस नोड पर जाएं',
+    addParallelNode: 'समानांतर नोड जोड़ें',
+    parallel: 'समानांतर',
+    branch: 'शाखा',
   },
   env: {
     envPanelTitle: 'पर्यावरण चर',

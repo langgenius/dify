@@ -77,6 +77,24 @@ const translation = {
     overwriteAndImport: 'Ghi đè và nhập',
     importDSL: 'Nhập DSL',
     syncingData: 'Đồng bộ hóa dữ liệu, chỉ vài giây.',
+    parallelTip: {
+      click: {
+        title: 'Bấm',
+        desc: 'để thêm',
+      },
+      drag: {
+        title: 'Kéo',
+        desc: 'Để kết nối',
+      },
+      limit: 'Song song được giới hạn trong các nhánh {{num}}.',
+      depthLimit: 'Giới hạn lớp lồng song song của {{num}} layer',
+    },
+    parallelRun: 'Chạy song song',
+    disconnect: 'Ngắt kết nối',
+    jumpToNode: 'Chuyển đến nút này',
+    addParallelNode: 'Thêm nút song song',
+    parallel: 'SONG SONG',
+    branch: 'NHÁNH',
   },
   env: {
     envPanelTitle: 'Biến Môi Trường',

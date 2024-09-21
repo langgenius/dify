@@ -1,15 +1,13 @@
 from collections.abc import Generator
 
-import google.generativeai.types.content_types as content_types
 import google.generativeai.types.generation_types as generation_config_types
-import google.generativeai.types.safety_types as safety_types
 import pytest
 from _pytest.monkeypatch import MonkeyPatch
 from google.ai import generativelanguage as glm
 from google.ai.generativelanguage_v1beta.types import content as gag_content
 from google.generativeai import GenerativeModel
 from google.generativeai.client import _ClientManager, configure
-from google.generativeai.types import GenerateContentResponse
+from google.generativeai.types import GenerateContentResponse, content_types, safety_types
 from google.generativeai.types.generation_types import BaseGenerateContentResponse
 
 current_api_key = ""

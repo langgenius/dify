@@ -20,7 +20,7 @@ from tests.integration_tests.model_runtime.__mock.openai import setup_openai_moc
 from tests.integration_tests.model_runtime.__mock.xinference import setup_xinference_mock
 
 
-@pytest.mark.parametrize("setup_openai_mock, setup_xinference_mock", [["chat", "none"]], indirect=True)
+@pytest.mark.parametrize(("setup_openai_mock", "setup_xinference_mock"), [("chat", "none")], indirect=True)
 def test_validate_credentials_for_chat_model(setup_openai_mock, setup_xinference_mock):
     model = XinferenceAILargeLanguageModel()
 
@@ -45,7 +45,7 @@ def test_validate_credentials_for_chat_model(setup_openai_mock, setup_xinference
     )
 
 
-@pytest.mark.parametrize("setup_openai_mock, setup_xinference_mock", [["chat", "none"]], indirect=True)
+@pytest.mark.parametrize(("setup_openai_mock", "setup_xinference_mock"), [("chat", "none")], indirect=True)
 def test_invoke_chat_model(setup_openai_mock, setup_xinference_mock):
     model = XinferenceAILargeLanguageModel()
 
@@ -75,7 +75,7 @@ def test_invoke_chat_model(setup_openai_mock, setup_xinference_mock):
     assert response.usage.total_tokens > 0
 
 
-@pytest.mark.parametrize("setup_openai_mock, setup_xinference_mock", [["chat", "none"]], indirect=True)
+@pytest.mark.parametrize(("setup_openai_mock", "setup_xinference_mock"), [("chat", "none")], indirect=True)
 def test_invoke_stream_chat_model(setup_openai_mock, setup_xinference_mock):
     model = XinferenceAILargeLanguageModel()
 
@@ -236,7 +236,7 @@ def test_invoke_stream_chat_model(setup_openai_mock, setup_xinference_mock):
 #     assert response.message.tool_calls[0].function.name == 'get_current_weather'
 
 
-@pytest.mark.parametrize("setup_openai_mock, setup_xinference_mock", [["completion", "none"]], indirect=True)
+@pytest.mark.parametrize(("setup_openai_mock", "setup_xinference_mock"), [("completion", "none")], indirect=True)
 def test_validate_credentials_for_generation_model(setup_openai_mock, setup_xinference_mock):
     model = XinferenceAILargeLanguageModel()
 
@@ -261,7 +261,7 @@ def test_validate_credentials_for_generation_model(setup_openai_mock, setup_xinf
     )
 
 
-@pytest.mark.parametrize("setup_openai_mock, setup_xinference_mock", [["completion", "none"]], indirect=True)
+@pytest.mark.parametrize(("setup_openai_mock", "setup_xinference_mock"), [("completion", "none")], indirect=True)
 def test_invoke_generation_model(setup_openai_mock, setup_xinference_mock):
     model = XinferenceAILargeLanguageModel()
 
@@ -286,7 +286,7 @@ def test_invoke_generation_model(setup_openai_mock, setup_xinference_mock):
     assert response.usage.total_tokens > 0
 
 
-@pytest.mark.parametrize("setup_openai_mock, setup_xinference_mock", [["completion", "none"]], indirect=True)
+@pytest.mark.parametrize(("setup_openai_mock", "setup_xinference_mock"), [("completion", "none")], indirect=True)
 def test_invoke_stream_generation_model(setup_openai_mock, setup_xinference_mock):
     model = XinferenceAILargeLanguageModel()
 

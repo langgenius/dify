@@ -9,7 +9,7 @@ from core.app.entities.app_invoke_entities import (
 )
 from core.callback_handler.index_tool_callback_handler import DatasetIndexToolCallbackHandler
 from core.model_manager import ModelInstance
-from core.moderation.base import ModerationException
+from core.moderation.base import ModerationError
 from core.rag.retrieval.dataset_retrieval import DatasetRetrieval
 from extensions.ext_database import db
 from models.model import App, Message
@@ -22,9 +22,9 @@ class CompletionAppRunner(AppRunner):
     Completion Application Runner
     """
 
-    def run(self, application_generate_entity: CompletionAppGenerateEntity,
-            queue_manager: AppQueueManager,
-            message: Message) -> None:
+    def run(
+        self, application_generate_entity: CompletionAppGenerateEntity, queue_manager: AppQueueManager, message: Message
+    ) -> None:
         """
         Run application
         :param application_generate_entity: application generate entity
@@ -54,7 +54,7 @@ class CompletionAppRunner(AppRunner):
             prompt_template_entity=app_config.prompt_template,
             inputs=inputs,
             files=files,
-            query=query
+            query=query,
         )
 
         # organize all inputs and template to prompt messages
@@ -65,7 +65,7 @@ class CompletionAppRunner(AppRunner):
             prompt_template_entity=app_config.prompt_template,
             inputs=inputs,
             files=files,
-            query=query
+            query=query,
         )
 
         # moderation
@@ -77,15 +77,15 @@ class CompletionAppRunner(AppRunner):
                 app_generate_entity=application_generate_entity,
                 inputs=inputs,
                 query=query,
-                message_id=message.id
+                message_id=message.id,
             )
-        except ModerationException as e:
+        except ModerationError as e:
             self.direct_output(
                 queue_manager=queue_manager,
                 app_generate_entity=application_generate_entity,
                 prompt_messages=prompt_messages,
                 text=str(e),
-                stream=application_generate_entity.stream
+                stream=application_generate_entity.stream,
             )
             return
 
@@ -97,7 +97,7 @@ class CompletionAppRunner(AppRunner):
                 app_id=app_record.id,
                 external_data_tools=external_data_tools,
                 inputs=inputs,
-                query=query
+                query=query,
             )
 
         # get context from datasets
@@ -108,7 +108,7 @@ class CompletionAppRunner(AppRunner):
                 app_record.id,
                 message.id,
                 application_generate_entity.user_id,
-                application_generate_entity.invoke_from
+                application_generate_entity.invoke_from,
             )
 
             dataset_config = app_config.dataset
@@ -126,7 +126,7 @@ class CompletionAppRunner(AppRunner):
                 invoke_from=application_generate_entity.invoke_from,
                 show_retrieve_source=app_config.additional_features.show_retrieve_source,
                 hit_callback=hit_callback,
-                message_id=message.id
+                message_id=message.id,
             )
 
         # reorganize all inputs and template to prompt messages
@@ -139,29 +139,26 @@ class CompletionAppRunner(AppRunner):
             inputs=inputs,
             files=files,
             query=query,
-            context=context
+            context=context,
         )
 
         # check hosting moderation
         hosting_moderation_result = self.check_hosting_moderation(
             application_generate_entity=application_generate_entity,
             queue_manager=queue_manager,
-            prompt_messages=prompt_messages
+            prompt_messages=prompt_messages,
         )
 
         if hosting_moderation_result:
             return
 
         # Re-calculate the max tokens if sum(prompt_token +  max_tokens) over model token limit
-        self.recalc_llm_max_tokens(
-            model_config=application_generate_entity.model_conf,
-            prompt_messages=prompt_messages
-        )
+        self.recalc_llm_max_tokens(model_config=application_generate_entity.model_conf, prompt_messages=prompt_messages)
 
         # Invoke model
         model_instance = ModelInstance(
             provider_model_bundle=application_generate_entity.model_conf.provider_model_bundle,
-            model=application_generate_entity.model_conf.model
+            model=application_generate_entity.model_conf.model,
         )
 
         db.session.close()
@@ -176,8 +173,5 @@ class CompletionAppRunner(AppRunner):
 
         # handle invoke result
         self._handle_invoke_result(
-            invoke_result=invoke_result,
-            queue_manager=queue_manager,
-            stream=application_generate_entity.stream
+            invoke_result=invoke_result, queue_manager=queue_manager, stream=application_generate_entity.stream
         )
-    

@@ -77,6 +77,24 @@ const translation = {
     importSuccess: 'Succesul importului',
     backupCurrentDraft: 'Backup curent draft',
     importDSLTip: 'Proiectul curent va fi suprascris. Exportați fluxul de lucru ca backup înainte de import.',
+    parallelTip: {
+      click: {
+        title: 'Clic',
+        desc: 'pentru a adăuga',
+      },
+      drag: {
+        title: 'Glisa',
+        desc: 'pentru a vă conecta',
+      },
+      depthLimit: 'Limita straturilor de imbricare paralelă a {{num}} straturi',
+      limit: 'Paralelismul este limitat la {{num}} ramuri.',
+    },
+    parallelRun: 'Rulare paralelă',
+    disconnect: 'Deconecta',
+    jumpToNode: 'Sari la acest nod',
+    addParallelNode: 'Adăugare nod paralel',
+    parallel: 'PARALEL',
+    branch: 'RAMURĂ',
   },
   env: {
     envPanelTitle: 'Variabile de Mediu',

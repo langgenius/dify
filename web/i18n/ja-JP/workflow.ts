@@ -77,6 +77,24 @@ const translation = {
     overwriteAndImport: 'オーバライトとインポート',
     importFailure: 'インポート失敗',
     importSuccess: 'インポート成功',
+    parallelTip: {
+      click: {
+        title: 'クリック',
+        desc: '追加する',
+      },
+      drag: {
+        title: 'ドラッグ',
+        desc: '接続するには',
+      },
+      limit: '並列処理は {{num}} ブランチに制限されています。',
+      depthLimit: '{{num}}レイヤーの平行ネストレイヤーの制限',
+    },
+    parallelRun: 'パラレルラン',
+    disconnect: '切る',
+    jumpToNode: 'このノードにジャンプします',
+    addParallelNode: '並列ノードを追加',
+    parallel: '並列',
+    branch: 'ブランチ',
   },
   env: {
     envPanelTitle: '環境変数',

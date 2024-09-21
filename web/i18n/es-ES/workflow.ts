@@ -77,6 +77,24 @@ const translation = {
     overwriteAndImport: 'Sobrescribir e importar',
     importFailure: 'Error al importar',
     importSuccess: 'Importación exitosa',
+    parallelTip: {
+      click: {
+        title: 'Clic',
+        desc: 'Para agregar',
+      },
+      drag: {
+        title: 'Arrastrar',
+        desc: 'Para conectarse',
+      },
+      limit: 'El paralelismo se limita a {{num}} ramas.',
+      depthLimit: 'Límite de capa de anidamiento paralelo de capas {{num}}',
+    },
+    parallelRun: 'Ejecución paralela',
+    disconnect: 'Desconectar',
+    jumpToNode: 'Saltar a este nodo',
+    addParallelNode: 'Agregar nodo paralelo',
+    parallel: 'PARALELO',
+    branch: 'RAMA',
   },
   env: {
     envPanelTitle: 'Variables de Entorno',

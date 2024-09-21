@@ -9,9 +9,7 @@ from core.workflow.graph_engine.entities.run_condition import RunCondition
 class ConditionManager:
     @staticmethod
     def get_condition_handler(
-            init_params: GraphInitParams,
-            graph: Graph,
-            run_condition: RunCondition
+        init_params: GraphInitParams, graph: Graph, run_condition: RunCondition
     ) -> RunConditionHandler:
         """
         Get condition handler
@@ -22,14 +20,6 @@ class ConditionManager:
         :return: condition handler
         """
         if run_condition.type == "branch_identify":
-            return BranchIdentifyRunConditionHandler(
-                init_params=init_params,
-                graph=graph,
-                condition=run_condition
-            )
+            return BranchIdentifyRunConditionHandler(init_params=init_params, graph=graph, condition=run_condition)
         else:
-            return ConditionRunConditionHandlerHandler(
-                init_params=init_params,
-                graph=graph,
-                condition=run_condition
-            )
+            return ConditionRunConditionHandlerHandler(init_params=init_params, graph=graph, condition=run_condition)

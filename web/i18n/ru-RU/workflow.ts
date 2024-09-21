@@ -77,6 +77,24 @@ const translation = {
     overwriteAndImport: 'Перезаписать и импортировать',
     importFailure: 'Ошибка импорта',
     importSuccess: 'Импорт успешно завершен',
+    parallelTip: {
+      click: {
+        title: 'Щелчок',
+        desc: 'добавить',
+      },
+      drag: {
+        title: 'Волочить',
+        desc: 'для подключения',
+      },
+      limit: 'Параллелизм ограничен ветвями {{num}}.',
+      depthLimit: 'Ограничение на количество слоев параллельной вложенности {{num}}',
+    },
+    parallelRun: 'Параллельный прогон',
+    disconnect: 'Разъединять',
+    jumpToNode: 'Перейти к этому узлу',
+    addParallelNode: 'Добавить параллельный узел',
+    parallel: 'ПАРАЛЛЕЛЬНЫЙ',
+    branch: 'ВЕТКА',
   },
   env: {
     envPanelTitle: 'Переменные среды',

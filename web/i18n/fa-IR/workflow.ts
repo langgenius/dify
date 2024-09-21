@@ -77,6 +77,24 @@ const translation = {
     overwriteAndImport: 'بازنویسی و وارد کردن',
     importFailure: 'خطا در وارد کردن',
     importSuccess: 'وارد کردن موفقیت‌آمیز',
+    parallelTip: {
+      click: {
+        title: 'کلیک کنید',
+        desc: 'اضافه کردن',
+      },
+      drag: {
+        desc: 'برای اتصال',
+        title: 'کشیدن',
+      },
+      depthLimit: 'حد لایه تودرتو موازی لایه های {{num}}',
+      limit: 'موازی سازی به شاخه های {{num}} محدود می شود.',
+    },
+    disconnect: 'قطع',
+    jumpToNode: 'پرش به این گره',
+    parallelRun: 'اجرای موازی',
+    addParallelNode: 'افزودن گره موازی',
+    parallel: 'موازی',
+    branch: 'شاخه',
   },
   env: {
     envPanelTitle: 'متغیرهای محیطی',

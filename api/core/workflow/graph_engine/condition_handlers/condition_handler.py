@@ -5,10 +5,7 @@ from core.workflow.utils.condition.processor import ConditionProcessor
 
 
 class ConditionRunConditionHandlerHandler(RunConditionHandler):
-    def check(self,
-              graph_runtime_state: GraphRuntimeState,
-              previous_route_node_state: RouteNodeState
-        ) -> bool:
+    def check(self, graph_runtime_state: GraphRuntimeState, previous_route_node_state: RouteNodeState) -> bool:
         """
         Check if the condition can be executed
 
@@ -22,8 +19,7 @@ class ConditionRunConditionHandlerHandler(RunConditionHandler):
         # process condition
         condition_processor = ConditionProcessor()
         input_conditions, group_result = condition_processor.process_conditions(
-            variable_pool=graph_runtime_state.variable_pool,
-            conditions=self.condition.conditions
+            variable_pool=graph_runtime_state.variable_pool, conditions=self.condition.conditions
         )
 
         # Apply the logical operator for the current case

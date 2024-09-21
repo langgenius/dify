@@ -12,11 +12,12 @@ class LLMMode(Enum):
     """
     Enum class for large language model mode.
     """
+
     COMPLETION = "completion"
     CHAT = "chat"
 
     @classmethod
-    def value_of(cls, value: str) -> 'LLMMode':
+    def value_of(cls, value: str) -> "LLMMode":
         """
         Get value of given mode.
 
@@ -26,13 +27,14 @@ class LLMMode(Enum):
         for mode in cls:
             if mode.value == value:
                 return mode
-        raise ValueError(f'invalid mode value {value}')
+        raise ValueError(f"invalid mode value {value}")
 
 
 class LLMUsage(ModelUsage):
     """
     Model class for llm usage.
     """
+
     prompt_tokens: int
     prompt_unit_price: Decimal
     prompt_price_unit: Decimal
@@ -50,20 +52,20 @@ class LLMUsage(ModelUsage):
     def empty_usage(cls):
         return cls(
             prompt_tokens=0,
-            prompt_unit_price=Decimal('0.0'),
-            prompt_price_unit=Decimal('0.0'),
-            prompt_price=Decimal('0.0'),
+            prompt_unit_price=Decimal("0.0"),
+            prompt_price_unit=Decimal("0.0"),
+            prompt_price=Decimal("0.0"),
             completion_tokens=0,
-            completion_unit_price=Decimal('0.0'),
-            completion_price_unit=Decimal('0.0'),
-            completion_price=Decimal('0.0'),
+            completion_unit_price=Decimal("0.0"),
+            completion_price_unit=Decimal("0.0"),
+            completion_price=Decimal("0.0"),
             total_tokens=0,
-            total_price=Decimal('0.0'),
-            currency='USD',
-            latency=0.0
+            total_price=Decimal("0.0"),
+            currency="USD",
+            latency=0.0,
         )
 
-    def plus(self, other: 'LLMUsage') -> 'LLMUsage':
+    def plus(self, other: "LLMUsage") -> "LLMUsage":
         """
         Add two LLMUsage instances together.
 
@@ -85,10 +87,10 @@ class LLMUsage(ModelUsage):
                 total_tokens=self.total_tokens + other.total_tokens,
                 total_price=self.total_price + other.total_price,
                 currency=other.currency,
-                latency=self.latency + other.latency
+                latency=self.latency + other.latency,
             )
 
-    def __add__(self, other: 'LLMUsage') -> 'LLMUsage':
+    def __add__(self, other: "LLMUsage") -> "LLMUsage":
         """
         Overload the + operator to add two LLMUsage instances.
 
@@ -97,10 +99,12 @@ class LLMUsage(ModelUsage):
         """
         return self.plus(other)
 
+
 class LLMResult(BaseModel):
     """
     Model class for llm result.
     """
+
     model: str
     prompt_messages: list[PromptMessage]
     message: AssistantPromptMessage
@@ -112,6 +116,7 @@ class LLMResultChunkDelta(BaseModel):
     """
     Model class for llm result chunk delta.
     """
+
     index: int
     message: AssistantPromptMessage
     usage: Optional[LLMUsage] = None
@@ -122,6 +127,7 @@ class LLMResultChunk(BaseModel):
     """
     Model class for llm result chunk.
     """
+
     model: str
     prompt_messages: list[PromptMessage]
     system_fingerprint: Optional[str] = None
@@ -132,4 +138,5 @@ class NumTokensResult(PriceInfo):
     """
     Model class for number of tokens result.
     """
+
     tokens: int
