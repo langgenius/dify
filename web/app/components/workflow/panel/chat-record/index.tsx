@@ -2,7 +2,6 @@ import {
   memo,
   useCallback,
   useEffect,
-  useMemo,
   useState,
 } from 'react'
 import { RiCloseLine } from '@remixicon/react'
@@ -17,50 +16,70 @@ import type { ChatItem } from '@/app/components/base/chat/types'
 import { fetchConversationMessages } from '@/service/debug'
 import { useStore as useAppStore } from '@/app/components/app/store'
 import Loading from '@/app/components/base/loading'
+import { UUID_NIL } from '@/app/components/base/chat/constants'
+
+function appendQAToChatList(newChatList: ChatItem[], item: any) {
+  newChatList.push({
+    id: item.id,
+    content: item.answer,
+    feedback: item.feedback,
+    isAnswer: true,
+    citation: item.metadata?.retriever_resources,
+    message_files: item.message_files?.filter((file: any) => file.belongs_to === 'assistant') || [],
+    workflow_run_id: item.workflow_run_id,
+  })
+  newChatList.push({
+    id: `question-${item.id}`,
+    content: item.query,
+    isAnswer: false,
+    message_files: item.message_files?.filter((file: any) => file.belongs_to === 'user') || [],
+  })
+}
+
+function getFormattedChatList(messages: any[]) {
+  const newChatList: ChatItem[] = []
+  let nextMessageId = null
+  for (const item of messages) {
+    if (!item.parent_message_id) {
+      appendQAToChatList(newChatList, item)
+      break
+    }
+
+    if (!nextMessageId) {
+      appendQAToChatList(newChatList, item)
+      nextMessageId = item.parent_message_id
+    }
+    else {
+      if (item.id === nextMessageId || nextMessageId === UUID_NIL) {
+        appendQAToChatList(newChatList, item)
+        nextMessageId = item.parent_message_id
+      }
+    }
+  }
+  return newChatList.reverse()
+}
 
 const ChatRecord = () => {
   const [fetched, setFetched] = useState(false)
-  const [chatList, setChatList] = useState([])
+  const [chatList, setChatList] = useState<ChatItem[]>([])
   const appDetail = useAppStore(s => s.appDetail)
   const workflowStore = useWorkflowStore()
   const { handleLoadBackupDraft } = useWorkflowRun()
   const historyWorkflowData = useStore(s => s.historyWorkflowData)
   const currentConversationID = historyWorkflowData?.conversation_id
 
-  const chatMessageList = useMemo(() => {
-    const res: ChatItem[] = []
-    if (chatList.length) {
-      chatList.forEach((item: any) => {
-        res.push({
-          id: `question-${item.id}`,
-          content: item.query,
-          isAnswer: false,
-          message_files: item.message_files?.filter((file: any) => file.belongs_to === 'user') || [],
-        })
-        res.push({
-          id: item.id,
-          content: item.answer,
-          feedback: item.feedback,
-          isAnswer: true,
-          citation: item.metadata?.retriever_resources,
-          message_files: item.message_files?.filter((file: any) => file.belongs_to === 'assistant') || [],
-          workflow_run_id: item.workflow_run_id,
-        })
-      })
-    }
-    return res
-  }, [chatList])
-
   const handleFetchConversationMessages = useCallback(async () => {
     if (appDetail && currentConversationID) {
       try {
         setFetched(false)
         const res = await fetchConversationMessages(appDetail.id, currentConversationID)
-        setFetched(true)
-        setChatList((res as any).data)
+        setChatList(getFormattedChatList((res as any).data))
       }
       catch (e) {
-
+        console.error(e)
+      }
+      finally {
+        setFetched(true)
       }
     }
   }, [appDetail, currentConversationID])
@@ -101,7 +120,7 @@ const ChatRecord = () => {
               config={{
                 supportCitationHitInfo: true,
               } as any}
-              chatList={chatMessageList}
+              chatList={chatList}
               chatContainerClassName='px-4'
               chatContainerInnerClassName='pt-6 w-full max-w-full mx-auto'
               chatFooterClassName='px-4 rounded-b-2xl'
