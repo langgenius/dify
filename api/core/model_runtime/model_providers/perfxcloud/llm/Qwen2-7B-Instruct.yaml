@@ -1,9 +1,11 @@
-model: Qwen1.5-7B
+model: Qwen2-7B-Instruct
 label:
-  en_US: Qwen1.5-7B
+  en_US: Qwen2-7B-Instruct
 model_type: llm
 features:
+  - multi-tool-call
   - agent-thought
+  - stream-tool-call
 model_properties:
   mode: completion
   context_size: 32768
@@ -59,4 +61,3 @@ pricing:
   output: "0.000"
   unit: "0.000"
   currency: RMB
-deprecated: true
