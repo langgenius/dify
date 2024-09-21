@@ -133,6 +133,7 @@ const translation = {
     datasetSettingLink: 'Paramètres de connaissance.',
     webpageUnit: 'Pages',
     websiteSource: 'Site web de prétraitement',
+    separatorTip: 'Un délimiteur est le caractère utilisé pour séparer le texte. \\n\\n et \\n sont des délimiteurs couramment utilisés pour séparer les paragraphes et les lignes. Combiné à des virgules (\\n\\n,\\n), les paragraphes seront segmentés par des lignes lorsqu’ils dépasseront la longueur maximale des morceaux. Vous pouvez également utiliser des délimiteurs spéciaux définis par vous-même (par exemple ***).',
   },
   stepThree: {
     creationTitle: '🎉 Connaissance créée',
