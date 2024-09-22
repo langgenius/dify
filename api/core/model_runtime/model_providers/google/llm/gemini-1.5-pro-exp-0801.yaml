@@ -1,6 +1,6 @@
-model: gemini-1.5-pro-latest
+model: gemini-1.5-pro-exp-0801
 label:
-  en_US: Gemini 1.5 Pro
+  en_US: Gemini 1.5 Pro 0801
 model_type: llm
 features:
   - agent-thought
