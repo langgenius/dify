@@ -106,7 +106,6 @@ export type MessageContent = {
   metadata: Metadata
   agent_thoughts: any[] // TODO
   workflow_run_id: string
-  parent_message_id: string | null
 }
 
 export type CompletionConversationGeneralDetail = {
