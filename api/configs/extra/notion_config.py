@@ -20,7 +20,7 @@ class NotionConfig(BaseSettings):
     )
 
     NOTION_INTEGRATION_TYPE: Optional[str] = Field(
-        description="Type of Notion integration." 
+        description="Type of Notion integration."
         " Set to 'internal' for internal integrations, or None for public integrations.",
         default=None,
     )

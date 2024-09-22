@@ -31,7 +31,7 @@ from configs.middleware.vdb.weaviate_config import WeaviateConfig
 
 class StorageConfig(BaseSettings):
     STORAGE_TYPE: str = Field(
-        description="Type of storage to use." 
+        description="Type of storage to use."
         " Options: 'local', 's3', 'azure-blob', 'aliyun-oss', 'google-storage'. Default is 'local'.",
         default="local",
     )
@@ -44,7 +44,7 @@ class StorageConfig(BaseSettings):
 
 class VectorStoreConfig(BaseSettings):
     VECTOR_STORE: Optional[str] = Field(
-        description="Type of vector store to use for efficient similarity search." 
+        description="Type of vector store to use for efficient similarity search."
         " Set to None if not using a vector store.",
         default=None,
     )
@@ -52,7 +52,7 @@ class VectorStoreConfig(BaseSettings):
 
 class KeywordStoreConfig(BaseSettings):
     KEYWORD_STORE: str = Field(
-        description="Method for keyword extraction and storage." 
+        description="Method for keyword extraction and storage."
         " Default is 'jieba', a Chinese text segmentation library.",
         default="jieba",
     )

@@ -474,7 +474,7 @@ class RagEtlConfig(BaseSettings):
     )
 
     KEYWORD_DATA_SOURCE_TYPE: str = Field(
-        description="Data source type for keyword extraction" 
+        description="Data source type for keyword extraction"
         " ('database' or other supported types), default to 'database'",
         default="database",
     )

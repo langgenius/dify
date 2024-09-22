@@ -26,7 +26,7 @@ class AnalyticdbConfig(BaseModel):
     )
     ANALYTICDB_ACCOUNT: Optional[str] = Field(
         default=None,
-        description="The account name used to log in to the AnalyticDB instance" 
+        description="The account name used to log in to the AnalyticDB instance"
         " (usually the initial account created with the instance).",
     )
     ANALYTICDB_PASSWORD: Optional[str] = Field(
@@ -37,6 +37,6 @@ class AnalyticdbConfig(BaseModel):
     )
     ANALYTICDB_NAMESPACE_PASSWORD: Optional[str] = Field(
         default=None,
-        description="The password for accessing the specified namespace within the AnalyticDB instance" 
+        description="The password for accessing the specified namespace within the AnalyticDB instance"
         " (if namespace feature is enabled).",
     )
