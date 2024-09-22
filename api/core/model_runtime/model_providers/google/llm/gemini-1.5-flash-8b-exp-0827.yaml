@@ -1,6 +1,6 @@
-model: gemini-1.5-pro-latest
+model: gemini-1.5-flash-8b-exp-0827
 label:
-  en_US: Gemini 1.5 Pro
+  en_US: Gemini 1.5 Flash 8B 0827
 model_type: llm
 features:
   - agent-thought
@@ -9,7 +9,7 @@ features:
   - stream-tool-call
 model_properties:
   mode: chat
-  context_size: 2097152
+  context_size: 1048576
 parameter_rules:
   - name: temperature
     use_template: temperature
