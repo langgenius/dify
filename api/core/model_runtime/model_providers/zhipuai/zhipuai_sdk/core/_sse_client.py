@@ -127,8 +127,7 @@ class SSELineParser:
 
         field, _p, value = line.partition(":")
 
-        if value.startswith(" "):
-            value = value[1:]
+        value = value.removeprefix(" ")
         if field == "data":
             self._data.append(value)
         elif field == "event":

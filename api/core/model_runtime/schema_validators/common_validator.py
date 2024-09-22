@@ -67,14 +67,15 @@ class CommonValidator:
         if credential_form_schema.max_length:
             if len(value) > credential_form_schema.max_length:
                 raise ValueError(
-                    f"Variable {credential_form_schema.variable} length should not greater than {credential_form_schema.max_length}"
+                    f"Variable {credential_form_schema.variable} length should not"
+                    f" greater than {credential_form_schema.max_length}"
                 )
 
         # check the type of value
         if not isinstance(value, str):
             raise ValueError(f"Variable {credential_form_schema.variable} should be string")
 
-        if credential_form_schema.type in [FormType.SELECT, FormType.RADIO]:
+        if credential_form_schema.type in {FormType.SELECT, FormType.RADIO}:
             # If the value is in options, no validation is performed
             if credential_form_schema.options:
                 if value not in [option.value for option in credential_form_schema.options]:
@@ -82,7 +83,7 @@ class CommonValidator:
 
         if credential_form_schema.type == FormType.SWITCH:
             # If the value is not in ['true', 'false'], an exception is thrown
-            if value.lower() not in ["true", "false"]:
+            if value.lower() not in {"true", "false"}:
                 raise ValueError(f"Variable {credential_form_schema.variable} should be true or false")
 
             value = True if value.lower() == "true" else False

@@ -49,13 +49,14 @@ class TokenBufferMemory:
         )
 
         if message_limit and message_limit > 0:
-            message_limit = message_limit if message_limit <= 500 else 500
+            message_limit = min(message_limit, 500)
         else:
             message_limit = 500
 
         messages = query.limit(message_limit).all()
 
-        # instead of all messages from the conversation, we only need to extract messages that belong to the thread of last message
+        # instead of all messages from the conversation, we only need to extract messages
+        # that belong to the thread of last message
         thread_messages = extract_thread_messages(messages)
         thread_messages.pop(0)
         messages = list(reversed(thread_messages))
@@ -66,7 +67,7 @@ class TokenBufferMemory:
             files = db.session.query(MessageFile).filter(MessageFile.message_id == message.id).all()
             if files:
                 file_extra_config = None
-                if self.conversation.mode not in [AppMode.ADVANCED_CHAT.value, AppMode.WORKFLOW.value]:
+                if self.conversation.mode not in {AppMode.ADVANCED_CHAT.value, AppMode.WORKFLOW.value}:
                     file_extra_config = FileUploadConfigManager.convert(self.conversation.model_config)
                 else:
                     if message.workflow_run_id:

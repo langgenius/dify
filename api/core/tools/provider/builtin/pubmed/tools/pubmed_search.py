@@ -51,7 +51,7 @@ class PubMedAPIWrapper(BaseModel):
         try:
             # Retrieve the top-k results for the query
             docs = [
-                f"Published: {result['pub_date']}\nTitle: {result['title']}\n" f"Summary: {result['summary']}"
+                f"Published: {result['pub_date']}\nTitle: {result['title']}\nSummary: {result['summary']}"
                 for result in self.load(query[: self.ARXIV_MAX_QUERY_LENGTH])
             ]
 
@@ -97,7 +97,7 @@ class PubMedAPIWrapper(BaseModel):
                 if e.code == 429 and retry < self.max_retry:
                     # Too Many Requests error
                     # wait for an exponentially increasing amount of time
-                    print(f"Too Many Requests, " f"waiting for {self.sleep_time:.2f} seconds...")
+                    print(f"Too Many Requests, waiting for {self.sleep_time:.2f} seconds...")
                     time.sleep(self.sleep_time)
                     self.sleep_time *= 2
                     retry += 1

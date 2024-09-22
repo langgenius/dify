@@ -75,7 +75,8 @@ Headers = Mapping[str, Union[str, Omit]]
 
 ResponseT = TypeVar(
     "ResponseT",
-    bound="Union[str, None, BaseModel, list[Any], Dict[str, Any], Response, UnknownResponse, ModelBuilderProtocol, BinaryResponseContent]",
+    bound="Union[str, None, BaseModel, list[Any], Dict[str, Any], Response, UnknownResponse, ModelBuilderProtocol,"
+    " BinaryResponseContent]",
 )
 
 # for user input files

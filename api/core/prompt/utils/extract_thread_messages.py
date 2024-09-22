@@ -15,7 +15,7 @@ def extract_thread_messages(messages: list[dict]) -> list[dict]:
             thread_messages.append(message)
             next_message = message.parent_message_id
         else:
-            if message.id == next_message or next_message == UUID_NIL:
+            if next_message in {message.id, UUID_NIL}:
                 thread_messages.append(message)
                 next_message = message.parent_message_id
 

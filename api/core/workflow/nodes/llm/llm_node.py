@@ -580,7 +580,7 @@ class LLMNode(BaseNode):
         prompt_messages = prompt_transform.get_prompt(
             prompt_template=node_data.prompt_template,
             inputs=inputs,
-            query=query if query else "",
+            query=query or "",
             files=files,
             context=context,
             memory_config=node_data.memory,

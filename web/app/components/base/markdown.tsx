@@ -198,11 +198,11 @@ const Paragraph = (paragraph: any) => {
     return (
       <>
         <ImageGallery srcs={[children_node[0].properties.src]} />
-        <div>{paragraph.children.slice(1)}</div>
+        <p>{paragraph.children.slice(1)}</p>
       </>
     )
   }
-  return <div>{paragraph.children}</div>
+  return <p>{paragraph.children}</p>
 }
 
 const Img = ({ src }: any) => {

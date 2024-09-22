@@ -104,7 +104,8 @@ class ArxivSearchTool(BuiltinTool):
             tool_parameters (dict[str, Any]): The parameters for the tool, including the 'query' parameter.
 
         Returns:
-            ToolInvokeMessage | list[ToolInvokeMessage]: The result of the tool invocation, which can be a single message or a list of messages.
+            ToolInvokeMessage | list[ToolInvokeMessage]: The result of the tool invocation,
+             which can be a single message or a list of messages.
         """
         query = tool_parameters.get("query", "")
 

@@ -45,8 +45,7 @@ class XinferenceSpeech2TextModel(Speech2TextModel):
             if "/" in credentials["model_uid"] or "?" in credentials["model_uid"] or "#" in credentials["model_uid"]:
                 raise CredentialsValidateFailedError("model_uid should not contain /, ?, or #")
 
-            if credentials["server_url"].endswith("/"):
-                credentials["server_url"] = credentials["server_url"][:-1]
+            credentials["server_url"] = credentials["server_url"].removesuffix("/")
 
             # initialize client
             client = Client(
@@ -101,19 +100,22 @@ class XinferenceSpeech2TextModel(Speech2TextModel):
 
         :param model: model name
         :param credentials: model credentials
-        :param file: The audio file object (not file name) to transcribe, in one of these formats: flac, mp3, mp4, mpe            g,mpga, m4a, ogg, wav, or webm.
+        :param file: The audio file object (not file name) to transcribe, in one of these formats: flac, mp3, mp4, mpeg,
+          mpga, m4a, ogg, wav, or webm.
         :param language: The language of the input audio. Supplying the input language in ISO-639-1
         :param prompt: An optional text to guide the model's style or continue a previous audio segment.
             The prompt should match the audio language.
-        :param response_format: The format of the transcript output, in one of these options: json, text, srt, verbose            _json, or vtt.
-        :param temperature: The sampling temperature, between 0 and 1. Higher values like 0.8 will make the output mor            e random,while lower values like 0.2 will make it more focused and deterministic.If set to 0, the model wi            ll use log probability to automatically increase the temperature until certain thresholds are hit.
+        :param response_format: The format of the transcript output, in one of these options: json, text, srt,
+          verbose_json, or vtt.
+        :param temperature: The sampling temperature, between 0 and 1. Higher values like 0.8 will make the output more
+          random,while lower values like 0.2 will make it more focused and deterministic.If set to 0, the model will use
+          log probability to automatically increase the temperature until certain thresholds are hit.
         :return: text for given audio file
         """
         server_url = credentials["server_url"]
         model_uid = credentials["model_uid"]
         api_key = credentials.get("api_key")
-        if server_url.endswith("/"):
-            server_url = server_url[:-1]
+        server_url = server_url.removesuffix("/")
         auth_headers = {"Authorization": f"Bearer {api_key}"} if api_key else {}
 
         try:

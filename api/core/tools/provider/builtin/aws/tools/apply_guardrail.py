@@ -62,7 +62,8 @@ class ApplyGuardrailTool(BuiltinTool):
                     if isinstance(policy_data, dict) and "topics" in policy_data:
                         for topic in policy_data["topics"]:
                             formatted_assessments.append(
-                                f"Policy: {policy_type}, Topic: {topic['name']}, Type: {topic['type']}, Action: {topic['action']}"
+                                f"Policy: {policy_type}, Topic: {topic['name']}, Type: {topic['type']},"
+                                f" Action: {topic['action']}"
                             )
                     else:
                         formatted_assessments.append(f"Policy: {policy_type}, Data: {policy_data}")

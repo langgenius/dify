@@ -65,7 +65,7 @@ class LangFuseDataTrace(BaseTraceInstance):
             self.generate_name_trace(trace_info)
 
     def workflow_trace(self, trace_info: WorkflowTraceInfo):
-        trace_id = trace_info.workflow_app_log_id if trace_info.workflow_app_log_id else trace_info.workflow_run_id
+        trace_id = trace_info.workflow_app_log_id or trace_info.workflow_run_id
         user_id = trace_info.metadata.get("user_id")
         if trace_info.message_id:
             trace_id = trace_info.message_id
@@ -84,7 +84,7 @@ class LangFuseDataTrace(BaseTraceInstance):
             )
             self.add_trace(langfuse_trace_data=trace_data)
             workflow_span_data = LangfuseSpan(
-                id=(trace_info.workflow_app_log_id if trace_info.workflow_app_log_id else trace_info.workflow_run_id),
+                id=(trace_info.workflow_app_log_id or trace_info.workflow_run_id),
                 name=TraceTaskName.WORKFLOW_TRACE.value,
                 input=trace_info.workflow_run_inputs,
                 output=trace_info.workflow_run_outputs,
@@ -93,7 +93,7 @@ class LangFuseDataTrace(BaseTraceInstance):
                 end_time=trace_info.end_time,
                 metadata=trace_info.metadata,
                 level=LevelEnum.DEFAULT if trace_info.error == "" else LevelEnum.ERROR,
-                status_message=trace_info.error if trace_info.error else "",
+                status_message=trace_info.error or "",
             )
             self.add_span(langfuse_span_data=workflow_span_data)
         else:
@@ -143,7 +143,7 @@ class LangFuseDataTrace(BaseTraceInstance):
             else:
                 inputs = json.loads(node_execution.inputs) if node_execution.inputs else {}
             outputs = json.loads(node_execution.outputs) if node_execution.outputs else {}
-            created_at = node_execution.created_at if node_execution.created_at else datetime.now()
+            created_at = node_execution.created_at or datetime.now()
             elapsed_time = node_execution.elapsed_time
             finished_at = created_at + timedelta(seconds=elapsed_time)
 
@@ -172,10 +172,8 @@ class LangFuseDataTrace(BaseTraceInstance):
                     end_time=finished_at,
                     metadata=metadata,
                     level=(LevelEnum.DEFAULT if status == "succeeded" else LevelEnum.ERROR),
-                    status_message=trace_info.error if trace_info.error else "",
-                    parent_observation_id=(
-                        trace_info.workflow_app_log_id if trace_info.workflow_app_log_id else trace_info.workflow_run_id
-                    ),
+                    status_message=trace_info.error or "",
+                    parent_observation_id=(trace_info.workflow_app_log_id or trace_info.workflow_run_id),
                 )
             else:
                 span_data = LangfuseSpan(
@@ -188,7 +186,7 @@ class LangFuseDataTrace(BaseTraceInstance):
                     end_time=finished_at,
                     metadata=metadata,
                     level=(LevelEnum.DEFAULT if status == "succeeded" else LevelEnum.ERROR),
-                    status_message=trace_info.error if trace_info.error else "",
+                    status_message=trace_info.error or "",
                 )
 
             self.add_span(langfuse_span_data=span_data)
@@ -212,7 +210,7 @@ class LangFuseDataTrace(BaseTraceInstance):
                     output=outputs,
                     metadata=metadata,
                     level=(LevelEnum.DEFAULT if status == "succeeded" else LevelEnum.ERROR),
-                    status_message=trace_info.error if trace_info.error else "",
+                    status_message=trace_info.error or "",
                     usage=generation_usage,
                 )
 
@@ -277,7 +275,7 @@ class LangFuseDataTrace(BaseTraceInstance):
             output=message_data.answer,
             metadata=metadata,
             level=(LevelEnum.DEFAULT if message_data.status != "error" else LevelEnum.ERROR),
-            status_message=message_data.error if message_data.error else "",
+            status_message=message_data.error or "",
             usage=generation_usage,
         )
 
@@ -319,7 +317,7 @@ class LangFuseDataTrace(BaseTraceInstance):
             end_time=trace_info.end_time,
             metadata=trace_info.metadata,
             level=(LevelEnum.DEFAULT if message_data.status != "error" else LevelEnum.ERROR),
-            status_message=message_data.error if message_data.error else "",
+            status_message=message_data.error or "",
             usage=generation_usage,
         )
 

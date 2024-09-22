@@ -63,11 +63,11 @@ class WorkflowConverter:
         # create new app
         new_app = App()
         new_app.tenant_id = app_model.tenant_id
-        new_app.name = name if name else app_model.name + "(workflow)"
+        new_app.name = name or app_model.name + "(workflow)"
         new_app.mode = AppMode.ADVANCED_CHAT.value if app_model.mode == AppMode.CHAT.value else AppMode.WORKFLOW.value
-        new_app.icon_type = icon_type if icon_type else app_model.icon_type
-        new_app.icon = icon if icon else app_model.icon
-        new_app.icon_background = icon_background if icon_background else app_model.icon_background
+        new_app.icon_type = icon_type or app_model.icon_type
+        new_app.icon = icon or app_model.icon
+        new_app.icon_background = icon_background or app_model.icon_background
         new_app.enable_site = app_model.enable_site
         new_app.enable_api = app_model.enable_api
         new_app.api_rpm = app_model.api_rpm

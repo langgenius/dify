@@ -54,7 +54,8 @@ class TeiHelper:
 
         url = str(URL(server_url) / "info")
 
-        # this method is surrounded by a lock, and default requests may hang forever, so we just set a Adapter with max_retries=3
+        # this method is surrounded by a lock, and default requests may hang forever,
+        # so we just set a Adapter with max_retries=3
         session = Session()
         session.mount("http://", HTTPAdapter(max_retries=3))
         session.mount("https://", HTTPAdapter(max_retries=3))
@@ -74,7 +75,7 @@ class TeiHelper:
         if len(model_type.keys()) < 1:
             raise RuntimeError("model_type is empty")
         model_type = list(model_type.keys())[0]
-        if model_type not in ["embedding", "reranker"]:
+        if model_type not in {"embedding", "reranker"}:
             raise RuntimeError(f"invalid model_type: {model_type}")
 
         max_input_length = response_json.get("max_input_length", 512)

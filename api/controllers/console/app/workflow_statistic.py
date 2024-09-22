@@ -30,12 +30,14 @@ class WorkflowDailyRunsStatistic(Resource):
         parser.add_argument("end", type=DatetimeString("%Y-%m-%d %H:%M"), location="args")
         args = parser.parse_args()
 
-        sql_query = """
-        SELECT date(DATE_TRUNC('day', created_at AT TIME ZONE 'UTC' AT TIME ZONE :tz )) AS date, count(id) AS runs
-            FROM workflow_runs 
-            WHERE app_id = :app_id 
-                AND triggered_from = :triggered_from
-        """
+        sql_query = """SELECT
+    DATE(DATE_TRUNC('day', created_at AT TIME ZONE 'UTC' AT TIME ZONE :tz )) AS date,
+    COUNT(id) AS runs
+FROM
+    workflow_runs
+WHERE
+    app_id = :app_id
+    AND triggered_from = :triggered_from"""
         arg_dict = {
             "tz": account.timezone,
             "app_id": app_model.id,
@@ -52,7 +54,7 @@ class WorkflowDailyRunsStatistic(Resource):
             start_datetime_timezone = timezone.localize(start_datetime)
             start_datetime_utc = start_datetime_timezone.astimezone(utc_timezone)
 
-            sql_query += " and created_at >= :start"
+            sql_query += " AND created_at >= :start"
             arg_dict["start"] = start_datetime_utc
 
         if args["end"]:
@@ -62,10 +64,10 @@ class WorkflowDailyRunsStatistic(Resource):
             end_datetime_timezone = timezone.localize(end_datetime)
             end_datetime_utc = end_datetime_timezone.astimezone(utc_timezone)
 
-            sql_query += " and created_at < :end"
+            sql_query += " AND created_at < :end"
             arg_dict["end"] = end_datetime_utc
 
-        sql_query += " GROUP BY date order by date"
+        sql_query += " GROUP BY date ORDER BY date"
 
         response_data = []
 
@@ -90,12 +92,14 @@ class WorkflowDailyTerminalsStatistic(Resource):
         parser.add_argument("end", type=DatetimeString("%Y-%m-%d %H:%M"), location="args")
         args = parser.parse_args()
 
-        sql_query = """
-                SELECT date(DATE_TRUNC('day', created_at AT TIME ZONE 'UTC' AT TIME ZONE :tz )) AS date, count(distinct workflow_runs.created_by) AS terminal_count
-                    FROM workflow_runs 
-                    WHERE app_id = :app_id 
-                        AND triggered_from = :triggered_from
-                """
+        sql_query = """SELECT
+    DATE(DATE_TRUNC('day', created_at AT TIME ZONE 'UTC' AT TIME ZONE :tz )) AS date,
+    COUNT(DISTINCT workflow_runs.created_by) AS terminal_count
+FROM
+    workflow_runs
+WHERE
+    app_id = :app_id
+    AND triggered_from = :triggered_from"""
         arg_dict = {
             "tz": account.timezone,
             "app_id": app_model.id,
@@ -112,7 +116,7 @@ class WorkflowDailyTerminalsStatistic(Resource):
             start_datetime_timezone = timezone.localize(start_datetime)
             start_datetime_utc = start_datetime_timezone.astimezone(utc_timezone)
 
-            sql_query += " and created_at >= :start"
+            sql_query += " AND created_at >= :start"
             arg_dict["start"] = start_datetime_utc
 
         if args["end"]:
@@ -122,10 +126,10 @@ class WorkflowDailyTerminalsStatistic(Resource):
             end_datetime_timezone = timezone.localize(end_datetime)
             end_datetime_utc = end_datetime_timezone.astimezone(utc_timezone)
 
-            sql_query += " and created_at < :end"
+            sql_query += " AND created_at < :end"
             arg_dict["end"] = end_datetime_utc
 
-        sql_query += " GROUP BY date order by date"
+        sql_query += " GROUP BY date ORDER BY date"
 
         response_data = []
 
@@ -150,14 +154,14 @@ class WorkflowDailyTokenCostStatistic(Resource):
         parser.add_argument("end", type=DatetimeString("%Y-%m-%d %H:%M"), location="args")
         args = parser.parse_args()
 
-        sql_query = """
-                SELECT 
-                    date(DATE_TRUNC('day', created_at AT TIME ZONE 'UTC' AT TIME ZONE :tz )) AS date, 
-                    SUM(workflow_runs.total_tokens) as token_count
-                FROM workflow_runs 
-                WHERE app_id = :app_id 
-                    AND triggered_from = :triggered_from
-                """
+        sql_query = """SELECT
+    DATE(DATE_TRUNC('day', created_at AT TIME ZONE 'UTC' AT TIME ZONE :tz )) AS date,
+    SUM(workflow_runs.total_tokens) AS token_count
+FROM
+    workflow_runs
+WHERE
+    app_id = :app_id
+    AND triggered_from = :triggered_from"""
         arg_dict = {
             "tz": account.timezone,
             "app_id": app_model.id,
@@ -174,7 +178,7 @@ class WorkflowDailyTokenCostStatistic(Resource):
             start_datetime_timezone = timezone.localize(start_datetime)
             start_datetime_utc = start_datetime_timezone.astimezone(utc_timezone)
 
-            sql_query += " and created_at >= :start"
+            sql_query += " AND created_at >= :start"
             arg_dict["start"] = start_datetime_utc
 
         if args["end"]:
@@ -184,10 +188,10 @@ class WorkflowDailyTokenCostStatistic(Resource):
             end_datetime_timezone = timezone.localize(end_datetime)
             end_datetime_utc = end_datetime_timezone.astimezone(utc_timezone)
 
-            sql_query += " and created_at < :end"
+            sql_query += " AND created_at < :end"
             arg_dict["end"] = end_datetime_utc
 
-        sql_query += " GROUP BY date order by date"
+        sql_query += " GROUP BY date ORDER BY date"
 
         response_data = []
 
@@ -217,23 +221,27 @@ class WorkflowAverageAppInteractionStatistic(Resource):
         parser.add_argument("end", type=DatetimeString("%Y-%m-%d %H:%M"), location="args")
         args = parser.parse_args()
 
-        sql_query = """
-            SELECT 
-                AVG(sub.interactions) as interactions,
-                sub.date
-            FROM
-                (SELECT 
-                    date(DATE_TRUNC('day', c.created_at AT TIME ZONE 'UTC' AT TIME ZONE :tz )) AS date, 
-                    c.created_by,
-                    COUNT(c.id) AS interactions
-                FROM workflow_runs c
-                WHERE c.app_id = :app_id
-                    AND c.triggered_from = :triggered_from
-                    {{start}}
-                    {{end}}
-                GROUP BY date, c.created_by) sub
-            GROUP BY sub.date
-            """
+        sql_query = """SELECT
+    AVG(sub.interactions) AS interactions,
+    sub.date
+FROM
+    (
+        SELECT
+            DATE(DATE_TRUNC('day', c.created_at AT TIME ZONE 'UTC' AT TIME ZONE :tz )) AS date,
+            c.created_by,
+            COUNT(c.id) AS interactions
+        FROM
+            workflow_runs c
+        WHERE
+            c.app_id = :app_id
+            AND c.triggered_from = :triggered_from
+            {{start}}
+            {{end}}
+        GROUP BY
+            date, c.created_by
+    ) sub
+GROUP BY
+    sub.date"""
         arg_dict = {
             "tz": account.timezone,
             "app_id": app_model.id,
@@ -262,7 +270,7 @@ class WorkflowAverageAppInteractionStatistic(Resource):
             end_datetime_timezone = timezone.localize(end_datetime)
             end_datetime_utc = end_datetime_timezone.astimezone(utc_timezone)
 
-            sql_query = sql_query.replace("{{end}}", " and c.created_at < :end")
+            sql_query = sql_query.replace("{{end}}", " AND c.created_at < :end")
             arg_dict["end"] = end_datetime_utc
         else:
             sql_query = sql_query.replace("{{end}}", "")

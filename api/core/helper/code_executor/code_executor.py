@@ -89,7 +89,8 @@ class CodeExecutor:
                 raise CodeExecutionError("Code execution service is unavailable")
             elif response.status_code != 200:
                 raise Exception(
-                    f"Failed to execute code, got status code {response.status_code}, please check if the sandbox service is running"
+                    f"Failed to execute code, got status code {response.status_code},"
+                    f" please check if the sandbox service is running"
                 )
         except CodeExecutionError as e:
             raise e

@@ -65,7 +65,7 @@ class BasedGenerateTaskPipeline:
 
         if isinstance(e, InvokeAuthorizationError):
             err = InvokeAuthorizationError("Incorrect API key provided")
-        elif isinstance(e, InvokeError) or isinstance(e, ValueError):
+        elif isinstance(e, InvokeError | ValueError):
             err = e
         else:
             err = Exception(e.description if getattr(e, "description", None) is not None else str(e))

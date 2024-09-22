@@ -128,11 +128,12 @@ class KnowledgeRetrievalNode(BaseNode):
                 weights = None
             elif node_data.multiple_retrieval_config.reranking_mode == "weighted_score":
                 reranking_model = None
+                vector_setting = node_data.multiple_retrieval_config.weights.vector_setting
                 weights = {
                     "vector_setting": {
-                        "vector_weight": node_data.multiple_retrieval_config.weights.vector_setting.vector_weight,
-                        "embedding_provider_name": node_data.multiple_retrieval_config.weights.vector_setting.embedding_provider_name,
-                        "embedding_model_name": node_data.multiple_retrieval_config.weights.vector_setting.embedding_model_name,
+                        "vector_weight": vector_setting.vector_weight,
+                        "embedding_provider_name": vector_setting.embedding_provider_name,
+                        "embedding_model_name": vector_setting.embedding_model_name,
                     },
                     "keyword_setting": {
                         "keyword_weight": node_data.multiple_retrieval_config.weights.keyword_setting.keyword_weight

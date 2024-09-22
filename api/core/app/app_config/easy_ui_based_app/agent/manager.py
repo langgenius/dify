@@ -18,7 +18,7 @@ class AgentConfigManager:
 
             if agent_strategy == "function_call":
                 strategy = AgentEntity.Strategy.FUNCTION_CALLING
-            elif agent_strategy == "cot" or agent_strategy == "react":
+            elif agent_strategy in {"cot", "react"}:
                 strategy = AgentEntity.Strategy.CHAIN_OF_THOUGHT
             else:
                 # old configs, try to detect default strategy
@@ -43,10 +43,10 @@ class AgentConfigManager:
 
                     agent_tools.append(AgentToolEntity(**agent_tool_properties))
 
-            if "strategy" in config["agent_mode"] and config["agent_mode"]["strategy"] not in [
+            if "strategy" in config["agent_mode"] and config["agent_mode"]["strategy"] not in {
                 "react_router",
                 "router",
-            ]:
+            }:
                 agent_prompt = agent_dict.get("prompt", None) or {}
                 # check model mode
                 model_mode = config.get("model", {}).get("mode", "completion")
