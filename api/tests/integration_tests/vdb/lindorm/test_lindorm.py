@@ -11,9 +11,9 @@ import environs
 env = environs.Env()
 
 class Config:
-    SEARCH_ENDPOINT = env.str("SEARCH_ENDPOINT", "http://ld-2ze018v27tgukcg04-proxy-search-pub.lindorm.aliyuncs.com:30070")
-    SEARCH_USERNAME = env.str("SEARCH_USERNAME", 'root')
-    SEARCH_PWD = env.str("SEARCH_PWD", "mMAqrZaIWPNu")
+    SEARCH_ENDPOINT = env.str("SEARCH_ENDPOINT", "http://ld-*************-proxy-search-pub.lindorm.aliyuncs.com:30070")
+    SEARCH_USERNAME = env.str("SEARCH_USERNAME", 'ADMIN')
+    SEARCH_PWD = env.str("SEARCH_PWD", "PWD")
 
 @pytest.mark.usefixtures("setup_mock_redis")
 class TestLindormVectorStore(AbstractVectorTest):

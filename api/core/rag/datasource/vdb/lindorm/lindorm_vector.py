@@ -167,7 +167,8 @@ class LindormVectorStore(BaseVector):
                                                 ids=ids,
                                                 bulk_size=bulk_size,
                                                 **kwargs)
-        self.__add_texts(texts=texts, embeddings=embeddings, metadatas=metadatas, ids=ids, max_chunk_bytes=bulk_size, routing_field=routing_field)
+        self.__add_texts(texts=texts, embeddings=embeddings, metadatas=metadatas, ids=ids, max_chunk_bytes=bulk_size,
+                         routing_field=routing_field)
 
     def __add_texts(self,
                     texts: Iterable[str],
@@ -202,7 +203,6 @@ class LindormVectorStore(BaseVector):
         )
         self.refresh()
         return bulked_ids
-
 
     def check_allow_inherit(self, parent_index: str, mapping: Dict):
         response = self._client.transport.perform_request(method="GET", url=f"/{parent_index}/_mapping?pretty")
@@ -363,10 +363,11 @@ class LindormVectorStore(BaseVector):
 
     def delete(self) -> None:
         try:
-            self._client.indices.delete(index=self._collection_name, params={"timeout":60})
+            self._client.indices.delete(index=self._collection_name, params={"timeout": 60})
             print("delete index success")
         except Exception as e:
             raise e
+
     def text_exists(self, id: str) -> bool:
         try:
             self._client.get(index=self._collection_name, id=id)
@@ -659,23 +660,6 @@ class LindormVectorStore(BaseVector):
             logger.info(f"id {return_ids}, del")
         elif method_name == "ivfpq":
             self._ivfpq_trained = False
-
-
-class LindormVectorStoreFactory(AbstractVectorFactory):
-    def init_vector(self, dataset: Dataset, attributes: list, embeddings: Embeddings) -> LindormVectorStore:
-        if dataset.index_struct_dict:
-            class_prefix: str = dataset.index_struct_dict["vector_store"]["class_prefix"]
-            collection_name = class_prefix
-        else:
-            dataset_id = dataset.id
-            collection_name = f"dify_dataset_{dataset_id}"
-        config = LindormVectorStoreConfig(
-            host=dify_config.vector_store.host,
-            port=dify_config.vector_store.port,
-            username=dify_config.vector_store.username,
-            password=dify_config.vector_store.password,
-        )
-        return LindormVectorStore(collection_name, config)
 
 
 def default_text_mapping(
@@ -1027,3 +1011,21 @@ def bulk_ingest_embeddings(
     except Exception as e:
         logger.error(f"RetryError in bulking")
     return return_ids
+
+
+class LindormVectorStoreFactory(AbstractVectorFactory):
+    def init_vector(self, dataset: Dataset, attributes: list, embeddings: Embeddings) -> LindormVectorStore:
+        if dataset.index_struct_dict:
+            class_prefix: str = dataset.index_struct_dict["vector_store"]["class_prefix"]
+            collection_name = class_prefix
+        else:
+            dataset_id = dataset.id
+            collection_name = Dataset.gen_collection_name_by_id(dataset_id)
+            dataset.index_struct = json.dumps(self.gen_index_struct_dict(VectorType.LINDORM, collection_name))
+        lindorm_config = LindormVectorStoreConfig(
+            host=dify_config.LINDORM_HOST,
+            port=dify_config.LINDROM_PORT,
+            username=dify_config.LINDORM_USERNAME,
+            password=dify_config.LINDORM_PASSWORD,
+        )
+        return LindormVectorStore(collection_name, lindorm_config)

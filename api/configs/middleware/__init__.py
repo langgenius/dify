@@ -32,7 +32,7 @@ from configs.middleware.vdb.tidb_vector_config import TiDBVectorConfig
 from configs.middleware.vdb.upstash_config import UpstashConfig
 from configs.middleware.vdb.vikingdb_config import VikingDBConfig
 from configs.middleware.vdb.weaviate_config import WeaviateConfig
-
+from configs.middleware.vdb.lindorm_config import LindormConfig
 
 class StorageConfig(BaseSettings):
     STORAGE_TYPE: str = Field(
@@ -255,5 +255,6 @@ class MiddlewareConfig(
     VikingDBConfig,
     UpstashConfig,
     TidbOnQdrantConfig,
+    LindormConfig
 ):
     pass

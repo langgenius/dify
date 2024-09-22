@@ -457,7 +457,7 @@ class DatasetIndexingEstimateApi(Resource):
             )
         except LLMBadRequestError:
             raise ProviderNotInitializeError(
-                "No Embedding Model available. Please configure a valid provider in the Settings -> Model Provider."
+                "No Embedding Model available. Please configure a valid provider " "in the Settings -> Model Provider."
             )
         except ProviderTokenNotInitError as ex:
             raise ProviderNotInitializeError(ex.description)
@@ -621,6 +621,7 @@ class DatasetRetrievalSettingApi(Resource):
             case (
                 VectorType.MILVUS
                 | VectorType.RELYT
+                | VectorType.PGVECTOR
                 | VectorType.TIDB_VECTOR
                 | VectorType.CHROMA
                 | VectorType.TENCENT
@@ -640,6 +641,7 @@ class DatasetRetrievalSettingApi(Resource):
                 | VectorType.ELASTICSEARCH
                 | VectorType.PGVECTOR
                 | VectorType.TIDB_ON_QDRANT
+                | VectorType.LINDORM
             ):
                 return {
                     "retrieval_method": [
@@ -679,6 +681,7 @@ class DatasetRetrievalSettingMockApi(Resource):
                 | VectorType.ORACLE
                 | VectorType.ELASTICSEARCH
                 | VectorType.PGVECTOR
+                | VectorType.LINDORM
             ):
                 return {
                     "retrieval_method": [
