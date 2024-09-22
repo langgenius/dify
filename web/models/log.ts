@@ -106,7 +106,6 @@ export type MessageContent = {
   metadata: Metadata
   agent_thoughts: any[] // TODO
   workflow_run_id: string
-  is_regenerated: boolean
   parent_message_id: string | null
 }
 

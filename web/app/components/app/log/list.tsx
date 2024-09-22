@@ -174,7 +174,6 @@ function DetailPanel<T extends ChatConversationFullDetailResponse | CompletionCo
     currentLogModalActiveTab: state.currentLogModalActiveTab,
   })))
   const { t } = useTranslation()
-
   const [hasMore, setHasMore] = useState(true)
   const [varValues, setVarValues] = useState<Record<string, string>>({})
 
