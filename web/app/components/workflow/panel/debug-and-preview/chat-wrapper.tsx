@@ -76,13 +76,19 @@ const ChatWrapper = forwardRef<ChatWrapperRefType, ChatWrapperProps>(({ showConv
   )
 
   const doSend = useCallback<OnSend>((query, files, last_answer) => {
+    const lastAnswer = chatListRef.current.at(-1)
+
     handleSend(
       {
         query,
         files,
         inputs: workflowStore.getState().inputs,
         conversation_id: conversationId,
-        parent_message_id: last_answer?.id || chatListRef.current.at(-1)?.id || null,
+        parent_message_id: last_answer?.id || (lastAnswer
+          ? lastAnswer.isOpeningStatement
+            ? null
+            : lastAnswer.id
+          : null),
       },
       {
         onGetSuggestedQuestions: (messageId, getAbortController) => fetchSuggestedQuestions(appDetail!.id, messageId, getAbortController),
