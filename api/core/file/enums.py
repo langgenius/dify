@@ -39,3 +39,16 @@ class FileBelongsTo(str, Enum):
             if member.value == value:
                 return member
         raise ValueError(f"No matching enum found for value '{value}'")
+
+
+class FileAttribute(str, Enum):
+    TYPE = "type"
+    SIZE = "size"
+    NAME = "name"
+    MIMETYPE = "mimetype"
+    TRANSFER_METHOD = "transfer_method"
+    URL = "url"
+
+
+class ArrayFileAttribute(str, Enum):
+    LENGTH = "length"

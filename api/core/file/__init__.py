@@ -1,4 +1,4 @@
-from .enums import FileBelongsTo, FileTransferMethod, FileType
+from .enums import ArrayFileAttribute, FileAttribute, FileBelongsTo, FileTransferMethod, FileType
 from .models import (
     File,
     FileExtraConfig,
@@ -12,4 +12,6 @@ __all__ = [
     "FileBelongsTo",
     "File",
     "ImageConfig",
+    "FileAttribute",
+    "ArrayFileAttribute",
 ]
