@@ -45,7 +45,7 @@ class FileAttribute(str, Enum):
     TYPE = "type"
     SIZE = "size"
     NAME = "name"
-    MIMETYPE = "mimetype"
+    MIME_TYPE = "mime_type"
     TRANSFER_METHOD = "transfer_method"
     URL = "url"
 

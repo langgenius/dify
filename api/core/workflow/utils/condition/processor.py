@@ -408,7 +408,7 @@ def _get_sub_attribute(*, key: str, variable: FileSegment | ArrayFileSegment) ->
                     raise ValueError("Invalid file")
             case FileAttribute.TYPE:
                 actual_value = variable.value.type
-            case FileAttribute.MIMETYPE:
+            case FileAttribute.MIME_TYPE:
                 actual_value = variable.value.mime_type
             case FileAttribute.TRANSFER_METHOD:
                 actual_value = variable.value.transfer_method
