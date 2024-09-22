@@ -100,6 +100,7 @@ exclude = [
 [tool.pytest_env]
 OPENAI_API_KEY = "sk-IamNotARealKeyJustForMockTestKawaiiiiiiiiii"
 UPSTAGE_API_KEY = "up-aaaaaaaaaaaaaaaaaaaa"
+FIREWORKS_API_KEY = "fw_aaaaaaaaaaaaaaaaaaaa"
 AZURE_OPENAI_API_BASE = "https://difyai-openai.openai.azure.com"
 AZURE_OPENAI_API_KEY = "xxxxb1707exxxxxxxxxxaaxxxxxf94"
 ANTHROPIC_API_KEY = "sk-ant-api11-IamNotARealKeyJustForMockTestKawaiiiiiiiiii-NotBaka-ASkksz"
