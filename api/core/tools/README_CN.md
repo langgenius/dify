@@ -12,10 +12,10 @@
 - `Api-Based Tools` 基于API的工具，即通过调用第三方API实现的工具，`Api-Based Tool`不需要再额外定义，只需提供`OpenAPI` `Swagger` `OpenAI plugin`等接口文档即可。
 
 ### 内置工具供应商
-![Alt text](docs/zh_Hans/images/index/image.png)
+![Alt text](docs/images/index/image.png)
 
 ### API工具供应商
-![Alt text](docs/zh_Hans/images/index/image-1.png)
+![Alt text](docs/images/index/image-1.png)
 
 ## 工具接入
 为了实现更灵活更强大的功能，Tools提供了一系列的接口，帮助开发者快速构建想要的工具，本文作为开发者的入门指南，将会以[快速接入](./docs/zh_Hans/tool_scale_out.md)和[高级接入](./docs/zh_Hans/advanced_scale_out.md)两部分介绍如何接入工具。
