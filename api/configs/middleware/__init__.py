@@ -27,7 +27,7 @@ from configs.middleware.vdb.relyt_config import RelytConfig
 from configs.middleware.vdb.tencent_vector_config import TencentVectorDBConfig
 from configs.middleware.vdb.tidb_vector_config import TiDBVectorConfig
 from configs.middleware.vdb.weaviate_config import WeaviateConfig
-
+from configs.middleware.vdb.lindorm_config import LindormConfig
 
 class StorageConfig(BaseSettings):
     STORAGE_TYPE: str = Field(
@@ -221,5 +221,6 @@ class MiddlewareConfig(
     TiDBVectorConfig,
     WeaviateConfig,
     ElasticsearchConfig,
+    LindormConfig
 ):
     pass
