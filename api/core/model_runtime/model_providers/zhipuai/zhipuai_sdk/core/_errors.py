@@ -13,6 +13,7 @@ __all__ = [
     "APIResponseError",
     "APIResponseValidationError",
     "APITimeoutError",
+    "APIConnectionError",
 ]
 
 
@@ -24,7 +25,7 @@ class ZhipuAIError(Exception):
         super().__init__(message)
 
 
-class APIStatusError(Exception):
+class APIStatusError(ZhipuAIError):
     response: httpx.Response
     status_code: int
 
@@ -49,7 +50,7 @@ class APIInternalError(APIStatusError): ...
 class APIServerFlowExceedError(APIStatusError): ...
 
 
-class APIResponseError(Exception):
+class APIResponseError(ZhipuAIError):
     message: str
     request: httpx.Request
     json_data: object
@@ -75,9 +76,11 @@ class APIResponseValidationError(APIResponseError):
         self.status_code = response.status_code
 
 
-class APITimeoutError(Exception):
-    request: httpx.Request
+class APIConnectionError(APIResponseError):
+    def __init__(self, *, message: str = "Connection error.", request: httpx.Request) -> None:
+        super().__init__(message, request, json_data=None)
 
-    def __init__(self, request: httpx.Request):
-        self.request = request
-        super().__init__("Request Timeout")
+
+class APITimeoutError(APIConnectionError):
+    def __init__(self, request: httpx.Request) -> None:
+        super().__init__(message="Request timed out.", request=request)
