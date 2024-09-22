@@ -168,7 +168,7 @@ gunicorn = "~22.0.0"
 httpx = { version = "~0.27.0", extras = ["socks"] }
 huggingface-hub = "~0.16.4"
 jieba = "0.42.1"
-langfuse = "^2.36.1"
+langfuse = "^2.48.0"
 langsmith = "^0.1.77"
 mailchimp-transactional = "~1.0.50"
 markdown = "~3.5.1"
