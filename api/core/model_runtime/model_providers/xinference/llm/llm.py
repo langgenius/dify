@@ -19,7 +19,6 @@ from openai.types.chat.chat_completion_message import FunctionCall
 from openai.types.completion import Completion
 from xinference_client.client.restful.restful_client import (
     Client,
-    RESTfulChatglmCppChatModelHandle,
     RESTfulChatModelHandle,
     RESTfulGenerateModelHandle,
 )
@@ -491,7 +490,7 @@ class XinferenceAILargeLanguageModel(LargeLanguageModel):
         if tools and len(tools) > 0:
             generate_config["tools"] = [{"type": "function", "function": helper.dump_model(tool)} for tool in tools]
         vision = credentials.get("support_vision", False)
-        if isinstance(xinference_model, RESTfulChatModelHandle | RESTfulChatglmCppChatModelHandle):
+        if isinstance(xinference_model, RESTfulChatModelHandle):
             resp = client.chat.completions.create(
                 model=credentials["model_uid"],
                 messages=[self._convert_prompt_message_to_dict(message) for message in prompt_messages],

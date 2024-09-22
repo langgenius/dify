@@ -1,8 +1,9 @@
-from typing import Optional
+from typing import Any, Optional
 
-from pydantic import BaseModel
+from ...core import BaseModel
 
 __all__ = [
+    "CompletionUsage",
     "ChatCompletionChunk",
     "Choice",
     "ChoiceDelta",
@@ -53,3 +54,4 @@ class ChatCompletionChunk(BaseModel):
     created: Optional[int] = None
     model: Optional[str] = None
     usage: Optional[CompletionUsage] = None
+    extra_json: dict[str, Any]
