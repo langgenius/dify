@@ -75,10 +75,10 @@ class AppGenerateResponseConverter(ABC):
         :return:
         """
         # show_retrieve_source
+        updated_resources = []
         if "retriever_resources" in metadata:
-            metadata["retriever_resources"] = []
             for resource in metadata["retriever_resources"]:
-                metadata["retriever_resources"].append(
+                updated_resources.append(
                     {
                         "segment_id": resource["segment_id"],
                         "position": resource["position"],
@@ -87,6 +87,7 @@ class AppGenerateResponseConverter(ABC):
                         "content": resource["content"],
                     }
                 )
+            metadata["retriever_resources"] = updated_resources
 
         # show annotation reply
         if "annotation_reply" in metadata:
