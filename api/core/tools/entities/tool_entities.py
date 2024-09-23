@@ -274,9 +274,12 @@ class ToolProviderIdentity(BaseModel):
     )
 
 
-class ToolProviderEntity(BaseModel):
-    identity: ToolProviderIdentity
-    credentials_schema: dict[str, ProviderConfig] = Field(default_factory=dict)
+class ToolIdentity(BaseModel):
+    author: str = Field(..., description="The author of the tool")
+    name: str = Field(..., description="The name of the tool")
+    label: I18nObject = Field(..., description="The label of the tool")
+    provider: str = Field(..., description="The provider of the tool")
+    icon: Optional[str] = None
 
 
 class ToolDescription(BaseModel):
@@ -284,12 +287,24 @@ class ToolDescription(BaseModel):
     llm: str = Field(..., description="The description presented to the LLM")
 
 
-class ToolIdentity(BaseModel):
-    author: str = Field(..., description="The author of the tool")
-    name: str = Field(..., description="The name of the tool")
-    label: I18nObject = Field(..., description="The label of the tool")
-    provider: str = Field(..., description="The provider of the tool")
-    icon: Optional[str] = None
+class ToolEntity(BaseModel):
+    identity: ToolIdentity
+    parameters: list[ToolParameter] = Field(default_factory=list)
+    description: Optional[ToolDescription] = None
+
+    # pydantic configs
+    model_config = ConfigDict(protected_namespaces=())
+
+    @field_validator("parameters", mode="before")
+    @classmethod
+    def set_parameters(cls, v, validation_info: ValidationInfo) -> list[ToolParameter]:
+        return v or []
+
+
+class ToolProviderEntity(BaseModel):
+    identity: ToolProviderIdentity
+    credentials_schema: dict[str, ProviderConfig] = Field(default_factory=dict)
+    tools: list[ToolEntity] = Field(default_factory=list)
 
 
 class WorkflowToolParameterConfiguration(BaseModel):
@@ -352,15 +367,4 @@ class ToolInvokeFrom(Enum):
     AGENT = "agent"
 
 
-class ToolEntity(BaseModel):
-    identity: ToolIdentity
-    parameters: list[ToolParameter] = Field(default_factory=list)
-    description: Optional[ToolDescription] = None
 
-    # pydantic configs
-    model_config = ConfigDict(protected_namespaces=())
-
-    @field_validator("parameters", mode="before")
-    @classmethod
-    def set_parameters(cls, v, validation_info: ValidationInfo) -> list[ToolParameter]:
-        return v or []
