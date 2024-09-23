@@ -1,3 +1,5 @@
+import urllib.parse
+
 from flask import request
 from flask_login import current_user
 from flask_restful import Resource, marshal_with
@@ -14,7 +16,8 @@ from controllers.console.datasets.error import (
 )
 from controllers.console.setup import setup_required
 from controllers.console.wraps import account_initialization_required, cloud_edition_billing_resource_check
-from fields.file_fields import file_fields, upload_config_fields
+from core.helper import ssrf_proxy
+from fields.file_fields import file_fields, remote_file_info_fields, upload_config_fields
 from libs.login import login_required
 from services.file_service import FileService
 
@@ -81,6 +84,21 @@ class FileSupportTypeApi(Resource):
         return {"allowed_extensions": allowed_extensions}
 
 
+class RemoteFileInfoApi(Resource):
+    @marshal_with(remote_file_info_fields)
+    def get(self, url):
+        decoded_url = urllib.parse.unquote(url)
+        try:
+            response = ssrf_proxy.head(decoded_url)
+            return {
+                "file_type": response.headers.get("Content-Type", "application/octet-stream"),
+                "file_length": int(response.headers.get("Content-Length", 0)),
+            }
+        except Exception as e:
+            return {"error": str(e)}, 400
+
+
 api.add_resource(FileApi, "/files/upload")
 api.add_resource(FilePreviewApi, "/files/<uuid:file_id>/preview")
 api.add_resource(FileSupportTypeApi, "/files/support-type")
+api.add_resource(RemoteFileInfoApi, "/remote-files/<path:url>")
