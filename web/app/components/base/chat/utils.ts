@@ -19,6 +19,15 @@ function getProcessedInputsFromUrlParams(): Record<string, any> {
   return inputs
 }
 
+function getLastAnswer(chatList: ChatItem[]) {
+  for (let i = chatList.length - 1; i >= 0; i--) {
+    const item = chatList[i]
+    if (item.isAnswer && !item.isOpeningStatement)
+      return item
+  }
+  return null
+}
+
 function appendQAToChatList(chatList: ChatItem[], item: any) {
   // we append answer first and then question since will reverse the whole chatList later
   chatList.push({
@@ -71,5 +80,6 @@ function getPrevChatList(fetchedMessages: any[]) {
 
 export {
   getProcessedInputsFromUrlParams,
+  getLastAnswer,
   getPrevChatList,
 }
