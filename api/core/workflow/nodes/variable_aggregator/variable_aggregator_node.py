@@ -23,7 +23,10 @@ class VariableAggregatorNode(BaseNode):
                 if variable is not None:
                     if "output" not in outputs:
                         outputs["output"] = []
-                    outputs["output"].extend(variable)
+                    if isinstance(variable, list):
+                        outputs["output"].extend(variable)
+                    elif isinstance(variable, str):
+                        outputs["output"].append(variable)
                     inputs[".".join(selector[1:])] = variable
         else:
             for group in node_data.advanced_settings.groups:
