@@ -323,10 +323,12 @@ class WorkflowAppGenerateTaskPipeline(BasedGenerateTaskPipeline, WorkflowCycleMa
                 if not graph_runtime_state:
                     raise Exception("Graph runtime state not initialized.")
 
-                if event.outputs is not None:
+                if event.outputs:
                     for k, v in event.outputs.items():
                         if isinstance(v, File):
                             event.outputs[k] = v.to_dict()
+                        if isinstance(v, list) and all(isinstance(item, File) for item in v):
+                            event.outputs[k] = [item.to_dict() for item in v]
 
                 workflow_run = self._handle_workflow_run_success(
                     workflow_run=workflow_run,

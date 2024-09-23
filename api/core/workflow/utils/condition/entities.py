@@ -30,7 +30,7 @@ class SubCondition(BaseModel):
     value: Optional[str] = None
 
 
-class SubVariable(BaseModel):
+class SubVariableCondition(BaseModel):
     logical_operator: Literal["and", "or"]
     conditions: list[SubCondition] = Field(default=list)
 
@@ -39,4 +39,4 @@ class Condition(BaseModel):
     variable_selector: list[str]
     comparison_operator: SupportedComparisonOperator
     value: Optional[str] = None
-    sub_variable: SubVariable | None = None
+    sub_variable_condition: SubVariableCondition | None = None

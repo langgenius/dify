@@ -20,7 +20,7 @@ def document_extractor_node():
     )
     return DocumentExtractorNode(
         id="test_node_id",
-        config={"id": "test_node_id", "data": node_data.dict()},
+        config={"id": "test_node_id", "data": node_data.model_dump()},
         graph_init_params=Mock(),
         graph=Mock(),
         graph_runtime_state=Mock(),

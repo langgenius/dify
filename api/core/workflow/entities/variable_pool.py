@@ -121,21 +121,21 @@ class VariablePool(BaseModel):
         if len(selector) < 2:
             raise ValueError("Invalid selector")
 
-        contains_file_attr = False
+        contains_attr = False
         if len(selector) > 2:
             file_attr = selector[-1]
             selector = selector[:-1]
-            contains_file_attr = True
+            contains_attr = True
 
         hash_key = hash(tuple(selector[1:]))
         value = self.variable_dictionary[selector[0]].get(hash_key)
 
-        if contains_file_attr:
-            if not isinstance(value, FileSegment):
-                return None
-            attr = FileAttribute(file_attr)
-            attr_value = file_manager.get_attr(file=value.value, attr=attr)
-            return variable_factory.build_segment(attr_value)
+        if contains_attr:
+            if isinstance(value, FileSegment):
+                attr = FileAttribute(file_attr)
+                attr_value = file_manager.get_attr(file=value.value, attr=attr)
+                return variable_factory.build_segment(attr_value)
+            return None
 
         return value
 
