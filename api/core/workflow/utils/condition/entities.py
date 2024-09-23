@@ -1,3 +1,4 @@
+from collections.abc import Sequence
 from typing import Literal, Optional
 
 from pydantic import BaseModel, Field
@@ -12,6 +13,8 @@ SupportedComparisonOperator = Literal[
     "is not",
     "empty",
     "not empty",
+    "in",
+    "not in",
     # for number
     "=",
     "≠",
@@ -27,7 +30,7 @@ SupportedComparisonOperator = Literal[
 class SubCondition(BaseModel):
     key: str
     comparison_operator: SupportedComparisonOperator
-    value: Optional[str] = None
+    value: str | Sequence[str] | None = None
 
 
 class SubVariableCondition(BaseModel):

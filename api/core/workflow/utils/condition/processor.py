@@ -92,17 +92,15 @@ def _evaluate_condition(
             return _assert_null(value=value)
         case "not null":
             return _assert_not_null(value=value)
+        case "in":
+            return _assert_in(value=value, expected=expected)
+        case "not in":
+            return _assert_not_in(value=value, expected=expected)
         case _:
             raise ValueError(f"Unsupported operator: {operator}")
 
 
 def _assert_contains(*, value: Any, expected: Any) -> bool:
-    """
-    Assert contains
-    :param actual_value: actual value
-    :param expected_value: expected value
-    :return:
-    """
     if not value:
         return False
 
@@ -115,12 +113,6 @@ def _assert_contains(*, value: Any, expected: Any) -> bool:
 
 
 def _assert_not_contains(*, value: Any, expected: Any) -> bool:
-    """
-    Assert not contains
-    :param actual_value: actual value
-    :param expected_value: expected value
-    :return:
-    """
     if not value:
         return True
 
@@ -133,12 +125,6 @@ def _assert_not_contains(*, value: Any, expected: Any) -> bool:
 
 
 def _assert_start_with(*, value: Any, expected: Any) -> bool:
-    """
-    Assert start with
-    :param actual_value: actual value
-    :param expected_value: expected value
-    :return:
-    """
     if not value:
         return False
 
@@ -151,12 +137,6 @@ def _assert_start_with(*, value: Any, expected: Any) -> bool:
 
 
 def _assert_end_with(*, value: Any, expected: Any) -> bool:
-    """
-    Assert end with
-    :param actual_value: actual value
-    :param expected_value: expected value
-    :return:
-    """
     if not value:
         return False
 
@@ -169,12 +149,6 @@ def _assert_end_with(*, value: Any, expected: Any) -> bool:
 
 
 def _assert_is(*, value: Any, expected: Any) -> bool:
-    """
-    Assert is
-    :param actual_value: actual value
-    :param expected_value: expected value
-    :return:
-    """
     if value is None:
         return False
 
@@ -187,12 +161,6 @@ def _assert_is(*, value: Any, expected: Any) -> bool:
 
 
 def _assert_is_not(*, value: Any, expected: Any) -> bool:
-    """
-    Assert is not
-    :param actual_value: actual value
-    :param expected_value: expected value
-    :return:
-    """
     if value is None:
         return False
 
@@ -205,34 +173,18 @@ def _assert_is_not(*, value: Any, expected: Any) -> bool:
 
 
 def _assert_empty(*, value: Any) -> bool:
-    """
-    Assert empty
-    :param actual_value: actual value
-    :return:
-    """
     if not value:
         return True
     return False
 
 
 def _assert_not_empty(*, value: Any) -> bool:
-    """
-    Assert not empty
-    :param actual_value: actual value
-    :return:
-    """
     if value:
         return True
     return False
 
 
 def _assert_equal(*, value: Any, expected: Any) -> bool:
-    """
-    Assert equal
-    :param actual_value: actual value
-    :param expected_value: expected value
-    :return:
-    """
     if value is None:
         return False
 
@@ -250,12 +202,6 @@ def _assert_equal(*, value: Any, expected: Any) -> bool:
 
 
 def _assert_not_equal(*, value: Any, expected: Any) -> bool:
-    """
-    Assert not equal
-    :param actual_value: actual value
-    :param expected_value: expected value
-    :return:
-    """
     if value is None:
         return False
 
@@ -273,12 +219,6 @@ def _assert_not_equal(*, value: Any, expected: Any) -> bool:
 
 
 def _assert_greater_than(*, value: Any, expected: Any) -> bool:
-    """
-    Assert greater than
-    :param actual_value: actual value
-    :param expected_value: expected value
-    :return:
-    """
     if value is None:
         return False
 
@@ -296,12 +236,6 @@ def _assert_greater_than(*, value: Any, expected: Any) -> bool:
 
 
 def _assert_less_than(*, value: Any, expected: Any) -> bool:
-    """
-    Assert less than
-    :param actual_value: actual value
-    :param expected_value: expected value
-    :return:
-    """
     if value is None:
         return False
 
@@ -319,12 +253,6 @@ def _assert_less_than(*, value: Any, expected: Any) -> bool:
 
 
 def _assert_greater_than_or_equal(*, value: Any, expected: Any) -> bool:
-    """
-    Assert greater than or equal
-    :param actual_value: actual value
-    :param expected_value: expected value
-    :return:
-    """
     if value is None:
         return False
 
@@ -342,12 +270,6 @@ def _assert_greater_than_or_equal(*, value: Any, expected: Any) -> bool:
 
 
 def _assert_less_than_or_equal(*, value: Any, expected: Any) -> bool:
-    """
-    Assert less than or equal
-    :param actual_value: actual value
-    :param expected_value: expected value
-    :return:
-    """
     if value is None:
         return False
 
@@ -365,25 +287,39 @@ def _assert_less_than_or_equal(*, value: Any, expected: Any) -> bool:
 
 
 def _assert_null(*, value: Any) -> bool:
-    """
-    Assert null
-    :param actual_value: actual value
-    :return:
-    """
     if value is None:
         return True
     return False
 
 
 def _assert_not_null(*, value: Any) -> bool:
-    """
-    Assert not null
-    :param actual_value: actual value
-    :return:
-    """
     if value is not None:
         return True
     return False
+
+
+def _assert_in(*, value: Any, expected: Any) -> bool:
+    if not value:
+        return False
+
+    if not isinstance(expected, list):
+        raise ValueError("Invalid expected value type: array")
+
+    if value not in expected:
+        return False
+    return True
+
+
+def _assert_not_in(*, value: Any, expected: Any) -> bool:
+    if not value:
+        return True
+
+    if not isinstance(expected, list):
+        raise ValueError("Invalid expected value type: array")
+
+    if value in expected:
+        return False
+    return True
 
 
 def _process_sub_conditions(
