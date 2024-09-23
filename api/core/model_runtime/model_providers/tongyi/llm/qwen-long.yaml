@@ -1,3 +1,4 @@
+# model docs: https://help.aliyun.com/zh/model-studio/getting-started/models#27b2b3a15d5c6
 model: qwen-long
 label:
   en_US: qwen-long
