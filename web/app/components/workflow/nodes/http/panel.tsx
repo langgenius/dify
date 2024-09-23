@@ -8,6 +8,7 @@ import EditBody from './components/edit-body'
 import AuthorizationModal from './components/authorization'
 import type { HttpNodeType } from './types'
 import Timeout from './components/timeout'
+import CurlPanel from './components/curl-panel'
 import cn from '@/utils/classnames'
 import Field from '@/app/components/workflow/nodes/_base/components/field'
 import Split from '@/app/components/workflow/nodes/_base/components/split'
@@ -53,6 +54,10 @@ const Panel: FC<NodePanelProps<HttpNodeType>> = ({
     inputVarValues,
     setInputVarValues,
     runResult,
+    isShowCurlPanel,
+    showCurlPanel,
+    hideCurlPanel,
+    handleCurlImport,
   } = useConfig(id, data)
   // To prevent prompt editor in body not update data.
   if (!isDataReady)
@@ -64,14 +69,25 @@ const Panel: FC<NodePanelProps<HttpNodeType>> = ({
         <Field
           title={t(`${i18nPrefix}.api`)}
           operations={
-            <div
-              onClick={showAuthorization}
-              className={cn(!readOnly && 'cursor-pointer hover:bg-gray-50', 'flex items-center h-6 space-x-1 px-2 rounded-md ')}
-            >
-              {!readOnly && <Settings01 className='w-3 h-3 text-gray-500' />}
-              <div className='text-xs font-medium text-gray-500'>
-                {t(`${i18nPrefix}.authorization.authorization`)}
-                <span className='ml-1 text-gray-700'>{t(`${i18nPrefix}.authorization.${inputs.authorization.type}`)}</span>
+            <div className='flex'>
+              <div
+                onClick={showAuthorization}
+                className={cn(!readOnly && 'cursor-pointer hover:bg-gray-50', 'flex items-center h-6 space-x-1 px-2 rounded-md ')}
+              >
+                {!readOnly && <Settings01 className='w-3 h-3 text-gray-500' />}
+                <div className='text-xs font-medium text-gray-500'>
+                  {t(`${i18nPrefix}.authorization.authorization`)}
+                  <span className='ml-1 text-gray-700'>{t(`${i18nPrefix}.authorization.${inputs.authorization.type}`)}</span>
+                </div>
+              </div>
+              <div
+                onClick={showCurlPanel}
+                className={cn(!readOnly && 'cursor-pointer hover:bg-gray-50', 'flex items-center h-6 space-x-1 px-2 rounded-md ')}
+              >
+                {!readOnly && <Settings01 className='w-3 h-3 text-gray-500' />}
+                <div className='text-xs font-medium text-gray-500'>
+                  { '导入curl' }
+                </div>
               </div>
             </div>
           }
@@ -180,7 +196,15 @@ const Panel: FC<NodePanelProps<HttpNodeType>> = ({
           result={<ResultPanel {...runResult} showSteps={false} />}
         />
       )}
-    </div >
+      {(isShowCurlPanel && !readOnly) && (
+        <CurlPanel
+          nodeId={id}
+          isShow
+          onHide={hideCurlPanel}
+          handleCurlImport={handleCurlImport}
+        />
+      )}
+    </div>
   )
 }
 
