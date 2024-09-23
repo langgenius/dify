@@ -34,6 +34,23 @@ export type DataSet = {
   partial_member_list?: any[]
 }
 
+export type ExternalAPIItem = {
+  id: string
+  tenant_id: string
+  name: string
+  description: string
+  settings: {
+    endpoint: string
+    api_key: string
+    document_retrieval_setting: {
+      top_k: number
+      score_threshold: number
+    }
+  }
+  created_by: string
+  created_at: string
+}
+
 export type CustomFile = File & {
   id?: string
   extension?: string
@@ -66,6 +83,14 @@ export type FileItem = {
 
 export type DataSetListResponse = {
   data: DataSet[]
+  has_more: boolean
+  limit: number
+  page: number
+  total: number
+}
+
+export type ExternalAPIListResponse = {
+  data: ExternalAPIItem[]
   has_more: boolean
   limit: number
   page: number

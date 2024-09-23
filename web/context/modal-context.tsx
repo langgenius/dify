@@ -10,6 +10,7 @@ import ModerationSettingModal from '@/app/components/app/configuration/toolbox/m
 import ExternalDataToolModal from '@/app/components/app/configuration/tools/external-data-tool-modal'
 import AnnotationFullModal from '@/app/components/billing/annotation-full/modal'
 import ModelModal from '@/app/components/header/account-setting/model-provider-page/model-modal'
+import ExternalAPIModal from '@/app/components/datasets/external-api/external-api-modal'
 import type {
   ConfigurationMethodEnum,
   CustomConfigurationModelFixedFields,
@@ -52,6 +53,7 @@ export type ModalContextState = {
   setShowPricingModal: () => void
   setShowAnnotationFullModal: () => void
   setShowModelModal: Dispatch<SetStateAction<ModalState<ModelModalType> | null>>
+  setShowExternalAPIModal: () => void
   setShowModelLoadBalancingModal: Dispatch<SetStateAction<ModelLoadBalancingModalProps | null>>
   setShowModelLoadBalancingEntryModal: Dispatch<SetStateAction<ModalState<LoadBalancingEntryModalType> | null>>
 }
@@ -63,6 +65,7 @@ const ModalContext = createContext<ModalContextState>({
   setShowPricingModal: () => { },
   setShowAnnotationFullModal: () => { },
   setShowModelModal: () => { },
+  setShowExternalAPIModal: () => { },
   setShowModelLoadBalancingModal: () => { },
   setShowModelLoadBalancingEntryModal: () => { },
 })
@@ -86,6 +89,7 @@ export const ModalContextProvider = ({
   const [showModerationSettingModal, setShowModerationSettingModal] = useState<ModalState<ModerationConfig> | null>(null)
   const [showExternalDataToolModal, setShowExternalDataToolModal] = useState<ModalState<ExternalDataTool> | null>(null)
   const [showModelModal, setShowModelModal] = useState<ModalState<ModelModalType> | null>(null)
+  const [showExternalAPIModal, setShowExternalAPIModal] = useState(false)
   const [showModelLoadBalancingModal, setShowModelLoadBalancingModal] = useState<ModelLoadBalancingModalProps | null>(null)
   const [showModelLoadBalancingEntryModal, setShowModelLoadBalancingEntryModal] = useState<ModalState<LoadBalancingEntryModalType> | null>(null)
   const searchParams = useSearchParams()
@@ -121,6 +125,18 @@ export const ModalContextProvider = ({
       showModelModal.onSaveCallback(showModelModal.payload)
     setShowModelModal(null)
   }, [showModelModal])
+
+  // const handleCancelExternalApiModal = useCallback(() => {
+  //   setShowExternalAPIModal(null)
+  //   if (showExternalAPIModal?.onCancelCallback)
+  //     showExternalAPIModal.onCancelCallback()
+  // }, [showExternalAPIModal])
+
+  // const handleSaveExternalApiModal = useCallback(() => {
+  //   if (showExternalAPIModal?.onSaveCallback)
+  //     showExternalAPIModal.onSaveCallback(null)
+  //   setShowExternalAPIModal(null)
+  // }, [showExternalAPIModal])
 
   const handleCancelModelLoadBalancingEntryModal = useCallback(() => {
     showModelLoadBalancingEntryModal?.onCancelCallback?.()
@@ -173,6 +189,7 @@ export const ModalContextProvider = ({
       setShowPricingModal: () => setShowPricingModal(true),
       setShowAnnotationFullModal: () => setShowAnnotationFullModal(true),
       setShowModelModal,
+      setShowExternalAPIModal: () => setShowExternalAPIModal(true),
       setShowModelLoadBalancingModal,
       setShowModelLoadBalancingEntryModal,
     }}>
@@ -242,6 +259,14 @@ export const ModalContextProvider = ({
               currentCustomConfigurationModelFixedFields={showModelModal.payload.currentCustomConfigurationModelFixedFields}
               onCancel={handleCancelModelModal}
               onSave={handleSaveModelModal}
+            />
+          )
+        }
+        {
+          !!showExternalAPIModal && (
+            <ExternalAPIModal
+              show={showExternalAPIModal}
+              onHide={() => setShowExternalAPIModal(false)}
             />
           )
         }

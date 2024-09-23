@@ -1,9 +1,21 @@
 const translation = {
   knowledge: '知识库',
+  externalAPI: '外部 API',
+  externalAPIPanelTitle: '外部知识库 API',
+  externalAPIPanelDescription: '外部知识库 API 用于连接到 Dify 之外的知识库并从中检索知识。',
+  externalAPIPanelDocumentation: '了解如何创建外部 API',
   documentCount: ' 文档',
   wordCount: ' 千字符',
   appCount: ' 关联应用',
   createDataset: '创建知识库',
+  createExternalAPI: '添加外部 API',
+  createExternalAPIFormTitle: '添加外部知识库 API',
+  editExternalAPIFormTitle: '编辑外部知识库 API',
+  editExternalAPIFormWarning: {
+    front: '此外部 API 已链接到',
+    end: '外部知识库',
+  },
+  connectDataset: '连接外部知识库',
   createDatasetIntro: '导入您自己的文本数据或通过 Webhook 实时写入数据以增强 LLM 的上下文。',
   deleteDatasetConfirmTitle: '要删除知识库吗？',
   deleteDatasetConfirmContent:
@@ -22,6 +34,18 @@ const translation = {
   unavailableTip: '由于 embedding 模型不可用，需要配置默认 embedding 模型',
   datasets: '知识库',
   datasetsApi: 'API',
+  externalAPIForm: {
+    name: '名称',
+    endpoint: 'API 端点',
+    apiKey: 'API 密钥',
+    save: '保存',
+    cancel: '取消',
+    edit: '编辑',
+    encrypted: {
+      front: '您的 API Token 将使用',
+      end: '加密并存储。',
+    },
+  },
   retrieval: {
     semantic_search: {
       title: '向量检索',

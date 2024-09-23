@@ -8,6 +8,7 @@ import { useDebounceFn } from 'ahooks'
 import useSWR from 'swr'
 
 // Components
+import ExternalAPIPanel from '../../components/datasets/external-api/external-api-panel'
 import Datasets from './Datasets'
 import DatasetFooter from './DatasetFooter'
 import ApiServer from './ApiServer'
@@ -16,6 +17,8 @@ import TabSliderNew from '@/app/components/base/tab-slider-new'
 import SearchInput from '@/app/components/base/search-input'
 import TagManagementModal from '@/app/components/base/tag-management'
 import TagFilter from '@/app/components/base/tag-management/filter'
+import Button from '@/app/components/base/button'
+import { ApiConnectionMod } from '@/app/components/base/icons/src/vender/solid/development'
 
 // Services
 import { fetchDatasetApiBaseUrl } from '@/service/datasets'
@@ -30,6 +33,7 @@ const Container = () => {
   const router = useRouter()
   const { currentWorkspace } = useAppContext()
   const showTagManagementModal = useTagStore(s => s.showTagManagementModal)
+  const [showExternalApiPanel, setShowExternalApiPanel] = useState(false)
 
   const options = useMemo(() => {
     return [
@@ -80,6 +84,14 @@ const Container = () => {
           <div className='flex items-center gap-2'>
             <TagFilter type='knowledge' value={tagFilterValue} onChange={handleTagsChange} />
             <SearchInput className='w-[200px]' value={keywords} onChange={handleKeywordsChange} />
+            <div className="w-[1px] h-4 bg-divider-regular" />
+            <Button
+              className='gap-0.5 shadows-shadow-xs'
+              onClick={() => setShowExternalApiPanel(true)}
+            >
+              <ApiConnectionMod className='w-4 h-4 text-components-button-secondary-text' />
+              <div className='flex px-0.5 justify-center items-center gap-1 text-components-button-secondary-text system-sm-medium'>{t('dataset.externalAPI')}</div>
+            </Button>
           </div>
         )}
         {activeTab === 'api' && data && <ApiServer apiBaseUrl={data.api_base_url || ''} />}
@@ -96,6 +108,8 @@ const Container = () => {
       )}
 
       {activeTab === 'api' && data && <Doc apiBaseUrl={data.api_base_url || ''} />}
+
+      {showExternalApiPanel && <ExternalAPIPanel onClose={() => setShowExternalApiPanel(false)} isShow={showExternalApiPanel} />}
     </div>
 
   )

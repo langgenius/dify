@@ -8,6 +8,8 @@ import type {
   DocumentDetailResponse,
   DocumentListResponse,
   ErrorDocsResponse,
+  ExternalAPIItem,
+  ExternalAPIListResponse,
   FileIndexingEstimateResponse,
   HitTestingRecordsResponse,
   HitTestingResponse,
@@ -80,6 +82,14 @@ export const checkIsUsedInApp: Fetcher<{ is_using: boolean }, string> = (id) => 
 
 export const deleteDataset: Fetcher<DataSet, string> = (datasetID) => {
   return del<DataSet>(`/datasets/${datasetID}`)
+}
+
+export const fetchExternalAPIList: Fetcher<ExternalAPIListResponse, { url: string; params: { page: number; limit: number } }> = ({ url, params }) => {
+  return get<ExternalAPIListResponse>(url, { params })
+}
+
+export const createExternalAPI: Fetcher<ExternalAPIItem, { body: ExternalAPIItem }> = ({ body }) => {
+  return post<ExternalAPIItem>('/datasets/api-template', { body })
 }
 
 export const fetchDefaultProcessRule: Fetcher<ProcessRuleResponse, { url: string }> = ({ url }) => {

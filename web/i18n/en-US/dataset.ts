@@ -1,9 +1,21 @@
 const translation = {
   knowledge: 'Knowledge',
+  externalAPI: 'External API',
+  externalAPIPanelTitle: 'External Knowledge API',
+  externalAPIPanelDescription: 'The external knowledge API is used to connect to a knowledge base outside of Dify and retrieve knowledge from that knowledge base.',
+  externalAPIPanelDocumentation: 'Learn how to create an external API',
   documentCount: ' docs',
   wordCount: ' k words',
   appCount: ' linked apps',
   createDataset: 'Create Knowledge',
+  createExternalAPI: 'Add an External API',
+  createExternalAPIFormTitle: 'Add an External Knowledge API',
+  editExternalAPIFormTitle: 'Edit the External Knowledge API',
+  editExternalAPIFormWarning: {
+    front: 'This External API is linked to',
+    end: 'external knowledge',
+  },
+  connectDataset: 'Connect to an external knowledge base',
   createDatasetIntro: 'Import your own text data or write data in real-time via Webhook for LLM context enhancement.',
   deleteDatasetConfirmTitle: 'Delete this Knowledge?',
   deleteDatasetConfirmContent:
@@ -22,6 +34,18 @@ const translation = {
   unavailableTip: 'Embedding model is not available, the default embedding model needs to be configured',
   datasets: 'KNOWLEDGE',
   datasetsApi: 'API ACCESS',
+  externalAPIForm: {
+    name: 'Name',
+    endpoint: 'API Endpoint',
+    apiKey: 'API Key',
+    save: 'Save',
+    cancel: 'Cancel',
+    edit: 'Edit',
+    encrypted: {
+      front: 'Your API Token will be encrypted and stored using',
+      end: 'technology.',
+    },
+  },
   retrieval: {
     semantic_search: {
       title: 'Vector Search',
