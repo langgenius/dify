@@ -67,3 +67,46 @@ model_credential_schema:
       required: false
       type: text-input
       default: '8192'
+    - variable: task
+      label:
+        zh_Hans: 下游任务
+        en_US: Downstream task
+      placeholder:
+        zh_Hans: 选择将使用向量模型的下游任务。模型将返回针对该任务优化的向量。
+        en_US: Select the downstream task for which the embeddings will be used. The model will return the optimized embeddings for that task.
+      required: false
+      type: select
+      options:
+        - value: retrieval.query
+          label:
+            en_US: retrieval.query
+        - value: retrieval.passage
+          label:
+            en_US: retrieval.passage
+        - value: separation
+          label:
+            en_US: separation
+        - value: classification
+          label:
+            en_US: classification
+        - value: text-matching
+          label:
+            en_US: text-matching
+    - variable: dimensions
+      label:
+        zh_Hans: 输出维度
+        en_US: Output dimensions
+      placeholder:
+        zh_Hans: 输入您的输出维度
+        en_US: Enter output dimensions
+      required: false
+      type: text-input
+    - variable: late_chunking
+      label:
+        zh_Hans: 后期分块
+        en_US: Late chunking
+      placeholder:
+        zh_Hans: 应用后期分块技术来利用模型的长上下文功能来生成上下文块向量化。
+        en_US: Apply the late chunking technique to leverage the model's long-context capabilities for generating contextual chunk embeddings.
+      required: false
+      type: switch
