@@ -18,31 +18,34 @@ class Speech2TextModel(AIModel):
     # pydantic configs
     model_config = ConfigDict(protected_namespaces=())
 
-    def invoke(self, model: str, 
-               credentials: dict,
-               file: IO[bytes], user: Optional[str] = None,
-               language: Optional[str] = None,
-               prompt: Optional[str] = None,
-               response_format: Optional[str] = "json",
-               temperature: Optional[float] = 0,) \
-            -> str:
+    def invoke(
+        self,
+        model: str,
+        credentials: dict,
+        file: IO[bytes],
+        user: Optional[str] = None,
+        language: Optional[str] = None,
+        prompt: Optional[str] = None,
+        response_format: Optional[str] = "json",
+        temperature: Optional[float] = 0,
+    ) -> str:
         """
         Invoke large language model
 
         :param model: model name
         :param credentials: model credentials
-        :param file: The audio file object (not file name) to transcribe, 
+        :param file: The audio file object (not file name) to transcribe,
                     in one of these formats: flac, mp3, mp4, mpeg, mpga, m4a, ogg, wav, or webm.
         :param user: unique user id
         :param language: The language of the input audio. Supplying the input language in ISO-639-1
-        :param prompt: An optional text to guide the model's style or continue a previous audio segment. 
+        :param prompt: An optional text to guide the model's style or continue a previous audio segment.
                         The prompt should match the audio language.
-        :param response_format: The format of the transcript output, 
+        :param response_format: The format of the transcript output,
                                 in one of these options: json, text, srt, verbose_json, or vtt.
-        :param temperature: The sampling temperature, between 0 and 1. 
-                            Higher values like 0.8 will make the output more random, 
-                            while lower values like 0.2 will make it more focused and deterministic. 
-                            If set to 0, the model will use log probability to automatically increase the temperature 
+        :param temperature: The sampling temperature, between 0 and 1.
+                            Higher values like 0.8 will make the output more random,
+                            while lower values like 0.2 will make it more focused and deterministic.
+                            If set to 0, the model will use log probability to automatically increase the temperature
                             until certain thresholds are hit.
         :return: text for given audio file
         """
@@ -52,13 +55,17 @@ class Speech2TextModel(AIModel):
             raise self._transform_invoke_error(e)
 
     @abstractmethod
-    def _invoke(self, model: str, credentials: dict,
-                file: IO[bytes], user: Optional[str] = None,
-                language: Optional[str] = None,
-                prompt: Optional[str] = None,
-                response_format: Optional[str] = "json",
-                temperature: Optional[float] = 0) \
-            -> str:
+    def _invoke(
+        self,
+        model: str,
+        credentials: dict,
+        file: IO[bytes],
+        user: Optional[str] = None,
+        language: Optional[str] = None,
+        prompt: Optional[str] = None,
+        response_format: Optional[str] = "json",
+        temperature: Optional[float] = 0,
+    ) -> str:
         """
         Invoke large language model
 
@@ -67,14 +74,14 @@ class Speech2TextModel(AIModel):
         :param file: audio file
         :param user: unique user id
         :param language: The language of the input audio. Supplying the input language in ISO-639-1
-        :param prompt: An optional text to guide the model's style or continue a previous audio segment. 
+        :param prompt: An optional text to guide the model's style or continue a previous audio segment.
                         The prompt should match the audio language.
-        :param response_format: The format of the transcript output, 
+        :param response_format: The format of the transcript output,
                                 in one of these options: json, text, srt, verbose_json, or vtt.
-        :param temperature: The sampling temperature, between 0 and 1. 
-                            Higher values like 0.8 will make the output more random, 
-                            while lower values like 0.2 will make it more focused and deterministic. 
-                            If set to 0, the model will use log probability to automatically increase the temperature 
+        :param temperature: The sampling temperature, between 0 and 1.
+                            Higher values like 0.8 will make the output more random,
+                            while lower values like 0.2 will make it more focused and deterministic.
+                            If set to 0, the model will use log probability to automatically increase the temperature
                             until certain thresholds are hit.
         :return: text for given audio file
         """
