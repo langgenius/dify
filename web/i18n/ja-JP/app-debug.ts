@@ -295,7 +295,7 @@ const translation = {
     historyNoBeEmpty: 'プロンプトには会話履歴を設定する必要があります',
     queryNoBeEmpty: 'プロンプトにクエリを設定する必要があります',
   },
-  variableConig: {
+  variableConfig: {
     'addModalTitle': '入力フィールドを追加',
     'editModalTitle': '入力フィールドを編集',
     'description': '{{varName}} の変数設定',

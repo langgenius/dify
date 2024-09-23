@@ -65,9 +65,7 @@ class Spider:
         :return: The JSON response or the raw response stream if stream is True.
         """
         headers = self._prepare_headers(content_type)
-        response = self._post_request(
-            f"https://api.spider.cloud/v1/{endpoint}", data, headers, stream
-        )
+        response = self._post_request(f"https://api.spider.cloud/v1/{endpoint}", data, headers, stream)
 
         if stream:
             return response
@@ -76,9 +74,7 @@ class Spider:
         else:
             self._handle_error(response, f"post to {endpoint}")
 
-    def api_get(
-        self, endpoint: str, stream: bool, content_type: str = "application/json"
-    ):
+    def api_get(self, endpoint: str, stream: bool, content_type: str = "application/json"):
         """
         Send a GET request to the specified endpoint.
 
@@ -86,9 +82,7 @@ class Spider:
         :return: The JSON decoded response.
         """
         headers = self._prepare_headers(content_type)
-        response = self._get_request(
-            f"https://api.spider.cloud/v1/{endpoint}", headers, stream
-        )
+        response = self._get_request(f"https://api.spider.cloud/v1/{endpoint}", headers, stream)
         if response.status_code == 200:
             return response.json()
         else:
@@ -120,14 +114,12 @@ class Spider:
 
         # Add { "return_format": "markdown" } to the params if not already present
         if "return_format" not in params:
-            params["return_format"] = "markdown"    
+            params["return_format"] = "markdown"
 
         # Set limit to 1
         params["limit"] = 1
 
-        return self.api_post(
-            "crawl", {"url": url, **(params or {})}, stream, content_type
-        )
+        return self.api_post("crawl", {"url": url, **(params or {})}, stream, content_type)
 
     def crawl_url(
         self,
@@ -150,9 +142,7 @@ class Spider:
         if "return_format" not in params:
             params["return_format"] = "markdown"
 
-        return self.api_post(
-            "crawl", {"url": url, **(params or {})}, stream, content_type
-        )
+        return self.api_post("crawl", {"url": url, **(params or {})}, stream, content_type)
 
     def links(
         self,
@@ -168,9 +158,7 @@ class Spider:
         :param params: Optional parameters for the link retrieval request.
         :return: JSON response containing the links.
         """
-        return self.api_post(
-            "links", {"url": url, **(params or {})}, stream, content_type
-        )
+        return self.api_post("links", {"url": url, **(params or {})}, stream, content_type)
 
     def extract_contacts(
         self,
@@ -207,9 +195,7 @@ class Spider:
         :param params: Optional parameters to guide the labeling process.
         :return: JSON response with labeled data.
         """
-        return self.api_post(
-            "pipeline/label", {"url": url, **(params or {})}, stream, content_type
-        )
+        return self.api_post("pipeline/label", {"url": url, **(params or {})}, stream, content_type)
 
     def _prepare_headers(self, content_type: str = "application/json"):
         return {
@@ -228,12 +214,8 @@ class Spider:
         return requests.delete(url, headers=headers, stream=stream)
 
     def _handle_error(self, response, action):
-        if response.status_code in [402, 409, 500]:
+        if response.status_code in {402, 409, 500}:
             error_message = response.json().get("error", "Unknown error occurred")
-            raise Exception(
-                f"Failed to {action}. Status code: {response.status_code}. Error: {error_message}"
-            )
+            raise Exception(f"Failed to {action}. Status code: {response.status_code}. Error: {error_message}")
         else:
-            raise Exception(
-                f"Unexpected error occurred while trying to {action}. Status code: {response.status_code}"
-            )
+            raise Exception(f"Unexpected error occurred while trying to {action}. Status code: {response.status_code}")

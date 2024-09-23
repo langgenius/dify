@@ -298,7 +298,7 @@ const translation = {
     historyNoBeEmpty: '提示词中必须设置对话历史',
     queryNoBeEmpty: '提示词中必须设置查询内容',
   },
-  variableConig: {
+  variableConfig: {
     'addModalTitle': '添加变量',
     'editModalTitle': '编辑变量',
     'description': '设置变量 {{varName}}',

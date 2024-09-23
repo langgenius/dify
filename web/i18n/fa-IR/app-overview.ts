@@ -48,6 +48,8 @@ const translation = {
           title: 'مراحل کاری',
           show: 'نمایش',
           hide: 'مخفی کردن',
+          showDesc: 'نمایش یا پنهان کردن جزئیات گردش کار در WebApp',
+          subTitle: 'جزئیات گردش کار',
         },
         chatColorTheme: 'تم رنگی چت',
         chatColorThemeDesc: 'تم رنگی چت‌بات را تنظیم کنید',
@@ -63,6 +65,12 @@ const translation = {
           customDisclaimer: 'سلب مسئولیت سفارشی',
           customDisclaimerPlaceholder: 'متن سلب مسئولیت سفارشی را وارد کنید',
           customDisclaimerTip: 'متن سلب مسئولیت سفارشی در سمت مشتری نمایش داده می‌شود و اطلاعات بیشتری درباره برنامه ارائه می‌دهد',
+        },
+        sso: {
+          title: 'WebApp SSO',
+          label: 'احراز هویت SSO',
+          description: 'همه کاربران باید قبل از استفاده از WebApp با SSO وارد شوند',
+          tooltip: 'برای فعال کردن WebApp SSO با سرپرست تماس بگیرید',
         },
       },
       embedded: {
@@ -119,7 +127,11 @@ const translation = {
     tokenPS: 'توکن/ثانیه',
     totalMessages: {
       title: 'کل پیام‌ها',
-      explanation: 'تعداد تعاملات روزانه با AI؛ مهندسی/اشکال‌زدایی دستورات مستثنی هستند.',
+      explanation: 'تعداد تعاملات روزانه با هوش مصنوعی.',
+    },
+    totalConversations: {
+      title: 'کل مکالمات',
+      explanation: 'تعداد مکالمات روزانه با هوش مصنوعی؛ مهندسی/اشکال‌زدایی پرامپت مستثنی است.',
     },
     activeUsers: {
       title: 'کاربران فعال',

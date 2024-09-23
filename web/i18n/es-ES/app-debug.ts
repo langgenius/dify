@@ -259,7 +259,7 @@ const translation = {
     historyNoBeEmpty: 'El historial de conversaciones debe establecerse en la indicación',
     queryNoBeEmpty: 'La consulta debe establecerse en la indicación',
   },
-  variableConig: {
+  variableConfig: {
     'addModalTitle': 'Agregar Campo de Entrada',
     'editModalTitle': 'Editar Campo de Entrada',
     'description': 'Configuración para la variable {{varName}}',

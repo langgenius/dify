@@ -155,7 +155,7 @@ def test_invoke_chat_model_with_vision_multi_pics(setup_google_mock):
         user="abc-123",
     )
 
-    print(f"resultz: {result.message.content}")
+    print(f"result: {result.message.content}")
     assert isinstance(result, LLMResult)
     assert len(result.message.content) > 0
 

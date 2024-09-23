@@ -12,6 +12,7 @@ class Speech2TextModel(AIModel):
     """
     Model class for speech2text model.
     """
+
     model_type: ModelType = ModelType.SPEECH2TEXT
 
     # pydantic configs
@@ -89,4 +90,4 @@ class Speech2TextModel(AIModel):
         current_dir = os.path.dirname(os.path.abspath(__file__))
 
         # Construct the path to the audio file
-        return os.path.join(current_dir, 'audio.mp3')
+        return os.path.join(current_dir, "audio.mp3")

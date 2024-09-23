@@ -48,6 +48,8 @@ const translation = {
           title: '워크플로 단계',
           show: '표시',
           hide: '숨기기',
+          showDesc: 'WebApp에서 워크플로 세부 정보 표시 또는 숨기기',
+          subTitle: '워크플로우 세부 정보',
         },
         chatColorTheme: '챗봇 색상 테마',
         chatColorThemeDesc: '챗봇의 색상 테마를 설정하세요',
@@ -60,6 +62,15 @@ const translation = {
           privacyPolicy: '개인정보 처리방침',
           privacyPolicyPlaceholder: '개인정보 처리방침 링크를 입력하세요',
           privacyPolicyTip: '방문자가 애플리케이션이 수집하는 데이터를 이해하고, Dify의 <privacyPolicyLink>개인정보 처리방침</privacyPolicyLink>을 참조할 수 있도록 합니다.',
+          customDisclaimer: '사용자 지정 면책 조항',
+          customDisclaimerPlaceholder: '사용자 지정 면책 조항 텍스트를 입력합니다.',
+          customDisclaimerTip: '사용자 지정 고지 사항 텍스트는 클라이언트 쪽에 표시되어 응용 프로그램에 대한 추가 정보를 제공합니다',
+        },
+        sso: {
+          label: 'SSO 인증',
+          title: '웹앱 SSO',
+          tooltip: '관리자에게 문의하여 WebApp SSO를 사용하도록 설정합니다.',
+          description: '모든 사용자는 WebApp을 사용하기 전에 SSO로 로그인해야 합니다.',
         },
       },
       embedded: {
@@ -116,7 +127,11 @@ const translation = {
     tokenPS: '토큰/초',
     totalMessages: {
       title: '총 메시지 수',
-      explanation: '일일 AI 상호작용 수; 엔지니어링/디버깅 목적의 프롬프트는 제외됩니다.',
+      explanation: '일일 AI 상호작용 수.',
+    },
+    totalConversations: {
+      title: '총 대화 수',
+      explanation: '일일 AI 대화 수; 프롬프트 엔지니어링/디버깅 제외.',
     },
     activeUsers: {
       title: '활성 사용자 수',

@@ -259,7 +259,7 @@ const translation = {
     historyNoBeEmpty: '프롬프트에 대화 기록을 설정해야 합니다',
     queryNoBeEmpty: '프롬프트에 쿼리를 설정해야 합니다',
   },
-  variableConig: {
+  variableConfig: {
     'addModalTitle': '입력 필드 추가',
     'editModalTitle': '입력 필드 편집',
     'description': '{{varName}} 변수 설정',

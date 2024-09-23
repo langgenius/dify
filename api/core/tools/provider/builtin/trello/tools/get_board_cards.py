@@ -17,14 +17,15 @@ class GetBoardCardsTool(BuiltinTool):
 
         Args:
             user_id (str): The ID of the user invoking the tool.
-            tool_parameters (dict[str, Union[str, int, bool]]): The parameters for the tool invocation, including the board ID.
+            tool_parameters (dict[str, Union[str, int, bool]]): The parameters for the tool invocation,
+             including the board ID.
 
         Returns:
             ToolInvokeMessage: The result of the tool invocation.
         """
-        api_key = self.runtime.credentials.get('trello_api_key')
-        token = self.runtime.credentials.get('trello_api_token')
-        board_id = tool_parameters.get('boardId')
+        api_key = self.runtime.credentials.get("trello_api_key")
+        token = self.runtime.credentials.get("trello_api_token")
+        board_id = tool_parameters.get("boardId")
 
         if not (api_key and token and board_id):
             return self.create_text_message("Missing required parameters: API key, token, or board ID.")
@@ -40,4 +41,3 @@ class GetBoardCardsTool(BuiltinTool):
 
         cards_summary = "\n".join([f"{card['name']} (ID: {card['id']})" for card in cards])
         return self.create_text_message(text=f"Cards for Board ID {board_id}:\n{cards_summary}")
-

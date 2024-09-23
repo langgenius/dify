@@ -95,7 +95,7 @@ const CardView: FC<ICardViewProps> = ({ appId }) => {
 
     if (systemFeatures.enable_web_sso_switch_component) {
       const [sso_err] = await asyncRunSafe<AppSSO>(
-        updateAppSSO({ id: appId, enabled: params.enable_sso }) as Promise<AppSSO>,
+        updateAppSSO({ id: appId, enabled: Boolean(params.enable_sso) }) as Promise<AppSSO>,
       )
       if (sso_err) {
         handleCallbackResult(sso_err)

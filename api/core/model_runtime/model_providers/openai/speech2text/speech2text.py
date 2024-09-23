@@ -28,7 +28,8 @@ class OpenAISpeech2TextModel(_CommonOpenAI, Speech2TextModel):
 
         :param model: model name
         :param credentials: model credentials
-        :param file: The audio file object (not file name) to transcribe, in one of these formats: flac, mp3, mp4, mpeg, mpga, m4a, ogg, wav, or webm.
+        :param file: The audio file object (not file name) to transcribe, in one of these formats: 
+                    flac, mp3, mp4, mpeg, mpga, m4a, ogg, wav, or webm.
         :param user: unique user id
         :param language: The language of the input audio. Supplying the input language in ISO-639-1
         :param prompt: An optional text to guide the model's style or continue a previous audio segment. 
@@ -51,6 +52,7 @@ class OpenAISpeech2TextModel(_CommonOpenAI, Speech2TextModel):
             response_format=response_format,
             temperature=temperature
         )
+
     def validate_credentials(self, model: str, credentials: dict) -> None:
         """
         Validate model credentials
@@ -62,7 +64,7 @@ class OpenAISpeech2TextModel(_CommonOpenAI, Speech2TextModel):
         try:
             audio_file_path = self._get_demo_file_path()
 
-            with open(audio_file_path, 'rb') as audio_file:
+            with open(audio_file_path, "rb") as audio_file:
                 self._speech2text_invoke(model, credentials, audio_file)
         except Exception as ex:
             raise CredentialsValidateFailedError(str(ex))
@@ -82,7 +84,8 @@ class OpenAISpeech2TextModel(_CommonOpenAI, Speech2TextModel):
 
         :param model: model name
         :param credentials: model credentials
-        :param file: The audio file object (not file name) to transcribe, in one of these formats: flac, mp3, mp4, mpeg, mpga, m4a, ogg, wav, or webm.
+        :param file: The audio file object (not file name) to transcribe, in one of these formats: 
+                    flac, mp3, mp4, mpeg, mpga, m4a, ogg, wav, or webm.
         :param language: The language of the input audio. Supplying the input language in ISO-639-1
         :param prompt: An optional text to guide the model's style or continue a previous audio segment. 
                         The prompt should match the audio language.
@@ -101,6 +104,12 @@ class OpenAISpeech2TextModel(_CommonOpenAI, Speech2TextModel):
         # init model client
         client = OpenAI(**credentials_kwargs)
 
-        response = client.audio.transcriptions.create(model=model, file=file, language=language, prompt=prompt, response_format=response_format, temperature=temperature)
-
+        response = client.audio.transcriptions.create(
+            model=model,
+            file=file,
+            language=language,
+            prompt=prompt,
+            response_format=response_format,
+            temperature=temperature
+        )
         return response.text

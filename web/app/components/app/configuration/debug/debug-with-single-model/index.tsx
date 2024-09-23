@@ -94,7 +94,7 @@ const DebugWithSingleModel = forwardRef<DebugWithSingleModelRefType, DebugWithSi
       `apps/${appId}/chat-messages`,
       data,
       {
-        onGetConvesationMessages: (conversationId, getAbortController) => fetchConversationMessages(appId, conversationId, getAbortController),
+        onGetConversationMessages: (conversationId, getAbortController) => fetchConversationMessages(appId, conversationId, getAbortController),
         onGetSuggestedQuestions: (responseItemId, getAbortController) => fetchSuggestedQuestions(appId, responseItemId, getAbortController),
       },
     )
@@ -130,6 +130,7 @@ const DebugWithSingleModel = forwardRef<DebugWithSingleModelRefType, DebugWithSi
       onAnnotationEdited={handleAnnotationEdited}
       onAnnotationAdded={handleAnnotationAdded}
       onAnnotationRemoved={handleAnnotationRemoved}
+      noSpacing
     />
   )
 })

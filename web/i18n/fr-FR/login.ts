@@ -31,7 +31,7 @@ const translation = {
   pp: 'Politique de Confidentialité',
   tosDesc: 'En vous inscrivant, vous acceptez nos',
   goToInit: 'Si vous n\'avez pas initialisé le compte, veuillez vous rendre sur la page d\'initialisation',
-  donthave: 'Vous n\'avez pas ?',
+  dontHave: 'Vous n\'avez pas ?',
   invalidInvitationCode: 'Code d\'invitation invalide',
   accountAlreadyInited: 'Compte déjà initialisé',
   forgotPassword: 'Mot de passe oublié?',
@@ -53,6 +53,7 @@ const translation = {
     nameEmpty: 'Le nom est requis',
     passwordEmpty: 'Un mot de passe est requis',
     passwordInvalid: 'Le mot de passe doit contenir des lettres et des chiffres, et la longueur doit être supérieure à 8.',
+    passwordLengthInValid: 'Le mot de passe doit comporter au moins 8 caractères.',
   },
   license: {
     tip: 'Avant de commencer Dify Community Edition, lisez le GitHub',
@@ -68,6 +69,7 @@ const translation = {
   activated: 'Connectez-vous maintenant',
   adminInitPassword: 'Mot de passe d\'initialisation de l\'administrateur',
   validate: 'Valider',
+  sso: 'Poursuivre avec l’authentification unique',
 }
 
 export default translation

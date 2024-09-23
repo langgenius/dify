@@ -8,7 +8,6 @@ logger = logging.getLogger(__name__)
 
 
 class UpstageProvider(ModelProvider):
-    
     def validate_provider_credentials(self, credentials: dict) -> None:
         """
         Validate provider credentials
@@ -19,14 +18,10 @@ class UpstageProvider(ModelProvider):
         try:
             model_instance = self.get_model_instance(ModelType.LLM)
 
-            model_instance.validate_credentials(
-                model="solar-1-mini-chat",
-                credentials=credentials
-            )
+            model_instance.validate_credentials(model="solar-1-mini-chat", credentials=credentials)
         except CredentialsValidateFailedError as e:
-            logger.exception(f'{self.get_provider_schema().provider} credentials validate failed')
+            logger.exception(f"{self.get_provider_schema().provider} credentials validate failed")
             raise e
         except Exception as e:
-            logger.exception(f'{self.get_provider_schema().provider} credentials validate failed')
+            logger.exception(f"{self.get_provider_schema().provider} credentials validate failed")
             raise e
-                

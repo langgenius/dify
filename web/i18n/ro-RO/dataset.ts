@@ -71,6 +71,7 @@ const translation = {
   nTo1RetrievalLegacy: 'Recuperarea N-la-1 va fi oficial depreciată din septembrie. Se recomandă utilizarea celei mai recente recuperări cu căi multiple pentru a obține rezultate mai bune.',
   nTo1RetrievalLegacyLink: 'Află mai multe',
   nTo1RetrievalLegacyLinkText: 'Recuperarea N-la-1 va fi oficial depreciată în septembrie.',
+  defaultRetrievalTip: 'Recuperarea pe mai multe căi este utilizată în mod implicit. Cunoștințele sunt preluate din mai multe baze de cunoștințe și apoi reclasificate.',
 }
 
 export default translation
