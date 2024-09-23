@@ -101,7 +101,7 @@ const CurlPanel: FC<Props> = ({ nodeId, isShow, onHide, handleCurlImport }) => {
 
   return (
     <Modal
-      title="Import From curl"
+      title={t('workflow.nodes.http.curl.title')}
       isShow={isShow}
       onClose={onHide}
       className='!w-[400px] !max-w-[400px] !p-4'
@@ -111,7 +111,7 @@ const CurlPanel: FC<Props> = ({ nodeId, isShow, onHide, handleCurlImport }) => {
           value={inputString}
           className='w-full my-3 p-3 text-sm text-gray-900 border-0 rounded-lg grow bg-gray-100 focus:outline-none focus:ring-1 focus:ring-inset focus:ring-gray-200 h-40'
           onChange={e => setInputString(e.target.value)}
-          placeholder="Paste curl string here"
+          placeholder={t('workflow.nodes.http.curl.placeholder')!}
         />
       </div>
       <div className='mt-4 flex justify-end space-x-2'>
