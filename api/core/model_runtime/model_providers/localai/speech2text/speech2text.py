@@ -32,7 +32,8 @@ class LocalAISpeech2text(Speech2TextModel):
         prompt: Optional[str] = None,
         response_format: Optional[str] = 'json',
         temperature: Optional[float] = 0
-    ) -> str:        """
+    ) -> str:        
+        """
         Invoke large language model
 
         :param model: model name
