@@ -389,7 +389,7 @@ class ConditionAssertionError(Exception):
         super().__init__(self.message)
 
 
-def _get_sub_attribute(*, key: str, variable: FileSegment | ArrayFileSegment) -> Any:
+def _get_sub_attribute(*, key: str, variable: FileSegment | ArrayFileSegment):
     if isinstance(variable, FileSegment):
         attribute = FileAttribute(key)
         match attribute:
@@ -407,11 +407,11 @@ def _get_sub_attribute(*, key: str, variable: FileSegment | ArrayFileSegment) ->
                 else:
                     raise ValueError("Invalid file")
             case FileAttribute.TYPE:
-                actual_value = variable.value.type
+                actual_value = str(variable.value.type)
             case FileAttribute.MIME_TYPE:
                 actual_value = variable.value.mime_type
             case FileAttribute.TRANSFER_METHOD:
-                actual_value = variable.value.transfer_method
+                actual_value = str(variable.value.transfer_method)
             case FileAttribute.URL:
                 actual_value = variable.value.url
             case _:

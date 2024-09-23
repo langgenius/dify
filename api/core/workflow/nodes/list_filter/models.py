@@ -30,7 +30,7 @@ _Condition = Literal[
 class FilterBy(BaseModel):
     key: str = ""
     comparison_operator: _Condition = "contains"
-    value: str = ""
+    value: str | Sequence[str] = ""
 
 
 class OrderBy(BaseModel):

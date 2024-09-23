@@ -47,17 +47,25 @@ class ListFilterNode(BaseNode):
 
         # Filter
         for filter_by in node_data.filter_by:
-            value = self.graph_runtime_state.variable_pool.convert_template(filter_by.value).text
-            # process_data["filter_by_value"] = value
             if isinstance(variable, ArrayStringSegment):
+                if not isinstance(filter_by.value, str):
+                    raise ValueError(f"Invalid filter value: {filter_by.value}")
+                value = self.graph_runtime_state.variable_pool.convert_template(filter_by.value).text
                 filter_func = _get_string_filter_func(condition=filter_by.comparison_operator, value=value)
                 result = list(filter(filter_func, variable.value))
                 variable = variable.model_copy(update={"value": result})
             elif isinstance(variable, ArrayNumberSegment):
+                if not isinstance(filter_by.value, str):
+                    raise ValueError(f"Invalid filter value: {filter_by.value}")
+                value = self.graph_runtime_state.variable_pool.convert_template(filter_by.value).text
                 filter_func = _get_number_filter_func(condition=filter_by.comparison_operator, value=float(value))
                 result = list(filter(filter_func, variable.value))
                 variable = variable.model_copy(update={"value": result})
             elif isinstance(variable, ArrayFileSegment):
+                if isinstance(filter_by.value, str):
+                    value = self.graph_runtime_state.variable_pool.convert_template(filter_by.value).text
+                else:
+                    value = filter_by.value
                 filter_func = _get_file_filter_func(
                     key=filter_by.key,
                     condition=filter_by.comparison_operator,
@@ -85,10 +93,7 @@ class ListFilterNode(BaseNode):
             result = variable.value[: node_data.limit.size]
             variable = variable.model_copy(update={"value": result})
 
-        if isinstance(variable, ArrayFileSegment):
-            outputs["result"] = [item.to_dict() for item in variable.value]
-        else:
-            outputs["result"] = variable.value
+        outputs["result"] = variable.value
         return NodeRunResult(
             status=WorkflowNodeExecutionStatus.SUCCEEDED,
             inputs=inputs,
@@ -161,6 +166,16 @@ def _get_string_filter_func(*, condition: str, value: str) -> Callable[[str], bo
             raise ValueError(f"Invalid condition: {condition}")
 
 
+def _get_sequence_filter_func(*, condition: str, value: Sequence[str]) -> Callable[[str], bool]:
+    match condition:
+        case "in":
+            return _in(value)
+        case "not in":
+            return lambda x: not _in(value)(x)
+        case _:
+            raise ValueError(f"Invalid condition: {condition}")
+
+
 def _get_number_filter_func(*, condition: str, value: int | float) -> Callable[[int | float], bool]:
     match condition:
         case "=":
@@ -179,11 +194,14 @@ def _get_number_filter_func(*, condition: str, value: int | float) -> Callable[[
             raise ValueError(f"Invalid condition: {condition}")
 
 
-def _get_file_filter_func(*, key: str, condition: str, value: str) -> Callable[[File], bool]:
-    if key in {"name", "type", "extension", "mime_type", "transfer_method", "urL"}:
+def _get_file_filter_func(*, key: str, condition: str, value: str | Sequence[str]) -> Callable[[File], bool]:
+    if key in {"name", "extension", "mime_type", "url"} and isinstance(value, str):
         extract_func = _get_file_extract_string_func(key=key)
         return lambda x: _get_string_filter_func(condition=condition, value=value)(extract_func(x))
-    elif key == "size":
+    if key in {"type", "transfer_method"} and isinstance(value, Sequence):
+        extract_func = _get_file_extract_string_func(key=key)
+        return lambda x: _get_sequence_filter_func(condition=condition, value=value)(extract_func(x))
+    elif key == "size" and isinstance(value, str):
         extract_func = _get_file_extract_number_func(key=key)
         return lambda x: _get_number_filter_func(condition=condition, value=float(value))(extract_func(x))
     else:
@@ -206,7 +224,7 @@ def _is(value: str):
     return lambda x: x is value
 
 
-def _in(value: str):
+def _in(value: str | Sequence[str]):
     return lambda x: x in value
 
 
