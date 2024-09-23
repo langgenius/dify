@@ -1024,7 +1024,6 @@ class LindormVectorStoreFactory(AbstractVectorFactory):
             dataset.index_struct = json.dumps(self.gen_index_struct_dict(VectorType.LINDORM, collection_name))
         lindorm_config = LindormVectorStoreConfig(
             host=dify_config.LINDORM_HOST,
-            port=dify_config.LINDROM_PORT,
             username=dify_config.LINDORM_USERNAME,
             password=dify_config.LINDORM_PASSWORD,
         )

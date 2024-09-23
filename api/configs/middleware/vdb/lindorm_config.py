@@ -11,10 +11,6 @@ class LindormConfig(BaseSettings):
         description="Lindorm host",
         default=None,
     )
-    LINDORM_PORT: PositiveInt = Field(
-        description="Lindorm port",
-        default=3306,
-    )
     LINDORM_USERNAME: Optional[str] = Field(
         description="Lindorm user",
         default=None,
