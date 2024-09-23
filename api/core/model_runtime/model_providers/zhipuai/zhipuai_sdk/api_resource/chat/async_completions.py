@@ -57,7 +57,7 @@ class AsyncCompletions(BaseAPI):
             if temperature <= 0:
                 do_sample = False
                 temperature = 0.01
-                # logger.warning("temperature:取值范围是：(0.0, 1.0) 开区间，do_sample重写为:false（参数top_p temperture不生效）")  # noqa: E501
+                # logger.warning("temperature:取值范围是：(0.0, 1.0) 开区间，do_sample重写为:false（参数top_p temperature不生效）")  # noqa: E501
             if temperature >= 1:
                 temperature = 0.99
                 # logger.warning("temperature:取值范围是：(0.0, 1.0) 开区间")

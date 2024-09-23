@@ -169,7 +169,7 @@ class BaseSyncPage(BasePage[_T], Generic[_T]):
     # Pydantic uses a custom `__iter__` method to support casting BaseModels
     # to dictionaries. e.g. dict(model).
     # As we want to support `for item in page`, this is inherently incompatible
-    # with the default pydantic behaviour. It is not possible to support both
+    # with the default pydantic behavior. It is not possible to support both
     # use cases at once. Fortunately, this is not a big deal as all other pydantic
     # methods should continue to work as expected as there is an alternative method
     # to cast a model to a dictionary, model.dict(), which is used internally
@@ -356,16 +356,16 @@ class HttpClient:
             **kwargs,
         )
 
-    def _object_to_formfata(self, key: str, value: Data | Mapping[object, object]) -> list[tuple[str, str]]:
+    def _object_to_formdata(self, key: str, value: Data | Mapping[object, object]) -> list[tuple[str, str]]:
         items = []
 
         if isinstance(value, Mapping):
             for k, v in value.items():
-                items.extend(self._object_to_formfata(f"{key}[{k}]", v))
+                items.extend(self._object_to_formdata(f"{key}[{k}]", v))
             return items
         if isinstance(value, list | tuple):
             for v in value:
-                items.extend(self._object_to_formfata(key + "[]", v))
+                items.extend(self._object_to_formdata(key + "[]", v))
             return items
 
         def _primitive_value_to_str(val) -> str:
@@ -385,7 +385,7 @@ class HttpClient:
         return [(key, str_data)]
 
     def _make_multipartform(self, data: Mapping[object, object]) -> dict[str, object]:
-        items = flatten(list(starmap(self._object_to_formfata, data.items())))
+        items = flatten(list(starmap(self._object_to_formdata, data.items())))
 
         serialized: dict[str, object] = {}
         for key, value in items:
@@ -620,7 +620,7 @@ class HttpClient:
         stream: bool,
         stream_cls: type[StreamResponse] | None,
     ) -> ResponseT:
-        # _legacy_response with raw_response_header to paser method
+        # _legacy_response with raw_response_header to parser method
         if response.request.headers.get(RAW_RESPONSE_HEADER) == "true":
             return cast(
                 ResponseT,
