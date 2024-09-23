@@ -1,4 +1,4 @@
-from collections.abc import Callable
+from collections.abc import Callable, Sequence
 from typing import Literal, cast
 
 from core.file import File, file_manager
@@ -19,56 +19,71 @@ class ListFilterNode(BaseNode):
     def _run(self):
         node_data = cast(ListFilterNodeData, self.node_data)
         inputs = {
-            "condition": node_data.condition,
-            "order": node_data.order,
-            "order_by": node_data.order_by,
-            "limit": node_data.limit,
-            "key": node_data.key,
+            "filter_by": node_data.filter_by.model_dump(),
+            "order_by": node_data.order_by.model_dump(),
+            "limit": node_data.limit.model_dump(),
         }
         process_data = {}
         outputs = {}
 
-        variable = self.graph_runtime_state.variable_pool.get(node_data.variable_selector)
+        variable = self.graph_runtime_state.variable_pool.get(node_data.variable)
         if variable is None:
-            error_message = f"Variable not found for selector: {node_data.variable_selector}"
+            error_message = f"Variable not found for selector: {node_data.variable}"
             return NodeRunResult(
                 status=WorkflowNodeExecutionStatus.FAILED, error=error_message, inputs=inputs, outputs=outputs
             )
         if not isinstance(variable, ArrayFileSegment | ArrayNumberSegment | ArrayStringSegment):
             error_message = (
-                f"Variable {node_data.variable_selector} is not an ArrayFileSegment, ArrayNumberSegment "
-                "or ArrayStringSegment"
+                f"Variable {node_data.variable} is not an ArrayFileSegment, ArrayNumberSegment " "or ArrayStringSegment"
             )
             return NodeRunResult(
                 status=WorkflowNodeExecutionStatus.FAILED, error=error_message, inputs=inputs, outputs=outputs
             )
         process_data["variable"] = variable.value
 
-        value = self.graph_runtime_state.variable_pool.convert_template(node_data.value).text
-        process_data["value"] = value
+        if node_data.filter_by.enabled:
+            value = self.graph_runtime_state.variable_pool.convert_template(node_data.filter_by.value).text
+            process_data["filter_by_value"] = value
 
         # Filter
-        if isinstance(variable, ArrayStringSegment):
-            filter_func = _get_string_filter_func(condition=node_data.condition, value=value)
-            result = list(filter(filter_func, variable.value))
-            if node_data.order is not None:
-                result = _order_string(order=node_data.order, array=result)
-        elif isinstance(variable, ArrayNumberSegment):
-            filter_func = _get_number_filter_func(condition=node_data.condition, value=float(value))
-            result = list(filter(filter_func, variable.value))
-            if node_data.order is not None:
-                result = _order_number(order=node_data.order, array=result)
-        elif isinstance(variable, ArrayFileSegment):
-            filter_func = _get_file_filter_func(key=node_data.key, condition=node_data.condition, value=value)
-            result = list(filter(filter_func, variable.value))
-            if node_data.order is not None:
-                result = _order_file(order=node_data.order, array=result)
+        if node_data.filter_by.enabled:
+            if isinstance(variable, ArrayStringSegment):
+                filter_func = _get_string_filter_func(condition=node_data.filter_by.comparison_operator, value=value)
+                result = list(filter(filter_func, variable.value))
+                variable = variable.model_copy(update={"value": result})
+            elif isinstance(variable, ArrayNumberSegment):
+                filter_func = _get_number_filter_func(
+                    condition=node_data.filter_by.comparison_operator, value=float(value)
+                )
+                result = list(filter(filter_func, variable.value))
+                variable = variable.model_copy(update={"value": result})
+            elif isinstance(variable, ArrayFileSegment):
+                filter_func = _get_file_filter_func(
+                    key=node_data.filter_by.key,
+                    condition=node_data.filter_by.comparison_operator,
+                    value=value,
+                )
+                result = list(filter(filter_func, variable.value))
+                variable = variable.model_copy(update={"value": result})
+
+        # Order
+        if node_data.order_by.enabled:
+            if isinstance(variable, ArrayStringSegment):
+                result = _order_string(order=node_data.order_by.value, array=variable.value)
+                variable = variable.model_copy(update={"value": result})
+            elif isinstance(variable, ArrayNumberSegment):
+                result = _order_number(order=node_data.order_by.value, array=variable.value)
+                variable = variable.model_copy(update={"value": result})
+            elif isinstance(variable, ArrayFileSegment):
+                result = _order_file(order=node_data.order_by.value, array=variable.value)
+                variable = variable.model_copy(update={"value": result})
 
         # Slice
-        if node_data.limit > -1:
-            result = result[: node_data.limit]
+        if node_data.limit.enabled:
+            result = variable.value[: node_data.limit.size]
+            variable = variable.model_copy(update={"value": result})
 
-        outputs["result"] = result
+        outputs["result"] = variable.value
         return NodeRunResult(
             status=WorkflowNodeExecutionStatus.SUCCEEDED,
             inputs=inputs,
@@ -214,15 +229,15 @@ def _ge(value: int | float):
     return lambda x: x >= value
 
 
-def _order_number(*, order: Literal["asc", "desc"], array: list[int | float]):
+def _order_number(*, order: Literal["asc", "desc"], array: Sequence[int | float]):
     return sorted(array, key=lambda x: x, reverse=order == "desc")
 
 
-def _order_string(*, order: Literal["asc", "desc"], array: list[str]):
+def _order_string(*, order: Literal["asc", "desc"], array: Sequence[str]):
     return sorted(array, key=lambda x: x, reverse=order == "desc")
 
 
-def _order_file(*, order: Literal["asc", "desc"], order_by: str = "", array: list[File]):
+def _order_file(*, order: Literal["asc", "desc"], order_by: str = "", array: Sequence[File]):
     if order_by in {"name", "type", "extension", "mime_type", "transfer_method", "urL"}:
         extract_func = _get_file_extract_string_func(key=order_by)
         return sorted(array, key=lambda x: extract_func(x), reverse=order == "desc")

@@ -1,7 +1,7 @@
 from collections.abc import Sequence
 from typing import Literal
 
-from pydantic import Field
+from pydantic import BaseModel, Field
 
 from core.workflow.entities.base_node_data_entities import BaseNodeData
 
@@ -27,11 +27,26 @@ _Condition = Literal[
 ]
 
 
-class ListFilterNodeData(BaseNodeData):
-    variable_selector: Sequence[str] = Field(default_factory=list)
-    order_by: str = ""
-    order: Literal["asc", "desc"] | None = None
-    limit: int = -1
+class FilterBy(BaseModel):
+    enabled: bool = False
     key: str = ""
-    condition: _Condition
-    value: str
+    comparison_operator: _Condition = "contains"
+    value: str = ""
+
+
+class OrderBy(BaseModel):
+    enabled: bool = False
+    key: str = ""
+    value: Literal["asc", "desc"] = "asc"
+
+
+class Limit(BaseModel):
+    enabled: bool = False
+    size: int = -1
+
+
+class ListFilterNodeData(BaseNodeData):
+    variable: Sequence[str] = Field(default_factory=list)
+    filter_by: FilterBy
+    order_by: OrderBy
+    limit: Limit
