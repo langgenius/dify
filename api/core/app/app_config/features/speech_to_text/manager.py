@@ -32,7 +32,8 @@ class SpeechToTextConfigManager:
         if "enabled" not in config["speech_to_text"] or not config["speech_to_text"]["enabled"]:
             config["speech_to_text"]["enabled"] = False
             
-        if "language_recognition" not in config["speech_to_text"] or not config["speech_to_text"]["language_recognition"]:
+        if ("language_recognition" not in config["speech_to_text"] or 
+            not config["speech_to_text"]["language_recognition"]):
             config["speech_to_text"]["language_recognition"] = "auto"
 
         if "language" not in config["speech_to_text"] or not config["speech_to_text"]["language"]:

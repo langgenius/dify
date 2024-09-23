@@ -38,13 +38,26 @@ class XinferenceSpeech2TextModel(Speech2TextModel):
         :param file: The audio file object (not file name) to transcribe, in one of these formats: flac, mp3, mp4, mpeg, mpga, m4a, ogg, wav, or webm.
         :param user: unique user id
         :param language: The language of the input audio. Supplying the input language in ISO-639-1
-        :param prompt: An optional text to guide the model's style or continue a previous audio segment. The prompt should match the audio language.
-        :param response_format: The format of the transcript output, in one of these options: json, text, srt, verbose_json, or vtt.
-        :param temperature: The sampling temperature, between 0 and 1. Higher values like 0.8 will make the output more random, while lower values like 0.2 will make it more focused and deterministic. If set to 0, the model will use log probability to automatically increase the temperature until certain thresholds are hit.
+        :param prompt: An optional text to guide the model's style or continue a previous audio segment. 
+                        The prompt should match the audio language.
+        :param response_format: The format of the transcript output, 
+                                in one of these options: json, text, srt, verbose_json, or vtt.
+        :param temperature: The sampling temperature, between 0 and 1. 
+                            Higher values like 0.8 will make the output more random, 
+                            while lower values like 0.2 will make it more focused and deterministic. 
+                            If set to 0, the model will use log probability to automatically increase the temperature 
+                            until certain thresholds are hit.
         :return: text for given audio file
         """
-        return self._speech2text_invoke(model, credentials, file, language=language, prompt=prompt, response_format=response_format, temperature=temperature)
-
+        return self._speech2text_invoke(
+            model,
+            credentials,
+            file,
+            language=language,
+            prompt=prompt,
+            response_format=response_format,
+            temperature=temperature
+        )
     def validate_credentials(self, model: str, credentials: dict) -> None:
         """
         Validate model credentials
@@ -126,9 +139,15 @@ class XinferenceSpeech2TextModel(Speech2TextModel):
         :param credentials: model credentials
         :param file: The audio file object (not file name) to transcribe, in one of these formats: flac, mp3, mp4, mpeg, mpga, m4a, ogg, wav, or webm.
         :param language: The language of the input audio. Supplying the input language in ISO-639-1
-        :param prompt: An optional text to guide the model's style or continue a previous audio segment. The prompt should match the audio language.
-        :param response_format: The format of the transcript output, in one of these options: json, text, srt, verbose_json, or vtt.
-        :param temperature: The sampling temperature, between 0 and 1. Higher values like 0.8 will make the output more random, while lower values like 0.2 will make it more focused and deterministic. If set to 0, the model will use log probability to automatically increase the temperature until certain thresholds are hit.
+        :param prompt: An optional text to guide the model's style or continue a previous audio segment. 
+                        The prompt should match the audio language.
+        :param response_format: The format of the transcript output, 
+                                in one of these options: json, text, srt, verbose_json, or vtt.
+        :param temperature: The sampling temperature, between 0 and 1. 
+                            Higher values like 0.8 will make the output more random, 
+                            while lower values like 0.2 will make it more focused and deterministic. 
+                            If set to 0, the model will use log probability to automatically increase the temperature 
+                            until certain thresholds are hit.
         :return: text for given audio file
         """
         server_url = credentials['server_url']
