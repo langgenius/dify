@@ -1,3 +1,4 @@
+# model docs: https://help.aliyun.com/zh/model-studio/getting-started/models#27b2b3a15d5c6
 model: qwen-long
 label:
   en_US: qwen-long
@@ -24,7 +25,7 @@ parameter_rules:
     type: int
     default: 2000
     min: 1
-    max: 2000
+    max: 6000
     help:
       zh_Hans: 用于指定模型在生成内容时token的最大数量，它定义了生成的上限，但不保证每次都会生成到这个数量。
       en_US: It is used to specify the maximum number of tokens when the model generates content. It defines the upper limit of generation, but does not guarantee that this number will be generated every time.

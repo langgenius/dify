@@ -77,6 +77,24 @@ const translation = {
     overwriteAndImport: 'Overwrite and Import',
     importFailure: 'Import failure',
     importSuccess: 'Import success',
+    parallelRun: 'Parallel Run',
+    parallelTip: {
+      click: {
+        title: 'Click',
+        desc: ' to add',
+      },
+      drag: {
+        title: 'Drag',
+        desc: ' to connect',
+      },
+      limit: 'Parallelism is limited to {{num}} branches.',
+      depthLimit: 'Parallel nesting layer limit of {{num}} layers',
+    },
+    disconnect: 'Disconnect',
+    jumpToNode: 'Jump to this node',
+    addParallelNode: 'Add Parallel Node',
+    parallel: 'PARALLEL',
+    branch: 'BRANCH',
   },
   env: {
     envPanelTitle: 'Environment Variables',
@@ -412,7 +430,6 @@ const translation = {
         'not empty': 'is not empty',
         'null': 'is null',
         'not null': 'is not null',
-        'regex match': 'regex match',
       },
       enterValue: 'Enter value',
       addCondition: 'Add Condition',

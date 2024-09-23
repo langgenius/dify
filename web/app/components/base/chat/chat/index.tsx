@@ -16,6 +16,7 @@ import type {
   ChatConfig,
   ChatItem,
   Feedback,
+  OnRegenerate,
   OnSend,
 } from '../types'
 import type { ThemeBuilder } from '../embedded-chatbot/theme/theme-context'
@@ -42,6 +43,7 @@ export type ChatProps = {
   onStopResponding?: () => void
   noChatInput?: boolean
   onSend?: OnSend
+  onRegenerate?: OnRegenerate
   chatContainerClassName?: string
   chatContainerInnerClassName?: string
   chatFooterClassName?: string
@@ -60,12 +62,14 @@ export type ChatProps = {
   hideProcessDetail?: boolean
   hideLogModal?: boolean
   themeBuilder?: ThemeBuilder
+  noSpacing?: boolean
 }
 
 const Chat: FC<ChatProps> = ({
   appData,
   config,
   onSend,
+  onRegenerate,
   chatList,
   isResponding,
   noStopResponding,
@@ -89,6 +93,7 @@ const Chat: FC<ChatProps> = ({
   hideProcessDetail,
   hideLogModal,
   themeBuilder,
+  noSpacing,
 }) => {
   const { t } = useTranslation()
   const { currentLogItem, setCurrentLogItem, showPromptLogModal, setShowPromptLogModal, showAgentLogModal, setShowAgentLogModal } = useAppStore(useShallow(state => ({
@@ -107,9 +112,9 @@ const Chat: FC<ChatProps> = ({
   const userScrolledRef = useRef(false)
 
   const handleScrollToBottom = useCallback(() => {
-    if (chatContainerRef.current && !userScrolledRef.current)
+    if (chatList.length > 1 && chatContainerRef.current && !userScrolledRef.current)
       chatContainerRef.current.scrollTop = chatContainerRef.current.scrollHeight
-  }, [])
+  }, [chatList.length])
 
   const handleWindowResize = useCallback(() => {
     if (chatContainerRef.current)
@@ -184,6 +189,7 @@ const Chat: FC<ChatProps> = ({
       answerIcon={answerIcon}
       allToolIcons={allToolIcons}
       onSend={onSend}
+      onRegenerate={onRegenerate}
       onAnnotationAdded={onAnnotationAdded}
       onAnnotationEdited={onAnnotationEdited}
       onAnnotationRemoved={onAnnotationRemoved}
@@ -197,7 +203,7 @@ const Chat: FC<ChatProps> = ({
           {chatNode}
           <div
             ref={chatContainerInnerRef}
-            className={`w-full ${chatContainerInnerClassName}`}
+            className={classNames('w-full', !noSpacing && 'px-8', chatContainerInnerClassName)}
           >
             {
               chatList.map((item, index) => {
@@ -217,6 +223,7 @@ const Chat: FC<ChatProps> = ({
                       showPromptLog={showPromptLog}
                       chatAnswerContainerInner={chatAnswerContainerInner}
                       hideProcessDetail={hideProcessDetail}
+                      noChatInput={noChatInput}
                     />
                   )
                 }
@@ -268,6 +275,7 @@ const Chat: FC<ChatProps> = ({
                   speechToTextConfig={config?.speech_to_text}
                   onSend={onSend}
                   theme={themeBuilder?.theme}
+                  noSpacing={noSpacing}
                 />
               )
             }

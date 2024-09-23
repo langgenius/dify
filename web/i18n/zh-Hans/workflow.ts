@@ -77,6 +77,24 @@ const translation = {
     overwriteAndImport: '覆盖并导入',
     importFailure: '导入失败',
     importSuccess: '导入成功',
+    parallelRun: '并行运行',
+    parallelTip: {
+      click: {
+        title: '点击',
+        desc: '添加节点',
+      },
+      drag: {
+        title: '拖拽',
+        desc: '连接节点',
+      },
+      limit: '并行分支限制为 {{num}} 个',
+      depthLimit: '并行嵌套层数限制 {{num}} 层',
+    },
+    disconnect: '断开连接',
+    jumpToNode: '跳转到节点',
+    addParallelNode: '添加并行节点',
+    parallel: '并行',
+    branch: '分支',
   },
   env: {
     envPanelTitle: '环境变量',
@@ -412,7 +430,6 @@ const translation = {
         'not empty': '不为空',
         'null': '空',
         'not null': '不为空',
-        'regex match': '正则匹配',
       },
       enterValue: '输入值',
       addCondition: '添加条件',

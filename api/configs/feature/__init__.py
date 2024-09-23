@@ -8,145 +8,143 @@ from configs.feature.hosted_service import HostedServiceConfig
 
 class SecurityConfig(BaseSettings):
     """
-    Secret Key configs
+    Security-related configurations for the application
     """
 
     SECRET_KEY: Optional[str] = Field(
-        description="Your App secret key will be used for securely signing the session cookie"
+        description="Secret key for secure session cookie signing."
         "Make sure you are changing this key for your deployment with a strong key."
-        "You can generate a strong key using `openssl rand -base64 42`."
-        "Alternatively you can set it with `SECRET_KEY` environment variable.",
+        "Generate a strong key using `openssl rand -base64 42` or set via the `SECRET_KEY` environment variable.",
         default=None,
     )
 
     RESET_PASSWORD_TOKEN_EXPIRY_HOURS: PositiveInt = Field(
-        description="Expiry time in hours for reset token",
+        description="Duration in hours for which a password reset token remains valid",
         default=24,
     )
 
 
 class AppExecutionConfig(BaseSettings):
     """
-    App Execution configs
+    Configuration parameters for application execution
     """
 
     APP_MAX_EXECUTION_TIME: PositiveInt = Field(
-        description="execution timeout in seconds for app execution",
+        description="Maximum allowed execution time for the application in seconds",
         default=1200,
     )
     APP_MAX_ACTIVE_REQUESTS: NonNegativeInt = Field(
-        description="max active request per app, 0 means unlimited",
+        description="Maximum number of concurrent active requests per app (0 for unlimited)",
         default=0,
     )
 
 
 class CodeExecutionSandboxConfig(BaseSettings):
     """
-    Code Execution Sandbox configs
+    Configuration for the code execution sandbox environment
     """
 
     CODE_EXECUTION_ENDPOINT: HttpUrl = Field(
-        description="endpoint URL of code execution service",
+        description="URL endpoint for the code execution service",
         default="http://sandbox:8194",
     )
 
     CODE_EXECUTION_API_KEY: str = Field(
-        description="API key for code execution service",
+        description="API key for accessing the code execution service",
         default="dify-sandbox",
     )
 
     CODE_EXECUTION_CONNECT_TIMEOUT: Optional[float] = Field(
-        description="connect timeout in seconds for code execution request",
+        description="Connection timeout in seconds for code execution requests",
         default=10.0,
     )
 
     CODE_EXECUTION_READ_TIMEOUT: Optional[float] = Field(
-        description="read timeout in seconds for code execution request",
+        description="Read timeout in seconds for code execution requests",
         default=60.0,
     )
 
     CODE_EXECUTION_WRITE_TIMEOUT: Optional[float] = Field(
-        description="write timeout in seconds for code execution request",
+        description="Write timeout in seconds for code execution request",
         default=10.0,
     )
 
     CODE_MAX_NUMBER: PositiveInt = Field(
-        description="max depth for code execution",
+        description="Maximum allowed numeric value in code execution",
         default=9223372036854775807,
     )
 
     CODE_MIN_NUMBER: NegativeInt = Field(
-        description="",
+        description="Minimum allowed numeric value in code execution",
         default=-9223372036854775807,
     )
 
     CODE_MAX_DEPTH: PositiveInt = Field(
-        description="max depth for code execution",
+        description="Maximum allowed depth for nested structures in code execution",
         default=5,
     )
 
     CODE_MAX_PRECISION: PositiveInt = Field(
-        description="max precision digits for float type in code execution",
+        description="mMaximum number of decimal places for floating-point numbers in code execution",
         default=20,
     )
 
     CODE_MAX_STRING_LENGTH: PositiveInt = Field(
-        description="max string length for code execution",
+        description="Maximum allowed length for strings in code execution",
         default=80000,
     )
 
     CODE_MAX_STRING_ARRAY_LENGTH: PositiveInt = Field(
-        description="",
+        description="Maximum allowed length for string arrays in code execution",
         default=30,
     )
 
     CODE_MAX_OBJECT_ARRAY_LENGTH: PositiveInt = Field(
-        description="",
+        description="Maximum allowed length for object arrays in code execution",
         default=30,
     )
 
     CODE_MAX_NUMBER_ARRAY_LENGTH: PositiveInt = Field(
-        description="",
+        description="Maximum allowed length for numeric arrays in code execution",
         default=1000,
     )
 
 
 class EndpointConfig(BaseSettings):
     """
-    Module URL configs
+    Configuration for various application endpoints and URLs
     """
 
     CONSOLE_API_URL: str = Field(
-        description="The backend URL prefix of the console API."
-        "used to concatenate the login authorization callback or notion integration callback.",
+        description="Base URL for the console API,"
+        "used for login authentication callback or notion integration callbacks",
         default="",
     )
 
     CONSOLE_WEB_URL: str = Field(
-        description="The front-end URL prefix of the console web."
-        "used to concatenate some front-end addresses and for CORS configuration use.",
+        description="Base URL for the console web interface," "used for frontend references and CORS configuration",
         default="",
     )
 
     SERVICE_API_URL: str = Field(
-        description="Service API Url prefix." "used to display Service API Base Url to the front-end.",
+        description="Base URL for the service API, displayed to users for API access",
         default="",
     )
 
     APP_WEB_URL: str = Field(
-        description="WebApp Url prefix." "used to display WebAPP API Base Url to the front-end.",
+        description="Base URL for the web application, used for frontend references",
         default="",
     )
 
 
 class FileAccessConfig(BaseSettings):
     """
-    File Access configs
+    Configuration for file access and handling
     """
 
     FILES_URL: str = Field(
-        description="File preview or download Url prefix."
-        " used to display File preview or download Url to the front-end or as Multi-model inputs;"
+        description="Base URL for file preview or download,"
+        " used for frontend display and multi-model inputs"
         "Url is signed and has expiration time.",
         validation_alias=AliasChoices("FILES_URL", "CONSOLE_API_URL"),
         alias_priority=1,
@@ -154,49 +152,49 @@ class FileAccessConfig(BaseSettings):
     )
 
     FILES_ACCESS_TIMEOUT: int = Field(
-        description="timeout in seconds for file accessing",
+        description="Expiration time in seconds for file access URLs",
         default=300,
     )
 
 
 class FileUploadConfig(BaseSettings):
     """
-    File Uploading configs
+    Configuration for file upload limitations
     """
 
     UPLOAD_FILE_SIZE_LIMIT: NonNegativeInt = Field(
-        description="size limit in Megabytes for uploading files",
+        description="Maximum allowed file size for uploads in megabytes",
         default=15,
     )
 
     UPLOAD_FILE_BATCH_LIMIT: NonNegativeInt = Field(
-        description="batch size limit for uploading files",
+        description="Maximum number of files allowed in a single upload batch",
         default=5,
     )
 
     UPLOAD_IMAGE_FILE_SIZE_LIMIT: NonNegativeInt = Field(
-        description="image file size limit in Megabytes for uploading files",
+        description="Maximum allowed image file size for uploads in megabytes",
         default=10,
     )
 
     BATCH_UPLOAD_LIMIT: NonNegativeInt = Field(
-        description="",  # todo: to be clarified
+        description="Maximum number of files allowed in a batch upload operation",
         default=20,
     )
 
 
 class HttpConfig(BaseSettings):
     """
-    HTTP configs
+    HTTP-related configurations for the application
     """
 
     API_COMPRESSION_ENABLED: bool = Field(
-        description="whether to enable HTTP response compression of gzip",
+        description="Enable or disable gzip compression for HTTP responses",
         default=False,
     )
 
     inner_CONSOLE_CORS_ALLOW_ORIGINS: str = Field(
-        description="",
+        description="Comma-separated list of allowed origins for CORS in the console",
         validation_alias=AliasChoices("CONSOLE_CORS_ALLOW_ORIGINS", "CONSOLE_WEB_URL"),
         default="",
     )
@@ -218,359 +216,360 @@ class HttpConfig(BaseSettings):
         return self.inner_WEB_API_CORS_ALLOW_ORIGINS.split(",")
 
     HTTP_REQUEST_MAX_CONNECT_TIMEOUT: Annotated[
-        PositiveInt, Field(ge=10, description="connect timeout in seconds for HTTP request")
+        PositiveInt, Field(ge=10, description="Maximum connection timeout in seconds for HTTP requests")
     ] = 10
 
     HTTP_REQUEST_MAX_READ_TIMEOUT: Annotated[
-        PositiveInt, Field(ge=60, description="read timeout in seconds for HTTP request")
+        PositiveInt, Field(ge=60, description="Maximum read timeout in seconds for HTTP requests")
     ] = 60
 
     HTTP_REQUEST_MAX_WRITE_TIMEOUT: Annotated[
-        PositiveInt, Field(ge=10, description="read timeout in seconds for HTTP request")
+        PositiveInt, Field(ge=10, description="Maximum write timeout in seconds for HTTP requests")
     ] = 20
 
     HTTP_REQUEST_NODE_MAX_BINARY_SIZE: PositiveInt = Field(
-        description="",
+        description="Maximum allowed size in bytes for binary data in HTTP requests",
         default=10 * 1024 * 1024,
     )
 
     HTTP_REQUEST_NODE_MAX_TEXT_SIZE: PositiveInt = Field(
-        description="",
+        description="Maximum allowed size in bytes for text data in HTTP requests",
         default=1 * 1024 * 1024,
     )
 
     SSRF_PROXY_HTTP_URL: Optional[str] = Field(
-        description="HTTP URL for SSRF proxy",
+        description="Proxy URL for HTTP requests to prevent Server-Side Request Forgery (SSRF)",
         default=None,
     )
 
     SSRF_PROXY_HTTPS_URL: Optional[str] = Field(
-        description="HTTPS URL for SSRF proxy",
+        description="Proxy URL for HTTPS requests to prevent Server-Side Request Forgery (SSRF)",
         default=None,
     )
 
 
 class InnerAPIConfig(BaseSettings):
     """
-    Inner API configs
+    Configuration for internal API functionality
     """
 
     INNER_API: bool = Field(
-        description="whether to enable the inner API",
+        description="Enable or disable the internal API",
         default=False,
     )
 
     INNER_API_KEY: Optional[str] = Field(
-        description="The inner API key is used to authenticate the inner API",
+        description="API key for accessing the internal API",
         default=None,
     )
 
 
 class LoggingConfig(BaseSettings):
     """
-    Logging configs
+    Configuration for application logging
     """
 
     LOG_LEVEL: str = Field(
-        description="Log output level, default to INFO." "It is recommended to set it to ERROR for production.",
+        description="Logging level, default to INFO. Set to ERROR for production environments.",
         default="INFO",
     )
 
     LOG_FILE: Optional[str] = Field(
-        description="logging output file path",
+        description="File path for log output.",
         default=None,
     )
 
     LOG_FORMAT: str = Field(
-        description="log format",
+        description="Format string for log messages",
         default="%(asctime)s.%(msecs)03d %(levelname)s [%(threadName)s] [%(filename)s:%(lineno)d] - %(message)s",
     )
 
     LOG_DATEFORMAT: Optional[str] = Field(
-        description="log date format",
+        description="Date format string for log timestamps",
         default=None,
     )
 
     LOG_TZ: Optional[str] = Field(
-        description="specify log timezone, eg: America/New_York",
+        description="Timezone for log timestamps (e.g., 'America/New_York')",
         default=None,
     )
 
 
 class ModelLoadBalanceConfig(BaseSettings):
     """
-    Model load balance configs
+    Configuration for model load balancing
     """
 
     MODEL_LB_ENABLED: bool = Field(
-        description="whether to enable model load balancing",
+        description="Enable or disable load balancing for models",
         default=False,
     )
 
 
 class BillingConfig(BaseSettings):
     """
-    Platform Billing Configurations
+    Configuration for platform billing features
     """
 
     BILLING_ENABLED: bool = Field(
-        description="whether to enable billing",
+        description="Enable or disable billing functionality",
         default=False,
     )
 
 
 class UpdateConfig(BaseSettings):
     """
-    Update configs
+    Configuration for application update checks
     """
 
     CHECK_UPDATE_URL: str = Field(
-        description="url for checking updates",
+        description="URL to check for application updates",
         default="https://updates.dify.ai",
     )
 
 
 class WorkflowConfig(BaseSettings):
     """
-    Workflow feature configs
+    Configuration for workflow execution
     """
 
     WORKFLOW_MAX_EXECUTION_STEPS: PositiveInt = Field(
-        description="max execution steps in single workflow execution",
+        description="Maximum number of steps allowed in a single workflow execution",
         default=500,
     )
 
     WORKFLOW_MAX_EXECUTION_TIME: PositiveInt = Field(
-        description="max execution time in seconds in single workflow execution",
+        description="Maximum execution time in seconds for a single workflow",
         default=1200,
     )
 
     WORKFLOW_CALL_MAX_DEPTH: PositiveInt = Field(
-        description="max depth of calling in single workflow execution",
+        description="Maximum allowed depth for nested workflow calls",
         default=5,
     )
 
     MAX_VARIABLE_SIZE: PositiveInt = Field(
-        description="The maximum size in bytes of a variable. default to 5KB.",
+        description="Maximum size in bytes for a single variable in workflows. Default to 5KB.",
         default=5 * 1024,
     )
 
 
 class OAuthConfig(BaseSettings):
     """
-    oauth configs
+    Configuration for OAuth authentication
     """
 
     OAUTH_REDIRECT_PATH: str = Field(
-        description="redirect path for OAuth",
+        description="Redirect path for OAuth authentication callbacks",
         default="/console/api/oauth/authorize",
     )
 
     GITHUB_CLIENT_ID: Optional[str] = Field(
-        description="GitHub client id for OAuth",
+        description="GitHub OAuth client secret",
         default=None,
     )
 
     GITHUB_CLIENT_SECRET: Optional[str] = Field(
-        description="GitHub client secret key for OAuth",
+        description="GitHub OAuth client secret",
         default=None,
     )
 
     GOOGLE_CLIENT_ID: Optional[str] = Field(
-        description="Google client id for OAuth",
+        description="Google OAuth client ID",
         default=None,
     )
 
     GOOGLE_CLIENT_SECRET: Optional[str] = Field(
-        description="Google client secret key for OAuth",
+        description="Google OAuth client secret",
         default=None,
     )
 
 
 class ModerationConfig(BaseSettings):
     """
-    Moderation in app configs.
+    Configuration for content moderation
     """
 
     MODERATION_BUFFER_SIZE: PositiveInt = Field(
-        description="buffer size for moderation",
+        description="Size of the buffer for content moderation processing",
         default=300,
     )
 
 
 class ToolConfig(BaseSettings):
     """
-    Tool configs
+    Configuration for tool management
     """
 
     TOOL_ICON_CACHE_MAX_AGE: PositiveInt = Field(
-        description="max age in seconds for tool icon caching",
+        description="Maximum age in seconds for caching tool icons",
         default=3600,
     )
 
 
 class MailConfig(BaseSettings):
     """
-    Mail Configurations
+    Configuration for email services
     """
 
     MAIL_TYPE: Optional[str] = Field(
-        description="Mail provider type name, default to None, available values are `smtp` and `resend`.",
+        description="Email service provider type ('smtp' or 'resend'), default to None.",
         default=None,
     )
 
     MAIL_DEFAULT_SEND_FROM: Optional[str] = Field(
-        description="default email address for sending from ",
+        description="Default email address to use as the sender",
         default=None,
     )
 
     RESEND_API_KEY: Optional[str] = Field(
-        description="API key for Resend",
+        description="API key for Resend email service",
         default=None,
     )
 
     RESEND_API_URL: Optional[str] = Field(
-        description="API URL for Resend",
+        description="API URL for Resend email service",
         default=None,
     )
 
     SMTP_SERVER: Optional[str] = Field(
-        description="smtp server host",
+        description="SMTP server hostname",
         default=None,
     )
 
     SMTP_PORT: Optional[int] = Field(
-        description="smtp server port",
+        description="SMTP server port number",
         default=465,
     )
 
     SMTP_USERNAME: Optional[str] = Field(
-        description="smtp server username",
+        description="Username for SMTP authentication",
         default=None,
     )
 
     SMTP_PASSWORD: Optional[str] = Field(
-        description="smtp server password",
+        description="Password for SMTP authentication",
         default=None,
     )
 
     SMTP_USE_TLS: bool = Field(
-        description="whether to use TLS connection to smtp server",
+        description="Enable TLS encryption for SMTP connections",
         default=False,
     )
 
     SMTP_OPPORTUNISTIC_TLS: bool = Field(
-        description="whether to use opportunistic TLS connection to smtp server",
+        description="Enable opportunistic TLS for SMTP connections",
         default=False,
     )
 
 
 class RagEtlConfig(BaseSettings):
     """
-    RAG ETL Configurations.
+    Configuration for RAG ETL processes
     """
 
     ETL_TYPE: str = Field(
-        description="RAG ETL type name, default to `dify`, available values are `dify` and `Unstructured`. ",
+        description="RAG ETL type ('dify' or 'Unstructured'), default to 'dify'",
         default="dify",
     )
 
     KEYWORD_DATA_SOURCE_TYPE: str = Field(
-        description="source type for keyword data, default to `database`, available values are `database` .",
+        description="Data source type for keyword extraction"
+        " ('database' or other supported types), default to 'database'",
         default="database",
     )
 
     UNSTRUCTURED_API_URL: Optional[str] = Field(
-        description="API URL for Unstructured",
+        description="API URL for Unstructured.io service",
         default=None,
     )
 
     UNSTRUCTURED_API_KEY: Optional[str] = Field(
-        description="API key for Unstructured",
+        description="API key for Unstructured.io service",
         default=None,
     )
 
 
 class DataSetConfig(BaseSettings):
     """
-    Dataset configs
+    Configuration for dataset management
     """
 
     CLEAN_DAY_SETTING: PositiveInt = Field(
-        description="interval in days for cleaning up dataset",
+        description="Interval in days for dataset cleanup operations",
         default=30,
     )
 
     DATASET_OPERATOR_ENABLED: bool = Field(
-        description="whether to enable dataset operator",
+        description="Enable or disable dataset operator functionality",
         default=False,
     )
 
 
 class WorkspaceConfig(BaseSettings):
     """
-    Workspace configs
+    Configuration for workspace management
     """
 
     INVITE_EXPIRY_HOURS: PositiveInt = Field(
-        description="workspaces invitation expiration in hours",
+        description="Expiration time in hours for workspace invitation links",
         default=72,
     )
 
 
 class IndexingConfig(BaseSettings):
     """
-    Indexing configs.
+    Configuration for indexing operations
     """
 
     INDEXING_MAX_SEGMENTATION_TOKENS_LENGTH: PositiveInt = Field(
-        description="max segmentation token length for indexing",
+        description="Maximum token length for text segmentation during indexing",
         default=1000,
     )
 
 
 class ImageFormatConfig(BaseSettings):
     MULTIMODAL_SEND_IMAGE_FORMAT: str = Field(
-        description="multi model send image format, support base64, url, default is base64",
+        description="Format for sending images in multimodal contexts ('base64' or 'url'), default is base64",
         default="base64",
     )
 
 
 class CeleryBeatConfig(BaseSettings):
     CELERY_BEAT_SCHEDULER_TIME: int = Field(
-        description="the time of the celery scheduler, default to 1 day",
+        description="Interval in days for Celery Beat scheduler execution, default to 1 day",
         default=1,
     )
 
 
 class PositionConfig(BaseSettings):
     POSITION_PROVIDER_PINS: str = Field(
-        description="The heads of model providers",
+        description="Comma-separated list of pinned model providers",
         default="",
     )
 
     POSITION_PROVIDER_INCLUDES: str = Field(
-        description="The included model providers",
+        description="Comma-separated list of included model providers",
         default="",
     )
 
     POSITION_PROVIDER_EXCLUDES: str = Field(
-        description="The excluded model providers",
+        description="Comma-separated list of excluded model providers",
         default="",
     )
 
     POSITION_TOOL_PINS: str = Field(
-        description="The heads of tools",
+        description="Comma-separated list of pinned tools",
         default="",
     )
 
     POSITION_TOOL_INCLUDES: str = Field(
-        description="The included tools",
+        description="Comma-separated list of included tools",
         default="",
     )
 
     POSITION_TOOL_EXCLUDES: str = Field(
-        description="The excluded tools",
+        description="Comma-separated list of excluded tools",
         default="",
     )
 

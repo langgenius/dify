@@ -13,7 +13,7 @@ class AlphaVantageProvider(BuiltinToolProviderController):
                     "credentials": credentials,
                 }
             ).invoke(
-                user_id='',
+                user_id="",
                 tool_parameters={
                     "code": "AAPL",  # Apple Inc.
                 },

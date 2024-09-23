@@ -21,29 +21,28 @@ from core.model_runtime.model_providers.__base.text_embedding_model import TextE
 
 request_template = {
     "compartmentId": "",
-    "servingMode": {
-        "modelId": "cohere.embed-english-light-v3.0",
-        "servingType": "ON_DEMAND"
-    },
+    "servingMode": {"modelId": "cohere.embed-english-light-v3.0", "servingType": "ON_DEMAND"},
     "truncate": "NONE",
-    "inputs": [""]
+    "inputs": [""],
 }
 oci_config_template = {
-        "user": "",
-        "fingerprint": "",
-        "tenancy": "",
-        "region": "",
-        "compartment_id": "",
-        "key_content": ""
-    }
+    "user": "",
+    "fingerprint": "",
+    "tenancy": "",
+    "region": "",
+    "compartment_id": "",
+    "key_content": "",
+}
+
+
 class OCITextEmbeddingModel(TextEmbeddingModel):
     """
     Model class for Cohere text embedding model.
     """
 
-    def _invoke(self, model: str, credentials: dict,
-                texts: list[str], user: Optional[str] = None) \
-            -> TextEmbeddingResult:
+    def _invoke(
+        self, model: str, credentials: dict, texts: list[str], user: Optional[str] = None
+    ) -> TextEmbeddingResult:
         """
         Invoke text embedding model
 
@@ -62,14 +61,13 @@ class OCITextEmbeddingModel(TextEmbeddingModel):
         used_tokens = 0
 
         for i, text in enumerate(texts):
-
             # Here token count is only an approximation based on the GPT2 tokenizer
             num_tokens = self._get_num_tokens_by_gpt2(text)
 
             if num_tokens >= context_size:
                 cutoff = int(len(text) * (np.floor(context_size / num_tokens)))
                 # if num tokens is larger than context length, only use the start
-                inputs.append(text[0: cutoff])
+                inputs.append(text[0:cutoff])
             else:
                 inputs.append(text)
             indices += [i]
@@ -80,26 +78,16 @@ class OCITextEmbeddingModel(TextEmbeddingModel):
         for i in _iter:
             # call embedding model
             embeddings_batch, embedding_used_tokens = self._embedding_invoke(
-                model=model,
-                credentials=credentials,
-                texts=inputs[i: i + max_chunks]
+                model=model, credentials=credentials, texts=inputs[i : i + max_chunks]
             )
 
             used_tokens += embedding_used_tokens
             batched_embeddings += embeddings_batch
 
         # calc usage
-        usage = self._calc_response_usage(
-            model=model,
-            credentials=credentials,
-            tokens=used_tokens
-        )
+        usage = self._calc_response_usage(model=model, credentials=credentials, tokens=used_tokens)
 
-        return TextEmbeddingResult(
-            embeddings=batched_embeddings,
-            usage=usage,
-            model=model
-        )
+        return TextEmbeddingResult(embeddings=batched_embeddings, usage=usage, model=model)
 
     def get_num_tokens(self, model: str, credentials: dict, texts: list[str]) -> int:
         """
@@ -125,6 +113,7 @@ class OCITextEmbeddingModel(TextEmbeddingModel):
         for text in texts:
             characters += len(text)
         return characters
+
     def validate_credentials(self, model: str, credentials: dict) -> None:
         """
         Validate model credentials
@@ -135,11 +124,7 @@ class OCITextEmbeddingModel(TextEmbeddingModel):
         """
         try:
             # call embedding model
-            self._embedding_invoke(
-                model=model,
-                credentials=credentials,
-                texts=['ping']
-            )
+            self._embedding_invoke(model=model, credentials=credentials, texts=["ping"])
         except Exception as ex:
             raise CredentialsValidateFailedError(str(ex))
 
@@ -157,10 +142,13 @@ class OCITextEmbeddingModel(TextEmbeddingModel):
         # initialize client
         oci_config = copy.deepcopy(oci_config_template)
         if "oci_config_content" in credentials:
-            oci_config_content = base64.b64decode(credentials.get('oci_config_content')).decode('utf-8')
+            oci_config_content = base64.b64decode(credentials.get("oci_config_content")).decode("utf-8")
             config_items = oci_config_content.split("/")
             if len(config_items) != 5:
-                raise CredentialsValidateFailedError("oci_config_content should be base64.b64encode('user_ocid/fingerprint/tenancy_ocid/region/compartment_ocid'.encode('utf-8'))")
+                raise CredentialsValidateFailedError(
+                    "oci_config_content should be base64.b64encode("
+                    "'user_ocid/fingerprint/tenancy_ocid/region/compartment_ocid'.encode('utf-8'))"
+                )
             oci_config["user"] = config_items[0]
             oci_config["fingerprint"] = config_items[1]
             oci_config["tenancy"] = config_items[2]
@@ -169,7 +157,7 @@ class OCITextEmbeddingModel(TextEmbeddingModel):
         else:
             raise CredentialsValidateFailedError("need to set oci_config_content in credentials ")
         if "oci_key_content" in credentials:
-            oci_key_content = base64.b64decode(credentials.get('oci_key_content')).decode('utf-8')
+            oci_key_content = base64.b64decode(credentials.get("oci_key_content")).decode("utf-8")
             oci_config["key_content"] = oci_key_content.encode(encoding="utf-8")
         else:
             raise CredentialsValidateFailedError("need to set oci_config_content in credentials ")
@@ -195,10 +183,7 @@ class OCITextEmbeddingModel(TextEmbeddingModel):
         """
         # get input price info
         input_price_info = self.get_price(
-            model=model,
-            credentials=credentials,
-            price_type=PriceType.INPUT,
-            tokens=tokens
+            model=model, credentials=credentials, price_type=PriceType.INPUT, tokens=tokens
         )
 
         # transform usage
@@ -209,7 +194,7 @@ class OCITextEmbeddingModel(TextEmbeddingModel):
             price_unit=input_price_info.unit,
             total_price=input_price_info.total_amount,
             currency=input_price_info.currency,
-            latency=time.perf_counter() - self.started_at
+            latency=time.perf_counter() - self.started_at,
         )
 
         return usage
@@ -224,19 +209,9 @@ class OCITextEmbeddingModel(TextEmbeddingModel):
         :return: Invoke error mapping
         """
         return {
-            InvokeConnectionError: [
-                InvokeConnectionError
-            ],
-            InvokeServerUnavailableError: [
-                InvokeServerUnavailableError
-            ],
-            InvokeRateLimitError: [
-                InvokeRateLimitError
-            ],
-            InvokeAuthorizationError: [
-                InvokeAuthorizationError
-            ],
-            InvokeBadRequestError: [
-                KeyError
-            ]
+            InvokeConnectionError: [InvokeConnectionError],
+            InvokeServerUnavailableError: [InvokeServerUnavailableError],
+            InvokeRateLimitError: [InvokeRateLimitError],
+            InvokeAuthorizationError: [InvokeAuthorizationError],
+            InvokeBadRequestError: [KeyError],
         }

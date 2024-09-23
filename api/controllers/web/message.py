@@ -57,6 +57,7 @@ class MessageListApi(WebApiResource):
     message_fields = {
         "id": fields.String,
         "conversation_id": fields.String,
+        "parent_message_id": fields.String,
         "inputs": fields.Raw,
         "query": fields.String,
         "answer": fields.String(attribute="re_sign_file_url_answer"),
@@ -78,7 +79,7 @@ class MessageListApi(WebApiResource):
     @marshal_with(message_infinite_scroll_pagination_fields)
     def get(self, app_model, end_user):
         app_mode = AppMode.value_of(app_model.mode)
-        if app_mode not in [AppMode.CHAT, AppMode.AGENT_CHAT, AppMode.ADVANCED_CHAT]:
+        if app_mode not in {AppMode.CHAT, AppMode.AGENT_CHAT, AppMode.ADVANCED_CHAT}:
             raise NotChatAppError()
 
         parser = reqparse.RequestParser()
@@ -89,7 +90,7 @@ class MessageListApi(WebApiResource):
 
         try:
             return MessageService.pagination_by_first_id(
-                app_model, end_user, args["conversation_id"], args["first_id"], args["limit"]
+                app_model, end_user, args["conversation_id"], args["first_id"], args["limit"], "desc"
             )
         except services.errors.conversation.ConversationNotExistsError:
             raise NotFound("Conversation Not Exists.")
@@ -160,7 +161,7 @@ class MessageMoreLikeThisApi(WebApiResource):
 class MessageSuggestedQuestionApi(WebApiResource):
     def get(self, app_model, end_user, message_id):
         app_mode = AppMode.value_of(app_model.mode)
-        if app_mode not in [AppMode.CHAT, AppMode.AGENT_CHAT, AppMode.ADVANCED_CHAT]:
+        if app_mode not in {AppMode.CHAT, AppMode.AGENT_CHAT, AppMode.ADVANCED_CHAT}:
             raise NotCompletionAppError()
 
         message_id = str(message_id)

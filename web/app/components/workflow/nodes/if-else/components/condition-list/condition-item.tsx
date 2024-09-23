@@ -80,6 +80,7 @@ const ConditionItem = ({
             <VariableTag
               valueSelector={condition.variable_selector}
               varType={condition.varType}
+              availableNodes={availableNodes}
             />
           </div>
           <div className='mx-1 w-[1px] h-3 bg-divider-regular'></div>

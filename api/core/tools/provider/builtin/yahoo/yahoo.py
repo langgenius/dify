@@ -11,11 +11,10 @@ class YahooFinanceProvider(BuiltinToolProviderController):
                     "credentials": credentials,
                 }
             ).invoke(
-                user_id='',
+                user_id="",
                 tool_parameters={
                     "ticker": "MSFT",
                 },
             )
         except Exception as e:
             raise ToolProviderCredentialValidationError(str(e))
-    

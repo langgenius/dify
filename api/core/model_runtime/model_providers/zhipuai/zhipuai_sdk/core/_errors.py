@@ -13,15 +13,19 @@ __all__ = [
     "APIResponseError",
     "APIResponseValidationError",
     "APITimeoutError",
+    "APIConnectionError",
 ]
 
 
 class ZhipuAIError(Exception):
-    def __init__(self, message: str, ) -> None:
+    def __init__(
+        self,
+        message: str,
+    ) -> None:
         super().__init__(message)
 
 
-class APIStatusError(Exception):
+class APIStatusError(ZhipuAIError):
     response: httpx.Response
     status_code: int
 
@@ -31,27 +35,22 @@ class APIStatusError(Exception):
         self.status_code = response.status_code
 
 
-class APIRequestFailedError(APIStatusError):
-    ...
+class APIRequestFailedError(APIStatusError): ...
 
 
-class APIAuthenticationError(APIStatusError):
-    ...
+class APIAuthenticationError(APIStatusError): ...
 
 
-class APIReachLimitError(APIStatusError):
-    ...
+class APIReachLimitError(APIStatusError): ...
 
 
-class APIInternalError(APIStatusError):
-    ...
+class APIInternalError(APIStatusError): ...
 
 
-class APIServerFlowExceedError(APIStatusError):
-    ...
+class APIServerFlowExceedError(APIStatusError): ...
 
 
-class APIResponseError(Exception):
+class APIResponseError(ZhipuAIError):
     message: str
     request: httpx.Request
     json_data: object
@@ -67,24 +66,21 @@ class APIResponseValidationError(APIResponseError):
     status_code: int
     response: httpx.Response
 
-    def __init__(
-            self,
-            response: httpx.Response,
-            json_data: object | None, *,
-            message: str | None = None
-    ) -> None:
+    def __init__(self, response: httpx.Response, json_data: object | None, *, message: str | None = None) -> None:
         super().__init__(
             message=message or "Data returned by API invalid for expected schema.",
             request=response.request,
-            json_data=json_data
+            json_data=json_data,
         )
         self.response = response
         self.status_code = response.status_code
 
 
-class APITimeoutError(Exception):
-    request: httpx.Request
+class APIConnectionError(APIResponseError):
+    def __init__(self, *, message: str = "Connection error.", request: httpx.Request) -> None:
+        super().__init__(message, request, json_data=None)
 
-    def __init__(self, request: httpx.Request):
-        self.request = request
-        super().__init__("Request Timeout")
+
+class APITimeoutError(APIConnectionError):
+    def __init__(self, request: httpx.Request) -> None:
+        super().__init__(message="Request timed out.", request=request)

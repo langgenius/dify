@@ -9,7 +9,6 @@ from requests.exceptions import ConnectionError
 from requests.sessions import Session
 from xinference_client.client.restful.restful_client import (
     Client,
-    RESTfulChatglmCppChatModelHandle,
     RESTfulChatModelHandle,
     RESTfulEmbeddingModelHandle,
     RESTfulGenerateModelHandle,
@@ -19,9 +18,7 @@ from xinference_client.types import Embedding, EmbeddingData, EmbeddingUsage
 
 
 class MockXinferenceClass:
-    def get_chat_model(
-        self: Client, model_uid: str
-    ) -> Union[RESTfulChatglmCppChatModelHandle, RESTfulGenerateModelHandle, RESTfulChatModelHandle]:
+    def get_chat_model(self: Client, model_uid: str) -> Union[RESTfulGenerateModelHandle, RESTfulChatModelHandle]:
         if not re.match(r"https?:\/\/[^\s\/$.?#].[^\s]*$", self.base_url):
             raise RuntimeError("404 Not Found")
 
@@ -42,7 +39,7 @@ class MockXinferenceClass:
             model_uid = url.split("/")[-1] or ""
             if not re.match(
                 r"[a-f0-9]{8}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{12}", model_uid
-            ) and model_uid not in ["generate", "chat", "embedding", "rerank"]:
+            ) and model_uid not in {"generate", "chat", "embedding", "rerank"}:
                 response.status_code = 404
                 response._content = b"{}"
                 return response
@@ -53,7 +50,7 @@ class MockXinferenceClass:
                 response._content = b"{}"
                 return response
 
-            if model_uid in ["generate", "chat"]:
+            if model_uid in {"generate", "chat"}:
                 response.status_code = 200
                 response._content = b"""{
                     "model_type": "LLM",
