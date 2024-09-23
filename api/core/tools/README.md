@@ -9,10 +9,10 @@ The tools provided for Agents and Workflows are currently divided into two categ
 - `Api-Based Tools`  leverage third-party APIs for implementation. You don't need to code to integrate these -- simply provide interface definitions in formats like `OpenAPI` , `Swagger`, or the `OpenAI-plugin` on the front-end.
 
 ### Built-in Tool Providers
-![Alt text](docs/zh_Hans/images/index/image.png)
+![Alt text](docs/images/index/image.png)
 
 ### API Tool Providers
-![Alt text](docs/zh_Hans/images/index/image-1.png)
+![Alt text](docs/images/index/image-1.png)
 
 ## Tool Integration
 
