@@ -88,7 +88,7 @@ const ImagePreview: FC<ImagePreviewProps> = ({
     })
   }
 
-  const imageTobase64ToBlob = (base64: string, type = 'image/png'): Blob => {
+  const imageBase64ToBlob = (base64: string, type = 'image/png'): Blob => {
     const byteCharacters = atob(base64)
     const byteArrays = []
 
@@ -109,7 +109,7 @@ const ImagePreview: FC<ImagePreviewProps> = ({
     const shareImage = async () => {
       try {
         const base64Data = url.split(',')[1]
-        const blob = imageTobase64ToBlob(base64Data, 'image/png')
+        const blob = imageBase64ToBlob(base64Data, 'image/png')
 
         await navigator.clipboard.write([
           new ClipboardItem({
