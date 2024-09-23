@@ -33,7 +33,7 @@ class HttpRequestNodeAuthorization(BaseModel):
 
 
 class BodyData(BaseModel):
-    key: str
+    key: str = ""
     type: Literal["file", "text"]
     value: str = ""
     file: Sequence[str] = Field(default_factory=list)
