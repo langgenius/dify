@@ -28,7 +28,6 @@ select = [
     "PLR0402", # manual-from-import
     "PLR1711", # useless-return
     "PLR1714", # repeated-equality-comparison
-    "PLR6201", # literal-membership
     "RUF019", # unnecessary-key-check
     "RUF100", # unused-noqa
     "RUF101", # redirected-noqa
