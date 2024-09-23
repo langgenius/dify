@@ -1,13 +1,15 @@
 import {
   memo,
+  useCallback,
 } from 'react'
 import { useTranslation } from 'react-i18next'
-import type { Condition } from '../types'
+import { ComparisonOperator, type Condition } from '../types'
 import {
   comparisonOperatorNotRequireValue,
   isComparisonOperatorNeedTranslate,
   isEmptyRelatedOperator,
 } from '../utils'
+import { FILE_TYPE_OPTIONS, TRANSFER_METHOD } from '../default'
 import type { ValueSelector } from '../../../types'
 import { Variable02 } from '@/app/components/base/icons/src/vender/solid/development'
 import { BubbleX, Env } from '@/app/components/base/icons/src/vender/line/others'
@@ -35,35 +37,41 @@ const ConditionValue = ({
   const notHasValue = comparisonOperatorNotRequireValue(operator)
   const isEnvVar = isENV(variableSelector)
   const isChatVar = isConversationVar(variableSelector)
-  // const formatValue = useMemo(() => {
-  //   if (notHasValue)
-  //     return ''
+  const formatValue = useCallback((c: Condition) => {
+    const notHasValue = comparisonOperatorNotRequireValue(c.comparison_operator)
+    if (notHasValue)
+      return ''
 
-  //   return value.replace(/{{#([^#]*)#}}/g, (a, b) => {
-  //     const arr: string[] = b.split('.')
-  //     if (isSystemVar(arr))
-  //       return `{{${b}}}`
+    const value = c.value as string
+    return value.replace(/{{#([^#]*)#}}/g, (a, b) => {
+      const arr: string[] = b.split('.')
+      if (isSystemVar(arr))
+        return `{{${b}}}`
 
-  //     return `{{${arr.slice(1).join('.')}}}`
-  //   })
-  // }, [notHasValue, value])
+      return `{{${arr.slice(1).join('.')}}}`
+    })
+  }, [])
 
-  // const isSelect = operator === ComparisonOperator.in || operator === ComparisonOperator.notIn
-  // const selectName = useMemo(() => {
-  //   if (isSelect) {
-  //     const name = [...FILE_TYPE_OPTIONS, ...TRANSFER_METHOD].filter(item => item.value === value)[0]
-  //     return name
-  //       ? t(`workflow.nodes.ifElse.optionName.${name.i18nKey}`).replace(/{{#([^#]*)#}}/g, (a, b) => {
-  //         const arr: string[] = b.split('.')
-  //         if (isSystemVar(arr))
-  //           return `{{${b}}}`
+  const isSelect = useCallback((c: Condition) => {
+    return c.comparison_operator === ComparisonOperator.in || c.comparison_operator === ComparisonOperator.notIn
+  }, [])
 
-  //         return `{{${arr.slice(1).join('.')}}}`
-  //       })
-  //       : ''
-  //   }
-  //   return ''
-  // }, [isSelect, t, value])
+  const selectName = useCallback((c: Condition) => {
+    const isSelect = c.comparison_operator === ComparisonOperator.in || c.comparison_operator === ComparisonOperator.notIn
+    if (isSelect) {
+      const name = [...FILE_TYPE_OPTIONS, ...TRANSFER_METHOD].filter(item => item.value === c.value)[0]
+      return name
+        ? t(`workflow.nodes.ifElse.optionName.${name.i18nKey}`).replace(/{{#([^#]*)#}}/g, (a, b) => {
+          const arr: string[] = b.split('.')
+          if (isSystemVar(arr))
+            return `{{${b}}}`
+
+          return `{{${arr.slice(1).join('.')}}}`
+        })
+        : ''
+    }
+    return ''
+  }, [])
 
   return (
     <div className='rounded-md bg-workflow-block-parma-bg'>
@@ -87,11 +95,6 @@ const ConditionValue = ({
         >
           {operatorName}
         </div>
-        {/* {
-        !notHasValue && (
-          <div className='truncate text-xs text-text-secondary' title={formatValue}>{isSelect ? selectName : formatValue}</div>
-        )
-      } */}
       </div>
       <div className='ml-[10px] pl-[10px] border-l border-divider-regular'>
         {
@@ -99,7 +102,7 @@ const ConditionValue = ({
             <div className='relative flex items-center h-6 space-x-1' key={c.id}>
               <div className='text-text-accent system-xs-medium'>{c.key}</div>
               <div className='text-text-primary system-xs-medium'>{isComparisonOperatorNeedTranslate(c.comparison_operator) ? t(`workflow.nodes.ifElse.comparisonOperator.${c.comparison_operator}`) : c.comparison_operator}</div>
-              {c.comparison_operator && !isEmptyRelatedOperator(c.comparison_operator) && <div className='text-text-secondary system-xs-regular'>{c.value}</div>}
+              {c.comparison_operator && !isEmptyRelatedOperator(c.comparison_operator) && <div className='text-text-secondary system-xs-regular'>{isSelect(c) ? selectName(c) : formatValue(c)}</div>}
               {index !== sub_variable_condition.conditions.length - 1 && (<div className='absolute z-10 right-1 bottom-[-10px] leading-4 text-[10px] font-medium text-text-accent uppercase'>{t(`${i18nPrefix}.${sub_variable_condition.logical_operator}`)}</div>)}
             </div>
           ))
