@@ -5,6 +5,7 @@ import { useTranslation } from 'react-i18next'
 import { BodyType, type HttpNodeType, Method } from '../types'
 import Modal from '@/app/components/base/modal'
 import Button from '@/app/components/base/button'
+import Toast from '@/app/components/base/toast'
 import { useNodesInteractions } from '@/app/components/workflow/hooks'
 
 type Props = {
@@ -14,7 +15,10 @@ type Props = {
   handleCurlImport: (node: HttpNodeType) => void
 }
 
-const parseCurl = (curlCommand: string): HttpNodeType => {
+const parseCurl = (curlCommand: string): { node: HttpNodeType | null; error: string | null } => {
+  if (!curlCommand.trim().toLowerCase().startsWith('curl'))
+    return { node: null, error: 'Invalid cURL command. Command must start with "curl".' }
+
   const node: Partial<HttpNodeType> = {
     title: 'HTTP Request',
     desc: 'Imported from cURL',
@@ -31,24 +35,34 @@ const parseCurl = (curlCommand: string): HttpNodeType => {
     switch (arg) {
       case '-X':
       case '--request':
+        if (i + 1 >= args.length)
+          return { node: null, error: 'Missing HTTP method after -X or --request.' }
         node.method = (args[++i].replace(/^['"]|['"]$/g, '') as Method) || Method.get
         break
       case '-H':
       case '--header':
+        if (i + 1 >= args.length)
+          return { node: null, error: 'Missing header value after -H or --header.' }
         node.headers += (node.headers ? '\n' : '') + args[++i].replace(/^['"]|['"]$/g, '')
         break
       case '-d':
       case '--data':
       case '--data-raw':
       case '--data-binary':
+        if (i + 1 >= args.length)
+          return { node: null, error: 'Missing data value after -d, --data, --data-raw, or --data-binary.' }
         node.body = { type: BodyType.rawText, data: args[++i].replace(/^['"]|['"]$/g, '') }
         break
       case '-F':
       case '--form': {
+        if (i + 1 >= args.length)
+          return { node: null, error: 'Missing form data after -F or --form.' }
         if (node.body?.type !== BodyType.formData)
           node.body = { type: BodyType.formData, data: '' }
         const formData = args[++i].replace(/^['"]|['"]$/g, '')
         const [key, ...valueParts] = formData.split('=')
+        if (!key)
+          return { node: null, error: 'Invalid form data format.' }
         let value = valueParts.join('=')
 
         // To support command like `curl -F "file=@/path/to/file;type=application/zip"`
@@ -64,6 +78,8 @@ const parseCurl = (curlCommand: string): HttpNodeType => {
         break
       }
       case '--json':
+        if (i + 1 >= args.length)
+          return { node: null, error: 'Missing JSON data after --json.' }
         node.body = { type: BodyType.json, data: args[++i].replace(/^['"]|['"]$/g, '') }
         break
       default:
@@ -73,6 +89,9 @@ const parseCurl = (curlCommand: string): HttpNodeType => {
     }
   }
 
+  if (!node.url)
+    return { node: null, error: 'Missing URL or url not start with http.' }
+
   // Extract query params from URL
   const urlParts = node.url?.split('?') || []
   if (urlParts.length > 1) {
@@ -80,7 +99,7 @@ const parseCurl = (curlCommand: string): HttpNodeType => {
     node.params = urlParts[1].replace(/&/g, '\n').replace(/=/g, ': ')
   }
 
-  return node as HttpNodeType
+  return { node: node as HttpNodeType, error: null }
 }
 
 const CurlPanel: FC<Props> = ({ nodeId, isShow, onHide, handleCurlImport }) => {
@@ -89,8 +108,18 @@ const CurlPanel: FC<Props> = ({ nodeId, isShow, onHide, handleCurlImport }) => {
   const { t } = useTranslation()
 
   const handleSave = useCallback(() => {
+    const { node, error } = parseCurl(inputString)
+    if (error) {
+      Toast.notify({
+        type: 'error',
+        message: error,
+      })
+      return
+    }
+    if (!node)
+      return
+
     onHide()
-    const node = parseCurl(inputString)
     handleCurlImport(node)
     // Close the panel then open it again to make the panel re-render
     handleNodeSelect(nodeId, true)
