@@ -5,9 +5,8 @@ from pathlib import Path
 from configs import dify_config
 from core.helper.position_helper import is_filtered
 from core.model_runtime.utils.encoders import jsonable_encoder
-from core.tools.__base.tool_provider import ToolProviderController
 from core.tools.builtin_tool.providers._positions import BuiltinToolProviderSort
-from core.tools.entities.api_entities import UserTool, UserToolProvider
+from core.tools.entities.api_entities import ToolApiEntity, ToolProviderApiEntity
 from core.tools.errors import ToolNotFoundError, ToolProviderCredentialValidationError, ToolProviderNotFoundError
 from core.tools.tool_label_manager import ToolLabelManager
 from core.tools.tool_manager import ToolManager
@@ -21,11 +20,17 @@ logger = logging.getLogger(__name__)
 
 class BuiltinToolManageService:
     @staticmethod
-    def list_builtin_tool_provider_tools(user_id: str, tenant_id: str, provider: str) -> list[UserTool]:
+    def list_builtin_tool_provider_tools(user_id: str, tenant_id: str, provider: str) -> list[ToolApiEntity]:
         """
         list builtin tool provider tools
+
+        :param user_id: the id of the user
+        :param tenant_id: the id of the tenant
+        :param provider: the name of the provider
+
+        :return: the list of tools
         """
-        provider_controller: ToolProviderController = ToolManager.get_builtin_provider(provider)
+        provider_controller = ToolManager.get_builtin_provider(provider, tenant_id)
         tools = provider_controller.get_tools()
 
         tool_provider_configurations = ProviderConfigEncrypter(
@@ -64,14 +69,16 @@ class BuiltinToolManageService:
         return result
 
     @staticmethod
-    def list_builtin_provider_credentials_schema(provider_name):
+    def list_builtin_provider_credentials_schema(provider_name: str, tenant_id: str):
         """
         list builtin provider credentials schema
 
+        :param provider_name: the name of the provider
+        :param tenant_id: the id of the tenant
         :return: the list of tool providers
         """
-        provider = ToolManager.get_builtin_provider(provider_name)
-        return jsonable_encoder([v for _, v in (provider.entity.credentials_schema or {}).items()])
+        provider = ToolManager.get_builtin_provider(provider_name, tenant_id)
+        return jsonable_encoder([v for _, v in (provider.get_credentials_schema() or {}).items()])
 
     @staticmethod
     def update_builtin_tool_provider(user_id: str, tenant_id: str, provider_name: str, credentials: dict):
@@ -90,7 +97,7 @@ class BuiltinToolManageService:
 
         try:
             # get provider
-            provider_controller = ToolManager.get_builtin_provider(provider_name)
+            provider_controller = ToolManager.get_builtin_provider(provider_name, tenant_id)
             if not provider_controller.need_credentials:
                 raise ValueError(f"provider {provider_name} does not need credentials")
             tool_configuration = ProviderConfigEncrypter(
@@ -109,7 +116,7 @@ class BuiltinToolManageService:
                     if name in masked_credentials and value == masked_credentials[name]:
                         credentials[name] = original_credentials[name]
             # validate credentials
-            provider_controller.validate_credentials(credentials)
+            provider_controller.validate_credentials(user_id, credentials)
             # encrypt credentials
             credentials = tool_configuration.encrypt(credentials)
         except (ToolProviderNotFoundError, ToolNotFoundError, ToolProviderCredentialValidationError) as e:
@@ -154,7 +161,7 @@ class BuiltinToolManageService:
         if provider_obj is None:
             return {}
 
-        provider_controller = ToolManager.get_builtin_provider(provider_obj.provider)
+        provider_controller = ToolManager.get_builtin_provider(provider_obj.provider, tenant_id)
         tool_configuration = ProviderConfigEncrypter(
             tenant_id=tenant_id,
             config=provider_controller.get_credentials_schema(),
@@ -186,7 +193,7 @@ class BuiltinToolManageService:
         db.session.commit()
 
         # delete cache
-        provider_controller = ToolManager.get_builtin_provider(provider_name)
+        provider_controller = ToolManager.get_builtin_provider(provider_name, tenant_id)
         tool_configuration = ProviderConfigEncrypter(
             tenant_id=tenant_id,
             config=provider_controller.get_credentials_schema(),
@@ -198,22 +205,22 @@ class BuiltinToolManageService:
         return {"result": "success"}
 
     @staticmethod
-    def get_builtin_tool_provider_icon(provider: str):
+    def get_builtin_tool_provider_icon(provider: str, tenant_id: str):
         """
         get tool provider icon and it's mimetype
         """
-        icon_path, mime_type = ToolManager.get_builtin_provider_icon(provider)
+        icon_path, mime_type = ToolManager.get_builtin_provider_icon(provider, tenant_id)
         icon_bytes = Path(icon_path).read_bytes()
 
         return icon_bytes, mime_type
 
     @staticmethod
-    def list_builtin_tools(user_id: str, tenant_id: str) -> list[UserToolProvider]:
+    def list_builtin_tools(user_id: str, tenant_id: str) -> list[ToolProviderApiEntity]:
         """
         list builtin tools
         """
         # get all builtin providers
-        provider_controllers = ToolManager.list_builtin_providers()
+        provider_controllers = ToolManager.list_builtin_providers(tenant_id)
 
         # get all user added providers
         db_providers: list[BuiltinToolProvider] = (
@@ -225,7 +232,7 @@ class BuiltinToolManageService:
             filter(lambda db_provider: db_provider.provider == provider, db_providers), None
         )
 
-        result: list[UserToolProvider] = []
+        result: list[ToolProviderApiEntity] = []
 
         for provider_controller in provider_controllers:
             try:

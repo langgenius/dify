@@ -16,7 +16,7 @@ class ToolRuntime(BaseModel):
     tool_id: Optional[str] = None
     invoke_from: Optional[InvokeFrom] = None
     tool_invoke_from: Optional[ToolInvokeFrom] = None
-    credentials: Optional[dict[str, Any]] = None
+    credentials: dict[str, Any] = Field(default_factory=dict)
     runtime_parameters: dict[str, Any] = Field(default_factory=dict)
 
 

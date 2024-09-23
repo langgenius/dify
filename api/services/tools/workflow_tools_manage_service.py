@@ -4,7 +4,7 @@ from datetime import datetime
 from sqlalchemy import or_
 
 from core.model_runtime.utils.encoders import jsonable_encoder
-from core.tools.entities.api_entities import UserTool, UserToolProvider
+from core.tools.entities.api_entities import ToolApiEntity, ToolProviderApiEntity
 from core.tools.tool_label_manager import ToolLabelManager
 from core.tools.utils.workflow_configuration_sync import WorkflowToolConfigurationUtils
 from core.tools.workflow_as_tool.provider import WorkflowToolProviderController
@@ -183,7 +183,7 @@ class WorkflowToolManageService:
         return {"result": "success"}
 
     @classmethod
-    def list_tenant_workflow_tools(cls, user_id: str, tenant_id: str) -> list[UserToolProvider]:
+    def list_tenant_workflow_tools(cls, user_id: str, tenant_id: str) -> list[ToolProviderApiEntity]:
         """
         List workflow tools.
         :param user_id: the user id
@@ -309,7 +309,7 @@ class WorkflowToolManageService:
         }
 
     @classmethod
-    def list_single_workflow_tools(cls, user_id: str, tenant_id: str, workflow_tool_id: str) -> list[UserTool]:
+    def list_single_workflow_tools(cls, user_id: str, tenant_id: str, workflow_tool_id: str) -> list[ToolApiEntity]:
         """
         List workflow tool provider tools.
         :param user_id: the user id

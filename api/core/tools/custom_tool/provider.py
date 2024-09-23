@@ -24,9 +24,10 @@ class ApiToolProviderController(ToolProviderController):
         super().__init__(entity)
         self.provider_id = provider_id
         self.tenant_id = tenant_id
+        self.tools = []
 
-    @staticmethod
-    def from_db(db_provider: ApiToolProvider, auth_type: ApiProviderAuthType) -> "ApiToolProviderController":
+    @classmethod
+    def from_db(cls, db_provider: ApiToolProvider, auth_type: ApiProviderAuthType):
         credentials_schema = {
             "auth_type": ProviderConfig(
                 name="auth_type",

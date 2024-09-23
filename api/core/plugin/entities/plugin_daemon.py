@@ -3,6 +3,8 @@ from typing import Generic, Optional, TypeVar
 
 from pydantic import BaseModel
 
+from core.tools.entities.tool_entities import ToolProviderEntityWithPlugin
+
 T = TypeVar("T", bound=(BaseModel | dict | list | bool))
 
 
@@ -27,3 +29,10 @@ class InstallPluginMessage(BaseModel):
 
     event: Event
     data: str
+
+
+class PluginToolProviderEntity(BaseModel):
+    provider: str
+    plugin_unique_identifier: str
+    plugin_id: str
+    declaration: ToolProviderEntityWithPlugin

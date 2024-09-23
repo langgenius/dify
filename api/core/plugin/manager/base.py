@@ -93,7 +93,14 @@ class BasePluginManager:
         Make a request to the plugin daemon inner API and return the response as a model.
         """
         response = self._request(method, path, headers, data, params)
-        rep = PluginDaemonBasicResponse[type](**response.json())
+        json_response = response.json()
+        for provider in json_response.get("data", []):
+            declaration = provider.get("declaration", {}) or {}
+            provider_name = declaration.get("identity", {}).get("name")
+            for tool in declaration.get("tools", []):
+                tool["identity"]["provider"] = provider_name
+
+        rep = PluginDaemonBasicResponse[type](**json_response)
         if rep.code != 0:
             raise ValueError(f"got error from plugin daemon: {rep.message}, code: {rep.code}")
         if rep.data is None:

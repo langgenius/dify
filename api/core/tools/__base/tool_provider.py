@@ -12,11 +12,9 @@ from core.tools.errors import ToolProviderCredentialValidationError
 
 class ToolProviderController(ABC):
     entity: ToolProviderEntity
-    tools: list[Tool]
 
     def __init__(self, entity: ToolProviderEntity) -> None:
         self.entity = entity
-        self.tools = []
 
     def get_credentials_schema(self) -> dict[str, ProviderConfig]:
         """

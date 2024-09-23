@@ -7,7 +7,7 @@ from core.entities.provider_entities import ProviderConfig
 from core.model_runtime.utils.encoders import jsonable_encoder
 from core.tools.__base.tool_runtime import ToolRuntime
 from core.tools.custom_tool.provider import ApiToolProviderController
-from core.tools.entities.api_entities import UserTool, UserToolProvider
+from core.tools.entities.api_entities import ToolApiEntity, ToolProviderApiEntity
 from core.tools.entities.common_entities import I18nObject
 from core.tools.entities.tool_bundle import ApiToolBundle
 from core.tools.entities.tool_entities import (
@@ -201,7 +201,7 @@ class ApiToolManageService:
         return {"schema": schema}
 
     @staticmethod
-    def list_api_tool_provider_tools(user_id: str, tenant_id: str, provider_name: str) -> list[UserTool]:
+    def list_api_tool_provider_tools(user_id: str, tenant_id: str, provider_name: str) -> list[ToolApiEntity]:
         """
         list api tool provider tools
         """
@@ -438,7 +438,7 @@ class ApiToolManageService:
         return {"result": result or "empty response"}
 
     @staticmethod
-    def list_api_tools(user_id: str, tenant_id: str) -> list[UserToolProvider]:
+    def list_api_tools(user_id: str, tenant_id: str) -> list[ToolProviderApiEntity]:
         """
         list api tools
         """
@@ -447,7 +447,7 @@ class ApiToolManageService:
             db.session.query(ApiToolProvider).filter(ApiToolProvider.tenant_id == tenant_id).all() or []
         )
 
-        result: list[UserToolProvider] = []
+        result: list[ToolProviderApiEntity] = []
 
         for provider in db_providers:
             # convert provider controller to user provider

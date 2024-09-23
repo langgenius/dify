@@ -19,9 +19,7 @@ class BuiltinToolProviderController(ToolProviderController):
     tools: list[BuiltinTool]
 
     def __init__(self, **data: Any) -> None:
-        if self.provider_type == ToolProviderType.API:
-            super().__init__(**data)
-            return
+        self.tools = []
 
         # load provider yaml
         provider = self.__class__.__module__.split(".")[-1]
@@ -76,9 +74,12 @@ class BuiltinToolProviderController(ToolProviderController):
                 parent_type=BuiltinTool,
             )
             tool["identity"]["provider"] = provider
-            tools.append(assistant_tool_class(
-                entity=ToolEntity(**tool), runtime=ToolRuntime(tenant_id=""),
-            ))
+            tools.append(
+                assistant_tool_class(
+                    entity=ToolEntity(**tool),
+                    runtime=ToolRuntime(tenant_id=""),
+                )
+            )
 
         self.tools = tools
         return tools
@@ -142,7 +143,7 @@ class BuiltinToolProviderController(ToolProviderController):
         """
         return self.entity.identity.tags or []
 
-    def validate_credentials(self, credentials: dict[str, Any]) -> None:
+    def validate_credentials(self, user_id: str, credentials: dict[str, Any]) -> None:
         """
         validate the credentials of the provider
 
@@ -153,10 +154,10 @@ class BuiltinToolProviderController(ToolProviderController):
         self.validate_credentials_format(credentials)
 
         # validate credentials
-        self._validate_credentials(credentials)
+        self._validate_credentials(user_id, credentials)
 
     @abstractmethod
-    def _validate_credentials(self, credentials: dict[str, Any]) -> None:
+    def _validate_credentials(self, user_id: str, credentials: dict[str, Any]) -> None:
         """
         validate the credentials of the provider
 

@@ -9,7 +9,7 @@ from core.tools.entities.common_entities import I18nObject
 from core.tools.entities.tool_entities import ToolProviderType
 
 
-class UserTool(BaseModel):
+class ToolApiEntity(BaseModel):
     author: str
     name: str  # identifier
     label: I18nObject  # label
@@ -18,10 +18,10 @@ class UserTool(BaseModel):
     labels: list[str] = Field(default_factory=list)
 
 
-UserToolProviderTypeLiteral = Optional[Literal["builtin", "api", "workflow"]]
+ToolProviderTypeApiLiteral = Optional[Literal["builtin", "api", "workflow"]]
 
 
-class UserToolProvider(BaseModel):
+class ToolProviderApiEntity(BaseModel):
     id: str
     author: str
     name: str  # identifier
@@ -33,7 +33,7 @@ class UserToolProvider(BaseModel):
     original_credentials: Optional[dict] = None
     is_team_authorization: bool = False
     allow_delete: bool = True
-    tools: list[UserTool] = Field(default_factory=list)
+    tools: list[ToolApiEntity] = Field(default_factory=list)
     labels: list[str] = Field(default_factory=list)
 
     def to_dict(self) -> dict:
@@ -63,5 +63,5 @@ class UserToolProvider(BaseModel):
         }
 
 
-class UserToolProviderCredentials(BaseModel):
+class ToolProviderCredentialsApiEntity(BaseModel):
     credentials: dict[str, ProviderConfig]

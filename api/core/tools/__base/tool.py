@@ -105,11 +105,11 @@ class Tool(ABC):
         """
         return self.entity.parameters
 
-    def get_all_runtime_parameters(self) -> list[ToolParameter]:
+    def get_merged_runtime_parameters(self) -> list[ToolParameter]:
         """
-        get all runtime parameters
+        get merged runtime parameters
 
-        :return: all runtime parameters
+        :return: merged runtime parameters
         """
         parameters = self.entity.parameters
         parameters = parameters.copy()

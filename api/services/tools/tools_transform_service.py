@@ -7,7 +7,7 @@ from core.tools.__base.tool import Tool
 from core.tools.__base.tool_runtime import ToolRuntime
 from core.tools.builtin_tool.provider import BuiltinToolProviderController
 from core.tools.custom_tool.provider import ApiToolProviderController
-from core.tools.entities.api_entities import UserTool, UserToolProvider
+from core.tools.entities.api_entities import ToolApiEntity, ToolProviderApiEntity
 from core.tools.entities.common_entities import I18nObject
 from core.tools.entities.tool_bundle import ApiToolBundle
 from core.tools.entities.tool_entities import (
@@ -15,6 +15,7 @@ from core.tools.entities.tool_entities import (
     ToolParameter,
     ToolProviderType,
 )
+from core.tools.plugin_tool.provider import PluginToolProviderController
 from core.tools.utils.configuration import ProviderConfigEncrypter
 from core.tools.workflow_as_tool.provider import WorkflowToolProviderController
 from core.tools.workflow_as_tool.tool import WorkflowTool
@@ -44,7 +45,7 @@ class ToolTransformService:
         return ""
 
     @staticmethod
-    def repack_provider(provider: Union[dict, UserToolProvider]):
+    def repack_provider(provider: Union[dict, ToolProviderApiEntity]):
         """
         repack provider
 
@@ -54,7 +55,7 @@ class ToolTransformService:
             provider["icon"] = ToolTransformService.get_tool_provider_icon_url(
                 provider_type=provider["type"], provider_name=provider["name"], icon=provider["icon"]
             )
-        elif isinstance(provider, UserToolProvider):
+        elif isinstance(provider, ToolProviderApiEntity):
             provider.icon = ToolTransformService.get_tool_provider_icon_url(
                 provider_type=provider.type.value, provider_name=provider.name, icon=provider.icon
             )
@@ -62,14 +63,14 @@ class ToolTransformService:
     @classmethod
     def builtin_provider_to_user_provider(
         cls,
-        provider_controller: BuiltinToolProviderController,
+        provider_controller: BuiltinToolProviderController | PluginToolProviderController,
         db_provider: Optional[BuiltinToolProvider],
         decrypt_credentials: bool = True,
-    ) -> UserToolProvider:
+    ) -> ToolProviderApiEntity:
         """
         convert provider controller to user provider
         """
-        result = UserToolProvider(
+        result = ToolProviderApiEntity(
             id=provider_controller.entity.identity.name,
             author=provider_controller.entity.identity.author,
             name=provider_controller.entity.identity.name,
@@ -154,7 +155,7 @@ class ToolTransformService:
         """
         convert provider controller to user provider
         """
-        return UserToolProvider(
+        return ToolProviderApiEntity(
             id=provider_controller.provider_id,
             author=provider_controller.entity.identity.author,
             name=provider_controller.entity.identity.name,
@@ -181,7 +182,7 @@ class ToolTransformService:
         db_provider: ApiToolProvider,
         decrypt_credentials: bool = True,
         labels: list[str] | None = None,
-    ) -> UserToolProvider:
+    ) -> ToolProviderApiEntity:
         """
         convert provider controller to user provider
         """
@@ -197,7 +198,7 @@ class ToolTransformService:
 
         # add provider into providers
         credentials = db_provider.credentials
-        result = UserToolProvider(
+        result = ToolProviderApiEntity(
             id=db_provider.id,
             author=username,
             name=db_provider.name,
@@ -240,7 +241,7 @@ class ToolTransformService:
         tenant_id: str,
         credentials: dict | None = None,
         labels: list[str] | None = None,
-    ) -> UserTool:
+    ) -> ToolApiEntity:
         """
         convert tool to user tool
         """
@@ -248,7 +249,7 @@ class ToolTransformService:
             # fork tool runtime
             tool = tool.fork_tool_runtime(
                 runtime=ToolRuntime(
-                    credentials=credentials,
+                    credentials=credentials or {},
                     tenant_id=tenant_id,
                 )
             )
@@ -270,7 +271,7 @@ class ToolTransformService:
                 if not found and runtime_parameter.form == ToolParameter.ToolParameterForm.FORM:
                     current_parameters.append(runtime_parameter)
 
-            return UserTool(
+            return ToolApiEntity(
                 author=tool.entity.identity.author,
                 name=tool.entity.identity.name,
                 label=tool.entity.identity.label,
@@ -279,7 +280,7 @@ class ToolTransformService:
                 labels=labels or [],
             )
         if isinstance(tool, ApiToolBundle):
-            return UserTool(
+            return ToolApiEntity(
                 author=tool.author,
                 name=tool.operation_id,
                 label=I18nObject(en_US=tool.operation_id, zh_Hans=tool.operation_id),

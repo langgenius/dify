@@ -166,7 +166,7 @@ class BaseAgentRunner(AppRunner):
             },
         )
 
-        parameters = tool_entity.get_all_runtime_parameters()
+        parameters = tool_entity.get_merged_runtime_parameters()
         for parameter in parameters:
             if parameter.form != ToolParameter.ToolParameterForm.LLM:
                 continue

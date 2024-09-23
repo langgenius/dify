@@ -224,6 +224,13 @@ class ToolParameter(BaseModel):
     max: Optional[Union[float, int]] = None
     options: list[ToolParameterOption] = Field(default_factory=list)
 
+    @field_validator("options", mode="before")
+    @classmethod
+    def transform_options(cls, v):
+        if not isinstance(v, list):
+            return []
+        return v
+
     @classmethod
     def get_simple_instance(
         cls,
@@ -304,6 +311,9 @@ class ToolEntity(BaseModel):
 class ToolProviderEntity(BaseModel):
     identity: ToolProviderIdentity
     credentials_schema: dict[str, ProviderConfig] = Field(default_factory=dict)
+
+
+class ToolProviderEntityWithPlugin(ToolProviderEntity):
     tools: list[ToolEntity] = Field(default_factory=list)
 
 

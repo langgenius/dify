@@ -167,7 +167,7 @@ class WorkflowTool(Tool):
         :param tool_parameters: the tool parameters
         :return: tool_parameters, files
         """
-        parameter_rules = self.get_all_runtime_parameters()
+        parameter_rules = self.get_merged_runtime_parameters()
         parameters_result = {}
         files = []
         for parameter in parameter_rules:
