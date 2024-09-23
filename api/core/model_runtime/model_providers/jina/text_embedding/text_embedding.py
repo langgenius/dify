@@ -44,16 +44,16 @@ class JinaTextEmbeddingModel(TextEmbeddingModel):
 
         data = {"model": model, "input": [transform_jina_input_text(model, text) for text in texts]}
 
-        task = credentials.get("task", None)
-        dimensions = credentials.get("dimensions", None)
-        late_chunking = credentials.get("late_chunking", None)
+        task = credentials.get("task")
+        dimensions = credentials.get("dimensions")
+        late_chunking = credentials.get("late_chunking")
 
         if task is not None:
             data["task"] = task
 
         if dimensions is not None:
             data["dimensions"] = int(dimensions)
-        
+
         if late_chunking is not None:
             data["late_chunking"] = late_chunking
 
