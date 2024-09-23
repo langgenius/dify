@@ -25,13 +25,16 @@ def test_validate_credentials():
                 {
                     "index": 0,
                     "score": 0.06762695,
-                    "input": "Carson City is the capital city of the American state of Nevada. At the 2010 United States Census, Carson City had a population of 55,274.",
+                    "input": "Carson City is the capital city of the American state of Nevada. At the 2010 United "
+                    "States Census, Carson City had a population of 55,274.",
                     "object": "text_document",
                 },
                 {
                     "index": 1,
                     "score": 0.057403564,
-                    "input": "The Commonwealth of the Northern Mariana Islands is a group of islands in the Pacific Ocean that are a political division controlled by the United States. Its capital is Saipan.",
+                    "input": "The Commonwealth of the Northern Mariana Islands is a group of islands in the Pacific "
+                    "Ocean that are a political division controlled by the United States. Its capital is "
+                    "Saipan.",
                     "object": "text_document",
                 },
             ],
@@ -66,7 +69,8 @@ def test_invoke_model():
                 {
                     "index": 1,
                     "score": 0.0703125,
-                    "input": "Her music is a kawaii bass, a mix of future bass, pop, and kawaii music and she leads a team named PopiParty.",
+                    "input": "Her music is a kawaii bass, a mix of future bass, pop, and kawaii music and she leads a "
+                    "team named PopiParty.",
                     "object": "text_document",
                 },
             ],
@@ -84,7 +88,8 @@ def test_invoke_model():
             query="Who is Kasumi?",
             docs=[
                 "Kasumi is a girl name of Japanese origin meaning mist.",
-                "Her music is a kawaii bass, a mix of future bass, pop, and kawaii music and she leads a team named PopiParty.",
+                "Her music is a kawaii bass, a mix of future bass, pop, and kawaii music and she leads a team named "
+                "PopiParty.",
             ],
             score_threshold=0.5,
         )
