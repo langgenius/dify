@@ -36,3 +36,10 @@ class PluginToolProviderEntity(BaseModel):
     plugin_unique_identifier: str
     plugin_id: str
     declaration: ToolProviderEntityWithPlugin
+
+
+class PluginBasicBooleanResponse(BaseModel):
+    """
+    Basic boolean response from plugin daemon.
+    """
+    result: bool

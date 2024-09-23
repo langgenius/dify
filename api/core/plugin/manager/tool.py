@@ -1,7 +1,7 @@
 from collections.abc import Generator
 from typing import Any
 
-from core.plugin.entities.plugin_daemon import PluginToolProviderEntity
+from core.plugin.entities.plugin_daemon import PluginBasicBooleanResponse, PluginToolProviderEntity
 from core.plugin.manager.base import BasePluginManager
 from core.tools.entities.tool_entities import ToolInvokeMessage
 
@@ -11,8 +11,22 @@ class PluginToolManager(BasePluginManager):
         """
         Fetch tool providers for the given asset.
         """
+
+        def transformer(json_response: dict[str, Any]) -> dict:
+            for provider in json_response.get("data", []):
+                declaration = provider.get("declaration", {}) or {}
+                provider_name = declaration.get("identity", {}).get("name")
+                for tool in declaration.get("tools", []):
+                    tool["identity"]["provider"] = provider_name
+
+            return json_response
+
         response = self._request_with_plugin_daemon_response(
-            "GET", f"plugin/{tenant_id}/tools", list[PluginToolProviderEntity], params={"page": 1, "page_size": 256}
+            "GET",
+            f"plugin/{tenant_id}/management/tools",
+            list[PluginToolProviderEntity],
+            params={"page": 1, "page_size": 256},
+            transformer=transformer,
         )
         return response
 
@@ -28,7 +42,7 @@ class PluginToolManager(BasePluginManager):
     ) -> Generator[ToolInvokeMessage, None, None]:
         response = self._request_with_plugin_daemon_response_stream(
             "POST",
-            f"plugin/{tenant_id}/tool/invoke",
+            f"plugin/{tenant_id}/dispatch/tool/invoke",
             ToolInvokeMessage,
             data={
                 "plugin_unique_identifier": plugin_unique_identifier,
@@ -40,6 +54,10 @@ class PluginToolManager(BasePluginManager):
                     "tool_parameters": tool_parameters,
                 },
             },
+            headers={
+                "X-Plugin-Identifier": plugin_unique_identifier,
+                "Content-Type": "application/json",
+            }
         )
         return response
 
@@ -49,10 +67,10 @@ class PluginToolManager(BasePluginManager):
         """
         validate the credentials of the provider
         """
-        response = self._request_with_plugin_daemon_response(
+        response = self._request_with_plugin_daemon_response_stream(
             "POST",
-            f"plugin/{tenant_id}/tool/validate_credentials",
-            bool,
+            f"plugin/{tenant_id}/dispatch/tool/validate_credentials",
+            PluginBasicBooleanResponse,
             data={
                 "plugin_unique_identifier": plugin_unique_identifier,
                 "user_id": user_id,
@@ -61,5 +79,13 @@ class PluginToolManager(BasePluginManager):
                     "credentials": credentials,
                 },
             },
+            headers={
+                "X-Plugin-Identifier": plugin_unique_identifier,
+                "Content-Type": "application/json",
+            }
         )
-        return response
+
+        for resp in response:
+            return resp.result
+        
+        return False

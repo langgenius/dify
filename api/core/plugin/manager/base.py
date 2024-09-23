@@ -1,5 +1,5 @@
 import json
-from collections.abc import Generator
+from collections.abc import Callable, Generator
 from typing import TypeVar
 
 import requests
@@ -21,7 +21,7 @@ class BasePluginManager:
         method: str,
         path: str,
         headers: dict | None = None,
-        data: bytes | dict | None = None,
+        data: bytes | dict | str | None = None,
         params: dict | None = None,
         stream: bool = False,
     ) -> requests.Response:
@@ -31,6 +31,10 @@ class BasePluginManager:
         url = URL(str(plugin_daemon_inner_api_baseurl)) / path
         headers = headers or {}
         headers["X-Api-Key"] = plugin_daemon_inner_api_key
+
+        if headers.get("Content-Type") == "application/json" and isinstance(data, dict):
+            data = json.dumps(data)
+
         response = requests.request(
             method=method, url=str(url), headers=headers, data=data, params=params, stream=stream
         )
@@ -48,7 +52,11 @@ class BasePluginManager:
         Make a stream request to the plugin daemon inner API
         """
         response = self._request(method, path, headers, data, params, stream=True)
-        yield from response.iter_lines()
+        for line in response.iter_lines():
+            line = line.decode("utf-8").strip()
+            if line.startswith("data:"):
+                line = line[5:].strip()
+            yield line
 
     def _stream_request_with_model(
         self,
@@ -88,17 +96,15 @@ class BasePluginManager:
         headers: dict | None = None,
         data: bytes | dict | None = None,
         params: dict | None = None,
+        transformer: Callable[[dict], dict] | None = None,
     ) -> T:
         """
         Make a request to the plugin daemon inner API and return the response as a model.
         """
         response = self._request(method, path, headers, data, params)
         json_response = response.json()
-        for provider in json_response.get("data", []):
-            declaration = provider.get("declaration", {}) or {}
-            provider_name = declaration.get("identity", {}).get("name")
-            for tool in declaration.get("tools", []):
-                tool["identity"]["provider"] = provider_name
+        if transformer:
+            json_response = transformer(json_response)
 
         rep = PluginDaemonBasicResponse[type](**json_response)
         if rep.code != 0:
@@ -128,3 +134,4 @@ class BasePluginManager:
             if rep.data is None:
                 raise ValueError("got empty data from plugin daemon")
             yield rep.data
+    
