@@ -43,6 +43,7 @@ from core.app.entities.task_entities import (
 )
 from core.app.task_pipeline.based_generate_task_pipeline import BasedGenerateTaskPipeline
 from core.app.task_pipeline.workflow_cycle_manage import WorkflowCycleManage
+from core.file import File
 from core.ops.ops_trace_manager import TraceQueueManager
 from core.workflow.enums import SystemVariableKey
 from extensions.ext_database import db
@@ -321,6 +322,11 @@ class WorkflowAppGenerateTaskPipeline(BasedGenerateTaskPipeline, WorkflowCycleMa
 
                 if not graph_runtime_state:
                     raise Exception("Graph runtime state not initialized.")
+
+                if event.outputs is not None:
+                    for k, v in event.outputs.items():
+                        if isinstance(v, File):
+                            event.outputs[k] = v.to_dict()
 
                 workflow_run = self._handle_workflow_run_success(
                     workflow_run=workflow_run,
