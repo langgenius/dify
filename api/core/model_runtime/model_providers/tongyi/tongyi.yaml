@@ -20,6 +20,7 @@ supported_model_types:
   - text-embedding
 configurate_methods:
   - predefined-model
+  - customizable-model
 provider_credential_schema:
   credential_form_schemas:
     - variable: dashscope_api_key
@@ -27,6 +28,23 @@ provider_credential_schema:
         en_US: API Key
       type: secret-input
       required: true
+      placeholder:
+        zh_Hans: 在此输入您的 API Key
+        en_US: Enter your API Key
+model_credential_schema:
+  model:
+    label:
+      en_US: Model Name
+      zh_Hans: 模型名称
+    placeholder:
+      en_US: Enter full model name
+      zh_Hans: 输入模型全称
+  credential_form_schemas:
+    - variable: dashscope_api_key
+      required: true
+      label:
+        en_US: API Key
+      type: secret-input
       placeholder:
         zh_Hans: 在此输入您的 API Key
         en_US: Enter your API Key

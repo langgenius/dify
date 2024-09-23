@@ -133,6 +133,7 @@ const translation = {
     datasetSettingLink: 'cài đặt Kiến thức.',
     websiteSource: 'Trang web tiền xử lý',
     webpageUnit: 'Trang',
+    separatorTip: 'Dấu phân cách là ký tự được sử dụng để phân tách văn bản. \\n\\n và \\n là dấu phân cách thường được sử dụng để tách các đoạn văn và dòng. Kết hợp với dấu phẩy (\\n\\n,\\n), các đoạn văn sẽ được phân đoạn theo các dòng khi vượt quá độ dài đoạn tối đa. Bạn cũng có thể sử dụng dấu phân cách đặc biệt do chính bạn xác định (ví dụ: ***).',
   },
   stepThree: {
     creationTitle: '🎉 Kiến thức đã được tạo',

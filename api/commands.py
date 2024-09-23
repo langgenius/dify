@@ -28,28 +28,28 @@ from services.account_service import RegisterService, TenantService
 
 
 @click.command("reset-password", help="Reset the account password.")
-@click.option("--email", prompt=True, help="The email address of the account whose password you need to reset")
-@click.option("--new-password", prompt=True, help="the new password.")
-@click.option("--password-confirm", prompt=True, help="the new password confirm.")
+@click.option("--email", prompt=True, help="Account email to reset password for")
+@click.option("--new-password", prompt=True, help="New password")
+@click.option("--password-confirm", prompt=True, help="Confirm new password")
 def reset_password(email, new_password, password_confirm):
     """
     Reset password of owner account
     Only available in SELF_HOSTED mode
     """
     if str(new_password).strip() != str(password_confirm).strip():
-        click.echo(click.style("sorry. The two passwords do not match.", fg="red"))
+        click.echo(click.style("Passwords do not match.", fg="red"))
         return
 
     account = db.session.query(Account).filter(Account.email == email).one_or_none()
 
     if not account:
-        click.echo(click.style("sorry. the account: [{}] not exist .".format(email), fg="red"))
+        click.echo(click.style("Account not found for email: {}".format(email), fg="red"))
         return
 
     try:
         valid_password(new_password)
     except:
-        click.echo(click.style("sorry. The passwords must match {} ".format(password_pattern), fg="red"))
+        click.echo(click.style("Invalid password. Must match {}".format(password_pattern), fg="red"))
         return
 
     # generate password salt
@@ -62,37 +62,37 @@ def reset_password(email, new_password, password_confirm):
     account.password = base64_password_hashed
     account.password_salt = base64_salt
     db.session.commit()
-    click.echo(click.style("Congratulations! Password has been reset.", fg="green"))
+    click.echo(click.style("Password reset successfully.", fg="green"))
 
 
 @click.command("reset-email", help="Reset the account email.")
-@click.option("--email", prompt=True, help="The old email address of the account whose email you need to reset")
-@click.option("--new-email", prompt=True, help="the new email.")
-@click.option("--email-confirm", prompt=True, help="the new email confirm.")
+@click.option("--email", prompt=True, help="Current account email")
+@click.option("--new-email", prompt=True, help="New email")
+@click.option("--email-confirm", prompt=True, help="Confirm new email")
 def reset_email(email, new_email, email_confirm):
     """
     Replace account email
     :return:
     """
     if str(new_email).strip() != str(email_confirm).strip():
-        click.echo(click.style("Sorry, new email and confirm email do not match.", fg="red"))
+        click.echo(click.style("New emails do not match.", fg="red"))
         return
 
     account = db.session.query(Account).filter(Account.email == email).one_or_none()
 
     if not account:
-        click.echo(click.style("sorry. the account: [{}] not exist .".format(email), fg="red"))
+        click.echo(click.style("Account not found for email: {}".format(email), fg="red"))
         return
 
     try:
         email_validate(new_email)
     except:
-        click.echo(click.style("sorry. {} is not a valid email. ".format(email), fg="red"))
+        click.echo(click.style("Invalid email: {}".format(new_email), fg="red"))
         return
 
     account.email = new_email
     db.session.commit()
-    click.echo(click.style("Congratulations!, email has been reset.", fg="green"))
+    click.echo(click.style("Email updated successfully.", fg="green"))
 
 
 @click.command(
@@ -104,7 +104,7 @@ def reset_email(email, new_email, email_confirm):
 )
 @click.confirmation_option(
     prompt=click.style(
-        "Are you sure you want to reset encrypt key pair? this operation cannot be rolled back!", fg="red"
+        "Are you sure you want to reset encrypt key pair? This operation cannot be rolled back!", fg="red"
     )
 )
 def reset_encrypt_key_pair():
@@ -114,13 +114,13 @@ def reset_encrypt_key_pair():
     Only support SELF_HOSTED mode.
     """
     if dify_config.EDITION != "SELF_HOSTED":
-        click.echo(click.style("Sorry, only support SELF_HOSTED mode.", fg="red"))
+        click.echo(click.style("This command is only for SELF_HOSTED installations.", fg="red"))
         return
 
     tenants = db.session.query(Tenant).all()
     for tenant in tenants:
         if not tenant:
-            click.echo(click.style("Sorry, no workspace found. Please enter /install to initialize.", fg="red"))
+            click.echo(click.style("No workspaces found. Run /install first.", fg="red"))
             return
 
         tenant.encrypt_public_key = generate_key_pair(tenant.id)
@@ -137,7 +137,7 @@ def reset_encrypt_key_pair():
         )
 
 
-@click.command("vdb-migrate", help="migrate vector db.")
+@click.command("vdb-migrate", help="Migrate vector db.")
 @click.option("--scope", default="all", prompt=False, help="The scope of vector database to migrate, Default is All.")
 def vdb_migrate(scope: str):
     if scope in {"knowledge", "all"}:
@@ -150,7 +150,7 @@ def migrate_annotation_vector_database():
     """
     Migrate annotation datas to target vector database .
     """
-    click.echo(click.style("Start migrate annotation data.", fg="green"))
+    click.echo(click.style("Starting annotation data migration.", fg="green"))
     create_count = 0
     skipped_count = 0
     total_count = 0
@@ -174,14 +174,14 @@ def migrate_annotation_vector_database():
                 f"Processing the {total_count} app {app.id}. " + f"{create_count} created, {skipped_count} skipped."
             )
             try:
-                click.echo("Create app annotation index: {}".format(app.id))
+                click.echo("Creating app annotation index: {}".format(app.id))
                 app_annotation_setting = (
                     db.session.query(AppAnnotationSetting).filter(AppAnnotationSetting.app_id == app.id).first()
                 )
 
                 if not app_annotation_setting:
                     skipped_count = skipped_count + 1
-                    click.echo("App annotation setting is disabled: {}".format(app.id))
+                    click.echo("App annotation setting disabled: {}".format(app.id))
                     continue
                 # get dataset_collection_binding info
                 dataset_collection_binding = (
@@ -190,7 +190,7 @@ def migrate_annotation_vector_database():
                     .first()
                 )
                 if not dataset_collection_binding:
-                    click.echo("App annotation collection binding is not exist: {}".format(app.id))
+                    click.echo("App annotation collection binding not found: {}".format(app.id))
                     continue
                 annotations = db.session.query(MessageAnnotation).filter(MessageAnnotation.app_id == app.id).all()
                 dataset = Dataset(
@@ -211,11 +211,11 @@ def migrate_annotation_vector_database():
                         documents.append(document)
 
                 vector = Vector(dataset, attributes=["doc_id", "annotation_id", "app_id"])
-                click.echo(f"Start to migrate annotation, app_id: {app.id}.")
+                click.echo(f"Migrating annotations for app: {app.id}.")
 
                 try:
                     vector.delete()
-                    click.echo(click.style(f"Successfully delete vector index for app: {app.id}.", fg="green"))
+                    click.echo(click.style(f"Deleted vector index for app {app.id}.", fg="green"))
                 except Exception as e:
                     click.echo(click.style(f"Failed to delete vector index for app {app.id}.", fg="red"))
                     raise e
@@ -223,12 +223,12 @@ def migrate_annotation_vector_database():
                     try:
                         click.echo(
                             click.style(
-                                f"Start to created vector index with {len(documents)} annotations for app {app.id}.",
+                                f"Creating vector index with {len(documents)} annotations for app {app.id}.",
                                 fg="green",
                             )
                         )
                         vector.create(documents)
-                        click.echo(click.style(f"Successfully created vector index for app {app.id}.", fg="green"))
+                        click.echo(click.style(f"Created vector index for app {app.id}.", fg="green"))
                     except Exception as e:
                         click.echo(click.style(f"Failed to created vector index for app {app.id}.", fg="red"))
                         raise e
@@ -237,14 +237,14 @@ def migrate_annotation_vector_database():
             except Exception as e:
                 click.echo(
                     click.style(
-                        "Create app annotation index error: {} {}".format(e.__class__.__name__, str(e)), fg="red"
+                        "Error creating app annotation index: {} {}".format(e.__class__.__name__, str(e)), fg="red"
                     )
                 )
                 continue
 
     click.echo(
         click.style(
-            f"Congratulations! Create {create_count} app annotation indexes, and skipped {skipped_count} apps.",
+            f"Migration complete. Created {create_count} app annotation indexes. Skipped {skipped_count} apps.",
             fg="green",
         )
     )
@@ -254,7 +254,7 @@ def migrate_knowledge_vector_database():
     """
     Migrate vector database datas to target vector database .
     """
-    click.echo(click.style("Start migrate vector db.", fg="green"))
+    click.echo(click.style("Starting vector database migration.", fg="green"))
     create_count = 0
     skipped_count = 0
     total_count = 0
@@ -278,7 +278,7 @@ def migrate_knowledge_vector_database():
                 f"Processing the {total_count} dataset {dataset.id}. {create_count} created, {skipped_count} skipped."
             )
             try:
-                click.echo("Create dataset vdb index: {}".format(dataset.id))
+                click.echo("Creating dataset vector database index: {}".format(dataset.id))
                 if dataset.index_struct_dict:
                     if dataset.index_struct_dict["type"] == vector_type:
                         skipped_count = skipped_count + 1
@@ -299,7 +299,7 @@ def migrate_knowledge_vector_database():
                         if dataset_collection_binding:
                             collection_name = dataset_collection_binding.collection_name
                         else:
-                            raise ValueError("Dataset Collection Bindings is not exist!")
+                            raise ValueError("Dataset Collection Binding not found")
                     else:
                         dataset_id = dataset.id
                         collection_name = Dataset.gen_collection_name_by_id(dataset_id)
@@ -351,14 +351,12 @@ def migrate_knowledge_vector_database():
                     raise ValueError(f"Vector store {vector_type} is not supported.")
 
                 vector = Vector(dataset)
-                click.echo(f"Start to migrate dataset {dataset.id}.")
+                click.echo(f"Migrating dataset {dataset.id}.")
 
                 try:
                     vector.delete()
                     click.echo(
-                        click.style(
-                            f"Successfully delete vector index {collection_name} for dataset {dataset.id}.", fg="green"
-                        )
+                        click.style(f"Deleted vector index {collection_name} for dataset {dataset.id}.", fg="green")
                     )
                 except Exception as e:
                     click.echo(
@@ -410,15 +408,13 @@ def migrate_knowledge_vector_database():
                     try:
                         click.echo(
                             click.style(
-                                f"Start to created vector index with {len(documents)} documents of {segments_count}"
+                                f"Creating vector index with {len(documents)} documents of {segments_count}"
                                 f" segments for dataset {dataset.id}.",
                                 fg="green",
                             )
                         )
                         vector.create(documents)
-                        click.echo(
-                            click.style(f"Successfully created vector index for dataset {dataset.id}.", fg="green")
-                        )
+                        click.echo(click.style(f"Created vector index for dataset {dataset.id}.", fg="green"))
                     except Exception as e:
                         click.echo(click.style(f"Failed to created vector index for dataset {dataset.id}.", fg="red"))
                         raise e
@@ -429,13 +425,13 @@ def migrate_knowledge_vector_database():
             except Exception as e:
                 db.session.rollback()
                 click.echo(
-                    click.style("Create dataset index error: {} {}".format(e.__class__.__name__, str(e)), fg="red")
+                    click.style("Error creating dataset index: {} {}".format(e.__class__.__name__, str(e)), fg="red")
                 )
                 continue
 
     click.echo(
         click.style(
-            f"Congratulations! Create {create_count} dataset indexes, and skipped {skipped_count} datasets.", fg="green"
+            f"Migration complete. Created {create_count} dataset indexes. Skipped {skipped_count} datasets.", fg="green"
         )
     )
 
@@ -445,7 +441,7 @@ def convert_to_agent_apps():
     """
     Convert Agent Assistant to Agent App.
     """
-    click.echo(click.style("Start convert to agent apps.", fg="green"))
+    click.echo(click.style("Starting convert to agent apps.", fg="green"))
 
     proceeded_app_ids = []
 
@@ -496,23 +492,23 @@ def convert_to_agent_apps():
             except Exception as e:
                 click.echo(click.style("Convert app error: {} {}".format(e.__class__.__name__, str(e)), fg="red"))
 
-    click.echo(click.style("Congratulations! Converted {} agent apps.".format(len(proceeded_app_ids)), fg="green"))
+    click.echo(click.style("Conversion complete. Converted {} agent apps.".format(len(proceeded_app_ids)), fg="green"))
 
 
-@click.command("add-qdrant-doc-id-index", help="add qdrant doc_id index.")
-@click.option("--field", default="metadata.doc_id", prompt=False, help="index field , default is metadata.doc_id.")
+@click.command("add-qdrant-doc-id-index", help="Add Qdrant doc_id index.")
+@click.option("--field", default="metadata.doc_id", prompt=False, help="Index field , default is metadata.doc_id.")
 def add_qdrant_doc_id_index(field: str):
-    click.echo(click.style("Start add qdrant doc_id index.", fg="green"))
+    click.echo(click.style("Starting Qdrant doc_id index creation.", fg="green"))
     vector_type = dify_config.VECTOR_STORE
     if vector_type != "qdrant":
-        click.echo(click.style("Sorry, only support qdrant vector store.", fg="red"))
+        click.echo(click.style("This command only supports Qdrant vector store.", fg="red"))
         return
     create_count = 0
 
     try:
         bindings = db.session.query(DatasetCollectionBinding).all()
         if not bindings:
-            click.echo(click.style("Sorry, no dataset collection bindings found.", fg="red"))
+            click.echo(click.style("No dataset collection bindings found.", fg="red"))
             return
         import qdrant_client
         from qdrant_client.http.exceptions import UnexpectedResponse
@@ -522,7 +518,7 @@ def add_qdrant_doc_id_index(field: str):
 
         for binding in bindings:
             if dify_config.QDRANT_URL is None:
-                raise ValueError("Qdrant url is required.")
+                raise ValueError("Qdrant URL is required.")
             qdrant_config = QdrantConfig(
                 endpoint=dify_config.QDRANT_URL,
                 api_key=dify_config.QDRANT_API_KEY,
@@ -539,41 +535,39 @@ def add_qdrant_doc_id_index(field: str):
             except UnexpectedResponse as e:
                 # Collection does not exist, so return
                 if e.status_code == 404:
-                    click.echo(
-                        click.style(f"Collection not found, collection_name:{binding.collection_name}.", fg="red")
-                    )
+                    click.echo(click.style(f"Collection not found: {binding.collection_name}.", fg="red"))
                     continue
                 # Some other error occurred, so re-raise the exception
                 else:
                     click.echo(
                         click.style(
-                            f"Failed to create qdrant index, collection_name:{binding.collection_name}.", fg="red"
+                            f"Failed to create Qdrant index for collection: {binding.collection_name}.", fg="red"
                         )
                     )
 
     except Exception as e:
-        click.echo(click.style("Failed to create qdrant client.", fg="red"))
+        click.echo(click.style("Failed to create Qdrant client.", fg="red"))
 
-    click.echo(click.style(f"Congratulations! Create {create_count} collection indexes.", fg="green"))
+    click.echo(click.style(f"Index creation complete. Created {create_count} collection indexes.", fg="green"))
 
 
 @click.command("create-tenant", help="Create account and tenant.")
-@click.option("--email", prompt=True, help="The email address of the tenant account.")
-@click.option("--name", prompt=True, help="The workspace name of the tenant account.")
+@click.option("--email", prompt=True, help="Tenant account email.")
+@click.option("--name", prompt=True, help="Workspace name.")
 @click.option("--language", prompt=True, help="Account language, default: en-US.")
 def create_tenant(email: str, language: Optional[str] = None, name: Optional[str] = None):
     """
     Create tenant account
     """
     if not email:
-        click.echo(click.style("Sorry, email is required.", fg="red"))
+        click.echo(click.style("Email is required.", fg="red"))
         return
 
     # Create account
     email = email.strip()
 
     if "@" not in email:
-        click.echo(click.style("Sorry, invalid email address.", fg="red"))
+        click.echo(click.style("Invalid email address.", fg="red"))
         return
 
     account_name = email.split("@")[0]
@@ -593,19 +587,19 @@ def create_tenant(email: str, language: Optional[str] = None, name: Optional[str
 
     click.echo(
         click.style(
-            "Congratulations! Account and tenant created.\nAccount: {}\nPassword: {}".format(email, new_password),
+            "Account and tenant created.\nAccount: {}\nPassword: {}".format(email, new_password),
             fg="green",
         )
     )
 
 
-@click.command("upgrade-db", help="upgrade the database")
+@click.command("upgrade-db", help="Upgrade the database")
 def upgrade_db():
     click.echo("Preparing database migration...")
     lock = redis_client.lock(name="db_upgrade_lock", timeout=60)
     if lock.acquire(blocking=False):
         try:
-            click.echo(click.style("Start database migration.", fg="green"))
+            click.echo(click.style("Starting database migration.", fg="green"))
 
             # run db migration
             import flask_migrate
@@ -615,7 +609,7 @@ def upgrade_db():
             click.echo(click.style("Database migration successful!", fg="green"))
 
         except Exception as e:
-            logging.exception(f"Database migration failed, error: {e}")
+            logging.exception(f"Database migration failed: {e}")
         finally:
             lock.release()
     else:
@@ -627,7 +621,7 @@ def fix_app_site_missing():
     """
     Fix app related site missing issue.
     """
-    click.echo(click.style("Start fix app related site missing issue.", fg="green"))
+    click.echo(click.style("Starting fix for missing app-related sites.", fg="green"))
 
     failed_app_ids = []
     while True:
@@ -650,22 +644,22 @@ where sites.id is null limit 1000"""
                     if tenant:
                         accounts = tenant.get_accounts()
                         if not accounts:
-                            print("Fix app {} failed.".format(app.id))
+                            print("Fix failed for app {}".format(app.id))
                             continue
 
                         account = accounts[0]
-                        print("Fix app {} related site missing issue.".format(app.id))
+                        print("Fixing missing site for app {}".format(app.id))
                         app_was_created.send(app, account=account)
                 except Exception as e:
                     failed_app_ids.append(app_id)
-                    click.echo(click.style("Fix app {} related site missing issue failed!".format(app_id), fg="red"))
+                    click.echo(click.style("Failed to fix missing site for app {}".format(app_id), fg="red"))
                     logging.exception(f"Fix app related site missing issue failed, error: {e}")
                     continue
 
             if not processed_count:
                 break
 
-    click.echo(click.style("Congratulations! Fix app related site missing issue successful!", fg="green"))
+    click.echo(click.style("Fix for missing app-related sites completed successfully!", fg="green"))
 
 
 def register_commands(app):
