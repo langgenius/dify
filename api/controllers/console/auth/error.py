@@ -41,3 +41,11 @@ class EmailOrPasswordMismatchError(BaseHTTPException):
     error_code = "email_or_password_mismatch"
     description = "The email or password is mismatched."
     code = 400
+
+
+class EmailPasswordLoginLimitError(BaseHTTPException):
+    error_code = "email_code_login_limit"
+    description = (
+        "Too many incorrect password attempts. Please verify your identity with the email code to complete login."
+    )
+    code = 429
