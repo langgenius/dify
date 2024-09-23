@@ -39,7 +39,11 @@ class ListFilterNode(BaseNode):
             return NodeRunResult(
                 status=WorkflowNodeExecutionStatus.FAILED, error=error_message, inputs=inputs, outputs=outputs
             )
-        process_data["variable"] = variable.value
+
+        if isinstance(variable, ArrayFileSegment):
+            process_data["variable"] = [item.to_dict() for item in variable.value]
+        else:
+            process_data["variable"] = variable.value
 
         # Filter
         for filter_by in node_data.filter_by:
@@ -71,7 +75,9 @@ class ListFilterNode(BaseNode):
                 result = _order_number(order=node_data.order_by.value, array=variable.value)
                 variable = variable.model_copy(update={"value": result})
             elif isinstance(variable, ArrayFileSegment):
-                result = _order_file(order=node_data.order_by.value, array=variable.value)
+                result = _order_file(
+                    order=node_data.order_by.value, order_by=node_data.order_by.key, array=variable.value
+                )
                 variable = variable.model_copy(update={"value": result})
 
         # Slice
@@ -79,7 +85,10 @@ class ListFilterNode(BaseNode):
             result = variable.value[: node_data.limit.size]
             variable = variable.model_copy(update={"value": result})
 
-        outputs["result"] = variable.value
+        if isinstance(variable, ArrayFileSegment):
+            outputs["result"] = [item.to_dict() for item in variable.value]
+        else:
+            outputs["result"] = variable.value
         return NodeRunResult(
             status=WorkflowNodeExecutionStatus.SUCCEEDED,
             inputs=inputs,
