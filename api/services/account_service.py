@@ -45,6 +45,9 @@ from tasks.mail_reset_password_task import send_reset_password_mail_task
 
 class AccountService:
     reset_password_rate_limiter = RateLimiter(prefix="reset_password_rate_limit", max_attempts=5, time_window=60 * 60)
+    email_code_login_rate_limiter = RateLimiter(
+        prefix="email_code_login_rate_limit", max_attempts=5, time_window=60 * 5
+    )
 
     @staticmethod
     def load_user(user_id: str) -> None | Account:
@@ -280,6 +283,9 @@ class AccountService:
 
     @classmethod
     def send_email_code_login_email(cls, account: Optional[Account] = None, email: Optional[str] = None):
+        if cls.email_code_login_rate_limiter.is_rate_limited(email):
+            raise RateLimitExceededError(f"Rate limit exceeded for email: {email}. Please try again later.")
+
         code = "".join([str(random.randint(0, 9)) for _ in range(6)])
         token = TokenManager.generate_token(
             account=account, email=email, token_type="email_code_login", additional_data={"code": code}
@@ -289,7 +295,7 @@ class AccountService:
             to=account.email if account else email,
             code=code,
         )
-
+        cls.email_code_login_rate_limiter.increment_rate_limit(email)
         return token
 
     @classmethod
