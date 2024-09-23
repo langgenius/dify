@@ -153,8 +153,10 @@ class FileService:
         return text
 
     @staticmethod
-    def get_image_preview(file_id: str, timestamp: str, nonce: str, sign: str) -> tuple[Generator, str]:
-        result = file_helpers.verify_file_signature(upload_file_id=file_id, timestamp=timestamp, nonce=nonce, sign=sign)
+    def get_image_preview(file_id: str, timestamp: str, nonce: str, sign: str):
+        result = file_helpers.verify_image_signature(
+            upload_file_id=file_id, timestamp=timestamp, nonce=nonce, sign=sign
+        )
         if not result:
             raise NotFound("File not found or signature is invalid")
 
@@ -167,6 +169,21 @@ class FileService:
         extension = upload_file.extension
         if extension.lower() not in IMAGE_EXTENSIONS:
             raise UnsupportedFileTypeError()
+
+        generator = storage.load(upload_file.key, stream=True)
+
+        return generator, upload_file.mime_type
+
+    @staticmethod
+    def get_signed_file_preview(file_id: str, timestamp: str, nonce: str, sign: str):
+        result = file_helpers.verify_file_signature(upload_file_id=file_id, timestamp=timestamp, nonce=nonce, sign=sign)
+        if not result:
+            raise NotFound("File not found or signature is invalid")
+
+        upload_file = db.session.query(UploadFile).filter(UploadFile.id == file_id).first()
+
+        if not upload_file:
+            raise NotFound("File not found or signature is invalid")
 
         generator = storage.load(upload_file.key, stream=True)
 

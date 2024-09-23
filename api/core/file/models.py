@@ -85,8 +85,19 @@ class File(BaseModel):
                 return ToolFileParser.get_tool_file_manager().sign_file(
                     tool_file_id=self.related_id, extension=self.extension
                 )
-
-        return None
+        else:
+            if self.transfer_method == FileTransferMethod.REMOTE_URL:
+                return self.url
+            elif self.transfer_method == FileTransferMethod.LOCAL_FILE:
+                if self.related_id is None:
+                    raise ValueError("Missing file related_id")
+                return helpers.get_signed_file_url(upload_file_id=self.related_id)
+            elif self.transfer_method == FileTransferMethod.TOOL_FILE:
+                assert self.related_id is not None
+                assert self.extension is not None
+                return ToolFileParser.get_tool_file_manager().sign_file(
+                    tool_file_id=self.related_id, extension=self.extension
+                )
 
     @model_validator(mode="after")
     def validate_after(self):
