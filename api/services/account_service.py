@@ -333,12 +333,12 @@ class AccountService:
         count = redis_client.get(key)
         if count is None:
             return False
-        
+
         count = int(count)
         if count > AccountService.LOGIN_MAX_ERROR_LIMITS:
             return True
         return False
-    
+
     @staticmethod
     def reset_login_error_rate_limit(email: str):
         key = f"login_error_rate_limit:{email}"
