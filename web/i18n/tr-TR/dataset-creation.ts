@@ -138,6 +138,7 @@ const translation = {
     indexSettingTip: 'Dizin yöntemini değiştirmek için, lütfen',
     retrievalSettingTip: 'Dizin yöntemini değiştirmek için, lütfen',
     datasetSettingLink: 'Bilgi ayarlarına gidin.',
+    separatorTip: 'Sınırlayıcı, metni ayırmak için kullanılan karakterdir. \\n\\n ve \\n, paragrafları ve satırları ayırmak için yaygın olarak kullanılan sınırlayıcılardır. Virgüllerle (\\n\\n,\\n) birleştirildiğinde, paragraflar maksimum öbek uzunluğunu aştığında satırlarla bölünür. Kendiniz tarafından tanımlanan özel sınırlayıcıları da kullanabilirsiniz (örn.',
   },
   stepThree: {
     creationTitle: '🎉 Bilgi oluşturuldu',

@@ -1,0 +1,212 @@
+identity:
+  name: txt2img workflow
+  author: Qun
+  label:
+    en_US: Txt2Img Workflow
+    zh_Hans: Txt2Img Workflow
+    pt_BR: Txt2Img Workflow
+description:
+  human:
+    en_US: a pre-defined comfyui workflow that can use one model and up to 3 loras to generate images. Support SD1.5, SDXL, SD3 and FLUX which contain text encoders/clip, but does not support models that requires a triple clip loader.
+    zh_Hans: 一个预定义的 ComfyUI 工作流，可以使用一个模型和最多3个loras来生成图像。支持包含文本编码器/clip的SD1.5、SDXL、SD3和FLUX，但不支持需要clip加载器的模型。
+    pt_BR: a pre-defined comfyui workflow that can use one model and up to 3 loras to generate images. Support SD1.5, SDXL, SD3 and FLUX which contain text encoders/clip, but does not support models that requires a triple clip loader.
+  llm: draw the image you want based on your prompt.
+parameters:
+  - name: prompt
+    type: string
+    required: true
+    label:
+      en_US: Prompt
+      zh_Hans: 提示词
+      pt_BR: Prompt
+    human_description:
+      en_US: Image prompt, you can check the official documentation of Stable Diffusion or FLUX
+      zh_Hans: 图像提示词，您可以查看 Stable Diffusion 或者 FLUX 的官方文档
+      pt_BR: Image prompt, you can check the official documentation of Stable Diffusion or FLUX
+    llm_description: Image prompt of Stable Diffusion, you should describe the image you want to generate as a list of words as possible as detailed, the prompt must be written in English.
+    form: llm
+  - name: model
+    type: string
+    required: true
+    label:
+      en_US: Model Name
+      zh_Hans: 模型名称
+      pt_BR: Model Name
+    human_description:
+      en_US: Model Name
+      zh_Hans: 模型名称
+      pt_BR: Model Name
+    form: form
+  - name: model_type
+    type: string
+    required: true
+    label:
+      en_US: Model Type
+      zh_Hans: 模型类型
+      pt_BR: Model Type
+    human_description:
+      en_US: Model Type
+      zh_Hans: 模型类型
+      pt_BR: Model Type
+    form: form
+  - name: lora_1
+    type: string
+    required: false
+    label:
+      en_US: Lora 1
+      zh_Hans: Lora 1
+      pt_BR: Lora 1
+    human_description:
+      en_US: Lora 1
+      zh_Hans: Lora 1
+      pt_BR: Lora 1
+    form: form
+  - name: lora_strength_1
+    type: number
+    required: false
+    label:
+      en_US: Lora Strength 1
+      zh_Hans: Lora Strength 1
+      pt_BR: Lora Strength 1
+    human_description:
+      en_US: Lora Strength 1
+      zh_Hans: Lora模型的权重
+      pt_BR: Lora Strength 1
+    form: form
+  - name: steps
+    type: number
+    required: false
+    label:
+      en_US: Steps
+      zh_Hans: Steps
+      pt_BR: Steps
+    human_description:
+      en_US: Steps
+      zh_Hans: Steps
+      pt_BR: Steps
+    form: form
+    default: 20
+  - name: width
+    type: number
+    required: false
+    label:
+      en_US: Width
+      zh_Hans: Width
+      pt_BR: Width
+    human_description:
+      en_US: Width
+      zh_Hans: Width
+      pt_BR: Width
+    form: form
+    default: 1024
+  - name: height
+    type: number
+    required: false
+    label:
+      en_US: Height
+      zh_Hans: Height
+      pt_BR: Height
+    human_description:
+      en_US: Height
+      zh_Hans: Height
+      pt_BR: Height
+    form: form
+    default: 1024
+  - name: negative_prompt
+    type: string
+    required: false
+    label:
+      en_US: Negative prompt
+      zh_Hans: Negative prompt
+      pt_BR: Negative prompt
+    human_description:
+      en_US: Negative prompt
+      zh_Hans: Negative prompt
+      pt_BR: Negative prompt
+    form: form
+    default: bad art, ugly, deformed, watermark, duplicated, discontinuous lines
+  - name: cfg
+    type: number
+    required: false
+    label:
+      en_US: CFG Scale
+      zh_Hans: CFG Scale
+      pt_BR: CFG Scale
+    human_description:
+      en_US: CFG Scale
+      zh_Hans: 提示词相关性(CFG Scale)
+      pt_BR: CFG Scale
+    form: form
+    default: 7.0
+  - name: sampler_name
+    type: string
+    required: false
+    label:
+      en_US: Sampling method
+      zh_Hans: Sampling method
+      pt_BR: Sampling method
+    human_description:
+      en_US: Sampling method
+      zh_Hans: Sampling method
+      pt_BR: Sampling method
+    form: form
+  - name: scheduler
+    type: string
+    required: false
+    label:
+      en_US: Scheduler
+      zh_Hans: Scheduler
+      pt_BR: Scheduler
+    human_description:
+      en_US: Scheduler
+      zh_Hans: Scheduler
+      pt_BR: Scheduler
+    form: form
+  - name: lora_2
+    type: string
+    required: false
+    label:
+      en_US: Lora 2
+      zh_Hans: Lora 2
+      pt_BR: Lora 2
+    human_description:
+      en_US: Lora 2
+      zh_Hans: Lora 2
+      pt_BR: Lora 2
+    form: form
+  - name: lora_strength_2
+    type: number
+    required: false
+    label:
+      en_US: Lora Strength 2
+      zh_Hans: Lora Strength 2
+      pt_BR: Lora Strength 2
+    human_description:
+      en_US: Lora Strength 2
+      zh_Hans: Lora模型的权重
+      pt_BR: Lora Strength 2
+    form: form
+  - name: lora_3
+    type: string
+    required: false
+    label:
+      en_US: Lora 3
+      zh_Hans: Lora 3
+      pt_BR: Lora 3
+    human_description:
+      en_US: Lora 3
+      zh_Hans: Lora 3
+      pt_BR: Lora 3
+    form: form
+  - name: lora_strength_3
+    type: number
+    required: false
+    label:
+      en_US: Lora Strength 3
+      zh_Hans: Lora Strength 3
+      pt_BR: Lora Strength 3
+    human_description:
+      en_US: Lora Strength 3
+      zh_Hans: Lora模型的权重
+      pt_BR: Lora Strength 3
+    form: form

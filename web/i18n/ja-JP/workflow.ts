@@ -93,6 +93,8 @@ const translation = {
     disconnect: '切る',
     jumpToNode: 'このノードにジャンプします',
     addParallelNode: '並列ノードを追加',
+    parallel: '並列',
+    branch: 'ブランチ',
   },
   env: {
     envPanelTitle: '環境変数',
