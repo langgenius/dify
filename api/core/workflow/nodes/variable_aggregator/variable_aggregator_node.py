@@ -21,10 +21,10 @@ class VariableAggregatorNode(BaseNode):
             for selector in node_data.variables:
                 variable = self.graph_runtime_state.variable_pool.get_any(selector)
                 if variable is not None:
-                    outputs = {"output": variable}
-
-                    inputs = {".".join(selector[1:]): variable}
-                    break
+                    if "output" not in outputs:
+                        outputs["output"] = []
+                    outputs["output"].extend(variable)
+                    inputs[".".join(selector[1:])] = variable
         else:
             for group in node_data.advanced_settings.groups:
                 for selector in group.variables:
@@ -33,7 +33,6 @@ class VariableAggregatorNode(BaseNode):
                     if variable is not None:
                         outputs[group.group_name] = {"output": variable}
                         inputs[".".join(selector[1:])] = variable
-                        break
 
         return NodeRunResult(status=WorkflowNodeExecutionStatus.SUCCEEDED, outputs=outputs, inputs=inputs)
 
