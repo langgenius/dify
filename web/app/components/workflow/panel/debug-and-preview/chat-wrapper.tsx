@@ -2,6 +2,7 @@ import {
   forwardRef,
   memo,
   useCallback,
+  useEffect,
   useImperativeHandle,
   useMemo,
 } from 'react'
@@ -30,9 +31,15 @@ type ChatWrapperProps = {
   showConversationVariableModal: boolean
   onConversationModalHide: () => void
   showInputsFieldsPanel: boolean
+  onHide: () => void
 }
 
-const ChatWrapper = forwardRef<ChatWrapperRefType, ChatWrapperProps>(({ showConversationVariableModal, onConversationModalHide, showInputsFieldsPanel }, ref) => {
+const ChatWrapper = forwardRef<ChatWrapperRefType, ChatWrapperProps>(({
+  showConversationVariableModal,
+  onConversationModalHide,
+  showInputsFieldsPanel,
+  onHide,
+}, ref) => {
   const nodes = useNodes<StartNodeType>()
   const startNode = nodes.find(node => node.data.type === BlockEnum.Start)
   const startVariables = startNode?.data.variables
@@ -91,6 +98,11 @@ const ChatWrapper = forwardRef<ChatWrapperRefType, ChatWrapperProps>(({ showConv
       handleRestart,
     }
   }, [handleRestart])
+
+  useEffect(() => {
+    if (isResponding)
+      onHide()
+  }, [isResponding, onHide])
 
   return (
     <>
