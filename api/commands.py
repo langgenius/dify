@@ -652,7 +652,7 @@ where sites.id is null limit 1000"""
                         app_was_created.send(app, account=account)
                 except Exception as e:
                     failed_app_ids.append(app_id)
-                    click.echo(click.style("FFailed to fix missing site for app {}".format(app_id), fg="red"))
+                    click.echo(click.style("Failed to fix missing site for app {}".format(app_id), fg="red"))
                     logging.exception(f"Fix app related site missing issue failed, error: {e}")
                     continue
 
