@@ -22,13 +22,12 @@ _Condition = Literal[
     "!=",
     "<",
     ">",
-    "<=",
-    ">=",
+    "≥",
+    "≤",
 ]
 
 
 class FilterBy(BaseModel):
-    enabled: bool = False
     key: str = ""
     comparison_operator: _Condition = "contains"
     value: str = ""
@@ -47,6 +46,6 @@ class Limit(BaseModel):
 
 class ListFilterNodeData(BaseNodeData):
     variable: Sequence[str] = Field(default_factory=list)
-    filter_by: FilterBy
+    filter_by: Sequence[FilterBy]
     order_by: OrderBy
     limit: Limit

@@ -19,7 +19,7 @@ class ListFilterNode(BaseNode):
     def _run(self):
         node_data = cast(ListFilterNodeData, self.node_data)
         inputs = {
-            "filter_by": node_data.filter_by.model_dump(),
+            "filter_by": [filter_by.model_dump() for filter_by in node_data.filter_by],
             "order_by": node_data.order_by.model_dump(),
             "limit": node_data.limit.model_dump(),
         }
@@ -41,26 +41,22 @@ class ListFilterNode(BaseNode):
             )
         process_data["variable"] = variable.value
 
-        if node_data.filter_by.enabled:
-            value = self.graph_runtime_state.variable_pool.convert_template(node_data.filter_by.value).text
-            process_data["filter_by_value"] = value
-
         # Filter
-        if node_data.filter_by.enabled:
+        for filter_by in node_data.filter_by:
+            value = self.graph_runtime_state.variable_pool.convert_template(filter_by.value).text
+            # process_data["filter_by_value"] = value
             if isinstance(variable, ArrayStringSegment):
-                filter_func = _get_string_filter_func(condition=node_data.filter_by.comparison_operator, value=value)
+                filter_func = _get_string_filter_func(condition=filter_by.comparison_operator, value=value)
                 result = list(filter(filter_func, variable.value))
                 variable = variable.model_copy(update={"value": result})
             elif isinstance(variable, ArrayNumberSegment):
-                filter_func = _get_number_filter_func(
-                    condition=node_data.filter_by.comparison_operator, value=float(value)
-                )
+                filter_func = _get_number_filter_func(condition=filter_by.comparison_operator, value=float(value))
                 result = list(filter(filter_func, variable.value))
                 variable = variable.model_copy(update={"value": result})
             elif isinstance(variable, ArrayFileSegment):
                 filter_func = _get_file_filter_func(
-                    key=node_data.filter_by.key,
-                    condition=node_data.filter_by.comparison_operator,
+                    key=filter_by.key,
+                    condition=filter_by.comparison_operator,
                     value=value,
                 )
                 result = list(filter(filter_func, variable.value))
@@ -164,11 +160,11 @@ def _get_number_filter_func(*, condition: str, value: int | float) -> Callable[[
             return _ne(value)
         case "<":
             return _lt(value)
-        case "<=":
+        case "≤":
             return _le(value)
         case ">":
             return _gt(value)
-        case ">=":
+        case "≥":
             return _ge(value)
         case _:
             raise ValueError(f"Invalid condition: {condition}")
