@@ -36,11 +36,16 @@ class LoginApi(Resource):
         parser.add_argument("remember_me", type=bool, required=False, default=False, location="json")
         args = parser.parse_args()
 
+        is_login_error_rate_limit = AccountService.is_login_error_rate_limit(args["email"])
+        if is_login_error_rate_limit:
+            raise EmailOrPasswordMismatchError()
+
         try:
             account = AccountService.authenticate(args["email"], args["password"])
         except services.errors.account.AccountLoginError:
             raise NotAllowedRegister()
         except services.errors.account.AccountPasswordError:
+            AccountService.add_login_error_rate_limit(args["email"])
             raise EmailOrPasswordMismatchError()
         except services.errors.account.AccountNotFoundError:
             if not dify_config.ALLOW_REGISTER:
@@ -57,7 +62,7 @@ class LoginApi(Resource):
             }
 
         token = AccountService.login(account, ip_address=get_remote_ip(request))
-
+        AccountService.reset_login_error_rate_limit(args["email"])
         return {"result": "success", "data": token}
 
 
@@ -154,7 +159,7 @@ class EmailCodeLoginApi(Resource):
                     "?message=Workspace not found, please contact system admin to invite you to join in a workspace."
                 )
         token = AccountService.login(account, ip_address=get_remote_ip(request))
-
+        AccountService.reset_login_error_rate_limit(args["email"])
         return {"result": "success", "data": token}
 
 

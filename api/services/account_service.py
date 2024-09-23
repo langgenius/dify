@@ -48,6 +48,7 @@ class AccountService:
     email_code_login_rate_limiter = RateLimiter(
         prefix="email_code_login_rate_limit", max_attempts=5, time_window=60 * 5
     )
+    LOGIN_MAX_ERROR_LIMITS = 5
 
     @staticmethod
     def load_user(user_id: str) -> None | Account:
@@ -316,6 +317,32 @@ class AccountService:
             raise Unauthorized("Account is banned or closed.")
 
         return account
+
+    @staticmethod
+    def add_login_error_rate_limit(email: str) -> None:
+        key = f"login_error_rate_limit:{email}"
+        count = redis_client.get(key)
+        if count is None:
+            count = 0
+        count = int(count) + 1
+        redis_client.setex(key, 60 * 60 * 24, count)
+
+    @staticmethod
+    def is_login_error_rate_limit(email: str) -> bool:
+        key = f"login_error_rate_limit:{email}"
+        count = redis_client.get(key)
+        if count is None:
+            return False
+        
+        count = int(count)
+        if count > AccountService.LOGIN_MAX_ERROR_LIMITS:
+            return True
+        return False
+    
+    @staticmethod
+    def reset_login_error_rate_limit(email: str):
+        key = f"login_error_rate_limit:{email}"
+        redis_client.delete(key)
 
 
 def _get_login_cache_key(*, account_id: str, token: str):
