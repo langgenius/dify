@@ -11,6 +11,7 @@ from controllers.console import api
 from controllers.console.auth.error import (
     EmailCodeError,
     EmailOrPasswordMismatchError,
+    EmailPasswordLoginLimitError,
     InvalidEmailError,
     InvalidTokenError,
 )
@@ -38,7 +39,7 @@ class LoginApi(Resource):
 
         is_login_error_rate_limit = AccountService.is_login_error_rate_limit(args["email"])
         if is_login_error_rate_limit:
-            raise EmailOrPasswordMismatchError()
+            raise EmailPasswordLoginLimitError()
 
         try:
             account = AccountService.authenticate(args["email"], args["password"])
