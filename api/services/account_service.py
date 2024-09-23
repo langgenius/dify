@@ -46,7 +46,7 @@ from tasks.mail_reset_password_task import send_reset_password_mail_task
 class AccountService:
     reset_password_rate_limiter = RateLimiter(prefix="reset_password_rate_limit", max_attempts=5, time_window=60 * 60)
     email_code_login_rate_limiter = RateLimiter(
-        prefix="email_code_login_rate_limit", max_attempts=5, time_window=60 * 5
+        prefix="email_code_login_rate_limit", max_attempts=1, time_window=60 * 1
     )
     LOGIN_MAX_ERROR_LIMITS = 5
 
