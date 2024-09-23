@@ -7,8 +7,30 @@ from extensions.ext_storage import storage
 from models import UploadFile
 
 from . import helpers
+from .enums import FileAttribute
 from .models import File, FileTransferMethod, FileType
 from .tool_file_parser import ToolFileParser
+
+
+def get_attr(*, file: "File", attr: "FileAttribute"):
+    match attr:
+        case FileAttribute.TYPE:
+            return file.type.value
+        case FileAttribute.SIZE:
+            if file.related_id is None:
+                raise ValueError("Missing file related_id")
+            content = download(upload_file_id=file.related_id, tenant_id=file.tenant_id)
+            return len(content)
+        case FileAttribute.NAME:
+            return file.filename
+        case FileAttribute.MIME_TYPE:
+            return file.mime_type
+        case FileAttribute.TRANSFER_METHOD:
+            return file.transfer_method.value
+        case FileAttribute.URL:
+            return file.url
+        case _:
+            raise ValueError(f"Invalid file attribute: {attr}")
 
 
 def to_prompt_message_content(file: "File", /):

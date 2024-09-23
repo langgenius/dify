@@ -6,7 +6,7 @@ from typing import Any, Union
 from pydantic import BaseModel, Field
 from typing_extensions import deprecated
 
-from core.file import File
+from core.file import File, FileAttribute, file_manager
 from core.variables import Segment, SegmentGroup, Variable
 from core.variables.segments import FileSegment
 from factories import variable_factory
@@ -120,8 +120,22 @@ class VariablePool(BaseModel):
         """
         if len(selector) < 2:
             raise ValueError("Invalid selector")
+
+        contains_file_attr = False
+        if len(selector) > 2:
+            file_attr = selector[-1]
+            selector = selector[:-1]
+            contains_file_attr = True
+
         hash_key = hash(tuple(selector[1:]))
         value = self.variable_dictionary[selector[0]].get(hash_key)
+
+        if contains_file_attr:
+            if not isinstance(value, FileSegment):
+                return None
+            attr = FileAttribute(file_attr)
+            attr_value = file_manager.get_attr(file=value.value, attr=attr)
+            return variable_factory.build_segment(attr_value)
 
         return value
 
