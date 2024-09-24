@@ -93,7 +93,11 @@ class ListFilterNode(BaseNode):
             result = variable.value[: node_data.limit.size]
             variable = variable.model_copy(update={"value": result})
 
-        outputs["result"] = variable.value
+        outputs = {
+            "result": variable.value,
+            "first_record": variable.value[0] if variable.value else None,
+            "last_record": variable.value[-1] if variable.value else None,
+        }
         return NodeRunResult(
             status=WorkflowNodeExecutionStatus.SUCCEEDED,
             inputs=inputs,
