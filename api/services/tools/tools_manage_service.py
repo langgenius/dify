@@ -15,7 +15,7 @@ class ToolCommonService:
 
         :return: the list of tool providers
         """
-        providers = ToolManager.user_list_providers(user_id, tenant_id, typ)
+        providers = ToolManager.list_providers_from_api(user_id, tenant_id, typ)
 
         # add icon
         for provider in providers:
