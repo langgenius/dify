@@ -31,6 +31,7 @@ class BasePluginManager:
         url = URL(str(plugin_daemon_inner_api_baseurl)) / path
         headers = headers or {}
         headers["X-Api-Key"] = plugin_daemon_inner_api_key
+        headers["Accept-Encoding"] = "gzip, deflate, br"
 
         if headers.get("Content-Type") == "application/json" and isinstance(data, dict):
             data = json.dumps(data)
