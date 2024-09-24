@@ -1,6 +1,6 @@
 {
   "name": "dify-web",
-  "version": "0.8.2",
+  "version": "0.8.3",
   "private": true,
   "engines": {
     "node": ">=18.17.0"
@@ -37,6 +37,7 @@
     "@remixicon/react": "^4.2.0",
     "@sentry/react": "^7.54.0",
     "@sentry/utils": "^7.54.0",
+    "@svgdotjs/svg.js": "^3.2.4",
     "@tailwindcss/line-clamp": "^0.4.4",
     "@tailwindcss/typography": "^0.5.9",
     "ahooks": "^3.7.5",
@@ -44,7 +45,6 @@
     "classnames": "^2.3.2",
     "copy-to-clipboard": "^3.3.3",
     "crypto-js": "^4.2.0",
-    "@svgdotjs/svg.js": "^3.2.4",
     "dayjs": "^1.11.7",
     "echarts": "^5.4.1",
     "echarts-for-react": "^3.0.2",

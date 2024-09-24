@@ -20,15 +20,15 @@ default_retrieval_model = {
 class HitTestingService:
     @classmethod
     def retrieve(
-            cls,
-            dataset: Dataset,
-            query: str,
-            account: Account,
-            retrieval_model: dict,
-            external_retrieval_model: dict,
-            limit: int = 10,
+        cls,
+        dataset: Dataset,
+        query: str,
+        account: Account,
+        retrieval_model: dict,
+        external_retrieval_model: dict,
+        limit: int = 10,
     ) -> dict:
-        if (dataset.available_document_count == 0 or dataset.available_segment_count == 0):
+        if dataset.available_document_count == 0 or dataset.available_segment_count == 0:
             return {
                 "query": {
                     "content": query,
@@ -72,16 +72,15 @@ class HitTestingService:
 
     @classmethod
     def external_retrieve(
-            cls,
-            dataset: Dataset,
-            query: str,
-            account: Account,
-            external_retrieval_model: dict,
+        cls,
+        dataset: Dataset,
+        query: str,
+        account: Account,
+        external_retrieval_model: dict,
     ) -> dict:
         if dataset.provider != "external":
             return {
-                "query": {
-                    "content": query},
+                "query": {"content": query},
                 "records": [],
             }
 

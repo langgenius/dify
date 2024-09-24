@@ -5,8 +5,11 @@ from copy import deepcopy
 from datetime import datetime, timezone
 from typing import Any, Optional, Union
 
+import boto3
 import httpx
 
+# from tasks.external_document_indexing_task import external_document_indexing_task
+from configs import dify_config
 from core.helper import ssrf_proxy
 from extensions.ext_database import db
 from models.dataset import (
@@ -15,13 +18,9 @@ from models.dataset import (
     ExternalApiTemplates,
     ExternalKnowledgeBindings,
 )
-from core.rag.models.document import Document as RetrievalDocument
 from models.model import UploadFile
 from services.entities.external_knowledge_entities.external_knowledge_entities import ApiTemplateSetting, Authorization
 from services.errors.dataset import DatasetNameDuplicateError
-# from tasks.external_document_indexing_task import external_document_indexing_task
-import requests
-import boto3
 
 
 class ExternalDatasetService:
@@ -111,8 +110,8 @@ class ExternalDatasetService:
         if api_template is None:
             raise ValueError("api template not found")
         settings = json.loads(api_template.settings)
-        for settings in settings:
-            custom_parameters = settings.get("document_process_setting")
+        for setting in settings:
+            custom_parameters = setting.get("document_process_setting")
             if custom_parameters:
                 for parameter in custom_parameters:
                     if parameter.get("required", False) and not process_parameter.get(parameter.get("name")):
@@ -243,6 +242,7 @@ class ExternalDatasetService:
             name=args.get("name"),
             description=args.get("description", ""),
             provider="external",
+            retrieval_model=args.get("external_retrieval_model"),
             created_by=user_id,
         )
 
@@ -264,7 +264,7 @@ class ExternalDatasetService:
 
     @staticmethod
     def fetch_external_knowledge_retrieval(
-            tenant_id: str, dataset_id: str, query: str, external_retrieval_parameters: dict
+        tenant_id: str, dataset_id: str, query: str, external_retrieval_parameters: dict
     ) -> list:
         external_knowledge_binding = ExternalKnowledgeBindings.query.filter_by(
             dataset_id=dataset_id, tenant_id=tenant_id
@@ -279,9 +279,7 @@ class ExternalDatasetService:
             raise ValueError("external api template not found")
 
         settings = json.loads(external_api_template.settings)
-        headers = {
-            "Content-Type": "application/json"
-        }
+        headers = {"Content-Type": "application/json"}
         if settings.get("api_key"):
             headers["Authorization"] = f"Bearer {settings.get('api_key')}"
 
@@ -300,32 +298,27 @@ class ExternalDatasetService:
         return []
 
     @staticmethod
-    def test_external_knowledge_retrieval(
-            top_k: int, score_threshold: float, query: str, external_knowledge_id: str
-    ):
+    def test_external_knowledge_retrieval(top_k: int, score_threshold: float, query: str, external_knowledge_id: str):
         client = boto3.client(
             "bedrock-agent-runtime",
-            aws_secret_access_key='',
-            aws_access_key_id='',
-            region_name='',
+            aws_secret_access_key=dify_config.AWS_SECRET_ACCESS_KEY,
+            aws_access_key_id=dify_config.AWS_ACCESS_KEY_ID,
+            region_name="us-east-1",
         )
         response = client.retrieve(
             knowledgeBaseId=external_knowledge_id,
             retrievalConfiguration={
-                'vectorSearchConfiguration': {
-                    'numberOfResults': top_k,
-                    'overrideSearchType': 'HYBRID'
-                }
+                "vectorSearchConfiguration": {"numberOfResults": top_k, "overrideSearchType": "HYBRID"}
             },
-            retrievalQuery={
-                'text': query
-            }
+            retrievalQuery={"text": query},
         )
         results = []
         if response.get("ResponseMetadata") and response.get("ResponseMetadata").get("HTTPStatusCode") == 200:
             if response.get("retrievalResults"):
                 retrieval_results = response.get("retrievalResults")
                 for retrieval_result in retrieval_results:
+                    if retrieval_result.get("score") < score_threshold:
+                        continue
                     result = {
                         "metadata": retrieval_result.get("metadata"),
                         "score": retrieval_result.get("score"),

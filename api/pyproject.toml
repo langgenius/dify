@@ -28,7 +28,6 @@ select = [
     "PLR0402", # manual-from-import
     "PLR1711", # useless-return
     "PLR1714", # repeated-equality-comparison
-    "PLR6201", # literal-membership
     "RUF019", # unnecessary-key-check
     "RUF100", # unused-noqa
     "RUF101", # redirected-noqa
@@ -100,6 +99,8 @@ exclude = [
 [tool.pytest_env]
 OPENAI_API_KEY = "sk-IamNotARealKeyJustForMockTestKawaiiiiiiiiii"
 UPSTAGE_API_KEY = "up-aaaaaaaaaaaaaaaaaaaa"
+FIREWORKS_API_KEY = "fw_aaaaaaaaaaaaaaaaaaaa"
+NOMIC_API_KEY = "nk-aaaaaaaaaaaaaaaaaaaa"
 AZURE_OPENAI_API_BASE = "https://difyai-openai.openai.azure.com"
 AZURE_OPENAI_API_KEY = "xxxxb1707exxxxxxxxxxaaxxxxxf94"
 ANTHROPIC_API_KEY = "sk-ant-api11-IamNotARealKeyJustForMockTestKawaiiiiiiiiii-NotBaka-ASkksz"
@@ -121,6 +122,7 @@ CODE_EXECUTION_API_KEY = "dify-sandbox"
 FIRECRAWL_API_KEY = "fc-"
 TEI_EMBEDDING_SERVER_URL = "http://a.abc.com:11451"
 TEI_RERANK_SERVER_URL = "http://a.abc.com:11451"
+MIXEDBREAD_API_KEY = "mk-aaaaaaaaaaaaaaaaaaaa"
 
 [tool.poetry]
 name = "dify-api"
@@ -155,20 +157,20 @@ flask-restful = "~0.3.10"
 Flask-SQLAlchemy = "~3.1.1"
 gevent = "~23.9.1"
 gmpy2 = "~2.2.1"
-google-ai-generativelanguage = "0.6.1"
+google-ai-generativelanguage = "0.6.9"
 google-api-core = "2.18.0"
 google-api-python-client = "2.90.0"
 google-auth = "2.29.0"
 google-auth-httplib2 = "0.2.0"
 google-cloud-aiplatform = "1.49.0"
 google-cloud-storage = "2.16.0"
-google-generativeai = "0.5.0"
+google-generativeai = "0.8.1"
 googleapis-common-protos = "1.63.0"
 gunicorn = "~22.0.0"
 httpx = { version = "~0.27.0", extras = ["socks"] }
 huggingface-hub = "~0.16.4"
 jieba = "0.42.1"
-langfuse = "^2.36.1"
+langfuse = "^2.48.0"
 langsmith = "^0.1.77"
 mailchimp-transactional = "~1.0.50"
 markdown = "~3.5.1"
@@ -203,7 +205,7 @@ transformers = "~4.35.0"
 unstructured = { version = "~0.10.27", extras = ["docx", "epub", "md", "msg", "ppt", "pptx"] }
 websocket-client = "~1.7.0"
 werkzeug = "~3.0.1"
-xinference-client = "0.13.3"
+xinference-client = "0.15.2"
 yarl = "~1.9.4"
 zhipuai = "1.0.7"
 # Before adding new dependency, consider place it in alphabet order (a-z) and suitable group.
@@ -217,6 +219,7 @@ azure-ai-inference = "^1.0.0b3"
 volcengine-python-sdk = {extras = ["ark"], version = "^1.0.98"}
 oci = "^2.133.0"
 tos = "^2.7.1"
+nomic = "^3.1.2"
 [tool.poetry.group.indriect.dependencies]
 kaleido = "0.2.1"
 rank-bm25 = "~0.2.2"

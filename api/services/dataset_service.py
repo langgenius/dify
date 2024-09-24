@@ -59,9 +59,7 @@ from tasks.sync_website_document_indexing_task import sync_website_document_inde
 class DatasetService:
     @staticmethod
     def get_datasets(page, per_page, tenant_id=None, user=None, search=None, tag_ids=None):
-        query = Dataset.query.filter(Dataset.tenant_id == tenant_id).order_by(
-            Dataset.created_at.desc()
-        )
+        query = Dataset.query.filter(Dataset.tenant_id == tenant_id).order_by(Dataset.created_at.desc())
 
         if user:
             # get permitted dataset ids
@@ -1125,8 +1123,8 @@ class DocumentService:
             DocumentService.data_source_args_validate(args)
             DocumentService.process_rule_args_validate(args)
         else:
-            if ("data_source" not in args and not args["data_source"]) and (
-                "process_rule" not in args and not args["process_rule"]
+            if ("data_source" not in args or not args["data_source"]) and (
+                "process_rule" not in args or not args["process_rule"]
             ):
                 raise ValueError("Data source or Process rule is required")
             else:

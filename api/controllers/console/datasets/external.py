@@ -1,7 +1,7 @@
 from flask import request
 from flask_login import current_user
 from flask_restful import Resource, marshal, reqparse
-from werkzeug.exceptions import Forbidden, NotFound, InternalServerError
+from werkzeug.exceptions import Forbidden, InternalServerError, NotFound
 
 import services
 from controllers.console import api
@@ -231,7 +231,8 @@ class ExternalDatasetCreateApi(Resource):
             help="name is required. Name must be between 1 to 100 characters.",
             type=_validate_name,
         )
-        parser.add_argument("description", type=str, required=True, nullable=True, location="json")
+        parser.add_argument("description", type=str, required=False, nullable=True, location="json")
+        parser.add_argument("external_retrieval_model", type=dict, required=False, location="json")
 
         args = parser.parse_args()
 
@@ -287,6 +288,7 @@ class ExternalKnowledgeHitTestingApi(Resource):
 
 
 api.add_resource(ExternalKnowledgeHitTestingApi, "/datasets/<uuid:dataset_id>/external-hit-testing")
+api.add_resource(ExternalDatasetCreateApi, "/datasets/external")
 api.add_resource(ExternalApiTemplateListApi, "/datasets/external-api-template")
 api.add_resource(ExternalApiTemplateApi, "/datasets/external-api-template/<uuid:api_template_id>")
 api.add_resource(ExternalApiUseCheckApi, "/datasets/external-api-template/<uuid:api_template_id>/use-check")

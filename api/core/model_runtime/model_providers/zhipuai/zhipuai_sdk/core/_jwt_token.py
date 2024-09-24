@@ -3,9 +3,11 @@ import time
 import cachetools.func
 import jwt
 
-API_TOKEN_TTL_SECONDS = 3 * 60
+# 缓存时间 3分钟
+CACHE_TTL_SECONDS = 3 * 60
 
-CACHE_TTL_SECONDS = API_TOKEN_TTL_SECONDS - 30
+# token 有效期比缓存时间 多30秒
+API_TOKEN_TTL_SECONDS = CACHE_TTL_SECONDS + 30
 
 
 @cachetools.func.ttl_cache(maxsize=10, ttl=CACHE_TTL_SECONDS)
