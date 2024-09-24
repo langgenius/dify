@@ -5,7 +5,8 @@ export function middleware(request: NextRequest) {
   const nonce = Buffer.from(crypto.randomUUID()).toString('base64')
   // style-src 'self' 'nonce-${nonce}';
   const whiteList = 'https://cloud.dify.dev/ https://cloud.dify.ai/ https://analytics.google.com https://googletagmanager.com https://api.github.com *.sentry.io'
-  const csp = process.env.NODE_ENV === 'production' ? `'nonce-${nonce}'` : '\'unsafe-eval\' \'unsafe-inline\''
+  // const csp = (process.env.NODE_ENV === 'production' && process.env.NEXT_PUBLIC_EDITION !== 'SELF_HOSTED') ? `'nonce-${nonce}'` : '\'unsafe-eval\' \'unsafe-inline\''
+  const csp = '\'unsafe-eval\' \'unsafe-inline\''
 
   const cspHeader = `
     default-src 'self' ${csp} blob: data: ${whiteList};
