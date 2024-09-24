@@ -485,7 +485,7 @@ class ToolManager:
         return cls._builtin_tools_labels[tool_name]
 
     @classmethod
-    def user_list_providers(
+    def list_providers_from_api(
         cls, user_id: str, tenant_id: str, typ: ToolProviderTypeApiLiteral
     ) -> list[ToolProviderApiEntity]:
         result_providers: dict[str, ToolProviderApiEntity] = {}
@@ -526,7 +526,14 @@ class ToolManager:
                     decrypt_credentials=False,
                 )
 
-                result_providers[provider.entity.identity.name] = user_provider
+                if isinstance(provider, PluginToolProviderController):
+                    result_providers[f"plugin_provider.{user_provider.name}.{provider.plugin_unique_identifier}"] = (
+                        user_provider
+                    )
+                else:
+                    result_providers[f"builtin_provider.{user_provider.name}"] = (
+                        user_provider
+                    )
 
         # get db api providers
 
