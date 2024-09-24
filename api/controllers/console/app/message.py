@@ -105,8 +105,6 @@ class ChatMessageListApi(Resource):
             if rest_count > 0:
                 has_more = True
 
-        history_messages = list(reversed(history_messages))
-
         return InfiniteScrollPagination(data=history_messages, limit=args["limit"], has_more=has_more)
 
 

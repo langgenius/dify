@@ -108,7 +108,7 @@ class DatasetRetrieval:
                 continue
 
             # pass if dataset is not available
-            if dataset and dataset.available_document_count == 0 and dataset.available_document_count == 0:
+            if dataset and dataset.available_document_count == 0:
                 continue
 
             available_datasets.append(dataset)
@@ -466,7 +466,7 @@ class DatasetRetrieval:
                 continue
 
             # pass if dataset is not available
-            if dataset and dataset.available_document_count == 0 and dataset.available_document_count == 0:
+            if dataset and dataset.available_document_count == 0:
                 continue
 
             available_datasets.append(dataset)

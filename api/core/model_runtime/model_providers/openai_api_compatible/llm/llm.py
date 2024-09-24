@@ -205,7 +205,13 @@ class OAIAPICompatLargeLanguageModel(_CommonOaiApiCompat, LargeLanguageModel):
             parameter_rules=[
                 ParameterRule(
                     name=DefaultParameterName.TEMPERATURE.value,
-                    label=I18nObject(en_US="Temperature"),
+                    label=I18nObject(en_US="Temperature", zh_Hans="温度"),
+                    help=I18nObject(
+                        en_US="Kernel sampling threshold. Used to determine the randomness of the results."
+                        "The higher the value, the stronger the randomness."
+                        "The higher the possibility of getting different answers to the same question.",
+                        zh_Hans="核采样阈值。用于决定结果随机性，取值越高随机性越强即相同的问题得到的不同答案的可能性越高。",
+                    ),
                     type=ParameterType.FLOAT,
                     default=float(credentials.get("temperature", 0.7)),
                     min=0,
@@ -214,7 +220,13 @@ class OAIAPICompatLargeLanguageModel(_CommonOaiApiCompat, LargeLanguageModel):
                 ),
                 ParameterRule(
                     name=DefaultParameterName.TOP_P.value,
-                    label=I18nObject(en_US="Top P"),
+                    label=I18nObject(en_US="Top P", zh_Hans="Top P"),
+                    help=I18nObject(
+                        en_US="The probability threshold of the nucleus sampling method during the generation process."
+                        "The larger the value is, the higher the randomness of generation will be."
+                        "The smaller the value is, the higher the certainty of generation will be.",
+                        zh_Hans="生成过程中核采样方法概率阈值。取值越大，生成的随机性越高；取值越小，生成的确定性越高。",
+                    ),
                     type=ParameterType.FLOAT,
                     default=float(credentials.get("top_p", 1)),
                     min=0,
@@ -223,7 +235,12 @@ class OAIAPICompatLargeLanguageModel(_CommonOaiApiCompat, LargeLanguageModel):
                 ),
                 ParameterRule(
                     name=DefaultParameterName.FREQUENCY_PENALTY.value,
-                    label=I18nObject(en_US="Frequency Penalty"),
+                    label=I18nObject(en_US="Frequency Penalty", zh_Hans="频率惩罚"),
+                    help=I18nObject(
+                        en_US="For controlling the repetition rate of words used by the model."
+                        "Increasing this can reduce the repetition of the same words in the model's output.",
+                        zh_Hans="用于控制模型已使用字词的重复率。 提高此项可以降低模型在输出中重复相同字词的重复度。",
+                    ),
                     type=ParameterType.FLOAT,
                     default=float(credentials.get("frequency_penalty", 0)),
                     min=-2,
@@ -231,7 +248,12 @@ class OAIAPICompatLargeLanguageModel(_CommonOaiApiCompat, LargeLanguageModel):
                 ),
                 ParameterRule(
                     name=DefaultParameterName.PRESENCE_PENALTY.value,
-                    label=I18nObject(en_US="Presence Penalty"),
+                    label=I18nObject(en_US="Presence Penalty", zh_Hans="存在惩罚"),
+                    help=I18nObject(
+                        en_US="Used to control the repetition rate when generating models."
+                        "Increasing this can reduce the repetition rate of model generation.",
+                        zh_Hans="用于控制模型生成时的重复度。提高此项可以降低模型生成的重复度。",
+                    ),
                     type=ParameterType.FLOAT,
                     default=float(credentials.get("presence_penalty", 0)),
                     min=-2,
@@ -239,7 +261,10 @@ class OAIAPICompatLargeLanguageModel(_CommonOaiApiCompat, LargeLanguageModel):
                 ),
                 ParameterRule(
                     name=DefaultParameterName.MAX_TOKENS.value,
-                    label=I18nObject(en_US="Max Tokens"),
+                    label=I18nObject(en_US="Max Tokens", zh_Hans="最大标记"),
+                    help=I18nObject(
+                        en_US="Maximum length of tokens for the model response.", zh_Hans="模型回答的tokens的最大长度。"
+                    ),
                     type=ParameterType.INT,
                     default=512,
                     min=1,

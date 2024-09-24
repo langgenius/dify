@@ -31,6 +31,7 @@ from core.model_runtime.entities.message_entities import (
 )
 from core.model_runtime.entities.model_entities import ModelFeature
 from core.model_runtime.model_providers.__base.large_language_model import LargeLanguageModel
+from core.prompt.utils.extract_thread_messages import extract_thread_messages
 from core.tools.__base.tool import Tool
 from core.tools.entities.tool_entities import (
     ToolParameter,
@@ -422,9 +423,11 @@ class BaseAgentRunner(AppRunner):
             .filter(
                 Message.conversation_id == self.message.conversation_id,
             )
-            .order_by(Message.created_at.asc())
+            .order_by(Message.created_at.desc())
             .all()
         )
+
+        messages = list(reversed(extract_thread_messages(messages)))
 
         for message in messages:
             if message.id == self.message.id:
