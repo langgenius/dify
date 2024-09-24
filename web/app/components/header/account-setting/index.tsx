@@ -28,7 +28,6 @@ import LanguagePage from './language-page'
 import ApiBasedExtensionPage from './api-based-extension-page'
 import DataSourcePage from './data-source-page'
 import ModelProviderPage from './model-provider-page'
-import s from './index.module.css'
 import cn from '@/utils/classnames'
 import BillingPage from '@/app/components/billing/billing-page'
 import CustomPage from '@/app/components/custom/custom-page'
@@ -166,7 +165,7 @@ export default function AccountSetting({
     <Modal
       isShow
       onClose={() => { }}
-      className={s.modal}
+      className='my-[60px] p-0 max-w-[1024px] rounded-xl overflow-y-auto'
       wrapperClassName='pt-[60px]'
     >
       <div className='flex'>
