@@ -741,6 +741,7 @@ class ExternalApiTemplates(db.Model):
             "name": self.name,
             "description": self.description,
             "settings": self.settings_dict,
+            "dataset_bindings": self.dataset_bindings,
             "created_by": self.created_by,
             "created_at": self.created_at.isoformat(),
         }
@@ -751,7 +752,20 @@ class ExternalApiTemplates(db.Model):
             return json.loads(self.settings) if self.settings else None
         except JSONDecodeError:
             return None
+    
+    @property
+    def dataset_bindings(self):
+        external_knowledge_bindings = db.session.query(ExternalKnowledgeBindings).filter(ExternalKnowledgeBindings.external_api_template_id == self.id).all()
+        dataset_ids = [binding.dataset_id for binding in external_knowledge_bindings]
+        datasets = db.session.query(Dataset).filter(Dataset.id.in_(dataset_ids)).all()
+        dataset_bindings = []
+        for dataset in datasets:
+            dataset_bindings.append({
+                "id": dataset.id,
+                "name": dataset.name
+            })
 
+        return dataset_bindings
 
 class ExternalKnowledgeBindings(db.Model):
     __tablename__ = "external_knowledge_bindings"

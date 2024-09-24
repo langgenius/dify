@@ -89,11 +89,11 @@ class ExternalDatasetService:
         db.session.commit()
 
     @staticmethod
-    def external_api_template_use_check(external_knowledge_api_id: str) -> bool:
+    def external_api_template_use_check(external_knowledge_api_id: str) -> tuple[bool, int]:
         count = ExternalKnowledgeBindings.query.filter_by(external_api_template_id=external_knowledge_api_id).count()
         if count > 0:
-            return True
-        return False
+            return True, count
+        return False, 0
 
     @staticmethod
     def get_external_knowledge_binding_with_dataset_id(tenant_id: str, dataset_id: str) -> ExternalKnowledgeBindings:
