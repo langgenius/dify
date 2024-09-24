@@ -7,7 +7,7 @@ import {
   RiDeleteBinLine,
 } from '@remixicon/react'
 import type { InputVar } from '../../../../types'
-import { BlockEnum, InputVarType } from '../../../../types'
+import { BlockEnum, InputVarType, SupportUploadFileTypes } from '../../../../types'
 import CodeEditor from '../editor/code-editor'
 import { CodeLanguage } from '../../../code/types'
 import TextEditor from '../editor/text-editor'
@@ -16,7 +16,7 @@ import Input from '@/app/components/base/input'
 import Textarea from '@/app/components/base/textarea'
 import TextGenerationImageUploader from '@/app/components/base/image-uploader/text-generation-image-uploader'
 import { FileUploaderInAttachmentWrapper } from '@/app/components/base/file-uploader'
-import { Resolution } from '@/types/app'
+import { Resolution, TransferMethod } from '@/types/app'
 import { useFeatures } from '@/app/components/base/features/hooks'
 import { VarBlockIcon } from '@/app/components/workflow/block-icon'
 import { Line3 } from '@/app/components/base/icons/src/public/common'
@@ -31,6 +31,7 @@ type Props = {
   onChange: (value: any) => void
   className?: string
   autoFocus?: boolean
+  inStepRun?: boolean
 }
 
 const FormItem: FC<Props> = ({
@@ -39,6 +40,7 @@ const FormItem: FC<Props> = ({
   onChange,
   className,
   autoFocus,
+  inStepRun = false,
 }) => {
   const { t } = useTranslation()
   const { type } = payload
@@ -164,9 +166,9 @@ const FormItem: FC<Props> = ({
                 onChange(getProcessedFiles(files)[0])
             }}
             fileConfig={{
-              allowed_file_types: payload.allowed_file_types,
-              allowed_file_extensions: payload.allowed_file_extensions,
-              allowed_file_upload_methods: payload.allowed_file_upload_methods,
+              allowed_file_types: inStepRun ? [SupportUploadFileTypes.custom] : payload.allowed_file_types,
+              allowed_file_extensions: inStepRun ? [] : payload.allowed_file_extensions,
+              allowed_file_upload_methods: inStepRun ? [TransferMethod.local_file, TransferMethod.remote_url] : payload.allowed_file_upload_methods,
               number_limits: 1,
             }}
           />
@@ -175,10 +177,10 @@ const FormItem: FC<Props> = ({
           <FileUploaderInAttachmentWrapper
             onChange={files => onChange(getProcessedFiles(files))}
             fileConfig={{
-              allowed_file_types: payload.allowed_file_types,
-              allowed_file_extensions: payload.allowed_file_extensions,
-              allowed_file_upload_methods: payload.allowed_file_upload_methods,
-              number_limits: payload.max_length,
+              allowed_file_types: inStepRun ? [SupportUploadFileTypes.custom] : payload.allowed_file_types,
+              allowed_file_extensions: inStepRun ? [] : payload.allowed_file_extensions,
+              allowed_file_upload_methods: inStepRun ? [TransferMethod.local_file, TransferMethod.remote_url] : payload.allowed_file_upload_methods,
+              number_limits: inStepRun ? 5 : payload.max_length,
             }}
           />
         )}

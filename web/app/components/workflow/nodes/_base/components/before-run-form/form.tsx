@@ -80,6 +80,7 @@ const Form: FC<Props> = ({
       {inputs.map((input, index) => {
         return (
           <FormItem
+            inStepRun
             key={index}
             payload={input}
             value={values[input.variable]}

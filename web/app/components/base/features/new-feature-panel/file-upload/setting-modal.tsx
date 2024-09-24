@@ -14,6 +14,7 @@ type FileUploadSettingsProps = {
   onChange?: OnFeaturesChange
   disabled?: boolean
   children?: React.ReactNode
+  imageUpload?: boolean
 }
 const FileUploadSettings = ({
   open,
@@ -21,6 +22,7 @@ const FileUploadSettings = ({
   onChange,
   disabled,
   children,
+  imageUpload,
 }: FileUploadSettingsProps) => {
   return (
     <PortalToFollowElem
@@ -37,6 +39,7 @@ const FileUploadSettings = ({
       <PortalToFollowElemContent style={{ zIndex: 50 }}>
         <div className='w-[360px] p-4 bg-components-panel-bg rounded-2xl border-[0.5px] border-components-panel-border shadow-2xl'>
           <SettingContent
+            imageUpload={imageUpload}
             onClose={() => onOpen(false)}
             onChange={(v) => {
               onChange?.(v)

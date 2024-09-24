@@ -73,6 +73,7 @@ const Panel: FC<NodePanelProps<StartNodeType>> = ({
 
               <VarItem
                 readonly
+                showLegacyBadge={!isChatMode}
                 payload={{
                   variable: 'sys.files',
                 } as any}

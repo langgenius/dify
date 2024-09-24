@@ -4,6 +4,7 @@ import {
   useCallback,
   useMemo,
 } from 'react'
+import { RiApps2AddLine } from '@remixicon/react'
 import { useNodes } from 'reactflow'
 import { useTranslation } from 'react-i18next'
 import { useContext } from 'use-context-selector'
@@ -46,7 +47,7 @@ const Header: FC = () => {
   const appSidebarExpand = useAppStore(s => s.appSidebarExpand)
   const appID = appDetail?.id
   const isChatMode = useIsChatMode()
-  const { nodesReadOnly } = useNodesReadOnly()
+  const { nodesReadOnly, getNodesReadOnly } = useNodesReadOnly()
   const publishedAt = useStore(s => s.publishedAt)
   const draftUpdatedAt = useStore(s => s.draftUpdatedAt)
   const toolPublished = useStore(s => s.toolPublished)
@@ -84,6 +85,17 @@ const Header: FC = () => {
     restoring,
     viewHistory,
   } = useWorkflowMode()
+
+  const handleShowFeatures = useCallback(() => {
+    const {
+      showFeaturesPanel,
+      isRestoring,
+      setShowFeaturesPanel,
+    } = workflowStore.getState()
+    if (getNodesReadOnly() && !isRestoring)
+      return
+    setShowFeaturesPanel(!showFeaturesPanel)
+  }, [workflowStore, getNodesReadOnly])
 
   const handleCancelRestore = useCallback(() => {
     handleLoadBackupDraft()
@@ -161,6 +173,10 @@ const Header: FC = () => {
             <EnvButton disabled={nodesReadOnly} />
             <div className='w-[1px] h-3.5 bg-gray-200'></div>
             <RunAndHistory />
+            <Button className='text-components-button-secondary-text' onClick={handleShowFeatures}>
+              <RiApps2AddLine className='w-4 h-4 mr-1 text-components-button-secondary-text' />
+              {t('workflow.common.features')}
+            </Button>
             <AppPublisher
               {...{
                 publishedAt,
@@ -197,6 +213,11 @@ const Header: FC = () => {
       {
         restoring && (
           <div className='flex items-center'>
+            <Button className='text-components-button-secondary-text' onClick={handleShowFeatures}>
+              <RiApps2AddLine className='w-4 h-4 mr-1 text-components-button-secondary-text' />
+              {t('workflow.common.features')}
+            </Button>
+            <div className='mx-2 w-[1px] h-3.5 bg-gray-200'></div>
             <Button
               className='mr-2'
               onClick={handleCancelRestore}

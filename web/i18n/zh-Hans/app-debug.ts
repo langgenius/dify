@@ -206,6 +206,13 @@ const translation = {
       numberLimit: '最大上传数',
       modalTitle: '文件上传设置',
     },
+    imageUpload: {
+      title: '图片上传',
+      description: '支持上传图片',
+      supportedTypes: '支持的文件类型',
+      numberLimit: '最大上传数',
+      modalTitle: '图片上传设置',
+    },
     bar: {
       empty: '开启功能增强 webapp 用户体验',
       enableText: '功能已开启',
