@@ -77,15 +77,7 @@ class NomicTextEmbeddingModel(_CommonNomic, TextEmbeddingModel):
         :param texts: texts to embed
         :return:
         """
-        if len(texts) == 0:
-            return 0
-
-        _, prompt_tokens, _ = self.embed_text(
-            model=model,
-            credentials=credentials,
-            texts=texts,
-        )
-        return prompt_tokens
+        return sum(self._get_num_tokens_by_gpt2(text) for text in texts)
 
     def validate_credentials(self, model: str, credentials: dict) -> None:
         """

@@ -122,6 +122,7 @@ CODE_EXECUTION_API_KEY = "dify-sandbox"
 FIRECRAWL_API_KEY = "fc-"
 TEI_EMBEDDING_SERVER_URL = "http://a.abc.com:11451"
 TEI_RERANK_SERVER_URL = "http://a.abc.com:11451"
+MIXEDBREAD_API_KEY = "mk-aaaaaaaaaaaaaaaaaaaa"
 
 [tool.poetry]
 name = "dify-api"
