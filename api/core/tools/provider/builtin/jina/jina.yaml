@@ -1,10 +1,10 @@
 identity:
   author: Dify
-  name: Jina AI
+  name: Jina
   label:
-    en_US: Jina AI
-    zh_Hans: Jina AI
-    pt_BR: Jina AI
+    en_US: Jina
+    zh_Hans: Jina
+    pt_BR: Jina
   description:
     en_US: Convert any URL to an LLM-friendly input or perform searches on the web for grounding information. Experience improved output for your agent and RAG systems at no cost.
     zh_Hans: 将任何URL转换为LLM易读的输入或在网页上搜索引擎上搜索引擎。
