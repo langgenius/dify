@@ -2,10 +2,10 @@ from typing import Optional
 
 from ....core import BaseModel
 
-__all__ = ["DocumentData", "DocumentObject", "DocumentSuccessinfo", "DocumentFailedInfo"]
+__all__ = ["DocumentData", "DocumentObject", "DocumentSuccessInfo", "DocumentFailedInfo"]
 
 
-class DocumentSuccessinfo(BaseModel):
+class DocumentSuccessInfo(BaseModel):
     documentId: Optional[str] = None
     """文件id"""
     filename: Optional[str] = None
@@ -24,7 +24,7 @@ class DocumentFailedInfo(BaseModel):
 class DocumentObject(BaseModel):
     """文档信息"""
 
-    successInfos: Optional[list[DocumentSuccessinfo]] = None
+    successInfos: Optional[list[DocumentSuccessInfo]] = None
     """上传成功的文件信息"""
     failedInfos: Optional[list[DocumentFailedInfo]] = None
     """上传失败的文件信息"""
