@@ -260,6 +260,7 @@ const ConditionItem = ({
                 onValueChange={handleUpdateConditionValue}
                 variables={numberVariables}
                 isShort={isValueFieldShort}
+                unit={fileAttr?.key === 'size' ? 'Byte' : undefined}
               />
             </div>
           )
