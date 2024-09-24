@@ -23,7 +23,7 @@ class AzureOpenAITextEmbeddingModel(_CommonAzureOpenAI, TextEmbeddingModel):
         credentials: dict,
         texts: list[str],
         user: Optional[str] = None,
-        input_type: str = EmbeddingInputType.DOCUMENT.value,
+        input_type: EmbeddingInputType = EmbeddingInputType.DOCUMENT,
     ) -> TextEmbeddingResult:
         base_model_name = credentials["base_model_name"]
         credentials_kwargs = self._to_credential_kwargs(credentials)

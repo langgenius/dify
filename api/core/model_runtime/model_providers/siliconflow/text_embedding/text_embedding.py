@@ -22,7 +22,7 @@ class SiliconflowTextEmbeddingModel(OAICompatEmbeddingModel):
         credentials: dict,
         texts: list[str],
         user: Optional[str] = None,
-        input_type: str = EmbeddingInputType.DOCUMENT.value,
+        input_type: EmbeddingInputType = EmbeddingInputType.DOCUMENT,
     ) -> TextEmbeddingResult:
         self._add_custom_parameters(credentials)
         return super()._invoke(model, credentials, texts, user)

@@ -26,7 +26,7 @@ class TextEmbeddingModel(AIModel):
         credentials: dict,
         texts: list[str],
         user: Optional[str] = None,
-        input_type: str = EmbeddingInputType.DOCUMENT.value,
+        input_type: EmbeddingInputType = EmbeddingInputType.DOCUMENT,
     ) -> TextEmbeddingResult:
         """
         Invoke text embedding model
@@ -52,7 +52,7 @@ class TextEmbeddingModel(AIModel):
         credentials: dict,
         texts: list[str],
         user: Optional[str] = None,
-        input_type: str = EmbeddingInputType.DOCUMENT.value,
+        input_type: EmbeddingInputType = EmbeddingInputType.DOCUMENT,
     ) -> TextEmbeddingResult:
         """
         Invoke text embedding model

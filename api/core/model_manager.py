@@ -160,7 +160,7 @@ class ModelInstance:
         )
 
     def invoke_text_embedding(
-        self, texts: list[str], user: Optional[str] = None, input_type: str = EmbeddingInputType.DOCUMENT.value
+        self, texts: list[str], user: Optional[str] = None, input_type: EmbeddingInputType = EmbeddingInputType.DOCUMENT
     ) -> TextEmbeddingResult:
         """
         Invoke large language model

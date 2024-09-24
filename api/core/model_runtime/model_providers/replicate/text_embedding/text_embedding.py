@@ -20,7 +20,7 @@ class ReplicateEmbeddingModel(_CommonReplicate, TextEmbeddingModel):
         credentials: dict,
         texts: list[str],
         user: Optional[str] = None,
-        input_type: str = EmbeddingInputType.DOCUMENT.value,
+        input_type: EmbeddingInputType = EmbeddingInputType.DOCUMENT,
     ) -> TextEmbeddingResult:
         client = ReplicateClient(api_token=credentials["replicate_api_token"], timeout=30)
 

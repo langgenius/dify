@@ -33,7 +33,7 @@ class MixedBreadTextEmbeddingModel(TextEmbeddingModel):
         credentials: dict,
         texts: list[str],
         user: Optional[str] = None,
-        input_type: str = EmbeddingInputType.DOCUMENT.value,
+        input_type: EmbeddingInputType = EmbeddingInputType.DOCUMENT,
     ) -> TextEmbeddingResult:
         """
         Invoke text embedding model
