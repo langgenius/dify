@@ -1,7 +1,7 @@
 from flask import request
 from flask_login import current_user
 from flask_restful import Resource, marshal, reqparse
-from werkzeug.exceptions import Forbidden, NotFound, InternalServerError
+from werkzeug.exceptions import Forbidden, InternalServerError, NotFound
 
 import services
 from controllers.console import api
@@ -233,7 +233,6 @@ class ExternalDatasetCreateApi(Resource):
         )
         parser.add_argument("description", type=str, required=False, nullable=True, location="json")
         parser.add_argument("external_retrieval_model", type=dict, required=False, location="json")
-
 
         args = parser.parse_args()
 

@@ -112,7 +112,12 @@ class DatasetRetrieval:
                 continue
 
             # pass if dataset is not available
-            if dataset and dataset.available_document_count == 0 and dataset.available_document_count == 0 and dataset.provider != "external":
+            if (
+                dataset
+                and dataset.available_document_count == 0
+                and dataset.available_document_count == 0
+                and dataset.provider != "external"
+            ):
                 continue
 
             available_datasets.append(dataset)
@@ -172,7 +177,6 @@ class DatasetRetrieval:
                 if item.metadata.get("score"):
                     document_score_list[item.metadata["doc_id"]] = item.metadata["score"]
 
-    
             index_node_ids = [document.metadata["doc_id"] for document in dify_documents]
             segments = DocumentSegment.query.filter(
                 DocumentSegment.dataset_id.in_(dataset_ids),
@@ -188,9 +192,19 @@ class DatasetRetrieval:
                 )
                 for segment in sorted_segments:
                     if segment.answer:
-                        document_context_list.append(DocumentContext(content=f"question:{segment.get_sign_content()} answer:{segment.answer}", score=document_score_list.get(segment.index_node_id, None)))
+                        document_context_list.append(
+                            DocumentContext(
+                                content=f"question:{segment.get_sign_content()} answer:{segment.answer}",
+                                score=document_score_list.get(segment.index_node_id, None),
+                            )
+                        )
                     else:
-                        document_context_list.append(DocumentContext(content=segment.get_sign_content(), score=document_score_list.get(segment.index_node_id, None)))
+                        document_context_list.append(
+                            DocumentContext(
+                                content=segment.get_sign_content(),
+                                score=document_score_list.get(segment.index_node_id, None),
+                            )
+                        )
                 if show_retrieve_source:
                     for segment in sorted_segments:
                         dataset = Dataset.query.filter_by(id=segment.dataset_id).first()
@@ -279,7 +293,7 @@ class DatasetRetrieval:
                         tenant_id=dataset.tenant_id,
                         dataset_id=dataset_id,
                         query=query,
-                        external_retrieval_parameters=dataset.retrieval_model
+                        external_retrieval_parameters=dataset.retrieval_model,
                     )
                     for external_document in external_documents:
                         document = Document(
@@ -304,7 +318,9 @@ class DatasetRetrieval:
                         retrieval_method = retrieval_model_config["search_method"]
                     # get reranking model
                     reranking_model = (
-                        retrieval_model_config["reranking_model"] if retrieval_model_config["reranking_enable"] else None
+                        retrieval_model_config["reranking_model"]
+                        if retrieval_model_config["reranking_enable"]
+                        else None
                     )
                     # get score threshold
                     score_threshold = 0.0
@@ -452,7 +468,7 @@ class DatasetRetrieval:
                     tenant_id=dataset.tenant_id,
                     dataset_id=dataset_id,
                     query=query,
-                    external_retrieval_parameters=dataset.retrieval_model
+                    external_retrieval_parameters=dataset.retrieval_model,
                 )
                 for external_document in external_documents:
                     document = Document(

@@ -168,7 +168,7 @@ class KnowledgeRetrievalNode(BaseNode):
                     "dataset_name": item.metadata.get("dataset_name"),
                     "document_name": item.metadata.get("title"),
                     "data_source_type": "external",
-                    "retriever_from": 'workflow',
+                    "retriever_from": "workflow",
                     "score": item.metadata.get("score"),
                 },
                 "title": item.metadata.get("title"),
