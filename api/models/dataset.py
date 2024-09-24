@@ -73,6 +73,15 @@ class Dataset(db.Model):
         return json.loads(self.index_struct) if self.index_struct else None
 
     @property
+    def external_retrieval_model(self):
+
+        default_retrieval_model = {
+            "top_k": 2,
+            "score_threshold": .0,
+        }
+        return self.retrieval_model or default_retrieval_model
+
+    @property
     def created_by_account(self):
         return db.session.get(Account, self.created_by)
 

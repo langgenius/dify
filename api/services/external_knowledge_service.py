@@ -7,6 +7,7 @@ from typing import Any, Optional, Union
 
 import httpx
 
+from configs import dify_config
 from core.helper import ssrf_proxy
 from extensions.ext_database import db
 from models.dataset import (
@@ -243,6 +244,7 @@ class ExternalDatasetService:
             name=args.get("name"),
             description=args.get("description", ""),
             provider="external",
+            retrieval_model=args.get("external_retrieval_model"),
             created_by=user_id,
         )
 
@@ -305,9 +307,9 @@ class ExternalDatasetService:
     ):
         client = boto3.client(
             "bedrock-agent-runtime",
-            aws_secret_access_key='',
-            aws_access_key_id='',
-            region_name='',
+            aws_secret_access_key=dify_config.AWS_SECRET_ACCESS_KEY,
+            aws_access_key_id=dify_config.AWS_ACCESS_KEY_ID,
+            region_name='us-east-1',
         )
         response = client.retrieve(
             knowledgeBaseId=external_knowledge_id,
@@ -326,6 +328,8 @@ class ExternalDatasetService:
             if response.get("retrievalResults"):
                 retrieval_results = response.get("retrievalResults")
                 for retrieval_result in retrieval_results:
+                    if retrieval_result.get("score") < score_threshold:
+                        continue
                     result = {
                         "metadata": retrieval_result.get("metadata"),
                         "score": retrieval_result.get("score"),
