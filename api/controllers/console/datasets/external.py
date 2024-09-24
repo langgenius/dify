@@ -152,7 +152,9 @@ class ExternalApiUseCheckApi(Resource):
     def get(self, external_knowledge_api_id):
         external_knowledge_api_id = str(external_knowledge_api_id)
 
-        external_api_template_is_using, count = ExternalDatasetService.external_api_template_use_check(external_knowledge_api_id)
+        external_api_template_is_using, count = ExternalDatasetService.external_api_template_use_check(
+            external_knowledge_api_id
+        )
         return {"is_using": external_api_template_is_using, "count": count}, 200
 
 
