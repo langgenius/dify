@@ -41,7 +41,7 @@ const AppDetailLayout: FC<IAppDetailLayoutProps> = (props) => {
   const pathname = usePathname()
   const media = useBreakpoints()
   const isMobile = media === MediaType.mobile
-  const { isCurrentWorkspaceEditor } = useAppContext()
+  const { currentWorkspace, isCurrentWorkspaceEditor } = useAppContext()
   const { appDetail, setAppDetail, setAppSiderbarExpand } = useStore(useShallow(state => ({
     appDetail: state.appDetail,
     setAppDetail: state.setAppDetail,
@@ -107,6 +107,9 @@ const AppDetailLayout: FC<IAppDetailLayoutProps> = (props) => {
 
   useEffect(() => {
     setAppDetail()
+    if (currentWorkspace.id === '')
+      return
+
     fetchAppDetail({ url: '/apps', id: appId }).then((res) => {
       // redirection
       const canIEditApp = isCurrentWorkspaceEditor
@@ -133,7 +136,7 @@ const AppDetailLayout: FC<IAppDetailLayoutProps> = (props) => {
       if (e.status === 404)
         router.replace('/apps')
     })
-  }, [appId, isCurrentWorkspaceEditor, systemFeatures, getNavigations, pathname, router, setAppDetail])
+  }, [appId, currentWorkspace, isCurrentWorkspaceEditor, systemFeatures, getNavigations, pathname, router, setAppDetail])
 
   useUnmount(() => {
     setAppDetail()
