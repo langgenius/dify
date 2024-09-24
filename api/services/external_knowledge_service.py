@@ -61,8 +61,8 @@ class ExternalDatasetService:
         return api_template
 
     @staticmethod
-    def get_api_template(api_template_id: str) -> ExternalApiTemplates:
-        return ExternalApiTemplates.query.filter_by(id=api_template_id).first()
+    def get_api_template(external_knowledge_api_id: str) -> ExternalApiTemplates:
+        return ExternalApiTemplates.query.filter_by(id=external_knowledge_api_id).first()
 
     @staticmethod
     def update_api_template(tenant_id, user_id, api_template_id, args) -> ExternalApiTemplates:
@@ -89,8 +89,8 @@ class ExternalDatasetService:
         db.session.commit()
 
     @staticmethod
-    def external_api_template_use_check(api_template_id: str) -> bool:
-        count = ExternalKnowledgeBindings.query.filter_by(external_api_template_id=api_template_id).count()
+    def external_api_template_use_check(external_knowledge_api_id: str) -> bool:
+        count = ExternalKnowledgeBindings.query.filter_by(external_api_template_id=external_knowledge_api_id).count()
         if count > 0:
             return True
         return False
