@@ -137,7 +137,7 @@ class DatasetDocumentStore:
 
         if document_segment is None:
             if raise_error:
-                raise ValueError(f"doc_id {doc_id} not found.")
+                raise ValueError(f"doc_id {doc_id} not found")
             else:
                 return None
 
@@ -156,7 +156,7 @@ class DatasetDocumentStore:
 
         if document_segment is None:
             if raise_error:
-                raise ValueError(f"doc_id {doc_id} not found.")
+                raise ValueError(f"doc_id {doc_id} not found")
             else:
                 return None
 

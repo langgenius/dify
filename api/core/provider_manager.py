@@ -202,7 +202,7 @@ class ProviderManager:
         # get provider instance
         provider_configuration = provider_configurations.get(provider)
         if not provider_configuration:
-            raise ValueError(f"Provider {provider} does not exist.")
+            raise ValueError(f"Provider {provider} does not exist")
 
         provider_instance = provider_configuration.get_provider_instance()
         model_type_instance = provider_instance.get_model_instance(model_type)
@@ -301,7 +301,7 @@ class ProviderManager:
         """
         provider_configurations = self.get_configurations(tenant_id)
         if provider not in provider_configurations:
-            raise ValueError(f"Provider {provider} does not exist.")
+            raise ValueError(f"Provider {provider} does not exist")
 
         # get available models from provider_configurations
         available_models = provider_configurations.get_models(model_type=model_type, only_active=True)
@@ -309,7 +309,7 @@ class ProviderManager:
         # check if the model is exist in available models
         model_names = [model.model for model in available_models]
         if model not in model_names:
-            raise ValueError(f"Model {model} does not exist.")
+            raise ValueError(f"Model {model} does not exist")
 
         # Get the list of available models from get_configurations and check if it is LLM
         default_model = (

@@ -29,7 +29,7 @@ class CreateListOnBoardTool(BuiltinTool):
         list_name = tool_parameters.get("name")
 
         if not (api_key and token and board_id and list_name):
-            return self.create_text_message("Missing required parameters: API key, token, board ID, or list name.")
+            return self.create_text_message("Missing required parameters: API key, token, board ID, or list name")
 
         url = f"https://api.trello.com/1/boards/{board_id}/lists"
         params = {"name": list_name, "key": api_key, "token": token}

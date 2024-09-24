@@ -19,7 +19,7 @@ class QueryStockTool(BuiltinTool):
             return self.create_text_message("Please tell me your stock code")
 
         if "api_key" not in self.runtime.credentials or not self.runtime.credentials.get("api_key"):
-            return self.create_text_message("Alpha Vantage API key is required.")
+            return self.create_text_message("Alpha Vantage API key is required")
 
         params = {
             "function": "TIME_SERIES_DAILY",

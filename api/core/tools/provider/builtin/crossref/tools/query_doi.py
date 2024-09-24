@@ -17,7 +17,7 @@ class CrossRefQueryDOITool(BuiltinTool):
     ) -> Union[ToolInvokeMessage, list[ToolInvokeMessage]]:
         doi = tool_parameters.get("doi")
         if not doi:
-            raise ToolParameterValidationError("doi is required.")
+            raise ToolParameterValidationError("doi is required")
         # doc: https://github.com/CrossRef/rest-api-doc
         url = f"https://api.crossref.org/works/{doi}"
         response = requests.get(url)

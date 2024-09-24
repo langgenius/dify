@@ -218,7 +218,7 @@ if you are not sure about the structure.
             prompt_messages.insert(
                 0,
                 SystemPromptMessage(
-                    content=block_prompts.replace("{{instructions}}", f"Please output a valid {code_block} object.")
+                    content=block_prompts.replace("{{instructions}}", f"Please output a valid {code_block} object")
                 ),
             )
 
@@ -799,14 +799,14 @@ if you are not sure about the structure.
                             filtered_model_parameters[parameter_name] = parameter_rule.default
                             continue
                         else:
-                            raise ValueError(f"Model Parameter {parameter_name} is required.")
+                            raise ValueError(f"Model Parameter {parameter_name} is required")
                     else:
                         continue
 
             # validate parameter value type
             if parameter_rule.type == ParameterType.INT:
                 if not isinstance(parameter_value, int):
-                    raise ValueError(f"Model Parameter {parameter_name} should be int.")
+                    raise ValueError(f"Model Parameter {parameter_name} should be int")
 
                 # validate parameter value range
                 if parameter_rule.min is not None and parameter_value < parameter_rule.min:
@@ -820,13 +820,13 @@ if you are not sure about the structure.
                     )
             elif parameter_rule.type == ParameterType.FLOAT:
                 if not isinstance(parameter_value, float | int):
-                    raise ValueError(f"Model Parameter {parameter_name} should be float.")
+                    raise ValueError(f"Model Parameter {parameter_name} should be float")
 
                 # validate parameter value precision
                 if parameter_rule.precision is not None:
                     if parameter_rule.precision == 0:
                         if parameter_value != int(parameter_value):
-                            raise ValueError(f"Model Parameter {parameter_name} should be int.")
+                            raise ValueError(f"Model Parameter {parameter_name} should be int")
                     else:
                         if parameter_value != round(parameter_value, parameter_rule.precision):
                             raise ValueError(
@@ -846,23 +846,23 @@ if you are not sure about the structure.
                     )
             elif parameter_rule.type == ParameterType.BOOLEAN:
                 if not isinstance(parameter_value, bool):
-                    raise ValueError(f"Model Parameter {parameter_name} should be bool.")
+                    raise ValueError(f"Model Parameter {parameter_name} should be bool")
             elif parameter_rule.type == ParameterType.STRING:
                 if not isinstance(parameter_value, str):
-                    raise ValueError(f"Model Parameter {parameter_name} should be string.")
+                    raise ValueError(f"Model Parameter {parameter_name} should be string")
 
                 # validate options
                 if parameter_rule.options and parameter_value not in parameter_rule.options:
-                    raise ValueError(f"Model Parameter {parameter_name} should be one of {parameter_rule.options}.")
+                    raise ValueError(f"Model Parameter {parameter_name} should be one of {parameter_rule.options}")
             elif parameter_rule.type == ParameterType.TEXT:
                 if not isinstance(parameter_value, str):
-                    raise ValueError(f"Model Parameter {parameter_name} should be text.")
+                    raise ValueError(f"Model Parameter {parameter_name} should be text")
 
                 # validate options
                 if parameter_rule.options and parameter_value not in parameter_rule.options:
-                    raise ValueError(f"Model Parameter {parameter_name} should be one of {parameter_rule.options}.")
+                    raise ValueError(f"Model Parameter {parameter_name} should be one of {parameter_rule.options}")
             else:
-                raise ValueError(f"Model Parameter {parameter_name} type {parameter_rule.type} is not supported.")
+                raise ValueError(f"Model Parameter {parameter_name} type {parameter_rule.type} is not supported")
 
             filtered_model_parameters[parameter_name] = parameter_value
 

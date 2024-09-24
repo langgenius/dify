@@ -55,7 +55,7 @@ class BaseIndexProcessor(ABC):
             segmentation = rules["segmentation"]
             max_segmentation_tokens_length = dify_config.INDEXING_MAX_SEGMENTATION_TOKENS_LENGTH
             if segmentation["max_tokens"] < 50 or segmentation["max_tokens"] > max_segmentation_tokens_length:
-                raise ValueError(f"Custom segment length should be between 50 and {max_segmentation_tokens_length}.")
+                raise ValueError(f"Custom segment length should be between 50 and {max_segmentation_tokens_length}")
 
             separator = segmentation["separator"]
             if separator:

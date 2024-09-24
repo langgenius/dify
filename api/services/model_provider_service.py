@@ -114,7 +114,7 @@ class ModelProviderService:
         # Get provider configuration
         provider_configuration = provider_configurations.get(provider)
         if not provider_configuration:
-            raise ValueError(f"Provider {provider} does not exist.")
+            raise ValueError(f"Provider {provider} does not exist")
 
         # Get provider custom credentials from workspace
         return provider_configuration.get_custom_credentials(obfuscated=True)
@@ -133,7 +133,7 @@ class ModelProviderService:
         # Get provider configuration
         provider_configuration = provider_configurations.get(provider)
         if not provider_configuration:
-            raise ValueError(f"Provider {provider} does not exist.")
+            raise ValueError(f"Provider {provider} does not exist")
 
         provider_configuration.custom_credentials_validate(credentials)
 
@@ -152,7 +152,7 @@ class ModelProviderService:
         # Get provider configuration
         provider_configuration = provider_configurations.get(provider)
         if not provider_configuration:
-            raise ValueError(f"Provider {provider} does not exist.")
+            raise ValueError(f"Provider {provider} does not exist")
 
         # Add or update custom provider credentials.
         provider_configuration.add_or_update_custom_credentials(credentials)
@@ -171,7 +171,7 @@ class ModelProviderService:
         # Get provider configuration
         provider_configuration = provider_configurations.get(provider)
         if not provider_configuration:
-            raise ValueError(f"Provider {provider} does not exist.")
+            raise ValueError(f"Provider {provider} does not exist")
 
         # Remove custom provider credentials.
         provider_configuration.delete_custom_credentials()
@@ -192,7 +192,7 @@ class ModelProviderService:
         # Get provider configuration
         provider_configuration = provider_configurations.get(provider)
         if not provider_configuration:
-            raise ValueError(f"Provider {provider} does not exist.")
+            raise ValueError(f"Provider {provider} does not exist")
 
         # Get model custom credentials from ProviderModel if exists
         return provider_configuration.get_custom_model_credentials(
@@ -218,7 +218,7 @@ class ModelProviderService:
         # Get provider configuration
         provider_configuration = provider_configurations.get(provider)
         if not provider_configuration:
-            raise ValueError(f"Provider {provider} does not exist.")
+            raise ValueError(f"Provider {provider} does not exist")
 
         # Validate model credentials
         provider_configuration.custom_model_credentials_validate(
@@ -244,7 +244,7 @@ class ModelProviderService:
         # Get provider configuration
         provider_configuration = provider_configurations.get(provider)
         if not provider_configuration:
-            raise ValueError(f"Provider {provider} does not exist.")
+            raise ValueError(f"Provider {provider} does not exist")
 
         # Add or update custom model credentials
         provider_configuration.add_or_update_custom_model_credentials(
@@ -267,7 +267,7 @@ class ModelProviderService:
         # Get provider configuration
         provider_configuration = provider_configurations.get(provider)
         if not provider_configuration:
-            raise ValueError(f"Provider {provider} does not exist.")
+            raise ValueError(f"Provider {provider} does not exist")
 
         # Remove custom model credentials
         provider_configuration.delete_custom_model_credentials(model_type=ModelType.value_of(model_type), model=model)
@@ -349,7 +349,7 @@ class ModelProviderService:
         # Get provider configuration
         provider_configuration = provider_configurations.get(provider)
         if not provider_configuration:
-            raise ValueError(f"Provider {provider} does not exist.")
+            raise ValueError(f"Provider {provider} does not exist")
 
         # Get model instance of LLM
         model_type_instance = provider_configuration.get_model_type_instance(ModelType.LLM)
@@ -425,7 +425,7 @@ class ModelProviderService:
 
         if icon_type.lower() == "icon_small":
             if not provider_schema.icon_small:
-                raise ValueError(f"Provider {provider} does not have small icon.")
+                raise ValueError(f"Provider {provider} does not have small icon")
 
             if lang.lower() == "zh_hans":
                 file_name = provider_schema.icon_small.zh_Hans
@@ -433,7 +433,7 @@ class ModelProviderService:
                 file_name = provider_schema.icon_small.en_US
         else:
             if not provider_schema.icon_large:
-                raise ValueError(f"Provider {provider} does not have large icon.")
+                raise ValueError(f"Provider {provider} does not have large icon")
 
             if lang.lower() == "zh_hans":
                 file_name = provider_schema.icon_large.zh_Hans
@@ -475,7 +475,7 @@ class ModelProviderService:
         # Get provider configuration
         provider_configuration = provider_configurations.get(provider)
         if not provider_configuration:
-            raise ValueError(f"Provider {provider} does not exist.")
+            raise ValueError(f"Provider {provider} does not exist")
 
         # Switch preferred provider type
         provider_configuration.switch_preferred_provider_type(preferred_provider_type_enum)
@@ -496,7 +496,7 @@ class ModelProviderService:
         # Get provider configuration
         provider_configuration = provider_configurations.get(provider)
         if not provider_configuration:
-            raise ValueError(f"Provider {provider} does not exist.")
+            raise ValueError(f"Provider {provider} does not exist")
 
         # Enable model
         provider_configuration.enable_model(model=model, model_type=ModelType.value_of(model_type))
@@ -517,7 +517,7 @@ class ModelProviderService:
         # Get provider configuration
         provider_configuration = provider_configurations.get(provider)
         if not provider_configuration:
-            raise ValueError(f"Provider {provider} does not exist.")
+            raise ValueError(f"Provider {provider} does not exist")
 
         # Enable model
         provider_configuration.disable_model(model=model, model_type=ModelType.value_of(model_type))

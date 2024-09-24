@@ -87,7 +87,7 @@ class ArxivAPIWrapper(BaseModel):
 
 
 class ArxivSearchInput(BaseModel):
-    query: str = Field(..., description="Search query.")
+    query: str = Field(..., description="Search query")
 
 
 class ArxivSearchTool(BuiltinTool):

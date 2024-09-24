@@ -31,13 +31,13 @@ from services.dataset_service import DatasetPermissionService, DatasetService, D
 
 def _validate_name(name):
     if not name or len(name) < 1 or len(name) > 40:
-        raise ValueError("Name must be between 1 to 40 characters.")
+        raise ValueError("Name must be between 1 to 40 characters")
     return name
 
 
 def _validate_description_length(description):
     if len(description) > 400:
-        raise ValueError("Description cannot exceed 400 characters.")
+        raise ValueError("Description cannot exceed 400 characters")
     return description
 
 
@@ -138,7 +138,7 @@ class DatasetApi(Resource):
         dataset_id_str = str(dataset_id)
         dataset = DatasetService.get_dataset(dataset_id_str)
         if dataset is None:
-            raise NotFound("Dataset not found.")
+            raise NotFound("Dataset not found")
         try:
             DatasetService.check_dataset_permission(dataset, current_user)
         except services.errors.account.NoPermissionError as e:
@@ -180,7 +180,7 @@ class DatasetApi(Resource):
         dataset_id_str = str(dataset_id)
         dataset = DatasetService.get_dataset(dataset_id_str)
         if dataset is None:
-            raise NotFound("Dataset not found.")
+            raise NotFound("Dataset not found")
 
         parser = reqparse.RequestParser()
         parser.add_argument(
@@ -205,12 +205,12 @@ class DatasetApi(Resource):
             choices=(DatasetPermissionEnum.ONLY_ME, DatasetPermissionEnum.ALL_TEAM, DatasetPermissionEnum.PARTIAL_TEAM),
             help="Invalid permission.",
         )
-        parser.add_argument("embedding_model", type=str, location="json", help="Invalid embedding model.")
+        parser.add_argument("embedding_model", type=str, location="json", help="Invalid embedding model")
         parser.add_argument(
             "embedding_model_provider", type=str, location="json", help="Invalid embedding model provider."
         )
-        parser.add_argument("retrieval_model", type=dict, location="json", help="Invalid retrieval model.")
-        parser.add_argument("partial_member_list", type=list, location="json", help="Invalid parent user list.")
+        parser.add_argument("retrieval_model", type=dict, location="json", help="Invalid retrieval model")
+        parser.add_argument("partial_member_list", type=list, location="json", help="Invalid parent user list")
         args = parser.parse_args()
         data = request.get_json()
 
@@ -228,7 +228,7 @@ class DatasetApi(Resource):
         dataset = DatasetService.update_dataset(dataset_id_str, args, current_user)
 
         if dataset is None:
-            raise NotFound("Dataset not found.")
+            raise NotFound("Dataset not found")
 
         result_data = marshal(dataset, dataset_detail_fields)
         tenant_id = current_user.current_tenant_id
@@ -264,7 +264,7 @@ class DatasetApi(Resource):
                 DatasetPermissionService.clear_partial_member_list(dataset_id_str)
                 return {"result": "success"}, 204
             else:
-                raise NotFound("Dataset not found.")
+                raise NotFound("Dataset not found")
         except services.errors.dataset.DatasetInUseError:
             raise DatasetInUseError()
 
@@ -288,7 +288,7 @@ class DatasetQueryApi(Resource):
         dataset_id_str = str(dataset_id)
         dataset = DatasetService.get_dataset(dataset_id_str)
         if dataset is None:
-            raise NotFound("Dataset not found.")
+            raise NotFound("Dataset not found")
 
         try:
             DatasetService.check_dataset_permission(dataset, current_user)
@@ -344,7 +344,7 @@ class DatasetIndexingEstimateApi(Resource):
             )
 
             if file_details is None:
-                raise NotFound("File not found.")
+                raise NotFound("File not found")
 
             if file_details:
                 for file_detail in file_details:
@@ -385,7 +385,7 @@ class DatasetIndexingEstimateApi(Resource):
                 )
                 extract_settings.append(extract_setting)
         else:
-            raise ValueError("Data source type not support")
+            raise ValueError("Data source type not supported")
         indexing_runner = IndexingRunner()
         try:
             response = indexing_runner.indexing_estimate(
@@ -418,7 +418,7 @@ class DatasetRelatedAppListApi(Resource):
         dataset_id_str = str(dataset_id)
         dataset = DatasetService.get_dataset(dataset_id_str)
         if dataset is None:
-            raise NotFound("Dataset not found.")
+            raise NotFound("Dataset not found")
 
         try:
             DatasetService.check_dataset_permission(dataset, current_user)
@@ -586,7 +586,7 @@ class DatasetRetrievalSettingApi(Resource):
                     ]
                 }
             case _:
-                raise ValueError(f"Unsupported vector db type {vector_type}.")
+                raise ValueError(f"Unsupported vector db type {vector_type}")
 
 
 class DatasetRetrievalSettingMockApi(Resource):
@@ -622,7 +622,7 @@ class DatasetRetrievalSettingMockApi(Resource):
                     ]
                 }
             case _:
-                raise ValueError(f"Unsupported vector db type {vector_type}.")
+                raise ValueError(f"Unsupported vector db type {vector_type}")
 
 
 class DatasetErrorDocs(Resource):
@@ -633,7 +633,7 @@ class DatasetErrorDocs(Resource):
         dataset_id_str = str(dataset_id)
         dataset = DatasetService.get_dataset(dataset_id_str)
         if dataset is None:
-            raise NotFound("Dataset not found.")
+            raise NotFound("Dataset not found")
         results = DocumentService.get_error_documents_by_dataset_id(dataset_id_str)
 
         return {"data": [marshal(item, document_status_fields) for item in results], "total": len(results)}, 200
@@ -647,7 +647,7 @@ class DatasetPermissionUserListApi(Resource):
         dataset_id_str = str(dataset_id)
         dataset = DatasetService.get_dataset(dataset_id_str)
         if dataset is None:
-            raise NotFound("Dataset not found.")
+            raise NotFound("Dataset not found")
         try:
             DatasetService.check_dataset_permission(dataset, current_user)
         except services.errors.account.NoPermissionError as e:

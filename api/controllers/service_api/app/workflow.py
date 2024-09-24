@@ -97,7 +97,7 @@ class WorkflowRunApi(Resource):
         except (ValueError, AppInvokeQuotaExceededError) as e:
             raise e
         except Exception as e:
-            logging.exception("internal server error.")
+            logging.exception("An internal server error occurred")
             raise InternalServerError()
 
 

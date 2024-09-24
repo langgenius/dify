@@ -37,7 +37,7 @@ class HitTestingApi(Resource):
 
         dataset = DatasetService.get_dataset(dataset_id_str)
         if dataset is None:
-            raise NotFound("Dataset not found.")
+            raise NotFound("Dataset not found")
 
         try:
             DatasetService.check_dataset_permission(dataset, current_user)
@@ -79,7 +79,7 @@ class HitTestingApi(Resource):
         except ValueError as e:
             raise ValueError(str(e))
         except Exception as e:
-            logging.exception("Hit testing failed.")
+            logging.exception("Hit testing failed")
             raise InternalServerError(str(e))
 
 

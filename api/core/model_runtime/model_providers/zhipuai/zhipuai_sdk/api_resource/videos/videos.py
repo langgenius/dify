@@ -41,7 +41,7 @@ class Videos(BaseAPI):
         timeout: float | httpx.Timeout | None | NotGiven = NOT_GIVEN,
     ) -> VideoObject:
         if not model and not model:
-            raise ValueError("At least one of `model` and `prompt` must be provided.")
+            raise ValueError("At least one of `model` and `prompt` must be provided")
         body = deepcopy_minimal(
             {
                 "model": model,
@@ -68,7 +68,7 @@ class Videos(BaseAPI):
         timeout: float | httpx.Timeout | None | NotGiven = NOT_GIVEN,
     ) -> VideoObject:
         if not id:
-            raise ValueError("At least one of `id` must be provided.")
+            raise ValueError("At least one of `id` must be provided")
 
         return self._get(
             f"/async-result/{id}",

@@ -28,7 +28,7 @@ class DeleteBoardTool(BuiltinTool):
         board_id = tool_parameters.get("boardId")
 
         if not (api_key and token and board_id):
-            return self.create_text_message("Missing required parameters: API key, token, or board ID.")
+            return self.create_text_message("Missing required parameters: API key, token, or board ID")
 
         url = f"https://api.trello.com/1/boards/{board_id}?key={api_key}&token={token}"
 
@@ -38,4 +38,4 @@ class DeleteBoardTool(BuiltinTool):
         except requests.exceptions.RequestException as e:
             return self.create_text_message("Failed to delete board")
 
-        return self.create_text_message(text=f"Board with ID {board_id} deleted successfully.")
+        return self.create_text_message(text=f"Board with ID {board_id} deleted successfully")

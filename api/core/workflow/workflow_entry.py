@@ -253,7 +253,7 @@ class WorkflowEntry:
             if (node_variable_key not in user_inputs and node_variable not in user_inputs) and not variable_pool.get(
                 variable_selector
             ):
-                raise ValueError(f"Variable key {node_variable} not found in user inputs.")
+                raise ValueError(f"Variable key {node_variable} not found in user inputs")
 
             # fetch variable node id from variable selector
             variable_node_id = variable_selector[0]

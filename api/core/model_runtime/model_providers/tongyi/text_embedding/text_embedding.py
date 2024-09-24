@@ -4,6 +4,7 @@ from typing import Optional
 import dashscope
 import numpy as np
 
+from core.embedding.embedding_constant import EmbeddingInputType
 from core.model_runtime.entities.model_entities import PriceType
 from core.model_runtime.entities.text_embedding_entities import (
     EmbeddingUsage,
@@ -27,6 +28,7 @@ class TongyiTextEmbeddingModel(_CommonTongyi, TextEmbeddingModel):
         credentials: dict,
         texts: list[str],
         user: Optional[str] = None,
+        input_type: EmbeddingInputType = EmbeddingInputType.DOCUMENT,
     ) -> TextEmbeddingResult:
         """
         Invoke text embedding model
@@ -133,14 +135,14 @@ class TongyiTextEmbeddingModel(_CommonTongyi, TextEmbeddingModel):
                 if "embedding" in data:
                     embeddings.append(data["embedding"])
                 else:
-                    raise ValueError("Embedding data is missing in the response.")
+                    raise ValueError("Embedding data is missing in the response")
             else:
-                raise ValueError("Response output is missing or does not contain embeddings.")
+                raise ValueError("Response output is missing or does not contain embeddings")
 
             if response.usage and "total_tokens" in response.usage:
                 embedding_used_tokens += response.usage["total_tokens"]
             else:
-                raise ValueError("Response usage is missing or does not contain total tokens.")
+                raise ValueError("Response usage is missing or does not contain total tokens")
 
         return [list(map(float, e)) for e in embeddings], embedding_used_tokens
 

@@ -126,7 +126,7 @@ class CodeNode(BaseNode):
         :return:
         """
         if depth > dify_config.CODE_MAX_DEPTH:
-            raise ValueError(f"Depth limit ${dify_config.CODE_MAX_DEPTH} reached, object too deep.")
+            raise ValueError(f"Depth limit ${dify_config.CODE_MAX_DEPTH} reached, object too deep")
 
         transformed_result = {}
         if output_schema is None:
@@ -185,7 +185,7 @@ class CodeNode(BaseNode):
                 elif output_value is None:
                     pass
                 else:
-                    raise ValueError(f"Output {prefix}.{output_name} is not a valid type.")
+                    raise ValueError(f"Output {prefix}.{output_name} is not a valid type")
 
             return result
 
@@ -193,7 +193,7 @@ class CodeNode(BaseNode):
         for output_name, output_config in output_schema.items():
             dot = "." if prefix else ""
             if output_name not in result:
-                raise ValueError(f"Output {prefix}{dot}{output_name} is missing.")
+                raise ValueError(f"Output {prefix}{dot}{output_name} is missing")
 
             if output_config.type == "object":
                 # check if output is object
@@ -304,13 +304,13 @@ class CodeNode(BaseNode):
                         for i, value in enumerate(result[output_name])
                     ]
             else:
-                raise ValueError(f"Output type {output_config.type} is not supported.")
+                raise ValueError(f"Output type {output_config.type} is not supported")
 
             parameters_validated[output_name] = True
 
         # check if all output parameters are validated
         if len(parameters_validated) != len(result):
-            raise ValueError("Not all output parameters are validated.")
+            raise ValueError("Not all output parameters are validated")
 
         return transformed_result
 

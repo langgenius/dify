@@ -245,7 +245,7 @@ class ModelProviderFactory:
             file_names = os.listdir(model_provider_dir_path)
 
             if (model_provider_name + ".py") not in file_names:
-                logger.warning(f"Missing {model_provider_name}.py file in {model_provider_dir_path}, Skip.")
+                logger.warning(f"Missing {model_provider_name}.py file in {model_provider_dir_path}, Skip")
                 continue
 
             # Dynamic loading {model_provider_name}.py file and find the subclass of ModelProvider
@@ -257,11 +257,11 @@ class ModelProviderFactory:
             )
 
             if not model_provider_class:
-                logger.warning(f"Missing Model Provider Class that extends ModelProvider in {py_path}, Skip.")
+                logger.warning(f"Missing Model Provider Class that extends ModelProvider in {py_path}, Skip")
                 continue
 
             if f"{model_provider_name}.yaml" not in file_names:
-                logger.warning(f"Missing {model_provider_name}.yaml file in {model_provider_dir_path}, Skip.")
+                logger.warning(f"Missing {model_provider_name}.yaml file in {model_provider_dir_path}, Skip")
                 continue
 
             model_providers.append(

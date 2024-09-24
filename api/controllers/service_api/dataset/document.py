@@ -50,10 +50,10 @@ class DocumentAddByTextApi(DatasetApiResource):
         dataset = db.session.query(Dataset).filter(Dataset.tenant_id == tenant_id, Dataset.id == dataset_id).first()
 
         if not dataset:
-            raise ValueError("Dataset is not exist.")
+            raise ValueError("Dataset not found")
 
         if not dataset.indexing_technique and not args["indexing_technique"]:
-            raise ValueError("indexing_technique is required.")
+            raise ValueError("Missing required parameter: indexing_technique")
 
         upload_file = FileService.upload_text(args.get("text"), args.get("name"))
         data_source = {
@@ -101,7 +101,7 @@ class DocumentUpdateByTextApi(DatasetApiResource):
         dataset = db.session.query(Dataset).filter(Dataset.tenant_id == tenant_id, Dataset.id == dataset_id).first()
 
         if not dataset:
-            raise ValueError("Dataset is not exist.")
+            raise ValueError("Dataset not found")
 
         if args["text"]:
             upload_file = FileService.upload_text(args.get("text"), args.get("name"))
@@ -150,9 +150,9 @@ class DocumentAddByFileApi(DatasetApiResource):
         dataset = db.session.query(Dataset).filter(Dataset.tenant_id == tenant_id, Dataset.id == dataset_id).first()
 
         if not dataset:
-            raise ValueError("Dataset is not exist.")
+            raise ValueError("Dataset not found")
         if not dataset.indexing_technique and not args.get("indexing_technique"):
-            raise ValueError("indexing_technique is required.")
+            raise ValueError("Missing required parameter: indexing_technique")
 
         # save file info
         file = request.files["file"]
@@ -204,7 +204,7 @@ class DocumentUpdateByFileApi(DatasetApiResource):
         dataset = db.session.query(Dataset).filter(Dataset.tenant_id == tenant_id, Dataset.id == dataset_id).first()
 
         if not dataset:
-            raise ValueError("Dataset is not exist.")
+            raise ValueError("Dataset not found")
         if "file" in request.files:
             # save file info
             file = request.files["file"]
@@ -245,13 +245,13 @@ class DocumentDeleteApi(DatasetApiResource):
         dataset = db.session.query(Dataset).filter(Dataset.tenant_id == tenant_id, Dataset.id == dataset_id).first()
 
         if not dataset:
-            raise ValueError("Dataset is not exist.")
+            raise ValueError("Dataset not found")
 
         document = DocumentService.get_document(dataset.id, document_id)
 
         # 404 if document not found
         if document is None:
-            raise NotFound("Document Not Exists.")
+            raise NotFound("Document not found")
 
         # 403 if document is archived
         if DocumentService.check_archived(document):
@@ -261,7 +261,7 @@ class DocumentDeleteApi(DatasetApiResource):
             # delete document
             DocumentService.delete_document(document)
         except services.errors.document.DocumentIndexingError:
-            raise DocumentIndexingError("Cannot delete document during indexing.")
+            raise DocumentIndexingError("Cannot delete document while it is being indexed")
 
         return {"result": "success"}, 200
 
@@ -275,7 +275,7 @@ class DocumentListApi(DatasetApiResource):
         search = request.args.get("keyword", default=None, type=str)
         dataset = db.session.query(Dataset).filter(Dataset.tenant_id == tenant_id, Dataset.id == dataset_id).first()
         if not dataset:
-            raise NotFound("Dataset not found.")
+            raise NotFound("Dataset not found")
 
         query = Document.query.filter_by(dataset_id=str(dataset_id), tenant_id=tenant_id)
 
@@ -307,11 +307,11 @@ class DocumentIndexingStatusApi(DatasetApiResource):
         # get dataset
         dataset = db.session.query(Dataset).filter(Dataset.tenant_id == tenant_id, Dataset.id == dataset_id).first()
         if not dataset:
-            raise NotFound("Dataset not found.")
+            raise NotFound("Dataset not found")
         # get documents
         documents = DocumentService.get_batch_documents(dataset_id, batch)
         if not documents:
-            raise NotFound("Documents not found.")
+            raise NotFound("Document not found")
         documents_status = []
         for document in documents:
             completed_segments = DocumentSegment.query.filter(

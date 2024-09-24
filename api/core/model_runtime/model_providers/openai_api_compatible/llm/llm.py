@@ -135,7 +135,7 @@ class OAIAPICompatLargeLanguageModel(_CommonOaiApiCompat, LargeLanguageModel):
                 data["prompt"] = "ping"
                 endpoint_url = urljoin(endpoint_url, "completions")
             else:
-                raise ValueError("Unsupported completion type for model configuration.")
+                raise ValueError("Unsupported completion type for model configuration")
 
             # send a post request to validate the credentials
             response = requests.post(endpoint_url, headers=headers, json=data, timeout=(10, 300))
@@ -343,7 +343,7 @@ class OAIAPICompatLargeLanguageModel(_CommonOaiApiCompat, LargeLanguageModel):
             endpoint_url = urljoin(endpoint_url, "completions")
             data["prompt"] = prompt_messages[0].content
         else:
-            raise ValueError("Unsupported completion type for model configuration.")
+            raise ValueError("Unsupported completion type for model configuration")
 
         # annotate tools with names, descriptions, etc.
         function_calling_type = credentials.get("function_calling_type", "no_call")

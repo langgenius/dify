@@ -24,7 +24,7 @@ def parse_json_markdown(json_string: str) -> dict:
         # Parse the JSON string into a Python dictionary
         parsed = json.loads(json_string)
     else:
-        raise Exception("Could not find JSON block in the output.")
+        raise Exception("Could not find JSON block in the output")
 
     return parsed
 

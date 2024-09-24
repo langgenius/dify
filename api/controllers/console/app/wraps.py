@@ -13,7 +13,7 @@ def get_app_model(view: Optional[Callable] = None, *, mode: Union[AppMode, list[
         @wraps(view_func)
         def decorated_view(*args, **kwargs):
             if not kwargs.get("app_id"):
-                raise ValueError("missing app_id in path parameters")
+                raise ValueError("Missing app_id in path parameters")
 
             app_id = kwargs.get("app_id")
             app_id = str(app_id)

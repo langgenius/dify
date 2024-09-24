@@ -50,7 +50,7 @@ class ConversationListApi(WebApiResource):
                 sort_by=args["sort_by"],
             )
         except LastConversationNotExistsError:
-            raise NotFound("Last Conversation Not Exists.")
+            raise NotFound("Last Conversation not found")
 
 
 class ConversationApi(WebApiResource):
@@ -63,7 +63,7 @@ class ConversationApi(WebApiResource):
         try:
             ConversationService.delete(app_model, conversation_id, end_user)
         except ConversationNotExistsError:
-            raise NotFound("Conversation Not Exists.")
+            raise NotFound("Conversation not found")
         WebConversationService.unpin(app_model, conversation_id, end_user)
 
         return {"result": "success"}, 204
@@ -86,7 +86,7 @@ class ConversationRenameApi(WebApiResource):
         try:
             return ConversationService.rename(app_model, conversation_id, end_user, args["name"], args["auto_generate"])
         except ConversationNotExistsError:
-            raise NotFound("Conversation Not Exists.")
+            raise NotFound("Conversation not found")
 
 
 class ConversationPinApi(WebApiResource):
@@ -100,7 +100,7 @@ class ConversationPinApi(WebApiResource):
         try:
             WebConversationService.pin(app_model, conversation_id, end_user)
         except ConversationNotExistsError:
-            raise NotFound("Conversation Not Exists.")
+            raise NotFound("Conversation not found")
 
         return {"result": "success"}
 

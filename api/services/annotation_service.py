@@ -37,7 +37,7 @@ class AppAnnotationService:
             message = db.session.query(Message).filter(Message.id == message_id, Message.app_id == app.id).first()
 
             if not message:
-                raise NotFound("Message Not Exists.")
+                raise NotFound("Message not found")
 
             annotation = message.annotation
             # save the message annotation
@@ -290,13 +290,13 @@ class AppAnnotationService:
                 content = {"question": row[0], "answer": row[1]}
                 result.append(content)
             if len(result) == 0:
-                raise ValueError("The CSV file is empty.")
+                raise ValueError("The CSV file is empty")
             # check annotation limit
             features = FeatureService.get_features(current_user.current_tenant_id)
             if features.billing.enabled:
                 annotation_quota_limit = features.annotation_quota_limit
                 if annotation_quota_limit.limit < len(result) + annotation_quota_limit.size:
-                    raise ValueError("The number of annotations exceeds the limit of your subscription.")
+                    raise ValueError("The number of annotations exceeds the limit of your subscription")
             # async job
             job_id = str(uuid.uuid4())
             indexing_cache_key = "app_annotation_batch_import_{}".format(str(job_id))

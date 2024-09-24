@@ -90,7 +90,7 @@ class ProviderConfiguration(BaseModel):
             for model_setting in self.model_settings:
                 if model_setting.model_type == model_type and model_setting.model == model:
                     if not model_setting.enabled:
-                        raise ValueError(f"Model {model} is disabled.")
+                        raise ValueError(f"Model {model} is disabled")
 
         if self.using_provider_type == ProviderType.SYSTEM:
             restrict_models = []
@@ -555,7 +555,7 @@ class ProviderConfiguration(BaseModel):
         )
 
         if load_balancing_config_count <= 1:
-            raise ValueError("Model load balancing configuration must be more than 1.")
+            raise ValueError("Model load balancing configuration must be more than 1")
 
         model_setting = (
             db.session.query(ProviderModelSetting)

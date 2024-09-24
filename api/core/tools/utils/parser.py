@@ -25,7 +25,7 @@ class ApiBasedToolSchemaParser:
         extra_info["description"] = openapi["info"].get("description", "")
 
         if len(openapi["servers"]) == 0:
-            raise ToolProviderNotFoundError("No server found in the openapi yaml.")
+            raise ToolProviderNotFoundError("No server found in the openapi yaml")
 
         server_url = openapi["servers"][0]["url"]
 
@@ -187,7 +187,7 @@ class ApiBasedToolSchemaParser:
 
         openapi: dict = safe_load(yaml)
         if openapi is None:
-            raise ToolApiSchemaError("Invalid openapi yaml.")
+            raise ToolApiSchemaError("Invalid openapi yaml")
         return ApiBasedToolSchemaParser.parse_openapi_to_tool_bundle(openapi, extra_info=extra_info, warning=warning)
 
     @staticmethod
@@ -204,7 +204,7 @@ class ApiBasedToolSchemaParser:
         servers = swagger.get("servers", [])
 
         if len(servers) == 0:
-            raise ToolApiSchemaError("No server found in the swagger yaml.")
+            raise ToolApiSchemaError("No server found in the swagger yaml")
 
         openapi = {
             "openapi": "3.0.0",
@@ -220,14 +220,14 @@ class ApiBasedToolSchemaParser:
 
         # check paths
         if "paths" not in swagger or len(swagger["paths"]) == 0:
-            raise ToolApiSchemaError("No paths found in the swagger yaml.")
+            raise ToolApiSchemaError("No paths found in the swagger yaml")
 
         # convert paths
         for path, path_item in swagger["paths"].items():
             openapi["paths"][path] = {}
             for method, operation in path_item.items():
                 if "operationId" not in operation:
-                    raise ToolApiSchemaError(f"No operationId found in operation {method} {path}.")
+                    raise ToolApiSchemaError(f"No operationId found in operation {method} {path}")
 
                 if ("summary" not in operation or len(operation["summary"]) == 0) and (
                     "description" not in operation or len(operation["description"]) == 0
@@ -270,16 +270,16 @@ class ApiBasedToolSchemaParser:
             api_url = api["url"]
             api_type = api["type"]
         except:
-            raise ToolProviderNotFoundError("Invalid openai plugin json.")
+            raise ToolProviderNotFoundError("Invalid openai plugin json")
 
         if api_type != "openapi":
-            raise ToolNotSupportedError("Only openapi is supported now.")
+            raise ToolNotSupportedError("Only openapi is supported now")
 
         # get openapi yaml
         response = get(api_url, headers={"User-Agent": "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) "}, timeout=5)
 
         if response.status_code != 200:
-            raise ToolProviderNotFoundError("cannot get openapi yaml from url.")
+            raise ToolProviderNotFoundError("cannot get openapi yaml from url")
 
         return ApiBasedToolSchemaParser.parse_openapi_yaml_to_tool_bundle(
             response.text, extra_info=extra_info, warning=warning

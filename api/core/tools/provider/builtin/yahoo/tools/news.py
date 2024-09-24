@@ -22,15 +22,15 @@ class YahooFinanceSearchTickerTool(BuiltinTool):
         try:
             return self.run(ticker=query, user_id=user_id)
         except (HTTPError, ReadTimeout):
-            return self.create_text_message("There is a internet connection problem. Please try again later.")
+            return self.create_text_message("There is a internet connection problem. Please try again later")
 
     def run(self, ticker: str, user_id: str) -> ToolInvokeMessage:
         company = yfinance.Ticker(ticker)
         try:
             if company.isin is None:
-                return self.create_text_message(f"Company ticker {ticker} not found.")
+                return self.create_text_message(f"Company ticker {ticker} not found")
         except (HTTPError, ReadTimeout, ConnectionError):
-            return self.create_text_message(f"Company ticker {ticker} not found.")
+            return self.create_text_message(f"Company ticker {ticker} not found")
 
         links = []
         try:
@@ -39,7 +39,7 @@ class YahooFinanceSearchTickerTool(BuiltinTool):
             if not links:
                 return self.create_text_message(f"There is nothing about {ticker} ticker")
         if not links:
-            return self.create_text_message(f"No news found for company that searched with {ticker} ticker.")
+            return self.create_text_message(f"No news found for company that searched with {ticker} ticker")
 
         result = "\n\n".join([self.get_url(link) for link in links])
 

@@ -214,7 +214,7 @@ class AgentChatAppConfigManager(BaseAppConfigManager):
                         raise ValueError("id in dataset must be of UUID type")
 
                     if not DatasetConfigManager.is_dataset_exists(tenant_id, tool_item["id"]):
-                        raise ValueError("Dataset ID does not exist, please check your permission.")
+                        raise ValueError("Dataset ID does not exist, please check your permission")
             else:
                 # latest style, use key-value pair
                 if "enabled" not in tool or not tool["enabled"]:

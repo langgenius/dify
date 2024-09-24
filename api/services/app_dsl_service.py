@@ -71,7 +71,7 @@ class AppDslService:
         try:
             import_data = yaml.safe_load(data)
         except yaml.YAMLError:
-            raise ValueError("Invalid YAML format in data argument.")
+            raise ValueError("Invalid YAML format in data argument")
 
         # check or repair dsl version
         import_data = cls._check_or_fix_dsl(import_data)
@@ -132,7 +132,7 @@ class AppDslService:
         try:
             import_data = yaml.safe_load(data)
         except yaml.YAMLError:
-            raise ValueError("Invalid YAML format in data argument.")
+            raise ValueError("Invalid YAML format in data argument")
 
         # check or repair dsl version
         import_data = cls._check_or_fix_dsl(import_data)
@@ -144,7 +144,7 @@ class AppDslService:
         # import dsl and overwrite app
         app_mode = AppMode.value_of(app_data.get("mode"))
         if app_mode not in {AppMode.ADVANCED_CHAT, AppMode.WORKFLOW}:
-            raise ValueError("Only support import workflow in advanced-chat or workflow app.")
+            raise ValueError("Only support import workflow in advanced-chat or workflow app")
 
         if app_data.get("mode") != app_model.mode:
             raise ValueError(f"App mode {app_data.get('mode')} is not matched with current app mode {app_mode.value}")
@@ -424,7 +424,7 @@ class AppDslService:
         workflow_service = WorkflowService()
         workflow = workflow_service.get_draft_workflow(app_model)
         if not workflow:
-            raise ValueError("Missing draft workflow configuration, please check.")
+            raise ValueError("Missing draft workflow configuration, please check")
 
         export_data["workflow"] = workflow.to_dict(include_secret=include_secret)
 
@@ -437,6 +437,6 @@ class AppDslService:
         """
         app_model_config = app_model.app_model_config
         if not app_model_config:
-            raise ValueError("Missing app configuration, please check.")
+            raise ValueError("Missing app configuration, please check")
 
         export_data["model_config"] = app_model_config.to_dict()

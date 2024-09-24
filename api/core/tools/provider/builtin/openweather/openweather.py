@@ -15,7 +15,7 @@ class OpenweatherProvider(BuiltinToolProviderController):
     def _validate_credentials(self, credentials: dict) -> None:
         try:
             if "api_key" not in credentials or not credentials.get("api_key"):
-                raise ToolProviderCredentialValidationError("Open weather API key is required.")
+                raise ToolProviderCredentialValidationError("Open weather API key is required")
             apikey = credentials.get("api_key")
             try:
                 response = query_weather(api_key=apikey)

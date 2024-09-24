@@ -28,7 +28,7 @@ class FetchAllBoardsTool(BuiltinTool):
         token = self.runtime.credentials.get("trello_api_token")
 
         if not (api_key and token):
-            return self.create_text_message("Missing Trello API key or token in credentials.")
+            return self.create_text_message("Missing Trello API key or token in credentials")
 
         # Including board filter in the request if provided
         board_filter = tool_parameters.get("boards", "open")
@@ -43,7 +43,7 @@ class FetchAllBoardsTool(BuiltinTool):
         boards = response.json()
 
         if not boards:
-            return self.create_text_message("No boards found in Trello.")
+            return self.create_text_message("No boards found in Trello")
 
         # Creating a string with both board names and IDs
         boards_info = ", ".join([f"{board['name']} (ID: {board['id']})" for board in boards])

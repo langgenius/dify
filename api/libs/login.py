@@ -56,11 +56,11 @@ def login_required(func):
         if admin_api_key_enable.lower() == "true":
             if auth_header:
                 if " " not in auth_header:
-                    raise Unauthorized("Invalid Authorization header format. Expected 'Bearer <api-key>' format.")
+                    raise Unauthorized("Invalid Authorization header format. Expected 'Bearer <api-key>' format")
                 auth_scheme, auth_token = auth_header.split(None, 1)
                 auth_scheme = auth_scheme.lower()
                 if auth_scheme != "bearer":
-                    raise Unauthorized("Invalid Authorization header format. Expected 'Bearer <api-key>' format.")
+                    raise Unauthorized("Invalid Authorization header format. Expected 'Bearer <api-key>' format")
                 admin_api_key = os.getenv("ADMIN_API_KEY")
 
                 if admin_api_key:

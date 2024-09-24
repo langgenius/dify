@@ -22,7 +22,7 @@ class NovitaAiTxt2ImgTool(BuiltinTool, NovitaAiToolBase):
         invoke tools
         """
         if "api_key" not in self.runtime.credentials or not self.runtime.credentials.get("api_key"):
-            raise ToolProviderCredentialValidationError("Novita AI API Key is required.")
+            raise ToolProviderCredentialValidationError("Novita AI API Key is required")
 
         api_key = self.runtime.credentials.get("api_key")
 

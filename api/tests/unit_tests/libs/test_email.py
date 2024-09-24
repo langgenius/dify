@@ -11,11 +11,11 @@ def test_email_with_valid_email():
 
 
 def test_email_with_invalid_email():
-    with pytest.raises(ValueError, match="invalid_email is not a valid email."):
+    with pytest.raises(ValueError, match="invalid_email is not a valid email"):
         email("invalid_email")
 
-    with pytest.raises(ValueError, match="@example.com is not a valid email."):
+    with pytest.raises(ValueError, match="@example.com is not a valid email"):
         email("@example.com")
 
-    with pytest.raises(ValueError, match="()@example.com is not a valid email."):
+    with pytest.raises(ValueError, match="()@example.com is not a valid email"):
         email("()@example.com")

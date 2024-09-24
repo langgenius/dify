@@ -259,14 +259,14 @@ class KnowledgeRetrievalNode(BaseNode):
         )
 
         if provider_model is None:
-            raise ValueError(f"Model {model_name} not exist.")
+            raise ValueError(f"Model {model_name} not exist")
 
         if provider_model.status == ModelStatus.NO_CONFIGURE:
-            raise ProviderTokenNotInitError(f"Model {model_name} credentials is not initialized.")
+            raise ProviderTokenNotInitError(f"Model {model_name} credentials is not initialized")
         elif provider_model.status == ModelStatus.NO_PERMISSION:
-            raise ModelCurrentlyNotSupportError(f"Dify Hosted OpenAI {model_name} currently not support.")
+            raise ModelCurrentlyNotSupportError(f"Dify Hosted OpenAI {model_name} currently not support")
         elif provider_model.status == ModelStatus.QUOTA_EXCEEDED:
-            raise QuotaExceededError(f"Model provider {provider_name} quota exceeded.")
+            raise QuotaExceededError(f"Model provider {provider_name} quota exceeded")
 
         # model config
         completion_params = node_data.single_retrieval_config.model.completion_params
@@ -278,12 +278,12 @@ class KnowledgeRetrievalNode(BaseNode):
         # get model mode
         model_mode = node_data.single_retrieval_config.model.mode
         if not model_mode:
-            raise ValueError("LLM mode is required.")
+            raise ValueError("LLM mode is required")
 
         model_schema = model_type_instance.get_model_schema(model_name, model_credentials)
 
         if not model_schema:
-            raise ValueError(f"Model {model_name} not exist.")
+            raise ValueError(f"Model {model_name} not exist")
 
         return model_instance, ModelConfigWithCredentialsEntity(
             provider=provider_name,

@@ -28,7 +28,7 @@ class CreateNewCardOnBoardTool(BuiltinTool):
 
         # Ensure required parameters are present
         if "name" not in tool_parameters or "idList" not in tool_parameters:
-            return self.create_text_message("Missing required parameters: name or idList.")
+            return self.create_text_message("Missing required parameters: name or idList")
 
         url = "https://api.trello.com/1/cards"
         params = {**tool_parameters, "key": api_key, "token": token}

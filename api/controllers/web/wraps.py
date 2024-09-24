@@ -33,16 +33,16 @@ def decode_jwt_token():
     try:
         auth_header = request.headers.get("Authorization")
         if auth_header is None:
-            raise Unauthorized("Authorization header is missing.")
+            raise Unauthorized("Authorization header is missing")
 
         if " " not in auth_header:
-            raise Unauthorized("Invalid Authorization header format. Expected 'Bearer <api-key>' format.")
+            raise Unauthorized("Invalid Authorization header format. Expected 'Bearer <api-key>' format")
 
         auth_scheme, tk = auth_header.split(None, 1)
         auth_scheme = auth_scheme.lower()
 
         if auth_scheme != "bearer":
-            raise Unauthorized("Invalid Authorization header format. Expected 'Bearer <api-key>' format.")
+            raise Unauthorized("Invalid Authorization header format. Expected 'Bearer <api-key>' format")
         decoded = PassportService().verify(tk)
         app_code = decoded.get("app_code")
         app_model = db.session.query(App).filter(App.id == decoded["app_id"]).first()
@@ -50,9 +50,9 @@ def decode_jwt_token():
         if not app_model:
             raise NotFound()
         if not app_code or not site:
-            raise BadRequest("Site URL is no longer valid.")
+            raise BadRequest("Site URL is no longer valid")
         if app_model.enable_site is False:
-            raise BadRequest("Site is disabled.")
+            raise BadRequest("Site is disabled")
         end_user = db.session.query(EndUser).filter(EndUser.id == decoded["end_user_id"]).first()
         if not end_user:
             raise NotFound()
@@ -85,7 +85,7 @@ def _validate_web_sso_token(decoded, system_features, app_code):
     if not system_features.sso_enforced_for_web or not app_web_sso_enabled:
         source = decoded.get("token_source")
         if source and source == "sso":
-            raise Unauthorized("sso token expired.")
+            raise Unauthorized("sso token expired")
 
 
 class WebApiResource(Resource):

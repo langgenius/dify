@@ -8,12 +8,12 @@ from core.tools.tool.builtin_tool import BuiltinTool
 
 
 class SearchStackExQuestionsInput(BaseModel):
-    intitle: str = Field(..., description="The search query.")
-    sort: str = Field(..., description="The sort order - relevance, activity, votes, creation.")
+    intitle: str = Field(..., description="The search query")
+    sort: str = Field(..., description="The sort order - relevance, activity, votes, creation")
     order: str = Field(..., description="asc or desc")
-    site: str = Field(..., description="The Stack Exchange site.")
-    tagged: str = Field(None, description="Semicolon-separated tags to include.")
-    nottagged: str = Field(None, description="Semicolon-separated tags to exclude.")
+    site: str = Field(..., description="The Stack Exchange site")
+    tagged: str = Field(None, description="Semicolon-separated tags to include")
+    nottagged: str = Field(None, description="Semicolon-separated tags to exclude")
     accepted: bool = Field(..., description="true for only accepted answers, false otherwise")
     pagesize: int = Field(..., description="Number of results per page")
 

@@ -46,7 +46,7 @@ class UpdateWorksheetRecordTool(BuiltinTool):
             res_json = res.json()
             if res_json.get("error_code") != 1:
                 return self.create_text_message(f"Failed to update the record. {res_json['error_msg']}")
-            return self.create_text_message("Record updated successfully.")
+            return self.create_text_message("Record updated successfully")
         except httpx.RequestError as e:
             return self.create_text_message(f"Failed to update the record, request error: {e}")
         except json.JSONDecodeError as e:

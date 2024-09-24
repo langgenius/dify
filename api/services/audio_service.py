@@ -111,7 +111,7 @@ class AudioService:
                         if voices:
                             voice = voices[0].get("value")
                         else:
-                            raise ValueError("Sorry, no voice available.")
+                            raise ValueError("Sorry, no voice available")
 
                     return model_instance.invoke_tts(
                         content_text=text_content.strip(), user=end_user, tenant_id=app_model.tenant_id, voice=voice

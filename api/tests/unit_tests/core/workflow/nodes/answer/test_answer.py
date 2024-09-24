@@ -55,7 +55,7 @@ def test_execute_answer():
         environment_variables=[],
     )
     pool.add(["start", "weather"], "sunny")
-    pool.add(["llm", "text"], "You are a helpful AI.")
+    pool.add(["llm", "text"], "You are a helpful AI")
 
     node = AnswerNode(
         id=str(uuid.uuid4()),

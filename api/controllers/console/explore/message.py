@@ -54,9 +54,9 @@ class MessageListApi(InstalledAppResource):
                 app_model, current_user, args["conversation_id"], args["first_id"], args["limit"], "desc"
             )
         except services.errors.conversation.ConversationNotExistsError:
-            raise NotFound("Conversation Not Exists.")
+            raise NotFound("Conversation not found")
         except services.errors.message.FirstMessageNotExistsError:
-            raise NotFound("First Message Not Exists.")
+            raise NotFound("First Message not found")
 
 
 class MessageFeedbackApi(InstalledAppResource):
@@ -72,7 +72,7 @@ class MessageFeedbackApi(InstalledAppResource):
         try:
             MessageService.create_feedback(app_model, message_id, current_user, args["rating"])
         except services.errors.message.MessageNotExistsError:
-            raise NotFound("Message Not Exists.")
+            raise NotFound("Message not found")
 
         return {"result": "success"}
 
@@ -103,7 +103,7 @@ class MessageMoreLikeThisApi(InstalledAppResource):
             )
             return helper.compact_generate_response(response)
         except MessageNotExistsError:
-            raise NotFound("Message Not Exists.")
+            raise NotFound("Message not found")
         except MoreLikeThisDisabledError:
             raise AppMoreLikeThisDisabledError()
         except ProviderTokenNotInitError as ex:
@@ -117,7 +117,7 @@ class MessageMoreLikeThisApi(InstalledAppResource):
         except ValueError as e:
             raise e
         except Exception:
-            logging.exception("internal server error.")
+            logging.exception("An internal server error occurred")
             raise InternalServerError()
 
 
@@ -149,7 +149,7 @@ class MessageSuggestedQuestionApi(InstalledAppResource):
         except InvokeError as e:
             raise CompletionRequestError(e.description)
         except Exception:
-            logging.exception("internal server error.")
+            logging.exception("An internal server error occurred")
             raise InternalServerError()
 
         return {"data": questions}

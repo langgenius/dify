@@ -602,7 +602,7 @@ class ParameterExtractorNode(LLMNode):
             user_prompt_message = ChatModelMessage(role=PromptMessageRole.USER, text=input_text)
             return [system_prompt_messages, user_prompt_message]
         else:
-            raise ValueError(f"Model mode {model_mode} not support.")
+            raise ValueError(f"Model mode {model_mode} not support")
 
     def _get_prompt_engineering_prompt_template(
         self,
@@ -637,7 +637,7 @@ class ParameterExtractorNode(LLMNode):
                 .replace("}γγγ", "")
             )
         else:
-            raise ValueError(f"Model mode {model_mode} not support.")
+            raise ValueError(f"Model mode {model_mode} not support")
 
     def _calculate_rest_token(
         self,

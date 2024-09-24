@@ -32,7 +32,7 @@ class GitlabCommitsTool(BuiltinTool):
         site_url = self.runtime.credentials.get("site_url")
 
         if "access_tokens" not in self.runtime.credentials or not self.runtime.credentials.get("access_tokens"):
-            return self.create_text_message("Gitlab API Access Tokens is required.")
+            return self.create_text_message("Gitlab API Access Tokens is required")
         if "site_url" not in self.runtime.credentials or not self.runtime.credentials.get("site_url"):
             site_url = "https://gitlab.com"
 

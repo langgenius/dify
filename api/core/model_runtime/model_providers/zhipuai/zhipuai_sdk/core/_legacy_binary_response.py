@@ -10,43 +10,43 @@ import httpx
 class HttpxResponseContent:
     @property
     def content(self) -> bytes:
-        raise NotImplementedError("This method is not implemented for this class.")
+        raise NotImplementedError("This method is not implemented for this class")
 
     @property
     def text(self) -> str:
-        raise NotImplementedError("This method is not implemented for this class.")
+        raise NotImplementedError("This method is not implemented for this class")
 
     @property
     def encoding(self) -> str | None:
-        raise NotImplementedError("This method is not implemented for this class.")
+        raise NotImplementedError("This method is not implemented for this class")
 
     @property
     def charset_encoding(self) -> str | None:
-        raise NotImplementedError("This method is not implemented for this class.")
+        raise NotImplementedError("This method is not implemented for this class")
 
     def json(self, **kwargs: Any) -> Any:
-        raise NotImplementedError("This method is not implemented for this class.")
+        raise NotImplementedError("This method is not implemented for this class")
 
     def read(self) -> bytes:
-        raise NotImplementedError("This method is not implemented for this class.")
+        raise NotImplementedError("This method is not implemented for this class")
 
     def iter_bytes(self, chunk_size: int | None = None) -> Iterator[bytes]:
-        raise NotImplementedError("This method is not implemented for this class.")
+        raise NotImplementedError("This method is not implemented for this class")
 
     def iter_text(self, chunk_size: int | None = None) -> Iterator[str]:
-        raise NotImplementedError("This method is not implemented for this class.")
+        raise NotImplementedError("This method is not implemented for this class")
 
     def iter_lines(self) -> Iterator[str]:
-        raise NotImplementedError("This method is not implemented for this class.")
+        raise NotImplementedError("This method is not implemented for this class")
 
     def iter_raw(self, chunk_size: int | None = None) -> Iterator[bytes]:
-        raise NotImplementedError("This method is not implemented for this class.")
+        raise NotImplementedError("This method is not implemented for this class")
 
     def write_to_file(
         self,
         file: str | os.PathLike[str],
     ) -> None:
-        raise NotImplementedError("This method is not implemented for this class.")
+        raise NotImplementedError("This method is not implemented for this class")
 
     def stream_to_file(
         self,
@@ -54,25 +54,25 @@ class HttpxResponseContent:
         *,
         chunk_size: int | None = None,
     ) -> None:
-        raise NotImplementedError("This method is not implemented for this class.")
+        raise NotImplementedError("This method is not implemented for this class")
 
     def close(self) -> None:
-        raise NotImplementedError("This method is not implemented for this class.")
+        raise NotImplementedError("This method is not implemented for this class")
 
     async def aread(self) -> bytes:
-        raise NotImplementedError("This method is not implemented for this class.")
+        raise NotImplementedError("This method is not implemented for this class")
 
     async def aiter_bytes(self, chunk_size: int | None = None) -> AsyncIterator[bytes]:
-        raise NotImplementedError("This method is not implemented for this class.")
+        raise NotImplementedError("This method is not implemented for this class")
 
     async def aiter_text(self, chunk_size: int | None = None) -> AsyncIterator[str]:
-        raise NotImplementedError("This method is not implemented for this class.")
+        raise NotImplementedError("This method is not implemented for this class")
 
     async def aiter_lines(self) -> AsyncIterator[str]:
-        raise NotImplementedError("This method is not implemented for this class.")
+        raise NotImplementedError("This method is not implemented for this class")
 
     async def aiter_raw(self, chunk_size: int | None = None) -> AsyncIterator[bytes]:
-        raise NotImplementedError("This method is not implemented for this class.")
+        raise NotImplementedError("This method is not implemented for this class")
 
     async def astream_to_file(
         self,
@@ -80,10 +80,10 @@ class HttpxResponseContent:
         *,
         chunk_size: int | None = None,
     ) -> None:
-        raise NotImplementedError("This method is not implemented for this class.")
+        raise NotImplementedError("This method is not implemented for this class")
 
     async def aclose(self) -> None:
-        raise NotImplementedError("This method is not implemented for this class.")
+        raise NotImplementedError("This method is not implemented for this class")
 
 
 class HttpxBinaryResponseContent(HttpxResponseContent):

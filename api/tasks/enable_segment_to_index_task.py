@@ -29,7 +29,7 @@ def enable_segment_to_index_task(segment_id: str):
         raise NotFound("Segment not found")
 
     if segment.status != "completed":
-        raise NotFound("Segment is not completed, enable action is not allowed.")
+        raise NotFound("Segment is not completed, enable action is not allowed")
 
     indexing_cache_key = "segment_{}_indexing".format(segment.id)
 

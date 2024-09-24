@@ -60,6 +60,6 @@ class TalksTool(BuiltinTool):
             talks_result = json.dumps(talks_result, ensure_ascii=False, indent=4)
 
         if not talks_result:
-            return self.create_text_message("D-ID talks request failed.")
+            return self.create_text_message("D-ID talks request failed")
 
         return self.create_text_message(talks_result)

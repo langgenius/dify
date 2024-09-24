@@ -7,6 +7,7 @@ from typing import Any, Optional
 import numpy as np
 from requests import Response, post
 
+from core.embedding.embedding_constant import EmbeddingInputType
 from core.model_runtime.entities.model_entities import PriceType
 from core.model_runtime.entities.text_embedding_entities import EmbeddingUsage, TextEmbeddingResult
 from core.model_runtime.errors.invoke import InvokeError
@@ -42,7 +43,7 @@ class WenxinTextEmbedding(_CommonWenxin, TextEmbedding):
 
     def _build_embed_request_body(self, model: str, texts: list[str], user: str) -> dict[str, Any]:
         if len(texts) == 0:
-            raise BadRequestError("The number of texts should not be zero.")
+            raise BadRequestError("The number of texts should not be zero")
         body = {
             "input": texts,
             "user_id": user,
@@ -70,7 +71,12 @@ class WenxinTextEmbeddingModel(TextEmbeddingModel):
         return WenxinTextEmbedding(api_key, secret_key)
 
     def _invoke(
-        self, model: str, credentials: dict, texts: list[str], user: Optional[str] = None
+        self,
+        model: str,
+        credentials: dict,
+        texts: list[str],
+        user: Optional[str] = None,
+        input_type: EmbeddingInputType = EmbeddingInputType.DOCUMENT,
     ) -> TextEmbeddingResult:
         """
         Invoke text embedding model

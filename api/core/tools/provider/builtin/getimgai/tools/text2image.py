@@ -34,6 +34,6 @@ class Text2ImageTool(BuiltinTool):
             text2image_result = json.dumps(text2image_result, ensure_ascii=False, indent=4)
 
         if not text2image_result:
-            return self.create_text_message("getimg.ai request failed.")
+            return self.create_text_message("getimg.ai request failed")
 
         return self.create_text_message(text2image_result)

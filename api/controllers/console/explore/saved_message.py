@@ -56,7 +56,7 @@ class SavedMessageListApi(InstalledAppResource):
         try:
             SavedMessageService.save(app_model, current_user, args["message_id"])
         except MessageNotExistsError:
-            raise NotFound("Message Not Exists.")
+            raise NotFound("Message not found")
 
         return {"result": "success"}
 

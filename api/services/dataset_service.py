@@ -141,7 +141,7 @@ class DatasetService:
     ):
         # check if dataset name already exists
         if Dataset.query.filter_by(name=name, tenant_id=tenant_id).first():
-            raise DatasetNameDuplicateError(f"Dataset with name {name} already exists.")
+            raise DatasetNameDuplicateError(f"Dataset with name {name} already exists")
         embedding_model = None
         if indexing_technique == "high_quality":
             model_manager = ModelManager()
@@ -305,27 +305,27 @@ class DatasetService:
     def check_dataset_permission(dataset, user):
         if dataset.tenant_id != user.current_tenant_id:
             logging.debug(f"User {user.id} does not have permission to access dataset {dataset.id}")
-            raise NoPermissionError("You do not have permission to access this dataset.")
+            raise NoPermissionError("You do not have permission to access this dataset")
         if dataset.permission == DatasetPermissionEnum.ONLY_ME and dataset.created_by != user.id:
             logging.debug(f"User {user.id} does not have permission to access dataset {dataset.id}")
-            raise NoPermissionError("You do not have permission to access this dataset.")
+            raise NoPermissionError("You do not have permission to access this dataset")
         if dataset.permission == "partial_members":
             user_permission = DatasetPermission.query.filter_by(dataset_id=dataset.id, account_id=user.id).first()
             if not user_permission and dataset.tenant_id != user.current_tenant_id and dataset.created_by != user.id:
                 logging.debug(f"User {user.id} does not have permission to access dataset {dataset.id}")
-                raise NoPermissionError("You do not have permission to access this dataset.")
+                raise NoPermissionError("You do not have permission to access this dataset")
 
     @staticmethod
     def check_dataset_operator_permission(user: Account = None, dataset: Dataset = None):
         if dataset.permission == DatasetPermissionEnum.ONLY_ME:
             if dataset.created_by != user.id:
-                raise NoPermissionError("You do not have permission to access this dataset.")
+                raise NoPermissionError("You do not have permission to access this dataset")
 
         elif dataset.permission == DatasetPermissionEnum.PARTIAL_TEAM:
             if not any(
                 dp.dataset_id == dataset.id for dp in DatasetPermission.query.filter_by(account_id=user.id).all()
             ):
-                raise NoPermissionError("You do not have permission to access this dataset.")
+                raise NoPermissionError("You do not have permission to access this dataset")
 
     @staticmethod
     def get_dataset_queries(dataset_id: str, page: int, per_page: int):
@@ -525,15 +525,15 @@ class DocumentService:
     def rename_document(dataset_id: str, document_id: str, name: str) -> Document:
         dataset = DatasetService.get_dataset(dataset_id)
         if not dataset:
-            raise ValueError("Dataset not found.")
+            raise ValueError("Dataset not found")
 
         document = DocumentService.get_document(dataset_id, document_id)
 
         if not document:
-            raise ValueError("Document not found.")
+            raise ValueError("Document not found")
 
         if document.tenant_id != current_user.current_tenant_id:
-            raise ValueError("No permission.")
+            raise ValueError("You do not have permission to perform this action")
 
         document.name = name
 
@@ -581,7 +581,7 @@ class DocumentService:
             retry_indexing_cache_key = "document_{}_is_retried".format(document.id)
             cache_result = redis_client.get(retry_indexing_cache_key)
             if cache_result is not None:
-                raise ValueError("Document is being retried, please try again later")
+                raise ValueError("Document is currently being retried. Please wait and try again later")
             # retry document indexing
             document.indexing_status = "waiting"
             db.session.add(document)
@@ -598,7 +598,7 @@ class DocumentService:
         sync_indexing_cache_key = "document_{}_is_sync".format(document.id)
         cache_result = redis_client.get(sync_indexing_cache_key)
         if cache_result is not None:
-            raise ValueError("Document is being synced, please try again later")
+            raise ValueError("Document is currently being retried. Please wait and try again later")
         # sync document indexing
         document.indexing_status = "waiting"
         data_source_info = document.data_source_info_dict
@@ -645,7 +645,7 @@ class DocumentService:
                     count = len(website_info["urls"])
                 batch_upload_limit = int(dify_config.BATCH_UPLOAD_LIMIT)
                 if count > batch_upload_limit:
-                    raise ValueError(f"You have reached the batch upload limit of {batch_upload_limit}.")
+                    raise ValueError(f"You have reached the batch upload limit of {batch_upload_limit}")
 
                 DocumentService.check_documents_upload_quota(count, features)
 
@@ -658,7 +658,7 @@ class DocumentService:
                 "indexing_technique" not in document_data
                 or document_data["indexing_technique"] not in Dataset.INDEXING_TECHNIQUE_LIST
             ):
-                raise ValueError("Indexing technique is required")
+                raise ValueError("Missing required parameter: indexing_technique")
 
             dataset.indexing_technique = document_data["indexing_technique"]
             if document_data["indexing_technique"] == "high_quality":
@@ -794,7 +794,7 @@ class DocumentService:
                         )
                     ).first()
                     if not data_source_binding:
-                        raise ValueError("Data source binding not found.")
+                        raise ValueError("Data source binding not found")
                     for page in notion_info["pages"]:
                         if page["page_id"] not in exist_page_ids:
                             data_source_info = {
@@ -986,7 +986,7 @@ class DocumentService:
                         )
                     ).first()
                     if not data_source_binding:
-                        raise ValueError("Data source binding not found.")
+                        raise ValueError("Data source binding not found")
                     for page in notion_info["pages"]:
                         data_source_info = {
                             "notion_workspace_id": workspace_id,
@@ -1046,7 +1046,7 @@ class DocumentService:
                 count = len(website_info["urls"])
             batch_upload_limit = int(dify_config.BATCH_UPLOAD_LIMIT)
             if count > batch_upload_limit:
-                raise ValueError(f"You have reached the batch upload limit of {batch_upload_limit}.")
+                raise ValueError(f"You have reached the batch upload limit of {batch_upload_limit}")
 
             DocumentService.check_documents_upload_quota(count, features)
 
@@ -1542,7 +1542,7 @@ class SegmentService:
         indexing_cache_key = "segment_{}_delete_indexing".format(segment.id)
         cache_result = redis_client.get(indexing_cache_key)
         if cache_result is not None:
-            raise ValueError("Segment is deleting.")
+            raise ValueError("Segment is deleting")
 
         # enabled segment need to delete index
         if segment.enabled:
@@ -1635,19 +1635,19 @@ class DatasetPermissionService:
     @classmethod
     def check_permission(cls, user, dataset, requested_permission, requested_partial_member_list):
         if not user.is_dataset_editor:
-            raise NoPermissionError("User does not have permission to edit this dataset.")
+            raise NoPermissionError("User does not have permission to edit this dataset")
 
         if user.is_dataset_operator and dataset.permission != requested_permission:
-            raise NoPermissionError("Dataset operators cannot change the dataset permissions.")
+            raise NoPermissionError("Dataset operators cannot change the dataset permissions")
 
         if user.is_dataset_operator and requested_permission == "partial_members":
             if not requested_partial_member_list:
-                raise ValueError("Partial member list is required when setting to partial members.")
+                raise ValueError("Partial member list is required when setting to partial members")
 
             local_member_list = cls.get_dataset_partial_member_list(dataset.id)
             request_member_list = [user["user_id"] for user in requested_partial_member_list]
             if set(local_member_list) != set(request_member_list):
-                raise ValueError("Dataset operators cannot change the dataset permissions.")
+                raise ValueError("Dataset operators cannot change the dataset permissions")
 
     @classmethod
     def clear_partial_member_list(cls, dataset_id):

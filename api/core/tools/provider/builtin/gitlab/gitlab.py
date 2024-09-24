@@ -10,7 +10,7 @@ class GitlabProvider(BuiltinToolProviderController):
     def _validate_credentials(self, credentials: dict[str, Any]) -> None:
         try:
             if "access_tokens" not in credentials or not credentials.get("access_tokens"):
-                raise ToolProviderCredentialValidationError("Gitlab Access Tokens is required.")
+                raise ToolProviderCredentialValidationError("Gitlab Access Tokens is required")
 
             if "site_url" not in credentials or not credentials.get("site_url"):
                 site_url = "https://gitlab.com"

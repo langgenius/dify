@@ -93,15 +93,15 @@ class ErnieBotModel(_CommonWenxin):
         # so, we just disable function calling for now.
 
         if tools is not None and len(tools) > 0:
-            raise BadRequestError("function calling is not supported yet.")
+            raise BadRequestError("function calling is not supported yet")
 
         if stop is not None:
             if len(stop) > 4:
-                raise BadRequestError("stop list should not exceed 4 items.")
+                raise BadRequestError("stop list should not exceed 4 items")
 
             for s in stop:
                 if len(s) > 20:
-                    raise BadRequestError("stop item should not exceed 20 characters.")
+                    raise BadRequestError("stop item should not exceed 20 characters")
 
     def _build_request_body(
         self,
@@ -128,9 +128,9 @@ class ErnieBotModel(_CommonWenxin):
         user: str,
     ) -> dict[str, Any]:
         if len(messages) % 2 == 0:
-            raise BadRequestError("The number of messages should be odd.")
+            raise BadRequestError("The number of messages should be odd")
         if messages[0].role == "function":
-            raise BadRequestError("The first message should be user message.")
+            raise BadRequestError("The first message should be user message")
 
         """
         TODO: implement function calling
@@ -146,7 +146,7 @@ class ErnieBotModel(_CommonWenxin):
         user: str,
     ) -> dict[str, Any]:
         if len(messages) == 0:
-            raise BadRequestError("The number of messages should not be zero.")
+            raise BadRequestError("The number of messages should not be zero")
 
         # check if the first element is system, shift it
         system_message = ""
@@ -155,9 +155,9 @@ class ErnieBotModel(_CommonWenxin):
             system_message = message.content
 
         if len(messages) % 2 == 0:
-            raise BadRequestError("The number of messages should be odd.")
+            raise BadRequestError("The number of messages should be odd")
         if messages[0].role != "user":
-            raise BadRequestError("The first message should be user message.")
+            raise BadRequestError("The first message should be user message")
         body = {
             "messages": [message.to_dict() for message in messages],
             "stream": stream,

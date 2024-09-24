@@ -62,7 +62,7 @@ class CSVExtractor(BaseExtractor):
 
             # check source column exists
             if self.source_column and self.source_column not in df.columns:
-                raise ValueError(f"Source column '{self.source_column}' not found in CSV file.")
+                raise ValueError(f"Source column '{self.source_column}' not found in CSV file")
 
             # create document objects
 

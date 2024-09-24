@@ -8,7 +8,7 @@ class GithubProvider(BuiltinToolProviderController):
     def _validate_credentials(self, credentials: dict) -> None:
         try:
             if "access_tokens" not in credentials or not credentials.get("access_tokens"):
-                raise ToolProviderCredentialValidationError("Github API Access Tokens is required.")
+                raise ToolProviderCredentialValidationError("Github API Access Tokens is required")
             if "api_version" not in credentials or not credentials.get("api_version"):
                 api_version = "2022-11-28"
             else:

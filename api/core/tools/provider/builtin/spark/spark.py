@@ -9,11 +9,11 @@ class SparkProvider(BuiltinToolProviderController):
     def _validate_credentials(self, credentials: dict) -> None:
         try:
             if "APPID" not in credentials or not credentials.get("APPID"):
-                raise ToolProviderCredentialValidationError("APPID is required.")
+                raise ToolProviderCredentialValidationError("APPID is required")
             if "APISecret" not in credentials or not credentials.get("APISecret"):
-                raise ToolProviderCredentialValidationError("APISecret is required.")
+                raise ToolProviderCredentialValidationError("APISecret is required")
             if "APIKey" not in credentials or not credentials.get("APIKey"):
-                raise ToolProviderCredentialValidationError("APIKey is required.")
+                raise ToolProviderCredentialValidationError("APIKey is required")
 
             appid = credentials.get("APPID")
             apisecret = credentials.get("APISecret")

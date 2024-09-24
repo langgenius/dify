@@ -30,16 +30,16 @@ class SegmentApi(DatasetApiResource):
         tenant_id = str(tenant_id)
         dataset = db.session.query(Dataset).filter(Dataset.tenant_id == tenant_id, Dataset.id == dataset_id).first()
         if not dataset:
-            raise NotFound("Dataset not found.")
+            raise NotFound("Dataset not found")
         # check document
         document_id = str(document_id)
         document = DocumentService.get_document(dataset.id, document_id)
         if not document:
-            raise NotFound("Document not found.")
+            raise NotFound("Document not found")
         if document.indexing_status != "completed":
-            raise NotFound("Document is not completed.")
+            raise NotFound("Document is not completed")
         if not document.enabled:
-            raise NotFound("Document is disabled.")
+            raise NotFound("Document is disabled")
         # check embedding model setting
         if dataset.indexing_technique == "high_quality":
             try:
@@ -76,12 +76,12 @@ class SegmentApi(DatasetApiResource):
         tenant_id = str(tenant_id)
         dataset = db.session.query(Dataset).filter(Dataset.tenant_id == tenant_id, Dataset.id == dataset_id).first()
         if not dataset:
-            raise NotFound("Dataset not found.")
+            raise NotFound("Dataset not found")
         # check document
         document_id = str(document_id)
         document = DocumentService.get_document(dataset.id, document_id)
         if not document:
-            raise NotFound("Document not found.")
+            raise NotFound("Document not found")
         # check embedding model setting
         if dataset.indexing_technique == "high_quality":
             try:
@@ -130,20 +130,20 @@ class DatasetSegmentApi(DatasetApiResource):
         tenant_id = str(tenant_id)
         dataset = db.session.query(Dataset).filter(Dataset.tenant_id == tenant_id, Dataset.id == dataset_id).first()
         if not dataset:
-            raise NotFound("Dataset not found.")
+            raise NotFound("Dataset not found")
         # check user's model setting
         DatasetService.check_dataset_model_setting(dataset)
         # check document
         document_id = str(document_id)
         document = DocumentService.get_document(dataset_id, document_id)
         if not document:
-            raise NotFound("Document not found.")
+            raise NotFound("Document not found")
         # check segment
         segment = DocumentSegment.query.filter(
             DocumentSegment.id == str(segment_id), DocumentSegment.tenant_id == current_user.current_tenant_id
         ).first()
         if not segment:
-            raise NotFound("Segment not found.")
+            raise NotFound("Segment not found")
         SegmentService.delete_segment(segment, document, dataset)
         return {"result": "success"}, 200
 
@@ -154,14 +154,14 @@ class DatasetSegmentApi(DatasetApiResource):
         tenant_id = str(tenant_id)
         dataset = db.session.query(Dataset).filter(Dataset.tenant_id == tenant_id, Dataset.id == dataset_id).first()
         if not dataset:
-            raise NotFound("Dataset not found.")
+            raise NotFound("Dataset not found")
         # check user's model setting
         DatasetService.check_dataset_model_setting(dataset)
         # check document
         document_id = str(document_id)
         document = DocumentService.get_document(dataset_id, document_id)
         if not document:
-            raise NotFound("Document not found.")
+            raise NotFound("Document not found")
         if dataset.indexing_technique == "high_quality":
             # check embedding model setting
             try:
@@ -185,7 +185,7 @@ class DatasetSegmentApi(DatasetApiResource):
             DocumentSegment.id == str(segment_id), DocumentSegment.tenant_id == current_user.current_tenant_id
         ).first()
         if not segment:
-            raise NotFound("Segment not found.")
+            raise NotFound("Segment not found")
 
         # validate args
         parser = reqparse.RequestParser()

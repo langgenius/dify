@@ -42,7 +42,7 @@ class BaseNode(ABC):
 
         node_id = config.get("id")
         if not node_id:
-            raise ValueError("Node ID is required.")
+            raise ValueError("Node ID is required")
 
         self.node_id = node_id
         self.node_data = self._node_data_cls(**config.get("data", {}))
@@ -79,7 +79,7 @@ class BaseNode(ABC):
         """
         node_id = config.get("id")
         if not node_id:
-            raise ValueError("Node ID is required when extracting variable selector to variable mapping.")
+            raise ValueError("Node ID is required when extracting variable selector to variable mapping")
 
         node_data = cls._node_data_cls(**config.get("data", {}))
         return cls._extract_variable_selector_to_variable_mapping(

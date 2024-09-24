@@ -8,8 +8,8 @@ from core.tools.tool.builtin_tool import BuiltinTool
 
 
 class SearchDevDocsInput(BaseModel):
-    doc: str = Field(..., description="The name of the documentation.")
-    topic: str = Field(..., description="The path of the section/topic.")
+    doc: str = Field(..., description="The name of the documentation")
+    topic: str = Field(..., description="The path of the section/topic")
 
 
 class SearchDevDocsTool(BuiltinTool):
@@ -31,9 +31,9 @@ class SearchDevDocsTool(BuiltinTool):
         topic = tool_parameters.get("topic", "")
 
         if not doc:
-            return self.create_text_message("Please provide the documentation name.")
+            return self.create_text_message("Please provide the documentation name")
         if not topic:
-            return self.create_text_message("Please provide the topic path.")
+            return self.create_text_message("Please provide the topic path")
 
         url = f"https://documents.devdocs.io/{doc}/{topic}.html"
         response = requests.get(url)

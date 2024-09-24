@@ -20,7 +20,7 @@ class PassportResource(Resource):
         system_features = FeatureService.get_system_features()
         app_code = request.headers.get("X-App-Code")
         if app_code is None:
-            raise Unauthorized("X-App-Code header is missing.")
+            raise Unauthorized("X-App-Code header is missing")
 
         if system_features.sso_enforced_for_web:
             app_web_sso_enabled = EnterpriseService.get_app_web_sso_enabled(app_code).get("enabled", False)

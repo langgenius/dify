@@ -27,7 +27,7 @@ from models.provider import Provider, ProviderModel
 from services.account_service import RegisterService, TenantService
 
 
-@click.command("reset-password", help="Reset the account password.")
+@click.command("reset-password", help="Reset the account password")
 @click.option("--email", prompt=True, help="Account email to reset password for")
 @click.option("--new-password", prompt=True, help="New password")
 @click.option("--password-confirm", prompt=True, help="Confirm new password")
@@ -65,7 +65,7 @@ def reset_password(email, new_password, password_confirm):
     click.echo(click.style("Password reset successfully.", fg="green"))
 
 
-@click.command("reset-email", help="Reset the account email.")
+@click.command("reset-email", help="Reset the account email")
 @click.option("--email", prompt=True, help="Current account email")
 @click.option("--new-email", prompt=True, help="New email")
 @click.option("--email-confirm", prompt=True, help="Confirm new email")
@@ -137,8 +137,8 @@ def reset_encrypt_key_pair():
         )
 
 
-@click.command("vdb-migrate", help="Migrate vector db.")
-@click.option("--scope", default="all", prompt=False, help="The scope of vector database to migrate, Default is All.")
+@click.command("vdb-migrate", help="Migrate vector db")
+@click.option("--scope", default="all", prompt=False, help="The scope of vector database to migrate, Default is All")
 def vdb_migrate(scope: str):
     if scope in {"knowledge", "all"}:
         migrate_knowledge_vector_database()
@@ -211,7 +211,7 @@ def migrate_annotation_vector_database():
                         documents.append(document)
 
                 vector = Vector(dataset, attributes=["doc_id", "annotation_id", "app_id"])
-                click.echo(f"Migrating annotations for app: {app.id}.")
+                click.echo(f"Migrating annotations for app: {app.id}")
 
                 try:
                     vector.delete()
@@ -232,7 +232,7 @@ def migrate_annotation_vector_database():
                     except Exception as e:
                         click.echo(click.style(f"Failed to created vector index for app {app.id}.", fg="red"))
                         raise e
-                click.echo(f"Successfully migrated app annotation {app.id}.")
+                click.echo(f"Successfully migrated app annotation {app.id}")
                 create_count += 1
             except Exception as e:
                 click.echo(
@@ -348,10 +348,10 @@ def migrate_knowledge_vector_database():
                     index_struct_dict = {"type": "elasticsearch", "vector_store": {"class_prefix": index_name}}
                     dataset.index_struct = json.dumps(index_struct_dict)
                 else:
-                    raise ValueError(f"Vector store {vector_type} is not supported.")
+                    raise ValueError(f"Vector store {vector_type} is not supported")
 
                 vector = Vector(dataset)
-                click.echo(f"Migrating dataset {dataset.id}.")
+                click.echo(f"Migrating dataset {dataset.id}")
 
                 try:
                     vector.delete()
@@ -420,7 +420,7 @@ def migrate_knowledge_vector_database():
                         raise e
                 db.session.add(dataset)
                 db.session.commit()
-                click.echo(f"Successfully migrated dataset {dataset.id}.")
+                click.echo(f"Successfully migrated dataset {dataset.id}")
                 create_count += 1
             except Exception as e:
                 db.session.rollback()
@@ -436,7 +436,7 @@ def migrate_knowledge_vector_database():
     )
 
 
-@click.command("convert-to-agent-apps", help="Convert Agent Assistant to Agent App.")
+@click.command("convert-to-agent-apps", help="Convert Agent Assistant to Agent App")
 def convert_to_agent_apps():
     """
     Convert Agent Assistant to Agent App.
@@ -495,8 +495,8 @@ def convert_to_agent_apps():
     click.echo(click.style("Conversion complete. Converted {} agent apps.".format(len(proceeded_app_ids)), fg="green"))
 
 
-@click.command("add-qdrant-doc-id-index", help="Add Qdrant doc_id index.")
-@click.option("--field", default="metadata.doc_id", prompt=False, help="Index field , default is metadata.doc_id.")
+@click.command("add-qdrant-doc-id-index", help="Add Qdrant doc_id index")
+@click.option("--field", default="metadata.doc_id", prompt=False, help="Index field , default is metadata.doc_id")
 def add_qdrant_doc_id_index(field: str):
     click.echo(click.style("Starting Qdrant doc_id index creation.", fg="green"))
     vector_type = dify_config.VECTOR_STORE
@@ -518,7 +518,7 @@ def add_qdrant_doc_id_index(field: str):
 
         for binding in bindings:
             if dify_config.QDRANT_URL is None:
-                raise ValueError("Qdrant URL is required.")
+                raise ValueError("Qdrant URL is required")
             qdrant_config = QdrantConfig(
                 endpoint=dify_config.QDRANT_URL,
                 api_key=dify_config.QDRANT_API_KEY,
@@ -551,10 +551,10 @@ def add_qdrant_doc_id_index(field: str):
     click.echo(click.style(f"Index creation complete. Created {create_count} collection indexes.", fg="green"))
 
 
-@click.command("create-tenant", help="Create account and tenant.")
-@click.option("--email", prompt=True, help="Tenant account email.")
-@click.option("--name", prompt=True, help="Workspace name.")
-@click.option("--language", prompt=True, help="Account language, default: en-US.")
+@click.command("create-tenant", help="Create account and tenant")
+@click.option("--email", prompt=True, help="Tenant account email")
+@click.option("--name", prompt=True, help="Workspace name")
+@click.option("--language", prompt=True, help="Account language, default: en-US")
 def create_tenant(email: str, language: Optional[str] = None, name: Optional[str] = None):
     """
     Create tenant account
@@ -616,7 +616,7 @@ def upgrade_db():
         click.echo("Database migration skipped")
 
 
-@click.command("fix-app-site-missing", help="Fix app related site missing issue.")
+@click.command("fix-app-site-missing", help="Fix app related site missing issue")
 def fix_app_site_missing():
     """
     Fix app related site missing issue.

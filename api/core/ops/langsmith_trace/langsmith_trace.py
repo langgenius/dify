@@ -349,7 +349,7 @@ class LangSmithDataTrace(BaseTraceInstance):
         data = filter_none_values(data)
         try:
             self.langsmith_client.create_run(**data)
-            logger.debug("LangSmith Run created successfully.")
+            logger.debug("LangSmith Run created successfully")
         except Exception as e:
             raise ValueError(f"LangSmith Failed to create run: {str(e)}")
 
@@ -358,7 +358,7 @@ class LangSmithDataTrace(BaseTraceInstance):
         data = filter_none_values(data)
         try:
             self.langsmith_client.update_run(**data)
-            logger.debug("LangSmith Run updated successfully.")
+            logger.debug("LangSmith Run updated successfully")
         except Exception as e:
             raise ValueError(f"LangSmith Failed to update run: {str(e)}")
 

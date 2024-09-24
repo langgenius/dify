@@ -171,7 +171,7 @@ class RelytVector(BaseVector):
         from pgvecto_rs.sqlalchemy import VECTOR
 
         if ids is None:
-            raise ValueError("No ids provided to delete.")
+            raise ValueError("No ids provided to delete")
 
         # Define the table schema
         chunks_table = Table(
@@ -245,7 +245,7 @@ class RelytVector(BaseVector):
         try:
             from sqlalchemy.engine import Row
         except ImportError:
-            raise ImportError("Could not import Row from sqlalchemy.engine. Please 'pip install sqlalchemy>=1.4'.")
+            raise ImportError("Could not import Row from sqlalchemy.engine. Please 'pip install sqlalchemy>=1.4'")
 
         filter_condition = ""
         if filter is not None:

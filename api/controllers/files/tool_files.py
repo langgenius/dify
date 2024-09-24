@@ -25,7 +25,7 @@ class ToolFilePreviewApi(Resource):
             nonce=args["nonce"],
             sign=args["sign"],
         ):
-            raise Forbidden("Invalid request.")
+            raise Forbidden("Invalid request")
 
         try:
             result = ToolFileManager.get_file_generator_by_tool_file_id(

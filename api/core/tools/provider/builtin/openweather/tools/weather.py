@@ -18,7 +18,7 @@ class OpenweatherTool(BuiltinTool):
         if not city:
             return self.create_text_message("Please tell me your city")
         if "api_key" not in self.runtime.credentials or not self.runtime.credentials.get("api_key"):
-            return self.create_text_message("OpenWeather API key is required.")
+            return self.create_text_message("OpenWeather API key is required")
 
         units = tool_parameters.get("units", "metric")
         lang = tool_parameters.get("lang", "zh_cn")

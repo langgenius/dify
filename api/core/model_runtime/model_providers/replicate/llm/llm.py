@@ -78,7 +78,7 @@ class ReplicateLargeLanguageModel(_CommonReplicate, LargeLanguageModel):
 
     def validate_credentials(self, model: str, credentials: dict) -> None:
         if "replicate_api_token" not in credentials:
-            raise CredentialsValidateFailedError("Replicate Access Token must be provided.")
+            raise CredentialsValidateFailedError("Replicate Access Token must be provided")
 
         model_version = ""
         if "model_version" in credentials:
@@ -116,7 +116,7 @@ class ReplicateLargeLanguageModel(_CommonReplicate, LargeLanguageModel):
             or "top_p" not in model_info_version.openapi_schema["components"]["schemas"]["Input"]["properties"]
             or "top_k" not in model_info_version.openapi_schema["components"]["schemas"]["Input"]["properties"]
         ):
-            raise CredentialsValidateFailedError(f"Model {model_name}:{version} is not a Text Generation model.")
+            raise CredentialsValidateFailedError(f"Model {model_name}:{version} is not a Text Generation model")
 
     def get_customizable_model_schema(self, model: str, credentials: dict) -> Optional[AIModelEntity]:
         model_type = LLMMode.CHAT if model.endswith("-chat") else LLMMode.COMPLETION

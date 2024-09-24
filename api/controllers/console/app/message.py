@@ -57,7 +57,7 @@ class ChatMessageListApi(Resource):
         )
 
         if not conversation:
-            raise NotFound("Conversation Not Exists.")
+            raise NotFound("Conversation not found")
 
         if args["first_id"]:
             first_message = (
@@ -124,7 +124,7 @@ class MessageFeedbackApi(Resource):
         message = db.session.query(Message).filter(Message.id == message_id, Message.app_id == app_model.id).first()
 
         if not message:
-            raise NotFound("Message Not Exists.")
+            raise NotFound("Message not found")
 
         feedback = message.admin_feedback
 
@@ -133,7 +133,7 @@ class MessageFeedbackApi(Resource):
         elif args["rating"] and feedback:
             feedback.rating = args["rating"]
         elif not args["rating"] and not feedback:
-            raise ValueError("rating cannot be None when feedback not exists")
+            raise ValueError("Rating cannot be None when feedback does not exist")
         else:
             feedback = MessageFeedback(
                 app_id=app_model.id,
@@ -210,7 +210,7 @@ class MessageSuggestedQuestionApi(Resource):
         except SuggestedQuestionsAfterAnswerDisabledError:
             raise AppSuggestedQuestionsAfterAnswerDisabledError()
         except Exception:
-            logging.exception("internal server error.")
+            logging.exception("An internal server error occurred")
             raise InternalServerError()
 
         return {"data": questions}
@@ -228,7 +228,7 @@ class MessageApi(Resource):
         message = db.session.query(Message).filter(Message.id == message_id, Message.app_id == app_model.id).first()
 
         if not message:
-            raise NotFound("Message Not Exists.")
+            raise NotFound("Message not found")
 
         return message
 

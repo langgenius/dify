@@ -118,5 +118,5 @@ def get_json_params(tool_parameters: dict[str, Any], key):
             param = param.replace("'", '"')
             param = json.loads(param)
         except Exception:
-            raise ValueError(f"Invalid {key} format.")
+            raise ValueError(f"Invalid {key} format")
         return param

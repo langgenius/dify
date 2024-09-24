@@ -19,14 +19,14 @@ class EnterpriseWorkspace(Resource):
 
         account = Account.query.filter_by(email=args["owner_email"]).first()
         if account is None:
-            return {"message": "owner account not found."}, 404
+            return {"message": "Owner account not found"}, 404
 
         tenant = TenantService.create_tenant(args["name"])
         TenantService.create_tenant_member(tenant, account, role="owner")
 
         tenant_was_created.send(tenant)
 
-        return {"message": "enterprise workspace created."}
+        return {"message": "Enterprise workspace created successfully"}
 
 
 api.add_resource(EnterpriseWorkspace, "/enterprise/workspace")

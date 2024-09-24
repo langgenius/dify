@@ -107,7 +107,7 @@ class VariablePool(BaseModel):
 
         return value
 
-    @deprecated("This method is deprecated, use `get` instead.")
+    @deprecated("This method is deprecated, use `get` instead")
     def get_any(self, selector: Sequence[str], /) -> Any | None:
         """
         Retrieves the value from the variable pool based on the given selector.

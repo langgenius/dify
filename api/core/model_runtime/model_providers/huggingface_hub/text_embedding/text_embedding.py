@@ -6,6 +6,7 @@ import numpy as np
 import requests
 from huggingface_hub import HfApi, InferenceClient
 
+from core.embedding.embedding_constant import EmbeddingInputType
 from core.model_runtime.entities.common_entities import I18nObject
 from core.model_runtime.entities.model_entities import AIModelEntity, FetchFrom, ModelType, PriceType
 from core.model_runtime.entities.text_embedding_entities import EmbeddingUsage, TextEmbeddingResult
@@ -18,7 +19,12 @@ HUGGINGFACE_ENDPOINT_API = "https://api.endpoints.huggingface.cloud/v2/endpoint/
 
 class HuggingfaceHubTextEmbeddingModel(_CommonHuggingfaceHub, TextEmbeddingModel):
     def _invoke(
-        self, model: str, credentials: dict, texts: list[str], user: Optional[str] = None
+        self,
+        model: str,
+        credentials: dict,
+        texts: list[str],
+        user: Optional[str] = None,
+        input_type: EmbeddingInputType = EmbeddingInputType.DOCUMENT,
     ) -> TextEmbeddingResult:
         client = InferenceClient(token=credentials["huggingfacehub_api_token"])
 
@@ -47,10 +53,10 @@ class HuggingfaceHubTextEmbeddingModel(_CommonHuggingfaceHub, TextEmbeddingModel
     def validate_credentials(self, model: str, credentials: dict) -> None:
         try:
             if "huggingfacehub_api_type" not in credentials:
-                raise CredentialsValidateFailedError("Huggingface Hub Endpoint Type must be provided.")
+                raise CredentialsValidateFailedError("Huggingface Hub Endpoint Type must be provided")
 
             if "huggingfacehub_api_token" not in credentials:
-                raise CredentialsValidateFailedError("Huggingface Hub API Token must be provided.")
+                raise CredentialsValidateFailedError("Huggingface Hub API Token must be provided")
 
             if credentials["huggingfacehub_api_type"] == "inference_endpoints":
                 if "huggingface_namespace" not in credentials:
@@ -59,13 +65,13 @@ class HuggingfaceHubTextEmbeddingModel(_CommonHuggingfaceHub, TextEmbeddingModel
                     )
 
                 if "huggingfacehub_endpoint_url" not in credentials:
-                    raise CredentialsValidateFailedError("Huggingface Hub Endpoint URL must be provided.")
+                    raise CredentialsValidateFailedError("Huggingface Hub Endpoint URL must be provided")
 
                 if "task_type" not in credentials:
-                    raise CredentialsValidateFailedError("Huggingface Hub Task Type must be provided.")
+                    raise CredentialsValidateFailedError("Huggingface Hub Task Type must be provided")
 
                 if credentials["task_type"] != "feature-extraction":
-                    raise CredentialsValidateFailedError("Huggingface Hub Task Type is invalid.")
+                    raise CredentialsValidateFailedError("Huggingface Hub Task Type is invalid")
 
                 self._check_endpoint_url_model_repository_name(credentials, model)
 
@@ -74,7 +80,7 @@ class HuggingfaceHubTextEmbeddingModel(_CommonHuggingfaceHub, TextEmbeddingModel
             elif credentials["huggingfacehub_api_type"] == "hosted_inference_api":
                 self._check_hosted_model_task_type(credentials["huggingfacehub_api_token"], model)
             else:
-                raise CredentialsValidateFailedError("Huggingface Hub Endpoint Type is invalid.")
+                raise CredentialsValidateFailedError("Huggingface Hub Endpoint Type is invalid")
 
             client = InferenceClient(token=credentials["huggingfacehub_api_token"])
             client.feature_extraction(text="hello world", model=model)
@@ -114,14 +120,14 @@ class HuggingfaceHubTextEmbeddingModel(_CommonHuggingfaceHub, TextEmbeddingModel
 
         try:
             if not model_info:
-                raise ValueError(f"Model {model_name} not found.")
+                raise ValueError(f"Model {model_name} not found")
 
             if "inference" in model_info.cardData and not model_info.cardData["inference"]:
-                raise ValueError(f"Inference API has been turned off for this model {model_name}.")
+                raise ValueError(f"Inference API has been turned off for this model {model_name}")
 
             valid_tasks = "feature-extraction"
             if model_info.pipeline_tag not in valid_tasks:
-                raise ValueError(f"Model {model_name} is not a valid task, must be one of {valid_tasks}.")
+                raise ValueError(f"Model {model_name} is not a valid task, must be one of {valid_tasks}")
         except Exception as e:
             raise CredentialsValidateFailedError(f"{str(e)}")
 
@@ -155,7 +161,7 @@ class HuggingfaceHubTextEmbeddingModel(_CommonHuggingfaceHub, TextEmbeddingModel
             response = requests.get(url=url, headers=headers)
 
             if response.status_code != 200:
-                raise ValueError("User Name or Organization Name is invalid.")
+                raise ValueError("User Name or Organization Name is invalid")
 
             model_repository_name = ""
 

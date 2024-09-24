@@ -399,7 +399,7 @@ class QueueStopEvent(AppQueueEvent):
             QueueStopEvent.StopBy.INPUT_MODERATION: "Stopped by input moderation.",
         }
 
-        return reason_mapping.get(self.stopped_by, "Stopped by unknown reason.")
+        return reason_mapping.get(self.stopped_by, "Stopped by unknown reason")
 
 
 class QueueMessage(BaseModel):

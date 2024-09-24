@@ -34,7 +34,7 @@ class VectorizerTool(BuiltinTool):
         else:
             image_binary = self.get_variable_file(self.VariableKey.IMAGE)
             if not image_binary:
-                return self.create_text_message("Image not found, please request user to generate image firstly.")
+                return self.create_text_message("Image not found, please request user to generate image firstly")
 
         response = post(
             "https://vectorizer.ai/api/v1/vectorize",
@@ -48,7 +48,7 @@ class VectorizerTool(BuiltinTool):
             raise Exception(response.text)
 
         return [
-            self.create_text_message("the vectorized svg is saved as an image."),
+            self.create_text_message("the vectorized svg is saved as an image"),
             self.create_blob_message(blob=response.content, meta={"mime_type": "image/svg+xml"}),
         ]
 

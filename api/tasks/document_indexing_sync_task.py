@@ -52,7 +52,7 @@ def document_indexing_sync_task(dataset_id: str, document_id: str):
             )
         ).first()
         if not data_source_binding:
-            raise ValueError("Data source binding not found.")
+            raise ValueError("Data source binding not found")
 
         loader = NotionExtractor(
             notion_workspace_id=workspace_id,

@@ -49,7 +49,7 @@ class IterationNode(BaseNode):
         iterator_list_value = iterator_list_segment.to_object()
 
         if not isinstance(iterator_list_value, list):
-            raise ValueError(f"Invalid iterator value: {iterator_list_value}, please provide a list.")
+            raise ValueError(f"Invalid iterator value: {iterator_list_value}, please provide a list")
 
         inputs = {"iterator_selector": iterator_list_value}
 
