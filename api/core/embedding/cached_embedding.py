@@ -58,7 +58,7 @@ class CacheEmbedding(Embeddings):
                     batch_texts = embedding_queue_texts[i : i + max_chunks]
 
                     embedding_result = self._model_instance.invoke_text_embedding(
-                        texts=batch_texts, user=self._user, input_type=EmbeddingInputType.DOCUMENT.value
+                        texts=batch_texts, user=self._user, input_type=EmbeddingInputType.DOCUMENT
                     )
 
                     for vector in embedding_result.embeddings:
@@ -104,7 +104,7 @@ class CacheEmbedding(Embeddings):
             return list(np.frombuffer(base64.b64decode(embedding), dtype="float"))
         try:
             embedding_result = self._model_instance.invoke_text_embedding(
-                texts=[text], user=self._user, input_type=EmbeddingInputType.QUERY.value
+                texts=[text], user=self._user, input_type=EmbeddingInputType.QUERY
             )
 
             embedding_results = embedding_result.embeddings[0]
