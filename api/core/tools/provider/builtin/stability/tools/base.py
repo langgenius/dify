@@ -11,7 +11,7 @@ class BaseStabilityAuthorization:
         """
         api_key = credentials.get("api_key", "")
         if not api_key:
-            raise ToolProviderCredentialValidationError("API key is required.")
+            raise ToolProviderCredentialValidationError("API key is required")
 
         response = requests.get(
             URL("https://api.stability.ai") / "v1" / "user" / "account",
@@ -20,7 +20,7 @@ class BaseStabilityAuthorization:
         )
 
         if not response.ok:
-            raise ToolProviderCredentialValidationError("Invalid API key.")
+            raise ToolProviderCredentialValidationError("Invalid API key")
 
         return True
 

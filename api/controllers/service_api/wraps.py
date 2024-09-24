@@ -40,17 +40,17 @@ def validate_app_token(view: Optional[Callable] = None, *, fetch_user_arg: Optio
 
             app_model = db.session.query(App).filter(App.id == api_token.app_id).first()
             if not app_model:
-                raise Forbidden("The app no longer exists.")
+                raise Forbidden("The app no longer exists")
 
             if app_model.status != "normal":
-                raise Forbidden("The app's status is abnormal.")
+                raise Forbidden("The app's status is abnormal")
 
             if not app_model.enable_api:
-                raise Forbidden("The app's API service has been disabled.")
+                raise Forbidden("The app's API service has been disabled")
 
             tenant = db.session.query(Tenant).filter(Tenant.id == app_model.tenant_id).first()
             if tenant.status == TenantStatus.ARCHIVE:
-                raise Forbidden("The workspace's status is archived.")
+                raise Forbidden("The workspace's status is archived")
 
             kwargs["app_model"] = app_model
 
@@ -66,7 +66,7 @@ def validate_app_token(view: Optional[Callable] = None, *, fetch_user_arg: Optio
                     user_id = None
 
                 if not user_id and fetch_user_arg.required:
-                    raise ValueError("Arg user must be provided.")
+                    raise ValueError("Arg user must be provided")
 
                 if user_id:
                     user_id = str(user_id)
@@ -96,13 +96,13 @@ def cloud_edition_billing_resource_check(resource: str, api_token_type: str):
                 documents_upload_quota = features.documents_upload_quota
 
                 if resource == "members" and 0 < members.limit <= members.size:
-                    raise Forbidden("The number of members has reached the limit of your subscription.")
+                    raise Forbidden("The number of members has reached the limit of your subscription")
                 elif resource == "apps" and 0 < apps.limit <= apps.size:
-                    raise Forbidden("The number of apps has reached the limit of your subscription.")
+                    raise Forbidden("The number of apps has reached the limit of your subscription")
                 elif resource == "vector_space" and 0 < vector_space.limit <= vector_space.size:
-                    raise Forbidden("The capacity of the vector space has reached the limit of your subscription.")
+                    raise Forbidden("The capacity of the vector space has reached the limit of your subscription")
                 elif resource == "documents" and 0 < documents_upload_quota.limit <= documents_upload_quota.size:
-                    raise Forbidden("The number of documents has reached the limit of your subscription.")
+                    raise Forbidden("The number of documents has reached the limit of your subscription")
                 else:
                     return view(*args, **kwargs)
 
@@ -157,9 +157,9 @@ def validate_dataset_token(view=None):
                     current_app.login_manager._update_request_context_with_user(account)
                     user_logged_in.send(current_app._get_current_object(), user=_get_user())
                 else:
-                    raise Unauthorized("Tenant owner account does not exist.")
+                    raise Unauthorized("Tenant owner account does not exist")
             else:
-                raise Unauthorized("Tenant does not exist.")
+                raise Unauthorized("Tenant does not exist")
             return view(api_token.tenant_id, *args, **kwargs)
 
         return decorated

@@ -27,7 +27,7 @@ class GitlabFilesTool(BuiltinTool):
         site_url = self.runtime.credentials.get("site_url")
 
         if "access_tokens" not in self.runtime.credentials or not self.runtime.credentials.get("access_tokens"):
-            return self.create_text_message("Gitlab API Access Tokens is required.")
+            return self.create_text_message("Gitlab API Access Tokens is required")
         if "site_url" not in self.runtime.credentials or not self.runtime.credentials.get("site_url"):
             site_url = "https://gitlab.com"
 
@@ -55,7 +55,7 @@ class GitlabFilesTool(BuiltinTool):
                 # Get project ID from project name
                 project_id = self.get_project_id(site_url, access_token, identifier)
                 if not project_id:
-                    return self.create_text_message(f"Project '{identifier}' not found.")
+                    return self.create_text_message(f"Project '{identifier}' not found")
                 tree_url = f"{domain}/api/v4/projects/{project_id}/repository/tree?path={path}&ref={branch}"
 
             response = requests.get(tree_url, headers=headers)

@@ -202,7 +202,7 @@ class StableDiffusionTool(BuiltinTool):
         image_variable = self.get_default_image_variable()
         image_binary = self.get_variable_file(image_variable.name)
         if not image_binary:
-            return self.create_text_message("Image not found, please request user to generate image firstly.")
+            return self.create_text_message("Image not found, please request user to generate image firstly")
 
         # Convert image to RGB and save as PNG
         try:

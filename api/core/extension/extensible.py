@@ -68,7 +68,7 @@ class Extensible:
                     position_map[extension_name] = position
 
                 if (extension_name + ".py") not in file_names:
-                    logging.warning(f"Missing {extension_name}.py file in {subdir_path}, Skip.")
+                    logging.warning(f"Missing {extension_name}.py file in {subdir_path}, Skip")
                     continue
 
                 # Dynamic loading {subdir_name}.py file and find the subclass of Extensible
@@ -86,13 +86,13 @@ class Extensible:
                         break
 
                 if not extension_class:
-                    logging.warning(f"Missing subclass of {cls.__name__} in {py_path}, Skip.")
+                    logging.warning(f"Missing subclass of {cls.__name__} in {py_path}, Skip")
                     continue
 
                 json_data = {}
                 if not builtin:
                     if "schema.json" not in file_names:
-                        logging.warning(f"Missing schema.json file in {subdir_path}, Skip.")
+                        logging.warning(f"Missing schema.json file in {subdir_path}, Skip")
                         continue
 
                     json_path = os.path.join(subdir_path, "schema.json")

@@ -59,7 +59,7 @@ def clean_dataset_task(
             logging.info(click.style("Cleaning documents for dataset: {}".format(dataset_id), fg="green"))
             # Specify the index type before initializing the index processor
             if doc_form is None:
-                raise ValueError("Index type must be specified.")
+                raise ValueError("Index type must be specified")
             index_processor = IndexProcessorFactory(doc_form).init_index_processor()
             index_processor.clean(dataset, None)
 

@@ -225,13 +225,13 @@ class IndexingRunner:
             count = len(extract_settings)
             batch_upload_limit = dify_config.BATCH_UPLOAD_LIMIT
             if count > batch_upload_limit:
-                raise ValueError(f"You have reached the batch upload limit of {batch_upload_limit}.")
+                raise ValueError(f"You have reached the batch upload limit of {batch_upload_limit}")
 
         embedding_model_instance = None
         if dataset_id:
             dataset = Dataset.query.filter_by(id=dataset_id).first()
             if not dataset:
-                raise ValueError("Dataset not found.")
+                raise ValueError("Dataset not found")
             if dataset.indexing_technique == "high_quality" or indexing_technique == "high_quality":
                 if dataset.embedding_model_provider:
                     embedding_model_instance = self.model_manager.get_model_instance(
@@ -390,7 +390,7 @@ class IndexingRunner:
             segmentation = rules["segmentation"]
             max_segmentation_tokens_length = dify_config.INDEXING_MAX_SEGMENTATION_TOKENS_LENGTH
             if segmentation["max_tokens"] < 50 or segmentation["max_tokens"] > max_segmentation_tokens_length:
-                raise ValueError(f"Custom segment length should be between 50 and {max_segmentation_tokens_length}.")
+                raise ValueError(f"Custom segment length should be between 50 and {max_segmentation_tokens_length}")
 
             separator = segmentation["separator"]
             if separator:

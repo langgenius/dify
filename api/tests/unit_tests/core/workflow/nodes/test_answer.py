@@ -58,7 +58,7 @@ def test_execute_answer():
         conversation_variables=[],
     )
     variable_pool.add(["start", "weather"], "sunny")
-    variable_pool.add(["llm", "text"], "You are a helpful AI.")
+    variable_pool.add(["llm", "text"], "You are a helpful AI")
 
     node = AnswerNode(
         id=str(uuid.uuid4()),

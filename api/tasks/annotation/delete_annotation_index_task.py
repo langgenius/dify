@@ -32,7 +32,7 @@ def delete_annotation_index_task(annotation_id: str, app_id: str, tenant_id: str
             vector = Vector(dataset, attributes=["doc_id", "annotation_id", "app_id"])
             vector.delete_by_metadata_field("annotation_id", annotation_id)
         except Exception:
-            logging.exception("Delete annotation index failed when annotation deleted.")
+            logging.exception("Delete annotation index failed when annotation deleted")
         end_at = time.perf_counter()
         logging.info(
             click.style("App annotations index deleted : {} latency: {}".format(app_id, end_at - start_at), fg="green")

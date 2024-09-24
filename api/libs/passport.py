@@ -15,8 +15,8 @@ class PassportService:
         try:
             return jwt.decode(token, self.sk, algorithms=["HS256"])
         except jwt.exceptions.InvalidSignatureError:
-            raise Unauthorized("Invalid token signature.")
+            raise Unauthorized("Invalid token signature")
         except jwt.exceptions.DecodeError:
-            raise Unauthorized("Invalid token.")
+            raise Unauthorized("Invalid token")
         except jwt.exceptions.ExpiredSignatureError:
-            raise Unauthorized("Token has expired.")
+            raise Unauthorized("Token has expired")

@@ -189,7 +189,7 @@ class DatasetConfigManager:
                         raise ValueError("id in dataset must be of UUID type")
 
                     if not cls.is_dataset_exists(tenant_id, tool_item["id"]):
-                        raise ValueError("Dataset ID does not exist, please check your permission.")
+                        raise ValueError("Dataset ID does not exist, please check your permission")
 
                     has_datasets = True
 

@@ -234,7 +234,7 @@ class LangfuseGeneration(BaseModel):
         default=None,
         description="The time at which the generation ended. Automatically set by generation.end().",
     )
-    model: Optional[str] = Field(default=None, description="The name of the model used for the generation.")
+    model: Optional[str] = Field(default=None, description="The name of the model used for the generation")
     model_parameters: Optional[dict[str, Any]] = Field(
         default=None,
         description="The parameters of the model used for the generation; can be any key-value pairs.",

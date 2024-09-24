@@ -40,7 +40,7 @@ class DatasetDocumentSegmentListApi(Resource):
         document_id = str(document_id)
         dataset = DatasetService.get_dataset(dataset_id)
         if not dataset:
-            raise NotFound("Dataset not found.")
+            raise NotFound("Dataset not found")
 
         try:
             DatasetService.check_dataset_permission(dataset, current_user)
@@ -50,7 +50,7 @@ class DatasetDocumentSegmentListApi(Resource):
         document = DocumentService.get_document(dataset_id, document_id)
 
         if not document:
-            raise NotFound("Document not found.")
+            raise NotFound("Document not found")
 
         parser = reqparse.RequestParser()
         parser.add_argument("last_id", type=str, default=None, location="args")
@@ -119,7 +119,7 @@ class DatasetDocumentSegmentApi(Resource):
         dataset_id = str(dataset_id)
         dataset = DatasetService.get_dataset(dataset_id)
         if not dataset:
-            raise NotFound("Dataset not found.")
+            raise NotFound("Dataset not found")
         # check user's model setting
         DatasetService.check_dataset_model_setting(dataset)
         # The role of the current user in the ta table must be admin, owner, or editor
@@ -153,7 +153,7 @@ class DatasetDocumentSegmentApi(Resource):
         ).first()
 
         if not segment:
-            raise NotFound("Segment not found.")
+            raise NotFound("Segment not found")
 
         if segment.status != "completed":
             raise NotFound("Segment is not completed, enable or disable function is not allowed")
@@ -170,7 +170,7 @@ class DatasetDocumentSegmentApi(Resource):
 
         if action == "enable":
             if segment.enabled:
-                raise InvalidActionError("Segment is already enabled.")
+                raise InvalidActionError("Segment is already enabled")
 
             segment.enabled = True
             segment.disabled_at = None
@@ -185,7 +185,7 @@ class DatasetDocumentSegmentApi(Resource):
             return {"result": "success"}, 200
         elif action == "disable":
             if not segment.enabled:
-                raise InvalidActionError("Segment is already disabled.")
+                raise InvalidActionError("Segment is already disabled")
 
             segment.enabled = False
             segment.disabled_at = datetime.now(timezone.utc).replace(tzinfo=None)
@@ -213,12 +213,12 @@ class DatasetDocumentSegmentAddApi(Resource):
         dataset_id = str(dataset_id)
         dataset = DatasetService.get_dataset(dataset_id)
         if not dataset:
-            raise NotFound("Dataset not found.")
+            raise NotFound("Dataset not found")
         # check document
         document_id = str(document_id)
         document = DocumentService.get_document(dataset_id, document_id)
         if not document:
-            raise NotFound("Document not found.")
+            raise NotFound("Document not found")
         if not current_user.is_editor:
             raise Forbidden()
         # check embedding model setting
@@ -263,14 +263,14 @@ class DatasetDocumentSegmentUpdateApi(Resource):
         dataset_id = str(dataset_id)
         dataset = DatasetService.get_dataset(dataset_id)
         if not dataset:
-            raise NotFound("Dataset not found.")
+            raise NotFound("Dataset not found")
         # check user's model setting
         DatasetService.check_dataset_model_setting(dataset)
         # check document
         document_id = str(document_id)
         document = DocumentService.get_document(dataset_id, document_id)
         if not document:
-            raise NotFound("Document not found.")
+            raise NotFound("Document not found")
         if dataset.indexing_technique == "high_quality":
             # check embedding model setting
             try:
@@ -294,7 +294,7 @@ class DatasetDocumentSegmentUpdateApi(Resource):
             DocumentSegment.id == str(segment_id), DocumentSegment.tenant_id == current_user.current_tenant_id
         ).first()
         if not segment:
-            raise NotFound("Segment not found.")
+            raise NotFound("Segment not found")
         # The role of the current user in the ta table must be admin, owner, or editor
         if not current_user.is_editor:
             raise Forbidden()
@@ -320,21 +320,21 @@ class DatasetDocumentSegmentUpdateApi(Resource):
         dataset_id = str(dataset_id)
         dataset = DatasetService.get_dataset(dataset_id)
         if not dataset:
-            raise NotFound("Dataset not found.")
+            raise NotFound("Dataset not found")
         # check user's model setting
         DatasetService.check_dataset_model_setting(dataset)
         # check document
         document_id = str(document_id)
         document = DocumentService.get_document(dataset_id, document_id)
         if not document:
-            raise NotFound("Document not found.")
+            raise NotFound("Document not found")
         # check segment
         segment_id = str(segment_id)
         segment = DocumentSegment.query.filter(
             DocumentSegment.id == str(segment_id), DocumentSegment.tenant_id == current_user.current_tenant_id
         ).first()
         if not segment:
-            raise NotFound("Segment not found.")
+            raise NotFound("Segment not found")
         # The role of the current user in the ta table must be admin or owner
         if not current_user.is_editor:
             raise Forbidden()
@@ -357,12 +357,12 @@ class DatasetDocumentSegmentBatchImportApi(Resource):
         dataset_id = str(dataset_id)
         dataset = DatasetService.get_dataset(dataset_id)
         if not dataset:
-            raise NotFound("Dataset not found.")
+            raise NotFound("Dataset not found")
         # check document
         document_id = str(document_id)
         document = DocumentService.get_document(dataset_id, document_id)
         if not document:
-            raise NotFound("Document not found.")
+            raise NotFound("Document not found")
         # get file from request
         file = request.files["file"]
         # check file
@@ -386,7 +386,7 @@ class DatasetDocumentSegmentBatchImportApi(Resource):
                     data = {"content": row[0]}
                 result.append(data)
             if len(result) == 0:
-                raise ValueError("The CSV file is empty.")
+                raise ValueError("The CSV file is empty")
             # async job
             job_id = str(uuid.uuid4())
             indexing_cache_key = "segment_batch_import_{}".format(str(job_id))
@@ -407,7 +407,7 @@ class DatasetDocumentSegmentBatchImportApi(Resource):
         indexing_cache_key = "segment_batch_import_{}".format(job_id)
         cache_result = redis_client.get(indexing_cache_key)
         if cache_result is None:
-            raise ValueError("The job is not exist.")
+            raise ValueError("The job does not exist")
 
         return {"job_id": job_id, "job_status": cache_result.decode()}, 200
 

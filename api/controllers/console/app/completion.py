@@ -63,11 +63,11 @@ class CompletionMessageApi(Resource):
 
             return helper.compact_generate_response(response)
         except services.errors.conversation.ConversationNotExistsError:
-            raise NotFound("Conversation Not Exists.")
+            raise NotFound("Conversation not found")
         except services.errors.conversation.ConversationCompletedError:
             raise ConversationCompletedError()
         except services.errors.app_model_config.AppModelConfigBrokenError:
-            logging.exception("App model config broken.")
+            logging.exception("App model configuration is broken")
             raise AppUnavailableError()
         except ProviderTokenNotInitError as ex:
             raise ProviderNotInitializeError(ex.description)
@@ -80,7 +80,7 @@ class CompletionMessageApi(Resource):
         except (ValueError, AppInvokeQuotaExceededError) as e:
             raise e
         except Exception as e:
-            logging.exception("internal server error.")
+            logging.exception("An internal server error occurred")
             raise InternalServerError()
 
 
@@ -126,11 +126,11 @@ class ChatMessageApi(Resource):
 
             return helper.compact_generate_response(response)
         except services.errors.conversation.ConversationNotExistsError:
-            raise NotFound("Conversation Not Exists.")
+            raise NotFound("Conversation not found")
         except services.errors.conversation.ConversationCompletedError:
             raise ConversationCompletedError()
         except services.errors.app_model_config.AppModelConfigBrokenError:
-            logging.exception("App model config broken.")
+            logging.exception("An internal server error occurred")
             raise AppUnavailableError()
         except ProviderTokenNotInitError as ex:
             raise ProviderNotInitializeError(ex.description)
@@ -145,7 +145,7 @@ class ChatMessageApi(Resource):
         except (ValueError, AppInvokeQuotaExceededError) as e:
             raise e
         except Exception as e:
-            logging.exception("internal server error.")
+            logging.exception("An internal server error occurred")
             raise InternalServerError()
 
 

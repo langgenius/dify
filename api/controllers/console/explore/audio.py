@@ -40,7 +40,7 @@ class ChatAudioApi(InstalledAppResource):
 
             return response
         except services.errors.app_model_config.AppModelConfigBrokenError:
-            logging.exception("App model config broken.")
+            logging.exception("App model configuration is broken")
             raise AppUnavailableError()
         except NoAudioUploadedServiceError:
             raise NoAudioUploadedError()
@@ -61,7 +61,7 @@ class ChatAudioApi(InstalledAppResource):
         except ValueError as e:
             raise e
         except Exception as e:
-            logging.exception("internal server error.")
+            logging.exception("An internal server error occurred")
             raise InternalServerError()
 
 
@@ -95,7 +95,7 @@ class ChatTextApi(InstalledAppResource):
             response = AudioService.transcript_tts(app_model=app_model, message_id=message_id, voice=voice, text=text)
             return response
         except services.errors.app_model_config.AppModelConfigBrokenError:
-            logging.exception("App model config broken.")
+            logging.exception("An internal server error occurred")
             raise AppUnavailableError()
         except NoAudioUploadedServiceError:
             raise NoAudioUploadedError()
@@ -116,7 +116,7 @@ class ChatTextApi(InstalledAppResource):
         except ValueError as e:
             raise e
         except Exception as e:
-            logging.exception("internal server error.")
+            logging.exception("An internal server error occurred")
             raise InternalServerError()
 
 

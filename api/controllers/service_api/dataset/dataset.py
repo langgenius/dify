@@ -16,7 +16,7 @@ from services.dataset_service import DatasetService
 
 def _validate_name(name):
     if not name or len(name) < 1 or len(name) > 40:
-        raise ValueError("Name must be between 1 to 40 characters.")
+        raise ValueError("Name must be between 1 to 40 characters")
     return name
 
 
@@ -123,7 +123,7 @@ class DatasetApi(DatasetApiResource):
             if DatasetService.delete_dataset(dataset_id_str, current_user):
                 return {"result": "success"}, 204
             else:
-                raise NotFound("Dataset not found.")
+                raise NotFound("Dataset not found")
         except services.errors.dataset.DatasetInUseError:
             raise DatasetInUseError()
 

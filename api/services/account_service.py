@@ -48,7 +48,7 @@ class AccountService:
             return None
 
         if account.status in {AccountStatus.BANNED.value, AccountStatus.CLOSED.value}:
-            raise Unauthorized("Account is banned or closed.")
+            raise Unauthorized("Account is banned or closed")
 
         current_tenant: TenantAccountJoin = TenantAccountJoin.query.filter_by(
             account_id=account.id, current=True
@@ -90,10 +90,10 @@ class AccountService:
 
         account = Account.query.filter_by(email=email).first()
         if not account:
-            raise AccountLoginError("Invalid email or password.")
+            raise AccountLoginError("Invalid email or password")
 
         if account.status in {AccountStatus.BANNED.value, AccountStatus.CLOSED.value}:
-            raise AccountLoginError("Account is banned or closed.")
+            raise AccountLoginError("Account is banned or closed")
 
         if account.status == AccountStatus.PENDING.value:
             account.status = AccountStatus.ACTIVE.value
@@ -101,14 +101,14 @@ class AccountService:
             db.session.commit()
 
         if account.password is None or not compare_password(password, account.password, account.password_salt):
-            raise AccountLoginError("Invalid email or password.")
+            raise AccountLoginError("Invalid email or password")
         return account
 
     @staticmethod
     def update_account_password(account, password, new_password):
         """update account password"""
         if account.password and not compare_password(password, account.password, account.password_salt):
-            raise CurrentPasswordIncorrectError("Current password is incorrect.")
+            raise CurrentPasswordIncorrectError("Current password is incorrect")
 
         # may be raised
         valid_password(new_password)
@@ -178,10 +178,10 @@ class AccountService:
                 db.session.add(account_integrate)
 
             db.session.commit()
-            logging.info(f"Account {account.id} linked {provider} account {open_id}.")
+            logging.info(f"Account {account.id} linked {provider} account {open_id}")
         except Exception as e:
             logging.exception(f"Failed to link {provider} account {open_id} to Account {account.id}")
-            raise LinkAccountIntegrateError("Failed to link account.") from e
+            raise LinkAccountIntegrateError("Failed to link account") from e
 
     @staticmethod
     def close_account(account: Account) -> None:
@@ -231,7 +231,7 @@ class AccountService:
     @classmethod
     def send_reset_password_email(cls, account):
         if cls.reset_password_rate_limiter.is_rate_limited(account.email):
-            raise RateLimitExceededError(f"Rate limit exceeded for email: {account.email}. Please try again later.")
+            raise RateLimitExceededError(f"Rate limit exceeded for email: {account.email}. Please try again later")
 
         token = TokenManager.generate_token(account, "reset_password")
         send_reset_password_mail_task.delay(language=account.interface_language, to=account.email, token=token)
@@ -288,8 +288,8 @@ class TenantService:
         """Create tenant member"""
         if role == TenantAccountJoinRole.OWNER.value:
             if TenantService.has_roles(tenant, [TenantAccountJoinRole.OWNER]):
-                logging.error(f"Tenant {tenant.id} has already an owner.")
-                raise Exception("Tenant already has an owner.")
+                logging.error(f"Tenant {tenant.id} has already an owner")
+                raise Exception("Tenant already has an owner")
 
         ta = TenantAccountJoin(tenant_id=tenant.id, account_id=account.id, role=role)
         db.session.add(ta)
@@ -311,13 +311,13 @@ class TenantService:
         """Get tenant by account and add the role"""
         tenant = account.current_tenant
         if not tenant:
-            raise TenantNotFoundError("Tenant not found.")
+            raise TenantNotFoundError("Tenant not found")
 
         ta = TenantAccountJoin.query.filter_by(tenant_id=tenant.id, account_id=account.id).first()
         if ta:
             tenant.role = ta.role
         else:
-            raise TenantNotFoundError("Tenant not found for the account.")
+            raise TenantNotFoundError("Tenant not found for the account")
         return tenant
 
     @staticmethod
@@ -326,7 +326,7 @@ class TenantService:
 
         # Ensure tenant_id is provided
         if tenant_id is None:
-            raise ValueError("Tenant ID must be provided.")
+            raise ValueError("Tenant ID must be provided")
 
         tenant_account_join = (
             db.session.query(TenantAccountJoin)
@@ -340,7 +340,7 @@ class TenantService:
         )
 
         if not tenant_account_join:
-            raise AccountNotLinkTenantError("Tenant not found or account is not a member of the tenant.")
+            raise AccountNotLinkTenantError("Tenant not found or account is not a member of the tenant")
         else:
             TenantAccountJoin.query.filter(
                 TenantAccountJoin.account_id == account.id, TenantAccountJoin.tenant_id != tenant_id
@@ -428,26 +428,26 @@ class TenantService:
             "update": [TenantAccountRole.OWNER],
         }
         if action not in {"add", "remove", "update"}:
-            raise InvalidActionError("Invalid action.")
+            raise InvalidActionError("Invalid action")
 
         if member:
             if operator.id == member.id:
-                raise CannotOperateSelfError("Cannot operate self.")
+                raise CannotOperateSelfError("Cannot operate self")
 
         ta_operator = TenantAccountJoin.query.filter_by(tenant_id=tenant.id, account_id=operator.id).first()
 
         if not ta_operator or ta_operator.role not in perms[action]:
-            raise NoPermissionError(f"No permission to {action} member.")
+            raise NoPermissionError(f"No permission to {action} member")
 
     @staticmethod
     def remove_member_from_tenant(tenant: Tenant, account: Account, operator: Account) -> None:
         """Remove member from tenant"""
         if operator.id == account.id and TenantService.check_member_permission(tenant, operator, account, "remove"):
-            raise CannotOperateSelfError("Cannot operate self.")
+            raise CannotOperateSelfError("Cannot operate self")
 
         ta = TenantAccountJoin.query.filter_by(tenant_id=tenant.id, account_id=account.id).first()
         if not ta:
-            raise MemberNotInTenantError("Member not in tenant.")
+            raise MemberNotInTenantError("Member not in tenant")
 
         db.session.delete(ta)
         db.session.commit()
@@ -460,7 +460,7 @@ class TenantService:
         target_member_join = TenantAccountJoin.query.filter_by(tenant_id=tenant.id, account_id=member.id).first()
 
         if target_member_join.role == new_role:
-            raise RoleAlreadyAssignedError("The provided role is already assigned to the member.")
+            raise RoleAlreadyAssignedError("The provided role is already assigned to the member")
 
         if new_role == "owner":
             # Find the current owner and change their role to 'admin'
@@ -475,7 +475,7 @@ class TenantService:
     def dissolve_tenant(tenant: Tenant, operator: Account) -> None:
         """Dissolve tenant"""
         if not TenantService.check_member_permission(tenant, operator, operator, "remove"):
-            raise NoPermissionError("No permission to dissolve tenant.")
+            raise NoPermissionError("No permission to dissolve tenant")
         db.session.query(TenantAccountJoin).filter_by(tenant_id=tenant.id).delete()
         db.session.delete(tenant)
         db.session.commit()
@@ -591,7 +591,7 @@ class RegisterService:
 
             # Support resend invitation email when the account is pending status
             if account.status != AccountStatus.PENDING.value:
-                raise AccountAlreadyInTenantError("Account already in tenant.")
+                raise AccountAlreadyInTenantError("Account already in tenant")
 
         token = cls.generate_invite_token(tenant, account)
 

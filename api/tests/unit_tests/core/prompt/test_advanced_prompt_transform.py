@@ -70,7 +70,7 @@ def test__get_chat_model_prompt_messages(get_chat_model_args):
 
     memory = TokenBufferMemory(conversation=Conversation(), model_instance=model_config_mock)
 
-    history_prompt_messages = [UserPromptMessage(content="Hi1."), AssistantPromptMessage(content="Hello1!")]
+    history_prompt_messages = [UserPromptMessage(content="Hi1"), AssistantPromptMessage(content="Hello1!")]
     memory.get_history_prompt_messages = MagicMock(return_value=history_prompt_messages)
 
     prompt_transform = AdvancedPromptTransform()

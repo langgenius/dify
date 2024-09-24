@@ -56,7 +56,7 @@ class InstalledAppWorkflowRunApi(InstalledAppResource):
         except ValueError as e:
             raise e
         except Exception as e:
-            logging.exception("internal server error.")
+            logging.exception("An internal server error occurred")
             raise InternalServerError()
 
 

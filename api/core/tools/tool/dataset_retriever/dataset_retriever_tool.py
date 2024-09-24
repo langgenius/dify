@@ -17,7 +17,7 @@ default_retrieval_model = {
 
 
 class DatasetRetrieverToolInput(BaseModel):
-    query: str = Field(..., description="Query for the dataset to be used to retrieve the dataset.")
+    query: str = Field(..., description="Query for the dataset to be used to retrieve the dataset")
 
 
 class DatasetRetrieverTool(DatasetRetrieverBaseTool):

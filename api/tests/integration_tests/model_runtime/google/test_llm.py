@@ -131,7 +131,7 @@ def test_invoke_chat_model_with_vision_multi_pics(setup_google_mock):
         model="gemini-pro-vision",
         credentials={"google_api_key": os.environ.get("GOOGLE_API_KEY")},
         prompt_messages=[
-            SystemPromptMessage(content="You are a helpful AI assistant."),
+            SystemPromptMessage(content="You are a helpful AI assistant"),
             UserPromptMessage(
                 content=[
                     TextPromptMessageContent(data="what do you see?"),
@@ -140,7 +140,7 @@ def test_invoke_chat_model_with_vision_multi_pics(setup_google_mock):
                     ),
                 ]
             ),
-            AssistantPromptMessage(content="I see a blue letter 'D' with a gradient from light blue to dark blue."),
+            AssistantPromptMessage(content="I see a blue letter 'D' with a gradient from light blue to dark blue"),
             UserPromptMessage(
                 content=[
                     TextPromptMessageContent(data="what about now?"),

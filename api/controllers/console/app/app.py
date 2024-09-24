@@ -32,7 +32,7 @@ class AppListApi(Resource):
             try:
                 return [str(uuid.UUID(v)) for v in value.split(",")]
             except ValueError:
-                abort(400, message="Invalid UUID format in tag_ids.")
+                abort(400, message="Invalid UUID format in tag_ids")
 
         parser = reqparse.RequestParser()
         parser.add_argument("page", type=inputs.int_range(1, 99999), required=False, default=1, location="args")

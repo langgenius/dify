@@ -169,14 +169,14 @@ def load_user_from_request(request_from_flask_login):
     if not auth_header:
         auth_token = request.args.get("_token")
         if not auth_token:
-            raise Unauthorized("Invalid Authorization token.")
+            raise Unauthorized("Invalid Authorization token")
     else:
         if " " not in auth_header:
-            raise Unauthorized("Invalid Authorization header format. Expected 'Bearer <api-key>' format.")
+            raise Unauthorized("Invalid Authorization header format. Expected 'Bearer <api-key>' format")
         auth_scheme, auth_token = auth_header.split(None, 1)
         auth_scheme = auth_scheme.lower()
         if auth_scheme != "bearer":
-            raise Unauthorized("Invalid Authorization header format. Expected 'Bearer <api-key>' format.")
+            raise Unauthorized("Invalid Authorization header format. Expected 'Bearer <api-key>' format")
 
     decoded = PassportService().verify(auth_token)
     user_id = decoded.get("user_id")

@@ -199,7 +199,7 @@ class OpenSearchVector(BaseVector):
         with redis_client.lock(lock_name, timeout=20):
             collection_exist_cache_key = f"vector_indexing_{self._collection_name.lower()}"
             if redis_client.get(collection_exist_cache_key):
-                logger.info(f"Collection {self._collection_name.lower()} already exists.")
+                logger.info(f"Collection {self._collection_name.lower()} already exists")
                 return
 
             if not self._client.indices.exists(index=self._collection_name.lower()):

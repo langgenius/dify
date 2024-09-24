@@ -345,7 +345,7 @@ class CohereLargeLanguageModel(LargeLanguageModel):
 
         if tools:
             if len(tools) == 1:
-                raise ValueError("Cohere tool call requires at least two tools to be specified.")
+                raise ValueError("Cohere tool call requires at least two tools to be specified")
 
             model_parameters["tools"] = self._convert_tools(tools)
 

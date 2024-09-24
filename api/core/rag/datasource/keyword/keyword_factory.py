@@ -17,12 +17,12 @@ class Keyword:
         keyword_type = config.KEYWORD_STORE
 
         if not keyword_type:
-            raise ValueError("Keyword store must be specified.")
+            raise ValueError("Keyword store must be specified")
 
         if keyword_type == "jieba":
             return Jieba(dataset=self._dataset)
         else:
-            raise ValueError(f"Keyword store {keyword_type} is not supported.")
+            raise ValueError(f"Keyword store {keyword_type} is not supported")
 
     def create(self, texts: list[Document], **kwargs):
         self._keyword_processor.create(texts, **kwargs)

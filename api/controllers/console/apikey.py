@@ -28,7 +28,7 @@ def _get_resource(resource_id, tenant_id, resource_model):
     resource = resource_model.query.filter_by(id=resource_id, tenant_id=tenant_id).first()
 
     if resource is None:
-        flask_restful.abort(404, message=f"{resource_model.__name__} not found.")
+        flask_restful.abort(404, message=f"{resource_model.__name__} not found")
 
     return resource
 

@@ -32,7 +32,7 @@ def inner_api_user_auth(view):
         if not dify_config.INNER_API:
             return view(*args, **kwargs)
 
-        # get header 'X-Inner-Api-Key'
+        # get header 'Authorization'
         authorization = request.headers.get("Authorization")
         if not authorization:
             return view(*args, **kwargs)

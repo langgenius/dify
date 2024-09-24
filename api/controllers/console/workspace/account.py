@@ -96,7 +96,7 @@ class AccountNameApi(Resource):
 
         # Validate account name length
         if len(args["name"]) < 3 or len(args["name"]) > 30:
-            raise ValueError("Account name must be between 3 and 30 characters.")
+            raise ValueError("Account name must be between 3 and 30 characters")
 
         updated_account = AccountService.update_account(current_user, name=args["name"])
 
@@ -160,7 +160,7 @@ class AccountTimezoneApi(Resource):
 
         # Validate timezone string, e.g. America/New_York, Asia/Shanghai
         if args["timezone"] not in pytz.all_timezones:
-            raise ValueError("Invalid timezone string.")
+            raise ValueError("Invalid timezone string")
 
         updated_account = AccountService.update_account(current_user, timezone=args["timezone"])
 

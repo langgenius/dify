@@ -28,7 +28,7 @@ class DeleteCardByIdTool(BuiltinTool):
         card_id = tool_parameters.get("id")
 
         if not (api_key and token and card_id):
-            return self.create_text_message("Missing required parameters: API key, token, or card ID.")
+            return self.create_text_message("Missing required parameters: API key, token, or card ID")
 
         url = f"https://api.trello.com/1/cards/{card_id}?key={api_key}&token={token}"
 
@@ -38,4 +38,4 @@ class DeleteCardByIdTool(BuiltinTool):
         except requests.exceptions.RequestException as e:
             return self.create_text_message("Failed to delete card")
 
-        return self.create_text_message(text=f"Card with ID {card_id} has been successfully deleted.")
+        return self.create_text_message(text=f"Card with ID {card_id} has been successfully deleted")

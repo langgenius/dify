@@ -44,6 +44,6 @@ class AnimationsTool(BuiltinTool):
             animations_result = json.dumps(animations_result, ensure_ascii=False, indent=4)
 
         if not animations_result:
-            return self.create_text_message("D-ID animations request failed.")
+            return self.create_text_message("D-ID animations request failed")
 
         return self.create_text_message(animations_result)

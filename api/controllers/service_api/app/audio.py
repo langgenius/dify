@@ -40,7 +40,7 @@ class AudioApi(Resource):
 
             return response
         except services.errors.app_model_config.AppModelConfigBrokenError:
-            logging.exception("App model config broken.")
+            logging.exception("App model configuration is broken")
             raise AppUnavailableError()
         except NoAudioUploadedServiceError:
             raise NoAudioUploadedError()
@@ -61,7 +61,7 @@ class AudioApi(Resource):
         except ValueError as e:
             raise e
         except Exception as e:
-            logging.exception("internal server error.")
+            logging.exception("An internal server error occurred")
             raise InternalServerError()
 
 
@@ -96,7 +96,7 @@ class TextApi(Resource):
 
             return response
         except services.errors.app_model_config.AppModelConfigBrokenError:
-            logging.exception("App model config broken.")
+            logging.exception("App model configuration is broken")
             raise AppUnavailableError()
         except NoAudioUploadedServiceError:
             raise NoAudioUploadedError()
@@ -117,7 +117,7 @@ class TextApi(Resource):
         except ValueError as e:
             raise e
         except Exception as e:
-            logging.exception("internal server error.")
+            logging.exception("An internal server error occurred")
             raise InternalServerError()
 
 

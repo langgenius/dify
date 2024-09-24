@@ -99,11 +99,11 @@ class SparkImgGeneratorTool(BuiltinTool):
         """
 
         if "APPID" not in self.runtime.credentials or not self.runtime.credentials.get("APPID"):
-            return self.create_text_message("APPID  is required.")
+            return self.create_text_message("APPID  is required")
         if "APISecret" not in self.runtime.credentials or not self.runtime.credentials.get("APISecret"):
-            return self.create_text_message("APISecret  is required.")
+            return self.create_text_message("APISecret  is required")
         if "APIKey" not in self.runtime.credentials or not self.runtime.credentials.get("APIKey"):
-            return self.create_text_message("APIKey  is required.")
+            return self.create_text_message("APIKey  is required")
 
         prompt = tool_parameters.get("prompt", "")
         if not prompt:

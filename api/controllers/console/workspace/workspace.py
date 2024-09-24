@@ -114,7 +114,7 @@ class TenantApi(Resource):
     @marshal_with(tenant_fields)
     def get(self):
         if request.path == "/info":
-            logging.warning("Deprecated URL /info was used.")
+            logging.warning("Deprecated URL /info was used")
 
         tenant = current_user.current_tenant
 

@@ -50,7 +50,7 @@ class ChatMessageAudioApi(Resource):
 
             return response
         except services.errors.app_model_config.AppModelConfigBrokenError:
-            logging.exception("App model config broken.")
+            logging.exception("App model configuration is broken")
             raise AppUnavailableError()
         except NoAudioUploadedServiceError:
             raise NoAudioUploadedError()
@@ -71,7 +71,7 @@ class ChatMessageAudioApi(Resource):
         except ValueError as e:
             raise e
         except Exception as e:
-            logging.exception(f"internal server error, {str(e)}.")
+            logging.exception(f"An internal server error occurred, {str(e)}")
             raise InternalServerError()
 
 
@@ -108,7 +108,7 @@ class ChatMessageTextApi(Resource):
             response = AudioService.transcript_tts(app_model=app_model, text=text, message_id=message_id, voice=voice)
             return response
         except services.errors.app_model_config.AppModelConfigBrokenError:
-            logging.exception("App model config broken.")
+            logging.exception("An internal server error occurred")
             raise AppUnavailableError()
         except NoAudioUploadedServiceError:
             raise NoAudioUploadedError()
@@ -129,7 +129,7 @@ class ChatMessageTextApi(Resource):
         except ValueError as e:
             raise e
         except Exception as e:
-            logging.exception(f"internal server error, {str(e)}.")
+            logging.exception(f"An internal server error occurred, {str(e)}")
             raise InternalServerError()
 
 
@@ -151,7 +151,7 @@ class TextModesApi(Resource):
 
             return response
         except services.errors.audio.ProviderNotSupportTextToSpeechLanageServiceError:
-            raise AppUnavailableError("Text to audio voices language parameter loss.")
+            raise AppUnavailableError("Text to audio voices language parameter loss")
         except NoAudioUploadedServiceError:
             raise NoAudioUploadedError()
         except AudioTooLargeServiceError as e:
@@ -171,7 +171,7 @@ class TextModesApi(Resource):
         except ValueError as e:
             raise e
         except Exception as e:
-            logging.exception(f"internal server error, {str(e)}.")
+            logging.exception(f"An internal server error occurred, {str(e)}")
             raise InternalServerError()
 
 

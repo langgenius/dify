@@ -28,7 +28,7 @@ class GetBoardActionsTool(BuiltinTool):
         board_id = tool_parameters.get("boardId")
 
         if not (api_key and token and board_id):
-            return self.create_text_message("Missing required parameters: API key, token, or board ID.")
+            return self.create_text_message("Missing required parameters: API key, token, or board ID")
 
         url = f"https://api.trello.com/1/boards/{board_id}/actions?key={api_key}&token={token}"
 

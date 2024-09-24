@@ -29,7 +29,7 @@ class GetFilteredBoardCardsTool(BuiltinTool):
         filter = tool_parameters.get("filter")
 
         if not (api_key and token and board_id and filter):
-            return self.create_text_message("Missing required parameters: API key, token, board ID, or filter.")
+            return self.create_text_message("Missing required parameters: API key, token, board ID, or filter")
 
         url = f"https://api.trello.com/1/boards/{board_id}/cards/{filter}?key={api_key}&token={token}"
 

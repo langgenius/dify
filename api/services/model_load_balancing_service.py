@@ -42,7 +42,7 @@ class ModelLoadBalancingService:
         # Get provider configuration
         provider_configuration = provider_configurations.get(provider)
         if not provider_configuration:
-            raise ValueError(f"Provider {provider} does not exist.")
+            raise ValueError(f"Provider {provider} does not exist")
 
         # Enable model load balancing
         provider_configuration.enable_model_load_balancing(model=model, model_type=ModelType.value_of(model_type))
@@ -63,7 +63,7 @@ class ModelLoadBalancingService:
         # Get provider configuration
         provider_configuration = provider_configurations.get(provider)
         if not provider_configuration:
-            raise ValueError(f"Provider {provider} does not exist.")
+            raise ValueError(f"Provider {provider} does not exist")
 
         # disable model load balancing
         provider_configuration.disable_model_load_balancing(model=model, model_type=ModelType.value_of(model_type))
@@ -85,7 +85,7 @@ class ModelLoadBalancingService:
         # Get provider configuration
         provider_configuration = provider_configurations.get(provider)
         if not provider_configuration:
-            raise ValueError(f"Provider {provider} does not exist.")
+            raise ValueError(f"Provider {provider} does not exist")
 
         # Convert model type to ModelType
         model_type = ModelType.value_of(model_type)
@@ -211,7 +211,7 @@ class ModelLoadBalancingService:
         # Get provider configuration
         provider_configuration = provider_configurations.get(provider)
         if not provider_configuration:
-            raise ValueError(f"Provider {provider} does not exist.")
+            raise ValueError(f"Provider {provider} does not exist")
 
         # Convert model type to ModelType
         model_type = ModelType.value_of(model_type)
@@ -297,7 +297,7 @@ class ModelLoadBalancingService:
         # Get provider configuration
         provider_configuration = provider_configurations.get(provider)
         if not provider_configuration:
-            raise ValueError(f"Provider {provider} does not exist.")
+            raise ValueError(f"Provider {provider} does not exist")
 
         # Convert model type to ModelType
         model_type = ModelType.value_of(model_type)
@@ -447,7 +447,7 @@ class ModelLoadBalancingService:
         # Get provider configuration
         provider_configuration = provider_configurations.get(provider)
         if not provider_configuration:
-            raise ValueError(f"Provider {provider} does not exist.")
+            raise ValueError(f"Provider {provider} does not exist")
 
         # Convert model type to ModelType
         model_type = ModelType.value_of(model_type)
@@ -468,7 +468,7 @@ class ModelLoadBalancingService:
             )
 
             if not load_balancing_model_config:
-                raise ValueError(f"Load balancing config {config_id} does not exist.")
+                raise ValueError(f"Load balancing config {config_id} does not exist")
 
         # Validate custom provider config
         self._custom_credentials_validate(

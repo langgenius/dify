@@ -132,7 +132,7 @@ class NVIDIALargeLanguageModel(OAIAPICompatLargeLanguageModel):
                 elif "server_url" in credentials:
                     endpoint_url = server_url
             else:
-                raise ValueError("Unsupported completion type for model configuration.")
+                raise ValueError("Unsupported completion type for model configuration")
 
             # send a post request to validate the credentials
             response = requests.post(endpoint_url, headers=headers, json=data, timeout=(10, 300))
@@ -208,7 +208,7 @@ class NVIDIALargeLanguageModel(OAIAPICompatLargeLanguageModel):
             elif "server_url" in credentials:
                 endpoint_url = server_url
         else:
-            raise ValueError("Unsupported completion type for model configuration.")
+            raise ValueError("Unsupported completion type for model configuration")
 
         # annotate tools with names, descriptions, etc.
         function_calling_type = credentials.get("function_calling_type", "no_call")

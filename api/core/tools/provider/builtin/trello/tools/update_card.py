@@ -28,7 +28,7 @@ class UpdateCardByIdTool(BuiltinTool):
         card_id = tool_parameters.get("id")
 
         if not (api_key and token and card_id):
-            return self.create_text_message("Missing required parameters: API key, token, or card ID.")
+            return self.create_text_message("Missing required parameters: API key, token, or card ID")
 
         # Constructing the URL and the payload for the PUT request
         url = f"https://api.trello.com/1/cards/{card_id}"

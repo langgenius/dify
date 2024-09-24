@@ -97,7 +97,7 @@ class PubMedAPIWrapper(BaseModel):
                 if e.code == 429 and retry < self.max_retry:
                     # Too Many Requests error
                     # wait for an exponentially increasing amount of time
-                    print(f"Too Many Requests, waiting for {self.sleep_time:.2f} seconds...")
+                    print(f"Too Many Requests, waiting for {self.sleep_time:.2f} seconds")
                     time.sleep(self.sleep_time)
                     self.sleep_time *= 2
                     retry += 1
@@ -160,7 +160,7 @@ class PubmedQueryRun(BaseModel):
 
 
 class PubMedInput(BaseModel):
-    query: str = Field(..., description="Search query.")
+    query: str = Field(..., description="Search query")
 
 
 class PubMedSearchTool(BuiltinTool):

@@ -87,7 +87,7 @@ class ZhipuAILargeLanguageModel(_CommonZhipuaiAI, LargeLanguageModel):
     #     else:
     #         # insert the system message
     #         prompt_messages.insert(0, SystemPromptMessage(
-    #             content=GLM_JSON_MODE_PROMPT.replace("{{instructions}}", "Please output a valid JSON object.")
+    #             content=GLM_JSON_MODE_PROMPT.replace("{{instructions}}", "Please output a valid JSON object")
     #         ))
     #     # check if the last message is a user message
     #     if len(prompt_messages) > 0 and isinstance(prompt_messages[-1], UserPromptMessage):

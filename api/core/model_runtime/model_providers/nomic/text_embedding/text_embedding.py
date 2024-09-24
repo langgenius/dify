@@ -5,6 +5,7 @@ from typing import Optional
 from nomic import embed
 from nomic import login as nomic_login
 
+from core.embedding.embedding_constant import EmbeddingInputType
 from core.model_runtime.entities.model_entities import PriceType
 from core.model_runtime.entities.text_embedding_entities import (
     EmbeddingUsage,
@@ -46,6 +47,7 @@ class NomicTextEmbeddingModel(_CommonNomic, TextEmbeddingModel):
         credentials: dict,
         texts: list[str],
         user: Optional[str] = None,
+        input_type: EmbeddingInputType = EmbeddingInputType.DOCUMENT,
     ) -> TextEmbeddingResult:
         """
         Invoke text embedding model
@@ -114,16 +116,16 @@ class NomicTextEmbeddingModel(_CommonNomic, TextEmbeddingModel):
         )
 
         if not (response and "embeddings" in response):
-            raise ValueError("Embedding data is missing in the response.")
+            raise ValueError("Embedding data is missing in the response")
 
         if not (response and "usage" in response):
-            raise ValueError("Response usage is missing.")
+            raise ValueError("Response usage is missing")
 
         if "prompt_tokens" not in response["usage"]:
-            raise ValueError("Response usage does not contain prompt tokens.")
+            raise ValueError("Response usage does not contain prompt tokens")
 
         if "total_tokens" not in response["usage"]:
-            raise ValueError("Response usage does not contain total tokens.")
+            raise ValueError("Response usage does not contain total tokens")
 
         embeddings = [list(map(float, e)) for e in response["embeddings"]]
         total_tokens = response["usage"]["total_tokens"]

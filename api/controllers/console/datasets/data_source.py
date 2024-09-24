@@ -80,7 +80,7 @@ class DataSourceApi(Resource):
         action = str(action)
         data_source_binding = DataSourceOauthBinding.query.filter_by(id=binding_id).first()
         if data_source_binding is None:
-            raise NotFound("Data source binding not found.")
+            raise NotFound("Data source binding not found")
         # enable binding
         if action == "enable":
             if data_source_binding.disabled:
@@ -89,7 +89,7 @@ class DataSourceApi(Resource):
                 db.session.add(data_source_binding)
                 db.session.commit()
             else:
-                raise ValueError("Data source is not disabled.")
+                raise ValueError("Data source is not disabled")
         # disable binding
         if action == "disable":
             if not data_source_binding.disabled:
@@ -98,7 +98,7 @@ class DataSourceApi(Resource):
                 db.session.add(data_source_binding)
                 db.session.commit()
             else:
-                raise ValueError("Data source is disabled.")
+                raise ValueError("Data source is disabled")
         return {"result": "success"}, 200
 
 
@@ -114,9 +114,9 @@ class DataSourceNotionListApi(Resource):
         if dataset_id:
             dataset = DatasetService.get_dataset(dataset_id)
             if not dataset:
-                raise NotFound("Dataset not found.")
+                raise NotFound("Dataset not found")
             if dataset.data_source_type != "notion_import":
-                raise ValueError("Dataset is not notion type.")
+                raise ValueError("Dataset is not Notion type")
             documents = Document.query.filter_by(
                 dataset_id=dataset_id,
                 tenant_id=current_user.current_tenant_id,
@@ -169,7 +169,7 @@ class DataSourceNotionApi(Resource):
             )
         ).first()
         if not data_source_binding:
-            raise NotFound("Data source binding not found.")
+            raise NotFound("Data source binding not found")
 
         extractor = NotionExtractor(
             notion_workspace_id=workspace_id,
@@ -231,7 +231,7 @@ class DataSourceNotionDatasetSyncApi(Resource):
         dataset_id_str = str(dataset_id)
         dataset = DatasetService.get_dataset(dataset_id_str)
         if dataset is None:
-            raise NotFound("Dataset not found.")
+            raise NotFound("Dataset not found")
 
         documents = DocumentService.get_document_by_dataset_id(dataset_id_str)
         for document in documents:
@@ -248,11 +248,11 @@ class DataSourceNotionDocumentSyncApi(Resource):
         document_id_str = str(document_id)
         dataset = DatasetService.get_dataset(dataset_id_str)
         if dataset is None:
-            raise NotFound("Dataset not found.")
+            raise NotFound("Dataset not found")
 
         document = DocumentService.get_document(dataset_id_str, document_id_str)
         if document is None:
-            raise NotFound("Document not found.")
+            raise NotFound("Document not found")
         document_indexing_sync_task.delay(dataset_id_str, document_id_str)
         return 200
 

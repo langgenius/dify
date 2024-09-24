@@ -39,7 +39,7 @@ class Vector:
             vector_type = self._dataset.index_struct_dict["type"]
 
         if not vector_type:
-            raise ValueError("Vector store must be specified.")
+            raise ValueError("Vector store must be specified")
 
         vector_factory_cls = self.get_vector_factory(vector_type)
         return vector_factory_cls().init_vector(self._dataset, self._attributes, self._embeddings)
@@ -104,7 +104,7 @@ class Vector:
 
                 return AnalyticdbVectorFactory
             case _:
-                raise ValueError(f"Vector store {vector_type} is not supported.")
+                raise ValueError(f"Vector store {vector_type} is not supported")
 
     def create(self, texts: list = None, **kwargs):
         if texts:

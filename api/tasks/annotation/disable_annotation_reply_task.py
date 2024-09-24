@@ -48,7 +48,7 @@ def disable_annotation_reply_task(job_id: str, app_id: str, tenant_id: str):
                 vector = Vector(dataset, attributes=["doc_id", "annotation_id", "app_id"])
                 vector.delete_by_metadata_field("app_id", app_id)
         except Exception:
-            logging.exception("Delete annotation index failed when annotation deleted.")
+            logging.exception("Delete annotation index failed when annotation deleted")
         redis_client.setex(disable_app_annotation_job_key, 600, "completed")
 
         # delete annotation setting

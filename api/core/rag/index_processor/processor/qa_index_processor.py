@@ -93,7 +93,7 @@ class QAIndexProcessor(BaseIndexProcessor):
                 data = Document(page_content=row[0], metadata={"answer": row[1]})
                 text_docs.append(data)
             if len(text_docs) == 0:
-                raise ValueError("The CSV file is empty.")
+                raise ValueError("The CSV file is empty")
 
         except Exception as e:
             raise ValueError(str(e))

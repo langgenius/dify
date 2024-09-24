@@ -43,6 +43,6 @@ class PieChartTool(BuiltinTool):
         plt.close(flg)
 
         return [
-            self.create_text_message("the pie chart is saved as an image."),
+            self.create_text_message("the pie chart is saved as an image"),
             self.create_blob_message(blob=buf.read(), meta={"mime_type": "image/png"}),
         ]

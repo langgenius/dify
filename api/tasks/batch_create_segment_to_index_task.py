@@ -39,14 +39,14 @@ def batch_create_segment_to_index_task(
     try:
         dataset = db.session.query(Dataset).filter(Dataset.id == dataset_id).first()
         if not dataset:
-            raise ValueError("Dataset not exist.")
+            raise ValueError("Dataset not exist")
 
         dataset_document = db.session.query(Document).filter(Document.id == document_id).first()
         if not dataset_document:
-            raise ValueError("Document not exist.")
+            raise ValueError("Document not exist")
 
         if not dataset_document.enabled or dataset_document.archived or dataset_document.indexing_status != "completed":
-            raise ValueError("Document is not available.")
+            raise ValueError("Document is not available")
         document_segments = []
         embedding_model = None
         if dataset.indexing_technique == "high_quality":

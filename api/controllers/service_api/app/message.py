@@ -91,9 +91,9 @@ class MessageListApi(Resource):
                 app_model, end_user, args["conversation_id"], args["first_id"], args["limit"]
             )
         except services.errors.conversation.ConversationNotExistsError:
-            raise NotFound("Conversation Not Exists.")
+            raise NotFound("Conversation not found")
         except services.errors.message.FirstMessageNotExistsError:
-            raise NotFound("First Message Not Exists.")
+            raise NotFound("First Message not found")
 
 
 class MessageFeedbackApi(Resource):
@@ -108,7 +108,7 @@ class MessageFeedbackApi(Resource):
         try:
             MessageService.create_feedback(app_model, message_id, end_user, args["rating"])
         except services.errors.message.MessageNotExistsError:
-            raise NotFound("Message Not Exists.")
+            raise NotFound("Message not found")
 
         return {"result": "success"}
 
@@ -126,11 +126,11 @@ class MessageSuggestedApi(Resource):
                 app_model=app_model, user=end_user, message_id=message_id, invoke_from=InvokeFrom.SERVICE_API
             )
         except services.errors.message.MessageNotExistsError:
-            raise NotFound("Message Not Exists.")
+            raise NotFound("Message not found")
         except SuggestedQuestionsAfterAnswerDisabledError:
-            raise BadRequest("Suggested Questions Is Disabled.")
+            raise BadRequest("Suggested Questions Is Disabled")
         except Exception:
-            logging.exception("internal server error.")
+            logging.exception("An internal server error occurred")
             raise InternalServerError()
 
         return {"result": "success", "data": questions}

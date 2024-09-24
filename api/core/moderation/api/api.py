@@ -38,7 +38,7 @@ class ApiModeration(Moderation):
 
         extension = cls._get_api_based_extension(tenant_id, api_based_extension_id)
         if not extension:
-            raise ValueError("API-based Extension not found. Please check it again.")
+            raise ValueError("API-based Extension not found. Please check it again")
 
     def moderation_for_inputs(self, inputs: dict, query: str = "") -> ModerationInputsResult:
         flagged = False

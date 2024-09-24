@@ -39,7 +39,7 @@ class ModelConfigConverter:
 
         if model_credentials is None:
             if not skip_check:
-                raise ProviderTokenNotInitError(f"Model {model_name} credentials is not initialized.")
+                raise ProviderTokenNotInitError(f"Model {model_name} credentials is not initialized")
             else:
                 model_credentials = {}
 
@@ -51,14 +51,14 @@ class ModelConfigConverter:
 
             if provider_model is None:
                 model_name = model_config.model
-                raise ValueError(f"Model {model_name} not exist.")
+                raise ValueError(f"Model {model_name} not exist")
 
             if provider_model.status == ModelStatus.NO_CONFIGURE:
-                raise ProviderTokenNotInitError(f"Model {model_name} credentials is not initialized.")
+                raise ProviderTokenNotInitError(f"Model {model_name} credentials is not initialized")
             elif provider_model.status == ModelStatus.NO_PERMISSION:
-                raise ModelCurrentlyNotSupportError(f"Dify Hosted OpenAI {model_name} currently not support.")
+                raise ModelCurrentlyNotSupportError(f"Dify Hosted OpenAI {model_name} currently not support")
             elif provider_model.status == ModelStatus.QUOTA_EXCEEDED:
-                raise QuotaExceededError(f"Model provider {provider_name} quota exceeded.")
+                raise QuotaExceededError(f"Model provider {provider_name} quota exceeded")
 
         # model config
         completion_params = model_config.parameters
@@ -77,7 +77,7 @@ class ModelConfigConverter:
         model_schema = model_type_instance.get_model_schema(model_config.model, model_credentials)
 
         if not skip_check and not model_schema:
-            raise ValueError(f"Model {model_name} not exist.")
+            raise ValueError(f"Model {model_name} not exist")
 
         return ModelConfigWithCredentialsEntity(
             provider=model_config.provider,

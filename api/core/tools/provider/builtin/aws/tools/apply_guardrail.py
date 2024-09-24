@@ -47,7 +47,7 @@ class ApplyGuardrailTool(BuiltinTool):
 
             # Check for empty response
             if not response:
-                return self.create_text_message(text="Received empty response from AWS Bedrock.")
+                return self.create_text_message(text="Received empty response from AWS Bedrock")
 
             # Process the result
             action = response.get("action", "No action specified")

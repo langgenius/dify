@@ -140,7 +140,7 @@ class WorkflowService:
             draft_workflow = self.get_draft_workflow(app_model=app_model)
 
         if not draft_workflow:
-            raise ValueError("No valid workflow found.")
+            raise ValueError("No valid workflow found")
 
         # create new workflow
         workflow = Workflow(
@@ -296,7 +296,7 @@ class WorkflowService:
         workflow_converter = WorkflowConverter()
 
         if app_model.mode not in {AppMode.CHAT.value, AppMode.COMPLETION.value}:
-            raise ValueError(f"Current App mode: {app_model.mode} is not supported convert to workflow.")
+            raise ValueError(f"Current App mode: {app_model.mode} is not supported convert to workflow")
 
         # convert to workflow
         new_app = workflow_converter.convert_to_workflow(

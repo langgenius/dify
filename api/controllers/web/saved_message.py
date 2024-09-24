@@ -53,7 +53,7 @@ class SavedMessageListApi(WebApiResource):
         try:
             SavedMessageService.save(app_model, end_user, args["message_id"])
         except MessageNotExistsError:
-            raise NotFound("Message Not Exists.")
+            raise NotFound("Message not found")
 
         return {"result": "success"}
 

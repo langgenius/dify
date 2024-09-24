@@ -22,7 +22,7 @@ class GithubRepositoriesTool(BuiltinTool):
             return self.create_text_message("Please input symbol")
 
         if "access_tokens" not in self.runtime.credentials or not self.runtime.credentials.get("access_tokens"):
-            return self.create_text_message("Github API Access Tokens is required.")
+            return self.create_text_message("Github API Access Tokens is required")
         if "api_version" not in self.runtime.credentials or not self.runtime.credentials.get("api_version"):
             api_version = "2022-11-28"
         else:
@@ -63,7 +63,7 @@ class GithubRepositoriesTool(BuiltinTool):
                         self.summary(user_id=user_id, content=json.dumps(contents, ensure_ascii=False))
                     )
                 else:
-                    return self.create_text_message(f"No items related to {query} were found.")
+                    return self.create_text_message(f"No items related to {query} were found")
             else:
                 return self.create_text_message((response.json()).get("message"))
         except Exception as e:

@@ -43,7 +43,7 @@ class ConversationListApi(InstalledAppResource):
                 pinned=pinned,
             )
         except LastConversationNotExistsError:
-            raise NotFound("Last Conversation Not Exists.")
+            raise NotFound("Last Conversation not found")
 
 
 class ConversationApi(InstalledAppResource):
@@ -57,7 +57,7 @@ class ConversationApi(InstalledAppResource):
         try:
             ConversationService.delete(app_model, conversation_id, current_user)
         except ConversationNotExistsError:
-            raise NotFound("Conversation Not Exists.")
+            raise NotFound("Conversation not found")
         WebConversationService.unpin(app_model, conversation_id, current_user)
 
         return {"result": "success"}, 204
@@ -83,7 +83,7 @@ class ConversationRenameApi(InstalledAppResource):
                 app_model, conversation_id, current_user, args["name"], args["auto_generate"]
             )
         except ConversationNotExistsError:
-            raise NotFound("Conversation Not Exists.")
+            raise NotFound("Conversation not found")
 
 
 class ConversationPinApi(InstalledAppResource):
@@ -98,7 +98,7 @@ class ConversationPinApi(InstalledAppResource):
         try:
             WebConversationService.pin(app_model, conversation_id, current_user)
         except ConversationNotExistsError:
-            raise NotFound("Conversation Not Exists.")
+            raise NotFound("Conversation not found")
 
         return {"result": "success"}
 

@@ -45,7 +45,7 @@ class Document(BaseAPI):
         timeout: float | httpx.Timeout | None | NotGiven = NOT_GIVEN,
     ) -> DocumentObject:
         if not file and not upload_detail:
-            raise ValueError("At least one of `file` and `upload_detail` must be provided.")
+            raise ValueError("At least one of `file` and `upload_detail` must be provided")
         body = deepcopy_minimal(
             {
                 "file": file,

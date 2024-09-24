@@ -162,7 +162,7 @@ class AdvancedChatAppGenerateTaskPipeline(BasedGenerateTaskPipeline, WorkflowCyc
             else:
                 continue
 
-        raise Exception("Queue listening stopped unexpectedly.")
+        raise Exception("Queue listening stopped unexpectedly")
 
     def _to_stream_response(
         self, generator: Generator[StreamResponse, None, None]
@@ -274,7 +274,7 @@ class AdvancedChatAppGenerateTaskPipeline(BasedGenerateTaskPipeline, WorkflowCyc
                 )
             elif isinstance(event, QueueNodeStartedEvent):
                 if not workflow_run:
-                    raise Exception("Workflow run not initialized.")
+                    raise Exception("Workflow run not initialized")
 
                 workflow_node_execution = self._handle_node_execution_start(workflow_run=workflow_run, event=event)
 
@@ -310,45 +310,45 @@ class AdvancedChatAppGenerateTaskPipeline(BasedGenerateTaskPipeline, WorkflowCyc
                     yield response
             elif isinstance(event, QueueParallelBranchRunStartedEvent):
                 if not workflow_run:
-                    raise Exception("Workflow run not initialized.")
+                    raise Exception("Workflow run not initialized")
 
                 yield self._workflow_parallel_branch_start_to_stream_response(
                     task_id=self._application_generate_entity.task_id, workflow_run=workflow_run, event=event
                 )
             elif isinstance(event, QueueParallelBranchRunSucceededEvent | QueueParallelBranchRunFailedEvent):
                 if not workflow_run:
-                    raise Exception("Workflow run not initialized.")
+                    raise Exception("Workflow run not initialized")
 
                 yield self._workflow_parallel_branch_finished_to_stream_response(
                     task_id=self._application_generate_entity.task_id, workflow_run=workflow_run, event=event
                 )
             elif isinstance(event, QueueIterationStartEvent):
                 if not workflow_run:
-                    raise Exception("Workflow run not initialized.")
+                    raise Exception("Workflow run not initialized")
 
                 yield self._workflow_iteration_start_to_stream_response(
                     task_id=self._application_generate_entity.task_id, workflow_run=workflow_run, event=event
                 )
             elif isinstance(event, QueueIterationNextEvent):
                 if not workflow_run:
-                    raise Exception("Workflow run not initialized.")
+                    raise Exception("Workflow run not initialized")
 
                 yield self._workflow_iteration_next_to_stream_response(
                     task_id=self._application_generate_entity.task_id, workflow_run=workflow_run, event=event
                 )
             elif isinstance(event, QueueIterationCompletedEvent):
                 if not workflow_run:
-                    raise Exception("Workflow run not initialized.")
+                    raise Exception("Workflow run not initialized")
 
                 yield self._workflow_iteration_completed_to_stream_response(
                     task_id=self._application_generate_entity.task_id, workflow_run=workflow_run, event=event
                 )
             elif isinstance(event, QueueWorkflowSucceededEvent):
                 if not workflow_run:
-                    raise Exception("Workflow run not initialized.")
+                    raise Exception("Workflow run not initialized")
 
                 if not graph_runtime_state:
-                    raise Exception("Graph runtime state not initialized.")
+                    raise Exception("Graph runtime state not initialized")
 
                 workflow_run = self._handle_workflow_run_success(
                     workflow_run=workflow_run,
@@ -367,10 +367,10 @@ class AdvancedChatAppGenerateTaskPipeline(BasedGenerateTaskPipeline, WorkflowCyc
                 self._queue_manager.publish(QueueAdvancedChatMessageEndEvent(), PublishFrom.TASK_PIPELINE)
             elif isinstance(event, QueueWorkflowFailedEvent):
                 if not workflow_run:
-                    raise Exception("Workflow run not initialized.")
+                    raise Exception("Workflow run not initialized")
 
                 if not graph_runtime_state:
-                    raise Exception("Graph runtime state not initialized.")
+                    raise Exception("Graph runtime state not initialized")
 
                 workflow_run = self._handle_workflow_run_failed(
                     workflow_run=workflow_run,
@@ -459,7 +459,7 @@ class AdvancedChatAppGenerateTaskPipeline(BasedGenerateTaskPipeline, WorkflowCyc
                 yield self._message_replace_to_stream_response(answer=event.text)
             elif isinstance(event, QueueAdvancedChatMessageEndEvent):
                 if not graph_runtime_state:
-                    raise Exception("Graph runtime state not initialized.")
+                    raise Exception("Graph runtime state not initialized")
 
                 output_moderation_answer = self._handle_output_moderation_when_task_finished(self._task_state.answer)
                 if output_moderation_answer:

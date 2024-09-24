@@ -67,7 +67,7 @@ class GraphEngineThreadPool(ThreadPoolExecutor):
     def check_is_full(self) -> None:
         print(f"submit_count: {self.submit_count}, max_submit_count: {self.max_submit_count}")
         if self.submit_count > self.max_submit_count:
-            raise ValueError(f"Max submit count {self.max_submit_count} of workflow thread pool reached.")
+            raise ValueError(f"Max submit count {self.max_submit_count} of workflow thread pool reached")
 
 
 class GraphEngine:
@@ -96,7 +96,7 @@ class GraphEngine:
         # init thread pool
         if thread_pool_id:
             if thread_pool_id not in GraphEngine.workflow_thread_pool_mapping:
-                raise ValueError(f"Max submit count {thread_pool_max_submit_count} of workflow thread pool reached.")
+                raise ValueError(f"Max submit count {thread_pool_max_submit_count} of workflow thread pool reached")
 
             self.thread_pool_id = thread_pool_id
             self.thread_pool = GraphEngine.workflow_thread_pool_mapping[thread_pool_id]
@@ -149,7 +149,7 @@ class GraphEngine:
                 try:
                     yield item
                     if isinstance(item, NodeRunFailedEvent):
-                        yield GraphRunFailedEvent(error=item.route_node_state.failed_reason or "Unknown error.")
+                        yield GraphRunFailedEvent(error=item.route_node_state.failed_reason or "Unknown error")
                         return
                     elif isinstance(item, NodeRunSucceededEvent):
                         if item.node_type == NodeType.END:
@@ -226,13 +226,13 @@ class GraphEngine:
             node_id = route_node_state.node_id
             node_config = self.graph.node_id_config_mapping.get(node_id)
             if not node_config:
-                raise GraphRunFailedError(f"Node {node_id} config not found.")
+                raise GraphRunFailedError(f"Node {node_id} config not found")
 
             # convert to specific node
             node_type = NodeType.value_of(node_config.get("data", {}).get("type"))
             node_cls = node_classes.get(node_type)
             if not node_cls:
-                raise GraphRunFailedError(f"Node {node_id} type {node_type} not found.")
+                raise GraphRunFailedError(f"Node {node_id} type {node_type} not found")
 
             previous_node_id = previous_route_node_state.node_id if previous_route_node_state else None
 
@@ -417,7 +417,7 @@ class GraphEngine:
 
         parallel = self.graph.parallel_mapping.get(parallel_id)
         if not parallel:
-            raise GraphRunFailedError(f"Parallel {parallel_id} not found.")
+            raise GraphRunFailedError(f"Parallel {parallel_id} not found")
 
         # run parallel nodes, run in new thread and use queue to get results
         q: queue.Queue = queue.Queue()

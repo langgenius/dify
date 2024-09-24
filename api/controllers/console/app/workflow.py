@@ -80,10 +80,10 @@ class DraftWorkflowApi(Resource):
             try:
                 data = json.loads(request.data.decode("utf-8"))
                 if "graph" not in data or "features" not in data:
-                    raise ValueError("graph or features not found in data")
+                    raise ValueError("Graph or features not found in data")
 
                 if not isinstance(data.get("graph"), dict) or not isinstance(data.get("features"), dict):
-                    raise ValueError("graph or features is not a dict")
+                    raise ValueError("Graph or features is not a dict")
 
                 args = {
                     "graph": data.get("graph"),
@@ -177,13 +177,13 @@ class AdvancedChatDraftWorkflowRunApi(Resource):
 
             return helper.compact_generate_response(response)
         except services.errors.conversation.ConversationNotExistsError:
-            raise NotFound("Conversation Not Exists.")
+            raise NotFound("Conversation not found")
         except services.errors.conversation.ConversationCompletedError:
             raise ConversationCompletedError()
         except ValueError as e:
             raise e
         except Exception as e:
-            logging.exception("internal server error.")
+            logging.exception("An internal server error occurred")
             raise InternalServerError()
 
 
@@ -211,13 +211,13 @@ class AdvancedChatDraftRunIterationNodeApi(Resource):
 
             return helper.compact_generate_response(response)
         except services.errors.conversation.ConversationNotExistsError:
-            raise NotFound("Conversation Not Exists.")
+            raise NotFound("Conversation not found")
         except services.errors.conversation.ConversationCompletedError:
             raise ConversationCompletedError()
         except ValueError as e:
             raise e
         except Exception as e:
-            logging.exception("internal server error.")
+            logging.exception("An internal server error occurred")
             raise InternalServerError()
 
 
@@ -245,13 +245,13 @@ class WorkflowDraftRunIterationNodeApi(Resource):
 
             return helper.compact_generate_response(response)
         except services.errors.conversation.ConversationNotExistsError:
-            raise NotFound("Conversation Not Exists.")
+            raise NotFound("Conversation not found")
         except services.errors.conversation.ConversationCompletedError:
             raise ConversationCompletedError()
         except ValueError as e:
             raise e
         except Exception as e:
-            logging.exception("internal server error.")
+            logging.exception("An internal server error occurred")
             raise InternalServerError()
 
 
@@ -282,7 +282,7 @@ class DraftWorkflowRunApi(Resource):
         except (ValueError, AppInvokeQuotaExceededError) as e:
             raise e
         except Exception as e:
-            logging.exception("internal server error.")
+            logging.exception("An internal server error occurred")
             raise InternalServerError()
 
 

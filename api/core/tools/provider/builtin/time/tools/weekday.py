@@ -21,12 +21,12 @@ class WeekdayTool(BuiltinTool):
 
         date_obj = self.convert_datetime(year, month, day)
         if not date_obj:
-            return self.create_text_message(f"Invalid date: Year {year}, Month {month}, Day {day}.")
+            return self.create_text_message(f"Invalid date: Year {year}, Month {month}, Day {day}")
 
         weekday_name = calendar.day_name[date_obj.weekday()]
         month_name = calendar.month_name[month]
         readable_date = f"{month_name} {date_obj.day}, {date_obj.year}"
-        return self.create_text_message(f"{readable_date} is {weekday_name}.")
+        return self.create_text_message(f"{readable_date} is {weekday_name}")
 
     @staticmethod
     def convert_datetime(year, month, day) -> datetime | None:

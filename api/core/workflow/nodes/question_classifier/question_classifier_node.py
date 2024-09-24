@@ -301,7 +301,7 @@ class QuestionClassifierNode(LLMNode):
             )
 
         else:
-            raise ValueError(f"Model mode {model_mode} not support.")
+            raise ValueError(f"Model mode {model_mode} not support")
 
     def _format_instruction(self, instruction: str, variable_pool: VariablePool) -> str:
         inputs = {}

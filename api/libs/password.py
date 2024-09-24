@@ -13,7 +13,7 @@ def valid_password(password):
     if re.match(pattern, password) is not None:
         return password
 
-    raise ValueError("Not a valid password.")
+    raise ValueError("Not a valid password")
 
 
 def hash_password(password_str, salt_byte):

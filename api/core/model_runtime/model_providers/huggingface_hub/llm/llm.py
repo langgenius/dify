@@ -75,20 +75,20 @@ class HuggingfaceHubLargeLanguageModel(_CommonHuggingfaceHub, LargeLanguageModel
     def validate_credentials(self, model: str, credentials: dict) -> None:
         try:
             if "huggingfacehub_api_type" not in credentials:
-                raise CredentialsValidateFailedError("Huggingface Hub Endpoint Type must be provided.")
+                raise CredentialsValidateFailedError("Huggingface Hub Endpoint Type must be provided")
 
             if credentials["huggingfacehub_api_type"] not in {"inference_endpoints", "hosted_inference_api"}:
-                raise CredentialsValidateFailedError("Huggingface Hub Endpoint Type is invalid.")
+                raise CredentialsValidateFailedError("Huggingface Hub Endpoint Type is invalid")
 
             if "huggingfacehub_api_token" not in credentials:
-                raise CredentialsValidateFailedError("Huggingface Hub Access Token must be provided.")
+                raise CredentialsValidateFailedError("Huggingface Hub Access Token must be provided")
 
             if credentials["huggingfacehub_api_type"] == "inference_endpoints":
                 if "huggingfacehub_endpoint_url" not in credentials:
-                    raise CredentialsValidateFailedError("Huggingface Hub Endpoint URL must be provided.")
+                    raise CredentialsValidateFailedError("Huggingface Hub Endpoint URL must be provided")
 
                 if "task_type" not in credentials:
-                    raise CredentialsValidateFailedError("Huggingface Hub Task Type must be provided.")
+                    raise CredentialsValidateFailedError("Huggingface Hub Task Type must be provided")
             elif credentials["huggingfacehub_api_type"] == "hosted_inference_api":
                 credentials["task_type"] = self._get_hosted_model_task_type(
                     credentials["huggingfacehub_api_token"], model
@@ -275,14 +275,14 @@ class HuggingfaceHubLargeLanguageModel(_CommonHuggingfaceHub, LargeLanguageModel
 
         try:
             if not model_info:
-                raise ValueError(f"Model {model_name} not found.")
+                raise ValueError(f"Model {model_name} not found")
 
             if "inference" in model_info.cardData and not model_info.cardData["inference"]:
-                raise ValueError(f"Inference API has been turned off for this model {model_name}.")
+                raise ValueError(f"Inference API has been turned off for this model {model_name}")
 
             valid_tasks = ("text2text-generation", "text-generation")
             if model_info.pipeline_tag not in valid_tasks:
-                raise ValueError(f"Model {model_name} is not a valid task, must be one of {valid_tasks}.")
+                raise ValueError(f"Model {model_name} is not a valid task, must be one of {valid_tasks}")
         except Exception as e:
             raise CredentialsValidateFailedError(f"{str(e)}")
 

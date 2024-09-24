@@ -24,7 +24,7 @@ class FunctionCallMultiDatasetRouter:
 
         try:
             prompt_messages = [
-                SystemPromptMessage(content="You are a helpful AI assistant."),
+                SystemPromptMessage(content="You are a helpful AI assistant"),
                 UserPromptMessage(content=query),
             ]
             result = model_instance.invoke_llm(

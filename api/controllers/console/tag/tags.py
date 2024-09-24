@@ -14,7 +14,7 @@ from services.tag_service import TagService
 
 def _validate_name(name):
     if not name or len(name) < 1 or len(name) > 50:
-        raise ValueError("Name must be between 1 to 50 characters.")
+        raise ValueError("Name must be between 1 to 50 characters")
     return name
 
 
@@ -125,8 +125,8 @@ class TagBindingDeleteApi(Resource):
             raise Forbidden()
 
         parser = reqparse.RequestParser()
-        parser.add_argument("tag_id", type=str, nullable=False, required=True, help="Tag ID is required.")
-        parser.add_argument("target_id", type=str, nullable=False, required=True, help="Target ID is required.")
+        parser.add_argument("tag_id", type=str, nullable=False, required=True, help="Tag ID is required")
+        parser.add_argument("target_id", type=str, nullable=False, required=True, help="Target ID is required")
         parser.add_argument(
             "type", type=str, location="json", choices=Tag.TAG_TYPE_LIST, nullable=True, help="Invalid tag type."
         )

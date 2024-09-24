@@ -156,7 +156,7 @@ class TiDBVector(BaseVector):
 
     def _delete_by_ids(self, ids: list[str]) -> bool:
         if ids is None:
-            raise ValueError("No ids provided to delete.")
+            raise ValueError("No ids provided to delete")
         table = self._table(self._dimension)
         try:
             with self._engine.connect() as conn, conn.begin():

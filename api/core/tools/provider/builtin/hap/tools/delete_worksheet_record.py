@@ -41,7 +41,7 @@ class DeleteWorksheetRecordTool(BuiltinTool):
             res_json = res.json()
             if res_json.get("error_code") != 1:
                 return self.create_text_message(f"Failed to delete the record. {res_json['error_msg']}")
-            return self.create_text_message("Successfully deleted the record.")
+            return self.create_text_message("Successfully deleted the record")
         except httpx.RequestError as e:
             return self.create_text_message(f"Failed to delete the record, request error: {e}")
         except Exception as e:

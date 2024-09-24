@@ -44,7 +44,7 @@ class ConversationApi(Resource):
                 sort_by=args["sort_by"],
             )
         except services.errors.conversation.LastConversationNotExistsError:
-            raise NotFound("Last Conversation Not Exists.")
+            raise NotFound("Last Conversation not found")
 
 
 class ConversationDetailApi(Resource):
@@ -60,7 +60,7 @@ class ConversationDetailApi(Resource):
         try:
             ConversationService.delete(app_model, conversation_id, end_user)
         except services.errors.conversation.ConversationNotExistsError:
-            raise NotFound("Conversation Not Exists.")
+            raise NotFound("Conversation not found")
         return {"result": "success"}, 200
 
 
@@ -82,7 +82,7 @@ class ConversationRenameApi(Resource):
         try:
             return ConversationService.rename(app_model, conversation_id, end_user, args["name"], args["auto_generate"])
         except services.errors.conversation.ConversationNotExistsError:
-            raise NotFound("Conversation Not Exists.")
+            raise NotFound("Conversation not found")
 
 
 api.add_resource(ConversationRenameApi, "/conversations/<uuid:c_id>/name", endpoint="conversation_name")
