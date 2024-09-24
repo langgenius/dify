@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useState } from 'react'
+import { useCallback, useEffect, useMemo, useState } from 'react'
 import produce from 'immer'
 import { useBoolean } from 'ahooks'
 import useVarList from '../_base/hooks/use-var-list'
@@ -42,7 +42,7 @@ const useConfig = (id: string, payload: HttpNodeType) => {
       setInputs(newInputs)
       setIsDataReady(true)
     }
-  // eslint-disable-next-line react-hooks/exhaustive-deps
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [defaultConfig])
 
   const handleMethodChange = useCallback((method: Method) => {
@@ -132,11 +132,23 @@ const useConfig = (id: string, payload: HttpNodeType) => {
     defaultRunInputData: {},
   })
 
+  const fileVarInputs = useMemo(() => {
+    if (!Array.isArray(inputs.body.data))
+      return ''
+
+    const res = inputs.body.data
+      .filter(item => item.file?.length)
+      .map(item => item.file ? `{{#${item.file.join('.')}#}}` : '')
+      .join(' ')
+    return res
+  }, [inputs.body.data])
+
   const varInputs = getInputVars([
     inputs.url,
     inputs.headers,
     inputs.params,
     typeof inputs.body.data === 'string' ? inputs.body.data : inputs.body.data.map(item => item.value).join(''),
+    fileVarInputs,
   ])
 
   const inputVarValues = (() => {

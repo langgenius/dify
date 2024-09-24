@@ -289,20 +289,26 @@ type PortalSelectProps = {
   onSelect: (value: Item) => void
   items: Item[]
   placeholder?: string
+  renderTrigger?: (value?: Item) => JSX.Element | null
   triggerClassName?: string
   triggerClassNameFn?: (open: boolean) => string
   popupClassName?: string
+  popupInnerClassName?: string
   readonly?: boolean
+  hideChecked?: boolean
 }
 const PortalSelect: FC<PortalSelectProps> = ({
   value,
   onSelect,
   items,
   placeholder,
+  renderTrigger,
   triggerClassName,
   triggerClassNameFn,
   popupClassName,
+  popupInnerClassName,
   readonly,
+  hideChecked,
 }) => {
   const { t } = useTranslation()
   const [open, setOpen] = useState(false)
@@ -317,26 +323,31 @@ const PortalSelect: FC<PortalSelectProps> = ({
       offset={4}
     >
       <PortalToFollowElemTrigger onClick={() => !readonly && setOpen(v => !v)} className='w-full'>
-        <div
-          className={classNames(`
+        {renderTrigger
+          ? renderTrigger(selectedItem)
+          : (
+            <div
+              className={classNames(`
             flex items-center justify-between px-2.5 h-9 rounded-lg border-0 bg-gray-100 text-sm ${readonly ? 'cursor-not-allowed' : 'cursor-pointer'} 
           `, triggerClassName, triggerClassNameFn?.(open))}
-          title={selectedItem?.name}
-        >
-          <span
-            className={`
+              title={selectedItem?.name}
+            >
+              <span
+                className={`
               grow truncate
               ${!selectedItem?.name && 'text-gray-400'}
             `}
-          >
-            {selectedItem?.name ?? localPlaceholder}
-          </span>
-          <ChevronDownIcon className='shrink-0 h-4 w-4 text-gray-400' />
-        </div>
+              >
+                {selectedItem?.name ?? localPlaceholder}
+              </span>
+              <ChevronDownIcon className='shrink-0 h-4 w-4 text-gray-400' />
+            </div>
+          )}
+
       </PortalToFollowElemTrigger>
       <PortalToFollowElemContent className={`z-20 ${popupClassName}`}>
         <div
-          className='px-1 py-1 max-h-60 overflow-auto rounded-md bg-white text-base shadow-lg border-gray-200 border-[0.5px] focus:outline-none sm:text-sm'
+          className={classNames('px-1 py-1 max-h-60 overflow-auto rounded-md bg-white text-base shadow-lg border-gray-200 border-[0.5px] focus:outline-none sm:text-sm', popupInnerClassName)}
         >
           {items.map((item: Item) => (
             <div
@@ -357,7 +368,7 @@ const PortalSelect: FC<PortalSelectProps> = ({
               >
                 {item.name}
               </span>
-              {item.value === value && (
+              {!hideChecked && item.value === value && (
                 <CheckIcon className='shrink-0 h-4 w-4 text-text-accent' />
               )}
             </div>
