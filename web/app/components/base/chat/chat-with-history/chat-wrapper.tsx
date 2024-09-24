@@ -2,9 +2,11 @@ import { useCallback, useEffect, useMemo } from 'react'
 import Chat from '../chat'
 import type {
   ChatConfig,
+  ChatItem,
   OnSend,
 } from '../types'
 import { useChat } from '../chat/hooks'
+import { getLastAnswer } from '../utils'
 import { useChatWithHistoryContext } from './context'
 import Header from './header'
 import ConfigPanel from './config-panel'
@@ -44,6 +46,8 @@ const ChatWrapper = () => {
   }, [appParams, currentConversationItem?.introduction, currentConversationId])
   const {
     chatList,
+    chatListRef,
+    handleUpdateChatList,
     handleSend,
     handleStop,
     isResponding,
@@ -63,11 +67,12 @@ const ChatWrapper = () => {
       currentChatInstanceRef.current.handleStop = handleStop
   }, [])
 
-  const doSend: OnSend = useCallback((message, files) => {
+  const doSend: OnSend = useCallback((message, files, last_answer) => {
     const data: any = {
       query: message,
       inputs: currentConversationId ? currentConversationItem?.inputs : newConversationInputs,
       conversation_id: currentConversationId,
+      parent_message_id: last_answer?.id || getLastAnswer(chatListRef.current)?.id || null,
     }
 
     if (appConfig?.file_upload?.image.enabled && files?.length)
@@ -83,6 +88,7 @@ const ChatWrapper = () => {
       },
     )
   }, [
+    chatListRef,
     appConfig,
     currentConversationId,
     currentConversationItem,
@@ -92,6 +98,23 @@ const ChatWrapper = () => {
     isInstalledApp,
     appId,
   ])
+
+  const doRegenerate = useCallback((chatItem: ChatItem) => {
+    const index = chatList.findIndex(item => item.id === chatItem.id)
+    if (index === -1)
+      return
+
+    const prevMessages = chatList.slice(0, index)
+    const question = prevMessages.pop()
+    const lastAnswer = getLastAnswer(prevMessages)
+
+    if (!question)
+      return
+
+    handleUpdateChatList(prevMessages)
+    doSend(question.content, question.message_files, lastAnswer)
+  }, [chatList, handleUpdateChatList, doSend])
+
   const chatNode = useMemo(() => {
     if (inputsForms.length) {
       return (
@@ -148,6 +171,7 @@ const ChatWrapper = () => {
       chatFooterClassName='pb-4'
       chatFooterInnerClassName={`mx-auto w-full max-w-full ${isMobile && 'px-4'}`}
       onSend={doSend}
+      onRegenerate={doRegenerate}
       onStopResponding={handleStop}
       chatNode={chatNode}
       allToolIcons={appMeta?.tool_icons || {}}

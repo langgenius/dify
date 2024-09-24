@@ -16,3 +16,4 @@ class BaseAPI:
         self._post = client.post
         self._put = client.put
         self._patch = client.patch
+        self._get_api_list = client.get_api_list
