@@ -234,6 +234,33 @@ class DatasetApi(Resource):
         )
         parser.add_argument("retrieval_model", type=dict, location="json", help="Invalid retrieval model.")
         parser.add_argument("partial_member_list", type=list, location="json", help="Invalid parent user list.")
+
+        parser.add_argument(
+            "external_retrieval_model",
+            type=dict,
+            required=False,
+            nullable=True,
+            location="json",
+            help="Invalid external retrieval model.",
+        )
+
+        parser.add_argument(
+            "external_knowledge_id",
+            type=str,
+            required=False,
+            nullable=True,
+            location="json",
+            help="Invalid external knowledge id.",
+        )
+
+        parser.add_argument(
+            "external_knowledge_api_id",
+            type=str,
+            required=False,
+            nullable=True,
+            location="json",
+            help="Invalid external knowledge api id.",
+        )
         args = parser.parse_args()
         data = request.get_json()
 

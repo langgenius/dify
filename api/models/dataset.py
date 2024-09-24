@@ -171,6 +171,29 @@ class Dataset(db.Model):
 
         return tags or []
 
+    @property
+    def external_knowledge_info(self):
+        if self.provider != "external":
+            return None
+        external_knowledge_binding = (
+            db.session.query(ExternalKnowledgeBindings).filter(ExternalKnowledgeBindings.dataset_id == self.id).first()
+        )
+        if not external_knowledge_binding:
+            return None
+        external_api_template = (
+            db.session.query(ExternalApiTemplates)
+            .filter(ExternalApiTemplates.id == external_knowledge_binding.external_api_template_id)
+            .first()
+        )
+        if not external_api_template:
+            return None
+        return {
+            "external_knowledge_id": external_knowledge_binding.external_knowledge_id,
+            "external_knowledge_api_id": external_api_template.id,
+            "external_knowledge_api_name": external_api_template.name,
+            "external_knowledge_api_endpoint": json.loads(external_api_template.settings).get("endpoint", ""),
+        }
+
     @staticmethod
     def gen_collection_name_by_id(dataset_id: str) -> str:
         normalized_dataset_id = dataset_id.replace("-", "_")
@@ -752,20 +775,22 @@ class ExternalApiTemplates(db.Model):
             return json.loads(self.settings) if self.settings else None
         except JSONDecodeError:
             return None
-    
+
     @property
     def dataset_bindings(self):
-        external_knowledge_bindings = db.session.query(ExternalKnowledgeBindings).filter(ExternalKnowledgeBindings.external_api_template_id == self.id).all()
+        external_knowledge_bindings = (
+            db.session.query(ExternalKnowledgeBindings)
+            .filter(ExternalKnowledgeBindings.external_api_template_id == self.id)
+            .all()
+        )
         dataset_ids = [binding.dataset_id for binding in external_knowledge_bindings]
         datasets = db.session.query(Dataset).filter(Dataset.id.in_(dataset_ids)).all()
         dataset_bindings = []
         for dataset in datasets:
-            dataset_bindings.append({
-                "id": dataset.id,
-                "name": dataset.name
-            })
+            dataset_bindings.append({"id": dataset.id, "name": dataset.name})
 
         return dataset_bindings
+
 
 class ExternalKnowledgeBindings(db.Model):
     __tablename__ = "external_knowledge_bindings"
