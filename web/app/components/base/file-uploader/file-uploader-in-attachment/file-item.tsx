@@ -71,7 +71,11 @@ const FileInAttachmentItem = ({
               <span>{ext.toLowerCase()}</span>
             )
           }
-          <span className='mx-1 system-2xs-medium'>•</span>
+          {
+            ext && (
+              <span className='mx-1 system-2xs-medium'>•</span>
+            )
+          }
           <span>{formatFileSize(file.size || 0)}</span>
         </div>
       </div>

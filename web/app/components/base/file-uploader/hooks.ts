@@ -99,11 +99,6 @@ export const useFile = (fileConfig: FileUpload) => {
     const allowedFileTypes = fileConfig.allowed_file_types
     const fileName = getFileNameFromUrl(url)
 
-    if (!isAllowedFileExtension(fileName, fileConfig.allowed_file_types || [], fileConfig.allowed_file_extensions || [])) {
-      notify({ type: 'error', message: t('common.fileUploader.fileExtensionNotSupport') })
-      return
-    }
-
     const uploadingFile = {
       id: uuid4(),
       name: fileName,
@@ -128,7 +123,7 @@ export const useFile = (fileConfig: FileUpload) => {
       notify({ type: 'error', message: t('common.fileUploader.pasteFileLinkInvalid') })
       handleRemoveFile(uploadingFile.id)
     })
-  }, [handleAddFile, handleUpdateFile, notify, t, handleRemoveFile, fileConfig?.allowed_file_types, fileConfig?.allowed_file_extensions])
+  }, [handleAddFile, handleUpdateFile, notify, t, handleRemoveFile, fileConfig?.allowed_file_types])
 
   const handleLoadFileFromLinkSuccess = useCallback(() => { }, [])
 
