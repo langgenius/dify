@@ -230,6 +230,10 @@ class WorkflowService:
             node_id=node_id,
         )
 
+        workflow_node_execution.app_id = app_model.id
+        workflow_node_execution.created_by = account.id
+        workflow_node_execution.workflow_id = draft_workflow.id
+
         db.session.add(workflow_node_execution)
         db.session.commit()
 

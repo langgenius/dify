@@ -1,4 +1,5 @@
 from core.plugin.backwards_invocation.base import BaseBackwardsInvocation
+from core.workflow.entities.node_entities import NodeType
 from core.workflow.nodes.parameter_extractor.entities import (
     ModelConfig as ParameterExtractorModelConfig,
 )
@@ -36,7 +37,7 @@ class PluginNodeBackwardsInvocation(BaseBackwardsInvocation):
         :param model_config: ModelConfig
         :param instruction: str
         :param query: str
-        :return: dict with __reason, __is_success, and other parameters
+        :return: dict
         """
         workflow_service = WorkflowService()
         node_id = "1919810"
@@ -50,6 +51,7 @@ class PluginNodeBackwardsInvocation(BaseBackwardsInvocation):
             instruction=instruction,  # instruct with variables are not supported
         )
         node_data_dict = node_data.model_dump()
+        node_data_dict["type"] = NodeType.PARAMETER_EXTRACTOR.value
         execution = workflow_service.run_free_workflow_node(
             node_data_dict,
             tenant_id=tenant_id,
@@ -60,10 +62,10 @@ class PluginNodeBackwardsInvocation(BaseBackwardsInvocation):
             },
         )
 
-        output = execution.outputs_dict
-        return output or {
-            "__reason": "No parameters extracted",
-            "__is_success": False,
+        return {
+            "inputs": execution.inputs_dict,
+            "outputs": execution.outputs_dict,
+            "process_data": execution.process_data_dict,
         }
 
     @classmethod
@@ -85,7 +87,7 @@ class PluginNodeBackwardsInvocation(BaseBackwardsInvocation):
         :param classes: list[ClassConfig]
         :param instruction: str
         :param query: str
-        :return: dict with class_name
+        :return: dict
         """
         workflow_service = WorkflowService()
         node_id = "1919810"
@@ -108,7 +110,8 @@ class PluginNodeBackwardsInvocation(BaseBackwardsInvocation):
             },
         )
 
-        output = execution.outputs_dict
-        return output or {
-            "class_name": classes[0].name,
+        return {
+            "inputs": execution.inputs_dict,
+            "outputs": execution.outputs_dict,
+            "process_data": execution.process_data_dict,
         }

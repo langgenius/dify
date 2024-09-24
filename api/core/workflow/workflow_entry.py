@@ -221,8 +221,27 @@ class WorkflowEntry:
         """
         # generate a fake graph
         node_config = {"id": node_id, "width": 114, "height": 514, "type": "custom", "data": node_data}
+        start_node_config = {
+            "id": "start",
+            "width": 114,
+            "height": 514,
+            "type": "custom",
+            "data": {
+                "type": NodeType.START.value,
+                "title": "Start",
+                "desc": "Start",
+            },
+        }
         graph_dict = {
-            "nodes": [node_config],
+            "nodes": [start_node_config, node_config],
+            "edges": [
+                {
+                    "source": "start",
+                    "target": node_id,
+                    "sourceHandle": "source",
+                    "targetHandle": "target",
+                }
+            ],
         }
 
         node_type = NodeType.value_of(node_data.get("type", ""))
