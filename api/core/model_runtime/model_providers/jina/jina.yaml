@@ -1,6 +1,6 @@
-provider: Jina AI
+provider: Jina
 label:
-  en_US: Jina AI
+  en_US: Jina
 description:
   en_US: Embedding and Rerank Model Supported
 icon_small:
