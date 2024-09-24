@@ -206,6 +206,88 @@ class WorkflowEntry:
             raise WorkflowNodeRunFailedError(node_instance=node_instance, error=str(e))
 
     @classmethod
+    def run_free_node(
+        cls, node_data: dict, node_id: str, tenant_id: str, user_id: str, user_inputs: dict[str, Any]
+    ) -> tuple[BaseNode, Generator[RunEvent | InNodeEvent, None, None]]:
+        """
+        Run free node
+
+        NOTE: only parameter_extractor/question_classifier are supported
+
+        :param node_data: node data
+        :param user_id: user id
+        :param user_inputs: user inputs
+        :return:
+        """
+        # generate a fake graph
+        node_config = {"id": node_id, "width": 114, "height": 514, "type": "custom", "data": node_data}
+        graph_dict = {
+            "nodes": [node_config],
+        }
+
+        node_type = NodeType.value_of(node_data.get("type", ""))
+        if node_type not in {NodeType.PARAMETER_EXTRACTOR, NodeType.QUESTION_CLASSIFIER}:
+            raise ValueError(f"Node type {node_type} not supported")
+
+        node_cls = node_classes.get(node_type)
+        if not node_cls:
+            raise ValueError(f"Node class not found for node type {node_type}")
+
+        graph = Graph.init(graph_config=graph_dict)
+
+        # init variable pool
+        variable_pool = VariablePool(
+            system_variables={},
+            user_inputs={},
+            environment_variables=[],
+        )
+
+        node_cls = cast(type[BaseNode], node_cls)
+        # init workflow run state
+        node_instance: BaseNode = node_cls(
+            id=str(uuid.uuid4()),
+            config=node_config,
+            graph_init_params=GraphInitParams(
+                tenant_id=tenant_id,
+                app_id="",
+                workflow_type=WorkflowType.WORKFLOW,
+                workflow_id="",
+                graph_config=graph_dict,
+                user_id=user_id,
+                user_from=UserFrom.ACCOUNT,
+                invoke_from=InvokeFrom.DEBUGGER,
+                call_depth=0,
+            ),
+            graph=graph,
+            graph_runtime_state=GraphRuntimeState(variable_pool=variable_pool, start_at=time.perf_counter()),
+        )
+
+        try:
+            # variable selector to variable mapping
+            try:
+                variable_mapping = node_cls.extract_variable_selector_to_variable_mapping(
+                    graph_config=graph_dict, config=node_config
+                )
+            except NotImplementedError:
+                variable_mapping = {}
+
+            cls.mapping_user_inputs_to_variable_pool(
+                variable_mapping=variable_mapping,
+                user_inputs=user_inputs,
+                variable_pool=variable_pool,
+                tenant_id=tenant_id,
+                node_type=node_type,
+                node_data=node_instance.node_data,
+            )
+
+            # run node
+            generator = node_instance.run()
+
+            return node_instance, generator
+        except Exception as e:
+            raise WorkflowNodeRunFailedError(node_instance=node_instance, error=str(e))
+
+    @classmethod
     def handle_special_values(cls, value: Optional[Mapping[str, Any]]) -> Optional[dict]:
         """
         Handle special values
