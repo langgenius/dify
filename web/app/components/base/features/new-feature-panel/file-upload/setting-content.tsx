@@ -11,10 +11,12 @@ import { SupportUploadFileTypes } from '@/app/components/workflow/types'
 import { FILE_EXTS } from '@/app/components/base/prompt-editor/constants'
 
 type SettingContentProps = {
+  imageUpload?: boolean
   onClose: () => void
   onChange?: OnFeaturesChange
 }
 const SettingContent = ({
+  imageUpload,
   onClose,
   onChange,
 }: SettingContentProps) => {
@@ -55,12 +57,13 @@ const SettingContent = ({
   return (
     <>
       <div className='mb-4 flex items-center justify-between'>
-        <div className='text-text-primary system-xl-semibold'>{t('appDebug.feature.fileUpload.modalTitle')}</div>
+        <div className='text-text-primary system-xl-semibold'>{!imageUpload ? t('appDebug.feature.fileUpload.modalTitle') : t('appDebug.feature.imageUpload.modalTitle')}</div>
         <div className='p-1 cursor-pointer' onClick={onClose}><RiCloseLine className='w-4 h-4 text-text-tertiary'/></div>
       </div>
       <FileUploadSetting
         isMultiple
         inFeaturePanel
+        hideSupportFileType={imageUpload}
         payload={tempPayload}
         onChange={(p: UploadFileSetting) => setTempPayload(p)}
       />

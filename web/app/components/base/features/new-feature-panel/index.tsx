@@ -8,12 +8,13 @@ import type { OnFeaturesChange } from '@/app/components/base/features/types'
 
 import MoreLikeThis from '@/app/components/base/features/new-feature-panel/more-like-this'
 import ConversationOpener from '@/app/components/base/features/new-feature-panel/conversation-opener'
-import Moderation from '@/app/components/base/features/new-feature-panel/moderation'
+import FollowUp from '@/app/components/base/features/new-feature-panel/follow-up'
 import SpeechToText from '@/app/components/base/features/new-feature-panel/speech-to-text'
 import TextToSpeech from '@/app/components/base/features/new-feature-panel/text-to-speech'
 import FileUpload from '@/app/components/base/features/new-feature-panel/file-upload'
-import FollowUp from '@/app/components/base/features/new-feature-panel/follow-up'
 import Citation from '@/app/components/base/features/new-feature-panel/citation'
+import ImageUpload from '@/app/components/base/features/new-feature-panel/image-upload'
+import Moderation from '@/app/components/base/features/new-feature-panel/moderation'
 import AnnotationReply from '@/app/components/base/features/new-feature-panel/annotation-reply'
 import type { PromptVariable } from '@/models/debug'
 
@@ -82,6 +83,7 @@ const NewFeaturePanel = ({
             <SpeechToText disabled={disabled} onChange={onChange} />
           )}
           {showFileUpload && isChatMode && <FileUpload disabled={disabled} onChange={onChange} />}
+          {showFileUpload && !isChatMode && <ImageUpload disabled={disabled} onChange={onChange} />}
           {isChatMode && (
             <Citation disabled={disabled} onChange={onChange} />
           )}

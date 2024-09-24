@@ -206,6 +206,13 @@ const translation = {
       numberLimit: 'Max uploads',
       modalTitle: 'File Upload Setting',
     },
+    imageUpload: {
+      title: 'Image Upload',
+      description: 'Allow uploading images.',
+      supportedTypes: 'Support File Types',
+      numberLimit: 'Max uploads',
+      modalTitle: 'Image Upload Setting',
+    },
     bar: {
       empty: 'Enable feature to enhance web app user experience',
       enableText: 'Features Enabled',

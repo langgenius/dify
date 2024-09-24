@@ -17,6 +17,7 @@ type Props = {
   payload: UploadFileSetting
   isMultiple: boolean
   inFeaturePanel?: boolean
+  hideSupportFileType?: boolean
   onChange: (payload: UploadFileSetting) => void
 }
 
@@ -24,6 +25,7 @@ const FileUploadSetting: FC<Props> = ({
   payload,
   isMultiple,
   inFeaturePanel = false,
+  hideSupportFileType = false,
   onChange,
 }) => {
   const { t } = useTranslation()
@@ -93,7 +95,7 @@ const FileUploadSetting: FC<Props> = ({
         >
           <div className='space-y-1'>
             {
-              [SupportUploadFileTypes.image, SupportUploadFileTypes.document, SupportUploadFileTypes.audio, SupportUploadFileTypes.video].map((type: SupportUploadFileTypes) => (
+              [SupportUploadFileTypes.document, SupportUploadFileTypes.image, SupportUploadFileTypes.audio, SupportUploadFileTypes.video].map((type: SupportUploadFileTypes) => (
                 <FileTypeItem
                   key={type}
                   type={type as SupportUploadFileTypes.image | SupportUploadFileTypes.document | SupportUploadFileTypes.audio | SupportUploadFileTypes.video}
@@ -150,14 +152,14 @@ const FileUploadSetting: FC<Props> = ({
           </div>
         </Field>
       )}
-      {inFeaturePanel && (
+      {inFeaturePanel && !hideSupportFileType && (
         <Field
           title={t('appDebug.variableConfig.file.supportFileTypes')}
           className='mt-4'
         >
           <div className='space-y-1'>
             {
-              [SupportUploadFileTypes.image, SupportUploadFileTypes.document, SupportUploadFileTypes.audio, SupportUploadFileTypes.video].map((type: SupportUploadFileTypes) => (
+              [SupportUploadFileTypes.document, SupportUploadFileTypes.image, SupportUploadFileTypes.audio, SupportUploadFileTypes.video].map((type: SupportUploadFileTypes) => (
                 <FileTypeItem
                   key={type}
                   type={type as SupportUploadFileTypes.image | SupportUploadFileTypes.document | SupportUploadFileTypes.audio | SupportUploadFileTypes.video}
