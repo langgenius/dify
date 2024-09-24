@@ -22,6 +22,7 @@ import {
 import Avatar from '@/app/components/base/avatar'
 import { useAppContext } from '@/context/app-context'
 import { ModelFeatureEnum } from '@/app/components/header/account-setting/model-provider-page/declarations'
+import { getLastAnswer } from '@/app/components/base/chat/utils'
 
 type DebugWithSingleModelProps = {
   checkCanSend?: () => boolean
@@ -83,17 +84,11 @@ const DebugWithSingleModel = forwardRef<DebugWithSingleModelRefType, DebugWithSi
       },
     }
 
-    const lastAnswer = chatListRef.current.at(-1)
-
     const data: any = {
       query: message,
       inputs,
       model_config: configData,
-      parent_message_id: last_answer?.id || (lastAnswer
-        ? lastAnswer.isOpeningStatement
-          ? null
-          : lastAnswer.id
-        : null),
+      parent_message_id: last_answer?.id || getLastAnswer(chatListRef.current)?.id || null,
     }
 
     if (visionConfig.enabled && files?.length && supportVision)
@@ -116,13 +111,13 @@ const DebugWithSingleModel = forwardRef<DebugWithSingleModelRefType, DebugWithSi
 
     const prevMessages = chatList.slice(0, index)
     const question = prevMessages.pop()
-    const lastAnswer = prevMessages.at(-1)
+    const lastAnswer = getLastAnswer(prevMessages)
 
     if (!question)
       return
 
     handleUpdateChatList(prevMessages)
-    doSend(question.content, question.message_files, (!lastAnswer || lastAnswer.isOpeningStatement) ? undefined : lastAnswer)
+    doSend(question.content, question.message_files, lastAnswer)
   }, [chatList, handleUpdateChatList, doSend])
 
   const allToolIcons = useMemo(() => {
