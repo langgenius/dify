@@ -56,7 +56,8 @@ class BasePluginManager:
             line = line.decode("utf-8").strip()
             if line.startswith("data:"):
                 line = line[5:].strip()
-            yield line
+            if line:
+                yield line
 
     def _stream_request_with_model(
         self,

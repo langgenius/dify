@@ -212,8 +212,8 @@ class ToolNode(BaseNode):
                     chunk_content=message.message.text, from_variable_selector=[self.node_id, "text"]
                 )
             elif message.type == ToolInvokeMessage.MessageType.JSON:
-                assert isinstance(message, ToolInvokeMessage.JsonMessage)
-                json.append(message.json_object)
+                assert isinstance(message.message, ToolInvokeMessage.JsonMessage)
+                json.append(message.message.json_object)
             elif message.type == ToolInvokeMessage.MessageType.LINK:
                 assert isinstance(message.message, ToolInvokeMessage.TextMessage)
                 stream_text = f"Link: {message.message.text}\n"
