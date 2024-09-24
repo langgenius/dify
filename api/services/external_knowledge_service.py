@@ -110,8 +110,8 @@ class ExternalDatasetService:
         if api_template is None:
             raise ValueError("api template not found")
         settings = json.loads(api_template.settings)
-        for settings in settings:
-            custom_parameters = settings.get("document_process_setting")
+        for setting in settings:
+            custom_parameters = setting.get("document_process_setting")
             if custom_parameters:
                 for parameter in custom_parameters:
                     if parameter.get("required", False) and not process_parameter.get(parameter.get("name")):
