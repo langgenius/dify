@@ -61,7 +61,7 @@ const NewFeaturePanel = ({
         </div>
         {/* list */}
         <div className='grow overflow-y-auto px-4 pb-4'>
-          {!isChatMode && (
+          {!isChatMode && !inWorkflow && (
             <MoreLikeThis disabled={disabled} onChange={onChange} />
           )}
           {isChatMode && (
@@ -72,20 +72,20 @@ const NewFeaturePanel = ({
               onAutoAddPromptVariable={onAutoAddPromptVariable}
             />
           )}
-          <Moderation disabled={disabled} onChange={onChange} />
-          {isChatMode && speech2textDefaultModel && (
-            <SpeechToText disabled={disabled} onChange={onChange} />
-          )}
-          {text2speechDefaultModel && (
-            <TextToSpeech disabled={disabled} onChange={onChange} />
-          )}
-          {showFileUpload && <FileUpload disabled={disabled} onChange={onChange} />}
           {isChatMode && (
             <FollowUp disabled={disabled} onChange={onChange} />
           )}
+          {text2speechDefaultModel && (isChatMode || !inWorkflow) && (
+            <TextToSpeech disabled={disabled} onChange={onChange} />
+          )}
+          {isChatMode && speech2textDefaultModel && (
+            <SpeechToText disabled={disabled} onChange={onChange} />
+          )}
+          {showFileUpload && isChatMode && <FileUpload disabled={disabled} onChange={onChange} />}
           {isChatMode && (
             <Citation disabled={disabled} onChange={onChange} />
           )}
+          {(isChatMode || !inWorkflow) && <Moderation disabled={disabled} onChange={onChange} />}
           {!inWorkflow && isChatMode && (
             <AnnotationReply disabled={disabled} onChange={onChange} />
           )}

@@ -83,7 +83,7 @@ const varTypeToInputVarType = (type: VarType, {
   if (type === VarType.file)
     return InputVarType.singleFile
   if (type === VarType.arrayFile)
-    return InputVarType.files
+    return InputVarType.multiFiles
 
   return InputVarType.textInput
 }
