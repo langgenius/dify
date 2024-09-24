@@ -321,7 +321,7 @@ class TenantService:
         return tenant
 
     @staticmethod
-    def switch_tenant(account: Account, tenant_id: int = None) -> None:
+    def switch_tenant(account: Account, tenant_id: Optional[int] = None) -> None:
         """Switch the current workspace for the account"""
 
         # Ensure tenant_id is provided
