@@ -62,6 +62,7 @@ const ChatItem: FC<ChatItemProps> = ({
   }, [configTemplate, features])
   const {
     chatList,
+    chatListRef,
     isResponding,
     handleSend,
     suggestedQuestions,
@@ -96,6 +97,7 @@ const ChatItem: FC<ChatItemProps> = ({
       query: message,
       inputs,
       model_config: configData,
+      parent_message_id: chatListRef.current.at(-1)?.id || null,
     }
 
     if ((config.file_upload as any).enabled && files?.length && supportVision)
@@ -109,7 +111,7 @@ const ChatItem: FC<ChatItemProps> = ({
         onGetSuggestedQuestions: (responseItemId, getAbortController) => fetchSuggestedQuestions(appId, responseItemId, getAbortController),
       },
     )
-  }, [appId, config, handleSend, inputs, modelAndParameter, textGenerationModelList])
+  }, [appId, config, handleSend, inputs, modelAndParameter, textGenerationModelList, chatListRef])
 
   const { eventEmitter } = useEventEmitterContextContext()
   eventEmitter?.useSubscription((v: any) => {

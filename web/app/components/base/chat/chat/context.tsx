@@ -11,6 +11,7 @@ export type ChatContextValue = Pick<ChatProps, 'config'
   | 'questionIcon'
   | 'answerIcon'
   | 'onSend'
+  | 'onRegenerate'
   | 'onAnnotationEdited'
   | 'onAnnotationAdded'
   | 'onAnnotationRemoved'
@@ -34,6 +35,7 @@ export const ChatContextProvider = ({
   questionIcon,
   answerIcon,
   onSend,
+  onRegenerate,
   onAnnotationEdited,
   onAnnotationAdded,
   onAnnotationRemoved,
@@ -48,6 +50,7 @@ export const ChatContextProvider = ({
       questionIcon,
       answerIcon,
       onSend,
+      onRegenerate,
       onAnnotationEdited,
       onAnnotationAdded,
       onAnnotationRemoved,

@@ -12,7 +12,7 @@ import {
 import Chat from '@/app/components/base/chat/chat'
 import { useChat } from '@/app/components/base/chat/chat/hooks'
 import { useDebugConfigurationContext } from '@/context/debug-configuration'
-import type { ChatConfig, OnSend } from '@/app/components/base/chat/types'
+import type { ChatConfig, ChatItem, OnSend } from '@/app/components/base/chat/types'
 import { useProviderContext } from '@/context/provider-context'
 import {
   fetchConversationMessages,
@@ -24,6 +24,7 @@ import { useAppContext } from '@/context/app-context'
 import { ModelFeatureEnum } from '@/app/components/header/account-setting/model-provider-page/declarations'
 import { useStore as useAppStore } from '@/app/components/app/store'
 import { useFeatures } from '@/app/components/base/features/hooks'
+import { getLastAnswer } from '@/app/components/base/chat/utils'
 
 type DebugWithSingleModelProps = {
   checkCanSend?: () => boolean
@@ -63,10 +64,12 @@ const DebugWithSingleModel = forwardRef<DebugWithSingleModelRefType, DebugWithSi
   }, [configTemplate, features])
   const {
     chatList,
+    chatListRef,
     isResponding,
     handleSend,
     suggestedQuestions,
     handleStop,
+    handleUpdateChatList,
     handleRestart,
     handleAnnotationAdded,
     handleAnnotationEdited,
@@ -82,7 +85,7 @@ const DebugWithSingleModel = forwardRef<DebugWithSingleModelRefType, DebugWithSi
   )
   useFormattingChangedSubscription(chatList)
 
-  const doSend: OnSend = useCallback((message, files) => {
+  const doSend: OnSend = useCallback((message, files, last_answer) => {
     if (checkCanSend && !checkCanSend())
       return
     const currentProvider = textGenerationModelList.find(item => item.provider === modelConfig.provider)
@@ -103,6 +106,7 @@ const DebugWithSingleModel = forwardRef<DebugWithSingleModelRefType, DebugWithSi
       query: message,
       inputs,
       model_config: configData,
+      parent_message_id: last_answer?.id || getLastAnswer(chatListRef.current)?.id || null,
     }
 
     if ((config.file_upload as any)?.enabled && files?.length && supportVision)
@@ -116,7 +120,23 @@ const DebugWithSingleModel = forwardRef<DebugWithSingleModelRefType, DebugWithSi
         onGetSuggestedQuestions: (responseItemId, getAbortController) => fetchSuggestedQuestions(appId, responseItemId, getAbortController),
       },
     )
-  }, [appId, checkCanSend, completionParams, config, handleSend, inputs, modelConfig, textGenerationModelList])
+  }, [chatListRef, appId, checkCanSend, completionParams, config, handleSend, inputs, modelConfig, textGenerationModelList])
+
+  const doRegenerate = useCallback((chatItem: ChatItem) => {
+    const index = chatList.findIndex(item => item.id === chatItem.id)
+    if (index === -1)
+      return
+
+    const prevMessages = chatList.slice(0, index)
+    const question = prevMessages.pop()
+    const lastAnswer = getLastAnswer(prevMessages)
+
+    if (!question)
+      return
+
+    handleUpdateChatList(prevMessages)
+    doSend(question.content, question.message_files, lastAnswer)
+  }, [chatList, handleUpdateChatList, doSend])
 
   const allToolIcons = useMemo(() => {
     const icons: Record<string, any> = {}
@@ -146,6 +166,7 @@ const DebugWithSingleModel = forwardRef<DebugWithSingleModelRefType, DebugWithSi
       onFeatureBarClick={setShowAppConfigureFeaturesModal}
       suggestedQuestions={suggestedQuestions}
       onSend={doSend}
+      onRegenerate={doRegenerate}
       onStopResponding={handleStop}
       showPromptLog
       questionIcon={<Avatar name={userProfile.name} size={40} />}

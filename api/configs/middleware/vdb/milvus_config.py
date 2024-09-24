@@ -6,30 +6,30 @@ from pydantic_settings import BaseSettings
 
 class MilvusConfig(BaseSettings):
     """
-    Milvus configs
+    Configuration settings for Milvus vector database
     """
 
     MILVUS_URI: Optional[str] = Field(
-        description="Milvus uri",
+        description="URI for connecting to the Milvus server (e.g., 'http://localhost:19530' or 'https://milvus-instance.example.com:19530')",
         default="http://127.0.0.1:19530",
     )
 
     MILVUS_TOKEN: Optional[str] = Field(
-        description="Milvus token",
+        description="Authentication token for Milvus, if token-based authentication is enabled",
         default=None,
     )
 
     MILVUS_USER: Optional[str] = Field(
-        description="Milvus user",
+        description="Username for authenticating with Milvus, if username/password authentication is enabled",
         default=None,
     )
 
     MILVUS_PASSWORD: Optional[str] = Field(
-        description="Milvus password",
+        description="Password for authenticating with Milvus, if username/password authentication is enabled",
         default=None,
     )
 
     MILVUS_DATABASE: str = Field(
-        description="Milvus database, default to `default`",
+        description="Name of the Milvus database to connect to (default is 'default')",
         default="default",
     )

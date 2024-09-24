@@ -342,9 +342,9 @@ export const useChat = (
             const newChatList = produce(chatListRef.current, (draft) => {
               const index = draft.findIndex(item => item.id === responseItem.id)
               if (index !== -1) {
-                const requestion = draft[index - 1]
+                const question = draft[index - 1]
                 draft[index - 1] = {
-                  ...requestion,
+                  ...question,
                 }
                 draft[index] = {
                   ...draft[index],
@@ -655,7 +655,8 @@ export const useChat = (
 
   return {
     chatList,
-    setChatList,
+    chatListRef,
+    handleUpdateChatList,
     conversationId: conversationId.current,
     isResponding,
     setIsResponding,
