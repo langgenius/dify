@@ -208,21 +208,21 @@ class XinferenceText2SpeechModel(TTSModel):
                 executor = concurrent.futures.ThreadPoolExecutor(max_workers=min(3, len(sentences)))
                 futures = [
                     executor.submit(
-                        handle.speech, input=sentences[i], voice=voice, response_format="mp3", speed=1.0, stream=False
+                        handle.speech, input=sentences[i], voice=voice, response_format="mp3", speed=1.0, stream=True
                     )
                     for i in range(len(sentences))
                 ]
 
                 for future in futures:
                     response = future.result()
-                    for i in range(0, len(response), 1024):
-                        yield response[i : i + 1024]
+                    for chunk in response:
+                        yield chunk
             else:
                 response = handle.speech(
-                    input=content_text.strip(), voice=voice, response_format="mp3", speed=1.0, stream=False
+                    input=content_text.strip(), voice=voice, response_format="mp3", speed=1.0, stream=True
                 )
 
-                for i in range(0, len(response), 1024):
-                    yield response[i : i + 1024]
+                for chunk in response:
+                    yield chunk
         except Exception as ex:
             raise InvokeBadRequestError(str(ex))
