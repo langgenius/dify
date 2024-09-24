@@ -33,6 +33,7 @@ type AnswerProps = {
   chatAnswerContainerInner?: string
   hideProcessDetail?: boolean
   appData?: AppData
+  noChatInput?: boolean
 }
 const Answer: FC<AnswerProps> = ({
   item,
@@ -45,6 +46,7 @@ const Answer: FC<AnswerProps> = ({
   chatAnswerContainerInner,
   hideProcessDetail,
   appData,
+  noChatInput,
 }) => {
   const { t } = useTranslation()
   const {
@@ -107,6 +109,7 @@ const Answer: FC<AnswerProps> = ({
                   question={question}
                   index={index}
                   showPromptLog={showPromptLog}
+                  noChatInput={noChatInput}
                 />
               )
             }

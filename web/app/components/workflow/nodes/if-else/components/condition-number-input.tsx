@@ -6,6 +6,7 @@ import {
 import { useTranslation } from 'react-i18next'
 import { RiArrowDownSLine } from '@remixicon/react'
 import { capitalize } from 'lodash-es'
+import { useBoolean } from 'ahooks'
 import { VarType as NumberVarType } from '../../tool/types'
 import VariableTag from '../../_base/components/variable-tag'
 import {
@@ -36,6 +37,7 @@ type ConditionNumberInputProps = {
   onValueChange: (v: string) => void
   variables: NodeOutPutVar[]
   isShort?: boolean
+  unit?: string
 }
 const ConditionNumberInput = ({
   numberVarType = NumberVarType.constant,
@@ -44,10 +46,15 @@ const ConditionNumberInput = ({
   onValueChange,
   variables,
   isShort,
+  unit,
 }: ConditionNumberInputProps) => {
   const { t } = useTranslation()
   const [numberVarTypeVisible, setNumberVarTypeVisible] = useState(false)
   const [variableSelectorVisible, setVariableSelectorVisible] = useState(false)
+  const [isFocus, {
+    setTrue: setFocus,
+    setFalse: setBlur,
+  }] = useBoolean()
 
   const handleSelectVariable = useCallback((valueSelector: ValueSelector) => {
     onValueChange(variableTransformer(valueSelector) as string)
@@ -139,13 +146,18 @@ const ConditionNumberInput = ({
         }
         {
           numberVarType === NumberVarType.constant && (
-            <input
-              className='block w-full px-2 text-[13px] text-components-input-text-filled placeholder:text-components-input-text-placeholder outline-none appearance-none bg-transparent'
-              type='number'
-              value={value}
-              onChange={e => onValueChange(e.target.value)}
-              placeholder={t('workflow.nodes.ifElse.enterValue') || ''}
-            />
+            <div className=' relative'>
+              <input
+                className={cn('block w-full px-2 text-[13px] text-components-input-text-filled placeholder:text-components-input-text-placeholder outline-none appearance-none bg-transparent', unit && 'pr-6')}
+                type='number'
+                value={value}
+                onChange={e => onValueChange(e.target.value)}
+                placeholder={t('workflow.nodes.ifElse.enterValue') || ''}
+                onFocus={setFocus}
+                onBlur={setBlur}
+              />
+              {!isFocus && unit && <div className='absolute right-2 top-[50%] translate-y-[-50%] text-text-tertiary system-sm-regular'>{unit}</div>}
+            </div>
           )
         }
       </div>

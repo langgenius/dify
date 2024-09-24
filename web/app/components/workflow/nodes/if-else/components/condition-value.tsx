@@ -16,16 +16,18 @@ import { isConversationVar, isENV, isSystemVar } from '@/app/components/workflow
 
 type ConditionValueProps = {
   variableSelector: string[]
+  labelName?: string
   operator: ComparisonOperator
   value: string
 }
 const ConditionValue = ({
   variableSelector,
+  labelName,
   operator,
   value,
 }: ConditionValueProps) => {
   const { t } = useTranslation()
-  const variableName = isSystemVar(variableSelector) ? variableSelector.slice(0).join('.') : variableSelector.slice(1).join('.')
+  const variableName = labelName || (isSystemVar(variableSelector) ? variableSelector.slice(0).join('.') : variableSelector.slice(1).join('.'))
   const operatorName = isComparisonOperatorNeedTranslate(operator) ? t(`workflow.nodes.ifElse.comparisonOperator.${operator}`) : operator
   const notHasValue = comparisonOperatorNotRequireValue(operator)
   const isEnvVar = isENV(variableSelector)

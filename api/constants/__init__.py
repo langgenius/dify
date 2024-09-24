@@ -15,3 +15,4 @@ ALLOWED_EXTENSIONS.extend([ext.upper() for ext in ALLOWED_EXTENSIONS])
 UNSTRUCTURED_ALLOWED_EXTENSIONS = ["txt", "markdown", "md", "pdf", "html", "htm", "xlsx", "xls"]
 UNSTRUCTURED_ALLOWED_EXTENSIONS.extend(("docx", "csv", "eml", "msg", "pptx", "ppt", "xml", "epub"))
 UNSTRUCTURED_ALLOWED_EXTENSIONS.extend([ext.upper() for ext in UNSTRUCTURED_ALLOWED_EXTENSIONS])
+UUID_NIL = "00000000-0000-0000-0000-000000000000"

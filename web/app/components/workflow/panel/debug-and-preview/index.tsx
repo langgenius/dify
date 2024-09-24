@@ -103,6 +103,7 @@ const DebugAndPreview = () => {
           showConversationVariableModal={showConversationVariableModal}
           onConversationModalHide={() => setShowConversationVariableModal(false)}
           showInputsFieldsPanel={expanded}
+          onHide={() => setExpanded(false)}
         />
       </div>
     </div>

@@ -3,6 +3,7 @@ function escape(input: string): string {
     return ''
 
   const res = input
+    .replaceAll('\\', '\\\\')
     .replaceAll('\0', '\\0')
     .replaceAll('\b', '\\b')
     .replaceAll('\f', '\\f')

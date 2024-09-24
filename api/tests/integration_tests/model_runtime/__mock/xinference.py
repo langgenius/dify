@@ -9,7 +9,6 @@ from requests.exceptions import ConnectionError
 from requests.sessions import Session
 from xinference_client.client.restful.restful_client import (
     Client,
-    RESTfulChatglmCppChatModelHandle,
     RESTfulChatModelHandle,
     RESTfulEmbeddingModelHandle,
     RESTfulGenerateModelHandle,
@@ -19,9 +18,7 @@ from xinference_client.types import Embedding, EmbeddingData, EmbeddingUsage
 
 
 class MockXinferenceClass:
-    def get_chat_model(
-        self: Client, model_uid: str
-    ) -> Union[RESTfulChatglmCppChatModelHandle, RESTfulGenerateModelHandle, RESTfulChatModelHandle]:
+    def get_chat_model(self: Client, model_uid: str) -> Union[RESTfulGenerateModelHandle, RESTfulChatModelHandle]:
         if not re.match(r"https?:\/\/[^\s\/$.?#].[^\s]*$", self.base_url):
             raise RuntimeError("404 Not Found")
 

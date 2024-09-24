@@ -1,3 +1,4 @@
+import logging
 from collections.abc import Generator
 from typing import Union
 
@@ -40,40 +41,56 @@ class Storage:
             self.storage_runner = LocalStorage(app=app)
 
     def save(self, filename, data):
-        if not self.storage_runner:
-            raise ValueError("storage runner is not initialized")
-        self.storage_runner.save(filename, data)
+        try:
+            self.storage_runner.save(filename, data)
+        except Exception as e:
+            logging.exception("Failed to save file: %s", e)
+            raise e
 
-    def load(self, filename: str, /, *, stream: bool = False) -> Union[bytes, Generator]:
-        if stream:
-            return self.load_stream(filename)
-        else:
-            return self.load_once(filename)
+    def load(self, filename: str, stream: bool = False) -> Union[bytes, Generator]:
+        try:
+            if stream:
+                return self.load_stream(filename)
+            else:
+                return self.load_once(filename)
+        except Exception as e:
+            logging.exception("Failed to load file: %s", e)
+            raise e
 
     def load_once(self, filename: str) -> bytes:
-        if not self.storage_runner:
-            raise ValueError("storage runner is not initialized")
-        return self.storage_runner.load_once(filename)
+        try:
+            return self.storage_runner.load_once(filename)
+        except Exception as e:
+            logging.exception("Failed to load_once file: %s", e)
+            raise e
 
     def load_stream(self, filename: str) -> Generator:
-        if not self.storage_runner:
-            raise ValueError("storage runner is not initialized")
-        return self.storage_runner.load_stream(filename)
+        try:
+            return self.storage_runner.load_stream(filename)
+        except Exception as e:
+            logging.exception("Failed to load_stream file: %s", e)
+            raise e
 
     def download(self, filename, target_filepath):
-        if not self.storage_runner:
-            raise ValueError("storage runner is not initialized")
-        self.storage_runner.download(filename, target_filepath)
+        try:
+            self.storage_runner.download(filename, target_filepath)
+        except Exception as e:
+            logging.exception("Failed to download file: %s", e)
+            raise e
 
     def exists(self, filename):
-        if not self.storage_runner:
-            raise ValueError("storage runner is not initialized")
-        return self.storage_runner.exists(filename)
+        try:
+            return self.storage_runner.exists(filename)
+        except Exception as e:
+            logging.exception("Failed to check file exists: %s", e)
+            raise e
 
     def delete(self, filename):
-        if not self.storage_runner:
-            raise ValueError("storage runner is not initialized")
-        return self.storage_runner.delete(filename)
+        try:
+            return self.storage_runner.delete(filename)
+        except Exception as e:
+            logging.exception("Failed to delete file: %s", e)
+            raise e
 
 
 storage = Storage()

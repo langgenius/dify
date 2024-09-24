@@ -7,6 +7,7 @@ import { RiUploadCloud2Line } from '@remixicon/react'
 import FileInput from '../file-input'
 import { useFile } from '../hooks'
 import { useStore } from '../store'
+import { FILE_URL_REGEX } from '../constants'
 import {
   PortalToFollowElem,
   PortalToFollowElemContent,
@@ -14,6 +15,7 @@ import {
 } from '@/app/components/base/portal-to-follow-elem'
 import Button from '@/app/components/base/button'
 import type { FileUpload } from '@/app/components/base/features/types'
+import cn from '@/utils/classnames'
 
 type FileFromLinkOrLocalProps = {
   showFromLink?: boolean
@@ -31,8 +33,21 @@ const FileFromLinkOrLocal = ({
   const files = useStore(s => s.files)
   const [open, setOpen] = useState(false)
   const [url, setUrl] = useState('')
+  const [showError, setShowError] = useState(false)
   const { handleLoadFileFromLink } = useFile(fileConfig)
   const disabled = !!fileConfig.number_limits && files.length >= fileConfig.number_limits
+
+  const handleSaveUrl = () => {
+    if (!url)
+      return
+
+    if (!FILE_URL_REGEX.test(url)) {
+      setShowError(true)
+      return
+    }
+    handleLoadFileFromLink(url)
+    setUrl('')
+  }
 
   return (
     <PortalToFollowElem
@@ -48,27 +63,39 @@ const FileFromLinkOrLocal = ({
         <div className='p-3 w-[280px] bg-components-panel-bg-blur border-[0.5px] border-components-panel-border rounded-xl shadow-lg'>
           {
             showFromLink && (
-              <div className='flex items-center p-1 h-8 bg-components-input-bg-active border border-components-input-border-active rounded-lg shadow-xs'>
-                <input
-                  className='grow block mr-0.5 px-1 bg-transparent system-sm-regular outline-none appearance-none'
-                  placeholder={t('common.fileUploader.pasteFileLinkInputPlaceholder') || ''}
-                  value={url}
-                  onChange={e => setUrl(e.target.value)}
-                  disabled={disabled}
-                />
-                <Button
-                  className='shrink-0'
-                  size='small'
-                  variant='primary'
-                  disabled={!url || disabled}
-                  onClick={() => {
-                    handleLoadFileFromLink(url)
-                    setUrl('')
-                  }}
-                >
-                  {t('common.operation.ok')}
-                </Button>
-              </div>
+              <>
+                <div className={cn(
+                  'flex items-center p-1 h-8 bg-components-input-bg-active border border-components-input-border-active rounded-lg shadow-xs',
+                  showError && 'border-components-input-border-destructive',
+                )}>
+                  <input
+                    className='grow block mr-0.5 px-1 bg-transparent system-sm-regular outline-none appearance-none'
+                    placeholder={t('common.fileUploader.pasteFileLinkInputPlaceholder') || ''}
+                    value={url}
+                    onChange={(e) => {
+                      setShowError(false)
+                      setUrl(e.target.value)
+                    }}
+                    disabled={disabled}
+                  />
+                  <Button
+                    className='shrink-0'
+                    size='small'
+                    variant='primary'
+                    disabled={!url || disabled}
+                    onClick={handleSaveUrl}
+                  >
+                    {t('common.operation.ok')}
+                  </Button>
+                </div>
+                {
+                  showError && (
+                    <div className='mt-0.5 body-xs-regular text-text-destructive'>
+                      {t('common.fileUploader.pasteFileLinkInvalid')}
+                    </div>
+                  )
+                }
+              </>
             )
           }
           {

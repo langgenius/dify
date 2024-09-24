@@ -126,7 +126,7 @@ const ConditionItem = ({
     doUpdateCondition(newCondition)
   }, [condition, doUpdateCondition])
 
-  const isSubVariable = condition.varType === VarType.arrayFile && [ComparisonOperator.contains, ComparisonOperator.notContains].includes(condition.comparison_operator!)
+  const isSubVariable = condition.varType === VarType.arrayFile && [ComparisonOperator.contains, ComparisonOperator.notContains, ComparisonOperator.allOf].includes(condition.comparison_operator!)
   const fileAttr = useMemo(() => {
     if (file)
       return file
@@ -138,7 +138,7 @@ const ConditionItem = ({
     return undefined
   }, [condition.key, file, isSubVariableKey])
 
-  const isSelect = condition.comparison_operator && [ComparisonOperator.in, ComparisonOperator.notIn, ComparisonOperator.allOf].includes(condition.comparison_operator)
+  const isSelect = condition.comparison_operator && [ComparisonOperator.in, ComparisonOperator.notIn].includes(condition.comparison_operator)
   const selectOptions = useMemo(() => {
     if (isSelect) {
       if (fileAttr?.key === 'type' || condition.comparison_operator === ComparisonOperator.allOf) {
@@ -260,6 +260,7 @@ const ConditionItem = ({
                 onValueChange={handleUpdateConditionValue}
                 variables={numberVariables}
                 isShort={isValueFieldShort}
+                unit={fileAttr?.key === 'size' ? 'Byte' : undefined}
               />
             </div>
           )

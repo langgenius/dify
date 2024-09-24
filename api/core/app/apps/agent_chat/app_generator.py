@@ -135,6 +135,7 @@ class AgentChatAppGenerator(MessageBasedAppGenerator):
             else self._prepare_user_inputs(user_inputs=inputs, app_config=app_config, user_id=user.id, role=role),
             query=query,
             files=file_objs,
+            parent_message_id=args.get("parent_message_id"),
             user_id=user.id,
             stream=stream,
             invoke_from=invoke_from,

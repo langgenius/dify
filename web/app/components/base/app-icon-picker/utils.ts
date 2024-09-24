@@ -11,6 +11,23 @@ export function getRadianAngle(degreeValue: number) {
   return (degreeValue * Math.PI) / 180
 }
 
+export function getMimeType(fileName: string): string {
+  const extension = fileName.split('.').pop()?.toLowerCase()
+  switch (extension) {
+    case 'png':
+      return 'image/png'
+    case 'jpg':
+    case 'jpeg':
+      return 'image/jpeg'
+    case 'gif':
+      return 'image/gif'
+    case 'webp':
+      return 'image/webp'
+    default:
+      return 'image/jpeg'
+  }
+}
+
 /**
  * Returns the new bounding area of a rotated rectangle.
  */
@@ -31,12 +48,14 @@ export function rotateSize(width: number, height: number, rotation: number) {
 export default async function getCroppedImg(
   imageSrc: string,
   pixelCrop: { x: number; y: number; width: number; height: number },
+  fileName: string,
   rotation = 0,
   flip = { horizontal: false, vertical: false },
 ): Promise<Blob> {
   const image = await createImage(imageSrc)
   const canvas = document.createElement('canvas')
   const ctx = canvas.getContext('2d')
+  const mimeType = getMimeType(fileName)
 
   if (!ctx)
     throw new Error('Could not create a canvas context')
@@ -93,6 +112,6 @@ export default async function getCroppedImg(
         resolve(file)
       else
         reject(new Error('Could not create a blob'))
-    }, 'image/jpeg')
+    }, mimeType)
   })
 }
