@@ -180,7 +180,7 @@ const useConfig = (id: string, payload: IfElseNodeType) => {
     setInputs(newInputs)
   }, [inputs, setInputs])
 
-  const handleAddSubVariableCondition = useCallback<HandleAddSubVariableCondition>((caseId: string, conditionId: string) => {
+  const handleAddSubVariableCondition = useCallback<HandleAddSubVariableCondition>((caseId: string, conditionId: string, key?: string) => {
     const newInputs = produce(inputs, (draft) => {
       const condition = draft.cases?.find(item => item.case_id === caseId)?.conditions.find(item => item.id === conditionId)
       if (!condition)
@@ -199,7 +199,7 @@ const useConfig = (id: string, payload: IfElseNodeType) => {
 
         subVarCondition.conditions.push({
           id: uuid4(),
-          key: '',
+          key: key || '',
           varType: VarType.string,
           comparison_operator: undefined,
           value: '',

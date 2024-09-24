@@ -12,10 +12,12 @@ import type { CaseItem, HandleAddCondition, HandleAddSubVariableCondition, Handl
 import type { Node, NodeOutPutVar, Var } from '../../../types'
 import { VarType } from '../../../types'
 import { useGetAvailableVars } from '../../variable-assigner/hooks'
+import { SUB_VARIABLES } from '../default'
 import ConditionList from './condition-list'
 import ConditionAdd from './condition-add'
 import cn from '@/utils/classnames'
 import Button from '@/app/components/base/button'
+import { PortalSelect as Select } from '@/app/components/base/select'
 
 type Props = {
   isSubVariable?: boolean
@@ -72,6 +74,11 @@ const ConditionWrap: FC<Props> = ({
   const filterNumberVar = useCallback((varPayload: Var) => {
     return varPayload.type === VarType.number
   }, [])
+
+  const subVarOptions = SUB_VARIABLES.map(item => ({
+    name: item,
+    value: item,
+  }))
 
   return (
     <>
@@ -151,14 +158,22 @@ const ConditionWrap: FC<Props> = ({
                 )}>
                   {isSubVariable
                     ? (
-                      <Button
-                        size='small'
-                        disabled={readOnly}
-                        onClick={() => handleAddSubVariableCondition?.(caseId!, conditionId!)}
-                      >
-                        <RiAddLine className='mr-1 w-3.5 h-3.5' />
-                        {t('workflow.nodes.ifElse.addSubVariable')}
-                      </Button>
+                      <Select
+                        popupInnerClassName='w-[165px] max-h-none'
+                        onSelect={value => handleAddSubVariableCondition?.(caseId!, conditionId!, value.value as string)}
+                        items={subVarOptions}
+                        value=''
+                        renderTrigger={() => (
+                          <Button
+                            size='small'
+                            disabled={readOnly}
+                          >
+                            <RiAddLine className='mr-1 w-3.5 h-3.5' />
+                            {t('workflow.nodes.ifElse.addSubVariable')}
+                          </Button>
+                        )}
+                        hideChecked
+                      />
                     )
                     : (
                       <ConditionAdd
