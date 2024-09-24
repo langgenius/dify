@@ -23,7 +23,7 @@ def _validate_name(name):
 
 
 def _validate_description_length(description):
-    if len(description) > 400:
+    if description and len(description) > 400:
         raise ValueError("Description cannot exceed 400 characters.")
     return description
 
@@ -60,13 +60,6 @@ class ExternalApiTemplateListApi(Resource):
             required=True,
             help="Name is required. Name must be between 1 to 100 characters.",
             type=_validate_name,
-        )
-        parser.add_argument(
-            "description",
-            nullable=True,
-            required=False,
-            help="Description is required. Description must be between 1 to 400 characters.",
-            type=_validate_description_length,
         )
         parser.add_argument(
             "settings",
@@ -118,13 +111,6 @@ class ExternalApiTemplateApi(Resource):
             required=True,
             help="type is required. Name must be between 1 to 100 characters.",
             type=_validate_name,
-        )
-        parser.add_argument(
-            "description",
-            nullable=True,
-            required=False,
-            help="description is required. Description must be between 1 to 400 characters.",
-            type=_validate_description_length,
         )
         parser.add_argument(
             "settings",
