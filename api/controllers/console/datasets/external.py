@@ -63,8 +63,8 @@ class ExternalApiTemplateListApi(Resource):
         )
         parser.add_argument(
             "description",
-            nullable=False,
-            required=True,
+            nullable=True,
+            required=False,
             help="Description is required. Description must be between 1 to 400 characters.",
             type=_validate_description_length,
         )
@@ -97,9 +97,9 @@ class ExternalApiTemplateApi(Resource):
     @setup_required
     @login_required
     @account_initialization_required
-    def get(self, api_template_id):
-        api_template_id = str(api_template_id)
-        api_template = ExternalDatasetService.get_api_template(api_template_id)
+    def get(self, external_knowledge_api_id):
+        external_knowledge_api_id = str(external_knowledge_api_id)
+        api_template = ExternalDatasetService.get_api_template(external_knowledge_api_id)
         if api_template is None:
             raise NotFound("API template not found.")
 
@@ -121,8 +121,8 @@ class ExternalApiTemplateApi(Resource):
         )
         parser.add_argument(
             "description",
-            nullable=False,
-            required=True,
+            nullable=True,
+            required=False,
             help="description is required. Description must be between 1 to 400 characters.",
             type=_validate_description_length,
         )
@@ -163,10 +163,10 @@ class ExternalApiUseCheckApi(Resource):
     @setup_required
     @login_required
     @account_initialization_required
-    def get(self, api_template_id):
-        api_template_id = str(api_template_id)
+    def get(self, external_knowledge_api_id):
+        external_knowledge_api_id = str(external_knowledge_api_id)
 
-        external_api_template_is_using = ExternalDatasetService.external_api_template_use_check(api_template_id)
+        external_api_template_is_using = ExternalDatasetService.external_api_template_use_check(external_knowledge_api_id)
         return {"is_using": external_api_template_is_using}, 200
 
 
@@ -289,6 +289,6 @@ class ExternalKnowledgeHitTestingApi(Resource):
 
 api.add_resource(ExternalKnowledgeHitTestingApi, "/datasets/<uuid:dataset_id>/external-hit-testing")
 api.add_resource(ExternalDatasetCreateApi, "/datasets/external")
-api.add_resource(ExternalApiTemplateListApi, "/datasets/external-api-template")
-api.add_resource(ExternalApiTemplateApi, "/datasets/external-api-template/<uuid:api_template_id>")
-api.add_resource(ExternalApiUseCheckApi, "/datasets/external-api-template/<uuid:api_template_id>/use-check")
+api.add_resource(ExternalApiTemplateListApi, "/datasets/external-knowledge-api")
+api.add_resource(ExternalApiTemplateApi, "/datasets/external-knowledge-api/<uuid:external_knowledge_api_id>")
+api.add_resource(ExternalApiUseCheckApi, "/datasets/external-knowledge-api/<uuid:external_knowledge_api_id>/use-check")
