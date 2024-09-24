@@ -219,9 +219,7 @@ class SageMakerLargeLanguageModel(LargeLanguageModel):
             if aws_region:
                 if access_key and secret_key:
                     boto_session = boto3.Session(
-                        aws_access_key_id=access_key,
-                        aws_secret_access_key=secret_key,
-                        region_name=aws_region
+                        aws_access_key_id=access_key, aws_secret_access_key=secret_key, region_name=aws_region
                     )
                 else:
                     boto_session = boto3.Session(region_name=aws_region)
