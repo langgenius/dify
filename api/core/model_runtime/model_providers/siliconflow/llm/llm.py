@@ -1,11 +1,9 @@
 from collections.abc import Generator
 from typing import Optional, Union
 
+from core.model_runtime.entities.common_entities import I18nObject
 from core.model_runtime.entities.llm_entities import LLMMode, LLMResult
 from core.model_runtime.entities.message_entities import PromptMessage, PromptMessageTool
-from core.model_runtime.model_providers.openai_api_compatible.llm.llm import OAIAPICompatLargeLanguageModel
-from core.model_runtime.entities.common_entities import I18nObject
-
 from core.model_runtime.entities.model_entities import (
     AIModelEntity,
     FetchFrom,
@@ -15,6 +13,7 @@ from core.model_runtime.entities.model_entities import (
     ParameterRule,
     ParameterType,
 )
+from core.model_runtime.model_providers.openai_api_compatible.llm.llm import OAIAPICompatLargeLanguageModel
 
 class SiliconflowLargeLanguageModel(OAIAPICompatLargeLanguageModel):
     def _invoke(
