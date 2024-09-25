@@ -10,7 +10,7 @@ import { useLocalFileUploader } from '../image-uploader/hooks'
 import EmojiPickerInner from '../emoji-picker/Inner'
 import Uploader from './Uploader'
 import s from './style.module.css'
-import getCroppedImg, { isAnimatedImage } from './utils'
+import getCroppedImg from './utils'
 import type { AppIconType, ImageFile } from '@/types/app'
 import cn from '@/utils/classnames'
 import { DISABLE_UPLOAD_IMAGE_AS_ICON } from '@/config'
@@ -88,11 +88,11 @@ const AppIconPicker: FC<AppIconPickerProps> = ({
       if (!imageCropInfo)
         return
       setUploading(true)
-      if (isAnimatedImage({ name: imageCropInfo.fileName }) && imageCropInfo.file) {
+      if (imageCropInfo.file) {
         handleLocalFileUpload(imageCropInfo.file)
         return
       }
-      const blob = await getCroppedImg(imageCropInfo.tempUrl, imageCropInfo.croppedAreaPixels)
+      const blob = await getCroppedImg(imageCropInfo.tempUrl, imageCropInfo.croppedAreaPixels, imageCropInfo.fileName)
       const file = new File([blob], imageCropInfo.fileName, { type: blob.type })
       handleLocalFileUpload(file)
     }

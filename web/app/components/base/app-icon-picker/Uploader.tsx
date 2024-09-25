@@ -8,7 +8,7 @@ import classNames from 'classnames'
 
 import { ImagePlus } from '../icons/src/vender/line/images'
 import { useDraggableUploader } from './hooks'
-import { isAnimatedImage } from './utils'
+import { checkIsAnimatedImage } from './utils'
 import { ALLOW_FILE_EXTENSIONS } from '@/types/app'
 
 type UploaderProps = {
@@ -20,6 +20,7 @@ const Uploader: FC<UploaderProps> = ({
   onImageCropped,
 }) => {
   const [inputImage, setInputImage] = useState<{ file: File; url: string }>()
+  const [isAnimatedImage, setIsAnimatedImage] = useState<boolean>(false)
   useEffect(() => {
     return () => {
       if (inputImage)
@@ -40,8 +41,11 @@ const Uploader: FC<UploaderProps> = ({
     const file = e.target.files?.[0]
     if (file) {
       setInputImage({ file, url: URL.createObjectURL(file) })
-      if (isAnimatedImage(file))
-        onImageCropped?.(URL.createObjectURL(file), { x: 0, y: 0, width: 0, height: 0 }, file.name, file)
+      checkIsAnimatedImage(file).then((isAnimatedImage) => {
+        setIsAnimatedImage(!!isAnimatedImage)
+        if (isAnimatedImage)
+          onImageCropped?.(URL.createObjectURL(file), { x: 0, y: 0, width: 0, height: 0 }, file.name, file)
+      })
     }
   }
 
@@ -56,11 +60,12 @@ const Uploader: FC<UploaderProps> = ({
   const inputRef = createRef<HTMLInputElement>()
 
   const handleShowImage = () => {
-    if (isAnimatedImage(inputImage?.file || { name: '' })) {
+    if (isAnimatedImage) {
       return (
         <img src={inputImage?.url} alt='' />
       )
     }
+
     return (
       <Cropper
         image={inputImage?.url}
