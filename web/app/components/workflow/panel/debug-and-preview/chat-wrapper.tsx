@@ -12,6 +12,7 @@ import {
   useStore,
   useWorkflowStore,
 } from '../../store'
+import { useCheckStartNodeForm } from '../../hooks'
 import type { StartNodeType } from '../../nodes/start/types'
 import Empty from './empty'
 import UserInput from './user-input'
@@ -61,6 +62,7 @@ const ChatWrapper = forwardRef<ChatWrapperRefType, ChatWrapperProps>(({
     }
   }, [features.opening, features.suggested, features.text2speech, features.speech2text, features.citation, features.moderation, features.file])
   const setShowFeaturesPanel = useStore(s => s.setShowFeaturesPanel)
+  const { checkStartNodeForm } = useCheckStartNodeForm()
 
   const {
     conversationId,
@@ -141,6 +143,7 @@ const ChatWrapper = forwardRef<ChatWrapperRefType, ChatWrapperProps>(({
         showFeatureBar
         onFeatureBarClick={setShowFeaturesPanel}
         onSend={doSend}
+        onSendCheck={checkStartNodeForm}
         onRegenerate={doRegenerate}
         onStopResponding={handleStop}
         chatNode={(

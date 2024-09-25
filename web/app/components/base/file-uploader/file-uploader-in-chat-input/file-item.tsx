@@ -29,8 +29,8 @@ const FileItem = ({
   onRemove,
   onReUpload,
 }: FileItemProps) => {
-  const { id, name, progress } = file
-  const ext = getFileExtension(name)
+  const { id, name, type, progress } = file
+  const ext = getFileExtension(name, type)
   const uploadError = progress === -1
 
   return (
@@ -59,7 +59,7 @@ const FileItem = ({
         <div className='flex items-center system-2xs-medium-uppercase text-text-tertiary'>
           <FileTypeIcon
             size='sm'
-            type={getFileAppearanceType(name)}
+            type={getFileAppearanceType(name, type)}
             className='mr-1'
           />
           {
