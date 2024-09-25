@@ -6,30 +6,30 @@ from pydantic_settings import BaseSettings
 
 class OracleConfig(BaseSettings):
     """
-    ORACLE configs
+    Configuration settings for Oracle database
     """
 
     ORACLE_HOST: Optional[str] = Field(
-        description="ORACLE host",
+        description="Hostname or IP address of the Oracle database server (e.g., 'localhost' or 'oracle.example.com')",
         default=None,
     )
 
     ORACLE_PORT: Optional[PositiveInt] = Field(
-        description="ORACLE port",
+        description="Port number on which the Oracle database server is listening (default is 1521)",
         default=1521,
     )
 
     ORACLE_USER: Optional[str] = Field(
-        description="ORACLE user",
+        description="Username for authenticating with the Oracle database",
         default=None,
     )
 
     ORACLE_PASSWORD: Optional[str] = Field(
-        description="ORACLE password",
+        description="Password for authenticating with the Oracle database",
         default=None,
     )
 
     ORACLE_DATABASE: Optional[str] = Field(
-        description="ORACLE database",
+        description="Name of the Oracle database or service to connect to (e.g., 'ORCL' or 'pdborcl')",
         default=None,
     )

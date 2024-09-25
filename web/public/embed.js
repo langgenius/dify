@@ -69,38 +69,47 @@
       iframe.id = iframeId;
       iframe.src = iframeUrl;
       iframe.style.cssText = `
-        border: none; position: fixed; flex-direction: column; justify-content: space-between;
+        border: none; position: absolute; flex-direction: column; justify-content: space-between;
         box-shadow: rgba(150, 150, 150, 0.2) 0px 10px 30px 0px, rgba(150, 150, 150, 0.2) 0px 0px 0px 1px;
-        bottom: 5rem; right: 1rem; width: 24rem; max-width: calc(100vw - 2rem); height: 40rem;
+        bottom: 55px; right: 0; width: 24rem; max-width: calc(100vw - 2rem); height: 40rem;
         max-height: calc(100vh - 6rem); border-radius: 0.75rem; display: flex; z-index: 2147483647;
         overflow: hidden; left: unset; background-color: #F3F4F6;user-select: none;
       `;
 
-      document.body.appendChild(iframe);
+      return iframe;
     }
 
     // Function to reset the iframe position
     function resetIframePosition() {
+      if (window.innerWidth <= 640)
+        return
+
       const targetIframe = document.getElementById(iframeId);
       const targetButton = document.getElementById(buttonId);
       if (targetIframe && targetButton) {
         const buttonRect = targetButton.getBoundingClientRect();
-        const buttonBottom = window.innerHeight - buttonRect.bottom;
-        const buttonRight = window.innerWidth - buttonRect.right;
-        const buttonLeft = buttonRect.left;
 
-        // Adjust iframe position to stay within viewport
-        targetIframe.style.bottom = `${
-          buttonBottom + buttonRect.height + 5 + targetIframe.clientHeight > window.innerHeight
-            ? buttonBottom - targetIframe.clientHeight - 5
-            : buttonBottom + buttonRect.height + 5
-        }px`;
+        const buttonInBottom = buttonRect.top - 5 > targetIframe.clientHeight
 
-        targetIframe.style.right = `${
-          buttonRight + targetIframe.clientWidth > window.innerWidth
-            ? window.innerWidth - buttonLeft - targetIframe.clientWidth
-            : buttonRight
-        }px`;
+        if (buttonInBottom) {
+          targetIframe.style.bottom = `${buttonRect.height + 5}px`;
+          targetIframe.style.top = 'unset';
+        }
+        else {
+          targetIframe.style.bottom = 'unset';
+          targetIframe.style.top = `${buttonRect.height + 5}px`;
+        }
+
+        const buttonInRight = buttonRect.right > targetIframe.clientWidth;
+
+        if (buttonInRight) {
+          targetIframe.style.right = '0';
+          targetIframe.style.left = 'unset';
+        }
+        else {
+          targetIframe.style.right = 'unset';
+          targetIframe.style.left = 0;
+        }
       }
     }
 
@@ -146,12 +155,6 @@
           box-shadow: var(--${containerDiv.id}-box-shadow, rgba(0, 0, 0, 0.2) 0px 4px 8px 0px);
           cursor: pointer;
           z-index: 2147483647;
-          transition: all 0.2s ease-in-out 0s;
-        }
-      `);
-      styleSheet.sheet.insertRule(`
-        #${containerDiv.id}:hover {
-          transform: var(--${containerDiv.id}-hover-transform, scale(1.1));
         }
       `);
 
@@ -167,7 +170,7 @@
       containerDiv.addEventListener("click", function () {
         const targetIframe = document.getElementById(iframeId);
         if (!targetIframe) {
-          createIframe();
+          containerDiv.appendChild(createIframe());
           resetIframePosition();
           this.title = "Exit (ESC)";
           displayDiv.innerHTML = svgIcons.close;
@@ -255,9 +258,6 @@
     if (!document.getElementById(buttonId)) {
       createButton();
     }
-
-    createIframe();
-    document.getElementById(iframeId).style.display = 'none';
   }
 
   // Add esc Exit keyboard event triggered

@@ -21,8 +21,7 @@ class BaseTraceInfo(BaseModel):
             return None
         if isinstance(v, str | dict | list):
             return v
-        else:
-            return ""
+        return ""
 
 
 class WorkflowTraceInfo(BaseTraceInfo):

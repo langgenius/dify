@@ -3,7 +3,9 @@ label:
   en_US: qwen-plus
 model_type: llm
 features:
+  - multi-tool-call
   - agent-thought
+  - stream-tool-call
 model_properties:
   mode: chat
   context_size: 131072
@@ -20,9 +22,9 @@ parameter_rules:
   - name: max_tokens
     use_template: max_tokens
     type: int
-    default: 2000
+    default: 8192
     min: 1
-    max: 2000
+    max: 8192
     help:
       zh_Hans: 用于指定模型在生成内容时token的最大数量，它定义了生成的上限，但不保证每次都会生成到这个数量。
       en_US: It is used to specify the maximum number of tokens when the model generates content. It defines the upper limit of generation, but does not guarantee that this number will be generated every time.
@@ -60,6 +62,7 @@ parameter_rules:
     type: float
     default: 1.1
     label:
+      zh_Hans: 重复惩罚
       en_US: Repetition penalty
     help:
       zh_Hans: 用于控制模型生成时的重复度。提高repetition_penalty时可以降低模型生成的重复度。1.0表示不做惩罚。
@@ -67,13 +70,16 @@ parameter_rules:
   - name: enable_search
     type: boolean
     default: false
+    label:
+      zh_Hans: 联网搜索
+      en_US: Web Search
     help:
       zh_Hans: 模型内置了互联网搜索服务，该参数控制模型在生成文本时是否参考使用互联网搜索结果。启用互联网搜索，模型会将搜索结果作为文本生成过程中的参考信息，但模型会基于其内部逻辑“自行判断”是否使用互联网搜索结果。
       en_US: The model has a built-in Internet search service. This parameter controls whether the model refers to Internet search results when generating text. When Internet search is enabled, the model will use the search results as reference information in the text generation process, but the model will "judge" whether to use Internet search results based on its internal logic.
   - name: response_format
     use_template: response_format
 pricing:
-  input: '0.004'
-  output: '0.012'
+  input: '0.0008'
+  output: '0.002'
   unit: '0.001'
   currency: RMB
