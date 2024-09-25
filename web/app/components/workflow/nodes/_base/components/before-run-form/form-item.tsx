@@ -23,7 +23,6 @@ import { Line3 } from '@/app/components/base/icons/src/public/common'
 import { Variable02 } from '@/app/components/base/icons/src/vender/solid/development'
 import { BubbleX } from '@/app/components/base/icons/src/vender/line/others'
 import cn from '@/utils/classnames'
-import { getProcessedFiles } from '@/app/components/base/file-uploader/utils'
 
 type Props = {
   payload: InputVar
@@ -161,9 +160,10 @@ const FormItem: FC<Props> = ({
         }
         {(type === InputVarType.singleFile) && (
           <FileUploaderInAttachmentWrapper
+            value={value ? [value] : []}
             onChange={(files) => {
               if (files.length)
-                onChange(getProcessedFiles(files)[0])
+                onChange(files[0])
             }}
             fileConfig={{
               allowed_file_types: inStepRun ? [SupportUploadFileTypes.custom] : payload.allowed_file_types,
@@ -175,7 +175,8 @@ const FormItem: FC<Props> = ({
         )}
         {(type === InputVarType.multiFiles) && (
           <FileUploaderInAttachmentWrapper
-            onChange={files => onChange(getProcessedFiles(files))}
+            value={value}
+            onChange={files => onChange(files)}
             fileConfig={{
               allowed_file_types: inStepRun ? [SupportUploadFileTypes.custom] : payload.allowed_file_types,
               allowed_file_extensions: inStepRun ? [] : payload.allowed_file_extensions,

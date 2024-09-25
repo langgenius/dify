@@ -61,6 +61,7 @@ export type ChatItem = IChatItem & {
   isError?: boolean
   workflowProcess?: WorkflowProcess
   conversationId?: string
+  allFiles?: FileEntity[]
 }
 
 export type OnSend = (message: string, files?: FileEntity[], last_answer?: ChatItem | null) => void

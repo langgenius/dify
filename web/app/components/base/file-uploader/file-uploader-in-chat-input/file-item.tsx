@@ -76,13 +76,14 @@ const FileItem = ({
           showDownloadAction && (
             <ActionButton
               size='xs'
+              onClick={() => window.open(file.url, '_blank')}
             >
               <RiDownloadLine className='w-3.5 h-3.5 text-text-tertiary' />
             </ActionButton>
           )
         }
         {
-          progress > 0 && progress < 100 && (
+          progress >= 0 && !file.uploadedId && (
             <ProgressCircle
               percentage={progress}
               size={12}
