@@ -8,6 +8,11 @@ from core.file import File, FileTransferMethod
 from core.variables import ArrayFileSegment
 from core.workflow.entities.node_entities import NodeRunResult
 from core.workflow.nodes.document_extractor import DocumentExtractorNode, DocumentExtractorNodeData
+from core.workflow.nodes.document_extractor.document_extractor_node import (
+    _extract_text_from_doc,
+    _extract_text_from_pdf,
+    _extract_text_from_plain_text,
+)
 from enums import NodeType
 from models.workflow import WorkflowNodeExecutionStatus
 
@@ -59,15 +64,15 @@ def test_run_invalid_variable_type(document_extractor_node, mock_graph_runtime_s
 @pytest.mark.parametrize(
     ("mime_type", "file_content", "expected_text", "transfer_method"),
     [
-        ("text/plain", b"Hello, world!", "Hello, world!", FileTransferMethod.LOCAL_FILE),
-        ("application/pdf", b"%PDF-1.5\n%Test PDF content", "Mocked PDF content", FileTransferMethod.LOCAL_FILE),
+        ("text/plain", b"Hello, world!", ["Hello, world!"], FileTransferMethod.LOCAL_FILE),
+        ("application/pdf", b"%PDF-1.5\n%Test PDF content", ["Mocked PDF content"], FileTransferMethod.LOCAL_FILE),
         (
             "application/vnd.openxmlformats-officedocument.wordprocessingml.document",
             b"PK\x03\x04",
-            "Mocked DOCX content",
+            ["Mocked DOCX content"],
             FileTransferMethod.LOCAL_FILE,
         ),
-        ("text/plain", b"Remote content", "Remote content", FileTransferMethod.REMOTE_URL),
+        ("text/plain", b"Remote content", ["Remote content"], FileTransferMethod.REMOTE_URL),
     ],
 )
 def test_run_extract_text(
@@ -102,11 +107,15 @@ def test_run_extract_text(
     monkeypatch.setattr("core.helper.ssrf_proxy.get", mock_ssrf_proxy_get)
 
     if mime_type == "application/pdf":
-        mock_pdf_extract = Mock(return_value=expected_text)
-        monkeypatch.setattr(document_extractor_node, "_extract_text_from_pdf", mock_pdf_extract)
+        mock_pdf_extract = Mock(return_value=expected_text[0])
+        monkeypatch.setattr(
+            "core.workflow.nodes.document_extractor.document_extractor_node._extract_text_from_pdf", mock_pdf_extract
+        )
     elif mime_type.startswith("application/vnd.openxmlformats"):
-        mock_docx_extract = Mock(return_value=expected_text)
-        monkeypatch.setattr(document_extractor_node, "_extract_text_from_doc", mock_docx_extract)
+        mock_docx_extract = Mock(return_value=expected_text[0])
+        monkeypatch.setattr(
+            "core.workflow.nodes.document_extractor.document_extractor_node._extract_text_from_doc", mock_docx_extract
+        )
 
     result = document_extractor_node._run()
 
@@ -121,31 +130,31 @@ def test_run_extract_text(
         mock_download.assert_called_once_with(upload_file_id="test_file_id", tenant_id="test_tenant_id")
 
 
-def test_extract_text_from_plain_text(document_extractor_node):
-    text = document_extractor_node._extract_text_from_plain_text(b"Hello, world!")
+def test_extract_text_from_plain_text():
+    text = _extract_text_from_plain_text(b"Hello, world!")
     assert text == "Hello, world!"
 
 
 @patch("pypdfium2.PdfDocument")
-def test_extract_text_from_pdf(mock_pdf_document, document_extractor_node):
+def test_extract_text_from_pdf(mock_pdf_document):
     mock_page = Mock()
     mock_text_page = Mock()
     mock_text_page.get_text_range.return_value = "PDF content"
     mock_page.get_textpage.return_value = mock_text_page
     mock_pdf_document.return_value = [mock_page]
-    text = document_extractor_node._extract_text_from_pdf(b"%PDF-1.5\n%Test PDF content")
+    text = _extract_text_from_pdf(b"%PDF-1.5\n%Test PDF content")
     assert text == "PDF content"
 
 
 @patch("docx.Document")
-def test_extract_text_from_doc(mock_document, document_extractor_node):
+def test_extract_text_from_doc(mock_document):
     mock_paragraph1 = Mock()
     mock_paragraph1.text = "Paragraph 1"
     mock_paragraph2 = Mock()
     mock_paragraph2.text = "Paragraph 2"
     mock_document.return_value.paragraphs = [mock_paragraph1, mock_paragraph2]
 
-    text = document_extractor_node._extract_text_from_doc(b"PK\x03\x04")
+    text = _extract_text_from_doc(b"PK\x03\x04")
     assert text == "Paragraph 1\nParagraph 2"
 
 

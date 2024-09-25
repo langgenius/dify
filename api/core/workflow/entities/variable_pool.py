@@ -119,23 +119,18 @@ class VariablePool(BaseModel):
             ValueError: If the selector is invalid.
         """
         if len(selector) < 2:
-            raise ValueError("Invalid selector")
-
-        contains_attr = False
-        if len(selector) > 2:
-            file_attr = selector[-1]
-            selector = selector[:-1]
-            contains_attr = True
+            return None
 
         hash_key = hash(tuple(selector[1:]))
         value = self.variable_dictionary[selector[0]].get(hash_key)
 
-        if contains_attr:
+        if value is None:
+            selector, attr = selector[:-1], selector[-1]
+            value = self.get(selector)
             if isinstance(value, FileSegment):
-                attr = FileAttribute(file_attr)
+                attr = FileAttribute(attr)
                 attr_value = file_manager.get_attr(file=value.value, attr=attr)
                 return variable_factory.build_segment(attr_value)
-            return None
 
         return value
 
