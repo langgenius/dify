@@ -89,6 +89,7 @@ class IterationNode(BaseNode):
             variable_pool=variable_pool,
             max_execution_steps=dify_config.WORKFLOW_MAX_EXECUTION_STEPS,
             max_execution_time=dify_config.WORKFLOW_MAX_EXECUTION_TIME,
+            thread_pool_id=self.thread_pool_id,
         )
 
         start_at = datetime.now(timezone.utc).replace(tzinfo=None)

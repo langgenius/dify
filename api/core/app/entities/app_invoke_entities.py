@@ -122,6 +122,7 @@ class ChatAppGenerateEntity(EasyUIBasedAppGenerateEntity):
     """
 
     conversation_id: Optional[str] = None
+    parent_message_id: Optional[str] = None
 
 
 class CompletionAppGenerateEntity(EasyUIBasedAppGenerateEntity):
@@ -138,6 +139,7 @@ class AgentChatAppGenerateEntity(EasyUIBasedAppGenerateEntity):
     """
 
     conversation_id: Optional[str] = None
+    parent_message_id: Optional[str] = None
 
 
 class AdvancedChatAppGenerateEntity(AppGenerateEntity):
@@ -149,6 +151,7 @@ class AdvancedChatAppGenerateEntity(AppGenerateEntity):
     app_config: WorkflowUIBasedAppConfig
 
     conversation_id: Optional[str] = None
+    parent_message_id: Optional[str] = None
     query: str
 
     class SingleIterationRunEntity(BaseModel):

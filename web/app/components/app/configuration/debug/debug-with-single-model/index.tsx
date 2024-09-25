@@ -12,7 +12,7 @@ import {
 import Chat from '@/app/components/base/chat/chat'
 import { useChat } from '@/app/components/base/chat/chat/hooks'
 import { useDebugConfigurationContext } from '@/context/debug-configuration'
-import type { OnSend } from '@/app/components/base/chat/types'
+import type { ChatItem, OnSend } from '@/app/components/base/chat/types'
 import { useProviderContext } from '@/context/provider-context'
 import {
   fetchConversationMessages,
@@ -45,10 +45,12 @@ const DebugWithSingleModel = forwardRef<DebugWithSingleModelRefType, DebugWithSi
   const config = useConfigFromDebugContext()
   const {
     chatList,
+    chatListRef,
     isResponding,
     handleSend,
     suggestedQuestions,
     handleStop,
+    handleUpdateChatList,
     handleRestart,
     handleAnnotationAdded,
     handleAnnotationEdited,
@@ -64,7 +66,7 @@ const DebugWithSingleModel = forwardRef<DebugWithSingleModelRefType, DebugWithSi
   )
   useFormattingChangedSubscription(chatList)
 
-  const doSend: OnSend = useCallback((message, files) => {
+  const doSend: OnSend = useCallback((message, files, last_answer) => {
     if (checkCanSend && !checkCanSend())
       return
     const currentProvider = textGenerationModelList.find(item => item.provider === modelConfig.provider)
@@ -81,10 +83,17 @@ const DebugWithSingleModel = forwardRef<DebugWithSingleModelRefType, DebugWithSi
       },
     }
 
+    const lastAnswer = chatListRef.current.at(-1)
+
     const data: any = {
       query: message,
       inputs,
       model_config: configData,
+      parent_message_id: last_answer?.id || (lastAnswer
+        ? lastAnswer.isOpeningStatement
+          ? null
+          : lastAnswer.id
+        : null),
     }
 
     if (visionConfig.enabled && files?.length && supportVision)
@@ -98,7 +107,23 @@ const DebugWithSingleModel = forwardRef<DebugWithSingleModelRefType, DebugWithSi
         onGetSuggestedQuestions: (responseItemId, getAbortController) => fetchSuggestedQuestions(appId, responseItemId, getAbortController),
       },
     )
-  }, [appId, checkCanSend, completionParams, config, handleSend, inputs, modelConfig, textGenerationModelList, visionConfig.enabled])
+  }, [chatListRef, appId, checkCanSend, completionParams, config, handleSend, inputs, modelConfig, textGenerationModelList, visionConfig.enabled])
+
+  const doRegenerate = useCallback((chatItem: ChatItem) => {
+    const index = chatList.findIndex(item => item.id === chatItem.id)
+    if (index === -1)
+      return
+
+    const prevMessages = chatList.slice(0, index)
+    const question = prevMessages.pop()
+    const lastAnswer = prevMessages.at(-1)
+
+    if (!question)
+      return
+
+    handleUpdateChatList(prevMessages)
+    doSend(question.content, question.message_files, (!lastAnswer || lastAnswer.isOpeningStatement) ? undefined : lastAnswer)
+  }, [chatList, handleUpdateChatList, doSend])
 
   const allToolIcons = useMemo(() => {
     const icons: Record<string, any> = {}
@@ -123,6 +148,7 @@ const DebugWithSingleModel = forwardRef<DebugWithSingleModelRefType, DebugWithSi
       chatFooterClassName='px-6 pt-10 pb-4'
       suggestedQuestions={suggestedQuestions}
       onSend={doSend}
+      onRegenerate={doRegenerate}
       onStopResponding={handleStop}
       showPromptLog
       questionIcon={<Avatar name={userProfile.name} size={40} />}
