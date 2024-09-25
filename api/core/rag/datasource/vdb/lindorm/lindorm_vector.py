@@ -2,27 +2,24 @@ import copy
 import json
 import logging
 import random
-import ssl
-import uuid
-
-from typing import Any, Optional, Tuple, Set
-from tenacity import stop_after_attempt, wait_fixed, retry
-from uuid import uuid4
 import time
-from opensearchpy import OpenSearch, helpers
-from opensearchpy.helpers import BulkIndexError, bulk
+import uuid
+from collections.abc import Iterable
+from typing import Any, Optional
+
+from opensearchpy import OpenSearch
+from opensearchpy.helpers import bulk
 from pydantic import BaseModel, model_validator
-from typing import List, Dict, Optional, Any, Iterable
-from core.rag.datasource.vdb.field import Field
+from tenacity import retry, stop_after_attempt, wait_fixed
+
+from configs import dify_config
 from core.rag.datasource.entity.embedding import Embeddings
+from core.rag.datasource.vdb.field import Field
 from core.rag.datasource.vdb.vector_base import BaseVector
 from core.rag.datasource.vdb.vector_factory import AbstractVectorFactory
 from core.rag.datasource.vdb.vector_type import VectorType
 from core.rag.models.document import Document
-
-from configs import dify_config
-
-from extensions.ext_redis import init_app, redis_client
+from extensions.ext_redis import redis_client
 from models.dataset import Dataset
 
 logger = logging.getLogger(__name__)
@@ -32,7 +29,6 @@ class LindormVectorStoreConfig(BaseModel):
     hosts: str
     username: Optional[str] = None
     password: Optional[str] = None
-    secure: bool = False
 
     @model_validator(mode="before")
     @classmethod
@@ -48,13 +44,9 @@ class LindormVectorStoreConfig(BaseModel):
     def to_opensearch_params(self) -> dict[str, Any]:
         params = {
             "hosts": self.hosts,
-            "use_ssl": self.secure,
-            "verify_certs": self.secure,
         }
         if self.username and self.password:
             params["http_auth"] = (self.username, self.password)
-        if self.secure:
-            params["ssl_context"] = self.create_ssl_context()
         return params
 
 
@@ -85,9 +77,9 @@ class LindormVectorStore(BaseVector):
                              metadatas: list[dict],
                              ids: list[str],
                              bulk_size: int = 1024,
-                             ) -> Tuple[Iterable[str], Optional[List[dict]], Optional[List[str]]]:
+                             ) -> tuple[Iterable[str], Optional[list[dict]], Optional[list[str]]]:
         @retry(stop=stop_after_attempt(3), wait=wait_fixed(60))
-        def __fetch_existing_ids(batch_ids: List[str]) -> Set[str]:
+        def __fetch_existing_ids(batch_ids: list[str]) -> set[str]:
             try:
                 existing_docs = self._client.mget(
                     index=self._collection_name,
@@ -97,10 +89,10 @@ class LindormVectorStore(BaseVector):
                 return {doc['_id'] for doc in existing_docs['docs'] if doc['found']}
             except Exception as e:
                 logger.error(f"Error fetching batch {batch_ids}: {e}")
-                return Set
+                return set
 
         @retry(stop=stop_after_attempt(3), wait=wait_fixed(60))
-        def __fetch_existing_routing_ids(batch_ids: List[str], route_ids: List[str]) -> Set[str]:
+        def __fetch_existing_routing_ids(batch_ids: list[str], route_ids: list[str]) -> set[str]:
             try:
                 existing_docs = self._client.mget(
                     body={"docs": [
@@ -115,7 +107,7 @@ class LindormVectorStore(BaseVector):
                 return {doc['_id'] for doc in existing_docs['docs'] if doc['found']}
             except Exception as e:
                 logger.error(f"Error fetching batch {batch_ids}: {e}")
-                return Set
+                return set
 
         if ids is None:
             return texts, metadatas, ids
@@ -124,16 +116,16 @@ class LindormVectorStore(BaseVector):
             raise RuntimeError(f"texts {len(texts)} != {ids}")
 
         if self._is_route_index and metadatas is None:
-            raise RuntimeError(f"route_index need metadatas's routing field, but metadatas is None")
+            raise RuntimeError("route_index need metadatas's routing field, but metadatas is None")
 
         filtered_texts = []
         filtered_metadatas = []
         filtered_ids = []
 
         def batch(iterable, n):
-            l = len(iterable)
-            for idx in range(0, l, n):
-                yield iterable[idx:min(idx + n, l)]
+            length = len(iterable)
+            for idx in range(0, length, n):
+                yield iterable[idx:min(idx + n, length)]
 
         for ids_batch, texts_batch, metadatas_batch in zip(batch(ids, bulk_size), batch(texts, bulk_size),
                                                            batch(metadatas,
@@ -172,12 +164,12 @@ class LindormVectorStore(BaseVector):
 
     def __add_texts(self,
                     texts: Iterable[str],
-                    embeddings: List[List[float]],
-                    ids: Optional[List[str]] = None,
-                    metadatas: Optional[List[dict]] = None,
+                    embeddings: list[list[float]],
+                    ids: Optional[list[str]] = None,
+                    metadatas: Optional[list[dict]] = None,
                     max_chunk_bytes: Optional[int] = 10 * 1024 * 1024,
                     routing_field: Optional[str] = None,
-                    ) -> List[str]:
+                    ) -> list[str]:
         total_items = len(texts)
         if total_items == 0:
             logger.warning("Texts size is zero!")
@@ -204,7 +196,7 @@ class LindormVectorStore(BaseVector):
         self.refresh()
         return bulked_ids
 
-    def check_allow_inherit(self, parent_index: str, mapping: Dict):
+    def check_allow_inherit(self, parent_index: str, mapping: dict):
         response = self._client.transport.perform_request(method="GET", url=f"/{parent_index}/_mapping?pretty")
         new_vector_field = mapping["mappings"]["properties"][Field.VECTOR.value]
         parent_vector_field = response[parent_index]["mappings"]["properties"][Field.VECTOR.value]
@@ -246,12 +238,12 @@ class LindormVectorStore(BaseVector):
                 raise RuntimeError(f"knn_routing {new_index_field.get('knn_routing')} != {parent_index_knn_routing}")
 
     def train_ivfpq_index_with_routing(self,
-                                       texts: List[str],
-                                       embeddings: List[List[float]],
-                                       metadatas: Optional[List[dict]] = None,
-                                       ids: Optional[List[str]] = None,
+                                       texts: list[str],
+                                       embeddings: list[list[float]],
+                                       metadatas: Optional[list[dict]] = None,
+                                       ids: Optional[list[str]] = None,
                                        bulk_size: int = 500,
-                                       **kwargs) -> List[str]:
+                                       **kwargs) -> list[str]:
         logger.info("start train ivfpq ...")
         kwargs = kwargs or self.kwargs
 
@@ -386,7 +378,6 @@ class LindormVectorStore(BaseVector):
 
         top_k = kwargs.get("top_k", 10)
         query = default_vector_search_query(query_vector=query_vector, k=top_k, **kwargs)
-
         try:
             response = self._client.search(index=self._collection_name, body=query)
         except Exception as e:
@@ -407,10 +398,10 @@ class LindormVectorStore(BaseVector):
             )
         docs = []
         for doc, score in docs_and_scores:
-            score_threshold = kwargs.get("top_k", 0.0) if kwargs.get("top_k", 0.0) else 0.0
+            score_threshold = kwargs.get("score_threshold", 0.0) if kwargs.get("score_threshold", 0.0) else 0.0
             if score > score_threshold:
                 doc.metadata["score"] = score
-            docs.append(doc)
+                docs.append(doc)
 
         return docs
 
@@ -495,178 +486,102 @@ class LindormVectorStore(BaseVector):
             )
         docs = []
         for doc, score in docs_and_scores:
-            score_threshold = kwargs.get("top_k", 0.0) if kwargs.get("top_k", 0.0) else 0.0
+            score_threshold = kwargs.get("score_threshold", 0.0) if kwargs.get("score_threshold", 0.0) else 0.0
             if score > score_threshold:
                 doc.metadata["score"] = score
             docs.append(doc)
 
         return docs
 
-    # def create_collection(
-    #         self, dimension: int, **kwargs
-    # ):
-    #     lock_name = f"vector_indexing_lock_{self._collection_name}"
-    #     with redis_client.lock(lock_name, timeout=20):
-    #         collection_exist_cache_key = f"vector_indexing_{self._collection_name}"
-    #         if redis_client.get(collection_exist_cache_key):
-    #             logger.info(f"Collection {self._collection_name} already exists.")
-    #             return
-    #         if self._client.indices.exists(index=self._collection_name):
-    #             print("{self._collection_name.lower()} already exists.")
-    #             return
-    #         if len(self.kwargs) == 0 and len(kwargs) != 0:
-    #             self.kwargs = copy.deepcopy(kwargs)
-    #         routing_field = kwargs.get("routing_field", None)
-    #         if routing_field is not None:
-    #             self._is_route_index = True
-    #         vector_field = kwargs.pop("vector_field", Field.VECTOR.value)
-    #         shards = kwargs.pop("shards", 2)
-    #
-    #         engine = kwargs.pop("engine", "lvector")
-    #         method_name = kwargs.pop("method_name", "hnsw")
-    #         data_type = kwargs.pop("data_type", "float")
-    #         space_type = kwargs.pop("space_type", "cosinesimil")
-    #
-    #         hnsw_m = kwargs.pop("hnsw_m", 24)
-    #         hnsw_ef_construction = kwargs.pop("hnsw_ef_construction", 500)
-    #         ivfpq_m = kwargs.pop("ivfpq_m", dimension)
-    #         nlist = kwargs.pop("nlist", 1000)
-    #         centroids_use_hnsw = kwargs.pop("centroids_use_hnsw", True if nlist >= 5000 else False)
-    #         centroids_hnsw_m = kwargs.pop("centroids_hnsw_m", 24)
-    #         centroids_hnsw_ef_construct = kwargs.pop("centroids_hnsw_ef_construct", 500)
-    #         centroids_hnsw_ef_search = kwargs.pop("centroids_hnsw_ef_search", 100)
-    #         mapping = default_text_mapping(
-    #             dimension,
-    #             method_name,
-    #             shards=shards,
-    #             engine=engine,
-    #             data_type=data_type,
-    #             space_type=space_type,
-    #             vector_field=vector_field,
-    #             hnsw_m=hnsw_m,
-    #             hnsw_ef_construction=hnsw_ef_construction,
-    #             nlist=nlist,
-    #             ivfpq_m=ivfpq_m,
-    #             centroids_use_hnsw=centroids_use_hnsw,
-    #             centroids_hnsw_m=centroids_hnsw_m,
-    #             centroids_hnsw_ef_construct=centroids_hnsw_ef_construct,
-    #             centroids_hnsw_ef_search=centroids_hnsw_ef_search,
-    #             **kwargs
-    #         )
-    #         parent_index = kwargs.pop("parent_index", None)
-    #         if parent_index is not None:
-    #             if parent_index.lower() == self._collection_name:
-    #                 raise RuntimeError(
-    #                     f"not allow index inherit the same index: {parent_index.lower()} == {self._collection_name}")
-    #             self.check_allow_inherit(parent_index, mapping)
-    #             mapping["settings"]["index"]["knn.vector_codebook_inherit_from"] = parent_index
-    #             mapping["settings"]["index"]["knn.offline.construction"] = True
-    #
-    #         self._client.indices.create(index=self._collection_name.lower(), body=mapping)
-    #         redis_client.set(collection_exist_cache_key, 1, ex=3600)
-    #         print(f"create index success: {self._collection_name}")
-    #
-    #         if parent_index is not None:
-    #             # trigger new vector table
-    #             routing_field = kwargs.get("routing_field", None)
-    #             routing = "0"
-    #             return_ids = bulk_ingest_embeddings(
-    #                 self._client,
-    #                 self._collection_name,
-    #                 [[random.random() for _ in range(dimension)]],
-    #                 ["demo"],
-    #                 metadatas=None if routing_field is None else [{routing_field: routing}],
-    #                 ids=["demo_id__"],
-    #                 routing_field=routing_field
-    #             )
-    #             self.refresh()
-    #             self.delete_by_ids(ids=return_ids)
-    #             logger.info(f"id {return_ids}, del")
-    #         elif method_name == "ivfpq":
-    #             self._ivfpq_trained = False
-
     def create_collection(
             self, dimension: int, **kwargs
     ):
-        if self._client.indices.exists(index=self._collection_name):
-            print("{self._collection_name.lower()} already exists.")
-            return
-        if len(self.kwargs) == 0 and len(kwargs) != 0:
-            self.kwargs = copy.deepcopy(kwargs)
-        routing_field = kwargs.get("routing_field", None)
-        if routing_field is not None:
-            self._is_route_index = True
-        vector_field = kwargs.pop("vector_field", Field.VECTOR.value)
-        shards = kwargs.pop("shards", 2)
-
-        engine = kwargs.pop("engine", "lvector")
-        method_name = kwargs.pop("method_name", "hnsw")
-        data_type = kwargs.pop("data_type", "float")
-        space_type = kwargs.pop("space_type", "cosinesimil")
-
-        hnsw_m = kwargs.pop("hnsw_m", 24)
-        hnsw_ef_construction = kwargs.pop("hnsw_ef_construction", 500)
-        ivfpq_m = kwargs.pop("ivfpq_m", dimension)
-        nlist = kwargs.pop("nlist", 1000)
-        centroids_use_hnsw = kwargs.pop("centroids_use_hnsw", True if nlist >= 5000 else False)
-        centroids_hnsw_m = kwargs.pop("centroids_hnsw_m", 24)
-        centroids_hnsw_ef_construct = kwargs.pop("centroids_hnsw_ef_construct", 500)
-        centroids_hnsw_ef_search = kwargs.pop("centroids_hnsw_ef_search", 100)
-        mapping = default_text_mapping(
-            dimension,
-            method_name,
-            shards=shards,
-            engine=engine,
-            data_type=data_type,
-            space_type=space_type,
-            vector_field=vector_field,
-            hnsw_m=hnsw_m,
-            hnsw_ef_construction=hnsw_ef_construction,
-            nlist=nlist,
-            ivfpq_m=ivfpq_m,
-            centroids_use_hnsw=centroids_use_hnsw,
-            centroids_hnsw_m=centroids_hnsw_m,
-            centroids_hnsw_ef_construct=centroids_hnsw_ef_construct,
-            centroids_hnsw_ef_search=centroids_hnsw_ef_search,
-            **kwargs
-        )
-        parent_index = kwargs.pop("parent_index", None)
-        if parent_index is not None:
-            if parent_index.lower() == self._collection_name:
-                raise RuntimeError(
-                    f"not allow index inherit the same index: {parent_index.lower()} == {self._collection_name}")
-            self.check_allow_inherit(parent_index, mapping)
-            mapping["settings"]["index"]["knn.vector_codebook_inherit_from"] = parent_index
-            mapping["settings"]["index"]["knn.offline.construction"] = True
-
-        self._client.indices.create(index=self._collection_name.lower(), body=mapping)
-        print(f"create index success: {self._collection_name}")
-
-        if parent_index is not None:
-            # trigger new vector table
+        lock_name = f"vector_indexing_lock_{self._collection_name}"
+        with redis_client.lock(lock_name, timeout=20):
+            collection_exist_cache_key = f"vector_indexing_{self._collection_name}"
+            if redis_client.get(collection_exist_cache_key):
+                logger.info(f"Collection {self._collection_name} already exists.")
+                return
+            if self._client.indices.exists(index=self._collection_name):
+                print("{self._collection_name.lower()} already exists.")
+                return
+            if len(self.kwargs) == 0 and len(kwargs) != 0:
+                self.kwargs = copy.deepcopy(kwargs)
             routing_field = kwargs.get("routing_field", None)
-            routing = "0"
-            return_ids = bulk_ingest_embeddings(
-                self._client,
-                self._collection_name,
-                [[random.random() for _ in range(dimension)]],
-                ["demo"],
-                metadatas=None if routing_field is None else [{routing_field: routing}],
-                ids=["demo_id__"],
-                routing_field=routing_field
+            if routing_field is not None:
+                self._is_route_index = True
+            vector_field = kwargs.pop("vector_field", Field.VECTOR.value)
+            shards = kwargs.pop("shards", 2)
+
+            engine = kwargs.pop("engine", "lvector")
+            method_name = kwargs.pop("method_name", "hnsw")
+            data_type = kwargs.pop("data_type", "float")
+            space_type = kwargs.pop("space_type", "cosinesimil")
+
+            hnsw_m = kwargs.pop("hnsw_m", 24)
+            hnsw_ef_construction = kwargs.pop("hnsw_ef_construction", 500)
+            ivfpq_m = kwargs.pop("ivfpq_m", dimension)
+            nlist = kwargs.pop("nlist", 1000)
+            centroids_use_hnsw = kwargs.pop("centroids_use_hnsw", True if nlist >= 5000 else False)
+            centroids_hnsw_m = kwargs.pop("centroids_hnsw_m", 24)
+            centroids_hnsw_ef_construct = kwargs.pop("centroids_hnsw_ef_construct", 500)
+            centroids_hnsw_ef_search = kwargs.pop("centroids_hnsw_ef_search", 100)
+            mapping = default_text_mapping(
+                dimension,
+                method_name,
+                shards=shards,
+                engine=engine,
+                data_type=data_type,
+                space_type=space_type,
+                vector_field=vector_field,
+                hnsw_m=hnsw_m,
+                hnsw_ef_construction=hnsw_ef_construction,
+                nlist=nlist,
+                ivfpq_m=ivfpq_m,
+                centroids_use_hnsw=centroids_use_hnsw,
+                centroids_hnsw_m=centroids_hnsw_m,
+                centroids_hnsw_ef_construct=centroids_hnsw_ef_construct,
+                centroids_hnsw_ef_search=centroids_hnsw_ef_search,
+                **kwargs
             )
-            self.refresh()
-            self.delete_by_ids(ids=return_ids)
-            logger.info(f"id {return_ids}, del")
-        elif method_name == "ivfpq":
-            self._ivfpq_trained = False
+            parent_index = kwargs.pop("parent_index", None)
+            if parent_index is not None:
+                if parent_index.lower() == self._collection_name:
+                    raise RuntimeError(
+                        f"not allow index inherit the same index: {parent_index.lower()} == {self._collection_name}")
+                self.check_allow_inherit(parent_index, mapping)
+                mapping["settings"]["index"]["knn.vector_codebook_inherit_from"] = parent_index
+                mapping["settings"]["index"]["knn.offline.construction"] = True
+
+            self._client.indices.create(index=self._collection_name.lower(), body=mapping)
+            redis_client.set(collection_exist_cache_key, 1, ex=3600)
+            print(f"create index success: {self._collection_name}")
+
+            if parent_index is not None:
+                # trigger new vector table
+                routing_field = kwargs.get("routing_field", None)
+                routing = "0"
+                return_ids = bulk_ingest_embeddings(
+                    self._client,
+                    self._collection_name,
+                    [[random.random() for _ in range(dimension)]],
+                    ["demo"],
+                    metadatas=None if routing_field is None else [{routing_field: routing}],
+                    ids=["demo_id__"],
+                    routing_field=routing_field
+                )
+                self.refresh()
+                self.delete_by_ids(ids=return_ids)
+                logger.info(f"id {return_ids}, del")
+            elif method_name == "ivfpq":
+                self._ivfpq_trained = False
 
 
 def default_text_mapping(
         dimension: int,
         method_name: str,
         **kwargs: Any
-) -> Dict:
+) -> dict:
     routing_field = kwargs.get("routing_field", None)
     excludes_from_source = kwargs.get("excludes_from_source", None)
     analyzer = kwargs.get("analyzer", "ik_max_word")
@@ -749,14 +664,14 @@ def default_text_search_query(
         query_text: str,
         k: int = 4,
         text_field: str = Field.CONTENT_KEY.value,
-        must: Optional[List[Dict]] = None,
-        must_not: Optional[List[Dict]] = None,
-        should: Optional[List[Dict]] = None,
+        must: Optional[list[dict]] = None,
+        must_not: Optional[list[dict]] = None,
+        should: Optional[list[dict]] = None,
         minimum_should_match: int = 0,
-        filter: Optional[List[Dict]] = None,
+        filters: Optional[list[dict]] = None,
         routing: Optional[str] = None,
         **kwargs
-) -> Dict:
+) -> dict:
     if routing is not None:
         routing_field = kwargs.get("routing_field", "routing_field")
         query_clause = {
@@ -774,7 +689,7 @@ def default_text_search_query(
             }
         }
     # build the simplest search_query when only query_text is specified
-    if not must and not must_not and not should and not filter:
+    if not must and not must_not and not should and not filters:
         search_query = {
             "size": k,
             "query": query_clause
@@ -784,7 +699,7 @@ def default_text_search_query(
     # build complex search_query when either of must/must_not/should/filter is specified
     if must:
         if not isinstance(must, list):
-            raise RuntimeError(f"unexpected [must] clause with {type(filter)}")
+            raise RuntimeError(f"unexpected [must] clause with {type(filters)}")
         if query_clause not in must:
             must.append(query_clause)
     else:
@@ -796,20 +711,20 @@ def default_text_search_query(
 
     if must_not:
         if not isinstance(must_not, list):
-            raise RuntimeError(f"unexpected [must_not] clause with {type(filter)}")
+            raise RuntimeError(f"unexpected [must_not] clause with {type(filters)}")
         boolean_query["must_not"] = must_not
 
     if should:
         if not isinstance(should, list):
-            raise RuntimeError(f"unexpected [should] clause with {type(filter)}")
+            raise RuntimeError(f"unexpected [should] clause with {type(filters)}")
         boolean_query["should"] = should
         if minimum_should_match != 0:
             boolean_query["minimum_should_match"] = minimum_should_match
 
-    if filter:
-        if not isinstance(filter, list):
-            raise RuntimeError(f"unexpected [filter] clause with {type(filter)}")
-        boolean_query["filter"] = filter
+    if filters:
+        if not isinstance(filters, list):
+            raise RuntimeError(f"unexpected [filter] clause with {type(filters)}")
+        boolean_query["filter"] = filters
 
     search_query = {
         "size": k,
@@ -821,7 +736,7 @@ def default_text_search_query(
 
 
 def default_vector_search_query(
-        query_vector: List[float],
+        query_vector: list[float],
         k: int = 4,
         min_score: str = "0.0",
         ef_search: Optional[str] = None,  # only for hnsw
@@ -829,14 +744,14 @@ def default_vector_search_query(
         reorder_factor: Optional[str] = None,  # "20"
         client_refactor: Optional[str] = None,  # "true"
         vector_field: str = Field.VECTOR.value,
-        filter: Optional[List[Dict]] = None,
+        filters: Optional[list[dict]] = None,
         filter_type: str = None,
         **kwargs
-) -> Dict:
-    if filter != None:
+) -> dict:
+    if filters != None:
         filter_type = "post_filter" if filter_type is None else filter_type
         if not isinstance(filter, list):
-            raise RuntimeError(f"unexpected filter with {type(filter)}")
+            raise RuntimeError(f"unexpected filter with {type(filters)}")
     final_ext = {"lvector": {}}
     if min_score != "0.0":
         final_ext["lvector"]["min_score"] = min_score
@@ -862,10 +777,10 @@ def default_vector_search_query(
         }
     }
 
-    if filter != None:
+    if filters != None:
         # when using filter, transform filter from List[Dict] to Dict as valid format
-        filter = {"bool": {"must": filter}} if len(filter) > 1 else filter[0]
-        search_query["query"]["knn"][vector_field]["filter"] = filter  # filter should be Dict
+        filters = {"bool": {"must": filters}} if len(filters) > 1 else filters[0]
+        search_query["query"]["knn"][vector_field]["filter"] = filters  # filter should be Dict
         if filter_type:
             final_ext["lvector"]["filter_type"] = filter_type
 
@@ -875,13 +790,13 @@ def default_vector_search_query(
 
 
 def default_hybrid_search_query(
-        query_vector: List[float],
+        query_vector: list[float],
         k: int = 4,
         vector_field: str = Field.VECTOR.value,
         text_field: str = Field.CONTENT_KEY.value,
         rrf_rank_constant: str = "60",
         match_text: str = "",
-        filter: Optional[List[Dict]] = None,
+        filters: Optional[list[dict]] = None,
         filter_type: str = None,
         min_score: str = "0.0",
         ef_search: Optional[str] = None,  # only for hnsw
@@ -891,7 +806,7 @@ def default_hybrid_search_query(
         rrf_window_size: Optional[str] = None,
         routing: Optional[str] = None,
         **kwargs
-) -> Dict:
+) -> dict:
     must_clauses = [
         {"match": {text_field: match_text}}
     ]
@@ -899,7 +814,7 @@ def default_hybrid_search_query(
         routing_field = kwargs.get("routing_field", "routing_field")
         must_clauses.append({"term": {f"metadata.{routing_field}.keyword": routing}})
 
-    if filter is not None:
+    if filters is not None:
         # Doing rrf search with full text, vector and filter.
         # use two bool expression to do rrf and filter respectively
         final_filter = {
@@ -910,7 +825,7 @@ def default_hybrid_search_query(
                     }
                 }, {
                     "bool": {
-                        "filter": filter  # filter should be List[Dict]
+                        "filter": filters  # filter should be List[Dict]
                     }
                 }]
             }
@@ -968,15 +883,15 @@ def default_hybrid_search_query(
 def bulk_ingest_embeddings(
         client: Any,
         index_name: str,
-        embeddings: List[List[float]],
+        embeddings: list[list[float]],
         texts: Iterable[str],
-        metadatas: Optional[List[dict]] = None,
-        ids: Optional[List[str]] = None,
+        metadatas: Optional[list[dict]] = None,
+        ids: Optional[list[str]] = None,
         vector_field: str = Field.VECTOR.value,
         text_field: str = Field.CONTENT_KEY.value,
         max_chunk_bytes: Optional[int] = 10 * 1024 * 1024,
         routing_field: Optional[str] = None,
-) -> List[str]:
+) -> list[str]:
     """Bulk Ingest Embeddings into given index."""
     requests = []
     return_ids = []
@@ -1003,13 +918,13 @@ def bulk_ingest_embeddings(
         return_ids.append(_id)
 
     @retry(stop=stop_after_attempt(3), wait=wait_fixed(60))
-    def bulk_with_retry(client: Any, requests: List[dict], max_chunk_bytes: int):
+    def bulk_with_retry(client: Any, requests: list[dict], max_chunk_bytes: int):
         bulk(client, requests, max_chunk_bytes=max_chunk_bytes)
 
     try:
         bulk_with_retry(client, requests, max_chunk_bytes)
     except Exception as e:
-        logger.error(f"RetryError in bulking")
+        logger.error("RetryError in bulking")
     return return_ids
 
 
@@ -1023,7 +938,7 @@ class LindormVectorStoreFactory(AbstractVectorFactory):
             collection_name = Dataset.gen_collection_name_by_id(dataset_id)
             dataset.index_struct = json.dumps(self.gen_index_struct_dict(VectorType.LINDORM, collection_name))
         lindorm_config = LindormVectorStoreConfig(
-            host=dify_config.LINDORM_HOST,
+            hosts=dify_config.LINDORM_URL,
             username=dify_config.LINDORM_USERNAME,
             password=dify_config.LINDORM_PASSWORD,
         )

@@ -16,6 +16,7 @@ from configs.middleware.storage.volcengine_tos_storage_config import VolcengineT
 from configs.middleware.vdb.analyticdb_config import AnalyticdbConfig
 from configs.middleware.vdb.chroma_config import ChromaConfig
 from configs.middleware.vdb.elasticsearch_config import ElasticsearchConfig
+from configs.middleware.vdb.lindorm_config import LindormConfig
 from configs.middleware.vdb.milvus_config import MilvusConfig
 from configs.middleware.vdb.myscale_config import MyScaleConfig
 from configs.middleware.vdb.opensearch_config import OpenSearchConfig
@@ -27,7 +28,7 @@ from configs.middleware.vdb.relyt_config import RelytConfig
 from configs.middleware.vdb.tencent_vector_config import TencentVectorDBConfig
 from configs.middleware.vdb.tidb_vector_config import TiDBVectorConfig
 from configs.middleware.vdb.weaviate_config import WeaviateConfig
-from configs.middleware.vdb.lindorm_config import LindormConfig
+
 
 class StorageConfig(BaseSettings):
     STORAGE_TYPE: str = Field(
