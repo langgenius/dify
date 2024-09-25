@@ -15,6 +15,7 @@ help:
     en_US: https://fireworks.ai/account/api-keys
 supported_model_types:
   - llm
+  - text-embedding
 configurate_methods:
   - predefined-model
 provider_credential_schema:
