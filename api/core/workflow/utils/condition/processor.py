@@ -22,7 +22,11 @@ class ConditionProcessor:
         for condition in conditions:
             variable = variable_pool.get(condition.variable_selector)
 
-            if isinstance(variable, ArrayFileSegment) and condition.comparison_operator in {"contains", "not contains"}:
+            if isinstance(variable, ArrayFileSegment) and condition.comparison_operator in {
+                "contains",
+                "not contains",
+                "all of",
+            }:
                 # check sub conditions
                 if not condition.sub_variable_condition:
                     raise ValueError("Sub variable is required")
@@ -34,7 +38,8 @@ class ConditionProcessor:
             else:
                 actual_value = variable.value if variable else None
                 expected_value = condition.value
-                expected_value = variable_pool.convert_template(expected_value).text if expected_value else None
+                if isinstance(expected_value, str):
+                    expected_value = variable_pool.convert_template(expected_value).text
                 input_conditions.append(
                     {
                         "actual_value": actual_value,
@@ -57,7 +62,7 @@ def _evaluate_condition(
     *,
     operator: SupportedComparisonOperator,
     value: Any,
-    expected: str | None,
+    expected: str | Sequence[str] | None,
 ) -> bool:
     match operator:
         case "contains":
@@ -96,6 +101,8 @@ def _evaluate_condition(
             return _assert_in(value=value, expected=expected)
         case "not in":
             return _assert_not_in(value=value, expected=expected)
+        case "all of" if isinstance(expected, list):
+            return _assert_all_of(value=value, expected=expected)
         case _:
             raise ValueError(f"Unsupported operator: {operator}")
 
@@ -318,6 +325,15 @@ def _assert_not_in(*, value: Any, expected: Any) -> bool:
         raise ValueError("Invalid expected value type: array")
 
     if value in expected:
+        return False
+    return True
+
+
+def _assert_all_of(*, value: Any, expected: Sequence[str]) -> bool:
+    if not value:
+        return False
+
+    if not all(item in value for item in expected):
         return False
     return True
 

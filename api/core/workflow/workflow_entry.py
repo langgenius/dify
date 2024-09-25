@@ -205,32 +205,27 @@ class WorkflowEntry:
         except Exception as e:
             raise WorkflowNodeRunFailedError(node_instance=node_instance, error=str(e))
 
-    @classmethod
-    def handle_special_values(cls, value: Optional[Mapping[str, Any]]) -> Optional[dict]:
-        """
-        Handle special values
-        :param value: value
-        :return:
-        """
-        if not value:
-            return None
+    @staticmethod
+    def handle_special_values(value: Optional[Mapping[str, Any]]) -> Mapping[str, Any] | None:
+        return WorkflowEntry._handle_special_values(value)
 
-        new_value = dict(value) if value else {}
-        if isinstance(new_value, dict):
-            for key, val in new_value.items():
-                if isinstance(val, File):
-                    new_value[key] = val.to_dict()
-                elif isinstance(val, list):
-                    new_val = []
-                    for v in val:
-                        if isinstance(v, File):
-                            new_val.append(v.to_dict())
-                        else:
-                            new_val.append(v)
-
-                    new_value[key] = new_val
-
-        return new_value
+    @staticmethod
+    def _handle_special_values(value: Any) -> Any:
+        if value is None:
+            return value
+        if isinstance(value, dict):
+            res = {}
+            for k, v in value.items():
+                res[k] = WorkflowEntry._handle_special_values(v)
+            return res
+        if isinstance(value, list):
+            res = []
+            for item in value:
+                res.append(WorkflowEntry._handle_special_values(item))
+            return res
+        if isinstance(value, File):
+            return value.to_dict()
+        return value
 
     @classmethod
     def mapping_user_inputs_to_variable_pool(
