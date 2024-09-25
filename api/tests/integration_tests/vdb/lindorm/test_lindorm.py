@@ -1,19 +1,18 @@
+import environs
 import pytest
+
 from core.rag.datasource.vdb.lindorm.lindorm_vector import LindormVectorStore, LindormVectorStoreConfig
 from models.dataset import Dataset
-from tests.integration_tests.vdb.test_vector_store import (
-    AbstractVectorTest,
-    setup_mock_redis,
-    get_example_document
-)
+from tests.integration_tests.vdb.test_vector_store import AbstractVectorTest, get_example_document, setup_mock_redis
 
-import environs
 env = environs.Env()
+
 
 class Config:
     SEARCH_ENDPOINT = env.str("SEARCH_ENDPOINT", "http://ld-*************-proxy-search-pub.lindorm.aliyuncs.com:30070")
     SEARCH_USERNAME = env.str("SEARCH_USERNAME", 'ADMIN')
     SEARCH_PWD = env.str("SEARCH_PWD", "PWD")
+
 
 @pytest.mark.usefixtures("setup_mock_redis")
 class TestLindormVectorStore(AbstractVectorTest):
@@ -51,6 +50,7 @@ class TestLindormVectorStore(AbstractVectorTest):
         added_doc_ids = self.add_texts()
         self.delete_by_ids(added_doc_ids)
         self.delete_vector()
+
 
 def test_lindorm_vector(setup_mock_redis):
     TestLindormVectorStore().run_all_tests()

@@ -1,14 +1,15 @@
 from typing import Optional
 
-from pydantic import Field, PositiveInt
+from pydantic import Field
 from pydantic_settings import BaseSettings
+
 
 class LindormConfig(BaseSettings):
     """
     Lindorm configs
     """
-    LINDORM_HOST: Optional[str] = Field(
-        description="Lindorm host",
+    LINDORM_URL: Optional[str] = Field(
+        description="Lindorm url",
         default=None,
     )
     LINDORM_USERNAME: Optional[str] = Field(
