@@ -87,7 +87,7 @@ class LegacyAPIResponse(Generic[R]):
 
         For lower-level control, see `.read()`, `.json()`, `.iter_bytes()`.
 
-        You can customise the type that the response is parsed into through
+        You can customize the type that the response is parsed into through
         the `to` argument, e.g.
 
         ```py

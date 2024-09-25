@@ -28,7 +28,6 @@ select = [
     "PLR0402", # manual-from-import
     "PLR1711", # useless-return
     "PLR1714", # repeated-equality-comparison
-    "PLR6201", # literal-membership
     "RUF019", # unnecessary-key-check
     "RUF100", # unused-noqa
     "RUF101", # redirected-noqa
@@ -101,6 +100,7 @@ exclude = [
 OPENAI_API_KEY = "sk-IamNotARealKeyJustForMockTestKawaiiiiiiiiii"
 UPSTAGE_API_KEY = "up-aaaaaaaaaaaaaaaaaaaa"
 FIREWORKS_API_KEY = "fw_aaaaaaaaaaaaaaaaaaaa"
+NOMIC_API_KEY = "nk-aaaaaaaaaaaaaaaaaaaa"
 AZURE_OPENAI_API_BASE = "https://difyai-openai.openai.azure.com"
 AZURE_OPENAI_API_KEY = "xxxxb1707exxxxxxxxxxaaxxxxxf94"
 ANTHROPIC_API_KEY = "sk-ant-api11-IamNotARealKeyJustForMockTestKawaiiiiiiiiii-NotBaka-ASkksz"
@@ -122,6 +122,7 @@ CODE_EXECUTION_API_KEY = "dify-sandbox"
 FIRECRAWL_API_KEY = "fc-"
 TEI_EMBEDDING_SERVER_URL = "http://a.abc.com:11451"
 TEI_RERANK_SERVER_URL = "http://a.abc.com:11451"
+MIXEDBREAD_API_KEY = "mk-aaaaaaaaaaaaaaaaaaaa"
 
 [tool.poetry]
 name = "dify-api"
@@ -218,6 +219,7 @@ azure-ai-inference = "^1.0.0b3"
 volcengine-python-sdk = {extras = ["ark"], version = "^1.0.98"}
 oci = "^2.133.0"
 tos = "^2.7.1"
+nomic = "^3.1.2"
 [tool.poetry.group.indriect.dependencies]
 kaleido = "0.2.1"
 rank-bm25 = "~0.2.2"

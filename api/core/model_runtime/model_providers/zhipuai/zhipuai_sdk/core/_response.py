@@ -252,7 +252,7 @@ class APIResponse(BaseAPIResponse[R]):
 
         For lower-level control, see `.read()`, `.json()`, `.iter_bytes()`.
 
-        You can customise the type that the response is parsed into through
+        You can customize the type that the response is parsed into through
         the `to` argument, e.g.
 
         ```py
@@ -363,7 +363,7 @@ class StreamAlreadyConsumed(ZhipuAIError):  # noqa: N818
     # ^ error
     ```
 
-    If you want this behaviour you'll need to either manually accumulate the response
+    If you want this behavior you'll need to either manually accumulate the response
     content or call `await response.read()` before iterating over the stream.
     """
 

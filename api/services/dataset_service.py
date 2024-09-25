@@ -1100,8 +1100,8 @@ class DocumentService:
             DocumentService.data_source_args_validate(args)
             DocumentService.process_rule_args_validate(args)
         else:
-            if ("data_source" not in args and not args["data_source"]) and (
-                "process_rule" not in args and not args["process_rule"]
+            if ("data_source" not in args or not args["data_source"]) and (
+                "process_rule" not in args or not args["process_rule"]
             ):
                 raise ValueError("Data source or Process rule is required")
             else:
