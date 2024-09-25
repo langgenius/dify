@@ -116,6 +116,7 @@ class Vector:
                 return AnalyticdbVectorFactory
             case VectorType.COUCHBASE:
                 from core.rag.datasource.vdb.couchbase.couchbase_vector import CouchbaseVectorFactory
+
                 return CouchbaseVectorFactory
             case VectorType.BAIDU:
                 from core.rag.datasource.vdb.baidu.baidu_vector import BaiduVectorFactory
