@@ -128,14 +128,14 @@ const ConditionItem = ({
     return undefined
   }, [condition.key, file, isSubVariableKey])
 
-  const isTransferMethod = fileAttr?.key === 'transfer_method'
+  const isArrayValue = fileAttr?.key === 'transfer_method' || fileAttr?.key === 'type'
 
   const handleUpdateConditionValue = useCallback((value: string) => {
-    if (value === condition.value || (isTransferMethod && value === condition.value?.[0]))
+    if (value === condition.value || (isArrayValue && value === condition.value?.[0]))
       return
     const newCondition = {
       ...condition,
-      value: isTransferMethod ? [value] : value,
+      value: isArrayValue ? [value] : value,
     }
     doUpdateCondition(newCondition)
   }, [condition, doUpdateCondition, fileAttr])
@@ -273,7 +273,7 @@ const ConditionItem = ({
               <Select
                 wrapperClassName='h-8'
                 className='px-2 text-xs rounded-t-none'
-                defaultValue={isTransferMethod ? (condition.value as string[])?.[0] : (condition.value as string)}
+                defaultValue={isArrayValue ? (condition.value as string[])?.[0] : (condition.value as string)}
                 items={selectOptions}
                 onSelect={item => handleUpdateConditionValue(item.value as string)}
                 hideChecked
