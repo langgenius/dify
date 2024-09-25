@@ -4,6 +4,7 @@ import type { FileEntity } from './types'
 import { upload } from '@/service/base'
 import { FILE_EXTS } from '@/app/components/base/prompt-editor/constants'
 import { SupportUploadFileTypes } from '@/app/components/workflow/types'
+import type { FileResponse } from '@/types/workflow'
 
 type FileUploadParams = {
   file: File
@@ -114,6 +115,22 @@ export const getProcessedFiles = (files: FileEntity[]) => {
     url: fileItem.url || '',
     upload_file_id: fileItem.uploadedId || '',
   }))
+}
+
+export const getProcessedFilesFromResponse = (files: FileResponse[]) => {
+  return files.map((fileItem) => {
+    return {
+      id: fileItem.related_id,
+      name: fileItem.filename,
+      size: fileItem.size || 0,
+      type: fileItem.mime_type,
+      progress: 100,
+      transferMethod: fileItem.transfer_method,
+      supportFileType: fileItem.type,
+      uploadedId: fileItem.related_id,
+      url: fileItem.url,
+    }
+  })
 }
 
 export const getFileNameFromUrl = (url: string) => {

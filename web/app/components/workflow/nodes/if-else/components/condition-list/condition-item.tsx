@@ -107,16 +107,6 @@ const ConditionItem = ({
     doUpdateCondition(newCondition)
   }, [condition, doUpdateCondition])
 
-  const handleUpdateConditionValue = useCallback((value: string) => {
-    if (value === condition.value)
-      return
-    const newCondition = {
-      ...condition,
-      value,
-    }
-    doUpdateCondition(newCondition)
-  }, [condition, doUpdateCondition])
-
   const handleUpdateConditionNumberVarType = useCallback((numberVarType: NumberVarType) => {
     const newCondition = {
       ...condition,
@@ -137,6 +127,18 @@ const ConditionItem = ({
     }
     return undefined
   }, [condition.key, file, isSubVariableKey])
+
+  const isArrayValue = fileAttr?.key === 'transfer_method' || fileAttr?.key === 'type'
+
+  const handleUpdateConditionValue = useCallback((value: string) => {
+    if (value === condition.value || (isArrayValue && value === condition.value?.[0]))
+      return
+    const newCondition = {
+      ...condition,
+      value: isArrayValue ? [value] : value,
+    }
+    doUpdateCondition(newCondition)
+  }, [condition, doUpdateCondition, fileAttr])
 
   const isSelect = condition.comparison_operator && [ComparisonOperator.in, ComparisonOperator.notIn].includes(condition.comparison_operator)
   const selectOptions = useMemo(() => {
@@ -242,7 +244,7 @@ const ConditionItem = ({
             <div className='px-2 py-1 max-h-[100px] border-t border-t-divider-subtle overflow-y-auto'>
               <ConditionInput
                 disabled={disabled}
-                value={condition.value}
+                value={condition.value as string}
                 onChange={handleUpdateConditionValue}
                 nodesOutputVars={nodesOutputVars}
                 availableNodes={availableNodes}
@@ -256,7 +258,7 @@ const ConditionItem = ({
               <ConditionNumberInput
                 numberVarType={condition.numberVarType}
                 onNumberVarTypeChange={handleUpdateConditionNumberVarType}
-                value={condition.value}
+                value={condition.value as string}
                 onValueChange={handleUpdateConditionValue}
                 variables={numberVariables}
                 isShort={isValueFieldShort}
@@ -271,7 +273,7 @@ const ConditionItem = ({
               <Select
                 wrapperClassName='h-8'
                 className='px-2 text-xs rounded-t-none'
-                defaultValue={condition.value}
+                defaultValue={isArrayValue ? (condition.value as string[])?.[0] : (condition.value as string)}
                 items={selectOptions}
                 onSelect={item => handleUpdateConditionValue(item.value as string)}
                 hideChecked

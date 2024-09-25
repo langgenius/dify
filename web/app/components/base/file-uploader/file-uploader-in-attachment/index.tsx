@@ -111,15 +111,20 @@ const FileUploaderInAttachment = ({
 }
 
 type FileUploaderInAttachmentWrapperProps = {
+  value?: FileEntity[]
   onChange: (files: FileEntity[]) => void
   fileConfig: FileUpload
 }
 const FileUploaderInAttachmentWrapper = ({
+  value,
   onChange,
   fileConfig,
 }: FileUploaderInAttachmentWrapperProps) => {
   return (
-    <FileContextProvider onChange={onChange}>
+    <FileContextProvider
+      value={value}
+      onChange={onChange}
+    >
       <FileUploaderInAttachment fileConfig={fileConfig} />
     </FileContextProvider>
   )

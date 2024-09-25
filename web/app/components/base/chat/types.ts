@@ -55,12 +55,14 @@ export type WorkflowProcess = {
   tracing: NodeTracing[]
   expand?: boolean // for UI
   resultText?: string
+  files?: FileEntity[]
 }
 
 export type ChatItem = IChatItem & {
   isError?: boolean
   workflowProcess?: WorkflowProcess
   conversationId?: string
+  allFiles?: FileEntity[]
 }
 
 export type OnSend = (message: string, files?: FileEntity[], last_answer?: ChatItem | null) => void

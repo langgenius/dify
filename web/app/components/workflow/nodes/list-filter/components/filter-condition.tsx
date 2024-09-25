@@ -30,6 +30,7 @@ const FilterCondition: FC<Props> = ({
 }) => {
   const { t } = useTranslation()
   const isSelect = [ComparisonOperator.in, ComparisonOperator.notIn, ComparisonOperator.allOf].includes(condition.comparison_operator)
+  const isArrayValue = condition.key === 'transfer_method' || condition.key === 'type'
   const selectOptions = useMemo(() => {
     if (isSelect) {
       if (condition.key === 'type' || condition.comparison_operator === ComparisonOperator.allOf) {
@@ -47,15 +48,15 @@ const FilterCondition: FC<Props> = ({
       return []
     }
     return []
-  }, [condition.comparison_operator, condition.key, isSelect, t])
+  }, [condition.comparison_operator, condition.key, isSelect, t, isArrayValue])
   const handleChange = useCallback((key: string) => {
     return (value: any) => {
       onChange({
         ...condition,
-        [key]: value,
+        [key]: isArrayValue ? [value] : value,
       })
     }
-  }, [condition, onChange])
+  }, [condition, onChange, isArrayValue])
 
   const handleSubVariableChange = useCallback((value: string) => {
     onChange({
@@ -88,7 +89,7 @@ const FilterCondition: FC<Props> = ({
             {isSelect && (
               <Select
                 items={selectOptions}
-                defaultValue={condition.value}
+                defaultValue={isArrayValue ? (condition.value as string[])[0] : condition.value as string}
                 onSelect={item => handleChange('value')(item.value)}
                 className='!text-[13px]'
                 wrapperClassName='grow h-8'

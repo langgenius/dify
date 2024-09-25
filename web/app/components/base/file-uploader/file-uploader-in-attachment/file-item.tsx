@@ -81,7 +81,7 @@ const FileInAttachmentItem = ({
       </div>
       <div className='shrink-0 flex items-center'>
         {
-          progress > 0 && progress < 100 && (
+          progress >= 0 && !file.uploadedId && (
             <ProgressCircle
               className='mr-2.5'
               percentage={progress}

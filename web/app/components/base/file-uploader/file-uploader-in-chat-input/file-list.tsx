@@ -5,8 +5,10 @@ import FileImageItem from './file-image-item'
 import FileItem from './file-item'
 import type { FileUpload } from '@/app/components/base/features/types'
 import { SupportUploadFileTypes } from '@/app/components/workflow/types'
+import cn from '@/utils/classnames'
 
 type FileListProps = {
+  className?: string
   files: FileEntity[]
   onRemove?: (fileId: string) => void
   onReUpload?: (fileId: string) => void
@@ -14,6 +16,7 @@ type FileListProps = {
   showDownloadAction?: boolean
 }
 export const FileList = ({
+  className,
   files,
   onReUpload,
   onRemove,
@@ -21,7 +24,7 @@ export const FileList = ({
   showDownloadAction = false,
 }: FileListProps) => {
   return (
-    <div className='flex flex-wrap gap-2'>
+    <div className={cn('flex flex-wrap gap-2', className)}>
       {
         files.map((file) => {
           if (file.supportFileType === SupportUploadFileTypes.image) {

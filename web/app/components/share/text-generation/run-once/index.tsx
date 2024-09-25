@@ -14,7 +14,6 @@ import TextGenerationImageUploader from '@/app/components/base/image-uploader/te
 import type { VisionFile, VisionSettings } from '@/types/app'
 import { FileUploaderInAttachmentWrapper } from '@/app/components/base/file-uploader'
 import { getProcessedFiles } from '@/app/components/base/file-uploader/utils'
-// import { InputVarType } from '@/app/components/workflow/types'
 
 export type IRunOnceProps = {
   siteInfo: SiteInfo
@@ -94,6 +93,18 @@ const RunOnce: FC<IRunOnceProps> = ({
                     onChange={(e) => { onInputsChange({ ...inputs, [item.key]: e.target.value }) }}
                   />
                 )}
+                {item.type === 'file' && (
+                  <FileUploaderInAttachmentWrapper
+                    onChange={(files) => { onInputsChange({ ...inputs, [item.key]: getProcessedFiles(files)[0] }) }}
+                    fileConfig={item.config as any}
+                  />
+                )}
+                {item.type === 'file-list' && (
+                  <FileUploaderInAttachmentWrapper
+                    onChange={(files) => { onInputsChange({ ...inputs, [item.key]: getProcessedFiles(files) }) }}
+                    fileConfig={item.config as any}
+                  />
+                )}
               </div>
             </div>
           ))}
@@ -115,9 +126,6 @@ const RunOnce: FC<IRunOnceProps> = ({
               </div>
             )
           }
-          <FileUploaderInAttachmentWrapper
-            onChange={files => onVisionFilesChange(getProcessedFiles(files))}
-          />
           {promptConfig.prompt_variables.length > 0 && (
             <div className='mt-4 h-[1px] bg-gray-100'></div>
           )}

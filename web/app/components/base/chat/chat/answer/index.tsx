@@ -21,6 +21,7 @@ import { EditTitle } from '@/app/components/app/annotation/edit-annotation-modal
 import type { AppData } from '@/models/share'
 import AnswerIcon from '@/app/components/base/answer-icon'
 import cn from '@/utils/classnames'
+import { FileList } from '@/app/components/base/file-uploader'
 
 type AnswerProps = {
   item: ChatItem
@@ -56,6 +57,7 @@ const Answer: FC<AnswerProps> = ({
     more,
     annotation,
     workflowProcess,
+    allFiles,
   } = item
   const hasAgentThoughts = !!agent_thoughts?.length
 
@@ -150,6 +152,16 @@ const Answer: FC<AnswerProps> = ({
                 <AgentContent
                   item={item}
                   responding={responding}
+                />
+              )
+            }
+            {
+              allFiles?.length && (
+                <FileList
+                  className='my-1'
+                  files={allFiles}
+                  showDeleteAction={false}
+                  showDownloadAction
                 />
               )
             }

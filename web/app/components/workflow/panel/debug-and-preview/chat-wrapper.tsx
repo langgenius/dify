@@ -62,7 +62,10 @@ const ChatWrapper = forwardRef<ChatWrapperRefType, ChatWrapperProps>(({
     }
   }, [features.opening, features.suggested, features.text2speech, features.speech2text, features.citation, features.moderation, features.file])
   const setShowFeaturesPanel = useStore(s => s.setShowFeaturesPanel)
-  const { checkStartNodeForm } = useCheckStartNodeForm()
+  const {
+    checkStartNodeForm,
+    getProcessedInputs,
+  } = useCheckStartNodeForm()
 
   const {
     conversationId,
@@ -89,7 +92,7 @@ const ChatWrapper = forwardRef<ChatWrapperRefType, ChatWrapperProps>(({
       {
         query,
         files,
-        inputs: workflowStore.getState().inputs,
+        inputs: getProcessedInputs(workflowStore.getState().inputs),
         conversation_id: conversationId,
         parent_message_id: last_answer?.id || getLastAnswer(chatListRef.current)?.id || null,
       },
@@ -97,7 +100,7 @@ const ChatWrapper = forwardRef<ChatWrapperRefType, ChatWrapperProps>(({
         onGetSuggestedQuestions: (messageId, getAbortController) => fetchSuggestedQuestions(appDetail!.id, messageId, getAbortController),
       },
     )
-  }, [chatListRef, conversationId, handleSend, workflowStore, appDetail])
+  }, [chatListRef, conversationId, handleSend, workflowStore, appDetail, getProcessedInputs])
 
   const doRegenerate = useCallback((chatItem: ChatItem) => {
     const index = chatList.findIndex(item => item.id === chatItem.id)
