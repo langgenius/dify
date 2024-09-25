@@ -392,6 +392,7 @@ const TextGeneration: FC<IMainProps> = ({
         image_file_size_limit: appParams?.system_parameters?.image_file_size_limit,
       })
       const prompt_variables = userInputsFormToPromptVariables(user_input_form)
+      console.log(prompt_variables)
       setPromptConfig({
         prompt_template: '', // placeholder for future
         prompt_variables,
