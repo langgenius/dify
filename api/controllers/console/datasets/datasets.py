@@ -111,7 +111,7 @@ class DatasetListApi(Resource):
             help="Invalid indexing technique.",
         )
         parser.add_argument(
-            "external_api_template_id",
+            "external_knowledge_api_id",
             type=str,
             nullable=True,
             required=False,
@@ -144,7 +144,7 @@ class DatasetListApi(Resource):
                 account=current_user,
                 permission=DatasetPermissionEnum.ONLY_ME,
                 provider=args["provider"],
-                external_api_template_id=args["external_api_template_id"],
+                external_knowledge_api_id=args["external_knowledge_api_id"],
                 external_knowledge_id=args["external_knowledge_id"],
             )
         except services.errors.dataset.DatasetNameDuplicateError:

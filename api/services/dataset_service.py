@@ -143,7 +143,7 @@ class DatasetService:
         account: Account,
         permission: Optional[str] = None,
         provider: str = "vendor",
-        external_api_template_id: Optional[str] = None,
+        external_knowledge_api_id: Optional[str] = None,
         external_knowledge_id: Optional[str] = None,
     ):
         # check if dataset name already exists
@@ -167,14 +167,14 @@ class DatasetService:
         db.session.add(dataset)
         db.session.flush()
 
-        if provider == "external" and external_api_template_id:
-            external_api_template = ExternalDatasetService.get_api_template(external_api_template_id)
-            if not external_api_template:
+        if provider == "external" and external_knowledge_api_id:
+            external_knowledge_api = ExternalDatasetService.get_external_knowledge_api(external_knowledge_api_id)
+            if not external_knowledge_api:
                 raise ValueError("External API template not found.")
             external_knowledge_binding = ExternalKnowledgeBindings(
                 tenant_id=tenant_id,
                 dataset_id=dataset.id,
-                external_api_template_id=external_api_template_id,
+                external_knowledge_api_id=external_knowledge_api_id,
                 external_knowledge_id=external_knowledge_id,
                 created_by=account.id,
             )
