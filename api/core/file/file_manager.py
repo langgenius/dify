@@ -58,8 +58,8 @@ def to_prompt_message_content(file: "File", /):
         raise ValueError("Missing file data")
 
     # decide the detail of image prompt message content
-    if file.extra_config and file.extra_config.image_config and file.extra_config.image_config.detail:
-        detail = file.extra_config.image_config.detail
+    if file._extra_config and file._extra_config.image_config and file._extra_config.image_config.detail:
+        detail = file._extra_config.image_config.detail
     else:
         detail = ImagePromptMessageContent.DETAIL.LOW
 

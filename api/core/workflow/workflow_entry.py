@@ -281,7 +281,7 @@ class WorkflowEntry:
                                 related_id=item.get("upload_file_id")
                                 if transfer_method == FileTransferMethod.LOCAL_FILE
                                 else None,
-                                extra_config=FileExtraConfig(
+                                _extra_config=FileExtraConfig(
                                     image_config=ImageConfig(detail=detail) if detail else None
                                 ),
                             )

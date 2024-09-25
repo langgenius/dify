@@ -42,11 +42,11 @@ class File(BaseModel):
     transfer_method: FileTransferMethod
     remote_url: Optional[str] = None  # remote url
     related_id: Optional[str] = None
-    extra_config: Optional[FileExtraConfig] = None
     filename: Optional[str] = None
     extension: Optional[str] = None
     mime_type: Optional[str] = None
     size: int = 0
+    _extra_config: FileExtraConfig | None = None
 
     def to_dict(self) -> Mapping[str, str | int | None]:
         data = self.model_dump()
@@ -109,31 +109,31 @@ class File(BaseModel):
                     raise ValueError("Missing file related_id")
 
         # Validate the extra config.
-        if not self.extra_config:
+        if not self._extra_config:
             return self
 
-        if self.extra_config.allowed_file_types:
-            if self.type not in self.extra_config.allowed_file_types and self.type != FileType.CUSTOM:
+        if self._extra_config.allowed_file_types:
+            if self.type not in self._extra_config.allowed_file_types and self.type != FileType.CUSTOM:
                 raise ValueError(f"Invalid file type: {self.type}")
 
-        if self.extra_config.allowed_extensions and self.extension not in self.extra_config.allowed_extensions:
+        if self._extra_config.allowed_extensions and self.extension not in self._extra_config.allowed_extensions:
             raise ValueError(f"Invalid file extension: {self.extension}")
 
         if (
-            self.extra_config.allowed_upload_methods
-            and self.transfer_method not in self.extra_config.allowed_upload_methods
+            self._extra_config.allowed_upload_methods
+            and self.transfer_method not in self._extra_config.allowed_upload_methods
         ):
             raise ValueError(f"Invalid transfer method: {self.transfer_method}")
 
         match self.type:
             case FileType.IMAGE:
                 # NOTE: This part of validation is deprecated, but still used in app features "Image Upload".
-                if not self.extra_config.image_config:
+                if not self._extra_config.image_config:
                     return self
                 # TODO: skip check if transfer_methods is empty, because many test cases are not setting this field
                 if (
-                    self.extra_config.image_config.transfer_methods
-                    and self.transfer_method not in self.extra_config.image_config.transfer_methods
+                    self._extra_config.image_config.transfer_methods
+                    and self.transfer_method not in self._extra_config.image_config.transfer_methods
                 ):
                     raise ValueError(f"Invalid transfer method: {self.transfer_method}")
 

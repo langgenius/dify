@@ -42,7 +42,7 @@ def build_from_message_file(
         transfer_method=FileTransferMethod.value_of(message_file.transfer_method),
         remote_url=message_file.url,
         related_id=message_file.upload_file_id or None,
-        extra_config=config,
+        _extra_config=config,
     )
 
 
@@ -79,7 +79,7 @@ def build_from_mapping(
                 transfer_method=transfer_method,
                 remote_url=None,
                 related_id=mapping.get("tool_file_id"),
-                extra_config=config,
+                _extra_config=config,
             )
         case _:
             raise ValueError(f"Invalid file transfer method: {transfer_method}")
@@ -153,7 +153,7 @@ def _build_from_local_file(
         transfer_method=transfer_method,
         remote_url=None,
         related_id=mapping.get("upload_file_id"),
-        extra_config=config,
+        _extra_config=config,
         size=row.size,
     )
     return file
@@ -174,7 +174,7 @@ def _build_from_remote_url(*, mapping, tenant_id, config, transfer_method):
         type=FileType.value_of(mapping.get("type")),
         transfer_method=transfer_method,
         remote_url=url,
-        extra_config=config,
+        _extra_config=config,
         mime_type=mime_type,
         size=file_size,
     )

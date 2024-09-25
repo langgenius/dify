@@ -18,6 +18,7 @@ def test_file_loads_and_dumps():
     assert isinstance(file_dict["type"], str)
     assert file_dict["transfer_method"] == file.transfer_method.value
     assert isinstance(file_dict["transfer_method"], str)
+    assert "_extra_config" not in file_dict
 
     file_obj = File.model_validate(file_dict)
     assert file_obj.id == file.id
@@ -25,3 +26,17 @@ def test_file_loads_and_dumps():
     assert file_obj.type == file.type
     assert file_obj.transfer_method == file.transfer_method
     assert file_obj.remote_url == file.remote_url
+
+
+def test_file_to_dict():
+    file = File(
+        id="file1",
+        tenant_id="tenant1",
+        type=FileType.IMAGE,
+        transfer_method=FileTransferMethod.REMOTE_URL,
+        remote_url="https://example.com/image1.jpg",
+    )
+
+    file_dict = file.to_dict()
+    assert "_extra_config" not in file_dict
+    assert "url" in file_dict
