@@ -1,5 +1,6 @@
 import json
 import time
+from collections.abc import Mapping
 from datetime import datetime, timezone
 from typing import Any, Optional, Union, cast
 
@@ -642,7 +643,7 @@ class WorkflowCycleManage:
 
         return files
 
-    def _get_file_var_from_value(self, value: Union[dict, list]) -> Optional[dict]:
+    def _get_file_var_from_value(self, value: Union[dict, list]) -> Mapping[str, str | None] | None:
         """
         Get file var from value
         :param value: variable value
@@ -656,8 +657,6 @@ class WorkflowCycleManage:
                 return value
         elif isinstance(value, File):
             return value.to_dict()
-
-        return None
 
     def _refetch_workflow_run(self, workflow_run_id: str) -> WorkflowRun:
         """
