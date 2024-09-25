@@ -114,7 +114,6 @@ class WorkflowToolProviderController(ToolProviderController):
                         llm_description=parameter.description,
                         required=variable.required,
                         options=options,
-                        default=variable.default,
                     )
                 )
             elif features.file_upload:
