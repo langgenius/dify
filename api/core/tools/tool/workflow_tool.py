@@ -73,7 +73,7 @@ class WorkflowTool(Tool):
         outputs = data.get("outputs", {})
         outputs, files = self._extract_files(outputs)
         for file in files:
-            result.append(self.create_file_var_message(file))
+            result.append(self.create_file_message(file))
 
         result.append(self.create_text_message(json.dumps(outputs, ensure_ascii=False)))
         result.append(self.create_json_message(outputs))
@@ -189,17 +189,13 @@ class WorkflowTool(Tool):
         result = {}
         for key, value in outputs.items():
             if isinstance(value, list):
-                has_file = False
                 for item in value:
                     if isinstance(item, dict) and item.get("model_identity") == FILE_MODEL_IDENTITY:
-                        try:
-                            files.append(File.model_validate(item))
-                            has_file = True
-                        except Exception as e:
-                            pass
-                if has_file:
-                    continue
+                        file = File.model_validate(item)
+                        files.append(file)
+            elif isinstance(value, dict) and value.get("model_identity") == FILE_MODEL_IDENTITY:
+                file = File.model_validate(value)
+                files.append(file)
 
             result[key] = value
-
         return result, files

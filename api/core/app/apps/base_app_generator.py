@@ -2,7 +2,7 @@ from collections.abc import Mapping
 from typing import TYPE_CHECKING, Any, Optional
 
 from core.app.app_config.entities import VariableEntityType
-from core.file import FileExtraConfig
+from core.file import File, FileExtraConfig
 from factories import file_factory
 
 if TYPE_CHECKING:
@@ -56,7 +56,10 @@ class BaseAppGenerator:
                 ),
             )
             for k, v in user_inputs.items()
-            if isinstance(v, list) and entity_dictionary[k].type == VariableEntityType.FILE_LIST
+            if isinstance(v, list)
+            # Ensure skip List<File>
+            and all(isinstance(item, dict) for item in v)
+            and entity_dictionary[k].type == VariableEntityType.FILE_LIST
         }
         # Merge all inputs
         user_inputs = {**user_inputs, **files_inputs, **file_list_inputs}
@@ -101,6 +104,18 @@ class BaseAppGenerator:
         elif var.type in {VariableEntityType.TEXT_INPUT, VariableEntityType.PARAGRAPH}:
             if var.max_length and len(user_input_value) > var.max_length:
                 raise ValueError(f"{var.variable} in input form must be less than {var.max_length} characters")
+        elif var.type == VariableEntityType.FILE:
+            if not isinstance(user_input_value, dict) and not isinstance(user_input_value, File):
+                raise ValueError(f"{var.variable} in input form must be a file")
+        elif var.type == VariableEntityType.FILE_LIST:
+            if not (
+                isinstance(user_input_value, list)
+                and (
+                    all(isinstance(item, dict) for item in user_input_value)
+                    or all(isinstance(item, File) for item in user_input_value)
+                )
+            ):
+                raise ValueError(f"{var.variable} in input form must be a list of files")
 
         return user_input_value
 

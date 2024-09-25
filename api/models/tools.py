@@ -103,7 +103,7 @@ class ApiToolProvider(db.Model):
     icon = db.Column(db.String(255), nullable=False)
     # original schema
     schema = db.Column(db.Text, nullable=False)
-    schema_type_str = db.Column(db.String(40), nullable=False)
+    schema_type_str: Mapped[str] = db.Column(db.String(40), nullable=False)
     # who created this tool
     user_id = db.Column(StringUUID, nullable=False)
     # tenant id
@@ -135,11 +135,11 @@ class ApiToolProvider(db.Model):
         return json.loads(self.credentials_str)
 
     @property
-    def user(self) -> Account:
+    def user(self) -> Account | None:
         return db.session.query(Account).filter(Account.id == self.user_id).first()
 
     @property
-    def tenant(self) -> Tenant:
+    def tenant(self) -> Tenant | None:
         return db.session.query(Tenant).filter(Tenant.id == self.tenant_id).first()
 
 
@@ -205,11 +205,11 @@ class WorkflowToolProvider(db.Model):
         return ApiProviderSchemaType.value_of(self.schema_type_str)
 
     @property
-    def user(self) -> Account:
+    def user(self) -> Account | None:
         return db.session.query(Account).filter(Account.id == self.user_id).first()
 
     @property
-    def tenant(self) -> Tenant:
+    def tenant(self) -> Tenant | None:
         return db.session.query(Tenant).filter(Tenant.id == self.tenant_id).first()
 
     @property
@@ -217,7 +217,7 @@ class WorkflowToolProvider(db.Model):
         return [WorkflowToolParameterConfiguration(**config) for config in json.loads(self.parameter_configuration)]
 
     @property
-    def app(self) -> App:
+    def app(self) -> App | None:
         return db.session.query(App).filter(App.id == self.app_id).first()
 
 

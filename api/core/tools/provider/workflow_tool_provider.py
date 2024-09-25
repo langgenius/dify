@@ -23,6 +23,8 @@ VARIABLE_TO_PARAMETER_TYPE_MAPPING = {
     VariableEntityType.PARAGRAPH: ToolParameter.ToolParameterType.STRING,
     VariableEntityType.SELECT: ToolParameter.ToolParameterType.SELECT,
     VariableEntityType.NUMBER: ToolParameter.ToolParameterType.NUMBER,
+    VariableEntityType.FILE: ToolParameter.ToolParameterType.FILE,
+    VariableEntityType.FILE_LIST: ToolParameter.ToolParameterType.FILES,
 }
 
 
@@ -36,8 +38,8 @@ class WorkflowToolProviderController(ToolProviderController):
         if not app:
             raise ValueError("app not found")
 
-        controller = WorkflowToolProviderController(
-            **{
+        controller = WorkflowToolProviderController.model_validate(
+            {
                 "identity": {
                     "author": db_provider.user.name if db_provider.user_id and db_provider.user else "",
                     "name": db_provider.label,
@@ -67,7 +69,7 @@ class WorkflowToolProviderController(ToolProviderController):
         :param app: the app
         :return: the tool
         """
-        workflow: Workflow = (
+        workflow = (
             db.session.query(Workflow)
             .filter(Workflow.app_id == db_provider.app_id, Workflow.version == db_provider.version)
             .first()
@@ -76,8 +78,8 @@ class WorkflowToolProviderController(ToolProviderController):
             raise ValueError("workflow not found")
 
         # fetch start node
-        graph: dict = workflow.graph_dict
-        features_dict: dict = workflow.features_dict
+        graph = workflow.graph_dict
+        features_dict = workflow.features_dict
         features = WorkflowAppConfigManager.convert_features(config_dict=features_dict, app_mode=AppMode.WORKFLOW)
 
         parameters = db_provider.parameter_configurations

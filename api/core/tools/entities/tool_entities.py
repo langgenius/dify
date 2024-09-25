@@ -104,7 +104,7 @@ class ToolInvokeMessage(BaseModel):
         BLOB = "blob"
         JSON = "json"
         IMAGE_LINK = "image_link"
-        FILE_VAR = "file_var"
+        FILE = "file"
 
     type: MessageType = MessageType.TEXT
     """

@@ -128,6 +128,7 @@ class ToolEngine:
         """
         try:
             # hit the callback handler
+            assert tool.identity is not None
             workflow_tool_callback.on_tool_start(tool_name=tool.identity.name, tool_inputs=tool_parameters)
 
             if isinstance(tool, WorkflowTool):

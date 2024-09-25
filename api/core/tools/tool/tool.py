@@ -292,10 +292,8 @@ class Tool(BaseModel, ABC):
         """
         return ToolInvokeMessage(type=ToolInvokeMessage.MessageType.IMAGE, message=image, save_as=save_as)
 
-    def create_file_var_message(self, file_var: "File") -> ToolInvokeMessage:
-        return ToolInvokeMessage(
-            type=ToolInvokeMessage.MessageType.FILE_VAR, message="", meta={"file_var": file_var}, save_as=""
-        )
+    def create_file_message(self, file: "File") -> ToolInvokeMessage:
+        return ToolInvokeMessage(type=ToolInvokeMessage.MessageType.FILE, message="", meta={"file": file}, save_as="")
 
     def create_link_message(self, link: str, save_as: str = "") -> ToolInvokeMessage:
         """

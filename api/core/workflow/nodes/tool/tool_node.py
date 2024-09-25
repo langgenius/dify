@@ -210,6 +210,9 @@ class ToolNode(BaseNode):
                 )
             elif response.type == ToolInvokeMessage.MessageType.LINK:
                 pass  # TODO:
+            elif response.type == ToolInvokeMessage.MessageType.FILE:
+                assert response.meta is not None
+                result.append(response.meta["file"])
 
         return result
 

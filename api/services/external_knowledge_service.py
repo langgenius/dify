@@ -69,7 +69,9 @@ class ExternalDatasetService:
 
     @staticmethod
     def update_external_knowledge_api(tenant_id, user_id, external_knowledge_api_id, args) -> ExternalKnowledgeApis:
-        external_knowledge_api = ExternalKnowledgeApis.query.filter_by(id=external_knowledge_api_id, tenant_id=tenant_id).first()
+        external_knowledge_api = ExternalKnowledgeApis.query.filter_by(
+            id=external_knowledge_api_id, tenant_id=tenant_id
+        ).first()
         if external_knowledge_api is None:
             raise ValueError("api template not found")
 
@@ -84,7 +86,9 @@ class ExternalDatasetService:
 
     @staticmethod
     def delete_external_knowledge_api(tenant_id: str, external_knowledge_api_id: str):
-        external_knowledge_api = ExternalKnowledgeApis.query.filter_by(id=external_knowledge_api_id, tenant_id=tenant_id).first()
+        external_knowledge_api = ExternalKnowledgeApis.query.filter_by(
+            id=external_knowledge_api_id, tenant_id=tenant_id
+        ).first()
         if external_knowledge_api is None:
             raise ValueError("api template not found")
 
@@ -109,7 +113,9 @@ class ExternalDatasetService:
 
     @staticmethod
     def document_create_args_validate(tenant_id: str, external_knowledge_api_id: str, process_parameter: dict):
-        external_knowledge_api = ExternalKnowledgeApis.query.filter_by(id=external_knowledge_api_id, tenant_id=tenant_id).first()
+        external_knowledge_api = ExternalKnowledgeApis.query.filter_by(
+            id=external_knowledge_api_id, tenant_id=tenant_id
+        ).first()
         if external_knowledge_api is None:
             raise ValueError("api template not found")
         settings = json.loads(external_knowledge_api.settings)
@@ -129,7 +135,9 @@ class ExternalDatasetService:
             raise ValueError("data source is required")
 
         process_parameter = args.get("process_parameter")
-        external_knowledge_api = ExternalKnowledgeApis.query.filter_by(id=external_knowledge_api_id, tenant_id=tenant_id).first()
+        external_knowledge_api = ExternalKnowledgeApis.query.filter_by(
+            id=external_knowledge_api_id, tenant_id=tenant_id
+        ).first()
         if external_knowledge_api is None:
             raise ValueError("api template not found")
 
@@ -183,7 +191,9 @@ class ExternalDatasetService:
         return dataset
 
     @staticmethod
-    def process_external_api(settings: ExternalKnowledgeApiSetting, files: Union[None, dict[str, Any]]) -> httpx.Response:
+    def process_external_api(
+        settings: ExternalKnowledgeApiSetting, files: Union[None, dict[str, Any]]
+    ) -> httpx.Response:
         """
         do http request depending on api bundle
         """
@@ -295,7 +305,9 @@ class ExternalDatasetService:
             "headers": headers,
             "params": external_retrieval_parameters,
         }
-        response = ExternalDatasetService.process_external_api(ExternalKnowledgeApiSetting(**external_knowledge_api_setting), None)
+        response = ExternalDatasetService.process_external_api(
+            ExternalKnowledgeApiSetting(**external_knowledge_api_setting), None
+        )
         if response.status_code == 200:
             return response.json()
         return []
