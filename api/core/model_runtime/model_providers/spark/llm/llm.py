@@ -220,20 +220,22 @@ class SparkLargeLanguageModel(LargeLanguageModel):
             else:
                 delta = content
             completion += delta
-        assistant_prompt_message = AssistantPromptMessage(
-            content=delta or "",
-        )
+            assistant_prompt_message = AssistantPromptMessage(
+                content=delta or "",
+            )
+            temp_assistant_prompt_message = AssistantPromptMessage(
+                content=completion,
+            )
+            prompt_tokens = self.get_num_tokens(model, credentials, prompt_messages)
+            completion_tokens = self.get_num_tokens(model, credentials, [temp_assistant_prompt_message])
 
-        prompt_tokens = self.get_num_tokens(model, credentials, prompt_messages)
-        completion_tokens = self.get_num_tokens(model, credentials, [assistant_prompt_message])
-
-        # transform usage
-        usage = self._calc_response_usage(model, credentials, prompt_tokens, completion_tokens)
-        yield LLMResultChunk(
-            model=model,
-            prompt_messages=prompt_messages,
-            delta=LLMResultChunkDelta(index=index, message=assistant_prompt_message, usage=usage),
-        )
+            # transform usage
+            usage = self._calc_response_usage(model, credentials, prompt_tokens, completion_tokens)
+            yield LLMResultChunk(
+                model=model,
+                prompt_messages=prompt_messages,
+                delta=LLMResultChunkDelta(index=index, message=assistant_prompt_message, usage=usage),
+            )
 
         thread.join()
 
