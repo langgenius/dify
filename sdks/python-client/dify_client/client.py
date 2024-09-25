@@ -413,3 +413,79 @@ class KnowledgeBaseClient(DifyClient):
         data = {"segment": segment_data}
         url = f"/datasets/{self._get_dataset_id()}/documents/{document_id}/segments/{segment_id}"
         return self._send_request("POST", url, json=data, **kwargs)
+
+    def hit_testing(self, query, search_method: str = "keyword_search", **kwargs):
+        """
+        Hit testing
+
+        :param query: query
+        :param search_method: search method, default: keyword_search,
+            other options: semantic_search/full_text_search/hybrid_search
+        :param reranking_enable: optional, whether to enable reranking
+        :param reranking_mode: optional, reranking mode, e.g. {reranking_provider_name: "", reranking_model_name: ""}
+        :param weights: optional, weights
+        :param top_k: optional, top k
+        :param score_threshold_enabled: optional, whether to enable score threshold
+        :param score_threshold: optional, score threshold
+        :return: Response from the API
+        e.g. {
+            "query": {
+                "content": "keyword"
+            },
+            "records": [
+                {
+                    "segment": {
+                        "id": "<uuid>",
+                        "position": 1,
+                        "document_id": "<uuid>",
+                        "content": "",
+                        "answer": null,
+                        "word_count": 255,
+                        "tokens": 0,
+                        "keywords": [
+                            "keyword1",
+                            "keyword2"
+                        ],
+                        "index_node_id": "<uuid>",
+                        "index_node_hash": "<hash>",
+                        "hit_count": 0,
+                        "enabled": true,
+                        "disabled_at": null,
+                        "disabled_by": null,
+                        "status": "completed",
+                        "created_by": "<user_id>",
+                        "created_at": 1726419935,
+                        "indexing_at": 1726419934,
+                        "completed_at": 1726419935,
+                        "error": null,
+                        "stopped_at": null,
+                        "document": {
+                            "id": "<uuid>",
+                            "data_source_type": "upload_file",
+                            "name": "file_name",
+                            "doc_type": null
+                        }
+                    },
+                    "score": null,
+                    "tsne_position": null
+                }
+            ]
+        }
+        """
+        retrieval_model = {
+            "search_method": search_method,
+            "reranking_enable": False,
+            "reranking_mode": None,
+            "reranking_model": {
+                "reranking_provider_name": "",
+                "reranking_model_name": ""
+            },
+            "weights": None,
+            "top_k": 2,
+            "score_threshold_enabled": None,
+            "score_threshold": None
+        }
+        retrieval_model.update(kwargs)
+        data = {"query": query, "retrieval_model": retrieval_model}
+        url = f"/datasets/{self._get_dataset_id()}/hit-testing"
+        return self._send_request("POST", url, json=data, **kwargs)
