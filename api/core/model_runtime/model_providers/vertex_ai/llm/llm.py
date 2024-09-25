@@ -2,6 +2,7 @@ import base64
 import io
 import json
 import logging
+import time
 from collections.abc import Generator
 from typing import Optional, Union, cast
 
@@ -20,7 +21,6 @@ from google.api_core import exceptions
 from google.cloud import aiplatform
 from google.oauth2 import service_account
 from PIL import Image
-from vertexai.generative_models import HarmBlockThreshold, HarmCategory
 
 from core.model_runtime.entities.llm_entities import LLMResult, LLMResultChunk, LLMResultChunkDelta, LLMUsage
 from core.model_runtime.entities.message_entities import (
@@ -34,6 +34,7 @@ from core.model_runtime.entities.message_entities import (
     ToolPromptMessage,
     UserPromptMessage,
 )
+from core.model_runtime.entities.model_entities import PriceType
 from core.model_runtime.errors.invoke import (
     InvokeAuthorizationError,
     InvokeBadRequestError,
@@ -503,20 +504,12 @@ class VertexAiLargeLanguageModel(LargeLanguageModel):
                     else:
                         history.append(content)
 
-        safety_settings = {
-            HarmCategory.HARM_CATEGORY_HARASSMENT: HarmBlockThreshold.BLOCK_NONE,
-            HarmCategory.HARM_CATEGORY_HATE_SPEECH: HarmBlockThreshold.BLOCK_NONE,
-            HarmCategory.HARM_CATEGORY_SEXUALLY_EXPLICIT: HarmBlockThreshold.BLOCK_NONE,
-            HarmCategory.HARM_CATEGORY_DANGEROUS_CONTENT: HarmBlockThreshold.BLOCK_NONE,
-        }
-
         google_model = glm.GenerativeModel(model_name=model, system_instruction=system_instruction)
 
         response = google_model.generate_content(
             contents=history,
             generation_config=glm.GenerationConfig(**config_kwargs),
             stream=stream,
-            safety_settings=safety_settings,
             tools=self._convert_tools_to_glm_tool(tools) if tools else None,
         )
 
