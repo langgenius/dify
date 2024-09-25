@@ -1,3 +1,4 @@
+import mimetypes
 from collections.abc import Mapping, Sequence
 from typing import TYPE_CHECKING, Any
 
@@ -5,6 +6,7 @@ from sqlalchemy import select
 
 from constants import IMAGE_EXTENSIONS
 from core.file import File, FileBelongsTo, FileExtraConfig, FileTransferMethod, FileType
+from core.helper import ssrf_proxy
 from extensions.ext_database import db
 from models import UploadFile
 
@@ -152,6 +154,7 @@ def _build_from_local_file(
         url=None,
         related_id=mapping.get("upload_file_id"),
         extra_config=config,
+        size=row.size,
     )
     return file
 
@@ -160,11 +163,19 @@ def _build_from_remote_url(*, mapping, tenant_id, config, transfer_method):
     url = mapping.get("url")
     if not url:
         raise ValueError("Invalid file url")
+    resp = ssrf_proxy.head(url)
+    resp.raise_for_status()
+    file_size = int(resp.headers.get("Content-Length", 0))
+    mime_type = str(resp.headers.get("Content-Type", ""))
+    if not mime_type:
+        mime_type, _ = mimetypes.guess_type(url)
     file = File(
         tenant_id=tenant_id,
         type=FileType.value_of(mapping.get("type")),
         transfer_method=transfer_method,
         url=url,
         extra_config=config,
+        mime_type=mime_type,
+        size=file_size,
     )
     return file

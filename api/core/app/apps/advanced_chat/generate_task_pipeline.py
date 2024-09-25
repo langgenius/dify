@@ -355,7 +355,7 @@ class AdvancedChatAppGenerateTaskPipeline(BasedGenerateTaskPipeline, WorkflowCyc
                     start_at=graph_runtime_state.start_at,
                     total_tokens=graph_runtime_state.total_tokens,
                     total_steps=graph_runtime_state.node_run_steps,
-                    outputs=json.dumps(event.outputs) if event.outputs else None,
+                    outputs=event.outputs,
                     conversation_id=self._conversation.id,
                     trace_manager=trace_manager,
                 )

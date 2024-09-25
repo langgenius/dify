@@ -1,4 +1,3 @@
-import json
 import logging
 import time
 from collections.abc import Generator
@@ -43,7 +42,6 @@ from core.app.entities.task_entities import (
 )
 from core.app.task_pipeline.based_generate_task_pipeline import BasedGenerateTaskPipeline
 from core.app.task_pipeline.workflow_cycle_manage import WorkflowCycleManage
-from core.file import File
 from core.ops.ops_trace_manager import TraceQueueManager
 from core.workflow.enums import SystemVariableKey
 from extensions.ext_database import db
@@ -323,21 +321,12 @@ class WorkflowAppGenerateTaskPipeline(BasedGenerateTaskPipeline, WorkflowCycleMa
                 if not graph_runtime_state:
                     raise Exception("Graph runtime state not initialized.")
 
-                if event.outputs:
-                    for k, v in event.outputs.items():
-                        if isinstance(v, File):
-                            event.outputs[k] = v.to_dict()
-                        if isinstance(v, list) and all(isinstance(item, File) for item in v):
-                            event.outputs[k] = [item.to_dict() for item in v]
-
                 workflow_run = self._handle_workflow_run_success(
                     workflow_run=workflow_run,
                     start_at=graph_runtime_state.start_at,
                     total_tokens=graph_runtime_state.total_tokens,
                     total_steps=graph_runtime_state.node_run_steps,
-                    outputs=json.dumps(event.outputs)
-                    if isinstance(event, QueueWorkflowSucceededEvent) and event.outputs
-                    else None,
+                    outputs=event.outputs,
                     conversation_id=None,
                     trace_manager=trace_manager,
                 )

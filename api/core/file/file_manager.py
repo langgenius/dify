@@ -17,10 +17,7 @@ def get_attr(*, file: "File", attr: "FileAttribute"):
         case FileAttribute.TYPE:
             return file.type.value
         case FileAttribute.SIZE:
-            if file.related_id is None:
-                raise ValueError("Missing file related_id")
-            content = download(upload_file_id=file.related_id, tenant_id=file.tenant_id)
-            return len(content)
+            return file.size
         case FileAttribute.NAME:
             return file.filename
         case FileAttribute.MIME_TYPE:

@@ -45,8 +45,9 @@ class File(BaseModel):
     filename: Optional[str] = None
     extension: Optional[str] = None
     mime_type: Optional[str] = None
+    size: int = 0
 
-    def to_dict(self) -> Mapping[str, str | None]:
+    def to_dict(self) -> Mapping[str, str | int | None]:
         return {
             "__variant": self.__class__.__name__,
             "tenant_id": self.tenant_id,
@@ -58,6 +59,7 @@ class File(BaseModel):
             "filename": self.filename,
             "extension": self.extension,
             "mime_type": self.mime_type,
+            "size": self.size,
         }
 
     @property

@@ -1,8 +1,7 @@
 from collections.abc import Callable, Sequence
 from typing import Literal, cast
 
-from core.file import File, file_manager
-from core.helper import ssrf_proxy
+from core.file import File
 from core.variables import ArrayFileSegment, ArrayNumberSegment, ArrayStringSegment
 from core.workflow.entities.node_entities import NodeRunResult
 from core.workflow.nodes.base_node import BaseNode
@@ -109,7 +108,7 @@ class ListFilterNode(BaseNode):
 def _get_file_extract_number_func(*, key: str) -> Callable[[File], int]:
     match key:
         case "size":
-            return _get_file_size
+            return lambda x: x.size
         case _:
             raise ValueError(f"Invalid key: {key}")
 
@@ -130,18 +129,6 @@ def _get_file_extract_string_func(*, key: str) -> Callable[[File], str]:
             return lambda x: x.url or ""
         case _:
             raise ValueError(f"Invalid key: {key}")
-
-
-def _get_file_size(file: File):
-    if file.related_id:
-        content = file_manager.download(upload_file_id=file.related_id, tenant_id=file.tenant_id)
-        return len(content)
-    elif file.url:
-        response = ssrf_proxy.head(url=file.url)
-        response.raise_for_status()
-        return int(response.headers.get("Content-Length", 0))
-    else:
-        raise ValueError("Invalid file")
 
 
 def _get_string_filter_func(*, condition: str, value: str) -> Callable[[str], bool]:
