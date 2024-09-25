@@ -2,9 +2,9 @@ identity:
   author: Dify
   name: jina
   label:
-    en_US: Jina
-    zh_Hans: Jina
-    pt_BR: Jina
+    en_US: Jina AI
+    zh_Hans: Jina AI
+    pt_BR: Jina AI
   description:
     en_US: Convert any URL to an LLM-friendly input or perform searches on the web for grounding information. Experience improved output for your agent and RAG systems at no cost.
     zh_Hans: 将任何URL转换为LLM易读的输入或在网页上搜索引擎上搜索引擎。
@@ -22,11 +22,11 @@ credentials_for_provider:
       zh_Hans: API 密钥（可留空）
       pt_BR: Chave API (deixe vazio se você não tiver uma)
     placeholder:
-      en_US: Please enter your Jina API key
-      zh_Hans: 请输入你的 Jina API 密钥
-      pt_BR: Por favor, insira sua chave de API do Jina
+      en_US: Please enter your Jina AI API key
+      zh_Hans: 请输入你的 Jina AI API 密钥
+      pt_BR: Por favor, insira sua chave de API do Jina AI
     help:
-      en_US: Get your Jina API key from Jina (optional, but you can get a higher rate)
-      zh_Hans: 从 Jina 获取您的 Jina API 密钥（非必须，能得到更高的速率）
-      pt_BR: Obtenha sua chave de API do Jina na Jina (opcional, mas você pode obter uma taxa mais alta)
+      en_US: Get your Jina AI API key from Jina AI (optional, but you can get a higher rate)
+      zh_Hans: 从 Jina AI 获取您的 Jina AI API 密钥（非必须，能得到更高的速率）
+      pt_BR: Obtenha sua chave de API do Jina AI na Jina AI (opcional, mas você pode obter uma taxa mais alta)
     url: https://jina.ai
