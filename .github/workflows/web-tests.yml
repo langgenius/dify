@@ -1,4 +1,4 @@
-name: web-tests
+name: Web Tests
 
 on:
     pull_request:
@@ -13,7 +13,7 @@ concurrency:
 
 jobs:
     test:
-        name: web-tests
+        name: Web Tests
         runs-on: ubuntu-latest
         defaults:
             run:
