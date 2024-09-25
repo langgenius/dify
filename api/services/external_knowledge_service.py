@@ -65,8 +65,8 @@ class ExternalDatasetService:
         return ExternalApiTemplates.query.filter_by(id=external_knowledge_api_id).first()
 
     @staticmethod
-    def update_api_template(tenant_id, user_id, api_template_id, args) -> ExternalApiTemplates:
-        api_template = ExternalApiTemplates.query.filter_by(id=api_template_id, tenant_id=tenant_id).first()
+    def update_api_template(tenant_id, user_id, external_knowledge_api_id, args) -> ExternalApiTemplates:
+        api_template = ExternalApiTemplates.query.filter_by(id=external_knowledge_api_id, tenant_id=tenant_id).first()
         if api_template is None:
             raise ValueError("api template not found")
 
@@ -80,8 +80,8 @@ class ExternalDatasetService:
         return api_template
 
     @staticmethod
-    def delete_api_template(tenant_id: str, api_template_id: str):
-        api_template = ExternalApiTemplates.query.filter_by(id=api_template_id, tenant_id=tenant_id).first()
+    def delete_api_template(tenant_id: str, external_knowledge_api_id: str):
+        api_template = ExternalApiTemplates.query.filter_by(id=external_knowledge_api_id, tenant_id=tenant_id).first()
         if api_template is None:
             raise ValueError("api template not found")
 

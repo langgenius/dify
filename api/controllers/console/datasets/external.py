@@ -101,8 +101,8 @@ class ExternalApiTemplateApi(Resource):
     @setup_required
     @login_required
     @account_initialization_required
-    def patch(self, api_template_id):
-        api_template_id = str(api_template_id)
+    def patch(self, external_knowledge_api_id):
+        external_knowledge_api_id = str(external_knowledge_api_id)
 
         parser = reqparse.RequestParser()
         parser.add_argument(
@@ -125,7 +125,7 @@ class ExternalApiTemplateApi(Resource):
         api_template = ExternalDatasetService.update_api_template(
             tenant_id=current_user.current_tenant_id,
             user_id=current_user.id,
-            api_template_id=api_template_id,
+            external_knowledge_api_id=external_knowledge_api_id,
             args=args,
         )
 
@@ -134,15 +134,15 @@ class ExternalApiTemplateApi(Resource):
     @setup_required
     @login_required
     @account_initialization_required
-    def delete(self, api_template_id):
-        api_template_id = str(api_template_id)
+    def delete(self, external_knowledge_api_id):
+        external_knowledge_api_id = str(external_knowledge_api_id)
 
         # The role of the current user in the ta table must be admin, owner, or editor
         if not current_user.is_editor or current_user.is_dataset_operator:
             raise Forbidden()
 
-        ExternalDatasetService.delete_api_template(current_user.current_tenant_id, api_template_id)
-        return {"result": "success"}, 204
+        ExternalDatasetService.delete_api_template(current_user.current_tenant_id, external_knowledge_api_id)
+        return {"result": "success"}, 200
 
 
 class ExternalApiUseCheckApi(Resource):
