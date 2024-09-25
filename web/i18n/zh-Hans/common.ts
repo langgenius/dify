@@ -200,7 +200,7 @@ const translation = {
     invitationLink: '邀请链接',
     failedInvitationEmails: '邀请以下邮箱失败',
     ok: '好的',
-    removeFromTeam: '移除团队',
+    removeFromTeam: '移出团队',
     removeFromTeamTip: '将取消团队访问',
     setAdmin: '设为管理员',
     setMember: '设为普通成员',

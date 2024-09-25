@@ -9,6 +9,7 @@ from google.cloud import aiplatform
 from google.oauth2 import service_account
 from vertexai.language_models import TextEmbeddingModel as VertexTextEmbeddingModel
 
+from core.embedding.embedding_constant import EmbeddingInputType
 from core.model_runtime.entities.common_entities import I18nObject
 from core.model_runtime.entities.model_entities import (
     AIModelEntity,
@@ -30,7 +31,12 @@ class VertexAiTextEmbeddingModel(_CommonVertexAi, TextEmbeddingModel):
     """
 
     def _invoke(
-        self, model: str, credentials: dict, texts: list[str], user: Optional[str] = None
+        self,
+        model: str,
+        credentials: dict,
+        texts: list[str],
+        user: Optional[str] = None,
+        input_type: EmbeddingInputType = EmbeddingInputType.DOCUMENT,
     ) -> TextEmbeddingResult:
         """
         Invoke text embedding model

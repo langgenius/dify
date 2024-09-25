@@ -1,25 +1,21 @@
 import time
-from typing import Optional
+from collections.abc import Mapping
+from typing import Optional, Union
 
-import dashscope
 import numpy as np
+from openai import OpenAI
 
 from core.embedding.embedding_constant import EmbeddingInputType
 from core.model_runtime.entities.model_entities import PriceType
-from core.model_runtime.entities.text_embedding_entities import (
-    EmbeddingUsage,
-    TextEmbeddingResult,
-)
+from core.model_runtime.entities.text_embedding_entities import EmbeddingUsage, TextEmbeddingResult
 from core.model_runtime.errors.validate import CredentialsValidateFailedError
-from core.model_runtime.model_providers.__base.text_embedding_model import (
-    TextEmbeddingModel,
-)
-from core.model_runtime.model_providers.tongyi._common import _CommonTongyi
+from core.model_runtime.model_providers.__base.text_embedding_model import TextEmbeddingModel
+from core.model_runtime.model_providers.fireworks._common import _CommonFireworks
 
 
-class TongyiTextEmbeddingModel(_CommonTongyi, TextEmbeddingModel):
+class FireworksTextEmbeddingModel(_CommonFireworks, TextEmbeddingModel):
     """
-    Model class for Tongyi text embedding model.
+    Model class for Fireworks text embedding model.
     """
 
     def _invoke(
@@ -37,18 +33,29 @@ class TongyiTextEmbeddingModel(_CommonTongyi, TextEmbeddingModel):
         :param credentials: model credentials
         :param texts: texts to embed
         :param user: unique user id
+        :param input_type: input type
         :return: embeddings result
         """
+
         credentials_kwargs = self._to_credential_kwargs(credentials)
+        client = OpenAI(**credentials_kwargs)
+
+        extra_model_kwargs = {}
+        if user:
+            extra_model_kwargs["user"] = user
+
+        extra_model_kwargs["encoding_format"] = "float"
 
         context_size = self._get_context_size(model, credentials)
         max_chunks = self._get_max_chunks(model, credentials)
+
         inputs = []
         indices = []
         used_tokens = 0
 
         for i, text in enumerate(texts):
             # Here token count is only an approximation based on the GPT2 tokenizer
+            # TODO: Optimize for better token estimation and chunking
             num_tokens = self._get_num_tokens_by_gpt2(text)
 
             if num_tokens >= context_size:
@@ -63,15 +70,15 @@ class TongyiTextEmbeddingModel(_CommonTongyi, TextEmbeddingModel):
         _iter = range(0, len(inputs), max_chunks)
 
         for i in _iter:
-            embeddings_batch, embedding_used_tokens = self.embed_documents(
-                credentials_kwargs=credentials_kwargs,
+            embeddings_batch, embedding_used_tokens = self._embedding_invoke(
                 model=model,
+                client=client,
                 texts=inputs[i : i + max_chunks],
+                extra_model_kwargs=extra_model_kwargs,
             )
             used_tokens += embedding_used_tokens
             batched_embeddings += embeddings_batch
 
-        # calc usage
         usage = self._calc_response_usage(model=model, credentials=credentials, tokens=used_tokens)
         return TextEmbeddingResult(embeddings=batched_embeddings, usage=usage, model=model)
 
@@ -84,15 +91,9 @@ class TongyiTextEmbeddingModel(_CommonTongyi, TextEmbeddingModel):
         :param texts: texts to embed
         :return:
         """
-        if len(texts) == 0:
-            return 0
-        total_num_tokens = 0
-        for text in texts:
-            total_num_tokens += self._get_num_tokens_by_gpt2(text)
+        return sum(self._get_num_tokens_by_gpt2(text) for text in texts)
 
-        return total_num_tokens
-
-    def validate_credentials(self, model: str, credentials: dict) -> None:
+    def validate_credentials(self, model: str, credentials: Mapping) -> None:
         """
         Validate model credentials
 
@@ -103,66 +104,40 @@ class TongyiTextEmbeddingModel(_CommonTongyi, TextEmbeddingModel):
         try:
             # transform credentials to kwargs for model instance
             credentials_kwargs = self._to_credential_kwargs(credentials)
+            client = OpenAI(**credentials_kwargs)
 
             # call embedding model
-            self.embed_documents(credentials_kwargs=credentials_kwargs, model=model, texts=["ping"])
+            self._embedding_invoke(model=model, client=client, texts=["ping"], extra_model_kwargs={})
         except Exception as ex:
             raise CredentialsValidateFailedError(str(ex))
 
-    @staticmethod
-    def embed_documents(credentials_kwargs: dict, model: str, texts: list[str]) -> tuple[list[list[float]], int]:
-        """Call out to Tongyi's embedding endpoint.
-
-        Args:
-            credentials_kwargs: The credentials to use for the call.
-            model: The model to use for embedding.
-            texts: The list of texts to embed.
-
-        Returns:
-            List of embeddings, one for each text, and tokens usage.
+    def _embedding_invoke(
+        self, model: str, client: OpenAI, texts: Union[list[str], str], extra_model_kwargs: dict
+    ) -> tuple[list[list[float]], int]:
         """
-        embeddings = []
-        embedding_used_tokens = 0
-        for text in texts:
-            response = dashscope.TextEmbedding.call(
-                api_key=credentials_kwargs["dashscope_api_key"],
-                model=model,
-                input=text,
-                text_type="document",
-            )
-            if response.output and "embeddings" in response.output and response.output["embeddings"]:
-                data = response.output["embeddings"][0]
-                if "embedding" in data:
-                    embeddings.append(data["embedding"])
-                else:
-                    raise ValueError("Embedding data is missing in the response.")
-            else:
-                raise ValueError("Response output is missing or does not contain embeddings.")
-
-            if response.usage and "total_tokens" in response.usage:
-                embedding_used_tokens += response.usage["total_tokens"]
-            else:
-                raise ValueError("Response usage is missing or does not contain total tokens.")
-
-        return [list(map(float, e)) for e in embeddings], embedding_used_tokens
+        Invoke embedding model
+        :param model: model name
+        :param client: model client
+        :param texts: texts to embed
+        :param extra_model_kwargs: extra model kwargs
+        :return: embeddings and used tokens
+        """
+        response = client.embeddings.create(model=model, input=texts, **extra_model_kwargs)
+        return [data.embedding for data in response.data], response.usage.total_tokens
 
     def _calc_response_usage(self, model: str, credentials: dict, tokens: int) -> EmbeddingUsage:
         """
         Calculate response usage
 
         :param model: model name
+        :param credentials: model credentials
         :param tokens: input tokens
         :return: usage
         """
-        # get input price info
         input_price_info = self.get_price(
-            model=model,
-            credentials=credentials,
-            price_type=PriceType.INPUT,
-            tokens=tokens,
+            model=model, credentials=credentials, tokens=tokens, price_type=PriceType.INPUT
         )
 
-        # transform usage
         usage = EmbeddingUsage(
             tokens=tokens,
             total_tokens=tokens,

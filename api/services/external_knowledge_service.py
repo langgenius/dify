@@ -19,7 +19,10 @@ from models.dataset import (
     ExternalKnowledgeBindings,
 )
 from models.model import UploadFile
-from services.entities.external_knowledge_entities.external_knowledge_entities import ExternalKnowledgeApiSetting, Authorization
+from services.entities.external_knowledge_entities.external_knowledge_entities import (
+    Authorization,
+    ExternalKnowledgeApiSetting,
+)
 from services.errors.dataset import DatasetNameDuplicateError
 
 
