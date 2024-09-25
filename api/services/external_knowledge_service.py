@@ -25,7 +25,7 @@ from services.errors.dataset import DatasetNameDuplicateError
 
 class ExternalDatasetService:
     @staticmethod
-    def get_external_knowledge_api(page, per_page, tenant_id, search=None) -> tuple[list[ExternalKnowledgeApis], int]:
+    def get_external_knowledge_apis(page, per_page, tenant_id, search=None) -> tuple[list[ExternalKnowledgeApis], int]:
         query = ExternalKnowledgeApis.query.filter(ExternalKnowledgeApis.tenant_id == tenant_id).order_by(
             ExternalKnowledgeApis.created_at.desc()
         )
