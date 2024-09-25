@@ -124,7 +124,7 @@ class ExtractProcessor:
                         extractor = UnstructuredPPTXExtractor(file_path, unstructured_api_url)
                     elif file_extension == ".xml":
                         extractor = UnstructuredXmlExtractor(file_path, unstructured_api_url)
-                    elif file_extension == "epub":
+                    elif file_extension == ".epub":
                         extractor = UnstructuredEpubExtractor(file_path, unstructured_api_url)
                     else:
                         # txt
@@ -146,7 +146,7 @@ class ExtractProcessor:
                         extractor = WordExtractor(file_path, upload_file.tenant_id, upload_file.created_by)
                     elif file_extension == ".csv":
                         extractor = CSVExtractor(file_path, autodetect_encoding=True)
-                    elif file_extension == "epub":
+                    elif file_extension == ".epub":
                         extractor = UnstructuredEpubExtractor(file_path)
                     else:
                         # txt
