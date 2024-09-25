@@ -58,3 +58,4 @@ if __name__ == "__main__":
     content = "好无聊啊"
     emopath = get_emo(content)
     print(emopath)
+    print()
