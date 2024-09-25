@@ -15,6 +15,7 @@ from core.model_runtime.entities.model_entities import (
 )
 from core.model_runtime.model_providers.openai_api_compatible.llm.llm import OAIAPICompatLargeLanguageModel
 
+
 class SiliconflowLargeLanguageModel(OAIAPICompatLargeLanguageModel):
     def _invoke(
         self,
