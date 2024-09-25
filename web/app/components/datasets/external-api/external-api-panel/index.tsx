@@ -5,23 +5,37 @@ import {
   RiCloseLine,
 } from '@remixicon/react'
 import { useTranslation } from 'react-i18next'
+import ExternalKnowledgeAPICard from '../external-knowledge-api-card'
 import cn from '@/utils/classnames'
-// import AddExternalAPIForm from '../create/add-external-api'
+import { useExternalKnowledgeApi } from '@/context/external-knowledge-api-context'
 import ActionButton from '@/app/components/base/action-button'
 import Button from '@/app/components/base/button'
+import Loading from '@/app/components/base/loading'
 import { useModalContext } from '@/context/modal-context'
 
 type ExternalAPIPanelProps = {
   onClose: () => void
   isShow: boolean
+  datasetBindings: { id: string; name: string }[]
 }
 
-const ExternalAPIPanel: React.FC<ExternalAPIPanelProps> = ({ onClose, isShow }) => {
+const ExternalAPIPanel: React.FC<ExternalAPIPanelProps> = ({ onClose, isShow, datasetBindings }) => {
   const { t } = useTranslation()
-  const { setShowExternalAPIModal } = useModalContext()
+  const { setShowExternalKnowledgeAPIModal } = useModalContext()
+  const { externalKnowledgeApiList, mutateExternalKnowledgeApis, isLoading } = useExternalKnowledgeApi()
 
   const handleOpenExternalAPIModal = () => {
-    setShowExternalAPIModal()
+    setShowExternalKnowledgeAPIModal({
+      payload: { name: '', settings: { endpoint: '', api_key: '' } },
+      datasetBindings: [],
+      onSaveCallback: () => {
+        mutateExternalKnowledgeApis()
+      },
+      onCancelCallback: () => {
+        mutateExternalKnowledgeApis()
+      },
+      isEditMode: false,
+    })
   }
 
   return (
@@ -60,7 +74,15 @@ const ExternalAPIPanel: React.FC<ExternalAPIPanelProps> = ({ onClose, isShow }) 
           </Button>
         </div>
         <div className='flex py-0 px-4 flex-col items-start gap-1 flex-grow self-stretch'>
-
+          {isLoading
+            ? (
+              <Loading />
+            )
+            : (
+              externalKnowledgeApiList.map(api => (
+                <ExternalKnowledgeAPICard key={api.id} api={api} />
+              ))
+            )}
         </div>
       </div>
     </div>

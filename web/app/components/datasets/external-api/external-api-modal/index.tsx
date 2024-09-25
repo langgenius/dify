@@ -1,46 +1,111 @@
 import type { FC } from 'react'
 import {
   memo,
+  useEffect,
   useState,
 } from 'react'
 import { useTranslation } from 'react-i18next'
 import {
+  RiBook2Line,
   RiCloseLine,
   RiInformation2Line,
   RiLock2Fill,
 } from '@remixicon/react'
-import { useToastContext } from '@/app/components/base/toast'
+import { useValidateApiKey } from '../key-validator/hooks'
+import { ValidatedApiKeyStatus } from '../key-validator/declarations'
+import { ValidatedEndpointStatus } from '../endpoint-validator/declarations'
+import { useValidateEndpoint } from '../endpoint-validator/hooks'
+import type { CreateExternalAPIReq, FormSchema } from '../declarations'
+import Form from './Form'
+import ActionButton from '@/app/components/base/action-button'
+import Confirm from '@/app/components/base/confirm'
 import {
   PortalToFollowElem,
   PortalToFollowElemContent,
 } from '@/app/components/base/portal-to-follow-elem'
-import ActionButton from '@/app/components/base/action-button'
-import Input from '@/app/components/base/input'
+import { createExternalAPI } from '@/service/datasets'
+import { useToastContext } from '@/app/components/base/toast'
 import Button from '@/app/components/base/button'
 import Tooltip from '@/app/components/base/tooltip'
 
 type AddExternalAPIModalProps = {
-  show: boolean
-  onHide: () => void
+  data?: CreateExternalAPIReq
+  onSave: (formValue: CreateExternalAPIReq) => void
+  onCancel: () => void
+  onEdit?: (formValue: CreateExternalAPIReq) => Promise<void>
+  datasetBindings?: { id: string; name: string }[]
+  isEditMode: boolean
 }
 
-const AddExternalAPIModal: FC<AddExternalAPIModalProps> = ({ show, onHide }) => {
+const formSchemas: FormSchema[] = [
+  {
+    variable: 'name',
+    type: 'text',
+    label: {
+      en_US: 'Name',
+    },
+    required: true,
+  },
+  {
+    variable: 'endpoint',
+    type: 'text',
+    label: {
+      en_US: 'API Endpoint',
+    },
+    required: true,
+  },
+  {
+    variable: 'api_key',
+    type: 'secret',
+    label: {
+      en_US: 'API Key',
+    },
+    required: true,
+  },
+]
+
+const AddExternalAPIModal: FC<AddExternalAPIModalProps> = ({ data, onSave, onCancel, datasetBindings, isEditMode, onEdit }) => {
   const { t } = useTranslation()
   const { notify } = useToastContext()
+  const [loading, setLoading] = useState(false)
   const [showConfirm, setShowConfirm] = useState(false)
-  const [formData, setFormData] = useState({ name: '', endpoint: '', apiKey: '' })
-  const isEditMode = true
+  const [formData, setFormData] = useState<CreateExternalAPIReq>({ name: '', settings: { endpoint: '', api_key: '' } })
 
-  const handleInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const { name, value } = e.target
-    setFormData({ ...formData, [name]: value })
+  useEffect(() => {
+    if (isEditMode && data)
+      setFormData(data)
+  }, [isEditMode, data])
+
+  const [, validatingApiKey, validatedApiKeyStatusState] = useValidateApiKey(formData.settings.api_key)
+  const [, validatingEndpoint, validatedEndpointStatusState] = useValidateEndpoint(formData.settings.endpoint)
+  const hasEmptyInputs = Object.values(formData).includes('')
+  const handleDataChange = (val: CreateExternalAPIReq) => {
+    setFormData(val)
   }
 
-  const handleFormSubmit = (e: React.FormEvent) => {
-    e.preventDefault()
-    // Handle form submission logic here
-    console.log('Form Data:', formData)
-    onHide()
+  const handleSave = async () => {
+    try {
+      setLoading(true)
+      if (isEditMode && onEdit) {
+        await onEdit(formData)
+        notify({ type: 'success', message: 'External API updated successfully' })
+      }
+      else {
+        const res = await createExternalAPI({ body: formData })
+        if (res && res.id) {
+          notify({ type: 'success', message: 'External API saved successfully' })
+          onSave(res)
+        }
+      }
+      onCancel()
+    }
+    catch (error) {
+      console.error('Error saving/updating external API:', error)
+      notify({ type: 'error', message: 'Failed to save/update External API' })
+    }
+    finally {
+      setLoading(false)
+    }
   }
 
   return (
@@ -51,69 +116,69 @@ const AddExternalAPIModal: FC<AddExternalAPIModalProps> = ({ show, onHide }) => 
             <div className='flex flex-col pt-6 pl-6 pb-3 pr-14 items-start gap-2 self-stretch'>
               <div className='self-stretch text-text-primary title-2xl-semi-bold flex-grow'>
                 {
-                  isEditMode ? t('dataset.editExternalAPIFormTitle') : t('dataset.createExternalAPIFormTitle')
+                  isEditMode ? t('dataset.editExternalAPIFormTitle') : t('dataset.createExternalAPI')
                 }
               </div>
-              {isEditMode && (
+              {isEditMode && (datasetBindings?.length ?? 0) > 0 && (
                 <div className='text-text-tertiary system-xs-regular flex items-center'>
                   {t('dataset.editExternalAPIFormWarning.front')}
                   <span className='text-text-accent cursor-pointer flex items-center'>
-                    &nbsp;3 {t('dataset.editExternalAPIFormWarning.end')}&nbsp;<Tooltip popupContent={'3 LINKED KNOWLEDGE --- needs to be modified'} asChild={false} position='bottom'><RiInformation2Line className='w-3.5 h-3.5' /></Tooltip>
+                    &nbsp;{datasetBindings?.length} {t('dataset.editExternalAPIFormWarning.end')}&nbsp;
+                    <Tooltip
+                      popupClassName='flex items-center self-stretch w-[320px]'
+                      popupContent={
+                        <div className='p-1'>
+                          <div className='flex pt-1 pb-0.5 pl-2 pr-3 items-start self-stretch'>
+                            <div className='text-text-tertiary system-xs-medium-uppercase'>{`${datasetBindings?.length} ${t('dataset.editExternalAPITooltipTitle')}`}</div>
+                            {datasetBindings?.map(binding => (
+                              <div key={binding.id} className='flex px-2 py-1 items-center gap-1 self-stretch'>
+                                <RiBook2Line className='w-4 h-4 text-text-secondary' />
+                                <div className='text-text-secondary system-sm-medium'>{binding.name}</div>
+                              </div>
+                            ))}
+                          </div>
+                        </div>
+                      }
+                      asChild={false}
+                      position='bottom'
+                    >
+                      <RiInformation2Line className='w-3.5 h-3.5' />
+                    </Tooltip>
                   </span>
                 </div>
               )}
             </div>
-            <ActionButton className='absolute top-5 right-5' onClick={onHide}>
+            <ActionButton className='absolute top-5 right-5' onClick={onCancel}>
               <RiCloseLine className='w-[18px] h-[18px] text-text-tertiary flex-shrink-0' />
             </ActionButton>
-            <form onSubmit={handleFormSubmit} className='flex px-6 py-3 flex-col justify-center items-start gap-4 self-stretch'>
-              <div className='flex flex-col justify-center items-start gap-4 self-stretch'>
-                <div className='flex flex-col items-start gap-1 self-stretch'>
-                  <label className='text-text-secondary system-sm-semibold' htmlFor='name'>
-                    {t('dataset.externalAPIForm.name')}
-                  </label>
-                  <Input
-                    type='text'
-                    id='name'
-                    name='name'
-                    value={formData.name}
-                    onChange={handleInputChange}
-                    required
-                  />
-                </div>
-                <div className='flex flex-col items-start gap-1 self-stretch'>
-                  <label className='text-text-secondary system-sm-semibold' htmlFor='endpoint'>
-                    {t('dataset.externalAPIForm.endpoint')}
-                  </label>
-                  <Input
-                    type='text'
-                    id='endpoint'
-                    name='endpoint'
-                    value={formData.endpoint}
-                    onChange={handleInputChange}
-                    required
-                  />
-                </div>
-                <div className='flex flex-col items-start gap-1 self-stretch'>
-                  <label className='text-text-secondary system-sm-semibold' htmlFor='apiKey'>
-                    {t('dataset.externalAPIForm.apiKey')}
-                  </label>
-                  <Input
-                    type='text'
-                    id='apiKey'
-                    name='apiKey'
-                    value={formData.apiKey}
-                    onChange={handleInputChange}
-                    required
-                  />
-                </div>
-              </div>
-            </form>
+            <Form
+              value={formData}
+              onChange={handleDataChange}
+              validatingApiKey={validatingApiKey}
+              validatedApiKeySuccess={validatedApiKeyStatusState?.status === ValidatedApiKeyStatus.Success}
+              validatingEndpoint={validatingEndpoint}
+              validatedEndpointSuccess={validatedEndpointStatusState?.status === ValidatedEndpointStatus.Success}
+              formSchemas={formSchemas}
+              className='flex px-6 py-3 flex-col justify-center items-start gap-4 self-stretch'
+            />
             <div className='flex p-6 pt-5 justify-end items-center gap-2 self-stretch'>
-              <Button type='button' variant='secondary' onClick={onHide}>
+              <Button type='button' variant='secondary' onClick={onCancel}>
                 {t('dataset.externalAPIForm.cancel')}
               </Button>
-              <Button type='submit' variant='primary'>
+              <Button
+                type='submit'
+                variant='primary'
+                onClick={() => {
+                  if (isEditMode && (datasetBindings?.length ?? 0) > 0)
+                    setShowConfirm(true)
+                  else if (isEditMode && onEdit)
+                    onEdit(formData)
+
+                  else
+                    handleSave()
+                }}
+                disabled={hasEmptyInputs || loading}
+              >
                 {t('dataset.externalAPIForm.save')}
               </Button>
             </div>
@@ -132,6 +197,16 @@ const AddExternalAPIModal: FC<AddExternalAPIModalProps> = ({ show, onHide }) => 
               {t('dataset.externalAPIForm.encrypted.end')}
             </div>
           </div>
+          {showConfirm && (datasetBindings?.length ?? 0) > 0 && (
+            <Confirm
+              isShow={showConfirm}
+              type='warning'
+              title='Warning'
+              content={`${t('datasets.editExternalAPIConfirmWarningContent.front')} ${datasetBindings?.length} ${t('datasets.editExternalAPIConfirmWarningContent.end')}`}
+              onCancel={() => setShowConfirm(false)}
+              onConfirm={handleSave}
+            />
+          )}
         </div>
       </PortalToFollowElemContent>
     </PortalToFollowElem>

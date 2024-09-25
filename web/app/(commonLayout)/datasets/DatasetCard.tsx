@@ -18,6 +18,7 @@ import Divider from '@/app/components/base/divider'
 import RenameDatasetModal from '@/app/components/datasets/rename-modal'
 import type { Tag } from '@/app/components/base/tag-management/constant'
 import TagSelector from '@/app/components/base/tag-management/selector'
+import CornerLabel from '@/app/components/base/corner-label'
 import { useAppContext } from '@/context/app-context'
 
 export type DatasetCardProps = {
@@ -108,13 +109,14 @@ const DatasetCard = ({
   return (
     <>
       <div
-        className='group col-span-1 bg-white border-2 border-solid border-transparent rounded-xl shadow-sm min-h-[160px] flex flex-col transition-all duration-200 ease-in-out cursor-pointer hover:shadow-lg'
+        className='group relative col-span-1 bg-white border-2 border-solid border-transparent rounded-xl shadow-sm min-h-[160px] flex flex-col transition-all duration-200 ease-in-out cursor-pointer hover:shadow-lg'
         data-disable-nprogress={true}
         onClick={(e) => {
           e.preventDefault()
           push(`/datasets/${dataset.id}/documents`)
         }}
       >
+        {dataset.provider === 'external' && <CornerLabel label='External' className='absolute right-0' labelClassName='rounded-tr-xl' />}
         <div className='flex pt-[14px] px-[14px] pb-3 h-[66px] items-center gap-3 grow-0 shrink-0'>
           <div className={cn(
             'shrink-0 flex items-center justify-center p-2.5 bg-[#F5F8FF] rounded-md border-[0.5px] border-[#E0EAFF]',

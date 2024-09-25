@@ -25,6 +25,7 @@ export type DataSet = {
   app_count: number
   document_count: number
   word_count: number
+  provider: string
   embedding_model: string
   embedding_model_provider: string
   embedding_available: boolean
@@ -42,13 +43,37 @@ export type ExternalAPIItem = {
   settings: {
     endpoint: string
     api_key: string
-    document_retrieval_setting: {
-      top_k: number
-      score_threshold: number
-    }
   }
+  dataset_bindings: { id: string; name: string }[]
   created_by: string
   created_at: string
+}
+
+export type ExternalKnowledgeItem = {
+  id: string
+  name: string
+  description: string | null
+  provider: 'external'
+  permission: DatasetPermission
+  data_source_type: null
+  indexing_technique: null
+  app_count: number
+  document_count: number
+  word_count: number
+  created_by: string
+  created_at: string
+  updated_by: string
+  updated_at: string
+  tags: Tag[]
+}
+
+export type ExternalAPIDeleteResponse = {
+  result: 'success' | 'error'
+}
+
+export type ExternalAPIUsage = {
+  is_using: boolean
+  count: number
 }
 
 export type CustomFile = File & {
