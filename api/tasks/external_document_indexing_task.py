@@ -8,17 +8,17 @@ from celery import shared_task
 from core.indexing_runner import DocumentIsPausedException
 from extensions.ext_database import db
 from extensions.ext_storage import storage
-from models.dataset import Dataset, ExternalApiTemplates
+from models.dataset import Dataset, ExternalKnowledgeApis
 from models.model import UploadFile
 from services.external_knowledge_service import ExternalDatasetService
 
 
 @shared_task(queue="dataset")
-def external_document_indexing_task(dataset_id: str, api_template_id: str, data_source: dict, process_parameter: dict):
+def external_document_indexing_task(dataset_id: str, external_knowledge_api_id: str, data_source: dict, process_parameter: dict):
     """
     Async process document
     :param dataset_id:
-    :param api_template_id:
+    :param external_knowledge_api_id:
     :param data_source:
     :param process_parameter:
     Usage: external_document_indexing_task.delay(dataset_id, document_id)
@@ -33,16 +33,16 @@ def external_document_indexing_task(dataset_id: str, api_template_id: str, data_
         return
 
     # get external api template
-    api_template = (
-        db.session.query(ExternalApiTemplates)
-        .filter(ExternalApiTemplates.id == api_template_id, ExternalApiTemplates.tenant_id == dataset.tenant_id)
+    external_knowledge_api = (
+        db.session.query(ExternalKnowledgeApis)
+        .filter(ExternalKnowledgeApis.id == external_knowledge_api_id, ExternalKnowledgeApis.tenant_id == dataset.tenant_id)
         .first()
     )
 
-    if not api_template:
+    if not external_knowledge_api:
         logging.info(
             click.style(
-                "Processed external dataset: {} failed, api template: {} not exit.".format(dataset_id, api_template_id),
+                "Processed external dataset: {} failed, api template: {} not exit.".format(dataset_id, external_knowledge_api_id),
                 fg="red",
             )
         )
@@ -59,7 +59,7 @@ def external_document_indexing_task(dataset_id: str, api_template_id: str, data_
             if file:
                 files[file.id] = (file.name, storage.load_once(file.key), file.mime_type)
     try:
-        settings = ExternalDatasetService.get_api_template_settings(json.loads(api_template.settings))
+        settings = ExternalDatasetService.get_external_knowledge_api_settings(json.loads(external_knowledge_api.settings))
         # assemble headers
         headers = ExternalDatasetService.assembling_headers(settings.authorization, settings.headers)
 

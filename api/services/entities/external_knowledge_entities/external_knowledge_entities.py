@@ -19,7 +19,7 @@ class ProcessStatusSetting(BaseModel):
     url: str
 
 
-class ApiTemplateSetting(BaseModel):
+class ExternalKnowledgeApiSetting(BaseModel):
     url: str
     request_method: str
     headers: Optional[dict] = None
