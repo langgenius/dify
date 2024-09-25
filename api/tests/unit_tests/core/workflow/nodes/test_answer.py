@@ -82,4 +82,4 @@ def test_execute_answer():
     result = node._run()
 
     assert result.status == WorkflowNodeExecutionStatus.SUCCEEDED
-    assert result.outputs["answer"] == "Today's weather is sunny\nYou are a helpful AI.\n{{img}}\nFin."
+    assert result.outputs["answer"] == "Today's weather is sunny\nYou are a helpful AI\n{{img}}\nFin."
