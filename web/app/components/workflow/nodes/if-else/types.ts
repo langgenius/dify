@@ -41,7 +41,7 @@ export type Condition = {
   variable_selector?: ValueSelector
   key?: string // sub variable key
   comparison_operator?: ComparisonOperator
-  value: string
+  value: string | string[]
   numberVarType?: NumberVarType
   sub_variable_condition?: CaseItem
 }

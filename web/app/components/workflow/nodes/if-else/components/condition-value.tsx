@@ -18,7 +18,7 @@ type ConditionValueProps = {
   variableSelector: string[]
   labelName?: string
   operator: ComparisonOperator
-  value: string
+  value: string | string[]
 }
 const ConditionValue = ({
   variableSelector,
@@ -36,6 +36,9 @@ const ConditionValue = ({
     if (notHasValue)
       return ''
 
+    if (Array.isArray(value)) // transfer method
+      return value[0]
+
     return value.replace(/{{#([^#]*)#}}/g, (a, b) => {
       const arr: string[] = b.split('.')
       if (isSystemVar(arr))
@@ -48,7 +51,7 @@ const ConditionValue = ({
   const isSelect = operator === ComparisonOperator.in || operator === ComparisonOperator.notIn
   const selectName = useMemo(() => {
     if (isSelect) {
-      const name = [...FILE_TYPE_OPTIONS, ...TRANSFER_METHOD].filter(item => item.value === value)[0]
+      const name = [...FILE_TYPE_OPTIONS, ...TRANSFER_METHOD].filter(item => item.value === (Array.isArray(value) ? value[0] : value))[0]
       return name
         ? t(`workflow.nodes.ifElse.optionName.${name.i18nKey}`).replace(/{{#([^#]*)#}}/g, (a, b) => {
           const arr: string[] = b.split('.')
