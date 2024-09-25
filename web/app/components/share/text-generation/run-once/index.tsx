@@ -14,7 +14,6 @@ import TextGenerationImageUploader from '@/app/components/base/image-uploader/te
 import type { VisionFile, VisionSettings } from '@/types/app'
 import { FileUploaderInAttachmentWrapper } from '@/app/components/base/file-uploader'
 import { getProcessedFiles } from '@/app/components/base/file-uploader/utils'
-// import { InputVarType } from '@/app/components/workflow/types'
 
 export type IRunOnceProps = {
   siteInfo: SiteInfo

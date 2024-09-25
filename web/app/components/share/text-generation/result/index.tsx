@@ -20,6 +20,9 @@ import type { WorkflowProcess } from '@/app/components/base/chat/types'
 import { sleep } from '@/utils'
 import type { SiteInfo } from '@/models/share'
 import { TEXT_GENERATION_TIMEOUT_MS } from '@/config'
+import {
+  getProcessedFilesFromResponse,
+} from '@/app/components/base/file-uploader/utils'
 
 export type IResultProps = {
   isWorkflow: boolean
@@ -295,6 +298,7 @@ const Result: FC<IResultProps> = ({
               if (isStringOutput) {
                 setWorkflowProcessData(produce(getWorkflowProcessData()!, (draft) => {
                   draft.resultText = data.outputs[Object.keys(data.outputs)[0]]
+                  draft.files = getProcessedFilesFromResponse(data.files || [])
                 }))
               }
             }

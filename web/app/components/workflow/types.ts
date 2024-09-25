@@ -6,7 +6,7 @@ import type {
 import type { Resolution, TransferMethod } from '@/types/app'
 import type { ToolDefaultValue } from '@/app/components/workflow/block-selector/types'
 import type { VarType as VarKindType } from '@/app/components/workflow/nodes/tool/types'
-import type { NodeTracing } from '@/types/workflow'
+import type { FileResponse, NodeTracing } from '@/types/workflow'
 import type { Collection, Tool } from '@/app/components/tools/types'
 import type { ChatVarType } from '@/app/components/workflow/panel/chat-variable-panel/type'
 
@@ -326,6 +326,7 @@ export type WorkflowRunningData = {
     steps?: number
     showSteps?: boolean
     total_steps?: number
+    files?: FileResponse[]
   }
   tracing?: NodeTracing[]
 }

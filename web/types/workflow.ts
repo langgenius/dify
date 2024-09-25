@@ -109,6 +109,7 @@ export type WorkflowFinishedResponse = {
       email: string
     }
     finished_at: number
+    files?: FileResponse[]
   }
 }
 

@@ -55,6 +55,7 @@ export type WorkflowProcess = {
   tracing: NodeTracing[]
   expand?: boolean // for UI
   resultText?: string
+  files?: FileEntity[]
 }
 
 export type ChatItem = IChatItem & {

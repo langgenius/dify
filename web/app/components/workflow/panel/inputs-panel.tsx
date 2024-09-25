@@ -1,5 +1,6 @@
 import {
   memo,
+  useCallback,
   useMemo,
 } from 'react'
 import { useTranslation } from 'react-i18next'
@@ -14,7 +15,7 @@ import {
   useStore,
   useWorkflowStore,
 } from '../store'
-import { useWorkflowRun } from '../hooks'
+import { useCheckStartNodeForm, useWorkflowRun } from '../hooks'
 import type { StartNodeType } from '../nodes/start/types'
 import { TransferMethod } from '../../base/text-generation/types'
 import Button from '@/app/components/base/button'
@@ -55,6 +56,8 @@ const InputsPanel = ({ onRun }: Props) => {
     return data
   }, [fileSettings?.image?.enabled, startVariables])
 
+  const { getProcessedInputs } = useCheckStartNodeForm()
+
   const handleValueChange = (variable: string, v: any) => {
     const {
       inputs,
@@ -73,17 +76,17 @@ const InputsPanel = ({ onRun }: Props) => {
     }
   }
 
-  const doRun = () => {
+  const doRun = useCallback(() => {
     onRun()
-    handleRun({ inputs, files })
-  }
+    handleRun({ inputs: getProcessedInputs(inputs), files })
+  }, [files, getProcessedInputs, handleRun, inputs, onRun])
 
-  const canRun = (() => {
+  const canRun = useMemo(() => {
     if (files?.some(item => (item.transfer_method as any) === TransferMethod.local_file && !item.upload_file_id))
       return false
 
     return true
-  })()
+  }, [files])
 
   return (
     <>
