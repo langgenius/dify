@@ -1,3 +1,4 @@
+from .constants import FILE_MODEL_IDENTITY
 from .enums import ArrayFileAttribute, FileAttribute, FileBelongsTo, FileTransferMethod, FileType
 from .models import (
     File,
@@ -14,4 +15,5 @@ __all__ = [
     "ImageConfig",
     "FileAttribute",
     "ArrayFileAttribute",
+    "FILE_MODEL_IDENTITY",
 ]

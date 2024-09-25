@@ -6,6 +6,7 @@ from pydantic import BaseModel, Field, model_validator
 from core.model_runtime.entities.message_entities import ImagePromptMessageContent
 
 from . import helpers
+from .constants import FILE_MODEL_IDENTITY
 from .enums import FileTransferMethod, FileType
 from .tool_file_parser import ToolFileParser
 
@@ -33,7 +34,7 @@ class FileExtraConfig(BaseModel):
 
 
 class File(BaseModel):
-    model_identity: str = "__dify__file__"
+    model_identity: str = FILE_MODEL_IDENTITY
 
     id: Optional[str] = None  # message file id
     tenant_id: str

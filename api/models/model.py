@@ -13,7 +13,7 @@ from sqlalchemy import Float, func, text
 from sqlalchemy.orm import Mapped, mapped_column
 
 from configs import dify_config
-from core.file import File
+from core.file import FILE_MODEL_IDENTITY, File
 from core.file import helpers as file_helpers
 from core.file.tool_file_parser import ToolFileParser
 from enums import FileTransferMethod, FileType
@@ -569,10 +569,10 @@ class Conversation(db.Model):
     def inputs(self):
         inputs = self._inputs.copy()
         for key, value in inputs.items():
-            if isinstance(value, dict) and value.get("model_identity") == File.model_identity:
+            if isinstance(value, dict) and value.get("model_identity") == FILE_MODEL_IDENTITY:
                 inputs[key] = File.model_validate(value)
             elif isinstance(value, list) and all(
-                isinstance(item, dict) and item.get("model_identity") == File.model_identity for item in value
+                isinstance(item, dict) and item.get("model_identity") == FILE_MODEL_IDENTITY for item in value
             ):
                 inputs[key] = [File.model_validate(item) for item in value]
         return inputs
