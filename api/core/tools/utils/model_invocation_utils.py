@@ -1,7 +1,7 @@
 """
-    For some reason, model will be used in tools like WebScraperTool, WikipediaSearchTool etc.
+For some reason, model will be used in tools like WebScraperTool, WikipediaSearchTool etc.
 
-    Therefore, a model manager is needed to list/invoke/validate models.
+Therefore, a model manager is needed to list/invoke/validate models.
 """
 
 import json
@@ -27,52 +27,49 @@ from models.tools import ToolModelInvoke
 class InvokeModelError(Exception):
     pass
 
+
 class ModelInvocationUtils:
     @staticmethod
     def get_max_llm_context_tokens(
         tenant_id: str,
     ) -> int:
         """
-            get max llm context tokens of the model
+        get max llm context tokens of the model
         """
         model_manager = ModelManager()
         model_instance = model_manager.get_default_model_instance(
-            tenant_id=tenant_id, model_type=ModelType.LLM,
+            tenant_id=tenant_id,
+            model_type=ModelType.LLM,
         )
 
         if not model_instance:
-            raise InvokeModelError('Model not found')
-        
+            raise InvokeModelError("Model not found")
+
         llm_model = cast(LargeLanguageModel, model_instance.model_type_instance)
         schema = llm_model.get_model_schema(model_instance.model, model_instance.credentials)
 
         if not schema:
-            raise InvokeModelError('No model schema found')
+            raise InvokeModelError("No model schema found")
 
         max_tokens = schema.model_properties.get(ModelPropertyKey.CONTEXT_SIZE, None)
         if max_tokens is None:
             return 2048
-        
+
         return max_tokens
 
     @staticmethod
-    def calculate_tokens(
-        tenant_id: str,
-        prompt_messages: list[PromptMessage]
-    ) -> int:
+    def calculate_tokens(tenant_id: str, prompt_messages: list[PromptMessage]) -> int:
         """
-            calculate tokens from prompt messages and model parameters
+        calculate tokens from prompt messages and model parameters
         """
 
         # get model instance
         model_manager = ModelManager()
-        model_instance = model_manager.get_default_model_instance(
-            tenant_id=tenant_id, model_type=ModelType.LLM
-        )
+        model_instance = model_manager.get_default_model_instance(tenant_id=tenant_id, model_type=ModelType.LLM)
 
         if not model_instance:
-            raise InvokeModelError('Model not found')
-        
+            raise InvokeModelError("Model not found")
+
         # get tokens
         tokens = model_instance.get_llm_num_tokens(prompt_messages)
 
@@ -80,9 +77,7 @@ class ModelInvocationUtils:
 
     @staticmethod
     def invoke(
-        user_id: str, tenant_id: str,
-        tool_type: str, tool_name: str,
-        prompt_messages: list[PromptMessage]
+        user_id: str, tenant_id: str, tool_type: str, tool_name: str, prompt_messages: list[PromptMessage]
     ) -> LLMResult:
         """
         invoke model with parameters in user's own context
@@ -103,15 +98,16 @@ class ModelInvocationUtils:
         model_manager = ModelManager()
         # get model instance
         model_instance = model_manager.get_default_model_instance(
-            tenant_id=tenant_id, model_type=ModelType.LLM,
+            tenant_id=tenant_id,
+            model_type=ModelType.LLM,
         )
 
         # get prompt tokens
         prompt_tokens = model_instance.get_llm_num_tokens(prompt_messages)
 
         model_parameters = {
-            'temperature': 0.8,
-            'top_p': 0.8,
+            "temperature": 0.8,
+            "top_p": 0.8,
         }
 
         # create tool model invoke
@@ -123,14 +119,14 @@ class ModelInvocationUtils:
             tool_name=tool_name,
             model_parameters=json.dumps(model_parameters),
             prompt_messages=json.dumps(jsonable_encoder(prompt_messages)),
-            model_response='',
+            model_response="",
             prompt_tokens=prompt_tokens,
             answer_tokens=0,
             answer_unit_price=0,
             answer_price_unit=0,
             provider_response_latency=0,
             total_price=0,
-            currency='USD',
+            currency="USD",
         )
 
         db.session.add(tool_model_invoke)
@@ -140,20 +136,24 @@ class ModelInvocationUtils:
             response: LLMResult = model_instance.invoke_llm(
                 prompt_messages=prompt_messages,
                 model_parameters=model_parameters,
-                tools=[], stop=[], stream=False, user=user_id, callbacks=[]
+                tools=[],
+                stop=[],
+                stream=False,
+                user=user_id,
+                callbacks=[],
             )
         except InvokeRateLimitError as e:
-            raise InvokeModelError(f'Invoke rate limit error: {e}')
+            raise InvokeModelError(f"Invoke rate limit error: {e}")
         except InvokeBadRequestError as e:
-            raise InvokeModelError(f'Invoke bad request error: {e}')
+            raise InvokeModelError(f"Invoke bad request error: {e}")
         except InvokeConnectionError as e:
-            raise InvokeModelError(f'Invoke connection error: {e}')
+            raise InvokeModelError(f"Invoke connection error: {e}")
         except InvokeAuthorizationError as e:
-            raise InvokeModelError('Invoke authorization error')
+            raise InvokeModelError("Invoke authorization error")
         except InvokeServerUnavailableError as e:
-            raise InvokeModelError(f'Invoke server unavailable error: {e}')
+            raise InvokeModelError(f"Invoke server unavailable error: {e}")
         except Exception as e:
-            raise InvokeModelError(f'Invoke error: {e}')
+            raise InvokeModelError(f"Invoke error: {e}")
 
         # update tool model invoke
         tool_model_invoke.model_response = response.message.content

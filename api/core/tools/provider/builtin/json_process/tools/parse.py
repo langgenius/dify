@@ -8,29 +8,30 @@ from core.tools.tool.builtin_tool import BuiltinTool
 
 
 class JSONParseTool(BuiltinTool):
-    def _invoke(self,
-                user_id: str,
-                tool_parameters: dict[str, Any],
-                ) -> Union[ToolInvokeMessage, list[ToolInvokeMessage]]:
+    def _invoke(
+        self,
+        user_id: str,
+        tool_parameters: dict[str, Any],
+    ) -> Union[ToolInvokeMessage, list[ToolInvokeMessage]]:
         """
-            invoke tools
+        invoke tools
         """
         # get content
-        content = tool_parameters.get('content', '')
+        content = tool_parameters.get("content", "")
         if not content:
-            return self.create_text_message('Invalid parameter content')
+            return self.create_text_message("Invalid parameter content")
 
         # get json filter
-        json_filter = tool_parameters.get('json_filter', '')
+        json_filter = tool_parameters.get("json_filter", "")
         if not json_filter:
-            return self.create_text_message('Invalid parameter json_filter')
+            return self.create_text_message("Invalid parameter json_filter")
 
-        ensure_ascii = tool_parameters.get('ensure_ascii', True)
+        ensure_ascii = tool_parameters.get("ensure_ascii", True)
         try:
             result = self._extract(content, json_filter, ensure_ascii)
             return self.create_text_message(str(result))
         except Exception:
-            return self.create_text_message('Failed to extract JSON content')
+            return self.create_text_message("Failed to extract JSON content")
 
     # Extract data from JSON content
     def _extract(self, content: str, json_filter: str, ensure_ascii: bool) -> str:

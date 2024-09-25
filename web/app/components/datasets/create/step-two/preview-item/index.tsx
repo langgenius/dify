@@ -41,14 +41,14 @@ const PreviewItem: FC<IPreviewItemProps> = ({
   const charNums = type === PreviewType.TEXT
     ? (content || '').length
     : (qa?.answer || '').length + (qa?.question || '').length
-  const formatedIndex = (() => String(index).padStart(3, '0'))()
+  const formattedIndex = (() => String(index).padStart(3, '0'))()
 
   return (
     <div className='p-4 rounded-xl bg-gray-50'>
       <div className='flex items-center justify-between h-5 text-xs text-gray-500'>
         <div className='flex items-center h-[18px] space-x-1 border border-gray-200 box-border rounded-md italic pl-1 pr-1.5 font-medium'>
           {sharpIcon}
-          <span>{formatedIndex}</span>
+          <span>{formattedIndex}</span>
         </div>
         <div className='flex items-center space-x-1'>
           {textIcon}

@@ -290,7 +290,7 @@ const translation = {
     historyNoBeEmpty: 'संवाद इतिहास प्रॉम्प्ट में सेट होना चाहिए',
     queryNoBeEmpty: 'प्रश्न प्रॉम्प्ट में सेट होना चाहिए',
   },
-  variableConig: {
+  variableConfig: {
     'addModalTitle': 'इनपुट फ़ील्ड जोड़ें',
     'editModalTitle': 'इनपुट फ़ील्ड संपादित करें',
     'description': 'वेरिएबल {{varName}} के लिए सेटिंग',

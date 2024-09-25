@@ -5,7 +5,7 @@ import Button from '../../base/button'
 import cn from '@/utils/classnames'
 import type { App } from '@/models/explore'
 import AppIcon from '@/app/components/base/app-icon'
-import { AiText, ChatBot, CuteRobote } from '@/app/components/base/icons/src/vender/solid/communication'
+import { AiText, ChatBot, CuteRobot } from '@/app/components/base/icons/src/vender/solid/communication'
 import { Route } from '@/app/components/base/icons/src/vender/solid/mapsAndTravel'
 export type AppCardProps = {
   app: App
@@ -38,7 +38,7 @@ const AppCard = ({
               <ChatBot className='w-3 h-3 text-[#1570EF]' />
             )}
             {appBasicInfo.mode === 'agent-chat' && (
-              <CuteRobote className='w-3 h-3 text-indigo-600' />
+              <CuteRobot className='w-3 h-3 text-indigo-600' />
             )}
             {appBasicInfo.mode === 'chat' && (
               <ChatBot className='w-3 h-3 text-[#1570EF]' />

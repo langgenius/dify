@@ -15,13 +15,14 @@ class BaseTraceInfo(BaseModel):
     metadata: dict[str, Any]
 
     @field_validator("inputs", "outputs")
+    @classmethod
     def ensure_type(cls, v):
         if v is None:
             return None
         if isinstance(v, str | dict | list):
             return v
-        else:
-            return ""
+        return ""
+
 
 class WorkflowTraceInfo(BaseTraceInfo):
     workflow_data: Any
@@ -98,23 +99,24 @@ class GenerateNameTraceInfo(BaseTraceInfo):
     conversation_id: Optional[str] = None
     tenant_id: str
 
+
 trace_info_info_map = {
-    'WorkflowTraceInfo': WorkflowTraceInfo,
-    'MessageTraceInfo': MessageTraceInfo,
-    'ModerationTraceInfo': ModerationTraceInfo,
-    'SuggestedQuestionTraceInfo': SuggestedQuestionTraceInfo,
-    'DatasetRetrievalTraceInfo': DatasetRetrievalTraceInfo,
-    'ToolTraceInfo': ToolTraceInfo,
-    'GenerateNameTraceInfo': GenerateNameTraceInfo,
+    "WorkflowTraceInfo": WorkflowTraceInfo,
+    "MessageTraceInfo": MessageTraceInfo,
+    "ModerationTraceInfo": ModerationTraceInfo,
+    "SuggestedQuestionTraceInfo": SuggestedQuestionTraceInfo,
+    "DatasetRetrievalTraceInfo": DatasetRetrievalTraceInfo,
+    "ToolTraceInfo": ToolTraceInfo,
+    "GenerateNameTraceInfo": GenerateNameTraceInfo,
 }
 
 
 class TraceTaskName(str, Enum):
-    CONVERSATION_TRACE = 'conversation'
-    WORKFLOW_TRACE = 'workflow'
-    MESSAGE_TRACE = 'message'
-    MODERATION_TRACE = 'moderation'
-    SUGGESTED_QUESTION_TRACE = 'suggested_question'
-    DATASET_RETRIEVAL_TRACE = 'dataset_retrieval'
-    TOOL_TRACE = 'tool'
-    GENERATE_NAME_TRACE = 'generate_conversation_name'
+    CONVERSATION_TRACE = "conversation"
+    WORKFLOW_TRACE = "workflow"
+    MESSAGE_TRACE = "message"
+    MODERATION_TRACE = "moderation"
+    SUGGESTED_QUESTION_TRACE = "suggested_question"
+    DATASET_RETRIEVAL_TRACE = "dataset_retrieval"
+    TOOL_TRACE = "tool"
+    GENERATE_NAME_TRACE = "generate_conversation_name"

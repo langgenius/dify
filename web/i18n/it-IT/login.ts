@@ -38,7 +38,7 @@ const translation = {
   tosDesc: 'Iscrivendoti, accetti i nostri',
   goToInit:
     'Se non hai inizializzato l\'account, vai alla pagina di inizializzazione',
-  donthave: 'Non hai?',
+  dontHave: 'Non hai?',
   invalidInvitationCode: 'Codice di invito non valido',
   accountAlreadyInited: 'Account già inizializzato',
   forgotPassword: 'Hai dimenticato la password?',

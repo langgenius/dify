@@ -42,8 +42,17 @@ x-shared-env: &shared-api-worker-env
   REDIS_PASSWORD: ${REDIS_PASSWORD:-difyai123456}
   REDIS_USE_SSL: ${REDIS_USE_SSL:-false}
   REDIS_DB: 0
+  REDIS_USE_SENTINEL: ${REDIS_USE_SENTINEL:-false}
+  REDIS_SENTINELS: ${REDIS_SENTINELS:-}
+  REDIS_SENTINEL_SERVICE_NAME: ${REDIS_SENTINEL_SERVICE_NAME:-}
+  REDIS_SENTINEL_USERNAME: ${REDIS_SENTINEL_USERNAME:-}
+  REDIS_SENTINEL_PASSWORD: ${REDIS_SENTINEL_PASSWORD:-}
+  REDIS_SENTINEL_SOCKET_TIMEOUT: ${REDIS_SENTINEL_SOCKET_TIMEOUT:-0.1}
   CELERY_BROKER_URL: ${CELERY_BROKER_URL:-redis://:difyai123456@redis:6379/1}
   BROKER_USE_SSL: ${BROKER_USE_SSL:-false}
+  CELERY_USE_SENTINEL: ${CELERY_USE_SENTINEL:-false}
+  CELERY_SENTINEL_MASTER_NAME: ${CELERY_SENTINEL_MASTER_NAME:-}
+  CELERY_SENTINEL_SOCKET_TIMEOUT: ${CELERY_SENTINEL_SOCKET_TIMEOUT:-0.1}
   WEB_API_CORS_ALLOW_ORIGINS: ${WEB_API_CORS_ALLOW_ORIGINS:-*}
   CONSOLE_CORS_ALLOW_ORIGINS: ${CONSOLE_CORS_ALLOW_ORIGINS:-*}
   STORAGE_TYPE: ${STORAGE_TYPE:-local}
@@ -66,17 +75,26 @@ x-shared-env: &shared-api-worker-env
   ALIYUN_OSS_ENDPOINT: ${ALIYUN_OSS_ENDPOINT:-}
   ALIYUN_OSS_REGION: ${ALIYUN_OSS_REGION:-}
   ALIYUN_OSS_AUTH_VERSION: ${ALIYUN_OSS_AUTH_VERSION:-v4}
-  ALIYUN_OSS_PATHS: ${ALIYUN_OSS_PATH:-}
+  ALIYUN_OSS_PATH: ${ALIYUN_OSS_PATH:-}
   TENCENT_COS_BUCKET_NAME: ${TENCENT_COS_BUCKET_NAME:-}
   TENCENT_COS_SECRET_KEY: ${TENCENT_COS_SECRET_KEY:-}
   TENCENT_COS_SECRET_ID: ${TENCENT_COS_SECRET_ID:-}
   TENCENT_COS_REGION: ${TENCENT_COS_REGION:-}
   TENCENT_COS_SCHEME: ${TENCENT_COS_SCHEME:-}
+  HUAWEI_OBS_BUCKET_NAME: ${HUAWEI_OBS_BUCKET_NAME:-}
+  HUAWEI_OBS_SECRET_KEY: ${HUAWEI_OBS_SECRET_KEY:-}
+  HUAWEI_OBS_ACCESS_KEY: ${HUAWEI_OBS_ACCESS_KEY:-}
+  HUAWEI_OBS_SERVER: ${HUAWEI_OBS_SERVER:-}
   OCI_ENDPOINT: ${OCI_ENDPOINT:-}
   OCI_BUCKET_NAME: ${OCI_BUCKET_NAME:-}
   OCI_ACCESS_KEY: ${OCI_ACCESS_KEY:-}
   OCI_SECRET_KEY: ${OCI_SECRET_KEY:-}
   OCI_REGION: ${OCI_REGION:-}
+  VOLCENGINE_TOS_BUCKET_NAME: ${VOLCENGINE_TOS_BUCKET_NAME:-}
+  VOLCENGINE_TOS_SECRET_KEY: ${VOLCENGINE_TOS_SECRET_KEY:-}
+  VOLCENGINE_TOS_ACCESS_KEY: ${VOLCENGINE_TOS_ACCESS_KEY:-}
+  VOLCENGINE_TOS_ENDPOINT: ${VOLCENGINE_TOS_ENDPOINT:-}
+  VOLCENGINE_TOS_REGION: ${VOLCENGINE_TOS_REGION:-}
   VECTOR_STORE: ${VECTOR_STORE:-weaviate}
   WEAVIATE_ENDPOINT: ${WEAVIATE_ENDPOINT:-http://weaviate:8080}
   WEAVIATE_API_KEY: ${WEAVIATE_API_KEY:-WVF5YThaHlkYwhGUSmCRgsX3tD5ngdN8pkih}
@@ -85,11 +103,10 @@ x-shared-env: &shared-api-worker-env
   QDRANT_CLIENT_TIMEOUT: ${QDRANT_CLIENT_TIMEOUT:-20}
   QDRANT_GRPC_ENABLED: ${QDRANT_GRPC_ENABLED:-false}
   QDRANT_GRPC_PORT: ${QDRANT_GRPC_PORT:-6334}
-  MILVUS_HOST: ${MILVUS_HOST:-127.0.0.1}
-  MILVUS_PORT: ${MILVUS_PORT:-19530}
+  MILVUS_URI: ${MILVUS_URI:-http://127.0.0.1:19530}
+  MILVUS_TOKEN: ${MILVUS_TOKEN:-}
   MILVUS_USER: ${MILVUS_USER:-root}
   MILVUS_PASSWORD: ${MILVUS_PASSWORD:-Milvus}
-  MILVUS_SECURE: ${MILVUS_SECURE:-false}
   MYSCALE_HOST: ${MYSCALE_HOST:-myscale}
   MYSCALE_PORT: ${MYSCALE_PORT:-8123}
   MYSCALE_USER: ${MYSCALE_USER:-default}
@@ -185,13 +202,16 @@ x-shared-env: &shared-api-worker-env
   CODE_MAX_STRING_ARRAY_LENGTH: ${CODE_MAX_STRING_ARRAY_LENGTH:-30}
   CODE_MAX_OBJECT_ARRAY_LENGTH: ${CODE_MAX_OBJECT_ARRAY_LENGTH:-30}
   CODE_MAX_NUMBER_ARRAY_LENGTH: ${CODE_MAX_NUMBER_ARRAY_LENGTH:-1000}
+  WORKFLOW_MAX_EXECUTION_STEPS: ${WORKFLOW_MAX_EXECUTION_STEPS:-500}
+  WORKFLOW_MAX_EXECUTION_TIME: ${WORKFLOW_MAX_EXECUTION_TIME:-1200}
+  WORKFLOW_CALL_MAX_DEPTH: ${WORKFLOW_MAX_EXECUTION_TIME:-5}
   SSRF_PROXY_HTTP_URL: ${SSRF_PROXY_HTTP_URL:-http://ssrf_proxy:3128}
   SSRF_PROXY_HTTPS_URL: ${SSRF_PROXY_HTTPS_URL:-http://ssrf_proxy:3128}
 
 services:
   # API service
   api:
-    image: langgenius/dify-api:0.7.3
+    image: langgenius/dify-api:0.8.3
     restart: always
     environment:
       # Use the shared environment variables.
@@ -211,7 +231,7 @@ services:
   # worker service
   # The Celery worker for processing the queue.
   worker:
-    image: langgenius/dify-api:0.7.3
+    image: langgenius/dify-api:0.8.3
     restart: always
     environment:
       # Use the shared environment variables.
@@ -230,13 +250,14 @@ services:
 
   # Frontend web application.
   web:
-    image: langgenius/dify-web:0.7.3
+    image: langgenius/dify-web:0.8.3
     restart: always
     environment:
       CONSOLE_API_URL: ${CONSOLE_API_URL:-}
       APP_API_URL: ${APP_API_URL:-}
       SENTRY_DSN: ${WEB_SENTRY_DSN:-}
       NEXT_TELEMETRY_DISABLED: ${NEXT_TELEMETRY_DISABLED:-0}
+      TEXT_GENERATION_TIMEOUT_MS: ${TEXT_GENERATION_TIMEOUT_MS:-60000}
 
   # The postgres database.
   db:
@@ -275,7 +296,7 @@ services:
 
   # The DifySandbox
   sandbox:
-    image: langgenius/dify-sandbox:0.2.6
+    image: langgenius/dify-sandbox:0.2.9
     restart: always
     environment:
       # The DifySandbox configurations
@@ -290,6 +311,8 @@ services:
       SANDBOX_PORT: ${SANDBOX_PORT:-8194}
     volumes:
       - ./volumes/sandbox/dependencies:/dependencies
+    healthcheck:
+      test: [ "CMD", "curl", "-f", "http://localhost:8194/health" ]
     networks:
       - ssrf_proxy_network
 
@@ -332,7 +355,7 @@ services:
       - CERTBOT_DOMAIN=${CERTBOT_DOMAIN}
       - CERTBOT_OPTIONS=${CERTBOT_OPTIONS:-}
     entrypoint: [ "/docker-entrypoint.sh" ]
-    command: ["tail", "-f", "/dev/null"]
+    command: [ "tail", "-f", "/dev/null" ]
 
   # The nginx reverse proxy.
   # used for reverse proxying the API service and Web service.
@@ -378,7 +401,7 @@ services:
   weaviate:
     image: semitechnologies/weaviate:1.19.0
     profiles:
-      - ''
+      - ""
       - weaviate
     restart: always
     volumes:
@@ -474,13 +497,13 @@ services:
       - oracle
     restart: always
     volumes:
-      - type: volume
-        source: oradata
+      - source: oradata
+        type: volume
         target: /opt/oracle/oradata
       - ./startupscripts:/opt/oracle/scripts/startup
     environment:
-      - ORACLE_PWD=${ORACLE_PWD:-Dify123456}
-      - ORACLE_CHARACTERSET=${ORACLE_CHARACTERSET:-AL32UTF8}
+      ORACLE_PWD: ${ORACLE_PWD:-Dify123456}
+      ORACLE_CHARACTERSET: ${ORACLE_CHARACTERSET:-AL32UTF8}
 
   # Milvus vector database services
   etcd:
@@ -489,10 +512,10 @@ services:
     profiles:
       - milvus
     environment:
-      - ETCD_AUTO_COMPACTION_MODE=${ETCD_AUTO_COMPACTION_MODE:-revision}
-      - ETCD_AUTO_COMPACTION_RETENTION=${ETCD_AUTO_COMPACTION_RETENTION:-1000}
-      - ETCD_QUOTA_BACKEND_BYTES=${ETCD_QUOTA_BACKEND_BYTES:-4294967296}
-      - ETCD_SNAPSHOT_COUNT=${ETCD_SNAPSHOT_COUNT:-50000}
+      ETCD_AUTO_COMPACTION_MODE: ${ETCD_AUTO_COMPACTION_MODE:-revision}
+      ETCD_AUTO_COMPACTION_RETENTION: ${ETCD_AUTO_COMPACTION_RETENTION:-1000}
+      ETCD_QUOTA_BACKEND_BYTES: ${ETCD_QUOTA_BACKEND_BYTES:-4294967296}
+      ETCD_SNAPSHOT_COUNT: ${ETCD_SNAPSHOT_COUNT:-50000}
     volumes:
       - ./volumes/milvus/etcd:/etcd
     command: etcd -advertise-client-urls=http://127.0.0.1:2379 -listen-client-urls http://0.0.0.0:2379 --data-dir /etcd
@@ -542,8 +565,11 @@ services:
       timeout: 20s
       retries: 3
     depends_on:
-      - "etcd"
-      - "minio"
+      - etcd
+      - minio
+    ports:
+      - 19530:19530
+      - 9091:9091
     networks:
       - milvus
 
@@ -554,10 +580,10 @@ services:
     profiles:
       - opensearch
     environment:
-      - discovery.type=${OPENSEARCH_DISCOVERY_TYPE:-single-node}
-      - bootstrap.memory_lock=${OPENSEARCH_BOOTSTRAP_MEMORY_LOCK:-true}
-      - OPENSEARCH_JAVA_OPTS=-Xms${OPENSEARCH_JAVA_OPTS_MIN:-512m} -Xmx${OPENSEARCH_JAVA_OPTS_MAX:-1024m}
-      - OPENSEARCH_INITIAL_ADMIN_PASSWORD=${OPENSEARCH_INITIAL_ADMIN_PASSWORD:-Qazwsxedc!@#123}
+      discovery.type: ${OPENSEARCH_DISCOVERY_TYPE:-single-node}
+      bootstrap.memory_lock: ${OPENSEARCH_BOOTSTRAP_MEMORY_LOCK:-true}
+      OPENSEARCH_JAVA_OPTS: -Xms${OPENSEARCH_JAVA_OPTS_MIN:-512m} -Xmx${OPENSEARCH_JAVA_OPTS_MAX:-1024m}
+      OPENSEARCH_INITIAL_ADMIN_PASSWORD: ${OPENSEARCH_INITIAL_ADMIN_PASSWORD:-Qazwsxedc!@#123}
     ulimits:
       memlock:
         soft: ${OPENSEARCH_MEMLOCK_SOFT:--1}
@@ -597,7 +623,7 @@ services:
       - ./volumes/myscale/log:/var/log/clickhouse-server
       - ./volumes/myscale/config/users.d/custom_users_config.xml:/etc/clickhouse-server/users.d/custom_users_config.xml
     ports:
-      - "${MYSCALE_PORT:-8123}:${MYSCALE_PORT:-8123}"
+      - ${MYSCALE_PORT:-8123}:${MYSCALE_PORT:-8123}
 
   # https://www.elastic.co/guide/en/elasticsearch/reference/current/settings.html
   # https://www.elastic.co/guide/en/elasticsearch/reference/current/docker.html#docker-prod-prerequisites
@@ -610,18 +636,18 @@ services:
     volumes:
       - dify_es01_data:/usr/share/elasticsearch/data
     environment:
-      - ELASTIC_PASSWORD=${ELASTICSEARCH_PASSWORD:-elastic}
-      - cluster.name=dify-es-cluster
-      - node.name=dify-es0
-      - discovery.type=single-node
-      - xpack.license.self_generated.type=trial
-      - xpack.security.enabled=true
-      - xpack.security.enrollment.enabled=false
-      - xpack.security.http.ssl.enabled=false
+      ELASTIC_PASSWORD: ${ELASTICSEARCH_PASSWORD:-elastic}
+      cluster.name: dify-es-cluster
+      node.name: dify-es0
+      discovery.type: single-node
+      xpack.license.self_generated.type: trial
+      xpack.security.enabled: "true"
+      xpack.security.enrollment.enabled: "false"
+      xpack.security.http.ssl.enabled: "false"
     ports:
       - ${ELASTICSEARCH_PORT:-9200}:9200
     healthcheck:
-      test: ["CMD", "curl", "-s", "http://localhost:9200/_cluster/health?pretty"]
+      test: [ "CMD", "curl", "-s", "http://localhost:9200/_cluster/health?pretty" ]
       interval: 30s
       timeout: 10s
       retries: 50
@@ -637,15 +663,15 @@ services:
       - elasticsearch
     restart: always
     environment:
-      - XPACK_ENCRYPTEDSAVEDOBJECTS_ENCRYPTIONKEY=d1a66dfd-c4d3-4a0a-8290-2abcb83ab3aa
-      - NO_PROXY=localhost,127.0.0.1,elasticsearch,kibana
-      - XPACK_SECURITY_ENABLED=true
-      - XPACK_SECURITY_ENROLLMENT_ENABLED=false
-      - XPACK_SECURITY_HTTP_SSL_ENABLED=false
-      - XPACK_FLEET_ISAIRGAPPED=true
-      - I18N_LOCALE=zh-CN
-      - SERVER_PORT=5601
-      - ELASTICSEARCH_HOSTS="http://elasticsearch:9200"
+      XPACK_ENCRYPTEDSAVEDOBJECTS_ENCRYPTIONKEY: d1a66dfd-c4d3-4a0a-8290-2abcb83ab3aa
+      NO_PROXY: localhost,127.0.0.1,elasticsearch,kibana
+      XPACK_SECURITY_ENABLED: "true"
+      XPACK_SECURITY_ENROLLMENT_ENABLED: "false"
+      XPACK_SECURITY_HTTP_SSL_ENABLED: "false"
+      XPACK_FLEET_ISAIRGAPPED: "true"
+      I18N_LOCALE: zh-CN
+      SERVER_PORT: "5601"
+      ELASTICSEARCH_HOSTS: http://elasticsearch:9200
     ports:
       - ${KIBANA_PORT:-5601}:5601
     healthcheck:

@@ -7,9 +7,9 @@ class MoreLikeThisConfigManager:
         :param config: model config args
         """
         more_like_this = False
-        more_like_this_dict = config.get('more_like_this')
+        more_like_this_dict = config.get("more_like_this")
         if more_like_this_dict:
-            if more_like_this_dict.get('enabled'):
+            if more_like_this_dict.get("enabled"):
                 more_like_this = True
 
         return more_like_this
@@ -22,9 +22,7 @@ class MoreLikeThisConfigManager:
         :param config: app model config args
         """
         if not config.get("more_like_this"):
-            config["more_like_this"] = {
-                "enabled": False
-            }
+            config["more_like_this"] = {"enabled": False}
 
         if not isinstance(config["more_like_this"], dict):
             raise ValueError("more_like_this must be of dict type")

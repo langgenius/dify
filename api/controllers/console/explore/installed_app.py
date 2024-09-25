@@ -31,7 +31,7 @@ class InstalledAppsListApi(Resource):
                 "app_owner_tenant_id": installed_app.app_owner_tenant_id,
                 "is_pinned": installed_app.is_pinned,
                 "last_used_at": installed_app.last_used_at,
-                "editable": current_user.role in ["owner", "admin"],
+                "editable": current_user.role in {"owner", "admin"},
                 "uninstallable": current_tenant_id == installed_app.app_owner_tenant_id,
             }
             for installed_app in installed_apps

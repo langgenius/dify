@@ -88,7 +88,7 @@ const translation = {
   switchTipEnd: ' switching back to Basic Orchestrate.',
   switchLabel: 'The app copy to be created',
   removeOriginal: 'Delete the original app',
-  switchStart: 'Start swtich',
+  switchStart: 'Start switch',
   typeSelector: {
     all: 'ALL Types',
     chatbot: 'Chatbot',

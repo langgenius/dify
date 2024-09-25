@@ -52,6 +52,8 @@ const translation = {
           title: 'वर्कफ़्लो स्टेप्स',
           show: 'दिखाएं',
           hide: 'छुपाएं',
+          subTitle: 'कार्यप्रवाह विवरण',
+          showDesc: 'WebApp में वर्कफ़्लो विवरण दिखाएँ या छुपाएँ',
         },
         chatColorTheme: 'चैटबॉट का रंग थीम',
         chatColorThemeDesc: 'चैटबॉट का रंग थीम निर्धारित करें',
@@ -69,6 +71,12 @@ const translation = {
           customDisclaimerPlaceholder: 'कस्टम अस्वीकरण टेक्स्ट दर्ज करें',
           customDisclaimerTip:
             'कस्टम अस्वीकरण टेक्स्ट क्लाइंट साइड पर प्रदर्शित होगा, जो एप्लिकेशन के बारे में अतिरिक्त जानकारी प्रदान करेगा',
+        },
+        sso: {
+          title: 'वेबएप एसएसओ',
+          label: 'SSO प्रमाणीकरण',
+          description: 'WebApp का उपयोग करने से पहले सभी उपयोगकर्ताओं को SSO के साथ लॉगिन करना आवश्यक है',
+          tooltip: 'WebApp SSO को सक्षम करने के लिए व्यवस्थापक से संपर्क करें',
         },
       },
       embedded: {
@@ -130,8 +138,11 @@ const translation = {
     tokenPS: 'टोकन/से.',
     totalMessages: {
       title: 'कुल संदेश',
-      explanation:
-        'दैनिक एआई इंटरैक्शन की गिनती; प्रॉम्प्ट इंजीनियरिंग/डीबगिंग को शामिल नहीं किया गया।',
+      explanation: 'दैनिक AI इंटरैक्शन की गिनती।',
+    },
+    totalConversations: {
+      title: 'कुल वार्तालाप',
+      explanation: 'दैनिक AI वार्तालाप की गिनती; प्रॉम्प्ट इंजीनियरिंग/डीबगिंग शामिल नहीं।',
     },
     activeUsers: {
       title: 'सक्रिय उपयोगकर्ता',

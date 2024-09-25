@@ -1,6 +1,6 @@
 from typing import Optional
 
-from pydantic import BaseModel
+from ...core import BaseModel
 
 __all__ = ["Completion", "CompletionUsage"]
 
@@ -41,5 +41,3 @@ class Completion(BaseModel):
     request_id: Optional[str] = None
     id: Optional[str] = None
     usage: CompletionUsage
-
-

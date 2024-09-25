@@ -37,7 +37,7 @@ const translation = {
       recommend: 'おすすめ',
     },
     invertedIndex: {
-      title: '逆インデックス',
+      title: '転置インデックス',
       description: '効率的な検索に使用される構造です。各用語が含まれるドキュメントまたはWebページを指すように、用語ごとに整理されています。',
     },
     change: '変更',
@@ -53,6 +53,7 @@ const translation = {
     semantic_search: 'ベクトル検索',
     full_text_search: 'フルテキスト検索',
     hybrid_search: 'ハイブリッド検索',
+    invertedIndex: '逆さま',
   },
   mixtureHighQualityAndEconomicTip: '高品質なナレッジベースと経済的なナレッジベースを混在させるには、Rerankモデルを構成する必要がある。',
   inconsistentEmbeddingModelTip: '選択されたナレッジベースが一貫性のない埋め込みモデルで構成されている場合、Rerankモデルの構成が必要です。',
@@ -70,6 +71,7 @@ const translation = {
   nTo1RetrievalLegacy: '製品計画によると、N-to-1 Retrievalは9月に正式に廃止される予定です。それまでは通常通り使用できます。',
   nTo1RetrievalLegacyLink: '詳細を見る',
   nTo1RetrievalLegacyLinkText: ' N-to-1 retrievalは9月に正式に廃止されます。',
+  defaultRetrievalTip: 'デフォルトでは、マルチパス取得が使用されます。ナレッジは複数のナレッジ ベースから取得され、再ランク付けされます。',
 }
 
 export default translation

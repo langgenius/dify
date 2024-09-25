@@ -13,12 +13,8 @@ class AzureDALLEProvider(BuiltinToolProviderController):
                     "credentials": credentials,
                 }
             ).invoke(
-                user_id='',
-                tool_parameters={
-                    "prompt": "cute girl, blue eyes, white hair, anime style",
-                    "size": "square",
-                    "n": 1
-                },
+                user_id="",
+                tool_parameters={"prompt": "cute girl, blue eyes, white hair, anime style", "size": "square", "n": 1},
             )
         except Exception as e:
             raise ToolProviderCredentialValidationError(str(e))

@@ -1,6 +1,6 @@
 {
   "name": "dify-web",
-  "version": "0.7.3",
+  "version": "0.8.3",
   "private": true,
   "engines": {
     "node": ">=18.17.0"
@@ -37,6 +37,7 @@
     "@remixicon/react": "^4.2.0",
     "@sentry/react": "^7.54.0",
     "@sentry/utils": "^7.54.0",
+    "@svgdotjs/svg.js": "^3.2.4",
     "@tailwindcss/line-clamp": "^0.4.4",
     "@tailwindcss/typography": "^0.5.9",
     "ahooks": "^3.7.5",
@@ -87,6 +88,7 @@
     "reactflow": "^11.11.3",
     "recordrtc": "^5.6.2",
     "rehype-katex": "^6.0.2",
+    "rehype-raw": "^7.0.0",
     "remark-breaks": "^3.0.2",
     "remark-gfm": "^3.0.1",
     "remark-math": "^5.1.1",

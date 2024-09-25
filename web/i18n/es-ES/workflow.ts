@@ -36,7 +36,7 @@ const translation = {
     searchVar: 'Buscar variable',
     variableNamePlaceholder: 'Nombre de la variable',
     setVarValuePlaceholder: 'Establecer variable',
-    needConnecttip: 'Este paso no está conectado a nada',
+    needConnectTip: 'Este paso no está conectado a nada',
     maxTreeDepth: 'Límite máximo de {{depth}} nodos por rama',
     needEndNode: 'Debe agregarse el bloque de Fin',
     needAnswerNode: 'Debe agregarse el bloque de Respuesta',
@@ -77,6 +77,24 @@ const translation = {
     overwriteAndImport: 'Sobrescribir e importar',
     importFailure: 'Error al importar',
     importSuccess: 'Importación exitosa',
+    parallelTip: {
+      click: {
+        title: 'Clic',
+        desc: 'Para agregar',
+      },
+      drag: {
+        title: 'Arrastrar',
+        desc: 'Para conectarse',
+      },
+      limit: 'El paralelismo se limita a {{num}} ramas.',
+      depthLimit: 'Límite de capa de anidamiento paralelo de capas {{num}}',
+    },
+    parallelRun: 'Ejecución paralela',
+    disconnect: 'Desconectar',
+    jumpToNode: 'Saltar a este nodo',
+    addParallelNode: 'Agregar nodo paralelo',
+    parallel: 'PARALELO',
+    branch: 'RAMA',
   },
   env: {
     envPanelTitle: 'Variables de Entorno',
@@ -186,6 +204,7 @@ const translation = {
     'transform': 'Transformar',
     'utilities': 'Utilidades',
     'noResult': 'No se encontraron coincidencias',
+    'searchTool': 'Herramienta de búsqueda',
   },
   blocks: {
     'start': 'Inicio',
@@ -411,10 +430,12 @@ const translation = {
         'not empty': 'no está vacío',
         'null': 'es nulo',
         'not null': 'no es nulo',
+        'regex match': 'Coincidencia de expresiones regulares',
       },
       enterValue: 'Ingresa un valor',
       addCondition: 'Agregar condición',
       conditionNotSetup: 'Condición NO configurada',
+      selectVariable: 'Seleccionar variable...',
     },
     variableAssigner: {
       title: 'Asignar variables',
@@ -532,6 +553,9 @@ const translation = {
     tracing: {
       stopBy: 'Detenido por {{user}}',
     },
+  },
+  tracing: {
+    stopBy: 'Pásate por {{usuario}}',
   },
 }
 

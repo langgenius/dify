@@ -13,15 +13,17 @@ logger = logging.getLogger(__name__)
 
 class TTSModel(AIModel):
     """
-    Model class for ttstext model.
+    Model class for TTS model.
     """
+
     model_type: ModelType = ModelType.TTS
 
     # pydantic configs
     model_config = ConfigDict(protected_namespaces=())
 
-    def invoke(self, model: str, tenant_id: str, credentials: dict, content_text: str, voice: str,
-               user: Optional[str] = None):
+    def invoke(
+        self, model: str, tenant_id: str, credentials: dict, content_text: str, voice: str, user: Optional[str] = None
+    ):
         """
         Invoke large language model
 
@@ -35,14 +37,21 @@ class TTSModel(AIModel):
         :return: translated audio file
         """
         try:
-            return self._invoke(model=model, credentials=credentials, user=user,
-                                content_text=content_text, voice=voice, tenant_id=tenant_id)
+            return self._invoke(
+                model=model,
+                credentials=credentials,
+                user=user,
+                content_text=content_text,
+                voice=voice,
+                tenant_id=tenant_id,
+            )
         except Exception as e:
             raise self._transform_invoke_error(e)
 
     @abstractmethod
-    def _invoke(self, model: str, tenant_id: str, credentials: dict, content_text: str, voice: str,
-                user: Optional[str] = None):
+    def _invoke(
+        self, model: str, tenant_id: str, credentials: dict, content_text: str, voice: str, user: Optional[str] = None
+    ):
         """
         Invoke large language model
 
@@ -71,10 +80,13 @@ class TTSModel(AIModel):
         if model_schema and ModelPropertyKey.VOICES in model_schema.model_properties:
             voices = model_schema.model_properties[ModelPropertyKey.VOICES]
             if language:
-                return [{'name': d['name'], 'value': d['mode']} for d in voices if
-                        language and language in d.get('language')]
+                return [
+                    {"name": d["name"], "value": d["mode"]}
+                    for d in voices
+                    if language and language in d.get("language")
+                ]
             else:
-                return [{'name': d['name'], 'value': d['mode']} for d in voices]
+                return [{"name": d["name"], "value": d["mode"]} for d in voices]
 
     def _get_model_default_voice(self, model: str, credentials: dict) -> any:
         """
@@ -123,23 +135,23 @@ class TTSModel(AIModel):
             return model_schema.model_properties[ModelPropertyKey.MAX_WORKERS]
 
     @staticmethod
-    def _split_text_into_sentences(org_text, max_length=2000, pattern=r'[。.!?]'):
+    def _split_text_into_sentences(org_text, max_length=2000, pattern=r"[。.!?]"):
         match = re.compile(pattern)
         tx = match.finditer(org_text)
         start = 0
         result = []
-        one_sentence = ''
+        one_sentence = ""
         for i in tx:
             end = i.regs[0][1]
             tmp = org_text[start:end]
             if len(one_sentence + tmp) > max_length:
                 result.append(one_sentence)
-                one_sentence = ''
+                one_sentence = ""
             one_sentence += tmp
             start = end
         last_sens = org_text[start:]
         if last_sens:
             one_sentence += last_sens
-        if one_sentence != '':
+        if one_sentence != "":
             result.append(one_sentence)
         return result

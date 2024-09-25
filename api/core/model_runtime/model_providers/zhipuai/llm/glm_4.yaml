@@ -23,20 +23,38 @@ parameter_rules:
     help:
       zh_Hans: 用温度取样的另一种方法，称为核取样取值范围是：(0.0, 1.0) 开区间，不能等于 0 或 1，默认值为 0.7 模型考虑具有 top_p 概率质量tokens的结果例如：0.1 意味着模型解码器只考虑从前 10% 的概率的候选集中取 tokens 建议您根据应用场景调整 top_p 或 temperature 参数，但不要同时调整两个参数。
       en_US: Another method of temperature sampling is called kernel sampling. The value range is (0.0, 1.0) open interval, which cannot be equal to 0 or 1. The default value is 0.7. The model considers the results with top_p probability mass tokens. For example 0.1 means The model decoder only considers tokens from the candidate set with the top 10% probability. It is recommended that you adjust the top_p or temperature parameters according to the application scenario, but do not adjust both parameters at the same time.
-  - name: incremental
+  - name: do_sample
     label:
-      zh_Hans: 增量返回
-      en_US: Incremental
+      zh_Hans: 采样策略
+      en_US: Sampling strategy
     type: boolean
     help:
-      zh_Hans: SSE接口调用时，用于控制每次返回内容方式是增量还是全量，不提供此参数时默认为增量返回，true 为增量返回，false 为全量返回。
-      en_US: When the SSE interface is called, it is used to control whether the content is returned incrementally or in full. If this parameter is not provided, the default is incremental return. true means incremental return, false means full return.
-    required: false
+      zh_Hans: do_sample 为 true 时启用采样策略，do_sample 为 false 时采样策略 temperature、top_p 将不生效。默认值为 true。
+      en_US: When `do_sample` is set to true, the sampling strategy is enabled. When `do_sample` is set to false, the sampling strategies such as `temperature` and `top_p` will not take effect. The default value is true.
+    default: true
+  - name: stream
+    label:
+      zh_Hans: 流处理
+      en_US: Event Stream
+    type: boolean
+    help:
+      zh_Hans: 使用同步调用时，此参数应当设置为 fasle 或者省略。表示模型生成完所有内容后一次性返回所有内容。默认值为 false。如果设置为 true，模型将通过标准 Event Stream ，逐块返回模型生成内容。Event Stream 结束时会返回一条data：[DONE]消息。注意：在模型流式输出生成内容的过程中，我们会分批对模型生成内容进行检测，当检测到违法及不良信息时，API会返回错误码（1301）。开发者识别到错误码（1301），应及时采取（清屏、重启对话）等措施删除生成内容，并确保不将含有违法及不良信息的内容传递给模型继续生成，避免其造成负面影响。
+      en_US: When using synchronous invocation, this parameter should be set to false or omitted. It indicates that the model will return all the generated content at once after the generation is complete. The default value is false. If set to true, the model will return the generated content in chunks via the standard Event Stream. A data：[DONE] message will be sent at the end of the Event Stream.Note：During the model's streaming output process, we will batch check the generated content. If illegal or harmful information is detected, the API will return an error code (1301). Developers who identify error code (1301) should promptly take actions such as clearing the screen or restarting the conversation to delete the generated content. They should also ensure that no illegal or harmful content is passed back to the model for continued generation to avoid negative impacts.
+    default: false
   - name: max_tokens
     use_template: max_tokens
     default: 1024
     min: 1
-    max: 8192
+    max: 4095
+  - name: web_search
+    type: boolean
+    label:
+      zh_Hans: 联网搜索
+      en_US: Web Search
+    default: false
+    help:
+      zh_Hans: 模型内置了互联网搜索服务，该参数控制模型在生成文本时是否参考使用互联网搜索结果。启用互联网搜索，模型会将搜索结果作为文本生成过程中的参考信息，但模型会基于其内部逻辑“自行判断”是否使用互联网搜索结果。
+      en_US: The model has a built-in Internet search service. This parameter controls whether the model refers to Internet search results when generating text. When Internet search is enabled, the model will use the search results as reference information in the text generation process, but the model will "judge" whether to use Internet search results based on its internal logic.
 pricing:
   input: '0.1'
   output: '0.1'

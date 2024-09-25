@@ -15,39 +15,38 @@ class DatasetConfigManager:
         :param config: model config args
         """
         dataset_ids = []
-        if 'datasets' in config.get('dataset_configs', {}):
-            datasets = config.get('dataset_configs', {}).get('datasets', {
-                'strategy': 'router',
-                'datasets': []
-            })
+        if "datasets" in config.get("dataset_configs", {}):
+            datasets = config.get("dataset_configs", {}).get("datasets", {"strategy": "router", "datasets": []})
 
-            for dataset in datasets.get('datasets', []):
+            for dataset in datasets.get("datasets", []):
                 keys = list(dataset.keys())
-                if len(keys) == 0 or keys[0] != 'dataset':
+                if len(keys) == 0 or keys[0] != "dataset":
                     continue
 
-                dataset = dataset['dataset']
+                dataset = dataset["dataset"]
 
-                if 'enabled' not in dataset or not dataset['enabled']:
+                if "enabled" not in dataset or not dataset["enabled"]:
                     continue
 
-                dataset_id = dataset.get('id', None)
+                dataset_id = dataset.get("id", None)
                 if dataset_id:
                     dataset_ids.append(dataset_id)
 
-        if 'agent_mode' in config and config['agent_mode'] \
-                and 'enabled' in config['agent_mode'] \
-                and config['agent_mode']['enabled']:
+        if (
+            "agent_mode" in config
+            and config["agent_mode"]
+            and "enabled" in config["agent_mode"]
+            and config["agent_mode"]["enabled"]
+        ):
+            agent_dict = config.get("agent_mode", {})
 
-            agent_dict = config.get('agent_mode', {})
-
-            for tool in agent_dict.get('tools', []):
+            for tool in agent_dict.get("tools", []):
                 keys = tool.keys()
                 if len(keys) == 1:
                     # old standard
                     key = list(tool.keys())[0]
 
-                    if key != 'dataset':
+                    if key != "dataset":
                         continue
 
                     tool_item = tool[key]
@@ -55,30 +54,28 @@ class DatasetConfigManager:
                     if "enabled" not in tool_item or not tool_item["enabled"]:
                         continue
 
-                    dataset_id = tool_item['id']
+                    dataset_id = tool_item["id"]
                     dataset_ids.append(dataset_id)
 
         if len(dataset_ids) == 0:
             return None
 
         # dataset configs
-        if 'dataset_configs' in config and config.get('dataset_configs'):
-            dataset_configs = config.get('dataset_configs')
+        if "dataset_configs" in config and config.get("dataset_configs"):
+            dataset_configs = config.get("dataset_configs")
         else:
-            dataset_configs = {
-                'retrieval_model': 'multiple'
-            }
-        query_variable = config.get('dataset_query_variable')
+            dataset_configs = {"retrieval_model": "multiple"}
+        query_variable = config.get("dataset_query_variable")
 
-        if dataset_configs['retrieval_model'] == 'single':
+        if dataset_configs["retrieval_model"] == "single":
             return DatasetEntity(
                 dataset_ids=dataset_ids,
                 retrieve_config=DatasetRetrieveConfigEntity(
                     query_variable=query_variable,
                     retrieve_strategy=DatasetRetrieveConfigEntity.RetrieveStrategy.value_of(
-                        dataset_configs['retrieval_model']
-                    )
-                )
+                        dataset_configs["retrieval_model"]
+                    ),
+                ),
             )
         else:
             return DatasetEntity(
@@ -86,15 +83,15 @@ class DatasetConfigManager:
                 retrieve_config=DatasetRetrieveConfigEntity(
                     query_variable=query_variable,
                     retrieve_strategy=DatasetRetrieveConfigEntity.RetrieveStrategy.value_of(
-                        dataset_configs['retrieval_model']
+                        dataset_configs["retrieval_model"]
                     ),
-                    top_k=dataset_configs.get('top_k', 4),
-                    score_threshold=dataset_configs.get('score_threshold'),
-                    reranking_model=dataset_configs.get('reranking_model'),
-                    weights=dataset_configs.get('weights'),
-                    reranking_enabled=dataset_configs.get('reranking_enabled', True),
-                    rerank_mode=dataset_configs.get('reranking_mode', 'reranking_model'),
-                )
+                    top_k=dataset_configs.get("top_k", 4),
+                    score_threshold=dataset_configs.get("score_threshold"),
+                    reranking_model=dataset_configs.get("reranking_model"),
+                    weights=dataset_configs.get("weights"),
+                    reranking_enabled=dataset_configs.get("reranking_enabled", True),
+                    rerank_mode=dataset_configs.get("reranking_mode", "reranking_model"),
+                ),
             )
 
     @classmethod
@@ -111,13 +108,10 @@ class DatasetConfigManager:
 
         # dataset_configs
         if not config.get("dataset_configs"):
-            config["dataset_configs"] = {'retrieval_model': 'single'}
+            config["dataset_configs"] = {"retrieval_model": "single"}
 
         if not config["dataset_configs"].get("datasets"):
-            config["dataset_configs"]["datasets"] = {
-                "strategy": "router",
-                "datasets": []
-            }
+            config["dataset_configs"]["datasets"] = {"strategy": "router", "datasets": []}
 
         if not isinstance(config["dataset_configs"], dict):
             raise ValueError("dataset_configs must be of object type")
@@ -125,8 +119,9 @@ class DatasetConfigManager:
         if not isinstance(config["dataset_configs"], dict):
             raise ValueError("dataset_configs must be of object type")
 
-        need_manual_query_datasets = (config.get("dataset_configs")
-                                      and config["dataset_configs"].get("datasets", {}).get("datasets"))
+        need_manual_query_datasets = config.get("dataset_configs") and config["dataset_configs"].get(
+            "datasets", {}
+        ).get("datasets")
 
         if need_manual_query_datasets and app_mode == AppMode.COMPLETION:
             # Only check when mode is completion
@@ -148,10 +143,7 @@ class DatasetConfigManager:
         """
         # Extract dataset config for legacy compatibility
         if not config.get("agent_mode"):
-            config["agent_mode"] = {
-                "enabled": False,
-                "tools": []
-            }
+            config["agent_mode"] = {"enabled": False, "tools": []}
 
         if not isinstance(config["agent_mode"], dict):
             raise ValueError("agent_mode must be of object type")
@@ -175,7 +167,7 @@ class DatasetConfigManager:
             config["agent_mode"]["strategy"] = PlanningStrategy.ROUTER.value
 
         has_datasets = False
-        if config["agent_mode"]["strategy"] in [PlanningStrategy.ROUTER.value, PlanningStrategy.REACT_ROUTER.value]:
+        if config["agent_mode"]["strategy"] in {PlanningStrategy.ROUTER.value, PlanningStrategy.REACT_ROUTER.value}:
             for tool in config["agent_mode"]["tools"]:
                 key = list(tool.keys())[0]
                 if key == "dataset":
@@ -188,7 +180,7 @@ class DatasetConfigManager:
                     if not isinstance(tool_item["enabled"], bool):
                         raise ValueError("enabled in agent_mode.tools must be of boolean type")
 
-                    if 'id' not in tool_item:
+                    if "id" not in tool_item:
                         raise ValueError("id is required in dataset")
 
                     try:

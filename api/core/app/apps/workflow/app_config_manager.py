@@ -12,6 +12,7 @@ class WorkflowAppConfig(WorkflowUIBasedAppConfig):
     """
     Workflow App Config Entity.
     """
+
     pass
 
 
@@ -26,13 +27,9 @@ class WorkflowAppConfigManager(BaseAppConfigManager):
             app_id=app_model.id,
             app_mode=app_mode,
             workflow_id=workflow.id,
-            sensitive_word_avoidance=SensitiveWordAvoidanceConfigManager.convert(
-                config=features_dict
-            ),
-            variables=WorkflowVariablesConfigManager.convert(
-                workflow=workflow
-            ),
-            additional_features=cls.convert_features(features_dict, app_mode)
+            sensitive_word_avoidance=SensitiveWordAvoidanceConfigManager.convert(config=features_dict),
+            variables=WorkflowVariablesConfigManager.convert(workflow=workflow),
+            additional_features=cls.convert_features(features_dict, app_mode),
         )
 
         return app_config
@@ -50,8 +47,7 @@ class WorkflowAppConfigManager(BaseAppConfigManager):
 
         # file upload validation
         config, current_related_config_keys = FileUploadConfigManager.validate_and_set_defaults(
-            config=config,
-            is_vision=False
+            config=config, is_vision=False
         )
         related_config_keys.extend(current_related_config_keys)
 
@@ -61,9 +57,7 @@ class WorkflowAppConfigManager(BaseAppConfigManager):
 
         # moderation validation
         config, current_related_config_keys = SensitiveWordAvoidanceConfigManager.validate_and_set_defaults(
-            tenant_id=tenant_id,
-            config=config,
-            only_structure_validate=only_structure_validate
+            tenant_id=tenant_id, config=config, only_structure_validate=only_structure_validate
         )
         related_config_keys.extend(current_related_config_keys)
 

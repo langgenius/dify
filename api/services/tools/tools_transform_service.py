@@ -33,7 +33,7 @@ class ToolTransformService:
 
         if provider_type == ToolProviderType.BUILT_IN.value:
             return url_prefix + "builtin/" + provider_name + "/icon"
-        elif provider_type in [ToolProviderType.API.value, ToolProviderType.WORKFLOW.value]:
+        elif provider_type in {ToolProviderType.API.value, ToolProviderType.WORKFLOW.value}:
             try:
                 return json.loads(icon)
             except:
@@ -74,12 +74,14 @@ class ToolTransformService:
                 en_US=provider_controller.identity.description.en_US,
                 zh_Hans=provider_controller.identity.description.zh_Hans,
                 pt_BR=provider_controller.identity.description.pt_BR,
+                ja_JP=provider_controller.identity.description.ja_JP,
             ),
             icon=provider_controller.identity.icon,
             label=I18nObject(
                 en_US=provider_controller.identity.label.en_US,
                 zh_Hans=provider_controller.identity.label.zh_Hans,
                 pt_BR=provider_controller.identity.label.pt_BR,
+                ja_JP=provider_controller.identity.label.ja_JP,
             ),
             type=ToolProviderType.BUILT_IN,
             masked_credentials={},

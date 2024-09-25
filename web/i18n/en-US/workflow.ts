@@ -36,7 +36,7 @@ const translation = {
     searchVar: 'Search variable',
     variableNamePlaceholder: 'Variable name',
     setVarValuePlaceholder: 'Set variable',
-    needConnecttip: 'This step is not connected to anything',
+    needConnectTip: 'This step is not connected to anything',
     maxTreeDepth: 'Maximum limit of {{depth}} nodes per branch',
     needEndNode: 'The End block must be added',
     needAnswerNode: 'The Answer block must be added',
@@ -77,6 +77,24 @@ const translation = {
     overwriteAndImport: 'Overwrite and Import',
     importFailure: 'Import failure',
     importSuccess: 'Import success',
+    parallelRun: 'Parallel Run',
+    parallelTip: {
+      click: {
+        title: 'Click',
+        desc: ' to add',
+      },
+      drag: {
+        title: 'Drag',
+        desc: ' to connect',
+      },
+      limit: 'Parallelism is limited to {{num}} branches.',
+      depthLimit: 'Parallel nesting layer limit of {{num}} layers',
+    },
+    disconnect: 'Disconnect',
+    jumpToNode: 'Jump to this node',
+    addParallelNode: 'Add Parallel Node',
+    parallel: 'PARALLEL',
+    branch: 'BRANCH',
   },
   env: {
     envPanelTitle: 'Environment Variables',
