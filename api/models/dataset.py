@@ -171,6 +171,29 @@ class Dataset(db.Model):
 
         return tags or []
 
+    @property
+    def external_knowledge_info(self):
+        if self.provider != "external":
+            return None
+        external_knowledge_binding = (
+            db.session.query(ExternalKnowledgeBindings).filter(ExternalKnowledgeBindings.dataset_id == self.id).first()
+        )
+        if not external_knowledge_binding:
+            return None
+        external_knowledge_api = (
+            db.session.query(ExternalKnowledgeApis)
+            .filter(ExternalKnowledgeApis.id == external_knowledge_binding.external_knowledge_api_id)
+            .first()
+        )
+        if not external_knowledge_api:
+            return None
+        return {
+            "external_knowledge_id": external_knowledge_binding.external_knowledge_id,
+            "external_knowledge_api_id": external_knowledge_api.id,
+            "external_knowledge_api_name": external_knowledge_api.name,
+            "external_knowledge_api_endpoint": json.loads(external_knowledge_api.settings).get("endpoint", ""),
+        }
+
     @staticmethod
     def gen_collection_name_by_id(dataset_id: str) -> str:
         normalized_dataset_id = dataset_id.replace("-", "_")
@@ -698,12 +721,12 @@ class DatasetPermission(db.Model):
     created_at = db.Column(db.DateTime, nullable=False, server_default=db.text("CURRENT_TIMESTAMP(0)"))
 
 
-class ExternalApiTemplates(db.Model):
-    __tablename__ = "external_api_templates"
+class ExternalKnowledgeApis(db.Model):
+    __tablename__ = "external_knowledge_apis"
     __table_args__ = (
-        db.PrimaryKeyConstraint("id", name="external_api_template_pkey"),
-        db.Index("external_api_templates_tenant_idx", "tenant_id"),
-        db.Index("external_api_templates_name_idx", "name"),
+        db.PrimaryKeyConstraint("id", name="external_knowledge_apis_pkey"),
+        db.Index("external_knowledge_apis_tenant_idx", "tenant_id"),
+        db.Index("external_knowledge_apis_name_idx", "name"),
     )
 
     id = db.Column(StringUUID, nullable=False, server_default=db.text("uuid_generate_v4()"))
@@ -723,6 +746,7 @@ class ExternalApiTemplates(db.Model):
             "name": self.name,
             "description": self.description,
             "settings": self.settings_dict,
+            "dataset_bindings": self.dataset_bindings,
             "created_by": self.created_by,
             "created_at": self.created_at.isoformat(),
         }
@@ -734,6 +758,21 @@ class ExternalApiTemplates(db.Model):
         except JSONDecodeError:
             return None
 
+    @property
+    def dataset_bindings(self):
+        external_knowledge_bindings = (
+            db.session.query(ExternalKnowledgeBindings)
+            .filter(ExternalKnowledgeBindings.external_knowledge_api_id == self.id)
+            .all()
+        )
+        dataset_ids = [binding.dataset_id for binding in external_knowledge_bindings]
+        datasets = db.session.query(Dataset).filter(Dataset.id.in_(dataset_ids)).all()
+        dataset_bindings = []
+        for dataset in datasets:
+            dataset_bindings.append({"id": dataset.id, "name": dataset.name})
+
+        return dataset_bindings
+
 
 class ExternalKnowledgeBindings(db.Model):
     __tablename__ = "external_knowledge_bindings"
@@ -742,12 +781,12 @@ class ExternalKnowledgeBindings(db.Model):
         db.Index("external_knowledge_bindings_tenant_idx", "tenant_id"),
         db.Index("external_knowledge_bindings_dataset_idx", "dataset_id"),
         db.Index("external_knowledge_bindings_external_knowledge_idx", "external_knowledge_id"),
-        db.Index("external_knowledge_bindings_external_api_template_idx", "external_api_template_id"),
+        db.Index("external_knowledge_bindings_external_knowledge_api_idx", "external_knowledge_api_id"),
     )
 
     id = db.Column(StringUUID, nullable=False, server_default=db.text("uuid_generate_v4()"))
     tenant_id = db.Column(StringUUID, nullable=False)
-    external_api_template_id = db.Column(StringUUID, nullable=False)
+    external_knowledge_api_id = db.Column(StringUUID, nullable=False)
     dataset_id = db.Column(StringUUID, nullable=False)
     external_knowledge_id = db.Column(db.Text, nullable=False)
     created_by = db.Column(StringUUID, nullable=False)

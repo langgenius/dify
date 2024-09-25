@@ -23,7 +23,7 @@ def _validate_name(name):
 
 
 def _validate_description_length(description):
-    if len(description) > 400:
+    if description and len(description) > 400:
         raise ValueError("Description cannot exceed 400 characters.")
     return description
 
@@ -37,12 +37,12 @@ class ExternalApiTemplateListApi(Resource):
         limit = request.args.get("limit", default=20, type=int)
         search = request.args.get("keyword", default=None, type=str)
 
-        api_templates, total = ExternalDatasetService.get_external_api_templates(
+        external_knowledge_apis, total = ExternalDatasetService.get_external_knowledge_apis(
             page, limit, current_user.current_tenant_id, search
         )
         response = {
-            "data": [item.to_dict() for item in api_templates],
-            "has_more": len(api_templates) == limit,
+            "data": [item.to_dict() for item in external_knowledge_apis],
+            "has_more": len(external_knowledge_apis) == limit,
             "limit": limit,
             "total": total,
             "page": page,
@@ -62,13 +62,6 @@ class ExternalApiTemplateListApi(Resource):
             type=_validate_name,
         )
         parser.add_argument(
-            "description",
-            nullable=True,
-            required=False,
-            help="Description is required. Description must be between 1 to 400 characters.",
-            type=_validate_description_length,
-        )
-        parser.add_argument(
             "settings",
             type=dict,
             location="json",
@@ -84,13 +77,13 @@ class ExternalApiTemplateListApi(Resource):
             raise Forbidden()
 
         try:
-            api_template = ExternalDatasetService.create_api_template(
+            external_knowledge_api = ExternalDatasetService.create_external_knowledge_api(
                 tenant_id=current_user.current_tenant_id, user_id=current_user.id, args=args
             )
         except services.errors.dataset.DatasetNameDuplicateError:
             raise DatasetNameDuplicateError()
 
-        return api_template.to_dict(), 201
+        return external_knowledge_api.to_dict(), 201
 
 
 class ExternalApiTemplateApi(Resource):
@@ -99,17 +92,17 @@ class ExternalApiTemplateApi(Resource):
     @account_initialization_required
     def get(self, external_knowledge_api_id):
         external_knowledge_api_id = str(external_knowledge_api_id)
-        api_template = ExternalDatasetService.get_api_template(external_knowledge_api_id)
-        if api_template is None:
+        external_knowledge_api = ExternalDatasetService.get_external_knowledge_api(external_knowledge_api_id)
+        if external_knowledge_api is None:
             raise NotFound("API template not found.")
 
-        return api_template.to_dict(), 200
+        return external_knowledge_api.to_dict(), 200
 
     @setup_required
     @login_required
     @account_initialization_required
-    def patch(self, api_template_id):
-        api_template_id = str(api_template_id)
+    def patch(self, external_knowledge_api_id):
+        external_knowledge_api_id = str(external_knowledge_api_id)
 
         parser = reqparse.RequestParser()
         parser.add_argument(
@@ -118,13 +111,6 @@ class ExternalApiTemplateApi(Resource):
             required=True,
             help="type is required. Name must be between 1 to 100 characters.",
             type=_validate_name,
-        )
-        parser.add_argument(
-            "description",
-            nullable=True,
-            required=False,
-            help="description is required. Description must be between 1 to 400 characters.",
-            type=_validate_description_length,
         )
         parser.add_argument(
             "settings",
@@ -136,27 +122,27 @@ class ExternalApiTemplateApi(Resource):
         args = parser.parse_args()
         ExternalDatasetService.validate_api_list(args["settings"])
 
-        api_template = ExternalDatasetService.update_api_template(
+        external_knowledge_api = ExternalDatasetService.update_external_knowledge_api(
             tenant_id=current_user.current_tenant_id,
             user_id=current_user.id,
-            api_template_id=api_template_id,
+            external_knowledge_api_id=external_knowledge_api_id,
             args=args,
         )
 
-        return api_template.to_dict(), 200
+        return external_knowledge_api.to_dict(), 200
 
     @setup_required
     @login_required
     @account_initialization_required
-    def delete(self, api_template_id):
-        api_template_id = str(api_template_id)
+    def delete(self, external_knowledge_api_id):
+        external_knowledge_api_id = str(external_knowledge_api_id)
 
         # The role of the current user in the ta table must be admin, owner, or editor
         if not current_user.is_editor or current_user.is_dataset_operator:
             raise Forbidden()
 
-        ExternalDatasetService.delete_api_template(current_user.current_tenant_id, api_template_id)
-        return {"result": "success"}, 204
+        ExternalDatasetService.delete_external_knowledge_api(current_user.current_tenant_id, external_knowledge_api_id)
+        return {"result": "success"}, 200
 
 
 class ExternalApiUseCheckApi(Resource):
@@ -166,8 +152,10 @@ class ExternalApiUseCheckApi(Resource):
     def get(self, external_knowledge_api_id):
         external_knowledge_api_id = str(external_knowledge_api_id)
 
-        external_api_template_is_using = ExternalDatasetService.external_api_template_use_check(external_knowledge_api_id)
-        return {"is_using": external_api_template_is_using}, 200
+        external_knowledge_api_is_using, count = ExternalDatasetService.external_knowledge_api_use_check(
+            external_knowledge_api_id
+        )
+        return {"is_using": external_knowledge_api_is_using, "count": count}, 200
 
 
 class ExternalDatasetInitApi(Resource):
@@ -180,7 +168,7 @@ class ExternalDatasetInitApi(Resource):
             raise Forbidden()
 
         parser = reqparse.RequestParser()
-        parser.add_argument("api_template_id", type=str, required=True, nullable=True, location="json")
+        parser.add_argument("external_knowledge_api_id", type=str, required=True, nullable=True, location="json")
         # parser.add_argument('name', nullable=False, required=True,
         #                     help='name is required. Name must be between 1 to 100 characters.',
         #                     type=_validate_name)
@@ -196,7 +184,7 @@ class ExternalDatasetInitApi(Resource):
 
         # validate args
         ExternalDatasetService.document_create_args_validate(
-            current_user.current_tenant_id, args["api_template_id"], args["process_parameter"]
+            current_user.current_tenant_id, args["external_knowledge_api_id"], args["process_parameter"]
         )
 
         try:
@@ -222,7 +210,7 @@ class ExternalDatasetCreateApi(Resource):
             raise Forbidden()
 
         parser = reqparse.RequestParser()
-        parser.add_argument("external_api_template_id", type=str, required=True, nullable=False, location="json")
+        parser.add_argument("external_knowledge_api_id", type=str, required=True, nullable=False, location="json")
         parser.add_argument("external_knowledge_id", type=str, required=True, nullable=False, location="json")
         parser.add_argument(
             "name",
