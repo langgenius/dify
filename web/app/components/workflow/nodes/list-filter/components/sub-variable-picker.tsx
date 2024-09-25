@@ -49,7 +49,7 @@ const SubVariablePicker: FC<Props> = ({
         onSelect={handleChange}
         className='!text-[13px]'
         placeholder={t('workflow.nodes.listFilter.selectVariableKeyPlaceholder')!}
-        optionClassName='pl-4 pr-5 py-0'
+        optionClassName='pl-1 pr-5 py-0'
         renderOption={renderOption}
         renderTrigger={item => (
           <div className='group/sub-variable-picker flex items-center h-8 pl-1 rounded-lg bg-components-input-bg-normal hover:bg-state-base-hover-alt'>
