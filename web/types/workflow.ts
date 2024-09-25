@@ -133,6 +133,7 @@ export type FileResponse = {
   related_id: string
   extension: string
   filename: string
+  size: number
   mime_type: string
   transfer_method: TransferMethod
   type: string

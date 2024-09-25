@@ -158,6 +158,7 @@ const Answer: FC<AnswerProps> = ({
             {
               allFiles?.length && (
                 <FileList
+                  className='my-1'
                   files={allFiles}
                   showDeleteAction={false}
                   showDownloadAction
