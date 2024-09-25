@@ -6,6 +6,7 @@ import type {
   OnSend,
 } from '../types'
 import { useChat } from '../chat/hooks'
+import { getLastAnswer } from '../utils'
 import { useEmbeddedChatbotContext } from './context'
 import ConfigPanel from './config-panel'
 import { isDify } from './utils'
@@ -73,7 +74,7 @@ const ChatWrapper = () => {
       query: message,
       inputs: currentConversationId ? currentConversationItem?.inputs : newConversationInputs,
       conversation_id: currentConversationId,
-      parent_message_id: last_answer?.id || chatListRef.current.at(-1)?.id || null,
+      parent_message_id: last_answer?.id || getLastAnswer(chatListRef.current)?.id || null,
     }
 
     if (appConfig?.file_upload?.image.enabled && files?.length)
@@ -107,13 +108,13 @@ const ChatWrapper = () => {
 
     const prevMessages = chatList.slice(0, index)
     const question = prevMessages.pop()
-    const lastAnswer = prevMessages.at(-1)
+    const lastAnswer = getLastAnswer(prevMessages)
 
     if (!question)
       return
 
     handleUpdateChatList(prevMessages)
-    doSend(question.content, question.message_files, (!lastAnswer || lastAnswer.isOpeningStatement) ? undefined : lastAnswer)
+    doSend(question.content, question.message_files, lastAnswer)
   }, [chatList, handleUpdateChatList, doSend])
 
   const chatNode = useMemo(() => {

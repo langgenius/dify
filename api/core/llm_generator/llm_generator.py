@@ -47,6 +47,8 @@ class LLMGenerator:
             )
         answer = response.message.content
         cleaned_answer = re.sub(r"^.*(\{.*\}).*$", r"\1", answer, flags=re.DOTALL)
+        if cleaned_answer is None:
+            return ""
         result_dict = json.loads(cleaned_answer)
         answer = result_dict["Your Output"]
         name = answer.strip()

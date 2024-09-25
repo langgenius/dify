@@ -25,6 +25,7 @@ import {
   stopChatMessageResponding,
 } from '@/service/debug'
 import { useStore as useAppStore } from '@/app/components/app/store'
+import { getLastAnswer } from '@/app/components/base/chat/utils'
 
 type ChatWrapperProps = {
   showConversationVariableModal: boolean
@@ -82,7 +83,7 @@ const ChatWrapper = forwardRef<ChatWrapperRefType, ChatWrapperProps>(({ showConv
         files,
         inputs: workflowStore.getState().inputs,
         conversation_id: conversationId,
-        parent_message_id: last_answer?.id || chatListRef.current.at(-1)?.id || null,
+        parent_message_id: last_answer?.id || getLastAnswer(chatListRef.current)?.id || null,
       },
       {
         onGetSuggestedQuestions: (messageId, getAbortController) => fetchSuggestedQuestions(appDetail!.id, messageId, getAbortController),
@@ -97,13 +98,13 @@ const ChatWrapper = forwardRef<ChatWrapperRefType, ChatWrapperProps>(({ showConv
 
     const prevMessages = chatList.slice(0, index)
     const question = prevMessages.pop()
-    const lastAnswer = prevMessages.at(-1)
+    const lastAnswer = getLastAnswer(prevMessages)
 
     if (!question)
       return
 
     handleUpdateChatList(prevMessages)
-    doSend(question.content, question.message_files, (!lastAnswer || lastAnswer.isOpeningStatement) ? undefined : lastAnswer)
+    doSend(question.content, question.message_files, lastAnswer)
   }, [chatList, handleUpdateChatList, doSend])
 
   useImperativeHandle(ref, () => {

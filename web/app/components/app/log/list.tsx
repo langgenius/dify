@@ -83,7 +83,6 @@ const PARAM_MAP = {
   frequency_penalty: 'Frequency Penalty',
 }
 
-// Format interface data for easy display
 const getFormattedChatList = (messages: ChatMessage[], conversationId: string, timezone: string, format: string) => {
   const newChatList: IChatItem[] = []
   messages.forEach((item: ChatMessage) => {

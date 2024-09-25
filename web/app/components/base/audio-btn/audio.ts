@@ -12,7 +12,7 @@ export default class AudioPlayer {
   mediaSource: MediaSource | null
   audio: HTMLAudioElement
   audioContext: AudioContext
-  sourceBuffer?: SourceBuffer
+  sourceBuffer?: any
   cacheBuffers: ArrayBuffer[] = []
   pauseTimer: number | null = null
   msgId: string | undefined
@@ -33,7 +33,7 @@ export default class AudioPlayer {
     this.callback = callback
 
     // Compatible with iphone ios17 ManagedMediaSource
-    const MediaSource = window.MediaSource || window.ManagedMediaSource
+    const MediaSource = window.ManagedMediaSource || window.MediaSource
     if (!MediaSource) {
       Toast.notify({
         message: 'Your browser does not support audio streaming, if you are using an iPhone, please update to iOS 17.1 or later.',
@@ -43,6 +43,10 @@ export default class AudioPlayer {
     this.mediaSource = MediaSource ? new MediaSource() : null
     this.audio = new Audio()
     this.setCallback(callback)
+    if (!window.MediaSource) { // if use  ManagedMediaSource
+      this.audio.disableRemotePlayback = true
+      this.audio.controls = true
+    }
     this.audio.src = this.mediaSource ? URL.createObjectURL(this.mediaSource) : ''
     this.audio.autoplay = true
 

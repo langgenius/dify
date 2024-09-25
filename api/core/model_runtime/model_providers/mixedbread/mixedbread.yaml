@@ -1,0 +1,31 @@
+provider: mixedbread
+label:
+  en_US: MixedBread
+description:
+  en_US: Embedding and Rerank Model Supported
+icon_small:
+  en_US: icon_s_en.png
+icon_large:
+  en_US: icon_l_en.png
+background: "#EFFDFD"
+help:
+  title:
+    en_US: Get your API key from MixedBread AI
+    zh_Hans: 从 MixedBread 获取 API Key
+  url:
+    en_US: https://www.mixedbread.ai/
+supported_model_types:
+  - text-embedding
+  - rerank
+configurate_methods:
+  - predefined-model
+provider_credential_schema:
+  credential_form_schemas:
+    - variable: api_key
+      label:
+        en_US: API Key
+      type: secret-input
+      required: true
+      placeholder:
+        zh_Hans: 在此输入您的 API Key
+        en_US: Enter your API Key

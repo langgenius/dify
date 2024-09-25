@@ -5,7 +5,7 @@ with open("README.md", "r", encoding="utf-8") as fh:
 
 setup(
     name="dify-client",
-    version="0.1.10",
+    version="0.1.12",
     author="Dify",
     author_email="hello@dify.ai",
     description="A package for interacting with the Dify Service-API",

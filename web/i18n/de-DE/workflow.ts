@@ -93,6 +93,8 @@ const translation = {
     disconnect: 'Trennen',
     jumpToNode: 'Zu diesem Knoten springen',
     addParallelNode: 'Parallelen Knoten hinzufügen',
+    parallel: 'PARALLEL',
+    branch: 'ZWEIG',
   },
   env: {
     envPanelTitle: 'Umgebungsvariablen',

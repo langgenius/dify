@@ -39,3 +39,15 @@ parameters:
       pt_BR: O número de resultados de pesquisa a serem retornados, permitindo que os usuários controlem a amplitude de sua saída de pesquisa.
     llm_description: Specifies the amount of search results to be displayed, offering users the ability to adjust the scope of their search findings.
     form: llm
+  - name: ensure_ascii
+    type: boolean
+    default: true
+    label:
+      en_US: Ensure ASCII
+      zh_Hans: 确保 ASCII
+      pt_BR: Ensure ASCII
+    human_description:
+      en_US: Ensure the JSON output is ASCII encoded
+      zh_Hans: 确保输出的 JSON 是 ASCII 编码
+      pt_BR: Ensure the JSON output is ASCII encoded
+    form: form

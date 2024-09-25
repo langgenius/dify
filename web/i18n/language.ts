@@ -31,10 +31,8 @@ export const languages = data.languages
 export const LanguagesSupported = languages.filter(item => item.supported).map(item => item.value)
 
 export const getLanguage = (locale: string) => {
-  if (locale === 'zh-Hans')
-    return locale.replace('-', '_')
-
-  return LanguagesSupported[0].replace('-', '_')
+  const supportedLocale = LanguagesSupported.find(lang => lang.startsWith(locale.split('-')[0]))
+  return (supportedLocale || LanguagesSupported[0]).replace('-', '_')
 }
 
 export const NOTICE_I18N = {

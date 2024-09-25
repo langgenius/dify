@@ -93,6 +93,8 @@ const translation = {
     disconnect: '斷開',
     jumpToNode: '跳轉到此節點',
     addParallelNode: '添加並行節點',
+    parallel: '並行',
+    branch: '分支',
   },
   env: {
     envPanelTitle: '環境變數',
