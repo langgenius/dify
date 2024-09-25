@@ -34,6 +34,7 @@ type ChatInputAreaProps = {
   visionConfig?: FileUpload
   speechToTextConfig?: EnableType
   onSend?: OnSend
+  onSendCheck?: () => boolean
   theme?: Theme | null
 }
 const ChatInputArea = ({
@@ -44,6 +45,7 @@ const ChatInputArea = ({
   visionConfig,
   speechToTextConfig = { enabled: true },
   onSend,
+  onSendCheck = () => true,
   // theme,
 }: ChatInputAreaProps) => {
   const { t } = useTranslation()
@@ -80,9 +82,11 @@ const ChatInputArea = ({
         notify({ type: 'info', message: t('appAnnotation.errorMessage.queryRequired') })
         return
       }
-      onSend(query, files)
-      setQuery('')
-      setFiles([])
+      if (onSendCheck()) {
+        onSend(query, files)
+        setQuery('')
+        setFiles([])
+      }
     }
   }
 

@@ -43,6 +43,7 @@ export type ChatProps = {
   onStopResponding?: () => void
   noChatInput?: boolean
   onSend?: OnSend
+  onSendCheck?: () => boolean
   onRegenerate?: OnRegenerate
   chatContainerClassName?: string
   chatContainerInnerClassName?: string
@@ -72,6 +73,7 @@ const Chat: FC<ChatProps> = ({
   appData,
   config,
   onSend,
+  onSendCheck,
   onRegenerate,
   chatList,
   isResponding,
@@ -281,6 +283,7 @@ const Chat: FC<ChatProps> = ({
                   visionConfig={config?.file_upload}
                   speechToTextConfig={config?.speech_to_text}
                   onSend={onSend}
+                  onSendCheck={onSendCheck}
                   theme={themeBuilder?.theme}
                 />
               )
