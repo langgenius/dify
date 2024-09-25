@@ -31,8 +31,8 @@ const FileInAttachmentItem = ({
   onRemove,
   onReUpload,
 }: FileInAttachmentItemProps) => {
-  const { id, name, progress, supportFileType, base64Url, url } = file
-  const ext = getFileExtension(name)
+  const { id, name, type, progress, supportFileType, base64Url, url } = file
+  const ext = getFileExtension(name, type)
   const isImageFile = supportFileType === SupportUploadFileTypes.image
 
   return (
@@ -52,7 +52,7 @@ const FileInAttachmentItem = ({
         {
           !isImageFile && (
             <FileTypeIcon
-              type={getFileAppearanceType(file.type)}
+              type={getFileAppearanceType(name, type)}
               size='lg'
             />
           )
@@ -71,7 +71,11 @@ const FileInAttachmentItem = ({
               <span>{ext.toLowerCase()}</span>
             )
           }
-          <span className='mx-1 system-2xs-medium'>•</span>
+          {
+            ext && (
+              <span className='mx-1 system-2xs-medium'>•</span>
+            )
+          }
           <span>{formatFileSize(file.size || 0)}</span>
         </div>
       </div>
