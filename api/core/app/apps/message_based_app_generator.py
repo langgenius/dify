@@ -88,7 +88,6 @@ class MessageBasedAppGenerator(BaseAppGenerator):
         conversation_filter = [
             Conversation.id == conversation_id,
             Conversation.app_id == app_model.id,
-            Conversation.status == "normal",
         ]
 
         if isinstance(user, Account):
