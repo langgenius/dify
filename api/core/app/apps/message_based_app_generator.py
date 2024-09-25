@@ -238,7 +238,7 @@ class MessageBasedAppGenerator(BaseAppGenerator):
                 type=file.type.value,
                 transfer_method=file.transfer_method.value,
                 belongs_to="user",
-                url=file.url,
+                url=file.remote_url,
                 upload_file_id=file.related_id,
                 created_by_role=("account" if account_id else "end_user"),
                 created_by=account_id or end_user_id,

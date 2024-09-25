@@ -40,7 +40,7 @@ class File(BaseModel):
     tenant_id: str
     type: FileType
     transfer_method: FileTransferMethod
-    url: Optional[str] = None  # remote url
+    remote_url: Optional[str] = None  # remote url
     related_id: Optional[str] = None
     extra_config: Optional[FileExtraConfig] = None
     filename: Optional[str] = None
@@ -49,23 +49,15 @@ class File(BaseModel):
     size: int = 0
 
     def to_dict(self) -> Mapping[str, str | int | None]:
+        data = self.model_dump()
         return {
-            "__variant": self.__class__.__name__,
-            "tenant_id": self.tenant_id,
-            "type": self.type.value,
-            "transfer_method": self.transfer_method.value,
-            "url": self.preview_url,
-            "remote_url": self.url,
-            "related_id": self.related_id,
-            "filename": self.filename,
-            "extension": self.extension,
-            "mime_type": self.mime_type,
-            "size": self.size,
+            **data,
+            "url": self.generate_url(),
         }
 
     @property
     def markdown(self) -> str:
-        preview_url = self.preview_url
+        preview_url = self.generate_url()
         if self.type == FileType.IMAGE:
             text = f'![{self.filename or ""}]({preview_url})'
         else:
@@ -73,11 +65,10 @@ class File(BaseModel):
 
         return text
 
-    @property
-    def preview_url(self) -> Optional[str]:
+    def generate_url(self) -> Optional[str]:
         if self.type == FileType.IMAGE:
             if self.transfer_method == FileTransferMethod.REMOTE_URL:
-                return self.url
+                return self.remote_url
             elif self.transfer_method == FileTransferMethod.LOCAL_FILE:
                 if self.related_id is None:
                     raise ValueError("Missing file related_id")
@@ -90,7 +81,7 @@ class File(BaseModel):
                 )
         else:
             if self.transfer_method == FileTransferMethod.REMOTE_URL:
-                return self.url
+                return self.remote_url
             elif self.transfer_method == FileTransferMethod.LOCAL_FILE:
                 if self.related_id is None:
                     raise ValueError("Missing file related_id")
@@ -106,9 +97,9 @@ class File(BaseModel):
     def validate_after(self):
         match self.transfer_method:
             case FileTransferMethod.REMOTE_URL:
-                if not self.url:
+                if not self.remote_url:
                     raise ValueError("Missing file url")
-                if not isinstance(self.url, str) or not self.url.startswith("http"):
+                if not isinstance(self.remote_url, str) or not self.remote_url.startswith("http"):
                     raise ValueError("Invalid file url")
             case FileTransferMethod.LOCAL_FILE:
                 if not self.related_id:

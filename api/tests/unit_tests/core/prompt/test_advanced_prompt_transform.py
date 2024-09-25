@@ -133,7 +133,7 @@ def test__get_chat_model_prompt_messages_with_files_no_memory(get_chat_model_arg
             tenant_id="tenant1",
             type=FileType.IMAGE,
             transfer_method=FileTransferMethod.REMOTE_URL,
-            url="https://example.com/image1.jpg",
+            remote_url="https://example.com/image1.jpg",
             extra_config=FileExtraConfig(image_config=ImageConfig(detail=ImagePromptMessageContent.DETAIL.HIGH)),
         )
     ]
@@ -158,7 +158,7 @@ def test__get_chat_model_prompt_messages_with_files_no_memory(get_chat_model_arg
     )
     assert isinstance(prompt_messages[3].content, list)
     assert len(prompt_messages[3].content) == 2
-    assert prompt_messages[3].content[1].data == files[0].url
+    assert prompt_messages[3].content[1].data == files[0].remote_url
 
 
 @pytest.fixture

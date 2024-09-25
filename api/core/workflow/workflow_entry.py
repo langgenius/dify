@@ -275,7 +275,9 @@ class WorkflowEntry:
                                 tenant_id=tenant_id,
                                 type=FileType.IMAGE,
                                 transfer_method=transfer_method,
-                                url=item.get("url") if transfer_method == FileTransferMethod.REMOTE_URL else None,
+                                remote_url=item.get("url")
+                                if transfer_method == FileTransferMethod.REMOTE_URL
+                                else None,
                                 related_id=item.get("upload_file_id")
                                 if transfer_method == FileTransferMethod.LOCAL_FILE
                                 else None,

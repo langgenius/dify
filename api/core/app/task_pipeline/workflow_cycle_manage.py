@@ -28,7 +28,7 @@ from core.app.entities.task_entities import (
     WorkflowStartStreamResponse,
     WorkflowTaskState,
 )
-from core.file.models import File
+from core.file import FILE_MODEL_IDENTITY, File
 from core.model_runtime.utils.encoders import jsonable_encoder
 from core.ops.entities.trace_entity import TraceTaskName
 from core.ops.ops_trace_manager import TraceQueueManager, TraceTask
@@ -643,7 +643,7 @@ class WorkflowCycleManage:
 
         return files
 
-    def _get_file_var_from_value(self, value: Union[dict, list]) -> Mapping[str, str | None] | None:
+    def _get_file_var_from_value(self, value: Union[dict, list]) -> Mapping[str, str | int | None] | None:
         """
         Get file var from value
         :param value: variable value
@@ -652,9 +652,8 @@ class WorkflowCycleManage:
         if not value:
             return None
 
-        if isinstance(value, dict):
-            if "__variant" in value and value["__variant"] == File.__name__:
-                return value
+        if isinstance(value, dict) and value.get("model_identity") == FILE_MODEL_IDENTITY:
+            return value
         elif isinstance(value, File):
             return value.to_dict()
 

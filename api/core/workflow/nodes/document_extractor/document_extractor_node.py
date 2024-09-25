@@ -120,9 +120,9 @@ def _download_file_content(file: File) -> bytes:
     """Download the content of a file based on its transfer method."""
     try:
         if file.transfer_method == FileTransferMethod.REMOTE_URL:
-            if file.url is None:
+            if file.remote_url is None:
                 raise FileDownloadError("Missing URL for remote file")
-            response = ssrf_proxy.get(file.url)
+            response = ssrf_proxy.get(file.remote_url)
             response.raise_for_status()
             return response.content
         elif file.transfer_method == FileTransferMethod.LOCAL_FILE:

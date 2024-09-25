@@ -25,7 +25,7 @@ def get_attr(*, file: "File", attr: "FileAttribute"):
         case FileAttribute.TRANSFER_METHOD:
             return file.transfer_method.value
         case FileAttribute.URL:
-            return file.url
+            return file.remote_url
         case _:
             raise ValueError(f"Invalid file attribute: {attr}")
 
@@ -117,7 +117,7 @@ def _get_base64(*, upload_file_id: str, tenant_id: str) -> str | None:
 def _get_url_or_b64_data(file: "File"):
     if file.type == FileType.IMAGE:
         if file.transfer_method == FileTransferMethod.REMOTE_URL:
-            return file.url
+            return file.remote_url
         elif file.transfer_method == FileTransferMethod.LOCAL_FILE:
             if file.related_id is None:
                 raise ValueError("Missing file related_id")

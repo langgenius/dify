@@ -3,7 +3,7 @@ import logging
 from copy import deepcopy
 from typing import Any, Optional, Union
 
-from core.file.models import File, FileTransferMethod
+from core.file import FILE_MODEL_IDENTITY, File, FileTransferMethod
 from core.tools.entities.tool_entities import ToolInvokeMessage, ToolParameter, ToolProviderType
 from core.tools.tool.tool import Tool
 from extensions.ext_database import db
@@ -50,6 +50,8 @@ class WorkflowTool(Tool):
         from core.app.apps.workflow.app_generator import WorkflowAppGenerator
 
         generator = WorkflowAppGenerator()
+        assert self.runtime is not None
+        assert self.runtime.invoke_from is not None
         result = generator.generate(
             app_model=app,
             workflow=workflow,
@@ -155,18 +157,18 @@ class WorkflowTool(Tool):
                 file = tool_parameters.get(parameter.name)
                 if file:
                     try:
-                        file_var_list = [File(**f) for f in file]
-                        for file_var in file_var_list:
-                            file_dict = {
-                                "transfer_method": file_var.transfer_method.value,
-                                "type": file_var.type.value,
+                        file_var_list = [File.model_validate(f) for f in file]
+                        for file in file_var_list:
+                            file_dict: dict[str, str | None] = {
+                                "transfer_method": file.transfer_method.value,
+                                "type": file.type.value,
                             }
-                            if file_var.transfer_method == FileTransferMethod.TOOL_FILE:
-                                file_dict["tool_file_id"] = file_var.related_id
-                            elif file_var.transfer_method == FileTransferMethod.LOCAL_FILE:
-                                file_dict["upload_file_id"] = file_var.related_id
-                            elif file_var.transfer_method == FileTransferMethod.REMOTE_URL:
-                                file_dict["url"] = file_var.preview_url
+                            if file.transfer_method == FileTransferMethod.TOOL_FILE:
+                                file_dict["tool_file_id"] = file.related_id
+                            elif file.transfer_method == FileTransferMethod.LOCAL_FILE:
+                                file_dict["upload_file_id"] = file.related_id
+                            elif file.transfer_method == FileTransferMethod.REMOTE_URL:
+                                file_dict["url"] = file.generate_url()
 
                             files.append(file_dict)
                     except Exception as e:
@@ -189,9 +191,9 @@ class WorkflowTool(Tool):
             if isinstance(value, list):
                 has_file = False
                 for item in value:
-                    if isinstance(item, dict) and item.get("__variant") == "File":
+                    if isinstance(item, dict) and item.get("model_identity") == FILE_MODEL_IDENTITY:
                         try:
-                            files.append(File(**item))
+                            files.append(File.model_validate(item))
                             has_file = True
                         except Exception as e:
                             pass

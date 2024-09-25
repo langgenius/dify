@@ -17,7 +17,7 @@ def file():
         type=FileType.DOCUMENT,
         transfer_method=FileTransferMethod.LOCAL_FILE,
         related_id="test_related_id",
-        url="test_url",
+        remote_url="test_url",
         filename="test_file.txt",
     )
 
