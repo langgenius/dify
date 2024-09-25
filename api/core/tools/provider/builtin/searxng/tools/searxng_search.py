@@ -35,6 +35,7 @@ class SearXNGSearchTool(BuiltinTool):
                 "categories": tool_parameters.get("search_type", "general"),
                 "engines": tool_parameters.get("engines", "bing"),
                 "time_range": tool_parameters.get("time_range", "None"),
+                "language": "zh",
             },
         )
 

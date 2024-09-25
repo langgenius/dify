@@ -181,3 +181,5 @@ api/.vscode
 .vscode
 
 demo*
+cache
+run.sh

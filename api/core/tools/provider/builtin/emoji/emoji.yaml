@@ -1,0 +1,10 @@
+identity: 
+  author: cipher
+  name: emoji
+  label: 
+    en_US: Emoji
+    zh_Hans: 表情包
+  description: 
+    en_US: Emoji 
+    zh_Hans: 表情包 
+  icon: icon.svg

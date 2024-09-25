@@ -1,0 +1,44 @@
+identity:
+  name: emo_search
+  author: cipher
+  label:
+    en_US: Emoji Search
+    zh_Hans: 表情包查询
+description:
+  human:
+    en_US: Emoji Search is an online tool that allows users to find and copy various emoji symbols.
+    zh_Hans: Emoji Search是一种在线搜索工具，用户可以通过它查找和复制各种表情符号。
+  llm: Perform searches on Emoji and get results.
+parameters:
+  - name: query
+    type: string
+    required: true
+    label:
+      en_US: Query string
+      zh_Hans: 查询语句
+    llm_description: Key words for searching
+    form: llm
+  - name: emo_vector_path
+    type: string
+    required: false
+    label:
+      en_US: emoji vector path(Note：The coding model of the generated vector library must be consistent with the coding model of the inference)
+      zh_Hans: emoji 向量库路径(注意：生成向量库的编码模型与推理的编码模型须一致)
+    default: /home/cipher/code/dify/cache/emo/vector
+    form: llm
+  - name: embedding_model_path
+    type: string
+    required: false
+    label:
+      en_US: embedding model path(Note：The coding model of the generated vector library must be consistent with the coding model of the inference)
+      zh_Hans: 编码模型路径(注意：生成向量库的编码模型与推理的编码模型须一致)
+    default: /home/data/cipher/model/Xorbits/bge-m3
+    form: llm
+  - name: emo_data_path
+    type: string
+    required: false
+    label:
+      en_US: emoji data path
+      zh_Hans: emoji 数据路径
+    default: /home/data/cipher/data/emo
+    form: llm
