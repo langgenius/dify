@@ -1,3 +1,4 @@
+import mime from 'mime'
 import { FileAppearanceTypeEnum } from './types'
 import type { FileEntity } from './types'
 import { upload } from '@/service/base'
@@ -39,43 +40,65 @@ export const fileUpload: FileUpload = ({
     })
 }
 
-export const getFileAppearanceType = (fileType: string) => {
-  if (!fileType)
-    return FileAppearanceTypeEnum.custom
+export const getFileExtension = (fileName: string, fileMimetype: string) => {
+  if (fileMimetype)
+    return mime.getExtension(fileMimetype) || ''
 
-  if (fileType.includes('image'))
-    return FileAppearanceTypeEnum.image
+  if (fileName) {
+    const fileNamePair = fileName.split('.')
+    const fileNamePairLength = fileNamePair.length
 
-  if (fileType.includes('video'))
-    return FileAppearanceTypeEnum.video
-
-  if (fileType.includes('audio'))
-    return FileAppearanceTypeEnum.audio
-
-  if (fileType.includes('pdf'))
-    return FileAppearanceTypeEnum.pdf
-
-  return FileAppearanceTypeEnum.custom
-}
-
-export const getFileExtension = (fileName: string) => {
-  if (!fileName)
-    return ''
-
-  const fileNamePair = fileName.split('.')
-  const fileNamePairLength = fileNamePair.length
-
-  if (fileNamePairLength > 1)
-    return fileNamePair[fileNamePairLength - 1]
+    if (fileNamePairLength > 1)
+      return fileNamePair[fileNamePairLength - 1]
+  }
 
   return ''
 }
 
-export const getSupportFileType = (fileName: string, isCustom?: boolean) => {
+export const getFileAppearanceType = (fileName: string, fileMimetype: string) => {
+  const extension = getFileExtension(fileName, fileMimetype)
+
+  if (extension === 'gif')
+    return FileAppearanceTypeEnum.gif
+
+  if (FILE_EXTS.image.includes(extension.toUpperCase()))
+    return FileAppearanceTypeEnum.image
+
+  if (FILE_EXTS.video.includes(extension.toUpperCase()))
+    return FileAppearanceTypeEnum.video
+
+  if (FILE_EXTS.audio.includes(extension.toUpperCase()))
+    return FileAppearanceTypeEnum.audio
+
+  if (extension === 'html')
+    return FileAppearanceTypeEnum.code
+
+  if (extension === 'pdf')
+    return FileAppearanceTypeEnum.pdf
+
+  if (extension === 'md' || extension === 'markdown')
+    return FileAppearanceTypeEnum.markdown
+
+  if (extension === 'xlsx' || extension === 'xls')
+    return FileAppearanceTypeEnum.excel
+
+  if (extension === 'docx' || extension === 'doc')
+    return FileAppearanceTypeEnum.word
+
+  if (extension === 'pptx' || extension === 'ppt')
+    return FileAppearanceTypeEnum.ppt
+
+  if (FILE_EXTS.document.includes(extension.toUpperCase()))
+    return FileAppearanceTypeEnum.document
+
+  return FileAppearanceTypeEnum.custom
+}
+
+export const getSupportFileType = (fileName: string, fileMimetype: string, isCustom?: boolean) => {
   if (isCustom)
     return SupportUploadFileTypes.custom
 
-  const extension = getFileExtension(fileName)
+  const extension = getFileExtension(fileName, fileMimetype)
   for (const key in FILE_EXTS) {
     if ((FILE_EXTS[key]).includes(extension.toUpperCase()))
       return key
@@ -105,6 +128,6 @@ export const getSupportFileExtensionList = (allowFileTypes: string[], allowFileE
   return allowFileTypes.map(type => FILE_EXTS[type]).flat()
 }
 
-export const isAllowedFileExtension = (fileName: string, allowFileTypes: string[], allowFileExtensions: string[]) => {
-  return getSupportFileExtensionList(allowFileTypes, allowFileExtensions).includes(getFileExtension(fileName).toUpperCase())
+export const isAllowedFileExtension = (fileName: string, fileMimetype: string, allowFileTypes: string[], allowFileExtensions: string[]) => {
+  return getSupportFileExtensionList(allowFileTypes, allowFileExtensions).includes(getFileExtension(fileName, fileMimetype).toUpperCase())
 }

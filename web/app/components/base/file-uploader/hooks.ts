@@ -11,7 +11,6 @@ import type { FileEntity } from './types'
 import { useFileStore } from './store'
 import {
   fileUpload,
-  getFileNameFromUrl,
   getSupportFileType,
   isAllowedFileExtension,
 } from './utils'
@@ -97,16 +96,15 @@ export const useFile = (fileConfig: FileUpload) => {
 
   const handleLoadFileFromLink = useCallback((url: string) => {
     const allowedFileTypes = fileConfig.allowed_file_types
-    const fileName = getFileNameFromUrl(url)
 
     const uploadingFile = {
       id: uuid4(),
-      name: fileName,
+      name: url,
       type: '',
       size: 0,
       progress: 0,
       transferMethod: TransferMethod.remote_url,
-      supportFileType: getSupportFileType(fileName, allowedFileTypes?.includes(SupportUploadFileTypes.custom)),
+      supportFileType: '',
       url,
     }
     handleAddFile(uploadingFile)
@@ -117,6 +115,7 @@ export const useFile = (fileConfig: FileUpload) => {
         type: res.file_type,
         size: res.file_length,
         progress: 100,
+        supportFileType: getSupportFileType(url, res.file_type, allowedFileTypes?.includes(SupportUploadFileTypes.custom)),
       }
       handleUpdateFile(newFile)
     }).catch(() => {
@@ -137,7 +136,7 @@ export const useFile = (fileConfig: FileUpload) => {
   }, [fileStore])
 
   const handleLocalFileUpload = useCallback((file: File) => {
-    if (!isAllowedFileExtension(file.name, fileConfig.allowed_file_types || [], fileConfig.allowed_file_extensions || [])) {
+    if (!isAllowedFileExtension(file.name, file.type, fileConfig.allowed_file_types || [], fileConfig.allowed_file_extensions || [])) {
       notify({ type: 'error', message: t('common.fileUploader.fileExtensionNotSupport') })
       return
     }
@@ -159,7 +158,7 @@ export const useFile = (fileConfig: FileUpload) => {
           size: file.size,
           progress: 0,
           transferMethod: TransferMethod.local_file,
-          supportFileType: getSupportFileType(file.name, allowedFileTypes?.includes(SupportUploadFileTypes.custom)),
+          supportFileType: getSupportFileType(file.name, file.type, allowedFileTypes?.includes(SupportUploadFileTypes.custom)),
           originalFile: file,
           base64Url: isImage ? reader.result as string : '',
         }
