@@ -30,6 +30,7 @@ const FilterCondition: FC<Props> = ({
 }) => {
   const { t } = useTranslation()
   const isSelect = [ComparisonOperator.in, ComparisonOperator.notIn, ComparisonOperator.allOf].includes(condition.comparison_operator)
+  const isTransferMethod = condition.key === 'transfer_method'
   const selectOptions = useMemo(() => {
     if (isSelect) {
       if (condition.key === 'type' || condition.comparison_operator === ComparisonOperator.allOf) {
@@ -38,7 +39,7 @@ const FilterCondition: FC<Props> = ({
           value: item.value,
         }))
       }
-      if (condition.key === 'transfer_method') {
+      if (isTransferMethod) {
         return TRANSFER_METHOD.map(item => ({
           name: t(`${optionNameI18NPrefix}.${item.i18nKey}`),
           value: item.value,
@@ -47,15 +48,15 @@ const FilterCondition: FC<Props> = ({
       return []
     }
     return []
-  }, [condition.comparison_operator, condition.key, isSelect, t])
+  }, [condition.comparison_operator, condition.key, isSelect, t, isTransferMethod])
   const handleChange = useCallback((key: string) => {
     return (value: any) => {
       onChange({
         ...condition,
-        [key]: value,
+        [key]: isTransferMethod ? [value] : value,
       })
     }
-  }, [condition, onChange])
+  }, [condition, onChange, isTransferMethod])
 
   const handleSubVariableChange = useCallback((value: string) => {
     onChange({
@@ -88,7 +89,7 @@ const FilterCondition: FC<Props> = ({
             {isSelect && (
               <Select
                 items={selectOptions}
-                defaultValue={condition.value}
+                defaultValue={isTransferMethod ? (condition.value as string[])[0] : condition.value as string}
                 onSelect={item => handleChange('value')(item.value)}
                 className='!text-[13px]'
                 wrapperClassName='grow h-8'
