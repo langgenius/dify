@@ -6,6 +6,7 @@ import {
 } from 'react'
 import { useTranslation } from 'react-i18next'
 import { produce, setAutoFreeze } from 'immer'
+import { uniqBy } from 'lodash-es'
 import { useParams, usePathname } from 'next/navigation'
 import { v4 as uuidV4 } from 'uuid'
 import type {
@@ -14,7 +15,10 @@ import type {
   Inputs,
 } from '../types'
 import type { InputForm } from './type'
-import { processOpeningStatement } from './utils'
+import {
+  getProcessedInputs,
+  processOpeningStatement,
+} from './utils'
 import { TransferMethod } from '@/types/app'
 import { useToastContext } from '@/app/components/base/toast'
 import { ssePost } from '@/service/base'
@@ -23,7 +27,10 @@ import { WorkflowRunningStatus } from '@/app/components/workflow/types'
 import useTimestamp from '@/hooks/use-timestamp'
 import { AudioPlayerManager } from '@/app/components/base/audio-btn/audio.player.manager'
 import type { FileEntity } from '@/app/components/base/file-uploader/types'
-import { getProcessedFiles } from '@/app/components/base/file-uploader/utils'
+import {
+  getProcessedFiles,
+  getProcessedFilesFromResponse,
+} from '@/app/components/base/file-uploader/utils'
 
 type GetAbortController = (abortController: AbortController) => void
 type SendCallback = {
@@ -206,12 +213,13 @@ export const useChat = (
     handleResponding(true)
     hasStopResponded.current = false
 
-    const { query, files, ...restData } = data
+    const { query, files, inputs, ...restData } = data
     const bodyParams = {
       response_mode: 'streaming',
       conversation_id: conversationId.current,
       files: getProcessedFiles(files || []),
       query,
+      inputs: getProcessedInputs(inputs || {}, formSettings?.inputsForm || []),
       ...restData,
     }
     if (bodyParams?.files?.length) {
@@ -512,6 +520,8 @@ export const useChat = (
             return item.node_id === data.node_id && (item.execution_metadata?.parallel_id === data.execution_metadata.parallel_id)
           })
           responseItem.workflowProcess!.tracing[currentIndex] = data as any
+          const processedFilesFromResponse = getProcessedFilesFromResponse(data.files || [])
+          responseItem.allFiles = uniqBy([...(responseItem.allFiles || []), ...(processedFilesFromResponse || [])], 'id')
           handleUpdateChatList(produce(chatListRef.current, (draft) => {
             const currentIndex = draft.findIndex(item => item.id === responseItem.id)
             draft[currentIndex] = {
