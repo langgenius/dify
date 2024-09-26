@@ -29,35 +29,6 @@ parameters:
       pt_BR: Image prompt, you can check the official documentation of step-1x
     llm_description: Image prompt of step-1x you should describe the image you want to generate as a list of words as possible as detailed
     form: llm
-  - name: model
-    type: select
-    required: false
-    human_description:
-      en_US: used for selecting the model name
-      zh_Hans: 用于选择模型的名字
-      pt_BR: used for selecting the model name
-    label:
-      en_US: Model Name
-      zh_Hans: 模型名字
-      pt_BR: Model Name
-    form: form
-    options:
-      - value: step-1x-turbo
-        label:
-          en_US: turbo
-          zh_Hans: turbo
-          pt_BR: turbo
-      - value: step-1x-medium
-        label:
-          en_US: medium
-          zh_Hans: medium
-          pt_BR: medium
-      - value: step-1x-large
-        label:
-          en_US: large
-          zh_Hans: large
-          pt_BR: large
-    default: step-1x-medium
   - name: size
     type: select
     required: false
