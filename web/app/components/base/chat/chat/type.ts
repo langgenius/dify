@@ -2,6 +2,7 @@ import type { TypeWithI18N } from '@/app/components/header/account-setting/model
 import type { Annotation, MessageRating } from '@/models/log'
 import type { VisionFile } from '@/types/app'
 import type { FileEntity } from '@/app/components/base/file-uploader/types'
+import type { InputVarType } from '@/app/components/workflow/types'
 
 export type MessageMore = {
   time: string
@@ -129,4 +130,12 @@ export type AnnotationReply = {
   conversation_id: string
   annotation_id: string
   annotation_author_name: string
+}
+
+export type InputForm = {
+  type: InputVarType
+  label: string
+  variable: any
+  required: boolean
+  [key: string]: any
 }

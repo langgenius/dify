@@ -74,12 +74,13 @@ const FileItem = ({
         </div>
         {
           showDownloadAction && (
-            <ActionButton
-              size='xs'
-              onClick={() => window.open(file.url, '_blank')}
-            >
-              <RiDownloadLine className='w-3.5 h-3.5 text-text-tertiary' />
-            </ActionButton>
+            <a href={file.url} download={true} target='_blank'>
+              <ActionButton
+                size='xs'
+              >
+                <RiDownloadLine className='w-3.5 h-3.5 text-text-tertiary' />
+              </ActionButton>
+            </a>
           )
         }
         {

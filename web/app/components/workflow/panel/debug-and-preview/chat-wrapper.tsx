@@ -62,10 +62,7 @@ const ChatWrapper = forwardRef<ChatWrapperRefType, ChatWrapperProps>(({
     }
   }, [features.opening, features.suggested, features.text2speech, features.speech2text, features.citation, features.moderation, features.file])
   const setShowFeaturesPanel = useStore(s => s.setShowFeaturesPanel)
-  const {
-    checkStartNodeForm,
-    getProcessedInputs,
-  } = useCheckStartNodeForm()
+  const { getProcessedInputs } = useCheckStartNodeForm()
 
   const {
     conversationId,
@@ -81,7 +78,7 @@ const ChatWrapper = forwardRef<ChatWrapperRefType, ChatWrapperProps>(({
     config,
     {
       inputs,
-      promptVariables: (startVariables as any) || [],
+      inputsForm: (startVariables || []) as any,
     },
     [],
     taskId => stopChatMessageResponding(appDetail!.id, taskId),
@@ -146,7 +143,8 @@ const ChatWrapper = forwardRef<ChatWrapperRefType, ChatWrapperProps>(({
         showFeatureBar
         onFeatureBarClick={setShowFeaturesPanel}
         onSend={doSend}
-        onSendCheck={checkStartNodeForm}
+        inputs={inputs}
+        inputsForm={(startVariables || []) as any}
         onRegenerate={doRegenerate}
         onStopResponding={handleStop}
         chatNode={(

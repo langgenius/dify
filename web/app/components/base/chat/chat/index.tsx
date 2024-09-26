@@ -25,6 +25,7 @@ import Answer from './answer'
 import ChatInputArea from './chat-input-area'
 import TryToAsk from './try-to-ask'
 import { ChatContextProvider } from './context'
+import type { InputForm } from './type'
 import cn from '@/utils/classnames'
 import type { Emoji } from '@/app/components/tools/types'
 import Button from '@/app/components/base/button'
@@ -43,7 +44,8 @@ export type ChatProps = {
   onStopResponding?: () => void
   noChatInput?: boolean
   onSend?: OnSend
-  onSendCheck?: () => boolean
+  inputs?: Record<string, any>
+  inputsForm?: InputForm[]
   onRegenerate?: OnRegenerate
   chatContainerClassName?: string
   chatContainerInnerClassName?: string
@@ -73,7 +75,8 @@ const Chat: FC<ChatProps> = ({
   appData,
   config,
   onSend,
-  onSendCheck,
+  inputs,
+  inputsForm,
   onRegenerate,
   chatList,
   isResponding,
@@ -283,7 +286,8 @@ const Chat: FC<ChatProps> = ({
                   visionConfig={config?.file_upload}
                   speechToTextConfig={config?.speech_to_text}
                   onSend={onSend}
-                  onSendCheck={onSendCheck}
+                  inputs={inputs}
+                  inputsForm={inputsForm}
                   theme={themeBuilder?.theme}
                 />
               )

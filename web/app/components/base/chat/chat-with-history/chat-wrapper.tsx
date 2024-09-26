@@ -55,7 +55,7 @@ const ChatWrapper = () => {
     appConfig,
     {
       inputs: (currentConversationId ? currentConversationItem?.inputs : newConversationInputs) as any,
-      promptVariables: inputsForms,
+      inputsForm: inputsForms,
     },
     appPrevChatList,
     taskId => stopChatMessageResponding('', taskId, isInstalledApp, appId),
@@ -165,6 +165,8 @@ const ChatWrapper = () => {
         chatFooterClassName='pb-4'
         chatFooterInnerClassName={`mx-auto w-full max-w-[720px] ${isMobile && 'px-4'}`}
         onSend={doSend}
+        inputs={currentConversationId ? currentConversationItem?.inputs as any : newConversationInputs}
+        inputsForm={inputsForms}
         onRegenerate={doRegenerate}
         onStopResponding={handleStop}
         chatNode={chatNode}
