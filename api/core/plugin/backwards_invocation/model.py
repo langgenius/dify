@@ -145,14 +145,14 @@ class PluginModelBackwardsInvocation(BaseBackwardsInvocation):
             temp.flush()
             temp.seek(0)
 
-        response = model_instance.invoke_speech2text(
-            file=temp,
-            user=user_id,
-        )
+            response = model_instance.invoke_speech2text(
+                file=temp,
+                user=user_id,
+            )
 
-        return {
-            "result": response,
-        }
+            return {
+                "result": response,
+            }
 
     @classmethod
     def invoke_moderation(cls, user_id: str, tenant: Tenant, payload: RequestInvokeModeration):
