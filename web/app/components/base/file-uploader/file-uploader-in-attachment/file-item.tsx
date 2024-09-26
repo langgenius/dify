@@ -5,6 +5,7 @@ import {
 } from '@remixicon/react'
 import FileTypeIcon from '../file-type-icon'
 import {
+  fileIsUploaded,
   getFileAppearanceType,
   getFileExtension,
 } from '../utils'
@@ -81,7 +82,7 @@ const FileInAttachmentItem = ({
       </div>
       <div className='shrink-0 flex items-center'>
         {
-          progress >= 0 && !file.uploadedId && (
+          progress >= 0 && !fileIsUploaded(file) && (
             <ProgressCircle
               className='mr-2.5'
               percentage={progress}

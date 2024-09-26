@@ -1,6 +1,7 @@
 import { RiCloseLine } from '@remixicon/react'
 import FileImageRender from '../file-image-render'
 import type { FileEntity } from '../types'
+import { fileIsUploaded } from '../utils'
 import Button from '@/app/components/base/button'
 import ProgressCircle from '@/app/components/base/progress-bar/progress-circle'
 import { ReplayLine } from '@/app/components/base/icons/src/vender/other'
@@ -39,7 +40,7 @@ const FileImageItem = ({
         showDownloadAction={showDownloadAction}
       />
       {
-        progress > 0 && progress < 100 && (
+        progress >= 0 && !fileIsUploaded(file) && (
           <div className='absolute inset-0 flex items-center justify-center border-[2px] border-effects-image-frame bg-background-overlay-alt z-10'>
             <ProgressCircle
               percentage={progress}
