@@ -1,43 +1,23 @@
-import React, { useEffect, useState } from 'react'
+import React from 'react'
 import { RiBookOpenLine } from '@remixicon/react'
 import { useTranslation } from 'react-i18next'
 import Input from '@/app/components/base/input'
 
 type KnowledgeBaseInfoProps = {
   name: string
-  description: string
+  description?: string
   onChange: (data: { name?: string; description?: string }) => void
 }
 
-const KnowledgeBaseInfo: React.FC<KnowledgeBaseInfoProps> = ({ name: initialName, description: initialDescription, onChange }) => {
+const KnowledgeBaseInfo: React.FC<KnowledgeBaseInfoProps> = ({ name, description, onChange }) => {
   const { t } = useTranslation()
-  const [name, setName] = useState(initialName)
-  const [description, setDescription] = useState(initialDescription)
-
-  useEffect(() => {
-    const savedName = localStorage.getItem('knowledgeBaseName')
-    const savedDescription = localStorage.getItem('knowledgeBaseDescription')
-
-    if (savedName)
-      setName(savedName)
-    if (savedDescription)
-      setDescription(savedDescription)
-
-    onChange({ name: savedName || initialName, description: savedDescription || initialDescription })
-  }, [])
 
   const handleNameChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const newName = e.target.value
-    setName(newName)
-    localStorage.setItem('knowledgeBaseName', newName)
-    onChange({ name: newName })
+    onChange({ name: e.target.value })
   }
 
   const handleDescriptionChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const newDescription = e.target.value
-    setDescription(newDescription)
-    localStorage.setItem('knowledgeBaseDescription', newDescription)
-    onChange({ description: newDescription })
+    onChange({ description: e.target.value })
   }
 
   return (
@@ -75,11 +55,6 @@ const KnowledgeBaseInfo: React.FC<KnowledgeBaseInfoProps> = ({ name: initialName
       </div>
     </form>
   )
-}
-
-export const clearKnowledgeBaseInfo = () => {
-  localStorage.removeItem('knowledgeBaseName')
-  localStorage.removeItem('knowledgeBaseDescription')
 }
 
 export default KnowledgeBaseInfo

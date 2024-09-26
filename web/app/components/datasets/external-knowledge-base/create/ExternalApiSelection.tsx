@@ -1,3 +1,4 @@
+import React, { useEffect } from 'react'
 import { useTranslation } from 'react-i18next'
 import Select from '@/app/components/base/select'
 import Input from '@/app/components/base/input'
@@ -8,7 +9,7 @@ type ExternalApiSelectionProps = {
   onChange: (data: { external_knowledge_api_id?: string; external_knowledge_id?: string }) => void
 }
 
-const ExternalApiSelection = ({ external_knowledge_api_id, external_knowledge_id, onChange }: ExternalApiSelectionProps) => {
+const ExternalApiSelection: React.FC<ExternalApiSelectionProps> = ({ external_knowledge_api_id, external_knowledge_id, onChange }) => {
   const { t } = useTranslation()
   const { externalKnowledgeApiList } = useExternalKnowledgeApi()
 
@@ -16,6 +17,11 @@ const ExternalApiSelection = ({ external_knowledge_api_id, external_knowledge_id
     value: api.id,
     name: api.name,
   }))
+
+  useEffect(() => {
+    if (!external_knowledge_api_id && apiItems.length > 0)
+      onChange({ external_knowledge_api_id: apiItems[0].value, external_knowledge_id })
+  }, [])
 
   return (
     <form className='flex flex-col gap-4 self-stretch'>

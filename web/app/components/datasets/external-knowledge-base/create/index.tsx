@@ -38,7 +38,6 @@ const ExternalKnowledgeBaseCreate: React.FC<ExternalKnowledgeBaseCreateProps> = 
 
   const handleFormChange = (newData: CreateKnowledgeBaseReq) => {
     setFormData(newData)
-    console.log(formData)
   }
 
   const isFormValid = formData.name !== ''
@@ -94,7 +93,12 @@ const ExternalKnowledgeBaseCreate: React.FC<ExternalKnowledgeBaseCreateProps> = 
               <Button variant='secondary' onClick={navBackHandle}>
                 <div className='text-components-button-secondary-text system-sm-medium'>{t('dataset.externalKnowledgeForm.cancel')}</div>
               </Button>
-              <Button variant='primary' onClick={() => onConnect(formData)} disabled={!isFormValid}>
+              <Button
+                variant='primary'
+                onClick={() => {
+                  onConnect(formData)
+                  navBackHandle()
+                }} disabled={!isFormValid}>
                 <div className='text-components-button-primary-text system-sm-medium'>{t('dataset.externalKnowledgeForm.connect')}</div>
                 <RiArrowRightLine className='w-4 h-4 text-components-button-primary-text' />
               </Button>

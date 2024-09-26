@@ -130,13 +130,13 @@ const AddExternalAPIModal: FC<AddExternalAPIModalProps> = ({ data, onSave, onCan
                         <div className='p-1'>
                           <div className='flex pt-1 pb-0.5 pl-2 pr-3 items-start self-stretch'>
                             <div className='text-text-tertiary system-xs-medium-uppercase'>{`${datasetBindings?.length} ${t('dataset.editExternalAPITooltipTitle')}`}</div>
-                            {datasetBindings?.map(binding => (
-                              <div key={binding.id} className='flex px-2 py-1 items-center gap-1 self-stretch'>
-                                <RiBook2Line className='w-4 h-4 text-text-secondary' />
-                                <div className='text-text-secondary system-sm-medium'>{binding.name}</div>
-                              </div>
-                            ))}
                           </div>
+                          {datasetBindings?.map(binding => (
+                            <div key={binding.id} className='flex px-2 py-1 items-center gap-1 self-stretch'>
+                              <RiBook2Line className='w-4 h-4 text-text-secondary' />
+                              <div className='text-text-secondary system-sm-medium'>{binding.name}</div>
+                            </div>
+                          ))}
                         </div>
                       }
                       asChild={false}
