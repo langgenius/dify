@@ -124,7 +124,7 @@ export default function MailAndPasswordAuth({ isInvite }: MailAndPasswordAuthPro
         tabIndex={2}
         variant='primary'
         onClick={handleEmailPasswordLogin}
-        disabled={isLoading}
+        disabled={isLoading || !email || !password}
         className="w-full"
       >{t('login.signBtn')}</Button>
     </div>
