@@ -10,6 +10,7 @@ const translation = {
   forget: 'Forgot your password?',
   signBtn: 'Sign in',
   continueWithCode: 'Continue With Code',
+  sendVerificationCode: 'Send Verification Code',
   usePassword: 'Use Password',
   useVerificationCode: 'Use Verification Code',
   or: 'OR',

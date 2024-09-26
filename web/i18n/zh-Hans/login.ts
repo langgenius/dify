@@ -10,6 +10,7 @@ const translation = {
   forget: '忘记密码？',
   signBtn: '登录',
   continueWithCode: '发送验证码',
+  sendVerificationCode: '发送验证码',
   usePassword: '使用密码登录',
   useVerificationCode: '使用验证码登录',
   or: '或',

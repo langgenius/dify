@@ -62,13 +62,14 @@ export default function CheckCode() {
     </div>
 
     <form onSubmit={() => { }}>
+      <input type='text' className='hidden' />
       <div className='mb-2'>
         <label htmlFor="email" className='my-2 system-md-semibold text-text-secondary'>{t('login.email')}</label>
         <div className='mt-1'>
           <Input id='email' type="email" disabled={loading} value={email} placeholder={t('login.emailPlaceholder') as string} onChange={e => setEmail(e.target.value)} />
         </div>
         <div className='mt-3'>
-          <Button loading={loading} disabled={loading} variant='primary' className='w-full' onClick={handleGetEMailVerificationCode}>{t('login.continueWithCode')}</Button>
+          <Button loading={loading} disabled={loading} variant='primary' className='w-full' onClick={handleGetEMailVerificationCode}>{t('login.sendVerificationCode')}</Button>
         </div>
       </div>
     </form>

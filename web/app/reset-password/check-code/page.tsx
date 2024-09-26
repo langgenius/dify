@@ -71,6 +71,7 @@ export default function CheckCode() {
     </div>
 
     <form action="">
+      <input type='text' className='hidden' />
       <label htmlFor="code" className='system-md-semibold text-text-secondary mb-1'>{t('login.checkCode.verificationCode')}</label>
       <Input value={code} onChange={e => setVerifyCode(e.target.value)} max-length={6} className='mt-1' placeholder={t('login.checkCode.verificationCodePlaceholder') as string} />
       <Button loading={loading} disabled={loading} className='my-3 w-full' variant='primary' onClick={verify}>{t('login.checkCode.verify')}</Button>
