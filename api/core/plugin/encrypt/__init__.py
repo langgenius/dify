@@ -16,7 +16,16 @@ class PluginEncrypter:
             provider_identity=payload.identity,
         )
 
-        if payload.opt == "encrypt":
-            return encrypter.encrypt(payload.data)
-        else:
-            return encrypter.decrypt(payload.data)
+        try:
+            if payload.opt == "encrypt":
+                return {
+                    "data": encrypter.encrypt(payload.data),
+                }
+            else:
+                return {
+                    "data": encrypter.decrypt(payload.data),
+                }
+        except Exception as e:
+            return {
+                "error": str(e),
+            }
