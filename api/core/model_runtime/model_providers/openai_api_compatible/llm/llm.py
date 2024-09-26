@@ -368,7 +368,7 @@ class OAIAPICompatLargeLanguageModel(_CommonOaiApiCompat, LargeLanguageModel):
         if user:
             data["user"] = user
 
-        response = requests.post(endpoint_url, headers=headers, json=data, timeout=(10, 300), stream=stream)
+        response = requests.post(endpoint_url, headers=headers, json=data, timeout=(30, 600), stream=stream)
 
         if response.encoding is None or response.encoding == "ISO-8859-1":
             response.encoding = "utf-8"

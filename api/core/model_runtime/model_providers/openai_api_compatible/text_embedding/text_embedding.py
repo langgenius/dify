@@ -146,7 +146,7 @@ class OAICompatEmbeddingModel(_CommonOaiApiCompat, TextEmbeddingModel):
 
             payload = {"input": "ping", "model": model}
 
-            response = requests.post(url=endpoint_url, headers=headers, data=json.dumps(payload), timeout=(10, 300))
+            response = requests.post(url=endpoint_url, headers=headers, data=json.dumps(payload), timeout=(30, 1000))
 
             if response.status_code != 200:
                 raise CredentialsValidateFailedError(
