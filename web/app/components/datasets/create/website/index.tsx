@@ -101,14 +101,9 @@ const Website: FC<Props> = ({
         </div>
       </div>
 
-      {sources.length === 0 && (
-        <NoData onConfig={handleOnConfig} provider={selectedProvider} />
-      )}
-
-      {sources.length > 0 && (
-        selectedProvider === DataSourceProvider.fireCrawl
-          ? (
-            <Firecrawl
+      {selectedProvider === DataSourceProvider.fireCrawl
+        ? sources.find(source => source.provider === DataSourceProvider.fireCrawl) ? (
+          <Firecrawl
               onPreview={onPreview}
               checkedCrawlResult={checkedCrawlResult}
               onCheckedCrawlResultChange={onCheckedCrawlResultChange}
@@ -116,9 +111,11 @@ const Website: FC<Props> = ({
               crawlOptions={crawlOptions}
               onCrawlOptionsChange={onCrawlOptionsChange}
             />
+          ) : (
+            <NoData onConfig={handleOnConfig} provider={selectedProvider} />
           )
-          : (
-            <JinaReader
+        : sources.find(source => source.provider === DataSourceProvider.jinaReader) ? (
+          <JinaReader
               onPreview={onPreview}
               checkedCrawlResult={checkedCrawlResult}
               onCheckedCrawlResultChange={onCheckedCrawlResultChange}
@@ -126,8 +123,10 @@ const Website: FC<Props> = ({
               crawlOptions={crawlOptions}
               onCrawlOptionsChange={onCrawlOptionsChange}
             />
+          ) : (
+            <NoData onConfig={handleOnConfig} provider={selectedProvider} />
           )
-      )}
+      }
     </div>
   )
 }
