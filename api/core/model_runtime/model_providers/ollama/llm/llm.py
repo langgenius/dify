@@ -366,7 +366,7 @@ class OllamaLargeLanguageModel(LargeLanguageModel):
                 # calculate num tokens
                 if "prompt_eval_count" in chunk_json:
                     prompt_tokens = chunk_json["prompt_eval_count"]
-                else :
+                else:
                     prompt_message_content = prompt_messages[0].content
                     if isinstance(prompt_message_content, str):
                         prompt_tokens = self._get_num_tokens_by_gpt2(prompt_message_content)
@@ -378,7 +378,7 @@ class OllamaLargeLanguageModel(LargeLanguageModel):
                                 content_text += message_content.data
                         prompt_tokens = self._get_num_tokens_by_gpt2(content_text)
                     
-                completion_tokens = chunk_json.get("eval_count",self._get_num_tokens_by_gpt2(full_text))
+                completion_tokens = chunk_json.get("eval_count", self._get_num_tokens_by_gpt2(full_text))
                 
                 # transform usage
                 usage = self._calc_response_usage(model, credentials, prompt_tokens, completion_tokens)
