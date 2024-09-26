@@ -57,7 +57,7 @@ const ResultTab = ({
         {currentTab === 'RESULT' && (
           <>
             <Markdown content={data?.resultText || ''} />
-            {data?.files?.length && (
+            {!!data?.files?.length && (
               <FileList
                 files={data?.files}
                 showDeleteAction={false}
@@ -67,14 +67,15 @@ const ResultTab = ({
           </>
         )}
         {currentTab === 'DETAIL' && content && (
-          <CodeEditor
-            readOnly
-            title={<div>JSON OUTPUT</div>}
-            language={CodeLanguage.json}
-            value={content}
-            isJSONStringifyBeauty
-            showFileList
-          />
+          <div className='mt-1'>
+            <CodeEditor
+              readOnly
+              title={<div>JSON OUTPUT</div>}
+              language={CodeLanguage.json}
+              value={content}
+              isJSONStringifyBeauty
+            />
+          </div>
         )}
       </div>
     </div>
