@@ -77,7 +77,7 @@ const ChatWrapper = () => {
       parent_message_id: last_answer?.id || getLastAnswer(chatListRef.current)?.id || null,
     }
 
-    if (appConfig?.file_upload?.image.enabled && files?.length)
+    if (appConfig?.file_upload?.image?.enabled && files?.length)
       data.files = files
 
     handleSend(
