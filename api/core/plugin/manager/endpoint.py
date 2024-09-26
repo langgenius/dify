@@ -59,6 +59,7 @@ class PluginEndpointManager(BasePluginManager):
             f"plugin/{tenant_id}/endpoint/update",
             dict,
             data={
+                "user_id": user_id,
                 "endpoint_id": endpoint_id,
                 "settings": settings,
             },
