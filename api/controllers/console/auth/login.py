@@ -81,16 +81,19 @@ class ResetPasswordSendEmailApi(Resource):
     def post(self):
         parser = reqparse.RequestParser()
         parser.add_argument("email", type=email, required=True, location="json")
+        parser.add_argument("language", type=str, required=False, location="json")
         args = parser.parse_args()
 
         account = AccountService.get_user_through_email(args["email"])
         if account is None:
             if dify_config.ALLOW_REGISTER:
-                token = AccountService.send_reset_password_email(email=args["email"])
+                token = AccountService.send_reset_password_email(
+                    email=args["email"], language=args["language"] or "en-US"
+                )
             else:
                 raise NotAllowedRegister()
         else:
-            token = AccountService.send_reset_password_email(account=account)
+            token = AccountService.send_reset_password_email(account=account, language=args["language"])
 
         return {"result": "success", "data": token}
 
@@ -100,16 +103,19 @@ class EmailCodeLoginSendEmailApi(Resource):
     def post(self):
         parser = reqparse.RequestParser()
         parser.add_argument("email", type=email, required=True, location="json")
+        parser.add_argument("language", type=str, required=False, location="json")
         args = parser.parse_args()
 
         account = AccountService.get_user_through_email(args["email"])
         if account is None:
             if dify_config.ALLOW_REGISTER:
-                token = AccountService.send_email_code_login_email(email=args["email"])
+                token = AccountService.send_email_code_login_email(
+                    email=args["email"], language=args["language"] or "en-US"
+                )
             else:
                 raise NotAllowedRegister()
         else:
-            token = AccountService.send_email_code_login_email(account=account)
+            token = AccountService.send_email_code_login_email(account=account, language=args["language"])
 
         return {"result": "success", "data": token}
 
