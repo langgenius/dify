@@ -14,6 +14,8 @@ export const useCheckInputsForms = () => {
     let fileIsUploading = false
     const requiredVars = inputsForm.filter(({ required }) => required)
 
+    console.log(inputs, inputsForm, 'inputs, inputsForm')
+
     if (requiredVars?.length) {
       requiredVars.forEach(({ variable, label, type }) => {
         if (hasEmptyInput)
@@ -42,7 +44,7 @@ export const useCheckInputsForms = () => {
       return
     }
 
-    return true
+    return false
   }, [notify, t])
 
   return {

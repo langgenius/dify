@@ -70,13 +70,11 @@ const ChatWrapper = () => {
   const doSend: OnSend = useCallback((message, files, last_answer) => {
     const data: any = {
       query: message,
+      files,
       inputs: currentConversationId ? currentConversationItem?.inputs : newConversationInputs,
       conversation_id: currentConversationId,
       parent_message_id: last_answer?.id || getLastAnswer(chatListRef.current)?.id || null,
     }
-
-    if (appConfig?.file_upload?.image?.enabled && files?.length)
-      data.files = files
 
     handleSend(
       getUrl('chat-messages', isInstalledApp, appId || ''),
