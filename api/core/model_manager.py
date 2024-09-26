@@ -310,7 +310,9 @@ class ModelInstance:
             user=user,
         )
 
-    def invoke_tts(self, content_text: str, tenant_id: str, voice: str, user: Optional[str] = None) -> str:
+    def invoke_tts(
+        self, content_text: str, tenant_id: str, voice: str, user: Optional[str] = None
+    ) -> Generator[bytes, None, None]:
         """
         Invoke large language tts model
 

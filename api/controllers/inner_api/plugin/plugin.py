@@ -47,7 +47,11 @@ class PluginInvokeTextEmbeddingApi(Resource):
     @get_tenant
     @plugin_data(payload_type=RequestInvokeTextEmbedding)
     def post(self, user_id: str, tenant_model: Tenant, payload: RequestInvokeTextEmbedding):
-        pass
+        return PluginModelBackwardsInvocation.invoke_text_embedding(
+            user_id=user_id,
+            tenant=tenant_model,
+            payload=payload,
+        )
 
 
 class PluginInvokeRerankApi(Resource):

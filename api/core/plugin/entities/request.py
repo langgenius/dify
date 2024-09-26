@@ -74,34 +74,62 @@ class RequestInvokeLLM(BaseRequestInvokeModel):
         return v
 
 
-class RequestInvokeTextEmbedding(BaseModel):
+class RequestInvokeTextEmbedding(BaseRequestInvokeModel):
     """
     Request to invoke text embedding
     """
 
+    model_type: ModelType = ModelType.TEXT_EMBEDDING
+    texts: list[str]
 
-class RequestInvokeRerank(BaseModel):
+
+class RequestInvokeRerank(BaseRequestInvokeModel):
     """
     Request to invoke rerank
     """
 
+    model_type: ModelType = ModelType.RERANK
+    query: str
+    docs: list[str]
+    score_threshold: float
+    top_n: int
 
-class RequestInvokeTTS(BaseModel):
+
+class RequestInvokeTTS(BaseRequestInvokeModel):
     """
     Request to invoke TTS
     """
 
+    model_type: ModelType = ModelType.TTS
+    content_text: str
+    voice: str
 
-class RequestInvokeSpeech2Text(BaseModel):
+
+class RequestInvokeSpeech2Text(BaseRequestInvokeModel):
     """
     Request to invoke speech2text
     """
 
+    model_type: ModelType = ModelType.SPEECH2TEXT
+    file: bytes
 
-class RequestInvokeModeration(BaseModel):
+    @field_validator("file", mode="before")
+    @classmethod
+    def convert_file(cls, v):
+        # hex string to bytes
+        if isinstance(v, str):
+            return bytes.fromhex(v)
+        else:
+            raise ValueError("file must be a hex string")
+
+
+class RequestInvokeModeration(BaseRequestInvokeModel):
     """
     Request to invoke moderation
     """
+
+    model_type: ModelType = ModelType.MODERATION
+    text: str
 
 
 class RequestInvokeParameterExtractorNode(BaseModel):
