@@ -12,7 +12,6 @@ from werkzeug.exceptions import Unauthorized
 
 from configs import dify_config
 from constants.languages import language_timezone_mapping, languages
-from controllers.console.auth.error import EmailPasswordLoginLimitError
 from events.tenant_event import tenant_was_created
 from extensions.ext_redis import redis_client
 from libs.helper import RateLimiter, TokenManager
@@ -290,7 +289,7 @@ class AccountService:
         cls, account: Optional[Account] = None, email: Optional[str] = None, language: Optional[str] = "en-US"
     ):
         if cls.email_code_login_rate_limiter.is_rate_limited(email):
-            raise EmailPasswordLoginLimitError()
+            raise RateLimitExceededError(f"Rate limit exceeded for email: {email}. Please try again later.")
 
         code = "".join([str(random.randint(0, 9)) for _ in range(6)])
         token = TokenManager.generate_token(
