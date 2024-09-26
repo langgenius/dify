@@ -73,6 +73,7 @@ const ResultTab = ({
             language={CodeLanguage.json}
             value={content}
             isJSONStringifyBeauty
+            showFileList
           />
         )}
       </div>
