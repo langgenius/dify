@@ -1,4 +1,4 @@
-# model docs: https://help.aliyun.com/zh/model-studio/getting-started/models#27b2b3a15d5c6
+# for more details, please refer to https://help.aliyun.com/zh/model-studio/getting-started/models
 model: qwen-long
 label:
   en_US: qwen-long
