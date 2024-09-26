@@ -28,6 +28,7 @@ import Avatar from '@/app/components/base/avatar'
 import { useAppContext } from '@/context/app-context'
 import { ModelFeatureEnum } from '@/app/components/header/account-setting/model-provider-page/declarations'
 import { useFeatures } from '@/app/components/base/features/hooks'
+import type { InputForm } from '@/app/components/base/chat/chat/type'
 
 type ChatItemProps = {
   modelAndParameter: ModelAndParameter
@@ -60,6 +61,7 @@ const ChatItem: FC<ChatItemProps> = ({
       annotation_reply: features.annotationReply,
     } as ChatConfig
   }, [configTemplate, features])
+  const inputsForm = modelConfig.configs.prompt_variables.filter(item => item.type !== 'api').map(item => ({ ...item, label: item.name, variable: item.key })) as InputForm[]
   const {
     chatList,
     chatListRef,
@@ -71,7 +73,7 @@ const ChatItem: FC<ChatItemProps> = ({
     config,
     {
       inputs,
-      promptVariables: modelConfig.configs.prompt_variables,
+      inputsForm,
     },
     [],
     taskId => stopChatMessageResponding(appId, taskId),

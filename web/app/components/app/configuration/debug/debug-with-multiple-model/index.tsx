@@ -13,23 +13,29 @@ import {
 import type { DebugWithMultipleModelContextType } from './context'
 import { useEventEmitterContextContext } from '@/context/event-emitter'
 import ChatInputArea from '@/app/components/base/chat/chat/chat-input-area'
-import type { VisionFile } from '@/app/components/base/chat/types'
 import { useDebugConfigurationContext } from '@/context/debug-configuration'
 import { useFeatures } from '@/app/components/base/features/hooks'
 import { useStore as useAppStore } from '@/app/components/app/store'
+import type { FileEntity } from '@/app/components/base/file-uploader/types'
+import type { InputForm } from '@/app/components/base/chat/chat/type'
 
 const DebugWithMultipleModel = () => {
-  const { mode } = useDebugConfigurationContext()
+  const {
+    mode,
+    inputs,
+    modelConfig,
+  } = useDebugConfigurationContext()
   const speech2text = useFeatures(s => s.features.speech2text)
   const file = useFeatures(s => s.features.file)
   const {
     multipleModelConfigs,
     checkCanSend,
   } = useDebugWithMultipleModelContext()
+
   const { eventEmitter } = useEventEmitterContextContext()
   const isChatMode = mode === 'chat' || mode === 'agent-chat'
 
-  const handleSend = useCallback((message: string, files?: VisionFile[]) => {
+  const handleSend = useCallback((message: string, files?: FileEntity[]) => {
     if (checkCanSend && !checkCanSend())
       return
 
@@ -93,6 +99,7 @@ const DebugWithMultipleModel = () => {
   }, [twoLine, threeLine, fourLine])
 
   const setShowAppConfigureFeaturesModal = useAppStore(s => s.setShowAppConfigureFeaturesModal)
+  const inputsForm = modelConfig.configs.prompt_variables.filter(item => item.type !== 'api').map(item => ({ ...item, label: item.name, variable: item.key })) as InputForm[]
 
   return (
     <div className='flex flex-col h-full'>
@@ -132,6 +139,8 @@ const DebugWithMultipleModel = () => {
             onSend={handleSend}
             speechToTextConfig={speech2text as any}
             visionConfig={file}
+            inputs={inputs}
+            inputsForm={inputsForm}
           />
         </div>
       )}

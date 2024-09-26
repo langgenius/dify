@@ -25,6 +25,7 @@ import { ModelFeatureEnum } from '@/app/components/header/account-setting/model-
 import { useStore as useAppStore } from '@/app/components/app/store'
 import { useFeatures } from '@/app/components/base/features/hooks'
 import { getLastAnswer } from '@/app/components/base/chat/utils'
+import type { InputForm } from '@/app/components/base/chat/chat/type'
 
 type DebugWithSingleModelProps = {
   checkCanSend?: () => boolean
@@ -62,6 +63,7 @@ const DebugWithSingleModel = forwardRef<DebugWithSingleModelRefType, DebugWithSi
       annotation_reply: features.annotationReply,
     } as ChatConfig
   }, [configTemplate, features])
+  const inputsForm = modelConfig.configs.prompt_variables.filter(item => item.type !== 'api').map(item => ({ ...item, label: item.name, variable: item.key })) as InputForm[]
   const {
     chatList,
     chatListRef,
@@ -78,7 +80,7 @@ const DebugWithSingleModel = forwardRef<DebugWithSingleModelRefType, DebugWithSi
     config,
     {
       inputs,
-      promptVariables: modelConfig.configs.prompt_variables,
+      inputsForm,
     },
     [],
     taskId => stopChatMessageResponding(appId, taskId),
@@ -166,6 +168,8 @@ const DebugWithSingleModel = forwardRef<DebugWithSingleModelRefType, DebugWithSi
       onFeatureBarClick={setShowAppConfigureFeaturesModal}
       suggestedQuestions={suggestedQuestions}
       onSend={doSend}
+      inputs={inputs}
+      inputsForm={inputsForm}
       onRegenerate={doRegenerate}
       onStopResponding={handleStop}
       showPromptLog
