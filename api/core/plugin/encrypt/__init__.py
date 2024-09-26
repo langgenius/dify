@@ -8,7 +8,7 @@ from models.account import Tenant
 
 class PluginEncrypter:
     @classmethod
-    def invoke_encrypt(cls, tenant: Tenant, payload: RequestInvokeEncrypt) -> Mapping[str, Any]:
+    def invoke_encrypt(cls, tenant: Tenant, payload: RequestInvokeEncrypt) -> dict:
         encrypter = ProviderConfigEncrypter(
             tenant_id=tenant.id,
             config=payload.data,
@@ -16,16 +16,7 @@ class PluginEncrypter:
             provider_identity=payload.identity,
         )
 
-        try:
-            if payload.opt == "encrypt":
-                return {
-                    "data": encrypter.encrypt(payload.data),
-                }
-            else:
-                return {
-                    "data": encrypter.decrypt(payload.data),
-                }
-        except Exception as e:
-            return {
-                "error": str(e),
-            }
+        if payload.opt == "encrypt":
+            return encrypter.encrypt(payload.data)
+        else:
+            return encrypter.decrypt(payload.data)

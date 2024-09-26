@@ -7,6 +7,7 @@ from controllers.inner_api import api
 from controllers.inner_api.plugin.wraps import get_tenant, plugin_data
 from controllers.inner_api.wraps import plugin_inner_api_only
 from core.plugin.backwards_invocation.app import PluginAppBackwardsInvocation
+from core.plugin.backwards_invocation.base import BaseBackwardsInvocationResponse
 from core.plugin.backwards_invocation.model import PluginModelBackwardsInvocation
 from core.plugin.backwards_invocation.node import PluginNodeBackwardsInvocation
 from core.plugin.encrypt import PluginEncrypter
@@ -47,11 +48,16 @@ class PluginInvokeTextEmbeddingApi(Resource):
     @get_tenant
     @plugin_data(payload_type=RequestInvokeTextEmbedding)
     def post(self, user_id: str, tenant_model: Tenant, payload: RequestInvokeTextEmbedding):
-        return PluginModelBackwardsInvocation.invoke_text_embedding(
-            user_id=user_id,
-            tenant=tenant_model,
-            payload=payload,
-        )
+        try:
+            return BaseBackwardsInvocationResponse(
+                data=PluginModelBackwardsInvocation.invoke_text_embedding(
+                    user_id=user_id,
+                    tenant=tenant_model,
+                    payload=payload,
+                )
+            ).model_dump()
+        except Exception as e:
+            return BaseBackwardsInvocationResponse(error=str(e)).model_dump()
 
 
 class PluginInvokeRerankApi(Resource):
@@ -60,7 +66,16 @@ class PluginInvokeRerankApi(Resource):
     @get_tenant
     @plugin_data(payload_type=RequestInvokeRerank)
     def post(self, user_id: str, tenant_model: Tenant, payload: RequestInvokeRerank):
-        pass
+        try:
+            return BaseBackwardsInvocationResponse(
+                data=PluginModelBackwardsInvocation.invoke_rerank(
+                    user_id=user_id,
+                    tenant=tenant_model,
+                    payload=payload,
+                )
+            ).model_dump()
+        except Exception as e:
+            return BaseBackwardsInvocationResponse(error=str(e)).model_dump()
 
 
 class PluginInvokeTTSApi(Resource):
@@ -69,7 +84,15 @@ class PluginInvokeTTSApi(Resource):
     @get_tenant
     @plugin_data(payload_type=RequestInvokeTTS)
     def post(self, user_id: str, tenant_model: Tenant, payload: RequestInvokeTTS):
-        pass
+        def generator():
+            response = PluginModelBackwardsInvocation.invoke_tts(
+                user_id=user_id,
+                tenant=tenant_model,
+                payload=payload,
+            )
+            return PluginModelBackwardsInvocation.convert_to_event_stream(response)
+
+        return compact_generate_response(generator())
 
 
 class PluginInvokeSpeech2TextApi(Resource):
@@ -78,7 +101,16 @@ class PluginInvokeSpeech2TextApi(Resource):
     @get_tenant
     @plugin_data(payload_type=RequestInvokeSpeech2Text)
     def post(self, user_id: str, tenant_model: Tenant, payload: RequestInvokeSpeech2Text):
-        pass
+        try:
+            return BaseBackwardsInvocationResponse(
+                data=PluginModelBackwardsInvocation.invoke_speech2text(
+                    user_id=user_id,
+                    tenant=tenant_model,
+                    payload=payload,
+                )
+            ).model_dump()
+        except Exception as e:
+            return BaseBackwardsInvocationResponse(error=str(e)).model_dump()
 
 
 class PluginInvokeModerationApi(Resource):
@@ -87,7 +119,16 @@ class PluginInvokeModerationApi(Resource):
     @get_tenant
     @plugin_data(payload_type=RequestInvokeModeration)
     def post(self, user_id: str, tenant_model: Tenant, payload: RequestInvokeModeration):
-        pass
+        try:
+            return BaseBackwardsInvocationResponse(
+                data=PluginModelBackwardsInvocation.invoke_moderation(
+                    user_id=user_id,
+                    tenant=tenant_model,
+                    payload=payload,
+                )
+            ).model_dump()
+        except Exception as e:
+            return BaseBackwardsInvocationResponse(error=str(e)).model_dump()
 
 
 class PluginInvokeToolApi(Resource):
@@ -118,14 +159,19 @@ class PluginInvokeParameterExtractorNodeApi(Resource):
     @get_tenant
     @plugin_data(payload_type=RequestInvokeParameterExtractorNode)
     def post(self, user_id: str, tenant_model: Tenant, payload: RequestInvokeParameterExtractorNode):
-        return PluginNodeBackwardsInvocation.invoke_parameter_extractor(
-            tenant_id=tenant_model.id,
-            user_id=user_id,
-            parameters=payload.parameters,
-            model_config=payload.model,
-            instruction=payload.instruction,
-            query=payload.query,
-        )
+        try:
+            return BaseBackwardsInvocationResponse(
+                data=PluginNodeBackwardsInvocation.invoke_parameter_extractor(
+                    tenant_id=tenant_model.id,
+                    user_id=user_id,
+                    parameters=payload.parameters,
+                    model_config=payload.model,
+                    instruction=payload.instruction,
+                    query=payload.query,
+                )
+            ).model_dump()
+        except Exception as e:
+            return BaseBackwardsInvocationResponse(error=str(e)).model_dump()
 
 
 class PluginInvokeQuestionClassifierNodeApi(Resource):
@@ -134,14 +180,19 @@ class PluginInvokeQuestionClassifierNodeApi(Resource):
     @get_tenant
     @plugin_data(payload_type=RequestInvokeQuestionClassifierNode)
     def post(self, user_id: str, tenant_model: Tenant, payload: RequestInvokeQuestionClassifierNode):
-        return PluginNodeBackwardsInvocation.invoke_question_classifier(
-            tenant_id=tenant_model.id,
-            user_id=user_id,
-            query=payload.query,
-            model_config=payload.model,
-            classes=payload.classes,
-            instruction=payload.instruction,
-        )
+        try:
+            return BaseBackwardsInvocationResponse(
+                data=PluginNodeBackwardsInvocation.invoke_question_classifier(
+                    tenant_id=tenant_model.id,
+                    user_id=user_id,
+                    query=payload.query,
+                    model_config=payload.model,
+                    classes=payload.classes,
+                    instruction=payload.instruction,
+                )
+            ).model_dump()
+        except Exception as e:
+            return BaseBackwardsInvocationResponse(error=str(e)).model_dump()
 
 
 class PluginInvokeAppApi(Resource):
@@ -173,7 +224,12 @@ class PluginInvokeEncryptApi(Resource):
         """
         encrypt or decrypt data
         """
-        return PluginEncrypter.invoke_encrypt(tenant_model, payload)
+        try:
+            return BaseBackwardsInvocationResponse(
+                data=PluginEncrypter.invoke_encrypt(tenant_model, payload)
+            ).model_dump()
+        except Exception as e:
+            return BaseBackwardsInvocationResponse(error=str(e)).model_dump()
 
 
 api.add_resource(PluginInvokeLLMApi, "/invoke/llm")
