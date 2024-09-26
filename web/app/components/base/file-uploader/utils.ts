@@ -1,4 +1,5 @@
 import mime from 'mime'
+import { flatten } from 'lodash-es'
 import { FileAppearanceTypeEnum } from './types'
 import type { FileEntity } from './types'
 import { upload } from '@/service/base'
@@ -147,4 +148,13 @@ export const getSupportFileExtensionList = (allowFileTypes: string[], allowFileE
 
 export const isAllowedFileExtension = (fileName: string, fileMimetype: string, allowFileTypes: string[], allowFileExtensions: string[]) => {
   return getSupportFileExtensionList(allowFileTypes, allowFileExtensions).includes(getFileExtension(fileName, fileMimetype).toUpperCase())
+}
+
+export const getFilesInLogs = (rawData: any) => {
+  const originalFiles = flatten(Object.keys(rawData || {}).map((key) => {
+    if (typeof rawData[key] === 'object' || Array.isArray(rawData[key]))
+      return rawData[key]
+    return undefined
+  }).filter(Boolean)).filter(item => item?.model_identity === '__dify__file__')
+  return getProcessedFilesFromResponse(originalFiles)
 }
