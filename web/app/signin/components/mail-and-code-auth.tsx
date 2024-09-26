@@ -53,6 +53,7 @@ export default function MailAndCodeAuth({ isInvite }: MailAndCodeAuthProps) {
   }
 
   return (<form onSubmit={() => { }}>
+    <input type='text' className='hidden' />
     <div className='mb-2'>
       <label htmlFor="email" className='my-2 system-md-semibold text-text-secondary'>{t('login.email')}</label>
       <div className='mt-1'>
