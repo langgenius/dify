@@ -3,6 +3,7 @@ import {
   RiDownloadLine,
 } from '@remixicon/react'
 import {
+  fileIsUploaded,
   getFileAppearanceType,
   getFileExtension,
 } from '../utils'
@@ -84,7 +85,7 @@ const FileItem = ({
           )
         }
         {
-          progress >= 0 && !file.uploadedId && (
+          progress >= 0 && !fileIsUploaded(file) && (
             <ProgressCircle
               percentage={progress}
               size={12}

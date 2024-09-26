@@ -6,6 +6,7 @@ import { upload } from '@/service/base'
 import { FILE_EXTS } from '@/app/components/base/prompt-editor/constants'
 import { SupportUploadFileTypes } from '@/app/components/workflow/types'
 import type { FileResponse } from '@/types/workflow'
+import { TransferMethod } from '@/types/app'
 
 type FileUploadParams = {
   file: File
@@ -157,4 +158,11 @@ export const getFilesInLogs = (rawData: any) => {
     return undefined
   }).filter(Boolean)).filter(item => item?.model_identity === '__dify__file__')
   return getProcessedFilesFromResponse(originalFiles)
+}
+
+export const fileIsUploaded = (file: FileEntity) => {
+  const localFileUploaded = file.transferMethod === TransferMethod.local_file && file.uploadedId
+  const fromUrlFileUploaded = file.transferMethod === TransferMethod.remote_url && file.progress === 100
+
+  return localFileUploaded || fromUrlFileUploaded
 }

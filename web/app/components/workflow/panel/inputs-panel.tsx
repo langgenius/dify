@@ -20,6 +20,9 @@ import type { StartNodeType } from '../nodes/start/types'
 import { TransferMethod } from '../../base/text-generation/types'
 import Button from '@/app/components/base/button'
 import { useFeatures } from '@/app/components/base/features/hooks'
+import {
+  getProcessedInputs,
+} from '@/app/components/base/chat/chat/utils'
 
 type Props = {
   onRun: () => void
@@ -76,8 +79,8 @@ const InputsPanel = ({ onRun }: Props) => {
 
   const doRun = useCallback(() => {
     onRun()
-    handleRun({ inputs, files })
-  }, [files, handleRun, inputs, onRun])
+    handleRun({ inputs: getProcessedInputs(inputs, variables as any), files })
+  }, [files, handleRun, inputs, onRun, variables])
 
   const canRun = useMemo(() => {
     if (files?.some(item => (item.transfer_method as any) === TransferMethod.local_file && !item.upload_file_id))
