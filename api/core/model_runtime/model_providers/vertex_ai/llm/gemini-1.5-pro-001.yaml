@@ -1,6 +1,6 @@
-model: gemini-1.5-flash-001
+model: gemini-1.5-pro-001
 label:
-  en_US: Gemini 1.5 Flash
+  en_US: Gemini 1.5 Pro 001
 model_type: llm
 features:
   - agent-thought
