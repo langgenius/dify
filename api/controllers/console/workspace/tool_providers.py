@@ -24,8 +24,10 @@ class ToolProviderListApi(Resource):
     @login_required
     @account_initialization_required
     def get(self):
-        user_id = current_user.id
-        tenant_id = current_user.current_tenant_id
+        user = current_user
+
+        user_id = user.id
+        tenant_id = user.current_tenant_id
 
         req = reqparse.RequestParser()
         req.add_argument(
@@ -46,8 +48,10 @@ class ToolBuiltinProviderListToolsApi(Resource):
     @login_required
     @account_initialization_required
     def get(self, provider):
-        user_id = current_user.id
-        tenant_id = current_user.current_tenant_id
+        user = current_user
+
+        user_id = user.id
+        tenant_id = user.current_tenant_id
 
         return jsonable_encoder(
             BuiltinToolManageService.list_builtin_tool_provider_tools(
@@ -63,11 +67,13 @@ class ToolBuiltinProviderDeleteApi(Resource):
     @login_required
     @account_initialization_required
     def post(self, provider):
-        if not current_user.is_admin_or_owner:
+        user = current_user
+
+        if not user.is_admin_or_owner:
             raise Forbidden()
 
-        user_id = current_user.id
-        tenant_id = current_user.current_tenant_id
+        user_id = user.id
+        tenant_id = user.current_tenant_id
 
         return BuiltinToolManageService.delete_builtin_tool_provider(
             user_id,
@@ -81,11 +87,13 @@ class ToolBuiltinProviderUpdateApi(Resource):
     @login_required
     @account_initialization_required
     def post(self, provider):
-        if not current_user.is_admin_or_owner:
+        user = current_user
+
+        if not user.is_admin_or_owner:
             raise Forbidden()
 
-        user_id = current_user.id
-        tenant_id = current_user.current_tenant_id
+        user_id = user.id
+        tenant_id = user.current_tenant_id
 
         parser = reqparse.RequestParser()
         parser.add_argument("credentials", type=dict, required=True, nullable=False, location="json")
@@ -105,8 +113,10 @@ class ToolBuiltinProviderGetCredentialsApi(Resource):
     @login_required
     @account_initialization_required
     def get(self, provider):
-        user_id = current_user.id
-        tenant_id = current_user.current_tenant_id
+        user = current_user
+
+        user_id = user.id
+        tenant_id = user.current_tenant_id
 
         return BuiltinToolManageService.get_builtin_tool_provider_credentials(
             user_id,
@@ -118,7 +128,10 @@ class ToolBuiltinProviderGetCredentialsApi(Resource):
 class ToolBuiltinProviderIconApi(Resource):
     @setup_required
     def get(self, provider):
-        tenant_id = current_user.current_tenant_id
+        user = current_user
+
+        user_id = user.id
+        tenant_id = user.current_tenant_id
 
         icon_bytes, mimetype = BuiltinToolManageService.get_builtin_tool_provider_icon(provider, tenant_id)
         icon_cache_max_age = dify_config.TOOL_ICON_CACHE_MAX_AGE
@@ -130,11 +143,13 @@ class ToolApiProviderAddApi(Resource):
     @login_required
     @account_initialization_required
     def post(self):
-        if not current_user.is_admin_or_owner:
+        user = current_user
+
+        if not user.is_admin_or_owner:
             raise Forbidden()
 
-        user_id = current_user.id
-        tenant_id = current_user.current_tenant_id
+        user_id = user.id
+        tenant_id = user.current_tenant_id
 
         parser = reqparse.RequestParser()
         parser.add_argument("credentials", type=dict, required=True, nullable=False, location="json")
@@ -167,6 +182,11 @@ class ToolApiProviderGetRemoteSchemaApi(Resource):
     @login_required
     @account_initialization_required
     def get(self):
+        user = current_user
+
+        user_id = user.id
+        tenant_id = user.current_tenant_id
+
         parser = reqparse.RequestParser()
 
         parser.add_argument("url", type=str, required=True, nullable=False, location="args")
@@ -174,8 +194,8 @@ class ToolApiProviderGetRemoteSchemaApi(Resource):
         args = parser.parse_args()
 
         return ApiToolManageService.get_api_tool_provider_remote_schema(
-            current_user.id,
-            current_user.current_tenant_id,
+            user_id,
+            tenant_id,
             args["url"],
         )
 
@@ -185,8 +205,10 @@ class ToolApiProviderListToolsApi(Resource):
     @login_required
     @account_initialization_required
     def get(self):
-        user_id = current_user.id
-        tenant_id = current_user.current_tenant_id
+        user = current_user
+
+        user_id = user.id
+        tenant_id = user.current_tenant_id
 
         parser = reqparse.RequestParser()
 
@@ -208,11 +230,13 @@ class ToolApiProviderUpdateApi(Resource):
     @login_required
     @account_initialization_required
     def post(self):
-        if not current_user.is_admin_or_owner:
+        user = current_user
+
+        if not user.is_admin_or_owner:
             raise Forbidden()
 
-        user_id = current_user.id
-        tenant_id = current_user.current_tenant_id
+        user_id = user.id
+        tenant_id = user.current_tenant_id
 
         parser = reqparse.RequestParser()
         parser.add_argument("credentials", type=dict, required=True, nullable=False, location="json")
@@ -247,11 +271,13 @@ class ToolApiProviderDeleteApi(Resource):
     @login_required
     @account_initialization_required
     def post(self):
-        if not current_user.is_admin_or_owner:
+        user = current_user
+
+        if not user.is_admin_or_owner:
             raise Forbidden()
 
-        user_id = current_user.id
-        tenant_id = current_user.current_tenant_id
+        user_id = user.id
+        tenant_id = user.current_tenant_id
 
         parser = reqparse.RequestParser()
 
@@ -271,8 +297,10 @@ class ToolApiProviderGetApi(Resource):
     @login_required
     @account_initialization_required
     def get(self):
-        user_id = current_user.id
-        tenant_id = current_user.current_tenant_id
+        user = current_user
+
+        user_id = user.id
+        tenant_id = user.current_tenant_id
 
         parser = reqparse.RequestParser()
 
@@ -292,7 +320,11 @@ class ToolBuiltinProviderCredentialsSchemaApi(Resource):
     @login_required
     @account_initialization_required
     def get(self, provider):
-        tenant_id = current_user.current_tenant_id
+        user = current_user
+
+        user_id = user.id
+        tenant_id = user.current_tenant_id
+
         return BuiltinToolManageService.list_builtin_provider_credentials_schema(provider, tenant_id)
 
 
@@ -344,11 +376,13 @@ class ToolWorkflowProviderCreateApi(Resource):
     @login_required
     @account_initialization_required
     def post(self):
-        if not current_user.is_admin_or_owner:
+        user = current_user
+
+        if not user.is_admin_or_owner:
             raise Forbidden()
 
-        user_id = current_user.id
-        tenant_id = current_user.current_tenant_id
+        user_id = user.id
+        tenant_id = user.current_tenant_id
 
         reqparser = reqparse.RequestParser()
         reqparser.add_argument("workflow_app_id", type=uuid_value, required=True, nullable=False, location="json")
@@ -381,11 +415,13 @@ class ToolWorkflowProviderUpdateApi(Resource):
     @login_required
     @account_initialization_required
     def post(self):
-        if not current_user.is_admin_or_owner:
+        user = current_user
+
+        if not user.is_admin_or_owner:
             raise Forbidden()
 
-        user_id = current_user.id
-        tenant_id = current_user.current_tenant_id
+        user_id = user.id
+        tenant_id = user.current_tenant_id
 
         reqparser = reqparse.RequestParser()
         reqparser.add_argument("workflow_tool_id", type=uuid_value, required=True, nullable=False, location="json")
@@ -421,11 +457,13 @@ class ToolWorkflowProviderDeleteApi(Resource):
     @login_required
     @account_initialization_required
     def post(self):
-        if not current_user.is_admin_or_owner:
+        user = current_user
+
+        if not user.is_admin_or_owner:
             raise Forbidden()
 
-        user_id = current_user.id
-        tenant_id = current_user.current_tenant_id
+        user_id = user.id
+        tenant_id = user.current_tenant_id
 
         reqparser = reqparse.RequestParser()
         reqparser.add_argument("workflow_tool_id", type=uuid_value, required=True, nullable=False, location="json")
@@ -444,8 +482,10 @@ class ToolWorkflowProviderGetApi(Resource):
     @login_required
     @account_initialization_required
     def get(self):
-        user_id = current_user.id
-        tenant_id = current_user.current_tenant_id
+        user = current_user
+
+        user_id = user.id
+        tenant_id = user.current_tenant_id
 
         parser = reqparse.RequestParser()
         parser.add_argument("workflow_tool_id", type=uuid_value, required=False, nullable=True, location="args")
@@ -476,8 +516,10 @@ class ToolWorkflowProviderListToolApi(Resource):
     @login_required
     @account_initialization_required
     def get(self):
-        user_id = current_user.id
-        tenant_id = current_user.current_tenant_id
+        user = current_user
+
+        user_id = user.id
+        tenant_id = user.current_tenant_id
 
         parser = reqparse.RequestParser()
         parser.add_argument("workflow_tool_id", type=uuid_value, required=True, nullable=False, location="args")
@@ -498,8 +540,10 @@ class ToolBuiltinListApi(Resource):
     @login_required
     @account_initialization_required
     def get(self):
-        user_id = current_user.id
-        tenant_id = current_user.current_tenant_id
+        user = current_user
+
+        user_id = user.id
+        tenant_id = user.current_tenant_id
 
         return jsonable_encoder(
             [
@@ -517,8 +561,10 @@ class ToolApiListApi(Resource):
     @login_required
     @account_initialization_required
     def get(self):
-        user_id = current_user.id
-        tenant_id = current_user.current_tenant_id
+        user = current_user
+
+        user_id = user.id
+        tenant_id = user.current_tenant_id
 
         return jsonable_encoder(
             [
@@ -536,8 +582,10 @@ class ToolWorkflowListApi(Resource):
     @login_required
     @account_initialization_required
     def get(self):
-        user_id = current_user.id
-        tenant_id = current_user.current_tenant_id
+        user = current_user
+
+        user_id = user.id
+        tenant_id = user.current_tenant_id
 
         return jsonable_encoder(
             [

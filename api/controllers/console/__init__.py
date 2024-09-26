@@ -58,6 +58,7 @@ from .tag import tags
 # Import workspace controllers
 from .workspace import (
     account,
+    endpoint,
     load_balancing_config,
     members,
     model_providers,
