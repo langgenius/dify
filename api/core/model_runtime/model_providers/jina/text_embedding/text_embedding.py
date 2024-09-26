@@ -28,7 +28,7 @@ class JinaTextEmbeddingModel(TextEmbeddingModel):
 
     api_base: str = "https://api.jina.ai/v1"
 
-    def _to_payload(self, model: str, texts: list[str], credentials: dict) -> dict:
+    def _to_payload(self, model: str, texts: list[str], credentials: dict, input_type: EmbeddingInputType) -> dict:
         """
         Parse model credentials
 
@@ -45,18 +45,10 @@ class JinaTextEmbeddingModel(TextEmbeddingModel):
 
         data = {"model": model, "input": [transform_jina_input_text(model, text) for text in texts]}
 
-        task = credentials.get("task")
-        dimensions = credentials.get("dimensions")
-        late_chunking = credentials.get("late_chunking")
-
-        if task is not None:
-            data["task"] = task
-
-        if dimensions is not None:
-            data["dimensions"] = int(dimensions)
-
-        if late_chunking is not None:
-            data["late_chunking"] = late_chunking
+        # model specific parameters
+        if model == "jina-embeddings-v3":
+            # set `task` type according to input type for the best performance
+            data["task"] = "retrieval.query" if input_type == EmbeddingInputType.QUERY else "retrieval.passage"
 
         return data
 
@@ -75,6 +67,7 @@ class JinaTextEmbeddingModel(TextEmbeddingModel):
         :param credentials: model credentials
         :param texts: texts to embed
         :param user: unique user id
+        :param input_type: input type
         :return: embeddings result
         """
         api_key = credentials["api_key"]
@@ -87,7 +80,7 @@ class JinaTextEmbeddingModel(TextEmbeddingModel):
         url = base_url + "/embeddings"
         headers = {"Authorization": "Bearer " + api_key, "Content-Type": "application/json"}
 
-        data = self._to_payload(model=model, texts=texts, credentials=credentials)
+        data = self._to_payload(model=model, texts=texts, credentials=credentials, input_type=input_type)
 
         try:
             response = post(url, headers=headers, data=dumps(data))

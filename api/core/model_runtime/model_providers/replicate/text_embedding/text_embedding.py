@@ -22,6 +22,16 @@ class ReplicateEmbeddingModel(_CommonReplicate, TextEmbeddingModel):
         user: Optional[str] = None,
         input_type: EmbeddingInputType = EmbeddingInputType.DOCUMENT,
     ) -> TextEmbeddingResult:
+        """
+        Invoke text embedding model
+
+        :param model: model name
+        :param credentials: model credentials
+        :param texts: texts to embed
+        :param user: unique user id
+        :param input_type: input type
+        :return: embeddings result
+        """
         client = ReplicateClient(api_token=credentials["replicate_api_token"], timeout=30)
 
         if "model_version" in credentials:
