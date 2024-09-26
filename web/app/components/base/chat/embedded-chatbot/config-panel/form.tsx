@@ -69,9 +69,9 @@ const Form = () => {
           value={newConversationInputs[variable] ? [newConversationInputs[variable]] : []}
           onChange={files => handleFormChange(variable, files[0])}
           fileConfig={{
-            allowed_file_types: appParams?.file_upload?.allowed_file_types,
-            allowed_file_extensions: appParams?.file_upload?.allowed_file_extensions,
-            allowed_file_upload_methods: appParams?.file_upload?.allowed_file_upload_methods,
+            allowed_file_types: form.allowed_file_types,
+            allowed_file_extensions: form.allowed_file_extensions,
+            allowed_file_upload_methods: form.allowed_file_upload_methods,
             number_limits: 1,
           }}
         />
@@ -83,10 +83,10 @@ const Form = () => {
           value={newConversationInputs[variable]}
           onChange={files => handleFormChange(variable, files)}
           fileConfig={{
-            allowed_file_types: appParams?.file_upload?.allowed_file_types,
-            allowed_file_extensions: appParams?.file_upload?.allowed_file_extensions,
-            allowed_file_upload_methods: appParams?.file_upload?.allowed_file_upload_methods,
-            number_limits: appParams?.file_upload?.max_length,
+            allowed_file_types: form.allowed_file_types,
+            allowed_file_extensions: form.allowed_file_extensions,
+            allowed_file_upload_methods: form.allowed_file_upload_methods,
+            number_limits: form.max_length,
           }}
         />
       )
