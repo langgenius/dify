@@ -44,7 +44,7 @@ export const useCheckInputsForms = () => {
       return
     }
 
-    return false
+    return true
   }, [notify, t])
 
   return {
