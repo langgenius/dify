@@ -5,7 +5,7 @@ from core.file import File
 
 class FilesContainedField(fields.Raw):
     def format(self, value):
-        return value
+        return self._format_file_object(value)
 
     def _format_file_object(self, v):
         if isinstance(v, File):
