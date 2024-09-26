@@ -17,11 +17,7 @@ class ListFilterNode(BaseNode):
 
     def _run(self):
         node_data = cast(ListFilterNodeData, self.node_data)
-        inputs = {
-            "filter_by": [filter_by.model_dump() for filter_by in node_data.filter_by],
-            "order_by": node_data.order_by.model_dump(),
-            "limit": node_data.limit.model_dump(),
-        }
+        inputs = {}
         process_data = {}
         outputs = {}
 

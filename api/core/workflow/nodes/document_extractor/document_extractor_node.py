@@ -40,7 +40,7 @@ class DocumentExtractorNode(BaseNode):
 
         value = variable.value
         inputs = {"variable_selector": variable_selector}
-        process_data = {"value": value}
+        process_data = {"documents": value if isinstance(value, list) else [value]}
 
         try:
             if isinstance(value, list):
