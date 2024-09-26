@@ -255,9 +255,11 @@ class AccountService:
         return AccountService.load_user(account_id)
 
     @classmethod
-    def send_reset_password_email(cls, account: Optional[Account] = None, email: Optional[str] = None):
+    def send_reset_password_email(
+        cls, account: Optional[Account] = None, email: Optional[str] = None, language: Optional[str] = "en-US"
+    ):
         account_email = account.email if account else email
-        account_language = account.interface_language if account else languages[0]
+        account_language = account.interface_language if account else language
 
         if cls.reset_password_rate_limiter.is_rate_limited(account_email):
             raise RateLimitExceededError(f"Rate limit exceeded for email: {account_email}. Please try again later.")
@@ -292,7 +294,7 @@ class AccountService:
             account=account, email=email, token_type="email_code_login", additional_data={"code": code}
         )
         send_email_code_login_mail_task.delay(
-            language=account.interface_language if account else languages[0],
+            language=account.interface_language if account else language,
             to=account.email if account else email,
             code=code,
         )

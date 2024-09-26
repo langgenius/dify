@@ -31,18 +31,23 @@ class ForgotPasswordSendEmailApi(Resource):
     def post(self):
         parser = reqparse.RequestParser()
         parser.add_argument("email", type=email, required=True, location="json")
+        parser.add_argument("language", type=str, required=False, location="json")
         args = parser.parse_args()
 
         account = Account.query.filter_by(email=args["email"]).first()
         token = None
         if account is None:
             if dify_config.ALLOW_REGISTER:
-                token = AccountService.send_reset_password_email(email=args["email"])
+                token = AccountService.send_reset_password_email(
+                    email=args["email"], language=args["language"] or "en-US"
+                )
             else:
                 raise NotAllowedRegister()
         elif account:
             try:
-                token = AccountService.send_reset_password_email(account=account, email=args["email"])
+                token = AccountService.send_reset_password_email(
+                    account=account, email=args["email"], language=args["language"] or "en-US"
+                )
             except RateLimitExceededError:
                 logging.warning(f"Rate limit exceeded for email: {args['email']}")
                 raise PasswordResetRateLimitExceededError()
