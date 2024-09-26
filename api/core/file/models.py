@@ -57,11 +57,11 @@ class File(BaseModel):
 
     @property
     def markdown(self) -> str:
-        preview_url = self.generate_url()
+        url = self.generate_url()
         if self.type == FileType.IMAGE:
-            text = f'![{self.filename or ""}]({preview_url})'
+            text = f'![{self.filename or ""}]({url})'
         else:
-            text = f"[{self.filename or preview_url}]({preview_url})"
+            text = f"[{self.filename or url}]({url})"
 
         return text
 
