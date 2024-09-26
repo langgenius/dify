@@ -33,6 +33,7 @@ export const FileList = ({
                 key={file.id}
                 file={file}
                 showDeleteAction={showDeleteAction}
+                showDownloadAction={showDownloadAction}
                 onRemove={onRemove}
                 onReUpload={onReUpload}
               />

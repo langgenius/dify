@@ -14,7 +14,10 @@ import type {
   Inputs,
 } from '@/app/components/base/chat/types'
 import type { InputForm } from '@/app/components/base/chat/chat/type'
-import { processOpeningStatement } from '@/app/components/base/chat/chat/utils'
+import {
+  getProcessedInputs,
+  processOpeningStatement,
+} from '@/app/components/base/chat/chat/utils'
 import { useToastContext } from '@/app/components/base/toast'
 import { TransferMethod } from '@/types/app'
 import {
@@ -191,9 +194,10 @@ export const useChat = (
 
     handleResponding(true)
 
-    const { files, ...restParams } = params
+    const { files, inputs, ...restParams } = params
     const bodyParams = {
       files: getProcessedFiles(files || []),
+      inputs: getProcessedInputs(inputs || {}, formSettings?.inputsForm || []),
       ...restParams,
     }
     if (bodyParams?.files?.length) {
