@@ -33,6 +33,7 @@ const DatasetCard = ({
   const { t } = useTranslation()
   const { notify } = useContext(ToastContext)
   const { push } = useRouter()
+  const EXTERNAL_PROVIDER = 'external' as const
 
   const { isCurrentWorkspaceDatasetOperator } = useAppContext()
   const [tags, setTags] = useState<Tag[]>(dataset.tags)
@@ -40,6 +41,7 @@ const DatasetCard = ({
   const [showRenameModal, setShowRenameModal] = useState(false)
   const [showConfirmDelete, setShowConfirmDelete] = useState(false)
   const [confirmMessage, setConfirmMessage] = useState<string>('')
+  const isExternalProvider = (provider: string): boolean => provider === EXTERNAL_PROVIDER
   const detectIsUsedByApp = useCallback(async () => {
     try {
       const { is_using: isUsedByApp } = await checkIsUsedInApp(dataset.id)
@@ -113,10 +115,12 @@ const DatasetCard = ({
         data-disable-nprogress={true}
         onClick={(e) => {
           e.preventDefault()
-          push(`/datasets/${dataset.id}/documents`)
+          isExternalProvider(dataset.provider)
+            ? push(`/datasets/${dataset.id}/hitTesting`)
+            : push(`/datasets/${dataset.id}/documents`)
         }}
       >
-        {dataset.provider === 'external' && <CornerLabel label='External' className='absolute right-0' labelClassName='rounded-tr-xl' />}
+        {isExternalProvider(dataset.provider) && <CornerLabel label='External' className='absolute right-0' labelClassName='rounded-tr-xl' />}
         <div className='flex pt-[14px] px-[14px] pb-3 h-[66px] items-center gap-3 grow-0 shrink-0'>
           <div className={cn(
             'shrink-0 flex items-center justify-center p-2.5 bg-[#F5F8FF] rounded-md border-[0.5px] border-[#E0EAFF]',

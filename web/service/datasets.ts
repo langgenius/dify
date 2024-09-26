@@ -12,6 +12,7 @@ import type {
   ExternalAPIItem,
   ExternalAPIListResponse,
   ExternalAPIUsage,
+  ExternalKnowledgeBaseHitTestingResponse,
   ExternalKnowledgeItem,
   FileIndexingEstimateResponse,
   HitTestingRecordsResponse,
@@ -242,6 +243,10 @@ export const checkSegmentBatchImportProgress: Fetcher<{ job_id: string; job_stat
 // hit testing
 export const hitTesting: Fetcher<HitTestingResponse, { datasetId: string; queryText: string; retrieval_model: RetrievalConfig }> = ({ datasetId, queryText, retrieval_model }) => {
   return post<HitTestingResponse>(`/datasets/${datasetId}/hit-testing`, { body: { query: queryText, retrieval_model } })
+}
+
+export const externalKnowledgeBaseHitTesting: Fetcher<ExternalKnowledgeBaseHitTestingResponse, { datasetId: string; query: string; external_retrieval_model: { top_k: number; score_threshold: number } }> = ({ datasetId, query, external_retrieval_model }) => {
+  return post<ExternalKnowledgeBaseHitTestingResponse>(`/datasets/${datasetId}/external-hit-testing`, { body: { query, external_retrieval_model } })
 }
 
 export const fetchTestingRecords: Fetcher<HitTestingRecordsResponse, { datasetId: string; params: { page: number; limit: number } }> = ({ datasetId, params }) => {

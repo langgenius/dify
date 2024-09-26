@@ -16,7 +16,7 @@ const KnowledgeBaseInfo: React.FC<KnowledgeBaseInfoProps> = ({ name, description
     onChange({ name: e.target.value })
   }
 
-  const handleDescriptionChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+  const handleDescriptionChange = (e: React.ChangeEvent<HTMLTextAreaElement>) => {
     onChange({ description: e.target.value })
   }
 
@@ -38,11 +38,11 @@ const KnowledgeBaseInfo: React.FC<KnowledgeBaseInfoProps> = ({ name, description
             <label className='text-text-secondary system-sm-semibold'>{t('dataset.externalKnowledgeDescription')}</label>
           </div>
           <div className='flex flex-col gap-1 self-stretch'>
-            <Input
+            <textarea
               value={description}
-              onChange={handleDescriptionChange}
+              onChange={ e => handleDescriptionChange(e)}
               placeholder={t('dataset.externalKnowledgeDescriptionPlaceholder') ?? ''}
-              className='flex h-20 p-2 self-stretch items-start'
+              className='flex h-20 p-2 self-stretch items-start rounded-lg bg-components-input-bg-normal text-components-input-text-placeholder system-sm-regular'
             />
             <div className='flex py-0.5 gap-1 self-stretch'>
               <div className='flex p-0.5 items-center gap-2'>

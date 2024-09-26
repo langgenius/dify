@@ -14,9 +14,10 @@ import Button from '@/app/components/base/button'
 
 type ExternalKnowledgeBaseCreateProps = {
   onConnect: (formValue: CreateKnowledgeBaseReq) => void
+  loading: boolean
 }
 
-const ExternalKnowledgeBaseCreate: React.FC<ExternalKnowledgeBaseCreateProps> = ({ onConnect }) => {
+const ExternalKnowledgeBaseCreate: React.FC<ExternalKnowledgeBaseCreateProps> = ({ onConnect, loading }) => {
   const { t } = useTranslation()
   const router = useRouter()
   const [formData, setFormData] = useState<CreateKnowledgeBaseReq>({
@@ -24,7 +25,7 @@ const ExternalKnowledgeBaseCreate: React.FC<ExternalKnowledgeBaseCreateProps> = 
     description: '',
     external_knowledge_api_id: '',
     external_knowledge_id: '',
-    external_retrieval_modal: {
+    external_retrieval_model: {
       top_k: 2,
       score_threshold: 0.5,
     },
@@ -43,8 +44,8 @@ const ExternalKnowledgeBaseCreate: React.FC<ExternalKnowledgeBaseCreateProps> = 
   const isFormValid = formData.name !== ''
     && formData.external_knowledge_api_id !== ''
     && formData.external_knowledge_id !== ''
-    && formData.external_retrieval_modal.top_k !== undefined
-    && formData.external_retrieval_modal.score_threshold !== undefined
+    && formData.external_retrieval_model.top_k !== undefined
+    && formData.external_retrieval_model.score_threshold !== undefined
 
   return (
     <div className='flex flex-col flex-grow self-stretch rounded-t-2xl border-t border-effects-highlight bg-components-panel-bg'>
@@ -79,12 +80,12 @@ const ExternalKnowledgeBaseCreate: React.FC<ExternalKnowledgeBaseCreateProps> = 
               })}
             />
             <RetrievalSettings
-              topK={formData.external_retrieval_modal.top_k}
-              scoreThreshold={formData.external_retrieval_modal.score_threshold}
+              topK={formData.external_retrieval_model.top_k}
+              scoreThreshold={formData.external_retrieval_model.score_threshold}
               onChange={data => handleFormChange({
                 ...formData,
-                external_retrieval_modal: {
-                  ...formData.external_retrieval_modal,
+                external_retrieval_model: {
+                  ...formData.external_retrieval_model,
                   ...data,
                 },
               })}
@@ -98,7 +99,10 @@ const ExternalKnowledgeBaseCreate: React.FC<ExternalKnowledgeBaseCreateProps> = 
                 onClick={() => {
                   onConnect(formData)
                   navBackHandle()
-                }} disabled={!isFormValid}>
+                }}
+                disabled={!isFormValid}
+                loading={loading}
+              >
                 <div className='text-components-button-primary-text system-sm-medium'>{t('dataset.externalKnowledgeForm.connect')}</div>
                 <RiArrowRightLine className='w-4 h-4 text-components-button-primary-text' />
               </Button>

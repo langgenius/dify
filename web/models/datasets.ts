@@ -33,6 +33,16 @@ export type DataSet = {
   retrieval_model: RetrievalConfig
   tags: Tag[]
   partial_member_list?: any[]
+  external_knowledge_info: {
+    external_knowledge_id: string
+    external_knowledge_api_id: string
+    external_knowledge_api_name: string
+    external_knowledge_api_endpoint: string
+  }
+  external_retrieval_model: {
+    top_k: number
+    score_threshold: number
+  }
 }
 
 export type ExternalAPIItem = {
@@ -434,6 +444,16 @@ export type HitTesting = {
   tsne_position: TsnePosition
 }
 
+export type ExternalKnowledgeBaseHitTesting = {
+  content: string
+  title: string
+  score: number
+  metadata: {
+    'x-amz-bedrock-kb-source-uri': string
+    'x-amz-bedrock-kb-data-source-id': string
+  }
+}
+
 export type Segment = {
   id: string
   document: Document
@@ -472,6 +492,13 @@ export type HitTestingResponse = {
     tsne_position: TsnePosition
   }
   records: Array<HitTesting>
+}
+
+export type ExternalKnowledgeBaseHitTestingResponse = {
+  query: {
+    content: string
+  }
+  records: Array<ExternalKnowledgeBaseHitTesting>
 }
 
 export type RelatedApp = {
