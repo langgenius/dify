@@ -23,7 +23,7 @@ from core.model_runtime.model_providers.__base.text_embedding_model import TextE
 
 class LocalAITextEmbeddingModel(TextEmbeddingModel):
     """
-    Model class for Jina text embedding model.
+    Model class for LocalAI text embedding model.
     """
 
     def _invoke(
@@ -41,6 +41,7 @@ class LocalAITextEmbeddingModel(TextEmbeddingModel):
         :param credentials: model credentials
         :param texts: texts to embed
         :param user: unique user id
+        :param input_type: input type
         :return: embeddings result
         """
         if len(texts) != 1:
