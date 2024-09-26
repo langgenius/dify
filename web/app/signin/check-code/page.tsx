@@ -4,11 +4,13 @@ import { RiArrowLeftLine, RiMailSendFill } from '@remixicon/react'
 import { useTranslation } from 'react-i18next'
 import { useState } from 'react'
 import { useRouter, useSearchParams } from 'next/navigation'
+import { useContext } from 'use-context-selector'
 import Countdown from '@/app/components/signin/countdown'
 import Button from '@/app/components/base/button'
 import Input from '@/app/components/base/input'
 import Toast from '@/app/components/base/toast'
 import { emailLoginWithCode, sendEMailLoginCode } from '@/service/common'
+import I18NContext from '@/context/i18n'
 
 export default function CheckCode() {
   const { t } = useTranslation()
@@ -19,6 +21,7 @@ export default function CheckCode() {
   const invite_token = decodeURIComponent(searchParams.get('invite_token') || '')
   const [code, setVerifyCode] = useState('')
   const [loading, setIsLoading] = useState(false)
+  const { locale } = useContext(I18NContext)
 
   const verify = async () => {
     try {
@@ -49,7 +52,7 @@ export default function CheckCode() {
 
   const resendCode = async () => {
     try {
-      const ret = await sendEMailLoginCode(email)
+      const ret = await sendEMailLoginCode(email, locale)
       const params = new URLSearchParams(searchParams)
       params.set('token', encodeURIComponent(ret.data))
       router.replace(`/signin/check-code?${params.toString()}`)

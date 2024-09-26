@@ -1,12 +1,14 @@
 import { useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { useRouter, useSearchParams } from 'next/navigation'
+import { useContext } from 'use-context-selector'
 import Input from '@/app/components/base/input'
 import Button from '@/app/components/base/button'
 import { emailRegex } from '@/config'
 import Toast from '@/app/components/base/toast'
 import { sendEMailLoginCode } from '@/service/common'
 import { COUNT_DOWN_KEY, COUNT_DOWN_TIME_MS } from '@/app/components/signin/countdown'
+import I18NContext from '@/context/i18n'
 
 type MailAndCodeAuthProps = {
   isInvite: boolean
@@ -19,6 +21,7 @@ export default function MailAndCodeAuth({ isInvite }: MailAndCodeAuthProps) {
   const emailFromLink = decodeURIComponent(searchParams.get('email') || '')
   const [email, setEmail] = useState(emailFromLink)
   const [loading, setIsLoading] = useState(false)
+  const { locale } = useContext(I18NContext)
 
   const handleGetEMailVerificationCode = async () => {
     try {
@@ -35,7 +38,7 @@ export default function MailAndCodeAuth({ isInvite }: MailAndCodeAuthProps) {
         return
       }
       setIsLoading(true)
-      const ret = await sendEMailLoginCode(email)
+      const ret = await sendEMailLoginCode(email, locale)
       if (ret.result === 'success') {
         localStorage.setItem(COUNT_DOWN_KEY, `${COUNT_DOWN_TIME_MS}`)
         const params = new URLSearchParams(searchParams)
