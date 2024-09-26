@@ -14,16 +14,11 @@ class TestExternalApi(Resource):
     def post(self):
         parser = reqparse.RequestParser()
         parser.add_argument(
-            "top_k",
+            "retrieval_setting",
             nullable=False,
             required=True,
-            type=int,
-        )
-        parser.add_argument(
-            "score_threshold",
-            nullable=False,
-            required=True,
-            type=float,
+            type=dict,
+            location="json"
         )
         parser.add_argument(
             "query",
@@ -32,14 +27,14 @@ class TestExternalApi(Resource):
             type=str,
         )
         parser.add_argument(
-            "external_knowledge_id",
+            "knowledge_id",
             nullable=False,
             required=True,
             type=str,
         )
         args = parser.parse_args()
         result = ExternalDatasetService.test_external_knowledge_retrieval(
-            args["top_k"], args["score_threshold"], args["query"], args["external_knowledge_id"]
+            args["retrieval_setting"], args["query"], args["knowledge_id"]
         )
         return result, 200
 
