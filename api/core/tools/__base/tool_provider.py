@@ -64,6 +64,9 @@ class ToolProviderController(ABC):
 
             # check type
             credential_schema = credentials_need_to_validate[credential_name]
+            if not credential_schema.required and credentials[credential_name] is None:
+                continue
+
             if credential_schema.type in {ProviderConfig.Type.SECRET_INPUT, ProviderConfig.Type.TEXT_INPUT}:
                 if not isinstance(credentials[credential_name], str):
                     raise ToolProviderCredentialValidationError(f"credential {credential_name} should be string")
