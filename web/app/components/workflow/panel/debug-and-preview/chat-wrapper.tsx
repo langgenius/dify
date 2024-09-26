@@ -12,7 +12,6 @@ import {
   useStore,
   useWorkflowStore,
 } from '../../store'
-import { useCheckStartNodeForm } from '../../hooks'
 import type { StartNodeType } from '../../nodes/start/types'
 import Empty from './empty'
 import UserInput from './user-input'
@@ -62,10 +61,6 @@ const ChatWrapper = forwardRef<ChatWrapperRefType, ChatWrapperProps>(({
     }
   }, [features.opening, features.suggested, features.text2speech, features.speech2text, features.citation, features.moderation, features.file])
   const setShowFeaturesPanel = useStore(s => s.setShowFeaturesPanel)
-  const {
-    checkStartNodeForm,
-    getProcessedInputs,
-  } = useCheckStartNodeForm()
 
   const {
     conversationId,
@@ -81,7 +76,7 @@ const ChatWrapper = forwardRef<ChatWrapperRefType, ChatWrapperProps>(({
     config,
     {
       inputs,
-      promptVariables: (startVariables as any) || [],
+      inputsForm: (startVariables || []) as any,
     },
     [],
     taskId => stopChatMessageResponding(appDetail!.id, taskId),
@@ -92,7 +87,7 @@ const ChatWrapper = forwardRef<ChatWrapperRefType, ChatWrapperProps>(({
       {
         query,
         files,
-        inputs: getProcessedInputs(workflowStore.getState().inputs),
+        inputs: workflowStore.getState().inputs,
         conversation_id: conversationId,
         parent_message_id: last_answer?.id || getLastAnswer(chatListRef.current)?.id || null,
       },
@@ -100,7 +95,7 @@ const ChatWrapper = forwardRef<ChatWrapperRefType, ChatWrapperProps>(({
         onGetSuggestedQuestions: (messageId, getAbortController) => fetchSuggestedQuestions(appDetail!.id, messageId, getAbortController),
       },
     )
-  }, [chatListRef, conversationId, handleSend, workflowStore, appDetail, getProcessedInputs])
+  }, [chatListRef, conversationId, handleSend, workflowStore, appDetail])
 
   const doRegenerate = useCallback((chatItem: ChatItem) => {
     const index = chatList.findIndex(item => item.id === chatItem.id)
@@ -146,7 +141,8 @@ const ChatWrapper = forwardRef<ChatWrapperRefType, ChatWrapperProps>(({
         showFeatureBar
         onFeatureBarClick={setShowFeaturesPanel}
         onSend={doSend}
-        onSendCheck={checkStartNodeForm}
+        inputs={inputs}
+        inputsForm={(startVariables || []) as any}
         onRegenerate={doRegenerate}
         onStopResponding={handleStop}
         chatNode={(

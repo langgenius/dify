@@ -6,6 +6,7 @@ import type {
   RerankingModeEnum,
   WeightedScoreEnum,
 } from '@/models/datasets'
+import type { UploadFileSetting } from '@/app/components/workflow/types'
 
 export enum Theme {
   light = 'light',
@@ -242,7 +243,7 @@ export type ModelConfig = {
   dataset_configs: DatasetConfigs
   file_upload?: {
     image: VisionSettings
-  }
+  } & UploadFileSetting
   files?: VisionFile[]
   created_at?: number
   updated_at?: number

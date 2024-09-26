@@ -14,7 +14,6 @@ const IfElseNode: FC<NodeProps<IfElseNodeType>> = (props) => {
   const { t } = useTranslation()
   const { cases } = data
   const casesLength = cases.length
-  console.log(cases)
   const checkIsConditionSet = useCallback((condition: Condition) => {
     if (!condition.variable_selector || condition.variable_selector.length === 0)
       return false

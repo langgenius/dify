@@ -11,6 +11,8 @@ import type {
   OnSend,
 } from '../../types'
 import type { Theme } from '../../embedded-chatbot/theme/theme-context'
+import type { InputForm } from '../type'
+import { useCheckInputsForms } from '../check-input-forms-hooks'
 import { useTextAreaHeight } from './hooks'
 import Operation from './operation'
 import cn from '@/utils/classnames'
@@ -18,7 +20,7 @@ import { FileListInChatInput } from '@/app/components/base/file-uploader'
 import { useFile } from '@/app/components/base/file-uploader/hooks'
 import {
   FileContextProvider,
-  useStore,
+  useFileStore,
 } from '@/app/components/base/file-uploader/store'
 import VoiceInput from '@/app/components/base/voice-input'
 import { useToastContext } from '@/app/components/base/toast'
@@ -34,7 +36,8 @@ type ChatInputAreaProps = {
   visionConfig?: FileUpload
   speechToTextConfig?: EnableType
   onSend?: OnSend
-  onSendCheck?: () => boolean
+  inputs?: Record<string, any>
+  inputsForm?: InputForm[]
   theme?: Theme | null
 }
 const ChatInputArea = ({
@@ -45,7 +48,8 @@ const ChatInputArea = ({
   visionConfig,
   speechToTextConfig = { enabled: true },
   onSend,
-  onSendCheck = () => true,
+  inputs = {},
+  inputsForm = [],
   // theme,
 }: ChatInputAreaProps) => {
   const { t } = useTranslation()
@@ -61,8 +65,7 @@ const ChatInputArea = ({
   const [query, setQuery] = useState('')
   const isUseInputMethod = useRef(false)
   const [showVoiceInput, setShowVoiceInput] = useState(false)
-  const files = useStore(s => s.files)
-  const setFiles = useStore(s => s.setFiles)
+  const filesStore = useFileStore()
   const {
     handleDragFileEnter,
     handleDragFileLeave,
@@ -71,9 +74,11 @@ const ChatInputArea = ({
     handleClipboardPasteFile,
     isDragActive,
   } = useFile(visionConfig!)
+  const { checkInputsForm } = useCheckInputsForms()
 
   const handleSend = () => {
     if (onSend) {
+      const { files, setFiles } = filesStore.getState()
       if (files.find(item => item.transferMethod === TransferMethod.local_file && !item.uploadedId)) {
         notify({ type: 'info', message: t('appDebug.errorMessage.waitForImgUpload') })
         return
@@ -82,7 +87,7 @@ const ChatInputArea = ({
         notify({ type: 'info', message: t('appAnnotation.errorMessage.queryRequired') })
         return
       }
-      if (onSendCheck()) {
+      if (checkInputsForm(inputs, inputsForm)) {
         onSend(query, files)
         setQuery('')
         setFiles([])

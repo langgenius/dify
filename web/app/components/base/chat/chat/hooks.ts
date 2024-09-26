@@ -6,24 +6,31 @@ import {
 } from 'react'
 import { useTranslation } from 'react-i18next'
 import { produce, setAutoFreeze } from 'immer'
+import { uniqBy } from 'lodash-es'
 import { useParams, usePathname } from 'next/navigation'
 import { v4 as uuidV4 } from 'uuid'
 import type {
   ChatConfig,
   ChatItem,
   Inputs,
-  PromptVariable,
 } from '../types'
+import type { InputForm } from './type'
+import {
+  getProcessedInputs,
+  processOpeningStatement,
+} from './utils'
 import { TransferMethod } from '@/types/app'
 import { useToastContext } from '@/app/components/base/toast'
 import { ssePost } from '@/service/base'
-import { replaceStringWithValues } from '@/app/components/app/configuration/prompt-value-panel/utils'
 import type { Annotation } from '@/models/log'
 import { WorkflowRunningStatus } from '@/app/components/workflow/types'
 import useTimestamp from '@/hooks/use-timestamp'
 import { AudioPlayerManager } from '@/app/components/base/audio-btn/audio.player.manager'
 import type { FileEntity } from '@/app/components/base/file-uploader/types'
-import { getProcessedFiles } from '@/app/components/base/file-uploader/utils'
+import {
+  getProcessedFiles,
+  getProcessedFilesFromResponse,
+} from '@/app/components/base/file-uploader/utils'
 
 type GetAbortController = (abortController: AbortController) => void
 type SendCallback = {
@@ -33,50 +40,11 @@ type SendCallback = {
   isPublicAPI?: boolean
 }
 
-export const useCheckPromptVariables = () => {
-  const { t } = useTranslation()
-  const { notify } = useToastContext()
-
-  const checkPromptVariables = useCallback((promptVariablesConfig: {
-    inputs: Inputs
-    promptVariables: PromptVariable[]
-  }) => {
-    const {
-      promptVariables,
-      inputs,
-    } = promptVariablesConfig
-    let hasEmptyInput = ''
-    const requiredVars = promptVariables.filter(({ key, name, required, type }) => {
-      if (type !== 'string' && type !== 'paragraph' && type !== 'select')
-        return false
-      const res = (!key || !key.trim()) || (!name || !name.trim()) || (required || required === undefined || required === null)
-      return res
-    })
-
-    if (requiredVars?.length) {
-      requiredVars.forEach(({ key, name }) => {
-        if (hasEmptyInput)
-          return
-
-        if (!inputs[key])
-          hasEmptyInput = name
-      })
-    }
-
-    if (hasEmptyInput) {
-      notify({ type: 'error', message: t('appDebug.errorMessage.valueOfVarRequired', { key: hasEmptyInput }) })
-      return false
-    }
-  }, [notify, t])
-
-  return checkPromptVariables
-}
-
 export const useChat = (
   config?: ChatConfig,
-  promptVariablesConfig?: {
+  formSettings?: {
     inputs: Inputs
-    promptVariables: PromptVariable[]
+    inputsForm: InputForm[]
   },
   prevChatList?: ChatItem[],
   stopChat?: (taskId: string) => void,
@@ -94,7 +62,6 @@ export const useChat = (
   const [suggestedQuestions, setSuggestQuestions] = useState<string[]>([])
   const conversationMessagesAbortControllerRef = useRef<AbortController | null>(null)
   const suggestedQuestionsAbortControllerRef = useRef<AbortController | null>(null)
-  const checkPromptVariables = useCheckPromptVariables()
   const params = useParams()
   const pathname = usePathname()
   useEffect(() => {
@@ -114,8 +81,8 @@ export const useChat = (
   }, [])
 
   const getIntroduction = useCallback((str: string) => {
-    return replaceStringWithValues(str, promptVariablesConfig?.promptVariables || [], promptVariablesConfig?.inputs || {})
-  }, [promptVariablesConfig?.inputs, promptVariablesConfig?.promptVariables])
+    return processOpeningStatement(str, formSettings?.inputs || {}, formSettings?.inputsForm || [])
+  }, [formSettings?.inputs, formSettings?.inputsForm])
   useEffect(() => {
     if (config?.opening_statement) {
       handleUpdateChatList(produce(chatListRef.current, (draft) => {
@@ -216,9 +183,6 @@ export const useChat = (
       return false
     }
 
-    if (promptVariablesConfig?.inputs && promptVariablesConfig?.promptVariables)
-      checkPromptVariables(promptVariablesConfig)
-
     const questionId = `question-${Date.now()}`
     const questionItem = {
       id: questionId,
@@ -249,12 +213,13 @@ export const useChat = (
     handleResponding(true)
     hasStopResponded.current = false
 
-    const { query, files, ...restData } = data
+    const { query, files, inputs, ...restData } = data
     const bodyParams = {
       response_mode: 'streaming',
       conversation_id: conversationId.current,
       files: getProcessedFiles(files || []),
       query,
+      inputs: getProcessedInputs(inputs || {}, formSettings?.inputsForm || []),
       ...restData,
     }
     if (bodyParams?.files?.length) {
@@ -555,6 +520,8 @@ export const useChat = (
             return item.node_id === data.node_id && (item.execution_metadata?.parallel_id === data.execution_metadata.parallel_id)
           })
           responseItem.workflowProcess!.tracing[currentIndex] = data as any
+          const processedFilesFromResponse = getProcessedFilesFromResponse(data.files || [])
+          responseItem.allFiles = uniqBy([...(responseItem.allFiles || []), ...(processedFilesFromResponse || [])], 'id')
           handleUpdateChatList(produce(chatListRef.current, (draft) => {
             const currentIndex = draft.findIndex(item => item.id === responseItem.id)
             draft[currentIndex] = {
@@ -575,15 +542,16 @@ export const useChat = (
       })
     return true
   }, [
-    checkPromptVariables,
     config?.suggested_questions_after_answer,
     updateCurrentQA,
     t,
     notify,
-    promptVariablesConfig,
     handleUpdateChatList,
     handleResponding,
     formatTime,
+    params.token,
+    params.appId,
+    pathname,
   ])
 
   const handleAnnotationEdited = useCallback((query: string, answer: string, index: number) => {

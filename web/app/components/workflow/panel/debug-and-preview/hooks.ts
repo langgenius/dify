@@ -12,11 +12,11 @@ import { NodeRunningStatus, WorkflowRunningStatus } from '../../types'
 import type {
   ChatItem,
   Inputs,
-  PromptVariable,
 } from '@/app/components/base/chat/types'
+import type { InputForm } from '@/app/components/base/chat/chat/type'
+import { processOpeningStatement } from '@/app/components/base/chat/chat/utils'
 import { useToastContext } from '@/app/components/base/toast'
 import { TransferMethod } from '@/types/app'
-import { replaceStringWithValues } from '@/app/components/app/configuration/prompt-value-panel/utils'
 import {
   getProcessedFiles,
   getProcessedFilesFromResponse,
@@ -29,9 +29,9 @@ type SendCallback = {
 }
 export const useChat = (
   config: any,
-  promptVariablesConfig?: {
+  formSettings?: {
     inputs: Inputs
-    promptVariables: PromptVariable[]
+    inputsForm: InputForm[]
   },
   prevChatList?: ChatItem[],
   stopChat?: (taskId: string) => void,
@@ -67,8 +67,8 @@ export const useChat = (
   }, [])
 
   const getIntroduction = useCallback((str: string) => {
-    return replaceStringWithValues(str, promptVariablesConfig?.promptVariables || [], promptVariablesConfig?.inputs || {})
-  }, [promptVariablesConfig?.inputs, promptVariablesConfig?.promptVariables])
+    return processOpeningStatement(str, formSettings?.inputs || {}, formSettings?.inputsForm || [])
+  }, [formSettings?.inputs, formSettings?.inputsForm])
   useEffect(() => {
     if (config?.opening_statement) {
       handleUpdateChatList(produce(chatListRef.current, (draft) => {

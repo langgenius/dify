@@ -123,6 +123,20 @@ export const useEmbeddedChatbot = () => {
         }
       }
 
+      if (item['file-list']) {
+        return {
+          ...item['file-list'],
+          type: 'file-list',
+        }
+      }
+
+      if (item.file) {
+        return {
+          ...item.file,
+          type: 'file',
+        }
+      }
+
       let value = initInputs[item['text-input'].variable]
       if (value && item['text-input'].max_length && value.length > item['text-input'].max_length)
         value = value.slice(0, item['text-input'].max_length)
