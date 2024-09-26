@@ -3,6 +3,8 @@ from flask_restful import fields
 from fields.member_fields import simple_account_fields
 from libs.helper import TimestampField
 
+from .raws import FilesContainedField
+
 
 class MessageTextField(fields.Raw):
     def format(self, value):
@@ -55,7 +57,7 @@ agent_thought_fields = {
 message_detail_fields = {
     "id": fields.String,
     "conversation_id": fields.String,
-    "inputs": fields.Raw,
+    "inputs": FilesContainedField,
     "query": fields.String,
     "message": fields.Raw,
     "message_tokens": fields.Integer,
@@ -99,7 +101,7 @@ simple_model_config_fields = {
 }
 
 simple_message_detail_fields = {
-    "inputs": fields.Raw,
+    "inputs": FilesContainedField,
     "query": fields.String,
     "message": MessageTextField,
     "answer": fields.String,
@@ -187,7 +189,7 @@ conversation_detail_fields = {
 simple_conversation_fields = {
     "id": fields.String,
     "name": fields.String,
-    "inputs": fields.Raw,
+    "inputs": FilesContainedField,
     "status": fields.String,
     "introduction": fields.String,
     "created_at": TimestampField,
