@@ -538,6 +538,10 @@ class AnthropicLargeLanguageModel(LargeLanguageModel):
                 else:
                     raise ValueError(f"Got unknown type {message}")
 
+        # if no user message, add a system message as the user message to avoid at least one message error
+        if not prompt_message_dicts:
+            prompt_message_dicts.append({"role": "user", "content": system})
+
         return system, prompt_message_dicts
 
     def _convert_one_message_to_text(self, message: PromptMessage) -> str:
