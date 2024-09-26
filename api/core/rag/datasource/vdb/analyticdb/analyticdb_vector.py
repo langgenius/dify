@@ -245,14 +245,14 @@ class AnalyticdbVector(BaseVector):
         documents = []
         for match in response.body.matches.match:
             if match.score > score_threshold:
-                metadata=json.loads(match.metadata.get("metadata_"))
-                metadata['score'] = match.score
+                metadata = json.loads(match.metadata.get("metadata_"))
+                metadata["score"] = match.score
                 doc = Document(
                     page_content=match.metadata.get("page_content"),
                     metadata=metadata,
                 )
                 documents.append(doc)
-        documents = sorted(documents, key=lambda x: x.metadata['score'], reverse=True)
+        documents = sorted(documents, key=lambda x: x.metadata["score"], reverse=True)
         return documents
 
     def search_by_full_text(self, query: str, **kwargs: Any) -> list[Document]:
@@ -277,14 +277,14 @@ class AnalyticdbVector(BaseVector):
         for match in response.body.matches.match:
             if match.score > score_threshold:
                 metadata = json.loads(match.metadata.get("metadata_"))
-                metadata['score'] = match.score
+                metadata["score"] = match.score
                 doc = Document(
                     page_content=match.metadata.get("page_content"),
                     vector=match.metadata.get("vector"),
                     metadata=metadata,
                 )
                 documents.append(doc)
-        documents = sorted(documents, key=lambda x: x.metadata['score'], reverse=True)
+        documents = sorted(documents, key=lambda x: x.metadata["score"], reverse=True)
         return documents
 
     def delete(self) -> None:
