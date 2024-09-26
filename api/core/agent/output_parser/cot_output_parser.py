@@ -76,7 +76,6 @@ class CotAgentOutputParser:
             while index < len(response):
                 steps = 1
                 delta = response[index : index + steps]
-                # last_character = response[index - 1] if index > 0 else ""
                 yield_delta = False
 
                 if delta == "`":
@@ -98,9 +97,6 @@ class CotAgentOutputParser:
                     if delta.lower() == action_str[action_idx] and action_idx == 0:
                         if last_character not in {"\n", " ", ""}:
                             yield_delta = True
-                            # index += steps
-                            # yield delta
-                            # continue
                         else:
                             last_character = delta
                             action_cache += delta
@@ -129,9 +125,6 @@ class CotAgentOutputParser:
                     if delta.lower() == thought_str[thought_idx] and thought_idx == 0:
                         if last_character not in {"\n", " ", ""}:
                             yield_delta = True
-                            # index += steps
-                            # yield delta
-                            # continue
                         else:
                             last_character = delta
                             thought_cache += delta
@@ -156,7 +149,7 @@ class CotAgentOutputParser:
                             yield thought_cache
                             thought_cache = ""
                             thought_idx = 0
-                    
+
                     if yield_delta:
                         index += steps
                         last_character = delta
