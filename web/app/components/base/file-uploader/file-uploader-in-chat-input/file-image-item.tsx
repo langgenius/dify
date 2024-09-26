@@ -8,12 +8,14 @@ import { ReplayLine } from '@/app/components/base/icons/src/vender/other'
 type FileImageItemProps = {
   file: FileEntity
   showDeleteAction?: boolean
+  showDownloadAction?: boolean
   onRemove?: (fileId: string) => void
   onReUpload?: (fileId: string) => void
 }
 const FileImageItem = ({
   file,
   showDeleteAction,
+  showDownloadAction,
   onRemove,
   onReUpload,
 }: FileImageItemProps) => {
@@ -34,6 +36,7 @@ const FileImageItem = ({
       <FileImageRender
         className='w-[68px] h-[68px] shadow-md'
         imageUrl={base64Url || url || ''}
+        showDownloadAction={showDownloadAction}
       />
       {
         progress > 0 && progress < 100 && (
