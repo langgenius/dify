@@ -4,12 +4,14 @@ import { RiArrowLeftLine, RiLockPasswordLine } from '@remixicon/react'
 import { useTranslation } from 'react-i18next'
 import { useState } from 'react'
 import { useRouter, useSearchParams } from 'next/navigation'
+import { useContext } from 'use-context-selector'
 import { COUNT_DOWN_KEY, COUNT_DOWN_TIME_MS } from '../components/signin/countdown'
 import { emailRegex } from '@/config'
 import Button from '@/app/components/base/button'
 import Input from '@/app/components/base/input'
 import Toast from '@/app/components/base/toast'
 import { sendResetPasswordCode } from '@/service/common'
+import I18NContext from '@/context/i18n'
 
 export default function CheckCode() {
   const { t } = useTranslation()
@@ -17,6 +19,7 @@ export default function CheckCode() {
   const router = useRouter()
   const [email, setEmail] = useState('')
   const [loading, setIsLoading] = useState(false)
+  const { locale } = useContext(I18NContext)
 
   const handleGetEMailVerificationCode = async () => {
     try {
@@ -33,7 +36,7 @@ export default function CheckCode() {
         return
       }
       setIsLoading(true)
-      const res = await sendResetPasswordCode(email)
+      const res = await sendResetPasswordCode(email, locale)
       if (res.result === 'success') {
         localStorage.setItem(COUNT_DOWN_KEY, `${COUNT_DOWN_TIME_MS}`)
         const params = new URLSearchParams(searchParams)

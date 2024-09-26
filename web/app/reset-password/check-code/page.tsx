@@ -4,11 +4,13 @@ import { RiArrowLeftLine, RiMailSendFill } from '@remixicon/react'
 import { useTranslation } from 'react-i18next'
 import { useState } from 'react'
 import { useRouter, useSearchParams } from 'next/navigation'
+import { useContext } from 'use-context-selector'
 import Countdown from '@/app/components/signin/countdown'
 import Button from '@/app/components/base/button'
 import Input from '@/app/components/base/input'
 import Toast from '@/app/components/base/toast'
 import { sendResetPasswordCode, verifyResetPasswordCode } from '@/service/common'
+import I18NContext from '@/context/i18n'
 
 export default function CheckCode() {
   const { t } = useTranslation()
@@ -18,6 +20,7 @@ export default function CheckCode() {
   const token = decodeURIComponent(searchParams.get('token') as string)
   const [code, setVerifyCode] = useState('')
   const [loading, setIsLoading] = useState(false)
+  const { locale } = useContext(I18NContext)
 
   const verify = async () => {
     try {
@@ -47,7 +50,7 @@ export default function CheckCode() {
 
   const resendCode = async () => {
     try {
-      const res = await sendResetPasswordCode(email)
+      const res = await sendResetPasswordCode(email, locale)
       if (res.result === 'success') {
         const params = new URLSearchParams(searchParams)
         params.set('token', encodeURIComponent(res.data))
