@@ -100,7 +100,7 @@ const Answer: FC<AnswerProps> = ({
           <AnswerTriangle className='absolute -left-2 top-0 w-2 h-3 text-gray-100' />
           <div
             ref={contentRef}
-            className={cn('relative inline-block px-4 py-3 max-w-full bg-gray-100 rounded-b-2xl rounded-tr-2xl text-sm text-gray-900', workflowProcess && 'w-full')}
+            className={cn('relative inline-block px-4 py-3 max-w-full bg-gray-100 rounded-b-2xl rounded-tr-2xl text-sm text-gray-900', workflowProcess && 'min-w-[298px]')}
           >
             {
               !responding && (

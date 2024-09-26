@@ -116,59 +116,78 @@ const CodeBlock: CodeComponent = memo(({ inline, className, children, ...props }
   const match = /language-(\w+)/.exec(className || '')
   const language = match?.[1]
   const languageShowName = getCorrectCapitalizationLanguageName(language || '')
-  let chartData = JSON.parse(String('{"title":{"text":"ECharts error - Wrong JSON format."}}').replace(/\n$/, ''))
-  if (language === 'echarts') {
-    try {
-      chartData = JSON.parse(String(children).replace(/\n$/, ''))
+  const chartData = useMemo(() => {
+    if (language === 'echarts') {
+      try {
+        return JSON.parse(String(children).replace(/\n$/, ''))
+      }
+      catch (error) {}
     }
-    catch (error) {
-    }
-  }
+    return JSON.parse('{"title":{"text":"ECharts error - Wrong JSON format."}}')
+  }, [language, children])
 
-  // Use `useMemo` to ensure that `SyntaxHighlighter` only re-renders when necessary
-  return useMemo(() => {
-    return (!inline && match)
-      ? (
-        <div>
-          <div
-            className='flex justify-between h-8 items-center p-1 pl-3 border-b'
-            style={{
-              borderColor: 'rgba(0, 0, 0, 0.05)',
-            }}
-          >
-            <div className='text-[13px] text-gray-500 font-normal'>{languageShowName}</div>
-            <div style={{ display: 'flex' }}>
-              {language === 'mermaid' && <SVGBtn isSVG={isSVG} setIsSVG={setIsSVG}/>}
-              <CopyBtn
-                className='mr-1'
-                value={String(children).replace(/\n$/, '')}
-                isPlain
-              />
-            </div>
+  const renderCodeContent = useMemo(() => {
+    const content = String(children).replace(/\n$/, '')
+    switch (language) {
+      case 'mermaid':
+        return isSVG ? <Flowchart PrimitiveCode={content} /> : null
+      case 'echarts':
+        return (
+          <div style={{ minHeight: '350px', minWidth: '700px' }}>
+            <ErrorBoundary>
+              <ReactEcharts option={chartData} />
+            </ErrorBoundary>
           </div>
-          {(language === 'mermaid' && isSVG)
-            ? (<Flowchart PrimitiveCode={String(children).replace(/\n$/, '')} />)
-            : (language === 'echarts'
-              ? (<div style={{ minHeight: '350px', minWidth: '700px' }}><ErrorBoundary><ReactEcharts option={chartData} /></ErrorBoundary></div>)
-              : (language === 'svg'
-                ? (<ErrorBoundary><SVGRenderer content={String(children).replace(/\n$/, '')} /></ErrorBoundary>)
-                : (<SyntaxHighlighter
-                  {...props}
-                  style={atelierHeathLight}
-                  customStyle={{
-                    paddingLeft: 12,
-                    backgroundColor: '#fff',
-                  }}
-                  language={match[1]}
-                  showLineNumbers
-                  PreTag="div"
-                >
-                  {String(children).replace(/\n$/, '')}
-                </SyntaxHighlighter>)))}
+        )
+      case 'svg':
+        return (
+          <ErrorBoundary>
+            <SVGRenderer content={content} />
+          </ErrorBoundary>
+        )
+      default:
+        return (
+          <SyntaxHighlighter
+            {...props}
+            style={atelierHeathLight}
+            customStyle={{
+              paddingLeft: 12,
+              backgroundColor: '#fff',
+            }}
+            language={match?.[1]}
+            showLineNumbers
+            PreTag="div"
+          >
+            {content}
+          </SyntaxHighlighter>
+        )
+    }
+  }, [language, match, props, children, chartData, isSVG])
+
+  if (inline || !match)
+    return <code {...props} className={className}>{children}</code>
+
+  return (
+    <div>
+      <div
+        className='flex justify-between h-8 items-center p-1 pl-3 border-b'
+        style={{
+          borderColor: 'rgba(0, 0, 0, 0.05)',
+        }}
+      >
+        <div className='text-[13px] text-gray-500 font-normal'>{languageShowName}</div>
+        <div style={{ display: 'flex' }}>
+          {language === 'mermaid' && <SVGBtn isSVG={isSVG} setIsSVG={setIsSVG}/>}
+          <CopyBtn
+            className='mr-1'
+            value={String(children).replace(/\n$/, '')}
+            isPlain
+          />
         </div>
-      )
-      : (<code {...props} className={className}>{children}</code>)
-  }, [chartData, children, className, inline, isSVG, language, languageShowName, match, props])
+      </div>
+      {renderCodeContent}
+    </div>
+  )
 })
 CodeBlock.displayName = 'CodeBlock'
 
