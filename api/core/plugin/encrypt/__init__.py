@@ -17,6 +17,10 @@ class PluginEncrypter:
         )
 
         if payload.opt == "encrypt":
-            return encrypter.encrypt(payload.data)
+            return {
+                "data": encrypter.encrypt(payload.data),
+            }
         else:
-            return encrypter.decrypt(payload.data)
+            return {
+                "data": encrypter.decrypt(payload.data),
+            }
