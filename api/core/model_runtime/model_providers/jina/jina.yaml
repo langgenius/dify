@@ -1,6 +1,6 @@
 provider: jina
 label:
-  en_US: Jina
+  en_US: Jina AI
 description:
   en_US: Embedding and Rerank Model Supported
 icon_small:
@@ -11,7 +11,7 @@ background: "#EFFDFD"
 help:
   title:
     en_US: Get your API key from Jina AI
-    zh_Hans: 从 Jina 获取 API Key
+    zh_Hans: 从 Jina AI 获取 API Key
   url:
     en_US: https://jina.ai/
 supported_model_types:

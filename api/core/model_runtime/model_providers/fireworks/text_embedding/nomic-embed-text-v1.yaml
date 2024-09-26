@@ -1,0 +1,12 @@
+model: nomic-ai/nomic-embed-text-v1
+label:
+  zh_Hans: nomic-embed-text-v1
+  en_US: nomic-embed-text-v1
+model_type: text-embedding
+model_properties:
+  context_size: 8192
+  max_chunks: 16
+pricing:
+  input: '0.008'
+  unit: '0.000001'
+  currency: 'USD'
