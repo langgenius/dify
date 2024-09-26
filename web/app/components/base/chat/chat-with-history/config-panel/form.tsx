@@ -74,7 +74,7 @@ const Form = () => {
             allowed_file_types: appParams?.file_upload?.allowed_file_types,
             allowed_file_extensions: appParams?.file_upload?.allowed_file_extensions,
             allowed_file_upload_methods: appParams?.file_upload?.allowed_file_upload_methods,
-            number_limits: appParams?.file_upload?.number_limits,
+            number_limits: appParams?.file_upload?.max_length,
           }}
         />
       )
