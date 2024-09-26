@@ -285,7 +285,9 @@ class AccountService:
         return TokenManager.get_token_data(token, "reset_password")
 
     @classmethod
-    def send_email_code_login_email(cls, account: Optional[Account] = None, email: Optional[str] = None):
+    def send_email_code_login_email(
+        cls, account: Optional[Account] = None, email: Optional[str] = None, language: Optional[str] = "en-US"
+    ):
         if cls.email_code_login_rate_limiter.is_rate_limited(email):
             raise RateLimitExceededError(f"Rate limit exceeded for email: {email}. Please try again later.")
 
