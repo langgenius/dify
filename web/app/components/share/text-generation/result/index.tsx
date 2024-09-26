@@ -288,6 +288,7 @@ const Result: FC<IResultProps> = ({
             }
             setWorkflowProcessData(produce(getWorkflowProcessData()!, (draft) => {
               draft.status = WorkflowRunningStatus.Succeeded
+              draft.files = getProcessedFilesFromResponse(data.files || [])
             }))
             if (!data.outputs) {
               setCompletionRes('')
@@ -298,7 +299,6 @@ const Result: FC<IResultProps> = ({
               if (isStringOutput) {
                 setWorkflowProcessData(produce(getWorkflowProcessData()!, (draft) => {
                   draft.resultText = data.outputs[Object.keys(data.outputs)[0]]
-                  draft.files = getProcessedFilesFromResponse(data.files || [])
                 }))
               }
             }
