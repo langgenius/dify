@@ -487,5 +487,5 @@ class KnowledgeBaseClient(DifyClient):
         }
         retrieval_model.update(kwargs)
         data = {"query": query, "retrieval_model": retrieval_model}
-        url = f"/datasets/{self._get_dataset_id()}/hit-testing"
+        url = f"/datasets/{self._get_dataset_id()}/hit_testing"
         return self._send_request("POST", url, json=data, **kwargs)
