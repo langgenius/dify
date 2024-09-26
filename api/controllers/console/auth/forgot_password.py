@@ -31,19 +31,20 @@ class ForgotPasswordSendEmailApi(Resource):
         parser.add_argument("language", type=str, required=False, location="json")
         args = parser.parse_args()
 
+        if args["language"] is not None and args["language"] == "zh-Hans":
+            language = "zh-Hans"
+        else:
+            language = "en-US"
+
         account = Account.query.filter_by(email=args["email"]).first()
         token = None
         if account is None:
             if dify_config.ALLOW_REGISTER:
-                token = AccountService.send_reset_password_email(
-                    email=args["email"], language=args["language"] or "en-US"
-                )
+                token = AccountService.send_reset_password_email(email=args["email"], language=language)
             else:
                 raise NotAllowedRegister()
         else:
-            token = AccountService.send_reset_password_email(
-                account=account, email=args["email"], language=args["language"] or "en-US"
-            )
+            token = AccountService.send_reset_password_email(account=account, email=args["email"], language=language)
 
         return {"result": "success", "data": token}
 

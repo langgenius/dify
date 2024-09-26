@@ -84,16 +84,19 @@ class ResetPasswordSendEmailApi(Resource):
         parser.add_argument("language", type=str, required=False, location="json")
         args = parser.parse_args()
 
+        if args["language"] is not None and args["language"] == "zh-Hans":
+            language = "zh-Hans"
+        else:
+            language = "en-US"
+
         account = AccountService.get_user_through_email(args["email"])
         if account is None:
             if dify_config.ALLOW_REGISTER:
-                token = AccountService.send_reset_password_email(
-                    email=args["email"], language=args["language"] or "en-US"
-                )
+                token = AccountService.send_reset_password_email(email=args["email"], language=language)
             else:
                 raise NotAllowedRegister()
         else:
-            token = AccountService.send_reset_password_email(account=account, language=args["language"])
+            token = AccountService.send_reset_password_email(account=account, language=language)
 
         return {"result": "success", "data": token}
 
@@ -106,16 +109,19 @@ class EmailCodeLoginSendEmailApi(Resource):
         parser.add_argument("language", type=str, required=False, location="json")
         args = parser.parse_args()
 
+        if args["language"] is not None and args["language"] == "zh-Hans":
+            language = "zh-Hans"
+        else:
+            language = "en-US"
+
         account = AccountService.get_user_through_email(args["email"])
         if account is None:
             if dify_config.ALLOW_REGISTER:
-                token = AccountService.send_email_code_login_email(
-                    email=args["email"], language=args["language"] or "en-US"
-                )
+                token = AccountService.send_email_code_login_email(email=args["email"], language=language)
             else:
                 raise NotAllowedRegister()
         else:
-            token = AccountService.send_email_code_login_email(account=account, language=args["language"])
+            token = AccountService.send_email_code_login_email(account=account, language=language)
 
         return {"result": "success", "data": token}
 

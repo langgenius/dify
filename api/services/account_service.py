@@ -258,7 +258,6 @@ class AccountService:
         cls, account: Optional[Account] = None, email: Optional[str] = None, language: Optional[str] = "en-US"
     ):
         account_email = account.email if account else email
-        account_language = account.interface_language if account else language
 
         if cls.reset_password_rate_limiter.is_rate_limited(account_email):
             from controllers.console.auth.error import PasswordResetRateLimitExceededError
@@ -270,7 +269,7 @@ class AccountService:
             account=account, email=email, token_type="reset_password", additional_data={"code": code}
         )
         send_reset_password_mail_task.delay(
-            language=account_language,
+            language=language,
             to=account_email,
             code=code,
         )
@@ -299,7 +298,7 @@ class AccountService:
             account=account, email=email, token_type="email_code_login", additional_data={"code": code}
         )
         send_email_code_login_mail_task.delay(
-            language=account.interface_language if account else language,
+            language=language,
             to=account.email if account else email,
             code=code,
         )
