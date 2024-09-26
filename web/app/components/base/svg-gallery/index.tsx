@@ -42,6 +42,8 @@ export const SVGRenderer = ({ content }: { content: string }) => {
         const originalHeight = parseInt(svgElement.getAttribute('height') || '600', 10)
         draw.viewbox(0, 0, originalWidth, originalHeight)
 
+        svgRef.current.style.width = `${Math.min(originalWidth, 298)}px`
+
         const rootElement = draw.svg(content)
 
         rootElement.click(() => {
@@ -58,10 +60,6 @@ export const SVGRenderer = ({ content }: { content: string }) => {
   return (
     <>
       <div ref={svgRef} style={{
-        width: '100%',
-        height: '100%',
-        minWidth: '298px',
-        minHeight: '300px',
         maxHeight: '80vh',
         display: 'flex',
         justifyContent: 'center',
@@ -69,6 +67,7 @@ export const SVGRenderer = ({ content }: { content: string }) => {
         cursor: 'pointer',
         wordBreak: 'break-word',
         whiteSpace: 'normal',
+        margin: '0 auto',
       }} />
       {imagePreview && (<ImagePreview url={imagePreview} title='Preview' onCancel={() => setImagePreview('')} />)}
     </>
