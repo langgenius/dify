@@ -128,39 +128,41 @@ const CodeBlock: CodeComponent = memo(({ inline, className, children, ...props }
 
   const renderCodeContent = useMemo(() => {
     const content = String(children).replace(/\n$/, '')
-    switch (language) {
-      case 'mermaid':
-        return isSVG ? <Flowchart PrimitiveCode={content} /> : null
-      case 'echarts':
-        return (
-          <div style={{ minHeight: '350px', minWidth: '700px' }}>
-            <ErrorBoundary>
-              <ReactEcharts option={chartData} />
-            </ErrorBoundary>
-          </div>
-        )
-      case 'svg':
-        return (
+    if (language === 'mermaid' && isSVG) {
+      return <Flowchart PrimitiveCode={content} />
+    }
+    else if (language === 'echarts') {
+      return (
+        <div style={{ minHeight: '350px', minWidth: '700px' }}>
           <ErrorBoundary>
-            <SVGRenderer content={content} />
+            <ReactEcharts option={chartData} />
           </ErrorBoundary>
-        )
-      default:
-        return (
-          <SyntaxHighlighter
-            {...props}
-            style={atelierHeathLight}
-            customStyle={{
-              paddingLeft: 12,
-              backgroundColor: '#fff',
-            }}
-            language={match?.[1]}
-            showLineNumbers
-            PreTag="div"
-          >
-            {content}
-          </SyntaxHighlighter>
-        )
+        </div>
+      )
+    }
+    else if (language === 'svg' && isSVG) {
+      return (
+        <ErrorBoundary>
+          <SVGRenderer content={content} />
+        </ErrorBoundary>
+      )
+    }
+    else {
+      return (
+        <SyntaxHighlighter
+          {...props}
+          style={atelierHeathLight}
+          customStyle={{
+            paddingLeft: 12,
+            backgroundColor: '#fff',
+          }}
+          language={match?.[1]}
+          showLineNumbers
+          PreTag="div"
+        >
+          {content}
+        </SyntaxHighlighter>
+      )
     }
   }, [language, match, props, children, chartData, isSVG])
 
@@ -177,7 +179,7 @@ const CodeBlock: CodeComponent = memo(({ inline, className, children, ...props }
       >
         <div className='text-[13px] text-gray-500 font-normal'>{languageShowName}</div>
         <div style={{ display: 'flex' }}>
-          {language === 'mermaid' && <SVGBtn isSVG={isSVG} setIsSVG={setIsSVG}/>}
+          {(['mermaid', 'svg']).includes(language!) && <SVGBtn isSVG={isSVG} setIsSVG={setIsSVG}/>}
           <CopyBtn
             className='mr-1'
             value={String(children).replace(/\n$/, '')}

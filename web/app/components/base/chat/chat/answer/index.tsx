@@ -85,6 +85,19 @@ const Answer: FC<AnswerProps> = ({
       getContentWidth()
   }, [responding])
 
+  // Recalculate contentWidth when content changes (e.g., SVG preview/source toggle)
+  useEffect(() => {
+    if (!containerRef.current)
+      return
+    const resizeObserver = new ResizeObserver(() => {
+      getContentWidth()
+    })
+    resizeObserver.observe(containerRef.current)
+    return () => {
+      resizeObserver.disconnect()
+    }
+  }, [])
+
   return (
     <div className='flex mb-2 last:mb-0'>
       <div className='shrink-0 relative w-10 h-10'>
@@ -100,7 +113,7 @@ const Answer: FC<AnswerProps> = ({
           <AnswerTriangle className='absolute -left-2 top-0 w-2 h-3 text-gray-100' />
           <div
             ref={contentRef}
-            className={cn('relative inline-block px-4 py-3 max-w-full bg-gray-100 rounded-b-2xl rounded-tr-2xl text-sm text-gray-900', workflowProcess && 'min-w-[298px]')}
+            className={cn('relative inline-block px-4 py-3 max-w-full bg-gray-100 rounded-b-2xl rounded-tr-2xl text-sm text-gray-900', workflowProcess && 'w-full')}
           >
             {
               !responding && (
