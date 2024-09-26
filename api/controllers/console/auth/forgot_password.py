@@ -1,5 +1,4 @@
 import base64
-import logging
 import secrets
 
 from flask import request
@@ -13,7 +12,6 @@ from controllers.console.auth.error import (
     InvalidEmailError,
     InvalidTokenError,
     PasswordMismatchError,
-    PasswordResetRateLimitExceededError,
 )
 from controllers.console.error import NotAllowedCreateWorkspace, NotAllowedRegister
 from controllers.console.setup import setup_required
@@ -23,7 +21,6 @@ from libs.helper import email, get_remote_ip
 from libs.password import hash_password, valid_password
 from models.account import Account
 from services.account_service import AccountService, TenantService
-from services.errors.account import RateLimitExceededError
 
 
 class ForgotPasswordSendEmailApi(Resource):
