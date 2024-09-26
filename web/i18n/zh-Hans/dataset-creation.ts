@@ -65,7 +65,7 @@ const translation = {
       fireCrawlNotConfigured: 'Firecrawl 未配置',
       fireCrawlNotConfiguredDescription: '请配置 Firecrawl 的 API 密钥以使用它。',
       jinaReaderNotConfigured: 'Jina Reader 未配置',
-      jinaReaderNotConfiguredDescription: '最佳 HTML 转 Markdown 工具。快速且可靠！',
+      jinaReaderNotConfiguredDescription: '请配置 Jina Reader 的免费 API 密钥以访问它。',
       configure: '配置',
       run: '运行',
       firecrawlTitle: '使用 🔥Firecrawl 提取网页内容',
