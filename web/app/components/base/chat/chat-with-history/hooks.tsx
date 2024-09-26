@@ -391,6 +391,7 @@ export const useChatWithHistory = (installedAppInfo?: InstalledApp) => {
     setShowConfigPanelBeforeChat,
     setShowNewConversationItemInList,
     newConversationInputs,
+    newConversationInputsRef,
     handleNewConversationInputsChange,
     inputsForms,
     handleNewConversation,

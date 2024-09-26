@@ -12,13 +12,14 @@ const Form = () => {
     appParams,
     inputsForms,
     newConversationInputs,
+    newConversationInputsRef,
     handleNewConversationInputsChange,
     isMobile,
   } = useEmbeddedChatbotContext()
 
   const handleFormChange = useCallback((variable: string, value: any) => {
     handleNewConversationInputsChange({
-      ...newConversationInputs,
+      ...newConversationInputsRef.current,
       [variable]: value,
     })
   }, [newConversationInputs, handleNewConversationInputsChange])
@@ -60,6 +61,20 @@ const Form = () => {
           value={newConversationInputs[variable] || ''}
           onChange={e => handleFormChange(variable, e.target.value)}
           placeholder={`${label}${!required ? `(${t('appDebug.variableTable.optional')})` : ''}`}
+        />
+      )
+    }
+    if (form.type === InputVarType.singleFile) {
+      return (
+        <FileUploaderInAttachmentWrapper
+          value={newConversationInputs[variable] ? [newConversationInputs[variable]] : []}
+          onChange={files => handleFormChange(variable, files[0])}
+          fileConfig={{
+            allowed_file_types: appParams?.file_upload?.allowed_file_types,
+            allowed_file_extensions: appParams?.file_upload?.allowed_file_extensions,
+            allowed_file_upload_methods: appParams?.file_upload?.allowed_file_upload_methods,
+            number_limits: 1,
+          }}
         />
       )
     }
