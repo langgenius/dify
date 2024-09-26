@@ -1,4 +1,4 @@
-# this model corresponds to qwen-max-0403, for more details 
+# this model corresponds to qwen-max-0403, for more details
 # please refer to (https://help.aliyun.com/zh/model-studio/getting-started/models#cf6cc4aa2aokf)
 model: qwen-max-0403
 label:
