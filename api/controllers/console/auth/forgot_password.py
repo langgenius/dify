@@ -43,14 +43,10 @@ class ForgotPasswordSendEmailApi(Resource):
                 )
             else:
                 raise NotAllowedRegister()
-        elif account:
-            try:
-                token = AccountService.send_reset_password_email(
-                    account=account, email=args["email"], language=args["language"] or "en-US"
-                )
-            except RateLimitExceededError:
-                logging.warning(f"Rate limit exceeded for email: {args['email']}")
-                raise PasswordResetRateLimitExceededError()
+        else:
+            token = AccountService.send_reset_password_email(
+                account=account, email=args["email"], language=args["language"] or "en-US"
+            )
 
         return {"result": "success", "data": token}
 

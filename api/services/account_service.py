@@ -12,7 +12,6 @@ from werkzeug.exceptions import Unauthorized
 
 from configs import dify_config
 from constants.languages import language_timezone_mapping, languages
-from controllers.console.auth.error import EmailPasswordLoginLimitError
 from events.tenant_event import tenant_was_created
 from extensions.ext_redis import redis_client
 from libs.helper import RateLimiter, TokenManager
@@ -34,7 +33,6 @@ from services.errors.account import (
     LinkAccountIntegrateError,
     MemberNotInTenantError,
     NoPermissionError,
-    RateLimitExceededError,
     RoleAlreadyAssignedError,
     TenantNotFoundError,
 )
@@ -45,7 +43,7 @@ from tasks.mail_reset_password_task import send_reset_password_mail_task
 
 
 class AccountService:
-    reset_password_rate_limiter = RateLimiter(prefix="reset_password_rate_limit", max_attempts=5, time_window=60 * 60)
+    reset_password_rate_limiter = RateLimiter(prefix="reset_password_rate_limit", max_attempts=1, time_window=60 * 1)
     email_code_login_rate_limiter = RateLimiter(
         prefix="email_code_login_rate_limit", max_attempts=1, time_window=60 * 1
     )
@@ -263,7 +261,9 @@ class AccountService:
         account_language = account.interface_language if account else language
 
         if cls.reset_password_rate_limiter.is_rate_limited(account_email):
-            raise RateLimitExceededError(f"Rate limit exceeded for email: {account_email}. Please try again later.")
+            from controllers.console.auth.error import PasswordResetRateLimitExceededError
+
+            raise PasswordResetRateLimitExceededError()
 
         code = "".join([str(random.randint(0, 9)) for _ in range(6)])
         token = TokenManager.generate_token(
@@ -290,7 +290,9 @@ class AccountService:
         cls, account: Optional[Account] = None, email: Optional[str] = None, language: Optional[str] = "en-US"
     ):
         if cls.email_code_login_rate_limiter.is_rate_limited(email):
-            raise EmailPasswordLoginLimitError()
+            from controllers.console.auth.error import EmailCodeLoginRateLimitExceededError
+
+            raise EmailCodeLoginRateLimitExceededError()
 
         code = "".join([str(random.randint(0, 9)) for _ in range(6)])
         token = TokenManager.generate_token(
