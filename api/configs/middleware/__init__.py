@@ -51,6 +51,11 @@ class VectorStoreConfig(BaseSettings):
         default=None,
     )
 
+    VECTOR_STORE_WHITELIST_ENABLE: Optional[bool] = Field(
+        description="Enable whitelist for vector store.",
+        default=False,
+    )
+
 
 class KeywordStoreConfig(BaseSettings):
     KEYWORD_STORE: str = Field(

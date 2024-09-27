@@ -721,6 +721,16 @@ class TidbAuthBinding(db.Model):
     password = db.Column(db.String(255), nullable=False)
     created_at = db.Column(db.DateTime, nullable=False, server_default=db.text("CURRENT_TIMESTAMP(0)"))
 
+class Whitelist(db.Model):
+    __tablename__ = 'whitelists'
+    __table_args__ = (
+        db.PrimaryKeyConstraint('id', name='whitelists_pkey'),
+        db.Index('whitelists_tenant_idx', 'tenant_id'),
+    )
+    id = db.Column(StringUUID, primary_key=True, server_default=db.text('uuid_generate_v4()'))
+    tenant_id = db.Column(StringUUID, nullable=True)
+    category = db.Column(db.String(255), nullable=False)
+    created_at = db.Column(db.DateTime, nullable=False, server_default=db.text('CURRENT_TIMESTAMP(0)'))
 
 class DatasetPermission(db.Model):
     __tablename__ = "dataset_permissions"

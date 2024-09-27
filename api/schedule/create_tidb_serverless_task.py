@@ -44,26 +44,23 @@ def create_tidb_serverless_task():
     click.echo(click.style("Create tidb serverless task success latency: {}".format(end_at - start_at), fg="green"))
 
 
-def create_clusters(iterations):
-    for _ in range(iterations):
-        try:
-            new_cluster = TidbService.create_tidb_serverless_cluster(
-                dify_config.TIDB_PROJECT_ID,
-                dify_config.TIDB_API_URL,
-                dify_config.TIDB_IAM_API_URL,
-                dify_config.TIDB_PUBLIC_KEY,
-                dify_config.TIDB_PRIVATE_KEY,
-                str(uuid.uuid4()).replace("-", "")[:16],
-                dify_config.TIDB_REGION,
-            )
-            tidb_auth_binding = TidbAuthBinding(
-                cluster_id=new_cluster["cluster_id"],
-                cluster_name=new_cluster["cluster_name"],
-                account=new_cluster["account"],
-                password=new_cluster["password"],
-            )
+def create_clusters(batch_size):
+    try:
+        new_clusters = TidbService.batch_create_tidb_serverless_cluster(
+            batch_size,
+            dify_config.TIDB_PROJECT_ID,
+            dify_config.TIDB_API_URL,
+            dify_config.TIDB_IAM_API_URL,
+            dify_config.TIDB_PUBLIC_KEY,
+            dify_config.TIDB_PRIVATE_KEY,
+            dify_config.TIDB_REGION)
+        for new_cluster in new_clusters:
+            tidb_auth_binding = TidbAuthBinding(cluster_id=new_cluster['cluster_id'],
+                                                cluster_name=new_cluster['cluster_name'],
+                                                account=new_cluster['account'],
+                                                password=new_cluster['password']
+                                                )
             db.session.add(tidb_auth_binding)
-            db.session.commit()
-        except Exception as e:
-            click.echo(click.style(f"Error: {e}", fg="red"))
-            continue
+        db.session.commit()
+    except Exception as e:
+        click.echo(click.style(f'Error: {e}', fg='red'))
