@@ -20,7 +20,13 @@ class PluginEncrypter:
             return {
                 "data": encrypter.encrypt(payload.data),
             }
-        else:
+        elif payload.opt == "decrypt":
             return {
                 "data": encrypter.decrypt(payload.data),
             }
+        elif payload.opt == "clear":
+            return {
+                "data": encrypter.delete_tool_credentials_cache(),
+            }
+        else:
+            raise ValueError(f"Invalid opt: {payload.opt}")

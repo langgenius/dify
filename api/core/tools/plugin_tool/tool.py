@@ -9,12 +9,12 @@ from core.tools.entities.tool_entities import ToolEntity, ToolInvokeMessage, Too
 
 class PluginTool(Tool):
     tenant_id: str
-    plugin_unique_identifier: str
+    plugin_id: str
 
-    def __init__(self, entity: ToolEntity, runtime: ToolRuntime, tenant_id: str, plugin_unique_identifier: str) -> None:
+    def __init__(self, entity: ToolEntity, runtime: ToolRuntime, tenant_id: str, plugin_id: str) -> None:
         super().__init__(entity, runtime)
         self.tenant_id = tenant_id
-        self.plugin_unique_identifier = plugin_unique_identifier
+        self.plugin_id = plugin_id
 
     @property
     def tool_provider_type(self) -> ToolProviderType:
@@ -25,7 +25,7 @@ class PluginTool(Tool):
         return manager.invoke(
             tenant_id=self.tenant_id,
             user_id=user_id,
-            plugin_unique_identifier=self.plugin_unique_identifier,
+            plugin_id=self.plugin_id,
             tool_provider=self.entity.identity.provider,
             tool_name=self.entity.identity.name,
             credentials=self.runtime.credentials,
@@ -37,5 +37,5 @@ class PluginTool(Tool):
             entity=self.entity,
             runtime=runtime,
             tenant_id=self.tenant_id,
-            plugin_unique_identifier=self.plugin_unique_identifier,
+            plugin_id=self.plugin_id,
         )

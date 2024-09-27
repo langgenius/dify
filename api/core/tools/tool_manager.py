@@ -85,7 +85,7 @@ class ToolManager:
         return PluginToolProviderController(
             entity=provider_entity.declaration,
             tenant_id=tenant_id,
-            plugin_unique_identifier=provider_entity.plugin_unique_identifier,
+            plugin_id=provider_entity.plugin_id,
         )
 
     @classmethod
@@ -402,7 +402,7 @@ class ToolManager:
             PluginToolProviderController(
                 entity=provider.declaration,
                 tenant_id=tenant_id,
-                plugin_unique_identifier=provider.plugin_unique_identifier,
+                plugin_id=provider.plugin_id,
             )
             for provider in provider_entities
         ]
@@ -527,13 +527,9 @@ class ToolManager:
                 )
 
                 if isinstance(provider, PluginToolProviderController):
-                    result_providers[f"plugin_provider.{user_provider.name}.{provider.plugin_unique_identifier}"] = (
-                        user_provider
-                    )
+                    result_providers[f"plugin_provider.{user_provider.name}.{provider.plugin_id}"] = user_provider
                 else:
-                    result_providers[f"builtin_provider.{user_provider.name}"] = (
-                        user_provider
-                    )
+                    result_providers[f"builtin_provider.{user_provider.name}"] = user_provider
 
         # get db api providers
 

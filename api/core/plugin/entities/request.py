@@ -173,7 +173,7 @@ class RequestInvokeEncrypt(BaseModel):
     Request to encryption
     """
 
-    opt: Literal["encrypt", "decrypt"]
+    opt: Literal["encrypt", "decrypt", "clear"]
     namespace: Literal["endpoint"]
     identity: str
     data: dict = Field(default_factory=dict)

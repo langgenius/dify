@@ -34,7 +34,7 @@ class PluginToolManager(BasePluginManager):
         self,
         tenant_id: str,
         user_id: str,
-        plugin_unique_identifier: str,
+        plugin_id: str,
         tool_provider: str,
         tool_name: str,
         credentials: dict[str, Any],
@@ -45,7 +45,6 @@ class PluginToolManager(BasePluginManager):
             f"plugin/{tenant_id}/dispatch/tool/invoke",
             ToolInvokeMessage,
             data={
-                "plugin_unique_identifier": plugin_unique_identifier,
                 "user_id": user_id,
                 "data": {
                     "provider": tool_provider,
@@ -55,14 +54,14 @@ class PluginToolManager(BasePluginManager):
                 },
             },
             headers={
-                "X-Plugin-Identifier": plugin_unique_identifier,
+                "X-Plugin-ID": plugin_id,
                 "Content-Type": "application/json",
-            }
+            },
         )
         return response
 
     def validate_provider_credentials(
-        self, tenant_id: str, user_id: str, plugin_unique_identifier: str, provider: str, credentials: dict[str, Any]
+        self, tenant_id: str, user_id: str, plugin_id: str, provider: str, credentials: dict[str, Any]
     ) -> bool:
         """
         validate the credentials of the provider
@@ -72,7 +71,6 @@ class PluginToolManager(BasePluginManager):
             f"plugin/{tenant_id}/dispatch/tool/validate_credentials",
             PluginBasicBooleanResponse,
             data={
-                "plugin_unique_identifier": plugin_unique_identifier,
                 "user_id": user_id,
                 "data": {
                     "provider": provider,
@@ -80,12 +78,12 @@ class PluginToolManager(BasePluginManager):
                 },
             },
             headers={
-                "X-Plugin-Identifier": plugin_unique_identifier,
+                "X-Plugin-ID": plugin_id,
                 "Content-Type": "application/json",
-            }
+            },
         )
 
         for resp in response:
             return resp.result
-        
+
         return False
