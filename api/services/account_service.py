@@ -177,7 +177,16 @@ class AccountService:
         account = AccountService.create_account(
             email=email, name=name, interface_language=interface_language, password=password
         )
-        TenantService.create_owner_tenant_if_not_exist(account=account)
+
+        # SELF_HOSTED Just create account, not create tenant
+        if dify_config.EDITION != "SELF_HOSTED":
+            TenantService.create_owner_tenant_if_not_exist(account=account)
+        else:
+            # SElF_HOST just have one tenant
+            tenant = Tenant.query.first()
+            TenantService.create_tenant_member(tenant, account, role="user")
+            account.current_tenant = tenant
+            db.session.commit()
 
         return account
 
@@ -239,6 +248,9 @@ class AccountService:
         if ip_address:
             AccountService.update_last_login(account, ip_address=ip_address)
         exp = timedelta(days=30)
+        if account.status == AccountStatus.PENDING.value:
+            account.status = AccountStatus.ACTIVE.value
+            db.session.commit()
         token = AccountService.get_account_jwt_token(account, exp=exp)
         redis_client.set(_get_login_cache_key(account_id=account.id, token=token), "1", ex=int(exp.total_seconds()))
         return token
@@ -662,14 +674,18 @@ class RegisterService:
             if open_id is not None or provider is not None:
                 AccountService.link_account_integrate(provider, open_id, account)
 
-            if not dify_config.ALLOW_CREATE_WORKSPACE:
-                logging.error("Register failed: Not allowed to create workspace.")
-                raise WorkSpaceNotAllowedCreateError()
-
-            tenant = TenantService.create_tenant(f"{account.name}'s Workspace")
-            TenantService.create_tenant_member(tenant, account, role="owner")
-            account.current_tenant = tenant
-            tenant_was_created.send(tenant)
+            if dify_config.EDITION != "SELF_HOSTED":
+                if not dify_config.ALLOW_CREATE_WORKSPACE:
+                    raise WorkSpaceNotAllowedCreateError()
+                tenant = TenantService.create_tenant(f"{account.name}'s Workspace")
+                TenantService.create_tenant_member(tenant, account, role="owner")
+                account.current_tenant = tenant
+                tenant_was_created.send(tenant)
+            else:
+                # SELF_HOSTED just have one tenant
+                tenant = Tenant.query.first()
+                TenantService.create_tenant_member(tenant, account, role="user")
+                account.current_tenant = tenant
 
             db.session.commit()
         except WorkSpaceNotAllowedCreateError:
