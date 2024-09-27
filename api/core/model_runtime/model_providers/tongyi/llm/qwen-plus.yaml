@@ -1,3 +1,5 @@
+# this model corresponds to qwen-plus, for more details
+# please refer to (https://help.aliyun.com/zh/model-studio/getting-started/models#bb0ffee88bwnk)
 model: qwen-plus
 label:
   en_US: qwen-plus

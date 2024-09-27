@@ -1,6 +1,6 @@
 'use client'
 import type { FC } from 'react'
-import React, { useCallback, useState } from 'react'
+import React, { useCallback, useEffect, useRef, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { useContext } from 'use-context-selector'
 import produce from 'immer'
@@ -45,6 +45,12 @@ const ConfigModal: FC<IConfigModalProps> = ({
   const { t } = useTranslation()
   const [tempPayload, setTempPayload] = useState<InputVar>(payload || getNewVarInWorkflow('') as any)
   const { type, label, variable, options, max_length } = tempPayload
+  const modalRef = useRef<HTMLDivElement>(null)
+  useEffect(() => {
+    // To fix the first input element auto focus, then directly close modal will raise error
+    if (isShow)
+      modalRef.current?.focus()
+  }, [isShow])
 
   const isStringInput = type === InputVarType.textInput || type === InputVarType.paragraph
   const checkVariableName = useCallback((value: string, canBeEmpty?: boolean) => {
@@ -175,7 +181,7 @@ const ConfigModal: FC<IConfigModalProps> = ({
       isShow={isShow}
       onClose={onClose}
     >
-      <div className='mb-8'>
+      <div className='mb-8' ref={modalRef} tabIndex={-1}>
         <div className='space-y-2'>
 
           <Field title={t('appDebug.variableConfig.fieldType')}>
