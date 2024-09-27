@@ -65,7 +65,7 @@ const translation = {
       fireCrawlNotConfigured: 'Firecrawl is not configured',
       fireCrawlNotConfiguredDescription: 'Configure Firecrawl with API key to use it.',
       jinaReaderNotConfigured: 'Jina Reader is not configured',
-      jinaReaderNotConfiguredDescription: 'Best HTML to Markdown converter. Fast & reliable!',
+      jinaReaderNotConfiguredDescription: 'Set up Jina Reader by entering your free API key for access.',
       configure: 'Configure',
       run: 'Run',
       firecrawlTitle: 'Extract web content with 🔥Firecrawl',
