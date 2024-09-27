@@ -1,11 +1,19 @@
 # base image
 FROM node:20.11-alpine3.19 AS base
-LABEL maintainer="takatost@gmail.com"
+LABEL maintainer="aibum"
 
 # if you located in China, you can use aliyun mirror to speed up
 # RUN sed -i 's/dl-cdn.alpinelinux.org/mirrors.aliyun.com/g' /etc/apk/repositories
-
-RUN apk add --no-cache tzdata
+RUN set -eux && \
+    apk add bind-tools && \
+    apk add busybox-extras && \
+    apk add findutils && \
+    apk add tcpdump && \
+    apk add tzdata && \
+    apk add curl && \
+    apk add --no-cache tzdata && \
+    apk add curl && \apk add bash && \
+    date
 
 
 # install packages
@@ -33,13 +41,13 @@ RUN yarn build
 # production stage
 FROM base AS production
 
-ENV NODE_ENV=production
-ENV EDITION=SELF_HOSTED
-ENV DEPLOY_ENV=PRODUCTION
-ENV CONSOLE_API_URL=http://127.0.0.1:5001
-ENV APP_API_URL=http://127.0.0.1:5001
-ENV PORT=3000
-ENV NEXT_TELEMETRY_DISABLED=1
+ENV NODE_ENV=${NODE_ENV:-production}
+ENV EDITION=${EDITION:-SELF_HOSTED}
+ENV DEPLOY_ENV=${DEPLOY_ENV:-PRODUCTION}
+ENV CONSOLE_API_URL=${CONSOLE_API_URL:-http://127.0.0.1:5001}
+ENV APP_API_URL=${APP_API_URL:-http://127.0.0.1:5001}
+ENV PORT=${PORT:-3000}
+ENV NEXT_TELEMETRY_DISABLED=${NEXT_TELEMETRY_DISABLED:-1}
 
 # set timezone
 ENV TZ=UTC

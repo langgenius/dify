@@ -2,6 +2,8 @@
 
 set -e
 
+cd /app/api
+
 if [[ "${MIGRATION_ENABLED}" == "true" ]]; then
   echo "Running migrations"
   flask upgrade-db
