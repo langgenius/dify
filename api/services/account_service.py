@@ -177,7 +177,10 @@ class AccountService:
         account = AccountService.create_account(
             email=email, name=name, interface_language=interface_language, password=password
         )
-        TenantService.create_owner_tenant_if_not_exist(account=account)
+
+        # SELF_HOSTED Just create account, not create tenant
+        if dify_config.EDITION != "SELF_HOSTED":
+            TenantService.create_owner_tenant_if_not_exist(account=account)
 
         return account
 
@@ -662,15 +665,16 @@ class RegisterService:
             if open_id is not None or provider is not None:
                 AccountService.link_account_integrate(provider, open_id, account)
 
-            if not dify_config.ALLOW_CREATE_WORKSPACE:
-                raise WorkSpaceNotAllowedCreateError()
+            if dify_config.EDITION != "SELF_HOSTED":
+                if not dify_config.ALLOW_CREATE_WORKSPACE:
+                    raise WorkSpaceNotAllowedCreateError()
 
-            tenant = TenantService.create_tenant(f"{account.name}'s Workspace")
-            TenantService.create_tenant_member(tenant, account, role="owner")
-            account.current_tenant = tenant
-            tenant_was_created.send(tenant)
+                tenant = TenantService.create_tenant(f"{account.name}'s Workspace")
+                TenantService.create_tenant_member(tenant, account, role="owner")
+                account.current_tenant = tenant
+                tenant_was_created.send(tenant)
 
-            db.session.commit()
+                db.session.commit()
         except WorkSpaceNotAllowedCreateError:
             db.session.rollback()
             raise
