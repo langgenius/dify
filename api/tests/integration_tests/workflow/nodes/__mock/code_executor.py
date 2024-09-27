@@ -23,7 +23,7 @@ class MockedCodeExecutor:
                 raise Exception("Language not supported")
 
 
-@pytest.fixture
+@pytest.fixture()
 def setup_code_executor_mock(request, monkeypatch: MonkeyPatch):
     if not MOCK:
         yield

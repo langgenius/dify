@@ -104,7 +104,7 @@ class MockGoogleClass:
             return client
 
 
-@pytest.fixture
+@pytest.fixture()
 def setup_google_mock(request, monkeypatch: MonkeyPatch):
     monkeypatch.setattr(BaseGenerateContentResponse, "text", MockGoogleClass.generative_response_text)
     monkeypatch.setattr(BaseGenerateContentResponse, "candidates", MockGoogleClass.generative_response_candidates)

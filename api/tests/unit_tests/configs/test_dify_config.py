@@ -10,7 +10,7 @@ from configs.app_config import DifyConfig
 EXAMPLE_ENV_FILENAME = ".env"
 
 
-@pytest.fixture
+@pytest.fixture()
 def example_env_file(tmp_path, monkeypatch) -> str:
     monkeypatch.chdir(tmp_path)
     file_path = tmp_path.joinpath(EXAMPLE_ENV_FILENAME)

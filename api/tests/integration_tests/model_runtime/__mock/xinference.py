@@ -156,7 +156,7 @@ class MockXinferenceClass:
 MOCK = os.getenv("MOCK_SWITCH", "false").lower() == "true"
 
 
-@pytest.fixture
+@pytest.fixture()
 def setup_xinference_mock(request, monkeypatch: MonkeyPatch):
     if MOCK:
         monkeypatch.setattr(Client, "get_model", MockXinferenceClass.get_chat_model)

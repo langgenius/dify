@@ -87,7 +87,7 @@ class MockAnthropicClass:
             return MockAnthropicClass.mocked_anthropic_chat_create_sync(model=model)
 
 
-@pytest.fixture
+@pytest.fixture()
 def setup_anthropic_mock(request, monkeypatch: MonkeyPatch):
     if MOCK:
         monkeypatch.setattr(Messages, "create", MockAnthropicClass.mocked_anthropic)

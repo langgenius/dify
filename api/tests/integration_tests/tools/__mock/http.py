@@ -27,7 +27,7 @@ class MockedHttp:
         return response
 
 
-@pytest.fixture
+@pytest.fixture()
 def setup_http_mock(request, monkeypatch: MonkeyPatch):
     monkeypatch.setattr(httpx, "request", MockedHttp.httpx_request)
     yield

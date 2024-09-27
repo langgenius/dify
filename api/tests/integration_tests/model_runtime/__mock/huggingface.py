@@ -9,7 +9,7 @@ from tests.integration_tests.model_runtime.__mock.huggingface_chat import MockHu
 MOCK = os.getenv("MOCK_SWITCH", "false").lower() == "true"
 
 
-@pytest.fixture
+@pytest.fixture()
 def setup_huggingface_mock(request, monkeypatch: MonkeyPatch):
     if MOCK:
         monkeypatch.setattr(InferenceClient, "text_generation", MockHuggingfaceChatClass.text_generation)

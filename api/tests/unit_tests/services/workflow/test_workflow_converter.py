@@ -24,7 +24,7 @@ from models.model import AppMode
 from services.workflow.workflow_converter import WorkflowConverter
 
 
-@pytest.fixture
+@pytest.fixture()
 def default_variables():
     value = [
         VariableEntity(
