@@ -146,13 +146,13 @@ def test_array_object_variable():
     assert isinstance(variable.value[1]["key2"], int)
 
 
-def test_variable_cannot_large_than_5_kb():
+def test_variable_cannot_large_than_200_kb():
     with pytest.raises(VariableError):
         variable_factory.build_variable_from_mapping(
             {
                 "id": str(uuid4()),
                 "value_type": "string",
                 "name": "test_text",
-                "value": "a" * 1024 * 6,
+                "value": "a" * 1024 * 201,
             }
         )

@@ -41,6 +41,9 @@ class Segment(BaseModel):
 
     @property
     def size(self) -> int:
+        """
+        Return the size of the value in bytes.
+        """
         return sys.getsizeof(self.value)
 
     def to_object(self) -> Any:

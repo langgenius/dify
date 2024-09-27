@@ -181,7 +181,6 @@ WHERE
 
         with db.engine.begin() as conn:
             rs = conn.execute(db.text(sql_query), arg_dict)
-            rs = conn.execute(db.text(sql_query), arg_dict)
             for i in rs:
                 response_data.append({"date": str(i.date), "terminal_count": i.terminal_count})
 
@@ -441,7 +440,6 @@ WHERE
         response_data = []
 
         with db.engine.begin() as conn:
-            rs = conn.execute(db.text(sql_query), arg_dict)
             rs = conn.execute(db.text(sql_query), arg_dict)
             for i in rs:
                 response_data.append({"date": str(i.date), "latency": round(i.latency * 1000, 4)})
