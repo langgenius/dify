@@ -245,7 +245,7 @@ const translation = {
     'iteration': 'Perform multiple steps on a list object until all results are outputted.',
     'parameter-extractor': 'Use LLM to extract structured parameters from natural language for tool invocations or HTTP requests.',
     'document-extractor': 'Used to parse uploaded documents into text content that is easily understandable by LLM.',
-    'list-filter': 'Used to filter or sort files uploaded by users in bulk.',
+    'list-filter': 'Used to filter or sort array content.',
   },
   operator: {
     zoomIn: 'Zoom In',
