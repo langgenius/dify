@@ -90,7 +90,7 @@ const ChatRecord = () => {
   return (
     <div
       className={`
-        flex flex-col w-[400px] rounded-l-2xl h-full border border-black/2 shadow-xl
+        flex flex-col w-[420px] rounded-l-2xl h-full border border-black/2 shadow-xl
       `}
       style={{
         background: 'linear-gradient(156deg, rgba(242, 244, 247, 0.80) 0%, rgba(242, 244, 247, 0.00) 99.43%), var(--white, #FFF)',
@@ -121,7 +121,7 @@ const ChatRecord = () => {
                 supportCitationHitInfo: true,
               } as any}
               chatList={chatList}
-              chatContainerClassName='px-4'
+              chatContainerClassName='px-3'
               chatContainerInnerClassName='pt-6 w-full max-w-full mx-auto'
               chatFooterClassName='px-4 rounded-b-2xl'
               chatFooterInnerClassName='pb-4 w-full max-w-full mx-auto'
@@ -129,6 +129,8 @@ const ChatRecord = () => {
               noChatInput
               allToolIcons={{}}
               showPromptLog
+              noSpacing
+              chatAnswerContainerInner='!pr-2'
             />
           </div>
         </>

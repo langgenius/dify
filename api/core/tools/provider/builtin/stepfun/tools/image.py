@@ -1,4 +1,3 @@
-import random
 from typing import Any, Union
 
 from openai import OpenAI
@@ -19,7 +18,7 @@ class StepfunTool(BuiltinTool):
         """
         invoke tools
         """
-        base_url = self.runtime.credentials.get("stepfun_base_url", "https://api.stepfun.com")
+        base_url = self.runtime.credentials.get("stepfun_base_url") or "https://api.stepfun.com"
         base_url = str(URL(base_url) / "v1")
 
         client = OpenAI(
@@ -28,9 +27,7 @@ class StepfunTool(BuiltinTool):
         )
 
         extra_body = {}
-        model = tool_parameters.get("model", "step-1x-medium")
-        if not model:
-            return self.create_text_message("Please input model name")
+        model = "step-1x-medium"
         # prompt
         prompt = tool_parameters.get("prompt", "")
         if not prompt:
@@ -67,9 +64,3 @@ class StepfunTool(BuiltinTool):
                 )
             )
         return result
-
-    @staticmethod
-    def _generate_random_id(length=8):
-        characters = "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789"
-        random_id = "".join(random.choices(characters, k=length))
-        return random_id

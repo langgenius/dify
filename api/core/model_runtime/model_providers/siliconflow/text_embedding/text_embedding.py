@@ -1,5 +1,6 @@
 from typing import Optional
 
+from core.embedding.embedding_constant import EmbeddingInputType
 from core.model_runtime.entities.text_embedding_entities import TextEmbeddingResult
 from core.model_runtime.model_providers.openai_api_compatible.text_embedding.text_embedding import (
     OAICompatEmbeddingModel,
@@ -16,8 +17,23 @@ class SiliconflowTextEmbeddingModel(OAICompatEmbeddingModel):
         super().validate_credentials(model, credentials)
 
     def _invoke(
-        self, model: str, credentials: dict, texts: list[str], user: Optional[str] = None
+        self,
+        model: str,
+        credentials: dict,
+        texts: list[str],
+        user: Optional[str] = None,
+        input_type: EmbeddingInputType = EmbeddingInputType.DOCUMENT,
     ) -> TextEmbeddingResult:
+        """
+        Invoke text embedding model
+
+        :param model: model name
+        :param credentials: model credentials
+        :param texts: texts to embed
+        :param user: unique user id
+        :param input_type: input type
+        :return: embeddings result
+        """
         self._add_custom_parameters(credentials)
         return super()._invoke(model, credentials, texts, user)
 
