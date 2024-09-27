@@ -126,7 +126,10 @@ MIXEDBREAD_API_KEY = "mk-aaaaaaaaaaaaaaaaaaaa"
 
 [tool.poetry]
 name = "dify-api"
-package-mode = false
+version = "0.1.0"
+description = "fock下来的dify源码包"
+authors = ["1035807396@qq.com"]
+# package-mode = false
 
 ############################################################
 # Main dependencies
