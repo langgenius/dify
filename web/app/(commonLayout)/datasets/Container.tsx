@@ -28,13 +28,14 @@ import { fetchDatasetApiBaseUrl } from '@/service/datasets'
 import { useTabSearchParams } from '@/hooks/use-tab-searchparams'
 import { useStore as useTagStore } from '@/app/components/base/tag-management/store'
 import { useAppContext } from '@/context/app-context'
+import { ExternalApiPanelProvider, useExternalApiPanel } from '@/context/external-api-panel-context'
 
-const Container = () => {
+const ContainerContent = () => {
   const { t } = useTranslation()
   const router = useRouter()
   const { currentWorkspace } = useAppContext()
   const showTagManagementModal = useTagStore(s => s.showTagManagementModal)
-  const [showExternalApiPanel, setShowExternalApiPanel] = useState(false)
+  const { showExternalApiPanel, setShowExternalApiPanel } = useExternalApiPanel()
 
   const options = useMemo(() => {
     return [
@@ -74,45 +75,51 @@ const Container = () => {
   }, [currentWorkspace, router])
 
   return (
-    <ExternalKnowledgeApiProvider>
-      <div ref={containerRef} className='grow relative flex flex-col bg-gray-100 overflow-y-auto'>
-        <div className='sticky top-0 flex justify-between pt-4 px-12 pb-2 leading-[56px] bg-gray-100 z-10 flex-wrap gap-y-2'>
-          <TabSliderNew
-            value={activeTab}
-            onChange={newActiveTab => setActiveTab(newActiveTab)}
-            options={options}
-          />
-          {activeTab === 'dataset' && (
-            <div className='flex items-center gap-2'>
-              <TagFilter type='knowledge' value={tagFilterValue} onChange={handleTagsChange} />
-              <SearchInput className='w-[200px]' value={keywords} onChange={handleKeywordsChange} />
-              <div className="w-[1px] h-4 bg-divider-regular" />
-              <Button
-                className='gap-0.5 shadows-shadow-xs'
-                onClick={() => setShowExternalApiPanel(true)}
-              >
-                <ApiConnectionMod className='w-4 h-4 text-components-button-secondary-text' />
-                <div className='flex px-0.5 justify-center items-center gap-1 text-components-button-secondary-text system-sm-medium'>{t('dataset.externalAPI')}</div>
-              </Button>
-            </div>
-          )}
-          {activeTab === 'api' && data && <ApiServer apiBaseUrl={data.api_base_url || ''} />}
-        </div>
-
+    <div ref={containerRef} className='grow relative flex flex-col bg-gray-100 overflow-y-auto'>
+      <div className='sticky top-0 flex justify-between pt-4 px-12 pb-2 leading-[56px] bg-gray-100 z-10 flex-wrap gap-y-2'>
+        <TabSliderNew
+          value={activeTab}
+          onChange={newActiveTab => setActiveTab(newActiveTab)}
+          options={options}
+        />
         {activeTab === 'dataset' && (
-          <>
-            <Datasets containerRef={containerRef} tags={tagIDs} keywords={searchKeywords} />
-            <DatasetFooter />
-            {showTagManagementModal && (
-              <TagManagementModal type='knowledge' show={showTagManagementModal} />
-            )}
-          </>
+          <div className='flex items-center gap-2'>
+            <TagFilter type='knowledge' value={tagFilterValue} onChange={handleTagsChange} />
+            <SearchInput className='w-[200px]' value={keywords} onChange={handleKeywordsChange} />
+            <div className="w-[1px] h-4 bg-divider-regular" />
+            <Button
+              className='gap-0.5 shadows-shadow-xs'
+              onClick={() => setShowExternalApiPanel(true)}
+            >
+              <ApiConnectionMod className='w-4 h-4 text-components-button-secondary-text' />
+              <div className='flex px-0.5 justify-center items-center gap-1 text-components-button-secondary-text system-sm-medium'>{t('dataset.externalAPI')}</div>
+            </Button>
+          </div>
         )}
-
-        {activeTab === 'api' && data && <Doc apiBaseUrl={data.api_base_url || ''} />}
-
-        {showExternalApiPanel && <ExternalAPIPanel onClose={() => setShowExternalApiPanel(false)} isShow={showExternalApiPanel} datasetBindings={[]} />}
+        {activeTab === 'api' && data && <ApiServer apiBaseUrl={data.api_base_url || ''} />}
       </div>
+      {activeTab === 'dataset' && (
+        <>
+          <Datasets containerRef={containerRef} tags={tagIDs} keywords={searchKeywords} />
+          <DatasetFooter />
+          {showTagManagementModal && (
+            <TagManagementModal type='knowledge' show={showTagManagementModal} />
+          )}
+        </>
+      )}
+      {activeTab === 'api' && data && <Doc apiBaseUrl={data.api_base_url || ''} />}
+
+      {showExternalApiPanel && <ExternalAPIPanel onClose={() => setShowExternalApiPanel(false)} isShow={showExternalApiPanel} datasetBindings={[]} />}
+    </div>
+  )
+}
+
+const Container = () => {
+  return (
+    <ExternalKnowledgeApiProvider>
+      <ExternalApiPanelProvider>
+        <ContainerContent />
+      </ExternalApiPanelProvider>
     </ExternalKnowledgeApiProvider>
   )
 }

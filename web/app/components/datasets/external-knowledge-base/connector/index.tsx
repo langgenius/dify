@@ -28,7 +28,9 @@ const ExternalKnowledgeBaseConnector = () => {
     }
     setLoading(false)
   }
-  return <ExternalKnowledgeBaseCreate onConnect={handleConnect} loading={loading} />
+  return (
+    <ExternalKnowledgeBaseCreate onConnect={handleConnect} loading={loading} />
+  )
 }
 
 export default ExternalKnowledgeBaseConnector

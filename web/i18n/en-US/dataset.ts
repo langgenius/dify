@@ -16,6 +16,7 @@ const translation = {
   wordCount: ' k words',
   appCount: ' linked apps',
   createDataset: 'Create Knowledge',
+  noExternalKnowledge: 'There is no External Knowledge API yet, click here to create',
   createExternalAPI: 'Add an External Knowledge API',
   editExternalAPIFormTitle: 'Edit the External Knowledge API',
   editExternalAPITooltipTitle: 'LINKED KNOWLEDGE',
@@ -37,6 +38,9 @@ const translation = {
       end: 'external knowledge. Deleting this API will invalidate all of them. Are you sure you want to delete this API?',
     },
     noConnectionContent: 'Are you sure to delete this API?',
+  },
+  selectExternalKnowledgeAPI: {
+    placeholder: 'Choose an External Knowledge API',
   },
   connectDataset: 'Connect to an External Knowledge Base',
   connectDatasetIntro: {

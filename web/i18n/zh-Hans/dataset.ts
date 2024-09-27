@@ -16,6 +16,7 @@ const translation = {
   wordCount: ' 千字符',
   appCount: ' 关联应用',
   createDataset: '创建知识库',
+  noExternalKnowledge: '还没有外部知识库 API，点击此处创建',
   createExternalAPI: '添加外部知识库 API',
   editExternalAPIFormTitle: '编辑外部知识库 API',
   editExternalAPITooltipTitle: '个关联知识库',
@@ -55,6 +56,9 @@ const translation = {
   datasetUsedByApp: '某些应用正在使用该知识库。应用将无法再使用该知识库,所有的提示配置和日志将被永久删除。',
   datasetDeleted: '知识库已删除',
   datasetDeleteFailed: '删除知识库失败',
+  selectExternalKnowledgeAPI: {
+    placeholder: '选择一个外部知识 API',
+  },
   didYouKnow: '你知道吗？',
   intro1: '知识库可以被集成到 Dify 应用中',
   intro2: '作为上下文',

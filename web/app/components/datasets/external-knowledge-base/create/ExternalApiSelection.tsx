@@ -1,8 +1,13 @@
 import React, { useEffect } from 'react'
 import { useTranslation } from 'react-i18next'
-import Select from '@/app/components/base/select'
+import { RiAddLine } from '@remixicon/react'
+import { useRouter } from 'next/navigation'
+import ExternalApiSelect from './ExternalApiSelect'
 import Input from '@/app/components/base/input'
+import Button from '@/app/components/base/button'
 import { useExternalKnowledgeApi } from '@/context/external-knowledge-api-context'
+import { useExternalApiPanel } from '@/context/external-api-panel-context'
+
 type ExternalApiSelectionProps = {
   external_knowledge_api_id: string
   external_knowledge_id: string
@@ -11,12 +16,22 @@ type ExternalApiSelectionProps = {
 
 const ExternalApiSelection: React.FC<ExternalApiSelectionProps> = ({ external_knowledge_api_id, external_knowledge_id, onChange }) => {
   const { t } = useTranslation()
+  const router = useRouter()
   const { externalKnowledgeApiList } = useExternalKnowledgeApi()
+  // const { setShowExternalApiPanel } = useExternalApiPanel()
 
   const apiItems = externalKnowledgeApiList.map(api => ({
     value: api.id,
     name: api.name,
+    url: api.settings.endpoint,
   }))
+
+  const { showExternalApiPanel, setShowExternalApiPanel } = useExternalApiPanel()
+
+  const handleAddNewAPI = () => {
+    router.back()
+    setShowExternalApiPanel(true)
+  }
 
   useEffect(() => {
     if (!external_knowledge_api_id && apiItems.length > 0)
@@ -29,12 +44,17 @@ const ExternalApiSelection: React.FC<ExternalApiSelectionProps> = ({ external_kn
         <div className='flex flex-col self-stretch'>
           <label className='text-text-secondary system-sm-semibold'>{t('dataset.externalAPIPanelTitle')}</label>
         </div>
-        <Select
-          className='w-full'
-          items={apiItems}
-          defaultValue={apiItems.length > 0 ? apiItems[0].value : ''}
-          onSelect={e => onChange({ external_knowledge_api_id: e.value as string, external_knowledge_id })}
-        />
+        {apiItems.length > 0
+          ? <ExternalApiSelect
+            items={apiItems}
+            defaultValue={apiItems[0].value}
+            onSelect={e => onChange({ external_knowledge_api_id: e.value as string, external_knowledge_id })}
+          />
+          : <Button variant={'tertiary'} onClick={handleAddNewAPI} className='justify-start gap-0.5'>
+            <RiAddLine className='w-4 h-4 text-text-tertiary' />
+            <span className='text-text-tertiary system-sm-regular'>{t('dataset.noExternalKnowledge')}</span>
+          </Button>
+        }
       </div>
       <div className='flex flex-col gap-1 self-stretch'>
         <div className='flex flex-col self-stretch'>
