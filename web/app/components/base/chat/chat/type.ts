@@ -3,6 +3,7 @@ import type { Annotation, MessageRating } from '@/models/log'
 import type { VisionFile } from '@/types/app'
 import type { FileEntity } from '@/app/components/base/file-uploader/types'
 import type { InputVarType } from '@/app/components/workflow/types'
+import type { FileResponse } from '@/types/workflow'
 
 export type MessageMore = {
   time: string
@@ -114,6 +115,7 @@ export type Metadata = {
 export type MessageEnd = {
   id: string
   metadata: Metadata
+  files?: FileResponse[]
 }
 
 export type MessageReplace = {

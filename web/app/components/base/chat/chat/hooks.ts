@@ -416,6 +416,8 @@ export const useChat = (
             return
           }
           responseItem.citation = messageEnd.metadata?.retriever_resources || []
+          const processedFilesFromResponse = getProcessedFilesFromResponse(messageEnd.files || [])
+          responseItem.allFiles = uniqBy([...(responseItem.allFiles || []), ...(processedFilesFromResponse || [])], 'id')
 
           const newListWithAnswer = produce(
             chatListRef.current.filter(item => item.id !== responseItem.id && item.id !== placeholderAnswerId),
@@ -520,8 +522,6 @@ export const useChat = (
             return item.node_id === data.node_id && (item.execution_metadata?.parallel_id === data.execution_metadata.parallel_id)
           })
           responseItem.workflowProcess!.tracing[currentIndex] = data as any
-          const processedFilesFromResponse = getProcessedFilesFromResponse(data.files || [])
-          responseItem.allFiles = uniqBy([...(responseItem.allFiles || []), ...(processedFilesFromResponse || [])], 'id')
           handleUpdateChatList(produce(chatListRef.current, (draft) => {
             const currentIndex = draft.findIndex(item => item.id === responseItem.id)
             draft[currentIndex] = {
@@ -552,6 +552,7 @@ export const useChat = (
     params.token,
     params.appId,
     pathname,
+    formSettings,
   ])
 
   const handleAnnotationEdited = useCallback((query: string, answer: string, index: number) => {
