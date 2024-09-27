@@ -14,7 +14,9 @@ from services.external_knowledge_service import ExternalDatasetService
 
 
 @shared_task(queue="dataset")
-def external_document_indexing_task(dataset_id: str, external_knowledge_api_id: str, data_source: dict, process_parameter: dict):
+def external_document_indexing_task(
+    dataset_id: str, external_knowledge_api_id: str, data_source: dict, process_parameter: dict
+):
     """
     Async process document
     :param dataset_id:
@@ -35,14 +37,18 @@ def external_document_indexing_task(dataset_id: str, external_knowledge_api_id: 
     # get external api template
     external_knowledge_api = (
         db.session.query(ExternalKnowledgeApis)
-        .filter(ExternalKnowledgeApis.id == external_knowledge_api_id, ExternalKnowledgeApis.tenant_id == dataset.tenant_id)
+        .filter(
+            ExternalKnowledgeApis.id == external_knowledge_api_id, ExternalKnowledgeApis.tenant_id == dataset.tenant_id
+        )
         .first()
     )
 
     if not external_knowledge_api:
         logging.info(
             click.style(
-                "Processed external dataset: {} failed, api template: {} not exit.".format(dataset_id, external_knowledge_api_id),
+                "Processed external dataset: {} failed, api template: {} not exit.".format(
+                    dataset_id, external_knowledge_api_id
+                ),
                 fg="red",
             )
         )
@@ -59,7 +65,9 @@ def external_document_indexing_task(dataset_id: str, external_knowledge_api_id: 
             if file:
                 files[file.id] = (file.name, storage.load_once(file.key), file.mime_type)
     try:
-        settings = ExternalDatasetService.get_external_knowledge_api_settings(json.loads(external_knowledge_api.settings))
+        settings = ExternalDatasetService.get_external_knowledge_api_settings(
+            json.loads(external_knowledge_api.settings)
+        )
         # assemble headers
         headers = ExternalDatasetService.assembling_headers(settings.authorization, settings.headers)
 

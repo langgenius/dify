@@ -20,9 +20,12 @@ from models.dataset import (
     ExternalKnowledgeBindings,
 )
 from models.model import UploadFile
-from services.entities.external_knowledge_entities.external_knowledge_entities import ExternalKnowledgeApiSetting, Authorization
+from services.entities.external_knowledge_entities.external_knowledge_entities import (
+    Authorization,
+    ExternalKnowledgeApiSetting,
+)
 from services.errors.dataset import DatasetNameDuplicateError
-from urllib.parse import urlparse
+
 
 class ExternalDatasetService:
     @staticmethod
@@ -61,14 +64,14 @@ class ExternalDatasetService:
         db.session.add(external_knowledge_api)
         db.session.commit()
         return external_knowledge_api
-    
+
     @staticmethod
     def check_endpoint_and_api_key(settings: dict):
         if "endpoint" not in settings or not settings["endpoint"]:
             raise ValueError("endpoint is required")
         if "api_key" not in settings or not settings["api_key"]:
             raise ValueError("api_key is required")
-        
+
         endpoint = f"{settings['endpoint']}/retrieval"
         api_key = settings["api_key"]
         if not validators.url(endpoint):
@@ -90,7 +93,9 @@ class ExternalDatasetService:
 
     @staticmethod
     def update_external_knowledge_api(tenant_id, user_id, external_knowledge_api_id, args) -> ExternalKnowledgeApis:
-        external_knowledge_api = ExternalKnowledgeApis.query.filter_by(id=external_knowledge_api_id, tenant_id=tenant_id).first()
+        external_knowledge_api = ExternalKnowledgeApis.query.filter_by(
+            id=external_knowledge_api_id, tenant_id=tenant_id
+        ).first()
         if external_knowledge_api is None:
             raise ValueError("api template not found")
 
@@ -105,7 +110,9 @@ class ExternalDatasetService:
 
     @staticmethod
     def delete_external_knowledge_api(tenant_id: str, external_knowledge_api_id: str):
-        external_knowledge_api = ExternalKnowledgeApis.query.filter_by(id=external_knowledge_api_id, tenant_id=tenant_id).first()
+        external_knowledge_api = ExternalKnowledgeApis.query.filter_by(
+            id=external_knowledge_api_id, tenant_id=tenant_id
+        ).first()
         if external_knowledge_api is None:
             raise ValueError("api template not found")
 
@@ -130,7 +137,9 @@ class ExternalDatasetService:
 
     @staticmethod
     def document_create_args_validate(tenant_id: str, external_knowledge_api_id: str, process_parameter: dict):
-        external_knowledge_api = ExternalKnowledgeApis.query.filter_by(id=external_knowledge_api_id, tenant_id=tenant_id).first()
+        external_knowledge_api = ExternalKnowledgeApis.query.filter_by(
+            id=external_knowledge_api_id, tenant_id=tenant_id
+        ).first()
         if external_knowledge_api is None:
             raise ValueError("api template not found")
         settings = json.loads(external_knowledge_api.settings)
@@ -150,7 +159,9 @@ class ExternalDatasetService:
             raise ValueError("data source is required")
 
         process_parameter = args.get("process_parameter")
-        external_knowledge_api = ExternalKnowledgeApis.query.filter_by(id=external_knowledge_api_id, tenant_id=tenant_id).first()
+        external_knowledge_api = ExternalKnowledgeApis.query.filter_by(
+            id=external_knowledge_api_id, tenant_id=tenant_id
+        ).first()
         if external_knowledge_api is None:
             raise ValueError("api template not found")
 
@@ -204,7 +215,9 @@ class ExternalDatasetService:
         return dataset
 
     @staticmethod
-    def process_external_api(settings: ExternalKnowledgeApiSetting, files: Union[None, dict[str, Any]]) -> httpx.Response:
+    def process_external_api(
+        settings: ExternalKnowledgeApiSetting, files: Union[None, dict[str, Any]]
+    ) -> httpx.Response:
         """
         do http request depending on api bundle
         """
@@ -322,7 +335,9 @@ class ExternalDatasetService:
             "headers": headers,
             "params": request_params,
         }
-        response = ExternalDatasetService.process_external_api(ExternalKnowledgeApiSetting(**external_knowledge_api_setting), None)
+        response = ExternalDatasetService.process_external_api(
+            ExternalKnowledgeApiSetting(**external_knowledge_api_setting), None
+        )
         if response.status_code == 200:
             return response.json().get("records", [])
         return []
@@ -338,7 +353,10 @@ class ExternalDatasetService:
         response = client.retrieve(
             knowledgeBaseId=external_knowledge_id,
             retrievalConfiguration={
-                "vectorSearchConfiguration": {"numberOfResults": retrieval_setting.get("top_k"), "overrideSearchType": "HYBRID"}
+                "vectorSearchConfiguration": {
+                    "numberOfResults": retrieval_setting.get("top_k"),
+                    "overrideSearchType": "HYBRID",
+                }
             },
             retrievalQuery={"text": query},
         )
@@ -347,7 +365,7 @@ class ExternalDatasetService:
             if response.get("retrievalResults"):
                 retrieval_results = response.get("retrievalResults")
                 for retrieval_result in retrieval_results:
-                    if retrieval_result.get("score") < retrieval_setting.get("score_threshold", .0):
+                    if retrieval_result.get("score") < retrieval_setting.get("score_threshold", 0.0):
                         continue
                     result = {
                         "metadata": retrieval_result.get("metadata"),
@@ -356,6 +374,4 @@ class ExternalDatasetService:
                         "content": retrieval_result.get("content").get("text"),
                     }
                     results.append(result)
-        return {
-            "records": results
-        }
+        return {"records": results}

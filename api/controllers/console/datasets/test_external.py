@@ -13,13 +13,7 @@ class TestExternalApi(Resource):
     @account_initialization_required
     def post(self):
         parser = reqparse.RequestParser()
-        parser.add_argument(
-            "retrieval_setting",
-            nullable=False,
-            required=True,
-            type=dict,
-            location="json"
-        )
+        parser.add_argument("retrieval_setting", nullable=False, required=True, type=dict, location="json")
         parser.add_argument(
             "query",
             nullable=False,
