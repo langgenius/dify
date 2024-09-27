@@ -18,6 +18,7 @@ const translation = {
   createDataset: '创建知识库',
   noExternalKnowledge: '还没有外部知识库 API，点击此处创建',
   createExternalAPI: '添加外部知识库 API',
+  createNewExternalAPI: '创建新的外部知识库API',
   editExternalAPIFormTitle: '编辑外部知识库 API',
   editExternalAPITooltipTitle: '个关联知识库',
   editExternalAPIConfirmWarningContent: {

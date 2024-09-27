@@ -2,7 +2,7 @@
 
 // Libraries
 import { useEffect, useMemo, useRef, useState } from 'react'
-import { useRouter } from 'next/navigation'
+import { useRouter, useSearchParams } from 'next/navigation'
 import { useTranslation } from 'react-i18next'
 import { useDebounceFn } from 'ahooks'
 import useSWR from 'swr'
@@ -19,7 +19,6 @@ import TagManagementModal from '@/app/components/base/tag-management'
 import TagFilter from '@/app/components/base/tag-management/filter'
 import Button from '@/app/components/base/button'
 import { ApiConnectionMod } from '@/app/components/base/icons/src/vender/solid/development'
-import { ExternalKnowledgeApiProvider } from '@/context/external-knowledge-api-context'
 
 // Services
 import { fetchDatasetApiBaseUrl } from '@/service/datasets'
@@ -28,14 +27,25 @@ import { fetchDatasetApiBaseUrl } from '@/service/datasets'
 import { useTabSearchParams } from '@/hooks/use-tab-searchparams'
 import { useStore as useTagStore } from '@/app/components/base/tag-management/store'
 import { useAppContext } from '@/context/app-context'
-import { ExternalApiPanelProvider, useExternalApiPanel } from '@/context/external-api-panel-context'
+import { useExternalApiPanel } from '@/context/external-api-panel-context'
 
-const ContainerContent = () => {
+const Container = () => {
   const { t } = useTranslation()
   const router = useRouter()
   const { currentWorkspace } = useAppContext()
   const showTagManagementModal = useTagStore(s => s.showTagManagementModal)
   const { showExternalApiPanel, setShowExternalApiPanel } = useExternalApiPanel()
+  const searchParams = useSearchParams()
+
+  useEffect(() => {
+    const openPanel = searchParams.get('openExternalApiPanel')
+    if (openPanel === 'true') {
+      setTimeout(() => {
+        setShowExternalApiPanel(true)
+        window.history.replaceState({}, '', '/datasets')
+      }, 500)
+    }
+  }, [searchParams, setShowExternalApiPanel])
 
   const options = useMemo(() => {
     return [
@@ -109,18 +119,8 @@ const ContainerContent = () => {
       )}
       {activeTab === 'api' && data && <Doc apiBaseUrl={data.api_base_url || ''} />}
 
-      {showExternalApiPanel && <ExternalAPIPanel onClose={() => setShowExternalApiPanel(false)} isShow={showExternalApiPanel} datasetBindings={[]} />}
+      {showExternalApiPanel && <ExternalAPIPanel onClose={() => setShowExternalApiPanel(false)} />}
     </div>
-  )
-}
-
-const Container = () => {
-  return (
-    <ExternalKnowledgeApiProvider>
-      <ExternalApiPanelProvider>
-        <ContainerContent />
-      </ExternalApiPanelProvider>
-    </ExternalKnowledgeApiProvider>
   )
 }
 

@@ -1,3 +1,5 @@
+'use client'
+
 import React, { useEffect } from 'react'
 import { useTranslation } from 'react-i18next'
 import { RiAddLine } from '@remixicon/react'
@@ -6,7 +8,6 @@ import ExternalApiSelect from './ExternalApiSelect'
 import Input from '@/app/components/base/input'
 import Button from '@/app/components/base/button'
 import { useExternalKnowledgeApi } from '@/context/external-knowledge-api-context'
-import { useExternalApiPanel } from '@/context/external-api-panel-context'
 
 type ExternalApiSelectionProps = {
   external_knowledge_api_id: string
@@ -18,7 +19,6 @@ const ExternalApiSelection: React.FC<ExternalApiSelectionProps> = ({ external_kn
   const { t } = useTranslation()
   const router = useRouter()
   const { externalKnowledgeApiList } = useExternalKnowledgeApi()
-  // const { setShowExternalApiPanel } = useExternalApiPanel()
 
   const apiItems = externalKnowledgeApiList.map(api => ({
     value: api.id,
@@ -26,11 +26,8 @@ const ExternalApiSelection: React.FC<ExternalApiSelectionProps> = ({ external_kn
     url: api.settings.endpoint,
   }))
 
-  const { showExternalApiPanel, setShowExternalApiPanel } = useExternalApiPanel()
-
   const handleAddNewAPI = () => {
-    router.back()
-    setShowExternalApiPanel(true)
+    router.push('/datasets?openExternalApiPanel=true')
   }
 
   useEffect(() => {

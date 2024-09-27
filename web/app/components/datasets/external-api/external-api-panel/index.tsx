@@ -15,11 +15,9 @@ import { useModalContext } from '@/context/modal-context'
 
 type ExternalAPIPanelProps = {
   onClose: () => void
-  isShow: boolean
-  datasetBindings: { id: string; name: string }[]
 }
 
-const ExternalAPIPanel: React.FC<ExternalAPIPanelProps> = ({ onClose, isShow, datasetBindings }) => {
+const ExternalAPIPanel: React.FC<ExternalAPIPanelProps> = ({ onClose }) => {
   const { t } = useTranslation()
   const { setShowExternalKnowledgeAPIModal } = useModalContext()
   const { externalKnowledgeApiList, mutateExternalKnowledgeApis, isLoading } = useExternalKnowledgeApi()
