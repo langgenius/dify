@@ -183,7 +183,7 @@ class AccountService:
             TenantService.create_owner_tenant_if_not_exist(account=account)
         else:
             # SElF_HOST just have one tenant
-            tenant = Tenant.query.filter_by(id=1).first()
+            tenant = Tenant.query.first()
             TenantService.create_tenant_member(tenant, account, role="user")
             account.current_tenant = tenant
             db.session.commit()
