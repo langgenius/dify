@@ -1,12 +1,15 @@
-model: gemini-pro-vision
+model: gemini-1.5-flash
 label:
-  en_US: Gemini Pro Vision
+  en_US: Gemini 1.5 Flash
 model_type: llm
 features:
+  - agent-thought
   - vision
+  - tool-call
+  - stream-tool-call
 model_properties:
   mode: chat
-  context_size: 12288
+  context_size: 1048576
 parameter_rules:
   - name: temperature
     use_template: temperature
@@ -24,9 +27,11 @@ parameter_rules:
   - name: max_tokens_to_sample
     use_template: max_tokens
     required: true
-    default: 4096
+    default: 8192
     min: 1
-    max: 4096
+    max: 8192
+  - name: response_format
+    use_template: response_format
   - name: stream
     label:
       zh_Hans: 流式输出
