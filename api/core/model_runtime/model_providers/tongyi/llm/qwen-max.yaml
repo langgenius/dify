@@ -1,3 +1,5 @@
+# this model corresponds to qwen-max, for more details
+# please refer to (https://help.aliyun.com/zh/model-studio/getting-started/models#cf6cc4aa2aokf)
 model: qwen-max
 label:
   en_US: qwen-max
