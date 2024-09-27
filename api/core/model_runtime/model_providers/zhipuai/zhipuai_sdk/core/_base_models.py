@@ -13,7 +13,7 @@ from typing_extensions import (
     ParamSpec,
     Protocol,
     override,
-    runtime_checkable
+    runtime_checkable,
 )
 
 from ._base_compat import (
