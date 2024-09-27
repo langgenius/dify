@@ -1,5 +1,6 @@
 const translation = {
   knowledge: '知识库',
+  externalTag: '外部',
   externalAPI: '外部 API',
   externalAPIPanelTitle: '外部知识库 API',
   externalKnowledgeId: '外部知识库 ID',
@@ -10,7 +11,7 @@ const translation = {
   externalKnowledgeDescriptionPlaceholder: '描述知识库内容（可选）',
   learnHowToWriteGoodKnowledgeDescription: '了解如何编写良好的知识库描述',
   externalAPIPanelDescription: '外部知识库 API 用于连接到 Dify 之外的知识库并从中检索知识。',
-  externalAPIPanelDocumentation: '了解如何创建外部 API',
+  externalAPIPanelDocumentation: '了解如何创建外部知识库 API',
   documentCount: ' 文档',
   wordCount: ' 千字符',
   appCount: ' 关联应用',
@@ -39,7 +40,11 @@ const translation = {
   },
   connectDatasetIntro: {
     title: '如何连接到外部知识库',
-    content: '要连接到外部知识库，您需要先创建一个外部 API。请仔细阅读并参考如何创建外部 API。然后找到相应的知识 ID 并将其填写在左侧表单中。如果所有信息都正确，点击连接按钮后会自动跳转到知识库的检索测试。',
+    content: {
+      front: '要连接到外部知识库，您需要先创建一个外部 API。请仔细阅读并参考',
+      link: '了解如何创建外部 API',
+      end: '。然后找到相应的知识库 ID 并填写在左侧表单中。如果所有信息正确，点击连接按钮后将自动跳转到知识库中的检索测试。',
+    },
     learnMore: '了解更多',
   },
   connectDataset: '连接外部知识库',
@@ -113,6 +118,8 @@ const translation = {
   defaultRetrievalTip: '默认情况下使用多路召回。从多个知识库中检索知识，然后重新排序。',
   mixtureHighQualityAndEconomicTip: '混合使用高质量和经济型知识库需要配置 Rerank 模型。',
   inconsistentEmbeddingModelTip: '当所选知识库配置的 Embedding 模型不一致时，需要配置 Rerank 模型。',
+  mixtureInternalAndExternalTip: '混合使用内部和外部知识时需要配置 Rerank 模型。',
+  allExternalTip: '仅使用外部知识时，用户可以选择是否启用 Rerank 模型。如果不启用，检索到的文本块将根据分数排序。当不同知识库的检索策略不一致时，结果可能不准确。',
   retrievalSettings: '召回设置',
   rerankSettings: 'Rerank 设置',
   weightedScore: {

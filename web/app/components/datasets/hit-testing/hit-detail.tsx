@@ -26,12 +26,12 @@ const HitDetail: FC<IHitDetailProps> = ({ segInfo }) => {
       )
     }
 
-    return segInfo?.content
+    return <div className='mb-4 text-md text-gray-800 h-full'>{segInfo?.content}</div>
   }
 
   return (
     segInfo?.id === 'external'
-      ? <div className='bg-gray-25 p-10'>
+      ? <div className='w-full overflow-x-auto px-2'>
         <div className={s.segModalContent}>{renderContent()}</div>
       </div>
       : <div className='overflow-x-auto'>

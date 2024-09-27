@@ -538,6 +538,9 @@ export type SelectedDatasetsMode = {
   allHighQualityFullTextSearch: boolean
   allEconomic: boolean
   mixtureHighQualityAndEconomic: boolean
+  allInternal: boolean
+  allExternal: boolean
+  mixtureInternalAndExternal: boolean
   inconsistentEmbeddingModel: boolean
 }
 

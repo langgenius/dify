@@ -11,10 +11,6 @@ import {
   RiInformation2Line,
   RiLock2Fill,
 } from '@remixicon/react'
-import { useValidateApiKey } from '../key-validator/hooks'
-import { ValidatedApiKeyStatus } from '../key-validator/declarations'
-import { ValidatedEndpointStatus } from '../endpoint-validator/declarations'
-import { useValidateEndpoint } from '../endpoint-validator/hooks'
 import type { CreateExternalAPIReq, FormSchema } from '../declarations'
 import Form from './Form'
 import ActionButton from '@/app/components/base/action-button'
@@ -76,18 +72,28 @@ const AddExternalAPIModal: FC<AddExternalAPIModalProps> = ({ data, onSave, onCan
       setFormData(data)
   }, [isEditMode, data])
 
-  const [, validatingApiKey, validatedApiKeyStatusState] = useValidateApiKey(formData.settings.api_key)
-  const [, validatingEndpoint, validatedEndpointStatusState] = useValidateEndpoint(formData.settings.endpoint)
-  const hasEmptyInputs = Object.values(formData).includes('')
+  const hasEmptyInputs = Object.values(formData).some(value =>
+    typeof value === 'string' ? value.trim() === '' : Object.values(value).some(v => v.trim() === ''),
+  )
   const handleDataChange = (val: CreateExternalAPIReq) => {
     setFormData(val)
   }
 
   const handleSave = async () => {
+    if (formData && formData.settings.api_key && formData.settings.api_key?.length < 5) {
+      notify({ type: 'error', message: t('common.apiBasedExtension.modal.apiKey.lengthError') })
+      setLoading(false)
+      return
+    }
     try {
       setLoading(true)
       if (isEditMode && onEdit) {
-        await onEdit(formData)
+        await onEdit(
+          {
+            ...formData,
+            settings: { ...formData.settings, api_key: formData.settings.api_key ? '[__HIDDEN__]' : formData.settings.api_key },
+          },
+        )
         notify({ type: 'success', message: 'External API updated successfully' })
       }
       else {
@@ -154,10 +160,6 @@ const AddExternalAPIModal: FC<AddExternalAPIModalProps> = ({ data, onSave, onCan
             <Form
               value={formData}
               onChange={handleDataChange}
-              validatingApiKey={validatingApiKey}
-              validatedApiKeySuccess={validatedApiKeyStatusState?.status === ValidatedApiKeyStatus.Success}
-              validatingEndpoint={validatingEndpoint}
-              validatedEndpointSuccess={validatedEndpointStatusState?.status === ValidatedEndpointStatus.Success}
               formSchemas={formSchemas}
               className='flex px-6 py-3 flex-col justify-center items-start gap-4 self-stretch'
             />

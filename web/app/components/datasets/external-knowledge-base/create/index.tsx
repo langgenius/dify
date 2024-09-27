@@ -41,7 +41,7 @@ const ExternalKnowledgeBaseCreate: React.FC<ExternalKnowledgeBaseCreateProps> = 
     setFormData(newData)
   }
 
-  const isFormValid = formData.name !== ''
+  const isFormValid = formData.name.trim() !== ''
     && formData.external_knowledge_api_id !== ''
     && formData.external_knowledge_id !== ''
     && formData.external_retrieval_model.top_k !== undefined
@@ -98,7 +98,6 @@ const ExternalKnowledgeBaseCreate: React.FC<ExternalKnowledgeBaseCreateProps> = 
                 variant='primary'
                 onClick={() => {
                   onConnect(formData)
-                  navBackHandle()
                 }}
                 disabled={!isFormValid}
                 loading={loading}

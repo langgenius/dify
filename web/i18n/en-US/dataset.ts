@@ -1,5 +1,6 @@
 const translation = {
   knowledge: 'Knowledge',
+  externalTag: 'External',
   externalAPI: 'External API',
   externalAPIPanelTitle: 'External Knowledge API',
   externalKnowledgeId: 'External Knowledge ID',
@@ -10,7 +11,7 @@ const translation = {
   externalKnowledgeDescriptionPlaceholder: 'Describe what\'s in this Knowledge Base (optional)',
   learnHowToWriteGoodKnowledgeDescription: 'Learn how to write a good knowledge description',
   externalAPIPanelDescription: 'The external knowledge API is used to connect to a knowledge base outside of Dify and retrieve knowledge from that knowledge base.',
-  externalAPIPanelDocumentation: 'Learn how to create an external API',
+  externalAPIPanelDocumentation: 'Learn how to create an External Knowledge API',
   documentCount: ' docs',
   wordCount: ' k words',
   appCount: ' linked apps',
@@ -40,7 +41,11 @@ const translation = {
   connectDataset: 'Connect to an External Knowledge Base',
   connectDatasetIntro: {
     title: 'How to Connect to an External Knowledge Base',
-    content: 'To connect to an external knowledge base, you need to create an external API first. Please read carefully and refer to learn how to create an external API. Then find the corresponding knowledge ID and fill it in the form on the left. If all the information is correct, it will automatically jump to the retrieval test in the knowledge base after clicking the connect button.',
+    content: {
+      front: 'To connect to an external knowledge base, you need to create an external API first. Please read carefully and refer to',
+      link: 'Learn how to create an external API',
+      end: '. Then find the corresponding knowledge ID and fill it in the form on the left. If all the information is correct, it will automatically jump to the retrieval test in the knowledge base after clicking the connect button.',
+    },
     learnMore: 'Learn More',
   },
   createDatasetIntro: 'Import your own text data or write data in real-time via Webhook for LLM context enhancement.',
@@ -113,6 +118,8 @@ const translation = {
   defaultRetrievalTip: 'Multi-path retrieval is used by default. Knowledge is retrieved from multiple knowledge bases and then re-ranked.',
   mixtureHighQualityAndEconomicTip: 'The Rerank model is required for mixture of high quality and economical knowledge bases.',
   inconsistentEmbeddingModelTip: 'The Rerank model is required if the Embedding models of the selected knowledge bases are inconsistent.',
+  mixtureInternalAndExternalTip: 'The Rerank model is required for mixture of internal and  external knowledge.',
+  allExternalTip: 'When using external knowledge only, the user can choose whether to enable the Rerank model. If not enabled, retrieved chunks will be sorted based on scores. When the retrieval strategies of different knowledge bases are inconsistent, it will be inaccurate.',
   retrievalSettings: 'Retrieval Setting',
   rerankSettings: 'Rerank Setting',
   weightedScore: {

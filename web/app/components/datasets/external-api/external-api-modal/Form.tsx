@@ -1,6 +1,7 @@
 import React, { useState } from 'react'
 import type { FC } from 'react'
 import { useTranslation } from 'react-i18next'
+import { RiBookOpenLine } from '@remixicon/react'
 import type { CreateExternalAPIReq, FormSchema } from '../declarations'
 import Input from '@/app/components/base/input'
 import cn from '@/utils/classnames'
@@ -11,10 +12,6 @@ type FormProps = {
   fieldLabelClassName?: string
   value: CreateExternalAPIReq
   onChange: (val: CreateExternalAPIReq) => void
-  validatingEndpoint: boolean
-  validatedApiKeySuccess?: boolean
-  validatingApiKey: boolean
-  validatedEndpointSuccess?: boolean
   formSchemas: FormSchema[]
   inputClassName?: string
 }
@@ -26,10 +23,6 @@ const Form: FC<FormProps> = React.memo(({
   value,
   onChange,
   formSchemas,
-  validatingEndpoint,
-  validatingApiKey,
-  validatedApiKeySuccess,
-  validatedEndpointSuccess,
   inputClassName,
 }) => {
   const { t, i18n } = useTranslation()
@@ -57,10 +50,23 @@ const Form: FC<FormProps> = React.memo(({
 
     return (
       <div key={variable} className={cn(itemClassName, 'flex flex-col items-start gap-1 self-stretch')}>
-        <label className={cn(fieldLabelClassName, 'text-text-secondary system-sm-semibold')} htmlFor={variable}>
-          {label[i18n.language] || label.en_US}
-          {required && <span className='ml-1 text-red-500'>*</span>}
-        </label>
+        <div className="flex justify-between items-center w-full">
+          <label className={cn(fieldLabelClassName, 'text-text-secondary system-sm-semibold')} htmlFor={variable}>
+            {label[i18n.language] || label.en_US}
+            {required && <span className='ml-1 text-red-500'>*</span>}
+          </label>
+          {variable === 'endpoint' && (
+            <a
+              href={'https://docs.dify.ai/guides/knowledge-base/external-knowledge-api-documentation' || '/'}
+              target='_blank'
+              rel='noopener noreferrer'
+              className='text-text-accent body-xs-regular flex items-center'
+            >
+              <RiBookOpenLine className='w-3 h-3 text-text-accent mr-1' />
+              {t('dataset.externalAPIPanelDocumentation')}
+            </a>
+          )}
+        </div>
         <Input
           type={type === 'secret' ? 'password' : 'text'}
           id={variable}

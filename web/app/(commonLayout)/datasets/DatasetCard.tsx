@@ -111,7 +111,7 @@ const DatasetCard = ({
   return (
     <>
       <div
-        className='group relative col-span-1 bg-white border-2 border-solid border-transparent rounded-xl shadow-sm min-h-[160px] flex flex-col transition-all duration-200 ease-in-out cursor-pointer hover:shadow-lg'
+        className='group relative col-span-1 bg-white border-[0.5px] border-solid border-transparent rounded-xl shadow-sm min-h-[160px] flex flex-col transition-all duration-200 ease-in-out cursor-pointer hover:shadow-lg'
         data-disable-nprogress={true}
         onClick={(e) => {
           e.preventDefault()
@@ -144,11 +144,18 @@ const DatasetCard = ({
                 className={cn('truncate', (!dataset.embedding_available || !dataset.document_count) && 'opacity-50')}
                 title={`${dataset.document_count}${t('dataset.documentCount')} · ${Math.round(dataset.word_count / 1000)}${t('dataset.wordCount')} · ${dataset.app_count}${t('dataset.appCount')}`}
               >
-                <span>{dataset.document_count}{t('dataset.documentCount')}</span>
-                <span className='shrink-0 mx-0.5 w-1 text-gray-400'>·</span>
-                <span>{Math.round(dataset.word_count / 1000)}{t('dataset.wordCount')}</span>
-                <span className='shrink-0 mx-0.5 w-1 text-gray-400'>·</span>
-                <span>{dataset.app_count}{t('dataset.appCount')}</span>
+                {dataset.provider === 'external'
+                  ? <>
+                    <span>{dataset.app_count}{t('dataset.appCount')}</span>
+                  </>
+                  : <>
+                    <span>{dataset.document_count}{t('dataset.documentCount')}</span>
+                    <span className='shrink-0 mx-0.5 w-1 text-gray-400'>·</span>
+                    <span>{Math.round(dataset.word_count / 1000)}{t('dataset.wordCount')}</span>
+                    <span className='shrink-0 mx-0.5 w-1 text-gray-400'>·</span>
+                    <span>{dataset.app_count}{t('dataset.appCount')}</span>
+                  </>
+                }
               </div>
             </div>
           </div>

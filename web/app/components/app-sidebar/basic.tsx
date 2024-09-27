@@ -1,4 +1,5 @@
 import React from 'react'
+import { useTranslation } from 'react-i18next'
 import AppIcon from '../base/app-icon'
 import Tooltip from '@/app/components/base/tooltip'
 
@@ -54,6 +55,8 @@ const ICON_MAP = {
 }
 
 export default function AppBasic({ icon, icon_background, name, isExternal, type, hoverTip, textStyle, mode = 'expand', iconType = 'app' }: IAppBasicProps) {
+  const { t } = useTranslation()
+
   return (
     <div className="flex items-start p-1">
       {icon && icon_background && iconType === 'app' && (
@@ -84,7 +87,7 @@ export default function AppBasic({ icon, icon_background, name, isExternal, type
           }
         </div>
         <div className={`text-xs font-normal text-gray-500 group-hover:text-gray-700 break-all ${textStyle?.extra ?? ''}`}>{type}</div>
-        <div className='text-text-tertiary system-2xs-medium-uppercase'>{isExternal ? 'External' : ''}</div>
+        <div className='text-text-tertiary system-2xs-medium-uppercase'>{isExternal ? t('dataset.externalTag') : ''}</div>
       </div>}
     </div>
   )

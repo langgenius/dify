@@ -42,14 +42,19 @@ const KnowledgeBaseInfo: React.FC<KnowledgeBaseInfoProps> = ({ name, description
               value={description}
               onChange={ e => handleDescriptionChange(e)}
               placeholder={t('dataset.externalKnowledgeDescriptionPlaceholder') ?? ''}
-              className='flex h-20 p-2 self-stretch items-start rounded-lg bg-components-input-bg-normal text-components-input-text-placeholder system-sm-regular'
+              className={`flex h-20 p-2 self-stretch items-start rounded-lg bg-components-input-bg-normal ${description ? 'text-components-input-text-filled' : 'text-components-input-text-placeholder'} system-sm-regular`}
             />
-            <div className='flex py-0.5 gap-1 self-stretch'>
+            <a
+              className='flex py-0.5 gap-1 self-stretch'
+              href='https://docs.dify.ai/features/datasets#how-to-write-a-good-dataset-description'
+              target="_blank"
+              rel="noopener noreferrer"
+            >
               <div className='flex p-0.5 items-center gap-2'>
                 <RiBookOpenLine className='w-3 h-3 text-text-tertiary' />
               </div>
               <div className='flex-grow text-text-tertiary body-xs-regular'>{t('dataset.learnHowToWriteGoodKnowledgeDescription')}</div>
-            </div>
+            </a>
           </div>
         </div>
       </div>
