@@ -104,7 +104,7 @@ class ArkClientV3:
                     if message_content.type == PromptMessageContentType.TEXT:
                         content.append(
                             ChatCompletionContentPartTextParam(
-                                text=message_content.text,
+                                text=message_content.data,
                                 type="text",
                             )
                         )
