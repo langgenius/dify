@@ -360,6 +360,11 @@ const translation = {
         createPlaceholder: '+ 文件扩展名，例如 .doc',
       },
     },
+    'uploadFileTypes': '上传文件类型',
+    'localUpload': '本地上传',
+    'both': '两者',
+    'maxNumberOfUploads': '最大上传数',
+    'maxNumberTip': '最大上传文件大小为 {{size}}',
     'content': '内容',
     'errorMsg': {
       labelNameRequired: '显示名称必填',
