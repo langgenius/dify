@@ -107,7 +107,7 @@ class MockTcvectordbClass:
 MOCK = os.getenv("MOCK_SWITCH", "false").lower() == "true"
 
 
-@pytest.fixture()
+@pytest.fixture
 def setup_tcvectordb_mock(request, monkeypatch: MonkeyPatch):
     if MOCK:
         monkeypatch.setattr(VectorDBClient, "__init__", MockTcvectordbClass.mock_vector_db_client)

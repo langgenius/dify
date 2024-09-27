@@ -73,6 +73,7 @@ ignore = [
     "PT004", # pytest-fixture-no-parentheses
     "PLR1714", # repeated-equality-comparison
     "RUF100", # unused-noqa
+    "PT001",
 ]
 
 [tool.ruff.lint.per-file-ignores]

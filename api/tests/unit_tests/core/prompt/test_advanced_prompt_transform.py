@@ -160,7 +160,7 @@ def test__get_chat_model_prompt_messages_with_files_no_memory(get_chat_model_arg
     assert prompt_messages[3].content[1].data == files[0].url
 
 
-@pytest.fixture()
+@pytest.fixture
 def get_chat_model_args():
     model_config_mock = MagicMock(spec=ModelConfigEntity)
     model_config_mock.provider = "openai"
