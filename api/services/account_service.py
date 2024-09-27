@@ -248,6 +248,9 @@ class AccountService:
         if ip_address:
             AccountService.update_last_login(account, ip_address=ip_address)
         exp = timedelta(days=30)
+        if account.status == AccountStatus.PENDING.value:
+            account.status = AccountStatus.ACTIVE.value
+            db.session.commit()
         token = AccountService.get_account_jwt_token(account, exp=exp)
         redis_client.set(_get_login_cache_key(account_id=account.id, token=token), "1", ex=int(exp.total_seconds()))
         return token
