@@ -149,6 +149,23 @@ class LindormVectorStore(BaseVector):
         return filtered_texts, metadatas if metadatas is None else filtered_metadatas, filtered_ids
 
     def add_texts(self, documents: list[Document], embeddings: list[list[float]], **kwargs):
+        actions = []
+        uuids = self._get_uuids(documents)
+        for i in range(len(documents)):
+            action = {
+                "_op_type": "index",
+                "_index": self._collection_name.lower(),
+                "_id": uuids[i],
+                "_source": {
+                    Field.CONTENT_KEY.value: documents[i].page_content,
+                    Field.VECTOR.value: embeddings[i],  # Make sure you pass an array here
+                    Field.METADATA_KEY.value: documents[i].metadata,
+                },
+            }
+            actions.append(action)
+        bulk(self._client, actions)
+
+    def add_texts_with_ivfpq_training(self, documents: list[Document], embeddings: list[list[float]], **kwargs):
         routing_field = self.kwargs.get("routing_field", None)
         bulk_size = kwargs.get("bulk_size", 500)
         texts = [d.page_content for d in documents]
@@ -353,13 +370,20 @@ class LindormVectorStore(BaseVector):
 
     def delete_by_ids(self, ids: list[str]) -> None:
         for id in ids:
-            self._client.delete(index=self._collection_name, id=id)
+            if self._client.exists(index=self._collection_name, id=id):
+                self._client.delete(index=self._collection_name, id=id)
+            else:
+                logger.warning(f"DELETE BY ID: ID {id} does not exist in the index.")
 
     def delete(self) -> None:
         try:
-            self._client.indices.delete(index=self._collection_name, params={"timeout": 60})
-            logger.info("delete index success")
+            if self._client.indices.exists(index=self._collection_name):
+                self._client.indices.delete(index=self._collection_name, params={"timeout": 60})
+                logger.info("Delete index success")
+            else:
+                logger.warning(f"Index '{self._collection_name}' does not exist. No deletion performed.")
         except Exception as e:
+            logger.error(f"Error occurred while deleting the index: {e}")
             raise e
 
     def text_exists(self, id: str) -> bool:
