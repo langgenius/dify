@@ -65,9 +65,9 @@ const translation = {
     tip: '启动 Dify 社区版之前, 请阅读 GitHub 上的',
     link: '开源协议',
   },
-  join: '加入',
-  joinTipStart: '邀请你加入',
-  joinTipEnd: '团队',
+  join: '加入 ',
+  joinTipStart: '邀请你加入 ',
+  joinTipEnd: ' 团队',
   invalid: '链接已失效',
   explore: '探索 Dify',
   activatedTipStart: '您已加入',
@@ -94,6 +94,7 @@ const translation = {
   backToLogin: '返回登录',
   setYourAccount: '设置您的账户',
   enterYourName: '请输入用户名',
+  back: '返回',
 }
 
 export default translation

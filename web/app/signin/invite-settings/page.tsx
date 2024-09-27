@@ -64,7 +64,7 @@ export default function InviteSettingsPage() {
 
   if (!checkRes)
     return <Loading />
-  if (checkRes.is_valid) {
+  if (!checkRes.is_valid) {
     return <div className="flex flex-col md:w-[400px]">
       <div className="w-full mx-auto">
         <div className="mb-3 flex justify-center items-center w-14 h-14 rounded-2xl border border-components-panel-border-subtle shadow-lg text-2xl font-bold">🤷‍♂️</div>

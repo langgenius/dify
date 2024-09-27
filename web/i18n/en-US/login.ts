@@ -65,9 +65,9 @@ const translation = {
     tip: 'Before starting Dify Community Edition, read the GitHub',
     link: 'Open-source License',
   },
-  join: 'Join',
-  joinTipStart: 'Invite you join',
-  joinTipEnd: 'team on Dify',
+  join: 'Join ',
+  joinTipStart: 'Invite you join ',
+  joinTipEnd: ' team on Dify',
   invalid: 'The link has expired',
   explore: 'Explore Dify',
   activatedTipStart: 'You have joined the',
@@ -93,6 +93,7 @@ const translation = {
   backToLogin: 'Back to login',
   setYourAccount: 'Set Your Account',
   enterYourName: 'Please enter your username',
+  back: 'Back',
 }
 
 export default translation
