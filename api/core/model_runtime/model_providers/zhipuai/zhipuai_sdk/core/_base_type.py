@@ -11,12 +11,11 @@ from typing import (
     TypeAlias,
     TypeVar,
     Union,
-    runtime_checkable,
 )
 
 import pydantic
 from httpx import Response
-from typing_extensions import Protocol, TypedDict, override
+from typing_extensions import Protocol, TypedDict, override, runtime_checkable
 
 Query = Mapping[str, object]
 Body = object
