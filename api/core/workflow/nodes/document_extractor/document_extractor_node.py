@@ -76,7 +76,7 @@ class DocumentExtractorNode(BaseNode):
 
 def _extract_text(*, file_content: bytes, mime_type: str) -> str:
     """Extract text from a file based on its MIME type."""
-    if mime_type.startswith("text/plain") or mime_type in {"text/html", "text/htm", "text/markdown"}:
+    if mime_type.startswith("text/plain") or mime_type in {"text/html", "text/htm", "text/markdown", "text/xml"}:
         return _extract_text_from_plain_text(file_content)
     elif mime_type == "application/pdf":
         return _extract_text_from_pdf(file_content)
