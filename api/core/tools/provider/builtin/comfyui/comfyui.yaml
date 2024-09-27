@@ -39,4 +39,4 @@ credentials_for_provider:
       en_US: The checkpoint name of the ComfyUI server, e.g. xxx.safetensors
       zh_Hans: ComfyUI服务器的模型名称, 比如 xxx.safetensors
       pt_BR: The checkpoint name of the ComfyUI server, e.g. xxx.safetensors
-    url: https://docs.dify.ai/tutorials/tool-configuration/comfyui
+    url: https://github.com/comfyanonymous/ComfyUI#installing
