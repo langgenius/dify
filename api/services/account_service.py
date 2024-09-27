@@ -181,6 +181,12 @@ class AccountService:
         # SELF_HOSTED Just create account, not create tenant
         if dify_config.EDITION != "SELF_HOSTED":
             TenantService.create_owner_tenant_if_not_exist(account=account)
+        else:
+            # SElF_HOST just have one tenant
+            tenant = Tenant.query.filter_by(id=1).first()
+            TenantService.create_tenant_member(tenant, account, role="user")
+            account.current_tenant = tenant
+            db.session.commit()
 
         return account
 
@@ -668,13 +674,17 @@ class RegisterService:
             if dify_config.EDITION != "SELF_HOSTED":
                 if not dify_config.ALLOW_CREATE_WORKSPACE:
                     raise WorkSpaceNotAllowedCreateError()
-
                 tenant = TenantService.create_tenant(f"{account.name}'s Workspace")
                 TenantService.create_tenant_member(tenant, account, role="owner")
                 account.current_tenant = tenant
                 tenant_was_created.send(tenant)
+            else:
+                # SELF_HOSTED just have one tenant
+                tenant = Tenant.query.filter_by(id=1).first()
+                TenantService.create_tenant_member(tenant, account, role="user")
+                account.current_tenant = tenant
 
-                db.session.commit()
+            db.session.commit()
         except WorkSpaceNotAllowedCreateError:
             db.session.rollback()
             raise
