@@ -23,6 +23,8 @@ const Filter: FC<IFilterProps> = ({ queryParams, setQueryParams }: IFilterProps)
           className='!min-w-[100px]'
           onSelect={
             (item) => {
+              if (!item.value)
+                return
               setQueryParams({ ...queryParams, status: item.value as string })
             }
           }
