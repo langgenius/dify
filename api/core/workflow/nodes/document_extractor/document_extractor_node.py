@@ -3,7 +3,9 @@ import io
 from typing import cast
 
 import docx
+import pandas as pd
 import pypdfium2
+from openpyxl import load_workbook
 
 from core.file import File, FileTransferMethod, file_manager
 from core.helper import ssrf_proxy
@@ -84,6 +86,12 @@ def _extract_text(*, file_content: bytes, mime_type: str) -> str:
         return _extract_text_from_doc(file_content)
     elif mime_type == "text/csv":
         return _extract_text_from_csv(file_content)
+    elif mime_type in {
+        "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+        "application/vnd.ms-excel",
+    }:
+        file_extension = ".xlsx" if mime_type.endswith("sheet") else ".xls"
+        return _extract_text_from_excel(file_content, file_extension)
     else:
         raise UnsupportedFileTypeError(f"Unsupported MIME type: {mime_type}")
 
@@ -164,3 +172,26 @@ def _extract_text_from_csv(file_content: bytes) -> str:
         return markdown_table.strip()
     except Exception as e:
         raise TextExtractionError(f"Failed to extract text from CSV: {str(e)}") from e
+
+
+def _extract_text_from_excel(file_content: bytes, file_extension: str) -> str:
+    try:
+        if file_extension == ".xlsx":
+            wb = load_workbook(io.BytesIO(file_content), data_only=True)
+            sheet = wb.active
+            if sheet is None:
+                raise ValueError("No active sheet in Excel file")
+            df = pd.DataFrame(sheet.values)
+        elif file_extension == ".xls":
+            df = pd.read_excel(io.BytesIO(file_content), engine="xlrd")
+        else:
+            raise ValueError(f"Unsupported Excel file extension: {file_extension}")
+
+        # Drop rows where all elements are NaN
+        df.dropna(how="all", inplace=True)
+
+        # Convert DataFrame to markdown table
+        markdown_table = df.to_markdown(index=False)
+        return markdown_table
+    except Exception as e:
+        raise TextExtractionError(f"Failed to extract text from Excel file: {str(e)}") from e
