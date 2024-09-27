@@ -1,6 +1,6 @@
-model: gemini-1.5-flash-latest
+model: gemini-1.5-flash-8b-exp-0924
 label:
-  en_US: Gemini 1.5 Flash Latest
+  en_US: Gemini 1.5 Flash 8B 0924
 model_type: llm
 features:
   - agent-thought
