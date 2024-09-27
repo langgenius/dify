@@ -23,6 +23,8 @@ from extensions.ext_redis import redis_client
 from models.dataset import Dataset
 
 logger = logging.getLogger(__name__)
+logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(levelname)s - %(message)s')
+logging.getLogger('opensearch').setLevel(logging.WARN)
 
 
 class LindormVectorStoreConfig(BaseModel):
@@ -175,7 +177,7 @@ class LindormVectorStore(BaseVector):
             logger.warning("Texts size is zero!")
             return []
 
-        if not self.kwargs.get("overwrite", False):
+        if not self.kwargs.get("overwrite", True):
             texts, metadatas, ids = self.__filter_existed_ids(texts, metadatas, ids)
             logger.info(f"after _id filter, texts num change from {total_items} => {len(texts)}")
 
@@ -356,7 +358,7 @@ class LindormVectorStore(BaseVector):
     def delete(self) -> None:
         try:
             self._client.indices.delete(index=self._collection_name, params={"timeout": 60})
-            print("delete index success")
+            logger.info("delete index success")
         except Exception as e:
             raise e
 
@@ -503,7 +505,7 @@ class LindormVectorStore(BaseVector):
                 logger.info(f"Collection {self._collection_name} already exists.")
                 return
             if self._client.indices.exists(index=self._collection_name):
-                print("{self._collection_name.lower()} already exists.")
+                logger.info("{self._collection_name.lower()} already exists.")
                 return
             if len(self.kwargs) == 0 and len(kwargs) != 0:
                 self.kwargs = copy.deepcopy(kwargs)
@@ -555,7 +557,7 @@ class LindormVectorStore(BaseVector):
 
             self._client.indices.create(index=self._collection_name.lower(), body=mapping)
             redis_client.set(collection_exist_cache_key, 1, ex=3600)
-            print(f"create index success: {self._collection_name}")
+            logger.info(f"create index success: {self._collection_name}")
 
             if parent_index is not None:
                 # trigger new vector table
