@@ -28,3 +28,4 @@ pricing:
   output: '1.26'
   unit: '0.000001'
   currency: RMB
+deprecated: true
