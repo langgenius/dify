@@ -7,6 +7,7 @@ from typing import Any, Optional, Union
 
 import boto3
 import httpx
+import validators
 
 # from tasks.external_document_indexing_task import external_document_indexing_task
 from configs import dify_config
@@ -21,7 +22,7 @@ from models.dataset import (
 from models.model import UploadFile
 from services.entities.external_knowledge_entities.external_knowledge_entities import ExternalKnowledgeApiSetting, Authorization
 from services.errors.dataset import DatasetNameDuplicateError
-
+from urllib.parse import urlparse
 
 class ExternalDatasetService:
     @staticmethod
@@ -47,6 +48,7 @@ class ExternalDatasetService:
 
     @staticmethod
     def create_external_knowledge_api(tenant_id: str, user_id: str, args: dict) -> ExternalKnowledgeApis:
+        ExternalDatasetService.check_endpoint_and_api_key(args.get("settings"))
         external_knowledge_api = ExternalKnowledgeApis(
             tenant_id=tenant_id,
             created_by=user_id,
@@ -59,6 +61,28 @@ class ExternalDatasetService:
         db.session.add(external_knowledge_api)
         db.session.commit()
         return external_knowledge_api
+    
+    @staticmethod
+    def check_endpoint_and_api_key(settings: dict):
+        if "endpoint" not in settings or not settings["endpoint"]:
+            raise ValueError("endpoint is required")
+        if "api_key" not in settings or not settings["api_key"]:
+            raise ValueError("api_key is required")
+        
+        endpoint = f"{settings['endpoint']}/retrieval"
+        api_key = settings["api_key"]
+        if not validators.url(endpoint):
+            raise ValueError(f"invalid endpoint: {endpoint}")
+        try:
+            response = httpx.post(endpoint, headers={"Authorization": f"Bearer {api_key}"})
+        except Exception as e:
+            raise ValueError(f"failed to connect to the endpoint: {endpoint}")
+        if response.status_code == 502:
+            raise ValueError(f"Bad Gateway: failed to connect to the endpoint: {endpoint}")
+        if response.status_code == 404:
+            raise ValueError(f"Not Found: failed to connect to the endpoint: {endpoint}")
+        if response.status_code == 403:
+            raise ValueError(f"Forbidden: Authorization failed with api_key: {api_key}")
 
     @staticmethod
     def get_external_knowledge_api(external_knowledge_api_id: str) -> ExternalKnowledgeApis:

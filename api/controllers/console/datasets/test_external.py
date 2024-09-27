@@ -39,4 +39,4 @@ class TestExternalApi(Resource):
         return result, 200
 
 
-api.add_resource(TestExternalApi, "/dify/external-knowledge/retrieval-documents")
+api.add_resource(TestExternalApi, "/retrieval")
