@@ -31,7 +31,8 @@ class OracleVectorConfig(BaseModel):
     password: str
     database: str
 
-    @model_validator(mode='before')
+    @model_validator(mode="before")
+    @classmethod
     def validate_config(cls, values: dict) -> dict:
         if not values["host"]:
             raise ValueError("config ORACLE_HOST is required")
@@ -103,9 +104,16 @@ class OracleVector(BaseVector):
                 arraysize=cursor.arraysize,
                 outconverter=self.numpy_converter_out,
             )
-    def _create_connection_pool(self, config: OracleVectorConfig):
-        return oracledb.create_pool(user=config.user, password=config.password, dsn="{}:{}/{}".format(config.host, config.port, config.database), min=1, max=50, increment=1)
 
+    def _create_connection_pool(self, config: OracleVectorConfig):
+        return oracledb.create_pool(
+            user=config.user,
+            password=config.password,
+            dsn="{}:{}/{}".format(config.host, config.port, config.database),
+            min=1,
+            max=50,
+            increment=1,
+        )
 
     @contextmanager
     def _get_cursor(self):
@@ -136,13 +144,15 @@ class OracleVector(BaseVector):
                     doc_id,
                     doc.page_content,
                     json.dumps(doc.metadata),
-                    #array.array("f", embeddings[i]),
+                    # array.array("f", embeddings[i]),
                     numpy.array(embeddings[i]),
                 )
             )
-        #print(f"INSERT INTO {self.table_name} (id, text, meta, embedding) VALUES (:1, :2, :3, :4)")
+        # print(f"INSERT INTO {self.table_name} (id, text, meta, embedding) VALUES (:1, :2, :3, :4)")
         with self._get_cursor() as cur:
-            cur.executemany(f"INSERT INTO {self.table_name} (id, text, meta, embedding) VALUES (:1, :2, :3, :4)", values)
+            cur.executemany(
+                f"INSERT INTO {self.table_name} (id, text, meta, embedding) VALUES (:1, :2, :3, :4)", values
+            )
         return pks
 
     def text_exists(self, id: str) -> bool:
@@ -157,7 +167,8 @@ class OracleVector(BaseVector):
             for record in cur:
                 docs.append(Document(page_content=record[1], metadata=record[0]))
         return docs
-    #def get_ids_by_metadata_field(self, key: str, value: str):
+
+    # def get_ids_by_metadata_field(self, key: str, value: str):
     #    with self._get_cursor() as cur:
     #        cur.execute(f"SELECT id FROM {self.table_name} d WHERE d.meta.{key}='{value}'" )
     #        idss = []
@@ -184,10 +195,12 @@ class OracleVector(BaseVector):
         top_k = kwargs.get("top_k", 5)
         with self._get_cursor() as cur:
             cur.execute(
-                f"SELECT meta, text, vector_distance(embedding,:1) AS distance FROM {self.table_name} ORDER BY distance fetch first {top_k} rows only" ,[numpy.array(query_vector)]
+                f"SELECT meta, text, vector_distance(embedding,:1) AS distance FROM {self.table_name}"
+                f" ORDER BY distance fetch first {top_k} rows only",
+                [numpy.array(query_vector)],
             )
             docs = []
-            score_threshold = kwargs.get("score_threshold") if kwargs.get("score_threshold") else 0.0
+            score_threshold = float(kwargs.get("score_threshold") or 0.0)
             for record in cur:
                 metadata, text, distance = record
                 score = 1 - distance
@@ -199,10 +212,10 @@ class OracleVector(BaseVector):
     def search_by_full_text(self, query: str, **kwargs: Any) -> list[Document]:
         top_k = kwargs.get("top_k", 5)
         # just not implement fetch by score_threshold now, may be later
-        score_threshold = kwargs.get("score_threshold") if kwargs.get("score_threshold") else 0.0
+        score_threshold = float(kwargs.get("score_threshold") or 0.0)
         if len(query) > 0:
             # Check which language the query is in
-            zh_pattern = re.compile('[\u4e00-\u9fa5]+')
+            zh_pattern = re.compile("[\u4e00-\u9fa5]+")
             match = zh_pattern.search(query)
             entities = []
             #  match: query condition maybe is a chinese sentence, so using Jieba split,else using nltk split
@@ -210,7 +223,7 @@ class OracleVector(BaseVector):
                 words = pseg.cut(query)
                 current_entity = ""
                 for word, pos in words:
-                    if pos == 'nr' or pos == 'Ng' or pos == 'eng' or pos == 'nz' or pos == 'n' or pos == 'ORG' or pos == 'v':  # nr: 人名, ns: 地名, nt: 机构名
+                    if pos in {"nr", "Ng", "eng", "nz", "n", "ORG", "v"}:  # nr: 人名, ns: 地名, nt: 机构名
                         current_entity += word
                     else:
                         if current_entity:
@@ -220,22 +233,23 @@ class OracleVector(BaseVector):
                     entities.append(current_entity)
             else:
                 try:
-                    nltk.data.find('tokenizers/punkt')
-                    nltk.data.find('corpora/stopwords')
+                    nltk.data.find("tokenizers/punkt")
+                    nltk.data.find("corpora/stopwords")
                 except LookupError:
-                    nltk.download('punkt')
-                    nltk.download('stopwords')
+                    nltk.download("punkt")
+                    nltk.download("stopwords")
                     print("run download")
-                e_str = re.sub(r'[^\w ]', '', query)
+                e_str = re.sub(r"[^\w ]", "", query)
                 all_tokens = nltk.word_tokenize(e_str)
-                stop_words = stopwords.words('english')
+                stop_words = stopwords.words("english")
                 for token in all_tokens:
                     if token not in stop_words:
                         entities.append(token)
             with self._get_cursor() as cur:
                 cur.execute(
-                    f"select meta, text, embedding FROM {self.table_name} WHERE CONTAINS(text, :1, 1) > 0 order by score(1) desc fetch first {top_k} rows only",
-                    [" ACCUM ".join(entities)]
+                    f"select meta, text, embedding FROM {self.table_name}"
+                    f" WHERE CONTAINS(text, :1, 1) > 0 order by score(1) desc fetch first {top_k} rows only",
+                    [" ACCUM ".join(entities)],
                 )
                 docs = []
                 for record in cur:
@@ -273,8 +287,7 @@ class OracleVectorFactory(AbstractVectorFactory):
         else:
             dataset_id = dataset.id
             collection_name = Dataset.gen_collection_name_by_id(dataset_id)
-            dataset.index_struct = json.dumps(
-                self.gen_index_struct_dict(VectorType.ORACLE, collection_name))
+            dataset.index_struct = json.dumps(self.gen_index_struct_dict(VectorType.ORACLE, collection_name))
 
         return OracleVector(
             collection_name=collection_name,

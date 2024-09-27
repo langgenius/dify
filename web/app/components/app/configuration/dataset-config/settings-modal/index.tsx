@@ -51,7 +51,7 @@ const SettingsModal: FC<SettingsModalProps> = ({
   const {
     modelList: rerankModelList,
     defaultModel: rerankDefaultModel,
-    currentModel: isRerankDefaultModelVaild,
+    currentModel: isRerankDefaultModelValid,
   } = useModelListAndDefaultModelAndCurrentProviderAndModel(ModelTypeEnum.rerank)
   const { t } = useTranslation()
   const { notify } = useToastContext()
@@ -83,7 +83,7 @@ const SettingsModal: FC<SettingsModalProps> = ({
     if (
       !isReRankModelSelected({
         rerankDefaultModel,
-        isRerankDefaultModelVaild: !!isRerankDefaultModelVaild,
+        isRerankDefaultModelValid: !!isRerankDefaultModelValid,
         rerankModelList,
         retrievalConfig,
         indexMethod,
@@ -263,7 +263,7 @@ const SettingsModal: FC<SettingsModalProps> = ({
             <div>
               <div>{t('datasetSettings.form.retrievalSetting.title')}</div>
               <div className='leading-[18px] text-xs font-normal text-gray-500'>
-                <a target='_blank' rel='noopener noreferrer' href='https://docs.dify.ai/guides/knowledge-base/create-knowledge-and-upload-documents#id-6-retrieval-settings' className='text-[#155eef]'>{t('datasetSettings.form.retrievalSetting.learnMore')}</a>
+                <a target='_blank' rel='noopener noreferrer' href='https://docs.dify.ai/guides/knowledge-base/create-knowledge-and-upload-documents#id-4-retrieval-settings' className='text-[#155eef]'>{t('datasetSettings.form.retrievalSetting.learnMore')}</a>
                 {t('datasetSettings.form.retrievalSetting.description')}
               </div>
             </div>

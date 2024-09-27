@@ -1,4 +1,5 @@
 """Abstract interface for document loader implementations."""
+
 import datetime
 import logging
 import mimetypes
@@ -6,8 +7,8 @@ import os
 import re
 import tempfile
 import uuid
-import xml.etree.ElementTree as ET
 from urllib.parse import urlparse
+from xml.etree import ElementTree
 
 import requests
 from docx import Document as DocxDocument
@@ -20,6 +21,7 @@ from extensions.ext_storage import storage
 from models.model import UploadFile
 
 logger = logging.getLogger(__name__)
+
 
 class WordExtractor(BaseExtractor):
     """Load docx files.
@@ -43,12 +45,11 @@ class WordExtractor(BaseExtractor):
             r = requests.get(self.file_path)
 
             if r.status_code != 200:
-                raise ValueError(
-                    f"Check the url of your file; returned status code {r.status_code}"
-                )
+                raise ValueError(f"Check the url of your file; returned status code {r.status_code}")
 
             self.web_path = self.file_path
-            self.temp_file = tempfile.NamedTemporaryFile()
+            # TODO: use a better way to handle the file
+            self.temp_file = tempfile.NamedTemporaryFile()  # noqa: SIM115
             self.temp_file.write(r.content)
             self.file_path = self.temp_file.name
         elif not os.path.isfile(self.file_path):
@@ -60,11 +61,13 @@ class WordExtractor(BaseExtractor):
 
     def extract(self) -> list[Document]:
         """Load given path as single page."""
-        content = self.parse_docx(self.file_path, 'storage')
-        return [Document(
-            page_content=content,
-            metadata={"source": self.file_path},
-        )]
+        content = self.parse_docx(self.file_path, "storage")
+        return [
+            Document(
+                page_content=content,
+                metadata={"source": self.file_path},
+            )
+        ]
 
     @staticmethod
     def _is_valid_url(url: str) -> bool:
@@ -84,18 +87,18 @@ class WordExtractor(BaseExtractor):
                     url = rel.reltype
                     response = requests.get(url, stream=True)
                     if response.status_code == 200:
-                        image_ext = mimetypes.guess_extension(response.headers['Content-Type'])
+                        image_ext = mimetypes.guess_extension(response.headers["Content-Type"])
                         file_uuid = str(uuid.uuid4())
-                        file_key = 'image_files/' + self.tenant_id + '/' + file_uuid + '.' + image_ext
+                        file_key = "image_files/" + self.tenant_id + "/" + file_uuid + "." + image_ext
                         mime_type, _ = mimetypes.guess_type(file_key)
                         storage.save(file_key, response.content)
                     else:
                         continue
                 else:
-                    image_ext = rel.target_ref.split('.')[-1]
+                    image_ext = rel.target_ref.split(".")[-1]
                     # user uuid as file name
                     file_uuid = str(uuid.uuid4())
-                    file_key = 'image_files/' + self.tenant_id + '/' + file_uuid + '.' + image_ext
+                    file_key = "image_files/" + self.tenant_id + "/" + file_uuid + "." + image_ext
                     mime_type, _ = mimetypes.guess_type(file_key)
 
                     storage.save(file_key, rel.target_part.blob)
@@ -112,12 +115,14 @@ class WordExtractor(BaseExtractor):
                     created_at=datetime.datetime.now(datetime.timezone.utc).replace(tzinfo=None),
                     used=True,
                     used_by=self.user_id,
-                    used_at=datetime.datetime.now(datetime.timezone.utc).replace(tzinfo=None)
+                    used_at=datetime.datetime.now(datetime.timezone.utc).replace(tzinfo=None),
                 )
 
                 db.session.add(upload_file)
                 db.session.commit()
-                image_map[rel.target_part] = f"![image]({dify_config.CONSOLE_API_URL}/files/{upload_file.id}/image-preview)"
+                image_map[rel.target_part] = (
+                    f"![image]({dify_config.CONSOLE_API_URL}/files/{upload_file.id}/image-preview)"
+                )
 
         return image_map
 
@@ -148,7 +153,7 @@ class WordExtractor(BaseExtractor):
             if col_index >= total_cols:
                 break
             cell_content = self._parse_cell(cell, image_map).strip()
-            cell_colspan = cell.grid_span if cell.grid_span else 1
+            cell_colspan = cell.grid_span or 1
             for i in range(cell_colspan):
                 if col_index + i < total_cols:
                     row_cells[col_index + i] = cell_content if i == 0 else ""
@@ -167,9 +172,11 @@ class WordExtractor(BaseExtractor):
     def _parse_cell_paragraph(self, paragraph, image_map):
         paragraph_content = []
         for run in paragraph.runs:
-            if run.element.xpath('.//a:blip'):
-                for blip in run.element.xpath('.//a:blip'):
+            if run.element.xpath(".//a:blip"):
+                for blip in run.element.xpath(".//a:blip"):
                     image_id = blip.get("{http://schemas.openxmlformats.org/officeDocument/2006/relationships}embed")
+                    if not image_id:
+                        continue
                     image_part = paragraph.part.rels[image_id].target_part
 
                     if image_part in image_map:
@@ -182,16 +189,16 @@ class WordExtractor(BaseExtractor):
     def _parse_paragraph(self, paragraph, image_map):
         paragraph_content = []
         for run in paragraph.runs:
-            if run.element.xpath('.//a:blip'):
-                for blip in run.element.xpath('.//a:blip'):
-                    embed_id = blip.get('{http://schemas.openxmlformats.org/officeDocument/2006/relationships}embed')
+            if run.element.xpath(".//a:blip"):
+                for blip in run.element.xpath(".//a:blip"):
+                    embed_id = blip.get("{http://schemas.openxmlformats.org/officeDocument/2006/relationships}embed")
                     if embed_id:
                         rel_target = run.part.rels[embed_id].target_ref
                         if rel_target in image_map:
                             paragraph_content.append(image_map[rel_target])
             if run.text.strip():
                 paragraph_content.append(run.text.strip())
-        return ' '.join(paragraph_content) if paragraph_content else ''
+        return " ".join(paragraph_content) if paragraph_content else ""
 
     def parse_docx(self, docx_path, image_folder):
         doc = DocxDocument(docx_path)
@@ -202,60 +209,59 @@ class WordExtractor(BaseExtractor):
         image_map = self._extract_images_from_docx(doc, image_folder)
 
         hyperlinks_url = None
-        url_pattern = re.compile(r'http://[^\s+]+//|https://[^\s+]+')
+        url_pattern = re.compile(r"http://[^\s+]+//|https://[^\s+]+")
         for para in doc.paragraphs:
             for run in para.runs:
                 if run.text and hyperlinks_url:
-                    result = f'  [{run.text}]({hyperlinks_url})  '
+                    result = f"  [{run.text}]({hyperlinks_url})  "
                     run.text = result
                     hyperlinks_url = None
-                if 'HYPERLINK' in run.element.xml:
+                if "HYPERLINK" in run.element.xml:
                     try:
-                        xml = ET.XML(run.element.xml)
+                        xml = ElementTree.XML(run.element.xml)
                         x_child = [c for c in xml.iter() if c is not None]
                         for x in x_child:
                             if x_child is None:
                                 continue
-                            if x.tag.endswith('instrText'):
+                            if x.tag.endswith("instrText"):
                                 for i in url_pattern.findall(x.text):
                                     hyperlinks_url = str(i)
                     except Exception as e:
                         logger.error(e)
 
-
-
-
         def parse_paragraph(paragraph):
             paragraph_content = []
             for run in paragraph.runs:
-                if hasattr(run.element, 'tag') and isinstance(element.tag, str) and run.element.tag.endswith('r'):
+                if hasattr(run.element, "tag") and isinstance(element.tag, str) and run.element.tag.endswith("r"):
                     drawing_elements = run.element.findall(
-                        './/{http://schemas.openxmlformats.org/wordprocessingml/2006/main}drawing')
+                        ".//{http://schemas.openxmlformats.org/wordprocessingml/2006/main}drawing"
+                    )
                     for drawing in drawing_elements:
                         blip_elements = drawing.findall(
-                            './/{http://schemas.openxmlformats.org/drawingml/2006/main}blip')
+                            ".//{http://schemas.openxmlformats.org/drawingml/2006/main}blip"
+                        )
                         for blip in blip_elements:
                             embed_id = blip.get(
-                                '{http://schemas.openxmlformats.org/officeDocument/2006/relationships}embed')
+                                "{http://schemas.openxmlformats.org/officeDocument/2006/relationships}embed"
+                            )
                             if embed_id:
                                 image_part = doc.part.related_parts.get(embed_id)
                                 if image_part in image_map:
                                     paragraph_content.append(image_map[image_part])
                 if run.text.strip():
                     paragraph_content.append(run.text.strip())
-            return ''.join(paragraph_content) if paragraph_content else ''
+            return "".join(paragraph_content) if paragraph_content else ""
 
         paragraphs = doc.paragraphs.copy()
         tables = doc.tables.copy()
         for element in doc.element.body:
-            if hasattr(element, 'tag'):
-                if isinstance(element.tag, str) and element.tag.endswith('p'):  # paragraph
+            if hasattr(element, "tag"):
+                if isinstance(element.tag, str) and element.tag.endswith("p"):  # paragraph
                     para = paragraphs.pop(0)
                     parsed_paragraph = parse_paragraph(para)
                     if parsed_paragraph:
                         content.append(parsed_paragraph)
-                elif isinstance(element.tag, str) and element.tag.endswith('tbl'):  # table
+                elif isinstance(element.tag, str) and element.tag.endswith("tbl"):  # table
                     table = tables.pop(0)
-                    content.append(self._table_to_markdown(table,image_map))
-        return '\n'.join(content)
-
+                    content.append(self._table_to_markdown(table, image_map))
+        return "\n".join(content)

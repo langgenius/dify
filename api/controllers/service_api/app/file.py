@@ -16,15 +16,13 @@ from services.file_service import FileService
 
 
 class FileApi(Resource):
-
     @validate_app_token(fetch_user_arg=FetchUserArg(fetch_from=WhereisUserArg.FORM))
     @marshal_with(file_fields)
     def post(self, app_model: App, end_user: EndUser):
-
-        file = request.files['file']
+        file = request.files["file"]
 
         # check file
-        if 'file' not in request.files:
+        if "file" not in request.files:
             raise NoFileUploadedError()
 
         if not file.mimetype:
@@ -43,4 +41,4 @@ class FileApi(Resource):
         return upload_file, 201
 
 
-api.add_resource(FileApi, '/files/upload')
+api.add_resource(FileApi, "/files/upload")

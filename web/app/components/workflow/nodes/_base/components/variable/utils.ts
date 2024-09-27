@@ -100,6 +100,10 @@ const formatItem = (
           type: VarType.string,
         })
         res.vars.push({
+          variable: 'sys.dialogue_count',
+          type: VarType.number,
+        })
+        res.vars.push({
           variable: 'sys.conversation_id',
           type: VarType.string,
         })

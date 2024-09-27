@@ -24,13 +24,8 @@ def test_get_models():
     providers = factory.get_models(
         model_type=ModelType.LLM,
         provider_configs=[
-            ProviderConfig(
-                provider='openai',
-                credentials={
-                    'openai_api_key': os.environ.get('OPENAI_API_KEY')
-                }
-            )
-        ]
+            ProviderConfig(provider="openai", credentials={"openai_api_key": os.environ.get("OPENAI_API_KEY")})
+        ],
     )
 
     logger.debug(providers)
@@ -44,29 +39,21 @@ def test_get_models():
             assert provider_model.model_type == ModelType.LLM
 
     providers = factory.get_models(
-        provider='openai',
+        provider="openai",
         provider_configs=[
-            ProviderConfig(
-                provider='openai',
-                credentials={
-                    'openai_api_key': os.environ.get('OPENAI_API_KEY')
-                }
-            )
-        ]
+            ProviderConfig(provider="openai", credentials={"openai_api_key": os.environ.get("OPENAI_API_KEY")})
+        ],
     )
 
     assert len(providers) == 1
     assert isinstance(providers[0], SimpleProviderEntity)
-    assert providers[0].provider == 'openai'
+    assert providers[0].provider == "openai"
 
 
 def test_provider_credentials_validate():
     factory = ModelProviderFactory()
     factory.provider_credentials_validate(
-        provider='openai',
-        credentials={
-            'openai_api_key': os.environ.get('OPENAI_API_KEY')
-        }
+        provider="openai", credentials={"openai_api_key": os.environ.get("OPENAI_API_KEY")}
     )
 
 
@@ -79,4 +66,4 @@ def test__get_model_provider_map():
         logger.debug(model_provider.provider_instance)
 
     assert len(model_providers) >= 1
-    assert isinstance(model_providers['openai'], ModelProviderExtension)
+    assert isinstance(model_providers["openai"], ModelProviderExtension)

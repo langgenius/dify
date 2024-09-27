@@ -11,7 +11,7 @@ import Button from '@/app/components/base/button'
 import { Balance } from '@/app/components/base/icons/src/vender/line/financeAndECommerce'
 import { Settings01 } from '@/app/components/base/icons/src/vender/line/general'
 import Switch from '@/app/components/base/switch'
-import TooltipPlus from '@/app/components/base/tooltip-plus'
+import Tooltip from '@/app/components/base/tooltip'
 import { useProviderContext, useProviderContextSelector } from '@/context/provider-context'
 import { disableModel, enableModel } from '@/service/common'
 import { Plan } from '@/app/components/billing/type'
@@ -99,9 +99,14 @@ const ModelListItem = ({ model, provider, isConfigurable, onConfig, onModifyLoad
         {
           model.deprecated
             ? (
-              <TooltipPlus popupContent={<span className='font-semibold'>{t('common.modelProvider.modelHasBeenDeprecated')}</span>} offset={{ mainAxis: 4 }}>
+              <Tooltip
+                popupContent={
+                  <span className='font-semibold'>{t('common.modelProvider.modelHasBeenDeprecated')}</span>} offset={{ mainAxis: 4 }
+                }
+                needsDelay
+              >
                 <Switch defaultValue={false} disabled size='md' />
-              </TooltipPlus>
+              </Tooltip>
             )
             : (isCurrentWorkspaceManager && (
               <Switch

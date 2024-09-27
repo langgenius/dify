@@ -7,10 +7,10 @@ from models.dataset import Dataset, DocumentSegment
 
 
 class VectorService:
-
     @classmethod
-    def create_segments_vector(cls, keywords_list: Optional[list[list[str]]],
-                               segments: list[DocumentSegment], dataset: Dataset):
+    def create_segments_vector(
+        cls, keywords_list: Optional[list[list[str]]], segments: list[DocumentSegment], dataset: Dataset
+    ):
         documents = []
         for segment in segments:
             document = Document(
@@ -20,14 +20,12 @@ class VectorService:
                     "doc_hash": segment.index_node_hash,
                     "document_id": segment.document_id,
                     "dataset_id": segment.dataset_id,
-                }
+                },
             )
             documents.append(document)
-        if dataset.indexing_technique == 'high_quality':
+        if dataset.indexing_technique == "high_quality":
             # save vector index
-            vector = Vector(
-                dataset=dataset
-            )
+            vector = Vector(dataset=dataset)
             vector.add_texts(documents, duplicate_check=True)
 
         # save keyword index
@@ -50,13 +48,11 @@ class VectorService:
                 "doc_hash": segment.index_node_hash,
                 "document_id": segment.document_id,
                 "dataset_id": segment.dataset_id,
-            }
+            },
         )
-        if dataset.indexing_technique == 'high_quality':
+        if dataset.indexing_technique == "high_quality":
             # update vector index
-            vector = Vector(
-                dataset=dataset
-            )
+            vector = Vector(dataset=dataset)
             vector.delete_by_ids([segment.index_node_id])
             vector.add_texts([document], duplicate_check=True)
 

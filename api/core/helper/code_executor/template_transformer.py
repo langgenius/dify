@@ -2,23 +2,15 @@ import json
 import re
 from abc import ABC, abstractmethod
 from base64 import b64encode
-from typing import Optional
-
-from core.helper.code_executor.entities import CodeDependency
 
 
 class TemplateTransformer(ABC):
-    _code_placeholder: str = '{{code}}'
-    _inputs_placeholder: str = '{{inputs}}'
-    _result_tag: str = '<<RESULT>>'
+    _code_placeholder: str = "{{code}}"
+    _inputs_placeholder: str = "{{inputs}}"
+    _result_tag: str = "<<RESULT>>"
 
     @classmethod
-    def get_standard_packages(cls) -> set[str]:
-        return set()
-
-    @classmethod
-    def transform_caller(cls, code: str, inputs: dict,
-                         dependencies: Optional[list[CodeDependency]] = None) -> tuple[str, str, list[CodeDependency]]:
+    def transform_caller(cls, code: str, inputs: dict) -> tuple[str, str]:
         """
         Transform code to python runner
         :param code: code
@@ -28,20 +20,13 @@ class TemplateTransformer(ABC):
         runner_script = cls.assemble_runner_script(code, inputs)
         preload_script = cls.get_preload_script()
 
-        packages = dependencies or []
-        standard_packages = cls.get_standard_packages()
-        for package in standard_packages:
-            if package not in packages:
-                packages.append(CodeDependency(name=package, version=''))
-        packages = list({dep.name: dep for dep in packages if dep.name}.values())
-
-        return runner_script, preload_script, packages
+        return runner_script, preload_script
 
     @classmethod
     def extract_result_str_from_response(cls, response: str) -> str:
-        result = re.search(rf'{cls._result_tag}(.*){cls._result_tag}', response, re.DOTALL)
+        result = re.search(rf"{cls._result_tag}(.*){cls._result_tag}", response, re.DOTALL)
         if not result:
-            raise ValueError('Failed to parse result')
+            raise ValueError("Failed to parse result")
         result = result.group(1)
         return result
 
@@ -65,7 +50,7 @@ class TemplateTransformer(ABC):
     @classmethod
     def serialize_inputs(cls, inputs: dict) -> str:
         inputs_json_str = json.dumps(inputs, ensure_ascii=False).encode()
-        input_base64_encoded = b64encode(inputs_json_str).decode('utf-8')
+        input_base64_encoded = b64encode(inputs_json_str).decode("utf-8")
         return input_base64_encoded
 
     @classmethod
@@ -82,4 +67,4 @@ class TemplateTransformer(ABC):
         """
         Get preload script
         """
-        return ''
+        return ""

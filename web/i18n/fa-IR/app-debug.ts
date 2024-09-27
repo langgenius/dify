@@ -283,18 +283,18 @@ const translation = {
       typeSelect: 'انتخاب',
     },
     varKeyError: {
-      canNoBeEmpty: 'کلید متغیر نمی‌تواند خالی باشد',
-      tooLong: 'کلید متغیر: {{key}} طولانی است. نمی‌تواند بیش از 30 کاراکتر باشد',
-      notValid: 'کلید متغیر: {{key}} نامعتبر است. فقط می‌تواند شامل حروف، اعداد و زیرخط باشد',
-      notStartWithNumber: 'کلید متغیر: {{key}} نمی‌تواند با عدد شروع شود',
-      keyAlreadyExists: 'کلید متغیر: :{{key}} از قبل وجود دارد',
+      canNoBeEmpty: '{{key}} مطلوب',
+      tooLong: '{{key}} طولانی است. نمی‌تواند بیش از 30 کاراکتر باشد',
+      notValid: '{{key}} نامعتبر است. فقط می‌تواند شامل حروف، اعداد و زیرخط باشد',
+      notStartWithNumber: '{{key}} نمی‌تواند با عدد شروع شود',
+      keyAlreadyExists: '{{key}} از قبل وجود دارد',
     },
     otherError: {
       promptNoBeEmpty: 'پرس و جو نمی‌تواند خالی باشد',
       historyNoBeEmpty: 'تاریخچه مکالمه باید در پرس و جو تنظیم شود',
       queryNoBeEmpty: 'پرس و جو باید در پرس و جو تنظیم شود',
     },
-    variableConig: {
+    variableConfig: {
       'addModalTitle': 'افزودن فیلد ورودی',
       'editModalTitle': 'ویرایش فیلد ورودی',
       'description': 'تنظیم برای متغیر {{varName}}',

@@ -136,6 +136,8 @@ const vars = {
   'components-panel-on-panel-item-bg-hover': 'var(--color-components-panel-on-panel-item-bg-hover)',
   'components-panel-on-panel-item-bg-alt': 'var(--color-components-panel-on-panel-item-bg-alt)',
 
+  'components-panel-bg-transparent': 'var(--color-components-panel-bg-transparent)',
+
   'components-main-nav-nav-button-text': 'var(--color-components-main-nav-nav-button-text)',
   'components-main-nav-nav-button-text-active': 'var(--color-components-main-nav-nav-button-text-active)',
   'components-main-nav-nav-button-bg': 'var(--color-components-main-nav-nav-button-bg)',
@@ -145,13 +147,13 @@ const vars = {
 
   'components-main-nav-nav-user-border': 'var(--color-components-main-nav-nav-user-border)',
 
-  'components-silder-knob': 'var(--color-components-silder-knob)',
-  'components-silder-knob-hover': 'var(--color-components-silder-knob-hover)',
-  'components-silder-knob-disabled': 'var(--color-components-silder-knob-disabled)',
-  'components-silder-range': 'var(--color-components-silder-range)',
-  'components-silder-track': 'var(--color-components-silder-track)',
-  'components-silder-knob-border-hover': 'var(--color-components-silder-knob-border-hover)',
-  'components-silder-knob-border': 'var(--color-components-silder-knob-border)',
+  'components-slider-knob': 'var(--color-components-slider-knob)',
+  'components-slider-knob-hover': 'var(--color-components-slider-knob-hover)',
+  'components-slider-knob-disabled': 'var(--color-components-slider-knob-disabled)',
+  'components-slider-range': 'var(--color-components-slider-range)',
+  'components-slider-track': 'var(--color-components-slider-track)',
+  'components-slider-knob-border-hover': 'var(--color-components-slider-knob-border-hover)',
+  'components-slider-knob-border': 'var(--color-components-slider-knob-border)',
 
   'components-segmented-control-item-active-bg': 'var(--color-components-segmented-control-item-active-bg)',
   'components-segmented-control-item-active-border': 'var(--color-components-segmented-control-item-active-border)',
@@ -227,10 +229,20 @@ const vars = {
   'components-progress-gray-bg': 'var(--color-components-progress-gray-bg)',
 
   'components-chat-input-audio-bg': 'var(--color-components-chat-input-audio-bg)',
-  'components-chat-input-audio-wave': 'var(--color-components-chat-input-audio-wave)',
+  'components-chat-input-audio-wave-default': 'var(--color-components-chat-input-audio-wave-default)',
   'components-chat-input-bg-mask-1': 'var(--color-components-chat-input-bg-mask-1)',
   'components-chat-input-bg-mask-2': 'var(--color-components-chat-input-bg-mask-2)',
   'components-chat-input-border': 'var(--color-components-chat-input-border)',
+  'components-chat-input-audio-wave-active': 'var(--color-components-chat-input-audio-wave-active)',
+  'components-chat-input-audio-bg-alt': 'var(--color-components-chat-input-audio-bg-alt)',
+
+  'components-Avatar-shape-fill-stop-0': 'var(--color-components-Avatar-shape-fill-stop-0)',
+  'components-Avatar-shape-fill-stop-100': 'var(--color-components-Avatar-shape-fill-stop-100)',
+
+  'components-Avatar-bg-mask-stop-0': 'var(--color-components-Avatar-bg-mask-stop-0)',
+  'components-Avatar-bg-mask-stop-100': 'var(--color-components-Avatar-bg-mask-stop-100)',
+
+  'components-Avatar-default-avatar-bg': 'var(--color-components-Avatar-default-avatar-bg)',
 
   'text-primary': 'var(--color-text-primary)',
   'text-secondary': 'var(--color-text-secondary)',
@@ -252,10 +264,11 @@ const vars = {
   'text-secondary-on-surface': 'var(--color-text-secondary-on-surface)',
   'text-logo-text': 'var(--color-text-logo-text)',
   'text-empty-state-icon': 'var(--color-text-empty-state-icon)',
+  'text-inverted': 'var(--color-text-inverted)',
 
   'background-body': 'var(--color-background-body)',
   'background-default-subtle': 'var(--color-background-default-subtle)',
-  'background-neurtral-subtle': 'var(--color-background-neurtral-subtle)',
+  'background-neutral-subtle': 'var(--color-background-neutral-subtle)',
   'background-sidenav-bg': 'var(--color-background-sidenav-bg)',
   'background-default': 'var(--color-background-default)',
   'background-soft': 'var(--color-background-soft)',
@@ -263,6 +276,8 @@ const vars = {
   'background-gradient-bg-fill-chat-bg-2': 'var(--color-background-gradient-bg-fill-chat-bg-2)',
   'background-gradient-bg-fill-chat-bubble-bg-1': 'var(--color-background-gradient-bg-fill-chat-bubble-bg-1)',
   'background-gradient-bg-fill-chat-bubble-bg-2': 'var(--color-background-gradient-bg-fill-chat-bubble-bg-2)',
+  'background-gradient-bg-fill-debug-bg-1': 'var(--color-background-gradient-bg-fill-debug-bg-1)',
+  'background-gradient-bg-fill-debug-bg-2': 'var(--color-background-gradient-bg-fill-debug-bg-2)',
 
   'background-gradient-mask-gray': 'var(--color-background-gradient-mask-gray)',
   'background-gradient-mask-transparent': 'var(--color-background-gradient-mask-transparent)',
@@ -299,11 +314,9 @@ const vars = {
   'shadow-shadow-10': 'var(--color-shadow-shadow-10)',
 
   'workflow-block-border': 'var(--color-workflow-block-border)',
-  'workflow-block-panel-bg': 'var(--color-workflow-block-panel-bg)',
   'workflow-block-parma-bg': 'var(--color-workflow-block-parma-bg)',
-  'workflow-block-nav-bg': 'var(--color-workflow-block-nav-bg)',
-  'workflow-block-nav-border-right': 'var(--color-workflow-block-nav-border-right)',
   'workflow-block-bg': 'var(--color-workflow-block-bg)',
+  'workflow-block-border-highlight': 'var(--color-workflow-block-border-highlight)',
 
   'workflow-canvas-workflow-dot-color': 'var(--color-workflow-canvas-workflow-dot-color)',
   'workflow-canvas-workflow-bg': 'var(--color-workflow-canvas-workflow-bg)',
@@ -312,8 +325,8 @@ const vars = {
   'workflow-link-line-normal': 'var(--color-workflow-link-line-normal)',
   'workflow-link-line-handle': 'var(--color-workflow-link-line-handle)',
 
-  'workflow-minmap-bg': 'var(--color-workflow-minmap-bg)',
-  'workflow-minmap-block': 'var(--color-workflow-minmap-block)',
+  'workflow-minimap-bg': 'var(--color-workflow-minimap-bg)',
+  'workflow-minimap-block': 'var(--color-workflow-minimap-block)',
 
   'workflow-display-success-bg': 'var(--color-workflow-display-success-bg)',
   'workflow-display-success-border-1': 'var(--color-workflow-display-success-border-1)',
@@ -359,8 +372,8 @@ const vars = {
   'divider-deep': 'var(--color-divider-deep)',
   'divider-burn': 'var(--color-divider-burn)',
   'divider-intense': 'var(--color-divider-intense)',
-  'divider-soild': 'var(--color-divider-soild)',
-  'divider-soild-alt': 'var(--color-divider-soild-alt)',
+  'divider-solid': 'var(--color-divider-solid)',
+  'divider-solid-alt': 'var(--color-divider-solid-alt)',
 
   'state-base-hover': 'var(--color-state-base-hover)',
   'state-base-active': 'var(--color-state-base-active)',
@@ -371,24 +384,24 @@ const vars = {
   'state-accent-hover': 'var(--color-state-accent-hover)',
   'state-accent-active': 'var(--color-state-accent-active)',
   'state-accent-hover-alt': 'var(--color-state-accent-hover-alt)',
-  'state-accent-soild': 'var(--color-state-accent-soild)',
+  'state-accent-solid': 'var(--color-state-accent-solid)',
   'state-accent-active-alt': 'var(--color-state-accent-active-alt)',
 
   'state-destructive-hover': 'var(--color-state-destructive-hover)',
   'state-destructive-hover-alt': 'var(--color-state-destructive-hover-alt)',
   'state-destructive-active': 'var(--color-state-destructive-active)',
-  'state-destructive-soild': 'var(--color-state-destructive-soild)',
+  'state-destructive-solid': 'var(--color-state-destructive-solid)',
   'state-destructive-border': 'var(--color-state-destructive-border)',
 
   'state-success-hover': 'var(--color-state-success-hover)',
   'state-success-hover-alt': 'var(--color-state-success-hover-alt)',
   'state-success-active': 'var(--color-state-success-active)',
-  'state-success-soild': 'var(--color-state-success-soild)',
+  'state-success-solid': 'var(--color-state-success-solid)',
 
   'state-warning-hover': 'var(--color-state-warning-hover)',
   'state-warning-hover-alt': 'var(--color-state-warning-hover-alt)',
   'state-warning-active': 'var(--color-state-warning-active)',
-  'state-warning-soild': 'var(--color-state-warning-soild)',
+  'state-warning-solid': 'var(--color-state-warning-solid)',
 
   'effects-highlight': 'var(--color-effects-highlight)',
   'effects-highlight-lightmode-off': 'var(--color-effects-highlight-lightmode-off)',
@@ -556,9 +569,36 @@ const vars = {
   'util-colors-gray-gray-600': 'var(--color-util-colors-gray-gray-600)',
   'util-colors-gray-gray-700': 'var(--color-util-colors-gray-gray-700)',
 
+  'util-colors-green-light-green-light-50': 'var(--color-util-colors-green-light-green-light-50)',
+  'util-colors-green-light-green-light-100': 'var(--color-util-colors-green-light-green-light-100)',
+  'util-colors-green-light-green-light-200': 'var(--color-util-colors-green-light-green-light-200)',
+  'util-colors-green-light-green-light-300': 'var(--color-util-colors-green-light-green-light-300)',
+  'util-colors-green-light-green-light-500': 'var(--color-util-colors-green-light-green-light-500)',
+  'util-colors-green-light-green-light-400': 'var(--color-util-colors-green-light-green-light-400)',
+  'util-colors-green-light-green-light-600': 'var(--color-util-colors-green-light-green-light-600)',
+  'util-colors-green-light-green-light-700': 'var(--color-util-colors-green-light-green-light-700)',
+
+  'util-colors-rose-rose-50': 'var(--color-util-colors-rose-rose-50)',
+  'util-colors-rose-rose-100': 'var(--color-util-colors-rose-rose-100)',
+  'util-colors-rose-rose-200': 'var(--color-util-colors-rose-rose-200)',
+  'util-colors-rose-rose-300': 'var(--color-util-colors-rose-rose-300)',
+  'util-colors-rose-rose-400': 'var(--color-util-colors-rose-rose-400)',
+  'util-colors-rose-rose-500': 'var(--color-util-colors-rose-rose-500)',
+  'util-colors-rose-rose-600': 'var(--color-util-colors-rose-rose-600)',
+  'util-colors-rose-rose-700': 'var(--color-util-colors-rose-rose-700)',
+
+  'util-colors-midnight-midnight-50': 'var(--color-util-colors-midnight-midnight-50)',
+  'util-colors-midnight-midnight-100': 'var(--color-util-colors-midnight-midnight-100)',
+  'util-colors-midnight-midnight-200': 'var(--color-util-colors-midnight-midnight-200)',
+  'util-colors-midnight-midnight-300': 'var(--color-util-colors-midnight-midnight-300)',
+  'util-colors-midnight-midnight-400': 'var(--color-util-colors-midnight-midnight-400)',
+  'util-colors-midnight-midnight-500': 'var(--color-util-colors-midnight-midnight-500)',
+  'util-colors-midnight-midnight-600': 'var(--color-util-colors-midnight-midnight-600)',
+  'util-colors-midnight-midnight-700': 'var(--color-util-colors-midnight-midnight-700)',
+
   'third-party-LangChain': 'var(--color-third-party-LangChain)',
   'third-party-Langfuse': 'var(--color-third-party-Langfuse)',
-
+  'third-party-Github': 'var(--color-third-party-Github)',
 }
 
 export default vars

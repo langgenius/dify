@@ -24,7 +24,7 @@ import { ToastContext } from '@/app/components/base/toast'
 import type { Item } from '@/app/components/base/select'
 import { SimpleSelect } from '@/app/components/base/select'
 import { deleteSegment, disableSegment, enableSegment, fetchSegments, updateSegment } from '@/service/datasets'
-import type { SegmentDetailModel, SegmentUpdator, SegmentsQuery, SegmentsResponse } from '@/models/datasets'
+import type { SegmentDetailModel, SegmentUpdater, SegmentsQuery, SegmentsResponse } from '@/models/datasets'
 import { asyncRunSafe } from '@/utils'
 import type { CommonResponse } from '@/models/common'
 import AutoHeightTextarea from '@/app/components/base/auto-height-textarea/common'
@@ -322,7 +322,7 @@ const Completed: FC<ICompletedProps> = ({
   }
 
   const handleUpdateSegment = async (segmentId: string, question: string, answer: string, keywords: string[]) => {
-    const params: SegmentUpdator = { content: '' }
+    const params: SegmentUpdater = { content: '' }
     if (docForm === 'qa_model') {
       if (!question.trim())
         return notify({ type: 'error', message: t('datasetDocuments.segment.questionEmpty') })
@@ -391,7 +391,7 @@ const Completed: FC<ICompletedProps> = ({
           defaultValue={'all'}
           className={s.select}
           wrapperClassName='h-fit w-[120px] mr-2' />
-        <Input showPrefix wrapperClassName='!w-52' className='!h-8' onChange={debounce(setSearchValue, 500)} />
+        <Input showLeftIcon wrapperClassName='!w-52' className='!h-8' onChange={debounce(e => setSearchValue(e.target.value), 500)} />
       </div>
       <InfiniteVirtualList
         embeddingAvailable={embeddingAvailable}

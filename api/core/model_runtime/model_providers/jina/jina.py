@@ -8,7 +8,6 @@ logger = logging.getLogger(__name__)
 
 
 class JinaProvider(ModelProvider):
-
     def validate_provider_credentials(self, credentials: dict) -> None:
         """
         Validate provider credentials
@@ -19,14 +18,11 @@ class JinaProvider(ModelProvider):
         try:
             model_instance = self.get_model_instance(ModelType.TEXT_EMBEDDING)
 
-            # Use `jina-embeddings-v2-base-en` model for validate,
+            # Use `jina-embeddings-v3` model for validate,
             # no matter what model you pass in, text completion model or chat model
-            model_instance.validate_credentials(
-                model='jina-embeddings-v2-base-en',
-                credentials=credentials
-            )
+            model_instance.validate_credentials(model="jina-embeddings-v3", credentials=credentials)
         except CredentialsValidateFailedError as ex:
             raise ex
         except Exception as ex:
-            logger.exception(f'{self.get_provider_schema().provider} credentials validate failed')
+            logger.exception(f"{self.get_provider_schema().provider} credentials validate failed")
             raise ex

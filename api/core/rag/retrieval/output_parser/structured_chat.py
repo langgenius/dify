@@ -16,9 +16,7 @@ class StructuredChatOutputParser:
                 if response["action"] == "Final Answer":
                     return ReactFinish({"output": response["action_input"]}, text)
                 else:
-                    return ReactAction(
-                        response["action"], response.get("action_input", {}), text
-                    )
+                    return ReactAction(response["action"], response.get("action_input", {}), text)
             else:
                 return ReactFinish({"output": text}, text)
         except Exception as e:

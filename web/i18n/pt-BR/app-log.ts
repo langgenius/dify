@@ -4,8 +4,9 @@ const translation = {
   dateTimeFormat: 'MM/DD/YYYY hh:mm A',
   table: {
     header: {
-      time: 'Hora',
-      endUser: 'Usuário Final',
+      updatedTime: 'Hora de atualização',
+      time: 'Hora de criação',
+      endUser: 'Usuário final ou conta',
       input: 'Entrada',
       output: 'Saída',
       summary: 'Título',
@@ -16,7 +17,7 @@ const translation = {
       status: 'STATUS',
       runtime: 'TEMPO DE EXECUÇÃO',
       tokens: 'TOKENS',
-      user: 'USUÁRIO FINAL',
+      user: 'USUÁRIO FINAL OU CONTA',
       version: 'VERSÃO',
     },
     pagination: {
@@ -69,6 +70,9 @@ const translation = {
       annotated: 'Melhorias Anotadas ({{count}} itens)',
       not_annotated: 'Não Anotado',
     },
+    sortBy: 'Ordenar por:',
+    descending: 'decrescente',
+    ascending: 'crescente',
   },
   workflowTitle: 'Registros de Fluxo de Trabalho',
   workflowSubtitle: 'O registro registrou a operação do Automate.',
@@ -85,6 +89,13 @@ const translation = {
     iterações: 'Iterações',
     iteração: 'Iteração',
     finalProcessing: 'Processamento Final',
+  },
+  agentLogDetail: {
+    iterations: 'Iterações',
+    agentMode: 'Modo Agente',
+    finalProcessing: 'Processamento final',
+    iteration: 'Iteração',
+    toolUsed: 'Ferramenta usada',
   },
 }
 

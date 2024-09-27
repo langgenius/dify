@@ -4,6 +4,7 @@ import React, { useCallback } from 'react'
 import type { VariantProps } from 'class-variance-authority'
 import { cva } from 'class-variance-authority'
 import cn from '@/utils/classnames'
+import Tooltip from '@/app/components/base/tooltip'
 
 const variants = cva([], {
   variants: {
@@ -26,6 +27,7 @@ type Props = {
   selected: boolean
   disabled?: boolean
   align?: 'left' | 'center' | 'right'
+  tooltip?: string
 } & VariantProps<typeof variants>
 
 const OptionCard: FC<Props> = ({
@@ -35,6 +37,7 @@ const OptionCard: FC<Props> = ({
   selected,
   disabled,
   align = 'center',
+  tooltip,
 }) => {
   const handleSelect = useCallback(() => {
     if (selected || disabled)
@@ -54,7 +57,16 @@ const OptionCard: FC<Props> = ({
       )}
       onClick={handleSelect}
     >
-      {title}
+      <span>{title}</span>
+      {tooltip
+        && <Tooltip
+          popupContent={
+            <div className='w-[240px]'>
+              {tooltip}
+            </div>
+          }
+        />
+      }
     </div>
   )
 }

@@ -5,7 +5,7 @@ import Button from '../../base/button'
 import cn from '@/utils/classnames'
 import type { App } from '@/models/explore'
 import AppIcon from '@/app/components/base/app-icon'
-import { AiText, ChatBot, CuteRobote } from '@/app/components/base/icons/src/vender/solid/communication'
+import { AiText, ChatBot, CuteRobot } from '@/app/components/base/icons/src/vender/solid/communication'
 import { Route } from '@/app/components/base/icons/src/vender/solid/mapsAndTravel'
 export type AppCardProps = {
   app: App
@@ -23,16 +23,22 @@ const AppCard = ({
   const { t } = useTranslation()
   const { app: appBasicInfo } = app
   return (
-    <div className={cn('group flex col-span-1 bg-white border-2 border-solid border-transparent rounded-lg shadow-sm min-h-[160px] flex flex-col transition-all duration-200 ease-in-out cursor-pointer hover:shadow-lg')}>
+    <div className={cn('relative overflow-hidden pb-2 group col-span-1 bg-white border-2 border-solid border-transparent rounded-lg shadow-sm flex flex-col transition-all duration-200 ease-in-out cursor-pointer hover:shadow-lg')}>
       <div className='flex pt-[14px] px-[14px] pb-3 h-[66px] items-center gap-3 grow-0 shrink-0'>
         <div className='relative shrink-0'>
-          <AppIcon size='large' icon={app.app.icon} background={app.app.icon_background} />
+          <AppIcon
+            size='large'
+            iconType={app.app.icon_type}
+            icon={app.app.icon}
+            background={app.app.icon_background}
+            imageUrl={app.app.icon_url}
+          />
           <span className='absolute bottom-[-3px] right-[-3px] w-4 h-4 p-0.5 bg-white rounded border-[0.5px] border-[rgba(0,0,0,0.02)] shadow-sm'>
             {appBasicInfo.mode === 'advanced-chat' && (
               <ChatBot className='w-3 h-3 text-[#1570EF]' />
             )}
             {appBasicInfo.mode === 'agent-chat' && (
-              <CuteRobote className='w-3 h-3 text-indigo-600' />
+              <CuteRobot className='w-3 h-3 text-indigo-600' />
             )}
             {appBasicInfo.mode === 'chat' && (
               <ChatBot className='w-3 h-3 text-[#1570EF]' />
@@ -58,9 +64,13 @@ const AppCard = ({
           </div>
         </div>
       </div>
-      <div className='mb-1 px-[14px] text-xs leading-normal text-gray-500 line-clamp-4 group-hover:line-clamp-2 group-hover:h-9'>{app.description}</div>
+      <div className="description-wrapper h-[90px] px-[14px] text-xs leading-normal text-gray-500 ">
+        <div className='line-clamp-4 group-hover:line-clamp-2'>
+          {app.description}
+        </div>
+      </div>
       {isExplore && canCreate && (
-        <div className={cn('hidden items-center flex-wrap min-h-[42px] px-[14px] pt-2 pb-[10px] group-hover:flex')}>
+        <div className={cn('hidden items-center flex-wrap min-h-[42px] px-[14px] pt-2 pb-[10px] bg-white group-hover:flex absolute bottom-0 left-0 right-0')}>
           <div className={cn('flex items-center w-full space-x-2')}>
             <Button variant='primary' className='grow h-7' onClick={() => onCreate()}>
               <PlusIcon className='w-4 h-4 mr-1' />
@@ -70,7 +80,7 @@ const AppCard = ({
         </div>
       )}
       {!isExplore && (
-        <div className={cn('hidden items-center flex-wrap min-h-[42px] px-[14px] pt-2 pb-[10px] group-hover:flex')}>
+        <div className={cn('hidden items-center flex-wrap min-h-[42px] px-[14px] pt-2 pb-[10px] bg-white group-hover:flex absolute bottom-0 left-0 right-0')}>
           <div className={cn('flex items-center w-full space-x-2')}>
             <Button variant='primary' className='grow h-7' onClick={() => onCreate()}>
               <PlusIcon className='w-4 h-4 mr-1' />

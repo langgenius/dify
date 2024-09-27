@@ -1,8 +1,8 @@
 from typing import Optional, Union
 
-from pydantic import BaseModel
+from ...core import BaseModel
 
-__all__ = ["FineTuningJob", "Error", "Hyperparameters", "ListOfFineTuningJob" ]
+__all__ = ["FineTuningJob", "Error", "Hyperparameters", "ListOfFineTuningJob"]
 
 
 class Error(BaseModel):

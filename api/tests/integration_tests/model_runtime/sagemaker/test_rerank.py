@@ -12,11 +12,11 @@ def test_validate_credentials():
 
     with pytest.raises(CredentialsValidateFailedError):
         model.validate_credentials(
-            model='bge-m3-rerank-v2',
+            model="bge-m3-rerank-v2",
             credentials={
                 "aws_region": os.getenv("AWS_REGION"),
                 "aws_access_key": os.getenv("AWS_ACCESS_KEY"),
-                "aws_secret_access_key": os.getenv("AWS_SECRET_ACCESS_KEY")
+                "aws_secret_access_key": os.getenv("AWS_SECRET_ACCESS_KEY"),
             },
             query="What is the capital of the United States?",
             docs=[
@@ -25,7 +25,7 @@ def test_validate_credentials():
                 "The Commonwealth of the Northern Mariana Islands is a group of islands in the Pacific Ocean that "
                 "are a political division controlled by the United States. Its capital is Saipan.",
             ],
-            score_threshold=0.8
+            score_threshold=0.8,
         )
 
 
@@ -33,11 +33,11 @@ def test_invoke_model():
     model = SageMakerRerankModel()
 
     result = model.invoke(
-        model='bge-m3-rerank-v2',
+        model="bge-m3-rerank-v2",
         credentials={
             "aws_region": os.getenv("AWS_REGION"),
             "aws_access_key": os.getenv("AWS_ACCESS_KEY"),
-            "aws_secret_access_key": os.getenv("AWS_SECRET_ACCESS_KEY")
+            "aws_secret_access_key": os.getenv("AWS_SECRET_ACCESS_KEY"),
         },
         query="What is the capital of the United States?",
         docs=[
@@ -46,7 +46,7 @@ def test_invoke_model():
             "The Commonwealth of the Northern Mariana Islands is a group of islands in the Pacific Ocean that "
             "are a political division controlled by the United States. Its capital is Saipan.",
         ],
-        score_threshold=0.8
+        score_threshold=0.8,
     )
 
     assert isinstance(result, RerankResult)

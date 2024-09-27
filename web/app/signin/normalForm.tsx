@@ -217,6 +217,7 @@ const NormalForm = () => {
                       autoComplete="email"
                       placeholder={t('login.emailPlaceholder') || ''}
                       className={'appearance-none block w-full rounded-lg pl-[14px] px-3 py-2 border border-gray-200 hover:border-gray-300 hover:shadow-sm focus:outline-none focus:ring-primary-500 focus:border-primary-500 placeholder-gray-400 caret-primary-600 sm:text-sm'}
+                      tabIndex={1}
                     />
                   </div>
                 </div>
@@ -241,6 +242,7 @@ const NormalForm = () => {
                       autoComplete="current-password"
                       placeholder={t('login.passwordPlaceholder') || ''}
                       className={'appearance-none block w-full rounded-lg pl-[14px] px-3 py-2 border border-gray-200 hover:border-gray-300 hover:shadow-sm focus:outline-none focus:ring-primary-500 focus:border-primary-500 placeholder-gray-400 caret-primary-600 sm:text-sm pr-10'}
+                      tabIndex={2}
                     />
                     <div className="absolute inset-y-0 right-0 flex items-center pr-3">
                       <button

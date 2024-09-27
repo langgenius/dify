@@ -128,6 +128,28 @@ class ChatClient extends DifyClient {
 
         return $this->send_request('POST', 'chat-messages', $data, null, $response_mode === 'streaming');
     }
+        
+    public function get_suggestions($message_id, $user) {
+        $params = [
+            'user' => $user
+        ]
+        return $this->send_request('GET', "messages/{$message_id}/suggested", null, $params);
+    }
+    
+    public function stop_message($task_id, $user) {
+        $data = ['user' => $user];
+        return $this->send_request('POST', "chat-messages/{$task_id}/stop", $data);
+    }
+
+    public function get_conversations($user, $first_id = null, $limit = null, $pinned = null) {
+        $params = [
+            'user' => $user,
+            'first_id' => $first_id,
+            'limit' => $limit,
+            'pinned'=> $pinned,
+        ];
+        return $this->send_request('GET', 'conversations', null, $params);
+    }
 
     public function get_conversation_messages($user, $conversation_id = null, $first_id = null, $limit = null) {
         $params = ['user' => $user];
@@ -144,33 +166,21 @@ class ChatClient extends DifyClient {
 
         return $this->send_request('GET', 'messages', null, $params);
     }
-
     
-    public function stop_message($task_id, $user) {
-        $data = ['user' => $user];
-        return $this->send_request('POST', "chat-messages/{$task_id}/stop", $data);
-    }
-
-
-
-
-
-    public function get_conversations($user, $first_id = null, $limit = null, $pinned = null) {
-        $params = [
-            'user' => $user,
-            'first_id' => $first_id,
-            'limit' => $limit,
-            'pinned'=> $pinned,
-        ];
-        return $this->send_request('GET', 'conversations', null, $params);
-    }
-
-    public function rename_conversation($conversation_id, $name, $user) {
+    public function rename_conversation($conversation_id, $name,$auto_generate, $user) {
         $data = [
             'name' => $name,
             'user' => $user,
+            'auto_generate' => $auto_generate
         ];
         return $this->send_request('PATCH', "conversations/{$conversation_id}", $data);
+    }
+
+    public function delete_conversation($conversation_id, $user) {
+        $data = [
+            'user' => $user,
+        ];
+        return $this->send_request('DELETE', "conversations/{$conversation_id}", $data);
     }
 
     public function audio_to_text($audio_file, $user) {
@@ -184,11 +194,23 @@ class ChatClient extends DifyClient {
         
     }
 
-        
-    public function get_suggestions($message_id, $user) {
-        $params = [
-            'user' => $user
-        ]
-        return $this->send_request('GET', "messages/{$message_id}/suggested", null, $params);
+}
+
+class WorkflowClient extends DifyClient{
+    public function run($inputs, $response_mode, $user) {
+        $data = [
+            'inputs' => $inputs,
+            'response_mode' => $response_mode,
+            'user' => $user,
+        ];
+        return $this->send_request('POST', 'workflows/run', $data);
     }
+
+    public function stop($task_id, $user) {
+        $data = [
+            'user' => $user,
+        ];
+        return $this->send_request('POST', "workflows/tasks/{$task_id}/stop",$data);
+    }
+    
 }

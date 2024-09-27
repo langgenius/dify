@@ -8,14 +8,14 @@ export type MessageMore = {
   latency: number | string
 }
 
-export type Feedbacktype = {
+export type FeedbackType = {
   rating: MessageRating
   content?: string | null
 }
 
 export type FeedbackFunc = (
   messageId: string,
-  feedback: Feedbacktype
+  feedback: FeedbackType
 ) => Promise<any>
 export type SubmitAnnotationFunc = (
   messageId: string,
@@ -71,11 +71,11 @@ export type IChatItem = {
   /**
    * The user feedback result of this message
    */
-  feedback?: Feedbacktype
+  feedback?: FeedbackType
   /**
    * The admin feedback result of this message
    */
-  adminFeedback?: Feedbacktype
+  adminFeedback?: FeedbackType
   /**
    * Whether to hide the feedback area
    */
@@ -95,6 +95,7 @@ export type IChatItem = {
   // for agent log
   conversationId?: string
   input?: any
+  parentMessageId?: string
 }
 
 export type Metadata = {

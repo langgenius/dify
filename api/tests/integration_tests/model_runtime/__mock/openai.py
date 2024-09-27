@@ -21,13 +21,17 @@ from tests.integration_tests.model_runtime.__mock.openai_remote import MockModel
 from tests.integration_tests.model_runtime.__mock.openai_speech2text import MockSpeech2TextClass
 
 
-def mock_openai(monkeypatch: MonkeyPatch, methods: list[Literal["completion", "chat", "remote", "moderation", "speech2text", "text_embedding"]]) -> Callable[[], None]:
+def mock_openai(
+    monkeypatch: MonkeyPatch,
+    methods: list[Literal["completion", "chat", "remote", "moderation", "speech2text", "text_embedding"]],
+) -> Callable[[], None]:
     """
-        mock openai module
+    mock openai module
 
-        :param monkeypatch: pytest monkeypatch fixture
-        :return: unpatch function
+    :param monkeypatch: pytest monkeypatch fixture
+    :return: unpatch function
     """
+
     def unpatch() -> None:
         monkeypatch.undo()
 
@@ -52,14 +56,15 @@ def mock_openai(monkeypatch: MonkeyPatch, methods: list[Literal["completion", "c
     return unpatch
 
 
-MOCK = os.getenv('MOCK_SWITCH', 'false').lower() == 'true'
+MOCK = os.getenv("MOCK_SWITCH", "false").lower() == "true"
+
 
 @pytest.fixture
 def setup_openai_mock(request, monkeypatch):
-    methods = request.param if hasattr(request, 'param') else []
+    methods = request.param if hasattr(request, "param") else []
     if MOCK:
         unpatch = mock_openai(monkeypatch, methods=methods)
-    
+
     yield
 
     if MOCK:

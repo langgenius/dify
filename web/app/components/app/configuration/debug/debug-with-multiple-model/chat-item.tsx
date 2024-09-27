@@ -46,6 +46,7 @@ const ChatItem: FC<ChatItemProps> = ({
   const config = useConfigFromDebugContext()
   const {
     chatList,
+    chatListRef,
     isResponding,
     handleSend,
     suggestedQuestions,
@@ -80,6 +81,7 @@ const ChatItem: FC<ChatItemProps> = ({
       query: message,
       inputs,
       model_config: configData,
+      parent_message_id: chatListRef.current.at(-1)?.id || null,
     }
 
     if (visionConfig.enabled && files?.length && supportVision)
@@ -89,11 +91,11 @@ const ChatItem: FC<ChatItemProps> = ({
       `apps/${appId}/chat-messages`,
       data,
       {
-        onGetConvesationMessages: (conversationId, getAbortController) => fetchConversationMessages(appId, conversationId, getAbortController),
+        onGetConversationMessages: (conversationId, getAbortController) => fetchConversationMessages(appId, conversationId, getAbortController),
         onGetSuggestedQuestions: (responseItemId, getAbortController) => fetchSuggestedQuestions(appId, responseItemId, getAbortController),
       },
     )
-  }, [appId, config, handleSend, inputs, modelAndParameter, textGenerationModelList, visionConfig.enabled])
+  }, [appId, config, handleSend, inputs, modelAndParameter, textGenerationModelList, visionConfig.enabled, chatListRef])
 
   const { eventEmitter } = useEventEmitterContextContext()
   eventEmitter?.useSubscription((v: any) => {
@@ -129,6 +131,7 @@ const ChatItem: FC<ChatItemProps> = ({
       questionIcon={<Avatar name={userProfile.name} size={40} />}
       allToolIcons={allToolIcons}
       hideLogModal
+      noSpacing
     />
   )
 }

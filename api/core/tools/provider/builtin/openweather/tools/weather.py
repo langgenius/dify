@@ -17,10 +17,7 @@ class OpenweatherTool(BuiltinTool):
         city = tool_parameters.get("city", "")
         if not city:
             return self.create_text_message("Please tell me your city")
-        if (
-            "api_key" not in self.runtime.credentials
-            or not self.runtime.credentials.get("api_key")
-        ):
+        if "api_key" not in self.runtime.credentials or not self.runtime.credentials.get("api_key"):
             return self.create_text_message("OpenWeather API key is required.")
 
         units = tool_parameters.get("units", "metric")
@@ -29,7 +26,7 @@ class OpenweatherTool(BuiltinTool):
             # request URL
             url = "https://api.openweathermap.org/data/2.5/weather"
 
-            # request parmas
+            # request params
             params = {
                 "q": city,
                 "appid": self.runtime.credentials.get("api_key"),
@@ -39,12 +36,9 @@ class OpenweatherTool(BuiltinTool):
             response = requests.get(url, params=params)
 
             if response.status_code == 200:
-
                 data = response.json()
                 return self.create_text_message(
-                    self.summary(
-                        user_id=user_id, content=json.dumps(data, ensure_ascii=False)
-                    )
+                    self.summary(user_id=user_id, content=json.dumps(data, ensure_ascii=False))
                 )
             else:
                 error_message = {
@@ -55,6 +49,4 @@ class OpenweatherTool(BuiltinTool):
                 return json.dumps(error_message)
 
         except Exception as e:
-            return self.create_text_message(
-                "Openweather API Key is invalid. {}".format(e)
-            )
+            return self.create_text_message("Openweather API Key is invalid. {}".format(e))

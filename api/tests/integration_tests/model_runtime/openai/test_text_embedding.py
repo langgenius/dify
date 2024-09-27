@@ -8,42 +8,27 @@ from core.model_runtime.model_providers.openai.text_embedding.text_embedding imp
 from tests.integration_tests.model_runtime.__mock.openai import setup_openai_mock
 
 
-@pytest.mark.parametrize('setup_openai_mock', [['text_embedding']], indirect=True)
+@pytest.mark.parametrize("setup_openai_mock", [["text_embedding"]], indirect=True)
 def test_validate_credentials(setup_openai_mock):
     model = OpenAITextEmbeddingModel()
 
     with pytest.raises(CredentialsValidateFailedError):
-        model.validate_credentials(
-            model='text-embedding-ada-002',
-            credentials={
-                'openai_api_key': 'invalid_key'
-            }
-        )
+        model.validate_credentials(model="text-embedding-ada-002", credentials={"openai_api_key": "invalid_key"})
 
     model.validate_credentials(
-        model='text-embedding-ada-002',
-        credentials={
-            'openai_api_key': os.environ.get('OPENAI_API_KEY')
-        }
+        model="text-embedding-ada-002", credentials={"openai_api_key": os.environ.get("OPENAI_API_KEY")}
     )
 
-@pytest.mark.parametrize('setup_openai_mock', [['text_embedding']], indirect=True)
+
+@pytest.mark.parametrize("setup_openai_mock", [["text_embedding"]], indirect=True)
 def test_invoke_model(setup_openai_mock):
     model = OpenAITextEmbeddingModel()
 
     result = model.invoke(
-        model='text-embedding-ada-002',
-        credentials={
-            'openai_api_key': os.environ.get('OPENAI_API_KEY'),
-            'openai_api_base': 'https://api.openai.com'
-        },
-        texts=[
-            "hello",
-            "world",
-            " ".join(["long_text"] * 100),
-            " ".join(["another_long_text"] * 100)
-        ],
-        user="abc-123"
+        model="text-embedding-ada-002",
+        credentials={"openai_api_key": os.environ.get("OPENAI_API_KEY"), "openai_api_base": "https://api.openai.com"},
+        texts=["hello", "world", " ".join(["long_text"] * 100), " ".join(["another_long_text"] * 100)],
+        user="abc-123",
     )
 
     assert isinstance(result, TextEmbeddingResult)
@@ -55,15 +40,9 @@ def test_get_num_tokens():
     model = OpenAITextEmbeddingModel()
 
     num_tokens = model.get_num_tokens(
-        model='text-embedding-ada-002',
-        credentials={
-            'openai_api_key': os.environ.get('OPENAI_API_KEY'),
-            'openai_api_base': 'https://api.openai.com'
-        },
-        texts=[
-            "hello",
-            "world"
-        ]
+        model="text-embedding-ada-002",
+        credentials={"openai_api_key": os.environ.get("OPENAI_API_KEY"), "openai_api_base": "https://api.openai.com"},
+        texts=["hello", "world"],
     )
 
     assert num_tokens == 2

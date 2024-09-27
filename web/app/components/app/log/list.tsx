@@ -5,10 +5,9 @@ import useSWR from 'swr'
 import {
   HandThumbDownIcon,
   HandThumbUpIcon,
-  InformationCircleIcon,
   XMarkIcon,
 } from '@heroicons/react/24/outline'
-import { RiEditFill } from '@remixicon/react'
+import { RiEditFill, RiQuestionLine } from '@remixicon/react'
 import { get } from 'lodash-es'
 import InfiniteScroll from 'react-infinite-scroll-component'
 import dayjs from 'dayjs'
@@ -17,18 +16,17 @@ import timezone from 'dayjs/plugin/timezone'
 import { createContext, useContext } from 'use-context-selector'
 import { useShallow } from 'zustand/react/shallow'
 import { useTranslation } from 'react-i18next'
+import { UUID_NIL } from '../../base/chat/constants'
 import s from './style.module.css'
 import VarPanel from './var-panel'
 import cn from '@/utils/classnames'
-import { randomString } from '@/utils'
-import type { FeedbackFunc, Feedbacktype, IChatItem, SubmitAnnotationFunc } from '@/app/components/base/chat/chat/type'
+import type { FeedbackFunc, FeedbackType, IChatItem, SubmitAnnotationFunc } from '@/app/components/base/chat/chat/type'
 import type { Annotation, ChatConversationFullDetailResponse, ChatConversationGeneralDetail, ChatConversationsResponse, ChatMessage, ChatMessagesRequest, CompletionConversationFullDetailResponse, CompletionConversationGeneralDetail, CompletionConversationsResponse, LogAnnotation } from '@/models/log'
 import type { App } from '@/types/app'
 import Loading from '@/app/components/base/loading'
 import Drawer from '@/app/components/base/drawer'
 import Popover from '@/app/components/base/popover'
 import Chat from '@/app/components/base/chat/chat'
-import Tooltip from '@/app/components/base/tooltip'
 import { ToastContext } from '@/app/components/base/toast'
 import { fetchChatConversationDetail, fetchChatMessages, fetchCompletionConversationDetail, updateLogMessageAnnotations, updateLogMessageFeedbacks } from '@/service/log'
 import { TONE_LIST } from '@/config'
@@ -42,7 +40,7 @@ import MessageLogModal from '@/app/components/base/message-log-modal'
 import { useStore as useAppStore } from '@/app/components/app/store'
 import { useAppContext } from '@/context/app-context'
 import useTimestamp from '@/hooks/use-timestamp'
-import TooltipPlus from '@/app/components/base/tooltip-plus'
+import Tooltip from '@/app/components/base/tooltip'
 import { CopyIcon } from '@/app/components/base/copy-icon'
 
 dayjs.extend(utc)
@@ -84,72 +82,92 @@ const PARAM_MAP = {
   frequency_penalty: 'Frequency Penalty',
 }
 
-// Format interface data for easy display
+function appendQAToChatList(newChatList: IChatItem[], item: any, conversationId: string, timezone: string, format: string) {
+  newChatList.push({
+    id: item.id,
+    content: item.answer,
+    agent_thoughts: addFileInfos(item.agent_thoughts ? sortAgentSorts(item.agent_thoughts) : item.agent_thoughts, item.message_files),
+    feedback: item.feedbacks.find((item: any) => item.from_source === 'user'), // user feedback
+    adminFeedback: item.feedbacks.find((item: any) => item.from_source === 'admin'), // admin feedback
+    feedbackDisabled: false,
+    isAnswer: true,
+    message_files: item.message_files?.filter((file: any) => file.belongs_to === 'assistant') || [],
+    log: [
+      ...item.message,
+      ...(item.message[item.message.length - 1]?.role !== 'assistant'
+        ? [
+          {
+            role: 'assistant',
+            text: item.answer,
+            files: item.message_files?.filter((file: any) => file.belongs_to === 'assistant') || [],
+          },
+        ]
+        : []),
+    ],
+    workflow_run_id: item.workflow_run_id,
+    conversationId,
+    input: {
+      inputs: item.inputs,
+      query: item.query,
+    },
+    more: {
+      time: dayjs.unix(item.created_at).tz(timezone).format(format),
+      tokens: item.answer_tokens + item.message_tokens,
+      latency: item.provider_response_latency.toFixed(2),
+    },
+    citation: item.metadata?.retriever_resources,
+    annotation: (() => {
+      if (item.annotation_hit_history) {
+        return {
+          id: item.annotation_hit_history.annotation_id,
+          authorName: item.annotation_hit_history.annotation_create_account?.name || 'N/A',
+          created_at: item.annotation_hit_history.created_at,
+        }
+      }
+
+      if (item.annotation) {
+        return {
+          id: item.annotation.id,
+          authorName: item.annotation.account.name,
+          logAnnotation: item.annotation,
+          created_at: 0,
+        }
+      }
+
+      return undefined
+    })(),
+    parentMessageId: `question-${item.id}`,
+  })
+  newChatList.push({
+    id: `question-${item.id}`,
+    content: item.inputs.query || item.inputs.default_input || item.query, // text generation: item.inputs.query; chat: item.query
+    isAnswer: false,
+    message_files: item.message_files?.filter((file: any) => file.belongs_to === 'user') || [],
+    parentMessageId: item.parent_message_id || undefined,
+  })
+}
+
 const getFormattedChatList = (messages: ChatMessage[], conversationId: string, timezone: string, format: string) => {
   const newChatList: IChatItem[] = []
-  messages.forEach((item: ChatMessage) => {
-    newChatList.push({
-      id: `question-${item.id}`,
-      content: item.inputs.query || item.inputs.default_input || item.query, // text generation: item.inputs.query; chat: item.query
-      isAnswer: false,
-      message_files: item.message_files?.filter((file: any) => file.belongs_to === 'user') || [],
-    })
-    newChatList.push({
-      id: item.id,
-      content: item.answer,
-      agent_thoughts: addFileInfos(item.agent_thoughts ? sortAgentSorts(item.agent_thoughts) : item.agent_thoughts, item.message_files),
-      feedback: item.feedbacks.find(item => item.from_source === 'user'), // user feedback
-      adminFeedback: item.feedbacks.find(item => item.from_source === 'admin'), // admin feedback
-      feedbackDisabled: false,
-      isAnswer: true,
-      message_files: item.message_files?.filter((file: any) => file.belongs_to === 'assistant') || [],
-      log: [
-        ...item.message,
-        ...(item.message[item.message.length - 1]?.role !== 'assistant'
-          ? [
-            {
-              role: 'assistant',
-              text: item.answer,
-              files: item.message_files?.filter((file: any) => file.belongs_to === 'assistant') || [],
-            },
-          ]
-          : []),
-      ],
-      workflow_run_id: item.workflow_run_id,
-      conversationId,
-      input: {
-        inputs: item.inputs,
-        query: item.query,
-      },
-      more: {
-        time: dayjs.unix(item.created_at).tz(timezone).format(format),
-        tokens: item.answer_tokens + item.message_tokens,
-        latency: item.provider_response_latency.toFixed(2),
-      },
-      citation: item.metadata?.retriever_resources,
-      annotation: (() => {
-        if (item.annotation_hit_history) {
-          return {
-            id: item.annotation_hit_history.annotation_id,
-            authorName: item.annotation_hit_history.annotation_create_account?.name || 'N/A',
-            created_at: item.annotation_hit_history.created_at,
-          }
-        }
+  let nextMessageId = null
+  for (const item of messages) {
+    if (!item.parent_message_id) {
+      appendQAToChatList(newChatList, item, conversationId, timezone, format)
+      break
+    }
 
-        if (item.annotation) {
-          return {
-            id: item.annotation.id,
-            authorName: item.annotation.account.name,
-            logAnnotation: item.annotation,
-            created_at: 0,
-          }
-        }
-
-        return undefined
-      })(),
-    })
-  })
-  return newChatList
+    if (!nextMessageId) {
+      appendQAToChatList(newChatList, item, conversationId, timezone, format)
+      nextMessageId = item.parent_message_id
+    }
+    else {
+      if (item.id === nextMessageId || nextMessageId === UUID_NIL) {
+        appendQAToChatList(newChatList, item, conversationId, timezone, format)
+        nextMessageId = item.parent_message_id
+      }
+    }
+  }
+  return newChatList.reverse()
 }
 
 // const displayedParams = CompletionParams.slice(0, -2)
@@ -174,6 +192,7 @@ function DetailPanel<T extends ChatConversationFullDetailResponse | CompletionCo
   })))
   const { t } = useTranslation()
   const [items, setItems] = React.useState<IChatItem[]>([])
+  const fetchedMessages = useRef<ChatMessage[]>([])
   const [hasMore, setHasMore] = useState(true)
   const [varValues, setVarValues] = useState<Record<string, string>>({})
   const fetchData = async () => {
@@ -195,7 +214,8 @@ function DetailPanel<T extends ChatConversationFullDetailResponse | CompletionCo
         const varValues = messageRes.data[0].inputs
         setVarValues(varValues)
       }
-      const newItems = [...getFormattedChatList(messageRes.data, detail.id, timezone!, t('appLog.dateTimeFormat') as string), ...items]
+      fetchedMessages.current = [...fetchedMessages.current, ...messageRes.data]
+      const newItems = getFormattedChatList(fetchedMessages.current, detail.id, timezone!, t('appLog.dateTimeFormat') as string)
       if (messageRes.has_more === false && detail?.model_config?.configs?.introduction) {
         newItems.unshift({
           id: 'introduction',
@@ -341,16 +361,16 @@ function DetailPanel<T extends ChatConversationFullDetailResponse | CompletionCo
   return (
     <div ref={ref} className='rounded-xl border-[0.5px] border-gray-200 h-full flex flex-col overflow-auto'>
       {/* Panel Header */}
-      <div className='border-b border-gray-100 py-4 px-6 flex items-center justify-between'>
+      <div className='border-b border-gray-100 py-4 px-6 flex items-center justify-between bg-components-panel-bg'>
         <div>
           <div className='text-gray-500 text-[10px] leading-[14px]'>{isChatMode ? t('appLog.detail.conversationId') : t('appLog.detail.time')}</div>
           {isChatMode && (
             <div className='flex items-center text-gray-700 text-[13px] leading-[18px]'>
-              <TooltipPlus
-                hideArrow
-                popupContent={detail.id}>
+              <Tooltip
+                popupContent={detail.id}
+              >
                 <div className='max-w-[105px] truncate'>{detail.id}</div>
-              </TooltipPlus>
+              </Tooltip>
               <CopyIcon content={detail.id} />
             </div>
           )}
@@ -380,7 +400,7 @@ function DetailPanel<T extends ChatConversationFullDetailResponse | CompletionCo
                 btnClassName='mr-4 !bg-gray-50 !py-1.5 !px-2.5 border-none font-normal'
                 btnElement={<>
                   <span className='text-[13px]'>{targetTone}</span>
-                  <InformationCircleIcon className='h-4 w-4 text-gray-800 ml-1.5' />
+                  <RiQuestionLine className='h-4 w-4 text-gray-800 ml-1.5' />
                 </>}
                 htmlContent={<div className='w-[280px]'>
                   <div className='flex justify-between py-2 px-4 font-medium text-sm text-gray-700'>
@@ -438,7 +458,7 @@ function DetailPanel<T extends ChatConversationFullDetailResponse | CompletionCo
             siteInfo={null}
           />
         </div>
-        : items.length < 8
+        : (items.length < 8 && !hasMore)
           ? <div className="pt-4 mb-4">
             <Chat
               config={{
@@ -544,7 +564,7 @@ const CompletionConversationDetailComp: FC<{ appId?: string; conversationId?: st
   const { notify } = useContext(ToastContext)
   const { t } = useTranslation()
 
-  const handleFeedback = async (mid: string, { rating }: Feedbacktype): Promise<boolean> => {
+  const handleFeedback = async (mid: string, { rating }: FeedbackType): Promise<boolean> => {
     try {
       await updateLogMessageFeedbacks({ url: `/apps/${appId}/feedbacks`, body: { message_id: mid, rating } })
       conversationDetailMutate()
@@ -589,7 +609,7 @@ const ChatConversationDetailComp: FC<{ appId?: string; conversationId?: string }
   const { notify } = useContext(ToastContext)
   const { t } = useTranslation()
 
-  const handleFeedback = async (mid: string, { rating }: Feedbacktype): Promise<boolean> => {
+  const handleFeedback = async (mid: string, { rating }: FeedbackType): Promise<boolean> => {
     try {
       await updateLogMessageFeedbacks({ url: `/apps/${appId}/feedbacks`, body: { message_id: mid, rating } })
       notify({ type: 'success', message: t('common.actionMsg.modifiedSuccessfully') })
@@ -641,13 +661,12 @@ const ConversationList: FC<IConversationList> = ({ logs, appDetail, onRefresh })
   const renderTdValue = (value: string | number | null, isEmptyStyle: boolean, isHighlight = false, annotation?: LogAnnotation) => {
     return (
       <Tooltip
-        htmlContent={
+        popupContent={
           <span className='text-xs text-gray-500 inline-flex items-center'>
             <RiEditFill className='w-3 h-3 mr-1' />{`${t('appLog.detail.annotationTip', { user: annotation?.account?.name })} ${formatTime(annotation?.created_at || dayjs().unix(), 'MM-DD hh:mm A')}`}
           </span>
         }
-        className={(isHighlight && !isChatMode) ? '' : '!hidden'}
-        selector={`highlight-${randomString(16)}`}
+        popupClassName={(isHighlight && !isChatMode) ? '' : '!hidden'}
       >
         <div className={cn(isEmptyStyle ? 'text-gray-400' : 'text-gray-700', !isHighlight ? '' : 'bg-orange-100', 'text-sm overflow-hidden text-ellipsis whitespace-nowrap')}>
           {value || '-'}
@@ -671,17 +690,18 @@ const ConversationList: FC<IConversationList> = ({ logs, appDetail, onRefresh })
         <thead className="h-8 leading-8 border-b border-gray-200 text-gray-500 font-bold">
           <tr>
             <td className='w-[1.375rem] whitespace-nowrap'></td>
-            <td className='whitespace-nowrap'>{t('appLog.table.header.time')}</td>
-            <td className='whitespace-nowrap'>{t('appLog.table.header.endUser')}</td>
             <td className='whitespace-nowrap'>{isChatMode ? t('appLog.table.header.summary') : t('appLog.table.header.input')}</td>
+            <td className='whitespace-nowrap'>{t('appLog.table.header.endUser')}</td>
             <td className='whitespace-nowrap'>{isChatMode ? t('appLog.table.header.messageCount') : t('appLog.table.header.output')}</td>
             <td className='whitespace-nowrap'>{t('appLog.table.header.userRate')}</td>
             <td className='whitespace-nowrap'>{t('appLog.table.header.adminRate')}</td>
+            <td className='whitespace-nowrap'>{t('appLog.table.header.updatedTime')}</td>
+            <td className='whitespace-nowrap'>{t('appLog.table.header.time')}</td>
           </tr>
         </thead>
         <tbody className="text-gray-500">
           {logs.data.map((log: any) => {
-            const endUser = log.from_end_user_session_id
+            const endUser = log.from_end_user_session_id || log.from_account_name
             const leftValue = get(log, isChatMode ? 'name' : 'message.inputs.query') || (!isChatMode ? (get(log, 'message.query') || get(log, 'message.inputs.default_input')) : '') || ''
             const rightValue = get(log, isChatMode ? 'message_count' : 'message.answer')
             return <tr
@@ -692,11 +712,10 @@ const ConversationList: FC<IConversationList> = ({ logs, appDetail, onRefresh })
                 setCurrentConversation(log)
               }}>
               <td className='text-center align-middle'>{!log.read_at && <span className='inline-block bg-[#3F83F8] h-1.5 w-1.5 rounded'></span>}</td>
-              <td className='w-[160px]'>{formatTime(log.created_at, t('appLog.dateTimeFormat') as string)}</td>
-              <td>{renderTdValue(endUser || defaultValue, !endUser)}</td>
               <td style={{ maxWidth: isChatMode ? 300 : 200 }}>
                 {renderTdValue(leftValue || t('appLog.table.empty.noChat'), !leftValue, isChatMode && log.annotated)}
               </td>
+              <td>{renderTdValue(endUser || defaultValue, !endUser)}</td>
               <td style={{ maxWidth: isChatMode ? 100 : 200 }}>
                 {renderTdValue(rightValue === 0 ? 0 : (rightValue || t('appLog.table.empty.noOutput')), !rightValue, !isChatMode && !!log.annotation?.content, log.annotation)}
               </td>
@@ -718,6 +737,8 @@ const ConversationList: FC<IConversationList> = ({ logs, appDetail, onRefresh })
                   </>
                 }
               </td>
+              <td className='w-[160px]'>{formatTime(log.updated_at, t('appLog.dateTimeFormat') as string)}</td>
+              <td className='w-[160px]'>{formatTime(log.created_at, t('appLog.dateTimeFormat') as string)}</td>
             </tr>
           })}
         </tbody>
@@ -727,7 +748,7 @@ const ConversationList: FC<IConversationList> = ({ logs, appDetail, onRefresh })
         onClose={onCloseDrawer}
         mask={isMobile}
         footer={null}
-        panelClassname='mt-16 mx-2 sm:mr-2 mb-4 !p-0 !max-w-[640px] rounded-xl'
+        panelClassname='mt-16 mx-2 sm:mr-2 mb-4 !p-0 !max-w-[640px] rounded-xl bg-background-gradient-bg-fill-chat-bg-1'
       >
         <DrawerContext.Provider value={{
           onClose: onCloseDrawer,

@@ -44,10 +44,9 @@ const Blocks = ({
           list.map(tool => (
             <Tooltip
               key={tool.name}
-              selector={`workflow-block-tool-${tool.name}`}
               position='right'
-              className='!p-0 !px-3 !py-2.5 !w-[200px] !leading-[18px] !text-xs !text-gray-700 !border-[0.5px] !border-black/5 !rounded-xl !shadow-lg'
-              htmlContent={(
+              popupClassName='!p-0 !px-3 !py-2.5 !w-[200px] !leading-[18px] !text-xs !text-gray-700 !border-[0.5px] !border-black/5 !rounded-xl !shadow-lg'
+              popupContent={(
                 <div>
                   <BlockIcon
                     size='md'
@@ -59,7 +58,6 @@ const Blocks = ({
                   <div className='text-xs text-gray-700 leading-[18px]'>{tool.description[language]}</div>
                 </div>
               )}
-              noArrow
             >
               <div
                 className='flex items-center px-3 w-full h-8 rounded-lg hover:bg-gray-50 cursor-pointer'
@@ -77,7 +75,7 @@ const Blocks = ({
                   type={BlockEnum.Tool}
                   toolIcon={toolWithProvider.icon}
                 />
-                <div className='text-sm text-gray-900 truncate'>{tool.label[language]}</div>
+                <div className='text-sm text-gray-900 flex-1 min-w-0 truncate'>{tool.label[language]}</div>
               </div>
             </Tooltip>
           ))

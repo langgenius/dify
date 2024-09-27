@@ -291,11 +291,16 @@ export type SiteConfig = {
   /** Custom Disclaimer */
   custom_disclaimer: string
 
+  icon_type: AppIconType | null
   icon: string
-  icon_background: string
+  icon_background: string | null
+  icon_url: string | null
 
   show_workflow_steps: boolean
+  use_icon_as_answer_icon: boolean
 }
+
+export type AppIconType = 'image' | 'emoji'
 
 /**
  * App
@@ -308,10 +313,19 @@ export type App = {
   /** Description */
   description: string
 
-  /** Icon */
+  /**
+   * Icon Type
+   * @default 'emoji'
+  */
+  icon_type: AppIconType | null
+  /** Icon, stores file ID if icon_type is 'image' */
   icon: string
-  /** Icon Background */
-  icon_background: string
+  /** Icon Background, only available when icon_type is null or 'emoji' */
+  icon_background: string | null
+  /** Icon URL, only available when icon_type is 'image' */
+  icon_url: string | null
+  /** Whether to use app icon as answer icon */
+  use_icon_as_answer_icon: boolean
 
   /** Mode */
   mode: AppMode
@@ -335,6 +349,10 @@ export type App = {
   /** api site url */
   api_base_url: string
   tags: Tag[]
+}
+
+export type AppSSO = {
+  enable_sso: boolean
 }
 
 /**

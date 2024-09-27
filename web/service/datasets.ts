@@ -18,14 +18,14 @@ import type {
   ProcessRuleResponse,
   RelatedAppResponse,
   SegmentDetailModel,
-  SegmentUpdator,
+  SegmentUpdater,
   SegmentsQuery,
   SegmentsResponse,
   createDocumentResponse,
 } from '@/models/datasets'
-import type { CommonResponse, DataSourceNotionWorkspace } from '@/models/common'
+import { type CommonResponse, type DataSourceNotionWorkspace, DataSourceProvider } from '@/models/common'
 import type {
-  ApikeysListResponse,
+  ApiKeysListResponse,
   CreateApiKeyResponse,
 } from '@/models/app'
 import type { RetrievalConfig } from '@/types/app'
@@ -184,11 +184,11 @@ export const disableSegment: Fetcher<CommonResponse, { datasetId: string; segmen
   return patch<CommonResponse>(`/datasets/${datasetId}/segments/${segmentId}/disable`)
 }
 
-export const updateSegment: Fetcher<{ data: SegmentDetailModel; doc_form: string }, { datasetId: string; documentId: string; segmentId: string; body: SegmentUpdator }> = ({ datasetId, documentId, segmentId, body }) => {
+export const updateSegment: Fetcher<{ data: SegmentDetailModel; doc_form: string }, { datasetId: string; documentId: string; segmentId: string; body: SegmentUpdater }> = ({ datasetId, documentId, segmentId, body }) => {
   return patch<{ data: SegmentDetailModel; doc_form: string }>(`/datasets/${datasetId}/documents/${documentId}/segments/${segmentId}`, { body })
 }
 
-export const addSegment: Fetcher<{ data: SegmentDetailModel; doc_form: string }, { datasetId: string; documentId: string; body: SegmentUpdator }> = ({ datasetId, documentId, body }) => {
+export const addSegment: Fetcher<{ data: SegmentDetailModel; doc_form: string }, { datasetId: string; documentId: string; body: SegmentUpdater }> = ({ datasetId, documentId, body }) => {
   return post<{ data: SegmentDetailModel; doc_form: string }>(`/datasets/${datasetId}/documents/${documentId}/segment`, { body })
 }
 
@@ -221,8 +221,8 @@ export const fetchNotionPagePreview: Fetcher<{ content: string }, { workspaceID:
   return get<{ content: string }>(`notion/workspaces/${workspaceID}/pages/${pageID}/${pageType}/preview`)
 }
 
-export const fetchApiKeysList: Fetcher<ApikeysListResponse, { url: string; params: Record<string, any> }> = ({ url, params }) => {
-  return get<ApikeysListResponse>(url, params)
+export const fetchApiKeysList: Fetcher<ApiKeysListResponse, { url: string; params: Record<string, any> }> = ({ url, params }) => {
+  return get<ApiKeysListResponse>(url, params)
 }
 
 export const delApikey: Fetcher<CommonResponse, { url: string; params: Record<string, any> }> = ({ url, params }) => {
@@ -253,7 +253,7 @@ export const createFirecrawlTask: Fetcher<CommonResponse, Record<string, any>> =
   return post<CommonResponse>('website/crawl', {
     body: {
       ...body,
-      provider: 'firecrawl',
+      provider: DataSourceProvider.fireCrawl,
     },
   })
 }
@@ -261,7 +261,26 @@ export const createFirecrawlTask: Fetcher<CommonResponse, Record<string, any>> =
 export const checkFirecrawlTaskStatus: Fetcher<CommonResponse, string> = (jobId: string) => {
   return get<CommonResponse>(`website/crawl/status/${jobId}`, {
     params: {
-      provider: 'firecrawl',
+      provider: DataSourceProvider.fireCrawl,
+    },
+  }, {
+    silent: true,
+  })
+}
+
+export const createJinaReaderTask: Fetcher<CommonResponse, Record<string, any>> = (body) => {
+  return post<CommonResponse>('website/crawl', {
+    body: {
+      ...body,
+      provider: DataSourceProvider.jinaReader,
+    },
+  })
+}
+
+export const checkJinaReaderTaskStatus: Fetcher<CommonResponse, string> = (jobId: string) => {
+  return get<CommonResponse>(`website/crawl/status/${jobId}`, {
+    params: {
+      provider: 'jinareader',
     },
   }, {
     silent: true,

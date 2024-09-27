@@ -75,6 +75,7 @@ message_detail_fields = {
     "metadata": fields.Raw(attribute="message_metadata_dict"),
     "status": fields.String,
     "error": fields.String,
+    "parent_message_id": fields.String,
 }
 
 feedback_stat_fields = {"like": fields.Integer, "dislike": fields.Integer}
@@ -111,6 +112,7 @@ conversation_fields = {
     "from_end_user_id": fields.String,
     "from_end_user_session_id": fields.String(),
     "from_account_id": fields.String,
+    "from_account_name": fields.String,
     "read_at": TimestampField,
     "created_at": TimestampField,
     "annotation": fields.Nested(annotation_fields, allow_null=True),
@@ -146,10 +148,12 @@ conversation_with_summary_fields = {
     "from_end_user_id": fields.String,
     "from_end_user_session_id": fields.String,
     "from_account_id": fields.String,
+    "from_account_name": fields.String,
     "name": fields.String,
     "summary": fields.String(attribute="summary_or_query"),
     "read_at": TimestampField,
     "created_at": TimestampField,
+    "updated_at": TimestampField,
     "annotated": fields.Boolean,
     "model_config": fields.Nested(simple_model_config_fields),
     "message_count": fields.Integer,

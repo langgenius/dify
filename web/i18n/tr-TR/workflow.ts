@@ -36,7 +36,7 @@ const translation = {
     searchVar: 'Değişkeni ara',
     variableNamePlaceholder: 'Değişken adı',
     setVarValuePlaceholder: 'Değişkeni ayarla',
-    needConnecttip: 'Bu adım hiçbir şeye bağlı değil',
+    needConnectTip: 'Bu adım hiçbir şeye bağlı değil',
     maxTreeDepth: 'Her dal için maksimum {{depth}} düğüm limiti',
     needEndNode: 'Son blok eklenmelidir',
     needAnswerNode: 'Yanıt bloğu eklenmelidir',
@@ -77,6 +77,24 @@ const translation = {
     overwriteAndImport: 'Üzerine Yaz ve İçe Aktar',
     importFailure: 'İçe Aktarma Başarısız',
     importSuccess: 'İçe Aktarma Başarılı',
+    parallelTip: {
+      click: {
+        desc: 'Eklemek için',
+        title: 'Tık',
+      },
+      drag: {
+        title: 'Sürükleme',
+        desc: 'Bağlanmak için',
+      },
+      depthLimit: '{{num}} katmanlarının paralel iç içe geçme katmanı sınırı',
+      limit: 'Paralellik {{num}} dallarıyla sınırlıdır.',
+    },
+    jumpToNode: 'Bu düğüme atla',
+    addParallelNode: 'Paralel Düğüm Ekle',
+    disconnect: 'Ayırmak',
+    parallelRun: 'Paralel Koşu',
+    parallel: 'PARALEL',
+    branch: 'DAL',
   },
   env: {
     envPanelTitle: 'Çevre Değişkenleri',
@@ -186,6 +204,7 @@ const translation = {
     'transform': 'Dönüştür',
     'utilities': 'Yardımcı Araçlar',
     'noResult': 'Eşleşen bulunamadı',
+    'searchTool': 'Arama aracı',
   },
   blocks: {
     'start': 'Başlat',
@@ -365,6 +384,7 @@ const translation = {
         'custom': 'Özel',
         'api-key-title': 'API Anahtarı',
         'header': 'Başlık',
+        'auth-type': 'Kimlik Doğrulama Türü',
       },
       insertVarPlaceholder: 'değişkeni eklemek için \'/\' yazın',
       timeout: {
@@ -411,13 +431,13 @@ const translation = {
         'not empty': 'boş değil',
         'null': 'null',
         'not null': 'null değil',
+        'regex match': 'normal ifade maçı',
       },
       enterValue: 'Değer girin',
       addCondition: 'Koşul Ekle',
       conditionNotSetup: 'Koşul AYARLANMADI',
       selectVariable: 'Değişken seçin...',
     },
-
     variableAssigner: {
       title: 'Değişken ata',
       outputType: 'Çıktı Türü',

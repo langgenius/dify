@@ -26,34 +26,24 @@ class BaseAppConfigManager:
         config_dict = dict(config_dict.items())
 
         additional_features = AppAdditionalFeatures()
-        additional_features.show_retrieve_source = RetrievalResourceConfigManager.convert(
-            config=config_dict
-        )
+        additional_features.show_retrieve_source = RetrievalResourceConfigManager.convert(config=config_dict)
 
         additional_features.file_upload = FileUploadConfigManager.convert(
-            config=config_dict,
-            is_vision=app_mode in [AppMode.CHAT, AppMode.COMPLETION, AppMode.AGENT_CHAT]
+            config=config_dict, is_vision=app_mode in {AppMode.CHAT, AppMode.COMPLETION, AppMode.AGENT_CHAT}
         )
 
-        additional_features.opening_statement, additional_features.suggested_questions = \
-            OpeningStatementConfigManager.convert(
-                config=config_dict
-            )
+        additional_features.opening_statement, additional_features.suggested_questions = (
+            OpeningStatementConfigManager.convert(config=config_dict)
+        )
 
         additional_features.suggested_questions_after_answer = SuggestedQuestionsAfterAnswerConfigManager.convert(
             config=config_dict
         )
 
-        additional_features.more_like_this = MoreLikeThisConfigManager.convert(
-            config=config_dict
-        )
+        additional_features.more_like_this = MoreLikeThisConfigManager.convert(config=config_dict)
 
-        additional_features.speech_to_text = SpeechToTextConfigManager.convert(
-            config=config_dict
-        )
+        additional_features.speech_to_text = SpeechToTextConfigManager.convert(config=config_dict)
 
-        additional_features.text_to_speech = TextToSpeechConfigManager.convert(
-            config=config_dict
-        )
+        additional_features.text_to_speech = TextToSpeechConfigManager.convert(config=config_dict)
 
         return additional_features

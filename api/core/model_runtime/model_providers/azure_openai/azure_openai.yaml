@@ -54,6 +54,12 @@ model_credential_schema:
       required: true
       options:
         - label:
+            en_US: 2024-08-01-preview
+          value: 2024-08-01-preview
+        - label:
+            en_US: 2024-07-01-preview
+          value: 2024-07-01-preview
+        - label:
             en_US: 2024-05-01-preview
           value: 2024-05-01-preview
         - label:
@@ -135,6 +141,12 @@ model_credential_schema:
         - label:
             en_US: gpt-4o-2024-05-13
           value: gpt-4o-2024-05-13
+          show_on:
+            - variable: __model_type
+              value: llm
+        - label:
+            en_US: gpt-4o-2024-08-06
+          value: gpt-4o-2024-08-06
           show_on:
             - variable: __model_type
               value: llm

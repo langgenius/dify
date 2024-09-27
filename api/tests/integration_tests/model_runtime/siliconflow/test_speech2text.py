@@ -12,16 +12,12 @@ def test_validate_credentials():
     with pytest.raises(CredentialsValidateFailedError):
         model.validate_credentials(
             model="iic/SenseVoiceSmall",
-            credentials={
-                "api_key": "invalid_key"
-            },
+            credentials={"api_key": "invalid_key"},
         )
 
     model.validate_credentials(
         model="iic/SenseVoiceSmall",
-        credentials={
-            "api_key": os.environ.get("API_KEY")
-        },
+        credentials={"api_key": os.environ.get("API_KEY")},
     )
 
 
@@ -42,12 +38,8 @@ def test_invoke_model():
         file = audio_file
 
         result = model.invoke(
-            model="iic/SenseVoiceSmall",
-            credentials={
-                "api_key": os.environ.get("API_KEY")
-            },
-            file=file
+            model="iic/SenseVoiceSmall", credentials={"api_key": os.environ.get("API_KEY")}, file=file
         )
 
         assert isinstance(result, str)
-        assert result == '1,2,3,4,5,6,7,8,9,10.'
+        assert result == "1,2,3,4,5,6,7,8,9,10."

@@ -27,8 +27,15 @@ from services.workflow_service import WorkflowService
 
 class MessageService:
     @classmethod
-    def pagination_by_first_id(cls, app_model: App, user: Optional[Union[Account, EndUser]],
-                               conversation_id: str, first_id: Optional[str], limit: int) -> InfiniteScrollPagination:
+    def pagination_by_first_id(
+        cls,
+        app_model: App,
+        user: Optional[Union[Account, EndUser]],
+        conversation_id: str,
+        first_id: Optional[str],
+        limit: int,
+        order: str = "asc",
+    ) -> InfiniteScrollPagination:
         if not user:
             return InfiniteScrollPagination(data=[], limit=limit, has_more=False)
 
@@ -36,52 +43,70 @@ class MessageService:
             return InfiniteScrollPagination(data=[], limit=limit, has_more=False)
 
         conversation = ConversationService.get_conversation(
-            app_model=app_model,
-            user=user,
-            conversation_id=conversation_id
+            app_model=app_model, user=user, conversation_id=conversation_id
         )
 
         if first_id:
-            first_message = db.session.query(Message) \
-                .filter(Message.conversation_id == conversation.id, Message.id == first_id).first()
+            first_message = (
+                db.session.query(Message)
+                .filter(Message.conversation_id == conversation.id, Message.id == first_id)
+                .first()
+            )
 
             if not first_message:
                 raise FirstMessageNotExistsError()
 
-            history_messages = db.session.query(Message).filter(
-                Message.conversation_id == conversation.id,
-                Message.created_at < first_message.created_at,
-                Message.id != first_message.id
-            ) \
-                .order_by(Message.created_at.desc()).limit(limit).all()
+            history_messages = (
+                db.session.query(Message)
+                .filter(
+                    Message.conversation_id == conversation.id,
+                    Message.created_at < first_message.created_at,
+                    Message.id != first_message.id,
+                )
+                .order_by(Message.created_at.desc())
+                .limit(limit)
+                .all()
+            )
         else:
-            history_messages = db.session.query(Message).filter(Message.conversation_id == conversation.id) \
-                .order_by(Message.created_at.desc()).limit(limit).all()
+            history_messages = (
+                db.session.query(Message)
+                .filter(Message.conversation_id == conversation.id)
+                .order_by(Message.created_at.desc())
+                .limit(limit)
+                .all()
+            )
 
         has_more = False
         if len(history_messages) == limit:
             current_page_first_message = history_messages[-1]
-            rest_count = db.session.query(Message).filter(
-                Message.conversation_id == conversation.id,
-                Message.created_at < current_page_first_message.created_at,
-                Message.id != current_page_first_message.id
-            ).count()
+            rest_count = (
+                db.session.query(Message)
+                .filter(
+                    Message.conversation_id == conversation.id,
+                    Message.created_at < current_page_first_message.created_at,
+                    Message.id != current_page_first_message.id,
+                )
+                .count()
+            )
 
             if rest_count > 0:
                 has_more = True
 
-        history_messages = list(reversed(history_messages))
+        if order == "asc":
+            history_messages = list(reversed(history_messages))
 
-        return InfiniteScrollPagination(
-            data=history_messages,
-            limit=limit,
-            has_more=has_more
-        )
+        return InfiniteScrollPagination(data=history_messages, limit=limit, has_more=has_more)
 
     @classmethod
-    def pagination_by_last_id(cls, app_model: App, user: Optional[Union[Account, EndUser]],
-                              last_id: Optional[str], limit: int, conversation_id: Optional[str] = None,
-                              include_ids: Optional[list] = None) -> InfiniteScrollPagination:
+    def pagination_by_last_id(
+        cls,
+        app_model: App,
+        user: Optional[Union[Account, EndUser]],
+        last_id: Optional[str],
+        limit: int,
+        conversation_id: Optional[str] = None,
+        include_ids: Optional[list] = None,
+    ) -> InfiniteScrollPagination:
         if not user:
             return InfiniteScrollPagination(data=[], limit=limit, has_more=False)
 
@@ -89,9 +114,7 @@ class MessageService:
 
         if conversation_id is not None:
             conversation = ConversationService.get_conversation(
-                app_model=app_model,
-                user=user,
-                conversation_id=conversation_id
+                app_model=app_model, user=user, conversation_id=conversation_id
             )
 
             base_query = base_query.filter(Message.conversation_id == conversation.id)
@@ -105,10 +128,12 @@ class MessageService:
             if not last_message:
                 raise LastMessageNotExistsError()
 
-            history_messages = base_query.filter(
-                Message.created_at < last_message.created_at,
-                Message.id != last_message.id
-            ).order_by(Message.created_at.desc()).limit(limit).all()
+            history_messages = (
+                base_query.filter(Message.created_at < last_message.created_at, Message.id != last_message.id)
+                .order_by(Message.created_at.desc())
+                .limit(limit)
+                .all()
+            )
         else:
             history_messages = base_query.order_by(Message.created_at.desc()).limit(limit).all()
 
@@ -116,30 +141,22 @@ class MessageService:
         if len(history_messages) == limit:
             current_page_first_message = history_messages[-1]
             rest_count = base_query.filter(
-                Message.created_at < current_page_first_message.created_at,
-                Message.id != current_page_first_message.id
+                Message.created_at < current_page_first_message.created_at, Message.id != current_page_first_message.id
             ).count()
 
             if rest_count > 0:
                 has_more = True
 
-        return InfiniteScrollPagination(
-            data=history_messages,
-            limit=limit,
-            has_more=has_more
-        )
+        return InfiniteScrollPagination(data=history_messages, limit=limit, has_more=has_more)
 
     @classmethod
-    def create_feedback(cls, app_model: App, message_id: str, user: Optional[Union[Account, EndUser]],
-                        rating: Optional[str]) -> MessageFeedback:
+    def create_feedback(
+        cls, app_model: App, message_id: str, user: Optional[Union[Account, EndUser]], rating: Optional[str]
+    ) -> MessageFeedback:
         if not user:
-            raise ValueError('user cannot be None')
+            raise ValueError("user cannot be None")
 
-        message = cls.get_message(
-            app_model=app_model,
-            user=user,
-            message_id=message_id
-        )
+        message = cls.get_message(app_model=app_model, user=user, message_id=message_id)
 
         feedback = message.user_feedback if isinstance(user, EndUser) else message.admin_feedback
 
@@ -148,14 +165,14 @@ class MessageService:
         elif rating and feedback:
             feedback.rating = rating
         elif not rating and not feedback:
-            raise ValueError('rating cannot be None when feedback not exists')
+            raise ValueError("rating cannot be None when feedback not exists")
         else:
             feedback = MessageFeedback(
                 app_id=app_model.id,
                 conversation_id=message.conversation_id,
                 message_id=message.id,
                 rating=rating,
-                from_source=('user' if isinstance(user, EndUser) else 'admin'),
+                from_source=("user" if isinstance(user, EndUser) else "admin"),
                 from_end_user_id=(user.id if isinstance(user, EndUser) else None),
                 from_account_id=(user.id if isinstance(user, Account) else None),
             )
@@ -167,13 +184,17 @@ class MessageService:
 
     @classmethod
     def get_message(cls, app_model: App, user: Optional[Union[Account, EndUser]], message_id: str):
-        message = db.session.query(Message).filter(
-            Message.id == message_id,
-            Message.app_id == app_model.id,
-            Message.from_source == ('api' if isinstance(user, EndUser) else 'console'),
-            Message.from_end_user_id == (user.id if isinstance(user, EndUser) else None),
-            Message.from_account_id == (user.id if isinstance(user, Account) else None),
-        ).first()
+        message = (
+            db.session.query(Message)
+            .filter(
+                Message.id == message_id,
+                Message.app_id == app_model.id,
+                Message.from_source == ("api" if isinstance(user, EndUser) else "console"),
+                Message.from_end_user_id == (user.id if isinstance(user, EndUser) else None),
+                Message.from_account_id == (user.id if isinstance(user, Account) else None),
+            )
+            .first()
+        )
 
         if not message:
             raise MessageNotExistsError()
@@ -181,27 +202,22 @@ class MessageService:
         return message
 
     @classmethod
-    def get_suggested_questions_after_answer(cls, app_model: App, user: Optional[Union[Account, EndUser]],
-                                             message_id: str, invoke_from: InvokeFrom) -> list[Message]:
+    def get_suggested_questions_after_answer(
+        cls, app_model: App, user: Optional[Union[Account, EndUser]], message_id: str, invoke_from: InvokeFrom
+    ) -> list[Message]:
         if not user:
-            raise ValueError('user cannot be None')
+            raise ValueError("user cannot be None")
 
-        message = cls.get_message(
-            app_model=app_model,
-            user=user,
-            message_id=message_id
-        )
+        message = cls.get_message(app_model=app_model, user=user, message_id=message_id)
 
         conversation = ConversationService.get_conversation(
-            app_model=app_model,
-            conversation_id=message.conversation_id,
-            user=user
+            app_model=app_model, conversation_id=message.conversation_id, user=user
         )
 
         if not conversation:
             raise ConversationNotExistsError()
 
-        if conversation.status != 'normal':
+        if conversation.status != "normal":
             raise ConversationCompletedError()
 
         model_manager = ModelManager()
@@ -216,24 +232,23 @@ class MessageService:
             if workflow is None:
                 return []
 
-            app_config = AdvancedChatAppConfigManager.get_app_config(
-                app_model=app_model,
-                workflow=workflow
-            )
+            app_config = AdvancedChatAppConfigManager.get_app_config(app_model=app_model, workflow=workflow)
 
             if not app_config.additional_features.suggested_questions_after_answer:
                 raise SuggestedQuestionsAfterAnswerDisabledError()
 
             model_instance = model_manager.get_default_model_instance(
-                tenant_id=app_model.tenant_id,
-                model_type=ModelType.LLM
+                tenant_id=app_model.tenant_id, model_type=ModelType.LLM
             )
         else:
             if not conversation.override_model_configs:
-                app_model_config = db.session.query(AppModelConfig).filter(
-                    AppModelConfig.id == conversation.app_model_config_id,
-                    AppModelConfig.app_id == app_model.id
-                ).first()
+                app_model_config = (
+                    db.session.query(AppModelConfig)
+                    .filter(
+                        AppModelConfig.id == conversation.app_model_config_id, AppModelConfig.app_id == app_model.id
+                    )
+                    .first()
+                )
             else:
                 conversation_override_model_configs = json.loads(conversation.override_model_configs)
                 app_model_config = AppModelConfig(
@@ -249,16 +264,13 @@ class MessageService:
 
             model_instance = model_manager.get_model_instance(
                 tenant_id=app_model.tenant_id,
-                provider=app_model_config.model_dict['provider'],
+                provider=app_model_config.model_dict["provider"],
                 model_type=ModelType.LLM,
-                model=app_model_config.model_dict['name']
+                model=app_model_config.model_dict["name"],
             )
 
         # get memory of conversation (read-only)
-        memory = TokenBufferMemory(
-            conversation=conversation,
-            model_instance=model_instance
-        )
+        memory = TokenBufferMemory(conversation=conversation, model_instance=model_instance)
 
         histories = memory.get_history_prompt_text(
             max_token_limit=3000,
@@ -267,18 +279,14 @@ class MessageService:
 
         with measure_time() as timer:
             questions = LLMGenerator.generate_suggested_questions_after_answer(
-                tenant_id=app_model.tenant_id,
-                histories=histories
+                tenant_id=app_model.tenant_id, histories=histories
             )
 
         # get tracing instance
         trace_manager = TraceQueueManager(app_id=app_model.id)
         trace_manager.add_trace_task(
             TraceTask(
-                TraceTaskName.SUGGESTED_QUESTION_TRACE,
-                message_id=message_id,
-                suggested_question=questions,
-                timer=timer
+                TraceTaskName.SUGGESTED_QUESTION_TRACE, message_id=message_id, suggested_question=questions, timer=timer
             )
         )
 

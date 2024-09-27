@@ -21,40 +21,22 @@ def test_validate_credentials():
     model = StepfunLargeLanguageModel()
 
     with pytest.raises(CredentialsValidateFailedError):
-        model.validate_credentials(
-            model='step-1-8k',
-            credentials={
-                'api_key': 'invalid_key'
-            }
-        )
+        model.validate_credentials(model="step-1-8k", credentials={"api_key": "invalid_key"})
 
-    model.validate_credentials(
-        model='step-1-8k',
-        credentials={
-            'api_key': os.environ.get('STEPFUN_API_KEY')
-        }
-    )
+    model.validate_credentials(model="step-1-8k", credentials={"api_key": os.environ.get("STEPFUN_API_KEY")})
+
 
 def test_invoke_model():
     model = StepfunLargeLanguageModel()
 
     response = model.invoke(
-        model='step-1-8k',
-        credentials={
-            'api_key': os.environ.get('STEPFUN_API_KEY')
-        },
-        prompt_messages=[
-            UserPromptMessage(
-                content='Hello World!'
-            )
-        ],
-        model_parameters={
-            'temperature': 0.9,
-            'top_p': 0.7
-        },
-        stop=['Hi'],
+        model="step-1-8k",
+        credentials={"api_key": os.environ.get("STEPFUN_API_KEY")},
+        prompt_messages=[UserPromptMessage(content="Hello World!")],
+        model_parameters={"temperature": 0.9, "top_p": 0.7},
+        stop=["Hi"],
         stream=False,
-        user="abc-123"
+        user="abc-123",
     )
 
     assert isinstance(response, LLMResult)
@@ -65,24 +47,17 @@ def test_invoke_stream_model():
     model = StepfunLargeLanguageModel()
 
     response = model.invoke(
-        model='step-1-8k',
-        credentials={
-            'api_key': os.environ.get('STEPFUN_API_KEY')
-        },
+        model="step-1-8k",
+        credentials={"api_key": os.environ.get("STEPFUN_API_KEY")},
         prompt_messages=[
             SystemPromptMessage(
-                content='You are a helpful AI assistant.',
+                content="You are a helpful AI assistant.",
             ),
-            UserPromptMessage(
-                content='Hello World!'
-            )
+            UserPromptMessage(content="Hello World!"),
         ],
-        model_parameters={
-            'temperature': 0.9,
-            'top_p': 0.7
-        },
+        model_parameters={"temperature": 0.9, "top_p": 0.7},
         stream=True,
-        user="abc-123"
+        user="abc-123",
     )
 
     assert isinstance(response, Generator)
@@ -98,10 +73,7 @@ def test_get_customizable_model_schema():
     model = StepfunLargeLanguageModel()
 
     schema = model.get_customizable_model_schema(
-        model='step-1-8k',
-        credentials={
-            'api_key': os.environ.get('STEPFUN_API_KEY')
-        }
+        model="step-1-8k", credentials={"api_key": os.environ.get("STEPFUN_API_KEY")}
     )
     assert isinstance(schema, AIModelEntity)
 
@@ -110,65 +82,42 @@ def test_invoke_chat_model_with_tools():
     model = StepfunLargeLanguageModel()
 
     result = model.invoke(
-        model='step-1-8k',
-        credentials={
-            'api_key': os.environ.get('STEPFUN_API_KEY')
-        },
+        model="step-1-8k",
+        credentials={"api_key": os.environ.get("STEPFUN_API_KEY")},
         prompt_messages=[
             SystemPromptMessage(
-                content='You are a helpful AI assistant.',
+                content="You are a helpful AI assistant.",
             ),
             UserPromptMessage(
                 content="what's the weather today in Shanghai?",
-            )
+            ),
         ],
-        model_parameters={
-            'temperature': 0.9,
-            'max_tokens': 100
-        },
+        model_parameters={"temperature": 0.9, "max_tokens": 100},
         tools=[
             PromptMessageTool(
-                name='get_weather',
-                description='Determine weather in my location',
+                name="get_weather",
+                description="Determine weather in my location",
                 parameters={
                     "type": "object",
                     "properties": {
-                      "location": {
-                        "type": "string",
-                        "description": "The city and state e.g. San Francisco, CA"
-                      },
-                      "unit": {
-                        "type": "string",
-                        "enum": [
-                          "c",
-                          "f"
-                        ]
-                      }
+                        "location": {"type": "string", "description": "The city and state e.g. San Francisco, CA"},
+                        "unit": {"type": "string", "enum": ["c", "f"]},
                     },
-                    "required": [
-                      "location"
-                    ]
-                  }
+                    "required": ["location"],
+                },
             ),
             PromptMessageTool(
-                name='get_stock_price',
-                description='Get the current stock price',
+                name="get_stock_price",
+                description="Get the current stock price",
                 parameters={
                     "type": "object",
-                    "properties": {
-                      "symbol": {
-                        "type": "string",
-                        "description": "The stock symbol"
-                      }
-                    },
-                    "required": [
-                      "symbol"
-                    ]
-                  }
-            )
+                    "properties": {"symbol": {"type": "string", "description": "The stock symbol"}},
+                    "required": ["symbol"],
+                },
+            ),
         ],
         stream=False,
-        user="abc-123"
+        user="abc-123",
     )
 
     assert isinstance(result, LLMResult)

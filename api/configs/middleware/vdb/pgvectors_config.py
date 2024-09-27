@@ -6,30 +6,30 @@ from pydantic_settings import BaseSettings
 
 class PGVectoRSConfig(BaseSettings):
     """
-    PGVectoRS configs
+    Configuration settings for PGVecto.RS (Rust-based vector extension for PostgreSQL)
     """
 
     PGVECTO_RS_HOST: Optional[str] = Field(
-        description='PGVectoRS host',
+        description="Hostname or IP address of the PostgreSQL server with PGVecto.RS extension (e.g., 'localhost')",
         default=None,
     )
 
     PGVECTO_RS_PORT: Optional[PositiveInt] = Field(
-        description='PGVectoRS port',
+        description="Port number on which the PostgreSQL server with PGVecto.RS is listening (default is 5431)",
         default=5431,
     )
 
     PGVECTO_RS_USER: Optional[str] = Field(
-        description='PGVectoRS user',
+        description="Username for authenticating with the PostgreSQL database using PGVecto.RS",
         default=None,
     )
 
     PGVECTO_RS_PASSWORD: Optional[str] = Field(
-        description='PGVectoRS password',
+        description="Password for authenticating with the PostgreSQL database using PGVecto.RS",
         default=None,
     )
 
     PGVECTO_RS_DATABASE: Optional[str] = Field(
-        description='PGVectoRS database',
+        description="Name of the PostgreSQL database with PGVecto.RS extension to connect to",
         default=None,
     )
