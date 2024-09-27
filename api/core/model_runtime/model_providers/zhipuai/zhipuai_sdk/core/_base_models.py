@@ -4,17 +4,12 @@ import inspect
 import os
 from collections.abc import Callable
 from datetime import date, datetime
-from typing import TYPE_CHECKING, Any, ClassVar, Generic, Literal, TypeGuard, TypeVar, cast
+from typing import TYPE_CHECKING, Any, ClassVar, Generic, Literal, TypeGuard, TypeVar, cast, runtime_checkable
 
 import pydantic
 import pydantic.generics
 from pydantic.fields import FieldInfo
-from typing_extensions import (
-    ParamSpec,
-    Protocol,
-    override,
-    runtime_checkable
-)
+from typing_extensions import ParamSpec, Protocol, override
 
 from ._base_compat import (
     PYDANTIC_V2,
