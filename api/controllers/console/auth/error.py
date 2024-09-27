@@ -49,3 +49,9 @@ class EmailPasswordLoginLimitError(BaseHTTPException):
         "Too many incorrect password attempts. Please verify your identity with the email code to complete login."
     )
     code = 429
+
+
+class EmailCodeLoginRateLimitExceededError(BaseHTTPException):
+    error_code = "email_code_login_rate_limit_exceeded"
+    description = "Too many login emails have been sent. Please try again in 5 minutes."
+    code = 429

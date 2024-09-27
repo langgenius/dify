@@ -19,6 +19,7 @@ from controllers.console.error import NotAllowedCreateWorkspace, NotAllowedRegis
 from controllers.console.setup import setup_required
 from events.tenant_event import tenant_was_created
 from libs.helper import email, get_remote_ip
+from libs.password import valid_password
 from models.account import Account
 from services.account_service import AccountService, TenantService
 from services.errors.workspace import WorkSpaceNotAllowedCreateError
@@ -33,7 +34,7 @@ class LoginApi(Resource):
         parser = reqparse.RequestParser()
         parser.add_argument("email", type=email, required=True, location="json")
         parser.add_argument("password", type=str, required=True, location="json")
-        parser.add_argument("remember_me", type=bool, required=False, default=False, location="json")
+        parser.add_argument("remember_me", type=valid_password, required=False, default=False, location="json")
         args = parser.parse_args()
 
         is_login_error_rate_limit = AccountService.is_login_error_rate_limit(args["email"])
@@ -84,16 +85,19 @@ class ResetPasswordSendEmailApi(Resource):
         parser.add_argument("language", type=str, required=False, location="json")
         args = parser.parse_args()
 
+        if args["language"] is not None and args["language"] == "zh-Hans":
+            language = "zh-Hans"
+        else:
+            language = "en-US"
+
         account = AccountService.get_user_through_email(args["email"])
         if account is None:
             if dify_config.ALLOW_REGISTER:
-                token = AccountService.send_reset_password_email(
-                    email=args["email"], language=args["language"] or "en-US"
-                )
+                token = AccountService.send_reset_password_email(email=args["email"], language=language)
             else:
                 raise NotAllowedRegister()
         else:
-            token = AccountService.send_reset_password_email(account=account, language=args["language"])
+            token = AccountService.send_reset_password_email(account=account, language=language)
 
         return {"result": "success", "data": token}
 
@@ -106,16 +110,19 @@ class EmailCodeLoginSendEmailApi(Resource):
         parser.add_argument("language", type=str, required=False, location="json")
         args = parser.parse_args()
 
+        if args["language"] is not None and args["language"] == "zh-Hans":
+            language = "zh-Hans"
+        else:
+            language = "en-US"
+
         account = AccountService.get_user_through_email(args["email"])
         if account is None:
             if dify_config.ALLOW_REGISTER:
-                token = AccountService.send_email_code_login_email(
-                    email=args["email"], language=args["language"] or "en-US"
-                )
+                token = AccountService.send_email_code_login_email(email=args["email"], language=language)
             else:
                 raise NotAllowedRegister()
         else:
-            token = AccountService.send_email_code_login_email(account=account, language=args["language"])
+            token = AccountService.send_email_code_login_email(account=account, language=language)
 
         return {"result": "success", "data": token}
 

@@ -1,5 +1,4 @@
 import base64
-import logging
 import secrets
 
 from flask import request
@@ -13,7 +12,6 @@ from controllers.console.auth.error import (
     InvalidEmailError,
     InvalidTokenError,
     PasswordMismatchError,
-    PasswordResetRateLimitExceededError,
 )
 from controllers.console.error import NotAllowedCreateWorkspace, NotAllowedRegister
 from controllers.console.setup import setup_required
@@ -23,7 +21,6 @@ from libs.helper import email, get_remote_ip
 from libs.password import hash_password, valid_password
 from models import Account
 from services.account_service import AccountService, TenantService
-from services.errors.account import RateLimitExceededError
 
 
 class ForgotPasswordSendEmailApi(Resource):
@@ -34,23 +31,20 @@ class ForgotPasswordSendEmailApi(Resource):
         parser.add_argument("language", type=str, required=False, location="json")
         args = parser.parse_args()
 
+        if args["language"] is not None and args["language"] == "zh-Hans":
+            language = "zh-Hans"
+        else:
+            language = "en-US"
+
         account = Account.query.filter_by(email=args["email"]).first()
         token = None
         if account is None:
             if dify_config.ALLOW_REGISTER:
-                token = AccountService.send_reset_password_email(
-                    email=args["email"], language=args["language"] or "en-US"
-                )
+                token = AccountService.send_reset_password_email(email=args["email"], language=language)
             else:
                 raise NotAllowedRegister()
-        elif account:
-            try:
-                token = AccountService.send_reset_password_email(
-                    account=account, email=args["email"], language=args["language"] or "en-US"
-                )
-            except RateLimitExceededError:
-                logging.warning(f"Rate limit exceeded for email: {args['email']}")
-                raise PasswordResetRateLimitExceededError()
+        else:
+            token = AccountService.send_reset_password_email(account=account, email=args["email"], language=language)
 
         return {"result": "success", "data": token}
 
