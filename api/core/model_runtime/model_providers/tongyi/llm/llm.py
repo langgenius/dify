@@ -18,7 +18,7 @@ from dashscope.common.error import (
     UnsupportedModel,
 )
 
-from core.model_runtime.entities.llm_entities import LLMResult, LLMResultChunk, LLMResultChunkDelta
+from core.model_runtime.entities.llm_entities import LLMMode, LLMResult, LLMResultChunk, LLMResultChunkDelta
 from core.model_runtime.entities.message_entities import (
     AssistantPromptMessage,
     ImagePromptMessageContent,
@@ -35,6 +35,7 @@ from core.model_runtime.entities.model_entities import (
     FetchFrom,
     I18nObject,
     ModelFeature,
+    ModelPropertyKey,
     ModelType,
     ParameterRule,
     ParameterType,
@@ -97,6 +98,11 @@ class TongyiLargeLanguageModel(LargeLanguageModel):
         :param tools: tools for tool calling
         :return:
         """
+        # Check if the model was added via get_customizable_model_schema
+        if self.get_customizable_model_schema(model, credentials) is not None:
+            # For custom models, tokens are not calculated.
+            return 0
+
         if model in {"qwen-turbo-chat", "qwen-plus-chat"}:
             model = model.replace("-chat", "")
         if model == "farui-plus":
@@ -537,55 +543,51 @@ class TongyiLargeLanguageModel(LargeLanguageModel):
         :param credentials: model credentials
         :return: AIModelEntity or None
         """
-        rules = [
-            ParameterRule(
-                name="temperature",
-                type=ParameterType.FLOAT,
-                use_template="temperature",
-                label=I18nObject(zh_Hans="温度", en_US="Temperature"),
-            ),
-            ParameterRule(
-                name="top_p",
-                type=ParameterType.FLOAT,
-                use_template="top_p",
-                label=I18nObject(zh_Hans="Top P", en_US="Top P"),
-            ),
-            ParameterRule(
-                name="top_k",
-                type=ParameterType.INT,
-                min=0,
-                max=99,
-                label=I18nObject(zh_Hans="top_k", en_US="top_k"),
-            ),
-            ParameterRule(
-                name="max_tokens",
-                type=ParameterType.INT,
-                min=1,
-                max=128000,
-                default=1024,
-                label=I18nObject(zh_Hans="最大生成长度", en_US="Max Tokens"),
-            ),
-            ParameterRule(
-                name="seed",
-                type=ParameterType.INT,
-                default=1234,
-                label=I18nObject(zh_Hans="随机种子", en_US="Random Seed"),
-            ),
-            ParameterRule(
-                name="repetition_penalty",
-                type=ParameterType.FLOAT,
-                default=1.1,
-                label=I18nObject(zh_Hans="重复惩罚", en_US="Repetition Penalty"),
-            ),
-        ]
-
-        entity = AIModelEntity(
+        return AIModelEntity(
             model=model,
-            label=I18nObject(en_US=model),
-            fetch_from=FetchFrom.CUSTOMIZABLE_MODEL,
+            label=I18nObject(en_US=model, zh_Hans=model),
             model_type=ModelType.LLM,
-            model_properties={},
-            parameter_rules=rules,
+            features=[ModelFeature.TOOL_CALL, ModelFeature.MULTI_TOOL_CALL, ModelFeature.STREAM_TOOL_CALL]
+            if credentials.get("function_calling_type") == "tool_call"
+            else [],
+            fetch_from=FetchFrom.CUSTOMIZABLE_MODEL,
+            model_properties={
+                ModelPropertyKey.CONTEXT_SIZE: int(credentials.get("context_size", 8000)),
+                ModelPropertyKey.MODE: LLMMode.CHAT.value,
+            },
+            parameter_rules=[
+                ParameterRule(
+                    name="temperature",
+                    use_template="temperature",
+                    label=I18nObject(en_US="Temperature", zh_Hans="温度"),
+                    type=ParameterType.FLOAT,
+                ),
+                ParameterRule(
+                    name="max_tokens",
+                    use_template="max_tokens",
+                    default=512,
+                    min=1,
+                    max=int(credentials.get("max_tokens", 1024)),
+                    label=I18nObject(en_US="Max Tokens", zh_Hans="最大标记"),
+                    type=ParameterType.INT,
+                ),
+                ParameterRule(
+                    name="top_p",
+                    use_template="top_p",
+                    label=I18nObject(en_US="Top P", zh_Hans="Top P"),
+                    type=ParameterType.FLOAT,
+                ),
+                ParameterRule(
+                    name="top_k",
+                    use_template="top_k",
+                    label=I18nObject(en_US="Top K", zh_Hans="Top K"),
+                    type=ParameterType.FLOAT,
+                ),
+                ParameterRule(
+                    name="frequency_penalty",
+                    use_template="frequency_penalty",
+                    label=I18nObject(en_US="Frequency Penalty", zh_Hans="重复惩罚"),
+                    type=ParameterType.FLOAT,
+                ),
+            ],
         )
-
-        return entity

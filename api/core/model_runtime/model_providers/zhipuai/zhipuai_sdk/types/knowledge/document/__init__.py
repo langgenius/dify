@@ -1,8 +1,8 @@
-from .document import DocumentData, DocumentFailedInfo, DocumentObject, DocumentSuccessinfo
+from .document import DocumentData, DocumentFailedInfo, DocumentObject, DocumentSuccessInfo
 
 __all__ = [
     "DocumentData",
     "DocumentObject",
-    "DocumentSuccessinfo",
+    "DocumentSuccessInfo",
     "DocumentFailedInfo",
 ]

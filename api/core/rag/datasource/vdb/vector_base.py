@@ -45,6 +45,7 @@ class BaseVector(ABC):
     def search_by_full_text(self, query: str, **kwargs: Any) -> list[Document]:
         raise NotImplementedError
 
+    @abstractmethod
     def delete(self) -> None:
         raise NotImplementedError
 

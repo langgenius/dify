@@ -1,3 +1,5 @@
+# this model corresponds to qwen-max, for more details
+# please refer to (https://help.aliyun.com/zh/model-studio/getting-started/models#cf6cc4aa2aokf)
 model: qwen-max-1201
 label:
   en_US: qwen-max-1201
@@ -66,12 +68,6 @@ parameter_rules:
     help:
       zh_Hans: 用于控制模型生成时的重复度。提高repetition_penalty时可以降低模型生成的重复度。1.0表示不做惩罚。
       en_US: Used to control the repeatability when generating models. Increasing repetition_penalty can reduce the duplication of model generation. 1.0 means no punishment.
-  - name: enable_search
-    type: boolean
-    default: false
-    help:
-      zh_Hans: 模型内置了互联网搜索服务，该参数控制模型在生成文本时是否参考使用互联网搜索结果。启用互联网搜索，模型会将搜索结果作为文本生成过程中的参考信息，但模型会基于其内部逻辑“自行判断”是否使用互联网搜索结果。
-      en_US: The model has a built-in Internet search service. This parameter controls whether the model refers to Internet search results when generating text. When Internet search is enabled, the model will use the search results as reference information in the text generation process, but the model will "judge" whether to use Internet search results based on its internal logic.
   - name: response_format
     use_template: response_format
 pricing:
