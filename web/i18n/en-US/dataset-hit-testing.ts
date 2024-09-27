@@ -1,6 +1,7 @@
 const translation = {
   title: 'Retrieval Testing',
-  desc: 'Test the hitting effect of the Knowledge based on the given query text.',
+  settingTitle: 'Retrieval Setting',
+  desc: 'Test the hitting effect of the Knowledge based on the given query text',
   dateTimeFormat: 'MM/DD/YYYY hh:mm A',
   recents: 'Recents',
   table: {

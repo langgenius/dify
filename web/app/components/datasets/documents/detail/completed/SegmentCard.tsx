@@ -36,6 +36,12 @@ export type UsageScene = 'doc' | 'hitTesting'
 type ISegmentCardProps = {
   loading: boolean
   detail?: SegmentDetailModel & { document: { name: string } }
+  contentExternal?: string
+  refSource?: {
+    title: string
+    uri: string
+  }
+  isExternal?: boolean
   score?: number
   onClick?: () => void
   onChangeSwitch?: (segId: string, enabled: boolean) => Promise<void>
@@ -48,6 +54,8 @@ type ISegmentCardProps = {
 
 const SegmentCard: FC<ISegmentCardProps> = ({
   detail = {},
+  contentExternal,
+  refSource,
   score,
   onClick,
   onChangeSwitch,
@@ -87,6 +95,9 @@ const SegmentCard: FC<ISegmentCardProps> = ({
         </>
       )
     }
+
+    if (contentExternal)
+      return contentExternal
 
     return content
   }
@@ -201,8 +212,8 @@ const SegmentCard: FC<ISegmentCardProps> = ({
                 <Divider />
                 <div className="relative flex items-center w-full">
                   <DocumentTitle
-                    name={detail?.document?.name || ''}
-                    extension={(detail?.document?.name || '').split('.').pop() || 'txt'}
+                    name={detail?.document?.name || refSource?.title || ''}
+                    extension={(detail?.document?.name || refSource?.title || '').split('.').pop() || 'txt'}
                     wrapperCls='w-full'
                     iconCls="!h-4 !w-4 !bg-contain"
                     textCls="text-xs text-gray-700 !font-normal overflow-hidden whitespace-nowrap text-ellipsis"
