@@ -73,6 +73,14 @@ class TextPromptMessageContent(PromptMessageContent):
 
     type: PromptMessageContentType = PromptMessageContentType.TEXT
 
+    @property
+    def text(self) -> str:
+        return self.data
+
+    @text.setter
+    def text(self, value: str):
+        self.data = value
+
 
 class ImagePromptMessageContent(PromptMessageContent):
     """

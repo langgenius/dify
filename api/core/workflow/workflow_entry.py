@@ -215,22 +215,16 @@ class WorkflowEntry:
         if not value:
             return None
 
-        new_value = dict(value) if value else {}
-        if isinstance(new_value, dict):
-            for key, val in new_value.items():
-                if isinstance(val, FileVar):
-                    new_value[key] = val.to_dict()
-                elif isinstance(val, list):
-                    new_val = []
-                    for v in val:
-                        if isinstance(v, FileVar):
-                            new_val.append(v.to_dict())
-                        else:
-                            new_val.append(v)
+        def convert_value(v):
+            if isinstance(v, FileVar):
+                return v.to_dict()
+            elif isinstance(v, list):
+                return [convert_value(item) for item in v]
+            elif isinstance(v, dict):
+                return {k: convert_value(v) for k, v in v.items()}
+            return v
 
-                    new_value[key] = new_val
-
-        return new_value
+        return {k: convert_value(v) for k, v in value.items()}
 
     @classmethod
     def mapping_user_inputs_to_variable_pool(

@@ -56,6 +56,11 @@ export const getOperators = (type?: VarType) => {
         ComparisonOperator.empty,
         ComparisonOperator.notEmpty,
       ]
+    case VarType.arrayFile:
+      return [
+        ComparisonOperator.empty,
+        ComparisonOperator.notEmpty,
+      ]
     default:
       return [
         ComparisonOperator.is,
