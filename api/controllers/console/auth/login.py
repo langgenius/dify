@@ -19,6 +19,7 @@ from controllers.console.error import NotAllowedCreateWorkspace, NotAllowedRegis
 from controllers.console.setup import setup_required
 from events.tenant_event import tenant_was_created
 from libs.helper import email, get_remote_ip
+from libs.password import valid_password
 from models.account import Account
 from services.account_service import AccountService, TenantService
 from services.errors.workspace import WorkSpaceNotAllowedCreateError
@@ -33,7 +34,7 @@ class LoginApi(Resource):
         parser = reqparse.RequestParser()
         parser.add_argument("email", type=email, required=True, location="json")
         parser.add_argument("password", type=str, required=True, location="json")
-        parser.add_argument("remember_me", type=bool, required=False, default=False, location="json")
+        parser.add_argument("remember_me", type=valid_password, required=False, default=False, location="json")
         args = parser.parse_args()
 
         is_login_error_rate_limit = AccountService.is_login_error_rate_limit(args["email"])
