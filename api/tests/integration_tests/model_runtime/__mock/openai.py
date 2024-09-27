@@ -59,7 +59,7 @@ def mock_openai(
 MOCK = os.getenv("MOCK_SWITCH", "false").lower() == "true"
 
 
-@pytest.fixture
+@pytest.fixture()
 def setup_openai_mock(request, monkeypatch):
     methods = request.param if hasattr(request, "param") else []
     if MOCK:

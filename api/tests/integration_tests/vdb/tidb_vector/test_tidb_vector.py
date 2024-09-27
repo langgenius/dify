@@ -7,7 +7,7 @@ from models.dataset import Document
 from tests.integration_tests.vdb.test_vector_store import AbstractVectorTest, get_example_text, setup_mock_redis
 
 
-@pytest.fixture
+@pytest.fixture()
 def tidb_vector():
     return TiDBVector(
         collection_name="test_collection",
@@ -48,13 +48,13 @@ def test_tidb_vector(setup_mock_redis, setup_tidbvector_mock, tidb_vector, mock_
     TiDBVectorTest(vector=tidb_vector).run_all_tests()
 
 
-@pytest.fixture
+@pytest.fixture()
 def mock_session():
     with patch("core.rag.datasource.vdb.tidb_vector.tidb_vector.Session", new_callable=MagicMock) as mock_session:
         yield mock_session
 
 
-@pytest.fixture
+@pytest.fixture()
 def setup_tidbvector_mock(tidb_vector, mock_session):
     with patch("core.rag.datasource.vdb.tidb_vector.tidb_vector.create_engine"):
         with patch.object(tidb_vector._engine, "connect"):

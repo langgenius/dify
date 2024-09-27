@@ -14,7 +14,7 @@ from tests.integration_tests.model_runtime.__mock.huggingface_tei import MockTEI
 MOCK = os.getenv("MOCK_SWITCH", "false").lower() == "true"
 
 
-@pytest.fixture
+@pytest.fixture()
 def setup_tei_mock(request, monkeypatch: pytest.MonkeyPatch):
     if MOCK:
         monkeypatch.setattr(TeiHelper, "get_tei_extra_parameter", MockTEIClass.get_tei_extra_parameter)

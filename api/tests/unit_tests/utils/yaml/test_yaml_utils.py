@@ -10,7 +10,7 @@ INVALID_YAML_FILE = "invalid_yaml.yaml"
 NON_EXISTING_YAML_FILE = "non_existing_file.yaml"
 
 
-@pytest.fixture
+@pytest.fixture()
 def prepare_example_yaml_file(tmp_path, monkeypatch) -> str:
     monkeypatch.chdir(tmp_path)
     file_path = tmp_path.joinpath(EXAMPLE_YAML_FILE)
@@ -33,7 +33,7 @@ def prepare_example_yaml_file(tmp_path, monkeypatch) -> str:
     return str(file_path)
 
 
-@pytest.fixture
+@pytest.fixture()
 def prepare_invalid_yaml_file(tmp_path, monkeypatch) -> str:
     monkeypatch.chdir(tmp_path)
     file_path = tmp_path.joinpath(INVALID_YAML_FILE)

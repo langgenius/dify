@@ -5,7 +5,7 @@ import pytest
 from core.helper.position_helper import get_position_map, is_filtered, pin_position_map, sort_by_position_map
 
 
-@pytest.fixture
+@pytest.fixture()
 def prepare_example_positions_yaml(tmp_path, monkeypatch) -> str:
     monkeypatch.chdir(tmp_path)
     tmp_path.joinpath("example_positions.yaml").write_text(
@@ -24,7 +24,7 @@ def prepare_example_positions_yaml(tmp_path, monkeypatch) -> str:
     return str(tmp_path)
 
 
-@pytest.fixture
+@pytest.fixture()
 def prepare_empty_commented_positions_yaml(tmp_path, monkeypatch) -> str:
     monkeypatch.chdir(tmp_path)
     tmp_path.joinpath("example_positions_all_commented.yaml").write_text(

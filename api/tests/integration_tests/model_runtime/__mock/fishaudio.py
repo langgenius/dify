@@ -70,7 +70,7 @@ def mock_fishaudio(
 MOCK = os.getenv("MOCK_SWITCH", "false").lower() == "true"
 
 
-@pytest.fixture
+@pytest.fixture()
 def setup_fishaudio_mock(request, monkeypatch):
     methods = request.param if hasattr(request, "param") else []
     if MOCK:
