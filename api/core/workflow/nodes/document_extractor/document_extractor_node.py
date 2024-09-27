@@ -1,3 +1,4 @@
+import csv
 import io
 from typing import cast
 
@@ -81,6 +82,8 @@ def _extract_text(*, file_content: bytes, mime_type: str) -> str:
         "application/msword",
     }:
         return _extract_text_from_doc(file_content)
+    elif mime_type == "text/csv":
+        return _extract_text_from_csv(file_content)
     else:
         raise UnsupportedFileTypeError(f"Unsupported MIME type: {mime_type}")
 
@@ -141,3 +144,23 @@ def _extract_text_from_file(file: File):
     file_content = _download_file_content(file)
     extracted_text = _extract_text(file_content=file_content, mime_type=file.mime_type)
     return extracted_text
+
+
+def _extract_text_from_csv(file_content: bytes) -> str:
+    try:
+        csv_file = io.StringIO(file_content.decode("utf-8"))
+        csv_reader = csv.reader(csv_file)
+        rows = list(csv_reader)
+
+        if not rows:
+            return ""
+
+        # Create markdown table
+        markdown_table = "| " + " | ".join(rows[0]) + " |\n"
+        markdown_table += "| " + " | ".join(["---"] * len(rows[0])) + " |\n"
+        for row in rows[1:]:
+            markdown_table += "| " + " | ".join(row) + " |\n"
+
+        return markdown_table.strip()
+    except Exception as e:
+        raise TextExtractionError(f"Failed to extract text from CSV: {str(e)}") from e
