@@ -1,6 +1,7 @@
 const translation = {
   title: '召回测试',
-  desc: '基于给定的查询文本测试知识库的召回效果。',
+  settingTitle: '召回设置',
+  desc: '基于给定的查询文本测试知识库的召回效果',
   dateTimeFormat: 'YYYY-MM-DD HH:mm',
   recents: '最近查询',
   table: {
