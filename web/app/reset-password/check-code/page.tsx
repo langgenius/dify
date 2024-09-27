@@ -1,5 +1,4 @@
 'use client'
-import Link from 'next/link'
 import { RiArrowLeftLine, RiMailSendFill } from '@remixicon/react'
 import { useTranslation } from 'react-i18next'
 import { useState } from 'react'
@@ -54,7 +53,7 @@ export default function CheckCode() {
       if (res.result === 'success') {
         const params = new URLSearchParams(searchParams)
         params.set('token', encodeURIComponent(res.data))
-        router.push(`/reset-password/check-code?${params.toString()}`)
+        router.replace(`/reset-password/check-code?${params.toString()}`)
       }
     }
     catch (error) { console.error(error) }
@@ -83,11 +82,11 @@ export default function CheckCode() {
     <div className='py-2'>
       <div className='bg-gradient-to-r from-background-gradient-mask-transparent via-divider-regular to-background-gradient-mask-transparent h-px'></div>
     </div>
-    <Link href='/signin' className='flex items-center justify-center h-9 text-text-tertiary'>
+    <div onClick={() => router.back()} className='flex items-center justify-center h-9 text-text-tertiary cursor-pointer'>
       <div className='inline-block p-1 rounded-full bg-background-default-dimm'>
         <RiArrowLeftLine size={12} />
       </div>
-      <span className='ml-2 system-xs-regular'>{t('login.checkCode.useAnotherMethod')}</span>
-    </Link>
+      <span className='ml-2 system-xs-regular'>{t('login.back')}</span>
+    </div>
   </div>
 }

@@ -93,6 +93,7 @@ const translation = {
   backToLogin: 'Back to login',
   setYourAccount: 'Set Your Account',
   enterYourName: 'Please enter your username',
+  back: 'Back',
 }
 
 export default translation

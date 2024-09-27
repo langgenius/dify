@@ -94,6 +94,7 @@ const translation = {
   backToLogin: '返回登录',
   setYourAccount: '设置您的账户',
   enterYourName: '请输入用户名',
+  back: '返回',
 }
 
 export default translation

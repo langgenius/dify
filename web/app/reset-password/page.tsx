@@ -79,7 +79,7 @@ export default function CheckCode() {
     <div className='py-2'>
       <div className='bg-gradient-to-r from-background-gradient-mask-transparent via-divider-regular to-background-gradient-mask-transparent h-px'></div>
     </div>
-    <Link href='/signin' className='flex items-center justify-center h-9 text-text-tertiary'>
+    <Link href={`/signin?${searchParams.toString()}`} className='flex items-center justify-center h-9 text-text-tertiary'>
       <div className='inline-block p-1 rounded-full bg-background-default-dimm'>
         <RiArrowLeftLine size={12} />
       </div>
