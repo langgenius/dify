@@ -680,7 +680,7 @@ class RegisterService:
                 tenant_was_created.send(tenant)
             else:
                 # SELF_HOSTED just have one tenant
-                tenant = Tenant.query.filter_by(id=1).first()
+                tenant = Tenant.query.first()
                 TenantService.create_tenant_member(tenant, account, role="user")
                 account.current_tenant = tenant
 
