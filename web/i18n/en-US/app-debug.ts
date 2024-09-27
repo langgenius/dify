@@ -367,6 +367,9 @@ const translation = {
         createPlaceholder: '+ File extension, e.g .doc',
       },
     },
+    'uploadFileTypes': 'Upload File Types',
+    'localUpload': 'Local Upload',
+    'both': 'Both',
     'maxNumberOfUploads': 'Max number of uploads',
     'maxNumberTip': 'Max {{size}} each',
     'errorMsg': {
