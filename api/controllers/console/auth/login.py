@@ -33,8 +33,8 @@ class LoginApi(Resource):
         """Authenticate user and login."""
         parser = reqparse.RequestParser()
         parser.add_argument("email", type=email, required=True, location="json")
-        parser.add_argument("password", type=str, required=True, location="json")
-        parser.add_argument("remember_me", type=valid_password, required=False, default=False, location="json")
+        parser.add_argument("password", type=valid_password, required=True, location="json")
+        parser.add_argument("remember_me", type=bool, required=False, default=False, location="json")
         args = parser.parse_args()
 
         is_login_error_rate_limit = AccountService.is_login_error_rate_limit(args["email"])
