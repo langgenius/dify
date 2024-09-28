@@ -1,4 +1,4 @@
-import React, { useState } from 'react'
+import React, { useEffect, useState } from 'react'
 import {
   RiAddLine,
   RiArrowDownSLine,
@@ -15,17 +15,22 @@ type ApiItem = {
 
 type ExternalApiSelectProps = {
   items: ApiItem[]
-  defaultValue?: string
+  value?: string
   onSelect: (item: ApiItem) => void
 }
 
-const ExternalApiSelect: React.FC<ExternalApiSelectProps> = ({ items, defaultValue, onSelect }) => {
+const ExternalApiSelect: React.FC<ExternalApiSelectProps> = ({ items, value, onSelect }) => {
   const { t } = useTranslation()
   const [isOpen, setIsOpen] = useState(false)
   const router = useRouter()
   const [selectedItem, setSelectedItem] = useState<ApiItem | null>(
-    items.find(item => item.value === defaultValue) || null,
+    items.find(item => item.value === value) || null,
   )
+
+  useEffect(() => {
+    const newSelectedItem = items.find(item => item.value === value) || null
+    setSelectedItem(newSelectedItem)
+  }, [value, items])
 
   const handleAddNewAPI = () => {
     router.push('/datasets?openExternalApiPanel=true')
@@ -40,7 +45,7 @@ const ExternalApiSelect: React.FC<ExternalApiSelectProps> = ({ items, defaultVal
   return (
     <div className="relative w-full">
       <div
-        className={`flex items-center justify-between cursor-point px-2 py-1 gap-0.5 self-stretch rounded-lg 
+        className={`flex items-center justify-between cursor-pointer px-2 py-1 gap-0.5 self-stretch rounded-lg 
         bg-components-input-bg-normal hover:bg-state-base-hover-alt ${isOpen && 'bg-state-base-hover-alt'}`}
         onClick={() => setIsOpen(!isOpen)}
       >

@@ -47,6 +47,11 @@ const DatasetItem: FC<Props> = ({
     hideSettingsModal()
   }, [hideSettingsModal, onChange])
 
+  const handleRemove = useCallback((e: React.MouseEvent) => {
+    e.stopPropagation()
+    onRemove()
+  }, [onRemove])
+
   return (
     <div className={`flex items-center h-10 justify-between rounded-xl px-2 border-[0.5px] 
       border-components-panel-border-subtle cursor-pointer group/dataset-item 
@@ -71,12 +76,15 @@ const DatasetItem: FC<Props> = ({
       {!readonly && (
         <div className='hidden group-hover/dataset-item:flex shrink-0 ml-2  items-center space-x-1'>
           <ActionButton
-            onClick={showSettingsModal}
+            onClick={(e) => {
+              e.stopPropagation()
+              showSettingsModal()
+            }}
           >
             <RiEditLine className='w-4 h-4 flex-shrink-0 text-text-tertiary' />
           </ActionButton>
           <ActionButton
-            onClick={onRemove}
+            onClick={handleRemove}
             state={ActionButtonState.Destructive}
             onMouseEnter={() => setIsDeleteHovered(true)}
             onMouseLeave={() => setIsDeleteHovered(false)}
