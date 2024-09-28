@@ -1,0 +1,22 @@
+identity:
+  name: markdown_to_pdf
+  author: Bowen Liang
+  label:
+    en_US: Markdown to PDF file
+    zh_Hans: 从Markdown生成PDF文件
+description:
+  human:
+    en_US: A tool for generating PDF file from Markdown text
+    zh_Hans: 一个用于将Markdown转换为PDF文件的工具
+  llm: A tool for generating PDF file from Markdown text
+parameters:
+  - name: markdown_text
+    type: string
+    required: true
+    label:
+      en_US: Markdown text
+      zh_Hans: Markdown格式文本
+    human_description:
+      en_US: Markdown text
+      zh_Hans: Markdown格式文本
+    form: llm

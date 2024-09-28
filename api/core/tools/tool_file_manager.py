@@ -27,6 +27,7 @@ class ToolFileManager:
         sign file to get a temporary url
         """
         base_url = dify_config.FILES_URL
+        extension = f".{extension}" if not extension.startswith(".") else extension
         file_preview_url = f"{base_url}/files/tools/{tool_file_id}{extension}"
 
         timestamp = str(int(time.time()))

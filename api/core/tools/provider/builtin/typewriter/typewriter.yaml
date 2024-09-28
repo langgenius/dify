@@ -1,0 +1,13 @@
+identity:
+  author: Bowen Liang
+  name: typewriter
+  label:
+    en_US: TypeWriter
+    zh_Hans: 打字机
+  description:
+    en_US: A tool for file generation with text
+    zh_Hans: 一个用于将文字转换为文件的的工具
+  icon: icon.svg
+  tags:
+    - utilities
+    - productivity

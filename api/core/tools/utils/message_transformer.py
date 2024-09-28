@@ -75,6 +75,20 @@ class ToolFileMessageTransformer:
                             meta=message.meta.copy() if message.meta is not None else {},
                         )
                     )
+                elif mimetype in {
+                    "application/pdf",
+                    "text/html",
+                    "application/vnd.openxmlformats-officedocument.wordprocessingml.document",
+                }:
+                    url = ToolFileManager.sign_file(file.id, guess_extension(file.mimetype))
+                    result.append(
+                        ToolInvokeMessage(
+                            type=ToolInvokeMessage.MessageType.LINK,
+                            message=url,
+                            save_as=message.save_as,
+                            meta=message.meta.copy() if message.meta is not None else {},
+                        )
+                    )
                 else:
                     result.append(
                         ToolInvokeMessage(
