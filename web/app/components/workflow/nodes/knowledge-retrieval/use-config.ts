@@ -208,6 +208,7 @@ const useConfig = (id: string, payload: KnowledgeRetrievalNodeType) => {
       allEconomic,
       mixtureHighQualityAndEconomic,
       inconsistentEmbeddingModel,
+      allInternal,
     } = getSelectedDatasetsMode(newDatasets)
     const newInputs = produce(inputs, (draft) => {
       draft.dataset_ids = newDatasets.map(d => d.id)
@@ -220,7 +221,7 @@ const useConfig = (id: string, payload: KnowledgeRetrievalNodeType) => {
     setInputs(newInputs)
     setSelectedDatasets(newDatasets)
 
-    if (allEconomic || mixtureHighQualityAndEconomic || inconsistentEmbeddingModel)
+    if (allInternal && (allEconomic || mixtureHighQualityAndEconomic || inconsistentEmbeddingModel))
       setRerankModelOpen(true)
   }, [inputs, setInputs, payload.retrieval_mode])
 

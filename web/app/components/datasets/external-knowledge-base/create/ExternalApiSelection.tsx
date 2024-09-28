@@ -1,6 +1,6 @@
 'use client'
 
-import React, { useEffect } from 'react'
+import React, { useEffect, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { RiAddLine } from '@remixicon/react'
 import { useRouter } from 'next/navigation'
@@ -19,12 +19,22 @@ const ExternalApiSelection: React.FC<ExternalApiSelectionProps> = ({ external_kn
   const { t } = useTranslation()
   const router = useRouter()
   const { externalKnowledgeApiList } = useExternalKnowledgeApi()
+  const [selectedApiId, setSelectedApiId] = useState(external_knowledge_api_id)
 
   const apiItems = externalKnowledgeApiList.map(api => ({
     value: api.id,
     name: api.name,
     url: api.settings.endpoint,
   }))
+
+  useEffect(() => {
+    if (apiItems.length > 0) {
+      const newSelectedId = external_knowledge_api_id || apiItems[0].value
+      setSelectedApiId(newSelectedId)
+      if (newSelectedId !== external_knowledge_api_id)
+        onChange({ external_knowledge_api_id: newSelectedId, external_knowledge_id })
+    }
+  }, [apiItems, external_knowledge_api_id, external_knowledge_id, onChange])
 
   const handleAddNewAPI = () => {
     router.push('/datasets?openExternalApiPanel=true')
@@ -44,8 +54,11 @@ const ExternalApiSelection: React.FC<ExternalApiSelectionProps> = ({ external_kn
         {apiItems.length > 0
           ? <ExternalApiSelect
             items={apiItems}
-            defaultValue={apiItems[0].value}
-            onSelect={e => onChange({ external_knowledge_api_id: e.value as string, external_knowledge_id })}
+            value={selectedApiId}
+            onSelect={(e) => {
+              setSelectedApiId(e.value)
+              onChange({ external_knowledge_api_id: e.value, external_knowledge_id })
+            }}
           />
           : <Button variant={'tertiary'} onClick={handleAddNewAPI} className='justify-start gap-0.5'>
             <RiAddLine className='w-4 h-4 text-text-tertiary' />
