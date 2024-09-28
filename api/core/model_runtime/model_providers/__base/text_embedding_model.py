@@ -8,6 +8,7 @@ from core.embedding.embedding_constant import EmbeddingInputType
 from core.model_runtime.entities.model_entities import ModelPropertyKey, ModelType
 from core.model_runtime.entities.text_embedding_entities import TextEmbeddingResult
 from core.model_runtime.model_providers.__base.ai_model import AIModel
+from core.plugin.manager.model import PluginModelManager
 
 
 class TextEmbeddingModel(AIModel):
@@ -66,7 +67,6 @@ class TextEmbeddingModel(AIModel):
         """
         raise NotImplementedError
 
-    @abstractmethod
     def get_num_tokens(self, model: str, credentials: dict, texts: list[str]) -> int:
         """
         Get number of tokens for given prompt messages
@@ -76,7 +76,17 @@ class TextEmbeddingModel(AIModel):
         :param texts: texts to embed
         :return:
         """
-        raise NotImplementedError
+        plugin_model_manager = PluginModelManager()
+        return plugin_model_manager.get_text_embedding_num_tokens(
+            tenant_id=self.tenant_id,
+            user_id="unknown",
+            plugin_id=self.plugin_id,
+            provider=self.provider_name,
+            model_type=self.model_type.value,
+            model=model,
+            credentials=credentials,
+            texts=texts,
+        )
 
     def _get_context_size(self, model: str, credentials: dict) -> int:
         """

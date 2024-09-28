@@ -14,7 +14,7 @@ from core.model_runtime.entities.provider_entities import (
     ModelCredentialSchema,
     ProviderCredentialSchema,
 )
-from core.model_runtime.model_providers import model_provider_factory
+from core.model_runtime.model_providers.model_provider_factory import ModelProviderFactory
 from core.provider_manager import ProviderManager
 from extensions.ext_database import db
 from models.provider import LoadBalancingModelConfig
@@ -527,6 +527,7 @@ class ModelLoadBalancingService:
                         credentials[key] = encrypter.decrypt_token(tenant_id, original_credentials[key])
 
         if validate:
+            model_provider_factory = ModelProviderFactory(tenant_id)
             if isinstance(credential_schemas, ModelCredentialSchema):
                 credentials = model_provider_factory.model_credentials_validate(
                     provider=provider_configuration.provider.provider,

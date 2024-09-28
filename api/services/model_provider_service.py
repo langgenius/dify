@@ -1,16 +1,12 @@
 import logging
-import mimetypes
 import os
-from pathlib import Path
-from typing import Optional, cast
+from typing import Optional
 
 import requests
-from flask import current_app
 
 from core.entities.model_entities import ModelStatus, ProviderModelWithStatusEntity
 from core.model_runtime.entities.model_entities import ModelType, ParameterRule
-from core.model_runtime.model_providers import model_provider_factory
-from core.model_runtime.model_providers.__base.large_language_model import LargeLanguageModel
+from core.model_runtime.model_providers.model_provider_factory import ModelProviderFactory
 from core.provider_manager import ProviderManager
 from models.provider import ProviderType
 from services.entities.model_provider_entities import (
@@ -100,7 +96,7 @@ class ModelProviderService:
             ModelWithProviderEntityResponse(model) for model in provider_configurations.get_models(provider=provider)
         ]
 
-    def get_provider_credentials(self, tenant_id: str, provider: str) -> dict:
+    def get_provider_credentials(self, tenant_id: str, provider: str) -> Optional[dict]:
         """
         get provider credentials.
 
@@ -176,7 +172,7 @@ class ModelProviderService:
         # Remove custom provider credentials.
         provider_configuration.delete_custom_credentials()
 
-    def get_model_credentials(self, tenant_id: str, provider: str, model_type: str, model: str) -> dict:
+    def get_model_credentials(self, tenant_id: str, provider: str, model_type: str, model: str) -> Optional[dict]:
         """
         get model credentials.
 
@@ -351,18 +347,17 @@ class ModelProviderService:
         if not provider_configuration:
             raise ValueError(f"Provider {provider} does not exist.")
 
-        # Get model instance of LLM
-        model_type_instance = provider_configuration.get_model_type_instance(ModelType.LLM)
-        model_type_instance = cast(LargeLanguageModel, model_type_instance)
-
         # fetch credentials
         credentials = provider_configuration.get_current_credentials(model_type=ModelType.LLM, model=model)
 
         if not credentials:
             return []
 
-        # Call get_parameter_rules method of model instance to get model parameter rules
-        return model_type_instance.get_parameter_rules(model=model, credentials=credentials)
+        model_schema = provider_configuration.get_model_schema(
+            model_type=ModelType.LLM, model=model, credentials=credentials
+        )
+
+        return model_schema.parameter_rules if model_schema else []
 
     def get_default_model_of_model_type(self, tenant_id: str, model_type: str) -> Optional[DefaultModelResponse]:
         """
@@ -410,52 +405,21 @@ class ModelProviderService:
         )
 
     def get_model_provider_icon(
-        self, provider: str, icon_type: str, lang: str
+        self, tenant_id: str, provider: str, icon_type: str, lang: str
     ) -> tuple[Optional[bytes], Optional[str]]:
         """
         get model provider icon.
 
+        :param tenant_id: workspace id
         :param provider: provider name
         :param icon_type: icon type (icon_small or icon_large)
         :param lang: language (zh_Hans or en_US)
         :return:
         """
-        provider_instance = model_provider_factory.get_provider_instance(provider)
-        provider_schema = provider_instance.get_provider_schema()
+        model_provider_factory = ModelProviderFactory(tenant_id)
+        byte_data = model_provider_factory.get_provider_icon(provider, icon_type, lang)
 
-        if icon_type.lower() == "icon_small":
-            if not provider_schema.icon_small:
-                raise ValueError(f"Provider {provider} does not have small icon.")
-
-            if lang.lower() == "zh_hans":
-                file_name = provider_schema.icon_small.zh_Hans
-            else:
-                file_name = provider_schema.icon_small.en_US
-        else:
-            if not provider_schema.icon_large:
-                raise ValueError(f"Provider {provider} does not have large icon.")
-
-            if lang.lower() == "zh_hans":
-                file_name = provider_schema.icon_large.zh_Hans
-            else:
-                file_name = provider_schema.icon_large.en_US
-
-        root_path = current_app.root_path
-        provider_instance_path = os.path.dirname(
-            os.path.join(root_path, provider_instance.__class__.__module__.replace(".", "/"))
-        )
-        file_path = os.path.join(provider_instance_path, "_assets")
-        file_path = os.path.join(file_path, file_name)
-
-        if not os.path.exists(file_path):
-            return None, None
-
-        mimetype, _ = mimetypes.guess_type(file_path)
-        mimetype = mimetype or "application/octet-stream"
-
-        # read binary from file
-        byte_data = Path(file_path).read_bytes()
-        return byte_data, mimetype
+        return byte_data, "application/octet-stream"
 
     def switch_preferred_provider(self, tenant_id: str, provider: str, preferred_provider_type: str) -> None:
         """
@@ -525,6 +489,9 @@ class ModelProviderService:
     def free_quota_submit(self, tenant_id: str, provider: str):
         api_key = os.environ.get("FREE_QUOTA_APPLY_API_KEY")
         api_base_url = os.environ.get("FREE_QUOTA_APPLY_BASE_URL")
+        if not api_base_url:
+            raise Exception("FREE_QUOTA_APPLY_BASE_URL is not set")
+
         api_url = api_base_url + "/api/v1/providers/apply"
 
         headers = {"Content-Type": "application/json", "Authorization": f"Bearer {api_key}"}
@@ -546,6 +513,9 @@ class ModelProviderService:
     def free_quota_qualification_verify(self, tenant_id: str, provider: str, token: Optional[str]):
         api_key = os.environ.get("FREE_QUOTA_APPLY_API_KEY")
         api_base_url = os.environ.get("FREE_QUOTA_APPLY_BASE_URL")
+        if not api_base_url:
+            raise Exception("FREE_QUOTA_APPLY_BASE_URL is not set")
+
         api_url = api_base_url + "/api/v1/providers/qualification-verify"
 
         headers = {"Content-Type": "application/json", "Authorization": f"Bearer {api_key}"}

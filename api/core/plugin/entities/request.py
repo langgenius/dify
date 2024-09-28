@@ -1,7 +1,7 @@
 from collections.abc import Mapping
 from typing import Any, Literal, Optional
 
-from pydantic import BaseModel, Field, field_validator
+from pydantic import BaseModel, ConfigDict, Field, field_validator
 
 from core.entities.provider_entities import BasicProviderConfig
 from core.model_runtime.entities.message_entities import (
@@ -39,6 +39,8 @@ class BaseRequestInvokeModel(BaseModel):
     model: str
     model_type: ModelType
 
+    model_config = ConfigDict(protected_namespaces=())
+
 
 class RequestInvokeLLM(BaseRequestInvokeModel):
     """
@@ -52,6 +54,8 @@ class RequestInvokeLLM(BaseRequestInvokeModel):
     tools: Optional[list[PromptMessageTool]] = Field(default_factory=list)
     stop: Optional[list[str]] = Field(default_factory=list)
     stream: Optional[bool] = False
+
+    model_config = ConfigDict(protected_namespaces=())
 
     @field_validator("prompt_messages", mode="before")
     @classmethod

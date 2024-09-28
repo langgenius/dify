@@ -9,7 +9,7 @@ logger = logging.getLogger(__name__)
 
 
 def test_get_providers():
-    factory = ModelProviderFactory()
+    factory = ModelProviderFactory("test_tenant")
     providers = factory.get_providers()
 
     for provider in providers:
@@ -20,7 +20,7 @@ def test_get_providers():
 
 
 def test_get_models():
-    factory = ModelProviderFactory()
+    factory = ModelProviderFactory("test_tenant")
     providers = factory.get_models(
         model_type=ModelType.LLM,
         provider_configs=[
@@ -51,19 +51,7 @@ def test_get_models():
 
 
 def test_provider_credentials_validate():
-    factory = ModelProviderFactory()
+    factory = ModelProviderFactory("test_tenant")
     factory.provider_credentials_validate(
         provider="openai", credentials={"openai_api_key": os.environ.get("OPENAI_API_KEY")}
     )
-
-
-def test__get_model_provider_map():
-    factory = ModelProviderFactory()
-    model_providers = factory._get_model_provider_map()
-
-    for name, model_provider in model_providers.items():
-        logger.debug(name)
-        logger.debug(model_provider.provider_instance)
-
-    assert len(model_providers) >= 1
-    assert isinstance(model_providers["openai"], ModelProviderExtension)

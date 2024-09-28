@@ -23,6 +23,9 @@ def check_moderation(model_config: ModelConfigWithCredentialsEntity, text: str) 
         if using_provider_type == ProviderType.SYSTEM and provider_name in moderation_config.providers:
             hosting_openai_config = hosting_configuration.provider_map["openai"]
 
+            if hosting_openai_config.credentials is None:
+                return False
+
             # 2000 text per chunk
             length = 2000
             text_chunks = [text[i : i + length] for i in range(0, len(text), length)]

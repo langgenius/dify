@@ -22,7 +22,7 @@ from core.helper.model_provider_cache import ProviderCredentialsCache, ProviderC
 from core.helper.position_helper import is_filtered
 from core.model_runtime.entities.model_entities import ModelType
 from core.model_runtime.entities.provider_entities import CredentialFormSchema, FormType, ProviderEntity
-from core.model_runtime.model_providers import model_provider_factory
+from core.model_runtime.model_providers.model_provider_factory import ModelProviderFactory
 from extensions import ext_hosting_provider
 from extensions.ext_database import db
 from extensions.ext_redis import redis_client
@@ -97,6 +97,7 @@ class ProviderManager:
         provider_name_to_provider_model_records_dict = self._get_all_provider_models(tenant_id)
 
         # Get all provider entities
+        model_provider_factory = ModelProviderFactory(tenant_id)
         provider_entities = model_provider_factory.get_providers()
 
         # Get All preferred provider types of the workspace
@@ -204,12 +205,10 @@ class ProviderManager:
         if not provider_configuration:
             raise ValueError(f"Provider {provider} does not exist.")
 
-        provider_instance = provider_configuration.get_provider_instance()
-        model_type_instance = provider_instance.get_model_instance(model_type)
+        model_type_instance = provider_configuration.get_model_type_instance(model_type)
 
         return ProviderModelBundle(
             configuration=provider_configuration,
-            provider_instance=provider_instance,
             model_type_instance=model_type_instance,
         )
 
@@ -257,8 +256,8 @@ class ProviderManager:
         if not default_model:
             return None
 
-        provider_instance = model_provider_factory.get_provider_instance(default_model.provider_name)
-        provider_schema = provider_instance.get_provider_schema()
+        model_provider_factory = ModelProviderFactory(tenant_id)
+        provider_schema = model_provider_factory.get_provider_schema(provider=default_model.provider_name)
 
         return DefaultModelEntity(
             model=default_model.model_name,

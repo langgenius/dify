@@ -132,7 +132,7 @@ class ModelProviderIconApi(Resource):
     def get(self, provider: str, icon_type: str, lang: str):
         model_provider_service = ModelProviderService()
         icon, mimetype = model_provider_service.get_model_provider_icon(
-            provider=provider, icon_type=icon_type, lang=lang
+            tenant_id=current_user.current_tenant_id, provider=provider, icon_type=icon_type, lang=lang
         )
 
         return send_file(io.BytesIO(icon), mimetype=mimetype)

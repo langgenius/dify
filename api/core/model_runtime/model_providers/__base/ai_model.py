@@ -1,10 +1,9 @@
 import decimal
 import os
-from abc import ABC, abstractmethod
 from collections.abc import Mapping
 from typing import Optional
 
-from pydantic import ConfigDict
+from pydantic import ConfigDict, Field
 
 from core.helper.position_helper import get_position_map, sort_by_position_map
 from core.model_runtime.entities.common_entities import I18nObject
@@ -20,34 +19,26 @@ from core.model_runtime.entities.model_entities import (
 )
 from core.model_runtime.errors.invoke import InvokeAuthorizationError, InvokeError
 from core.model_runtime.model_providers.__base.tokenizers.gpt2_tokenzier import GPT2Tokenizer
+from core.plugin.entities.plugin_daemon import PluginModelProviderEntity
 from core.tools.utils.yaml_utils import load_yaml_file
 
 
-class AIModel(ABC):
+class AIModel:
     """
     Base class for all models.
     """
 
-    model_type: ModelType
-    model_schemas: Optional[list[AIModelEntity]] = None
-    started_at: float = 0
+    tenant_id: str = Field(description="Tenant ID")
+    model_type: ModelType = Field(description="Model type")
+    plugin_id: str = Field(description="Plugin ID")
+    provider_name: str = Field(description="Provider")
+    plugin_model_provider: PluginModelProviderEntity = Field(description="Plugin model provider")
+    started_at: float = Field(description="Invoke start time", default=0)
 
     # pydantic configs
     model_config = ConfigDict(protected_namespaces=())
 
-    @abstractmethod
-    def validate_credentials(self, model: str, credentials: Mapping) -> None:
-        """
-        Validate model credentials
-
-        :param model: model name
-        :param credentials: model credentials
-        :return:
-        """
-        raise NotImplementedError
-
     @property
-    @abstractmethod
     def _invoke_error_mapping(self) -> dict[type[InvokeError], list[type[Exception]]]:
         """
         Map model invoke error to unified error
@@ -66,20 +57,18 @@ class AIModel(ABC):
         :param error: model invoke error
         :return: unified error
         """
-        provider_name = self.__class__.__module__.split(".")[-3]
-
         for invoke_error, model_errors in self._invoke_error_mapping.items():
             if isinstance(error, tuple(model_errors)):
                 if invoke_error == InvokeAuthorizationError:
                     return invoke_error(
                         description=(
-                            f"[{provider_name}] Incorrect model credentials provided, please check and try again."
+                            f"[{self.provider_name}] Incorrect model credentials provided, please check and try again."
                         )
                     )
 
-                return invoke_error(description=f"[{provider_name}] {invoke_error.description}, {str(error)}")
+                return invoke_error(description=f"[{self.provider_name}] {invoke_error.description}, {str(error)}")
 
-        return InvokeError(description=f"[{provider_name}] Error: {str(error)}")
+        return InvokeError(description=f"[{self.provider_name}] Error: {str(error)}")
 
     def get_price(self, model: str, credentials: dict, price_type: PriceType, tokens: int) -> PriceInfo:
         """

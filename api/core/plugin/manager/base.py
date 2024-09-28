@@ -132,8 +132,19 @@ class BasePluginManager:
             line_data = json.loads(line)
             rep = PluginDaemonBasicResponse[type](**line_data)
             if rep.code != 0:
-                raise ValueError(f"got error from plugin daemon: {rep.message}, code: {rep.code}")
+                raise PluginDaemonRespError(rep.message, rep.code)
             if rep.data is None:
                 raise ValueError("got empty data from plugin daemon")
             yield rep.data
-    
+
+
+class PluginDaemonRespError(Exception):
+    """
+    Plugin daemon response error.
+    """
+
+    def __init__(self, resp_message: str, code: int):
+        super().__init__()
+        self.message = f"got error from plugin daemon: {resp_message}, code: {code}"
+        self.resp_message = resp_message
+        self.code = code

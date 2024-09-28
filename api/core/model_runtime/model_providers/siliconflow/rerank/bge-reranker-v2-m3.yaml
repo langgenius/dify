@@ -1,4 +1,0 @@
-model: BAAI/bge-reranker-v2-m3
-model_type: rerank
-model_properties:
-  context_size: 8192

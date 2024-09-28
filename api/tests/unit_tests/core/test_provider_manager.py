@@ -1,12 +1,13 @@
 from core.entities.provider_entities import ModelSettings
 from core.model_runtime.entities.model_entities import ModelType
-from core.model_runtime.model_providers import model_provider_factory
+from core.model_runtime.model_providers.model_provider_factory import ModelProviderFactory
 from core.provider_manager import ProviderManager
 from models.provider import LoadBalancingModelConfig, ProviderModelSetting
 
 
 def test__to_model_settings(mocker):
     # Get all provider entities
+    model_provider_factory = ModelProviderFactory("test_tenant")
     provider_entities = model_provider_factory.get_providers()
 
     provider_entity = None
@@ -71,6 +72,7 @@ def test__to_model_settings(mocker):
 
 def test__to_model_settings_only_one_lb(mocker):
     # Get all provider entities
+    model_provider_factory = ModelProviderFactory("test_tenant")
     provider_entities = model_provider_factory.get_providers()
 
     provider_entity = None
@@ -123,6 +125,7 @@ def test__to_model_settings_only_one_lb(mocker):
 
 def test__to_model_settings_lb_disabled(mocker):
     # Get all provider entities
+    model_provider_factory = ModelProviderFactory("test_tenant")
     provider_entities = model_provider_factory.get_providers()
 
     provider_entity = None
