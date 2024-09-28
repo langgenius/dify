@@ -492,8 +492,9 @@ class DatasetRetrieval:
                 score_threshold_enabled = retrieval_model_config.get("score_threshold_enabled")
                 if score_threshold_enabled:
                     score_threshold = retrieval_model_config.get("score_threshold")
-                    
+
                 from core.tools.utils.dataset_retriever.dataset_retriever_tool import DatasetRetrieverTool
+
                 tool = DatasetRetrieverTool.from_dataset(
                     dataset=dataset,
                     top_k=top_k,
@@ -506,6 +507,7 @@ class DatasetRetrieval:
                 tools.append(tool)
         elif retrieve_config.retrieve_strategy == DatasetRetrieveConfigEntity.RetrieveStrategy.MULTIPLE:
             from core.tools.utils.dataset_retriever.dataset_multi_retriever_tool import DatasetMultiRetrieverTool
+
             tool = DatasetMultiRetrieverTool.from_dataset(
                 dataset_ids=[dataset.id for dataset in available_datasets],
                 tenant_id=tenant_id,

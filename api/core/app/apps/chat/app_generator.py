@@ -50,7 +50,8 @@ class ChatAppGenerator(MessageBasedAppGenerator):
 
     @overload
     def generate(
-        self, app_model: App,
+        self,
+        app_model: App,
         user: Union[Account, EndUser],
         args: Any,
         invoke_from: InvokeFrom,

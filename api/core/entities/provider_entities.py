@@ -116,6 +116,7 @@ class BasicProviderConfig(BaseModel):
     """
     Base model class for common provider settings like credentials
     """
+
     class Type(Enum):
         SECRET_INPUT = CommonParameterType.SECRET_INPUT.value
         TEXT_INPUT = CommonParameterType.TEXT_INPUT.value
@@ -135,7 +136,7 @@ class BasicProviderConfig(BaseModel):
             for mode in cls:
                 if mode.value == value:
                     return mode
-            raise ValueError(f'invalid mode value {value}')
+            raise ValueError(f"invalid mode value {value}")
 
     type: Type = Field(..., description="The type of the credentials")
     name: str = Field(..., description="The name of the credentials")
@@ -145,6 +146,7 @@ class ProviderConfig(BasicProviderConfig):
     """
     Model class for common provider settings like credentials
     """
+
     class Option(BaseModel):
         value: str = Field(..., description="The value of the option")
         label: I18nObject = Field(..., description="The label of the option")

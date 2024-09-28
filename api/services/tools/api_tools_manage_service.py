@@ -161,7 +161,7 @@ class ApiToolManageService:
             tenant_id=tenant_id,
             config=provider_controller.get_credentials_schema(),
             provider_type=provider_controller.provider_type.value,
-            provider_identity=provider_controller.entity.identity.name
+            provider_identity=provider_controller.entity.identity.name,
         )
 
         encrypted_credentials = tool_configuration.encrypt(credentials)
@@ -293,7 +293,7 @@ class ApiToolManageService:
             tenant_id=tenant_id,
             config=provider_controller.get_credentials_schema(),
             provider_type=provider_controller.provider_type.value,
-            provider_identity=provider_controller.entity.identity.name
+            provider_identity=provider_controller.entity.identity.name,
         )
 
         original_credentials = tool_configuration.decrypt(provider.credentials)
@@ -412,7 +412,7 @@ class ApiToolManageService:
                 tenant_id=tenant_id,
                 config=provider_controller.get_credentials_schema(),
                 provider_type=provider_controller.provider_type.value,
-                provider_identity=provider_controller.entity.identity.name
+                provider_identity=provider_controller.entity.identity.name,
             )
             decrypted_credentials = tool_configuration.decrypt(credentials)
             # check if the credential has changed, save the original credential

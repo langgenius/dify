@@ -43,4 +43,4 @@ class WorkflowToolConfigurationUtils:
 
         for parameter in tool_configurations:
             if parameter.name not in variable_names:
-                raise ValueError('parameter configuration mismatch, please republish the tool to update')
+                raise ValueError("parameter configuration mismatch, please republish the tool to update")

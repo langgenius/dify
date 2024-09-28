@@ -375,6 +375,3 @@ class ToolInvokeFrom(Enum):
 
     WORKFLOW = "workflow"
     AGENT = "agent"
-
-
-

@@ -10,6 +10,7 @@ class AgentToolEntity(BaseModel):
     """
     Agent Tool Entity.
     """
+
     provider_type: ToolProviderType
     provider_id: str
     tool_name: str

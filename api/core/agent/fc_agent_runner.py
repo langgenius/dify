@@ -366,9 +366,7 @@ class FunctionCallAgentRunner(BaseAgentRunner):
 
         return tool_calls
 
-    def _init_system_message(
-        self, prompt_template: str, prompt_messages: list[PromptMessage]
-    ) -> list[PromptMessage]:
+    def _init_system_message(self, prompt_template: str, prompt_messages: list[PromptMessage]) -> list[PromptMessage]:
         """
         Initialize system message
         """

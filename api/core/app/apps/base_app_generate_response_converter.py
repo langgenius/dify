@@ -20,6 +20,7 @@ class AppGenerateResponseConverter(ABC):
             if isinstance(response, AppBlockingResponse):
                 return cls.convert_blocking_full_response(response)
             else:
+
                 def _generate_full_response() -> Generator[dict | str, Any, None]:
                     yield from cls.convert_stream_simple_response(response)
 
@@ -28,6 +29,7 @@ class AppGenerateResponseConverter(ABC):
             if isinstance(response, AppBlockingResponse):
                 return cls.convert_blocking_simple_response(response)
             else:
+
                 def _generate_simple_response() -> Generator[dict | str, Any, None]:
                     yield from cls.convert_stream_simple_response(response)
 
@@ -45,8 +47,9 @@ class AppGenerateResponseConverter(ABC):
 
     @classmethod
     @abstractmethod
-    def convert_stream_full_response(cls, stream_response: Generator[AppStreamResponse, None, None]) \
-            -> Generator[dict | str, None, None]:
+    def convert_stream_full_response(
+        cls, stream_response: Generator[AppStreamResponse, None, None]
+    ) -> Generator[dict | str, None, None]:
         raise NotImplementedError
 
     @classmethod

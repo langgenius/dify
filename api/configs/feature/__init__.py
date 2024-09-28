@@ -114,20 +114,18 @@ class PluginConfig(BaseSettings):
     """
     Plugin configs
     """
+
     PLUGIN_API_URL: HttpUrl = Field(
-        description='Plugin API URL',
-        default='http://plugin:5002',
+        description="Plugin API URL",
+        default="http://plugin:5002",
     )
 
     PLUGIN_API_KEY: str = Field(
-        description='Plugin API key',
-        default='plugin-api-key',
+        description="Plugin API key",
+        default="plugin-api-key",
     )
 
-    INNER_API_KEY_FOR_PLUGIN: str = Field(
-        description='Inner api key for plugin',
-        default='inner-api-key'
-    )
+    INNER_API_KEY_FOR_PLUGIN: str = Field(description="Inner api key for plugin", default="inner-api-key")
 
 
 class EndpointConfig(BaseSettings):

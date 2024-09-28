@@ -34,8 +34,9 @@ class WorkflowAppGenerateResponseConverter(AppGenerateResponseConverter):
         return cls.convert_blocking_full_response(blocking_response)
 
     @classmethod
-    def convert_stream_full_response(cls, stream_response: Generator[WorkflowAppStreamResponse, None, None]) \
-            -> Generator[dict | str, None, None]:
+    def convert_stream_full_response(
+        cls, stream_response: Generator[WorkflowAppStreamResponse, None, None]
+    ) -> Generator[dict | str, None, None]:
         """
         Convert stream full response.
         :param stream_response: stream response
@@ -62,8 +63,9 @@ class WorkflowAppGenerateResponseConverter(AppGenerateResponseConverter):
             yield response_chunk
 
     @classmethod
-    def convert_stream_simple_response(cls, stream_response: Generator[WorkflowAppStreamResponse, None, None]) \
-            -> Generator[dict | str, None, None]:
+    def convert_stream_simple_response(
+        cls, stream_response: Generator[WorkflowAppStreamResponse, None, None]
+    ) -> Generator[dict | str, None, None]:
         """
         Convert stream simple response.
         :param stream_response: stream response

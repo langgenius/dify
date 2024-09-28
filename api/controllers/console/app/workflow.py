@@ -140,7 +140,7 @@ class DraftWorkflowImportApi(Resource):
         # The role of the current user in the ta table must be admin, owner, or editor
         if not current_user.is_editor:
             raise Forbidden()
-        
+
         if not isinstance(current_user, Account):
             raise Forbidden()
 
@@ -167,7 +167,7 @@ class AdvancedChatDraftWorkflowRunApi(Resource):
         # The role of the current user in the ta table must be admin, owner, or editor
         if not current_user.is_editor:
             raise Forbidden()
-        
+
         if not isinstance(current_user, Account):
             raise Forbidden()
 
@@ -209,7 +209,7 @@ class AdvancedChatDraftRunIterationNodeApi(Resource):
         # The role of the current user in the ta table must be admin, owner, or editor
         if not current_user.is_editor:
             raise Forbidden()
-        
+
         if not isinstance(current_user, Account):
             raise Forbidden()
 
@@ -246,7 +246,7 @@ class WorkflowDraftRunIterationNodeApi(Resource):
         # The role of the current user in the ta table must be admin, owner, or editor
         if not current_user.is_editor:
             raise Forbidden()
-        
+
         if not isinstance(current_user, Account):
             raise Forbidden()
 
@@ -283,7 +283,7 @@ class DraftWorkflowRunApi(Resource):
         # The role of the current user in the ta table must be admin, owner, or editor
         if not current_user.is_editor:
             raise Forbidden()
-        
+
         if not isinstance(current_user, Account):
             raise Forbidden()
 
@@ -336,7 +336,7 @@ class DraftWorkflowNodeRunApi(Resource):
         # The role of the current user in the ta table must be admin, owner, or editor
         if not current_user.is_editor:
             raise Forbidden()
-        
+
         if not isinstance(current_user, Account):
             raise Forbidden()
 
@@ -388,7 +388,7 @@ class PublishedWorkflowApi(Resource):
         # The role of the current user in the ta table must be admin, owner, or editor
         if not current_user.is_editor:
             raise Forbidden()
-        
+
         if not isinstance(current_user, Account):
             raise Forbidden()
 
@@ -428,7 +428,7 @@ class DefaultBlockConfigApi(Resource):
         # The role of the current user in the ta table must be admin, owner, or editor
         if not current_user.is_editor:
             raise Forbidden()
-        
+
         if not isinstance(current_user, Account):
             raise Forbidden()
 
@@ -464,7 +464,7 @@ class ConvertToWorkflowApi(Resource):
         # The role of the current user in the ta table must be admin, owner, or editor
         if not current_user.is_editor:
             raise Forbidden()
-        
+
         if not isinstance(current_user, Account):
             raise Forbidden()
 

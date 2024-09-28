@@ -50,8 +50,9 @@ class ChatAppGenerateResponseConverter(AppGenerateResponseConverter):
         return response
 
     @classmethod
-    def convert_stream_full_response(cls, stream_response: Generator[ChatbotAppStreamResponse, None, None]) \
-            -> Generator[dict | str, None, None]:
+    def convert_stream_full_response(
+        cls, stream_response: Generator[ChatbotAppStreamResponse, None, None]
+    ) -> Generator[dict | str, None, None]:
         """
         Convert stream full response.
         :param stream_response: stream response
@@ -80,8 +81,9 @@ class ChatAppGenerateResponseConverter(AppGenerateResponseConverter):
             yield response_chunk
 
     @classmethod
-    def convert_stream_simple_response(cls, stream_response: Generator[ChatbotAppStreamResponse, None, None]) \
-            -> Generator[dict | str, None, None]:
+    def convert_stream_simple_response(
+        cls, stream_response: Generator[ChatbotAppStreamResponse, None, None]
+    ) -> Generator[dict | str, None, None]:
         """
         Convert stream simple response.
         :param stream_response: stream response

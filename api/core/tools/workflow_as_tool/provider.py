@@ -65,7 +65,7 @@ class WorkflowToolProviderController(ToolProviderController):
     @property
     def provider_type(self) -> ToolProviderType:
         return ToolProviderType.WORKFLOW
-    
+
     def _get_db_provider_tool(self, db_provider: WorkflowToolProvider, app: App) -> WorkflowTool:
         """
         get db provider tool
@@ -73,10 +73,11 @@ class WorkflowToolProviderController(ToolProviderController):
         :param app: the app
         :return: the tool
         """
-        workflow: Workflow | None = db.session.query(Workflow).filter(
-            Workflow.app_id == db_provider.app_id,
-            Workflow.version == db_provider.version
-        ).first()
+        workflow: Workflow | None = (
+            db.session.query(Workflow)
+            .filter(Workflow.app_id == db_provider.app_id, Workflow.version == db_provider.version)
+            .first()
+        )
 
         if not workflow:
             raise ValueError("workflow not found")
@@ -84,10 +85,7 @@ class WorkflowToolProviderController(ToolProviderController):
         # fetch start node
         graph: Mapping = workflow.graph_dict
         features_dict: Mapping = workflow.features_dict
-        features = WorkflowAppConfigManager.convert_features(
-            config_dict=features_dict,
-            app_mode=AppMode.WORKFLOW
-        )
+        features = WorkflowAppConfigManager.convert_features(config_dict=features_dict, app_mode=AppMode.WORKFLOW)
 
         parameters = db_provider.parameter_configurations
         variables = WorkflowToolConfigurationUtils.get_workflow_graph_variables(graph)
@@ -180,14 +178,18 @@ class WorkflowToolProviderController(ToolProviderController):
         if self.tools is not None:
             return self.tools
 
-        db_providers: WorkflowToolProvider | None = db.session.query(WorkflowToolProvider).filter(
-            WorkflowToolProvider.tenant_id == tenant_id,
-            WorkflowToolProvider.app_id == self.provider_id,
-        ).first()
+        db_providers: WorkflowToolProvider | None = (
+            db.session.query(WorkflowToolProvider)
+            .filter(
+                WorkflowToolProvider.tenant_id == tenant_id,
+                WorkflowToolProvider.app_id == self.provider_id,
+            )
+            .first()
+        )
 
         if not db_providers:
             return []
-        
+
         app = db_providers.app
         if not app:
             raise ValueError("can not read app of workflow")

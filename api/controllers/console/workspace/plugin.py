@@ -17,11 +17,9 @@ class PluginDebuggingKeyApi(Resource):
         user = current_user
         if not user.is_admin_or_owner:
             raise Forbidden()
-        
+
         tenant_id = user.current_tenant_id
-        return {
-            "key": PluginDebuggingService.get_plugin_debugging_key(tenant_id)
-        }
+        return {"key": PluginDebuggingService.get_plugin_debugging_key(tenant_id)}
 
 
 api.add_resource(PluginDebuggingKeyApi, "/workspaces/current/plugin/debugging-key")

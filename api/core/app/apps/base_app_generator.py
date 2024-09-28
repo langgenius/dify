@@ -64,11 +64,12 @@ class BaseAppGenerator:
         if isinstance(generator, dict):
             return generator
         else:
+
             def gen():
                 for message in generator:
                     if isinstance(message, dict):
-                        yield f'data: {json.dumps(message)}\n\n'
+                        yield f"data: {json.dumps(message)}\n\n"
                     else:
-                        yield f'event: {message}\n\n'
-            
+                        yield f"event: {message}\n\n"
+
             return gen()

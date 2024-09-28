@@ -238,7 +238,7 @@ class WorkflowService:
         db.session.commit()
 
         return workflow_node_execution
-    
+
     def run_free_workflow_node(
         self, node_data: dict, tenant_id: str, user_id: str, node_id: str, user_inputs: dict[str, Any]
     ) -> WorkflowNodeExecution:
@@ -258,7 +258,7 @@ class WorkflowService:
             ),
             start_at=start_at,
             tenant_id=tenant_id,
-            node_id=node_id
+            node_id=node_id,
         )
 
         return workflow_node_execution
