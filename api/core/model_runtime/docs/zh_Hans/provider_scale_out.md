@@ -117,7 +117,7 @@ model_credential_schema:
       en_US: Enter your API Base
 ```
 
-也可以参考  `model_providers` 目录下其他供应商目录下的 YAML 配置信息，完整的 YAML 规则见：[Schema](schema.md#Provider)。
+也可以参考  `model_providers` 目录下其他供应商目录下的 YAML 配置信息，完整的 YAML 规则见：[Schema](schema.md#provider)。
 
 #### 实现供应商代码
 
