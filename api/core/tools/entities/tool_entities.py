@@ -298,7 +298,7 @@ class ToolEntity(BaseModel):
     identity: ToolIdentity
     parameters: list[ToolParameter] = Field(default_factory=list)
     description: Optional[ToolDescription] = None
-    # TODO: output schema
+    output_schema: Optional[dict] = None
     has_runtime_parameters: bool = Field(default=False, description="Whether the tool has runtime parameters")
 
     # pydantic configs

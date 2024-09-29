@@ -262,6 +262,7 @@ class ToolTransformService:
                 name=tool.entity.identity.name,
                 label=tool.entity.identity.label,
                 description=tool.entity.description.human if tool.entity.description else I18nObject(en_US=""),
+                output_schema=tool.entity.output_schema,
                 parameters=current_parameters,
                 labels=labels or [],
             )

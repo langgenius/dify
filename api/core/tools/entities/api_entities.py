@@ -16,6 +16,7 @@ class ToolApiEntity(BaseModel):
     description: I18nObject
     parameters: Optional[list[ToolParameter]] = None
     labels: list[str] = Field(default_factory=list)
+    output_schema: Optional[dict] = None
 
 
 ToolProviderTypeApiLiteral = Optional[Literal["builtin", "api", "workflow"]]
