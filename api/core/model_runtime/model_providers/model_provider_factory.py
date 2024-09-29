@@ -13,7 +13,6 @@ from core.model_runtime.model_providers.__base.large_language_model import Large
 from core.model_runtime.model_providers.__base.moderation_model import ModerationModel
 from core.model_runtime.model_providers.__base.rerank_model import RerankModel
 from core.model_runtime.model_providers.__base.speech2text_model import Speech2TextModel
-from core.model_runtime.model_providers.__base.text2img_model import Text2ImageModel
 from core.model_runtime.model_providers.__base.text_embedding_model import TextEmbeddingModel
 from core.model_runtime.model_providers.__base.tts_model import TTSModel
 from core.model_runtime.schema_validators.model_credential_schema_validator import ModelCredentialSchemaValidator
@@ -284,8 +283,6 @@ class ModelProviderFactory:
             return ModerationModel(**init_params)
         elif model_type == ModelType.TTS:
             return TTSModel(**init_params)
-        elif model_type == ModelType.TEXT2IMG:
-            return Text2ImageModel(**init_params)
 
     def get_provider_icon(self, provider: str, icon_type: str, lang: str) -> bytes:
         """

@@ -3,7 +3,6 @@ from core.model_runtime.entities.message_entities import PromptMessage, SystemPr
 from core.tools.__base.tool import Tool
 from core.tools.entities.tool_entities import ToolProviderType
 from core.tools.utils.model_invocation_utils import ModelInvocationUtils
-from core.tools.utils.web_reader_tool import get_url
 
 _SUMMARY_PROMPT = """You are a professional language researcher, you are interested in the language
 and you can quickly aimed at the main point of an webpage and reproduce it in your own words but 
@@ -124,9 +123,3 @@ class BuiltinTool(Tool):
             return self.summary(user_id=user_id, content=result)
 
         return result
-
-    def get_url(self, url: str, user_agent: str | None = None) -> str:
-        """
-        get url
-        """
-        return get_url(url, user_agent=user_agent)

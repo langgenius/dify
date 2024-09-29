@@ -244,12 +244,11 @@ class ProviderManager:
                     (model for model in available_models if model.model == "gpt-4"), available_models[0]
                 )
 
-                default_model = TenantDefaultModel(
-                    tenant_id=tenant_id,
-                    model_type=model_type.to_origin_model_type(),
-                    provider_name=available_model.provider.provider,
-                    model_name=available_model.model,
-                )
+                default_model = TenantDefaultModel()
+                default_model.tenant_id = tenant_id
+                default_model.model_type = model_type.to_origin_model_type()
+                default_model.provider_name = available_model.provider.provider
+                default_model.model_name = available_model.model
                 db.session.add(default_model)
                 db.session.commit()
 
@@ -489,15 +488,14 @@ class ProviderManager:
                     # Init trial provider records if not exists
                     if ProviderQuotaType.TRIAL not in provider_quota_to_provider_record_dict:
                         try:
-                            provider_record = Provider(
-                                tenant_id=tenant_id,
-                                provider_name=provider_name,
-                                provider_type=ProviderType.SYSTEM.value,
-                                quota_type=ProviderQuotaType.TRIAL.value,
-                                quota_limit=quota.quota_limit,
-                                quota_used=0,
-                                is_valid=True,
-                            )
+                            provider_record = Provider()
+                            provider_record.tenant_id = tenant_id
+                            provider_record.provider_name = provider_name
+                            provider_record.provider_type = ProviderType.SYSTEM.value
+                            provider_record.quota_type = ProviderQuotaType.TRIAL.value
+                            provider_record.quota_limit = quota.quota_limit
+                            provider_record.quota_used = 0
+                            provider_record.is_valid = True
                             db.session.add(provider_record)
                             db.session.commit()
                         except IntegrityError:

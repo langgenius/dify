@@ -1,5 +1,3 @@
-import time
-from abc import abstractmethod
 from typing import Optional
 
 from pydantic import ConfigDict
@@ -39,33 +37,20 @@ class TextEmbeddingModel(AIModel):
         :param input_type: input type
         :return: embeddings result
         """
-        self.started_at = time.perf_counter()
-
         try:
-            return self._invoke(model, credentials, texts, user, input_type)
+            plugin_model_manager = PluginModelManager()
+            return plugin_model_manager.invoke_text_embedding(
+                tenant_id=self.tenant_id,
+                user_id=user or "unknown",
+                plugin_id=self.plugin_id,
+                provider=self.provider_name,
+                model=model,
+                credentials=credentials,
+                texts=texts,
+                input_type=input_type.value,
+            )
         except Exception as e:
             raise self._transform_invoke_error(e)
-
-    @abstractmethod
-    def _invoke(
-        self,
-        model: str,
-        credentials: dict,
-        texts: list[str],
-        user: Optional[str] = None,
-        input_type: EmbeddingInputType = EmbeddingInputType.DOCUMENT,
-    ) -> TextEmbeddingResult:
-        """
-        Invoke text embedding model
-
-        :param model: model name
-        :param credentials: model credentials
-        :param texts: texts to embed
-        :param user: unique user id
-        :param input_type: input type
-        :return: embeddings result
-        """
-        raise NotImplementedError
 
     def get_num_tokens(self, model: str, credentials: dict, texts: list[str]) -> int:
         """
@@ -82,7 +67,6 @@ class TextEmbeddingModel(AIModel):
             user_id="unknown",
             plugin_id=self.plugin_id,
             provider=self.provider_name,
-            model_type=self.model_type.value,
             model=model,
             credentials=credentials,
             texts=texts,

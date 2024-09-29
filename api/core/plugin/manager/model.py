@@ -235,6 +235,7 @@ class PluginModelManager(BasePluginManager):
         model: str,
         credentials: dict,
         texts: list[str],
+        input_type: str,
     ) -> TextEmbeddingResult:
         """
         Invoke text embedding
@@ -252,6 +253,7 @@ class PluginModelManager(BasePluginManager):
                         "model": model,
                         "credentials": credentials,
                         "texts": texts,
+                        "input_type": input_type,
                     },
                 }
             ),
@@ -272,7 +274,6 @@ class PluginModelManager(BasePluginManager):
         user_id: str,
         plugin_id: str,
         provider: str,
-        model_type: str,
         model: str,
         credentials: dict,
         texts: list[str],
@@ -289,7 +290,7 @@ class PluginModelManager(BasePluginManager):
                     "user_id": user_id,
                     "data": {
                         "provider": provider,
-                        "model_type": model_type,
+                        "model_type": "text-embedding",
                         "model": model,
                         "credentials": credentials,
                         "texts": texts,
@@ -313,7 +314,6 @@ class PluginModelManager(BasePluginManager):
         user_id: str,
         plugin_id: str,
         provider: str,
-        model_type: str,
         model: str,
         credentials: dict,
         query: str,
@@ -333,7 +333,7 @@ class PluginModelManager(BasePluginManager):
                     "user_id": user_id,
                     "data": {
                         "provider": provider,
-                        "model_type": model_type,
+                        "model_type": "rerank",
                         "model": model,
                         "credentials": credentials,
                         "query": query,
@@ -360,7 +360,6 @@ class PluginModelManager(BasePluginManager):
         user_id: str,
         plugin_id: str,
         provider: str,
-        model_type: str,
         model: str,
         credentials: dict,
         content_text: str,
@@ -378,7 +377,7 @@ class PluginModelManager(BasePluginManager):
                     "user_id": user_id,
                     "data": {
                         "provider": provider,
-                        "model_type": model_type,
+                        "model_type": "tts",
                         "model": model,
                         "credentials": credentials,
                         "content_text": content_text,
@@ -405,7 +404,6 @@ class PluginModelManager(BasePluginManager):
         user_id: str,
         plugin_id: str,
         provider: str,
-        model_type: str,
         model: str,
         credentials: dict,
         language: Optional[str] = None,
@@ -422,7 +420,7 @@ class PluginModelManager(BasePluginManager):
                     "user_id": user_id,
                     "data": {
                         "provider": provider,
-                        "model_type": model_type,
+                        "model_type": "tts",
                         "model": model,
                         "credentials": credentials,
                         "language": language,
@@ -447,7 +445,6 @@ class PluginModelManager(BasePluginManager):
         user_id: str,
         plugin_id: str,
         provider: str,
-        model_type: str,
         model: str,
         credentials: dict,
         file: IO[bytes],
@@ -464,7 +461,7 @@ class PluginModelManager(BasePluginManager):
                     "user_id": user_id,
                     "data": {
                         "provider": provider,
-                        "model_type": model_type,
+                        "model_type": "speech2text",
                         "model": model,
                         "credentials": credentials,
                         "file": binascii.hexlify(file.read()).decode(),
@@ -488,7 +485,6 @@ class PluginModelManager(BasePluginManager):
         user_id: str,
         plugin_id: str,
         provider: str,
-        model_type: str,
         model: str,
         credentials: dict,
         text: str,
@@ -505,7 +501,7 @@ class PluginModelManager(BasePluginManager):
                     "user_id": user_id,
                     "data": {
                         "provider": provider,
-                        "model_type": model_type,
+                        "model_type": "moderation",
                         "model": model,
                         "credentials": credentials,
                         "text": text,
