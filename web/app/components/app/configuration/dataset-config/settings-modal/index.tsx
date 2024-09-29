@@ -63,6 +63,7 @@ const SettingsModal: FC<SettingsModalProps> = ({
   const ref = useRef(null)
   const [topK, setTopK] = useState(currentDataset?.external_retrieval_model.top_k ?? 2)
   const [scoreThreshold, setScoreThreshold] = useState(currentDataset?.external_retrieval_model.score_threshold ?? 0.5)
+  const [scoreThresholdEnabled, setScoreThresholdEnabled] = useState(currentDataset?.external_retrieval_model.score_threshold_enabled ?? false)
 
   const { setShowAccountSettingModal } = useModalContext()
   const [loading, setLoading] = useState(false)
@@ -80,11 +81,13 @@ const SettingsModal: FC<SettingsModalProps> = ({
   const [isHideChangedTip, setIsHideChangedTip] = useState(false)
   const isRetrievalChanged = !isEqual(retrievalConfig, localeCurrentDataset?.retrieval_model_dict) || indexMethod !== localeCurrentDataset?.indexing_technique
 
-  const handleSettingsChange = (data: { top_k?: number; score_threshold?: number }) => {
+  const handleSettingsChange = (data: { top_k?: number; score_threshold?: number; score_threshold_enabled?: boolean }) => {
     if (data.top_k !== undefined)
       setTopK(data.top_k)
     if (data.score_threshold !== undefined)
       setScoreThreshold(data.score_threshold)
+    if (data.score_threshold_enabled !== undefined)
+      setScoreThresholdEnabled(data.score_threshold_enabled)
   }
 
   const handleSave = async () => {
@@ -124,6 +127,7 @@ const SettingsModal: FC<SettingsModalProps> = ({
           external_retrieval_model: {
             top_k: topK,
             score_threshold: scoreThreshold,
+            score_threshold_enabled: scoreThresholdEnabled,
           },
           retrieval_model: {
             ...postRetrievalConfig,
@@ -289,6 +293,7 @@ const SettingsModal: FC<SettingsModalProps> = ({
               <RetrievalSettings
                 topK={topK}
                 scoreThreshold={scoreThreshold}
+                scoreThresholdEnabled={scoreThresholdEnabled}
                 onChange={handleSettingsChange}
                 isInRetrievalSetting={true}
               />

@@ -6,6 +6,8 @@ import {
 import { useTranslation } from 'react-i18next'
 import { useRouter } from 'next/navigation'
 import { ApiConnectionMod } from '@/app/components/base/icons/src/vender/solid/development'
+import { useModalContext } from '@/context/modal-context'
+import { useExternalKnowledgeApi } from '@/context/external-knowledge-api-context'
 
 type ApiItem = {
   value: string
@@ -22,10 +24,12 @@ type ExternalApiSelectProps = {
 const ExternalApiSelect: React.FC<ExternalApiSelectProps> = ({ items, value, onSelect }) => {
   const { t } = useTranslation()
   const [isOpen, setIsOpen] = useState(false)
-  const router = useRouter()
   const [selectedItem, setSelectedItem] = useState<ApiItem | null>(
     items.find(item => item.value === value) || null,
   )
+  const { setShowExternalKnowledgeAPIModal } = useModalContext()
+  const { mutateExternalKnowledgeApis } = useExternalKnowledgeApi()
+  const router = useRouter()
 
   useEffect(() => {
     const newSelectedItem = items.find(item => item.value === value) || null
@@ -33,7 +37,17 @@ const ExternalApiSelect: React.FC<ExternalApiSelectProps> = ({ items, value, onS
   }, [value, items])
 
   const handleAddNewAPI = () => {
-    router.push('/datasets?openExternalApiPanel=true')
+    setShowExternalKnowledgeAPIModal({
+      payload: { name: '', settings: { endpoint: '', api_key: '' } },
+      onSaveCallback: async () => {
+        mutateExternalKnowledgeApis()
+        router.refresh()
+      },
+      onCancelCallback: () => {
+        mutateExternalKnowledgeApis()
+      },
+      isEditMode: false,
+    })
   }
 
   const handleSelect = (item: ApiItem) => {
@@ -51,7 +65,7 @@ const ExternalApiSelect: React.FC<ExternalApiSelectProps> = ({ items, value, onS
       >
         {selectedItem
           ? (
-            <div className="flex px-2 py-1 items-center gap-0.5 self-stretch rounded-lg">
+            <div className="flex p-1 items-center gap-2 self-stretch rounded-lg">
               <ApiConnectionMod className='text-text-secondary w-4 h-4' />
               <div className='flex items-center flex-grow'>
                 <span className='text-components-input-text-filled text-ellipsis system-sm-regular overflow-hidden'>{selectedItem.name}</span>

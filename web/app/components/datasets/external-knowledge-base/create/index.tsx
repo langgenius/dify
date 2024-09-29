@@ -28,6 +28,7 @@ const ExternalKnowledgeBaseCreate: React.FC<ExternalKnowledgeBaseCreateProps> = 
     external_retrieval_model: {
       top_k: 2,
       score_threshold: 0.5,
+      score_threshold_enabled: false,
     },
     provider: 'external',
 
@@ -91,6 +92,7 @@ const ExternalKnowledgeBaseCreate: React.FC<ExternalKnowledgeBaseCreateProps> = 
             <RetrievalSettings
               topK={formData.external_retrieval_model.top_k}
               scoreThreshold={formData.external_retrieval_model.score_threshold}
+              scoreThresholdEnabled={formData.external_retrieval_model.score_threshold_enabled}
               onChange={data => handleFormChange({
                 ...formData,
                 external_retrieval_model: {

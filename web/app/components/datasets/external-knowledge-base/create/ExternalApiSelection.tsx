@@ -7,6 +7,7 @@ import { useRouter } from 'next/navigation'
 import ExternalApiSelect from './ExternalApiSelect'
 import Input from '@/app/components/base/input'
 import Button from '@/app/components/base/button'
+import { useModalContext } from '@/context/modal-context'
 import { useExternalKnowledgeApi } from '@/context/external-knowledge-api-context'
 
 type ExternalApiSelectionProps = {
@@ -20,6 +21,8 @@ const ExternalApiSelection: React.FC<ExternalApiSelectionProps> = ({ external_kn
   const router = useRouter()
   const { externalKnowledgeApiList } = useExternalKnowledgeApi()
   const [selectedApiId, setSelectedApiId] = useState(external_knowledge_api_id)
+  const { setShowExternalKnowledgeAPIModal } = useModalContext()
+  const { mutateExternalKnowledgeApis } = useExternalKnowledgeApi()
 
   const apiItems = externalKnowledgeApiList.map(api => ({
     value: api.id,
@@ -37,7 +40,17 @@ const ExternalApiSelection: React.FC<ExternalApiSelectionProps> = ({ external_kn
   }, [apiItems, external_knowledge_api_id, external_knowledge_id, onChange])
 
   const handleAddNewAPI = () => {
-    router.push('/datasets?openExternalApiPanel=true')
+    setShowExternalKnowledgeAPIModal({
+      payload: { name: '', settings: { endpoint: '', api_key: '' } },
+      onSaveCallback: async () => {
+        mutateExternalKnowledgeApis()
+        router.refresh()
+      },
+      onCancelCallback: () => {
+        mutateExternalKnowledgeApis()
+      },
+      isEditMode: false,
+    })
   }
 
   useEffect(() => {
