@@ -684,17 +684,15 @@ class RegisterService:
             if open_id is not None or provider is not None:
                 AccountService.link_account_integrate(provider, open_id, account)
 
-            if not dify_config.ALLOW_CREATE_WORKSPACE:
-                raise WorkSpaceNotAllowedCreateError()
-            tenant = TenantService.create_tenant(f"{account.name}'s Workspace")
-            TenantService.create_tenant_member(tenant, account, role="owner")
-            account.current_tenant = tenant
-            tenant_was_created.send(tenant)
+            if dify_config.ALLOW_CREATE_WORKSPACE:
+                tenant = TenantService.create_tenant(f"{account.name}'s Workspace")
+                TenantService.create_tenant_member(tenant, account, role="owner")
+                account.current_tenant = tenant
+                tenant_was_created.send(tenant)
 
             db.session.commit()
         except WorkSpaceNotAllowedCreateError:
             db.session.rollback()
-            raise
         except Exception as e:
             db.session.rollback()
             logging.error(f"Register failed: {e}")
