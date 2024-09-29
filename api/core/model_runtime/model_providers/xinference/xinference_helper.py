@@ -132,3 +132,16 @@ class XinferenceHelper:
             context_length=context_length,
             model_family=model_family,
         )
+
+
+def validate_model_uid(credentials: dict) -> bool:
+    """
+    Validate the model_uid within the credentials dictionary to ensure it does not
+    contain forbidden characters ("/", "?", "#").
+
+    param credentials: model credentials
+    :return: True if the model_uid does not contain forbidden characters ("/", "?", "#"), else False.
+    """
+    forbidden_characters = ["/", "?", "#"]
+    model_uid = credentials.get("model_uid", "")
+    return not any(char in forbidden_characters for char in model_uid)
