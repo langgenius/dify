@@ -146,10 +146,15 @@ class AccountService:
 
     @staticmethod
     def create_account(
-        email: str, name: str, interface_language: str, password: Optional[str] = None, interface_theme: str = "light"
+        email: str,
+        name: str,
+        interface_language: str,
+        password: Optional[str] = None,
+        interface_theme: str = "light",
+        is_setup: Optional[bool] = False,
     ) -> Account:
         """create account"""
-        if not dify_config.ALLOW_REGISTER:
+        if not dify_config.ALLOW_REGISTER and not is_setup:
             from controllers.console.error import NotAllowedRegister
 
             raise NotAllowedRegister()
@@ -188,15 +193,7 @@ class AccountService:
             email=email, name=name, interface_language=interface_language, password=password
         )
 
-        # SELF_HOSTED Just create account, not create tenant
-        if dify_config.EDITION != "SELF_HOSTED":
-            TenantService.create_owner_tenant_if_not_exist(account=account)
-        else:
-            # SElF_HOST just have one tenant
-            tenant = Tenant.query.first()
-            TenantService.create_tenant_member(tenant, account, role="user")
-            account.current_tenant = tenant
-            db.session.commit()
+        TenantService.create_owner_tenant_if_not_exist(account=account)
 
         return account
 
@@ -379,9 +376,9 @@ def _get_login_cache_key(*, account_id: str, token: str):
 
 class TenantService:
     @staticmethod
-    def create_tenant(name: str) -> Tenant:
+    def create_tenant(name: str, is_setup: Optional[bool] = False) -> Tenant:
         """Create tenant"""
-        if not dify_config.ALLOW_CREATE_WORKSPACE:
+        if not dify_config.ALLOW_CREATE_WORKSPACE and not is_setup:
             from controllers.console.error import NotAllowedCreateWorkspace
 
             raise NotAllowedCreateWorkspace()
@@ -395,9 +392,11 @@ class TenantService:
         return tenant
 
     @staticmethod
-    def create_owner_tenant_if_not_exist(account: Account, name: Optional[str] = None):
+    def create_owner_tenant_if_not_exist(
+        account: Account, name: Optional[str] = None, is_setup: Optional[bool] = False
+    ):
         """Create owner tenant if not exist"""
-        if not dify_config.ALLOW_CREATE_WORKSPACE:
+        if not dify_config.ALLOW_CREATE_WORKSPACE and not is_setup:
             raise WorkSpaceNotAllowedCreateError()
         available_ta = (
             TenantAccountJoin.query.filter_by(account_id=account.id).order_by(TenantAccountJoin.id.asc()).first()
@@ -407,9 +406,9 @@ class TenantService:
             return
 
         if name:
-            tenant = TenantService.create_tenant(name)
+            tenant = TenantService.create_tenant(name=name, is_setup=is_setup)
         else:
-            tenant = TenantService.create_tenant(f"{account.name}'s Workspace")
+            tenant = TenantService.create_tenant(name=f"{account.name}'s Workspace", is_setup=is_setup)
         TenantService.create_tenant_member(tenant, account, role="owner")
         account.current_tenant = tenant
         db.session.commit()
@@ -641,12 +640,13 @@ class RegisterService:
                 name=name,
                 interface_language=languages[0],
                 password=password,
+                is_setup=True,
             )
 
             account.last_login_ip = ip_address
             account.initialized_at = datetime.now(timezone.utc).replace(tzinfo=None)
 
-            TenantService.create_owner_tenant_if_not_exist(account)
+            TenantService.create_owner_tenant_if_not_exist(account=account, is_setup=True)
 
             dify_setup = DifySetup(version=dify_config.CURRENT_VERSION)
             db.session.add(dify_setup)
@@ -684,18 +684,12 @@ class RegisterService:
             if open_id is not None or provider is not None:
                 AccountService.link_account_integrate(provider, open_id, account)
 
-            if dify_config.EDITION != "SELF_HOSTED":
-                if not dify_config.ALLOW_CREATE_WORKSPACE:
-                    raise WorkSpaceNotAllowedCreateError()
-                tenant = TenantService.create_tenant(f"{account.name}'s Workspace")
-                TenantService.create_tenant_member(tenant, account, role="owner")
-                account.current_tenant = tenant
-                tenant_was_created.send(tenant)
-            else:
-                # SELF_HOSTED just have one tenant
-                tenant = Tenant.query.first()
-                TenantService.create_tenant_member(tenant, account, role="user")
-                account.current_tenant = tenant
+            if not dify_config.ALLOW_CREATE_WORKSPACE:
+                raise WorkSpaceNotAllowedCreateError()
+            tenant = TenantService.create_tenant(f"{account.name}'s Workspace")
+            TenantService.create_tenant_member(tenant, account, role="owner")
+            account.current_tenant = tenant
+            tenant_was_created.send(tenant)
 
             db.session.commit()
         except WorkSpaceNotAllowedCreateError:

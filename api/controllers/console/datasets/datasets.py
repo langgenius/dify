@@ -613,10 +613,10 @@ class DatasetRetrievalSettingApi(Resource):
             case (
                 VectorType.MILVUS
                 | VectorType.RELYT
-                | VectorType.PGVECTOR
                 | VectorType.TIDB_VECTOR
                 | VectorType.CHROMA
                 | VectorType.TENCENT
+                | VectorType.PGVECTO_RS
             ):
                 return {"retrieval_method": [RetrievalMethod.SEMANTIC_SEARCH.value]}
             case (
