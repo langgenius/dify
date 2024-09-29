@@ -73,50 +73,26 @@ class AppService:
         app_mode = AppMode.value_of(args["mode"])
         app_template = default_app_templates[app_mode]
 
+        default_app_config = {}
         # get model config
         default_model_config = app_template.get("model_config")
         default_model_config = default_model_config.copy() if default_model_config else None
         if default_model_config and "model" in default_model_config:
-            # get model provider
-            model_manager = ModelManager()
+            default_model_config["model"] = self._get_default_model_dict(account, default_model_config)
+            default_app_config["model"] = default_model_config["model"]
 
-            # get default model instance
-            try:
-                model_instance = model_manager.get_default_model_instance(
-                    tenant_id=account.current_tenant_id, model_type=ModelType.LLM
-                )
-            except (ProviderTokenNotInitError, LLMBadRequestError):
-                model_instance = None
-            except Exception as e:
-                logging.exception(e)
-                model_instance = None
+        default_dataset_config = app_template.copy() if app_template else None
+        if default_dataset_config and "dataset_configs" in default_dataset_config:
+            default_dataset_config["dataset_configs"] = self._get_default_dataset_dict(account,default_dataset_config)
+            default_app_config["dataset_configs"] = default_dataset_config["dataset_configs"]
 
-            if model_instance:
-                if (
-                    model_instance.model == default_model_config["model"]["name"]
-                    and model_instance.provider == default_model_config["model"]["provider"]
-                ):
-                    default_model_dict = default_model_config["model"]
-                else:
-                    llm_model = cast(LargeLanguageModel, model_instance.model_type_instance)
-                    model_schema = llm_model.get_model_schema(model_instance.model, model_instance.credentials)
-
-                    default_model_dict = {
-                        "provider": model_instance.provider,
-                        "name": model_instance.model,
-                        "mode": model_schema.model_properties.get(ModelPropertyKey.MODE),
-                        "completion_params": {},
-                    }
-            else:
-                provider, model = model_manager.get_default_provider_model_name(
-                    tenant_id=account.current_tenant_id, model_type=ModelType.LLM
-                )
-                default_model_config["model"]["provider"] = provider
-                default_model_config["model"]["name"] = model
-                default_model_dict = default_model_config["model"]
-
-            default_model_config["model"] = json.dumps(default_model_dict)
-
+        if args.get("dataset_id"):
+            default_dataset_config["dataset_configs"]["datasets"] = self._get_dataset_config(args["dataset_id"])
+        if  args.get("pre_prompt"):
+            default_app_config["pre_prompt"] = args.get("pre_prompt")
+        if args.get("opening_statement"):
+            default_app_config["opening_statement"] = args.get("opening_statement")
+        
         app = App(**app_template["app"])
         app.name = args["name"]
         app.description = args.get("description", "")
@@ -134,7 +110,7 @@ class AppService:
         db.session.flush()
 
         if default_model_config:
-            app_model_config = AppModelConfig(**default_model_config)
+            app_model_config = AppModelConfig().from_model_config_dict(default_app_config)
             app_model_config.app_id = app.id
             app_model_config.created_by = account.id
             app_model_config.updated_by = account.id
@@ -148,6 +124,94 @@ class AppService:
         app_was_created.send(app, account=account)
 
         return app
+    
+    def _get_dataset_config(self,dataset_id:str):
+        return {
+            "datasets": [
+                {
+                    "dataset": {
+                        "enabled": True,
+                        "id": dataset_id
+                    }
+                }
+            ]
+        }
+    
+    def _get_default_dataset_dict(self, account: Account, default_dataset_config: dict) -> dict:
+        """
+        获取默认dataset配置字典
+        :param account: 账户实例
+        :param default_model_config: 默认模型配置
+        :return: 默认模型配置字典
+        """
+        # 获取租户的默认文本嵌入模型
+        # tenant_default_embedding_model = self.provider_manager.get_default_model(account.current_tenant_id, ModelType.TEXT_EMBEDDING)
+        model_manager = ModelManager()
+                # get default model instance
+        try:
+            model_instance = model_manager.get_default_model_instance(
+                tenant_id=account.current_tenant_id, model_type=ModelType.TEXT_EMBEDDING
+            )
+        except (ProviderTokenNotInitError, LLMBadRequestError):
+            model_instance = None
+        except Exception as e:
+            logging.exception(e)
+            model_instance = None
+            
+        # 获取租户的默认模型
+        if model_instance:
+            dataset_configs = default_dataset_config["dataset_configs"]
+            if "weights" in dataset_configs and "vector_setting" in dataset_configs["weights"]:
+                vector_setting = dataset_configs["weights"]["vector_setting"]
+                vector_setting["embedding_provider_name"] = model_instance.provider
+                vector_setting["embedding_model_name"] = model_instance.model
+        # 如果没有租户默认模型，则返回原始默认配置
+        return default_dataset_config["dataset_configs"]
+        
+
+    def _get_default_model_dict(self, account: Account, default_model_config: dict) -> dict:
+        """
+        获取默认模型配置字典
+        :param account: 账户实例
+        :param default_model_config: 默认模型配置
+        :return: 默认模型配置字典
+        """
+        model_manager = ModelManager()
+                # get default model instance
+        try:
+            model_instance = model_manager.get_default_model_instance(
+                tenant_id=account.current_tenant_id, model_type=ModelType.LLM
+            )
+        except (ProviderTokenNotInitError, LLMBadRequestError):
+            model_instance = None
+        except Exception as e:
+            logging.exception(e)
+            model_instance = None
+        # 获取租户的默认模型
+        if model_instance:
+            if (
+                model_instance.model == default_model_config["model"]["name"]
+                and model_instance.provider == default_model_config["model"]["provider"]
+            ):
+                default_model_dict = default_model_config["model"]
+            else:
+                llm_model = cast(LargeLanguageModel, model_instance.model_type_instance)
+                model_schema = llm_model.get_model_schema(model_instance.model, model_instance.credentials)
+
+                default_model_dict = {
+                    "provider": model_instance.provider,
+                    "name": model_instance.model,
+                    "mode": model_schema.model_properties.get(ModelPropertyKey.MODE),
+                    "completion_params": {},
+                }
+        else:
+            provider, model = model_manager.get_default_provider_model_name(
+                tenant_id=account.current_tenant_id, model_type=ModelType.LLM
+            )
+            default_model_config["model"]["provider"] = provider
+            default_model_config["model"]["name"] = model
+            default_model_dict = default_model_config["model"]
+        return default_model_dict
 
     def get_app(self, app: App) -> App:
         """
