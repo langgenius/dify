@@ -1,9 +1,11 @@
 from collections.abc import Generator
 from typing import Any
 
+from pydantic import BaseModel
+
 from core.plugin.entities.plugin_daemon import PluginBasicBooleanResponse, PluginToolProviderEntity
 from core.plugin.manager.base import BasePluginManager
-from core.tools.entities.tool_entities import ToolInvokeMessage
+from core.tools.entities.tool_entities import ToolInvokeMessage, ToolParameter
 
 
 class PluginToolManager(BasePluginManager):
@@ -144,3 +146,41 @@ class PluginToolManager(BasePluginManager):
             return resp.result
 
         return False
+
+    def get_runtime_parameters(
+        self,
+        tenant_id: str,
+        user_id: str,
+        provider: str,
+        credentials: dict[str, Any],
+        tool: str,
+    ) -> list[ToolParameter]:
+        """
+        get the runtime parameters of the tool
+        """
+        plugin_id, provider_name = self._split_provider(provider)
+
+        class RuntimeParametersResponse(BaseModel):
+            parameters: list[ToolParameter]
+
+        response = self._request_with_plugin_daemon_response_stream(
+            "GET",
+            f"plugin/{tenant_id}/dispatch/tool/get_runtime_parameters",
+            RuntimeParametersResponse,
+            params={
+                "user_id": user_id,
+                "data": {
+                    "provider": provider_name,
+                    "tool": tool,
+                    "credentials": credentials,
+                },
+            },
+            headers={
+                "X-Plugin-ID": plugin_id,
+            },
+        )
+
+        for resp in response:
+            return resp.parameters
+
+        return []

@@ -255,7 +255,11 @@ class ToolManager:
 
     @classmethod
     def get_agent_tool_runtime(
-        cls, tenant_id: str, app_id: str, agent_tool: AgentToolEntity, invoke_from: InvokeFrom = InvokeFrom.DEBUGGER
+        cls,
+        tenant_id: str,
+        app_id: str,
+        agent_tool: AgentToolEntity,
+        invoke_from: InvokeFrom = InvokeFrom.DEBUGGER,
     ) -> Tool:
         """
         get the agent tool runtime
