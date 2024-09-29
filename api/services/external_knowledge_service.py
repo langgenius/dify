@@ -319,11 +319,12 @@ class ExternalDatasetService:
         headers = {"Content-Type": "application/json"}
         if settings.get("api_key"):
             headers["Authorization"] = f"Bearer {settings.get('api_key')}"
-
+        score_threshold_enabled = external_retrieval_parameters.get("score_threshold_enabled") or False
+        score_threshold = external_retrieval_parameters.get("score_threshold", 0.0) if score_threshold_enabled else 0.0
         request_params = {
             "retrieval_setting": {
                 "top_k": external_retrieval_parameters.get("top_k"),
-                "score_threshold": external_retrieval_parameters.get("score_threshold"),
+                "score_threshold": score_threshold,
             },
             "query": query,
             "knowledge_id": external_knowledge_binding.external_knowledge_id,
