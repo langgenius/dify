@@ -120,9 +120,10 @@ class BasePluginManager:
             if rep.code == -500:
                 try:
                     error = PluginDaemonError(**json.loads(rep.message))
-                    self._handle_plugin_daemon_error(error.error_type, error.message, error.args)
                 except Exception as e:
                     raise ValueError(f"got error from plugin daemon: {rep.message}, code: {rep.code}")
+
+                self._handle_plugin_daemon_error(error.error_type, error.message, error.args)
             raise ValueError(f"got error from plugin daemon: {rep.message}, code: {rep.code}")
         if rep.data is None:
             raise ValueError("got empty data from plugin daemon")
@@ -148,9 +149,10 @@ class BasePluginManager:
                 if rep.code == -500:
                     try:
                         error = PluginDaemonError(**json.loads(rep.message))
-                        self._handle_plugin_daemon_error(error.error_type, error.message, error.args)
                     except Exception as e:
                         raise PluginDaemonInnerError(code=rep.code, message=rep.message)
+
+                    self._handle_plugin_daemon_error(error.error_type, error.message, error.args)
                 raise ValueError(f"got error from plugin daemon: {rep.message}, code: {rep.code}")
             if rep.data is None:
                 raise ValueError("got empty data from plugin daemon")
