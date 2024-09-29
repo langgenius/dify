@@ -123,12 +123,13 @@ class ToolManager:
         :return: the tool
         """
         if provider_type == ToolProviderType.BUILT_IN:
-            builtin_tool = cls.get_builtin_tool(provider_id, tool_name, tenant_id)
-            if not builtin_tool:
-                raise ValueError(f"tool {tool_name} not found")
-
             # check if the builtin tool need credentials
             provider_controller = cls.get_builtin_provider(provider_id, tenant_id)
+
+            builtin_tool = provider_controller.get_tool(tool_name)
+            if not builtin_tool:
+                raise ToolProviderNotFoundError(f"builtin tool {tool_name} not found")
+
             if not provider_controller.need_credentials:
                 return cast(
                     BuiltinTool,
