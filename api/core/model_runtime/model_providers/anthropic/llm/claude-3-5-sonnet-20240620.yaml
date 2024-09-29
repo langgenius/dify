@@ -37,3 +37,4 @@ pricing:
   output: '15.00'
   unit: '0.000001'
   currency: USD
+support_system_prompt: false

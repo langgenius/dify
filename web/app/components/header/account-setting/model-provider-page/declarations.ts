@@ -121,6 +121,7 @@ export type ModelItem = {
   model_properties: Record<string, string | number>
   load_balancing_enabled: boolean
   deprecated?: boolean
+  support_system_prompt: boolean
 }
 
 export enum PreferredProviderTypeEnum {

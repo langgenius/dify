@@ -39,7 +39,7 @@ export type ModelParameterModalProps = {
   mode: string
   modelId: string
   provider: string
-  setModel: (model: { modelId: string; provider: string; mode?: string; features?: string[] }) => void
+  setModel: (model: { modelId: string; provider: string; mode?: string; features?: string[]; support_system_prompt?: boolean }) => void
   completionParams: FormValue
   onCompletionParamsChange: (newParams: FormValue) => void
   hideDebugWithMultipleModel?: boolean
@@ -120,6 +120,7 @@ const ModelParameterModal: FC<ModelParameterModalProps> = ({
       provider,
       mode: targetModelItem?.model_properties.mode as string,
       features: targetModelItem?.features || [],
+      support_system_prompt: targetModelItem?.support_system_prompt || true,
     })
   }
 

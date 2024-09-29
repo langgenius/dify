@@ -325,6 +325,7 @@ class ModelProviderService:
                             model_properties=model.model_properties,
                             status=model.status,
                             load_balancing_enabled=model.load_balancing_enabled,
+                            support_system_prompt=model.support_system_prompt,
                         )
                         for model in models
                     ],

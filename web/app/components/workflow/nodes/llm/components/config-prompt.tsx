@@ -105,7 +105,7 @@ const ConfigPrompt: FC<Props> = ({
   const handleAddPrompt = useCallback(() => {
     const newPrompt = produce(payload as PromptItem[], (draft) => {
       if (draft.length === 0) {
-        draft.push({ role: PromptRole.system, text: '' })
+        draft.push({ role: PromptRole.user, text: '' })
 
         return
       }
@@ -144,8 +144,8 @@ const ConfigPrompt: FC<Props> = ({
   }, [onChange, payload])
 
   const canChooseSystemRole = (() => {
-    if (isChatModel && Array.isArray(payload))
-      return !payload.find(item => item.role === PromptRole.system)
+    // if (isChatModel && Array.isArray(payload))
+    //   return !payload.find(item => item.role === PromptRole.system)
 
     return false
   })()
@@ -158,8 +158,8 @@ const ConfigPrompt: FC<Props> = ({
               <ReactSortable className="space-y-1"
                 list={payloadWithIds}
                 setList={(list) => {
-                  if ((payload as PromptItem[])?.[0]?.role === PromptRole.system && list[0].p?.role !== PromptRole.system)
-                    return
+                  // if ((payload as PromptItem[])?.[0]?.role === PromptRole.system && list[0].p?.role !== PromptRole.system)
+                  //   return
 
                   onChange(list.map(item => item.p))
                 }}

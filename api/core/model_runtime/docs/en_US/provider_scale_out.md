@@ -1,4 +1,4 @@
-## Adding a New Provider
+# Adding a New Provider
 
 Providers support three types of model configuration methods:
 
@@ -142,6 +142,8 @@ pricing:  # Pricing information
   output: '24.00'  # Output price, i.e., returned content price
   unit: '0.000001'  # Pricing unit, i.e., the above prices are per 100K
   currency: USD  # Currency
+support_system_prompt: false  # Whether to support system prompt
+deprecated: false  # Whether to deprecate
 ```
 
 It is recommended to prepare all model configurations before starting the implementation of the model code.

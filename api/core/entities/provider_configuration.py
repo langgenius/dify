@@ -796,6 +796,7 @@ class ProviderConfiguration(BaseModel):
                         deprecated=m.deprecated,
                         provider=SimpleModelProviderEntity(self.provider),
                         status=status,
+                        support_system_prompt=m.support_system_prompt,
                     )
                 )
 
@@ -860,6 +861,7 @@ class ProviderConfiguration(BaseModel):
                                 deprecated=custom_model_schema.deprecated,
                                 provider=SimpleModelProviderEntity(self.provider),
                                 status=status,
+                                support_system_prompt=custom_model_schema.support_system_prompt,
                             )
                         )
 
@@ -921,6 +923,7 @@ class ProviderConfiguration(BaseModel):
                         provider=SimpleModelProviderEntity(self.provider),
                         status=status,
                         load_balancing_enabled=load_balancing_enabled,
+                        support_system_prompt=m.support_system_prompt,
                     )
                 )
 
@@ -967,6 +970,7 @@ class ProviderConfiguration(BaseModel):
                     provider=SimpleModelProviderEntity(self.provider),
                     status=status,
                     load_balancing_enabled=load_balancing_enabled,
+                    support_system_prompt=custom_model_schema.support_system_prompt,
                 )
             )
 

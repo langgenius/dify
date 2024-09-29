@@ -59,3 +59,4 @@ pricing:
   output: '0.075'
   unit: '0.001'
   currency: USD
+support_system_prompt: false

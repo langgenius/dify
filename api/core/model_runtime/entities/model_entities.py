@@ -148,9 +148,7 @@ class ModelPropertyKey(Enum):
 
 
 class ProviderModel(BaseModel):
-    """
-    Model class for provider model.
-    """
+    model_config = ConfigDict(protected_namespaces=())
 
     model: str
     label: I18nObject
@@ -159,7 +157,7 @@ class ProviderModel(BaseModel):
     fetch_from: FetchFrom
     model_properties: dict[ModelPropertyKey, Any]
     deprecated: bool = False
-    model_config = ConfigDict(protected_namespaces=())
+    support_system_prompt: bool = True
 
 
 class ParameterRule(BaseModel):

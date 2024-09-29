@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useRef, useState } from 'react'
 import produce from 'immer'
-import { EditionType, VarType } from '../../types'
+import { EditionType, PromptRole, VarType } from '../../types'
 import type { Memory, PromptItem, ValueSelector, Var, Variable } from '../../types'
 import { useStore } from '../../store'
 import {
@@ -100,7 +100,7 @@ const useConfig = (id: string, payload: LLMNodeType) => {
       })
       setInputs(newInputs)
     }
-  // eslint-disable-next-line react-hooks/exhaustive-deps
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [defaultConfig, isChatModel])
 
   const [modelChanged, setModelChanged] = useState(false)
@@ -109,7 +109,7 @@ const useConfig = (id: string, payload: LLMNodeType) => {
     currentModel,
   } = useModelListAndDefaultModelAndCurrentProviderAndModel(ModelTypeEnum.textGeneration)
 
-  const handleModelChanged = useCallback((model: { provider: string; modelId: string; mode?: string }) => {
+  const handleModelChanged = useCallback((model: { provider: string; modelId: string; mode?: string; support_system_prompt?: boolean }) => {
     const newInputs = produce(inputRef.current, (draft) => {
       draft.model.provider = model.provider
       draft.model.name = model.modelId
@@ -117,6 +117,17 @@ const useConfig = (id: string, payload: LLMNodeType) => {
       const isModeChange = model.mode !== inputRef.current.model.mode
       if (isModeChange && defaultConfig && Object.keys(defaultConfig).length > 0)
         appendDefaultPromptConfig(draft, defaultConfig, model.mode === 'chat')
+
+      const hasSystemPrompt = Array.isArray(inputs.prompt_template) && inputs.prompt_template.length > 0 && inputs.prompt_template[0].role === PromptRole.system
+      if (Array.isArray(draft.prompt_template) && hasSystemPrompt && !model.support_system_prompt) {
+        draft.prompt_template = draft.prompt_template.slice(1)
+      }
+      else if (Array.isArray(draft.prompt_template) && !hasSystemPrompt && model.support_system_prompt) {
+        draft.prompt_template = [{
+          role: PromptRole.system,
+          text: '',
+        }, ...draft.prompt_template]
+      }
     })
     setInputs(newInputs)
     setModelChanged(true)
@@ -128,6 +139,7 @@ const useConfig = (id: string, payload: LLMNodeType) => {
         provider: currentProvider?.provider,
         modelId: currentModel?.model,
         mode: currentModel?.model_properties?.mode as string,
+        support_system_prompt: currentModel?.support_system_prompt,
       })
     }
   }, [model.provider, currentProvider, currentModel, handleModelChanged])
@@ -175,7 +187,7 @@ const useConfig = (id: string, payload: LLMNodeType) => {
       })
       setInputs(newInputs)
     }
-  // eslint-disable-next-line react-hooks/exhaustive-deps
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [isShowVisionConfig, modelChanged])
 
   // variables

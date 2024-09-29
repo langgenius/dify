@@ -51,3 +51,4 @@ pricing:
   unit: '0.001'
   currency: USD
 deprecated: true
+support_system_prompt: false

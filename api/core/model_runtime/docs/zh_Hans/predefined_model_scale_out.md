@@ -1,4 +1,4 @@
-## 预定义模型接入
+# 预定义模型接入
 
 供应商集成完成后，接下来为供应商下模型的接入。
 
@@ -17,7 +17,7 @@
 
 对于预定义的模型，我们首先需要在 `llm` `module` 下创建以模型名为文件名称的 YAML 文件，如：`claude-2.1.yaml`。
 
-### 准备模型 YAML
+## 准备模型 YAML
 
 ```yaml
 model: claude-2.1  # 模型标识
@@ -58,6 +58,8 @@ pricing:  # 价格信息
   output: '24.00'  # 输出单价，即返回内容单价
   unit: '0.000001'  # 价格单位，即上述价格为每 100K 的单价
   currency: USD  # 价格货币
+support_system_prompt: false  # 是否支持系统提示
+deprecated: false  # 是否废弃
 ```
 
 建议将所有模型配置都准备完毕后再开始模型代码的实现。
@@ -151,10 +153,10 @@ pricing:  # 价格信息
   Runtime Errors:
 
   - `InvokeConnectionError` 调用连接错误
-  - `InvokeServerUnavailableError ` 调用服务方不可用
-  - `InvokeRateLimitError ` 调用达到限额
+  - `InvokeServerUnavailableError` 调用服务方不可用
+  - `InvokeRateLimitError` 调用达到限额
   - `InvokeAuthorizationError`  调用鉴权失败
-  - `InvokeBadRequestError ` 调用传参有误
+  - `InvokeBadRequestError` 调用传参有误
 
   ```python
   @property
