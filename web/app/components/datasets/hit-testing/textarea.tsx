@@ -5,7 +5,7 @@ import { getIcon } from '../common/retrieval-method-info'
 import s from './style.module.css'
 import Tooltip from '@/app/components/base/tooltip'
 import cn from '@/utils/classnames'
-import Textarea from '@/app/components/base/textarea'
+// import Textarea from '@/app/components/base/textarea'
 import type { HitTestingResponse } from '@/models/datasets'
 import { hitTesting } from '@/service/datasets'
 import { asyncRunSafe } from '@/utils'
@@ -89,8 +89,8 @@ const TextAreaWithButton = ({
           <div className='h-2 rounded-tl-xl rounded-tr-xl bg-white'></div>
         </div>
         <div className='px-4 pb-11'>
-          <Textarea
-            className='h-[220px] resize-none'
+          <textarea
+            className='h-[220px] border-none resize-none font-normal caret-primary-600 text-gray-700 text-sm w-full focus-visible:outline-none placeholder:text-gray-300 placeholder:text-sm placeholder:font-normal'
             value={text}
             onChange={handleTextChange}
             placeholder={t('datasetHitTesting.input.placeholder') as string}
