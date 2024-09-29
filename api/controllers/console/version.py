@@ -38,11 +38,26 @@ class VersionApi(Resource):
             return result
 
         content = json.loads(response.content)
-        result["version"] = content["version"]
-        result["release_date"] = content["releaseDate"]
-        result["release_notes"] = content["releaseNotes"]
-        result["can_auto_update"] = content["canAutoUpdate"]
+        if _has_new_version(latest_version=content["version"], current_version=args.get("current_version")):
+            result["version"] = content["version"]
+            result["release_date"] = content["releaseDate"]
+            result["release_notes"] = content["releaseNotes"]
+            result["can_auto_update"] = content["canAutoUpdate"]
         return result
+
+
+def _has_new_version(*, latest_version: str, current_version: str) -> bool:
+    if "-" in current_version:
+        current_version = current_version.split("-")[0]
+    # split two version to major, minor, patch
+    current_version_list = current_version.split(".")
+    latest_version_list = latest_version.split(".")
+    for i in range(len(current_version_list)):
+        if int(current_version_list[i]) < int(latest_version_list[i]):
+            return True
+        elif int(current_version_list[i]) > int(latest_version_list[i]):
+            return False
+    return False
 
 
 api.add_resource(VersionApi, "/version")
