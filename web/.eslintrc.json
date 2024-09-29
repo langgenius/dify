@@ -1,4 +1,5 @@
 {
+  "root": true,
   "extends": [
     "next",
     "@antfu"
