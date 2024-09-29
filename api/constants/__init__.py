@@ -1,3 +1,5 @@
+from configs import dify_config
+
 HIDDEN_VALUE = "[__HIDDEN__]"
 UUID_NIL = "00000000-0000-0000-0000-000000000000"
 
@@ -13,9 +15,7 @@ AUDIO_EXTENSIONS.extend([ext.upper() for ext in AUDIO_EXTENSIONS])
 DOCUMENT_EXTENSIONS = ["txt", "markdown", "md", "pdf", "html", "htm", "xlsx", "xls", "docx", "csv"]
 DOCUMENT_EXTENSIONS.extend([ext.upper() for ext in DOCUMENT_EXTENSIONS])
 
-ALLOWED_EXTENSIONS = ["txt", "markdown", "md", "pdf", "html", "htm", "xlsx", "xls", "docx", "csv"]
-ALLOWED_EXTENSIONS.extend([ext.upper() for ext in ALLOWED_EXTENSIONS])
-
-UNSTRUCTURED_ALLOWED_EXTENSIONS = ["txt", "markdown", "md", "pdf", "html", "htm", "xlsx", "xls"]
-UNSTRUCTURED_ALLOWED_EXTENSIONS.extend(("docx", "csv", "eml", "msg", "pptx", "ppt", "xml", "epub"))
-UNSTRUCTURED_ALLOWED_EXTENSIONS.extend([ext.upper() for ext in UNSTRUCTURED_ALLOWED_EXTENSIONS])
+if dify_config.ETL_TYPE == "Unstructured":
+    DOCUMENT_EXTENSIONS = ["txt", "markdown", "md", "pdf", "html", "htm", "xlsx", "xls"]
+    DOCUMENT_EXTENSIONS.extend(("docx", "csv", "eml", "msg", "pptx", "ppt", "xml", "epub"))
+    DOCUMENT_EXTENSIONS.extend([ext.upper() for ext in DOCUMENT_EXTENSIONS])

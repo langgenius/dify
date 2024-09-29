@@ -6,7 +6,7 @@ from flask_restful import Resource, marshal_with
 
 import services
 from configs import dify_config
-from constants import ALLOWED_EXTENSIONS, UNSTRUCTURED_ALLOWED_EXTENSIONS
+from constants import DOCUMENT_EXTENSIONS
 from controllers.console import api
 from controllers.console.datasets.error import (
     FileTooLargeError,
@@ -79,9 +79,7 @@ class FileSupportTypeApi(Resource):
     @login_required
     @account_initialization_required
     def get(self):
-        etl_type = dify_config.ETL_TYPE
-        allowed_extensions = UNSTRUCTURED_ALLOWED_EXTENSIONS if etl_type == "Unstructured" else ALLOWED_EXTENSIONS
-        return {"allowed_extensions": allowed_extensions}
+        return {"allowed_extensions": DOCUMENT_EXTENSIONS}
 
 
 class RemoteFileInfoApi(Resource):

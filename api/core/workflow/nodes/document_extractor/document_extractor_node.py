@@ -5,6 +5,9 @@ from typing import cast
 import docx
 import pandas as pd
 import pypdfium2
+from unstructured.partition.email import partition_email
+from unstructured.partition.epub import partition_epub
+from unstructured.partition.msg import partition_msg
 from unstructured.partition.ppt import partition_ppt
 from unstructured.partition.pptx import partition_pptx
 
@@ -96,6 +99,12 @@ def _extract_text(*, file_content: bytes, mime_type: str) -> str:
         return _extract_text_from_ppt(file_content)
     elif mime_type == "application/vnd.openxmlformats-officedocument.presentationml.presentation":
         return _extract_text_from_pptx(file_content)
+    elif mime_type == "application/epub+zip":
+        return _extract_text_from_epub(file_content)
+    elif mime_type == "message/rfc822":
+        return _extract_text_from_eml(file_content)
+    elif mime_type == "application/vnd.ms-outlook":
+        return _extract_text_from_msg(file_content)
     else:
         raise UnsupportedFileTypeError(f"Unsupported MIME type: {mime_type}")
 
@@ -210,3 +219,30 @@ def _extract_text_from_pptx(file_content: bytes) -> str:
         return "\n".join([getattr(element, "text", "") for element in elements])
     except Exception as e:
         raise TextExtractionError(f"Failed to extract text from PPTX: {str(e)}") from e
+
+
+def _extract_text_from_epub(file_content: bytes) -> str:
+    try:
+        with io.BytesIO(file_content) as file:
+            elements = partition_epub(file=file)
+        return "\n".join([str(element) for element in elements])
+    except Exception as e:
+        raise TextExtractionError(f"Failed to extract text from EPUB: {str(e)}") from e
+
+
+def _extract_text_from_eml(file_content: bytes) -> str:
+    try:
+        with io.BytesIO(file_content) as file:
+            elements = partition_email(file=file)
+        return "\n".join([str(element) for element in elements])
+    except Exception as e:
+        raise TextExtractionError(f"Failed to extract text from EML: {str(e)}") from e
+
+
+def _extract_text_from_msg(file_content: bytes) -> str:
+    try:
+        with io.BytesIO(file_content) as file:
+            elements = partition_msg(file=file)
+        return "\n".join([str(element) for element in elements])
+    except Exception as e:
+        raise TextExtractionError(f"Failed to extract text from MSG: {str(e)}") from e

@@ -10,10 +10,9 @@ from werkzeug.exceptions import NotFound
 
 from configs import dify_config
 from constants import (
-    ALLOWED_EXTENSIONS,
     AUDIO_EXTENSIONS,
+    DOCUMENT_EXTENSIONS,
     IMAGE_EXTENSIONS,
-    UNSTRUCTURED_ALLOWED_EXTENSIONS,
     VIDEO_EXTENSIONS,
 )
 from core.file import helpers as file_helpers
@@ -147,9 +146,7 @@ class FileService:
 
         # extract text from file
         extension = upload_file.extension
-        etl_type = dify_config.ETL_TYPE
-        allowed_extensions = UNSTRUCTURED_ALLOWED_EXTENSIONS if etl_type == "Unstructured" else ALLOWED_EXTENSIONS
-        if extension.lower() not in allowed_extensions:
+        if extension.lower() not in DOCUMENT_EXTENSIONS:
             raise UnsupportedFileTypeError()
 
         text = ExtractProcessor.load_from_upload_file(upload_file, return_text=True)
