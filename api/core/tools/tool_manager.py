@@ -312,7 +312,7 @@ class ToolManager:
         """
         get the workflow tool runtime
         """
-        tool_entity = cls.get_tool_runtime(
+        tool_runtime = cls.get_tool_runtime(
             provider_type=workflow_tool.provider_type,
             provider_id=workflow_tool.provider_id,
             tool_name=workflow_tool.tool_name,
@@ -321,7 +321,7 @@ class ToolManager:
             tool_invoke_from=ToolInvokeFrom.WORKFLOW,
         )
         runtime_parameters = {}
-        parameters = tool_entity.get_merged_runtime_parameters()
+        parameters = tool_runtime.get_merged_runtime_parameters()
 
         for parameter in parameters:
             # save tool parameter to tool entity memory
@@ -332,7 +332,7 @@ class ToolManager:
         # decrypt runtime parameters
         encryption_manager = ToolParameterConfigurationManager(
             tenant_id=tenant_id,
-            tool_runtime=tool_entity,
+            tool_runtime=tool_runtime,
             provider_name=workflow_tool.provider_id,
             provider_type=workflow_tool.provider_type,
             identity_id=f"WORKFLOW.{app_id}.{node_id}",
@@ -341,11 +341,11 @@ class ToolManager:
         if runtime_parameters:
             runtime_parameters = encryption_manager.decrypt_tool_parameters(runtime_parameters)
 
-        if not tool_entity.runtime:
+        if not tool_runtime.runtime:
             raise Exception("tool missing runtime")
 
-        tool_entity.runtime.runtime_parameters.update(runtime_parameters)
-        return tool_entity
+        tool_runtime.runtime.runtime_parameters.update(runtime_parameters)
+        return tool_runtime
 
     @classmethod
     def get_builtin_provider_icon(cls, provider: str, tenant_id: str) -> tuple[str, str]:

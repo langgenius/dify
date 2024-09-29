@@ -1,5 +1,5 @@
 from collections.abc import Generator
-from typing import Any
+from typing import Any, Optional
 
 from core.plugin.manager.tool import PluginToolManager
 from core.tools.__base.tool import Tool
@@ -9,10 +9,12 @@ from core.tools.entities.tool_entities import ToolEntity, ToolInvokeMessage, Too
 
 class PluginTool(Tool):
     tenant_id: str
+    runtime_parameters: Optional[list[ToolParameter]]
 
     def __init__(self, entity: ToolEntity, runtime: ToolRuntime, tenant_id: str) -> None:
         super().__init__(entity, runtime)
         self.tenant_id = tenant_id
+        self.runtime_parameters = None
 
     @property
     def tool_provider_type(self) -> ToolProviderType:
@@ -43,11 +45,16 @@ class PluginTool(Tool):
         if not self.entity.has_runtime_parameters:
             return self.entity.parameters
 
+        if self.runtime_parameters is not None:
+            return self.runtime_parameters
+
         manager = PluginToolManager()
-        return manager.get_runtime_parameters(
+        self.runtime_parameters = manager.get_runtime_parameters(
             tenant_id=self.tenant_id,
             user_id="",
             provider=self.entity.identity.provider,
             tool=self.entity.identity.name,
             credentials=self.runtime.credentials,
         )
+
+        return self.runtime_parameters

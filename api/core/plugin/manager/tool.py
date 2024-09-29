@@ -164,11 +164,11 @@ class PluginToolManager(BasePluginManager):
             parameters: list[ToolParameter]
 
         response = self._request_with_plugin_daemon_response_stream(
-            "GET",
+            "POST",
             f"plugin/{tenant_id}/dispatch/tool/get_runtime_parameters",
             RuntimeParametersResponse,
-            params={
-                "user_id": user_id,
+            data={
+                "user_id": "user_id",
                 "data": {
                     "provider": provider_name,
                     "tool": tool,
@@ -177,6 +177,7 @@ class PluginToolManager(BasePluginManager):
             },
             headers={
                 "X-Plugin-ID": plugin_id,
+                "Content-Type": "application/json",
             },
         )
 
