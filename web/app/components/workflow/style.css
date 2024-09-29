@@ -16,3 +16,7 @@
   border: 1px solid #528BFF;
   background: rgba(21, 94, 239, 0.05);
 }
+
+#workflow-container .react-flow__node-custom-note {
+  z-index: -1000 !important;
+}
