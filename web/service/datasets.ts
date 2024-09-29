@@ -245,7 +245,7 @@ export const hitTesting: Fetcher<HitTestingResponse, { datasetId: string; queryT
   return post<HitTestingResponse>(`/datasets/${datasetId}/hit-testing`, { body: { query: queryText, retrieval_model } })
 }
 
-export const externalKnowledgeBaseHitTesting: Fetcher<ExternalKnowledgeBaseHitTestingResponse, { datasetId: string; query: string; external_retrieval_model: { top_k: number; score_threshold: number } }> = ({ datasetId, query, external_retrieval_model }) => {
+export const externalKnowledgeBaseHitTesting: Fetcher<ExternalKnowledgeBaseHitTestingResponse, { datasetId: string; query: string; external_retrieval_model: { top_k: number; score_threshold: number; score_threshold_enabled: boolean } }> = ({ datasetId, query, external_retrieval_model }) => {
   return post<ExternalKnowledgeBaseHitTestingResponse>(`/datasets/${datasetId}/external-hit-testing`, { body: { query, external_retrieval_model } })
 }
 

@@ -42,7 +42,7 @@ const KnowledgeBaseInfo: React.FC<KnowledgeBaseInfoProps> = ({ name, description
               value={description}
               onChange={ e => handleDescriptionChange(e)}
               placeholder={t('dataset.externalKnowledgeDescriptionPlaceholder') ?? ''}
-              className={`flex h-20 p-2 self-stretch items-start rounded-lg bg-components-input-bg-normal ${description ? 'text-components-input-text-filled' : 'text-components-input-text-placeholder'} system-sm-regular`}
+              className={`flex h-20 py-2 p-3 self-stretch items-start rounded-lg bg-components-input-bg-normal ${description ? 'text-components-input-text-filled' : 'text-components-input-text-placeholder'} system-sm-regular`}
             />
             <a
               className='flex py-0.5 gap-1 self-stretch'

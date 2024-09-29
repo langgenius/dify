@@ -211,7 +211,7 @@ const SegmentCard: FC<ISegmentCardProps> = ({
               </div>
               <div className={cn('w-full bg-gray-50 group-hover:bg-white')}>
                 <Divider />
-                <div className="relative flex items-center w-full">
+                <div className="relative flex items-center w-full pb-1">
                   <DocumentTitle
                     name={detail?.document?.name || refSource?.title || ''}
                     extension={(detail?.document?.name || refSource?.title || '').split('.').pop() || 'txt'}

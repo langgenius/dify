@@ -60,6 +60,7 @@ const Form = () => {
   const [permission, setPermission] = useState(currentDataset?.permission)
   const [topK, setTopK] = useState(currentDataset?.external_retrieval_model.top_k ?? 2)
   const [scoreThreshold, setScoreThreshold] = useState(currentDataset?.external_retrieval_model.score_threshold ?? 0.5)
+  const [scoreThresholdEnabled, setScoreThresholdEnabled] = useState(currentDataset?.external_retrieval_model.score_threshold_enabled ?? false)
   const [selectedMemberIDs, setSelectedMemberIDs] = useState<string[]>(currentDataset?.partial_member_list || [])
   const [memberList, setMemberList] = useState<Member[]>([])
   const [indexMethod, setIndexMethod] = useState(currentDataset?.indexing_technique)
@@ -90,11 +91,13 @@ const Form = () => {
       setMemberList(accounts)
   }
 
-  const handleSettingsChange = (data: { top_k?: number; score_threshold?: number }) => {
+  const handleSettingsChange = (data: { top_k?: number; score_threshold?: number; score_threshold_enabled?: boolean }) => {
     if (data.top_k !== undefined)
       setTopK(data.top_k)
     if (data.score_threshold !== undefined)
       setScoreThreshold(data.score_threshold)
+    if (data.score_threshold_enabled !== undefined)
+      setScoreThresholdEnabled(data.score_threshold_enabled)
   }
 
   useMount(() => {
@@ -141,6 +144,7 @@ const Form = () => {
           external_retrieval_model: {
             top_k: topK,
             score_threshold: scoreThreshold,
+            score_threshold_enabled: scoreThresholdEnabled,
           },
           retrieval_model: {
             ...postRetrievalConfig,
@@ -268,6 +272,7 @@ const Form = () => {
             <RetrievalSettings
               topK={topK}
               scoreThreshold={scoreThreshold}
+              scoreThresholdEnabled={scoreThresholdEnabled}
               onChange={handleSettingsChange}
               isInRetrievalSetting={true}
             />

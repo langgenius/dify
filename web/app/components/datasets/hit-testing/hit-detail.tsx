@@ -35,33 +35,31 @@ const HitDetail: FC<IHitDetailProps> = ({ segInfo }) => {
         <div className={s.segModalContent}>{renderContent()}</div>
       </div>
       : <div className='overflow-x-auto'>
-        <div className="bg-gray-25 p-6">
-          <div className="flex items-center">
-            <SegmentIndexTag
-              positionId={segInfo?.position || ''}
-              className="w-fit mr-6"
-            />
-            <div className={cn(s.commonIcon, s.typeSquareIcon)} />
-            <span className={cn('mr-6', s.numberInfo)}>
-              {segInfo?.word_count} {t('datasetDocuments.segment.characters')}
-            </span>
-            <div className={cn(s.commonIcon, s.targetIcon)} />
-            <span className={s.numberInfo}>
-              {segInfo?.hit_count} {t('datasetDocuments.segment.hitCount')}
-            </span>
-          </div>
-          <Divider />
-          <div className={s.segModalContent}>{renderContent()}</div>
-          <div className={s.keywordTitle}>
-            {t('datasetDocuments.segment.keywords')}
-          </div>
-          <div className={s.keywordWrapper}>
-            {!segInfo?.keywords?.length
-              ? '-'
-              : segInfo?.keywords?.map((word, index) => {
-                return <div key={index} className={s.keyword}>{word}</div>
-              })}
-          </div>
+        <div className="flex items-center">
+          <SegmentIndexTag
+            positionId={segInfo?.position || ''}
+            className="w-fit mr-6"
+          />
+          <div className={cn(s.commonIcon, s.typeSquareIcon)} />
+          <span className={cn('mr-6', s.numberInfo)}>
+            {segInfo?.word_count} {t('datasetDocuments.segment.characters')}
+          </span>
+          <div className={cn(s.commonIcon, s.targetIcon)} />
+          <span className={s.numberInfo}>
+            {segInfo?.hit_count} {t('datasetDocuments.segment.hitCount')}
+          </span>
+        </div>
+        <Divider />
+        <div className={s.segModalContent}>{renderContent()}</div>
+        <div className={s.keywordTitle}>
+          {t('datasetDocuments.segment.keywords')}
+        </div>
+        <div className={s.keywordWrapper}>
+          {!segInfo?.keywords?.length
+            ? '-'
+            : segInfo?.keywords?.map((word, index) => {
+              return <div key={index} className={s.keyword}>{word}</div>
+            })}
         </div>
       </div>
   )

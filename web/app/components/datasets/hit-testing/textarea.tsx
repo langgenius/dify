@@ -51,9 +51,10 @@ const TextAreaWithButton = ({
   const [externalRetrievalSettings, setExternalRetrievalSettings] = useState({
     top_k: 2,
     score_threshold: 0.5,
+    score_threshold_enabled: false,
   })
 
-  const handleSaveExternalRetrievalSettings = (data: { top_k: number; score_threshold: number }) => {
+  const handleSaveExternalRetrievalSettings = (data: { top_k: number; score_threshold: number; score_threshold_enabled: boolean }) => {
     setExternalRetrievalSettings(data)
     setIsSettingsOpen(false)
   }
@@ -90,6 +91,7 @@ const TextAreaWithButton = ({
         external_retrieval_model: {
           top_k: externalRetrievalSettings.top_k,
           score_threshold: externalRetrievalSettings.score_threshold,
+          score_threshold_enabled: externalRetrievalSettings.score_threshold_enabled,
         },
       }) as Promise<ExternalKnowledgeBaseHitTestingResponse>,
     )

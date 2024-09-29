@@ -9,9 +9,10 @@ import ActionButton from '@/app/components/base/action-button'
 
 type ModifyExternalRetrievalModalProps = {
   onClose: () => void
-  onSave: (data: { top_k: number; score_threshold: number }) => void
+  onSave: (data: { top_k: number; score_threshold: number; score_threshold_enabled: boolean }) => void
   initialTopK: number
   initialScoreThreshold: number
+  initialScoreThresholdEnabled: boolean
 }
 
 const ModifyExternalRetrievalModal: React.FC<ModifyExternalRetrievalModalProps> = ({
@@ -19,20 +20,24 @@ const ModifyExternalRetrievalModal: React.FC<ModifyExternalRetrievalModalProps> 
   onSave,
   initialTopK,
   initialScoreThreshold,
+  initialScoreThresholdEnabled,
 }) => {
   const { t } = useTranslation()
   const [topK, setTopK] = useState(initialTopK)
   const [scoreThreshold, setScoreThreshold] = useState(initialScoreThreshold)
+  const [scoreThresholdEnabled, setScoreThresholdEnabled] = useState(initialScoreThresholdEnabled)
 
-  const handleSettingsChange = (data: { top_k?: number; score_threshold?: number }) => {
+  const handleSettingsChange = (data: { top_k?: number; score_threshold?: number; score_threshold_enabled?: boolean }) => {
     if (data.top_k !== undefined)
       setTopK(data.top_k)
     if (data.score_threshold !== undefined)
       setScoreThreshold(data.score_threshold)
+    if (data.score_threshold_enabled !== undefined)
+      setScoreThresholdEnabled(data.score_threshold_enabled)
   }
 
   const handleSave = () => {
-    onSave({ top_k: topK, score_threshold: scoreThreshold })
+    onSave({ top_k: topK, score_threshold: scoreThreshold, score_threshold_enabled: scoreThresholdEnabled })
     onClose()
   }
 
@@ -50,6 +55,7 @@ const ModifyExternalRetrievalModal: React.FC<ModifyExternalRetrievalModalProps> 
         <RetrievalSettings
           topK={topK}
           scoreThreshold={scoreThreshold}
+          scoreThresholdEnabled={scoreThresholdEnabled}
           onChange={handleSettingsChange}
           isInHitTesting={true}
         />

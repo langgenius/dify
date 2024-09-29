@@ -2,7 +2,7 @@
 
 // Libraries
 import { useEffect, useMemo, useRef, useState } from 'react'
-import { useRouter, useSearchParams } from 'next/navigation'
+import { useRouter } from 'next/navigation'
 import { useTranslation } from 'react-i18next'
 import { useDebounceFn } from 'ahooks'
 import useSWR from 'swr'
@@ -35,17 +35,6 @@ const Container = () => {
   const { currentWorkspace } = useAppContext()
   const showTagManagementModal = useTagStore(s => s.showTagManagementModal)
   const { showExternalApiPanel, setShowExternalApiPanel } = useExternalApiPanel()
-  const searchParams = useSearchParams()
-
-  useEffect(() => {
-    const openPanel = searchParams.get('openExternalApiPanel')
-    if (openPanel === 'true') {
-      setTimeout(() => {
-        setShowExternalApiPanel(true)
-        window.history.replaceState({}, '', '/datasets')
-      }, 500)
-    }
-  }, [searchParams, setShowExternalApiPanel])
 
   const options = useMemo(() => {
     return [
