@@ -53,7 +53,8 @@ from services.account_service import AccountService
 
 warnings.simplefilter("ignore", ResourceWarning)
 
-os.environ["TZ"] = "UTC"
+# os.environ["TZ"] = "UTC"
+os.environ["TZ"] = "Asia/Shanghai"
 # windows platform not support tzset
 if hasattr(time, "tzset"):
     time.tzset()
