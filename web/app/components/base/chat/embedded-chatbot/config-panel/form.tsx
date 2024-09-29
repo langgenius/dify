@@ -8,7 +8,6 @@ import { FileUploaderInAttachmentWrapper } from '@/app/components/base/file-uplo
 const Form = () => {
   const { t } = useTranslation()
   const {
-    appParams,
     inputsForms,
     newConversationInputs,
     newConversationInputsRef,
