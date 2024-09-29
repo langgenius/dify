@@ -9,4 +9,5 @@ pytest api/tests/integration_tests/model_runtime/anthropic \
   api/tests/integration_tests/model_runtime/upstage \
   api/tests/integration_tests/model_runtime/fireworks \
   api/tests/integration_tests/model_runtime/nomic \
-  api/tests/integration_tests/model_runtime/mixedbread
+  api/tests/integration_tests/model_runtime/mixedbread \
+  api/tests/integration_tests/model_runtime/voyage
