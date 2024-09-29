@@ -61,7 +61,7 @@ const NewFeaturePanel = ({
           <div className='w-8 h-8 p-2 cursor-pointer' onClick={onClose}><RiCloseLine className='w-4 h-4 text-text-tertiary'/></div>
         </div>
         {/* list */}
-        <div className='grow overflow-y-auto px-4 pb-4'>
+        <div className='grow h-0 overflow-y-auto px-4 pb-4'>
           {!isChatMode && !inWorkflow && (
             <MoreLikeThis disabled={disabled} onChange={onChange} />
           )}
