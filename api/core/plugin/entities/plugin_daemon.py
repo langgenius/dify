@@ -87,3 +87,22 @@ class PluginVoiceEntity(BaseModel):
 
 class PluginVoicesResponse(BaseModel):
     voices: list[PluginVoiceEntity] = Field(description="The result of the voices.")
+
+
+class PluginDaemonError(BaseModel):
+    """
+    Error from plugin daemon.
+    """
+
+    error_type: str
+    message: str
+    args: Optional[dict] = None
+
+
+class PluginDaemonInnerError(Exception):
+    code: int
+    message: str
+
+    def __init__(self, code: int, message: str):
+        self.code = code
+        self.message = message

@@ -1,13 +1,20 @@
 import json
 from collections.abc import Callable, Generator
-from typing import TypeVar
+from typing import Optional, TypeVar
 
 import requests
 from pydantic import BaseModel
 from yarl import URL
 
 from configs import dify_config
-from core.plugin.entities.plugin_daemon import PluginDaemonBasicResponse
+from core.model_runtime.errors.invoke import (
+    InvokeAuthorizationError,
+    InvokeBadRequestError,
+    InvokeConnectionError,
+    InvokeRateLimitError,
+    InvokeServerUnavailableError,
+)
+from core.plugin.entities.plugin_daemon import PluginDaemonBasicResponse, PluginDaemonError, PluginDaemonInnerError
 
 plugin_daemon_inner_api_baseurl = dify_config.PLUGIN_API_URL
 plugin_daemon_inner_api_key = dify_config.PLUGIN_API_KEY
@@ -110,6 +117,12 @@ class BasePluginManager:
 
         rep = PluginDaemonBasicResponse[type](**json_response)
         if rep.code != 0:
+            if rep.code == -500:
+                try:
+                    error = PluginDaemonError(**json.loads(rep.message))
+                    self._handle_plugin_daemon_error(error.error_type, error.message, error.args)
+                except Exception as e:
+                    raise ValueError(f"got error from plugin daemon: {rep.message}, code: {rep.code}")
             raise ValueError(f"got error from plugin daemon: {rep.message}, code: {rep.code}")
         if rep.data is None:
             raise ValueError("got empty data from plugin daemon")
@@ -132,19 +145,34 @@ class BasePluginManager:
             line_data = json.loads(line)
             rep = PluginDaemonBasicResponse[type](**line_data)
             if rep.code != 0:
-                raise PluginDaemonRespError(rep.message, rep.code)
+                if rep.code == -500:
+                    try:
+                        error = PluginDaemonError(**json.loads(rep.message))
+                        self._handle_plugin_daemon_error(error.error_type, error.message, error.args)
+                    except Exception as e:
+                        raise PluginDaemonInnerError(code=rep.code, message=rep.message)
+                raise ValueError(f"got error from plugin daemon: {rep.message}, code: {rep.code}")
             if rep.data is None:
                 raise ValueError("got empty data from plugin daemon")
             yield rep.data
 
+    def _handle_plugin_daemon_error(self, error_type: str, message: str, args: Optional[dict] = None):
+        """
+        handle the error from plugin daemon
+        """
+        args = args or {}
 
-class PluginDaemonRespError(Exception):
-    """
-    Plugin daemon response error.
-    """
-
-    def __init__(self, resp_message: str, code: int):
-        super().__init__()
-        self.message = f"got error from plugin daemon: {resp_message}, code: {code}"
-        self.resp_message = resp_message
-        self.code = code
+        if error_type == PluginDaemonInnerError.__name__:
+            raise PluginDaemonInnerError(code=-500, message=message)
+        elif error_type == InvokeRateLimitError.__name__:
+            raise InvokeRateLimitError(description=args.get("description"))
+        elif error_type == InvokeAuthorizationError.__name__:
+            raise InvokeAuthorizationError(description=args.get("description"))
+        elif error_type == InvokeBadRequestError.__name__:
+            raise InvokeBadRequestError(description=args.get("description"))
+        elif error_type == InvokeConnectionError.__name__:
+            raise InvokeConnectionError(description=args.get("description"))
+        elif error_type == InvokeServerUnavailableError.__name__:
+            raise InvokeServerUnavailableError(description=args.get("description"))
+        else:
+            raise ValueError(f"got unknown error from plugin daemon: {error_type}, message: {message}, args: {args}")
