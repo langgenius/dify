@@ -59,6 +59,8 @@ class ToolManager:
         :param tenant_id: the id of the tenant
         :return: the provider
         """
+        # split provider to
+
         if len(cls._hardcoded_providers) == 0:
             # init the builtin providers
             cls.load_hardcoded_providers_cache()
@@ -77,8 +79,7 @@ class ToolManager:
         get the plugin provider
         """
         manager = PluginToolManager()
-        providers = manager.fetch_tool_providers(tenant_id)
-        provider_entity = next((x for x in providers if x.declaration.identity.name == provider), None)
+        provider_entity = manager.fetch_tool_provider(tenant_id, provider)
         if not provider_entity:
             raise ToolProviderNotFoundError(f"plugin provider {provider} not found")
 
@@ -181,9 +182,6 @@ class ToolManager:
             )
 
         elif provider_type == ToolProviderType.API:
-            if tenant_id is None:
-                raise ValueError("tenant id is required for api provider")
-
             api_provider, credentials = cls.get_api_provider_controller(tenant_id, provider_id)
 
             # decrypt the credentials
