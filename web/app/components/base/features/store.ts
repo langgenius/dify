@@ -1,6 +1,6 @@
 import { createStore } from 'zustand'
 import type { Features } from './types'
-import { TransferMethod } from '@/types/app'
+import { Resolution, TransferMethod } from '@/types/app'
 
 export type FeaturesModal = {
   showFeaturesModal: boolean
@@ -46,7 +46,7 @@ export const createFeaturesStore = (initProps?: Partial<FeaturesState>) => {
       file: {
         image: {
           enabled: false,
-          detail: 'high',
+          detail: Resolution.high,
           number_limits: 3,
           transfer_methods: [TransferMethod.local_file, TransferMethod.remote_url],
         },
