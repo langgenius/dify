@@ -83,7 +83,6 @@ const TextAreaWithButton = ({
   }
 
   const externalRetrievalTestingOnSubmit = async () => {
-    setLoading(true)
     const [e, res] = await asyncRunSafe<ExternalKnowledgeBaseHitTestingResponse>(
       externalKnowledgeBaseHitTesting({
         datasetId,
@@ -99,7 +98,6 @@ const TextAreaWithButton = ({
       onUpdateList?.()
     }
     setLoading(false)
-    _onSubmit && _onSubmit()
   }
 
   const retrievalMethod = isEconomy ? RETRIEVE_METHOD.invertedIndex : retrievalConfig.search_method
