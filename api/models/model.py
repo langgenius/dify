@@ -47,6 +47,23 @@ class AppMode(Enum):
             if mode.value == value:
                 return mode
         raise ValueError(f"invalid mode value {value}")
+    
+class ResourceType(Enum):
+    APP = "app"
+    DATASET = "dataset"
+
+    @classmethod
+    def value_of(cls, value: str) -> "ResourceType":
+        """
+        Get value of given mode.
+
+        :param value: mode value
+        :return: mode
+        """
+        for t in cls:
+            if t.value == value:
+                return t
+        raise ValueError(f"invalid mode value {value}")
 
 
 class IconType(Enum):
@@ -409,7 +426,7 @@ class AppModelConfig(db.Model):
             json.dumps(model_config["user_input_form"]) if model_config.get("user_input_form") else None
         )
         self.dataset_query_variable = model_config.get("dataset_query_variable")
-        self.pre_prompt = model_config["pre_prompt"]
+        self.pre_prompt = model_config.get("pre_prompt")
         self.agent_mode = json.dumps(model_config["agent_mode"]) if model_config.get("agent_mode") else None
         self.retriever_resource = (
             json.dumps(model_config["retriever_resource"]) if model_config.get("retriever_resource") else None

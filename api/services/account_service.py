@@ -319,6 +319,25 @@ class TenantService:
         else:
             raise TenantNotFoundError("Tenant not found for the account.")
         return tenant
+    
+    @staticmethod
+    def modify_tencent(tenant_id: str,name:str) -> None:
+        """modify tenant info"""
+        tenant = db.session.query(Tenant).filter(Tenant.id == tenant_id).first()
+        if not tenant:
+            raise TenantNotFoundError("Tenant not found") 
+        if name:
+            tenant.name = name
+        db.session.commit()
+    
+    @staticmethod
+    def delete_tencent(tenant_id: str) -> None:
+        """modify tenant info"""
+        tenant = db.session.query(Tenant).filter(Tenant.id == tenant_id).first()
+        if not tenant:
+            raise TenantNotFoundError("tenant not found")
+        tenant.status = TenantStatus.ARCHIVE
+        db.session.commit()
 
     @staticmethod
     def switch_tenant(account: Account, tenant_id: int = None) -> None:
