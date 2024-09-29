@@ -49,14 +49,14 @@ class VersionApi(Resource):
 def _has_new_version(*, latest_version: str, current_version: str) -> bool:
     def parse_version(version: str) -> tuple:
         # Split version into parts and pre-release suffix if any
-        parts = version.split('-')
-        version_parts = parts[0].split('.')
+        parts = version.split("-")
+        version_parts = parts[0].split(".")
         pre_release = parts[1] if len(parts) > 1 else None
 
         # Validate version format
         if len(version_parts) != 3:
             raise ValueError(f"Invalid version format: {version}")
-        
+
         try:
             # Convert version parts to integers
             major, minor, patch = map(int, version_parts)
